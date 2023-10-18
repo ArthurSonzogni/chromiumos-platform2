@@ -20,6 +20,8 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/task/single_thread_task_runner.h>
+#include <base/time/time.h>
 #include <chromeos/ec/ec_commands.h>
 #include <libec/ec_command_factory.h>
 #include <libec/fingerprint/fp_frame_command.h>
@@ -54,6 +56,13 @@
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
+
+// The maximum number of times we will retry getting external display info.
+constexpr int kMaximumGetExternalDisplayInfoRetry = 10;
+
+// The interval to wait between retrying to get external display info.
+constexpr base::TimeDelta kGetExternalDisplayInfoRetryPeriod =
+    base::Milliseconds(500);
 
 ec::FpMode ToEcFpMode(mojom::FingerprintCaptureType type) {
   switch (type) {
@@ -147,6 +156,33 @@ std::optional<uint8_t> GetNumFans(const int cros_fd) {
 
 double KelvinToCelsius(int temperature_kelvin) {
   return static_cast<double>(temperature_kelvin) - 273.15;
+}
+
+bool HasMissingDrmField(
+    const mojom::ExternalDisplayInfoPtr& external_display_info) {
+  // Check for display size.
+  if (external_display_info->display_width.is_null() ||
+      external_display_info->display_height.is_null()) {
+    return true;
+  }
+
+  // Check for resolution.
+  if (external_display_info->resolution_horizontal.is_null() ||
+      external_display_info->resolution_vertical.is_null()) {
+    return true;
+  }
+
+  // Check for refresh rate.
+  if (external_display_info->refresh_rate.is_null()) {
+    return true;
+  }
+
+  // Check for EDID information.
+  if (!external_display_info->edid_version.has_value()) {
+    return true;
+  }
+
+  return false;
 }
 
 }  // namespace
@@ -487,22 +523,77 @@ void DelegateImpl::GetPsr(GetPsrCallback callback) {
 }
 
 void DelegateImpl::GetConnectedExternalDisplayConnectors(
+    const std::optional<std::vector<uint32_t>>& last_known_connectors_const,
     GetConnectedExternalDisplayConnectorsCallback callback) {
-  base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr>
-      external_display_connectors;
-  DisplayUtil display_util;
-  if (!display_util.Initialize()) {
-    std::move(callback).Run(std::move(external_display_connectors),
-                            "Failed to initialize DisplayUtil");
+  if (!last_known_connectors_const.has_value()) {
+    GetConnectedExternalDisplayConnectorsHelper(std::nullopt,
+                                                std::move(callback), 0);
     return;
   }
+
+  std::vector<uint32_t> last_known_connectors = {};
+  for (const auto& element : last_known_connectors_const.value()) {
+    last_known_connectors.push_back(element);
+  }
+  std::sort(last_known_connectors.begin(), last_known_connectors.end());
+  GetConnectedExternalDisplayConnectorsHelper(last_known_connectors,
+                                              std::move(callback), 0);
+}
+
+void DelegateImpl::GetConnectedExternalDisplayConnectorsHelper(
+    std::optional<std::vector<uint32_t>> last_known_connectors,
+    GetConnectedExternalDisplayConnectorsCallback callback,
+    int times) {
+  DisplayUtil display_util;
+
+  if (!display_util.Initialize()) {
+    std::move(callback).Run(
+        base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr>{},
+        "Failed to initialize DisplayUtil");
+    return;
+  }
+
+  base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr>
+      external_display_connectors;
 
   std::vector<uint32_t> connector_ids =
       display_util.GetExternalDisplayConnectorIDs();
 
-  for (auto connector_id : connector_ids) {
+  if (last_known_connectors.has_value()) {
+    std::sort(connector_ids.begin(), connector_ids.end());
+    // If the connected connectors are identical to the previous state, it is
+    // possible that DRM have not detected the new display yet. Retry to ensure
+    // that all DRM changes are detected.
+    if (last_known_connectors == connector_ids &&
+        times < kMaximumGetExternalDisplayInfoRetry) {
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+          FROM_HERE,
+          base::BindOnce(
+              &DelegateImpl::GetConnectedExternalDisplayConnectorsHelper,
+              weak_ptr_factory_.GetWeakPtr(), last_known_connectors,
+              std::move(callback), times + 1),
+          kGetExternalDisplayInfoRetryPeriod);
+      return;
+    }
+  }
+
+  for (const auto& connector_id : connector_ids) {
     external_display_connectors[connector_id] =
         display_util.GetExternalDisplayInfo(connector_id);
+    // If the connector info has missing fields, it is possible that DRM have
+    // not fully detected all information yet. Retry to ensure that all DRM
+    // changes are detected.
+    if (times < kMaximumGetExternalDisplayInfoRetry &&
+        HasMissingDrmField(external_display_connectors[connector_id])) {
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+          FROM_HERE,
+          base::BindOnce(
+              &DelegateImpl::GetConnectedExternalDisplayConnectorsHelper,
+              weak_ptr_factory_.GetWeakPtr(), last_known_connectors,
+              std::move(callback), times + 1),
+          kGetExternalDisplayInfoRetryPeriod);
+      return;
+    }
   }
 
   std::move(callback).Run(std::move(external_display_connectors), std::nullopt);

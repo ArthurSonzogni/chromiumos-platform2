@@ -83,7 +83,7 @@ class UdevEventsImpl final : public UdevEvents {
   std::set<uint32_t> last_known_external_display_connectors_;
   // A boolean lock to indicate whether the drm resource is currently being
   // accessed.
-  bool drm_is_locked_;
+  bool drm_is_locked_ = false;
   // Stores the connector_id of the current connected external display
   // connectors.
   std::set<uint32_t> current_external_display_connectors_;

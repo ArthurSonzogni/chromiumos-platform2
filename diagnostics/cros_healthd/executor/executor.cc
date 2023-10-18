@@ -949,6 +949,7 @@ void Executor::RunLongRunningDelegate(
 }
 
 void Executor::GetConnectedExternalDisplayConnectors(
+    const std::optional<std::vector<uint32_t>>& last_known_connectors,
     GetConnectedExternalDisplayConnectorsCallback callback) {
   auto delegate = std::make_unique<DelegateProcess>(
       seccomp_file::kDrm,
@@ -957,6 +958,7 @@ void Executor::GetConnectedExternalDisplayConnectors(
       });
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetConnectedExternalDisplayConnectors(
+      last_known_connectors,
       CreateOnceDelegateCallback(
           std::move(delegate), std::move(callback),
           base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr>{},

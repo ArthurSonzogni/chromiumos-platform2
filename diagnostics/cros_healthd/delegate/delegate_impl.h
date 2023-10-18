@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_DELEGATE_DELEGATE_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_DELEGATE_DELEGATE_IMPL_H_
 
+#include <vector>
+
 #include <base/time/time.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
@@ -52,6 +54,7 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
   void GetLidAngle(GetLidAngleCallback callback) override;
   void GetPsr(GetPsrCallback callback) override;
   void GetConnectedExternalDisplayConnectors(
+      const std::optional<std::vector<uint32_t>>& last_known_connectors,
       GetConnectedExternalDisplayConnectorsCallback callback) override;
   void GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) override;
   void FetchDisplayInfo(FetchDisplayInfoCallback callback) override;
@@ -73,7 +76,15 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
   void GetEcThermalSensors(GetEcThermalSensorsCallback callback) override;
 
  private:
+  void GetConnectedExternalDisplayConnectorsHelper(
+      std::optional<std::vector<uint32_t>> last_known_connectors,
+      GetConnectedExternalDisplayConnectorsCallback callback,
+      int times);
+
   ec::EcCommandFactoryInterface* const ec_command_factory_;
+
+  // Must be the last class member.
+  base::WeakPtrFactory<DelegateImpl> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics

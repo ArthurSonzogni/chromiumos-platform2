@@ -135,10 +135,12 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
                mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>),
               (override));
   MOCK_METHOD(void, RemoveFioTestFile, (RemoveFioTestFileCallback), (override));
-  MOCK_METHOD(void,
-              GetConnectedExternalDisplayConnectors,
-              (GetConnectedExternalDisplayConnectorsCallback),
-              (override));
+  MOCK_METHOD(
+      void,
+      GetConnectedExternalDisplayConnectors,
+      (const std::optional<std::vector<uint32_t>>& last_known_connectors,
+       GetConnectedExternalDisplayConnectorsCallback),
+      (override));
   MOCK_METHOD(void,
               GetPrivacyScreenInfo,
               (GetPrivacyScreenInfoCallback),
