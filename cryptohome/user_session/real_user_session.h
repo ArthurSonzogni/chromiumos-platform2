@@ -80,12 +80,14 @@ class RealUserSession : public UserSession {
 
   bool VerifyUser(const ObfuscatedUsername& obfuscated_username) const override;
 
-  Pkcs11Token* GetPkcs11Token() override { return pkcs11_token_.get(); }
+  Pkcs11Token* GetPkcs11Token() const override { return pkcs11_token_.get(); }
 
   Username GetUsername() const override { return username_; }
 
   void PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
                              const brillo::SecureBlob& fnek) override;
+
+  void PrepareChapsKey(const brillo::SecureBlob& chaps_key) override;
 
   bool ResetApplicationContainer(const std::string& application) override;
 

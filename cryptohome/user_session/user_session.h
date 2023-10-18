@@ -87,7 +87,7 @@ class UserSession {
       const ObfuscatedUsername& obfuscated_username) const = 0;
 
   // Returns PKCS11 token associated with the session.
-  virtual Pkcs11Token* GetPkcs11Token() = 0;
+  virtual Pkcs11Token* GetPkcs11Token() const = 0;
 
   // Returns the name of the user associated with the session.
   virtual Username GetUsername() const = 0;
@@ -95,6 +95,9 @@ class UserSession {
   // Computes a public derivative from |fek| and |fnek| for u2fd to fetch.
   virtual void PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
                                      const brillo::SecureBlob& fnek) = 0;
+
+  // Ensure the user token of this user session is ready for the key store.
+  virtual void PrepareChapsKey(const brillo::SecureBlob& chaps_key) = 0;
 
   // Resets the application container for a given session.
   virtual bool ResetApplicationContainer(const std::string& application) = 0;

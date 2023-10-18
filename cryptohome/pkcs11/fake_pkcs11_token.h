@@ -11,12 +11,14 @@ namespace cryptohome {
 
 class FakePkcs11Token final : public Pkcs11Token {
  public:
-  FakePkcs11Token() : ready_(false) {}
+  FakePkcs11Token() : has_key_(true), ready_(false), restoring_(false) {}
 
   ~FakePkcs11Token() override = default;
 
   bool Insert() override {
+    has_key_ = false;
     ready_ = true;
+    restoring_ = false;
     return true;
   }
 
@@ -24,8 +26,27 @@ class FakePkcs11Token final : public Pkcs11Token {
 
   bool IsReady() const override { return ready_; }
 
+  void TryRestoring() override {
+    if (has_key_) {
+      Insert();
+      return;
+    }
+
+    ready_ = false;
+    restoring_ = true;
+  }
+
+  bool NeedRestore() const override { return restoring_; }
+
+  void RestoreAuthData(const brillo::SecureBlob& auth_data) override {
+    ready_ = true;
+    restoring_ = false;
+  }
+
  private:
+  bool has_key_;
   bool ready_;
+  bool restoring_;
 };
 
 }  // namespace cryptohome

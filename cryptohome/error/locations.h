@@ -1343,6 +1343,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   //// This is a separator block at value 1700
   //// See location_db.py for more info.
   //////////////////////////////////////////////////
+  /* ./auth_session.cc */
+  kLocAuthSessionPrepareChapsKeyNoFileSystemKeyset = 1700,
   //////////////////////////////////////////////////
   //// This is a separator block at value 1900
   //// See location_db.py for more info.

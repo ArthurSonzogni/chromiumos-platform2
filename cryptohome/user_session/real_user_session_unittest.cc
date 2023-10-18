@@ -245,6 +245,11 @@ TEST_F(RealUserSessionTest, MountVaultOk) {
   ASSERT_TRUE(session_->GetPkcs11Token()->Insert());
   ASSERT_TRUE(session_->GetPkcs11Token()->IsReady());
 
+  EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(true));
+  EXPECT_CALL(platform_, GetCurrentTime()).WillOnce(Return(kTs3));
+  EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(true));
+  EXPECT_TRUE(session_->Unmount());
+
   // SETUP
 
   // TODO(dlunev): this is required to mimic a real Mount::PrepareCryptohome

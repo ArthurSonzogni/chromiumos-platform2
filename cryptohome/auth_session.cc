@@ -995,6 +995,10 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
     }
   }
 
+  if (CryptohomeStatus status = PrepareChapsKey(); !status.ok()) {
+    LOG(ERROR) << "Failed to prepare chaps key: " << status;
+  }
+
   // Flip the status on the successful authentication.
   SetAuthorizedForFullAuthIntents(request_auth_factor_type,
                                   auth_factor_type_user_policy);
@@ -1296,9 +1300,14 @@ void AuthSession::AuthenticateAuthFactor(
         verifier = user_session->FindCredentialVerifier(auth_factor_labels[0]);
       }
 
+      bool restoring_chaps = user_session && user_session->GetPkcs11Token() &&
+                             user_session->GetPkcs11Token()->NeedRestore() &&
+                             factor_driver.IsFullAuthSupported(auth_intent_);
+
       // Attempt lightweight authentication via a credential verifier if
       // suitable.
-      if (verifier && factor_driver.IsLightAuthSupported(auth_intent_) &&
+      if (!restoring_chaps && verifier &&
+          factor_driver.IsLightAuthSupported(auth_intent_) &&
           IsIntentEnabledBasedOnPolicy(factor_driver, auth_intent_,
                                        auth_factor_type_user_policy) &&
           request.flags.force_full_auth != ForceFullAuthFlag::kForce) {
@@ -3876,6 +3885,10 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
     }
   }
 
+  if (CryptohomeStatus status = PrepareChapsKey(); !status.ok()) {
+    LOG(ERROR) << "Failed to prepare chaps key: " << status;
+  }
+
   // Flip the status on the successful authentication.
   SetAuthorizedForFullAuthIntents(auth_factor_type,
                                   auth_factor_type_user_policy);
@@ -4264,6 +4277,25 @@ CryptohomeStatus AuthSession::PrepareWebAuthnSecret() {
   session->PrepareWebAuthnSecret(file_system_keyset_->Key().fek,
                                  file_system_keyset_->Key().fnek);
   SetAuthorizedForIntents({AuthIntent::kWebAuthn});
+  return OkStatus<CryptohomeCryptoError>();
+}
+
+CryptohomeStatus AuthSession::PrepareChapsKey() {
+  if (!file_system_keyset_.has_value()) {
+    LOG(ERROR) << "No file system keyset when preparing chaps secret.";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionPrepareChapsKeyNoFileSystemKeyset),
+        ErrorActionSet({error::PossibleAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO,
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+  }
+
+  // Only prepare the chaps key if the user session exist.
+  UserSession* const session = user_session_map_->Find(username_);
+  if (session) {
+    session->PrepareChapsKey(file_system_keyset_->chaps_key());
+  }
+
   return OkStatus<CryptohomeCryptoError>();
 }
 

@@ -58,12 +58,13 @@ class MockUserSession : public UserSession {
               (),
               (override));
   MOCK_METHOD(bool, VerifyUser, (const ObfuscatedUsername&), (const, override));
-  MOCK_METHOD(Pkcs11Token*, GetPkcs11Token, (), (override));
+  MOCK_METHOD(Pkcs11Token*, GetPkcs11Token, (), (const, override));
   MOCK_METHOD(Username, GetUsername, (), (const, override));
   MOCK_METHOD(void,
               PrepareWebAuthnSecret,
               (const brillo::SecureBlob&, const brillo::SecureBlob&),
               (override));
+  MOCK_METHOD(void, PrepareChapsKey, (const brillo::SecureBlob&), (override));
   MOCK_METHOD(bool,
               ResetApplicationContainer,
               (const std::string&),

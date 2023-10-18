@@ -29,7 +29,8 @@ RealPkcs11Token::RealPkcs11Token(
       token_dir_(token_dir),
       auth_data_(auth_data),
       chaps_client_factory_(std::move(chaps_client_factory)),
-      ready_(false) {}
+      ready_(false),
+      need_restore_(false) {}
 
 RealPkcs11Token::~RealPkcs11Token() {
   Remove();
@@ -56,12 +57,14 @@ bool RealPkcs11Token::Insert() {
     // We should not do it if we failed, but keep it to preserve the behaviour.
     auth_data_ = std::nullopt;
     ready_ = true;
+    need_restore_ = false;
 
     return false;
   }
 
   auth_data_ = std::nullopt;
   ready_ = true;
+  need_restore_ = false;
 
   return true;
 }
@@ -77,6 +80,26 @@ void RealPkcs11Token::Remove() {
 
 bool RealPkcs11Token::IsReady() const {
   return ready_;
+}
+
+void RealPkcs11Token::TryRestoring() {
+  if (auth_data_.has_value()) {
+    Insert();
+    return;
+  }
+
+  // We will need to wait a full auth to restore the key.
+  ready_ = false;
+  need_restore_ = true;
+}
+
+bool RealPkcs11Token::NeedRestore() const {
+  return need_restore_;
+}
+
+void RealPkcs11Token::RestoreAuthData(const brillo::SecureBlob& auth_data) {
+  auth_data_ = auth_data;
+  Insert();
 }
 
 }  // namespace cryptohome

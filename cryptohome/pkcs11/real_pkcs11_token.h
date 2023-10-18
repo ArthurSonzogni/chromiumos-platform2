@@ -26,6 +26,9 @@ class RealPkcs11Token final : public Pkcs11Token {
   bool Insert() override;
   void Remove() override;
   bool IsReady() const override;
+  void TryRestoring() override;
+  bool NeedRestore() const override;
+  void RestoreAuthData(const brillo::SecureBlob& auth_data) override;
 
  private:
   RealPkcs11Token(const Username& username,
@@ -44,6 +47,7 @@ class RealPkcs11Token final : public Pkcs11Token {
   const std::unique_ptr<ChapsClientFactory> chaps_client_factory_;
 
   bool ready_;
+  bool need_restore_;
 
   friend class RealPkcs11TokenFactory;
 };

@@ -819,6 +819,9 @@ class AuthSession final {
   // Prepares the WebAuthn secret using file_system_keyset.
   CryptohomeStatus PrepareWebAuthnSecret();
 
+  // Prepares the chaps key using file_system_keyset.
+  CryptohomeStatus PrepareChapsKey();
+
   // RemoveRateLimiters remove all rate-limiter leaves in the UserMetadata. This
   // doesn't leave the USS with a consistent state, and should only be called
   // during PrepareUserForRemoval.

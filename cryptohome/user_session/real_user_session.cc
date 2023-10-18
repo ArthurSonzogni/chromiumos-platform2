@@ -87,13 +87,12 @@ MountStatus RealUserSession::MountVault(
 
   user_activity_timestamp_manager_->UpdateTimestamp(obfuscated_username_,
                                                     base::TimeDelta());
-  pkcs11_token_ = pkcs11_token_factory_->New(
-      username, homedirs_->GetChapsTokenDir(username), fs_keyset.chaps_key());
 
   // u2fd only needs to fetch the secret hash and not the secret itself when
   // mounting.
   PrepareWebAuthnSecretHash(fs_keyset.Key().fek, fs_keyset.Key().fnek);
   PrepareHibernateSecret(fs_keyset.Key().fek, fs_keyset.Key().fnek);
+  PrepareChapsKey(fs_keyset.chaps_key());
 
   return OkStatus<CryptohomeMountError>();
 }
@@ -127,9 +126,7 @@ MountStatus RealUserSession::MountEphemeral(const Username& username) {
 
   StorageStatus status = mount_->MountEphemeralCryptohome(username);
   if (status.ok()) {
-    pkcs11_token_ = pkcs11_token_factory_->New(
-        username_, homedirs_->GetChapsTokenDir(username_),
-        brillo::SecureBlob());
+    PrepareChapsKey(brillo::SecureBlob());
     return OkStatus<CryptohomeMountError>();
   }
 
@@ -221,6 +218,15 @@ std::unique_ptr<brillo::SecureBlob> RealUserSession::GetWebAuthnSecret() {
 
 const brillo::SecureBlob& RealUserSession::GetWebAuthnSecretHash() const {
   return webauthn_secret_hash_;
+}
+
+void RealUserSession::PrepareChapsKey(const brillo::SecureBlob& chaps_key) {
+  if (!pkcs11_token_) {
+    pkcs11_token_ = pkcs11_token_factory_->New(
+        username_, homedirs_->GetChapsTokenDir(username_), chaps_key);
+  } else if (pkcs11_token_->NeedRestore()) {
+    pkcs11_token_->RestoreAuthData(chaps_key);
+  }
 }
 
 void RealUserSession::PrepareHibernateSecret(const brillo::SecureBlob& fek,
