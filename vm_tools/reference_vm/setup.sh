@@ -135,6 +135,8 @@ EOF
   touch /opt/google/cros-containers/bin/sommelier
   # Required for boot with R/O rootfs
   mkdir -p /mnt/shared
+  # Required for disk ballooning
+  mkdir -p /mnt/stateful
 
   apt-get update
   apt-get -y install "${CROS_PACKAGES[@]}"
