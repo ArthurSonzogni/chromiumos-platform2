@@ -56,9 +56,6 @@ void SessionManagerProxy::OnSessionStateChanged(const std::string& state) {
 }
 
 std::string SessionManagerProxy::RetrieveSessionState() {
-  dbus::MethodCall method_call(
-      login_manager::kSessionManagerInterface,
-      login_manager::kSessionManagerRetrieveSessionState);
   std::string state;
   brillo::ErrorPtr error;
   if (!proxy_->RetrieveSessionState(&state, &error)) {

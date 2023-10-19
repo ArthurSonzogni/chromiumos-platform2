@@ -33,9 +33,10 @@ class PowerSupplyTrainingCondition : public TrainingCondition {
   [[nodiscard]] bool IsTrainingConditionSatisfied() const override;
 
  private:
-  // Called before training to see if the device is in a good condition, and
-  // during the training to see if the training should be aborted.
+  // Processes powerd dbus signals/responses.
+  void OnPowerManagerServiceAvailable(bool service_available);
   void OnPowerSupplyReceived(dbus::Signal* signal);
+  void OnBatterySaverModeReceived(dbus::Signal* signal);
 
   // Obtained from dbus, should never delete it.
   dbus::ObjectProxy* const powerd_dbus_proxy_;
@@ -44,6 +45,11 @@ class PowerSupplyTrainingCondition : public TrainingCondition {
   // Updated in `OnPowerSupplyReceived` and used in
   // `TrainingConditionsSatisfied`.
   bool enough_battery_;
+
+  // If `battery_saver_enabled_`, do not run the tasks.
+  // Updated in `OnBatterySaverModeReceived` and `OnGetBatterySaverModeState`,
+  // used in `TrainingConditionsSatisfied`.
+  bool battery_saver_enabled_;
 
   const base::WeakPtrFactory<PowerSupplyTrainingCondition> weak_ptr_factory_;
 

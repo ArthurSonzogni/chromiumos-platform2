@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include <base/check.h>
 #include <base/functional/callback.h>
@@ -17,14 +18,20 @@
 #include <gtest/gtest.h>
 
 #include "federated/power_supply_training_condition.h"
+#include "power_manager/proto_bindings/battery_saver.pb.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
 
 namespace federated {
 namespace {
 
+using ::power_manager::kBatterySaverModeStateChanged;
+using ::power_manager::kGetBatterySaverModeState;
 using ::power_manager::kPowerManagerInterface;
+using ::power_manager::kPowerManagerServiceName;
+using ::power_manager::kPowerManagerServicePath;
 using ::power_manager::kPowerSupplyPollSignal;
 using ::testing::_;
+using ::testing::Invoke;
 using ::testing::SaveArg;
 using ::testing::StrictMock;
 
@@ -40,15 +47,6 @@ power_manager::PowerSupplyProperties GeneratePowerSupplyProto(
   return power_supply_proto;
 }
 
-// Writes the given string (a serialized proto or "") to dbus signal.
-void WriteSerializedProtoToSignal(const std::string& serialized_proto,
-                                  dbus::Signal* signal) {
-  dbus::MessageWriter writer(signal);
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(serialized_proto.data()),
-      serialized_proto.size());
-}
-
 }  // namespace
 
 class PowerSupplyTrainingConditionTest : public ::testing::Test {
@@ -57,8 +55,8 @@ class PowerSupplyTrainingConditionTest : public ::testing::Test {
       : mock_dbus_(new StrictMock<dbus::MockBus>(dbus::Bus::Options())),
         dbus_object_proxy_(new StrictMock<dbus::MockObjectProxy>(
             mock_dbus_.get(),
-            power_manager::kPowerManagerServiceName,
-            dbus::ObjectPath(power_manager::kPowerManagerServicePath))) {}
+            kPowerManagerServiceName,
+            dbus::ObjectPath(kPowerManagerServicePath))) {}
   PowerSupplyTrainingConditionTest(const PowerSupplyTrainingConditionTest&) =
       delete;
   PowerSupplyTrainingConditionTest& operator=(
@@ -66,26 +64,63 @@ class PowerSupplyTrainingConditionTest : public ::testing::Test {
 
   void SetUp() override {
     EXPECT_CALL(*mock_dbus_,
-                GetObjectProxy(
-                    power_manager::kPowerManagerServiceName,
-                    dbus::ObjectPath(power_manager::kPowerManagerServicePath)))
+                GetObjectProxy(kPowerManagerServiceName,
+                               dbus::ObjectPath(kPowerManagerServicePath)))
         .WillOnce(Return(dbus_object_proxy_.get()));
 
+    EXPECT_CALL(
+        *dbus_object_proxy_,
+        DoConnectToSignal(kPowerManagerInterface, kPowerSupplyPollSignal, _, _))
+        .WillOnce(SaveArg<2>(&on_signal_callbacks_[kPowerSupplyPollSignal]));
+
     EXPECT_CALL(*dbus_object_proxy_,
-                DoConnectToSignal(power_manager::kPowerManagerInterface,
-                                  power_manager::kPowerSupplyPollSignal, _, _))
-        .WillOnce(SaveArg<2>(
-            &on_signal_callbacks_[power_manager::kPowerSupplyPollSignal]));
+                DoConnectToSignal(kPowerManagerInterface,
+                                  kBatterySaverModeStateChanged, _, _))
+        .WillOnce(
+            SaveArg<2>(&on_signal_callbacks_[kBatterySaverModeStateChanged]));
+
+    EXPECT_CALL(*dbus_object_proxy_, DoWaitForServiceToBeAvailable(_))
+        .WillOnce(Invoke(
+            [](dbus::MockObjectProxy::WaitForServiceToBeAvailableCallback*
+                   callback) { std::move(*callback).Run(true); }));
+
+    EXPECT_CALL(*dbus_object_proxy_, CallMethodAndBlock(_, _))
+        .WillOnce(Invoke(
+            this,
+            &PowerSupplyTrainingConditionTest::RespondGetBatterySaverMode));
 
     power_supply_training_condition_ =
         std::make_unique<PowerSupplyTrainingCondition>(mock_dbus_.get());
   }
 
-  void InvokeSignal(const std::string& signal_name, dbus::Signal* signal) {
-    ASSERT_TRUE(signal);
+  // Creates a dbus signal with the given `signal_name`, writes the given string
+  // (a serialized proto or "") to it and invokes.
+  void CreateSignalAndInvoke(const std::string& serialized_proto,
+                             const std::string& signal_name) {
+    dbus::Signal signal(kPowerManagerInterface, signal_name);
+    dbus::MessageWriter writer(&signal);
+    writer.AppendArrayOfBytes(
+        reinterpret_cast<const uint8_t*>(serialized_proto.data()),
+        serialized_proto.size());
+
     auto callback_iter = on_signal_callbacks_.find(signal_name);
     ASSERT_NE(callback_iter, on_signal_callbacks_.end());
-    callback_iter->second.Run(signal);
+    callback_iter->second.Run(&signal);
+  }
+
+  // Initialises the battery saver mode as disabled.
+  std::unique_ptr<dbus::Response> RespondGetBatterySaverMode(
+      dbus::MethodCall* method_call, int timeout_msec) {
+    EXPECT_EQ(method_call->GetInterface(), kPowerManagerInterface);
+    EXPECT_EQ(method_call->GetMember(), kGetBatterySaverModeState);
+    method_call->SetSerial(1);  // Needs to be non-zero or it fails.
+    std::unique_ptr<dbus::Response> response =
+        dbus::Response::FromMethodCall(method_call);
+    dbus::MessageWriter writer(response.get());
+    power_manager::BatterySaverModeState battery_saver_mode_state;
+    battery_saver_mode_state.set_enabled(false);
+    writer.AppendProtoAsArrayOfBytes(battery_saver_mode_state);
+    return response;
   }
 
   PowerSupplyTrainingCondition* power_supply_training_condition() const {
@@ -101,8 +136,6 @@ class PowerSupplyTrainingConditionTest : public ::testing::Test {
   std::unique_ptr<PowerSupplyTrainingCondition>
       power_supply_training_condition_;
 
-  // Currently, PowerSupply only connects to one signal, but may use more
-  // in the future.
   std::unordered_map<std::string,
                      base::RepeatingCallback<void(dbus::Signal* signal)>>
       on_signal_callbacks_;
@@ -110,21 +143,13 @@ class PowerSupplyTrainingConditionTest : public ::testing::Test {
 
 // Tests PowerSupply is initialized correctly and can handle unexpected
 // empty proto messages.
-TEST_F(PowerSupplyTrainingConditionTest, EmptySignal) {
-  dbus::Signal signal(kPowerManagerInterface, kPowerSupplyPollSignal);
-
+TEST_F(PowerSupplyTrainingConditionTest, EmptyPowerSupplyPollSignal) {
   // Initialized as false;
   EXPECT_FALSE(
       power_supply_training_condition()->IsTrainingConditionSatisfied());
 
-  // Invoke kPowerSupplyPollSignal without a valid proto message.
-  InvokeSignal(kPowerSupplyPollSignal, &signal);
-  EXPECT_FALSE(
-      power_supply_training_condition()->IsTrainingConditionSatisfied());
-
-  // Invoke kPowerSupplyPollSignal with a valid empty proto message.
-  WriteSerializedProtoToSignal("", &signal);
-  InvokeSignal(kPowerSupplyPollSignal, &signal);
+  // Invoke kPowerSupplyPollSignal with an empty proto message.
+  CreateSignalAndInvoke("", kPowerSupplyPollSignal);
   EXPECT_FALSE(
       power_supply_training_condition()->IsTrainingConditionSatisfied());
 }
@@ -135,50 +160,64 @@ TEST_F(PowerSupplyTrainingConditionTest, PowerSupplySatisfied) {
   // first written string can be read by the DeviceStatusMonitor.
 
   // battery = 95, state = discharging, satisfied.
-  dbus::Signal signal_1(kPowerManagerInterface, kPowerSupplyPollSignal);
-  WriteSerializedProtoToSignal(
+  CreateSignalAndInvoke(
       GeneratePowerSupplyProto(
           95.0, power_manager::PowerSupplyProperties::DISCHARGING)
           .SerializeAsString(),
-      &signal_1);
-  InvokeSignal(kPowerSupplyPollSignal, &signal_1);
+      kPowerSupplyPollSignal);
   EXPECT_TRUE(
       power_supply_training_condition()->IsTrainingConditionSatisfied());
 
   // battery = 50, state = charging, satisfied.
-  dbus::Signal signal_2(kPowerManagerInterface, kPowerSupplyPollSignal);
-  WriteSerializedProtoToSignal(
+  CreateSignalAndInvoke(
       GeneratePowerSupplyProto(50.0,
                                power_manager::PowerSupplyProperties::CHARGING)
           .SerializeAsString(),
-      &signal_2);
-  InvokeSignal(kPowerSupplyPollSignal, &signal_2);
+      kPowerSupplyPollSignal);
   EXPECT_TRUE(
       power_supply_training_condition()->IsTrainingConditionSatisfied());
 
   // battery = 100, state = full, satisfied.
-  dbus::Signal signal_3(kPowerManagerInterface, kPowerSupplyPollSignal);
-  WriteSerializedProtoToSignal(
-      GeneratePowerSupplyProto(100.0,
-                               power_manager::PowerSupplyProperties::FULL)
-          .SerializeAsString(),
-      &signal_3);
-  InvokeSignal(kPowerSupplyPollSignal, &signal_3);
+  CreateSignalAndInvoke(GeneratePowerSupplyProto(
+                            100.0, power_manager::PowerSupplyProperties::FULL)
+                            .SerializeAsString(),
+                        kPowerSupplyPollSignal);
   EXPECT_TRUE(
       power_supply_training_condition()->IsTrainingConditionSatisfied());
 }
 
 TEST_F(PowerSupplyTrainingConditionTest, PowerSupplyNotSatisfied) {
   // battery = 80, state = discharging, unsatisfied.
-  dbus::Signal signal(kPowerManagerInterface, kPowerSupplyPollSignal);
-  WriteSerializedProtoToSignal(
+  CreateSignalAndInvoke(
       GeneratePowerSupplyProto(
           80.0, power_manager::PowerSupplyProperties::DISCHARGING)
           .SerializeAsString(),
-      &signal);
-  InvokeSignal(kPowerSupplyPollSignal, &signal);
+      kPowerSupplyPollSignal);
   EXPECT_FALSE(
       power_supply_training_condition()->IsTrainingConditionSatisfied());
 }
 
+TEST_F(PowerSupplyTrainingConditionTest, RespectBatterySaverMode) {
+  // Meets the power supply requirements.
+  CreateSignalAndInvoke(GeneratePowerSupplyProto(
+                            100.0, power_manager::PowerSupplyProperties::FULL)
+                            .SerializeAsString(),
+                        kPowerSupplyPollSignal);
+  EXPECT_TRUE(
+      power_supply_training_condition()->IsTrainingConditionSatisfied());
+
+  // When battery_saver is enabled, power supply conditions are not satisfied.
+  power_manager::BatterySaverModeState battery_saver_mode_state;
+  battery_saver_mode_state.set_enabled(true);
+  CreateSignalAndInvoke(battery_saver_mode_state.SerializeAsString(),
+                        kBatterySaverModeStateChanged);
+  EXPECT_FALSE(
+      power_supply_training_condition()->IsTrainingConditionSatisfied());
+
+  battery_saver_mode_state.set_enabled(false);
+  CreateSignalAndInvoke(battery_saver_mode_state.SerializeAsString(),
+                        kBatterySaverModeStateChanged);
+  EXPECT_TRUE(
+      power_supply_training_condition()->IsTrainingConditionSatisfied());
+}
 }  // namespace federated
