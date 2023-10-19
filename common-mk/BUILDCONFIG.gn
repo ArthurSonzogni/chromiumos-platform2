@@ -91,7 +91,10 @@ if (sysroot == "/") {
 }
 
 # All binary targets will get this list of configs by default.
-_binary_target_configs = [ "//common-mk:compiler_defaults" ]
+_binary_target_configs = [
+  "//common-mk:compiler_defaults",
+  "//common-mk:lto_experiment",
+]
 
 if (!enable_exceptions) {
   _binary_target_configs += [ "//common-mk:no_exceptions" ]
@@ -120,6 +123,7 @@ set_defaults("static_library") {
 set_defaults("shared_library") {
   configs = _binary_target_configs
   configs += [ "//common-mk:pic" ]
+  configs -= [ "//common-mk:lto_experiment" ]
 }
 
 set_defaults("source_set") {
