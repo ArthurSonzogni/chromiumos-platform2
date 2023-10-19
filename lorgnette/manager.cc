@@ -408,6 +408,20 @@ StartScanResponse Manager::StartScan(const StartScanRequest& request) {
   response.set_state(SCAN_STATE_FAILED);
   response.set_scan_failure_mode(SCAN_FAILURE_MODE_UNKNOWN);
 
+  // Give extra time to start the scan because some devices don't return from
+  // the SANE call until the hardware has started to scan.
+  if (!activity_callback_.is_null())
+    activity_callback_.Run(Daemon::kExtendedShutdownTimeout);
+
+  // Ensure the timeout is restored to normal no matter how this function exits.
+  base::ScopedClosureRunner restore_timeout(base::BindOnce(
+      [](base::WeakPtr<Manager> manager) {
+        if (manager && !manager->activity_callback_.is_null()) {
+          manager->activity_callback_.Run(Daemon::kNormalShutdownTimeout);
+        }
+      },
+      weak_factory_.GetWeakPtr()));
+
   brillo::ErrorPtr error;
   ScanFailureMode failure_mode(SCAN_FAILURE_MODE_UNKNOWN);
   std::unique_ptr<SaneDevice> device;
@@ -445,6 +459,7 @@ StartScanResponse Manager::StartScan(const StartScanRequest& request) {
 
   if (!activity_callback_.is_null())
     activity_callback_.Run(Daemon::kExtendedShutdownTimeout);
+  (void)restore_timeout.Release();  // Don't undo the extended timeout.
 
   response.set_scan_uuid(uuid);
   response.set_state(SCAN_STATE_IN_PROGRESS);
