@@ -77,16 +77,13 @@ bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
 
 bool VpdProcessImpl::HandleExit(const siginfo_t& info) {
   if (!subprocess_) {
-    LOG(ERROR) << "Update VPD fail, no subprocess";
     return false;
   }
   if (subprocess_->GetPid() <= 0) {
-    LOG(ERROR) << "Update VPD fail, pid = " << subprocess_->GetPid();
     subprocess_.reset();
     return false;
   }
   if (subprocess_->GetPid() != info.si_pid) {
-    LOG(ERROR) << "Update VPD notification from wrong process";
     return false;
   }
 
