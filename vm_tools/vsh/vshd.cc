@@ -85,24 +85,14 @@ int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  // Save vshd logs to kernel's printk buffer so that we can see what happened
-  // through pstore even when vsh doesn't work.
-  int kmsg_fd = open(kDevKmsg, O_WRONLY | O_CLOEXEC);
-  if (kmsg_fd != -1) {
-    g_kmsg_fd.reset(kmsg_fd);
-    logging::SetLogMessageHandler(LogToKmsg);
-  } else {
-    PLOG(WARNING) << "Failed to open /dev/kmsg";
-  }
-
-  LOG(INFO) << "vshd started";
-
   DEFINE_uint64(forward_to_host_port, 0, "Port to forward to on the host");
   DEFINE_bool(inherit_env, false, "Inherit the current environment variables");
   DEFINE_string(default_user, "chronos", "Default login user");
   DEFINE_bool(allow_to_switch_user, true,
               "Allows logging in as a user (including root) other than the "
               "default user");
+  // TODO(b/306282531): Set this to false once ARCVM sets this flag.
+  DEFINE_bool(log_kmsg, true, "Log to /dev/kmsg rather than syslog");
 
   brillo::FlagHelper::Init(argc, argv, "vsh daemon");
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
@@ -110,6 +100,21 @@ int main(int argc, char** argv) {
     LOG(ERROR) << "Unknown extra command line arguments; exiting";
     return EXIT_FAILURE;
   }
+
+  if (FLAGS_log_kmsg) {
+    // Save vshd logs to kernel's printk buffer so that we can see what happened
+    // through pstore even when vsh doesn't work.
+    // If vshd is running without privileges, this is expected to fail.
+    int kmsg_fd = open(kDevKmsg, O_WRONLY | O_CLOEXEC);
+    if (kmsg_fd != -1) {
+      g_kmsg_fd.reset(kmsg_fd);
+      logging::SetLogMessageHandler(LogToKmsg);
+    } else {
+      PLOG(WARNING) << "Failed to open /dev/kmsg";
+    }
+  }
+
+  LOG(INFO) << "vshd started";
 
   if (FLAGS_forward_to_host_port != 0) {
     uint32_t port = static_cast<uint32_t>(FLAGS_forward_to_host_port);
