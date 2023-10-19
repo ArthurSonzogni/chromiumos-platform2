@@ -625,6 +625,16 @@ void DlpAdaptor::AddPerFileWatch(
   if (!fanotify_watcher_->IsActive())
     return;
 
+  // No files to add -> exit early.
+  if (files.empty())
+    return;
+
+  // Not expected, but if the DB is not there -> delay adding watches.
+  if (!db_) {
+    pending_per_file_watches_ = true;
+    return;
+  }
+
   std::vector<FileId> ids;
   for (const auto& entry : files) {
     ids.push_back(entry.second);
