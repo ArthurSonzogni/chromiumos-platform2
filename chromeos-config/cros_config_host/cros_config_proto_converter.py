@@ -802,9 +802,80 @@ def _build_resource(config: Config) -> dict:
         config.hw_design_config.hardware_features.soc.resource_config
     )
 
-    return json_format.MessageToDict(
-        resource_config, including_default_value_fields=True
-    )
+    def _build_governor(config):
+        result = {}
+        if config.HasField("conservative"):
+            result["conservative"] = {}
+        if config.HasField("ondemand"):
+            result["ondemand"] = json_format.MessageToDict(
+                config.ondemand, including_default_value_fields=True
+            )
+        if config.HasField("performance"):
+            result["performance"] = {}
+        if config.HasField("powersave"):
+            result["powersave"] = {}
+        if config.HasField("schedutil"):
+            result["schedutil"] = {}
+        if config.HasField("userspace"):
+            result["userspace"] = {}
+        return result
+
+    def _build_preference(config):
+        result = {}
+        if config.HasField("cpu_offline"):
+            result["cpu-offline"] = json_format.MessageToDict(
+                config.cpu_offline, including_default_value_fields=False
+            )
+        if config.HasField("epp"):
+            result["epp"] = json_format.MessageToDict(
+                config.epp, including_default_value_fields=False
+            )
+        if config.HasField("governor"):
+            result["governor"] = _build_governor(config.governor)
+        return result
+
+    def _build_power_preference(config):
+        result = {}
+        if config.HasField("arcvm_gaming_power_preferences"):
+            result["arcvm-gaming-power-preferences"] = _build_preference(
+                config.arcvm_gaming_power_preferences
+            )
+        if config.HasField("battery_saver_power_preferences"):
+            result["battery-saver-power-preferences"] = _build_preference(
+                config.battery_saver_power_preferences
+            )
+        if config.HasField("borealis_gaming_power_preferences"):
+            result["borealis-gaming-power-preferences"] = _build_preference(
+                config.borealis_gaming_power_preferences
+            )
+        if config.HasField("default_power_preferences"):
+            result["default-power-preferences"] = _build_preference(
+                config.default_power_preferences
+            )
+        if config.HasField("fullscreen_video_power_preferences"):
+            result["fullscreen-power-preferences"] = _build_preference(
+                config.fullscreen_video_power_preferences
+            )
+        if config.HasField("vm_boot_power_preferences"):
+            result["vm-boot-power-preferences"] = _build_preference(
+                config.vm_boot_power_preferences
+            )
+        if config.HasField("web_rtc_power_preferences"):
+            result["web-rtc-power-preferences"] = _build_preference(
+                config.web_rtc_power_preferences
+            )
+        return result
+
+    def _build_power_source(config):
+        result = {}
+        if config.HasField("ac"):
+            result["ac"] = _build_power_preference(config.ac)
+        if config.HasField("dc"):
+            result["dc"] = _build_power_preference(config.dc)
+        return result
+
+    result = _build_power_source(resource_config)
+    return result
 
 
 def _overlay_presence(*values):
