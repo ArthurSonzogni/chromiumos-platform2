@@ -13,6 +13,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <utility>
 
 #include <libhwsec/factory/factory.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
@@ -23,6 +24,13 @@ class DeviceManagementService {
  public:
   DeviceManagementService();
   ~DeviceManagementService();
+
+  void SetParamsForTesting(std::unique_ptr<fwmp::FirmwareManagementParameters>
+                               firmware_management_parameters,
+                           std::unique_ptr<InstallAttributes> install_attrs) {
+    firmware_management_parameters_ = std::move(firmware_management_parameters);
+    install_attrs_ = std::move(install_attrs);
+  }
 
   void Initialize(const hwsec::CryptohomeFrontend& hwsec_, Platform& platform);
 

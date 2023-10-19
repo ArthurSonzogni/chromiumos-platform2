@@ -12,8 +12,8 @@ namespace device_management {
 class MockFirmwareManagementParameters
     : public fwmp::FirmwareManagementParameters {
  public:
-  MockFirmwareManagementParameters();
-  virtual ~MockFirmwareManagementParameters();
+  MockFirmwareManagementParameters() = default;
+  virtual ~MockFirmwareManagementParameters() = default;
 
   MOCK_METHOD(bool, Create, (), (override));
   MOCK_METHOD(bool, Destroy, (), (override));

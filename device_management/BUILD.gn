@@ -179,6 +179,7 @@ if (use.test) {
   }
   executable("device_management_testrunner") {
     sources = [
+      "device_management_service_test.cc",
       "device_management_testrunner.cc",
       "fwmp/firmware_management_parameters_test.cc",
       "install_attributes/fake_platform.cc",

@@ -25,9 +25,15 @@ DeviceManagementService::~DeviceManagementService() {}
 
 void DeviceManagementService::Initialize(
     const hwsec::CryptohomeFrontend& hwsec_, Platform& platform_) {
-  firmware_management_parameters_ =
-      fwmp::FirmwareManagementParameters::CreateInstance(&hwsec_);
-  install_attrs_ = std::make_unique<InstallAttributes>(&platform_, &hwsec_);
+  if (!firmware_management_parameters_) {
+    firmware_management_parameters_ =
+        fwmp::FirmwareManagementParameters::CreateInstance(&hwsec_);
+  }
+
+  if (!install_attrs_) {
+    install_attrs_ = std::make_unique<InstallAttributes>(&platform_, &hwsec_);
+  }
+
   // Initialize the install-time locked attributes since we can't do it prior
   // to ownership.
   hwsec_.RegisterOnReadyCallback(base::BindOnce(
