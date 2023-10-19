@@ -73,6 +73,7 @@ class SensorHalClientImpl : public SensorHalClient {
     // SensorServiceNewDevicesObserver Mojo interface implementation.
     void OnNewDeviceAdded(int32_t iio_device_id,
                           const std::vector<mojom::DeviceType>& types) override;
+    void OnDeviceRemoved(int32_t iio_device_id) override;
 
     bool IsReady() { return sensor_service_remote_.is_bound(); }
 
@@ -141,9 +142,6 @@ class SensorHalClientImpl : public SensorHalClient {
 
     void OnSensorServiceDisconnect();
     void OnNewDevicesObserverDisconnect();
-    void OnSensorDeviceDisconnect(int32_t iio_device_id,
-                                  uint32_t custom_reason_code,
-                                  const std::string& description);
 
     CameraMojoChannelManager* mojo_manager_;
 

@@ -318,6 +318,44 @@ void SensorHalClientImpl::IPCBridge::OnNewDeviceAdded(
   RegisterDevice(iio_device_id, types);
 }
 
+void SensorHalClientImpl::IPCBridge::OnDeviceRemoved(int32_t iio_device_id) {
+  LOGF(INFO) << "OnDeviceRemoved: " << iio_device_id;
+  for (auto it = readers_.begin(); it != readers_.end();) {
+    if (it->second.iio_device_id == iio_device_id) {
+      it->first->OnErrorOccurred(SamplesObserver::ErrorType::DEVICE_REMOVED);
+      it = readers_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+
+  // Look for replacement sensors for the same types & location.
+  std::vector<mojom::DeviceType> types = devices_[iio_device_id].types;
+  std::optional<Location> location_opt = devices_[iio_device_id].location;
+  devices_.erase(iio_device_id);
+  if (!location_opt.has_value())
+    return;
+
+  auto location = location_opt.value();
+  for (const mojom::DeviceType& type : types) {
+    auto& map_type = device_maps_[type];
+    if (map_type[location] == iio_device_id) {
+      map_type.erase(location);
+
+      // Currently we couldn't differentiate devices with the same type and
+      // location.
+      for (auto& device : devices_) {
+        if (base::Contains(device.second.types, type) &&
+            device.second.location == location) {
+          map_type[location] = device.first;
+          RunDeviceQueriesForType(type);
+          break;
+        }
+      }
+    }
+  }
+}
+
 base::WeakPtr<SensorHalClientImpl::IPCBridge>
 SensorHalClientImpl::IPCBridge::GetWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
@@ -383,13 +421,6 @@ void SensorHalClientImpl::IPCBridge::RegisterDevice(
 
   device.remote = GetSensorDeviceRemote(iio_device_id);
 
-  // Add a temporary disconnect handler to catch failures during sensor
-  // enumeration. SensorDevice will handle disconnection during normal
-  // operation.
-  device.remote.set_disconnect_with_reason_handler(
-      base::BindOnce(&SensorHalClientImpl::IPCBridge::OnSensorDeviceDisconnect,
-                     GetWeakPtr(), iio_device_id));
-
   device.remote->GetAttributes(
       attr_names,
       base::BindOnce(&SensorHalClientImpl::IPCBridge::GetAttributesCallback,
@@ -453,8 +484,8 @@ void SensorHalClientImpl::IPCBridge::GetAttributesCallback(
   DCHECK(device.location && device.scale);
 
   for (const auto& type : device.types) {
-    // TODO(b/189998208): Check how to choose from multiple devices with the
-    // same type and location pair.
+    // Currently we couldn't differentiate devices with the same type and
+    // location.
     if (!HasDeviceInternal(type, *device.location)) {
       device_maps_[type][*device.location] = iio_device_id;
     }
@@ -548,59 +579,6 @@ void SensorHalClientImpl::IPCBridge::OnNewDevicesObserverDisconnect() {
 
   // Assumes IIO Service has crashed and waits for its relaunch.
   ResetSensorService();
-}
-
-void SensorHalClientImpl::IPCBridge::OnSensorDeviceDisconnect(
-    int32_t iio_device_id,
-    uint32_t custom_reason_code,
-    const std::string& description) {
-  const auto reason = static_cast<cros::mojom::SensorDeviceDisconnectReason>(
-      custom_reason_code);
-  LOG(WARNING) << "SensorDevice disconnected with id: " << iio_device_id
-               << ", reason: " << reason << ", description: " << description;
-
-  switch (reason) {
-    case cros::mojom::SensorDeviceDisconnectReason::IIOSERVICE_CRASHED:
-      ResetSensorService();
-      break;
-
-    case cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED:
-      for (auto it = readers_.begin(); it != readers_.end();) {
-        if (it->second.iio_device_id == iio_device_id) {
-          it->first->OnErrorOccurred(
-              SamplesObserver::ErrorType::DEVICE_REMOVED);
-          it = readers_.erase(it);
-        } else {
-          ++it;
-        }
-      }
-
-      auto types = devices_[iio_device_id].types;
-      auto location_opt = devices_[iio_device_id].location;
-      devices_.erase(iio_device_id);
-      if (!location_opt.has_value())
-        break;
-
-      auto location = location_opt.value();
-      for (const auto& type : types) {
-        auto& map_type = device_maps_[type];
-        if (map_type[location] == iio_device_id) {
-          map_type.erase(location);
-
-          // TODO(b/189998208): Check how to choose from multiple devices with
-          // the same type and location pair.
-          for (auto& device : devices_) {
-            if (base::Contains(device.second.types, type) &&
-                device.second.location == location) {
-              map_type[location] = device.first;
-              RunDeviceQueriesForType(type);
-              break;
-            }
-          }
-        }
-      }
-      break;
-  }
 }
 
 }  // namespace cros
