@@ -85,6 +85,8 @@ EOF
   install -m 0755 -t /usr/local/bin \
     "${DATA_ROOT}/usr/local/bin/update-cros-list"
 
+  install -D -m 0644 -t /usr/local/lib/systemd/journald.conf.d \
+    "${DATA_ROOT}/usr/local/lib/systemd/journald.conf.d/50-console.conf"
   install -D -m 0644 -t /usr/local/lib/systemd/system \
     "${DATA_ROOT}/usr/local/lib/systemd/system/install-refvm.service" \
     "${DATA_ROOT}/usr/local/lib/systemd/system/maitred.service" \
