@@ -56,11 +56,6 @@ void RemoveBtmonLog(mojom::Executor* executor) {
   executor->RemoveBtmonLog(base::DoNothing());
 }
 
-void CancelAdapterDiscovery(
-    org::chromium::bluetooth::BluetoothProxyInterface* adapter) {
-  adapter->CancelDiscoveryAsync(base::DoNothing(), base::DoNothing());
-}
-
 // Return true if |ReadBtmonLog| runs successfully.
 bool HandleReadBtmonLogResponse(const mojom::ExecutedProcessResultPtr& result) {
   std::string err = result->err;
@@ -217,8 +212,7 @@ void BluetoothDiscoveryRoutineV2::UpdateAdapterDiscoveryMode() {
 
   // Wait for the property changed event in |OnAdapterDiscoveringChanged|.
   if (step_ == TestStep::kCheckDiscoveringStatusOn) {
-    adapter_stop_discovery_ = base::ScopedClosureRunner(
-        base::BindOnce(&CancelAdapterDiscovery, adapter));
+    SetupStopDiscoveryJob();
     adapter->StartDiscoveryAsync(
         base::DoNothing(),
         base::BindOnce(&BluetoothDiscoveryRoutineV2::HandleUpdateDiscoveryError,

@@ -469,5 +469,28 @@ TEST_F(BluetoothRoutineBaseV2Test, ResetPoweredOffDeconstructed) {
   routine_base.reset();
 }
 
+// Test that the BluetoothRoutineBaseV2 can stop discovery when deconstructed.
+TEST_F(BluetoothRoutineBaseV2Test, SetupStopDiscoveryJob) {
+  InSequence s;
+  auto routine_base = std::make_unique<BluetoothRoutineBaseV2>(&mock_context_);
+
+  // Initialize to setup default adapter.
+  SetupInitializeSuccessCall(/*initial_powered=*/false);
+  base::test::TestFuture<bool> future;
+  routine_base->Initialize(future.GetCallback());
+  EXPECT_EQ(future.Get(), true);
+
+  // Stop discovery.
+  routine_base->SetupStopDiscoveryJob();
+  SetupGetAdaptersCall();
+  EXPECT_CALL(mock_adapter_proxy_, CancelDiscoveryAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/false));
+
+  // Reset.
+  EXPECT_CALL(mock_manager_proxy_, StopAsync(kDefaultHciInterface, _, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>());
+  routine_base.reset();
+}
+
 }  // namespace
 }  // namespace diagnostics

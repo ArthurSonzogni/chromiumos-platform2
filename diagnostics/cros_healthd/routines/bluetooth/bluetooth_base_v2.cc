@@ -44,6 +44,15 @@ void ResetPoweredState(FlossController* floss_controller,
   }
 }
 
+void CancelAdapterDiscovery(FlossController* floss_controller,
+                            int32_t hci_interface) {
+  auto adapter_path = GetAdapterPath(hci_interface);
+  for (const auto& adapter : floss_controller->GetAdapters()) {
+    if (adapter && adapter->GetObjectPath() == adapter_path)
+      adapter->CancelDiscoveryAsync(base::DoNothing(), base::DoNothing());
+  }
+}
+
 }  // namespace
 
 BluetoothRoutineBaseV2::BluetoothRoutineBaseV2(Context* context)
@@ -275,6 +284,12 @@ void BluetoothRoutineBaseV2::OnManagerRemoved(
     const dbus::ObjectPath& manager_path) {
   LOG(ERROR) << "Bluetooth manager proxy is removed unexpectedly";
   manager_ = nullptr;
+}
+
+void BluetoothRoutineBaseV2::SetupStopDiscoveryJob() {
+  adapter_stop_discovery_ = base::ScopedClosureRunner(
+      base::BindOnce(&CancelAdapterDiscovery, context_->floss_controller(),
+                     default_adapter_hci_));
 }
 
 }  // namespace diagnostics

@@ -431,6 +431,7 @@ TEST_F(BluetoothDiscoveryRoutineV2Test, FailedVerifyDiscoveringHci) {
                                          /*lescan_on_success=*/false);
 
   // Stop discovery.
+  SetupGetAdaptersCall();
   EXPECT_CALL(mock_adapter_proxy_, CancelDiscoveryAsync(_, _, _));
 
   // Cleanup Logs.
@@ -513,6 +514,7 @@ TEST_F(BluetoothDiscoveryRoutineV2Test, FailedStartDiscovery) {
       .WillOnce(base::test::RunOnceCallback<1>(error.get()));
 
   // Stop discovery.
+  SetupGetAdaptersCall();
   EXPECT_CALL(mock_adapter_proxy_, CancelDiscoveryAsync(_, _, _));
 
   // Cleanup Logs.
@@ -591,6 +593,7 @@ TEST_F(BluetoothDiscoveryRoutineV2Test, BtmonTerminatedError) {
       .WillOnce([&]() { fake_process_control_.receiver().reset(); });
 
   // Stop discovery.
+  SetupGetAdaptersCall();
   EXPECT_CALL(mock_adapter_proxy_, CancelDiscoveryAsync(_, _, _));
 
   // Cleanup Logs.
@@ -616,6 +619,7 @@ TEST_F(BluetoothDiscoveryRoutineV2Test, RoutineTimeoutOccurred) {
   // Start discovery.
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _));
   // Stop discovery.
+  SetupGetAdaptersCall();
   EXPECT_CALL(mock_adapter_proxy_, CancelDiscoveryAsync(_, _, _));
 
   // Cleanup Logs.

@@ -118,9 +118,6 @@ class BluetoothDiscoveryRoutineV2 final : public BaseRoutineControl,
   // A callback that should be run regardless of the execution status. This
   // callback will remove temporary log file created by btmon.
   base::ScopedClosureRunner remove_btmon_log_;
-  // A callback that should be run regardless of the execution status. This
-  // callback will ask the adapter to stop discovery.
-  base::ScopedClosureRunner adapter_stop_discovery_;
 
   // Must be the last class member.
   base::WeakPtrFactory<BluetoothDiscoveryRoutineV2> weak_ptr_factory_{this};

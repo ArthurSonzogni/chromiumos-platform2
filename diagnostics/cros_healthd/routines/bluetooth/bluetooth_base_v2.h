@@ -55,6 +55,10 @@ class BluetoothRoutineBaseV2 {
   // string when unexpected error occurs.
   void ChangeAdapterPoweredState(bool powered, ResultCallback on_finish);
 
+  // Set |adapter_stop_discovery_| callback to stop discovery at the end of the
+  // routine.
+  void SetupStopDiscoveryJob();
+
  protected:
   // Unowned pointer that should outlive this instance.
   Context* const context_;
@@ -71,6 +75,9 @@ class BluetoothRoutineBaseV2 {
   // A callback that should be run regardless of the execution status. This
   // callback will reset the adapter powered to |initial_powered_state_|.
   base::ScopedClosureRunner reset_bluetooth_powered_;
+  // A callback that should be run regardless of the execution status. This
+  // callback will ask the adapter to stop discovery.
+  base::ScopedClosureRunner adapter_stop_discovery_;
 
  private:
   // Inner functions of |Initialize|.
