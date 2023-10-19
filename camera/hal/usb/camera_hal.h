@@ -25,8 +25,8 @@
 #include "cros-camera/udev_watcher.h"
 #include "hal/usb/camera_characteristics.h"
 #include "hal/usb/camera_client.h"
-#include "hal/usb/camera_privacy_switch_monitor.h"
 #include "hal/usb/common_types.h"
+#include "hal/usb/v4l2_event_monitor.h"
 
 namespace cros {
 
@@ -79,9 +79,7 @@ class CameraHal : public UdevWatcher::Observer {
   void OnDeviceAdded(ScopedUdevDevicePtr dev) override;
   void OnDeviceRemoved(ScopedUdevDevicePtr dev) override;
 
-  // Monitors HW camera privacy switch state changes. The HW privacy switch is
-  // available on some devices.
-  CameraPrivacySwitchMonitor hw_privacy_switch_monitor_;
+  V4L2EventMonitor v4l2_event_monitor_;
 
   // SW privacy switch state. The SW privacy switch is set by OS and independent
   // from the HW privacy switch that some devices have.

@@ -35,7 +35,6 @@ shared_library("libcamera_hal") {
     "camera_client.cc",
     "camera_hal.cc",
     "camera_hal_device_ops.cc",
-    "camera_privacy_switch_monitor.cc",
     "capture_request.cc",
     "frame_buffer.cc",
     "image_processor.cc",
@@ -44,6 +43,7 @@ shared_library("libcamera_hal") {
     "stream_format.cc",
     "test_pattern.cc",
     "v4l2_camera_device.cc",
+    "v4l2_event_monitor.cc",
     "vendor_tag.cc",
   ]
   configs += [ ":target_defaults" ]

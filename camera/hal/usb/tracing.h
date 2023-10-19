@@ -11,5 +11,7 @@
 
 #define TRACE_USB_HAL(...) \
   TRACE_EVENT_AUTOGEN(kCameraTraceCategoryUsbHal, ##__VA_ARGS__)
+#define TRACE_USB_HAL_EVENT(event, ...) \
+  TRACE_EVENT(kCameraTraceCategoryUsbHal, event, ##__VA_ARGS__);
 
 #endif  // CAMERA_HAL_USB_TRACING_H_

@@ -24,6 +24,7 @@
 #include "hal/usb/quirks.h"
 #include "hal/usb/stream_format.h"
 #include "hal/usb/tracing.h"
+#include "hal/usb/v4l2_event_monitor.h"
 
 namespace cros {
 
@@ -88,21 +89,20 @@ int ResolvedFrameRateFromMetadata(const android::CameraMetadata& metadata,
 
 }  // namespace
 
-CameraClient::CameraClient(
-    int id,
-    const DeviceInfo& device_info,
-    const camera_metadata_t& static_metadata,
-    const camera_metadata_t& request_template,
-    const hw_module_t* module,
-    hw_device_t** hw_device,
-    CameraPrivacySwitchMonitor* hw_privacy_switch_monitor,
-    ClientType client_type,
-    bool sw_privacy_switch_on)
+CameraClient::CameraClient(int id,
+                           const DeviceInfo& device_info,
+                           const camera_metadata_t& static_metadata,
+                           const camera_metadata_t& request_template,
+                           const hw_module_t* module,
+                           hw_device_t** hw_device,
+                           V4L2EventMonitor* v4l2_event_monitor,
+                           ClientType client_type,
+                           bool sw_privacy_switch_on)
     : id_(id),
       device_info_(device_info),
       static_metadata_(clone_camera_metadata(&static_metadata)),
       device_(new V4L2CameraDevice(
-          device_info, hw_privacy_switch_monitor, sw_privacy_switch_on)),
+          device_info, v4l2_event_monitor, sw_privacy_switch_on)),
       callback_ops_(nullptr),
       sw_privacy_switch_on_(sw_privacy_switch_on),
       request_thread_("Capture request thread"),
@@ -647,7 +647,7 @@ bool CameraClient::ShouldUseNativeSensorRatio(
   }
 
   bool use_native_sensor_ratio = false;
-  // Find the same ratio maximium resolution with minimum 30 fps.
+  // Find the same ratio maximum resolution with minimum 30 fps.
   float target_aspect_ratio =
       static_cast<float>(device_info_.sensor_info_pixel_array_size_width) /
       device_info_.sensor_info_pixel_array_size_height;
@@ -895,7 +895,7 @@ void CameraClient::RequestHandler::HandleRequest(
   bool keep_trying;
   do {
     VLOGFID(2, device_id_) << "before DequeueV4L2Buffer";
-    ret = DequeueV4L2Buffer(pattern_mode);
+    ret = DequeueV4L2Buffer(pattern_mode, capture_result.frame_number);
     keep_trying = false;
     if (!ret) {
       if (metadata_handler_->PreHandleRequest(
@@ -1204,8 +1204,8 @@ void CameraClient::RequestHandler::SkipFramesAfterStreamOn(int num_frames) {
   for (size_t i = 0; i < num_frames; i++) {
     uint32_t buffer_id, data_size;
     uint64_t v4l2_ts, user_ts;
-    int ret =
-        device_->GetNextFrameBuffer(&buffer_id, &data_size, &v4l2_ts, &user_ts);
+    int ret = device_->GetNextFrameBuffer(&buffer_id, &data_size, &v4l2_ts,
+                                          &user_ts, -1);
     if (!ret) {
       current_buffer_timestamp_in_v4l2_ = v4l2_ts;
       current_buffer_timestamp_in_user_ = user_ts;
@@ -1282,7 +1282,8 @@ void CameraClient::RequestHandler::NotifyRequestError(uint32_t frame_number) {
   callback_ops_->notify(callback_ops_, &m);
 }
 
-int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
+int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode,
+                                                    int frame_number) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   int ret;
   if (sw_privacy_switch_on_) {
@@ -1347,8 +1348,8 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
     }
     // If device_->GetNextFrameBuffer returns error, the buffer is still in
     // driver side. Therefore we don't need to enqueue the buffer.
-    ret =
-        device_->GetNextFrameBuffer(&buffer_id, &data_size, &v4l2_ts, &user_ts);
+    ret = device_->GetNextFrameBuffer(&buffer_id, &data_size, &v4l2_ts,
+                                      &user_ts, frame_number);
     if (ret) {
       LOGF_THROTTLED(ERROR, 60)
           << V4L2CameraDevice::GetModelName(device_info_.device_path)

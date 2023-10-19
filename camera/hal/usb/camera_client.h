@@ -25,13 +25,13 @@
 #include "cros-camera/face_detector_client_cros_wrapper.h"
 #include "cros-camera/future.h"
 #include "hal/usb/cached_frame.h"
-#include "hal/usb/camera_privacy_switch_monitor.h"
 #include "hal/usb/capture_request.h"
 #include "hal/usb/common_types.h"
 #include "hal/usb/frame_buffer.h"
 #include "hal/usb/metadata_handler.h"
 #include "hal/usb/test_pattern.h"
 #include "hal/usb/v4l2_camera_device.h"
+#include "hal/usb/v4l2_event_monitor.h"
 
 namespace cros {
 
@@ -65,7 +65,7 @@ class CameraClient {
                const camera_metadata_t& request_template,
                const hw_module_t* module,
                hw_device_t** hw_device,
-               CameraPrivacySwitchMonitor* hw_privacy_switch_monitor,
+               V4L2EventMonitor* v4l2_event_monitor,
                ClientType client_type,
                bool sw_privacy_switch_on);
   CameraClient(const CameraClient&) = delete;
@@ -270,7 +270,7 @@ class CameraClient {
     void NotifyRequestError(uint32_t frame_number);
 
     // Dequeue V4L2 frame buffer.
-    int DequeueV4L2Buffer(int32_t pattern_mode);
+    int DequeueV4L2Buffer(int32_t pattern_modei, int frame_number);
 
     // Enqueue V4L2 frame buffer.
     int EnqueueV4L2Buffer();

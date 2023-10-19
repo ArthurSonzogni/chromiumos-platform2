@@ -339,13 +339,10 @@ int CameraHal::OpenDevice(int id,
     request_template = request_template_[id].get();
   }
   const auto& device_info = device_infos_[id];
-  // Force disable HW privacy switch if the config doesn't declare it.  This is
-  // to block privacy switch signal that is not HW based (b/273675069).
-  auto* hw_privacy_switch_monitor_for_client =
-      device_info.has_privacy_switch ? &hw_privacy_switch_monitor_ : nullptr;
+
   cameras_[id] = std::make_unique<CameraClient>(
       id, device_info, *static_metadata, *request_template, module, hw_device,
-      hw_privacy_switch_monitor_for_client, client_type, sw_privacy_switch_on_);
+      &v4l2_event_monitor_, client_type, sw_privacy_switch_on_);
   if (cameras_[id]->OpenDevice()) {
     cameras_.erase(id);
     return -ENODEV;
@@ -540,7 +537,7 @@ void CameraHal::TearDown() {
 
 void CameraHal::SetPrivacySwitchCallback(
     PrivacySwitchStateChangeCallback callback) {
-  hw_privacy_switch_monitor_.RegisterCallback(std::move(callback));
+  v4l2_event_monitor_.RegisterCallback(std::move(callback));
 }
 
 void CameraHal::CloseDeviceOnOpsThread(int id) {
@@ -774,9 +771,8 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
   request_template_[info.camera_id] =
       ScopedCameraMetadata(request_template.release());
 
-  if (info.has_privacy_switch) {
-    hw_privacy_switch_monitor_.TrySubscribe(info.camera_id, info.device_path);
-  }
+  v4l2_event_monitor_.TrySubscribe(info.camera_id, info.device_path,
+                                   info.has_privacy_switch);
 
   if (info.lens_facing == LensFacing::kExternal) {
     callbacks_->camera_device_status_change(callbacks_, info.camera_id,
@@ -804,7 +800,7 @@ void CameraHal::OnDeviceRemoved(ScopedUdevDevicePtr dev) {
     return;
   }
 
-  hw_privacy_switch_monitor_.Unsubscribe(id);
+  v4l2_event_monitor_.Unsubscribe(id);
 
   LOGF(INFO) << "Camera " << id << " at " << path << " removed";
 

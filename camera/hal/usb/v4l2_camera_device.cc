@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <optional>
 
 #include <base/check.h>
 #include <base/containers/contains.h>
@@ -39,6 +40,8 @@
 #include "cros-camera/utils/camera_config.h"
 #include "hal/usb/camera_characteristics.h"
 #include "hal/usb/quirks.h"
+#include "hal/usb/tracing.h"
+#include "hal/usb/v4l2_event_monitor.h"
 
 namespace cros {
 
@@ -275,14 +278,13 @@ const std::string RoiControlApiToString(RoiControlApi roi_control_api) {
 V4L2CameraDevice::V4L2CameraDevice()
     : stream_on_(false), device_info_(DeviceInfo()) {}
 
-V4L2CameraDevice::V4L2CameraDevice(
-    const DeviceInfo& device_info,
-    CameraPrivacySwitchMonitor* privacy_switch_monitor,
-    bool sw_privacy_switch_on)
+V4L2CameraDevice::V4L2CameraDevice(const DeviceInfo& device_info,
+                                   V4L2EventMonitor* v4l2_event_monitor,
+                                   bool sw_privacy_switch_on)
     : stream_on_(false),
       sw_privacy_switch_on_(sw_privacy_switch_on),
       device_info_(device_info),
-      hw_privacy_switch_monitor_(privacy_switch_monitor) {}
+      v4l2_event_monitor_(v4l2_event_monitor) {}
 
 V4L2CameraDevice::~V4L2CameraDevice() {
   device_fd_.reset();
@@ -612,10 +614,9 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
     fds->push_back(std::move(temp_fds[i]));
   }
 
-  if (hw_privacy_switch_monitor_) {
-    hw_privacy_switch_monitor_->TrySubscribe(device_info_.camera_id,
-                                             device_info_.device_path);
-  }
+  v4l2_event_monitor_->TrySubscribe(device_info_.camera_id,
+                                    device_info_.device_path,
+                                    device_info_.has_privacy_switch);
 
   if (device_info_.enable_face_detection && roi_flags_ &&
       roi_control_api_ == RoiControlApi::kUvcRoiRectRelative) {
@@ -662,7 +663,8 @@ int V4L2CameraDevice::StreamOff() {
 int V4L2CameraDevice::GetNextFrameBuffer(uint32_t* buffer_id,
                                          uint32_t* data_size,
                                          uint64_t* v4l2_ts,
-                                         uint64_t* user_ts) {
+                                         uint64_t* user_ts,
+                                         std::optional<int> frame_number) {
   base::AutoLock l(lock_);
   if (!device_fd_.is_valid()) {
     LOGF(ERROR) << "Device is not opened";
@@ -701,6 +703,11 @@ int V4L2CameraDevice::GetNextFrameBuffer(uint32_t* buffer_id,
   buffer.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   buffer.memory = V4L2_MEMORY_MMAP;
   int ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_DQBUF, &buffer));
+  if (frame_number.has_value()) {
+    TRACE_USB_HAL_EVENT("VIDOC_DQBUF", "frame_sequence", buffer.sequence,
+                        perfetto::Flow::ProcessScoped(buffer.sequence),
+                        "frame_number", *frame_number);
+  }
   if (ret < 0) {
     ret = ERRNO_OR_RET(ret);
     PLOGF_THROTTLED(ERROR, 60) << "DQBUF fails";

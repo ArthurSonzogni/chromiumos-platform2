@@ -10,6 +10,7 @@
 #include <time.h>
 
 #include <map>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -21,8 +22,8 @@
 
 #include "cros-camera/cros_camera_hal.h"
 #include "cros-camera/timezone.h"
-#include "hal/usb/camera_privacy_switch_monitor.h"
 #include "hal/usb/common_types.h"
+#include "hal/usb/v4l2_event_monitor.h"
 
 namespace cros {
 
@@ -89,7 +90,7 @@ class V4L2CameraDevice {
  public:
   V4L2CameraDevice();
   V4L2CameraDevice(const DeviceInfo& device_info,
-                   CameraPrivacySwitchMonitor* privacy_switch_monitor,
+                   V4L2EventMonitor* v4l2_event_monitor,
                    bool sw_privacy_switch_on);
   V4L2CameraDevice(const V4L2CameraDevice&) = delete;
   V4L2CameraDevice& operator=(const V4L2CameraDevice&) = delete;
@@ -134,7 +135,8 @@ class V4L2CameraDevice {
   int GetNextFrameBuffer(uint32_t* buffer_id,
                          uint32_t* data_size,
                          uint64_t* v4l2_ts,
-                         uint64_t* user_ts);
+                         uint64_t* user_ts,
+                         std::optional<int> frame_number);
 
   // Return |buffer_id| buffer to device. Return 0 if the buffer is returned
   // successfully. Otherwise, return -|errno|. This function should be called
@@ -336,8 +338,9 @@ class V4L2CameraDevice {
 
   RoiControl roi_control_;
 
-  // Monitor for the status change of HW camera privacy switch.
-  CameraPrivacySwitchMonitor* hw_privacy_switch_monitor_;
+  // Monitor for the status change of HW camera privacy switch and shutter
+  // event.
+  V4L2EventMonitor* v4l2_event_monitor_;
 
   // Since V4L2CameraDevice may be called on different threads, this is used to
   // guard all variables.

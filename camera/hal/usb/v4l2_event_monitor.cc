@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "hal/usb/camera_privacy_switch_monitor.h"
+#include "hal/usb/v4l2_event_monitor.h"
 
 #include <fcntl.h>
 #include <linux/videodev2.h>
@@ -16,6 +16,7 @@
 #include <base/files/file_util.h>
 
 #include "cros-camera/common.h"
+#include "hal/usb/tracing.h"
 
 namespace cros {
 
@@ -48,14 +49,14 @@ bool IsControlAvailable(int device_fd) {
 
 }  // namespace
 
-CameraPrivacySwitchMonitor::CameraPrivacySwitchMonitor()
+V4L2EventMonitor::V4L2EventMonitor()
     : state_(PrivacySwitchState::kUnknown), event_thread_("V4L2Event") {}
 
-CameraPrivacySwitchMonitor::~CameraPrivacySwitchMonitor() {
+V4L2EventMonitor::~V4L2EventMonitor() {
   UnsubscribeEvents();
 }
 
-void CameraPrivacySwitchMonitor::RegisterCallback(
+void V4L2EventMonitor::RegisterCallback(
     PrivacySwitchStateChangeCallback callback) {
   callback_ = std::move(callback);
 
@@ -75,8 +76,9 @@ void CameraPrivacySwitchMonitor::RegisterCallback(
   }
 }
 
-void CameraPrivacySwitchMonitor::TrySubscribe(
-    int camera_id, const base::FilePath& device_path) {
+void V4L2EventMonitor::TrySubscribe(int camera_id,
+                                    const base::FilePath& device_path,
+                                    bool has_privacy_switch) {
   {
     base::AutoLock l(camera_id_lock_);
     if (subscribed_camera_id_to_fd_.find(camera_id) !=
@@ -93,34 +95,45 @@ void CameraPrivacySwitchMonitor::TrySubscribe(
     return;
   }
 
-  if (!IsControlAvailable(device_fd.get())) {
-    return;
+  int32_t priv_init_value = 0;
+  if (IsControlAvailable(device_fd.get())) {
+    if (GetControlValue(device_fd.get(), &priv_init_value) != 0) {
+      LOGF(ERROR) << "Failed to get initial value of privacy control for "
+                     "camera: "
+                  << camera_id;
+      has_privacy_switch = false;
+    }
+  } else {
+    has_privacy_switch = false;
   }
+  OnStatusChanged(camera_id, priv_init_value != 0 ? PrivacySwitchState::kOn
+                                                  : PrivacySwitchState::kOff);
 
-  int32_t init_value;
-  if (GetControlValue(device_fd.get(), &init_value) != 0) {
-    LOGF(ERROR) << "Failed to get initial value of privacy control for camera: "
-                << camera_id;
-    return;
-  }
-  OnStatusChanged(camera_id, init_value != 0 ? PrivacySwitchState::kOn
-                                             : PrivacySwitchState::kOff);
-  SubscribeEvent(camera_id, std::move(device_fd));
+  SubscribeEvent(camera_id, std::move(device_fd), has_privacy_switch);
 }
 
-void CameraPrivacySwitchMonitor::Unsubscribe(int camera_id) {
+void V4L2EventMonitor::Unsubscribe(int camera_id) {
   base::AutoLock l(camera_id_lock_);
-  auto it = subscribed_camera_id_to_fd_.find(camera_id);
-  if (it == subscribed_camera_id_to_fd_.end()) {
-    return;
+  {
+    auto it = subscribed_camera_id_to_fd_.find(camera_id);
+    if (it == subscribed_camera_id_to_fd_.end()) {
+      return;
+    }
+    subscribed_camera_id_to_fd_.erase(it);
   }
-  subscribed_camera_id_to_fd_.erase(it);
+  {
+    auto it = subscribed_camera_ids_with_privacy_switch_.find(camera_id);
+    if (it == subscribed_camera_ids_with_privacy_switch_.end()) {
+      return;
+    }
+    subscribed_camera_ids_with_privacy_switch_.erase(it);
+  }
 
   RestartEventLoop();
 }
 
-void CameraPrivacySwitchMonitor::OnStatusChanged(int camera_id,
-                                                 PrivacySwitchState state) {
+void V4L2EventMonitor::OnStatusChanged(int camera_id,
+                                       PrivacySwitchState state) {
   if (state == state_) {
     return;
   }
@@ -131,16 +144,39 @@ void CameraPrivacySwitchMonitor::OnStatusChanged(int camera_id,
   }
 }
 
-void CameraPrivacySwitchMonitor::SubscribeEvent(int camera_id,
-                                                base::ScopedFD device_fd) {
-  struct v4l2_event_subscription sub = {.type = V4L2_EVENT_CTRL,
-                                        .id = V4L2_CID_PRIVACY};
+void V4L2EventMonitor::SubscribeEvent(int camera_id,
+                                      base::ScopedFD device_fd,
+                                      bool has_privacy_switch) {
+  // Force disable HW privacy switch if the config doesn't declare it.  This is
+  // to block privacy switch signal that is not HW based (b/273675069).
+  if (has_privacy_switch) {
+    struct v4l2_event_subscription sub = {.type = V4L2_EVENT_CTRL,
+                                          .id = V4L2_CID_PRIVACY};
+    if (HANDLE_EINTR(ioctl(device_fd.get(), VIDIOC_SUBSCRIBE_EVENT, &sub)) <
+        0) {
+      PLOGF(ERROR) << "Failed to subscribe for privacy status change";
+      has_privacy_switch = false;
+    }
+  }
+
+  bool is_frame_sync_subscribed = true;
+  struct v4l2_event_subscription sub = {.type = V4L2_EVENT_FRAME_SYNC, .id = 0};
   if (HANDLE_EINTR(ioctl(device_fd.get(), VIDIOC_SUBSCRIBE_EVENT, &sub)) < 0) {
-    PLOGF(ERROR) << "Failed to subscribe for privacy status change";
+    PLOGF(ERROR) << "Failed to subscribe for frame sync event";
+    is_frame_sync_subscribed = false;
+  }
+
+  LOGF(INFO) << "has_privacy_switch = " << has_privacy_switch
+             << ", has_subscribe_frame_sync = " << is_frame_sync_subscribed;
+  if (!has_privacy_switch && !is_frame_sync_subscribed) {
     return;
   }
+
   base::AutoLock l(camera_id_lock_);
   subscribed_camera_id_to_fd_.emplace(camera_id, std::move(device_fd));
+  if (has_privacy_switch) {
+    subscribed_camera_ids_with_privacy_switch_.insert(camera_id);
+  }
 
   // If the thread hasn't been started, start the thread to listen for events.
   // If the thread is already started, triggers the thread to make it restart
@@ -159,13 +195,12 @@ void CameraPrivacySwitchMonitor::SubscribeEvent(int camera_id,
     }
 
     event_thread_.task_runner()->PostTask(
-        FROM_HERE,
-        base::BindRepeating(&CameraPrivacySwitchMonitor::RunDequeueEventsLoop,
-                            base::Unretained(this)));
+        FROM_HERE, base::BindRepeating(&V4L2EventMonitor::RunDequeueEventsLoop,
+                                       base::Unretained(this)));
   }
 }
 
-void CameraPrivacySwitchMonitor::UnsubscribeEvents() {
+void V4L2EventMonitor::UnsubscribeEvents() {
   control_pipe_.reset();
   if (event_thread_.IsRunning()) {
     event_thread_.Stop();
@@ -173,7 +208,16 @@ void CameraPrivacySwitchMonitor::UnsubscribeEvents() {
 
   base::AutoLock l(camera_id_lock_);
   for (auto& it : subscribed_camera_id_to_fd_) {
-    struct v4l2_event_subscription sub = {.type = V4L2_EVENT_CTRL,
+    int camera_id = it.second.get();
+    if (subscribed_camera_ids_with_privacy_switch_.contains(camera_id)) {
+      struct v4l2_event_subscription sub = {.type = V4L2_EVENT_CTRL};
+      if (HANDLE_EINTR(ioctl(it.second.get(), VIDIOC_UNSUBSCRIBE_EVENT, &sub)) <
+          0) {
+        PLOGF(ERROR) << "Failed to unsubscribe for frame sync event";
+      }
+    }
+
+    struct v4l2_event_subscription sub = {.type = V4L2_EVENT_FRAME_SYNC,
                                           .id = V4L2_CID_PRIVACY};
     if (HANDLE_EINTR(ioctl(it.second.get(), VIDIOC_UNSUBSCRIBE_EVENT, &sub)) <
         0) {
@@ -181,9 +225,10 @@ void CameraPrivacySwitchMonitor::UnsubscribeEvents() {
     }
   }
   subscribed_camera_id_to_fd_.clear();
+  subscribed_camera_ids_with_privacy_switch_.clear();
 }
 
-void CameraPrivacySwitchMonitor::RunDequeueEventsLoop() {
+void V4L2EventMonitor::RunDequeueEventsLoop() {
   while (true) {
     std::vector<struct pollfd> fds;
     std::vector<int> camera_ids;
@@ -223,6 +268,11 @@ void CameraPrivacySwitchMonitor::RunDequeueEventsLoop() {
           OnStatusChanged(camera_ids[i], ev.u.ctrl.value != 0
                                              ? PrivacySwitchState::kOn
                                              : PrivacySwitchState::kOff);
+        } else if (ev.type == V4L2_EVENT_FRAME_SYNC) {
+          TRACE_USB_HAL_EVENT(
+              "V4L2_EVENT_FRAME_SYNC", "frame_sequence",
+              ev.u.frame_sync.frame_sequence,
+              perfetto::Flow::ProcessScoped(ev.u.frame_sync.frame_sequence));
         }
       }
     }
@@ -238,7 +288,7 @@ void CameraPrivacySwitchMonitor::RunDequeueEventsLoop() {
   }
 }
 
-void CameraPrivacySwitchMonitor::RestartEventLoop() {
+void V4L2EventMonitor::RestartEventLoop() {
   uint8_t value = 0;
   if (write(control_pipe_.get(), &value, sizeof(value)) < 0) {
     PLOGF(ERROR) << "Failed to restart the event loop";
