@@ -22,7 +22,7 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
  public:
   CrosConfigUtilsImpl();
   explicit CrosConfigUtilsImpl(
-      const std::string& configs_root_path,
+      const base::FilePath& configs_root_path,
       std::unique_ptr<brillo::CrosConfigInterface> cros_config);
   ~CrosConfigUtilsImpl() override = default;
 
@@ -62,7 +62,7 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
   std::map<std::string, uint32_t> GetSsfcProbeableComponents(
       const base::FilePath& component_type_config_path) const;
 
-  std::string configs_root_path_;
+  base::FilePath configs_root_path_;
   std::unique_ptr<brillo::CrosConfigInterface> cros_config_;
 };
 

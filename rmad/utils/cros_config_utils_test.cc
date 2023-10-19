@@ -28,22 +28,18 @@ using testing::SetArgPointee;
 
 namespace {
 
-constexpr char kModelName[] = "TestModelName";
-constexpr char kModelNameUnused[] = "TestModelNameUnused";
+constexpr char kModelName1[] = "TestModelName1";
+constexpr char kModelName2[] = "TestModelName2";
+constexpr char kModelName3[] = "TestModelName3";
 
 constexpr char kBrandCode[] = "ZZCR";
 
-constexpr uint32_t kSkuId = 1234567890;
-constexpr uint32_t kSkuIdUnused = 1111111110;
-constexpr uint32_t kSkuIdOther1 = 1111111111;
-constexpr uint32_t kSkuIdOther2 = 1111111112;
+constexpr uint32_t kSkuId1 = 0x1000;
+constexpr uint32_t kSkuId2 = 0x1001;
+constexpr uint32_t kSkuId3 = 0x2000;
+constexpr uint32_t kSkuId4 = 0x2001;
 
-constexpr char kCustomLabelTagEmpty[] = "";
 constexpr char kCustomLabelTag[] = "TestCustomLabelTag";
-constexpr char kCustomLabelTagUnused[] = "TestCustomLabelTagUnused";
-constexpr char kCustomLabelTagOther[] = "TestCustomLabelTagOther";
-
-constexpr char kTrueStr[] = "true";
 
 constexpr uint32_t kFirmwareConfig = 55688;
 
@@ -56,18 +52,7 @@ constexpr uint32_t kSsfcValue1 = 0x1;
 constexpr char kSsfcIdentifier2[] = "TestComponent_2";
 constexpr uint32_t kSsfcValue2 = 0x2;
 
-const std::vector<std::string> kTargetCustomLabelTagList = {
-    kCustomLabelTagEmpty, kCustomLabelTag, kCustomLabelTagOther};
-const std::vector<std::string> kEmptyCustomLabelTagList = {
-    kCustomLabelTagEmpty};
-const std::vector<uint32_t> kTargetSkuIdList = {kSkuIdOther1, kSkuIdOther2,
-                                                kSkuId};
-
-struct UtilArgs {
-  bool custom_label = true;
-  bool enable_rmad = true;
-  bool set_optional = true;
-};
+constexpr char kTrueStr[] = "true";
 
 }  // namespace
 
@@ -110,8 +95,16 @@ class CrosConfigUtilsImplTest : public testing::Test {
     return root_path;
   }
 
+  struct CrosConfigUtilArgs {
+    std::string model_name = kModelName1;
+    uint32_t sku_id = kSkuId1;
+    std::optional<std::string> custom_label_tag = std::nullopt;
+    bool enable_rmad = true;
+    bool set_optional_rmad_configs = true;
+  };
+
   std::unique_ptr<CrosConfigUtils> CreateCrosConfigUtils(
-      const UtilArgs& args = {}) {
+      const CrosConfigUtilArgs& args) {
     // Define all path constants here.
     const base::FilePath root_path = base::FilePath(kCrosRootPath);
     const base::FilePath identity_path = root_path.Append(kCrosIdentityPath);
@@ -131,54 +124,46 @@ class CrosConfigUtilsImplTest : public testing::Test {
 
     auto fake_cros_config = std::make_unique<brillo::FakeCrosConfig>();
     fake_cros_config->SetString(root_path.value(), kCrosModelNameKey,
-                                kModelName);
+                                args.model_name);
     fake_cros_config->SetString(root_path.value(), kCrosBrandCodeKey,
                                 kBrandCode);
     fake_cros_config->SetString(identity_path.value(), kCrosIdentitySkuKey,
-                                base::NumberToString(kSkuId));
+                                base::NumberToString(args.sku_id));
     fake_cros_config->SetString(firmware_path.value(),
                                 kCrosFirmwareFirmwareConfigKey,
                                 base::NumberToString(kFirmwareConfig));
-
-    base::FilePath cros_config_root_path;
-    if (args.custom_label) {
-      cros_config_root_path =
-          CreateCrosConfigFs({{.model_name = kModelName,
-                               .sku_id = kSkuId,
-                               .custom_label_tag = kCustomLabelTagEmpty},
-                              {.model_name = kModelName,
-                               .sku_id = kSkuIdOther1,
-                               .custom_label_tag = kCustomLabelTag},
-                              {.model_name = kModelName,
-                               .sku_id = kSkuIdOther2,
-                               .custom_label_tag = kCustomLabelTag},
-                              {.model_name = kModelName,
-                               .sku_id = kSkuIdOther1,
-                               .custom_label_tag = kCustomLabelTagOther},
-                              {.model_name = kModelNameUnused,
-                               .sku_id = kSkuIdUnused,
-                               .custom_label_tag = kCustomLabelTagUnused},
-                              {.model_name = kModelName,
-                               .sku_id = std::nullopt,
-                               .custom_label_tag = kCustomLabelTagOther}});
+    if (args.custom_label_tag.has_value()) {
       fake_cros_config->SetString(identity_path.value(),
                                   kCrosIdentityCustomLabelTagKey,
-                                  kCustomLabelTag);
-    } else {
-      cros_config_root_path =
-          CreateCrosConfigFs({{.model_name = kModelName,
-                               .sku_id = kSkuId,
-                               .custom_label_tag = kCustomLabelTagEmpty},
-                              {.model_name = kModelNameUnused,
-                               .sku_id = kSkuIdOther1,
-                               .custom_label_tag = kCustomLabelTag},
-                              {.model_name = kModelNameUnused,
-                               .sku_id = kSkuIdOther2,
-                               .custom_label_tag = kCustomLabelTagOther},
-                              {.model_name = kModelNameUnused,
-                               .sku_id = kSkuIdUnused,
-                               .custom_label_tag = kCustomLabelTagUnused}});
+                                  args.custom_label_tag.value());
     }
+
+    // Create cros_config database.
+    // - Model |kModelName1| has 3 design configs
+    //   - (kSkuId1, "")
+    //   - (kSkuId1, kCustomLabelTag)
+    //   - (kSkuId2, "")
+    // - Model |kModelName2| has 2 design configs
+    //   - (kSkuId3, null)
+    //   - (kSkuId4, null)
+    // - Model |kModelName3| has 1 design config
+    //   - (null, null)
+    base::FilePath cros_config_root_path;
+    cros_config_root_path = CreateCrosConfigFs(
+        {{.model_name = kModelName1, .sku_id = kSkuId1, .custom_label_tag = ""},
+         {.model_name = kModelName1,
+          .sku_id = kSkuId1,
+          .custom_label_tag = kCustomLabelTag},
+         {.model_name = kModelName1, .sku_id = kSkuId2, .custom_label_tag = ""},
+         {.model_name = kModelName2,
+          .sku_id = kSkuId3,
+          .custom_label_tag = std::nullopt},
+         {.model_name = kModelName2,
+          .sku_id = kSkuId4,
+          .custom_label_tag = std::nullopt},
+         {.model_name = kModelName3,
+          .sku_id = std::nullopt,
+          .custom_label_tag = std::nullopt}});
 
     if (args.enable_rmad) {
       fake_cros_config->SetString(rmad_path.value(), kCrosRmadEnabledKey,
@@ -187,7 +172,7 @@ class CrosConfigUtilsImplTest : public testing::Test {
                                   kTrueStr);
       fake_cros_config->SetString(rmad_path.value(),
                                   kCrosRmadUseLegacyCustomLabelKey, kTrueStr);
-      if (args.set_optional) {
+      if (args.set_optional_rmad_configs) {
         fake_cros_config->SetString(ssfc_path.value(), kCrosSsfcMaskKey,
                                     base::NumberToString(kSsfcMask));
         fake_cros_config->SetString(component_type_config_0_path.value(),
@@ -212,8 +197,8 @@ class CrosConfigUtilsImplTest : public testing::Test {
                                   base::NumberToString(kSsfcValue2));
     }
 
-    return std::make_unique<CrosConfigUtilsImpl>(
-        cros_config_root_path.MaybeAsASCII(), std::move(fake_cros_config));
+    return std::make_unique<CrosConfigUtilsImpl>(cros_config_root_path,
+                                                 std::move(fake_cros_config));
   }
 
  protected:
@@ -223,7 +208,7 @@ class CrosConfigUtilsImplTest : public testing::Test {
 };
 
 TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Enabled) {
-  auto cros_config_utils = CreateCrosConfigUtils();
+  auto cros_config_utils = CreateCrosConfigUtils({});
 
   RmadConfig config;
   EXPECT_TRUE(cros_config_utils->GetRmadConfig(&config));
@@ -244,8 +229,9 @@ TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Enabled) {
   EXPECT_EQ(probeable_components.at(kSsfcIdentifier2), kSsfcValue2);
 }
 
-TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Enabled_NoOptionalValues) {
-  auto cros_config_utils = CreateCrosConfigUtils({.set_optional = false});
+TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Enabled_NoOptionalConfigss) {
+  auto cros_config_utils =
+      CreateCrosConfigUtils({.set_optional_rmad_configs = false});
 
   RmadConfig config;
   EXPECT_TRUE(cros_config_utils->GetRmadConfig(&config));
@@ -279,79 +265,99 @@ TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Disabled) {
 }
 
 TEST_F(CrosConfigUtilsImplTest, GetModelName_Success) {
-  auto cros_config_utils = CreateCrosConfigUtils();
+  auto cros_config_utils = CreateCrosConfigUtils({});
 
   std::string model_name;
   EXPECT_TRUE(cros_config_utils->GetModelName(&model_name));
-  EXPECT_EQ(model_name, kModelName);
+  EXPECT_EQ(model_name, kModelName1);
 }
 
 TEST_F(CrosConfigUtilsImplTest, GetBrandCode_Success) {
-  auto cros_config_utils = CreateCrosConfigUtils();
+  auto cros_config_utils = CreateCrosConfigUtils({});
 
   std::string brand_code;
   EXPECT_TRUE(cros_config_utils->GetBrandCode(&brand_code));
   EXPECT_EQ(brand_code, kBrandCode);
 }
 
-TEST_F(CrosConfigUtilsImplTest, GetCustomLabelTag_Success) {
-  auto cros_config_utils = CreateCrosConfigUtils();
+TEST_F(CrosConfigUtilsImplTest, GetSkuId_Success) {
+  auto cros_config_utils = CreateCrosConfigUtils({});
+
+  uint32_t sku_id;
+  EXPECT_TRUE(cros_config_utils->GetSkuId(&sku_id));
+  EXPECT_EQ(sku_id, kSkuId1);
+}
+
+TEST_F(CrosConfigUtilsImplTest, GetCustomLabelTag_NotCustomLabel_Success) {
+  auto cros_config_utils = CreateCrosConfigUtils({});
+
+  std::string custom_label_tag;
+  EXPECT_FALSE(cros_config_utils->GetCustomLabelTag(&custom_label_tag));
+}
+
+TEST_F(CrosConfigUtilsImplTest, GetCustomLabelTag_IsCustomLabel_Success) {
+  auto cros_config_utils =
+      CreateCrosConfigUtils({.custom_label_tag = kCustomLabelTag});
 
   std::string custom_label_tag;
   EXPECT_TRUE(cros_config_utils->GetCustomLabelTag(&custom_label_tag));
   EXPECT_EQ(custom_label_tag, kCustomLabelTag);
 }
 
-TEST_F(CrosConfigUtilsImplTest, GetSkuId_Success) {
-  auto cros_config_utils = CreateCrosConfigUtils();
+TEST_F(CrosConfigUtilsImplTest, GetFirmwareConfig_Success) {
+  auto cros_config_utils = CreateCrosConfigUtils({});
 
-  uint32_t sku_id;
-  EXPECT_TRUE(cros_config_utils->GetSkuId(&sku_id));
-  EXPECT_EQ(sku_id, kSkuId);
+  uint32_t firmware_config;
+  EXPECT_TRUE(cros_config_utils->GetFirmwareConfig(&firmware_config));
+  EXPECT_EQ(firmware_config, kFirmwareConfig);
 }
 
 TEST_F(CrosConfigUtilsImplTest, GetSkuIdList_Success) {
-  auto cros_config_utils = CreateCrosConfigUtils();
+  auto cros_config_utils = CreateCrosConfigUtils({});
 
   std::vector<uint32_t> sku_id_list;
   EXPECT_TRUE(cros_config_utils->GetSkuIdList(&sku_id_list));
-  EXPECT_EQ(sku_id_list, kTargetSkuIdList);
+  EXPECT_EQ(sku_id_list, std::vector<uint32_t>({kSkuId1, kSkuId2}));
+}
+
+TEST_F(CrosConfigUtilsImplTest, GetEmptySkuIdList_Success) {
+  // Model |kModelName3| doesn't populate SKU ID.
+  auto cros_config_utils = CreateCrosConfigUtils({.model_name = kModelName3});
+
+  std::vector<uint32_t> sku_id_list;
+  EXPECT_TRUE(cros_config_utils->GetSkuIdList(&sku_id_list));
+  EXPECT_EQ(sku_id_list, std::vector<uint32_t>());
 }
 
 TEST_F(CrosConfigUtilsImplTest, GetCustomLabelTagList_Success) {
-  auto cros_config_utils = CreateCrosConfigUtils();
+  auto cros_config_utils = CreateCrosConfigUtils({});
 
   std::vector<std::string> custom_label_tag_list;
   EXPECT_TRUE(cros_config_utils->GetCustomLabelTagList(&custom_label_tag_list));
-  EXPECT_EQ(custom_label_tag_list, kTargetCustomLabelTagList);
+  EXPECT_EQ(custom_label_tag_list,
+            std::vector<std::string>({"", kCustomLabelTag}));
 }
 
-TEST_F(CrosConfigUtilsImplTest, GetEmptyCustomLabelTagList_Success) {
-  auto cros_config_utils = CreateCrosConfigUtils({.custom_label = false});
+TEST_F(CrosConfigUtilsImplTest, GetSingleCustomLabelTagList_Success) {
+  // Model |kModelName2| doesn't have custom label devices.
+  auto cros_config_utils = CreateCrosConfigUtils({.model_name = kModelName2});
 
   std::vector<std::string> custom_label_tag_list;
   EXPECT_TRUE(cros_config_utils->GetCustomLabelTagList(&custom_label_tag_list));
-  EXPECT_EQ(custom_label_tag_list, kEmptyCustomLabelTagList);
+  EXPECT_EQ(custom_label_tag_list, std::vector<std::string>({""}));
 }
 
 TEST_F(CrosConfigUtilsImplTest, HasCustomLabel_True) {
-  auto cros_config_utils = CreateCrosConfigUtils();
+  auto cros_config_utils = CreateCrosConfigUtils({});
 
   EXPECT_TRUE(cros_config_utils->HasCustomLabel());
 }
 
 TEST_F(CrosConfigUtilsImplTest, HasCustomLabel_False) {
-  auto cros_config_utils = CreateCrosConfigUtils({.custom_label = false});
+  // Model |kModelName2| doesn't have custom label devices.
+  auto cros_config_utils = CreateCrosConfigUtils({.model_name = kModelName2});
 
   EXPECT_FALSE(cros_config_utils->HasCustomLabel());
-}
-
-TEST_F(CrosConfigUtilsImplTest, GetFirmwareConfig_Success) {
-  auto cros_config_utils = CreateCrosConfigUtils();
-
-  uint32_t firmware_config;
-  EXPECT_TRUE(cros_config_utils->GetFirmwareConfig(&firmware_config));
-  EXPECT_EQ(firmware_config, kFirmwareConfig);
 }
 
 }  // namespace rmad

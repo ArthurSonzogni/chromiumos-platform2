@@ -67,7 +67,7 @@ CrosConfigUtilsImpl::CrosConfigUtilsImpl()
 }
 
 CrosConfigUtilsImpl::CrosConfigUtilsImpl(
-    const std::string& configs_root_path,
+    const base::FilePath& configs_root_path,
     std::unique_ptr<brillo::CrosConfigInterface> cros_config)
     : configs_root_path_(configs_root_path),
       cros_config_(std::move(cros_config)) {}
@@ -150,7 +150,7 @@ bool CrosConfigUtilsImpl::GetDesignConfigList(
   }
 
   design_config_list->clear();
-  base::FileEnumerator e(base::FilePath(configs_root_path_),
+  base::FileEnumerator e(configs_root_path_,
                          /*recursive=*/false,
                          base::FileEnumerator::FileType::DIRECTORIES);
   for (base::FilePath path = e.Next(); !path.empty(); path = e.Next()) {
