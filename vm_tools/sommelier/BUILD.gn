@@ -117,6 +117,7 @@ static_library("libsommelier") {
     "sommelier-output.cc",
     "sommelier-pointer-constraints.cc",
     "sommelier-relative-pointer-manager.cc",
+    "sommelier-scope-timer.cc",
     "sommelier-seat.cc",
     "sommelier-shell.cc",
     "sommelier-stylus-tablet.cc",

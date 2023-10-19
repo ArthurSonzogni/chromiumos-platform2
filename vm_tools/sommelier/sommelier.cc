@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "sommelier.h"            // NOLINT(build/include_directory)
+#include "sommelier-scope-timer.h"  // NOLINT(build/include_directory)
 #include "sommelier-tracing.h"    // NOLINT(build/include_directory)
 #include "sommelier-transform.h"  // NOLINT(build/include_directory)
 #include "sommelier-window.h"     // NOLINT(build/include_directory)
@@ -4068,34 +4069,40 @@ int real_main(int argc, char** argv) {
     ctx.channel = new VirtWaylandChannel();
   }
 
-  event_loop = wl_display_get_event_loop(ctx.host_display);
-  if (!sl_context_init_wayland_channel(&ctx, event_loop, display)) {
-    return EXIT_FAILURE;
-  }
-
-  int drm_fd = -1;
-  char* drm_device = nullptr;
-  if (force_drm_device != nullptr) {
-    // Use DRM device specified on the command line.
-    drm_fd = open(force_drm_device, O_RDWR | O_CLOEXEC);
-    if (drm_fd == -1) {
-      fprintf(stderr, "error: could not open %s (%s)\n", force_drm_device,
-              strerror(errno));
+  {
+    ScopeTimer timer("init wayland channel");
+    event_loop = wl_display_get_event_loop(ctx.host_display);
+    if (!sl_context_init_wayland_channel(&ctx, event_loop, display)) {
       return EXIT_FAILURE;
     }
-    drm_device = strdup(force_drm_device);
-  } else {
-    // Enumerate render nodes to find the virtio_gpu device.
-    drm_fd = open_virtgpu(&drm_device);
   }
-  if (drm_fd >= 0) {
-    ctx.gbm = gbm_create_device(drm_fd);
-    if (!ctx.gbm) {
-      fprintf(stderr, "error: couldn't get display device\n");
-      return EXIT_FAILURE;
-    }
 
-    ctx.drm_device = drm_device;
+  {
+    ScopeTimer timer("drm device");
+    int drm_fd = -1;
+    char* drm_device = nullptr;
+    if (force_drm_device != nullptr) {
+      // Use DRM device specified on the command line.
+      drm_fd = open(force_drm_device, O_RDWR | O_CLOEXEC);
+      if (drm_fd == -1) {
+        fprintf(stderr, "error: could not open %s (%s)\n", force_drm_device,
+                strerror(errno));
+        return EXIT_FAILURE;
+      }
+      drm_device = strdup(force_drm_device);
+    } else {
+      // Enumerate render nodes to find the virtio_gpu device.
+      drm_fd = open_virtgpu(&drm_device);
+    }
+    if (drm_fd >= 0) {
+      ctx.gbm = gbm_create_device(drm_fd);
+      if (!ctx.gbm) {
+        fprintf(stderr, "error: couldn't get display device\n");
+        return EXIT_FAILURE;
+      }
+
+      ctx.drm_device = drm_device;
+    }
   }
 
   wl_array_init(&ctx.dpi);
@@ -4120,70 +4127,82 @@ int real_main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  if (ctx.virtwl_display_fd != -1) {
-    ctx.display = wl_display_connect_to_fd(ctx.virtwl_display_fd);
-  } else {
-    if (display == nullptr)
-      display = getenv("WAYLAND_DISPLAY");
-    if (display == nullptr)
-      display = "wayland-0";
-
-    ctx.display = wl_display_connect(display);
-  }
-
-  if (!ctx.display) {
-    fprintf(stderr, "error: failed to connect to %s\n", display);
-    return EXIT_FAILURE;
-  }
-
-  if (!sl_parse_accelerators(&ctx.accelerators, accelerators))
-    return EXIT_FAILURE;
-  if (!sl_parse_accelerators(&ctx.windowed_accelerators, windowed_accelerators))
-    return EXIT_FAILURE;
-
-  ctx.display_event_source.reset(
-      wl_event_loop_add_fd(event_loop, wl_display_get_fd(ctx.display),
-                           WL_EVENT_READABLE, sl_handle_event, &ctx));
-
-  wl_registry_add_listener(wl_display_get_registry(ctx.display),
-                           &sl_registry_listener, &ctx);
-
-  if (ctx.runprog || ctx.xwayland) {
-    // Wayland connection from client.
-    int rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sv);
-    errno_assert(!rv);
-    client_fd = sv[0];
-  }
-
-  ctx.client = wl_client_create(ctx.host_display, client_fd);
-
-  // Replace the core display implementation. This is needed in order to
-  // implement sync handler properly.
-  sl_set_display_implementation(&ctx, ctx.client);
-
-  if (ctx.runprog || ctx.xwayland) {
-    ctx.sigchld_event_source.reset(
-        wl_event_loop_add_signal(event_loop, SIGCHLD, sl_handle_sigchld, &ctx));
-
-    if (ctx.xwayland) {
-      sl_spawn_xwayland(&ctx, event_loop, sv[1], xwayland_cmd_prefix,
-                        xwayland_path, xdisplay, xauth_path, xfont_path,
-                        xwayland_gl_driver_path, glamor);
+  {
+    ScopeTimer timer("connect display");
+    if (ctx.virtwl_display_fd != -1) {
+      ctx.display = wl_display_connect_to_fd(ctx.virtwl_display_fd);
     } else {
-      pid = fork();
-      errno_assert(pid != -1);
-      if (pid == 0) {
-        // Unset DISPLAY to prevent X clients from connecting to an existing X
-        // server when X forwarding is not enabled.
-        unsetenv("DISPLAY");
-        sl_execvp(ctx.runprog[0], ctx.runprog, sv[1]);
-        _exit(EXIT_FAILURE);
-      }
-      ctx.child_pid = pid;
+      if (display == nullptr)
+        display = getenv("WAYLAND_DISPLAY");
+      if (display == nullptr)
+        display = "wayland-0";
+
+      ctx.display = wl_display_connect(display);
     }
-    close(sv[1]);
+
+    if (!ctx.display) {
+      fprintf(stderr, "error: failed to connect to %s\n", display);
+      return EXIT_FAILURE;
+    }
+
+    if (!sl_parse_accelerators(&ctx.accelerators, accelerators))
+      return EXIT_FAILURE;
+    if (!sl_parse_accelerators(&ctx.windowed_accelerators,
+                               windowed_accelerators))
+      return EXIT_FAILURE;
+
+    ctx.display_event_source.reset(
+        wl_event_loop_add_fd(event_loop, wl_display_get_fd(ctx.display),
+                             WL_EVENT_READABLE, sl_handle_event, &ctx));
+
+    wl_registry_add_listener(wl_display_get_registry(ctx.display),
+                             &sl_registry_listener, &ctx);
   }
 
+  {
+    ScopeTimer timer("client create");
+    if (ctx.runprog || ctx.xwayland) {
+      // Wayland connection from client.
+      int rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sv);
+      errno_assert(!rv);
+      client_fd = sv[0];
+    }
+
+    ctx.client = wl_client_create(ctx.host_display, client_fd);
+  }
+
+  {
+    ScopeTimer timer("display implementation");
+    // Replace the core display implementation. This is needed in order to
+    // implement sync handler properly.
+    sl_set_display_implementation(&ctx, ctx.client);
+  }
+
+  {
+    ScopeTimer timer("spawn xwayland");
+    if (ctx.runprog || ctx.xwayland) {
+      ctx.sigchld_event_source.reset(wl_event_loop_add_signal(
+          event_loop, SIGCHLD, sl_handle_sigchld, &ctx));
+
+      if (ctx.xwayland) {
+        sl_spawn_xwayland(&ctx, event_loop, sv[1], xwayland_cmd_prefix,
+                          xwayland_path, xdisplay, xauth_path, xfont_path,
+                          xwayland_gl_driver_path, glamor);
+      } else {
+        pid = fork();
+        errno_assert(pid != -1);
+        if (pid == 0) {
+          // Unset DISPLAY to prevent X clients from connecting to an existing X
+          // server when X forwarding is not enabled.
+          unsetenv("DISPLAY");
+          sl_execvp(ctx.runprog[0], ctx.runprog, sv[1]);
+          _exit(EXIT_FAILURE);
+        }
+        ctx.child_pid = pid;
+      }
+      close(sv[1]);
+    }
+  }
   // Attempt to enable tracing.  This could be called earlier but would rather
   // spawn all children first.
   const bool tracing_needed = ctx.trace_filename || ctx.trace_system;
