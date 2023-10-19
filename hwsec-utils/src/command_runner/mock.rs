@@ -6,8 +6,8 @@ use std::collections::VecDeque;
 use std::fmt::Write;
 
 use crate::command_runner::CommandRunner;
-use crate::cr50::RmaSnBits;
-use crate::cr50::GSCTOOL_CMD_NAME;
+use crate::gsc::RmaSnBits;
+use crate::gsc::GSCTOOL_CMD_NAME;
 use crate::output::HwsecOutput;
 use crate::output::HwsecStatus;
 use crate::tpm2::tests::split_into_hex_strtok;
@@ -119,7 +119,7 @@ impl MockCommandRunner {
         );
     }
     pub fn add_metrics_client_expectation(&mut self, event_id: u64) {
-        use crate::cr50::GSC_METRICS_PREFIX;
+        use crate::gsc::GSC_METRICS_PREFIX;
         self.add_expectation(
             MockCommandInput::new(
                 "metrics_client",
@@ -199,10 +199,10 @@ impl MockCommandRunner {
             flag: 0x00007f80,
         });
     }
-    pub fn add_successful_cr50_get_name_arbitary_interaction(&mut self) {
+    pub fn add_successful_gsc_get_name_arbitary_interaction(&mut self) {
         self.add_successful_gsctool_read_board_id_arbitary_interaction();
     }
-    pub fn add_successful_cr50_read_rma_sn_bits_interaction_non_generic_tpm2(
+    pub fn add_successful_gsc_read_rma_sn_bits_interaction_non_generic_tpm2(
         &mut self,
         rma_sn_bits: RmaSnBits,
     ) {
@@ -227,7 +227,7 @@ impl MockCommandRunner {
             "",
         );
     }
-    pub fn add_successful_cr50_read_rma_sn_bits_arbitary_interaction(&mut self) {
+    pub fn add_successful_gsc_read_rma_sn_bits_arbitary_interaction(&mut self) {
         // Use this when not in want of specifying rma sn bits.
         // Reading rma sn bits with mock context
         // after calling this function with would return
@@ -236,7 +236,7 @@ impl MockCommandRunner {
         //     rma_status: 0xff,
         //     sn_bits: [0x87, 0x7f, 0x50, 0xd2, 0x08, 0xec, 0x89, 0xe9, 0xc1, 0x69, 0x1f, 0x54],
         // }
-        self.add_successful_cr50_read_rma_sn_bits_interaction_non_generic_tpm2(RmaSnBits {
+        self.add_successful_gsc_read_rma_sn_bits_interaction_non_generic_tpm2(RmaSnBits {
             sn_data_version: [0x0f, 0xff, 0xff],
             rma_status: 0xff,
             sn_bits: [

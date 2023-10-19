@@ -8,11 +8,11 @@ use std::process::exit;
 use hwsec_utils::command_runner::CommandRunner;
 use hwsec_utils::context::Context;
 use hwsec_utils::context::RealContext;
-use hwsec_utils::cr50::board_id_is_set;
-use hwsec_utils::cr50::cr50_check_sn_bits;
-use hwsec_utils::cr50::cr50_compute_updater_sn_bits;
-use hwsec_utils::cr50::cr50_set_sn_bits;
-use hwsec_utils::cr50::Cr50SetSnBitsVerdict;
+use hwsec_utils::gsc::board_id_is_set;
+use hwsec_utils::gsc::gsc_check_sn_bits;
+use hwsec_utils::gsc::gsc_compute_updater_sn_bits;
+use hwsec_utils::gsc::gsc_set_sn_bits;
+use hwsec_utils::gsc::Cr50SetSnBitsVerdict;
 
 fn main() {
     const VPD_KEY: &str = "attested_device_id";
@@ -41,8 +41,8 @@ fn main() {
         exit(Cr50SetSnBitsVerdict::MissingVpdKeyError as i32);
     }
 
-    let sn_bits = cr50_compute_updater_sn_bits(sn);
-    cr50_check_sn_bits(&mut real_ctx, sn_bits, dry_run)
+    let sn_bits = gsc_compute_updater_sn_bits(sn);
+    gsc_check_sn_bits(&mut real_ctx, sn_bits, dry_run)
         .map_err(|e| {
             exit(e as i32);
         })
@@ -60,7 +60,7 @@ fn main() {
         exit(0);
     }
 
-    cr50_set_sn_bits(&mut real_ctx, sn_bits)
+    gsc_set_sn_bits(&mut real_ctx, sn_bits)
         .map_err(|e| {
             exit(e as i32);
         })

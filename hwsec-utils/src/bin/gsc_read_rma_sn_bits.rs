@@ -3,11 +3,11 @@
 // found in the LICENSE file.
 
 use hwsec_utils::context::RealContext;
-use hwsec_utils::cr50::cr50_read_rma_sn_bits;
+use hwsec_utils::gsc::gsc_read_rma_sn_bits;
 
 fn main() {
     let mut real_ctx = RealContext::new();
-    let result = cr50_read_rma_sn_bits(&mut real_ctx);
+    let result = gsc_read_rma_sn_bits(&mut real_ctx);
     match result {
         Ok(rma_sn_bits) => {
             let sn_data_version = rma_sn_bits

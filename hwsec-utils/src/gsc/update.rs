@@ -6,17 +6,16 @@ use log::error;
 use log::info;
 
 use crate::context::Context;
-use crate::cr50::cr50_get_name;
-use crate::cr50::gsctool_cmd_successful;
-use crate::cr50::run_gsctool_cmd;
-use crate::cr50::GSCTOOL_CMD_NAME;
 use crate::error::HwsecError;
+use crate::gsc::gsc_get_name;
+use crate::gsc::gsctool_cmd_successful;
+use crate::gsc::run_gsctool_cmd;
+use crate::gsc::GSCTOOL_CMD_NAME;
 
 const MAX_RETRIES: u32 = 3;
 const SLEEP_DURATION: u64 = 70;
 
-// TODO (b/246863926)
-pub fn cr50_update(ctx: &mut impl Context) -> Result<(), HwsecError> {
+pub fn gsc_update(ctx: &mut impl Context) -> Result<(), HwsecError> {
     info!("Starting");
 
     let options: Vec<&str>;
@@ -32,10 +31,10 @@ pub fn cr50_update(ctx: &mut impl Context) -> Result<(), HwsecError> {
         return Err(HwsecError::GsctoolError(1));
     }
 
-    let cr50_image = cr50_get_name(ctx, &options[..])?;
+    let gsc_image = gsc_get_name(ctx, &options[..])?;
 
-    if !ctx.path_exists(cr50_image.as_str()) {
-        info!("{} not found, quitting.", cr50_image);
+    if !ctx.path_exists(gsc_image.as_str()) {
+        info!("{} not found, quitting.", gsc_image);
         return Err(HwsecError::GsctoolError(1));
     }
 
@@ -48,8 +47,7 @@ pub fn cr50_update(ctx: &mut impl Context) -> Result<(), HwsecError> {
             ctx.sleep(SLEEP_DURATION);
         }
 
-        let exe_result =
-            run_gsctool_cmd(ctx, [&options[..], &["--upstart", &cr50_image]].concat())?;
+        let exe_result = run_gsctool_cmd(ctx, [&options[..], &["--upstart", &gsc_image]].concat())?;
         exit_status = exe_result.status.code().unwrap();
 
         // Exit status values 2 or below indicate successful update, nonzero
@@ -95,13 +93,13 @@ pub fn cr50_update(ctx: &mut impl Context) -> Result<(), HwsecError> {
 mod tests {
     use crate::context::mock::MockContext;
     use crate::context::Context;
-    use crate::cr50::cr50_update;
-    use crate::cr50::update::MAX_RETRIES;
-    use crate::cr50::GSC_IMAGE_BASE_NAME;
     use crate::error::HwsecError;
+    use crate::gsc::gsc_update;
+    use crate::gsc::update::MAX_RETRIES;
+    use crate::gsc::GSC_IMAGE_BASE_NAME;
 
     #[test]
-    fn test_cr50_update_could_not_communicate_with_cr50() {
+    fn test_gsc_update_could_not_communicate_with_cr50() {
         let mut mock_ctx = MockContext::new();
         mock_ctx
             .cmd_runner()
@@ -109,7 +107,7 @@ mod tests {
         mock_ctx
             .cmd_runner()
             .add_gsctool_interaction(vec!["--fwver", "--trunks_send"], 1, "", "");
-        let result = cr50_update(&mut mock_ctx);
+        let result = gsc_update(&mut mock_ctx);
         assert_eq!(result, Err(HwsecError::GsctoolError(1)));
     }
 
@@ -125,12 +123,12 @@ mod tests {
             "Board ID space: 43425559:bcbdaaa6:00007f10",
             "",
         );
-        let result = cr50_update(&mut mock_ctx);
+        let result = gsc_update(&mut mock_ctx);
         assert_eq!(result, Err(HwsecError::GsctoolError(1)));
     }
 
     #[test]
-    fn test_cr50_update_ok() {
+    fn test_gsc_update_ok() {
         let mut mock_ctx = MockContext::new();
         mock_ctx
             .cmd_runner()
@@ -152,12 +150,12 @@ mod tests {
             "",
         );
 
-        let result = cr50_update(&mut mock_ctx);
+        let result = gsc_update(&mut mock_ctx);
         assert_eq!(result, Ok(()));
     }
 
     #[test]
-    fn test_cr50_update_failed_exceed_max_retries() {
+    fn test_gsc_update_failed_exceed_max_retries() {
         let mut mock_ctx = MockContext::new();
         mock_ctx
             .cmd_runner()
@@ -181,7 +179,7 @@ mod tests {
             );
         }
 
-        let result = cr50_update(&mut mock_ctx);
+        let result = gsc_update(&mut mock_ctx);
         assert_eq!(result, Err(HwsecError::GsctoolError(3)));
     }
 }

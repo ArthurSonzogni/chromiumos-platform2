@@ -41,7 +41,7 @@ impl From<Cr50SetFactoryConfigVerdict> for i32 {
     }
 }
 
-pub fn cr50_check_factory_config(
+pub fn gsc_check_factory_config(
     ctx: &mut impl Context,
     cfg: FactoryConfig,
 ) -> Result<(), Cr50SetFactoryConfigVerdict> {
@@ -74,14 +74,14 @@ pub fn cr50_check_factory_config(
     }
 }
 
-pub fn cr50_set_factory_config(
+pub fn gsc_set_factory_config(
     ctx: &mut impl Context,
     x_branded: bool,
     compliance_version: u8,
 ) -> Result<(), Cr50SetFactoryConfigVerdict> {
     let cfg = FactoryConfig::new(x_branded, compliance_version)
         .ok_or(Cr50SetFactoryConfigVerdict::GeneralError)?;
-    cr50_check_factory_config(ctx, cfg)?;
+    gsc_check_factory_config(ctx, cfg)?;
     let val = format!("{:x}", cfg.0);
     run_gsctool_cmd(ctx, vec!["-a", "--factory_config", &val]).map_err(|_| {
         error!("Failed to run gsctool.");
@@ -96,10 +96,10 @@ mod tests {
     use super::*;
     use crate::context::mock::MockContext;
     use crate::context::Context;
-    use crate::cr50::Cr50SetFactoryConfigVerdict;
+    use crate::gsc::Cr50SetFactoryConfigVerdict;
 
     #[test]
-    fn test_cr50_check_factory_config_unset() {
+    fn test_gsc_check_factory_config_unset() {
         let cfg = FactoryConfig::new(false, 0).unwrap();
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
@@ -109,12 +109,12 @@ mod tests {
             "",
         );
 
-        let result = cr50_check_factory_config(&mut mock_ctx, cfg);
+        let result = gsc_check_factory_config(&mut mock_ctx, cfg);
         assert_eq!(result, Ok(()));
     }
 
     #[test]
-    fn test_cr50_check_factory_config() {
+    fn test_gsc_check_factory_config() {
         let cfg = FactoryConfig::new(true, 0x3).unwrap();
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
@@ -124,12 +124,12 @@ mod tests {
             "",
         );
 
-        let result = cr50_check_factory_config(&mut mock_ctx, cfg);
+        let result = gsc_check_factory_config(&mut mock_ctx, cfg);
         assert_eq!(result, Err(Cr50SetFactoryConfigVerdict::AlreadySetError));
     }
 
     #[test]
-    fn test_cr50_set_factory_config() {
+    fn test_gsc_set_factory_config() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["-a", "--factory_config"],
@@ -147,12 +147,12 @@ mod tests {
         );
 
         let result =
-            cr50_set_factory_config(&mut mock_ctx, cfg.x_branded(), cfg.compliance_version());
+            gsc_set_factory_config(&mut mock_ctx, cfg.x_branded(), cfg.compliance_version());
         assert_eq!(result, Ok(()));
     }
 
     #[test]
-    fn test_cr50_set_factory_config_already_set() {
+    fn test_gsc_set_factory_config_already_set() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["-a", "--factory_config"],
@@ -162,12 +162,12 @@ mod tests {
         );
         let cfg = FactoryConfig::new(true, 0x3).unwrap();
         let result =
-            cr50_set_factory_config(&mut mock_ctx, cfg.x_branded(), cfg.compliance_version());
+            gsc_set_factory_config(&mut mock_ctx, cfg.x_branded(), cfg.compliance_version());
         assert_eq!(result, Err(Cr50SetFactoryConfigVerdict::AlreadySetError));
     }
 
     #[test]
-    fn test_cr50_set_factory_config_already_set_different() {
+    fn test_gsc_set_factory_config_already_set_different() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["-a", "--factory_config"],
@@ -177,7 +177,7 @@ mod tests {
         );
         let cfg = FactoryConfig::new(true, 0x3).unwrap();
         let result =
-            cr50_set_factory_config(&mut mock_ctx, cfg.x_branded(), cfg.compliance_version());
+            gsc_set_factory_config(&mut mock_ctx, cfg.x_branded(), cfg.compliance_version());
         assert_eq!(
             result,
             Err(Cr50SetFactoryConfigVerdict::AlreadySetDifferentlyError)
@@ -185,9 +185,9 @@ mod tests {
     }
 
     #[test]
-    fn test_cr50_set_factory_config_invalid() {
+    fn test_gsc_set_factory_config_invalid() {
         let mut mock_ctx = MockContext::new();
-        let result = cr50_set_factory_config(&mut mock_ctx, false, 0xFF);
+        let result = gsc_set_factory_config(&mut mock_ctx, false, 0xFF);
         assert_eq!(result, Err(Cr50SetFactoryConfigVerdict::GeneralError));
     }
 }

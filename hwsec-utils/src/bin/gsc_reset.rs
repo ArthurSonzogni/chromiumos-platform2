@@ -3,11 +3,11 @@
 // found in the LICENSE file.
 
 use hwsec_utils::context::RealContext;
-use hwsec_utils::cr50::cr50_reset;
+use hwsec_utils::gsc::gsc_reset;
 
 fn main() {
     let mut real_ctx = RealContext::new();
-    if cr50_reset(&mut real_ctx).is_err() {
+    if gsc_reset(&mut real_ctx).is_err() {
         eprintln!("Cr50 Reset Error.");
     }
 }

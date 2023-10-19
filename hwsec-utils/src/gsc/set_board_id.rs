@@ -10,8 +10,8 @@ use super::run_gsctool_cmd;
 use super::Version;
 use crate::command_runner::CommandRunner;
 use crate::context::Context;
-use crate::cr50::get_value_from_gsctool_output;
-use crate::cr50::parse_version;
+use crate::gsc::get_value_from_gsctool_output;
+use crate::gsc::parse_version;
 use crate::tpm2::ERASED_BOARD_ID;
 
 pub const WHITELABEL: u32 = 0x4000;
@@ -52,7 +52,7 @@ impl From<Cr50SetBoardIDVerdict> for i32 {
     }
 }
 
-pub fn cr50_check_board_id_and_flag(
+pub fn gsc_check_board_id_and_flag(
     ctx: &mut impl Context,
     new_board_id: u32,
     new_flag: u16,
@@ -95,7 +95,7 @@ pub fn cr50_check_board_id_and_flag(
     }
 }
 
-pub fn cr50_set_board_id_and_flag(
+pub fn gsc_set_board_id_and_flag(
     ctx: &mut impl Context,
     board_id: u32,
     flag: u16,
@@ -118,7 +118,7 @@ pub fn cr50_set_board_id_and_flag(
 // prepvt version. The arguments are the lowest prod version the DUT should be
 // running, the lowest prepvt version the DUT should be running, and a
 // description of the feature.
-pub fn check_cr50_support(
+pub fn check_gsc_support(
     ctx: &mut impl Context,
     target_prod: Version,
     target_prepvt: Version,
@@ -165,10 +165,10 @@ pub fn check_cr50_support(
     }
 }
 
-pub fn check_cr50_support_partial_board_id(
+pub fn check_gsc_support_partial_board_id(
     ctx: &mut impl Context,
 ) -> Result<(), Cr50SetBoardIDVerdict> {
-    check_cr50_support(
+    check_gsc_support(
         ctx,
         Version {
             epoch: 0,
@@ -243,14 +243,14 @@ mod tests {
     use crate::command_runner::MockCommandOutput;
     use crate::context::mock::MockContext;
     use crate::context::Context;
-    use crate::cr50::check_cr50_support_partial_board_id;
-    use crate::cr50::check_device;
-    use crate::cr50::cr50_check_board_id_and_flag;
-    use crate::cr50::cr50_set_board_id_and_flag;
-    use crate::cr50::Cr50SetBoardIDVerdict;
+    use crate::gsc::check_device;
+    use crate::gsc::check_gsc_support_partial_board_id;
+    use crate::gsc::gsc_check_board_id_and_flag;
+    use crate::gsc::gsc_set_board_id_and_flag;
+    use crate::gsc::Cr50SetBoardIDVerdict;
 
     #[test]
-    fn test_cr50_check_board_id_and_flag_ok() {
+    fn test_gsc_check_board_id_and_flag_ok() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["--any", "--board_id"],
@@ -259,12 +259,12 @@ mod tests {
             "",
         );
 
-        let result = cr50_check_board_id_and_flag(&mut mock_ctx, 0x00000000, 0x0000);
+        let result = gsc_check_board_id_and_flag(&mut mock_ctx, 0x00000000, 0x0000);
         assert_eq!(result, Ok(()));
     }
 
     #[test]
-    fn test_cr50_check_board_id_and_flag_part_1_neq_new_board_id() {
+    fn test_gsc_check_board_id_and_flag_part_1_neq_new_board_id() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["--any", "--board_id"],
@@ -273,7 +273,7 @@ mod tests {
             "",
         );
 
-        let result = cr50_check_board_id_and_flag(&mut mock_ctx, 0x1234567a, 0x0000);
+        let result = gsc_check_board_id_and_flag(&mut mock_ctx, 0x1234567a, 0x0000);
         assert_eq!(
             result,
             Err(Cr50SetBoardIDVerdict::AlreadySetDifferentlyError)
@@ -281,7 +281,7 @@ mod tests {
     }
 
     #[test]
-    fn test_cr50_check_board_id_and_flag_flag_xor_new_flag_eq_whitelabel() {
+    fn test_gsc_check_board_id_and_flag_flag_xor_new_flag_eq_whitelabel() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["--any", "--board_id"],
@@ -290,12 +290,12 @@ mod tests {
             "",
         );
 
-        let result = cr50_check_board_id_and_flag(&mut mock_ctx, 0x12345678, 0x4087);
+        let result = gsc_check_board_id_and_flag(&mut mock_ctx, 0x12345678, 0x4087);
         assert_eq!(result, Err(Cr50SetBoardIDVerdict::AlreadySetError));
     }
 
     #[test]
-    fn test_cr50_check_board_id_and_flag_board_id_flag_neq_new_flag() {
+    fn test_gsc_check_board_id_and_flag_board_id_flag_neq_new_flag() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["--any", "--board_id"],
@@ -304,7 +304,7 @@ mod tests {
             "",
         );
 
-        let result = cr50_check_board_id_and_flag(&mut mock_ctx, 0x12345678, 0x4087);
+        let result = gsc_check_board_id_and_flag(&mut mock_ctx, 0x12345678, 0x4087);
         assert_eq!(
             result,
             Err(Cr50SetBoardIDVerdict::AlreadySetDifferentlyError)
@@ -312,7 +312,7 @@ mod tests {
     }
 
     #[test]
-    fn test_cr50_check_board_id_and_flag_else_case() {
+    fn test_gsc_check_board_id_and_flag_else_case() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["--any", "--board_id"],
@@ -321,12 +321,12 @@ mod tests {
             "",
         );
 
-        let result = cr50_check_board_id_and_flag(&mut mock_ctx, 0x12345678, 0x1234);
+        let result = gsc_check_board_id_and_flag(&mut mock_ctx, 0x12345678, 0x1234);
         assert_eq!(result, Err(Cr50SetBoardIDVerdict::AlreadySetError));
     }
 
     #[test]
-    fn test_cr50_set_board_id_and_flag_ok() {
+    fn test_gsc_set_board_id_and_flag_ok() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["--any", "--board_id", "0x12345678:0x0000abcd"],
@@ -335,12 +335,12 @@ mod tests {
             "",
         );
 
-        let result = cr50_set_board_id_and_flag(&mut mock_ctx, 0x12345678, 0xabcd);
+        let result = gsc_set_board_id_and_flag(&mut mock_ctx, 0x12345678, 0xabcd);
         assert_eq!(result, Ok(()));
     }
 
     #[test]
-    fn test_cr50_set_board_id_and_flag_failed() {
+    fn test_gsc_set_board_id_and_flag_failed() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["--any", "--board_id", "0x12345678:0x0000abcd"],
@@ -349,14 +349,14 @@ mod tests {
             "",
         );
 
-        let result = cr50_set_board_id_and_flag(&mut mock_ctx, 0x12345678, 0xabcd);
+        let result = gsc_set_board_id_and_flag(&mut mock_ctx, 0x12345678, 0xabcd);
         assert_eq!(result, Err(Cr50SetBoardIDVerdict::GeneralError));
     }
 
     // TODO (b/249410379): design more unit tests,
-    // continue from testing cr50_set_board_id_and_flag
+    // continue from testing gsc_set_board_id_and_flag
     #[test]
-    fn test_check_cr50_support_ok() {
+    fn test_check_gsc_support_ok() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["--any", "--fwver", "--machine"],
@@ -365,12 +365,12 @@ mod tests {
             "",
         );
 
-        let result = check_cr50_support_partial_board_id(&mut mock_ctx);
+        let result = check_gsc_support_partial_board_id(&mut mock_ctx);
         assert_eq!(result, Ok(()));
     }
 
     #[test]
-    fn test_check_cr50_support_failed_to_get_version() {
+    fn test_check_gsc_support_failed_to_get_version() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["--any", "--fwver", "--machine"],
@@ -379,12 +379,12 @@ mod tests {
             "",
         );
 
-        let result = check_cr50_support_partial_board_id(&mut mock_ctx);
+        let result = check_gsc_support_partial_board_id(&mut mock_ctx);
         assert_eq!(result, Err(Cr50SetBoardIDVerdict::GeneralError));
     }
 
     #[test]
-    fn test_check_cr50_support_prod_version_too_old() {
+    fn test_check_gsc_support_prod_version_too_old() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["--any", "--fwver", "--machine"],
@@ -393,12 +393,12 @@ mod tests {
             "",
         );
 
-        let result = check_cr50_support_partial_board_id(&mut mock_ctx);
+        let result = check_gsc_support_partial_board_id(&mut mock_ctx);
         assert_eq!(result, Err(Cr50SetBoardIDVerdict::GeneralError));
     }
 
     #[test]
-    fn test_check_cr50_support_prepvt_version_too_old() {
+    fn test_check_gsc_support_prepvt_version_too_old() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["--any", "--fwver", "--machine"],
@@ -407,7 +407,7 @@ mod tests {
             "",
         );
 
-        let result = check_cr50_support_partial_board_id(&mut mock_ctx);
+        let result = check_gsc_support_partial_board_id(&mut mock_ctx);
         assert_eq!(result, Err(Cr50SetBoardIDVerdict::GeneralError));
     }
 

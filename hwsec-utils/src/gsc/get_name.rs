@@ -5,14 +5,14 @@
 use log::info;
 
 use crate::context::Context;
-use crate::cr50::extract_board_id_from_gsctool_response;
-use crate::cr50::run_gsctool_cmd;
-use crate::cr50::GSCTOOL_CMD_NAME;
-use crate::cr50::GSC_IMAGE_BASE_NAME;
 use crate::error::HwsecError;
+use crate::gsc::extract_board_id_from_gsctool_response;
+use crate::gsc::run_gsctool_cmd;
+use crate::gsc::GSCTOOL_CMD_NAME;
+use crate::gsc::GSC_IMAGE_BASE_NAME;
 use crate::tpm2::ERASED_BOARD_ID;
 
-pub fn cr50_get_name(
+pub fn gsc_get_name(
     ctx: &mut impl Context,
     gsctool_command_options: &[&str],
 ) -> Result<String, HwsecError> {
@@ -56,9 +56,9 @@ pub fn cr50_get_name(
 mod tests {
     use super::*;
     use crate::context::mock::MockContext;
-    use crate::cr50::GSC_IMAGE_BASE_NAME;
+    use crate::gsc::GSC_IMAGE_BASE_NAME;
     #[test]
-    fn test_cr50_get_name() {
+    fn test_gsc_get_name() {
         let mut mock_ctx = MockContext::new();
 
         mock_ctx.cmd_runner().add_gsctool_interaction(
@@ -73,13 +73,13 @@ mod tests {
             "",
         );
 
-        let name = cr50_get_name(&mut mock_ctx, &["--any"]);
+        let name = gsc_get_name(&mut mock_ctx, &["--any"]);
 
         assert_eq!(name, Ok(String::from(GSC_IMAGE_BASE_NAME) + ".prod"));
     }
 
     #[test]
-    fn test_cr50_get_name_board_id_not_found() {
+    fn test_gsc_get_name_board_id_not_found() {
         let mut mock_ctx = MockContext::new();
 
         mock_ctx.cmd_runner().add_gsctool_interaction(
@@ -94,12 +94,12 @@ mod tests {
             "",
         );
 
-        let name = cr50_get_name(&mut mock_ctx, &["--any"]);
+        let name = gsc_get_name(&mut mock_ctx, &["--any"]);
         assert_eq!(name, Err(HwsecError::GsctoolResponseBadFormatError));
     }
 
     #[test]
-    fn test_cr50_get_name_different_ext() {
+    fn test_gsc_get_name_different_ext() {
         let mut mock_ctx = MockContext::new();
 
         mock_ctx.cmd_runner().add_gsctool_interaction(
@@ -114,7 +114,7 @@ mod tests {
             "",
         );
 
-        let name = cr50_get_name(&mut mock_ctx, &["--any"]);
+        let name = gsc_get_name(&mut mock_ctx, &["--any"]);
 
         assert_eq!(name, Ok(String::from(GSC_IMAGE_BASE_NAME) + ".prepvt"));
     }

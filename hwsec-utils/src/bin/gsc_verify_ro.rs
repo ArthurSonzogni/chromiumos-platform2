@@ -7,8 +7,8 @@ use std::path::Path;
 use std::process::exit;
 
 use hwsec_utils::context::RealContext;
-use hwsec_utils::cr50::cr50_verify_ro;
-use hwsec_utils::cr50::update_dut_if_needed;
+use hwsec_utils::gsc::gsc_verify_ro;
+use hwsec_utils::gsc::update_dut_if_needed;
 
 /// The two arguments are the Cr50 image file of the lowest
 /// version DUT should be running, and the RO verification
@@ -51,6 +51,6 @@ fn main() {
         exit(1)
     };
 
-    let result = cr50_verify_ro(&mut real_ctx, ro_descriptions);
+    let result = gsc_verify_ro(&mut real_ctx, ro_descriptions);
     exit(result.is_ok() as i32);
 }

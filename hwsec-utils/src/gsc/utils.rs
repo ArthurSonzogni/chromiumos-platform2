@@ -162,8 +162,8 @@ pub fn get_factory_config_with_gsctool(
 mod tests {
     use super::get_value_from_gsctool_output;
     use super::parse_version;
-    use crate::cr50::Version;
     use crate::error::HwsecError;
+    use crate::gsc::Version;
 
     #[test]
     fn test_parse_version_ok() {

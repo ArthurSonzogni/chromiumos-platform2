@@ -8,9 +8,9 @@ use std::path::Path;
 
 use crate::command_runner::CommandRunner;
 use crate::context::Context;
-use crate::cr50::clear_terminal;
-use crate::cr50::run_gsctool_cmd;
 use crate::error::HwsecError;
+use crate::gsc::clear_terminal;
+use crate::gsc::run_gsctool_cmd;
 
 // RMA Reset Authorization parameters.
 // - URL of Reset Authorization Server.
@@ -126,7 +126,7 @@ fn generate_challenge_url_and_display_challenge(
     Ok(challenge_url)
 }
 
-pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
+pub fn gsc_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
     const WAIT_TO_ENTER_RMA_SECS: u64 = 2;
     const SECS_IN_A_DAY: u64 = 86400;
 

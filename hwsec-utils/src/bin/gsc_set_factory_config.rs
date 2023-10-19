@@ -7,8 +7,8 @@ use std::process::exit;
 use std::str::FromStr;
 
 use hwsec_utils::context::RealContext;
-use hwsec_utils::cr50::cr50_set_factory_config;
-use hwsec_utils::cr50::Cr50SetFactoryConfigVerdict;
+use hwsec_utils::gsc::gsc_set_factory_config;
+use hwsec_utils::gsc::Cr50SetFactoryConfigVerdict;
 use libchromeos::syslog;
 use log::error;
 
@@ -50,7 +50,7 @@ fn main() {
         print_usage(args[0]);
             exit(Cr50SetFactoryConfigVerdict::GeneralError as i32)
         };
-    cr50_set_factory_config(&mut real_ctx, x_branded, ver)
+    gsc_set_factory_config(&mut real_ctx, x_branded, ver)
         .map_err(|e| exit(e as i32))
         .unwrap();
 }

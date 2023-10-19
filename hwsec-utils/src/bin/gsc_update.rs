@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 use hwsec_utils::context::RealContext;
-use hwsec_utils::cr50::cr50_update;
 use hwsec_utils::error::HwsecError;
+use hwsec_utils::gsc::gsc_update;
 use libchromeos::syslog;
 
 // This script is run at postinstall phase of Chrome OS installation process.
@@ -24,7 +24,7 @@ fn main() {
     }
 
     let mut real_ctx = RealContext::new();
-    match cr50_update(&mut real_ctx) {
+    match gsc_update(&mut real_ctx) {
         Ok(()) => std::process::exit(0),
         Err(hwsec_error) => match hwsec_error {
             HwsecError::GsctoolError(err_code) => std::process::exit(err_code),

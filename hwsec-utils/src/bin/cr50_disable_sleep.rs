@@ -8,7 +8,7 @@
 // each suspend.
 
 use hwsec_utils::context::RealContext;
-use hwsec_utils::cr50::monitor_suspend_dbus_signal;
+use hwsec_utils::gsc::monitor_suspend_dbus_signal;
 use libchromeos::syslog;
 
 fn main() {

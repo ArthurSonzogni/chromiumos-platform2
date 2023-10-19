@@ -5,8 +5,8 @@
 use std::fmt;
 use std::fmt::Display;
 
-use super::cr50_read_rma_sn_bits;
 use super::get_board_id_with_gsctool;
+use super::gsc_read_rma_sn_bits;
 use super::run_gsctool_cmd;
 use super::u8_slice_to_hex_string;
 use super::RmaSnBits;
@@ -60,7 +60,7 @@ pub fn report_device_has_been_rmaed(dry_run: bool) -> Result<(), Cr50SetSnBitsVe
     }
 }
 
-pub fn cr50_compute_updater_sn_bits(sn: &str) -> SnBits {
+pub fn gsc_compute_updater_sn_bits(sn: &str) -> SnBits {
     let mut hasher = hmac_sha256::Hash::new();
     hasher.update(sn);
     let hashed_value = &hasher.finalize();
@@ -81,12 +81,12 @@ pub fn is_rmaed(rma_sn_bits: RmaSnBits) -> bool {
     rma_sn_bits.rma_status != 0xff
 }
 
-pub fn cr50_check_sn_bits(
+pub fn gsc_check_sn_bits(
     ctx: &mut impl Context,
     sn_bits: SnBits,
     dry_run: bool,
 ) -> Result<(), Cr50SetSnBitsVerdict> {
-    let rma_sn_bits = cr50_read_rma_sn_bits(ctx).map_err(|_| {
+    let rma_sn_bits = gsc_read_rma_sn_bits(ctx).map_err(|_| {
         eprintln!("ERROR: Failed to read RMA+SN Bits.");
         Cr50SetSnBitsVerdict::GeneralError
     })?;
@@ -125,7 +125,7 @@ fn set_sn_bits_with_gsctool(
     Ok(gsctool_output.status.code().unwrap())
 }
 
-pub fn cr50_set_sn_bits(
+pub fn gsc_set_sn_bits(
     ctx: &mut impl Context,
     sn_bits: SnBits,
 ) -> Result<(), Cr50SetSnBitsVerdict> {
@@ -151,15 +151,15 @@ pub fn cr50_set_sn_bits(
 mod tests {
     use crate::context::mock::MockContext;
     use crate::context::Context;
-    use crate::cr50::cr50_check_sn_bits;
-    use crate::cr50::cr50_compute_updater_sn_bits;
-    use crate::cr50::Cr50SetSnBitsVerdict;
-    use crate::cr50::RmaSnBits;
+    use crate::gsc::gsc_check_sn_bits;
+    use crate::gsc::gsc_compute_updater_sn_bits;
+    use crate::gsc::Cr50SetSnBitsVerdict;
+    use crate::gsc::RmaSnBits;
 
     #[test]
-    fn test_cr50_compute_updater_sn_bits() {
+    fn test_gsc_compute_updater_sn_bits() {
         let meow: &str = "meow";
-        let hashed_meow = cr50_compute_updater_sn_bits(meow);
+        let hashed_meow = gsc_compute_updater_sn_bits(meow);
         assert_eq!(
             hashed_meow,
             [0x40, 0x4c, 0xdd, 0x7b, 0xc1, 0x09, 0xc4, 0x32, 0xf8, 0xcc, 0x24, 0x43]
@@ -170,7 +170,7 @@ mod tests {
     fn test_board_id_is_set() {
         use crate::context::mock::MockContext;
         use crate::context::Context;
-        use crate::cr50::board_id_is_set;
+        use crate::gsc::board_id_is_set;
         use crate::tpm2::BoardID;
 
         let mut mock_ctx = MockContext::new();
@@ -190,7 +190,7 @@ mod tests {
     fn test_board_id_is_not_set() {
         use crate::context::mock::MockContext;
         use crate::context::Context;
-        use crate::cr50::board_id_is_set;
+        use crate::gsc::board_id_is_set;
         use crate::tpm2::ERASED_BOARD_ID;
 
         let mut mock_ctx = MockContext::new();
@@ -203,11 +203,11 @@ mod tests {
     }
 
     #[test]
-    fn test_cr50_check_sn_bits_rmaed_dry_run() {
+    fn test_gsc_check_sn_bits_rmaed_dry_run() {
         let mut mock_ctx = MockContext::new();
         mock_ctx
             .cmd_runner()
-            .add_successful_cr50_read_rma_sn_bits_interaction_non_generic_tpm2(RmaSnBits {
+            .add_successful_gsc_read_rma_sn_bits_interaction_non_generic_tpm2(RmaSnBits {
                 sn_data_version: [0x12, 0x34, 0x56],
                 rma_status: 0x94,
                 sn_bits: [
@@ -215,7 +215,7 @@ mod tests {
                 ],
             });
 
-        let result = cr50_check_sn_bits(
+        let result = gsc_check_sn_bits(
             &mut mock_ctx,
             [
                 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc,
@@ -226,11 +226,11 @@ mod tests {
     }
 
     #[test]
-    fn test_cr50_check_sn_bits_rmaed_non_dry_run() {
+    fn test_gsc_check_sn_bits_rmaed_non_dry_run() {
         let mut mock_ctx = MockContext::new();
         mock_ctx
             .cmd_runner()
-            .add_successful_cr50_read_rma_sn_bits_interaction_non_generic_tpm2(RmaSnBits {
+            .add_successful_gsc_read_rma_sn_bits_interaction_non_generic_tpm2(RmaSnBits {
                 sn_data_version: [0x12, 0x34, 0x56],
                 rma_status: 0x87,
                 sn_bits: [
@@ -238,7 +238,7 @@ mod tests {
                 ],
             });
 
-        let result = cr50_check_sn_bits(
+        let result = gsc_check_sn_bits(
             &mut mock_ctx,
             [
                 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc,
@@ -249,17 +249,17 @@ mod tests {
     }
 
     #[test]
-    fn test_cr50_check_sn_bits_ok() {
+    fn test_gsc_check_sn_bits_ok() {
         let mut mock_ctx = MockContext::new();
         mock_ctx
             .cmd_runner()
-            .add_successful_cr50_read_rma_sn_bits_interaction_non_generic_tpm2(RmaSnBits {
+            .add_successful_gsc_read_rma_sn_bits_interaction_non_generic_tpm2(RmaSnBits {
                 sn_data_version: [0x12, 0x34, 0x56],
                 rma_status: 0xff,
                 sn_bits: [0xff; 12],
             });
 
-        let result = cr50_check_sn_bits(
+        let result = gsc_check_sn_bits(
             &mut mock_ctx,
             [
                 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc,
@@ -270,17 +270,17 @@ mod tests {
     }
 
     #[test]
-    fn test_cr50_check_sn_bits_different() {
+    fn test_gsc_check_sn_bits_different() {
         let mut mock_ctx = MockContext::new();
         mock_ctx
             .cmd_runner()
-            .add_successful_cr50_read_rma_sn_bits_interaction_non_generic_tpm2(RmaSnBits {
+            .add_successful_gsc_read_rma_sn_bits_interaction_non_generic_tpm2(RmaSnBits {
                 sn_data_version: [0x12, 0x34, 0x56],
                 rma_status: 0xff,
                 sn_bits: [0x11; 12],
             });
 
-        let result = cr50_check_sn_bits(
+        let result = gsc_check_sn_bits(
             &mut mock_ctx,
             [
                 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc,
@@ -294,11 +294,11 @@ mod tests {
     }
 
     #[test]
-    fn test_cr50_check_sn_bits_dry_run() {
+    fn test_gsc_check_sn_bits_dry_run() {
         let mut mock_ctx = MockContext::new();
         mock_ctx
             .cmd_runner()
-            .add_successful_cr50_read_rma_sn_bits_interaction_non_generic_tpm2(RmaSnBits {
+            .add_successful_gsc_read_rma_sn_bits_interaction_non_generic_tpm2(RmaSnBits {
                 sn_data_version: [0x12, 0x34, 0x56],
                 rma_status: 0xff,
                 sn_bits: [
@@ -306,7 +306,7 @@ mod tests {
                 ],
             });
 
-        let result = cr50_check_sn_bits(
+        let result = gsc_check_sn_bits(
             &mut mock_ctx,
             [
                 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc,
@@ -317,11 +317,11 @@ mod tests {
     }
 
     #[test]
-    fn test_cr50_check_sn_bits_non_dry_run() {
+    fn test_gsc_check_sn_bits_non_dry_run() {
         let mut mock_ctx = MockContext::new();
         mock_ctx
             .cmd_runner()
-            .add_successful_cr50_read_rma_sn_bits_interaction_non_generic_tpm2(RmaSnBits {
+            .add_successful_gsc_read_rma_sn_bits_interaction_non_generic_tpm2(RmaSnBits {
                 sn_data_version: [0x12, 0x34, 0x56],
                 rma_status: 0xff,
                 sn_bits: [
@@ -329,7 +329,7 @@ mod tests {
                 ],
             });
 
-        let result = cr50_check_sn_bits(
+        let result = gsc_check_sn_bits(
             &mut mock_ctx,
             [
                 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc,
@@ -340,8 +340,8 @@ mod tests {
     }
 
     #[test]
-    fn test_cr50_set_sn_bits_ok() {
-        use crate::cr50::cr50_set_sn_bits;
+    fn test_gsc_set_sn_bits_ok() {
+        use crate::gsc::gsc_set_sn_bits;
 
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
@@ -351,7 +351,7 @@ mod tests {
             "",
         );
 
-        let result = cr50_set_sn_bits(
+        let result = gsc_set_sn_bits(
             &mut mock_ctx,
             [
                 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc,
@@ -361,8 +361,8 @@ mod tests {
     }
 
     #[test]
-    fn test_cr50_set_sn_bits_gt_2_exit_code() {
-        use crate::cr50::cr50_set_sn_bits;
+    fn test_gsc_set_sn_bits_gt_2_exit_code() {
+        use crate::gsc::gsc_set_sn_bits;
 
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
@@ -375,7 +375,7 @@ mod tests {
             .cmd_runner()
             .add_successful_gsctool_read_board_id_arbitary_interaction();
 
-        let result = cr50_set_sn_bits(
+        let result = gsc_set_sn_bits(
             &mut mock_ctx,
             [
                 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc,
@@ -385,8 +385,8 @@ mod tests {
     }
 
     #[test]
-    fn test_cr50_set_sn_bits_lt_3_exit_code() {
-        use crate::cr50::cr50_set_sn_bits;
+    fn test_gsc_set_sn_bits_lt_3_exit_code() {
+        use crate::gsc::gsc_set_sn_bits;
 
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
@@ -396,7 +396,7 @@ mod tests {
             "",
         );
 
-        let result = cr50_set_sn_bits(
+        let result = gsc_set_sn_bits(
             &mut mock_ctx,
             [
                 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc,

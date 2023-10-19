@@ -3,10 +3,10 @@
 // found in the LICENSE file.
 
 use hwsec_utils::context::RealContext;
-use hwsec_utils::cr50::cr50_flash_log;
-use hwsec_utils::cr50::read_prev_timestamp_from_file;
-use hwsec_utils::cr50::set_cr50_log_file_time_base;
-use hwsec_utils::cr50::update_timestamp_file;
+use hwsec_utils::gsc::gsc_flash_log;
+use hwsec_utils::gsc::read_prev_timestamp_from_file;
+use hwsec_utils::gsc::set_log_file_time_base;
+use hwsec_utils::gsc::update_timestamp_file;
 use libchromeos::syslog;
 
 const TIMESTAMP_FILE: &str = "/mnt/stateful_partition/unencrypted/preserve/cr50_flog_timestamp";
@@ -27,11 +27,11 @@ fn main() {
         std::process::exit(1)
     };
 
-    if set_cr50_log_file_time_base(&mut real_ctx).is_err() {
+    if set_log_file_time_base(&mut real_ctx).is_err() {
         std::process::exit(1)
     };
 
-    let (ret_code, new_stamp): (i32, u64) = match cr50_flash_log(&mut real_ctx, prev_stamp) {
+    let (ret_code, new_stamp): (i32, u64) = match gsc_flash_log(&mut real_ctx, prev_stamp) {
         Ok(new_stamp) => (0, new_stamp),
         Err((_, new_stamp)) => (1, new_stamp),
     };

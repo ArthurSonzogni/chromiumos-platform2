@@ -9,10 +9,10 @@ use log::error;
 use log::info;
 
 use crate::context::Context;
-use crate::cr50::run_gsctool_cmd;
-use crate::cr50::run_metrics_client;
-use crate::cr50::GSC_METRICS_PREFIX;
 use crate::error::HwsecError;
+use crate::gsc::run_gsctool_cmd;
+use crate::gsc::run_metrics_client;
+use crate::gsc::GSC_METRICS_PREFIX;
 
 const FE_LOG_NVMEM: u64 = 5;
 const NVMEM_MALLOC: u64 = 200;
@@ -44,7 +44,7 @@ pub fn update_timestamp_file(
     ctx.write_contents_to_file(file_path, &new_stamp.to_ne_bytes())
 }
 
-pub fn set_cr50_log_file_time_base(ctx: &mut impl Context) -> Result<(), HwsecError> {
+pub fn set_log_file_time_base(ctx: &mut impl Context) -> Result<(), HwsecError> {
     let epoch_secs = match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
         Ok(epoch) => epoch.as_secs(),
         Err(_) => return Err(HwsecError::SystemTimeError),
@@ -102,7 +102,7 @@ fn parse_timestamp_and_event_id_from_log_entry(line: &str) -> Result<(u64, u64),
     Ok((stamp, event_id))
 }
 
-pub fn cr50_flash_log(ctx: &mut impl Context, prev_stamp: u64) -> Result<u64, (HwsecError, u64)> {
+pub fn gsc_flash_log(ctx: &mut impl Context, prev_stamp: u64) -> Result<u64, (HwsecError, u64)> {
     let Ok(gsctool_result) = run_gsctool_cmd(
         ctx,
         vec!["--any", "--machine", "--flog", &prev_stamp.to_string()]
@@ -157,8 +157,8 @@ mod tests {
     use super::parse_timestamp_and_event_id_from_log_entry;
     use crate::context::mock::MockContext;
     use crate::context::Context;
-    use crate::cr50::cr50_flash_log;
     use crate::error::HwsecError;
+    use crate::gsc::gsc_flash_log;
 
     const PREV_STAMP: u64 = 0;
 
@@ -203,7 +203,7 @@ mod tests {
     }
 
     #[test]
-    fn test_cr50_flash_log_empty_flash_log() {
+    fn test_gsc_flash_log_empty_flash_log() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["--any", "--machine", "--flog", "0"],
@@ -212,12 +212,12 @@ mod tests {
             "",
         );
 
-        let result = cr50_flash_log(&mut mock_ctx, PREV_STAMP);
+        let result = gsc_flash_log(&mut mock_ctx, PREV_STAMP);
         assert_eq!(result, Ok(0));
     }
 
     #[test]
-    fn test_cr50_flash_log_multiple_lines_flash_log() {
+    fn test_gsc_flash_log_multiple_lines_flash_log() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["--any", "--machine", "--flog", "0"],
@@ -231,12 +231,12 @@ mod tests {
             mock_ctx.cmd_runner().add_metrics_client_expectation(9);
         }
 
-        let result = cr50_flash_log(&mut mock_ctx, PREV_STAMP);
+        let result = gsc_flash_log(&mut mock_ctx, PREV_STAMP);
         assert_eq!(result, Ok(3));
     }
 
     #[test]
-    fn test_cr50_flash_log_event_gsctool_error() {
+    fn test_gsc_flash_log_event_gsctool_error() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["--any", "--machine", "--flog", "0"],
@@ -245,7 +245,7 @@ mod tests {
             "",
         );
 
-        let result = cr50_flash_log(&mut mock_ctx, PREV_STAMP);
+        let result = gsc_flash_log(&mut mock_ctx, PREV_STAMP);
         assert_eq!(result, Err((HwsecError::GsctoolError(1), 0)));
     }
 

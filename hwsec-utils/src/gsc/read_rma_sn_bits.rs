@@ -7,7 +7,7 @@ use crate::context::Context;
 use crate::error::HwsecError;
 use crate::tpm2::nv_read;
 
-pub fn cr50_read_rma_sn_bits(ctx: &mut impl Context) -> Result<RmaSnBits, HwsecError> {
+pub fn gsc_read_rma_sn_bits(ctx: &mut impl Context) -> Result<RmaSnBits, HwsecError> {
     const READ_SN_BITS_INDEX: u32 = 0x013fff01;
     const READ_SN_BITS_LENGTH: u16 = 16;
 
@@ -34,7 +34,7 @@ mod tests {
     use crate::tpm2::tests::split_into_hex_strtok;
 
     #[test]
-    fn test_cr50_read_rma_sn_bits_success() {
+    fn test_gsc_read_rma_sn_bits_success() {
         use crate::tpm2::tests::split_into_hex_strtok;
 
         let mut mock_ctx = MockContext::new();
@@ -55,7 +55,7 @@ mod tests {
             "",
         );
 
-        let rma_sn_bits = cr50_read_rma_sn_bits(&mut mock_ctx);
+        let rma_sn_bits = gsc_read_rma_sn_bits(&mut mock_ctx);
         assert_eq!(
             rma_sn_bits,
             Ok(RmaSnBits {
@@ -67,7 +67,7 @@ mod tests {
     }
 
     #[test]
-    fn test_cr50_read_rma_sn_bits_nv_read_malfunction() {
+    fn test_gsc_read_rma_sn_bits_nv_read_malfunction() {
         let mut mock_ctx = MockContext::new();
 
         mock_ctx.cmd_runner().set_trunksd_running(true);
@@ -86,7 +86,7 @@ mod tests {
             "",
         );
 
-        let rma_sn_bits = cr50_read_rma_sn_bits(&mut mock_ctx);
+        let rma_sn_bits = gsc_read_rma_sn_bits(&mut mock_ctx);
         assert_eq!(rma_sn_bits, Err(HwsecError::CommandRunnerError));
     }
 }

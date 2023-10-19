@@ -5,11 +5,11 @@
 use std::path::Path;
 
 use crate::context::Context;
-use crate::cr50::get_value_from_gsctool_output;
-use crate::cr50::parse_version;
-use crate::cr50::run_gsctool_cmd;
-use crate::cr50::Version;
 use crate::error::HwsecError;
+use crate::gsc::get_value_from_gsctool_output;
+use crate::gsc::parse_version;
+use crate::gsc::run_gsctool_cmd;
+use crate::gsc::Version;
 
 /// Retrieve Cr50 version running on the DUT. Reported in 'gsctool -afM' output
 /// as RW_FW_VER=<epoch>.<major>.<minor>
@@ -274,7 +274,7 @@ fn update_dut(ctx: &mut impl Context, image_path: &Path) -> Result<(), HwsecErro
     Ok(())
 }
 
-pub fn cr50_verify_ro(ctx: &mut impl Context, ro_descriptions: &Path) -> Result<(), HwsecError> {
+pub fn gsc_verify_ro(ctx: &mut impl Context, ro_descriptions: &Path) -> Result<(), HwsecError> {
     let rlz = retrieve_dut_board_rlz(ctx)?;
     let desc_file_str = ro_descriptions.join(format!("verify_ro_{}.db", rlz));
 
@@ -306,8 +306,8 @@ mod tests {
     use super::update_dut_if_needed;
     use crate::context::mock::MockContext;
     use crate::context::Context;
-    use crate::cr50::Version;
     use crate::error::HwsecError;
+    use crate::gsc::Version;
 
     #[test]
     fn test_retrieve_dut_firmware_rw_version_ok() {
