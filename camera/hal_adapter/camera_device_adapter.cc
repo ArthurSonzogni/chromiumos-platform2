@@ -778,6 +778,12 @@ int32_t CameraDeviceAdapter::WaitForPendingRequests(base::TimeDelta timeout) {
     const base::TimeDelta elapsed_time = timer.Elapsed();
     if (elapsed_time >= timeout) {
       LOGF(ERROR) << "Waiting for pending requests timed out";
+      for (auto& req : inflight_requests_) {
+        VLOGF(1) << "Inflight request: frame " << req.first
+                 << ", pending buffers: " << req.second.pending_streams.size()
+                 << ", has pending metadata: "
+                 << req.second.has_pending_metadata;
+      }
       return -ENODEV;
     }
     inflight_requests_empty_cv_.TimedWait(timeout - elapsed_time);

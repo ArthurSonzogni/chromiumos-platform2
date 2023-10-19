@@ -18,6 +18,7 @@
 #include <memory>
 #include <numeric>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -64,6 +65,7 @@ namespace {
 
 const int kSyncWaitTimeoutMs = 1000;
 const base::TimeDelta kMaximumMetricsSessionDuration = base::Seconds(3600);
+const uint32_t kMaxInflightReprocessingRequests = 20;
 
 constexpr char kEffectKey[] = "effect";
 constexpr char kBlurLevelKey[] = "blur_level";
@@ -289,6 +291,19 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
     base::TimeTicks last_processed_frame_timestamp;
   };
 
+  class ReprocessingRequestTracker {
+   public:
+    ReprocessingRequestTracker() = default;
+
+    void Reset();
+    void AddRequest(uint32_t frame_number);
+    bool HasRequest(uint32_t frame_number);
+
+   private:
+    base::Lock requests_lock_;
+    std::set<uint32_t> requests_ GUARDED_BY(requests_lock_);
+  };
+
   // States for async effects pipeline processing. On destroy, the output
   // buffers are returned to the client.
   struct ProcessContext {
@@ -349,6 +364,8 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
   // Determined at stream configuration.
   uint32_t graph_max_frames_in_flight_ = 0;
 
+  ReprocessingRequestTracker reprocessing_request_tracker_;
+
   EffectsConfig active_runtime_effects_config_
       GUARDED_BY_CONTEXT(gl_thread_checker_) = EffectsConfig();
   // Config state. last_set_effect_ can be different to
@@ -406,6 +423,26 @@ EffectsStreamManipulatorImpl::ProcessContext::~ProcessContext() {
     result.AppendOutputBuffer(std::move(copy_buffer));
   }
   result_callback.Run(std::move(result));
+}
+
+void EffectsStreamManipulatorImpl::ReprocessingRequestTracker::Reset() {
+  base::AutoLock lock(requests_lock_);
+  requests_.clear();
+}
+
+void EffectsStreamManipulatorImpl::ReprocessingRequestTracker::AddRequest(
+    uint32_t frame_number) {
+  base::AutoLock lock(requests_lock_);
+  requests_.insert(frame_number);
+  if (requests_.size() > kMaxInflightReprocessingRequests) {
+    requests_.erase(requests_.begin());
+  }
+}
+
+bool EffectsStreamManipulatorImpl::ReprocessingRequestTracker::HasRequest(
+    uint32_t frame_number) {
+  base::AutoLock lock(requests_lock_);
+  return requests_.find(frame_number) != requests_.end();
 }
 
 std::unique_ptr<EffectsStreamManipulator> EffectsStreamManipulator::Create(
@@ -638,6 +675,7 @@ bool EffectsStreamManipulatorImpl::ConfigureStreams(
 
 void EffectsStreamManipulatorImpl::ResetState() {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
+  reprocessing_request_tracker_.Reset();
   process_contexts_.clear();
   still_capture_processor_->Reset();
   base::AutoLock lock(stream_contexts_lock_);
@@ -729,6 +767,8 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureRequest(
     // Skip reprocessing requests. We can't touch the output buffers of a
     // reprocessing request since they have to be produced from the given input
     // buffer.
+    reprocessing_request_tracker_.AddRequest(request->frame_number());
+    VLOGF(3) << "Skip reprocessing request, frame " << request->frame_number();
     return true;
   }
 
@@ -827,6 +867,11 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
   base::ScopedClosureRunner callback_action(
       base::BindOnce(&EffectsStreamManipulatorImpl::ReturnCaptureResult,
                      base::Unretained(this), std::ref(result)));
+
+  if (reprocessing_request_tracker_.HasRequest(result.frame_number())) {
+    VLOGF(3) << "Skip reprocessing result, frame " << result.frame_number();
+    return true;
+  }
 
   if (runtime_options_->sw_privacy_switch_state() ==
       mojom::CameraPrivacySwitchState::ON) {
