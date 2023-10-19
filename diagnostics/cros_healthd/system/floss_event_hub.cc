@@ -98,6 +98,16 @@ base::CallbackListSubscription FlossEventHub::SubscribeDeviceConnectedChanged(
   return device_connected_changed_observers_.Add(callback);
 }
 
+base::CallbackListSubscription FlossEventHub::SubscribeDeviceBondChanged(
+    OnFlossDeviceBondChangedCallback callback) {
+  return device_bond_changed_observers_.Add(callback);
+}
+
+base::CallbackListSubscription FlossEventHub::SubscribeDeviceSspRequest(
+    OnFlossDeviceSspRequestCallback callback) {
+  return device_ssp_request_observers_.Add(callback);
+}
+
 base::CallbackListSubscription FlossEventHub::SubscribeManagerRemoved(
     OnFlossManagerRemovedCallback callback) {
   return manager_removed_observers_.Add(callback);
@@ -206,6 +216,18 @@ void FlossEventHub::OnDevicePropertiesChanged(
 void FlossEventHub::OnDeviceConnectedChanged(
     const brillo::VariantDictionary& device, bool connected) {
   device_connected_changed_observers_.Notify(device, connected);
+}
+
+void FlossEventHub::OnDeviceBondChanged(uint32_t bt_status,
+                                        const std::string& address,
+                                        uint32_t bond_state) {
+  device_bond_changed_observers_.Notify(bt_status, address,
+                                        static_cast<BondState>(bond_state));
+}
+
+void FlossEventHub::OnDeviceSspRequest(
+    const brillo::VariantDictionary& device) {
+  device_ssp_request_observers_.Notify(device);
 }
 
 void FlossEventHub::OnScanResultReceived(

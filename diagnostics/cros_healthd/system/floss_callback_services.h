@@ -48,9 +48,13 @@ class BluetoothCallbackService
   void OnDevicePropertiesChanged(
       const brillo::VariantDictionary& device,
       const std::vector<uint32_t>& properties) override;
-  void OnBondStateChanged(uint32_t in_status,
-                          const std::string& in_address,
-                          uint32_t in_state) override;
+  void OnBondStateChanged(uint32_t bt_status,
+                          const std::string& address,
+                          uint32_t bond_state) override;
+  void OnSspRequest(const brillo::VariantDictionary& device,
+                    uint32_t cod,
+                    uint32_t bt_ssp_variant,
+                    uint32_t passkey) override;
 
   // Unowned pointer. Used to send Bluetooth events.
   FlossEventHub* const event_hub_;
@@ -138,7 +142,7 @@ class ScannerCallbackService
 
  private:
   // org::chromium::bluetooth::ScannerCallbackInterface overrides:
-  void OnScanResult(const brillo::VariantDictionary& in_scan_result) override;
+  void OnScanResult(const brillo::VariantDictionary& scan_result) override;
 
   // Unowned pointer. Used to notify Bluetooth events.
   FlossEventHub* const event_hub_;

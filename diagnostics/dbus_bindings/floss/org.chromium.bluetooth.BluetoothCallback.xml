@@ -44,9 +44,20 @@
     </method>
     <method name="OnBondStateChanged">
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
-      <arg name="status" direction="in" type="u"/>
+      <arg name="bt_status" direction="in" type="u"/>
       <arg name="address" direction="in" type="s"/>
-      <arg name="state" direction="in" type="u"/>
+      <arg name="bond_state" direction="in" type="u"/>
+    </method>
+    <method name="OnSspRequest">
+      <tp:docstring>
+        Secure Simple Pairing (SSP) request event, which would be sent when
+        creating bond.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg name="device" direction="in" type="a{sv}"/>
+      <arg name="cod" direction="in" type="u"/>
+      <arg name="bt_ssp_variant" direction="in" type="u"/>
+      <arg name="passkey" direction="in" type="u"/>
     </method>
   </interface>
 </node>

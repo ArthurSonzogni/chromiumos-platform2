@@ -63,9 +63,19 @@ void BluetoothCallbackService::OnDevicePropertiesChanged(
   event_hub_->OnDevicePropertiesChanged(device, properties);
 }
 
-void BluetoothCallbackService::OnBondStateChanged(uint32_t status,
+void BluetoothCallbackService::OnBondStateChanged(uint32_t bt_status,
                                                   const std::string& address,
-                                                  uint32_t state) {}
+                                                  uint32_t bond_state) {
+  event_hub_->OnDeviceBondChanged(bt_status, address, bond_state);
+}
+
+void BluetoothCallbackService::OnSspRequest(
+    const brillo::VariantDictionary& device,
+    uint32_t cod,
+    uint32_t bt_ssp_variant,
+    uint32_t passkey) {
+  event_hub_->OnDeviceSspRequest(device);
+}
 
 ManagerCallbackService::ManagerCallbackService(
     FlossEventHub* event_hub,

@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <base/callback_list.h>
@@ -52,6 +53,15 @@ enum class BtPropertyType : uint32_t {
   kRemoteDeviceTimestamp = 0xFF,
 };
 
+// Bluetooth device bond state, which is copied and modified from |BondState|
+// enum in the Android codebase:
+// packages/modules/Bluetooth/system/gd/rust/topshim/src/btif.rs
+enum class BondState : uint32_t {
+  kNotBonded = 0,
+  kBondingInProgress = 1,
+  kBonded = 2,
+};
+
 // Adapter events.
 using OnFlossAdapterAddedCallback = base::RepeatingCallback<void(
     org::chromium::bluetooth::BluetoothProxyInterface* adapter)>;
@@ -72,6 +82,10 @@ using OnFlossDevicePropertyChangedCallback = base::RepeatingCallback<void(
     const brillo::VariantDictionary& device, BtPropertyType property)>;
 using OnFlossDeviceConnectedChangedCallback = base::RepeatingCallback<void(
     const brillo::VariantDictionary& device, bool connected)>;
+using OnFlossDeviceBondChangedCallback = base::RepeatingCallback<void(
+    uint32_t bt_status, const std::string& address, BondState bond_state)>;
+using OnFlossDeviceSspRequestCallback =
+    base::RepeatingCallback<void(const brillo::VariantDictionary& device)>;
 // Other floss events.
 using OnFlossManagerRemovedCallback =
     base::RepeatingCallback<void(const dbus::ObjectPath& manager_path)>;
@@ -108,6 +122,10 @@ class FlossEventHub {
       OnFlossDevicePropertyChangedCallback callback);
   base::CallbackListSubscription SubscribeDeviceConnectedChanged(
       OnFlossDeviceConnectedChangedCallback callback);
+  base::CallbackListSubscription SubscribeDeviceBondChanged(
+      OnFlossDeviceBondChangedCallback callback);
+  base::CallbackListSubscription SubscribeDeviceSspRequest(
+      OnFlossDeviceSspRequestCallback callback);
   base::CallbackListSubscription SubscribeManagerRemoved(
       OnFlossManagerRemovedCallback callback);
   base::CallbackListSubscription SubscribeScanResultReceived(
@@ -141,6 +159,10 @@ class FlossEventHub {
                                  const std::vector<uint32_t>& properties);
   void OnDeviceConnectedChanged(const brillo::VariantDictionary& device,
                                 bool connected);
+  void OnDeviceBondChanged(uint32_t bt_status,
+                           const std::string& address,
+                           uint32_t bond_state);
+  void OnDeviceSspRequest(const brillo::VariantDictionary& device);
   void OnScanResultReceived(const brillo::VariantDictionary& scan_result);
 
  private:
@@ -191,6 +213,11 @@ class FlossEventHub {
   base::RepeatingCallbackList<void(const brillo::VariantDictionary& device,
                                    bool connected)>
       device_connected_changed_observers_;
+  base::RepeatingCallbackList<void(
+      uint32_t bt_status, const std::string& address, BondState bond_state)>
+      device_bond_changed_observers_;
+  base::RepeatingCallbackList<void(const brillo::VariantDictionary& device)>
+      device_ssp_request_observers_;
   base::RepeatingCallbackList<void(const dbus::ObjectPath& adapter_path)>
       manager_removed_observers_;
   base::RepeatingCallbackList<void(
