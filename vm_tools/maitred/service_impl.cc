@@ -653,12 +653,14 @@ grpc::Status ServiceImpl::ConfigureContainerGuest(
                         "failed to write container token to file");
   }
 
+#if USE_VM_BOREALIS
   // Run garcon.
   if (!init_->Spawn({"/etc/init.d/cros-garcon", "daemon"}, {}, true /*respawn*/,
                     false /*use_console*/, false /*wait_for_exit*/,
                     &launch_info)) {
     return grpc::Status(grpc::INTERNAL, "failed to launch garcon");
   }
+#endif
   return grpc::Status::OK;
 }
 
