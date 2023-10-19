@@ -9,7 +9,13 @@
 set -e
 
 # Switch to script directory to constrain testing.
-cd "$(dirname "$(realpath -e "${BASH_SOURCE[0]}")")"
+HERE="$(dirname "$(realpath -e "${BASH_SOURCE[0]}")")"
+cd "${HERE}"
+
+# Ensure we use the Python packages from the source tree so that people don't
+# need to update_chroot or emerge anything to pick up local changes.
+SRC="${HERE}/../.."
+export PYTHONPATH="${HERE}:${SRC}/config/python:${PYTHONPATH:-}"
 
 python3 -m unittest discover -p '*test.py' -v
 

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Copyright 2021 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -9,7 +9,13 @@
 set -e
 
 # Change to the directory of this script.
-cd "$(dirname "$0")"
+HERE="$(dirname "$(realpath -e "${BASH_SOURCE[0]}")")"
+cd "${HERE}"
+
+# Ensure we use the Python packages from the source tree so that people don't
+# need to update_chroot or emerge anything to pick up local changes.
+SRC="${HERE}/../.."
+export PYTHONPATH="${HERE}:${SRC}/config/python:${PYTHONPATH:-}"
 
 # Regen power manager prefs schema
 python3 -m cros_config_host.power_manager_prefs_gen_schema \
