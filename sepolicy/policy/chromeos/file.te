@@ -369,7 +369,6 @@ type cros_dev_tast_test, file_type, cros_file_type, cros_uncategorized_file_type
 
 type sdcardd_exec, exec_type, file_type, android_file_type;
 
-type cros_cr50-disable-sleep_script, exec_type, file_type, cros_init_scripts_file_type, cros_file_type, cros_system_file_type;
 type cros_cr50_disable_sleep_exec, exec_type, file_type, cros_init_scripts_file_type, cros_file_type, cros_system_file_type;
 type cros_init_activate_date_script, exec_type, file_type, cros_init_scripts_file_type, cros_file_type, cros_system_file_type;
 type cros_init_chapsd_shell_script, exec_type, file_type, cros_init_scripts_file_type, cros_file_type, cros_system_file_type;

@@ -274,7 +274,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/share/chromeos-ssh-config/sshd-pre u:object_r:cros_init_sshd_pre_shell_script:s0
 /usr/share/cros(/.*)?           u:object_r:cros_usr_dirs:s0
 /usr/share/cros/init(/.*)?      u:object_r:cros_init_shell_scripts:s0
-/usr/share/cros/cr50-disable-sleep.sh u:object_r:cros_cr50-disable-sleep_script:s0
 /usr/share/cros/hwsec-utils/cr50_disable_sleep u:object_r:cros_cr50_disable_sleep_exec:s0
 /usr/share/cros/init/activate_date.sh u:object_r:cros_init_activate_date_script:s0
 /usr/share/cros/init/crx-import.sh u:object_r:cros_init_crx_import_script:s0
