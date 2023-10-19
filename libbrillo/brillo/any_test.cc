@@ -238,7 +238,7 @@ TEST(Any, Swap) {
   EXPECT_EQ(2.7, val2.Get<double>());
 }
 
-TEST(Any, TypeMismatch) {
+TEST(AnyDeathTest, TypeMismatch) {
   Any val(12);
   EXPECT_DEATH(val.Get<double>(),
                "Requesting value of type 'double' from variant containing "
