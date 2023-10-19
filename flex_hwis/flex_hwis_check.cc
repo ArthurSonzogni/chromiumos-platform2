@@ -44,31 +44,31 @@ int64_t NowToEpochInSeconds() {
 
 }  // namespace
 
-constexpr char kHwisUuidFile[] = "var/lib/flex_hwis_tool/uuid";
+constexpr char kDeviceNameFile[] = "var/lib/flex_hwis_tool/name";
 constexpr char kHwisTimeStampFile[] = "var/lib/flex_hwis_tool/time";
 
 FlexHwisCheck::FlexHwisCheck(const base::FilePath& base_path,
                              policy::PolicyProvider& provider)
     : base_path_(base_path), policy_provider_(provider) {}
 
-std::optional<std::string> FlexHwisCheck::GetUuid() const {
-  return ReadHwisFile(UuidPath());
+std::optional<std::string> FlexHwisCheck::GetDeviceName() const {
+  return ReadHwisFile(DeviceNamePath());
 }
 
-void FlexHwisCheck::DeleteUuid() {
-  if (!brillo::DeleteFile(UuidPath())) {
-    LOG(INFO) << "Error deleting UUID file";
+void FlexHwisCheck::DeleteDeviceName() {
+  if (!brillo::DeleteFile(DeviceNamePath())) {
+    LOG(INFO) << "Error deleting device name file";
   }
 }
 
-void FlexHwisCheck::SetUuid(const std::string_view uuid) {
-  if (!WriteHwisFile(UuidPath(), uuid)) {
-    LOG(INFO) << "Error writing UUID file";
+void FlexHwisCheck::SetDeviceName(const std::string_view name) {
+  if (!WriteHwisFile(DeviceNamePath(), name)) {
+    LOG(INFO) << "Error writing device name file";
   }
 }
 
-base::FilePath FlexHwisCheck::UuidPath() const {
-  return base_path_.Append(kHwisUuidFile);
+base::FilePath FlexHwisCheck::DeviceNamePath() const {
+  return base_path_.Append(kDeviceNameFile);
 }
 
 std::optional<std::string> FlexHwisCheck::ReadHwisFile(

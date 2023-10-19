@@ -29,7 +29,7 @@ constexpr char kPostMetricName[] = "Platform.FlexHwis.ServerPostSuccess";
 constexpr char kPermissionMetricName[] =
     "Platform.FlexHwis.PermissionCheckResult";
 constexpr char kHwisFilePath[] = "var/lib/flex_hwis_tool";
-constexpr char kUuidForTesting[] = "uuid_for_testing";
+constexpr char kDeviceNameForTesting[] = "name_for_testing";
 
 ACTION_P(SetEnabled, enabled) {
   *arg0 = enabled;
@@ -93,10 +93,11 @@ class FlexHwisTest : public ::testing::Test {
     CHECK(base::WriteFile(time_path.Append("time"), timestamp));
   }
 
-  void CreateUuid() {
-    base::FilePath uuid_path = test_path_.Append(kHwisFilePath);
-    CHECK(base::CreateDirectory(uuid_path));
-    CHECK(base::WriteFile(uuid_path.Append("uuid"), kUuidForTesting));
+  void CreateDeviceName() {
+    base::FilePath hwis_file_path = test_path_.Append(kHwisFilePath);
+    CHECK(base::CreateDirectory(hwis_file_path));
+    CHECK(
+        base::WriteFile(hwis_file_path.Append("name"), kDeviceNameForTesting));
   }
 
   void ExpectPermissionMetric(PermissionResult result) {
@@ -111,12 +112,12 @@ class FlexHwisTest : public ::testing::Test {
   }
 
   void ExpectDeleteAction() {
-    CreateUuid();
+    CreateDeviceName();
     EXPECT_CALL(mock_http_sender_, DeleteDevice(_)).WillOnce(Return(true));
   }
 
   void ExpectUpdateAction(bool api_call_success) {
-    CreateUuid();
+    CreateDeviceName();
     EXPECT_CALL(mock_http_sender_, UpdateDevice(_))
         .WillOnce(Return(api_call_success));
     ExpectApiMetric(kPutMetricName, api_call_success);
@@ -124,7 +125,7 @@ class FlexHwisTest : public ::testing::Test {
 
   void ExpectRegisterAction(bool api_call_success) {
     hwis_proto::Device hardware_info;
-    hardware_info.set_name(kUuidForTesting);
+    hardware_info.set_name(kDeviceNameForTesting);
     DeviceRegisterResult result(api_call_success,
                                 hardware_info.SerializeAsString());
     EXPECT_CALL(mock_http_sender_, RegisterNewDevice(_))

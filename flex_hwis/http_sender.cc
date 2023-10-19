@@ -69,7 +69,7 @@ DeviceRegisterResult HttpSender::RegisterNewDevice(
     const hwis_proto::Device& device_info) {
   if (server_url_.empty()) {
     LOG(WARNING) << "flex_hwis_tool has no server configured";
-    return DeviceRegisterResult(/*success=*/false, /*device_id=*/"");
+    return DeviceRegisterResult(/*success=*/false, /*device_name=*/"");
   }
   brillo::ErrorPtr error;
   // TODO(b/297887750): add API key to header to authorize from real server.
@@ -92,7 +92,7 @@ DeviceRegisterResult HttpSender::RegisterNewDevice(
 
   hwis_proto::Device device_proto;
   device_proto.ParseFromString(response->ExtractDataAsString());
-  register_result.device_id = device_proto.name();
+  register_result.device_name = device_proto.name();
   register_result.success = true;
   return register_result;
 }

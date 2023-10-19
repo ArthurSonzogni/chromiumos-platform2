@@ -98,19 +98,19 @@ TEST_F(FlexHwisCheckTest, CheckTimeEmpty) {
   EXPECT_FALSE(flex_hwis_check_.HasRunRecently());
 }
 
-TEST_F(FlexHwisCheckTest, CheckUuid) {
+TEST_F(FlexHwisCheckTest, CheckDeviceName) {
   auto flex_hwis_check_ =
       flex_hwis::FlexHwisCheck(test_path_, mock_policy_provider_);
 
-  // Simulate failure to read UUID.
-  EXPECT_EQ(std::nullopt, flex_hwis_check_.GetUuid());
+  // Simulate failure to read device name.
+  EXPECT_EQ(std::nullopt, flex_hwis_check_.GetDeviceName());
 
-  constexpr char kUuid[] = "reven-uuid";
-  flex_hwis_check_.SetUuid(kUuid);
-  EXPECT_EQ(kUuid, flex_hwis_check_.GetUuid().value());
+  constexpr char kDeviceName[] = "reven_device_name";
+  flex_hwis_check_.SetDeviceName(kDeviceName);
+  EXPECT_EQ(kDeviceName, flex_hwis_check_.GetDeviceName().value());
 
-  flex_hwis_check_.DeleteUuid();
-  EXPECT_EQ(std::nullopt, flex_hwis_check_.GetUuid());
+  flex_hwis_check_.DeleteDeviceName();
+  EXPECT_EQ(std::nullopt, flex_hwis_check_.GetDeviceName());
 }
 
 TEST_F(FlexHwisCheckTest, CheckManagedPermission) {

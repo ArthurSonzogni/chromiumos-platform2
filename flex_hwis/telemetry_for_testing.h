@@ -45,7 +45,6 @@ inline constexpr int kSecondPciBusDeviceId = 0x2a43;
 inline constexpr char kPciBusDriver[] = "r8152";
 inline constexpr bool kTpmIsAllowed = true;
 inline constexpr bool kTpmOwned = true;
-inline constexpr char kUuid[] = "reven-uuid";
 
 namespace flex_hwis {
 namespace mojom = ::ash::cros_healthd::mojom;

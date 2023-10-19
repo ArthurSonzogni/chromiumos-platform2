@@ -71,18 +71,18 @@ Result FlexHwisSender::CollectAndSend(MetricsLibraryInterface& metrics,
   PermissionInfo permission_info = check_.CheckPermission();
   SendPermissionMetric(permission_info, metrics);
   hwis_proto::Device hardware_info;
-  const std::optional<std::string> uuid = check_.GetUuid();
+  const std::optional<std::string> device_name = check_.GetDeviceName();
 
   // Exit if the device does not have permission to send data to the server.
   if (!permission_info.permission) {
-    if (uuid) {
+    if (device_name) {
       // If the user does not consent to share hardware data, the HWIS service
-      // must delete the client's UUID after confirming that the request to
+      // must delete the device name file after confirming that the request to
       // delete the hardware data to the server is successfully.
       hwis_proto::DeleteDevice delete_device;
-      delete_device.set_name(uuid.value());
+      delete_device.set_name(device_name.value());
       if (sender_.DeleteDevice(delete_device)) {
-        check_.DeleteUuid();
+        check_.DeleteDeviceName();
       }
     }
     return Result::NotAuthorized;
@@ -93,10 +93,10 @@ Result FlexHwisSender::CollectAndSend(MetricsLibraryInterface& metrics,
   bool api_call_success = false;
   std::string metric_name;
 
-  // If device ID is not in client side, client should register a new device.
-  // If device ID already exists, then the client should update the device.
-  if (uuid) {
-    hardware_info.set_name(uuid.value());
+  // If device name is not in client side, client should register a new device.
+  // If device name already exists, then the client should update the device.
+  if (device_name) {
+    hardware_info.set_name(device_name.value());
     api_call_success = sender_.UpdateDevice(hardware_info);
     metric_name = kPutMetricName;
   } else {
@@ -106,9 +106,9 @@ Result FlexHwisSender::CollectAndSend(MetricsLibraryInterface& metrics,
     metric_name = kPostMetricName;
 
     // If the device is successfully registered, the server will return a
-    // device ID. The client must save this device ID in the local file.
+    // device name. The client must save this device name in the local file.
     if (api_call_success) {
-      check_.SetUuid(register_result.device_id);
+      check_.SetDeviceName(register_result.device_name);
     }
   }
 
