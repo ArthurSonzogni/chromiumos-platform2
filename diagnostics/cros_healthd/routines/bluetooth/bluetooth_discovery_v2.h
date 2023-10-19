@@ -8,7 +8,6 @@
 #include <optional>
 #include <string>
 
-#include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/types/expected.h>
 #include <dbus/object_path.h>
@@ -115,9 +114,6 @@ class BluetoothDiscoveryRoutineV2 final : public BaseRoutineControl,
 
   // The line number of the btmon log last checked.
   uint32_t log_line_last_checked = 0;
-
-  // Cancelable task to update the routine percentage.
-  base::CancelableOnceClosure percentage_update_task_;
 
   // A callback that should be run regardless of the execution status. This
   // callback will remove temporary log file created by btmon.

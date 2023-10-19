@@ -4,12 +4,11 @@
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_discovery_v2.h"
 
-#include <algorithm>
 #include <optional>
 #include <utility>
 #include <vector>
 
-#include <base/functional/callback_helpers.h>
+#include <base/functional/callback.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/task/single_thread_task_runner.h>
@@ -30,9 +29,6 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-// Frequency to update the routine percentage.
-constexpr base::TimeDelta kBluetoothDiscoveryRoutineUpdatePeriod =
-    base::Milliseconds(500);
 // Time to wait for btmon to save HCI traces to log file.
 constexpr base::TimeDelta kBluetoothDiscoveryRoutineBtmonWritingTime =
     base::Seconds(1);
@@ -423,21 +419,8 @@ void BluetoothDiscoveryRoutineV2::ValidateAdapterDiscovering(
 }
 
 void BluetoothDiscoveryRoutineV2::UpdatePercentage() {
-  double step_percent = static_cast<int32_t>(step_) * 100.0 /
-                        static_cast<int32_t>(TestStep::kComplete);
-  double running_time_ratio =
-      (base::TimeTicks::Now() - start_ticks_) / kDiscoveryRoutineTimeout;
-  int new_percentage =
-      step_percent + (100.0 - step_percent) * std::min(1.0, running_time_ratio);
-  if (new_percentage < 99) {
-    percentage_update_task_.Reset(
-        base::BindOnce(&BluetoothDiscoveryRoutineV2::UpdatePercentage,
-                       weak_ptr_factory_.GetWeakPtr()));
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-        FROM_HERE, percentage_update_task_.callback(),
-        kBluetoothDiscoveryRoutineUpdatePeriod);
-  }
-
+  double new_percentage = static_cast<int32_t>(step_) * 100.0 /
+                          static_cast<int32_t>(TestStep::kComplete);
   // Update the percentage.
   if (new_percentage > state()->percentage && new_percentage < 100)
     SetPercentage(new_percentage);

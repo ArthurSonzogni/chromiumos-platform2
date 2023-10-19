@@ -7,7 +7,6 @@
 
 #include <string>
 
-#include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/types/expected.h>
 
@@ -83,9 +82,6 @@ class BluetoothPowerRoutineV2 final : public BaseRoutineControl,
 
   // Detail of routine output.
   ash::cros_healthd::mojom::BluetoothPowerRoutineDetailPtr routine_output_;
-
-  // Cancelable task to update the routine percentage.
-  base::CancelableOnceClosure percentage_update_task_;
 
   // Must be the last class member.
   base::WeakPtrFactory<BluetoothPowerRoutineV2> weak_ptr_factory_{this};
