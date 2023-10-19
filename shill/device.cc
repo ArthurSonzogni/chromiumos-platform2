@@ -64,7 +64,22 @@ namespace {
 
 constexpr size_t kHardwareAddressLength = 6;
 
-int PortalResultToMetricsEnum(PortalDetector::Result portal_result) {
+Service::ConnectState PortalValidationStateToConnectionState(
+    PortalDetector::ValidationState validation_state) {
+  switch (validation_state) {
+    case PortalDetector::ValidationState::kInternetConnectivity:
+      return Service::kStateOnline;
+    case PortalDetector::ValidationState::kNoConnectivity:
+      return Service::kStateNoConnectivity;
+    case PortalDetector::ValidationState::kPartialConnectivity:
+      return Service::kStatePortalSuspected;
+    case PortalDetector::ValidationState::kPortalRedirect:
+      return Service::kStateRedirectFound;
+  }
+}
+}  // namespace
+
+int Device::PortalResultToMetricsEnum(PortalDetector::Result portal_result) {
   switch (portal_result.http_phase) {
     case PortalDetector::Phase::kUnknown:
       return Metrics::kPortalDetectorResultUnknown;
@@ -111,22 +126,6 @@ int PortalResultToMetricsEnum(PortalDetector::Result portal_result) {
       }
   }
 }
-
-Service::ConnectState PortalValidationStateToConnectionState(
-    PortalDetector::ValidationState validation_state) {
-  switch (validation_state) {
-    case PortalDetector::ValidationState::kInternetConnectivity:
-      return Service::kStateOnline;
-    case PortalDetector::ValidationState::kNoConnectivity:
-      return Service::kStateNoConnectivity;
-    case PortalDetector::ValidationState::kPartialConnectivity:
-      return Service::kStatePortalSuspected;
-    case PortalDetector::ValidationState::kPortalRedirect:
-      return Service::kStateRedirectFound;
-  }
-}
-
-}  // namespace
 
 const char Device::kStoragePowered[] = "Powered";
 

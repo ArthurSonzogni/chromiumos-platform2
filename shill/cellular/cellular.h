@@ -203,6 +203,9 @@ class Cellular : public Device,
   // Called when the associated Modem object is destroyed.
   void OnModemDestroyed();
 
+  void OnNetworkValidationResult(int interface_index,
+                                 const PortalDetector::Result& result) override;
+
   // Returns true if |service| is connectable.
   bool GetConnectable(CellularService* service) const;
 
@@ -230,6 +233,10 @@ class Cellular : public Device,
   void NotifyDetailedCellularConnectionResult(const Error& error,
                                               ApnList::ApnType apn_type,
                                               const shill::Stringmap& apn_info);
+  void NotifyNetworkValidationResult(
+      std::map<std::string, std::string> apn_info,
+      int portal_result,
+      int portal_detection_count);
 
   // Is the underlying device in the process of activating?
   bool IsActivating() const;

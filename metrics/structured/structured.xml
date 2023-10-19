@@ -789,6 +789,72 @@
     </metric>
   </event>
 
+  <event name="CellularNetworkValidationAttempt">
+    <summary>
+      Records information of the network validation attempt over cellular.
+      An entry is logged immediately after portal detection fails or succeeds.
+    </summary>
+    <metric name="apn_id" type="int">
+      <summary>
+        The ID of the APN used to establish the connection. This ID is a hash
+        of the string uuid+apn_name+username+password.
+      </summary>
+    </metric>
+    <metric name="portal_detection_result" type="int">
+      <summary>
+        Result of the portal detection attempt(see Metrics::PortalDetectorResult).
+      </summary>
+    </metric>
+    <metric name="initial_result" type="int">
+      <summary>
+        Indicates if this is an initial portal attempt. Set to 1
+        for initial attempt else 0.
+      </summary>
+    </metric>
+    <metric name="ipv4_config_method" type="int">
+      <summary>
+        The IPv4 config method(see IPConfig::Method) provided by the carrier.
+      </summary>
+    </metric>
+    <metric name="ipv6_config_method" type="int">
+      <summary>
+        The IPv6 config method(see IPConfig::Method) provided by the carrier.
+      </summary>
+    </metric>
+    <metric name="home_mccmnc" type="int">
+      <summary>
+        The MCCMNC of the home provider.
+      </summary>
+    </metric>
+    <metric name="serving_mccmnc" type="int">
+      <summary>
+        The MCCMNC of the serving provider.
+      </summary>
+    </metric>
+    <metric name="roaming_state" type="int">
+      <summary>
+        Indicates if the device is roaming.
+      </summary>
+    </metric>
+    <metric name="tech_used" type="int">
+      <summary>
+        Indicates the technologies in use for the connect attempt.
+
+        Value is a bitmask, allowing multiple simultaneous technologies, for
+        instance for proper 5G-NSA reporting. Values are defined by the
+        MMModemAccessTechnology enum in ModemManager[1].
+
+        [1] freedesktop.org/software/ModemManager/api/latest/ModemManager-Flags-and-Enumerations.html#MMModemAccessTechnology
+        </summary>
+    </metric>
+    <metric name="sim_type" type="int">
+      <summary>
+        Indicates the type of SIM used. pSIM or eSIM.
+        Options are Unknown == 0 , pSIM == 1 , eSIM == 2.
+      </summary>
+    </metric>
+  </event>
+
 </project>
 
 <project name="RollbackEnterprise">

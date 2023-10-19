@@ -1879,18 +1879,25 @@ class Metrics {
   virtual void NotifyCellularEntitlementCheckResult(
       Metrics::CellularEntitlementCheck result);
 
+  // IPConfigMethod and SimType are used for cellular metrics reporting
+  enum class IPConfigMethod {
+    kUnknown = 0,
+    kPPP = 1,
+    kStatic = 2,
+    kDynamic = 3
+  };
+  enum class SimType {
+    kUnknown = 0,
+    kPsim = 1,
+    kEsim = 2,
+  };
+
   struct DetailedCellularConnectionResult {
     // The values are used in metrics and thus should not be changed.
     enum class APNType {
       kDefault,
       kAttach,
       kDUN,
-    };
-    enum class IPConfigMethod {
-      kUnknown = 0,
-      kPPP = 1,
-      kStatic = 2,
-      kDHCP = 3
     };
     enum class ConnectionAttemptType {
       kUnknown = 0,
@@ -1909,13 +1916,27 @@ class Metrics {
     std::string roaming_state;
     uint32_t tech_used;
     uint32_t iccid_length;
-    uint32_t sim_type;
+    SimType sim_type;
     std::string gid1;
     uint32_t modem_state;
     int interface_index;
     uint32_t use_apn_revamp_ui;
     ConnectionAttemptType connection_attempt_type;
     uint32_t subscription_error_seen;
+  };
+
+  struct CellularNetworkValidationResult {
+    std::map<std::string, std::string> apn_info;
+    std::string uuid;
+    int portal_detection_result;
+    int portal_detection_count;
+    IPConfigMethod ipv4_config_method;
+    IPConfigMethod ipv6_config_method;
+    std::string home_mccmnc;
+    std::string serving_mccmnc;
+    std::string roaming_state;
+    uint32_t tech_used;
+    SimType sim_type;
   };
 
   struct CellularPowerOptimizationInfo {
@@ -1944,6 +1965,10 @@ class Metrics {
   // Notifies this object of the resulting status of a cellular connection
   virtual void NotifyDetailedCellularConnectionResult(
       const DetailedCellularConnectionResult& result);
+
+  // Notifies result of portal detection over a cellular connection
+  virtual void NotifyCellularNetworkValidationResult(
+      const CellularNetworkValidationResult& result);
 
   // Notifies modem power optimization performed
   virtual void NotifyCellularPowerOptimization(

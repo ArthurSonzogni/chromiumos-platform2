@@ -717,6 +717,66 @@ std::optional<int64_t> Metrics::IntGid1(const std::string& gid1) {
   return parsed;
 }
 
+void Metrics::NotifyCellularNetworkValidationResult(
+    const CellularNetworkValidationResult& result) {
+  int64_t home, serving;
+  std::string apn_name;
+  std::string username;
+  std::string password;
+  CellularRoamingState roaming =
+      CellularRoamingState::kCellularRoamingStateUnknown;
+
+  base::StringToInt64(result.home_mccmnc, &home);
+  base::StringToInt64(result.serving_mccmnc, &serving);
+  if (result.roaming_state == kRoamingStateHome) {
+    roaming = kCellularRoamingStateHome;
+  } else if (result.roaming_state == kRoamingStateRoaming) {
+    roaming = kCellularRoamingStateRoaming;
+  }
+
+  DCHECK(base::Contains(result.apn_info, kApnSourceProperty));
+  if (base::Contains(result.apn_info, kApnSourceProperty)) {
+    if (result.apn_info.at(kApnSourceProperty) == cellular::kApnSourceMoDb ||
+        result.apn_info.at(kApnSourceProperty) == cellular::kApnSourceModem) {
+      if (base::Contains(result.apn_info, kApnProperty))
+        apn_name = result.apn_info.at(kApnProperty);
+      if (base::Contains(result.apn_info, kApnUsernameProperty))
+        username = result.apn_info.at(kApnUsernameProperty);
+      if (base::Contains(result.apn_info, kApnPasswordProperty))
+        password = result.apn_info.at(kApnPasswordProperty);
+    }
+  }
+
+  LOG(INFO) << __func__
+            << ": portal_detection_result: " << result.portal_detection_result
+            << " portal_detection_count: " << result.portal_detection_count
+            << " apn:" << apn_name
+            << " ipv4:" << static_cast<int>(result.ipv4_config_method)
+            << " ipv6:" << static_cast<int>(result.ipv6_config_method)
+            << " home_mccmnc:" << result.home_mccmnc
+            << " serving_mccmnc:" << result.serving_mccmnc
+            << " roaming_state:" << result.roaming_state
+            << " tech_used:" << result.tech_used
+            << " sim_type:" << static_cast<int>(result.sim_type);
+
+  auto event =
+      metrics::structured::events::cellular::CellularNetworkValidationAttempt()
+          .Setportal_detection_result(
+              static_cast<int64_t>(result.portal_detection_result))
+          .Setinitial_result(
+              static_cast<int64_t>(result.portal_detection_count == 1 ? 1 : 0))
+          .Setapn_id(HashApn(result.uuid, apn_name, username, password))
+          .Setipv4_config_method(static_cast<int>(result.ipv4_config_method))
+          .Setipv6_config_method(static_cast<int>(result.ipv6_config_method))
+          .Sethome_mccmnc(home)
+          .Setserving_mccmnc(serving)
+          .Setroaming_state(roaming)
+          .Settech_used(result.tech_used)
+          .Setsim_type(static_cast<int>(result.sim_type));
+
+  event.Record();
+}
+
 void Metrics::NotifyDetailedCellularConnectionResult(
     const DetailedCellularConnectionResult& result) {
   int64_t home, serving, detailed_error_hash;
@@ -817,8 +877,8 @@ void Metrics::NotifyDetailedCellularConnectionResult(
           << " roaming_state:" << result.roaming_state
           << " tech_used:" << result.tech_used
           << " iccid_length:" << result.iccid_length
-          << " sim_type:" << result.sim_type << " gid1:" << result.gid1
-          << " modem_state:" << result.modem_state
+          << " sim_type:" << static_cast<int>(result.sim_type)
+          << " gid1:" << result.gid1 << " modem_state:" << result.modem_state
           << " connect_time:" << connect_time
           << " scan_connect_time:" << scan_connect_time
           << " detailed_error:" << result.detailed_error
@@ -839,7 +899,7 @@ void Metrics::NotifyDetailedCellularConnectionResult(
           .Setapn_source(static_cast<int64_t>(apn_source))
           .Settech_used(result.tech_used)
           .Seticcid_length(result.iccid_length)
-          .Setsim_type(result.sim_type)
+          .Setsim_type(static_cast<int>(result.sim_type))
           .Setmodem_state(result.modem_state)
           .Setconnect_time(connect_time)
           .Setscan_connect_time(scan_connect_time)

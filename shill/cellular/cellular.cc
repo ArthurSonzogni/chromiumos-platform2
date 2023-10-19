@@ -112,10 +112,10 @@ bool IsEnabledModemState(Cellular::ModemState state) {
   return false;
 }
 
-Metrics::DetailedCellularConnectionResult::IPConfigMethod
-BearerIPConfigMethodToMetrics(CellularBearer::IPConfigMethod method) {
+Metrics::IPConfigMethod BearerIPConfigMethodToMetrics(
+    CellularBearer::IPConfigMethod method) {
   using BearerType = CellularBearer::IPConfigMethod;
-  using MetricsType = Metrics::DetailedCellularConnectionResult::IPConfigMethod;
+  using MetricsType = Metrics::IPConfigMethod;
   switch (method) {
     case BearerType::kUnknown:
       return MetricsType::kUnknown;
@@ -124,7 +124,7 @@ BearerIPConfigMethodToMetrics(CellularBearer::IPConfigMethod method) {
     case BearerType::kStatic:
       return MetricsType::kStatic;
     case BearerType::kDHCP:
-      return MetricsType::kDHCP;
+      return MetricsType::kDynamic;
   }
 }
 
@@ -1154,6 +1154,29 @@ void Cellular::UpdateSecondaryServices() {
   manager()->cellular_service_provider()->RemoveNonDeviceServices(this);
 }
 
+void Cellular::OnNetworkValidationResult(int interface_index,
+                                         const PortalDetector::Result& result) {
+  SLOG(1) << LoggingTag() << ": " << __func__;
+
+  Device::OnNetworkValidationResult(interface_index, result);
+
+  int portal_result = Device::PortalResultToMetricsEnum(result);
+
+  // TODO(b/309512268) add support for tethering PDN.
+  if (!IsEventOnPrimaryNetwork(interface_index)) {
+    return;
+  }
+  if (!selected_service() || !selected_service()->IsConnected()) {
+    return;
+  }
+  if (!service_ || !service_->GetLastGoodApn()) {
+    return;
+  }
+  // Report cellular specific metrics with APN information.
+  NotifyNetworkValidationResult(*service_->GetLastGoodApn(), portal_result,
+                                result.num_attempts);
+}
+
 void Cellular::OnModemDestroyed() {
   SLOG(1) << LoggingTag() << ": " << __func__;
   StopLocationPolling();
@@ -1268,6 +1291,55 @@ bool Cellular::IsSubscriptionErrorSeen() {
   return service_ && subscription_error_seen_[service_->iccid()];
 }
 
+void Cellular::NotifyNetworkValidationResult(
+    std::map<std::string, std::string> apn_info,
+    int portal_detection_result,
+    int portal_detection_count) {
+  CHECK(service_);
+  auto ipv4 = CellularBearer::IPConfigMethod::kUnknown;
+  auto ipv6 = CellularBearer::IPConfigMethod::kUnknown;
+  uint32_t tech_used = MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN;
+  Metrics::SimType sim_type = Metrics::SimType::kUnknown;
+  // TODO(b/309512268) Add support for tethering PDN.
+  const ApnList::ApnType apn_type = ApnList::ApnType::kDefault;
+
+  LOG(INFO) << LoggingTag() << ": " << __func__
+            << ": portal_detection_result: " << portal_detection_result
+            << " portal_detection_count: " << portal_detection_count;
+
+  std::string roaming_state = service_->roaming_state();
+  // If EID is not empty, report as eSIM else report as pSIM
+  if (!service_->eid().empty())
+    sim_type = Metrics::SimType::kEsim;
+  else
+    sim_type = Metrics::SimType::kPsim;
+
+  if (capability_) {
+    tech_used = capability_->GetActiveAccessTechnologies();
+    CellularBearer* bearer = capability_->GetActiveBearer(apn_type);
+    if (bearer) {
+      ipv4 = bearer->ipv4_config_method();
+      ipv6 = bearer->ipv6_config_method();
+    }
+  }
+
+  Metrics::CellularNetworkValidationResult result;
+  result.portal_detection_result = portal_detection_result;
+  result.portal_detection_count = portal_detection_count;
+  result.uuid = mobile_operator_info_->uuid();
+  result.apn_info = apn_info;
+  result.ipv4_config_method = BearerIPConfigMethodToMetrics(ipv4);
+  result.ipv6_config_method = BearerIPConfigMethodToMetrics(ipv6);
+  result.home_mccmnc = mobile_operator_info_->mccmnc();
+  result.serving_mccmnc = mobile_operator_info_->serving_mccmnc();
+  result.roaming_state = service_->roaming_state();
+  result.tech_used = tech_used;
+  result.sim_type = sim_type;
+  // TODO(b/309512268) consider adding apn_type here if APN name
+  // is not sufficient to identify tethering APN.
+  metrics()->NotifyCellularNetworkValidationResult(result);
+}
+
 void Cellular::NotifyDetailedCellularConnectionResult(
     const Error& error,
     ApnList::ApnType apn_type,
@@ -1279,7 +1351,7 @@ void Cellular::NotifyDetailedCellularConnectionResult(
   auto ipv6 = CellularBearer::IPConfigMethod::kUnknown;
   uint32_t tech_used = MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN;
   uint32_t iccid_len = 0;
-  SimType sim_type = kSimTypeUnknown;
+  Metrics::SimType sim_type = Metrics::SimType::kUnknown;
   brillo::ErrorPtr detailed_error;
   std::string cellular_error;
   bool use_apn_revamp_ui = false;
@@ -1291,7 +1363,8 @@ void Cellular::NotifyDetailedCellularConnectionResult(
     iccid_len = service_->iccid().length();
     use_apn_revamp_ui = service_->custom_apn_list().has_value();
     // If EID is not empty, report as eSIM else report as pSIM
-    sim_type = service_->eid().empty() ? kSimTypePsim : kSimTypeEsim;
+    sim_type = service_->eid().empty() ? Metrics::SimType::kPsim
+                                       : Metrics::SimType::kEsim;
   }
 
   if (capability_) {
