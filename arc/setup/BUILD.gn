@@ -57,6 +57,7 @@ pkg_config("target_defaults_pkg_deps") {
     # before protobuf here or the linker flags won"t be in the right
     # order.
     "system_api",
+    "vboot_host",
   ]
   if (use.fuzzer) {
     pkg_deps += [ "protobuf" ]

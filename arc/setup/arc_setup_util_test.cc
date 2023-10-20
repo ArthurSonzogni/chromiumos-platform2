@@ -1197,22 +1197,33 @@ TEST(ArcSetupUtil, GenerateFirstStageFstab) {
   base::ScopedTempDir dir;
   ASSERT_TRUE(dir.CreateUniqueTempDir());
   const base::FilePath fstab(dir.GetPath().Append("fstab"));
-  const base::FilePath vendor_image_path;
   std::string cache_partition;
+
+  // Create a fake vendor image with EROFS magic number.
+  const base::FilePath vendor_img_path(dir.GetPath().Append("vendor.raw.img"));
+  const std::string erofs_magic_number(
+      reinterpret_cast<const char*>(&kErofsMagicNumber),
+      sizeof(kErofsMagicNumber));
+  base::ScopedFD fd(
+      open(vendor_img_path.value().c_str(), O_CREAT | O_WRONLY, 0600));
+  ASSERT_EQ(lseek(fd.get(), kErofsMagicOffset, SEEK_SET), kErofsMagicOffset);
+  ASSERT_TRUE(base::WriteFileDescriptor(fd.get(), erofs_magic_number));
 
   // Generate the fstab and verify the content.
   EXPECT_TRUE(
       GenerateFirstStageFstab(base::FilePath(kFakeCombinedBuildPropPath), fstab,
-                              vendor_image_path, cache_partition));
+                              vendor_img_path, cache_partition));
   EXPECT_TRUE(base::ReadFileToString(fstab, &content));
+  EXPECT_EQ(0, content.find("/dev/block/vdb /vendor erofs "));
   EXPECT_NE(std::string::npos, content.find(kFakeCombinedBuildPropPath));
   EXPECT_EQ(std::string::npos, content.find(kCachePartition));
 
   // Generate the fstab again with the other prop file and verify the content.
   EXPECT_TRUE(
       GenerateFirstStageFstab(base::FilePath(kAnotherFakeCombinedBuildPropPath),
-                              fstab, vendor_image_path, cache_partition));
+                              fstab, vendor_img_path, cache_partition));
   EXPECT_TRUE(base::ReadFileToString(fstab, &content));
+  EXPECT_EQ(0, content.find("/dev/block/vdb /vendor erofs "));
   EXPECT_EQ(std::string::npos, content.find(kFakeCombinedBuildPropPath));
   EXPECT_NE(std::string::npos, content.find(kAnotherFakeCombinedBuildPropPath));
   EXPECT_EQ(std::string::npos, content.find(kCachePartition));
@@ -1225,13 +1236,22 @@ TEST(ArcSetupUtil, GenerateFirstStageFstab_WithCachePartition) {
   base::ScopedTempDir dir;
   ASSERT_TRUE(dir.CreateUniqueTempDir());
   const base::FilePath fstab(dir.GetPath().Append("fstab"));
-  const base::FilePath vendor_image_path;
+
+  // Create a fake vendor image with EROFS magic number.
+  const base::FilePath vendor_img_path(dir.GetPath().Append("vendor.raw.img"));
+  const std::string erofs_magic_number(
+      reinterpret_cast<const char*>(&kErofsMagicNumber),
+      sizeof(kErofsMagicNumber));
+  base::ScopedFD fd(
+      open(vendor_img_path.value().c_str(), O_CREAT | O_WRONLY, 0600));
+  ASSERT_EQ(lseek(fd.get(), kErofsMagicOffset, SEEK_SET), kErofsMagicOffset);
+  ASSERT_TRUE(base::WriteFileDescriptor(fd.get(), erofs_magic_number));
 
   const std::string cache_partition = "vdc";
   // Generate the fstab and verify if the disk number for cache is correctly set
   EXPECT_TRUE(
       GenerateFirstStageFstab(base::FilePath(kFakeCombinedBuildPropPath), fstab,
-                              vendor_image_path, cache_partition));
+                              vendor_img_path, cache_partition));
   EXPECT_TRUE(base::ReadFileToString(fstab, &content));
   EXPECT_NE(std::string::npos, content.find(cache_partition));
 
@@ -1240,46 +1260,53 @@ TEST(ArcSetupUtil, GenerateFirstStageFstab_WithCachePartition) {
   // number
   EXPECT_TRUE(
       GenerateFirstStageFstab(base::FilePath(kFakeCombinedBuildPropPath), fstab,
-                              vendor_image_path, cache_partition_with_demo));
+                              vendor_img_path, cache_partition_with_demo));
   EXPECT_TRUE(base::ReadFileToString(fstab, &content));
   EXPECT_NE(std::string::npos, content.find(cache_partition_with_demo));
 }
 
-TEST(ArcSetupUtil, GenerateFirstStageFstab_VendorImageType) {
+TEST(ArcSetupUtil, GenerateFirstStageFstab_SquashfsVendorImage) {
   constexpr const char kFakeCombinedBuildPropPath[] = "/path/to/build.prop";
-
   std::string content;
   base::ScopedTempDir dir;
   ASSERT_TRUE(dir.CreateUniqueTempDir());
   const base::FilePath fstab(dir.GetPath().Append("fstab"));
-  const base::FilePath vendor_image_path(
-      dir.GetPath().Append("vendor.raw.img"));
   std::string cache_partition;
 
-  // By default, "squashfs" should be set as the vendor file system type.
+  // Create a fake vendor image with Squashfs magic number.
+  const base::FilePath vendor_img_path(dir.GetPath().Append("vendor.raw.img"));
+  const std::string squashfs_magic_number(
+      reinterpret_cast<const char*>(&kSquashfsMagicNumber),
+      sizeof(kSquashfsMagicNumber));
+  base::ScopedFD fd(
+      open(vendor_img_path.value().c_str(), O_CREAT | O_WRONLY, 0600));
+  ASSERT_EQ(lseek(fd.get(), kSquashfsMagicOffset, SEEK_SET),
+            kSquashfsMagicOffset);
+  ASSERT_TRUE(base::WriteFileDescriptor(fd.get(), squashfs_magic_number));
+
   EXPECT_TRUE(
       GenerateFirstStageFstab(base::FilePath(kFakeCombinedBuildPropPath), fstab,
-                              vendor_image_path, cache_partition));
+                              vendor_img_path, cache_partition));
   EXPECT_TRUE(base::ReadFileToString(fstab, &content));
   EXPECT_EQ(0, content.find("/dev/block/vdb /vendor squashfs "));
+}
 
-  // Create a fake EROFS image, which has the EROFS magic number at 1024 byte.
-  const uint32_t kErofsMagicNumber = 0xe0f5e1e2;
+TEST(ArcSetupUtil, GenerateFirstStageFstab_InvalidVendorImage) {
+  constexpr const char kFakeCombinedBuildPropPath[] = "/path/to/build.prop";
+  std::string content;
+  base::ScopedTempDir dir;
+  ASSERT_TRUE(dir.CreateUniqueTempDir());
+  const base::FilePath fstab(dir.GetPath().Append("fstab"));
+  std::string cache_partition;
+
+  // Create an empty file at the vendor image path.
+  const base::FilePath vendor_img_path(dir.GetPath().Append("vendor.raw.img"));
   base::ScopedFD fd(
-      open(vendor_image_path.value().c_str(), O_CREAT | O_WRONLY, 0600));
-  ASSERT_TRUE(fd.is_valid());
-  ASSERT_EQ(lseek(fd.get(), 1024, SEEK_SET), 1024);
-  const std::string data(reinterpret_cast<const char*>(&kErofsMagicNumber),
-                         sizeof(kErofsMagicNumber));
-  ASSERT_TRUE(base::WriteFileDescriptor(fd.get(), data));
+      open(vendor_img_path.value().c_str(), O_CREAT | O_WRONLY, 0600));
 
-  // Pass the fake EROFS image as |vendor_image_path|.
-  // "erofs" should be set as the vendor file system type.
-  EXPECT_TRUE(
+  EXPECT_FALSE(
       GenerateFirstStageFstab(base::FilePath(kFakeCombinedBuildPropPath), fstab,
-                              vendor_image_path, cache_partition));
-  EXPECT_TRUE(base::ReadFileToString(fstab, &content));
-  EXPECT_EQ(0, content.find("/dev/block/vdb /vendor erofs "));
+                              vendor_img_path, cache_partition));
 }
 
 TEST_P(FilterMediaProfileTest, All) {

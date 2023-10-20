@@ -59,6 +59,7 @@
 #include <libsegmentation/feature_management.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
+#include <vboot/crossystem.h>
 
 #include "arc/setup/xml/android_xml_util.h"
 
@@ -1016,39 +1017,66 @@ bool SafeCopyFile(const base::FilePath& src_path,
   return true;
 }
 
-bool IsErofsImage(const base::FilePath& image_path) {
-  // Check the magic number of erofs placed at the 1024 byte.
-  // https://elixir.bootlin.com/linux/latest/source/fs/erofs/erofs_fs.h#L53
-  const off_t kErofsMagicOffset = 1024;
-  const uint32_t kErofsMagicNumber = 0xe0f5e1e2;
-  base::ScopedFD fd(open(image_path.value().c_str(), O_RDONLY));
+bool GetArcImageType(const base::FilePath& image_path,
+                     std::string* out_image_type) {
+  const std::string path = image_path.value();
+
+  const bool is_dev_mode = (VbGetSystemPropertyInt("cros_debug") == 1);
+  int open_flags = O_RDONLY;
+  if (!is_dev_mode) {
+    // Allow symlink traversals only in dev mode.
+    open_flags |= O_NOFOLLOW;
+  }
+
+  base::ScopedFD fd(open(path.c_str(), open_flags));
   if (!fd.is_valid()) {
-    PLOG(ERROR) << "Failed to open " << image_path.value();
+    PLOG(ERROR) << "Failed to open " << path;
     return false;
   }
-  off_t cur_pos = lseek(fd.get(), kErofsMagicOffset, SEEK_SET);
-  if (cur_pos != kErofsMagicOffset) {
-    PLOG(ERROR) << "Failed to seek " << image_path.value() << " lseek returned "
-                << cur_pos;
+
+  off_t cur_pos = lseek(fd.get(), kSquashfsMagicOffset, SEEK_SET);
+  if (cur_pos != kSquashfsMagicOffset) {
+    PLOG(ERROR) << "Failed to lseek " << path << ", returned " << cur_pos;
     return false;
   }
   uint32_t data;
   if (!base::ReadFromFD(fd.get(), reinterpret_cast<char*>(&data),
                         sizeof(data))) {
-    PLOG(ERROR) << "Can't read the magic number of " << image_path.value();
+    PLOG(ERROR) << "Failed to read " << path << " at " << kSquashfsMagicOffset;
     return false;
   }
-  return data == kErofsMagicNumber;
+  if (data == kSquashfsMagicNumber) {
+    *out_image_type = "squashfs";
+    return true;
+  }
+
+  cur_pos = lseek(fd.get(), kErofsMagicOffset, SEEK_SET);
+  if (cur_pos != kErofsMagicOffset) {
+    PLOG(ERROR) << "lseek failed for " << path << ", returned " << cur_pos;
+    return false;
+  }
+  if (!base::ReadFromFD(fd.get(), reinterpret_cast<char*>(&data),
+                        sizeof(data))) {
+    PLOG(ERROR) << "Failed to read " << path << " at " << kErofsMagicOffset;
+    return false;
+  }
+  if (data == kErofsMagicNumber) {
+    *out_image_type = "erofs";
+    return true;
+  }
+
+  LOG(ERROR) << "Failed to detect image type for " << path;
+  return false;
 }
 
 bool GenerateFirstStageFstab(const base::FilePath& combined_property_file_name,
                              const base::FilePath& fstab_path,
                              const base::FilePath& vendor_image_path,
                              const std::string& cache_partition) {
-  // TODO(b/269555375): Exit with error if an IO error occurs inside
-  //                    IsErofsImage.
-  const std::string vendor_fs_type =
-      IsErofsImage(vendor_image_path) ? "erofs" : "squashfs";
+  std::string vendor_image_type;
+  if (!GetArcImageType(vendor_image_path, &vendor_image_type)) {
+    return false;
+  }
 
   // The file is exposed to the guest by crosvm via /sys/firmware/devicetree,
   // which in turn allows the guest's init process to mount /vendor very early,
@@ -1062,7 +1090,7 @@ bool GenerateFirstStageFstab(const base::FilePath& combined_property_file_name,
   std::string firstStageFstabTemplate = base::StringPrintf(
       "/dev/block/vdb /vendor %s ro,noatime,nodev "
       "wait,check,formattable,reservedsize=128M\n",
-      vendor_fs_type.c_str());
+      vendor_image_type.c_str());
 
   // A dedicated cache partition needs to be mounted in the first stage init
   // process. This is required for the adb remount / sync feature to work on
