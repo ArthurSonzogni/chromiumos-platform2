@@ -6,6 +6,7 @@
 
 #include "common/stream_manipulator_manager.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -18,8 +19,10 @@
 #include "common/still_capture_processor_impl.h"
 #include "common/stream_manipulator.h"
 #include "common/sw_privacy_switch_stream_manipulator.h"
+#include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
+#include "cros-camera/device_config.h"
 #include "cros-camera/jpeg_compressor.h"
 #include "cros-camera/tracing.h"
 #include "features/feature_profile.h"
@@ -54,6 +57,10 @@
 
 #if USE_CAMERA_FEATURE_PORTRAIT_MODE
 #include "features/portrait_mode/portrait_mode_stream_manipulator.h"
+#endif
+
+#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
+#include "features/third_party/intel/intel_vendor_metadata_tags.h"
 #endif
 
 namespace cros {
@@ -156,7 +163,32 @@ StreamManipulatorManager::StreamManipulatorManager(
   CHECK(default_capture_result_thread_.Start());
   TRACE_COMMON();
 
-  FeatureProfile feature_profile;
+  std::optional<FeatureProfile::DeviceMetadata> dev_mdata = std::nullopt;
+#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
+  const auto* static_mdata =
+      create_options.camera_info.static_camera_characteristics;
+  base::span<const char> module_id =
+      GetRoMetadataAsSpan<char>(static_mdata, INTEL_VENDOR_CAMERA_MODULE_ID);
+  base::span<const char> sensor_id =
+      GetRoMetadataAsSpan<char>(static_mdata, INTEL_VENDOR_CAMERA_SENSOR_ID);
+  if (!module_id.empty() && !sensor_id.empty()) {
+    dev_mdata = {
+        .model_name = DeviceConfig::Create()->GetModelName(),
+        .camera_info = {FeatureProfile::CameraInfo{
+            .module_id = std::string(module_id.data(), module_id.size()),
+            .sensor_id = std::string(sensor_id.data(), sensor_id.size()),
+        }},
+    };
+    LOGF(INFO) << "Loading feature profile with:"
+               << " module_id: " << dev_mdata->camera_info[0].module_id
+               << " sensor_id: " << dev_mdata->camera_info[0].sensor_id;
+  }
+#endif
+
+  // Create the feature profile for the given camera module from the default
+  // feature config (e.g. /etc/camera/feature_profile.json).
+  FeatureProfile feature_profile(/*feature_config=*/std::nullopt,
+                                 /*device_matadata=*/std::move(dev_mdata));
 
 #if USE_CAMERA_FEATURE_FRAME_ANNOTATOR
   stream_manipulators_.emplace_back(

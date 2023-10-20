@@ -36,6 +36,9 @@ class CROS_CAMERA_EXPORT StreamManipulatorManager {
     // created for (e.g. USB v.s. vendor camera HAL).
     std::string camera_module_name;
 
+    // The camera_info_t instance reported by the camera HAL.
+    const camera_info_t& camera_info;
+
     // Used by the face detection stream manipulator to provide a callback for
     // camera HAL.
     base::OnceCallback<void(FaceDetectionResultCallback)>

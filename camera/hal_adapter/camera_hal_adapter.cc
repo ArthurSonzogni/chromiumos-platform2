@@ -312,6 +312,7 @@ int32_t CameraHalAdapter::OpenDevice(
       std::make_unique<StreamManipulatorManager>(
           StreamManipulatorManager::CreateOptions{
               .camera_module_name = camera_module->common.name,
+              .camera_info = info,
               .set_face_detection_result_callback =
                   std::move(set_face_detection_result_callback),
               .sw_privacy_switch_stream_manipulator_enabled = false,
