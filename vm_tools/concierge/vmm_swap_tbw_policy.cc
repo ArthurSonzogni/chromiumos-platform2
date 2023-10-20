@@ -29,7 +29,6 @@
 namespace vm_tools::concierge {
 
 namespace {
-constexpr char kOldHistoryFileName[] = "tbw_history";
 static constexpr base::TimeDelta WEEK = base::Days(7);
 static constexpr char kMetricsTotalBytesWrittenInAWeek[] =
     "Memory.VmmSwap.TotalBytesWrittenInAWeek";
@@ -72,27 +71,6 @@ bool VmmSwapTbwPolicy::Init(base::Time now) {
   if (history_file_.has_value()) {
     LOG(ERROR) << "Tbw history file is already loaded";
     return false;
-  }
-
-  // The old format file was named "tbw_history". If there is the file, load the
-  // history from the old file and recreate a new file from the history.
-  // TODO(b/289975202): Remove this 2 milestones (M119) after since we care
-  // about the last 28 days history.
-  base::File old_file = history_file_path_.OpenFileInDir(kOldHistoryFileName);
-  if (old_file.IsValid() ||
-      old_file.error_details() != base::File::FILE_ERROR_NOT_FOUND) {
-    LOG(INFO) << "Old tbw history file is found. Recreate a new history file.";
-    history_file_path_.DeleteFileInDir(kOldHistoryFileName);
-    if (old_file.IsValid()) {
-      if (LoadFromOldFormattedFile(old_file, now)) {
-        // The file was old formatted. Replace the old history file with the new
-        // file format.
-        return RotateHistoryFile(now);
-      }
-    } else {
-      LOG(ERROR) << "Failed to open old tbw history file: "
-                 << old_file.ErrorToString(old_file.error_details());
-    }
   }
 
   base::File file = history_file_path_.Create();
@@ -273,61 +251,6 @@ bool VmmSwapTbwPolicy::LoadFromFile(base::File& file, base::Time now) {
     previous_time = time;
   }
 
-  return true;
-}
-
-bool VmmSwapTbwPolicy::LoadFromOldFormattedFile(base::File& file,
-                                                base::Time now) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!file.IsValid()) {
-    LOG(ERROR) << "tbw history file is invalid to load";
-    return false;
-  }
-
-  google::protobuf::io::FileInputStream input_stream(file.GetPlatformFile());
-  TbwHistoryEntry entry;
-  base::Time previous_time;
-  while (true) {
-    // Load message size.
-    uint8_t* message_size;
-    int size;
-    if (input_stream.Next((const void**)&message_size, &size)) {
-      DCHECK_GT(size, 0);
-      // TbwHistoryEntry message is less than 127 bytes. The MSB is reserved
-      // for future extensibility.
-      if (*message_size > 127) {
-        LOG(ERROR) << "tbw history message size is invalid: "
-                   << base::NumberToString(*message_size);
-        return false;
-      }
-      // Consume 1 byte for message size field.
-      input_stream.BackUp(size - 1);
-    } else if (input_stream.GetErrno()) {
-      LOG(ERROR) << "parse tbw history message size: errno: "
-                 << base::NumberToString(input_stream.GetErrno());
-      return false;
-    } else {
-      // EOF
-      break;
-    }
-
-    if (!entry.ParseFromBoundedZeroCopyStream(&input_stream, *message_size)) {
-      LOG(ERROR) << "parse tbw history entry";
-      return false;
-    }
-    base::Time time = base::Time::FromDeltaSinceWindowsEpoch(
-        base::Microseconds(entry.time_us()));
-    if ((now - time).is_negative()) {
-      LOG(ERROR) << "tbw history file has invalid time (too new)";
-      return false;
-    } else if ((time - previous_time).is_negative()) {
-      LOG(ERROR) << "tbw history file has invalid time (old than lastest)";
-      return false;
-    }
-    // Old file format does not support `reported_fence`.
-    AppendEntry(entry.size(), time);
-    previous_time = time;
-  }
   return true;
 }
 

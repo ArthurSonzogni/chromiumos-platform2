@@ -139,7 +139,6 @@ class VmmSwapTbwPolicy final {
   // Behaves the similar to |WriteBytesWrittenEntry|.
   bool WriteReportEntry(base::Time time, bool try_rotate = true);
   bool LoadFromFile(base::File& file, base::Time now);
-  bool LoadFromOldFormattedFile(base::File& file, base::Time now);
   void AppendEntry(uint64_t bytes_written, base::Time time);
   bool RotateHistoryFile(base::Time time);
   void DeleteFile();

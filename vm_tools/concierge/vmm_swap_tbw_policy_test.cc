@@ -27,25 +27,6 @@ namespace {
 static constexpr char kMetricsTotalBytesWrittenInAWeek[] =
     "Memory.VmmSwap.TotalBytesWrittenInAWeek";
 
-bool WriteOldFormatEntry(base::File& file,
-                         uint64_t bytes_written,
-                         base::Time time) {
-  TbwHistoryEntry entry;
-  uint8_t message_size_buf[1];
-  entry.set_time_us(time.ToDeltaSinceWindowsEpoch().InMicroseconds());
-  entry.set_size(bytes_written);
-  // TbwHistoryEntry message is less than 127 bytes. The MSB is reserved for
-  // future extensibility.
-  if (entry.ByteSizeLong() > 127) {
-    return false;
-  }
-  message_size_buf[0] = entry.ByteSizeLong();
-  if (!base::WriteFileDescriptor(file.GetPlatformFile(), message_size_buf)) {
-    return false;
-  }
-  return entry.SerializeToFileDescriptor(file.GetPlatformFile());
-}
-
 class VmmSwapTbwPolicyTest : public ::testing::Test {
  protected:
   void SetUp() override {
@@ -362,46 +343,6 @@ TEST_F(VmmSwapTbwPolicyTest, RecordRotateHistoryFile) {
 
   // Less than page size.
   EXPECT_LE(history_file.GetLength(), KiB(4));
-}
-
-TEST_F(VmmSwapTbwPolicyTest, InitMigratesOldFormatIntoNewFormat) {
-  base::Time now = base::Time::Now();
-  base::FilePath old_file_path =
-      history_file_path_.DirName().Append("tbw_history");
-  // Create old file
-  base::File old_history_file = base::File(
-      old_file_path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
-  for (int i = 0; i < 7; i++) {
-    ASSERT_TRUE(
-        WriteOldFormatEntry(old_history_file, 200, now + base::Days(i)));
-  }
-  now += base::Days(6);
-
-  VmmSwapTbwPolicy before_policy = VmmSwapTbwPolicy(
-      GetMetricsRef(), history_file_path_, std::move(report_timer_));
-  VmmSwapTbwPolicy after_policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), history_file_path_,
-                       std::make_unique<base::MockRepeatingTimer>());
-  before_policy.SetTargetTbwPerDay(100);
-  after_policy.SetTargetTbwPerDay(100);
-
-  EXPECT_TRUE(before_policy.Init(now));
-  // The old file is removed
-  EXPECT_FALSE(base::PathExists(old_file_path));
-  EXPECT_FALSE(
-      before_policy.CanSwapOut(now + base::Days(1) - base::Seconds(1)));
-  EXPECT_TRUE(before_policy.CanSwapOut(now + base::Days(1)));
-  now += base::Days(15);
-
-  // Appending entries to the migrated file should not break the file.
-  before_policy.Record(400, now);
-  EXPECT_FALSE(
-      before_policy.CanSwapOut(now + base::Days(1) - base::Seconds(1)));
-  EXPECT_TRUE(before_policy.CanSwapOut(now + base::Days(1)));
-
-  EXPECT_TRUE(after_policy.Init(now));
-  EXPECT_FALSE(after_policy.CanSwapOut(now + base::Days(1) - base::Seconds(1)));
-  EXPECT_TRUE(after_policy.CanSwapOut(now + base::Days(1)));
 }
 
 TEST_F(VmmSwapTbwPolicyTest, InitNotTriggerReportTimer) {
