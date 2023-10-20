@@ -7,18 +7,17 @@
 
 #include "vm_tools/concierge/mm/balloon_blocker.h"
 
-#include <string>
+#include <memory>
 #include <vector>
 
 #include <base/containers/flat_map.h>
-
 namespace vm_tools::concierge::mm {
 
 class FakeBalloonBlocker : public BalloonBlocker {
  public:
   static base::flat_map<int, FakeBalloonBlocker*> fake_balloon_blockers_;
 
-  explicit FakeBalloonBlocker(int vm_cid);
+  FakeBalloonBlocker(int vm_cid, std::unique_ptr<BalloonMetrics> metrics);
 
   ~FakeBalloonBlocker();
 

@@ -8,25 +8,37 @@
 #include <utility>
 
 #include <base/test/task_environment.h>
+#include <base/time/time.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
+#include <vm_applications/apps.pb.h>
 
 #include "vm_tools/concierge/byte_unit.h"
+#include "vm_tools/concierge/mm/balloon_metrics.h"
 #include "vm_tools/concierge/mm/fake_balloon.h"
 
 namespace vm_tools::concierge::mm {
 namespace {
 
+using testing::_;
+
 class BalloonBlockerTest : public ::testing::Test {
  public:
   void SetUp() override {
+    metrics_ = std::make_unique<MetricsLibraryMock>();
+    now_ = base::TimeTicks::Now();
     std::unique_ptr<FakeBalloon> fake_balloon = std::make_unique<FakeBalloon>();
     leaked_fake_balloon_ = fake_balloon.get();
 
     balloon_blocker_ = std::make_unique<BalloonBlocker>(
-        6, std::move(fake_balloon), base::Milliseconds(1000),
-        base::Milliseconds(100),
+        6, std::move(fake_balloon),
+        std::make_unique<BalloonMetrics>(
+            apps::VmType::ARCVM,
+            raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()),
+            base::BindRepeating(&BalloonBlockerTest::Now,
+                                base::Unretained(this))),
+        base::Milliseconds(1000), base::Milliseconds(100),
         base::BindRepeating(&BalloonBlockerTest::Now, base::Unretained(this)));
-    now_ = base::TimeTicks::Now();
   }
 
  protected:
@@ -52,6 +64,7 @@ class BalloonBlockerTest : public ::testing::Test {
   std::unique_ptr<BalloonBlocker> balloon_blocker_{};
   size_t balloon_adjustment_count_{};
   base::TimeTicks now_{};
+  std::unique_ptr<MetricsLibraryMock> metrics_;
 };
 
 TEST_F(BalloonBlockerTest, TestBlockedDoesNotAdjustBalloon) {
@@ -221,11 +234,11 @@ TEST_F(BalloonBlockerTest, TestBalloonStallSetsCorrectBlock) {
                                                       now_),
             ResizePriority::RESIZE_PRIORITY_LOWEST);
 
-  leaked_fake_balloon_->RunStallCallback({
-      .success = true,
-      .actual_delta_bytes = -MiB(16),
-      .new_target = 0,
-  });
+  leaked_fake_balloon_->RunStallCallback({}, {
+                                                 .success = true,
+                                                 .actual_delta_bytes = -MiB(16),
+                                                 .new_target = 0,
+                                             });
 
   // After a balloon stall, inflations should be blocked at the highest
   // priority.
@@ -244,6 +257,95 @@ TEST_F(BalloonBlockerTest, TestDeflateBelowZero) {
   ASSERT_EQ(balloon_blocker_->TryResize(
                 {ResizePriority::RESIZE_PRIORITY_HIGHEST, -MiB(256)}),
             -MiB(128));
+}
+
+TEST_F(BalloonBlockerTest, TestStallMetrics) {
+  const int deflate_mib = 16;
+  EXPECT_CALL(*metrics_,
+              SendToUMA("Memory.VMMMS.ARCVM.Deflate", deflate_mib, _, _, _))
+      .Times(1);
+
+  const base::TimeDelta resize_interval = base::Seconds(12);
+  now_ += resize_interval;
+  EXPECT_CALL(*metrics_, SendTimeToUMA("Memory.VMMMS.ARCVM.ResizeInterval",
+                                       resize_interval, _, _, _))
+      .Times(1);
+
+  const int stall_throughput = 14;
+  EXPECT_CALL(*metrics_, SendLinearToUMA("Memory.VMMMS.ARCVM.StallThroughput",
+                                         stall_throughput, _))
+      .Times(1);
+
+  leaked_fake_balloon_->RunStallCallback(
+      {
+          .inflate_mb_per_s = stall_throughput,
+      },
+      {
+          .success = true,
+          .actual_delta_bytes = -MiB(deflate_mib),
+          .new_target = 0,
+      });
+}
+
+TEST_F(BalloonBlockerTest, TestResizeMetrics) {
+  int size_mib = 0;
+  const auto do_resize = [this, &size_mib](int delta_mib,
+                                           base::TimeDelta resize_interval,
+                                           int resize_count) {
+    EXPECT_CALL(*metrics_, SendTimeToUMA("Memory.VMMMS.ARCVM.ResizeInterval",
+                                         resize_interval, _, _, _))
+        .Times(1);
+
+    if (delta_mib >= 0) {
+      EXPECT_CALL(*metrics_,
+                  SendToUMA("Memory.VMMMS.ARCVM.Inflate", delta_mib, _, _, _))
+          .Times(1);
+    } else {
+      EXPECT_CALL(*metrics_,
+                  SendToUMA("Memory.VMMMS.ARCVM.Deflate", -delta_mib, _, _, _))
+          .Times(1);
+    }
+
+    if (resize_count > 0) {
+      EXPECT_CALL(*metrics_,
+                  SendRepeatedToUMA("Memory.VMMMS.ARCVM.Size10Minutes",
+                                    size_mib, _, _, _, resize_count))
+          .Times(1);
+    } else {
+      EXPECT_CALL(*metrics_,
+                  SendRepeatedToUMA("Memory.VMMMS.ARCVM.Size10Minutes",
+                                    size_mib, _, _, _, _))
+          .Times(0);
+    }
+
+    size_mib += delta_mib;
+    leaked_fake_balloon_->do_resize_results_.push_back(Balloon::ResizeResult{
+        .success = true,
+        .actual_delta_bytes = MiB(delta_mib),
+        .new_target = MiB(size_mib),
+    });
+    now_ += resize_interval;
+    balloon_blocker_->TryResize(
+        {ResizePriority::RESIZE_PRIORITY_MGLRU_RECLAIM, MiB(delta_mib)});
+    task_environment_.RunUntilIdle();
+  };
+
+  {
+    SCOPED_TRACE("Inflate after 1 size reporting interval");
+    do_resize(400, base::Minutes(10), 1);
+  }
+  {
+    SCOPED_TRACE("Deflate after 17 size reporting intervals");
+    do_resize(-200, base::Minutes(170), 17);
+  }
+  {
+    SCOPED_TRACE("Inflate after 0.5 size reporting intervals");
+    do_resize(800, base::Minutes(5), 0);
+  }
+  {
+    SCOPED_TRACE("Inflate after 1 unaligned size reporting interval");
+    do_resize(-600, base::Minutes(10), 1);
+  }
 }
 
 }  // namespace

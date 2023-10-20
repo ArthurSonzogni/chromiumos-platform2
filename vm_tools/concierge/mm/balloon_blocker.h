@@ -12,11 +12,14 @@
 #include <base/sequence_checker.h>
 #include <base/threading/thread.h>
 #include <base/time/time.h>
+#include <metrics/metrics_library.h>
 
+#include <vm_applications/apps.pb.h>
 #include <vm_memory_management/vm_memory_management.pb.h>
 
 #include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/mm/balloon.h"
+#include "vm_tools/concierge/mm/balloon_metrics.h"
 
 namespace vm_tools::concierge::mm {
 
@@ -62,6 +65,7 @@ class BalloonBlocker {
  public:
   BalloonBlocker(int vm_cid,
                  std::unique_ptr<Balloon> balloon,
+                 std::unique_ptr<BalloonMetrics> metrics,
                  base::TimeDelta low_priority_block_duration =
                      kDefaultLowPriorityBalloonBlockDuration,
                  base::TimeDelta high_priority_block_duration =
@@ -82,6 +86,9 @@ class BalloonBlocker {
   virtual ResizePriority LowestUnblockedPriority(
       ResizeDirection direction, base::TimeTicks check_time) const;
 
+  // Returns the type of VM this blocker is for. Used for logging and metrics.
+  apps::VmType GetVmType() const;
+
  protected:
   int GetCid();
 
@@ -93,7 +100,8 @@ class BalloonBlocker {
   void RecordResizeRequest(const ResizeRequest& request);
 
   // Run by the Balloon when a balloon stall is detected.
-  void OnBalloonStall(Balloon::ResizeResult result);
+  void OnBalloonStall(Balloon::StallStatistics stats,
+                      Balloon::ResizeResult result);
 
   // Run by the Balloon when a resize finishes.
   void OnResizeResult(ResizePriority priority, Balloon::ResizeResult result);
@@ -118,6 +126,10 @@ class BalloonBlocker {
 
   // The actual balloon.
   const std::unique_ptr<Balloon> balloon_ GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Metrics logging helpers.
+  const std::unique_ptr<BalloonMetrics> metrics_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // The duration of a balloon block.
   // In practice, the duration of the balloon block is the minimum interval for

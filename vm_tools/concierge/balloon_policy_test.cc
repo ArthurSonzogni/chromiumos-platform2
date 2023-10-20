@@ -12,8 +12,10 @@
 #include <base/json/json_reader.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "vm_tools/concierge/byte_unit.h"
+#include "vm_tools/concierge/mm/balloon_metrics.h"
 
 namespace vm_tools {
 namespace concierge {
@@ -33,8 +35,13 @@ TEST(BalloonPolocyTest, Unreclaimable) {
       .reclaim_target_cache = 0,
       .critical_target_cache = 0,
       .moderate_target_cache = MiB(200)};
-  LimitCacheBalloonPolicy policy(margins, host_lwm, guest_stats, params,
-                                 "test");
+  const auto metrics_library = std::make_unique<MetricsLibraryMock>();
+  const auto metrics = std::make_unique<mm::BalloonMetrics>(
+      apps::VmType::ARCVM,
+      raw_ref<MetricsLibraryInterface>::from_ptr(metrics_library.get()));
+  LimitCacheBalloonPolicy policy(
+      margins, host_lwm, guest_stats, params, "test",
+      raw_ref<mm::BalloonMetrics>::from_ptr(metrics.get()));
 
   // Test that when, because of unevictable memory, there is less cache left
   // than the cache limit, that we keep free_memory at MaxFree.
@@ -70,8 +77,13 @@ TEST(BalloonPolicyTest, LimitCacheNoLimit) {
   const LimitCacheBalloonPolicy::Params params = {.reclaim_target_cache = 0,
                                                   .critical_target_cache = 0,
                                                   .moderate_target_cache = 0};
-  LimitCacheBalloonPolicy policy(margins, host_lwm, guest_stats, params,
-                                 "test");
+  const auto metrics_library = std::make_unique<MetricsLibraryMock>();
+  const auto metrics = std::make_unique<mm::BalloonMetrics>(
+      apps::VmType::ARCVM,
+      raw_ref<MetricsLibraryInterface>::from_ptr(metrics_library.get()));
+  LimitCacheBalloonPolicy policy(
+      margins, host_lwm, guest_stats, params, "test",
+      raw_ref<mm::BalloonMetrics>::from_ptr(metrics.get()));
 
   // NB: Because there are no cache limits, target_free will always be
   // MaxFree().
@@ -116,8 +128,13 @@ TEST(BalloonPolicyTest, LimitCacheModerate) {
       .reclaim_target_cache = 0,
       .critical_target_cache = 0,
       .moderate_target_cache = MiB(200)};
-  LimitCacheBalloonPolicy policy(margins, host_lwm, guest_stats, params,
-                                 "test");
+  const auto metrics_library = std::make_unique<MetricsLibraryMock>();
+  const auto metrics = std::make_unique<mm::BalloonMetrics>(
+      apps::VmType::ARCVM,
+      raw_ref<MetricsLibraryInterface>::from_ptr(metrics_library.get()));
+  LimitCacheBalloonPolicy policy(
+      margins, host_lwm, guest_stats, params, "test",
+      raw_ref<mm::BalloonMetrics>::from_ptr(metrics.get()));
 
   // limit_start is the host_available level below which we start limiting
   // guest memory.
@@ -174,8 +191,13 @@ TEST(BalloonPolicyTest, LimitCacheCritical) {
       .reclaim_target_cache = 0,
       .critical_target_cache = MiB(100),
       .moderate_target_cache = 0};
-  LimitCacheBalloonPolicy policy(margins, host_lwm, guest_stats, params,
-                                 "test");
+  const auto metrics_library = std::make_unique<MetricsLibraryMock>();
+  const auto metrics = std::make_unique<mm::BalloonMetrics>(
+      apps::VmType::ARCVM,
+      raw_ref<MetricsLibraryInterface>::from_ptr(metrics_library.get()));
+  LimitCacheBalloonPolicy policy(
+      margins, host_lwm, guest_stats, params, "test",
+      raw_ref<mm::BalloonMetrics>::from_ptr(metrics.get()));
 
   // limit_start is the host_available level below which we start limiting
   // guest memory.
@@ -230,8 +252,13 @@ TEST(BalloonPolicyTest, LimitCacheReclaim) {
       .reclaim_target_cache = MiB(100),
       .critical_target_cache = 0,
       .moderate_target_cache = 0};
-  LimitCacheBalloonPolicy policy(margins, host_lwm, guest_stats, params,
-                                 "test");
+  const auto metrics_library = std::make_unique<MetricsLibraryMock>();
+  const auto metrics = std::make_unique<mm::BalloonMetrics>(
+      apps::VmType::ARCVM,
+      raw_ref<MetricsLibraryInterface>::from_ptr(metrics_library.get()));
+  LimitCacheBalloonPolicy policy(
+      margins, host_lwm, guest_stats, params, "test",
+      raw_ref<mm::BalloonMetrics>::from_ptr(metrics.get()));
 
   // limit_start is the host_free level below which we start limiting
   // guest memory.
@@ -286,8 +313,13 @@ TEST(BalloonPolicyTest, LimitCacheModerateAndCritical) {
       .reclaim_target_cache = 0,
       .critical_target_cache = MiB(100),
       .moderate_target_cache = MiB(200)};
-  LimitCacheBalloonPolicy policy(margins, host_lwm, guest_stats, params,
-                                 "test");
+  const auto metrics_library = std::make_unique<MetricsLibraryMock>();
+  const auto metrics = std::make_unique<mm::BalloonMetrics>(
+      apps::VmType::ARCVM,
+      raw_ref<MetricsLibraryInterface>::from_ptr(metrics_library.get()));
+  LimitCacheBalloonPolicy policy(
+      margins, host_lwm, guest_stats, params, "test",
+      raw_ref<mm::BalloonMetrics>::from_ptr(metrics.get()));
 
   // Test that when we are limited by both moderate and critical available cache
   // limits, the smaller of the two is used.
@@ -311,8 +343,13 @@ TEST(BalloonPolicyTest, LimitCacheGuestFreeLow) {
       .reclaim_target_cache = 0,
       .critical_target_cache = MiB(100),
       .moderate_target_cache = MiB(200)};
-  LimitCacheBalloonPolicy policy(margins, host_lwm, guest_stats, params,
-                                 "test");
+  const auto metrics_library = std::make_unique<MetricsLibraryMock>();
+  const auto metrics = std::make_unique<mm::BalloonMetrics>(
+      apps::VmType::ARCVM,
+      raw_ref<MetricsLibraryInterface>::from_ptr(metrics_library.get()));
+  LimitCacheBalloonPolicy policy(
+      margins, host_lwm, guest_stats, params, "test",
+      raw_ref<mm::BalloonMetrics>::from_ptr(metrics.get()));
 
   BalloonStats stats = {{.free_memory = 0, .disk_caches = MiB(150)}};
   EXPECT_EQ(-policy.MinFree(),
@@ -545,8 +582,13 @@ TEST(BalloonPolicyTest, ParseZoneInfoStatsFailures) {
 }
 
 TEST(BalloonPolicyTest, LimitCacheBalloonDeflationLimits) {
+  const auto metrics_library = std::make_unique<MetricsLibraryMock>();
+  const auto metrics = std::make_unique<mm::BalloonMetrics>(
+      apps::VmType::ARCVM,
+      raw_ref<MetricsLibraryInterface>::from_ptr(metrics_library.get()));
   LimitCacheBalloonPolicy policy(
-      {}, 0, {}, {.responsive_max_deflate_bytes = 200 * 4096}, "test");
+      {}, 0, {}, {.responsive_max_deflate_bytes = 200 * 4096}, "test",
+      raw_ref<mm::BalloonMetrics>::from_ptr(metrics.get()));
   ComponentMemoryMargins margins{
       .chrome_critical = 0,
       .chrome_moderate = 0,

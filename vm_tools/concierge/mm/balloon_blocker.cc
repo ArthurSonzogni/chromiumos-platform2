@@ -60,11 +60,13 @@ void ResizeRequest::LimitMagnitude(int64_t limit_bytes) {
 BalloonBlocker::BalloonBlocker(
     int vm_cid,
     std::unique_ptr<Balloon> balloon,
+    std::unique_ptr<BalloonMetrics> metrics,
     base::TimeDelta low_priority_block_duration,
     base::TimeDelta high_priority_block_duration,
     base::RepeatingCallback<base::TimeTicks(void)> time_ticks_now)
     : vm_cid_(vm_cid),
       balloon_(std::move(balloon)),
+      metrics_(std::move(metrics)),
       low_priority_block_duration_(low_priority_block_duration),
       high_priority_block_duration_(high_priority_block_duration),
       time_ticks_now_(time_ticks_now) {
@@ -134,6 +136,11 @@ ResizePriority BalloonBlocker::LowestUnblockedPriority(
   return static_cast<ResizePriority>(highest_opposite_request - 1);
 }
 
+apps::VmType BalloonBlocker::GetVmType() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return metrics_->GetVmType();
+}
+
 int BalloonBlocker::GetCid() {
   return vm_cid_;
 }
@@ -185,13 +192,16 @@ void BalloonBlocker::RecordResizeRequest(const ResizeRequest& request) {
       });
 }
 
-void BalloonBlocker::OnBalloonStall(Balloon::ResizeResult result) {
+void BalloonBlocker::OnBalloonStall(Balloon::StallStatistics stats,
+                                    Balloon::ResizeResult result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   // If the balloon stalled, block inflations at stall priority.
   RecordResizeRequest({ResizePriority::RESIZE_PRIORITY_BALLOON_STALL, -1});
 
   OnResizeResult(ResizePriority::RESIZE_PRIORITY_BALLOON_STALL, result);
+
+  metrics_->OnStall(stats);
 }
 
 void BalloonBlocker::OnResizeResult(ResizePriority priority,
@@ -202,6 +212,8 @@ void BalloonBlocker::OnResizeResult(ResizePriority priority,
             << ResizePriority_Name(priority) << ","
             << (result.new_target / MiB(1)) << " MB ("
             << (result.actual_delta_bytes / MiB(1)) << " MB)]";
+
+  metrics_->OnResize(result);
 }
 
 }  // namespace vm_tools::concierge::mm

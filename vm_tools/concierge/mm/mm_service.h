@@ -29,7 +29,7 @@ class MmService {
   // Returns whether the specified VM type is managed by the MmService.
   static constexpr const ManagedVmsSet& ManagedVms() { return kManagedVms; }
 
-  MmService();
+  explicit MmService(const raw_ref<MetricsLibraryInterface> metrics);
 
   ~MmService();
 
@@ -38,7 +38,7 @@ class MmService {
   bool Start();
 
   // Called to notify the service that a new VM has started.
-  void NotifyVmStarted(apps::VmType type,
+  void NotifyVmStarted(apps::VmType vm_type,
                        int vm_cid,
                        const std::string& socket);
 
@@ -78,7 +78,9 @@ class MmService {
   void NegotiationThreadStop();
 
   // Notify negotiation thread components that a new VM has started.
-  void NegotiationThreadNotifyVmStarted(int vm_cid, const std::string& socket);
+  void NegotiationThreadNotifyVmStarted(apps::VmType type,
+                                        int vm_cid,
+                                        const std::string& socket);
 
   // Runs ReclaimUntil on the negotiation thread.
   void NegotiationThreadReclaimUntilBlocked(int vm_cid,
@@ -117,6 +119,9 @@ class MmService {
   // Used by Balloon instances for running blocking calls to crosvm_control.
   base::Thread balloon_operation_thread_ GUARDED_BY_CONTEXT(sequence_checker_){
       "VMMMS_Balloon_Operation_Thread"};
+
+  // Metrics logging helpers. Thread safe, so not GUARDED_BY_CONTEXT.
+  const raw_ref<MetricsLibraryInterface> metrics_;
 
   // The reclaim broker instance.
   std::unique_ptr<ReclaimBroker> reclaim_broker_

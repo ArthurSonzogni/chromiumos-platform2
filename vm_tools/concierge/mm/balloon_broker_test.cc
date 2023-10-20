@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <limits>
 #include <unordered_map>
 #include <utility>
 
@@ -13,8 +14,11 @@
 #include <gtest/gtest.h>
 
 #include <base/test/task_environment.h>
+#include <metrics/metrics_library_mock.h>
+#include <vm_applications/apps.pb.h>
 
 #include "vm_tools/concierge/mm/balloon_broker.h"
+#include "vm_tools/concierge/mm/balloon_metrics.h"
 #include "vm_tools/concierge/mm/fake_balloon_blocker.h"
 #include "vm_tools/concierge/mm/fake_kills_server.h"
 
@@ -28,12 +32,16 @@ bool operator==(const ResizeRequest& lhs, const ResizeRequest& rhs) {
 }
 
 std::unique_ptr<BalloonBlocker> CreateFakeBalloonBlocker(
-    int vm_cid, const std::string&, scoped_refptr<base::SequencedTaskRunner>) {
-  return std::make_unique<FakeBalloonBlocker>(vm_cid);
+    int vm_cid,
+    const std::string&,
+    scoped_refptr<base::SequencedTaskRunner>,
+    std::unique_ptr<BalloonMetrics> metrics) {
+  return std::make_unique<FakeBalloonBlocker>(vm_cid, std::move(metrics));
 }
 
 namespace {
 
+using testing::_;
 class BalloonBrokerTest : public ::testing::Test {
  public:
   void SetUp() override {
@@ -43,9 +51,12 @@ class BalloonBrokerTest : public ::testing::Test {
     // Leak this pointer so tests can set expectations on the fake server.
     fake_kills_server_ = fake_kills_server.get();
 
+    metrics_ = std::make_unique<MetricsLibraryMock>();
+
     balloon_broker_ = std::make_unique<BalloonBroker>(
         std::move(fake_kills_server),
         base::SequencedTaskRunner::GetCurrentDefault(),
+        raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()),
         &CreateFakeBalloonBlocker);
 
     client_connection_handler_ = fake_kills_server_->ClientConnectionCallback();
@@ -56,6 +67,8 @@ class BalloonBrokerTest : public ::testing::Test {
     kill_request_handler_ = fake_kills_server_->KillRequestHandler();
 
     no_kill_candidate_handler_ = fake_kills_server_->NoKillCandidateCallback();
+
+    decision_latency_handler_ = fake_kills_server_->DecisionLatencyCallback();
   }
 
   void TearDown() override {
@@ -96,19 +109,21 @@ class BalloonBrokerTest : public ::testing::Test {
   Server::ClientDisconnectedNotification client_disconnected_handler_{};
   KillsServer::KillRequestHandler kill_request_handler_{};
   KillsServer::NoKillCandidateNotification no_kill_candidate_handler_{};
+  KillsServer::DecisionLatencyNotification decision_latency_handler_{};
+  std::unique_ptr<MetricsLibraryMock> metrics_;
   base::test::TaskEnvironment task_environment_;
 };
 
 TEST_F(BalloonBrokerTest, TestRegisterVm) {
-  balloon_broker_->RegisterVm(5, kTestSocket);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
   ASSERT_EQ(FakeBalloonBlocker::fake_balloon_blockers_.size(), 1);
-  balloon_broker_->RegisterVm(6, kTestSocket2);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
   ASSERT_EQ(FakeBalloonBlocker::fake_balloon_blockers_.size(), 2);
 }
 
 TEST_F(BalloonBrokerTest, TestNoConnections) {
-  balloon_broker_->RegisterVm(5, kTestSocket);
-  balloon_broker_->RegisterVm(6, kTestSocket2);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
 
   Client host_client{.cid = VMADDR_CID_LOCAL,
                      .connection_id = 1,
@@ -123,8 +138,8 @@ TEST_F(BalloonBrokerTest, TestNoConnections) {
 }
 
 TEST_F(BalloonBrokerTest, TestOneConnectionHostKillRequest) {
-  balloon_broker_->RegisterVm(5, kTestSocket);
-  balloon_broker_->RegisterVm(6, kTestSocket2);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
 
   Client host_client{VMADDR_CID_LOCAL, 0,
                      ConnectionType::CONNECTION_TYPE_KILLS};
@@ -145,8 +160,8 @@ TEST_F(BalloonBrokerTest, TestOneConnectionHostKillRequest) {
 }
 
 TEST_F(BalloonBrokerTest, TestMultipleConnectionsHostKillRequest) {
-  balloon_broker_->RegisterVm(5, kTestSocket);
-  balloon_broker_->RegisterVm(6, kTestSocket2);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
 
   Client host_client{VMADDR_CID_LOCAL, 0,
                      ConnectionType::CONNECTION_TYPE_KILLS};
@@ -173,8 +188,8 @@ TEST_F(BalloonBrokerTest, TestMultipleConnectionsHostKillRequest) {
 }
 
 TEST_F(BalloonBrokerTest, TestGuestDisconnectHostKillRequest) {
-  balloon_broker_->RegisterVm(5, kTestSocket);
-  balloon_broker_->RegisterVm(6, kTestSocket2);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
 
   Client host_client{VMADDR_CID_LOCAL, 0,
                      ConnectionType::CONNECTION_TYPE_KILLS};
@@ -203,7 +218,7 @@ TEST_F(BalloonBrokerTest, TestGuestKillRequest) {
   client_connection_handler_.Run(
       {VMADDR_CID_LOCAL, 0, ConnectionType::CONNECTION_TYPE_KILLS});
 
-  balloon_broker_->RegisterVm(5, kTestSocket);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
   Client client{5, 1, ConnectionType::CONNECTION_TYPE_KILLS};
   client_connection_handler_.Run(client);
 
@@ -219,8 +234,8 @@ TEST_F(BalloonBrokerTest, TestGuestKillRequest) {
 }
 
 TEST_F(BalloonBrokerTest, TestReclaimWithNoConnectedVms) {
-  balloon_broker_->RegisterVm(5, kTestSocket);
-  balloon_broker_->RegisterVm(6, kTestSocket2);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
 
   BalloonBroker::ReclaimOperation reclaim_operation{{VMADDR_CID_LOCAL, 512}};
 
@@ -231,8 +246,8 @@ TEST_F(BalloonBrokerTest, TestReclaimWithNoConnectedVms) {
 }
 
 TEST_F(BalloonBrokerTest, TestReclaimFromHost) {
-  balloon_broker_->RegisterVm(5, kTestSocket);
-  balloon_broker_->RegisterVm(6, kTestSocket2);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
 
   client_connection_handler_.Run({5, 0, ConnectionType::CONNECTION_TYPE_KILLS});
   client_connection_handler_.Run({6, 1, ConnectionType::CONNECTION_TYPE_KILLS});
@@ -252,8 +267,8 @@ TEST_F(BalloonBrokerTest, TestReclaimFromHost) {
 }
 
 TEST_F(BalloonBrokerTest, TestReclaimFromGuest) {
-  balloon_broker_->RegisterVm(5, kTestSocket);
-  balloon_broker_->RegisterVm(6, kTestSocket2);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
 
   client_connection_handler_.Run({5, 0, ConnectionType::CONNECTION_TYPE_KILLS});
   client_connection_handler_.Run({6, 1, ConnectionType::CONNECTION_TYPE_KILLS});
@@ -270,8 +285,8 @@ TEST_F(BalloonBrokerTest, TestReclaimFromGuest) {
 }
 
 TEST_F(BalloonBrokerTest, TestReclaimFromHostAndGuest) {
-  balloon_broker_->RegisterVm(5, kTestSocket);
-  balloon_broker_->RegisterVm(6, kTestSocket2);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
 
   client_connection_handler_.Run({5, 0, ConnectionType::CONNECTION_TYPE_KILLS});
   client_connection_handler_.Run({6, 1, ConnectionType::CONNECTION_TYPE_KILLS});
@@ -293,7 +308,7 @@ TEST_F(BalloonBrokerTest, TestReclaimFromHostAndGuest) {
 
 TEST_F(BalloonBrokerTest, TestClientDisconnected) {
   int vm_cid = 5;
-  balloon_broker_->RegisterVm(vm_cid, kTestSocket);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, vm_cid, kTestSocket);
 
   Client host_client{VMADDR_CID_LOCAL, 0,
                      ConnectionType::CONNECTION_TYPE_KILLS};
@@ -339,8 +354,8 @@ TEST_F(BalloonBrokerTest, TestClientDisconnected) {
 }
 
 TEST_F(BalloonBrokerTest, TestLowestUnblockedPriority) {
-  balloon_broker_->RegisterVm(5, kTestSocket);
-  balloon_broker_->RegisterVm(6, kTestSocket2);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
 
   // By default if nothing is blocked, the lowest block priority is LOWEST.
   ASSERT_EQ(balloon_broker_->LowestUnblockedPriority(),
@@ -380,7 +395,7 @@ TEST_F(BalloonBrokerTest, TestLowestUnblockedPriority) {
 
 TEST_F(BalloonBrokerTest, TestHandleNoKillCandidates) {
   int vm_cid = 5;
-  balloon_broker_->RegisterVm(vm_cid, kTestSocket);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, vm_cid, kTestSocket);
 
   Client host_client{VMADDR_CID_LOCAL, 0,
                      ConnectionType::CONNECTION_TYPE_KILLS};
@@ -408,6 +423,66 @@ TEST_F(BalloonBrokerTest, TestHandleNoKillCandidates) {
   ExpectResizeRequest(
       vm_cid,
       {ResizePriority::RESIZE_PRIORITY_NO_KILL_CANDIDATES_HOST, MiB(128)});
+}
+
+TEST_F(BalloonBrokerTest, HandleDecisionLatencyMetrics) {
+  int vm_cid = 5;
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, vm_cid, kTestSocket);
+  Client host_client{VMADDR_CID_LOCAL, 0,
+                     ConnectionType::CONNECTION_TYPE_KILLS};
+  Client vm_client{vm_cid, 2, ConnectionType::CONNECTION_TYPE_KILLS};
+  client_connection_handler_.Run(host_client);
+  client_connection_handler_.Run(vm_client);
+
+  {
+    SCOPED_TRACE("Regular latency");
+    DecisionLatency result;
+    result.set_latency_ms(1234);
+    EXPECT_CALL(*metrics_, SendTimeToUMA("Memory.VMMMS.Host.DecisionLatency",
+                                         base::Milliseconds(1234), _, _, _))
+        .Times(1);
+    FakeBalloonBlocker::fake_balloon_blockers_[vm_cid]
+        ->try_resize_results_.emplace_back(MiB(512));
+    kill_request_handler_.Run(host_client, MiB(512),
+                              ResizePriority::RESIZE_PRIORITY_CACHED_TAB);
+    decision_latency_handler_.Run(host_client, result);
+  }
+
+  {
+    SCOPED_TRACE("Timed out latency that would have been rejected");
+    DecisionLatency result;
+    result.set_latency_ms(std::numeric_limits<uint32_t>::max());
+    EXPECT_CALL(*metrics_,
+                SendEnumToUMA("Memory.VMMMS.Host.DecisionTimeout",
+                              ResizePriority::RESIZE_PRIORITY_CACHED_TAB, _))
+        .Times(1);
+    FakeBalloonBlocker::fake_balloon_blockers_[vm_cid]
+        ->try_resize_results_.emplace_back(MiB(0));
+    kill_request_handler_.Run(host_client, MiB(512),
+                              ResizePriority::RESIZE_PRIORITY_CACHED_TAB);
+    decision_latency_handler_.Run(host_client, result);
+  }
+
+  {
+    SCOPED_TRACE("Timed out latency that would have been granted");
+    DecisionLatency result;
+    result.set_latency_ms(std::numeric_limits<uint32_t>::max());
+    EXPECT_CALL(
+        *metrics_,
+        SendEnumToUMA("Memory.VMMMS.Host.DecisionTimeout",
+                      ResizePriority::RESIZE_PRIORITY_PERCEPTIBLE_TAB, _))
+        .Times(1);
+    EXPECT_CALL(
+        *metrics_,
+        SendEnumToUMA("Memory.VMMMS.Host.UnnecessaryKill",
+                      ResizePriority::RESIZE_PRIORITY_PERCEPTIBLE_TAB, _))
+        .Times(1);
+    FakeBalloonBlocker::fake_balloon_blockers_[vm_cid]
+        ->try_resize_results_.emplace_back(MiB(512));
+    kill_request_handler_.Run(host_client, MiB(512),
+                              ResizePriority::RESIZE_PRIORITY_PERCEPTIBLE_TAB);
+    decision_latency_handler_.Run(host_client, result);
+  }
 }
 
 }  // namespace

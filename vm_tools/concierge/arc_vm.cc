@@ -281,6 +281,7 @@ ArcVm::ArcVm(Config config)
           std::move(config.vm_swapping_notify_callback)),
       guest_memory_size_(config.guest_memory_size),
       virtio_blk_metrics_(std::move(config.virtio_blk_metrics)),
+      balloon_metrics_(std::move(config.balloon_metrics)),
       weak_ptr_factory_(this) {
   if (config.is_vmm_swap_enabled) {
     vmm_swap_usage_policy_.Init();
@@ -637,7 +638,8 @@ void ArcVm::InitializeBalloonPolicy(const MemoryMargins& margins,
   auto host_lwm = HostZoneLowSum(balloon_init_attempts_ == 0);
   if (guest_stats && host_lwm) {
     balloon_policy_ = std::make_unique<LimitCacheBalloonPolicy>(
-        margins, *host_lwm, *guest_stats, kArcVmLimitCachePolicyParams, vm);
+        margins, *host_lwm, *guest_stats, kArcVmLimitCachePolicyParams, vm,
+        raw_ref<mm::BalloonMetrics>::from_ptr(balloon_metrics_.get()));
     return;
   } else if (balloon_init_attempts_ > 0) {
     // We still have attempts left. Leave balloon_policy_ uninitialized, and

@@ -15,19 +15,51 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <base/strings/strcat.h>
 #include <base/time/time.h>
+
+#include <vm_applications/apps.pb.h>
+#include <vm_memory_management/vm_memory_management.pb.h>
 
 using vm_tools::vm_memory_management::ResizePriority_Name;
 
 namespace vm_tools::concierge::mm {
 
+namespace {
+
+// Metrics definitions
+
+// The prefix for all Virtual Machine Memory Management Service metrics.
+constexpr char kMetricsPrefix[] = "Memory.VMMMS.";
+
+// DecisionLatency tracks how much time the VMMMS adds to clients when they are
+// deciding what to kill under memory pressure. It is very important that this
+// number is never very high, even at p99.
+constexpr char kDecisionLatencyMetric[] = ".DecisionLatency";
+constexpr base::TimeDelta kDecisionLatencyMetricMin = base::Seconds(0);
+constexpr base::TimeDelta kDecisionLatencyMetricMax = base::Seconds(5);
+constexpr size_t kDecisionLatencyMetricBuckets = 100;
+
+// DecisionTimeout tracks how often we cause clients to time out. This should
+// never happen, so we will use UMA to verify.
+constexpr char kDecisionTimeoutMetric[] = ".DecisionTimeout";
+
+// UnnecessaryKill tracks how often a timeout caused a client to kill something
+// unnecessarily. This tracks the user-impact of timeouts, and should help us
+// diagnose engagement regressions cuased by latency in VMMMS.
+constexpr char kUnnecessaryKillMetric[] = ".UnnecessaryKill";
+
+}  // namespace
+
 BalloonBroker::BalloonBroker(
     std::unique_ptr<KillsServer> kills_server,
     scoped_refptr<base::SequencedTaskRunner> balloon_operations_task_runner,
+    const raw_ref<MetricsLibraryInterface> metrics,
     BalloonBlockerFactory balloon_blocker_factory)
     : kills_server_(std::move(kills_server)),
       balloon_operations_task_runner_(balloon_operations_task_runner),
-      balloon_blocker_factory_(balloon_blocker_factory) {
+      balloon_blocker_factory_(balloon_blocker_factory),
+      metrics_(metrics) {
   kills_server_->SetClientConnectionNotification(base::BindRepeating(
       &BalloonBroker::OnNewClientConnected, base::Unretained(this)));
   kills_server_->SetClientDisconnectedNotification(base::BindRepeating(
@@ -43,7 +75,9 @@ BalloonBroker::BalloonBroker(
   contexts_[VMADDR_CID_LOCAL] = {};
 }
 
-void BalloonBroker::RegisterVm(int vm_cid, const std::string& socket_path) {
+void BalloonBroker::RegisterVm(apps::VmType vm_type,
+                               int vm_cid,
+                               const std::string& socket_path) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (contexts_.find(vm_cid) != contexts_.end()) {
@@ -52,10 +86,10 @@ void BalloonBroker::RegisterVm(int vm_cid, const std::string& socket_path) {
 
   kills_server_->RegisterVm(vm_cid);
 
-  contexts_[vm_cid] = {
-      .balloon = balloon_blocker_factory_(vm_cid, socket_path,
-                                          balloon_operations_task_runner_),
-      .clients = {}};
+  contexts_[vm_cid] = {.balloon = balloon_blocker_factory_(
+                           vm_cid, socket_path, balloon_operations_task_runner_,
+                           std::make_unique<BalloonMetrics>(vm_type, metrics_)),
+                       .clients = {}};
 }
 
 void BalloonBroker::RemoveVm(int vm_cid) {
@@ -222,10 +256,13 @@ ResizePriority BalloonBroker::LowestUnblockedPriority() const {
 std::unique_ptr<BalloonBlocker> BalloonBroker::CreateBalloonBlocker(
     int vm_cid,
     const std::string& socket_path,
-    scoped_refptr<base::SequencedTaskRunner> balloon_operations_task_runner) {
+    scoped_refptr<base::SequencedTaskRunner> balloon_operations_task_runner,
+    std::unique_ptr<BalloonMetrics> metrics) {
   return std::make_unique<BalloonBlocker>(
-      vm_cid, std::make_unique<Balloon>(vm_cid, socket_path,
-                                        balloon_operations_task_runner));
+      vm_cid,
+      std::make_unique<Balloon>(vm_cid, socket_path,
+                                balloon_operations_task_runner),
+      std::move(metrics));
 }
 
 void BalloonBroker::OnNewClientConnected(Client client) {
@@ -246,8 +283,6 @@ void BalloonBroker::OnNewClientConnected(Client client) {
   if (client.cid != VMADDR_CID_LOCAL) {
     connected_vms_.emplace(client.cid);
   }
-
-  LOG(INFO) << "BalloonBroker new client. CID: " << client.cid;
 }
 
 void BalloonBroker::OnClientDisconnected(Client client) {
@@ -351,15 +386,30 @@ void BalloonBroker::HandleDecisionLatency(Client client,
     return;
   }
 
-  // If the client timed out waiting for the response but the kill request was
-  // successful, this means that something was killed when it shouldn't have
-  // been.
-  if (latency.latency_ms() == std::numeric_limits<uint32_t>::max() &&
-      bb_client->kill_request_result > 0) {
-    LOG(WARNING) << "Unnecessary kill occurred for CID: " << client.cid
-                 << " Priority: "
-                 << ResizePriority_Name(bb_client->kill_request_priority)
-                 << " Reason: Response timed out.";
+  if (latency.latency_ms() < std::numeric_limits<uint32_t>::max()) {
+    // Not a timeout, log the latency.
+    metrics_->SendTimeToUMA(
+        GetMetricName(client.cid, kDecisionLatencyMetric),
+        base::Milliseconds(latency.latency_ms()), kDecisionLatencyMetricMin,
+        kDecisionLatencyMetricMax, kDecisionLatencyMetricBuckets);
+  } else {
+    // Timeout, log the priority of the failed request.
+    metrics_->SendEnumToUMA(GetMetricName(client.cid, kDecisionTimeoutMetric),
+                            static_cast<int>(bb_client->kill_request_priority),
+                            ResizePriority::RESIZE_PRIORITY_N_PRIORITIES);
+    if (bb_client->kill_request_result > 0) {
+      // If the client timed out waiting for the response but the kill request
+      // was successful, this means that something was killed when it shouldn't
+      // have been.
+      LOG(WARNING) << "Unnecessary kill occurred for CID: " << client.cid
+                   << " Priority: "
+                   << ResizePriority_Name(bb_client->kill_request_priority)
+                   << " Reason: Response timed out.";
+      metrics_->SendEnumToUMA(
+          GetMetricName(client.cid, kUnnecessaryKillMetric),
+          static_cast<int>(bb_client->kill_request_priority),
+          ResizePriority::RESIZE_PRIORITY_N_PRIORITIES);
+    }
   }
 }
 
@@ -413,6 +463,24 @@ BalloonBroker::BalloonBrokerClient* BalloonBroker::GetBalloonBrokerClient(
   }
 
   return nullptr;
+}
+
+std::string BalloonBroker::GetMetricName(
+    int cid, const std::string& unprefixed_metric_name) const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  if (cid == VMADDR_CID_LOCAL) {
+    return base::StrCat({kMetricsPrefix, "Host", unprefixed_metric_name});
+  }
+
+  auto find = contexts_.find(cid);
+  if (find == contexts_.end()) {
+    return base::StrCat({kMetricsPrefix, "Unknown", unprefixed_metric_name});
+  }
+
+  const apps::VmType vm_type = find->second.balloon->GetVmType();
+  return base::StrCat(
+      {kMetricsPrefix, apps::VmType_Name(vm_type), unprefixed_metric_name});
 }
 
 void BalloonBroker::SetHasKillCandidates(Client client, bool has_candidates) {

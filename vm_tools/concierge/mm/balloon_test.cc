@@ -5,11 +5,13 @@
 #include "vm_tools/concierge/mm/balloon.h"
 
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 
+#include "base/time/time.h"
 #include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/fake_crosvm_control.h"
 
@@ -37,8 +39,9 @@ class BalloonTest : public ::testing::Test {
  protected:
   static constexpr char kTestSocket[] = "/run/test-socket";
 
-  void OnBalloonStall(Balloon::ResizeResult result) {
-    balloon_stall_results_.emplace_back(result);
+  void OnBalloonStall(Balloon::StallStatistics stats,
+                      Balloon::ResizeResult result) {
+    balloon_stall_results_.emplace_back(std::make_pair(stats, result));
   }
 
   void ReturnBalloonSize(uint64_t size) {
@@ -75,7 +78,8 @@ class BalloonTest : public ::testing::Test {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   std::unique_ptr<Balloon> balloon_{};
   std::vector<Balloon::ResizeResult> resize_results_{};
-  std::vector<Balloon::ResizeResult> balloon_stall_results_{};
+  std::vector<std::pair<Balloon::StallStatistics, Balloon::ResizeResult>>
+      balloon_stall_results_{};
   base::TimeTicks now_{};
   int balloon_op_count_ = 1;
 };
@@ -175,15 +179,19 @@ TEST_F(BalloonTest, TestBalloonStallDetectedAndCorrected) {
   FastForwardBy(base::Seconds(6));
   ASSERT_EQ(balloon_stall_results_.size(), 0);
 
-  // 100 more seconds in the future and the balloon has not inflated any more.
-  // This should be detected as a stall.
-  FastForwardBy(base::Seconds(100));
+  // 6 more seconds in the future and the balloon has only inflated by 30 more
+  // MiB. This should be detected as a stall.
+  ReturnBalloonSize(MiB(128 + 30));
+  FastForwardBy(base::Seconds(6));
 
-  // The current stall back off is 128 MiB, so since the balloon stalled at 128
-  // MiB it should be deflated down to 0.
-  AssertBalloonSizedTo(0);
+  // The current stall back off is 128 MiB, so since the balloon stalled at 158
+  // MiB it should be deflated down to 30 MiB.
+  AssertBalloonSizedTo(MiB(30));
 
   ASSERT_EQ(balloon_stall_results_.size(), 1);
+
+  // The stall throughput should be 30MiB / 6s or 5 MiB/s.
+  ASSERT_EQ(balloon_stall_results_[0].first.inflate_mb_per_s, 5);
 }
 
 TEST_F(BalloonTest, TestBalloonStallDetectionOnlyRunsOnce) {

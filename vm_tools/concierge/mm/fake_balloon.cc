@@ -31,8 +31,8 @@ void FakeBalloon::DoResize(
       FROM_HERE, base::BindOnce(std::move(completion_callback), result));
 }
 
-void FakeBalloon::RunStallCallback(ResizeResult result) {
-  GetStallCallback().Run(result);
+void FakeBalloon::RunStallCallback(StallStatistics stats, ResizeResult result) {
+  GetStallCallback().Run(stats, result);
 }
 
 int64_t FakeBalloon::GetTargetSize() {

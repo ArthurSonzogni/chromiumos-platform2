@@ -7,11 +7,13 @@
 #include <crosvm/crosvm_control.h>
 
 #include <limits>
+#include <memory>
 #include <optional>
 #include <stdint.h>
 #include <string>
 
 #include "vm_tools/concierge/byte_unit.h"
+#include "vm_tools/concierge/mm/balloon_metrics.h"
 
 namespace vm_tools::concierge {
 
@@ -193,7 +195,8 @@ class LimitCacheBalloonPolicy : public BalloonPolicyInterface {
                           int64_t host_lwm,
                           ZoneInfoStats guest_zoneinfo,
                           const Params& params,
-                          const std::string& vm);
+                          const std::string& vm,
+                          raw_ref<mm::BalloonMetrics> metrics);
 
   int64_t ComputeBalloonDelta(
       const BalloonStats& stats,
@@ -251,6 +254,8 @@ class LimitCacheBalloonPolicy : public BalloonPolicyInterface {
   // cached).
   static constexpr size_t kDeflationLimitCount = 3;
   BalloonDeflationLimit balloon_deflation_limits_[kDeflationLimitCount]{};
+
+  const raw_ref<mm::BalloonMetrics> metrics_;
 
   LimitCacheBalloonPolicy(const LimitCacheBalloonPolicy&) = delete;
   LimitCacheBalloonPolicy& operator=(const LimitCacheBalloonPolicy&) = delete;

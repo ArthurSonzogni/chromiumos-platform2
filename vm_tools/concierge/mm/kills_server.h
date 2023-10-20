@@ -46,6 +46,9 @@ class KillsServer : public Server {
 
   // END: Event Callbacks.
  protected:
+  // Gets the decision latency handler for this server.
+  const DecisionLatencyNotification& GetDecisionLatencyCallback();
+
   // Gets the kill request handler for this server.
   const KillRequestHandler& GetKillRequestHandler();
 

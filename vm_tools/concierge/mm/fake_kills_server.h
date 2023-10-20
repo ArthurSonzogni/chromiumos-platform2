@@ -17,6 +17,8 @@ class FakeKillsServer : public KillsServer {
 
   const ClientDisconnectedNotification& ClientDisconnectedCallback();
 
+  const DecisionLatencyNotification& DecisionLatencyCallback();
+
   const KillRequestHandler& KillRequestHandler();
 
   const NoKillCandidateNotification& NoKillCandidateCallback();

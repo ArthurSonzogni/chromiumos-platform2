@@ -37,6 +37,11 @@ void KillsServer::SetDecisionLatencyNotification(
   decision_latency_callback_ = callback;
 }
 
+const KillsServer::DecisionLatencyNotification&
+KillsServer::GetDecisionLatencyCallback() {
+  return decision_latency_callback_;
+}
+
 const KillsServer::KillRequestHandler& KillsServer::GetKillRequestHandler() {
   return kill_request_handler_;
 }

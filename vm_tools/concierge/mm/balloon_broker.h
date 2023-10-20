@@ -15,11 +15,15 @@
 #include <base/containers/flat_map.h>
 #include <base/sequence_checker.h>
 #include <base/task/sequenced_task_runner.h>
+#include <metrics/metrics_library.h>
 
+#include <vm_applications/apps.pb.h>
 #include <vm_memory_management/vm_memory_management.pb.h>
 
+#include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/mm/balloon_blocker.h"
+#include "vm_tools/concierge/mm/balloon_metrics.h"
 #include "vm_tools/concierge/mm/kills_server.h"
 
 using vm_tools::vm_memory_management::ResizePriority;
@@ -40,11 +44,15 @@ class BalloonBroker {
  public:
   // Creates balloon instances.
   using BalloonBlockerFactory = std::function<std::unique_ptr<BalloonBlocker>(
-      int, const std::string&, scoped_refptr<base::SequencedTaskRunner>)>;
+      int,
+      const std::string&,
+      scoped_refptr<base::SequencedTaskRunner>,
+      std::unique_ptr<BalloonMetrics>)>;
 
   explicit BalloonBroker(
       std::unique_ptr<KillsServer> kills_server,
       scoped_refptr<base::SequencedTaskRunner> balloon_operations_task_runner,
+      const raw_ref<MetricsLibraryInterface> metrics,
       BalloonBlockerFactory balloon_blocker_factory =
           &BalloonBroker::CreateBalloonBlocker);
 
@@ -52,7 +60,9 @@ class BalloonBroker {
   BalloonBroker& operator=(const BalloonBroker&) = delete;
 
   // Registers a VM and the corresponding control socket with the broker.
-  void RegisterVm(int vm_cid, const std::string& socket_path);
+  void RegisterVm(apps::VmType vm_type,
+                  int vm_cid,
+                  const std::string& socket_path);
 
   // Removes a VM and its corresponding balloon from the broker.
   void RemoveVm(int vm_cid);
@@ -124,7 +134,8 @@ class BalloonBroker {
   static std::unique_ptr<BalloonBlocker> CreateBalloonBlocker(
       int vm_cid,
       const std::string& socket_path,
-      scoped_refptr<base::SequencedTaskRunner> balloon_operations_task_runner);
+      scoped_refptr<base::SequencedTaskRunner> balloon_operations_task_runner,
+      std::unique_ptr<BalloonMetrics> metrics);
 
   // START: Server Callbacks.
 
@@ -161,6 +172,9 @@ class BalloonBroker {
 
   // Returns the BalloonBrokerClient that corresponds to |client|.
   BalloonBrokerClient* GetBalloonBrokerClient(Client client);
+
+  std::string GetMetricName(int cid,
+                            const std::string& unprefixed_metric_name) const;
 
   // Sets the kill candidate state for the specified client.
   void SetHasKillCandidates(Client client, bool has_candidates);
@@ -212,6 +226,10 @@ class BalloonBroker {
   // calls here than to expose enough information to support coordination at
   // a higher level.
   std::deque<ReclaimUntilBlockedCallback> reclaim_until_blocked_cbs_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Used for logging metrics related to balloon events.
+  const raw_ref<MetricsLibraryInterface> metrics_
       GUARDED_BY_CONTEXT(sequence_checker_);
 };
 

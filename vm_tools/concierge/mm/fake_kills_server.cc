@@ -18,6 +18,11 @@ FakeKillsServer::ClientDisconnectedCallback() {
   return Server::GetClientDisconnectedCallback();
 }
 
+const KillsServer::DecisionLatencyNotification&
+FakeKillsServer::DecisionLatencyCallback() {
+  return KillsServer::GetDecisionLatencyCallback();
+}
+
 const KillsServer::KillRequestHandler& FakeKillsServer::KillRequestHandler() {
   return KillsServer::GetKillRequestHandler();
 }

@@ -1709,7 +1709,8 @@ bool Service::InitVmMemoryManagementService() {
     return true;
   }
 
-  vm_memory_management_service_ = std::make_unique<mm::MmService>();
+  vm_memory_management_service_ = std::make_unique<mm::MmService>(
+      raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()));
 
   if (!vm_memory_management_service_->Start()) {
     vm_memory_management_service_.reset();

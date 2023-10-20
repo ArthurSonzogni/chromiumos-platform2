@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <optional>
+#include <utility>
 
 #include <base/check.h>
 #include <base/files/file_util.h>
@@ -137,15 +138,18 @@ bool BalanceAvailableBalloonPolicy::DeflateBalloonToSaveProcess(
   return false;
 }
 
-LimitCacheBalloonPolicy::LimitCacheBalloonPolicy(const MemoryMargins& margins,
-                                                 int64_t host_lwm,
-                                                 ZoneInfoStats guest_zoneinfo,
-                                                 const Params& params,
-                                                 const std::string& vm)
+LimitCacheBalloonPolicy::LimitCacheBalloonPolicy(
+    const MemoryMargins& margins,
+    int64_t host_lwm,
+    ZoneInfoStats guest_zoneinfo,
+    const Params& params,
+    const std::string& vm,
+    raw_ref<mm::BalloonMetrics> metrics)
     : margins_(margins),
       host_lwm_(host_lwm),
       guest_zoneinfo_(guest_zoneinfo),
-      params_(params) {
+      params_(params),
+      metrics_(metrics) {
   LOG(INFO) << "BalloonInit: { "
             << "\"type\": \"LimitCacheBalloonPolicy\","
             << "\"vm\": \"" << vm << "\","
@@ -297,6 +301,12 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
             << ","
             // Reclaimable guest cache (should match with LMKD's view).
             << (guest_cache / MiB(1)) << "]";
+
+  const int64_t new_target =
+      std::max<int64_t>(0, static_cast<int64_t>(stats.balloon_actual) + delta);
+  const int64_t actual_delta_bytes =
+      new_target - static_cast<int64_t>(stats.balloon_actual);
+  metrics_->OnResize({true, actual_delta_bytes, new_target});
 
   return delta;
 }

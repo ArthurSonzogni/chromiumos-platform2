@@ -28,6 +28,7 @@
 
 #include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/crosvm_control.h"
+#include "vm_tools/concierge/mm/balloon_metrics.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/virtio_blk_metrics.h"
 #include "vm_tools/concierge/vm_base_impl.h"
@@ -93,6 +94,8 @@ class ArcVm final : public VmBaseImpl {
     base::RepeatingCallback<void(SwappingState)> vm_swapping_notify_callback;
     // The metrics sender for the virtio-blk performance.
     std::unique_ptr<VirtioBlkMetrics> virtio_blk_metrics;
+    // The metrics sender for virtio-balloon.
+    std::unique_ptr<mm::BalloonMetrics> balloon_metrics;
     // `guest_memory_size` is the size of the guest memory in bytes which is
     // specified in VmBuilder.
     int64_t guest_memory_size;
@@ -347,6 +350,9 @@ class ArcVm final : public VmBaseImpl {
   // Metrics reporter for virtio-blk performance.
   std::unique_ptr<VirtioBlkMetrics> virtio_blk_metrics_
       GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Metrics reporter for virtio-balloon events.
+  std::unique_ptr<mm::BalloonMetrics> balloon_metrics_;
 
   base::WeakPtrFactory<ArcVm> weak_ptr_factory_;
 };

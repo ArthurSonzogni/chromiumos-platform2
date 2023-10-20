@@ -20,7 +20,7 @@ class FakeBalloon : public Balloon {
       int64_t delta_bytes,
       base::OnceCallback<void(ResizeResult)> completion_callback) override;
 
-  void RunStallCallback(ResizeResult result);
+  void RunStallCallback(StallStatistics stats, ResizeResult result);
 
   int64_t GetTargetSize() override;
 

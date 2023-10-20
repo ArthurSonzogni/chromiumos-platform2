@@ -38,7 +38,8 @@ T PostTaskAndWaitForResult(scoped_refptr<base::TaskRunner> task_runner,
 }
 }  // namespace
 
-MmService::MmService() : weak_ptr_factory_(this) {
+MmService::MmService(const raw_ref<MetricsLibraryInterface> metrics)
+    : metrics_(metrics), weak_ptr_factory_(this) {
   DETACH_FROM_SEQUENCE(negotiation_thread_sequence_checker_);
 }
 
@@ -111,12 +112,12 @@ bool MmService::Start() {
   return true;
 }
 
-void MmService::NotifyVmStarted(apps::VmType type,
+void MmService::NotifyVmStarted(apps::VmType vm_type,
                                 int vm_cid,
                                 const std::string& socket) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  if (!ManagedVms().contains(type)) {
+  if (!ManagedVms().contains(vm_type)) {
     return;
   }
 
@@ -125,7 +126,7 @@ void MmService::NotifyVmStarted(apps::VmType type,
   negotiation_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::BindOnce(&MmService::NegotiationThreadNotifyVmStarted,
-                     weak_ptr_factory_.GetWeakPtr(), vm_cid, socket));
+                     weak_ptr_factory_.GetWeakPtr(), vm_type, vm_cid, socket));
 }
 
 void MmService::NotifyVmBootComplete(int vm_cid) {
@@ -220,7 +221,7 @@ bool MmService::NegotiationThreadStart(
   }
 
   balloon_broker_ = std::make_unique<BalloonBroker>(
-      std::move(kills_server), balloon_operations_task_runner);
+      std::move(kills_server), balloon_operations_task_runner, metrics_);
 
   return true;
 }
@@ -231,10 +232,11 @@ void MmService::NegotiationThreadStop() {
   DETACH_FROM_SEQUENCE(negotiation_thread_sequence_checker_);
 }
 
-void MmService::NegotiationThreadNotifyVmStarted(int vm_cid,
+void MmService::NegotiationThreadNotifyVmStarted(apps::VmType vm_type,
+                                                 int vm_cid,
                                                  const std::string& socket) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(negotiation_thread_sequence_checker_);
-  balloon_broker_->RegisterVm(vm_cid, socket);
+  balloon_broker_->RegisterVm(vm_type, vm_cid, socket);
 }
 
 void MmService::NegotiationThreadReclaimUntilBlocked(

@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -51,7 +52,8 @@ Balloon::Balloon(
       time_ticks_now_(time_ticks_now) {}
 
 void Balloon::SetStallCallback(
-    base::RepeatingCallback<void(ResizeResult)> stall_callback) {
+    base::RepeatingCallback<void(StallStatistics, ResizeResult)>
+        stall_callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   stall_callback_ = stall_callback;
 }
@@ -71,7 +73,7 @@ int64_t Balloon::GetTargetSize() {
   return target_balloon_size_;
 }
 
-base::RepeatingCallback<void(Balloon::ResizeResult)>&
+base::RepeatingCallback<void(Balloon::StallStatistics, Balloon::ResizeResult)>&
 Balloon::GetStallCallback() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return stall_callback_;
@@ -202,8 +204,11 @@ void Balloon::CheckForAndCorrectBalloonStallWithSize(
 
   // If the balloon is stalled, deflate it by the backoff size and then run the
   // stall callback with the result.
-  if (BalloonIsStalled(*current_size)) {
-    DoResize(-kBalloonStallBackoffSize, base::BindOnce(stall_callback_));
+  const std::optional<Balloon::StallStatistics> stall_stats =
+      BalloonIsStalled(*current_size);
+  if (stall_stats) {
+    DoResize(-kBalloonStallBackoffSize,
+             base::BindOnce(stall_callback_, *stall_stats));
   }
 }
 
@@ -223,7 +228,8 @@ bool Balloon::BalloonIsExpectedSizeOrLarger(int64_t current_size) const {
   return size_delta < MiB(1);
 }
 
-bool Balloon::BalloonIsStalled(int64_t current_size) {
+std::optional<Balloon::StallStatistics> Balloon::BalloonIsStalled(
+    int64_t current_size) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   base::TimeDelta time_since_resize = time_ticks_now_.Run() - resize_time_;
@@ -232,7 +238,7 @@ bool Balloon::BalloonIsStalled(int64_t current_size) {
   // stalled on an inflation.
   if (BalloonIsExpectedSizeOrLarger(current_size)) {
     checking_balloon_stall_ = false;
-    return false;
+    return std::nullopt;
   }
 
   // In the case where the balloon deflates itself (such as when deflate-on-oom
@@ -258,7 +264,7 @@ bool Balloon::BalloonIsStalled(int64_t current_size) {
                  << "MiB Actual: " << (current_size / MiB(1)) << "MiB"
                  << " Rate: " << mb_per_s << "MiB/s ";
     checking_balloon_stall_ = false;
-    return true;
+    return StallStatistics{mb_per_s};
   }
 
   // Reset the initial balloon size and resize time so the next stall detection
@@ -273,7 +279,7 @@ bool Balloon::BalloonIsStalled(int64_t current_size) {
       base::BindOnce(&Balloon::CheckForAndCorrectBalloonStall,
                      weak_ptr_factory_.GetWeakPtr()),
       kBalloonStallDetectionInterval);
-  return false;
+  return std::nullopt;
 }
 
 }  // namespace vm_tools::concierge::mm

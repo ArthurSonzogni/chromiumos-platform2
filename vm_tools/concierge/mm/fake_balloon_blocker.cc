@@ -4,7 +4,7 @@
 
 #include "vm_tools/concierge/mm/fake_balloon_blocker.h"
 
-#include <memory>
+#include <utility>
 
 #include "vm_tools/concierge/mm/fake_balloon.h"
 
@@ -14,8 +14,10 @@ namespace vm_tools::concierge::mm {
 base::flat_map<int, FakeBalloonBlocker*>
     FakeBalloonBlocker::fake_balloon_blockers_{};
 
-FakeBalloonBlocker::FakeBalloonBlocker(int vm_cid)
-    : BalloonBlocker(vm_cid, std::make_unique<FakeBalloon>()) {
+FakeBalloonBlocker::FakeBalloonBlocker(int vm_cid,
+                                       std::unique_ptr<BalloonMetrics> metrics)
+    : BalloonBlocker(
+          vm_cid, std::make_unique<FakeBalloon>(), std::move(metrics)) {
   fake_balloon_blockers_[vm_cid] = this;
 }
 

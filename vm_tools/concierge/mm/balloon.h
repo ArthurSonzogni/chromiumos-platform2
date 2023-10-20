@@ -5,6 +5,7 @@
 #ifndef VM_TOOLS_CONCIERGE_MM_BALLOON_H_
 #define VM_TOOLS_CONCIERGE_MM_BALLOON_H_
 
+#include <optional>
 #include <string>
 
 #include <base/functional/callback.h>
@@ -32,6 +33,10 @@ class Balloon {
     int64_t new_target = 0;
   };
 
+  struct StallStatistics {
+    int64_t inflate_mb_per_s = 0;
+  };
+
   Balloon(
       int vm_cid,
       const std::string& control_socket,
@@ -43,7 +48,8 @@ class Balloon {
 
   // Sets the callback to be run when the balloon is stalled.
   void SetStallCallback(
-      base::RepeatingCallback<void(ResizeResult)> stall_callback);
+      base::RepeatingCallback<void(StallStatistics, ResizeResult)>
+          stall_callback);
 
   // Resizes the balloon by delta_bytes.
   virtual void DoResize(
@@ -56,7 +62,8 @@ class Balloon {
   virtual int64_t GetTargetSize();
 
  protected:
-  base::RepeatingCallback<void(ResizeResult)>& GetStallCallback();
+  base::RepeatingCallback<void(StallStatistics, ResizeResult)>&
+  GetStallCallback();
 
  private:
   // Performs a resize of the balloon once the current size has been retrieved.
@@ -75,8 +82,9 @@ class Balloon {
   // Checks if the balloon is at or above the current size.
   bool BalloonIsExpectedSizeOrLarger(int64_t current_size) const;
 
-  // Checks if the balloon is stalled.
-  bool BalloonIsStalled(int64_t current_size);
+  // Checks if the balloon is stalled. Returns StallStatistics if the balloon
+  // is stalled.
+  std::optional<StallStatistics> BalloonIsStalled(int64_t current_size);
 
   // Both checks for and corrects a balloon stall by backing off on the balloon
   // size if stalled. Returns true if the balloon was stalled, false otherwise.
@@ -117,7 +125,7 @@ class Balloon {
   SEQUENCE_CHECKER(sequence_checker_);
 
   // Callback to run when a balloon stall is detected.
-  base::RepeatingCallback<void(ResizeResult)> stall_callback_ =
+  base::RepeatingCallback<void(StallStatistics, ResizeResult)> stall_callback_ =
       base::DoNothing();
 
   // The balloon's size before the most recent resize operation.
