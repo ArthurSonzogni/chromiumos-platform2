@@ -86,7 +86,6 @@
 #include "cryptohome/pkcs11/real_pkcs11_token_factory.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/user_secret_stash/storage.h"
-#include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/user_session/real_user_session_factory.h"
 #include "cryptohome/user_session/user_session.h"
 #include "cryptohome/util/proto_enum.h"
@@ -3587,13 +3586,10 @@ void UserDataAuth::ListAuthFactors(
 
     // Determine what auth factors are supported by going through the entire set
     // of auth factor types and checking each one.
-
     std::set<AuthFactorStorageType> configured_storages;
-    if (IsUserSecretStashExperimentEnabled(platform_)) {
-      configured_storages.insert(AuthFactorStorageType::kUserSecretStash);
-    }
-    if (!IsUserSecretStashExperimentEnabled(platform_) ||
-        auth_factor_map.HasFactorWithStorage(
+    configured_storages.insert(AuthFactorStorageType::kUserSecretStash);
+
+    if (auth_factor_map.HasFactorWithStorage(
             AuthFactorStorageType::kVaultKeyset)) {
       configured_storages.insert(AuthFactorStorageType::kVaultKeyset);
     }

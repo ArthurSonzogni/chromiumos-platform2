@@ -74,7 +74,6 @@
 #include "cryptohome/user_secret_stash/encrypted.h"
 #include "cryptohome/user_secret_stash/migrator.h"
 #include "cryptohome/user_secret_stash/storage.h"
-#include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.h"
@@ -623,29 +622,27 @@ CryptohomeStatus AuthSession::OnUserCreated() {
     if (!file_system_keyset_.has_value()) {
       file_system_keyset_ = FileSystemKeyset::CreateRandom();
     }
-    if (IsUserSecretStashExperimentEnabled(platform_)) {
-      // Check invariants.
-      CHECK(!decrypted_uss_);
-      CHECK(file_system_keyset_.has_value());
-      // The USS experiment is on, hence create the USS for the newly created
-      // non-ephemeral user. Keep the USS in memory: it will be persisted after
-      // the first auth factor gets added.
-      CryptohomeStatusOr<DecryptedUss> new_uss =
-          DecryptedUss::CreateWithRandomMainKey(uss_storage_,
-                                                *file_system_keyset_);
-      if (!new_uss.ok()) {
-        LOG(ERROR) << "User secret stash creation failed";
-        return MakeStatus<CryptohomeError>(
-                   CRYPTOHOME_ERR_LOC(
-                       kLocAuthSessionCreateUSSFailedInOnUserCreated),
-                   ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                                   PossibleAction::kReboot}),
-                   user_data_auth::CryptohomeErrorCode::
-                       CRYPTOHOME_ERROR_MOUNT_FATAL)
-            .Wrap(std::move(new_uss).err_status());
-      }
-      decrypted_uss_ = std::move(*new_uss);
+    // Check invariants.
+    CHECK(!decrypted_uss_);
+    CHECK(file_system_keyset_.has_value());
+    // Create the USS for the newly created
+    // non-ephemeral user. Keep the USS in memory: it will be persisted after
+    // the first auth factor gets added.
+    CryptohomeStatusOr<DecryptedUss> new_uss =
+        DecryptedUss::CreateWithRandomMainKey(uss_storage_,
+                                              *file_system_keyset_);
+    if (!new_uss.ok()) {
+      LOG(ERROR) << "User secret stash creation failed";
+      return MakeStatus<CryptohomeError>(
+                 CRYPTOHOME_ERR_LOC(
+                     kLocAuthSessionCreateUSSFailedInOnUserCreated),
+                 ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                                 PossibleAction::kReboot}),
+                 user_data_auth::CryptohomeErrorCode::
+                     CRYPTOHOME_ERROR_MOUNT_FATAL)
+          .Wrap(std::move(new_uss).err_status());
     }
+    decrypted_uss_ = std::move(*new_uss);
   }
 
   return OkStatus<CryptohomeError>();
@@ -693,33 +690,18 @@ void AuthSession::MigrateToUssDuringUpdateVaultKeyset(
   // verifications.
   AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
 
-  if (IsUserSecretStashExperimentEnabled(platform_)) {
-    UssMigrator migrator(username_);
-    // FilesystemKeyset is the same for all VaultKeysets hence the session's
-    // |file_system_keyset_| is what we need for the migrator.
-    migrator.MigrateVaultKeysetToUss(
-        uss_storage_, auth_factor_label, file_system_keyset_.value(),
-        base::BindOnce(&AuthSession::OnMigrationUssCreatedForUpdate,
-                       weak_factory_.GetWeakPtr(), auth_factor_type,
-                       auth_factor_label, auth_factor_metadata, auth_input,
-                       std::move(on_done), std::move(callback_error),
-                       std::move(key_blobs), std::move(auth_block_state)));
-    // Since migration removes the keyset file, we don't update the keyset file.
-    return;
-  }
-
-  CryptohomeStatus status = keyset_management_->UpdateKeysetWithKeyBlobs(
-      VaultKeysetIntent{.backup = false}, obfuscated_username_, key_data,
-      *vault_keyset_.get(), std::move(*key_blobs.get()),
-      std::move(auth_block_state));
-  if (!status.ok()) {
-    std::move(on_done).Run(
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocAuthSessionUpdateWithBlobFailedInUpdateKeyset))
-            .Wrap(std::move(status)));
-  }
-  std::move(on_done).Run(OkStatus<CryptohomeError>());
+  UssMigrator migrator(username_);
+  // FilesystemKeyset is the same for all VaultKeysets hence the session's
+  // |file_system_keyset_| is what we need for the migrator.
+  migrator.MigrateVaultKeysetToUss(
+      uss_storage_, auth_factor_label, file_system_keyset_.value(),
+      base::BindOnce(&AuthSession::OnMigrationUssCreatedForUpdate,
+                     weak_factory_.GetWeakPtr(), auth_factor_type,
+                     auth_factor_label, auth_factor_metadata, auth_input,
+                     std::move(on_done), std::move(callback_error),
+                     std::move(key_blobs), std::move(auth_block_state)));
+  // Since migration removes the keyset file, we don't update the keyset file.
+  return;
 }
 
 void AuthSession::AuthenticateViaVaultKeysetAndMigrateToUss(
@@ -884,7 +866,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
 
   ReportTimerDuration(auth_session_performance_timer.get());
 
-  if (auth_for_decrypt_ && IsUserSecretStashExperimentEnabled(platform_)) {
+  if (auth_for_decrypt_) {
     UssMigrator migrator(username_);
 
     migrator.MigrateVaultKeysetToUss(

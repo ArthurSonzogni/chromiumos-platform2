@@ -25,7 +25,6 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state_test_utils.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
-#include "cryptohome/user_secret_stash/user_secret_stash.h"
 
 namespace cryptohome {
 namespace {
@@ -673,24 +672,7 @@ TEST_F(LoadAllAuthFactorsTest, NoFactors) {
   EXPECT_THAT(af_map, IsEmpty());
 }
 
-TEST_F(LoadAllAuthFactorsTest, LoadWithOnlyVaultKeysets) {
-  auto no_uss = DisableUssExperiment();
-  InstallVaultKeysets({{"primary", &CreatePasswordVaultKeyset},
-                       {"secondary", &CreatePasswordVaultKeyset}});
-
-  auto af_map =
-      manager_.LoadAllAuthFactors(kObfuscatedUsername, {}, converter_);
-
-  EXPECT_THAT(af_map,
-              UnorderedElementsAre(
-                  AuthFactorMapItem(AuthFactorType::kPassword, "primary",
-                                    AuthFactorStorageType::kVaultKeyset),
-                  AuthFactorMapItem(AuthFactorType::kPassword, "secondary",
-                                    AuthFactorStorageType::kVaultKeyset)));
-}
-
 TEST_F(LoadAllAuthFactorsTest, LoadWithOnlyUss) {
-  auto uss = EnableUssExperiment();
   InstallVaultKeysets({});
   InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "primary",
                               {.metadata = PasswordMetadata()},
@@ -755,7 +737,6 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithMixUsesUssAndMigratedVk) {
 }
 
 TEST_F(LoadAllAuthFactorsTest, LoadWithOnlyUssAndBrokenFactors) {
-  auto uss = EnableUssExperiment();
   InstallVaultKeysets({});
   InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "primary",
                               {.metadata = PasswordMetadata()},

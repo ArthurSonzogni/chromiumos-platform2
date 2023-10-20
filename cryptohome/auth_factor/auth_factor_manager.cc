@@ -32,7 +32,6 @@
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/user_secret_stash/user_secret_stash.h"
 
 namespace cryptohome {
 namespace {

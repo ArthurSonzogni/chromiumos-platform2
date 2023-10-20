@@ -28,7 +28,6 @@
 #include "cryptohome/key_objects.h"
 #include "cryptohome/user_secret_stash/decrypted.h"
 #include "cryptohome/user_secret_stash/storage.h"
-#include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {

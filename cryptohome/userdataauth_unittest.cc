@@ -82,7 +82,6 @@
 #include "cryptohome/storage/mock_mount.h"
 #include "cryptohome/storage/mock_mount_factory.h"
 #include "cryptohome/user_secret_stash/storage.h"
-#include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/mock_user_session_factory.h"
 #include "cryptohome/username.h"
@@ -1964,10 +1963,6 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   // Checks that when we have a bunch of stale shadow mounts, some active
   // mounts, and no open filehandles, all inactive mounts are unmounted.
 
-  EXPECT_CALL(platform_,
-              FileExists(base::FilePath("/var/lib/cryptohome/uss_disabled")));
-  EXPECT_CALL(platform_,
-              FileExists(base::FilePath("/var/lib/cryptohome/uss_enabled")));
   EXPECT_CALL(platform_, FileExists(base::FilePath("/home/.shadow/salt")))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_,
@@ -2095,10 +2090,6 @@ TEST_F(UserDataAuthTest,
   // Checks that when we have a bunch of stale shadow mounts, some active
   // mounts, and no open filehandles, all inactive mounts are unmounted.
 
-  EXPECT_CALL(platform_,
-              FileExists(base::FilePath("/var/lib/cryptohome/uss_disabled")));
-  EXPECT_CALL(platform_,
-              FileExists(base::FilePath("/var/lib/cryptohome/uss_enabled")));
   EXPECT_CALL(platform_, FileExists(base::FilePath("/home/.shadow/salt")))
       .WillOnce(Return(false));
   EXPECT_CALL(platform_,
