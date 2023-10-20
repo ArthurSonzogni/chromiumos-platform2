@@ -246,6 +246,10 @@ class TerminaVm final : public VmBaseImpl {
       std::unique_ptr<vm_tools::Maitred::Stub> stub,
       VmBuilder vm_builder);
 
+  // In production, maitred shutdown happens ~whenever. In tests we need to
+  // force the shutdown to happen before cleanup.
+  void StopMaitredForTesting(base::OnceClosure stop_callback);
+
  private:
   // Helper class for asynchronously cleaning up the GRPC client.
   struct MaitredDeleter {

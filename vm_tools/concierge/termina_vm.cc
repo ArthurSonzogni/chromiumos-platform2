@@ -119,7 +119,6 @@ void TerminaVm::MaitredDeleter::operator()(
         // callback (currently) deadlocks, i.e. the callback is posted to
         // the same sequence that called ShutDown().
         delete maitred;
-        LOG(INFO) << "Maitred stub deleted: " << maitred;
       },
       maitred));
 }
@@ -1119,6 +1118,17 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
   vm->InitializeMaitredService(std::move(stub));
   vm->network_alloc_ = network_allocation;
   return vm;
+}
+
+void TerminaVm::StopMaitredForTesting(base::OnceClosure stop_callback) {
+  auto maitred = maitred_handle_.release();
+  maitred->ShutDown(base::BindOnce(
+      [](brillo::AsyncGrpcClient<vm_tools::Maitred>* maitred,
+         base::OnceClosure stop_callback) {
+        delete maitred;
+        std::move(stop_callback).Run();
+      },
+      maitred, std::move(stop_callback)));
 }
 
 }  // namespace vm_tools::concierge

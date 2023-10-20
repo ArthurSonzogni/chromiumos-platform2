@@ -393,6 +393,13 @@ void TerminaVmTest::SetUp() {
 }
 
 void TerminaVmTest::TearDown() {
+  // Explicitly stop the grpc client.
+  //
+  // See b/305092746 for context.
+  base::RunLoop maitred_loop;
+  vm_->StopMaitredForTesting(maitred_loop.QuitClosure());
+  maitred_loop.Run();
+
   // Do the opposite of SetUp to make sure things get cleaned up in the right
   // order.
   vm_.reset();
