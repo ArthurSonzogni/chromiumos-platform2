@@ -5,8 +5,8 @@
 description     "create validated caches of lockbox protected files"
 author          "chromium-os-dev@chromium.org"
 
-# Runs before cryptohomed so it can consume install attributes.
-start on starting cryptohomed
+# Runs before device_managementd so it can consume install attributes.
+start on starting device_managementd
 
 oom score -100
 
