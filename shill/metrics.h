@@ -683,6 +683,9 @@ class Metrics {
     kEthernetDriverRndisHost = 28,
     kEthernetDriverAtl1c = 29,
     kEthernetDriverSky2 = 30,
+    kEthernetDriverStGmac = 31,
+    kEthernetDriverNForce = 32,
+    kEthernetDriverR8153 = 33,
     kEthernetDriverMax
   };
   static constexpr EnumMetric<FixedName> kMetricEthernetDriver = {

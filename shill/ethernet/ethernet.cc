@@ -990,6 +990,7 @@ void Ethernet::NotifyEthernetDriverName() {
           {"e100", Metrics::kEthernetDriverE100},
           {"e1000", Metrics::kEthernetDriverE1000},
           {"e1000e", Metrics::kEthernetDriverE1000e},
+          {"forcedeth", Metrics::kEthernetDriverNForce},
           {"igb", Metrics::kEthernetDriverIgb},
           {"igbvf", Metrics::kEthernetDriverIgbvf},
           {"igc", Metrics::kEthernetDriverIgc},
@@ -1005,6 +1006,8 @@ void Ethernet::NotifyEthernetDriverName() {
           {"sky2", Metrics::kEthernetDriverSky2},
           {"smsc75xx", Metrics::kEthernetDriverSmsc75xx},
           {"smsc95xx", Metrics::kEthernetDriverSmsc95xx},
+          {"st_gmac", Metrics::kEthernetDriverStGmac},
+          {"r8153_ecm", Metrics::kEthernetDriverR8153},
           {"tg3", Metrics::kEthernetDriverTg3},
           {"error", Metrics::kEthernetDriverError},
       });
