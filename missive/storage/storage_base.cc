@@ -320,11 +320,6 @@ void QueuesContainer::RegisterCompletionCallback(base::OnceClosure callback) {
   }
 }
 
-void QueuesContainer::DropAllQueues() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  queues_.clear();
-}
-
 base::WeakPtr<QueuesContainer> QueuesContainer::GetWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
 }

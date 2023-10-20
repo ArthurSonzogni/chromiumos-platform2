@@ -85,9 +85,6 @@ class QueuesContainer
 
   void RegisterCompletionCallback(base::OnceClosure callback);
 
-  // Removes references to all queues inside `queues_`.
-  void DropAllQueues();
-
   base::WeakPtr<QueuesContainer> GetWeakPtr();
 
   // Accessors.
