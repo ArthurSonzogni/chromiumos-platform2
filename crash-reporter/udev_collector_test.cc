@@ -53,8 +53,11 @@ const char kBluetoothCoredumpFilePattern[] = "bt_firmware.*";
 // Dummy content for device coredump data file.
 const char kDevCoredumpDataContents[] = "coredump";
 
+// BT tests should be using BT specific driver name.
+const char kConnectivityBTDriverName[] = "bt_driver";
+
 // Driver name for a coredump that should not be collected:
-const char kNoCollectDriverName[] = "iwlwifi";
+const char kNoCollectDriverName[] = "disallowed_driver";
 
 // Driver name for a coredump that should be collected:
 const char kCollectedDriverName[] = "msm";
@@ -209,7 +212,7 @@ TEST_F(UdevCollectorTest, TestCollectedDevCoredump) {
 
 TEST_F(UdevCollectorTest, RunAsRoot_TestValidBluetoothDevCoredump) {
   std::string device_name = "devcd0";
-  GenerateDevCoredump(device_name, kNoCollectDriverName);
+  GenerateDevCoredump(device_name, kConnectivityBTDriverName);
 
   FilePath data_path =
       FilePath(base::StringPrintf("%s/%s/data",
@@ -241,7 +244,7 @@ TEST_F(UdevCollectorTest, RunAsRoot_TestValidBluetoothDevCoredump) {
 
 TEST_F(UdevCollectorTest, RunAsRoot_TestInvalidBluetoothDevCoredump) {
   std::string device_name = "devcd1";
-  GenerateDevCoredump(device_name, kNoCollectDriverName);
+  GenerateDevCoredump(device_name, kConnectivityBTDriverName);
 
   FilePath data_path =
       FilePath(base::StringPrintf("%s/%s/data",
