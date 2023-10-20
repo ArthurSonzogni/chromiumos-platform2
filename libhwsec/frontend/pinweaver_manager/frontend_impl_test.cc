@@ -36,6 +36,7 @@ using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::error::testing::IsOkAnd;
 using ::hwsec_foundation::error::testing::IsOkAndHolds;
 using ::hwsec_foundation::error::testing::NotOkAnd;
+using ::testing::AnyOf;
 using ::testing::Eq;
 using ::testing::Ge;
 
@@ -1176,16 +1177,21 @@ TEST_F(PinWeaverManagerImplTest, FailedSyncDiskCorrupted) {
               NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kSpaceNotFound))));
   EXPECT_THAT(pinweaver_manager_->CheckCredential(label2, kLeSecret1),
               NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kSpaceNotFound))));
-  // The InsertCredential commend sended to TPM will fail due to out-of-sync
-  // hash tree. After receiving kPinWeaverOutOfSync, the RetryHandler
-  // attempted to perform ReplayLog but still failed. As a result, the hash
-  // tree is locked.
+
+  // The following InsertCredential attempt has two failure scenarios:
+  // 1. If the label being inserted (randomly chosen) has a corrupted sibling,
+  //    the GetAuxHashes call will fail and return kSpaceNotFound.
+  // 2. If all siblings are not corrupted, the InsertCredential command will be
+  //    sent to GSC but fail due to an out-of-sync root hash (returning
+  //    kPinWeaverOutOfSync). The RetryHandler will attempt to perform ReplayLog
+  //    but still fail. As a result, the hash tree will be locked.
   EXPECT_THAT(
       pinweaver_manager_->InsertCredential(
           std::vector<hwsec::OperationPolicySetting>(), kLeSecret2, kHeSecret1,
           kResetSecret1, delay_sched,
           /*expiration_delay=*/std::nullopt),
-      NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverOutOfSync))));
+      NotOkAnd(HasTPMRetryAction(AnyOf(Eq(TPMRetryAction::kPinWeaverOutOfSync),
+                                       Eq(TPMRetryAction::kSpaceNotFound)))));
 }
 
 TEST_F(PinWeaverManagerImplTest, CheckCredentialExpirations) {
