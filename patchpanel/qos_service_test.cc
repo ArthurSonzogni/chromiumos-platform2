@@ -92,7 +92,8 @@ class FakeDNSClientFactory : public net_base::DNSClientFactory {
         .WillByDefault([this](net_base::IPFamily family,
                               std::string_view hostname,
                               DNSClient::Callback callback,
-                              const DNSClient::Options& options) {
+                              const DNSClient::Options& options,
+                              net_base::AresInterface* ares_interface) {
           switch (family) {
             case net_base::IPFamily::kIPv4:
               ipv4_callbacks_.emplace_back(std::move(callback));
@@ -112,7 +113,8 @@ class FakeDNSClientFactory : public net_base::DNSClientFactory {
               (net_base::IPFamily family,
                std::string_view hostname,
                DNSClient::Callback callback,
-               const DNSClient::Options& options),
+               const DNSClient::Options& options,
+               net_base::AresInterface* ares_interface),
               (override));
 
   void TriggerIPv4Callback(const DNSClient::Result& result) {
@@ -271,10 +273,14 @@ TEST(QoSServiceTest, UpdateDoHProviders) {
       "",  // check that no crash for empty string
   };
 
-  EXPECT_CALL(*dns_factory, Resolve(net_base::IPFamily::kIPv4, "url-a", _, _));
-  EXPECT_CALL(*dns_factory, Resolve(net_base::IPFamily::kIPv6, "url-a", _, _));
-  EXPECT_CALL(*dns_factory, Resolve(net_base::IPFamily::kIPv4, "url-b", _, _));
-  EXPECT_CALL(*dns_factory, Resolve(net_base::IPFamily::kIPv6, "url-b", _, _));
+  EXPECT_CALL(*dns_factory,
+              Resolve(net_base::IPFamily::kIPv4, "url-a", _, _, _));
+  EXPECT_CALL(*dns_factory,
+              Resolve(net_base::IPFamily::kIPv6, "url-a", _, _, _));
+  EXPECT_CALL(*dns_factory,
+              Resolve(net_base::IPFamily::kIPv4, "url-b", _, _, _));
+  EXPECT_CALL(*dns_factory,
+              Resolve(net_base::IPFamily::kIPv6, "url-b", _, _, _));
 
   svc.UpdateDoHProviders(doh_list);
 

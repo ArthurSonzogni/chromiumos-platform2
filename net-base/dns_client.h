@@ -19,7 +19,8 @@ namespace net_base {
 
 class AresInterface;
 
-// An async DNS resolver.
+// An async DNS resolver. The object can be destroyed at anytime to cancel the
+// ongoing query.
 class NET_BASE_EXPORT DNSClient {
  public:
   // The values should be matched with the constants defined in ares.h, except
@@ -61,6 +62,18 @@ class NET_BASE_EXPORT DNSClient {
     // - Interface.
   };
 
+  DNSClient() = default;
+
+  // Pure virtual just to make this class abstract.
+  virtual ~DNSClient() = 0;
+
+  // DNSClientFactory is neither copyable nor movable.
+  DNSClient(const DNSClient&) = delete;
+  DNSClient& operator=(const DNSClient&) = delete;
+};
+
+class NET_BASE_EXPORT DNSClientFactory {
+ public:
   // Resolves |hostname| to IP address in |family|. Results (either the
   // IPAddresses or failure) are returned to the caller by |callback|.
   // - This function will always return a valid object (unless it fails to
@@ -71,30 +84,11 @@ class NET_BASE_EXPORT DNSClient {
   //   ongoing DNS query. If this happens before the callback is triggered, the
   //   callback won't be triggered any more.
   // - |ares| is only used in unit tests.
-  static std::unique_ptr<DNSClient> Resolve(IPFamily family,
-                                            std::string_view hostname,
-                                            Callback callback,
-                                            const Options& options,
-                                            AresInterface* ares = nullptr);
-
-  virtual ~DNSClient() = default;
-
-  // DNSClientFactory is neither copyable nor movable.
-  DNSClient(const DNSClient&) = delete;
-  DNSClient& operator=(const DNSClient&) = delete;
-
- protected:
-  // Should only be constructed from the factory method.
-  DNSClient() = default;
-};
-
-// A wrapper of DNSClient for the ease of unit tests.
-class NET_BASE_EXPORT DNSClientFactory {
- public:
   virtual std::unique_ptr<DNSClient> Resolve(IPFamily family,
                                              std::string_view hostname,
                                              DNSClient::Callback callback,
-                                             const DNSClient::Options& options);
+                                             const DNSClient::Options& options,
+                                             AresInterface* ares = nullptr);
 
   DNSClientFactory() = default;
   virtual ~DNSClientFactory() = default;

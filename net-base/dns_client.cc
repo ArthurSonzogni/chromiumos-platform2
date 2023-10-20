@@ -347,24 +347,19 @@ void DNSClientImpl::RefreshTimeout() {
 
 }  // namespace
 
-std::unique_ptr<DNSClient> DNSClient::Resolve(IPFamily family,
-                                              std::string_view hostname,
-                                              Callback callback,
-                                              const Options& options,
-                                              AresInterface* ares) {
-  if (!ares) {
-    ares = AresInterface::GetInstance();
-  }
-  return std::make_unique<DNSClientImpl>(family, hostname, std::move(callback),
-                                         options, ares);
-}
+DNSClient::~DNSClient() = default;
 
 std::unique_ptr<DNSClient> DNSClientFactory::Resolve(
     IPFamily family,
     std::string_view hostname,
     DNSClient::Callback callback,
-    const DNSClient::Options& options) {
-  return DNSClient::Resolve(family, hostname, std::move(callback), options);
+    const DNSClient::Options& options,
+    AresInterface* ares) {
+  if (!ares) {
+    ares = AresInterface::GetInstance();
+  }
+  return std::make_unique<DNSClientImpl>(family, hostname, std::move(callback),
+                                         options, ares);
 }
 
 }  // namespace net_base

@@ -274,8 +274,9 @@ TEST_F(DNSClientTest, IPv4WriteReadAndReturnSuccess) {
   const auto addrs = {IPAddress::CreateFromString("192.168.1.1").value(),
                       IPAddress::CreateFromString("192.168.1.2").value()};
 
-  auto client = DNSClient::Resolve(IPFamily::kIPv4, "test-url", GetCallback(),
-                                   /*options=*/{}, &fake_ares);
+  auto client =
+      DNSClientFactory().Resolve(IPFamily::kIPv4, "test-url", GetCallback(),
+                                 /*options=*/{}, &fake_ares);
 
   fake_ares.TriggerWriteReady();
   task_env_.RunUntilIdle();
@@ -291,8 +292,9 @@ TEST_F(DNSClientTest, IPv6WriteReadAndReturnSuccess) {
   const auto addrs = {IPAddress::CreateFromString("fd00::1").value(),
                       IPAddress::CreateFromString("fd00::2").value()};
 
-  auto client = DNSClient::Resolve(IPFamily::kIPv6, "test-url", GetCallback(),
-                                   /*options=*/{}, &fake_ares);
+  auto client =
+      DNSClientFactory().Resolve(IPFamily::kIPv6, "test-url", GetCallback(),
+                                 /*options=*/{}, &fake_ares);
 
   fake_ares.TriggerWriteReady();
   task_env_.RunUntilIdle();
@@ -308,8 +310,9 @@ TEST_F(DNSClientTest, MultipleWriteReadAndReturnSuccess) {
   const auto addrs = {IPAddress::CreateFromString("192.168.1.1").value(),
                       IPAddress::CreateFromString("192.168.1.2").value()};
 
-  auto client = DNSClient::Resolve(IPFamily::kIPv4, "test-url", GetCallback(),
-                                   /*options=*/{}, &fake_ares);
+  auto client =
+      DNSClientFactory().Resolve(IPFamily::kIPv4, "test-url", GetCallback(),
+                                 /*options=*/{}, &fake_ares);
 
   fake_ares.TriggerWriteReady();
   fake_ares.TriggerReadReady();
@@ -328,8 +331,9 @@ TEST_F(DNSClientTest, MultipleWriteReadAndReturnSuccess) {
 TEST_F(DNSClientTest, WriteReadAndReturnError) {
   FakeAres fake_ares;
 
-  auto client = DNSClient::Resolve(IPFamily::kIPv4, "test-url", GetCallback(),
-                                   /*options=*/{}, &fake_ares);
+  auto client =
+      DNSClientFactory().Resolve(IPFamily::kIPv4, "test-url", GetCallback(),
+                                 /*options=*/{}, &fake_ares);
 
   fake_ares.TriggerWriteReady();
   fake_ares.TriggerReadReady();
@@ -344,8 +348,8 @@ TEST_F(DNSClientTest, WriteAndTimeout) {
   DNSClient::Options opts = {
       .timeout = base::Seconds(1),
   };
-  auto client = DNSClient::Resolve(IPFamily::kIPv4, "test-url", GetCallback(),
-                                   opts, &fake_ares);
+  auto client = DNSClientFactory().Resolve(IPFamily::kIPv4, "test-url",
+                                           GetCallback(), opts, &fake_ares);
 
   fake_ares.TriggerWriteReady();
   task_env_.RunUntilIdle();
@@ -357,8 +361,9 @@ TEST_F(DNSClientTest, WriteAndTimeout) {
 TEST_F(DNSClientTest, WriteAndDestroyObject) {
   FakeAres fake_ares;
 
-  auto client = DNSClient::Resolve(IPFamily::kIPv4, "test-url", GetCallback(),
-                                   /*options=*/{}, &fake_ares);
+  auto client =
+      DNSClientFactory().Resolve(IPFamily::kIPv4, "test-url", GetCallback(),
+                                 /*options=*/{}, &fake_ares);
 
   fake_ares.TriggerWriteReady();
   task_env_.RunUntilIdle();
