@@ -689,7 +689,7 @@ StatusOr<ScopedKey> KeyManagementTpm1::LoadKeyInternal(
   }
 
   KeyToken token = current_token_++;
-  key_map_.emplace(token, KeyTpm1{
+  key_map_.emplace(token, std::make_unique<KeyTpm1>(KeyTpm1{
                               .type = key_type,
                               .key_handle = key_handle,
                               .cache =
@@ -699,7 +699,7 @@ StatusOr<ScopedKey> KeyManagementTpm1::LoadKeyInternal(
                               .scoped_key = std::move(scoped_key),
                               .scoped_policy = std::move(scoped_policy),
                               .reload_data = std::move(reload_data),
-                          });
+                          }));
 
   return ScopedKey(Key{.token = token}, middleware_derivative_);
 }
@@ -728,7 +728,7 @@ StatusOr<std::reference_wrapper<KeyTpm1>> KeyManagementTpm1::GetKeyData(
   if (it == key_map_.end()) {
     return MakeStatus<TPMError>("Unknown key", TPMRetryAction::kNoRetry);
   }
-  return it->second;
+  return *it->second;
 }
 
 Status KeyManagementTpm1::ReloadIfPossible(Key key) {
@@ -834,7 +834,7 @@ StatusOr<ScopedKey> KeyManagementTpm1::CreateRsaPublicKeyObject(
   KeyToken token = current_token_++;
   key_map_.emplace(
       token,
-      KeyTpm1{
+      std::make_unique<KeyTpm1>(KeyTpm1{
           .type = KeyTpm1::Type::kTransientKey,
           .key_handle = key_handle,
           .cache =
@@ -844,7 +844,7 @@ StatusOr<ScopedKey> KeyManagementTpm1::CreateRsaPublicKeyObject(
               },
           .scoped_key = std::move(local_key_handle),
           .reload_data = std::nullopt,
-      });
+      }));
 
   return ScopedKey(Key{.token = token}, middleware_derivative_);
 }

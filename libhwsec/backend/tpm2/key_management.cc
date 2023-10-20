@@ -227,10 +227,10 @@ KeyManagementTpm2::~KeyManagementTpm2() {
 
   std::vector<Key> key_list;
   for (auto& [token, data] : key_map_) {
-    if (data.reload_data.has_value() &&
-        data.reload_data->flush_timer != nullptr) {
-      data.reload_data->flush_timer->Stop();
-      data.reload_data->flush_timer.reset();
+    if (data->reload_data.has_value() &&
+        data->reload_data->flush_timer != nullptr) {
+      data->reload_data->flush_timer->Stop();
+      data->reload_data->flush_timer.reset();
     }
     key_list.push_back(Key{.token = token});
   }
@@ -639,7 +639,8 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadKey(
     const brillo::Blob& key_blob,
     const LoadKeyOptions& load_key_options) {
   if (load_key_options.auto_reload == true && policy.device_configs.none()) {
-    for (auto& [token, key_data] : key_map_) {
+    for (auto& [token, key_data_ptr] : key_map_) {
+      auto& key_data = *key_data_ptr;
       if (IsKeyDataMatch(key_data, key_blob, policy)) {
         if (key_data.reload_data->flush_timer != nullptr) {
           key_data.reload_data->flush_timer->Stop();
@@ -883,7 +884,7 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadKeyInternal(
   }
 
   KeyToken token = current_token_++;
-  key_map_.emplace(token, KeyTpm2{
+  key_map_.emplace(token, std::make_unique<KeyTpm2>(KeyTpm2{
                               .type = key_type,
                               .key_handle = key_handle,
                               .cache =
@@ -892,7 +893,7 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadKeyInternal(
                                       .public_area = std::move(public_area),
                                   },
                               .reload_data = std::move(reload_data),
-                          });
+                          }));
 
   return ScopedKey(Key{.token = token}, middleware_derivative_);
 }
@@ -966,7 +967,7 @@ StatusOr<std::reference_wrapper<KeyTpm2>> KeyManagementTpm2::GetKeyData(
   if (it == key_map_.end()) {
     return MakeStatus<TPMError>("Unknown key", TPMRetryAction::kNoRetry);
   }
-  return it->second;
+  return *it->second;
 }
 
 Status KeyManagementTpm2::ReloadIfPossible(Key key) {

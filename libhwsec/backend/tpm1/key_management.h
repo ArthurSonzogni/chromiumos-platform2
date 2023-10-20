@@ -156,7 +156,9 @@ class KeyManagementTpm1 : public KeyManagement {
   MiddlewareDerivative& middleware_derivative_;
 
   KeyToken current_token_ = 0;
-  absl::flat_hash_map<KeyToken, KeyTpm1> key_map_;
+  // We need pointer/reference stability for values, use an extra unique_ptr
+  // here.
+  absl::flat_hash_map<KeyToken, std::unique_ptr<KeyTpm1>> key_map_;
   absl::flat_hash_map<PersistentKeyType, KeyToken> persistent_key_map_;
   std::optional<ScopedTssKey> srk_cache_;
 };

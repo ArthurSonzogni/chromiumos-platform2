@@ -68,6 +68,8 @@ class SessionManagementTpm2 : public SessionManagement {
  private:
   TrunksContext& context_;
 
+  // We need pointer/reference stability for values, use an extra unique_ptr
+  // here.
   absl::flat_hash_map<SessionSecuritySetting,
                       std::unique_ptr<trunks::HmacSession>>
       hmac_sessions_;
