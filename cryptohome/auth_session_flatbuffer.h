@@ -11,8 +11,8 @@
 namespace cryptohome {
 
 // Convert AuthIntent to and from the serialized flatbuffer type.
-enumeration::SerializedAuthIntent SerializeAuthIntent(AuthIntent intent);
-AuthIntent DeserializeAuthIntent(enumeration::SerializedAuthIntent intent);
+SerializedAuthIntent SerializeAuthIntent(AuthIntent intent);
+AuthIntent DeserializeAuthIntent(SerializedAuthIntent intent);
 
 }  // namespace cryptohome
 

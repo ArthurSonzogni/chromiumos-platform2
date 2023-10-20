@@ -20,9 +20,8 @@ namespace cryptohome {
 
 namespace {
 
-bool IntentInUserPolicyIntents(
-    const AuthIntent& intent,
-    std::vector<::cryptohome::enumeration::SerializedAuthIntent> auth_intents) {
+bool IntentInUserPolicyIntents(const AuthIntent& intent,
+                               std::vector<SerializedAuthIntent> auth_intents) {
   for (auto auth_intent : auth_intents) {
     if (SerializeAuthIntent(intent) == auth_intent) {
       return true;

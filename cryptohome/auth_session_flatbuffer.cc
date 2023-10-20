@@ -9,24 +9,24 @@
 
 namespace cryptohome {
 
-enumeration::SerializedAuthIntent SerializeAuthIntent(AuthIntent intent) {
+SerializedAuthIntent SerializeAuthIntent(AuthIntent intent) {
   switch (intent) {
     case AuthIntent::kDecrypt:
-      return enumeration::SerializedAuthIntent::kDecrypt;
+      return SerializedAuthIntent::kDecrypt;
     case AuthIntent::kVerifyOnly:
-      return enumeration::SerializedAuthIntent::kVerifyOnly;
+      return SerializedAuthIntent::kVerifyOnly;
     case AuthIntent::kWebAuthn:
-      return enumeration::SerializedAuthIntent::kWebAuthn;
+      return SerializedAuthIntent::kWebAuthn;
   }
 }
 
-AuthIntent DeserializeAuthIntent(enumeration::SerializedAuthIntent intent) {
+AuthIntent DeserializeAuthIntent(SerializedAuthIntent intent) {
   switch (intent) {
-    case enumeration::SerializedAuthIntent::kDecrypt:
+    case SerializedAuthIntent::kDecrypt:
       return AuthIntent::kDecrypt;
-    case enumeration::SerializedAuthIntent::kVerifyOnly:
+    case SerializedAuthIntent::kVerifyOnly:
       return AuthIntent::kVerifyOnly;
-    case enumeration::SerializedAuthIntent::kWebAuthn:
+    case SerializedAuthIntent::kWebAuthn:
       return AuthIntent::kWebAuthn;
   }
 }

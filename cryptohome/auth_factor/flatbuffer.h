@@ -13,10 +13,9 @@
 namespace cryptohome {
 
 // Convert AuthFactorType to and from the serialized flatbuffer type.
-std::optional<enumeration::SerializedAuthFactorType> SerializeAuthFactorType(
+std::optional<SerializedAuthFactorType> SerializeAuthFactorType(
     AuthFactorType type);
-AuthFactorType DeserializeAuthFactorType(
-    enumeration::SerializedAuthFactorType type);
+AuthFactorType DeserializeAuthFactorType(SerializedAuthFactorType type);
 
 }  // namespace cryptohome
 

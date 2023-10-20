@@ -165,8 +165,6 @@ action("auth-block-state-flatbuffers-binding-generate") {
     "--test_utils_header_include_path",
     "cryptohome/flatbuffer_schemas/structures_test_utils.h",
     "${root_gen_dir}/bfbs/auth_block_state.bfbs",
-    "--filter_by_namespace",
-    "cryptohome",
   ]
   deps = [
     ":auth-block-state-flatbuffers-binding-binary",
@@ -200,8 +198,6 @@ action("enumerations-flatbuffers-binding-generate") {
     "--test_utils_header_include_path",
     "cryptohome/flatbuffer_schemas/enumerations.h",
     "${root_gen_dir}/bfbs/enumerations.bfbs",
-    "--filter_by_namespace",
-    "cryptohome::enumeration",
   ]
   deps = [
     ":enumerations-flatbuffers-binding-binary",
@@ -242,8 +238,6 @@ action("structures-flatbuffers-binding-generate") {
     "--test_utils_header_include_path",
     "libhwsec/structures/signature_sealed_data_test_utils.h",
     "${root_gen_dir}/bfbs/structures.bfbs",
-    "--filter_by_namespace",
-    "cryptohome::structure",
   ]
   deps = [
     ":flatbuffers-binding-generator",
@@ -286,8 +280,6 @@ action("user-policy-flatbuffers-binding-generate") {
     "--test_utils_header_include_path",
     "cryptohome/flatbuffer_schemas/enumerations_test_utils.h",
     "${root_gen_dir}/bfbs/user_policy.bfbs",
-    "--filter_by_namespace",
-    "cryptohome",
   ]
   deps = [
     ":enumerations-flatbuffers-binding-generate",
@@ -374,8 +366,6 @@ action("auth-factor-flatbuffers-binding-generate") {
     "--test_utils_header_include_path",
     "cryptohome/flatbuffer_schemas/auth_block_state_test_utils.h",
     "${root_gen_dir}/bfbs/auth_factor.bfbs",
-    "--filter_by_namespace",
-    "cryptohome::auth_factor",
   ]
   deps = [
     ":auth-block-state-flatbuffers-binding-generate",

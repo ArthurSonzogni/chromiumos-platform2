@@ -15,14 +15,14 @@ attribute "serializable";
 table SerializedUserAuthFactorTypePolicy {
   // The type which this policy applies to. If this is unset then the policy
   // is invalid and should be discarded.
-  type:cryptohome.enumeration._serialized_.SerializedAuthFactorType = null (id: 0);
+  type:SerializedAuthFactorType = null (id: 0);
 
   // Intents which are explicitly enabled and disabled for this type. In a
   // properly serialized policy intents should only appear in at most one of
   // these lists but if an intent appears in both then the disable takes
   // precedence over the enable.
-  enabled_intents:[cryptohome.enumeration._serialized_.SerializedAuthIntent] (id: 1);
-  disabled_intents:[cryptohome.enumeration._serialized_.SerializedAuthIntent] (id: 2);
+  enabled_intents:[SerializedAuthIntent] (id: 1);
+  disabled_intents:[SerializedAuthIntent] (id: 2);
 }
 
 // The persistent structure used to capture all user-global policy.

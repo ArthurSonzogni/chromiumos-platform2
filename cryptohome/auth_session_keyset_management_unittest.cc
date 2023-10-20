@@ -85,7 +85,6 @@ using ::testing::VariantWith;
 using base::test::TaskEnvironment;
 using base::test::TestFuture;
 using brillo::cryptohome::home::SanitizeUserName;
-using cryptohome::enumeration::SerializedAuthFactorType;
 using cryptohome::error::CryptohomeError;
 using hwsec_foundation::error::testing::IsOk;
 using hwsec_foundation::error::testing::NotOk;

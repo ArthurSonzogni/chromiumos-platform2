@@ -9,44 +9,43 @@
 
 namespace cryptohome {
 
-std::optional<enumeration::SerializedAuthFactorType> SerializeAuthFactorType(
+std::optional<SerializedAuthFactorType> SerializeAuthFactorType(
     AuthFactorType type) {
   switch (type) {
     case AuthFactorType::kPassword:
-      return enumeration::SerializedAuthFactorType::kPassword;
+      return SerializedAuthFactorType::kPassword;
     case AuthFactorType::kPin:
-      return enumeration::SerializedAuthFactorType::kPin;
+      return SerializedAuthFactorType::kPin;
     case AuthFactorType::kCryptohomeRecovery:
-      return enumeration::SerializedAuthFactorType::kCryptohomeRecovery;
+      return SerializedAuthFactorType::kCryptohomeRecovery;
     case AuthFactorType::kKiosk:
-      return enumeration::SerializedAuthFactorType::kKiosk;
+      return SerializedAuthFactorType::kKiosk;
     case AuthFactorType::kSmartCard:
-      return enumeration::SerializedAuthFactorType::kSmartCard;
+      return SerializedAuthFactorType::kSmartCard;
     case AuthFactorType::kLegacyFingerprint:
-      return enumeration::SerializedAuthFactorType::kLegacyFingerprint;
+      return SerializedAuthFactorType::kLegacyFingerprint;
     case AuthFactorType::kFingerprint:
-      return enumeration::SerializedAuthFactorType::kFingerprint;
+      return SerializedAuthFactorType::kFingerprint;
     case AuthFactorType::kUnspecified:
       return std::nullopt;
   }
 }
 
-AuthFactorType DeserializeAuthFactorType(
-    enumeration::SerializedAuthFactorType type) {
+AuthFactorType DeserializeAuthFactorType(SerializedAuthFactorType type) {
   switch (type) {
-    case enumeration::SerializedAuthFactorType::kPassword:
+    case SerializedAuthFactorType::kPassword:
       return AuthFactorType::kPassword;
-    case enumeration::SerializedAuthFactorType::kPin:
+    case SerializedAuthFactorType::kPin:
       return AuthFactorType::kPin;
-    case enumeration::SerializedAuthFactorType::kCryptohomeRecovery:
+    case SerializedAuthFactorType::kCryptohomeRecovery:
       return AuthFactorType::kCryptohomeRecovery;
-    case enumeration::SerializedAuthFactorType::kKiosk:
+    case SerializedAuthFactorType::kKiosk:
       return AuthFactorType::kKiosk;
-    case enumeration::SerializedAuthFactorType::kSmartCard:
+    case SerializedAuthFactorType::kSmartCard:
       return AuthFactorType::kSmartCard;
-    case enumeration::SerializedAuthFactorType::kLegacyFingerprint:
+    case SerializedAuthFactorType::kLegacyFingerprint:
       return AuthFactorType::kLegacyFingerprint;
-    case enumeration::SerializedAuthFactorType::kFingerprint:
+    case SerializedAuthFactorType::kFingerprint:
       return AuthFactorType::kFingerprint;
   }
 }

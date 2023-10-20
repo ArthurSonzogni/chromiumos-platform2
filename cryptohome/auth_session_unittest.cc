@@ -78,8 +78,6 @@ namespace {
 
 using base::test::TestFuture;
 using brillo::cryptohome::home::SanitizeUserName;
-using cryptohome::enumeration::SerializedAuthFactorType;
-using cryptohome::enumeration::SerializedAuthIntent;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeMountError;

@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 # Copyright 2022 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
 """A C++ binding code generator for flatbuffers schema.
 
 This generator generates four kinds of files form flatbuffers schema:
@@ -73,13 +72,12 @@ This generator introduces three new custom attributes in the schema:
 """
 
 import argparse
-from datetime import date
-from functools import lru_cache
+import datetime
+import functools
 import logging
 import os
 import re
-from subprocess import PIPE
-from subprocess import run
+import subprocess
 import sys
 
 # The following imports will be available in the build system.
@@ -160,10 +158,10 @@ _COPYRIGHT_HEADER = Template(
 // Generated with command:
 // {{ cmd }}
 """
-).render(year=date.today().year, cmd=" ".join(sys.argv))
+).render(year=datetime.date.today().year, cmd=" ".join(sys.argv))
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def HasAttribute(obj, attr_str):
     for aid in range(obj.AttributesLength()):
         attr = obj.Attributes(aid)
@@ -173,12 +171,12 @@ def HasAttribute(obj, attr_str):
     return False
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def IsSecure(obj):
     return HasAttribute(obj, _SECURE_ATTRIBUTE)
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def IsOptional(field):
     field_type = GetFieldType(field)
     if IsScalar(field_type.BaseType()):
@@ -192,7 +190,7 @@ def IsOptional(field):
     return HasAttribute(field, _OPTIONAL_ATTRIBUTE)
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def IsSerializable(schema, obj):
     if HasAttribute(obj, _SERIALIZABLE_ATTRIBUTE):
         return True
@@ -203,12 +201,12 @@ def IsSerializable(schema, obj):
     return schema.RootTable().Name() == obj.Name()
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def IsScalar(base_type):
     return base_type in _SCALAR_SET
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def IsUType(data_type):
     if data_type.BaseType() == BaseType.UType:
         return True
@@ -217,7 +215,7 @@ def IsUType(data_type):
     return False
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def IsUnion(data_type):
     if data_type.BaseType() == BaseType.Union:
         return True
@@ -229,7 +227,7 @@ def IsUnion(data_type):
 # A workaround to make sure we always returning the same object.
 # Returning unique objects from every accessor would mess up the caching of
 # other function results.
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def GetObject(schema, idx):
     return schema.Objects(idx)
 
@@ -237,7 +235,7 @@ def GetObject(schema, idx):
 # A workaround to make sure we always returning the same enum object.
 # Returning unique objects from every accessor would mess up the caching of
 # other function results.
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def GetEnum(schema, idx):
     return schema.Enums(idx)
 
@@ -245,7 +243,7 @@ def GetEnum(schema, idx):
 # A workaround to make sure we always returning the same values objects.
 # Returning unique objects from every accessor would mess up the caching of
 # other function results.
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def GetValues(enum):
     return tuple(enum.Values(vid) for vid in range(enum.ValuesLength()))
 
@@ -253,34 +251,34 @@ def GetValues(enum):
 # A workaround to make sure we always returning the same field objects.
 # Returning unique objects from every accessor would mess up the caching of
 # other function results.
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def GetFields(obj):
     return tuple(obj.Fields(fid) for fid in range(obj.FieldsLength()))
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def GetSortedFields(obj):
     fields = list(GetFields(obj))
     fields.sort(key=lambda field: field.Id())
     return tuple(fields)
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def GetFieldType(field):
     return field.Type()
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def GetValueUnionType(value):
     return value.UnionType()
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def GetSimpleName(obj):
     return obj.Name().decode("utf-8").split(".")[-1]
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def GetNamespaces(obj, serialized_namespace=False):
     namespaces = obj.Name().decode("utf-8").split(".")[:-1]
     if not serialized_namespace:
@@ -288,16 +286,18 @@ def GetNamespaces(obj, serialized_namespace=False):
     return tuple(namespaces)
 
 
-@lru_cache(maxsize=None)
-def IsNamespaceAllowed(obj, namespace_filter):
-    # Allow everything if the namespace_filter is empty.
-    if not namespace_filter:
-        return True
-    namespace = "::".join(GetNamespaces(obj))
-    return namespace in namespace_filter
+@functools.lru_cache(maxsize=None)
+def GetSchemaBasename(obj):
+    return os.path.basename(obj.DeclarationFile().decode("utf-8"))
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
+def IsSchemaFileAllowed(obj, schema_file):
+    decl_file = GetSchemaBasename(obj)
+    return decl_file == schema_file
+
+
+@functools.lru_cache(maxsize=None)
 def OutputNamespaceHead(target_namespace):
     template = Template(
         """
@@ -307,7 +307,7 @@ def OutputNamespaceHead(target_namespace):
     return template.render(target_namespace=target_namespace)
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def OutputNamespaceFoot(target_namespace):
     template = Template(
         """
@@ -317,7 +317,7 @@ def OutputNamespaceFoot(target_namespace):
     return template.render(target_namespace=target_namespace)
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def OutputObjectType(obj, serialized=False):
     template = Template('::{{ full_name|join("::") }}')
 
@@ -327,7 +327,7 @@ def OutputObjectType(obj, serialized=False):
     return template.render(full_name=full_name)
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def OutputBaseType(base_type):
     if base_type in _BASE_TYPE_STRING:
         return _BASE_TYPE_STRING[base_type]
@@ -339,7 +339,7 @@ def OutputBaseType(base_type):
     )
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def OutputType(schema, data_type, is_secure):
     base_type = data_type.BaseType()
     element_type = data_type.Element()
@@ -380,7 +380,7 @@ def OutputType(schema, data_type, is_secure):
         return OutputBaseType(base_type)
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def OutputFieldType(schema, field, is_secure):
     data_type = GetFieldType(field)
     is_optional = IsOptional(field)
@@ -395,8 +395,9 @@ def OutputFieldType(schema, field, is_secure):
     return inner_type
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def OutputStructure(schema, obj):
+    # pylint: disable=line-too-long
     template = Template(
         """
         {{ namespace_head }}
@@ -448,7 +449,7 @@ def OutputStructure(schema, obj):
     )
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def OutputVariant(schema, union):
     template = Template(
         """
@@ -482,7 +483,7 @@ def OutputVariant(schema, union):
     )
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def OutputEnum(enum):
     template = Template(
         """
@@ -517,7 +518,7 @@ def OutputEnum(enum):
     )
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def OutputEnumToFlatBuffer(enum):
     template = Template(
         """
@@ -558,7 +559,7 @@ def OutputEnumToFlatBuffer(enum):
     )
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def OutputUnionTypeToFlatBuffer(schema, union):
     template = Template(
         """
@@ -614,8 +615,9 @@ def OutputUnionTypeToFlatBuffer(schema, union):
     )
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def OutputStructureToFlatBuffer(schema, obj):
+    # pylint: disable=line-too-long
     template = Template(
         """
         {{ namespace_head }}
@@ -679,7 +681,7 @@ def OutputStructureToFlatBuffer(schema, obj):
     )
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def OutputStructureSerializer(obj):
     template = Template(
         """
@@ -741,7 +743,7 @@ def OutputStructureSerializer(obj):
     )
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def OutputEnumFromFlatBuffer(enum):
     template = Template(
         """
@@ -781,8 +783,9 @@ def OutputEnumFromFlatBuffer(enum):
     )
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def OutputUnionFromFlatBuffer(schema, union):
+    # pylint: disable=line-too-long
     template = Template(
         """
         {{ namespace_head }}
@@ -841,8 +844,9 @@ def OutputUnionFromFlatBuffer(schema, union):
     )
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def OutputStructureFromFlatBuffer(schema, obj):
+    # pylint: disable=line-too-long
     template = Template(
         """
         {{ namespace_head }}
@@ -905,8 +909,9 @@ def OutputStructureFromFlatBuffer(schema, obj):
     )
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def OutputStructureDeserializer(obj):
+    # pylint: disable=line-too-long
     template = Template(
         """
         {{ namespace_head }}
@@ -964,7 +969,7 @@ def OutputStructureDeserializer(obj):
     )
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def OutputTestStructure(obj):
     template = Template(
         """
@@ -1002,7 +1007,7 @@ def OutputTestStructure(obj):
     )
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def TypeToID(data_type):
     base_type = data_type.BaseType()
     element_type = data_type.Element()
@@ -1027,7 +1032,7 @@ def TypeToID(data_type):
     return None
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def CheckSecure(schema, node_id):
     node_type, entity_id = node_id
 
@@ -1071,7 +1076,7 @@ def CheckSecure(schema, node_id):
 # Check every object is inside the serialized namespace.
 # So the developers would not confused about why the last namespace disappeared
 # if they forget to add the serialized namespace.
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def CheckSerializedNamespaces(obj):
     namespaces = obj.Name().decode("utf-8").split(".")[:-1]
     if namespaces[-1] != _SERIALIZED_NAMESPACE:
@@ -1084,7 +1089,7 @@ def CheckSerializedNamespaces(obj):
         )
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def SchemaCheck(schema):
     for object_id in range(schema.ObjectsLength()):
         obj = GetObject(schema, object_id)
@@ -1092,7 +1097,7 @@ def SchemaCheck(schema):
         CheckSecure(schema, (_OBJECT_TOPOSORT_TYPE, object_id))
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def TopologicalSort(schema):
     topo_order = []
     visited = set()
@@ -1125,16 +1130,16 @@ def TopologicalSort(schema):
     return topo_order
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def ClangFormatCode(code):
-    format_out = run(
+    format_out = subprocess.run(
         [
             "clang-format",
             "-style={"
             'BasedOnStyle: "Chromium", '
             "AllowAllParametersOfDeclarationOnNextLine: true}",
         ],
-        stdout=PIPE,
+        stdout=subprocess.PIPE,
         input=code,
         encoding="ascii",
         check=True,
@@ -1142,8 +1147,13 @@ def ClangFormatCode(code):
     return format_out.stdout
 
 
-@lru_cache(maxsize=None)
-def OutputBindingHeader(schema, guard_name, include_paths, namespace_filter):
+@functools.lru_cache(maxsize=None)
+def OutputBindingHeader(
+    schema,
+    guard_name,
+    include_paths,
+    schema_file,
+):
     template = Template(
         """\
         {{ copyright }}
@@ -1178,12 +1188,12 @@ def OutputBindingHeader(schema, guard_name, include_paths, namespace_filter):
         node_type, entity_id = node_id
         if node_type == _OBJECT_TOPOSORT_TYPE:
             obj = GetObject(schema, entity_id)
-            if not IsNamespaceAllowed(obj, namespace_filter):
+            if not IsSchemaFileAllowed(obj, schema_file):
                 continue
             definitions.append(OutputStructure(schema, obj))
         elif node_type == _ENUM_TOPOSORT_TYPE:
             enum = GetEnum(schema, entity_id)
-            if not IsNamespaceAllowed(enum, namespace_filter):
+            if not IsSchemaFileAllowed(enum, schema_file):
                 continue
             if enum.IsUnion():
                 definitions.append(OutputVariant(schema, enum))
@@ -1200,9 +1210,12 @@ def OutputBindingHeader(schema, guard_name, include_paths, namespace_filter):
     return ClangFormatCode(header)
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def OutputBindingFlatbufferHeader(
-    schema, guard_name, include_paths, namespace_filter
+    schema,
+    guard_name,
+    include_paths,
+    schema_file,
 ):
     template = Template(
         """\
@@ -1240,13 +1253,13 @@ def OutputBindingFlatbufferHeader(
         node_type, entity_id = node_id
         if node_type == _OBJECT_TOPOSORT_TYPE:
             obj = GetObject(schema, entity_id)
-            if not IsNamespaceAllowed(obj, namespace_filter):
+            if not IsSchemaFileAllowed(obj, schema_file):
                 continue
             implementations.append(OutputStructureToFlatBuffer(schema, obj))
             implementations.append(OutputStructureFromFlatBuffer(schema, obj))
         elif node_type == _ENUM_TOPOSORT_TYPE:
             enum = GetEnum(schema, entity_id)
-            if not IsNamespaceAllowed(enum, namespace_filter):
+            if not IsSchemaFileAllowed(enum, schema_file):
                 continue
             if enum.IsUnion():
                 implementations.append(
@@ -1267,8 +1280,8 @@ def OutputBindingFlatbufferHeader(
     return ClangFormatCode(header)
 
 
-@lru_cache(maxsize=None)
-def OutputBindingImpl(schema, include_paths, namespace_filter):
+@functools.lru_cache(maxsize=None)
+def OutputBindingImpl(schema, include_paths, schema_file):
     template = Template(
         """\
         {{ copyright }}
@@ -1305,7 +1318,7 @@ def OutputBindingImpl(schema, include_paths, namespace_filter):
         node_type, entity_id = node_id
         if node_type == _OBJECT_TOPOSORT_TYPE:
             obj = GetObject(schema, entity_id)
-            if not IsNamespaceAllowed(obj, namespace_filter):
+            if not IsSchemaFileAllowed(obj, schema_file):
                 continue
             if IsSerializable(schema, obj):
                 implementations.append(OutputStructureSerializer(obj))
@@ -1320,9 +1333,12 @@ def OutputBindingImpl(schema, include_paths, namespace_filter):
     return ClangFormatCode(impl)
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def OutputBindingTestUtilsHeader(
-    schema, guard_name, include_paths, namespace_filter
+    schema,
+    guard_name,
+    include_paths,
+    schema_file,
 ):
     template = Template(
         """\
@@ -1350,7 +1366,7 @@ def OutputBindingTestUtilsHeader(
         node_type, entity_id = node_id
         if node_type == _OBJECT_TOPOSORT_TYPE:
             obj = GetObject(schema, entity_id)
-            if not IsNamespaceAllowed(obj, namespace_filter):
+            if not IsSchemaFileAllowed(obj, schema_file):
                 continue
             implementations.append(OutputTestStructure(obj))
 
@@ -1398,12 +1414,6 @@ def main():
         help="The include path for testing utils header",
         action="append",
     )
-    parser.add_argument(
-        "--filter_by_namespace",
-        default=[],
-        help="Output the objects that match filter namespace",
-        action="append",
-    )
     parser.add_argument("input_files", nargs="*")
     args = parser.parse_args()
 
@@ -1436,42 +1446,47 @@ def main():
 
         SchemaCheck(schema)
 
-        with open(header_file_path, "w") as output_file:
+        schema_file = base_name + ".fbs"
+
+        def open_for_output(path):
+            return open(path, "w", encoding="utf-8")
+
+        with open_for_output(header_file_path) as output_file:
             output_file.write(
                 OutputBindingHeader(
                     schema,
                     guard_name,
                     tuple(args.header_include_paths),
-                    tuple(args.filter_by_namespace),
+                    schema_file,
                 )
             )
 
-        with open(header_flatbuffer_file_path, "w") as output_file:
+        with open_for_output(header_flatbuffer_file_path) as output_file:
             output_file.write(
                 OutputBindingFlatbufferHeader(
                     schema,
                     header_flatbuffer_guard_name,
                     tuple(args.flatbuffer_header_include_paths),
-                    tuple(args.filter_by_namespace),
+                    schema_file,
                 )
             )
 
-        with open(impl_file_path, "w") as output_file:
+        with open_for_output(impl_file_path) as output_file:
             output_file.write(
                 OutputBindingImpl(
                     schema,
                     tuple(args.impl_include_paths),
-                    tuple(args.filter_by_namespace),
+                    schema_file,
                 )
             )
 
-        with open(test_utils_header_file_path, "w") as output_file:
+        with open_for_output(test_utils_header_file_path) as output_file:
             output_file.write(
                 OutputBindingTestUtilsHeader(
                     schema,
                     test_utils_guard_name,
                     tuple(args.test_utils_header_include_paths),
-                    tuple(args.filter_by_namespace),
+                    schema_file,
                 )
             )
 

@@ -11,11 +11,10 @@
 
 namespace cryptohome {
 namespace {
+
 using ::brillo::Blob;
 using ::cryptohome::SerializedUserAuthFactorTypePolicy;
 using ::cryptohome::SerializedUserPolicy;
-using cryptohome::enumeration::SerializedAuthFactorType;
-using cryptohome::enumeration::SerializedAuthIntent;
 
 class UserPolicyFileTest : public ::testing::Test {
  protected:
