@@ -9,8 +9,7 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
-    ":install_minijail_config_restore",
-    ":install_minijail_config_save",
+    ":install_minijail_conf",
     ":liboobeconfig",
     ":oobe_config_restore",
     ":oobe_config_save",
@@ -139,7 +138,10 @@ executable("rollback_cleanup") {
   sources = [ "rollback_cleanup_main.cc" ]
   configs += [ ":target_defaults" ]
   install_path = "sbin"
-  deps = [ ":liboobeconfig" ]
+  deps = [
+    ":install_policy_rollback_cleanup",
+    ":liboobeconfig",
+  ]
 }
 
 install_config("install_dbus_config") {
@@ -161,13 +163,12 @@ install_config("install_init_config_save") {
   install_path = "upstart"
 }
 
-install_config("install_minijail_config_restore") {
-  sources = [ "minijail/oobe_config_restore.conf" ]
-  install_path = "minijail_conf"
-}
-
-install_config("install_minijail_config_save") {
-  sources = [ "minijail/oobe_config_save.conf" ]
+install_config("install_minijail_conf") {
+  sources = [
+    "minijail/oobe_config_restore.conf",
+    "minijail/oobe_config_save.conf",
+    "minijail/rollback_cleanup.conf",
+  ]
   install_path = "minijail_conf"
 }
 
@@ -184,6 +185,13 @@ install_config("install_policy_config_save") {
               ".policy" ]
   install_path = "seccomp_policy"
   outputs = [ "oobe_config_save-seccomp.policy" ]
+}
+
+install_config("install_policy_rollback_cleanup") {
+  sources = [ "seccomp_filters/rollback_cleanup-seccomp-" + getenv("ARCH") +
+              ".policy" ]
+  install_path = "seccomp_policy"
+  outputs = [ "rollback_cleanup-seccomp.policy" ]
 }
 
 install_config("install_tmpfilesd_config_restore") {

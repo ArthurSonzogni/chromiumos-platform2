@@ -60,9 +60,15 @@ void CleanEnterpriseRollbackMetrics(
 // when the device is owned.
 void CleanEnterpriseRollbackLeftovers(const FileHandler* file_handler,
                                       hwsec::FactoryImpl* hwsec_factory) {
-  file_handler->RemoveRestorePath();
-  file_handler->RemoveOpensslEncryptedRollbackData();
-  file_handler->RemoveTpmEncryptedRollbackData();
+  if (!file_handler->RemoveDecryptedRollbackData()) {
+    LOG(ERROR) << "Failed to remove decrypted rollback data.";
+  }
+  if (!file_handler->RemoveOpensslEncryptedRollbackData()) {
+    LOG(ERROR) << "Failed to remove OpenSSL encrypted rollback data.";
+  }
+  if (!file_handler->RemoveTpmEncryptedRollbackData()) {
+    LOG(ERROR) << "Failed to remove TPM encrypted rollback data.";
+  }
   ZeroTpmSpaceIfExists(hwsec_factory);
 }
 
