@@ -555,7 +555,7 @@ void Daemon::Init() {
   }
 
   bluetooth_controller_->Init(udev_.get(), platform_features_,
-                              dbus_wrapper_.get());
+                              dbus_wrapper_.get(), tablet_mode);
   wifi_controller_->Init(this, prefs_.get(), udev_.get(), tablet_mode);
   cellular_controller_->Init(this, prefs_.get(), dbus_wrapper_.get());
   peripheral_battery_watcher_ = delegate_->CreatePeripheralBatteryWatcher(
@@ -782,6 +782,7 @@ void Daemon::HandleTabletModeChange(TabletMode mode) {
   for (auto controller : all_backlight_controllers_)
     controller->HandleTabletModeChange(mode);
   user_proximity_watcher_->HandleTabletModeChange(mode);
+  bluetooth_controller_->HandleTabletModeChange(mode);
   wifi_controller_->HandleTabletModeChange(mode);
   cellular_controller_->HandleTabletModeChange(mode);
 }

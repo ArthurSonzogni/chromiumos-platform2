@@ -19,6 +19,12 @@
 namespace power_manager::policy {
 namespace {
 
+const char kFlossManagerService[] = "org.chromium.bluetooth.Manager";
+const char kFlossManagerInterface[] = "org.chromium.bluetooth.Manager";
+const char kFlossManagerObject[] = "/org/chromium/bluetooth/Manager";
+const char kSetTabletMode[] = "SetTabletMode";
+constexpr base::TimeDelta kFlossManagerDBusTimeout = base::Seconds(2);
+
 // Check if the path exists at the wakeup path and return the
 // path to the power/control path if it does.
 base::FilePath GetSysattrPathFromWakeupDevicePath(
@@ -93,18 +99,32 @@ BluetoothController::~BluetoothController() {
     udev_->RemoveSubsystemObserver(kUdevSubsystemBluetooth, this);
     udev_->RemoveTaggedDeviceObserver(this);
   }
+  if (dbus_wrapper_)
+    dbus_wrapper_->RemoveObserver(this);
 }
 
 void BluetoothController::Init(
     system::UdevInterface* udev,
     feature::PlatformFeaturesInterface* platform_features,
-    system::DBusWrapperInterface* dbus_wrapper) {
+    system::DBusWrapperInterface* dbus_wrapper,
+    TabletMode tablet_mode) {
   DCHECK(udev);
   DCHECK(platform_features);
   DCHECK(dbus_wrapper);
 
   udev_ = udev;
   platform_features_ = platform_features;
+  tablet_mode_ = tablet_mode;
+  dbus_wrapper_ = dbus_wrapper;
+  dbus_wrapper_->AddObserver(this);
+
+  floss_dbus_proxy_ =
+      dbus_wrapper->GetObjectProxy(kFlossManagerService, kFlossManagerObject);
+  dbus_wrapper->RegisterForServiceAvailability(
+      floss_dbus_proxy_,
+      base::BindOnce(
+          &BluetoothController::HandleFlossServiceAvailableOrRestarted,
+          weak_ptr_factory_.GetWeakPtr()));
 
   // Register for udev updates.
   udev_->AddSubsystemObserver(kUdevSubsystemBluetooth, this);
@@ -135,6 +155,68 @@ void BluetoothController::Init(
 
   // Do the initial fetch.
   RefetchFeatures();
+}
+
+// Inform tablet mode change through dbus
+void BluetoothController::DBusInformTabletModeChange() {
+  bool tablet_mode_enabled = false;
+  switch (tablet_mode_) {
+    case TabletMode::ON:
+      tablet_mode_enabled = true;
+      break;
+    case TabletMode::OFF:
+    case TabletMode::UNSUPPORTED:
+      tablet_mode_enabled = false;
+      break;
+    default:
+      LOG(ERROR) << "Undefined tablet mode.";
+  }
+
+  if (!dbus_wrapper_ || !floss_dbus_proxy_)
+    return;
+
+  dbus::MethodCall method_call(kFlossManagerInterface, kSetTabletMode);
+  dbus::MessageWriter(&method_call).AppendBool(tablet_mode_enabled);
+  dbus_wrapper_->CallMethodAsync(
+      floss_dbus_proxy_, &method_call, kFlossManagerDBusTimeout,
+      base::BindRepeating(&BluetoothController::SetTabletModeResponse,
+                          weak_ptr_factory_.GetWeakPtr()));
+}
+
+void BluetoothController::SetTabletModeResponse(dbus::Response* response) {
+  if (!response) {
+    LOG(ERROR) << "D-Bus method call to " << kFlossManagerInterface << "."
+               << kSetTabletMode << " failed";
+    return;
+  }
+}
+
+void BluetoothController::HandleTabletModeChange(TabletMode mode) {
+  if (tablet_mode_ == mode)
+    return;
+  tablet_mode_ = mode;
+  DBusInformTabletModeChange();
+}
+
+void BluetoothController::OnDBusNameOwnerChanged(
+    const std::string& service_name,
+    const std::string& old_owner,
+    const std::string& new_owner) {
+  // When Floss restarts.
+  if (service_name == kFlossManagerService && !new_owner.empty()) {
+    LOG(INFO) << "D-Bus " << service_name << " ownership changed to "
+              << new_owner;
+    HandleFlossServiceAvailableOrRestarted(true);
+  }
+}
+
+void BluetoothController::HandleFlossServiceAvailableOrRestarted(
+    bool available) {
+  if (!available) {
+    LOG(ERROR) << "Failed waiting for Floss to become available";
+    return;
+  }
+  DBusInformTabletModeChange();
 }
 
 void BluetoothController::ApplyAutosuspendQuirk() {

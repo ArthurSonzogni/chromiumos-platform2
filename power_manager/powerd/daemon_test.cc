@@ -179,6 +179,8 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     flashrom_lock_path_ = temp_dir_.GetPath().Append("flashrom_lock");
     battery_tool_lock_path_ = temp_dir_.GetPath().Append("battery_tool_lock");
     proc_path_ = temp_dir_.GetPath().Append("proc");
+    dbus_wrapper_->SetMethodCallback(base::BindRepeating(
+        &DaemonTest::HandleDBusMethodCall, base::Unretained(this)));
   }
   DaemonTest(const DaemonTest&) = delete;
   DaemonTest& operator=(const DaemonTest&) = delete;
@@ -217,6 +219,13 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     daemon_->set_hibernated_state_path_for_testing(hibernated_state_path_);
     daemon_->disable_mojo_for_testing();
     daemon_->Init();
+  }
+
+  std::unique_ptr<dbus::Response> HandleDBusMethodCall(dbus::ObjectProxy* proxy,
+                                                       dbus::MethodCall* call) {
+    std::unique_ptr<dbus::Response> response =
+        dbus::Response::FromMethodCall(call);
+    return response;
   }
 
   // DaemonDelegate:

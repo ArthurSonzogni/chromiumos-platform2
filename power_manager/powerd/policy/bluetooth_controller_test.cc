@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/check_op.h>
 #include <base/files/file_path.h>
@@ -14,15 +15,27 @@
 #include <featured/fake_platform_features.h>
 #include <gtest/gtest.h>
 
+#include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/udev_stub.h"
 #include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::policy {
 
+namespace {
+const char kFlossManagerService[] = "org.chromium.bluetooth.Manager";
+const char kFlossManagerObject[] = "/org/chromium/bluetooth/Manager";
+}  // namespace
+
 class BluetoothControllerTest : public TestEnvironment {
  public:
-  BluetoothControllerTest() = default;
+  BluetoothControllerTest() {
+    floss_dbus_proxy_ =
+        dbus_wrapper_.GetObjectProxy(kFlossManagerService, kFlossManagerObject);
+    dbus_wrapper_.SetMethodCallback(
+        base::BindRepeating(&BluetoothControllerTest::HandleDBusMethodCall,
+                            base::Unretained(this)));
+  }
   BluetoothControllerTest(const BluetoothControllerTest&) = delete;
   BluetoothControllerTest& operator=(const BluetoothControllerTest&) = delete;
 
@@ -50,7 +63,9 @@ class BluetoothControllerTest : public TestEnvironment {
     platform_features_->SetEnabled(
         BluetoothController::kLongAutosuspendFeatureName,
         with_autosuspend_feature_enabled);
-    controller_->Init(&udev_, platform_features_.get(), &dbus_wrapper_);
+    controller_->Init(&udev_, platform_features_.get(), &dbus_wrapper_,
+                      TabletMode::UNSUPPORTED);
+    dbus_wrapper_.NotifyServiceAvailable(floss_dbus_proxy_, true);
   }
 
   void PrepareTestFiles() {
@@ -171,11 +186,30 @@ class BluetoothControllerTest : public TestEnvironment {
     return base::WriteFile(filepath, contents);
   }
 
+  std::unique_ptr<dbus::Response> HandleDBusMethodCall(dbus::ObjectProxy* proxy,
+                                                       dbus::MethodCall* call) {
+    dbus_method_calls_.push_back(call->GetMember());
+
+    std::unique_ptr<dbus::Response> response =
+        dbus::Response::FromMethodCall(call);
+    return response;
+  }
+
+  std::string GetDBusMethodCalls() {
+    std::string method_calls_str = base::JoinString(dbus_method_calls_, ",");
+    dbus_method_calls_.clear();
+    return method_calls_str;
+  }
+
   base::FilePath file_prefix_;
   system::DBusWrapperStub dbus_wrapper_;
   system::UdevStub udev_;
   std::unique_ptr<BluetoothController> controller_;
   std::unique_ptr<feature::FakePlatformFeatures> platform_features_;
+  dbus::ObjectProxy* floss_dbus_proxy_ = nullptr;
+
+  // Names of D-Bus method calls.
+  std::vector<std::string> dbus_method_calls_;
 };
 
 TEST_F(BluetoothControllerTest, AutosuspendQuirkApplied) {
@@ -315,4 +349,33 @@ TEST_F(BluetoothControllerTest, TaggedRolesIncreaseAutosuspend) {
             BluetoothController::kDefaultAutosuspendTimeout);
 }
 
+TEST_F(BluetoothControllerTest, HandleTabletModeChangeDbusCall) {
+  Init();
+  // Clear previous calls.
+  GetDBusMethodCalls();
+  // No dbus call without mode change from initial value.
+  controller_->HandleTabletModeChange(TabletMode::UNSUPPORTED);
+  EXPECT_EQ("", GetDBusMethodCalls());
+  // Mode change
+  controller_->HandleTabletModeChange(TabletMode::ON);
+  EXPECT_EQ("SetTabletMode", GetDBusMethodCalls());
+  // No dbus call with repeated mode change
+  controller_->HandleTabletModeChange(TabletMode::ON);
+  EXPECT_EQ("", GetDBusMethodCalls());
+  // Mode change
+  controller_->HandleTabletModeChange(TabletMode::OFF);
+  EXPECT_EQ("SetTabletMode", GetDBusMethodCalls());
+}
+
+TEST_F(BluetoothControllerTest, FlossNameOwnerChange) {
+  Init();
+  // Expect call when service is available
+  EXPECT_EQ("SetTabletMode", GetDBusMethodCalls());
+  // Notify name owner change
+  dbus_wrapper_.NotifyNameOwnerChanged(kFlossManagerService, "", "");
+  EXPECT_EQ("", GetDBusMethodCalls());
+  // Expect call with new owner
+  dbus_wrapper_.NotifyNameOwnerChanged(kFlossManagerService, "", "new_name");
+  EXPECT_EQ("SetTabletMode", GetDBusMethodCalls());
+}
 }  // namespace power_manager::policy

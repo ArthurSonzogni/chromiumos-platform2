@@ -5,6 +5,7 @@
 #ifndef POWER_MANAGER_POWERD_POLICY_BLUETOOTH_CONTROLLER_H_
 #define POWER_MANAGER_POWERD_POLICY_BLUETOOTH_CONTROLLER_H_
 
+#include <memory>
 #include <string>
 
 #include <base/containers/flat_map.h>
@@ -12,6 +13,7 @@
 #include <base/memory/weak_ptr.h>
 #include <featured/feature_library.h>
 
+#include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
@@ -21,7 +23,8 @@ namespace power_manager::policy {
 
 // BluetoothController initiates power-related changes to the Bluetooth chipset.
 class BluetoothController : public system::UdevSubsystemObserver,
-                            public system::UdevTaggedDeviceObserver {
+                            public system::UdevTaggedDeviceObserver,
+                            public system::DBusWrapperInterface::Observer {
  public:
   // Bluetooth subsystem and host devtype for udev events.
   static const char kUdevSubsystemBluetooth[];
@@ -54,7 +57,11 @@ class BluetoothController : public system::UdevSubsystemObserver,
 
   void Init(system::UdevInterface* udev,
             feature::PlatformFeaturesInterface* platform_features,
-            system::DBusWrapperInterface* dbus_wrapper);
+            system::DBusWrapperInterface* dbus_wrapper,
+            TabletMode tablet_mode);
+
+  // Called when the tablet mode changes.
+  void HandleTabletModeChange(TabletMode mode);
 
   // Bluetooth devices currently have a quirk where suspending while
   // autosuspended can cause events to increment the wake count while
@@ -72,6 +79,11 @@ class BluetoothController : public system::UdevSubsystemObserver,
   void OnTaggedDeviceChanged(const system::TaggedDevice& device) override;
   void OnTaggedDeviceRemoved(const system::TaggedDevice& device) override;
 
+  // system::DBusWrapperInterface::Observer
+  void OnDBusNameOwnerChanged(const std::string& service_name,
+                              const std::string& old_owner,
+                              const std::string& new_owner) override;
+
  private:
   // Called when we need to refetch features.
   void RefetchFeatures();
@@ -79,9 +91,21 @@ class BluetoothController : public system::UdevSubsystemObserver,
   // Apply result of feature query.
   void IsLongAutosuspendFeatureEnabled(bool enabled);
 
+  // Handles the `floss_dbus_proxy_` becoming initially available.
+  void HandleFlossServiceAvailableOrRestarted(bool available);
+
+  // Send DBus call to Bluetooth daemon with current tablet mode.
+  void DBusInformTabletModeChange();
+
+  // Callback for D-Bus method calls
+  void SetTabletModeResponse(dbus::Response* response);
+
   system::UdevInterface* udev_ = nullptr;  // Not owned.
 
   feature::PlatformFeaturesInterface* platform_features_;  // Not owned
+
+  TabletMode tablet_mode_ = TabletMode::UNSUPPORTED;
+  system::DBusWrapperInterface* dbus_wrapper_ = nullptr;  // non-owned
 
   // Is the feature to enable long autosuspend when hid devices connect enabled?
   bool long_autosuspend_feature_enabled_ = false;
@@ -99,6 +123,9 @@ class BluetoothController : public system::UdevSubsystemObserver,
 
   // Map of autosuspend delay path and current connected device count.
   base::flat_map<base::FilePath, int> delay_path_connected_count_;
+
+  // DBus proxy to Floss manager service.
+  dbus::ObjectProxy* floss_dbus_proxy_ = nullptr;  // not owned
 
   base::WeakPtrFactory<BluetoothController> weak_ptr_factory_{this};
 };
