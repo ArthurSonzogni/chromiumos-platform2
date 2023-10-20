@@ -50,6 +50,7 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus,
   battery_tool_ = std::make_unique<BatteryTool>();
   container_tool_ = std::make_unique<ContainerTool>();
   crash_sender_tool_ = std::make_unique<CrashSenderTool>();
+  crosh_tool_ = std::make_unique<CroshTool>();
   cups_tool_ = std::make_unique<CupsTool>();
   cros_healthd_tool_ = std::make_unique<CrosHealthdTool>();
   debug_logs_tool_ = std::make_unique<DebugLogsTool>(bus);
@@ -116,6 +117,13 @@ void DebugdDBusAdaptor::RegisterAsync(
 std::string DebugdDBusAdaptor::SetOomScoreAdj(
     const std::map<pid_t, int32_t>& scores) {
   return oom_adj_tool_->Set(scores);
+}
+
+bool DebugdDBusAdaptor::CroshStart(brillo::ErrorPtr* error,
+                                   const base::ScopedFD& infd,
+                                   const base::ScopedFD& outfd,
+                                   std::string* handle) {
+    return crosh_tool_->Run(infd, outfd, handle, error);
 }
 
 bool DebugdDBusAdaptor::PingStart(brillo::ErrorPtr* error,

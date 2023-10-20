@@ -109,6 +109,7 @@ static_library("libdebugd") {
     "src/container_tool.cc",
     "src/crash_sender_tool.cc",
     "src/cros_healthd_tool.cc",
+    "src/crosh_tool.cc",
     "src/cups_tool.cc",
     "src/debug_logs_tool.cc",
     "src/debug_mode_tool.cc",
@@ -433,6 +434,7 @@ if (use.test) {
   executable("debugd_testrunner") {
     sources = [
       "src/crash_sender_tool_test.cc",
+      "src/crosh_tool_test.cc",
       "src/cups_tool_test.cc",
       "src/dev_mode_no_owner_restriction_test.cc",
       "src/dmesg_tool_test.cc",
