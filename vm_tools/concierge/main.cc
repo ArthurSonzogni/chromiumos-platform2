@@ -2,33 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/at_exit.h>
-#include <base/check.h>
-#include <base/files/file_descriptor_watcher_posix.h>
-#include <base/logging.h>
-#include <base/message_loop/message_pump_type.h>
-#include <base/task/single_thread_task_executor.h>
-#include <brillo/flag_helper.h>
-#include <brillo/syslog_logging.h>
-
-#include "vm_tools/concierge/service.h"
+#include "vm_tools/concierge/concierge_daemon.h"
 
 int main(int argc, char** argv) {
-  base::AtExitManager at_exit;
-  base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
-  base::FileDescriptorWatcher watcher(task_executor.task_runner());
-
-  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
-  brillo::FlagHelper::Init(argc, argv, "vm_concierge service");
-
-  if (argc != 1) {
-    LOG(ERROR) << "Unexpected command line arguments";
-    return EXIT_FAILURE;
-  }
-
-  vm_tools::concierge::Service service;
-  // Run the service on the main thread.
-  CHECK(service.HostBlocking());
-
-  return 0;
+  return vm_tools::concierge::ConciergeDaemon::Run(argc, argv);
 }

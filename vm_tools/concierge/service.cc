@@ -7,16 +7,13 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <google/protobuf/repeated_field.h>
-#include <grp.h>
 #include <linux/capability.h>
 #include <net/route.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/mount.h>
-#include <sys/prctl.h>
 #include <sys/sendfile.h>
-#include <sys/signalfd.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -225,8 +222,6 @@ constexpr char kPerBootVmShaderCacheFeature[] = "VmPerBootShaderCache";
 
 // Feature name of borealis-provision.
 constexpr char kBorealisProvisionFeature[] = "BorealisProvision";
-
-constexpr gid_t kCrosvmUGid = 299;
 
 // A feature name for throttling ARCVM's crosvm with cpu.cfs_quota_us.
 constexpr char kArcVmInitialThrottleFeatureName[] =
@@ -1285,8 +1280,21 @@ bool Service::ListVmDisksInLocation(const string& cryptohome_id,
   return true;
 }
 
-Service::Service()
-    : next_seneschal_server_port_(kFirstSeneschalServerPort),
+// static
+void Service::CreateAndHost(
+    int signal_fd,
+    base::OnceCallback<void(std::unique_ptr<Service>)> on_hosted) {
+  auto service = base::WrapUnique(new Service(signal_fd));
+  DCHECK_CALLED_ON_VALID_SEQUENCE(service->sequence_checker_);
+  if (!service->Init()) {
+    service.reset();
+  }
+  std::move(on_hosted).Run(std::move(service));
+}
+
+Service::Service(int signal_fd)
+    : signal_fd_(signal_fd),
+      next_seneschal_server_port_(kFirstSeneschalServerPort),
       host_kernel_version_(GetKernelVersion()),
       weak_ptr_factory_(this) {}
 
@@ -1304,134 +1312,10 @@ Service::~Service() {
       .Get();
 }
 
-void Service::OnSignalReadable() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  struct signalfd_siginfo siginfo;
-  if (read(signal_fd_.get(), &siginfo, sizeof(siginfo)) != sizeof(siginfo)) {
-    PLOG(ERROR) << "Failed to read from signalfd";
-    return;
-  }
-
-  if (siginfo.ssi_signo == SIGCHLD) {
-    HandleChildExit();
-  } else if (siginfo.ssi_signo == SIGTERM) {
-    HandleSigterm();
-  } else {
-    LOG(ERROR) << "Received unknown signal from signal fd: "
-               << strsignal(siginfo.ssi_signo);
-  }
-}
-
-bool Service::HostBlocking() {
-  bool success;
-  base::RunLoop run_loop;
-  vm_tools::concierge::Service::HostAsync(base::BindOnce(
-      [](base::RunLoop* loop, bool* out_success,
-         bool service_ran_successfully) {
-        *out_success = service_ran_successfully;
-        loop->Quit();
-      },
-      &run_loop, &success));
-  run_loop.Run();
-  return success;
-}
-
-void Service::HostAsync(ServiceShutdownCallback on_shutdown) {
-  if (!Init()) {
-    std::move(on_shutdown).Run(false);
-    return;
-  }
-  on_shutdown_ = std::move(on_shutdown);
-}
-
 bool Service::Init() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  // It's not possible to ask minijail to set up a user namespace and switch to
-  // a non-0 uid/gid, or to set up supplemental groups. Concierge needs both
-  // supplemental groups and to run as a user whose id is unchanged from the
-  // root namespace (dbus authentication requires this), so we configure this
-  // here.
-  if (setresuid(kCrosvmUGid, kCrosvmUGid, kCrosvmUGid) < 0) {
-    PLOG(ERROR) << "Failed to set uid to crosvm";
-    return false;
-  }
-  if (setresgid(kCrosvmUGid, kCrosvmUGid, kCrosvmUGid) < 0) {
-    PLOG(ERROR) << "Failed to set gid to crosvm";
-    return false;
-  }
-  // Ideally we would just call initgroups("crosvm") here, but internally glibc
-  // interprets EINVAL as signaling that the list of supplemental groups is too
-  // long and truncates the list, when it could also indicate that some of the
-  // gids are unmapped in the current namespace. Instead we look up the groups
-  // ourselves so we can log a useful error if the mapping is wrong.
-  int ngroups = 0;
-  getgrouplist("crosvm", kCrosvmUGid, nullptr, &ngroups);
-  std::vector<gid_t> groups(ngroups);
-  if (getgrouplist("crosvm", kCrosvmUGid, groups.data(), &ngroups) < 0) {
-    PLOG(ERROR) << "Failed to get supplemental groups for user crosvm";
-    return false;
-  }
-  if (setgroups(ngroups, groups.data()) < 0) {
-    PLOG(ERROR)
-        << "Failed to set supplemental groups. This probably means you have "
-           "added user crosvm to groups that are not mapped in the concierge "
-           "user namespace and need to update vm_concierge.conf.";
-    return false;
-  }
+  VMT_TRACE_BEGIN(kCategory, "Service::Init");
 
-  // Change the umask so that the runtime directory for each VM will get the
-  // right permissions.
-  umask(002);
-
-  // Set up the signalfd for receiving SIGCHLD and SIGTERM.
-  // This applies to all threads created afterwards.
-  sigset_t mask;
-  sigemptyset(&mask);
-  sigaddset(&mask, SIGCHLD);
-  sigaddset(&mask, SIGTERM);
-
-  // Restore process' "dumpable" flag so that /proc will be writable.
-  // We need it to properly set up jail for Plugin VM helper process.
-  if (prctl(PR_SET_DUMPABLE, 1) < 0) {
-    PLOG(ERROR) << "Failed to set PR_SET_DUMPABLE";
-    return false;
-  }
-
-  signal_fd_.reset(signalfd(-1, &mask, SFD_NONBLOCK | SFD_CLOEXEC));
-  if (!signal_fd_.is_valid()) {
-    PLOG(ERROR) << "Failed to create signalfd";
-    return false;
-  }
-
-  watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      signal_fd_.get(),
-      base::BindRepeating(&Service::OnSignalReadable, base::Unretained(this)));
-  if (!watcher_) {
-    LOG(ERROR) << "Failed to watch signalfd";
-    return false;
-  }
-
-  // Now block signals from the normal signal handling path so that we will get
-  // them via the signalfd.
-  if (sigprocmask(SIG_BLOCK, &mask, nullptr) < 0) {
-    PLOG(ERROR) << "Failed to block signals via sigprocmask";
-    return false;
-  }
-
-  // TODO(b/193806814): This log line helps us detect when there is a race
-  // during signal setup. When we eventually fix that bug we won't need it.
-  LOG(INFO) << "Finished setting up signal handlers";
-
-  // Perfetto has its own threads, so we are unable to initialize tracing until
-  // after we've set up signal handlers (so that perfetto's threads inherit the
-  // mask).
-  //
-  // TODO(b/296025701): Move process-init out of service.cc. We need to do it
-  // before InitTracing due to threading, and i'd rather have tracing
-  // conceptually available as-soon-as we're in service.
-  InitTracing();
-
-  VMT_TRACE_BEGIN(kCategory, "Service::Init::bus");
   if (!metrics_thread_.StartWithOptions(
           base::Thread::Options(base::MessagePumpType::DEFAULT, 0))) {
     LOG(ERROR) << "Failed to start metrics thread";
@@ -1702,7 +1586,7 @@ bool Service::InitVmMemoryManagementService() {
   return true;
 }
 
-void Service::HandleChildExit() {
+void Service::ChildExited() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // We can't just rely on the information in the siginfo structure because
   // more than one child may have exited but only one SIGCHLD will be
@@ -1755,14 +1639,12 @@ void Service::HandleChildExit() {
   }
 }
 
-void Service::HandleSigterm() {
+void Service::Stop(base::OnceClosure on_stopped) {
   LOG(INFO) << "Shutting down due to SIGTERM";
 
   StopAllVmsImpl(SERVICE_SHUTDOWN);
-  if (!on_shutdown_.is_null()) {
-    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(on_shutdown_), true));
-  }
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, std::move(on_stopped));
 }
 
 void Service::StartVm(dbus::MethodCall* method_call,
@@ -2095,7 +1977,7 @@ StartVmResponse Service::StartVmInternal(
   // Set up a "checker" that will wait until the VM is ready or a signal is
   // received while waiting for the VM to start or we timeout.
   std::unique_ptr<VmStartChecker> vm_start_checker =
-      VmStartChecker::Create(signal_fd_.get());
+      VmStartChecker::Create(signal_fd_);
   if (!vm_start_checker) {
     LOG(ERROR) << "Failed to create VM start checker";
     response.set_failure_reason("Failed to create VM start checker");
