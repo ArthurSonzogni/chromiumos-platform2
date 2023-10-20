@@ -4,5 +4,6 @@
   "pw_build_LINK_DEPS": [
     "//third_party/pigweed/pw_assert:impl",
     "//third_party/pigweed/pw_assert_basic:pw_assert_basic.impl"
-  ]
+  ],
+  "pw_tokenizer_CONFIG": "//timberslide:token_config"
 }

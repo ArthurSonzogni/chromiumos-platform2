@@ -16,6 +16,17 @@ group("all") {
   }
 }
 
+config("use_token_config") {
+  cflags = [
+    "--include",
+    "timberslide/token_config.h",
+  ]
+}
+
+group("token_config") {
+  public_configs = [ ":use_token_config" ]
+}
+
 pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
@@ -32,19 +43,19 @@ static_library("libtimberslide") {
     "string_transformer.cc",
     "timberslide.cc",
   ]
-  configs += [ ":target_defaults" ]
+  configs += [
+    ":target_defaults",
+    ":use_token_config",
+  ]
 
-  deps = [ "$dir_pw_tokenizer:decoder" ]
+  public_deps = [ "$dir_pw_tokenizer:decoder" ]
 }
 
 executable("timberslide") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
   install_path = "bin"
-  deps = [
-    ":libtimberslide",
-    "$dir_pw_tokenizer:decoder",
-  ]
+  deps = [ ":libtimberslide" ]
 }
 
 install_config("install_scripts") {
