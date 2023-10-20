@@ -3,3 +3,5 @@ type cros_device_managementd, domain, chromeos_domain;
 permissive cros_device_managementd;
 
 from_minijail_preload(cros_device_managementd, cros_device_managementd_exec)
+
+r_dir_file(cros_device_managementd, sysfs_tpm)
