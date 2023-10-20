@@ -49,28 +49,33 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
     MOCK_METHOD(void, SendPowerCableSignal, (bool), (const));
   };
 
+  struct StateHandlerArgs {
+    bool* powerwash_requested = nullptr;
+    bool* cutoff_requested = nullptr;
+    bool* reboot_called = nullptr;
+    bool* shutdown_called = nullptr;
+    bool* metrics_called = nullptr;
+    bool is_cros_debug = true;
+    bool record_metrics_success = true;
+    bool state_metrics_recorded = true;
+  };
+
   scoped_refptr<RepairCompleteStateHandler> CreateStateHandler(
-      bool* powerwash_requested = nullptr,
-      bool* cutoff_requested = nullptr,
-      bool* reboot_called = nullptr,
-      bool* shutdown_called = nullptr,
-      bool* metrics_called = nullptr,
-      bool is_cros_debug = true,
-      bool record_metrics_success = true,
-      bool state_metrics_recorded = true) {
+      const StateHandlerArgs& args) {
     // Mock |PowerManagerClient|.
     auto mock_power_manager_client =
         std::make_unique<NiceMock<MockPowerManagerClient>>();
-    if (reboot_called) {
+    if (args.reboot_called) {
       ON_CALL(*mock_power_manager_client, Restart())
-          .WillByDefault(DoAll(Assign(reboot_called, true), Return(true)));
+          .WillByDefault(DoAll(Assign(args.reboot_called, true), Return(true)));
     } else {
       ON_CALL(*mock_power_manager_client, Restart())
           .WillByDefault(Return(true));
     }
-    if (shutdown_called) {
+    if (args.shutdown_called) {
       ON_CALL(*mock_power_manager_client, Shutdown())
-          .WillByDefault(DoAll(Assign(shutdown_called, true), Return(true)));
+          .WillByDefault(
+              DoAll(Assign(args.shutdown_called, true), Return(true)));
     } else {
       ON_CALL(*mock_power_manager_client, Shutdown())
           .WillByDefault(Return(true));
@@ -88,7 +93,7 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
     ON_CALL(*mock_crossystem_utils,
             GetInt(Eq(CrosSystemUtils::kCrosDebugProperty), _))
         .WillByDefault(
-            DoAll(SetArgPointee<1>(is_cros_debug ? 1 : 0), Return(true)));
+            DoAll(SetArgPointee<1>(args.is_cros_debug ? 1 : 0), Return(true)));
 
     // Mock |SysUtils|.
     auto mock_sys_utils = std::make_unique<NiceMock<MockSysUtils>>();
@@ -98,10 +103,10 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
     // Mock |MetricsUtils|.
     auto mock_metrics_utils = std::make_unique<NiceMock<MockMetricsUtils>>();
     ON_CALL(*mock_metrics_utils, RecordAll(_))
-        .WillByDefault(DoAll(Assign(metrics_called, true),
-                             Return(record_metrics_success)));
+        .WillByDefault(DoAll(Assign(args.metrics_called, true),
+                             Return(args.record_metrics_success)));
 
-    if (state_metrics_recorded) {
+    if (args.state_metrics_recorded) {
       EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
           json_store_, RmadState::STATE_NOT_SET, RmadState::kRepairComplete,
           base::Time::Now().ToDoubleT()));
@@ -116,13 +121,13 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
     // Register request powerwash callback.
     daemon_callback_->SetExecuteRequestRmaPowerwashCallback(base::BindRepeating(
         &RepairCompleteStateHandlerTest::RequestRmaPowerwash,
-        base::Unretained(this), powerwash_requested));
+        base::Unretained(this), args.powerwash_requested));
 
     // Register request battery cutoff callback.
     daemon_callback_->SetExecuteRequestBatteryCutoffCallback(
         base::BindRepeating(
             &RepairCompleteStateHandlerTest::RequestBatteryCutoff,
-            base::Unretained(this), cutoff_requested));
+            base::Unretained(this), args.cutoff_requested));
 
     return base::MakeRefCounted<RepairCompleteStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(), GetTempDirPath(),
@@ -171,7 +176,7 @@ TEST_F(RepairCompleteStateHandlerTest,
        InitializeState_PowerwashRequired_Success) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_TRUE(handler->GetState().repair_complete().powerwash_required());
 
@@ -195,7 +200,7 @@ TEST_F(RepairCompleteStateHandlerTest,
        InitializeState_PowerwashNotRequired_NoPowerwashCountFile) {
   // powerwash_count not set.
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_FALSE(handler->GetState().repair_complete().powerwash_required());
 
@@ -206,7 +211,7 @@ TEST_F(RepairCompleteStateHandlerTest,
 
 TEST_F(RepairCompleteStateHandlerTest, InitializeState_Fail) {
   // |kWipeDevice| not set.
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(),
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
@@ -214,7 +219,7 @@ TEST_F(RepairCompleteStateHandlerTest, InitializeState_Fail) {
 TEST_F(RepairCompleteStateHandlerTest, TryGetNextStateCase_NoUserInput) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
 
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
@@ -230,7 +235,8 @@ TEST_F(RepairCompleteStateHandlerTest,
   {
     bool powerwash_requested = false, reboot_called = false;
     auto handler =
-        CreateStateHandler(&powerwash_requested, nullptr, &reboot_called);
+        CreateStateHandler({.powerwash_requested = &powerwash_requested,
+                            .reboot_called = &reboot_called});
     EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
     handler->RunState();
@@ -258,8 +264,11 @@ TEST_F(RepairCompleteStateHandlerTest,
     bool powerwash_requested = false, cutoff_requested = false,
          reboot_called = false, shutdown_called = false, metrics_called = false;
     auto handler =
-        CreateStateHandler(&powerwash_requested, &cutoff_requested,
-                           &reboot_called, &shutdown_called, &metrics_called);
+        CreateStateHandler({.powerwash_requested = &powerwash_requested,
+                            .cutoff_requested = &cutoff_requested,
+                            .reboot_called = &reboot_called,
+                            .shutdown_called = &shutdown_called,
+                            .metrics_called = &metrics_called});
     EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
     // Check that the state file exists now.
@@ -290,8 +299,11 @@ TEST_F(RepairCompleteStateHandlerTest,
   bool powerwash_requested = false, cutoff_requested = false,
        reboot_called = false, shutdown_called = false, metrics_called = false;
   auto handler =
-      CreateStateHandler(&powerwash_requested, &cutoff_requested,
-                         &reboot_called, &shutdown_called, &metrics_called);
+      CreateStateHandler({.powerwash_requested = &powerwash_requested,
+                          .cutoff_requested = &cutoff_requested,
+                          .reboot_called = &reboot_called,
+                          .shutdown_called = &shutdown_called,
+                          .metrics_called = &metrics_called});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // Check that the state file exists now.
@@ -344,8 +356,11 @@ TEST_F(RepairCompleteStateHandlerTest,
   bool powerwash_requested = false, cutoff_requested = false,
        reboot_called = false, shutdown_called = false, metrics_called = false;
   auto handler =
-      CreateStateHandler(&powerwash_requested, &cutoff_requested,
-                         &reboot_called, &shutdown_called, &metrics_called);
+      CreateStateHandler({.powerwash_requested = &powerwash_requested,
+                          .cutoff_requested = &cutoff_requested,
+                          .reboot_called = &reboot_called,
+                          .shutdown_called = &shutdown_called,
+                          .metrics_called = &metrics_called});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // Check that the state file exists now.
@@ -397,8 +412,11 @@ TEST_F(RepairCompleteStateHandlerTest,
   bool powerwash_requested = false, cutoff_requested = false,
        reboot_called = false, shutdown_called = false, metrics_called = false;
   auto handler =
-      CreateStateHandler(&powerwash_requested, &cutoff_requested,
-                         &reboot_called, &shutdown_called, &metrics_called);
+      CreateStateHandler({.powerwash_requested = &powerwash_requested,
+                          .cutoff_requested = &cutoff_requested,
+                          .reboot_called = &reboot_called,
+                          .shutdown_called = &shutdown_called,
+                          .metrics_called = &metrics_called});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // Check that the state file exists now.
@@ -453,8 +471,11 @@ TEST_F(RepairCompleteStateHandlerTest,
   bool powerwash_requested = false, cutoff_requested = false,
        reboot_called = false, shutdown_called = false, metrics_called = false;
   auto handler =
-      CreateStateHandler(&powerwash_requested, &cutoff_requested,
-                         &reboot_called, &shutdown_called, &metrics_called);
+      CreateStateHandler({.powerwash_requested = &powerwash_requested,
+                          .cutoff_requested = &cutoff_requested,
+                          .reboot_called = &reboot_called,
+                          .shutdown_called = &shutdown_called,
+                          .metrics_called = &metrics_called});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // Check that the state file exists now.
@@ -509,8 +530,11 @@ TEST_F(RepairCompleteStateHandlerTest,
   bool powerwash_requested = false, cutoff_requested = false,
        reboot_called = false, shutdown_called = false, metrics_called = false;
   auto handler =
-      CreateStateHandler(&powerwash_requested, &cutoff_requested,
-                         &reboot_called, &shutdown_called, &metrics_called);
+      CreateStateHandler({.powerwash_requested = &powerwash_requested,
+                          .cutoff_requested = &cutoff_requested,
+                          .reboot_called = &reboot_called,
+                          .shutdown_called = &shutdown_called,
+                          .metrics_called = &metrics_called});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // Check that the state file exists now.
@@ -561,8 +585,10 @@ TEST_F(RepairCompleteStateHandlerTest,
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
   bool powerwash_requested = false, reboot_called = false;
-  auto handler = CreateStateHandler(&powerwash_requested, nullptr,
-                                    &reboot_called, nullptr, nullptr, false);
+  auto handler =
+      CreateStateHandler({.powerwash_requested = &powerwash_requested,
+                          .reboot_called = &reboot_called,
+                          .is_cros_debug = false});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // Powerwash is not done yet, but disabled manually.
@@ -590,7 +616,7 @@ TEST_F(RepairCompleteStateHandlerTest,
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MissingState) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No RepairCompleteState.
@@ -610,7 +636,7 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MissingState) {
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MissingArgs) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -632,7 +658,7 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MissingArgs) {
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_ArgsViolation) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -657,9 +683,13 @@ TEST_F(RepairCompleteStateHandlerTest,
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
   bool powerwash_requested = false, cutoff_requested = false,
        reboot_called = false, shutdown_called = false, metrics_called = false;
-  auto handler = CreateStateHandler(&powerwash_requested, &cutoff_requested,
-                                    &reboot_called, &shutdown_called,
-                                    &metrics_called, true, true, false);
+  auto handler =
+      CreateStateHandler({.powerwash_requested = &powerwash_requested,
+                          .cutoff_requested = &cutoff_requested,
+                          .reboot_called = &reboot_called,
+                          .shutdown_called = &shutdown_called,
+                          .metrics_called = &metrics_called,
+                          .state_metrics_recorded = false});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // Check that the state file exists now.
@@ -698,9 +728,13 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MetricsFailed) {
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
   bool powerwash_requested = false, cutoff_requested = false,
        reboot_called = false, shutdown_called = false, metrics_called = false;
-  auto handler = CreateStateHandler(&powerwash_requested, &cutoff_requested,
-                                    &reboot_called, &shutdown_called,
-                                    &metrics_called, true, false);
+  auto handler =
+      CreateStateHandler({.powerwash_requested = &powerwash_requested,
+                          .cutoff_requested = &cutoff_requested,
+                          .reboot_called = &reboot_called,
+                          .shutdown_called = &shutdown_called,
+                          .metrics_called = &metrics_called,
+                          .record_metrics_success = false});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // Check that the state file exists now.
@@ -740,8 +774,11 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_JsonFailed) {
   bool powerwash_requested = false, cutoff_requested = false,
        reboot_called = false, shutdown_called = false, metrics_called = false;
   auto handler =
-      CreateStateHandler(&powerwash_requested, &cutoff_requested,
-                         &reboot_called, &shutdown_called, &metrics_called);
+      CreateStateHandler({.powerwash_requested = &powerwash_requested,
+                          .cutoff_requested = &cutoff_requested,
+                          .reboot_called = &reboot_called,
+                          .shutdown_called = &shutdown_called,
+                          .metrics_called = &metrics_called});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // Check that the state file exists now.

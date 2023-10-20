@@ -27,15 +27,6 @@ using testing::Return;
 using testing::SetArgPointee;
 using testing::StrictMock;
 
-namespace {
-
-struct StateHandlerArgs {
-  std::vector<bool> wp_status_list = {};
-  bool enable_swwp_succeeded = true;
-};
-
-}  // namespace
-
 namespace rmad {
 
 class WriteProtectEnablePhysicalStateHandlerTest : public StateHandlerTest {
@@ -46,8 +37,13 @@ class WriteProtectEnablePhysicalStateHandlerTest : public StateHandlerTest {
     MOCK_METHOD(void, SendHardwareWriteProtectSignal, (bool), (const));
   };
 
+  struct StateHandlerArgs {
+    std::vector<bool> wp_status_list = {};
+    bool enable_swwp_succeeded = true;
+  };
+
   scoped_refptr<WriteProtectEnablePhysicalStateHandler> CreateStateHandler(
-      const StateHandlerArgs& args = {}) {
+      const StateHandlerArgs& args) {
     // Mock |WriteProtectUtils|.
     auto mock_write_protect_utils =
         std::make_unique<StrictMock<MockWriteProtectUtils>>();
@@ -80,7 +76,7 @@ class WriteProtectEnablePhysicalStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(WriteProtectEnablePhysicalStateHandlerTest, InitializeState_Succeeded) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
@@ -104,7 +100,7 @@ TEST_F(WriteProtectEnablePhysicalStateHandlerTest, GetNextStateCase_Succeeded) {
 
 TEST_F(WriteProtectEnablePhysicalStateHandlerTest,
        GetNextStateCase_MissingState) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No WriteProtectEnablePhysicalState.

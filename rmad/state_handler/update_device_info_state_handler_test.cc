@@ -68,7 +68,7 @@ namespace rmad {
 class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
  public:
   struct StateHandlerArgs {
-    const std::vector<bool> wp_status_list = {false};
+    std::vector<bool> wp_status_list = {false};
     bool has_serial_number = true;
     bool has_region = true;
     bool has_sku = true;
@@ -76,7 +76,7 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     bool has_dram_part_num = true;
     bool has_region_list = true;
     bool has_sku_list = true;
-    const std::vector<uint32_t> sku_list = kSkuList;
+    std::vector<uint32_t> sku_list = kSkuList;
     bool has_custom_label_list = true;
     bool is_feature_enabled = true;
     bool is_feature_mutable = false;

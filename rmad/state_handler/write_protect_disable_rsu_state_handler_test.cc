@@ -42,21 +42,21 @@ constexpr char kTestUrl[] =
     "https://www.google.com/chromeos/partner/console/"
     "cr50reset?challenge=ABCDEFGH&hwid=MODEL_TEST";
 
-struct StateHandlerArgs {
-  bool factory_mode_enabled = false;
-  bool is_cros_debug = false;
-  bool* powerwash_requested = nullptr;
-  bool* reboot_toggled = nullptr;
-};
-
 }  // namespace
 
 namespace rmad {
 
 class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
  public:
+  struct StateHandlerArgs {
+    bool factory_mode_enabled = false;
+    bool is_cros_debug = false;
+    bool* powerwash_requested = nullptr;
+    bool* reboot_toggled = nullptr;
+  };
+
   scoped_refptr<WriteProtectDisableRsuStateHandler> CreateStateHandler(
-      const StateHandlerArgs& args = {}) {
+      const StateHandlerArgs& args) {
     // Mock |GscUtils|.
     auto mock_gsc_utils = std::make_unique<NiceMock<MockGscUtils>>();
     ON_CALL(*mock_gsc_utils, IsFactoryModeEnabled())
@@ -300,7 +300,7 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
 }
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_MissingState) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No WriteProtectDisableRsuState.
@@ -313,7 +313,7 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_MissingState) {
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest,
        GetNextStateCase_WrongUnlockCode) {
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;

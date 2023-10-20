@@ -66,11 +66,15 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
                 (const));
   };
 
+  struct StateHandlerArgs {
+    std::vector<double> base_acc_progresses = {};
+    std::vector<double> lid_acc_progresses = {};
+    std::vector<double> base_gyro_progresses = {};
+    std::vector<double> lid_gyro_progresses = {};
+  };
+
   scoped_refptr<RunCalibrationStateHandler> CreateStateHandler(
-      const std::vector<double>& base_acc_progresses,
-      const std::vector<double>& lid_acc_progresses,
-      const std::vector<double>& base_gyro_progresses,
-      const std::vector<double>& lid_gyro_progresses) {
+      const StateHandlerArgs& args) {
     // Mock |SensorCalibrationUtils|.
     std::unique_ptr<StrictMock<MockSensorCalibrationUtils>> base_acc_utils =
         std::make_unique<StrictMock<MockSensorCalibrationUtils>>();
@@ -85,7 +89,7 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
 
     std::vector<CalibrationComponentStatus> base_acc_statuses;
     component_status.set_component(RMAD_COMPONENT_BASE_ACCELEROMETER);
-    for (auto progress : base_acc_progresses) {
+    for (auto progress : args.base_acc_progresses) {
       if (progress < 0) {
         component_status.set_status(
             CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
@@ -102,7 +106,7 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
 
     std::vector<CalibrationComponentStatus> lid_acc_statuses;
     component_status.set_component(RMAD_COMPONENT_LID_ACCELEROMETER);
-    for (auto progress : lid_acc_progresses) {
+    for (auto progress : args.lid_acc_progresses) {
       if (progress < 0) {
         component_status.set_status(
             CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
@@ -119,7 +123,7 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
 
     std::vector<CalibrationComponentStatus> base_gyro_statuses;
     component_status.set_component(RMAD_COMPONENT_BASE_GYROSCOPE);
-    for (auto progress : base_gyro_progresses) {
+    for (auto progress : args.base_gyro_progresses) {
       if (progress < 0) {
         component_status.set_status(
             CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
@@ -136,7 +140,7 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
 
     std::vector<CalibrationComponentStatus> lid_gyro_statuses;
     component_status.set_component(RMAD_COMPONENT_LID_GYROSCOPE);
-    for (auto progress : lid_gyro_progresses) {
+    for (auto progress : args.lid_gyro_progresses) {
       if (progress < 0) {
         component_status.set_status(
             CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
@@ -289,7 +293,7 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(RunCalibrationStateHandlerTest, Cleanup_Success) {
-  auto handler = CreateStateHandler({}, {}, {}, {});
+  auto handler = CreateStateHandler({});
   handler->CleanUpState();
 }
 
@@ -303,12 +307,12 @@ TEST_F(RunCalibrationStateHandlerTest, InitializeState_Success) {
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler({}, {}, {}, {});
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
 TEST_F(RunCalibrationStateHandlerTest, InitializeState_NoCalibrationMap) {
-  auto handler = CreateStateHandler({}, {}, {}, {});
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(),
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
   task_environment_.RunUntilIdle();
@@ -332,7 +336,8 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_Success) {
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler({}, {0.5, 1.0}, {}, {0.5, 1.0});
+  auto handler = CreateStateHandler(
+      {.lid_acc_progresses = {0.5, 1.0}, .lid_gyro_progresses = {0.5, 1.0}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   task_environment_.RunUntilIdle();
@@ -380,7 +385,8 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_Success_NoWipeDevice) {
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler({}, {0.5, 1.0}, {}, {0.5, 1.0});
+  auto handler = CreateStateHandler(
+      {.lid_acc_progresses = {0.5, 1.0}, .lid_gyro_progresses = {0.5, 1.0}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   task_environment_.RunUntilIdle();
@@ -429,7 +435,8 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler({0.5, 1.0}, {}, {0.5, 1.0}, {});
+  auto handler = CreateStateHandler(
+      {.base_acc_progresses = {0.5, 1.0}, .base_gyro_progresses = {0.5, 1.0}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   task_environment_.RunUntilIdle();
@@ -477,7 +484,7 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler({}, {}, {}, {});
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   task_environment_.RunUntilIdle();
@@ -521,7 +528,7 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_NoNeedCalibration) {
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler({}, {}, {}, {});
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   task_environment_.RunUntilIdle();
@@ -566,7 +573,7 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler({}, {}, {}, {});
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   task_environment_.RunUntilIdle();
@@ -612,7 +619,8 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_MissingState) {
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler({1.0}, {}, {1.0}, {});
+  auto handler = CreateStateHandler(
+      {.base_acc_progresses = {1.0}, .base_gyro_progresses = {1.0}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   task_environment_.RunUntilIdle();
@@ -640,7 +648,8 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_MissingWipeDeviceVar) {
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler({1.0}, {}, {1.0}, {});
+  auto handler = CreateStateHandler(
+      {.base_acc_progresses = {1.0}, .base_gyro_progresses = {1.0}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   task_environment_.RunUntilIdle();
@@ -666,7 +675,7 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_UnexpectedReboot) {
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler({}, {}, {}, {});
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
   EXPECT_EQ(error, RMAD_ERROR_OK);
@@ -702,7 +711,8 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_NotFinished) {
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler({0.5}, {}, {0.5}, {});
+  auto handler = CreateStateHandler(
+      {.base_acc_progresses = {0.5}, .base_gyro_progresses = {0.5}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   task_environment_.RunUntilIdle();
@@ -744,7 +754,7 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler({}, {}, {0.5, 1.0}, {});
+  auto handler = CreateStateHandler({.base_gyro_progresses = {0.5, 1.0}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   task_environment_.RunUntilIdle();
@@ -781,7 +791,7 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler({}, {}, {0.5, 1.0}, {});
+  auto handler = CreateStateHandler({.base_gyro_progresses = {0.5, 1.0}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   task_environment_.RunUntilIdle();
@@ -816,7 +826,7 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_SuccessUnknownStatus) {
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler({}, {}, {0.5, 1.0}, {});
+  auto handler = CreateStateHandler({.base_gyro_progresses = {0.5, 1.0}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   task_environment_.RunUntilIdle();
@@ -852,7 +862,8 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler({1.0}, {}, {-1.0}, {});
+  auto handler = CreateStateHandler(
+      {.base_acc_progresses = {1.0}, .base_gyro_progresses = {-1.0}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   task_environment_.RunUntilIdle();
@@ -888,7 +899,8 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler({}, {1.0}, {}, {-1.0});
+  auto handler = CreateStateHandler(
+      {.lid_acc_progresses = {1.0}, .lid_gyro_progresses = {-1.0}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   task_environment_.RunUntilIdle();
@@ -923,7 +935,7 @@ TEST_F(RunCalibrationStateHandlerTest, TryGetNextStateCaseAtBoot_Success) {
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler({}, {}, {}, {});
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();

@@ -36,27 +36,32 @@ namespace rmad {
 
 class ComponentsRepairStateHandlerTest : public StateHandlerTest {
  public:
+  struct StateHandlerArgs {
+    bool runtime_probe_client_retval = true;
+    ComponentsWithIdentifier probed_components = {};
+    bool ccd_blocked = false;
+    bool hwwp_enabled = true;
+  };
+
   scoped_refptr<ComponentsRepairStateHandler> CreateStateHandler(
-      bool runtime_probe_client_retval,
-      const ComponentsWithIdentifier& probed_components,
-      bool ccd_blocked,
-      bool hwwp_enabled) {
+      const StateHandlerArgs& args) {
     // Mock |CryptohomeClient|.
     auto mock_cryptohome_client =
         std::make_unique<NiceMock<MockCryptohomeClient>>();
     ON_CALL(*mock_cryptohome_client, IsCcdBlocked())
-        .WillByDefault(Return(ccd_blocked));
+        .WillByDefault(Return(args.ccd_blocked));
     // Mock |RuntimeProbeClient|.
     auto mock_runtime_probe_client =
         std::make_unique<NiceMock<MockRuntimeProbeClient>>();
     ON_CALL(*mock_runtime_probe_client, ProbeCategories(_, _, _))
-        .WillByDefault(DoAll(SetArgPointee<2>(probed_components),
-                             Return(runtime_probe_client_retval)));
+        .WillByDefault(DoAll(SetArgPointee<2>(args.probed_components),
+                             Return(args.runtime_probe_client_retval)));
     // Mock |WriteProtectUtils|.
     auto mock_write_protect_utils =
         std::make_unique<NiceMock<MockWriteProtectUtils>>();
     ON_CALL(*mock_write_protect_utils, GetHardwareWriteProtectionStatus(_))
-        .WillByDefault(DoAll(SetArgPointee<0>(hwwp_enabled), Return(true)));
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(args.hwwp_enabled), Return(true)));
 
     return base::MakeRefCounted<ComponentsRepairStateHandler>(
         json_store_, daemon_callback_, std::move(mock_cryptohome_client),
@@ -85,12 +90,12 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(ComponentsRepairStateHandlerTest, InitializeState_Success) {
-  auto handler = CreateStateHandler(true, {}, false, true);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, InitializeState_Fail) {
-  auto handler = CreateStateHandler(false, {}, false, true);
+  auto handler = CreateStateHandler({.runtime_probe_client_retval = false});
   EXPECT_EQ(handler->InitializeState(),
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
@@ -98,7 +103,7 @@ TEST_F(ComponentsRepairStateHandlerTest, InitializeState_Fail) {
 TEST_F(ComponentsRepairStateHandlerTest,
        GetNextStateCase_Success_NonMlbRework) {
   auto handler = CreateStateHandler(
-      true, {{RMAD_COMPONENT_BATTERY, "battery_abcd"}}, false, true);
+      {.probed_components = {{RMAD_COMPONENT_BATTERY, "battery_abcd"}}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state = CreateDefaultComponentsRepairState();
@@ -144,7 +149,8 @@ TEST_F(ComponentsRepairStateHandlerTest,
 TEST_F(ComponentsRepairStateHandlerTest,
        GetNextStateCase_Success_MlbRework_Case1) {
   auto handler = CreateStateHandler(
-      true, {{RMAD_COMPONENT_BATTERY, "battery_abcd"}}, true, true);
+      {.probed_components = {{RMAD_COMPONENT_BATTERY, "battery_abcd"}},
+       .ccd_blocked = true});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -192,7 +198,8 @@ TEST_F(ComponentsRepairStateHandlerTest,
 TEST_F(ComponentsRepairStateHandlerTest,
        GetNextStateCase_Success_MlbRework_Case2_HwwpDisabled) {
   auto handler = CreateStateHandler(
-      true, {{RMAD_COMPONENT_BATTERY, "battery_abcd"}}, false, false);
+      {.probed_components = {{RMAD_COMPONENT_BATTERY, "battery_abcd"}},
+       .hwwp_enabled = false});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -231,7 +238,7 @@ TEST_F(ComponentsRepairStateHandlerTest,
 TEST_F(ComponentsRepairStateHandlerTest,
        GetNextStateCase_Success_MlbRework_Case2_HwwpEnabled) {
   auto handler = CreateStateHandler(
-      true, {{RMAD_COMPONENT_BATTERY, "battery_abcd"}}, false, true);
+      {.probed_components = {{RMAD_COMPONENT_BATTERY, "battery_abcd"}}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -269,7 +276,7 @@ TEST_F(ComponentsRepairStateHandlerTest,
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_MissingState) {
   auto handler = CreateStateHandler(
-      true, {{RMAD_COMPONENT_BATTERY, "battery_abcd"}}, false, true);
+      {.probed_components = {{RMAD_COMPONENT_BATTERY, "battery_abcd"}}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No ComponentsRepairState.
@@ -282,7 +289,7 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_MissingState) {
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnknownComponent) {
   auto handler = CreateStateHandler(
-      true, {{RMAD_COMPONENT_BATTERY, "battery_abcd"}}, false, true);
+      {.probed_components = {{RMAD_COMPONENT_BATTERY, "battery_abcd"}}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state = CreateDefaultComponentsRepairState();
@@ -306,7 +313,7 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnknownComponent) {
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnprobedComponent) {
   auto handler = CreateStateHandler(
-      true, {{RMAD_COMPONENT_BATTERY, "battery_abcd"}}, false, true);
+      {.probed_components = {{RMAD_COMPONENT_BATTERY, "battery_abcd"}}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state = CreateDefaultComponentsRepairState();
@@ -331,7 +338,7 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnprobedComponent) {
 TEST_F(ComponentsRepairStateHandlerTest,
        GetNextStateCase_MissingProbedComponent) {
   auto handler = CreateStateHandler(
-      true, {{RMAD_COMPONENT_BATTERY, "battery_abcd"}}, false, true);
+      {.probed_components = {{RMAD_COMPONENT_BATTERY, "battery_abcd"}}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state = CreateDefaultComponentsRepairState();
@@ -350,7 +357,7 @@ TEST_F(ComponentsRepairStateHandlerTest,
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnknownRepairState) {
   auto handler = CreateStateHandler(
-      true, {{RMAD_COMPONENT_BATTERY, "battery_abcd"}}, false, true);
+      {.probed_components = {{RMAD_COMPONENT_BATTERY, "battery_abcd"}}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // State doesn't contain RMAD_COMPONENT_BATTERY.

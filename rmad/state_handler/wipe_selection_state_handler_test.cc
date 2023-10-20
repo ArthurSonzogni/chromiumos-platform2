@@ -27,13 +27,18 @@ namespace rmad {
 
 class WipeSelectionStateHandlerTest : public StateHandlerTest {
  public:
+  struct StateHandlerArgs {
+    bool hwwp_enabled = true;
+  };
+
   scoped_refptr<WipeSelectionStateHandler> CreateStateHandler(
-      bool hwwp_enabled) {
+      const StateHandlerArgs& args) {
     // Mock |WriteProtectUtils|.
     auto mock_write_protect_utils =
         std::make_unique<NiceMock<MockWriteProtectUtils>>();
     ON_CALL(*mock_write_protect_utils, GetHardwareWriteProtectionStatus(_))
-        .WillByDefault(DoAll(SetArgPointee<0>(hwwp_enabled), Return(true)));
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(args.hwwp_enabled), Return(true)));
 
     return base::MakeRefCounted<WipeSelectionStateHandler>(
         json_store_, daemon_callback_, std::move(mock_write_protect_utils));
@@ -67,14 +72,14 @@ TEST_F(WipeSelectionStateHandlerTest, InitializeState_Success) {
   json_store_->SetValue(kWpDisableRequired, true);
   json_store_->SetValue(kCcdBlocked, true);
 
-  auto handler = CreateStateHandler(true);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
 TEST_F(WipeSelectionStateHandlerTest, InitializeState_MissingVars_SameOwner) {
   // No kSameOwner in |json_store_|.
 
-  auto handler = CreateStateHandler(true);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(),
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
@@ -84,7 +89,7 @@ TEST_F(WipeSelectionStateHandlerTest,
   // No kWpDisableRequired in |json_store_|.
   json_store_->SetValue(kSameOwner, true);
 
-  auto handler = CreateStateHandler(true);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(),
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
@@ -94,7 +99,7 @@ TEST_F(WipeSelectionStateHandlerTest, InitializeState_MissingVars_CcdBlocked) {
   json_store_->SetValue(kSameOwner, true);
   json_store_->SetValue(kWpDisableRequired, true);
 
-  auto handler = CreateStateHandler(true);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(),
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
@@ -103,7 +108,7 @@ TEST_F(WipeSelectionStateHandlerTest,
        InitializeState_WrongCondition_DifferentOwner) {
   json_store_->SetValue(kSameOwner, false);
 
-  auto handler = CreateStateHandler(true);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(),
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
@@ -115,7 +120,7 @@ TEST_F(WipeSelectionStateHandlerTest, GetNextStateCase_Case1) {
   json_store_->SetValue(kWpDisableRequired, true);
   json_store_->SetValue(kCcdBlocked, true);
 
-  auto handler = CreateStateHandler(true);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -134,7 +139,7 @@ TEST_F(WipeSelectionStateHandlerTest, GetNextStateCase_Case2) {
   json_store_->SetValue(kWpDisableRequired, true);
   json_store_->SetValue(kCcdBlocked, true);
 
-  auto handler = CreateStateHandler(true);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -163,7 +168,7 @@ TEST_F(WipeSelectionStateHandlerTest, GetNextStateCase_Case3_HwwpEnabled) {
   json_store_->SetValue(kWpDisableRequired, true);
   json_store_->SetValue(kCcdBlocked, false);
 
-  auto handler = CreateStateHandler(true);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -182,7 +187,7 @@ TEST_F(WipeSelectionStateHandlerTest, GetNextStateCase_Case3_HwwpDisabled) {
   json_store_->SetValue(kWpDisableRequired, true);
   json_store_->SetValue(kCcdBlocked, false);
 
-  auto handler = CreateStateHandler(false);
+  auto handler = CreateStateHandler({.hwwp_enabled = false});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -201,7 +206,7 @@ TEST_F(WipeSelectionStateHandlerTest, GetNextStateCase_Case4) {
   json_store_->SetValue(kWpDisableRequired, true);
   json_store_->SetValue(kCcdBlocked, false);
 
-  auto handler = CreateStateHandler(true);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -219,7 +224,7 @@ TEST_F(WipeSelectionStateHandlerTest, GetNextStateCase_Case5) {
   json_store_->SetValue(kSameOwner, true);
   json_store_->SetValue(kWpDisableRequired, false);
 
-  auto handler = CreateStateHandler(true);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -236,7 +241,7 @@ TEST_F(WipeSelectionStateHandlerTest, GetNextStateCase_MissingState) {
   json_store_->SetValue(kSameOwner, true);
   json_store_->SetValue(kWpDisableRequired, false);
 
-  auto handler = CreateStateHandler(true);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No WipeSelectionState.
@@ -251,7 +256,7 @@ TEST_F(WipeSelectionStateHandlerTest, TryGetNextStateCaseAtBoot) {
   json_store_->SetValue(kSameOwner, true);
   json_store_->SetValue(kWpDisableRequired, false);
 
-  auto handler = CreateStateHandler(true);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();

@@ -33,9 +33,14 @@ namespace rmad {
 
 class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
  public:
+  struct StateHandlerArgs {
+    bool ro_verified = true;
+    bool hwwp_enabled = false;
+  };
+
   scoped_refptr<UpdateRoFirmwareStateHandler> CreateStateHandler(
-      bool ro_verified, bool hwwp_enabled) {
-    json_store_->SetValue(kRoFirmwareVerified, ro_verified);
+      const StateHandlerArgs& args) {
+    json_store_->SetValue(kRoFirmwareVerified, args.ro_verified);
     // Mock |UdevUtils|.
     auto mock_udev_utils = std::make_unique<NiceMock<MockUdevUtils>>();
     ON_CALL(*mock_udev_utils, EnumerateBlockDevices())
@@ -49,7 +54,8 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
     auto mock_write_protect_utils =
         std::make_unique<NiceMock<MockWriteProtectUtils>>();
     ON_CALL(*mock_write_protect_utils, GetHardwareWriteProtectionStatus(_))
-        .WillByDefault(DoAll(SetArgPointee<0>(hwwp_enabled), Return(true)));
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(args.hwwp_enabled), Return(true)));
 
     // Mock |PowerManagerClient|.
     auto mock_power_manager_client =
@@ -66,25 +72,25 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(UpdateRoFirmwareStateHandlerTest, InitializeState_Success_RoVerified) {
-  auto handler = CreateStateHandler(true, false);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_EQ(handler->GetState().update_ro_firmware().optional(), true);
 }
 
 TEST_F(UpdateRoFirmwareStateHandlerTest,
        InitializeState_Success_RoNotVerified) {
-  auto handler = CreateStateHandler(false, false);
+  auto handler = CreateStateHandler({.ro_verified = false});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_EQ(handler->GetState().update_ro_firmware().optional(), false);
 }
 
 TEST_F(UpdateRoFirmwareStateHandlerTest, InitializeState_Failed) {
-  auto handler = CreateStateHandler(true, true);
+  auto handler = CreateStateHandler({.hwwp_enabled = true});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_WP_ENABLED);
 }
 
 TEST_F(UpdateRoFirmwareStateHandlerTest, GetNextStateCase_Success_Skip) {
-  auto handler = CreateStateHandler(true, false);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto update_ro_firmware = std::make_unique<UpdateRoFirmwareState>();
@@ -99,7 +105,7 @@ TEST_F(UpdateRoFirmwareStateHandlerTest, GetNextStateCase_Success_Skip) {
 }
 
 TEST_F(UpdateRoFirmwareStateHandlerTest, GetNextStateCase_Success_Update) {
-  auto handler = CreateStateHandler(true, false);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto update_ro_firmware = std::make_unique<UpdateRoFirmwareState>();
@@ -114,7 +120,7 @@ TEST_F(UpdateRoFirmwareStateHandlerTest, GetNextStateCase_Success_Update) {
 }
 
 TEST_F(UpdateRoFirmwareStateHandlerTest, GetNextStateCase_MissingState) {
-  auto handler = CreateStateHandler(true, false);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No UpdateRoFirmwareState.
@@ -126,7 +132,7 @@ TEST_F(UpdateRoFirmwareStateHandlerTest, GetNextStateCase_MissingState) {
 }
 
 TEST_F(UpdateRoFirmwareStateHandlerTest, GetNextStateCase_MissingArgs) {
-  auto handler = CreateStateHandler(true, false);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto update_ro_firmware = std::make_unique<UpdateRoFirmwareState>();
@@ -141,7 +147,7 @@ TEST_F(UpdateRoFirmwareStateHandlerTest, GetNextStateCase_MissingArgs) {
 }
 
 TEST_F(UpdateRoFirmwareStateHandlerTest, GetNextStateCase_Violation) {
-  auto handler = CreateStateHandler(false, false);
+  auto handler = CreateStateHandler({.ro_verified = false});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto update_ro_firmware = std::make_unique<UpdateRoFirmwareState>();

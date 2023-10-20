@@ -19,20 +19,16 @@
 using testing::NiceMock;
 using testing::Return;
 
-namespace {
-
-struct StateHandlerArgs {
-  bool factory_mode_enabled = false;
-};
-
-}  // namespace
-
 namespace rmad {
 
 class WriteProtectDisableMethodStateHandlerTest : public StateHandlerTest {
  public:
+  struct StateHandlerArgs {
+    bool factory_mode_enabled = false;
+  };
+
   scoped_refptr<WriteProtectDisableMethodStateHandler> CreateStateHandler(
-      const StateHandlerArgs& args = {}) {
+      const StateHandlerArgs& args) {
     // Mock |GscUtils|.
     auto mock_gsc_utils = std::make_unique<NiceMock<MockGscUtils>>();
     ON_CALL(*mock_gsc_utils, IsFactoryModeEnabled())
@@ -50,7 +46,7 @@ TEST_F(WriteProtectDisableMethodStateHandlerTest, InitializeState_Succeeded) {
   json_store_->SetValue(kCcdBlocked, false);
   json_store_->SetValue(kWipeDevice, true);
 
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
@@ -58,7 +54,7 @@ TEST_F(WriteProtectDisableMethodStateHandlerTest,
        InitializeState_MissingVars_SameOwner) {
   // No kSameOwner in |json_store_|.
 
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(),
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
@@ -68,7 +64,7 @@ TEST_F(WriteProtectDisableMethodStateHandlerTest,
   // No kWpDisableRequired in |json_store_|.
   json_store_->SetValue(kSameOwner, true);
 
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(),
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
@@ -79,7 +75,7 @@ TEST_F(WriteProtectDisableMethodStateHandlerTest,
   json_store_->SetValue(kSameOwner, true);
   json_store_->SetValue(kWpDisableRequired, true);
 
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(),
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
@@ -91,7 +87,7 @@ TEST_F(WriteProtectDisableMethodStateHandlerTest,
   json_store_->SetValue(kWpDisableRequired, true);
   json_store_->SetValue(kWipeDevice, true);
 
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(),
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
@@ -103,7 +99,7 @@ TEST_F(WriteProtectDisableMethodStateHandlerTest,
   json_store_->SetValue(kWpDisableRequired, false);
   json_store_->SetValue(kWipeDevice, true);
 
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(),
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
@@ -117,7 +113,7 @@ TEST_F(WriteProtectDisableMethodStateHandlerTest,
   json_store_->SetValue(kCcdBlocked, true);
   json_store_->SetValue(kWipeDevice, true);
 
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(),
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
@@ -131,7 +127,7 @@ TEST_F(WriteProtectDisableMethodStateHandlerTest,
   json_store_->SetValue(kCcdBlocked, false);
   json_store_->SetValue(kWipeDevice, false);
 
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(),
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
@@ -158,7 +154,7 @@ TEST_F(WriteProtectDisableMethodStateHandlerTest,
   json_store_->SetValue(kCcdBlocked, false);
   json_store_->SetValue(kWipeDevice, true);
 
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -190,7 +186,7 @@ TEST_F(WriteProtectDisableMethodStateHandlerTest,
   json_store_->SetValue(kCcdBlocked, false);
   json_store_->SetValue(kWipeDevice, true);
 
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -222,7 +218,7 @@ TEST_F(WriteProtectDisableMethodStateHandlerTest,
   json_store_->SetValue(kCcdBlocked, false);
   json_store_->SetValue(kWipeDevice, true);
 
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No WriteProtectDisableMethodState.
@@ -241,7 +237,7 @@ TEST_F(WriteProtectDisableMethodStateHandlerTest,
   json_store_->SetValue(kCcdBlocked, false);
   json_store_->SetValue(kWipeDevice, true);
 
-  auto handler = CreateStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;

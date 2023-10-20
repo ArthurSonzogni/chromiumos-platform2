@@ -39,16 +39,6 @@ constexpr char kInvalidBoardIdType[] = "ffffffff";
 constexpr char kValidBoardIdFlags[] = "00007f80";
 constexpr char kInvalidBoardIdFlags[] = "00007f7f";
 
-struct StateHandlerArgs {
-  // First WP check to know if factory mode is enabled.
-  // Second WP check after disabling factory mode. WP is expected to be enabled.
-  std::vector<bool> hwwp_status_list = {false, true};
-  bool enable_swwp_success = true;
-  bool disable_factory_mode_success = true;
-  std::string board_id_type = kValidBoardIdType;
-  std::string board_id_flags = kValidBoardIdFlags;
-};
-
 }  // namespace
 
 namespace rmad {
@@ -64,8 +54,19 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
                 (const));
   };
 
+  struct StateHandlerArgs {
+    // First WP check to know if factory mode is enabled.
+    // Second WP check after disabling factory mode. WP is expected to be
+    // enabled.
+    std::vector<bool> hwwp_status_list = {false, true};
+    bool enable_swwp_success = true;
+    bool disable_factory_mode_success = true;
+    std::string board_id_type = kValidBoardIdType;
+    std::string board_id_flags = kValidBoardIdFlags;
+  };
+
   scoped_refptr<FinalizeStateHandler> CreateInitializedStateHandler(
-      const StateHandlerArgs& args = {}) {
+      const StateHandlerArgs& args) {
     // Mock |GscUtils|.
     auto mock_gsc_utils = std::make_unique<NiceMock<MockGscUtils>>();
     ON_CALL(*mock_gsc_utils, DisableFactoryMode())
@@ -152,7 +153,7 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpDisabled_Succeeded) {
-  auto handler = CreateInitializedStateHandler();
+  auto handler = CreateInitializedStateHandler({});
 
   handler->RunState();
   ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
@@ -236,7 +237,7 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags_Bypass) {
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_Succeeded) {
-  auto handler = CreateInitializedStateHandler();
+  auto handler = CreateInitializedStateHandler({});
   handler->RunState();
   task_environment_.RunUntilIdle();
 
@@ -257,7 +258,7 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_InProgress) {
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingState) {
-  auto handler = CreateInitializedStateHandler();
+  auto handler = CreateInitializedStateHandler({});
   handler->RunState();
   task_environment_.RunUntilIdle();
 
@@ -266,7 +267,7 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingState) {
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingArgs) {
-  auto handler = CreateInitializedStateHandler();
+  auto handler = CreateInitializedStateHandler({});
   handler->RunState();
   task_environment_.RunUntilIdle();
 

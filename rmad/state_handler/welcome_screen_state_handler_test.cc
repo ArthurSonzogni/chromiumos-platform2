@@ -36,11 +36,6 @@ constexpr char kVerificationFailedErrorStr[] =
 constexpr char kVerificationFailedErrorLogStr[] =
     "Unqualified dram: dram_1234, Unqualified battery: battery_5678";
 
-struct StateHandlerArgs {
-  bool hw_verification_request_success = true;
-  bool hw_verification_result = true;
-};
-
 }  // namespace
 
 namespace rmad {
@@ -56,24 +51,28 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
                 (const));
   };
 
-  scoped_refptr<WelcomeScreenStateHandler> CreateInitializedStateHandler(
-      const StateHandlerArgs& args = {}) {
+  struct StateHandlerArgs {
+    bool hw_verification_request_success = true;
+    bool hw_verification_result = true;
+  };
+
+  scoped_refptr<WelcomeScreenStateHandler> CreateStateHandler(
+      const StateHandlerArgs& args) {
     // Mock |HardwareVerifierClient|.
     auto mock_hardware_verifier_client =
         std::make_unique<NiceMock<MockHardwareVerifierClient>>();
     ON_CALL(*mock_hardware_verifier_client, GetHardwareVerificationResult(_, _))
-        .WillByDefault(
-            [args](bool* is_compliant,
-                   std::vector<std::string>* error_strings) {
-              if (args.hw_verification_request_success) {
-                *is_compliant = args.hw_verification_result;
-                if (!args.hw_verification_result) {
-                  *error_strings = {kUnqualifiedDramErrorStr,
-                                    kUnqualifiedBatteryErrorStr};
-                }
-              }
-              return args.hw_verification_request_success;
-            });
+        .WillByDefault([args](bool* is_compliant,
+                              std::vector<std::string>* error_strings) {
+          if (args.hw_verification_request_success) {
+            *is_compliant = args.hw_verification_result;
+            if (!args.hw_verification_result) {
+              *error_strings = {kUnqualifiedDramErrorStr,
+                                kUnqualifiedBatteryErrorStr};
+            }
+          }
+          return args.hw_verification_request_success;
+        });
 
     // Register signal callback.
     daemon_callback_->SetHardwareVerificationSignalCallback(
@@ -108,7 +107,7 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
 
 TEST_F(WelcomeScreenStateHandlerTest,
        InitializeState_Succeeded_VerificationPass_DoGetStateTask) {
-  auto handler = CreateInitializedStateHandler();
+  auto handler = CreateStateHandler({});
 
   RmadState state = handler->GetState(true);
   ExpectSignal(true, "");
@@ -129,7 +128,7 @@ TEST_F(WelcomeScreenStateHandlerTest,
 
 TEST_F(WelcomeScreenStateHandlerTest,
        InitializeState_Succeeded_VerificationPass_NoGetStateTask) {
-  auto handler = CreateInitializedStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state = handler->GetState();
@@ -137,8 +136,7 @@ TEST_F(WelcomeScreenStateHandlerTest,
 
 TEST_F(WelcomeScreenStateHandlerTest,
        InitializeState_Succeeded_VerificationFail) {
-  auto handler =
-      CreateInitializedStateHandler({.hw_verification_result = false});
+  auto handler = CreateStateHandler({.hw_verification_result = false});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state = handler->GetState(true);
@@ -161,13 +159,12 @@ TEST_F(WelcomeScreenStateHandlerTest,
 
 TEST_F(WelcomeScreenStateHandlerTest,
        InitializeState_Succeeded_VerificationCallFail) {
-  auto handler =
-      CreateInitializedStateHandler({.hw_verification_request_success = false});
+  auto handler = CreateStateHandler({.hw_verification_request_success = false});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
 TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_Succeeded) {
-  auto handler = CreateInitializedStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -180,7 +177,7 @@ TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_Succeeded) {
 }
 
 TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_MissingState) {
-  auto handler = CreateInitializedStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No WelcomeScreenState.
@@ -192,7 +189,7 @@ TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_MissingState) {
 }
 
 TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_MissingArgs) {
-  auto handler = CreateInitializedStateHandler();
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;

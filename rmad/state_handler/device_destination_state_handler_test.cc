@@ -32,18 +32,24 @@ using ComponentRepairStatus = ComponentsRepairState::ComponentRepairStatus;
 
 class DeviceDestinationStateHandlerTest : public StateHandlerTest {
  public:
+  struct StateHandlerArgs {
+    bool ccd_blocked = false;
+    bool hwwp_enabled = true;
+  };
+
   scoped_refptr<DeviceDestinationStateHandler> CreateStateHandler(
-      bool ccd_blocked, bool hwwp_enabled) {
+      const StateHandlerArgs& args) {
     // Mock |CryptohomeClient|.
     auto mock_cryptohome_client =
         std::make_unique<NiceMock<MockCryptohomeClient>>();
     ON_CALL(*mock_cryptohome_client, IsCcdBlocked())
-        .WillByDefault(Return(ccd_blocked));
+        .WillByDefault(Return(args.ccd_blocked));
     // Mock |WriteProtectUtils|.
     auto mock_write_protect_utils =
         std::make_unique<NiceMock<MockWriteProtectUtils>>();
     ON_CALL(*mock_write_protect_utils, GetHardwareWriteProtectionStatus(_))
-        .WillByDefault(DoAll(SetArgPointee<0>(hwwp_enabled), Return(true)));
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(args.hwwp_enabled), Return(true)));
 
     return base::MakeRefCounted<DeviceDestinationStateHandler>(
         json_store_, daemon_callback_, std::move(mock_cryptohome_client),
@@ -52,7 +58,7 @@ class DeviceDestinationStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(DeviceDestinationStateHandlerTest, InitializeState_Success) {
-  auto handler = CreateStateHandler(false, true);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
@@ -60,7 +66,7 @@ TEST_F(DeviceDestinationStateHandlerTest,
        GetNextStateCase_Success_Same_WpDisableRequired_MlbRepair_CcdBlocked) {
   // MLB repair implies "different owner" so this test case should not happen in
   // practice. Still add this test just for safety.
-  auto handler = CreateStateHandler(true, true);
+  auto handler = CreateStateHandler({.ccd_blocked = true});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   json_store_->SetValue(kMlbRepair, true);
@@ -104,7 +110,7 @@ TEST_F(DeviceDestinationStateHandlerTest,
 TEST_F(
     DeviceDestinationStateHandlerTest,
     GetNextStateCase_Success_Same_WpDisableRequired_NonMlbRepair_CcdBlocked) {
-  auto handler = CreateStateHandler(true, true);
+  auto handler = CreateStateHandler({.ccd_blocked = true});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   json_store_->SetValue(kReplacedComponentNames,
@@ -149,7 +155,7 @@ TEST_F(
 
 TEST_F(DeviceDestinationStateHandlerTest,
        GetNextStateCase_Success_Same_WpDisableRequired_CcdNotBlocked) {
-  auto handler = CreateStateHandler(false, true);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   json_store_->SetValue(kReplacedComponentNames,
@@ -182,7 +188,7 @@ TEST_F(DeviceDestinationStateHandlerTest,
 
 TEST_F(DeviceDestinationStateHandlerTest,
        GetNextStateCase_Success_Same_WpDisableNotRequired) {
-  auto handler = CreateStateHandler(false, true);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   json_store_->SetValue(kReplacedComponentNames,
@@ -213,7 +219,7 @@ TEST_F(DeviceDestinationStateHandlerTest,
 
 TEST_F(DeviceDestinationStateHandlerTest,
        GetNextStateCase_Success_Different_CcdBlocked) {
-  auto handler = CreateStateHandler(true, true);
+  auto handler = CreateStateHandler({.ccd_blocked = true});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -243,7 +249,7 @@ TEST_F(DeviceDestinationStateHandlerTest,
 
 TEST_F(DeviceDestinationStateHandlerTest,
        GetNextStateCase_Success_Different_CcdNotBlocked_HwwpDisabled) {
-  auto handler = CreateStateHandler(false, false);
+  auto handler = CreateStateHandler({.hwwp_enabled = false});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -273,7 +279,7 @@ TEST_F(DeviceDestinationStateHandlerTest,
 
 TEST_F(DeviceDestinationStateHandlerTest,
        GetNextStateCase_Success_Different_CcdNotBlocked_HwwpEnabled) {
-  auto handler = CreateStateHandler(false, true);
+  auto handler = CreateStateHandler({});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;

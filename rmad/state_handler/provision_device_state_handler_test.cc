@@ -54,25 +54,6 @@ constexpr char kInvalidBoardIdType[] = "5a5a4352";  // ZZCR.
 constexpr char kPvtBoardIdFlags[] = "00007f80";
 constexpr char kCustomLabelPvtBoardIdFlags[] = "00003f80";
 
-struct StateHandlerArgs {
-  bool get_model_name_success = true;
-  bool get_ssfc_success = true;
-  bool need_update_ssfc = true;
-  bool set_ssfc_success = true;
-  bool set_stable_device_secret_success = true;
-  bool flush_vpd = true;
-  bool hwwp_enabled = false;
-  bool reset_gbb_success = true;
-  bool read_board_id_success = true;
-  bool has_cbi = true;
-  bool get_cros_fw_config_success = true;
-  bool get_cbi_fw_config_success = true;
-  bool set_cbi_fw_config_success = true;
-  std::string board_id_type = kValidBoardIdType;
-  std::string board_id_flags = kPvtBoardIdFlags;
-  std::set<rmad::RmadComponent> probed_components = {};
-};
-
 constexpr rmad::RmadComponent kComponentNeedCalibration =
     rmad::RMAD_COMPONENT_BASE_ACCELEROMETER;
 constexpr rmad::RmadComponent kComponentNeedCalibration2 =
@@ -99,8 +80,27 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     status_history_.push_back(status);
   }
 
+  struct StateHandlerArgs {
+    bool get_model_name_success = true;
+    bool get_ssfc_success = true;
+    bool need_update_ssfc = true;
+    bool set_ssfc_success = true;
+    bool set_stable_device_secret_success = true;
+    bool flush_vpd = true;
+    bool hwwp_enabled = false;
+    bool reset_gbb_success = true;
+    bool read_board_id_success = true;
+    bool has_cbi = true;
+    bool get_cros_fw_config_success = true;
+    bool get_cbi_fw_config_success = true;
+    bool set_cbi_fw_config_success = true;
+    std::string board_id_type = kValidBoardIdType;
+    std::string board_id_flags = kPvtBoardIdFlags;
+    std::set<rmad::RmadComponent> probed_components = {};
+  };
+
   scoped_refptr<ProvisionDeviceStateHandler> CreateInitializedStateHandler(
-      const StateHandlerArgs& args = {}) {
+      const StateHandlerArgs& args) {
     // Expect signal is always sent.
     ON_CALL(signal_sender_, SendProvisionProgressSignal(_))
         .WillByDefault(WithArg<0>(
@@ -246,7 +246,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
   }
 
   void ExpectTransitionSucceededAtBoot(RmadState::StateCase expected_state_case,
-                                       const StateHandlerArgs& args = {}) {
+                                       const StateHandlerArgs& args) {
     auto handler = CreateInitializedStateHandler(args);
     auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
     EXPECT_EQ(error, RMAD_ERROR_OK);
@@ -285,13 +285,13 @@ TEST_F(ProvisionDeviceStateHandlerTest, VerifyTestConstant) {
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest, InitializeState_Succeeded) {
-  auto handler = CreateInitializedStateHandler();
+  auto handler = CreateInitializedStateHandler({});
   handler->RunState();
   task_environment_.RunUntilIdle();
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest, Clenaup_Succeeded) {
-  auto handler = CreateInitializedStateHandler();
+  auto handler = CreateInitializedStateHandler({});
   handler->RunState();
   handler->CleanUpState();
   task_environment_.RunUntilIdle();
@@ -303,7 +303,7 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Succeeded) {
   json_store_->SetValue(kWipeDevice, true);
 
   // Run the state handler.
-  auto handler = CreateInitializedStateHandler();
+  auto handler = CreateInitializedStateHandler({});
   handler->RunState();
   task_environment_.RunUntilIdle();
 
@@ -321,7 +321,7 @@ TEST_F(ProvisionDeviceStateHandlerTest, TryGetNextStateCaseAtBoot_Failed) {
 
   // TryGetNextStateCaseAtBoot() is called before RunState(), so we don't call
   // RunState() here.
-  auto handler = CreateInitializedStateHandler();
+  auto handler = CreateInitializedStateHandler({});
 
   // We should not transition to the next state until provisioning is completed.
   auto [error, state] = handler->TryGetNextStateCaseAtBoot();
@@ -559,7 +559,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   json_store_->SetValue(kSameOwner, true);
   json_store_->SetValue(kWipeDevice, false);
 
-  auto handler = CreateInitializedStateHandler();
+  auto handler = CreateInitializedStateHandler({});
   handler->RunState();
   task_environment_.RunUntilIdle();
 
@@ -570,13 +570,13 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   ExpectTransitionReboot(handler);
 
   // Successfully transition to WpEnablePhysical state.
-  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kWpEnablePhysical);
+  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kWpEnablePhysical, {});
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_UnknownDestinationFailedBlocking) {
   // Set up environment without destination (internal error).
-  auto handler = CreateInitializedStateHandler();
+  auto handler = CreateInitializedStateHandler({});
   handler->RunState();
   task_environment_.RunUntilIdle();
 
@@ -590,7 +590,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
 TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Retry) {
   // Set up environment without destination (internal error).
-  auto handler = CreateInitializedStateHandler();
+  auto handler = CreateInitializedStateHandler({});
   handler->RunState();
   task_environment_.RunUntilIdle();
 
@@ -618,7 +618,7 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Retry) {
   ExpectTransitionReboot(handler);
 
   // Successfully transition to Finalize state.
-  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kFinalize);
+  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kFinalize, {});
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
@@ -958,7 +958,7 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_MissingState) {
   json_store_->SetValue(kSameOwner, false);
   json_store_->SetValue(kWipeDevice, true);
 
-  auto handler = CreateInitializedStateHandler();
+  auto handler = CreateInitializedStateHandler({});
   handler->RunState();
   task_environment_.RunUntilIdle();
 
@@ -975,7 +975,7 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_MissingArgs) {
   json_store_->SetValue(kSameOwner, false);
   json_store_->SetValue(kWipeDevice, true);
 
-  auto handler = CreateInitializedStateHandler();
+  auto handler = CreateInitializedStateHandler({});
   handler->RunState();
   task_environment_.RunUntilIdle();
 
