@@ -173,6 +173,10 @@ class PortalDetector {
     // Returns the ValidationState value inferred from this captive portal
     // detection result.
     ValidationState GetValidationState() const;
+
+    // If the HTTP probe completed normally, returns a HTTP code equivalent to
+    // log with UMA. Used for metrics only.
+    std::optional<int> GetHTTPResponseCodeMetricResult() const;
   };
 
   PortalDetector(EventDispatcher* dispatcher,

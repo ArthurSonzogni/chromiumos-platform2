@@ -91,10 +91,10 @@ TEST_F(MetricsTest, EnumMetric) {
       .max = 13,
   };
   EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.FakeEnum", 3, 13));
-  metrics_.SendEnumToUMA(metric2, Technology(Technology::kWiFi), 3);
+  metrics_.SendEnumToUMA(metric2, Technology::kWiFi, 3);
   Mock::VerifyAndClearExpectations(&library_);
   EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Vpn.FakeEnum", 8, 13));
-  metrics_.SendEnumToUMA(metric2, Technology(Technology::kVPN), 8);
+  metrics_.SendEnumToUMA(metric2, Technology::kVPN, 8);
   Mock::VerifyAndClearExpectations(&library_);
 
   Metrics::EnumMetric<Metrics::NameByTechnology> metric3 = {
@@ -103,7 +103,7 @@ TEST_F(MetricsTest, EnumMetric) {
       .max = 13,
   };
   EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.FakeEnum.Wifi", 3, 13));
-  metrics_.SendEnumToUMA(metric3, Technology(Technology::kWiFi), 3);
+  metrics_.SendEnumToUMA(metric3, Technology::kWiFi, 3);
   Mock::VerifyAndClearExpectations(&library_);
 
   Metrics::EnumMetric<Metrics::NameByVPNType> metric4 = {
@@ -147,11 +147,11 @@ TEST_F(MetricsTest, HistogramMetric) {
   };
   EXPECT_CALL(library_,
               SendToUMA("Network.Shill.Wifi.FakeBuckets", 148, 0, 250, 64));
-  metrics_.SendToUMA(metric2, Technology(Technology::kWiFi), 148);
+  metrics_.SendToUMA(metric2, Technology::kWiFi, 148);
   Mock::VerifyAndClearExpectations(&library_);
   EXPECT_CALL(library_,
               SendToUMA("Network.Shill.Ethernet.FakeBuckets", 13, 0, 250, 64));
-  metrics_.SendToUMA(metric2, Technology(Technology::kEthernet), 13);
+  metrics_.SendToUMA(metric2, Technology::kEthernet, 13);
   Mock::VerifyAndClearExpectations(&library_);
 
   const Metrics::HistogramMetric<Metrics::NameByTechnology> metric3 = {
@@ -163,7 +163,35 @@ TEST_F(MetricsTest, HistogramMetric) {
   };
   EXPECT_CALL(library_,
               SendToUMA("Network.Shill.FakeBuckets.Wifi", 148, 0, 250, 64));
-  metrics_.SendToUMA(metric3, Technology(Technology::kWiFi), 148);
+  metrics_.SendToUMA(metric3, Technology::kWiFi, 148);
+  Mock::VerifyAndClearExpectations(&library_);
+}
+
+TEST_F(MetricsTest, SparseMetric) {
+  Metrics::SparseMetric<Metrics::FixedName> metric1 = {
+      .n = Metrics::FixedName{"Fake.SparseHistogram"},
+  };
+  EXPECT_CALL(library_, SendSparseToUMA("Fake.SparseHistogram", 123456));
+  metrics_.SendSparseToUMA(metric1, 123456);
+  Mock::VerifyAndClearExpectations(&library_);
+
+  Metrics::SparseMetric<Metrics::NameByTechnology> metric2 = {
+      .n = Metrics::NameByTechnology{"FakeBucket"},
+  };
+  EXPECT_CALL(library_, SendSparseToUMA("Network.Shill.Wifi.FakeBucket", 7890));
+  metrics_.SendSparseToUMA(metric2, Technology::kWiFi, 7890);
+  Mock::VerifyAndClearExpectations(&library_);
+  EXPECT_CALL(library_,
+              SendSparseToUMA("Network.Shill.Ethernet.FakeBucket", 123));
+  metrics_.SendSparseToUMA(metric2, Technology::kEthernet, 123);
+  Mock::VerifyAndClearExpectations(&library_);
+
+  const Metrics::SparseMetric<Metrics::NameByTechnology> metric3 = {
+      .n = Metrics::NameByTechnology{"FakePrefix",
+                                     Metrics::TechnologyLocation::kAfterName},
+  };
+  EXPECT_CALL(library_, SendSparseToUMA("Network.Shill.FakePrefix.Wifi", 3456));
+  metrics_.SendSparseToUMA(metric3, Technology::kWiFi, 3456);
   Mock::VerifyAndClearExpectations(&library_);
 }
 

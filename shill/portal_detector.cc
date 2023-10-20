@@ -20,6 +20,7 @@
 #include "shill/dns_client.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
+#include "shill/metrics.h"
 
 namespace {
 constexpr char kLinuxUserAgent[] =
@@ -36,6 +37,11 @@ constexpr base::TimeDelta kPortalCheckInterval = base::Seconds(3);
 constexpr base::TimeDelta kMinPortalCheckDelay = base::Seconds(0);
 // Max time interval between two portal detection attempts.
 constexpr base::TimeDelta kMaxPortalCheckInterval = base::Minutes(5);
+
+bool IsRedirectResponse(int status_code) {
+  return status_code == brillo::http::status_code::Redirect ||
+         status_code == brillo::http::status_code::RedirectKeepVerb;
+}
 }  // namespace
 
 namespace shill {
@@ -216,8 +222,7 @@ void PortalDetector::HttpRequestSuccessCallback(
   result_->http_status_code = status_code;
   if (status_code == brillo::http::status_code::NoContent) {
     result_->http_status = Status::kSuccess;
-  } else if (status_code == brillo::http::status_code::Redirect ||
-             status_code == brillo::http::status_code::RedirectKeepVerb) {
+  } else if (IsRedirectResponse(status_code)) {
     result_->http_status = Status::kRedirect;
     std::string redirect_url_string =
         response->GetHeader(brillo::http::response_header::kLocation);
@@ -225,8 +230,8 @@ void PortalDetector::HttpRequestSuccessCallback(
       LOG(INFO) << LoggingTag() << ": Received redirection status code "
                 << status_code << " but there was no Location header";
     } else {
-      HttpUrl redirect_url;
-      if (!redirect_url.ParseFromString(redirect_url_string)) {
+      const auto redirect_url = HttpUrl::CreateFromString(redirect_url_string);
+      if (!redirect_url) {
         // Do not log |redirect_url_string| if it is not a valid URL and cannot
         // be obfuscated by the redaction tool.
         LOG(INFO) << LoggingTag() << ": Received redirection status code "
@@ -440,6 +445,24 @@ PortalDetector::ValidationState PortalDetector::Result::GetValidationState()
     return ValidationState::kNoConnectivity;
   }
   return ValidationState::kPartialConnectivity;
+}
+
+std::optional<int> PortalDetector::Result::GetHTTPResponseCodeMetricResult()
+    const {
+  // Check if the HTTP probe completed.
+  if (http_status_code == 0) {
+    return std::nullopt;
+  }
+  // Reject invalid status codes not defined in RFC9110.
+  if (http_status_code < 100 || 599 < http_status_code) {
+    return Metrics::kPortalDetectorHTTPResponseCodeInvalid;
+  }
+  // For redirect responses, verify there was a valid redirect URL.
+  if (IsRedirectResponse(http_status_code) && redirect_url_string.empty()) {
+    return Metrics::kPortalDetectorHTTPResponseCodeIncompleteRedirect;
+  }
+  // Otherwise, return the response code directly.
+  return http_status_code;
 }
 
 std::string PortalDetector::LoggingTag() const {

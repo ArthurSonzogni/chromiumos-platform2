@@ -205,6 +205,18 @@ void Metrics::SendToUMA(const Metrics::HistogramMetric<PrefixName>& metric,
                       metric.num_buckets);
 }
 
+void Metrics::SendSparseToUMA(const SparseMetric<FixedName>& metric,
+                              int sample) {
+  library_->SendSparseToUMA(metric.n.name, sample);
+}
+
+void Metrics::SendSparseToUMA(const SparseMetric<NameByTechnology>& metric,
+                              Technology technology,
+                              int sample) {
+  library_->SendSparseToUMA(
+      GetFullMetricName(metric.n.name, technology, metric.n.location), sample);
+}
+
 // static
 Metrics::WiFiChannel Metrics::WiFiFrequencyToChannel(uint16_t frequency) {
   WiFiChannel channel = kWiFiChannelUndef;

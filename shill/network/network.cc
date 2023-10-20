@@ -1007,6 +1007,11 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
     metrics_->SendToUMA(Metrics::kPortalDetectorHTTPSProbeDuration, technology_,
                         result.https_duration.InMilliseconds());
   }
+  if (const auto http_response_code =
+          result.GetHTTPResponseCodeMetricResult()) {
+    metrics_->SendSparseToUMA(Metrics::kPortalDetectorHTTPResponseCode,
+                              technology_, *http_response_code);
+  }
 }
 
 void Network::StopNetworkValidationLog() {

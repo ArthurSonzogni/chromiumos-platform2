@@ -56,11 +56,12 @@ using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SetArgPointee;
+using ::testing::StrictMock;
 using ::testing::WithArg;
 
 constexpr int kTestIfindex = 123;
 constexpr char kTestIfname[] = "eth_test";
-constexpr auto kTestTechnology = Technology::kUnknown;
+constexpr auto kTestTechnology = Technology::kWiFi;
 
 // IPv4 properties from DHCP.
 constexpr char kIPv4DHCPAddress[] = "192.168.1.2";
@@ -273,7 +274,7 @@ class NetworkTest : public ::testing::Test {
   NiceMock<MockControl> control_interface_;
   EventDispatcherForTest dispatcher_;
   MockManager manager_;
-  NiceMock<MockMetrics> metrics_;
+  StrictMock<MockMetrics> metrics_;
 
   MockDHCPProvider dhcp_provider_;
   MockNetworkEventHandler event_handler_;
@@ -1020,6 +1021,9 @@ TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
   result.http_status = PortalDetector::Status::kSuccess;
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kFailure;
+  result.http_duration = base::Milliseconds(100);
+  result.https_duration = base::Milliseconds(200);
+  result.http_status_code = 204;
   EXPECT_EQ(PortalDetector::ValidationState::kPartialConnectivity,
             result.GetValidationState());
   MockConnectionDiagnostics* conn_diag = new MockConnectionDiagnostics();
@@ -1034,6 +1038,13 @@ TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
               OnNetworkValidationResult(network_->interface_index(), _));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorHTTPProbeDuration,
+                                  Technology::kWiFi, 100));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorHTTPSProbeDuration,
+                                  Technology::kWiFi, 200));
+  EXPECT_CALL(metrics_,
+              SendSparseToUMA(Metrics::kPortalDetectorHTTPResponseCode,
+                              Technology::kWiFi, 204));
   network_->OnPortalDetectorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kPartialConnectivity,
             network_->network_validation_result()->GetValidationState());
@@ -1047,6 +1058,8 @@ TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
   result.http_status = PortalDetector::Status::kFailure;
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kFailure;
+  result.http_duration = base::Milliseconds(0);
+  result.https_duration = base::Milliseconds(200);
   EXPECT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             result.GetValidationState());
   MockConnectionDiagnostics* conn_diag = new MockConnectionDiagnostics();
@@ -1061,6 +1074,8 @@ TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
               OnNetworkValidationResult(network_->interface_index(), _));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorHTTPSProbeDuration,
+                                  Technology::kWiFi, 200));
   network_->OnPortalDetectorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             network_->network_validation_result()->GetValidationState());
@@ -1074,6 +1089,9 @@ TEST_F(NetworkTest, PortalDetectionResult_InternetConnectivity) {
   result.http_status = PortalDetector::Status::kSuccess;
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kSuccess;
+  result.http_duration = base::Milliseconds(100);
+  result.https_duration = base::Milliseconds(200);
+  result.http_status_code = 204;
   EXPECT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
             result.GetValidationState());
 
@@ -1082,6 +1100,16 @@ TEST_F(NetworkTest, PortalDetectionResult_InternetConnectivity) {
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
               OnNetworkValidationResult(network_->interface_index(), _));
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kPortalDetectorInternetValidationDuration,
+                        Technology::kWiFi, 200));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorHTTPProbeDuration,
+                                  Technology::kWiFi, 100));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorHTTPSProbeDuration,
+                                  Technology::kWiFi, 200));
+  EXPECT_CALL(metrics_,
+              SendSparseToUMA(Metrics::kPortalDetectorHTTPResponseCode,
+                              Technology::kWiFi, 204));
   network_->OnPortalDetectorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
             network_->network_validation_result()->GetValidationState());
@@ -1096,6 +1124,9 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kSuccess;
   result.redirect_url_string = "https://portal.com/login";
+  result.http_duration = base::Milliseconds(100);
+  result.https_duration = base::Milliseconds(200);
+  result.http_status_code = 302;
   EXPECT_EQ(PortalDetector::ValidationState::kPortalRedirect,
             result.GetValidationState());
 
@@ -1104,8 +1135,57 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
               OnNetworkValidationResult(network_->interface_index(), _));
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kPortalDetectorPortalDiscoveryDuration,
+                        Technology::kWiFi, 200));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorHTTPProbeDuration,
+                                  Technology::kWiFi, 100));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorHTTPSProbeDuration,
+                                  Technology::kWiFi, 200));
+  EXPECT_CALL(metrics_,
+              SendSparseToUMA(Metrics::kPortalDetectorHTTPResponseCode,
+                              Technology::kWiFi, 302));
   network_->OnPortalDetectorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kPortalRedirect,
+            network_->network_validation_result()->GetValidationState());
+}
+
+TEST_F(NetworkTest, PortalDetectionResult_PortalInvalidRedirect) {
+  EXPECT_FALSE(network_->network_validation_result().has_value());
+  SetNetworkStateForPortalDetection();
+  PortalDetector::Result result;
+  result.http_phase = PortalDetector::Phase::kContent,
+  result.http_status = PortalDetector::Status::kRedirect;
+  result.https_phase = PortalDetector::Phase::kContent;
+  result.https_status = PortalDetector::Status::kFailure;
+  result.redirect_url_string = "";
+  result.http_duration = base::Milliseconds(100);
+  result.https_duration = base::Milliseconds(200);
+  result.http_status_code = 302;
+  EXPECT_EQ(PortalDetector::ValidationState::kPartialConnectivity,
+            result.GetValidationState());
+
+  MockConnectionDiagnostics* conn_diag = new MockConnectionDiagnostics();
+  EXPECT_CALL(*network_, CreateConnectionDiagnostics)
+      .WillOnce([conn_diag](const net_base::IPAddress&,
+                            const net_base::IPAddress&,
+                            const std::vector<std::string>&) {
+        return std::unique_ptr<MockConnectionDiagnostics>(conn_diag);
+      });
+  EXPECT_CALL(event_handler_,
+              OnNetworkValidationResult(network_->interface_index(), _));
+  EXPECT_CALL(event_handler2_,
+              OnNetworkValidationResult(network_->interface_index(), _));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorHTTPProbeDuration,
+                                  Technology::kWiFi, 100));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorHTTPSProbeDuration,
+                                  Technology::kWiFi, 200));
+  EXPECT_CALL(metrics_,
+              SendSparseToUMA(
+                  Metrics::kPortalDetectorHTTPResponseCode, Technology::kWiFi,
+                  Metrics::kPortalDetectorHTTPResponseCodeIncompleteRedirect));
+  network_->OnPortalDetectorResult(result);
+  EXPECT_EQ(PortalDetector::ValidationState::kPartialConnectivity,
             network_->network_validation_result()->GetValidationState());
 }
 
@@ -1117,10 +1197,23 @@ TEST_F(NetworkTest, PortalDetectionResult_ClearAfterStop) {
   result.http_status = PortalDetector::Status::kSuccess;
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kSuccess;
+  result.http_duration = base::Milliseconds(100);
+  result.https_duration = base::Milliseconds(200);
+  result.http_status_code = 204;
   MockPortalDetector* portal_detector = new MockPortalDetector();
   ON_CALL(*portal_detector, IsInProgress()).WillByDefault(Return(true));
   network_->set_portal_detector_for_testing(portal_detector);
 
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kPortalDetectorInternetValidationDuration,
+                        Technology::kWiFi, 200));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorHTTPProbeDuration,
+                                  Technology::kWiFi, 100));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorHTTPSProbeDuration,
+                                  Technology::kWiFi, 200));
+  EXPECT_CALL(metrics_,
+              SendSparseToUMA(Metrics::kPortalDetectorHTTPResponseCode,
+                              Technology::kWiFi, 204));
   network_->OnPortalDetectorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
             network_->network_validation_result()->GetValidationState());
@@ -2052,7 +2145,7 @@ TEST_F(NetworkTest, ValidationLogRecordMetrics) {
   };
 
   for (const auto& tt : test_cases) {
-    NiceMock<MockMetrics> metrics;
+    StrictMock<MockMetrics> metrics;
     Network::ValidationLog log(Technology::kWiFi, &metrics);
     for (auto r : tt.results) {
       // Ensure that all durations between events are positive.

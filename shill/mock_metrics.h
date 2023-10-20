@@ -126,6 +126,16 @@ class MockMetrics : public Metrics {
               (override));
   MOCK_METHOD(bool, SendSparseToUMA, (const std::string&, int), (override));
   MOCK_METHOD(void,
+              SendSparseToUMA,
+              (const Metrics::SparseMetric<Metrics::FixedName>&, int),
+              (override));
+  MOCK_METHOD(void,
+              SendSparseToUMA,
+              (const Metrics::SparseMetric<Metrics::NameByTechnology>&,
+               Technology,
+               int),
+              (override));
+  MOCK_METHOD(void,
               NotifyConnectionDiagnosticsIssue,
               (const std::string&),
               (override));

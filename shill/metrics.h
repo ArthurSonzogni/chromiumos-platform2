@@ -55,9 +55,7 @@ class Metrics {
     N n;
     int max;
     // Necessary for testing.
-    bool operator==(const EnumMetric<N>& that) const {
-      return n == that.n && max == that.max;
-    }
+    bool operator==(const EnumMetric<N>& that) const = default;
   };
 
   // Helper type for describing a UMA histogram metrics.
@@ -70,14 +68,21 @@ class Metrics {
     int max;
     int num_buckets;
     // Necessary for testing.
-    bool operator==(const HistogramMetric<N>& that) const {
-      return n == that.n && min == that.min && max == that.max &&
-             num_buckets == that.num_buckets;
-    }
+    bool operator==(const HistogramMetric<N>& that) const = default;
   };
 
-  // Represents a fixed UMA metric name for a metric represented with EnumMetric
-  // or HistogramMetric.
+  // Helper type for describing a UMA sparse histogram metrics.
+  // The template parameter is used for deriving the name of the metric. See
+  // FixedName and NameByTechnology.
+  template <typename N>
+  struct SparseMetric {
+    N n;
+    // Necessary for testing.
+    bool operator==(const SparseMetric<N>& that) const = default;
+  };
+
+  // Represents a fixed UMA metric name for a metric represented with
+  // EnumMetric, HistogramMetric, or SparseMetric.
   struct FixedName {
     const char* name;
     // Necessary for testing.
@@ -386,6 +391,21 @@ class Metrics {
                 TechnologyLocation::kAfterName},
           .max = kPortalDetectorAggregateResultMax,
   };
+
+  // HTTP response codes of the HTTP probe sent for a network validation
+  // attempt. The values recorded are a mix of valid HTTP response codes in the
+  // [100, 599] range and special defined values.
+  static constexpr SparseMetric<NameByTechnology>
+      kPortalDetectorHTTPResponseCode = {
+          .n = NameByTechnology{"PortalDetector.HTTPReponseCode",
+                                TechnologyLocation::kAfterName},
+  };
+  // Value used with |kPortalDetectorHTTPResponseCode| to indicate an invalid
+  // response code outside the [100, 599] range.
+  static constexpr int kPortalDetectorHTTPResponseCodeInvalid = 0;
+  // Value used with |kPortalDetectorHTTPResponseCode| to indicate a 302 or 307
+  // response code when the Location header was missing or invalid.
+  static constexpr int kPortalDetectorHTTPResponseCodeIncompleteRedirect = 1;
 
   // patchpanel::NeighborLinkMonitor statistics.
   enum NeighborLinkMonitorFailure {
@@ -2328,6 +2348,15 @@ class Metrics {
   virtual void SendToUMA(const HistogramMetric<PrefixName>& metric,
                          const std::string& suffix,
                          int sample);
+
+  // Sends sparse histogram data to UMA for a metric with a fixed name.
+  virtual void SendSparseToUMA(const SparseMetric<FixedName>& metric,
+                               int sample);
+
+  // Sends sparse histogram data to UMA for a metric split by shill technology
+  virtual void SendSparseToUMA(const SparseMetric<NameByTechnology>& metric,
+                               Technology technology,
+                               int sample);
 
   // Reports the elapsed time recorded by |timer| for the histogram name and
   // settings defined by |timer|.
