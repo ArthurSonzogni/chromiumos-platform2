@@ -175,7 +175,6 @@ static_library("libconcierge") {
     "../concierge/ssh_keys.cc",
     "../concierge/startup_listener_impl.cc",
     "../concierge/sysfs_notify_watcher.cc",
-    "../concierge/sysfs_notify_watcher_impl.cc",
     "../concierge/tap_device_builder.cc",
     "../concierge/termina_vm.cc",
     "../concierge/tracing.cc",

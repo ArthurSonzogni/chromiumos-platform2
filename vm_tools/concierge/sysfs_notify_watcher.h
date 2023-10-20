@@ -8,11 +8,16 @@
 #include <memory>
 
 #include <base/functional/callback.h>
+#include <base/task/sequenced_task_runner.h>
+#include <base/threading/thread.h>
 
 namespace vm_tools::concierge {
 
 // Watch for high priority data (POLLPRI) on a file and run
-// a specified callback when data is available
+// a specified callback when data is available.
+// Note: This class reports POLLPRI events with a 'best effort' approach. Not
+// all events are guaranteed to be reported, especially if they occur in rapid
+// succession.
 
 // Ideally base::FileDescriptorWatcher could be used, but POLLPRI is not
 // currently supported by libchrome's message pump infrastructure. Once the
@@ -32,10 +37,26 @@ class SysfsNotifyWatcher {
 
   void SetCallback(const SysfsNotifyCallback& callback);
 
- protected:
+ private:
   SysfsNotifyWatcher(int fd, const SysfsNotifyCallback& callback);
 
-  virtual bool StartWatching() = 0;
+  // Start watching the fd.
+  bool StartWatching();
+
+  // Callback that runs when poll() returns.
+  void PollEvent(bool success);
+
+  // Polls once on the watched fd.
+  // Runs on poll_thread_.
+  void PollOnThread(int fd);
+
+  // Used to run a poll() in the background.
+  base::Thread poll_thread_{"Sysfs Notify Poll Thread"};
+
+  // Runs tasks on the sequence on which this was instantiated (the
+  // sequence on which the callback must run).
+  const scoped_refptr<base::SequencedTaskRunner> main_thread_task_runner_ =
+      base::SequencedTaskRunner::GetCurrentDefault();
 
   // The specific fd to watch
   int fd_;
