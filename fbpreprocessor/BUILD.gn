@@ -27,6 +27,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libfeatures",
     "protobuf",
     "system_api",
   ]
@@ -52,6 +53,7 @@ static_library("libfbpreprocessord") {
     "input_manager.cc",
     "manager.cc",
     "output_manager.cc",
+    "platform_features_client.cc",
     "pseudonymization_manager.cc",
     "session_state_manager.cc",
   ]

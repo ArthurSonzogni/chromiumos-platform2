@@ -20,6 +20,7 @@
 
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
+#include "fbpreprocessor/platform_features_client.h"
 #include "fbpreprocessor/pseudonymization_manager.h"
 #include "fbpreprocessor/session_state_manager.h"
 #include "fbpreprocessor/storage.h"
@@ -81,6 +82,14 @@ void InputManager::OnFirmwareDumpCreated(dbus::Signal* signal) {
       FirmwareDump fw_dump(path.RemoveExtension());
       // TODO(b/307593542): remove filenames from logs.
       LOG(INFO) << "Detected new file " << fw_dump << ".";
+
+      if (!manager_->platform_features()->FirmwareDumpsAllowed()) {
+        // The feature is disabled, but firmware dumps were created anyway.
+        // Delete those firmware dumps.
+        LOG(INFO) << "Feature disabled, deleting firmware dump.";
+        fw_dump.Delete();
+        continue;
+      }
 
       if (base::SequencedTaskRunner::HasCurrentDefault()) {
         base::SequencedTaskRunner::GetCurrentDefault()->PostTask(

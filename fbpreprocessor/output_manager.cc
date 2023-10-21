@@ -20,6 +20,7 @@
 
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
+#include "fbpreprocessor/platform_features_client.h"
 #include "fbpreprocessor/storage.h"
 
 namespace {
@@ -35,11 +36,15 @@ OutputManager::OutputManager(Manager* manager)
           base::Seconds(manager->default_file_expiration_in_secs())),
       manager_(manager) {
   manager_->session_state_manager()->AddObserver(this);
+  manager_->platform_features()->AddObserver(this);
 }
 
 OutputManager::~OutputManager() {
   if (manager_->session_state_manager())
     manager_->session_state_manager()->RemoveObserver(this);
+  if (manager_->platform_features()) {
+    manager_->platform_features()->RemoveObserver(this);
+  }
 }
 
 void OutputManager::OnUserLoggedIn(const std::string& user_dir) {
@@ -58,8 +63,21 @@ void OutputManager::OnUserLoggedOut() {
   user_root_dir_.clear();
 }
 
+void OutputManager::OnFeatureChanged(bool allowed) {
+  if (!allowed) {
+    DeleteAllFiles();
+  }
+}
+
 void OutputManager::AddNewFile(const FirmwareDump& fw_dump,
                                const base::TimeDelta& expiration) {
+  if (!manager_->platform_features()->FirmwareDumpsAllowed()) {
+    // The value of the Finch flag may have been changed during the
+    // pseudonymization process, delete the files here.
+    LOG(INFO) << "Feature disabled, deleting firmware dump.";
+    fw_dump.Delete();
+    return;
+  }
   // TODO(b/307593542): remove filenames from logs.
   LOG(INFO) << "File " << fw_dump << " will expire in " << expiration;
   base::Time now = base::Time::Now();
@@ -76,6 +94,9 @@ void OutputManager::AddNewFile(const FirmwareDump& fw_dump) {
 
 std::forward_list<FirmwareDump> OutputManager::AvailableDumps() {
   std::forward_list<FirmwareDump> dumps;
+  if (!manager_->platform_features()->FirmwareDumpsAllowed()) {
+    return dumps;
+  }
   files_lock_.Acquire();
   for (auto file : files_) {
     dumps.push_front(file.fw_dump());

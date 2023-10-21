@@ -17,11 +17,13 @@
 
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
+#include "fbpreprocessor/platform_features_client.h"
 #include "fbpreprocessor/session_state_manager.h"
 
 namespace fbpreprocessor {
 
-class OutputManager : public SessionStateManager::Observer {
+class OutputManager : public SessionStateManager::Observer,
+                      public PlatformFeaturesClient::Observer {
  public:
   static constexpr base::TimeDelta kDefaultExpiration = base::Minutes(30);
 
@@ -32,6 +34,8 @@ class OutputManager : public SessionStateManager::Observer {
 
   void OnUserLoggedIn(const std::string& user_dir) override;
   void OnUserLoggedOut() override;
+
+  void OnFeatureChanged(bool allowed) override;
 
   // Adds a new firmware dump to be managed by the lifecycle manager. It will
   // automatically be deleted after |expiration|.

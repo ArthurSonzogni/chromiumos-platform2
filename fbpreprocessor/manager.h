@@ -10,6 +10,7 @@
 #include <dbus/bus.h>
 
 #include "fbpreprocessor/configuration.h"
+#include "fbpreprocessor/platform_features_client.h"
 
 namespace fbpreprocessor {
 
@@ -37,6 +38,10 @@ class Manager {
 
   InputManager* input_manager() const { return input_manager_.get(); }
 
+  PlatformFeaturesClient* platform_features() const {
+    return platform_features_.get();
+  }
+
   int default_file_expiration_in_secs() const {
     return default_file_expiration_in_secs_;
   }
@@ -48,6 +53,7 @@ class Manager {
   std::unique_ptr<OutputManager> output_manager_;
   std::unique_ptr<InputManager> input_manager_;
   std::unique_ptr<SessionStateManager> session_state_manager_;
+  std::unique_ptr<PlatformFeaturesClient> platform_features_;
 };
 
 }  // namespace fbpreprocessor

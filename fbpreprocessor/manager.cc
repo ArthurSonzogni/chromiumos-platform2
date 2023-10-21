@@ -11,6 +11,7 @@
 #include "fbpreprocessor/configuration.h"
 #include "fbpreprocessor/input_manager.h"
 #include "fbpreprocessor/output_manager.h"
+#include "fbpreprocessor/platform_features_client.h"
 #include "fbpreprocessor/pseudonymization_manager.h"
 #include "fbpreprocessor/session_state_manager.h"
 
@@ -22,11 +23,16 @@ Manager::Manager(const Configuration& config)
 void Manager::Start(dbus::Bus* bus) {
   // SessionStateManager must be instantiated first since the other modules will
   // register as observers with the SessionStateManager::Observer interface.
+  // Same thing for PlatformFeaturesClient, other modules will also register as
+  // observers so it must be instantiated before the observers.
   session_state_manager_ = std::make_unique<SessionStateManager>(bus);
+  platform_features_ = std::make_unique<PlatformFeaturesClient>();
+
   pseudonymization_manager_ = std::make_unique<PseudonymizationManager>(this);
   output_manager_ = std::make_unique<OutputManager>(this);
   input_manager_ = std::make_unique<InputManager>(this, bus);
 
+  platform_features_->Start(bus);
   // Now that the daemon is fully initialized, notify everyone if a user was
   // logged in when the daemon started.
   session_state_manager_->RefreshPrimaryUser();
