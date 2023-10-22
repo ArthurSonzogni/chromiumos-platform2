@@ -28,6 +28,8 @@ class NET_BASE_EXPORT AresInterface {
 
   virtual void destroy(ares_channel channel);
 
+  virtual void set_local_dev(ares_channel channel, const char* local_dev_name);
+
   virtual void gethostbyname(ares_channel channel,
                              const char* name,
                              int family,
@@ -43,6 +45,8 @@ class NET_BASE_EXPORT AresInterface {
   virtual void process_fd(ares_channel channel,
                           ares_socket_t read_fd,
                           ares_socket_t write_fd);
+
+  virtual int set_servers_csv(ares_channel channel, const char* servers);
 
  protected:
   AresInterface();

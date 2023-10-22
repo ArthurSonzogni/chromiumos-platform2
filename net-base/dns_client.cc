@@ -16,6 +16,7 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/types/expected.h>
 #include <base/memory/ptr_util.h>
@@ -176,13 +177,44 @@ DNSClientImpl::DNSClientImpl(IPFamily family,
   struct ares_options ares_opts;
   memset(&ares_opts, 0, sizeof(ares_opts));
 
-  // We don't need any options now but will need it in the future (for
-  // specifying name servers and interface), so use ares_init_options() instead
-  // of ares_init() here.
-  int status = ares_->init_options(&channel_, &ares_opts, /*optmask=*/0);
+  int opt_mask = 0;
+
+  if (options.per_query_initial_timeout.has_value()) {
+    auto per_query_timeout = *options.per_query_initial_timeout;
+    static constexpr auto kMaxPerQueryInitialTimeout = base::Minutes(1);
+    if (per_query_timeout > kMaxPerQueryInitialTimeout) {
+      LOG(ERROR) << "Input per query timeout " << per_query_timeout.InSeconds()
+                 << "s is too long, reset to max timeout "
+                 << kMaxPerQueryInitialTimeout.InSeconds() << "s";
+      per_query_timeout = kMaxPerQueryInitialTimeout;
+    }
+
+    ares_opts.timeout = static_cast<int>(per_query_timeout.InMilliseconds());
+    opt_mask |= ARES_OPT_TIMEOUTMS;
+  }
+
+  if (options.number_of_tries.has_value()) {
+    ares_opts.tries = *options.number_of_tries;
+    opt_mask |= ARES_OPT_TRIES;
+  }
+
+  int status = ares_->init_options(&channel_, &ares_opts, opt_mask);
   if (status != ARES_SUCCESS) {
     ReportFailure(AresStatusToError(status));
     return;
+  }
+
+  if (!options.interface.empty()) {
+    ares_->set_local_dev(channel_, options.interface.c_str());
+  }
+
+  if (options.name_server.has_value()) {
+    status = ares_->set_servers_csv(channel_,
+                                    options.name_server->ToString().c_str());
+    if (status != ARES_SUCCESS) {
+      ReportFailure(AresStatusToError(status));
+      return;
+    }
   }
 
   // The raw pointer here is safe since the callback can only be invoked inside

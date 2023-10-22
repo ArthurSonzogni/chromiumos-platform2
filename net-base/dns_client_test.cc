@@ -23,6 +23,13 @@
 namespace net_base {
 namespace {
 
+using ::testing::_;
+using ::testing::AllOf;
+using ::testing::Field;
+using ::testing::Pointee;
+using ::testing::StrEq;
+using ::testing::StrictMock;
+
 using Error = DNSClient::Error;
 using Result = DNSClient::Result;
 
@@ -35,6 +42,8 @@ class FakeAres : public AresInterface {
                    int optmask) override;
 
   void destroy(ares_channel channel) override;
+
+  void set_local_dev(ares_channel channel, const char* local_dev_name) override;
 
   void gethostbyname(ares_channel channel,
                      const char* name,
@@ -53,6 +62,8 @@ class FakeAres : public AresInterface {
   void process_fd(ares_channel channel,
                   ares_socket_t read_fd,
                   ares_socket_t write_fd) override;
+
+  int set_servers_csv(ares_channel channel, const char* servers) override;
 
   // The client of FakeAres will get the event that socket is readable or
   // writable.
@@ -110,6 +121,7 @@ FakeAres::~FakeAres() {
 int FakeAres::init_options(ares_channel* channelptr,
                            struct ares_options* options,
                            int optmask) {
+  LOG(INFO) << __func__ << ": " << channelptr;
   *channelptr = CreateChannel();
   return ARES_SUCCESS;
 }
@@ -128,6 +140,10 @@ void FakeAres::destroy(ares_channel channel) {
   read_fd_remote_.reset();
   write_fd_local_.reset();
   write_fd_remote_.reset();
+}
+
+void FakeAres::set_local_dev(ares_channel channel, const char* local_dev_name) {
+  CheckChannel(channel);
 }
 
 void FakeAres::gethostbyname(ares_channel channel,
@@ -212,6 +228,11 @@ void FakeAres::process_fd(ares_channel channel,
   gethostbyname_params_->callback(gethostbyname_params_->arg,
                                   callback_result_->status,
                                   /*timeouts=*/0, &ent);
+}
+
+int FakeAres::set_servers_csv(ares_channel channel, const char* servers) {
+  CheckChannel(channel);
+  return ARES_SUCCESS;
 }
 
 // The string used to trigger and verify the read fd behavior. The content can
@@ -372,6 +393,77 @@ TEST_F(DNSClientTest, WriteAndDestroyObject) {
   EXPECT_CALL(*this, Callback).Times(0);
   client.reset();
   task_env_.FastForwardUntilNoTasksRemain();
+}
+
+// Only need to mock several functions.
+class MockAres : public FakeAres {
+ public:
+  MockAres() {
+    ON_CALL(*this, init_options)
+        .WillByDefault([this](ares_channel* channelptr,
+                              struct ares_options* options, int optmask) {
+          return this->FakeAres::init_options(channelptr, options, optmask);
+        });
+    ON_CALL(*this, set_local_dev)
+        .WillByDefault(
+            [this](ares_channel channel, const char* local_dev_name) {
+              return this->FakeAres::set_local_dev(channel, local_dev_name);
+            });
+    ON_CALL(*this, set_servers_csv)
+        .WillByDefault([this](ares_channel channel, const char* servers) {
+          return this->FakeAres::set_servers_csv(channel, servers);
+        });
+  }
+
+  MOCK_METHOD(int,
+              init_options,
+              (ares_channel * channelptr,
+               struct ares_options* options,
+               int optmask),
+              (override));
+  MOCK_METHOD(void,
+              set_local_dev,
+              (ares_channel channel, const char* local_dev_name),
+              (override));
+  MOCK_METHOD(int,
+              set_servers_csv,
+              (ares_channel channel, const char* servers),
+              (override));
+};
+
+TEST_F(DNSClientTest, ResolveWithOptions) {
+  StrictMock<MockAres> mock_ares;
+
+  DNSClient::Options test_opts = {
+      .number_of_tries = 5,
+      .per_query_initial_timeout = base::Seconds(10),
+      .interface = "wlan0",
+      .name_server = IPAddress::CreateFromString("1.2.3.4").value(),
+  };
+
+  EXPECT_CALL(mock_ares,
+              init_options(_,
+                           Pointee(AllOf(Field(&ares_options::tries, 5),
+                                         Field(&ares_options::timeout, 10000))),
+                           ARES_OPT_TIMEOUTMS | ARES_OPT_TRIES));
+  EXPECT_CALL(mock_ares, set_local_dev(_, StrEq("wlan0")));
+  EXPECT_CALL(mock_ares, set_servers_csv(_, StrEq("1.2.3.4")));
+
+  auto client = DNSClientFactory().Resolve(
+      IPFamily::kIPv4, "test-url", GetCallback(), test_opts, &mock_ares);
+}
+
+TEST_F(DNSClientTest, ResolveWithoutOptions) {
+  StrictMock<MockAres> mock_ares;
+
+  EXPECT_CALL(mock_ares,
+              init_options(_,
+                           Pointee(AllOf(Field(&ares_options::tries, 0),
+                                         Field(&ares_options::timeout, 0))),
+                           /*opt_masks=*/0));
+
+  auto client = DNSClientFactory().Resolve(
+      IPFamily::kIPv4, "test-url", GetCallback(), /*options=*/{}, &mock_ares);
 }
 
 }  // namespace

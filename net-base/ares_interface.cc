@@ -24,6 +24,11 @@ void AresInterface::destroy(ares_channel channel) {
   return ares_destroy(channel);
 }
 
+void AresInterface::set_local_dev(ares_channel channel,
+                                  const char* local_dev_name) {
+  return ares_set_local_dev(channel, local_dev_name);
+}
+
 void AresInterface::gethostbyname(ares_channel channel,
                                   const char* name,
                                   int family,
@@ -48,6 +53,10 @@ void AresInterface::process_fd(ares_channel channel,
                                ares_socket_t read_fd,
                                ares_socket_t write_fd) {
   return ares_process_fd(channel, read_fd, write_fd);
+}
+
+int AresInterface::set_servers_csv(ares_channel channel, const char* servers) {
+  return ares_set_servers_csv(channel, servers);
 }
 
 }  // namespace net_base
