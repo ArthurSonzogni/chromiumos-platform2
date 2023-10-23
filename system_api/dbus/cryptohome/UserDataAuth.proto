@@ -1449,10 +1449,9 @@ message GetRecoveryRequestReply {
   bytes recovery_request = 3;
 }
 
-// CreateVaultKeysetRequest is built when a user is trying to get the
-// recovery payload for CryptohomeRecoveryAuthFactor for a user. When the call
-// is made, AuthSession is in an unauthenticated state. After the operation the
-// AuthSession would still be in an unauthenticated state.
+// CreateVaultKeysetRequest is built when a user is trying to create a
+// VaultKeyset for a user, it is a similar operation to AddAuthFactor, but for
+// testing purposes with legacy VaultKeysets.
 message CreateVaultKeysetRequest {
   // Serialized form of token that is used to identify Auth Session that needs
   // to be extended.
@@ -1468,6 +1467,14 @@ message CreateVaultKeysetRequest {
   // A flag to disable the creation of KeyData with the VaultKeyset. Used to
   // emulate legacy VaultKeysets before M91.
   bool disable_key_data = 5;
+  // Optional parameters for SmartCard input.
+  // Parameters for connecting and making requests to a key delegate service:
+  // |dbus_service_name|, the D-Bus service name of the key delegate service
+  // that exports the key delegate object.
+  string key_delegate_dbus_service_name = 6;
+  // Specifies the key which is asked to sign the data. Contains the DER-encoded
+  // blob of the X.509 Subject Public Key Info.
+  bytes public_key_spki_der = 7;
 }
 
 message CreateVaultKeysetReply {

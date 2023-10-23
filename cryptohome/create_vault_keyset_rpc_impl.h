@@ -18,6 +18,7 @@ namespace cryptohome {
 class CreateVaultKeysetRpcImpl {
  public:
   CreateVaultKeysetRpcImpl(KeysetManagement* keyset_management,
+                           const hwsec::CryptohomeFrontend* hwsec,
                            AuthBlockUtility* auth_block_utility,
                            AuthFactorDriverManager* auth_factor_driver_manager);
 
@@ -50,6 +51,7 @@ class CreateVaultKeysetRpcImpl {
                                   std::unique_ptr<AuthBlockState> auth_state);
 
   KeysetManagement* const keyset_management_;
+  const hwsec::CryptohomeFrontend* hwsec_;
   AuthBlockUtility* const auth_block_utility_;
   AuthFactorDriverManager* const auth_factor_driver_manager_;
 

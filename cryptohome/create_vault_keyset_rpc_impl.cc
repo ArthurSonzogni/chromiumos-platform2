@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+#include <base/strings/string_number_conversions.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
@@ -15,6 +16,7 @@
 
 #include "cryptohome/auth_factor/protobuf.h"
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/signature_sealing/structures_proto.h"
 
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
@@ -28,11 +30,17 @@ using hwsec_foundation::status::OkStatus;
 
 namespace cryptohome {
 
+namespace {
+constexpr uint32_t kTpm12Family = 0x312E3200;
+}  // namespace
+
 CreateVaultKeysetRpcImpl::CreateVaultKeysetRpcImpl(
     KeysetManagement* keyset_management,
+    const hwsec::CryptohomeFrontend* hwsec,
     AuthBlockUtility* auth_block_utility,
     AuthFactorDriverManager* auth_factor_driver_manager)
     : keyset_management_(keyset_management),
+      hwsec_(hwsec),
       auth_block_utility_(auth_block_utility),
       auth_factor_driver_manager_(auth_factor_driver_manager) {}
 
@@ -130,7 +138,72 @@ void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
 
   KeyData key_data;
   key_data.set_label(request.key_label());
-  key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
+  switch (*type) {
+    case AuthFactorType::kPassword:
+      key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
+      break;
+    case AuthFactorType::kPin:
+      key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
+      key_data.mutable_policy()->set_low_entropy_credential(true);
+      break;
+    case AuthFactorType::kKiosk:
+      key_data.set_type(KeyData::KEY_TYPE_KIOSK);
+      break;
+    case AuthFactorType::kSmartCard: {
+      key_data.set_type(KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
+
+      // Assign public_key_spki_der to AuthInput and KeyData structures.
+      std::string challenge_spki;
+      if (!base::HexStringToString(request.public_key_spki_der(),
+                                   &challenge_spki)) {
+        LOG(ERROR) << "Challenge SPKI Public Key DER is not hex encoded.";
+        std::move(on_done).Run(MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocCreateVaultKeysetRpcImplKeyNotHexEncoded),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+        return;
+      }
+
+      hwsec::StatusOr<uint32_t> family = hwsec_->GetFamily();
+      if (!family.ok()) {
+        LOG(ERROR) << "Failed to get the TPM family: " << family.status();
+        std::move(on_done).Run(MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocCreateVaultKeysetRpcImplFailedTPMFamily),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+        return;
+      }
+      // TPM 1.2 only supports SHA1, otherwise default to SHA512.
+      auto algo =
+          ((family.value() == kTpm12Family)
+               ? SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1
+               : SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512);
+
+      // Initializes a ChallengeCredentialAuthInput.
+      // Append challenge algorithm and key_delegate_dbus_service_name for
+      // testing to ChallengeCredentialAuthInput struct.
+      if (!request.key_delegate_dbus_service_name().empty() &&
+          !challenge_spki.empty()) {
+        auth_input.challenge_credential_auth_input =
+            ChallengeCredentialAuthInput{
+                .public_key_spki_der = brillo::BlobFromString(challenge_spki),
+                .challenge_signature_algorithms = {algo},
+                .dbus_service_name = request.key_delegate_dbus_service_name(),
+            };
+        auto* challenge_key = key_data.add_challenge_response_key();
+        challenge_key->set_public_key_spki_der(challenge_spki);
+      }
+      break;
+    }
+    default:
+      LOG(ERROR) << "Unimplemented AuthFactorType.";
+      std::move(on_done).Run(MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocCreateVaultKeysetRpcImplUnspecifiedAuthFactorType),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+          user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+      return;
+  }
 
   auto create_callback = base::BindOnce(
       &CreateVaultKeysetRpcImpl::CreateAndPersistVaultKeyset,

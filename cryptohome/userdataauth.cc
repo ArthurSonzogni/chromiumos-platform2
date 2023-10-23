@@ -689,7 +689,8 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   }
 
   create_vault_keyset_impl_ = std::make_unique<CreateVaultKeysetRpcImpl>(
-      keyset_management_, auth_block_utility_, auth_factor_driver_manager_);
+      keyset_management_, hwsec_, auth_block_utility_,
+      auth_factor_driver_manager_);
 
   if (!vault_factory_) {
     auto container_factory =

@@ -21,6 +21,7 @@
 #include <base/logging.h>
 #include <base/no_destructor.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <brillo/cryptohome.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/flag_helper.h>
@@ -169,6 +170,20 @@ bool WriteHexFileLogged(const FilePath& file_path, const SecureBlob& contents) {
     return true;
   LOG(ERROR) << "Failed to write to file " << file_path.value() << ".";
   return false;
+}
+
+user_data_auth::AuthFactorType GetAuthFactorTypeFromString(
+    const std::string& raw_auth_factor_type) {
+  if (raw_auth_factor_type == "password")
+    return user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_PASSWORD;
+  else if (raw_auth_factor_type == "pin")
+    return user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_PIN;
+  else if (raw_auth_factor_type == "kiosk")
+    return user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_KIOSK;
+  else if (raw_auth_factor_type == "smart_card")
+    return user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_SMART_CARD;
+  else
+    return user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_UNSPECIFIED;
 }
 
 bool DoRecoveryCryptoCreateHsmPayloadAction(
@@ -525,6 +540,8 @@ bool DoCreateVaultKeyset(const std::string& auth_session_id_hex,
                          const std::string& key_data_label,
                          const std::string& raw_auth_factor_type,
                          const std::string& raw_password,
+                         const std::string& key_delegate_dbus_service_name,
+                         const std::string& public_key_spki_der,
                          bool disable_key_data,
                          bool use_public_mount_salt,
                          Platform* platform) {
@@ -538,36 +555,41 @@ bool DoCreateVaultKeyset(const std::string& auth_session_id_hex,
   std::string auth_session_id;
   base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
 
-  // Format passkey to match cryptohome.cc command line
-  std::string trimmed_password;
-  base::TrimString(raw_password, "/r/n", &trimmed_password);
-  brillo::SecureBlob passkey;
-  brillo::SecureBlob salt;
-  if (use_public_mount_salt) {
-    GetPublicMountSalt(platform, &salt);
-  } else {
-    GetSystemSalt(platform, &salt);
-  }
-  Crypto::PasswordToPasskey(trimmed_password.c_str(), salt, &passkey);
-
   // Determine and enumerate AuthFactorType from raw input.
   user_data_auth::AuthFactorType auth_factor_type =
-      user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_PASSWORD;
-  if (raw_auth_factor_type == "password") {
-    auth_factor_type =
-        user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_PASSWORD;
-  } else if (raw_auth_factor_type == "pin") {
-    auth_factor_type = user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_PIN;
-  } else if (raw_auth_factor_type == "kiosk") {
-    auth_factor_type = user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_KIOSK;
-  }
+      GetAuthFactorTypeFromString(raw_auth_factor_type);
 
   user_data_auth::CreateVaultKeysetRequest request;
   request.set_auth_session_id(auth_session_id);
   request.set_key_label(key_data_label);
   request.set_type(auth_factor_type);
-  request.set_passkey(passkey.to_string());
   request.set_disable_key_data(disable_key_data);
+
+  // Fill challenge credential parameters depending on AuthFactorType.
+  if (auth_factor_type ==
+      user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_SMART_CARD) {
+    if (!key_delegate_dbus_service_name.empty())
+      request.set_key_delegate_dbus_service_name(
+          key_delegate_dbus_service_name);
+
+    if (!public_key_spki_der.empty())
+      request.set_public_key_spki_der(public_key_spki_der);
+  } else {
+    // Anything factor that isn't a challenge credntial has a passkey.
+    // Format passkey to match cryptohome.cc command line
+    std::string trimmed_password;
+    base::TrimString(raw_password, "/r/n", &trimmed_password);
+    brillo::SecureBlob passkey;
+    brillo::SecureBlob salt;
+    if (use_public_mount_salt) {
+      GetPublicMountSalt(platform, &salt);
+    } else {
+      GetSystemSalt(platform, &salt);
+    }
+    Crypto::PasswordToPasskey(trimmed_password.c_str(), salt, &passkey);
+    request.set_passkey(passkey.to_string());
+  }
+
   user_data_auth::CreateVaultKeysetReply reply;
   brillo::ErrorPtr error;
 
@@ -717,6 +739,14 @@ int main(int argc, char* argv[]) {
   DEFINE_string(passkey, "",
                 "User passkey input, or password used to generate a custom "
                 "vault keyset.");
+  DEFINE_string(
+      key_delegate_name, "",
+      "For connecting and making requests to a key delegate service: "
+      "|dbus_service_name|, the D-Bus service name of the key delegate "
+      "service that exports the key delegate object.");
+  DEFINE_string(challenge_spki, "",
+                "Specifies the key which is asked to sign the data. Contains "
+                "the DER-encoded blob of the X.509 Subject Public Key Info.");
   DEFINE_bool(disable_key_data, false,
               "Boolean to enable or disable adding a KeyData object to "
               "the VaultKeyset during creation.");
@@ -730,12 +760,11 @@ int main(int argc, char* argv[]) {
   if (FLAGS_action.empty()) {
     LOG(ERROR) << "--action is required.";
   } else if (FLAGS_action == "create_vault_keyset") {
-    if (CheckMandatoryFlag("auth_session_id", FLAGS_auth_session_id) &&
-        CheckMandatoryFlag("passkey", FLAGS_passkey)) {
+    if (CheckMandatoryFlag("auth_session_id", FLAGS_auth_session_id)) {
       success = cryptohome::DoCreateVaultKeyset(
           FLAGS_auth_session_id, FLAGS_key_data_label, FLAGS_auth_factor_type,
-          FLAGS_passkey, FLAGS_disable_key_data, FLAGS_use_public_mount_salt,
-          &platform);
+          FLAGS_passkey, FLAGS_key_delegate_name, FLAGS_challenge_spki,
+          FLAGS_disable_key_data, FLAGS_use_public_mount_salt, &platform);
     }
   } else if (FLAGS_action == "recovery_crypto_create_hsm_payload") {
     if (CheckMandatoryFlag("rsa_priv_key_out_file",

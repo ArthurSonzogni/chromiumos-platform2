@@ -487,12 +487,6 @@ class AuthSession final {
   CryptohomeStatusOr<AuthInput> CreateAuthInputForSelectFactor(
       AuthFactorType auth_factor_type);
 
-  // Initializes a ChallengeCredentialAuthInput, i.e.
-  // {.public_key_spki_der, .challenge_signature_algorithms} from
-  // the challenge_response_key values in in authorization
-  std::optional<ChallengeCredentialAuthInput>
-  CreateChallengeCredentialAuthInput(const AuthorizationRequest& authorization);
-
   // This function attempts to add verifier for the given label based on the
   // AuthInput. If it succeeds it will return a pointer to the verifier.
   // Otherwise it will return null.

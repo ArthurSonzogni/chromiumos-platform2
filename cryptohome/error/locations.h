@@ -1589,6 +1589,12 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserSessionEvictCryptohomeKeyInEvictDeviceKey = 2325,
   /* ./userdataauth.cc */
   kLocUserDataAuthNoActiveMountInEvictDeviceKey = 2326,
+  /* ./create_vault_keyset_rpc_impl.cc */
+  kLocCreateVaultKeysetRpcImplFailedTPMFamily = 2327,
+  /* ./create_vault_keyset_rpc_impl.cc */
+  kLocCreateVaultKeysetRpcImplUnspecifiedAuthFactorType = 2328,
+  /* ./create_vault_keyset_rpc_impl.cc */
+  kLocCreateVaultKeysetRpcImplKeyNotHexEncoded = 2329,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2500
   //// See location_db.py for more info.
