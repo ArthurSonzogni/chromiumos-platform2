@@ -77,6 +77,22 @@ void BluetoothRoutineBaseV2::Initialize(
                               weak_ptr_factory_.GetWeakPtr())));
 
   auto [on_success, on_error] = SplitDbusCallback(
+      base::BindOnce(&BluetoothRoutineBaseV2::CheckFlossEnabledState,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(on_finish)));
+  manager_->GetFlossEnabledAsync(std::move(on_success), std::move(on_error));
+}
+
+void BluetoothRoutineBaseV2::CheckFlossEnabledState(
+    base::OnceCallback<void(bool)> on_finish,
+    brillo::Error* error,
+    bool floss_enabled) {
+  if (error || !floss_enabled) {
+    LOG(ERROR) << "Failed to ensure that floss is enabled.";
+    std::move(on_finish).Run(false);
+    return;
+  }
+
+  auto [on_success, on_error] = SplitDbusCallback(
       base::BindOnce(&BluetoothRoutineBaseV2::SetupDefaultAdapter,
                      weak_ptr_factory_.GetWeakPtr(), std::move(on_finish)));
   manager_->GetDefaultAdapterAsync(std::move(on_success), std::move(on_error));

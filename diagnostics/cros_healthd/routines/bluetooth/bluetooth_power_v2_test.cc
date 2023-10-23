@@ -70,6 +70,8 @@ class BluetoothPowerRoutineV2Test : public testing::Test {
   void SetupInitializeSuccessCall(bool initial_powered) {
     EXPECT_CALL(*mock_floss_controller(), GetManager())
         .WillOnce(Return(&mock_manager_proxy_));
+    EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+        .WillOnce(base::test::RunOnceCallback<0>(/*floss_enabled=*/true));
     EXPECT_CALL(mock_manager_proxy_, GetDefaultAdapterAsync(_, _, _))
         .WillOnce(base::test::RunOnceCallback<0>(/*hci_interface=*/0));
     if (initial_powered) {

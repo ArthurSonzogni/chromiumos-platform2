@@ -81,6 +81,9 @@ class BluetoothRoutineBaseV2 {
 
  private:
   // Inner functions of |Initialize|.
+  void CheckFlossEnabledState(base::OnceCallback<void(bool)> on_finish,
+                              brillo::Error* error,
+                              bool floss_enabled);
   void SetupDefaultAdapter(base::OnceCallback<void(bool)> on_finish,
                            brillo::Error* error,
                            int32_t hci_interface);

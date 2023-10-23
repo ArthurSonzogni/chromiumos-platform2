@@ -120,6 +120,8 @@ class BluetoothRoutineBaseV2Test : public testing::Test {
 
   // Setup all the required call for calling |Initialize| successfully.
   void SetupInitializeSuccessCall(bool initial_powered) {
+    EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+        .WillOnce(base::test::RunOnceCallback<0>(/*floss_enabled=*/true));
     SetupGetDefaultAdapterCall();
     if (initial_powered) {
       SetupGetAdaptersCall();
@@ -161,12 +163,36 @@ TEST_F(BluetoothRoutineBaseV2Test, GetManagerProxyError) {
   EXPECT_EQ(routine_base_.GetDefaultAdapter(), nullptr);
 }
 
+// Test that the BluetoothRoutineBaseV2 can handle error when floss is disabled.
+TEST_F(BluetoothRoutineBaseV2Test, FlossDisabledError) {
+  InSequence s;
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*floss_enabled=*/false));
+
+  EXPECT_EQ(InitializeSync(), false);
+  EXPECT_EQ(routine_base_.GetDefaultAdapter(), nullptr);
+}
+
+// Test that the BluetoothRoutineBaseV2 can handle error when getting floss
+// enabled state.
+TEST_F(BluetoothRoutineBaseV2Test, GetFlossEnabledError) {
+  InSequence s;
+  error_ = brillo::Error::Create(FROM_HERE, "", "", "");
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>(error_.get()));
+
+  EXPECT_EQ(InitializeSync(), false);
+  EXPECT_EQ(routine_base_.GetDefaultAdapter(), nullptr);
+}
+
 // Test that the BluetoothRoutineBaseV2 can handle error when getting default
 // adapter.
 TEST_F(BluetoothRoutineBaseV2Test, GetDefaultAdapterError) {
   InSequence s;
 
-  // Fails to initialize.
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*floss_enabled=*/true));
+  // Fails to setup default adapter.
   SetupGetDefaultAdapterCall(/*success=*/false);
 
   EXPECT_EQ(InitializeSync(), false);
@@ -178,9 +204,11 @@ TEST_F(BluetoothRoutineBaseV2Test, GetDefaultAdapterError) {
 TEST_F(BluetoothRoutineBaseV2Test, GetAdapterEnabledError) {
   InSequence s;
 
-  // Fails to initialize.
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*floss_enabled=*/true));
   SetupGetDefaultAdapterCall();
   SetupGetAdaptersCall();
+  // Fails to get adapter enabled state.
   SetupGetAdapterEnabledCall(/*powered=*/true, /*success=*/false);
 
   EXPECT_EQ(InitializeSync(), false);
@@ -199,6 +227,8 @@ TEST_F(BluetoothRoutineBaseV2Test, EmptyAdapter) {
 // Test that the BluetoothRoutineBaseV2 can handle null adapter and return null.
 TEST_F(BluetoothRoutineBaseV2Test, NullAdapter) {
   InSequence s;
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*floss_enabled=*/true));
   SetupGetDefaultAdapterCall(/*success=*/true);
   EXPECT_CALL(*mock_floss_controller(), GetAdapters())
       .WillOnce(Return(
@@ -214,6 +244,8 @@ TEST_F(BluetoothRoutineBaseV2Test, NullAdapter) {
 // the default one.
 TEST_F(BluetoothRoutineBaseV2Test, MultipleAdapter) {
   InSequence s;
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*floss_enabled=*/true));
   SetupGetDefaultAdapterCall(/*success=*/true);
 
   // Non-default adapter with HCI interface 1.
@@ -242,6 +274,8 @@ TEST_F(BluetoothRoutineBaseV2Test, MultipleAdapter) {
 TEST_F(BluetoothRoutineBaseV2Test, GetPoweredFailedMissingManagerProxy) {
   InSequence s;
 
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*floss_enabled=*/true));
   EXPECT_CALL(mock_manager_proxy_, GetDefaultAdapterAsync(_, _, _))
       .WillOnce(WithArg<0>([&](base::OnceCallback<void(int32_t)> on_success) {
         // Manager proxy is removed unexpectedly.
@@ -280,6 +314,8 @@ TEST_F(BluetoothRoutineBaseV2Test, PreCheckPassedPoweredOn) {
 // when the powered is on at first.
 TEST_F(BluetoothRoutineBaseV2Test, PreCheckFailedNoAdapter) {
   InSequence s;
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*floss_enabled=*/true));
   SetupGetDefaultAdapterCall();
   // The adapter is missing when the powered is on.
   EXPECT_CALL(*mock_floss_controller(), GetAdapters())
