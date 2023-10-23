@@ -421,7 +421,7 @@ class MobileOperatorInfoCarriersRogersTest
   MobileOperatorInfoCarriersRogersTest()
       : kRogersApn4G(ApnBuilder("ltemobile.apn")
                          .IpType(kApnIpTypeV4V6)
-                         .ApnTypes({kApnTypeDefault})),
+                         .ApnTypes({kApnTypeDefault, kApnTypeIA})),
         kRogersApn4GDun(ApnBuilder("ltedata.apn")
                             .IpType(kApnIpTypeV4V6)
                             .ApnTypes({kApnTypeDun})

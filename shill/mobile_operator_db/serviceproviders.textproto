@@ -2173,6 +2173,7 @@ mno {
       }
       ip_type: IPV4V6
       type: DEFAULT
+      type: IA
     }
     mobile_apn {
       apn: "ltedata.apn"
