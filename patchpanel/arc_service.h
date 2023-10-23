@@ -232,19 +232,28 @@ class ArcService {
   // |shill_device| changed.
   void UpdateDeviceIPConfig(const ShillClient::Device& shill_device);
 
-  // Temporary setters and getters needed for Manager until
-  // NotifyAndroidInteractiveState and NotifyAndroidWifiMulticastLockChange are
-  // migrated to ArcService.
-  bool is_android_wifi_multicast_lock_held() {
-    return is_android_wifi_multicast_lock_held_;
-  }
-  void set_android_wifi_multicast_lock_held(bool is_held) {
-    is_android_wifi_multicast_lock_held_ = is_held;
-  }
-  bool is_arc_interactive() { return is_arc_interactive_; }
-  void set_arc_interactive(bool is_interactive) {
-    is_arc_interactive_ = is_interactive;
-  }
+  // Start/Stop forwarding multicast traffic to ARC when ARC power state
+  // changes.
+  // When power state changes into interactive, start forwarding IPv4 and IPv6
+  // multicast mDNS and SSDP traffic for all non-WiFi interfaces, and for WiFi
+  // interface only when Android WiFi multicast lock is held by any app in ARC.
+  // When power state changes into non-interactive, stop forwarding multicast
+  // traffic for all interfaces if enabled.
+  void NotifyAndroidInteractiveState(bool is_interactive);
+
+  // Start/Stop forwarding WiFi multicast traffic to and from ARC when Android
+  // WiFi multicast lock held status changes. Start forwarding IPv4 and IPv6
+  // multicast mDNS and SSDP traffic for WiFi interfaces only when
+  // device power state is interactive and Android WiFi multicast lock is held
+  // by any app in ARC, otherwise stop multicast forwarder for ARC WiFi
+  // interface.
+  void NotifyAndroidWifiMulticastLockChange(bool is_held);
+
+  // Returns true if MulticastForwarder and BroadcastForwarder are currently
+  // running on the ARC WiFi interface. This requires both:
+  //  a) ARC is in an interactive state,
+  //  b) The Android WiFi multicast lock is held by at least one App.
+  bool IsWiFiMulticastForwardingRunning();
 
  private:
   // Creates ARC interface configuration for the the legacy "arc0" management

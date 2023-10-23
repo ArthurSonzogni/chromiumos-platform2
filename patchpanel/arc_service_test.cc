@@ -926,6 +926,80 @@ TEST_F(ArcServiceTest, ContainerImpl_Restart) {
   Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
+TEST_F(ArcServiceTest, ContainerImpl_WiFiMulticastForwarding) {
+  EXPECT_CALL(*datapath_, NetnsAttachName).WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, ConnectVethPair).WillRepeatedly(Return(true));
+  EXPECT_CALL(*datapath_, AddToBridge).WillRepeatedly(Return(true));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers).WillRepeatedly(Return(true));
+  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+
+  auto svc = NewService(ArcService::ArcType::kContainer);
+
+  EXPECT_FALSE(svc->IsWiFiMulticastForwardingRunning());
+  svc->NotifyAndroidWifiMulticastLockChange(true);
+  svc->NotifyAndroidInteractiveState(true);
+  EXPECT_FALSE(svc->IsWiFiMulticastForwardingRunning());
+
+  svc->Start(kTestPID);
+  EXPECT_TRUE(svc->IsStarted());
+  EXPECT_FALSE(svc->IsWiFiMulticastForwardingRunning());
+  Mock::VerifyAndClearExpectations(forwarding_service_.get());
+
+  // Add WiFi Device. Lock is not taken yet.
+  EXPECT_CALL(*forwarding_service_,
+              StartForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                              ForwardingService::ForwardingSet{
+                                  .ipv6 = true, .multicast = false},
+                              Eq(std::nullopt), Eq(std::nullopt)));
+  auto wlan0_dev = MakeShillDevice("wlan0", ShillClient::Device::Type::kWifi);
+  svc->AddDevice(wlan0_dev);
+  EXPECT_FALSE(svc->IsWiFiMulticastForwardingRunning());
+  Mock::VerifyAndClearExpectations(forwarding_service_.get());
+
+  // Android Multicast lock is taken
+  EXPECT_CALL(*forwarding_service_,
+              StartForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                              ForwardingService::ForwardingSet{
+                                  .ipv6 = false, .multicast = true},
+                              Eq(std::nullopt), Eq(std::nullopt)));
+  svc->NotifyAndroidWifiMulticastLockChange(true);
+  EXPECT_TRUE(svc->IsWiFiMulticastForwardingRunning());
+  Mock::VerifyAndClearExpectations(forwarding_service_.get());
+
+  // Android WiFi multicast lock is released.
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                     ForwardingService::ForwardingSet{.multicast = true}));
+  svc->NotifyAndroidWifiMulticastLockChange(false);
+  EXPECT_FALSE(svc->IsWiFiMulticastForwardingRunning());
+  Mock::VerifyAndClearExpectations(forwarding_service_.get());
+
+  // Android is not interactive anymore.
+  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StopForwarding).Times(0);
+  svc->NotifyAndroidInteractiveState(false);
+  EXPECT_FALSE(svc->IsWiFiMulticastForwardingRunning());
+  Mock::VerifyAndClearExpectations(forwarding_service_.get());
+
+  // Android Multicast lock is taken, there is no effect
+  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StopForwarding).Times(0);
+  svc->NotifyAndroidWifiMulticastLockChange(true);
+  EXPECT_FALSE(svc->IsWiFiMulticastForwardingRunning());
+  Mock::VerifyAndClearExpectations(forwarding_service_.get());
+
+  // Android is interactive agin.
+  EXPECT_CALL(*forwarding_service_,
+              StartForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                              ForwardingService::ForwardingSet{
+                                  .ipv6 = false, .multicast = true},
+                              Eq(std::nullopt), Eq(std::nullopt)));
+  svc->NotifyAndroidInteractiveState(true);
+  EXPECT_TRUE(svc->IsWiFiMulticastForwardingRunning());
+  Mock::VerifyAndClearExpectations(forwarding_service_.get());
+}
+
 // VM Impl
 
 TEST_F(ArcServiceTest, VmImpl_Start) {

@@ -1243,102 +1243,23 @@ void Manager::StopForwarding(const ShillClient::Device& shill_device,
 }
 
 void Manager::NotifyAndroidWifiMulticastLockChange(bool is_held) {
-  // When multicast lock status changes from not held to held or the other
-  // way, decide whether to enable or disable multicast forwarder for ARC.
-  if (arc_svc_->is_android_wifi_multicast_lock_held() == is_held) {
-    return;
-  }
-
-  // If arc is not interactive, multicast lock held status does not
-  // affect multicast traffic.
-  arc_svc_->set_android_wifi_multicast_lock_held(is_held);
-  if (!arc_svc_->is_arc_interactive()) {
-    return;
-  }
-
-  // Only start/stop forwarding when multicast allowed status changes to avoid
-  // start/stop forwarding multiple times, also wifi multicast lock should
-  // only affect multicast traffic on wireless device.
-  for (const auto* arc_device : arc_svc_->GetDevices()) {
-    // The "arc0" ARC device is ignored.
-    if (!arc_device->shill_device_ifname()) {
-      continue;
-    }
-    auto* upstream_shill_device = shill_client_->GetDeviceByShillDeviceName(
-        *arc_device->shill_device_ifname());
-    if (!upstream_shill_device) {
-      LOG(ERROR) << __func__
-                 << ": no upstream shill Device found for ARC Device "
-                 << *arc_device;
-      continue;
-    }
-    if (upstream_shill_device->type != ShillClient::Device::Type::kWifi) {
-      continue;
-    }
-    if (arc_svc_->is_android_wifi_multicast_lock_held()) {
-      StartForwarding(*upstream_shill_device, arc_device->bridge_ifname(),
-                      ForwardingService::ForwardingSet{.multicast = true});
-    } else {
-      StopForwarding(*upstream_shill_device, arc_device->bridge_ifname(),
-                     ForwardingService::ForwardingSet{.multicast = true});
-    }
-  }
-
-  // Notify multicast metrics for forwarder state change.
-  if (arc_svc_->is_android_wifi_multicast_lock_held()) {
+  auto before = arc_svc_->IsWiFiMulticastForwardingRunning();
+  arc_svc_->NotifyAndroidWifiMulticastLockChange(is_held);
+  auto after = arc_svc_->IsWiFiMulticastForwardingRunning();
+  if (!before && after) {
     multicast_metrics_->OnARCWiFiForwarderStarted();
-  } else {
+  } else if (before && !after) {
     multicast_metrics_->OnARCWiFiForwarderStopped();
   }
 }
 
 void Manager::NotifyAndroidInteractiveState(bool is_interactive) {
-  // When power state of device changes, decide whether to disable
-  // multicast forwarder for ARC.
-  if (arc_svc_->is_arc_interactive() == is_interactive) {
-    return;
-  }
-
-  // If ARC power state has changed to interactive, enable all
-  // interfaces that are not wifi interface, and only enable wifi interfaces
-  // when wifi multicast lock is held.
-  // If ARC power state has changed to non-interactive, disable all
-  // interfaces that are not wifi interface, and only disable wifi
-  // interfaces when they were in enabled state (multicast lock held).
-  arc_svc_->set_arc_interactive(is_interactive);
-  for (const auto* arc_device : arc_svc_->GetDevices()) {
-    // The "arc0" ARC device is ignored.
-    if (!arc_device->shill_device_ifname()) {
-      continue;
-    }
-    auto* upstream_shill_device = shill_client_->GetDeviceByShillDeviceName(
-        *arc_device->shill_device_ifname());
-    if (!upstream_shill_device) {
-      LOG(ERROR) << __func__
-                 << ": no upstream shill Device found for ARC Device "
-                 << *arc_device;
-      continue;
-    }
-    if (upstream_shill_device->type == ShillClient::Device::Type::kWifi &&
-        !arc_svc_->is_android_wifi_multicast_lock_held()) {
-      continue;
-    }
-    if (arc_svc_->is_arc_interactive()) {
-      StartForwarding(*upstream_shill_device, arc_device->bridge_ifname(),
-                      ForwardingService::ForwardingSet{.multicast = true});
-    } else {
-      StopForwarding(*upstream_shill_device, arc_device->bridge_ifname(),
-                     ForwardingService::ForwardingSet{.multicast = true});
-    }
-  }
-
-  // Notify multicast metrics for forwarder state change.
-  if (!arc_svc_->is_android_wifi_multicast_lock_held()) {
-    return;
-  }
-  if (arc_svc_->is_arc_interactive()) {
+  auto before = arc_svc_->IsWiFiMulticastForwardingRunning();
+  arc_svc_->NotifyAndroidInteractiveState(is_interactive);
+  auto after = arc_svc_->IsWiFiMulticastForwardingRunning();
+  if (!before && after) {
     multicast_metrics_->OnARCWiFiForwarderStarted();
-  } else {
+  } else if (before && !after) {
     multicast_metrics_->OnARCWiFiForwarderStopped();
   }
 }

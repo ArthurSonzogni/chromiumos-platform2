@@ -454,6 +454,8 @@ void ArcService::Stop(uint32_t id) {
   }
 
   id_ = kInvalidId;
+  is_arc_interactive_ = true;
+  is_android_wifi_multicast_lock_held_ = false;
   RecordEvent(metrics_, ArcServiceUmaEvent::kStopSuccess);
 }
 
@@ -732,6 +734,105 @@ void ArcService::StopArcDeviceDatapath(
   if (arc_type_ == ArcType::kContainer) {
     datapath_->RemoveInterface(arc_device.arc_device_ifname());
   }
+}
+
+void ArcService::NotifyAndroidWifiMulticastLockChange(bool is_held) {
+  if (!IsStarted()) {
+    return;
+  }
+
+  // When multicast lock status changes from not held to held or the other
+  // way, decide whether to enable or disable multicast forwarder for ARC.
+  if (is_android_wifi_multicast_lock_held_ == is_held) {
+    return;
+  }
+  is_android_wifi_multicast_lock_held_ = is_held;
+
+  // If arc is not interactive, multicast lock held status does not
+  // affect multicast traffic.
+  if (!is_arc_interactive_) {
+    return;
+  }
+
+  // Only start/stop forwarding when multicast allowed status changes to avoid
+  // start/stop forwarding multiple times, also wifi multicast lock should
+  // only affect multicast traffic on wireless device.
+  for (const auto& [shill_device_ifname, arc_device] : devices_) {
+    const auto shill_device_it = shill_devices_.find(shill_device_ifname);
+    if (shill_device_it == shill_devices_.end()) {
+      LOG(ERROR) << __func__
+                 << ": no upstream shill Device found for ARC Device "
+                 << arc_device;
+      continue;
+    }
+    if (shill_device_it->second.type != ShillClient::Device::Type::kWifi) {
+      continue;
+    }
+    if (is_android_wifi_multicast_lock_held_) {
+      forwarding_service_->StartForwarding(
+          shill_device_it->second, arc_device.bridge_ifname(),
+          ForwardingService::ForwardingSet{.multicast = true});
+    } else {
+      forwarding_service_->StopForwarding(
+          shill_device_it->second, arc_device.bridge_ifname(),
+          ForwardingService::ForwardingSet{.multicast = true});
+    }
+  }
+}
+
+void ArcService::NotifyAndroidInteractiveState(bool is_interactive) {
+  if (!IsStarted()) {
+    return;
+  }
+
+  if (is_arc_interactive_ == is_interactive) {
+    return;
+  }
+  is_arc_interactive_ = is_interactive;
+
+  // If ARC power state has changed to interactive, enable all
+  // interfaces that are not WiFi interface, and only enable WiFi interfaces
+  // when WiFi multicast lock is held.
+  // If ARC power state has changed to non-interactive, disable all
+  // interfaces that are not WiFi interface, and only disable WiFi
+  // interfaces when they were in enabled state (multicast lock held).
+  for (const auto& [shill_device_ifname, arc_device] : devices_) {
+    const auto shill_device_it = shill_devices_.find(shill_device_ifname);
+    if (shill_device_it == shill_devices_.end()) {
+      LOG(ERROR) << __func__
+                 << ": no upstream shill Device found for ARC Device "
+                 << arc_device;
+      continue;
+    }
+    if (shill_device_it->second.type == ShillClient::Device::Type::kWifi &&
+        !is_android_wifi_multicast_lock_held_) {
+      continue;
+    }
+    if (is_arc_interactive_) {
+      forwarding_service_->StartForwarding(
+          shill_device_it->second, arc_device.bridge_ifname(),
+          ForwardingService::ForwardingSet{.multicast = true});
+    } else {
+      forwarding_service_->StopForwarding(
+          shill_device_it->second, arc_device.bridge_ifname(),
+          ForwardingService::ForwardingSet{.multicast = true});
+    }
+  }
+}
+
+bool ArcService::IsWiFiMulticastForwardingRunning() {
+  // Check multicast forwarding conditions for WiFi. This implies ARC is
+  // running.
+  if (!is_arc_interactive_ || !is_android_wifi_multicast_lock_held_) {
+    return false;
+  }
+  // Ensure there is also an active WiFi Device;
+  for (const auto& [_, shill_dev] : shill_devices_) {
+    if (shill_dev.type == ShillClient::Device::Type::kWifi) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace patchpanel
