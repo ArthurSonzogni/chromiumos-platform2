@@ -182,8 +182,9 @@ void Storage::Create(
           storage_->options_.directory());
 
       // Get the information we need to create queues
-      queue_parameters_ =
-          StorageDirectory::FindQueueDirectories(storage_->options_);
+      queue_parameters_ = StorageDirectory::FindQueueDirectories(
+          storage_->options_.directory(),
+          storage_->options_.ProduceQueuesOptionsList());
 
       // If encryption is not enabled, proceed with the queues.
       if (!storage_->encryption_module_->is_enabled()) {

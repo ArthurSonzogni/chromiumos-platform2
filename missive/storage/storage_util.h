@@ -34,7 +34,9 @@ class StorageDirectory {
   // Returns a set of <Priority, GenerationGuid> tuples corresponding to valid
   // queue directories found in the storage directory provided in `options`. For
   // legacy directories, GenerationGuid will be empty.
-  static Set FindQueueDirectories(const StorageOptions& options);
+  static Set FindQueueDirectories(
+      const base::FilePath& storage_directory,
+      const StorageOptions::QueuesOptionsList& options_list);
 
   // Deletes all multigenerational queue directories in `storage_directory` that
   // contain no unconfirmed records. Returns false on error. Returns true
@@ -45,8 +47,9 @@ class StorageDirectory {
  private:
   // Returns priority/generation guid tuple from a filepath, or error status.
   static StatusOr<std::tuple<Priority, GenerationGuid>>
-  GetPriorityAndGenerationGuid(const base::FilePath& full_name,
-                               const StorageOptions& options);
+  GetPriorityAndGenerationGuid(
+      const base::FilePath& full_name,
+      const StorageOptions::QueuesOptionsList& options_list);
 
   // Returns generation guid from a filepath, or error status.
   static StatusOr<GenerationGuid> ParseGenerationGuidFromFilePath(
@@ -54,7 +57,8 @@ class StorageDirectory {
 
   // Return priority from a filepath, or error status.
   static StatusOr<Priority> ParsePriorityFromQueueDirectory(
-      const base::FilePath& full_path, const StorageOptions& options);
+      const base::FilePath& full_path,
+      const StorageOptions::QueuesOptionsList& options_list);
 
   // Returns true if the filepath matches the format of a metadata file. Returns
   // false otherwise.

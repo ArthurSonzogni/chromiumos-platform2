@@ -126,7 +126,9 @@ TEST_F(StorageDirectoryTest, MultigenerationQueueDirectoriesAreFound) {
 
   const auto kExpectedNumQueueDirectories = queue_options_list.size();
   const auto priority_generation_guid_pairs =
-      StorageDirectory::FindQueueDirectories(storage_options_);
+      StorageDirectory::FindQueueDirectories(
+          storage_options_.directory(),
+          storage_options_.ProduceQueuesOptionsList());
 
   EXPECT_EQ(priority_generation_guid_pairs.size(),
             kExpectedNumQueueDirectories);
@@ -155,7 +157,9 @@ TEST_F(StorageDirectoryTest, LegacyQueueDirectoriesAreFound) {
 
   const auto kExpectedNumLegacyQueueDirectories = queue_options.size();
   const auto priority_generation_guid_pairs =
-      StorageDirectory::FindQueueDirectories(storage_options_);
+      StorageDirectory::FindQueueDirectories(
+          storage_options_.directory(),
+          storage_options_.ProduceQueuesOptionsList());
 
   EXPECT_EQ(priority_generation_guid_pairs.size(),
             kExpectedNumLegacyQueueDirectories);
@@ -176,7 +180,10 @@ TEST_F(StorageDirectoryTest, MixedQueueDirectoriesAreFound) {
 
   const int expected_num_queue_directories = 2;
   const int num_queue_directories =
-      StorageDirectory::FindQueueDirectories(storage_options_).size();
+      StorageDirectory::FindQueueDirectories(
+          storage_options_.directory(),
+          storage_options_.ProduceQueuesOptionsList())
+          .size();
 
   EXPECT_EQ(num_queue_directories, expected_num_queue_directories);
 }
@@ -201,7 +208,10 @@ TEST_F(StorageDirectoryTest, EmptyLegacyQueueDirectoriesAreNotDeleted) {
 
   const int expected_num_queue_directories = 1;
   const int num_queue_directories =
-      StorageDirectory::FindQueueDirectories(storage_options_).size();
+      StorageDirectory::FindQueueDirectories(
+          storage_options_.directory(),
+          storage_options_.ProduceQueuesOptionsList())
+          .size();
   EXPECT_EQ(num_queue_directories, expected_num_queue_directories);
 }
 
@@ -228,7 +238,10 @@ TEST_F(StorageDirectoryTest, EmptyMultigenerationQueueDirectoriesAreDeleted) {
   // We should find zero queue directories
   const int expected_num_queue_directories = 0;
   const int num_queue_directories =
-      StorageDirectory::FindQueueDirectories(storage_options_).size();
+      StorageDirectory::FindQueueDirectories(
+          storage_options_.directory(),
+          storage_options_.ProduceQueuesOptionsList())
+          .size();
   EXPECT_EQ(num_queue_directories, expected_num_queue_directories);
 }
 
@@ -255,7 +268,10 @@ TEST_F(StorageDirectoryTest,
   EXPECT_TRUE(base::DirectoryExists(multigenerational_queue_directory_path));
   const int expected_num_queue_directories = 1;
   const int num_queue_directories =
-      StorageDirectory::FindQueueDirectories(storage_options_).size();
+      StorageDirectory::FindQueueDirectories(
+          storage_options_.directory(),
+          storage_options_.ProduceQueuesOptionsList())
+          .size();
   EXPECT_EQ(num_queue_directories, expected_num_queue_directories);
 }
 

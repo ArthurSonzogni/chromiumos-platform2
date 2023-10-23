@@ -23,15 +23,16 @@ namespace reporting {
 
 // static
 StorageDirectory::Set StorageDirectory::FindQueueDirectories(
-    const StorageOptions& options) {
+    const base::FilePath& storage_directory,
+    const StorageOptions::QueuesOptionsList& options_list) {
   Set queue_params;
-  base::FileEnumerator dir_enum(options.directory(),
+  base::FileEnumerator dir_enum(storage_directory,
                                 /*recursive=*/false,
                                 base::FileEnumerator::DIRECTORIES);
   for (auto full_name = dir_enum.Next(); !full_name.empty();
        full_name = dir_enum.Next()) {
     if (const auto priority_result =
-            ParsePriorityFromQueueDirectory(full_name, options);
+            ParsePriorityFromQueueDirectory(full_name, options_list);
         priority_result.ok() && full_name.Extension().empty()) {
       // This is a legacy queue directory named just by priority with no
       // generation guid as an extension: foo/bar/Security,
@@ -40,7 +41,7 @@ StorageDirectory::Set StorageDirectory::FindQueueDirectories(
           std::make_tuple(priority_result.ValueOrDie(), GenerationGuid()));
       LOG(INFO) << "Found legacy queue directory: " << full_name;
     } else if (auto queue_param =
-                   GetPriorityAndGenerationGuid(full_name, options);
+                   GetPriorityAndGenerationGuid(full_name, options_list);
                queue_param.ok()) {
       queue_params.emplace(queue_param.ValueOrDie());
     } else {
@@ -54,15 +55,17 @@ StorageDirectory::Set StorageDirectory::FindQueueDirectories(
 
 // static
 StatusOr<std::tuple<Priority, GenerationGuid>>
-StorageDirectory::GetPriorityAndGenerationGuid(const base::FilePath& full_name,
-                                               const StorageOptions& options) {
+StorageDirectory::GetPriorityAndGenerationGuid(
+    const base::FilePath& full_name,
+    const StorageOptions::QueuesOptionsList& options_list) {
   // Try to parse generation guid from file path
   const auto generation_guid = ParseGenerationGuidFromFilePath(full_name);
   if (!generation_guid.ok()) {
     return generation_guid.status();
   }
   // Try to parse a priority from file path
-  const auto priority = ParsePriorityFromQueueDirectory(full_name, options);
+  const auto priority =
+      ParsePriorityFromQueueDirectory(full_name, options_list);
   if (!priority.ok()) {
     return priority.status();
   }
@@ -98,9 +101,9 @@ StatusOr<GenerationGuid> StorageDirectory::ParseGenerationGuidFromFilePath(
 
 // static
 StatusOr<Priority> StorageDirectory::ParsePriorityFromQueueDirectory(
-    const base::FilePath& full_path, const StorageOptions& options) {
-  for (const auto& priority_queue_options_pair :
-       options.ProduceQueuesOptionsList()) {
+    const base::FilePath& full_path,
+    const StorageOptions::QueuesOptionsList& options_list) {
+  for (const auto& priority_queue_options_pair : options_list) {
     if (priority_queue_options_pair.second.directory() ==
         full_path.RemoveExtension()) {
       return priority_queue_options_pair.first;

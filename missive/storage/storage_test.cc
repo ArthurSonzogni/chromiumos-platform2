@@ -1640,7 +1640,9 @@ TEST_P(StorageTest, EmptyMultigenerationalQueuesAreDeletedOnStartup) {
 
   const int expected_num_queue_directories = 0;
   const int num_queue_directories =
-      StorageDirectory::FindQueueDirectories(options_).size();
+      StorageDirectory::FindQueueDirectories(
+          options_.directory(), options_.ProduceQueuesOptionsList())
+          .size();
   EXPECT_THAT(num_queue_directories, Eq(expected_num_queue_directories));
 }
 
