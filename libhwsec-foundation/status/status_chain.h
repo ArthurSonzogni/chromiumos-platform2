@@ -79,15 +79,7 @@ template <typename _Et>
 template <typename _Et>
 [[clang::return_typestate(consumed)]] const StatusChain<_Et>&
 ConstRefOkStatus() {
-  // thread_local variable instances are initialized much like static
-  // variables, except that they must be initialized separately for each
-  // thread, rather than once at program startup. This means that
-  // thread_local variables declared within a function are safe.
-
-  // thread_local variable instances are not destroyed before their thread
-  // terminates, so they do not have the destruction-order issues of static
-  // variables.
-  const thread_local StatusChain<_Et> kOkStatus = OkStatus<_Et>();
+  static const StatusChain<_Et> kOkStatus = OkStatus<_Et>();
   return kOkStatus;
 }
 

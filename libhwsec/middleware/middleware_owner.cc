@@ -40,6 +40,13 @@ scoped_refptr<base::TaskRunner> GetCurrentTaskRunnerOrNullptr() {
              ? base::SequencedTaskRunner::GetCurrentDefault()
              : nullptr;
 }
+
+// Use thread_local to ensure the metrics, proxy and backend could only be
+// accessed on a thread.
+ABSL_CONST_INIT static thread_local std::unique_ptr<hwsec::Metrics> metrics_;
+ABSL_CONST_INIT static thread_local std::unique_ptr<hwsec::Proxy> proxy_;
+ABSL_CONST_INIT static thread_local std::unique_ptr<hwsec::Backend> backend_;
+
 }  // namespace
 
 namespace hwsec {
@@ -151,6 +158,18 @@ void MiddlewareOwner::FiniBackend() {
   backend_.reset();
   proxy_.reset();
   metrics_.reset();
+}
+
+Metrics* MiddlewareOwner::GetMetrics() const {
+  return metrics_.get();
+}
+
+Proxy* MiddlewareOwner::GetProxy() const {
+  return proxy_.get();
+}
+
+Backend* MiddlewareOwner::GetBackend() const {
+  return backend_.get();
 }
 
 }  // namespace hwsec

@@ -81,6 +81,12 @@ class HWSEC_EXPORT MiddlewareOwner {
   void InitWithCustomBackend(std::unique_ptr<Backend> custom_backend);
   void FiniBackend();
 
+  // These functions can only be used on the background thread.
+  // Otherwise it will return nullptr.
+  Metrics* GetMetrics() const;
+  Proxy* GetProxy() const;
+  Backend* GetBackend() const;
+
   std::unique_ptr<base::Thread> background_thread_;
 
   scoped_refptr<base::TaskRunner> task_runner_;
@@ -89,12 +95,6 @@ class HWSEC_EXPORT MiddlewareOwner {
 #if USE_FUZZER
   FuzzedDataProvider* data_provider_ = nullptr;
 #endif
-
-  // Use thread_local to ensure the metrics, proxy and backend could only be
-  // accessed on a thread.
-  ABSL_CONST_INIT static inline thread_local std::unique_ptr<Metrics> metrics_;
-  ABSL_CONST_INIT static inline thread_local std::unique_ptr<Proxy> proxy_;
-  ABSL_CONST_INIT static inline thread_local std::unique_ptr<Backend> backend_;
 
   // Member variables should appear before the WeakPtrFactory, to ensure
   // that any WeakPtrs to Controller are invalidated before its members

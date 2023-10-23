@@ -257,11 +257,11 @@ class Middleware {
     }
 #endif
 
-    if (!middleware->backend_) {
+    if (!middleware->GetBackend()) {
       return MakeStatus<TPMError>("No backend", TPMRetryAction::kNoRetry);
     }
 
-    auto* sub = middleware->backend_->Get<SubClassType<decltype(Func)>>();
+    auto* sub = middleware->GetBackend()->Get<SubClassType<decltype(Func)>>();
     if (!sub) {
       return MakeStatus<TPMError>("No sub class in backend",
                                   TPMRetryAction::kNoRetry);
@@ -287,9 +287,10 @@ class Middleware {
     for (TPMRetryHandler retry_handler;;) {
       SubClassResult<decltype(Func)> result = (sub->*Func)(args...);
 
-      TrackFuncResult(GetFuncName<Func>(), middleware->metrics_.get(), result);
+      TrackFuncResult(GetFuncName<Func>(), middleware->GetMetrics(), result);
 
-      if (retry_handler.HandleResult(result, *middleware->backend_, args...)) {
+      if (retry_handler.HandleResult(result, *middleware->GetBackend(),
+                                     args...)) {
         return result;
       }
     }
@@ -361,9 +362,9 @@ class Middleware {
       return;
     }
 
-    TrackFuncResult(GetFuncName<Func>(), middleware->metrics_.get(), result);
+    TrackFuncResult(GetFuncName<Func>(), middleware->GetMetrics(), result);
 
-    if (retry_handler->HandleResult(result, *middleware->backend_,
+    if (retry_handler->HandleResult(result, *middleware->GetBackend(),
                                     std::get<I>(*args)...)) {
       std::move(callback).Run(std::move(result));
       return;
