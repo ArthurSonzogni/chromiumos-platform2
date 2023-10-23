@@ -278,7 +278,7 @@ void RedactCommandline(std::string* commandline,
 namespace secagentd {
 
 constexpr ProcessCache::InternalProcessCacheType::size_type
-    kProcessCacheMaxSize = 256;
+    kProcessCacheMaxSize = 281;
 constexpr ProcessCache::InternalImageCacheType::size_type kImageCacheMaxSize =
     256;
 
