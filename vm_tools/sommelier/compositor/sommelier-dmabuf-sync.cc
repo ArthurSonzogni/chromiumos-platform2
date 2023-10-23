@@ -10,7 +10,12 @@
 #include <sys/ioctl.h>
 #include <cstdio>
 #include <cstring>
+#include <unistd.h>
+#include <xf86drm.h>
 
+#include "../sommelier.h"          // NOLINT(build/include_directory)
+#include "../sommelier-tracing.h"  // NOLINT(build/include_directory)
+#include "../virtualization/linux-headers/virtgpu_drm.h"  // NOLINT(build/include_directory)
 #include "sommelier-dmabuf-sync.h"  // NOLINT(build/include_directory)
 
 // Shamelessly stolen from libsync.
@@ -104,4 +109,47 @@ int sl_dmabuf_get_read_sync_file(int dmabuf_fd, int& sync_file_fd) {
 
   assert(ret < 0);
   return errno;
+}
+
+void sl_dmabuf_sync(struct sl_context* ctx, struct sl_sync_point* sync_point) {
+  int drm_fd = gbm_device_get_fd(ctx->gbm);
+  struct drm_prime_handle prime_handle;
+  int sync_file_fd;
+  int ret;
+
+  // Attempt to export a sync_file from prime buffer and wait explicitly.
+  ret = sl_dmabuf_get_read_sync_file(sync_point->fd, sync_file_fd);
+  if (!ret) {
+    TRACE_EVENT("drm", "sl_dmabuf_sync: sync_wait", "prime_fd", sync_point->fd);
+    sl_dmabuf_sync_wait(sync_file_fd);
+    close(sync_file_fd);
+    return;
+  }
+
+  // Fallback to waiting on a virtgpu buffer's implicit fence.
+  //
+  // First imports the prime fd to a gem handle. This will fail if this
+  // function was not passed a prime handle that can be imported by the drm
+  // device given to sommelier.
+  memset(&prime_handle, 0, sizeof(prime_handle));
+  prime_handle.fd = sync_point->fd;
+  TRACE_EVENT("drm", "sl_dmabuf_sync: virtgpu_wait", "prime_fd",
+              prime_handle.fd);
+  ret = drmIoctl(drm_fd, DRM_IOCTL_PRIME_FD_TO_HANDLE, &prime_handle);
+  if (!ret) {
+    struct drm_virtgpu_3d_wait wait_arg;
+    struct drm_gem_close gem_close;
+
+    // Then attempts to wait for GPU operations to complete. This will fail
+    // silently if the drm device passed to sommelier is not a virtio-gpu
+    // device.
+    memset(&wait_arg, 0, sizeof(wait_arg));
+    wait_arg.handle = prime_handle.handle;
+    drmIoctl(drm_fd, DRM_IOCTL_VIRTGPU_WAIT, &wait_arg);
+
+    // Always close the handle we imported.
+    memset(&gem_close, 0, sizeof(gem_close));
+    gem_close.handle = prime_handle.handle;
+    drmIoctl(drm_fd, DRM_IOCTL_GEM_CLOSE, &gem_close);
+  }
 }

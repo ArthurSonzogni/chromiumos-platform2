@@ -24,5 +24,6 @@ struct dma_buf_export_sync_file {
 int sl_dmabuf_get_read_sync_file(int dmabuf_fd, int& sync_file_fd);
 bool sl_dmabuf_sync_is_virtgpu(int sync_file_fd);
 void sl_dmabuf_sync_wait(int sync_file_fd);
+void sl_dmabuf_sync(struct sl_context* ctx, struct sl_sync_point* sync_point);
 
 #endif  // VM_TOOLS_SOMMELIER_COMPOSITOR_SOMMELIER_DMABUF_SYNC_H_

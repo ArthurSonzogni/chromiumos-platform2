@@ -64,49 +64,6 @@ static void sl_drm_create_planar_buffer(struct wl_client* client,
   assert(0);
 }
 
-static void sl_drm_sync(struct sl_context* ctx,
-                        struct sl_sync_point* sync_point) {
-  int drm_fd = gbm_device_get_fd(ctx->gbm);
-  struct drm_prime_handle prime_handle;
-  int sync_file_fd;
-  int ret;
-
-  // Attempt to export a sync_file from prime buffer and wait explicitly.
-  ret = sl_dmabuf_get_read_sync_file(sync_point->fd, sync_file_fd);
-  if (!ret) {
-    TRACE_EVENT("drm", "sl_drm_sync: sync_wait", "prime_fd", sync_point->fd);
-    sl_dmabuf_sync_wait(sync_file_fd);
-    close(sync_file_fd);
-    return;
-  }
-
-  // Fallback to waiting on a virtgpu buffer's implicit fence.
-  //
-  // First imports the prime fd to a gem handle. This will fail if this
-  // function was not passed a prime handle that can be imported by the drm
-  // device given to sommelier.
-  memset(&prime_handle, 0, sizeof(prime_handle));
-  prime_handle.fd = sync_point->fd;
-  TRACE_EVENT("drm", "sl_drm_sync: virtgpu_wait", "prime_fd", prime_handle.fd);
-  ret = drmIoctl(drm_fd, DRM_IOCTL_PRIME_FD_TO_HANDLE, &prime_handle);
-  if (!ret) {
-    struct drm_virtgpu_3d_wait wait_arg;
-    struct drm_gem_close gem_close;
-
-    // Then attempts to wait for GPU operations to complete. This will fail
-    // silently if the drm device passed to sommelier is not a virtio-gpu
-    // device.
-    memset(&wait_arg, 0, sizeof(wait_arg));
-    wait_arg.handle = prime_handle.handle;
-    drmIoctl(drm_fd, DRM_IOCTL_VIRTGPU_WAIT, &wait_arg);
-
-    // Always close the handle we imported.
-    memset(&gem_close, 0, sizeof(gem_close));
-    gem_close.handle = prime_handle.handle;
-    drmIoctl(drm_fd, DRM_IOCTL_GEM_CLOSE, &gem_close);
-  }
-}
-
 static void sl_drm_create_prime_buffer(struct wl_client* client,
                                        struct wl_resource* resource,
                                        uint32_t id,
@@ -185,7 +142,7 @@ static void sl_drm_create_prime_buffer(struct wl_client* client,
                             width, height, /*is_drm=*/true);
   if (is_gpu_buffer) {
     host_buffer->sync_point = sl_sync_point_create(name);
-    host_buffer->sync_point->sync = sl_drm_sync;
+    host_buffer->sync_point->sync = sl_dmabuf_sync;
     host_buffer->shm_format = sl_shm_format_for_drm_format(format);
 
     // Create our DRM PRIME mmap container
