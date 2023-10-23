@@ -36,13 +36,13 @@ from chromite.lint.linters import gnlint
 TOP_DIR = Path(__file__).resolve().parent.parent
 SOURCE_FILE_SUFFICES = (".c", ".cc", ".cpp", ".cxx")
 
-# common-mk example files that are not intended to be part of GN build.
-EXCLUDED_FILES = frozenset(
-    (
-        "common-mk/example/component/component.cc",
-        "common-mk/example/component/subcomponent/subcomponent.c",
-        "common-mk/example/project_main.cc",
-    )
+# Not all platform2 sources are intended to appear in a cros build (e.g.
+# examples and vm-specific code), so exclude those.
+EXCLUDED_DIRS = (
+    "common-mk/example/",
+    "vm_tools/cros_im",
+    "vm_tools/reference_vm/data/",
+    "vm_tools/sommelier/quirks/",
 )
 
 
@@ -210,7 +210,7 @@ def CheckSourceFileIncludedInBuild(
             # need to be present in a build file.
             continue
 
-        if str(path) in EXCLUDED_FILES:
+        if str(path).startswith(EXCLUDED_DIRS):
             # List of files that don't need to be checked (e.g. examples).
             continue
 
