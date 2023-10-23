@@ -644,8 +644,8 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                 let mut background_pids = Vec::<i32>::new();
                 let mut protected_pids = Vec::<i32>::new();
                 for process in report_browser_processes.processes {
-                    // The visible tab processes are not used yet.
-                    if process.visible {
+                    // The focused tab processes are not used yet.
+                    if process.focused {
                         continue;
                     }
                     if process.protected {
