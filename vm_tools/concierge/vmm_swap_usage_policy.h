@@ -98,10 +98,6 @@ class VmmSwapUsagePolicy final {
   bool WriteEnabledDurationEntry(base::Time time,
                                  base::TimeDelta duration,
                                  bool try_rotate = true);
-  // Write shutdown entry to the history file.
-  //
-  // Behaves the similar to |WriteEnabledDurationEntry|.
-  bool WriteShutdownEntry(base::Time time);
   bool LoadFromFile(base::File& file, base::Time now);
   bool RotateHistoryFile(base::Time time);
   void DeleteFile();

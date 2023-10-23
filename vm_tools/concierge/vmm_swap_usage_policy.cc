@@ -118,23 +118,10 @@ void VmmSwapUsagePolicy::OnDisabled(base::Time time) {
 
 void VmmSwapUsagePolicy::OnDestroy(base::Time time) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!(is_enabled_ && history_file_.has_value())) {
+  if (!history_file_.has_value()) {
     return;
   }
-
-  base::Time start_time;
-  auto latest_entry =
-      usage_history_.ReadBuffer(usage_history_.BufferSize() - 1);
-  // Check the latest entry is in file or not. The shutdown entry must have
-  // later timestamp than the latest entry in the file.
-  if (!latest_entry.duration.has_value()) {
-    start_time = latest_entry.start;
-  } else if ((time - latest_entry.start) >= base::Hours(1)) {
-    start_time = latest_entry.start + base::Hours(1);
-  } else {
-    start_time = time;
-  }
-  WriteShutdownEntry(start_time);
+  OnDisabled(time);
 }
 
 base::TimeDelta VmmSwapUsagePolicy::PredictDuration(base::Time now) {
@@ -250,13 +237,6 @@ bool VmmSwapUsagePolicy::WriteEnabledDurationEntry(base::Time time,
   return WriteEntry(std::move(entry), time, try_rotate);
 }
 
-bool VmmSwapUsagePolicy::WriteShutdownEntry(base::Time time) {
-  UsageHistoryEntry entry;
-  entry.set_start_time_us(time.ToDeltaSinceWindowsEpoch().InMicroseconds());
-  entry.set_is_shutdown(true);
-  return WriteEntry(std::move(entry), time, true);
-}
-
 bool VmmSwapUsagePolicy::LoadFromFile(base::File& file, base::Time now) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!file.IsValid()) {
@@ -286,7 +266,6 @@ bool VmmSwapUsagePolicy::LoadFromFile(base::File& file, base::Time now) {
   }
 
   base::Time previous_time;
-  std::optional<base::Time> shutdown_time;
   for (auto entry : container.entries()) {
     base::Time time = base::Time::FromDeltaSinceWindowsEpoch(
         base::Microseconds(entry.start_time_us()));
@@ -299,9 +278,9 @@ bool VmmSwapUsagePolicy::LoadFromFile(base::File& file, base::Time now) {
       return false;
     }
 
-    if (entry.is_shutdown()) {
-      shutdown_time = time;
-    } else {
+    // TODO(b/307193725): Remove shutdown check once all shutdown entries
+    // will be >28 days old.
+    if (!entry.is_shutdown()) {
       if (duration.is_negative()) {
         LOG(ERROR) << "usage history file has invalid duration (negative)";
         return false;
@@ -312,28 +291,9 @@ bool VmmSwapUsagePolicy::LoadFromFile(base::File& file, base::Time now) {
         period_entry.duration = duration;
         usage_history_.SaveToBuffer(period_entry);
       }
-      shutdown_time.reset();
     }
 
     previous_time = time;
-  }
-
-  // If the last entry is OnShutdown entry, it means that the VM was shutdown
-  // while vmm-swap is enabled. We treat the duration while the device is
-  // powered off as the VM was idle (i.e. vmm-swap was enabled). The
-  // start_time_us of OnShutdown entry is the last time when vmm-swap was
-  // enabled.
-  if (shutdown_time.has_value()) {
-    is_enabled_ = true;
-    if (usage_history_.CurrentIndex() == 0 ||
-        usage_history_.ReadBuffer(usage_history_.BufferSize() - 1).start +
-                base::Hours(1) <=
-            shutdown_time.value()) {
-      struct SwapPeriod entry;
-      entry.start = shutdown_time.value();
-      entry.duration.reset();
-      usage_history_.SaveToBuffer(entry);
-    }
   }
 
   return true;

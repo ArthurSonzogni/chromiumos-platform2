@@ -387,17 +387,17 @@ TEST_F(VmmSwapUsagePolicyTest, OnDestroyWriteEntriesToFile) {
   VmmSwapUsagePolicy before_policy(history_file_path_);
   VmmSwapUsagePolicy after_policy(history_file_path_);
   ASSERT_TRUE(before_policy.Init(now));
-  // 1 days
+  // 1 day
   before_policy.OnEnabled(now - base::Days(14));
   before_policy.OnDisabled(now - base::Days(13));
-  // 7 days (= 2 days enabled + 5 days shutdown)
+  // 2 days
   before_policy.OnEnabled(now - base::Days(7));
   before_policy.OnDestroy(now - base::Days(5));
-  ASSERT_EQ(before_policy.PredictDuration(now), base::Days(4));
+  ASSERT_EQ(before_policy.PredictDuration(now), base::Days(3) / 2);
 
   EXPECT_TRUE(after_policy.Init(now));
 
-  EXPECT_EQ(after_policy.PredictDuration(now), base::Days(4));
+  EXPECT_EQ(after_policy.PredictDuration(now), base::Days(3) / 2);
 }
 
 TEST_F(VmmSwapUsagePolicyTest, OnDestroyWithoutDisable) {
@@ -405,56 +405,36 @@ TEST_F(VmmSwapUsagePolicyTest, OnDestroyWithoutDisable) {
   VmmSwapUsagePolicy before_policy(history_file_path_);
   VmmSwapUsagePolicy after_policy(history_file_path_);
   ASSERT_TRUE(before_policy.Init(now));
-  // 14 days + 7 days
+  // 13 days + 6 days
   before_policy.OnEnabled(now - base::Days(14));
   before_policy.OnDestroy(now - base::Days(1));
-  ASSERT_EQ(before_policy.PredictDuration(now), base::Days(21) / 2);
+  ASSERT_EQ(before_policy.PredictDuration(now), base::Days(19) / 2);
 
   EXPECT_TRUE(after_policy.Init(now));
 
-  EXPECT_EQ(after_policy.PredictDuration(now), base::Days(21) / 2);
+  EXPECT_EQ(after_policy.PredictDuration(now), base::Days(19) / 2);
 }
 
-TEST_F(VmmSwapUsagePolicyTest, OnDestroyLatestEnableAfter1hour) {
+TEST_F(VmmSwapUsagePolicyTest, OnDisableLatestEnableWithin1hour) {
   base::Time now = base::Time::Now();
   VmmSwapUsagePolicy before_policy(history_file_path_);
   VmmSwapUsagePolicy after_policy(history_file_path_);
   ASSERT_TRUE(before_policy.Init(now));
-  // 1 days
+  // 1 day
   before_policy.OnEnabled(now - base::Days(14));
   before_policy.OnDisabled(now - base::Days(13));
+  // Add entry at end of week, but doesn't contribute to predicted duration
   before_policy.OnEnabled(now - base::Days(7) - base::Hours(1));
   before_policy.OnDisabled(now - base::Days(7) - base::Minutes(30));
   // This enable record is not in the ring buffer.
   before_policy.OnEnabled(now - base::Days(7) - base::Minutes(10));
-  // Write entry as if enabled 1 hour later than last enable.
-  before_policy.OnDestroy(now - base::Days(1));
-  ASSERT_EQ(before_policy.PredictDuration(now), base::Days(4));
+  // Enabled close to previous entry, so pesimestically becomes 6 days
+  before_policy.OnDisabled(now - base::Days(1));
+  ASSERT_EQ(before_policy.PredictDuration(now), base::Days(7) / 2);
 
   EXPECT_TRUE(after_policy.Init(now));
 
-  EXPECT_EQ(after_policy.PredictDuration(now), base::Days(4));
-}
-
-TEST_F(VmmSwapUsagePolicyTest, OnDestroyLatestEnableWithin1hour) {
-  base::Time now = base::Time::Now();
-  VmmSwapUsagePolicy before_policy(history_file_path_);
-  VmmSwapUsagePolicy after_policy(history_file_path_);
-  ASSERT_TRUE(before_policy.Init(now));
-  // 1 days
-  before_policy.OnEnabled(now - base::Days(14));
-  before_policy.OnDisabled(now - base::Days(13));
-  before_policy.OnEnabled(now - base::Days(7) - base::Hours(1));
-  before_policy.OnDisabled(now - base::Days(7) - base::Minutes(30));
-  // This enable record is not in the ring buffer.
-  before_policy.OnEnabled(now - base::Days(7) - base::Minutes(10));
-  // Write entry as if enabled 1 hour later than last enable.
-  before_policy.OnDestroy(now - base::Days(7) - base::Minutes(5));
-  ASSERT_EQ(before_policy.PredictDuration(now), base::Days(4));
-
-  EXPECT_TRUE(after_policy.Init(now));
-
-  EXPECT_EQ(after_policy.PredictDuration(now), base::Days(4));
+  EXPECT_EQ(after_policy.PredictDuration(now), base::Days(7) / 2);
 }
 
 TEST_F(VmmSwapUsagePolicyTest, InitMultipleShutdownRecordAreIgnored) {
@@ -462,19 +442,19 @@ TEST_F(VmmSwapUsagePolicyTest, InitMultipleShutdownRecordAreIgnored) {
   VmmSwapUsagePolicy before_policy(history_file_path_);
   VmmSwapUsagePolicy after_policy(history_file_path_);
   ASSERT_TRUE(before_policy.Init(now));
-  // 3 days
+  // 2 days
   before_policy.OnEnabled(now - base::Days(14));
   before_policy.OnDestroy(now - base::Days(12));
   before_policy.OnDisabled(now - base::Days(11));
-  // 5 days
+  // 1 day
   before_policy.OnEnabled(now - base::Days(7));
   before_policy.OnDestroy(now - base::Days(6));
   before_policy.OnDisabled(now - base::Days(2));
-  ASSERT_EQ(before_policy.PredictDuration(now), base::Days(4));
+  ASSERT_EQ(before_policy.PredictDuration(now), base::Days(3) / 2);
 
   EXPECT_TRUE(after_policy.Init(now));
 
-  EXPECT_EQ(after_policy.PredictDuration(now), base::Days(4));
+  EXPECT_EQ(after_policy.PredictDuration(now), base::Days(3) / 2);
 }
 
 TEST_F(VmmSwapUsagePolicyTest, OnDisabledRotateHistoryFile) {
