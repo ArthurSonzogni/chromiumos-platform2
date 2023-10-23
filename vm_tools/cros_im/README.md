@@ -6,7 +6,7 @@ protocols `zwp_unstable_text_input_v1` and
 [go/crostini-ime-rollout] and [go/crostini-ime-tests] for additional design
 details.
 
-IME Support is currently limited to GTK3 applications (including Electron-based
+IME Support is currently limited to GTK3/4 applications (including Electron-based
 apps), and only Debian Bullseye/Bookworm containers are officially supported.
 Known issues are tracked [here][issue hotlist] and bugs can be reported
 [here][new issue].
@@ -66,11 +66,17 @@ sudo apt install -y clang googletest libgtk-3-dev libgtkmm-3.0-dev libwayland-bi
 meson build && cd build && ninja
 ```
 
+Additional commands to compile with GTK4 support (from bookworm onwards):
+```bash
+sudo apt install -y libgtk-4-dev libgtkmm-4.0.dev
+meson configure -Dbuild_gtk4=true && ninja
+```
+
 ### Testing
 Automated tests can be run from a build directory with `meson test`. This
 invokes `../test/run_tests.py`, which can also be run directly if needed.
 
-The GTK IM module can be manually tested by setting up a custom IM module cache:
+The GTK3 IM module can be manually tested by setting up a custom IM module cache:
 ```bash
 /usr/lib/*/libgtk-3-0/gtk-query-immodules-3.0 im-cros-gtk3.so > dev-immodules.cache
 export GTK_IM_MODULE_FILE=$(pwd)/dev-immodules.cache
