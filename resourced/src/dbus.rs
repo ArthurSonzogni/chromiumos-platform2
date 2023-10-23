@@ -485,7 +485,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                 let sched_ctx = context.and_then(|ctx| ctx.scheduler_context.clone());
                 let conn_clone = conn_clone3.clone();
                 async move {
-                    let state = match schedqos::ProcessSchedulerState::try_from(process_state) {
+                    let state = match schedqos::ProcessState::try_from(process_state) {
                         Ok(s) => s,
                         Err(_) => {
                             return sender_context
@@ -542,7 +542,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                 let sched_ctx = context.and_then(|ctx| ctx.scheduler_context.clone());
                 let conn_clone = conn_clone4.clone();
                 async move {
-                    let state = match schedqos::ThreadSchedulerState::try_from(thread_state) {
+                    let state = match schedqos::ThreadState::try_from(thread_state) {
                         Ok(s) => s,
                         Err(_) => {
                             return sender_context

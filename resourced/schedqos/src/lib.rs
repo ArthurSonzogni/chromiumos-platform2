@@ -14,48 +14,56 @@ use anyhow::Context;
 use anyhow::Result;
 use procfs::process::Process;
 
+// This is used in the test.
+#[allow(dead_code)]
+const NUM_PROCESS_STATES: usize = ProcessState::Background as usize + 1;
+const NUM_THREAD_STATES: usize = ThreadState::Background as usize + 1;
+
+/// Scheduler QoS states of a process.
+#[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum ProcessSchedulerState {
+pub enum ProcessState {
     Normal = 0,
     Background = 1,
 }
 
-impl TryFrom<u8> for ProcessSchedulerState {
-    type Error = anyhow::Error;
+impl TryFrom<u8> for ProcessState {
+    type Error = ();
 
-    fn try_from(mode_raw: u8) -> Result<ProcessSchedulerState> {
-        Ok(match mode_raw {
-            0 => ProcessSchedulerState::Normal,
-            1 => ProcessSchedulerState::Background,
-            _ => bail!("Unsupported process state value"),
-        })
+    fn try_from(v: u8) -> std::result::Result<Self, Self::Error> {
+        match v {
+            0 => Ok(Self::Normal),
+            1 => Ok(Self::Background),
+            _ => Err(()),
+        }
     }
 }
 
+/// Scheduler QoS states of a thread.
+#[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum ThreadSchedulerState {
+pub enum ThreadState {
     UrgentBursty = 0,
     Urgent = 1,
     Balanced = 2,
     Eco = 3,
     Utility = 4,
     Background = 5,
-    Max = 6,
 }
 
-impl TryFrom<u8> for ThreadSchedulerState {
-    type Error = anyhow::Error;
+impl TryFrom<u8> for ThreadState {
+    type Error = ();
 
-    fn try_from(mode_raw: u8) -> Result<ThreadSchedulerState> {
-        Ok(match mode_raw {
-            0 => ThreadSchedulerState::UrgentBursty,
-            1 => ThreadSchedulerState::Urgent,
-            2 => ThreadSchedulerState::Balanced,
-            3 => ThreadSchedulerState::Eco,
-            4 => ThreadSchedulerState::Utility,
-            5 => ThreadSchedulerState::Background,
-            _ => bail!("Unsupported thread state value"),
-        })
+    fn try_from(v: u8) -> std::result::Result<Self, Self::Error> {
+        match v {
+            0 => Ok(Self::UrgentBursty),
+            1 => Ok(Self::Urgent),
+            2 => Ok(Self::Balanced),
+            3 => Ok(Self::Eco),
+            4 => Ok(Self::Utility),
+            5 => Ok(Self::Background),
+            _ => Err(()),
+        }
     }
 }
 
@@ -180,7 +188,7 @@ const UCLAMP_BOOST_PERCENT: u32 = 60;
 const UCLAMP_BOOSTED_MIN: u32 = (UCLAMP_BOOST_PERCENT * UCLAMP_MAX + 50) / 100;
 
 // Thread QoS settings table
-const THREAD_SETTINGS: [ThreadSettings; ThreadSchedulerState::Max as usize] = [
+const THREAD_SETTINGS: [ThreadSettings; NUM_THREAD_STATES] = [
     // UrgentBursty
     ThreadSettings {
         sched_settings: sched_attr {
@@ -264,15 +272,13 @@ impl SchedQosContext {
         // TODO(kawasin): Make this mut to update internal state mapping.
         &self,
         process_id: i32,
-        process_state: ProcessSchedulerState,
+        process_state: ProcessState,
     ) -> Result<()> {
         match process_state {
-            ProcessSchedulerState::Normal => write(CGROUP_NORMAL, process_id.to_string())
+            ProcessState::Normal => write(CGROUP_NORMAL, process_id.to_string())
                 .context(format!("Failed to write to {}", CGROUP_NORMAL))?,
-            ProcessSchedulerState::Background => {
-                write(CGROUP_BACKGROUND, process_id.to_string())
-                    .context(format!("Failed to write to {}", CGROUP_BACKGROUND))?
-            }
+            ProcessState::Background => write(CGROUP_BACKGROUND, process_id.to_string())
+                .context(format!("Failed to write to {}", CGROUP_BACKGROUND))?,
         }
 
         Ok(())
@@ -283,7 +289,7 @@ impl SchedQosContext {
         &self,
         process_id: i32,
         thread_id: i32,
-        thread_state: ThreadSchedulerState,
+        thread_state: ThreadState,
     ) -> Result<()> {
         // Validate thread_id is a thread of process_id
         if !is_same_process(process_id, thread_id)? {
@@ -335,5 +341,35 @@ impl SchedQosContext {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_process_state_conversion() {
+        for state in [ProcessState::Normal, ProcessState::Background] {
+            assert_eq!(state, ProcessState::try_from(state as u8).unwrap());
+        }
+
+        assert!(ProcessState::try_from(NUM_PROCESS_STATES as u8).is_err());
+    }
+
+    #[test]
+    fn test_thread_state_conversion() {
+        for state in [
+            ThreadState::UrgentBursty,
+            ThreadState::Urgent,
+            ThreadState::Balanced,
+            ThreadState::Eco,
+            ThreadState::Utility,
+            ThreadState::Background,
+        ] {
+            assert_eq!(state, ThreadState::try_from(state as u8).unwrap());
+        }
+
+        assert!(ThreadState::try_from(NUM_THREAD_STATES as u8).is_err());
     }
 }
