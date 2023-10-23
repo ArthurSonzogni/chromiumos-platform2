@@ -2,20 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "../sommelier.h"           // NOLINT(build/include_directory)
-#include "../sommelier-tracing.h"   // NOLINT(build/include_directory)
-#include "../sommelier-util.h"      // NOLINT(build/include_directory)
-#include "sommelier-dmabuf-sync.h"  // NOLINT(build/include_directory)
+#include "../sommelier.h"            // NOLINT(build/include_directory)
+#include "../sommelier-tracing.h"    // NOLINT(build/include_directory)
+#include "../sommelier-util.h"       // NOLINT(build/include_directory)
+#include "sommelier-linux-dmabuf.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
 #include <gbm.h>
 #include <libdrm/drm_fourcc.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 #include <xf86drm.h>
-
-#include "../virtualization/linux-headers/virtgpu_drm.h"  // NOLINT(build/include_directory)
 
 #include "drm-server-protocol.h"  // NOLINT(build/include_directory)
 #include "linux-dmabuf-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
@@ -80,107 +77,47 @@ static void sl_drm_create_prime_buffer(struct wl_client* client,
   TRACE_EVENT("drm", "sl_drm_create_prime_buffer", "id", id);
   struct sl_host_drm* host =
       static_cast<sl_host_drm*>(wl_resource_get_user_data(resource));
+  struct sl_context* ctx = host->ctx;
   struct zwp_linux_buffer_params_v1* buffer_params;
 
   assert(name >= 0);
-  assert(!offset1);
-  assert(!stride1);
-  assert(!offset2);
-  assert(!stride2);
+  assert(stride0 >= 0);
 
-  // Attempts to correct stride0 with virtio-gpu specific resource information,
-  // if available.  Ideally mesa/gbm should have the correct stride. Remove
-  // after crbug.com/892242 is resolved in mesa.
-  int is_gpu_buffer = 0;
-  uint64_t format_modifier = DRM_FORMAT_MOD_INVALID;
-  if (host->ctx->gbm) {
-    int drm_fd = gbm_device_get_fd(host->ctx->gbm);
-    struct drm_prime_handle prime_handle;
-    int ret;
-
-    // First imports the prime fd to a gem handle. This will fail if this
-    // function was not passed a prime handle that can be imported by the drm
-    // device given to sommelier.
-    memset(&prime_handle, 0, sizeof(prime_handle));
-    prime_handle.fd = name;
-    ret = drmIoctl(drm_fd, DRM_IOCTL_PRIME_FD_TO_HANDLE, &prime_handle);
-    if (!ret) {
-      struct drm_virtgpu_resource_info_cros info_arg;
-      struct drm_gem_close gem_close;
-
-      // Then attempts to get resource information. This will fail silently if
-      // the drm device passed to sommelier is not a virtio-gpu device.
-      memset(&info_arg, 0, sizeof(info_arg));
-      info_arg.bo_handle = prime_handle.handle;
-      info_arg.type = VIRTGPU_RESOURCE_INFO_TYPE_EXTENDED;
-      ret = drmIoctl(drm_fd, DRM_IOCTL_VIRTGPU_RESOURCE_INFO_CROS, &info_arg);
-      // Correct stride0 if we are able to get proper resource info.
-      if (!ret) {
-        if (info_arg.stride) {
-          stride0 = info_arg.stride;
-          format_modifier = info_arg.format_modifier;
-        }
-        is_gpu_buffer = 1;
-      }
-
-      // Always close the handle we imported.
-      memset(&gem_close, 0, sizeof(gem_close));
-      gem_close.handle = prime_handle.handle;
-      drmIoctl(drm_fd, DRM_IOCTL_GEM_CLOSE, &gem_close);
-    }
+  /* Sommelier's wl_drm has never supported multiplanar buffers and wl_drm is
+   * nearing deprecation in favor of zwp_linux_dmabuf_v1. */
+  if (offset1 || stride1 || offset2 || stride2) {
+    wl_resource_post_error(host->resource, WL_DRM_ERROR_INVALID_NAME,
+                           "multiplanar buffers not supported");
+    return;
   }
 
   buffer_params = zwp_linux_dmabuf_v1_create_params(host->linux_dmabuf_proxy);
-  zwp_linux_buffer_params_v1_add(buffer_params, name, 0, offset0, stride0,
-                                 format_modifier >> 32,
-                                 format_modifier & 0xffffffff);
 
-  struct sl_host_buffer* host_buffer =
-      sl_create_host_buffer(host->ctx, client, id,
-                            zwp_linux_buffer_params_v1_create_immed(
-                                buffer_params, width, height, format, 0),
-                            width, height, /*is_drm=*/true);
-  if (is_gpu_buffer) {
-    host_buffer->sync_point = sl_sync_point_create(name);
-    host_buffer->sync_point->sync = sl_dmabuf_sync;
-    host_buffer->shm_format = sl_shm_format_for_drm_format(format);
-
-    // Create our DRM PRIME mmap container
-    // This is simply a container that records necessary information
-    // to map the DRM buffer through the GBM API's.
-    // The GBM API's may need to perform a rather heavy copy of the
-    // buffer into memory accessible by the CPU to perform the mapping
-    // operation.
-    // For this reason, the GBM mapping API's will not be used until we
-    // are absolutely certain that the buffers contents need to be
-    // accessed. This will be done through a call to sl_mmap_begin_access.
-    //
-    // We are also checking for a single plane format as this container
-    // is currently only defined for single plane format buffers.
-
-    if (sl_shm_num_planes_for_shm_format(host_buffer->shm_format) == 1) {
-      host_buffer->shm_mmap = sl_drm_prime_mmap_create(
-          host->ctx->gbm, name,
-          sl_shm_bpp_for_shm_format(host_buffer->shm_format),
-          sl_shm_num_planes_for_shm_format(host_buffer->shm_format), stride0,
-          width, height, format);
-
-      // The buffer_resource must be set appropriately here or else
-      // we will not perform the appropriate release at the end of
-      // sl_host_surface_commit (see the end of that function for details).
-      //
-      // This release should only be done IF we successfully perform
-      // the xshape interjection, as the host compositor will be using
-      // a different buffer. For non shaped windows or fallbacks due
-      // to map failure, where the buffer is relayed onto the host,
-      // we should not release the buffer. That is the responsibility
-      // of the host. The fallback path/non shape path takes care of this
-      // by setting the host_surface contents_shm_mmap to nullptr.
-      host_buffer->shm_mmap->buffer_resource = host_buffer->resource;
-    }
-  } else {
-    close(name);
+  uint32_t host_stride0 = stride0;
+  uint32_t host_modifier_hi = DRM_FORMAT_MOD_INVALID >> 32;
+  uint32_t host_modifier_lo = DRM_FORMAT_MOD_INVALID & 0xFFFFFFFF;
+  bool is_virtgpu_buffer = false;
+  if (ctx->gbm) {
+    is_virtgpu_buffer = sl_linux_dmabuf_fixup_plane0_params(
+        ctx->gbm, name, &host_stride0, &host_modifier_hi, &host_modifier_lo);
   }
+
+  zwp_linux_buffer_params_v1_add(buffer_params, name, 0, offset0, host_stride0,
+                                 host_modifier_hi, host_modifier_lo);
+
+  struct wl_buffer* buffer_proxy = zwp_linux_buffer_params_v1_create_immed(
+      buffer_params, width, height, format, 0);
+
+  const struct sl_linux_dmabuf_host_buffer_create_info create_info = {
+      .width = (uint32_t)width,
+      .height = (uint32_t)height,
+      .stride = host_stride0,
+      .format = format,
+      .dmabuf_fd = name,
+      .is_virtgpu_buffer = is_virtgpu_buffer,
+  };
+  sl_linux_dmabuf_create_host_buffer(ctx, client, buffer_proxy, id,
+                                     &create_info);
 
   zwp_linux_buffer_params_v1_destroy(buffer_params);
 }
