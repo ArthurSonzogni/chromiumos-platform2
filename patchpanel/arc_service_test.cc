@@ -24,6 +24,7 @@
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/mock_datapath.h"
+#include "patchpanel/mock_forwarding_service.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/shill_client.h"
 
@@ -104,6 +105,7 @@ class ArcServiceTest : public testing::Test {
   void SetUp() override {
     datapath_ = std::make_unique<MockDatapath>();
     addr_mgr_ = std::make_unique<AddressManager>();
+    forwarding_service_ = std::make_unique<MockForwardingService>();
     metrics_ = std::make_unique<MetricsLibraryMock>();
     guest_device_events_.clear();
     shill_devices_.clear();
@@ -111,7 +113,8 @@ class ArcServiceTest : public testing::Test {
 
   std::unique_ptr<ArcService> NewService(ArcService::ArcType arc_type) {
     return std::make_unique<ArcService>(
-        datapath_.get(), addr_mgr_.get(), arc_type, metrics_.get(),
+        arc_type, datapath_.get(), addr_mgr_.get(), forwarding_service_.get(),
+        metrics_.get(),
         base::BindRepeating(&ArcServiceTest::ArcDeviceEventHandler,
                             base::Unretained(this)));
   }
@@ -125,6 +128,7 @@ class ArcServiceTest : public testing::Test {
 
   std::unique_ptr<AddressManager> addr_mgr_;
   std::unique_ptr<MockDatapath> datapath_;
+  std::unique_ptr<MockForwardingService> forwarding_service_;
   std::unique_ptr<MetricsLibraryMock> metrics_;
   std::map<std::string, ArcService::ArcDeviceEvent> guest_device_events_;
   std::map<std::string, ShillClient::Device> shill_devices_;

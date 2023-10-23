@@ -212,17 +212,22 @@ void ArcService::ArcDevice::ConvertToProto(NetworkDevice* output) const {
   FillSubnetProto(arc_ipv4_subnet(), output->mutable_ipv4_subnet());
 }
 
-ArcService::ArcService(Datapath* datapath,
+ArcService::ArcService(ArcType arc_type,
+                       Datapath* datapath,
                        AddressManager* addr_mgr,
-                       ArcType arc_type,
+                       ForwardingService* forwarding_service,
                        MetricsLibraryInterface* metrics,
                        ArcDeviceChangeHandler arc_device_change_handler)
-    : datapath_(datapath),
+    : arc_type_(arc_type),
+      datapath_(datapath),
       addr_mgr_(addr_mgr),
-      arc_type_(arc_type),
+      forwarding_service_(forwarding_service),
       metrics_(metrics),
       arc_device_change_handler_(arc_device_change_handler),
       id_(kInvalidId) {
+  DCHECK(datapath_);
+  DCHECK(addr_mgr_);
+  DCHECK(forwarding_service_);
   AllocateArc0Config();
   AllocateAddressConfigs();
 }

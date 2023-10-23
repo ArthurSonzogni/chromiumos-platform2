@@ -19,6 +19,7 @@
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
+#include "patchpanel/forwarding_service.h"
 #include "patchpanel/ipc.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/routing_service.h"
@@ -133,6 +134,7 @@ class CrostiniService {
   // caller.
   CrostiniService(AddressManager* addr_mgr,
                   Datapath* datapath,
+                  ForwardingService* forwarding_service,
                   CrostiniDeviceEventHandler event_handler);
   CrostiniService(const CrostiniService&) = delete;
   CrostiniService& operator=(const CrostiniService&) = delete;
@@ -176,15 +178,23 @@ class CrostiniService {
   void StartAutoDNAT(const CrostiniDevice* crostini_device);
   void StopAutoDNAT(const CrostiniDevice* crostini_device);
 
+  // IPv4 prefix and address manager, owned by Manager.
   AddressManager* addr_mgr_;
+  // Routing and iptables controller service, owned by Manager.
   Datapath* datapath_;
-  std::optional<ShillClient::Device> default_logical_device_;
+  // Service for starting and stopping IPv6 and multicast forwarding between an
+  // CrostiniDevice and its upstream shill Device, owned by Manager.
+  ForwardingService* forwarding_service_;
+  // Client callback for notifying CrostiniDevice creation or destruction
+  // events.
   CrostiniDeviceEventHandler event_handler_;
-
+  // Indicates if adb port forwarding from Crostini to patchpanel's adb-proxy
+  // service should be enabled when a Termina VM starts.
+  bool adb_sideloading_enabled_;
+  // The current logical shill Device.
+  std::optional<ShillClient::Device> default_logical_device_;
   // Mapping of VM IDs to TAP devices
   std::map<uint64_t, std::unique_ptr<CrostiniDevice>> devices_;
-
-  bool adb_sideloading_enabled_;
   scoped_refptr<dbus::Bus> bus_;
 
   base::WeakPtrFactory<CrostiniService> weak_factory_{this};

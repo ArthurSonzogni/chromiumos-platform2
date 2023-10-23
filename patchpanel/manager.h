@@ -25,6 +25,7 @@
 #include "patchpanel/datapath.h"
 #include "patchpanel/dhcp_server_controller.h"
 #include "patchpanel/downstream_network_service.h"
+#include "patchpanel/forwarding_service.h"
 #include "patchpanel/guest_ipv6_service.h"
 #include "patchpanel/multicast_counters_service.h"
 #include "patchpanel/multicast_metrics.h"
@@ -40,7 +41,7 @@ namespace patchpanel {
 class QoSService;
 
 // The core implementation of the patchpanel daemon.
-class Manager {
+class Manager : public ForwardingService {
  public:
   // The notification callbacks to the client side.
   class ClientNotifier {
@@ -176,14 +177,19 @@ class Manager {
   static std::optional<int> CalculateDownstreamCurHopLimit(
       System* system, const std::string& upstream_iface);
 
+  void StartForwarding(const ShillClient::Device& shill_device,
+                       const std::string& ifname_virtual,
+                       const ForwardingService::ForwardingSet& fs =
+                           {.ipv6 = true, .multicast = true},
+                       std::optional<int> mtu = std::nullopt,
+                       std::optional<int> hop_limit = std::nullopt) override;
+  void StopForwarding(const ShillClient::Device& shill_device,
+                      const std::string& ifname_virtual,
+                      const ForwardingService::ForwardingSet& fs = {
+                          .ipv6 = true, .multicast = true}) override;
+
  private:
   friend class ManagerTest;
-
-  // Struct to specify which forwarders to start and stop.
-  struct ForwardingSet {
-    bool ipv6;
-    bool multicast;
-  };
 
   // Callbacks from |shill_client_|.
   void OnShillDefaultLogicalDeviceChanged(
@@ -225,17 +231,6 @@ class Manager {
   // invalidated by the caller. Calls OnLifelineFdClosed for any invalid fd
   // found.
   void OnLifelineFdClosed(int client_fd);
-
-  void StartForwarding(const ShillClient::Device& shill_device,
-                       const std::string& ifname_virtual,
-                       const ForwardingSet& fs = {.ipv6 = true,
-                                                  .multicast = true},
-                       const std::optional<int>& mtu = std::nullopt,
-                       const std::optional<int>& hop_limit = std::nullopt);
-  void StopForwarding(const ShillClient::Device& shill_device,
-                      const std::string& ifname_virtual,
-                      const ForwardingSet& fs = {.ipv6 = true,
-                                                 .multicast = true});
 
   const CrostiniService::CrostiniDevice* StartCrosVm(
       uint64_t vm_id,

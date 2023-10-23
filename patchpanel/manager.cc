@@ -84,11 +84,11 @@ Manager::Manager(const base::FilePath& cmd_path,
   auto arc_type =
       USE_ARCVM ? ArcService::ArcType::kVM : ArcService::ArcType::kContainer;
   arc_svc_ = std::make_unique<ArcService>(
-      datapath_.get(), &addr_mgr_, arc_type, metrics_,
+      arc_type, datapath_.get(), &addr_mgr_, this, metrics_,
       base::BindRepeating(&Manager::OnArcDeviceChanged,
                           weak_factory_.GetWeakPtr()));
   cros_svc_ = std::make_unique<CrostiniService>(
-      &addr_mgr_, datapath_.get(),
+      &addr_mgr_, datapath_.get(), this,
       base::BindRepeating(&Manager::OnCrostiniDeviceEvent,
                           weak_factory_.GetWeakPtr()));
 
@@ -200,11 +200,11 @@ void Manager::OnShillDefaultLogicalDeviceChanged(
     }
     if (prev_device) {
       StopForwarding(*prev_device, nsinfo.host_ifname,
-                     ForwardingSet{.ipv6 = true});
+                     ForwardingService::ForwardingSet{.ipv6 = true});
     }
     if (new_device) {
       StartForwarding(*new_device, nsinfo.host_ifname,
-                      ForwardingSet{.ipv6 = true});
+                      ForwardingService::ForwardingSet{.ipv6 = true});
 
       // Disable and re-enable IPv6. This is necessary to trigger SLAAC in the
       // kernel to send RS. Add a delay for the forwarding to be set up.
@@ -253,11 +253,11 @@ void Manager::OnShillDefaultPhysicalDeviceChanged(
     }
     if (prev_device) {
       StopForwarding(*prev_device, nsinfo.host_ifname,
-                     ForwardingSet{.ipv6 = true});
+                     ForwardingService::ForwardingSet{.ipv6 = true});
     }
     if (new_device) {
       StartForwarding(*new_device, nsinfo.host_ifname,
-                      ForwardingSet{.ipv6 = true});
+                      ForwardingService::ForwardingSet{.ipv6 = true});
 
       // Disable and re-enable IPv6. This is necessary to trigger SLAAC in the
       // kernel to send RS. Add a delay for the forwarding to be set up.
@@ -295,7 +295,8 @@ void Manager::OnShillDevicesChanged(
       if (nsinfo.static_ipv6_config.has_value()) {
         continue;
       }
-      StopForwarding(device, nsinfo.host_ifname, ForwardingSet{.ipv6 = true});
+      StopForwarding(device, nsinfo.host_ifname,
+                     ForwardingService::ForwardingSet{.ipv6 = true});
     }
     StopForwarding(device, /*ifname_virtual=*/"");
     datapath_->StopConnectionPinning(device);
@@ -326,7 +327,8 @@ void Manager::OnShillDevicesChanged(
       if (nsinfo.static_ipv6_config.has_value()) {
         continue;
       }
-      StartForwarding(device, nsinfo.host_ifname, ForwardingSet{.ipv6 = true});
+      StartForwarding(device, nsinfo.host_ifname,
+                      ForwardingService::ForwardingSet{.ipv6 = true});
       base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
           FROM_HERE,
           base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
@@ -978,7 +980,7 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
   // Start forwarding for IPv6.
   if (!nsinfo.static_ipv6_config.has_value() && current_outbound_device) {
     StartForwarding(*current_outbound_device, nsinfo.host_ifname,
-                    ForwardingSet{.ipv6 = true});
+                    ForwardingService::ForwardingSet{.ipv6 = true});
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
@@ -1045,7 +1047,7 @@ void Manager::OnLifelineFdClosed(int client_fd) {
     // Stop IPv6 guest service on the downstream interface if IPv6 is enabled.
     if (info.enable_ipv6 && info.upstream_device) {
       StopForwarding(*info.upstream_device, info.downstream_ifname,
-                     ForwardingSet{.ipv6 = true});
+                     ForwardingService::ForwardingSet{.ipv6 = true});
     }
 
     // Stop the DHCP server if exists.
@@ -1075,7 +1077,7 @@ void Manager::OnLifelineFdClosed(int client_fd) {
     if (connected_namespace_it->second.current_outbound_device) {
       StopForwarding(*connected_namespace_it->second.current_outbound_device,
                      connected_namespace_it->second.host_ifname,
-                     ForwardingSet{.ipv6 = true});
+                     ForwardingService::ForwardingSet{.ipv6 = true});
     }
     datapath_->StopRoutingNamespace(connected_namespace_it->second);
     LOG(INFO) << "Disconnected network namespace "
@@ -1244,7 +1246,7 @@ patchpanel::DownstreamNetworkResult Manager::HandleDownstreamNetworkInfo(
   if (info.enable_ipv6 && info.upstream_device) {
     StartForwarding(
         *info.upstream_device, info.downstream_ifname,
-        ForwardingSet{.ipv6 = true}, info.mtu,
+        ForwardingService::ForwardingSet{.ipv6 = true}, info.mtu,
         CalculateDownstreamCurHopLimit(system_, info.upstream_device->ifname));
   }
 
@@ -1262,9 +1264,9 @@ void Manager::SendGuestMessage(const GuestMessage& msg) {
 
 void Manager::StartForwarding(const ShillClient::Device& shill_device,
                               const std::string& ifname_virtual,
-                              const ForwardingSet& fs,
-                              const std::optional<int>& mtu,
-                              const std::optional<int>& hop_limit) {
+                              const ForwardingService::ForwardingSet& fs,
+                              std::optional<int> mtu,
+                              std::optional<int> hop_limit) {
   if (shill_device.ifname.empty() || ifname_virtual.empty())
     return;
 
@@ -1286,7 +1288,7 @@ void Manager::StartForwarding(const ShillClient::Device& shill_device,
 
 void Manager::StopForwarding(const ShillClient::Device& shill_device,
                              const std::string& ifname_virtual,
-                             const ForwardingSet& fs) {
+                             const ForwardingService::ForwardingSet& fs) {
   if (shill_device.ifname.empty())
     return;
 
@@ -1351,10 +1353,10 @@ void Manager::NotifyAndroidWifiMulticastLockChange(bool is_held) {
     }
     if (android_wifi_multicast_lock_held_) {
       StartForwarding(*upstream_shill_device, arc_device->bridge_ifname(),
-                      ForwardingSet{.multicast = true});
+                      ForwardingService::ForwardingSet{.multicast = true});
     } else {
       StopForwarding(*upstream_shill_device, arc_device->bridge_ifname(),
-                     ForwardingSet{.multicast = true});
+                     ForwardingService::ForwardingSet{.multicast = true});
     }
   }
 
@@ -1399,10 +1401,10 @@ void Manager::NotifyAndroidInteractiveState(bool is_interactive) {
     }
     if (is_arc_interactive_) {
       StartForwarding(*upstream_shill_device, arc_device->bridge_ifname(),
-                      ForwardingSet{.multicast = true});
+                      ForwardingService::ForwardingSet{.multicast = true});
     } else {
       StopForwarding(*upstream_shill_device, arc_device->bridge_ifname(),
-                     ForwardingSet{.multicast = true});
+                     ForwardingService::ForwardingSet{.multicast = true});
     }
   }
 

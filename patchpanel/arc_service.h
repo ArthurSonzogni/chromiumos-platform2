@@ -23,6 +23,7 @@
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
+#include "patchpanel/forwarding_service.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/shill_client.h"
 #include "patchpanel/subnet.h"
@@ -179,9 +180,10 @@ class ArcService {
   static std::string ArcBridgeName(const ShillClient::Device& device);
 
   // All pointers are required, cannot be null, and are owned by the caller.
-  ArcService(Datapath* datapath,
+  ArcService(ArcType arc_type,
+             Datapath* datapath,
              AddressManager* addr_mgr,
-             ArcType arc_type,
+             ForwardingService* forwarding_service,
              MetricsLibraryInterface* metrics,
              ArcDeviceChangeHandler arc_device_change_handler);
   ArcService(const ArcService&) = delete;
@@ -251,12 +253,15 @@ class ArcService {
   FRIEND_TEST(ArcServiceTest, NotStarted_AddRemoveDevice);
   FRIEND_TEST(ArcServiceTest, VmImpl_ArcvmInterfaceMapping);
 
+  // Type of ARC environment.
+  ArcType arc_type_;
   // Routing and iptables controller service, owned by Manager.
   Datapath* datapath_;
   // IPv4 prefix and address manager, owned by Manager.
   AddressManager* addr_mgr_;
-  // Type of ARC environment.
-  ArcType arc_type_;
+  // Service for starting and stopping IPv6 and multicast forwarding between an
+  // ArcDevice and its upstream shill Device, owned by Manager.
+  ForwardingService* forwarding_service_;
   // UMA metrics client, owned by Manager.
   MetricsLibraryInterface* metrics_;
   // Manager callback used for notifying about ARC virtual device creation and

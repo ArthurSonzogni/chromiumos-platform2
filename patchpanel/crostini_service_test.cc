@@ -23,6 +23,7 @@
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/mock_datapath.h"
+#include "patchpanel/mock_forwarding_service.h"
 #include "patchpanel/routing_service.h"
 
 using testing::_;
@@ -49,11 +50,12 @@ class CrostiniServiceTest : public testing::Test {
   void SetUp() override {
     datapath_ = std::make_unique<MockDatapath>();
     addr_mgr_ = std::make_unique<AddressManager>();
+    forwarding_service_ = std::make_unique<MockForwardingService>();
   }
 
   std::unique_ptr<CrostiniService> NewService() {
     return std::make_unique<CrostiniService>(
-        addr_mgr_.get(), datapath_.get(),
+        addr_mgr_.get(), datapath_.get(), forwarding_service_.get(),
         base::BindRepeating(&CrostiniServiceTest::DeviceHandler,
                             base::Unretained(this)));
   }
@@ -65,6 +67,7 @@ class CrostiniServiceTest : public testing::Test {
 
   std::unique_ptr<AddressManager> addr_mgr_;
   std::unique_ptr<MockDatapath> datapath_;
+  std::unique_ptr<MockForwardingService> forwarding_service_;
   std::map<std::string, CrostiniService::CrostiniDeviceEvent> guest_devices_;
 };
 

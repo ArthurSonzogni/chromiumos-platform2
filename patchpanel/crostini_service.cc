@@ -123,13 +123,16 @@ void CrostiniService::CrostiniDevice::ConvertToProto(
 CrostiniService::CrostiniService(
     AddressManager* addr_mgr,
     Datapath* datapath,
+    ForwardingService* forwarding_service,
     CrostiniService::CrostiniDeviceEventHandler event_handler)
     : addr_mgr_(addr_mgr),
       datapath_(datapath),
+      forwarding_service_(forwarding_service),
       event_handler_(event_handler),
       adb_sideloading_enabled_(false) {
   DCHECK(addr_mgr_);
   DCHECK(datapath_);
+  DCHECK(forwarding_service_);
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
