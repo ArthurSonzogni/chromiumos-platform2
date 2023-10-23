@@ -75,6 +75,10 @@ constexpr base::TimeDelta kBackOff = base::Seconds(1);
 constexpr char kStorageQueueGenerationIdResetUma[] =
     "Platform.Missive.StorageQueueGenerationIdReset";
 
+// Storage queue parsing failure UMA metric name.
+constexpr char kStorageQueueParsingFailureUma[] =
+    "Platform.Missive.StorageQueueParsingFailure";
+
 // Helper function for ResourceExhaustedCase UMA upload.
 void SendResExCaseToUma(StorageQueue::ResourceExhaustedCase case_enum) {
   // The ChromeOS metrics instance.
@@ -1721,6 +1725,19 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
                Status(error::DATA_LOSS, "Cannot serialize record"));
       return;
     }
+
+    // To make sure nothing got broken, parse `buffer` back.
+    // To speed up and save memory, allow to alias the `buffer`.
+    wrapped_record.Clear();
+    if (!wrapped_record.ParseFrom<
+            google::protobuf::MessageLite::ParseFlags::kParseWithAliasing>(
+            buffer)) {
+      analytics::Metrics::SendBoolToUMA(kStorageQueueParsingFailureUma, true);
+      Schedule(&WriteContext::Response, base::Unretained(this),
+               Status(error::DATA_LOSS, "Cannot parse record back"));
+      return;
+    }
+
     // Release wrapped record memory, so `scoped_reservation` may act.
     wrapped_record.Clear();
     CompressWrappedRecord(std::move(buffer), std::move(scoped_reservation));
