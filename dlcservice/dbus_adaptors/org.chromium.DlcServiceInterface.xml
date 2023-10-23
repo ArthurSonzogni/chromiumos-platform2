@@ -7,33 +7,6 @@
 <node name="/org/chromium/DlcService"
   xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
 <interface name="org.chromium.DlcServiceInterface">
-  <!-- TODO(b/218396905): DEPRECATE -->
-  <method name="InstallDlc">
-    <tp:docstring>
-      Install a Downloadable Content (DLC).
-    </tp:docstring>
-    <arg name="id" type="s" direction="in">
-      <tp:docstring>
-        The ID of the DLC.
-      </tp:docstring>
-    </arg>
-  </method>
-  <!-- TODO(b/218396905): DEPRECATE -->
-  <method name="InstallWithOmahaUrl">
-    <tp:docstring>
-      Install a DLC with a given Omaha URL.
-    </tp:docstring>
-    <arg name="id" type="s" direction="in">
-      <tp:docstring>
-        The ID of the DLC.
-      </tp:docstring>
-    </arg>
-    <arg name="omaha_url" type="s" direction="in">
-      <tp:docstring>
-        The Omaha URL to install the DLC from.
-      </tp:docstring>
-    </arg>
-  </method>
   <method name="Install">
     <tp:docstring>
       Install a Downloadable Content (DLC).

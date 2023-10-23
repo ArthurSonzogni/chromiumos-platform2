@@ -26,10 +26,6 @@ class DBusService : public org::chromium::DlcServiceInterfaceInterface {
   ~DBusService() = default;
 
   // org::chromium::DlServiceInterfaceInterface overrides:
-  bool InstallDlc(brillo::ErrorPtr* err, const std::string& id_in) override;
-  bool InstallWithOmahaUrl(brillo::ErrorPtr* err,
-                           const std::string& id_in,
-                           const std::string& omaha_url_in) override;
   bool Install(brillo::ErrorPtr* err,
                const InstallRequest& install_request) override;
   bool Uninstall(brillo::ErrorPtr* err, const std::string& id_in) override;

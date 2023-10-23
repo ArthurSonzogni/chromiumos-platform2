@@ -28,18 +28,6 @@ namespace dlcservice {
 DBusService::DBusService(DlcServiceInterface* dlc_service)
     : dlc_service_(dlc_service) {}
 
-bool DBusService::InstallDlc(brillo::ErrorPtr* err, const std::string& id_in) {
-  return dlc_service_->Install(
-      CreateInstallRequest(id_in, /*omaha_url=*/"", /*reserve=*/false), err);
-}
-
-bool DBusService::InstallWithOmahaUrl(brillo::ErrorPtr* err,
-                                      const std::string& id_in,
-                                      const std::string& omaha_url_in) {
-  return dlc_service_->Install(
-      CreateInstallRequest(id_in, omaha_url_in, /*reserve=*/false), err);
-}
-
 bool DBusService::Install(brillo::ErrorPtr* err,
                           const InstallRequest& install_request) {
   return dlc_service_->Install(install_request, err);

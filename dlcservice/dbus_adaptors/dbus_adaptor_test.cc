@@ -39,25 +39,6 @@ class DBusServiceTest : public BaseTest {
   DBusServiceTest& operator=(const DBusServiceTest&) = delete;
 };
 
-TEST_F(DBusServiceTest, InstallDlc) {
-  EXPECT_CALL(
-      *dlc_service_,
-      Install(CheckInstallRequest(CreateInstallRequest(kFirstDlc)), &err_))
-      .WillOnce(Return(true));
-
-  EXPECT_TRUE(dbus_service_->InstallDlc(&err_, kFirstDlc));
-}
-
-TEST_F(DBusServiceTest, InstallWithOmahaUrl) {
-  EXPECT_CALL(*dlc_service_, Install(CheckInstallRequest(CreateInstallRequest(
-                                         kFirstDlc, kDefaultOmahaUrl)),
-                                     &err_))
-      .WillOnce(Return(true));
-
-  EXPECT_TRUE(
-      dbus_service_->InstallWithOmahaUrl(&err_, kFirstDlc, kDefaultOmahaUrl));
-}
-
 TEST_F(DBusServiceTest, GetInstalled) {
   EXPECT_CALL(*dlc_service_, GetInstalled())
       .WillOnce(Return(DlcIdList({kFirstDlc, kSecondDlc})));
