@@ -22,6 +22,10 @@ class ForwardingService {
   struct ForwardingSet {
     bool ipv6;
     bool multicast;
+
+    bool operator==(const ForwardingSet& b) const {
+      return ipv6 == b.ipv6 && multicast == b.multicast;
+    }
   };
 
   // Starts IPv6 and multicast forwarding as specified in |fs| between the

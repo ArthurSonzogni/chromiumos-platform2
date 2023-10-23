@@ -172,6 +172,10 @@ const CrostiniService::CrostiniDevice* CrostiniService::Start(
   datapath_->StartRoutingDeviceAsUser(dev->tap_device_ifname(),
                                       TrafficSourceFromVMType(vm_type),
                                       dev->vm_ipv4_address());
+  if (default_logical_device_) {
+    forwarding_service_->StartForwarding(*default_logical_device_,
+                                         dev->tap_device_ifname());
+  }
   if (adb_sideloading_enabled_) {
     StartAdbPortForwarding(dev->tap_device_ifname());
   }
@@ -199,6 +203,10 @@ void CrostiniService::Stop(uint64_t vm_id) {
 
   event_handler_.Run(*it->second, CrostiniDeviceEvent::kRemoved);
   const std::string tap_ifname = it->second->tap_device_ifname();
+  if (default_logical_device_) {
+    forwarding_service_->StopForwarding(*default_logical_device_,
+                                        it->second->tap_device_ifname());
+  }
   datapath_->StopRoutingDevice(tap_ifname, TrafficSourceFromVMType(vm_type));
   if (adb_sideloading_enabled_) {
     StopAdbPortForwarding(tap_ifname);
@@ -356,6 +364,20 @@ void CrostiniService::CheckAdbSideloadingStatus() {
 void CrostiniService::OnShillDefaultLogicalDeviceChanged(
     const ShillClient::Device* new_device,
     const ShillClient::Device* prev_device) {
+  // When the default logical network changes, Crostini's tap devices must leave
+  // their current forwarding group for multicast and IPv6 ndproxy and join the
+  // forwarding group of the new logical default network.
+  for (const auto& [_, dev] : devices_) {
+    if (prev_device) {
+      forwarding_service_->StopForwarding(*prev_device,
+                                          dev->tap_device_ifname());
+    }
+    if (new_device) {
+      forwarding_service_->StartForwarding(*new_device,
+                                           dev->tap_device_ifname());
+    }
+  }
+
   // b/197930417: Update Auto DNAT rules if a Parallels VM is running.
   const CrostiniDevice* parallels_device = nullptr;
   for (const auto& [_, dev] : devices_) {

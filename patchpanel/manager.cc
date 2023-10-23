@@ -161,20 +161,6 @@ void Manager::OnShillDefaultLogicalDeviceChanged(
     datapath_->StartVpnRouting(*new_device);
   }
 
-  // When the default logical network changes, Crostini's tap devices must leave
-  // their current forwarding group for multicast and IPv6 ndproxy and join the
-  // forwarding group of the new logical default network.
-  // TODO(b/197930417): Introduce a separate forwarding service and migrate the
-  // update of the forwarding setup inside the default logical device change
-  // handler CrostiniService::OnShillDefaultLogicalDeviceChanged.
-  for (const auto* crostini_device : cros_svc_->GetDevices()) {
-    if (prev_device) {
-      StopForwarding(*prev_device, crostini_device->tap_device_ifname());
-    }
-    if (new_device) {
-      StartForwarding(*new_device, crostini_device->tap_device_ifname());
-    }
-  }
   cros_svc_->OnShillDefaultLogicalDeviceChanged(new_device, prev_device);
 
   // When the default logical network changes, ConnectedNamespaces' devices
@@ -459,25 +445,18 @@ void Manager::OnArcDeviceChanged(const ShillClient::Device& shill_device,
 void Manager::OnCrostiniDeviceEvent(
     const CrostiniService::CrostiniDevice& virtual_device,
     CrostiniService::CrostiniDeviceEvent event) {
-  auto default_logical_device = shill_client_->default_logical_device();
   auto* signal_device = new NetworkDevice();
+  NetworkDeviceChangedSignal::Event signal_event;
   virtual_device.ConvertToProto(signal_device);
-  if (event == CrostiniService::CrostiniDeviceEvent::kAdded) {
-    if (default_logical_device) {
-      StartForwarding(*default_logical_device,
-                      virtual_device.tap_device_ifname(),
-                      {.ipv6 = true, .multicast = true});
-    }
-    client_notifier_->OnNetworkDeviceChanged(
-        signal_device, NetworkDeviceChangedSignal::DEVICE_ADDED);
-  } else if (event == CrostiniService::CrostiniDeviceEvent::kRemoved) {
-    if (default_logical_device) {
-      StopForwarding(*default_logical_device,
-                     virtual_device.tap_device_ifname());
-    }
-    client_notifier_->OnNetworkDeviceChanged(
-        signal_device, NetworkDeviceChangedSignal::DEVICE_REMOVED);
+  switch (event) {
+    case CrostiniService::CrostiniDeviceEvent::kAdded:
+      signal_event = NetworkDeviceChangedSignal::DEVICE_ADDED;
+      break;
+    case CrostiniService::CrostiniDeviceEvent::kRemoved:
+      signal_event = NetworkDeviceChangedSignal::DEVICE_REMOVED;
+      break;
   }
+  client_notifier_->OnNetworkDeviceChanged(signal_device, signal_event);
 }
 
 bool Manager::ArcStartup(pid_t pid) {
