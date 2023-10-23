@@ -58,11 +58,6 @@ constexpr char kProcCmdline[] = "proc/cmdline";
 
 constexpr int kVersionAttestationPcr = 13;
 
-// The "/." ensures we trigger the automount, instead of just examining the
-// mount point.
-// TODO(b/244186883): remove this.
-constexpr char kKernelDebugTracingDir[] = "kernel/debug/tracing/.";
-
 constexpr char kRunNamespaces[] = "run/namespaces";
 constexpr char kRun[] = "run";
 constexpr char kLock[] = "lock";
@@ -292,15 +287,6 @@ void ChromeosStartup::EarlySetup() {
       PLOG(WARNING) << "Unable to mount " << debug.value();
     }
   }
-
-  // HACK(b/244186883): ensure we trigger the /sys/kernel/debug/tracing
-  // automount now (before we set 0755 below), because otherwise the kernel may
-  // change its permissions whenever it eventually does get automounted.
-  // TODO(b/244186883): remove this.
-  struct stat st;
-  const base::FilePath debug_tracing = sysfs.Append(kKernelDebugTracingDir);
-  // Ignore errors.
-  platform_->Stat(debug_tracing, &st);
 
   // Mount tracefs at /sys/kernel/tracing. On older kernels, tracing was part
   // of debugfs and was present at /sys/kernel/debug/tracing. Newer kernels
