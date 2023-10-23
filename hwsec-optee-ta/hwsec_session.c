@@ -44,7 +44,7 @@ static TEE_Result get_auth_pubkey(uint8_t* auth_pubkey, int32_t* length) {
   }
 
   uint32_t ptypes =
-      TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INOUT, TEE_PARAM_TYPE_VALUE_OUTPUT,
+      TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_OUTPUT, TEE_PARAM_TYPE_NONE,
                       TEE_PARAM_TYPE_NONE, TEE_PARAM_TYPE_NONE);
 
   TEE_Param params[TEE_NUM_PARAMS];
@@ -58,7 +58,7 @@ static TEE_Result get_auth_pubkey(uint8_t* auth_pubkey, int32_t* length) {
     goto cleanup_sess;
   }
 
-  *length = params[1].value.a;
+  *length = params[0].memref.size;
 
 cleanup_sess:
   TEE_CloseTASession(sess);
