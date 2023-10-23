@@ -38,6 +38,7 @@ message ReportBrowserProcesses {
     int32 pid = 1;
     bool protected = 2;
     bool visible = 3;
+    bool focused = 4;
   }
   repeated Process processes = 2;
 }
