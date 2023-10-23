@@ -25,7 +25,10 @@ namespace brillo {
 // (if the key exists). Note that some values may be the empty string ("").
 class BRILLO_EXPORT CpuInfo final {
  public:
-  ~CpuInfo() = default;
+  ~CpuInfo();
+
+  CpuInfo(CpuInfo&& other);
+  CpuInfo& operator=(CpuInfo&& other);
 
   // Returns a CpuInfo object based on a file pointed to by |path|, or
   // std::nullopt if |path| could not be read or if there was a parse error.
@@ -57,7 +60,7 @@ class BRILLO_EXPORT CpuInfo final {
   static base::FilePath DefaultPath();
 
  private:
-  CpuInfo() = default;
+  CpuInfo();
   bool LoadFromString(std::string_view data);
   std::vector<std::map<std::string, std::string, std::less<>>> proc_records_;
 };

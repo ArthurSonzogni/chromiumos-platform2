@@ -17,6 +17,12 @@ constexpr char kCpuInfoPath[] = "/proc/cpuinfo";
 
 }  // namespace
 
+CpuInfo::CpuInfo() = default;
+CpuInfo::~CpuInfo() = default;
+
+CpuInfo::CpuInfo(CpuInfo&& other) = default;
+CpuInfo& CpuInfo::operator=(CpuInfo&& other) = default;
+
 std::optional<CpuInfo> CpuInfo::Create(const base::FilePath& path) {
   std::string cpuinfo;
   if (!ReadFileToString(path, &cpuinfo))
