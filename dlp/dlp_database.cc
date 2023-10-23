@@ -139,8 +139,8 @@ class DlpDatabase::Core {
   bool UpsertFileEntry(const FileEntry& file_entry);
   bool UpsertLegacyFileEntryForTesting(const FileEntry& file_entry);
   bool UpsertFileEntries(const std::vector<FileEntry>& file_entries);
-  std::map<FileId, FileEntry> GetFileEntriesByIds(std::vector<FileId> ids,
-                                                  bool ignore_crtime) const;
+  std::map<FileId, FileEntry> GetFileEntriesByIds(
+      std::vector<FileId> ids) const;
   bool DeleteFileEntryByInode(ino64_t inode);
   bool DeleteFileEntriesWithIdsNotInSet(std::set<FileId> ids_to_keep);
   bool MigrateDatabase(const std::vector<FileId>& existing_files);
@@ -355,33 +355,22 @@ bool DlpDatabase::Core::UpsertFileEntries(
 }
 
 std::map<FileId, FileEntry> DlpDatabase::Core::GetFileEntriesByIds(
-    std::vector<FileId> ids, bool ignore_crtime) const {
+    std::vector<FileId> ids) const {
   std::map<FileId, FileEntry> file_entries;
   if (!IsOpen())
     return file_entries;
 
   std::string sql;
-  if (ignore_crtime) {
-    sql +=
-        "SELECT inode,crtime,source_url,referrer_url FROM file_entries_crtime "
-        "WHERE inode IN (";
-
-  } else {
-    sql +=
-        "SELECT inode,crtime,source_url,referrer_url FROM file_entries_crtime "
-        "WHERE (inode, crtime) IN (";
-  }
+  sql +=
+      "SELECT inode,crtime,source_url,referrer_url FROM file_entries_crtime "
+      "WHERE (inode, crtime) IN (";
   bool first = true;
   for (FileId id : ids) {
     if (!first) {
       sql += ",";
     }
-    if (ignore_crtime) {
-      sql += base::NumberToString(id.first);
-    } else {
-      sql += "(" + base::NumberToString(id.first) + ", " +
-             base::NumberToString(id.second) + ")";
-    }
+    sql += "(" + base::NumberToString(id.first) + ", " +
+           base::NumberToString(id.second) + ")";
     first = false;
   }
   sql += ")";
@@ -603,14 +592,12 @@ void DlpDatabase::UpsertFileEntries(const std::vector<FileEntry>& file_entries,
 
 void DlpDatabase::GetFileEntriesByIds(
     std::vector<FileId> ids,
-    bool ignore_crtime,
     base::OnceCallback<void(std::map<FileId, FileEntry>)> callback) const {
   CHECK(!task_runner_->RunsTasksInCurrentSequence());
   task_runner_->PostTaskAndReplyWithResult(
       FROM_HERE,
       base::BindOnce(&DlpDatabase::Core::GetFileEntriesByIds,
-                     base::Unretained(core_.get()), std::move(ids),
-                     ignore_crtime),
+                     base::Unretained(core_.get()), std::move(ids)),
       std::move(callback));
 }
 

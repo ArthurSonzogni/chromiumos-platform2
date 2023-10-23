@@ -330,11 +330,10 @@ void DlpAdaptor::RequestFileAccess(
   }
 
   db_->GetFileEntriesByIds(
-      ids, /*ignore_crtime=*/false,
-      base::BindOnce(&DlpAdaptor::ProcessRequestFileAccessWithData,
-                     weak_factory_.GetWeakPtr(), std::move(response),
-                     std::move(request), std::move(local_fd),
-                     std::move(remote_fd)));
+      ids, base::BindOnce(&DlpAdaptor::ProcessRequestFileAccessWithData,
+                          weak_factory_.GetWeakPtr(), std::move(response),
+                          std::move(request), std::move(local_fd),
+                          std::move(remote_fd)));
 }
 
 void DlpAdaptor::ProcessRequestFileAccessWithData(
@@ -458,12 +457,6 @@ void DlpAdaptor::GetFilesSources(
 
   std::vector<FileId> ids;
   std::vector<std::pair<FileId, std::string>> requested_files;
-  for (const auto& inode : request.files_inodes()) {
-    FileId id = {inode, /*crtime=*/0};
-    ids.push_back(id);
-    requested_files.emplace_back(id, "");
-  }
-
   for (const auto& path : request.files_paths()) {
     const FileId id = GetFileId(path);
     if (id.first > 0) {
@@ -472,13 +465,10 @@ void DlpAdaptor::GetFilesSources(
     }
   }
 
-  // Crtime is not provided via requests with only inode, so ignoring it for
-  // now.
   db_->GetFileEntriesByIds(
-      ids, /*ignore_crtime=*/true,
-      base::BindOnce(&DlpAdaptor::ProcessGetFilesSourcesWithData,
-                     weak_factory_.GetWeakPtr(), std::move(response),
-                     requested_files));
+      ids, base::BindOnce(&DlpAdaptor::ProcessGetFilesSourcesWithData,
+                          weak_factory_.GetWeakPtr(), std::move(response),
+                          requested_files));
 }
 
 void DlpAdaptor::CheckFilesTransfer(
@@ -512,10 +502,9 @@ void DlpAdaptor::CheckFilesTransfer(
   }
 
   db_->GetFileEntriesByIds(
-      ids, /*ignore_crtime=*/false,
-      base::BindOnce(&DlpAdaptor::ProcessCheckFilesTransferWithData,
-                     weak_factory_.GetWeakPtr(), std::move(response),
-                     std::move(request)));
+      ids, base::BindOnce(&DlpAdaptor::ProcessCheckFilesTransferWithData,
+                          weak_factory_.GetWeakPtr(), std::move(response),
+                          std::move(request)));
 }
 
 void DlpAdaptor::SetFanotifyWatcherStartedForTesting(bool is_started) {
@@ -641,9 +630,8 @@ void DlpAdaptor::AddPerFileWatch(
   }
 
   db_->GetFileEntriesByIds(
-      ids, /*ignore_crtime=*/false,
-      base::BindOnce(&DlpAdaptor::ProcessAddPerFileWatchWithData,
-                     weak_factory_.GetWeakPtr(), files));
+      ids, base::BindOnce(&DlpAdaptor::ProcessAddPerFileWatchWithData,
+                          weak_factory_.GetWeakPtr(), files));
 }
 
 void DlpAdaptor::ProcessAddPerFileWatchWithData(
@@ -697,7 +685,7 @@ void DlpAdaptor::ProcessFileOpenRequest(
   }
 
   db_->GetFileEntriesByIds(
-      {id}, /*ignore_crtime=*/false,
+      {id},
       base::BindOnce(&DlpAdaptor::ProcessFileOpenRequestWithData,
                      weak_factory_.GetWeakPtr(), pid, std::move(callback)));
 }

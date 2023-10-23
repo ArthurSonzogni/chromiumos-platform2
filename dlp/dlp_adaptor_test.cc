@@ -196,9 +196,8 @@ class DlpAdaptorTest : public ::testing::Test {
   }
 
   std::vector<uint8_t> CreateSerializedGetFilesSourcesRequest(
-      std::vector<ino64_t> inodes, std::vector<std::string> paths) {
+      std::vector<std::string> paths) {
     GetFilesSourcesRequest request;
-    *request.mutable_files_inodes() = {inodes.begin(), inodes.end()};
     *request.mutable_files_paths() = {paths.begin(), paths.end()};
 
     std::vector<uint8_t> proto_blob(request.ByteSizeLong());
@@ -303,8 +302,7 @@ class DlpAdaptorTest : public ::testing::Test {
     EXPECT_EQ(expected_result, success);
   }
 
-  GetFilesSourcesResponse GetFilesSources(std::vector<ino64_t> inodes,
-                                          std::vector<std::string> paths) {
+  GetFilesSourcesResponse GetFilesSources(std::vector<std::string> paths) {
     GetFilesSourcesResponse result;
     std::unique_ptr<
         brillo::dbus_utils::MockDBusMethodResponse<std::vector<uint8_t>>>
@@ -321,8 +319,7 @@ class DlpAdaptorTest : public ::testing::Test {
         &result, &run_loop));
 
     GetDlpAdaptor()->GetFilesSources(
-        std::move(response),
-        CreateSerializedGetFilesSourcesRequest(inodes, paths));
+        std::move(response), CreateSerializedGetFilesSourcesRequest(paths));
     run_loop.Run();
     return result;
   }
@@ -1138,46 +1135,6 @@ TEST_F(DlpAdaptorTest, RequestAllowedWithoutDatabase) {
 TEST_F(DlpAdaptorTest, GetFilesSources) {
   InitDatabase();
 
-  // Create files to request sources by ids.
-  base::FilePath file_path1;
-  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
-  const FileId id1 = GetFileId(file_path1.value());
-  base::FilePath file_path2;
-  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2));
-  const FileId id2 = GetFileId(file_path2.value());
-
-  const std::string source1 = "source1";
-  const std::string source2 = "source2";
-  const std::string referrer1 = "referrer1";
-  const std::string referrer2 = "referrer2";
-
-  // Add the files to the database.
-  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, referrer1),
-                    CreateAddFileRequest(file_path2, source2, referrer2)},
-                   /*expected_result=*/true);
-
-  GetFilesSourcesResponse response =
-      GetFilesSources({id1.first, id2.first, 123456}, /*paths=*/{});
-
-  ASSERT_EQ(response.files_metadata_size(), 2u);
-
-  FileMetadata file_metadata1 = response.files_metadata()[0];
-  EXPECT_EQ(file_metadata1.inode(), id1.first);
-  EXPECT_EQ(file_metadata1.crtime(), id1.second);
-  EXPECT_EQ(file_metadata1.source_url(), source1);
-  EXPECT_EQ(file_metadata1.referrer_url(), referrer1);
-
-  FileMetadata file_metadata2 = response.files_metadata()[1];
-  EXPECT_EQ(file_metadata2.inode(), id2.first);
-  EXPECT_EQ(file_metadata2.crtime(), id2.second);
-  EXPECT_EQ(file_metadata2.source_url(), source2);
-  EXPECT_EQ(file_metadata2.referrer_url(), referrer2);
-  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
-}
-
-TEST_F(DlpAdaptorTest, GetFilesSourcesByPath) {
-  InitDatabase();
-
   // Create files to request sources.
   base::FilePath file_path1;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
@@ -1192,8 +1149,8 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesByPath) {
   AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, referrer1)},
                    /*expected_result=*/true);
 
-  GetFilesSourcesResponse response = GetFilesSources(
-      /*ids=*/{}, {file_path1.value(), file_path2.value(), "/bad/path"});
+  GetFilesSourcesResponse response =
+      GetFilesSources({file_path1.value(), file_path2.value(), "/bad/path"});
 
   ASSERT_EQ(response.files_metadata_size(), 1u);
 
@@ -1203,49 +1160,6 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesByPath) {
   EXPECT_EQ(file_metadata1.path(), file_path1.value());
   EXPECT_EQ(file_metadata1.source_url(), source1);
   EXPECT_EQ(file_metadata1.referrer_url(), referrer1);
-}
-
-TEST_F(DlpAdaptorTest, GetFilesSourcesMixed) {
-  InitDatabase();
-
-  // Create files to request sources.
-  base::FilePath file_path1;
-  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
-  const FileId id1 = GetFileId(file_path1.value());
-  base::FilePath file_path2;
-  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2));
-  const FileId id2 = GetFileId(file_path2.value());
-
-  const std::string source1 = "source1";
-  const std::string source2 = "source2";
-  const std::string referrer1 = "referrer1";
-  const std::string referrer2 = "referrer2";
-
-  // Add the files to the database.
-  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, referrer1),
-                    CreateAddFileRequest(file_path2, source2, referrer2)},
-                   /*expected_result=*/true);
-
-  GetFilesSourcesResponse response =
-      GetFilesSources({id2.first, 123456}, {file_path1.value(), "/bad/path"});
-
-  ASSERT_EQ(response.files_metadata_size(), 2u);
-
-  // First element - requested by inode.
-  FileMetadata file_metadata1 = response.files_metadata()[0];
-  EXPECT_EQ(file_metadata1.inode(), id2.first);
-  EXPECT_EQ(file_metadata1.crtime(), id2.second);
-  EXPECT_FALSE(file_metadata1.has_path());
-  EXPECT_EQ(file_metadata1.source_url(), source2);
-  EXPECT_EQ(file_metadata1.referrer_url(), referrer2);
-
-  // Second element - requested by path.
-  FileMetadata file_metadata2 = response.files_metadata()[1];
-  EXPECT_EQ(file_metadata2.inode(), id1.first);
-  EXPECT_EQ(file_metadata2.crtime(), id1.second);
-  EXPECT_EQ(file_metadata2.path(), file_path1.value());
-  EXPECT_EQ(file_metadata2.source_url(), source1);
-  EXPECT_EQ(file_metadata2.referrer_url(), referrer1);
 }
 
 TEST_F(DlpAdaptorTest, GetFilesSourcesDatabaseMigrated) {
@@ -1273,7 +1187,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesDatabaseMigrated) {
                    /*expected_result=*/true);
 
   GetFilesSourcesResponse response =
-      GetFilesSources({id1.first, id2.first, 123456}, /*paths=*/{});
+      GetFilesSources({file_path1.value(), file_path2.value(), "/bad/path"});
 
   // Only the second file is expected as database was not migrated.
   ASSERT_EQ(response.files_metadata_size(), 1u);
@@ -1293,7 +1207,8 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesDatabaseMigrated) {
                                   run_loop.QuitClosure());
     run_loop.Run();
 
-    response = GetFilesSources({id1.first, id2.first, 123456}, /*paths=*/{});
+    response =
+        GetFilesSources({file_path1.value(), file_path2.value(), "/bad/path"});
 
     ASSERT_EQ(response.files_metadata_size(), 2u);
 
@@ -1340,7 +1255,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
                    /*expected_result=*/true);
 
   GetFilesSourcesResponse response =
-      GetFilesSources({id1.first, id2.first}, /*paths=*/{});
+      GetFilesSources({file_path1.value(), file_path2.value()});
 
   EXPECT_EQ(response.files_metadata_size(), 0u);
 
@@ -1348,7 +1263,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
   InitDatabase();
 
   // Check that the pending entries were added.
-  response = GetFilesSources({id1.first, id2.first}, /*paths=*/{});
+  response = GetFilesSources({file_path1.value(), file_path2.value()});
 
   ASSERT_EQ(response.files_metadata_size(), 2u);
 
@@ -1374,10 +1289,8 @@ TEST_F(DlpAdaptorTest, DISABLED_GetFilesSourcesWithoutDatabaseNotAdded) {
   // Create files to request sources by ids.
   base::FilePath file_path1;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
-  const FileId id1 = GetFileId(file_path1.value());
   base::FilePath file_path2;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2));
-  const FileId id2 = GetFileId(file_path2.value());
 
   const std::string source1 = "source1";
   const std::string source2 = "source2";
@@ -1389,7 +1302,7 @@ TEST_F(DlpAdaptorTest, DISABLED_GetFilesSourcesWithoutDatabaseNotAdded) {
                    /*expected_result=*/true);
 
   GetFilesSourcesResponse response =
-      GetFilesSources({id1.first, id2.first}, /*paths=*/{});
+      GetFilesSources({file_path1.value(), file_path2.value()});
 
   EXPECT_EQ(response.files_metadata_size(), 0u);
 
@@ -1399,7 +1312,7 @@ TEST_F(DlpAdaptorTest, DISABLED_GetFilesSourcesWithoutDatabaseNotAdded) {
   InitDatabase();
 
   // Check that the pending entries were not added.
-  response = GetFilesSources({id1.first, id2.first}, /*paths=*/{});
+  response = GetFilesSources({file_path1.value(), file_path2.value()});
 
   EXPECT_EQ(response.files_metadata_size(), 0u);
 }
@@ -1417,7 +1330,6 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithCleanup) {
   const FileId id1 = GetFileId(file_path1.value());
   base::FilePath file_path2;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2));
-  const FileId id2 = GetFileId(file_path2.value());
 
   const std::string source1 = "source1";
   const std::string source2 = "source2";
@@ -1439,7 +1351,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithCleanup) {
   run_loop2.Run();
 
   GetFilesSourcesResponse response =
-      GetFilesSources({id1.first, id2.first}, /*paths=*/{});
+      GetFilesSources({file_path1.value(), file_path2.value()});
 
   ASSERT_EQ(response.files_metadata_size(), 1u);
 
@@ -1464,7 +1376,6 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithoutCleanup) {
   const FileId id1 = GetFileId(file_path1.value());
   base::FilePath file_path2;
   ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2));
-  const FileId id2 = GetFileId(file_path2.value());
 
   const std::string source1 = "source1";
   const std::string source2 = "source2";
@@ -1486,9 +1397,9 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithoutCleanup) {
   run_loop2.Run();
 
   GetFilesSourcesResponse response =
-      GetFilesSources({id1.first, id2.first}, /*paths=*/{});
+      GetFilesSources({file_path1.value(), file_path2.value()});
 
-  ASSERT_EQ(response.files_metadata_size(), 2u);
+  ASSERT_EQ(response.files_metadata_size(), 1u);
 
   FileMetadata file_metadata1 = response.files_metadata()[0];
   EXPECT_EQ(file_metadata1.inode(), id1.first);
@@ -1496,11 +1407,6 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithoutCleanup) {
   EXPECT_EQ(file_metadata1.source_url(), source1);
   EXPECT_EQ(file_metadata1.referrer_url(), referrer1);
 
-  FileMetadata file_metadata2 = response.files_metadata()[1];
-  EXPECT_EQ(file_metadata2.inode(), id2.first);
-  EXPECT_EQ(file_metadata2.crtime(), id2.second);
-  EXPECT_EQ(file_metadata2.source_url(), source2);
-  EXPECT_EQ(file_metadata2.referrer_url(), referrer2);
   EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
 }
 
@@ -1533,7 +1439,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight) {
   helper_.OnFileDeleted(id2);
 
   GetFilesSourcesResponse response =
-      GetFilesSources({id1.first, id2.first}, /*paths=*/{});
+      GetFilesSources({file_path1.value(), file_path2.value()});
 
   ASSERT_EQ(response.files_metadata_size(), 1u);
 
@@ -1552,7 +1458,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight) {
   // Notify that file was deleted.
   helper_.OnFileDeleted(id1);
 
-  response = GetFilesSources({id1.first, id2.first}, /*paths=*/{});
+  response = GetFilesSources({file_path1.value(), file_path2.value()});
 
   ASSERT_EQ(response.files_metadata_size(), 0u);
   EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram), ElementsAre());
@@ -1584,7 +1490,7 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesOverwrite) {
                    /*expected_result=*/true);
 
   GetFilesSourcesResponse response =
-      GetFilesSources({id1.first, id2.first}, /*paths=*/{});
+      GetFilesSources({file_path1.value(), file_path2.value()});
 
   ASSERT_EQ(response.files_metadata_size(), 2u);
 

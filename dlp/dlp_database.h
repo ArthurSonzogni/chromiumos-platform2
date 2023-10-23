@@ -85,10 +85,9 @@ class DlpDatabase : public DlpDatabaseDelegate {
                          base::OnceCallback<void(bool)> callback);
 
   // Gets the file entries by ids. Returns a map of only found entries to
-  // the |callback|. If |ignore_crtime| is set, this part of |id| is ignored.
+  // the |callback|.
   void GetFileEntriesByIds(
       std::vector<FileId> ids,
-      bool ignore_crtime,
       base::OnceCallback<void(std::map<FileId, FileEntry>)> callback) const;
 
   // Deletes file entry with |inode| from database. Returns true to the
