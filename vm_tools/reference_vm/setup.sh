@@ -91,6 +91,7 @@ EOF
     "${DATA_ROOT}/usr/local/lib/systemd/system/install-refvm.service" \
     "${DATA_ROOT}/usr/local/lib/systemd/system/maitred.service" \
     "${DATA_ROOT}/usr/local/lib/systemd/system/opt-google-cros\\x2dcontainers.mount" \
+    "${DATA_ROOT}/usr/local/lib/systemd/system/tmp.mount" \
     "${DATA_ROOT}/usr/local/lib/systemd/system/update-cros-list.service" \
     "${DATA_ROOT}/usr/local/lib/systemd/system/vshd.service"
   systemctl enable maitred.service update-cros-list.service vshd.service \
