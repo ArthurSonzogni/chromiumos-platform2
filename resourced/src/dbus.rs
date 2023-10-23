@@ -39,7 +39,6 @@ use crate::feature;
 use crate::memory;
 use crate::power;
 use crate::psi;
-use crate::qos;
 use crate::vm_memory_management_client::VmMemoryManagementClient;
 
 const SERVICE_NAME: &str = "org.chromium.ResourceManager";
@@ -480,7 +479,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             move |mut sender_context, _, (process_id, process_state): (i32, u8)| {
                 let conn_clone = conn_clone3.clone();
                 async move {
-                    let state = match qos::ProcessSchedulerState::try_from(process_state) {
+                    let state = match schedqos::ProcessSchedulerState::try_from(process_state) {
                         Ok(s) => s,
                         Err(_) => {
                             return sender_context
@@ -510,7 +509,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                             }
                         };
 
-                    let result = qos::change_process_state(process_id, state);
+                    let result = schedqos::change_process_state(process_id, state);
                     match result {
                         Ok(()) => sender_context.reply(Ok(())),
                         Err(e) => {
@@ -530,7 +529,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             move |mut sender_context, _, (process_id, thread_id, thread_state): (i32, i32, u8)| {
                 let conn_clone = conn_clone4.clone();
                 async move {
-                    let state = match qos::ThreadSchedulerState::try_from(thread_state) {
+                    let state = match schedqos::ThreadSchedulerState::try_from(thread_state) {
                         Ok(s) => s,
                         Err(_) => {
                             return sender_context
@@ -560,7 +559,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                             }
                         };
 
-                    let result = qos::change_thread_state(process_id, thread_id, state);
+                    let result = schedqos::change_thread_state(process_id, thread_id, state);
                     match result {
                         Ok(()) => sender_context.reply(Ok(())),
                         Err(e) => {
