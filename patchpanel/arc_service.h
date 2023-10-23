@@ -231,6 +231,20 @@ class ArcService {
   // |shill_device| changed.
   void UpdateDeviceIPConfig(const ShillClient::Device& shill_device);
 
+  // Temporary setters and getters needed for Manager until
+  // NotifyAndroidInteractiveState and NotifyAndroidWifiMulticastLockChange are
+  // migrated to ArcService.
+  bool is_android_wifi_multicast_lock_held() {
+    return is_android_wifi_multicast_lock_held_;
+  }
+  void set_android_wifi_multicast_lock_held(bool is_held) {
+    is_android_wifi_multicast_lock_held_ = is_held;
+  }
+  bool is_arc_interactive() { return is_arc_interactive_; }
+  void set_arc_interactive(bool is_interactive) {
+    is_arc_interactive_ = is_interactive;
+  }
+
  private:
   // Creates ARC interface configuration for the the legacy "arc0" management
   // interface used for VPN forwarding and ADB-over-TCP.
@@ -295,6 +309,12 @@ class ArcService {
   uint32_t id_;
   // All shill Devices currently managed by shill, keyed by shill Device name.
   std::map<std::string, ShillClient::Device> shill_devices_;
+  // Whether multicast lock is held by any app in ARC, used to decide whether
+  // to start/stop forwarding multicast traffic to ARC on WiFi.
+  bool is_android_wifi_multicast_lock_held_ = false;
+  // Whether device is interactive, used to decide whether to start/stop
+  // forwarding multicast traffic to ARC on all multicast enabled networks.
+  bool is_arc_interactive_ = true;
 
   base::WeakPtrFactory<ArcService> weak_factory_{this};
 };

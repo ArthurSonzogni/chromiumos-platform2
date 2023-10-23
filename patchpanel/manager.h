@@ -345,14 +345,6 @@ class Manager : public ForwardingService {
   std::map<int, std::unique_ptr<base::FileDescriptorWatcher::Controller>>
       lifeline_fd_controllers_;
 
-  // Whether multicast lock is held by any app in ARC, used to decide whether
-  // to start/stop forwarding multicast traffic to ARC on WiFi.
-  bool android_wifi_multicast_lock_held_ = false;
-
-  // Whether device is interactive, used to decide whether to start/stop
-  // forwarding multicast traffic to ARC on all multicast enabled networks.
-  bool is_arc_interactive_ = true;
-
   // Fetches and reports multicast packet count to UMA metrics.
   std::unique_ptr<MulticastMetrics> multicast_metrics_;
 
