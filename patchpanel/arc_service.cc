@@ -516,7 +516,15 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
 
   LOG(INFO) << "Starting ARC Device " << arc_device_it.first->second;
   StartArcDeviceDatapath(arc_device_it.first->second);
-
+  // Only start forwarding multicast traffic if ARC is in an interactive state.
+  // In addition, on WiFi the Android WiFi multicast lock must also be held.
+  bool forward_multicast =
+      is_arc_interactive_ &&
+      (shill_device.type != ShillClient::Device::Type::kWifi ||
+       is_android_wifi_multicast_lock_held_);
+  forwarding_service_->StartForwarding(
+      shill_device, arc_device_it.first->second.bridge_ifname(),
+      {.ipv6 = true, .multicast = forward_multicast});
   arc_device_change_handler_.Run(shill_device, arc_device_it.first->second,
                                  ArcDeviceEvent::kAdded);
   assigned_configs_.emplace(shill_device.ifname, std::move(config));
@@ -533,6 +541,8 @@ void ArcService::RemoveDevice(const ShillClient::Device& shill_device) {
       LOG(INFO) << "Removing ARC Device " << arc_device;
       arc_device_change_handler_.Run(shill_device, arc_device,
                                      ArcDeviceEvent::kRemoved);
+      forwarding_service_->StopForwarding(shill_device,
+                                          arc_device.bridge_ifname());
       StopArcDeviceDatapath(arc_device);
       const auto config_it = assigned_configs_.find(shill_device.ifname);
       if (config_it == assigned_configs_.end()) {

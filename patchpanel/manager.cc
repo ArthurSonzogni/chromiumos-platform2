@@ -420,26 +420,17 @@ void Manager::OnArcDeviceChanged(const ShillClient::Device& shill_device,
   // patchpanel to advertise the ARC virtual device as associated with the
   // shill Device kInterfaceProperty value. This is handled in FillDeviceProto.
   auto* signal_device = new NetworkDevice();
+  NetworkDeviceChangedSignal::Event signal_event;
   arc_device.ConvertToProto(signal_device);
-  if (event == ArcService::ArcDeviceEvent::kAdded) {
-    // Only start forwarding multicast traffic if ARC is in an interactive
-    // state.
-    bool forward_multicast = arc_svc_->is_arc_interactive();
-    // In addition, only start forwarding multicast traffic on WiFi if the
-    // Android WiFi multicast lock is held.
-    if (shill_device.type == ShillClient::Device::Type::kWifi &&
-        !arc_svc_->is_android_wifi_multicast_lock_held()) {
-      forward_multicast = false;
-    }
-    StartForwarding(shill_device, arc_device.bridge_ifname(),
-                    {.ipv6 = true, .multicast = forward_multicast});
-    client_notifier_->OnNetworkDeviceChanged(
-        signal_device, NetworkDeviceChangedSignal::DEVICE_ADDED);
-  } else if (event == ArcService::ArcDeviceEvent::kRemoved) {
-    StopForwarding(shill_device, arc_device.bridge_ifname());
-    client_notifier_->OnNetworkDeviceChanged(
-        signal_device, NetworkDeviceChangedSignal::DEVICE_REMOVED);
+  switch (event) {
+    case ArcService::ArcDeviceEvent::kAdded:
+      signal_event = NetworkDeviceChangedSignal::DEVICE_ADDED;
+      break;
+    case ArcService::ArcDeviceEvent::kRemoved:
+      signal_event = NetworkDeviceChangedSignal::DEVICE_REMOVED;
+      break;
   }
+  client_notifier_->OnNetworkDeviceChanged(signal_device, signal_event);
 }
 
 void Manager::OnCrostiniDeviceEvent(
