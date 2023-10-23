@@ -516,6 +516,45 @@ chromeos:
             )
         self.assertIn("Identities are not unique", str(ctx.exception))
 
+    def testFileCollision(self):
+        config = {
+            "chromeos": {
+                "configs": [
+                    {
+                        "identity": {"platform-name": "foo", "sku-id": 1},
+                        "name": "foo",
+                        "audio": {
+                            "main": {
+                                "files": [
+                                    {
+                                        "destination": "/etc/cras/foo/dsp",
+                                        "source": "foo/audio/cras-config/dsp",
+                                    },
+                                ],
+                            }
+                        },
+                    },
+                    {
+                        "identity": {"platform-name": "foo", "sku-id": 2},
+                        "name": "bar",
+                        "audio": {
+                            "main": {
+                                "files": [
+                                    {
+                                        "destination": "/etc/cras/foo/dsp",
+                                        "source": "bar/audio/cras-config/dsp",
+                                    },
+                                ],
+                            }
+                        },
+                    },
+                ],
+            },
+        }
+        with self.assertRaises(cros_config_schema.ValidationError) as ctx:
+            cros_config_schema.ValidateConfig(json.dumps(config))
+        self.assertIn("File collision detected", str(ctx.exception))
+
     def testCustomLabelWithExternalStylusAndCloudGamingFeature(self):
         config = CUSTOM_LABEL_CONFIG
         cros_config_schema.ValidateConfig(

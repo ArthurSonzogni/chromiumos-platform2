@@ -686,6 +686,68 @@ def _ValidateUniqueIdentities(json_config):
             )
 
 
+def _ValidateFileCollision(json_config):
+    """Verifies files do not collide within the config.
+
+    Args:
+        json_config: JSON config dictionary
+
+    Raises:
+        ValidationError: when two files with different path are
+        installed to the same position of the image.
+    """
+
+    def safe_get_from_key(source, keys):
+        """Util function to iterate json to specified position
+
+        Args:
+            source: the json config dict that need to be parsed
+            keys: nested key position, separated by '.'
+
+        Returns:
+            the list of files nested under the key,
+            or return empty list if the key is not found.
+        """
+        current = source
+        for key in keys.split("."):
+            if key in current:
+                current = current[key]
+            else:
+                return []
+        return current
+
+    keys = ["audio.main.files", "thermal.files"]
+
+    total_list = sum(
+        [
+            safe_get_from_key(config, key)
+            for key in keys
+            for config in json_config["chromeos"]["configs"]
+        ],
+        [],
+    )
+
+    install_paths = {}
+
+    for pair in total_list:
+        if (
+            pair["destination"] in install_paths
+            and install_paths[pair["destination"]] != pair["source"]
+        ):
+            raise ValidationError(
+                "File collision detected: "
+                "Two files %s, %s are installing "
+                "to the same destination %s "
+                % (
+                    pair["source"],
+                    install_paths[pair["destination"]],
+                    pair["destination"],
+                )
+            )
+        else:
+            install_paths[pair["destination"]] = pair["source"]
+
+
 def _ValidateCustomLabelBrandChangesOnly(json_config):
     """Verifies that custom label changes are contained to branding information.
 
@@ -877,6 +939,7 @@ def ValidateConfig(config):
     _ValidateConsistentSideVolumeButton(json_config)
     _ValidateFeatureDeviceTypeIdentities(json_config)
     _ValidateHdmiCec(json_config)
+    _ValidateFileCollision(json_config)
 
 
 def MergeConfigs(configs):
