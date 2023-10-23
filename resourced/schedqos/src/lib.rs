@@ -215,68 +215,89 @@ fn is_same_process(process_id: i32, thread_id: i32) -> Result<bool> {
     Ok(stat.tgid == process_id)
 }
 
-pub fn change_process_state(process_id: i32, process_state: ProcessSchedulerState) -> Result<()> {
-    match process_state {
-        ProcessSchedulerState::Normal => write(CGROUP_NORMAL, process_id.to_string())
-            .context(format!("Failed to write to {}", CGROUP_NORMAL))?,
-        ProcessSchedulerState::Background => write(CGROUP_BACKGROUND, process_id.to_string())
-            .context(format!("Failed to write to {}", CGROUP_BACKGROUND))?,
-    }
-
-    Ok(())
+pub struct SchedQosContext {
+    // TODO: Add config, internal state mapping
 }
 
-pub fn change_thread_state(
-    process_id: i32,
-    thread_id: i32,
-    thread_state: ThreadSchedulerState,
-) -> Result<()> {
-    // Validate thread_id is a thread of process_id
-    if !is_same_process(process_id, thread_id)? {
-        bail!("Thread does not belong to process");
+impl SchedQosContext {
+    /// TODO(kawasin): Add more initialization logic
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        Self {}
     }
 
-    let thread_settings = &THREAD_SETTINGS[thread_state as usize];
-    let mut temp_sched_attr = thread_settings.sched_settings;
-    temp_sched_attr.sched_flags |= if *SUPPORTS_UCLAMP {
-        SCHED_FLAG_UTIL_CLAMP_MIN | SCHED_FLAG_UTIL_CLAMP_MAX
-    } else {
-        0
-    };
+    pub fn set_process_state(
+        // TODO(kawasin): Make this mut to update internal state mapping.
+        &self,
+        process_id: i32,
+        process_state: ProcessSchedulerState,
+    ) -> Result<()> {
+        match process_state {
+            ProcessSchedulerState::Normal => write(CGROUP_NORMAL, process_id.to_string())
+                .context(format!("Failed to write to {}", CGROUP_NORMAL))?,
+            ProcessSchedulerState::Background => {
+                write(CGROUP_BACKGROUND, process_id.to_string())
+                    .context(format!("Failed to write to {}", CGROUP_BACKGROUND))?
+            }
+        }
 
-    let res = unsafe {
-        libc::syscall(
-            libc::SYS_sched_setattr,
-            thread_id,
-            &mut temp_sched_attr as *mut sched_attr as usize,
-            0,
-        )
-    };
-    if res < 0 {
-        bail!(
-            "Failed to set scheduler attributes, error={}",
-            std::io::Error::last_os_error()
-        );
+        Ok(())
     }
 
-    // Apply the cpuset setting
-    match thread_settings.cpuset {
-        CpuSelection::All => write(CPUSET_ALL, thread_id.to_string())
-            .context(format!("Failed to write to {}", CPUSET_ALL))?,
-        CpuSelection::Efficient => write(CPUSET_EFFICIENT, thread_id.to_string())
-            .context(format!("Failed to write to {}", CPUSET_EFFICIENT))?,
-    };
+    pub fn set_thread_state(
+        // TODO(kawasin): Make this mut to update internal state mapping.
+        &self,
+        process_id: i32,
+        thread_id: i32,
+        thread_state: ThreadSchedulerState,
+    ) -> Result<()> {
+        // Validate thread_id is a thread of process_id
+        if !is_same_process(process_id, thread_id)? {
+            bail!("Thread does not belong to process");
+        }
 
-    // Apply latency sensitive. Latency_sensitive will prefer idle cores.
-    // This is a patch not yet in upstream(http://crrev/c/2981472)
-    let latency_sensitive_file =
-        format!("/proc/{}/task/{}/latency_sensitive", process_id, thread_id);
+        let thread_settings = &THREAD_SETTINGS[thread_state as usize];
+        let mut temp_sched_attr = thread_settings.sched_settings;
+        temp_sched_attr.sched_flags |= if *SUPPORTS_UCLAMP {
+            SCHED_FLAG_UTIL_CLAMP_MIN | SCHED_FLAG_UTIL_CLAMP_MAX
+        } else {
+            0
+        };
 
-    if std::path::Path::new(&latency_sensitive_file).exists() {
-        let value = if thread_settings.prefer_idle { 1 } else { 0 };
-        write(&latency_sensitive_file, value.to_string())
-            .context(format!("Failed to write to {}", latency_sensitive_file))?;
+        let res = unsafe {
+            libc::syscall(
+                libc::SYS_sched_setattr,
+                thread_id,
+                &mut temp_sched_attr as *mut sched_attr as usize,
+                0,
+            )
+        };
+        if res < 0 {
+            bail!(
+                "Failed to set scheduler attributes, error={}",
+                std::io::Error::last_os_error()
+            );
+        }
+
+        // Apply the cpuset setting
+        match thread_settings.cpuset {
+            CpuSelection::All => write(CPUSET_ALL, thread_id.to_string())
+                .context(format!("Failed to write to {}", CPUSET_ALL))?,
+            CpuSelection::Efficient => write(CPUSET_EFFICIENT, thread_id.to_string())
+                .context(format!("Failed to write to {}", CPUSET_EFFICIENT))?,
+        };
+
+        // Apply latency sensitive. Latency_sensitive will prefer idle cores.
+        // This is a patch not yet in upstream(http://crrev/c/2981472)
+        let latency_sensitive_file =
+            format!("/proc/{}/task/{}/latency_sensitive", process_id, thread_id);
+
+        if std::path::Path::new(&latency_sensitive_file).exists() {
+            let value = if thread_settings.prefer_idle { 1 } else { 0 };
+            write(&latency_sensitive_file, value.to_string())
+                .context(format!("Failed to write to {}", latency_sensitive_file))?;
+        }
+
+        Ok(())
     }
-
-    Ok(())
 }

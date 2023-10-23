@@ -12,6 +12,7 @@ use std::sync::atomic::AtomicI32;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::Duration;
 
 use anyhow::anyhow;
@@ -31,6 +32,7 @@ use dbus_crossroads::MethodErr;
 use dbus_tokio::connection;
 use log::error;
 use log::LevelFilter;
+use schedqos::SchedQosContext;
 use system_api::battery_saver::BatterySaverModeState;
 
 use crate::common;
@@ -72,6 +74,8 @@ struct DbusContext {
     reset_game_mode_timer_id: Arc<AtomicUsize>,
     reset_fullscreen_video_timer_id: Arc<AtomicUsize>,
     reset_vm_boot_mode_timer_id: Arc<AtomicUsize>,
+
+    scheduler_context: Arc<Mutex<SchedQosContext>>,
 }
 
 fn is_unspported_error(e: &anyhow::Error) -> bool {
@@ -476,7 +480,9 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             "ChangeProcessState",
             ("ProcessId", "ProcessState"),
             (),
-            move |mut sender_context, _, (process_id, process_state): (i32, u8)| {
+            move |mut sender_context, cr, (process_id, process_state): (i32, u8)| {
+                let context: Option<&mut DbusContext> = cr.data_mut(sender_context.path());
+                let sched_ctx = context.map(|ctx| ctx.scheduler_context.clone());
                 let conn_clone = conn_clone3.clone();
                 async move {
                     let state = match schedqos::ProcessSchedulerState::try_from(process_state) {
@@ -509,7 +515,12 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                             }
                         };
 
-                    let result = schedqos::change_process_state(process_id, state);
+                    let Some(sched_ctx) = sched_ctx else {
+                        return sender_context.reply(Err(MethodErr::failed("no schedqos context")));
+                    };
+                    let sched_ctx = sched_ctx.lock().expect("lock schedqos context");
+
+                    let result = sched_ctx.set_process_state(process_id, state);
                     match result {
                         Ok(()) => sender_context.reply(Ok(())),
                         Err(e) => {
@@ -526,7 +537,9 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             "ChangeThreadState",
             ("ProcessId", "ThreadId", "ThreadState"),
             (),
-            move |mut sender_context, _, (process_id, thread_id, thread_state): (i32, i32, u8)| {
+            move |mut sender_context, cr, (process_id, thread_id, thread_state): (i32, i32, u8)| {
+                let context: Option<&mut DbusContext> = cr.data_mut(sender_context.path());
+                let sched_ctx = context.map(|ctx| ctx.scheduler_context.clone());
                 let conn_clone = conn_clone4.clone();
                 async move {
                     let state = match schedqos::ThreadSchedulerState::try_from(thread_state) {
@@ -559,7 +572,12 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                             }
                         };
 
-                    let result = schedqos::change_thread_state(process_id, thread_id, state);
+                    let Some(sched_ctx) = sched_ctx else {
+                        return sender_context.reply(Err(MethodErr::failed("no schedqos context")));
+                    };
+                    let sched_ctx = sched_ctx.lock().expect("lock schedqos context");
+
+                    let result = sched_ctx.set_thread_state(process_id, thread_id, state);
                     match result {
                         Ok(()) => sender_context.reply(Ok(())),
                         Err(e) => {
@@ -810,6 +828,7 @@ pub async fn service_main() -> Result<()> {
         reset_game_mode_timer_id: Arc::new(AtomicUsize::new(0)),
         reset_fullscreen_video_timer_id: Arc::new(AtomicUsize::new(0)),
         reset_vm_boot_mode_timer_id: Arc::new(AtomicUsize::new(0)),
+        scheduler_context: Arc::new(Mutex::new(SchedQosContext::new())),
     };
 
     let (io_resource, conn) = connection::new_system_sync()?;
