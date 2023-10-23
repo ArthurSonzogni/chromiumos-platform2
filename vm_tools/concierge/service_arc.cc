@@ -85,7 +85,7 @@ const VariationsFeature kArcVmLowMemJemallocArenasFeature{
     kArcVmLowMemJemallocArenasFeatureName, FEATURE_DISABLED_BY_DEFAULT};
 
 const VariationsFeature kArcVmAAudioMMAPFeature{kArcVmAAudioMMAPFeatureName,
-                                                FEATURE_DISABLED_BY_DEFAULT};
+                                                FEATURE_ENABLED_BY_DEFAULT};
 
 const VariationsFeature kArcVmAAudioMMAPLowLatencyFeature{
     kArcVmAAudioMMAPLowLatencyFeatureName, FEATURE_DISABLED_BY_DEFAULT};
