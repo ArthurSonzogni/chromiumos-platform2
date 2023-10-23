@@ -1150,10 +1150,13 @@ TEST_F(DlcServiceTestLegacy, PeriodicInstallCheck) {
     status.set_is_install(true);
     status_list.push_back(status);
   }
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<0>(status_list[0]), Return(true)))
-      .WillOnce(Return(false))
-      .WillOnce(DoAll(SetArgPointee<0>(status_list[1]), Return(true)));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvancedAsync(_, _, _))
+      .WillOnce(WithArg<0>(Invoke(
+          [status_list](auto&& arg) { std::move(arg).Run(status_list[0]); })))
+      .WillOnce(WithArg<0>(Invoke(
+          [status_list](auto&& arg) { std::move(arg).Run(status_list[0]); })))
+      .WillOnce(WithArg<0>(Invoke(
+          [status_list](auto&& arg) { std::move(arg).Run(status_list[1]); })));
 
   // We need to make sure the state is intalling so, rescheduling periodic check
   // happens.
@@ -1199,8 +1202,9 @@ TEST_F(DlcServiceTestLegacy, InstallSchedulesPeriodicInstallCheck) {
     status_list.push_back(status);
   }
 
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<0>(status_list[1]), Return(true)));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvancedAsync(_, _, _))
+      .WillOnce(WithArg<0>(Invoke(
+          [status_list](auto&& arg) { std::move(arg).Run(status_list[1]); })));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
@@ -1612,7 +1616,7 @@ TEST_F(DlcServiceTestLegacy, UpdateEngineBecomesAvailable) {
   auto* system_state = SystemState::Get();
   system_state->set_update_engine_service_available(false);
 
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvancedAsync(_, _, _))
       .Times(1);
 
   dlc_service_->OnWaitForUpdateEngineServiceToBeAvailable(true);

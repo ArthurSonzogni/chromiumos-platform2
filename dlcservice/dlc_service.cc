@@ -159,7 +159,7 @@ void DlcService::CleanupUnsupported() {
 void DlcService::OnWaitForUpdateEngineServiceToBeAvailable(bool available) {
   LOG(INFO) << "Update Engine service available=" << available;
   SystemState::Get()->set_update_engine_service_available(available);
-  std::ignore = GetUpdateEngineStatus();
+  GetUpdateEngineStatusAsync();
 }
 
 bool DlcService::Install(const InstallRequest& install_request, ErrorPtr* err) {
@@ -496,12 +496,7 @@ void DlcService::PeriodicInstallCheck() {
   auto* system_state = SystemState::Get();
   if ((system_state->clock()->Now() -
        system_state->update_engine_status_timestamp()) > kNotSeenStatusDelay) {
-    if (GetUpdateEngineStatus()) {
-      ErrorPtr tmp_error;
-      if (!HandleStatusResult(&tmp_error)) {
-        return;
-      }
-    }
+    GetUpdateEngineStatusAsync();
   }
 
   SchedulePeriodicInstallCheck();
@@ -595,17 +590,20 @@ bool DlcService::HandleStatusResult(brillo::ErrorPtr* err) {
   return false;
 }
 
-bool DlcService::GetUpdateEngineStatus() {
-  StatusResult status_result;
-  if (!SystemState::Get()->update_engine()->GetStatusAdvanced(&status_result,
-                                                              nullptr)) {
-    LOG(ERROR) << "Failed to get update_engine status, will try again later.";
-    return false;
+void DlcService::GetUpdateEngineStatusAsync() {
+  SystemState::Get()->update_engine()->GetStatusAdvancedAsync(
+      base::BindOnce(&DlcService::OnStatusUpdateAdvancedSignal,
+                     weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&DlcService::OnGetUpdateEngineStatusAsyncError,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void DlcService::OnGetUpdateEngineStatusAsyncError(brillo::Error* err) {
+  if (err) {
+    auto err_ptr = err->Clone();
+    LOG(ERROR) << "Failed to get update_engine status, err="
+               << Error::ToString(err_ptr);
   }
-  SystemState::Get()->set_update_engine_status(status_result);
-  LOG(INFO) << "Got update_engine status: "
-            << update_engine::Operation_Name(status_result.current_operation());
-  return true;
 }
 
 void DlcService::OnStatusUpdateAdvancedSignal(

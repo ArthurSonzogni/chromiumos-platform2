@@ -179,7 +179,8 @@ class DlcService : public DlcServiceInterface {
   void SchedulePeriodicInstallCheck();
 
   // Gets update_engine's operation status and saves it in |SystemState|.
-  bool GetUpdateEngineStatus();
+  void GetUpdateEngineStatusAsync();
+  void OnGetUpdateEngineStatusAsyncError(brillo::Error* err);
 
   // Installs a DLC without sending metrics when the install fails.
   bool InstallInternal(const InstallRequest& install_request,
