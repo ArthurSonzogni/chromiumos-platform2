@@ -13,6 +13,7 @@
 #include "dbus/shadercached/dbus-constants.h"
 #include "shadercached/proto_bindings/shadercached.pb.h"
 
+#include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/vm_util.h"
 
 namespace vm_tools::concierge {
@@ -21,13 +22,11 @@ namespace vm_tools::concierge {
 SharedDataParam CreateShaderSharedDataParam(base::FilePath data_dir);
 
 base::expected<shadercached::PrepareShaderCacheResponse, std::string>
-PrepareShaderCache(const std::string& owner_id,
-                   const std::string& vm_name,
+PrepareShaderCache(const VmId& vm_id,
                    scoped_refptr<dbus::Bus> bus_,
                    dbus::ObjectProxy* shadercached_proxy_);
 
-std::string PurgeShaderCache(const std::string& owner_id,
-                             const std::string& vm_name,
+std::string PurgeShaderCache(const VmId& vm_id,
                              scoped_refptr<dbus::Bus> bus_,
                              dbus::ObjectProxy* shadercached_proxy_);
 

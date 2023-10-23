@@ -7,13 +7,14 @@
 
 #include <string>
 
+#include "vm_tools/common/vm_id.h"
+
 namespace vm_tools::concierge {
 
-// Erases all of the SSH keys generated for the specified |vm_name|. Should be
+// Erases all of the SSH keys generated for the specified |vm_id|. Should be
 // called when a VM disk image is destroyed. Returns false if there were any
 // failures deleting the keys, true otherwise.
-bool EraseGuestSshKeys(const std::string& cryptohome_id,
-                       const std::string& vm_name);
+bool EraseGuestSshKeys(const VmId& vm_id);
 
 }  // namespace vm_tools::concierge
 

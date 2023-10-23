@@ -25,14 +25,13 @@ namespace vm_tools::concierge {
 
 namespace {
 
-bool GetPluginStatefulDirectory(const std::string& vm_id,
-                                const std::string& cryptohome_id,
+bool GetPluginStatefulDirectory(const VmId& vm_id,
                                 bool create,
                                 base::FilePath* path_out) {
   return GetPluginDirectory(base::FilePath(kCryptohomeRoot)
                                 .Append(kPluginVmDir)
-                                .Append(cryptohome_id),
-                            "pvm", vm_id, create, path_out);
+                                .Append(vm_id.owner_id()),
+                            "pvm", vm_id.name(), create, path_out);
 }
 
 bool GetPluginRuntimeDirectory(const std::string& vm_id,
@@ -122,6 +121,8 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
   LOG(INFO) << "Received StartPluginVm request";
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
+  VmId vm_id(request.owner_id(), request.name());
+
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_vm_type(VmInfo::PLUGIN_VM);
 
@@ -132,8 +133,7 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
 
   // Get the stateful directory.
   base::FilePath stateful_dir;
-  if (!GetPluginStatefulDirectory(request.name(), request.owner_id(),
-                                  true /* create */, &stateful_dir)) {
+  if (!GetPluginStatefulDirectory(vm_id, true /* create */, &stateful_dir)) {
     LOG(ERROR) << "Unable to create stateful directory for VM";
 
     response.set_failure_reason("Unable to create stateful directory");
@@ -142,8 +142,7 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
 
   // Get the directory for ISO images.
   base::FilePath iso_dir;
-  if (!GetPluginIsoDirectory(request.name(), request.owner_id(),
-                             true /* create */, &iso_dir)) {
+  if (!GetPluginIsoDirectory(vm_id, true /* create */, &iso_dir)) {
     LOG(ERROR) << "Unable to create directory holding ISOs for VM";
 
     response.set_failure_reason("Unable to create ISO directory");
@@ -233,7 +232,6 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
       std::make_move_iterator(request.mutable_params()->end()));
 
   // Now start the VM.
-  VmId vm_id(request.owner_id(), request.name());
   SendVmStartingUpSignal(vm_id, *vm_info);
 
   VmBuilder vm_builder;
@@ -302,39 +300,33 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
   return response;
 }
 
-bool Service::RenamePluginVm(const std::string& owner_id,
-                             const std::string& old_name,
-                             const std::string& new_name,
+bool Service::RenamePluginVm(const VmId& old_id,
+                             const VmId& new_id,
                              std::string* failure_reason) {
   base::FilePath old_dir;
-  if (!GetPluginStatefulDirectory(old_name, owner_id, false /* create */,
-                                  &old_dir)) {
+  if (!GetPluginStatefulDirectory(old_id, false /* create */, &old_dir)) {
     *failure_reason = "unable to determine current VM directory";
     return false;
   }
 
   base::FilePath old_iso_dir;
-  if (!GetPluginIsoDirectory(old_name, owner_id, false /* create */,
-                             &old_iso_dir)) {
+  if (!GetPluginIsoDirectory(old_id, false /* create */, &old_iso_dir)) {
     *failure_reason = "unable to determine current VM ISO directory";
     return false;
   }
 
   base::FilePath new_dir;
-  if (!GetPluginStatefulDirectory(new_name, owner_id, false /* create */,
-                                  &new_dir)) {
+  if (!GetPluginStatefulDirectory(new_id, false /* create */, &new_dir)) {
     *failure_reason = "unable to determine new VM directory";
     return false;
   }
 
   base::FilePath new_iso_dir;
-  if (!GetPluginIsoDirectory(new_name, owner_id, false /* create */,
-                             &new_iso_dir)) {
+  if (!GetPluginIsoDirectory(new_id, false /* create */, &new_iso_dir)) {
     *failure_reason = "unable to determine new VM ISO directory";
     return false;
   }
 
-  VmId old_id(owner_id, old_name);
   bool registered;
   if (!pvm::dispatcher::IsVmRegistered(bus_, vmplugin_service_proxy_, old_id,
                                        &registered)) {
@@ -379,8 +371,8 @@ bool Service::RenamePluginVm(const std::string& owner_id,
     return false;
   }
 
-  if (!pvm::dispatcher::RegisterVm(bus_, vmplugin_service_proxy_,
-                                   VmId(owner_id, new_name), new_dir)) {
+  if (!pvm::dispatcher::RegisterVm(bus_, vmplugin_service_proxy_, new_id,
+                                   new_dir)) {
     *failure_reason = "Failed to re-register renamed VM";
     return false;
   }

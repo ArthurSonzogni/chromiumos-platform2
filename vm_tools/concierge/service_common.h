@@ -56,8 +56,7 @@ struct PflashMetadata {
 
 // Gets the path to the file given the name, user id, location, and extension.
 std::optional<base::FilePath> GetFilePathFromName(
-    const std::string& cryptohome_id,
-    const std::string& vm_name,
+    const VmId& vm_id,
     StorageLocation storage_location,
     const std::string& extension,
     base::FilePath storage_dir = base::FilePath(kCryptohomeRoot));
@@ -68,8 +67,7 @@ bool GetPluginDirectory(const base::FilePath& prefix,
                         bool create,
                         base::FilePath* path_out);
 
-bool GetPluginIsoDirectory(const std::string& vm_id,
-                           const std::string& cryptohome_id,
+bool GetPluginIsoDirectory(const VmId& vm_id,
                            bool create,
                            base::FilePath* path_out);
 
@@ -84,8 +82,7 @@ void SendDbusResponse(dbus::ExportedObject::ResponseSender response_sender,
 // Returns information about the Pflash file associated with a VM. If there is a
 // failure in querying the information then it returns std::nullopt.
 std::optional<PflashMetadata> GetPflashMetadata(
-    const std::string& cryptohome_id,
-    const std::string& vm_name,
+    const VmId& vm_id,
     base::FilePath storage_dir = base::FilePath(kCryptohomeRoot));
 
 // Returns in order -

@@ -13,6 +13,7 @@
 #include <dbus/message.h>
 #include <dbus/shadercached/dbus-constants.h>
 
+#include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/vm_util.h"
 
 namespace vm_tools::concierge {
@@ -46,16 +47,15 @@ SharedDataParam CreateShaderSharedDataParam(base::FilePath data_dir) {
 }
 
 base::expected<shadercached::PrepareShaderCacheResponse, std::string>
-PrepareShaderCache(const std::string& owner_id,
-                   const std::string& vm_name,
+PrepareShaderCache(const VmId& vm_id,
                    scoped_refptr<dbus::Bus> bus_,
                    dbus::ObjectProxy* shadercached_proxy_) {
   dbus::MethodCall method_call(shadercached::kShaderCacheInterface,
                                shadercached::kPrepareShaderCache);
   dbus::MessageWriter shadercached_writer(&method_call);
   shadercached::PrepareShaderCacheRequest prepare_request;
-  prepare_request.set_vm_name(vm_name);
-  prepare_request.set_vm_owner_id(owner_id);
+  prepare_request.set_vm_name(vm_id.name());
+  prepare_request.set_vm_owner_id(vm_id.owner_id());
   shadercached_writer.AppendProtoAsArrayOfBytes(prepare_request);
 
   dbus::Error error;
@@ -78,16 +78,15 @@ PrepareShaderCache(const std::string& owner_id,
   return base::ok(response);
 }
 
-std::string PurgeShaderCache(const std::string& owner_id,
-                             const std::string& vm_name,
+std::string PurgeShaderCache(const VmId& vm_id,
                              scoped_refptr<dbus::Bus> bus_,
                              dbus::ObjectProxy* shadercached_proxy_) {
   dbus::MethodCall method_call(shadercached::kShaderCacheInterface,
                                shadercached::kPurgeMethod);
   dbus::MessageWriter shadercached_writer(&method_call);
   shadercached::PurgeRequest purge_request;
-  purge_request.set_vm_name(vm_name);
-  purge_request.set_vm_owner_id(owner_id);
+  purge_request.set_vm_name(vm_id.name());
+  purge_request.set_vm_owner_id(vm_id.owner_id());
   shadercached_writer.AppendProtoAsArrayOfBytes(purge_request);
 
   dbus::Error error;

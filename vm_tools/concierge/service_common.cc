@@ -17,17 +17,16 @@
 namespace vm_tools::concierge {
 
 std::optional<base::FilePath> GetFilePathFromName(
-    const std::string& cryptohome_id,
-    const std::string& vm_name,
+    const VmId& vm_id,
     StorageLocation storage_location,
     const std::string& extension,
     base::FilePath storage_dir) {
-  if (!IsValidOwnerId(cryptohome_id)) {
+  if (!IsValidOwnerId(vm_id.owner_id())) {
     LOG(ERROR) << "Invalid cryptohome_id specified";
     return std::nullopt;
   }
   // Encode the given disk name to ensure it only has valid characters.
-  std::string encoded_name = GetEncodedName(vm_name);
+  std::string encoded_name = GetEncodedName(vm_id.name());
 
   switch (storage_location) {
     case STORAGE_CRYPTOHOME_ROOT: {
@@ -43,7 +42,7 @@ std::optional<base::FilePath> GetFilePathFromName(
       return std::nullopt;
     }
   }
-  storage_dir = storage_dir.Append(cryptohome_id);
+  storage_dir = storage_dir.Append(vm_id.owner_id());
 
   if (!base::DirectoryExists(storage_dir)) {
     LOG(ERROR) << "Missing VM storage directory " << storage_dir;
@@ -83,14 +82,13 @@ bool GetPluginDirectory(const base::FilePath& prefix,
   return true;
 }
 
-bool GetPluginIsoDirectory(const std::string& vm_id,
-                           const std::string& cryptohome_id,
+bool GetPluginIsoDirectory(const VmId& vm_id,
                            bool create,
                            base::FilePath* path_out) {
   return GetPluginDirectory(base::FilePath(kCryptohomeRoot)
                                 .Append(kPluginVmDir)
-                                .Append(cryptohome_id),
-                            "iso", vm_id, create, path_out);
+                                .Append(vm_id.owner_id()),
+                            "iso", vm_id.name(), create, path_out);
 }
 
 // Valid owner/cryptohome ID is a hexadecimal string.
@@ -117,13 +115,11 @@ void SendDbusResponse(dbus::ExportedObject::ResponseSender response_sender,
   std::move(response_sender).Run(std::move(dbus_response));
 }
 
-std::optional<PflashMetadata> GetPflashMetadata(
-    const std::string& cryptohome_id,
-    const std::string& vm_name,
-    base::FilePath storage_dir) {
+std::optional<PflashMetadata> GetPflashMetadata(const VmId& vm_id,
+                                                base::FilePath storage_dir) {
   std::optional<base::FilePath> pflash_installation_path_result =
-      GetFilePathFromName(cryptohome_id, vm_name, STORAGE_CRYPTOHOME_ROOT,
-                          kPflashImageExtension, storage_dir);
+      GetFilePathFromName(vm_id, STORAGE_CRYPTOHOME_ROOT, kPflashImageExtension,
+                          storage_dir);
   if (!pflash_installation_path_result) {
     return std::nullopt;
   }
@@ -140,8 +136,7 @@ std::optional<base::FilePath> GetInstalledOrRequestPflashPath(
   bool is_pflash_sent_in_request =
       base::PathExists(start_vm_request_pflash_path);
 
-  std::optional<PflashMetadata> pflash_metadata =
-      GetPflashMetadata(vm_id.owner_id(), vm_id.name());
+  std::optional<PflashMetadata> pflash_metadata = GetPflashMetadata(vm_id);
   if (!pflash_metadata) {
     return std::nullopt;
   }

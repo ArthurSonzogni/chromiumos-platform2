@@ -374,8 +374,7 @@ class Service final : public org::chromium::VmConciergeInterface,
 
   // Initiate a disk resize request for the VM identified by |owner_id| and
   // |vm_name|.
-  void ResizeDisk(const std::string& owner_id,
-                  const std::string& vm_name,
+  void ResizeDisk(const VmId& vm_id,
                   StorageLocation location,
                   uint64_t new_size,
                   DiskImageStatusEnum* status,
@@ -383,24 +382,21 @@ class Service final : public org::chromium::VmConciergeInterface,
   // Query the status of the most recent ResizeDisk request.
   // If this returns DISK_STATUS_FAILED, |failure_reason| will be filled with an
   // error message.
-  void ProcessResize(const std::string& owner_id,
-                     const std::string& vm_name,
+  void ProcessResize(const VmId& vm_id,
                      StorageLocation location,
                      uint64_t target_size,
                      DiskImageStatusEnum* status,
                      std::string* failure_reason);
 
   // Finalize the resize process after a success resize has completed.
-  void FinishResize(const std::string& owner_id,
-                    const std::string& vm_name,
+  void FinishResize(const VmId& vm_id,
                     StorageLocation location,
                     DiskImageStatusEnum* status,
                     std::string* failure_reason);
 
   // Executes rename operation of a Plugin VM.
-  bool RenamePluginVm(const std::string& owner_id,
-                      const std::string& old_name,
-                      const std::string& new_name,
+  bool RenamePluginVm(const VmId& old_id,
+                      const VmId& new_id,
                       std::string* failure_reason);
 
   // Callback for when the localtime file is changed
@@ -413,10 +409,6 @@ class Service final : public org::chromium::VmConciergeInterface,
 
   // Returns an iterator to vm with key |vm_id|.
   VmMap::iterator FindVm(const VmId& vm_id);
-
-  // Returns an iterator to vm with key (|owner_id|, |vm_name|).
-  VmMap::iterator FindVm(const std::string& owner_id,
-                         const std::string& vm_name);
 
   std::optional<int64_t> GetAvailableMemory();
   std::optional<int64_t> GetForegroundAvailableMemory();
@@ -452,13 +444,11 @@ class Service final : public org::chromium::VmConciergeInterface,
                            std::string* failure_reason);
 
   // Get GPU cache path for the VM.
-  base::FilePath GetVmGpuCachePathInternal(const std::string& owner_id,
-                                           const std::string& vm_name);
+  base::FilePath GetVmGpuCachePathInternal(const VmId& vm_id);
 
   // Prepares the GPU shader disk cache directories and if necessary erases
   // old caches for all VMs. Returns the prepared paths.
-  VMGpuCacheSpec PrepareVmGpuCachePaths(const std::string& owner_id,
-                                        const std::string& vm_name,
+  VMGpuCacheSpec PrepareVmGpuCachePaths(const VmId& vm_id,
                                         bool enable_render_server,
                                         bool enable_foz_db_list);
 

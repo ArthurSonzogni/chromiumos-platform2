@@ -273,15 +273,13 @@ class PluginVmImportOperation : public DiskImageOperation {
 class VmResizeOperation : public DiskImageOperation {
  public:
   using StartResizeCallback =
-      base::OnceCallback<void(const std::string& owner_id,
-                              const std::string& vm_name,
+      base::OnceCallback<void(const VmId& vm_id,
                               StorageLocation location,
                               uint64_t target_size,
                               DiskImageStatus* status,
                               std::string* failure_reason)>;
   using ProcessResizeCallback =
-      base::RepeatingCallback<void(const std::string& owner_id,
-                                   const std::string& vm_name,
+      base::RepeatingCallback<void(const VmId& vm_id,
                                    StorageLocation location,
                                    uint64_t target_size,
                                    DiskImageStatus* status,

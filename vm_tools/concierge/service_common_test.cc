@@ -50,8 +50,9 @@ TEST(ServiceCommonTest, TestGetPflashMetadataInvalidOwnerId) {
   // Invalid owner id should yield failure."
   std::string invalid_owner_id =
       std::string(kValidCryptoHomeCharacters) + "/./";
+  VmId vm_id(invalid_owner_id, "123bru");
   std::optional<PflashMetadata> pflash_metadata_result =
-      GetPflashMetadata(invalid_owner_id, "123bru", test_root_dir);
+      GetPflashMetadata(vm_id, test_root_dir);
   EXPECT_FALSE(pflash_metadata_result.has_value());
 }
 
@@ -69,8 +70,9 @@ TEST(ServiceCommonTest, TestGetPflashMetadataSuccess) {
   std::unordered_map<std::string, std::string> vm_name_to_base64 = {
       {"bru", "YnJ1"}, {"foo", "Zm9v"}};
   for (const auto& kv : vm_name_to_base64) {
+    VmId vm_id(kValidCryptoHomeCharacters, kv.first);
     std::optional<PflashMetadata> pflash_metadata_result =
-        GetPflashMetadata(kValidCryptoHomeCharacters, kv.first, test_root_dir);
+        GetPflashMetadata(vm_id, test_root_dir);
     EXPECT_TRUE(pflash_metadata_result.has_value());
     EXPECT_FALSE(pflash_metadata_result->is_installed);
     // The base64 value for the VM name "bru" is "YnJ1".

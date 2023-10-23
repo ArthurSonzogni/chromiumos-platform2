@@ -677,14 +677,13 @@ ArcVmCompleteBootResponse Service::ArcVmCompleteBoot(
 
   ArcVmCompleteBootResponse response;
 
+  VmId vm_id(request.owner_id(), kArcVmName);
   if (!CheckVmNameAndOwner(request, response)) {
     response.set_result(ArcVmCompleteBootResult::BAD_REQUEST);
     return response;
   }
 
-  VmId vm_id(request.owner_id(), kArcVmName);
-
-  auto iter = FindVm(vm_id.owner_id(), vm_id.name());
+  auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
     LOG(ERROR) << "Unable to locate ArcVm instance";
     response.set_result(ArcVmCompleteBootResult::ARCVM_NOT_FOUND);

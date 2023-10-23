@@ -32,15 +32,15 @@ constexpr char kVmContainerSeparator[] = "-";
 
 }  // namespace
 
-bool EraseGuestSshKeys(const std::string& cryptohome_id,
-                       const std::string& vm_name) {
+bool EraseGuestSshKeys(const VmId& vm_id) {
   // Look in the generated key directory for all keys that have the prefix
   // associated with this |vm_name| and erase them.
   bool rv = true;
-  std::string encoded_vm = GetEncodedName(vm_name);
+  std::string encoded_vm = GetEncodedName(vm_id.name());
   std::string target_prefix = encoded_vm + kVmContainerSeparator;
-  base::FilePath search_path =
-      base::FilePath(kCryptohomeRoot).Append(cryptohome_id).Append(kSshKeysDir);
+  base::FilePath search_path = base::FilePath(kCryptohomeRoot)
+                                   .Append(vm_id.owner_id())
+                                   .Append(kSshKeysDir);
   base::FileEnumerator file_enum(search_path, false,
                                  base::FileEnumerator::FILES);
   for (base::FilePath enum_path = file_enum.Next(); !enum_path.empty();

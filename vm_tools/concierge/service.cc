@@ -556,20 +556,19 @@ base::FilePath GetLatestVMPath() {
 
 // Gets the path to a VM disk given the name, user id, and location.
 bool GetDiskPathFromName(
-    const std::string& vm_name,
-    const std::string& cryptohome_id,
+    const VmId& vm_id,
     StorageLocation storage_location,
     base::FilePath* path_out,
     enum DiskImageType preferred_image_type = DiskImageType::DISK_IMAGE_AUTO) {
   switch (storage_location) {
     case STORAGE_CRYPTOHOME_ROOT: {
-      const auto qcow2_path = GetFilePathFromName(
-          cryptohome_id, vm_name, storage_location, kQcowImageExtension);
+      const auto qcow2_path =
+          GetFilePathFromName(vm_id, storage_location, kQcowImageExtension);
       if (!qcow2_path) {
         return false;
       }
-      const auto raw_path = GetFilePathFromName(
-          cryptohome_id, vm_name, storage_location, kRawImageExtension);
+      const auto raw_path =
+          GetFilePathFromName(vm_id, storage_location, kRawImageExtension);
       if (!raw_path) {
         return false;
       }
@@ -583,7 +582,7 @@ bool GetDiskPathFromName(
       // files in dev mode), bail out, since we can't tell which one the user
       // wants.
       if (qcow2_exists && raw_exists) {
-        LOG(ERROR) << "Both qcow2 and raw variants of " << vm_name
+        LOG(ERROR) << "Both qcow2 and raw variants of " << vm_id.name()
                    << " already exist.";
         return false;
       }
@@ -606,8 +605,8 @@ bool GetDiskPathFromName(
       return true;
     }
     case STORAGE_CRYPTOHOME_PLUGINVM: {
-      const auto plugin_path = GetFilePathFromName(
-          cryptohome_id, vm_name, storage_location, kPluginVmImageExtension);
+      const auto plugin_path =
+          GetFilePathFromName(vm_id, storage_location, kPluginVmImageExtension);
       if (!plugin_path) {
         return false;
       }
@@ -649,14 +648,13 @@ std::string GetFilesystem(const base::FilePath& disk_location) {
   return output;
 }
 
-bool CheckVmExists(const std::string& vm_name,
-                   const std::string& cryptohome_id,
+bool CheckVmExists(const VmId& vm_id,
                    base::FilePath* out_path = nullptr,
                    StorageLocation* storage_location = nullptr) {
   for (int l = StorageLocation_MIN; l <= StorageLocation_MAX; l++) {
     StorageLocation location = static_cast<StorageLocation>(l);
     base::FilePath disk_path;
-    if (GetDiskPathFromName(vm_name, cryptohome_id, location, &disk_path) &&
+    if (GetDiskPathFromName(vm_id, location, &disk_path) &&
         base::PathExists(disk_path)) {
       if (out_path) {
         *out_path = disk_path;
@@ -751,15 +749,13 @@ KernelVersionAndMajorRevision GetKernelVersion() {
   return std::make_pair(version, major_revision);
 }
 
-// vm_name should always be less then kMaxVmNameLength characters long.
-base::FilePath GetVmLogPath(const std::string& owner_id,
-                            const std::string& vm_name,
-                            const std::string& extension) {
-  std::string encoded_vm_name = GetEncodedName(vm_name);
+// vm_id.name should always be less than kMaxVmNameLength characters long.
+base::FilePath GetVmLogPath(const VmId& vm_id, const std::string& extension) {
+  std::string encoded_vm_name = GetEncodedName(vm_id.name());
 
   base::FilePath path = base::FilePath(kCryptohomeRoot)
                             .Append(kCrosvmDir)
-                            .Append(owner_id)
+                            .Append(vm_id.owner_id())
                             .Append(kCrosvmLogDir)
                             .Append(encoded_vm_name)
                             .AddExtension(extension);
@@ -872,12 +868,11 @@ std::optional<int> FindIntValue(
 
 }  // namespace
 
-base::FilePath Service::GetVmGpuCachePathInternal(const std::string& owner_id,
-                                                  const std::string& vm_name) {
+base::FilePath Service::GetVmGpuCachePathInternal(const VmId& vm_id) {
   std::string vm_dir;
   // Note, we can not have '=' symbols in this path or it will break crosvm's
   // commandline argument parsing, so we use OMIT_PADDING.
-  base::Base64UrlEncode(vm_name, base::Base64UrlEncodePolicy::OMIT_PADDING,
+  base::Base64UrlEncode(vm_id.name(), base::Base64UrlEncodePolicy::OMIT_PADDING,
                         &vm_dir);
 
   std::string cache_id;
@@ -900,7 +895,7 @@ base::FilePath Service::GetVmGpuCachePathInternal(const std::string& owner_id,
 
   return base::FilePath(kCryptohomeRoot)
       .Append(kCrosvmDir)
-      .Append(owner_id)
+      .Append(vm_id.owner_id())
       .Append(kCrosvmGpuCacheDir)
       .Append(GetMd5HashForFilename(cache_id))
       .Append(vm_dir);
@@ -1250,7 +1245,8 @@ bool Service::ListVmDisksInLocation(const string& cryptohome_id,
 
     uint64_t min_size;
     uint64_t available_space;
-    auto iter = FindVm(cryptohome_id, image_name);
+    VmId vm_id(cryptohome_id, image_name);
+    auto iter = FindVm(vm_id);
     // VM may not be running - in this case, we can't determine min_size or
     // available_space, so report 0 for unknown.
     min_size = 0;
@@ -1835,6 +1831,8 @@ StartVmResponse Service::StartVmInternal(
   StartVmResponse response;
   response.set_status(VM_STATUS_FAILURE);
 
+  VmId vm_id(request.owner_id(), request.name());
+
   apps::VmType classification = internal::ClassifyVm(request);
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_vm_type(ToLegacyVmType(classification));
@@ -1897,8 +1895,8 @@ StartVmResponse Service::StartVmInternal(
     return response;
   }
 
-  std::optional<base::FilePath> pflash_result = GetInstalledOrRequestPflashPath(
-      VmId(request.owner_id(), request.name()), image_spec.pflash);
+  std::optional<base::FilePath> pflash_result =
+      GetInstalledOrRequestPflashPath(vm_id, image_spec.pflash);
   if (!pflash_result) {
     LOG(ERROR) << "Failed to get pflash path";
     response.set_failure_reason("Failed to get pflash path");
@@ -2049,8 +2047,7 @@ StartVmResponse Service::StartVmInternal(
     return response;
   }
 
-  base::FilePath log_path =
-      GetVmLogPath(request.owner_id(), request.name(), kCrosvmLogSocketExt);
+  base::FilePath log_path = GetVmLogPath(vm_id, kCrosvmLogSocketExt);
   base::FilePath log_dir = log_path.DirName();
   base::File::Error dir_error;
   if (!base::CreateDirectoryAndGetError(log_dir, &dir_error)) {
@@ -2087,8 +2084,7 @@ StartVmResponse Service::StartVmInternal(
   VMGpuCacheSpec gpu_cache_spec;
   if (request.enable_gpu()) {
     gpu_cache_spec =
-        PrepareVmGpuCachePaths(request.owner_id(), request.name(),
-                               enable_render_server, enable_foz_db_list);
+        PrepareVmGpuCachePaths(vm_id, enable_render_server, enable_foz_db_list);
   }
 
   // Allocate resources for the VM.
@@ -2171,7 +2167,6 @@ StartVmResponse Service::StartVmInternal(
                      static_cast<int32_t>(request.cpus()));
 
   // Notify VmLogForwarder that a vm is starting up.
-  VmId vm_id(request.owner_id(), request.name());
   SendVmStartingUpSignal(vm_id, *vm_info);
 
   VmBuilder vm_builder;
@@ -2188,8 +2183,7 @@ StartVmResponse Service::StartVmInternal(
                          base::FilePath(kTerminaVcpuCpuCgroup).value())
       .SetRenderServerCachePath(std::move(gpu_cache_spec.render_server));
   if (enable_foz_db_list) {
-    auto prepare_result = PrepareShaderCache(request.owner_id(), request.name(),
-                                             bus_, shadercached_proxy_);
+    auto prepare_result = PrepareShaderCache(vm_id, bus_, shadercached_proxy_);
     if (prepare_result.has_value()) {
       auto precompiled_cache_path =
           base::FilePath(prepare_result.value().precompiled_cache_path());
@@ -2408,11 +2402,10 @@ StopVmResponse Service::StopVm(const StopVmRequest& request) {
 
   StopVmResponse response;
 
+  VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
-
-  VmId vm_id(request.owner_id(), request.name());
 
   if (!StopVmInternal(vm_id, STOP_VM_REQUESTED)) {
     LOG(ERROR) << "Unable to shut down VM";
@@ -2534,11 +2527,12 @@ SuspendVmResponse Service::SuspendVm(const SuspendVmRequest& request) {
 
   SuspendVmResponse response;
 
+  VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
-  auto iter = FindVm(request.owner_id(), request.name());
+  auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM " << request.name() << " does not exist";
     // This is not an error to Chrome
@@ -2569,13 +2563,14 @@ ResumeVmResponse Service::ResumeVm(const ResumeVmRequest& request) {
 
   ResumeVmResponse response;
 
+  VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
-  auto iter = FindVm(request.owner_id(), request.name());
+  auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM " << request.name() << " does not exist";
+    LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
     // This is not an error to Chrome
     response.set_success(true);
     return response;
@@ -2613,13 +2608,14 @@ GetVmInfoResponse Service::GetVmInfo(const GetVmInfoRequest& request) {
 
   GetVmInfoResponse response;
 
+  VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
-  auto iter = FindVm(request.owner_id(), request.name());
+  auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM " << request.name() << " does not exist";
+    LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
 
     return response;
   }
@@ -2646,13 +2642,14 @@ GetVmEnterpriseReportingInfoResponse Service::GetVmEnterpriseReportingInfo(
 
   GetVmEnterpriseReportingInfoResponse response;
 
+  VmId vm_id(request.owner_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
-  auto iter = FindVm(request.owner_id(), request.vm_name());
+  auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM " << request.vm_name() << " does not exist";
+    LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
     response.set_failure_reason("Requested VM does not exist");
     return response;
   }
@@ -2696,12 +2693,13 @@ AdjustVmResponse Service::AdjustVm(const AdjustVmRequest& request) {
 
   AdjustVmResponse response;
 
+  VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
   StorageLocation location;
-  if (!CheckVmExists(request.name(), request.owner_id(), nullptr, &location)) {
+  if (!CheckVmExists(vm_id, nullptr, &location)) {
     response.set_failure_reason("Requested VM does not exist");
     return response;
   }
@@ -2735,13 +2733,15 @@ AdjustVmResponse Service::AdjustVm(const AdjustVmRequest& request) {
       failure_reason = "Incorrect number of arguments for 'rename' operation";
     } else if (params[0].empty()) {
       failure_reason = "New name can not be empty";
-    } else if (CheckVmExists(params[0], request.owner_id())) {
-      failure_reason = "VM with such name already exists";
-    } else if (location != STORAGE_CRYPTOHOME_PLUGINVM) {
-      failure_reason = "Operation is not supported for the VM";
     } else {
-      success = RenamePluginVm(request.owner_id(), request.name(), params[0],
-                               &failure_reason);
+      VmId new_id(request.owner_id(), params[0]);
+      if (CheckVmExists(new_id)) {
+        failure_reason = "VM with such name already exists";
+      } else if (location != STORAGE_CRYPTOHOME_PLUGINVM) {
+        failure_reason = "Operation is not supported for the VM";
+      } else {
+        success = RenamePluginVm(vm_id, new_id, &failure_reason);
+      }
     }
   } else {
     failure_reason = "Unrecognized operation";
@@ -2952,6 +2952,7 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
     CreateDiskImageRequest request, base::ScopedFD in_fd) {
   CreateDiskImageResponse response;
 
+  VmId vm_id(request.cryptohome_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
     response.set_status(DISK_STATUS_FAILED);
     return response;
@@ -2987,8 +2988,7 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
 
   base::FilePath disk_path;
   StorageLocation disk_location;
-  if (CheckVmExists(request.vm_name(), request.cryptohome_id(), &disk_path,
-                    &disk_location)) {
+  if (CheckVmExists(vm_id, &disk_path, &disk_location)) {
     if (disk_location != request.storage_location()) {
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason(
@@ -3010,8 +3010,7 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
     return response;
   }
 
-  if (!GetDiskPathFromName(request.vm_name(), request.cryptohome_id(),
-                           request.storage_location(), &disk_path,
+  if (!GetDiskPathFromName(vm_id, request.storage_location(), &disk_path,
                            request.image_type())) {
     response.set_status(DISK_STATUS_FAILED);
     response.set_failure_reason("Failed to create vm image");
@@ -3029,8 +3028,7 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
     // Get the name of directory for ISO images. Do not create it - it will be
     // created by the PluginVmCreateOperation code.
     base::FilePath iso_dir;
-    if (!GetPluginIsoDirectory(request.vm_name(), request.cryptohome_id(),
-                               false /* create */, &iso_dir)) {
+    if (!GetPluginIsoDirectory(vm_id, false /* create */, &iso_dir)) {
       LOG(ERROR) << "Unable to determine directory for ISOs";
 
       response.set_failure_reason("Unable to determine ISO directory");
@@ -3178,18 +3176,18 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
 
   DestroyDiskImageResponse response;
 
+  VmId vm_id(request.cryptohome_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
     response.set_status(DISK_STATUS_FAILED);
     return response;
   }
 
   // Stop the associated VM if it is still running.
-  auto iter = FindVm(request.cryptohome_id(), request.vm_name());
+  auto iter = FindVm(vm_id);
   if (iter != vms_.end()) {
     LOG(INFO) << "Shutting down VM " << request.vm_name();
 
-    if (!StopVmInternal(VmId(request.cryptohome_id(), request.vm_name()),
-                        DESTROY_DISK_IMAGE_REQUESTED)) {
+    if (!StopVmInternal(vm_id, DESTROY_DISK_IMAGE_REQUESTED)) {
       LOG(ERROR) << "Unable to shut down VM";
 
       response.set_status(DISK_STATUS_FAILED);
@@ -3202,19 +3200,17 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
   // if borealis enabled. There is no way to check VM type easily unless we turn
   // it up.
   // TODO(endlesspring): Deal with errors once we distribute to all boards.
-  auto _ = PurgeShaderCache(request.cryptohome_id(), request.vm_name(), bus_,
-                            shadercached_proxy_);
+  auto _ = PurgeShaderCache(vm_id, bus_, shadercached_proxy_);
 
   base::FilePath disk_path;
   StorageLocation location;
-  if (!CheckVmExists(request.vm_name(), request.cryptohome_id(), &disk_path,
-                     &location)) {
+  if (!CheckVmExists(vm_id, &disk_path, &location)) {
     response.set_status(DISK_STATUS_DOES_NOT_EXIST);
     response.set_failure_reason("No such image");
     return response;
   }
 
-  if (!EraseGuestSshKeys(request.cryptohome_id(), request.vm_name())) {
+  if (!EraseGuestSshKeys(vm_id)) {
     // Don't return a failure here, just log an error because this is only a
     // side effect and not what the real request is about.
     LOG(ERROR) << "Failed removing guest SSH keys for VM " << request.vm_name();
@@ -3222,7 +3218,6 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
 
   if (location == STORAGE_CRYPTOHOME_PLUGINVM) {
     // Plugin VMs need to be unregistered before we can delete them.
-    VmId vm_id(request.cryptohome_id(), request.vm_name());
     bool registered;
     if (!pvm::dispatcher::IsVmRegistered(bus_, vmplugin_service_proxy_, vm_id,
                                          &registered)) {
@@ -3242,8 +3237,7 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
     }
 
     base::FilePath iso_dir;
-    if (GetPluginIsoDirectory(vm_id.name(), vm_id.owner_id(),
-                              false /* create */, &iso_dir) &&
+    if (GetPluginIsoDirectory(vm_id, false /* create */, &iso_dir) &&
         base::PathExists(iso_dir) && !base::DeletePathRecursively(iso_dir)) {
       LOG(ERROR) << "Unable to remove ISO directory for " << vm_id.name();
 
@@ -3254,8 +3248,7 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
     }
 
     // Delete GPU shader disk cache.
-    base::FilePath gpu_cache_path =
-        GetVmGpuCachePathInternal(request.cryptohome_id(), request.vm_name());
+    base::FilePath gpu_cache_path = GetVmGpuCachePathInternal(vm_id);
     if (!base::DeletePathRecursively(gpu_cache_path)) {
       LOG(ERROR) << "Failed to remove GPU cache for VM: " << gpu_cache_path;
     }
@@ -3274,8 +3267,7 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
   // Pflash may not be present for all VMs. We should only report error if it
   // exists and we failed to delete it. The |DeleteFile| API handles the
   // non-existing case as a success.
-  std::optional<PflashMetadata> pflash_metadata =
-      GetPflashMetadata(request.cryptohome_id(), request.vm_name());
+  std::optional<PflashMetadata> pflash_metadata = GetPflashMetadata(vm_id);
   if (pflash_metadata && pflash_metadata->is_installed) {
     if (!base::DeleteFile(pflash_metadata->path)) {
       response.set_status(DISK_STATUS_FAILED);
@@ -3295,6 +3287,7 @@ ResizeDiskImageResponse Service::ResizeDiskImage(
 
   ResizeDiskImageResponse response;
 
+  VmId vm_id(request.cryptohome_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
     response.set_status(DISK_STATUS_FAILED);
     return response;
@@ -3302,8 +3295,7 @@ ResizeDiskImageResponse Service::ResizeDiskImage(
 
   base::FilePath disk_path;
   StorageLocation location;
-  if (!CheckVmExists(request.vm_name(), request.cryptohome_id(), &disk_path,
-                     &location)) {
+  if (!CheckVmExists(vm_id, &disk_path, &location)) {
     response.set_status(DISK_STATUS_DOES_NOT_EXIST);
     response.set_failure_reason("Resize image doesn't exist");
     return response;
@@ -3316,8 +3308,7 @@ ResizeDiskImageResponse Service::ResizeDiskImage(
   }
 
   auto op = VmResizeOperation::Create(
-      VmId(request.cryptohome_id(), request.vm_name()), location, disk_path,
-      size,
+      vm_id, location, disk_path, size,
       base::BindOnce(&Service::ResizeDisk, weak_ptr_factory_.GetWeakPtr()),
       base::BindRepeating(&Service::ProcessResize,
                           weak_ptr_factory_.GetWeakPtr()));
@@ -3336,8 +3327,7 @@ ResizeDiskImageResponse Service::ResizeDiskImage(
   } else if (op->status() == DISK_STATUS_RESIZED) {
     DiskImageStatusEnum status = DISK_STATUS_RESIZED;
     std::string failure_reason;
-    FinishResize(request.cryptohome_id(), request.vm_name(), location, &status,
-                 &failure_reason);
+    FinishResize(vm_id, location, &status, &failure_reason);
     if (status != DISK_STATUS_RESIZED) {
       response.set_status(status);
       response.set_failure_reason(failure_reason);
@@ -3347,17 +3337,16 @@ ResizeDiskImageResponse Service::ResizeDiskImage(
   return response;
 }
 
-void Service::ResizeDisk(const std::string& owner_id,
-                         const std::string& vm_name,
+void Service::ResizeDisk(const VmId& vm_id,
                          StorageLocation location,
                          uint64_t new_size,
                          DiskImageStatusEnum* status,
                          std::string* failure_reason) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  auto iter = FindVm(owner_id, vm_name);
+  auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Unable to find VM " << vm_name;
+    LOG(ERROR) << "Unable to find VM " << vm_id.name();
     *failure_reason = "No such image";
     *status = DISK_STATUS_DOES_NOT_EXIST;
     return;
@@ -3366,16 +3355,15 @@ void Service::ResizeDisk(const std::string& owner_id,
   *status = iter->second->ResizeDisk(new_size, failure_reason);
 }
 
-void Service::ProcessResize(const std::string& owner_id,
-                            const std::string& vm_name,
+void Service::ProcessResize(const VmId& vm_id,
                             StorageLocation location,
                             uint64_t target_size,
                             DiskImageStatusEnum* status,
                             std::string* failure_reason) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  auto iter = FindVm(owner_id, vm_name);
+  auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Unable to find VM " << vm_name;
+    LOG(ERROR) << "Unable to find VM " << vm_id.name();
     *failure_reason = "No such image";
     *status = DISK_STATUS_DOES_NOT_EXIST;
     return;
@@ -3384,17 +3372,16 @@ void Service::ProcessResize(const std::string& owner_id,
   *status = iter->second->GetDiskResizeStatus(failure_reason);
 
   if (*status == DISK_STATUS_RESIZED) {
-    FinishResize(owner_id, vm_name, location, status, failure_reason);
+    FinishResize(vm_id, location, status, failure_reason);
   }
 }
 
-void Service::FinishResize(const std::string& owner_id,
-                           const std::string& vm_name,
+void Service::FinishResize(const VmId& vm_id,
                            StorageLocation location,
                            DiskImageStatusEnum* status,
                            std::string* failure_reason) {
   base::FilePath disk_path;
-  if (!GetDiskPathFromName(vm_name, owner_id, location, &disk_path)) {
+  if (!GetDiskPathFromName(vm_id, location, &disk_path)) {
     LOG(ERROR) << "Failed to get disk path after resize";
     *failure_reason = "Failed to get disk path after resize";
     *status = DISK_STATUS_FAILED;
@@ -3470,6 +3457,7 @@ ExportDiskImageResponse Service::ExportDiskImageInternal(
   ExportDiskImageResponse response;
   response.set_status(DISK_STATUS_FAILED);
 
+  VmId vm_id(request.cryptohome_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
     response.set_status(DISK_STATUS_FAILED);
     return response;
@@ -3477,8 +3465,7 @@ ExportDiskImageResponse Service::ExportDiskImageInternal(
 
   base::FilePath disk_path;
   StorageLocation location;
-  if (!CheckVmExists(request.vm_name(), request.cryptohome_id(), &disk_path,
-                     &location)) {
+  if (!CheckVmExists(vm_id, &disk_path, &location)) {
     response.set_status(DISK_STATUS_DOES_NOT_EXIST);
     response.set_failure_reason("Export image doesn't exist");
     return response;
@@ -3497,8 +3484,6 @@ ExportDiskImageResponse Service::ExportDiskImageInternal(
       response.set_failure_reason("Unsupported location for image");
       return response;
   }
-
-  VmId vm_id(request.cryptohome_id(), request.vm_name());
 
   if (!request.force()) {
     if (FindVm(vm_id) != vms_.end()) {
@@ -3552,11 +3537,12 @@ ImportDiskImageResponse Service::ImportDiskImage(
   ImportDiskImageResponse response;
   response.set_status(DISK_STATUS_FAILED);
 
+  VmId vm_id(request.cryptohome_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
-  if (CheckVmExists(request.vm_name(), request.cryptohome_id())) {
+  if (CheckVmExists(vm_id)) {
     response.set_status(DISK_STATUS_EXISTS);
     response.set_failure_reason("VM/disk with such name already exists");
     return response;
@@ -3570,16 +3556,14 @@ ImportDiskImageResponse Service::ImportDiskImage(
   }
 
   base::FilePath disk_path;
-  if (!GetDiskPathFromName(request.vm_name(), request.cryptohome_id(),
-                           request.storage_location(), &disk_path)) {
+  if (!GetDiskPathFromName(vm_id, request.storage_location(), &disk_path)) {
     response.set_failure_reason("Failed to set up vm image name");
     return response;
   }
 
   auto op = PluginVmImportOperation::Create(
-      base::ScopedFD(dup(in_fd.get())), disk_path, request.source_size(),
-      VmId(request.cryptohome_id(), request.vm_name()), bus_,
-      vmplugin_service_proxy_);
+      base::ScopedFD(dup(in_fd.get())), disk_path, request.source_size(), vm_id,
+      bus_, vmplugin_service_proxy_);
 
   response.set_status(op->status());
   response.set_command_uuid(op->uuid());
@@ -3739,14 +3723,15 @@ AttachNetDeviceResponse Service::AttachNetDevice(
 
   AttachNetDeviceResponse response;
 
+  VmId vm_id(request.owner_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
-  auto iter = FindVm(request.owner_id(), request.vm_name());
+  auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
-    response.set_failure_reason("Requested VM " + request.vm_name() +
-                                " with owner " + request.owner_id() +
+    response.set_failure_reason("Requested VM " + vm_id.name() +
+                                " with owner " + vm_id.owner_id() +
                                 " does not exist");
     LOG(ERROR) << response.failure_reason();
     return response;
@@ -3772,14 +3757,15 @@ DetachNetDeviceResponse Service::DetachNetDevice(
 
   DetachNetDeviceResponse response;
 
+  VmId vm_id(request.owner_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
-  auto iter = FindVm(request.owner_id(), request.vm_name());
+  auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
-    response.set_failure_reason("Requested VM " + request.vm_name() +
-                                " with owner " + request.owner_id() +
+    response.set_failure_reason("Requested VM " + vm_id.name() +
+                                " with owner " + vm_id.owner_id() +
                                 " does not exist");
     LOG(ERROR) << response.failure_reason();
     return response;
@@ -3811,13 +3797,14 @@ AttachUsbDeviceResponse Service::AttachUsbDevice(
 
   AttachUsbDeviceResponse response;
 
+  VmId vm_id(request.owner_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
-  auto iter = FindVm(request.owner_id(), request.vm_name());
+  auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM " << request.vm_name() << " does not exist";
+    LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
     response.set_reason("Requested VM does not exist");
     return response;
   }
@@ -3866,13 +3853,14 @@ DetachUsbDeviceResponse Service::DetachUsbDevice(
 
   DetachUsbDeviceResponse response;
 
+  VmId vm_id(request.owner_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
-  auto iter = FindVm(request.owner_id(), request.vm_name());
+  auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM " << request.vm_name() << " does not exist";
+    LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
     response.set_reason("Requested VM does not exist");
     return response;
   }
@@ -3899,13 +3887,14 @@ ListUsbDeviceResponse Service::ListUsbDevices(
 
   ListUsbDeviceResponse response;
 
+  VmId vm_id(request.owner_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
-  auto iter = FindVm(request.owner_id(), request.vm_name());
+  auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM " << request.vm_name() << " does not exist";
+    LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
     return response;
   }
 
@@ -3923,6 +3912,7 @@ ListUsbDeviceResponse Service::ListUsbDevices(
   response.set_success(true);
   return response;
 }
+
 DnsSettings Service::ComposeDnsResponse() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DnsSettings dns_settings;
@@ -4034,14 +4024,15 @@ void Service::ReclaimVmMemory(
 
   ReclaimVmMemoryResponse response;
 
+  VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
     response_sender->Return(response);
     return;
   }
 
-  auto iter = FindVm(request.owner_id(), request.name());
+  auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM " << request.name() << " does not exist";
+    LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
     response.set_failure_reason("Requested VM does not exist");
     response_sender->Return(response);
     return;
@@ -4069,14 +4060,15 @@ void Service::AggressiveBalloon(
 
   AggressiveBalloonResponse response;
 
+  VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
     response_sender->Return(response);
     return;
   }
 
-  auto iter = FindVm(request.owner_id(), request.name());
+  auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM " << request.name() << " does not exist";
+    LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
     response.set_failure_reason("Requested VM does not exist");
     response_sender->Return(response);
     return;
@@ -4381,12 +4373,11 @@ void Service::OnTremplinStartedSignal(dbus::Signal* signal) {
     return;
   }
 
-  auto iter = FindVm(tremplin_started_signal.owner_id(),
-                     tremplin_started_signal.vm_name());
+  VmId vm_id(tremplin_started_signal.owner_id(),
+             tremplin_started_signal.vm_name());
+  auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Received signal from an unknown VM "
-               << VmId(tremplin_started_signal.owner_id(),
-                       tremplin_started_signal.vm_name());
+    LOG(ERROR) << "Received signal from an unknown VM " << vm_id.name();
     return;
   }
   LOG(INFO) << "Received request: " << __func__ << " for " << iter->first;
@@ -4402,10 +4393,10 @@ void Service::OnVmToolsStateChangedSignal(dbus::Signal* signal) {
     return;
   }
 
-  auto iter = FindVm(owner_id, vm_name);
+  VmId vm_id(owner_id, vm_name);
+  auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Received signal from an unknown VM "
-               << VmId(owner_id, vm_name);
+    LOG(ERROR) << "Received signal from an unknown VM " << vm_id.name();
     return;
   }
   LOG(INFO) << "Received request: " << __func__ << " for " << iter->first;
@@ -4467,12 +4458,6 @@ void Service::HandleSuspendDone() {
 Service::VmMap::iterator Service::FindVm(const VmId& vm_id) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return vms_.find(vm_id);
-}
-
-Service::VmMap::iterator Service::FindVm(const std::string& owner_id,
-                                         const std::string& vm_name) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return vms_.find(VmId(owner_id, vm_name));
 }
 
 base::FilePath Service::GetVmImagePath(const std::string& dlc_id,
@@ -4637,15 +4622,12 @@ VMImageSpec Service::GetImageSpec(
 
 // TODO(b/244486983): move this functionality to shadercached
 Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
-    const std::string& owner_id,
-    const std::string& vm_name,
-    bool enable_render_server,
-    bool enable_foz_db_list) {
+    const VmId& vm_id, bool enable_render_server, bool enable_foz_db_list) {
   // We want to delete and recreate the cache directory atomically, and in order
   // to do that we ensure that this method runs on the main thread always.
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  base::FilePath cache_path = GetVmGpuCachePathInternal(owner_id, vm_name);
+  base::FilePath cache_path = GetVmGpuCachePathInternal(vm_id);
   // Cache ID is either boot id or OS build hash
   base::FilePath cache_id_path = cache_path.DirName();
   base::FilePath base_path = cache_id_path.DirName();
@@ -4763,6 +4745,7 @@ bool Service::AddGroupPermissionMesa(
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
+  VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request,
                            request /* in place of a response proto */)) {
     *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
@@ -4771,9 +4754,7 @@ bool Service::AddGroupPermissionMesa(
     return false;
   }
 
-  base::FilePath cache_path =
-      GetVmGpuCachePathInternal(request.owner_id(), request.name());
-
+  base::FilePath cache_path = GetVmGpuCachePathInternal(vm_id);
   AddGroupPermissionChildren(cache_path);
 
   return true;
@@ -4808,6 +4789,7 @@ bool Service::GetVmLogs(brillo::ErrorPtr* error,
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
+  VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, *response)) {
     *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
                                    DBUS_ERROR_FAILED,
@@ -4815,8 +4797,7 @@ bool Service::GetVmLogs(brillo::ErrorPtr* error,
     return false;
   }
 
-  base::FilePath log_path =
-      GetVmLogPath(request.owner_id(), request.name(), kCrosvmLogFileExt);
+  base::FilePath log_path = GetVmLogPath(vm_id, kCrosvmLogFileExt);
 
   std::vector<base::FilePath> paths;
   int64_t remaining_log_space = kMaxGetVmLogsSize;
@@ -4879,14 +4860,15 @@ void Service::SwapVm(
 
   SwapVmResponse response;
 
+  VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
     response_sender->Return(response);
     return;
   }
 
-  auto iter = FindVm(request.owner_id(), request.name());
+  auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM " << request.name() << " does not exist";
+    LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
     response.set_failure_reason("Requested VM does not exist");
     response_sender->Return(response);
     return;
@@ -4918,12 +4900,12 @@ InstallPflashResponse Service::InstallPflash(
     const InstallPflashRequest& request, const base::ScopedFD& pflash_src_fd) {
   InstallPflashResponse response;
 
+  VmId vm_id(request.owner_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
     return response;
   }
 
-  std::optional<PflashMetadata> pflash_metadata =
-      GetPflashMetadata(request.owner_id(), request.vm_name());
+  std::optional<PflashMetadata> pflash_metadata = GetPflashMetadata(vm_id);
   if (!pflash_metadata) {
     response.set_failure_reason("Failed to get pflash install path");
     return response;
@@ -4941,7 +4923,7 @@ InstallPflashResponse Service::InstallPflash(
       base::FilePath(kProcFileDescriptorsPath)
           .Append(base::NumberToString(pflash_src_fd.get()));
 
-  LOG(INFO) << "Installing Pflash file for VM: " << request.vm_name()
+  LOG(INFO) << "Installing Pflash file for VM: " << vm_id.name()
             << " to: " << pflash_metadata->path;
   if (!base::CopyFile(pflash_src_path, pflash_metadata->path)) {
     response.set_failure_reason("Failed to copy pflash image");
@@ -4958,6 +4940,7 @@ bool Service::GetVmGpuCachePath(brillo::ErrorPtr* error,
                                 GetVmGpuCachePathResponse* response) {
   LOG(INFO) << "Received request: " << __func__;
 
+  VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, *response)) {
     *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
                                    DBUS_ERROR_FAILED,
@@ -4965,8 +4948,7 @@ bool Service::GetVmGpuCachePath(brillo::ErrorPtr* error,
     return false;
   }
 
-  base::FilePath path =
-      GetVmGpuCachePathInternal(request.owner_id(), request.name());
+  base::FilePath path = GetVmGpuCachePathInternal(vm_id);
   if (!base::DirectoryExists(path)) {
     *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
                                    DBUS_ERROR_FAILED,

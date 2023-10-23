@@ -796,8 +796,7 @@ std::unique_ptr<VmResizeOperation> VmResizeOperation::Create(
   DiskImageStatus status = DiskImageStatus::DISK_STATUS_UNKNOWN;
   std::string failure_reason;
   std::move(start_resize_cb)
-      .Run(vm_id.owner_id(), vm_id.name(), location, disk_size, &status,
-           &failure_reason);
+      .Run(vm_id, location, disk_size, &status, &failure_reason);
 
   auto op = base::WrapUnique(new VmResizeOperation(
       std::move(vm_id), std::move(location), std::move(disk_path),
@@ -823,8 +822,8 @@ VmResizeOperation::VmResizeOperation(const VmId vm_id,
 bool VmResizeOperation::ExecuteIo(uint64_t io_limit) {
   DiskImageStatus status = DiskImageStatus::DISK_STATUS_UNKNOWN;
   std::string failure_reason;
-  process_resize_cb_.Run(vm_id().owner_id(), vm_id().name(), location_,
-                         target_size_, &status, &failure_reason);
+  process_resize_cb_.Run(vm_id(), location_, target_size_, &status,
+                         &failure_reason);
 
   set_status(status);
   set_failure_reason(failure_reason);

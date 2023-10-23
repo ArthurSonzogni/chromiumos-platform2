@@ -41,7 +41,8 @@ bool CheckCpuCount(const T& request, StartVmResponse* response) {
 template <class T>
 bool Service::CheckExistingVm(const T& request, StartVmResponse* response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  auto iter = FindVm(request.owner_id(), request.name());
+  VmId vm_id(request.owner_id(), request.name());
+  auto iter = FindVm(vm_id);
   if (iter != vms_.end()) {
     LOG(INFO) << "VM with requested name is already running";
 
