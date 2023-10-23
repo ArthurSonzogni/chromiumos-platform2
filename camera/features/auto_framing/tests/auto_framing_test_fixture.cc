@@ -284,7 +284,7 @@ bool AutoFramingTestFixture::SetUp(
       .operation_mode = CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE,
   });
   StreamEffectMap stream_effects_map;
-  LOGF(INFO) << "Configued streams:";
+  LOGF(INFO) << "Configured streams:";
   for (camera3_stream_t* s : stream_config.GetStreams()) {
     LOGF(INFO) << "  " << GetDebugString(s);
   }
