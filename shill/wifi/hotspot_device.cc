@@ -13,6 +13,7 @@
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
+#include "shill/mac_address.h"
 #include "shill/manager.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_process_proxy_interface.h"
@@ -33,13 +34,13 @@ HotspotDevice::HotspotDevice(Manager* manager,
                              const std::string& mac_address,
                              uint32_t phy_index,
                              LocalDevice::EventCallback callback)
-    : LocalDevice(
-          manager, IfaceType::kAP, link_name, mac_address, phy_index, callback),
+    : LocalDevice(manager, IfaceType::kAP, link_name, phy_index, callback),
       primary_link_name_(primary_link_name),
       prev_primary_iface_control_state_(false),
       pending_phy_info_(false),
       service_(nullptr),
-      supplicant_state_(kInterfaceStateUnknown) {
+      supplicant_state_(kInterfaceStateUnknown),
+      mac_address_(mac_address) {
   supplicant_primary_interface_path_ = RpcIdentifier("");
   supplicant_interface_proxy_.reset();
   supplicant_interface_path_ = RpcIdentifier("");

@@ -11,10 +11,9 @@ namespace shill {
 MockLocalDevice::MockLocalDevice(Manager* manager,
                                  IfaceType type,
                                  const std::string& link_name,
-                                 const std::string& mac_address,
                                  uint32_t phy_index,
                                  const EventCallback& callback)
-    : LocalDevice(manager, type, link_name, mac_address, phy_index, callback) {}
+    : LocalDevice(manager, type, link_name, phy_index, callback) {}
 
 MockLocalDevice::~MockLocalDevice() = default;
 

@@ -26,7 +26,6 @@ namespace shill {
 
 namespace {
 const char kDeviceName[] = "ap0";
-const char kDeviceAddress[] = "00:01:02:03:04:05";
 const uint32_t kPhyIndex = 5678;
 }  // namespace
 
@@ -35,11 +34,9 @@ class TestLocalDevice : public LocalDevice {
   TestLocalDevice(Manager* manager,
                   IfaceType type,
                   std::optional<std::string> link_name,
-                  const std::string& mac_address,
                   uint32_t phy_index,
                   const EventCallback& callback)
-      : LocalDevice(
-            manager, type, link_name, mac_address, phy_index, callback) {}
+      : LocalDevice(manager, type, link_name, phy_index, callback) {}
   ~TestLocalDevice() override = default;
 
   bool Start() override { return true; }
@@ -52,9 +49,9 @@ class TestLocalDevice : public LocalDevice {
 class LocalDeviceTest : public testing::Test {
  public:
   LocalDeviceTest() : manager_(&control_interface_, &dispatcher_, &metrics_) {
-    device_ = new NiceMock<TestLocalDevice>(
-        &manager_, LocalDevice::IfaceType::kAP, kDeviceName, kDeviceAddress,
-        kPhyIndex, cb.Get());
+    device_ =
+        new NiceMock<TestLocalDevice>(&manager_, LocalDevice::IfaceType::kAP,
+                                      kDeviceName, kPhyIndex, cb.Get());
   }
   ~LocalDeviceTest() override = default;
 

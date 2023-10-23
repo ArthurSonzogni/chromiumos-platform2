@@ -28,7 +28,8 @@ namespace shill {
 
 class TestLocalService : public LocalService {
  public:
-  TestLocalService(LocalDeviceConstRefPtr device) : LocalService(device) {}
+  explicit TestLocalService(LocalDeviceConstRefPtr device)
+      : LocalService(device) {}
   ~TestLocalService() override = default;
 
   KeyValueStore GetSupplicantConfigurationParameters() const override {
@@ -40,12 +41,8 @@ class LocalServiceTest : public testing::Test {
  public:
   LocalServiceTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
-        device_(new NiceMock<MockLocalDevice>(&manager_,
-                                              LocalDevice::IfaceType::kAP,
-                                              "ap0",
-                                              "00:00:00:00:00:00",
-                                              0,
-                                              cb.Get())),
+        device_(new NiceMock<MockLocalDevice>(
+            &manager_, LocalDevice::IfaceType::kAP, "ap0", 0, cb.Get())),
         service_(new NiceMock<TestLocalService>(device_)) {}
   ~LocalServiceTest() override = default;
 

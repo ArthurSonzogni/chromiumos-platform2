@@ -13,6 +13,7 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>
 
+#include "shill/mac_address.h"
 #include "shill/mockable.h"
 #include "shill/store/key_value_store.h"
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
@@ -61,6 +62,9 @@ class HotspotDevice : public LocalDevice,
 
   // Get the MAC addresses of the connected stations to this hotspot device.
   mockable std::vector<std::vector<uint8_t>> GetStations();
+
+  // Get mac_address_.
+  const std::string& mac_address() const { return mac_address_; }
 
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from
@@ -122,6 +126,8 @@ class HotspotDevice : public LocalDevice,
   std::map<RpcIdentifier, KeyValueStore> stations_;
   std::string supplicant_state_;
   base::WeakPtrFactory<HotspotDevice> weak_ptr_factory_{this};
+  // MAC address to be configured on the device.
+  std::string mac_address_;
 };
 
 }  // namespace shill

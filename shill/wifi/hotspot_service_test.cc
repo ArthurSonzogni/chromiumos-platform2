@@ -40,9 +40,8 @@ class HotspotServiceTest : public testing::Test {
  public:
   HotspotServiceTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_) {
-    device_ =
-        new NiceMock<MockLocalDevice>(&manager_, LocalDevice::IfaceType::kAP,
-                                      "ap0", "00:00:00:00:00:00", 0, cb.Get());
+    device_ = new NiceMock<MockLocalDevice>(
+        &manager_, LocalDevice::IfaceType::kAP, "ap0", 0, cb.Get());
   }
   ~HotspotServiceTest() override = default;
 

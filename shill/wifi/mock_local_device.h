@@ -18,7 +18,6 @@ class MockLocalDevice : public LocalDevice {
   MockLocalDevice(Manager* manager,
                   IfaceType type,
                   const std::string& link_name,
-                  const std::string& mac_address,
                   uint32_t phy_index,
                   const EventCallback& callback);
   ~MockLocalDevice() override;

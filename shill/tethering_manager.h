@@ -17,6 +17,7 @@
 #include <base/memory/weak_ptr.h>
 #include <chromeos/patchpanel/dbus/client.h>
 
+#include "shill/mac_address.h"
 #include "shill/network/network.h"
 #include "shill/portal_detector.h"
 #include "shill/refptr_types.h"

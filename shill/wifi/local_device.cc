@@ -10,7 +10,6 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
-#include "shill/mac_address.h"
 #include "shill/manager.h"
 #include "shill/wifi/local_device.h"
 
@@ -24,25 +23,21 @@ static auto kModuleLogScope = ScopeLogger::kWiFi;
 LocalDevice::LocalDevice(Manager* manager,
                          IfaceType type,
                          std::optional<std::string> link_name,
-                         const std::string& mac_address,
                          uint32_t phy_index,
                          const EventCallback& callback)
     : enabled_(false),
       manager_(manager),
       iface_type_(type),
       link_name_(link_name),
-      mac_address_(mac_address),
       phy_index_(phy_index),
       callback_(std::move(callback)) {
   SLOG(1) << "LocalDevice(): " << link_name_.value_or("(no link_name)")
-          << " type: " << iface_type_ << " MAC address: " << mac_address_
-          << " Phy index: " << phy_index_;
+          << " type: " << iface_type_ << " Phy index: " << phy_index_;
 }
 
 LocalDevice::~LocalDevice() {
   SLOG(1) << "~LocalDevice(): " << link_name_.value_or("(no link_name)")
-          << " type: " << iface_type_ << " MAC address: " << mac_address_
-          << " Phy index: " << phy_index_;
+          << " type: " << iface_type_ << " Phy index: " << phy_index_;
 }
 
 bool LocalDevice::SetEnabled(bool enable) {

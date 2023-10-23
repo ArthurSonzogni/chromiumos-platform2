@@ -692,8 +692,8 @@ class WiFiProviderTest : public testing::Test {
 
   scoped_refptr<MockLocalDevice> CreateLocalDevice(
       LocalDevice::IfaceType type, const std::string& link_name) {
-    scoped_refptr<MockLocalDevice> dev = new NiceMock<MockLocalDevice>(
-        &manager_, type, link_name, "00:00:00:00:00:00", 0, cb.Get());
+    scoped_refptr<MockLocalDevice> dev =
+        new NiceMock<MockLocalDevice>(&manager_, type, link_name, 0, cb.Get());
     return dev;
   }
 

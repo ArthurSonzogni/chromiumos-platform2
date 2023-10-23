@@ -13,7 +13,6 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>
 
-#include "shill/mac_address.h"
 #include "shill/mockable.h"
 #include "shill/refptr_types.h"
 #include "shill/wifi/local_service.h"
@@ -59,7 +58,6 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   LocalDevice(Manager* manager,
               IfaceType type,
               std::optional<std::string> link_name,
-              const std::string& mac_address,
               uint32_t phy_index,
               const EventCallback& callback);
   LocalDevice(const LocalDevice&) = delete;
@@ -80,7 +78,6 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   std::optional<std::string> link_name() const { return link_name_; }
   uint32_t phy_index() const { return phy_index_; }
   IfaceType iface_type() const { return iface_type_; }
-  const std::string& mac_address() const { return mac_address_; }
 
  protected:
   FRIEND_TEST(LocalDeviceTest, PostDeviceEvent);
@@ -111,8 +108,6 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   Manager* manager_;
   IfaceType iface_type_;
   std::optional<std::string> link_name_;
-  // MAC address to be configured on the device.
-  std::string mac_address_;
   uint32_t phy_index_;
   EventCallback callback_;
   base::WeakPtrFactory<LocalDevice> weak_factory_{this};
