@@ -504,28 +504,6 @@ class AuthSession final {
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state);
 
-  // Adds VaultKeyset for the |obfuscated_username_| by calling
-  // KeysetManagement::AddInitialKeyset() or KeysetManagement::AddKeyset()
-  // based on |is_initial_keyset|.
-  CryptohomeStatus AddVaultKeyset(const std::string& key_label,
-                                  const KeyData& key_data,
-                                  bool is_initial_keyset,
-                                  VaultKeysetIntent vk_backup_intent,
-                                  std::unique_ptr<KeyBlobs> key_blobs,
-                                  std::unique_ptr<AuthBlockState> auth_state);
-
-  // Creates and persist VaultKeyset for the |obfuscated_username_|. This
-  // function is needed for processing callback results in an asynchronous
-  // manner through |on_done| callback.
-  void CreateAndPersistVaultKeyset(const KeyData& key_data,
-                                   AuthInput auth_input,
-                                   std::unique_ptr<AuthSessionPerformanceTimer>
-                                       auth_session_performance_timer,
-                                   StatusCallback on_done,
-                                   CryptohomeStatus callback_error,
-                                   std::unique_ptr<KeyBlobs> key_blobs,
-                                   std::unique_ptr<AuthBlockState> auth_state);
-
   // Updates the secret of an AuthFactor backed by a VaultKeyset and migrates it
   // to UserSecretStash. Failures during this operation fails to both update and
   // migrate the factor.
@@ -608,19 +586,6 @@ class AuthSession final {
       AuthFactor& auth_factor,
       const KeyBlobs& key_blobs,
       DecryptedUss::Transaction& transaction);
-
-  // Returns the callback function to add and AuthFactor for the right key store
-  // type.
-  AuthBlock::CreateCallback GetAddAuthFactorCallback(
-      const AuthFactorType& auth_factor_type,
-      const std::string& auth_factor_label,
-      const AuthFactorMetadata& auth_factor_metadata,
-      const KeyData& key_data,
-      const AuthInput& auth_input,
-      const AuthFactorStorageType auth_factor_storage_type,
-      std::unique_ptr<AuthSessionPerformanceTimer>
-          auth_session_performance_timer,
-      StatusCallback on_done);
 
   // Returns the callback function to update and AuthFactor for the right key
   // store type.

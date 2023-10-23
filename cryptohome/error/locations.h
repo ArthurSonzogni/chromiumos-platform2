@@ -431,17 +431,17 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionChalCredUnsupportedInAddKeyset = 302,
   /* =Obsolete= */
   kLocAuthSessionPinweaverUnsupportedInAddKeyset = 303,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionNullParamInCallbackInAddKeyset = 304,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionCreateFailedInAddKeyset = 305,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionAddFailedInAddKeyset = 306,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionNoFSKeyInAddKeyset = 307,
   /* =Obsolete= */
   kLocAuthSessionNoChallengeInfoInAddKeyset = 308,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionAddInitialFailedInAddKeyset = 309,
   /* =Obsolete= */
   kLocAuthSessionGetCredFailedInUpdate = 310,
@@ -459,7 +459,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionNullParamInCallbackInUpdateKeyset = 316,
   /* ./auth_session.cc */
   kLocAuthSessionCreateFailedInUpdateKeyset = 317,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionUpdateWithBlobFailedInUpdateKeyset = 318,
   /* =Obsolete= */
   kLocAuthSessionGetCredFailedInAuth = 319,
@@ -1103,7 +1103,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionNoInputInUpdateAuthFactor = 638,
   /* ./auth_session.cc */
   kLocAuthSessionInvalidBlockTypeInUpdateAuthFactor = 639,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionAddVaultKeysetFailedinAddAuthFactor = 640,
   /* ./auth_session.cc */
   kLocAuthSessionNullParamInUpdateViaUSS = 641,
@@ -1149,7 +1149,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocCreateFailedInAuthInputForAuth = 661,
   /* ./auth_session.cc */
   kLocCreateFailedInAuthInputForAdd = 662,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocNoVkInAuthInputForAdd = 663,
   /* ./auth_session.cc */
   kLocNoUserInputInAddFactorForEphemeral = 664,
@@ -1681,7 +1681,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocPinWeaverAuthBlockNullLeManagerInIsSupported = 2726,
   /* =Obsolete= */
   kLocPinWeaverAuthBlockNoKeyLoaderInIsSupported = 2727,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionNoVkInAddKeyset = 2728,
   /* ./auth_factor/auth_factor_manager.cc */
   kLocAuthFactorManagerEmptyReadInLoad = 2729,

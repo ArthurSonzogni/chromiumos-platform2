@@ -656,131 +656,6 @@ void AuthSession::RegisterVaultKeysetAuthFactor(AuthFactor auth_factor) {
                        AuthFactorStorageType::kVaultKeyset);
 }
 
-void AuthSession::CreateAndPersistVaultKeyset(
-    const KeyData& key_data,
-    AuthInput auth_input,
-    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
-    StatusCallback on_done,
-    CryptohomeStatus callback_error,
-    std::unique_ptr<KeyBlobs> key_blobs,
-    std::unique_ptr<AuthBlockState> auth_state) {
-  // callback_error, key_blobs and auth_state are returned by
-  // AuthBlock::CreateCallback.
-  if (!callback_error.ok() || key_blobs == nullptr || auth_state == nullptr) {
-    if (callback_error.ok()) {
-      callback_error = MakeStatus<CryptohomeCryptoError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionNullParamInCallbackInAddKeyset),
-          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-          CryptoError::CE_OTHER_CRYPTO,
-          user_data_auth::CryptohomeErrorCode::
-              CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
-    }
-    LOG(ERROR) << "KeyBlobs derivation failed before adding keyset.";
-    std::move(on_done).Run(
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocAuthSessionCreateFailedInAddKeyset),
-            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
-            .Wrap(std::move(callback_error)));
-    return;
-  }
-
-  CryptohomeStatus status =
-      AddVaultKeyset(key_data.label(), key_data,
-                     !auth_factor_map_.HasFactorWithStorage(
-                         AuthFactorStorageType::kVaultKeyset),
-                     VaultKeysetIntent{.backup = false}, std::move(key_blobs),
-                     std::move(auth_state));
-
-  if (!status.ok()) {
-    std::move(on_done).Run(
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocAuthSessionAddVaultKeysetFailedinAddAuthFactor),
-            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
-            .Wrap(std::move(status)));
-    return;
-  }
-
-  std::optional<AuthFactor> added_auth_factor =
-      converter_.VaultKeysetToAuthFactor(obfuscated_username_,
-                                         key_data.label());
-  // Initialize auth_factor_type with kPassword for CredentailVerifier.
-  AuthFactorType auth_factor_type = AuthFactorType::kPassword;
-  if (added_auth_factor) {
-    auth_factor_type = added_auth_factor->type();
-    auth_factor_map_.Add(std::move(*added_auth_factor),
-                         AuthFactorStorageType::kVaultKeyset);
-  } else {
-    LOG(WARNING) << "Failed to convert added keyset to AuthFactor.";
-  }
-
-  AddCredentialVerifier(auth_factor_type, key_data.label(), auth_input);
-
-  // Report timer for how long AuthSession operation takes.
-  ReportTimerDuration(auth_session_performance_timer.get());
-  std::move(on_done).Run(OkStatus<CryptohomeError>());
-}
-
-CryptohomeStatus AuthSession::AddVaultKeyset(
-    const std::string& key_label,
-    const KeyData& key_data,
-    bool is_initial_keyset,
-    VaultKeysetIntent vk_backup_intent,
-    std::unique_ptr<KeyBlobs> key_blobs,
-    std::unique_ptr<AuthBlockState> auth_state) {
-  CHECK(key_blobs);
-  CHECK(auth_state);
-  if (is_initial_keyset) {
-    if (!file_system_keyset_.has_value()) {
-      LOG(ERROR) << "AddInitialKeyset: file_system_keyset is invalid.";
-      return MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionNoFSKeyInAddKeyset),
-          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                          PossibleAction::kReboot}),
-          user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
-    }
-    // TODO(b/229825202): Migrate KeysetManagement and wrap the returned error.
-    CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-        keyset_management_->AddInitialKeyset(
-            vk_backup_intent, obfuscated_username_, key_data,
-            /*challenge_credentials_keyset_info*/ std::nullopt,
-            file_system_keyset_.value(), std::move(*key_blobs.get()),
-            std::move(auth_state));
-    if (!vk_status.ok()) {
-      vault_keyset_ = nullptr;
-      return MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionAddInitialFailedInAddKeyset),
-          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                          PossibleAction::kReboot}),
-          user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
-    }
-    LOG(INFO) << "AuthSession: added initial keyset " << key_data.label()
-              << ".";
-    vault_keyset_ = std::move(vk_status).value();
-  } else {
-    if (!vault_keyset_) {
-      // This shouldn't normally happen, but is possible if, e.g., the backup VK
-      // is corrupted and the authentication completed via USS.
-      return MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionNoVkInAddKeyset),
-          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-          user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
-    }
-    CryptohomeStatus status = keyset_management_->AddKeyset(
-        vk_backup_intent, obfuscated_username_, key_label, key_data,
-        *vault_keyset_.get(), std::move(*key_blobs.get()),
-        std::move(auth_state), true /*clobber*/);
-    if (!status.ok()) {
-      return MakeStatus<CryptohomeError>(
-                 CRYPTOHOME_ERR_LOC(kLocAuthSessionAddFailedInAddKeyset))
-          .Wrap(std::move(status));
-    }
-    LOG(INFO) << "AuthSession: added additional keyset " << key_label << ".";
-  }
-
-  return OkStatus<CryptohomeError>();
-}
-
 void AuthSession::MigrateToUssDuringUpdateVaultKeyset(
     AuthFactorType auth_factor_type,
     const std::string& auth_factor_label,
@@ -2949,6 +2824,8 @@ AuthBlockType AuthSession::ResaveVaultKeysetIfNeeded(
     return auth_block_type;
   }
 
+  // Create the USS for the newly created non-ephemeral user. Keep the USS in
+  // memory: it will be persisted after the first auth factor gets added.
   // KeyBlobs needs to be re-created since there maybe a change in the
   // AuthBlock type with the change in TPM state. Don't abort on failure.
   // Only password and pin type credentials are evaluated for resave.
@@ -3108,28 +2985,13 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
     return std::move(auth_input);
   }
 
-  if (factor_driver.NeedsResetSecret()) {
-    if (decrypted_uss_) {
-      // When using USS, every resettable factor gets a unique reset secret.
-      // When USS is not backed up by VaultKeysets this secret needs to be
-      // generated independently.
-      LOG(INFO) << "Adding random reset secret for UserSecretStash.";
-      auth_input.reset_secret =
-          CreateSecureRandomBlob(kCryptohomeResetSecretLength);
-      return std::move(auth_input);
-    }
-
-    // When using VaultKeyset, reset is implemented via a seed that's shared
-    // among all of the user's VKs. Hence copy it from the previously loaded VK.
-    if (!vault_keyset_) {
-      return MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocNoVkInAuthInputForAdd),
-          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
-    }
-
-    return UpdateAuthInputWithResetParamsFromPasswordVk(auth_input,
-                                                        *vault_keyset_);
+  if (factor_driver.NeedsResetSecret() && decrypted_uss_) {
+    // When using USS, every resettable factor gets a unique reset secret,
+    // each of which is generated independently.
+    LOG(INFO) << "Adding random reset secret for UserSecretStash.";
+    auth_input.reset_secret =
+        CreateSecureRandomBlob(kCryptohomeResetSecretLength);
+    return std::move(auth_input);
   }
 
   return std::move(auth_input);
@@ -3534,10 +3396,8 @@ void AuthSession::AuthForDecrypt::AddAuthFactor(
 
   // Report timer for how long AddAuthFactor operation takes.
   auto auth_session_performance_timer =
-      session_->decrypted_uss_ ? std::make_unique<AuthSessionPerformanceTimer>(
-                                     kAuthSessionAddAuthFactorUSSTimer)
-                               : std::make_unique<AuthSessionPerformanceTimer>(
-                                     kAuthSessionAddAuthFactorVKTimer);
+      std::make_unique<AuthSessionPerformanceTimer>(
+          kAuthSessionAddAuthFactorUSSTimer);
 
   // Determine the auth block type to use.
   const AuthFactorDriver& factor_driver =
@@ -3570,43 +3430,13 @@ void AuthSession::AuthForDecrypt::AddAuthFactor(
     return;
   }
 
-  AuthFactorStorageType auth_factor_storage_type =
-      session_->decrypted_uss_ ? AuthFactorStorageType::kUserSecretStash
-                               : AuthFactorStorageType::kVaultKeyset;
-
-  auto create_callback = session_->GetAddAuthFactorCallback(
-      auth_factor_type, auth_factor_label, auth_factor_metadata, key_data,
-      auth_input_status.value(), auth_factor_storage_type,
-      std::move(auth_session_performance_timer), std::move(on_done));
-
   session_->auth_block_utility_->CreateKeyBlobsWithAuthBlock(
       auth_block_type.value(), auth_input_status.value(),
-      std::move(create_callback));
-}
-
-AuthBlock::CreateCallback AuthSession::GetAddAuthFactorCallback(
-    const AuthFactorType& auth_factor_type,
-    const std::string& auth_factor_label,
-    const AuthFactorMetadata& auth_factor_metadata,
-    const KeyData& key_data,
-    const AuthInput& auth_input,
-    const AuthFactorStorageType auth_factor_storage_type,
-    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
-    StatusCallback on_done) {
-  switch (auth_factor_storage_type) {
-    case AuthFactorStorageType::kUserSecretStash:
-      return base::BindOnce(&AuthSession::PersistAuthFactorToUserSecretStash,
-                            weak_factory_.GetWeakPtr(), auth_factor_type,
-                            auth_factor_label, auth_factor_metadata, auth_input,
-                            std::move(auth_session_performance_timer),
-                            std::move(on_done));
-
-    case AuthFactorStorageType::kVaultKeyset:
-      return base::BindOnce(&AuthSession::CreateAndPersistVaultKeyset,
-                            weak_factory_.GetWeakPtr(), key_data, auth_input,
-                            std::move(auth_session_performance_timer),
-                            std::move(on_done));
-  }
+      base::BindOnce(
+          &AuthSession::PersistAuthFactorToUserSecretStash,
+          session_->weak_factory_.GetWeakPtr(), auth_factor_type,
+          auth_factor_label, auth_factor_metadata, auth_input_status.value(),
+          std::move(auth_session_performance_timer), std::move(on_done)));
 }
 
 void AuthSession::AddAuthFactorForEphemeral(
