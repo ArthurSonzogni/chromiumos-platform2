@@ -52,8 +52,8 @@ class ChallengeCredentialsDecryptOperation final
       KeyChallengeService* key_challenge_service,
       const hwsec::CryptohomeFrontend* hwsec,
       const Username& account_id,
-      const structure::ChallengePublicKeyInfo& public_key_info,
-      const structure::SignatureChallengeInfo& keyset_challenge_info,
+      const SerializedChallengePublicKeyInfo& public_key_info,
+      const SerializedSignatureChallengeInfo& keyset_challenge_info,
       CompletionCallback completion_callback);
 
   ~ChallengeCredentialsDecryptOperation() override;
@@ -95,8 +95,8 @@ class ChallengeCredentialsDecryptOperation final
       CryptoStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>);
 
   const Username account_id_;
-  const structure::ChallengePublicKeyInfo public_key_info_;
-  const structure::SignatureChallengeInfo keyset_challenge_info_;
+  const SerializedChallengePublicKeyInfo public_key_info_;
+  const SerializedSignatureChallengeInfo keyset_challenge_info_;
   std::unique_ptr<brillo::Blob> salt_signature_;
   CompletionCallback completion_callback_;
   const hwsec::CryptohomeFrontend* const hwsec_;

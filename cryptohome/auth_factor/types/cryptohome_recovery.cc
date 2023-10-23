@@ -28,8 +28,8 @@ CryptohomeRecoveryAuthFactorDriver::GetAuthFactorLabelArity() const {
 
 std::optional<user_data_auth::AuthFactor>
 CryptohomeRecoveryAuthFactorDriver::TypedConvertToProto(
-    const auth_factor::CommonMetadata& common,
-    const auth_factor::CryptohomeRecoveryMetadata& typed_metadata) const {
+    const CommonMetadata& common,
+    const CryptohomeRecoveryMetadata& typed_metadata) const {
   user_data_auth::AuthFactor proto;
   proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
   proto.mutable_cryptohome_recovery_metadata()->set_mediator_pub_key(

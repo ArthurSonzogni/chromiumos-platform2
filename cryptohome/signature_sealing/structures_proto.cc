@@ -121,49 +121,48 @@ hwsec::Tpm12CertifiedMigratableKeyData FromProto(
 
 }  // namespace
 
-ChallengeSignatureAlgorithm ToProto(
-    structure::ChallengeSignatureAlgorithm obj) {
+ChallengeSignatureAlgorithm ToProto(SerializedChallengeSignatureAlgorithm obj) {
   switch (obj) {
-    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1:
+    case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1:
       return ChallengeSignatureAlgorithm::CHALLENGE_RSASSA_PKCS1_V1_5_SHA1;
-    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256:
+    case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256:
       return ChallengeSignatureAlgorithm::CHALLENGE_RSASSA_PKCS1_V1_5_SHA256;
-    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384:
+    case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384:
       return ChallengeSignatureAlgorithm::CHALLENGE_RSASSA_PKCS1_V1_5_SHA384;
-    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512:
+    case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512:
       return ChallengeSignatureAlgorithm::CHALLENGE_RSASSA_PKCS1_V1_5_SHA512;
   }
 }
 
-structure::ChallengeSignatureAlgorithm FromProto(
+SerializedChallengeSignatureAlgorithm FromProto(
     ChallengeSignatureAlgorithm obj) {
   switch (obj) {
     case ChallengeSignatureAlgorithm::CHALLENGE_RSASSA_PKCS1_V1_5_SHA1:
-      return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
+      return SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
     case ChallengeSignatureAlgorithm::CHALLENGE_RSASSA_PKCS1_V1_5_SHA256:
-      return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256;
+      return SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256;
     case ChallengeSignatureAlgorithm::CHALLENGE_RSASSA_PKCS1_V1_5_SHA384:
-      return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384;
+      return SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384;
     case ChallengeSignatureAlgorithm::CHALLENGE_RSASSA_PKCS1_V1_5_SHA512:
-      return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512;
+      return SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512;
   }
 }
 
-std::optional<structure::ChallengeSignatureAlgorithm> FromProto(
+std::optional<SerializedChallengeSignatureAlgorithm> FromProto(
     user_data_auth::SmartCardSignatureAlgorithm obj) {
   switch (obj) {
     case user_data_auth::SmartCardSignatureAlgorithm::
         CHALLENGE_RSASSA_PKCS1_V1_5_SHA1:
-      return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
+      return SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
     case user_data_auth::SmartCardSignatureAlgorithm::
         CHALLENGE_RSASSA_PKCS1_V1_5_SHA256:
-      return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256;
+      return SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256;
     case user_data_auth::SmartCardSignatureAlgorithm::
         CHALLENGE_RSASSA_PKCS1_V1_5_SHA384:
-      return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384;
+      return SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384;
     case user_data_auth::SmartCardSignatureAlgorithm::
         CHALLENGE_RSASSA_PKCS1_V1_5_SHA512:
-      return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512;
+      return SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512;
     default:  // ::SmartCardSignatureAlgorithm::CHALLENGE_NOT_SPECIFIED
       return std::nullopt;
   }
@@ -194,7 +193,7 @@ hwsec::SignatureSealedData FromProto(const SignatureSealedData& obj) {
 }
 
 SerializedVaultKeyset_SignatureChallengeInfo ToProto(
-    const structure::SignatureChallengeInfo& obj) {
+    const SerializedSignatureChallengeInfo& obj) {
   SerializedVaultKeyset_SignatureChallengeInfo result;
   result.set_public_key_spki_der(BlobToString(obj.public_key_spki_der));
   *result.mutable_sealed_secret() = ToProto(obj.sealed_secret);
@@ -206,9 +205,9 @@ SerializedVaultKeyset_SignatureChallengeInfo ToProto(
   return result;
 }
 
-structure::SignatureChallengeInfo FromProto(
+SerializedSignatureChallengeInfo FromProto(
     const SerializedVaultKeyset_SignatureChallengeInfo& obj) {
-  structure::SignatureChallengeInfo result;
+  SerializedSignatureChallengeInfo result;
   result.public_key_spki_der = BlobFromString(obj.public_key_spki_der());
   result.sealed_secret = FromProto(obj.sealed_secret());
   result.salt = BlobFromString(obj.salt());
@@ -218,7 +217,7 @@ structure::SignatureChallengeInfo FromProto(
   return result;
 }
 
-ChallengePublicKeyInfo ToProto(const structure::ChallengePublicKeyInfo& obj) {
+ChallengePublicKeyInfo ToProto(const SerializedChallengePublicKeyInfo& obj) {
   ChallengePublicKeyInfo result;
   result.set_public_key_spki_der(BlobToString(obj.public_key_spki_der));
   for (const auto& content : obj.signature_algorithm)
@@ -226,8 +225,8 @@ ChallengePublicKeyInfo ToProto(const structure::ChallengePublicKeyInfo& obj) {
   return result;
 }
 
-structure::ChallengePublicKeyInfo FromProto(const ChallengePublicKeyInfo& obj) {
-  structure::ChallengePublicKeyInfo result;
+SerializedChallengePublicKeyInfo FromProto(const ChallengePublicKeyInfo& obj) {
+  SerializedChallengePublicKeyInfo result;
   result.public_key_spki_der = BlobFromString(obj.public_key_spki_der());
   for (const auto& content : obj.signature_algorithm()) {
     result.signature_algorithm.push_back(

@@ -149,7 +149,7 @@ TEST_F(ChallengeCredentialAuthBlockTest, Create) {
               .public_key_spki_der =
                   brillo::BlobFromString("public_key_spki_der"),
               .challenge_signature_algorithms =
-                  {structure::ChallengeSignatureAlgorithm::
+                  {SerializedChallengeSignatureAlgorithm::
                        kRsassaPkcs1V15Sha256},
           },
   };
@@ -158,7 +158,7 @@ TEST_F(ChallengeCredentialAuthBlockTest, Create) {
               GenerateNew(kFakeAccountId, _, _, _, _))
       .WillOnce([&](auto&&, auto public_key_info, auto&&, auto&&,
                     auto&& callback) {
-        auto info = std::make_unique<structure::SignatureChallengeInfo>();
+        auto info = std::make_unique<SerializedSignatureChallengeInfo>();
         info->public_key_spki_der = public_key_info.public_key_spki_der;
         info->salt_signature_algorithm = public_key_info.signature_algorithm[0];
         auto passkey = std::make_unique<brillo::SecureBlob>("passkey");
@@ -205,7 +205,7 @@ TEST_F(ChallengeCredentialAuthBlockTest, CreateCredentialsFailed) {
               .public_key_spki_der =
                   brillo::BlobFromString("public_key_spki_der"),
               .challenge_signature_algorithms =
-                  {structure::ChallengeSignatureAlgorithm::
+                  {SerializedChallengeSignatureAlgorithm::
                        kRsassaPkcs1V15Sha256},
           },
   };
@@ -225,7 +225,7 @@ TEST_F(ChallengeCredentialAuthBlockTest, MutipleCreateFailed) {
               .public_key_spki_der =
                   brillo::BlobFromString("public_key_spki_der"),
               .challenge_signature_algorithms =
-                  {structure::ChallengeSignatureAlgorithm::
+                  {SerializedChallengeSignatureAlgorithm::
                        kRsassaPkcs1V15Sha256},
           },
   };
@@ -234,7 +234,7 @@ TEST_F(ChallengeCredentialAuthBlockTest, MutipleCreateFailed) {
               GenerateNew(kFakeAccountId, _, _, _, _))
       .WillOnce([&](auto&&, auto public_key_info, auto&&, auto&&,
                     auto&& callback) {
-        auto info = std::make_unique<structure::SignatureChallengeInfo>();
+        auto info = std::make_unique<SerializedSignatureChallengeInfo>();
         info->public_key_spki_der = public_key_info.public_key_spki_der;
         info->salt_signature_algorithm = public_key_info.signature_algorithm[0];
         auto passkey = std::make_unique<brillo::SecureBlob>("passkey");
@@ -284,7 +284,7 @@ TEST_F(ChallengeCredentialAuthBlockTest, CreateMissingObfuscatedUsername) {
               .public_key_spki_der =
                   brillo::BlobFromString("public_key_spki_der"),
               .challenge_signature_algorithms =
-                  {structure::ChallengeSignatureAlgorithm::
+                  {SerializedChallengeSignatureAlgorithm::
                        kRsassaPkcs1V15Sha256},
           },
   };
@@ -355,11 +355,12 @@ TEST_F(ChallengeCredentialAuthBlockTest, Derive) {
                           hwsec_foundation::kDefaultScryptParams.p_factor,
                   },
               .keyset_challenge_info =
-                  structure::SignatureChallengeInfo{
+                  SerializedSignatureChallengeInfo{
                       .public_key_spki_der =
                           brillo::BlobFromString("public_key_spki_der"),
-                      .salt_signature_algorithm = structure::
-                          ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
+                      .salt_signature_algorithm =
+                          SerializedChallengeSignatureAlgorithm::
+                              kRsassaPkcs1V15Sha256,
                   },
           },
   };
@@ -398,7 +399,7 @@ TEST_F(ChallengeCredentialAuthBlockTest, Derive) {
       .challenge_credential_auth_input =
           ChallengeCredentialAuthInput{
               .challenge_signature_algorithms =
-                  {structure::ChallengeSignatureAlgorithm::
+                  {SerializedChallengeSignatureAlgorithm::
                        kRsassaPkcs1V15Sha256},
           },
   };
@@ -436,11 +437,12 @@ TEST_F(ChallengeCredentialAuthBlockTest, DeriveFailed) {
       .state =
           ChallengeCredentialAuthBlockState{
               .keyset_challenge_info =
-                  structure::SignatureChallengeInfo{
+                  SerializedSignatureChallengeInfo{
                       .public_key_spki_der =
                           brillo::BlobFromString("public_key_spki_der"),
-                      .salt_signature_algorithm = structure::
-                          ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
+                      .salt_signature_algorithm =
+                          SerializedChallengeSignatureAlgorithm::
+                              kRsassaPkcs1V15Sha256,
                   },
           },
   };
@@ -449,7 +451,7 @@ TEST_F(ChallengeCredentialAuthBlockTest, DeriveFailed) {
       .challenge_credential_auth_input =
           ChallengeCredentialAuthInput{
               .challenge_signature_algorithms =
-                  {structure::ChallengeSignatureAlgorithm::
+                  {SerializedChallengeSignatureAlgorithm::
                        kRsassaPkcs1V15Sha256},
           },
   };
@@ -514,7 +516,7 @@ TEST_F(ChallengeCredentialAuthBlockTest, DeriveNoState) {
       .challenge_credential_auth_input =
           ChallengeCredentialAuthInput{
               .challenge_signature_algorithms =
-                  {structure::ChallengeSignatureAlgorithm::
+                  {SerializedChallengeSignatureAlgorithm::
                        kRsassaPkcs1V15Sha256},
           },
   };
@@ -542,7 +544,7 @@ TEST_F(ChallengeCredentialAuthBlockTest, DeriveNoKeysetInfo) {
       .challenge_credential_auth_input =
           ChallengeCredentialAuthInput{
               .challenge_signature_algorithms =
-                  {structure::ChallengeSignatureAlgorithm::
+                  {SerializedChallengeSignatureAlgorithm::
                        kRsassaPkcs1V15Sha256},
           },
   };
@@ -576,11 +578,12 @@ TEST_F(ChallengeCredentialAuthBlockTest, DeriveNoScryptState) {
       .state =
           ChallengeCredentialAuthBlockState{
               .keyset_challenge_info =
-                  structure::SignatureChallengeInfo{
+                  SerializedSignatureChallengeInfo{
                       .public_key_spki_der =
                           brillo::BlobFromString("public_key_spki_der"),
-                      .salt_signature_algorithm = structure::
-                          ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
+                      .salt_signature_algorithm =
+                          SerializedChallengeSignatureAlgorithm::
+                              kRsassaPkcs1V15Sha256,
                   },
           },
   };
@@ -588,7 +591,7 @@ TEST_F(ChallengeCredentialAuthBlockTest, DeriveNoScryptState) {
       .challenge_credential_auth_input =
           ChallengeCredentialAuthInput{
               .challenge_signature_algorithms =
-                  {structure::ChallengeSignatureAlgorithm::
+                  {SerializedChallengeSignatureAlgorithm::
                        kRsassaPkcs1V15Sha256},
           },
   };
@@ -727,7 +730,7 @@ class ChallengeCredentialAuthBlockFullTest : public ::testing::Test {
 TEST_F(ChallengeCredentialAuthBlockFullTest, DeriveCreated) {
   constexpr auto kHwsecAlgorithm = HwsecAlgorithm::kRsassaPkcs1V15Sha256;
   constexpr auto kAlgorithm =
-      structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256;
+      SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256;
   constexpr auto kChallengeAlgorithm = CHALLENGE_RSASSA_PKCS1_V1_5_SHA256;
   const AuthInput kAuthInput{
       .obfuscated_username = kObfuscatedUsername,
@@ -771,15 +774,15 @@ TEST_F(ChallengeCredentialAuthBlockFullTest, DeriveCreated) {
 TEST_F(ChallengeCredentialAuthBlockFullTest, DeriveCreatedDifferentAlgorithms) {
   constexpr auto kHwsecSaltAlgorithm = HwsecAlgorithm::kRsassaPkcs1V15Sha256;
   constexpr auto kSaltAlgorithm =
-      structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256;
+      SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256;
   constexpr auto kSaltChallengeAlgorithm = CHALLENGE_RSASSA_PKCS1_V1_5_SHA256;
   constexpr auto kHwsecTpmAlgorithm = HwsecAlgorithm::kRsassaPkcs1V15Sha1;
   constexpr auto kTpmAlgorithm =
-      structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
+      SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
   constexpr auto kTpmChallengeAlgorithm = CHALLENGE_RSASSA_PKCS1_V1_5_SHA1;
   const std::vector<HwsecAlgorithm> kHwsecAlgorithms = {kHwsecTpmAlgorithm,
                                                         kHwsecSaltAlgorithm};
-  const std::vector<structure::ChallengeSignatureAlgorithm> kAlgorithms = {
+  const std::vector<SerializedChallengeSignatureAlgorithm> kAlgorithms = {
       kTpmAlgorithm, kSaltAlgorithm};
   const AuthInput kAuthInput{
       .obfuscated_username = kObfuscatedUsername,

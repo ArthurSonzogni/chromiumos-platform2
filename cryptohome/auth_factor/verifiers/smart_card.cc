@@ -30,8 +30,8 @@ SmartCardVerifier::SmartCardVerifier(
     : AsyncCredentialVerifier(
           AuthFactorType::kSmartCard,
           std::move(auth_factor_label),
-          {.metadata = auth_factor::SmartCardMetadata{.public_key_spki_der =
-                                                          public_key_blob}}),
+          {.metadata =
+               SmartCardMetadata{.public_key_spki_der = public_key_blob}}),
       challenge_credentials_helper_(challenge_credentials_helper),
       key_challenge_service_factory_(key_challenge_service_factory) {
   CHECK(challenge_credentials_helper_);
@@ -97,7 +97,7 @@ void SmartCardVerifier::VerifyAsync(const AuthInput& auth_input,
   auto key_challenge_service = key_challenge_service_factory_->New(
       auth_input.challenge_credential_auth_input->dbus_service_name);
 
-  structure::ChallengePublicKeyInfo public_key_info{
+  SerializedChallengePublicKeyInfo public_key_info{
       .public_key_spki_der = auth_input.challenge_credential_auth_input.value()
                                  .public_key_spki_der,
       .signature_algorithm = auth_input.challenge_credential_auth_input.value()

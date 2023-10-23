@@ -266,8 +266,8 @@ AuthFactorLabelArity FingerprintAuthFactorDriver::GetAuthFactorLabelArity()
 
 std::optional<user_data_auth::AuthFactor>
 FingerprintAuthFactorDriver::TypedConvertToProto(
-    const auth_factor::CommonMetadata& common,
-    const auth_factor::FingerprintMetadata& typed_metadata) const {
+    const CommonMetadata& common,
+    const FingerprintMetadata& typed_metadata) const {
   user_data_auth::AuthFactor proto;
   proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
   proto.mutable_fingerprint_metadata();

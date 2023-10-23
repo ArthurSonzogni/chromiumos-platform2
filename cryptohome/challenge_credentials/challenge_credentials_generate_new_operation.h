@@ -55,7 +55,7 @@ class ChallengeCredentialsGenerateNewOperation final
       KeyChallengeService* key_challenge_service,
       const hwsec::CryptohomeFrontend* hwsec,
       const Username& account_id,
-      const structure::ChallengePublicKeyInfo& public_key_info,
+      const SerializedChallengePublicKeyInfo& public_key_info,
       const ObfuscatedUsername& obfuscated_username,
       CompletionCallback completion_callback);
 
@@ -87,17 +87,17 @@ class ChallengeCredentialsGenerateNewOperation final
 
   // Constructs the SignatureChallengeInfo that will be persisted as
   // part of the auth block state.
-  structure::SignatureChallengeInfo ConstructKeysetSignatureChallengeInfo()
+  SerializedSignatureChallengeInfo ConstructKeysetSignatureChallengeInfo()
       const;
 
   const Username account_id_;
-  const structure::ChallengePublicKeyInfo public_key_info_;
+  const SerializedChallengePublicKeyInfo public_key_info_;
   const ObfuscatedUsername obfuscated_username_;
   CompletionCallback completion_callback_;
   const hwsec::CryptohomeFrontend* const hwsec_;
   brillo::Blob salt_;
-  structure::ChallengeSignatureAlgorithm salt_signature_algorithm_ =
-      structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
+  SerializedChallengeSignatureAlgorithm salt_signature_algorithm_ =
+      SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
   std::unique_ptr<brillo::Blob> salt_signature_;
   std::unique_ptr<brillo::SecureBlob> tpm_protected_secret_value_;
   hwsec::SignatureSealedData tpm_sealed_secret_data_;

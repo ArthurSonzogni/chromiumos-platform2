@@ -48,8 +48,8 @@ AuthFactorLabelArity PasswordAuthFactorDriver::GetAuthFactorLabelArity() const {
 
 std::optional<user_data_auth::AuthFactor>
 PasswordAuthFactorDriver::TypedConvertToProto(
-    const auth_factor::CommonMetadata& common,
-    const auth_factor::PasswordMetadata& typed_metadata) const {
+    const CommonMetadata& common,
+    const PasswordMetadata& typed_metadata) const {
   user_data_auth::AuthFactor proto;
   proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
   proto.mutable_password_metadata();

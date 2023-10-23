@@ -67,7 +67,7 @@ class ChallengeCredentialAuthBlock : public AuthBlock {
   // This continues the creating process after Scrypt::Create.
   void CreateContinueAfterScrypt(
       CreateCallback callback,
-      std::unique_ptr<structure::SignatureChallengeInfo>
+      std::unique_ptr<SerializedSignatureChallengeInfo>
           signature_challenge_info,
       CryptohomeStatus error,
       std::unique_ptr<KeyBlobs> key_blobs,

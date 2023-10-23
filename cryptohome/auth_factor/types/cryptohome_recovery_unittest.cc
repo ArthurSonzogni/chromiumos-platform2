@@ -38,7 +38,7 @@ TEST_F(CryptohomeRecoveryDriverTest, ConvertToProto) {
   CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
   AuthFactorDriver& driver = recovery_driver;
   AuthFactorMetadata metadata =
-      CreateMetadataWithType<auth_factor::CryptohomeRecoveryMetadata>(
+      CreateMetadataWithType<CryptohomeRecoveryMetadata>(
           {.mediator_pub_key = brillo::BlobFromString(kPublicKeyStr)});
 
   // Test
@@ -66,7 +66,7 @@ TEST_F(CryptohomeRecoveryDriverTest, ConvertToProtoNoMetadata) {
   CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
   AuthFactorDriver& driver = recovery_driver;
   AuthFactorMetadata metadata =
-      CreateMetadataWithType<auth_factor::CryptohomeRecoveryMetadata>();
+      CreateMetadataWithType<CryptohomeRecoveryMetadata>();
 
   // Test
   std::optional<user_data_auth::AuthFactor> proto =
@@ -184,10 +184,9 @@ TEST_F(CryptohomeRecoveryDriverTest, GetDelayFails) {
   CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
   AuthFactorDriver& driver = recovery_driver;
 
-  AuthFactor factor(
-      AuthFactorType::kCryptohomeRecovery, kLabel,
-      CreateMetadataWithType<auth_factor::CryptohomeRecoveryMetadata>(),
-      {.state = CryptohomeRecoveryAuthBlockState()});
+  AuthFactor factor(AuthFactorType::kCryptohomeRecovery, kLabel,
+                    CreateMetadataWithType<CryptohomeRecoveryMetadata>(),
+                    {.state = CryptohomeRecoveryAuthBlockState()});
 
   auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
   ASSERT_THAT(delay_in_ms, NotOk());
@@ -199,10 +198,9 @@ TEST_F(CryptohomeRecoveryDriverTest, GetExpirationFails) {
   CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
   AuthFactorDriver& driver = recovery_driver;
 
-  AuthFactor factor(
-      AuthFactorType::kCryptohomeRecovery, kLabel,
-      CreateMetadataWithType<auth_factor::CryptohomeRecoveryMetadata>(),
-      {.state = CryptohomeRecoveryAuthBlockState()});
+  AuthFactor factor(AuthFactorType::kCryptohomeRecovery, kLabel,
+                    CreateMetadataWithType<CryptohomeRecoveryMetadata>(),
+                    {.state = CryptohomeRecoveryAuthBlockState()});
 
   auto expired = driver.IsExpired(kObfuscatedUser, factor);
   ASSERT_THAT(expired, NotOk());

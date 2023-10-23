@@ -1384,7 +1384,7 @@ void AuthSession::AuthenticateAuthFactor(
         if (stored_auth_factor->storage_type() ==
                 AuthFactorStorageType::kVaultKeyset &&
             request_auth_factor_type == AuthFactorType::kKiosk) {
-          metadata.metadata = auth_factor::KioskMetadata();
+          metadata.metadata = KioskMetadata();
         } else {
           LOG(ERROR)
               << "Unexpected mismatch in type from label and auth_input.";

@@ -968,8 +968,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthenticatePasswordVkToKioskUss) {
   EXPECT_THAT(stored_auth_factor.storage_type(),
               Eq(AuthFactorStorageType::kUserSecretStash));
   EXPECT_THAT(auth_factor.type(), Eq(AuthFactorType::kKiosk));
-  EXPECT_THAT(auth_factor.metadata().metadata,
-              VariantWith<auth_factor::KioskMetadata>(_));
+  EXPECT_THAT(auth_factor.metadata().metadata, VariantWith<KioskMetadata>(_));
 }
 
 // Test if AuthenticateAuthFactor authenticates existing credentials for a

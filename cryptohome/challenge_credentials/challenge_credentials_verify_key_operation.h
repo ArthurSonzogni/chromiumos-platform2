@@ -44,7 +44,7 @@ class ChallengeCredentialsVerifyKeyOperation final
       KeyChallengeService* key_challenge_service,
       const hwsec::CryptohomeFrontend* hwsec,
       const Username& account_id,
-      const structure::ChallengePublicKeyInfo& public_key_info,
+      const SerializedChallengePublicKeyInfo& public_key_info,
       CompletionCallback completion_callback);
 
   ~ChallengeCredentialsVerifyKeyOperation() override;
@@ -56,13 +56,13 @@ class ChallengeCredentialsVerifyKeyOperation final
  private:
   void OnChallengeResponse(
       const brillo::Blob& public_key_spki_der,
-      structure::ChallengeSignatureAlgorithm challenge_algorithm,
+      SerializedChallengeSignatureAlgorithm challenge_algorithm,
       const brillo::Blob& challenge,
       CryptoStatusOr<std::unique_ptr<brillo::Blob>> challenge_signature);
 
   const hwsec::CryptohomeFrontend* const hwsec_;
   const Username account_id_;
-  const structure::ChallengePublicKeyInfo public_key_info_;
+  const SerializedChallengePublicKeyInfo public_key_info_;
   CompletionCallback completion_callback_;
   base::WeakPtrFactory<ChallengeCredentialsVerifyKeyOperation>
       weak_ptr_factory_{this};

@@ -1536,7 +1536,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLightweight) {
       .WillOnce(Return(true));
   auto verifier = std::make_unique<MockCredentialVerifier>(
       AuthFactorType::kPassword, kPasswordLabel,
-      AuthFactorMetadata{.metadata = auth_factor::PasswordMetadata()});
+      AuthFactorMetadata{.metadata = PasswordMetadata()});
   EXPECT_CALL(*verifier, VerifySync(_)).WillOnce(ReturnOk<CryptohomeError>());
   user_session->AddCredentialVerifier(std::move(verifier));
   EXPECT_TRUE(user_session_map_.Add(kUsername, std::move(user_session)));

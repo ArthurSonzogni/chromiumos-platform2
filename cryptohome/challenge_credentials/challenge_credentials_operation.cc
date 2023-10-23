@@ -91,7 +91,7 @@ void ChallengeCredentialsOperation::MakeKeySignatureChallenge(
     const Username& account_id,
     const Blob& public_key_spki_der,
     const Blob& data_to_sign,
-    structure::ChallengeSignatureAlgorithm signature_algorithm,
+    SerializedChallengeSignatureAlgorithm signature_algorithm,
     KeySignatureChallengeCallback response_callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
 

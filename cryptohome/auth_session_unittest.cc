@@ -811,7 +811,7 @@ class AuthSessionWithUssTest : public AuthSessionTest {
  protected:
   struct ReplyToVerifyKey {
     void operator()(const Username& account_id,
-                    const structure::ChallengePublicKeyInfo& public_key_info,
+                    const SerializedChallengePublicKeyInfo& public_key_info,
                     std::unique_ptr<KeyChallengeService> key_challenge_service,
                     ChallengeCredentialsHelper::VerifyKeyCallback callback) {
       if (is_key_valid) {
@@ -1628,7 +1628,7 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaUss) {
   // test.
   AuthFactor auth_factor(
       AuthFactorType::kPassword, kFakeLabel,
-      AuthFactorMetadata{.metadata = auth_factor::PasswordMetadata()},
+      AuthFactorMetadata{.metadata = PasswordMetadata()},
       AuthBlockState{.state = TpmBoundToPcrAuthBlockState()});
   EXPECT_TRUE(
       auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
@@ -1726,7 +1726,7 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaAsyncUss) {
   // test.
   AuthFactor auth_factor(
       AuthFactorType::kPassword, kFakeLabel,
-      AuthFactorMetadata{.metadata = auth_factor::PasswordMetadata()},
+      AuthFactorMetadata{.metadata = PasswordMetadata()},
       AuthBlockState{.state = TpmBoundToPcrAuthBlockState()});
   EXPECT_TRUE(
       auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
@@ -1825,7 +1825,7 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaAsyncUssFails) {
   // test.
   AuthFactor auth_factor(
       AuthFactorType::kPassword, kFakeLabel,
-      AuthFactorMetadata{.metadata = auth_factor::PasswordMetadata()},
+      AuthFactorMetadata{.metadata = PasswordMetadata()},
       AuthBlockState{.state = TpmBoundToPcrAuthBlockState()});
   EXPECT_TRUE(
       auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
@@ -1920,10 +1920,9 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinAuthFactorViaUss) {
   ASSERT_THAT(uss, IsOk());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
-  AuthFactor auth_factor(
-      AuthFactorType::kPin, kFakePinLabel,
-      AuthFactorMetadata{.metadata = auth_factor::PinMetadata()},
-      AuthBlockState{.state = PinWeaverAuthBlockState()});
+  AuthFactor auth_factor(AuthFactorType::kPin, kFakePinLabel,
+                         AuthFactorMetadata{.metadata = PinMetadata()},
+                         AuthBlockState{.state = PinWeaverAuthBlockState()});
   EXPECT_TRUE(
       auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
           .ok());
@@ -2013,10 +2012,9 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinAuthFactorViaUssWithRecreate) {
   ASSERT_THAT(uss, IsOk());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
-  AuthFactor auth_factor(
-      AuthFactorType::kPin, kFakePinLabel,
-      AuthFactorMetadata{.metadata = auth_factor::PinMetadata()},
-      AuthBlockState{.state = PinWeaverAuthBlockState()});
+  AuthFactor auth_factor(AuthFactorType::kPin, kFakePinLabel,
+                         AuthFactorMetadata{.metadata = PinMetadata()},
+                         AuthBlockState{.state = PinWeaverAuthBlockState()});
   EXPECT_TRUE(
       auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
           .ok());
@@ -2126,10 +2124,9 @@ TEST_F(AuthSessionWithUssTest,
   ASSERT_THAT(uss, IsOk());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
-  AuthFactor auth_factor(
-      AuthFactorType::kPin, kFakePinLabel,
-      AuthFactorMetadata{.metadata = auth_factor::PinMetadata()},
-      AuthBlockState{.state = PinWeaverAuthBlockState()});
+  AuthFactor auth_factor(AuthFactorType::kPin, kFakePinLabel,
+                         AuthFactorMetadata{.metadata = PinMetadata()},
+                         AuthBlockState{.state = PinWeaverAuthBlockState()});
   EXPECT_TRUE(
       auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
           .ok());
@@ -2230,7 +2227,7 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
   // test.
   AuthFactor auth_factor(
       AuthFactorType::kPin, kFakePinLabel,
-      AuthFactorMetadata{.metadata = auth_factor::PinMetadata()},
+      AuthFactorMetadata{.metadata = PinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState{.le_label = 0xbaadf00d}});
   EXPECT_TRUE(
       auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
@@ -2387,7 +2384,7 @@ TEST_F(AuthSessionWithUssTest, AuthenticateCryptohomeRecoveryAuthFactor) {
   // Creating the auth factor.
   AuthFactor auth_factor(
       AuthFactorType::kCryptohomeRecovery, kFakeLabel,
-      AuthFactorMetadata{.metadata = auth_factor::CryptohomeRecoveryMetadata()},
+      AuthFactorMetadata{.metadata = CryptohomeRecoveryMetadata()},
       AuthBlockState{.state = CryptohomeRecoveryAuthBlockState()});
   EXPECT_TRUE(
       auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
@@ -2526,8 +2523,8 @@ TEST_F(AuthSessionWithUssTest, AuthenticateSmartCardAuthFactor) {
   AuthFactor auth_factor(
       AuthFactorType::kSmartCard, kFakeLabel,
       AuthFactorMetadata{
-          .metadata = auth_factor::SmartCardMetadata{.public_key_spki_der =
-                                                         public_key_spki_der}},
+          .metadata =
+              SmartCardMetadata{.public_key_spki_der = public_key_spki_der}},
       AuthBlockState{.state = ChallengeCredentialAuthBlockState()});
   EXPECT_TRUE(
       auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
@@ -2658,7 +2655,7 @@ TEST_F(AuthSessionWithUssTest, LightweightPasswordAuthentication) {
       .WillOnce(Return(true));
   auto verifier = std::make_unique<MockCredentialVerifier>(
       AuthFactorType::kPassword, kFakeLabel,
-      AuthFactorMetadata{.metadata = auth_factor::PasswordMetadata()});
+      AuthFactorMetadata{.metadata = PasswordMetadata()});
   EXPECT_CALL(*verifier, VerifySync(_)).WillOnce(ReturnOk<CryptohomeError>());
   user_session->AddCredentialVerifier(std::move(verifier));
   EXPECT_TRUE(user_session_map_.Add(kFakeUsername, std::move(user_session)));
@@ -2715,7 +2712,7 @@ TEST_F(AuthSessionWithUssTest, LightweightPasswordPostAction) {
   // test.
   AuthFactor auth_factor(
       AuthFactorType::kPassword, kFakeLabel,
-      AuthFactorMetadata{.metadata = auth_factor::PasswordMetadata()},
+      AuthFactorMetadata{.metadata = PasswordMetadata()},
       AuthBlockState{.state = TpmBoundToPcrAuthBlockState()});
   EXPECT_TRUE(
       auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
@@ -2744,7 +2741,7 @@ TEST_F(AuthSessionWithUssTest, LightweightPasswordPostAction) {
       .WillRepeatedly(Return(true));
   auto verifier = std::make_unique<MockCredentialVerifier>(
       AuthFactorType::kPassword, kFakeLabel,
-      AuthFactorMetadata{.metadata = auth_factor::PasswordMetadata()});
+      AuthFactorMetadata{.metadata = PasswordMetadata()});
   EXPECT_CALL(*verifier, VerifySync(_)).WillOnce(ReturnOk<CryptohomeError>());
   user_session->AddCredentialVerifier(std::move(verifier));
   EXPECT_TRUE(user_session_map_.Add(kFakeUsername, std::move(user_session)));

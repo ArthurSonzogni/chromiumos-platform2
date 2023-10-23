@@ -41,17 +41,17 @@ constexpr int kSecretSizeBytes = 32;
 // Returns the signature algorithm that should be used for signing salt from the
 // set of algorithms supported by the given key. Returns nullopt when no
 // suitable algorithm was found.
-std::optional<structure::ChallengeSignatureAlgorithm>
+std::optional<SerializedChallengeSignatureAlgorithm>
 ChooseSaltSignatureAlgorithm(
-    const structure::ChallengePublicKeyInfo& public_key_info) {
-  std::optional<structure::ChallengeSignatureAlgorithm>
+    const SerializedChallengePublicKeyInfo& public_key_info) {
+  std::optional<SerializedChallengeSignatureAlgorithm>
       currently_chosen_algorithm;
   // Respect the input's algorithm prioritization, with the exception of
   // considering SHA-1 as the least preferred option.
   for (auto algo : public_key_info.signature_algorithm) {
     currently_chosen_algorithm = algo;
     if (*currently_chosen_algorithm !=
-        structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1)
+        SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1)
       break;
   }
   return currently_chosen_algorithm;
@@ -60,15 +60,15 @@ ChooseSaltSignatureAlgorithm(
 using HwsecAlgorithm = hwsec::CryptohomeFrontend::SignatureSealingAlgorithm;
 
 HwsecAlgorithm ConvertAlgorithm(
-    structure::ChallengeSignatureAlgorithm algorithm) {
+    SerializedChallengeSignatureAlgorithm algorithm) {
   switch (algorithm) {
-    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1:
+    case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1:
       return HwsecAlgorithm::kRsassaPkcs1V15Sha1;
-    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256:
+    case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256:
       return HwsecAlgorithm::kRsassaPkcs1V15Sha256;
-    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384:
+    case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384:
       return HwsecAlgorithm::kRsassaPkcs1V15Sha384;
-    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512:
+    case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512:
       return HwsecAlgorithm::kRsassaPkcs1V15Sha512;
   }
   NOTREACHED();
@@ -82,7 +82,7 @@ ChallengeCredentialsGenerateNewOperation::
         KeyChallengeService* key_challenge_service,
         const hwsec::CryptohomeFrontend* hwsec,
         const Username& account_id,
-        const structure::ChallengePublicKeyInfo& public_key_info,
+        const SerializedChallengePublicKeyInfo& public_key_info,
         const ObfuscatedUsername& obfuscated_username,
         CompletionCallback completion_callback)
     : ChallengeCredentialsOperation(key_challenge_service),
@@ -184,7 +184,7 @@ CryptoStatus ChallengeCredentialsGenerateNewOperation::GenerateSalt() {
 CryptoStatus
 ChallengeCredentialsGenerateNewOperation::StartGeneratingSaltSignature() {
   CHECK(!salt_.empty());
-  std::optional<structure::ChallengeSignatureAlgorithm>
+  std::optional<SerializedChallengeSignatureAlgorithm>
       chosen_salt_signature_algorithm =
           ChooseSaltSignatureAlgorithm(public_key_info_);
   if (!chosen_salt_signature_algorithm) {
@@ -262,7 +262,7 @@ void ChallengeCredentialsGenerateNewOperation::ProceedIfComputationsDone() {
     return;
 
   auto signature_challenge_info =
-      std::make_unique<structure::SignatureChallengeInfo>(
+      std::make_unique<SerializedSignatureChallengeInfo>(
           ConstructKeysetSignatureChallengeInfo());
 
   auto passkey = std::make_unique<brillo::SecureBlob>(
@@ -273,9 +273,9 @@ void ChallengeCredentialsGenerateNewOperation::ProceedIfComputationsDone() {
   // |this| can be already destroyed at this point.
 }
 
-structure::SignatureChallengeInfo ChallengeCredentialsGenerateNewOperation::
+SerializedSignatureChallengeInfo ChallengeCredentialsGenerateNewOperation::
     ConstructKeysetSignatureChallengeInfo() const {
-  structure::SignatureChallengeInfo keyset_signature_challenge_info;
+  SerializedSignatureChallengeInfo keyset_signature_challenge_info;
   keyset_signature_challenge_info.public_key_spki_der =
       public_key_info_.public_key_spki_der;
   keyset_signature_challenge_info.sealed_secret = tpm_sealed_secret_data_;

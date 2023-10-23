@@ -212,7 +212,7 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateTpm12) {
                       .block_size = kBlockSize,
                       .parallel_factor = kParallelFactor,
                   },
-              .keyset_challenge_info = structure::SignatureChallengeInfo{
+              .keyset_challenge_info = SerializedSignatureChallengeInfo{
                   .public_key_spki_der = BlobFromString("public_key_spki_der"),
                   .sealed_secret =
                       hwsec::Tpm12CertifiedMigratableKeyData{
@@ -252,8 +252,9 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateTpm12) {
                               },
                       },
                   .salt = BlobFromString("salt"),
-                  .salt_signature_algorithm = structure::
-                      ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
+                  .salt_signature_algorithm =
+                      SerializedChallengeSignatureAlgorithm::
+                          kRsassaPkcs1V15Sha256,
               }}};
   std::optional<SecureBlob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
@@ -275,7 +276,7 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateTpm2) {
                   .block_size = kBlockSize,
                   .parallel_factor = kParallelFactor,
               },
-          .keyset_challenge_info = structure::SignatureChallengeInfo{
+          .keyset_challenge_info = SerializedSignatureChallengeInfo{
               .public_key_spki_der = BlobFromString("public_key_spki_der"),
               .sealed_secret =
                   hwsec::Tpm2PolicySignedData{
@@ -295,7 +296,7 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateTpm2) {
                   },
               .salt = BlobFromString("salt"),
               .salt_signature_algorithm =
-                  structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
+                  SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
           }}};
   std::optional<SecureBlob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
@@ -317,7 +318,7 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateEmpty) {
                   .block_size = kBlockSize,
                   .parallel_factor = kParallelFactor,
               },
-          .keyset_challenge_info = structure::SignatureChallengeInfo{
+          .keyset_challenge_info = SerializedSignatureChallengeInfo{
               .public_key_spki_der = BlobFromString(""),
               .sealed_secret =
                   hwsec::Tpm2PolicySignedData{
@@ -364,7 +365,7 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateNoInfo) {
 TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateDefault) {
   AuthBlockState state = {
       .state = ChallengeCredentialAuthBlockState{
-          .keyset_challenge_info = structure::SignatureChallengeInfo{
+          .keyset_challenge_info = SerializedSignatureChallengeInfo{
               .sealed_secret = hwsec::Tpm2PolicySignedData{},
           }}};
   std::optional<SecureBlob> blob = state.Serialize();
@@ -374,7 +375,7 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateDefault) {
   ASSERT_TRUE(state2.has_value());
   EXPECT_EQ(state, state2);
   state.state = ChallengeCredentialAuthBlockState{
-      .keyset_challenge_info = structure::SignatureChallengeInfo{
+      .keyset_challenge_info = SerializedSignatureChallengeInfo{
           .public_key_spki_der = BlobFromString(""),
           .sealed_secret =
               hwsec::Tpm2PolicySignedData{

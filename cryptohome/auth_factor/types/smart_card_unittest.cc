@@ -59,9 +59,8 @@ TEST_F(SmartCardDriverTest, ConvertToProto) {
       AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
       &key_challenge_service_factory_);
   AuthFactorDriver& driver = sc_driver;
-  AuthFactorMetadata metadata =
-      CreateMetadataWithType<auth_factor::SmartCardMetadata>(
-          {.public_key_spki_der = kPublicKey});
+  AuthFactorMetadata metadata = CreateMetadataWithType<SmartCardMetadata>(
+      {.public_key_spki_der = kPublicKey});
 
   // Test
   std::optional<user_data_auth::AuthFactor> proto =
@@ -205,7 +204,7 @@ TEST_F(SmartCardDriverTest, GetDelayFails) {
   AuthFactorDriver& driver = sc_driver;
 
   AuthFactor factor(AuthFactorType::kSmartCard, kLabel,
-                    CreateMetadataWithType<auth_factor::SmartCardMetadata>(
+                    CreateMetadataWithType<SmartCardMetadata>(
                         {.public_key_spki_der = kPublicKey}),
                     {.state = ChallengeCredentialAuthBlockState()});
 
@@ -223,7 +222,7 @@ TEST_F(SmartCardDriverTest, GetExpirationFails) {
   AuthFactorDriver& driver = sc_driver;
 
   AuthFactor factor(AuthFactorType::kSmartCard, kLabel,
-                    CreateMetadataWithType<auth_factor::SmartCardMetadata>(
+                    CreateMetadataWithType<SmartCardMetadata>(
                         {.public_key_spki_der = kPublicKey}),
                     {.state = ChallengeCredentialAuthBlockState()});
 
@@ -243,7 +242,7 @@ TEST_F(SmartCardDriverTest, CreateCredentialVerifierFailsWithoutDbus) {
   ChallengeCredentialAuthInput cc_input = {
       .public_key_spki_der = kPublicKey,
       .challenge_signature_algorithms =
-          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1},
+          {SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1},
   };
   AuthInput auth_input = {.username = kUser,
                           .challenge_credential_auth_input = cc_input};
@@ -260,7 +259,7 @@ TEST_F(SmartCardDriverTest, CreateCredentialVerifierFailsWithoutHelper) {
   ChallengeCredentialAuthInput cc_input = {
       .public_key_spki_der = kPublicKey,
       .challenge_signature_algorithms =
-          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1},
+          {SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1},
       .dbus_service_name = kCcDbusServiceName};
   AuthInput auth_input = {.username = kUser,
                           .challenge_credential_auth_input = cc_input};
@@ -278,7 +277,7 @@ TEST_F(SmartCardDriverTest, CreateCredentialVerifier) {
   ChallengeCredentialAuthInput cc_input = {
       .public_key_spki_der = kPublicKey,
       .challenge_signature_algorithms =
-          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1},
+          {SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1},
       .dbus_service_name = kCcDbusServiceName};
   AuthInput auth_input = {.username = kUser,
                           .challenge_credential_auth_input = cc_input};
@@ -294,14 +293,14 @@ TEST_F(SmartCardDriverTest, CreateCredentialVerifier) {
   EXPECT_CALL(challenge_credentials_helper_,
               VerifyKey(auth_input.username, _, _, _))
       .WillOnce([this](const Username&,
-                       const structure::ChallengePublicKeyInfo& public_key_info,
+                       const SerializedChallengePublicKeyInfo& public_key_info,
                        std::unique_ptr<KeyChallengeService>,
                        ChallengeCredentialsHelper::VerifyKeyCallback callback) {
         EXPECT_THAT(public_key_info.public_key_spki_der, Eq(kPublicKey));
         EXPECT_THAT(
             public_key_info.signature_algorithm,
             ElementsAre(
-                structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1));
+                SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1));
         std::move(callback).Run(OkStatus<error::CryptohomeCryptoError>());
       });
   TestFuture<CryptohomeStatus> good_result;

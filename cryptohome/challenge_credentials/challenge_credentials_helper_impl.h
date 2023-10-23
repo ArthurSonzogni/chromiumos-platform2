@@ -45,25 +45,25 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
 
   // ChallengeCredentialsHelper:
   void GenerateNew(const Username& account_id,
-                   const structure::ChallengePublicKeyInfo& public_key_info,
+                   const SerializedChallengePublicKeyInfo& public_key_info,
                    const ObfuscatedUsername& obfuscated_username,
                    std::unique_ptr<KeyChallengeService> key_challenge_service,
                    GenerateNewCallback callback) override;
   void Decrypt(const Username& account_id,
-               const structure::ChallengePublicKeyInfo& public_key_info,
-               const structure::SignatureChallengeInfo& keyset_challenge_info,
+               const SerializedChallengePublicKeyInfo& public_key_info,
+               const SerializedSignatureChallengeInfo& keyset_challenge_info,
                std::unique_ptr<KeyChallengeService> key_challenge_service,
                DecryptCallback callback) override;
   void VerifyKey(const Username& account_id,
-                 const structure::ChallengePublicKeyInfo& public_key_info,
+                 const SerializedChallengePublicKeyInfo& public_key_info,
                  std::unique_ptr<KeyChallengeService> key_challenge_service,
                  VerifyKeyCallback callback) override;
 
  private:
   void StartDecryptOperation(
       const Username& account_id,
-      const structure::ChallengePublicKeyInfo& public_key_info,
-      const structure::SignatureChallengeInfo& keyset_challenge_info,
+      const SerializedChallengePublicKeyInfo& public_key_info,
+      const SerializedSignatureChallengeInfo& keyset_challenge_info,
       int attempt_number,
       DecryptCallback callback);
 
@@ -83,8 +83,8 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
   // callback.
   void OnDecryptCompleted(
       const Username& account_id,
-      const structure::ChallengePublicKeyInfo& public_key_info,
-      const structure::SignatureChallengeInfo& keyset_challenge_info,
+      const SerializedChallengePublicKeyInfo& public_key_info,
+      const SerializedSignatureChallengeInfo& keyset_challenge_info,
       int attempt_number,
       DecryptCallback original_callback,
       CryptoStatusOr<GenerateNewOrDecryptResult> result);

@@ -989,7 +989,7 @@ TEST_F(VaultKeysetTest, ChallengeCredentialAuthBlockTypeToVKFlagValuesSet) {
   // ChallengeCredential test.
   VaultKeyset vault_keyset;
   ChallengeCredentialAuthBlockState challenge_credential_state = {
-      .keyset_challenge_info = structure::SignatureChallengeInfo{
+      .keyset_challenge_info = SerializedSignatureChallengeInfo{
           .sealed_secret = hwsec::Tpm2PolicySignedData{},
       }};
   AuthBlockState auth_state = {.state = challenge_credential_state};

@@ -17,23 +17,23 @@
 namespace cryptohome {
 namespace proto {
 
-ChallengeSignatureAlgorithm ToProto(structure::ChallengeSignatureAlgorithm obj);
-structure::ChallengeSignatureAlgorithm FromProto(
+ChallengeSignatureAlgorithm ToProto(SerializedChallengeSignatureAlgorithm obj);
+SerializedChallengeSignatureAlgorithm FromProto(
     ChallengeSignatureAlgorithm obj);
 
-std::optional<structure::ChallengeSignatureAlgorithm> FromProto(
+std::optional<SerializedChallengeSignatureAlgorithm> FromProto(
     user_data_auth::SmartCardSignatureAlgorithm obj);
 
 SignatureSealedData ToProto(const hwsec::SignatureSealedData& obj);
 hwsec::SignatureSealedData FromProto(const SignatureSealedData& obj);
 
 SerializedVaultKeyset_SignatureChallengeInfo ToProto(
-    const structure::SignatureChallengeInfo& obj);
-structure::SignatureChallengeInfo FromProto(
+    const SerializedSignatureChallengeInfo& obj);
+SerializedSignatureChallengeInfo FromProto(
     const SerializedVaultKeyset_SignatureChallengeInfo& obj);
 
-ChallengePublicKeyInfo ToProto(const structure::ChallengePublicKeyInfo& obj);
-structure::ChallengePublicKeyInfo FromProto(const ChallengePublicKeyInfo& obj);
+ChallengePublicKeyInfo ToProto(const SerializedChallengePublicKeyInfo& obj);
+SerializedChallengePublicKeyInfo FromProto(const ChallengePublicKeyInfo& obj);
 
 }  // namespace proto
 }  // namespace cryptohome

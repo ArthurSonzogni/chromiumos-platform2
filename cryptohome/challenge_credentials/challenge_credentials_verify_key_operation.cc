@@ -41,38 +41,38 @@ namespace {
 constexpr int kChallengeByteCount = 20;
 
 // Returns the signature algorithm to be used for the verification.
-std::optional<structure::ChallengeSignatureAlgorithm> ChooseChallengeAlgorithm(
-    const structure::ChallengePublicKeyInfo& public_key_info) {
-  std::optional<structure::ChallengeSignatureAlgorithm>
+std::optional<SerializedChallengeSignatureAlgorithm> ChooseChallengeAlgorithm(
+    const SerializedChallengePublicKeyInfo& public_key_info) {
+  std::optional<SerializedChallengeSignatureAlgorithm>
       currently_chosen_algorithm;
   // Respect the input's algorithm prioritization, with the exception of
   // considering SHA-1 as the least preferred option.
   for (auto algo : public_key_info.signature_algorithm) {
     currently_chosen_algorithm = algo;
     if (*currently_chosen_algorithm !=
-        structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1)
+        SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1)
       break;
   }
   return currently_chosen_algorithm;
 }
 
 int GetOpenSslSignatureAlgorithmNid(
-    structure::ChallengeSignatureAlgorithm algorithm) {
+    SerializedChallengeSignatureAlgorithm algorithm) {
   switch (algorithm) {
-    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1:
+    case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1:
       return NID_sha1;
-    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256:
+    case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256:
       return NID_sha256;
-    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384:
+    case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384:
       return NID_sha384;
-    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512:
+    case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512:
       return NID_sha512;
   }
   return 0;
 }
 
 bool IsValidSignature(const Blob& public_key_spki_der,
-                      structure::ChallengeSignatureAlgorithm algorithm,
+                      SerializedChallengeSignatureAlgorithm algorithm,
                       const Blob& input,
                       const Blob& signature) {
   const int openssl_algorithm_nid = GetOpenSslSignatureAlgorithmNid(algorithm);
@@ -126,7 +126,7 @@ ChallengeCredentialsVerifyKeyOperation::ChallengeCredentialsVerifyKeyOperation(
     KeyChallengeService* key_challenge_service,
     const hwsec::CryptohomeFrontend* hwsec,
     const Username& account_id,
-    const structure::ChallengePublicKeyInfo& public_key_info,
+    const SerializedChallengePublicKeyInfo& public_key_info,
     CompletionCallback completion_callback)
     : ChallengeCredentialsOperation(key_challenge_service),
       hwsec_(hwsec),
@@ -151,7 +151,7 @@ void ChallengeCredentialsVerifyKeyOperation::Start() {
                  CryptoError::CE_OTHER_CRYPTO));
     return;
   }
-  const std::optional<structure::ChallengeSignatureAlgorithm>
+  const std::optional<SerializedChallengeSignatureAlgorithm>
       chosen_challenge_algorithm = ChooseChallengeAlgorithm(public_key_info_);
   if (!chosen_challenge_algorithm) {
     LOG(ERROR) << "Failed to choose verification signature challenge algorithm";
@@ -195,7 +195,7 @@ void ChallengeCredentialsVerifyKeyOperation::Abort(
 
 void ChallengeCredentialsVerifyKeyOperation::OnChallengeResponse(
     const Blob& public_key_spki_der,
-    structure::ChallengeSignatureAlgorithm challenge_algorithm,
+    SerializedChallengeSignatureAlgorithm challenge_algorithm,
     const Blob& challenge,
     CryptoStatusOr<std::unique_ptr<Blob>> challenge_response_status) {
   DCHECK(thread_checker_.CalledOnValidThread());

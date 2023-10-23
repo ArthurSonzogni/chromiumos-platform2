@@ -108,8 +108,7 @@ TEST_F(FingerprintDriverTest, ConvertToProto) {
       &platform_, &crypto_, &uss_storage_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
-  AuthFactorMetadata metadata =
-      CreateMetadataWithType<auth_factor::FingerprintMetadata>();
+  AuthFactorMetadata metadata = CreateMetadataWithType<FingerprintMetadata>();
 
   // Test
   std::optional<user_data_auth::AuthFactor> proto =
@@ -299,7 +298,7 @@ TEST_F(FingerprintDriverTest, GetDelayFailsWithoutLeLabel) {
   AuthFactorDriver& driver = fp_driver;
 
   AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
-                    CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
+                    CreateMetadataWithType<FingerprintMetadata>(),
                     {.state = FingerprintAuthBlockState()});
 
   auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
@@ -315,7 +314,7 @@ TEST_F(FingerprintDriverTest, GetDelayInfinite) {
   AuthFactorDriver& driver = fp_driver;
 
   AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
-                    CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
+                    CreateMetadataWithType<FingerprintMetadata>(),
                     {.state = FingerprintAuthBlockState()});
   CreateUssWithRateLimiterId();
   EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
@@ -333,7 +332,7 @@ TEST_F(FingerprintDriverTest, GetDelayFinite) {
   AuthFactorDriver& driver = fp_driver;
 
   AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
-                    CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
+                    CreateMetadataWithType<FingerprintMetadata>(),
                     {.state = FingerprintAuthBlockState()});
   CreateUssWithRateLimiterId();
   EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
@@ -351,7 +350,7 @@ TEST_F(FingerprintDriverTest, GetDelayZero) {
   AuthFactorDriver& driver = fp_driver;
 
   AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
-                    CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
+                    CreateMetadataWithType<FingerprintMetadata>(),
                     {.state = FingerprintAuthBlockState()});
   CreateUssWithRateLimiterId();
   EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
@@ -369,7 +368,7 @@ TEST_F(FingerprintDriverTest, IsExpiredFailsWithoutLeLabel) {
   AuthFactorDriver& driver = fp_driver;
 
   AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
-                    CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
+                    CreateMetadataWithType<FingerprintMetadata>(),
                     {.state = FingerprintAuthBlockState()});
 
   auto is_expired = driver.IsExpired(kObfuscatedUser, factor);
@@ -385,7 +384,7 @@ TEST_F(FingerprintDriverTest, IsNotExpired) {
   AuthFactorDriver& driver = fp_driver;
 
   AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
-                    CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
+                    CreateMetadataWithType<FingerprintMetadata>(),
                     {.state = FingerprintAuthBlockState()});
   CreateUssWithRateLimiterId();
   EXPECT_CALL(hwsec_pw_manager_, GetExpirationInSeconds(kLeLabel))
@@ -403,7 +402,7 @@ TEST_F(FingerprintDriverTest, IsExpired) {
   AuthFactorDriver& driver = fp_driver;
 
   AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
-                    CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
+                    CreateMetadataWithType<FingerprintMetadata>(),
                     {.state = FingerprintAuthBlockState()});
   CreateUssWithRateLimiterId();
   EXPECT_CALL(hwsec_pw_manager_, GetExpirationInSeconds(kLeLabel))

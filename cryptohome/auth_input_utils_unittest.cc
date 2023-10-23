@@ -81,8 +81,7 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputSmartCard) {
 
   brillo::Blob public_key_spki_der = brillo::BlobFromString(kPublicKeySPKIDer);
   AuthFactorMetadata auth_factor_metadata{
-      .metadata = auth_factor::SmartCardMetadata{.public_key_spki_der =
-                                                     public_key_spki_der},
+      .metadata = SmartCardMetadata{.public_key_spki_der = public_key_spki_der},
   };
   std::optional<AuthInput> auth_input =
       CreateAuthInput(&platform_, proto, kUserName, kObfuscatedUsername,

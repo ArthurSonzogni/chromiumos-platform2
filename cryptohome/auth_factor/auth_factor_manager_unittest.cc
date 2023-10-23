@@ -68,11 +68,11 @@ AuthBlockState CreatePasswordAuthBlockState(const std::string& suffix = "") {
 AuthFactor CreatePasswordAuthFactor() {
   AuthFactorMetadata metadata = {
       .common =
-          auth_factor::CommonMetadata{
+          CommonMetadata{
               .chromeos_version_last_updated = kChromeosVersion,
               .chrome_version_last_updated = kChromeVersion,
           },
-      .metadata = auth_factor::PasswordMetadata()};
+      .metadata = PasswordMetadata()};
   return AuthFactor(AuthFactorType::kPassword, kSomeIdpLabel, metadata,
                     CreatePasswordAuthBlockState());
 }
@@ -113,7 +113,7 @@ TEST_F(AuthFactorManagerTest, Save) {
             kChromeosVersion);
   EXPECT_EQ(loaded_auth_factor->metadata().common.chrome_version_last_updated,
             kChromeVersion);
-  EXPECT_TRUE(absl::holds_alternative<auth_factor::PasswordMetadata>(
+  EXPECT_TRUE(absl::holds_alternative<PasswordMetadata>(
       loaded_auth_factor->metadata().metadata));
   EXPECT_EQ(auth_factor.auth_block_state(),
             loaded_auth_factor->auth_block_state());
@@ -693,10 +693,10 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithOnlyUss) {
   auto uss = EnableUssExperiment();
   InstallVaultKeysets({});
   InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "primary",
-                              {.metadata = auth_factor::PasswordMetadata()},
+                              {.metadata = PasswordMetadata()},
                               {.state = TpmBoundToPcrAuthBlockState()}));
   InstallUssFactor(AuthFactor(AuthFactorType::kPin, "secondary",
-                              {.metadata = auth_factor::PinMetadata()},
+                              {.metadata = PinMetadata()},
                               {.state = PinWeaverAuthBlockState()}));
   auto af_map = manager_.LoadAllAuthFactors(
       kObfuscatedUsername, {"primary", "secondary"}, converter_);
@@ -715,10 +715,10 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithMixUsesUssAndVk) {
   InstallVaultKeysets({{"tertiary", &CreatePasswordVaultKeyset},
                        {"quaternary", &CreateBackupVaultKeyset}});
   InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "primary",
-                              {.metadata = auth_factor::PasswordMetadata()},
+                              {.metadata = PasswordMetadata()},
                               {.state = TpmBoundToPcrAuthBlockState()}));
   InstallUssFactor(AuthFactor(AuthFactorType::kPin, "secondary",
-                              {.metadata = auth_factor::PinMetadata()},
+                              {.metadata = PinMetadata()},
                               {.state = PinWeaverAuthBlockState()}));
 
   auto af_map = manager_.LoadAllAuthFactors(
@@ -740,7 +740,7 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithMixUsesUssAndMigratedVk) {
   InstallVaultKeysets({{"secondary", &CreatePasswordVaultKeyset},
                        {"primary", &CreateMigratedVaultKeyset}});
   InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "primary",
-                              {.metadata = auth_factor::PasswordMetadata()},
+                              {.metadata = PasswordMetadata()},
                               {.state = TpmBoundToPcrAuthBlockState()}));
 
   auto af_map =
@@ -758,13 +758,13 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithOnlyUssAndBrokenFactors) {
   auto uss = EnableUssExperiment();
   InstallVaultKeysets({});
   InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "primary",
-                              {.metadata = auth_factor::PasswordMetadata()},
+                              {.metadata = PasswordMetadata()},
                               {.state = TpmBoundToPcrAuthBlockState()}));
   InstallUssFactor(AuthFactor(AuthFactorType::kPin, "secondary",
-                              {.metadata = auth_factor::PinMetadata()},
+                              {.metadata = PinMetadata()},
                               {.state = PinWeaverAuthBlockState()}));
   InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "broken",
-                              {.metadata = auth_factor::PasswordMetadata()},
+                              {.metadata = PasswordMetadata()},
                               {.state = TpmBoundToPcrAuthBlockState()}));
 
   auto af_map = manager_.LoadAllAuthFactors(

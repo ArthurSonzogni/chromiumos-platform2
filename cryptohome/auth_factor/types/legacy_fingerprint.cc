@@ -90,8 +90,7 @@ LegacyFingerprintAuthFactorDriver::GetAuthFactorLabelArity() const {
 
 std::optional<user_data_auth::AuthFactor>
 LegacyFingerprintAuthFactorDriver::TypedConvertToProto(
-    const auth_factor::CommonMetadata& common,
-    const std::monostate& typed_metadata) const {
+    const CommonMetadata& common, const std::monostate& typed_metadata) const {
   user_data_auth::AuthFactor proto;
   proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
   return proto;

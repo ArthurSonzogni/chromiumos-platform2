@@ -33,7 +33,7 @@ std::pair<std::unique_ptr<CredentialVerifier>, CredentialVerifier*>
 MakeTestVerifier(std::string label) {
   auto owned_ptr = std::make_unique<MockCredentialVerifier>(
       AuthFactorType::kPassword, std::move(label),
-      AuthFactorMetadata{.metadata = auth_factor::PasswordMetadata()});
+      AuthFactorMetadata{.metadata = PasswordMetadata()});
   auto* unowned_ptr = owned_ptr.get();
   return {std::move(owned_ptr), unowned_ptr};
 }

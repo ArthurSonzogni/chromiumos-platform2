@@ -17,17 +17,17 @@
 namespace cryptohome {
 
 struct AuthFactorMetadata {
-  auth_factor::CommonMetadata common;
+  CommonMetadata common;
 
   // Use `std::monostate` as the first alternative, in order to make the
   // default constructor create an empty metadata.
   std::variant<std::monostate,
-               auth_factor::PasswordMetadata,
-               auth_factor::PinMetadata,
-               auth_factor::CryptohomeRecoveryMetadata,
-               auth_factor::KioskMetadata,
-               auth_factor::SmartCardMetadata,
-               auth_factor::FingerprintMetadata>
+               PasswordMetadata,
+               PinMetadata,
+               CryptohomeRecoveryMetadata,
+               KioskMetadata,
+               SmartCardMetadata,
+               FingerprintMetadata>
       metadata;
 };
 

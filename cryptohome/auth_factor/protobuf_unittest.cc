@@ -180,9 +180,8 @@ TEST(AuthFactorPropertiesFromProtoTest, AuthFactorMetaDataCheck) {
   EXPECT_THAT(auth_factor_metadata.common.chrome_version_last_updated,
               Eq(kChromeVersion));
   EXPECT_THAT(auth_factor_metadata.common.lockout_policy,
-              Eq(auth_factor::LockoutPolicy::NO_LOCKOUT));
-  EXPECT_THAT(auth_factor_metadata.metadata,
-              VariantWith<auth_factor::PasswordMetadata>(_));
+              Eq(SerializedLockoutPolicy::NO_LOCKOUT));
+  EXPECT_THAT(auth_factor_metadata.metadata, VariantWith<PasswordMetadata>(_));
   EXPECT_THAT(auth_factor_type, Eq(AuthFactorType::kPassword));
   EXPECT_THAT(auth_factor_label, Eq(kLabel));
 }
@@ -215,9 +214,8 @@ TEST(AuthFactorPropertiesFromProtoTest, AuthFactorMetaDataCheckPin) {
   EXPECT_THAT(auth_factor_metadata.common.chrome_version_last_updated,
               Eq(kChromeVersion));
   EXPECT_THAT(auth_factor_metadata.common.lockout_policy,
-              Eq(auth_factor::LockoutPolicy::ATTEMPT_LIMITED));
-  EXPECT_THAT(auth_factor_metadata.metadata,
-              VariantWith<auth_factor::PinMetadata>(_));
+              Eq(SerializedLockoutPolicy::ATTEMPT_LIMITED));
+  EXPECT_THAT(auth_factor_metadata.metadata, VariantWith<PinMetadata>(_));
   EXPECT_THAT(auth_factor_type, Eq(AuthFactorType::kPin));
   EXPECT_THAT(auth_factor_label, Eq(kLabel));
 }
@@ -250,9 +248,8 @@ TEST(AuthFactorPropertiesFromProtoTest, AuthFactorMetaDataCheckPinTimeLimit) {
   EXPECT_THAT(auth_factor_metadata.common.chrome_version_last_updated,
               Eq(kChromeVersion));
   EXPECT_THAT(auth_factor_metadata.common.lockout_policy,
-              Eq(auth_factor::LockoutPolicy::TIME_LIMITED));
-  EXPECT_THAT(auth_factor_metadata.metadata,
-              VariantWith<auth_factor::PinMetadata>(_));
+              Eq(SerializedLockoutPolicy::TIME_LIMITED));
+  EXPECT_THAT(auth_factor_metadata.metadata, VariantWith<PinMetadata>(_));
   EXPECT_THAT(auth_factor_type, Eq(AuthFactorType::kPin));
   EXPECT_THAT(auth_factor_label, Eq(kLabel));
 }
@@ -286,9 +283,8 @@ TEST(AuthFactorPropertiesFromProtoTest,
   EXPECT_THAT(auth_factor_metadata.common.chrome_version_last_updated,
               Eq(kChromeVersion));
   EXPECT_THAT(auth_factor_metadata.common.lockout_policy,
-              Eq(auth_factor::LockoutPolicy::TIME_LIMITED));
-  EXPECT_THAT(auth_factor_metadata.metadata,
-              VariantWith<auth_factor::PinMetadata>(_));
+              Eq(SerializedLockoutPolicy::TIME_LIMITED));
+  EXPECT_THAT(auth_factor_metadata.metadata, VariantWith<PinMetadata>(_));
   EXPECT_THAT(auth_factor_type, Eq(AuthFactorType::kPin));
   EXPECT_THAT(auth_factor_label, Eq(kLabel));
 }
@@ -323,9 +319,8 @@ TEST(AuthFactorPropertiesFromProtoTest,
   EXPECT_THAT(auth_factor_metadata.common.chrome_version_last_updated,
               Eq(kChromeVersion));
   EXPECT_THAT(auth_factor_metadata.common.lockout_policy,
-              Eq(auth_factor::LockoutPolicy::TIME_LIMITED));
-  EXPECT_THAT(auth_factor_metadata.metadata,
-              VariantWith<auth_factor::PinMetadata>(_));
+              Eq(SerializedLockoutPolicy::TIME_LIMITED));
+  EXPECT_THAT(auth_factor_metadata.metadata, VariantWith<PinMetadata>(_));
   EXPECT_THAT(auth_factor_type, Eq(AuthFactorType::kPin));
   EXPECT_THAT(auth_factor_label, Eq(kLabel));
 }

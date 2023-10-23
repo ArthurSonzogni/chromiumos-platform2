@@ -32,7 +32,7 @@ class PinAuthFactorDriver final
       public AfDriverWithBlockTypes<AuthBlockType::kPinWeaver>,
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kNoChecks,
                                         AfDriverKioskConfig::kNoKiosk>,
-      public AfDriverWithMetadata<auth_factor::PinMetadata>,
+      public AfDriverWithMetadata<PinMetadata>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
       public AfDriverFullAuthIsRepeatable<true>,
@@ -56,8 +56,8 @@ class PinAuthFactorDriver final
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
-      const auth_factor::CommonMetadata& common,
-      const auth_factor::PinMetadata& typed_metadata) const override;
+      const CommonMetadata& common,
+      const PinMetadata& typed_metadata) const override;
 
   Crypto* crypto_;
 };

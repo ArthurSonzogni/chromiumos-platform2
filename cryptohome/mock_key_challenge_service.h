@@ -83,7 +83,7 @@ class KeyChallengeServiceMockController final {
       const Username& expected_username,
       const brillo::Blob& expected_public_key_spki_der,
       const brillo::Blob& expected_challenge_value,
-      structure::ChallengeSignatureAlgorithm expected_signature_algorithm);
+      SerializedChallengeSignatureAlgorithm expected_signature_algorithm);
 
   // Whether the mocked ChallengeKey() has been called.
   //

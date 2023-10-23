@@ -155,7 +155,7 @@ CryptoStatus ChallengeCredentialsHelperImpl::CheckSrkRocaStatus() {
 
 void ChallengeCredentialsHelperImpl::GenerateNew(
     const Username& account_id,
-    const structure::ChallengePublicKeyInfo& public_key_info,
+    const SerializedChallengePublicKeyInfo& public_key_info,
     const ObfuscatedUsername& obfuscated_username,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
     GenerateNewCallback callback) {
@@ -190,8 +190,8 @@ void ChallengeCredentialsHelperImpl::GenerateNew(
 
 void ChallengeCredentialsHelperImpl::Decrypt(
     const Username& account_id,
-    const structure::ChallengePublicKeyInfo& public_key_info,
-    const structure::SignatureChallengeInfo& keyset_challenge_info,
+    const SerializedChallengePublicKeyInfo& public_key_info,
+    const SerializedSignatureChallengeInfo& keyset_challenge_info,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
     DecryptCallback callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
@@ -221,7 +221,7 @@ void ChallengeCredentialsHelperImpl::Decrypt(
 
 void ChallengeCredentialsHelperImpl::VerifyKey(
     const Username& account_id,
-    const structure::ChallengePublicKeyInfo& public_key_info,
+    const SerializedChallengePublicKeyInfo& public_key_info,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
     VerifyKeyCallback callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
@@ -254,8 +254,8 @@ void ChallengeCredentialsHelperImpl::VerifyKey(
 
 void ChallengeCredentialsHelperImpl::StartDecryptOperation(
     const Username& account_id,
-    const structure::ChallengePublicKeyInfo& public_key_info,
-    const structure::SignatureChallengeInfo& keyset_challenge_info,
+    const SerializedChallengePublicKeyInfo& public_key_info,
+    const SerializedSignatureChallengeInfo& keyset_challenge_info,
     int attempt_number,
     DecryptCallback callback) {
   CHECK(!operation_);
@@ -296,8 +296,8 @@ void ChallengeCredentialsHelperImpl::OnGenerateNewCompleted(
 
 void ChallengeCredentialsHelperImpl::OnDecryptCompleted(
     const Username& account_id,
-    const structure::ChallengePublicKeyInfo& public_key_info,
-    const structure::SignatureChallengeInfo& keyset_challenge_info,
+    const SerializedChallengePublicKeyInfo& public_key_info,
+    const SerializedSignatureChallengeInfo& keyset_challenge_info,
     int attempt_number,
     DecryptCallback original_callback,
     CryptoStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>

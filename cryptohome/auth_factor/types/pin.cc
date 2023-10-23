@@ -33,7 +33,7 @@ using ::cryptohome::error::PossibleAction;
 using ::hwsec_foundation::status::MakeStatus;
 
 user_data_auth::LockoutPolicy LockoutPolicyToAuthFactor(
-    const std::optional<auth_factor::LockoutPolicy>& policy) {
+    const std::optional<SerializedLockoutPolicy>& policy) {
   if (!policy.has_value()) {
     // This assumption can be made because historically all pins have been
     // attempt limited. When modern pins are enabled they will say time limited
@@ -41,14 +41,14 @@ user_data_auth::LockoutPolicy LockoutPolicyToAuthFactor(
     return user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED;
   }
   switch (policy.value()) {
-    case auth_factor::LockoutPolicy::TIME_LIMITED:
+    case SerializedLockoutPolicy::TIME_LIMITED:
       return user_data_auth::LOCKOUT_POLICY_TIME_LIMITED;
     // This assumption can be made because historically all pins have been
     // attempt limited. When modern pins are enabled they will say time limited
     // explicitly.
-    case auth_factor::LockoutPolicy::NO_LOCKOUT:
-    case auth_factor::LockoutPolicy::ATTEMPT_LIMITED:
-    case auth_factor::LockoutPolicy::UNKNOWN:
+    case SerializedLockoutPolicy::NO_LOCKOUT:
+    case SerializedLockoutPolicy::ATTEMPT_LIMITED:
+    case SerializedLockoutPolicy::UNKNOWN:
       return user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED;
   }
 }
@@ -113,8 +113,7 @@ AuthFactorLabelArity PinAuthFactorDriver::GetAuthFactorLabelArity() const {
 
 std::optional<user_data_auth::AuthFactor>
 PinAuthFactorDriver::TypedConvertToProto(
-    const auth_factor::CommonMetadata& common,
-    const auth_factor::PinMetadata& typed_metadata) const {
+    const CommonMetadata& common, const PinMetadata& typed_metadata) const {
   user_data_auth::AuthFactor proto;
   proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
   proto.mutable_common_metadata()->set_lockout_policy(

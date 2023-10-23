@@ -35,7 +35,7 @@ TEST_F(ScryptVerifierTest, AuthFactorLabel) {
 }
 
 TEST_F(ScryptVerifierTest, AuthFactorMetadata) {
-  EXPECT_TRUE(std::holds_alternative<auth_factor::PasswordMetadata>(
+  EXPECT_TRUE(std::holds_alternative<PasswordMetadata>(
       verifier_->auth_factor_metadata().metadata));
 }
 

@@ -17,10 +17,10 @@ namespace cryptohome {
 
 TEST(ChallengeSignatureAlgorithmTest, ToProtoFromProto) {
   for (auto algo : {
-           structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1,
-           structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
-           structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384,
-           structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512,
+           SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1,
+           SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
+           SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384,
+           SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512,
        }) {
     EXPECT_EQ(algo, proto::FromProto(proto::ToProto(algo)));
   }
@@ -130,15 +130,15 @@ TEST(SignatureChallengeInfoTest, ToProtoFromProto) {
               hwsec::Tpm2PolicyDigest{.digest = BlobFromString("digest1")},
           },
   };
-  structure::SignatureChallengeInfo data{
+  SerializedSignatureChallengeInfo data{
       .public_key_spki_der = BlobFromString("public_key_spki_der"),
       .sealed_secret = policy_data,
       .salt = BlobFromString("salt"),
       .salt_signature_algorithm =
-          structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384,
+          SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384,
   };
 
-  structure::SignatureChallengeInfo final_data =
+  SerializedSignatureChallengeInfo final_data =
       proto::FromProto(proto::ToProto(data));
   EXPECT_EQ(final_data.public_key_spki_der, data.public_key_spki_der);
   EXPECT_EQ(final_data.salt, data.salt);
@@ -162,14 +162,14 @@ TEST(SignatureChallengeInfoTest, ToProtoFromProto) {
 }
 
 TEST(ChallengePublicKeyInfoTest, ToProtoFromProto) {
-  structure::ChallengePublicKeyInfo data{
+  SerializedChallengePublicKeyInfo data{
       .public_key_spki_der = BlobFromString("public_key_spki_der"),
       .signature_algorithm = {
-          structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1,
-          structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
+          SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1,
+          SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
       }};
 
-  structure::ChallengePublicKeyInfo final_data =
+  SerializedChallengePublicKeyInfo final_data =
       proto::FromProto(proto::ToProto(data));
   EXPECT_EQ(final_data.public_key_spki_der, data.public_key_spki_der);
   EXPECT_EQ(final_data.signature_algorithm, data.signature_algorithm);

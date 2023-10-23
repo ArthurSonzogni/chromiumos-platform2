@@ -40,35 +40,35 @@ namespace cryptohome {
 namespace {
 
 HwsecAlgorithm ConvertToHwsecAlgorithm(
-    structure::ChallengeSignatureAlgorithm algorithm) {
+    SerializedChallengeSignatureAlgorithm algorithm) {
   switch (algorithm) {
-    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1:
+    case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1:
       return HwsecAlgorithm::kRsassaPkcs1V15Sha1;
-    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256:
+    case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256:
       return HwsecAlgorithm::kRsassaPkcs1V15Sha256;
-    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384:
+    case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384:
       return HwsecAlgorithm::kRsassaPkcs1V15Sha384;
-    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512:
+    case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512:
       return HwsecAlgorithm::kRsassaPkcs1V15Sha512;
   }
   NOTREACHED() << "Unknown algorithm, fallback to SHA1.";
   return HwsecAlgorithm::kRsassaPkcs1V15Sha1;
 }
 
-structure::ChallengeSignatureAlgorithm ConvertFromHwsecAlgorithm(
+SerializedChallengeSignatureAlgorithm ConvertFromHwsecAlgorithm(
     HwsecAlgorithm algorithm) {
   switch (algorithm) {
     case HwsecAlgorithm::kRsassaPkcs1V15Sha1:
-      return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
+      return SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
     case HwsecAlgorithm::kRsassaPkcs1V15Sha256:
-      return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256;
+      return SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256;
     case HwsecAlgorithm::kRsassaPkcs1V15Sha384:
-      return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384;
+      return SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384;
     case HwsecAlgorithm::kRsassaPkcs1V15Sha512:
-      return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512;
+      return SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512;
   }
   NOTREACHED() << "Unknown algorithm, fallback to SHA1.";
-  return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
+  return SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
 }
 
 }  // namespace
@@ -77,8 +77,8 @@ ChallengeCredentialsDecryptOperation::ChallengeCredentialsDecryptOperation(
     KeyChallengeService* key_challenge_service,
     const hwsec::CryptohomeFrontend* hwsec,
     const Username& account_id,
-    const structure::ChallengePublicKeyInfo& public_key_info,
-    const structure::SignatureChallengeInfo& keyset_challenge_info,
+    const SerializedChallengePublicKeyInfo& public_key_info,
+    const SerializedSignatureChallengeInfo& keyset_challenge_info,
     CompletionCallback completion_callback)
     : ChallengeCredentialsOperation(key_challenge_service),
       account_id_(account_id),

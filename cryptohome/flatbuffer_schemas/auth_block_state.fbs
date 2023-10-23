@@ -77,7 +77,7 @@ table FingerprintAuthBlockState (secure) {
 
 table ChallengeCredentialAuthBlockState (secure) {
   scrypt_state:ScryptAuthBlockState (id: 0);
-  keyset_challenge_info:cryptohome.structure._serialized_.SignatureChallengeInfo (id: 1, optional);
+  keyset_challenge_info:SerializedSignatureChallengeInfo (id: 1, optional);
 }
 
 table DoubleWrappedCompatAuthBlockState (secure) {

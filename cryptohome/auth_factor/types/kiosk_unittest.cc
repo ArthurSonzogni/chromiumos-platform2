@@ -34,8 +34,7 @@ TEST_F(KioskDriverTest, KioskConvertToProto) {
   // Setup
   KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;
-  AuthFactorMetadata metadata =
-      CreateMetadataWithType<auth_factor::KioskMetadata>();
+  AuthFactorMetadata metadata = CreateMetadataWithType<KioskMetadata>();
 
   // Test
   std::optional<user_data_auth::AuthFactor> proto =
@@ -140,7 +139,7 @@ TEST_F(KioskDriverTest, GetDelayFails) {
   AuthFactorDriver& driver = kiosk_driver;
 
   AuthFactor factor(AuthFactorType::kKiosk, kLabel,
-                    CreateMetadataWithType<auth_factor::KioskMetadata>(),
+                    CreateMetadataWithType<KioskMetadata>(),
                     {.state = TpmEccAuthBlockState()});
 
   auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
@@ -154,7 +153,7 @@ TEST_F(KioskDriverTest, GetExpirationFails) {
   AuthFactorDriver& driver = kiosk_driver;
 
   AuthFactor factor(AuthFactorType::kKiosk, kLabel,
-                    CreateMetadataWithType<auth_factor::KioskMetadata>(),
+                    CreateMetadataWithType<KioskMetadata>(),
                     {.state = TpmEccAuthBlockState()});
 
   auto expired = driver.IsExpired(kObfuscatedUser, factor);

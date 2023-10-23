@@ -100,7 +100,7 @@ class ChallengeCredentialsOperation {
       const Username& account_id,
       const brillo::Blob& public_key_spki_der,
       const brillo::Blob& data_to_sign,
-      structure::ChallengeSignatureAlgorithm signature_algorithm,
+      SerializedChallengeSignatureAlgorithm signature_algorithm,
       KeySignatureChallengeCallback response_callback);
 
   base::ThreadChecker thread_checker_;

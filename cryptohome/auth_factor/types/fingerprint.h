@@ -37,7 +37,7 @@ class FingerprintAuthFactorDriver final
       public AfDriverWithBlockTypes<AuthBlockType::kFingerprint>,
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kUsingUss,
                                         AfDriverKioskConfig::kNoKiosk>,
-      public AfDriverWithMetadata<auth_factor::FingerprintMetadata>,
+      public AfDriverWithMetadata<FingerprintMetadata>,
       public AfDriverFullAuthIsRepeatable<false>,
       public AfDriverResetCapability<
           AuthFactorDriver::ResetCapability::kResetWrongAttemptsAndExpiration>,
@@ -76,8 +76,8 @@ class FingerprintAuthFactorDriver final
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
-      const auth_factor::CommonMetadata& common,
-      const auth_factor::FingerprintMetadata& typed_metadata) const override;
+      const CommonMetadata& common,
+      const FingerprintMetadata& typed_metadata) const override;
 
   Crypto* crypto_;
   UssStorage* uss_storage_;

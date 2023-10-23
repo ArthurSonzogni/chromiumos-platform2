@@ -30,7 +30,7 @@ class CryptohomeRecoveryAuthFactorDriver final
       public AfDriverWithBlockTypes<AuthBlockType::kCryptohomeRecovery>,
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kUsingUss,
                                         AfDriverKioskConfig::kNoKiosk>,
-      public AfDriverWithMetadata<auth_factor::CryptohomeRecoveryMetadata>,
+      public AfDriverWithMetadata<CryptohomeRecoveryMetadata>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
       public AfDriverFullAuthIsRepeatable<false>,
@@ -52,9 +52,8 @@ class CryptohomeRecoveryAuthFactorDriver final
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
-      const auth_factor::CommonMetadata& common,
-      const auth_factor::CryptohomeRecoveryMetadata& typed_metadata)
-      const override;
+      const CommonMetadata& common,
+      const CryptohomeRecoveryMetadata& typed_metadata) const override;
 
   Crypto* crypto_;
 };

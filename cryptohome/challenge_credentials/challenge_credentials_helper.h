@@ -41,15 +41,14 @@ class ChallengeCredentialsHelper {
   // nullptr.
   class GenerateNewOrDecryptResult {
    public:
-    GenerateNewOrDecryptResult(
-        std::unique_ptr<structure::SignatureChallengeInfo>
-            signature_challenge_info,
-        std::unique_ptr<brillo::SecureBlob> passkey)
+    GenerateNewOrDecryptResult(std::unique_ptr<SerializedSignatureChallengeInfo>
+                                   signature_challenge_info,
+                               std::unique_ptr<brillo::SecureBlob> passkey)
         : info_(std::move(signature_challenge_info)),
           passkey_(std::move(passkey)) {}
 
     // Getters
-    std::unique_ptr<structure::SignatureChallengeInfo> info() {
+    std::unique_ptr<SerializedSignatureChallengeInfo> info() {
       return std::move(info_);
     }
     std::unique_ptr<brillo::SecureBlob> passkey() {
@@ -57,13 +56,11 @@ class ChallengeCredentialsHelper {
     }
 
     // Const getters
-    const structure::SignatureChallengeInfo* info() const {
-      return info_.get();
-    }
+    const SerializedSignatureChallengeInfo* info() const { return info_.get(); }
     const brillo::SecureBlob* passkey() const { return passkey_.get(); }
 
    private:
-    std::unique_ptr<structure::SignatureChallengeInfo> info_;
+    std::unique_ptr<SerializedSignatureChallengeInfo> info_;
     std::unique_ptr<brillo::SecureBlob> passkey_;
   };
 
@@ -118,7 +115,7 @@ class ChallengeCredentialsHelper {
   // The result is reported via |callback|.
   virtual void GenerateNew(
       const Username& account_id,
-      const structure::ChallengePublicKeyInfo& public_key_info,
+      const SerializedChallengePublicKeyInfo& public_key_info,
       const ObfuscatedUsername& obfuscated_username,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
       GenerateNewCallback callback) = 0;
@@ -135,8 +132,8 @@ class ChallengeCredentialsHelper {
   // The result is reported via |callback|.
   virtual void Decrypt(
       const Username& account_id,
-      const structure::ChallengePublicKeyInfo& public_key_info,
-      const structure::SignatureChallengeInfo& keyset_challenge_info,
+      const SerializedChallengePublicKeyInfo& public_key_info,
+      const SerializedSignatureChallengeInfo& keyset_challenge_info,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
       DecryptCallback callback) = 0;
 
@@ -148,7 +145,7 @@ class ChallengeCredentialsHelper {
   // The result is reported via |callback|.
   virtual void VerifyKey(
       const Username& account_id,
-      const structure::ChallengePublicKeyInfo& public_key_info,
+      const SerializedChallengePublicKeyInfo& public_key_info,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
       VerifyKeyCallback callback) = 0;
 };

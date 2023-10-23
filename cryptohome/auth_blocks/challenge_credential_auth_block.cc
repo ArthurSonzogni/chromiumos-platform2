@@ -142,7 +142,7 @@ void ChallengeCredentialAuthBlock::Create(const AuthInput& auth_input,
     return;
   }
 
-  structure::ChallengePublicKeyInfo public_key_info{
+  SerializedChallengePublicKeyInfo public_key_info{
       .public_key_spki_der = auth_input.challenge_credential_auth_input.value()
                                  .public_key_spki_der,
       .signature_algorithm = auth_input.challenge_credential_auth_input.value()
@@ -176,7 +176,7 @@ void ChallengeCredentialAuthBlock::CreateContinue(
 
   ChallengeCredentialsHelper::GenerateNewOrDecryptResult result_val =
       std::move(result).value();
-  std::unique_ptr<structure::SignatureChallengeInfo> signature_challenge_info =
+  std::unique_ptr<SerializedSignatureChallengeInfo> signature_challenge_info =
       result_val.info();
   std::unique_ptr<brillo::SecureBlob> passkey = result_val.passkey();
   CHECK(passkey);
@@ -194,7 +194,7 @@ void ChallengeCredentialAuthBlock::CreateContinue(
 
 void ChallengeCredentialAuthBlock::CreateContinueAfterScrypt(
     CreateCallback callback,
-    std::unique_ptr<structure::SignatureChallengeInfo> signature_challenge_info,
+    std::unique_ptr<SerializedSignatureChallengeInfo> signature_challenge_info,
     CryptohomeStatus error,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_block_state) {
@@ -287,7 +287,7 @@ void ChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
     return;
   }
 
-  const structure::SignatureChallengeInfo& keyset_challenge_info =
+  const SerializedSignatureChallengeInfo& keyset_challenge_info =
       cc_state->keyset_challenge_info.value();
   if (!keyset_challenge_info.salt_signature_algorithm.has_value()) {
     LOG(ERROR)
@@ -302,7 +302,7 @@ void ChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
     return;
   }
 
-  structure::ChallengePublicKeyInfo public_key_info{
+  SerializedChallengePublicKeyInfo public_key_info{
       .public_key_spki_der = keyset_challenge_info.public_key_spki_der,
       .signature_algorithm = auth_input.challenge_credential_auth_input.value()
                                  .challenge_signature_algorithms,

@@ -53,36 +53,36 @@ namespace {
 using HwsecAlgorithm = hwsec::CryptohomeFrontend::SignatureSealingAlgorithm;
 
 HwsecAlgorithm ConvertAlgorithm(
-    structure::ChallengeSignatureAlgorithm algorithm) {
+    SerializedChallengeSignatureAlgorithm algorithm) {
   switch (algorithm) {
-    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1:
+    case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1:
       return HwsecAlgorithm::kRsassaPkcs1V15Sha1;
-    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256:
+    case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256:
       return HwsecAlgorithm::kRsassaPkcs1V15Sha256;
-    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384:
+    case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384:
       return HwsecAlgorithm::kRsassaPkcs1V15Sha384;
-    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512:
+    case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512:
       return HwsecAlgorithm::kRsassaPkcs1V15Sha512;
   }
   NOTREACHED();
   return static_cast<HwsecAlgorithm>(algorithm);
 }
 
-structure::ChallengePublicKeyInfo MakeChallengePublicKeyInfo(
+SerializedChallengePublicKeyInfo MakeChallengePublicKeyInfo(
     const Blob& set_public_key_spki_der,
-    const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms) {
-  structure::ChallengePublicKeyInfo public_key_info;
+    const std::vector<SerializedChallengeSignatureAlgorithm>& key_algorithms) {
+  SerializedChallengePublicKeyInfo public_key_info;
   public_key_info.public_key_spki_der = set_public_key_spki_der;
   for (auto key_algorithm : key_algorithms)
     public_key_info.signature_algorithm.push_back(key_algorithm);
   return public_key_info;
 }
 
-structure::SignatureChallengeInfo MakeFakeKeysetChallengeInfo(
+SerializedSignatureChallengeInfo MakeFakeKeysetChallengeInfo(
     const Blob& public_key_spki_der,
     const Blob& salt,
-    structure::ChallengeSignatureAlgorithm salt_challenge_algorithm) {
-  structure::SignatureChallengeInfo keyset_challenge_info;
+    SerializedChallengeSignatureAlgorithm salt_challenge_algorithm) {
+  SerializedSignatureChallengeInfo keyset_challenge_info;
   keyset_challenge_info.public_key_spki_der = public_key_spki_der;
   keyset_challenge_info.sealed_secret =
       MakeFakeSignatureSealedData(public_key_spki_der);
@@ -107,11 +107,11 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
   // Starts the asynchronous GenerateNew() operation.  The result, once the
   // operation completes, will be stored in |generate_new_result|.
   void CallGenerateNew(
-      const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
+      const std::vector<SerializedChallengeSignatureAlgorithm>& key_algorithms,
       std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>*
           generate_new_result) {
     CHECK(challenge_service_);
-    const structure::ChallengePublicKeyInfo public_key_info =
+    const SerializedChallengePublicKeyInfo public_key_info =
         MakeChallengePublicKeyInfo(kPublicKeySpkiDer, key_algorithms);
     challenge_credentials_helper_.GenerateNew(
         kUserEmail, public_key_info, kObfuscatedUsername,
@@ -122,15 +122,15 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
   // Starts the asynchronous Decrypt() operation.  The result, once the
   // operation completes, will be stored in |decrypt_result|.
   void CallDecrypt(
-      const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
-      structure::ChallengeSignatureAlgorithm salt_challenge_algorithm,
+      const std::vector<SerializedChallengeSignatureAlgorithm>& key_algorithms,
+      SerializedChallengeSignatureAlgorithm salt_challenge_algorithm,
       const Blob& salt,
       std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>*
           decrypt_result) {
     CHECK(challenge_service_);
-    const structure::ChallengePublicKeyInfo public_key_info =
+    const SerializedChallengePublicKeyInfo public_key_info =
         MakeChallengePublicKeyInfo(kPublicKeySpkiDer, key_algorithms);
-    const structure::SignatureChallengeInfo keyset_challenge_info =
+    const SerializedSignatureChallengeInfo keyset_challenge_info =
         MakeFakeKeysetChallengeInfo(kPublicKeySpkiDer, salt,
                                     salt_challenge_algorithm);
     challenge_credentials_helper_.Decrypt(
@@ -145,8 +145,8 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
   void StartSurplusOperation() {
     // Use different parameters here, to avoid clashing with mocks set up for
     // the normal operation.
-    constexpr structure::ChallengeSignatureAlgorithm kLocalAlgorithm =
-        structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256;
+    constexpr SerializedChallengeSignatureAlgorithm kLocalAlgorithm =
+        SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256;
     const Blob kLocalPublicKeySpkiDer =
         CombineBlobs({kPublicKeySpkiDer, Blob(1)});
 
@@ -160,10 +160,10 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
         std::make_unique<MockKeyChallengeService>();
     EXPECT_CALL(*mock_key_challenge_service, ChallengeKeyMovable(_, _, _))
         .Times(AnyNumber());
-    const structure::ChallengePublicKeyInfo public_key_info =
+    const SerializedChallengePublicKeyInfo public_key_info =
         MakeChallengePublicKeyInfo(kLocalPublicKeySpkiDer,
                                    {kLocalAlgorithm} /* key_algorithms */);
-    const structure::SignatureChallengeInfo keyset_challenge_info =
+    const SerializedSignatureChallengeInfo keyset_challenge_info =
         MakeFakeKeysetChallengeInfo(
             kLocalPublicKeySpkiDer, kSalt,
             kLocalAlgorithm /* salt_challenge_algorithm */);
@@ -191,7 +191,7 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
   // Returns a helper object that aids mocking of the sealed secret creation
   // functionality.
   std::unique_ptr<SignatureSealedCreationMocker> MakeSealedCreationMocker(
-      const std::vector<structure::ChallengeSignatureAlgorithm>&
+      const std::vector<SerializedChallengeSignatureAlgorithm>&
           key_algorithms) {
     EXPECT_CALL(hwsec_, GetRandomSecureBlob(_))
         .WillOnce(ReturnValue(kTpmProtectedSecret));
@@ -211,8 +211,8 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
   // Returns a helper object that aids mocking of the secret unsealing
   // functionality.
   std::unique_ptr<SignatureSealedUnsealingMocker> MakeUnsealingMocker(
-      const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
-      structure::ChallengeSignatureAlgorithm unsealing_algorithm) {
+      const std::vector<SerializedChallengeSignatureAlgorithm>& key_algorithms,
+      SerializedChallengeSignatureAlgorithm unsealing_algorithm) {
     std::vector<HwsecAlgorithm> hwsec_key_algorithms;
     for (auto algo : key_algorithms) {
       hwsec_key_algorithms.push_back(ConvertAlgorithm(algo));
@@ -230,7 +230,7 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
   // Sets up an expectation that the salt challenge request will be issued via
   // |challenge_service_|.
   void ExpectSaltChallenge(
-      structure::ChallengeSignatureAlgorithm salt_challenge_algorithm) {
+      SerializedChallengeSignatureAlgorithm salt_challenge_algorithm) {
     salt_challenge_mock_controller_.ExpectSignatureChallenge(
         kUserEmail, kPublicKeySpkiDer, kSalt, salt_challenge_algorithm);
   }
@@ -256,7 +256,7 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
   // Sets up an expectation that the secret unsealing challenge request will be
   // issued via |challenge_service_|.
   void ExpectUnsealingChallenge(
-      structure::ChallengeSignatureAlgorithm unsealing_algorithm) {
+      SerializedChallengeSignatureAlgorithm unsealing_algorithm) {
     unsealing_challenge_mock_controller_.ExpectSignatureChallenge(
         kUserEmail, kPublicKeySpkiDer, kUnsealingChallengeValue,
         unsealing_algorithm);
@@ -409,8 +409,8 @@ class ChallengeCredentialsHelperImplBasicTest
     : public ChallengeCredentialsHelperImplTestBase {
  protected:
   // The single algorithm to be used in this test.
-  static constexpr structure::ChallengeSignatureAlgorithm kAlgorithm =
-      structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256;
+  static constexpr SerializedChallengeSignatureAlgorithm kAlgorithm =
+      SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256;
 
   ChallengeCredentialsHelperImplBasicTest() {}
 };
@@ -849,9 +849,9 @@ namespace {
 
 // Test parameters for ChallengeCredentialsHelperImplAlgorithmsTest.
 struct AlgorithmsTestParam {
-  std::vector<structure::ChallengeSignatureAlgorithm> key_algorithms;
-  structure::ChallengeSignatureAlgorithm salt_challenge_algorithm;
-  structure::ChallengeSignatureAlgorithm unsealing_algorithm;
+  std::vector<SerializedChallengeSignatureAlgorithm> key_algorithms;
+  SerializedChallengeSignatureAlgorithm salt_challenge_algorithm;
+  SerializedChallengeSignatureAlgorithm unsealing_algorithm;
 };
 
 // Tests various combinations of multiple algorithms.
@@ -894,19 +894,19 @@ INSTANTIATE_TEST_SUITE_P(
     ChallengeCredentialsHelperImplAlgorithmsTest,
     Values(
         AlgorithmsTestParam{
-            {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1,
-             structure::ChallengeSignatureAlgorithm::
+            {SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1,
+             SerializedChallengeSignatureAlgorithm::
                  kRsassaPkcs1V15Sha256} /* key_algorithms */,
-            structure::ChallengeSignatureAlgorithm::
+            SerializedChallengeSignatureAlgorithm::
                 kRsassaPkcs1V15Sha256 /* salt_challenge_algorithm */,
-            structure::ChallengeSignatureAlgorithm::
+            SerializedChallengeSignatureAlgorithm::
                 kRsassaPkcs1V15Sha256 /* unsealing_algorithm */},
         AlgorithmsTestParam{
-            {structure::ChallengeSignatureAlgorithm::
+            {SerializedChallengeSignatureAlgorithm::
                  kRsassaPkcs1V15Sha1} /* key_algorithms */,
-            structure::ChallengeSignatureAlgorithm::
+            SerializedChallengeSignatureAlgorithm::
                 kRsassaPkcs1V15Sha1 /* salt_challenge_algorithm */,
-            structure::ChallengeSignatureAlgorithm::
+            SerializedChallengeSignatureAlgorithm::
                 kRsassaPkcs1V15Sha1 /* unsealing_algorithm */}));
 
 // Test prioritization of algorithms according to their order in the input.
@@ -915,20 +915,20 @@ INSTANTIATE_TEST_SUITE_P(
     ChallengeCredentialsHelperImplAlgorithmsTest,
     Values(
         AlgorithmsTestParam{
-            {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
-             structure::ChallengeSignatureAlgorithm::
+            {SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
+             SerializedChallengeSignatureAlgorithm::
                  kRsassaPkcs1V15Sha512} /* key_algorithms */,
-            structure::ChallengeSignatureAlgorithm::
+            SerializedChallengeSignatureAlgorithm::
                 kRsassaPkcs1V15Sha256 /* salt_challenge_algorithm */,
-            structure::ChallengeSignatureAlgorithm::
+            SerializedChallengeSignatureAlgorithm::
                 kRsassaPkcs1V15Sha256 /* unsealing_algorithm */},
         AlgorithmsTestParam{
-            {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512,
-             structure::ChallengeSignatureAlgorithm::
+            {SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512,
+             SerializedChallengeSignatureAlgorithm::
                  kRsassaPkcs1V15Sha256} /* key_algorithms */,
-            structure::ChallengeSignatureAlgorithm::
+            SerializedChallengeSignatureAlgorithm::
                 kRsassaPkcs1V15Sha512 /* salt_challenge_algorithm */,
-            structure::ChallengeSignatureAlgorithm::
+            SerializedChallengeSignatureAlgorithm::
                 kRsassaPkcs1V15Sha512 /* unsealing_algorithm */}));
 
 }  // namespace cryptohome

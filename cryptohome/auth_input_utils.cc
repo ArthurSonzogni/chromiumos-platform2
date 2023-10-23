@@ -66,7 +66,7 @@ AuthInput FromSmartCardAuthInput(
     const std::optional<brillo::Blob>& public_key_spki_der) {
   ChallengeCredentialAuthInput chall_cred_auth_input;
   for (const auto& content : proto.signature_algorithms()) {
-    std::optional<structure::ChallengeSignatureAlgorithm> signature_algorithm =
+    std::optional<SerializedChallengeSignatureAlgorithm> signature_algorithm =
         proto::FromProto(ChallengeSignatureAlgorithm(content));
     if (signature_algorithm.has_value()) {
       chall_cred_auth_input.challenge_signature_algorithms.push_back(
@@ -151,8 +151,7 @@ std::optional<AuthInput> CreateAuthInput(
       // Check for auth_factor_metadata and add the public_key_spki_der to
       // AuthInput from the auth_factor_metadata
       const auto* smart_card_metadata =
-          std::get_if<auth_factor::SmartCardMetadata>(
-              &auth_factor_metadata.metadata);
+          std::get_if<SmartCardMetadata>(&auth_factor_metadata.metadata);
       std::optional<brillo::Blob> public_key_spki_der;
       if (smart_card_metadata) {
         public_key_spki_der = smart_card_metadata->public_key_spki_der;

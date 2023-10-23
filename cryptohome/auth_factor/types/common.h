@@ -153,7 +153,7 @@ class AfDriverWithMetadata : public virtual AuthFactorDriver {
   // implement. Will be called by ConvertToProto if if the given metadata
   // contains the correct type-specific metadata.
   virtual std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
-      const auth_factor::CommonMetadata& common,
+      const CommonMetadata& common,
       const MetadataType& typed_metadata) const = 0;
 };
 

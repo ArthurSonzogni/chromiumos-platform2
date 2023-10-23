@@ -57,7 +57,7 @@ struct ChallengeCredentialAuthInput {
   // Supported signature algorithms, in the order of preference
   // (starting from the most preferred). Absence of this field
   // denotes that the key cannot be used for signing.
-  std::vector<structure::ChallengeSignatureAlgorithm>
+  std::vector<SerializedChallengeSignatureAlgorithm>
       challenge_signature_algorithms;
   // Dbus service name used when generating a KeyChallengeService,
   // also used to create the ChallengeCredential AuthBlock.
