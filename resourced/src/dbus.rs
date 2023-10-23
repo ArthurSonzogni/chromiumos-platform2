@@ -75,7 +75,7 @@ struct DbusContext {
     reset_fullscreen_video_timer_id: Arc<AtomicUsize>,
     reset_vm_boot_mode_timer_id: Arc<AtomicUsize>,
 
-    scheduler_context: Arc<Mutex<SchedQosContext>>,
+    scheduler_context: Option<Arc<Mutex<SchedQosContext>>>,
 }
 
 fn is_unspported_error(e: &anyhow::Error) -> bool {
@@ -482,7 +482,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             (),
             move |mut sender_context, cr, (process_id, process_state): (i32, u8)| {
                 let context: Option<&mut DbusContext> = cr.data_mut(sender_context.path());
-                let sched_ctx = context.map(|ctx| ctx.scheduler_context.clone());
+                let sched_ctx = context.and_then(|ctx| ctx.scheduler_context.clone());
                 let conn_clone = conn_clone3.clone();
                 async move {
                     let state = match schedqos::ProcessSchedulerState::try_from(process_state) {
@@ -539,7 +539,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             (),
             move |mut sender_context, cr, (process_id, thread_id, thread_state): (i32, i32, u8)| {
                 let context: Option<&mut DbusContext> = cr.data_mut(sender_context.path());
-                let sched_ctx = context.map(|ctx| ctx.scheduler_context.clone());
+                let sched_ctx = context.and_then(|ctx| ctx.scheduler_context.clone());
                 let conn_clone = conn_clone4.clone();
                 async move {
                     let state = match schedqos::ThreadSchedulerState::try_from(thread_state) {
@@ -823,12 +823,19 @@ fn report_notification_count(notification_count: i32) -> Result<()> {
 
 pub async fn service_main() -> Result<()> {
     let root = Path::new("/");
+    let scheduler_context = match SchedQosContext::new() {
+        Ok(ctx) => Some(Arc::new(Mutex::new(ctx))),
+        Err(e) => {
+            error!("failed to initialize schedqos context: {e}");
+            None
+        }
+    };
     let context = DbusContext {
         power_preferences_manager: Arc::new(power::new_directory_power_preferences_manager(root)),
         reset_game_mode_timer_id: Arc::new(AtomicUsize::new(0)),
         reset_fullscreen_video_timer_id: Arc::new(AtomicUsize::new(0)),
         reset_vm_boot_mode_timer_id: Arc::new(AtomicUsize::new(0)),
-        scheduler_context: Arc::new(Mutex::new(SchedQosContext::new())),
+        scheduler_context,
     };
 
     let (io_resource, conn) = connection::new_system_sync()?;

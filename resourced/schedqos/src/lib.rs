@@ -6,12 +6,12 @@
 // process. QoS definitions map to performance characteristics.
 
 use std::fs::write;
+use std::io;
 
 use anyhow::anyhow;
 use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
-use once_cell::sync::Lazy;
 use procfs::process::Process;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -104,25 +104,59 @@ impl sched_attr {
     }
 }
 
-// Determine if uclamp is supported on this system.
-static SUPPORTS_UCLAMP: Lazy<bool> = Lazy::new(|| {
-    let mut temp_attr: sched_attr = sched_attr {
-        sched_util_max: 0,
-        ..sched_attr::default()
-    };
-    unsafe {
+/// Check the kernel support setting uclamp via sched_attr.
+///
+/// sched_util_min and sched_util_max were added to sched_attr from Linux kernel
+/// v5.3 and guarded by CONFIG_UCLAMP_TASK flag.
+fn check_uclamp_support() -> io::Result<bool> {
+    let mut attr = sched_attr::default();
+
+    // SAFETY: sched_getattr only modifies fields of attr.
+    let res = unsafe {
         libc::syscall(
             libc::SYS_sched_getattr,
             0, // current thread
-            &mut temp_attr as *mut sched_attr as usize,
+            &mut attr as *mut sched_attr as usize,
             std::mem::size_of::<sched_attr>() as u32,
             0,
         )
     };
 
-    // shed_util_max is only filled in if uclamp is supported.
-    temp_attr.sched_util_max != 0
-});
+    if res < 0 {
+        // sched_getattr must succeeds in most cases.
+        //
+        // * no ESRCH because this is inqury for this thread.
+        // * no E2BIG nor EINVAL because sched_attr struct must be correct.
+        //   Otherwise following sched_setattr fail anyway.
+        //
+        // Some environments (e.g. qemu-user) do not support sched_getattr(2)
+        // and may fail as ENOSYS.
+        return Err(io::Error::last_os_error());
+    }
+
+    attr.sched_flags |= SCHED_FLAG_UTIL_CLAMP_MIN | SCHED_FLAG_UTIL_CLAMP_MAX;
+
+    // SAFETY: sched_setattr does not modify userspace memory.
+    let res = unsafe {
+        libc::syscall(
+            libc::SYS_sched_setattr,
+            0, // current thread
+            &mut attr as *mut sched_attr as usize,
+            0,
+        )
+    };
+
+    if res < 0 {
+        let err = io::Error::last_os_error();
+        if err.raw_os_error() == Some(libc::EOPNOTSUPP) {
+            Ok(false)
+        } else {
+            Err(err)
+        }
+    } else {
+        Ok(true)
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 struct ThreadSettings {
@@ -216,14 +250,14 @@ fn is_same_process(process_id: i32, thread_id: i32) -> Result<bool> {
 }
 
 pub struct SchedQosContext {
-    // TODO: Add config, internal state mapping
+    uclamp_support: bool,
 }
 
 impl SchedQosContext {
-    /// TODO(kawasin): Add more initialization logic
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        Self {}
+    pub fn new() -> io::Result<Self> {
+        Ok(Self {
+            uclamp_support: check_uclamp_support()?,
+        })
     }
 
     pub fn set_process_state(
@@ -258,10 +292,12 @@ impl SchedQosContext {
 
         let thread_settings = &THREAD_SETTINGS[thread_state as usize];
         let mut temp_sched_attr = thread_settings.sched_settings;
-        temp_sched_attr.sched_flags |= if *SUPPORTS_UCLAMP {
-            SCHED_FLAG_UTIL_CLAMP_MIN | SCHED_FLAG_UTIL_CLAMP_MAX
-        } else {
-            0
+
+        // Setting SCHED_FLAG_UTIL_CLAMP_MIN or SCHED_FLAG_UTIL_CLAMP_MAX should
+        // be avoided if kernel does not support uclamp. Otherwise
+        // sched_setattr(2) fails as EOPNOTSUPP.
+        if self.uclamp_support {
+            temp_sched_attr.sched_flags |= SCHED_FLAG_UTIL_CLAMP_MIN | SCHED_FLAG_UTIL_CLAMP_MAX;
         };
 
         let res = unsafe {
@@ -275,7 +311,7 @@ impl SchedQosContext {
         if res < 0 {
             bail!(
                 "Failed to set scheduler attributes, error={}",
-                std::io::Error::last_os_error()
+                io::Error::last_os_error()
             );
         }
 
