@@ -4,9 +4,10 @@
 
 #include "rmad/state_handler/update_device_info_state_handler.h"
 
+#include <algorithm>
 #include <cstdint>
-#include <limits>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -25,7 +26,6 @@
 #include "rmad/utils/mock_write_protect_utils.h"
 
 using testing::_;
-using testing::Assign;
 using testing::DoAll;
 using testing::Eq;
 using testing::InSequence;
@@ -42,7 +42,6 @@ namespace {
 constexpr char kSerialNumber[] = "TestSerialNumber";
 constexpr char kRegion[] = "TestRegion";
 constexpr uint32_t kSkuId = 1234567890;
-constexpr char kCustomLabelTag[] = "TestCustomLabelTag";
 constexpr char kDramPartNum[] = "TestDramPartNum";
 
 const std::vector<std::string> kRegionList = {"TestRegion", "TestRegion1"};
@@ -72,7 +71,7 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     bool has_serial_number = true;
     bool has_region = true;
     bool has_sku = true;
-    std::string custom_label = std::string(kCustomLabelTag);
+    std::optional<std::string> custom_label = "";
     bool has_dram_part_num = true;
     bool has_region_list = true;
     bool has_sku_list = true;
@@ -123,14 +122,6 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
       ON_CALL(*vpd_utils, GetRegion(_)).WillByDefault(Return(false));
     }
 
-    if (!args.custom_label.empty()) {
-      ON_CALL(*vpd_utils, GetCustomLabelTag(_, _))
-          .WillByDefault(
-              DoAll(SetArgPointee<0>(args.custom_label), Return(true)));
-    } else {
-      ON_CALL(*vpd_utils, GetCustomLabelTag(_, _)).WillByDefault(Return(false));
-    }
-
     if (args.set_serial_number_success) {
       ON_CALL(*vpd_utils, SetSerialNumber(_))
           .WillByDefault(DoAll(SaveArg<0>(&serial_number_set_), Return(true)));
@@ -157,13 +148,6 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
 
     // Mock |CbiUtils|.
     auto cbi_utils = std::make_unique<NiceMock<MockCbiUtils>>();
-    if (args.has_sku) {
-      ON_CALL(*cbi_utils, GetSkuId(_))
-          .WillByDefault(DoAll(SetArgPointee<0>(kSkuId), Return(true)));
-    } else {
-      ON_CALL(*cbi_utils, GetSkuId(_)).WillByDefault(Return(false));
-    }
-
     if (args.set_sku_success) {
       ON_CALL(*cbi_utils, SetSkuId(_))
           .WillByDefault(DoAll(SaveArg<0>(&sku_set_), Return(true)));
@@ -202,6 +186,23 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
                       .has_cbi = args.has_cbi,
                       .use_legacy_custom_label = args.use_legacy_custom_label}),
                   Return(true)));
+
+    if (args.has_sku) {
+      ON_CALL(*cros_config_utils, GetSkuId(_))
+          .WillByDefault(DoAll(SetArgPointee<0>(kSkuId), Return(true)));
+    } else {
+      ON_CALL(*cros_config_utils, GetSkuId(_)).WillByDefault(Return(false));
+    }
+
+    if (args.custom_label.has_value()) {
+      ON_CALL(*cros_config_utils, GetCustomLabelTag(_))
+          .WillByDefault(
+              DoAll(SetArgPointee<0>(args.custom_label.value()), Return(true)));
+    } else {
+      ON_CALL(*cros_config_utils, GetCustomLabelTag(_))
+          .WillByDefault(Return(false));
+    }
+
     if (args.has_sku_list) {
       ON_CALL(*cros_config_utils, GetSkuIdList(_))
           .WillByDefault(DoAll(SetArgPointee<0>(args.sku_list), Return(true)));
@@ -340,6 +341,37 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_Mlb_Success) {
   json_store_->SetValue(kMlbRepair, true);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  // Verify read-only data.
+  auto state = handler->GetState();
+  EXPECT_TRUE(std::equal(state.update_device_info().region_list().begin(),
+                         state.update_device_info().region_list().end(),
+                         kRegionList.begin(), kRegionList.end()));
+  EXPECT_TRUE(std::equal(state.update_device_info().sku_list().begin(),
+                         state.update_device_info().sku_list().end(),
+                         kSkuList.begin(), kSkuList.end()));
+  EXPECT_TRUE(std::equal(state.update_device_info().whitelabel_list().begin(),
+                         state.update_device_info().whitelabel_list().end(),
+                         kCustomLabelTagList.begin(),
+                         kCustomLabelTagList.end()));
+  EXPECT_TRUE(std::equal(state.update_device_info().custom_label_list().begin(),
+                         state.update_device_info().custom_label_list().end(),
+                         kCustomLabelTagList.begin(),
+                         kCustomLabelTagList.end()));
+  EXPECT_EQ(state.update_device_info().original_serial_number(), kSerialNumber);
+  EXPECT_EQ(state.update_device_info().original_region_index(),
+            kOriginalRegionSelection);
+  EXPECT_EQ(state.update_device_info().original_sku_index(),
+            kOriginalSkuSelection);
+  EXPECT_EQ(state.update_device_info().original_whitelabel_index(),
+            kOriginalCustomLabelSelection);
+  EXPECT_EQ(state.update_device_info().original_dram_part_number(),
+            kDramPartNum);
+  EXPECT_EQ(state.update_device_info().original_custom_label_index(),
+            kOriginalCustomLabelSelection);
+  EXPECT_EQ(state.update_device_info().original_feature_level(),
+            UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_0);
+  EXPECT_TRUE(state.update_device_info().mlb_repair());
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NoMlb_Success) {
@@ -347,6 +379,37 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NoMlb_Success) {
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  // Verify read-only data.
+  auto state = handler->GetState();
+  EXPECT_TRUE(std::equal(state.update_device_info().region_list().begin(),
+                         state.update_device_info().region_list().end(),
+                         kRegionList.begin(), kRegionList.end()));
+  EXPECT_TRUE(std::equal(state.update_device_info().sku_list().begin(),
+                         state.update_device_info().sku_list().end(),
+                         kSkuList.begin(), kSkuList.end()));
+  EXPECT_TRUE(std::equal(state.update_device_info().whitelabel_list().begin(),
+                         state.update_device_info().whitelabel_list().end(),
+                         kCustomLabelTagList.begin(),
+                         kCustomLabelTagList.end()));
+  EXPECT_TRUE(std::equal(state.update_device_info().custom_label_list().begin(),
+                         state.update_device_info().custom_label_list().end(),
+                         kCustomLabelTagList.begin(),
+                         kCustomLabelTagList.end()));
+  EXPECT_EQ(state.update_device_info().original_serial_number(), kSerialNumber);
+  EXPECT_EQ(state.update_device_info().original_region_index(),
+            kOriginalRegionSelection);
+  EXPECT_EQ(state.update_device_info().original_sku_index(),
+            kOriginalSkuSelection);
+  EXPECT_EQ(state.update_device_info().original_whitelabel_index(),
+            kOriginalCustomLabelSelection);
+  EXPECT_EQ(state.update_device_info().original_dram_part_number(),
+            kDramPartNum);
+  EXPECT_EQ(state.update_device_info().original_custom_label_index(),
+            kOriginalCustomLabelSelection);
+  EXPECT_EQ(state.update_device_info().original_feature_level(),
+            UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_0);
+  EXPECT_FALSE(state.update_device_info().mlb_repair());
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_VarMissing_Failed) {
@@ -387,7 +450,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NoSku_Success) {
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        InitializeState_NoCustomLabel_Success) {
-  auto handler = CreateStateHandler({.custom_label = ""});
+  auto handler = CreateStateHandler({.custom_label = std::nullopt});
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
