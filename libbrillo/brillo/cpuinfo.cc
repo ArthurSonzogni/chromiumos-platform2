@@ -23,22 +23,29 @@ CpuInfo::~CpuInfo() = default;
 CpuInfo::CpuInfo(CpuInfo&& other) = default;
 CpuInfo& CpuInfo::operator=(CpuInfo&& other) = default;
 
+CpuInfo::CpuInfo(RecordsVec proc_records)
+    : proc_records_(std::move(proc_records)) {}
+
 std::optional<CpuInfo> CpuInfo::Create(const base::FilePath& path) {
   std::string cpuinfo;
-  if (!ReadFileToString(path, &cpuinfo))
+  if (!ReadFileToString(path, &cpuinfo)) {
     return std::nullopt;
+  }
   return CreateFromString(cpuinfo);
 }
 
-bool CpuInfo::LoadFromString(std::string_view data) {
-  std::map<std::string, std::string, std::less<>> p;
-  proc_records_.clear();
+std::optional<CpuInfo::RecordsVec> CpuInfo::ParseFromString(
+    std::string_view data) {
+  std::optional<RecordsVec> recs = RecordsVec();
+  Record p;
+
   for (std::string_view line : base::SplitStringPiece(
            data, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL)) {
     // Blank lines separate processor records.
     if (line.size() == 0) {
-      if (!p.empty())
-        proc_records_.push_back(std::move(p));  // no empty records
+      if (!p.empty()) {
+        recs->push_back(std::move(p));  // no empty records
+      }
       p.clear();
       continue;
     }
@@ -46,22 +53,25 @@ bool CpuInfo::LoadFromString(std::string_view data) {
     std::vector<std::string_view> kv = base::SplitStringPiece(
         line, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
     // must be a "key : value" pair and have a nonempty key
-    if (kv.size() != 2 || kv[0].size() == 0)
-      return false;
+    if (kv.size() != 2 || kv[0].size() == 0) {
+      return std::nullopt;
+    }
     p.emplace(std::make_pair(kv[0], kv[1]));
   }
 
-  if (!p.empty())
-    proc_records_.push_back(std::move(p));
+  if (!p.empty()) {
+    recs->push_back(std::move(p));
+  }
 
-  return true;
+  return recs;
 }
 
 std::optional<CpuInfo> CpuInfo::CreateFromString(std::string_view data) {
-  std::optional<CpuInfo> c = CpuInfo();
-  if (!c->LoadFromString(data))
+  std::optional<RecordsVec> recs = ParseFromString(data);
+  if (!recs.has_value()) {
     return std::nullopt;
-  return c;
+  }
+  return CpuInfo(std::move(recs).value());
 }
 
 size_t CpuInfo::NumProcRecords() const {
@@ -70,12 +80,14 @@ size_t CpuInfo::NumProcRecords() const {
 
 std::optional<std::string_view> CpuInfo::LookUp(size_t proc_index,
                                                 std::string_view key) const {
-  if (proc_index >= proc_records_.size())
+  if (proc_index >= proc_records_.size()) {
     return std::nullopt;
+  }
   auto& rec = proc_records_[proc_index];
   auto it = rec.find(key);
-  if (it == rec.end())
+  if (it == rec.end()) {
     return std::nullopt;
+  }
   return std::optional<std::string_view>(it->second);
 }
 

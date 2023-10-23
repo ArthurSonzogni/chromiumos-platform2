@@ -61,8 +61,11 @@ class BRILLO_EXPORT CpuInfo final {
 
  private:
   CpuInfo();
-  bool LoadFromString(std::string_view data);
-  std::vector<std::map<std::string, std::string, std::less<>>> proc_records_;
+  using Record = std::map<std::string, std::string, std::less<>>;
+  using RecordsVec = std::vector<Record>;
+  explicit CpuInfo(RecordsVec proc_records);
+  static std::optional<RecordsVec> ParseFromString(std::string_view data);
+  RecordsVec proc_records_;
 };
 
 }  // namespace brillo
