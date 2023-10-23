@@ -20,6 +20,7 @@
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                   value="dlcservice::InstallRequest"/>
     </arg>
+    <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
   </method>
   <method name="Uninstall">
     <tp:docstring>

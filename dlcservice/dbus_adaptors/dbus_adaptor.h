@@ -26,8 +26,9 @@ class DBusService : public org::chromium::DlcServiceInterfaceInterface {
   ~DBusService() = default;
 
   // org::chromium::DlServiceInterfaceInterface overrides:
-  bool Install(brillo::ErrorPtr* err,
-               const InstallRequest& install_request) override;
+  void Install(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+      const dlcservice::InstallRequest& in_install_request) override;
   bool Uninstall(brillo::ErrorPtr* err, const std::string& id_in) override;
   bool Purge(brillo::ErrorPtr* err, const std::string& id_in) override;
   bool Deploy(brillo::ErrorPtr* err, const std::string& id_in) override;

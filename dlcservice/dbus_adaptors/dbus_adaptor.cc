@@ -28,9 +28,15 @@ namespace dlcservice {
 DBusService::DBusService(DlcServiceInterface* dlc_service)
     : dlc_service_(dlc_service) {}
 
-bool DBusService::Install(brillo::ErrorPtr* err,
-                          const InstallRequest& install_request) {
-  return dlc_service_->Install(install_request, err);
+void DBusService::Install(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+    const dlcservice::InstallRequest& in_install_request) {
+  brillo::ErrorPtr err;
+  if (!dlc_service_->Install(in_install_request, &err)) {
+    response->ReplyWithError(err.get());
+  } else {
+    response->Return();
+  }
 }
 
 bool DBusService::Uninstall(brillo::ErrorPtr* err, const string& id_in) {
