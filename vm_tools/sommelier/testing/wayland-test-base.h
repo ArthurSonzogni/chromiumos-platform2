@@ -125,6 +125,8 @@ class FakeWaylandClient {
 
   void Flush() { wl_display_flush(client_display); }
 
+  void DispatchEvents() { wl_display_dispatch(client_display); }
+
   // Represents the client from the server's (Sommelier's) end.
   struct wl_client* client = nullptr;
 

@@ -86,6 +86,11 @@ sommelier_defines = [
                       "DARK_FRAME_COLOR=${dark_frame_color}",
                     ] + gaming_defines + tracing_defines
 
+testing_defines = []
+if (use.test) {
+  testing_defines += [ "WITH_TESTS" ]
+}
+
 static_library("libgaming") {
   sources = [
     "libevdev/libevdev-shim.cc",
@@ -139,7 +144,7 @@ static_library("libsommelier") {
     "xcb/xcb-shim.cc",
   ]
   include_dirs = []
-  defines = sommelier_defines
+  defines = sommelier_defines + testing_defines
   pkg_deps = [
                "gbm",
                "libdrm",
@@ -171,6 +176,7 @@ executable("sommelier") {
 if (use.test) {
   executable("sommelier_test") {
     sources = [
+      "compositor/sommelier-linux-dmabuf-test.cc",
       "sommelier-gaming-test.cc",
       "sommelier-output-test.cc",
       "sommelier-test-main.cc",
@@ -185,7 +191,7 @@ if (use.test) {
     ]
     include_dirs = [ "testing" ]
 
-    defines = sommelier_defines
+    defines = sommelier_defines + testing_defines
 
     pkg_deps = [
                  "libevdev",

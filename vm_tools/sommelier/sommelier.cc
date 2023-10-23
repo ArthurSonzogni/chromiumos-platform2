@@ -2,12 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "compositor/sommelier-linux-dmabuf.h"  // NOLINT(build/include_directory)
 #include "sommelier.h"              // NOLINT(build/include_directory)
 #include "sommelier-scope-timer.h"  // NOLINT(build/include_directory)
 #include "sommelier-tracing.h"      // NOLINT(build/include_directory)
 #include "sommelier-transform.h"    // NOLINT(build/include_directory)
 #include "sommelier-window.h"       // NOLINT(build/include_directory)
 #include "sommelier-xshape.h"       // NOLINT(build/include_directory)
+
 #ifdef GAMEPAD_SUPPORT
 #include "libevdev/libevdev-shim.h"
 #endif
@@ -639,9 +641,11 @@ void sl_registry_handler(void* data,
     assert(linux_dmabuf);
     linux_dmabuf->ctx = ctx;
     linux_dmabuf->id = id;
-    linux_dmabuf->version =
-        MIN(ZWP_LINUX_BUFFER_PARAMS_V1_CREATE_IMMED_SINCE_VERSION, version);
+    linux_dmabuf->version = MIN(SL_LINUX_DMABUF_MAX_VERSION, version);
+
     linux_dmabuf->host_drm_global = sl_drm_global_create(ctx, linux_dmabuf);
+    linux_dmabuf->host_linux_dmabuf_global =
+        sl_linux_dmabuf_global_create(ctx, linux_dmabuf);
 
     if (linux_dmabuf->version >= 2) {
       linux_dmabuf->proxy_v2 = static_cast<zwp_linux_dmabuf_v1*>(
@@ -848,6 +852,7 @@ void sl_registry_remover(void* data,
       sl_global_destroy(ctx->linux_dmabuf->host_drm_global);
     if (ctx->linux_dmabuf->proxy_v2)
       zwp_linux_dmabuf_v1_destroy(ctx->linux_dmabuf->proxy_v2);
+    sl_global_destroy(ctx->linux_dmabuf->host_linux_dmabuf_global);
     free(ctx->linux_dmabuf);
     ctx->linux_dmabuf = nullptr;
     return;

@@ -185,6 +185,11 @@ sommelier_defines = [
     '-DDARK_FRAME_COLOR="' + get_option('dark_frame_color') + '"',
 ]
 
+testing_defines = []
+if (get_option('with_tests'))
+    testing_defines += '-DWITH_TESTS'
+endif
+
 libsommelier = static_library('sommelier',
   sources: [
     'compositor/sommelier-compositor.cc',
@@ -237,7 +242,7 @@ libsommelier = static_library('sommelier',
     dependency('xcb-xfixes'),
     dependency('xkbcommon'),
   ] + gamepad_dependencies + tracing_dependencies + quirks_dependencies,
-  cpp_args: cpp_args + sommelier_defines,
+  cpp_args: cpp_args + sommelier_defines + testing_defines,
   include_directories: includes,
 )
 
@@ -257,6 +262,7 @@ if get_option('with_tests')
   sommelier_test = executable('sommelier_test',
     install: true,
     sources: [
+      'compositor/sommelier-linux-dmabuf-test.cc',
       'sommelier-test.cc',
       'sommelier-test-main.cc',
       'sommelier-transform-test.cc',
@@ -274,7 +280,7 @@ if get_option('with_tests')
       dependency('gmock'),
       dependency('pixman-1')
     ] + gamepad_dependencies + tracing_dependencies + quirks_dependencies,
-    cpp_args: cpp_args + sommelier_defines,
+    cpp_args: cpp_args + sommelier_defines + testing_defines,
     include_directories: includes + testing_includes,
   )
 

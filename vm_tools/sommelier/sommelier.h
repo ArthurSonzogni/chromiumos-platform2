@@ -438,6 +438,7 @@ struct sl_linux_dmabuf {
   uint32_t id;
   uint32_t version;
   struct sl_global* host_drm_global;
+  struct sl_global* host_linux_dmabuf_global;
 
   // binding (version 2) is only used for wl_shm copy-on-commit
   struct zwp_linux_dmabuf_v1* proxy_v2;
@@ -570,6 +571,9 @@ struct sl_global* sl_gtk_shell_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_drm_global_create(struct sl_context* ctx,
                                        struct sl_linux_dmabuf* linux_dmabuf);
+
+struct sl_global* sl_linux_dmabuf_global_create(
+    struct sl_context* ctx, struct sl_linux_dmabuf* linux_dmabuf);
 
 struct sl_global* sl_text_input_extension_global_create(struct sl_context* ctx,
                                                         uint32_t exo_version);

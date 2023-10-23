@@ -9,6 +9,8 @@
 
 #include "../sommelier.h"  // NOLINT(build/include_directory)
 
+#define SL_LINUX_DMABUF_MAX_VERSION 4u
+
 struct gbm_device;
 bool sl_linux_dmabuf_fixup_plane0_params(gbm_device* gbm,
                                          int32_t fd,
