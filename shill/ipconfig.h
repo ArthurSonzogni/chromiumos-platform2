@@ -52,11 +52,9 @@ class IPConfig {
 
     // Applies all non-empty properties in |network_config| of |family| to this
     // object. The |address_family| on |this| must be either empty or the same
-    // as |family|". When |force_overwrite| is false, field will be kept
-    // unchanged if the corresponding field in |network_config| is empty.
+    // as |family|".
     void UpdateFromNetworkConfig(
         const NetworkConfig& network_config,
-        bool force_overwrite,
         net_base::IPFamily family = net_base::IPFamily::kIPv4);
 
     void UpdateFromDHCPData(const DHCPv4Config::Data& dhcp_data);

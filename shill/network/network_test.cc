@@ -131,7 +131,7 @@ NetworkConfig CreateIPv4NetworkConfig(
 IPConfig::Properties NetworkConfigToIPProperties(const NetworkConfig& config) {
   IPConfig::Properties props = {};
   props.address_family = net_base::IPFamily::kIPv4;
-  props.UpdateFromNetworkConfig(config, /*force_overwrite=*/true);
+  props.UpdateFromNetworkConfig(config);
   return props;
 }
 
