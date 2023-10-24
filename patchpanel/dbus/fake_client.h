@@ -74,7 +74,7 @@ class BRILLO_EXPORT FakeClient : public Client {
                       const std::string& dst_ip,
                       uint32_t dst_port) override;
 
-  bool SetVpnLockdown(bool enable) override;
+  void SetVpnLockdown(bool enable) override;
 
   base::ScopedFD RedirectDns(Client::DnsRedirectionRequestType type,
                              const std::string& input_ifname,

@@ -108,9 +108,7 @@ bool FakeClient::ModifyPortRule(Client::FirewallRequestOperation op,
   return true;
 }
 
-bool FakeClient::SetVpnLockdown(bool enable) {
-  return true;
-}
+void FakeClient::SetVpnLockdown(bool enable) {}
 
 base::ScopedFD FakeClient::RedirectDns(
     Client::DnsRedirectionRequestType type,

@@ -372,8 +372,9 @@ class BRILLO_EXPORT Client {
   // Start or stop VPN lockdown. When VPN lockdown is enabled and no VPN
   // connection exists, any non-ARC traffic that would be routed to a VPN
   // connection is instead rejected. ARC traffic is ignored because Android
-  // already implements VPN lockdown.
-  virtual bool SetVpnLockdown(bool enable) = 0;
+  // already implements VPN lockdown. This method is async. It will return
+  // directly instead of waiting for the result of the D-Bus request.
+  virtual void SetVpnLockdown(bool enable) = 0;
 
   // Sends a SetDnsRedirectionRuleRequest to modify iptables rules for DNS
   // proxy. This should only be called by 'dns-proxy'. If successful, it returns

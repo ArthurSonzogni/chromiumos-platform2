@@ -709,7 +709,7 @@ class ClientImpl : public Client {
                       const std::string& dst_ip,
                       uint32_t dst_port) override;
 
-  bool SetVpnLockdown(bool enable) override;
+  void SetVpnLockdown(bool enable) override;
 
   base::ScopedFD RedirectDns(Client::DnsRedirectionRequestType type,
                              const std::string& input_ifname,
@@ -1245,26 +1245,24 @@ bool ClientImpl::ModifyPortRule(Client::FirewallRequestOperation op,
   return true;
 }
 
-bool ClientImpl::SetVpnLockdown(bool enable) {
+void ClientImpl::SetVpnLockdown(bool enable) {
   SetVpnLockdownRequest request;
   request.set_enable_vpn_lockdown(enable);
 
-  // TODO(b/284797476): Switch shill to use the async DBus call.
-  SetVpnLockdownResponse response;
-  brillo::ErrorPtr error;
-  const bool result = RunOnDBusThreadSync(base::BindOnce(
-      [](PatchPanelProxyInterface* proxy, const SetVpnLockdownRequest& request,
-         SetVpnLockdownResponse* response, brillo::ErrorPtr* error) {
-        return proxy->SetVpnLockdown(request, response, error);
+  RunOnDBusThreadAsync(base::BindOnce(
+      [](PatchPanelProxyInterface* proxy,
+         const SetVpnLockdownRequest& request) {
+        // This API doesn't return anything.
+        auto success_callback = base::DoNothing();
+        // The current use case do not care about failures. Leaving a log is
+        // enough now.
+        auto error_callback = [](brillo::Error* error) {
+          LOG(ERROR) << "SetVpnLockdown failed: " << error->GetMessage();
+        };
+        proxy->SetVpnLockdownAsync(request, success_callback,
+                                   base::BindOnce(error_callback));
       },
-      proxy_.get(), request, &response, &error));
-  if (!result) {
-    LOG(ERROR) << "SetVpnLockdown(" << enable
-               << ") failed: " << error->GetMessage();
-    return false;
-  }
-
-  return true;
+      proxy_.get(), request));
 }
 
 base::ScopedFD ClientImpl::RedirectDns(

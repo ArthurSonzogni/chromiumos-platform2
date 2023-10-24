@@ -96,7 +96,7 @@ class MockPatchpanelClient : public patchpanel::FakeClient {
   MockPatchpanelClient() = default;
   ~MockPatchpanelClient() = default;
 
-  MOCK_METHOD(bool, SetVpnLockdown, (bool enable), (override));
+  MOCK_METHOD(void, SetVpnLockdown, (bool enable), (override));
 };
 
 class MockTetheringManager : public shill::TetheringManager {
