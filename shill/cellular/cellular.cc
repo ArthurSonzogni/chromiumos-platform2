@@ -1263,6 +1263,10 @@ void Cellular::NotifyCellularConnectionResult(const Error& error,
              << error.message();
 }
 
+bool Cellular::IsSubscriptionErrorSeen() {
+  return service_ && subscription_error_seen_[service_->iccid()];
+}
+
 void Cellular::NotifyDetailedCellularConnectionResult(
     const Error& error,
     ApnList::ApnType apn_type,
@@ -1334,7 +1338,7 @@ void Cellular::NotifyDetailedCellularConnectionResult(
   // subsequent errors report subscription_error_seen=true.
   // This is needed because when connection attempt fail with
   // serviceOptionNotSubscribed error which in most cases indicate issues
-  // related to user data plan, subsequent connection attempts fails with
+  // related to invalid APNs, subsequent connection attempts fails with
   // different error codes, making analysis of metrics difficult.
   if (IsSubscriptionError(cellular_error)) {
     subscription_error_seen_[iccid] = true;

@@ -50,6 +50,7 @@ class Error {
     kTechnologyNotAvailable,
     kWepNotSupported,
     kWrongState,
+    kOperationNotAllowed,
     kNumErrors,
   };
 

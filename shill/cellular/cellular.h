@@ -225,6 +225,10 @@ class Cellular : public Device,
 
   void OnModemStateChanged(ModemState new_state);
 
+  // Returns true if ServiceOptionNotSubscribed error was reported
+  // for this ICCID.
+  bool IsSubscriptionErrorSeen();
+
   // Called to send detailed metrics for the last connection attempt.
   void NotifyDetailedCellularConnectionResult(const Error& error,
                                               ApnList::ApnType apn_type,

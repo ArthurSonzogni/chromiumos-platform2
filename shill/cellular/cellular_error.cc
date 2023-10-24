@@ -7,6 +7,7 @@
 #include <string>
 
 #include <ModemManager/ModemManager.h>
+#include <libmbim-glib/libmbim-glib.h>
 
 // TODO(armansito): Once we refactor the code to handle the ModemManager D-Bus
 // bindings in a dedicated class, this code should move there.
@@ -51,6 +52,9 @@ const char kErrorWrongState[] = MM_CORE_ERROR_DBUS_PREFIX ".WrongState";
 const char kErrorMobileEquipmentUnknown[] =
     MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".Unknown";
 
+const char kErrorOperationNotAllowed[] =
+    MBIM_STATUS_ERROR_DBUS_PREFIX ".OperationNotAllowed";
+
 }  // namespace
 
 // static
@@ -86,6 +90,8 @@ void CellularError::FromMM1ChromeosDBusError(brillo::Error* dbus_error,
     type = Error::kInternalError;
   else if (name == kErrorWrongState)
     type = Error::kWrongState;
+  else if (name == kErrorOperationNotAllowed)
+    type = Error::kOperationNotAllowed;
   else
     type = Error::kOperationFailed;
 

@@ -54,6 +54,7 @@ const Info kInfos[Error::kNumErrors] = {
     {kErrorResultTechnologyNotAvailable, "Technology not available"},
     {kErrorResultWepNotSupported, "WEP not supported"},
     {kErrorResultWrongState, "Wrong state"},
+    {kErrorResultInternalError, "Internal error"},
 };
 
 }  // namespace

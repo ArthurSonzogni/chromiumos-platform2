@@ -1939,7 +1939,15 @@ void CellularCapability3gpp::UpdateLinkSpeed(const KeyValueStore& properties) {
 
 bool CellularCapability3gpp::RetriableConnectError(const Error& error) const {
   return error.type() == Error::kInvalidApn ||
-         error.type() == Error::kInternalError;
+         error.type() == Error::kInternalError ||
+         // This is a workaround on the shill side for b/289540816, where modem
+         // starts returning OperationNotAllowed error after trying to connect
+         // using wrong APNs a few times. The workaround is to continue
+         // the connect attempt using the next APN if we receive
+         // OperationNotAllowed after we have already processed
+         // serviceOptionNotSubscribed error.
+         (error.type() == Error::kOperationNotAllowed &&
+          cellular()->IsSubscriptionErrorSeen());
 }
 
 std::string CellularCapability3gpp::NormalizeMdn(const std::string& mdn) const {

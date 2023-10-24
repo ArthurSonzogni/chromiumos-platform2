@@ -119,12 +119,14 @@ TEST(ErrorTest, GetDBusResult) {
   EXPECT_EQ(kErrorResultWepNotSupported,
             Error::GetDBusResult(Error::kWepNotSupported));
   EXPECT_EQ(kErrorResultWrongState, Error::GetDBusResult(Error::kWrongState));
+  EXPECT_EQ(kErrorResultInternalError,
+            Error::GetDBusResult(Error::kOperationNotAllowed));
 }
 
 TEST(ErrorTest, GetDefaultMessage) {
   // Check the last error code to try to prevent off-by-one bugs when adding or
   // removing error types.
-  ASSERT_EQ(Error::kWrongState, Error::kNumErrors - 1);
+  ASSERT_EQ(Error::kOperationNotAllowed, Error::kNumErrors - 1);
   EXPECT_EQ("Permission denied",
             Error::GetDefaultMessage(Error::kPermissionDenied));
 }
