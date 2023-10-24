@@ -220,7 +220,10 @@ allowxperm cros_cryptohomed device:blk_file ioctl {
 
 # TODO(b/178237710) Label the directories and files with specific contexts.
 allow cros_cryptohomed cros_run_namespaces:dir      search;
-allow cros_cryptohomed labeledfs:filesystem quotaget;
+allow cros_cryptohomed labeledfs:filesystem {
+  quotaget
+  unmount
+};
 
 # TODO(b/178237004) Label the processes with specific contexts.
 allow cros_cryptohomed cros_unconfined_exec:file    x_file_perms;
@@ -261,6 +264,7 @@ is_arc_vm(`
   allow cros_cryptohomed unlabeled:{ dir file } relabelto;
   allow cros_cryptohomed unlabeled:{ dir file } setattr;
   create_dir_file(cros_cryptohomed, unlabeled)
+  allow cros_cryptohomed unlabeled:filesystem unmount;
 
   # cryptohomed needs to remove files and directories when removing a user profile.
   allow cros_cryptohomed { file_type -cros_system_file_type }:dir rmdir;
@@ -305,6 +309,7 @@ is_arc_vm(`
     allow cros_cryptohomed unlabeled:{ dir file } relabelto;
     allow cros_cryptohomed unlabeled:{ dir file } setattr;
     create_dir_file(cros_cryptohomed, unlabeled)
+    allow cros_cryptohomed unlabeled:filesystem unmount;
 
     # cryptohomed needs to remove files and directories when removing a user profile.
     allow cros_cryptohomed { file_type -cros_system_file_type }:dir rmdir;
