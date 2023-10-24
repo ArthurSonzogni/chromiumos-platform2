@@ -10,6 +10,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "brillo/brillo_export.h"
 #include "brillo/compression/compressor_interface.h"
@@ -62,8 +63,8 @@ class BRILLO_EXPORT ZlibCompressor : public CompressorInterface {
   // While Process() can be called multiple times with `flush` = false to do
   // partial processing (eg. if the data is too large to fit into memory), but
   // the last call (and only the last call) needs `flush` = true.
-  std::optional<std::string> Process(const std::string& data_in,
-                                     bool flush) override;
+  std::optional<std::vector<uint8_t>> Process(
+      const std::vector<uint8_t>& data_in, bool flush) override;
 
   // Reset the state of the object, returns false on failure.
   bool Reset() override;
@@ -106,8 +107,8 @@ class BRILLO_EXPORT ZlibDecompressor : public CompressorInterface {
   // While Process() can be called multiple times with `flush` = false to do
   // partial processing (eg. if the data is too large to fit into memory), but
   // the last call (and only the last call) needs `flush` = true.
-  std::optional<std::string> Process(const std::string& data_in,
-                                     bool flush) override;
+  std::optional<std::vector<uint8_t>> Process(
+      const std::vector<uint8_t>& data_in, bool flush) override;
 
   // Reset the state of the object, returns false on failure.
   bool Reset() override;

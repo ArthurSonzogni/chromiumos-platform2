@@ -23,6 +23,7 @@
 #include <base/values.h>
 #include <brillo/compression/compressor_interface.h>
 #include <brillo/compression/zlib_compressor.h>
+#include <brillo/strings/string_utils.h>
 
 #include "dlcservice/metadata/metadata_interface.h"
 
@@ -119,7 +120,8 @@ int Metadata::CompressionSize(const std::string& metadata) {
     return -1;
   }
 
-  auto data_out = compressor_copy->Process(metadata, /*flush=*/true);
+  auto data_out = compressor_copy->Process(
+      brillo::string_utils::GetStringAsBytes(metadata), /*flush=*/true);
   if (!data_out) {
     return -1;
   }
@@ -165,12 +167,15 @@ bool Metadata::FlushCache() {
       }
     }
 
-    auto buffer = compressor_->Process(metadata_entry, /*flush=*/false);
+    auto buffer = compressor_->Process(
+        brillo::string_utils::GetStringAsBytes(metadata_entry),
+        /*flush=*/false);
     if (!buffer) {
       LOG(ERROR) << "Unable to compress metadata for DLC=" << id;
       return false;
     }
-    compressed_metadata_.append(*buffer);
+    compressed_metadata_.append(buffer->begin(),
+                                buffer->begin() + buffer->size());
     if (min_id.empty())
       min_id = id;
   }
@@ -183,9 +188,11 @@ bool Metadata::FlushBuffer(const DlcId& file_id) {
   bool ret = true;
   if (file_id.size()) {
     // Flush all the data to output buffer.
-    auto buffer = compressor_->Process(/*data_in=*/"", /*flush=*/true);
+    auto buffer = compressor_->Process(
+        /*data_in=*/brillo::string_utils::GetStringAsBytes(""), /*flush=*/true);
     if (buffer) {
-      compressed_metadata_.append(*buffer);
+      compressed_metadata_.append(buffer->begin(),
+                                  buffer->begin() + buffer->size());
     } else {
       LOG(ERROR) << "Unable to flush the compressed metadata";
       ret = false;
@@ -243,8 +250,9 @@ bool Metadata::LoadMetadata(const DlcId& id) {
     LOG(ERROR) << "Failed to reset decompressor.";
     return false;
   }
-  auto decompressed_metadata =
-      decompressor_->Process(compressed_metadata_, /*flush=*/true);
+  auto decompressed_metadata = decompressor_->Process(
+      brillo::string_utils::GetStringAsBytes(compressed_metadata_),
+      /*flush=*/true);
   compressed_metadata_.clear();
   if (!decompressed_metadata) {
     return false;
@@ -252,7 +260,11 @@ bool Metadata::LoadMetadata(const DlcId& id) {
 
   // Parse decompressed metadata json.
   auto metadata_val = base::JSONReader::ReadAndReturnValueWithError(
-      std::string("{").append(*decompressed_metadata).append("}"),
+      std::string("{")
+          .append(
+              decompressed_metadata->begin(),
+              decompressed_metadata->begin() + decompressed_metadata->size())
+          .append("}"),
       base::JSON_ALLOW_TRAILING_COMMAS);
   if (!metadata_val.has_value()) {
     LOG(ERROR) << "Could not parse the DLC metadata as JSON. Error: "

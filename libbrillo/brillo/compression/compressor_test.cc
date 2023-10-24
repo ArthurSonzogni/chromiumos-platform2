@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <optional>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -34,66 +35,70 @@ class CompressorTest : public testing::Test {
 };
 
 TEST_F(CompressorTest, CompressDecompressFlush) {
-  std::string data_in(kUncompressedTestDataSize, 'x');
+  std::vector<uint8_t> data_in(kUncompressedTestDataSize, 'x');
 
   auto compressed = compressor_->Process(data_in, /*flush=*/true);
-  EXPECT_TRUE(compressed);
+  ASSERT_TRUE(compressed);
 
-  auto data_out = decompressor_->Process(*compressed, /*flush=*/true);
-  EXPECT_TRUE(data_out);
+  auto data_out = decompressor_->Process(compressed.value(), /*flush=*/true);
+  ASSERT_TRUE(data_out);
 
-  EXPECT_EQ(data_in, *data_out);
+  EXPECT_EQ(data_in, data_out);
 }
 
 TEST_F(CompressorTest, CompressDecompressNoFlush) {
-  std::string data_in(kUncompressedTestDataSize, 'x');
+  std::vector<uint8_t> data_in(kUncompressedTestDataSize, 'x');
 
   auto compressed = compressor_->Process(data_in, /*flush=*/false);
-  EXPECT_TRUE(compressed);
+  ASSERT_TRUE(compressed);
 
-  auto flushed = compressor_->Process("", /*flush=*/true);
-  EXPECT_TRUE(flushed);
-  compressed->append(*flushed);
+  auto flushed = compressor_->Process({}, /*flush=*/true);
+  ASSERT_TRUE(flushed);
+  compressed->insert(compressed->end(), flushed->begin(), flushed->end());
 
-  auto data_out = decompressor_->Process(*compressed, /*flush=*/true);
-  EXPECT_TRUE(data_out);
+  auto data_out = decompressor_->Process(compressed.value(), /*flush=*/true);
+  ASSERT_TRUE(data_out);
 
-  EXPECT_EQ(data_in, *data_out);
+  EXPECT_EQ(data_in, data_out);
 }
 
 TEST_F(CompressorTest, CompressDecompressClone) {
-  std::string data_in(kUncompressedTestDataSize, 'x');
+  std::vector<uint8_t> data_in(kUncompressedTestDataSize, 'x');
 
   auto compressed = compressor_->Process(data_in, /*flush=*/false);
-  EXPECT_TRUE(compressed);
+  ASSERT_TRUE(compressed);
 
   auto clone = compressor_->Clone();
-  std::string clone_data = *compressed;
-  EXPECT_TRUE(clone);
+  ASSERT_TRUE(clone);
 
   // Process another data_in with the clone object and flush.
   auto clone_flushed = clone->Process(data_in, /*flush=*/true);
-  EXPECT_TRUE(clone_flushed);
-  clone_data.append(*clone_flushed);
+  ASSERT_TRUE(clone_flushed);
+  std::vector<uint8_t> clone_data = compressed.value();
+  clone_data.insert(clone_data.end(), clone_flushed->begin(),
+                    clone_flushed->end());
 
   // Also flush the original object.
-  auto flushed = compressor_->Process("", /*flush=*/true);
-  EXPECT_TRUE(flushed);
-  compressed->append(*flushed);
+  auto flushed = compressor_->Process({}, /*flush=*/true);
+  ASSERT_TRUE(flushed);
+  compressed->insert(compressed->end(), flushed->begin(), flushed->end());
 
   // Original data unchanged.
-  auto data_out = decompressor_->Process(*compressed, /*flush=*/true);
-  EXPECT_TRUE(data_out);
-  EXPECT_EQ(data_in, *data_out);
+  auto data_out = decompressor_->Process(compressed.value(), /*flush=*/true);
+  ASSERT_TRUE(data_out);
+  EXPECT_EQ(data_in, data_out);
 
   // Cloned one has processed data_in twice.
   auto clone_data_out = decompressor_->Process(clone_data, /*flush=*/true);
-  EXPECT_TRUE(clone_data_out);
-  EXPECT_EQ(data_in + data_in, *clone_data_out);
+  ASSERT_TRUE(clone_data_out);
+  std::vector<uint8_t> expected_clone_data = data_in;
+  expected_clone_data.insert(expected_clone_data.end(), data_in.begin(),
+                             data_in.end());
+  EXPECT_EQ(expected_clone_data, clone_data_out);
 }
 
 TEST_F(CompressorTest, EmptyFlush) {
-  auto flushed = compressor_->Process("", true);
+  auto flushed = compressor_->Process({}, true);
   EXPECT_TRUE(flushed);
 }
 

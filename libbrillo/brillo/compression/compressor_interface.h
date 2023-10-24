@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "brillo/brillo_export.h"
 
@@ -39,8 +40,8 @@ class BRILLO_EXPORT CompressorInterface {
   // While Process() can be called multiple times with `flush` = false to do
   // partial processing (eg. if the data is too large to fit into memory), but
   // the last call (and only the last call) needs `flush` = true.
-  virtual std::optional<std::string> Process(const std::string& data_in,
-                                             bool flush) = 0;
+  virtual std::optional<std::vector<uint8_t>> Process(
+      const std::vector<uint8_t>& data_in, bool flush) = 0;
 
   // Reset the state of the object.
   virtual bool Reset() = 0;

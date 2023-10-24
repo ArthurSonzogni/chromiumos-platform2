@@ -29,11 +29,12 @@ namespace {
 constexpr size_t kDefaultOutBufferSize = 4096;
 
 // The common processing loop for compression and decompression.
-std::optional<std::string> ProcessImpl(std::function<int(z_streamp, int)> func,
-                                       z_streamp zstream,
-                                       int flush,
-                                       const std::string& data_in) {
-  std::string data_out;
+std::optional<std::vector<uint8_t>> ProcessImpl(
+    std::function<int(z_streamp, int)> func,
+    z_streamp zstream,
+    int flush,
+    const std::vector<uint8_t>& data_in) {
+  std::vector<uint8_t> data_out;
   std::vector<Bytef> out_buffer(kDefaultOutBufferSize);
   zstream->avail_in = data_in.size();
   zstream->next_in = reinterpret_cast<const Bytef*>(data_in.data());
@@ -53,7 +54,8 @@ std::optional<std::string> ProcessImpl(std::function<int(z_streamp, int)> func,
     }
     // Copy the data to output.
     size_t len = out_buffer.size() - zstream->avail_out;
-    data_out.append(out_buffer.begin(), out_buffer.begin() + len);
+    data_out.insert(data_out.end(), out_buffer.begin(),
+                    out_buffer.begin() + len);
   } while (zstream->avail_out == 0);
 
   return data_out;
@@ -94,8 +96,8 @@ std::unique_ptr<CompressorInterface> ZlibCompressor::Clone() {
   return clone;
 }
 
-std::optional<std::string> ZlibCompressor::Process(const std::string& data_in,
-                                                   bool flush) {
+std::optional<std::vector<uint8_t>> ZlibCompressor::Process(
+    const std::vector<uint8_t>& data_in, bool flush) {
   auto data_out = ProcessImpl(deflate, &zstream_,
                               flush ? Z_FULL_FLUSH : Z_NO_FLUSH, data_in);
   if (!data_out && !Reset()) {
@@ -143,8 +145,8 @@ std::unique_ptr<CompressorInterface> ZlibDecompressor::Clone() {
   return clone;
 }
 
-std::optional<std::string> ZlibDecompressor::Process(const std::string& data_in,
-                                                     bool flush) {
+std::optional<std::vector<uint8_t>> ZlibDecompressor::Process(
+    const std::vector<uint8_t>& data_in, bool flush) {
   auto data_out = ProcessImpl(inflate, &zstream_, Z_NO_FLUSH, data_in);
   if (!data_out && !Reset()) {
     LOG(ERROR) << "Failed to reset decompressor after decompression failure.";

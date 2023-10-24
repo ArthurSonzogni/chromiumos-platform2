@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 
@@ -24,9 +25,9 @@ class MockCompressor : public CompressorInterface {
 
   MOCK_METHOD(bool, Initialize, (), (override));
   MOCK_METHOD(std::unique_ptr<CompressorInterface>, Clone, (), (override));
-  MOCK_METHOD(std::optional<std::string>,
+  MOCK_METHOD(std::optional<std::vector<uint8_t>>,
               Process,
-              (const std::string&, bool),
+              (const std::vector<uint8_t>&, bool),
               (override));
   MOCK_METHOD(bool, Reset, (), (override));
 };

@@ -13,6 +13,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
 #include <brillo/compression/mock_compressor.h>
+#include <brillo/strings/string_utils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -66,7 +67,8 @@ TEST_F(MetadataTest, GetMetadata) {
   std::string mock_metadata =
       base::StringPrintf(kMetadataTemplate, kFirstDlc, "{}", kFirstDlc);
   EXPECT_CALL(*decompressor_ptr_, Reset).WillOnce(Return(true));
-  EXPECT_CALL(*decompressor_ptr_, Process).WillOnce(Return(mock_metadata));
+  EXPECT_CALL(*decompressor_ptr_, Process)
+      .WillOnce(Return(brillo::string_utils::GetStringAsBytes(mock_metadata)));
 
   auto entry = metadata_->Get(kFirstDlc);
   EXPECT_TRUE(entry);
@@ -76,7 +78,8 @@ TEST_F(MetadataTest, GetUnsupportedMetadata) {
   std::string mock_metadata =
       base::StringPrintf(kMetadataTemplate, kFirstDlc, "{}", kFirstDlc);
   EXPECT_CALL(*decompressor_ptr_, Reset).WillOnce(Return(true));
-  EXPECT_CALL(*decompressor_ptr_, Process).WillOnce(Return(mock_metadata));
+  EXPECT_CALL(*decompressor_ptr_, Process)
+      .WillOnce(Return(brillo::string_utils::GetStringAsBytes(mock_metadata)));
 
   EXPECT_FALSE(metadata_->Get("unsupported-dlc"));
 }
@@ -95,19 +98,22 @@ TEST_F(MetadataTest, ModifyMetadata) {
       base::StringPrintf(kMetadataTemplate, kSecondDlc, "{}", kSecondDlc);
   EXPECT_CALL(*decompressor_ptr_, Reset).WillOnce(Return(true));
   EXPECT_CALL(*decompressor_ptr_, Process)
-      .WillOnce(Return(mock_metadata_first + mock_metadata_second));
+      .WillOnce(Return(brillo::string_utils::GetStringAsBytes(
+          mock_metadata_first + mock_metadata_second)));
 
   // Mock modifying to a small data that still fits inside one file.
   std::string modified("Modified data.");
-  EXPECT_CALL(*compressor_ptr_, Process(_, true)).WillRepeatedly(Return(""));
+  EXPECT_CALL(*compressor_ptr_, Process(_, true))
+      .WillRepeatedly(Return(brillo::string_utils::GetStringAsBytes("")));
   EXPECT_CALL(*compressor_ptr_, Process(_, false))
-      .WillRepeatedly(Return(modified));
+      .WillRepeatedly(Return(brillo::string_utils::GetStringAsBytes(modified)));
   EXPECT_CALL(*compressor_ptr_, Reset).WillRepeatedly(Return(true));
 
   std::unique_ptr<brillo::MockCompressor> clones[2];
   for (auto&& clone : clones) {
     clone = std::make_unique<brillo::MockCompressor>();
-    EXPECT_CALL(*clone, Process(_, true)).WillOnce(Return(modified));
+    EXPECT_CALL(*clone, Process(_, true))
+        .WillOnce(Return(brillo::string_utils::GetStringAsBytes(modified)));
   }
   EXPECT_CALL(*compressor_ptr_, Clone)
       .WillOnce(Return(std::move(clones[0])))
@@ -136,19 +142,22 @@ TEST_F(MetadataTest, ModifyMetadataToLargerContent) {
       base::StringPrintf(kMetadataTemplate, kSecondDlc, "{}", kSecondDlc);
   EXPECT_CALL(*decompressor_ptr_, Reset).WillOnce(Return(true));
   EXPECT_CALL(*decompressor_ptr_, Process)
-      .WillOnce(Return(mock_metadata_first + mock_metadata_second));
+      .WillOnce(Return(brillo::string_utils::GetStringAsBytes(
+          mock_metadata_first + mock_metadata_second)));
 
   // Mock modifying to larger data that causes new file to be created.
   std::string modified(kMaxMetadataFileSize / 2 + 1, 'x');
-  EXPECT_CALL(*compressor_ptr_, Process(_, true)).WillRepeatedly(Return(""));
+  EXPECT_CALL(*compressor_ptr_, Process(_, true))
+      .WillRepeatedly(Return(brillo::string_utils::GetStringAsBytes("")));
   EXPECT_CALL(*compressor_ptr_, Process(_, false))
-      .WillRepeatedly(Return(modified));
+      .WillRepeatedly(Return(brillo::string_utils::GetStringAsBytes(modified)));
   EXPECT_CALL(*compressor_ptr_, Reset).WillRepeatedly(Return(true));
 
   std::unique_ptr<brillo::MockCompressor> clones[3];
   for (auto&& clone : clones) {
     clone = std::make_unique<brillo::MockCompressor>();
-    EXPECT_CALL(*clone, Process(_, true)).WillOnce(Return(modified));
+    EXPECT_CALL(*clone, Process(_, true))
+        .WillOnce(Return(brillo::string_utils::GetStringAsBytes(modified)));
   }
   EXPECT_CALL(*compressor_ptr_, Clone)
       .WillOnce(Return(std::move(clones[0])))
@@ -181,7 +190,8 @@ TEST_F(MetadataTest, ListAndFilterDlcIds) {
       kMetadataTemplate, kThirdDlc, "{\"powerwash-safe\":123}", kThirdDlc);
   EXPECT_CALL(*decompressor_ptr_, Reset).WillOnce(Return(true));
   EXPECT_CALL(*decompressor_ptr_, Process)
-      .WillRepeatedly(Return(mock_metadata1 + mock_metadata2 + mock_metadata3));
+      .WillRepeatedly(Return(brillo::string_utils::GetStringAsBytes(
+          mock_metadata1 + mock_metadata2 + mock_metadata3)));
 
   EXPECT_EQ(metadata_->ListDlcIds(Metadata::FilterKey::kNone, base::Value()),
             std::vector<DlcId>({kFirstDlc, kSecondDlc, kThirdDlc}));
