@@ -16,9 +16,10 @@ const HELP: &str = r#"Usage: arc
     dns [ NETWORK ] <domain> |
     proxy <url> |
     list [ networks ] |
-    stats [ sockets | traffic ]
+    stats [ sockets | traffic | idle ]
   ]
   where NETWORK := [ wifi | eth | ethernet | cell | cellular | vpn ]
+  If NETWORK is not specified, the default network is used.
 
 ping:           check the reachability of a host or IP address.
 http:           do a GET request to an URL and print the response header.
@@ -27,8 +28,8 @@ proxy:          resolve the current proxy configuration for a given URL.
 list networks:  show properties of all networks connected in Android.
 stats sockets:  show TCP connect and DNS statistics by Android Apps.
 stats traffic:  show traffic packet statistics by Android Apps.
+stats idle   :  show system idle stats of Android.
 
-If NETWORK is not specified, the default network is used.
 "#;
 
 type CommandRunner = dyn Fn(&[&str]) -> Result<(), dispatcher::Error>;
@@ -111,6 +112,8 @@ fn execute_arc_command(
         // Prints tx and rx packets and bytes counter statistics for traffic initiated by Android
         // Apps. This output does not contain any PII.
         ["stats", "traffic"] => adb_command_runner(&["shell", "dumpsys", "wifi", "traffic"]),
+        // Prints the Android idle settings and states. This output does not contain any PII.
+        ["stats", "idle"] => adb_command_runner(&["shell", "dumpsys", "deviceidle"]),
         [other, ..] => invalid_argument(other),
     }
 }
