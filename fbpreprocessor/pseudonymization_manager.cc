@@ -86,6 +86,11 @@ void PseudonymizationManager::OnPseudonymizationComplete(
             << (success ? " " : " un") << "successfully.";
   if (success) {
     manager_->output_manager()->AddNewFile(output);
+  } else {
+    if (!output.Delete()) {
+      LOG(ERROR) << "Failed to delete output firmware dump after "
+                 << "pseudonymization failure.";
+    }
   }
   manager_->input_manager()->DeleteFirmwareDump(input);
 }
