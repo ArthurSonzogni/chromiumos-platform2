@@ -1431,7 +1431,7 @@ bool Manager::SetFeatureFlag(
       break;
     case patchpanel::SetFeatureFlagRequest::FeatureFlag::
         SetFeatureFlagRequest_FeatureFlag_CLAT:
-      old_flag = qos_svc_->is_enabled();
+      old_flag = clat_svc_->is_enabled();
       if (enabled) {
         clat_svc_->Enable();
       } else {
