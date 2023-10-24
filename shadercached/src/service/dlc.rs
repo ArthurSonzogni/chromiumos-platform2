@@ -16,7 +16,8 @@ use log::{debug, error, info, warn};
 use std::collections::HashSet;
 use std::sync::Arc;
 use system_api::{
-    dlcservice::dlc_state::State, dlcservice::DlcState, shadercached::ShaderCacheMountStatus,
+    dlcservice::dlc_state::State, dlcservice::DlcState, dlcservice::InstallRequest,
+    shadercached::ShaderCacheMountStatus,
 };
 
 pub async fn handle_dlc_state_changed<D: DbusConnectionTrait>(
@@ -249,15 +250,18 @@ pub async fn install_shader_cache_dlc<D: DbusConnectionTrait>(
     dbus_conn: Arc<D>,
 ) -> Result<()> {
     let dlc_name = steam_app_id_to_dlc(steam_game_id);
-
     debug!("Requesting to install dlc {}", dlc_name);
+
+    let mut install_request = InstallRequest::new();
+    install_request.id = dlc_name;
+    let install_request_bytes = protobuf::Message::write_to_bytes(&install_request)?;
     dbus_conn
         .call_dbus_method(
             dlc_service::SERVICE_NAME,
             dlc_service::PATH_NAME,
             dlc_service::INTERFACE_NAME,
             dlc_service::INSTALL_METHOD,
-            (dlc_name,),
+            (install_request_bytes,),
         )
         .await?;
 

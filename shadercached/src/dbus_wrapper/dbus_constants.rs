@@ -21,7 +21,7 @@ pub mod dlc_service {
     pub const PATH_NAME: &str = "/org/chromium/DlcService";
     pub const INTERFACE_NAME: &str = "org.chromium.DlcServiceInterface";
 
-    pub const INSTALL_METHOD: &str = "InstallDlc";
+    pub const INSTALL_METHOD: &str = "Install";
     pub const UNINSTALL_METHOD: &str = "Uninstall";
     pub const GET_INSTALLED_METHOD: &str = "GetInstalled";
 

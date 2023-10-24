@@ -14,6 +14,7 @@ use crate::dlc_queue::new_queue;
 use crate::service::periodic_dlc_handler;
 use crate::shader_cache_mount::{mount_ops, new_mount_map, VmId};
 use crate::test::common::{add_shader_cache_mount, generate_mount_list, mock_gpucache};
+use system_api::dlcservice::InstallRequest;
 
 fn mock_dbus_conn(
     games_to_install: &[SteamAppId],
@@ -32,12 +33,31 @@ fn mock_dbus_conn(
     }
     mock_conn
         .expect_call_dbus_method()
-        .times(games_to_install.len() + games_to_uninstall.len())
+        .times(games_to_install.len())
+        .returning(
+            move |_, _, _, method, (install_request_bytes,): (Vec<u8>,)| {
+                let install_request: InstallRequest =
+                    match protobuf::Message::parse_from_bytes(&install_request_bytes) {
+                        Ok(unparsed) => unparsed,
+                        Err(e) => {
+                            return Box::pin(async move {
+                                Err(dbus::Error::new_failed(
+                                    format!("Failed parse install request, {}", e).as_str(),
+                                ))
+                            })
+                        }
+                    };
+                if method == dbus_constants::dlc_service::INSTALL_METHOD {
+                    assert!(dlc_ids_to_install.remove(&install_request.id));
+                    return Box::pin(async { Ok(()) });
+                }
+                unreachable!();
+            },
+        );
+    mock_conn
+        .expect_call_dbus_method()
+        .times(games_to_uninstall.len())
         .returning(move |_, _, _, method, (dlc_id,): (String,)| {
-            if method == dbus_constants::dlc_service::INSTALL_METHOD {
-                assert!(dlc_ids_to_install.remove(&dlc_id));
-                return Box::pin(async { Ok(()) });
-            }
             if method == dbus_constants::dlc_service::UNINSTALL_METHOD {
                 assert!(dlc_ids_to_uninstall.remove(&dlc_id));
                 return Box::pin(async { Ok(()) });
@@ -109,11 +129,22 @@ async fn dlc_install_many_failure_then_success() -> Result<()> {
     let dlc_queue = new_queue();
     let mut dbus_conn = MockDbusConnectionTrait::new();
     dbus_conn.expect_call_dbus_method().times(3).returning(
-        move |_, _, _, _, (dlc_id,): (String,)| {
+        move |_, _, _, _, (install_request_bytes,): (Vec<u8>,)| {
+            let install_request: InstallRequest =
+                match protobuf::Message::parse_from_bytes(&install_request_bytes) {
+                    Ok(unparsed) => unparsed,
+                    Err(e) => {
+                        return Box::pin(async move {
+                            Err(dbus::Error::new_failed(
+                                format!("Failed parse install request, {}", e).as_str(),
+                            ))
+                        })
+                    }
+                };
             // Fail every request except id 42
             // TODO(endlesspring): revisit this function, consider putting this
             // into mock_dbus_conn().
-            if dlc_to_steam_app_id(&dlc_id).expect("Invalid DLC id") == 42 {
+            if dlc_to_steam_app_id(&install_request.id).expect("Invalid DLC id") == 42 {
                 return Box::pin(async { Ok(()) });
             }
             Box::pin(async { Err(dbus::Error::new_failed("failed")) })
