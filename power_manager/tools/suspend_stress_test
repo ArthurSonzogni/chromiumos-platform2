@@ -345,6 +345,9 @@ while true; do
   sus_time=$(( ( $(random) % suspend_interval ) + FLAGS_suspend_min ))
   printf "sleep for %2d seconds..." "${sus_time}"
   last_s0ix_count=$(get_s0ix_count)
+  if [ "${FLAGS_ignore_s0ix_substates}" -eq "${FLAGS_FALSE}" ]; then
+    s0ix_substate_before="$(grep 'S0i' /sys/kernel/debug/pmc_core/substate_residencies)"
+  fi
   last_s2idle_count=$(get_s2idle_count)
   last_ignore_count=$(get_wakeup_source_event_count \
                       "${FLAGS_ignore_wakeup_source}")
@@ -462,6 +465,12 @@ while true; do
   elif [ "${check_s0ix_errors}" = 1 ] && \
        [ "${cur_s0ix_count}" = "${last_s0ix_count}" ]; then
     echo "Suspend failed, s0ix count did not increment from ${last_s0ix_count}"
+    if [ "${FLAGS_ignore_s0ix_substates}" -eq "${FLAGS_FALSE}" ]; then
+      echo "S0ix substate before :"
+      echo "${s0ix_substate_before}"
+      echo "S0ix substate now :"
+      grep 'S0i' /sys/kernel/debug/pmc_core/substate_residencies
+    fi
     : $(( s0ix_errors += 1 ))
     if [ "${FLAGS_errors_fatal}" -eq "${FLAGS_TRUE}" ]; then
       exit_loop=1
