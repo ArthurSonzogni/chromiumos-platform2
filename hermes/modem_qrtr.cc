@@ -137,6 +137,7 @@ void ModemQrtr::SetActiveSlot(const uint32_t physical_slot, ResultCallback cb) {
 void ModemQrtr::StoreAndSetActiveSlot(uint32_t physical_slot,
                                       ResultCallback cb) {
   LOG(INFO) << __func__ << " physical_slot:" << physical_slot;
+  stored_active_slot_.reset();
   auto set_active_slot = base::BindOnce(
       &ModemQrtr::SetActiveSlot, weak_factory_.GetWeakPtr(), physical_slot);
   tx_queue_.push_back({std::make_unique<TxInfo>(), AllocateId(),
@@ -639,7 +640,10 @@ int ModemQrtr::ReceiveQmiGetSlots(const qrtr_packet& packet) {
 
     LOG(INFO) << "Slot:" << i + 1 << " is_present:" << is_present
               << " is_euicc:" << is_euicc << " is_active:" << is_active;
-    if (is_active) {
+    // |stored_active_slot_| will be reset if the restoration is executed.
+    // otherwise, preserve the |stored_active_slot_| until the old slot is
+    // restored. b/304356139
+    if (is_active && !stored_active_slot_) {
       stored_active_slot_ = i + 1;
       if (!logical_slot_found) {
         // This is the logical slot we grab when we perform a switch slot
