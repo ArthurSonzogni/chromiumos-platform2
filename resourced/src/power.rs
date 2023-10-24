@@ -351,15 +351,18 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreference
 
     fn apply_cpu_hotplug(&self, preferences: config::PowerPreferences) -> Result<()> {
         match preferences.cpu_offline {
-            Some(config::CpuOfflinePreference::Smt) => {
-                hotplug_cpus(self.get_root(), HotplugCpuAction::OfflineSMT)?
-            }
-            Some(config::CpuOfflinePreference::Half) => {
-                hotplug_cpus(self.get_root(), HotplugCpuAction::OfflineHalf)?
-            }
-            Some(config::CpuOfflinePreference::SmallCore) => {
-                hotplug_cpus(self.get_root(), HotplugCpuAction::OfflineSmallCore)?
-            }
+            Some(config::CpuOfflinePreference::Smt { min_active_threads }) => hotplug_cpus(
+                self.get_root(),
+                HotplugCpuAction::OfflineSMT { min_active_threads },
+            )?,
+            Some(config::CpuOfflinePreference::Half { min_active_threads }) => hotplug_cpus(
+                self.get_root(),
+                HotplugCpuAction::OfflineHalf { min_active_threads },
+            )?,
+            Some(config::CpuOfflinePreference::SmallCore { min_active_threads }) => hotplug_cpus(
+                self.get_root(),
+                HotplugCpuAction::OfflineSmallCore { min_active_threads },
+            )?,
             None => {
                 hotplug_cpus(self.get_root(), HotplugCpuAction::OnlineAll)?;
             }
@@ -1259,7 +1262,9 @@ mod tests {
                         Ok(Some(config::PowerPreferences {
                             governor: Some(config::Governor::Conservative),
                             epp: None,
-                            cpu_offline: Some(config::CpuOfflinePreference::SmallCore),
+                            cpu_offline: Some(config::CpuOfflinePreference::SmallCore {
+                                min_active_threads: 2,
+                            }),
                         }))
                     },
                     ..Default::default()
@@ -1284,7 +1289,9 @@ mod tests {
                         Ok(Some(config::PowerPreferences {
                             governor: Some(config::Governor::Conservative),
                             epp: None,
-                            cpu_offline: Some(config::CpuOfflinePreference::Smt),
+                            cpu_offline: Some(config::CpuOfflinePreference::Smt {
+                                min_active_threads: 2,
+                            }),
                         }))
                     },
                     ..Default::default()
@@ -1309,7 +1316,9 @@ mod tests {
                         Ok(Some(config::PowerPreferences {
                             governor: Some(config::Governor::Conservative),
                             epp: None,
-                            cpu_offline: Some(config::CpuOfflinePreference::Half),
+                            cpu_offline: Some(config::CpuOfflinePreference::Half {
+                                min_active_threads: 2,
+                            }),
                         }))
                     },
                     ..Default::default()

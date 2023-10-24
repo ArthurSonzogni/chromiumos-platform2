@@ -13,6 +13,7 @@ use anyhow::Result;
 use crate::common::read_file_to_u64;
 
 const RESOURCED_CONFIG_PATH: &str = "run/chromeos-config/v1/resource/";
+const DEFUALT_MIN_ACTIVE_THREADS: u32 = 2;
 
 pub trait ConfigProvider {
     fn read_power_preferences(
@@ -113,17 +114,32 @@ impl FromDir for EnergyPerformancePreference {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CpuOfflinePreference {
-    SmallCore,
-    Smt,
-    Half,
+    SmallCore { min_active_threads: u32 },
+    Smt { min_active_threads: u32 },
+    Half { min_active_threads: u32 },
 }
 
 impl FromDir for CpuOfflinePreference {
     fn from_dir(dir: DirEntry) -> Result<Option<CpuOfflinePreference>> {
+        let min_active_threads_path = dir.path().join("min-active-threads");
+
+        // The min-active-threads config is optional and it will be set to
+        // DEFUALT_MIN_ACTIVE_THREADS if not specified
+        let min_active_threads = if min_active_threads_path.exists() {
+            read_file_to_u64(&min_active_threads_path).with_context(|| {
+                format!(
+                    "Error reading min-active-threads from {}",
+                    min_active_threads_path.display()
+                )
+            })? as u32
+        } else {
+            DEFUALT_MIN_ACTIVE_THREADS
+        };
+
         match dir.file_name().to_str() {
-            Some("small-core") => Ok(Some(CpuOfflinePreference::SmallCore)),
-            Some("smt") => Ok(Some(CpuOfflinePreference::Smt)),
-            Some("half") => Ok(Some(CpuOfflinePreference::Half)),
+            Some("small-core") => Ok(Some(CpuOfflinePreference::SmallCore { min_active_threads })),
+            Some("smt") => Ok(Some(CpuOfflinePreference::Smt { min_active_threads })),
+            Some("half") => Ok(Some(CpuOfflinePreference::Half { min_active_threads })),
             _ => bail!("Unknown cpu-offline {:?}!", dir.file_name()),
         }
     }

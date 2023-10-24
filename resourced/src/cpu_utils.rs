@@ -22,11 +22,11 @@ pub enum HotplugCpuAction {
     // Set all CPUs to online.
     OnlineAll,
     // Offline small CPUs if the device has big/little clusters.
-    OfflineSmallCore,
+    OfflineSmallCore { min_active_threads: u32 },
     // Offline SMT cores if available.
-    OfflineSMT,
-    // Offline half of the CPUs if the device has >= 4 CPUs.
-    OfflineHalf,
+    OfflineSMT { min_active_threads: u32 },
+    // Offline half of CPUs and ensuring at least min_active_threads remain active.
+    OfflineHalf { min_active_threads: u32 },
 }
 
 // Returns cpus string containing cpus with the minimal value of the property.
@@ -219,28 +219,31 @@ pub fn hotplug_cpus(root: &Path, action: HotplugCpuAction) -> Result<()> {
             update_cpu_smt_control(root, true)?;
             update_cpu_online_status(root, &all_cores, true)?;
         }
-        HotplugCpuAction::OfflineSmallCore => {
+        // TODO(darrenwu): Check the minimum active threads for small cores
+        HotplugCpuAction::OfflineSmallCore {
+            min_active_threads: _,
+        } => {
             if is_big_little_supported(root)? {
                 let little_cores: String = get_little_cores(root)?;
                 update_cpu_online_status(root, &little_cores, false)?;
             }
         }
-        HotplugCpuAction::OfflineSMT => {
+        // TODO(darrenwu): Check the minimum active threads for SMT
+        HotplugCpuAction::OfflineSMT {
+            min_active_threads: _,
+        } => {
             update_cpu_smt_control(root, false)?;
         }
-        HotplugCpuAction::OfflineHalf => {
-            let num_cores: i32 = get_cpuset_all_cpus(root)?
+        HotplugCpuAction::OfflineHalf { min_active_threads } => {
+            let last_core: u32 = get_cpuset_all_cpus(root)?
                 .split('-')
                 .last()
                 .context("can't get number of cores")?
                 .trim()
                 .parse()?;
-            if num_cores >= 3 {
-                update_cpu_online_status(
-                    root,
-                    &format!("{}-{}", (num_cores / 2) + 1, num_cores),
-                    false,
-                )?;
+            if last_core + 1 > min_active_threads {
+                let first_core = std::cmp::max((last_core / 2) + 1, min_active_threads);
+                update_cpu_online_status(root, &format!("{}-{}", first_core, last_core), false)?;
             }
         }
     }
@@ -263,6 +266,8 @@ mod tests {
 
     #[test]
     fn test_hotplug_cpus() {
+        const ONLINE: &str = "1";
+        const OFFLINE: &str = "0";
         struct Test<'a> {
             cpus: &'a str,
             big_little: bool,
@@ -276,37 +281,80 @@ mod tests {
         }
 
         let tests = [
+            // Test offline small cores
             Test {
                 cpus: "0-3",
                 big_little: true,
                 cluster1_freq: [2400000; 2],
                 cluster2_freq: [1800000; 2],
-                hotplug: &HotplugCpuAction::OfflineSmallCore,
+                hotplug: &HotplugCpuAction::OfflineSmallCore {
+                    min_active_threads: 2,
+                },
                 smt: "on",
-                cluster1_expected_state: ["1"; 2],
-                cluster2_expected_state: ["0"; 2],
+                cluster1_expected_state: [ONLINE; 2],
+                cluster2_expected_state: [OFFLINE; 2],
                 smt_expected_state: "",
             },
+            // Test offline half cores
+            // Offline half when min-active-theads equals half cores
             Test {
                 cpus: "0-3",
                 big_little: false,
                 cluster1_freq: [2400000; 2],
                 cluster2_freq: [2400000; 2],
-                hotplug: &HotplugCpuAction::OfflineHalf,
+                hotplug: &HotplugCpuAction::OfflineHalf {
+                    min_active_threads: 2,
+                },
                 smt: "on",
-                cluster1_expected_state: ["1"; 2],
-                cluster2_expected_state: ["0"; 2],
+                cluster1_expected_state: [ONLINE; 2],
+                cluster2_expected_state: [OFFLINE; 2],
                 smt_expected_state: "",
             },
+            // Test offline half cores
+            // CPU offline starts from min-active-threads when
+            // min-active-theads greater than half cores
             Test {
                 cpus: "0-3",
                 big_little: false,
                 cluster1_freq: [2400000; 2],
                 cluster2_freq: [2400000; 2],
-                hotplug: &HotplugCpuAction::OfflineSMT,
+                hotplug: &HotplugCpuAction::OfflineHalf {
+                    min_active_threads: 3,
+                },
                 smt: "on",
-                cluster1_expected_state: ["1"; 2],
-                cluster2_expected_state: ["0"; 2],
+                // Expect 3 cores online
+                cluster1_expected_state: [ONLINE; 2],
+                cluster2_expected_state: [ONLINE, OFFLINE],
+                smt_expected_state: "",
+            },
+            // Test offline half cores
+            // No CPU offline when min-active-theads less than all cores
+            Test {
+                cpus: "0-3",
+                big_little: false,
+                cluster1_freq: [2400000; 2],
+                cluster2_freq: [2400000; 2],
+                hotplug: &HotplugCpuAction::OfflineHalf {
+                    min_active_threads: 5,
+                },
+                smt: "on",
+                // Expect 3 cores online
+                cluster1_expected_state: [ONLINE; 2],
+                cluster2_expected_state: [ONLINE; 2],
+                smt_expected_state: "",
+            },
+            // Test offline SMT
+            Test {
+                cpus: "0-3",
+                big_little: false,
+                cluster1_freq: [2400000; 2],
+                cluster2_freq: [2400000; 2],
+                hotplug: &HotplugCpuAction::OfflineSMT {
+                    min_active_threads: 2,
+                },
+                smt: "on",
+                cluster1_expected_state: [ONLINE; 2],
+                cluster2_expected_state: [OFFLINE; 2],
                 smt_expected_state: "off",
             },
         ];
@@ -340,7 +388,10 @@ mod tests {
             hotplug_cpus(root.path(), *test.hotplug).unwrap();
 
             // Check result.
-            if test.hotplug == &HotplugCpuAction::OfflineSMT {
+            if let HotplugCpuAction::OfflineSMT {
+                min_active_threads: _,
+            } = test.hotplug
+            {
                 // The mock sysfs cannot offline the SMT CPUs, here to check the smt control state
                 test_check_smt_control(root.path(), test.smt_expected_state);
                 continue;
