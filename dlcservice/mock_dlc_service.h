@@ -5,6 +5,7 @@
 #ifndef DLCSERVICE_MOCK_DLC_SERVICE_H_
 #define DLCSERVICE_MOCK_DLC_SERVICE_H_
 
+#include <memory>
 #include <string>
 
 #include "dlcservice/dlc_service.h"
@@ -16,9 +17,10 @@ class MockDlcService : public DlcServiceInterface {
   MockDlcService() = default;
 
   MOCK_METHOD(void, Initialize, (), (override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(void,
               Install,
-              (const InstallRequest&, brillo::ErrorPtr*),
+              (const InstallRequest&,
+               std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>>),
               (override));
   MOCK_METHOD(bool,
               Uninstall,

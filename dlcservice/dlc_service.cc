@@ -16,6 +16,7 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
+#include <brillo/dbus/dbus_method_response.h>
 #include <brillo/files/file_util.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
@@ -162,34 +163,28 @@ void DlcService::OnWaitForUpdateEngineServiceToBeAvailable(bool available) {
   GetUpdateEngineStatusAsync();
 }
 
-bool DlcService::Install(const InstallRequest& install_request, ErrorPtr* err) {
+void DlcService::Install(
+    const InstallRequest& install_request,
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
   // TODO(b/220202911): Start parallelizing installations.
   // Ash Chrome dlcservice client handled installations in a queue, but
   // dlcservice has numerous other DBus clients that can all race to install
   // various DLCs. This checks here need to guarantee atomic installation per
   // DLC in sequence.
-  bool result = InstallInternal(install_request, err);
-  // Only send error metrics in here. Install success metrics is sent in
-  // |DlcBase|.
-  if (!result) {
+  auto ret_func =
+      [install_request](
+          std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+          brillo::ErrorPtr* err) -> void {
+    // Only send error metrics in here. Install success metrics is sent in
+    // |DlcBase|.
     LOG(ERROR) << AlertLogTag(kCategoryInstall)
                << "Failed to install DLC=" << install_request.id();
     SystemState::Get()->metrics()->SendInstallResultFailure(err);
     Error::ConvertToDbusError(err);
-  }
-  return result;
-}
+    std::move(response)->ReplyWithError(err->get());
+  };
 
-bool DlcService::InstallInternal(const InstallRequest& install_request,
-                                 ErrorPtr* err) {
-  // TODO(ahassani): Currently, we create the DLC images even if later we find
-  // out the update_engine is busy and we have to delete the images. It would be
-  // better to know the update_engine status beforehand so we can tell the DLC
-  // to not create the images, just load them if it can. We can do this more
-  // reliably by caching the last status we saw from update_engine, rather than
-  // pulling for it on every install request. That would also allows us to
-  // properly queue the incoming install requests.
-
+  brillo::ErrorPtr err;
   // Try to install and figure out if install through update_engine is needed.
   bool external_install_needed = false;
   auto manager_install = [this](const InstallRequest& install_request,
@@ -222,14 +217,16 @@ bool DlcService::InstallInternal(const InstallRequest& install_request,
     *external_install_needed = dlc->IsInstalling();
     return true;
   };
-  if (!manager_install(install_request, &external_install_needed, err)) {
+  if (!manager_install(install_request, &external_install_needed, &err)) {
     LOG(ERROR) << "Failed to install DLC=" << install_request.id();
-    return false;
+    return ret_func(std::move(response), &err);
   }
 
   // Install through update_engine only if needed.
-  if (!external_install_needed)
-    return true;
+  if (!external_install_needed) {
+    std::move(response)->Return();
+    return;
+  }
 
   const auto& id = install_request.id();
   if (installing_dlc_id_ && installing_dlc_id_ != id) {
@@ -238,7 +235,7 @@ bool DlcService::InstallInternal(const InstallRequest& install_request,
         "now.",
         installing_dlc_id_.value().c_str(), id.c_str());
     LOG(ERROR) << err_str;
-    *err = Error::Create(FROM_HERE, kErrorBusy, err_str);
+    err = Error::Create(FROM_HERE, kErrorBusy, err_str);
     ErrorPtr tmp_err;
     auto manager_cancel = [this](const DlcId& id, const ErrorPtr& err_in,
                                  ErrorPtr* err) -> bool {
@@ -246,27 +243,31 @@ bool DlcService::InstallInternal(const InstallRequest& install_request,
       auto* dlc = GetDlc(id, err);
       return dlc && (!dlc->IsInstalling() || dlc->CancelInstall(err_in, err));
     };
-    if (!manager_cancel(id, *err, &tmp_err))
+    if (!manager_cancel(id, err, &tmp_err))
       LOG(ERROR) << "Failed to cancel install for DLC=" << id;
-    return false;
+    return ret_func(std::move(response), &err);
   }
 
-  if (!InstallWithUpdateEngine(install_request, err)) {
-    // dlcservice must cancel the install as update_engine won't be able to
-    // install the initialized DLC.
-    CancelInstall(*err);
-    return false;
-  }
-
-  // By now the update_engine is installing the DLC, so schedule a periodic
-  // install checker in case we miss update_engine signals.
-  SchedulePeriodicInstallCheck();
-
-  return true;
+  InstallWithUpdateEngine(install_request, std::move(response));
 }
 
-bool DlcService::InstallWithUpdateEngine(const InstallRequest& install_request,
-                                         ErrorPtr* err) {
+void DlcService::InstallWithUpdateEngine(
+    const InstallRequest& install_request,
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
+  auto ret_func =
+      [this, install_request](
+          std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+          brillo::ErrorPtr err) -> void {
+    LOG(ERROR) << AlertLogTag(kCategoryInstall)
+               << "Failed to install DLC=" << install_request.id();
+    SystemState::Get()->metrics()->SendInstallResultFailure(&err);
+    Error::ConvertToDbusError(&err);
+    // dlcservice must cancel the install as update_engine won't be able to
+    // install the initialized DLC.
+    CancelInstall(err);
+    std::move(response)->ReplyWithError(err.get());
+  };
+
   const auto id = install_request.id();
   // Need to set in order for the cancellation of DLC setup.
   installing_dlc_id_ = id;
@@ -276,17 +277,17 @@ bool DlcService::InstallWithUpdateEngine(const InstallRequest& install_request,
   // client to retry the installation.
   if (!SystemState::Get()->IsUpdateEngineServiceAvailable()) {
     string err_str = "Installation called before update_engine is available.";
-    *err = Error::Create(FROM_HERE, kErrorBusy, err_str);
-    return false;
+    return ret_func(std::move(response),
+                    Error::Create(FROM_HERE, kErrorBusy, err_str));
   }
 
   // Check what state update_engine is in.
   if (SystemState::Get()->update_engine_status().current_operation() ==
       update_engine::UPDATED_NEED_REBOOT) {
-    *err =
+    return ret_func(
+        std::move(response),
         Error::Create(FROM_HERE, kErrorNeedReboot,
-                      "Update Engine applied update, device needs a reboot.");
-    return false;
+                      "Update Engine applied update, device needs a reboot."));
   }
 
   LOG(INFO) << "Sending request to update_engine to install DLC=" << id;
@@ -294,9 +295,10 @@ bool DlcService::InstallWithUpdateEngine(const InstallRequest& install_request,
   update_engine::InstallParams install_params;
   install_params.set_id(id);
   install_params.set_omaha_url(install_request.omaha_url());
-  auto* dlc = GetDlc(id, err);
+  brillo::ErrorPtr err;
+  auto* dlc = GetDlc(id, &err);
   if (dlc == nullptr) {
-    return false;
+    return ret_func(std::move(response), err->Clone());
   }
   install_params.set_scaled(dlc->IsScaled());
   ErrorPtr tmp_err;
@@ -312,13 +314,16 @@ bool DlcService::InstallWithUpdateEngine(const InstallRequest& install_request,
     LOG(ERROR) << "Update Engine failed to install requested DLCs: "
                << (tmp_err ? Error::ToString(tmp_err)
                            : "Missing error from update engine proxy.");
-    *err =
+    return ret_func(
+        std::move(response),
         Error::Create(FROM_HERE, kErrorBusy,
-                      "Update Engine failed to schedule install operations.");
-    return false;
+                      "Update Engine failed to schedule install operations."));
   }
 
-  return true;
+  // By now the update_engine is installing the DLC, so schedule a periodic
+  // install checker in case we miss update_engine signals.
+  SchedulePeriodicInstallCheck();
+  std::move(response)->Return();
 }
 
 bool DlcService::Uninstall(const string& id, brillo::ErrorPtr* err) {

@@ -14,6 +14,7 @@
 
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
+#include <brillo/dbus/dbus_method_response.h>
 #include <brillo/errors/error.h>
 #include <brillo/message_loops/message_loop.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
@@ -45,13 +46,10 @@ class DlcServiceInterface {
   // install DLC(s) and other files that require creation are handled.
   // Args:
   //   install_request: The DLC install request.
-  //   external_install_needed: It is set to true if we need to actually install
-  //     the DLC through update_engine.
-  //   err: The error that's set when returned false.
-  // Return:
-  //   True on success, otherwise false.
-  virtual bool Install(const InstallRequest& install_request,
-                       brillo::ErrorPtr* err) = 0;
+  //   response: The DBus method response to respond on.
+  virtual void Install(
+      const InstallRequest& install_request,
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) = 0;
 
   // DLC Uninstall/Purge Flow
   //
@@ -106,9 +104,9 @@ class DlcService : public DlcServiceInterface {
   ~DlcService() override;
 
   void Initialize() override;
-  // Calls |InstallInternal| and sends the metrics for unsuccessful installs.
-  bool Install(const InstallRequest& install_request,
-               brillo::ErrorPtr* err) override;
+  void Install(const InstallRequest& install_request,
+               std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>>
+                   response) override;
   bool Uninstall(const std::string& id, brillo::ErrorPtr* err) override;
   bool Deploy(const DlcId& id, brillo::ErrorPtr* err) override;
   DlcIdList GetInstalled() override;
@@ -146,8 +144,9 @@ class DlcService : public DlcServiceInterface {
 
   // Install the DLC with ID |id| through update_engine by sending a request to
   // it.
-  bool InstallWithUpdateEngine(const InstallRequest& install_request,
-                               brillo::ErrorPtr* err);
+  void InstallWithUpdateEngine(
+      const InstallRequest& install_request,
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response);
 
   // Finishes the currently running installation. Returns true if the
   // installation finished successfully, false otherwise.
@@ -181,10 +180,6 @@ class DlcService : public DlcServiceInterface {
   // Gets update_engine's operation status and saves it in |SystemState|.
   void GetUpdateEngineStatusAsync();
   void OnGetUpdateEngineStatusAsyncError(brillo::Error* err);
-
-  // Installs a DLC without sending metrics when the install fails.
-  bool InstallInternal(const InstallRequest& install_request,
-                       brillo::ErrorPtr* err);
 
   // Called on receiving update_engine's |StatusUpdate| signal.
   void OnStatusUpdateAdvancedSignal(

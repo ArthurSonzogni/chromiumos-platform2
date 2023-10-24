@@ -11,6 +11,7 @@
 #include <base/files/file_util.h>
 #include <base/test/mock_log.h>
 #include <base/test/simple_test_clock.h>
+#include <brillo/dbus/mock_dbus_method_response.h>
 #include <brillo/message_loops/message_loop_utils.h>
 #include <dbus/dlcservice/dbus-constants.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
@@ -33,20 +34,19 @@
 #include "dlcservice/utils.h"
 #include "dlcservice/utils/mock_utils.h"
 
+using brillo::dbus_utils::MockDBusMethodResponse;
 using dlcservice::metrics::InstallResult;
 using dlcservice::metrics::UninstallResult;
 using std::string;
 using std::vector;
 using testing::_;
 using testing::AnyNumber;
-using testing::ByMove;
 using testing::DoAll;
 using testing::ElementsAre;
 using testing::HasSubstr;
 using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
-using testing::SaveArg;
 using testing::SetArgPointee;
 using testing::StrictMock;
 using testing::WithArg;
@@ -136,8 +136,9 @@ TEST_F(DlcServiceTest, InstallTestUnsupported) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedInvalidDlc));
 
-  brillo::ErrorPtr err;
-  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest("foo-dlc"), &err));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  EXPECT_CALL(*mr, ReplyWithError(_)).Times(1);
+  dlc_service_->Install(CreateInstallRequest("foo-dlc"), std::move(mr));
 }
 
 TEST_F(DlcServiceTest, InstallTestAlreadyInstalling) {
@@ -148,8 +149,12 @@ TEST_F(DlcServiceTest, InstallTestAlreadyInstalling) {
   supported.emplace("foo-dlc", std::move(mock_dlc_foo));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
-  brillo::ErrorPtr err;
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest("foo-dlc"), &err));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
+  dlc_service_->Install(CreateInstallRequest("foo-dlc"), std::move(mr));
+  EXPECT_TRUE(called);
 }
 
 TEST_F(DlcServiceTest, InstallTestDlcInstallFailure) {
@@ -163,8 +168,9 @@ TEST_F(DlcServiceTest, InstallTestDlcInstallFailure) {
 
   EXPECT_CALL(*mock_metrics_, SendInstallResult(InstallResult::kUnknownError));
 
-  brillo::ErrorPtr err;
-  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest("foo-dlc"), &err));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  EXPECT_CALL(*mr, ReplyWithError(_)).Times(1);
+  dlc_service_->Install(CreateInstallRequest("foo-dlc"), std::move(mr));
 }
 
 TEST_F(DlcServiceTest, InstallTestNoExternalRequirement) {
@@ -179,8 +185,12 @@ TEST_F(DlcServiceTest, InstallTestNoExternalRequirement) {
   supported.emplace("foo-dlc", std::move(mock_dlc_foo));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
-  brillo::ErrorPtr err;
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest("foo-dlc"), &err));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
+  dlc_service_->Install(CreateInstallRequest("foo-dlc"), std::move(mr));
+  EXPECT_TRUE(called);
 }
 
 TEST_F(DlcServiceTest, InstallTestExternalRequirementUpdaterDown) {
@@ -203,8 +213,9 @@ TEST_F(DlcServiceTest, InstallTestExternalRequirementUpdaterDown) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedUpdateEngineBusy));
 
-  brillo::ErrorPtr err;
-  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest("foo-dlc"), &err));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  EXPECT_CALL(*mr, ReplyWithError(_)).Times(1);
+  dlc_service_->Install(CreateInstallRequest("foo-dlc"), std::move(mr));
 }
 
 TEST_F(DlcServiceTest, InstallTestExternalRequirementUpdaterDownCancelFailure) {
@@ -227,8 +238,9 @@ TEST_F(DlcServiceTest, InstallTestExternalRequirementUpdaterDownCancelFailure) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedUpdateEngineBusy));
 
-  brillo::ErrorPtr err;
-  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest("foo-dlc"), &err));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  EXPECT_CALL(*mr, ReplyWithError(_)).Times(1);
+  dlc_service_->Install(CreateInstallRequest("foo-dlc"), std::move(mr));
 }
 
 TEST_F(DlcServiceTest, InstallTestExternalRequirementPendingUpdate) {
@@ -254,8 +266,9 @@ TEST_F(DlcServiceTest, InstallTestExternalRequirementPendingUpdate) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedNeedReboot));
 
-  brillo::ErrorPtr err;
-  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest("foo-dlc"), &err));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  EXPECT_CALL(*mr, ReplyWithError(_)).Times(1);
+  dlc_service_->Install(CreateInstallRequest("foo-dlc"), std::move(mr));
 }
 
 TEST_F(DlcServiceTest,
@@ -282,8 +295,9 @@ TEST_F(DlcServiceTest,
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedNeedReboot));
 
-  brillo::ErrorPtr err;
-  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest("foo-dlc"), &err));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  EXPECT_CALL(*mr, ReplyWithError(_)).Times(1);
+  dlc_service_->Install(CreateInstallRequest("foo-dlc"), std::move(mr));
 }
 
 TEST_F(DlcServiceTest, InstallTestExternalRequirementInstallFailure) {
@@ -308,8 +322,9 @@ TEST_F(DlcServiceTest, InstallTestExternalRequirementInstallFailure) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
       .WillOnce(Return(false));
 
-  brillo::ErrorPtr err;
-  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest("foo-dlc"), &err));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  EXPECT_CALL(*mr, ReplyWithError(_)).Times(1);
+  dlc_service_->Install(CreateInstallRequest("foo-dlc"), std::move(mr));
 }
 
 TEST_F(DlcServiceTest, InstallTestExternalRequirementInstallSuccess) {
@@ -329,8 +344,12 @@ TEST_F(DlcServiceTest, InstallTestExternalRequirementInstallSuccess) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
       .WillOnce(Return(true));
 
-  brillo::ErrorPtr err;
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest("foo-dlc"), &err));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
+  dlc_service_->Install(CreateInstallRequest("foo-dlc"), std::move(mr));
+  EXPECT_TRUE(called);
 }
 
 // Tests related to `Uninstall`.
@@ -795,7 +814,12 @@ class DlcServiceTestLegacy : public BaseTest {
     EXPECT_CALL(*mock_metrics_,
                 SendInstallResult(InstallResult::kSuccessNewInstall));
 
-    EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(id), &err_));
+    auto mr = std::make_unique<MockDBusMethodResponse<>>();
+    bool called = false;
+    mr->set_return_callback(
+        base::BindOnce([](bool* called) { *called = true; }, &called));
+    dlc_service_->Install(CreateInstallRequest(id), std::move(mr));
+    EXPECT_TRUE(called);
 
     CheckDlcState(id, DlcState::INSTALLING);
 
@@ -1012,7 +1036,12 @@ TEST_F(DlcServiceTestLegacy, UninstallInstallingFails) {
   EXPECT_CALL(*mock_metrics_,
               SendUninstallResult(UninstallResult::kFailedUpdateEngineBusy));
 
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
+  dlc_service_->Install(CreateInstallRequest(kSecondDlc), std::move(mr));
+  EXPECT_TRUE(called);
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
   EXPECT_FALSE(dlc_service_->Uninstall(kSecondDlc, &err_));
@@ -1029,7 +1058,12 @@ TEST_F(DlcServiceTestLegacy, UninstallInstallingButInstalledFails) {
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
   EXPECT_CALL(*mock_metrics_, SendUninstallResult(UninstallResult::kSuccess));
 
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
+  dlc_service_->Install(CreateInstallRequest(kSecondDlc), std::move(mr));
+  EXPECT_TRUE(called);
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
   // |kFirstDlc| was installed, so there should be no problem uninstalling it
@@ -1046,7 +1080,12 @@ TEST_F(DlcServiceTestLegacy, InstallInvalidDlcTest) {
   const string id = "bad-dlc-id";
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedInvalidDlc));
-  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest(id), &err_));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  EXPECT_CALL(*mr, ReplyWithError(_)).WillOnce([this](auto&& arg) {
+    err_ = arg->Clone();
+  });
+  dlc_service_->Install(CreateInstallRequest(id), std::move(mr));
+  ASSERT_TRUE(err_.get());
   EXPECT_EQ(err_->GetCode(), kErrorInvalidDlc);
 }
 
@@ -1060,7 +1099,12 @@ TEST_F(DlcServiceTestLegacy, InstallTest) {
 
   EXPECT_THAT(dlc_service_->GetInstalled(), ElementsAre(kFirstDlc));
 
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
+  dlc_service_->Install(CreateInstallRequest(kSecondDlc), std::move(mr));
+  EXPECT_TRUE(called);
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
   // Should remain same as it's not stamped verified.
@@ -1083,7 +1127,12 @@ TEST_F(DlcServiceTestLegacy, InstallAlreadyInstalledValid) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessAlreadyInstalled));
 
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kFirstDlc), &err_));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
+  dlc_service_->Install(CreateInstallRequest(kFirstDlc), std::move(mr));
+  EXPECT_TRUE(called);
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kFirstDlc)));
   CheckDlcState(kFirstDlc, DlcState::INSTALLED);
 }
@@ -1096,7 +1145,14 @@ TEST_F(DlcServiceTestLegacy, InstallAlreadyInstalledWhileAnotherInstalling) {
       .WillOnce(Return(true));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
 
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+  {
+    auto mr = std::make_unique<MockDBusMethodResponse<>>();
+    bool called = false;
+    mr->set_return_callback(
+        base::BindOnce([](bool* called) { *called = true; }, &called));
+    dlc_service_->Install(CreateInstallRequest(kSecondDlc), std::move(mr));
+    EXPECT_TRUE(called);
+  }
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
   // |kFirstDlc| can quickly be installed again even though another install is
@@ -1112,7 +1168,14 @@ TEST_F(DlcServiceTestLegacy, InstallAlreadyInstalledWhileAnotherInstalling) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessAlreadyInstalled));
 
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kFirstDlc), &err_));
+  {
+    auto mr = std::make_unique<MockDBusMethodResponse<>>();
+    bool called = false;
+    mr->set_return_callback(
+        base::BindOnce([](bool* called) { *called = true; }, &called));
+    dlc_service_->Install(CreateInstallRequest(kFirstDlc), std::move(mr));
+    EXPECT_TRUE(called);
+  }
   CheckDlcState(kFirstDlc, DlcState::INSTALLED);
 }
 
@@ -1130,7 +1193,12 @@ TEST_F(DlcServiceTestLegacy, InstallCannotSetDlcActiveValue) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessNewInstall));
 
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
+  dlc_service_->Install(CreateInstallRequest(kSecondDlc), std::move(mr));
+  EXPECT_TRUE(called);
   EXPECT_TRUE(dlc_service_->InstallCompleted({kSecondDlc}, &err_));
 
   StatusResult status_result;
@@ -1164,7 +1232,12 @@ TEST_F(DlcServiceTestLegacy, PeriodicInstallCheck) {
       .WillOnce(Return(true));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
 
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
+  dlc_service_->Install(CreateInstallRequest(kSecondDlc), std::move(mr));
+  EXPECT_TRUE(called);
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
   // The first time it should not get the status because enough time hasn't
@@ -1211,7 +1284,12 @@ TEST_F(DlcServiceTestLegacy, InstallSchedulesPeriodicInstallCheck) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedToVerifyImage));
 
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
+  dlc_service_->Install(CreateInstallRequest(kSecondDlc), std::move(mr));
+  EXPECT_TRUE(called);
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
   // The checking for update comes from signal.
@@ -1234,7 +1312,12 @@ TEST_F(DlcServiceTestLegacy, InstallFailureCleansUp) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedUpdateEngineBusy));
 
-  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  EXPECT_CALL(*mr, ReplyWithError(_)).WillOnce([this](auto&& arg) {
+    err_ = arg->Clone();
+  });
+  dlc_service_->Install(CreateInstallRequest(kSecondDlc), std::move(mr));
+  ASSERT_TRUE(err_.get());
   EXPECT_EQ(err_->GetCode(), kErrorBusy);
 
   EXPECT_FALSE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
@@ -1249,15 +1332,19 @@ TEST_F(DlcServiceTestLegacy, InstallUrlTest) {
                       Return(true)));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
 
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
   dlc_service_->Install(CreateInstallRequest(kSecondDlc, kDefaultOmahaUrl),
-                        &err_);
+                        std::move(mr));
+  EXPECT_TRUE(called);
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 }
 
 TEST_F(DlcServiceTestLegacy, InstallAlreadyInstalledThatGotUnmountedTest) {
   Install(kFirstDlc);
 
-  // TOOD(ahassani): Move these checks to InstallTest.
   CheckDlcState(kFirstDlc, DlcState::INSTALLED);
   const auto mount_path_root = JoinPaths(mount_path_, "root");
   EXPECT_TRUE(base::PathExists(mount_path_root));
@@ -1272,7 +1359,12 @@ TEST_F(DlcServiceTestLegacy, InstallAlreadyInstalledThatGotUnmountedTest) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessAlreadyInstalled));
 
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kFirstDlc), &err_));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
+  dlc_service_->Install(CreateInstallRequest(kFirstDlc), std::move(mr));
+  EXPECT_TRUE(called);
   CheckDlcState(kFirstDlc, DlcState::INSTALLED);
 }
 
@@ -1285,7 +1377,12 @@ TEST_F(DlcServiceTestLegacy, InstallFailsToCreateDirectory) {
   // Install will fail because DlcBase::CreateDlc() will fail to create
   // directories inside |content_path_|, since the permissions don't allow
   // writing into |content_path_|.
-  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  EXPECT_CALL(*mr, ReplyWithError(_)).WillOnce([this](auto&& arg) {
+    err_ = arg->Clone();
+  });
+  dlc_service_->Install(CreateInstallRequest(kSecondDlc), std::move(mr));
+  ASSERT_TRUE(err_.get());
   EXPECT_EQ(err_->GetCode(), kErrorInternal);
 
   CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED, kErrorInternal);
@@ -1305,7 +1402,12 @@ TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalDlcRootTest) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessNewInstall));
 
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
+  dlc_service_->Install(CreateInstallRequest(kSecondDlc), std::move(mr));
+  EXPECT_TRUE(called);
 
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
@@ -1343,7 +1445,12 @@ TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalNoRemountTest) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessNewInstall));
 
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
+  dlc_service_->Install(CreateInstallRequest(kSecondDlc), std::move(mr));
+  EXPECT_TRUE(called);
 
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
@@ -1368,7 +1475,12 @@ TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalTest) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessNewInstall));
 
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
+  dlc_service_->Install(CreateInstallRequest(kSecondDlc), std::move(mr));
+  EXPECT_TRUE(called);
 
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
@@ -1393,7 +1505,12 @@ TEST_F(DlcServiceTestLegacy, MountFailureTest) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedToMountImage));
 
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
+  dlc_service_->Install(CreateInstallRequest(kSecondDlc), std::move(mr));
+  EXPECT_TRUE(called);
 
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
@@ -1416,7 +1533,12 @@ TEST_F(DlcServiceTestLegacy, ReportingFailureCleanupTest) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedInstallInUpdateEngine));
 
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
+  dlc_service_->Install(CreateInstallRequest(kSecondDlc), std::move(mr));
+  EXPECT_TRUE(called);
 
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
@@ -1445,7 +1567,12 @@ TEST_F(DlcServiceTestLegacy, ReportingFailureSignalTest) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedInstallInUpdateEngine));
 
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
+  dlc_service_->Install(CreateInstallRequest(kSecondDlc), std::move(mr));
+  EXPECT_TRUE(called);
 
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
@@ -1473,7 +1600,12 @@ TEST_F(DlcServiceTestLegacy, SignalToleranceCapTest) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedInstallInUpdateEngine));
 
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
+  dlc_service_->Install(CreateInstallRequest(kSecondDlc), std::move(mr));
+  EXPECT_TRUE(called);
 
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
@@ -1499,7 +1631,12 @@ TEST_F(DlcServiceTestLegacy, SignalToleranceCapResetTest) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedInstallInUpdateEngine));
 
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
+  dlc_service_->Install(CreateInstallRequest(kSecondDlc), std::move(mr));
+  EXPECT_TRUE(called);
 
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
@@ -1547,7 +1684,12 @@ TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalDownloadProgressTest) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessNewInstall));
 
-  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+  auto mr = std::make_unique<MockDBusMethodResponse<>>();
+  bool called = false;
+  mr->set_return_callback(
+      base::BindOnce([](bool* called) { *called = true; }, &called));
+  dlc_service_->Install(CreateInstallRequest(kSecondDlc), std::move(mr));
+  EXPECT_TRUE(called);
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
   StatusResult status_result;
@@ -1584,7 +1726,12 @@ TEST_F(DlcServiceTestLegacy,
     EXPECT_CALL(*mock_metrics_,
                 SendInstallResult(InstallResult::kFailedToMountImage));
 
-    EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+    auto mr = std::make_unique<MockDBusMethodResponse<>>();
+    bool called = false;
+    mr->set_return_callback(
+        base::BindOnce([](bool* called) { *called = true; }, &called));
+    dlc_service_->Install(CreateInstallRequest(kSecondDlc), std::move(mr));
+    EXPECT_TRUE(called);
     CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
     EXPECT_TRUE(dlc_service_->InstallCompleted({kSecondDlc}, &err_));
