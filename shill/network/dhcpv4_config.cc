@@ -18,6 +18,7 @@
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 
+#include "shill/http_url.h"
 #include "shill/logging.h"
 
 namespace shill {
@@ -154,6 +155,16 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
       if (mtu > NetworkConfig::kMinIPv4MTU) {
         network_config->mtu = mtu;
       }
+    } else if (key == kConfigurationKeyCaptivePortalUri) {
+      // RFC 8910 specifies that the protocol of the URI must be HTTPS.
+      const auto uri = HttpUrl::CreateFromString(value.Get<std::string>());
+      if (!uri.has_value() || uri->protocol() != HttpUrl::Protocol::kHttps) {
+        LOG(ERROR) << "Ignoring invalid captive portal uri: "
+                   << value.Get<std::string>();
+        has_error = true;
+        continue;
+      }
+      network_config->captive_portal_uri = *uri;
     } else if (key == kConfigurationKeyClasslessStaticRoutes) {
       classless_static_routes = value.Get<std::string>();
     } else if (key == kConfigurationKeyVendorEncapsulatedOptions) {

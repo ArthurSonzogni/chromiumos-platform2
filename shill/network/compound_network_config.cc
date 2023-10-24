@@ -156,10 +156,12 @@ bool CompoundNetworkConfig::Recalculate() {
         link_protocol_network_config_->included_route_prefixes;
   }
 
-  // |rfc3442_routes| can only be from DHCP.
+  // |rfc3442_routes| and |captive_portal_uri| can only be from DHCP.
   if (dhcp_network_config_) {
     combined_network_config_->rfc3442_routes =
         dhcp_network_config_->rfc3442_routes;
+    combined_network_config_->captive_portal_uri =
+        dhcp_network_config_->captive_portal_uri;
   }
 
   // DNS and DNSSL preference: static > non-static source merged.

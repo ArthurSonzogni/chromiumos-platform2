@@ -5,6 +5,7 @@
 #include "shill/network/network_config.h"
 
 #include <algorithm>
+#include <compare>
 
 #include <base/strings/string_util.h>
 #include <net-base/ipv4_address.h>
@@ -19,20 +20,7 @@ bool NetworkConfig::IsEmpty() const {
   return *this == NetworkConfig{};
 }
 
-bool operator==(const NetworkConfig& lhs, const NetworkConfig& rhs) {
-  return lhs.ipv4_address == rhs.ipv4_address &&
-         lhs.ipv4_broadcast == rhs.ipv4_broadcast &&
-         lhs.ipv4_gateway == lhs.ipv4_gateway &&
-         lhs.ipv6_addresses == rhs.ipv6_addresses &&
-         lhs.ipv6_gateway == rhs.ipv6_gateway &&
-         lhs.ipv4_default_route == rhs.ipv4_default_route &&
-         lhs.ipv6_blackhole_route == rhs.ipv6_blackhole_route &&
-         lhs.excluded_route_prefixes == rhs.excluded_route_prefixes &&
-         lhs.included_route_prefixes == rhs.included_route_prefixes &&
-         lhs.rfc3442_routes == rhs.rfc3442_routes &&
-         lhs.dns_servers == rhs.dns_servers &&
-         lhs.dns_search_domains == rhs.dns_search_domains && lhs.mtu == rhs.mtu;
-}
+bool NetworkConfig::operator==(const NetworkConfig& rhs) const = default;
 
 std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config) {
   stream << "{IPv4 address: "
@@ -102,6 +90,9 @@ std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config) {
   }
   if (config.mtu) {
     stream << ", mtu: " << *config.mtu;
+  }
+  if (config.captive_portal_uri) {
+    stream << ", captive_portal_uri: " << config.captive_portal_uri->ToString();
   }
   return stream << "}";
 }

@@ -15,6 +15,8 @@
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 
+#include "shill/http_url.h"
+
 namespace shill {
 
 // Properties related to the IP layer used to represent a configuration.
@@ -28,6 +30,7 @@ struct NetworkConfig {
   NetworkConfig();
   ~NetworkConfig();
 
+  bool operator==(const NetworkConfig& rhs) const;
   bool IsEmpty() const;
 
   // IPv4 configurations. If |ipv4_address| is null, no IPv4 is configured on
@@ -60,9 +63,10 @@ struct NetworkConfig {
   std::vector<net_base::IPAddress> dns_servers;
   std::vector<std::string> dns_search_domains;
   std::optional<int> mtu;
-};
 
-bool operator==(const NetworkConfig& lhs, const NetworkConfig& rhs);
+  // The captive portal URI gained from DHCP option 114, defined at RFC 8910.
+  std::optional<HttpUrl> captive_portal_uri;
+};
 
 std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config);
 

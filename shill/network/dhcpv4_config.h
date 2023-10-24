@@ -34,6 +34,8 @@ class DHCPv4Config {
   // internally, make them public for unit tests.
   static constexpr char kConfigurationKeyBroadcastAddress[] =
       "BroadcastAddress";
+  static constexpr char kConfigurationKeyCaptivePortalUri[] =
+      "CaptivePortalUri";
   static constexpr char kConfigurationKeyClasslessStaticRoutes[] =
       "ClasslessStaticRoutes";
   static constexpr char kConfigurationKeyDNS[] = "DomainNameServers";

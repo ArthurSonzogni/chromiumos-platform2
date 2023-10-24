@@ -134,4 +134,31 @@ TEST(DHCPv4ConfigTest, ParseConfigurationRespectingMinimumMTU) {
   }
 }
 
+TEST(DHCPv4ConfigTest, ParseConfigurationCaptivePortalUri) {
+  const std::string kCaptivePortalUri = "https://example.org/portal.html";
+  KeyValueStore conf;
+  conf.Set<std::string>(DHCPv4Config::kConfigurationKeyCaptivePortalUri,
+                        kCaptivePortalUri);
+
+  NetworkConfig network_config;
+  DHCPv4Config::Data dhcp_data;
+  EXPECT_TRUE(
+      DHCPv4Config::ParseConfiguration(conf, &network_config, &dhcp_data));
+  EXPECT_EQ(network_config.captive_portal_uri,
+            HttpUrl::CreateFromString(kCaptivePortalUri).value());
+}
+
+TEST(DHCPv4ConfigTest, ParseConfigurationCaptivePortalUriFailed) {
+  const std::string kCaptivePortalUri = "invalid uri";
+  KeyValueStore conf;
+  conf.Set<std::string>(DHCPv4Config::kConfigurationKeyCaptivePortalUri,
+                        kCaptivePortalUri);
+
+  NetworkConfig network_config;
+  DHCPv4Config::Data dhcp_data;
+  EXPECT_FALSE(
+      DHCPv4Config::ParseConfiguration(conf, &network_config, &dhcp_data));
+  EXPECT_EQ(network_config.captive_portal_uri, std::nullopt);
+}
+
 }  // namespace shill
