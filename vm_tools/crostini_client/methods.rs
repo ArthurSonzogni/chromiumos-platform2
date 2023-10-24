@@ -602,7 +602,7 @@ impl Methods {
             DLC_SERVICE_SERVICE_NAME,
             DLC_SERVICE_SERVICE_PATH,
             DLC_SERVICE_INTERFACE,
-            INSTALL_DLC_METHOD,
+            INSTALL_METHOD,
         )?
         .append1(name);
 
