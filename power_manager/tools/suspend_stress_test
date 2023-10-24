@@ -154,8 +154,7 @@ has_s2idle() {
 # Returns the S0ix residency counter as returned by the kernel.
 # The driver that provides these counters depends on the platform.
 get_s0ix_count() {
-  if [ -e /sys/kernel/debug/pmc_core/substate_residencies ] &&
-     [ "${FLAGS_ignore_s0ix_substates}" -eq "${FLAGS_FALSE}" ]; then
+  if [ "${FLAGS_ignore_s0ix_substates}" -eq "${FLAGS_FALSE}" ]; then
     # From Tigerlake with kernel >= 5.4
     # Larger number means deeper state,
     # so we sort all substates and check last one.
@@ -197,6 +196,10 @@ has_ectool_s0ix_counter() {
   fi
 }
 
+s0ix_substate_exists() {
+  [ -e /sys/kernel/debug/pmc_core/substate_residencies ]
+}
+
 should_ignore_s0ix_count() {
   # TODO(b/297952740): remove this when this bug is resolved.
   grep -q "^$(cros_config / name)$" << EOF
@@ -229,7 +232,7 @@ EOF
 FLAGS "$@" || exit 1
 
 if [ "${FLAGS_ignore_s0ix_substates}" -eq "${FLAGS_FALSE}" ] && \
-   should_ignore_s0ix_count; then
+  (should_ignore_s0ix_count || ! s0ix_substate_exists); then
   FLAGS_ignore_s0ix_substates=${FLAGS_TRUE}
 fi
 
@@ -266,8 +269,7 @@ fi
 check_s0ix_errors=0
 check_s2idle_errors=0
 if check_powerd_config --suspend_to_idle; then
-  if { [ -e /sys/kernel/debug/pmc_core/substate_residencies ] && \
-       [ "${FLAGS_ignore_s0ix_substates}" -eq "${FLAGS_FALSE}" ]; } || \
+  if [ "${FLAGS_ignore_s0ix_substates}" -eq "${FLAGS_FALSE}" ] || \
      [ -e /sys/kernel/debug/pmc_core/slp_s0_residency_usec ] || \
      [ -e /sys/kernel/debug/telemetry/s0ix_residency_usec ] || \
      [ -e /sys/kernel/debug/amd_pmc/s0ix_stats ]; then
