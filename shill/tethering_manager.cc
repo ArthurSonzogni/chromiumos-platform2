@@ -538,9 +538,9 @@ void TetheringManager::CheckAndStartDownstreamTetheredNetwork() {
   if (!hotspot_dev_ || !hotspot_dev_->IsServiceUp()) {
     // Downstream hotspot device or service is not ready.
     if (hotspot_service_up_) {
-      // Has already received the kServiceUp event, but device state is not
+      // Has already received the kLinkUp event, but device state is not
       // correct, something went wrong. Terminate tethering session.
-      LOG(ERROR) << "Has received kServiceUp event from hotspot device but the "
+      LOG(ERROR) << "Has received kLinkUp event from hotspot device but the "
                     "device state is not correct. Terminate tethering session";
       PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
       StopTetheringSession(StopReason::kError);
@@ -948,21 +948,33 @@ void TetheringManager::OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
   LOG(INFO) << "TetheringManager received downstream device "
             << *device->link_name() << " event: " << event;
 
-  if (event == LocalDevice::DeviceEvent::kInterfaceDisabled ||
-      event == LocalDevice::DeviceEvent::kServiceDown) {
-    if (state_ == TetheringState::kTetheringStarting) {
-      PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
-    }
-    StopTetheringSession(StopReason::kError);
-  } else if (event == LocalDevice::DeviceEvent::kInterfaceEnabled) {
-    OnDownstreamDeviceEnabled();
-  } else if (event == LocalDevice::DeviceEvent::kServiceUp) {
-    hotspot_service_up_ = true;
-    CheckAndStartDownstreamTetheredNetwork();
-  } else if (event == LocalDevice::DeviceEvent::kPeerConnected) {
-    OnPeerAssoc();
-  } else if (event == LocalDevice::DeviceEvent::kPeerDisconnected) {
-    OnPeerDisassoc();
+  switch (event) {
+    case LocalDevice::DeviceEvent::kInterfaceDisabled:
+    case LocalDevice::DeviceEvent::kLinkDown:
+      if (state_ == TetheringState::kTetheringStarting) {
+        PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
+      }
+      StopTetheringSession(StopReason::kError);
+      break;
+    case LocalDevice::DeviceEvent::kInterfaceEnabled:
+      OnDownstreamDeviceEnabled();
+      break;
+    case LocalDevice::DeviceEvent::kLinkUp:
+      hotspot_service_up_ = true;
+      CheckAndStartDownstreamTetheredNetwork();
+      break;
+    case LocalDevice::DeviceEvent::kPeerConnected:
+      OnPeerAssoc();
+      break;
+    case LocalDevice::DeviceEvent::kPeerDisconnected:
+      OnPeerDisassoc();
+      break;
+    case LocalDevice::DeviceEvent::kLinkFailure:
+    case LocalDevice::DeviceEvent::kNetworkUp:
+    case LocalDevice::DeviceEvent::kNetworkDown:
+    case LocalDevice::DeviceEvent::kNetworkFailure:
+      LOG(WARNING) << "TetheringManager ignored unexpected " << event
+                   << " event from downstream device " << *device->link_name();
   }
 }
 

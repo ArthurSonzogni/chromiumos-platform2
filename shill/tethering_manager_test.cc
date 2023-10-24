@@ -299,7 +299,7 @@ class TetheringManagerTest : public testing::Test {
                             LocalDevice::DeviceEvent::kInterfaceEnabled,
                             hotspot_device_.get());
       DownStreamDeviceEvent(tethering_manager,
-                            LocalDevice::DeviceEvent::kServiceUp,
+                            LocalDevice::DeviceEvent::kLinkUp,
                             hotspot_device_.get());
       OnUpstreamNetworkAcquired(tethering_manager_,
                                 TetheringManager::SetEnabledResult::kSuccess);
@@ -1032,8 +1032,7 @@ TEST_F(TetheringManagerTest, StartTetheringSessionSuccessWithCellularUpstream) {
 
   // Downstream device event service up.
   EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
-  DownStreamDeviceEvent(tethering_manager_,
-                        LocalDevice::DeviceEvent::kServiceUp,
+  DownStreamDeviceEvent(tethering_manager_, LocalDevice::DeviceEvent::kLinkUp,
                         hotspot_device_.get());
 
   // Upstream network fetched.
@@ -1088,8 +1087,7 @@ TEST_F(TetheringManagerTest, StartTetheringSessionSuccessWithEthernetUpstream) {
   // Downstream device event service up.
   EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
   ON_CALL(*hotspot_device_.get(), IsServiceUp()).WillByDefault(Return(true));
-  DownStreamDeviceEvent(tethering_manager_,
-                        LocalDevice::DeviceEvent::kServiceUp,
+  DownStreamDeviceEvent(tethering_manager_, LocalDevice::DeviceEvent::kLinkUp,
                         hotspot_device_.get());
 
   // Tethering network created.
@@ -1121,8 +1119,7 @@ TEST_F(TetheringManagerTest,
 
   // Downstream device event service up.
   EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
-  DownStreamDeviceEvent(tethering_manager_,
-                        LocalDevice::DeviceEvent::kServiceUp,
+  DownStreamDeviceEvent(tethering_manager_, LocalDevice::DeviceEvent::kLinkUp,
                         hotspot_device_.get());
 
   // Upstream network fetched.
@@ -1146,8 +1143,7 @@ TEST_F(TetheringManagerTest,
 
   // Downstream device event service up.
   EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
-  DownStreamDeviceEvent(tethering_manager_,
-                        LocalDevice::DeviceEvent::kServiceUp,
+  DownStreamDeviceEvent(tethering_manager_, LocalDevice::DeviceEvent::kLinkUp,
                         hotspot_device_.get());
 
   // Upstream network fetched.
@@ -1173,8 +1169,7 @@ TEST_F(TetheringManagerTest,
   Mock::VerifyAndClearExpectations(&manager_);
 
   // Downstream device event service up.
-  DownStreamDeviceEvent(tethering_manager_,
-                        LocalDevice::DeviceEvent::kServiceUp,
+  DownStreamDeviceEvent(tethering_manager_, LocalDevice::DeviceEvent::kLinkUp,
                         hotspot_device_.get());
 
   // Upstream network fetched.
@@ -1188,10 +1183,9 @@ TEST_F(TetheringManagerTest,
             TetheringManager::TetheringState::kTetheringStarting);
   Mock::VerifyAndClearExpectations(&manager_);
 
-  // Force another LocalDevice::DeviceEvent::kServiceUp event for the
+  // Force another LocalDevice::DeviceEvent::kLinkUp event for the
   // downstream network.
-  DownStreamDeviceEvent(tethering_manager_,
-                        LocalDevice::DeviceEvent::kServiceUp,
+  DownStreamDeviceEvent(tethering_manager_, LocalDevice::DeviceEvent::kLinkUp,
                         hotspot_device_.get());
 
   VerifyResult(TetheringManager::SetEnabledResult::kFailure);
@@ -1229,8 +1223,7 @@ TEST_F(TetheringManagerTest, StartTetheringSessionUpstreamNetworkNotReady) {
 
   // Downstream device event service up.
   EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
-  DownStreamDeviceEvent(tethering_manager_,
-                        LocalDevice::DeviceEvent::kServiceUp,
+  DownStreamDeviceEvent(tethering_manager_, LocalDevice::DeviceEvent::kLinkUp,
                         hotspot_device_.get());
 
   // Upstream network fetched. Network has no Internet connectivity
@@ -1271,8 +1264,7 @@ TEST_F(TetheringManagerTest, StartTetheringSessionUpstreamNetworkHasPortal) {
 
   // Downstream device event service up.
   EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
-  DownStreamDeviceEvent(tethering_manager_,
-                        LocalDevice::DeviceEvent::kServiceUp,
+  DownStreamDeviceEvent(tethering_manager_, LocalDevice::DeviceEvent::kLinkUp,
                         hotspot_device_.get());
 
   // Upstream network fetched. Network is in a portal state.
@@ -1377,8 +1369,7 @@ TEST_F(TetheringManagerTest, DeviceEventServiceDown) {
                          TetheringManager::SetEnabledResult::kSuccess);
 
   EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
-  DownStreamDeviceEvent(tethering_manager_,
-                        LocalDevice::DeviceEvent::kServiceDown,
+  DownStreamDeviceEvent(tethering_manager_, LocalDevice::DeviceEvent::kLinkDown,
                         hotspot_device_.get());
   DispatchPendingEvents();
   CheckTetheringStopping(tethering_manager_, kTetheringIdleReasonError);
@@ -1435,8 +1426,7 @@ TEST_F(TetheringManagerTest, DISABLED_UpstreamNetworkValidationFailed) {
 
   // Downstream device event service up.
   EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
-  DownStreamDeviceEvent(tethering_manager_,
-                        LocalDevice::DeviceEvent::kServiceUp,
+  DownStreamDeviceEvent(tethering_manager_, LocalDevice::DeviceEvent::kLinkUp,
                         hotspot_device_.get());
 
   // Upstream network fetched. Network not ready.

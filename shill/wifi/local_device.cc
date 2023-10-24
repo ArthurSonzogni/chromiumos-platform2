@@ -106,22 +106,40 @@ std::ostream& operator<<(std::ostream& stream, LocalDevice::IfaceType type) {
 }
 
 std::ostream& operator<<(std::ostream& stream, LocalDevice::DeviceEvent event) {
-  if (event == LocalDevice::DeviceEvent::kInterfaceDisabled) {
-    stream << "InterfaceDisabled";
-  } else if (event == LocalDevice::DeviceEvent::kInterfaceEnabled) {
-    stream << "InterfaceEnabled";
-  } else if (event == LocalDevice::DeviceEvent::kServiceUp) {
-    stream << "ServiceUp";
-  } else if (event == LocalDevice::DeviceEvent::kServiceDown) {
-    stream << "ServiceDown";
-  } else if (event == LocalDevice::DeviceEvent::kPeerConnected) {
-    stream << "PeerConnected";
-  } else if (event == LocalDevice::DeviceEvent::kPeerDisconnected) {
-    stream << "PeerDisconnected";
-  } else {
-    stream << "unknown";
+  switch (event) {
+    case LocalDevice::DeviceEvent::kInterfaceDisabled:
+      stream << "InterfaceDisabled";
+      return stream;
+    case LocalDevice::DeviceEvent::kInterfaceEnabled:
+      stream << "InterfaceEnabled";
+      return stream;
+    case LocalDevice::DeviceEvent::kLinkUp:
+      stream << "LinkUp";
+      return stream;
+    case LocalDevice::DeviceEvent::kLinkDown:
+      stream << "LinkDown";
+      return stream;
+    case LocalDevice::DeviceEvent::kLinkFailure:
+      stream << "LinkFailure";
+      return stream;
+    case LocalDevice::DeviceEvent::kNetworkUp:
+      stream << "NetworkUp";
+      return stream;
+    case LocalDevice::DeviceEvent::kNetworkDown:
+      stream << "NetworkDown";
+      return stream;
+    case LocalDevice::DeviceEvent::kNetworkFailure:
+      stream << "NetworkFailure";
+      return stream;
+    case LocalDevice::DeviceEvent::kPeerConnected:
+      stream << "PeerConnected";
+      return stream;
+    case LocalDevice::DeviceEvent::kPeerDisconnected:
+      stream << "PeerDisconnected";
+      return stream;
   }
 
+  stream << "unknown";
   return stream;
 }
 

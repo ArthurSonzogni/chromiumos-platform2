@@ -296,27 +296,27 @@ TEST_F(HotspotDeviceTest, ServiceEvent) {
   props.Set<std::string>(WPASupplicant::kInterfacePropertyState,
                          WPASupplicant::kInterfaceStateCompleted);
 
-  // Expect supplicant_state_ change and kServiceUp DeviceEvent sent on
+  // Expect supplicant_state_ change and kLinkUp DeviceEvent sent on
   // wpa_supplicant state kInterfaceStateCompleted.
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kServiceUp, _)).Times(1);
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
   device_->PropertiesChangedTask(props);
   EXPECT_EQ(device_->supplicant_state_,
             WPASupplicant::kInterfaceStateCompleted);
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
 
-  // Expect supplicant_state_ change and kServiceDown DeviceEvent sent on
+  // Expect supplicant_state_ change and kLinkDown DeviceEvent sent on
   // wpa_supplicant state kInterfaceStateDisconnected.
   props.Set<std::string>(WPASupplicant::kInterfacePropertyState,
                          WPASupplicant::kInterfaceStateDisconnected);
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kServiceDown, _)).Times(1);
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkDown, _)).Times(1);
   device_->PropertiesChangedTask(props);
   EXPECT_EQ(device_->supplicant_state_,
             WPASupplicant::kInterfaceStateDisconnected);
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
 
-  // Expect supplicant_state_ change but no kServiceDown DeviceEvent sent on
+  // Expect supplicant_state_ change but no kLinkDown DeviceEvent sent on
   // further wpa_supplicant state change kInterfaceStateInactive.
   props.Set<std::string>(WPASupplicant::kInterfacePropertyState,
                          WPASupplicant::kInterfaceStateInactive);

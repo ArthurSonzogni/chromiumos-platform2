@@ -39,10 +39,15 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   enum class DeviceEvent {
     kInterfaceDisabled,  // Interface is disabled in kernel.
     kInterfaceEnabled,   // Interface is enabled and ready to use.
-    kServiceUp,          // A service is added and brought up.
-    kServiceDown,        // A service is brought down and removed.
-    kPeerConnected,      // A peer is connected.
-    kPeerDisconnected,   // A peer is disconnected.
+    kLinkUp,       // A link layer (L2 connection) is added and brought up.
+    kLinkDown,     // A link layer (L2 connection) is brought down and removed.
+    kLinkFailure,  // Failed to bring up a link layer (L2 connection).
+    kNetworkUp,    // A network layer (L3 connection) is added and brought up.
+    kNetworkDown,  // A network layer (L3 connection) is brought down and
+                   // removed.
+    kNetworkFailure,    // Failed to bring up a network layer (L3 connection).
+    kPeerConnected,     // A peer is connected.
+    kPeerDisconnected,  // A peer is disconnected.
   };
 
   // Callback function with an event code and a pointer to the base class

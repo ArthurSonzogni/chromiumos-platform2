@@ -54,10 +54,10 @@ void LocalService::SetState(LocalServiceState state) {
 
   if (IsUpState(prev_state)) {
     // Service changed from connect state to other non-connect state.
-    device_->PostDeviceEvent(LocalDevice::DeviceEvent::kServiceDown);
+    device_->PostDeviceEvent(LocalDevice::DeviceEvent::kLinkDown);
   } else if (IsUpState(state)) {
     // Service changed from non-connect state to connect state.
-    device_->PostDeviceEvent(LocalDevice::DeviceEvent::kServiceUp);
+    device_->PostDeviceEvent(LocalDevice::DeviceEvent::kLinkUp);
   }
 }
 

@@ -75,16 +75,16 @@ TEST_F(LocalServiceTest, SetState) {
   Mock::VerifyAndClearExpectations(&cb);
   EXPECT_EQ(ServiceState(), LocalService::LocalServiceState::kStateStarting);
 
-  // Emit device event kServiceUp if service is up.
+  // Emit device event kLinkUp if service is up.
   service_->SetState(LocalService::LocalServiceState::kStateUp);
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kServiceUp, _)).Times(1);
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
   EXPECT_EQ(ServiceState(), LocalService::LocalServiceState::kStateUp);
 
-  // Emit device event kServiceDown if service is down.
+  // Emit device event kLinkDown if service is down.
   service_->SetState(LocalService::LocalServiceState::kStateIdle);
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kServiceDown, _)).Times(1);
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkDown, _)).Times(1);
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
   EXPECT_EQ(ServiceState(), LocalService::LocalServiceState::kStateIdle);

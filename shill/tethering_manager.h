@@ -340,7 +340,7 @@ class TetheringManager : public Network::EventHandler {
   SetEnabledResultCallback result_callback_;
   // Downlink hotspot device.
   HotspotDeviceRefPtr hotspot_dev_;
-  // If downstream hotspot device event kServiceUp has been received or not.
+  // If downstream hotspot device event kLinkUp has been received or not.
   bool hotspot_service_up_;
   // The reason why tethering is stopped.
   StopReason stop_reason_;
