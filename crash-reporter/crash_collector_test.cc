@@ -1896,14 +1896,14 @@ TEST_P(CrashCollectorParameterizedTest, MetaData) {
   collector_.set_test_kernel_info(kKernelName, kKernelVersion);
   std::unique_ptr<policy::MockDevicePolicy> test_device_policy =
       std::make_unique<policy::MockDevicePolicy>();
-  if (!test_case.enterprise_enrolled) {
+  if (!test_case.enterprise_enrolled.has_value()) {
     EXPECT_CALL(*test_device_policy, LoadPolicy(/*delete_invalid_files=*/false))
-        .WillOnce(Return(false));
+        .WillRepeatedly(Return(false));
   } else {
     EXPECT_CALL(*test_device_policy, LoadPolicy(/*delete_invalid_files=*/false))
-        .WillOnce(Return(true));
+        .WillRepeatedly(Return(true));
     EXPECT_CALL(*test_device_policy, IsEnterpriseEnrolled())
-        .WillOnce(Return(*test_case.enterprise_enrolled));
+        .WillRepeatedly(Return(*test_case.enterprise_enrolled));
   }
   collector_.set_device_policy_for_test(std::move(test_device_policy));
 

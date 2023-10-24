@@ -668,6 +668,10 @@ class CrashCollector {
   // collector handled or ignored it.
   void LogCrash(const std::string& message, const std::string& reason) const;
 
+  // Make sure device policy has been loaded. Can be called before each use of
+  // device_policy_. Returns false if the policy can't be loaded.
+  bool LoadDevicePolicy();
+
  private:
   struct ForcedGetCreatedCrashDirectoryByEuidStatus {
     ForcedGetCreatedCrashDirectoryByEuidStatus(

@@ -62,6 +62,7 @@
 #include "crash-reporter/constants.h"
 #include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
+#include "crash-reporter/detailed_hardware_data.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"
 
@@ -161,16 +162,6 @@ constexpr char kARCStatus[] = "Built with ARCVM";
 #else
 constexpr char kARCStatus[] = "Not built with ARC";
 #endif
-
-// All the files under /sys/class/dmi/id/ appear to be 4096 bytes, though the
-// actual contents are smaller. I can't find where in the spec it says how big
-// DMI fields can be, but it looks like the kernel "dmi_header" uses a u8 to
-// store the length.
-constexpr int64_t kDmiMaxSize = 256;
-constexpr char kProductNameKey[] = "chromeosflex_product_name";
-constexpr char kProductVersionKey[] = "chromeosflex_product_version";
-// This string is intentionally different to match the field as used elsewhere.
-constexpr char kSysVendorKey[] = "chromeosflex_product_vendor";
 
 #define NCG(x) "(?:" x ")"
 #define OPT_NCG(x) NCG(x) "?"
@@ -523,25 +514,6 @@ bool CarefullyReadFileToStringWithMaxSize(const base::FilePath& path,
   contents->append(data.begin(), data.end());
 
   return true;
-}
-
-std::optional<std::string> ReadDmiIdBestEffort(const std::string& file) {
-  const base::FilePath path = paths::Get(paths::kDmiIdDirectory).Append(file);
-
-  std::string contents;
-  if (!base::ReadFileToStringWithMaxSize(path, &contents, kDmiMaxSize)) {
-    LOG(INFO) << "Couldn't read " << path.value();
-    return std::nullopt;
-  }
-
-  // The kernel adds a trailing newline to the DMI files it
-  // exposes. Trim that character, but don't trim any other trailing
-  // whitespace as that would be in the DMI data itself.
-  if (base::EndsWith(contents, "\n")) {
-    contents.pop_back();
-  }
-
-  return contents;
 }
 
 CrashCollector::CrashCollector(
@@ -1697,30 +1669,29 @@ void CrashCollector::AddDetailedHardwareData() {
     return;
   }
 
-  const std::optional<std::string> product_name(
-      ReadDmiIdBestEffort(paths::kProductNameFile));
-  const std::optional<std::string> product_version(
-      ReadDmiIdBestEffort(paths::kProductVersionFile));
-  const std::optional<std::string> sys_vendor(
-      ReadDmiIdBestEffort(paths::kSysVendorFile));
+  LOG(INFO) << "Adding Manufacturer/Model info.";
+  for (const auto& [key, value] : detailed_hardware_data::DmiModelInfo()) {
+    // For these three we really care about the distinction between not having
+    // read it and having read it but the file being empty -- some OEMs
+    // put/leave "useless" values (like empty strings or "To be filled by
+    // O.E.M.") in there, but even those can provide some signal. Use
+    // AddCrashMetaData so present-but-empty values aren't filtered out.
+    AddCrashMetaData(constants::kUploadVarPrefix + key, value);
+  }
 
-  // For these three we really care about the distinction between not having
-  // read it and having read it but the file being empty -- some OEMs put/leave
-  // "useless" values (like empty strings or "To be filled by O.E.M.") in there,
-  // but even those can provide some signal.
-  // Use AddCrashMetaData so present-but-empty values aren't filtered out.
-  if (product_name.has_value()) {
-    AddCrashMetaData(constants::kUploadVarPrefix + std::string(kProductNameKey),
-                     product_name.value());
+  // Make sure the device_policy_ we're about to pass has been loaded.
+  if (!LoadDevicePolicy()) {
+    LOG(WARNING) << "Not adding detailed hardware info without loading policy.";
+    return;
   }
-  if (product_version.has_value()) {
-    AddCrashMetaData(
-        constants::kUploadVarPrefix + std::string(kProductVersionKey),
-        product_version.value());
-  }
-  if (sys_vendor.has_value()) {
-    AddCrashMetaData(constants::kUploadVarPrefix + std::string(kSysVendorKey),
-                     sys_vendor.value());
+
+  if (detailed_hardware_data::FlexComponentInfoAllowedByPolicy(
+          *device_policy_)) {
+    LOG(INFO) << "Adding hardware component info.";
+    for (const auto& [key, value] :
+         detailed_hardware_data::FlexComponentInfo()) {
+      AddCrashMetaUploadData(key, value);
+    }
   }
 }
 
@@ -1792,16 +1763,22 @@ std::string CrashCollector::GetKernelVersion() const {
   return StringPrintf("%s %s", buf.release, buf.version);
 }
 
-std::optional<bool> CrashCollector::IsEnterpriseEnrolled() {
+bool CrashCollector::LoadDevicePolicy() {
   DCHECK(device_policy_);
   if (!device_policy_loaded_) {
-    if (!device_policy_->LoadPolicy(/*delete_invalid_files=*/false)) {
+    if (device_policy_->LoadPolicy(/*delete_invalid_files=*/false)) {
+      device_policy_loaded_ = true;
+    } else {
       LOG(ERROR) << "Failed to load device policy";
-      return std::nullopt;
     }
-    device_policy_loaded_ = true;
   }
+  return device_policy_loaded_;
+}
 
+std::optional<bool> CrashCollector::IsEnterpriseEnrolled() {
+  if (!LoadDevicePolicy()) {
+    return std::nullopt;
+  }
   return device_policy_->IsEnterpriseEnrolled();
 }
 
