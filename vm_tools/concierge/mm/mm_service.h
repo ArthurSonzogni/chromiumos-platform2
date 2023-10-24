@@ -48,6 +48,17 @@ class MmService {
   // Called to notify the service that a VM will stop soon.
   void NotifyVmStopping(int vm_cid);
 
+  // Callback for when ReclaimUntilBlocked() completes.
+  using ReclaimUntilBlockedCallback =
+      BalloonBroker::ReclaimUntilBlockedCallback;
+  // Reclaims all memory from |vm_cid| that is needed at less than |priority|.
+  void ReclaimUntilBlocked(int vm_cid,
+                           ResizePriority priority,
+                           ReclaimUntilBlockedCallback cb);
+
+  // Stop the ongoing ReclaimUntilBlocked() request.
+  void StopReclaimUntilBlocked(int vm_cid);
+
   // Returns an open FD to the kills server.
   base::ScopedFD GetKillsServerConnection();
 
@@ -58,9 +69,6 @@ class MmService {
   // Instructs the balloon broker to perform the supplied reclaim operation.
   void Reclaim(const BalloonBroker::ReclaimOperation& reclaim_operation,
                ResizePriority priority);
-
-  // Reclaim from the target context until it is blocked at |priority|.
-  void ReclaimUntil(int cid, ResizePriority priority);
 
   // Starts components that run on the negotiation thread.
   bool NegotiationThreadStart(
@@ -73,7 +81,12 @@ class MmService {
   void NegotiationThreadNotifyVmStarted(int vm_cid, const std::string& socket);
 
   // Runs ReclaimUntil on the negotiation thread.
-  void NegotiationThreadReclaimUntil(int vm_cid, ResizePriority priority);
+  void NegotiationThreadReclaimUntilBlocked(int vm_cid,
+                                            ResizePriority priority,
+                                            ReclaimUntilBlockedCallback cb);
+
+  // Runs StopReclaimUntil on the negotiation thread.
+  void NegotiationThreadStopReclaimUntilBlocked(int vm_cid);
 
   // Notify the negotiation thread that a VM is stopping.
   void NegotiationThreadNotifyVmStopping(int vm_cid);

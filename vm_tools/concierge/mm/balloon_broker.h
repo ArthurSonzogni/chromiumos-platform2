@@ -5,8 +5,11 @@
 #ifndef VM_TOOLS_CONCIERGE_MM_BALLOON_BROKER_H_
 #define VM_TOOLS_CONCIERGE_MM_BALLOON_BROKER_H_
 
+#include <deque>
 #include <memory>
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/containers/flat_map.h>
@@ -66,8 +69,17 @@ class BalloonBroker {
   void Reclaim(const ReclaimOperation& reclaim_targets,
                ResizePriority priority);
 
-  // Reclaim from |vm_cid| until the request is blocked at |priority|.
-  void ReclaimUntilBlocked(int vm_cid, ResizePriority priority);
+  // Callback for when ReclaimUntilBlocked() completes.
+  using ReclaimUntilBlockedCallback =
+      base::OnceCallback<void(bool success, const char* err_msg)>;
+  // Reclaim all memory from |vm_cid| that is not needed with priority at least
+  // |priority|.
+  void ReclaimUntilBlocked(int vm_cid,
+                           ResizePriority priority,
+                           ReclaimUntilBlockedCallback cb);
+
+  // Stops the ongoing ReclaimUntilBlocked() operation.
+  void StopReclaimUntilBlocked(int vm_cid);
 
  private:
   // Contains state related to a client that is connected to the VM memory
@@ -160,8 +172,15 @@ class BalloonBroker {
                                 ResizePriority priority,
                                 int64_t result);
 
-  // The amount to reclaim for every iteration of ReclaimUntilBlocked().
-  static constexpr int64_t kReclaimIncrement = MiB(128);
+  // Performs one balloon adjustment step, as part of the overall
+  // ReclaimUntilBlocked() process.
+  void ReclaimUntilBlockedStep();
+
+  // Constants for determining how fast ReclaimUntilBlocked() operates.
+  static constexpr int64_t kReclaimTargetPerSecond = MiB(200);
+  static constexpr int64_t kReclaimStepsPerSecond = 5;
+  static constexpr int64_t kReclaimIncrement =
+      kReclaimTargetPerSecond / kReclaimStepsPerSecond;
 
   // The server that listens for and handles kills related messages.
   const std::unique_ptr<KillsServer> kills_server_;
@@ -182,6 +201,20 @@ class BalloonBroker {
 
   // Maintains the list of VMs that are currently connected.
   base::flat_set<int> connected_vms_ GUARDED_BY_CONTEXT(sequence_checker_){};
+
+  // Parameters used for the current ReclaimUntilBlocked() operation.
+  std::optional<std::pair<int /* cid */, ResizePriority>>
+      reclaim_until_blocked_params_ GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Callbacks to be invoked when the current ReclaimUntilBlocked() completes.
+  //
+  // Although we don't expect multiple overlapping reclaim requests in the real
+  // world, certain vmm-swap tests can trigger the aggressive balloon while
+  // post boot reclaim is still ongoing. It's simpler to support overlapping
+  // calls here than to expose enough information to support coordination at
+  // a higher level.
+  std::deque<ReclaimUntilBlockedCallback> reclaim_until_blocked_cbs_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 };
 
 }  // namespace vm_tools::concierge::mm

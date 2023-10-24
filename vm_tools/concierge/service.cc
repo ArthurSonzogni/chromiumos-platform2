@@ -4051,10 +4051,11 @@ void Service::ReclaimVmMemory(
           std::move(response_sender)));
 }
 
-void Service::AggressiveBalloon(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        AggressiveBalloonResponse>> response_sender,
-    const AggressiveBalloonRequest& request) {
+using AggressiveBalloonResponder = std::unique_ptr<
+    brillo::dbus_utils::DBusMethodResponse<AggressiveBalloonResponse>>;
+
+void Service::AggressiveBalloon(AggressiveBalloonResponder response_sender,
+                                const AggressiveBalloonRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
@@ -4074,17 +4075,41 @@ void Service::AggressiveBalloon(
     return;
   }
 
-  if (request.enable()) {
-    iter->second->InflateAggressiveBalloon(base::BindOnce(
-        [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-               AggressiveBalloonResponse>> response_sender,
-           AggressiveBalloonResponse response) {
-          std::move(response_sender)->Return(response);
-        },
-        std::move(response_sender)));
+  auto type = iter->second->GetInfo().type;
+  if (vm_memory_management_service_ &&
+      mm::MmService::ManagedVms().contains(type)) {
+    auto cid = iter->second->GetInfo().cid;
+    if (request.enable()) {
+      auto cb = base::BindOnce(
+          [](AggressiveBalloonResponder response_sender, bool success,
+             const char* err_msg) {
+            AggressiveBalloonResponse response;
+            response.set_success(success);
+            if (!success) {
+              response.set_failure_reason(err_msg);
+            }
+            std::move(response_sender)->Return(response);
+          },
+          std::move(response_sender));
+      vm_memory_management_service_->ReclaimUntilBlocked(
+          cid, ResizePriority::RESIZE_PRIORITY_CACHED_TAB, std::move(cb));
+    } else {
+      vm_memory_management_service_->StopReclaimUntilBlocked(cid);
+      response.set_success(true);
+      response_sender->Return(response);
+    }
   } else {
-    iter->second->StopAggressiveBalloon(response);
-    response_sender->Return(response);
+    if (request.enable()) {
+      iter->second->InflateAggressiveBalloon(base::BindOnce(
+          [](AggressiveBalloonResponder response_sender,
+             AggressiveBalloonResponse response) {
+            std::move(response_sender)->Return(response);
+          },
+          std::move(response_sender)));
+    } else {
+      iter->second->StopAggressiveBalloon(response);
+      response_sender->Return(response);
+    }
   }
 }
 

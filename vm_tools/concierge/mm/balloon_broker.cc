@@ -91,21 +91,89 @@ void BalloonBroker::Reclaim(const ReclaimOperation& reclaim_targets,
   }
 }
 
-void BalloonBroker::ReclaimUntilBlocked(int vm_cid, ResizePriority priority) {
+void BalloonBroker::ReclaimUntilBlocked(int vm_cid,
+                                        ResizePriority priority,
+                                        ReclaimUntilBlockedCallback cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  if (reclaim_until_blocked_params_) {
+    int cur_cid = reclaim_until_blocked_params_->first;
+    if (cur_cid != vm_cid) {
+      LOG(ERROR) << "Already reclaiming " << cur_cid << ", can't reclaim "
+                 << vm_cid;
+      std::move(cb).Run(false, "already reclaiming");
+      return;
+    }
+
+    reclaim_until_blocked_cbs_.emplace_back(std::move(cb));
+
+    // If the request is at a lower priority than the ongoing operation, then
+    // the current operation will fulfil the new request. Otherwise we need to
+    // bump up the priority of the ongoing request. Note that it's possible for
+    // a deflate request with priority below this reclaim operation to be
+    // granted before the next ReclaimUntilBlockedStep(). However, that cannot
+    // be differentiated from the deflate request occurring immediately before
+    // the start of this reclaim operation, so it is a benign race.
+    if (reclaim_until_blocked_params_->second > priority) {
+      reclaim_until_blocked_params_.emplace(vm_cid, priority);
+    }
+  } else {
+    reclaim_until_blocked_params_.emplace(vm_cid, priority);
+    reclaim_until_blocked_cbs_.emplace_back(std::move(cb));
+    ReclaimUntilBlockedStep();
+  }
+}
+
+void BalloonBroker::ReclaimUntilBlockedStep() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  if (!reclaim_until_blocked_params_) {
+    return;
+  }
+
+  int vm_cid = reclaim_until_blocked_params_->first;
+  ResizePriority priority = reclaim_until_blocked_params_->second;
 
   // If the adjustment doesn't change the balloon size as much as requested, the
   // adjustment was blocked. Do not continue.
   if (AdjustBalloon(vm_cid, kReclaimIncrement, priority) < kReclaimIncrement) {
+    while (!reclaim_until_blocked_cbs_.empty()) {
+      std::move(reclaim_until_blocked_cbs_.front()).Run(true, "");
+      reclaim_until_blocked_cbs_.pop_front();
+    }
+    reclaim_until_blocked_params_.reset();
     return;
   }
 
   // Inflate again in the near future.
   base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&BalloonBroker::ReclaimUntilBlocked,
-                     base::Unretained(this), vm_cid, priority),
-      base::Seconds(1));
+      base::BindOnce(&BalloonBroker::ReclaimUntilBlockedStep,
+                     base::Unretained(this)),
+      base::Seconds(1) / kReclaimStepsPerSecond);
+}
+
+void BalloonBroker::StopReclaimUntilBlocked(int vm_cid) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  if (!reclaim_until_blocked_params_) {
+    LOG(WARNING) << "StopReclaimUntilBlocked while operation not ongoing";
+    return;
+  }
+
+  if (reclaim_until_blocked_params_->first != vm_cid) {
+    LOG(WARNING) << "StopReclaimUntilBlocked for different target "
+                 << reclaim_until_blocked_params_->first << " vs " << vm_cid;
+    return;
+  }
+
+  while (!reclaim_until_blocked_cbs_.empty()) {
+    std::move(reclaim_until_blocked_cbs_.front())
+        .Run(false, "reclaim all cancelled");
+    reclaim_until_blocked_cbs_.pop_front();
+  }
+
+  reclaim_until_blocked_params_.reset();
 }
 
 ResizePriority BalloonBroker::LowestUnblockedPriority() const {
