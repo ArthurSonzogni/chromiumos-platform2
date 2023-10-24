@@ -157,7 +157,7 @@ class MockDBusMethodResponse
     auto owned_method_call = std::make_unique<dbus::MethodCall>(
         "com.example.Interface", "MockMethod");
     // Set a value to bypass the checks in dbus libraray.
-    // Note that is is an arbitrary value.
+    // Note that this is an arbitrary value.
     owned_method_call->SetSerial(5);
 
     MockDBusMethodResponse<Types...>* result =
