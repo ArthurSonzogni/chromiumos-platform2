@@ -881,6 +881,8 @@ void AdaptiveChargingController::Init(
     // AdaptiveChargingController still runs the predictions to report how well
     // the ML model performs, even if the system isn't supported.
     adaptive_charging_enabled_ = false;
+    // Charge Limit relies on the same EC features as Adaptive Charging.
+    charge_limit_enabled_ = false;
     state_ = AdaptiveChargingState::NOT_SUPPORTED;
   } else if (adaptive_charging_enabled_) {
     state_ = AdaptiveChargingState::INACTIVE;
@@ -1657,6 +1659,7 @@ void AdaptiveChargingController::StartChargeLimit() {
         return;
       }
       if (!delegate_->SetBatteryDischarge()) {
+        delegate_->RemoveSuspendInternalDelay(charge_limit_delay_.get());
         charge_limit_enabled_ = false;
         LOG(ERROR) << "Failed to set battery discharge for Charge Limit";
         return;
@@ -1681,6 +1684,7 @@ void AdaptiveChargingController::StartChargeLimit() {
 void AdaptiveChargingController::StopChargeLimit() {
   LOG(INFO) << "Stopping Charge Limit.";
   charge_limit_discharge_timer_->Stop();
+  delegate_->RemoveSuspendInternalDelay(charge_limit_delay_.get());
   SetSustain(kBatterySustainDisabled, kBatterySustainDisabled);
   power_supply_->ClearChargeLimited();
   is_sustain_set_ = false;
