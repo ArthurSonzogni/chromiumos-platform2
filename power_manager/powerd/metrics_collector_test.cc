@@ -1216,12 +1216,51 @@ TEST_F(AdaptiveChargingMetricsTest,
       {"Power.AdaptiveChargingMinutesToFull.SlowCharging", 130},
       {"Power.AdaptiveChargingMinutes.Delay", 120},
       {"Power.AdaptiveChargingMinutes.Available", 300},
+      {"Power.AdaptiveChargingBatteryState",
+       static_cast<int>(AdaptiveChargingBatteryState::FULL_CHARGE_WITH_DELAY)},
       {"Power.AdaptiveChargingDelayDelta.Active.Early", 0},
       {"power.AdaptiveChargingMinutesFullOnAC.Active", 50},
   };
   for (const Expected& expected : expected) {
     EXPECT_EQ(metrics_.GetLast(expected.name), expected.value)
         << "Metric " << expected.name << "has unexpected value.";
+  }
+}
+
+// Test that metrics are correct for a full charge without delaying charge.
+TEST_F(AdaptiveChargingMetricsTest,
+       AdaptiveChargingActiveFullChargeWithoutDelay) {
+  Init();
+
+  base::TimeTicks now = GetCurrentBootTime();
+  collector_.GenerateAdaptiveChargingUnplugMetrics(
+      AdaptiveChargingState::INACTIVE,
+      /*target_time=*/now - base::Hours(2),
+      /*hold_start_time=*/now - base::Hours(4),
+      /*hold_end_time=*/now - base::Hours(4),
+      /*charge_finished_time=*/now - base::Hours(2),
+      /*time_spent_slow_charging=*/base::TimeDelta(),
+      /*display_battery_percent=*/100.0);
+
+  // Confirm metrics.
+  struct Expected {
+    std::string name;
+    int value;
+  };
+  std::vector<Expected> expected = {
+      {"Power.AdaptiveChargingMinutesDelta.Active.Early", 120},
+      {"Power.AdaptiveChargingBatteryPercentageOnUnplug.NormalCharging", 100},
+      {"Power.AdaptiveChargingMinutes.Delay", 0},
+      {"Power.AdaptiveChargingMinutes.Available", 240},
+      {"Power.AdaptiveChargingBatteryState",
+       static_cast<int>(
+           AdaptiveChargingBatteryState::FULL_CHARGE_WITHOUT_DELAY)},
+      {"Power.AdaptiveChargingDelayDelta.Active.Early", 60},
+      {"power.AdaptiveChargingMinutesFullOnAC.Active", 120},
+  };
+  for (const Expected& expected : expected) {
+    EXPECT_EQ(metrics_.GetLast(expected.name), expected.value)
+        << "Metric " << expected.name << " has unexpected value.";
   }
 }
 
@@ -1253,8 +1292,48 @@ TEST_F(AdaptiveChargingMetricsTest,
       {"Power.AdaptiveChargingMinutesToFull.MixedCharging", 130},
       {"Power.AdaptiveChargingMinutes.Delay", 120},
       {"Power.AdaptiveChargingMinutes.Available", 300},
+      {"Power.AdaptiveChargingBatteryState",
+       static_cast<int>(
+           AdaptiveChargingBatteryState::PARTIAL_CHARGE_WITH_DELAY)},
       {"Power.AdaptiveChargingDelayDelta.Active.Early", 0},
       {"power.AdaptiveChargingMinutesFullOnAC.Active", 50},
+  };
+  for (const Expected& expected : expected) {
+    EXPECT_EQ(metrics_.GetLast(expected.name), expected.value)
+        << "Metric " << expected.name << " has unexpected value.";
+  }
+}
+
+// Test that metrics are correct for a partial charge without delaying charge.
+TEST_F(AdaptiveChargingMetricsTest,
+       AdaptiveChargingActivePartialChargeWithoutDelay) {
+  Init();
+
+  base::TimeTicks now = GetCurrentBootTime();
+  collector_.GenerateAdaptiveChargingUnplugMetrics(
+      AdaptiveChargingState::INACTIVE,
+      /*target_time=*/now + base::Hours(1),
+      /*hold_start_time=*/base::TimeTicks(),
+      /*hold_end_time=*/base::TimeTicks(),
+      /*charge_finished_time=*/now,
+      /*time_spent_slow_charging=*/base::TimeDelta(),
+      /*display_battery_percent=*/85.0);
+
+  // Confirm metrics.
+  struct Expected {
+    std::string name;
+    int value;
+  };
+  std::vector<Expected> expected = {
+      {"Power.AdaptiveChargingMinutesDelta.Active.Late", 60},
+      {"Power.AdaptiveChargingBatteryPercentageOnUnplug.NormalCharging", 85},
+      {"Power.AdaptiveChargingMinutes.Delay", 0},
+      {"Power.AdaptiveChargingMinutes.Available", 0},
+      {"Power.AdaptiveChargingBatteryState",
+       static_cast<int>(
+           AdaptiveChargingBatteryState::PARTIAL_CHARGE_WITHOUT_DELAY)},
+      {"Power.AdaptiveChargingDelayDelta.Active.Early", 0},
+      {"power.AdaptiveChargingMinutesFullOnAC.Active", 0},
   };
   for (const Expected& expected : expected) {
     EXPECT_EQ(metrics_.GetLast(expected.name), expected.value)

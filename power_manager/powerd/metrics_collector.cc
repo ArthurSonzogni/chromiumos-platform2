@@ -784,12 +784,14 @@ void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(
   std::string state_suffix = "";
   std::string time_suffix = "";
   std::string type_suffix = "";
+  bool report_active_metrics = false;
 
   switch (state) {
     case AdaptiveChargingState::ACTIVE:
     case AdaptiveChargingState::SLOWCHARGE:
     case AdaptiveChargingState::INACTIVE:
       state_suffix = kAdaptiveChargingStateActiveSuffix;
+      report_active_metrics = true;
       break;
     case AdaptiveChargingState::HEURISTIC_DISABLED:
       state_suffix = kAdaptiveChargingStateHeuristicDisabledSuffix;
@@ -855,6 +857,27 @@ void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(
   SendMetric(kAdaptiveChargingMinutesAvailableName, available_time.InMinutes(),
              kAdaptiveChargingMinutesMin, kAdaptiveChargingMinutesMax,
              kAdaptiveChargingMinutesBuckets);
+
+  if (report_active_metrics) {
+    AdaptiveChargingBatteryState battery_state =
+        AdaptiveChargingBatteryState::MAX;
+    // Treat anything over 99% for the display battery percent as full.
+    if (display_battery_percentage >= 99.0) {
+      if (delay_time != base::TimeDelta())
+        battery_state = AdaptiveChargingBatteryState::FULL_CHARGE_WITH_DELAY;
+      else
+        battery_state = AdaptiveChargingBatteryState::FULL_CHARGE_WITHOUT_DELAY;
+    } else {
+      if (delay_time != base::TimeDelta())
+        battery_state = AdaptiveChargingBatteryState::PARTIAL_CHARGE_WITH_DELAY;
+      else
+        battery_state =
+            AdaptiveChargingBatteryState::PARTIAL_CHARGE_WITHOUT_DELAY;
+    }
+    SendEnumMetric(kAdaptiveChargingBatteryStateName,
+                   static_cast<int>(battery_state),
+                   static_cast<int>(AdaptiveChargingBatteryState::MAX));
+  }
 
   metric_name = kAdaptiveChargingDelayDeltaName;
 

@@ -136,6 +136,8 @@ extern const char kAdaptiveChargingMinutesAvailableName[];
 extern const int kAdaptiveChargingMinutesMin;
 extern const int kAdaptiveChargingMinutesMax;
 
+extern const char kAdaptiveChargingBatteryStateName[];
+
 extern const char kNumberOfAlsAdjustmentsPerSessionName[];
 extern const int kNumberOfAlsAdjustmentsPerSessionMin;
 extern const int kNumberOfAlsAdjustmentsPerSessionMax;
@@ -269,6 +271,15 @@ enum class AdaptiveChargingState {
   USER_DISABLED,
   SHUTDOWN,
   NOT_SUPPORTED,
+  MAX
+};
+
+// Values for the AdaptiveChargingBatteryState metric.
+enum class AdaptiveChargingBatteryState {
+  FULL_CHARGE_WITH_DELAY,
+  FULL_CHARGE_WITHOUT_DELAY,
+  PARTIAL_CHARGE_WITH_DELAY,
+  PARTIAL_CHARGE_WITHOUT_DELAY,
   MAX
 };
 

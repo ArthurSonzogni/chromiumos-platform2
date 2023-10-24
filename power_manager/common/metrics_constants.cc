@@ -177,6 +177,9 @@ const char kAdaptiveChargingMinutesAvailableName[] =
 const int kAdaptiveChargingMinutesMin = 0;
 const int kAdaptiveChargingMinutesMax = 3 * 24 * 60;
 
+const char kAdaptiveChargingBatteryStateName[] =
+    "Power.AdaptiveChargingBatteryState";
+
 const char kNumberOfAlsAdjustmentsPerSessionName[] =
     "Power.NumberOfAlsAdjustmentsPerSession";
 const int kNumberOfAlsAdjustmentsPerSessionMin = 1;
