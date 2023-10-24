@@ -72,10 +72,12 @@ struct FetchDeviceInfoDetails {
   bool get_type_error = false;
   bool get_appearance_error = false;
   bool get_modalias_error = false;
+  bool get_rssi_error = false;
   bool get_uuids_error = false;
   bool get_bluetooth_class_error = false;
   uint32_t type = 0;
   brillo::VariantDictionary vendor_product_info = kTestDeviceVendorProductInfo;
+  int16_t rssi = -60;
   std::vector<std::vector<uint8_t>> uuids = {kTestUuidBytes};
 };
 
@@ -228,6 +230,13 @@ class BluetoothFetcherFlossTest : public ::testing::Test {
     } else {
       EXPECT_CALL(mock_adapter_proxy_,
                   GetRemoteVendorProductInfoAsync(device, _, _, _))
+          .WillOnce(base::test::RunOnceCallback<2>(error_.get()));
+    }
+    if (!details.get_rssi_error) {
+      EXPECT_CALL(mock_adapter_proxy_, GetRemoteRSSIAsync(device, _, _, _))
+          .WillOnce(base::test::RunOnceCallback<1>(details.rssi));
+    } else {
+      EXPECT_CALL(mock_adapter_proxy_, GetRemoteRSSIAsync(device, _, _, _))
           .WillOnce(base::test::RunOnceCallback<2>(error_.get()));
     }
     if (!details.get_uuids_error) {
@@ -521,8 +530,9 @@ TEST_F(BluetoothFetcherFlossTest, ConnectedDevices) {
   SetupGetAvailableAdaptersCall();
   SetupGetAdaptersCall();
   SetupFetchAdapterInfoCall({.connected_devices = {kTestConnectedDevice}});
-  SetupFetchDeviceInfoCall(kTestConnectedDevice,
-                           /*details=*/{.type = 1, .uuids = {kTestUuidBytes}});
+  SetupFetchDeviceInfoCall(
+      kTestConnectedDevice,
+      /*details=*/{.type = 1, .rssi = -60, .uuids = {kTestUuidBytes}});
 
   auto bluetooth_result = FetchBluetoothInfoSync();
   ASSERT_TRUE(bluetooth_result->is_bluetooth_adapter_info());
@@ -537,6 +547,7 @@ TEST_F(BluetoothFetcherFlossTest, ConnectedDevices) {
   EXPECT_EQ(devices[0]->type, mojom::BluetoothDeviceType::kBrEdr);
   EXPECT_EQ(devices[0]->appearance->value, 2371);
   EXPECT_EQ(devices[0]->modalias, kTestDeviceModalias);
+  EXPECT_EQ(devices[0]->rssi->value, -60);
   EXPECT_EQ(devices[0]->uuids.value().size(), 1);
   EXPECT_EQ(devices[0]->uuids.value()[0], kTestUuidString);
   EXPECT_EQ(devices[0]->bluetooth_class->value, 236034);
@@ -660,6 +671,38 @@ TEST_F(BluetoothFetcherFlossTest, ParseVendorIDSourceError) {
   ASSERT_TRUE(bluetooth_result->is_error());
   EXPECT_EQ(bluetooth_result->get_error()->msg,
             "Failed to parse vendor ID source");
+}
+
+// Test that the error of getting device RSSI is handled gracefully.
+TEST_F(BluetoothFetcherFlossTest, GetDeviceRssiError) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall({.connected_devices = {kTestConnectedDevice}});
+  SetupFetchDeviceInfoCall(kTestConnectedDevice, {.get_rssi_error = true});
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_error());
+  EXPECT_EQ(bluetooth_result->get_error()->msg, "Failed to get device RSSI");
+}
+
+// Test that the device invalid RSSI is handled gracefully.
+TEST_F(BluetoothFetcherFlossTest, GetDeviceInvalidRssi) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall({.connected_devices = {kTestConnectedDevice}});
+  SetupFetchDeviceInfoCall(kTestConnectedDevice,
+                           {.rssi = /*invalid_rssi=*/127});
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_bluetooth_adapter_info());
+  const auto& adapter_info = bluetooth_result->get_bluetooth_adapter_info();
+  EXPECT_EQ(adapter_info.size(), 1);
+  ASSERT_TRUE(adapter_info[0]->connected_devices.has_value());
+  const auto& devices = adapter_info[0]->connected_devices.value();
+  EXPECT_EQ(devices.size(), 1);
+  EXPECT_FALSE(devices[0]->rssi);
 }
 
 // Test that the error of getting device UUIDs is handled gracefully.

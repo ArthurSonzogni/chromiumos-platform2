@@ -59,6 +59,10 @@ constexpr char kCaseTrueWireless[] = "case";
 }  // namespace battery_type
 }  // namespace floss
 
+// Invalid RSSI, which is copied from |INVALID_RSSI| in the Android codebase:
+// packages/modules/Bluetooth/system/gd/rust/topshim/src/btif.rs
+constexpr int16_t kInvalidRssi = 127;
+
 org::chromium::bluetooth::BluetoothProxyInterface* GetTargetAdapter(
     FlossController* floss_controller, int32_t hci_interface) {
   const auto target_adapter_path =
@@ -173,6 +177,10 @@ class State {
       mojom::BluetoothDeviceInfo* const device_info_ptr,
       brillo::Error* err,
       const brillo::VariantDictionary& info);
+  void HandleDeviceRssiResponse(
+      mojom::BluetoothDeviceInfo* const device_info_ptr,
+      brillo::Error* err,
+      int16_t rssi);
   void HandleDeviceUuidsResponse(
       mojom::BluetoothDeviceInfo* const device_info_ptr,
       brillo::Error* err,
@@ -430,6 +438,12 @@ void State::FetchConnectedDevicesInfo(
                        base::Unretained(this), device_info.get())));
     adapter->GetRemoteVendorProductInfoAsync(
         device, std::move(modalias_cb.first), std::move(modalias_cb.second));
+    // RSSI.
+    auto rssi_cb = SplitDbusCallback(barrier.Depend(
+        base::BindOnce(&State::HandleDeviceRssiResponse, base::Unretained(this),
+                       device_info.get())));
+    adapter->GetRemoteRSSIAsync(device, std::move(rssi_cb.first),
+                                std::move(rssi_cb.second));
     // UUIDs.
     auto uuids_cb = SplitDbusCallback(barrier.Depend(
         base::BindOnce(&State::HandleDeviceUuidsResponse,
@@ -526,6 +540,21 @@ void State::HandleDeviceVendorProductInfoResponse(
     error_ = CreateAndLogProbeError(mojom::ErrorType::kParseError,
                                     "Failed to parse vendor ID source");
   }
+}
+
+void State::HandleDeviceRssiResponse(
+    mojom::BluetoothDeviceInfo* const device_info_ptr,
+    brillo::Error* err,
+    int16_t rssi) {
+  if (err) {
+    error_ = CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
+                                    "Failed to get device RSSI");
+    return;
+  }
+  if (rssi == kInvalidRssi) {
+    return;
+  }
+  device_info_ptr->rssi = mojom::NullableInt16::New(rssi);
 }
 
 void State::HandleDeviceUuidsResponse(
