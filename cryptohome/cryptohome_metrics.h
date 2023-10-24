@@ -324,35 +324,6 @@ inline constexpr char kCryptohomeErrorAuthenticateAuthFactorErrorBucket[] =
 inline constexpr char kCryptohomeErrorRemoveAuthFactorErrorBucket[] =
     "RemoveAuthFactorError";
 
-// List of possible results of fetching the USS experiment config. If fetching
-// failed, the status is kFetchError. If parsing failed, the status is
-// kParseError.
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
-enum class FetchUssExperimentConfigStatus {
-  kEnabled = 0,
-  kDisabled = 1,
-  // kError = 2, // no longer used, separated into kFetchError and kParseError
-  kFetchError = 3,
-  kParseError = 4,
-  kNoReleaseTrack = 5,
-  kMaxValue,
-};
-
-// List of possible results when AuthSession checks whether USS experiment
-// should be enabled. This reports the normal case, which is the flag set by the
-// config fetcher. If the enable/disable behavior is overridden this will not be
-// reported. kNotFound means that the config fetching failed or haven't
-// completed by the time AuthSession checks the flag.
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
-enum class UssExperimentFlag {
-  kEnabled = 0,
-  kDisabled = 1,
-  kNotFound = 2,
-  kMaxValue,
-};
-
 // List of possible auth factor backing store configurations that a user can
 // have. This is determined by whether a user's factors are stored in vault
 // keysets or the USS.
@@ -597,16 +568,6 @@ void ReportCryptohomeErrorAllLocations(std::string error_bucket_name,
 // for situations in which we generate too many possible values in
 // CryptohomeError related reporting.
 void DisableErrorMetricsReporting();
-
-// Reports the result of fetching the USS experiment config.
-void ReportFetchUssExperimentConfigStatus(
-    FetchUssExperimentConfigStatus status);
-
-// Reports the number of retries when fetching the USS experiment config.
-void ReportFetchUssExperimentConfigRetries(int retries);
-
-// Reports the result of reading the USS experiment flag.
-void ReportUssExperimentFlag(UssExperimentFlag flag);
 
 // Reports the current state of the auth factor backing stores.
 void ReportAuthFactorBackingStoreConfig(AuthFactorBackingStoreConfig config);

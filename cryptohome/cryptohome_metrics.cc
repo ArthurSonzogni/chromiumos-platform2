@@ -88,12 +88,6 @@ constexpr char kSelectFactorAuthBlockTypeHistogram[] =
 constexpr char kLegacyCodePathUsageHistogramPrefix[] =
     "Cryptohome.LegacyCodePathUsage";
 constexpr char kVaultKeysetMetric[] = "Cryptohome.VaultKeysetMetric";
-constexpr char kFetchUssExperimentConfigStatus[] =
-    "Cryptohome.UssExperiment.FetchUssExperimentConfigStatus";
-constexpr char kFetchUssExperimentConfigRetries[] =
-    "Cryptohome.UssExperiment.FetchUssExperimentConfigRetries";
-constexpr char kUssExperimentFlag[] =
-    "Cryptohome.UssExperiment.UssExperimentFlag";
 constexpr char kAuthFactorBackingStoreConfig[] =
     "Cryptohome.AuthFactorBackingStoreConfig";
 constexpr char kVkToUssMigrationStatus[] = "Cryptohome.VkToUssMigrationStatus";
@@ -791,32 +785,6 @@ void ReportCryptohomeErrorAllLocations(std::string error_bucket_name,
                         kCryptohomeErrorAllLocationsSuffix},
                        ".");
   g_metrics->SendSparseToUMA(name, static_cast<int>(loc));
-}
-
-void ReportFetchUssExperimentConfigStatus(
-    FetchUssExperimentConfigStatus status) {
-  if (!g_metrics) {
-    return;
-  }
-
-  g_metrics->SendEnumToUMA(
-      kFetchUssExperimentConfigStatus, static_cast<int>(status),
-      static_cast<int>(FetchUssExperimentConfigStatus::kMaxValue));
-}
-
-void ReportFetchUssExperimentConfigRetries(int retries) {
-  constexpr int kMin = 0, kMax = 9, kNumBuckets = 10;
-  g_metrics->SendToUMA(kFetchUssExperimentConfigRetries, retries, kMin, kMax,
-                       kNumBuckets);
-}
-
-void ReportUssExperimentFlag(UssExperimentFlag flag) {
-  if (!g_metrics) {
-    return;
-  }
-
-  g_metrics->SendEnumToUMA(kUssExperimentFlag, static_cast<int>(flag),
-                           static_cast<int>(UssExperimentFlag::kMaxValue));
 }
 
 void ReportAuthFactorBackingStoreConfig(AuthFactorBackingStoreConfig config) {
