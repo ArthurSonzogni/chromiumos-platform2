@@ -13,6 +13,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
@@ -302,28 +303,60 @@ void DlcService::InstallWithUpdateEngine(
   }
   install_params.set_scaled(dlc->IsScaled());
   ErrorPtr tmp_err;
-  if (!SystemState::Get()->update_engine()->Install(install_params, &tmp_err)) {
-    // TODO(kimjae): need update engine to propagate correct error message by
-    // passing in |ErrorPtr| and being set within update engine, current default
-    // is to indicate that update engine is updating because there is no way an
-    // install should have taken place if not through dlcservice. (could also be
-    // the case that an update applied between the time of the last status check
-    // above, but just return |kErrorBusy| because the next time around if an
-    // update has been applied and is in a reboot needed state, it will indicate
-    // correctly then).
-    LOG(ERROR) << "Update Engine failed to install requested DLCs: "
-               << (tmp_err ? Error::ToString(tmp_err)
-                           : "Missing error from update engine proxy.");
-    return ret_func(
-        std::move(response),
-        Error::Create(FROM_HERE, kErrorBusy,
-                      "Update Engine failed to schedule install operations."));
-  }
+  // TODO(kimjae): need update engine to propagate correct error message by
+  // passing in |ErrorPtr| and being set within update engine, current default
+  // is to indicate that update engine is updating because there is no way an
+  // install should have taken place if not through dlcservice. (could also be
+  // the case that an update applied between the time of the last status check
+  // above, but just return |kErrorBusy| because the next time around if an
+  // update has been applied and is in a reboot needed state, it will indicate
+  // correctly then).
+  auto [response_bind1, response_bind2] =
+      base::SplitOnceCallback(base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+             brillo::ErrorPtr err) -> void {
+            if (err.get()) {
+              std::move(response)->ReplyWithError(err.get());
+            } else {
+              std::move(response)->Return();
+            }
+          },
+          std::move(response)));
+  SystemState::Get()->update_engine()->InstallAsync(
+      install_params,
+      base::BindOnce(&DlcService::OnUpdateEngineInstallAsyncSuccess,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(response_bind1)),
+      base::BindOnce(&DlcService::OnUpdateEngineInstallAsyncError,
+                     weak_ptr_factory_.GetWeakPtr(),
+                     std::move(response_bind2)));
+}
 
+void DlcService::OnUpdateEngineInstallAsyncSuccess(
+    base::OnceCallback<void(brillo::ErrorPtr)> response_func) {
   // By now the update_engine is installing the DLC, so schedule a periodic
   // install checker in case we miss update_engine signals.
   SchedulePeriodicInstallCheck();
-  std::move(response)->Return();
+  std::move(response_func).Run(nullptr);
+}
+
+void DlcService::OnUpdateEngineInstallAsyncError(
+    base::OnceCallback<void(brillo::ErrorPtr)> response_func,
+    brillo::Error* err) {
+  // Keep this double logging until tagging is removed/updated.
+  LOG(ERROR) << "Update Engine failed to install requested DLCs: "
+             << (err ? Error::ToString(err->Clone())
+                     : "Missing error from update engine proxy.");
+  LOG(ERROR) << AlertLogTag(kCategoryInstall)
+             << "Failed to install DLC=" << installing_dlc_id_.value();
+  auto ret_err =
+      Error::Create(FROM_HERE, kErrorBusy,
+                    "Update Engine failed to schedule install operations.");
+  // dlcservice must cancel the install as update_engine won't be able to
+  // install the initialized DLC.
+  CancelInstall(ret_err);
+  SystemState::Get()->metrics()->SendInstallResultFailure(&ret_err);
+  Error::ConvertToDbusError(&ret_err);
+  std::move(response_func).Run(ret_err->Clone());
 }
 
 bool DlcService::Uninstall(const string& id, brillo::ErrorPtr* err) {
