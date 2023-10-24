@@ -221,17 +221,24 @@ action("signature-sealed-data-flatbuffers-binding-generate") {
   ]
 }
 
+source_set("hardware_abstraction_external_thread_local_library") {
+  sources = [ "middleware/middleware_owner.cc" ]
+  configs += [
+    ":target_defaults",
+    "//common-mk:pic",
+  ]
+  configs -= [ "//common-mk:lto_experiment" ]
+  deps = [ ":signature-sealed-data-flatbuffers-binding-generate" ]
+}
+
 # The sources that contain HWSEC_EXPORT.
 # The exported symbols should only be linked to one shared library.
 source_set("hardware_abstraction_external_library") {
   sources = [
     "${root_gen_dir}/include/libhwsec/structures/signature_sealed_data.cc",
     "factory/factory_impl.cc",
-    "middleware/middleware_owner.cc",
     "structures/key.cc",
   ]
-
-  libs = []
 
   if (use.fuzzer) {
     sources += [ "factory/fuzzed_factory.cc" ]
@@ -242,7 +249,10 @@ source_set("hardware_abstraction_external_library") {
     "//common-mk:pic",
   ]
 
-  deps = [ ":signature-sealed-data-flatbuffers-binding-generate" ]
+  deps = [
+    ":hardware_abstraction_external_thread_local_library",
+    ":signature-sealed-data-flatbuffers-binding-generate",
+  ]
 }
 
 proto_library("oobe_config_encrypted_data_proto") {
