@@ -7,6 +7,23 @@
 
 // NOTE: This mojom should be kept in sync with the copy in Chromium's repo in
 // src/chromeos/ash/services/cros_healthd/public/mojom/cros_healthd_routines.mojom.
+//
+// This interface is in the process of being synced to Chromium from ChromiumOS.
+// Thus, we have the following routines that are supported by cros_healthd in
+// ChromiumOS but not yet part of Chromium's interface (in both
+// `RoutineArgument` and `RoutineDetail`):
+// - Audio driver routine
+// - Cpu stress routine
+// - Ufs lifetime routine
+// - Disk read routine
+// - Cpu cache routine
+// - Prime search routine
+// - Led lit up routine
+// - Floating point routine
+// - Bluetooth power routine
+// - Bluetooth discovery routine
+// - Fan routine
+// - Bluetooth scanning routine
 
 module ash.cros_healthd.mojom;
 
@@ -69,42 +86,40 @@ interface CrosHealthdRoutinesService {
       RoutineArgument routine_argument) => (SupportStatus status);
 };
 
-// Possible routines the RoutineControl API can create.
-//
-// NextMinVersion: 15, NextIndex: 15
+// Argument types for the possible routines the routine control API can create.
 [Extensible]
 union RoutineArgument {
   // Default field is required by extensible unions for backward compatibility.
   // Any unrecognized Mojo field will deserialize to this field. Don't use this.
-  [Default, MinVersion=1] bool unrecognizedArgument @0;
+  [Default] bool unrecognizedArgument;
   // Arguments to create a memory routine.
-  MemoryRoutineArgument memory@1;
-  // Arguments to create an audio driver malfunction test routine.
-  [MinVersion=2] AudioDriverRoutineArgument audio_driver@2;
-  // Arguments to create a CPU stress routine.
-  [MinVersion=3] CpuStressRoutineArgument cpu_stress@3;
-  // Arguments to create a UFS lifetime routine.
-  [MinVersion=4] UfsLifetimeRoutineArgument ufs_lifetime@4;
-  // Arguments to create a disk read routine.
-  [MinVersion=5] DiskReadRoutineArgument disk_read@5;
-  // Arguments to create a CPU cache routine.
-  [MinVersion=6] CpuCacheRoutineArgument cpu_cache@6;
-  // Arguments to create a prime search routine.
-  [MinVersion=7] PrimeSearchRoutineArgument prime_search@7;
+  [MinVersion=1] MemoryRoutineArgument memory;
   // Arguments to create a volume button routine.
-  [MinVersion=8] VolumeButtonRoutineArgument volume_button@8;
+  [MinVersion=2] VolumeButtonRoutineArgument volume_button;
+  // Arguments to create an audio driver malfunction test routine.
+  AudioDriverRoutineArgument audio_driver;
+  // Arguments to create a CPU stress routine.
+  CpuStressRoutineArgument cpu_stress;
+  // Arguments to create a UFS lifetime routine.
+  UfsLifetimeRoutineArgument ufs_lifetime;
+  // Arguments to create a disk read routine.
+  DiskReadRoutineArgument disk_read;
+  // Arguments to create a CPU cache routine.
+  CpuCacheRoutineArgument cpu_cache;
+  // Arguments to create a prime search routine.
+  PrimeSearchRoutineArgument prime_search;
   // Arguments to create a LED lit up routine.
-  [MinVersion=9] LedLitUpRoutineArgument led_lit_up@9;
+  LedLitUpRoutineArgument led_lit_up;
   // Arguments to create a floating point routine.
-  [MinVersion=10] FloatingPointRoutineArgument floating_point@10;
+  FloatingPointRoutineArgument floating_point;
   // Arguments to create a Bluetooth power routine.
-  [MinVersion=11] BluetoothPowerRoutineArgument bluetooth_power@11;
+  BluetoothPowerRoutineArgument bluetooth_power;
   // Arguments to create a Bluetooth discovery routine.
-  [MinVersion=12] BluetoothDiscoveryRoutineArgument bluetooth_discovery@12;
+  BluetoothDiscoveryRoutineArgument bluetooth_discovery;
   // Arguments to create a fan routine.
-  [MinVersion=13] FanRoutineArgument fan@13;
+  FanRoutineArgument fan;
   // Arguments to create a Bluetooth scanning routine.
-  [MinVersion=14] BluetoothScanningRoutineArgument bluetooth_scanning@14;
+  BluetoothScanningRoutineArgument bluetooth_scanning;
 };
 
 // This routine checks whether there is any memory problem by
@@ -381,19 +396,20 @@ struct RoutineStateFinished {
   RoutineDetail? detail@1;
 };
 
-
+// Details about a finished routine.
+[Extensible]
 union RoutineDetail {
   // Default field is required by extensible unions for backward compatibility.
   // Any unrecognized Mojo field will deserialize to this field. Don't use this.
   [Default] bool unrecognizedArgument;
   MemoryRoutineDetail memory;
+  VolumeButtonRoutineDetail volume_button;
   AudioDriverRoutineDetail audio_driver;
   CpuStressRoutineDetail cpu_stress;
   UfsLifetimeRoutineDetail ufs_lifetime;
   DiskReadRoutineDetail disk_read;
   CpuCacheRoutineDetail cpu_cache;
   PrimeSearchRoutineDetail prime_search;
-  VolumeButtonRoutineDetail volume_button;
   LedLitUpRoutineDetail led_lit_up;
   FloatingPointRoutineDetail floating_point;
   BluetoothPowerRoutineDetail bluetooth_power;
