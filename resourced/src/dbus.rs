@@ -41,6 +41,7 @@ use crate::feature;
 use crate::memory;
 use crate::power;
 use crate::psi;
+use crate::qos;
 use crate::vm_memory_management_client::VmMemoryManagementClient;
 
 const SERVICE_NAME: &str = "org.chromium.ResourceManager";
@@ -823,7 +824,7 @@ fn report_notification_count(notification_count: i32) -> Result<()> {
 
 pub async fn service_main() -> Result<()> {
     let root = Path::new("/");
-    let scheduler_context = match SchedQosContext::new() {
+    let scheduler_context = match qos::create_schedqos_context() {
         Ok(ctx) => Some(Arc::new(Mutex::new(ctx))),
         Err(e) => {
             error!("failed to initialize schedqos context: {e}");

@@ -5,8 +5,8 @@
 // APIs to adjust the Quality of Service (QoS) expected for a thread or a
 // process. QoS definitions map to performance characteristics.
 
-use std::fs::write;
 use std::io;
+use std::path::PathBuf;
 
 use anyhow::anyhow;
 use anyhow::bail;
@@ -14,8 +14,6 @@ use anyhow::Context;
 use anyhow::Result;
 use procfs::process::Process;
 
-// This is used in the test.
-#[allow(dead_code)]
 const NUM_PROCESS_STATES: usize = ProcessState::Background as usize + 1;
 const NUM_THREAD_STATES: usize = ThreadState::Background as usize + 1;
 
@@ -67,10 +65,146 @@ impl TryFrom<u8> for ThreadState {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum CpuSelection {
-    All = 0,
-    Efficient = 1,
+/// Config of each process/thread QoS state.
+#[derive(Debug)]
+pub struct Config {
+    /// Config for cgroups
+    pub cgroup_config: CgroupConfig,
+    /// ProcessStateConfig for each process QoS state
+    pub process_configs: [ProcessStateConfig; NUM_PROCESS_STATES],
+    /// ThreadStateConfig for each thread QoS state
+    pub thread_configs: [ThreadStateConfig; NUM_THREAD_STATES],
+}
+
+impl Config {
+    pub const fn default_process_config() -> [ProcessStateConfig; NUM_PROCESS_STATES] {
+        [
+            // ProcessState::Normal
+            ProcessStateConfig {
+                cpu_cgroup: CpuCgroup::Normal,
+            },
+            // Process:State::Background
+            ProcessStateConfig {
+                cpu_cgroup: CpuCgroup::Background,
+            },
+        ]
+    }
+
+    pub const fn default_thread_config() -> [ThreadStateConfig; NUM_THREAD_STATES] {
+        [
+            // ThreadState::UrgentBursty
+            ThreadStateConfig {
+                rt_priority: Some(8),
+                nice: -8,
+                uclamp_min: UCLAMP_BOOSTED_MIN,
+                cpuset_cgroup: CpusetCgroup::All,
+                prefer_idle: true,
+            },
+            // ThreadState::Urgent
+            ThreadStateConfig {
+                nice: -8,
+                uclamp_min: UCLAMP_BOOSTED_MIN,
+                cpuset_cgroup: CpusetCgroup::All,
+                prefer_idle: true,
+                ..ThreadStateConfig::default()
+            },
+            // ThreadState::Balanced
+            ThreadStateConfig {
+                cpuset_cgroup: CpusetCgroup::All,
+                prefer_idle: true,
+                ..ThreadStateConfig::default()
+            },
+            // ThreadState::Eco
+            ThreadStateConfig {
+                cpuset_cgroup: CpusetCgroup::Efficient,
+                ..ThreadStateConfig::default()
+            },
+            // ThreadState::Utility
+            ThreadStateConfig {
+                nice: 1,
+                cpuset_cgroup: CpusetCgroup::Efficient,
+                ..ThreadStateConfig::default()
+            },
+            // ThreadState::Background
+            ThreadStateConfig {
+                nice: 10,
+                cpuset_cgroup: CpusetCgroup::Efficient,
+                ..ThreadStateConfig::default()
+            },
+        ]
+    }
+}
+
+/// Paths to cgroup directories.
+#[derive(Debug)]
+pub struct CgroupConfig {
+    /// Path to cpu cgroup for normal processes
+    pub cpu_normal: PathBuf,
+    /// Path to cpu cgroup for background processes
+    pub cpu_background: PathBuf,
+    /// Path to cpuset cgroup using all CPU cores
+    pub cpuset_all: PathBuf,
+    /// Path to cpuset cgroup using efficient CPU cores only
+    pub cpuset_efficient: PathBuf,
+}
+
+/// Detailed scheduler settings for a process QoS state.
+#[derive(Clone, Debug)]
+pub struct ProcessStateConfig {
+    /// The cpu cgroup
+    pub cpu_cgroup: CpuCgroup,
+}
+
+/// Detailed scheduler settings for a thread QoS state.
+#[derive(Clone, Debug)]
+pub struct ThreadStateConfig {
+    /// The priority in RT (SCHED_FIFO). If this is None, it uses SCHED_OTHER instead.
+    pub rt_priority: Option<u32>,
+    /// The nice value
+    pub nice: i32,
+    /// sched_attr.sched_util_min
+    ///
+    /// This must be smaller than or equal to 1024.
+    pub uclamp_min: u32,
+    /// The cpuset cgroup
+    pub cpuset_cgroup: CpusetCgroup,
+    /// On systems that use EAS, EAS will try to pack workloads onto non-idle
+    /// cpus first as long as there is capacity. However, if an idle cpu was
+    /// chosen it would reduce the latency.
+    pub prefer_idle: bool,
+}
+
+impl ThreadStateConfig {
+    fn validate(&self) -> std::result::Result<(), &'static str> {
+        if self.uclamp_min > UCLAMP_MAX {
+            return Err("uclamp_min is too big");
+        }
+        Ok(())
+    }
+
+    const fn default() -> Self {
+        ThreadStateConfig {
+            rt_priority: None,
+            nice: 0,
+            uclamp_min: 0,
+            cpuset_cgroup: CpusetCgroup::All,
+            prefer_idle: false,
+        }
+    }
+}
+
+/// Cpu cgroups
+#[derive(Clone, Copy, Debug)]
+pub enum CpuCgroup {
+    Normal,
+    Background,
+}
+
+/// Cpuset cgroups
+#[derive(Clone, Copy, Debug)]
+pub enum CpusetCgroup {
+    All,
+    Efficient,
 }
 
 #[repr(C)]
@@ -166,85 +300,9 @@ fn check_uclamp_support() -> io::Result<bool> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-struct ThreadSettings {
-    sched_settings: sched_attr,
-    cpuset: CpuSelection,
-    // On systems that use EAS, EAS will try to pack workloads onto non-idle
-    // cpus first as long as there is capacity. However, if an idle cpu was
-    // chosen it would reduce the latency.
-    prefer_idle: bool,
-}
-
-const CGROUP_NORMAL: &str = "/sys/fs/cgroup/cpu/resourced/normal/cgroup.procs";
-const CGROUP_BACKGROUND: &str = "/sys/fs/cgroup/cpu/resourced/background/cgroup.procs";
-
-// Note these might be changed to resourced specific folders in the futre
-const CPUSET_ALL: &str = "/sys/fs/cgroup/cpuset/chrome/urgent/tasks";
-const CPUSET_EFFICIENT: &str = "/sys/fs/cgroup/cpuset/chrome/non-urgent/tasks";
-
 const UCLAMP_MAX: u32 = 1024;
 const UCLAMP_BOOST_PERCENT: u32 = 60;
 const UCLAMP_BOOSTED_MIN: u32 = (UCLAMP_BOOST_PERCENT * UCLAMP_MAX + 50) / 100;
-
-// Thread QoS settings table
-const THREAD_SETTINGS: [ThreadSettings; NUM_THREAD_STATES] = [
-    // UrgentBursty
-    ThreadSettings {
-        sched_settings: sched_attr {
-            sched_policy: libc::SCHED_FIFO as u32,
-            sched_priority: 8,
-            sched_util_min: UCLAMP_BOOSTED_MIN,
-            ..sched_attr::default()
-        },
-        cpuset: CpuSelection::All,
-        prefer_idle: true,
-    },
-    // Urgent
-    ThreadSettings {
-        sched_settings: sched_attr {
-            sched_nice: -8,
-            sched_util_min: UCLAMP_BOOSTED_MIN,
-            ..sched_attr::default()
-        },
-        cpuset: CpuSelection::All,
-        prefer_idle: true,
-    },
-    // Balanced
-    ThreadSettings {
-        sched_settings: sched_attr {
-            ..sched_attr::default()
-        },
-        cpuset: CpuSelection::All,
-        prefer_idle: true,
-    },
-    // Eco
-    ThreadSettings {
-        sched_settings: sched_attr {
-            ..sched_attr::default()
-        },
-        cpuset: CpuSelection::Efficient,
-        prefer_idle: false,
-    },
-    // Utility
-    ThreadSettings {
-        sched_settings: sched_attr {
-            sched_nice: 1,
-            ..sched_attr::default()
-        },
-        cpuset: CpuSelection::Efficient,
-        prefer_idle: false,
-    },
-    // Background
-    ThreadSettings {
-        sched_settings: sched_attr {
-            sched_nice: 10,
-            ..sched_attr::default()
-        },
-        cpuset: CpuSelection::Efficient,
-        prefer_idle: false,
-    },
-];
 
 fn is_same_process(process_id: i32, thread_id: i32) -> Result<bool> {
     let proc =
@@ -258,12 +316,21 @@ fn is_same_process(process_id: i32, thread_id: i32) -> Result<bool> {
 }
 
 pub struct SchedQosContext {
+    // TODO(kawasin): Convert cgroup path to a opened file.
+    config: Config,
     uclamp_support: bool,
 }
 
 impl SchedQosContext {
-    pub fn new() -> io::Result<Self> {
+    pub fn new(config: Config) -> anyhow::Result<Self> {
+        for thread_config in &config.thread_configs {
+            thread_config
+                .validate()
+                .map_err(|e| anyhow::anyhow!("thread: {}", e))?;
+        }
+
         Ok(Self {
+            config,
             uclamp_support: check_uclamp_support()?,
         })
     }
@@ -274,14 +341,15 @@ impl SchedQosContext {
         process_id: i32,
         process_state: ProcessState,
     ) -> Result<()> {
-        match process_state {
-            ProcessState::Normal => write(CGROUP_NORMAL, process_id.to_string())
-                .context(format!("Failed to write to {}", CGROUP_NORMAL))?,
-            ProcessState::Background => write(CGROUP_BACKGROUND, process_id.to_string())
-                .context(format!("Failed to write to {}", CGROUP_BACKGROUND))?,
-        }
+        let process_config = &self.config.process_configs[process_state as usize];
 
-        Ok(())
+        let cgroup = match process_config.cpu_cgroup {
+            CpuCgroup::Normal => &self.config.cgroup_config.cpu_normal,
+            CpuCgroup::Background => &self.config.cgroup_config.cpu_background,
+        };
+
+        std::fs::write(cgroup, process_id.to_string())
+            .with_context(|| format!("Failed to write to {:?}", cgroup))
     }
 
     pub fn set_thread_state(
@@ -296,21 +364,35 @@ impl SchedQosContext {
             bail!("Thread does not belong to process");
         }
 
-        let thread_settings = &THREAD_SETTINGS[thread_state as usize];
-        let mut temp_sched_attr = thread_settings.sched_settings;
+        let thread_config = &self.config.thread_configs[thread_state as usize];
+
+        let cgroup = match thread_config.cpuset_cgroup {
+            CpusetCgroup::All => &self.config.cgroup_config.cpuset_all,
+            CpusetCgroup::Efficient => &self.config.cgroup_config.cpuset_efficient,
+        };
+
+        let mut attr = sched_attr::default();
+
+        if let Some(rt_priority) = thread_config.rt_priority {
+            attr.sched_policy = libc::SCHED_FIFO as u32;
+            attr.sched_priority = rt_priority;
+        }
+
+        attr.sched_nice = thread_config.nice;
 
         // Setting SCHED_FLAG_UTIL_CLAMP_MIN or SCHED_FLAG_UTIL_CLAMP_MAX should
         // be avoided if kernel does not support uclamp. Otherwise
         // sched_setattr(2) fails as EOPNOTSUPP.
         if self.uclamp_support {
-            temp_sched_attr.sched_flags |= SCHED_FLAG_UTIL_CLAMP_MIN | SCHED_FLAG_UTIL_CLAMP_MAX;
+            attr.sched_util_min = thread_config.uclamp_min;
+            attr.sched_flags |= SCHED_FLAG_UTIL_CLAMP_MIN | SCHED_FLAG_UTIL_CLAMP_MAX;
         };
 
         let res = unsafe {
             libc::syscall(
                 libc::SYS_sched_setattr,
                 thread_id,
-                &mut temp_sched_attr as *mut sched_attr as usize,
+                &mut attr as *mut sched_attr as usize,
                 0,
             )
         };
@@ -321,13 +403,8 @@ impl SchedQosContext {
             );
         }
 
-        // Apply the cpuset setting
-        match thread_settings.cpuset {
-            CpuSelection::All => write(CPUSET_ALL, thread_id.to_string())
-                .context(format!("Failed to write to {}", CPUSET_ALL))?,
-            CpuSelection::Efficient => write(CPUSET_EFFICIENT, thread_id.to_string())
-                .context(format!("Failed to write to {}", CPUSET_EFFICIENT))?,
-        };
+        std::fs::write(cgroup, thread_id.to_string())
+            .context(format!("Failed to write to {:?}", cgroup))?;
 
         // Apply latency sensitive. Latency_sensitive will prefer idle cores.
         // This is a patch not yet in upstream(http://crrev/c/2981472)
@@ -335,8 +412,8 @@ impl SchedQosContext {
             format!("/proc/{}/task/{}/latency_sensitive", process_id, thread_id);
 
         if std::path::Path::new(&latency_sensitive_file).exists() {
-            let value = if thread_settings.prefer_idle { 1 } else { 0 };
-            write(&latency_sensitive_file, value.to_string())
+            let value = if thread_config.prefer_idle { 1 } else { 0 };
+            std::fs::write(&latency_sensitive_file, value.to_string())
                 .context(format!("Failed to write to {}", latency_sensitive_file))?;
         }
 
