@@ -14,6 +14,8 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
+#include <dlcservice/proto_bindings/dlcservice.pb.h>
+// NOLINTNEXTLINE(build/include_alpha) dbus-proxies.h needs dlcservice.pb.h
 #include <dlcservice/dbus-proxies.h>
 
 #include "federated/device_status_monitor.h"
@@ -117,7 +119,9 @@ void Scheduler::Schedule(
         base::BindOnce(&OnDBusSignalConnected));
 
     error.reset();
-    if (!dlcservice_client_->InstallDlc(kDlcId, &error)) {
+    dlcservice::InstallRequest install_request;
+    install_request.set_id(kDlcId);
+    if (!dlcservice_client_->Install(install_request, &error)) {
       if (error != nullptr) {
         LOG(ERROR) << "Error calling dlcservice (code=" << error->GetCode()
                    << "): " << error->GetMessage();
