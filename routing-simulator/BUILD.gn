@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 group("all") {
-  deps = [ ":librouting-simulator" ]
+  deps = [ ":routing-simulator" ]
   if (use.test) {
     deps += [ ":routing_simulator_testrunner" ]
   }
@@ -25,7 +25,12 @@ static_library("librouting-simulator") {
   configs += [ ":target_defaults" ]
 }
 
-#TODO(b/302635355): Add an executable in this package.
+executable("routing-simulator") {
+  sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
+  install_path = "bin"
+  deps = [ ":librouting-simulator" ]
+}
 
 if (use.test) {
   pkg_config("test_config") {
