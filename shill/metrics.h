@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <chromeos/dbus/shill/dbus-constants.h>
@@ -23,8 +24,6 @@
 
 namespace shill {
 
-static constexpr size_t kMaxMetricNameLen = 256;
-
 // Represents a UMA metric name that can be defined by technology for a
 // metric represented with EnumMetric or HistogramMetric, following the
 // pattern "$kMetricPrefix.$TECH.$name" or "$kMetricPrefix.$name.$TECH"
@@ -34,12 +33,9 @@ static constexpr size_t kMaxMetricNameLen = 256;
 // MetricsNameByTechnology{"name"}.
 struct MetricsNameByTechnology {
   enum class Location { kBeforeName, kAfterName };
-  const char* name;
+  std::string_view name;
   Location location = Location::kBeforeName;
-  // Necessary for testing.
-  bool operator==(const MetricsNameByTechnology& that) const {
-    return strncmp(name, that.name, kMaxMetricNameLen) == 0;
-  }
+  bool operator==(const MetricsNameByTechnology& that) const = default;
 };
 
 class Metrics {
@@ -54,7 +50,6 @@ class Metrics {
   struct EnumMetric {
     N n;
     int max;
-    // Necessary for testing.
     bool operator==(const EnumMetric<N>& that) const = default;
   };
 
@@ -67,7 +62,6 @@ class Metrics {
     int min;
     int max;
     int num_buckets;
-    // Necessary for testing.
     bool operator==(const HistogramMetric<N>& that) const = default;
   };
 
@@ -77,36 +71,26 @@ class Metrics {
   template <typename N>
   struct SparseMetric {
     N n;
-    // Necessary for testing.
     bool operator==(const SparseMetric<N>& that) const = default;
   };
 
   // Represents a fixed UMA metric name for a metric represented with
   // EnumMetric, HistogramMetric, or SparseMetric.
   struct FixedName {
-    const char* name;
-    // Necessary for testing.
-    bool operator==(const FixedName& that) const {
-      return strncmp(name, that.name, kMaxMetricNameLen) == 0;
-    }
+    std::string_view name;
+    bool operator==(const FixedName& that) const = default;
   };
 
   // Represents a UMA metric name by APN type.
   struct NameByApnType {
-    const char* name;
-    // Necessary for testing.
-    bool operator==(const NameByApnType& that) const {
-      return strncmp(name, that.name, kMaxMetricNameLen) == 0;
-    }
+    std::string_view name;
+    bool operator==(const NameByApnType& that) const = default;
   };
 
   // Represents a UMA metric name by VPN type.
   struct NameByVPNType {
-    const char* name;
-    // Necessary for testing.
-    bool operator==(const NameByVPNType& that) const {
-      return strncmp(name, that.name, kMaxMetricNameLen) == 0;
-    }
+    std::string_view name;
+    bool operator==(const NameByVPNType& that) const = default;
   };
 
   // Represents a UMA metric name with a fixed prefix. Callers provide the
@@ -114,11 +98,8 @@ class Metrics {
   // like "Network.Shill.WiFi.RememberedSystemNetworkCount.*" that share a
   // common prefix.
   struct PrefixName {
-    const char* prefix;
-    // Necessary for testing.
-    bool operator==(const PrefixName& that) const {
-      return strncmp(prefix, that.prefix, kMaxMetricNameLen) == 0;
-    }
+    std::string_view prefix;
+    bool operator==(const PrefixName& that) const = default;
   };
 
   enum WiFiChannel {
@@ -1774,7 +1755,7 @@ class Metrics {
   // Specializes |metric_name| with the specified |technology_id| and
   // |location|.
   static std::string GetFullMetricName(
-      const char* metric_name,
+      std::string_view metric_name,
       Technology technology_id,
       TechnologyLocation location = TechnologyLocation::kBeforeName);
 

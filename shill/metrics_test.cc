@@ -34,6 +34,7 @@
 using testing::_;
 using testing::AnyNumber;
 using testing::DoAll;
+using testing::Eq;
 using testing::Ge;
 using testing::Mock;
 using testing::NiceMock;
@@ -466,7 +467,7 @@ TEST_F(MetricsTest, ReportDeviceScanResultToUma) {
   Metrics::WiFiScanResult result =
       Metrics::kScanResultProgressiveAndFullConnected;
   EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricScanResult.n.name,
+              SendEnumToUMA(Eq(Metrics::kMetricScanResult.n.name),
                             Metrics::kScanResultProgressiveAndFullConnected,
                             Metrics::kScanResultMax));
   metrics_.ReportDeviceScanResultToUma(result);
@@ -486,12 +487,12 @@ TEST_F(MetricsTest, CellularDrop) {
   metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
   for (size_t index = 0; index < std::size(kUMATechnologyStrings); ++index) {
     EXPECT_CALL(library_,
-                SendEnumToUMA(Metrics::kMetricCellularDrop.n.name, index,
+                SendEnumToUMA(Eq(Metrics::kMetricCellularDrop.n.name), index,
                               Metrics::kCellularDropTechnologyMax));
     EXPECT_CALL(
         library_,
         SendToUMA(
-            Metrics::kMetricCellularSignalStrengthBeforeDrop.n.name,
+            Eq(Metrics::kMetricCellularSignalStrengthBeforeDrop.n.name),
             signal_strength,
             Metrics::kMetricCellularSignalStrengthBeforeDrop.min,
             Metrics::kMetricCellularSignalStrengthBeforeDrop.max,
@@ -618,11 +619,12 @@ TEST_F(MetricsTest, NotifySuspendActionsCompleted_Success) {
       .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
   EXPECT_CALL(*mock_time_suspend_actions_timer, HasStarted())
       .WillOnce(Return(true));
-  EXPECT_CALL(library_, SendToUMA(Metrics::kMetricSuspendActionTimeTaken.n.name,
-                                  non_zero_time_delta.InMilliseconds(),
-                                  Metrics::kMetricSuspendActionTimeTaken.min,
-                                  Metrics::kMetricSuspendActionTimeTaken.max,
-                                  Metrics::kTimerHistogramNumBuckets));
+  EXPECT_CALL(library_,
+              SendToUMA(Eq(Metrics::kMetricSuspendActionTimeTaken.n.name),
+                        non_zero_time_delta.InMilliseconds(),
+                        Metrics::kMetricSuspendActionTimeTaken.min,
+                        Metrics::kMetricSuspendActionTimeTaken.max,
+                        Metrics::kTimerHistogramNumBuckets));
   metrics_.NotifySuspendActionsCompleted(true);
 }
 
@@ -635,11 +637,12 @@ TEST_F(MetricsTest, NotifySuspendActionsCompleted_Failure) {
       .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
   EXPECT_CALL(*mock_time_suspend_actions_timer, HasStarted())
       .WillOnce(Return(true));
-  EXPECT_CALL(library_, SendToUMA(Metrics::kMetricSuspendActionTimeTaken.n.name,
-                                  non_zero_time_delta.InMilliseconds(),
-                                  Metrics::kMetricSuspendActionTimeTaken.min,
-                                  Metrics::kMetricSuspendActionTimeTaken.max,
-                                  Metrics::kTimerHistogramNumBuckets));
+  EXPECT_CALL(library_,
+              SendToUMA(Eq(Metrics::kMetricSuspendActionTimeTaken.n.name),
+                        non_zero_time_delta.InMilliseconds(),
+                        Metrics::kMetricSuspendActionTimeTaken.min,
+                        Metrics::kMetricSuspendActionTimeTaken.max,
+                        Metrics::kTimerHistogramNumBuckets));
   metrics_.NotifySuspendActionsCompleted(false);
 }
 
@@ -651,10 +654,11 @@ TEST_F(MetricsTest, NotifySuspendActionsStarted) {
 
 TEST_F(MetricsTest, NotifyConnectionDiagnosticsIssue_Success) {
   const std::string& issue = ConnectionDiagnostics::kIssueIPCollision;
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricConnectionDiagnosticsIssue.n.name,
-                            Metrics::kConnectionDiagnosticsIssueIPCollision,
-                            Metrics::kConnectionDiagnosticsIssueMax));
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA(Eq(Metrics::kMetricConnectionDiagnosticsIssue.n.name),
+                    Metrics::kConnectionDiagnosticsIssueIPCollision,
+                    Metrics::kConnectionDiagnosticsIssueMax));
   metrics_.NotifyConnectionDiagnosticsIssue(issue);
 }
 
@@ -679,21 +683,24 @@ TEST_F(MetricsTest, NotifyAp80211kSupport) {
 TEST_F(MetricsTest, NotifyAp80211rSupport) {
   bool ota_ft_supported = false;
   bool otds_ft_supported = false;
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricAp80211rSupport.n.name,
-                                      Metrics::kWiFiAp80211rNone,
-                                      Metrics::kWiFiAp80211rMax));
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA(Eq(Metrics::kMetricAp80211rSupport.n.name),
+                    Metrics::kWiFiAp80211rNone, Metrics::kWiFiAp80211rMax));
   metrics_.NotifyAp80211rSupport(ota_ft_supported, otds_ft_supported);
 
   ota_ft_supported = true;
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricAp80211rSupport.n.name,
-                                      Metrics::kWiFiAp80211rOTA,
-                                      Metrics::kWiFiAp80211rMax));
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA(Eq(Metrics::kMetricAp80211rSupport.n.name),
+                    Metrics::kWiFiAp80211rOTA, Metrics::kWiFiAp80211rMax));
   metrics_.NotifyAp80211rSupport(ota_ft_supported, otds_ft_supported);
 
   otds_ft_supported = true;
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricAp80211rSupport.n.name,
-                                      Metrics::kWiFiAp80211rOTDS,
-                                      Metrics::kWiFiAp80211rMax));
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA(Eq(Metrics::kMetricAp80211rSupport.n.name),
+                    Metrics::kWiFiAp80211rOTDS, Metrics::kWiFiAp80211rMax));
   metrics_.NotifyAp80211rSupport(ota_ft_supported, otds_ft_supported);
 }
 
@@ -752,29 +759,34 @@ TEST_F(MetricsTest, NotifyCiscoAdaptiveFTSupportTrue) {
 }
 
 TEST_F(MetricsTest, NotifyApChannelSwitch) {
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch.n.name,
-                                      Metrics::kWiFiApChannelSwitch24To24,
-                                      Metrics::kWiFiApChannelSwitchMax));
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Eq(Metrics::kMetricApChannelSwitch.n.name),
+                            Metrics::kWiFiApChannelSwitch24To24,
+                            Metrics::kWiFiApChannelSwitchMax));
   metrics_.NotifyApChannelSwitch(2417, 2472);
 
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch.n.name,
-                                      Metrics::kWiFiApChannelSwitch24To5,
-                                      Metrics::kWiFiApChannelSwitchMax));
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Eq(Metrics::kMetricApChannelSwitch.n.name),
+                            Metrics::kWiFiApChannelSwitch24To5,
+                            Metrics::kWiFiApChannelSwitchMax));
   metrics_.NotifyApChannelSwitch(2462, 5805);
 
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch.n.name,
-                                      Metrics::kWiFiApChannelSwitch5To24,
-                                      Metrics::kWiFiApChannelSwitchMax));
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Eq(Metrics::kMetricApChannelSwitch.n.name),
+                            Metrics::kWiFiApChannelSwitch5To24,
+                            Metrics::kWiFiApChannelSwitchMax));
   metrics_.NotifyApChannelSwitch(5210, 2422);
 
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch.n.name,
-                                      Metrics::kWiFiApChannelSwitch5To5,
-                                      Metrics::kWiFiApChannelSwitchMax));
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Eq(Metrics::kMetricApChannelSwitch.n.name),
+                            Metrics::kWiFiApChannelSwitch5To5,
+                            Metrics::kWiFiApChannelSwitchMax));
   metrics_.NotifyApChannelSwitch(5500, 5320);
 
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch.n.name,
-                                      Metrics::kWiFiApChannelSwitchUndef,
-                                      Metrics::kWiFiApChannelSwitchMax));
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Eq(Metrics::kMetricApChannelSwitch.n.name),
+                            Metrics::kWiFiApChannelSwitchUndef,
+                            Metrics::kWiFiApChannelSwitchMax));
   metrics_.NotifyApChannelSwitch(3000, 3000);
 }
 

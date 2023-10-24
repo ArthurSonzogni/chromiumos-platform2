@@ -147,7 +147,9 @@ Metrics::Metrics()
 Metrics::~Metrics() = default;
 
 void Metrics::SendEnumToUMA(const EnumMetric<FixedName>& metric, int sample) {
-  library_->SendEnumToUMA(metric.n.name, sample, metric.max);
+  // The std::string conversion should be removed once MetricsLibraryInterface
+  // is improved with std::string_view variants of Send*ToUMA.
+  library_->SendEnumToUMA(std::string(metric.n.name), sample, metric.max);
 }
 
 void Metrics::SendEnumToUMA(const EnumMetric<NameByApnType>& metric,
@@ -156,8 +158,8 @@ void Metrics::SendEnumToUMA(const EnumMetric<NameByApnType>& metric,
   // Using the format Network.Shill.Cellular.{MetricName}.{ApnType} to make it
   // easier to find the metrics using autocomplete in UMA.
   const std::string name =
-      base::StringPrintf("%s.Cellular.%s.%s", kMetricPrefix, metric.n.name,
-                         GetApnTypeString(type).c_str());
+      base::StrCat({kMetricPrefix, ".Cellular.", metric.n.name, ".",
+                    GetApnTypeString(type)});
   library_->SendEnumToUMA(name, sample, metric.max);
 }
 
@@ -173,21 +175,24 @@ void Metrics::SendEnumToUMA(const EnumMetric<NameByVPNType>& metric,
                             VPNType type,
                             int sample) {
   const std::string name =
-      base::StringPrintf("%s.Vpn.%s.%s", kMetricPrefix,
-                         VPNTypeToMetricString(type).c_str(), metric.n.name);
+      base::StrCat({kMetricPrefix, ".Vpn.", VPNTypeToMetricString(type), ".",
+                    metric.n.name});
   library_->SendEnumToUMA(name, sample, metric.max);
 }
 
 void Metrics::SendEnumToUMA(const EnumMetric<PrefixName>& metric,
                             const std::string& suffix,
                             int sample) {
-  library_->SendEnumToUMA(metric.n.prefix + suffix, sample, metric.max);
+  library_->SendEnumToUMA(base::StrCat({metric.n.prefix, suffix}), sample,
+                          metric.max);
 }
 
 void Metrics::SendToUMA(const Metrics::HistogramMetric<FixedName>& metric,
                         int sample) {
-  library_->SendToUMA(metric.n.name, sample, metric.min, metric.max,
-                      metric.num_buckets);
+  // The std::string conversion should be removed once MetricsLibraryInterface
+  // is improved with std::string_view variants of Send*ToUMA.
+  library_->SendToUMA(std::string(metric.n.name), sample, metric.min,
+                      metric.max, metric.num_buckets);
 }
 
 void Metrics::SendToUMA(
@@ -201,13 +206,15 @@ void Metrics::SendToUMA(
 void Metrics::SendToUMA(const Metrics::HistogramMetric<PrefixName>& metric,
                         const std::string& suffix,
                         int sample) {
-  library_->SendToUMA(metric.n.prefix + suffix, sample, metric.min, metric.max,
-                      metric.num_buckets);
+  library_->SendToUMA(base::StrCat({metric.n.prefix, suffix}), sample,
+                      metric.min, metric.max, metric.num_buckets);
 }
 
 void Metrics::SendSparseToUMA(const SparseMetric<FixedName>& metric,
                               int sample) {
-  library_->SendSparseToUMA(metric.n.name, sample);
+  // The std::string conversion should be removed once MetricsLibraryInterface
+  // is improved with std::string_view variants of Send*ToUMA.
+  library_->SendSparseToUMA(std::string(metric.n.name), sample);
 }
 
 void Metrics::SendSparseToUMA(const SparseMetric<NameByTechnology>& metric,
@@ -330,17 +337,15 @@ Metrics::EapInnerProtocol Metrics::EapInnerProtocolStringToEnum(
 }
 
 // static
-std::string Metrics::GetFullMetricName(const char* metric_name,
+std::string Metrics::GetFullMetricName(std::string_view metric_name,
                                        Technology technology_id,
                                        TechnologyLocation location) {
   std::string technology = TechnologyName(technology_id);
   technology[0] = base::ToUpperASCII(technology[0]);
   if (location == TechnologyLocation::kBeforeName) {
-    return base::StringPrintf("%s.%s.%s", kMetricPrefix, technology.c_str(),
-                              metric_name);
+    return base::StrCat({kMetricPrefix, ".", technology, ".", metric_name});
   } else {
-    return base::StringPrintf("%s.%s.%s", kMetricPrefix, metric_name,
-                              technology.c_str());
+    return base::StrCat({kMetricPrefix, ".", metric_name, ".", technology});
   }
 }
 
