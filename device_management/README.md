@@ -1,4 +1,4 @@
-# device_management (Device Management Service)
+# device_managementd (Device Management Service)
 
 Device Management service is mainly responsible for storage, retrieval
 and removal of various device management related attributes such as
@@ -23,3 +23,12 @@ to this enrollment. The datastore is made tamper-evident by serializing
 it to a bytestream and persisting it to the filesystem via the Lockbox
 class. This is done when InstallAttributes::Finalize() is called.
 After finalization, the data becomes read-only.
+
+# Components
+This is the list of the currently supported components by device_managementd
+
+*   [Firmware Management Parameters]: control the rewritable (RW) firmware boot process.
+*   [Lockbox]: Tamper-evident, install-time system attributes storage.
+
+[Firmware Management Parameters]: ./docs/firmware_management_parameters.md
+[Lockbox]: ./docs/lockbox.md
