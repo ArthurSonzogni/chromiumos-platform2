@@ -7,6 +7,7 @@ type cros_cryptohomed, chromeos_domain, domain, mlstrustedsubject;
 domain_auto_trans(cros_init_scripts, cros_cryptohomed_exec, cros_cryptohomed)
 domain_auto_trans(cros_cryptohomed, cros_unconfined_exec, chromeos)
 domain_auto_trans(cros_cryptohomed, cros_spaced_cli_exec, cros_spaced_cli)
+use_init_fd(cros_cryptohomed)
 
 allow domain cros_cryptohomed:key                                     search;
 
@@ -113,7 +114,6 @@ cros_daemon_store_perms(cros_cryptohomed, usb_bouncer, relabelto)
 
 
 allow cros_cryptohomed chromeos_startup_tmp_file:file mounton;
-allow cros_cryptohomed cros_init_scripts:fd use;
 allow cros_cryptohomed cros_init:key {
   link
   write
@@ -230,22 +230,30 @@ allow cros_cryptohomed cros_unconfined_exec:file    x_file_perms;
 allow cros_cryptohomed cros_initctl_exec:file rx_file_perms;
 
 # Dm-crypt cryptohome related labels.
-allow cros_cryptohomed cros_run_udev:dir { read search};
-allow cros_cryptohomed cros_var_lock:dir { getattr search };
-allow cros_cryptohomed cros_var_cache_dlcservice:dir { getattr search };
-allow cros_cryptohomed cros_var_cache_dlcservice:file { getattr };
-allow cros_cryptohomed cros_run_lock:dir { add_name remove_name write };
-allow cros_cryptohomed cros_run_lock:file { append create getattr lock open read unlink };
-allow cros_cryptohomed device:lnk_file { create open read unlink };
-allow cros_cryptohomed device:dir { add_name open read remove_name write};
-allow cros_cryptohomed devpts:dir { open read search };
+r_dir_file(cros_cryptohomed {cros_run_udev cros_var_lock cros_var_cache_dlcservice cros_var_cache_dlcservice });
+create_dir_file(cros_cryptohomed cros_run_lock);
+allow cros_cryptohomed device:lnk_file create_file_perms;
+allow cros_cryptohomed device:dir rw_dir_perms;
+allow cros_cryptohomed devpts:dir r_dir_perms;
 allow cros_cryptohomed cros_udevadm_exec:file rx_file_perms;
 allow cros_cryptohomed cros_mke2fs_exec:file rx_file_perms;
-allow cros_cryptohomed usb_device:dir search;
 allow cros_cryptohomed kernel:system ipc_info;
-allow cros_cryptohomed cros_run_udev:sock_file write;
+allow cros_cryptohomed cros_run_udev:sock_file rw_file_perms;
 allow cros_cryptohomed cros_shm:file getattr;
 allow cros_cryptohomed cros_udevd:unix_stream_socket connectto;
+
+# Device permissions.
+r_dir_file( cros_cryptohomed { audio_device input_device });
+allow cros_cryptohomed kmsg_device:chr_file r_file_perms;
+allow cros_cryptohomed logger_device:sock_file r_file_perms;
+allow cros_cryptohomed proc_cmdline:file r_file_perms;
+allow cros_cryptohomed usb_device:chr_file r_file_perms;
+allow cros_cryptohomed usb_device:dir r_dir_perms;
+allow cros_cryptohomed audio_device:chr_file getattr;
+allow cros_cryptohomed cros_run_udev:dir watch;
+
+allow cros_cryptohomed cros_init:dir search;
+allow cros_cryptohomed cros_init:file read;
 
 # Remove the arc_cts_fails_release macro for ARCVM devices so that
 # cros_cryptohomed is not converted into a permissive domain after being
@@ -342,6 +350,7 @@ cros_tcsd_client(cros_cryptohomed)
 
 log_writer(cros_cryptohomed)
 uma_writer(cros_cryptohomed)
+
 allow cros_cryptohomed debugfs:dir r_dir_perms;
 
 filetrans_pattern(cros_cryptohomed, cros_home, cros_home_shadow, dir, ".shadow")

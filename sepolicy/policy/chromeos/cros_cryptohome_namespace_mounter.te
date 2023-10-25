@@ -9,6 +9,7 @@ domain_auto_trans(cros_cryptohome_namespace_mounter, cros_unconfined_exec, chrom
 
 allow domain cros_cryptohome_namespace_mounter:key search;
 allow cros_cryptohome_namespace_mounter cros_cryptohomed:fd use;
+allow cros_cryptohome_namespace_mounter kernel:process setsched;
 
 allow cros_cryptohome_namespace_mounter cros_cryptohomed:{
   unix_stream_socket
@@ -157,7 +158,7 @@ is_arc_vm(`
     remount
     unmount
   };
-  allow cros_cryptohome_namespace_mounter device:chr_file r_file_perms;
+  allow cros_cryptohome_namespace_mounter device:chr_file rw_file_perms;
   create_dir_file(cros_cryptohome_namespace_mounter, unlabeled)
 ',`
   arc_cts_fails_release(`
@@ -175,7 +176,7 @@ is_arc_vm(`
       remount
       unmount
     };
-    allow cros_cryptohome_namespace_mounter device:chr_file r_file_perms;
+    allow cros_cryptohome_namespace_mounter device:chr_file rw_file_perms;
     create_dir_file(cros_cryptohome_namespace_mounter, unlabeled)
   ', (cros_cryptohome_namespace_mounter))
 ')
