@@ -5,27 +5,32 @@
 // APIs to adjust the Quality of Service (QoS) expected for a thread or a
 // process. QoS definitions map to performance characteristics.
 
+pub mod cgroups;
+
 use std::fmt::Display;
 use std::io;
 use std::path::Path;
-use std::path::PathBuf;
 
-pub type Result<'a, T> = std::result::Result<T, Error<'a>>;
+pub use cgroups::CgroupContext;
+pub use cgroups::CpuCgroup;
+pub use cgroups::CpusetCgroup;
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 const NUM_PROCESS_STATES: usize = ProcessState::Background as usize + 1;
 const NUM_THREAD_STATES: usize = ThreadState::Background as usize + 1;
 
 /// Errors from schedqos crate.
 #[derive(Debug)]
-pub enum Error<'a> {
+pub enum Error {
     Config(&'static str, &'static str),
-    Cgroup(&'a Path, io::Error),
+    Cgroup(&'static str, io::Error),
     SchedAttr(io::Error),
     LatencySensitive(io::Error),
     InvalidThread,
 }
 
-impl std::error::Error for Error<'_> {
+impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Config(_, _) => None,
@@ -37,11 +42,11 @@ impl std::error::Error for Error<'_> {
     }
 }
 
-impl Display for Error<'_> {
+impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Config(category, e) => f.write_fmt(format_args!("config: {category}: {e}")),
-            Self::Cgroup(path, e) => f.write_fmt(format_args!("cgroup: file={path:?}, {e}")),
+            Self::Cgroup(name, e) => f.write_fmt(format_args!("cgroup: {name}: {e}")),
             Self::SchedAttr(e) => f.write_fmt(format_args!("sched_setattr(2): {e}")),
             Self::LatencySensitive(e) => f.write_fmt(format_args!("latency sensitive file: {e}")),
             Self::InvalidThread => f.write_str("invalid thread id"),
@@ -101,7 +106,7 @@ impl TryFrom<u8> for ThreadState {
 #[derive(Debug)]
 pub struct Config {
     /// Config for cgroups
-    pub cgroup_config: CgroupConfig,
+    pub cgroup_context: CgroupContext,
     /// ProcessStateConfig for each process QoS state
     pub process_configs: [ProcessStateConfig; NUM_PROCESS_STATES],
     /// ThreadStateConfig for each thread QoS state
@@ -167,19 +172,6 @@ impl Config {
     }
 }
 
-/// Paths to cgroup directories.
-#[derive(Debug)]
-pub struct CgroupConfig {
-    /// Path to cpu cgroup for normal processes
-    pub cpu_normal: PathBuf,
-    /// Path to cpu cgroup for background processes
-    pub cpu_background: PathBuf,
-    /// Path to cpuset cgroup using all CPU cores
-    pub cpuset_all: PathBuf,
-    /// Path to cpuset cgroup using efficient CPU cores only
-    pub cpuset_efficient: PathBuf,
-}
-
 /// Detailed scheduler settings for a process QoS state.
 #[derive(Clone, Debug)]
 pub struct ProcessStateConfig {
@@ -223,20 +215,6 @@ impl ThreadStateConfig {
             prefer_idle: false,
         }
     }
-}
-
-/// Cpu cgroups
-#[derive(Clone, Copy, Debug)]
-pub enum CpuCgroup {
-    Normal,
-    Background,
-}
-
-/// Cpuset cgroups
-#[derive(Clone, Copy, Debug)]
-pub enum CpusetCgroup {
-    All,
-    Efficient,
 }
 
 #[repr(C)]
@@ -357,13 +335,12 @@ fn validate_thread_id(process_id: ProcessId, thread_id: ThreadId) -> bool {
 }
 
 pub struct SchedQosContext {
-    // TODO(kawasin): Convert cgroup path to a opened file.
     config: Config,
     uclamp_support: bool,
 }
 
 impl SchedQosContext {
-    pub fn new(config: Config) -> Result<'static, Self> {
+    pub fn new(config: Config) -> Result<Self> {
         for thread_config in &config.thread_configs {
             thread_config
                 .validate()
@@ -377,25 +354,21 @@ impl SchedQosContext {
     }
 
     pub fn set_process_state(
-        // TODO(kawasin): Make this mut to update internal state mapping.
-        &self,
+        &mut self,
         process_id: u32,
         process_state: ProcessState,
     ) -> Result<()> {
         let process_id = ProcessId(process_id);
         let process_config = &self.config.process_configs[process_state as usize];
 
-        let cgroup = match process_config.cpu_cgroup {
-            CpuCgroup::Normal => &self.config.cgroup_config.cpu_normal,
-            CpuCgroup::Background => &self.config.cgroup_config.cpu_background,
-        };
-
-        std::fs::write(cgroup, process_id.0.to_string()).map_err(|e| Error::Cgroup(cgroup, e))
+        self.config
+            .cgroup_context
+            .set_cpu_cgroup(process_id, process_config.cpu_cgroup)
+            .map_err(|e| Error::Cgroup(process_config.cpu_cgroup.name(), e))
     }
 
     pub fn set_thread_state(
-        // TODO(kawasin): Make this mut to update internal state mapping.
-        &self,
+        &mut self,
         process_id: u32,
         thread_id: u32,
         thread_state: ThreadState,
@@ -407,11 +380,6 @@ impl SchedQosContext {
         }
 
         let thread_config = &self.config.thread_configs[thread_state as usize];
-
-        let cgroup = match thread_config.cpuset_cgroup {
-            CpusetCgroup::All => &self.config.cgroup_config.cpuset_all,
-            CpusetCgroup::Efficient => &self.config.cgroup_config.cpuset_efficient,
-        };
 
         let mut attr = sched_attr::default();
 
@@ -442,7 +410,10 @@ impl SchedQosContext {
             return Err(Error::SchedAttr(io::Error::last_os_error()));
         }
 
-        std::fs::write(cgroup, thread_id.0.to_string()).map_err(|e| Error::Cgroup(cgroup, e))?;
+        self.config
+            .cgroup_context
+            .set_cpuset_cgroup(thread_id, thread_config.cpuset_cgroup)
+            .map_err(|e| Error::Cgroup(thread_config.cpuset_cgroup.name(), e))?;
 
         // Apply latency sensitive. Latency_sensitive will prefer idle cores.
         // This is a patch not yet in upstream(http://crrev/c/2981472)

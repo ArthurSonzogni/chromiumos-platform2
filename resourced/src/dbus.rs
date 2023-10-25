@@ -521,7 +521,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                     let Some(sched_ctx) = sched_ctx else {
                         return sender_context.reply(Err(MethodErr::failed("no schedqos context")));
                     };
-                    let sched_ctx = sched_ctx.lock().expect("lock schedqos context");
+                    let mut sched_ctx = sched_ctx.lock().expect("lock schedqos context");
 
                     let result = sched_ctx.set_process_state(process_id, state);
                     match result {
@@ -578,7 +578,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                     let Some(sched_ctx) = sched_ctx else {
                         return sender_context.reply(Err(MethodErr::failed("no schedqos context")));
                     };
-                    let sched_ctx = sched_ctx.lock().expect("lock schedqos context");
+                    let mut sched_ctx = sched_ctx.lock().expect("lock schedqos context");
 
                     let result = sched_ctx.set_thread_state(process_id, thread_id, state);
                     match result {
