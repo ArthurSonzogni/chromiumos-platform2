@@ -39,6 +39,7 @@
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/network/mock_network.h"
+#include "shill/portal_detector.h"
 #include "shill/store/fake_store.h"
 #include "shill/store/property_store.h"
 #include "shill/technology.h"
@@ -215,7 +216,6 @@ class TetheringManagerTest : public testing::Test {
         .WillByDefault(Return());
     ON_CALL(*cellular_service_provider_, ReleaseTetheringNetwork(_, _))
         .WillByDefault(Return());
-    ON_CALL(*network_, HasInternetConnectivity()).WillByDefault(Return(true));
     ON_CALL(*network_, IsConnected()).WillByDefault(Return(true));
     ON_CALL(*wifi_provider_, GetPhyAtIndex(hotspot_device_->phy_index()))
         .WillByDefault(Return(&wifi_phy_));
@@ -487,8 +487,8 @@ class TetheringManagerTest : public testing::Test {
     tethering_manager->OnNetworkDestroyed(kTestInterfaceIndex);
   }
 
-  void OnUpstreamNetworkValidationResult(TetheringManager* tethering_manager) {
-    PortalDetector::Result result;
+  void OnUpstreamNetworkValidationResult(TetheringManager* tethering_manager,
+                                         const PortalDetector::Result& result) {
     tethering_manager->OnNetworkValidationResult(kTestInterfaceIndex, result);
   }
 
@@ -1037,6 +1037,12 @@ TEST_F(TetheringManagerTest, StartTetheringSessionSuccessWithCellularUpstream) {
                         hotspot_device_.get());
 
   // Upstream network fetched.
+  PortalDetector::Result portal_detector_result;
+  portal_detector_result.http_phase = PortalDetector::Phase::kContent,
+  portal_detector_result.http_status = PortalDetector::Status::kSuccess;
+  portal_detector_result.https_phase = PortalDetector::Phase::kContent;
+  portal_detector_result.https_status = PortalDetector::Status::kSuccess;
+  network_->set_portal_detector_result_for_testing(portal_detector_result);
   OnUpstreamNetworkAcquired(tethering_manager_,
                             TetheringManager::SetEnabledResult::kSuccess);
 
@@ -1052,7 +1058,6 @@ TEST_F(TetheringManagerTest, StartTetheringSessionSuccessWithCellularUpstream) {
 TEST_F(TetheringManagerTest, StartTetheringSessionSuccessWithEthernetUpstream) {
   MockNetwork eth_network(kTestInterfaceIndex + 1, "eth0",
                           Technology::kEthernet);
-  ON_CALL(eth_network, HasInternetConnectivity()).WillByDefault(Return(true));
   ON_CALL(eth_network, IsConnected()).WillByDefault(Return(true));
   scoped_refptr<MockService> eth_service = new MockService(&manager_);
   EXPECT_CALL(manager_, GetFirstEthernetService())
@@ -1088,6 +1093,12 @@ TEST_F(TetheringManagerTest, StartTetheringSessionSuccessWithEthernetUpstream) {
                         hotspot_device_.get());
 
   // Tethering network created.
+  PortalDetector::Result portal_detector_result;
+  portal_detector_result.http_phase = PortalDetector::Phase::kContent,
+  portal_detector_result.http_status = PortalDetector::Status::kSuccess;
+  portal_detector_result.https_phase = PortalDetector::Phase::kContent;
+  portal_detector_result.https_status = PortalDetector::Status::kSuccess;
+  eth_network.set_portal_detector_result_for_testing(portal_detector_result);
   OnDownstreamNetworkReady(tethering_manager_, MakeFd());
 
   Mock::VerifyAndClearExpectations(&manager_);
@@ -1222,11 +1233,56 @@ TEST_F(TetheringManagerTest, StartTetheringSessionUpstreamNetworkNotReady) {
                         LocalDevice::DeviceEvent::kServiceUp,
                         hotspot_device_.get());
 
-  // Upstream network fetched. Network not ready upon fetch and will be ready
-  // later.
-  EXPECT_CALL(*network_, HasInternetConnectivity())
-      .WillOnce(Return(false))
-      .WillRepeatedly(DoDefault());
+  // Upstream network fetched. Network has no Internet connectivity
+  PortalDetector::Result portal_detector_result;
+  network_->set_portal_detector_result_for_testing(portal_detector_result);
+  OnUpstreamNetworkAcquired(tethering_manager_,
+                            TetheringManager::SetEnabledResult::kSuccess);
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringStarting);
+
+  // Tethering network created.
+  OnDownstreamNetworkReady(tethering_manager_, MakeFd());
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringActive);
+
+  // Feed network validation result event.
+  OnUpstreamNetworkValidationResult(tethering_manager_, portal_detector_result);
+
+  // TODO(b/291845893): Normally the session is expected to fail. Change the
+  // test expectations once a new tethering session properly fails if
+  // TetheringManager cannot observe the upstream network is ready after a few
+  // network validation retries.
+  VerifyResult(TetheringManager::SetEnabledResult::kSuccess);
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringActive);
+  Mock::VerifyAndClearExpectations(&manager_);
+}
+
+TEST_F(TetheringManagerTest, StartTetheringSessionUpstreamNetworkHasPortal) {
+  TetheringPrerequisite(tethering_manager_);
+
+  EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
+  SetEnabled(tethering_manager_, true);
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringStarting);
+  EXPECT_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "wwan0", _, _, _, _))
+      .WillOnce(Return(true));
+
+  // Downstream device event service up.
+  EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
+  DownStreamDeviceEvent(tethering_manager_,
+                        LocalDevice::DeviceEvent::kServiceUp,
+                        hotspot_device_.get());
+
+  // Upstream network fetched. Network is in a portal state.
+  PortalDetector::Result portal_detector_result;
+  portal_detector_result.http_phase = PortalDetector::Phase::kContent,
+  portal_detector_result.http_status = PortalDetector::Status::kRedirect;
+  portal_detector_result.https_phase = PortalDetector::Phase::kContent;
+  portal_detector_result.https_status = PortalDetector::Status::kSuccess;
+  portal_detector_result.redirect_url_string = "https://portal.com/login";
+  network_->set_portal_detector_result_for_testing(portal_detector_result);
   OnUpstreamNetworkAcquired(tethering_manager_,
                             TetheringManager::SetEnabledResult::kSuccess);
   EXPECT_EQ(TetheringState(tethering_manager_),
@@ -1235,8 +1291,6 @@ TEST_F(TetheringManagerTest, StartTetheringSessionUpstreamNetworkNotReady) {
   // Tethering network created.
   OnDownstreamNetworkReady(tethering_manager_, MakeFd());
 
-  // Feed network validation result event.
-  OnUpstreamNetworkValidationResult(tethering_manager_);
   VerifyResult(TetheringManager::SetEnabledResult::kSuccess);
   EXPECT_EQ(TetheringState(tethering_manager_),
             TetheringManager::TetheringState::kTetheringActive);
@@ -1386,10 +1440,11 @@ TEST_F(TetheringManagerTest, DISABLED_UpstreamNetworkValidationFailed) {
                         hotspot_device_.get());
 
   // Upstream network fetched. Network not ready.
-  EXPECT_CALL(*network_, HasInternetConnectivity())
-      .WillRepeatedly(Return(false));
-  ON_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "wwan0", _, _, _, _))
-      .WillByDefault(Return(true));
+  PortalDetector::Result portal_detector_result;
+  portal_detector_result.http_phase = PortalDetector::Phase::kConnection,
+  portal_detector_result.http_status = PortalDetector::Status::kFailure;
+  portal_detector_result.https_phase = PortalDetector::Phase::kConnection;
+  portal_detector_result.https_status = PortalDetector::Status::kFailure;
   OnUpstreamNetworkAcquired(tethering_manager_,
                             TetheringManager::SetEnabledResult::kSuccess);
   EXPECT_EQ(TetheringState(tethering_manager_),
@@ -1401,9 +1456,10 @@ TEST_F(TetheringManagerTest, DISABLED_UpstreamNetworkValidationFailed) {
             TetheringManager::TetheringState::kTetheringStarting);
 
   // Feed network validation result event.
-  OnUpstreamNetworkValidationResult(tethering_manager_);
+  OnUpstreamNetworkValidationResult(tethering_manager_, portal_detector_result);
+
   VerifyResult(
-      TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable);
+      TetheringManager::SetEnabledResult::kUpstreamNetworkWithoutInternet);
   CheckTetheringStopping(tethering_manager_,
                          kTetheringIdleReasonUpstreamDisconnect);
 }

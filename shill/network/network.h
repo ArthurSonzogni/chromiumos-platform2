@@ -438,6 +438,10 @@ class Network {
   void set_ignore_link_monitoring_for_testing(bool ignore_link_monitoring) {
     ignore_link_monitoring_ = ignore_link_monitoring;
   }
+  void set_portal_detector_result_for_testing(
+      const PortalDetector::Result& result) {
+    network_validation_result_ = result;
+  }
 
  private:
   // TODO(b/232177767): Refactor DeviceTest to remove this dependency.

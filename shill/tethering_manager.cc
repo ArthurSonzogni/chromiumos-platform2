@@ -570,9 +570,9 @@ void TetheringManager::CheckAndPostTetheringStartResult() {
     return;
   }
 
-  if (!upstream_network_->HasInternetConnectivity()) {
+  if (!IsUpstreamNetworkReady()) {
     LOG(WARNING) << __func__ << ": Upstream Network " << *upstream_network_
-                 << " has not validated Internet access";
+                 << " not ready yet.";
     // TODO(b/273975270): Re-enable checking Internet connectivity on the
     // upstream network once the Network class can manage portal detection
     // retries by itself, and returning early if there is no Internet
@@ -611,7 +611,9 @@ void TetheringManager::OnStartingTetheringTimeout() {
     result = SetEnabledResult::kDownstreamWiFiFailure;
   } else if (!upstream_network_) {
     result = SetEnabledResult::kUpstreamNetworkNotAvailable;
-  } else if (!upstream_network_->HasInternetConnectivity()) {
+  } else if (!upstream_network_->IsConnected()) {
+    result = SetEnabledResult::kUpstreamFailure;
+  } else if (!IsUpstreamNetworkReady()) {
     result = SetEnabledResult::kUpstreamNetworkWithoutInternet;
   }
   PostSetEnabledResult(result);
@@ -1283,7 +1285,7 @@ void TetheringManager::OnNetworkValidationResult(
     int interface_index, const PortalDetector::Result& result) {
   DCHECK(upstream_network_);
   if (state_ == TetheringState::kTetheringStarting) {
-    if (!upstream_network_->HasInternetConnectivity()) {
+    if (!IsUpstreamNetworkReady()) {
       LOG(WARNING) << __func__ << ": Upstream Network " << *upstream_network_
                    << " has failed validating Internet access";
       // TODO(b/273975270): Re-enable stopping the tethering session if an
@@ -1312,6 +1314,35 @@ void TetheringManager::OnNetworkDestroyed(int interface_index) {
   upstream_network_ = nullptr;
   upstream_service_ = nullptr;
   StopTetheringSession(StopReason::kUpstreamDisconnect);
+}
+
+bool TetheringManager::IsUpstreamNetworkReady() {
+  if (!upstream_network_ || !upstream_network_->IsConnected()) {
+    // Upstream network was not yet acquired or is not connected;
+    return false;
+  }
+  const auto validation_result = upstream_network_->network_validation_result();
+  if (!validation_result) {
+    // Internet connectivity has not yet been evaluated.
+    return false;
+  }
+  switch (validation_result->GetValidationState()) {
+    case PortalDetector::ValidationState::kInternetConnectivity:
+      return true;
+    case PortalDetector::ValidationState::kPortalRedirect:
+      if (upstream_network_->technology() == Technology::kCellular) {
+        // b/301648519: Some Cellular carriers use portal redirection flows for
+        // asking the user to enable or buy a tethering data plan. This flow is
+        // not handled natively in ChromeOS, but the network is nonetheless
+        // considered ready.
+        return true;
+      }
+      return false;
+    case PortalDetector::ValidationState::kNoConnectivity:
+      return false;
+    case PortalDetector::ValidationState::kPartialConnectivity:
+      return false;
+  }
 }
 
 // Stub Network::EventHandler handlers for network events

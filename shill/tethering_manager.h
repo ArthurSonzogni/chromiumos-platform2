@@ -18,6 +18,7 @@
 #include <chromeos/patchpanel/dbus/client.h>
 
 #include "shill/network/network.h"
+#include "shill/portal_detector.h"
 #include "shill/refptr_types.h"
 #include "shill/store/property_store.h"
 #include "shill/technology.h"
@@ -149,6 +150,9 @@ class TetheringManager : public Network::EventHandler {
     kError,               // Internal error.
   };
 
+  // Convert stop reason enum to string.
+  static const char* StopReasonToString(StopReason reason);
+
   using SetEnabledResultCallback =
       base::OnceCallback<void(SetEnabledResult result)>;
 
@@ -260,8 +264,9 @@ class TetheringManager : public Network::EventHandler {
   size_t GetClientCount();
   // Deregister upstream network listener and free the network.
   void FreeUpstreamNetwork();
-  // Convert stop reason enum to string.
-  static const char* StopReasonToString(StopReason reason);
+  // Returns true if the upstream network is defined, is connected, and is in a
+  // validation state compatible with tethering.
+  bool IsUpstreamNetworkReady();
 
   // TetheringManager is created and owned by Manager.
   Manager* manager_;
