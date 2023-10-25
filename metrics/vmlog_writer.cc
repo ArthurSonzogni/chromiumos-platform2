@@ -335,11 +335,17 @@ bool VmlogFile::Write(const std::string& data) {
     return false;
 
   if (cur_size_ + data.size() > max_size_) {
+    // Copy from vmlog.<TIMESTAMP> to vmlog.1.<TIMESTAMP> -- but do not update
+    // filenames.
     if (!base::CopyFile(live_path_, rotated_path_)) {
       PLOG(ERROR) << "Could not copy vmlog to: " << rotated_path_.value();
     }
     base::FilePath rotated_path_dir = rotated_path_.DirName();
     base::FilePath rotated_symlink = rotated_path_dir.Append("vmlog.1.LATEST");
+    // If vmlog.1.LATEST doesn't already exist, create it as a symlink to
+    // vmlog.1.<TIMESTAMP> using the timestamp above.
+    // If it *does* already exist, no need to update it: the target of the link
+    // won't change; we're just overwriting its contents.
     if (!base::PathExists(rotated_symlink)) {
       if (!base::CreateSymbolicLink(rotated_path_, rotated_symlink)) {
         PLOG(ERROR) << "Unable to create symbolic link from "
@@ -348,6 +354,7 @@ bool VmlogFile::Write(const std::string& data) {
       }
     }
 
+    // Clear the existing file and start writing to it at the beginning.
     if (HANDLE_EINTR(ftruncate(fd_, 0)) != 0) {
       PLOG(ERROR) << "Could not ftruncate() file";
       return false;
@@ -405,10 +412,14 @@ void VmlogWriter::Init(const base::FilePath& vmlog_dir,
   base::FilePath vmlog_rotated_path =
       vmlog_dir.Append("vmlog.1." + brillo::GetTimeAsLogString(now));
 
+  // Rename current vmlog.LATEST to vmlog.PREVIOUS, and create a new
+  // vmlog.LATEST pointing at the just-created (current) vmlog.
   brillo::UpdateLogSymlinks(vmlog_dir.Append("vmlog.LATEST"),
                             vmlog_dir.Append("vmlog.PREVIOUS"),
                             vmlog_current_path);
 
+  // Update the old vmlog.1.LATEST to be called vmlog.1.PREVIOUS, but do *not*
+  // create a new vmlog.1.LATEST -- that'll happen when we rotate logs.
   base::DeleteFile(vmlog_dir.Append("vmlog.1.PREVIOUS"));
   if (base::PathExists(vmlog_dir.Append("vmlog.1.LATEST"))) {
     base::Move(vmlog_dir.Append("vmlog.1.LATEST"),

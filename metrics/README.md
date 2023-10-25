@@ -161,6 +161,68 @@ list of items, because the number of columns depends on number of CPU cores.
 -   From `/sys/devices/system/cpu/cpuN/cpufreq/scaling_cur_freq`
     -   cpufreqN: frequency of core in kHz.
 
+`vmlog_writer` manages a number of symbolic links, which are not immediately
+intuitive:
+
+*   `vmlog.LATEST` is a symbolic link to the current logfile that `vmlog_writer`
+    is writing to. It is rotated whenever the size gets above 256KiB. The
+    underlying log file is **not** renamed during this rotation, so the date
+    suffix reflects the time when `vmlog_writer` started during the most recent
+    run of `metrics_daemon` (most likely at boot, unless `metrics_daemon`
+    restarted).
+*   `vmlog.1.LATEST` is a symbolic link to the **last** log file written to.
+    When `vmlog.LATEST` would exceed 256KiB, its contents are copied and
+    overwrite the current contents of the file `vmlog.1.LATEST` points to.
+    Similarly, the date suffix on the target of this link only changes when
+    `metrics_daemon` starts.
+*   `vmlog.PREVIOUS` is a symbolic link that points to the vmlog contents as of
+    the previous shutdown. That is, when `metrics_daemon` starts, it renames
+    `vmlog.LATEST` to `vmlog.PREVIOUS` and creates a new `vmlog.LATEST`, which
+    points to the new log file it just created.
+*   `vmlog.1.PREVIOUS` is a symbolic link that points to the `vmlog.1.LATEST`
+    contents as of the previous shutdown. That is, when `metrics_daemon` starts,
+    it renames `vmlog.1.LATEST` to `vmlog.1.PREVIOUS`.
+
+An illustrative example:
+
+```
+# ls -l /var/log/vmlog
+total 660
+-rw-r--r--. 1 metrics metrics 262060 Oct 25 12:11 vmlog.1.20231024-213014
+-rw-r--r--. 1 metrics metrics 262074 Oct 25 14:15 vmlog.1.20231025-163712
+lrwxrwxrwx. 1 metrics metrics     38 Oct 25 14:15 vmlog.1.LATEST -> /var/log/vmlog/vmlog.1.20231025-163712
+lrwxrwxrwx. 1 metrics metrics     38 Oct 24 19:12 vmlog.1.PREVIOUS -> /var/log/vmlog/vmlog.1.20231024-213014
+-rw-r--r--. 1 metrics metrics  74182 Oct 24 17:29 vmlog.20231024-210100
+-rw-r--r--. 1 metrics metrics  66750 Oct 25 12:37 vmlog.20231024-213014
+-rw-r--r--. 1 metrics metrics   1622 Oct 25 14:16 vmlog.20231025-163712
+lrwxrwxrwx. 1 metrics metrics     21 Oct 25 12:37 vmlog.LATEST -> vmlog.20231025-163712
+lrwxrwxrwx. 1 metrics metrics     21 Oct 24 17:30 vmlog.PREVIOUS -> vmlog.20231024-213014
+```
+
+From this set of logs and symlinks, we can understand the following sequence of
+events:
+
+1.  2023-10-24 at 21:30:14 UTC: `metrics_daemon` starts up, and creates
+    `vmlog.20231024-213014`.
+2.  2023-10-25 at 12:11 **local** time: The size of `vmlog.20231024-213014`
+    would grow too large after the next data write, so `vmlog_writer` copies it
+    to `vmlog.1.20231024-213014`, overwriting its contents, and truncates
+    `vmlog.20231024-213014`.
+3.  2023-10-25 at 16:37:12 UTC: `metrics_daemon` starts up, and creates
+    `vmlog.20231025-163712`. It updates `vmlog.LATEST` to point to this new file
+    and vmlog.PREVIOUS to point to `vmlog.20231024-213014`, and renames the
+    previous `vmlog.1.LATEST` to be `vmlog.1.PREVIOUS`, keeping it pointing to
+    `vmlog.1.20231024-213014`.
+4.  2023-10-24 at 14:15 **local** time: The size of `vmlog.20231025-163712`
+    would grow too large after the next data write, so `vmlog_writer` copies it
+    to `vmlog.1.20231025-163712`, overwriting its contents. At this time, it
+    creates a new `vmlog.1.LATEST` file, pointing it to
+    `vmlog.1.20231025-163712`.  Finally, it truncates `vmlog.20231025-163712`.
+5.  2023-10-25 at 14:16 **local** time: `vmlog_writer` continues writing to the
+    existing file, `vmlog.20231025-163712`.
+
+Periodically, `chromeos-cleanup-logs` will remove old `vmlog.<TIMESTAMP>` files.
+
 ## Further Information
 
 See
