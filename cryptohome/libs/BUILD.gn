@@ -145,7 +145,7 @@ action("auth-block-state-flatbuffers-binding-generate") {
     "--header_include_paths",
     "cryptohome/flatbuffer_schemas/structures.h",
     "--flatbuffer_header_include_paths",
-    "cryptohome/auth_block_state_generated.h",
+    "cryptohome/flatbuffer_schemas/auth_block_state_generated.h",
     "--flatbuffer_header_include_paths",
     "cryptohome/flatbuffer_schemas/auth_block_state.h",
     "--flatbuffer_header_include_paths",
@@ -188,7 +188,7 @@ action("enumerations-flatbuffers-binding-generate") {
     "--flatbuffer_header_include_paths",
     "cryptohome/flatbuffer_schemas/enumerations.h",
     "--flatbuffer_header_include_paths",
-    "cryptohome/enumerations_generated.h",
+    "cryptohome/flatbuffer_schemas/enumerations_generated.h",
     "--flatbuffer_header_include_paths",
     "libhwsec-foundation/flatbuffers/basic_objects.h",
     "--impl_include_paths",
@@ -222,7 +222,7 @@ action("structures-flatbuffers-binding-generate") {
     "--flatbuffer_header_include_paths",
     "cryptohome/flatbuffer_schemas/structures.h",
     "--flatbuffer_header_include_paths",
-    "cryptohome/structures_generated.h",
+    "cryptohome/flatbuffer_schemas/structures_generated.h",
     "--flatbuffer_header_include_paths",
     "libhwsec/structures/signature_sealed_data_flatbuffer.h",
     "--flatbuffer_header_include_paths",
@@ -260,7 +260,7 @@ action("user-policy-flatbuffers-binding-generate") {
     "--header_include_paths",
     "cryptohome/flatbuffer_schemas/enumerations.h",
     "--flatbuffer_header_include_paths",
-    "cryptohome/user_policy_generated.h",
+    "cryptohome/flatbuffer_schemas/user_policy_generated.h",
     "--flatbuffer_header_include_paths",
     "cryptohome/flatbuffer_schemas/user_policy.h",
     "--flatbuffer_header_include_paths",
@@ -305,9 +305,9 @@ action("user-secret-stash-flatbuffers-binding-generate") {
     "--output_dir=${root_gen_dir}/include/cryptohome/flatbuffer_schemas",
     "--guard_prefix=CRYPTOHOME_FLATBUFFER_SCHEMAS",
     "--flatbuffer_header_include_paths",
-    "cryptohome/user_secret_stash_container_generated.h",
+    "cryptohome/flatbuffer_schemas/user_secret_stash_container_generated.h",
     "--flatbuffer_header_include_paths",
-    "cryptohome/user_secret_stash_payload_generated.h",
+    "cryptohome/flatbuffer_schemas/user_secret_stash_payload_generated.h",
     "--flatbuffer_header_include_paths",
     "libhwsec-foundation/flatbuffers/basic_objects.h",
     "--impl_include_paths",
@@ -346,7 +346,7 @@ action("auth-factor-flatbuffers-binding-generate") {
     "--header_include_paths",
     "cryptohome/flatbuffer_schemas/auth_block_state.h",
     "--flatbuffer_header_include_paths",
-    "cryptohome/auth_factor_generated.h",
+    "cryptohome/flatbuffer_schemas/auth_factor_generated.h",
     "--flatbuffer_header_include_paths",
     "cryptohome/flatbuffer_schemas/auth_factor.h",
     "--flatbuffer_header_include_paths",
@@ -396,7 +396,7 @@ source_set("cryptohome-flatbuffers-binding") {
 }
 
 flatbuffer("cryptohome-flatbuffers") {
-  flatc_out_dir = "include/cryptohome"
+  flatc_out_dir = "include/cryptohome/flatbuffer_schemas"
   flatc_args = [
     # Default flatbuffer flags used in Chrome OS.
     "--cpp",
