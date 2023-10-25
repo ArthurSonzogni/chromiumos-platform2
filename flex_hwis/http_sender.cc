@@ -12,6 +12,8 @@
 #include <brillo/http/http_transport.h>
 #include <brillo/mime_utils.h>
 
+#include "flex_hwis/flex_hwis_server_info.h"
+
 namespace flex_hwis {
 
 constexpr char kApiVersion[] = "/v1/";
@@ -25,11 +27,12 @@ bool HttpSender::DeleteDevice(const hwis_proto::DeleteDevice& device_info) {
     return false;
   }
   brillo::ErrorPtr error;
-  // TODO(b/297887750): add API key to header to authorize from real server.
+  const brillo::http::HeaderList kApiHeaders = {
+      {"X-Goog-Api-Key", std::string(flex_hwis::kApiKey)}};
   auto response = brillo::http::SendRequestAndBlock(
       brillo::http::request_type::kDelete,
       server_url_ + kApiVersion + device_info.name(), /*data=*/nullptr,
-      /*data_size=*/0, brillo::mime::application::kProtobuf, /*headers=*/{},
+      /*data_size=*/0, brillo::mime::application::kProtobuf, kApiHeaders,
       brillo::http::Transport::CreateDefault(), &error);
   if (!response || !response->IsSuccessful()) {
     LOG(WARNING) << "Failed to delete device";
@@ -47,13 +50,14 @@ bool HttpSender::UpdateDevice(const hwis_proto::Device& device_info) {
     return false;
   }
   brillo::ErrorPtr error;
-  // TODO(b/297887750): add API key to header to authorize from real server.
+  const brillo::http::HeaderList kApiHeaders = {
+      {"X-Goog-Api-Key", std::string(flex_hwis::kApiKey)}};
   auto response = brillo::http::SendRequestAndBlock(
       brillo::http::request_type::kPatch,
       server_url_ + kApiVersion + device_info.name(),
       device_info.SerializeAsString().c_str(),
       device_info.SerializeAsString().size(),
-      brillo::mime::application::kProtobuf, /*headers=*/{},
+      brillo::mime::application::kProtobuf, kApiHeaders,
       brillo::http::Transport::CreateDefault(), &error);
   if (!response || !response->IsSuccessful()) {
     LOG(WARNING) << "Failed to update device";
@@ -72,12 +76,13 @@ DeviceRegisterResult HttpSender::RegisterNewDevice(
     return DeviceRegisterResult(/*success=*/false, /*device_name=*/"");
   }
   brillo::ErrorPtr error;
-  // TODO(b/297887750): add API key to header to authorize from real server.
+  const brillo::http::HeaderList kApiHeaders = {
+      {"X-Goog-Api-Key", std::string(flex_hwis::kApiKey)}};
   auto response = brillo::http::PostBinaryAndBlock(
       server_url_ + kApiVersion + "devices",
       device_info.SerializeAsString().c_str(),
       device_info.SerializeAsString().size(),
-      brillo::mime::application::kProtobuf, /*headers=*/{},
+      brillo::mime::application::kProtobuf, kApiHeaders,
       brillo::http::Transport::CreateDefault(), &error);
 
   DeviceRegisterResult register_result;
