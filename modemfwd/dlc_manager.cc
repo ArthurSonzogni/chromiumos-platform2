@@ -100,9 +100,9 @@ void DlcManager::OnGetExistingDlcsSuccess(
 
 void DlcManager::OnGetExistingDlcsError(brillo::Error* dbus_error) {
   brillo::ErrorPtr err = Error::CreateFromDbusError(dbus_error);
-  brillo::Error::AddTo(&err, FROM_HERE, kModemfwdErrorDomain,
-                       error::kDlcServiceReturnedErrorOnGetExistingDlcs,
-                       "Failed to get existing DLCs.");
+  modemfwd::Error::AddTo(&err, FROM_HERE,
+                         error::kDlcServiceReturnedErrorOnGetExistingDlcs,
+                         "Failed to get existing DLCs.");
   metrics_->SendDlcUninstallResultFailure(err.get());
   // Nothing else to do without the list of existing DLCs.
 }
@@ -131,9 +131,9 @@ void DlcManager::OnPurgeSuccess() {
 void DlcManager::OnPurgeError(brillo::Error* dbus_error) {
   // If purging the DLC fails, log the error and continue purging the rest.
   brillo::ErrorPtr err = Error::CreateFromDbusError(dbus_error);
-  brillo::Error::AddTo(&err, FROM_HERE, kModemfwdErrorDomain,
-                       error::kDlcServiceReturnedErrorOnPurge,
-                       "Failed to purge DLC.");
+  modemfwd::Error::AddTo(&err, FROM_HERE,
+                         error::kDlcServiceReturnedErrorOnPurge,
+                         "Failed to purge DLC.");
   metrics_->SendDlcUninstallResultFailure(err.get());
   RemoveNextDlc();
 }
@@ -247,9 +247,9 @@ void DlcManager::CallGetDlcStateAsync() {
 
 void DlcManager::OnInstallError(brillo::Error* dbus_error) {
   brillo::ErrorPtr err = Error::CreateFromDbusError(dbus_error);
-  brillo::Error::AddTo(&err, FROM_HERE, kModemfwdErrorDomain,
-                       error::kDlcServiceReturnedErrorOnInstall,
-                       "Failed to install DLC.");
+  modemfwd::Error::AddTo(&err, FROM_HERE,
+                         error::kDlcServiceReturnedErrorOnInstall,
+                         "Failed to install DLC.");
   ProcessInstallError(std::move(err));
 }
 
@@ -283,9 +283,9 @@ void DlcManager::OnInstallGetDlcStateSuccess(
 
 void DlcManager::OnInstallGetDlcStateError(brillo::Error* dbus_error) {
   brillo::ErrorPtr err = Error::CreateFromDbusError(dbus_error);
-  brillo::Error::AddTo(&err, FROM_HERE, kModemfwdErrorDomain,
-                       error::kDlcServiceReturnedErrorOnGetDlcState,
-                       "Failed to get the state of the DLC.");
+  modemfwd::Error::AddTo(&err, FROM_HERE,
+                         error::kDlcServiceReturnedErrorOnGetDlcState,
+                         "Failed to get the state of the DLC.");
   ProcessInstallError(std::move(err));
 }
 

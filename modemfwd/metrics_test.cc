@@ -226,8 +226,8 @@ TEST_F(MetricsTest, SendDlcInstallResult_VerifyErrorIteration) {
   auto err = brillo::Error::Create(FROM_HERE, "dbus",
                                    dlcservice::kErrorInvalidDlc, "msg");
   // known linked error
-  brillo::Error::AddTo(&err, FROM_HERE, kModemfwdErrorDomain,
-                       error::kDlcServiceReturnedErrorOnInstall, "msg");
+  modemfwd::Error::AddTo(&err, FROM_HERE,
+                         error::kDlcServiceReturnedErrorOnInstall, "msg");
   metrics_->SendDlcInstallResultFailure(err.get());
 
   // unknown root error
@@ -365,8 +365,8 @@ TEST_F(MetricsTest, SendDlcUninstallResult_VerifyErrorIteration) {
   auto err = brillo::Error::Create(FROM_HERE, "dbus",
                                    error::kUnexpectedEmptyVariant, "msg");
   // known linked error
-  brillo::Error::AddTo(&err, FROM_HERE, kModemfwdErrorDomain,
-                       error::kDlcServiceReturnedErrorOnGetExistingDlcs, "msg");
+  modemfwd::Error::AddTo(
+      &err, FROM_HERE, error::kDlcServiceReturnedErrorOnGetExistingDlcs, "msg");
   metrics_->SendDlcUninstallResultFailure(err.get());
 
   // unknown root error
