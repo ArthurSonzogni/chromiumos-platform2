@@ -240,6 +240,13 @@ void Client::RegisterDeviceRemovedHandler(const DeviceChangedHandler& handler) {
 
 void Client::OnOwnerChange(const std::string& old_owner,
                            const std::string& new_owner) {
+  // Avoid resetting client state when |old_owner| is empty as there might be
+  // race between owner change callback and shill startup callback. See also
+  // b/307671293.
+  if (old_owner.empty()) {
+    return;
+  }
+
   ReleaseDefaultServiceProxy();
   for (const auto& device : devices_) {
     device.second->release_object_proxy();
