@@ -77,7 +77,6 @@ type cros_crash_sender_exec, exec_type, file_type, cros_file_type, cros_system_f
 type cros_crosdns_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_crossystem_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_cryptohome_namespace_mounter_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
-type cros_cryptohome_proxy_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_cryptohomed_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_cupsd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_cups_proxy_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
