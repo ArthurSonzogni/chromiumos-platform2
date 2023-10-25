@@ -565,6 +565,11 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("disable_spectre_variant2_mitigation"))
     AddFeatureDisableOverride("SpectreVariant2Mitigation");
 
+  if (UseFlagIsSet("vulkan_chrome")) {
+    AddFeatureEnableOverride("Vulkan");
+    AddFeatureEnableOverride("DefaultANGLEVulkan");
+  }
+
   brillo::CrosConfig cros_config;
 
   // Disable Floss if the Floss USE flag was not set or the cros config
