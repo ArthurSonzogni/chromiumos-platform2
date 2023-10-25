@@ -7526,6 +7526,10 @@ mno {
     tethering_allowed: true
     mobile_apn {
       apn: "au.au-net.ne.jp"
+      apn_filter {
+        type: MCCMNC
+        exclude_regex: "44054"
+      }
       localized_name {
         name: "LTE NET for DATA"
       }
@@ -7537,12 +7541,40 @@ mno {
       type: IA
     }
     mobile_apn {
+      apn: "uad5gn.au-net.ne.jp"
+      localized_name {
+        name: "5G NET"
+      }
+      username: "au@uad5gn.au-net.ne.jp"
+      password: "au"
+      authentication: CHAP
+      ip_type: IPV4V6
+      type: DEFAULT
+      type: IA
+    }
+    mobile_apn {
       apn: "uno.au-net.ne.jp"
+      apn_filter {
+        type: MCCMNC
+        exclude_regex: "44054"
+      }
       localized_name {
         name: "LTE NET"
       }
       username: "685840734641020@uno.au-net.ne.jp"
       password: "KpyrR6BP"
+      authentication: CHAP
+      ip_type: IPV4V6
+      type: DEFAULT
+      type: IA
+    }
+    mobile_apn {
+      apn: "au5g.au-net.ne.jp"
+      localized_name {
+        name: "5G NET for DATA"
+      }
+      username: "user@au5g.au-net.ne.jp"
+      password: "au"
       authentication: CHAP
       ip_type: IPV4V6
       type: DEFAULT
