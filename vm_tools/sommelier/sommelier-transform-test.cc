@@ -15,10 +15,6 @@ class TransformTest : public ::testing::Test {
   void SetUp() override {
     sl_context_init_default(&ctx);
 
-    // Test only for stable_scaling since it'll be enabled on by
-    // default unless there's an issue.
-    ctx.stable_scaling = true;
-
     // Reset any object variables that are used to a reasonable default.
     sl_transform_reset_surface_scale(&ctx, &fake_surface);
   }
