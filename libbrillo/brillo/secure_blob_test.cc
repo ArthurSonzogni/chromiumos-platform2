@@ -235,9 +235,7 @@ TEST_F(SecureBlobTest, HexStringToSecureBlob) {
 template <typename T>
 class TestSecureAllocator : public SecureAllocator<T> {
  public:
-  TestSecureAllocator() {
-    erased_count = 0;
-  }
+  TestSecureAllocator() { erased_count = 0; }
 
   int GetErasedCount() { return erased_count; }
 
@@ -261,11 +259,14 @@ TEST(SecureAllocator, ErasureOnDeallocation) {
   // Make sure that the contents are cleared on deallocation.
   TestSecureAllocator<char> e;
 
-  char* test_string_addr = e.allocate(15);
-  snprintf(test_string_addr, sizeof(test_string_addr), "Test String");
+  // N.B. cpplint incorrectly recommends the use of `sizeof(test_string_addr)`
+  // if `15` is inlined as the size of the allocation, so pull it into a var.
+  size_t test_string_size = 15;
+  char* test_string_addr = e.allocate(test_string_size);
+  snprintf(test_string_addr, test_string_size, "Test String");
 
   // Deallocate memory; the mock class should check for cleared data.
-  e.deallocate(test_string_addr, 15);
+  e.deallocate(test_string_addr, test_string_size);
   // The deallocation should have traversed the complete page.
   EXPECT_EQ(e.GetErasedCount(), 4096);
 }
