@@ -4,7 +4,6 @@
 
 #include "routing-simulator/routing_table.h"
 
-#include <string>
 #include <vector>
 
 #include <base/logging.h>
@@ -13,9 +12,8 @@
 #include "routing-simulator/route.h"
 
 namespace routing_simulator {
+
 RoutingTable::RoutingTable() = default;
-RoutingTable::RoutingTable(const std::vector<Route>& routes)
-    : routes_(routes) {}
 
 RoutingTable::RoutingTable(const RoutingTable& other) = default;
 RoutingTable& RoutingTable::operator=(const RoutingTable& other) = default;
@@ -24,32 +22,25 @@ void RoutingTable::AddRoute(const Route& new_route) {
   routes_.push_back(new_route);
 }
 
-// Returns the output interface of the route which matches the destination.
-// Returns std::nullopt if the format is invalid or no match route is found.
-std::optional<std::string> RoutingTable::LookUpRoute(
-    const net_base::IPAddress& address) {
+const Route* RoutingTable::LookUpRoute(
+    net_base::IPAddress& destination_address) {
   const Route* longest_prefix_route_ptr = nullptr;
   for (const auto& route : routes_) {
-    if (!route.prefix().InSameSubnetWith(address)) {
+    if (!route.destination_prefix().InSameSubnetWith(destination_address)) {
       continue;
     }
     if (longest_prefix_route_ptr == nullptr) {
       longest_prefix_route_ptr = &route;
       continue;
     }
-    if (longest_prefix_route_ptr->prefix().prefix_length() <
-        route.prefix().prefix_length()) {
+    if (longest_prefix_route_ptr->destination_prefix().prefix_length() <
+        route.destination_prefix().prefix_length()) {
       longest_prefix_route_ptr = &route;
     }
   }
-  // No match route is found.
-  if (longest_prefix_route_ptr == nullptr) {
-    return std::nullopt;
-  }
-  return longest_prefix_route_ptr->output_interface();
+  return longest_prefix_route_ptr;
 }
 
-bool RoutingTable::operator==(const RoutingTable& rhs) const {
-  return routes_ == rhs.routes_;
-}
+bool RoutingTable::operator==(const RoutingTable& rhs) const = default;
+
 }  // namespace routing_simulator
