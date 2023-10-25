@@ -149,6 +149,10 @@ class MetricsCollector {
   // approximation.
   static constexpr base::TimeDelta kRuntimeS0ixOverheadTime =
       base::Microseconds(100);
+  // Path to the last-succeeded resume timestamp file, which records when the
+  // kernel finished to resume in MONOTONIC clock.
+  static constexpr char kLastSuccessResumeTimePath[] =
+      "/sys/power/suspend_stats/last_success_resume_time";
 
   // Returns a copy of |enum_name| with a suffix describing |power_source|
   // appended to it. Public so it can be called by tests.
@@ -262,6 +266,10 @@ class MetricsCollector {
   // Generates UMA metrics about Ambient Light level on Resume.
   void GenerateAmbientLightResumeMetrics(int lux);
 
+  // Send the metric of the time duration for the first display after kernel
+  // resume.
+  void GenerateDisplayAfterResumeDurationMsMetric();
+
  private:
   friend class MetricsCollectorTest;
   friend class AdaptiveChargingMetricsTest;
@@ -341,6 +349,9 @@ class MetricsCollector {
   // given file path.
   base::FilePath GetPrefixedFilePath(const base::FilePath& file_path) const;
 
+  // Parse sysfs to retrieve the timestamp of the latest kernel resume.
+  void UpdateLastKernelResumedTime();
+
   PrefsInterface* prefs_ = nullptr;
   policy::BacklightController* display_backlight_controller_ = nullptr;
   policy::BacklightController* keyboard_backlight_controller_ = nullptr;
@@ -412,6 +423,10 @@ class MetricsCollector {
 
   // True if suspend to idle (S0ix) is enabled.
   bool suspend_to_idle_ = false;
+
+  // Timestamp of the end of last kernel resume, get from
+  // /sys/power/suspend_stats/last_success_resume_time.
+  base::TimeTicks last_kernel_resumed_timestamp_;
 
   // If non-empty, contains a temp dir that will be prepended to paths.
   base::FilePath prefix_path_for_testing_;

@@ -15,6 +15,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 
 #include "policy/adaptive_charging_controller.h"
 #include "power_manager/common/metrics_constants.h"
@@ -261,6 +262,47 @@ void MetricsCollector::Init(
   }
 }
 
+void MetricsCollector::UpdateLastKernelResumedTime() {
+  if (!base::PathExists(
+          GetPrefixedFilePath(base::FilePath(kLastSuccessResumeTimePath)))) {
+    return;
+  }
+  base::FilePath last_resume_time_path =
+      base::FilePath(kLastSuccessResumeTimePath);
+
+  // This file records the end of succeeded kernel resumed time
+  // in MONOTONIC clock base.
+  std::string last_resume_time;
+  if (!base::ReadFileToString(last_resume_time_path, &last_resume_time)) {
+    return;
+  }
+  // The timestamp tails a linefeed for human readability, trim it.
+  base::TrimWhitespaceASCII(last_resume_time, base::TRIM_TRAILING,
+                            &last_resume_time);
+  double resume_time_sec;
+  if (!base::StringToDouble(last_resume_time, &resume_time_sec)) {
+    return;
+  }
+  last_kernel_resumed_timestamp_ =
+      base::TimeTicks() + base::Seconds(resume_time_sec);
+}
+
+void MetricsCollector::GenerateDisplayAfterResumeDurationMsMetric() {
+  if (last_kernel_resumed_timestamp_ == base::TimeTicks())
+    return;
+
+  base::TimeTicks now = clock_.GetCurrentTime();
+  base::TimeDelta duration = now - last_kernel_resumed_timestamp_;
+
+  last_kernel_resumed_timestamp_ = base::TimeTicks();
+
+  LOG(INFO) << "Display after resume duration is " << duration;
+  SendMetricWithPowerSource(kDisplayAfterResumeDurationMsName,
+                            duration.InMilliseconds(),
+                            kDisplayAfterResumeDurationMsMin,
+                            kDisplayAfterResumeDurationMsMax, kDefaultBuckets);
+}
+
 void MetricsCollector::HandleScreenDimmedChange(
     bool dimmed, base::TimeTicks last_user_activity_time) {
   if (dimmed) {
@@ -449,6 +491,7 @@ void MetricsCollector::HandleResume(int num_suspend_attempts, bool hibernated) {
     tracker.UpdatePostResume();
   if (suspend_to_idle_ && !hibernated)
     GenerateS2IdleS0ixMetrics();
+  UpdateLastKernelResumedTime();
 }
 
 void MetricsCollector::HandleCanceledSuspendRequest(int num_suspend_attempts,

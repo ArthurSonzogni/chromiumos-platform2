@@ -1757,6 +1757,8 @@ std::unique_ptr<dbus::Response> Daemon::HandleSetIsProjectingMethod(
   input_device_controller_->SetDisplayMode(mode);
   for (auto controller : all_backlight_controllers_)
     controller->HandleDisplayModeChange(mode);
+
+  metrics_collector_->GenerateDisplayAfterResumeDurationMsMetric();
   return nullptr;
 }
 

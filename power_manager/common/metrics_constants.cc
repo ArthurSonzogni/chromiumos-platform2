@@ -268,4 +268,9 @@ const int kPeripheralReadLatencyMsMax = 1000;
 const char kBatterySaverUserBrightenedSec[] =
     "Power.BatterySaver.UserBrightenedSec";
 
+const char kDisplayAfterResumeDurationMsName[] =
+    "Power.DisplayAfrerResumeDurationMs";
+const int kDisplayAfterResumeDurationMsMin = 0;
+const int kDisplayAfterResumeDurationMsMax = 60 * 1000;
+
 }  // namespace power_manager::metrics
