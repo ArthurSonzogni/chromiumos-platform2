@@ -86,7 +86,7 @@ typeDefs:
       - legacy
       - "on"
   platform-name: &platform_name
-    description: "Defines the name of the mosys platform used. Mosys is the only software which is allowed to used this value."
+    description: "Do not set or use this value.  It is no longer used and is pending deletion."
     type: string
   stylus-category: &stylus-category
     description: "Denotes the category of stylus this device contains."

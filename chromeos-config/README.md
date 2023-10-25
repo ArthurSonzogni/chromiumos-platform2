@@ -863,7 +863,7 @@ In the tables below,
 | customization-id | string |  | False |  | False | 'customization_id' value set in the VPD for non-unibuild Zergs and Whitelabels. Deprecated for use in new products since 2017/07/26. |
 | feature-device-type | string |  | False |  | False | Type of feature enablement for this device |
 | frid | string |  | False |  | False | String which must match the AP firmware FRID (first part before the period) in order for the config to match.  Leaving this value unset will cause the config to match any FRID.  |
-| platform-name | string |  | False |  | False | Defines the name of the mosys platform used. Mosys is the only software which is allowed to used this value. |
+| platform-name | string |  | False |  | False | Do not set or use this value.  It is no longer used and is pending deletion. |
 | sku-id | integer |  | False |  | False | SKU/Board strapping pins [configured during board manufacturing](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/design_docs/cros_board_info.md#SKU_ID). Leaving this value unset will cause the config to match any SKU ID. Minimum value: -0x1. Maximum value: 0x7fffffff. |
 
 ### keyboard
