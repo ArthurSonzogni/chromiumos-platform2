@@ -342,7 +342,19 @@ std::map<std::string, uint32_t> CrosConfigUtilsImpl::GetSsfcProbeableComponents(
 std::vector<std::string> CrosConfigUtilsImpl::GetSkuPropertyDescriptions(
     const base::FilePath& root_path) const {
   std::vector<std::string> ret;
+  // The properties are ordered heuristically.
   ret.push_back(GetHasTouchscreenDescription(root_path));
+  ret.push_back(GetHasPrivacyScreenDescription(root_path));
+  ret.push_back(GetHasHdmiDescription(root_path));
+  ret.push_back(GetHasSdReaderDescription(root_path));
+  ret.push_back(GetHasFingerprintDescription(root_path));
+  ret.push_back(GetHasKeyboardBacklightDescription(root_path));
+  ret.push_back(GetHasProximitySensorDescription(root_path));
+  ret.push_back(GetStorageTypeDescription(root_path));
+  ret.push_back(GetCameraCountDescription(root_path));
+  ret.push_back(GetStylusCategoryDescription(root_path));
+  ret.push_back(GetCellularDescription(root_path));
+  ret.push_back(GetAudioDescription(root_path));
   return ret;
 }
 

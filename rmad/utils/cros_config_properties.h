@@ -35,6 +35,61 @@ constexpr char kCrosHardwarePropertiesPath[] = "hardware-properties";
 // cros_config property /hardware-properties/has-touchscreen.
 constexpr char kCrosHardwarePropertiesHasTouchscreenKey[] = "has-touchscreen";
 std::string GetHasTouchscreenDescription(const base::FilePath& root_path);
+// cros_config property /hardware-properties/has-privacy-screen.
+constexpr char kCrosHardwarePropertiesHasPrivacyScreenKey[] =
+    "has-privacy-screen";
+std::string GetHasPrivacyScreenDescription(const base::FilePath& root_path);
+// cros_config property /hardware-properties/has-hdmi.
+constexpr char kCrosHardwarePropertiesHasHdmiKey[] = "has-hdmi";
+std::string GetHasHdmiDescription(const base::FilePath& root_path);
+// cros_config property /hardware-properties/has-sd-reader.
+constexpr char kCrosHardwarePropertiesHasSdReaderKey[] = "has-sd-reader";
+std::string GetHasSdReaderDescription(const base::FilePath& root_path);
+// cros_config property /hardware-properties/stylus-category.
+constexpr char kCrosHardwarePropertiesStylusCategoryKey[] = "stylus-category";
+std::string GetStylusCategoryDescription(const base::FilePath& root_path);
+// cros_config property /hardware-properties/form-factor.
+constexpr char kCrosHardwarePropertiesFormFactorKey[] = "form-factor";
+std::string GetFormFactorDescription(const base::FilePath& root_path);
+// cros_config property /hardware-properties/storage-type.
+constexpr char kCrosHardwarePropertiesStorageTypeKey[] = "storage-type";
+std::string GetStorageTypeDescription(const base::FilePath& root_path);
+
+// cros_config path /modem.
+constexpr char kCrosModemPath[] = "modem";
+// cros_config property /modem/firmware-variant.
+constexpr char kCrosModemFirmwareVariantKey[] = "firmware-variant";
+std::string GetCellularDescription(const base::FilePath& root_path);
+
+// cros_config path /fingerprint.
+constexpr char kCrosFingerprintPath[] = "fingerprint";
+// cros_config property /fingerprint/sensor-location.
+constexpr char kCrosFingerprintSensorLocationKey[] = "sensor-location";
+std::string GetHasFingerprintDescription(const base::FilePath& root_path);
+
+// cros_config path /audio.
+constexpr char kCrosAudioPath[] = "audio";
+// cros_config path /audio/main.
+constexpr char kCrosAudioMainPath[] = "main";
+// cros_config property /audio/main/ucm-suffix.
+constexpr char kCrosAudioUcmSuffixKey[] = "ucm-suffix";
+std::string GetAudioDescription(const base::FilePath& root_path);
+
+// cros_config path /power.
+constexpr char kCrosPowerPath[] = "power";
+// cros_config property /power/has-keyboard-backlight.
+constexpr char kCrosPowerHasKeyboardBacklightKey[] = "has-keyboard-backlight";
+std::string GetHasKeyboardBacklightDescription(const base::FilePath& root_path);
+
+// cros_config path /camera.
+constexpr char kCrosCameraPath[] = "camera";
+// cros_config property /camera/count.
+constexpr char kCrosCameraCountKey[] = "count";
+std::string GetCameraCountDescription(const base::FilePath& root_path);
+
+// cros_config path /proximity-sensor.
+constexpr char kCrosProximitySensor[] = "proximity-sensor";
+std::string GetHasProximitySensorDescription(const base::FilePath& root_path);
 
 // cros_config path /rmad.
 constexpr char kCrosRmadPath[] = "rmad";
