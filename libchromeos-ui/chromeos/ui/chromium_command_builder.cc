@@ -121,8 +121,6 @@ const char ChromiumCommandBuilder::kEnableBlinkFeaturesFlag[] =
     "enable-blink-features";
 const char ChromiumCommandBuilder::kDisableBlinkFeaturesFlag[] =
     "disable-blink-features";
-const char ChromiumCommandBuilder::kCrosConfigIdentityPath[] = "/identity";
-const char ChromiumCommandBuilder::kCrosConfigPlatformName[] = "platform-name";
 
 const char ChromiumCommandBuilder::kCrosConfigBluetoothFlagsPath[] =
     "/bluetooth/flags";
@@ -570,20 +568,7 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("disable_spectre_variant2_mitigation"))
     AddFeatureDisableOverride("SpectreVariant2Mitigation");
 
-  // The display controller on SC7280 uses multiple planes when the screen
-  // resolution is sufficiently wide, and we can run out of planes to display
-  // the cursor on its own plane (e.g. if a 4k display is plugged in). Thus in
-  // these cases, we default to the software cursor.
-  // TODO(b/273509565): Remove this workaround when Chrome migrates off the
-  // legacy cursor API and can properly test modesets with the cursor plane.
   brillo::CrosConfig cros_config;
-  std::string platform_name;
-  if (cros_config.GetString(kCrosConfigIdentityPath, kCrosConfigPlatformName,
-                            &platform_name)) {
-    if (platform_name == "Herobrine") {
-      AddArg("--sw-cursor-on-wide-displays");
-    }
-  }
 
   // Disable Floss if the Floss USE flag was not set or the cros config
   // was specified.
