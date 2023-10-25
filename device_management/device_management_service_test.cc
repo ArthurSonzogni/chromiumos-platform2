@@ -34,6 +34,8 @@ using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SaveArg;
+using ::testing::SaveArgPointee;
+using ::testing::SetArgPointee;
 using ::testing::StrictMock;
 
 using TPMRetryAction = ::hwsec::TPMRetryAction;
@@ -107,7 +109,7 @@ TEST_F(DeviceManagementServiceEnsureInstallAttributeInitTest,
 #endif  // USE_TPM_INSECURE_FALLBACK
 
 // Make sure the first install cases works correctly.
-class DeviceManagementServicerInstallAttibuteFirstInstallTest
+class DeviceManagementServiceInstallAttibuteFirstInstallTest
     : public ::testing::Test {
  public:
   void SetUp() override {
@@ -134,7 +136,7 @@ class DeviceManagementServicerInstallAttibuteFirstInstallTest
   base::OnceCallback<void(hwsec::Status)> hwsec_callback_;
 };
 
-TEST_F(DeviceManagementServicerInstallAttibuteFirstInstallTest,
+TEST_F(DeviceManagementServiceInstallAttibuteFirstInstallTest,
        InitializeWithHwsecReady) {
   // Assume the libhwsec is ready.
   EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
@@ -154,7 +156,7 @@ TEST_F(DeviceManagementServicerInstallAttibuteFirstInstallTest,
 
 // These tests are only useful when the insecure fallback is on.
 #if USE_TPM_INSECURE_FALLBACK
-TEST_F(DeviceManagementServicerInstallAttibuteFirstInstallTest,
+TEST_F(DeviceManagementServiceInstallAttibuteFirstInstallTest,
        InitializeWithHwsecNoBackend) {
   // Test the case that there is no backend in libhwsec.
   EXPECT_CALL(hwsec_, IsEnabled())
@@ -174,7 +176,7 @@ TEST_F(DeviceManagementServicerInstallAttibuteFirstInstallTest,
             device_management_service_.InstallAttributesGetStatus());
 }
 
-TEST_F(DeviceManagementServicerInstallAttibuteFirstInstallTest,
+TEST_F(DeviceManagementServiceInstallAttibuteFirstInstallTest,
        InitializeWithHwsecNeverReady) {
   // Test the cast that libhwsec never ready.
   EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(false));
@@ -189,6 +191,156 @@ TEST_F(DeviceManagementServicerInstallAttibuteFirstInstallTest,
             device_management_service_.InstallAttributesGetStatus());
 }
 #endif  // USE_TPM_INSECURE_FALLBACK
+
+// Provides a test fixture to make sure operations related to FWMP,
+// install_attributes etc. are working as expected.
+class DeviceManagementServiceAPITest : public ::testing::Test {
+ public:
+  void SetUp() override {
+    auto fwmp =
+        std::make_unique<StrictMock<MockFirmwareManagementParameters>>();
+    auto install_attrs = std::make_unique<StrictMock<MockInstallAttributes>>();
+    fwmp_ = fwmp.get();
+    install_attrs_ = install_attrs.get();
+    device_management_service_.SetParamsForTesting(std::move(fwmp),
+                                                   std::move(install_attrs));
+  }
+
+ protected:
+  DeviceManagementService device_management_service_;
+  StrictMock<MockFirmwareManagementParameters>* fwmp_;
+  StrictMock<MockInstallAttributes>* install_attrs_;
+};
+
+TEST_F(DeviceManagementServiceAPITest, GetFirmwareManagementParametersSuccess) {
+  const std::string kHash = "its_a_hash";
+  std::vector<uint8_t> hash(kHash.begin(), kHash.end());
+  constexpr uint32_t kFlag = 0x1234;
+
+  EXPECT_CALL(*fwmp_, Load()).WillOnce(Return(true));
+  EXPECT_CALL(*fwmp_, GetFlags(_))
+      .WillRepeatedly(DoAll(SetArgPointee<0>(kFlag), Return(true)));
+  EXPECT_CALL(*fwmp_, GetDeveloperKeyHash(_))
+      .WillRepeatedly(DoAll(SetArgPointee<0>(hash), Return(true)));
+
+  device_management::FirmwareManagementParameters fwmp;
+  EXPECT_EQ(device_management::DEVICE_MANAGEMENT_ERROR_NOT_SET,
+            device_management_service_.GetFirmwareManagementParameters(&fwmp));
+
+  EXPECT_EQ(kFlag, fwmp.flags());
+  EXPECT_EQ(kHash, fwmp.developer_key_hash());
+}
+
+TEST_F(DeviceManagementServiceAPITest, GetFirmwareManagementParametersFailure) {
+  constexpr uint32_t kFlag = 0x1234;
+
+  // Test Load() fail.
+  EXPECT_CALL(*fwmp_, Load()).WillRepeatedly(Return(false));
+
+  device_management::FirmwareManagementParameters fwmp;
+  EXPECT_EQ(device_management::
+                DEVICE_MANAGEMENT_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID,
+            device_management_service_.GetFirmwareManagementParameters(&fwmp));
+
+  // Test GetFlags() fail.
+  EXPECT_CALL(*fwmp_, Load()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*fwmp_, GetFlags(_)).WillRepeatedly(Return(false));
+
+  EXPECT_EQ(device_management::
+                DEVICE_MANAGEMENT_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID,
+            device_management_service_.GetFirmwareManagementParameters(&fwmp));
+
+  // Test GetDeveloperKeyHash fail.
+  EXPECT_CALL(*fwmp_, Load()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*fwmp_, GetFlags(_))
+      .WillRepeatedly(DoAll(SetArgPointee<0>(kFlag), Return(true)));
+  EXPECT_CALL(*fwmp_, GetDeveloperKeyHash(_)).WillRepeatedly(Return(false));
+
+  EXPECT_EQ(device_management::
+                DEVICE_MANAGEMENT_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID,
+            device_management_service_.GetFirmwareManagementParameters(&fwmp));
+}
+
+TEST_F(DeviceManagementServiceAPITest, SetFirmwareManagementParametersSuccess) {
+  const std::string kHash = "its_a_hash";
+  std::vector<uint8_t> hash(kHash.begin(), kHash.end());
+  constexpr uint32_t kFlag = 0x1234;
+
+  std::vector<uint8_t> out_hash;
+
+  EXPECT_CALL(*fwmp_, Create()).WillOnce(Return(true));
+  EXPECT_CALL(*fwmp_, Store(kFlag, _))
+      .WillOnce(DoAll(SaveArgPointee<1>(&out_hash), Return(true)));
+
+  device_management::FirmwareManagementParameters fwmp;
+  fwmp.set_flags(kFlag);
+  fwmp.set_developer_key_hash(kHash);
+
+  EXPECT_EQ(device_management::DEVICE_MANAGEMENT_ERROR_NOT_SET,
+            device_management_service_.SetFirmwareManagementParameters(fwmp));
+
+  EXPECT_EQ(hash, out_hash);
+}
+
+TEST_F(DeviceManagementServiceAPITest, SetFirmwareManagementParametersNoHash) {
+  constexpr uint32_t kFlag = 0x1234;
+
+  EXPECT_CALL(*fwmp_, Create()).WillOnce(Return(true));
+  EXPECT_CALL(*fwmp_, Store(kFlag, nullptr)).WillOnce(Return(true));
+
+  device_management::FirmwareManagementParameters fwmp;
+  fwmp.set_flags(kFlag);
+
+  EXPECT_EQ(device_management::DEVICE_MANAGEMENT_ERROR_NOT_SET,
+            device_management_service_.SetFirmwareManagementParameters(fwmp));
+}
+
+TEST_F(DeviceManagementServiceAPITest,
+       SetFirmwareManagementParametersCreateError) {
+  const std::string kHash = "its_a_hash";
+  constexpr uint32_t kFlag = 0x1234;
+
+  EXPECT_CALL(*fwmp_, Create()).WillOnce(Return(false));
+
+  device_management::FirmwareManagementParameters fwmp;
+  fwmp.set_flags(kFlag);
+  fwmp.set_developer_key_hash(kHash);
+
+  EXPECT_EQ(
+      device_management::
+          DEVICE_MANAGEMENT_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE,
+      device_management_service_.SetFirmwareManagementParameters(fwmp));
+}
+
+TEST_F(DeviceManagementServiceAPITest,
+       SetFirmwareManagementParametersStoreError) {
+  const std::string kHash = "its_a_hash";
+  constexpr uint32_t kFlag = 0x1234;
+
+  EXPECT_CALL(*fwmp_, Create()).WillOnce(Return(true));
+  EXPECT_CALL(*fwmp_, Store(_, _)).WillOnce(Return(false));
+
+  device_management::FirmwareManagementParameters fwmp;
+  fwmp.set_flags(kFlag);
+  fwmp.set_developer_key_hash(kHash);
+
+  EXPECT_EQ(
+      device_management::
+          DEVICE_MANAGEMENT_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE,
+      device_management_service_.SetFirmwareManagementParameters(fwmp));
+}
+
+TEST_F(DeviceManagementServiceAPITest,
+       RemoveFirmwareManagementParametersSuccess) {
+  EXPECT_CALL(*fwmp_, Destroy()).WillOnce(Return(true));
+  EXPECT_TRUE(device_management_service_.RemoveFirmwareManagementParameters());
+}
+
+TEST_F(DeviceManagementServiceAPITest,
+       RemoveFirmwareManagementParametersFailure) {
+  EXPECT_CALL(*fwmp_, Destroy()).WillOnce(Return(false));
+  EXPECT_FALSE(device_management_service_.RemoveFirmwareManagementParameters());
+}
 
 // TODO(b/306379379): Add more unittests for the service.
 
