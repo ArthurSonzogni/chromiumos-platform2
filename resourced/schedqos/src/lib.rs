@@ -6,13 +6,12 @@
 // process. QoS definitions map to performance characteristics.
 
 use std::io;
+use std::path::Path;
 use std::path::PathBuf;
 
-use anyhow::anyhow;
 use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
-use procfs::process::Process;
 
 const NUM_PROCESS_STATES: usize = ProcessState::Background as usize + 1;
 const NUM_THREAD_STATES: usize = ThreadState::Background as usize + 1;
@@ -304,15 +303,24 @@ const UCLAMP_MAX: u32 = 1024;
 const UCLAMP_BOOST_PERCENT: u32 = 60;
 const UCLAMP_BOOSTED_MIN: u32 = (UCLAMP_BOOST_PERCENT * UCLAMP_MAX + 50) / 100;
 
-fn is_same_process(process_id: i32, thread_id: i32) -> Result<bool> {
-    let proc =
-        Process::new(thread_id).map_err(|e| anyhow!("Failed to find process, error: {}", e))?;
+/// Wrap u32 PID with [ProcessId] internally.
+///
+/// Using u32 for both process id and thread id is confusing in this library.
+/// This is to prevent unexpected typo by the explicit typing.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+struct ProcessId(u32);
 
-    let stat = proc
-        .status()
-        .map_err(|e| anyhow!("Failed to find process status, error: {}", e))?;
+/// Wrap u32 TID with [ThreadId] internally.
+///
+/// See [ProcessId] for the reason.
+///
+/// [std::thread::ThreadId] is not our use case because it is only for thread in
+/// the running process and not expected for threads of other processes.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+struct ThreadId(u32);
 
-    Ok(stat.tgid == process_id)
+fn validate_thread_id(process_id: ProcessId, thread_id: ThreadId) -> bool {
+    Path::new(&format!("/proc/{}/task/{}", process_id.0, thread_id.0)).exists()
 }
 
 pub struct SchedQosContext {
@@ -338,9 +346,10 @@ impl SchedQosContext {
     pub fn set_process_state(
         // TODO(kawasin): Make this mut to update internal state mapping.
         &self,
-        process_id: i32,
+        process_id: u32,
         process_state: ProcessState,
     ) -> Result<()> {
+        let process_id = ProcessId(process_id);
         let process_config = &self.config.process_configs[process_state as usize];
 
         let cgroup = match process_config.cpu_cgroup {
@@ -348,19 +357,20 @@ impl SchedQosContext {
             CpuCgroup::Background => &self.config.cgroup_config.cpu_background,
         };
 
-        std::fs::write(cgroup, process_id.to_string())
+        std::fs::write(cgroup, process_id.0.to_string())
             .with_context(|| format!("Failed to write to {:?}", cgroup))
     }
 
     pub fn set_thread_state(
         // TODO(kawasin): Make this mut to update internal state mapping.
         &self,
-        process_id: i32,
-        thread_id: i32,
+        process_id: u32,
+        thread_id: u32,
         thread_state: ThreadState,
     ) -> Result<()> {
-        // Validate thread_id is a thread of process_id
-        if !is_same_process(process_id, thread_id)? {
+        let process_id = ProcessId(process_id);
+        let thread_id = ThreadId(thread_id);
+        if !validate_thread_id(process_id, thread_id) {
             bail!("Thread does not belong to process");
         }
 
@@ -391,7 +401,7 @@ impl SchedQosContext {
         let res = unsafe {
             libc::syscall(
                 libc::SYS_sched_setattr,
-                thread_id,
+                thread_id.0,
                 &mut attr as *mut sched_attr as usize,
                 0,
             )
@@ -403,13 +413,15 @@ impl SchedQosContext {
             );
         }
 
-        std::fs::write(cgroup, thread_id.to_string())
+        std::fs::write(cgroup, thread_id.0.to_string())
             .context(format!("Failed to write to {:?}", cgroup))?;
 
         // Apply latency sensitive. Latency_sensitive will prefer idle cores.
         // This is a patch not yet in upstream(http://crrev/c/2981472)
-        let latency_sensitive_file =
-            format!("/proc/{}/task/{}/latency_sensitive", process_id, thread_id);
+        let latency_sensitive_file = format!(
+            "/proc/{}/task/{}/latency_sensitive",
+            process_id.0, thread_id.0
+        );
 
         if std::path::Path::new(&latency_sensitive_file).exists() {
             let value = if thread_config.prefer_idle { 1 } else { 0 };
@@ -423,6 +435,8 @@ impl SchedQosContext {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use super::*;
 
     #[test]
@@ -448,5 +462,33 @@ mod tests {
         }
 
         assert!(ThreadState::try_from(NUM_THREAD_STATES as u8).is_err());
+    }
+
+    #[test]
+    fn test_validate_thread_id() {
+        let process_id = ProcessId(std::process::id());
+        let thread_id = ThreadId(unsafe { libc::gettid() } as u32);
+        let child_process_id = unsafe { libc::fork() };
+        if child_process_id == 0 {
+            std::thread::sleep(Duration::from_secs(100));
+            std::process::exit(0);
+        }
+        assert!(child_process_id > 0);
+        let child_process_id = ProcessId(child_process_id as u32);
+        let child_process_thread_id = ThreadId(child_process_id.0);
+
+        assert!(validate_thread_id(process_id, thread_id));
+        assert!(!validate_thread_id(process_id, child_process_thread_id));
+        assert!(validate_thread_id(
+            child_process_id,
+            child_process_thread_id
+        ));
+        assert!(!validate_thread_id(child_process_id, thread_id));
+
+        let child_process_id = child_process_id.0 as libc::pid_t;
+        unsafe {
+            libc::kill(child_process_id, libc::SIGKILL);
+            libc::waitpid(child_process_id, std::ptr::null_mut(), 0);
+        }
     }
 }

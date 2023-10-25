@@ -137,7 +137,7 @@ fn set_game_mode_and_tune_swappiness(
     Ok(())
 }
 
-async fn get_sender_pid(sender_id: String, conn: Arc<SyncConnection>) -> Result<libc::pid_t> {
+async fn get_sender_pid(sender_id: String, conn: Arc<SyncConnection>) -> Result<u32> {
     let proxy = Proxy::new(
         "org.freedesktop.DBus",
         "/org/freedesktop/DBus",
@@ -153,7 +153,7 @@ async fn get_sender_pid(sender_id: String, conn: Arc<SyncConnection>) -> Result<
         )
         .await
     {
-        Ok::<(u32,), _>((pid,)) => Ok(pid as libc::pid_t),
+        Ok::<(u32,), _>((pid,)) => Ok(pid),
         Err(e) => {
             error!("Could not get sender pid: {:#}", e);
             bail!(e);
@@ -161,11 +161,13 @@ async fn get_sender_pid(sender_id: String, conn: Arc<SyncConnection>) -> Result<
     }
 }
 
-fn get_pid_euid(pid: i32) -> Result<u32> {
-    let proc: procfs::process::Process = procfs::process::Process::new(pid).map_err(|e| {
-        error!("Failed to find process {} {}", pid, e);
-        anyhow!("Failed to find pid")
-    })?;
+fn get_pid_euid(pid: u32) -> Result<u32> {
+    // TODO(kawasin): Stop using procfs crate
+    let proc: procfs::process::Process =
+        procfs::process::Process::new(pid as i32).map_err(|e| {
+            error!("Failed to find process {} {}", pid, e);
+            anyhow!("Failed to find pid")
+        })?;
 
     let stat: procfs::process::Status = proc.status().map_err(|e| {
         error!("Failed to find status {} {}", pid, e);
@@ -175,7 +177,7 @@ fn get_pid_euid(pid: i32) -> Result<u32> {
     Ok(stat.euid)
 }
 
-fn check_process_euids_match(pid_1: i32, pid_2: i32) -> Result<()> {
+fn check_process_euids_match(pid_1: u32, pid_2: u32) -> Result<()> {
     let euid1 = get_pid_euid(pid_1)?;
     let euid2 = get_pid_euid(pid_2)?;
     if euid1 != euid2 {
@@ -198,7 +200,7 @@ fn check_process_euids_match(pid_1: i32, pid_2: i32) -> Result<()> {
 // be kept as long as resourced is making changes to the target thread/process.
 async fn validate_target_pid(
     sender_id: String,
-    target_pid: i32,
+    target_pid: u32,
     conn: Arc<SyncConnection>,
 ) -> Result<OwnedFd> {
     let sender_pid = get_sender_pid(sender_id, conn).await?;
@@ -481,7 +483,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             "ChangeProcessState",
             ("ProcessId", "ProcessState"),
             (),
-            move |mut sender_context, cr, (process_id, process_state): (i32, u8)| {
+            move |mut sender_context, cr, (process_id, process_state): (u32, u8)| {
                 let context: Option<&mut DbusContext> = cr.data_mut(sender_context.path());
                 let sched_ctx = context.and_then(|ctx| ctx.scheduler_context.clone());
                 let conn_clone = conn_clone3.clone();
@@ -538,7 +540,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             "ChangeThreadState",
             ("ProcessId", "ThreadId", "ThreadState"),
             (),
-            move |mut sender_context, cr, (process_id, thread_id, thread_state): (i32, i32, u8)| {
+            move |mut sender_context, cr, (process_id, thread_id, thread_state): (u32, u32, u8)| {
                 let context: Option<&mut DbusContext> = cr.data_mut(sender_context.path());
                 let sched_ctx = context.and_then(|ctx| ctx.scheduler_context.clone());
                 let conn_clone = conn_clone4.clone();
