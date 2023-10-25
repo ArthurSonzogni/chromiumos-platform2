@@ -478,6 +478,7 @@ mod tests {
     use super::*;
     use crate::test_utils::tests::test_check_online_cpu;
     use crate::test_utils::tests::test_check_smt_control;
+    use crate::test_utils::tests::test_write_core_cpus_list;
     use crate::test_utils::tests::test_write_cpu_max_freq;
     use crate::test_utils::tests::test_write_cpuset_root_cpus;
     use crate::test_utils::tests::test_write_online_cpu;
@@ -1375,7 +1376,6 @@ mod tests {
                     power_source: config::PowerSourceType::DC,
                 },
             };
-
             test_write_cpuset_root_cpus(root, test.cpus);
             test_write_smt_control(root, test.smt_orig_state);
             write_per_policy_scaling_governor(
@@ -1393,6 +1393,11 @@ mod tests {
                     },
                 ],
             );
+            // Setup core cpus list for two physical cores and two virtual cores
+            test_write_core_cpus_list(root, 0, "0,2");
+            test_write_core_cpus_list(root, 1, "1,3");
+            test_write_core_cpus_list(root, 2, "0,2");
+            test_write_core_cpus_list(root, 3, "1,3");
 
             if test.big_little {
                 test_write_ui_use_flags(root, "big_little");

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::collections::HashSet;
 use std::fs::read_to_string;
 use std::io::BufRead;
 use std::io::BufReader;
@@ -23,7 +24,8 @@ pub enum HotplugCpuAction {
     OnlineAll,
     // Offline small CPUs if the device has big/little clusters.
     OfflineSmallCore { min_active_threads: u32 },
-    // Offline SMT cores if available.
+    // Offline SMT cores if available and the number of physical cores meets
+    // the minimum active therads.
     OfflineSMT { min_active_threads: u32 },
     // Offline half of CPUs and ensuring at least min_active_threads remain active.
     OfflineHalf { min_active_threads: u32 },
@@ -212,6 +214,24 @@ fn update_cpu_smt_control(root: &Path, enable: bool) -> Result<()> {
     Ok(())
 }
 
+// Determines the number of physical cores on the system by analyzing the
+// core_cpus_list files in sysfs. Sibling cores, sharing the same
+// physical core, have identical core_cpus_list values. By identifying
+// unique values, the function counts distinct physical cores.
+fn get_physical_cores(root: &Path) -> Result<u32> {
+    let mut core_cpus = HashSet::new();
+    let core_cpus_list_pattern = root
+        .join("sys/devices/system/cpu/cpu*/topology/core_cpus_list")
+        .to_str()
+        .context("Failed to construct thread core cpus list pattern")?
+        .to_owned();
+    for core_cpus_list in glob(&core_cpus_list_pattern)? {
+        core_cpus.insert(read_to_string(core_cpus_list?)?);
+    }
+
+    Ok(core_cpus.len() as u32)
+}
+
 pub fn hotplug_cpus(root: &Path, action: HotplugCpuAction) -> Result<()> {
     match action {
         HotplugCpuAction::OnlineAll => {
@@ -228,11 +248,11 @@ pub fn hotplug_cpus(root: &Path, action: HotplugCpuAction) -> Result<()> {
                 update_cpu_online_status(root, &little_cores, false)?;
             }
         }
-        // TODO(darrenwu): Check the minimum active threads for SMT
-        HotplugCpuAction::OfflineSMT {
-            min_active_threads: _,
-        } => {
-            update_cpu_smt_control(root, false)?;
+        HotplugCpuAction::OfflineSMT { min_active_threads } => {
+            let physical_cores = get_physical_cores(root)?;
+            if physical_cores >= min_active_threads {
+                update_cpu_smt_control(root, false)?;
+            }
         }
         HotplugCpuAction::OfflineHalf { min_active_threads } => {
             let last_core: u32 = get_cpuset_all_cpus(root)?
@@ -258,6 +278,7 @@ mod tests {
     use super::*;
     use crate::test_utils::tests::test_check_online_cpu;
     use crate::test_utils::tests::test_check_smt_control;
+    use crate::test_utils::tests::test_write_core_cpus_list;
     use crate::test_utils::tests::test_write_cpu_max_freq;
     use crate::test_utils::tests::test_write_cpuset_root_cpus;
     use crate::test_utils::tests::test_write_online_cpu;
@@ -357,6 +378,21 @@ mod tests {
                 cluster2_expected_state: [OFFLINE; 2],
                 smt_expected_state: "off",
             },
+            // Test offline SMT
+            // No CPU offline when physical cores less than min-active-theads
+            Test {
+                cpus: "0-3",
+                big_little: false,
+                cluster1_freq: [2400000; 2],
+                cluster2_freq: [2400000; 2],
+                hotplug: &HotplugCpuAction::OfflineSMT {
+                    min_active_threads: 3,
+                },
+                smt: "on",
+                cluster1_expected_state: [ONLINE; 2],
+                cluster2_expected_state: [ONLINE; 2],
+                smt_expected_state: "on",
+            },
         ];
 
         for test in tests {
@@ -383,6 +419,11 @@ mod tests {
                     *freq,
                 );
             }
+            // Setup core cpus list for two physical cores and two virtual cores
+            test_write_core_cpus_list(root.path(), 0, "0,2");
+            test_write_core_cpus_list(root.path(), 1, "1,3");
+            test_write_core_cpus_list(root.path(), 2, "0,2");
+            test_write_core_cpus_list(root.path(), 3, "1,3");
 
             // Call function to test.
             hotplug_cpus(root.path(), *test.hotplug).unwrap();

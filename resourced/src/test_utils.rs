@@ -75,6 +75,16 @@ pub(crate) mod tests {
         let value = std::fs::read_to_string(root_online_cpu).unwrap();
         assert_eq!(value, expected);
     }
+
+    pub fn test_write_core_cpus_list(root: &Path, cpu: u32, value: &str) {
+        let core_cpus_list = root.join(format!(
+            "sys/devices/system/cpu/cpu{}/topology/core_cpus_list",
+            cpu
+        ));
+        test_create_parent_dir(&core_cpus_list);
+        std::fs::write(core_cpus_list, value).unwrap();
+    }
+
     pub fn test_write_smt_control(root: &Path, status: &str) {
         let smt_control = root.join(SMT_CONTROL_PATH);
         test_create_parent_dir(&smt_control);
