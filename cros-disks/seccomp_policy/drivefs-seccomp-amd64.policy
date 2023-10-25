@@ -21,8 +21,8 @@ connect: 1
 creat: 1
 dup: 1
 dup2: 1
-epoll_create1: 1
 epoll_create: 1
+epoll_create1: 1
 epoll_ctl: 1
 epoll_wait: 1
 eventfd2: 1
@@ -83,8 +83,8 @@ openat: 1
 pipe: 1
 pipe2: 1
 poll: 1
-pread64: 1
 prctl: 1
+pread64: 1
 prlimit64: 1
 process_vm_readv: 1
 pwrite64: 1
@@ -107,8 +107,8 @@ sched_getparam: 1
 sched_getscheduler: 1
 sched_setattr: 1
 sched_yield: 1
-sendmsg: 1
 sendmmsg: 1
+sendmsg: 1
 sendto: 1
 set_robust_list: 1
 set_tid_address: 1

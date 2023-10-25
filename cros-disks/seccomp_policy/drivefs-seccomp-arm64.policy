@@ -65,16 +65,16 @@ mkdirat: 1
 mlock: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
-munlock: 1
 mremap: 1
+munlock: 1
 munmap: 1
 nanosleep: 1
 newfstatat: 1
 openat: 1
 pipe2: 1
 ppoll: 1
-pread64: 1
 prctl: 1
+pread64: 1
 prlimit64: 1
 process_vm_readv: 1
 pwrite64: 1

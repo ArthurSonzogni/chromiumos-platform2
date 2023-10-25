@@ -115,8 +115,8 @@ sched_getscheduler: 1
 sched_setattr: 1
 sched_yield: 1
 send: 1
-sendmsg: 1
 sendmmsg: 1
+sendmsg: 1
 sendto: 1
 set_robust_list: 1
 set_tid_address: 1
