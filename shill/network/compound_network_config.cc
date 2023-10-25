@@ -198,11 +198,11 @@ bool CompoundNetworkConfig::Recalculate() {
   }
 
   // MTU preference: static > smallest value from DHCP, SLAAC and link.
-  if (static_network_config_.mtu) {
+  if (static_network_config_.mtu && static_network_config_.mtu > 0) {
     combined_network_config_->mtu = static_network_config_.mtu;
   } else {
     auto update_mtu = [this](const std::unique_ptr<NetworkConfig>& config) {
-      if (config && config->mtu &&
+      if (config && config->mtu && config->mtu > 0 &&
           (!combined_network_config_->mtu ||
            combined_network_config_->mtu > config->mtu)) {
         combined_network_config_->mtu = config->mtu;
