@@ -242,7 +242,7 @@ TEST(Content, StressTest) {
   base::FilePath src(getenv("PWD"));
   ASSERT_TRUE(base::PathExists(src));
 
-  base::FilePath stress_test = src.Append("syslog").Append("UTF8_test.txt");
+  base::FilePath stress_test = src.Append("syslog").Append("UTF8_test.dat");
   ASSERT_TRUE(base::PathExists(stress_test));
 
   string content;
