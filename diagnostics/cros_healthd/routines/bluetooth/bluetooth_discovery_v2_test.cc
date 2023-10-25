@@ -373,7 +373,7 @@ TEST_F(BluetoothDiscoveryRoutineV2Test, PreCheckErrorAlreadyDiscoveryMode) {
 
 // Test that the Bluetooth discovery routine can handle the error when it fails
 // to power on the adapter.
-TEST_F(BluetoothDiscoveryRoutineV2Test, FailedPowerOnAdapter) {
+TEST_F(BluetoothDiscoveryRoutineV2Test, PowerOnAdapterError) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/false);
 
@@ -385,12 +385,8 @@ TEST_F(BluetoothDiscoveryRoutineV2Test, FailedPowerOnAdapter) {
   // Reset Powered.
   SetupResetPoweredCall(/*initial_powered=*/false);
 
-  mojom::RoutineStatePtr result = RunRoutineAndWaitForExit();
-  EXPECT_EQ(result->percentage, 100);
-  EXPECT_TRUE(result->state_union->is_finished());
-
-  const auto& state = result->state_union->get_finished();
-  EXPECT_FALSE(state->has_passed);
+  RunRoutineAndWaitForException(
+      "Failed to ensure default adapter is powered on.");
 }
 
 // Test that the Bluetooth discovery routine can handle the error when reading

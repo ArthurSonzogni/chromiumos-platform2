@@ -337,12 +337,8 @@ TEST_F(BluetoothScanningRoutineV2Test, PowerOnAdapterError) {
   // Reset Powered.
   SetupResetPoweredCall(/*initial_powered=*/false);
 
-  mojom::RoutineStatePtr result = RunRoutineAndWaitForExit();
-  EXPECT_EQ(result->percentage, 100);
-  EXPECT_TRUE(result->state_union->is_finished());
-
-  const auto& state = result->state_union->get_finished();
-  EXPECT_FALSE(state->has_passed);
+  RunRoutineAndWaitForException(
+      "Failed to ensure default adapter is powered on.");
 }
 
 // Test that the Bluetooth scanning routine can handle the error when adapter

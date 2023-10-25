@@ -196,7 +196,8 @@ void BluetoothDiscoveryRoutineV2::HandlePreCheckResponse(
 void BluetoothDiscoveryRoutineV2::HandleEnsurePoweredOnResponse(
     const base::expected<bool, std::string>& result) {
   if (!result.has_value() || !result.value()) {
-    SetResultAndStop(result);
+    SetResultAndStop(
+        base::unexpected("Failed to ensure default adapter is powered on."));
     return;
   }
   RunNextStep();
@@ -205,8 +206,7 @@ void BluetoothDiscoveryRoutineV2::HandleEnsurePoweredOnResponse(
 void BluetoothDiscoveryRoutineV2::UpdateAdapterDiscoveryMode() {
   auto adapter = GetDefaultAdapter();
   if (!adapter) {
-    SetResultAndStop(
-        base::unexpected("Failed to get default Bluetooth adapter."));
+    SetResultAndStop(base::unexpected("Failed to get default adapter."));
     return;
   }
 

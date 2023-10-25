@@ -165,7 +165,8 @@ void BluetoothScanningRoutineV2::HandlePreCheckResponse(
 void BluetoothScanningRoutineV2::HandleEnsurePoweredOnResponse(
     const base::expected<bool, std::string>& result) {
   if (!result.has_value() || !result.value()) {
-    SetResultAndStop(result);
+    SetResultAndStop(
+        base::unexpected("Failed to ensure default adapter is powered on."));
     return;
   }
   RunNextStep();
