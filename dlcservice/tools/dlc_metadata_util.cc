@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -58,15 +59,17 @@ class DlcMetadataUtil {
   std::string id_;
   base::FilePath file_path_;
   Metadata::FilterKey filter_key_;
+  base::FilePath metadata_dir_;
 
-  Metadata metadata_{base::FilePath(imageloader::kDlcManifestRootpath)};
+  std::unique_ptr<Metadata> metadata_;
 };
 
 int DlcMetadataUtil::Run() {
   if (!ParseFlags())
     return EX_USAGE;
 
-  if (!metadata_.Initialize()) {
+  metadata_ = std::make_unique<Metadata>(metadata_dir_);
+  if (!metadata_->Initialize()) {
     LOG(ERROR) << "Failed to initialize metadata.";
     return EX_SOFTWARE;
   }
@@ -87,6 +90,9 @@ bool DlcMetadataUtil::ParseFlags() {
   DEFINE_bool(list, false, "List all DLC IDs, or a subset if filters is given");
   DEFINE_string(id, "", "The ID of the DLC");
   DEFINE_string(file, "", "Use the file instead of stdin/stdout");
+  DEFINE_string(metadata_dir, "",
+                "The DLC metadata directory path. "
+                "Manifest root path is used if not specified");
   DEFINE_bool(factory_install, false, "Filter factory installed DLCs");
   DEFINE_bool(powerwash_safe, false, "Filter powerwash safe DLCs");
   DEFINE_bool(preload_allowed, false, "Filter preload allowed DLCs");
@@ -132,11 +138,21 @@ bool DlcMetadataUtil::ParseFlags() {
   }
 
   file_path_ = base::FilePath(FLAGS_file);
+  if (FLAGS_metadata_dir.empty()) {
+    metadata_dir_ = base::FilePath(imageloader::kDlcManifestRootpath);
+  } else {
+    metadata_dir_ = base::FilePath(FLAGS_metadata_dir);
+  }
+  if (!base::PathExists(metadata_dir_)) {
+    LOG(ERROR) << "The metadata direcotry " << metadata_dir_
+               << " does not exists.";
+    return false;
+  }
   return true;
 }
 
 int DlcMetadataUtil::GetMetadata() {
-  auto entry = metadata_.Get(id_);
+  auto entry = metadata_->Get(id_);
   if (!entry) {
     LOG(ERROR) << "Unable to get metadata for " << id_;
     return EX_SOFTWARE;
@@ -165,11 +181,11 @@ int DlcMetadataUtil::SetMetadata() {
     return EX_DATAERR;
   }
 
-  return metadata_.Set(id_, *entry) ? EX_OK : EX_SOFTWARE;
+  return metadata_->Set(id_, *entry) ? EX_OK : EX_SOFTWARE;
 }
 
 int DlcMetadataUtil::ListDlcIds() {
-  const auto& ids = metadata_.ListDlcIds(filter_key_, base::Value(true));
+  const auto& ids = metadata_->ListDlcIds(filter_key_, base::Value(true));
   auto id_list = base::Value::List::with_capacity(ids.size());
   for (const auto& id : ids)
     id_list.Append(id);
