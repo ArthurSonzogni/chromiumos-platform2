@@ -53,6 +53,9 @@ class DenyClaimedUsbDeviceRule : public UsbSubsystemUdevRule {
   // If so, then its parent node is an Android device with USB debugging
   // enabled and we can detach its other interfaces to use it.
   bool IsInterfaceAdb(udev_device* device);
+
+  // If running on a chromebox, ignore external/internal tagging.
+  const bool running_on_chromebox_;
 };
 
 }  // namespace permission_broker

@@ -74,7 +74,11 @@ bool HasRemovableParent(udev_device* device) {
 namespace permission_broker {
 
 DenyClaimedUsbDeviceRule::DenyClaimedUsbDeviceRule()
-    : UsbSubsystemUdevRule("DenyClaimedUsbDeviceRule"), policy_loaded_(false) {}
+    : UsbSubsystemUdevRule("DenyClaimedUsbDeviceRule"),
+      policy_loaded_(false),
+      // If unabled to load form-factor, assume most conservative case.
+      running_on_chromebox_(GetFormFactor() == FormFactor::kChromebox ||
+                            GetFormFactor() == FormFactor::kUnknown) {}
 
 DenyClaimedUsbDeviceRule::~DenyClaimedUsbDeviceRule() = default;
 
@@ -211,7 +215,10 @@ Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {
     LOG(ERROR) << "Unable to get PlatformFeatures library, will not enable "
                   "permissive features";
   } else if (features_lib->IsEnabledBlocking(
-                 RuleUtils::kEnablePermissiveUsbPassthrough)) {
+                 RuleUtils::kEnablePermissiveUsbPassthrough) &&
+             // There are more UI/UX implications that must be considered for
+             // chromeboxes, disable for now.
+             !running_on_chromebox_) {
     // If permissive USB is enabled, we should potentially still allow claimed
     // interfaces, pending the result of other rules e.g.
     // AllowExternallyTaggedUsbDeviceRule.

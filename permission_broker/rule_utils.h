@@ -14,6 +14,10 @@ using policy::DevicePolicy;
 
 namespace permission_broker {
 
+enum class FormFactor { kUnknown, kChromebox, kOther };
+
+const FormFactor& GetFormFactor();
+
 constexpr char kCrosUsbLocation[] = "CROS_USB_LOCATION";
 
 enum class CrosUsbLocationProperty {

@@ -8,7 +8,6 @@
 
 #include <cstring>
 #include <optional>
-#include <string>
 
 #include "base/logging.h"
 #include "featured/feature_library.h"
@@ -51,7 +50,10 @@ CrosUsbLocationProperty AncestorsLocation(udev_device* device) {
 }
 
 AllowExternalTaggedUsbDeviceRule::AllowExternalTaggedUsbDeviceRule()
-    : Rule("AllowExternalTaggedUsbDeviceRule") {}
+    : Rule("AllowExternalTaggedUsbDeviceRule"),
+      // If unable to load form-factor, assume most conservative case.
+      running_on_chromebox_(GetFormFactor() == FormFactor::kChromebox ||
+                            GetFormFactor() == FormFactor::kUnknown) {}
 
 AllowExternalTaggedUsbDeviceRule::~AllowExternalTaggedUsbDeviceRule() = default;
 
@@ -101,7 +103,8 @@ Rule::Result AllowExternalTaggedUsbDeviceRule::ProcessDevice(
     return IGNORE;
   }
   if (!features_lib->IsEnabledBlocking(
-          RuleUtils::kEnablePermissiveUsbPassthrough)) {
+          RuleUtils::kEnablePermissiveUsbPassthrough) ||
+      running_on_chromebox_) {
     return IGNORE;
   }
   return ProcessUsbDevice(device, maybe_location.value());

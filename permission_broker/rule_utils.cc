@@ -6,13 +6,48 @@
 
 #include <optional>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "base/logging.h"
 #include "base/strings/string_number_conversions.h"
+#include "chromeos-config/libcros_config/cros_config.h"
 #include "permission_broker/allow_lists.h"
 
+namespace {
+
+std::string LoadFormFactor() {
+  brillo::CrosConfig cros_config;
+  std::string form_factor;
+
+  if (!cros_config.GetString("/hardware-properties", "form-factor",
+                             &form_factor)) {
+    LOG(ERROR) << "Unable to ascertain form-factor from CrosConfig, this may "
+                  "affect rule processing.";
+  }
+
+  return form_factor;
+}
+
+permission_broker::FormFactor StringToFormFactor(std::string form_factor) {
+  if (form_factor.empty()) {
+    return permission_broker::FormFactor::kUnknown;
+  } else if (form_factor == "CHROMEBOX") {
+    return permission_broker::FormFactor::kChromebox;
+  }
+
+  return permission_broker::FormFactor::kOther;
+}
+
+}  // namespace
+
 namespace permission_broker {
+
+const FormFactor& GetFormFactor() {
+  static_assert(std::is_trivially_destructible<FormFactor>::value);
+  static const FormFactor s = StringToFormFactor(LoadFormFactor());
+  return s;
+}
 
 std::optional<CrosUsbLocationProperty> GetCrosUsbLocationProperty(
     udev_device* device) {

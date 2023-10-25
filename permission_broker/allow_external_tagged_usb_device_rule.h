@@ -26,6 +26,9 @@ class AllowExternalTaggedUsbDeviceRule : public Rule {
   Result ProcessDevice(udev_device* device) override;
 
   const char* const GetTagValue(udev_device* device);
+
+  // If running on a chromebox, ignore external/internal tagging.
+  const bool running_on_chromebox_;
 };
 
 }  // namespace permission_broker

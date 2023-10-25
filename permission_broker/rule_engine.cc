@@ -8,11 +8,12 @@
 #include <poll.h>
 #include <sys/inotify.h>
 
-#include "permission_broker/rule.h"
+#include <string>
 
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
+#include "permission_broker/rule.h"
 
 namespace permission_broker {
 
