@@ -226,10 +226,10 @@ std::ostream& operator<<(std::ostream& stream,
            << ";";
   }
   if (config.dhcp_network_config_) {
-    stream << " DHCP " << *config.link_protocol_network_config_ << ";";
+    stream << " DHCP " << *config.dhcp_network_config_ << ";";
   }
-  if (config.dhcp_network_config_) {
-    stream << " SLAAC " << *config.link_protocol_network_config_ << ";";
+  if (config.slaac_network_config_) {
+    stream << " SLAAC " << *config.slaac_network_config_ << ";";
   }
   stream << " combined config " << *config.combined_network_config_;
   return stream;
