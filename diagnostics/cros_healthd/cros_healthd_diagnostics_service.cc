@@ -25,7 +25,6 @@
 #include "diagnostics/cros_healthd/system/floss_controller.h"
 #include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/system/ground_truth_constants.h"
-#include "diagnostics/cros_healthd/system/system_config.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
 #include "diagnostics/cros_healthd/utils/metrics_utils.h"
@@ -571,16 +570,19 @@ void CrosHealthdDiagnosticsService::
         RunBluetoothScanningRoutineCallback callback,
         brillo::Error* err,
         bool floss_enabled) {
-  if (!err && floss_enabled) {
-    // TODO(300239430): Support Bluetooth routines using Floss.
-    ReportUnsupportedRoutine(mojom::DiagnosticRoutineEnum::kBluetoothScanning,
-                             std::move(callback));
-    return;
-  }
-  // Fall back to using Bluez to run Bluetooth routine.
   std::optional<base::TimeDelta> exec_duration;
   if (!length_seconds.is_null())
     exec_duration = base::Seconds(length_seconds->value);
+
+  if (!err && floss_enabled) {
+    auto args = mojom::BluetoothScanningRoutineArgument::New();
+    args->exec_duration = exec_duration;
+    RunRoutineWithAdapter(
+        mojom::RoutineArgument::NewBluetoothScanning(std::move(args)),
+        mojom::DiagnosticRoutineEnum::kBluetoothScanning, std::move(callback));
+    return;
+  }
+  // Fall back to using Bluez to run Bluetooth routine.
   RunRoutine(routine_factory_->MakeBluetoothScanningRoutine(exec_duration),
              mojom::DiagnosticRoutineEnum::kBluetoothScanning,
              std::move(callback));
