@@ -839,6 +839,11 @@ void Manager::StopTetheringUpstreamNetwork(
   datapath_->StopSourceIPv6PrefixEnforcement(upstream_network);
   datapath_->StopConnectionPinning(upstream_network);
   counters_svc_->OnPhysicalDeviceRemoved(upstream_network.ifname);
+  // b/305257482: Ensure that GuestIPv6Service forgets the IPv6 configuration of
+  // the upstream network by faking IPv6 disconnection.
+  auto fake_disconneted_network = upstream_network;
+  fake_disconneted_network.ipconfig.ipv6_cidr = std::nullopt;
+  ipv6_svc_->OnUplinkIPv6Changed(fake_disconneted_network);
 }
 
 void Manager::OnNeighborReachabilityEvent(
