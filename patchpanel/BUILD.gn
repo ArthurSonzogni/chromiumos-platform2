@@ -14,7 +14,9 @@ group("all") {
     ":libpatchpanel",
     ":libpatchpanel-util",
     ":patchpaneld",
+    "//patchpanel/bpf:patchpanel_ebpf",
   ]
+
   if (use.fuzzer) {
     deps += [
       ":broadcast_forwarder_fuzzer",

@@ -1,0 +1,37 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/ebpf_gen.gni")
+
+group("patchpanel_ebpf") {
+  deps = [
+    ":ebpf_webrtc_detection",
+    ":patchpanel_bpf_loader",
+  ]
+}
+
+generate_vmlinux("vmlinux_h") {
+  vmlinux_out_dir = "include/patchpanel/vmlinux"
+  btf_out_dir = "bpf"
+}
+
+generate_ebpf_object("ebpf_webrtc_detection") {
+  sources = [ "webrtc_detection.c" ]
+  obj_out_dir = "bpf"
+  btf_inout_dir = "bpf"
+
+  # We use min-core BTF to load the program.
+  defines = [ "USE_MIN_CORE_BTF=1" ]
+  deps = [ ":vmlinux_h" ]
+}
+
+executable("patchpanel_bpf_loader") {
+  sources = [ "bpf_loader.cc" ]
+  cflags = [ "-Wconversion" ]
+  pkg_deps = [
+    "libbpf",
+    "libchrome",
+  ]
+  install_path = "bin"
+}
