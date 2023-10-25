@@ -420,6 +420,11 @@ void Network::OnIPConfigUpdatedFromDHCP(const NetworkConfig& network_config,
     metrics_->SendToUMA(Metrics::kMetricDHCPv4ProvisionDurationMillis,
                         technology_, dhcp_duration->InMilliseconds());
   }
+
+  if (network_validation_log_ &&
+      network_config.captive_portal_uri.has_value()) {
+    network_validation_log_->SetCapportDHCPSupported();
+  }
 }
 
 void Network::OnDHCPDrop(bool is_voluntary) {
@@ -501,6 +506,11 @@ std::optional<base::TimeDelta> Network::TimeToNextDHCPLeaseRenewal() {
 void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
   const auto slaac_network_config = slaac_controller_->GetNetworkConfig();
   LOG(INFO) << *this << ": Updating SLAAC config to " << slaac_network_config;
+
+  if (network_validation_log_ &&
+      slaac_network_config.captive_portal_uri.has_value()) {
+    network_validation_log_->SetCapportRASupported();
+  }
 
   auto old_network_config = config_.Get();
   if (config_.SetFromSLAAC(
@@ -1097,6 +1107,14 @@ void Network::ValidationLog::AddResult(const PortalDetector::Result& result) {
   }
 }
 
+void Network::ValidationLog::SetCapportDHCPSupported() {
+  capport_dhcp_supported_ = true;
+}
+
+void Network::ValidationLog::SetCapportRASupported() {
+  capport_ra_supported_ = true;
+}
+
 void Network::ValidationLog::RecordMetrics() const {
   if (results_.empty()) {
     return;
@@ -1169,6 +1187,18 @@ void Network::ValidationLog::RecordMetrics() const {
     metrics_->SendToUMA(Metrics::kPortalDetectorTimeToInternetAfterRedirect,
                         technology_,
                         time_to_internet_after_redirect.InMilliseconds());
+  }
+
+  if (has_redirect) {
+    Metrics::CapportSupported capport_metric = Metrics::kCapportNotSupported;
+    if (capport_dhcp_supported_ && capport_ra_supported_) {
+      capport_metric = Metrics::kCapportSupportedByDHCPv4AndRA;
+    } else if (capport_dhcp_supported_) {
+      capport_metric = Metrics::kCapportSupportedByDHCPv4;
+    } else if (capport_ra_supported_) {
+      capport_metric = Metrics::kCapportSupportedByRA;
+    }
+    metrics_->SendEnumToUMA(Metrics::kMetricCapportSupported, capport_metric);
   }
 }
 

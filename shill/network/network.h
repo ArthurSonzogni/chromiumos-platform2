@@ -184,6 +184,8 @@ class Network {
    public:
     ValidationLog(Technology technology, Metrics* metrics);
     void AddResult(const PortalDetector::Result& result);
+    void SetCapportDHCPSupported();
+    void SetCapportRASupported();
     void RecordMetrics() const;
 
    private:
@@ -192,6 +194,8 @@ class Network {
     base::TimeTicks connection_start_;
     std::vector<std::pair<base::TimeTicks, PortalDetector::ValidationState>>
         results_;
+    bool capport_dhcp_supported_ = false;
+    bool capport_ra_supported_ = false;
   };
 
   // Returns true if |reason| requires that network validation be entirely

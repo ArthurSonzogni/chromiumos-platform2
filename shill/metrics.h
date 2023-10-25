@@ -1158,6 +1158,26 @@ class Metrics {
       .max = kPasspointRemovalMax,
   };
 
+  // Metric counting whether the upstream network supports CAPPORT protocol.
+  // This metric is only recorded at most once by network connection when a
+  // portal is found with an HTTP redirect.
+  enum CapportSupported {
+    // The upstream network doesn't support CAPPORT protocol.
+    kCapportNotSupported = 0,
+    // The upstream network supports CAPPORT protocol by DHCPv4.
+    kCapportSupportedByDHCPv4 = 1,
+    // The upstream network supports CAPPORT protocol by IPv6 RA.
+    kCapportSupportedByRA = 2,
+    // The upstream network supports CAPPORT protocol by DHCP v4 and IPv6 RA.
+    kCapportSupportedByDHCPv4AndRA = 3,
+
+    kCapportSupportedMax,
+  };
+  static constexpr EnumMetric<FixedName> kMetricCapportSupported = {
+      .n = FixedName{"Network.Shill.PortalDector.CAPPORTSupported"},
+      .max = kCapportSupportedMax,
+  };
+
   // Metric indicating the provisioning origin of Passpoint credentials.
   // This metric is recorded once for any successful Passpoint provisioning
   // event.

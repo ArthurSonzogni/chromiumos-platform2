@@ -53,6 +53,7 @@ using ::testing::Field;
 using ::testing::InvokeWithoutArgs;
 using ::testing::IsEmpty;
 using ::testing::Mock;
+using ::testing::Ne;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SetArgPointee;
@@ -2091,7 +2092,9 @@ TEST_F(NetworkStartTest, NoReportIPTypeForShortConnection) {
   dispatcher_.task_environment().FastForwardBy(base::Minutes(1));
 }
 
-TEST_F(NetworkTest, ValidationLogRecordMetrics) {
+TEST(ValidationLogTest, ValidationLogRecordMetrics) {
+  EventDispatcherForTest dispatcher;
+
   // Stub PortalDetector results:
   PortalDetector::Result i, r, p, n;
 
@@ -2122,9 +2125,8 @@ TEST_F(NetworkTest, ValidationLogRecordMetrics) {
 
   struct {
     std::vector<PortalDetector::Result> results;
-    std::optional<Metrics::PortalDetectorAggregateResult> expected_metric_enum;
+    Metrics::PortalDetectorAggregateResult expected_metric_enum;
   } test_cases[] = {
-      {{}, std::nullopt},
       {{i}, Metrics::kPortalDetectorAggregateResultInternet},
       {{i, r, p, n}, Metrics::kPortalDetectorAggregateResultInternet},
       {{r}, Metrics::kPortalDetectorAggregateResultRedirect},
@@ -2149,62 +2151,91 @@ TEST_F(NetworkTest, ValidationLogRecordMetrics) {
     Network::ValidationLog log(Technology::kWiFi, &metrics);
     for (auto r : tt.results) {
       // Ensure that all durations between events are positive.
-      dispatcher_.task_environment().FastForwardBy(base::Milliseconds(10));
+      dispatcher.task_environment().FastForwardBy(base::Milliseconds(10));
       log.AddResult(r);
     }
 
-    if (!tt.expected_metric_enum) {
-      EXPECT_CALL(metrics,
-                  SendEnumToUMA(Metrics::kPortalDetectorAggregateResult, _, _))
-          .Times(0);
-      EXPECT_CALL(metrics,
-                  SendToUMA(Metrics::kPortalDetectorTimeToRedirect, _, _))
-          .Times(0);
-    } else {
-      EXPECT_CALL(metrics,
-                  SendEnumToUMA(Metrics::kPortalDetectorAggregateResult,
-                                Technology::kWiFi, *tt.expected_metric_enum));
-      switch (*tt.expected_metric_enum) {
-        case Metrics::kPortalDetectorAggregateResultInternet:
-        case Metrics::
-            kPortalDetectorAggregateResultInternetAfterPartialConnectivity:
-          EXPECT_CALL(metrics, SendToUMA(Metrics::kPortalDetectorTimeToInternet,
-                                         Technology::kWiFi, _));
-          break;
-        case Metrics::kPortalDetectorAggregateResultRedirect:
-          EXPECT_CALL(metrics, SendToUMA(Metrics::kPortalDetectorTimeToRedirect,
-                                         Technology::kWiFi, _));
-          break;
-        case Metrics::kPortalDetectorAggregateResultInternetAfterRedirect:
-          EXPECT_CALL(metrics, SendToUMA(Metrics::kPortalDetectorTimeToRedirect,
-                                         Technology::kWiFi, _));
-          EXPECT_CALL(
-              metrics,
-              SendToUMA(Metrics::kPortalDetectorTimeToInternetAfterRedirect,
-                        Technology::kWiFi, _));
-          break;
-        case Metrics::kPortalDetectorAggregateResultNoConnectivity:
-        case Metrics::kPortalDetectorAggregateResultPartialConnectivity:
-        case Metrics::kPortalDetectorAggregateResultUnknown:
-        default:
-          EXPECT_CALL(metrics,
-                      SendToUMA(Metrics::kPortalDetectorTimeToInternet, _, _))
-              .Times(0);
-          EXPECT_CALL(metrics,
-                      SendToUMA(Metrics::kPortalDetectorTimeToRedirect, _, _))
-              .Times(0);
-          EXPECT_CALL(
-              metrics,
-              SendToUMA(Metrics::kPortalDetectorTimeToInternetAfterRedirect, _,
-                        _))
-              .Times(0);
-          break;
-      }
+    EXPECT_CALL(metrics,
+                SendEnumToUMA(Metrics::kPortalDetectorAggregateResult,
+                              Technology::kWiFi, tt.expected_metric_enum));
+    switch (tt.expected_metric_enum) {
+      case Metrics::kPortalDetectorAggregateResultInternet:
+      case Metrics::
+          kPortalDetectorAggregateResultInternetAfterPartialConnectivity:
+        EXPECT_CALL(metrics, SendToUMA(Metrics::kPortalDetectorTimeToInternet,
+                                       Technology::kWiFi, _));
+        break;
+      case Metrics::kPortalDetectorAggregateResultRedirect:
+        EXPECT_CALL(metrics, SendToUMA(Metrics::kPortalDetectorTimeToRedirect,
+                                       Technology::kWiFi, _));
+        EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kMetricCapportSupported,
+                                           Metrics::kCapportNotSupported));
+        break;
+      case Metrics::kPortalDetectorAggregateResultInternetAfterRedirect:
+        EXPECT_CALL(metrics, SendToUMA(Metrics::kPortalDetectorTimeToRedirect,
+                                       Technology::kWiFi, _));
+        EXPECT_CALL(
+            metrics,
+            SendToUMA(Metrics::kPortalDetectorTimeToInternetAfterRedirect,
+                      Technology::kWiFi, _));
+        EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kMetricCapportSupported,
+                                           Metrics::kCapportNotSupported));
+        break;
+      case Metrics::kPortalDetectorAggregateResultNoConnectivity:
+      case Metrics::kPortalDetectorAggregateResultPartialConnectivity:
+      case Metrics::kPortalDetectorAggregateResultUnknown:
+      default:
+        EXPECT_CALL(metrics,
+                    SendToUMA(Metrics::kPortalDetectorTimeToInternet, _, _))
+            .Times(0);
+        EXPECT_CALL(metrics,
+                    SendToUMA(Metrics::kPortalDetectorTimeToRedirect, _, _))
+            .Times(0);
+        EXPECT_CALL(
+            metrics,
+            SendToUMA(Metrics::kPortalDetectorTimeToInternetAfterRedirect, _,
+                      _))
+            .Times(0);
+        break;
     }
 
     log.RecordMetrics();
     Mock::VerifyAndClearExpectations(&metrics);
   }
+}
+
+TEST(ValidationLogTest, ValidationLogRecordMetricsWithoutRecord) {
+  StrictMock<MockMetrics> metrics;
+
+  EXPECT_CALL(metrics,
+              SendEnumToUMA(Metrics::kPortalDetectorAggregateResult, _, _))
+      .Times(0);
+  EXPECT_CALL(metrics, SendToUMA(Metrics::kPortalDetectorTimeToRedirect, _, _))
+      .Times(0);
+
+  Network::ValidationLog log(Technology::kWiFi, &metrics);
+  log.RecordMetrics();
+}
+
+TEST(ValidationLogTest, ValidationLogRecordMetricsCapportSupported) {
+  PortalDetector::Result redirect_result;
+  redirect_result.http_phase = PortalDetector::Phase::kContent;
+  redirect_result.http_status = PortalDetector::Status::kRedirect;
+  redirect_result.https_phase = PortalDetector::Phase::kContent;
+  redirect_result.https_status = PortalDetector::Status::kFailure;
+  redirect_result.redirect_url_string = "https://portal.login";
+
+  MockMetrics metrics;
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kMetricCapportSupported,
+                                     Metrics::kCapportSupportedByDHCPv4));
+  EXPECT_CALL(metrics, SendEnumToUMA(Metrics::kMetricCapportSupported,
+                                     Ne(Metrics::kCapportSupportedByDHCPv4)))
+      .Times(0);
+
+  Network::ValidationLog log(Technology::kWiFi, &metrics);
+  log.AddResult(redirect_result);
+  log.SetCapportDHCPSupported();
+  log.RecordMetrics();
 }
 
 }  // namespace
