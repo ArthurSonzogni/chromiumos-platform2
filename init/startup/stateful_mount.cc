@@ -424,6 +424,20 @@ void StatefulMount::MountStateful() {
       bootstat_.LogEvent("pre-lvm-activation");
       std::optional<brillo::PhysicalVolume> pv =
           lvm_->GetPhysicalVolume(state_dev_);
+
+      if (!pv && USE_LVM_MIGRATION) {
+        // Attempt to migrate to thinpool if migration is enabled: if the
+        // migration fails, then we expect the stateful partition to be back to
+        // its original state.
+
+        if (!AttemptStatefulMigration()) {
+          LOG(ERROR) << "Failed to migrate stateful partition to a thinpool";
+        } else {
+          // Reset the physical volume on success from thinpool migration.
+          pv = lvm_->GetPhysicalVolume(state_dev_);
+        }
+      }
+
       if (pv && pv->IsValid()) {
         volume_group_ = lvm_->GetVolumeGroup(*pv);
         if (volume_group_ && volume_group_->IsValid()) {
@@ -469,16 +483,6 @@ void StatefulMount::MountStateful() {
             }
             should_mount_lvm = true;
           }
-        }
-      } else if (USE_LVM_MIGRATION) {
-        // Attempt to migrate to thinpool if migration is enabled: if the
-        // migration fails, then we expect the stateful partition to be back to
-        // its original state.
-
-        if (!AttemptStatefulMigration()) {
-          LOG(ERROR) << "Failed to migrate stateful partition to a thinpool";
-        } else {
-          should_mount_lvm = true;
         }
       }
       bootstat_.LogEvent("lvm-activation-complete");
