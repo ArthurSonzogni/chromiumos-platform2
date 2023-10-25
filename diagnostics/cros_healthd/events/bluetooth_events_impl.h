@@ -22,6 +22,7 @@
 namespace diagnostics {
 
 enum class BtPropertyType : uint32_t;
+enum class BondState : uint32_t;
 
 // Production implementation of the BluetoothEvents interface.
 class BluetoothEventsImpl final : public BluetoothEvents {
@@ -59,6 +60,9 @@ class BluetoothEventsImpl final : public BluetoothEvents {
                                     BtPropertyType property);
   void OnFlossDeviceConnectedChanged(const brillo::VariantDictionary& device,
                                      bool connected);
+  void OnFlossDeviceBondChanged(uint32_t bt_status,
+                                const std::string& address,
+                                BondState bond_state);
 
   // Each observer in |observers_| will be notified of any Bluetooth event in
   // the ash::cros_healthd::mojom::CrosHealthdBluetoothObserver interface.

@@ -36,6 +36,9 @@ class FakeFlossEventHub final : public FlossEventHub {
                                    const std::vector<uint32_t>& properties);
   void SendDeviceConnectedChanged(const brillo::VariantDictionary& device,
                                   bool connected);
+  void SendDeviceBondChanged(uint32_t bt_status,
+                             const std::string& address,
+                             uint32_t bond_state);
   void SendManagerAdded(
       org::chromium::bluetooth::ManagerProxyInterface* manager);
   void SendManagerRemoved(

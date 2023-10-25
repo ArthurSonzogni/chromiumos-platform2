@@ -138,8 +138,12 @@ TEST_F(BluetoothEventsImplTest, ReceiveFlossDevicePropertyChangedEvent) {
   fake_floss_event_hub()->SendDevicePropertiesChanged(device, properties);
   fake_floss_event_hub()->SendDeviceConnectedChanged(device,
                                                      /*connected=*/true);
-  // One to check for device connected change events.
-  for (int i = 0; i < properties.size() + 1; ++i) {
+  // |bt_status| is 0 for Success and |bond_state| is 2 for Bonded.
+  fake_floss_event_hub()->SendDeviceBondChanged(/*bt_status=*/0, /*address=*/"",
+                                                /*bond_state=*/2);
+  // One to check for device connected change events and one to check for device
+  // bond change events.
+  for (int i = 0; i < properties.size() + 2; ++i) {
     WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kDevicePropertyChanged);
   }
 }

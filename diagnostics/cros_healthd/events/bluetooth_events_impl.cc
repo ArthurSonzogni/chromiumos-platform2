@@ -102,6 +102,12 @@ BluetoothEventsImpl::BluetoothEventsImpl(Context* context) {
           base::BindRepeating(
               &BluetoothEventsImpl::OnFlossDeviceConnectedChanged,
               weak_ptr_factory_.GetWeakPtr())));
+  // Since bond state is not included in `BtPropertyType` enum, we need to
+  // subscribe this event separately.
+  event_subscriptions_.push_back(
+      context->floss_event_hub()->SubscribeDeviceBondChanged(
+          base::BindRepeating(&BluetoothEventsImpl::OnFlossDeviceBondChanged,
+                              weak_ptr_factory_.GetWeakPtr())));
 }
 
 BluetoothEventsImpl::~BluetoothEventsImpl() {}
@@ -193,6 +199,13 @@ void BluetoothEventsImpl::OnFlossDevicePropertyChanged(
 
 void BluetoothEventsImpl::OnFlossDeviceConnectedChanged(
     const brillo::VariantDictionary& device, bool connected) {
+  SendBluetoothEvent(observers_,
+                     mojom::BluetoothEventInfo::State::kDevicePropertyChanged);
+}
+
+void BluetoothEventsImpl::OnFlossDeviceBondChanged(uint32_t bt_status,
+                                                   const std::string& address,
+                                                   BondState bond_state) {
   SendBluetoothEvent(observers_,
                      mojom::BluetoothEventInfo::State::kDevicePropertyChanged);
 }

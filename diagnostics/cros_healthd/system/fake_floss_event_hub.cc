@@ -54,6 +54,12 @@ void FakeFlossEventHub::SendDeviceConnectedChanged(
   OnDeviceConnectedChanged(device, connected);
 }
 
+void FakeFlossEventHub::SendDeviceBondChanged(uint32_t bt_status,
+                                              const std::string& address,
+                                              uint32_t bond_state) {
+  OnDeviceBondChanged(bt_status, address, bond_state);
+}
+
 void FakeFlossEventHub::SendManagerAdded(
     org::chromium::bluetooth::ManagerProxyInterface* manager) {
   OnManagerAdded(manager);
