@@ -167,7 +167,7 @@ void V4L2EventMonitor::SubscribeEvent(int camera_id,
   }
 
   LOGF(INFO) << "has_privacy_switch = " << has_privacy_switch
-             << ", has_subscribe_frame_sync = " << is_frame_sync_subscribed;
+             << ", is_frame_sync_subscribed = " << is_frame_sync_subscribed;
   if (!has_privacy_switch && !is_frame_sync_subscribed) {
     return;
   }
