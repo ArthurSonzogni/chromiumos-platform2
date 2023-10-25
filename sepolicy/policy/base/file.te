@@ -22,6 +22,7 @@ type sysfs, fs_type, sysfs_type, mlstrustedobject;
 # proc, sysfs, or other nodes that allow accessing and configuring kernel interfaces.
 type cgroup, fs_type;
 type configfs, fs_type;
+type debugfs_sw_sync, fs_type, debugfs_type;
 type debugfs_sync, fs_type, debugfs_type;
 type debugfs_trace_marker, fs_type;
 type debugfs_tracing, fs_type, debugfs_type;
