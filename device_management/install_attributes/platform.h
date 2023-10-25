@@ -24,7 +24,6 @@
 #include <gtest/gtest_prod.h>
 
 extern "C" {
-#include <keyutils.h>
 #include <linux/fs.h>
 }
 
