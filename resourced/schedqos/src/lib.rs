@@ -5,16 +5,49 @@
 // APIs to adjust the Quality of Service (QoS) expected for a thread or a
 // process. QoS definitions map to performance characteristics.
 
+use std::fmt::Display;
 use std::io;
 use std::path::Path;
 use std::path::PathBuf;
 
-use anyhow::bail;
-use anyhow::Context;
-use anyhow::Result;
+pub type Result<'a, T> = std::result::Result<T, Error<'a>>;
 
 const NUM_PROCESS_STATES: usize = ProcessState::Background as usize + 1;
 const NUM_THREAD_STATES: usize = ThreadState::Background as usize + 1;
+
+/// Errors from schedqos crate.
+#[derive(Debug)]
+pub enum Error<'a> {
+    Config(&'static str, &'static str),
+    Cgroup(&'a Path, io::Error),
+    SchedAttr(io::Error),
+    LatencySensitive(io::Error),
+    InvalidThread,
+}
+
+impl std::error::Error for Error<'_> {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Config(_, _) => None,
+            Self::Cgroup(_, e) => Some(e),
+            Self::SchedAttr(e) => Some(e),
+            Self::LatencySensitive(e) => Some(e),
+            Self::InvalidThread => None,
+        }
+    }
+}
+
+impl Display for Error<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Config(category, e) => f.write_fmt(format_args!("config: {category}: {e}")),
+            Self::Cgroup(path, e) => f.write_fmt(format_args!("cgroup: file={path:?}, {e}")),
+            Self::SchedAttr(e) => f.write_fmt(format_args!("sched_setattr(2): {e}")),
+            Self::LatencySensitive(e) => f.write_fmt(format_args!("latency sensitive file: {e}")),
+            Self::InvalidThread => f.write_str("invalid thread id"),
+        }
+    }
+}
 
 /// Scheduler QoS states of a process.
 #[repr(u8)]
@@ -330,16 +363,16 @@ pub struct SchedQosContext {
 }
 
 impl SchedQosContext {
-    pub fn new(config: Config) -> anyhow::Result<Self> {
+    pub fn new(config: Config) -> Result<'static, Self> {
         for thread_config in &config.thread_configs {
             thread_config
                 .validate()
-                .map_err(|e| anyhow::anyhow!("thread: {}", e))?;
+                .map_err(|e| Error::Config("thread validation", e))?;
         }
 
         Ok(Self {
             config,
-            uclamp_support: check_uclamp_support()?,
+            uclamp_support: check_uclamp_support().map_err(Error::SchedAttr)?,
         })
     }
 
@@ -357,8 +390,7 @@ impl SchedQosContext {
             CpuCgroup::Background => &self.config.cgroup_config.cpu_background,
         };
 
-        std::fs::write(cgroup, process_id.0.to_string())
-            .with_context(|| format!("Failed to write to {:?}", cgroup))
+        std::fs::write(cgroup, process_id.0.to_string()).map_err(|e| Error::Cgroup(cgroup, e))
     }
 
     pub fn set_thread_state(
@@ -371,7 +403,7 @@ impl SchedQosContext {
         let process_id = ProcessId(process_id);
         let thread_id = ThreadId(thread_id);
         if !validate_thread_id(process_id, thread_id) {
-            bail!("Thread does not belong to process");
+            return Err(Error::InvalidThread);
         }
 
         let thread_config = &self.config.thread_configs[thread_state as usize];
@@ -407,14 +439,10 @@ impl SchedQosContext {
             )
         };
         if res < 0 {
-            bail!(
-                "Failed to set scheduler attributes, error={}",
-                io::Error::last_os_error()
-            );
+            return Err(Error::SchedAttr(io::Error::last_os_error()));
         }
 
-        std::fs::write(cgroup, thread_id.0.to_string())
-            .context(format!("Failed to write to {:?}", cgroup))?;
+        std::fs::write(cgroup, thread_id.0.to_string()).map_err(|e| Error::Cgroup(cgroup, e))?;
 
         // Apply latency sensitive. Latency_sensitive will prefer idle cores.
         // This is a patch not yet in upstream(http://crrev/c/2981472)
@@ -426,7 +454,7 @@ impl SchedQosContext {
         if std::path::Path::new(&latency_sensitive_file).exists() {
             let value = if thread_config.prefer_idle { 1 } else { 0 };
             std::fs::write(&latency_sensitive_file, value.to_string())
-                .context(format!("Failed to write to {}", latency_sensitive_file))?;
+                .map_err(Error::LatencySensitive)?;
         }
 
         Ok(())

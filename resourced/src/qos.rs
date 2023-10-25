@@ -18,7 +18,7 @@ const CGROUP_CPUSET_ALL: &str = "/sys/fs/cgroup/cpuset/chrome/urgent/tasks";
 const CGROUP_CPUSET_EFFICIENT: &str = "/sys/fs/cgroup/cpuset/chrome/non-urgent/tasks";
 
 pub fn create_schedqos_context() -> anyhow::Result<SchedQosContext> {
-    SchedQosContext::new(Config {
+    let ctx = SchedQosContext::new(Config {
         cgroup_config: CgroupConfig {
             cpu_normal: PathBuf::from(CGROUP_CPU_NORMAL),
             cpu_background: PathBuf::from(CGROUP_CPU_BACKGROUND),
@@ -27,5 +27,6 @@ pub fn create_schedqos_context() -> anyhow::Result<SchedQosContext> {
         },
         process_configs: Config::default_process_config(),
         thread_configs: Config::default_thread_config(),
-    })
+    })?;
+    Ok(ctx)
 }
