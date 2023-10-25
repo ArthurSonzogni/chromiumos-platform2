@@ -184,7 +184,8 @@ std::vector<std::string> BuildExpectedDHCPCDArgs(bool has_hostname,
                                                  bool has_arp_gateway,
                                                  bool has_lease_suffix,
                                                  bool enable_dscp) {
-  std::vector<std::string> ret = {"-B", "-i", "chromeos", "-q", "-4"};
+  std::vector<std::string> ret = {"-B", "-i", "chromeos",          "-q",
+                                  "-4", "-o", "captive_portal_uri"};
   if (has_hostname) {
     ret.insert(ret.end(), {"-h", kHostName});
   }

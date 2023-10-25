@@ -376,10 +376,11 @@ bool DHCPController::ShouldKeepLeaseOnDisconnect() const {
 
 std::vector<std::string> DHCPController::GetFlags() {
   std::vector<std::string> flags = {
-      "-B",              // Run in foreground.
-      "-i", "chromeos",  // Static value for Vendor class info.
-      "-q",              // Only warnings+errors to stderr.
-      "-4",              // IPv4 only.
+      "-B",                        // Run in foreground.
+      "-i", "chromeos",            // Static value for Vendor class info.
+      "-q",                        // Only warnings+errors to stderr.
+      "-4",                        // IPv4 only.
+      "-o", "captive_portal_uri",  // Request the captive portal URI.
   };
 
   // Request hostname from server.
