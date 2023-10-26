@@ -171,5 +171,34 @@ TEST_F(BusUtilsTest, ProbeUnknown) {
   EXPECT_EQ(result, std::nullopt);
 }
 
+TEST_F(BusUtilsTest, ProbePciPlatform) {
+  const std::string dev_name = "dev_name";
+  const std::string bus_dev = SetFakePciDevice(dev_name);
+  SetFile({bus_dev, "device"}, "0x1111");
+  SetFile({bus_dev, "vendor"}, "0x2222");
+  SetFile({bus_dev, "revision"}, "0x01");
+  SetFile({bus_dev, "class"}, "0x010203");
+
+  const std::string platform_dev_name = "platform_dev";
+  // Unset link set by SetFakePciDevice.
+  UnsetPath({kFakeSysClassDir, dev_name, "device"});
+  SetSymbolicLink({bus_dev, platform_dev_name},
+                  {kFakeSysClassDir, dev_name, "device"});
+  SetSymbolicLink({"bus", "platform"},
+                  {bus_dev, platform_dev_name, "subsystem"});
+
+  auto ans = MakeValue({
+      {"bus_type", "pci"},
+      {"pci_device_id", "0x1111"},
+      {"pci_vendor_id", "0x2222"},
+      {"pci_revision", "0x01"},
+      {"pci_class", "0x010203"},
+      {"path", GetPathUnderRoot({kFakeSysClassDir, dev_name}).value()},
+  });
+  auto result = GetDeviceBusDataFromSysfsNode(
+      GetPathUnderRoot({kFakeSysClassDir, dev_name}));
+  EXPECT_EQ(result, ans);
+}
+
 }  // namespace
 }  // namespace runtime_probe

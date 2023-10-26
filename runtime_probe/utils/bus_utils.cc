@@ -62,11 +62,8 @@ std::optional<uint8_t> GetPciRevisionIdFromConfig(base::FilePath node_path) {
   return revision_array[0];
 }
 
-}  // namespace
-
-std::optional<base::Value> GetDeviceBusDataFromSysfsNode(
-    const base::FilePath& node_path) {
-  const auto dev_path = node_path.Append("device");
+std::optional<base::Value> GetDeviceBusDataFromSysfsDeviceNode(
+    const base::FilePath& node_path, const base::FilePath& dev_path) {
   const auto dev_subsystem_path = dev_path.Append("subsystem");
   base::FilePath dev_subsystem_link_path;
   if (!base::ReadSymbolicLink(dev_subsystem_path, &dev_subsystem_link_path)) {
@@ -90,10 +87,22 @@ std::optional<base::Value> GetDeviceBusDataFromSysfsNode(
     auto field_path = base::MakeAbsoluteFilePath(dev_path.Append(".."));
     res = MapFilesToDict(field_path, kUsbFields, kUsbOptionalFields);
   } else if (bus_type == "platform") {
-    VLOG(2) << "Path " << node_path
-            << " has bus type \"platform\", which usually means it is a device "
-               "bound with SoC. Ignore it.";
-    return std::nullopt;
+    // Try to find a parent device as the device bus info. See b/307870105 for
+    // example.
+    VLOG(2) << "Found a platform device at " << node_path
+            << ". Try to get its parent device.";
+    const auto perent_dev_path =
+        base::MakeAbsoluteFilePath(dev_path.Append(".."));
+    auto parent_dev =
+        GetDeviceBusDataFromSysfsDeviceNode(node_path, perent_dev_path);
+    if (!parent_dev) {
+      VLOG(2) << "Path " << node_path
+              << " has bus type \"platform\", which usually means it is a "
+                 "device bound with SoC. Ignore it.";
+      return std::nullopt;
+    }
+    VLOG(2) << "Found a parent device at " << perent_dev_path;
+    return parent_dev;
   } else {
     LOG(ERROR) << "Unknown bus_type " << bus_type;
     return std::nullopt;
@@ -110,6 +119,14 @@ std::optional<base::Value> GetDeviceBusDataFromSysfsNode(
   res->GetDict().Set("path", node_path.value());
 
   return res;
+}
+
+}  // namespace
+
+std::optional<base::Value> GetDeviceBusDataFromSysfsNode(
+    const base::FilePath& node_path) {
+  const auto dev_path = node_path.Append("device");
+  return GetDeviceBusDataFromSysfsDeviceNode(node_path, dev_path);
 }
 
 }  // namespace runtime_probe
