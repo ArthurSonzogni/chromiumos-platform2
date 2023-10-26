@@ -92,20 +92,11 @@ class BalloonBlocker {
   // Records a received resize request and adds the time to the block list.
   void RecordResizeRequest(const ResizeRequest& request);
 
-  // Returns true if there are competing requests for the balloon at a high
-  // priority.
-  bool BalloonIsUnderContention() const;
-
   // Run by the Balloon when a balloon stall is detected.
   void OnBalloonStall(Balloon::ResizeResult result);
 
   // Run by the Balloon when a resize finishes.
   void OnResizeResult(ResizePriority priority, Balloon::ResizeResult result);
-
-  // When the balloon is under contention (both inflates and deflates are
-  // blocked at a relatively high priority), limit resizes to this amount to
-  // reduce the chance of an OOM in the host or guest.
-  static constexpr int64_t kBalloonContentionMaxOperationSizeBytes = MiB(256);
 
   // The default duration for a low priority block.
   static constexpr base::TimeDelta kDefaultLowPriorityBalloonBlockDuration =

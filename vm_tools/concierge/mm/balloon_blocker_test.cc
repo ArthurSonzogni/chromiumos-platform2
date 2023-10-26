@@ -234,17 +234,6 @@ TEST_F(BalloonBlockerTest, TestBalloonStallSetsCorrectBlock) {
             ResizePriority::RESIZE_PRIORITY_UNSPECIFIED);
 }
 
-TEST_F(BalloonBlockerTest, TestUnderContentionSizeLimit) {
-  SetBlockPriorityTo(ResizePriority::RESIZE_PRIORITY_FOCUSED_TAB);
-
-  // Since the balloon is blocked at a high level, the balloon should
-  // be under contention and a large request should be capped at 256MB.
-  ASSERT_EQ(
-      balloon_blocker_->TryResize(
-          {ResizePriority::RESIZE_PRIORITY_NO_KILL_CANDIDATES_HOST, MiB(512)}),
-      MiB(256));
-}
-
 TEST_F(BalloonBlockerTest, TestDeflateBelowZero) {
   // First inflate the balloon by some amount.
   ASSERT_EQ(balloon_blocker_->TryResize(

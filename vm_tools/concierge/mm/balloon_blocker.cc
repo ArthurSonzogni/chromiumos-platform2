@@ -94,12 +94,6 @@ int64_t BalloonBlocker::TryResize(ResizeRequest request) {
     return 0;
   }
 
-  // Limit the size of requests when there is memory pressure to avoid thrashing
-  // the balloon.
-  if (BalloonIsUnderContention()) {
-    request.LimitMagnitude(kBalloonContentionMaxOperationSizeBytes);
-  }
-
   // Can't deflate below 0, so limit the magnitude of deflations to the current
   // target balloon size.
   if (request.GetDirection() == ResizeDirection::kDeflate) {
@@ -189,25 +183,6 @@ void BalloonBlocker::RecordResizeRequest(const ResizeRequest& request) {
 
         list[check_priority] = base::TimeTicks();
       });
-}
-
-bool BalloonBlocker::BalloonIsUnderContention() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  // If both directions are receiving requests at a higher priority than this,
-  // the balloon is considered under contention.
-  static constexpr ResizePriority kContentionCutoffPriority =
-      ResizePriority::RESIZE_PRIORITY_CACHED_TAB;
-
-  base::TimeTicks now = time_ticks_now_.Run();
-
-  ResizePriority inflate_pri =
-      LowestUnblockedPriority(ResizeDirection::kInflate, now);
-  ResizePriority deflate_pri =
-      LowestUnblockedPriority(ResizeDirection::kDeflate, now);
-
-  return inflate_pri < kContentionCutoffPriority &&
-         deflate_pri < kContentionCutoffPriority;
 }
 
 void BalloonBlocker::OnBalloonStall(Balloon::ResizeResult result) {

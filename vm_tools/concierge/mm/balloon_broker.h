@@ -117,9 +117,7 @@ class BalloonBroker {
   // context, but it is facing persistent memory pressure.
   //
   // This is purposefully large so that in the case of high host memory pressure
-  // with low guest memory pressure the balloon inflates quickly. If the
-  // balloon is under contention then this amount will be capped by the
-  // balloon's kBalloonContentionMaxOperationSizeBytes.
+  // with low guest memory pressure the balloon inflates quickly.
   static constexpr int64_t kNoKillCandidatesReclaimAmount = MiB(128);
 
   // Creates a balloon.
