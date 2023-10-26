@@ -1,4 +1,4 @@
-# Copyright 2022 The ChromiumOS Authors
+# Copyright 2023 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -20,6 +20,8 @@ Build-Depends: clang,
                dh-exec,
                qtbase5-dev,
                qtbase5-private-dev,
+               libgtk-4-dev,
+               libgtkmm-4.0-dev,
 Standards-Version: 4.5.0
 Homepage: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/vm_tools/cros_im/
 
@@ -29,4 +31,4 @@ Multi-Arch: same
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: ChromeOS IME support
  cros_im allows ChromeOS IMEs to be used within Crostini. Support is currently
- limited to GTK3 and QT5/6 applications.
+ limited to GTK3, GTK4 and QT5 applications.

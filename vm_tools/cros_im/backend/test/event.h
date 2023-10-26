@@ -5,6 +5,7 @@
 #ifndef VM_TOOLS_CROS_IM_BACKEND_TEST_EVENT_H_
 #define VM_TOOLS_CROS_IM_BACKEND_TEST_EVENT_H_
 
+#include <cstdint>
 #include <iostream>
 #include <string>
 

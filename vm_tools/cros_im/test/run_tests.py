@@ -18,15 +18,18 @@ This script should be invoked from the build directory, e.g.
 import argparse
 import functools
 import os
+import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from typing import Callable, Dict, List, Optional
 
 
 TEST_BINARY_GTK3 = "./cros_im_tests_gtk3"
 TEST_BINARY_GTK4 = "./cros_im_tests_gtk4"
+GTK4_PATH = "gtk-4.0"
 
 
 def run_tests_with_wayland_server(test_func: Callable) -> bool:
@@ -103,28 +106,21 @@ def set_up_gtk3_immodules_cache() -> bool:
             )
             return True
         except subprocess.CalledProcessError as e:
-            print(e.output.decode())
+            print(e.output)
             print(e)
             return False
 
 
-def set_up_gtk4_immodule() -> bool:
+def set_up_gtk4_immodule(tmp_dir_name: str) -> bool:
     try:
-        gnu_type = get_gnu_type()
-        subprocess.run(
-            [
-                "sudo",
-                "cp",
-                "libim-test-cros-gtk4.so",
-                f"/usr/lib/{gnu_type}/gtk-4.0/4.0.0/immodules/.",
-            ],
-            capture_output=True,
-            check=True,
-            text=True,
+        gtk4_immodule_dir = f"{tmp_dir_name}/{GTK4_PATH}/4.0.0/immodules"
+        os.makedirs(f"{gtk4_immodule_dir}")
+        shutil.copyfile(
+            "libim-test-cros-gtk4.so",
+            f"{gtk4_immodule_dir}/libim-test-cros-gtk4.so",
         )
         return True
-    except subprocess.CalledProcessError as e:
-        print(e.output.decode())
+    except OSError as e:
         print(e)
         return False
 
@@ -156,6 +152,7 @@ def get_test_names(
 def run_gtk_wayland_tests(
     test_filter: Optional[str],
     test_binary: Optional[str],
+    tmp_dir_name: Optional[str],
     xvfb_env_override: Optional[Dict[str, str]] = None,
 ) -> bool:
     env_override = {
@@ -164,6 +161,9 @@ def run_gtk_wayland_tests(
         "GTK_IM_MODULE": "test-cros",
         "GDK_BACKEND": "wayland",
     }
+
+    if test_binary == TEST_BINARY_GTK4:
+        env_override.update({"GTK_PATH": f"{tmp_dir_name}/{GTK4_PATH}"})
 
     if xvfb_env_override:
         env_override.update(xvfb_env_override)
@@ -233,28 +233,31 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if args.suite == "gtk4" and not set_up_gtk4_immodule():
-        sys.exit("Failed to setup test IM module for GTK4.")
-    if args.suite == "gtk3" and not set_up_gtk3_immodules_cache():
-        sys.exit("Failed to set up immodules for GTK3.")
+    with tempfile.TemporaryDirectory() as tmp_dir_name:
+        if args.suite == "gtk4" and not set_up_gtk4_immodule(tmp_dir_name):
+            sys.exit("Failed to setup test IM module for GTK4.")
+        if args.suite == "gtk3" and not set_up_gtk3_immodules_cache():
+            sys.exit("Failed to set up immodules for GTK3.")
 
-    tests_passed = True
+        tests_passed = True
 
-    test_binary = TEST_BINARY_GTK4 if args.suite == "gtk4" else TEST_BINARY_GTK3
-
-    gtk_wayland_runner = functools.partial(
-        run_gtk_wayland_tests, args.gtest_filter, test_binary
-    )
-
-    if args.with_xvfb:
-        tests_passed = tests_passed and run_tests_with_wayland_server(
-            gtk_wayland_runner
+        test_binary = (
+            TEST_BINARY_GTK4 if args.suite == "gtk4" else TEST_BINARY_GTK3
         )
-    else:
-        tests_passed = tests_passed and gtk_wayland_runner()
 
-    if not tests_passed:
-        sys.exit("At least one test did not pass.")
+        gtk_wayland_runner = functools.partial(
+            run_gtk_wayland_tests, args.gtest_filter, test_binary, tmp_dir_name
+        )
+
+        if args.with_xvfb:
+            tests_passed = tests_passed and run_tests_with_wayland_server(
+                gtk_wayland_runner
+            )
+        else:
+            tests_passed = tests_passed and gtk_wayland_runner()
+
+        if not tests_passed:
+            sys.exit("At least one test did not pass.")
 
 
 if __name__ == "__main__":

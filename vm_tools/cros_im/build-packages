@@ -121,6 +121,7 @@ main() {
   local arch
   local dist
   for dist in ${dists_to_build}; do
+    ln -sf "debian-${dist}" debian
     for arch in ${arches_to_build}; do
       create_changelog "${dist}"
       mkdir -p "/var/cache/pbuilder/aptcache/debian-${dist}-${arch}"
@@ -137,6 +138,8 @@ main() {
     local deb_dir="${dist}_cros_im_debs"
     mkdir -p "${deb_dir}"
     mv "${ARTIFACTS}"/cros-im_*.deb "${deb_dir}"
+
+    rm -f debian
   done
 
   cleanup
