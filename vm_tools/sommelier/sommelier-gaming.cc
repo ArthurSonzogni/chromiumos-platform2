@@ -126,6 +126,11 @@ const DeviceID kDualSenseUSB = {
 const DeviceID kDualSenseBT = {
     .vendor = kSonyVendor, .product = kDualSenseProduct, .version = 0x100};
 
+// There's currently a quirk that causes Dualsense gamepads to have 0x000 as
+// their version when connected over BT after a ChromeOS reboot.
+const DeviceID kDualSenseBuggedBT = {
+    .vendor = kSonyVendor, .product = kDualSenseProduct, .version = 0x000};
+
 const DeviceID kDualSenseEdgeUSB = {
     .vendor = kSonyVendor, .product = kDualSenseEdgeProduct, .version = 0x111};
 
@@ -389,6 +394,7 @@ const std::unordered_map<DeviceID, const InputMapping*> kDeviceMappings = {
     {kStratusPlusBT, &kAxisQuirkMapping},
     {kDualSenseUSB, &kDualSenseMapping},
     {kDualSenseBT, &kDualSenseMapping},
+    {kDualSenseBuggedBT, &kDualSenseMapping},
     {kDualShock4v2USB, &kDualShock4Mapping},
     {kDualShock4v2BT, &kDualShock4Mapping},
     {kDualShock3USB, &kDualShock3Mapping},
