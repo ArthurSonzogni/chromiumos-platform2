@@ -673,7 +673,9 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   return response;
 }
 
-ArcVmCompleteBootResponse Service::ArcVmCompleteBoot(
+void Service::ArcVmCompleteBoot(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        ArcVmCompleteBootResponse>> response_cb,
     const ArcVmCompleteBootRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -683,14 +685,16 @@ ArcVmCompleteBootResponse Service::ArcVmCompleteBoot(
   VmId vm_id(request.owner_id(), kArcVmName);
   if (!CheckVmNameAndOwner(request, response)) {
     response.set_result(ArcVmCompleteBootResult::BAD_REQUEST);
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
     LOG(ERROR) << "Unable to locate ArcVm instance";
     response.set_result(ArcVmCompleteBootResult::ARCVM_NOT_FOUND);
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   ArcVm* vm = dynamic_cast<ArcVm*>(iter->second.get());
@@ -705,7 +709,7 @@ ArcVmCompleteBootResponse Service::ArcVmCompleteBoot(
   }
 
   response.set_result(ArcVmCompleteBootResult::SUCCESS);
-  return response;
+  response_cb->Return(response);
 }
 
 }  // namespace vm_tools::concierge

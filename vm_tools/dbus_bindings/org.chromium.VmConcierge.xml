@@ -16,7 +16,7 @@
       <tp:docstring>
         Adds group permission to directories created by mesa for a specified VM.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="normal" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::AddGroupPermissionMesaRequest"/>
@@ -26,7 +26,7 @@
       <tp:docstring>
         Adjusts parameters of a given VM.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::AdjustVmRequest"/>
@@ -58,7 +58,7 @@
       <tp:docstring>
         Completes the boot of an ARCVM VM.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::ArcVmCompleteBootRequest"/>
@@ -75,7 +75,7 @@
       <tp:docstring>
         Attaches a net tap device to a VM.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::AttachNetDeviceRequest"/>
@@ -92,7 +92,7 @@
       <tp:docstring>
         Attaches a USB device to a VM.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::AttachUsbDeviceRequest"/>
@@ -111,7 +111,7 @@
       <tp:docstring>
         Cancels a disk image operation.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::CancelDiskImageRequest"/>
@@ -152,7 +152,7 @@
       <tp:docstring>
         Destroys a disk image.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::DestroyDiskImageRequest"/>
@@ -169,7 +169,7 @@
       <tp:docstring>
         Detaches a net tap device from a VM.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::DetachNetDeviceRequest"/>
@@ -186,7 +186,7 @@
       <tp:docstring>
         Detaches a USB device from a VM.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::DetachUsbDeviceRequest"/>
@@ -203,7 +203,7 @@
       <tp:docstring>
         Checks status of a disk image operation.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::DiskImageStatusRequest"/>
@@ -249,7 +249,7 @@
       <tp:docstring>
         Gets DNS info.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::DnsSettings"/>
@@ -262,7 +262,7 @@
       <tp:docstring>
         Gets VM info specific to enterprise reporting.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::GetVmEnterpriseReportingInfoRequest"/>
@@ -279,7 +279,7 @@
       <tp:docstring>
         Gets VM's GPU cache path. Returns dbus error on failure.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="normal" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::GetVmGpuCachePathRequest"/>
@@ -293,7 +293,7 @@
       <tp:docstring>
         Gets VM info.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::GetVmInfoRequest"/>
@@ -310,7 +310,7 @@
       <tp:docstring>
         Get if allowed to launch VM.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="response" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::GetVmLaunchAllowedRequest"/>
@@ -324,7 +324,7 @@
       <tp:docstring>
         Gets VM logs.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="normal" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::GetVmLogsRequest"/>
@@ -338,7 +338,7 @@
       <tp:docstring>
         Returns an open FD to the VM Memory Management Service kills server.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::GetVmMemoryManagementKillsConnectionRequest"/>
@@ -359,7 +359,7 @@
       <tp:docstring>
         Imports a disk image.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::ImportDiskImageRequest"/>
@@ -381,7 +381,7 @@
       <tp:docstring>
         Installs the Pflash image associated with a VM.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::InstallPflashRequest"/>
@@ -403,7 +403,7 @@
       <tp:docstring>
         Lists USB devices.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::ListUsbDeviceRequest"/>
@@ -420,7 +420,7 @@
       <tp:docstring>
         Lists existing disk images.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::ListVmDisksRequest"/>
@@ -437,7 +437,7 @@
       <tp:docstring>
         Lists Vms.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::ListVmsRequest"/>
@@ -471,7 +471,7 @@
       <tp:docstring>
         Resizes a disk image. Can return asynchronously.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::ResizeDiskImageRequest"/>
@@ -489,7 +489,7 @@
       <tp:docstring>
         Resumes a VM.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::ResumeVmRequest"/>
@@ -506,7 +506,7 @@
       <tp:docstring>
         Updates balloon timer.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::SetBalloonTimerRequest"/>
@@ -523,7 +523,7 @@
       <tp:docstring>
         Set VM's CPU restriction state.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::SetVmCpuRestrictionRequest"/>
@@ -598,13 +598,13 @@
       <tp:docstring>
         Stops all running VMs.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
     </method>
     <method name="StopVm">
       <tp:docstring>
         Stops VM.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::StopVmRequest"/>
@@ -624,7 +624,7 @@
         Similar to StopVm but works without passing owner_id and stops the given
         VM for all owners.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::StopVmRequest"/>
@@ -641,7 +641,7 @@
       <tp:docstring>
         Suspends a VM.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::SuspendVmRequest"/>
@@ -675,7 +675,7 @@
       <tp:docstring>
          Updates all VMs' times to the current host time.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::SyncVmTimesResponse"/>

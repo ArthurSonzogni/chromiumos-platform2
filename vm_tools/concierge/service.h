@@ -134,26 +134,32 @@ class Service final : public org::chromium::VmConciergeInterface,
   StartVmResponse StartPluginVmInternal(StartPluginVmRequest request,
                                         StartVmResponse& response);
   void StartPluginVm(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          vm_tools::concierge::StartVmResponse>> response,
-      const vm_tools::concierge::StartPluginVmRequest& request) override;
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StartVmResponse>>
+          response_cb,
+      const StartPluginVmRequest& request) override;
 
   // Handles a request to start ARCVM.
   StartVmResponse StartArcVmInternal(StartArcVmRequest request,
                                      StartVmResponse& response);
   void StartArcVm(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          vm_tools::concierge::StartVmResponse>> response,
-      const vm_tools::concierge::StartArcVmRequest& request) override;
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StartVmResponse>>
+          response_cb,
+      const StartArcVmRequest& request) override;
 
   // Handles a request to stop a VM.
-  StopVmResponse StopVm(const StopVmRequest& request) override;
+  void StopVm(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StopVmResponse>>
+          response_cb,
+      const StopVmRequest& request) override;
 
   // Handles a request to stop a VM, but ignores the owner_id in the request and
   // stops the given VM for all owners.
   // TODO(b/305120263): Remove owner_id from StopVmRequest and merge this method
   // into StopVm.
-  StopVmResponse StopVmWithoutOwnerId(const StopVmRequest& request) override;
+  void StopVmWithoutOwnerId(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StopVmResponse>>
+          response_cb,
+      const StopVmRequest& request) override;
 
   // Handles a request to stop a VM.
   bool StopVmInternal(const VmId& vm_id, VmStopReason reason);
@@ -162,32 +168,48 @@ class Service final : public org::chromium::VmConciergeInterface,
   void StopVmInternalAsTask(VmId vm_id, VmStopReason reason);
 
   // Handles a request to suspend a VM.
-  SuspendVmResponse SuspendVm(const SuspendVmRequest& request) override;
+  void SuspendVm(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<SuspendVmResponse>>
+          response_cb,
+      const SuspendVmRequest& request) override;
 
   // Handles a request to resume a VM.
-  ResumeVmResponse ResumeVm(const ResumeVmRequest& request) override;
+  void ResumeVm(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<ResumeVmResponse>>
+          response_cb,
+      const ResumeVmRequest& request) override;
 
   // Handles a request to stop all running VMs.
   void StopAllVmsImpl(VmStopReason reason);
-  void StopAllVms() override;
+  void StopAllVms(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>>
+                      response_cb) override;
 
   // Handles a request to get VM info.
-  GetVmInfoResponse GetVmInfo(const GetVmInfoRequest& request) override;
+  void GetVmInfo(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<GetVmInfoResponse>>
+          response_cb,
+      const GetVmInfoRequest& request) override;
 
   // Handles a request to get VM info specific to enterprise reporting.
-  GetVmEnterpriseReportingInfoResponse GetVmEnterpriseReportingInfo(
+  void GetVmEnterpriseReportingInfo(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          GetVmEnterpriseReportingInfoResponse>> response_cb,
       const GetVmEnterpriseReportingInfoRequest& request) override;
 
   // Handles a request to complete the boot of an ARC VM.
-  ArcVmCompleteBootResponse ArcVmCompleteBoot(
-      const ArcVmCompleteBootRequest& request) override;
+  void ArcVmCompleteBoot(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                             ArcVmCompleteBootResponse>> response_cb,
+                         const ArcVmCompleteBootRequest& request) override;
 
   // Handles a request to update balloon timer.
-  SetBalloonTimerResponse SetBalloonTimer(
-      const SetBalloonTimerRequest& request) override;
+  void SetBalloonTimer(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                           SetBalloonTimerResponse>> response_cb,
+                       const SetBalloonTimerRequest& request) override;
 
   // Handles a request to update all VMs' times to the current host time.
-  SyncVmTimesResponse SyncVmTimes() override;
+  void SyncVmTimes(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          vm_tools::concierge::SyncVmTimesResponse>> response_cb) override;
 
   // Handles a request to create a disk image.
   void CreateDiskImage(dbus::MethodCall* method_call,
@@ -196,12 +218,14 @@ class Service final : public org::chromium::VmConciergeInterface,
       CreateDiskImageRequest request, base::ScopedFD in_fd);
 
   // Handles a request to destroy a disk image.
-  DestroyDiskImageResponse DestroyDiskImage(
-      const DestroyDiskImageRequest& request) override;
+  void DestroyDiskImage(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                            DestroyDiskImageResponse>> response_cb,
+                        const DestroyDiskImageRequest& request) override;
 
   // Handles a request to resize a disk image.
-  ResizeDiskImageResponse ResizeDiskImage(
-      const ResizeDiskImageRequest& request) override;
+  void ResizeDiskImage(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                           ResizeDiskImageResponse>> response_cb,
+                       const ResizeDiskImageRequest& request) override;
 
   // Handles a request to get disk resize status.
   std::unique_ptr<dbus::Response> GetDiskResizeStatus(
@@ -216,68 +240,94 @@ class Service final : public org::chromium::VmConciergeInterface,
       base::ScopedFD digest_fd);
 
   // Handles a request to import a disk image.
-  ImportDiskImageResponse ImportDiskImage(const ImportDiskImageRequest& request,
-                                          const base::ScopedFD& in_fd) override;
+  void ImportDiskImage(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                           ImportDiskImageResponse>> response_cb,
+                       const ImportDiskImageRequest& request,
+                       const base::ScopedFD& in_fd) override;
 
   // Handles a request to check status of a disk image operation.
-  DiskImageStatusResponse DiskImageStatus(
-      const DiskImageStatusRequest& request) override;
+  void DiskImageStatus(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                           DiskImageStatusResponse>> response_cb,
+                       const DiskImageStatusRequest& request) override;
 
   // Handles a request to cancel a disk image operation.
-  CancelDiskImageResponse CancelDiskImageOperation(
+  void CancelDiskImageOperation(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          CancelDiskImageResponse>> response_cb,
       const CancelDiskImageRequest& request) override;
 
   // Run import/export disk image operation with given UUID.
   void RunDiskImageOperation(std::string uuid);
 
   // Handles a request to list existing disk images.
-  ListVmDisksResponse ListVmDisks(const ListVmDisksRequest& request) override;
+  void ListVmDisks(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                       ListVmDisksResponse>> response_cb,
+                   const ListVmDisksRequest& request) override;
 
-  AttachUsbDeviceResponse AttachUsbDevice(const AttachUsbDeviceRequest& request,
-                                          const base::ScopedFD& fd) override;
-  DetachUsbDeviceResponse DetachUsbDevice(
-      const DetachUsbDeviceRequest& request) override;
-  ListUsbDeviceResponse ListUsbDevices(
-      const ListUsbDeviceRequest& request) override;
+  void AttachUsbDevice(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                           AttachUsbDeviceResponse>> response_cb,
+                       const AttachUsbDeviceRequest& request,
+                       const base::ScopedFD& fd) override;
+  void DetachUsbDevice(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                           DetachUsbDeviceResponse>> response_cb,
+                       const DetachUsbDeviceRequest& request) override;
+  void ListUsbDevices(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                          ListUsbDeviceResponse>> response_cb,
+                      const ListUsbDeviceRequest& request) override;
 
   // Attaches a net tap device
-  AttachNetDeviceResponse AttachNetDevice(
-      const AttachNetDeviceRequest& request) override;
+  void AttachNetDevice(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                           AttachNetDeviceResponse>> response_cb,
+                       const AttachNetDeviceRequest& request) override;
 
   // Detach a net tap device
-  DetachNetDeviceResponse DetachNetDevice(
-      const DetachNetDeviceRequest& request) override;
+  void DetachNetDevice(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                           DetachNetDeviceResponse>> response_cb,
+                       const DetachNetDeviceRequest& request) override;
 
-  DnsSettings GetDnsSettings() override;
+  void GetDnsSettings(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<DnsSettings>>
+          response_cb) override;
 
-  SetVmCpuRestrictionResponse SetVmCpuRestriction(
+  void SetVmCpuRestriction(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          SetVmCpuRestrictionResponse>> response_cb,
       const SetVmCpuRestrictionRequest& request) override;
 
   // Handles a request to adjust parameters of a given VM.
-  AdjustVmResponse AdjustVm(const AdjustVmRequest& request) override;
+  void AdjustVm(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<AdjustVmResponse>>
+          response_cb,
+      const AdjustVmRequest& request) override;
 
   // Handles a request to list all the VMs.
-  ListVmsResponse ListVms(const ListVmsRequest& request) override;
+  void ListVms(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<ListVmsResponse>>
+          response_cb,
+      const ListVmsRequest& request) override;
 
   // Handles a request to get VM's GPU cache path.
-  bool GetVmGpuCachePath(brillo::ErrorPtr* error,
-                         const GetVmGpuCachePathRequest& request,
-                         GetVmGpuCachePathResponse* response) override;
+  void GetVmGpuCachePath(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                             GetVmGpuCachePathResponse>> response_cb,
+                         const GetVmGpuCachePathRequest& request) override;
 
   // Handles a request to add group permission to directories created by mesa
   // for a specified VM.
-  bool AddGroupPermissionMesa(
-      brillo::ErrorPtr* error,
+  void AddGroupPermissionMesa(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response_cb,
       const AddGroupPermissionMesaRequest& request) override;
 
   // Handles a request to get if allowed to launch VM.
-  GetVmLaunchAllowedResponse GetVmLaunchAllowed(
+  void GetVmLaunchAllowed(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          GetVmLaunchAllowedResponse>> response_cb,
       const GetVmLaunchAllowedRequest& request) override;
 
   // Handles a request to get VM logs.
-  bool GetVmLogs(brillo::ErrorPtr* error,
-                 const GetVmLogsRequest& request,
-                 GetVmLogsResponse* response) override;
+  void GetVmLogs(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<GetVmLogsResponse>>
+          response_cb,
+      const GetVmLogsRequest& request) override;
 
   // Handles a request to change VM swap state.
   void SwapVm(
@@ -288,27 +338,29 @@ class Service final : public org::chromium::VmConciergeInterface,
   void NotifyVmSwapping(const VmId& vm_id, SwappingState swapping_state);
 
   // Handles a request to install the Pflash image associated with a VM.
-  InstallPflashResponse InstallPflash(
-      const InstallPflashRequest& request,
-      const base::ScopedFD& pflash_src_fd) override;
+  void InstallPflash(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                         InstallPflashResponse>> response_cb,
+                     const InstallPflashRequest& request,
+                     const base::ScopedFD& pflash_src_fd) override;
 
   // Asynchronously handles a request to reclaim memory of a given VM.
   void ReclaimVmMemory(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          vm_tools::concierge::ReclaimVmMemoryResponse>> response,
+          vm_tools::concierge::ReclaimVmMemoryResponse>> response_cb,
       const vm_tools::concierge::ReclaimVmMemoryRequest& request) override;
 
   // Inflate balloon in a vm until perceptible processes in the guest are tried
   // to kill.
   void AggressiveBalloon(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                             AggressiveBalloonResponse>> response,
+                             AggressiveBalloonResponse>> response_cb,
                          const AggressiveBalloonRequest& request) override;
 
   // Returns an opened FD to the VM memory management kills server.
   void GetVmMemoryManagementKillsConnection(
-      const GetVmMemoryManagementKillsConnectionRequest& request,
-      GetVmMemoryManagementKillsConnectionResponse* response,
-      std::vector<base::ScopedFD>* fd) override;
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          GetVmMemoryManagementKillsConnectionResponse,
+          std::vector<base::ScopedFD>>> response_cb,
+      const GetVmMemoryManagementKillsConnectionRequest& in_request) override;
 
   // Creates DnsSettings from current configuration.
   DnsSettings ComposeDnsResponse();

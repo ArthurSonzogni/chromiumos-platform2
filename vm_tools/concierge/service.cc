@@ -2175,7 +2175,10 @@ StartVmResponse Service::StartVmInternal(
   return response;
 }
 
-StopVmResponse Service::StopVm(const StopVmRequest& request) {
+void Service::StopVm(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StopVmResponse>>
+        response_cb,
+    const StopVmRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
@@ -2183,7 +2186,8 @@ StopVmResponse Service::StopVm(const StopVmRequest& request) {
 
   VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   if (!StopVmInternal(vm_id, STOP_VM_REQUESTED)) {
@@ -2192,17 +2196,22 @@ StopVmResponse Service::StopVm(const StopVmRequest& request) {
   } else {
     response.set_success(true);
   }
-  return response;
+  response_cb->Return(response);
+  return;
 }
 
-StopVmResponse Service::StopVmWithoutOwnerId(const StopVmRequest& request) {
+void Service::StopVmWithoutOwnerId(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StopVmResponse>>
+        response_cb,
+    const StopVmRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   StopVmResponse response;
 
   if (request.name().empty()) {
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   std::vector<VmId> vms_to_stop;
@@ -2216,12 +2225,14 @@ StopVmResponse Service::StopVmWithoutOwnerId(const StopVmRequest& request) {
     if (!StopVmInternal(vm_to_stop, STOP_VM_REQUESTED)) {
       LOG(ERROR) << "Unable to shut down VM";
       response.set_failure_reason("Unable to shut down VM");
-      return response;
+      response_cb->Return(response);
+      return;
     }
   }
 
   response.set_success(true);
-  return response;
+  response_cb->Return(response);
+  return;
 }
 
 bool Service::StopVmInternal(const VmId& vm_id, VmStopReason reason) {
@@ -2273,9 +2284,10 @@ class VMDelegate : public base::PlatformThread::Delegate {
   VmBaseImpl* vm_;
 };
 
-void Service::StopAllVms() {
+void Service::StopAllVms(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response_cb) {
   StopAllVmsImpl(STOP_ALL_VMS_REQUESTED);
-  return;
+  response_cb->Return();
 }
 
 void Service::StopAllVmsImpl(VmStopReason reason) {
@@ -2328,7 +2340,10 @@ void Service::StopAllVmsImpl(VmStopReason reason) {
   }
 }
 
-SuspendVmResponse Service::SuspendVm(const SuspendVmRequest& request) {
+void Service::SuspendVm(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<SuspendVmResponse>>
+        response_cb,
+    const SuspendVmRequest& request) {
   VMT_TRACE(kCategory, "Service::SuspendVm");
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -2337,7 +2352,8 @@ SuspendVmResponse Service::SuspendVm(const SuspendVmRequest& request) {
 
   VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   auto iter = FindVm(vm_id);
@@ -2345,7 +2361,8 @@ SuspendVmResponse Service::SuspendVm(const SuspendVmRequest& request) {
     LOG(ERROR) << "Requested VM " << request.name() << " does not exist";
     // This is not an error to Chrome
     response.set_success(true);
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   auto& vm = iter->second;
@@ -2355,16 +2372,21 @@ SuspendVmResponse Service::SuspendVm(const SuspendVmRequest& request) {
 
     response.set_failure_reason(
         "VM does not support external suspend signals.");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   vm->Suspend();
 
   response.set_success(true);
-  return response;
+  response_cb->Return(response);
+  return;
 }
 
-ResumeVmResponse Service::ResumeVm(const ResumeVmRequest& request) {
+void Service::ResumeVm(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<ResumeVmResponse>>
+        response_cb,
+    const ResumeVmRequest& request) {
   VMT_TRACE(kCategory, "Service::ResumeVm");
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -2373,7 +2395,8 @@ ResumeVmResponse Service::ResumeVm(const ResumeVmRequest& request) {
 
   VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   auto iter = FindVm(vm_id);
@@ -2381,7 +2404,8 @@ ResumeVmResponse Service::ResumeVm(const ResumeVmRequest& request) {
     LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
     // This is not an error to Chrome
     response.set_success(true);
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   auto& vm = iter->second;
@@ -2391,7 +2415,8 @@ ResumeVmResponse Service::ResumeVm(const ResumeVmRequest& request) {
 
     response.set_failure_reason(
         "VM does not support external suspend signals.");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   vm->Resume();
@@ -2407,10 +2432,14 @@ ResumeVmResponse Service::ResumeVm(const ResumeVmRequest& request) {
   vm->SetResolvConfig(nameservers_, search_domains_);
 
   response.set_success(true);
-  return response;
+  response_cb->Return(response);
+  return;
 }
 
-GetVmInfoResponse Service::GetVmInfo(const GetVmInfoRequest& request) {
+void Service::GetVmInfo(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<GetVmInfoResponse>>
+        response_cb,
+    const GetVmInfoRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
@@ -2418,14 +2447,16 @@ GetVmInfoResponse Service::GetVmInfo(const GetVmInfoRequest& request) {
 
   VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
 
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   VmBaseImpl::Info vm = iter->second->GetInfo();
@@ -2440,10 +2471,13 @@ GetVmInfoResponse Service::GetVmInfo(const GetVmInfoRequest& request) {
   vm_info->set_storage_ballooning(vm.storage_ballooning);
 
   response.set_success(true);
-  return response;
+  response_cb->Return(response);
+  return;
 }
 
-GetVmEnterpriseReportingInfoResponse Service::GetVmEnterpriseReportingInfo(
+void Service::GetVmEnterpriseReportingInfo(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        GetVmEnterpriseReportingInfoResponse>> response_cb,
     const GetVmEnterpriseReportingInfoRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -2452,24 +2486,29 @@ GetVmEnterpriseReportingInfoResponse Service::GetVmEnterpriseReportingInfo(
 
   VmId vm_id(request.owner_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
     response.set_failure_reason("Requested VM does not exist");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   // failure_reason and success will be set by GetVmEnterpriseReportingInfo.
   if (!iter->second->GetVmEnterpriseReportingInfo(&response)) {
     LOG(ERROR) << "Failed to get VM enterprise reporting info";
   }
-  return response;
+  response_cb->Return(response);
+  return;
 }
 
-SetBalloonTimerResponse Service::SetBalloonTimer(
+void Service::SetBalloonTimer(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        SetBalloonTimerResponse>> response_cb,
     const SetBalloonTimerRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -2492,10 +2531,14 @@ SetBalloonTimerResponse Service::SetBalloonTimer(
   }
 
   response.set_success(true);
-  return response;
+  response_cb->Return(response);
+  return;
 }
 
-AdjustVmResponse Service::AdjustVm(const AdjustVmRequest& request) {
+void Service::AdjustVm(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<AdjustVmResponse>>
+        response_cb,
+    const AdjustVmRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
@@ -2503,13 +2546,15 @@ AdjustVmResponse Service::AdjustVm(const AdjustVmRequest& request) {
 
   VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   StorageLocation location;
   if (!CheckVmExists(vm_id, nullptr, &location)) {
     response.set_failure_reason("Requested VM does not exist");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   std::vector<string> params(request.params().begin(), request.params().end());
@@ -2557,10 +2602,13 @@ AdjustVmResponse Service::AdjustVm(const AdjustVmRequest& request) {
 
   response.set_success(success);
   response.set_failure_reason(failure_reason);
-  return response;
+  response_cb->Return(response);
+  return;
 }
 
-SyncVmTimesResponse Service::SyncVmTimes() {
+void Service::SyncVmTimes(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        vm_tools::concierge::SyncVmTimesResponse>> response_cb) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
@@ -2578,7 +2626,8 @@ SyncVmTimesResponse Service::SyncVmTimes() {
   response.set_requests(requests);
   response.set_failures(failures);
 
-  return response;
+  response_cb->Return(response);
+  return;
 }
 
 bool Service::StartTermina(TerminaVm* vm,
@@ -2977,7 +3026,9 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
   return response;
 }
 
-DestroyDiskImageResponse Service::DestroyDiskImage(
+void Service::DestroyDiskImage(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        DestroyDiskImageResponse>> response_cb,
     const DestroyDiskImageRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -2987,7 +3038,8 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
   VmId vm_id(request.cryptohome_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
     response.set_status(DISK_STATUS_FAILED);
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   // Stop the associated VM if it is still running.
@@ -3000,7 +3052,8 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
 
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason("Unable to shut down VM");
-      return response;
+      response_cb->Return(response);
+      return;
     }
   }
 
@@ -3015,7 +3068,8 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
   if (!CheckVmExists(vm_id, &disk_path, &location)) {
     response.set_status(DISK_STATUS_DOES_NOT_EXIST);
     response.set_failure_reason("No such image");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   if (!EraseGuestSshKeys(vm_id)) {
@@ -3033,7 +3087,8 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
       response.set_failure_reason(
           "failed to check Plugin VM registration status");
 
-      return response;
+      response_cb->Return(response);
+      return;
     }
 
     if (registered &&
@@ -3041,7 +3096,8 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason("failed to unregister Plugin VM");
 
-      return response;
+      response_cb->Return(response);
+      return;
     }
 
     base::FilePath iso_dir;
@@ -3052,7 +3108,8 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason("Unable to remove ISO directory");
 
-      return response;
+      response_cb->Return(response);
+      return;
     }
 
     // Delete GPU shader disk cache.
@@ -3069,7 +3126,8 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
     response.set_status(DISK_STATUS_FAILED);
     response.set_failure_reason("Disk removal failed");
 
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   // Pflash may not be present for all VMs. We should only report error if it
@@ -3080,15 +3138,19 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
     if (!base::DeleteFile(pflash_metadata->path)) {
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason("Pflash removal failed");
-      return response;
+      response_cb->Return(response);
+      return;
     }
   }
 
   response.set_status(DISK_STATUS_DESTROYED);
-  return response;
+  response_cb->Return(response);
+  return;
 }
 
-ResizeDiskImageResponse Service::ResizeDiskImage(
+void Service::ResizeDiskImage(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        ResizeDiskImageResponse>> response_cb,
     const ResizeDiskImageRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -3098,7 +3160,8 @@ ResizeDiskImageResponse Service::ResizeDiskImage(
   VmId vm_id(request.cryptohome_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
     response.set_status(DISK_STATUS_FAILED);
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   base::FilePath disk_path;
@@ -3106,7 +3169,8 @@ ResizeDiskImageResponse Service::ResizeDiskImage(
   if (!CheckVmExists(vm_id, &disk_path, &location)) {
     response.set_status(DISK_STATUS_DOES_NOT_EXIST);
     response.set_failure_reason("Resize image doesn't exist");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   auto size = request.disk_size() & kDiskSizeMask;
@@ -3142,7 +3206,8 @@ ResizeDiskImageResponse Service::ResizeDiskImage(
     }
   }
 
-  return response;
+  response_cb->Return(response);
+  return;
 }
 
 void Service::ResizeDisk(const VmId& vm_id,
@@ -3337,8 +3402,11 @@ ExportDiskImageResponse Service::ExportDiskImageInternal(
   return response;
 }
 
-ImportDiskImageResponse Service::ImportDiskImage(
-    const ImportDiskImageRequest& request, const base::ScopedFD& in_fd) {
+void Service::ImportDiskImage(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        ImportDiskImageResponse>> response_cb,
+    const ImportDiskImageRequest& request,
+    const base::ScopedFD& in_fd) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
@@ -3347,26 +3415,30 @@ ImportDiskImageResponse Service::ImportDiskImage(
 
   VmId vm_id(request.cryptohome_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   if (CheckVmExists(vm_id)) {
     response.set_status(DISK_STATUS_EXISTS);
     response.set_failure_reason("VM/disk with such name already exists");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   if (request.storage_location() != STORAGE_CRYPTOHOME_PLUGINVM) {
     LOG(ERROR)
         << "Locations other than STORAGE_CRYPTOHOME_PLUGINVM are not supported";
     response.set_failure_reason("Unsupported location for image");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   base::FilePath disk_path;
   if (!GetDiskPathFromName(vm_id, request.storage_location(), &disk_path)) {
     response.set_failure_reason("Failed to set up vm image name");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   auto op = PluginVmImportOperation::Create(
@@ -3386,7 +3458,8 @@ ImportDiskImageResponse Service::ImportDiskImage(
                        weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
   }
 
-  return response;
+  response_cb->Return(response);
+  return;
 }
 
 void Service::RunDiskImageOperation(std::string uuid) {
@@ -3432,7 +3505,9 @@ void Service::RunDiskImageOperation(std::string uuid) {
   }
 }
 
-DiskImageStatusResponse Service::DiskImageStatus(
+void Service::DiskImageStatus(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        DiskImageStatusResponse>> response_cb,
     const DiskImageStatusRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -3449,7 +3524,8 @@ DiskImageStatusResponse Service::DiskImageStatus(
   if (iter == disk_image_ops_.end() || iter->canceled) {
     LOG(ERROR) << "Unknown command uuid in DiskImageStatusRequest";
     response.set_failure_reason("Unknown command uuid");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   auto op = iter->op.get();
@@ -3460,10 +3536,13 @@ DiskImageStatusResponse Service::DiskImageStatus(
     disk_image_ops_.erase(iter);
   }
 
-  return response;
+  response_cb->Return(response);
+  return;
 }
 
-CancelDiskImageResponse Service::CancelDiskImageOperation(
+void Service::CancelDiskImageOperation(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        CancelDiskImageResponse>> response_cb,
     const CancelDiskImageRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -3479,13 +3558,15 @@ CancelDiskImageResponse Service::CancelDiskImageOperation(
   if (iter == disk_image_ops_.end()) {
     LOG(ERROR) << "Unknown command uuid in CancelDiskImageRequest";
     response.set_failure_reason("Unknown command uuid");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   auto op = iter->op.get();
   if (op->status() != DISK_STATUS_IN_PROGRESS) {
     response.set_failure_reason("Command is no longer in progress");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   // Mark the operation as canceled. We can't erase it from the list right
@@ -3494,17 +3575,21 @@ CancelDiskImageResponse Service::CancelDiskImageOperation(
   iter->canceled = true;
 
   response.set_success(true);
-  return response;
+  response_cb->Return(response);
 }
 
-ListVmDisksResponse Service::ListVmDisks(const ListVmDisksRequest& request) {
+void Service::ListVmDisks(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<ListVmDisksResponse>>
+        response_cb,
+    const ListVmDisksRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   ListVmDisksResponse response;
 
   if (!CheckVmNameAndOwner(request, response, true /* Empty VmName allowed*/)) {
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   response.set_success(true);
@@ -3521,10 +3606,12 @@ ListVmDisksResponse Service::ListVmDisks(const ListVmDisksRequest& request) {
     }
   }
 
-  return response;
+  response_cb->Return(response);
 }
 
-AttachNetDeviceResponse Service::AttachNetDevice(
+void Service::AttachNetDevice(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        AttachNetDeviceResponse>> response_cb,
     const AttachNetDeviceRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -3533,7 +3620,8 @@ AttachNetDeviceResponse Service::AttachNetDevice(
 
   VmId vm_id(request.owner_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   auto iter = FindVm(vm_id);
@@ -3542,7 +3630,8 @@ AttachNetDeviceResponse Service::AttachNetDevice(
                                 " with owner " + vm_id.owner_id() +
                                 " does not exist");
     LOG(ERROR) << response.failure_reason();
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   uint8_t out_bus;
@@ -3551,14 +3640,17 @@ AttachNetDeviceResponse Service::AttachNetDevice(
     response.set_failure_reason(
         "Failed to attach tap device due to crosvm error.");
     LOG(ERROR) << response.failure_reason();
-    return response;
+    response_cb->Return(response);
+    return;
   }
   response.set_success(true);
   response.set_guest_bus(out_bus);
-  return response;
+  response_cb->Return(response);
 }
 
-DetachNetDeviceResponse Service::DetachNetDevice(
+void Service::DetachNetDevice(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        DetachNetDeviceResponse>> response_cb,
     const DetachNetDeviceRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -3567,7 +3659,8 @@ DetachNetDeviceResponse Service::DetachNetDevice(
 
   VmId vm_id(request.owner_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   auto iter = FindVm(vm_id);
@@ -3576,7 +3669,8 @@ DetachNetDeviceResponse Service::DetachNetDevice(
                                 " with owner " + vm_id.owner_id() +
                                 " does not exist");
     LOG(ERROR) << response.failure_reason();
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   if (request.guest_bus() == 0 || request.guest_bus() > 0xFF) {
@@ -3584,22 +3678,27 @@ DetachNetDeviceResponse Service::DetachNetDevice(
                                 std::to_string(request.guest_bus()) +
                                 " is out of valid range 1-255");
     LOG(ERROR) << response.failure_reason();
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   if (!iter->second->DetachNetDevice(request.guest_bus())) {
     response.set_failure_reason(
         "Failed to detach tap device due to crosvm error.");
     LOG(ERROR) << response.failure_reason();
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   response.set_success(true);
-  return response;
+  response_cb->Return(response);
 }
 
-AttachUsbDeviceResponse Service::AttachUsbDevice(
-    const AttachUsbDeviceRequest& request, const base::ScopedFD& fd) {
+void Service::AttachUsbDevice(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        AttachUsbDeviceResponse>> response_cb,
+    const AttachUsbDeviceRequest& request,
+    const base::ScopedFD& fd) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
@@ -3607,38 +3706,44 @@ AttachUsbDeviceResponse Service::AttachUsbDevice(
 
   VmId vm_id(request.owner_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
     response.set_reason("Requested VM does not exist");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   if (request.bus_number() > 0xFF) {
     LOG(ERROR) << "Bus number out of valid range " << request.bus_number();
     response.set_reason("Invalid bus number");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   if (request.port_number() > 0xFF) {
     LOG(ERROR) << "Port number out of valid range " << request.port_number();
     response.set_reason("Invalid port number");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   if (request.vendor_id() > 0xFFFF) {
     LOG(ERROR) << "Vendor ID out of valid range " << request.vendor_id();
     response.set_reason("Invalid vendor ID");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   if (request.product_id() > 0xFFFF) {
     LOG(ERROR) << "Product ID out of valid range " << request.product_id();
     response.set_reason("Invalid product ID");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   uint8_t guest_port{};
@@ -3647,14 +3752,17 @@ AttachUsbDeviceResponse Service::AttachUsbDevice(
           request.product_id(), fd.get(), &guest_port)) {
     LOG(ERROR) << "Failed to attach USB device.";
     response.set_reason("Error from crosvm");
-    return response;
+    response_cb->Return(response);
+    return;
   }
   response.set_success(true);
   response.set_guest_port(guest_port);
-  return response;
+  response_cb->Return(response);
 }
 
-DetachUsbDeviceResponse Service::DetachUsbDevice(
+void Service::DetachUsbDevice(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        DetachUsbDeviceResponse>> response_cb,
     const DetachUsbDeviceRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -3663,32 +3771,38 @@ DetachUsbDeviceResponse Service::DetachUsbDevice(
 
   VmId vm_id(request.owner_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
     response.set_reason("Requested VM does not exist");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   if (request.guest_port() > 0xFF) {
     LOG(ERROR) << "Guest port number out of valid range "
                << request.guest_port();
     response.set_reason("Invalid guest port number");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   if (!iter->second->DetachUsbDevice(request.guest_port())) {
     LOG(ERROR) << "Failed to detach USB device";
-    return response;
+    response_cb->Return(response);
+    return;
   }
   response.set_success(true);
-  return response;
+  response_cb->Return(response);
 }
 
-ListUsbDeviceResponse Service::ListUsbDevices(
+void Service::ListUsbDevices(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        ListUsbDeviceResponse>> response_cb,
     const ListUsbDeviceRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -3697,19 +3811,22 @@ ListUsbDeviceResponse Service::ListUsbDevices(
 
   VmId vm_id(request.owner_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   std::vector<UsbDeviceEntry> usb_list;
   if (!iter->second->ListUsbDevice(&usb_list)) {
     LOG(ERROR) << "Failed to list USB devices";
-    return response;
+    response_cb->Return(response);
+    return;
   }
   for (auto usb : usb_list) {
     UsbDeviceMessage* usb_proto = response.add_usb_devices();
@@ -3718,7 +3835,7 @@ ListUsbDeviceResponse Service::ListUsbDevices(
     usb_proto->set_product_id(usb.product_id);
   }
   response.set_success(true);
-  return response;
+  response_cb->Return(response);
 }
 
 DnsSettings Service::ComposeDnsResponse() {
@@ -3733,14 +3850,18 @@ DnsSettings Service::ComposeDnsResponse() {
   return dns_settings;
 }
 
-DnsSettings Service::GetDnsSettings() {
+void Service::GetDnsSettings(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<DnsSettings>>
+        response_cb) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  return ComposeDnsResponse();
+  response_cb->Return(ComposeDnsResponse());
 }
 
-SetVmCpuRestrictionResponse Service::SetVmCpuRestriction(
+void Service::SetVmCpuRestriction(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        SetVmCpuRestrictionResponse>> response_cb,
     const SetVmCpuRestrictionRequest& request) {
   // TODO(yusukes,hashimoto): Instead of allowing Chrome to decide when to
   // restrict each VM's CPU usage, let Concierge itself do that for potentially
@@ -3769,17 +3890,21 @@ SetVmCpuRestrictionResponse Service::SetVmCpuRestriction(
   }
 
   response.set_success(success);
-  return response;
+  response_cb->Return(response);
 }
 
-ListVmsResponse Service::ListVms(const ListVmsRequest& request) {
+void Service::ListVms(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<ListVmsResponse>>
+        response_cb,
+    const ListVmsRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   ListVmsResponse response;
 
   if (!CheckVmNameAndOwner(request, response)) {
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   for (const auto& vm_entry : vms_) {
@@ -3820,7 +3945,7 @@ ListVmsResponse Service::ListVms(const ListVmsRequest& request) {
     }
   }
   response.set_success(true);
-  return response;
+  response_cb->Return(response);
 }
 
 void Service::ReclaimVmMemory(
@@ -3922,16 +4047,20 @@ void Service::AggressiveBalloon(AggressiveBalloonResponder response_sender,
 }
 
 void Service::GetVmMemoryManagementKillsConnection(
-    const GetVmMemoryManagementKillsConnectionRequest&,
-    GetVmMemoryManagementKillsConnectionResponse* response,
-    std::vector<base::ScopedFD>* out_fd) {
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        GetVmMemoryManagementKillsConnectionResponse,
+        std::vector<base::ScopedFD>>> response_cb,
+    const GetVmMemoryManagementKillsConnectionRequest& in_request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  GetVmMemoryManagementKillsConnectionResponse response;
 
   if (!vm_memory_management_service_) {
     static constexpr char error[] = "Service is not enabled.";
     LOG(ERROR) << error;
-    response->set_failure_reason(error);
+    response.set_failure_reason(error);
+    response_cb->Return(response, {});
     return;
   }
 
@@ -3940,16 +4069,17 @@ void Service::GetVmMemoryManagementKillsConnection(
   if (!fd.is_valid()) {
     static constexpr char error[] = "Failed to connect.";
     LOG(ERROR) << error;
-    response->set_failure_reason(error);
+    response.set_failure_reason(error);
+    response_cb->Return(response, {});
     return;
   }
 
-  response->set_success(true);
-  response->set_host_kill_request_timeout_ms(
+  response.set_success(true);
+  response.set_host_kill_request_timeout_ms(
       host_kill_decision_timeout_.InMilliseconds());
-  out_fd->push_back(std::move(fd));
-
-  return;
+  std::vector<base::ScopedFD> response_fds;
+  response_fds.push_back(std::move(fd));
+  response_cb->Return(response, response_fds);
 }
 
 void Service::OnResolvConfigChanged(std::vector<string> nameservers,
@@ -4573,32 +4703,33 @@ void AddGroupPermissionChildren(const base::FilePath& path) {
   }
 }
 
-bool Service::AddGroupPermissionMesa(
-    brillo::ErrorPtr* error, const AddGroupPermissionMesaRequest& request) {
+void Service::AddGroupPermissionMesa(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response_cb,
+    const AddGroupPermissionMesaRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request,
                            request /* in place of a response proto */)) {
-    *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
-                                   DBUS_ERROR_FAILED,
-                                   "Empty or malformed owner ID / VM name");
-    return false;
+    response_cb->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                                DBUS_ERROR_FAILED,
+                                "Empty or malformed owner ID / VM name");
+    return;
   }
 
   base::FilePath cache_path = GetVmGpuCachePathInternal(vm_id);
   AddGroupPermissionChildren(cache_path);
 
-  return true;
+  response_cb->Return();
 }
 
-GetVmLaunchAllowedResponse Service::GetVmLaunchAllowed(
+void Service::GetVmLaunchAllowed(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        GetVmLaunchAllowedResponse>> response_cb,
     const GetVmLaunchAllowedRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  GetVmLaunchAllowedResponse response;
 
   bool allowed = true;
   std::string reason;
@@ -4609,24 +4740,27 @@ GetVmLaunchAllowedResponse Service::GetVmLaunchAllowed(
     allowed = untrusted_vm_utils_.IsUntrustedVMAllowed(&reason);
   }
 
+  GetVmLaunchAllowedResponse response;
   response.set_allowed(allowed);
   response.set_reason(reason);
-
-  return response;
+  response_cb->Return(response);
 }
 
-bool Service::GetVmLogs(brillo::ErrorPtr* error,
-                        const GetVmLogsRequest& request,
-                        GetVmLogsResponse* response) {
+void Service::GetVmLogs(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<GetVmLogsResponse>>
+        response_cb,
+    const GetVmLogsRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
+  GetVmLogsResponse response;
+
   VmId vm_id(request.owner_id(), request.name());
-  if (!CheckVmNameAndOwner(request, *response)) {
-    *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
-                                   DBUS_ERROR_FAILED,
-                                   "Empty or malformed owner ID / VM name");
-    return false;
+  if (!CheckVmNameAndOwner(request, response)) {
+    response_cb->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                                DBUS_ERROR_FAILED,
+                                "Empty or malformed owner ID / VM name");
+    return;
   }
 
   base::FilePath log_path = GetVmLogPath(vm_id, kCrosvmLogFileExt);
@@ -4637,10 +4771,9 @@ bool Service::GetVmLogs(brillo::ErrorPtr* error,
     int64_t size;
     bool ok = base::GetFileSize(log_path, &size);
     if (!ok) {
-      *error =
-          brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
-                                DBUS_ERROR_FAILED, "Failed to get log size");
-      return false;
+      response_cb->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                                  DBUS_ERROR_FAILED, "Failed to get log size");
+      return;
     }
     remaining_log_space -= size;
     paths.push_back(log_path);
@@ -4677,10 +4810,10 @@ bool Service::GetVmLogs(brillo::ErrorPtr* error,
       remaining_log_space = 0;
     }
 
-    response->mutable_log()->append(contents_view);
+    response.mutable_log()->append(contents_view);
   }
 
-  return true;
+  response_cb->Return(response);
 }
 
 void Service::SwapVm(
@@ -4728,25 +4861,31 @@ void Service::NotifyVmSwapping(const VmId& vm_id,
   concierge_adaptor_.SendVmSwappingSignalSignal(proto);
 }
 
-InstallPflashResponse Service::InstallPflash(
-    const InstallPflashRequest& request, const base::ScopedFD& pflash_src_fd) {
+void Service::InstallPflash(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        InstallPflashResponse>> response_cb,
+    const InstallPflashRequest& request,
+    const base::ScopedFD& pflash_src_fd) {
   InstallPflashResponse response;
 
   VmId vm_id(request.owner_id(), request.vm_name());
   if (!CheckVmNameAndOwner(request, response)) {
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   std::optional<PflashMetadata> pflash_metadata = GetPflashMetadata(vm_id);
   if (!pflash_metadata) {
     response.set_failure_reason("Failed to get pflash install path");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   // We only allow one Pflash file to be allowed during the lifetime of a VM.
   if (pflash_metadata->is_installed) {
     response.set_failure_reason("Pflash already installed");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   // No Pflash is installed that means we can associate the given file with the
@@ -4759,43 +4898,47 @@ InstallPflashResponse Service::InstallPflash(
             << " to: " << pflash_metadata->path;
   if (!base::CopyFile(pflash_src_path, pflash_metadata->path)) {
     response.set_failure_reason("Failed to copy pflash image");
-    return response;
+    response_cb->Return(response);
+    return;
   }
 
   response.set_success(true);
-  return response;
+  response_cb->Return(response);
 }
 
 // TODO(b/244486983): separate out GPU VM cache methods out of service.cc file
-bool Service::GetVmGpuCachePath(brillo::ErrorPtr* error,
-                                const GetVmGpuCachePathRequest& request,
-                                GetVmGpuCachePathResponse* response) {
+void Service::GetVmGpuCachePath(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        GetVmGpuCachePathResponse>> response_cb,
+    const GetVmGpuCachePathRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
 
+  GetVmGpuCachePathResponse response;
+
   VmId vm_id(request.owner_id(), request.name());
-  if (!CheckVmNameAndOwner(request, *response)) {
-    *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
-                                   DBUS_ERROR_FAILED,
-                                   "Empty or malformed owner ID / VM name");
-    return false;
+  if (!CheckVmNameAndOwner(request, response)) {
+    response_cb->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                                DBUS_ERROR_FAILED,
+                                "Empty or malformed owner ID / VM name");
+    return;
   }
 
   base::FilePath path = GetVmGpuCachePathInternal(vm_id);
   if (!base::DirectoryExists(path)) {
-    *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
-                                   DBUS_ERROR_FAILED,
-                                   "GPU cache path does not exist");
-    return false;
+    response_cb->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                                DBUS_ERROR_FAILED,
+                                "GPU cache path does not exist");
+    return;
 
   } else if (path.empty()) {
-    *error =
-        brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
-                              DBUS_ERROR_FAILED, "GPU cache path is empty");
-    return false;
+    response_cb->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                                DBUS_ERROR_FAILED, "GPU cache path is empty");
+    return;
   }
 
-  response->set_path(path.value());
-  return true;
+  response.set_path(path.value());
+  response_cb->Return(response);
+  return;
 }
 
 int Service::GetCpuQuota() {
