@@ -76,7 +76,7 @@ class HttpRequest {
   // effect of this function.
   virtual void Stop();
 
-  virtual const std::string& interface_name() const { return interface_name_; }
+  virtual const std::string& logging_tag() const { return logging_tag_; }
 
  private:
   friend class HttpRequestTest;
@@ -93,7 +93,6 @@ class HttpRequest {
   void SendStatus(Result result);
 
   std::string logging_tag_;
-  std::string interface_name_;
   net_base::IPFamily ip_family_;
   std::vector<net_base::IPAddress> dns_list_;
 
@@ -106,10 +105,7 @@ class HttpRequest {
   std::shared_ptr<brillo::http::Transport> transport_;
   brillo::http::RequestID request_id_;
   HttpUrl url_;
-  std::string server_hostname_;
   brillo::http::HeaderList headers_;
-  int server_port_;
-  std::string server_path_;
   bool is_running_;
 };
 

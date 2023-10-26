@@ -34,7 +34,7 @@ namespace shill {
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kHTTP;
 static std::string ObjectID(const HttpRequest* r) {
-  return r->interface_name();
+  return r->logging_tag();
 }
 }  // namespace Logging
 
@@ -43,20 +43,18 @@ HttpRequest::HttpRequest(EventDispatcher* dispatcher,
                          net_base::IPFamily ip_family,
                          const std::vector<net_base::IPAddress>& dns_list,
                          bool allow_non_google_https)
-    : interface_name_(interface_name),
-      ip_family_(ip_family),
+    : ip_family_(ip_family),
       dns_list_(dns_list),
       weak_ptr_factory_(this),
       dns_client_callback_(base::BindRepeating(&HttpRequest::GetDNSResult,
                                                weak_ptr_factory_.GetWeakPtr())),
       dns_client_(new DnsClient(ip_family_,
-                                interface_name_,
+                                interface_name,
                                 DnsClient::kDnsTimeout,
                                 dispatcher,
                                 dns_client_callback_)),
       transport_(brillo::http::Transport::CreateDefault()),
       request_id_(-1),
-      server_port_(-1),
       is_running_(false) {
   // b/180521518, Force the transport to bind to |interface_name|. Otherwise,
   // the request would be routed by default through the current physical default
@@ -88,18 +86,14 @@ HttpRequest::Result HttpRequest::Start(
   url_ = url;
   headers_ = headers;
   is_running_ = true;
-  server_hostname_ = url.host();
-  server_port_ = url.port();
-  server_path_ = url.path();
   transport_->SetDefaultTimeout(kRequestTimeout);
 
   request_success_callback_ = std::move(request_success_callback);
   request_error_callback_ = std::move(request_error_callback);
 
-  const auto server_addr =
-      net_base::IPAddress::CreateFromString(server_hostname_);
+  const auto server_addr = net_base::IPAddress::CreateFromString(url_.host());
   if (server_addr && server_addr->GetFamily() != ip_family_) {
-    LOG(ERROR) << logging_tag_ << ": Server hostname " << server_hostname_
+    LOG(ERROR) << logging_tag_ << ": Server hostname " << url_.host()
                << " doesn't match the IP family " << ip_family_;
     Stop();
     return kResultDNSFailure;
@@ -108,7 +102,7 @@ HttpRequest::Result HttpRequest::Start(
   if (server_addr) {
     StartRequest();
   } else {
-    SLOG(this, 2) << "Looking up host: " << server_hostname_;
+    SLOG(this, 2) << "Looking up host: " << url_.host();
     Error error;
     std::vector<std::string> dns_addresses;
     // TODO(b/307880493): Migrate to net_base::DNSClient and avoid
@@ -118,7 +112,7 @@ HttpRequest::Result HttpRequest::Start(
         dns_addresses.push_back(dns.ToString());
       }
     }
-    if (!dns_client_->Start(dns_addresses, server_hostname_, &error)) {
+    if (!dns_client_->Start(dns_addresses, url_.host(), &error)) {
       LOG(ERROR) << logging_tag_
                  << ": Failed to start DNS client: " << error.message();
       Stop();
@@ -211,9 +205,6 @@ void HttpRequest::Stop() {
   dns_client_->Stop();
   is_running_ = false;
   request_id_ = -1;
-  server_hostname_.clear();
-  server_path_.clear();
-  server_port_ = -1;
   request_error_callback_.Reset();
   request_success_callback_.Reset();
 }
@@ -223,8 +214,8 @@ void HttpRequest::GetDNSResult(
     const base::expected<net_base::IPAddress, Error>& address) {
   SLOG(this, 3) << "In " << __func__;
   if (!address.has_value()) {
-    LOG(ERROR) << logging_tag_ << ": Could not resolve " << server_hostname_
-               << ": " << address.error().message();
+    LOG(ERROR) << logging_tag_ << ": Could not resolve " << url_.host() << ": "
+               << address.error().message();
     if (address.error().message() == DnsClient::kErrorTimedOut) {
       SendStatus(kResultDNSTimeout);
     } else {
@@ -236,9 +227,8 @@ void HttpRequest::GetDNSResult(
   // Add the host/port to IP mapping to the DNS cache to force curl to resolve
   // the URL to the given IP. Otherwise, will do its own DNS resolution and not
   // use the IP we provide to it.
-  transport_->ResolveHostToIp(server_hostname_, server_port_,
-                              address->ToString());
-  LOG(INFO) << logging_tag_ << ": Resolved " << server_hostname_ << " to "
+  transport_->ResolveHostToIp(url_.host(), url_.port(), address->ToString());
+  LOG(INFO) << logging_tag_ << ": Resolved " << url_.host() << " to "
             << *address;
   StartRequest();
 }

@@ -122,7 +122,6 @@ class HttpRequestTest : public Test {
     EXPECT_TRUE(request_->request_success_callback_.is_null());
     EXPECT_FALSE(request_->dns_client_callback_.is_null());
     EXPECT_EQ(dns_client_, request_->dns_client_.get());
-    EXPECT_TRUE(request_->server_hostname_.empty());
     EXPECT_FALSE(request_->is_running_);
   }
   void ExpectStop() { EXPECT_CALL(*dns_client_, Stop()).Times(AtLeast(1)); }
