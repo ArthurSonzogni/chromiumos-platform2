@@ -1414,7 +1414,7 @@ int main(int argc, char** argv) {
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printer.PrintHumanOutput("Remove failed.\n");
-      return 1;
+      return static_cast<int>(reply.error());
     }
     printer.PrintHumanOutput("Remove succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_UNMOUNT],
@@ -1433,7 +1433,7 @@ int main(int argc, char** argv) {
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printer.PrintHumanOutput("Unmount failed.\n");
-      return 1;
+      return static_cast<int>(reply.error());
     }
     printer.PrintHumanOutput("Unmount succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_MOUNTED],
@@ -1697,12 +1697,13 @@ int main(int argc, char** argv) {
           BrilloErrorToString(error.get()).c_str());
       return 1;
     }
-    if (reply.error() ==
+
+    if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintFormattedHumanOutput("%s\n", reply.value().c_str());
-    } else {
-      return 1;
+      return static_cast<int>(reply.error());
     }
+    printer.PrintFormattedHumanOutput("%s\n", reply.value().c_str());
+
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_SET],
                  action.c_str())) {
@@ -1755,7 +1756,7 @@ int main(int argc, char** argv) {
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printer.PrintHumanOutput("Call to InstallAttributesSet() failed.\n");
-      return 1;
+      return static_cast<int>(reply.error());
     }
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_INSTALL_ATTRIBUTES_FINALIZE],
@@ -1813,7 +1814,7 @@ int main(int argc, char** argv) {
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printer.PrintHumanOutput(
           "Call to InstallAttributesGetStatus() failed.\n");
-      return 1;
+      return static_cast<int>(reply.error());
     }
     printer.PrintFormattedHumanOutput("InstallAttributesCount(): %d\n",
                                       reply.count());
@@ -1835,7 +1836,7 @@ int main(int argc, char** argv) {
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printer.PrintHumanOutput(
           "Call to InstallAttributesGetStatus() failed.\n");
-      return 1;
+      return static_cast<int>(reply.error());
     }
     printer.PrintFormattedHumanOutput(
         "%s\n", InstallAttributesState_Name(reply.state()).c_str());
@@ -1857,7 +1858,7 @@ int main(int argc, char** argv) {
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printer.PrintHumanOutput(
           "Call to InstallAttributesGetStatus() failed.\n");
-      return 1;
+      return static_cast<int>(reply.error());
     }
 
     bool result =
@@ -1908,7 +1909,7 @@ int main(int argc, char** argv) {
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printer.PrintHumanOutput(
           "Call to InstallAttributesGetStatus() failed.\n");
-      return 1;
+      return static_cast<int>(reply.error());
     }
 
     bool result =
@@ -1933,7 +1934,7 @@ int main(int argc, char** argv) {
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printer.PrintHumanOutput(
           "Call to InstallAttributesGetStatus() failed.\n");
-      return 1;
+      return static_cast<int>(reply.error());
     }
     bool result = (reply.state() ==
                    user_data_auth::InstallAttributesState::FIRST_INSTALL);
@@ -2050,7 +2051,7 @@ int main(int argc, char** argv) {
       printer.PrintFormattedHumanOutput(
           "Failed to call GetLoginStatus: status %d\n",
           static_cast<int>(reply.error()));
-      return 1;
+      return static_cast<int>(reply.error());
     }
     // TODO(b/189388158): because PrintDebugString won't print a field if it's
     // default value in proto3. We use a workaround to print it manually here.
@@ -2083,7 +2084,7 @@ int main(int argc, char** argv) {
         printer.PrintFormattedHumanOutput(
             "Failed to call GetFirmwareManagementParameters: status %d\n",
             static_cast<int>(reply.error()));
-        return 1;
+        return static_cast<int>(reply.error());
       }
     }
 
@@ -2144,7 +2145,7 @@ int main(int argc, char** argv) {
         printer.PrintFormattedHumanOutput(
             "Failed to call SetFirmwareManagementParameters: status %d\n",
             static_cast<int>(reply.error()));
-        return 1;
+        return static_cast<int>(reply.error());
       }
     }
 
@@ -2171,7 +2172,7 @@ int main(int argc, char** argv) {
         printer.PrintFormattedHumanOutput(
             "Failed to call RemoveFirmwareManagementParameters: status %d\n",
             static_cast<int>(reply.error()));
-        return 1;
+        return static_cast<int>(reply.error());
       }
     }
 
@@ -2200,7 +2201,7 @@ int main(int argc, char** argv) {
       printer.PrintFormattedHumanOutput(
           "MigrateToDircrypto call failed: status %d\n",
           static_cast<int>(reply.error()));
-      return 1;
+      return static_cast<int>(reply.error());
     }
 
     printer.PrintHumanOutput("MigrateToDircrypto call succeeded.\n");
@@ -2230,7 +2231,7 @@ int main(int argc, char** argv) {
       printer.PrintFormattedHumanOutput(
           "NeedsDirCryptoMigration call failed: status %d\n",
           static_cast<int>(reply.error()));
-      return 1;
+      return static_cast<int>(reply.error());
     }
 
     if (reply.needs_dircrypto_migration())
@@ -2283,7 +2284,7 @@ int main(int argc, char** argv) {
       printer.PrintFormattedHumanOutput(
           "GetAccountDiskUsage call failed: status %d\n",
           static_cast<int>(reply.error()));
-      return 1;
+      return static_cast<int>(reply.error());
     }
 
     printer.PrintFormattedHumanOutput(
@@ -2317,7 +2318,7 @@ int main(int argc, char** argv) {
       printer.PrintFormattedHumanOutput(
           "LockToSingleUserMountUntilReboot call failed: status %d\n",
           static_cast<int>(reply.error()));
-      return 1;
+      return static_cast<int>(reply.error());
     }
 
     printer.PrintHumanOutput("Login disabled.\n");
@@ -2340,7 +2341,7 @@ int main(int argc, char** argv) {
       printer.PrintFormattedHumanOutput(
           "GetRsuDeviceId call failed: status %d\n",
           static_cast<int>(reply.error()));
-      return 1;
+      return static_cast<int>(reply.error());
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_START_AUTH_SESSION],
                      action.c_str())) {
