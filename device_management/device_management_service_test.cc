@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -20,6 +21,7 @@
 #include "device_management/fwmp/mock_firmware_management_parameters.h"
 #include "device_management/install_attributes/mock_install_attributes.h"
 #include "device_management/install_attributes/mock_platform.h"
+#include "device_management/proto_bindings/device_management_interface.pb.h"
 
 using ::hwsec::TPMError;
 using ::hwsec_foundation::error::testing::IsOk;
@@ -30,6 +32,8 @@ using ::hwsec_foundation::status::MakeStatus;
 using ::testing::_;
 using ::testing::AtLeast;
 using ::testing::DoAll;
+using ::testing::ElementsAreArray;
+using ::testing::Invoke;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
@@ -207,6 +211,9 @@ class DeviceManagementServiceAPITest : public ::testing::Test {
   }
 
  protected:
+  constexpr static char kInstallAttributeName[] = "SomeRandomAttribute";
+  constexpr static uint8_t kInstallAttributeData[] = {0x01, 0x02, 0x00,
+                                                      0x03, 0xFF, 0xAB};
   DeviceManagementService device_management_service_;
   StrictMock<MockFirmwareManagementParameters>* fwmp_;
   StrictMock<MockInstallAttributes>* install_attrs_;
@@ -342,6 +349,130 @@ TEST_F(DeviceManagementServiceAPITest,
   EXPECT_FALSE(device_management_service_.RemoveFirmwareManagementParameters());
 }
 
-// TODO(b/306379379): Add more unittests for the service.
+TEST_F(DeviceManagementServiceAPITest, InstallAttributesEnterpriseOwned) {
+  brillo::Blob blob_true = brillo::BlobFromString("true");
+  blob_true.push_back(0);
 
+  EXPECT_CALL(*install_attrs_, Get("enterprise.owned", _))
+      .WillOnce(DoAll(SetArgPointee<1>(blob_true), Return(true)));
+
+  device_management_service_.DetectEnterpriseOwnership();
+
+  EXPECT_TRUE(device_management_service_.IsEnterpriseOwned());
+}
+
+TEST_F(DeviceManagementServiceAPITest, InstallAttributesNotEnterpriseOwned) {
+  brillo::Blob blob_false = brillo::BlobFromString("false");
+  blob_false.push_back(0);
+
+  EXPECT_CALL(*install_attrs_, Get("enterprise.owned", _))
+      .WillOnce(DoAll(SetArgPointee<1>(blob_false), Return(true)));
+
+  device_management_service_.DetectEnterpriseOwnership();
+
+  EXPECT_FALSE(device_management_service_.IsEnterpriseOwned());
+}
+
+TEST_F(DeviceManagementServiceAPITest, InstallAttributesGet) {
+  // Test for successful case.
+  EXPECT_CALL(*install_attrs_, Get(kInstallAttributeName, _))
+      .WillOnce(DoAll(SetArgPointee<1>(std::vector<uint8_t>(
+                          std::begin(kInstallAttributeData),
+                          std::end(kInstallAttributeData))),
+                      Return(true)));
+  std::vector<uint8_t> data;
+  EXPECT_TRUE(device_management_service_.InstallAttributesGet(
+      kInstallAttributeName, &data));
+  EXPECT_THAT(data, ElementsAreArray(kInstallAttributeData));
+
+  // Test for unsuccessful case.
+  EXPECT_CALL(*install_attrs_, Get(kInstallAttributeName, _))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(device_management_service_.InstallAttributesGet(
+      kInstallAttributeName, &data));
+}
+
+TEST_F(DeviceManagementServiceAPITest, InstallAttributesSet) {
+  // Test for successful case.
+  EXPECT_CALL(*install_attrs_, Set(kInstallAttributeName,
+                                   ElementsAreArray(kInstallAttributeData)))
+      .WillOnce(Return(true));
+
+  std::vector<uint8_t> data(std::begin(kInstallAttributeData),
+                            std::end(kInstallAttributeData));
+  EXPECT_TRUE(device_management_service_.InstallAttributesSet(
+      kInstallAttributeName, data));
+
+  // Test for unsuccessful case.
+  EXPECT_CALL(*install_attrs_, Set(kInstallAttributeName,
+                                   ElementsAreArray(kInstallAttributeData)))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(device_management_service_.InstallAttributesSet(
+      kInstallAttributeName, data));
+}
+
+TEST_F(DeviceManagementServiceAPITest, InstallAttributesFinalize) {
+  // Test for successful case.
+  EXPECT_CALL(*install_attrs_, Finalize()).WillOnce(Return(true));
+  EXPECT_CALL(*install_attrs_, Get(_, _)).WillOnce(Return(true));
+  EXPECT_TRUE(device_management_service_.InstallAttributesFinalize());
+
+  // Test for unsuccessful case.
+  EXPECT_CALL(*install_attrs_, Finalize()).WillOnce(Return(false));
+  EXPECT_CALL(*install_attrs_, Get(_, _)).WillOnce(Return(true));
+  EXPECT_FALSE(device_management_service_.InstallAttributesFinalize());
+}
+
+TEST_F(DeviceManagementServiceAPITest, InstallAttributesCount) {
+  constexpr int kCount = 42;  // The Answer!!
+  EXPECT_CALL(*install_attrs_, Count()).WillOnce(Return(kCount));
+  EXPECT_EQ(kCount, device_management_service_.InstallAttributesCount());
+}
+
+TEST_F(DeviceManagementServiceAPITest, InstallAttributesIsSecure) {
+  // Test for successful case.
+  EXPECT_CALL(*install_attrs_, IsSecure()).WillOnce(Return(true));
+  EXPECT_TRUE(device_management_service_.InstallAttributesIsSecure());
+
+  // Test for unsuccessful case.
+  EXPECT_CALL(*install_attrs_, IsSecure()).WillOnce(Return(false));
+  EXPECT_FALSE(device_management_service_.InstallAttributesIsSecure());
+}
+
+TEST_F(DeviceManagementServiceAPITest, InstallAttributesGetStatus) {
+  constexpr InstallAttributes::Status status_list[] = {
+      InstallAttributes::Status::kUnknown,
+      InstallAttributes::Status::kTpmNotOwned,
+      InstallAttributes::Status::kFirstInstall,
+      InstallAttributes::Status::kValid,
+      InstallAttributes::Status::kInvalid,
+  };
+
+  for (auto s : status_list) {
+    EXPECT_CALL(*install_attrs_, status()).WillOnce(Return(s));
+    EXPECT_EQ(s, device_management_service_.InstallAttributesGetStatus());
+  }
+}
+
+TEST_F(DeviceManagementServiceAPITest, InstallAttributesStatusToProtoEnum) {
+  EXPECT_EQ(InstallAttributesState::UNKNOWN,
+            DeviceManagementService::InstallAttributesStatusToProtoEnum(
+                InstallAttributes::Status::kUnknown));
+  EXPECT_EQ(InstallAttributesState::TPM_NOT_OWNED,
+            DeviceManagementService::InstallAttributesStatusToProtoEnum(
+                InstallAttributes::Status::kTpmNotOwned));
+  EXPECT_EQ(InstallAttributesState::FIRST_INSTALL,
+            DeviceManagementService::InstallAttributesStatusToProtoEnum(
+                InstallAttributes::Status::kFirstInstall));
+  EXPECT_EQ(InstallAttributesState::VALID,
+            DeviceManagementService::InstallAttributesStatusToProtoEnum(
+                InstallAttributes::Status::kValid));
+  EXPECT_EQ(InstallAttributesState::INVALID,
+            DeviceManagementService::InstallAttributesStatusToProtoEnum(
+                InstallAttributes::Status::kInvalid));
+  static_assert(InstallAttributesState_MAX == 4,
+                "Incorrect element count in InstallAttributesState");
+  static_assert(static_cast<int>(InstallAttributes::Status::COUNT) == 5,
+                "Incorrect element count in InstallAttributes::Status");
+}
 }  // namespace device_management
