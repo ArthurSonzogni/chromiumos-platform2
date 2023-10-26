@@ -9,30 +9,35 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include <base/functional/bind.h>
+#include <base/memory/weak_ptr.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <brillo/http/mock_connection.h>
 #include <brillo/http/mock_transport.h>
 #include <brillo/mime_utils.h>
 #include <brillo/streams/mock_stream.h>
 #include <curl/curl.h>
 #include <gtest/gtest.h>
+#include <net-base/dns_client.h>
 #include <net-base/http_url.h>
 #include <net-base/ip_address.h>
 
 #include "shill/mock_control.h"
-#include "shill/mock_dns_client.h"
 #include "shill/mock_manager.h"
 #include "shill/test_event_dispatcher.h"
 
 using ::testing::_;
 using ::testing::AtLeast;
 using ::testing::DoAll;
+using ::testing::Eq;
 using ::testing::Invoke;
+using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::ReturnRef;
@@ -46,14 +51,33 @@ using ::testing::WithArg;
 namespace shill {
 
 namespace {
-const char kTextSiteName[] = "www.chromium.org";
-const char kTextURL[] = "http://www.chromium.org/path/to/resource";
-const char kNumericURL[] = "http://10.1.1.1";
-const char kInterfaceName[] = "int0";
-const char kLoggingTag[] = "int0 IPv4 attempt=1";
-constexpr net_base::IPAddress kDNSServer0(net_base::IPv4Address(8, 8, 8, 8));
-constexpr net_base::IPAddress kDNSServer1(net_base::IPv4Address(8, 8, 4, 4));
-const char kServerAddress[] = "10.1.1.1";
+constexpr std::string_view kTextSiteName = "www.chromium.org";
+constexpr std::string_view kTextURL =
+    "http://www.chromium.org/path/to/resource";
+constexpr std::string_view kIPv4AddressURL = "http://10.1.1.1";
+constexpr std::string_view kIPv6AddressURL = "http://[2001:db8::1]/example";
+constexpr std::string_view kInterfaceName = "int0";
+constexpr std::string_view kLoggingTag = "int0 IPv4 attempt=1";
+constexpr net_base::IPAddress kIPv4DNS0(net_base::IPv4Address(8, 8, 8, 8));
+constexpr net_base::IPAddress kIPv4DNS1(net_base::IPv4Address(8, 8, 4, 4));
+// clang-format off
+constexpr net_base::IPAddress kIPv6DNS0(net_base::IPv6Address(0x20, 0x01,
+                                                              0x48, 0x60,
+                                                              0x48, 0x60,
+                                                              0x00, 0x00,
+                                                              0x00, 0x00,
+                                                              0x00, 0x00,
+                                                              0x00, 0x00,
+                                                              0x88, 0x88));
+constexpr net_base::IPAddress kIPv6DNS1(net_base::IPv6Address(0x20, 0x01,
+                                                              0x48, 0x60,
+                                                              0x48, 0x60,
+                                                              0x00, 0x00,
+                                                              0x00, 0x00,
+                                                              0x00, 0x00,
+                                                              0x00, 0x00,
+                                                              0x88, 0x44));
+// clang-format on
 }  // namespace
 
 MATCHER_P(ByteStringMatches, byte_string, "") {
@@ -64,12 +88,74 @@ MATCHER_P(CallbackEq, callback, "") {
   return arg.Equals(callback);
 }
 
+// The fake client doesn't need to do anything. WeakPtrFactory is for querying
+// whether the object is still valid in the test.
+class FakeDNSClient : public net_base::DNSClient {
+ public:
+  FakeDNSClient(std::string_view hostname,
+                std::optional<net_base::IPAddress> dns)
+      : hostname_(hostname), dns_(dns) {}
+
+  base::WeakPtr<FakeDNSClient> AsWeakPtr() {
+    return weak_factory_.GetWeakPtr();
+  }
+
+  std::string_view hostname() { return hostname_; }
+  std::optional<net_base::IPAddress> dns() { return dns_; }
+
+ private:
+  std::string hostname_;
+  std::optional<net_base::IPAddress> dns_;
+  base::WeakPtrFactory<FakeDNSClient> weak_factory_{this};
+};
+
+class FakeDNSClientFactory : public net_base::DNSClientFactory {
+ public:
+  using Callbacks = std::vector<net_base::DNSClient::Callback>;
+
+  FakeDNSClientFactory() {
+    ON_CALL(*this, Resolve)
+        .WillByDefault([this](
+                           net_base::IPFamily family, std::string_view hostname,
+                           net_base::DNSClient::CallbackWithDuration callback,
+                           const net_base::DNSClient::Options& options,
+                           net_base::AresInterface* ares_interface) {
+          callbacks_.emplace_back(std::move(callback));
+          auto ret =
+              std::make_unique<FakeDNSClient>(hostname, options.name_server);
+          clients_.push_back(ret->AsWeakPtr());
+          return ret;
+        });
+  }
+
+  MOCK_METHOD(std::unique_ptr<net_base::DNSClient>,
+              Resolve,
+              (net_base::IPFamily family,
+               std::string_view hostname,
+               net_base::DNSClient::CallbackWithDuration callback,
+               const net_base::DNSClient::Options& options,
+               net_base::AresInterface* ares_interface),
+              (override));
+
+  void TriggerCallback(const net_base::DNSClient::Result& result) {
+    std::move(callbacks_.back()).Run(base::Milliseconds(100), result);
+    callbacks_.pop_back();
+  }
+
+  std::vector<base::WeakPtr<FakeDNSClient>> GetWeakPtrsToExistingClients()
+      const {
+    return clients_;
+  }
+
+ private:
+  std::vector<net_base::DNSClient::CallbackWithDuration> callbacks_;
+  std::vector<base::WeakPtr<FakeDNSClient>> clients_;
+};
+
 class HttpRequestTest : public Test {
  public:
   HttpRequestTest()
-      : interface_name_(kInterfaceName),
-        dns_client_(new StrictMock<MockDnsClient>()),
-        transport_(std::make_shared<brillo::http::MockTransport>()),
+      : transport_(std::make_shared<brillo::http::MockTransport>()),
         brillo_connection_(
             std::make_shared<brillo::http::MockConnection>(transport_)),
         manager_(&control_, &dispatcher_, nullptr) {}
@@ -94,43 +180,37 @@ class HttpRequestTest : public Test {
     }
   };
 
-  void SetUp() override {
-    request_.reset(new HttpRequest(
-        &dispatcher_, interface_name_, net_base::IPFamily::kIPv4,
-        {kDNSServer0, kDNSServer1}, true, transport_));
-    // Passes ownership.
-    request_->dns_client_.reset(dns_client_);
-  }
-  void TearDown() override {
-    if (request_->is_running_) {
-      ExpectStop();
-
-      // Subtle: Make sure the finalization of the request happens while our
-      // expectations are still active.
-      request_.reset();
-    }
-    testing::Mock::VerifyAndClearExpectations(brillo_connection_.get());
-    brillo_connection_.reset();
-    testing::Mock::VerifyAndClearExpectations(transport_.get());
-    transport_.reset();
-  }
   HttpRequest* request() { return request_.get(); }
   std::shared_ptr<brillo::http::MockTransport> transport() {
     return transport_;
   }
 
   // Expectations
-  void ExpectReset() {
-    EXPECT_TRUE(request_->request_error_callback_.is_null());
-    EXPECT_TRUE(request_->request_success_callback_.is_null());
-    EXPECT_FALSE(request_->dns_client_callback_.is_null());
-    EXPECT_EQ(dns_client_, request_->dns_client_.get());
-    EXPECT_FALSE(request_->is_running_);
+  void ExpectStopped() {
+    EXPECT_FALSE(request_->is_running());
+    if (dns_client_factory_) {
+      for (const auto& client :
+           dns_client_factory_->GetWeakPtrsToExistingClients()) {
+        EXPECT_TRUE(client.WasInvalidated());
+      }
+    }
   }
-  void ExpectStop() { EXPECT_CALL(*dns_client_, Stop()).Times(AtLeast(1)); }
-  void ExpectDNSRequest(const std::string& host, bool return_value) {
-    EXPECT_CALL(*dns_client_, Start(_, StrEq(host), _))
-        .WillOnce(Return(return_value));
+  void VerifyDNSRequests(std::string_view hostname,
+                         const std::vector<net_base::IPAddress>& dns_list) {
+    ASSERT_NE(nullptr, dns_client_factory_);
+    auto dns_clients = dns_client_factory_->GetWeakPtrsToExistingClients();
+    auto dns_list_copy = dns_list;
+    EXPECT_EQ(dns_list_copy.size(), dns_clients.size());
+    for (const auto& client : dns_clients) {
+      ASSERT_NE(nullptr, client);
+      EXPECT_EQ(hostname, client->hostname());
+      ASSERT_TRUE(client->dns().has_value());
+      auto it =
+          std::find(dns_list_copy.begin(), dns_list_copy.end(), *client->dns());
+      EXPECT_NE(it, dns_list_copy.end());
+      dns_list_copy.erase(it);
+    }
+    EXPECT_TRUE(dns_list_copy.empty());
   }
   void ExpectRequestErrorCallback(HttpRequest::Error error) {
     EXPECT_CALL(target_, RequestErrorCallTarget(error));
@@ -156,22 +236,35 @@ class HttpRequestTest : public Test {
     EXPECT_CALL(target_, RequestSuccessCallTarget(_))
         .WillOnce(Invoke(this, &HttpRequestTest::InvokeResultVerify));
   }
-  void GetDNSResultFailure(const std::string& error_msg) {
-    Error error(Error::kOperationFailed, error_msg);
-    request_->GetDNSResult(base::unexpected(error));
+  void CreateRequest(std::string_view interface_name,
+                     net_base::IPFamily ip_family,
+                     const std::vector<net_base::IPAddress>& dns_list) {
+    dns_client_factory_ = new FakeDNSClientFactory();
+    EXPECT_CALL(*transport_, SetInterface(Eq(interface_name)));
+    EXPECT_CALL(*transport_, UseCustomCertificate).Times(0);
+    request_.reset(new HttpRequest(&dispatcher_, interface_name, ip_family,
+                                   dns_list, false, transport_,
+                                   base::WrapUnique(dns_client_factory_)));
   }
-  void GetDNSResultSuccess(const net_base::IPAddress& address) {
-    request_->GetDNSResult(address);
+  void GetDNSResultFailure(net_base::IPAddress dns,
+                           net_base::DNSClient::Error error) {
+    request_->GetDNSResult(dns, base::Milliseconds(100),
+                           base::unexpected(error));
   }
-  void StartRequest(const std::string& url_string) {
+  void GetDNSResultSuccess(net_base::IPAddress dns,
+                           const std::vector<net_base::IPAddress>& addresses) {
+    request_->GetDNSResult(dns, base::Milliseconds(100), addresses);
+  }
+  void StartRequest(std::string_view url_string) {
     auto url = net_base::HttpUrl::CreateFromString(url_string);
+    ASSERT_TRUE(url.has_value());
     request_->Start(kLoggingTag, *url, {}, target_.request_success_callback(),
                     target_.request_error_callback());
   }
-  void ExpectCreateConnection(const std::string& url) {
-    EXPECT_CALL(
-        *transport_,
-        CreateConnection(url, brillo::http::request_type::kGet, _, "", "", _))
+  void ExpectCreateConnection(std::string_view url) {
+    EXPECT_CALL(*transport_,
+                CreateConnection(Eq(url), brillo::http::request_type::kGet, _,
+                                 "", "", _))
         .WillOnce(Return(brillo_connection_));
   }
   void FinishRequestAsyncSuccess(
@@ -218,9 +311,7 @@ class HttpRequestTest : public Test {
   }
 
  protected:
-  const std::string interface_name_;
-  // Owned by the HttpRequest, but tracked here for EXPECT().
-  StrictMock<MockDnsClient>* dns_client_;
+  FakeDNSClientFactory* dns_client_factory_;
   std::shared_ptr<brillo::http::MockTransport> transport_;
   std::shared_ptr<brillo::http::MockConnection> brillo_connection_;
   EventDispatcherForTest dispatcher_;
@@ -233,7 +324,9 @@ class HttpRequestTest : public Test {
 };
 
 TEST_F(HttpRequestTest, Constructor) {
-  ExpectReset();
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
+  ExpectStopped();
 }
 
 TEST_F(HttpRequestTest, UseCustomCertificate) {
@@ -241,71 +334,185 @@ TEST_F(HttpRequestTest, UseCustomCertificate) {
   EXPECT_CALL(*transport,
               UseCustomCertificate(brillo::http::Transport::Certificate::kNss));
 
-  std::vector<net_base::IPAddress> dns_list = {kDNSServer0, kDNSServer1};
+  std::vector<net_base::IPAddress> dns_list = {kIPv4DNS0, kIPv4DNS1};
   auto request = std::make_unique<HttpRequest>(
       &dispatcher_, "wlan0", net_base::IPFamily::kIPv4, dns_list,
-      /*allow_non_google_https=*/true, transport);
+      /*allow_non_google_https=*/true, transport,
+      std::make_unique<FakeDNSClientFactory>());
 }
 
-TEST_F(HttpRequestTest, NumericRequestSuccess) {
-  const std::string resp{"Sample response."};
-  ExpectRequestSuccessCallback(resp);
+TEST_F(HttpRequestTest, IPv4NumericRequestSuccess) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
 
+  const std::string resp = "Sample response.";
+  ExpectRequestSuccessCallback(resp);
   EXPECT_CALL(*transport(), ResolveHostToIp).Times(0);
-  ExpectCreateConnection(kNumericURL);
+  ExpectCreateConnection(kIPv4AddressURL);
   ExpectFinishRequestAsyncSuccess(resp);
 
-  ExpectStop();
-  StartRequest(kNumericURL);
-  ExpectReset();
+  StartRequest(kIPv4AddressURL);
+  ExpectStopped();
 }
 
-TEST_F(HttpRequestTest, RequestFail) {
-  ExpectRequestErrorCallback(HttpRequest::Error::kConnectionFailure);
+TEST_F(HttpRequestTest, IPv4NumericRequestFail) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
 
-  ExpectCreateConnection(kNumericURL);
+  ExpectRequestErrorCallback(HttpRequest::Error::kConnectionFailure);
+  ExpectCreateConnection(kIPv4AddressURL);
   ExpectFinishRequestAsyncFail();
 
-  ExpectStop();
-  StartRequest(kNumericURL);
-  ExpectReset();
+  StartRequest(kIPv4AddressURL);
+  ExpectStopped();
 }
 
-TEST_F(HttpRequestTest, TextRequestSuccess) {
-  ExpectDNSRequest(kTextSiteName, true);
+// TODO(cros-networking@): Re-enable this test when HttpUrl supports parsing
+// IPv6 address hosts.
+TEST_F(HttpRequestTest, DISABLED_IPv6NumericRequestSuccess) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv6,
+                {kIPv6DNS0, kIPv6DNS1});
 
-  const std::string resp{"Sample response."};
+  const std::string resp = "Sample response.";
+  ExpectRequestSuccessCallback(resp);
+  EXPECT_CALL(*transport(), ResolveHostToIp).Times(0);
+  ExpectCreateConnection(kIPv6AddressURL);
+  ExpectFinishRequestAsyncSuccess(resp);
+
+  StartRequest(kIPv6AddressURL);
+  ExpectStopped();
+}
+
+// TODO(cros-networking@): Re-enable this test when HttpUrl supports parsing
+// IPv6 address hosts.
+TEST_F(HttpRequestTest, DISABLED_IPv6NumericRequestFail) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv6,
+                {kIPv6DNS0, kIPv6DNS1});
+
+  ExpectRequestErrorCallback(HttpRequest::Error::kConnectionFailure);
+  ExpectCreateConnection(kIPv6AddressURL);
+  ExpectFinishRequestAsyncFail();
+
+  StartRequest(kIPv6AddressURL);
+  ExpectStopped();
+}
+
+TEST_F(HttpRequestTest, IPv4TextRequestSuccess) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
+
+  StartRequest(kTextURL);
+  VerifyDNSRequests(kTextSiteName, {kIPv4DNS0, kIPv4DNS1});
+
+  const std::string resp = "Sample response.";
   ExpectRequestSuccessCallback(resp);
   auto url = *net_base::HttpUrl::CreateFromString(kTextURL);
-  EXPECT_CALL(*transport(),
-              ResolveHostToIp(url.host(), url.port(), kServerAddress));
+  EXPECT_CALL(*transport(), ResolveHostToIp(url.host(), url.port(),
+                                            "10.1.1.1,10.1.1.2,10.1.1.3"));
   ExpectCreateConnection(kTextURL);
   ExpectFinishRequestAsyncSuccess(resp);
 
-  ExpectStop();
-  StartRequest(kTextURL);
-  const auto addr = *net_base::IPAddress::CreateFromString(kServerAddress);
-  GetDNSResultSuccess(addr);
-  ExpectReset();
+  GetDNSResultSuccess(
+      kIPv4DNS0, {
+                     net_base::IPAddress(net_base::IPv4Address(10, 1, 1, 1)),
+                     net_base::IPAddress(net_base::IPv4Address(10, 1, 1, 2)),
+                     net_base::IPAddress(net_base::IPv4Address(10, 1, 1, 3)),
+                 });
+
+  ExpectStopped();
 }
 
-TEST_F(HttpRequestTest, FailDNSFailure) {
-  ExpectDNSRequest(kTextSiteName, true);
+TEST_F(HttpRequestTest, IPv6TextRequestSuccess) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv6,
+                {kIPv6DNS0, kIPv6DNS1});
+
   StartRequest(kTextURL);
+  VerifyDNSRequests(kTextSiteName, {kIPv6DNS0, kIPv6DNS1});
+
+  const std::string resp = "Sample response.";
+  ExpectRequestSuccessCallback(resp);
+  auto url = *net_base::HttpUrl::CreateFromString(kTextURL);
+  EXPECT_CALL(*transport(),
+              ResolveHostToIp(url.host(), url.port(), "2001:db8::1"));
+  ExpectCreateConnection(kTextURL);
+  ExpectFinishRequestAsyncSuccess(resp);
+
+  const auto addr = *net_base::IPAddress::CreateFromString("2001:db8::1");
+  GetDNSResultSuccess(kIPv6DNS0, {addr});
+
+  ExpectStopped();
+}
+
+// multiple addresses
+
+TEST_F(HttpRequestTest, IPv4FailDNSFailure) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
+  StartRequest(kTextURL);
+  VerifyDNSRequests(kTextSiteName, {kIPv4DNS0, kIPv4DNS1});
   ExpectRequestErrorCallback(HttpRequest::Error::kDNSFailure);
-  ExpectStop();
-  GetDNSResultFailure(DnsClient::kErrorNoData);
-  ExpectReset();
+  GetDNSResultFailure(kIPv4DNS0, net_base::DNSClient::Error::kNoData);
+  GetDNSResultFailure(kIPv4DNS1, net_base::DNSClient::Error::kNoData);
+  ExpectStopped();
 }
 
-TEST_F(HttpRequestTest, FailDNSTimeout) {
-  ExpectDNSRequest(kTextSiteName, true);
+TEST_F(HttpRequestTest, IPv4FailDNSTimeout) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv4DNS0, kIPv4DNS1});
   StartRequest(kTextURL);
+  VerifyDNSRequests(kTextSiteName, {kIPv4DNS0, kIPv4DNS1});
   ExpectRequestErrorCallback(HttpRequest::Error::kDNSTimeout);
-  ExpectStop();
-  const std::string error(DnsClient::kErrorTimedOut);
-  GetDNSResultFailure(error);
-  ExpectReset();
+  GetDNSResultFailure(kIPv4DNS0, net_base::DNSClient::Error::kTimedOut);
+  GetDNSResultFailure(kIPv4DNS1, net_base::DNSClient::Error::kTimedOut);
+  ExpectStopped();
+}
+
+TEST_F(HttpRequestTest, IPv6FailDNSFailure) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv6,
+                {kIPv6DNS0, kIPv6DNS1});
+  StartRequest(kTextURL);
+  VerifyDNSRequests(kTextSiteName, {kIPv6DNS0, kIPv6DNS1});
+  ExpectRequestErrorCallback(HttpRequest::Error::kDNSFailure);
+  GetDNSResultFailure(kIPv6DNS0, net_base::DNSClient::Error::kNoData);
+  GetDNSResultFailure(kIPv6DNS1, net_base::DNSClient::Error::kNoData);
+  ExpectStopped();
+}
+
+TEST_F(HttpRequestTest, IPv6FailDNSTimeout) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv6,
+                {kIPv6DNS0, kIPv6DNS1});
+  StartRequest(kTextURL);
+  VerifyDNSRequests(kTextSiteName, {kIPv6DNS0, kIPv6DNS1});
+  ExpectRequestErrorCallback(HttpRequest::Error::kDNSTimeout);
+  GetDNSResultFailure(kIPv6DNS0, net_base::DNSClient::Error::kTimedOut);
+  GetDNSResultFailure(kIPv6DNS1, net_base::DNSClient::Error::kTimedOut);
+  ExpectStopped();
+}
+
+TEST_F(HttpRequestTest, IPv4TextRequestSuccessAfterSomeDNSError) {
+  CreateRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                {kIPv6DNS0, kIPv6DNS1});
+
+  StartRequest(kTextURL);
+  VerifyDNSRequests(kTextSiteName, {kIPv6DNS0, kIPv6DNS1});
+
+  EXPECT_CALL(*transport(), ResolveHostToIp).Times(0);
+  GetDNSResultFailure(kIPv4DNS0, net_base::DNSClient::Error::kTimedOut);
+  EXPECT_TRUE(request_->is_running());
+  Mock::VerifyAndClearExpectations(transport().get());
+
+  const std::string resp = "Sample response.";
+  ExpectRequestSuccessCallback(resp);
+  auto url = *net_base::HttpUrl::CreateFromString(kTextURL);
+  EXPECT_CALL(*transport(),
+              ResolveHostToIp(url.host(), url.port(), "10.1.1.1"));
+  ExpectCreateConnection(kTextURL);
+  ExpectFinishRequestAsyncSuccess(resp);
+
+  GetDNSResultSuccess(
+      kIPv4DNS1, {net_base::IPAddress(net_base::IPv4Address(10, 1, 1, 1))});
+
+  ExpectStopped();
 }
 
 }  // namespace shill

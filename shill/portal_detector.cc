@@ -18,7 +18,6 @@
 #include <brillo/http/http_request.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "shill/dns_client.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"

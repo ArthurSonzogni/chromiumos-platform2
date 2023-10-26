@@ -8,6 +8,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/functional/bind.h>
@@ -55,7 +56,9 @@ class MockHttpRequest : public HttpRequest {
                     kInterfaceName,
                     net_base::IPFamily::kIPv4,
                     {kDNSServer0, kDNSServer1},
-                    true) {}
+                    true,
+                    brillo::http::Transport::CreateDefault(),
+                    nullptr) {}
   MockHttpRequest(const MockHttpRequest&) = delete;
   MockHttpRequest& operator=(const MockHttpRequest&) = delete;
   ~MockHttpRequest() = default;
@@ -63,7 +66,7 @@ class MockHttpRequest : public HttpRequest {
   MOCK_METHOD(
       void,
       Start,
-      (const std::string&,
+      (std::string_view,
        const net_base::HttpUrl&,
        const brillo::http::HeaderList&,
        base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>,
@@ -158,8 +161,8 @@ class PortalDetectorTest : public Test {
     // Expect that PortalDetector will create the request of the HTTP probe
     // first.
     EXPECT_CALL(*portal_detector_, CreateHTTPRequest)
-        .WillOnce(Return(std::unique_ptr<HttpRequest>(http_request_)))
-        .WillOnce(Return(std::unique_ptr<HttpRequest>(https_request_)));
+        .WillOnce(Return(std::unique_ptr<MockHttpRequest>(http_request_)))
+        .WillOnce(Return(std::unique_ptr<MockHttpRequest>(https_request_)));
     portal_detector_->Start(kInterfaceName, net_base::IPFamily::kIPv4,
                             {kDNSServer0, kDNSServer1}, "tag");
   }
@@ -183,7 +186,7 @@ class PortalDetectorTest : public Test {
   }
 
   void ExpectReset() {
-    EXPECT_EQ(0, portal_detector_->attempt_count_);
+    EXPECT_EQ(0, portal_detector_->attempt_count());
     EXPECT_TRUE(callback_target_.result_callback() ==
                 portal_detector_->portal_result_callback_);
     ExpectCleanupTrial();

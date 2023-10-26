@@ -8,18 +8,19 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <brillo/http/http_utils.h>
+#include <net-base/dns_client.h>
 #include <net-base/http_url.h>
 
-#include "shill/dns_client.h"
-#include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 
@@ -27,6 +28,13 @@ namespace {
 
 // The curl error domain for http requests
 const char kCurlEasyError[] = "curl_easy_error";
+
+// Maximum number of name servers queried in parallel.
+constexpr int kDNSMaxParallelQueries = 4;
+// Maximum number of query tries per name server.
+constexpr int kDNSNumberOfQueries = 3;
+// Timeout of a single query to a single name server.
+constexpr base::TimeDelta kDNSTimeoutOfQueries = base::Seconds(2);
 
 }  // namespace
 
@@ -39,31 +47,31 @@ static std::string ObjectID(const HttpRequest* r) {
 }
 }  // namespace Logging
 
-HttpRequest::HttpRequest(EventDispatcher* dispatcher,
-                         const std::string& interface_name,
-                         net_base::IPFamily ip_family,
-                         const std::vector<net_base::IPAddress>& dns_list,
-                         bool allow_non_google_https,
-                         std::shared_ptr<brillo::http::Transport> transport)
+HttpRequest::HttpRequest(
+    EventDispatcher* dispatcher,
+    std::string_view interface_name,
+    net_base::IPFamily ip_family,
+    const std::vector<net_base::IPAddress>& dns_list,
+    bool allow_non_google_https,
+    std::shared_ptr<brillo::http::Transport> transport,
+    std::unique_ptr<net_base::DNSClientFactory> dns_client_factory)
     : dispatcher_(dispatcher),
       ip_family_(ip_family),
       dns_list_(dns_list),
-      weak_ptr_factory_(this),
-      dns_client_callback_(base::BindRepeating(&HttpRequest::GetDNSResult,
-                                               weak_ptr_factory_.GetWeakPtr())),
-      dns_client_(new DnsClient(ip_family_,
-                                interface_name,
-                                DnsClient::kDnsTimeout,
-                                dispatcher,
-                                dns_client_callback_)),
       transport_(transport),
+      dns_client_factory_(std::move(dns_client_factory)),
       request_id_(-1),
       is_running_(false) {
+  dns_options_.interface = interface_name;
+  // TODO(b/307880493): Tune these parameters based on the technology once
+  // metrics are available.
+  dns_options_.number_of_tries = kDNSNumberOfQueries;
+  dns_options_.per_query_initial_timeout = kDNSTimeoutOfQueries;
   // b/180521518, Force the transport to bind to |interface_name|. Otherwise,
   // the request would be routed by default through the current physical default
   // network. b/288351302: binding to an IP address of the interface name is not
   // enough to disambiguate all IPv4 multi-network scenarios.
-  transport_->SetInterface(interface_name);
+  transport_->SetInterface(dns_options_.interface);
   if (allow_non_google_https) {
     transport_->UseCustomCertificate(
         brillo::http::Transport::Certificate::kNss);
@@ -75,7 +83,7 @@ HttpRequest::~HttpRequest() {
 }
 
 void HttpRequest::Start(
-    const std::string& logging_tag,
+    std::string_view logging_tag,
     const net_base::HttpUrl& url,
     const brillo::http::HeaderList& headers,
     base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
@@ -103,19 +111,16 @@ void HttpRequest::Start(
     return;
   }
 
-  shill::Error error;
-  std::vector<std::string> dns_addresses;
-  // TODO(b/307880493): Migrate to net_base::DNSClient and avoid
-  // converting the net_base::IPAddress values to std::string.
   for (const auto& dns : dns_list_) {
-    if (dns.GetFamily() == ip_family_) {
-      dns_addresses.push_back(dns.ToString());
+    if (dns_queries_.size() > kDNSMaxParallelQueries) {
+      break;
     }
-  }
-  if (!dns_client_->Start(dns_addresses, url_.host(), &error)) {
-    LOG(ERROR) << logging_tag_
-               << ": Failed to start DNS client: " << error.message();
-    SendErrorAsync(Error::kDNSFailure);
+    auto cb = base::BindOnce(&HttpRequest::GetDNSResult,
+                             weak_ptr_factory_.GetWeakPtr(), dns);
+    auto dns_options = dns_options_;
+    dns_options.name_server = dns;
+    dns_queries_[dns] = dns_client_factory_->Resolve(
+        ip_family_, url_.host(), std::move(cb), dns_options);
   }
 }
 
@@ -194,15 +199,10 @@ void HttpRequest::ErrorCallback(brillo::http::RequestID request_id,
 }
 
 void HttpRequest::Stop() {
-  SLOG(this, 3) << "In " << __func__ << ": running is " << is_running_;
-
   if (!is_running_) {
     return;
   }
-
-  // Clear IO handlers first so that closing the socket doesn't cause
-  // events to fire.
-  dns_client_->Stop();
+  dns_queries_.clear();
   is_running_ = false;
   request_id_ = -1;
   request_error_callback_.Reset();
@@ -210,26 +210,40 @@ void HttpRequest::Stop() {
 }
 
 // DnsClient callback that fires when the DNS request completes.
-void HttpRequest::GetDNSResult(
-    const base::expected<net_base::IPAddress, shill::Error>& address) {
-  SLOG(this, 3) << "In " << __func__;
-  if (!address.has_value()) {
-    LOG(ERROR) << logging_tag_ << ": Could not resolve " << url_.host() << ": "
-               << address.error().message();
-    if (address.error().message() == DnsClient::kErrorTimedOut) {
-      SendError(Error::kDNSTimeout);
-    } else {
-      SendError(Error::kDNSFailure);
+void HttpRequest::GetDNSResult(net_base::IPAddress dns,
+                               base::TimeDelta duration,
+                               const net_base::DNSClient::Result& result) {
+  if (!result.has_value()) {
+    LOG(WARNING) << logging_tag_ << ": Could not resolve " << url_.host()
+                 << " with " << dns << ": " << result.error();
+    auto error = Error::kDNSFailure;
+    if (result.error() == net_base::DNSClient::Error::kTimedOut) {
+      error = Error::kDNSTimeout;
+    }
+    dns_queries_.erase(dns);
+    if (dns_queries_.empty()) {
+      SendError(error);
     }
     return;
   }
 
+  // Cancel all other queries.
+  dns_queries_.clear();
+
+  // CURLOPT_RESOLVE expects the format "[+]HOST:PORT:ADDRESS[,ADDRESS]" for DNS
+  // cache entries, and brillo::http::Transport::ResolveHostToIp() already adds
+  // "HOST:PORT:".
+  std::string addresses;
+  std::string sep = "";
+  for (const auto& addr : *result) {
+    base::StrAppend(&addresses, {sep, addr.ToString()});
+    sep = ",";
+  }
   // Add the host/port to IP mapping to the DNS cache to force curl to resolve
-  // the URL to the given IP. Otherwise, will do its own DNS resolution and not
-  // use the IP we provide to it.
-  transport_->ResolveHostToIp(url_.host(), url_.port(), address->ToString());
+  // the URL to the given IP. Otherwise, curl will do its own DNS resolution.
+  transport_->ResolveHostToIp(url_.host(), url_.port(), addresses);
   LOG(INFO) << logging_tag_ << ": Resolved " << url_.host() << " to "
-            << *address;
+            << addresses << " in " << duration;
   StartRequest();
 }
 
@@ -237,7 +251,6 @@ void HttpRequest::SendError(Error error) {
   // Save copies on the stack, since Stop() will remove them.
   auto request_error_callback = std::move(request_error_callback_);
   Stop();
-
   // Call the callback last, since it may delete us and |this| may no longer
   // be valid.
   if (!request_error_callback.is_null()) {

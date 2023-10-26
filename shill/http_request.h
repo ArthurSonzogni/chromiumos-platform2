@@ -5,10 +5,12 @@
 #ifndef SHILL_HTTP_REQUEST_H_
 #define SHILL_HTTP_REQUEST_H_
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/cancelable_callback.h>
@@ -18,10 +20,9 @@
 #include <base/types/expected.h>
 #include <brillo/errors/error.h>
 #include <brillo/http/http_transport.h>
+#include <net-base/dns_client.h>
 #include <net-base/http_url.h>
 #include <net-base/ip_address.h>
-
-#include "shill/dns_client.h"
 
 namespace shill {
 
@@ -59,12 +60,14 @@ class HttpRequest {
   // communication with a non-Google server is allowed. Note that this
   // will not change any behavior for HTTP communication.
   HttpRequest(EventDispatcher* dispatcher,
-              const std::string& interface_name,
+              std::string_view interface_name,
               net_base::IPFamily ip_family,
               const std::vector<net_base::IPAddress>& dns_list,
               bool allow_non_google_https = false,
               std::shared_ptr<brillo::http::Transport> transport =
-                  brillo::http::Transport::CreateDefault());
+                  brillo::http::Transport::CreateDefault(),
+              std::unique_ptr<net_base::DNSClientFactory> dns_client_factory =
+                  std::make_unique<net_base::DNSClientFactory>());
   HttpRequest(const HttpRequest&) = delete;
   HttpRequest& operator=(const HttpRequest&) = delete;
 
@@ -75,7 +78,7 @@ class HttpRequest {
   // Otherwise, if the request fails |request_error_callback| is called with the
   // error reason.
   virtual void Start(
-      const std::string& logging_tag,
+      std::string_view logging_tag,
       const net_base::HttpUrl& url,
       const brillo::http::HeaderList& headers,
       base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
@@ -87,6 +90,7 @@ class HttpRequest {
   virtual void Stop();
 
   virtual const std::string& logging_tag() const { return logging_tag_; }
+  bool is_running() const { return is_running_; }
 
  private:
   friend class HttpRequestTest;
@@ -94,8 +98,9 @@ class HttpRequest {
   // Time to wait for HTTP request.
   static constexpr base::TimeDelta kRequestTimeout = base::Seconds(10);
 
-  void GetDNSResult(
-      const base::expected<net_base::IPAddress, shill::Error>& address);
+  void GetDNSResult(net_base::IPAddress dns,
+                    base::TimeDelta duration,
+                    const net_base::DNSClient::Result& result);
   void StartRequest();
   void SuccessCallback(brillo::http::RequestID request_id,
                        std::unique_ptr<brillo::http::Response> response);
@@ -108,21 +113,26 @@ class HttpRequest {
   void SendErrorAsync(Error error);
 
   EventDispatcher* dispatcher_;
-  std::string logging_tag_;
   net_base::IPFamily ip_family_;
+  // The list of name server addresses.
   std::vector<net_base::IPAddress> dns_list_;
-
-  base::WeakPtrFactory<HttpRequest> weak_ptr_factory_;
-  DnsClient::ClientCallback dns_client_callback_;
+  std::shared_ptr<brillo::http::Transport> transport_;
+  std::unique_ptr<net_base::DNSClientFactory> dns_client_factory_;
+  // Common DNS settings for all DNS queries.
+  net_base::DNSClient::Options dns_options_;
+  brillo::http::RequestID request_id_;
+  bool is_running_;
+  // All DNS queries currently in-flight, keyed by the DNS server address.
+  std::map<net_base::IPAddress, std::unique_ptr<net_base::DNSClient>>
+      dns_queries_;
+  std::string logging_tag_;
+  net_base::HttpUrl url_;
+  brillo::http::HeaderList headers_;
   base::OnceCallback<void(Error)> request_error_callback_;
   base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
       request_success_callback_;
-  std::unique_ptr<DnsClient> dns_client_;
-  std::shared_ptr<brillo::http::Transport> transport_;
-  brillo::http::RequestID request_id_;
-  net_base::HttpUrl url_;
-  brillo::http::HeaderList headers_;
-  bool is_running_;
+
+  base::WeakPtrFactory<HttpRequest> weak_ptr_factory_{this};
 };
 
 std::ostream& operator<<(std::ostream& stream, HttpRequest::Error error);
