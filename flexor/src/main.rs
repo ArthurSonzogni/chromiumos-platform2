@@ -6,6 +6,8 @@ use anyhow::Result;
 use libchromeos::panic_handler;
 use log::info;
 
+mod mount;
+
 static FLEXOR_TAG: &'static str = "flexor";
 
 fn main() -> Result<()> {

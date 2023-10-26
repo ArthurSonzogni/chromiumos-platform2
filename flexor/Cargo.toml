@@ -8,4 +8,6 @@ edition = "2021"
 anyhow = "1.0"
 libchromeos = { path = "../libchromeos-rs" } # provided by ebuild
 log = "0.4.20"
+nix = "0.23"
 stderrlog = "0.5.0"
+tempfile = "3.0"
