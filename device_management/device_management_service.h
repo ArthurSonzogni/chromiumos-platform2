@@ -89,13 +89,7 @@ class DeviceManagementService {
 
   // =============== Install Attributes Related Utilities ===============
 
-  // Set whether this device is enterprise owned. Calling this method will have
-  // effect on all currently mounted mounts. This can only be called on
-  // mount_thread_.
-  void SetEnterpriseOwned(bool enterprise_owned);
-
-  // Detect whether this device is enterprise owned, and call
-  // SetEnterpriseOwned(). This can only be called on origin thread.
+  // Detect whether this device is enterprise owned.
   void DetectEnterpriseOwnership();
 
   // Call this method to initialize the install attributes functionality. This

@@ -156,14 +156,6 @@ DeviceManagementService::InstallAttributesStatusToProtoEnum(
   return device_management::InstallAttributesState::INVALID;
 }
 
-// NOTE: cryptohome will now query device_management service to know the status
-// of `enterprise_owned_` variable. Earlier, we maintained another copy of
-// this instance in homedirs_ (see below) and updated it from this function.
-void DeviceManagementService::SetEnterpriseOwned(bool enterprise_owned) {
-  enterprise_owned_ = enterprise_owned;
-  // homedirs_->set_enterprise_owned(enterprise_owned);
-}
-
 void DeviceManagementService::DetectEnterpriseOwnership() {
   static const std::string true_str = "true";
   brillo::Blob true_value(true_str.begin(), true_str.end());
@@ -171,12 +163,11 @@ void DeviceManagementService::DetectEnterpriseOwnership() {
 
   brillo::Blob value;
   if (install_attrs_->Get("enterprise.owned", &value) && value == true_value) {
-    // Update any active mounts with the state, have to be done on mount thread.
-    SetEnterpriseOwned(true);
+    enterprise_owned_ = true;
   }
   // Note: Right now there's no way to convert an enterprise owned machine to a
   // non-enterprise owned machine without clearing the TPM, so we don't try
-  // calling SetEnterpriseOwned() with false.
+  // set `enterprise_owned_` to false.
 }
 
 void DeviceManagementService::InitializeInstallAttributesCallback(
