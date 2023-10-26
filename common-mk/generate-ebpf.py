@@ -11,29 +11,50 @@ used by userspace programs to load, attach and communicate with bpf functions.
 """
 
 import argparse
-import os
-import pathlib
+import logging
+from pathlib import Path
 import re
 import subprocess
 import sys
-import typing
+from typing import List
 
 
-def _run_command(command: typing.List[str]) -> subprocess.CompletedProcess:
+_HACK_VAR_TO_DISABLE_ISORT = "hack"
+# pylint: disable=wrong-import-position
+import chromite_init  # pylint: disable=unused-import
+
+from chromite.lib import commandline
+from chromite.lib import cros_build_lib
+
+
+_ARCH_TO_DEFINE = {
+    "amd64": "__TARGET_ARCH_x86",
+    "amd64-linux": "__TARGET_ARCH_x86",
+    "arm": "__TARGET_ARCH_arm",
+    "arm-linux": "__TARGET_ARCH_arm",
+    "arm64": "__TARGET_ARCH_arm64",
+    "mips": "__TARGET_ARCH_mips",
+    "ppc": "__TARGET_ARCH_powerpc",
+    "ppc64": "__TARGET_ARCH_powerpc",
+    "ppc64-linux": "__TARGET_ARCH_powerpc",
+    "x86": "__TARGET_ARCH_x86",
+    "x86-linux": "__TARGET_ARCH_x86",
+}
+
+
+def _run_command(command: List[str]) -> subprocess.CompletedProcess:
     """Run a command with default options.
 
     Run a command using subprocess.run with default configuration.
     """
-    return subprocess.run(
+    return cros_build_lib.run(
         command,
-        check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         encoding="utf-8",
     )
 
 
-def do_compile_bpf(args):
+def do_compile_bpf(opts: argparse.Namespace) -> int:
     """Compile BPF program from C.
 
     Takes a BPF application written in C and generates the BPF object file.
@@ -42,39 +63,18 @@ def do_compile_bpf(args):
     If args.out_min_btf is specified, the BPF object file is also processed to
     generate a min CO-RE BTF.
     """
-    out_obj = args.out_obj
-    out_bpf_skeleton_header = args.out_bpf_skeleton_header
-    out_btf = args.out_min_btf
-    vmlinux_btf = args.vmlinux_btf
-    source = args.source
-    arch = args.arch
-    includes = args.includes
-    defines = args.defines or []
-    sysroot = args.sysroot
-
-    arch_to_define = {
-        "amd64": "__TARGET_ARCH_x86",
-        "amd64-linux": "__TARGET_ARCH_x86",
-        "arm": "__TARGET_ARCH_arm",
-        "arm-linux": "__TARGET_ARCH_arm",
-        "arm64": "__TARGET_ARCH_arm64",
-        "mips": "__TARGET_ARCH_mips",
-        "ppc": "__TARGET_ARCH_powerpc",
-        "ppc64": "__TARGET_ARCH_powerpc",
-        "ppc64-linux": "__TARGET_ARCH_powerpc",
-        "x86": "__TARGET_ARCH_x86",
-        "x86-linux": "__TARGET_ARCH_x86",
-    }
-    arch = arch_to_define.get(arch, None)
-    if arch is None:
-        print(
-            f"Unable to map arch={arch} to a sensible"
-            "__TARGET_ARCH_XXX for bpf compilation."
-        )
-        return -1
+    out_obj = opts.out_obj
+    out_bpf_skeleton_header = opts.out_bpf_skeleton_header
+    out_btf = opts.out_min_btf
+    vmlinux_btf = opts.vmlinux_btf
+    source = opts.source
+    arch = _ARCH_TO_DEFINE[opts.arch]
+    includes = opts.includes
+    defines = opts.defines or []
+    sysroot = opts.sysroot
 
     # Create the folder to hold the output if it does not exist.
-    pathlib.Path(os.path.dirname(out_obj)).mkdir(parents=True, exist_ok=True)
+    out_obj.parent.mkdir(parents=True, exist_ok=True)
 
     # Calling bpf-clang is equivalent to "clang --target bpf".
     # It may seem odd that the application needs to be compiled with -g but
@@ -101,10 +101,9 @@ def do_compile_bpf(args):
 
         # BPFtools will output the C formatted dump of kernel symbols to stdout.
         # Write the contents to file.
-        with open(
-            out_bpf_skeleton_header, "w", encoding="utf-8"
-        ) as bpf_skeleton:
-            bpf_skeleton.write(bpftool_proc.stdout)
+        out_bpf_skeleton_header.write_text(
+            bpftool_proc.stdout, encoding="utf-8"
+        )
 
     # Generate a detached min_core BTF.
     if out_btf:
@@ -113,7 +112,7 @@ def do_compile_bpf(args):
                 "Need a full vmlinux BTF as input in order to generate a min "
                 "BTF"
             )
-            return -1
+            return 1
         gen_min_core_btf = [
             "/usr/sbin/bpftool",
             "gen",
@@ -127,16 +126,16 @@ def do_compile_bpf(args):
     return 0
 
 
-def do_gen_vmlinux(args):
+def do_gen_vmlinux(opts: argparse.Namespace) -> int:
     """Generate vmlinux.h for use in BPF programs.
 
     Invokes pahole and bpftool to generate vmlinux.h from vmlinux from the
     kernel build. Uses BTF as an intermediate format. The generated BTF is
     preserved for possible use in generation of min CO-RE BTFs.
     """
-    sysroot = args.sysroot
-    vmlinux_out = args.out_header
-    btf_out = args.out_btf
+    sysroot = opts.sysroot
+    vmlinux_out = opts.out_header
+    btf_out = opts.out_btf
     vmlinux_in = f"{sysroot}/usr/lib/debug/boot/vmlinux"
     gen_detached_btf = [
         "/usr/bin/pahole",
@@ -168,11 +167,12 @@ def do_gen_vmlinux(args):
 
     # First, run pahole to generate a detached vmlinux BTF. This step works
     # regardless of whether the vmlinux was built with CONFIG_DEBUG_BTF_INFO.
-    pathlib.Path(os.path.dirname(btf_out)).mkdir(parents=True, exist_ok=True)
+    btf_out.parent.mkdir(parents=True, exist_ok=True)
     _run_command(gen_detached_btf)
 
     symbols = _run_command(read_symbols)
     for line in symbols.stdout.splitlines():
+        # pylint: disable=line-too-long
         # Example line to parse:
         # 145612: ffffffff823e1ca0   274 OBJECT  GLOBAL DEFAULT    2 linux_banner
         d = line.split()
@@ -182,22 +182,25 @@ def do_gen_vmlinux(args):
             linux_banner_sec = d[-2]
             break
     else:
-        print(f"Failed to find linux_banner from {vmlinux_in}")
+        logging.error("Failed to find linux_banner from %s", vmlinux_in)
         return 1
 
     sections = _run_command(read_sections)
+    target_section_str = f"[{linux_banner_sec:>2}]"
     for line in sections.stdout.splitlines():
+        # pylint: disable=line-too-long
         # Example line to parse:
         # [ 2] .rodata           PROGBITS        ffffffff82200000 1400000 5e104e 00 WAMS  0   0 4096
-        if line.lstrip().startswith(f"[{linux_banner_sec:>2}]"):
+        if line.lstrip().startswith(target_section_str):
             d = line.split("]", 1)[1].split()
             section_addr = int(d[2], 16)
             section_off = int(d[3], 16)
             break
     else:
-        print(
-            f"Failed to find section '[{linux_banner_sec:>2}]' from "
-            f"{vmlinux_in}"
+        logging.error(
+            "Failed to find section '%s' from %s",
+            target_section_str,
+            vmlinux_in,
         )
         return 1
 
@@ -208,7 +211,7 @@ def do_gen_vmlinux(args):
 
     m = re.match(r"Linux version (\d+).(\d+).(\d+)", linux_banner)
     if not m:
-        print(f"Failed to match Linux version: {linux_banner}")
+        logging.error("Failed to match Linux version: %s", linux_banner)
         return 1
 
     version = m.group(1)
@@ -222,7 +225,7 @@ def do_gen_vmlinux(args):
     # Then, use the generated BTF (and not vmlinux itself) to generate the
     # header.
     vmlinux_cmd = _run_command(gen_vmlinux)
-    with open(f"{vmlinux_out}", "w", encoding="utf-8") as vmlinux:
+    with vmlinux_out.open("w", encoding="utf-8") as vmlinux:
         written = False
 
         for line in vmlinux_cmd.stdout.splitlines():
@@ -235,37 +238,41 @@ def do_gen_vmlinux(args):
                 written = True
 
         if not written:
-            print("Failed to write LINUX_VERSION_CODE")
+            logging.error("Failed to write LINUX_VERSION_CODE")
             return 1
 
     return 0
 
 
-def main(argv: typing.List[str]) -> int:
-    """A command line tool for all things BPF.
-
-    A command line tool to help compile eBPF code to object file and generate C
-    BPF skeletons, and to generate vmlinux.h from kernel build artifacts.
-    """
-    parser = argparse.ArgumentParser(description=__doc__)
+def get_parser() -> argparse.ArgumentParser:
+    parser = commandline.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(help="sub-command help")
 
     compile_bpf = subparsers.add_parser("compile_bpf")
     compile_bpf.add_argument(
-        "--out_obj",
+        "--out-obj",
         required=True,
+        type=Path,
         help="The name of the output object file.",
     )
     compile_bpf.add_argument(
-        "--out_bpf_skeleton_header",
+        "--out-bpf-skeleton-header",
         required=False,
-        help="The name of the eBPF skeleton output header file. Specifying this argument will result in eBPF skeletons being generated in addition to the eBPF objects.",
+        type=Path,
+        help=(
+            "The name of the eBPF skeleton output header file."
+            " Specifying this argument will result in eBPF skeletons being"
+            " generated in addition to the eBPF objects."
+        ),
     )
     compile_bpf.add_argument(
-        "--source", required=True, help="The bpf source code."
+        "--source", required=True, type=Path, help="The bpf source code."
     )
     compile_bpf.add_argument(
-        "--arch", required=True, help="The target architecture."
+        "--arch",
+        required=True,
+        choices=_ARCH_TO_DEFINE.keys(),
+        help="The target architecture.",
     )
     compile_bpf.add_argument(
         "--includes",
@@ -280,13 +287,15 @@ def main(argv: typing.List[str]) -> int:
         help="Additional preprocessor defines.",
     )
     compile_bpf.add_argument(
-        "--vmlinux_btf",
+        "--vmlinux-btf",
         required=False,
+        type=Path,
         help="The detached full vmlinux BTF file.",
     )
     compile_bpf.add_argument(
-        "--out_min_btf",
+        "--out-min-btf",
         required=False,
+        type=Path,
         help="The name of the output min BTF file.",
     )
     # We require the board sysroot so that BPF compilations will use board
@@ -294,6 +303,7 @@ def main(argv: typing.List[str]) -> int:
     compile_bpf.add_argument(
         "--sysroot",
         required=True,
+        type="dir_exists",
         help="The path that should be treated as the root directory.",
     )
 
@@ -303,29 +313,40 @@ def main(argv: typing.List[str]) -> int:
     gen_vmlinux.add_argument(
         "--sysroot",
         required=True,
+        type="dir_exists",
         help="The path that should be treated as the root directory.",
     )
     gen_vmlinux.add_argument(
-        "--out_header",
+        "--out-header",
         required=True,
+        type=Path,
         help="The name of the output vmlinux.h file.",
     )
     gen_vmlinux.add_argument(
-        "--out_btf",
+        "--out-btf",
         required=True,
+        type=Path,
         help="The name of the output vmlinux BTF file.",
     )
     gen_vmlinux.set_defaults(func=do_gen_vmlinux)
-    args = parser.parse_args(argv)
+
+    return parser
+
+
+def main(argv: List[str]) -> int:
+    """A command line tool for all things BPF.
+
+    A command line tool to help compile eBPF code to object file and generate C
+    BPF skeletons, and to generate vmlinux.h from kernel build artifacts.
+    """
+    parser = get_parser()
+    opts = parser.parse_args(argv)
 
     try:
-        return args.func(args)
-    except subprocess.CalledProcessError as error:
-        print(
-            f'cmd={" ".join(error.cmd)}\nstderr={error.stderr}\n'
-            f"stdout={error.stdout}\nretcode={error.returncode}\n"
-        )
-        return -1
+        return opts.func(opts)
+    except subprocess.CalledProcessError as e:
+        logging.error(e)
+        return 1
 
 
 if __name__ == "__main__":

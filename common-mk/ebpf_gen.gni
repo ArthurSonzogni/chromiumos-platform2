@@ -21,8 +21,8 @@ template("generate_vmlinux") {
     args = [
       "gen_vmlinux",
       "--sysroot=${sysroot}",
-      "--out_header=${out_header}",
-      "--out_btf=${out_btf}",
+      "--out-header=${out_header}",
+      "--out-btf=${out_btf}",
     ]
   }
 }
@@ -51,7 +51,7 @@ template("generate_ebpf_object") {
     script = "//common-mk/generate-ebpf.py"
     args = [
       "compile_bpf",
-      "--out_obj=${out_obj}",
+      "--out-obj=${out_obj}",
       "--source={{source}}",
       "--arch=${arch}",
       "--sysroot=${sysroot}",
@@ -70,8 +70,8 @@ template("generate_ebpf_object") {
           "${root_gen_dir}/${btf_inout_dir}/{{source_name_part}}.min.btf"
       vmlinux_btf = "${root_gen_dir}/${btf_inout_dir}/vmlinux.full.btf"
       args += [
-        "--out_min_btf=${out_min_btf}",
-        "--vmlinux_btf=${vmlinux_btf}",
+        "--out-min-btf=${out_min_btf}",
+        "--vmlinux-btf=${vmlinux_btf}",
       ]
       outputs += [ out_min_btf ]
     }
@@ -106,8 +106,8 @@ template("generate_ebpf_skeletons") {
     script = "//common-mk/generate-ebpf.py"
     args = [
       "compile_bpf",
-      "--out_obj=${out_obj}",
-      "--out_bpf_skeleton_header=${out_bpf_skeleton_header}",
+      "--out-obj=${out_obj}",
+      "--out-bpf-skeleton-header=${out_bpf_skeleton_header}",
       "--source={{source}}",
       "--arch=${arch}",
       "--sysroot=${sysroot}",
@@ -126,8 +126,8 @@ template("generate_ebpf_skeletons") {
           "${root_gen_dir}/${btf_inout_dir}/{{source_name_part}}.min.btf"
       vmlinux_btf = "${root_gen_dir}/${btf_inout_dir}/vmlinux.full.btf"
       args += [
-        "--out_min_btf=${out_min_btf}",
-        "--vmlinux_btf=${vmlinux_btf}",
+        "--out-min-btf=${out_min_btf}",
+        "--vmlinux-btf=${vmlinux_btf}",
       ]
       outputs += [ out_min_btf ]
     }
