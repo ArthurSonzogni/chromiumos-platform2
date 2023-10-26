@@ -31,13 +31,12 @@ namespace device_management {
 class InstallAttributes {
  public:
   enum class Status {
-    kUnknown,       // Not initialized yet.
-    kTpmNotOwned,   // TPM not owned yet.
-    kFirstInstall,  // Allows writing.
-    kValid,         // Validated successfully.
-    kInvalid,       // Not valid, e.g. clobbered, absent.
-    COUNT,          // This is unused, just for counting the number of elements.
-                    // Note that COUNT should always be the last element.
+    kUnknown,              // Not initialized yet.
+    kTpmNotOwned,          // TPM not owned yet.
+    kFirstInstall,         // Allows writing.
+    kValid,                // Validated successfully.
+    kInvalid,              // Not valid, e.g. clobbered, absent.
+    kMaxValue = kInvalid,  // This should be the last item of the enum.
   };
 
   // The provided pointers must outlive this instance.

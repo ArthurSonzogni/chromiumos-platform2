@@ -263,7 +263,7 @@ bool InstallAttributes::Finalize() {
       return true;
     case Status::kFirstInstall:
       break;
-    case Status::COUNT:
+    default:
       NOTREACHED();
   }
 

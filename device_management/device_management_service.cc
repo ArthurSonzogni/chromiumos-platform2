@@ -20,7 +20,8 @@ namespace device_management {
 DeviceManagementService::DeviceManagementService()
     : firmware_management_parameters_(nullptr),
       install_attrs_(nullptr),
-      enterprise_owned_(false) {}
+      enterprise_owned_(false),
+      metrics_(std::make_unique<Metrics>()) {}
 DeviceManagementService::~DeviceManagementService() {}
 
 void DeviceManagementService::Initialize(
@@ -42,6 +43,9 @@ void DeviceManagementService::Initialize(
 
   // Always try to init the install attributes even if the TPM is not ready.
   InitializeInstallAttributesCallback(hwsec::OkStatus());
+
+  // Report the current status of install-attributes to UMA.
+  metrics_->ReportInstallAttributesStatus(install_attrs_->status());
 }
 
 device_management::DeviceManagementErrorCode

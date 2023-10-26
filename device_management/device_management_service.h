@@ -8,6 +8,7 @@
 #include "device_management/fwmp/firmware_management_parameters.h"
 #include "device_management/install_attributes/install_attributes.h"
 #include "device_management/install_attributes/platform.h"
+#include "device_management/metrics.h"
 #include "device_management/proto_bindings/device_management_interface.pb.h"
 
 #include <memory>
@@ -109,6 +110,8 @@ class DeviceManagementService {
   std::unique_ptr<InstallAttributes> install_attrs_;
   // Whether this device is an enterprise owned device.
   bool enterprise_owned_;
+  // The metrics object will be used to send UMA report.
+  std::unique_ptr<Metrics> metrics_;
 };
 }  // namespace device_management
 

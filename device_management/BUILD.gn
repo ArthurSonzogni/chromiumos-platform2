@@ -149,13 +149,17 @@ executable("device_management_client") {
 
 # Main programs.
 executable("device_managementd") {
-  sources = [ "main.cc" ]
+  sources = [
+    "main.cc",
+    "metrics.cc",
+  ]
   configs += [
     ":target_defaults",
     ":local_proto_include",
   ]
 
   pkg_deps = [
+    "libmetrics",
     "protobuf",
     "system_api",
   ]
@@ -187,6 +191,7 @@ if (use.test) {
       "install_attributes/lockbox_test.cc",
       "install_attributes/mock_lockbox.cc",
       "install_attributes/mock_platform.cc",
+      "metrics.cc",
     ]
     libs = [
       "hwsec_test",

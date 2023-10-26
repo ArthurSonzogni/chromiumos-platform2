@@ -472,7 +472,7 @@ TEST_F(DeviceManagementServiceAPITest, InstallAttributesStatusToProtoEnum) {
                 InstallAttributes::Status::kInvalid));
   static_assert(InstallAttributesState_MAX == 4,
                 "Incorrect element count in InstallAttributesState");
-  static_assert(static_cast<int>(InstallAttributes::Status::COUNT) == 5,
+  static_assert(static_cast<int>(InstallAttributes::Status::kMaxValue) == 4,
                 "Incorrect element count in InstallAttributes::Status");
 }
 }  // namespace device_management
