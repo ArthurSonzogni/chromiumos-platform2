@@ -263,6 +263,8 @@ class NetworkTest : public ::testing::Test {
     NetworkConfig config;
     config.ipv4_address =
         *net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.1/24");
+    config.ipv4_gateway =
+        *net_base::IPv4Address::CreateFromString("192.168.1.1");
     config.dns_servers = {
         *net_base::IPAddress::CreateFromString("8.8.8.8"),
         *net_base::IPAddress::CreateFromString("8.8.4.4"),
@@ -274,13 +276,14 @@ class NetworkTest : public ::testing::Test {
   void SetNetworkStateForConnectionDiagnostic() {
     SetNetworkStateToConnected();
     const std::string ipv4_addr_str = "192.168.1.1";
-    network_->set_ipconfig(
-        std::make_unique<IPConfig>(&control_interface_, kTestIfname));
-    IPConfig::Properties ipv4_props;
-    ipv4_props.address = ipv4_addr_str;
-    ipv4_props.gateway = ipv4_addr_str;
-    ipv4_props.dns_servers = {ipv4_addr_str};
-    network_->ipconfig()->UpdateProperties(ipv4_props);
+    auto config = std::make_unique<NetworkConfig>();
+    config->ipv4_address =
+        net_base::IPv4CIDR::CreateFromStringAndPrefix(ipv4_addr_str, 32);
+    config->ipv4_gateway =
+        net_base::IPv4Address::CreateFromString(ipv4_addr_str);
+    config->dns_servers = {
+        *net_base::IPAddress::CreateFromString(ipv4_addr_str)};
+    network_->set_link_protocol_network_config(std::move(config));
   }
 
  protected:
@@ -520,16 +523,18 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
   const auto ipv4_addr = *net_base::IPAddress::CreateFromString(ipv4_addr_str);
   const auto ipv6_addr = *net_base::IPAddress::CreateFromString(ipv6_addr_str);
   SetNetworkStateToConnected();
-  network_->set_ipconfig(
-      std::make_unique<IPConfig>(&control_interface_, kTestIfname));
-  network_->set_ip6config(
-      std::make_unique<IPConfig>(&control_interface_, kTestIfname));
-  IPConfig::Properties ipv4_props;
-  ipv4_props.gateway = ipv4_addr_str;
-  network_->ipconfig()->UpdateProperties(ipv4_props);
-  IPConfig::Properties ipv6_props;
-  ipv6_props.gateway = ipv6_addr_str;
-  network_->ip6config()->UpdateProperties(ipv6_props);
+
+  auto network_config = std::make_unique<NetworkConfig>();
+  network_config->ipv4_gateway =
+      *net_base::IPv4Address::CreateFromString(ipv4_addr_str);
+  network_config->ipv6_gateway =
+      *net_base::IPv6Address::CreateFromString(ipv6_addr_str);
+  // Placeholder addresses to let Network believe this is a valid configuration.
+  network_config->ipv4_address =
+      *net_base::IPv4CIDR::CreateFromStringAndPrefix(ipv4_addr_str, 32);
+  network_config->ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromStringAndPrefix(ipv6_addr_str, 120)};
+  network_->set_link_protocol_network_config(std::move(network_config));
 
   // Connected network with IPv4 configured, reachability event matching the
   // IPv4 gateway.
@@ -625,9 +630,13 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
                                    network_->interface_index(), ipv4_addr,
                                    Role::kGateway, Status::kReachable))
       .Times(1);
-  network_->set_ipconfig(
-      std::make_unique<IPConfig>(&control_interface_, kTestIfname));
-  network_->ipconfig()->UpdateProperties(ipv4_props);
+  network_config = std::make_unique<NetworkConfig>();
+  network_config->ipv4_address =
+      *net_base::IPv4CIDR::CreateFromStringAndPrefix(ipv4_addr_str, 32);
+  network_config->ipv4_gateway =
+      *net_base::IPv4Address::CreateFromString(ipv4_addr_str);
+  network_->set_link_protocol_network_config(std::move(network_config));
+
   SetNetworkStateToConnected();
   network_->OnNeighborReachabilityEvent(event1);
   network_->OnNeighborReachabilityEvent(event2);
@@ -652,9 +661,14 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
   network_->Stop();
   network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{},
                                         .accept_ra = true});
-  network_->set_ip6config(
-      std::make_unique<IPConfig>(&control_interface_, kTestIfname));
-  network_->ip6config()->UpdateProperties(ipv6_props);
+
+  network_config = std::make_unique<NetworkConfig>();
+  network_config->ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromStringAndPrefix(ipv6_addr_str, 120)};
+  network_config->ipv6_gateway =
+      *net_base::IPv6Address::CreateFromString(ipv6_addr_str);
+  network_->set_link_protocol_network_config(std::move(network_config));
+
   SetNetworkStateToConnected();
   network_->OnNeighborReachabilityEvent(event1);
   network_->OnNeighborReachabilityEvent(event2);
@@ -676,8 +690,18 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
       std::make_unique<IPConfig>(&control_interface_, kTestIfname));
   network_->set_ip6config(
       std::make_unique<IPConfig>(&control_interface_, kTestIfname));
-  network_->ipconfig()->UpdateProperties(ipv4_props);
-  network_->ip6config()->UpdateProperties(ipv6_props);
+
+  network_config = std::make_unique<NetworkConfig>();
+  network_config->ipv4_address =
+      *net_base::IPv4CIDR::CreateFromStringAndPrefix(ipv4_addr_str, 32);
+  network_config->ipv4_gateway =
+      *net_base::IPv4Address::CreateFromString(ipv4_addr_str);
+  network_config->ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromStringAndPrefix(ipv6_addr_str, 120)};
+  network_config->ipv6_gateway =
+      *net_base::IPv6Address::CreateFromString(ipv6_addr_str);
+  network_->set_link_protocol_network_config(std::move(network_config));
+
   SetNetworkStateToConnected();
   network_->OnNeighborReachabilityEvent(event1);
   network_->OnNeighborReachabilityEvent(event2);
@@ -1264,21 +1288,19 @@ TEST_F(NetworkTest, PortalDetectionResult_ClearAfterStop) {
 TEST_F(NetworkTest, IsConnectedViaTether) {
   EXPECT_FALSE(network_->IsConnectedViaTether());
 
-  network_->set_ipconfig(
-      std::make_unique<IPConfig>(&control_interface_, kTestIfname));
   EXPECT_FALSE(network_->IsConnectedViaTether());
 
-  IPConfig::Properties properties;
+  DHCPv4Config::Data dhcp_data;
   const char vendor_option1[] = "ANDROID_METERED";
-  properties.dhcp_data.vendor_encapsulated_options =
+  dhcp_data.vendor_encapsulated_options =
       ByteArray(vendor_option1, vendor_option1 + strlen(vendor_option1));
-  network_->ipconfig()->UpdateProperties(properties);
+  network_->set_dhcp_data_for_testing(dhcp_data);
   EXPECT_TRUE(network_->IsConnectedViaTether());
 
   const char vendor_option2[] = "Some other non-empty value";
-  properties.dhcp_data.vendor_encapsulated_options =
+  dhcp_data.vendor_encapsulated_options =
       ByteArray(vendor_option2, vendor_option2 + strlen(vendor_option2));
-  network_->ipconfig()->UpdateProperties(properties);
+  network_->set_dhcp_data_for_testing(dhcp_data);
   EXPECT_FALSE(network_->IsConnectedViaTether());
 }
 

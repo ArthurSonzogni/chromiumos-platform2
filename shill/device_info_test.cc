@@ -810,11 +810,14 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   device0->GetPrimaryNetwork()->set_state_for_testing(
       Network::State::kConnected);
   device0->GetPrimaryNetwork()->RegisterEventHandler(&event_handler0);
-  IPConfig::Properties props0 = {};
-  props0.gateway = kTestIPAddress0.ToString();
-  device0->GetPrimaryNetwork()->set_ipconfig(
-      std::make_unique<IPConfig>(&control_interface_, "null0"));
-  device0->GetPrimaryNetwork()->ipconfig()->UpdateProperties(props0);
+
+  NetworkConfig config0;
+  // Placeholder addresses to let Network believe this is a valid configuration.
+  config0.ipv4_address = net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+      *kTestIPAddress0.ToIPv4Address(), 32);
+  config0.ipv4_gateway = kTestIPAddress0.ToIPv4Address();
+  device0->GetPrimaryNetwork()->set_link_protocol_network_config(
+      std::make_unique<NetworkConfig>(config0));
 
   scoped_refptr<MockDevice> device1(
       new MockDevice(&manager_, "null1", "addr1", kTestDeviceIndex + 1));
@@ -830,11 +833,13 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   device1->GetPrimaryNetwork()->set_state_for_testing(
       Network::State::kConnected);
   device1->GetPrimaryNetwork()->RegisterEventHandler(&event_handler1);
-  IPConfig::Properties props1 = {};
-  props1.gateway = kTestIPAddress2.ToString();
-  device1->GetPrimaryNetwork()->set_ip6config(
-      std::make_unique<IPConfig>(&control_interface_, "null1"));
-  device1->GetPrimaryNetwork()->ip6config()->UpdateProperties(props1);
+
+  NetworkConfig config1;
+  config1.ipv6_addresses = {*net_base::IPv6CIDR::CreateFromAddressAndPrefix(
+      *kTestIPAddress2.ToIPv6Address(), 120)};
+  config1.ipv6_gateway = kTestIPAddress2.ToIPv6Address();
+  device1->GetPrimaryNetwork()->set_link_protocol_network_config(
+      std::make_unique<NetworkConfig>(config1));
 
   using Role = patchpanel::Client::NeighborRole;
   using Status = patchpanel::Client::NeighborStatus;

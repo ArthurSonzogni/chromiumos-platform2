@@ -140,8 +140,6 @@ class IPConfig {
 
  private:
   friend class IPConfigTest;
-  // TODO(b/269401899): Remove all usage of properties() in Network.
-  friend class Network;
   friend std::ostream& operator<<(std::ostream& stream, const IPConfig& config);
 
   // Inform RPC listeners of changes to our properties. MAY emit

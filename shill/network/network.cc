@@ -8,7 +8,6 @@
 #include <iostream>
 #include <memory>
 #include <optional>
-#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -21,6 +20,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/ip_address.h>
+#include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 
 #include "shill/event_dispatcher.h"
@@ -638,7 +638,7 @@ NetworkPriority Network::GetPriority() {
   return priority_;
 }
 
-NetworkConfig Network::GetNetworkConfig() const {
+const NetworkConfig& Network::GetNetworkConfig() const {
   return config_.Get();
 }
 
@@ -701,66 +701,55 @@ void Network::OnNeighborReachabilityEvent(
 
   if (event.role == Role::kGateway ||
       event.role == Role::kGatewayAndDnsServer) {
-    IPConfig* ipconfig;
-    bool* gateway_found;
+    const NetworkConfig& network_config = GetNetworkConfig();
     switch (ip_address->GetFamily()) {
       case net_base::IPFamily::kIPv4:
-        ipconfig = ipconfig_.get();
-        gateway_found = &ipv4_gateway_found_;
+        // It is impossible to observe a reachability event for the current
+        // gateway before Network knows the NetworkConfig for the current
+        // connection: patchpanel would not emit reachability event for the
+        // correct connection yet.
+        if (!network_config.ipv4_address) {
+          LOG(INFO) << *this << ": " << __func__ << ": "
+                    << ip_address->GetFamily()
+                    << " not configured, ignoring neighbor reachability event"
+                    << event;
+          return;
+        }
+        // Ignore reachability events related to a prior connection.
+        if (network_config.ipv4_gateway != ip_address->ToIPv4Address()) {
+          LOG(INFO) << *this << ": " << __func__
+                    << ": ignored neighbor reachability event with conflicting "
+                       "gateway address "
+                    << event;
+          return;
+        }
+        ipv4_gateway_found_ = true;
         break;
       case net_base::IPFamily::kIPv6:
-        ipconfig = ip6config_.get();
-        gateway_found = &ipv6_gateway_found_;
+        if (network_config.ipv6_addresses.empty()) {
+          LOG(INFO) << *this << ": " << __func__ << ": "
+                    << ip_address->GetFamily()
+                    << " not configured, ignoring neighbor reachability event"
+                    << event;
+          return;
+        }
+        // Ignore reachability events related to a prior connection.
+        if (network_config.ipv6_gateway != ip_address->ToIPv6Address()) {
+          LOG(INFO) << *this << ": " << __func__
+                    << ": ignored neighbor reachability event with conflicting "
+                       "gateway address "
+                    << event;
+          return;
+        }
+        ipv6_gateway_found_ = true;
         break;
     }
-    // It is impossible to observe a reachability event for the current gateway
-    // before Network knows the IPConfig for the current connection: patchpanel
-    // would not emit reachability event for the correct connection yet.
-    if (!ipconfig) {
-      LOG(INFO) << *this << ": " << __func__ << ": " << ip_address->GetFamily()
-                << " not configured, ignoring neighbor reachability event "
-                << event;
-      return;
-    }
-    // Ignore reachability events related to a prior connection.
-    if (ipconfig->properties().gateway != event.ip_addr) {
-      LOG(INFO) << *this << ": " << __func__
-                << ": ignored neighbor reachability event with conflicting "
-                   "gateway address "
-                << event;
-      return;
-    }
-    *gateway_found = true;
   }
 
   for (auto* ev : event_handlers_) {
     ev->OnNeighborReachabilityEvent(interface_index_, *ip_address, event.role,
                                     event.status);
   }
-}
-
-std::optional<net_base::IPAddress> Network::local() const {
-  if (ipconfig() && !ipconfig()->properties().address.empty()) {
-    return net_base::IPAddress::CreateFromString(
-        (ipconfig()->properties().address));
-  }
-  if (ip6config() && ip6config()->properties().HasIPAddressAndDNS()) {
-    return net_base::IPAddress::CreateFromString(
-        (ip6config()->properties().address));
-  }
-  return std::nullopt;
-}
-
-std::optional<net_base::IPAddress> Network::gateway() const {
-  if (ipconfig() && !ipconfig()->properties().address.empty()) {
-    return net_base::IPAddress::CreateFromString(
-        ipconfig()->properties().gateway);
-  }
-  if (ip6config() && ip6config()->properties().HasIPAddressAndDNS()) {
-    return net_base::IPAddress::CreateFromString(
-        ip6config()->properties().gateway);
-  }
-  return std::nullopt;
 }
 
 bool Network::StartPortalDetection(ValidationReason reason) {
@@ -971,15 +960,29 @@ void Network::StartConnectionDiagnostics() {
   }
   DCHECK(primary_family_);
 
-  const auto local_address = local();
+  std::optional<net_base::IPAddress> local_address = std::nullopt;
+  std::optional<net_base::IPAddress> gateway_address = std::nullopt;
+  const NetworkConfig& config = GetNetworkConfig();
+  if (config.ipv4_address) {
+    local_address = net_base::IPAddress(config.ipv4_address->address());
+    gateway_address =
+        config.ipv4_gateway
+            ? std::make_optional(net_base::IPAddress(*config.ipv4_gateway))
+            : std::nullopt;
+  } else if (!config.ipv6_addresses.empty()) {
+    local_address = net_base::IPAddress(config.ipv6_addresses[0].address());
+    gateway_address =
+        config.ipv6_gateway
+            ? std::make_optional(net_base::IPAddress(*config.ipv6_gateway))
+            : std::nullopt;
+  }
+
   if (!local_address) {
     LOG(ERROR)
         << *this
         << ": Local address unavailable, aborting connection diagnostics";
     return;
   }
-
-  const auto gateway_address = gateway();
   if (!gateway_address) {
     LOG(ERROR) << *this
                << ": Gateway unavailable, aborting connection diagnostics";
@@ -1042,11 +1045,10 @@ void Network::ConnectivityTestCallback(const std::string& device_logging_tag,
 }
 
 bool Network::IsConnectedViaTether() const {
-  if (!ipconfig_) {
+  if (!dhcp_data_) {
     return false;
   }
-  const auto& vendor_option =
-      ipconfig_->properties().dhcp_data.vendor_encapsulated_options;
+  const auto& vendor_option = dhcp_data_->vendor_encapsulated_options;
   if (vendor_option.size() != strlen(kAndroidMeteredHotspotVendorOption)) {
     return false;
   }

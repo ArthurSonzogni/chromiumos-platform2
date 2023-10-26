@@ -307,7 +307,7 @@ class Network {
   // Returns the current active configuration of the Network. That could be from
   // DHCPv4, static IPv4 configuration, SLAAC, data-link layer control
   // protocols, or merged from multiple of these sources.
-  NetworkConfig GetNetworkConfig() const;
+  const NetworkConfig& GetNetworkConfig() const;
 
   // Returns all known (global) addresses of the Network. That includes IPv4
   // address from link protocol, or from DHCPv4, or from static IPv4
@@ -427,6 +427,9 @@ class Network {
       const NetworkConfig& network_config) {
     config_.SetFromDHCP(std::make_unique<NetworkConfig>(network_config));
   }
+  void set_dhcp_data_for_testing(const DHCPv4Config::Data data) {
+    dhcp_data_ = data;
+  }
   const std::vector<EventHandler*>& event_handlers() const {
     return event_handlers_;
   }
@@ -528,14 +531,6 @@ class Network {
   void ReportNeighborLinkMonitorFailure(Technology tech,
                                         net_base::IPFamily family,
                                         patchpanel::Client::NeighborRole role);
-
-  // Properties of the current IP config. Returns IPv4 properties if the Network
-  // is dual-stack, and default (empty) values if the Network is not connected.
-  // TODO(b/269401899): These getters should be deprecated. Instead, callers
-  // should use getters like GetAddresses() to get properties of all IP families
-  // at the same time.
-  std::optional<net_base::IPAddress> local() const;
-  std::optional<net_base::IPAddress> gateway() const;
 
   const int interface_index_;
   const std::string interface_name_;
