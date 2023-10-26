@@ -101,8 +101,11 @@ typedef struct cros_camera_hal {
    */
   void (*set_privacy_switch_state)(bool on) = nullptr;
 
-  /* reserved for future use */
-  void* reserved[4];
+  /**
+   * Reserved for future use. Initialize it so users of named field initializers
+   * don't get warnings from Clang: b/305723283.
+   */
+  void* reserved[4] = {};
 } cros_camera_hal_t;
 
 }  // namespace cros
