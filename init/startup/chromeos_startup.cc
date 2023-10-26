@@ -142,16 +142,17 @@ void ChromeosStartup::ParseFlags(Flags* flags) {
 
 // We manage this base timestamp by hand. It isolates us from bad clocks on
 // the system where this image was built/modified, and on the runtime image
-// (in case a dev modified random paths while the clock was out of sync).
+// (in case a dev modified random paths while the clock was out of sync) or
+// if the RTC is buggy or battery is dead.
 // TODO(b/234157809): Our namespaces module doesn't support time namespaces
 // currently. Add unittests for CheckClock once we add support.
 void ChromeosStartup::CheckClock() {
   time_t cur_time;
   time(&cur_time);
 
-  if (cur_time < kBaseSecs) {
+  if (cur_time < kMinSecs || cur_time > kMaxSecs) {
     struct timespec stime;
-    stime.tv_sec = kBaseSecs;
+    stime.tv_sec = kMinSecs;
     stime.tv_nsec = 0;
     if (clock_settime(CLOCK_REALTIME, &stime) != 0) {
       // TODO(b/232901639): Improve failure reporting.
