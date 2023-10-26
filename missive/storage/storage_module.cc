@@ -4,14 +4,15 @@
 
 #include "missive/storage/storage_module.h"
 
+#include <functional>
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include <base/check.h>
-#include <base/containers/flat_map.h>
 #include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_forward.h>
@@ -68,10 +69,24 @@ class StorageModule::UploadProgressTracker {
   }
 
  private:
-  base::flat_map<std::tuple<Priority,
-                            int64_t /*generation_id*/,
-                            std::string /*genration_giud*/>,
-                 int64_t /*sequencing_id*/>
+  struct Hash {
+    size_t operator()(
+        const std::tuple<Priority,
+                         int64_t /*generation id*/,
+                         std::string /*genration_giud*/>& v) const noexcept {
+      const auto& [priority, generation_id, genration_giud] = v;
+      static constexpr std::hash<Priority> priority_hasher;
+      static constexpr std::hash<int64_t> generation_hasher;
+      static constexpr std::hash<std::string> genration_giud_hasher;
+      return priority_hasher(priority) ^ generation_hasher(generation_id) ^
+             genration_giud_hasher(genration_giud);
+    }
+  };
+  std::unordered_map<std::tuple<Priority,
+                                int64_t /*generation_id*/,
+                                std::string /*genration_giud*/>,
+                     int64_t /*sequencing_id*/,
+                     Hash>
       state_;
 };
 
