@@ -18,7 +18,7 @@ class DevicePolicy;
 
 // This class holds device settings that are to be enforced across all users.
 //
-// If there is a policy on disk at creation time, we will load it at verify
+// If there is a policy on disk at creation time, we will load it and verify
 // its signature.
 class PolicyProvider {
  public:
