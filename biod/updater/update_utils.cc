@@ -22,7 +22,7 @@ namespace {
 
 constexpr char kFirmwareGlobSuffix[] = "_*.bin";
 constexpr char kUpdateDisableFile[] =
-    "/mnt/stateful_partition/.disable_fp_updater";
+    "/var/lib/bio_fw_updater/.disable_fp_updater";
 
 }  // namespace
 
@@ -36,7 +36,7 @@ std::string UpdaterVersion() {
 }
 
 bool UpdateDisallowed(const BiodSystem& system) {
-  // Disable updates when /mnt/stateful_partition/.disable_fp_updater exists
+  // Disable updates when /var/lib/bio_fw_updater/.disable_fp_updater exists
   // and Developer Mode can boot from unsigned kernel (it's a bit stronger check
   // than developer mode only).
   if (!system.OnlyBootSignedKernel() &&

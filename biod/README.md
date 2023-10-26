@@ -117,7 +117,7 @@ To disable the automatic update, you can create the `.disable_fp_updater` file
 in the stateful partition:
 
 ```bash
-(dut) $ touch /mnt/stateful_partition/.disable_fp_updater
+(dut) $ touch /var/lib/bio_fw_updater/.disable_fp_updater
 ```
 
 For security reasons this will work only when we are allowed to boot developer

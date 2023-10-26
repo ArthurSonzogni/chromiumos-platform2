@@ -421,6 +421,7 @@ type cros_var_db_pkg, file_type, cros_file_type, cros_var_file_type;
 
 # var/lib
 type cros_var_lib_biod, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_bio_fw_updater, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_bluetooth, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_boot-update-firmware, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_bootlockbox, file_type, cros_file_type, cros_var_file_type;
