@@ -28,6 +28,11 @@
         "type": "RLIMIT_NICE",
         "hard": 40,
         "soft": 40
+      },
+      {
+        "type": "RLIMIT_NOFILE",
+        "hard": 32768,
+        "soft": 32768
       }
     ],
     "cwd": "/",
