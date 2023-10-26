@@ -284,6 +284,9 @@ class SenderBase {
   const bool log_extra_times_ = false;
 
  private:
+  // Add chromebook plus-related details to the crash.
+  void AddSegmentationDetails(FullCrash& crash);
+
   // Creates a `ScopedProcessingFileBase` object. Called in
   // EvaluateMetaFileMinimal.
   virtual std::unique_ptr<ScopedProcessingFileBase> MakeScopedProcessingFile(
@@ -299,6 +302,10 @@ class SenderBase {
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
       session_manager_proxy_;
   std::unique_ptr<brillo::OsReleaseReader> os_release_reader_;
+
+  // If already populated, feature and scope level for |AddSegmentationDetails|.
+  std::optional<std::string> feature_level_;
+  std::optional<std::string> scope_level_;
 };
 
 }  // namespace util

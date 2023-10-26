@@ -221,6 +221,156 @@ TEST_F(CrashSenderBaseTest, ReadMetaFile_BlockAbsoluteAttachments) {
   EXPECT_EQ(2, log_files_blocked);
 }
 
+TEST_F(CrashSenderBaseTest, ReadMetaFile_Segmentation) {
+  const base::FilePath meta_file = test_dir_.Append("read_meta_file.meta");
+  const base::FilePath payload_file = test_dir_.Append("read_meta_file.xyz");
+  const std::string meta =
+      base::StrCat({"payload=read_meta_file.xyz\n"
+                    "exec_name=exec_bar\n"
+                    "fake_report_id=456\n"
+                    "upload_var_prod=bar\n"
+                    "done=1\n"});
+  ASSERT_TRUE(test_util::CreateFile(meta_file, meta));
+  ASSERT_TRUE(test_util::CreateFile(payload_file, "payload file"));
+  brillo::KeyValueStore metadata;
+  EXPECT_TRUE(ParseMetadata(meta, &metadata));
+
+  const util::CrashDetails details = {
+      .meta_file = meta_file,
+      .payload_file = payload_file.BaseName(),
+      .payload_kind = "log",
+      .client_id = "client",
+      .metadata = metadata,
+  };
+
+  const base::FilePath segmentation_file = paths::GetAt(
+      paths::kSystemRunStateDirectory, paths::kSegmentationStatusPath);
+  ASSERT_TRUE(test_util::CreateFile(segmentation_file,
+                                    "feature_level=1\nscope_level=0\n"));
+
+  SenderBase::Options options;
+  CrashSenderBaseForTesting sender(
+      std::make_unique<test_util::AdvancingClock>(), options);
+  FullCrash crash = sender.ReadMetaFile(details);
+  EXPECT_EQ(crash.payload, std::make_pair("upload_file_log", payload_file));
+  EXPECT_THAT(crash.key_vals,
+              testing::Contains(std::make_pair("feature_level", "1")));
+  EXPECT_THAT(crash.key_vals,
+              testing::Contains(std::make_pair("scope_level", "0")));
+}
+
+TEST_F(CrashSenderBaseTest, ReadMetaFile_Segmentation_NoScope) {
+  const base::FilePath meta_file = test_dir_.Append("read_meta_file.meta");
+  const base::FilePath payload_file = test_dir_.Append("read_meta_file.xyz");
+  const std::string meta =
+      base::StrCat({"payload=read_meta_file.xyz\n"
+                    "exec_name=exec_bar\n"
+                    "fake_report_id=456\n"
+                    "upload_var_prod=bar\n"
+                    "done=1\n"});
+  ASSERT_TRUE(test_util::CreateFile(meta_file, meta));
+  ASSERT_TRUE(test_util::CreateFile(payload_file, "payload file"));
+  brillo::KeyValueStore metadata;
+  EXPECT_TRUE(ParseMetadata(meta, &metadata));
+
+  const util::CrashDetails details = {
+      .meta_file = meta_file,
+      .payload_file = payload_file.BaseName(),
+      .payload_kind = "log",
+      .client_id = "client",
+      .metadata = metadata,
+  };
+
+  const base::FilePath segmentation_file = paths::GetAt(
+      paths::kSystemRunStateDirectory, paths::kSegmentationStatusPath);
+  ASSERT_TRUE(test_util::CreateFile(segmentation_file, "feature_level=1\n"));
+
+  SenderBase::Options options;
+  CrashSenderBaseForTesting sender(
+      std::make_unique<test_util::AdvancingClock>(), options);
+  FullCrash crash = sender.ReadMetaFile(details);
+  // Should still succeed.
+  EXPECT_EQ(crash.payload, std::make_pair("upload_file_log", payload_file));
+  EXPECT_THAT(crash.key_vals,
+              testing::Contains(std::make_pair("feature_level", "1")));
+  EXPECT_THAT(
+      crash.key_vals,
+      testing::Not(testing::Contains(std::make_pair("scope_level", "0"))));
+}
+
+TEST_F(CrashSenderBaseTest, ReadMetaFile_Segmentation_NoFeature) {
+  const base::FilePath meta_file = test_dir_.Append("read_meta_file.meta");
+  const base::FilePath payload_file = test_dir_.Append("read_meta_file.xyz");
+  const std::string meta =
+      base::StrCat({"payload=read_meta_file.xyz\n"
+                    "exec_name=exec_bar\n"
+                    "fake_report_id=456\n"
+                    "upload_var_prod=bar\n"
+                    "done=1\n"});
+  ASSERT_TRUE(test_util::CreateFile(meta_file, meta));
+  ASSERT_TRUE(test_util::CreateFile(payload_file, "payload file"));
+  brillo::KeyValueStore metadata;
+  EXPECT_TRUE(ParseMetadata(meta, &metadata));
+
+  const util::CrashDetails details = {
+      .meta_file = meta_file,
+      .payload_file = payload_file.BaseName(),
+      .payload_kind = "log",
+      .client_id = "client",
+      .metadata = metadata,
+  };
+
+  const base::FilePath segmentation_file = paths::GetAt(
+      paths::kSystemRunStateDirectory, paths::kSegmentationStatusPath);
+  ASSERT_TRUE(test_util::CreateFile(segmentation_file, "scope_level=1\n"));
+
+  SenderBase::Options options;
+  CrashSenderBaseForTesting sender(
+      std::make_unique<test_util::AdvancingClock>(), options);
+  FullCrash crash = sender.ReadMetaFile(details);
+  // Should still succeed.
+  EXPECT_EQ(crash.payload, std::make_pair("upload_file_log", payload_file));
+  EXPECT_THAT(crash.key_vals,
+              testing::Contains(std::make_pair("scope_level", "1")));
+  EXPECT_THAT(
+      crash.key_vals,
+      testing::Not(testing::Contains(std::make_pair("feature_level", "0"))));
+}
+
+TEST_F(CrashSenderBaseTest, ReadMetaFile_Segmentation_BadFormat) {
+  const base::FilePath meta_file = test_dir_.Append("read_meta_file.meta");
+  const base::FilePath payload_file = test_dir_.Append("read_meta_file.xyz");
+  const std::string meta =
+      base::StrCat({"payload=read_meta_file.xyz\n"
+                    "exec_name=exec_bar\n"
+                    "fake_report_id=456\n"
+                    "upload_var_prod=bar\n"
+                    "done=1\n"});
+  ASSERT_TRUE(test_util::CreateFile(meta_file, meta));
+  ASSERT_TRUE(test_util::CreateFile(payload_file, "payload file"));
+  brillo::KeyValueStore metadata;
+  EXPECT_TRUE(ParseMetadata(meta, &metadata));
+
+  const util::CrashDetails details = {
+      .meta_file = meta_file,
+      .payload_file = payload_file.BaseName(),
+      .payload_kind = "log",
+      .client_id = "client",
+      .metadata = metadata,
+  };
+
+  const base::FilePath segmentation_file = paths::GetAt(
+      paths::kSystemRunStateDirectory, paths::kSegmentationStatusPath);
+  ASSERT_TRUE(test_util::CreateFile(segmentation_file, "feature_level=\n"));
+
+  SenderBase::Options options;
+  CrashSenderBaseForTesting sender(
+      std::make_unique<test_util::AdvancingClock>(), options);
+  FullCrash crash = sender.ReadMetaFile(details);
+  // Should still succeed.
+  EXPECT_EQ(crash.payload, std::make_pair("upload_file_log", payload_file));
+}
+
 TEST_F(CrashSenderBaseTest, CreateClientId) {
   std::string client_id = GetClientId();
   EXPECT_EQ(client_id.length(), 32);

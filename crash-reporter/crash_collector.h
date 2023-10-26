@@ -238,6 +238,12 @@ class CrashCollector {
   // Initialize metrics path. Returns true if flag directory is created.
   static bool InitializeSystemMetricsDirectories();
 
+  // Initialize a file containing the segmentation status (feature level and
+  // scope level) of the device. This is useful for debugging chromebook
+  // plus-related crashes. It is computed once on boot and is static for the
+  // rest of the boot.
+  static bool InitializeSegmentationStatus();
+
   // Add non-standard meta data to the crash metadata file.  Call
   // before calling FinishCrash.  Key must not contain "=" or "\n" characters.
   // Value must not contain "\n" characters.

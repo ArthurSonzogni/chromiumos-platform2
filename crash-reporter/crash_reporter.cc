@@ -108,6 +108,10 @@ bool InitializeSystem(std::shared_ptr<UserCollector> user_collector,
     return false;
   }
 
+  if (!CrashCollector::InitializeSegmentationStatus()) {
+    LOG(WARNING) << "Couldn't set up segmentation status; proceeding anyway";
+  }
+
   return user_collector->Enable(early);
 }
 

@@ -68,6 +68,11 @@ inline constexpr char kChromeProcessTypeKey[] = "ptype";
 
 inline constexpr mode_t kSystemCrashFilesMode = 0660;
 
+// Keys to report on chromebook plus status of a device, to debug potential
+// crashes related to that status. See libsegmentation for more.
+inline constexpr char kFeatureLevelKey[] = "feature_level";
+inline constexpr char kScopeLevelKey[] = "scope_level";
+
 }  // namespace constants
 
 #endif  // CRASH_REPORTER_CONSTANTS_H_

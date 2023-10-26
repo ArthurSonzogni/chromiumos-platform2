@@ -46,6 +46,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/dbus/data_serialization.h>
+#include <brillo/files/file_util.h>
 #include <brillo/key_value_store.h>
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>
@@ -69,6 +70,10 @@ const char kCollectChromeFile[] =
 const char kDefaultLogConfig[] = "/etc/crash_reporter_logs.conf";
 const char kDefaultUserName[] = "chronos";
 const char kShellPath[] = "/bin/sh";
+const char kFeatureCheckPath[] = "/usr/sbin/feature_check";
+// Largest amount of data to read for feature_level and scope_level, which
+// should both be ints.
+const int kMaxLevelSize = 128;
 const char kCollectorNameKey[] = "collector";
 const char kDaemonStoreKey[] = "using_daemon_store";
 const char kEarlyCrashKey[] = "is_early_boot";
@@ -203,6 +208,50 @@ constexpr char kSysVendorKey[] = "chromeosflex_product_vendor";
   OPT_NCG( WB NCG(H16 ":") "{0,6}" H16) "::") ")"
 // clang-format on
 
+// Run the feature_check binary to get feature_level or scope_level and get its
+// value.
+std::optional<int> RunFeatureCheckAndGetValue(std::string_view flag) {
+  base::FilePath level_file;
+  if (!base::CreateTemporaryFile(&level_file)) {
+    LOG(WARNING) << "Failed to create temp file for feature_check output";
+    return std::nullopt;
+  }
+
+  brillo::ProcessImpl feature_check;
+  feature_check.AddArg(kFeatureCheckPath);
+  feature_check.AddArg(std::string(flag));
+  feature_check.RedirectOutput(level_file);
+
+  int result = feature_check.Run();
+  if (result != 0) {
+    LOG(WARNING) << "Failed to run feature_check: " << result;
+    return std::nullopt;
+  }
+
+  std::string level_contents;
+  bool fully_read = base::ReadFileToStringWithMaxSize(
+      level_file, &level_contents, kMaxLevelSize);
+  if (!fully_read) {
+    LOG(WARNING) << "Failed to read feature_check output";
+    return std::nullopt;
+  }
+  if (!brillo::DeleteFile(level_file)) {
+    LOG(WARNING) << "Failed to delete temp file; will be deleted on reboot";
+  }
+  if (!base::TrimWhitespaceASCII(level_contents, base::TrimPositions::TRIM_ALL,
+                                 &level_contents)) {
+    LOG(WARNING) << "Failed to trim whitespace from feature_check output";
+    return std::nullopt;
+  }
+  // The conversion isn't *strictly* necessary, but it's a nice way to validate
+  // that the string is valid.
+  int level = -1;
+  if (!base::StringToInt(level_contents, &level)) {
+    LOG(WARNING) << "Failed to parse level from feature_check into an int";
+    return std::nullopt;
+  }
+  return level;
+}
 }  // namespace
 
 const char* const CrashCollector::kUnknownValue = "unknown";
@@ -2085,6 +2134,56 @@ bool CrashCollector::InitializeSystemMetricsDirectories() {
                                    kSystemRunMetricsFlagMode, metrics_user_id,
                                    metrics_group_id, nullptr))
     return false;
+
+  return true;
+}
+
+// static
+bool CrashCollector::InitializeSegmentationStatus() {
+  auto feature_level_maybe = RunFeatureCheckAndGetValue("--feature_level");
+  if (!feature_level_maybe.has_value()) {
+    LOG(WARNING) << "Failed to get feature level";
+    return false;
+  }
+  int feature_level = feature_level_maybe.value();
+
+  auto scope_level_maybe = RunFeatureCheckAndGetValue("--scope_level");
+  if (!scope_level_maybe.has_value()) {
+    LOG(WARNING) << "Failed to get scope level";
+    return false;
+  }
+  int scope_level = scope_level_maybe.value();
+
+  std::string output = base::StrCat({constants::kFeatureLevelKey, "=",
+                                     base::NumberToString(feature_level), "\n",
+                                     constants::kScopeLevelKey, "=",
+                                     base::NumberToString(scope_level), "\n"});
+
+  base::FilePath segmentation_file = paths::GetAt(
+      paths::kSystemRunStateDirectory, paths::kSegmentationStatusPath);
+
+  // TODO(mutexlox): Unify this with GetNewFileHandle and WriteNewFile, which
+  // are member functions rather than static functions.
+
+  // Note: Getting the c_str() before calling open or memfd_create ensures that
+  // PLOG works correctly -- there won't be intervening standard library calls
+  // between the open / memfd_create and PLOG which could overwrite errno.
+  std::string filename_string = segmentation_file.value();
+  const char* filename_cstr = filename_string.c_str();
+  // The O_NOFOLLOW is redundant with O_CREAT|O_EXCL, but doesn't hurt.
+  int fd = HANDLE_EINTR(
+      open(filename_cstr,
+           O_CREAT | O_WRONLY | O_TRUNC | O_EXCL | O_NOFOLLOW | O_CLOEXEC,
+           constants::kSystemCrashFilesMode));
+  if (fd < 0) {
+    PLOG(ERROR) << "Could not open " << filename_cstr;
+    return false;
+  }
+  base::ScopedFD scoped_fd(fd);
+  if (!base::WriteFileDescriptor(fd, output)) {
+    LOG(WARNING) << "Failed to write segmentation information";
+    return false;
+  }
 
   return true;
 }

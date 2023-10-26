@@ -169,6 +169,10 @@ inline constexpr char kProductNameFile[] = "product_name";
 inline constexpr char kProductVersionFile[] = "product_version";
 inline constexpr char kSysVendorFile[] = "sys_vendor";
 
+// File in kSystemRunStateDirectory representing current status of segmentation.
+// (see libsegmentation).
+inline constexpr char kSegmentationStatusPath[] = "segmentation_status";
+
 // Gets a FilePath from the given path. A prefix will be added if the prefix is
 // set with SetPrefixForTesting().
 base::FilePath Get(base::StringPiece file_path);

@@ -23,9 +23,6 @@
 #include "crash-reporter/util.h"
 
 namespace {
-constexpr char kUploadVarPrefix[] = "upload_var_";
-constexpr char kUploadTextPrefix[] = "upload_text_";
-constexpr char kUploadFilePrefix[] = "upload_file_";
 constexpr char kOsTimestamp[] = "os_millis";
 constexpr char kProcessingExt[] = ".processing";
 constexpr char kRecentIncompleteMeta[] = "Recent incomplete metadata";
@@ -502,6 +499,45 @@ void SenderBase::EnsureDBusIsReady() {
   }
 }
 
+void SenderBase::AddSegmentationDetails(FullCrash& crash) {
+  if (feature_level_.has_value() && scope_level_.has_value()) {
+    crash.key_vals.emplace_back(constants::kScopeLevelKey,
+                                scope_level_.value());
+    crash.key_vals.emplace_back(constants::kFeatureLevelKey,
+                                feature_level_.value());
+    return;
+  }
+
+  base::FilePath segmentation_file = paths::GetAt(
+      paths::kSystemRunStateDirectory, paths::kSegmentationStatusPath);
+  std::string raw_segmentation;
+  if (!base::ReadFileToStringWithMaxSize(segmentation_file, &raw_segmentation,
+                                         kMaxMetaFileSize)) {
+    LOG(WARNING) << "Failed to read semgentation data file";
+    return;
+  }
+  brillo::KeyValueStore segmentation_data;
+  if (!ParseMetadata(raw_segmentation, &segmentation_data)) {
+    LOG(WARNING) << "Failed to parse segmentation data; continuing without";
+    return;
+  }
+  std::string scope_level;
+  if (!segmentation_data.GetString(constants::kScopeLevelKey, &scope_level)) {
+    LOG(WARNING) << "Failed to get scope level; continuing without";
+  } else {
+    scope_level_ = scope_level;
+    crash.key_vals.emplace_back(constants::kScopeLevelKey, scope_level);
+  }
+  std::string feature_level;
+  if (!segmentation_data.GetString(constants::kFeatureLevelKey,
+                                   &feature_level)) {
+    LOG(WARNING) << "Failed to get scope level; continuing without";
+    return;
+  }
+  feature_level_ = feature_level;
+  crash.key_vals.emplace_back(constants::kFeatureLevelKey, feature_level);
+}
+
 FullCrash SenderBase::ReadMetaFile(const CrashDetails& details) {
   FullCrash crash;
 
@@ -568,15 +604,15 @@ FullCrash SenderBase::ReadMetaFile(const CrashDetails& details) {
     }
     std::string value;
     details.metadata.GetString(key, &value);
-    bool is_upload_var =
-        base::StartsWith(key, kUploadVarPrefix, base::CompareCase::SENSITIVE);
-    bool is_upload_text =
-        base::StartsWith(key, kUploadTextPrefix, base::CompareCase::SENSITIVE);
-    bool is_upload_file =
-        base::StartsWith(key, kUploadFilePrefix, base::CompareCase::SENSITIVE);
+    bool is_upload_var = base::StartsWith(key, constants::kUploadVarPrefix,
+                                          base::CompareCase::SENSITIVE);
+    bool is_upload_text = base::StartsWith(key, constants::kUploadTextPrefix,
+                                           base::CompareCase::SENSITIVE);
+    bool is_upload_file = base::StartsWith(key, constants::kUploadFilePrefix,
+                                           base::CompareCase::SENSITIVE);
     if (is_upload_var) {
-      crash.key_vals.emplace_back(key.substr(sizeof(kUploadVarPrefix) - 1),
-                                  value);
+      crash.key_vals.emplace_back(
+          key.substr(sizeof(constants::kUploadVarPrefix) - 1), value);
     } else if (is_upload_text || is_upload_file) {
       base::FilePath value_file(value);
       // Upload only files without path information in them
@@ -589,18 +625,22 @@ FullCrash SenderBase::ReadMetaFile(const CrashDetails& details) {
           std::string value_content;
           if (base::ReadFileToString(value_file, &value_content)) {
             crash.key_vals.emplace_back(
-                key.substr(sizeof(kUploadTextPrefix) - 1), value_content);
+                key.substr(sizeof(constants::kUploadTextPrefix) - 1),
+                value_content);
           } else {
             LOG(ERROR) << "Failed attaching file contents from "
                        << value_file.value();
           }
         } else {  // not is_upload_text so must be is_upload_file
-          crash.files.emplace_back(key.substr(sizeof(kUploadFilePrefix) - 1),
-                                   value_file);
+          crash.files.emplace_back(
+              key.substr(sizeof(constants::kUploadFilePrefix) - 1), value_file);
         }
       }
     }
   }
+
+  // Add data related to chromebook plus for debugging.
+  AddSegmentationDetails(crash);
 
   return crash;
 }
