@@ -468,6 +468,14 @@ class Network {
   // PortalDetector object easily.
   mockable std::unique_ptr<PortalDetector> CreatePortalDetector();
 
+  // Returns the preferred IPFamily for performing network validation with
+  // PortalDetector. This defaults to IPv4 if both IPv4 and IPv6 are available.
+  std::optional<net_base::IPFamily> GetNetworkValidationIPFamily() const;
+  // Returns the list of name servers for performing network validation with
+  // PortalDetector.
+  std::vector<net_base::IPAddress> GetNetworkValidationDNSServers(
+      net_base::IPFamily family) const;
+
   // Constructs and returns a ConnectionDiagnostics instance. Isolate
   // this function only for unit tests, so that we can inject a mock
   // ConnectionDiagnostics object easily.

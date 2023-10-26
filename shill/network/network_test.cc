@@ -257,8 +257,21 @@ class NetworkTest : public ::testing::Test {
     network_->set_primary_family_for_testing(net_base::IPFamily::kIPv4);
   }
 
-  // Ensure local() and gateway() being available for portal detection.
+  // Sets a fake DHCPv4 config to allow network validation to start.
   void SetNetworkStateForPortalDetection() {
+    SetNetworkStateToConnected();
+    NetworkConfig config;
+    config.ipv4_address =
+        *net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.1/24");
+    config.dns_servers = {
+        *net_base::IPAddress::CreateFromString("8.8.8.8"),
+        *net_base::IPAddress::CreateFromString("8.8.4.4"),
+    };
+    network_->set_dhcp_network_config_for_testing(config);
+  }
+
+  // Ensure local() and gateway() being available for portal detection.
+  void SetNetworkStateForConnectionDiagnostic() {
     SetNetworkStateToConnected();
     const std::string ipv4_addr_str = "192.168.1.1";
     network_->set_ipconfig(
@@ -813,6 +826,28 @@ TEST_F(NetworkTest, PortalDetectionNotConnected) {
       network_->StartPortalDetection(Network::ValidationReason::kDBusRequest));
 }
 
+TEST_F(NetworkTest, PortalDetectionNoDNS) {
+  SetNetworkStateToConnected();
+  NetworkConfig config;
+  config.ipv4_address =
+      *net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.1/24");
+  config.dns_servers = {};
+  network_->set_dhcp_network_config_for_testing(config);
+
+  EXPECT_FALSE(network_->IsPortalDetectionInProgress());
+  EXPECT_CALL(*network_, CreatePortalDetector()).Times(0);
+  EXPECT_CALL(event_handler_,
+              OnNetworkValidationStart(network_->interface_index()))
+      .Times(0);
+  EXPECT_CALL(event_handler2_,
+              OnNetworkValidationStart(network_->interface_index()))
+      .Times(0);
+  EXPECT_FALSE(network_->StartPortalDetection(
+      Network::ValidationReason::kServicePropertyUpdate));
+  EXPECT_FALSE(
+      network_->StartPortalDetection(Network::ValidationReason::kDBusRequest));
+}
+
 TEST_F(NetworkTest, PortalDetectionRequestsInitializesPortalDetector) {
   int ifindex = network_->interface_index();
   SetNetworkStateForPortalDetection();
@@ -1017,6 +1052,7 @@ TEST_F(NetworkTest, PortalDetectionResultAfterDisconnection) {
 TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
   EXPECT_FALSE(network_->network_validation_result().has_value());
   SetNetworkStateForPortalDetection();
+  SetNetworkStateForConnectionDiagnostic();
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kSuccess;
@@ -1054,6 +1090,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
 TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
   EXPECT_FALSE(network_->network_validation_result().has_value());
   SetNetworkStateForPortalDetection();
+  SetNetworkStateForConnectionDiagnostic();
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kConnection,
   result.http_status = PortalDetector::Status::kFailure;
@@ -1154,6 +1191,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
 TEST_F(NetworkTest, PortalDetectionResult_PortalInvalidRedirect) {
   EXPECT_FALSE(network_->network_validation_result().has_value());
   SetNetworkStateForPortalDetection();
+  SetNetworkStateForConnectionDiagnostic();
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kRedirect;

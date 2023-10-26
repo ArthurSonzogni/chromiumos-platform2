@@ -651,7 +651,7 @@ std::vector<net_base::IPCIDR> Network::GetAddresses() const {
   if (network_config.ipv4_address) {
     result.emplace_back(*network_config.ipv4_address);
   }
-  for (const auto& ipv6_addr : config_.Get().ipv6_addresses) {
+  for (const auto& ipv6_addr : network_config.ipv6_addresses) {
     result.emplace_back(ipv6_addr);
   }
   return result;
@@ -776,17 +776,22 @@ bool Network::StartPortalDetection(ValidationReason reason) {
   //   - or has stopped,
   //   - or should be reset immediately entirely.
   if (!portal_detector_ || ShouldResetNetworkValidation(reason)) {
-    const auto local_address = local();
-    if (!local_address) {
+    auto family = GetNetworkValidationIPFamily();
+    if (!family) {
       LOG(ERROR) << *this << " " << __func__ << "(" << reason
                  << "): Cannot start portal detection: No valid IP address";
       portal_detector_.reset();
       return false;
     }
-
+    auto dns_list = GetNetworkValidationDNSServers(*family);
+    if (dns_list.empty()) {
+      LOG(ERROR) << *this << " " << __func__ << "(" << reason
+                 << "): Cannot start portal detection: No DNS servers";
+      portal_detector_.reset();
+      return false;
+    }
     portal_detector_ = CreatePortalDetector();
-    portal_detector_->Start(interface_name_, local_address->GetFamily(),
-                            GetDNSServers(), logging_tag_);
+    portal_detector_->Start(interface_name_, *family, dns_list, logging_tag_);
     LOG(INFO) << *this << " " << __func__ << "(" << reason
               << "): Portal detection started.";
     for (auto* ev : event_handlers_) {
@@ -818,16 +823,20 @@ bool Network::RestartPortalDetection() {
     LOG(ERROR) << *this << ": Portal detection was not started, cannot restart";
     return false;
   }
-
-  const auto local_address = local();
-  if (!local_address) {
+  auto family = GetNetworkValidationIPFamily();
+  if (!family) {
     LOG(ERROR) << *this
                << ": Cannot restart portal detection: No valid IP address";
+    portal_detector_.reset();
     return false;
   }
-
-  portal_detector_->Start(interface_name_, local_address->GetFamily(),
-                          GetDNSServers(), logging_tag_);
+  auto dns_list = GetNetworkValidationDNSServers(*family);
+  if (dns_list.empty()) {
+    LOG(ERROR) << *this << ": Cannot restart portal detection: No DNS servers";
+    portal_detector_.reset();
+    return false;
+  }
+  portal_detector_->Start(interface_name_, *family, dns_list, logging_tag_);
   // TODO(b/216351118): this ignores the portal detection retry delay. The
   // callback should be triggered when the next attempt starts, not when it
   // is scheduled.
@@ -855,6 +864,29 @@ std::unique_ptr<PortalDetector> Network::CreatePortalDetector() {
   return std::make_unique<PortalDetector>(
       dispatcher_, probing_configuration_,
       base::BindRepeating(&Network::OnPortalDetectorResult, AsWeakPtr()));
+}
+
+std::optional<net_base::IPFamily> Network::GetNetworkValidationIPFamily()
+    const {
+  auto network_config = GetNetworkConfig();
+  if (network_config.ipv4_address) {
+    return net_base::IPFamily::kIPv4;
+  }
+  if (!network_config.ipv6_addresses.empty()) {
+    return net_base::IPFamily::kIPv6;
+  }
+  return std::nullopt;
+}
+
+std::vector<net_base::IPAddress> Network::GetNetworkValidationDNSServers(
+    net_base::IPFamily family) const {
+  std::vector<net_base::IPAddress> dns_list;
+  for (const auto& addr : GetNetworkConfig().dns_servers) {
+    if (addr.GetFamily() == family) {
+      dns_list.push_back(addr);
+    }
+  }
+  return dns_list;
 }
 
 void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
@@ -980,19 +1012,23 @@ std::unique_ptr<ConnectionDiagnostics> Network::CreateConnectionDiagnostics(
 
 void Network::StartConnectivityTest(
     PortalDetector::ProbingConfiguration probe_config) {
+  auto family = GetNetworkValidationIPFamily();
+  if (!family) {
+    LOG(ERROR) << *this << " " << __func__ << ": No valid IP address";
+    return;
+  }
+  auto dns_list = GetNetworkValidationDNSServers(*family);
+  if (dns_list.empty()) {
+    LOG(ERROR) << *this << " " << __func__ << ": No DNS servers";
+    return;
+  }
+  LOG(INFO) << *this << ": Starting Internet connectivity test";
   connectivity_test_portal_detector_ = std::make_unique<PortalDetector>(
       dispatcher_, probe_config,
       base::BindRepeating(&Network::ConnectivityTestCallback,
                           weak_factory_.GetWeakPtr(), logging_tag_));
-  const auto local_address = local();
-  if (!local_address) {
-    LOG(DFATAL) << *this << ": Does not have a valid address";
-    return;
-  }
-  LOG(INFO) << *this << ": Starting Internet connectivity test";
-  connectivity_test_portal_detector_->Start(interface_name_,
-                                            local_address->GetFamily(),
-                                            GetDNSServers(), logging_tag_);
+  connectivity_test_portal_detector_->Start(interface_name_, *family, dns_list,
+                                            logging_tag_);
 }
 
 void Network::ConnectivityTestCallback(const std::string& device_logging_tag,
