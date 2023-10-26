@@ -46,13 +46,13 @@ class NET_BASE_EXPORT RTNLHandler {
   using ResponseCallback = base::OnceCallback<void(int32_t error)>;
 
   // Request mask.
-  static const uint32_t kRequestLink;
-  static const uint32_t kRequestAddr;
-  static const uint32_t kRequestRoute;
-  static const uint32_t kRequestRule;
-  static const uint32_t kRequestRdnss;
-  static const uint32_t kRequestNeighbor;
-  static const uint32_t kRequestBridgeNeighbor;
+  static constexpr uint32_t kRequestLink = (1 << 0);
+  static constexpr uint32_t kRequestAddr = (1 << 1);
+  static constexpr uint32_t kRequestRoute = (1 << 2);
+  static constexpr uint32_t kRequestRule = (1 << 3);
+  static constexpr uint32_t kRequestNdUserOption = (1 << 4);
+  static constexpr uint32_t kRequestNeighbor = (1 << 5);
+  static constexpr uint32_t kRequestBridgeNeighbor = (1 << 6);
 
   virtual ~RTNLHandler();
 

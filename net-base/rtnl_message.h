@@ -147,6 +147,13 @@ class NET_BASE_EXPORT RTNLMessage {
     std::vector<net_base::IPv6Address> addresses;
   };
 
+  struct NdUserOption {
+    NdUserOption() = default;
+    std::string ToString() const;
+    uint8_t type;
+    std::vector<uint8_t> option_bytes;  // Including header
+  };
+
   // Packs the attribute map into bytes, with the proper alignment.
   static std::vector<uint8_t> PackAttrs(const RTNLAttrMap& attrs);
 
@@ -197,6 +204,7 @@ class NET_BASE_EXPORT RTNLMessage {
   void set_rdnss_option(const RdnssOption& rdnss_option) {
     rdnss_option_ = rdnss_option;
   }
+  const NdUserOption& nd_user_option() const { return nd_user_option_; }
   const NeighborStatus& neighbor_status() const { return neighbor_status_; }
   void set_neighbor_status(const NeighborStatus& neighbor_status) {
     neighbor_status_ = neighbor_status;
@@ -285,6 +293,7 @@ class NET_BASE_EXPORT RTNLMessage {
   static std::unique_ptr<RTNLMessage> DecodeNeighbor(Mode mode,
                                                      const RTNLHeader* hdr);
 
+  void SetNdUserOptionBytes(const uint8_t* data, size_t length);
   bool ParseRdnssOption(const uint8_t* data, size_t length, uint32_t lifetime);
   bool EncodeLink(RTNLHeader* hdr) const;
   bool EncodeAddress(RTNLHeader* hdr) const;
@@ -316,6 +325,7 @@ class NET_BASE_EXPORT RTNLMessage {
   RouteStatus route_status_;
   NeighborStatus neighbor_status_;
   RdnssOption rdnss_option_;
+  NdUserOption nd_user_option_;
   // Additional rtattr contained in the message.
   RTNLAttrMap attributes_;
   // NOTE: Update Reset() accordingly when adding a new member field.

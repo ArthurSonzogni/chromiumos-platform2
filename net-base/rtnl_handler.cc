@@ -33,14 +33,6 @@
 
 namespace net_base {
 
-const uint32_t RTNLHandler::kRequestLink = 1;
-const uint32_t RTNLHandler::kRequestAddr = 2;
-const uint32_t RTNLHandler::kRequestRoute = 4;
-const uint32_t RTNLHandler::kRequestRule = 8;
-const uint32_t RTNLHandler::kRequestRdnss = 16;
-const uint32_t RTNLHandler::kRequestNeighbor = 32;
-const uint32_t RTNLHandler::kRequestBridgeNeighbor = 64;
-
 const uint32_t RTNLHandler::kErrorWindowSize = 16;
 const uint32_t RTNLHandler::kStoredRequestWindowSize = 32;
 
@@ -294,16 +286,14 @@ void RTNLHandler::ParseRTNL(base::span<const uint8_t> data) {
         case RTNLMessage::kTypeRule:
           DispatchEvent(kRequestRule, *msg);
           break;
-        case RTNLMessage::kTypeRdnss:
-          DispatchEvent(kRequestRdnss, *msg);
-          break;
         case RTNLMessage::kTypeNeighbor:
           DispatchEvent(kRequestNeighbor, *msg);
           break;
+        // Various ND user options.
+        case RTNLMessage::kTypeRdnss:
         case RTNLMessage::kTypeDnssl:
         case RTNLMessage::kTypeNdUserOption:
-          // DNSSL and general ND user option support is not implemented yet.
-          // Just ignore it.
+          DispatchEvent(kRequestNdUserOption, *msg);
           break;
         default:
           LOG(ERROR) << "Unknown RTNL message type: " << msg->type();

@@ -424,8 +424,14 @@ std::string RTNLMessage::NeighborStatus::ToString() const {
                             flags, type);
 }
 
+// |lifetime| is unsigned. Printing as signed so that infinity (0xfffffff) get
+// printed as -1. Same below.
 std::string RTNLMessage::RdnssOption::ToString() const {
   return base::StringPrintf("RdnssOption lifetime %d", lifetime);
+}
+
+std::string RTNLMessage::NdUserOption::ToString() const {
+  return base::StringPrintf("NdUserOption type %u", type);
 }
 
 // static
@@ -702,27 +708,39 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
     return nullptr;
   }
 
+  std::unique_ptr<RTNLMessage> msg;
   switch (nd_user_option_header->type) {
     case ND_OPT_DNSSL: {
-      // TODO(zqiu): Parse DNSSL (DNS Search List) option.
-      return std::make_unique<RTNLMessage>(
+      // TODO(b/172214013): Parse DNSSL (DNS Search List) option.
+      msg = std::make_unique<RTNLMessage>(
           kTypeDnssl, mode, hdr->hdr.nlmsg_flags, hdr->hdr.nlmsg_seq,
           hdr->hdr.nlmsg_pid, interface_index, family);
+      msg->SetNdUserOptionBytes(
+          reinterpret_cast<const uint8_t*>(nd_user_option_header), opt_len);
+      return msg;
     }
     case ND_OPT_RDNSS: {
       // Parse RNDSS (Recursive DNS Server) option.
-      auto msg = std::make_unique<RTNLMessage>(kTypeRdnss, mode, 0, 0, 0,
-                                               interface_index, family);
+      msg = std::make_unique<RTNLMessage>(kTypeRdnss, mode, 0, 0, 0,
+                                          interface_index, family);
       if (!msg->ParseRdnssOption(option_data, data_len, lifetime)) {
+        LOG(ERROR) << "Invalid RDNSS RTNL packet.";
         return nullptr;
       }
       return msg;
     }
     default:
-      // TODO(b/298937394): Capture the option binary value in the message.
-      return std::make_unique<RTNLMessage>(kTypeNdUserOption, mode, 0, 0, 0,
-                                           interface_index, family);
+      msg = std::make_unique<RTNLMessage>(kTypeNdUserOption, mode, 0, 0, 0,
+                                          interface_index, family);
+      msg->SetNdUserOptionBytes(
+          reinterpret_cast<const uint8_t*>(nd_user_option_header), opt_len);
+      return msg;
   }
+}
+
+void RTNLMessage::SetNdUserOptionBytes(const uint8_t* data, size_t length) {
+  nd_user_option_.option_bytes.assign(data, data + length);
+  nd_user_option_.type = *data;
 }
 
 bool RTNLMessage::ParseRdnssOption(const uint8_t* data,
@@ -1148,7 +1166,7 @@ std::string RTNLMessage::ToString() const {
       break;
     case RTNLMessage::kTypeDnssl:
     case RTNLMessage::kTypeNdUserOption:
-      // Nothing
+      details = nd_user_option_.ToString();
       break;
     case RTNLMessage::kTypeNeighbor:
       details = neighbor_status_.ToString();

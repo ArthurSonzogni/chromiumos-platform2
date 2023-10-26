@@ -50,7 +50,7 @@ void SLAACController::Start(
                           weak_factory_.GetWeakPtr()),
       rtnl_handler_);
   rdnss_listener_ = std::make_unique<net_base::RTNLListener>(
-      net_base::RTNLHandler::kRequestRdnss,
+      net_base::RTNLHandler::kRequestNdUserOption,
       base::BindRepeating(&SLAACController::RDNSSMsgHandler,
                           weak_factory_.GetWeakPtr()),
       rtnl_handler_);
@@ -238,7 +238,10 @@ void SLAACController::RouteMsgHandler(const net_base::RTNLMessage& msg) {
 }
 
 void SLAACController::RDNSSMsgHandler(const net_base::RTNLMessage& msg) {
-  DCHECK(msg.type() == net_base::RTNLMessage::kTypeRdnss);
+  if (msg.type() != net_base::RTNLMessage::kTypeRdnss) {
+    // DNSSL and other ND options are not supported yet.
+    return;
+  }
   if (msg.interface_index() != interface_index_) {
     return;
   }
