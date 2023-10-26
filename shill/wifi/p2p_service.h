@@ -28,12 +28,17 @@ class P2PService : public LocalService {
   P2PService(const P2PService&) = delete;
   P2PService& operator=(const P2PService&) = delete;
 
-  // Stub function returns an empty KeyValueStore.
+  // This method returns wpa_supplicant configuration parameters.
   KeyValueStore GetSupplicantConfigurationParameters() const override;
 
   std::optional<uint32_t> frequency() { return frequency_; }
 
  private:
+  // These methods return wpa_supplicant configuration parameters
+  // for GO and Client roles, respectively.
+  KeyValueStore GetSupplicantGOConfigurationParameters() const;
+  KeyValueStore GetSupplicantClientConfigurationParameters() const;
+
   // The hex-encoded tethering SSID name to be used in WiFi P2P. No value means
   // randomly generate a SSID with Direct- prefix.
   std::optional<std::string> hex_ssid_;

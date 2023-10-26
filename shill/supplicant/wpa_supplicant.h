@@ -181,14 +181,18 @@ class WPASupplicant {
   static constexpr char kSecurityModeWPA[] = "WPA";
   static constexpr char kStationPropertyAddress[] = "Address";
   static constexpr char kStationPropertyAID[] = "AID";
-  static constexpr char kAddPersistentGroupPropertyBSSID[] = "bssid";
+  static constexpr int32_t kAddPersistentGroupModeClient = 0;
+  static constexpr int32_t kAddPersistentGroupModeGO = 3;
+  static constexpr char kAddPersistentGroupPropertyFrequency[] = "frequency";
   static constexpr char kAddPersistentGroupPropertyMode[] = "mode";
   static constexpr char kAddPersistentGroupPropertyPassphrase[] = "psk";
   static constexpr char kAddPersistentGroupPropertySSID[] = "ssid";
   static constexpr char kGroupAddPropertyFrequency[] = "frequency";
+  static constexpr char kGroupAddPropertyPassphrase[] = "passphrase";
   static constexpr char kGroupAddPropertyPersistent[] = "persistent";
   static constexpr char kGroupAddPropertyPersistentPath[] =
       "persistent_group_object";
+  static constexpr char kGroupAddPropertySSID[] = "ssid";
   static constexpr char kGroupStartedPropertyGroupObject[] = "group_object";
   static constexpr char kGroupStartedPropertyInterfaceObject[] =
       "interface_object";

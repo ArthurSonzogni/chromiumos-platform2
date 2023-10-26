@@ -31,7 +31,7 @@ class LocalService {
   };
   static const char* StateToString(const LocalServiceState& state);
 
-  LocalService(LocalDeviceConstRefPtr device);
+  explicit LocalService(LocalDeviceConstRefPtr device);
   LocalService(const LocalService&) = delete;
   LocalService& operator=(const LocalService&) = delete;
 
@@ -48,6 +48,7 @@ class LocalService {
   bool IsUp() const;
 
   const std::string& log_name() const { return log_name_; }
+  LocalDeviceConstRefPtr device() const { return device_; }
   LocalServiceState state() const { return state_; }
 
  private:
