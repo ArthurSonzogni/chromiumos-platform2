@@ -29,6 +29,7 @@
 #include <base/strings/string_number_conversions.h>
 
 #include "net-base/byte_utils.h"
+#include "net-base/rtnl_message.h"
 
 namespace net_base {
 
@@ -300,7 +301,9 @@ void RTNLHandler::ParseRTNL(base::span<const uint8_t> data) {
           DispatchEvent(kRequestNeighbor, *msg);
           break;
         case RTNLMessage::kTypeDnssl:
-          // DNSSL support is not implemented. Just ignore it.
+        case RTNLMessage::kTypeNdUserOption:
+          // DNSSL and general ND user option support is not implemented yet.
+          // Just ignore it.
           break;
         default:
           LOG(ERROR) << "Unknown RTNL message type: " << msg->type();

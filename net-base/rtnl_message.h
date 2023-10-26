@@ -40,6 +40,7 @@ class NET_BASE_EXPORT RTNLMessage {
     kTypeRdnss,
     kTypeDnssl,
     kTypeNeighbor,
+    kTypeNdUserOption,  // Unknown ND user options that does not have own types.
   };
 
   enum Mode { kModeUnknown, kModeGet, kModeAdd, kModeDelete, kModeQuery };
@@ -306,7 +307,8 @@ class NET_BASE_EXPORT RTNLMessage {
   int32_t interface_index_;
   // Corresponds to ifi_family (kTypeLink), ifa_family (kTypeAddress),
   // rtm_family (kTypeRoute and kTypeRule), ndm_family (kTypeNeighbor). Always
-  // IPv6 for neighbor discovery options (kTypeRdnss, kTypeDnssl).
+  // IPv6 for neighbor discovery options (kTypeRdnss, kTypeDnssl,
+  // kTypeNdUserOption).
   sa_family_t family_;
   // Details specific to a message type.
   LinkStatus link_status_;

@@ -719,7 +719,9 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
       return msg;
     }
     default:
-      return nullptr;
+      // TODO(b/298937394): Capture the option binary value in the message.
+      return std::make_unique<RTNLMessage>(kTypeNdUserOption, mode, 0, 0, 0,
+                                           interface_index, family);
   }
 }
 
@@ -1067,6 +1069,8 @@ std::string RTNLMessage::TypeToString(RTNLMessage::Type type) {
       return "Dnssl";
     case RTNLMessage::kTypeNeighbor:
       return "Neighbor";
+    case RTNLMessage::kTypeNdUserOption:
+      return "NdUserOption";
     default:
       return "UnknownType";
   }
@@ -1140,8 +1144,11 @@ std::string RTNLMessage::ToString() const {
           route_status_.flags);
       break;
     case RTNLMessage::kTypeRdnss:
-    case RTNLMessage::kTypeDnssl:
       details = rdnss_option_.ToString();
+      break;
+    case RTNLMessage::kTypeDnssl:
+    case RTNLMessage::kTypeNdUserOption:
+      // Nothing
       break;
     case RTNLMessage::kTypeNeighbor:
       details = neighbor_status_.ToString();

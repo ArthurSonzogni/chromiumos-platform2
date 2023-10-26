@@ -35,6 +35,7 @@ class RTNLHandlerFuzz {
     switch (msg.type()) {
       case RTNLMessage::kTypeRdnss:
       case RTNLMessage::kTypeDnssl:
+      case RTNLMessage::kTypeNdUserOption:
         // RDNSS and DNSSL (RTM_NEWNDUSEROPT) don't have "query" modes, so we
         // don't support re-constructing them in user space.
         CHECK(bytes.empty());
