@@ -145,7 +145,7 @@ StatusOr<bool> VendorTpm2::IsSrkRocaVulnerable() {
   return false;
 }
 
-StatusOr<brillo::Blob> VendorTpm2::GetRsuDeviceId() {
+StatusOr<brillo::Blob> VendorTpm2::GetLegacyRsuDeviceId() {
   std::string device_id;
 
   RETURN_IF_ERROR(MakeStatus<TPM2Error>(
@@ -153,6 +153,25 @@ StatusOr<brillo::Blob> VendorTpm2::GetRsuDeviceId() {
       .WithStatus<TPMError>("Failed to get the RSU device ID");
 
   return BlobFromString(device_id);
+}
+
+StatusOr<brillo::Blob> VendorTpm2::GetRsuDeviceId() {
+  // Try to read the virtual NV RSU device ID first.
+  StatusOr<brillo::Blob> device_id = ro_data_.Read(RoSpace::kRsuDeviceId);
+  if (device_id.ok()) {
+    if (!device_id->empty()) {
+      return device_id;
+    } else {
+      LOG(WARNING) << "Empty virtual NV device ID.";
+    }
+  } else {
+    LOG(WARNING) << "Failed to get virtual NV device ID: "
+                 << device_id.err_status();
+  }
+
+  // Some older version of cr50 don't support virtual NV RSU device ID,
+  // fallback to the legacy method.
+  return GetLegacyRsuDeviceId();
 }
 
 StatusOr<IFXFieldUpgradeInfo> VendorTpm2::GetIFXFieldUpgradeInfo() {

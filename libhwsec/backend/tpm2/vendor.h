@@ -11,6 +11,7 @@
 #include <brillo/secure_blob.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
+#include "libhwsec/backend/tpm2/ro_data.h"
 #include "libhwsec/backend/tpm2/trunks_context.h"
 #include "libhwsec/backend/vendor.h"
 #include "libhwsec/proxy/proxy.h"
@@ -22,8 +23,9 @@ namespace hwsec {
 class VendorTpm2 : public Vendor {
  public:
   VendorTpm2(TrunksContext& context,
-             org::chromium::TpmManagerProxyInterface& tpm_manager)
-      : context_(context), tpm_manager_(tpm_manager) {}
+             org::chromium::TpmManagerProxyInterface& tpm_manager,
+             RoDataTpm2& ro_data)
+      : context_(context), tpm_manager_(tpm_manager), ro_data_(ro_data) {}
 
   StatusOr<uint32_t> GetFamily() override;
   StatusOr<uint64_t> GetSpecLevel() override;
@@ -41,9 +43,12 @@ class VendorTpm2 : public Vendor {
 
  private:
   Status EnsureVersionInfo();
+  // The legacy version of RSU device ID will do an extra RMA auth.
+  StatusOr<brillo::Blob> GetLegacyRsuDeviceId();
 
   TrunksContext& context_;
   org::chromium::TpmManagerProxyInterface& tpm_manager_;
+  RoDataTpm2& ro_data_;
 
   bool fw_declared_stable_ = false;
   std::optional<tpm_manager::GetVersionInfoReply> version_info_;

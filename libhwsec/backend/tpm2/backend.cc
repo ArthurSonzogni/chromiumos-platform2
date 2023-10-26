@@ -37,11 +37,11 @@ BackendTpm2::BackendTpm2(Proxy& proxy,
       random_(context_),
       pinweaver_(context_, config_),
       pinweaver_manager_(pinweaver_, pw_hash_tree_dir, metrics),
-      vendor_(context_, tpm_manager_),
       recovery_crypto_(context_, config_, key_management_, session_management_),
       u2f_(context_),
       attestation_(context_, config_, key_management_, random_, signing_),
       ro_data_(context_, key_management_, signing_, tpm_nvram_),
+      vendor_(context_, tpm_manager_, ro_data_),
       version_attestation_(context_, config_, key_management_, platform_) {}
 
 BackendTpm2::~BackendTpm2() = default;

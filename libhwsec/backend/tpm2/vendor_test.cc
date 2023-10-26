@@ -16,6 +16,7 @@
 
 using hwsec_foundation::error::testing::IsOk;
 using hwsec_foundation::error::testing::IsOkAndHolds;
+using hwsec_foundation::error::testing::NotOkWith;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
@@ -24,6 +25,7 @@ using testing::NiceMock;
 using testing::Return;
 using testing::SaveArg;
 using testing::SetArgPointee;
+using tpm_manager::NvramResult;
 using tpm_manager::TpmManagerStatus;
 namespace hwsec {
 
@@ -113,12 +115,68 @@ TEST_F(BackendVendorTpm2Test, SendRawCommand) {
 TEST_F(BackendVendorTpm2Test, GetRsuDeviceId) {
   const std::string kFakeRsuDeviceId = "fake_rsu_device_id";
 
+  tpm_manager::ReadSpaceReply read_reply;
+  read_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
+  read_reply.set_data(kFakeRsuDeviceId);
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), ReadSpace(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(read_reply), Return(true)));
+
+  EXPECT_THAT(backend_->GetVendorTpm2().GetRsuDeviceId(),
+              IsOkAndHolds(brillo::BlobFromString(kFakeRsuDeviceId)));
+}
+
+TEST_F(BackendVendorTpm2Test, GetRsuDeviceIdNotExistFallbackLegacy) {
+  const std::string kFakeRsuDeviceId = "fake_rsu_device_id";
+
+  // The space not found on Ti50.
+  tpm_manager::ReadSpaceReply read_reply;
+  read_reply.set_result(NvramResult::NVRAM_RESULT_SPACE_DOES_NOT_EXIST);
+
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), ReadSpace(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(read_reply), Return(true)));
+
   EXPECT_CALL(proxy_->GetMockTpmUtility(), GetRsuDeviceId(_))
       .WillOnce(DoAll(SetArgPointee<0>(kFakeRsuDeviceId),
                       Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_THAT(backend_->GetVendorTpm2().GetRsuDeviceId(),
               IsOkAndHolds(brillo::BlobFromString(kFakeRsuDeviceId)));
+}
+
+TEST_F(BackendVendorTpm2Test, GetRsuDeviceIdEmptyFallbackLegacy) {
+  const std::string kFakeRsuDeviceId = "fake_rsu_device_id";
+
+  // The space not found on Cr50.
+  tpm_manager::ReadSpaceReply read_reply;
+  read_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
+
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), ReadSpace(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(read_reply), Return(true)));
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetRsuDeviceId(_))
+      .WillOnce(DoAll(SetArgPointee<0>(kFakeRsuDeviceId),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_THAT(backend_->GetVendorTpm2().GetRsuDeviceId(),
+              IsOkAndHolds(brillo::BlobFromString(kFakeRsuDeviceId)));
+}
+
+TEST_F(BackendVendorTpm2Test, GetRsuDeviceIdFail) {
+  const std::string kFakeRsuDeviceId = "fake_rsu_device_id";
+
+  // The space not found on Cr50.
+  tpm_manager::ReadSpaceReply read_reply;
+  read_reply.set_result(NvramResult::NVRAM_RESULT_SPACE_DOES_NOT_EXIST);
+
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), ReadSpace(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(read_reply), Return(true)));
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetRsuDeviceId(_))
+      .WillOnce(DoAll(SetArgPointee<0>(kFakeRsuDeviceId),
+                      Return(trunks::TPM_RC_FAILURE)));
+
+  EXPECT_THAT(backend_->GetVendorTpm2().GetRsuDeviceId(),
+              NotOkWith("Failed to get the RSU device ID"));
 }
 
 }  // namespace hwsec

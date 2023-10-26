@@ -134,11 +134,11 @@ class BackendTpm2 : public Backend {
   RandomTpm2 random_;
   PinWeaverTpm2 pinweaver_;
   PinWeaverManagerImpl pinweaver_manager_;
-  VendorTpm2 vendor_;
   RecoveryCryptoTpm2 recovery_crypto_;
   U2fTpm2 u2f_;
   AttestationTpm2 attestation_;
   RoDataTpm2 ro_data_;
+  VendorTpm2 vendor_;
   VersionAttestationTpm2 version_attestation_;
 };
 
