@@ -80,9 +80,9 @@ class ClatService {
   Datapath* datapath_;
   shill::ProcessManager* process_manager_;
   System* system_;
-  // Flag to turn CLAT feature on or off. Can be modified through Enable() and
-  // Disable().
-  bool is_enabled_ = true;
+  // CLAT feature is disabled by default. This value can be changed in
+  // `Enable()` and `Disable()`
+  bool is_enabled_ = false;
   pid_t tayga_pid_ = -1;
 
   // The device on which CLAT should be running.
