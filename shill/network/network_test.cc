@@ -147,7 +147,7 @@ class MockPortalDetector : public PortalDetector {
               Start,
               (const std::string& ifname,
                net_base::IPFamily,
-               const std::vector<std::string>&,
+               const std::vector<net_base::IPAddress>&,
                const std::string& logging_tag),
               (override));
   MOCK_METHOD(void, Stop, (), (override));
@@ -163,7 +163,7 @@ class MockConnectionDiagnostics : public ConnectionDiagnostics {
             kTestIfindex,
             *net_base::IPAddress::CreateFromString(kIPv4DHCPAddress),
             *net_base::IPAddress::CreateFromString(kIPv4DHCPGateway),
-            {kIPv4DHCPNameServer},
+            {*net_base::IPAddress::CreateFromString(kIPv4DHCPNameServer)},
             nullptr,
             nullptr,
             base::DoNothing()) {}
@@ -207,7 +207,7 @@ class NetworkInTest : public Network {
               CreateConnectionDiagnostics,
               (const net_base::IPAddress& ip_address,
                const net_base::IPAddress& gateway,
-               const std::vector<std::string>& dns_list),
+               const std::vector<net_base::IPAddress>& dns_list),
               (override));
   MOCK_METHOD(void,
               ApplyNetworkConfig,
@@ -1032,7 +1032,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
   EXPECT_CALL(*network_, CreateConnectionDiagnostics)
       .WillOnce([conn_diag](const net_base::IPAddress&,
                             const net_base::IPAddress&,
-                            const std::vector<std::string>&) {
+                            const std::vector<net_base::IPAddress>&) {
         return std::unique_ptr<MockConnectionDiagnostics>(conn_diag);
       });
   EXPECT_CALL(event_handler_,
@@ -1068,7 +1068,7 @@ TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
   EXPECT_CALL(*network_, CreateConnectionDiagnostics)
       .WillOnce([conn_diag](const net_base::IPAddress&,
                             const net_base::IPAddress&,
-                            const std::vector<std::string>&) {
+                            const std::vector<net_base::IPAddress>&) {
         return std::unique_ptr<MockConnectionDiagnostics>(conn_diag);
       });
   EXPECT_CALL(event_handler_,
@@ -1170,7 +1170,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalInvalidRedirect) {
   EXPECT_CALL(*network_, CreateConnectionDiagnostics)
       .WillOnce([conn_diag](const net_base::IPAddress&,
                             const net_base::IPAddress&,
-                            const std::vector<std::string>&) {
+                            const std::vector<net_base::IPAddress>&) {
         return std::unique_ptr<MockConnectionDiagnostics>(conn_diag);
       });
   EXPECT_CALL(event_handler_,

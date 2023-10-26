@@ -20,6 +20,7 @@
 #include <brillo/streams/mock_stream.h>
 #include <curl/curl.h>
 #include <gtest/gtest.h>
+#include <net-base/ip_address.h>
 
 #include "shill/http_url.h"
 #include "shill/mock_control.h"
@@ -49,9 +50,8 @@ const char kTextURL[] = "http://www.chromium.org/path/to/resource";
 const char kNumericURL[] = "http://10.1.1.1";
 const char kInterfaceName[] = "int0";
 const char kLoggingTag[] = "int0 IPv4 attempt=1";
-const char kDNSServer0[] = "8.8.8.8";
-const char kDNSServer1[] = "8.8.4.4";
-const char* const kDNSServers[] = {kDNSServer0, kDNSServer1};
+constexpr net_base::IPAddress kDNSServer0(net_base::IPv4Address(8, 8, 8, 8));
+constexpr net_base::IPAddress kDNSServer1(net_base::IPv4Address(8, 8, 4, 4));
 const char kServerAddress[] = "10.1.1.1";
 }  // namespace
 
@@ -67,7 +67,6 @@ class HttpRequestTest : public Test {
  public:
   HttpRequestTest()
       : interface_name_(kInterfaceName),
-        dns_list_(kDNSServers, kDNSServers + 2),
         dns_client_(new StrictMock<MockDnsClient>()),
         transport_(std::make_shared<brillo::http::MockTransport>()),
         brillo_connection_(
@@ -224,7 +223,6 @@ class HttpRequestTest : public Test {
 
  private:
   const std::string interface_name_;
-  std::vector<std::string> dns_list_;
   // Owned by the HttpRequest, but tracked here for EXPECT().
   StrictMock<MockDnsClient>* dns_client_;
   std::shared_ptr<brillo::http::MockTransport> transport_;

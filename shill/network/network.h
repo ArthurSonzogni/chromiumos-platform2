@@ -474,7 +474,7 @@ class Network {
   mockable std::unique_ptr<ConnectionDiagnostics> CreateConnectionDiagnostics(
       const net_base::IPAddress& ip_address,
       const net_base::IPAddress& gateway,
-      const std::vector<std::string>& dns_list);
+      const std::vector<net_base::IPAddress>& dns_list);
 
   // Shuts down and clears all the running state of this network. If
   // |trigger_callback| is true and the Network is started, OnNetworkStopped()
@@ -526,7 +526,6 @@ class Network {
   // TODO(b/269401899): These getters should be deprecated. Instead, callers
   // should use getters like GetAddresses() to get properties of all IP families
   // at the same time.
-  std::vector<std::string> dns_servers() const;
   std::optional<net_base::IPAddress> local() const;
   std::optional<net_base::IPAddress> gateway() const;
 

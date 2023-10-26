@@ -216,7 +216,7 @@ class PortalDetector {
   // if an attempt is already running.
   virtual void Start(const std::string& ifname,
                      net_base::IPFamily ip_family,
-                     const std::vector<std::string>& dns_list,
+                     const std::vector<net_base::IPAddress>& dns_list,
                      const std::string& logging_tag);
 
   // End the current portal detection process if one exists, and do not call

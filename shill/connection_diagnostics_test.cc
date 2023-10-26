@@ -38,13 +38,14 @@ namespace shill {
 namespace {
 constexpr const char kInterfaceName[] = "int0";
 constexpr const int kInterfaceIndex = 4;
-constexpr const char kDNSServer0[] = "8.8.8.8";
-constexpr const char kDNSServer1[] = "8.8.4.4";
-const std::vector<std::string> kIPv4DnsList{kDNSServer0, kDNSServer1};
-const std::vector<std::string> kIPv6DnsList{
-    "2001:4860:4860::8888",
-    "2001:4860:4860::8844",
-};
+constexpr net_base::IPAddress kIPv4DNSServer0(
+    net_base::IPv4Address(8, 8, 8, 8));
+constexpr net_base::IPAddress kIPv4DNSServer1(
+    net_base::IPv4Address(8, 8, 4, 4));
+constexpr net_base::IPAddress kIPv6DNSServer0(net_base::IPv6Address(
+    0x20, 0x01, 0x48, 0x60, 0x48, 0x60, 0, 0, 0, 0, 0, 0, 0, 0, 0x88, 0x88));
+constexpr net_base::IPAddress kIPv6DNSServer1(net_base::IPv6Address(
+    0x20, 0x01, 0x48, 0x60, 0x48, 0x60, 0, 0, 0, 0, 0, 0, 0, 0, 0x88, 0x44));
 constexpr const char kHttpUrl[] = "http://www.gstatic.com/generate_204";
 const auto kIPv4DeviceAddress =
     *net_base::IPAddress::CreateFromString("100.200.43.22");
@@ -130,12 +131,12 @@ class ConnectionDiagnosticsTest : public Test {
  public:
   ConnectionDiagnosticsTest()
       : gateway_(kIPv4GatewayAddress),
-        dns_list_(kIPv4DnsList),
+        dns_list_({kIPv4DNSServer0, kIPv4DNSServer1}),
         connection_diagnostics_(kInterfaceName,
                                 kInterfaceIndex,
                                 kIPv4DeviceAddress,
                                 kIPv4GatewayAddress,
-                                kIPv4DnsList,
+                                {kIPv4DNSServer0, kIPv4DNSServer1},
                                 &dispatcher_,
                                 &metrics_,
                                 callback_target_.result_callback()) {}
@@ -181,10 +182,10 @@ class ConnectionDiagnosticsTest : public Test {
 
   void UseIPv6() {
     gateway_ = kIPv6GatewayAddress;
-    dns_list_ = kIPv6DnsList;
+    dns_list_ = {kIPv6DNSServer0, kIPv6DNSServer1};
     connection_diagnostics_.ip_address_ = kIPv6DeviceAddress;
     connection_diagnostics_.gateway_ = kIPv6GatewayAddress;
-    connection_diagnostics_.dns_list_ = kIPv6DnsList;
+    connection_diagnostics_.dns_list_ = {kIPv6DNSServer0, kIPv6DNSServer1};
   }
 
   void AddExpectedEvent(ConnectionDiagnostics::Type type,
@@ -237,11 +238,6 @@ class ConnectionDiagnosticsTest : public Test {
     ExpectPingDNSSeversStart(true, "");
   }
 
-  void ExpectPingDNSSeversStartFailureAllAddressesInvalid() {
-    ExpectPingDNSSeversStart(false,
-                             ConnectionDiagnostics::kIssueDNSServersInvalid);
-  }
-
   void ExpectPingDNSSeversStartFailureAllIcmpSessionsFailed() {
     ExpectPingDNSSeversStart(false, ConnectionDiagnostics::kIssueInternalError);
   }
@@ -269,11 +265,15 @@ class ConnectionDiagnosticsTest : public Test {
     AddExpectedEvent(ConnectionDiagnostics::kTypeResolveTargetServerIP,
                      ConnectionDiagnostics::kPhaseStart,
                      ConnectionDiagnostics::kResultSuccess);
-    EXPECT_CALL(
-        *dns_client_,
-        Start(dns_list_, connection_diagnostics_.target_url_->host(), _))
+    std::vector<std::string> pingable_dns_servers;
+    for (const auto& dns : dns_list_) {
+      pingable_dns_servers.push_back(dns.ToString());
+    }
+    EXPECT_CALL(*dns_client_,
+                Start(pingable_dns_servers,
+                      connection_diagnostics_.target_url_->host(), _))
         .WillOnce(Return(true));
-    connection_diagnostics_.ResolveTargetServerIPAddress(dns_list_);
+    connection_diagnostics_.ResolveTargetServerIPAddress(pingable_dns_servers);
   }
 
   void ExpectResolveTargetServerIPAddressEndSuccess(
@@ -355,7 +355,7 @@ class ConnectionDiagnosticsTest : public Test {
         // If the DNS server addresses are invalid, we will not even attempt to
         // start any ICMP sessions.
         expected_issue == ConnectionDiagnostics::kIssueDNSServersInvalid) {
-      connection_diagnostics_.dns_list_ = {"110.2.3", "1.5"};
+      connection_diagnostics_.dns_list_ = {};
     } else {
       // We are either instrumenting the success case (started pinging all
       // DNS servers successfully) or the failure case where we fail to start
@@ -368,13 +368,9 @@ class ConnectionDiagnosticsTest : public Test {
       auto dns_server_icmp_session_1 =
           std::make_unique<NiceMock<MockIcmpSession>>(&dispatcher_);
 
-      EXPECT_CALL(
-          *dns_server_icmp_session_0,
-          Start(*net_base::IPAddress::CreateFromString(kDNSServer0), _, _))
+      EXPECT_CALL(*dns_server_icmp_session_0, Start(kIPv4DNSServer0, _, _))
           .WillOnce(Return(is_success));
-      EXPECT_CALL(
-          *dns_server_icmp_session_1,
-          Start(*net_base::IPAddress::CreateFromString(kDNSServer1), _, _))
+      EXPECT_CALL(*dns_server_icmp_session_1, Start(kIPv4DNSServer1, _, _))
           .WillOnce(Return(is_success));
 
       connection_diagnostics_.id_to_pending_dns_server_icmp_session_.clear();
@@ -464,7 +460,7 @@ class ConnectionDiagnosticsTest : public Test {
   }
 
   net_base::IPAddress gateway_;
-  std::vector<std::string> dns_list_;
+  std::vector<net_base::IPAddress> dns_list_;
   CallbackTarget callback_target_;
   NiceMock<MockMetrics> metrics_;
   ConnectionDiagnostics connection_diagnostics_;
@@ -540,15 +536,6 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingDNSServerStartFailure_1) {
   // end diagnostics.
   ExpectSuccessfulStart();
   ExpectPingDNSSeversStartFailureAllIcmpSessionsFailed();
-  VerifyStopped();
-}
-
-TEST_F(ConnectionDiagnosticsTest, EndWith_PingDNSServerStartFailure_2) {
-  // We attempt to pinging DNS servers, but all DNS servers configured for this
-  // connection have invalid IP addresses, so we fail to start ping DNs servers,
-  // and end diagnostics.
-  ExpectSuccessfulStart();
-  ExpectPingDNSSeversStartFailureAllAddressesInvalid();
   VerifyStopped();
 }
 

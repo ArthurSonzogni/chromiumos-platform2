@@ -739,21 +739,6 @@ void Network::OnNeighborReachabilityEvent(
   }
 }
 
-// TODO(b/269401899): these accessors adapt to the legacy portal detection
-// behavior that runs on IPv4 when an IPv4 address is available, and IPv6 when
-// IPv4 address is not available but both IPv6 address and IPv6 DNS are
-// available. Should be removed when portal detection migrate to the ideal
-// behavior of running on both IPv4 and IPv6 separately.
-std::vector<std::string> Network::dns_servers() const {
-  if (ipconfig() && !ipconfig()->properties().address.empty()) {
-    return ipconfig()->properties().dns_servers;
-  }
-  if (ip6config() && ip6config()->properties().HasIPAddressAndDNS()) {
-    return ip6config()->properties().dns_servers;
-  }
-  return {};
-}
-
 std::optional<net_base::IPAddress> Network::local() const {
   if (ipconfig() && !ipconfig()->properties().address.empty()) {
     return net_base::IPAddress::CreateFromString(
@@ -801,7 +786,7 @@ bool Network::StartPortalDetection(ValidationReason reason) {
 
     portal_detector_ = CreatePortalDetector();
     portal_detector_->Start(interface_name_, local_address->GetFamily(),
-                            dns_servers(), logging_tag_);
+                            GetDNSServers(), logging_tag_);
     LOG(INFO) << *this << " " << __func__ << "(" << reason
               << "): Portal detection started.";
     for (auto* ev : event_handlers_) {
@@ -842,7 +827,7 @@ bool Network::RestartPortalDetection() {
   }
 
   portal_detector_->Start(interface_name_, local_address->GetFamily(),
-                          dns_servers(), logging_tag_);
+                          GetDNSServers(), logging_tag_);
   // TODO(b/216351118): this ignores the portal detection retry delay. The
   // callback should be triggered when the next attempt starts, not when it
   // is scheduled.
@@ -970,7 +955,7 @@ void Network::StartConnectionDiagnostics() {
   }
 
   connection_diagnostics_ = CreateConnectionDiagnostics(
-      *local_address, *gateway_address, dns_servers());
+      *local_address, *gateway_address, GetDNSServers());
   if (!connection_diagnostics_->Start(probing_configuration_.portal_http_url)) {
     connection_diagnostics_.reset();
     LOG(WARNING) << *this << ": Failed to start connection diagnostics";
@@ -987,7 +972,7 @@ void Network::StopConnectionDiagnostics() {
 std::unique_ptr<ConnectionDiagnostics> Network::CreateConnectionDiagnostics(
     const net_base::IPAddress& ip_address,
     const net_base::IPAddress& gateway,
-    const std::vector<std::string>& dns_list) {
+    const std::vector<net_base::IPAddress>& dns_list) {
   return std::make_unique<ConnectionDiagnostics>(
       interface_name(), interface_index(), ip_address, gateway, dns_list,
       dispatcher_, metrics_, base::DoNothing());
@@ -1005,8 +990,9 @@ void Network::StartConnectivityTest(
     return;
   }
   LOG(INFO) << *this << ": Starting Internet connectivity test";
-  connectivity_test_portal_detector_->Start(
-      interface_name_, local_address->GetFamily(), dns_servers(), logging_tag_);
+  connectivity_test_portal_detector_->Start(interface_name_,
+                                            local_address->GetFamily(),
+                                            GetDNSServers(), logging_tag_);
 }
 
 void Network::ConnectivityTestCallback(const std::string& device_logging_tag,

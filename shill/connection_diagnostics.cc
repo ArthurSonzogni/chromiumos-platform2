@@ -101,7 +101,7 @@ ConnectionDiagnostics::ConnectionDiagnostics(
     int iface_index,
     const net_base::IPAddress& ip_address,
     const net_base::IPAddress& gateway,
-    const std::vector<std::string>& dns_list,
+    const std::vector<net_base::IPAddress>& dns_list,
     EventDispatcher* dispatcher,
     Metrics* metrics,
     ResultCallback result_callback)
@@ -229,33 +229,23 @@ void ConnectionDiagnostics::PingDNSServers() {
     // attempting to ping the other DNS servers rather than failing. We only
     // need to successfully ping a single DNS server to decide whether or not
     // DNS servers can be reached.
-    const auto dns_server_ip_addr =
-        net_base::IPAddress::CreateFromString(dns_list_[i]);
-    if (!dns_server_ip_addr) {
-      LOG(ERROR) << iface_name_
-                 << ": could not parse DNS server IP address from string";
-      ++num_invalid_dns_server_addr;
-      id_to_pending_dns_server_icmp_session_.erase(i);
-      continue;
-    }
-
+    const auto& dns_server_ip_addr = dns_list_[i];
     auto session_iter = id_to_pending_dns_server_icmp_session_.find(i);
     if (session_iter == id_to_pending_dns_server_icmp_session_.end())
       continue;
 
     if (!session_iter->second->Start(
-            *dns_server_ip_addr, iface_index_,
+            dns_server_ip_addr, iface_index_,
             base::BindOnce(&ConnectionDiagnostics::OnPingDNSServerComplete,
                            weak_ptr_factory_.GetWeakPtr(), i))) {
       LOG(ERROR) << iface_name_ << "Failed to initiate ping for DNS server at "
-                 << dns_server_ip_addr->ToString();
+                 << dns_server_ip_addr;
       ++num_failed_icmp_session_start;
       id_to_pending_dns_server_icmp_session_.erase(i);
       continue;
     }
 
-    SLOG(2) << __func__ << ": pinging DNS server at "
-            << dns_server_ip_addr->ToString();
+    SLOG(2) << __func__ << ": pinging DNS server at " << dns_server_ip_addr;
   }
 
   if (id_to_pending_dns_server_icmp_session_.empty()) {
@@ -313,7 +303,7 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
   }
 
   if (IcmpSession::AnyRepliesReceived(result)) {
-    pingable_dns_servers_.push_back(dns_list_[dns_server_index]);
+    pingable_dns_servers_.push_back(dns_list_[dns_server_index].ToString());
   }
   if (!id_to_pending_dns_server_icmp_session_.empty()) {
     SLOG(2) << __func__ << ": not yet finished pinging all DNS servers";

@@ -50,7 +50,7 @@ class HttpRequest {
   HttpRequest(EventDispatcher* dispatcher,
               const std::string& interface_name,
               net_base::IPFamily ip_family,
-              const std::vector<std::string>& dns_list,
+              const std::vector<net_base::IPAddress>& dns_list,
               bool allow_non_google_https = false);
   HttpRequest(const HttpRequest&) = delete;
   HttpRequest& operator=(const HttpRequest&) = delete;
@@ -95,7 +95,7 @@ class HttpRequest {
   std::string logging_tag_;
   std::string interface_name_;
   net_base::IPFamily ip_family_;
-  std::vector<std::string> dns_list_;
+  std::vector<net_base::IPAddress> dns_list_;
 
   base::WeakPtrFactory<HttpRequest> weak_ptr_factory_;
   DnsClient::ClientCallback dns_client_callback_;

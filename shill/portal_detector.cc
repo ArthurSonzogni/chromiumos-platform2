@@ -94,7 +94,7 @@ const HttpUrl& PortalDetector::PickProbeUrl(
 
 void PortalDetector::Start(const std::string& ifname,
                            net_base::IPFamily ip_family,
-                           const std::vector<std::string>& dns_list,
+                           const std::vector<net_base::IPAddress>& dns_list,
                            const std::string& logging_tag) {
   if (IsInProgress()) {
     LOG(INFO) << LoggingTag() << ": Attempt is already running";

@@ -41,7 +41,7 @@ static std::string ObjectID(const HttpRequest* r) {
 HttpRequest::HttpRequest(EventDispatcher* dispatcher,
                          const std::string& interface_name,
                          net_base::IPFamily ip_family,
-                         const std::vector<std::string>& dns_list,
+                         const std::vector<net_base::IPAddress>& dns_list,
                          bool allow_non_google_https)
     : interface_name_(interface_name),
       ip_family_(ip_family),
@@ -110,7 +110,15 @@ HttpRequest::Result HttpRequest::Start(
   } else {
     SLOG(this, 2) << "Looking up host: " << server_hostname_;
     Error error;
-    if (!dns_client_->Start(dns_list_, server_hostname_, &error)) {
+    std::vector<std::string> dns_addresses;
+    // TODO(b/307880493): Migrate to net_base::DNSClient and avoid
+    // converting the net_base::IPAddress values to std::string.
+    for (const auto& dns : dns_list_) {
+      if (dns.GetFamily() == ip_family_) {
+        dns_addresses.push_back(dns.ToString());
+      }
+    }
+    if (!dns_client_->Start(dns_addresses, server_hostname_, &error)) {
       LOG(ERROR) << logging_tag_
                  << ": Failed to start DNS client: " << error.message();
       Stop();

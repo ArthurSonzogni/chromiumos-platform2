@@ -43,9 +43,8 @@ const std::vector<std::string> kFallbackHttpsUrls{
     "http://url1.com/gen204",
     "http://url2.com/gen204",
 };
-const char kDNSServer0[] = "8.8.8.8";
-const char kDNSServer1[] = "8.8.4.4";
-const char* const kDNSServers[] = {kDNSServer0, kDNSServer1};
+constexpr net_base::IPAddress kDNSServer0(net_base::IPv4Address(8, 8, 8, 8));
+constexpr net_base::IPAddress kDNSServer1(net_base::IPv4Address(8, 8, 4, 4));
 
 class MockHttpRequest : public HttpRequest {
  public:
@@ -101,7 +100,7 @@ class PortalDetectorTest : public Test {
         http_request_(nullptr),
         https_request_(nullptr),
         interface_name_(kInterfaceName),
-        dns_servers_(kDNSServers, kDNSServers + 2),
+        dns_servers_({kDNSServer0, kDNSServer1}),
         portal_detector_(
             new PortalDetector(&dispatcher_,
                                MakeProbingConfiguration(),
@@ -223,7 +222,7 @@ class PortalDetectorTest : public Test {
   MockHttpRequest* https_request_;
   CallbackTarget callback_target_;
   const std::string interface_name_;
-  std::vector<std::string> dns_servers_;
+  std::vector<net_base::IPAddress> dns_servers_;
   std::unique_ptr<PortalDetector> portal_detector_;
 };
 

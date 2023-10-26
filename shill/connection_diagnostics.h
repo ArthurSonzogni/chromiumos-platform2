@@ -129,7 +129,7 @@ class ConnectionDiagnostics {
                         int iface_index,
                         const net_base::IPAddress& ip_address,
                         const net_base::IPAddress& gateway,
-                        const std::vector<std::string>& dns_list,
+                        const std::vector<net_base::IPAddress>& dns_list,
                         EventDispatcher* dispatcher,
                         Metrics* metrics,
                         ResultCallback result_callback);
@@ -220,8 +220,9 @@ class ConnectionDiagnostics {
   net_base::IPAddress ip_address_;
   // The IP address of the gateway.
   net_base::IPAddress gateway_;
-  std::vector<std::string> dns_list_;
+  std::vector<net_base::IPAddress> dns_list_;
 
+  // TODO(b/307880493): Migrate to net_base::DNSClient.
   std::unique_ptr<DnsClient> dns_client_;
   std::unique_ptr<IcmpSession> icmp_session_;
 
@@ -232,6 +233,8 @@ class ConnectionDiagnostics {
   // Used to ping multiple DNS servers in parallel.
   std::map<int, std::unique_ptr<IcmpSession>>
       id_to_pending_dns_server_icmp_session_;
+  // TODO(b/307880493): Migrate to net_base::DNSClient and avoid
+  // converting the pingable net_base::IPAddress values to std::string.
   std::vector<std::string> pingable_dns_servers_;
 
   int num_dns_attempts_;
