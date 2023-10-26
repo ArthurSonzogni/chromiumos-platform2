@@ -1067,6 +1067,9 @@ class TRUNKS_EXPORT TpmUtility {
   virtual TPM_RC GetRwVersion(uint32_t* epoch,
                               uint32_t* major,
                               uint32_t* minor) = 0;
+
+  // Get TPM console logs.
+  virtual TPM_RC GetConsoleLogs(std::string* logs) = 0;
 };
 
 }  // namespace trunks

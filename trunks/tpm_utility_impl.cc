@@ -77,6 +77,7 @@ const uint16_t kGscSubcmdU2fSign = 45;
 const uint16_t kGscSubcmdU2fAttest = 46;
 const uint16_t kGscSubcmdGetRoStatus = 57;
 const uint16_t kTi50GetMetrics = 65;
+const uint16_t kTi50GetConsoleLogs = 67;
 
 // Salt used exclusively for the Remote Server Unlock process due to the privacy
 // reasons.
@@ -3735,5 +3736,9 @@ TPM_RC TpmUtilityImpl::GetRwVersion(uint32_t* epoch,
   *major = base::NetToHost32(pdu.shv[kRwVersionIndex].major);
   *minor = base::NetToHost32(pdu.shv[kRwVersionIndex].minor);
   return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::GetConsoleLogs(std::string* logs) {
+  return GscVendorCommand(kTi50GetConsoleLogs, std::string(), logs);
 }
 }  // namespace trunks

@@ -773,6 +773,10 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->GetRwVersion(epoch, major, minor);
   }
 
+  TPM_RC GetConsoleLogs(std::string* logs) override {
+    return target_->GetConsoleLogs(logs);
+  }
+
  private:
   TpmUtility* target_;
 };

@@ -395,6 +395,7 @@ class MockTpmUtility : public TpmUtility {
               GetRwVersion,
               (uint32_t*, uint32_t*, uint32_t*),
               (override));
+  MOCK_METHOD(TPM_RC, GetConsoleLogs, (std::string*), (override));
 };
 
 }  // namespace trunks

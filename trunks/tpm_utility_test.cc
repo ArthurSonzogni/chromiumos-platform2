@@ -3834,10 +3834,11 @@ TEST_F(TpmUtilityTest, GetTi50Stats) {
   EXPECT_EQ(aprov_time, 0x55667788);
   EXPECT_EQ(aprov_status, 0x9900AABB);
 }
+
 TEST_F(TpmUtilityTest, GetRwVersion) {
   std::string command_response(
       "\x80\x01"           // tag=TPM_STD_NO_SESSIONS
-      "\x00\x00\x00\x3C"   // size=28
+      "\x00\x00\x00\x3C"   // size=60
       "\x00\x00\x00\x00"   // code=TPM_RC_SUCCESS
       "\x00\x04"           // subcommand=EXTENSION_FW_UPGRADE
       "\x00\x00\x00\x00"   // return_value
@@ -3863,5 +3864,23 @@ TEST_F(TpmUtilityTest, GetRwVersion) {
   EXPECT_EQ(minor, 0x11223344);
   EXPECT_EQ(major, 0xDDCCBBAA);
   EXPECT_EQ(epoch, 0x88776655);
+}
+
+TEST_F(TpmUtilityTest, GetConsoleLogs) {
+  std::string command_response(
+      "\x80\x01"           // tag=TPM_STD_NO_SESSIONS
+      "\x00\x00\x00\x18"   // size=24
+      "\x00\x00\x00\x00"   // code=TPM_RC_SUCCESS
+      "\x00\x43"           // subcommand=kTi50GetConsoleLogs
+      "\x41\x42\x43\x44"   // "ABCD"
+      "\x45\x46\x47\x48"   // "EFGH"
+      "\x49\x4A\x4B\x4C",  // "IJKL"
+      24);
+  EXPECT_CALL(mock_transceiver_, SendCommandAndWait(_))
+      .WillOnce(Return(command_response));
+
+  std::string logs;
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetConsoleLogs(&logs));
+  EXPECT_EQ(logs, "ABCDEFGHIJKL");
 }
 }  // namespace trunks

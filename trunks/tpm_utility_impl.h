@@ -397,6 +397,8 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                       uint32_t* major,
                       uint32_t* minor) override;
 
+  TPM_RC GetConsoleLogs(std::string* logs) override;
+
  private:
   friend class TpmUtilityTest;
   friend class NVTpmUtilityTest;
