@@ -62,12 +62,8 @@ class BluetoothRoutineBaseV2 {
  protected:
   // Unowned pointer that should outlive this instance.
   Context* const context_;
-  // The Bluetooth manager from Floss.
-  org::chromium::bluetooth::ManagerProxyInterface* manager_;
   // The HCI interface number of default adapter, will be set in |Initialize|.
   int32_t default_adapter_hci_ = -1;
-  // The default adapter from Floss, which is null when adapter is not enabled.
-  org::chromium::bluetooth::BluetoothProxyInterface* default_adapter_ = nullptr;
   // The callback will be unregistered when the subscription is destructured.
   std::vector<base::CallbackListSubscription> event_subscriptions_;
   // Routine start time, used to calculate the progress percentage and timeout.
@@ -110,6 +106,12 @@ class BluetoothRoutineBaseV2 {
 
   // The initial powered state of the adapter.
   std::optional<bool> initial_powered_state_;
+
+  // The Bluetooth manager from Floss.
+  org::chromium::bluetooth::ManagerProxyInterface* manager_;
+
+  // The default adapter from Floss, which is null when adapter is not enabled.
+  org::chromium::bluetooth::BluetoothProxyInterface* default_adapter_ = nullptr;
 
   // The callbacks waiting for adapter enabled event. The callbacks will return
   // a bool state to report whether the adapter is enabled successfully.

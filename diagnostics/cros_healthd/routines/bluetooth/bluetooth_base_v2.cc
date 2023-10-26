@@ -188,9 +188,8 @@ void BluetoothRoutineBaseV2::RunPreCheck(
     return;
   }
 
-  // The adapter must be existing when powered is on.
-  auto adapter = GetDefaultAdapter();
-  if (!adapter) {
+  // The default adapter must be existing when powered is on.
+  if (!default_adapter_) {
     std::move(on_finish).Run("Failed to get default adapter.");
     return;
   }
@@ -198,7 +197,8 @@ void BluetoothRoutineBaseV2::RunPreCheck(
   auto [on_success, on_error] = SplitDbusCallback(
       base::BindOnce(&BluetoothRoutineBaseV2::HandleDiscoveringResponse,
                      weak_ptr_factory_.GetWeakPtr(), std::move(on_finish)));
-  adapter->IsDiscoveringAsync(std::move(on_success), std::move(on_error));
+  default_adapter_->IsDiscoveringAsync(std::move(on_success),
+                                       std::move(on_error));
 }
 
 void BluetoothRoutineBaseV2::HandleDiscoveringResponse(
