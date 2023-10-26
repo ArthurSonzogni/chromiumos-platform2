@@ -6,7 +6,9 @@ use anyhow::Result;
 use libchromeos::panic_handler;
 use log::info;
 
+mod chromeos_install;
 mod mount;
+mod util;
 
 static FLEXOR_TAG: &'static str = "flexor";
 
