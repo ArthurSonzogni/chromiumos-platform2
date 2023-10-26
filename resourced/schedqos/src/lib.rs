@@ -6,6 +6,7 @@
 // process. QoS definitions map to performance characteristics.
 
 pub mod cgroups;
+mod sched_attr;
 
 use std::fmt::Display;
 use std::io;
@@ -14,6 +15,9 @@ use std::path::Path;
 pub use cgroups::CgroupContext;
 pub use cgroups::CpuCgroup;
 pub use cgroups::CpusetCgroup;
+use sched_attr::SchedAttrContext;
+use sched_attr::UCLAMP_BOOSTED_MIN;
+pub use sched_attr::UCLAMP_MAX;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -217,103 +221,6 @@ impl ThreadStateConfig {
     }
 }
 
-#[repr(C)]
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-struct sched_attr {
-    pub size: u32,
-
-    pub sched_policy: u32,
-    pub sched_flags: u64,
-    pub sched_nice: i32,
-
-    pub sched_priority: u32,
-
-    pub sched_runtime: u64,
-    pub sched_deadline: u64,
-    pub sched_period: u64,
-
-    pub sched_util_min: u32,
-    pub sched_util_max: u32,
-}
-
-const SCHED_FLAG_UTIL_CLAMP_MIN: u64 = 0x20;
-const SCHED_FLAG_UTIL_CLAMP_MAX: u64 = 0x40;
-
-impl sched_attr {
-    pub const fn default() -> Self {
-        Self {
-            size: std::mem::size_of::<sched_attr>() as u32,
-            sched_policy: libc::SCHED_OTHER as u32,
-            sched_flags: 0,
-            sched_nice: 0,
-            sched_priority: 0,
-            sched_runtime: 0,
-            sched_deadline: 0,
-            sched_period: 0,
-            sched_util_min: 0,
-            sched_util_max: UCLAMP_MAX,
-        }
-    }
-}
-
-/// Check the kernel support setting uclamp via sched_attr.
-///
-/// sched_util_min and sched_util_max were added to sched_attr from Linux kernel
-/// v5.3 and guarded by CONFIG_UCLAMP_TASK flag.
-fn check_uclamp_support() -> io::Result<bool> {
-    let mut attr = sched_attr::default();
-
-    // SAFETY: sched_getattr only modifies fields of attr.
-    let res = unsafe {
-        libc::syscall(
-            libc::SYS_sched_getattr,
-            0, // current thread
-            &mut attr as *mut sched_attr as usize,
-            std::mem::size_of::<sched_attr>() as u32,
-            0,
-        )
-    };
-
-    if res < 0 {
-        // sched_getattr must succeeds in most cases.
-        //
-        // * no ESRCH because this is inqury for this thread.
-        // * no E2BIG nor EINVAL because sched_attr struct must be correct.
-        //   Otherwise following sched_setattr fail anyway.
-        //
-        // Some environments (e.g. qemu-user) do not support sched_getattr(2)
-        // and may fail as ENOSYS.
-        return Err(io::Error::last_os_error());
-    }
-
-    attr.sched_flags |= SCHED_FLAG_UTIL_CLAMP_MIN | SCHED_FLAG_UTIL_CLAMP_MAX;
-
-    // SAFETY: sched_setattr does not modify userspace memory.
-    let res = unsafe {
-        libc::syscall(
-            libc::SYS_sched_setattr,
-            0, // current thread
-            &mut attr as *mut sched_attr as usize,
-            0,
-        )
-    };
-
-    if res < 0 {
-        let err = io::Error::last_os_error();
-        if err.raw_os_error() == Some(libc::EOPNOTSUPP) {
-            Ok(false)
-        } else {
-            Err(err)
-        }
-    } else {
-        Ok(true)
-    }
-}
-
-const UCLAMP_MAX: u32 = 1024;
-const UCLAMP_BOOST_PERCENT: u32 = 60;
-const UCLAMP_BOOSTED_MIN: u32 = (UCLAMP_BOOST_PERCENT * UCLAMP_MAX + 50) / 100;
-
 /// Wrap u32 PID with [ProcessId] internally.
 ///
 /// Using u32 for both process id and thread id is confusing in this library.
@@ -336,7 +243,7 @@ fn validate_thread_id(process_id: ProcessId, thread_id: ThreadId) -> bool {
 
 pub struct SchedQosContext {
     config: Config,
-    uclamp_support: bool,
+    sched_attr_context: SchedAttrContext,
 }
 
 impl SchedQosContext {
@@ -349,7 +256,7 @@ impl SchedQosContext {
 
         Ok(Self {
             config,
-            uclamp_support: check_uclamp_support().map_err(Error::SchedAttr)?,
+            sched_attr_context: SchedAttrContext::new().map_err(Error::SchedAttr)?,
         })
     }
 
@@ -381,34 +288,9 @@ impl SchedQosContext {
 
         let thread_config = &self.config.thread_configs[thread_state as usize];
 
-        let mut attr = sched_attr::default();
-
-        if let Some(rt_priority) = thread_config.rt_priority {
-            attr.sched_policy = libc::SCHED_FIFO as u32;
-            attr.sched_priority = rt_priority;
-        }
-
-        attr.sched_nice = thread_config.nice;
-
-        // Setting SCHED_FLAG_UTIL_CLAMP_MIN or SCHED_FLAG_UTIL_CLAMP_MAX should
-        // be avoided if kernel does not support uclamp. Otherwise
-        // sched_setattr(2) fails as EOPNOTSUPP.
-        if self.uclamp_support {
-            attr.sched_util_min = thread_config.uclamp_min;
-            attr.sched_flags |= SCHED_FLAG_UTIL_CLAMP_MIN | SCHED_FLAG_UTIL_CLAMP_MAX;
-        };
-
-        let res = unsafe {
-            libc::syscall(
-                libc::SYS_sched_setattr,
-                thread_id.0,
-                &mut attr as *mut sched_attr as usize,
-                0,
-            )
-        };
-        if res < 0 {
-            return Err(Error::SchedAttr(io::Error::last_os_error()));
-        }
+        self.sched_attr_context
+            .set_thread_sched_attr(thread_id, thread_config)
+            .map_err(Error::SchedAttr)?;
 
         self.config
             .cgroup_context
