@@ -104,6 +104,7 @@ type cros_flex_hwis_tool_exec, exec_type, file_type, cros_file_type, cros_system
 type cros_gdbus_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_getopt_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_grep_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_gsclog_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_gsctool_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_healthd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_health_tool_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
@@ -494,6 +495,7 @@ type cros_var_log_faillog, file_type, cros_log_type, cros_file_type, cros_var_fi
 type cros_var_log_fbpreprocessord, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_fpstudy, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_fwupd, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
+type cros_var_log_gsclog, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_hypervisor, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_lorgnette, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_metrics, file_type, cros_log_type, cros_file_type, cros_var_file_type;

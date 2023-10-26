@@ -75,6 +75,7 @@ copies.
 | [fusebox](./fusebox/) | FuseBox service |
 | [glib-bridge](./glib-bridge/) | library for libchrome-glib message loop interoperation |
 | [goldfishd](./goldfishd/) | Android Emulator Daemon |
+| [gsclog](./gsclog/) | GSC Log Fetcher |
 | [hammerd](./hammerd/) | Firmware updater utility for hammer hardware |
 | [hardware_verifier](./hardware_verifier/) | Hardware verifier tool |
 | [heartd](./heartd/) | Health ensure and accident resolve treatment daemon |

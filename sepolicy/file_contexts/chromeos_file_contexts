@@ -104,6 +104,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/gdbus                  u:object_r:cros_gdbus_exec:s0
 /usr/bin/getopt                 u:object_r:cros_getopt_exec:s0
 /usr/bin/gfind                  u:object_r:cros_find_exec:s0
+/usr/bin/gsclog                 u:object_r:cros_gsclog_exec:s0
 /usr/bin/heartd                 u:object_r:cros_heartd_exec:s0
 /usr/bin/heartd-tool            u:object_r:cros_heartd_tool_exec:s0
 /usr/bin/hermes                 u:object_r:cros_hermes_exec:s0
@@ -382,6 +383,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/log/fpstudy(/.*)?          u:object_r:cros_var_log_fpstudy:s0
 /var/log/fpstudy-audit.log      u:object_r:cros_syslog:s0
 /var/log/fwupd.log              u:object_r:cros_var_log_fwupd:s0
+/var/log/gsc.log                u:object_r:cros_var_log_gsclog:s0
 /var/log/hammerd.log            u:object_r:cros_hammerd_log:s0
 /var/log/hypervisor.log         u:object_r:cros_var_log_hypervisor:s0
 /var/log/lorgnette(/.*)?        u:object_r:cros_var_log_lorgnette:s0

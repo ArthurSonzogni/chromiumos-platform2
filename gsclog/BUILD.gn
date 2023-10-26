@@ -1,0 +1,44 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":gsclog",
+    ":install_tmpfiles_config",
+    ":install_upstart_configs",
+  ]
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+}
+
+static_library("libgsclog") {
+  sources = [ "gsclog.cc" ]
+  libs = [ "trunks" ]
+  configs += [ ":target_defaults" ]
+}
+
+executable("gsclog") {
+  sources = [ "main.cc" ]
+  pkg_deps = [ "libminijail" ]
+  configs += [ ":target_defaults" ]
+  install_path = "bin"
+  deps = [ ":libgsclog" ]
+}
+
+install_config("install_upstart_configs") {
+  sources = [ "init/gsclog.conf" ]
+  install_path = "upstart"
+}
+
+install_config("install_tmpfiles_config") {
+  sources = [ "tmpfiles.d/gsclog.conf" ]
+  install_path = "tmpfilesd"
+}
