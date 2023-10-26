@@ -22,7 +22,8 @@ pub const SMT_CONTROL_PATH: &str = "sys/devices/system/cpu/smt/control";
 pub enum HotplugCpuAction {
     // Set all CPUs to online.
     OnlineAll,
-    // Offline small CPUs if the device has big/little clusters.
+    // Offline small CPUs if the device has big/little clusters and the number
+    // of active big cores meets the minimum active threads.
     OfflineSmallCore { min_active_threads: u32 },
     // Offline SMT cores if available and the number of physical cores meets
     // the minimum active therads.
@@ -232,6 +233,15 @@ fn get_physical_cores(root: &Path) -> Result<u32> {
     Ok(core_cpus.len() as u32)
 }
 
+fn get_last_core(root: &Path) -> Result<u32> {
+    Ok(get_cpuset_all_cpus(root)?
+        .split('-')
+        .last()
+        .context("can't get number of cores")?
+        .trim()
+        .parse()?)
+}
+
 pub fn hotplug_cpus(root: &Path, action: HotplugCpuAction) -> Result<()> {
     match action {
         HotplugCpuAction::OnlineAll => {
@@ -239,13 +249,15 @@ pub fn hotplug_cpus(root: &Path, action: HotplugCpuAction) -> Result<()> {
             update_cpu_smt_control(root, true)?;
             update_cpu_online_status(root, &all_cores, true)?;
         }
-        // TODO(darrenwu): Check the minimum active threads for small cores
-        HotplugCpuAction::OfflineSmallCore {
-            min_active_threads: _,
-        } => {
+        HotplugCpuAction::OfflineSmallCore { min_active_threads } => {
             if is_big_little_supported(root)? {
                 let little_cores: String = get_little_cores(root)?;
-                update_cpu_online_status(root, &little_cores, false)?;
+                let little_cores_count: u32 =
+                    little_cores.split(',').collect::<Vec<_>>().len() as u32;
+                let all_cores_count: u32 = get_last_core(root)? + 1;
+                if all_cores_count - little_cores_count >= min_active_threads {
+                    update_cpu_online_status(root, &little_cores, false)?;
+                }
             }
         }
         HotplugCpuAction::OfflineSMT { min_active_threads } => {
@@ -255,12 +267,7 @@ pub fn hotplug_cpus(root: &Path, action: HotplugCpuAction) -> Result<()> {
             }
         }
         HotplugCpuAction::OfflineHalf { min_active_threads } => {
-            let last_core: u32 = get_cpuset_all_cpus(root)?
-                .split('-')
-                .last()
-                .context("can't get number of cores")?
-                .trim()
-                .parse()?;
+            let last_core: u32 = get_last_core(root)?;
             if last_core + 1 > min_active_threads {
                 let first_core = std::cmp::max((last_core / 2) + 1, min_active_threads);
                 update_cpu_online_status(root, &format!("{}-{}", first_core, last_core), false)?;
@@ -314,6 +321,21 @@ mod tests {
                 smt: "on",
                 cluster1_expected_state: [ONLINE; 2],
                 cluster2_expected_state: [OFFLINE; 2],
+                smt_expected_state: "",
+            },
+            // Test offline small cores
+            // No CPU offline when big cores less than min-active-theads
+            Test {
+                cpus: "0-3",
+                big_little: true,
+                cluster1_freq: [2400000; 2],
+                cluster2_freq: [1800000; 2],
+                hotplug: &HotplugCpuAction::OfflineSmallCore {
+                    min_active_threads: 3,
+                },
+                smt: "on",
+                cluster1_expected_state: [ONLINE; 2],
+                cluster2_expected_state: [ONLINE; 2],
                 smt_expected_state: "",
             },
             // Test offline half cores
