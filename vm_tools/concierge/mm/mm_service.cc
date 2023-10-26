@@ -132,8 +132,9 @@ void MmService::NotifyVmBootComplete(int vm_cid) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   // When a VM has completed boot, slowly reclaim from it until it starts to
-  // kill low priority apps. This helps ensure that future balloon inflations
-  // resulting from host kills will actually apply memory pressure in the guest.
+  // kill low priority apps or a new MGLRU generation is created. This helps
+  // ensure that future balloon inflations resulting from host kills will
+  // actually apply memory pressure in the guest.
   ReclaimUntilBlocked(vm_cid, ResizePriority::RESIZE_PRIORITY_MGLRU_RECLAIM,
                       base::DoNothing());
 }

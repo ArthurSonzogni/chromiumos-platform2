@@ -72,6 +72,20 @@ void BalloonBroker::Reclaim(const ReclaimOperation& reclaim_targets,
                             ResizePriority priority) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
+  // First check to see if there is a current reclaim until operation at the
+  // lowest priority. If there is, it should be cancelled when a new reclaim
+  // operation is started.
+  //
+  // By handling low priority reclaim operations here instead of as a block in
+  // the BalloonBlocker, the reclaim operation that cancels the
+  // ReclaimUntilBlocked() will still be granted and resize the balloon
+  // appropriately.
+  if (reclaim_until_blocked_params_ &&
+      reclaim_until_blocked_params_->second ==
+          ResizePriority::RESIZE_PRIORITY_MGLRU_RECLAIM) {
+    StopReclaimUntilBlocked(reclaim_until_blocked_params_->first);
+  }
+
   if (connected_vms_.size() == 0) {
     return;
   }
