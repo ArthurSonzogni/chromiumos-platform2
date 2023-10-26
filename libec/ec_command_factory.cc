@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <array>
 #include <utility>
 #include <vector>
 
@@ -102,6 +103,17 @@ EcCommandFactory::FpPairingKeyWrapCommand(const brillo::Blob& pub_x,
                                           const brillo::Blob& pub_y,
                                           const brillo::Blob& encrypted_priv) {
   return FpPairingKeyWrapCommand::Create(pub_x, pub_y, encrypted_priv);
+}
+
+std::unique_ptr<ec::LedControlQueryCommand>
+EcCommandFactory::LedControlQueryCommand(enum ec_led_id led_id) {
+  return std::make_unique<ec::LedControlQueryCommand>(led_id);
+}
+
+std::unique_ptr<ec::LedControlSetCommand>
+EcCommandFactory::LedControlSetCommand(
+    enum ec_led_id led_id, std::array<uint8_t, EC_LED_COLOR_COUNT> brightness) {
+  return std::make_unique<ec::LedControlSetCommand>(led_id, brightness);
 }
 
 std::unique_ptr<ec::LedControlAutoCommand>

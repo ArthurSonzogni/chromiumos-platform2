@@ -5,6 +5,7 @@
 #ifndef LIBEC_MOCK_EC_COMMAND_FACTORY_H_
 #define LIBEC_MOCK_EC_COMMAND_FACTORY_H_
 
+#include <array>
 #include <memory>
 #include <string>
 #include <vector>
@@ -92,6 +93,15 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
               (const brillo::Blob& pub_x,
                const brillo::Blob& pub_y,
                const brillo::Blob& encrypted_priv),
+              (override));
+  MOCK_METHOD(std::unique_ptr<ec::LedControlQueryCommand>,
+              LedControlQueryCommand,
+              (enum ec_led_id led_id),
+              (override));
+  MOCK_METHOD(std::unique_ptr<ec::LedControlSetCommand>,
+              LedControlSetCommand,
+              (enum ec_led_id led_id,
+               (std::array<uint8_t, EC_LED_COLOR_COUNT> brightness)),
               (override));
   MOCK_METHOD(std::unique_ptr<ec::LedControlAutoCommand>,
               LedControlAutoCommand,

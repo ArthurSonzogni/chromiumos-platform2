@@ -5,6 +5,7 @@
 #ifndef LIBEC_EC_COMMAND_FACTORY_H_
 #define LIBEC_EC_COMMAND_FACTORY_H_
 
+#include <array>
 #include <memory>
 #include <string>
 #include <vector>
@@ -147,6 +148,21 @@ class EcCommandFactoryInterface {
       "All commands created by this class should derive from "
       "EcCommandInterface");
 
+  virtual std::unique_ptr<ec::LedControlQueryCommand> LedControlQueryCommand(
+      enum ec_led_id led_id) = 0;
+  static_assert(
+      std::is_base_of<EcCommandInterface, ec::LedControlQueryCommand>::value,
+      "All commands created by this class should derive from "
+      "EcCommandInterface");
+
+  virtual std::unique_ptr<ec::LedControlSetCommand> LedControlSetCommand(
+      enum ec_led_id led_id,
+      std::array<uint8_t, EC_LED_COLOR_COUNT> brightness) = 0;
+  static_assert(
+      std::is_base_of<EcCommandInterface, ec::LedControlSetCommand>::value,
+      "All commands created by this class should derive from "
+      "EcCommandInterface");
+
   virtual std::unique_ptr<ec::LedControlAutoCommand> LedControlAutoCommand(
       enum ec_led_id led_id) = 0;
   static_assert(
@@ -221,6 +237,13 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
       const brillo::Blob& pub_x,
       const brillo::Blob& pub_y,
       const brillo::Blob& encrypted_priv) override;
+
+  std::unique_ptr<ec::LedControlQueryCommand> LedControlQueryCommand(
+      enum ec_led_id led_id) override;
+
+  std::unique_ptr<ec::LedControlSetCommand> LedControlSetCommand(
+      enum ec_led_id led_id,
+      std::array<uint8_t, EC_LED_COLOR_COUNT> brightness) override;
 
   std::unique_ptr<ec::LedControlAutoCommand> LedControlAutoCommand(
       enum ec_led_id led_id) override;
