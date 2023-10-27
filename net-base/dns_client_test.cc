@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/time/time.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -26,6 +27,7 @@ namespace {
 using ::testing::_;
 using ::testing::AllOf;
 using ::testing::Field;
+using ::testing::Ge;
 using ::testing::Pointee;
 using ::testing::StrEq;
 using ::testing::StrictMock;
@@ -281,8 +283,13 @@ class DNSClientTest : public testing::Test {
   ~DNSClientTest() = default;
 
   MOCK_METHOD(void, Callback, (const Result&), ());
+  MOCK_METHOD(void, CallbackWithDuration, (base::TimeDelta, const Result&), ());
   DNSClient::Callback GetCallback() {
     return base::BindOnce(&DNSClientTest::Callback, base::Unretained(this));
+  }
+  DNSClient::CallbackWithDuration GetCallbackWithDuration() {
+    return base::BindOnce(&DNSClientTest::CallbackWithDuration,
+                          base::Unretained(this));
   }
 
   base::test::TaskEnvironment task_env_{
@@ -464,6 +471,60 @@ TEST_F(DNSClientTest, ResolveWithoutOptions) {
 
   auto client = DNSClientFactory().Resolve(
       IPFamily::kIPv4, "test-url", GetCallback(), /*options=*/{}, &mock_ares);
+}
+
+TEST_F(DNSClientTest, ReturnSuccessWithDuration) {
+  FakeAres fake_ares;
+  const auto addrs = {IPAddress::CreateFromString("192.168.1.1").value()};
+
+  auto client = DNSClientFactory().Resolve(IPFamily::kIPv4, "test-url",
+                                           GetCallbackWithDuration(),
+                                           /*options=*/{}, &fake_ares);
+
+  task_env_.FastForwardBy(base::Milliseconds(150));
+  fake_ares.TriggerWriteReady();
+  task_env_.RunUntilIdle();
+
+  fake_ares.TriggerReadReady();
+  fake_ares.InvokeCallbackOnNextProcessFD(ARES_SUCCESS, addrs);
+  EXPECT_CALL(*this,
+              CallbackWithDuration(Ge(base::Milliseconds(150)), Result(addrs)));
+  task_env_.RunUntilIdle();
+}
+
+TEST_F(DNSClientTest, ReturnErrorWithDuration) {
+  FakeAres fake_ares;
+
+  auto client = DNSClientFactory().Resolve(IPFamily::kIPv4, "test-url",
+                                           GetCallbackWithDuration(),
+                                           /*options=*/{}, &fake_ares);
+
+  task_env_.FastForwardBy(base::Milliseconds(200));
+  fake_ares.TriggerWriteReady();
+  fake_ares.TriggerReadReady();
+  fake_ares.InvokeCallbackOnNextProcessFD(ARES_ENODATA, {});
+  EXPECT_CALL(*this,
+              CallbackWithDuration(Ge(base::Milliseconds(200)),
+                                   Result(base::unexpected(Error::kNoData))));
+  task_env_.RunUntilIdle();
+}
+
+TEST_F(DNSClientTest, TimeoutWithDuration) {
+  FakeAres fake_ares;
+
+  DNSClient::Options opts = {
+      .timeout = base::Seconds(1),
+  };
+  auto client = DNSClientFactory().Resolve(
+      IPFamily::kIPv4, "test-url", GetCallbackWithDuration(), opts, &fake_ares);
+
+  fake_ares.TriggerWriteReady();
+  task_env_.RunUntilIdle();
+
+  EXPECT_CALL(*this,
+              CallbackWithDuration(Ge(base::Seconds(1)),
+                                   Result(base::unexpected(Error::kTimedOut))));
+  task_env_.FastForwardBy(base::Seconds(2));
 }
 
 }  // namespace

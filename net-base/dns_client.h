@@ -84,9 +84,10 @@ class NET_BASE_EXPORT DNSClient {
 
   // The callback returns the resolved IP addresses (A or AAAA records) on
   // success.
-  // TODO(b/302101630): Add query latency.
   using Result = base::expected<std::vector<IPAddress>, Error>;
-  using Callback = base::OnceCallback<void(const Result&)>;
+  using Callback = base::OnceCallback<void(const Result& result)>;
+  using CallbackWithDuration =
+      base::OnceCallback<void(base::TimeDelta duration, const Result& result)>;
 
   // Optional configurations for Resolve().
   struct Options {
@@ -139,6 +140,12 @@ class NET_BASE_EXPORT DNSClientFactory {
   //   ongoing DNS query. If this happens before the callback is triggered, the
   //   callback won't be triggered any more.
   // - |ares| is only used in unit tests.
+  virtual std::unique_ptr<DNSClient> Resolve(
+      IPFamily family,
+      std::string_view hostname,
+      DNSClient::CallbackWithDuration callback,
+      const DNSClient::Options& options,
+      AresInterface* ares = nullptr);
   virtual std::unique_ptr<DNSClient> Resolve(IPFamily family,
                                              std::string_view hostname,
                                              DNSClient::Callback callback,

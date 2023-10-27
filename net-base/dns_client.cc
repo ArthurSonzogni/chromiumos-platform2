@@ -98,7 +98,7 @@ class DNSClientImpl : public DNSClient {
  public:
   DNSClientImpl(IPFamily family,
                 std::string_view hostname,
-                Callback callback,
+                CallbackWithDuration callback,
                 const Options& options,
                 AresInterface* ares);
   ~DNSClientImpl();
@@ -116,9 +116,9 @@ class DNSClientImpl : public DNSClient {
 
   // Helper functions to invoke the callback. Passing by values are expected
   // here since we need move or copy inside the functions.
-  void ReportSuccess(std::vector<IPAddress> ip_addrs);
-  void ReportFailure(Error err);
-  void ScheduleStopAndInvokeCallback(Result result);
+  void ReportSuccess(base::TimeTicks stop, std::vector<IPAddress> ip_addrs);
+  void ReportFailure(base::TimeTicks stop, Error err);
+  void ScheduleStopAndInvokeCallback(base::TimeTicks stop, Result result);
   void StopAndInvokeCallback(base::OnceClosure cb_with_result);
 
   // Helper functions for the fd management.
@@ -148,6 +148,7 @@ class DNSClientImpl : public DNSClient {
   AresInterface* ares_;
 
   const IPFamily family_;
+  const base::TimeTicks start_;
   const base::TimeTicks deadline_;
 
   ares_channel channel_ = nullptr;
@@ -156,7 +157,7 @@ class DNSClientImpl : public DNSClient {
   std::vector<std::unique_ptr<base::FileDescriptorWatcher::Controller>>
       write_handlers_;
 
-  Callback callback_;
+  CallbackWithDuration callback_;
 
   // For cancelling the ongoing timeout task.
   base::WeakPtrFactory<DNSClientImpl> weak_factory_for_timeout_{this};
@@ -167,12 +168,13 @@ class DNSClientImpl : public DNSClient {
 
 DNSClientImpl::DNSClientImpl(IPFamily family,
                              std::string_view hostname,
-                             Callback callback,
+                             CallbackWithDuration callback,
                              const Options& options,
                              AresInterface* ares)
     : ares_(ares),
       family_(family),
-      deadline_(base::TimeTicks::Now() + options.timeout),
+      start_(base::TimeTicks::Now()),
+      deadline_(start_ + options.timeout),
       callback_(std::move(callback)) {
   struct ares_options ares_opts;
   memset(&ares_opts, 0, sizeof(ares_opts));
@@ -200,7 +202,7 @@ DNSClientImpl::DNSClientImpl(IPFamily family,
 
   int status = ares_->init_options(&channel_, &ares_opts, opt_mask);
   if (status != ARES_SUCCESS) {
-    ReportFailure(AresStatusToError(status));
+    ReportFailure(start_, AresStatusToError(status));
     return;
   }
 
@@ -212,7 +214,7 @@ DNSClientImpl::DNSClientImpl(IPFamily family,
     status = ares_->set_servers_csv(channel_,
                                     options.name_server->ToString().c_str());
     if (status != ARES_SUCCESS) {
-      ReportFailure(AresStatusToError(status));
+      ReportFailure(start_, AresStatusToError(status));
       return;
     }
   }
@@ -265,8 +267,9 @@ void DNSClientImpl::ProcessGethostbynameCallback(int status,
     return;
   }
 
+  auto now = base::TimeTicks::Now();
   if (status != ARES_SUCCESS) {
-    ReportFailure(AresStatusToError(status));
+    ReportFailure(now, AresStatusToError(status));
     return;
   }
 
@@ -274,26 +277,29 @@ void DNSClientImpl::ProcessGethostbynameCallback(int status,
   // hostname, so empty list here means an error.
   auto addrs = GetIPsFromHostent(family_, hostent);
   if (!addrs.empty()) {
-    ReportSuccess(std::move(addrs));
+    ReportSuccess(now, std::move(addrs));
   } else {
-    ReportFailure(Error::kInternal);
+    ReportFailure(now, Error::kInternal);
   }
 }
 
-void DNSClientImpl::ReportSuccess(std::vector<IPAddress> ip_addrs) {
-  ScheduleStopAndInvokeCallback(std::move(ip_addrs));
+void DNSClientImpl::ReportSuccess(base::TimeTicks stop,
+                                  std::vector<IPAddress> ip_addrs) {
+  ScheduleStopAndInvokeCallback(stop, std::move(ip_addrs));
 }
 
-void DNSClientImpl::ReportFailure(Error err) {
-  ScheduleStopAndInvokeCallback(base::unexpected(err));
+void DNSClientImpl::ReportFailure(base::TimeTicks stop, Error err) {
+  ScheduleStopAndInvokeCallback(stop, base::unexpected(err));
 }
 
-void DNSClientImpl::ScheduleStopAndInvokeCallback(Result result) {
+void DNSClientImpl::ScheduleStopAndInvokeCallback(base::TimeTicks stop,
+                                                  Result result) {
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&DNSClientImpl::StopAndInvokeCallback,
                      weak_factory_.GetWeakPtr(),
-                     base::BindOnce(std::move(callback_), std::move(result))));
+                     base::BindOnce(std::move(callback_), stop - start_,
+                                    std::move(result))));
 }
 
 void DNSClientImpl::StopAndInvokeCallback(base::OnceClosure cb_with_result) {
@@ -357,7 +363,7 @@ void DNSClientImpl::RefreshTimeout() {
   // the resolver library.
   const auto now = base::TimeTicks::Now();
   if (now >= deadline_) {
-    ReportFailure(Error::kTimedOut);
+    ReportFailure(now, Error::kTimedOut);
     return;
   }
 
@@ -384,7 +390,7 @@ DNSClient::~DNSClient() = default;
 std::unique_ptr<DNSClient> DNSClientFactory::Resolve(
     IPFamily family,
     std::string_view hostname,
-    DNSClient::Callback callback,
+    DNSClient::CallbackWithDuration callback,
     const DNSClient::Options& options,
     AresInterface* ares) {
   if (!ares) {
@@ -392,6 +398,21 @@ std::unique_ptr<DNSClient> DNSClientFactory::Resolve(
   }
   return std::make_unique<DNSClientImpl>(family, hostname, std::move(callback),
                                          options, ares);
+}
+
+std::unique_ptr<DNSClient> DNSClientFactory::Resolve(
+    IPFamily family,
+    std::string_view hostname,
+    DNSClient::Callback callback,
+    const DNSClient::Options& options,
+    AresInterface* ares) {
+  auto wrapped_callback = base::BindOnce(
+      [](DNSClient::Callback original_callback, base::TimeDelta duration,
+         const DNSClient::Result& result) {
+        std::move(original_callback).Run(result);
+      },
+      std::move(callback));
+  return Resolve(family, hostname, std::move(wrapped_callback), options, ares);
 }
 
 // static
