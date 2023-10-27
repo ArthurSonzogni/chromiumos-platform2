@@ -5,8 +5,6 @@
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_pairing.h"
 
 #include <algorithm>
-#include <memory>
-#include <numeric>
 #include <string>
 #include <utility>
 #include <vector>
@@ -48,7 +46,7 @@ void BluetoothPairingRoutine::Start() {
       FROM_HERE,
       base::BindOnce(&BluetoothPairingRoutine::OnTimeoutOccurred,
                      weak_ptr_factory_.GetWeakPtr()),
-      kRoutinePairingTimeout);
+      kPairingRoutineTimeout);
 
   event_subscriptions_.push_back(
       context_->bluez_event_hub()->SubscribeDeviceAdded(
@@ -104,7 +102,7 @@ void BluetoothPairingRoutine::PopulateStatusUpdate(
 
   double step_percent = step_ * 100 / TestStep::kComplete;
   double running_time_ratio =
-      (base::TimeTicks::Now() - start_ticks_) / kRoutinePairingTimeout;
+      (base::TimeTicks::Now() - start_ticks_) / kPairingRoutineTimeout;
   response->progress_percent =
       step_percent + (100 - step_percent) * std::min(1.0, running_time_ratio);
 }

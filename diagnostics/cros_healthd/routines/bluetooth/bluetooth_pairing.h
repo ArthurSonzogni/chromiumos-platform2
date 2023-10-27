@@ -5,9 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_PAIRING_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_PAIRING_H_
 
-#include <memory>
 #include <string>
-#include <vector>
 
 #include <dbus/object_path.h>
 #include <base/memory/weak_ptr.h>
@@ -21,9 +19,6 @@
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
-
-constexpr base::TimeDelta kRoutinePairingTimeout = base::Seconds(30);
-constexpr char kHealthdBluetoothDiagnosticsTag[] = "<healthd_bt_diag_tag>";
 
 class BluetoothPairingRoutine final : public DiagnosticRoutineWithStatus,
                                       public BluetoothRoutineBase {

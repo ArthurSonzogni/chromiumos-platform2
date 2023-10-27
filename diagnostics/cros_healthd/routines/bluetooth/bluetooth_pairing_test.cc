@@ -447,7 +447,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedFindTargetPeripheral) {
   CheckRoutineUpdate(27, mojom::DiagnosticRoutineStatusEnum::kRunning,
                      kBluetoothRoutineRunningMessage);
   // Failed to find target peripheral before timeout.
-  task_environment_.FastForwardBy(kRoutinePairingTimeout);
+  task_environment_.FastForwardBy(kPairingRoutineTimeout);
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
                      kBluetoothRoutineFailedFindTargetPeripheral);
 }

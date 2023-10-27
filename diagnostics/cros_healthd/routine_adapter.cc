@@ -130,6 +130,8 @@ base::Value::Dict ConvertRoutineDetailToOutputDict(
       return ParseFanDetail(detail->get_fan());
     case mojom::RoutineDetail::Tag::kBluetoothScanning:
       return ParseBluetoothScanningDetail(detail->get_bluetooth_scanning());
+    case mojom::RoutineDetail::Tag::kBluetoothPairing:
+      return ParseBluetoothPairingDetail(detail->get_bluetooth_pairing());
   }
 }
 

@@ -64,6 +64,12 @@ constexpr base::TimeDelta kScanningRoutineTimeout = base::Seconds(5);
 // distance over air.
 constexpr int16_t kNearbyPeripheralMinimumAverageRssi = -60;
 
+// Bluetooth pairing routine timeout.
+constexpr base::TimeDelta kPairingRoutineTimeout = base::Seconds(30);
+
+// The identifier for test peripheral in Bluetooth pairing routine.
+constexpr char kHealthdBluetoothDiagnosticsTag[] = "<healthd_bt_diag_tag>";
+
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_CONSTANTS_H_

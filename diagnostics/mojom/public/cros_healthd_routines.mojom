@@ -24,10 +24,12 @@
 // - Bluetooth discovery routine
 // - Fan routine
 // - Bluetooth scanning routine
+// - Bluetooth pairing routine
 
 module ash.cros_healthd.mojom;
 
 import "diagnostics/mojom/external/time.mojom";
+import "diagnostics/mojom/external/uuid.mojom";
 import "diagnostics/mojom/public/cros_healthd_exception.mojom";
 
 // Routines interface exposed by the cros_healthd daemon.
@@ -120,6 +122,8 @@ union RoutineArgument {
   FanRoutineArgument fan;
   // Arguments to create a Bluetooth scanning routine.
   BluetoothScanningRoutineArgument bluetooth_scanning;
+  // Arguments to create a Bluetooth pairing routine.
+  BluetoothPairingRoutineArgument bluetooth_pairing;
 };
 
 // This routine checks whether there is any memory problem by
@@ -296,6 +300,16 @@ struct BluetoothScanningRoutineArgument {
   ash.cros_healthd.external.mojo_base.mojom.TimeDelta? exec_duration@0;
 };
 
+// This routine checks whether the adapter can find and pair with a device with
+// a specific peripheral id.
+//
+// NextMinVersion: 1, NextIndex: 1
+struct BluetoothPairingRoutineArgument {
+  // The unique id of the target peripheral device to test, which can be
+  // obtained from `BluetoothScanningRoutineDetail`.
+  string peripheral_id@0;
+};
+
 // Interface exposed to clients for controlling a routine.
 //
 // Error Handling:
@@ -416,6 +430,7 @@ union RoutineDetail {
   BluetoothDiscoveryRoutineDetail bluetooth_discovery;
   FanRoutineDetail fan;
   BluetoothScanningRoutineDetail bluetooth_scanning;
+  BluetoothPairingRoutineDetail bluetooth_pairing;
 };
 
 // Details regarding memory routine.
@@ -613,6 +628,84 @@ struct BluetoothScannedPeripheralInfo {
 struct BluetoothScanningRoutineDetail {
   // Scanned nearby peripheral info.
   array<BluetoothScannedPeripheralInfo> peripherals@0;
+};
+
+// Details regarding the scanned peripheral for pairing routine.
+//
+// NextMinVersion: 1, NextIndex: 7
+struct BluetoothPairingPeripheralInfo {
+  // The error which is reported when the routine fails to finish pairing.
+  //
+  // NextMinVersion: 1, NextIndex: 6
+  [Extensible]
+  enum PairError {
+    // The default value is for backward compatibility, should not be used.
+    [Default] kUnmappedEnumField = 0,
+    // No error.
+    kNone = 1,
+    // Fails to start creating bond.
+    kBondFailed = 2,
+    // Gets bad status when creating bond.
+    kBadStatus = 3,
+    // Fails to handle Secure Simple Pairing request.
+    kSspFailed = 4,
+    // Timeout.
+    kTimeout = 5,
+  };
+  PairError pair_error@0;
+
+  // The error which is reported when the routine fails to establish a baseband
+  // connection when creating bond.
+  //
+  // NextMinVersion: 1, NextIndex: 4
+  [Extensible]
+  enum ConnectError {
+    // The default value is for backward compatibility, should not be used.
+    [Default] kUnmappedEnumField = 0,
+    // No error.
+    kNone = 1,
+    // Unable to receive connected event.
+    kNoConnectedEvent = 2,
+    // Connection state is not accessed successfully or `not connected`.
+    kNotConnected = 3,
+  };
+  ConnectError connect_error@1;
+
+  // The list of available services of peripheral.
+  array<ash.cros_healthd.external.mojo_base.mojom.Uuid> uuids@2;
+  // The Bluetooth class of device (CoD) of peripheral.
+  uint32? bluetooth_class@3;
+
+  // The address type of peripheral.
+  //
+  // NextMinVersion: 1, NextIndex: 4
+  [Extensible]
+  enum AddressType {
+    // The default value is for backward compatibility, should not be used.
+    [Default] kUnmappedEnumField = 0,
+    // Unknown.
+    kUnknown = 1,
+    // Public address type.
+    kPublic = 2,
+    // Random address type.
+    kRandom = 3,
+  };
+  AddressType address_type@4;
+  // The result of peripheral address check.
+  bool is_address_valid@5;
+  // The first half of Bluetooth address, in the format XX:XX:XX (X: [0-9A-F]).
+  // It is reported when `is_address_valid` is false, `address_type` is not
+  // unknown and the address can be parsed successfully.
+  string? failed_manufacturer_id@6;
+};
+
+// Details regarding Bluetooth pairing routine.
+//
+// NextMinVersion: 1, NextIndex: 1
+struct BluetoothPairingRoutineDetail {
+  // The info for the test peripheral, or null if the routine fails to find the
+  // peripheral.
+  BluetoothPairingPeripheralInfo? pairing_peripheral@0;
 };
 
 // Enumeration of the possible DiskRead routine's command type.

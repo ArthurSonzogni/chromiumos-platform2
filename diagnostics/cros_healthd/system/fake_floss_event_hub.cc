@@ -60,6 +60,11 @@ void FakeFlossEventHub::SendDeviceBondChanged(uint32_t bt_status,
   OnDeviceBondChanged(bt_status, address, bond_state);
 }
 
+void FakeFlossEventHub::SendDeviceSspRequest(
+    const brillo::VariantDictionary& device) {
+  OnDeviceSspRequest(device);
+}
+
 void FakeFlossEventHub::SendManagerAdded(
     org::chromium::bluetooth::ManagerProxyInterface* manager) {
   OnManagerAdded(manager);

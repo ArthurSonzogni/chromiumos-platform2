@@ -307,7 +307,8 @@ void GroundTruth::IsRoutineArgumentSupported(
       return;
     }
     case mojom::RoutineArgument::Tag::kBluetoothPower:
-    case mojom::RoutineArgument::Tag::kBluetoothDiscovery: {
+    case mojom::RoutineArgument::Tag::kBluetoothDiscovery:
+    case mojom::RoutineArgument::Tag::kBluetoothPairing: {
       GetFlossSupportStatus(context_->floss_controller(), std::move(callback));
       return;
     }

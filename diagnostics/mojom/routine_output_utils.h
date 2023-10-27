@@ -19,6 +19,10 @@ base::Value::Dict ParseBluetoothDiscoveryDetail(
     const ash::cros_healthd::mojom::BluetoothDiscoveryRoutineDetailPtr&
         bluetooth_discovery_detail);
 
+base::Value::Dict ParseBluetoothPairingDetail(
+    const ash::cros_healthd::mojom::BluetoothPairingRoutineDetailPtr&
+        bluetooth_pairing_detail);
+
 base::Value::Dict ParseBluetoothPowerDetail(
     const ash::cros_healthd::mojom::BluetoothPowerRoutineDetailPtr&
         bluetooth_power_detail);

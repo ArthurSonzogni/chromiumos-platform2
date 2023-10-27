@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/uuid.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
@@ -49,6 +50,41 @@ TEST(RoutineOutputUtilsTest, ParseBluetoothDiscoveryDetail) {
   expected_result.Set("stop_discovery_result",
                       std::move(stop_discovery_result));
   EXPECT_EQ(ParseBluetoothDiscoveryDetail(detail), expected_result);
+}
+
+TEST(RoutineOutputUtilsTest, ParseBluetoothPairingDetail) {
+  auto peripheral = mojom::BluetoothPairingPeripheralInfo::New();
+  peripheral->pair_error =
+      mojom::BluetoothPairingPeripheralInfo_PairError::kBadStatus;
+  peripheral->connect_error =
+      mojom::BluetoothPairingPeripheralInfo_ConnectError::kNone;
+  peripheral->uuids = {
+      base::Uuid::ParseLowercase("0000110a-0000-1000-8000-00805f9b34fb"),
+      base::Uuid::ParseLowercase("0000110f-0000-1000-8000-00805f9b34fb")};
+  peripheral->bluetooth_class = 123456;
+  peripheral->address_type =
+      mojom::BluetoothPairingPeripheralInfo_AddressType::kPublic;
+  peripheral->is_address_valid = false;
+  peripheral->failed_manufacturer_id = "test_id";
+
+  auto detail = mojom::BluetoothPairingRoutineDetail::New();
+  detail->pairing_peripheral = std::move(peripheral);
+
+  base::Value::Dict expected_peripheral;
+  expected_peripheral.Set("connect_error", "None");
+  expected_peripheral.Set("pair_error", "Bad Status");
+  base::Value::List expected_uuids;
+  expected_uuids.Append("0000110a-0000-1000-8000-00805f9b34fb");
+  expected_uuids.Append("0000110f-0000-1000-8000-00805f9b34fb");
+  expected_peripheral.Set("uuids", std::move(expected_uuids));
+  expected_peripheral.Set("bluetooth_class", "123456");
+  expected_peripheral.Set("address_type", "Public");
+  expected_peripheral.Set("is_address_valid", false);
+  expected_peripheral.Set("failed_manufacturer_id", "test_id");
+
+  base::Value::Dict expected_result;
+  expected_result.Set("pairing_peripheral", std::move(expected_peripheral));
+  EXPECT_EQ(ParseBluetoothPairingDetail(detail), expected_result);
 }
 
 TEST(RoutineOutputUtilsTest, ParseBluetoothPowerDetail) {

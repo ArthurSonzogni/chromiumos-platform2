@@ -115,6 +115,10 @@ void RoutineV2Client::OnRoutineStateChange(
           PrintOutput(
               ParseBluetoothScanningDetail(detail->get_bluetooth_scanning()));
           break;
+        case mojom::RoutineDetail::Tag::kBluetoothPairing:
+          PrintOutput(
+              ParseBluetoothPairingDetail(detail->get_bluetooth_pairing()));
+          break;
       }
       run_loop_.Quit();
       return;

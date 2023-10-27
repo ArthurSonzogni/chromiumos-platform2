@@ -48,6 +48,22 @@
       <arg name="device" direction="in" type="a{sv}"/>
       <arg name="bluetooth_class" direction="out" type="u"/>
     </method>
+    <method name="GetRemoteAddressType">
+      <arg name="device" direction="in" type="a{sv}"/>
+      <arg name="address_type" direction="out" type="u"/>
+    </method>
+    <method name="GetRemoteAlias">
+      <arg name="device" direction="in" type="a{sv}"/>
+      <arg name="alias" direction="out" type="s"/>
+    </method>
+    <method name="SetRemoteAlias">
+      <arg name="device" direction="in" type="a{sv}"/>
+      <arg name="alias" direction="in" type="s"/>
+    </method>
+    <method name="GetConnectionState">
+      <arg name="device" direction="in" type="a{sv}"/>
+      <arg name="state" direction="out" type="u"/>
+    </method>
     <method name="StartDiscovery">
       <arg name="is_success" direction="out" type="b"/>
     </method>
@@ -56,6 +72,23 @@
     </method>
     <method name="GetConnectedDevices">
       <arg name="devices" direction="out" type="aa{sv}"/>
+    </method>
+    <method name="GetBondedDevices">
+      <arg name="devices" direction="out" type="aa{sv}"/>
+    </method>
+    <method name="CreateBond">
+      <arg name="device" direction="in" type="a{sv}"/>
+      <arg name="transport" direction="in" type="u"/>
+      <arg name="is_success" direction="out" type="b"/>
+    </method>
+    <method name="RemoveBond">
+      <arg name="device" direction="in" type="a{sv}"/>
+      <arg name="is_success" direction="out" type="b"/>
+    </method>
+    <method name="SetPairingConfirmation">
+      <arg name="device" direction="in" type="a{sv}"/>
+      <arg name="accept" direction="in" type="b"/>
+      <arg name="is_success" direction="out" type="b"/>
     </method>
     <method name="RegisterCallback">
       <arg name="callback_path" direction="in" type="o" />

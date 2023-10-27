@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/values.h>
+#include <base/strings/string_number_conversions.h>
 
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
@@ -27,6 +28,52 @@ std::string EnumToString(mojom::HardwarePresenceStatus state) {
       return "Not Matched";
     case mojom::HardwarePresenceStatus::kNotConfigured:
       return "Not Configured";
+  }
+}
+
+std::string EnumToString(
+    mojom::BluetoothPairingPeripheralInfo_PairError error) {
+  switch (error) {
+    case mojom::BluetoothPairingPeripheralInfo_PairError::kUnmappedEnumField:
+      NOTREACHED_NORETURN();
+    case mojom::BluetoothPairingPeripheralInfo_PairError::kNone:
+      return "None";
+    case mojom::BluetoothPairingPeripheralInfo_PairError::kBondFailed:
+      return "Bond Failed";
+    case mojom::BluetoothPairingPeripheralInfo_PairError::kBadStatus:
+      return "Bad Status";
+    case mojom::BluetoothPairingPeripheralInfo_PairError::kSspFailed:
+      return "Ssp Failed";
+    case mojom::BluetoothPairingPeripheralInfo_PairError::kTimeout:
+      return "Timeout";
+  }
+}
+
+std::string EnumToString(
+    mojom::BluetoothPairingPeripheralInfo_ConnectError error) {
+  switch (error) {
+    case mojom::BluetoothPairingPeripheralInfo_ConnectError::kUnmappedEnumField:
+      NOTREACHED_NORETURN();
+    case mojom::BluetoothPairingPeripheralInfo_ConnectError::kNone:
+      return "None";
+    case mojom::BluetoothPairingPeripheralInfo_ConnectError::kNoConnectedEvent:
+      return "No Connected Event";
+    case mojom::BluetoothPairingPeripheralInfo_ConnectError::kNotConnected:
+      return "Not Connected";
+  }
+}
+
+std::string EnumToString(
+    mojom::BluetoothPairingPeripheralInfo_AddressType address_type) {
+  switch (address_type) {
+    case mojom::BluetoothPairingPeripheralInfo_AddressType::kUnmappedEnumField:
+      NOTREACHED_NORETURN();
+    case mojom::BluetoothPairingPeripheralInfo_AddressType::kUnknown:
+      return "Unknown";
+    case mojom::BluetoothPairingPeripheralInfo_AddressType::kPublic:
+      return "Public";
+    case mojom::BluetoothPairingPeripheralInfo_AddressType::kRandom:
+      return "Random";
   }
 }
 
@@ -69,6 +116,41 @@ base::Value::Dict ParseBluetoothDiscoveryDetail(
         "dbus_discovering",
         bluetooth_discovery_detail->stop_discovery_result->dbus_discovering);
     output.Set("stop_discovery_result", std::move(stop_discovery_result));
+  }
+
+  return output;
+}
+
+base::Value::Dict ParseBluetoothPairingDetail(
+    const ash::cros_healthd::mojom::BluetoothPairingRoutineDetailPtr&
+        bluetooth_pairing_detail) {
+  base::Value::Dict output;
+
+  if (bluetooth_pairing_detail->pairing_peripheral) {
+    base::Value::Dict out_peripheral;
+    const auto& peripheral = bluetooth_pairing_detail->pairing_peripheral;
+    out_peripheral.Set("pair_error", EnumToString(peripheral->pair_error));
+    out_peripheral.Set("connect_error",
+                       EnumToString(peripheral->connect_error));
+
+    base::Value::List out_uuids;
+    for (const auto& uuid : peripheral->uuids) {
+      out_uuids.Append(uuid.AsLowercaseString());
+    }
+    out_peripheral.Set("uuids", std::move(out_uuids));
+    if (peripheral->bluetooth_class) {
+      out_peripheral.Set(
+          "bluetooth_class",
+          base::NumberToString(peripheral->bluetooth_class.value()));
+    }
+    out_peripheral.Set("address_type", EnumToString(peripheral->address_type));
+
+    out_peripheral.Set("is_address_valid", peripheral->is_address_valid);
+    if (peripheral->failed_manufacturer_id) {
+      out_peripheral.Set("failed_manufacturer_id",
+                         peripheral->failed_manufacturer_id.value());
+    }
+    output.Set("pairing_peripheral", std::move(out_peripheral));
   }
 
   return output;

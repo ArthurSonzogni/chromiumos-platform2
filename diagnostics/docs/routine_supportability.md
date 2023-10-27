@@ -158,6 +158,10 @@ Some examples:
 }
 ```
 
+### Bluetooth pairing
+
+Supported only when ChromeOS uses Floss as Bluetooth stack.
+
 ### Fan
 
 Supported when `fan-count` is not set, or is set and have a non-zero value.
