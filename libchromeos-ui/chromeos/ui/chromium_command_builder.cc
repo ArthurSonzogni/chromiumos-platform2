@@ -547,9 +547,6 @@ void ChromiumCommandBuilder::AddUiFlags() {
     AddFeatureEnableOverride("Pepper3DImageChromium");
   }
 
-  if (UseFlagIsSet("big_little"))
-    AddArg("--num-raster-threads=2");
-
   AddArg(std::string("--gpu-sandbox-failures-fatal=") +
          (is_chrome_os_hardware() &&
                   !UseFlagIsSet("gpu_sandbox_failures_not_fatal")
