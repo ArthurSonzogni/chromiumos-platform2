@@ -151,8 +151,8 @@ bool DHCPServerController::Start(const Config& config,
                            config.domain_searches().c_str()));
   }
   if (!config.mtu().empty()) {
-    dnsmasq_args.push_back(base::StringPrintf("--dhcp-option=option:mtu,%s",
-                                              config.mtu().c_str()));
+    dnsmasq_args.push_back(base::StringPrintf(
+        "--dhcp-option-force=option:mtu,%s", config.mtu().c_str()));
   }
   for (const auto& [tag, content] : config.dhcp_options()) {
     dnsmasq_args.push_back(
