@@ -290,6 +290,8 @@ void CameraHalServerImpl::IPCBridge::OnPrivacySwitchStatusChanged(
   } else {  // state == PrivacySwitchState::kOff
     state_in_mojo = cros::mojom::CameraPrivacySwitchState::OFF;
   }
+  LOGF(INFO) << "The HW privacy switch state of the camera with id="
+             << camera_id << " changed to " << state_in_mojo;
   if (callbacks_.is_bound()) {
     callbacks_->CameraPrivacySwitchStateChange(state_in_mojo, camera_id);
   }
