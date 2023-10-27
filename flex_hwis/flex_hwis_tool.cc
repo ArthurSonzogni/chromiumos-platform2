@@ -33,13 +33,12 @@ int main(int argc, char** argv) {
           GetCurrentDefault() /* io_thread_task_runner */,
       mojo::core::ScopedIPCSupport::ShutdownPolicy::
           CLEAN /* blocking shutdown */);
-
+  auto server_info = flex_hwis::ServerInfo();
+  auto sender = flex_hwis::HttpSender(server_info);
+  auto provider = policy::PolicyProvider();
+  flex_hwis::FlexHwisSender flex_hwis_sender(base::FilePath("/"), provider,
+                                             sender);
   MetricsLibrary metrics_library;
-  auto provider = std::make_unique<policy::PolicyProvider>();
-  auto sender = std::make_unique<flex_hwis::HttpSender>(
-      std::string(flex_hwis::kServerUrl));
-  flex_hwis::FlexHwisSender flex_hwis_sender(base::FilePath("/"), *provider,
-                                             *sender);
   auto flex_hwis_res = flex_hwis_sender.CollectAndSend(
       metrics_library,
       FLAGS_debug ? flex_hwis::Debug::Print : flex_hwis::Debug::None);

@@ -19,6 +19,7 @@ group("all") {
     deps += [
       ":flex_hwis_check_test",
       ":flex_hwis_mojo_test",
+      ":flex_hwis_server_info_test",
       ":flex_hwis_test",
     ]
   }
@@ -51,6 +52,7 @@ static_library("libflex_hwis") {
     "flex_hwis.cc",
     "flex_hwis_check.cc",
     "flex_hwis_mojo.cc",
+    "flex_hwis_server_info.cc",
     "http_sender.cc",
     "telemetry_for_testing.cc",
   ]
@@ -149,6 +151,20 @@ if (use.test) {
     run_test = true
     deps = [
       ":hwis_data_proto",
+      ":libflex_hwis",
+      "//common-mk/testrunner",
+    ]
+  }
+
+  executable("flex_hwis_server_info_test") {
+    sources = [ "flex_hwis_server_info_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":flex_hwis_test_config",
+      ":target_defaults",
+    ]
+    run_test = true
+    deps = [
       ":libflex_hwis",
       "//common-mk/testrunner",
     ]

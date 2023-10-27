@@ -5,9 +5,10 @@
 #ifndef FLEX_HWIS_HTTP_SENDER_H_
 #define FLEX_HWIS_HTTP_SENDER_H_
 
-#include "flex_hwis/hwis_data.pb.h"
-
 #include <string>
+
+#include "flex_hwis/flex_hwis_server_info.h"
+#include "flex_hwis/hwis_data.pb.h"
 
 namespace flex_hwis {
 class DeviceRegisterResult {
@@ -20,7 +21,7 @@ class DeviceRegisterResult {
 class HttpSender {
  public:
   HttpSender() = default;
-  explicit HttpSender(std::string server_url);
+  explicit HttpSender(ServerInfo& server_info);
   HttpSender(const HttpSender&) = delete;
   HttpSender& operator=(const HttpSender&) = delete;
 
@@ -39,7 +40,7 @@ class HttpSender {
   virtual bool UpdateDevice(const hwis_proto::Device& device_info);
 
  private:
-  const std::string server_url_;
+  ServerInfo server_info_;
 };
 }  // namespace flex_hwis
 

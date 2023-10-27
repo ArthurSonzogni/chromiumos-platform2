@@ -18,20 +18,20 @@ namespace flex_hwis {
 
 constexpr char kApiVersion[] = "/v1/";
 
-HttpSender::HttpSender(const std::string server_url)
-    : server_url_(server_url) {}
+HttpSender::HttpSender(ServerInfo& server_info) : server_info_(server_info) {}
 
 bool HttpSender::DeleteDevice(const hwis_proto::DeleteDevice& device_info) {
-  if (server_url_.empty()) {
+  if (server_info_.GetServerUrl().empty()) {
     LOG(WARNING) << "flex_hwis_tool has no server configured";
     return false;
   }
   brillo::ErrorPtr error;
   const brillo::http::HeaderList kApiHeaders = {
-      {"X-Goog-Api-Key", std::string(flex_hwis::kApiKey)}};
+      {"X-Goog-Api-Key", server_info_.GetApiKey()}};
   auto response = brillo::http::SendRequestAndBlock(
       brillo::http::request_type::kDelete,
-      server_url_ + kApiVersion + device_info.name(), /*data=*/nullptr,
+      server_info_.GetServerUrl() + kApiVersion + device_info.name(),
+      /*data=*/nullptr,
       /*data_size=*/0, brillo::mime::application::kProtobuf, kApiHeaders,
       brillo::http::Transport::CreateDefault(), &error);
   if (!response || !response->IsSuccessful()) {
@@ -45,16 +45,16 @@ bool HttpSender::DeleteDevice(const hwis_proto::DeleteDevice& device_info) {
 }
 
 bool HttpSender::UpdateDevice(const hwis_proto::Device& device_info) {
-  if (server_url_.empty()) {
+  if (server_info_.GetServerUrl().empty()) {
     LOG(WARNING) << "flex_hwis_tool has no server configured";
     return false;
   }
   brillo::ErrorPtr error;
   const brillo::http::HeaderList kApiHeaders = {
-      {"X-Goog-Api-Key", std::string(flex_hwis::kApiKey)}};
+      {"X-Goog-Api-Key", server_info_.GetApiKey()}};
   auto response = brillo::http::SendRequestAndBlock(
       brillo::http::request_type::kPatch,
-      server_url_ + kApiVersion + device_info.name(),
+      server_info_.GetServerUrl() + kApiVersion + device_info.name(),
       device_info.SerializeAsString().c_str(),
       device_info.SerializeAsString().size(),
       brillo::mime::application::kProtobuf, kApiHeaders,
@@ -71,15 +71,15 @@ bool HttpSender::UpdateDevice(const hwis_proto::Device& device_info) {
 
 DeviceRegisterResult HttpSender::RegisterNewDevice(
     const hwis_proto::Device& device_info) {
-  if (server_url_.empty()) {
+  if (server_info_.GetServerUrl().empty()) {
     LOG(WARNING) << "flex_hwis_tool has no server configured";
     return DeviceRegisterResult(/*success=*/false, /*device_name=*/"");
   }
   brillo::ErrorPtr error;
   const brillo::http::HeaderList kApiHeaders = {
-      {"X-Goog-Api-Key", std::string(flex_hwis::kApiKey)}};
+      {"X-Goog-Api-Key", server_info_.GetApiKey()}};
   auto response = brillo::http::PostBinaryAndBlock(
-      server_url_ + kApiVersion + "devices",
+      server_info_.GetServerUrl() + kApiVersion + "devices",
       device_info.SerializeAsString().c_str(),
       device_info.SerializeAsString().size(),
       brillo::mime::application::kProtobuf, kApiHeaders,

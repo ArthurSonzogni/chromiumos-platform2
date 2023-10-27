@@ -5,26 +5,34 @@
 #ifndef FLEX_HWIS_FLEX_HWIS_SERVER_INFO_H_
 #define FLEX_HWIS_FLEX_HWIS_SERVER_INFO_H_
 
-#if USE_FLEX_INTERNAL
-#include "flex_hwis_private/server_info.h"
-#endif
+#include <string>
 
-#include <string_view>
+#include <base/files/file_util.h>
 
 namespace flex_hwis {
+enum class TestImageResult {
+  // The image the service runs on is the test image
+  TestImage,
+  // The image the service runs on is not the test image.
+  NotTestImage,
+  // Encountered an error.
+  Error
+};
+class ServerInfo {
+ public:
+  ServerInfo();
+  const std::string& GetServerUrl() const;
+  const std::string& GetApiKey() const;
+  // Determine if the device is using a test image. If an error occurs,
+  // record the error information and return TestImageResult::Error.
+  // This method refers to /src/platform2/init/startup/platform_impl.cc.
+  // TODO(b/308163572): extract IsTestImage function to libbrillo library.
+  TestImageResult IsTestImage(const base::FilePath& lsb_file);
 
-// kServerUrl points to the hwis server, which can be used to register,
-// update, and delete device hardware data.
-// kApiKey is used to do authorization of the client application that
-// is making requests to the hwis server.
-#if USE_FLEX_INTERNAL
-inline constexpr std::string_view kServerUrl = flex_hwis_private::kServerUrl;
-inline constexpr std::string_view kApiKey = flex_hwis_private::kApiKey;
-#else
-inline constexpr std::string_view kServerUrl = "";
-inline constexpr std::string_view kApiKey = "";
-#endif  // USE_FLEX_INTERNAL
-
+ private:
+  std::string server_url;
+  std::string api_key;
+};
 }  // namespace flex_hwis
 
 #endif  // FLEX_HWIS_FLEX_HWIS_SERVER_INFO_H_
