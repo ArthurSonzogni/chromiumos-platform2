@@ -3220,7 +3220,8 @@
             "PlatformHEVCDecoderSupport"
           ],
           "ash-enabled-features": [
-            "SeamlessRefreshRateSwitching"
+            "SeamlessRefreshRateSwitching",
+            "VariableRefreshRateAvailable"
           ],
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
@@ -3788,7 +3789,8 @@
             "PlatformHEVCDecoderSupport"
           ],
           "ash-enabled-features": [
-            "SeamlessRefreshRateSwitching"
+            "SeamlessRefreshRateSwitching",
+            "VariableRefreshRateAvailable"
           ],
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
@@ -4927,7 +4929,8 @@
             "PlatformHEVCDecoderSupport"
           ],
           "ash-enabled-features": [
-            "SeamlessRefreshRateSwitching"
+            "SeamlessRefreshRateSwitching",
+            "VariableRefreshRateAvailable"
           ],
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
@@ -5497,7 +5500,8 @@
             "PlatformHEVCDecoderSupport"
           ],
           "ash-enabled-features": [
-            "SeamlessRefreshRateSwitching"
+            "SeamlessRefreshRateSwitching",
+            "VariableRefreshRateAvailable"
           ],
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
@@ -6630,7 +6634,8 @@
         "ui": {
           "ash-enabled-features": [
             "PlatformHEVCDecoderSupport",
-            "SeamlessRefreshRateSwitching"
+            "SeamlessRefreshRateSwitching",
+            "VariableRefreshRateAvailable"
           ],
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
@@ -6919,7 +6924,8 @@
         "ui": {
           "ash-enabled-features": [
             "PlatformHEVCDecoderSupport",
-            "SeamlessRefreshRateSwitching"
+            "SeamlessRefreshRateSwitching",
+            "VariableRefreshRateAvailable"
           ],
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
@@ -7208,7 +7214,8 @@
         "ui": {
           "ash-enabled-features": [
             "PlatformHEVCDecoderSupport",
-            "SeamlessRefreshRateSwitching"
+            "SeamlessRefreshRateSwitching",
+            "VariableRefreshRateAvailable"
           ],
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
@@ -7497,7 +7504,8 @@
         "ui": {
           "ash-enabled-features": [
             "PlatformHEVCDecoderSupport",
-            "SeamlessRefreshRateSwitching"
+            "SeamlessRefreshRateSwitching",
+            "VariableRefreshRateAvailable"
           ],
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
@@ -7777,7 +7785,8 @@
           "ash-enabled-features": [
             "CloudGamingDevice",
             "PlatformHEVCDecoderSupport",
-            "SeamlessRefreshRateSwitching"
+            "SeamlessRefreshRateSwitching",
+            "VariableRefreshRateAvailable"
           ],
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
@@ -8035,7 +8044,8 @@
         "ui": {
           "ash-enabled-features": [
             "PlatformHEVCDecoderSupport",
-            "SeamlessRefreshRateSwitching"
+            "SeamlessRefreshRateSwitching",
+            "VariableRefreshRateAvailable"
           ],
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
@@ -8289,7 +8299,8 @@
         "ui": {
           "ash-enabled-features": [
             "PlatformHEVCDecoderSupport",
-            "SeamlessRefreshRateSwitching"
+            "SeamlessRefreshRateSwitching",
+            "VariableRefreshRateAvailable"
           ],
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
@@ -8544,7 +8555,8 @@
           "ash-enabled-features": [
             "CloudGamingDevice",
             "PlatformHEVCDecoderSupport",
-            "SeamlessRefreshRateSwitching"
+            "SeamlessRefreshRateSwitching",
+            "VariableRefreshRateAvailable"
           ],
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",

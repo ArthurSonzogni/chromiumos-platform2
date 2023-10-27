@@ -972,6 +972,12 @@ def _build_ash_flags(config: Config) -> dict:
     ):
         _enable_feature("SeamlessRefreshRateSwitching")
 
+    if (
+        component_pb2.Component.DisplayPanel.VARIABLE_REFRESH_RATE_AVAILABLE
+        in hw_features.screen.panel_properties.features
+    ):
+        _enable_feature("VariableRefreshRateAvailable")
+
     _add_flag(
         "arc-build-properties",
         {
