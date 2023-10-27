@@ -169,79 +169,42 @@ impl CpusetCgroup {
 
 #[cfg(test)]
 mod tests {
-
-    use std::io::Read;
-
     use super::*;
-
-    #[derive(Debug)]
-    struct FakeCgroupFiles {
-        cpu_normal: File,
-        cpu_background: File,
-        cpuset_all: File,
-        cpuset_efficient: File,
-    }
-
-    fn create_fake_cgroup_context_pair() -> (CgroupContext, FakeCgroupFiles) {
-        let cpu_normal = tempfile::NamedTempFile::new().unwrap();
-        let cpu_background = tempfile::NamedTempFile::new().unwrap();
-        let cpuset_all = tempfile::NamedTempFile::new().unwrap();
-        let cpuset_efficient = tempfile::NamedTempFile::new().unwrap();
-        (
-            CgroupContext {
-                cpu_normal: cpu_normal.reopen().unwrap(),
-                cpu_background: cpu_background.reopen().unwrap(),
-                cpuset_all: cpuset_all.reopen().unwrap(),
-                cpuset_efficient: cpuset_efficient.reopen().unwrap(),
-            },
-            FakeCgroupFiles {
-                cpu_normal: cpu_normal.reopen().unwrap(),
-                cpu_background: cpu_background.reopen().unwrap(),
-                cpuset_all: cpuset_all.reopen().unwrap(),
-                cpuset_efficient: cpuset_efficient.reopen().unwrap(),
-            },
-        )
-    }
+    use crate::test_utils::*;
 
     #[test]
     fn test_set_cpu_cgroup() {
         let (mut ctx, mut files) = create_fake_cgroup_context_pair();
-        let mut buf = [0; 1024];
 
         ctx.set_cpu_cgroup(ProcessId(123), CpuCgroup::Normal)
             .unwrap();
-        assert_eq!(files.cpu_normal.read(buf.as_mut_slice()).unwrap(), 3);
-        assert_eq!(&buf[..3], b"123");
+        assert_eq!(read_number(&mut files.cpu_normal), Some(123));
 
         ctx.set_cpu_cgroup(ProcessId(456), CpuCgroup::Normal)
             .unwrap();
-        assert_eq!(files.cpu_normal.read(buf.as_mut_slice()).unwrap(), 3);
-        assert_eq!(&buf[..3], b"456");
+        assert_eq!(read_number(&mut files.cpu_normal), Some(456));
 
         ctx.set_cpu_cgroup(ProcessId(789), CpuCgroup::Background)
             .unwrap();
-        assert_eq!(files.cpu_background.read(buf.as_mut_slice()).unwrap(), 3);
-        assert_eq!(&buf[..3], b"789");
+        assert_eq!(read_number(&mut files.cpu_normal), None);
+        assert_eq!(read_number(&mut files.cpu_background), Some(789));
     }
 
     #[test]
     fn test_set_cpuset_cgroup() {
         let (mut ctx, mut files) = create_fake_cgroup_context_pair();
-        let mut buf = [0; 1024];
 
         ctx.set_cpuset_cgroup(ThreadId(123), CpusetCgroup::All)
             .unwrap();
-        assert_eq!(files.cpuset_all.read(buf.as_mut_slice()).unwrap(), 3);
-        assert_eq!(&buf[..3], b"123");
+        assert_eq!(read_number(&mut files.cpuset_all), Some(123));
 
         ctx.set_cpuset_cgroup(ThreadId(456), CpusetCgroup::All)
             .unwrap();
-        assert_eq!(files.cpuset_all.read(buf.as_mut_slice()).unwrap(), 3);
-        assert_eq!(&buf[..3], b"456");
+        assert_eq!(read_number(&mut files.cpuset_all), Some(456));
 
         ctx.set_cpuset_cgroup(ThreadId(789), CpusetCgroup::Efficient)
             .unwrap();
-        assert_eq!(files.cpuset_efficient.read(buf.as_mut_slice()).unwrap(), 3);
-        assert_eq!(&buf[..3], b"789");
+        assert_eq!(read_number(&mut files.cpuset_all), None);
+        assert_eq!(read_number(&mut files.cpuset_efficient), Some(789));
     }
 }

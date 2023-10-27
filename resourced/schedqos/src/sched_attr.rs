@@ -175,6 +175,29 @@ fn check_uclamp_support() -> io::Result<bool> {
 }
 
 #[cfg(test)]
+pub(crate) fn assert_sched_attr(
+    ctx: &SchedAttrContext,
+    thread_id: ThreadId,
+    thread_config: &ThreadStateConfig,
+) {
+    let mut attr = sched_attr::default();
+    sched_getattr(thread_id, &mut attr).unwrap();
+
+    if let Some(rt_priority) = thread_config.rt_priority {
+        assert_eq!(attr.sched_policy, libc::SCHED_FIFO as u32);
+        assert_eq!(attr.sched_priority, rt_priority);
+    } else {
+        assert_eq!(attr.sched_policy, libc::SCHED_OTHER as u32);
+        assert_eq!(attr.sched_nice, thread_config.nice);
+    }
+
+    if ctx.uclamp_support {
+        assert_eq!(attr.sched_util_max, UCLAMP_MAX);
+        assert_eq!(attr.sched_util_min, thread_config.uclamp_min);
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::cgroups::CpusetCgroup;
@@ -227,6 +250,7 @@ mod tests {
                 assert_eq!(attr.sched_util_max, UCLAMP_MAX);
                 assert_eq!(attr.sched_util_min, uclamp_min);
             }
+            assert_sched_attr(&ctx, ThreadId(0), &thread_config);
         }
     }
 
@@ -257,6 +281,7 @@ mod tests {
                 assert_eq!(attr.sched_util_max, UCLAMP_MAX);
                 assert_eq!(attr.sched_util_min, uclamp_min);
             }
+            assert_sched_attr(&ctx, ThreadId(0), &thread_config);
         }
     }
 

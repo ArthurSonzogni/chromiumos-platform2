@@ -7,6 +7,8 @@
 
 pub mod cgroups;
 mod sched_attr;
+#[cfg(test)]
+mod test_utils;
 
 use std::fmt::Display;
 use std::io;
@@ -319,6 +321,7 @@ mod tests {
     use std::time::Duration;
 
     use super::*;
+    use crate::test_utils::*;
 
     #[test]
     fn test_process_state_conversion() {
@@ -348,7 +351,7 @@ mod tests {
     #[test]
     fn test_validate_thread_id() {
         let process_id = ProcessId(std::process::id());
-        let thread_id = ThreadId(unsafe { libc::gettid() } as u32);
+        let thread_id = get_current_thread_id();
         let child_process_id = unsafe { libc::fork() };
         if child_process_id == 0 {
             std::thread::sleep(Duration::from_secs(100));
@@ -370,6 +373,117 @@ mod tests {
         unsafe {
             libc::kill(child_process_id, libc::SIGKILL);
             libc::waitpid(child_process_id, std::ptr::null_mut(), 0);
+        }
+    }
+
+    #[test]
+    fn test_set_process_state() {
+        let (cgroup_context, mut cgroup_files) = create_fake_cgroup_context_pair();
+        let mut ctx = SchedQosContext::new(Config {
+            cgroup_context,
+            process_configs: [
+                ProcessStateConfig {
+                    cpu_cgroup: CpuCgroup::Normal,
+                },
+                ProcessStateConfig {
+                    cpu_cgroup: CpuCgroup::Background,
+                },
+            ],
+            thread_configs: Config::default_thread_config(),
+        })
+        .unwrap();
+
+        let process_id = std::process::id();
+        ctx.set_process_state(process_id, ProcessState::Normal)
+            .unwrap();
+        assert_eq!(read_number(&mut cgroup_files.cpu_normal), Some(process_id));
+
+        ctx.set_process_state(process_id, ProcessState::Background)
+            .unwrap();
+        assert_eq!(
+            read_number(&mut cgroup_files.cpu_background),
+            Some(process_id)
+        );
+    }
+
+    #[test]
+    fn test_set_thread_state() {
+        let process_id = std::process::id();
+        let (cgroup_context, mut cgroup_files) = create_fake_cgroup_context_pair();
+        let thread_configs = [
+            // ThreadState::UrgentBursty
+            ThreadStateConfig {
+                rt_priority: Some(8),
+                nice: -8,
+                uclamp_min: UCLAMP_BOOSTED_MIN,
+                cpuset_cgroup: CpusetCgroup::All,
+                prefer_idle: true,
+            },
+            // ThreadState::Urgent
+            ThreadStateConfig {
+                nice: -8,
+                uclamp_min: UCLAMP_BOOSTED_MIN,
+                cpuset_cgroup: CpusetCgroup::All,
+                prefer_idle: true,
+                ..ThreadStateConfig::default()
+            },
+            // ThreadState::Balanced
+            ThreadStateConfig {
+                cpuset_cgroup: CpusetCgroup::All,
+                prefer_idle: true,
+                ..ThreadStateConfig::default()
+            },
+            // ThreadState::Eco
+            ThreadStateConfig {
+                cpuset_cgroup: CpusetCgroup::Efficient,
+                ..ThreadStateConfig::default()
+            },
+            // ThreadState::Utility
+            ThreadStateConfig {
+                nice: 1,
+                cpuset_cgroup: CpusetCgroup::Efficient,
+                ..ThreadStateConfig::default()
+            },
+            // ThreadState::Background
+            ThreadStateConfig {
+                nice: 10,
+                cpuset_cgroup: CpusetCgroup::Efficient,
+                ..ThreadStateConfig::default()
+            },
+        ];
+        let mut ctx = SchedQosContext::new(Config {
+            cgroup_context,
+            process_configs: Config::default_process_config(),
+            thread_configs: thread_configs.clone(),
+        })
+        .unwrap();
+        let sched_ctx = SchedAttrContext::new().unwrap();
+
+        for state in [
+            ThreadState::UrgentBursty,
+            ThreadState::Urgent,
+            ThreadState::Balanced,
+            ThreadState::Eco,
+            ThreadState::Utility,
+            ThreadState::Background,
+        ] {
+            let (thread_id, _thread) = spawn_thread_for_test();
+
+            ctx.set_thread_state(process_id, thread_id.0, state)
+                .unwrap();
+            let thread_config = &thread_configs[state as usize];
+            match thread_config.cpuset_cgroup {
+                CpusetCgroup::All => {
+                    assert_eq!(read_number(&mut cgroup_files.cpuset_all), Some(thread_id.0))
+                }
+                CpusetCgroup::Efficient => {
+                    assert_eq!(
+                        read_number(&mut cgroup_files.cpuset_efficient),
+                        Some(thread_id.0)
+                    )
+                }
+            }
+            assert_sched_attr(&sched_ctx, thread_id, thread_config);
         }
     }
 }
