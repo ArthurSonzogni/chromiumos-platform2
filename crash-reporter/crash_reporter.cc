@@ -303,6 +303,7 @@ int main(int argc, char* argv[]) {
               "Report collected kernel ath10k error");
   DEFINE_bool(kernel_ath11k_error, false,
               "Report collected kernel ath11k error");
+  DEFINE_bool(kernel_kfence, false, "Report collected kernel kfence error");
   DEFINE_bool(kernel_wifi_warning, false,
               "Report collected kernel wifi warning");
   DEFINE_bool(kernel_smmu_fault, false, "Report collected kernel smmu faults");
@@ -666,9 +667,9 @@ int main(int argc, char* argv[]) {
 
   collectors.push_back(KernelWarningCollector::GetHandlerInfo(
       FLAGS_weight, FLAGS_kernel_warning, FLAGS_kernel_wifi_warning,
-      FLAGS_kernel_smmu_fault, FLAGS_kernel_suspend_warning,
-      FLAGS_kernel_iwlwifi_error, FLAGS_kernel_ath10k_error,
-      FLAGS_kernel_ath11k_error, metrics_lib));
+      FLAGS_kernel_kfence, FLAGS_kernel_smmu_fault,
+      FLAGS_kernel_suspend_warning, FLAGS_kernel_iwlwifi_error,
+      FLAGS_kernel_ath10k_error, FLAGS_kernel_ath11k_error, metrics_lib));
 
   GenericFailureCollector::HandlerInfoOptions handler_info_options = {
       .suspend_failure = FLAGS_suspend_failure,

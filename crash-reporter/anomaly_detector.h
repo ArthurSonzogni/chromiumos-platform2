@@ -121,6 +121,13 @@ class KernelParser : public Parser {
     None,
     Start,
   };
+  enum class KfenceLineType {
+    // The following enum values are used to parse the KFENCE error. The None
+    // value means that there is no error detected in the log. The Start value
+    // means that the first line of the dump was found.
+    None,
+    Start,
+  };
   const bool testonly_send_all_;
 
   LineType last_line_ = LineType::None;
@@ -130,6 +137,8 @@ class KernelParser : public Parser {
   std::string ath10k_text_;
   Ath11kLineType ath11k_last_line_ = Ath11kLineType::None;
   std::string ath11k_text_;
+  KfenceLineType kfence_last_line_ = KfenceLineType::None;
+  std::string kfence_text_;
   std::string text_;
   std::string flag_;
   int ah11k_line_counter_ = 0;

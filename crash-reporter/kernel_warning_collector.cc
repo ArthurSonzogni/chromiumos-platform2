@@ -23,6 +23,7 @@
 namespace {
 const char kGenericWarningExecName[] = "kernel-warning";
 const char kWifiWarningExecName[] = "kernel-wifi-warning";
+const char kKfenceExecName[] = "kernel-kfence";
 const char kSMMUFaultExecName[] = "kernel-smmu-fault";
 const char kSuspendWarningExecName[] = "kernel-suspend-warning";
 const char kKernelIwlwifiErrorExecName[] = "kernel-iwlwifi-error";
@@ -58,6 +59,12 @@ bool KernelWarningCollector::LoadKernelWarning(std::string* content,
     if (!ExtractIwlwifiSignature(*content, signature, func_name)) {
       return false;
     } else if (signature->length() > 0) {
+      return true;
+    }
+  } else if (type == kKfence) {
+    if (!ExtractKfenceSignature(*content, signature, func_name)) {
+      return false;
+    } else if (!signature->empty()) {
       return true;
     }
   } else if (type == kSMMUFault) {
@@ -247,6 +254,36 @@ bool KernelWarningCollector::ExtractIwlwifiSignature(const std::string& content,
   return true;
 }
 
+constexpr LazyRE2 kfence_sig_re = {
+    R"(BUG: KFENCE: (.+ ([0-9a-zA-Z_]+)\+0x[0-9a-fA-F]+/0x[0-9a-fA-F]+)$)"};
+
+// Extract the function name and signature from the first line
+// Example:
+//  BUG: KFENCE: use-after-free read in buggy_function_name+0xac/0x13c
+//  func_name=buggy_function_name
+//  signature=use-after-free read in buggy_function_name+0xac/0x13c
+bool KernelWarningCollector::ExtractKfenceSignature(const std::string& content,
+                                                    std::string* signature,
+                                                    std::string* func_name) {
+  std::string line;
+  std::string::size_type end_position = content.find('\n');
+  if (end_position == std::string::npos) {
+    LOG(ERROR) << "unexpected kfence format";
+    return false;
+  }
+
+  line = content.substr(0, end_position);
+  if (RE2::PartialMatch(line, *kfence_sig_re, signature, func_name)) {
+    return true;
+  }
+
+  LOG(ERROR) << line << " does not match kfence regex";
+  signature->clear();
+  func_name->clear();
+
+  return false;
+}
+
 constexpr LazyRE2 smmu_sig_re = {R"((\S+): Unhandled context fault: (.*))"};
 
 bool KernelWarningCollector::ExtractSMMUFaultSignature(
@@ -341,6 +378,8 @@ bool KernelWarningCollector::Collect(int weight, WarningType type) {
   const char* exec_name;
   if (type == kWifi)
     exec_name = kWifiWarningExecName;
+  else if (type == kKfence)
+    exec_name = kKfenceExecName;
   else if (type == kSMMUFault)
     exec_name = kSMMUFaultExecName;
   else if (type == kSuspend)
@@ -404,7 +443,7 @@ CrashCollector::ComputedCrashSeverity KernelWarningCollector::ComputeSeverity(
   // Note that kKernelAth10kErrorExecName is not covered yet.
   // TODO(b/288895335): Add logic to set crash severity of
   // kKernelAth10kErrorExecName to kWarning.
-  if (exec_name == kSMMUFaultExecName) {
+  if (exec_name == kSMMUFaultExecName || exec_name == kKfenceExecName) {
     computed_severity.crash_severity = CrashSeverity::kError;
   } else if ((exec_name == kKernelIwlwifiErrorExecName) ||
              (exec_name == kWifiWarningExecName) ||
@@ -421,6 +460,7 @@ CollectorInfo KernelWarningCollector::GetHandlerInfo(
     int32_t weight,
     bool kernel_warning,
     bool kernel_wifi_warning,
+    bool kernel_kfence,
     bool kernel_smmu_fault,
     bool kernel_suspend_warning,
     bool kernel_iwlwifi_error,
@@ -443,6 +483,10 @@ CollectorInfo KernelWarningCollector::GetHandlerInfo(
            {
                .should_handle = kernel_wifi_warning,
                .cb = base::BindRepeating(kernel_warn_cb, WarningType::kWifi),
+           },
+           {
+               .should_handle = kernel_kfence,
+               .cb = base::BindRepeating(kernel_warn_cb, WarningType::kKfence),
            },
            {
                .should_handle = kernel_smmu_fault,

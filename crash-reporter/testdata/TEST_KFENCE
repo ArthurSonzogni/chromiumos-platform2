@@ -1,0 +1,54 @@
+[  210.910972] lkdtm: Performing direct entry READ_AFTER_FREE
+[  210.911190] lkdtm: Value in memory before free: 12345678
+[  210.911286] lkdtm: Attempting bad read from freed memory
+[  210.911328] ==================================================================
+[  210.911352] BUG: KFENCE: use-after-free read in lkdtm_READ_AFTER_FREE+0xac/0x13c
+
+[  210.911412] Use-after-free read at 0x00000000c8aa61de (in kfence-#117):
+[  210.911446]  lkdtm_READ_AFTER_FREE+0xac/0x13c
+[  210.911486]  lkdtm_do_action+0x24/0x58
+[  210.911531]  direct_entry+0x1e8/0x25c
+[  210.911574]  full_proxy_write+0x74/0xa4
+[  210.911621]  vfs_write+0xe8/0x3dc
+[  210.911665]  __arm64_sys_write+0x70/0xf0
+[  210.911705]  invoke_syscall+0x4c/0xe8
+[  210.911745]  el0_svc_common+0xa0/0x184
+[  210.911782]  do_el0_svc+0x30/0x90
+[  210.911818]  el0_svc+0x20/0x50
+[  210.911858]  el0t_64_sync_handler+0x20/0x110
+[  210.911896]  el0t_64_sync+0x1a4/0x1a8
+
+[  210.911951] kfence-#117: 0x00000000b84a828c-0x00000000cde259c3, size=1024, cache=kmalloc-1k
+
+[  210.911990] allocated by task 5582 on cpu 2 at 210.911150s:
+[  210.912053]  lkdtm_READ_AFTER_FREE+0x30/0x13c
+[  210.912090]  lkdtm_do_action+0x24/0x58
+[  210.912131]  direct_entry+0x1e8/0x25c
+[  210.912171]  full_proxy_write+0x74/0xa4
+[  210.912211]  vfs_write+0xe8/0x3dc
+[  210.912248]  __arm64_sys_write+0x70/0xf0
+[  210.912286]  invoke_syscall+0x4c/0xe8
+[  210.912321]  el0_svc_common+0xa0/0x184
+[  210.912357]  do_el0_svc+0x30/0x90
+[  210.912391]  el0_svc+0x20/0x50
+[  210.912425]  el0t_64_sync_handler+0x20/0x110
+[  210.912462]  el0t_64_sync+0x1a4/0x1a8
+
+[  210.912512] freed by task 5582 on cpu 2 at 210.911281s:
+[  210.912568]  lkdtm_READ_AFTER_FREE+0xa0/0x13c
+[  210.912603]  lkdtm_do_action+0x24/0x58
+[  210.912644]  direct_entry+0x1e8/0x25c
+[  210.912684]  full_proxy_write+0x74/0xa4
+[  210.912724]  vfs_write+0xe8/0x3dc
+[  210.912762]  __arm64_sys_write+0x70/0xf0
+[  210.912800]  invoke_syscall+0x4c/0xe8
+[  210.912835]  el0_svc_common+0xa0/0x184
+[  210.912872]  do_el0_svc+0x30/0x90
+[  210.912908]  el0_svc+0x20/0x50
+[  210.912944]  el0t_64_sync_handler+0x20/0x110
+[  210.912981]  el0t_64_sync+0x1a4/0x1a8
+
+[  210.913038] CPU: 2 PID: 5582 Comm: bash Not tainted 5.15.136-20794-g9bd4a6db2ccd-dirty #158 28594e572a412942e6407c45649761f186265000
+[  210.913088] Hardware name: Google Lazor (rev1 - 2) with LTE (DT)
+[  210.913116] ==================================================================
+[  424.106279] init: ml-service (mojo_service) post-start process (6501) terminated with status 2

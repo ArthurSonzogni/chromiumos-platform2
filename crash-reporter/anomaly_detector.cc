@@ -271,6 +271,10 @@ constexpr char crash_report_rlimit[] =
 constexpr LazyRE2 header = {
     R"(^\[\s*\S+\] WARNING:(?: CPU: \d+ PID: \d+)? at (.+))"};
 
+constexpr LazyRE2 start_kfence_dump = {R"(^\[\s*\S+\] BUG: KFENCE: )"};
+// The kernel uses 66 = characters to mark the end of the report.
+constexpr LazyRE2 end_kfence_dump = {R"(^\[\s*\S+\] ={66})"};
+
 constexpr LazyRE2 smmu_fault = {R"(Unhandled context fault: fsr=0x)"};
 
 static constexpr LazyRE2 kernel_lc_suspend_warning = {
@@ -471,6 +475,26 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
           std::move(iwlwifi_text_tmp),
           {std::move(kFlag), base::StringPrintf("--weight=%d", kWeight)});
     }
+  }
+
+  if (kfence_last_line_ == KfenceLineType::None) {
+    if (RE2::PartialMatch(line, *start_kfence_dump)) {
+      kfence_last_line_ = KfenceLineType::Start;
+      kfence_text_ += line + "\n";
+    }
+  } else if (kfence_last_line_ == KfenceLineType::Start) {
+    // Return if the end_kfence_dump is reached
+    if (RE2::PartialMatch(line, *end_kfence_dump)) {
+      kfence_last_line_ = KfenceLineType::None;
+
+      std::string kfence_text_tmp;
+      kfence_text_tmp.swap(kfence_text_);
+
+      return CrashReport(std::move(kfence_text_tmp),
+                         {std::move("--kernel_kfence")});
+    }
+
+    kfence_text_ += line + "\n";
   }
 
   if (RE2::PartialMatch(line, *smmu_fault)) {
