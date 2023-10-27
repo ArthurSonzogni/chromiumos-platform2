@@ -46,7 +46,10 @@ enum class ClientEvent {
   kRejected = 5,
   kTaskFailedUnknownError = 6,
   kTaskTimeoutAbort = 7,
-  kMaxValue = kTaskTimeoutAbort,
+  kExampleSelectorCriteriaParsingError = 8,
+  kTaskNameEmptyError = 9,
+  kGetNextExampleInvalidArgumentError = 10,
+  kMaxValue = kGetNextExampleInvalidArgumentError,
 };
 
 // A scoped metrics recorder for a round of task. It collects metrics when the

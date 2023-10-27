@@ -90,14 +90,14 @@ bool FederatedClient::Context::PrepareExamples(const char* const criteria_data,
   if (!criteria.ParseFromArray(criteria_data, criteria_data_size)) {
     LOG(ERROR) << "Failed to parse criteria.";
     Metrics::GetInstance()->LogClientEvent(
-        client_name, ClientEvent::kGetExampleIteratorError);
+        client_name, ClientEvent::kExampleSelectorCriteriaParsingError);
     return false;
   }
 
   if (criteria.task_name().empty()) {
     LOG(ERROR) << "No valid task_name";
     Metrics::GetInstance()->LogClientEvent(
-        client_name, ClientEvent::kGetExampleIteratorError);
+        client_name, ClientEvent::kTaskNameEmptyError);
     return false;
   }
 
@@ -150,7 +150,7 @@ bool FederatedClient::Context::GetNextExample(const char** const data,
 
   if (absl::IsInvalidArgument(record.status())) {
     Metrics::GetInstance()->LogClientEvent(
-        typed_context->client_name_, ClientEvent::kGetExampleIteratorError);
+        typed_context->client_name_, ClientEvent::kGetNextExampleInvalidArgumentError);
     return false;
   }
 
