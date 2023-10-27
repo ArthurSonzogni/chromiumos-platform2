@@ -100,6 +100,7 @@ bool DnsClient::Start(const std::vector<std::string>& dns_list,
   std::vector<std::string> filtered_dns_list = FilterEmptyIPs(dns_list);
 
   if (!resolver_state_) {
+    int options_mask = 0;
     struct ares_options options;
     memset(&options, 0, sizeof(options));
 
@@ -109,11 +110,22 @@ bool DnsClient::Start(const std::vector<std::string>& dns_list,
       return false;
     }
 
-    options.timeout = timeout_.InMilliseconds() / filtered_dns_list.size();
+    // The per-query timeout is derived from the total timeout divided by the
+    // total number of queries that will be sent. The total number of queries is
+    // the number of name servers to query multiplied by the query tries.
+    int timeout_ms = timeout_.InMilliseconds();
+    timeout_ms = timeout_ms / (kDnsQueryTries * filtered_dns_list.size());
+    if (timeout_ms < kDnsQueryMinTimeout.InMilliseconds()) {
+      timeout_ms = kDnsQueryMinTimeout.InMilliseconds();
+    }
+    options.timeout = timeout_ms;
+    options_mask |= ARES_OPT_TIMEOUTMS;
+    options.tries = kDnsQueryTries;
+    options_mask |= ARES_OPT_TRIES;
 
     resolver_state_ = std::make_unique<DnsClientState>();
-    int status = ares_->InitOptions(&resolver_state_->channel, &options,
-                                    ARES_OPT_TIMEOUTMS);
+    int status =
+        ares_->InitOptions(&resolver_state_->channel, &options, options_mask);
     if (status != ARES_SUCCESS) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                             "ARES initialization returns error code: " +

@@ -44,7 +44,13 @@ class DnsClient {
   static const char kErrorTimedOut[];
   static const char kErrorUnknown[];
 
+  // Total default timeout for the query over all tries and all name servers.
   static constexpr base::TimeDelta kDnsTimeout = base::Milliseconds(8000);
+  // Minimum timeout per query to a name server.
+  static constexpr base::TimeDelta kDnsQueryMinTimeout =
+      base::Milliseconds(1000);
+  // Total number of tries per name server.
+  static constexpr int kDnsQueryTries = 2;
 
   DnsClient(net_base::IPFamily family,
             const std::string& interface_name,
