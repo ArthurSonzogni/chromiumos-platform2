@@ -262,6 +262,21 @@ the device/firmware needs to triage.
 
 TODO: Add devcoredump details if we ever enable them.
 
+### Bluetooth Firmware Crashdump Collector
+
+This collects a device crashdump whenever a bluetooth controller crash occurs.
+It is part of udev_collector. The program name is `bt_firmware`.
+
+*   Whenever a bluetooth controller crash occurs, the host bluetooth kernel
+    stack captures the crashdump and reports it via the devcoredump interface.
+*   This triggers a udev event which is captured by [udev_collector] and sent to
+    [udev_bluetooth_util] for further processing.
+*   This dump is then locally parsed by [bluetooth_devcd_parser] which extracts
+    the necessary information like controller type, firmware version, program
+    counter, stack trace, etc., and generates a unique signature.
+*   This parsed crashdump along with logs is stored in a spool directory as
+    specified under `Crash Report Storage` in the [Crash Reporter] document.
+
 ## user_collector
 
 Collects all userland crashes where the kernel dumps core.
@@ -456,6 +471,7 @@ D-Bus signal on /org/chromium/AnomalyEventService.  This is currently used by
 [EC]: https://chromium.googlesource.com/chromiumos/platform/ec
 [elogtool]: https://review.coreboot.org/plugins/gitiles/coreboot/+/HEAD/util/cbfstool/
 [Google Breakpad]: https://chromium.googlesource.com/breakpad/breakpad
+[Crash Reporter]: ../README.md
 [crashpad]: https://chromium.googlesource.com/crashpad/crashpad
 [memd]: ../../metrics/memd/
 [pstore]: https://chromium.googlesource.com/chromiumos/third_party/kernel/+/v4.17/Documentation/admin-guide/ramoops.rst
@@ -486,6 +502,8 @@ D-Bus signal on /org/chromium/AnomalyEventService.  This is currently used by
 [service_failure_collector]: ../service_failure_collector.cc
 [udev rules]: ../99-crash-reporter.rules
 [udev_collector]: ../udev_collector.cc
+[udev_bluetooth_util]: ../udev_bluetooth_util.cc
+[bluetooth_devcd_parser]: ../bluetooth_devcd_parser.cc
 [unclean_shutdown_collector]: ../unclean_shutdown_collector.cc
 [user_collector]: ../user_collector.cc
 [user_collector_base.cc]: ../user_collector_base.cc
