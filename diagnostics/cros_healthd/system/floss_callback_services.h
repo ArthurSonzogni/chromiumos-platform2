@@ -8,9 +8,12 @@
 #include <string>
 #include <vector>
 
-#include <dbus/object_path.h>
 #include <base/callback_list.h>
-#include <brillo/any.h>
+#include <base/memory/weak_ptr.h>
+#include <brillo/dbus/dbus_object.h>
+#include <brillo/variant_dictionary.h>
+#include <dbus/bus.h>
+#include <dbus/object_path.h>
 
 #include "diagnostics/dbus_bindings/floss_callback/org.chromium.bluetooth.BluetoothCallback.h"
 #include "diagnostics/dbus_bindings/floss_callback/org.chromium.bluetooth.BluetoothConnectionCallback.h"

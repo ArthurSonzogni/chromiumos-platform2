@@ -5,8 +5,10 @@
 #include "diagnostics/cros_healthd/system/floss_callback_services.h"
 
 #include <string>
+#include <vector>
 
 #include <brillo/variant_dictionary.h>
+#include <dbus/object_path.h>
 
 #include "diagnostics/cros_healthd/system/floss_event_hub.h"
 
