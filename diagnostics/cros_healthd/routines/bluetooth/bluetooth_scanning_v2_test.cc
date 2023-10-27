@@ -110,8 +110,8 @@ class BluetoothScanningRoutineV2Test : public testing::Test {
   void SetSwitchDiscoveryCall() {
     EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
         .WillOnce(WithArg<0>(
-            [=](base::OnceCallback<void(bool discovering)> on_success) {
-              std::move(on_success).Run(/*discovering=*/true);
+            [=](base::OnceCallback<void(bool is_success)> on_success) {
+              std::move(on_success).Run(/*is_success=*/true);
               for (const auto& peripheral : fake_peripherals_) {
                 fake_floss_event_hub()->SendDeviceAdded(peripheral.device_dict);
                 // Send out the RSSIs.
@@ -140,8 +140,8 @@ class BluetoothScanningRoutineV2Test : public testing::Test {
     }
     EXPECT_CALL(mock_adapter_proxy_, CancelDiscoveryAsync(_, _, _))
         .WillOnce(WithArg<0>(
-            [](base::OnceCallback<void(bool discovering)> on_success) {
-              std::move(on_success).Run(/*discovering=*/false);
+            [](base::OnceCallback<void(bool is_success)> on_success) {
+              std::move(on_success).Run(/*is_success=*/true);
             }));
   }
 
@@ -373,8 +373,8 @@ TEST_F(BluetoothScanningRoutineV2Test, StopDiscoveryError) {
   // Start discovery.
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
       .WillOnce(
-          WithArg<0>([](base::OnceCallback<void(bool discovering)> on_success) {
-            std::move(on_success).Run(/*discovering=*/true);
+          WithArg<0>([](base::OnceCallback<void(bool is_success)> on_success) {
+            std::move(on_success).Run(/*is_success=*/true);
           }));
   // Stop discovery.
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
@@ -397,9 +397,9 @@ TEST_F(BluetoothScanningRoutineV2Test, ParseDeviceInfoError) {
 
   // Start discovery.
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
-      .WillOnce(WithArg<0>(
-          [&](base::OnceCallback<void(bool discovering)> on_success) {
-            std::move(on_success).Run(/*discovering=*/true);
+      .WillOnce(
+          WithArg<0>([&](base::OnceCallback<void(bool is_success)> on_success) {
+            std::move(on_success).Run(/*is_success=*/true);
             fake_floss_event_hub()->SendDeviceAdded(
                 brillo::VariantDictionary{{"no_address", ""}, {"no_name", ""}});
           }));
@@ -422,9 +422,9 @@ TEST_F(BluetoothScanningRoutineV2Test, GetDeviceRssiError) {
 
   // Start discovery.
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
-      .WillOnce(WithArg<0>(
-          [&](base::OnceCallback<void(bool discovering)> on_success) {
-            std::move(on_success).Run(/*discovering=*/true);
+      .WillOnce(
+          WithArg<0>([&](base::OnceCallback<void(bool is_success)> on_success) {
+            std::move(on_success).Run(/*is_success=*/true);
             fake_floss_event_hub()->SendDevicePropertiesChanged(
                 brillo::VariantDictionary{{"address", ""}, {"name", ""}},
                 {static_cast<uint32_t>(BtPropertyType::kRemoteRssi)});

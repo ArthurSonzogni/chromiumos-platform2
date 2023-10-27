@@ -70,7 +70,7 @@ class BluetoothScanningRoutineV2 final : public BaseRoutineControl,
   void UpdateAdapterDiscoveryMode();
 
   // Handle the response of updating discovery mode.
-  void HandleUpdateDiscoveryResponse(brillo::Error* error, bool discovering);
+  void HandleUpdateDiscoveryResponse(brillo::Error* error, bool is_success);
 
   // Observe device added and device property changed events to collect RSSI.
   void OnDeviceAdded(const brillo::VariantDictionary& device);

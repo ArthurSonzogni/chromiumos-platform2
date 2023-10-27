@@ -195,8 +195,8 @@ void BluetoothScanningRoutineV2::UpdateAdapterDiscoveryMode() {
 }
 
 void BluetoothScanningRoutineV2::HandleUpdateDiscoveryResponse(
-    brillo::Error* error, bool discovering) {
-  if (error) {
+    brillo::Error* error, bool is_success) {
+  if (error || !is_success) {
     SetResultAndStop(base::unexpected("Failed to update discovery mode."));
     return;
   }

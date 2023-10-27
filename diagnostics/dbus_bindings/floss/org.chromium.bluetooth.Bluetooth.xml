@@ -49,10 +49,10 @@
       <arg name="bluetooth_class" direction="out" type="u"/>
     </method>
     <method name="StartDiscovery">
-      <arg name="discovering" direction="out" type="b"/>
+      <arg name="is_success" direction="out" type="b"/>
     </method>
     <method name="CancelDiscovery">
-      <arg name="discovering" direction="out" type="b"/>
+      <arg name="is_success" direction="out" type="b"/>
     </method>
     <method name="GetConnectedDevices">
       <arg name="devices" direction="out" type="aa{sv}"/>
