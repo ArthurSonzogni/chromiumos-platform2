@@ -123,6 +123,9 @@ class TpmInitializerImpl : public TpmInitializer {
                         TSS_FLAG sub_flag,
                         std::string* data);
 
+  // Persists the value of reset_da_lock_auth_failed.
+  void PersistResetDALockAuthFailed();
+
   OpensslCryptoUtilImpl openssl_util_;
   LocalDataStore* local_data_store_;
   TpmStatus* tpm_status_;

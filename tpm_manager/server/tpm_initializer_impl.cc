@@ -173,12 +173,24 @@ bool TpmInitializerImpl::InitializeTpm(bool* already_owned) {
     return false;
   }
 
-  reset_da_lock_auth_failed_ = false;
+  reset_da_lock_auth_failed_ = local_data.reset_da_lock_auth_failure();
   return true;
 }
 
 void TpmInitializerImpl::VerifiedBootHelper() {
   // Nothing to do.
+}
+
+void TpmInitializerImpl::PersistResetDALockAuthFailed() {
+  LocalData local_data;
+  if (!local_data_store_->Read(&local_data)) {
+    LOG(ERROR) << __func__ << ": failed to read local data.";
+    return;
+  }
+  local_data.set_reset_da_lock_auth_failure(true);
+  if (!local_data_store_->Write(local_data)) {
+    LOG(ERROR) << __func__ << ": failed to write local data.";
+  }
 }
 
 DictionaryAttackResetStatus TpmInitializerImpl::ResetDictionaryAttackLock() {
@@ -243,6 +255,7 @@ DictionaryAttackResetStatus TpmInitializerImpl::ResetDictionaryAttackLock() {
     if (TPM_ERROR(TPM_E_AUTHFAIL) == result ||
         TPM_ERROR(TPM_E_AUTH2FAIL) == result) {
       reset_da_lock_auth_failed_ = true;
+      PersistResetDALockAuthFailed();
     }
 
     return result == TPM_ERROR(TPM_E_WRONGPCRVAL)

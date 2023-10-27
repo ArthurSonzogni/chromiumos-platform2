@@ -191,6 +191,9 @@ message LocalData {
   // This value should be reset after the TPM had been cleared and only
   // applicable on TPM1.2 devices.
   optional bool no_srk_auth = 8;
+  // Whether the reset DA lock failed with the wrong auth happened or not.
+  // If this kind of failure happened before, we should prevent resetting DA.
+  optional bool reset_da_lock_auth_failure = 9;
 }
 
 // The format of the ownership taken signal payload.
