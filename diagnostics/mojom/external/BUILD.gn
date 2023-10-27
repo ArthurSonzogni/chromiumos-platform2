@@ -23,10 +23,8 @@ generate_mojom_bindings("libpublic_dependencies") {
 generate_mojom_bindings("libnetwork_diagnostics_mojo_bindings") {
   mojo_root = "${platform2_root}"
   install_package = "cros_healthd-client"
-  sources = [
-    "network_diagnostics.mojom",
-    "time.mojom",
-  ]
+  deps = [ ":libmojo_base" ]
+  sources = [ "network_diagnostics.mojom" ]
   mojo_extra_args = [
     "--typemap",
     rebase_path("type_mappings.json"),
@@ -40,5 +38,18 @@ generate_mojom_bindings("libnetwork_health_mojo_bindings") {
     "network_health.mojom",
     "network_health_types.mojom",
     "network_types.mojom",
+  ]
+}
+
+generate_mojom_bindings("libmojo_base") {
+  mojo_root = "${platform2_root}"
+  install_package = "cros_healthd-client"
+  sources = [
+    "time.mojom",
+    "uuid.mojom",
+  ]
+  mojo_extra_args = [
+    "--typemap",
+    rebase_path("type_mappings.json"),
   ]
 }

@@ -33,6 +33,23 @@
       "public_headers": [
         "base/time/time.h"
       ]
+    },
+    "ash.cros_healthd.external.mojo_base.mojom.Uuid": {
+      "hashable": false,
+      "typename": "base::Uuid",
+      "forward_declaration": null,
+      "traits_headers": [
+        "diagnostics/mojom/external/uuid_mojom_traits.h"
+      ],
+      "copyable_pass_by_value": true,
+      "default_constructible": true,
+      "force_serialize": false,
+      "move_only": false,
+      "nullable_is_same_type": false,
+      "non_copyable_non_movable": false,
+      "public_headers": [
+        "base/uuid.h"
+      ]
     }
   }
 }

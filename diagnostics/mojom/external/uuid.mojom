@@ -1,0 +1,15 @@
+// Copyright 2023 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+//  This file is copied from,
+//  https://cs.chromium.org/chromium/src/mojo/public/mojom/base/uuid.mojom
+
+// Change the module to avoid collision with other platform mojom.
+module ash.cros_healthd.external.mojo_base.mojom;
+
+// Corresponds to |base::Uuid| in base/uuid.h
+[Stable]
+struct Uuid {
+  string value;
+};

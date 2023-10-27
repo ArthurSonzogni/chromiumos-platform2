@@ -10,6 +10,7 @@ generate_mojom_bindings("libcros_healthd_mojo_bindings") {
   install_package = "cros_healthd-client"
   deps = [
     "//diagnostics/mojom/external:libcros_healthd_internal",
+    "//diagnostics/mojom/external:libmojo_base",
     "//diagnostics/mojom/external:libnetwork_diagnostics_mojo_bindings",
     "//diagnostics/mojom/external:libnetwork_health_mojo_bindings",
     "//diagnostics/mojom/external:libpublic_dependencies",
