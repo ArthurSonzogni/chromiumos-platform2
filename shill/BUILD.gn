@@ -81,6 +81,12 @@ pkg_config("target_defaults") {
     defines += [ "DISABLE_FLOSS" ]
   }
 
+  # We can't have address space limits for certain allocators.
+  # See b/271214988 for details.
+  if (use.system_wide_scudo) {
+    defines += [ "DISABLE_CHARON_RLIMIT_AS=1" ]
+  }
+
   if (use.test || use.fuzzer) {
     # For the "mockable" keyword.
     defines += [ "TEST_BUILD" ]

@@ -752,7 +752,13 @@ void IPsecConnection::StartCharon() {
   // memory. This can be partially reduced by lowering charon.threads, but in
   // any case, Charon cannot rely on inheriting shill's RLIMIT_AS. See
   // crbug/961519.
+  //
+  // Additionally, address space limits do not work well with allocators
+  // that mmap large amounts of space up front such as ASAN, Scudo,
+  // PartitionAlloc. Allow disabling it through a build configuration.
+#ifndef DISABLE_CHARON_RLIMIT_AS
   minijail_options.rlimit_as_soft = 750'000'000;  // 750MB
+#endif
   charon_pid_ = process_manager_->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kCharonPath), args, env, minijail_options,
       base::BindOnce(&IPsecConnection::OnCharonExitedUnexpectedly,

@@ -179,6 +179,7 @@ _IUSE = [
     "selinux",
     "slow_mount",
     "systemd",
+    "system_wide_scudo",
     "tcmalloc",
     "test",
     "ti50_onboard",
