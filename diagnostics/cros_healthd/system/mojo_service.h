@@ -24,7 +24,7 @@ class NetworkDiagnosticsRoutines;
 namespace cros::mojom {
 class SensorService;
 class SensorDevice;
-}
+}  // namespace cros::mojom
 
 namespace diagnostics {
 

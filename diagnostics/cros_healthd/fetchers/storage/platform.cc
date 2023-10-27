@@ -30,7 +30,7 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr char kDevPrefix[] = "/dev/";
 
-}
+}  // namespace
 
 std::string Platform::GetRootDeviceName() const {
   char dev_path_cstr[PATH_MAX];

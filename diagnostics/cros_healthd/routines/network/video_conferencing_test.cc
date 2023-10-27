@@ -75,16 +75,15 @@ class VideoConferencingRoutineTest : public testing::Test {
 TEST_F(VideoConferencingRoutineTest, RoutineSuccess) {
   EXPECT_CALL(*(network_diagnostics_adapter()),
               RunVideoConferencingRoutine(_, _))
-      .WillOnce(
-          [&](const std::optional<std::string>& stun_server_hostname,
-              network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                  RunVideoConferencingCallback callback) {
-            auto result = CreateResult(
-                network_diagnostics_ipc::RoutineVerdict::kNoProblem,
-                network_diagnostics_ipc::RoutineProblems::
-                    NewVideoConferencingProblems({}));
-            std::move(callback).Run(std::move(result));
-          });
+      .WillOnce([&](const std::optional<std::string>& stun_server_hostname,
+                    network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunVideoConferencingCallback callback) {
+        auto result =
+            CreateResult(network_diagnostics_ipc::RoutineVerdict::kNoProblem,
+                         network_diagnostics_ipc::RoutineProblems::
+                             NewVideoConferencingProblems({}));
+        std::move(callback).Run(std::move(result));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,
@@ -97,16 +96,15 @@ TEST_F(VideoConferencingRoutineTest, RoutineSuccess) {
 TEST_F(VideoConferencingRoutineTest, RoutineError) {
   EXPECT_CALL(*(network_diagnostics_adapter()),
               RunVideoConferencingRoutine(_, _))
-      .WillOnce(
-          [&](const std::optional<std::string>& stun_server_hostname,
-              network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                  RunVideoConferencingCallback callback) {
-            auto result =
-                CreateResult(network_diagnostics_ipc::RoutineVerdict::kNotRun,
-                             network_diagnostics_ipc::RoutineProblems::
-                                 NewVideoConferencingProblems({}));
-            std::move(callback).Run(std::move(result));
-          });
+      .WillOnce([&](const std::optional<std::string>& stun_server_hostname,
+                    network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunVideoConferencingCallback callback) {
+        auto result =
+            CreateResult(network_diagnostics_ipc::RoutineVerdict::kNotRun,
+                         network_diagnostics_ipc::RoutineProblems::
+                             NewVideoConferencingProblems({}));
+        std::move(callback).Run(std::move(result));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,
@@ -133,16 +131,15 @@ class VideoConferencingProblemTest
 TEST_P(VideoConferencingProblemTest, HandleVideoConferencingProblem) {
   EXPECT_CALL(*(network_diagnostics_adapter()),
               RunVideoConferencingRoutine(_, _))
-      .WillOnce(
-          [&](const std::optional<std::string>& stun_server_hostname,
-              network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                  RunVideoConferencingCallback callback) {
-            auto result = CreateResult(
-                network_diagnostics_ipc::RoutineVerdict::kProblem,
-                network_diagnostics_ipc::RoutineProblems::
-                    NewVideoConferencingProblems(params().problems));
-            std::move(callback).Run(std::move(result));
-          });
+      .WillOnce([&](const std::optional<std::string>& stun_server_hostname,
+                    network_diagnostics_ipc::NetworkDiagnosticsRoutines::
+                        RunVideoConferencingCallback callback) {
+        auto result =
+            CreateResult(network_diagnostics_ipc::RoutineVerdict::kProblem,
+                         network_diagnostics_ipc::RoutineProblems::
+                             NewVideoConferencingProblems(params().problems));
+        std::move(callback).Run(std::move(result));
+      });
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,

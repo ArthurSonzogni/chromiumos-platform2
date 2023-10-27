@@ -58,9 +58,7 @@ class BatteryFetcherTest : public ::testing::Test {
  protected:
   BatteryFetcherTest() = default;
 
-  void SetUp() override {
-    SetHasSmartBatteryInfo(true);
-  }
+  void SetUp() override { SetHasSmartBatteryInfo(true); }
 
   BatteryFetcher* battery_fetcher() { return &battery_fetcher_; }
 
