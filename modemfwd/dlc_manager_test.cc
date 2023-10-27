@@ -17,6 +17,7 @@
 #include "dlcservice/dbus-proxy-mocks.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include "modemfwd/error.h"
 #include "modemfwd/mock_metrics.h"
 
 using modemfwd::metrics::DlcInstallResult;
@@ -132,6 +133,9 @@ class DlcManagerTest : public ::testing::Test {
     dlcservice::DlcState dlc_state;
     dlc_state.set_state(state);
     dlc_state.set_root_path(kDeviceDlcMountPath);
+    if (state == dlcservice::DlcState::NOT_INSTALLED) {
+      dlc_state.set_last_error_code(dlcservice::kErrorBusy);
+    }
     std::move(get_dlc_state_success_cb_).Run(dlc_state);
   }
 
@@ -484,8 +488,8 @@ TEST_F(DlcManagerTest, InstallModemDlcGetDlcStateAsyncUnexpectedState) {
       .WillRepeatedly(Invoke(this, &DlcManagerTest::StoreGetDlcStateAsync));
 
   EXPECT_CALL(install_cb, Run("", NotNull()));  // error returned
-  EXPECT_CALL(*mock_metrics_, SendDlcInstallResult(
-                                  DlcInstallResult::kFailedUnexpectedDlcState));
+  EXPECT_CALL(*mock_metrics_,
+              SendDlcInstallResult(DlcInstallResult::kDlcServiceReturnedBusy));
 
   dlc_manager_->InstallModemDlc(install_cb.Get());
   InvokeServiceAvailableFromStored();
@@ -498,6 +502,82 @@ TEST_F(DlcManagerTest, InstallModemDlcGetDlcStateAsyncUnexpectedState) {
     InvokeInstallSuccessFromStored();
   }
   InvokeGetDlcStateSuccessFromStored(dlcservice::DlcState::NOT_INSTALLED);
+}
+
+TEST_F(DlcManagerTest, InstallModemDlcGetDlcStateAsyncSuccessNotInstalled) {
+  SetUpDefaultDlcManagerHelper();
+  InstallModemDlcOnceCallbackMock install_cb;
+  AddWaitForServiceExpects();
+  EXPECT_CALL(*mock_dlcservice_proxy_ptr_,
+              InstallAsync(EqualsProto(default_install_request_), _, _, _))
+      .Times(dlcmanager::kMaxRetriesBeforeFallbackToRootfs + 1)
+      .WillRepeatedly(Invoke(this, &DlcManagerTest::StoreInstallAsync));
+
+  EXPECT_CALL(*mock_dlcservice_proxy_ptr_,
+              GetDlcStateAsync(kDeviceDlc, _, _, _))
+      .Times(dlcmanager::kMaxRetriesBeforeFallbackToRootfs + 1)
+      .WillRepeatedly(Invoke(this, &DlcManagerTest::StoreGetDlcStateAsync));
+
+  EXPECT_CALL(install_cb, Run("", NotNull()));  // error returned
+  EXPECT_CALL(
+      *mock_metrics_,
+      SendDlcInstallResult(DlcInstallResult::kDlcServiceReturnedNoImageFound));
+
+  dlc_manager_->InstallModemDlc(install_cb.Get());
+  InvokeServiceAvailableFromStored();
+  InvokeInstallSuccessFromStored();
+
+  dlcservice::DlcState dlc_state;
+  dlc_state.set_state(dlcservice::DlcState::NOT_INSTALLED);
+  dlc_state.set_last_error_code(dlcservice::kErrorNoImageFound);
+  for (int i = 0; i < dlcmanager::kMaxRetriesBeforeFallbackToRootfs; i++) {
+    // Manually invoke GetDlcState
+    std::move(get_dlc_state_success_cb_).Run(dlc_state);
+    while (install_async_success_cb_.is_null()) {
+      task_environment_.FastForwardBy(base::Seconds(1));
+    }
+    InvokeInstallSuccessFromStored();
+  }
+  // Manually invoke GetDlcState
+  std::move(get_dlc_state_success_cb_).Run(dlc_state);
+}
+
+TEST_F(DlcManagerTest,
+       InstallModemDlcGetDlcStateAsyncSuccessNotInstalledUnknownLastErrorCode) {
+  SetUpDefaultDlcManagerHelper();
+  InstallModemDlcOnceCallbackMock install_cb;
+  AddWaitForServiceExpects();
+  EXPECT_CALL(*mock_dlcservice_proxy_ptr_,
+              InstallAsync(EqualsProto(default_install_request_), _, _, _))
+      .Times(dlcmanager::kMaxRetriesBeforeFallbackToRootfs + 1)
+      .WillRepeatedly(Invoke(this, &DlcManagerTest::StoreInstallAsync));
+
+  EXPECT_CALL(*mock_dlcservice_proxy_ptr_,
+              GetDlcStateAsync(kDeviceDlc, _, _, _))
+      .Times(dlcmanager::kMaxRetriesBeforeFallbackToRootfs + 1)
+      .WillRepeatedly(Invoke(this, &DlcManagerTest::StoreGetDlcStateAsync));
+
+  EXPECT_CALL(install_cb, Run("", NotNull()));  // error returned
+  EXPECT_CALL(*mock_metrics_, SendDlcInstallResult(
+                                  DlcInstallResult::kFailedUnexpectedDlcState));
+
+  dlc_manager_->InstallModemDlc(install_cb.Get());
+  InvokeServiceAvailableFromStored();
+  InvokeInstallSuccessFromStored();
+
+  dlcservice::DlcState dlc_state;
+  dlc_state.set_state(dlcservice::DlcState::NOT_INSTALLED);
+  dlc_state.set_last_error_code("unknown.error.code");
+  for (int i = 0; i < dlcmanager::kMaxRetriesBeforeFallbackToRootfs; i++) {
+    // Manually invoke GetDlcState
+    std::move(get_dlc_state_success_cb_).Run(dlc_state);
+    while (install_async_success_cb_.is_null()) {
+      task_environment_.FastForwardBy(base::Seconds(1));
+    }
+    InvokeInstallSuccessFromStored();
+  }
+  // Manually invoke GetDlcState
+  std::move(get_dlc_state_success_cb_).Run(dlc_state);
 }
 
 TEST_F(DlcManagerTest, InstallModemDlcRetryInstallOnFailure) {

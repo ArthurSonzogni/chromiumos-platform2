@@ -12,6 +12,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/errors/error.h>
+#include <dbus/dlcservice/dbus-constants.h>
 #include "dlcservice/dbus-proxies.h"
 #include "dlcservice/proto_bindings/dlcservice.pb.h"
 
@@ -29,6 +30,16 @@ const base::TimeDelta kInstallRetryMaxPeriod = base::Hours(2);
 // reached. (1+2+4+8+16)*kInitialInstallRetryPeriod = 62 seconds.
 const uint16_t kMaxRetriesBeforeFallbackToRootfs = 5;
 }  // namespace dlcmanager
+
+// static
+std::map<std::string_view, std::string> DlcManager::dlc_service_errors_ = {
+    {dlcservice::kErrorInvalidDlc, error::kDlcServiceInstallErrorInvalidDlc},
+    {dlcservice::kErrorInternal, error::kDlcServiceInstallErrorInternal},
+    {dlcservice::kErrorAllocation, error::kDlcServiceInstallErrorAllocation},
+    {dlcservice::kErrorNoImageFound, error::kDlcServiceInstallErrorNoImage},
+    {dlcservice::kErrorNeedReboot, error::kDlcServiceInstallErrorNeedReboot},
+    {dlcservice::kErrorBusy, error::kDlcServiceInstallErrorBusy},
+};
 
 DlcManager::DlcManager(scoped_refptr<dbus::Bus> bus,
                        Metrics* metrics,
@@ -246,10 +257,9 @@ void DlcManager::CallGetDlcStateAsync() {
 }
 
 void DlcManager::OnInstallError(brillo::Error* dbus_error) {
-  brillo::ErrorPtr err = Error::CreateFromDbusError(dbus_error);
-  modemfwd::Error::AddTo(&err, FROM_HERE,
-                         error::kDlcServiceReturnedErrorOnInstall,
-                         "Failed to install DLC.");
+  auto err = DlcServiceToModemFwdError(
+      FROM_HERE, dbus_error ? dbus_error->GetCode() : "",
+      error::kDlcServiceReturnedErrorOnInstall, "Failed to install DLC.");
   ProcessInstallError(std::move(err));
 }
 
@@ -267,8 +277,11 @@ void DlcManager::OnInstallGetDlcStateSuccess(
     const std::string& state_name =
         dlcservice::DlcState::State_Name(state.state());
     LOG(INFO) << "DLC not installed correctly. Current state is:" << state_name;
-    brillo::ErrorPtr err = Error::Create(
-        FROM_HERE, error::kUnexpectedDlcState,
+
+    auto err = DlcServiceToModemFwdError(
+        FROM_HERE,
+        state.last_error_code().empty() ? "" : state.last_error_code(),
+        error::kUnexpectedDlcState,
         base::StringPrintf("Unexpected DLC state:%s", state_name.c_str()));
     ProcessInstallError(std::move(err));
     return;
@@ -301,6 +314,25 @@ void DlcManager::ProcessInstallError(brillo::ErrorPtr err) {
 
   install_retry_counter_++;
   PostRetryInstallTask();
+}
+
+brillo::ErrorPtr DlcManager::DlcServiceToModemFwdError(
+    const base::Location& location,
+    const std::string& error_code,
+    const std::string& linked_error_code,
+    const std::string& linked_error_message) {
+  auto it = dlc_service_errors_.find(error_code);
+  if (it != dlc_service_errors_.end()) {
+    return Error::Create(location, it->second,
+                         "Root error reported by dlcservice");
+  } else {
+    // Unknown dlcservice error code. Create root error from it and add a known
+    // linked error
+    auto err = Error::Create(location, error_code,
+                             "Root error reported by dlcservice");
+    Error::AddTo(&err, FROM_HERE, linked_error_code, linked_error_message);
+    return err;
+  }
 }
 
 }  // namespace modemfwd

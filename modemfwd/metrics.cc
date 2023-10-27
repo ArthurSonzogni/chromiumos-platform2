@@ -60,16 +60,32 @@ static constexpr int kMetricFwInstallTimeNumBuckets = 60;
 // IMPORTANT: To obsolete a metric enum value, just remove it from the map
 // initialization and comment it out on the Enum.
 Metrics::DlcInstallResultMap Metrics::install_result_ = {
+    // dlcservice dbus errors
     {dlcservice::kErrorInvalidDlc,
-     DlcInstallResult::kDlcServiceReturnedInvalidDlc},  // dbus error
+     DlcInstallResult::kDlcServiceReturnedInvalidDlc},
     {dlcservice::kErrorAllocation,
-     DlcInstallResult::kDlcServiceReturnedAllocation},  // dbus error
+     DlcInstallResult::kDlcServiceReturnedAllocation},
     {dlcservice::kErrorNoImageFound,
-     DlcInstallResult::kDlcServiceReturnedNoImageFound},  // dbus error
+     DlcInstallResult::kDlcServiceReturnedNoImageFound},
     {dlcservice::kErrorNeedReboot,
-     DlcInstallResult::kDlcServiceReturnedNeedReboot},  // dbus error
-    {dlcservice::kErrorBusy,
-     DlcInstallResult::kDlcServiceReturnedBusy},  // dbus error
+     DlcInstallResult::kDlcServiceReturnedNeedReboot},
+    {dlcservice::kErrorBusy, DlcInstallResult::kDlcServiceReturnedBusy},
+    {dlcservice::kErrorInternal,
+     DlcInstallResult::kDlcServiceReturnedInternalError},
+    // translated modemfwd errors from dbus errors
+    {error::kDlcServiceInstallErrorInvalidDlc,
+     DlcInstallResult::kDlcServiceReturnedInvalidDlc},
+    {error::kDlcServiceInstallErrorAllocation,
+     DlcInstallResult::kDlcServiceReturnedAllocation},
+    {error::kDlcServiceInstallErrorNoImage,
+     DlcInstallResult::kDlcServiceReturnedNoImageFound},
+    {error::kDlcServiceInstallErrorNeedReboot,
+     DlcInstallResult::kDlcServiceReturnedNeedReboot},
+    {error::kDlcServiceInstallErrorBusy,
+     DlcInstallResult::kDlcServiceReturnedBusy},
+    {error::kDlcServiceInstallErrorInternal,
+     DlcInstallResult::kDlcServiceReturnedInternalError},
+    // modemfwd internal errors
     {error::kUnexpectedDlcState, DlcInstallResult::kFailedUnexpectedDlcState},
     {error::kTimeoutWaitingForDlcService,
      DlcInstallResult::kFailedTimeoutWaitingForDlcService},

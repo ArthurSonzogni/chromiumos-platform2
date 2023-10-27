@@ -96,6 +96,11 @@ class DlcManager {
   void OnInstallGetDlcStateSuccess(const dlcservice::DlcState& state);
   void OnInstallGetDlcStateError(brillo::Error* dbus_error);
   void ProcessInstallError(brillo::ErrorPtr error);
+  brillo::ErrorPtr DlcServiceToModemFwdError(
+      const base::Location& location,
+      const std::string& error_code,
+      const std::string& linked_error_code,
+      const std::string& linked_error_message);
 
   enum class InstallStep { WAITING_FOR_SERVICE, INSTALLING, GET_DLC_STATE };
   std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface>
@@ -105,6 +110,8 @@ class DlcManager {
   std::string dlc_id_;
   bool is_dlc_empty_;
   std::string variant_;
+  // Map of known dlcservice install errors to internal modemfwd errors.
+  static std::map<std::string_view, std::string> dlc_service_errors_;
   // Since the device might not have internet when modemfwd starts, modemfwd
   // should try to install periodically until Install succeeds. This is only
   // used after a powerwash, when the DLCs are not in the device. The period

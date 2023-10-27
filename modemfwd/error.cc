@@ -15,6 +15,15 @@ namespace modemfwd {
 
 const char kModemfwdErrorDomain[] = "modemfwd";
 namespace error {
+const char kDlcServiceInstallErrorAllocation[] =
+    "dlcServiceInstallErrorAllocation";
+const char kDlcServiceInstallErrorBusy[] = "dlcServiceInstallErrorBusy";
+const char kDlcServiceInstallErrorInvalidDlc[] =
+    "dlcServiceInstallErrorInvalidDlc";
+const char kDlcServiceInstallErrorInternal[] = "dlcServiceInstallErrorInternal";
+const char kDlcServiceInstallErrorNeedReboot[] =
+    "dlcServiceInstallErrorNeedReboot";
+const char kDlcServiceInstallErrorNoImage[] = "dlcServiceInstallErrorNoImage";
 const char kDlcServiceReturnedErrorOnGetDlcState[] =
     "dlcServiceReturnedErrorOnFailedToGetDlcState";
 const char kDlcServiceReturnedErrorOnGetExistingDlcs[] =

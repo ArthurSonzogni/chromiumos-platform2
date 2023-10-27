@@ -48,6 +48,7 @@ enum class DlcInstallResult {
   kDlcServiceReturnedErrorOnInstall = 11,
   kDlcServiceReturnedErrorOnGetDlcState = 12,
   kUnexpectedEmptyDlcId = 13,
+  kDlcServiceReturnedInternalError = 14,
   kNumConstants
 };
 

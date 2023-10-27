@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <brillo/errors/error.h>
 #include <dbus/dlcservice/dbus-constants.h>
 #include <dbus/modemfwd/dbus-constants.h>
 #include <gmock/gmock.h>
@@ -110,40 +111,60 @@ TEST_F(MetricsTest, SendDlcInstallResult_Failures) {
 
   EXPECT_CALL(*metrics_library_,
               SendEnumToUMA(metrics::kMetricDlcInstallResult,
-                            2 /*kDlcServiceReturnedInvalidDlc*/, num_consts));
+                            2 /*kDlcServiceReturnedInvalidDlc*/, num_consts))
+      .Times(2);
   auto err = brillo::Error::Create(FROM_HERE, "dbus",
                                    dlcservice::kErrorInvalidDlc, "msg");
   metrics_->SendDlcInstallResultFailure(err.get());
+  err = modemfwd::Error::Create(
+      FROM_HERE, error::kDlcServiceInstallErrorInvalidDlc, "msg");
+  metrics_->SendDlcInstallResultFailure(err.get());
   testing::Mock::VerifyAndClearExpectations(&metrics_library_);
 
   EXPECT_CALL(*metrics_library_,
               SendEnumToUMA(metrics::kMetricDlcInstallResult,
-                            3 /*kDlcServiceReturnedAllocation*/, num_consts));
+                            3 /*kDlcServiceReturnedAllocation*/, num_consts))
+      .Times(2);
   err = brillo::Error::Create(FROM_HERE, "dbus", dlcservice::kErrorAllocation,
                               "msg");
   metrics_->SendDlcInstallResultFailure(err.get());
+  err = modemfwd::Error::Create(
+      FROM_HERE, error::kDlcServiceInstallErrorAllocation, "msg");
+  metrics_->SendDlcInstallResultFailure(err.get());
   testing::Mock::VerifyAndClearExpectations(&metrics_library_);
 
   EXPECT_CALL(*metrics_library_,
               SendEnumToUMA(metrics::kMetricDlcInstallResult,
-                            4 /*kDlcServiceReturnedNoImageFound*/, num_consts));
+                            4 /*kDlcServiceReturnedNoImageFound*/, num_consts))
+      .Times(2);
   err = brillo::Error::Create(FROM_HERE, "dbus", dlcservice::kErrorNoImageFound,
                               "msg");
   metrics_->SendDlcInstallResultFailure(err.get());
-  testing::Mock::VerifyAndClearExpectations(&metrics_library_);
-
-  EXPECT_CALL(*metrics_library_,
-              SendEnumToUMA(metrics::kMetricDlcInstallResult,
-                            5 /*kDlcServiceReturnedNeedReboot*/, num_consts));
-  err = brillo::Error::Create(FROM_HERE, "dbus", dlcservice::kErrorNeedReboot,
-                              "msg");
+  err = modemfwd::Error::Create(FROM_HERE,
+                                error::kDlcServiceInstallErrorNoImage, "msg");
   metrics_->SendDlcInstallResultFailure(err.get());
   testing::Mock::VerifyAndClearExpectations(&metrics_library_);
 
   EXPECT_CALL(*metrics_library_,
               SendEnumToUMA(metrics::kMetricDlcInstallResult,
-                            6 /*kDlcServiceReturnedBusy*/, num_consts));
+                            5 /*kDlcServiceReturnedNeedReboot*/, num_consts))
+      .Times(2);
+  err = brillo::Error::Create(FROM_HERE, "dbus", dlcservice::kErrorNeedReboot,
+                              "msg");
+  metrics_->SendDlcInstallResultFailure(err.get());
+  err = modemfwd::Error::Create(
+      FROM_HERE, error::kDlcServiceInstallErrorNeedReboot, "msg");
+  metrics_->SendDlcInstallResultFailure(err.get());
+  testing::Mock::VerifyAndClearExpectations(&metrics_library_);
+
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(metrics::kMetricDlcInstallResult,
+                            6 /*kDlcServiceReturnedBusy*/, num_consts))
+      .Times(2);
   err = brillo::Error::Create(FROM_HERE, "dbus", dlcservice::kErrorBusy, "msg");
+  metrics_->SendDlcInstallResultFailure(err.get());
+  err = modemfwd::Error::Create(FROM_HERE, error::kDlcServiceInstallErrorBusy,
+                                "msg");
   metrics_->SendDlcInstallResultFailure(err.get());
   testing::Mock::VerifyAndClearExpectations(&metrics_library_);
 
@@ -208,8 +229,20 @@ TEST_F(MetricsTest, SendDlcInstallResult_Failures) {
   metrics_->SendDlcInstallResultFailure(err.get());
   testing::Mock::VerifyAndClearExpectations(&metrics_library_);
 
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(metrics::kMetricDlcInstallResult,
+                            14 /*kDlcServiceInstallErrorInternal*/, num_consts))
+      .Times(2);
+  err = brillo::Error::Create(FROM_HERE, "dbus", dlcservice::kErrorInternal,
+                              "msg");
+  metrics_->SendDlcInstallResultFailure(err.get());
+  err = modemfwd::Error::Create(FROM_HERE,
+                                error::kDlcServiceInstallErrorInternal, "msg");
+  metrics_->SendDlcInstallResultFailure(err.get());
+  testing::Mock::VerifyAndClearExpectations(&metrics_library_);
+
   // Check that all values were tested.
-  EXPECT_EQ(14, static_cast<int>(DlcInstallResult::kNumConstants));
+  EXPECT_EQ(15, static_cast<int>(DlcInstallResult::kNumConstants));
 }
 
 TEST_F(MetricsTest, SendDlcInstallResult_VerifyErrorIteration) {
