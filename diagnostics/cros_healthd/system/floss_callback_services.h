@@ -55,6 +55,10 @@ class BluetoothCallbackService
                     uint32_t cod,
                     uint32_t bt_ssp_variant,
                     uint32_t passkey) override;
+  void OnSdpSearchComplete(
+      const brillo::VariantDictionary& device,
+      const std::vector<uint8_t>& searched_uuid,
+      const std::vector<brillo::VariantDictionary>& sdp_records) override;
 
   // Unowned pointer. Used to send Bluetooth events.
   FlossEventHub* const event_hub_;

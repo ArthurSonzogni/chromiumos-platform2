@@ -59,5 +59,11 @@
       <arg name="bt_ssp_variant" direction="in" type="u"/>
       <arg name="passkey" direction="in" type="u"/>
     </method>
+    <method name="OnSdpSearchComplete">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg name="device" direction="in" type="a{sv}"/>
+      <arg name="searched_uuid" direction="in" type="ay"/>
+      <arg name="sdp_records" direction="in" type="aa{sv}"/>
+    </method>
   </interface>
 </node>

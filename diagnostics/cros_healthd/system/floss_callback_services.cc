@@ -77,6 +77,11 @@ void BluetoothCallbackService::OnSspRequest(
   event_hub_->OnDeviceSspRequest(device);
 }
 
+void BluetoothCallbackService::OnSdpSearchComplete(
+    const brillo::VariantDictionary& device,
+    const std::vector<uint8_t>& searched_uuid,
+    const std::vector<brillo::VariantDictionary>& sdp_records) {}
+
 ManagerCallbackService::ManagerCallbackService(
     FlossEventHub* event_hub,
     const scoped_refptr<dbus::Bus>& bus,
