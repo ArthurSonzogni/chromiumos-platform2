@@ -51,6 +51,7 @@ void SendServerMetric(std::string metric_name,
 }  // namespace
 constexpr char kPutMetricName[] = "Platform.FlexHwis.ServerPutSuccess";
 constexpr char kPostMetricName[] = "Platform.FlexHwis.ServerPostSuccess";
+constexpr char kDeleteMetricName[] = "Platform.FlexHwis.ServerDeleteSuccess";
 
 FlexHwisSender::FlexHwisSender(const base::FilePath& base_path,
                                policy::PolicyProvider& provider,
@@ -81,9 +82,12 @@ Result FlexHwisSender::CollectAndSend(MetricsLibraryInterface& metrics,
       // delete the hardware data to the server is successfully.
       hwis_proto::DeleteDevice delete_device;
       delete_device.set_name(device_name.value());
+      bool api_delete_success = false;
       if (sender_.DeleteDevice(delete_device)) {
         check_.DeleteDeviceName();
+        api_delete_success = true;
       }
+      SendServerMetric(kDeleteMetricName, api_delete_success, metrics);
     }
     return Result::NotAuthorized;
   }

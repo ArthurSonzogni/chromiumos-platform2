@@ -26,6 +26,7 @@ namespace flex_hwis {
 
 constexpr char kPutMetricName[] = "Platform.FlexHwis.ServerPutSuccess";
 constexpr char kPostMetricName[] = "Platform.FlexHwis.ServerPostSuccess";
+constexpr char kDeleteMetricName[] = "Platform.FlexHwis.ServerDeleteSuccess";
 constexpr char kPermissionMetricName[] =
     "Platform.FlexHwis.PermissionCheckResult";
 constexpr char kHwisFilePath[] = "var/lib/flex_hwis_tool";
@@ -114,6 +115,7 @@ class FlexHwisTest : public ::testing::Test {
   void ExpectDeleteAction() {
     CreateDeviceName();
     EXPECT_CALL(mock_http_sender_, DeleteDevice(_)).WillOnce(Return(true));
+    ExpectApiMetric(kDeleteMetricName, true);
   }
 
   void ExpectUpdateAction(bool api_call_success) {
