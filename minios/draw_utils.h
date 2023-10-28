@@ -5,6 +5,7 @@
 #ifndef MINIOS_DRAW_UTILS_H_
 #define MINIOS_DRAW_UTILS_H_
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -54,7 +55,7 @@ class DrawUtils : public DrawInterface {
   // The period corresponding to 66.67 fps.
   static constexpr base::TimeDelta kAnimationPeriod = base::Milliseconds(15);
 
-  explicit DrawUtils(ProcessManagerInterface* process_manager)
+  explicit DrawUtils(std::shared_ptr<ProcessManagerInterface> process_manager)
       : process_manager_(process_manager),
         screens_path_(root_.Append(kScreens)) {}
   ~DrawUtils() override = default;
@@ -218,7 +219,7 @@ class DrawUtils : public DrawInterface {
                          bool show_arrow,
                          bool focused);
 
-  ProcessManagerInterface* process_manager_;
+  std::shared_ptr<ProcessManagerInterface> process_manager_;
 
   // Timer for animating the indeterminate progress bar.
   base::RepeatingTimer timer_;

@@ -12,6 +12,7 @@
 #include <base/time/time.h>
 
 #include "minios/metrics_reporter.h"
+#include "minios/process_manager_interface.h"
 #include "minios/utils.h"
 
 namespace minios {
@@ -27,7 +28,7 @@ const int kRecoveryReasonCode_NBR = 200;
 const int kRecoveryReasonCode_MAX = 255;
 
 MetricsReporter::MetricsReporter(
-    ProcessManagerInterface* process_manager,
+    std::shared_ptr<ProcessManagerInterface> process_manager,
     std::unique_ptr<MetricsLibraryInterface> metrics_lib)
     : process_manager_(process_manager) {
   if (metrics_lib)

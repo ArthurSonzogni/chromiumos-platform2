@@ -58,13 +58,14 @@ std::tuple<bool, std::string, int64_t> ReadFileContent(
     int num_cols);
 
 // Gets VPD region data given a key. Returns false on failure.
-bool GetCrosRegionData(ProcessManagerInterface* process_manager,
+bool GetCrosRegionData(std::shared_ptr<ProcessManagerInterface> process_manager,
                        std::string key,
                        std::string* value);
 
 // Gets XKB keyboard data and extracts country code from it. Defaults to "us" on
 // failure.
-std::string GetKeyboardLayout(ProcessManagerInterface* process_manager);
+std::string GetKeyboardLayout(
+    std::shared_ptr<ProcessManagerInterface> process_manager);
 
 // Read frecon created symbolic link and return the virtual terminal path.
 base::FilePath GetLogConsole();
@@ -80,16 +81,17 @@ inline std::string AlertLogTag(const std::string& category) {
 
 // Mount the stateful partition at `/stateful/` if its not currently mounted.
 // Returns true if successfully mounted, false otherwise.
-bool MountStatefulPartition(ProcessManagerInterface* process_manager);
+bool MountStatefulPartition(
+    std::shared_ptr<ProcessManagerInterface> process_manager);
 
 // Compress a pre-determined list of NBR logs and save it to the provided path.
 // Returns the result of running a `tar` command.
-int CompressLogs(std::unique_ptr<ProcessManagerInterface> process_manager,
+int CompressLogs(std::shared_ptr<ProcessManagerInterface> process_manager,
                  const base::FilePath& archive_path = kDefaultArchivePath);
 
 // Calculate kernel size.
 std::optional<uint64_t> KernelSize(
-    std::unique_ptr<ProcessManagerInterface> process_manager,
+    std::shared_ptr<ProcessManagerInterface> process_manager,
     const base::FilePath& device);
 
 // Read the kernel cmdline and get the current version.
@@ -111,11 +113,11 @@ void TrimLogStoreKey(std::string& key);
 
 // Get log encryption key from VPD. Returns `nullopt` if not found.
 std::optional<std::string> GetLogStoreKey(
-    ProcessManagerInterface* process_manager);
+    std::shared_ptr<ProcessManagerInterface> process_manager);
 
 // Save a given log encryption key to VPD. Returns true on success, false
 // otherwise.
-bool SaveLogStoreKey(ProcessManagerInterface* process_manager,
+bool SaveLogStoreKey(std::shared_ptr<ProcessManagerInterface> process_manager,
                      const std::string& key);
 
 }  // namespace minios

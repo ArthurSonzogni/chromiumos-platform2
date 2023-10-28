@@ -136,30 +136,30 @@ TEST_F(UtilTest, ReadFileContentStartOffset) {
 }
 
 TEST_F(UtilTest, GetKeyboardLayoutFailure) {
-  MockProcessManager mock_process_manager_;
-  EXPECT_CALL(mock_process_manager_, RunCommandWithOutput(_, _, _, _))
+  auto mock_process_manager_ = std::make_shared<MockProcessManager>();
+  EXPECT_CALL(*mock_process_manager_, RunCommandWithOutput(_, _, _, _))
       .WillOnce(
           testing::DoAll(testing::SetArgPointee<2>(""), testing::Return(true)));
-  EXPECT_EQ(GetKeyboardLayout(&mock_process_manager_), "us");
+  EXPECT_EQ(GetKeyboardLayout(mock_process_manager_), "us");
 
   // Badly formatted.
-  EXPECT_CALL(mock_process_manager_, RunCommandWithOutput(_, _, _, _))
+  EXPECT_CALL(*mock_process_manager_, RunCommandWithOutput(_, _, _, _))
       .WillOnce(testing::DoAll(testing::SetArgPointee<2>("xkbeng:::"),
                                testing::Return(true)));
-  EXPECT_EQ(GetKeyboardLayout(&mock_process_manager_), "us");
+  EXPECT_EQ(GetKeyboardLayout(mock_process_manager_), "us");
 
   // Failed.
-  EXPECT_CALL(mock_process_manager_, RunCommandWithOutput(_, _, _, _))
+  EXPECT_CALL(*mock_process_manager_, RunCommandWithOutput(_, _, _, _))
       .WillOnce(testing::DoAll(testing::Return(false)));
-  EXPECT_EQ(GetKeyboardLayout(&mock_process_manager_), "us");
+  EXPECT_EQ(GetKeyboardLayout(mock_process_manager_), "us");
 }
 
 TEST_F(UtilTest, GetKeyboardLayout) {
-  MockProcessManager mock_process_manager_;
-  EXPECT_CALL(mock_process_manager_, RunCommandWithOutput(_, _, _, _))
+  auto mock_process_manager_ = std::make_shared<MockProcessManager>();
+  EXPECT_CALL(*mock_process_manager_, RunCommandWithOutput(_, _, _, _))
       .WillOnce(testing::DoAll(testing::SetArgPointee<2>("xkb:en::eng"),
                                testing::Return(true)));
-  EXPECT_EQ(GetKeyboardLayout(&mock_process_manager_), "en");
+  EXPECT_EQ(GetKeyboardLayout(mock_process_manager_), "en");
 }
 
 TEST(UtilsTest, AlertLogTagCreationTest) {
@@ -186,25 +186,25 @@ TEST(UtilsTest, AlertLogTagLogTest) {
 }
 
 TEST(UtilsTest, MountStatefulPartitionTest) {
-  std::unique_ptr<MockProcessManager> mock_process_manager_ =
-      std::make_unique<StrictMock<MockProcessManager>>();
+  auto mock_process_manager_ =
+      std::make_shared<StrictMock<MockProcessManager>>();
 
   std::vector<std::string> expected_args = {
       "/usr/bin/stateful_partition_for_recovery", "--mount"};
 
   EXPECT_CALL(*mock_process_manager_, RunCommand(expected_args, _))
       .WillOnce(::testing::Return(0));
-  EXPECT_TRUE(MountStatefulPartition(mock_process_manager_.get()));
+  EXPECT_TRUE(MountStatefulPartition(mock_process_manager_));
 
   // Verify error results.
   EXPECT_CALL(*mock_process_manager_, RunCommand)
       .WillOnce(::testing::Return(1));
-  EXPECT_FALSE(MountStatefulPartition(mock_process_manager_.get()));
+  EXPECT_FALSE(MountStatefulPartition(mock_process_manager_));
   EXPECT_FALSE(MountStatefulPartition(nullptr));
 }
 
 TEST(UtilsTest, CompressLogsTest) {
-  auto mock_process_manager = std::make_unique<MockProcessManager>();
+  auto mock_process_manager = std::make_shared<MockProcessManager>();
   const auto archive_path = "/path/to/store/archive";
   std::vector<std::string> expected_cmd = {
       "/usr/bin/tar",         "-czhf",
@@ -212,11 +212,11 @@ TEST(UtilsTest, CompressLogsTest) {
       "/var/log/upstart.log", "/var/log/messages"};
   EXPECT_CALL(*mock_process_manager, RunCommand(expected_cmd, _));
 
-  CompressLogs(std::move(mock_process_manager), base::FilePath{archive_path});
+  CompressLogs(mock_process_manager, base::FilePath{archive_path});
 }
 
 TEST(UtilsTest, KernelSizeTest) {
-  auto mock_process_manager = std::make_unique<MockProcessManager>();
+  auto mock_process_manager = std::make_shared<MockProcessManager>();
   const auto device_path = "/dev/device0p1";
   std::vector<std::string> expected_cmd = {"/usr/bin/futility", "show", "-P",
                                            device_path};
@@ -232,26 +232,23 @@ TEST(UtilsTest, KernelSizeTest) {
       .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(futility_output),
                       testing::Return(true)));
 
-  EXPECT_THAT(
-      KernelSize(std::move(mock_process_manager), base::FilePath{device_path}),
-      Optional(111));
+  EXPECT_THAT(KernelSize(mock_process_manager, base::FilePath{device_path}),
+              Optional(111));
 }
 
 TEST(UtilsTest, KernelSizeFailuresTest) {
-  auto mock_process_manager = std::make_unique<MockProcessManager>();
+  auto mock_process_manager = std::make_shared<MockProcessManager>();
   const auto device_path = "/dev/device0p1";
   std::vector<std::string> expected_cmd = {"/usr/bin/futility", "show", "-P",
                                            device_path};
   // Test out empty string.
   std::string futility_output = "";
-  mock_process_manager = std::make_unique<MockProcessManager>();
   EXPECT_CALL(*mock_process_manager,
               RunCommandWithOutput(expected_cmd, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(futility_output),
                       testing::Return(true)));
-  EXPECT_EQ(
-      KernelSize(std::move(mock_process_manager), base::FilePath{device_path}),
-      std::nullopt);
+  EXPECT_EQ(KernelSize(mock_process_manager, base::FilePath{device_path}),
+            std::nullopt);
 
   // Missing kernel body size.
   futility_output = std::string{"kernel::keyblock::size::2232\n"} +
@@ -261,9 +258,8 @@ TEST(UtilsTest, KernelSizeFailuresTest) {
               RunCommandWithOutput(expected_cmd, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(futility_output),
                       testing::Return(true)));
-  EXPECT_EQ(
-      KernelSize(std::move(mock_process_manager), base::FilePath{device_path}),
-      std::nullopt);
+  EXPECT_EQ(KernelSize(mock_process_manager, base::FilePath{device_path}),
+            std::nullopt);
 
   // 0 kernel body size.
   futility_output = std::string{"kernel::keyblock::size::2232\n"} +
@@ -274,9 +270,8 @@ TEST(UtilsTest, KernelSizeFailuresTest) {
               RunCommandWithOutput(expected_cmd, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(futility_output),
                       testing::Return(true)));
-  EXPECT_EQ(
-      KernelSize(std::move(mock_process_manager), base::FilePath{device_path}),
-      std::nullopt);
+  EXPECT_EQ(KernelSize(mock_process_manager, base::FilePath{device_path}),
+            std::nullopt);
 
   // Non number value for keyblock size.
   futility_output = std::string{"keyblock::size::bad_val\n"} +
@@ -287,9 +282,8 @@ TEST(UtilsTest, KernelSizeFailuresTest) {
               RunCommandWithOutput(expected_cmd, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(futility_output),
                       testing::Return(true)));
-  EXPECT_EQ(
-      KernelSize(std::move(mock_process_manager), base::FilePath{device_path}),
-      std::nullopt);
+  EXPECT_EQ(KernelSize(mock_process_manager, base::FilePath{device_path}),
+            std::nullopt);
 }
 
 TEST(UtilsTest, GetRemovableDevices) {
@@ -327,7 +321,7 @@ TEST(UtilsTest, GetRemovableDevices) {
 
 TEST(UtilsTest, GetLogStoreKeyTest) {
   auto mock_process_manager_ =
-      std::make_unique<StrictMock<MockProcessManager>>();
+      std::make_shared<StrictMock<MockProcessManager>>();
 
   const std::string kKey = "thisisa32bytestring1234567890abc";
   const std::vector<std::string> kExpectedArgs = {"/usr/bin/vpd", "-g",
@@ -337,15 +331,15 @@ TEST(UtilsTest, GetLogStoreKeyTest) {
               RunCommandWithOutput(kExpectedArgs, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(kKey),
                       ::testing::Return(true)));
-  const auto log_store_key = GetLogStoreKey(mock_process_manager_.get());
+  const auto log_store_key = GetLogStoreKey(mock_process_manager_);
 
   ASSERT_TRUE(log_store_key.has_value());
   EXPECT_EQ(log_store_key.value(), kKey);
 }
 
 TEST(UtilsTest, GetLogStoreKeyFailureTest) {
-  std::unique_ptr<MockProcessManager> mock_process_manager_ =
-      std::make_unique<StrictMock<MockProcessManager>>();
+  auto mock_process_manager_ =
+      std::make_shared<StrictMock<MockProcessManager>>();
   const std::string kKey = "short_key";
 
   const std::vector<std::string> kExpectedArgs = {"/usr/bin/vpd", "-g",
@@ -355,7 +349,7 @@ TEST(UtilsTest, GetLogStoreKeyFailureTest) {
               RunCommandWithOutput(kExpectedArgs, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(-1), SetArgPointee<2>(kKey),
                       ::testing::Return(true)));
-  const auto log_store_key = GetLogStoreKey(mock_process_manager_.get());
+  const auto log_store_key = GetLogStoreKey(mock_process_manager_);
 
   EXPECT_FALSE(log_store_key.has_value());
 }
@@ -403,8 +397,8 @@ TEST(UtilsTest, LogStoreKeyTrimTest) {
 }
 
 TEST(UtilsTest, SaveLogKeyTest) {
-  std::unique_ptr<MockProcessManager> mock_process_manager_ =
-      std::make_unique<StrictMock<MockProcessManager>>();
+  auto mock_process_manager_ =
+      std::make_shared<StrictMock<MockProcessManager>>();
 
   const auto kKey = "thisisa32bytestring1234567890abc";
 
@@ -414,7 +408,7 @@ TEST(UtilsTest, SaveLogKeyTest) {
 
   EXPECT_CALL(*mock_process_manager_, RunCommand(expected_args, _))
       .WillOnce(::testing::Return(0));
-  EXPECT_TRUE(SaveLogStoreKey(mock_process_manager_.get(), kKey));
+  EXPECT_TRUE(SaveLogStoreKey(mock_process_manager_, kKey));
 }
 
 }  // namespace minios

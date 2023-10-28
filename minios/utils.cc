@@ -163,7 +163,7 @@ std::tuple<bool, std::string, int64_t> ReadFileContent(
   return {true, content, bytes_read};
 }
 
-bool GetCrosRegionData(ProcessManagerInterface* process_manager,
+bool GetCrosRegionData(std::shared_ptr<ProcessManagerInterface> process_manager,
                        std::string key,
                        std::string* value) {
   int exit_code = 0;
@@ -196,7 +196,8 @@ bool TriggerShutdown() {
   return true;
 }
 
-std::string GetKeyboardLayout(ProcessManagerInterface* process_manager) {
+std::string GetKeyboardLayout(
+    std::shared_ptr<ProcessManagerInterface> process_manager) {
   std::string keyboard_layout;
   if (!GetCrosRegionData(process_manager, "keyboards", &keyboard_layout)) {
     LOG(WARNING) << "Could not get region data. Defaulting to 'us'.";
@@ -226,7 +227,8 @@ base::FilePath GetLogConsole() {
   return target;
 }
 
-bool MountStatefulPartition(ProcessManagerInterface* process_manager) {
+bool MountStatefulPartition(
+    std::shared_ptr<ProcessManagerInterface> process_manager) {
   if (base::PathExists(base::FilePath{kStatefulPath})) {
     LOG(INFO) << "Stateful already mounted";
     return true;
@@ -246,7 +248,7 @@ bool MountStatefulPartition(ProcessManagerInterface* process_manager) {
   }
   return true;
 }
-int CompressLogs(std::unique_ptr<ProcessManagerInterface> process_manager,
+int CompressLogs(std::shared_ptr<ProcessManagerInterface> process_manager,
                  const base::FilePath& archive_path) {
   // Note: These are the explicit set of logs that are approved by privacy team.
   // Adding files to this list would require clearance from Privacy team.
@@ -296,7 +298,7 @@ std::optional<uint64_t> ParseFutilityOutputInt(
 // them, or if any are set to 0 returns a nullopt, otherwise returns the sum
 // of those numbers.
 std::optional<uint64_t> KernelSize(
-    std::unique_ptr<ProcessManagerInterface> process_manager,
+    std::shared_ptr<ProcessManagerInterface> process_manager,
     const base::FilePath& device) {
   std::vector<std::string> futility_show_command{begin(kFutilityShowCmd),
                                                  end(kFutilityShowCmd)};
@@ -405,7 +407,7 @@ void TrimLogStoreKey(std::string& key) {
 }
 
 std::optional<std::string> GetLogStoreKey(
-    ProcessManagerInterface* process_manager) {
+    std::shared_ptr<ProcessManagerInterface> process_manager) {
   int return_code = 0;
   std::string std_out, std_err;
 
@@ -430,7 +432,7 @@ std::optional<std::string> GetLogStoreKey(
   return std_out;
 }
 
-bool SaveLogStoreKey(ProcessManagerInterface* process_manager,
+bool SaveLogStoreKey(std::shared_ptr<ProcessManagerInterface> process_manager,
                      const std::string& key) {
   if (!IsLogStoreKeyValid(key)) {
     return false;

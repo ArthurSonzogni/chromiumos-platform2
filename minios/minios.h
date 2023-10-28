@@ -46,7 +46,7 @@ class MiniOs : public MiniOsInterface {
   std::shared_ptr<UpdateEngineProxy> update_engine_proxy_;
   std::shared_ptr<NetworkManagerInterface> network_manager_;
 
-  ProcessManager process_manager_;
+  std::shared_ptr<ProcessManager> process_manager_;
   std::shared_ptr<DrawInterface> draw_utils_;
   ScreenController screens_controller_;
 };

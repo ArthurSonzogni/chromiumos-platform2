@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <optional>
 
 #include <base/files/file_util.h>
@@ -58,8 +59,9 @@ class DrawUtilsTest : public ::testing::Test {
   // Path to /etc/screens in test directory.
   base::FilePath screens_path_;
   std::string test_root_;
-  MockProcessManager mock_process_manager_;
-  DrawUtils draw_utils_{&mock_process_manager_};
+  std::shared_ptr<MockProcessManager> mock_process_manager_ =
+      std::make_shared<MockProcessManager>();
+  DrawUtils draw_utils_{mock_process_manager_};
 };
 
 TEST_F(DrawUtilsTest, ShowText) {
@@ -267,7 +269,7 @@ TEST_F(DrawUtilsTest, CheckDetachable) {
 
 TEST_F(DrawUtilsTest, GetHwidFromCommand) {
   std::string output = "Nightfury TEST ID";
-  EXPECT_CALL(mock_process_manager_, RunCommandWithOutput(_, _, _, _))
+  EXPECT_CALL(*mock_process_manager_, RunCommandWithOutput(_, _, _, _))
       .WillOnce(testing::DoAll(testing::SetArgPointee<2>(output),
                                testing::Return(true)));
   draw_utils_.ReadHardwareId();
@@ -276,7 +278,7 @@ TEST_F(DrawUtilsTest, GetHwidFromCommand) {
 }
 
 TEST_F(DrawUtilsTest, GetHwidFromDefault) {
-  EXPECT_CALL(mock_process_manager_, RunCommandWithOutput(_, _, _, _))
+  EXPECT_CALL(*mock_process_manager_, RunCommandWithOutput(_, _, _, _))
       .WillOnce(testing::Return(false));
   draw_utils_.ReadHardwareId();
   EXPECT_EQ(draw_utils_.hwid_, "CHROMEBOOK");

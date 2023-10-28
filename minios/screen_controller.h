@@ -35,7 +35,7 @@ class ScreenController : public ScreenControllerInterface,
   ScreenController(std::shared_ptr<DrawInterface> draw_utils,
                    std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
                    std::shared_ptr<NetworkManagerInterface> network_manager,
-                   ProcessManagerInterface* process_manager);
+                   std::shared_ptr<ProcessManagerInterface> process_manager);
 
   virtual ~ScreenController() = default;
 
@@ -138,7 +138,7 @@ class ScreenController : public ScreenControllerInterface,
 
   StateReporterInterface* state_reporter_ = nullptr;
 
-  ProcessManagerInterface* process_manager_;
+  std::shared_ptr<ProcessManagerInterface> process_manager_;
 
   KeyReader key_reader_;
 

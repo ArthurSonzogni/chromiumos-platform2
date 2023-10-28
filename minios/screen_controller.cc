@@ -43,7 +43,7 @@ ScreenController::ScreenController(
     std::shared_ptr<DrawInterface> draw_utils,
     std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
     std::shared_ptr<NetworkManagerInterface> network_manager,
-    ProcessManagerInterface* process_manager)
+    std::shared_ptr<ProcessManagerInterface> process_manager)
     : draw_utils_(draw_utils),
       update_engine_proxy_(update_engine_proxy),
       network_manager_(network_manager),

@@ -4,6 +4,7 @@
 
 #include "minios/minios.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -21,11 +22,12 @@ MiniOs::MiniOs(std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
                std::shared_ptr<NetworkManagerInterface> network_manager)
     : update_engine_proxy_(update_engine_proxy),
       network_manager_(network_manager),
-      draw_utils_(std::make_shared<DrawUtils>(&process_manager_)),
+      process_manager_(std::make_shared<ProcessManager>()),
+      draw_utils_(std::make_shared<DrawUtils>(process_manager_)),
       screens_controller_(ScreenController(draw_utils_,
                                            update_engine_proxy_,
                                            network_manager_,
-                                           &process_manager_)) {}
+                                           process_manager_)) {}
 
 int MiniOs::Run() {
   LOG(INFO) << "Starting miniOS.";

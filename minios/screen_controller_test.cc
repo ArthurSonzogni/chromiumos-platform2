@@ -74,10 +74,11 @@ class ScreenControllerTest : public ::testing::Test {
   MockScreenInterface mock_screen_;
   std::shared_ptr<NetworkManagerInterface> mock_network_manager_ =
       std::make_shared<NiceMock<MockNetworkManager>>();
-  MockProcessManager process_manager_;
+  std::shared_ptr<MockProcessManager> process_manager_ =
+      std::make_shared<NiceMock<MockProcessManager>>();
   ScreenController screen_controller_{draw_interface_,
                                       mock_update_engine_proxy_,
-                                      mock_network_manager_, &process_manager_};
+                                      mock_network_manager_, process_manager_};
 
   base::SimpleTestClock clock_;
   brillo::FakeMessageLoop loop_{&clock_};
@@ -353,17 +354,18 @@ class GoToScreenTest
       EXPECT_CALL(*update_engine_proxy_, StartUpdate).WillOnce(Return(true));
     }
     screen_controller_.SetCurrentScreenForTest(starting_screen_);
-    ON_CALL(process_manager_, RunCommandWithOutput(_, _, _, _))
+    ON_CALL(*process_manager_, RunCommandWithOutput(_, _, _, _))
         .WillByDefault(Return(true));
   }
 
  protected:
-  NiceMock<MockProcessManager> process_manager_;
+  std::shared_ptr<NiceMock<MockProcessManager>> process_manager_ =
+      std::make_shared<NiceMock<MockProcessManager>>();
   std::shared_ptr<NiceMock<MockUpdateEngineProxy>> update_engine_proxy_ =
       std::make_shared<NiceMock<MockUpdateEngineProxy>>();
   ScreenController screen_controller_{
       std::make_shared<NiceMock<MockDrawInterface>>(), update_engine_proxy_,
-      std::make_shared<NiceMock<MockNetworkManager>>(), &process_manager_};
+      std::make_shared<NiceMock<MockNetworkManager>>(), process_manager_};
   const ScreenType starting_screen_ = std::get<0>(GetParam()),
                    next_screen_ = std::get<1>(GetParam());
 };

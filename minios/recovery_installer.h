@@ -5,6 +5,7 @@
 #ifndef MINIOS_RECOVERY_INSTALLER_H_
 #define MINIOS_RECOVERY_INSTALLER_H_
 
+#include <memory>
 #include <string>
 
 #include "minios/process_manager.h"
@@ -14,7 +15,8 @@ namespace minios {
 
 class RecoveryInstaller : public RecoveryInstallerInterface {
  public:
-  explicit RecoveryInstaller(ProcessManagerInterface* process_manager)
+  explicit RecoveryInstaller(
+      std::shared_ptr<ProcessManagerInterface> process_manager)
       : repartition_completed_(false), process_manager_(process_manager) {}
   virtual ~RecoveryInstaller() = default;
 
@@ -27,7 +29,7 @@ class RecoveryInstaller : public RecoveryInstallerInterface {
   // Only repartition the disk once per recovery attempt.
   bool repartition_completed_;
 
-  ProcessManagerInterface* process_manager_;
+  std::shared_ptr<ProcessManagerInterface> process_manager_;
 };
 
 }  // namespace minios

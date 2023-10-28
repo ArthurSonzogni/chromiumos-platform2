@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <gtest/gtest.h>
+#include <memory>
 
 #include "minios/mock_process_manager.h"
 #include "minios/recovery_installer.h"
@@ -13,18 +14,19 @@ namespace minios {
 
 class RecoveryInstallerTest : public ::testing::Test {
  protected:
-  MockProcessManager mock_process_manager_;
-  RecoveryInstaller recovery_installer_{&mock_process_manager_};
+  std::shared_ptr<MockProcessManager> mock_process_manager_ =
+      std::make_shared<MockProcessManager>();
+  RecoveryInstaller recovery_installer_{mock_process_manager_};
 };
 
 TEST_F(RecoveryInstallerTest, RepartitionDiskFailure) {
-  EXPECT_CALL(mock_process_manager_, RunCommandWithOutput(_, _, _, _))
+  EXPECT_CALL(*mock_process_manager_, RunCommandWithOutput(_, _, _, _))
       .WillOnce(testing::Return(false));
   EXPECT_FALSE(recovery_installer_.RepartitionDisk());
 }
 
 TEST_F(RecoveryInstallerTest, RepeatedRepartitionDisk) {
-  EXPECT_CALL(mock_process_manager_, RunCommandWithOutput(_, _, _, _))
+  EXPECT_CALL(*mock_process_manager_, RunCommandWithOutput(_, _, _, _))
       .WillOnce(testing::Return(true));
   EXPECT_TRUE(recovery_installer_.RepartitionDisk());
 

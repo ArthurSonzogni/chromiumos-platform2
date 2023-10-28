@@ -30,7 +30,7 @@ extern const int kRecoveryReasonCode_MAX;
 class MetricsReporter : public MetricsReporterInterface {
  public:
   explicit MetricsReporter(
-      ProcessManagerInterface* process_manager,
+      std::shared_ptr<ProcessManagerInterface> process_manager,
       std::unique_ptr<MetricsLibraryInterface> metrics_lib = nullptr);
   virtual ~MetricsReporter() = default;
 
@@ -42,7 +42,7 @@ class MetricsReporter : public MetricsReporterInterface {
 
  private:
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
-  ProcessManagerInterface* process_manager_;
+  std::shared_ptr<ProcessManagerInterface> process_manager_;
 
   base::Time start_time_;
 };
