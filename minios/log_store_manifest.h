@@ -20,8 +20,7 @@ namespace minios {
 extern const uint64_t kBlockSize;
 class LogStoreManifest : public LogStoreManifestInterface {
  public:
-  LogStoreManifest(base::FilePath log_archive_path,
-                   base::FilePath disk_path,
+  LogStoreManifest(base::FilePath disk_path,
                    uint64_t kernel_size,
                    uint64_t partition_size);
 
@@ -30,7 +29,7 @@ class LogStoreManifest : public LogStoreManifestInterface {
 
   ~LogStoreManifest() override = default;
 
-  bool Generate(const uint64_t& log_store_offset) override;
+  bool Generate(const LogManifest::Entry& entry) override;
   std::optional<LogManifest> Retreive() override;
   bool Write() override;
   // Clear any manifest stores found on disk.
@@ -54,7 +53,6 @@ class LogStoreManifest : public LogStoreManifestInterface {
 
   void SetValid(bool valid) { valid_ = valid; }
 
-  base::FilePath log_archive_path_;
   base::FilePath disk_path_;
   base::File disk_;
   const uint64_t kernel_size_;

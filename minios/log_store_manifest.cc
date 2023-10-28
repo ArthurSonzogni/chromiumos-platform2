@@ -20,12 +20,10 @@ const uint64_t kBlockSize = 512;
 // Offset from end of partition. Location for storing manifest.
 const uint64_t kDefaultManifestStoreOffset = 2;
 
-LogStoreManifest::LogStoreManifest(base::FilePath log_archive_path,
-                                   base::FilePath disk_path,
+LogStoreManifest::LogStoreManifest(base::FilePath disk_path,
                                    uint64_t kernel_size,
                                    uint64_t partition_size)
-    : log_archive_path_(log_archive_path),
-      disk_path_(disk_path),
+    : disk_path_(disk_path),
       disk_(disk_path,
             base::File::FLAG_OPEN | base::File::FLAG_WRITE |
                 base::File::FLAG_READ),
@@ -53,10 +51,8 @@ LogStoreManifest::LogStoreManifest(base::FilePath log_archive_path,
     SetValid(false);
   }
 
-  if (log_archive_path_.empty() || disk_path_.empty()) {
-    LOG(ERROR)
-        << "Disabling manifest storage due to empty path(s). Archive path: "
-        << log_archive_path_ << ", disk path: " << disk_path_;
+  if (disk_path_.empty()) {
+    LOG(ERROR) << "Disabling manifest storage due to empty disk path";
     SetValid(false);
   }
 
@@ -66,25 +62,16 @@ LogStoreManifest::LogStoreManifest(base::FilePath log_archive_path,
   }
 }
 
-bool LogStoreManifest::Generate(const uint64_t& log_store_offset) {
+bool LogStoreManifest::Generate(const LogManifest::Entry& entry) {
   if (!IsValid()) {
     LOG(ERROR) << "Ignoring manifest generate due to bad params.";
-    return false;
-  }
-  // Open and get log archive properties.
-  base::File log_file{log_archive_path_,
-                      base::File::FLAG_OPEN | base::File::FLAG_READ};
-  if (!log_file.IsValid()) {
-    LOG(ERROR) << "Invalid log archive file: " << log_archive_path_;
     return false;
   }
 
   // Fill out manifest and store it for a future write.
   manifest_.emplace();
   auto* log_entry = manifest_->mutable_entry();
-  log_entry->set_offset(log_store_offset);
-  log_entry->set_count(log_file.GetLength());
-
+  log_entry->CopyFrom(entry);
   return true;
 }
 

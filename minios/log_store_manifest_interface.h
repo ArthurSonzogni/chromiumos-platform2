@@ -14,8 +14,8 @@ class LogStoreManifestInterface {
  public:
   virtual ~LogStoreManifestInterface() = default;
 
-  // Generate a manifest for the archive point to in `log_archive_path`.
-  virtual bool Generate(const uint64_t& log_store_offset) = 0;
+  // Generate a manifest with the given `entry`.
+  virtual bool Generate(const LogManifest::Entry& entry) = 0;
 
   // Retrieve a previously written manifest from disk. This is done by
   // inspecting the first `sizeof(kLogStoreMagic)` bytes of every block on
