@@ -361,8 +361,7 @@ bool CellularServiceProvider::HardwareSupportsTethering() {
     SLOG(3) << __func__ << " reading modem firmware variant";
     std::string temp_variant;
     if (!cros_config_->GetString("/modem", "firmware-variant", &temp_variant)) {
-      LOG(INFO) << "Cannot find modem firmware variant. Tethering through "
-                   "cellular is not supported";
+      SLOG(3) << __func__ << "Cannot find modem firmware variant.";
       return false;
     }
     variant_ = std::move(temp_variant);
