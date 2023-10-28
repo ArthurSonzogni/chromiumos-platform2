@@ -99,6 +99,9 @@ class Daemon : public brillo::DBusServiceDaemon {
   // Possibly called multiple times.
   void OnModemDeviceSeen(std::string device_id, std::string equipment_id);
 
+  // Check if modem is in Flash mode and force-flash them if necessary.
+  void ForceFlashIfInFlashMode(const std::string& device_id,
+                               ModemHelper* modem_helper);
   // Check for wedged modems and force-flash them if necessary.
   void CheckForWedgedModems();
   void ForceFlashIfWedged(const std::string& device_id,

@@ -8,6 +8,7 @@
 #include <signal.h>
 #include <sysexits.h>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
@@ -15,6 +16,7 @@
 
 #include <base/check.h>
 #include <base/containers/contains.h>
+#include <base/containers/fixed_flat_map.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -57,12 +59,27 @@ constexpr char kDisableAutoUpdatePref[] =
 // Will allow recovery well before the 120 second suspend timeout and shutdown.
 constexpr base::TimeDelta kHeartbeatDelay = base::Seconds(20);
 constexpr base::TimeDelta kCmdKillDelay = base::Seconds(1);
-const uint8_t kFailedHeartbeatsBeforeRecovery = 3;
+constexpr uint8_t kDefaultFailedHeartbeatsBeforeRecovery = 3;
+constexpr uint8_t kFM101FailedHeartbeatsBeforeRecovery = 6;
+constexpr char kEM060DeviceID[] = "usb:2c7c:0128";
+constexpr char kFM101DeviceID[] = "usb:2cb7:01a2";
+constexpr char kFM350DeviceID[] = "pci:14c3:4d75";
+constexpr char kL850DeviceID[] = "usb:2cb7:0007";
+constexpr char kNL668DeviceID[] = "usb:2cb7:01a0";
 
-constexpr char const* kDevicesSupportingRecovery[] = {
-    "pci:14c3:4d75",  // FM350
-    "usb:2cb7:01a2",  // FM101
-    "usb:2c7c:0128"   // EM060
+// Mapping between device_ids and the maximum number of
+// missed heartbeats before modem reboot.
+constexpr auto kDevicesSupportingRecoveryMap =
+    base::MakeFixedFlatMap<std::string_view, uint8_t>({
+        {kFM350DeviceID, kDefaultFailedHeartbeatsBeforeRecovery},  // FM350
+        {kFM101DeviceID, kFM101FailedHeartbeatsBeforeRecovery},    // FM101
+        {kEM060DeviceID, kDefaultFailedHeartbeatsBeforeRecovery},  // EM060
+    });
+
+constexpr char const* kDevicesSupportingFlashModeCheck[] = {
+    kL850DeviceID,   // L850
+    kFM101DeviceID,  // FM101
+    kNL668DeviceID   // NL668
 };
 
 // Returns the modem firmware variant for the current model of the device by
@@ -124,13 +141,28 @@ bool IsAutoUpdateDisabledByPref() {
 }
 
 bool IsRecoveryEnabledForDeviceId(const std::string& device_id) {
-  for (auto const& device : kDevicesSupportingRecovery) {
+  const auto it = kDevicesSupportingRecoveryMap.find(device_id);
+  if (it != kDevicesSupportingRecoveryMap.end()) {
+    return true;
+  }
+  return false;
+}
+
+bool IsFlashModeCheckEnabledForDeviceId(const std::string& device_id) {
+  for (auto const& device : kDevicesSupportingFlashModeCheck) {
     if (base::Contains(device_id, device)) {
       return true;
     }
   }
-
   return false;
+}
+
+uint8_t GetMaxFailedHeartbeatsBeforeRecovery(const std::string& device_id) {
+  const auto it = kDevicesSupportingRecoveryMap.find(device_id);
+  if (it != kDevicesSupportingRecoveryMap.end()) {
+    return it->second;
+  }
+  return kDefaultFailedHeartbeatsBeforeRecovery;
 }
 
 }  // namespace
@@ -328,8 +360,12 @@ void Daemon::CompleteInitialization() {
   // Check if we have any qcom soc based modems that require a flash before they
   // boot.
   const char kSocInternalDeviceId[] = "soc:*:* (Internal)";
-  if (helper_directory_->GetHelperForDeviceId(kSocInternalDeviceId))
+  if (helper_directory_->GetHelperForDeviceId(kSocInternalDeviceId)) {
     ForceFlash(kSocInternalDeviceId);
+  } else {
+    helper_directory_->ForEachHelper(base::BindRepeating(
+        &Daemon::ForceFlashIfInFlashMode, base::Unretained(this)));
+  }
 
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
@@ -433,6 +469,21 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
   return !err;
 }
 
+void Daemon::ForceFlashIfInFlashMode(const std::string& device_id,
+                                     ModemHelper* helper) {
+  EVLOG(1) << __func__ << "device_id: " << device_id;
+  if (!IsFlashModeCheckEnabledForDeviceId(device_id) ||
+      !helper->FlashModeCheck()) {
+    return;
+  }
+
+  metrics_->SendCheckForWedgedModemResult(
+      metrics::CheckForWedgedModemResult::kModemWedged);
+  LOG(INFO) << "Modem with device ID [" << device_id
+            << "] appears to be in flash mode, attempting recovery";
+  ForceFlash(device_id);
+}
+
 void Daemon::CheckForWedgedModems() {
   EVLOG(1) << "Running wedged modems check...";
 
@@ -495,6 +546,7 @@ void Daemon::ForceFlashIfNeverAppeared(const std::string& device_id) {
 }
 
 void Daemon::StartHeartbeatTimer() {
+  EVLOG(1) << __func__;
   // Start periodic monitoring task
   for (auto const& modem_info : modems_)
     modem_info.second->ResetHeartbeatFailures();
@@ -503,6 +555,7 @@ void Daemon::StartHeartbeatTimer() {
 }
 
 void Daemon::StopHeartbeatTimer() {
+  EVLOG(1) << __func__;
   // Stop periodic monitoring task
   for (auto const& modem_info : modems_)
     modem_info.second->ResetHeartbeatFailures();
@@ -567,7 +620,7 @@ void Daemon::HandleModemCheckResult(const std::string& device_id,
 
   modems_[device_id]->IncrementHeartbeatFailures();
   if (modems_[device_id]->GetHeartbeatFailures() <
-      kFailedHeartbeatsBeforeRecovery)
+      GetMaxFailedHeartbeatsBeforeRecovery(device_id))
     return;
 
   ResetModemWithHelper(device_id,
