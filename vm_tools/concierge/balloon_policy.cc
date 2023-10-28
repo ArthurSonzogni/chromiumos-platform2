@@ -34,6 +34,21 @@ constexpr int64_t MAX_OOM_MIN_FREE = KiB(322'560);
 constexpr int64_t PAGE_BYTES = 4096;
 }  // namespace
 
+BalloonPolicyInterface::BalloonPolicyInterface() {
+  LOG(INFO) << "BalloonTrace throttled with size window: "
+            << kBalloonTraceSizeWindowWidth / MiB(1) << " MIB";
+}
+
+bool BalloonPolicyInterface::ShouldLogBalloonTrace(int64_t new_balloon_size) {
+  if (std::abs(last_balloon_trace_size_ - new_balloon_size) <
+      (kBalloonTraceSizeWindowWidth / 2)) {
+    return false;
+  }
+
+  last_balloon_trace_size_ = new_balloon_size;
+  return true;
+}
+
 BalanceAvailableBalloonPolicy::BalanceAvailableBalloonPolicy(
     int64_t critical_host_available,
     int64_t guest_available_bias,
@@ -119,11 +134,13 @@ int64_t BalanceAvailableBalloonPolicy::ComputeBalloonDelta(
       balloon_delta_abs * 100 / host_above_critical > 1) {
     // Finally, make sure the balloon delta won't cause a negative size.
     const int64_t delta = std::max(balloon_delta_capped, -balloon_actual);
-    LOG(INFO) << "BalloonTrace:[" << vm << ","
-              << (game_mode ? "game_mode_on," : ",")
-              << (balloon_actual / MiB(1)) << "," << (delta / MiB(1)) << ","
-              << (host_available / MiB(1)) << "," << (guest_cached / MiB(1))
-              << "," << (guest_free / MiB(1)) << "]";
+    if (ShouldLogBalloonTrace(balloon_actual + delta)) {
+      LOG(INFO) << "BalloonTrace:[" << vm << ","
+                << (game_mode ? "game_mode_on," : ",")
+                << (balloon_actual / MiB(1)) << "," << (delta / MiB(1)) << ","
+                << (host_available / MiB(1)) << "," << (guest_cached / MiB(1))
+                << "," << (guest_free / MiB(1)) << "]";
+    }
     return delta;
   }
 
@@ -281,26 +298,28 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
       std::max(static_cast<int64_t>(0),
                static_cast<int64_t>(stats.balloon_actual) + delta));
 
-  LOG(INFO) << "BalloonTrace[" << vm << ","
-            << (game_mode ? "game_mode_on," : ",")
-            // Balloon size.
-            << (stats.balloon_actual / MiB(1))
-            << ","
-            // The amount we are changing the balloon.
-            << (delta / MiB(1))
-            << ","
-            // Host free memory above the low water mark.
-            << ((host_free - host_lwm_) / MiB(1))
-            << ","
-            // ChromeOS Available. We can compute host_available by knowing if
-            // we are in game mode.
-            << (total_available_mem / MiB(1))
-            << ","
-            // Guest free memory above low water mark.
-            << ((guest_free - guest_lwm) / MiB(1))
-            << ","
-            // Reclaimable guest cache (should match with LMKD's view).
-            << (guest_cache / MiB(1)) << "]";
+  if (ShouldLogBalloonTrace(stats.balloon_actual + delta)) {
+    LOG(INFO) << "BalloonTrace[" << vm << ","
+              << (game_mode ? "game_mode_on," : ",")
+              // Balloon size.
+              << (stats.balloon_actual / MiB(1))
+              << ","
+              // The amount we are changing the balloon.
+              << (delta / MiB(1))
+              << ","
+              // Host free memory above the low water mark.
+              << ((host_free - host_lwm_) / MiB(1))
+              << ","
+              // ChromeOS Available. We can compute host_available by knowing if
+              // we are in game mode.
+              << (total_available_mem / MiB(1))
+              << ","
+              // Guest free memory above low water mark.
+              << ((guest_free - guest_lwm) / MiB(1))
+              << ","
+              // Reclaimable guest cache (should match with LMKD's view).
+              << (guest_cache / MiB(1)) << "]";
+  }
 
   const int64_t new_target =
       std::max<int64_t>(0, static_cast<int64_t>(stats.balloon_actual) + delta);

@@ -91,6 +91,7 @@ static constexpr int32_t kPlatformPerceptibleMaxOmmScoreAdjValue = 250;
 
 class BalloonPolicyInterface {
  public:
+  BalloonPolicyInterface();
   virtual ~BalloonPolicyInterface() = default;
 
   // Calculates the amount of memory to be shifted between a VM and the host.
@@ -113,6 +114,18 @@ class BalloonPolicyInterface {
   // the balloon size has been changed by someone outside of the balloon policy
   // (e.g., aggressive balloon).
   virtual void UpdateCurrentBalloonSize(uint64_t size) = 0;
+
+ protected:
+  // Returns true if the a balloon trace should be logged.
+  bool ShouldLogBalloonTrace(int64_t new_balloon_size);
+
+ private:
+  // Do not log a ballon trace if the balloon remains within a window of this
+  // width from the previous log.
+  static constexpr int64_t kBalloonTraceSizeWindowWidth = MiB(100);
+
+  // The size of the balloon when the last balloon trace was logged.
+  int64_t last_balloon_trace_size_ = 0;
 };
 
 class BalanceAvailableBalloonPolicy : public BalloonPolicyInterface {
