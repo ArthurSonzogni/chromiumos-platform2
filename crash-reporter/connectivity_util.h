@@ -23,7 +23,7 @@ std::optional<Session> GetPrimaryUserSession(
     org::chromium::SessionManagerInterfaceProxyInterface*
         session_manager_proxy);
 
-// IsConnectivityFwdumpEnabled() checks if connectivity fw dump is enabled
+// IsConnectivityFwdumpAllowed() checks if connectivity fw dump is enabled
 // by checking if the user is a googler or in allowlist and if policy to
 // collect connectivity fw dump is set.
 bool IsConnectivityFwdumpAllowed(

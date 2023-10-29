@@ -99,14 +99,50 @@ bool ConnectivityFwdumpCollectionForUserAllowed(const std::string& username) {
   return IsUserInConnectivityFwdumpAllowlist(username);
 }
 
-// Check if connectivity fw dump collection policy is set.
+// Checks if connectivity fw dump collection policy is set.
 bool IsFwdumpPolicySet(
     const enterprise_management::CloudPolicySettings& user_policy) {
-  // TODO(b/300277841): Once UserFeedbackWithLowLevelDebugDataAllowed
-  // policy flag is available, this function will be modified to check
-  // this specific policy, if this is set, returns true else false.
-  // until then, we return by default as true.
-  return true;
+  // UserFeedbackWithLowLevelDebugDataAllowed policy is stored
+  // in CloudPolicySubProto1 protobuf embedded inside
+  // CloudPolicySetting protobuf.
+  if (!user_policy.has_subproto1()) {
+    return false;
+  }
+
+  enterprise_management::CloudPolicySubProto1 subproto =
+      user_policy.subproto1();
+  if (!subproto.has_userfeedbackwithlowleveldebugdataallowed()) {
+    LOG(INFO) << "UserFeedbackWithLowLevelDebugDataAllowed not set.";
+    return false;
+  }
+
+  ::enterprise_management::StringListPolicyProto
+      connectivity_fwdump_policy_val =
+          subproto.userfeedbackwithlowleveldebugdataallowed();
+  if (!connectivity_fwdump_policy_val.has_value()) {
+    LOG(ERROR) << "UserFeedbackWithLowLevelDebugDataAllowed set"
+               << "but has no policy value.";
+    return false;
+  }
+
+  ::enterprise_management::StringList policy_string_list =
+      connectivity_fwdump_policy_val.value();
+
+  // UserFeedbackWithLowLevelDebugDataAllowed policy can have values
+  // specific to a domain e.g. "wifi", "bluetooth" or "all". In case
+  // it is "all", connectivity fwdumps for all the connectivity domains
+  // can be enabled.
+  for (int i = 0; i < policy_string_list.entries_size(); i++) {
+    // If the policy is set to "wifi" or "all" we consider connectivity
+    // fwdump policy as enabled for wifi domain.
+    if ((policy_string_list.entries(i) == "wifi") ||
+        (policy_string_list.entries(i) == "all")) {
+      LOG(INFO) << "UserFeedbackWithLowLevelDebugDataAllowed is set.";
+      return true;
+    }
+  }
+  LOG(INFO) << "UserFeedbackWithLowLevelDebugDataAllowed policy is not set.";
+  return false;
 }
 
 }  // namespace

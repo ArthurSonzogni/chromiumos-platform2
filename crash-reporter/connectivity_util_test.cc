@@ -72,16 +72,15 @@ class ConnectivityUtilTest : public ::testing::Test {
   // response of RetrievePolicyEx() function call.
   std::vector<uint8_t> CreatePolicyFetchResponseBlob(
       const login_manager::PolicyAccountType& type,
-      const std::string& affiliation_id) {
+      const std::string& affiliation_id,
+      const std::string& connectivity_policy_val) {
     enterprise_management::PolicyData policy_data;
-
-    // Add fake policy values to ensure user policy is correctly
-    // deserialized. TODO(b/291344512): These will be replaced with
-    // userfeedbackwithlowleveldebugdataallowed once this policy
-    // is available.
     enterprise_management::CloudPolicySettings user_policy_val;
-    user_policy_val.mutable_arcpolicy()->set_value("ARCVM");
-    user_policy_val.mutable_attestationenabledforuser()->set_value(true);
+    // Add policy required for connectivity fwdumps.
+    user_policy_val.mutable_subproto1()
+        ->mutable_userfeedbackwithlowleveldebugdataallowed()
+        ->mutable_value()
+        ->add_entries(connectivity_policy_val);
     std::string serialized_user_policy = user_policy_val.SerializeAsString();
     policy_data.set_policy_value(serialized_user_policy);
 
@@ -115,8 +114,8 @@ TEST_F(ConnectivityUtilTest, IsConnectivityFwdumpAllowedGooglerUser) {
                        _, _, _))
       .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
         *out_blob = CreatePolicyFetchResponseBlob(
-            login_manager::PolicyAccountType::ACCOUNT_TYPE_USER,
-            kAffiliationID);
+            login_manager::PolicyAccountType::ACCOUNT_TYPE_USER, kAffiliationID,
+            "wifi");
         return true;
       })));
 
@@ -125,6 +124,7 @@ TEST_F(ConnectivityUtilTest, IsConnectivityFwdumpAllowedGooglerUser) {
 }
 
 // Test connectivity fwdump is allowed if user is in allowlist.
+// Test also validates connectivity debug data collection with policy set.
 TEST_F(ConnectivityUtilTest, IsConnectivityFwdumpAllowedForAllowedUser) {
   EXPECT_CALL(
       *session_manager_.get(),
@@ -134,8 +134,8 @@ TEST_F(ConnectivityUtilTest, IsConnectivityFwdumpAllowedForAllowedUser) {
                        _, _, _))
       .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
         *out_blob = CreatePolicyFetchResponseBlob(
-            login_manager::PolicyAccountType::ACCOUNT_TYPE_USER,
-            kAffiliationID);
+            login_manager::PolicyAccountType::ACCOUNT_TYPE_USER, kAffiliationID,
+            "wifi");
         return true;
       })));
 
@@ -160,16 +160,20 @@ TEST_F(ConnectivityUtilTest, IsConnectivityFwdumpAllowedNoSessionManager) {
 
 // Test to ensure that connectivity fwdump is not allowed for
 // different types of not allowed users.
+// Also test that Connectivity policy set for WiFi but User Not allowed.
 TEST_F(ConnectivityUtilTest, IsConnectivityFwdumpAllowedUserNotAllowed) {
-  // IsConnectivityFwdumpAllowed() exits early and RetrievePolicyEx not
-  // expected to be called.
   EXPECT_CALL(
       *session_manager_.get(),
       RetrievePolicyEx(CreateExpectedDescriptorBlob(
                            login_manager::PolicyAccountType::ACCOUNT_TYPE_USER,
                            kDeviceUserInAllowList),
                        _, _, _))
-      .Times(0);
+      .WillRepeatedly(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob(
+            login_manager::PolicyAccountType::ACCOUNT_TYPE_USER, kAffiliationID,
+            "wifi");
+        return true;
+      })));
 
   EXPECT_FALSE(IsConnectivityFwdumpAllowed(session_manager_.get(),
                                            kDeviceUserNotAllowed));
@@ -182,6 +186,68 @@ TEST_F(ConnectivityUtilTest, IsConnectivityFwdumpAllowedUserNotAllowed) {
 
   EXPECT_FALSE(IsConnectivityFwdumpAllowed(session_manager_.get(),
                                            kDeviceUserNotAllowed3));
+}
+
+// UserFeedbackWithLowLevelDebugDataAllowed policy set for all
+// connectivity domains.
+TEST_F(ConnectivityUtilTest,
+       IsConnectivityFwdumpAllowedConnectivityPolicySetForAllDomain) {
+  EXPECT_CALL(
+      *session_manager_.get(),
+      RetrievePolicyEx(CreateExpectedDescriptorBlob(
+                           login_manager::PolicyAccountType::ACCOUNT_TYPE_USER,
+                           kDeviceUserInAllowList),
+                       _, _, _))
+      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob(
+            login_manager::PolicyAccountType::ACCOUNT_TYPE_USER, kAffiliationID,
+            "all");
+        return true;
+      })));
+
+  EXPECT_TRUE(IsConnectivityFwdumpAllowed(session_manager_.get(),
+                                          kDeviceUserInAllowList));
+}
+
+// UserFeedbackWithLowLevelDebugDataAllowed policy empty.
+TEST_F(ConnectivityUtilTest,
+       IsConnectivityFwdumpAllowedConnectivityPolicyEmpty) {
+  EXPECT_CALL(
+      *session_manager_.get(),
+      RetrievePolicyEx(CreateExpectedDescriptorBlob(
+                           login_manager::PolicyAccountType::ACCOUNT_TYPE_USER,
+                           kDeviceUserInAllowList),
+                       _, _, _))
+      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob(
+            login_manager::PolicyAccountType::ACCOUNT_TYPE_USER, kAffiliationID,
+            "");
+        return true;
+      })));
+
+  EXPECT_FALSE(IsConnectivityFwdumpAllowed(session_manager_.get(),
+                                           kDeviceUserInAllowList));
+}
+
+// Connectivity policy not set but user allowed(googler or in allowlist).
+TEST_F(ConnectivityUtilTest,
+       IsConnectivityFwdumpAllowedConnectivityPolicyNotSetButUserAllowed) {
+  // UserFeedbackWithLowLevelDebugDataAllowed policy set for wifi.
+  EXPECT_CALL(
+      *session_manager_.get(),
+      RetrievePolicyEx(CreateExpectedDescriptorBlob(
+                           login_manager::PolicyAccountType::ACCOUNT_TYPE_USER,
+                           kDeviceGoogleUser),
+                       _, _, _))
+      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob(
+            login_manager::PolicyAccountType::ACCOUNT_TYPE_USER, kAffiliationID,
+            "");
+        return true;
+      })));
+
+  EXPECT_FALSE(
+      IsConnectivityFwdumpAllowed(session_manager_.get(), kDeviceGoogleUser));
 }
 
 // Test to ensure the expected crash directory is created.
