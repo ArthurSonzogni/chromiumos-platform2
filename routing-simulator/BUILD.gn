@@ -20,6 +20,7 @@ pkg_config("target_defaults") {
 static_library("librouting-simulator") {
   sources = [
     "route.cc",
+    "routing_policy_entry.cc",
     "routing_table.cc",
   ]
   configs += [ ":target_defaults" ]
@@ -40,6 +41,7 @@ if (use.test) {
     run_test = true
     sources = [
       "route_test.cc",
+      "routing_policy_entry_test.cc",
       "routing_table_test.cc",
     ]
     configs += [
