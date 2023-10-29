@@ -36,6 +36,8 @@ using ::testing::StrEq;
 using ::testing::StrictMock;
 
 const brillo::SecureBlob kValidKey{"thisisa32bytestring1234567890abc"};
+const brillo::SecureBlob kTestData{
+    "test data to verify encryption and decryption"};
 
 class UtilTest : public ::testing::Test {
  public:
@@ -409,7 +411,7 @@ TEST(UtilsTest, SaveLogKeyTest) {
   auto mock_process_manager_ =
       std::make_shared<StrictMock<MockProcessManager>>();
 
-  std::vector<std::string> expected_args = {
+  const std::vector<std::string> expected_args = {
       "/usr/bin/vpd", "-s",
       "minios_log_store_key=" +
           brillo::SecureBlobToSecureHex(kValidKey).to_string()};
@@ -417,6 +419,39 @@ TEST(UtilsTest, SaveLogKeyTest) {
   EXPECT_CALL(*mock_process_manager_, RunCommand(expected_args, _))
       .WillOnce(::testing::Return(0));
   EXPECT_TRUE(SaveLogStoreKey(mock_process_manager_, kValidKey));
+}
+
+TEST(UtilsTest, EncryptDecryptTest) {
+  const auto& encrypted_contents = EncryptLogArchiveData(kTestData, kValidKey);
+  EXPECT_TRUE(encrypted_contents.has_value());
+  const auto& decrypted_contents =
+      DecryptLogArchiveData(encrypted_contents.value(), kValidKey);
+
+  EXPECT_TRUE(decrypted_contents.has_value());
+  EXPECT_EQ(kTestData, decrypted_contents);
+}
+
+TEST(UtilsTest, ReadFileToSecureBlobTest) {
+  base::ScopedTempDir tmp_dir_;
+  ASSERT_TRUE(tmp_dir_.CreateUniqueTempDir());
+  const auto file_path = tmp_dir_.GetPath().Append("file");
+
+  ASSERT_TRUE(base::WriteFile(file_path, kTestData));
+
+  const auto& file_contents = ReadFileToSecureBlob(file_path);
+  EXPECT_TRUE(file_contents.has_value());
+  EXPECT_EQ(file_contents.value(), kTestData);
+}
+
+TEST(UtilsTest, WriteSecureBlobToFileTest) {
+  base::ScopedTempDir tmp_dir_;
+  ASSERT_TRUE(tmp_dir_.CreateUniqueTempDir());
+  const auto file_path = tmp_dir_.GetPath().Append("file");
+  EXPECT_TRUE(WriteSecureBlobToFile(file_path, kTestData));
+
+  const auto& file_contents = ReadFileToSecureBlob(file_path);
+  EXPECT_TRUE(file_contents.has_value());
+  EXPECT_EQ(file_contents.value(), kTestData);
 }
 
 }  // namespace minios

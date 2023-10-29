@@ -16,6 +16,7 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/secure_blob.h>
 #include <brillo/udev/udev.h>
+#include <minios/proto_bindings/minios.pb.h>
 
 #include "minios/process_manager_interface.h"
 
@@ -122,5 +123,26 @@ std::optional<brillo::SecureBlob> GetLogStoreKey(
 bool SaveLogStoreKey(std::shared_ptr<ProcessManagerInterface> process_manager,
                      const brillo::SecureBlob& key);
 
+// Read contents of a given file into a secureblob. Returns file contents on
+// success and nullopt otherwise.
+std::optional<brillo::SecureBlob> ReadFileToSecureBlob(
+    const base::FilePath& log_archive_path);
+
+// Read contents of a secureblob into a given file. Returns true on success,
+// false otherwise.
+bool WriteSecureBlobToFile(const base::FilePath& log_archive_path,
+                           const brillo::SecureBlob& data);
+
+// Encrypt data with the given key. Returns encrypted contents, iv and
+// tag on success, nullopt otherwise.
+std::optional<EncryptedLogFile> EncryptLogArchiveData(
+    const brillo::SecureBlob& plain_data, const brillo::SecureBlob& key);
+
+// Decrypt encrypted contents (along with iv and tag) with given key. Returns
+// plain text data on success, nullopt otherwise.
+std::optional<brillo::SecureBlob> DecryptLogArchiveData(
+    const EncryptedLogFile& encrypted_contents, const brillo::SecureBlob& key);
+
 }  // namespace minios
+
 #endif  // MINIOS_UTILS_H__

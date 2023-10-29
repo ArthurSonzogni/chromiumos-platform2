@@ -25,7 +25,8 @@
 #include <brillo/udev/udev_device.h>
 #include <brillo/udev/udev_enumerate.h>
 #include <brillo/udev/utils.h>
-#include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/crypto/aes.h>
+#include <minios/proto_bindings/minios.pb.h>
 
 #include "minios/minios.h"
 #include "minios/process_manager.h"
@@ -452,6 +453,67 @@ bool SaveLogStoreKey(std::shared_ptr<ProcessManagerInterface> process_manager,
     return false;
   }
   return true;
+}
+
+std::optional<brillo::SecureBlob> ReadFileToSecureBlob(
+    const base::FilePath& file_path) {
+  base::File file{file_path, base::File::FLAG_OPEN | base::File::FLAG_READ};
+  if (!file.IsValid()) {
+    LOG(ERROR) << "Failed to open file=" << file_path;
+    return std::nullopt;
+  }
+
+  brillo::SecureBlob file_contents;
+  file_contents.resize(file.GetLength());
+
+  if (!file.ReadAtCurrentPosAndCheck(file_contents)) {
+    PLOG(ERROR) << "Failed to read file=" << file_path;
+    return std::nullopt;
+  }
+  return file_contents;
+}
+
+bool WriteSecureBlobToFile(const base::FilePath& file_path,
+                           const brillo::SecureBlob& data) {
+  if (!base::WriteFile(file_path, data)) {
+    PLOG(ERROR) << "Failed to write plain data to archive=" << file_path;
+    return false;
+  }
+  return true;
+}
+
+std::optional<EncryptedLogFile> EncryptLogArchiveData(
+    const brillo::SecureBlob& plain_data, const brillo::SecureBlob& key) {
+  brillo::Blob iv, tag, ciphertext;
+  if (!hwsec_foundation::AesGcmEncrypt(plain_data, std::nullopt, key, &iv, &tag,
+                                       &ciphertext)) {
+    LOG(ERROR) << "Failed to encrypt file contents";
+    return std::nullopt;
+  }
+  EncryptedLogFile encrypted_contents;
+  encrypted_contents.set_iv(brillo::BlobToString(iv));
+  encrypted_contents.set_tag(brillo::BlobToString(tag));
+  encrypted_contents.set_ciphertext(brillo::BlobToString(ciphertext));
+  return encrypted_contents;
+}
+
+std::optional<brillo::SecureBlob> DecryptLogArchiveData(
+    const EncryptedLogFile& encrypted_contents, const brillo::SecureBlob& key) {
+  brillo::SecureBlob plain_data;
+  if (!hwsec_foundation::AesGcmDecrypt(
+          brillo::Blob(encrypted_contents.ciphertext().begin(),
+                       encrypted_contents.ciphertext().end()),
+          std::nullopt,
+          brillo::Blob(encrypted_contents.tag().begin(),
+                       encrypted_contents.tag().end()),
+          key,
+          brillo::Blob(encrypted_contents.iv().begin(),
+                       encrypted_contents.iv().end()),
+          &plain_data)) {
+    LOG(ERROR) << "Failed to decrypt data";
+    return std::nullopt;
+  }
+  return plain_data;
 }
 
 }  // namespace minios
