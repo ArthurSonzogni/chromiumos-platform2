@@ -86,6 +86,7 @@ static_library("libminios") {
     "utils.cc",
   ]
   configs += [ ":target_defaults" ]
+  libs = [ "hwsec-foundation" ]
   deps = [ ":minios_adaptors" ]
 }
 

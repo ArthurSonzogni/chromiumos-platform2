@@ -25,6 +25,7 @@
 #include <brillo/udev/udev_device.h>
 #include <brillo/udev/udev_enumerate.h>
 #include <brillo/udev/utils.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 
 #include "minios/minios.h"
 #include "minios/process_manager.h"
@@ -60,6 +61,8 @@ const char kFileSystemProperty[] = "ID_FS_USAGE";
 const char kFilesystem[] = "filesystem";
 
 constexpr int kLogStoreKeySizeBytes = 32;
+// Hex representations of keys would be twice the size.
+constexpr int kLogStoreHexKeySizeBytes = 64;
 }  // namespace
 
 namespace minios {
@@ -388,7 +391,7 @@ bool GetRemovableDevices(std::vector<base::FilePath>& devices,
   return true;
 }
 
-bool IsLogStoreKeyValid(const std::string& key) {
+bool IsLogStoreKeyValid(const brillo::SecureBlob& key) {
   if (key.size() != kLogStoreKeySizeBytes) {
     LOG(ERROR) << "Key not of expected size, key_size=" << key.size()
                << " expected=" << kLogStoreKeySizeBytes;
@@ -398,15 +401,15 @@ bool IsLogStoreKeyValid(const std::string& key) {
 }
 
 void TrimLogStoreKey(std::string& key) {
-  if (key.size() <= kLogStoreKeySizeBytes)
+  if (key.size() <= kLogStoreHexKeySizeBytes)
     return;
 
-  key = key.substr(0, kLogStoreKeySizeBytes) +
-        std::string{base::TrimWhitespaceASCII(key.substr(kLogStoreKeySizeBytes),
-                                              base::TRIM_TRAILING)};
+  key = key.substr(0, kLogStoreHexKeySizeBytes) +
+        std::string{base::TrimWhitespaceASCII(
+            key.substr(kLogStoreHexKeySizeBytes), base::TRIM_TRAILING)};
 }
 
-std::optional<std::string> GetLogStoreKey(
+std::optional<brillo::SecureBlob> GetLogStoreKey(
     std::shared_ptr<ProcessManagerInterface> process_manager) {
   int return_code = 0;
   std::string std_out, std_err;
@@ -425,20 +428,24 @@ std::optional<std::string> GetLogStoreKey(
   }
 
   TrimLogStoreKey(std_out);
-  if (!IsLogStoreKeyValid(std_out)) {
+  brillo::SecureBlob key;
+  brillo::SecureBlob::HexStringToSecureBlob(std_out, &key);
+  if (!IsLogStoreKeyValid(key)) {
     return std::nullopt;
   }
 
-  return std_out;
+  return key;
 }
 
 bool SaveLogStoreKey(std::shared_ptr<ProcessManagerInterface> process_manager,
-                     const std::string& key) {
+                     const brillo::SecureBlob& key) {
   if (!IsLogStoreKeyValid(key)) {
     return false;
   }
 
-  const auto key_value_pair = std::string{kVpdLogStoreSecretKey} + "=" + key;
+  const auto& hex_key = brillo::SecureBlobToSecureHex(key);
+  const auto& key_value_pair =
+      std::string{kVpdLogStoreSecretKey} + "=" + hex_key.to_string();
   if (process_manager->RunCommand(
           {kVpdCommand, kVpdAddValueFlag, key_value_pair}, {}) != 0) {
     LOG(ERROR) << "VPD save operation failed";

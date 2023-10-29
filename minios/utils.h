@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <brillo/secure_blob.h>
 #include <brillo/udev/udev.h>
 
 #include "minios/process_manager.h"
@@ -105,20 +106,20 @@ bool GetRemovableDevices(
     std::unique_ptr<brillo::Udev> udev = brillo::Udev::Create());
 
 // Check if the given log store key is valid.
-bool IsLogStoreKeyValid(const std::string& key);
+bool IsLogStoreKeyValid(const brillo::SecureBlob& key);
 
 // Trim the provided key for any trailing whitespace beyond
-// `kLogStoreKeySizeBytes`.
+// `kLogStoreHexKeySizeBytes`.
 void TrimLogStoreKey(std::string& key);
 
 // Get log encryption key from VPD. Returns `nullopt` if not found.
-std::optional<std::string> GetLogStoreKey(
+std::optional<brillo::SecureBlob> GetLogStoreKey(
     std::shared_ptr<ProcessManagerInterface> process_manager);
 
 // Save a given log encryption key to VPD. Returns true on success, false
 // otherwise.
 bool SaveLogStoreKey(std::shared_ptr<ProcessManagerInterface> process_manager,
-                     const std::string& key);
+                     const brillo::SecureBlob& key);
 
 }  // namespace minios
 #endif  // MINIOS_UTILS_H__

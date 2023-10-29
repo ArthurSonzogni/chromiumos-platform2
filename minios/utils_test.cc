@@ -10,11 +10,13 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/test/mock_log.h>
+#include <brillo/secure_blob.h>
 #include <brillo/udev/mock_udev.h>
 #include <brillo/udev/mock_udev_device.h>
 #include <brillo/udev/mock_udev_enumerate.h>
 #include <brillo/udev/mock_udev_list_entry.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 
 #include "gmock/gmock.h"
 #include "minios/mock_process_manager.h"
@@ -32,6 +34,8 @@ using ::testing::Return;
 using ::testing::SetArgPointee;
 using ::testing::StrEq;
 using ::testing::StrictMock;
+
+const brillo::SecureBlob kValidKey{"thisisa32bytestring1234567890abc"};
 
 class UtilTest : public ::testing::Test {
  public:
@@ -323,24 +327,25 @@ TEST(UtilsTest, GetLogStoreKeyTest) {
   auto mock_process_manager_ =
       std::make_shared<StrictMock<MockProcessManager>>();
 
-  const std::string kKey = "thisisa32bytestring1234567890abc";
-  const std::vector<std::string> kExpectedArgs = {"/usr/bin/vpd", "-g",
-                                                  "minios_log_store_key"};
+  const std::vector<std::string>& kExpectedArgs = {"/usr/bin/vpd", "-g",
+                                                   "minios_log_store_key"};
 
   EXPECT_CALL(*mock_process_manager_,
               RunCommandWithOutput(kExpectedArgs, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(kKey),
+      .WillOnce(DoAll(SetArgPointee<1>(0),
+                      SetArgPointee<2>(
+                          brillo::SecureBlobToSecureHex(kValidKey).to_string()),
                       ::testing::Return(true)));
   const auto log_store_key = GetLogStoreKey(mock_process_manager_);
 
   ASSERT_TRUE(log_store_key.has_value());
-  EXPECT_EQ(log_store_key.value(), kKey);
+  EXPECT_EQ(log_store_key.value(), kValidKey);
 }
 
 TEST(UtilsTest, GetLogStoreKeyFailureTest) {
   auto mock_process_manager_ =
       std::make_shared<StrictMock<MockProcessManager>>();
-  const std::string kKey = "short_key";
+  const std::string& kKey = "short_key";
 
   const std::vector<std::string> kExpectedArgs = {"/usr/bin/vpd", "-g",
                                                   "minios_log_store_key"};
@@ -355,11 +360,10 @@ TEST(UtilsTest, GetLogStoreKeyFailureTest) {
 }
 
 TEST(UtilsTest, LogStoreKeyValidTest) {
-  const auto kValidKey = "thisisa32bytestring1234567890abc";
-
-  const auto kShortKey = "short";
-  const auto kLongKey = "thisisa32bytestring1234567890abc_____";
-  const auto kEmptyKey = "";
+  const auto& kShortKey = brillo::SecureBlob{"short"};
+  const auto& kLongKey =
+      brillo::SecureBlob{"thisisa32bytestring1234567890abc_____"};
+  const auto& kEmptyKey = brillo::SecureBlob{""};
 
   EXPECT_TRUE(IsLogStoreKeyValid(kValidKey));
   EXPECT_FALSE(IsLogStoreKeyValid(kShortKey));
@@ -368,47 +372,51 @@ TEST(UtilsTest, LogStoreKeyValidTest) {
 }
 
 TEST(UtilsTest, LogStoreKeyTrimTest) {
-  std::string simple_key = "thisisa32bytestring1234567890abc";
+  std::string simple_key =
+      "thisisa64bytestring1234567890abcthisisa64bytestring1234567890abc";
   TrimLogStoreKey(simple_key);
-  EXPECT_EQ(simple_key, "thisisa32bytestring1234567890abc");
+  EXPECT_EQ(simple_key,
+            "thisisa64bytestring1234567890abcthisisa64bytestring1234567890abc");
 
   std::string short_key = "short_key";
   TrimLogStoreKey(short_key);
   EXPECT_EQ(short_key, "short_key");
 
-  std::string simple_key_with_trailing_space =
-      "thisisa32bytestring1234567890abc ";
+  std::string simple_key_with_trailing_space = simple_key + "  ";
   TrimLogStoreKey(simple_key_with_trailing_space);
-  EXPECT_EQ(simple_key_with_trailing_space, "thisisa32bytestring1234567890abc");
+  EXPECT_EQ(simple_key_with_trailing_space, simple_key);
 
-  std::string simple_key_with_whitespace =
-      "thisisa32bytestring1234567890abc\n ";
+  std::string simple_key_with_whitespace = simple_key + "\n ";
   TrimLogStoreKey(simple_key_with_whitespace);
-  EXPECT_EQ(simple_key_with_whitespace, "thisisa32bytestring1234567890abc");
+  EXPECT_EQ(simple_key_with_whitespace, simple_key);
 
-  std::string key_with_whitespace = "thisisa32bytestring1234567890\n  ";
+  std::string key_with_whitespace =
+      "thisisa64bytestring1234567890abcthisisa64bytestring1234567890\n  ";
   TrimLogStoreKey(key_with_whitespace);
-  EXPECT_EQ(key_with_whitespace, "thisisa32bytestring1234567890\n  ");
+  EXPECT_EQ(
+      key_with_whitespace,
+      "thisisa64bytestring1234567890abcthisisa64bytestring1234567890\n  ");
 
   std::string key_with_trailing_whitespace =
-      "thisisa32bytestring1234567890\n  \n\t   ";
+      "thisisa64bytestring1234567890abcthisisa64bytestring1234567890\n  \n\t ";
   TrimLogStoreKey(key_with_trailing_whitespace);
-  EXPECT_EQ(key_with_trailing_whitespace, "thisisa32bytestring1234567890\n  ");
+  EXPECT_EQ(
+      key_with_trailing_whitespace,
+      "thisisa64bytestring1234567890abcthisisa64bytestring1234567890\n  ");
 }
 
 TEST(UtilsTest, SaveLogKeyTest) {
   auto mock_process_manager_ =
       std::make_shared<StrictMock<MockProcessManager>>();
 
-  const auto kKey = "thisisa32bytestring1234567890abc";
-
   std::vector<std::string> expected_args = {
       "/usr/bin/vpd", "-s",
-      "minios_log_store_key=thisisa32bytestring1234567890abc"};
+      "minios_log_store_key=" +
+          brillo::SecureBlobToSecureHex(kValidKey).to_string()};
 
   EXPECT_CALL(*mock_process_manager_, RunCommand(expected_args, _))
       .WillOnce(::testing::Return(0));
-  EXPECT_TRUE(SaveLogStoreKey(mock_process_manager_, kKey));
+  EXPECT_TRUE(SaveLogStoreKey(mock_process_manager_, kValidKey));
 }
 
 }  // namespace minios
