@@ -16,5 +16,11 @@
       "request": [
         "CrosCameraService"
       ]
+    },
+    {
+      "identity": "u:r:cros_ssh_session:s0",
+      "request": [
+        "CrosCameraService"
+      ]
     }
 ]
