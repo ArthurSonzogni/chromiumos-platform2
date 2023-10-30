@@ -6,6 +6,8 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
+gpt_disk_io = { version = "0.15.0", features = ["std"] }
+gpt_disk_types = "0.15.0"
 libchromeos = { path = "../libchromeos-rs" } # provided by ebuild
 log = "0.4.20"
 nix = "0.23"

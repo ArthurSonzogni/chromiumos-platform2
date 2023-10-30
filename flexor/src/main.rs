@@ -7,6 +7,7 @@ use libchromeos::panic_handler;
 use log::info;
 
 mod chromeos_install;
+mod gpt;
 mod mount;
 mod util;
 
