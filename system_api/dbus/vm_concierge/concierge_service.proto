@@ -602,7 +602,6 @@ message StopVmRequest {
   string name = 1;
 
   // The owner of the vm.
-  // TODO(b/305120263): Deprecate this field.
   string owner_id = 2;
 }
 

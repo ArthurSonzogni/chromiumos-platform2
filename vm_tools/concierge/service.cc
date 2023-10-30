@@ -2399,19 +2399,9 @@ StartVmResponse Service::StartVmInternal(
   return response;
 }
 
-StopVmResponse Service::StopVm(const StopVmRequest& request_original) {
+StopVmResponse Service::StopVm(const StopVmRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  // TODO(b/307732864): Support generating mutable arguments in D-Bus bindings
-  // and remove this copying.
-  StopVmRequest request(request_original);
-
-  // Allow accepting empty owner_id until its deprecation is done.
-  // TODO(b/305120263): Remove owner_id from StopVmRequest.
-  if (request_original.owner_id().empty()) {
-    request.set_owner_id(primary_owner_id_);
-  }
 
   StopVmResponse response;
 
