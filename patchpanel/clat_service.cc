@@ -29,6 +29,7 @@
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/iptables.h"
+#include "patchpanel/shill_client.h"
 #include "patchpanel/system.h"
 
 namespace patchpanel {
@@ -69,6 +70,10 @@ bool RemoveConfigFileIfExists(const base::FilePath& conf_file_path) {
     return false;
   }
   return true;
+}
+
+bool NeedsClat(const ShillClient::Device& device) {
+  return device.IsIPv6Only() && device.type != ShillClient::Device::Type::kVPN;
 }
 
 }  // namespace
@@ -123,7 +128,7 @@ void ClatService::OnShillDefaultLogicalDeviceChanged(
   // CLAT should be started when CLAT is not running and the new default logical
   // device is IPv6-only.
   bool need_start =
-      new_device && !clat_running_device_ && new_device->IsIPv6Only();
+      new_device && !clat_running_device_ && NeedsClat(*new_device);
 
   if (need_start) {
     StartClat(*new_device);
@@ -138,7 +143,7 @@ void ClatService::OnShillDefaultLogicalDeviceChanged(
 void ClatService::OnDefaultLogicalDeviceIPConfigChanged(
     const ShillClient::Device& default_logical_device) {
   if (!clat_running_device_) {
-    if (default_logical_device.IsIPv6Only()) {
+    if (NeedsClat(default_logical_device)) {
       StartClat(default_logical_device);
     }
     return;
@@ -159,7 +164,7 @@ void ClatService::OnDefaultLogicalDeviceIPConfigChanged(
   DCHECK(!clat_running_device_->ipconfig.ipv4_cidr.has_value());
   DCHECK(clat_running_device_->ipconfig.ipv6_cidr.has_value());
 
-  if (!default_logical_device.IsIPv6Only()) {
+  if (!NeedsClat(default_logical_device)) {
     StopClat();
     return;
   }
