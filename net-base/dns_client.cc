@@ -394,4 +394,40 @@ std::unique_ptr<DNSClient> DNSClientFactory::Resolve(
                                          options, ares);
 }
 
+// static
+std::string_view DNSClient::ErrorName(DNSClient::Error error) {
+  switch (error) {
+    case Error::kInternal:
+      return "InternalError";
+    case Error::kNoData:
+      return "NoData";
+    case Error::kFormErr:
+      return "FormError";
+    case Error::kServerFail:
+      return "ServerFailure";
+    case Error::kNotFound:
+      return "NotFound";
+    case Error::kNotImplemented:
+      return "NotImplemented";
+    case Error::kRefused:
+      return "Refused";
+    case Error::kBadQuery:
+      return "BadQuery";
+    case Error::kBadName:
+      return "BadName";
+    case Error::kBadFamily:
+      return "BadFamily";
+    case Error::kBadResp:
+      return "BadResp";
+    case Error::kNetRefused:
+      return "ConnectionRefused";
+    case Error::kTimedOut:
+      return "TimedOut";
+  }
+}
+
+std::ostream& operator<<(std::ostream& stream, DNSClient::Error error) {
+  return stream << DNSClient::ErrorName(error);
+}
+
 }  // namespace net_base

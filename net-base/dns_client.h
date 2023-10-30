@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <optional>
+#include <ostream>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -30,19 +31,32 @@ class NET_BASE_EXPORT DNSClient {
   // Error.
   enum class Error {
     kInternal = 0,
+    // ARES_ENODATA
     kNoData = 1,
+    // ARES_EFORMERR
     kFormErr = 2,
+    // ARES_ESERVFAIL
     kServerFail = 3,
+    // ARES_ENOTFOUND
     kNotFound = 4,
+    // ARES_ENOTIMP
     kNotImplemented = 5,
+    // ARES_ERFUSED
     kRefused = 6,
+    // ARES_EBADQUERY
     kBadQuery = 7,
+    // ARES_EBADNAME
     kBadName = 8,
+    // ARES_EBADFAMILY
     kBadFamily = 9,
+    // ARES_EBADRESP
     kBadResp = 10,
+    // ARES_ECONNREFUSED
     kNetRefused = 11,
+    // ARES_ETIMEOUT
     kTimedOut = 12,
   };
+  static std::string_view ErrorName(Error error);
 
   // The callback returns the resolved IP addresses (A or AAAA records) on
   // success.
@@ -114,6 +128,8 @@ class NET_BASE_EXPORT DNSClientFactory {
   DNSClientFactory(const DNSClientFactory&) = delete;
   DNSClientFactory& operator=(const DNSClientFactory&) = delete;
 };
+
+std::ostream& operator<<(std::ostream& stream, DNSClient::Error error);
 
 }  // namespace net_base
 
