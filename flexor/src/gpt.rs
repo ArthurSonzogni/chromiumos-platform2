@@ -6,7 +6,7 @@ use std::fs::File;
 
 use anyhow::{anyhow, Context, Result};
 use gpt_disk_io::{BlockIo, Disk, MutSliceBlockIo, StdBlockIo};
-use gpt_disk_types::BlockSize;
+use gpt_disk_types::{BlockSize, GptPartitionEntry, GptPartitionName};
 
 // Implementations of the [`BlockIo`] trait that we use for [`Gpt`].
 // Currently this boils down to either a file (in case of the real
@@ -109,13 +109,49 @@ impl<'a> Gpt<'a> {
 
         Ok(())
     }
+
+    // Reads the GPT partition table and returns information about the first
+    // partition with `label` that is found.
+    pub fn get_entry_for_partition_with_label(
+        &mut self,
+        label: GptPartitionName,
+    ) -> Result<Option<GptPartitionEntry>> {
+        let mut block_buf = vec![
+            0;
+            self.block_size
+                .to_usize()
+                .context("Failed to read block size")?
+        ];
+        let header_table = self.disk.read_primary_gpt_header(&mut block_buf)?;
+        let layout = header_table.get_partition_entry_array_layout()?;
+
+        let mut block_buf = vec![
+            0;
+            layout
+                .num_bytes_rounded_to_block_as_usize(self.block_size)
+                .unwrap()
+        ];
+        let entry_array = self
+            .disk
+            .read_gpt_partition_entry_array(layout, &mut block_buf)?;
+
+        for index in 0..layout.num_entries {
+            let entry = entry_array.get_partition_entry(index).unwrap();
+            if entry.name == label {
+                return Ok(Some(*entry));
+            }
+        }
+        Ok(None)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
     use gpt_disk_io::{Disk, MutSliceBlockIo};
-    use gpt_disk_types::{BlockSize, GptHeader};
+    use gpt_disk_types::{
+        BlockSize, GptHeader, GptPartitionEntry, GptPartitionEntryArray, LbaLe, U32Le,
+    };
 
     use crate::gpt::Gpt;
 
@@ -126,11 +162,29 @@ mod tests {
         let block_io = MutSliceBlockIo::new(disk_storage, block_size);
         let mut disk = Disk::new(block_io)?;
 
-        let primary_header = GptHeader::default();
+        let primary_header = GptHeader {
+            partition_entry_lba: LbaLe::from_u64(2),
+            number_of_partition_entries: U32Le::from_u32(128),
+            ..Default::default()
+        };
+        let partition_entry = GptPartitionEntry {
+            name: "STATE".parse().unwrap(),
+            ..Default::default()
+        };
+        let layout = primary_header.get_partition_entry_array_layout()?;
+        let mut bytes = vec![
+            0;
+            layout
+                .num_bytes_rounded_to_block_as_usize(block_size)
+                .unwrap()
+        ];
+        let mut entry_array = GptPartitionEntryArray::new(layout, block_size, &mut bytes)?;
+        *entry_array.get_partition_entry_mut(0).unwrap() = partition_entry;
 
         let mut block_buf = vec![0u8; block_size.to_usize().unwrap()];
         disk.write_protective_mbr(&mut block_buf)?;
         disk.write_primary_gpt_header(&primary_header, &mut block_buf)?;
+        disk.write_gpt_partition_entry_array(&entry_array)?;
 
         Ok(())
     }
@@ -144,6 +198,19 @@ mod tests {
         let gpt = Gpt::from_slice(&mut disk, block_size);
 
         assert!(gpt.is_ok());
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_entry_for_partition_with_label() -> Result<()> {
+        let mut disk = vec![0; 4 * 1024 * 1024];
+        let block_size = BlockSize::BS_512;
+        setup_disk_with_valid_header(&mut disk, block_size)?;
+
+        let mut gpt = Gpt::from_slice(&mut disk, block_size)?;
+        let state_entry = gpt.get_entry_for_partition_with_label("STATE".parse().unwrap())?;
+        assert!(state_entry.is_some());
+
         Ok(())
     }
 }
