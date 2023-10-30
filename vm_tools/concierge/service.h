@@ -589,9 +589,6 @@ class Service final : public org::chromium::VmConciergeInterface,
   std::unique_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
-  // The hashed cryptohome id of the primary session user.
-  std::string primary_owner_id_;
-
   // This should be the last member of the class.
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 };

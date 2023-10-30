@@ -87,7 +87,6 @@
 #include <dbus/vm_concierge/dbus-constants.h>
 #include <metrics/metrics_library.h>
 #include <metrics/metrics_writer.h>
-#include <session_manager/dbus-proxies.h>
 #include <spaced/dbus-proxies.h>
 #include <spaced/disk_usage_proxy.h>
 #include <vm_applications/apps.pb.h>
@@ -1471,37 +1470,6 @@ bool Service::Init() {
            .val) {
     return false;
   }
-
-  // Set up the D-Bus proxy for communicating with Session Manager.
-  // We use this proxy to request the primary session ID at startup and never
-  // need it again, so it is not stored in the Service object.
-  std::unique_ptr<org::chromium::SessionManagerInterfaceProxy>
-      session_manager_proxy =
-          std::make_unique<org::chromium::SessionManagerInterfaceProxy>(bus_);
-
-  // Fill |primary_owner_id_| with the cryptohome hash of the primary user.
-  if (!AsyncNoReject(dbus_thread_.task_runner(),
-                     base::BindOnce(
-                         [](org::chromium::SessionManagerInterfaceProxy
-                                * session_manager_proxy,
-                            std::string* primary_owner_id_) {
-                           brillo::ErrorPtr error;
-                           std::string username;
-                           if (!session_manager_proxy->RetrievePrimarySession(
-                                   &username, primary_owner_id_, &error)) {
-                             LOG(ERROR) << "RetrievePrimarySession failed: "
-                                        << error->GetMessage();
-                             return false;
-                           }
-                           return true;
-                         },
-                         base::Unretained(session_manager_proxy.get()),
-                         base::Unretained(&primary_owner_id_)))
-           .Get()
-           .val) {
-    return false;
-  }
-  LOG(INFO) << "Primary session owner id: " << primary_owner_id_;
 
   exported_object_ =
       bus_->GetExportedObject(dbus::ObjectPath(kVmConciergeServicePath));
