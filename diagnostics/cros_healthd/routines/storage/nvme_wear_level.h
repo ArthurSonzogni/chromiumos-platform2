@@ -6,7 +6,6 @@
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_STORAGE_NVME_WEAR_LEVEL_H_
 
 #include <cstdint>
-#include <memory>
 #include <optional>
 #include <string>
 

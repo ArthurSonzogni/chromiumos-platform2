@@ -5,9 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_UTILS_DELEGATE_PROCESS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_UTILS_DELEGATE_PROCESS_H_
 
-#include <string>
 #include <string_view>
-#include <vector>
 
 #include <base/memory/weak_ptr.h>
 #include <mojo/public/cpp/bindings/remote.h>

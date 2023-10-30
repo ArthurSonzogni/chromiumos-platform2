@@ -10,7 +10,6 @@
 #include <cstdint>
 #include <optional>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>

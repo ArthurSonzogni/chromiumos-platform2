@@ -5,7 +5,6 @@
 #include "diagnostics/cros_healthd/routines/storage/nvme_wear_level.h"
 
 #include <utility>
-#include <vector>
 
 #include <base/base64.h>
 #include <base/check.h>

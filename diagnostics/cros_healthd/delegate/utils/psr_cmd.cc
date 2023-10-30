@@ -9,7 +9,6 @@
 #include <fstream>
 #include <errno.h>
 #include <linux/mei.h>
-#include <memory>
 #include <optional>
 #include <stdlib.h>
 #include <string.h>

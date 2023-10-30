@@ -12,7 +12,6 @@
 #include <base/strings/string_split.h>
 
 #include "diagnostics/base/file_utils.h"
-#include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/cros_healthd/utils/usb_utils_constants.h"
 
 namespace diagnostics {

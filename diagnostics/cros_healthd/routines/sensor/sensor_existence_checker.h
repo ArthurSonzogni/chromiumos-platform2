@@ -6,7 +6,6 @@
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_SENSOR_SENSOR_EXISTENCE_CHECKER_H_
 
 #include <map>
-#include <set>
 #include <string>
 #include <vector>
 

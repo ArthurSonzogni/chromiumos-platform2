@@ -19,7 +19,6 @@
 // NOLINTNEXTLINE(build/include_alpha) dbus-proxy-mocks.h needs spaced.pb.h
 #include <spaced/dbus-proxy-mocks.h>
 
-#include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routine_adapter.h"

@@ -5,7 +5,6 @@
 #include "diagnostics/cros_healthd/routines/storage/emmc_lifetime.h"
 
 #include <cstdint>
-#include <memory>
 #include <sstream>
 #include <string>
 #include <utility>

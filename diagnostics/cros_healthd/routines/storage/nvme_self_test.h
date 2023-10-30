@@ -6,7 +6,6 @@
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_STORAGE_NVME_SELF_TEST_H_
 
 #include <cstdint>
-#include <memory>
 #include <string>
 
 #include <base/values.h>

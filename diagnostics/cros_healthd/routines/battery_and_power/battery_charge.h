@@ -8,7 +8,6 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <string>
 
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>

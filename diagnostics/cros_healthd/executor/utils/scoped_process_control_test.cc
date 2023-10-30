@@ -2,14 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <utility>
-
 #include <base/functional/callback_helpers.h>
-#include <base/functional/callback_forward.h>
 #include <base/run_loop.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
-#include <gmock/gmock-actions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>

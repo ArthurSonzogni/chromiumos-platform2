@@ -4,8 +4,6 @@
 
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
 
-#include <memory>
-
 namespace diagnostics {
 
 FakeMojoService::FakeMojoService() = default;

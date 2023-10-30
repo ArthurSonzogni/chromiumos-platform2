@@ -20,7 +20,6 @@
 #include "diagnostics/cros_healthd/events/touchscreen_events_impl.h"
 #include "diagnostics/cros_healthd/events/udev_events_impl.h"
 #include "diagnostics/cros_healthd/utils/metrics_utils.h"
-#include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 
 namespace diagnostics {
 

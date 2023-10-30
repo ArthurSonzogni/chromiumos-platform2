@@ -3,9 +3,6 @@
 // found in the LICENSE file.
 
 #include <cstdint>
-#include <map>
-#include <memory>
-#include <utility>
 
 #include <base/memory/scoped_refptr.h>
 #include <brillo/errors/error.h>

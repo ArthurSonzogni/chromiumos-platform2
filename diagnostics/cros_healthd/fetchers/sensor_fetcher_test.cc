@@ -3,8 +3,6 @@
 // found in the LICENSE file.
 
 #include <memory>
-#include <string>
-#include <utility>
 
 #include <base/files/file_util.h>
 #include <base/test/gmock_callback_support.h>

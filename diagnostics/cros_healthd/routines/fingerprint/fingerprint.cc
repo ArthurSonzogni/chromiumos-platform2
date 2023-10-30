@@ -5,7 +5,6 @@
 #include "diagnostics/cros_healthd/routines/fingerprint/fingerprint.h"
 
 #include <algorithm>
-#include <cmath>
 #include <string>
 #include <utility>
 #include <vector>

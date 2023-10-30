@@ -6,7 +6,6 @@
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_DIAG_ROUTINE_WITH_STATUS_H_
 
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "diagnostics/cros_healthd/routines/diag_routine.h"

@@ -5,9 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_DISCOVERY_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_DISCOVERY_H_
 
-#include <memory>
 #include <string>
-#include <vector>
 
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>

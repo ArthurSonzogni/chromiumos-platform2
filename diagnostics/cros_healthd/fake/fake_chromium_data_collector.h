@@ -5,8 +5,6 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FAKE_FAKE_CHROMIUM_DATA_COLLECTOR_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FAKE_FAKE_CHROMIUM_DATA_COLLECTOR_H_
 
-#include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>

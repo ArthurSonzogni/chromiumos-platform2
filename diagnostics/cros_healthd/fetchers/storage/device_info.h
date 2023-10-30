@@ -5,7 +5,6 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_STORAGE_DEVICE_INFO_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_STORAGE_DEVICE_INFO_H_
 
-#include <cstdint>
 #include <memory>
 #include <string>
 

@@ -7,8 +7,6 @@
 #include <sys/capability.h>
 #include <sys/mount.h>
 
-#include <string>
-
 #include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>

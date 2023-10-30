@@ -5,8 +5,6 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_SYSTEM_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_SYSTEM_FETCHER_H_
 
-#include <string>
-
 #include <base/files/file_path.h>
 #include <base/functional/callback_forward.h>
 

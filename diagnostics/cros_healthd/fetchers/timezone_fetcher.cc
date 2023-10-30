@@ -5,7 +5,6 @@
 #include "diagnostics/cros_healthd/fetchers/timezone_fetcher.h"
 
 #include <string>
-#include <utility>
 
 #include <base/files/file_util.h>
 #include <brillo/timezone/tzif_parser.h>

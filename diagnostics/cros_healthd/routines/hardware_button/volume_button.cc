@@ -5,7 +5,6 @@
 #include "diagnostics/cros_healthd/routines/hardware_button/volume_button.h"
 
 #include <string>
-#include <utility>
 
 #include <base/check.h>
 #include <base/functional/bind.h>

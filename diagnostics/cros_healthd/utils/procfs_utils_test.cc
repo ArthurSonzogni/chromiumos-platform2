@@ -9,8 +9,6 @@
 #include <base/files/file_path.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/base/file_test_utils.h"
-
 namespace diagnostics {
 namespace {
 

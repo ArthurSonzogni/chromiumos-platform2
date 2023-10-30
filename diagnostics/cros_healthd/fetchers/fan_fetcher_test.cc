@@ -2,12 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <inttypes.h>
-
 #include <cstdint>
 #include <cstdlib>
 #include <string>
-#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>

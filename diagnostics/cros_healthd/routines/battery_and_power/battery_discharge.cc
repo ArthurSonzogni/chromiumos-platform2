@@ -4,8 +4,6 @@
 
 #include "diagnostics/cros_healthd/routines/battery_and_power/battery_discharge.h"
 
-#include <inttypes.h>
-
 #include <cstdint>
 #include <optional>
 #include <string>

@@ -4,7 +4,6 @@
 
 #include "diagnostics/cros_healthd/utils/resource_queue.h"
 
-#include <ostream>
 #include <utility>
 
 #include <base/check_op.h>

@@ -4,7 +4,6 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include <base/test/gmock_callback_support.h>

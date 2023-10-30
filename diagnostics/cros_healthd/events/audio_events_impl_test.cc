@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <memory>
-#include <string>
 #include <utility>
 
 #include <base/check.h>

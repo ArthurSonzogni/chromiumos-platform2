@@ -5,7 +5,6 @@
 #include "diagnostics/cros_healthd/events/crash_events.h"
 
 #include <iterator>
-#include <limits>
 #include <optional>
 #include <string>
 #include <utility>

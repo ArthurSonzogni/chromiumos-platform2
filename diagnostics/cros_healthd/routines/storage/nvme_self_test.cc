@@ -4,7 +4,6 @@
 
 #include "diagnostics/cros_healthd/routines/storage/nvme_self_test.h"
 
-#include <algorithm>
 #include <iterator>
 #include <utility>
 #include <vector>

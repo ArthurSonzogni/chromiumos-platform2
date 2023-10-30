@@ -5,7 +5,6 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_CPU_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_CPU_FETCHER_H_
 
-#include <map>
 #include <string>
 
 #include <base/files/file_path.h>

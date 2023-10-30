@@ -8,7 +8,6 @@
 #include <bits/types/siginfo_t.h>
 
 #include <memory>
-#include <string>
 #include <vector>
 
 #include <base/functional/callback_forward.h>

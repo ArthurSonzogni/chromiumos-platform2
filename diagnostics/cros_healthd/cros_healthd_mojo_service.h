@@ -6,8 +6,6 @@
 #define DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_MOJO_SERVICE_H_
 
 #include <cstdint>
-#include <memory>
-#include <string>
 #include <vector>
 
 #include <base/memory/weak_ptr.h>

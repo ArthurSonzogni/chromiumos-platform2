@@ -8,8 +8,6 @@
 #include <base/files/file_path.h>
 #include <base/functional/callback_forward.h>
 #include <base/memory/weak_ptr.h>
-#include <string>
-#include <vector>
 
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"

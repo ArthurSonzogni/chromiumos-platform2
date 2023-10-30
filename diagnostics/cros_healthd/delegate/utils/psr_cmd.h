@@ -5,14 +5,11 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_PSR_CMD_H_
 #define DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_PSR_CMD_H_
 
-#include <iostream>
 #include <linux/mei.h>
 #include <linux/uuid.h>
-#include <memory>
 #include <optional>
 #include <string>
 #include <sys/types.h>
-#include <utility>
 #include <vector>
 
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"

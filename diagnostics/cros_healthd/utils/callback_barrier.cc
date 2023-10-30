@@ -4,7 +4,6 @@
 
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 
-#include <ostream>
 #include <utility>
 
 #include <base/check_op.h>

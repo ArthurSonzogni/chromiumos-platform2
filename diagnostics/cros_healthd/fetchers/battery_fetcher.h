@@ -7,7 +7,6 @@
 
 #include <optional>
 #include <string>
-#include <vector>
 
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"

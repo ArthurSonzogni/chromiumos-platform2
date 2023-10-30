@@ -5,7 +5,6 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINE_ADAPTER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINE_ADAPTER_H_
 
-#include <memory>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -15,7 +14,6 @@
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
-#include "diagnostics/cros_healthd/routines/routine_service.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 

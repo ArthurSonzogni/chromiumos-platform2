@@ -28,7 +28,6 @@
 
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/system/system_utilities_constants.h"
-#include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/cros_healthd/utils/procfs_utils.h"
 
 namespace diagnostics {

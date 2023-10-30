@@ -5,8 +5,6 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_PRIVACY_SCREEN_PRIVACY_SCREEN_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_PRIVACY_SCREEN_PRIVACY_SCREEN_H_
 
-#include <cstdint>
-#include <memory>
 #include <string>
 
 #include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"

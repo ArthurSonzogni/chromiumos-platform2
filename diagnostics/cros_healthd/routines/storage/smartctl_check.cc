@@ -4,7 +4,6 @@
 
 #include "diagnostics/cros_healthd/routines/storage/smartctl_check.h"
 
-#include <memory>
 #include <optional>
 #include <string>
 #include <utility>

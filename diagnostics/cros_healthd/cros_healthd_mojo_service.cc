@@ -4,7 +4,6 @@
 
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
 
-#include <memory>
 #include <sys/types.h>
 #include <utility>
 
