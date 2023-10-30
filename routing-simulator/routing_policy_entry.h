@@ -22,7 +22,7 @@ class RoutingPolicyEntry {
   // For |output_interface|, |input_interface| and |fwmark|, an empty string is
   // set, if the input does not contain a value. Returns std::nullopt if the
   // format is invalid.
-  static std::optional<RoutingPolicyEntry> CreateFromPolicyEntryString(
+  static std::optional<RoutingPolicyEntry> CreateFromPolicyString(
       std::string_view policy_string, net_base::IPFamily ip_family);
 
   // RoutingPolicyEntry is only copyable.
@@ -41,6 +41,21 @@ class RoutingPolicyEntry {
 
  private:
   explicit RoutingPolicyEntry(net_base::IPFamily ip_family);
+
+  // Parses a priority part in a policy entry in a routing policy table and sets
+  // |priority_| to the value. Returns false if the parsing failed.
+  bool SetPriority(std::string_view priority_string);
+
+  // Parses a policy entry in a routing policy table and sets
+  // |source_prefix_| to the value. Returns false if a parse with a source
+  // prefix failed.
+  bool SetSourcePrefix(base::span<const std::string_view>* policy_tokens_span,
+                       net_base::IPFamily ip_family);
+
+  // Parses a policy entry and sets items to the members of a RoutingPolicyEntry
+  // object such as |output_interface_|, |input_interface_|, |fwmark_| and
+  // |table_id_|. Returns false if the parsing failed.
+  bool SetItems(base::span<const std::string_view> policy_tokens_span);
 
   int priority_ = 0;
   net_base::IPCIDR source_prefix_;
