@@ -39,6 +39,9 @@ pub const UPDATE_ENGINE: &str = "/usr/bin/update_engine_client";
 const BOARD_NAME_PREFIX: &str = "CHROMEOS_RELEASE_BOARD=";
 const CROS_USER_ID_HASH: &str = "CROS_USER_ID_HASH";
 
+// The return value of cryptohome when call install_attributes_get and the value is not set.
+const CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_GET_FAILED: i32 = 34;
+
 static INCLUDE_DEV: AtomicBool = AtomicBool::new(false);
 static INCLUDE_USB: AtomicBool = AtomicBool::new(false);
 
@@ -163,11 +166,11 @@ pub fn is_consumer_device() -> Result<bool> {
 
     let stdout = String::from_utf8(output.stdout).unwrap();
 
-    // If the attribute is not set, cryptohome will treat it as an error, return 1 and output
-    // nothing.
+    // If the attribute is not set, cryptohome will treat it as an error, return
+    // CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_GET_FAILED and output nothing.
     match output.status.code() {
         Some(0) => Ok(!stdout.contains("enterprise")),
-        Some(1) if stdout.is_empty() => Ok(true),
+        Some(CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_GET_FAILED) if stdout.is_empty() => Ok(true),
         None => Err(Error::WrappedError("failed to get exit code".to_string())),
         _ => Err(Error::WrappedError(stdout)),
     }
