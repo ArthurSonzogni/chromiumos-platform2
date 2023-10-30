@@ -1129,23 +1129,34 @@ void WiFi::CurrentBSSChanged(const RpcIdentifier& new_bss) {
 
   if (new_bss.value() == WPASupplicant::kCurrentBSSNull) {
     HandleDisconnect();
-    if (!provider_->GetHiddenSSIDList().empty()) {
-      // Before disconnecting, wpa_supplicant probably scanned for
-      // APs. So, in the normal case, we defer to the timer for the next scan.
-      //
-      // However, in the case of hidden SSIDs, supplicant knows about
-      // at most one of them. (That would be the hidden SSID we were
-      // connected to, if applicable.)
-      //
-      // So, in this case, we initiate an immediate scan. This scan
-      // will include the hidden SSIDs we know about (up to the limit of
-      // kScanMAxSSIDsPerScan).
-      //
-      // We may want to reconsider this immediate scan, if/when shill
-      // takes greater responsibility for scanning (vs. letting
-      // supplicant handle most of it).
-      Scan(nullptr, __func__, false);
-    }
+    // Trigger immediate scan upon disconnect to prevent unnecessarily
+    // waiting at the idle state for the next foreground scan.
+    //
+    // Before disconnecting, wpa_supplicant probably scanned for
+    // APs. However, BSS entries could expire when background scan intervals
+    // extended. So when an STA disconnects, the current BSS will be the only
+    // available BSS in shill and supplicant.
+    //
+    // Prior to reaching here, WiFi::ServiceDisconnected will trigger
+    // Manager::NotifyServiceStateChanged which triggers Service::AutoConnect.
+    // But the STA cannot autoconnect to any services because there are no more
+    // services with available endpoints. Therefore, to find an available
+    // endpoint shill needs to trigger a scan.
+    //
+    // Previously shill deferred to a timer for the next foreground scan
+    // which might take up to kFastScanInterval to get triggered
+    // during which the STA would be idle. Shill, now, initiates an immediate
+    // scan here.The scan triggers the following code path
+    // WiFi::BSSAddedTask --> WiFiProvider::OnEndpointAdded -->
+    // Manager::UpdateService --> Manager::SortServices -->
+    // Manager::SortServicesTask --> AutoConnect() which leads to a
+    // connection attempt if the detected service is autoconnectable.
+    //
+    // In the case that there is a successful autoconnect attempt before this
+    // scan request (for instance, if BSS entries hadn't expired and AutoConnect
+    // was triggered via HandleDisconnect), shill has logic to ignore the scan
+    // request since the STA will already be attempting to connect.
+    Scan(nullptr, __func__, false);
   } else {
     HandleRoam(new_bss, old_bss);
   }

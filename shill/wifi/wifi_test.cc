@@ -3933,27 +3933,12 @@ TEST_F(WiFiMainTest, ScanTimerStopOnZeroInterval) {
   EXPECT_TRUE(GetScanTimer().IsCancelled());
 }
 
-TEST_F(WiFiMainTest, ScanOnDisconnectWithHidden) {
+TEST_F(WiFiMainTest, ScanOnDisconnect) {
   StartWiFi();
   event_dispatcher_->DispatchPendingEvents();
   SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
-  std::vector<uint8_t> kSSID(1, 'a');
-  ByteArrays ssids;
-  ssids.push_back(kSSID);
   ExpectScanIdle();
-  EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList())
-      .WillRepeatedly(Return(ssids));
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
-              Scan(ScanRequestHasHiddenSSID(kSSID)));
-  ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
-  event_dispatcher_->DispatchPendingEvents();
-}
-
-TEST_F(WiFiMainTest, NoScanOnDisconnectWithoutHidden) {
-  StartWiFi();
-  event_dispatcher_->DispatchPendingEvents();
-  SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_));
   EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList())
       .WillRepeatedly(Return(ByteArrays()));
   ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
