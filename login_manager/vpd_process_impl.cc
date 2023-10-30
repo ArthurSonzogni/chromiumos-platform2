@@ -27,7 +27,6 @@ VpdProcessImpl::VpdProcessImpl(SystemUtils* system_utils)
 }
 
 void VpdProcessImpl::RequestJobExit(const std::string& reason) {
-  LOG(INFO) << "VPD process exit requested";
   if (subprocess_ && subprocess_->GetPid() > 0)
     subprocess_->Kill(SIGTERM);
 }
@@ -64,7 +63,6 @@ bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
   }
 
   if (!subprocess_->ForkAndExec(argv, env)) {
-    LOG(ERROR) << "Failed to fork the process";
     subprocess_.reset();
     // The caller remains responsible for running |completion|.
     return false;
@@ -92,13 +90,7 @@ bool VpdProcessImpl::HandleExit(const siginfo_t& info) {
   metrics.SendSparseToUMA(kVpdUpdateMetric, info.si_status);
 
   const bool success = (info.si_status == 0);
-  if (success) {
-    LOG(INFO) << "Update VPD success, has completion = "
-              << (!completion_.is_null());
-  } else {
-    LOG_IF(ERROR, !success)
-        << "Failed to update VPD, code = " << info.si_status;
-  }
+  LOG_IF(ERROR, !success) << "Failed to update VPD, code = " << info.si_status;
 
   // Reset the completion to ensure we won't call it again.
   if (!completion_.is_null())
