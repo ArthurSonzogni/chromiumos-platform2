@@ -89,6 +89,9 @@ class BalloonBlocker {
   // Returns the type of VM this blocker is for. Used for logging and metrics.
   apps::VmType GetVmType() const;
 
+  // Sets whether the "BalloonTrace" logs should be printed.
+  void SetShouldLogBalloonTrace(bool do_log);
+
  protected:
   int GetCid();
 
@@ -157,6 +160,9 @@ class BalloonBlocker {
   // non-dense ResizePriority enum.
   base::flat_map<ResizeDirection, RequestList> request_lists_
       GUARDED_BY_CONTEXT(sequence_checker_){};
+
+  // Controls whether the "BalloonTrace" logs should be printed.
+  bool should_log_balloon_trace_ GUARDED_BY_CONTEXT(sequence_checker_) = true;
 
   // Must be the last member.
   base::WeakPtrFactory<BalloonBlocker> weak_ptr_factory_{this};

@@ -166,6 +166,19 @@ void BalloonBroker::ReclaimUntilBlocked(int vm_cid,
       reclaim_until_blocked_params_.emplace(vm_cid, priority);
     }
   } else {
+    // ReclaimUntilBlocked can spam BalloonTrace logs, so disable logging when
+    // reclaiming at a low priority and then re-enable them when the reclaim
+    // operation is complete.
+    if (priority == ResizePriority::RESIZE_PRIORITY_LOWEST) {
+      SetShouldLogBalloonTrace(vm_cid, false);
+
+      // Unretained(this) is safe because the callback is owned by this
+      // instance.
+      reclaim_until_blocked_cbs_.emplace_back(
+          base::BindOnce(&BalloonBroker::SetShouldLogBalloonTraceAsCallback,
+                         base::Unretained(this), vm_cid, true));
+    }
+
     reclaim_until_blocked_params_.emplace(vm_cid, priority);
     reclaim_until_blocked_cbs_.emplace_back(std::move(cb));
     ReclaimUntilBlockedStep();
@@ -504,6 +517,26 @@ void BalloonBroker::SetMostRecentKillRequest(Client client,
     bb_client->kill_request_priority = priority;
     bb_client->kill_request_result = result;
   }
+}
+
+void BalloonBroker::SetShouldLogBalloonTrace(int cid, bool do_log) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  if (!contexts_.contains(cid) || !contexts_[cid].balloon) {
+    LOG(WARNING) << "Cannot set balloon trace state for non-existant context: "
+                 << cid;
+    return;
+  }
+
+  contexts_[cid].balloon->SetShouldLogBalloonTrace(do_log);
+}
+
+void BalloonBroker::SetShouldLogBalloonTraceAsCallback(int cid,
+                                                       bool do_log,
+                                                       bool,
+                                                       const char*) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return SetShouldLogBalloonTrace(cid, do_log);
 }
 
 }  // namespace vm_tools::concierge::mm

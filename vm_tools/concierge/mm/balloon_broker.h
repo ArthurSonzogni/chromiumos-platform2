@@ -188,6 +188,13 @@ class BalloonBroker {
   // ReclaimUntilBlocked() process.
   void ReclaimUntilBlockedStep();
 
+  // Enables balloon traces for the specific CID.
+  void SetShouldLogBalloonTrace(int cid, bool do_log);
+  void SetShouldLogBalloonTraceAsCallback(int cid,
+                                          bool do_log,
+                                          bool,
+                                          const char*);
+
   // Constants for determining how fast ReclaimUntilBlocked() operates.
   static constexpr int64_t kReclaimTargetPerSecond = MiB(200);
   static constexpr int64_t kReclaimStepsPerSecond = 5;
