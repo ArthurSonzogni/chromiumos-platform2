@@ -185,7 +185,7 @@ impl SuspendConductor<'_> {
         if result.is_ok() {
             log_metric_event(HibernateEvent::ResumeSuccess);
         } else {
-            log_metric_event(HibernateEvent::SuspendFailure);
+            // SuspendFailure event is recorded in hibernate()
         }
 
         let _hibermeta_mount = self.volume_manager.mount_hibermeta()?;
