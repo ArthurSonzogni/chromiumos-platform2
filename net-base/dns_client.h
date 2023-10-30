@@ -55,6 +55,30 @@ class NET_BASE_EXPORT DNSClient {
     kNetRefused = 11,
     // ARES_ETIMEOUT
     kTimedOut = 12,
+    // ARES_EOF
+    kEndOfFile = 13,
+    // ARES_EFILE
+    kReadErr = 14,
+    // ARES_ENOMEM
+    kNoMemory = 15,
+    // ARES_EDESTRUCTION
+    kChannelDestroyed = 16,
+    // ARES_EBADSTR
+    kBadFormat = 17,
+    // ARES_EBADFLAGS
+    kBadFlags = 18,
+    // ARES_ENONAME
+    kBadHostname = 19,
+    // ARES_EBADHINTS
+    kBadHints = 20,
+    // ARES_ENOTINITIALIZED
+    kNotInit = 21,
+    // ARES_ELOADIPHLPAPI
+    kLoadErr = 22,
+    // ARES_EADDRGETNETWORKPARAMS
+    kGetNetworkParamsNotFound = 23,
+    // ARES_ECANCELLED
+    kCancelled = 24,
   };
   static std::string_view ErrorName(Error error);
 

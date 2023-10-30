@@ -423,6 +423,30 @@ std::string_view DNSClient::ErrorName(DNSClient::Error error) {
       return "ConnectionRefused";
     case Error::kTimedOut:
       return "TimedOut";
+    case Error::kEndOfFile:
+      return "EndOfFile";
+    case Error::kReadErr:
+      return "FileReadError";
+    case Error::kNoMemory:
+      return "OutOfMemory";
+    case Error::kChannelDestroyed:
+      return "ChannelIsBeingDestroyed";
+    case Error::kBadFormat:
+      return "MisformattedInput";
+    case Error::kBadFlags:
+      return "IllegalFlagsSpecified";
+    case Error::kBadHostname:
+      return "HostnameWasNotNumeric";
+    case Error::kBadHints:
+      return "IllegalHintFlagsSpecified";
+    case Error::kNotInit:
+      return "LibraryNotInitialized";
+    case Error::kLoadErr:
+      return "LoadError";
+    case Error::kGetNetworkParamsNotFound:
+      return "GetNetworkParamsFunctionNotFound";
+    case Error::kCancelled:
+      return "QueryCancelled";
   }
 }
 
