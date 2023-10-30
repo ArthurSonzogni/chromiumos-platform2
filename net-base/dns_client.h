@@ -153,7 +153,8 @@ class NET_BASE_EXPORT DNSClientFactory {
   DNSClientFactory& operator=(const DNSClientFactory&) = delete;
 };
 
-std::ostream& operator<<(std::ostream& stream, DNSClient::Error error);
+NET_BASE_EXPORT std::ostream& operator<<(std::ostream& stream,
+                                         DNSClient::Error error);
 
 }  // namespace net_base
 
