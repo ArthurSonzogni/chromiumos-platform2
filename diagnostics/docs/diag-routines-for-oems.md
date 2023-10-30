@@ -1566,10 +1566,12 @@ Sample output:
 ```bash
 Progress: 100
 Output: {
-   "address_type": "random",
-   "bluetooth_class": "123456",
-   "is_address_valid": true,
-   "uuids": [ "0000110a-0000-1000-8000-00805f9b34fb", "00000000-0000-0000-0000-000000000000" ]
+   "pairing_peripheral": {
+      "address_type": "random",
+      "bluetooth_class": "123456",
+      "is_address_valid": true,
+      "uuids": [ "0000110a-0000-1000-8000-00805f9b34fb", "00000000-0000-0000-0000-000000000000" ]
+   }
 }
 
 Status: Passed
@@ -1577,14 +1579,16 @@ Status message: Bluetooth routine passed.
 ```
 
 Optional fields in output:
-- `failed_manufacturer_id` (Type: string): The first half of the Bluetooth
-  address, which is reported when `is_address_valid` is false and the address
-  can be parsed successfully.
-- `connect_error` (Type: string): The error code from Bluetooth service, which
-  is reported when the routine fails to create baseband connection. E.g.
-  `org.bluez.Error.NotReady`.
-- `pair_error` (Type: string): The error code from Bluetooth service, which
-  is reported when the routine fails to finish pairing. E.g.
+- `pairing_peripheral`: The info of the target peripheral, which will be null if
+  the routine can not find the peripheral with given `peripheral_id`.
+- `pairing_peripheral.failed_manufacturer_id` (Type: string): The first half of
+  the Bluetooth address, which is reported when `is_address_valid` is false and
+  the address can be parsed successfully.
+- `pairing_peripheral.connect_error` (Type: string): The error code from
+  Bluetooth service, which is reported when the routine fails to create baseband
+  connection. E.g. `org.bluez.Error.NotReady`.
+- `pairing_peripheral.pair_error` (Type: string): The error code from Bluetooth
+  service, which is reported when the routine fails to finish pairing. E.g.
   `org.bluez.Error.AuthenticationFailed`.
 
 Errors:

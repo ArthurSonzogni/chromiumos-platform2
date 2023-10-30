@@ -83,7 +83,12 @@ void BluetoothPairingRoutine::PopulateStatusUpdate(
 
   if (include_output) {
     std::string json;
-    base::JSONWriter::Write(output_dict_, &json);
+    base::Value::Dict output_dict;
+    if (pairing_peripheral_info_.has_value()) {
+      output_dict.Set("pairing_peripheral",
+                      pairing_peripheral_info_.value().Clone());
+    }
+    base::JSONWriter::Write(output_dict, &json);
     response->output = CreateReadOnlySharedMemoryRegionMojoHandle(json);
   }
 
@@ -255,50 +260,54 @@ void BluetoothPairingRoutine::OnDeviceAdded(
     org::bluez::Device1ProxyInterface* device) {
   const auto& address = device->address();
   if (!device || target_device_ || step_ != TestStep::kScanTargetDevice ||
-      peripheral_id_ != base::NumberToString(base::FastHash(address)))
+      peripheral_id_ != base::NumberToString(base::FastHash(address))) {
     return;
+  }
+  target_device_ = device;
+  pairing_peripheral_info_ = base::Value::Dict();
 
   const auto& address_type = device->address_type();
-  output_dict_.Set("address_type", address_type);
+  pairing_peripheral_info_->Set("address_type", address_type);
   const auto& [is_address_valid, failed_manufacturer_id] =
       ValidatePeripheralAddress(address, address_type);
-  output_dict_.Set("is_address_valid", is_address_valid);
+  pairing_peripheral_info_->Set("is_address_valid", is_address_valid);
   if (failed_manufacturer_id.has_value()) {
-    output_dict_.Set("failed_manufacturer_id", failed_manufacturer_id.value());
+    pairing_peripheral_info_->Set("failed_manufacturer_id",
+                                  failed_manufacturer_id.value());
   }
 
   if (device->is_bluetooth_class_valid()) {
-    output_dict_.Set("bluetooth_class",
-                     base::NumberToString(device->bluetooth_class()));
+    pairing_peripheral_info_->Set(
+        "bluetooth_class", base::NumberToString(device->bluetooth_class()));
   }
   if (device->is_uuids_valid()) {
     base::Value::List out_uuids;
     for (const auto& uuid : device->uuids())
       out_uuids.Append(uuid);
-    output_dict_.Set("uuids", std::move(out_uuids));
+    pairing_peripheral_info_->Set("uuids", std::move(out_uuids));
   }
-
-  target_device_ = device;
   RunNextStep();
 }
 
 void BluetoothPairingRoutine::OnDevicePropertyChanged(
     org::bluez::Device1ProxyInterface* device,
     const std::string& property_name) {
-  if (!device || device != target_device_)
+  if (!device || device != target_device_) {
     return;
+  }
+  CHECK(pairing_peripheral_info_);
 
   if (property_name == device->ClassName()) {
     if (device->is_bluetooth_class_valid()) {
-      output_dict_.Set("bluetooth_class",
-                       base::NumberToString(device->bluetooth_class()));
+      pairing_peripheral_info_->Set(
+          "bluetooth_class", base::NumberToString(device->bluetooth_class()));
     }
   } else if (property_name == device->UUIDsName()) {
     if (device->is_uuids_valid()) {
       base::Value::List out_uuids;
       for (const auto& uuid : device->uuids())
         out_uuids.Append(uuid);
-      output_dict_.Set("uuids", std::move(out_uuids));
+      pairing_peripheral_info_->Set("uuids", std::move(out_uuids));
     }
   } else if (property_name == device->PairedName()) {
     if (step_ == TestStep::kMonitorPairedEvent) {
@@ -337,14 +346,18 @@ void BluetoothPairingRoutine::HandleError(brillo::Error* error) {
                        "Bluetooth routine failed to remove target peripheral.");
       break;
     case TestStep::kBasebandConnection:
-      if (error)
-        output_dict_.Set("connect_error", error->GetCode());
+      CHECK(pairing_peripheral_info_.has_value());
+      if (error) {
+        pairing_peripheral_info_->Set("connect_error", error->GetCode());
+      }
       SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kFailed,
                        kBluetoothRoutineFailedCreateBasebandConnection);
       break;
     case TestStep::kPairTargetDevice:
-      if (error)
-        output_dict_.Set("pair_error", error->GetCode());
+      CHECK(pairing_peripheral_info_.has_value());
+      if (error) {
+        pairing_peripheral_info_->Set("pair_error", error->GetCode());
+      }
       SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kFailed,
                        kBluetoothRoutineFailedFinishPairing);
       break;

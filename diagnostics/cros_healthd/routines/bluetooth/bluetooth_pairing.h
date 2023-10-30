@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_PAIRING_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_PAIRING_H_
 
+#include <optional>
 #include <string>
 
 #include <dbus/object_path.h>
@@ -88,9 +89,9 @@ class BluetoothPairingRoutine final : public DiagnosticRoutineWithStatus,
   const std::string peripheral_id_;
   // The device with certain peripheral ID.
   org::bluez::Device1ProxyInterface* target_device_ = nullptr;
-  // Details about the routine's execution. Reported in status updates when
-  // requested.
-  base::Value::Dict output_dict_;
+  // Info about the target peripheral, which will be null if the routine can
+  // not find the target device. Reported in status updates when requested.
+  std::optional<base::Value::Dict> pairing_peripheral_info_;
   // Must be the last class member.
   base::WeakPtrFactory<BluetoothPairingRoutine> weak_ptr_factory_{this};
 };

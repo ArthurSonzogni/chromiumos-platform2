@@ -192,26 +192,29 @@ class BluetoothPairingRoutineTest : public testing::Test {
   base::Value::Dict ConstructOutputDict(
       const brillo::Error* connect_error = nullptr,
       const brillo::Error* pair_error = nullptr) {
-    base::Value::Dict output_dict;
-    output_dict.Set("address_type", target_address_type_);
-    output_dict.Set("is_address_valid", true);
+    base::Value::Dict output_pairing_peripheral;
+    output_pairing_peripheral.Set("address_type", target_address_type_);
+    output_pairing_peripheral.Set("is_address_valid", true);
 
     if (target_bluetooth_class_.has_value()) {
-      output_dict.Set("bluetooth_class",
-                      base::NumberToString(target_bluetooth_class_.value()));
+      output_pairing_peripheral.Set(
+          "bluetooth_class",
+          base::NumberToString(target_bluetooth_class_.value()));
     }
     if (!target_uuids_.empty()) {
       base::Value::List out_uuids;
       for (const auto& uuid : target_uuids_)
         out_uuids.Append(uuid);
-      output_dict.Set("uuids", std::move(out_uuids));
+      output_pairing_peripheral.Set("uuids", std::move(out_uuids));
     }
 
     if (connect_error)
-      output_dict.Set("connect_error", connect_error->GetCode());
+      output_pairing_peripheral.Set("connect_error", connect_error->GetCode());
     if (pair_error)
-      output_dict.Set("pair_error", pair_error->GetCode());
+      output_pairing_peripheral.Set("pair_error", pair_error->GetCode());
 
+    base::Value::Dict output_dict;
+    output_dict.Set("pairing_peripheral", std::move(output_pairing_peripheral));
     return output_dict;
   }
 
