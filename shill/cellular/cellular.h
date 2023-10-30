@@ -174,9 +174,6 @@ class Cellular : public Device,
   void OnAfterResume() override;
   void UpdateGeolocationObjects(
       std::vector<GeolocationInfo>* geolocation_infos) const override;
-  // Overridden in cellular to destroy capability in addition to the regular
-  // disable functionality.
-  void SetEnabled(bool enable) override;
 
   // Network event handler
   void OnConnectionUpdated(int interface_index) override;
@@ -444,6 +441,7 @@ class Cellular : public Device,
   // the associated Service.
   void SetServiceForTesting(CellularServiceRefPtr service);
   void SetSelectedServiceForTesting(CellularServiceRefPtr service);
+
   void set_home_provider_for_testing(const Stringmap& home_provider) {
     home_provider_ = home_provider;
   }
@@ -452,10 +450,7 @@ class Cellular : public Device,
     mobile_operator_info_.reset(mobile_operator_info);
   }
   void clear_found_networks_for_testing() { found_networks_.clear(); }
-  CellularCapability3gpp* capability_for_testing() {
-    using_capability_for_testing_ = true;
-    return capability_.get();
-  }
+  CellularCapability3gpp* capability_for_testing() { return capability_.get(); }
   const KeyValueStores& sim_slot_info_for_testing() { return sim_slot_info_; }
   void set_modem_state_for_testing(ModemState state) { modem_state_ = state; }
   void set_eid_for_testing(const std::string& eid) { eid_ = eid; }
@@ -703,7 +698,6 @@ class Cellular : public Device,
   // Executed after the asynchronous CellularCapability3gpp::StartModem
   // call from OnAfterResume completes.
   static void LogRestartModemResult(const Error& error);
-  void HandleDisableResult(const Error& error);
 
   // Handler to reset qcom-q6v5-mss based modems
   bool ResetQ6V5Modem();
@@ -917,8 +911,6 @@ class Cellular : public Device,
   // ///////////////////////////////////////////////////////////////////////////
 
   std::unique_ptr<CellularCapability3gpp> capability_;
-  // When set in tests, capability is not destroyed on disable.
-  bool using_capability_for_testing_ = false;
   std::optional<InterfaceToProperties> initial_properties_;
   std::unique_ptr<CarrierEntitlement> carrier_entitlement_;
 
