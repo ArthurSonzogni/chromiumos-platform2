@@ -102,8 +102,7 @@ install_config("install_tmpfiles_config") {
 install_config("install_upstart_config") {
   sources = [
     "init/upstart/flex_disk_metrics.conf",
-    # TODO(b/305052945): install this file once the client is ready to ship.
-    # "init/upstart/flex_hwis.conf",
+    "init/upstart/flex_hwis.conf",
   ]
   install_path = "upstart"
 }
