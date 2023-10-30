@@ -576,7 +576,7 @@ bool DoCreateVaultKeyset(const std::string& auth_session_id_hex,
       request.set_public_key_spki_der(public_key_spki_der);
   } else {
     // Anything factor that isn't a challenge credntial has a passkey.
-    // Format passkey to match cryptohome.cc command line
+    // Format passkey to match cryptohome.cc command line.
     std::string trimmed_password;
     base::TrimString(raw_password, "/r/n", &trimmed_password);
     brillo::SecureBlob passkey;
