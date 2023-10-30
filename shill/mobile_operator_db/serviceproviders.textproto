@@ -948,6 +948,8 @@ mno {
       name: "Telstra"
     }
     mccmnc: "50501"
+    mccmnc: "50571"
+    mccmnc: "50572"
     mobile_apn {
       apn: "telstra.wap"
       ip_type: IPV6
@@ -962,25 +964,6 @@ mno {
       ip_type: IPV4V6
       type: DEFAULT
       type: IA
-    }
-  }
-}
-
-mno {
-  data {
-    uuid: "86a87384-21aa-48c4-9f6d-690c3943a4dc"
-    country: "au"
-    localized_name {
-      name: "Telstra"
-    }
-    mccmnc: "50571"
-    mccmnc: "50572"
-    mobile_apn {
-      apn: "telstra.lanes"
-      localized_name {
-        name: "Telstra LANES"
-      }
-      type: DEFAULT
     }
   }
 }
