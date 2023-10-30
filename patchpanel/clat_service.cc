@@ -195,9 +195,13 @@ void ClatService::StartClat(const ShillClient::Device& shill_device) {
     return;
   }
 
-  clat_ipv6_addr_ = AddressManager::GetRandomizedIPv6Address(
-                        shill_device.ipconfig.ipv6_cidr->GetPrefixCIDR())
-                        .address();
+  auto clat_ipv6_cidr = AddressManager::GetRandomizedIPv6Address(
+      shill_device.ipconfig.ipv6_cidr->GetPrefixCIDR());
+  if (!clat_ipv6_cidr) {
+    LOG(ERROR) << "Failed to get randomized IPv6 address from " << shill_device;
+    return;
+  }
+  clat_ipv6_addr_ = clat_ipv6_cidr->address();
 
   if (!CreateConfigFile(kTunnelDeviceIfName, clat_ipv6_addr_.value())) {
     LOG(ERROR) << "Failed to create " << kTaygaConfigFilePath;

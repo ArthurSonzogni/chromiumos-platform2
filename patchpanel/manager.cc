@@ -940,15 +940,21 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
     nsinfo.current_outbound_device = *current_outbound_device;
   }
   if (request.static_ipv6()) {
-    nsinfo.static_ipv6_config = StaticIPv6Config{};
     auto ipv6_subnet = addr_mgr_.AllocateIPv6Subnet();
-    nsinfo.static_ipv6_config->host_cidr =
-        addr_mgr_.GetRandomizedIPv6Address(ipv6_subnet);
-    do {
-      nsinfo.static_ipv6_config->peer_cidr =
-          addr_mgr_.GetRandomizedIPv6Address(ipv6_subnet);
-    } while (nsinfo.static_ipv6_config->peer_cidr ==
-             nsinfo.static_ipv6_config->host_cidr);
+    if (ipv6_subnet.prefix_length() >= 127) {
+      LOG(ERROR) << "Allocated IPv6 subnet must at least hold 2 addresses and "
+                    "1 base address, but got "
+                 << ipv6_subnet;
+    } else {
+      nsinfo.static_ipv6_config = StaticIPv6Config{};
+      nsinfo.static_ipv6_config->host_cidr =
+          *addr_mgr_.GetRandomizedIPv6Address(ipv6_subnet);
+      do {
+        nsinfo.static_ipv6_config->peer_cidr =
+            *addr_mgr_.GetRandomizedIPv6Address(ipv6_subnet);
+      } while (nsinfo.static_ipv6_config->peer_cidr ==
+               nsinfo.static_ipv6_config->host_cidr);
+    }
   }
 
   if (!datapath_->StartRoutingNamespace(nsinfo)) {

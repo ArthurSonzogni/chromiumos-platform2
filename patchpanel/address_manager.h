@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 
 #include <base/containers/flat_set.h>
 #include <base/functional/callback.h>
@@ -71,14 +72,14 @@ class BRILLO_EXPORT AddressManager {
   // Gets randomized IPv6 address inside |subnet|. Caller is responsible to
   // handle possible duplicated addresses. This method guarantess that the base
   // address of |subnet| is not returned.
-  static net_base::IPv6CIDR GetRandomizedIPv6Address(
+  static std::optional<net_base::IPv6CIDR> GetRandomizedIPv6Address(
       const net_base::IPv6CIDR& subnet);
 
   // Generates IPv6 subnet of |prefix_length| inside |net_block|. This method
   // guarantees that the subnet address created is not equal to the base
   // |net_block| address.
-  net_base::IPv6CIDR GenerateIPv6Subnet(const net_base::IPv6CIDR& net_block,
-                                        int prefix_length);
+  std::optional<net_base::IPv6CIDR> GenerateIPv6Subnet(
+      const net_base::IPv6CIDR& net_block, int prefix_length);
 
  private:
   MacAddressGenerator mac_addrs_;

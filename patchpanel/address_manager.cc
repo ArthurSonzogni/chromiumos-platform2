@@ -6,6 +6,7 @@
 
 #include <array>
 #include <climits>
+#include <optional>
 #include <vector>
 
 #include <base/containers/contains.h>
@@ -88,7 +89,7 @@ std::unique_ptr<Subnet> AddressManager::AllocateIPv4Subnet(GuestType guest,
 net_base::IPv6CIDR AddressManager::AllocateIPv6Subnet() {
   net_base::IPv6CIDR subnet;
   do {
-    subnet = GenerateIPv6Subnet(kULASubnet, kStaticIPv6PrefixLength);
+    subnet = *GenerateIPv6Subnet(kULASubnet, kStaticIPv6PrefixLength);
   } while (base::Contains(allocated_ipv6_subnets_, subnet));
   allocated_ipv6_subnets_.insert(subnet);
 
@@ -101,10 +102,14 @@ void AddressManager::ReleaseIPv6Subnet(const net_base::IPv6CIDR& subnet) {
   }
 }
 
-net_base::IPv6CIDR AddressManager::GetRandomizedIPv6Address(
+std::optional<net_base::IPv6CIDR> AddressManager::GetRandomizedIPv6Address(
     const net_base::IPv6CIDR& subnet) {
-  // |subnet| must at least holds 1 IPv6 address, excluding the base address.
-  DCHECK_LT(subnet.prefix_length(), 128);
+  if (subnet.prefix_length() >= 128) {
+    LOG(ERROR) << "Subnet must at least holds 1 IPv6 address, excluding the "
+                  "base address. Got "
+               << subnet;
+    return std::nullopt;
+  }
 
   net_base::IPv6Address::DataType addr = {};
   do {
@@ -117,14 +122,19 @@ net_base::IPv6CIDR AddressManager::GetRandomizedIPv6Address(
     }
   } while (net_base::IPv6Address(addr) == subnet.address());
 
-  return *net_base::IPv6CIDR::CreateFromAddressAndPrefix(
+  return net_base::IPv6CIDR::CreateFromAddressAndPrefix(
       net_base::IPv6Address(addr), subnet.prefix_length());
 }
 
-net_base::IPv6CIDR AddressManager::GenerateIPv6Subnet(
+std::optional<net_base::IPv6CIDR> AddressManager::GenerateIPv6Subnet(
     const net_base::IPv6CIDR& net_block, int prefix_length) {
   // Avoid invalid |net_block| and |prefix_length| combination.
-  DCHECK(prefix_length > net_block.prefix_length() && prefix_length <= 128);
+  if (prefix_length <= net_block.prefix_length() || prefix_length > 128) {
+    LOG(ERROR) << "Given prefix length " << prefix_length
+               << " must be less than network block prefix length "
+               << net_block.prefix_length();
+    return std::nullopt;
+  }
 
   // Generates randomized subnet that is not equal to the base |net_block|
   // address.

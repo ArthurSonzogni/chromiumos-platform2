@@ -97,10 +97,19 @@ TEST(AddressManager, GenerateIPv6Subnet) {
 
   AddressManager mgr;
   for (int i = net_block.prefix_length() + 1; i <= 128; ++i) {
-    auto subnet = mgr.GenerateIPv6Subnet(net_block, i);
+    auto subnet = *mgr.GenerateIPv6Subnet(net_block, i);
     EXPECT_EQ(subnet.prefix_length(), i);
     EXPECT_EQ(subnet, subnet.GetPrefixCIDR());
     EXPECT_TRUE(net_block.InSameSubnetWith(subnet.address()));
+  }
+}
+
+TEST(AddressManager, GenerateIPv6Subnet_Invalid) {
+  auto net_block = *net_base::IPv6CIDR::CreateFromStringAndPrefix("fd00::", 8);
+
+  AddressManager mgr;
+  for (int i = 0; i <= net_block.prefix_length(); ++i) {
+    EXPECT_FALSE(mgr.GenerateIPv6Subnet(net_block, i).has_value());
   }
 }
 
@@ -118,10 +127,16 @@ TEST(AddressManager, GetRandomizedIPv6Address) {
   AddressManager mgr;
   auto subnet = mgr.AllocateIPv6Subnet();
   for (int i = 0; i < 100; ++i) {
-    auto cidr = mgr.GetRandomizedIPv6Address(subnet);
+    auto cidr = *mgr.GetRandomizedIPv6Address(subnet);
     EXPECT_TRUE(subnet.InSameSubnetWith(cidr.address()));
     EXPECT_EQ(subnet.prefix_length(), cidr.prefix_length());
   }
+}
+
+TEST(AddressManager, GetRandomizedIPv6Address_Invalid) {
+  AddressManager mgr;
+  auto subnet = *net_base::IPv6CIDR::CreateFromStringAndPrefix("fd00::", 128);
+  EXPECT_FALSE(mgr.GetRandomizedIPv6Address(subnet).has_value());
 }
 
 }  // namespace patchpanel
