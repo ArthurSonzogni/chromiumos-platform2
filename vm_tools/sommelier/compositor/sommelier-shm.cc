@@ -5,6 +5,7 @@
 #include "../sommelier.h"          // NOLINT(build/include_directory)
 #include "../sommelier-tracing.h"  // NOLINT(build/include_directory)
 #include "../sommelier-util.h"     // NOLINT(build/include_directory)
+#include "sommelier-formats.h"     // NOLINT(build/include_directory)
 
 #include <assert.h>
 #include <stdlib.h>
@@ -27,101 +28,6 @@ struct sl_host_shm {
   struct wl_shm* shm_proxy;
   struct zwp_linux_dmabuf_v1* linux_dmabuf_proxy;
 };
-
-size_t sl_shm_bpp_for_shm_format(uint32_t format) {
-  switch (format) {
-    case WL_SHM_FORMAT_NV12:
-      return 1;
-    case WL_SHM_FORMAT_RGB565:
-      return 2;
-    case WL_SHM_FORMAT_ARGB8888:
-    case WL_SHM_FORMAT_ABGR8888:
-    case WL_SHM_FORMAT_XRGB8888:
-    case WL_SHM_FORMAT_XBGR8888:
-      return 4;
-  }
-  assert(0);
-  return 0;
-}
-
-size_t sl_shm_num_planes_for_shm_format(uint32_t format) {
-  switch (format) {
-    case WL_SHM_FORMAT_NV12:
-      return 2;
-    case WL_SHM_FORMAT_RGB565:
-    case WL_SHM_FORMAT_ARGB8888:
-    case WL_SHM_FORMAT_ABGR8888:
-    case WL_SHM_FORMAT_XRGB8888:
-    case WL_SHM_FORMAT_XBGR8888:
-      return 1;
-  }
-  assert(0);
-  return 0;
-}
-
-static size_t sl_y_subsampling_for_shm_format_plane(uint32_t format,
-                                                    size_t plane) {
-  switch (format) {
-    case WL_SHM_FORMAT_NV12: {
-      const size_t subsampling[] = {1, 2};
-
-      assert(plane < ARRAY_SIZE(subsampling));
-      return subsampling[plane];
-    }
-    case WL_SHM_FORMAT_RGB565:
-    case WL_SHM_FORMAT_ARGB8888:
-    case WL_SHM_FORMAT_ABGR8888:
-    case WL_SHM_FORMAT_XRGB8888:
-    case WL_SHM_FORMAT_XBGR8888:
-      return 1;
-  }
-  assert(0);
-  return 0;
-}
-
-static int sl_offset_for_shm_format_plane(uint32_t format,
-                                          size_t height,
-                                          size_t stride,
-                                          size_t plane) {
-  switch (format) {
-    case WL_SHM_FORMAT_NV12: {
-      const size_t offset[] = {0, 1};
-
-      assert(plane < ARRAY_SIZE(offset));
-      return offset[plane] * height * stride;
-    }
-    case WL_SHM_FORMAT_RGB565:
-    case WL_SHM_FORMAT_ARGB8888:
-    case WL_SHM_FORMAT_ABGR8888:
-    case WL_SHM_FORMAT_XRGB8888:
-    case WL_SHM_FORMAT_XBGR8888:
-      return 0;
-  }
-  assert(0);
-  return 0;
-}
-
-static size_t sl_size_for_shm_format_plane(uint32_t format,
-                                           size_t height,
-                                           size_t stride,
-                                           size_t plane) {
-  return height / sl_y_subsampling_for_shm_format_plane(format, plane) * stride;
-}
-
-static size_t sl_size_for_shm_format(uint32_t format,
-                                     size_t height,
-                                     size_t stride) {
-  size_t i, num_planes = sl_shm_num_planes_for_shm_format(format);
-  size_t total_size = 0;
-
-  for (i = 0; i < num_planes; ++i) {
-    size_t size = sl_size_for_shm_format_plane(format, height, stride, i);
-    size_t offset = sl_offset_for_shm_format_plane(format, height, stride, i);
-    total_size = MAX(total_size, size + offset);
-  }
-
-  return total_size;
-}
 
 static void sl_host_shm_pool_create_host_buffer(struct wl_client* client,
                                                 struct wl_resource* resource,
@@ -149,12 +55,11 @@ static void sl_host_shm_pool_create_host_buffer(struct wl_client* client,
 
   host_buffer->shm_format = format;
   host_buffer->shm_mmap = sl_mmap_create(
-      host->fd, sl_size_for_shm_format(format, height, stride),
-      sl_shm_bpp_for_shm_format(format),
-      sl_shm_num_planes_for_shm_format(format), offset, stride,
-      offset + sl_offset_for_shm_format_plane(format, height, stride, 1),
-      stride, sl_y_subsampling_for_shm_format_plane(format, 0),
-      sl_y_subsampling_for_shm_format_plane(format, 1));
+      host->fd, sl_shm_format_size(format, height, stride),
+      sl_shm_format_bpp(format), sl_shm_format_num_planes(format), offset,
+      stride, offset + sl_shm_format_plane_offset(format, 1, height, stride),
+      stride, sl_shm_format_plane_y_subsampling(format, 0),
+      sl_shm_format_plane_y_subsampling(format, 1));
   // In the case of mmaps created from the client buffer, we want to be able
   // to close the FD when the client releases the shm pool (i.e. when it's
   // done transferring) as opposed to when the pool is freed (i.e. when we're

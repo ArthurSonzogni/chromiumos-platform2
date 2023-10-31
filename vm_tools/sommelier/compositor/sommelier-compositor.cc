@@ -8,6 +8,7 @@
 #include "../sommelier-transform.h"  // NOLINT(build/include_directory)
 #include "../sommelier-xshape.h"     // NOLINT(build/include_directory)
 #include "sommelier-dmabuf-sync.h"   // NOLINT(build/include_directory)
+#include "sommelier-formats.h"       // NOLINT(build/include_directory)
 
 #include <assert.h>
 #include <errno.h>
@@ -158,6 +159,7 @@ static void sl_host_surface_attach(struct wl_client* client,
   // Transfer the flag and shape data over to the surface
   // if we are working on a shaped window
   if (window_shaped) {
+    assert(sl_shm_format_is_supported(host_buffer->shm_format));
     host->contents_shaped = true;
     pixman_region32_copy(&host->contents_shape, &window->shape_rectangles);
   } else {
@@ -196,8 +198,8 @@ static void sl_host_surface_attach(struct wl_client* client,
       size_t height = host_buffer->height;
       uint32_t shm_format =
           window_shaped ? WL_SHM_FORMAT_ARGB8888 : host_buffer->shm_format;
-      size_t bpp = sl_shm_bpp_for_shm_format(shm_format);
-      size_t num_planes = sl_shm_num_planes_for_shm_format(shm_format);
+      size_t bpp = sl_shm_format_bpp(shm_format);
+      size_t num_planes = sl_shm_format_num_planes(shm_format);
 
       host->current_buffer = new sl_output_buffer();
       wl_list_insert(&host->released_buffers, &host->current_buffer->link);
@@ -230,7 +232,7 @@ static void sl_host_surface_attach(struct wl_client* client,
 
         create_info.width = static_cast<__u32>(width);
         create_info.height = static_cast<__u32>(height);
-        create_info.drm_format = sl_drm_format_for_shm_format(shm_format);
+        create_info.drm_format = sl_shm_format_to_drm_format(shm_format);
 
         rv = host->ctx->channel->allocate(create_info, create_output);
         if (rv) {

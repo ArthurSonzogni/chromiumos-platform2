@@ -104,6 +104,7 @@ static_library("libsommelier") {
     "compositor/sommelier-compositor.cc",
     "compositor/sommelier-dmabuf-sync.cc",
     "compositor/sommelier-drm.cc",
+    "compositor/sommelier-formats.cc",
     "compositor/sommelier-linux-dmabuf.cc",
     "compositor/sommelier-mmap.cc",
     "compositor/sommelier-shm.cc",

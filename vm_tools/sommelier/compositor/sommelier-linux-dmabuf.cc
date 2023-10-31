@@ -8,6 +8,7 @@
 #include "../sommelier.h"  // NOLINT(build/include_directory)
 #include "../virtualization/linux-headers/virtgpu_drm.h"  // NOLINT(build/include_directory)
 #include "sommelier-dmabuf-sync.h"   // NOLINT(build/include_directory)
+#include "sommelier-formats.h"       // NOLINT(build/include_directory)
 #include "sommelier-linux-dmabuf.h"  // NOLINT(build/include_directory)
 
 #include "linux-dmabuf-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
@@ -25,7 +26,8 @@ struct sl_host_buffer* sl_linux_dmabuf_create_host_buffer(
   if (create_info->is_virtgpu_buffer) {
     host_buffer->sync_point = sl_sync_point_create(create_info->dmabuf_fd);
     host_buffer->sync_point->sync = sl_dmabuf_sync;
-    host_buffer->shm_format = sl_shm_format_for_drm_format(create_info->format);
+    host_buffer->shm_format =
+        sl_shm_format_from_drm_format(create_info->format);
 
     // Create our DRM PRIME mmap container
     // This is simply a container that records necessary information
@@ -40,11 +42,11 @@ struct sl_host_buffer* sl_linux_dmabuf_create_host_buffer(
     // We are also checking for a single plane format as this container
     // is currently only defined for single plane format buffers.
 
-    if (sl_shm_num_planes_for_shm_format(host_buffer->shm_format) == 1) {
+    if (sl_shm_format_num_planes(host_buffer->shm_format) == 1) {
       host_buffer->shm_mmap = sl_drm_prime_mmap_create(
           ctx->gbm, create_info->dmabuf_fd,
-          sl_shm_bpp_for_shm_format(host_buffer->shm_format),
-          sl_shm_num_planes_for_shm_format(host_buffer->shm_format),
+          sl_shm_format_bpp(host_buffer->shm_format),
+          sl_shm_format_num_planes(host_buffer->shm_format),
           create_info->stride, create_info->width, create_info->height,
           create_info->format);
 

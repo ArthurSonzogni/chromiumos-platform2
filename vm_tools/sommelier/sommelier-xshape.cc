@@ -5,9 +5,10 @@
 #include <assert.h>
 #include <pixman.h>
 
-#include "sommelier.h"          // NOLINT(build/include_directory)
-#include "sommelier-tracing.h"  // NOLINT(build/include_directory)
-#include "sommelier-xshape.h"   // NOLINT(build/include_directory)
+#include "compositor/sommelier-formats.h"  // NOLINT(build/include_directory)
+#include "sommelier.h"                     // NOLINT(build/include_directory)
+#include "sommelier-tracing.h"             // NOLINT(build/include_directory)
+#include "sommelier-xshape.h"              // NOLINT(build/include_directory)
 
 static void sl_clear_shape_region(sl_window* window) {
   window->shaped = false;
@@ -101,6 +102,7 @@ void sl_shape_query(struct sl_context* ctx, xcb_window_t xwindow) {
 }
 
 pixman_format_code_t sl_pixman_format_for_shm_format(uint32_t shm_format) {
+  assert(sl_shm_format_is_supported(shm_format));
   pixman_format_code_t fmt = PIXMAN_a1;
 
   switch (shm_format) {

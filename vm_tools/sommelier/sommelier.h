@@ -522,10 +522,6 @@ void sl_compositor_init_context(struct sl_context* ctx,
                                 uint32_t id,
                                 uint32_t version);
 
-size_t sl_shm_bpp_for_shm_format(uint32_t format);
-
-size_t sl_shm_num_planes_for_shm_format(uint32_t format);
-
 struct sl_global* sl_shm_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_subcompositor_global_create(struct sl_context* ctx);
@@ -631,9 +627,6 @@ void sl_create_window(struct sl_context* ctx,
 void sl_handle_client_message(struct sl_context* ctx,
                               xcb_client_message_event_t* event);
 void sl_handle_focus_in(struct sl_context* ctx, xcb_focus_in_event_t* event);
-
-uint32_t sl_drm_format_for_shm_format(int format);
-int sl_shm_format_for_drm_format(uint32_t drm_format);
 
 #ifdef GAMEPAD_SUPPORT
 void sl_gaming_seat_add_listener(struct sl_context* ctx);

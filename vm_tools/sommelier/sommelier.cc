@@ -107,44 +107,6 @@ int sl_open_wayland_socket(const char* socket_name,
                            int* lock_fd,
                            int* sock_fd);
 
-int sl_shm_format_for_drm_format(uint32_t drm_format) {
-  switch (drm_format) {
-    case WL_DRM_FORMAT_NV12:
-      return WL_SHM_FORMAT_NV12;
-    case WL_DRM_FORMAT_RGB565:
-      return WL_SHM_FORMAT_RGB565;
-    case WL_DRM_FORMAT_ARGB8888:
-      return WL_SHM_FORMAT_ARGB8888;
-    case WL_DRM_FORMAT_ABGR8888:
-      return WL_SHM_FORMAT_ABGR8888;
-    case WL_DRM_FORMAT_XRGB8888:
-      return WL_SHM_FORMAT_XRGB8888;
-    case WL_DRM_FORMAT_XBGR8888:
-      return WL_SHM_FORMAT_XBGR8888;
-  }
-  assert(0);
-  return 0;
-}
-
-uint32_t sl_drm_format_for_shm_format(int format) {
-  switch (format) {
-    case WL_SHM_FORMAT_NV12:
-      return WL_DRM_FORMAT_NV12;
-    case WL_SHM_FORMAT_RGB565:
-      return WL_DRM_FORMAT_RGB565;
-    case WL_SHM_FORMAT_ARGB8888:
-      return WL_DRM_FORMAT_ARGB8888;
-    case WL_SHM_FORMAT_ABGR8888:
-      return WL_DRM_FORMAT_ABGR8888;
-    case WL_SHM_FORMAT_XRGB8888:
-      return WL_DRM_FORMAT_XRGB8888;
-    case WL_SHM_FORMAT_XBGR8888:
-      return WL_DRM_FORMAT_XBGR8888;
-  }
-  assert(0);
-  return 0;
-}
-
 const char* net_wm_state_to_string(int i) {
   switch (i) {
     case NET_WM_STATE_REMOVE:
