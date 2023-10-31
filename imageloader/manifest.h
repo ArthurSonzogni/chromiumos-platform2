@@ -68,8 +68,6 @@ class BRILLO_EXPORT Manifest {
   bool mount_file_required() const { return mount_file_required_; }
   bool reserved() const { return reserved_; }
   bool critical_update() const { return critical_update_; }
-  const std::string& used_by() const { return used_by_; }
-  int64_t days_to_purge() const { return days_to_purge_; }
   const std::string& description() const { return description_; }
   const std::map<std::string, std::string> metadata() const {
     return metadata_;
@@ -100,8 +98,6 @@ class BRILLO_EXPORT Manifest {
   bool mount_file_required_ = false;
   bool reserved_ = false;
   bool critical_update_ = false;
-  std::string used_by_;
-  int64_t days_to_purge_ = 0;
   std::string description_;
   std::map<std::string, std::string> metadata_;
   bool use_logical_volume_ = false;

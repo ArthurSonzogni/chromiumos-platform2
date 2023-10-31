@@ -43,8 +43,6 @@ constexpr char kFactoryInstall[] = "factory-install";
 constexpr char kMountFileRequired[] = "mount-file-required";
 constexpr char kReserved[] = "reserved";
 constexpr char kCriticalUpdate[] = "critical-update";
-constexpr char kUsedBy[] = "used-by";
-constexpr char kDaysToPurge[] = "days-to-purge";
 constexpr char kDescription[] = "description";
 constexpr char kUseLogicalVolume[] = "use-logical-volume";
 constexpr char kScaled[] = "scaled";
@@ -131,8 +129,6 @@ bool Manifest::operator==(const Manifest& rhs) const {
       mount_file_required() == rhs.mount_file_required() &&
       reserved() == rhs.reserved() &&
       critical_update() == rhs.critical_update() &&
-      used_by() == rhs.used_by() &&
-      days_to_purge() == rhs.days_to_purge() &&
       description() == rhs.description() &&
       metadata() == rhs.metadata() &&
       use_logical_volume() == rhs.use_logical_volume() &&
@@ -263,16 +259,6 @@ bool Manifest::ParseManifest(const base::Value::Dict& manifest_dict) {
   const std::string* image_type = manifest_dict.FindString(kImageType);
   if (image_type)
     image_type_ = *image_type;
-  const std::string* used_by = manifest_dict.FindString(kUsedBy);
-  if (used_by)
-    used_by_ = *used_by;
-  const std::string* days_to_purge_str = manifest_dict.FindString(kDaysToPurge);
-  if (days_to_purge_str) {
-    if (!base::StringToInt64(*days_to_purge_str, &days_to_purge_)) {
-      LOG(ERROR) << "Days to purge is malformed: " << *days_to_purge_str;
-      return false;
-    }
-  }
   const std::string* description = manifest_dict.FindString(kDescription);
   if (description)
     description_ = *description;

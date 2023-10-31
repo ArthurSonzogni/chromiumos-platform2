@@ -31,8 +31,6 @@ TEST(ManifestTest, ParseManifest) {
   const std::string size = R"("42")";
   const std::string preload_allowed = "true";
   const std::string factory_install = "true";
-  const std::string used_by = R"("foo-user")";
-  const std::string days_to_purge = R"("3")";
   const std::string mount_file_required = "true";
   const std::string reserved = "true";
   const std::string critical_update = "true";
@@ -70,9 +68,6 @@ TEST(ManifestTest, ParseManifest) {
     "size":)" + size + R"(,
     "table-sha256-hash":)" + table_sha256_hash +
                                    R"(,
-    "used-by":)" + used_by + R"(,
-    "days-to-purge":)" + days_to_purge +
-                                   R"(,
     "version":)" + version + R"(,
     "use-logical-volume":)" + use_logical_volume +
                                    R"(,
@@ -100,8 +95,6 @@ TEST(ManifestTest, ParseManifest) {
   EXPECT_EQ(manifest.size(), 42);
   EXPECT_EQ(manifest.preload_allowed(), true);
   EXPECT_EQ(manifest.factory_install(), true);
-  EXPECT_EQ(manifest.used_by(), "foo-user");
-  EXPECT_EQ(manifest.days_to_purge(), 3);
   EXPECT_EQ(manifest.mount_file_required(), true);
   EXPECT_EQ(manifest.description(), "foo-description");
   EXPECT_EQ(manifest.reserved(), true);
@@ -146,8 +139,6 @@ TEST(ManifestTest, ParseManifestNoOptional) {
   EXPECT_EQ(manifest.manifest_version(), 1);
   EXPECT_EQ(manifest.preload_allowed(), false);
   EXPECT_EQ(manifest.factory_install(), false);
-  EXPECT_EQ(manifest.used_by(), "");
-  EXPECT_EQ(manifest.days_to_purge(), 0);
   EXPECT_EQ(manifest.description(), "");
   EXPECT_EQ(manifest.reserved(), false);
   EXPECT_EQ(manifest.critical_update(), false);
@@ -331,8 +322,6 @@ TEST(ManifestTest, ParseManifestValueDict) {
           .Set("size", "42")
           .Set("preload-allowed", true)
           .Set("factory-install", true)
-          .Set("used-by", "foo-user")
-          .Set("days-to-purge", "3")
           .Set("mount-file-required", true)
           .Set("reserved", true)
           .Set("critical-update", true)
@@ -359,8 +348,6 @@ TEST(ManifestTest, ParseManifestValueDict) {
   EXPECT_EQ(manifest.size(), 42);
   EXPECT_EQ(manifest.preload_allowed(), true);
   EXPECT_EQ(manifest.factory_install(), true);
-  EXPECT_EQ(manifest.used_by(), "foo-user");
-  EXPECT_EQ(manifest.days_to_purge(), 3);
   EXPECT_EQ(manifest.mount_file_required(), true);
   EXPECT_EQ(manifest.description(), "foo-description");
   EXPECT_EQ(manifest.reserved(), true);

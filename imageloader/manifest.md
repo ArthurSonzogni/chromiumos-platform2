@@ -27,8 +27,6 @@ the dlcservice daemon.
 - `mount-file-required`: File created for indirect access of mount path.
 - `reserved`: True if DLC image slots should always be reserved on disk.
 - `critical-update`:  True if DLC updates should always auto update with the OS.
-- `used-by`: Either "user" or "system" for DLC ref counting.
-- `days-to-purge`: Delay for cleaning up zero referenced DLC.
 - `description`: Human readable DLC description.
 - `metadata`: Expandable metadata.
 - `use-logical-volume`: True if DLC should use logical volumes.
