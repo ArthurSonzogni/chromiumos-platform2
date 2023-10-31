@@ -89,7 +89,7 @@ void MountHelper::CleanupMounts(const std::string& msg) {
   append_log.AddArg("--append_logfile");
   append_log.AddArg(tmpfiles.value());
   if (!append_log.Run()) {
-    PLOG(WARNING) << "clobber-log --append_logfile failed";
+    LOG(WARNING) << "clobber-log --append_logfile failed";
   }
 
   std::vector<std::string> crash_args{"--clobber_state"};

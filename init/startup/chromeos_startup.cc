@@ -826,7 +826,7 @@ int ChromeosStartup::Run() {
   crash_reporter.AddArg("/sbin/crash_reporter");
   crash_reporter.AddArg("--ephemeral_collect");
   if (crash_reporter.Run() != 0) {
-    PLOG(WARNING) << "Unable to collect early logs and crashes.";
+    LOG(WARNING) << "Unable to collect early logs and crashes.";
   }
 
   if (enable_stateful_security_hardening_) {

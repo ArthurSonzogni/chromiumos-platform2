@@ -119,7 +119,7 @@ bool Dumpe2fs(const base::FilePath& path,
     dump.RedirectUsingMemory(STDOUT_FILENO);
   }
   if (dump.Run() != 0) {
-    PLOG(WARNING) << "dumpe2fs failed";
+    LOG(WARNING) << "dumpe2fs failed";
     return false;
   }
   if (info) {
@@ -269,8 +269,12 @@ void StatefulMount::EnableExt4Features() {
     tune2fs.AddArg(state_dev_.value());
     tune2fs.RedirectOutputToMemory(true);
     int status = tune2fs.Run();
-    if (status != 0) {
-      PLOG(ERROR) << "tune2fs failed with status: " << status;
+    if (status == 0) {
+      return;
+    } else if (status < 0) {
+      PLOG(ERROR) << "Failed to run tune2fs";
+    } else {
+      LOG(WARNING) << "tune2fs returned non zero exit code: " << status;
     }
   }
 }

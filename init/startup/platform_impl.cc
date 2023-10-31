@@ -112,8 +112,12 @@ void Platform::BootAlert(const std::string& arg) {
   boot_alert.AddArg("/sbin/chromeos-boot-alert");
   boot_alert.AddArg(arg);
   int ret = boot_alert.Run();
-  if (ret != 0) {
-    PLOG(WARNING) << "chromeos-boot-alert failed with code " << ret;
+  if (ret == 0) {
+    return;
+  } else if (ret < 0) {
+    PLOG(ERROR) << "Failed to run chromeos-boot-alert";
+  } else {
+    LOG(WARNING) << "chromeos-boot-alert returned non zero exit code: " << ret;
   }
 }
 
@@ -185,8 +189,14 @@ void Platform::RemoveInBackground(const std::vector<base::FilePath>& paths) {
 void Platform::RunProcess(const base::FilePath& cmd_path) {
   brillo::ProcessImpl proc;
   proc.AddArg(cmd_path.value());
-  if (proc.Run() != 0) {
-    PLOG(WARNING) << "Failed to run " << cmd_path.value();
+  int res = proc.Run();
+  if (res == 0) {
+    return;
+  } else if (res < 0) {
+    PLOG(ERROR) << "Failed to run " << cmd_path.value();
+  } else {
+    LOG(WARNING) << "Process " << cmd_path.value()
+                 << " returned non zero exit code: " << res;
   }
 }
 
@@ -200,11 +210,14 @@ bool Platform::RunHiberman(const base::FilePath& output_file) {
   hiberman.AddArg("-v");
   hiberman.RedirectOutput(output_file);
   int ret = hiberman.Run();
-  if (ret != 0) {
-    PLOG(WARNING) << "hiberman failed with code " << ret;
+  if (ret == 0) {
+    return true;
+  } else if (ret < 0) {
+    PLOG(ERROR) << "Failed to run hiberman";
     return false;
   }
-  return true;
+  LOG(WARNING) << "hiberman returned non zero exit code: " << ret;
+  return false;
 }
 
 void Platform::AddClobberCrashReport(const std::vector<std::string> args) {
@@ -216,8 +229,11 @@ void Platform::AddClobberCrashReport(const std::vector<std::string> args) {
     crash.AddArg(arg);
   }
   int ret = crash.Run();
-  if (ret != 0) {
-    PLOG(WARNING) << "crash_reporter failed with code " << ret;
+  if (ret < 0) {
+    PLOG(ERROR) << "Failed to run crash_reporter";
+    return;
+  } else if (ret != 0) {
+    LOG(WARNING) << "crash_reporter returned non zero exit code: " << ret;
     return;
   }
 
@@ -252,8 +268,12 @@ void Platform::ReplayExt4Journal(const base::FilePath& dev) {
   e2fsck.AddArg("journal_only");
   e2fsck.AddArg(dev.value());
   int ret = e2fsck.Run();
-  if (ret != 0) {
-    PLOG(WARNING) << "e2fsck failed with code " << ret;
+  if (ret == 0) {
+    return;
+  } else if (ret < 0) {
+    PLOG(WARNING) << "Failed to run e2fsck";
+  } else {
+    LOG(WARNING) << "e2fsck returned non zero exit code: " << ret;
   }
 }
 
@@ -265,8 +285,12 @@ void Platform::ClobberLogRepair(const base::FilePath& dev,
   log_repair.AddArg(dev.value());
   log_repair.AddArg(msg);
   int status = log_repair.Run();
-  if (status != 0) {
-    PLOG(WARNING) << "Repairing clobber.log failed with code " << status;
+  if (status == 0) {
+    return;
+  } else if (status < 0) {
+    PLOG(WARNING) << "Failed to run clobber-log";
+  } else {
+    LOG(WARNING) << "clobber-log returned non zero exit code: " << status;
   }
 }
 
