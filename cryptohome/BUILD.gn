@@ -19,6 +19,7 @@ group("all") {
     ":homedirs_initializer",
     ":install_tmpfilesd",
     ":lockbox-cache",
+    ":lockbox-cache-manager",
     ":mount-encrypted",
     ":mount_encrypted_lib",
     ":stateful-recovery",
@@ -194,6 +195,28 @@ executable("lockbox-cache") {
     "libecryptfs",
     "libmetrics",
   ]
+}
+
+pkg_config("lockbox-cache-manager_config") {
+  pkg_deps = [
+    "libbrillo",
+    "libmetrics",
+  ]
+  libs = [ "hwsec-foundation" ]
+}
+
+executable("lockbox-cache-manager") {
+  sources = [
+    "lockbox-cache-manager/lockbox-cache-manager-main.cc",
+    "lockbox-cache-manager/lockbox-cache-manager.cc",
+    "lockbox-cache-manager/metrics.cc",
+    "lockbox-cache-manager/platform.cc",
+  ]
+  configs += [
+    ":target_defaults",
+    ":lockbox-cache-manager_config",
+  ]
+  install_path = "sbin"
 }
 
 static_library("mount_encrypted_lib") {
