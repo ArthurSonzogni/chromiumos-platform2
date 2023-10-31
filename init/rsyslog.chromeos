@@ -43,6 +43,7 @@ if (($programname == 'charon') or \
     ($programname == 'nss-get-cert') or \
     ($programname == 'openvpn') or \
     ($programname == 'openvpn-script') or \
+    ($programname == 'patchpanel_bpf_loader') or \
     ($programname == 'patchpaneld') or \
     ($programname == 'pppd') or \
     ($programname == 'pseudomodem') or \
@@ -63,6 +64,7 @@ if (($programname == 'charon') or \
     ($programname == 'nss-get-cert') or \
     ($programname == 'openvpn') or \
     ($programname == 'openvpn-script') or \
+    ($programname == 'patchpanel_bpf_loader') or \
     ($programname == 'patchpaneld') or \
     ($programname == 'pppd') or \
     ($programname == 'pseudomodem') or \

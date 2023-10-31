@@ -31,6 +31,7 @@ executable("patchpanel_bpf_loader") {
   cflags = [ "-Wconversion" ]
   pkg_deps = [
     "libbpf",
+    "libbrillo",
     "libchrome",
   ]
   install_path = "bin"

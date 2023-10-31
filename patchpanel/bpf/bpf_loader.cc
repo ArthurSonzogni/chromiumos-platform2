@@ -15,6 +15,7 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/version.h>
+#include <brillo/syslog_logging.h>
 
 #include "patchpanel/bpf/constants.h"
 
@@ -163,5 +164,6 @@ bool LoadBPF() {
 //   can umount and remove that folder explicitly to force a reload.
 // - Only run on supported kernel versions.
 int main() {
+  brillo::InitLog(brillo::kLogToSyslog);
   return patchpanel::LoadBPF() ? 0 : 1;
 }
