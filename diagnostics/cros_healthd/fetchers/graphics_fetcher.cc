@@ -29,12 +29,12 @@ std::unique_ptr<EglManager> EglManager::Create() {
   // (*1): For example, Asurada uses mali driver, and they don't support v1.5
   // EGL API at this moment. Asking them to upgrade their driver needs a long
   // time to go. Hence, we decide to use an USE flag to unblock this case.
-#if defined(USE_MESA_REVEN)
-  egl_manager->egl_display_ = eglGetPlatformDisplay(
-      EGL_PLATFORM_SURFACELESS_MESA, EGL_DEFAULT_DISPLAY, nullptr);
-#else
-  egl_manager->egl_display_ = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-#endif
+  if (USE_MESA_REVEN) {
+    egl_manager->egl_display_ = eglGetPlatformDisplay(
+        EGL_PLATFORM_SURFACELESS_MESA, EGL_DEFAULT_DISPLAY, nullptr);
+  } else {
+    egl_manager->egl_display_ = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+  }
   if (eglInitialize(egl_manager->egl_display_, /*major=*/nullptr,
                     /*minor=*/nullptr) != EGL_TRUE) {
     return nullptr;

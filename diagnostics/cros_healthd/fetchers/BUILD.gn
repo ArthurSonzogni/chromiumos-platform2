@@ -6,9 +6,7 @@ import("//common-mk/pkg_config.gni")
 
 # Library that provides fetchers used by cros_healthd.
 pkg_config("libcros_healthd_fetchers_pkg_deps") {
-  if (defined(use.mesa_reven)) {
-    defines = [ "USE_MESA_REVEN=${use.mesa_reven}" ]
-  }
+  defines = [ "USE_MESA_REVEN=${use.mesa_reven}" ]
 
   pkg_deps = [
     "dbus-1",
