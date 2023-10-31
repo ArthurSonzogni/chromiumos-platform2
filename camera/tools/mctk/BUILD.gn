@@ -1,0 +1,51 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("all") {
+  deps = [ ":mctk" ]
+}
+
+executable("mctk") {
+  sources = [
+    "//camera/tools/mctk/control_from_kernel.cc",
+    "//camera/tools/mctk/control_from_yaml.cc",
+    "//camera/tools/mctk/control_helpers.cc",
+    "//camera/tools/mctk/control_setters.cc",
+    "//camera/tools/mctk/entity.cc",
+    "//camera/tools/mctk/entity_from_kernel.cc",
+    "//camera/tools/mctk/entity_from_yaml.cc",
+    "//camera/tools/mctk/entity_setters.cc",
+    "//camera/tools/mctk/link_from_yaml.cc",
+    "//camera/tools/mctk/link_getters.cc",
+    "//camera/tools/mctk/link_setters.cc",
+    "//camera/tools/mctk/main.cc",
+    "//camera/tools/mctk/mcdev.cc",
+    "//camera/tools/mctk/mcdev_from_kernel.cc",
+    "//camera/tools/mctk/mcdev_from_yaml.cc",
+    "//camera/tools/mctk/mcdev_to_yaml_file.cc",
+    "//camera/tools/mctk/merge.cc",
+    "//camera/tools/mctk/pad.cc",
+    "//camera/tools/mctk/pad_from_kernel.cc",
+    "//camera/tools/mctk/pad_from_yaml.cc",
+    "//camera/tools/mctk/pad_setters.cc",
+    "//camera/tools/mctk/remap.cc",
+    "//camera/tools/mctk/remap_from_yaml.cc",
+    "//camera/tools/mctk/routing.cc",
+    "//camera/tools/mctk/selection.cc",
+    "//camera/tools/mctk/yaml_empty.cc",
+    "//camera/tools/mctk/yaml_map.cc",
+    "//camera/tools/mctk/yaml_node.cc",
+    "//camera/tools/mctk/yaml_node_from_file.cc",
+    "//camera/tools/mctk/yaml_node_from_parser.cc",
+    "//camera/tools/mctk/yaml_node_lookup.cc",
+    "//camera/tools/mctk/yaml_node_read.cc",
+    "//camera/tools/mctk/yaml_node_to_file.cc",
+    "//camera/tools/mctk/yaml_node_v4l_parsers.cc",
+    "//camera/tools/mctk/yaml_scalar.cc",
+    "//camera/tools/mctk/yaml_sequence.cc",
+  ]
+  configs += [ "//camera/build:cros_camera_common" ]
+  install_path = "bin"
+  pkg_deps = [ "yaml-0.1" ]
+}
