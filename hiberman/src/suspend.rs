@@ -198,7 +198,9 @@ impl SuspendConductor<'_> {
             !self.options.dry_run,
         );
 
-        self.record_total_resume_time();
+        if result.is_ok() {
+            self.record_total_resume_time();
+        }
 
         // Read the metrics files and send out the samples.
         read_and_send_metrics();
