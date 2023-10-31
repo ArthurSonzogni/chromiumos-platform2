@@ -42,12 +42,6 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
 
   scoped_refptr<base::SingleThreadTaskRunner> GetIpcTaskRunner() override;
 
-  void RegisterServer(
-      mojo::PendingRemote<mojom::CameraHalServer> server,
-      mojom::CameraHalDispatcher::RegisterServerWithTokenCallback
-          on_construct_callback,
-      Callback on_error_callback) override;
-
   mojo::Remote<mojom::CameraAlgorithmOps> CreateCameraAlgorithmOpsRemote(
       const std::string& socket_path, const std::string& pipe_name) override;
 
@@ -76,50 +70,13 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
 
  private:
   class MojoServiceManagerObserverImpl;
-  template <typename T, typename ConstructCallbackType>
-  struct PendingMojoTask {
-    T pendingReceiverOrRemote;
-    ConstructCallbackType on_construct_callback;
-    Callback on_error_callback;
-  };
-
-  using ServerPendingMojoTask = PendingMojoTask<
-      mojo::PendingRemote<mojom::CameraHalServer>,
-      mojom::CameraHalDispatcher::RegisterServerWithTokenCallback>;
-
-  template <typename T>
-  using JpegPendingMojoTask = PendingMojoTask<T, Callback>;
-
-  void TryConnectToDispatcher();
-
-  void TryConsumePendingMojoTasks();
 
   void TearDownMojoEnvOnIpcThread();
-
-  // Reset the dispatcher.
-  void ResetDispatcherPtr();
 
   chromeos::mojo_service_manager::mojom::ServiceManager*
   GetServiceManagerProxy();
 
-  void RegisterServiceToMojoServiceManagerOnIpcThread(
-      const std::string& service_name,
-      mojo::PendingRemote<
-          chromeos::mojo_service_manager::mojom::ServiceProvider> remote);
-
-  // The Mojo channel to CameraHalDispatcher in Chrome. All the Mojo
-  // communication to |dispatcher_| happens on |ipc_thread_|.
-  mojo::Remote<mojom::CameraHalDispatcher> dispatcher_;
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
-
-  // Watches for change events on the unix domain socket file created by Chrome.
-  // Upon file change OnSocketFileStatusChange will be called to initiate
-  // connection to CameraHalDispatcher.
-  base::FilePathWatcher watcher_;
-
-  // Pending Mojo tasks information which should be consumed when the
-  // |dispatcher_| is connected.
-  ServerPendingMojoTask camera_hal_server_task_;
 
   // TODO(b/151270948): Remove this static variable once we implemnet CrOS
   // specific interface on all camera HALs.

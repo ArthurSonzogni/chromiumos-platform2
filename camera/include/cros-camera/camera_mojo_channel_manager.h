@@ -59,17 +59,6 @@ class CROS_CAMERA_EXPORT CameraMojoChannelManager
   // Gets the task runner that the CameraHalDispatcher interface is bound to.
   virtual scoped_refptr<base::SingleThreadTaskRunner> GetIpcTaskRunner() = 0;
 
-  // Registers the camera HAL server pointer |hal_ptr| to the
-  // CameraHalDispatcher.
-  // This method is expected to be called on the IPC thread and the
-  // |on_construct_callback| and |on_error_callback| will be run on the IPC
-  // thread as well.
-  virtual void RegisterServer(
-      mojo::PendingRemote<mojom::CameraHalServer> server,
-      mojom::CameraHalDispatcher::RegisterServerWithTokenCallback
-          on_construct_callback,
-      Callback on_error_callback) = 0;
-
   // Create a new CameraAlgorithmOps remote.
   virtual mojo::Remote<mojom::CameraAlgorithmOps>
   CreateCameraAlgorithmOpsRemote(const std::string& socket_path,

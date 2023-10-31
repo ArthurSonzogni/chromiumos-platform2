@@ -28,22 +28,6 @@
 
 namespace cros {
 
-namespace {
-
-constexpr char kServerTokenPath[] = "/run/camera_tokens/server/token";
-
-std::optional<base::UnguessableToken> ReadToken(std::string path) {
-  base::FilePath token_path(path);
-  std::string token_string;
-  if (!base::ReadFileToString(token_path, &token_string)) {
-    LOGF(ERROR) << "Failed to read server token";
-    return std::nullopt;
-  }
-  return cros::TokenFromString(token_string);
-}
-
-}  // namespace
-
 using chromeos::mojo_service_manager::mojom::ErrorOrServiceState;
 using chromeos::mojo_service_manager::mojom::ServiceState;
 
@@ -172,11 +156,6 @@ CameraMojoChannelManagerImpl::CameraMojoChannelManagerImpl()
   mojo::core::Init();
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
       GetIpcTaskRunner(), mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
-
-  GetIpcTaskRunner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&CameraMojoChannelManagerImpl::TryConnectToDispatcher,
-                     base::Unretained(this)));
 }
 
 CameraMojoChannelManagerImpl::~CameraMojoChannelManagerImpl() {
@@ -207,23 +186,6 @@ scoped_refptr<base::SingleThreadTaskRunner>
 CameraMojoChannelManagerImpl::GetIpcTaskRunner() {
   CHECK(ipc_thread_.task_runner());
   return ipc_thread_.task_runner();
-}
-
-void CameraMojoChannelManagerImpl::RegisterServer(
-    mojo::PendingRemote<mojom::CameraHalServer> server,
-    mojom::CameraHalDispatcher::RegisterServerWithTokenCallback
-        on_construct_callback,
-    Callback on_error_callback) {
-  DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
-
-  camera_hal_server_task_ = {
-      .pendingReceiverOrRemote = std::move(server),
-      .on_construct_callback = std::move(on_construct_callback),
-      .on_error_callback = std::move(on_error_callback)};
-  GetIpcTaskRunner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&CameraMojoChannelManagerImpl::TryConnectToDispatcher,
-                     base::Unretained(this)));
 }
 
 mojo::Remote<mojom::CameraAlgorithmOps>
@@ -264,61 +226,9 @@ void CameraMojoChannelManagerImpl::RequestServiceFromMojoServiceManager(
                                     std::move(receiver));
 }
 
-void CameraMojoChannelManagerImpl::TryConnectToDispatcher() {
-  DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
-
-  if (dispatcher_.is_bound()) {
-    TryConsumePendingMojoTasks();
-    return;
-  }
-
-  RequestServiceFromMojoServiceManager(
-      /*service_name=*/chromeos::mojo_services::kCrosCameraHalDispatcher,
-      dispatcher_.BindNewPipeAndPassReceiver().PassPipe());
-
-  dispatcher_.set_disconnect_handler(
-      base::BindOnce(&CameraMojoChannelManagerImpl::ResetDispatcherPtr,
-                     base::Unretained(this)));
-  TryConsumePendingMojoTasks();
-}
-
-void CameraMojoChannelManagerImpl::TryConsumePendingMojoTasks() {
-  DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
-
-  if (camera_hal_server_task_.pendingReceiverOrRemote) {
-    auto server_token = ReadToken(kServerTokenPath);
-    if (!server_token.has_value()) {
-      LOGF(ERROR) << "Failed to read server token";
-      std::move(camera_hal_server_task_.on_construct_callback)
-          .Run(-EPERM, mojo::NullRemote());
-    } else {
-      auto token = mojo_base::mojom::UnguessableToken::New();
-      token->high = server_token->GetHighForSerialization();
-      token->low = server_token->GetLowForSerialization();
-      dispatcher_->RegisterServerWithToken(
-          std::move(camera_hal_server_task_.pendingReceiverOrRemote),
-          std::move(token),
-          std::move(camera_hal_server_task_.on_construct_callback));
-    }
-  }
-}
-
 void CameraMojoChannelManagerImpl::TearDownMojoEnvOnIpcThread() {
   DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
-
-  ResetDispatcherPtr();
   ipc_support_.reset();
-}
-
-void CameraMojoChannelManagerImpl::ResetDispatcherPtr() {
-  DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
-
-  if (camera_hal_server_task_.on_error_callback) {
-    std::move(camera_hal_server_task_.on_error_callback).Run();
-    camera_hal_server_task_ = {};
-  }
-
-  dispatcher_.reset();
 }
 
 chromeos::mojo_service_manager::mojom::ServiceManager*
@@ -335,18 +245,6 @@ void CameraMojoChannelManagerImpl::RegisterServiceToMojoServiceManager(
     const std::string& service_name,
     mojo::PendingRemote<chromeos::mojo_service_manager::mojom::ServiceProvider>
         remote) {
-  GetIpcTaskRunner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&CameraMojoChannelManagerImpl::
-                         RegisterServiceToMojoServiceManagerOnIpcThread,
-                     base::Unretained(this), service_name, std::move(remote)));
-}
-
-void CameraMojoChannelManagerImpl::
-    RegisterServiceToMojoServiceManagerOnIpcThread(
-        const std::string& service_name,
-        mojo::PendingRemote<
-            chromeos::mojo_service_manager::mojom::ServiceProvider> remote) {
   DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
   GetServiceManagerProxy()->Register(service_name, std::move(remote));
 }
