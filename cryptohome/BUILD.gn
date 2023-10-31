@@ -36,6 +36,7 @@ group("all") {
       ":cryptohome_testrunner",
       ":error_location_check",
       ":fake_platform_unittest",
+      ":lockbox-cache-manager_testrunner",
       ":mount_encrypted_unittests",
       ":stateful_recovery_unittests",
     ]
@@ -351,6 +352,30 @@ if (use.test) {
       "libuser_data_auth-client",
       "libuser_data_auth-client-test",
     ]
+  }
+
+  pkg_config("lockbox-cache-manager_testrunner_config") {
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
+      "libmetrics",
+    ]
+    libs = [ "hwsec-foundation" ]
+  }
+  executable("lockbox-cache-manager_testrunner") {
+    sources = [
+      "lockbox-cache-manager/lockbox-cache-manager.cc",
+      "lockbox-cache-manager/lockbox-cache-manager_test.cc",
+      "lockbox-cache-manager/lockbox-cache-manager_testrunner.cc",
+      "lockbox-cache-manager/metrics.cc",
+      "lockbox-cache-manager/platform.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":lockbox-cache-manager_testrunner_config",
+      ":target_defaults",
+    ]
+    run_test = true
   }
 
   executable("cryptohome_testrunner") {
