@@ -12,14 +12,14 @@ use tempfile::TempDir;
 
 pub enum FsType {
     EXT4,
-    FAT32,
+    VFAT,
 }
 
 impl fmt::Display for FsType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::EXT4 => f.write_str("ext4"),
-            Self::FAT32 => f.write_str("fat32"),
+            Self::VFAT => f.write_str("vfat"),
         }
     }
 }
@@ -37,7 +37,7 @@ impl Mount {
         let data: Option<&Path> = None;
 
         info!(
-            "Mounting {} to {}",
+            "Mounting {} to {}; fs type is: {fs_type}",
             path.as_ref().display(),
             tempdir.path().display()
         );
