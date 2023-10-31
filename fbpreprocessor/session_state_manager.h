@@ -5,23 +5,15 @@
 #ifndef FBPREPROCESSOR_SESSION_STATE_MANAGER_H_
 #define FBPREPROCESSOR_SESSION_STATE_MANAGER_H_
 
+#include <memory>
 #include <string>
 #include <utility>
 
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
-#include <dbus/object_proxy.h>
+#include <session_manager/dbus-proxies.h>
 
 namespace fbpreprocessor {
-
-namespace dbus_constants {
-inline constexpr char kSessionStateStarted[] = "started";
-inline constexpr char kSessionStateStopped[] = "stopped";
-inline constexpr char kDBusErrorNoReply[] =
-    "org.freedesktop.DBus.Error.NoReply";
-inline constexpr char kDBusErrorServiceUnknown[] =
-    "org.freedesktop.DBus.Error.ServiceUnknown";
-}  // namespace dbus_constants
 
 class SessionStateManagerInterface {
  public:
@@ -59,7 +51,7 @@ class SessionStateManager : public SessionStateManagerInterface {
   bool RefreshPrimaryUser();
 
  private:
-  void OnSessionStateChanged(dbus::Signal* signal);
+  void OnSessionStateChanged(const std::string& state);
 
   // Query session manager for the current primary user. Returns std::nullopt
   // when there was an error while getting primary user.
@@ -79,7 +71,8 @@ class SessionStateManager : public SessionStateManagerInterface {
                          bool success);
 
   // Proxy for dbus communication with session manager / login.
-  scoped_refptr<dbus::ObjectProxy> session_manager_proxy_;
+  std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
+      session_manager_proxy_;
 
   // Username of the primary user. Empty if no primary user present.
   std::string primary_user_;

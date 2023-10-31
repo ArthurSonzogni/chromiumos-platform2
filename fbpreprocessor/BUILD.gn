@@ -28,6 +28,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libfeatures",
+    "libsession_manager-client",
     "protobuf",
     "system_api",
   ]

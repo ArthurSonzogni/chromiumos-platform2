@@ -8,46 +8,37 @@
 #include <string>
 #include <utility>
 
-#include <base/check.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
-#include <base/types/expected.h>
 #include <dbus/bus.h>
-#include <dbus/error.h>
-#include <dbus/login_manager/dbus-constants.h>
-#include <dbus/message.h>
-#include <dbus/object_proxy.h>
+#include <session_manager/dbus-proxies.h>
 
 #include "fbpreprocessor/storage.h"
 
+namespace {
+constexpr char kSessionStateStarted[] = "started";
+constexpr char kSessionStateStopped[] = "stopped";
+}  // namespace
+
 namespace fbpreprocessor {
 
-SessionStateManager::SessionStateManager(dbus::Bus* bus) {
-  session_manager_proxy_ = bus->GetObjectProxy(
-      login_manager::kSessionManagerServiceName,
-      dbus::ObjectPath(login_manager::kSessionManagerServicePath));
-
-  session_manager_proxy_->ConnectToSignal(
-      login_manager::kSessionManagerInterface,
-      login_manager::kSessionStateChangedSignal,
+SessionStateManager::SessionStateManager(dbus::Bus* bus)
+    : session_manager_proxy_(
+          std::make_unique<org::chromium::SessionManagerInterfaceProxy>(bus)) {
+  session_manager_proxy_->RegisterSessionStateChangedSignalHandler(
       base::BindRepeating(&SessionStateManager::OnSessionStateChanged,
                           weak_factory.GetWeakPtr()),
       base::BindOnce(&SessionStateManager::OnSignalConnected,
                      weak_factory.GetWeakPtr()));
 }
 
-void SessionStateManager::OnSessionStateChanged(dbus::Signal* signal) {
-  CHECK(signal != nullptr) << "Invalid OnSessionStateChanged signal.";
-  dbus::MessageReader signal_reader(signal);
-  std::string state;
-
-  CHECK(signal_reader.PopString(&state));
+void SessionStateManager::OnSessionStateChanged(const std::string& state) {
   LOG(INFO) << "Session state changed to " << state;
 
-  if (state == dbus_constants::kSessionStateStarted) {
+  if (state == kSessionStateStarted) {
     if (!primary_user_hash_.empty()) {
       LOG(INFO) << "Primary user already exists. Not updating primary user.";
       return;
@@ -58,7 +49,7 @@ void SessionStateManager::OnSessionStateChanged(dbus::Signal* signal) {
         observer.OnUserLoggedIn(primary_user_hash_);
       }
     }
-  } else if (state == dbus_constants::kSessionStateStopped) {
+  } else if (state == kSessionStateStopped) {
     primary_user_hash_.clear();
     for (auto& observer : observers_) {
       observer.OnUserLoggedOut();
@@ -76,54 +67,16 @@ void SessionStateManager::RemoveObserver(Observer* observer) {
 
 std::optional<std::pair<std::string, std::string>>
 SessionStateManager::RetrievePrimaryUser() {
-  dbus::Error error;
-  std::string sanitized_username;
-
-  dbus::MethodCall method_call(
-      login_manager::kSessionManagerInterface,
-      login_manager::kSessionManagerRetrievePrimarySession);
-
-  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> dbus_response =
-      session_manager_proxy_->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-
-  if (!dbus_response.has_value()) {
-    dbus::Error error = std::move(dbus_response.error());
-    if (error.IsValid()) {
-      std::string error_name = error.name();
-      LOG(ERROR) << "Calling "
-                 << login_manager::kSessionManagerRetrievePrimarySession
-                 << " from " << login_manager::kSessionManagerInterface
-                 << " interface finished with " << error_name << " error.";
-
-      if (error_name == dbus_constants::kDBusErrorNoReply) {
-        LOG(ERROR) << "Timeout while getting primary session.";
-      } else if (error_name == dbus_constants::kDBusErrorServiceUnknown) {
-        LOG(ERROR) << "Can't find " << login_manager::kSessionManagerServiceName
-                   << " service. Maybe session_manager is not running?";
-      } else {
-        LOG(ERROR) << "Error details: " << error.message();
-      }
-      return std::nullopt;
-    }
-  }
-
-  std::unique_ptr<dbus::Response> response = std::move(dbus_response.value());
-  if (!response.get()) {
-    LOG(ERROR) << "Cannot retrieve username for primary session.";
-    return std::nullopt;
-  }
-
-  dbus::MessageReader response_reader(response.get());
+  brillo::ErrorPtr error;
   std::string username;
-  if (!response_reader.PopString(&username)) {
-    LOG(ERROR) << "Primary session username bad format.";
+  std::string sanitized_username;
+  if (!session_manager_proxy_->RetrievePrimarySession(
+          &username, &sanitized_username, &error) ||
+      error.get()) {
+    LOG(ERROR) << "Failed to retrieve primary session: " << error->GetMessage();
     return std::nullopt;
   }
-  if (!response_reader.PopString(&sanitized_username)) {
-    LOG(ERROR) << "Primary session sanitized username bad format.";
-    return std::nullopt;
-  }
+
   return std::make_pair(username, sanitized_username);
 }
 
