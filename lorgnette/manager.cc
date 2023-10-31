@@ -325,6 +325,7 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
     }
     *response.add_scanners() = std::move(scanner);
   }
+  response.set_result(OperationResult::OPERATION_RESULT_SUCCESS);
 
   if (!activity_callback_.is_null())
     activity_callback_.Run(Daemon::kNormalShutdownTimeout);
