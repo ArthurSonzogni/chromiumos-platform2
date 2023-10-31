@@ -430,6 +430,10 @@ std::string RTNLMessage::RdnssOption::ToString() const {
   return base::StringPrintf("RdnssOption lifetime %d", lifetime);
 }
 
+std::string RTNLMessage::DnsslOption::ToString() const {
+  return base::StringPrintf("DnsslOption lifetime %d", lifetime);
+}
+
 std::string RTNLMessage::NdUserOption::ToString() const {
   return base::StringPrintf("NdUserOption type %u", type);
 }
@@ -711,12 +715,12 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
   std::unique_ptr<RTNLMessage> msg;
   switch (nd_user_option_header->type) {
     case ND_OPT_DNSSL: {
-      // TODO(b/172214013): Parse DNSSL (DNS Search List) option.
-      msg = std::make_unique<RTNLMessage>(
-          kTypeDnssl, mode, hdr->hdr.nlmsg_flags, hdr->hdr.nlmsg_seq,
-          hdr->hdr.nlmsg_pid, interface_index, family);
-      msg->SetNdUserOptionBytes(
-          reinterpret_cast<const uint8_t*>(nd_user_option_header), opt_len);
+      msg = std::make_unique<RTNLMessage>(kTypeDnssl, mode, 0, 0, 0,
+                                          interface_index, family);
+      if (!msg->ParseDnsslOption(option_data, data_len, lifetime)) {
+        LOG(ERROR) << "Invalid DNSSL RTNL packet.";
+        return nullptr;
+      }
       return msg;
     }
     case ND_OPT_RDNSS: {
@@ -741,6 +745,35 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
 void RTNLMessage::SetNdUserOptionBytes(const uint8_t* data, size_t length) {
   nd_user_option_.option_bytes.assign(data, data + length);
   nd_user_option_.type = *data;
+}
+
+bool RTNLMessage::ParseDnsslOption(const uint8_t* data,
+                                   size_t length,
+                                   uint32_t lifetime) {
+  // Section 3.1 of RFC1035.
+  std::vector<std::string> domains;
+  std::vector<std::string_view> tokens;
+  for (size_t offset = 0; offset < length;) {
+    const uint8_t token_size = data[offset];
+    if (offset + token_size >= length) {
+      return false;
+    }
+    if (token_size > 0) {
+      tokens.push_back(std::string_view(
+          reinterpret_cast<const char*>(data) + offset + 1,
+          reinterpret_cast<const char*>(data) + offset + 1 + token_size));
+    } else if (!tokens.empty()) {
+      domains.push_back(base::JoinString(tokens, "."));
+      tokens.clear();
+    }
+    offset += (token_size + 1);
+  }
+  if (!tokens.empty()) {
+    domains.push_back(base::JoinString(tokens, "."));
+  }
+  dnssl_option_.domains = std::move(domains);
+  dnssl_option_.lifetime = lifetime;
+  return true;
 }
 
 bool RTNLMessage::ParseRdnssOption(const uint8_t* data,
@@ -1165,6 +1198,8 @@ std::string RTNLMessage::ToString() const {
       details = rdnss_option_.ToString();
       break;
     case RTNLMessage::kTypeDnssl:
+      details = dnssl_option_.ToString();
+      break;
     case RTNLMessage::kTypeNdUserOption:
       details = nd_user_option_.ToString();
       break;

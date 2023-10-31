@@ -147,6 +147,13 @@ class NET_BASE_EXPORT RTNLMessage {
     std::vector<net_base::IPv6Address> addresses;
   };
 
+  struct DnsslOption {
+    DnsslOption() = default;
+    std::string ToString() const;
+    uint32_t lifetime;
+    std::vector<std::string> domains;
+  };
+
   struct NdUserOption {
     NdUserOption() = default;
     std::string ToString() const;
@@ -203,6 +210,10 @@ class NET_BASE_EXPORT RTNLMessage {
   const RdnssOption& rdnss_option() const { return rdnss_option_; }
   void set_rdnss_option(const RdnssOption& rdnss_option) {
     rdnss_option_ = rdnss_option;
+  }
+  const DnsslOption& dnssl_option() const { return dnssl_option_; }
+  void set_dnssl_option(const DnsslOption& dnssl_option) {
+    dnssl_option_ = dnssl_option;
   }
   const NdUserOption& nd_user_option() const { return nd_user_option_; }
   const NeighborStatus& neighbor_status() const { return neighbor_status_; }
@@ -294,6 +305,7 @@ class NET_BASE_EXPORT RTNLMessage {
                                                      const RTNLHeader* hdr);
 
   void SetNdUserOptionBytes(const uint8_t* data, size_t length);
+  bool ParseDnsslOption(const uint8_t* data, size_t length, uint32_t lifetime);
   bool ParseRdnssOption(const uint8_t* data, size_t length, uint32_t lifetime);
   bool EncodeLink(RTNLHeader* hdr) const;
   bool EncodeAddress(RTNLHeader* hdr) const;
@@ -325,6 +337,7 @@ class NET_BASE_EXPORT RTNLMessage {
   RouteStatus route_status_;
   NeighborStatus neighbor_status_;
   RdnssOption rdnss_option_;
+  DnsslOption dnssl_option_;
   NdUserOption nd_user_option_;
   // Additional rtattr contained in the message.
   RTNLAttrMap attributes_;
