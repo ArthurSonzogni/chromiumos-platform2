@@ -11,6 +11,7 @@
 
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
+#include <bindings/cloud_policy.pb.h>
 #include <session_manager/dbus-proxies.h>
 
 namespace fbpreprocessor {
@@ -50,6 +51,10 @@ class SessionStateManager : public SessionStateManagerInterface {
   void RemoveObserver(Observer* observer) override;
   bool RefreshPrimaryUser();
 
+  // Returns true if the user is allowed to include firmware dumps in feedback
+  // reports, false otherwise.
+  bool FirmwareDumpsAllowedByPolicy();
+
  private:
   void OnSessionStateChanged(const std::string& state);
 
@@ -62,6 +67,19 @@ class SessionStateManager : public SessionStateManagerInterface {
   // Updates primary user internally.
   bool UpdatePrimaryUser();
 
+  // Query session manager to know all the sessions that are currently active.
+  // We keep track of the number of active sessions to ensure that only the
+  // primary user is logged in.
+  bool UpdateActiveSessions();
+
+  // Retrieve the value of the UserFeedbackWithLowLevelDebugDataAllowed policy.
+  bool UpdatePolicy();
+
+  // Utility method that resets the relevant members that hold the state of
+  // logged in users/sessions when the state changes, for example when users log
+  // out.
+  void ResetPrimaryUser();
+
   // Create directories in the daemon-store where the input and output files
   // will live.
   bool CreateUserDirectories();
@@ -69,6 +87,10 @@ class SessionStateManager : public SessionStateManagerInterface {
   void OnSignalConnected(const std::string& interface_name,
                          const std::string& signal_name,
                          bool success);
+
+  // Returns true if the primary user is in the allowlist of domains or users
+  // who are allowed to include firmware dumps in feedback reports.
+  bool PrimaryUserInAllowlist();
 
   // Proxy for dbus communication with session manager / login.
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
@@ -81,6 +103,16 @@ class SessionStateManager : public SessionStateManagerInterface {
   // /run/daemon-store/fbpreprocessord/${primary_user_hash_}.
   // Empty if no primary user present.
   std::string primary_user_hash_;
+
+  // Number of concurrently active sessions. Includes incognito sessions. If
+  // more than 1 session is active, do not allow adding firmware dumps to
+  // feedback reports.
+  int active_sessions_num_;
+
+  // When the user logs in, we retrieve the policy and use this field to track
+  // if the UserFeedbackWithLowLevelDebugDataAllowed policy allows us to
+  // process firmware dumps.
+  bool fw_dumps_allowed_by_policy_;
 
   // List of SessionStateManager observers
   base::ObserverList<Observer>::Unchecked observers_;

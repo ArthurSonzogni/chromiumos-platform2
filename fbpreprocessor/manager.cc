@@ -40,4 +40,17 @@ void Manager::Start(dbus::Bus* bus) {
 
 Manager::~Manager() = default;
 
+bool Manager::FirmwareDumpsAllowed() {
+  if (session_state_manager_.get() == nullptr) {
+    LOG(ERROR) << "SessionStateManager not instantiated.";
+    return false;
+  }
+  if (platform_features_.get() == nullptr) {
+    LOG(ERROR) << "PlatformFeaturesClient not instantiated.";
+    return false;
+  }
+  return session_state_manager_->FirmwareDumpsAllowedByPolicy() &&
+         platform_features_->FirmwareDumpsAllowedByFinch();
+}
+
 }  // namespace fbpreprocessor

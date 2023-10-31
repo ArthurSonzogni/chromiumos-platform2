@@ -73,9 +73,9 @@ void OutputManager::OnFeatureChanged(bool allowed) {
 }
 
 void OutputManager::AddFirmwareDump(const FirmwareDump& fw_dump) {
-  if (!manager_->platform_features()->FirmwareDumpsAllowed()) {
-    // The value of the Finch flag may have been changed during the
-    // pseudonymization process, delete the files here.
+  if (!manager_->FirmwareDumpsAllowed()) {
+    // The value of the Finch flag or the policy may have been changed during
+    // the pseudonymization process, delete the files here.
     LOG(INFO) << "Feature disabled, deleting firmware dump.";
     DeleteFirmwareDump(fw_dump);
     return;
@@ -90,7 +90,7 @@ void OutputManager::AddFirmwareDump(const FirmwareDump& fw_dump) {
 
 std::forward_list<FirmwareDump> OutputManager::AvailableDumps() {
   std::forward_list<FirmwareDump> dumps;
-  if (!manager_->platform_features()->FirmwareDumpsAllowed()) {
+  if (!manager_->FirmwareDumpsAllowed()) {
     return dumps;
   }
   files_lock_.Acquire();

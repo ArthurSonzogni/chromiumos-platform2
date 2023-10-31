@@ -62,6 +62,8 @@ static_library("libfbpreprocessord") {
   deps = [
     ":fbpreprocessor-dbus-adaptors",
     ":fbpreprocessor-proto",
+    "//common-mk/external_dependencies:policy-protos",
+    "//common-mk/external_dependencies:user_policy-protos",
   ]
 }
 

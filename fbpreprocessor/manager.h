@@ -26,6 +26,10 @@ class Manager {
 
   void Start(dbus::Bus* bus);
 
+  // Is the user allowed to add firmware dumps to feedback reports? This will
+  // return false if any condition (Finch, policy, allowlist, etc.) is not met.
+  bool FirmwareDumpsAllowed();
+
   SessionStateManager* session_state_manager() const {
     return session_state_manager_.get();
   }
