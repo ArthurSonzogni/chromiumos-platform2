@@ -101,8 +101,17 @@ std::unique_ptr<BaseRoutineControl> RoutineService::CreateRoutineControl(
     case mojom::RoutineArgument::Tag::kBluetoothDiscovery:
       return std::make_unique<BluetoothDiscoveryRoutineV2>(
           context_, std::move(routine_arg->get_bluetooth_discovery()));
-    case mojom::RoutineArgument::Tag::kFan:
-      return std::make_unique<FanRoutine>(context_, routine_arg->get_fan());
+    case mojom::RoutineArgument::Tag::kFan: {
+      auto routine = FanRoutine::Create(context_, routine_arg->get_fan());
+      if (routine.has_value()) {
+        return std::move(routine.value());
+      }
+      routine_receiver.ResetWithReason(
+          static_cast<uint32_t>(mojom::Exception::Reason::kUnsupported),
+          routine.error());
+
+      return nullptr;
+    }
     case mojom::RoutineArgument::Tag::kBluetoothScanning: {
       auto routine = BluetoothScanningRoutineV2::Create(
           context_, routine_arg->get_bluetooth_scanning());

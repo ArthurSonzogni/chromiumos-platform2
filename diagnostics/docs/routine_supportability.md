@@ -164,7 +164,7 @@ Supported only when ChromeOS uses Floss as Bluetooth stack.
 
 ### Fan
 
-Supported when `fan-count` is not set, or is set and have a non-zero value.
+Supported when `fan-count` is set and is a non-zero value.
 
 You can run the following commands on your DUT:
 1. `cros_config /hardware-properties fan-count` This is helpful to understand

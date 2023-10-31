@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_FAN_FAN_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_FAN_FAN_H_
 
+#include <memory>
 #include <optional>
 #include <set>
 #include <string>
@@ -21,8 +22,9 @@ namespace diagnostics {
 
 class FanRoutine final : public BaseRoutineControl {
  public:
-  FanRoutine(Context* context,
-             const ash::cros_healthd::mojom::FanRoutineArgumentPtr& arg);
+  static base::expected<std::unique_ptr<FanRoutine>, std::string> Create(
+      Context* context,
+      const ash::cros_healthd::mojom::FanRoutineArgumentPtr& arg);
   FanRoutine(const FanRoutine&) = delete;
   FanRoutine& operator=(const FanRoutine&) = delete;
   ~FanRoutine() override;
@@ -43,11 +45,18 @@ class FanRoutine final : public BaseRoutineControl {
   inline static constexpr base::TimeDelta kFanRoutineUpdatePeriod =
       base::Seconds(1);
 
+ protected:
+  explicit FanRoutine(
+      Context* context,
+      const ash::cros_healthd::mojom::FanRoutineArgumentPtr& arg);
+
  private:
   // An enum to describe what stage the fan routine is currently in.
   enum class Stage {
-    // The initial stage, where the routine attempt to set the fan speed to be
-    // higher than the original values.
+    // The Initial stage.
+    kInitialize,
+    // The first stage after starting to run, where the routine attempt to set
+    // the fan speed to be higher than the original values.
     kSetIncrease,
     // The routine attempt to verify whether a higher fan speed is actually
     // achieved.
@@ -59,6 +68,9 @@ class FanRoutine final : public BaseRoutineControl {
     // achieved.
     kVerifyDecrease,
   };
+
+  // Get the expected fan count from cros config.
+  static std::optional<uint8_t> GetExpectedFanCount(Context* context);
 
   // The |Run| function is added to the memory cpu resource queue as a callback
   // and will be called when resource is available.
@@ -89,14 +101,12 @@ class FanRoutine final : public BaseRoutineControl {
   // Enter the finish state and return the result.
   void TerminateFanRoutine();
 
-  std::optional<uint8_t> GetExpectedFanCount();
-
   ash::cros_healthd::mojom::HardwarePresenceStatus CheckFanCount();
 
   // Context object used to communicate with the executor.
   Context* context_;
   // Records the current stage of the fan routine execution.
-  Stage stage_;
+  Stage stage_ = Stage::kInitialize;
   // Records how many times the fan speed has been verified at each stage.
   int verify_count_;
   // A callback that should be run regardless of the execution status. This

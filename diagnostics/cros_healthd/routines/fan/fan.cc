@@ -30,6 +30,22 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 }  // namespace
 
+base::expected<std::unique_ptr<FanRoutine>, std::string> FanRoutine::Create(
+    Context* context, const mojom::FanRoutineArgumentPtr& arg) {
+  CHECK(!arg.is_null());
+
+  auto expected_fan_count = GetExpectedFanCount(context);
+  if (!expected_fan_count.has_value()) {
+    return base::unexpected("cros config fan count must be a valid number");
+  }
+
+  if (expected_fan_count.value() == 0) {
+    return base::unexpected("routine unsupported for device with no fan");
+  }
+
+  return base::ok(base::WrapUnique(new FanRoutine(context, arg)));
+}
+
 FanRoutine::FanRoutine(Context* context,
                        const mojom::FanRoutineArgumentPtr& arg)
     : context_(context) {
@@ -39,6 +55,7 @@ FanRoutine::FanRoutine(Context* context,
 FanRoutine::~FanRoutine() = default;
 
 void FanRoutine::OnStart() {
+  CHECK(stage_ == Stage::kInitialize);
   SetWaitingState(mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled,
                   "Waiting for memory and CPU resource");
   // We should not run the fan diag alongside any memory or cpu intensive
@@ -91,6 +108,11 @@ void FanRoutine::HandleGetFanSpeed(const std::vector<uint16_t>& fan_speed,
   }
 
   switch (stage_) {
+    case Stage::kInitialize: {
+      LOG(ERROR) << "Routine should not be in initialized after run";
+      RaiseException("Invalid routine stage");
+      return;
+    }
     case Stage::kSetIncrease: {
       base::flat_map<uint8_t, uint16_t> set_fan_rpm = {};
       SetPercentage(10);
@@ -205,8 +227,8 @@ void FanRoutine::HandleSetFanSpeed(const std::optional<std::string>& error) {
   DelayGetFanSpeed();
 }
 
-std::optional<uint8_t> FanRoutine::GetExpectedFanCount() {
-  GroundTruth ground_truth = GroundTruth{context_};
+std::optional<uint8_t> FanRoutine::GetExpectedFanCount(Context* context) {
+  GroundTruth ground_truth = GroundTruth{context};
   uint32_t fan_count;
   if (!base::StringToUint(ground_truth.FanCount(), &fan_count)) {
     return std::nullopt;
@@ -215,7 +237,7 @@ std::optional<uint8_t> FanRoutine::GetExpectedFanCount() {
 }
 
 mojom::HardwarePresenceStatus FanRoutine::CheckFanCount() {
-  auto expected_fan_count = GetExpectedFanCount();
+  auto expected_fan_count = GetExpectedFanCount(context_);
   auto actual_fan_count = original_fan_speed_.size();
 
   if (!expected_fan_count.has_value()) {
