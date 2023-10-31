@@ -89,11 +89,16 @@ message ScannerInfo {
 
   // MIME types that can be returned from this scanner.
   repeated string image_format = 8;
+
+  // A suggested string for displaying to the user.
+  string display_name = 9;
 }
 
 // Information returned from a ListScanners dbus request.
 message ListScannersResponse {
   repeated ScannerInfo scanners = 1;
+
+  OperationResult result = 2;
 }
 
 // Information returned from a GetScannerCapabilities dbus request.
