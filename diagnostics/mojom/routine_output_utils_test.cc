@@ -159,5 +159,20 @@ TEST(RoutineOutputUtilsTest, ParseUfsLifetimeDetail) {
   EXPECT_EQ(ParseUfsLifetimeDetail(detail), expected_result);
 }
 
+TEST(RoutineOutputUtilsTest, ParseFanDetail) {
+  auto detail = mojom::FanRoutineDetail::New();
+  detail->passed_fan_ids = {0, 2};
+  detail->failed_fan_ids = {1, 3};
+  detail->fan_count_status = mojom::HardwarePresenceStatus::kMatched;
+
+  base::Value::Dict expected_result;
+  expected_result.Set("passed_fan_ids",
+                      base::Value::List().Append(0).Append(2));
+  expected_result.Set("failed_fan_ids",
+                      base::Value::List().Append(1).Append(3));
+  expected_result.Set("fan_count_status", "Matched");
+  EXPECT_EQ(ParseFanDetail(detail), expected_result);
+}
+
 }  // namespace
 }  // namespace diagnostics
