@@ -55,7 +55,8 @@ available:
 :   Force O_DIRECT on all virtio-blk devices.
 
 `O_DIRECT_N=N`
-:   Force O_DIRECT on Nth virtio-blk device. N starts from 0.
+:   Force O_DIRECT on Nth virtio-blk device. N starts from 0. For example,
+    `O_DIRECT_N=0` for turning on O_DIRECT on system.img on ARCVM.
 
 `BLOCK_MULTIPLE_WORKERS=true`
 :   Enable multiple worker threads on all virtio-blk devices.
