@@ -1,3 +1,1 @@
-jintaolin@chromium.org
-matthewmwang@chromium.org
-norvez@chromium.org
+include chromiumos/owners:v1:/wifi/OWNERS.shill
