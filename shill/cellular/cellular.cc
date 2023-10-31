@@ -525,6 +525,12 @@ void Cellular::StopStep(EnabledStateChangedCallback callback,
   DCHECK(stop_step_.has_value());
   switch (stop_step_.value()) {
     case StopSteps::kStopModem:
+
+      // Destroy any cellular services regardless of any errors that occur
+      // during the stop process since we do not know the state of the modem at
+      // this point.
+      DestroyAllServices();
+
       if (capability_) {
         LOG(INFO) << LoggingTag() << ": " << __func__ << ": Calling StopModem.";
         SetState(State::kModemStopping);
@@ -545,11 +551,6 @@ void Cellular::StopStep(EnabledStateChangedCallback callback,
       // this device using the old IP, we need to make sure that we prevent
       // further packets from going out.
       DestroySockets();
-
-      // Destroy any cellular services regardless of any errors that occur
-      // during the stop process since we do not know the state of the modem at
-      // this point.
-      DestroyAllServices();
 
       // In case no termination action was executed (and
       // TerminationActionComplete was not invoked) in response to a suspend

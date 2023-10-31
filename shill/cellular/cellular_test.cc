@@ -1107,14 +1107,12 @@ TEST_F(CellularTest, StopModemCallback) {
   SetMockService();
   CallStopModemCallback(Error(Error::kSuccess));
   EXPECT_EQ(device_->state(), Cellular::State::kDisabled);
-  EXPECT_EQ(device_->service(), nullptr);
 }
 
 TEST_F(CellularTest, StopModemCallbackFail) {
   SetMockService();
   CallStopModemCallback(Error(Error::kOperationFailed));
   EXPECT_EQ(device_->state(), Cellular::State::kDisabled);
-  EXPECT_EQ(device_->service(), nullptr);
 }
 
 TEST_F(CellularTest, SetPolicyAllowRoaming) {
