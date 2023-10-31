@@ -93,6 +93,7 @@ if (use.test) {
       "libchrome-test",
     ]
     deps = [
+      ":bootlockbox-adaptors",
       ":libnvram-boot-lockbox",
       "//common-mk/testrunner",
     ]
