@@ -43,6 +43,12 @@ const char kUdevSubsystemDevCoredump[] = "devcoredump";
 const char kUdevTouchscreenTrackpadExecName[] = "udev-i2c-atmel_mxt_ts";
 const char kUdevUsbExecName[] = "udev-usb";
 
+// Udev constants
+const char kUdevSubsystem[] = "SUBSYSTEM";
+const char kUdevKernelNumber[] = "KERNEL_NUMBER";
+const char kUdevAction[] = "ACTION";
+const char kUdevDriver[] = "DRIVER";
+const char kUdevKernel[] = "KERNEL";
 }  // namespace
 
 UdevCollector::UdevCollector(
@@ -57,12 +63,13 @@ UdevCollector::~UdevCollector() {}
 bool UdevCollector::IsSafeDevCoredump(
     std::map<std::string, std::string> udev_event_map) {
   // Is it a device coredump?
-  if (udev_event_map["SUBSYSTEM"] != kUdevSubsystemDevCoredump)
+  if (udev_event_map[kUdevSubsystem] != kUdevSubsystemDevCoredump)
     return false;
 
   int instance_number;
-  if (!base::StringToInt(udev_event_map["KERNEL_NUMBER"], &instance_number)) {
-    LOG(ERROR) << "Invalid kernel number: " << udev_event_map["KERNEL_NUMBER"];
+  if (!base::StringToInt(udev_event_map[kUdevKernelNumber], &instance_number)) {
+    LOG(ERROR) << "Invalid kernel number: "
+               << udev_event_map[kUdevKernelNumber];
     return false;
   }
 
@@ -108,7 +115,7 @@ bool UdevCollector::HandleCrash(const std::string& udev_event) {
 
   FilePath coredump_path = FilePath(
       base::StringPrintf("%s/devcd%s/data", dev_coredump_directory_.c_str(),
-                         udev_event_map["KERNEL_NUMBER"].c_str()));
+                         udev_event_map[kUdevKernelNumber].c_str()));
 
   if (bluetooth_util::IsCoredumpEnabled() &&
       bluetooth_util::IsBluetoothCoredump(coredump_path)) {
@@ -117,7 +124,7 @@ bool UdevCollector::HandleCrash(const std::string& udev_event) {
     LOG(INFO) << "Safe device coredumps are always processed";
   } else if (util::IsDeveloperImage()) {
     LOG(INFO) << "developer image - collect udev crash info.";
-  } else if (udev_event_map["SUBSYSTEM"] == kUdevSubsystemDevCoredump) {
+  } else if (udev_event_map[kUdevSubsystem] == kUdevSubsystemDevCoredump) {
     LOG(INFO) << "Device coredumps are not processed on non-developer images.";
     // Clear devcoredump memory before returning.
     ClearDevCoredump(coredump_path);
@@ -133,19 +140,20 @@ bool UdevCollector::HandleCrash(const std::string& udev_event) {
     return false;
   }
 
-  if (udev_event_map["SUBSYSTEM"] == kUdevSubsystemDevCoredump) {
+  if (udev_event_map[kUdevSubsystem] == kUdevSubsystemDevCoredump) {
     int instance_number;
-    if (!base::StringToInt(udev_event_map["KERNEL_NUMBER"], &instance_number)) {
+    if (!base::StringToInt(udev_event_map[kUdevKernelNumber],
+                           &instance_number)) {
       LOG(ERROR) << "Invalid kernel number: "
-                 << udev_event_map["KERNEL_NUMBER"];
+                 << udev_event_map[kUdevKernelNumber];
       return false;
     }
     return ProcessDevCoredump(crash_directory, instance_number);
   }
 
-  return ProcessUdevCrashLogs(crash_directory, udev_event_map["ACTION"],
-                              udev_event_map["KERNEL"],
-                              udev_event_map["SUBSYSTEM"]);
+  return ProcessUdevCrashLogs(crash_directory, udev_event_map[kUdevAction],
+                              udev_event_map[kUdevKernel],
+                              udev_event_map[kUdevSubsystem]);
 }
 
 bool UdevCollector::ProcessUdevCrashLogs(const FilePath& crash_directory,
@@ -329,7 +337,7 @@ std::string UdevCollector::ExtractFailingDeviceDriverName(
   std::vector<std::pair<std::string, std::string>> uevent_keyval;
   base::SplitStringIntoKeyValuePairs(uevent_content, '=', '\n', &uevent_keyval);
   for (const auto& key_value : uevent_keyval) {
-    if (key_value.first == "DRIVER") {
+    if (key_value.first == kUdevDriver) {
       return key_value.second;
     }
   }
