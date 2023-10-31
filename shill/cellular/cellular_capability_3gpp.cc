@@ -1190,7 +1190,9 @@ void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(
     properties->Set<uint32_t>(CellularBearer::kMMIpTypeProperty,
                               IpTypeToMMBearerIpFamily(kApnIpTypeV4));
   }
-  if (cellular()->GetForceInitEpsBearerSettings()) {
+  /* Force initial EPS bearer settings is currently only required for FM101
+   * MR2 firmware. Hence setting it only for FM101 to limit the impact */
+  if (cellular()->GetForceInitEpsBearerSettings() && IsModemFM101()) {
     properties->Set<bool>(CellularBearer::kMMForceProperty, true);
   }
 }
