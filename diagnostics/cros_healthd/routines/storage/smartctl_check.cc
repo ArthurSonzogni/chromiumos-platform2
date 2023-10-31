@@ -6,6 +6,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/base64.h>
@@ -14,7 +15,6 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <debugd/dbus-proxies.h>
 #include <re2/re2.h>
@@ -55,18 +55,17 @@ bool ScrapeSmartctlAttributes(const std::string& output,
   base::SplitStringIntoKeyValuePairs(output, ':', '\n', &pairs);
   for (const auto& pair : pairs) {
     const std::string& key = pair.first;
-    const base::StringPiece& value_str =
+    std::string_view value_str =
         base::TrimWhitespaceASCII(pair.second, base::TRIM_ALL);
     if (key == "Available Spare") {
-      found_available_spare |= RE2::FullMatch(
-          std::string(value_str), kPercentStringRegex, available_spare);
+      found_available_spare |=
+          RE2::FullMatch(value_str, kPercentStringRegex, available_spare);
     } else if (key == "Available Spare Threshold") {
-      found_available_spare_threshold |=
-          RE2::FullMatch(std::string(value_str), kPercentStringRegex,
-                         available_spare_threshold);
+      found_available_spare_threshold |= RE2::FullMatch(
+          value_str, kPercentStringRegex, available_spare_threshold);
     } else if (key == "Percentage Used") {
-      found_percentage_used |= RE2::FullMatch(
-          std::string(value_str), kPercentStringRegex, percentage_used);
+      found_percentage_used |=
+          RE2::FullMatch(value_str, kPercentStringRegex, percentage_used);
     } else if (key == "Critical Warning") {
       found_critical_warning |=
           base::HexStringToInt(value_str, critical_warning);
