@@ -50,6 +50,7 @@ void SaneClientFake::AddDevice(const std::string& name,
   info.set_type(type);
   info.set_connection_type(ConnectionTypeForScanner(info));
   info.set_secure(info.connection_type() == lorgnette::CONNECTION_USB);
+  info.set_display_name(DisplayNameForScanner(info));
   scanners_.push_back(info);
 }
 

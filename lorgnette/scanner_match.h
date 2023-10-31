@@ -32,6 +32,9 @@ bool DuplicateScannerExists(const std::string& scanner_name,
 // SANE connection string.
 lorgnette::ConnectionType ConnectionTypeForScanner(const ScannerInfo& scanner);
 
+// Create a human-readable display name from the info in `scanner`.
+std::string DisplayNameForScanner(const ScannerInfo& scanner);
+
 }  // namespace lorgnette
 
 #endif  // LORGNETTE_SCANNER_MATCH_H_

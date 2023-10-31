@@ -4,13 +4,15 @@
 
 #include "lorgnette/usb/usb_device.h"
 
+#include <cstdint>
+
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <libusb.h>
-#include <cstdint>
 
 #include "lorgnette/ippusb_device.h"
+#include "lorgnette/scanner_match.h"
 
 namespace lorgnette {
 
@@ -113,6 +115,7 @@ std::optional<ScannerInfo> UsbDevice::IppUsbScannerInfo() {
   info.set_type(kScannerTypeMFP);  // Printer that can scan == MFP.
   info.set_connection_type(lorgnette::CONNECTION_USB);
   info.set_secure(true);
+  info.set_display_name(DisplayNameForScanner(info));
   return info;
 }
 

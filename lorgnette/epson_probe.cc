@@ -23,6 +23,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "lorgnette/firewall_manager.h"
+#include "lorgnette/scanner_match.h"
 
 namespace lorgnette {
 
@@ -176,6 +177,7 @@ static std::vector<ScannerInfo> SendProbeAndListen(uint16_t probe_socket) {
         info.set_type(kScannerTypeFlatbed);
         info.set_connection_type(lorgnette::CONNECTION_NETWORK);
         info.set_secure(false);
+        info.set_display_name(DisplayNameForScanner(info));
         scanners.push_back(info);
       } else {
         LOG(INFO) << "Not adding device " << device_name << "; already in list";

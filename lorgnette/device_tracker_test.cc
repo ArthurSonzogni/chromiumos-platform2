@@ -302,10 +302,10 @@ TEST(DeviceTrackerTest, CompleteDiscoverySession) {
 
   sane_client->SetListDevicesResult(true);
   // Duplicates of eSCL over ippusb that are filtered out.
-  sane_client->AddDevice("pixma:12344321_12AF", "GoogleTest",
+  sane_client->AddDevice("pixma:04a94321_12AF", "GoogleTest",
                          "eSCL Scanner 3001", "eSCL");
   auto pixma_scanner = std::make_unique<SaneDeviceFake>();
-  sane_client->SetDeviceForName("pixma:12344321_12AF",
+  sane_client->SetDeviceForName("pixma:04A94321_12AF",
                                 std::move(pixma_scanner));
   sane_client->AddDevice("epson2:libusb:001:001", "GoogleTest",
                          "eSCL Scanner 3002", "eSCL");
@@ -313,14 +313,14 @@ TEST(DeviceTrackerTest, CompleteDiscoverySession) {
   sane_client->SetDeviceForName("epson2:libusb:001:001",
                                 std::move(epson2_scanner));
 
-  // Unique device without ippusb support that is added during SANE probing.
+  // Unique USB device without ippusb support that is added during SANE probing.
   sane_client->AddDevice("epsonds:libusb:001:002", "GoogleTest",
                          "SANE Scanner 4000", "USB");
   auto epsonds_scanner = std::make_unique<SaneDeviceFake>();
   sane_client->SetDeviceForName("epsonds:libusb:001:002",
                                 std::move(epsonds_scanner));
 
-  // Unique network device that is added during SANE probing.
+  // Unique non-eSCL network device that is added during SANE probing.
   sane_client->AddDevice("epson2:net:127.0.0.1", "GoogleTest",
                          "GoogleTest SANE NetScan 4200", "Network");
   auto epson2_netscan = std::make_unique<SaneDeviceFake>();
@@ -374,15 +374,18 @@ TEST(DeviceTrackerTest, CompleteDiscoverySession) {
   escl3000.set_manufacturer("GoogleTest");
   escl3000.set_model("eSCL Scanner 3000");
   escl3000.set_connection_type(lorgnette::CONNECTION_USB);
+  escl3000.set_display_name("GoogleTest eSCL Scanner 3000 (USB)");
   escl3000.set_secure(true);
   ScannerInfo sane4000;
   sane4000.set_manufacturer("GoogleTest");
   sane4000.set_model("SANE Scanner 4000");
+  sane4000.set_display_name("GoogleTest SANE Scanner 4000 (USB)");
   sane4000.set_connection_type(lorgnette::CONNECTION_USB);
   sane4000.set_secure(true);
   ScannerInfo sane4200;
   sane4200.set_manufacturer("GoogleTest");
   sane4200.set_model("GoogleTest SANE NetScan 4200");
+  sane4200.set_display_name("GoogleTest SANE NetScan 4200");
   sane4200.set_connection_type(lorgnette::CONNECTION_NETWORK);
   sane4200.set_secure(false);
 

@@ -620,7 +620,7 @@ void Manager::RemoveDuplicateScanners(
     if (DuplicateScannerExists(scanner.name(), seen_vidpid, seen_busdev)) {
       continue;
     }
-    scanners->push_back(scanner);
+    scanners->emplace_back(scanner);
   }
 }
 

@@ -26,6 +26,7 @@ void PrintScannerDetails(const lorgnette::ScannerInfo& info,
                                    info.image_format().end());
   // clang-format off
   out << "      " << "Device UUID:       " << info.device_uuid() << std::endl
+      << "      " << "Display name:      " << info.display_name() << std::endl
       << "      " << "Connection String: " << info.name() << std::endl
       << "      " << "Manufacturer:      " << info.manufacturer() << std::endl
       << "      " << "Model:             " << info.model() << std::endl

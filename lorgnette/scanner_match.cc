@@ -67,4 +67,19 @@ lorgnette::ConnectionType ConnectionTypeForScanner(const ScannerInfo& scanner) {
   return lorgnette::CONNECTION_USB;
 }
 
+std::string DisplayNameForScanner(const ScannerInfo& scanner) {
+  std::string scanner_name;
+  if (base::StartsWith(scanner.model(), scanner.manufacturer(),
+                       base::CompareCase::INSENSITIVE_ASCII)) {
+    scanner_name = scanner.model();
+  } else {
+    scanner_name = base::StrCat({scanner.manufacturer(), " ", scanner.model()});
+  }
+
+  if (scanner.connection_type() == lorgnette::CONNECTION_USB) {
+    scanner_name += " (USB)";
+  }
+  return scanner_name;
+}
+
 }  // namespace lorgnette

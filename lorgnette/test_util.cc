@@ -120,6 +120,15 @@ bool MatchesScannerInfoMatcher::MatchAndExplain(
   }
   // TODO(b/308191406): Compare image_formats once something other than the
   // hardcoded defaults is available.
+  if (!expected_.display_name().empty() &&
+      value->display_name() != expected_.display_name()) {
+    std::string msg = base::StringPrintf("display name is %s, expected %s",
+                                         value->display_name().c_str(),
+                                         expected_.display_name().c_str());
+    LOG(ERROR) << msg;
+    *ml << msg;
+    return false;
+  }
 
   return true;
 }

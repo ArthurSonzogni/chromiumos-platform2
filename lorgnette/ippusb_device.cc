@@ -24,6 +24,8 @@
 #include <base/timer/elapsed_timer.h>
 #include <re2/re2.h>
 
+#include "lorgnette/scanner_match.h"
+
 namespace lorgnette {
 
 const base::TimeDelta kSocketCreationTimeout = base::Seconds(3);
@@ -118,6 +120,7 @@ std::optional<ScannerInfo> ScannerInfoForDevice(
   info.set_type(kScannerTypeMFP);  // Printer that can scan == MFP.
   info.set_connection_type(lorgnette::CONNECTION_USB);
   info.set_secure(true);
+  info.set_display_name(DisplayNameForScanner(info));
   return info;
 }
 
