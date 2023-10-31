@@ -61,6 +61,7 @@ static_library("libflex_hwis") {
     ":metrics",
   ]
   libs = [ "policy" ]
+  deps = [ ":hwis_data_proto" ]
 }
 
 executable("flex_hwis_tool") {
