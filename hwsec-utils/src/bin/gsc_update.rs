@@ -7,6 +7,20 @@ use hwsec_utils::error::HwsecError;
 use hwsec_utils::gsc::gsc_update;
 use libchromeos::syslog;
 
+static STDERR_LOGGER: StderrLogger = StderrLogger;
+
+struct StderrLogger;
+
+impl log::Log for StderrLogger {
+    fn enabled(&self, _metadata: &log::Metadata) -> bool {
+        true
+    }
+    fn log(&self, record: &log::Record) {
+        eprintln!("{} - {}", record.level(), record.args());
+    }
+    fn flush(&self) {}
+}
+
 // This script is run at postinstall phase of Chrome OS installation process.
 // It checks if the currently running cr50 image is ready to accept a
 // background update and if the resident trunks_send utility is capable of
@@ -18,9 +32,11 @@ fn main() {
         None => std::process::exit(1),
     };
 
-    if let Err(e) = syslog::init(ident, true /* Don't log to stderr */) {
+    if let Err(e) = syslog::init(ident, true /* Log to stderr */) {
         eprintln!("failed to initialize syslog: {}", e);
-        std::process::exit(1)
+        // Fallback to the std error logger.
+        log::set_logger(&STDERR_LOGGER).unwrap();
+        log::set_max_level(log::LevelFilter::Info);
     }
 
     let mut real_ctx = RealContext::new();
