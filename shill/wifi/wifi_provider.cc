@@ -166,8 +166,8 @@ bool GetServiceParametersFromArgs(const KeyValueStore& args,
   *ssid_bytes = ssid;
   *mode = mode_test;
 
-  // If the caller hasn't specified otherwise, we assume it is a hidden service.
-  *hidden_ssid = args.Lookup<bool>(kWifiHiddenSsid, true);
+  // If the caller didn't specify otherwise, assume it is not a hidden service.
+  *hidden_ssid = args.Lookup<bool>(kWifiHiddenSsid, false);
 
   return true;
 }

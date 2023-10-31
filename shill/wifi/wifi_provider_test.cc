@@ -1270,7 +1270,7 @@ TEST_F(WiFiProviderTest, GetServiceMinimal) {
 
   // These two should be set to their default values if not specified.
   EXPECT_TRUE(service->IsSecurityMatch(kSecurityClassNone));
-  EXPECT_TRUE(service->hidden_ssid());
+  EXPECT_FALSE(service->hidden_ssid());
 }
 
 TEST_F(WiFiProviderTest, GetServiceFullySpecified) {
