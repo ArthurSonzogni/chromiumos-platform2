@@ -441,11 +441,15 @@ TEST_F(AccountManagerTest, SetConfigSuccess) {
 TEST_F(AccountManagerTest, SetConfigValidatesConfig) {
   EXPECT_EQ(ERROR_NONE, AddAccount());
 
+  // The config is saved even if it's invalid and if it's successful, SetConfig
+  // returns ERROR_NONE.
   krb5_->set_validate_config_error(ERROR_BAD_CONFIG);
-  EXPECT_EQ(ERROR_BAD_CONFIG, SetConfig());
+  EXPECT_EQ(ERROR_NONE, SetConfig());
 
-  // The config should not be saved if the validation returned error.
-  EXPECT_FALSE(base::PathExists(krb5conf_path_));
+  // The config has to be saved even if the validation returned error.
+  std::string krb5_conf;
+  EXPECT_TRUE(base::ReadFileToString(krb5conf_path_, &krb5_conf));
+  EXPECT_EQ(krb5_conf, kKrb5Conf);
 }
 
 // SetConfig() triggers KerberosFilesChanged if the credential cache exists.
@@ -688,12 +692,25 @@ TEST_F(AccountManagerTest, AcquireTgtEnctypesMetricsNoConfig) {
 // AcquireTgt() doesn't record encryption types UMA stats if config is invalid.
 TEST_F(AccountManagerTest, AcquireTgtEnctypesMetricsInvalidConfig) {
   EXPECT_EQ(ERROR_NONE, AddAccount());
+  krb5_->set_validate_config_error(ERROR_BAD_CONFIG);
   EXPECT_EQ(ERROR_NONE, SetConfig(kInvalidKrb5Conf));
 
   // No encryption type should be reported through |metric_|.
   EXPECT_CALL(*metrics_, ReportKerberosEncryptionTypes(_)).Times(0);
 
-  EXPECT_EQ(ERROR_NONE, AcquireTgt());
+  EXPECT_EQ(ERROR_BAD_CONFIG, AcquireTgt());
+}
+
+// AcquireTgt() doesn't try to get a ticket if config is invalid.
+TEST_F(AccountManagerTest, AcquireTgtInvalidConfig) {
+  EXPECT_EQ(ERROR_NONE, AddAccount());
+  krb5_->set_validate_config_error(ERROR_BAD_CONFIG);
+  EXPECT_EQ(ERROR_NONE, SetConfig(kInvalidKrb5Conf));
+
+  int initial_acquire_tgt_call_count = krb5_->acquire_tgt_call_count();
+
+  EXPECT_EQ(ERROR_BAD_CONFIG, AcquireTgt());
+  EXPECT_EQ(krb5_->acquire_tgt_call_count(), initial_acquire_tgt_call_count);
 }
 
 // RemoveAccount() removes the credential cache file.
@@ -999,6 +1016,29 @@ TEST_F(AccountManagerTest, AutoRenewalDoesNotCallAcquireTgtIfRenewalSucceeds) {
   // |krb5_->RenewTgt()|.
   EXPECT_EQ(initial_acquire_tgt_call_count, krb5_->acquire_tgt_call_count());
   EXPECT_EQ(ERROR_NONE, manager_->last_renew_tgt_error_for_testing());
+}
+
+// If configuration was changed to invalid after the ticket is acquired, renewal
+// proccess doesn't call krb5_;
+TEST_F(AccountManagerTest, AutoRenewalInvalidConfig) {
+  krb5_->set_tgt_status(kValidTgt);
+  EXPECT_EQ(ERROR_NONE, AddAccount());
+  EXPECT_EQ(ERROR_NONE, AcquireTgt());
+
+  // Set invalid configuraion.
+  krb5_->set_validate_config_error(ERROR_BAD_CONFIG);
+  EXPECT_EQ(ERROR_NONE, SetConfig(kInvalidKrb5Conf));
+
+  int initial_acquire_tgt_call_count = krb5_->acquire_tgt_call_count();
+  int initial_renew_tgt_count = krb5_->renew_tgt_call_count();
+
+  // Fast forward to scheduled renewal task.
+  EXPECT_EQ(1, task_runner_->GetPendingTaskCount());
+  task_runner_->FastForwardBy(task_runner_->NextPendingTaskDelay());
+
+  // RenewTgt or AcquireTgt should not be called.
+  EXPECT_EQ(initial_renew_tgt_count, krb5_->renew_tgt_call_count());
+  EXPECT_EQ(initial_acquire_tgt_call_count, krb5_->acquire_tgt_call_count());
 }
 
 // Verifies that all files written have the expected access permissions.

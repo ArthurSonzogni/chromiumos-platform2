@@ -295,29 +295,35 @@ std::vector<Account> AccountManager::ListAccounts() const {
 }
 
 ErrorType AccountManager::SetConfig(const std::string& principal_name,
-                                    const std::string& krb5conf) const {
-  const InternalAccount* account = GetAccount(principal_name);
-  if (!account) {
+                                    const std::string& krb5conf) {
+  InternalAccount* account = GetMutableAccount(principal_name);
+  if (!account)
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
-  }
 
-  // Validate configuration before setting it to make sure it doesn't contain
-  // invalid options.
-  ConfigErrorInfo error_info;
-  ErrorType error = krb5_->ValidateConfig(krb5conf, &error_info);
-  if (error != ERROR_NONE) {
-    return error;
-  }
-
+  // Saving the krb5 configuration is done even if the syntax is invalid.
+  ErrorType error;
   error = SaveFile(GetKrb5ConfPath(principal_name), krb5conf);
 
-  // Triggering the signal is only necessary if the file was saved successfully,
-  // and the credential cache exists.
-  if (error == ERROR_NONE && base::PathExists(GetKrb5CCPath(principal_name))) {
-    TriggerKerberosFilesChanged(principal_name);
-  }
+  if (error != ERROR_NONE)
+    return error;
 
-  return error;
+  // Triggering the signal is only necessary if the credential cache exists.
+  if (base::PathExists(GetKrb5CCPath(principal_name)))
+    TriggerKerberosFilesChanged(principal_name);
+
+  // Validate configuration to make sure it doesn't contain invalid options.
+  ConfigErrorInfo error_info;
+  error = krb5_->ValidateConfig(krb5conf, &error_info);
+
+  // If the configuration is invalid we still want to keep it, but it needs to
+  // be marked as invalid so that it can't be used for acquiring tickets.
+  if (error != ERROR_NONE)
+    account->data.set_is_config_valid(false);
+  else
+    account->data.set_is_config_valid(true);
+  SaveAccounts();
+
+  return ERROR_NONE;
 }
 
 ErrorType AccountManager::ValidateConfig(const std::string& krb5conf,
@@ -332,6 +338,8 @@ ErrorType AccountManager::AcquireTgt(const std::string& principal_name,
   InternalAccount* account = GetMutableAccount(principal_name);
   if (!account)
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
+  if (!account->data.is_config_valid())
+    return ERROR_BAD_CONFIG;
 
   // Remember whether to use the login password.
   if (account->data.use_login_password() != use_login_password) {
@@ -467,6 +475,12 @@ ErrorType AccountManager::GetTgtStatus(const std::string& principal_name,
 }
 
 ErrorType AccountManager::RenewTgt(const std::string& principal_name) {
+  const InternalAccount* account = GetAccount(principal_name);
+  if (!account)
+    return ERROR_UNKNOWN_PRINCIPAL_NAME;
+  if (!account->data.is_config_valid())
+    return ERROR_BAD_CONFIG;
+
   ErrorType error =
       krb5_->RenewTgt(principal_name, GetKrb5CCPath(principal_name),
                       GetKrb5ConfPath(principal_name));

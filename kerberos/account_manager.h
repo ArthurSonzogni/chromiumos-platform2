@@ -90,9 +90,10 @@ class AccountManager : public TgtRenewalScheduler::Delegate {
   std::vector<Account> ListAccounts() const;
 
   // Sets the Kerberos configuration (krb5.conf) used for the given
-  // |principal_name|. Validates the config before setting it.
+  // |principal_name|. Validates the config but saves it regardless of
+  // the outcome.
   [[nodiscard]] ErrorType SetConfig(const std::string& principal_name,
-                                    const std::string& krb5conf) const;
+                                    const std::string& krb5conf);
 
   // Validates the Kerberos configuration data |krb5conf|. If the config has
   // syntax errors or uses non-allowlisted options, returns ERROR_BAD_CONFIG

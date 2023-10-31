@@ -14,6 +14,9 @@ message AccountData {
 
   // Whether the account uses the ChromeOS login password for authentication.
   optional bool use_login_password = 3;
+
+  // Whether the krb5 config bound to the account is valid.
+  optional bool is_config_valid = 4 [default = true];
 }
 
 // List of all accounts. Used for serialization.
