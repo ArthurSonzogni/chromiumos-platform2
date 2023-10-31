@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/containers/flat_set.h>
+#include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 
 namespace lorgnette {
 
@@ -26,6 +27,10 @@ ExtractIdentifiersFromDeviceName(const std::string& device_name,
 bool DuplicateScannerExists(const std::string& scanner_name,
                             const base::flat_set<std::string>& seen_vidpid,
                             const base::flat_set<std::string>& seen_busdev);
+
+// Detect whether `scanner` represents a USB or network connection based on the
+// SANE connection string.
+lorgnette::ConnectionType ConnectionTypeForScanner(const ScannerInfo& scanner);
 
 }  // namespace lorgnette
 

@@ -174,6 +174,8 @@ TEST(UsbDeviceTest, ScannerInfoDedupMfgrInModel) {
             "ippusb:escl:GoogleTest Scanner 3000:1234_4321/eSCL/");
   EXPECT_EQ(info->manufacturer(), "GoogleTest");
   EXPECT_EQ(info->model(), "GoogleTest Scanner 3000");
+  EXPECT_EQ(info->connection_type(), CONNECTION_USB);
+  EXPECT_TRUE(info->secure());
 }
 
 TEST(UsbDeviceTest, ScannerInfoConcatModelWithoutMfgr) {
@@ -192,6 +194,8 @@ TEST(UsbDeviceTest, ScannerInfoConcatModelWithoutMfgr) {
             "ippusb:escl:GoogleTest Scanner 3000:1234_4321/eSCL/");
   EXPECT_EQ(info->manufacturer(), "GoogleTest");
   EXPECT_EQ(info->model(), "Scanner 3000");
+  EXPECT_EQ(info->connection_type(), CONNECTION_USB);
+  EXPECT_TRUE(info->secure());
 }
 
 }  // namespace

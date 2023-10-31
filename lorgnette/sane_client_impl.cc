@@ -16,6 +16,7 @@
 #include "lorgnette/dbus_adaptors/org.chromium.lorgnette.Manager.h"
 #include "lorgnette/guess_source.h"
 #include "lorgnette/sane_device_impl.h"
+#include "lorgnette/scanner_match.h"
 
 static const char* kDbusDomain = brillo::errors::dbus::kDomain;
 
@@ -78,6 +79,8 @@ std::optional<std::vector<ScannerInfo>> SaneClientImpl::DeviceListToScannerInfo(
     info.set_manufacturer(dev->vendor ? dev->vendor : "");
     info.set_model(dev->model ? dev->model : "");
     info.set_type(dev->type ? dev->type : "");
+    info.set_connection_type(ConnectionTypeForScanner(info));
+    info.set_secure(info.connection_type() == lorgnette::CONNECTION_USB);
     scanners.push_back(info);
   }
   return scanners;

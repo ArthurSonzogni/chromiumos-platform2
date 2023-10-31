@@ -13,6 +13,7 @@
 
 #include "lorgnette/constants.h"
 #include "lorgnette/dbus_adaptors/org.chromium.lorgnette.Manager.h"
+#include "lorgnette/scanner_match.h"
 
 namespace lorgnette {
 
@@ -47,6 +48,8 @@ void SaneClientFake::AddDevice(const std::string& name,
   info.set_manufacturer(manufacturer);
   info.set_model(model);
   info.set_type(type);
+  info.set_connection_type(ConnectionTypeForScanner(info));
+  info.set_secure(info.connection_type() == lorgnette::CONNECTION_USB);
   scanners_.push_back(info);
 }
 

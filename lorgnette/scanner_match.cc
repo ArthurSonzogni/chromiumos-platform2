@@ -8,7 +8,8 @@
 #include <string>
 #include <utility>
 
-#include "base/strings/string_util.h"
+#include <base/strings/strcat.h>
+#include <base/strings/string_util.h>
 #include <re2/re2.h>
 
 #include <base/logging.h>
@@ -49,6 +50,21 @@ bool DuplicateScannerExists(const std::string& scanner_name,
     return seen_busdev.contains(bus + ":" + dev);
   }
   return false;
+}
+
+lorgnette::ConnectionType ConnectionTypeForScanner(const ScannerInfo& scanner) {
+  if (base::StartsWith(scanner.name(), "epson2:net:") ||
+      base::StartsWith(scanner.name(), "epsonds:net:")) {
+    return lorgnette::CONNECTION_NETWORK;
+  }
+
+  if (base::StartsWith(scanner.name(), "pixma:") &&
+      !RE2::PartialMatch(scanner.name(), "^pixma:(?i)04A9[0-9A-F]{4}")) {
+    return lorgnette::CONNECTION_NETWORK;
+  }
+
+  // Most SANE scanners are USB unless they match a specific network pattern.
+  return lorgnette::CONNECTION_USB;
 }
 
 }  // namespace lorgnette

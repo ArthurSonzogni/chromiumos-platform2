@@ -320,6 +320,12 @@ TEST(DeviceTrackerTest, CompleteDiscoverySession) {
   sane_client->SetDeviceForName("epsonds:libusb:001:002",
                                 std::move(epsonds_scanner));
 
+  // Unique network device that is added during SANE probing.
+  sane_client->AddDevice("epson2:net:127.0.0.1", "GoogleTest",
+                         "GoogleTest SANE NetScan 4200", "Network");
+  auto epson2_netscan = std::make_unique<SaneDeviceFake>();
+  sane_client->SetDeviceForName("epson2:net:127.0.0.1",
+                                std::move(epson2_netscan));
   auto tracker =
       std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
 
@@ -364,16 +370,26 @@ TEST(DeviceTrackerTest, CompleteDiscoverySession) {
 
   run_loop.Run();
 
+  ScannerInfo escl3000;
+  escl3000.set_manufacturer("GoogleTest");
+  escl3000.set_model("eSCL Scanner 3000");
+  escl3000.set_connection_type(lorgnette::CONNECTION_USB);
+  escl3000.set_secure(true);
+  ScannerInfo sane4000;
+  sane4000.set_manufacturer("GoogleTest");
+  sane4000.set_model("SANE Scanner 4000");
+  sane4000.set_connection_type(lorgnette::CONNECTION_USB);
+  sane4000.set_secure(true);
+  ScannerInfo sane4200;
+  sane4200.set_manufacturer("GoogleTest");
+  sane4200.set_model("GoogleTest SANE NetScan 4200");
+  sane4200.set_connection_type(lorgnette::CONNECTION_NETWORK);
+  sane4200.set_secure(false);
+
   EXPECT_THAT(closed_sessions, ElementsAre(response.session_id()));
-  EXPECT_THAT(
-      scanners,
-      Each(Pointee(Property(&ScannerInfo::manufacturer, "GoogleTest"))));
-  EXPECT_THAT(
-      scanners,
-      UnorderedElementsAre(
-          Pointee(Property("model", &ScannerInfo::model, "eSCL Scanner 3000")),
-          Pointee(
-              Property("model", &ScannerInfo::model, "SANE Scanner 4000"))));
+  EXPECT_THAT(scanners, UnorderedElementsAre(MatchesScannerInfo(escl3000),
+                                             MatchesScannerInfo(sane4000),
+                                             MatchesScannerInfo(sane4200)));
 }
 
 TEST(DeviceTrackerTest, OpenScannerEmptyDevice) {

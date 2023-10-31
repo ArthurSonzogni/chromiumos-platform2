@@ -378,7 +378,8 @@ void DeviceTracker::ProbeSANEDevice(std::string session_id,
     return;
   }
 
-  LOG(INFO) << __func__ << ": Probing SANE device for " << session_id;
+  LOG(INFO) << __func__ << ": Probing SANE device " << scanner_info.name()
+            << " for " << session_id;
 
   if (!Manager::ScannerCanBeUsed(scanner_info)) {
     return;

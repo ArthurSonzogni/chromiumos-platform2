@@ -72,5 +72,35 @@ TEST(ScannerMatchTest, NoDuplicatesFound) {
       DuplicateScannerExists(kScannerNameBusdev, seen_vidpids, seen_busdevs));
 }
 
+TEST(ScannerMatchTest, EpsonConnections) {
+  ScannerInfo info;
+  info.set_name("epson2:net:1.2.3.4");
+  EXPECT_EQ(ConnectionTypeForScanner(info), CONNECTION_NETWORK);
+
+  info.set_name("epsonds:net:1.2.3.4");
+  EXPECT_EQ(ConnectionTypeForScanner(info), CONNECTION_NETWORK);
+
+  info.set_name("epson2:libusb:001:002");
+  EXPECT_EQ(ConnectionTypeForScanner(info), CONNECTION_USB);
+
+  info.set_name("epsonds:libusb:001:002");
+  EXPECT_EQ(ConnectionTypeForScanner(info), CONNECTION_USB);
+}
+
+TEST(ScannerMatchTest, PixmaConnections) {
+  ScannerInfo info;
+  info.set_name("pixma:MF2600_1.2.3.4");
+  EXPECT_EQ(ConnectionTypeForScanner(info), CONNECTION_NETWORK);
+
+  info.set_name("pixma:04A91234_ABC123");
+  EXPECT_EQ(ConnectionTypeForScanner(info), CONNECTION_USB);
+}
+
+TEST(ScannerMatchTest, OtherConnections) {
+  ScannerInfo info;
+  info.set_name("ippusb:escl:therest");
+  EXPECT_EQ(ConnectionTypeForScanner(info), CONNECTION_USB);
+}
+
 }  // namespace
 }  // namespace lorgnette

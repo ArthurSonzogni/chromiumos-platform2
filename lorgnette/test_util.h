@@ -82,6 +82,30 @@ MATCHER_P(EqualsProto,
   return expected_serialized == actual_serialized;
 }
 
+// Verifies that the ScannerInfo argument matches any fields that have been set
+// in the expected value.  Fields in the expected that are left at their default
+// values are not checked in the argument.
+class MatchesScannerInfoMatcher {
+ public:
+  using is_gtest_matcher = void;
+
+  explicit MatchesScannerInfoMatcher(lorgnette::ScannerInfo info);
+
+  bool MatchAndExplain(const std::unique_ptr<lorgnette::ScannerInfo>& value,
+                       testing::MatchResultListener* ml) const;
+
+  void DescribeTo(std::ostream* os) const { *os << "matches ScannerInfo"; }
+
+  void DescribeNegationTo(std::ostream* os) const {
+    *os << "does not match ScannerInfo";
+  }
+
+ private:
+  lorgnette::ScannerInfo expected_;
+};
+::testing::Matcher<std::unique_ptr<lorgnette::ScannerInfo>> MatchesScannerInfo(
+    lorgnette::ScannerInfo info);
+
 libusb_device_descriptor MakeMinimalDeviceDescriptor();
 std::unique_ptr<libusb_interface_descriptor> MakeIppUsbInterfaceDescriptor();
 

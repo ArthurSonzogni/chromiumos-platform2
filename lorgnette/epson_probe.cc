@@ -174,6 +174,8 @@ static std::vector<ScannerInfo> SendProbeAndListen(uint16_t probe_socket) {
         info.set_manufacturer(kScannerManufacturerEpson);
         info.set_model(kScannerModelNetwork);
         info.set_type(kScannerTypeFlatbed);
+        info.set_connection_type(lorgnette::CONNECTION_NETWORK);
+        info.set_secure(false);
         scanners.push_back(info);
       } else {
         LOG(INFO) << "Not adding device " << device_name << "; already in list";
