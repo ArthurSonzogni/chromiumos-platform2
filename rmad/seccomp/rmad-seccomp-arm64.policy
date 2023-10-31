@@ -16,12 +16,14 @@ read: 1
 # CROS_EC_DEV_IOCRDMEM                      = 0xc108ec01
 # _IOC(_IOC_READ|_IOC_WRITE, 0x3a, 0, 0x28) = 0xc0283a00
 # GPIO_GET_LINEINFO_IOCTL                   = 0xc048b402
+# FIONBIO                                   = 0x5421
 ioctl: arg1 == 0xc16cb403 || arg1 == 0xc014ec00 || \
        arg1 == 0x8044b401 || arg1 == 0xc040b408 || \
        arg1 == 0x80084d17 || arg1 == 0x40084d02 || \
        arg1 == 0x40084d06 || arg1 == 0x40084d05 || \
        arg1 == 0x5401 || arg1 == 0xc108ec01 || \
-       arg1 == 0xc0283a00 || arg1 == 0xc048b402
+       arg1 == 0xc0283a00 || arg1 == 0xc048b402 || \
+       arg1 == 0x5421
 newfstatat: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 faccessat: 1
@@ -36,6 +38,7 @@ getgid: 1
 getegid: 1
 fdatasync: 1
 signalfd4: 1
+sigaltstack: 1
 epoll_pwait: 1
 fchmod: 1
 mremap: 1
@@ -52,6 +55,7 @@ sendmsg: 1
 getdents64: 1
 rt_sigprocmask: 1
 ppoll: 1
+pread64: 1
 sendto: 1
 dup3: 1
 prlimit64: 1
@@ -61,6 +65,7 @@ fcntl: 1
 execve: 1
 rseq: 1
 set_tid_address: 1
+sched_getaffinity: 1
 flock: 1
 clone: 1
 exit_group: 1
