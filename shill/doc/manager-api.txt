@@ -526,7 +526,8 @@ Methods		dict GetProperties()
 			"result_code" (string): A string indicating the result of the
 			operation. This could be any one of "success", "not_allowed",
 			"not_supported", "concurrency_not_supported", "timeout",
-			"frequency_not_supported", "bad_ssid", "operation_failed".
+			"frequency_not_supported", "bad_ssid", "operation_in_progress",
+			"operation_failed".
 
 			"shill_id" (uint32): Only included when result_code == "success".
 			Unique ID for the newly formed P2P group.
@@ -547,7 +548,8 @@ Methods		dict GetProperties()
 			operation. This could be any one of "success", "not_allowed",
 			"not_supported", "concurrency_not_supported", "timeout",
 			"auth_failure", "frequency_not_supported",  "group_not_found",
-			"already_connected", "invalid_arguments", "operation_failed".
+			"already_connected", "invalid_arguments", "operation_in_progress",
+			"operation_failed".
 
 			"shill_id" (uint32): Only included when result_code == "success".
 			Unique ID for the newly created P2P client.
@@ -564,7 +566,8 @@ Methods		dict GetProperties()
 
 			"result_code" (string): A string indicating the result of the
 			operation. This could be any one of "success", "not_allowed",
-			"not_supported", "timeout", "no_group", "operation_failed".
+			"not_supported", "timeout", "no_group", "operation_in_progress",
+			"operation_failed".
 
 			"shill_id" (uint32): Unique ID for the requested P2P client.
 
@@ -579,7 +582,8 @@ Methods		dict GetProperties()
 
 			"result_code" (string): A string indicating the result of the
 			operation. This could be any one of "success", "not_allowed",
-			"not_supported", "timeout", "not_connected", "operation_failed".
+			"not_supported", "timeout", "not_connected", "operation_in_progress",
+			"operation_failed".
 
 			"shill_id" (uint32): Unique ID for the requested P2P client.
 

@@ -123,6 +123,8 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
   // the P2P link to be created on.
   Integers PreferredChannels();
 
+  using P2PResultCallback = base::OnceCallback<void(KeyValueStore result)>;
+
   void HelpRegisterDerivedBool(PropertyStore* store,
                                std::string_view name,
                                bool (P2PManager::*get)(Error* error),
@@ -157,7 +159,7 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
 
   void PostResult(std::string result_code,
                   std::optional<uint32_t> shill_id,
-                  base::OnceCallback<void(KeyValueStore result)> callback);
+                  P2PResultCallback callback);
 
   // Delete a P2P device, stopping all active operations and deleting it's
   // references.
@@ -195,6 +197,12 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
   // Increases by 1 for each new device and resets to 0 when P2PManager is
   // reset.
   uint32_t next_unique_id_;
+
+  // Member to hold the result callback function. This callback function gets
+  // set when dbus methods (CreateP2PGroup, ConnectToP2PGroup, DestroyP2PGroup,
+  // DisconnectFromP2PGroup) are called and runs when the async method call is
+  // done.
+  P2PResultCallback result_callback_;
 
   // The wpa_supplicant p2p device proxy of the primary network interface.
   // It provides group status signals which are handled by P2PManager and

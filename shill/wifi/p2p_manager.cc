@@ -123,19 +123,23 @@ void P2PManager::Stop() {
   }
 }
 
-void P2PManager::CreateP2PGroup(
-    base::OnceCallback<void(KeyValueStore result)> callback,
-    const KeyValueStore& args) {
+void P2PManager::CreateP2PGroup(P2PResultCallback callback,
+                                const KeyValueStore& args) {
   LOG(INFO) << __func__;
-
-  if (supplicant_primary_p2pdevice_pending_event_delegate_) {
+  if (!callback) {
+    LOG(ERROR) << "Callback is empty";
+    return;
+  }
+  if (supplicant_primary_p2pdevice_pending_event_delegate_ ||
+      result_callback_) {
     LOG(WARNING) << "Failed to create P2P group, operation is already "
                     "in progress";
-    PostResult(kCreateP2PGroupResultOperationFailed, std::nullopt,
+    PostResult(kCreateP2PGroupResultOperationInProgress, std::nullopt,
                std::move(callback));
     return;
   }
 
+  result_callback_ = std::move(callback);
   std::optional<std::string> ssid;
   if (args.Contains<std::string>(kP2PDeviceSSID)) {
     ssid = args.Get<std::string>(kP2PDeviceSSID);
@@ -169,14 +173,14 @@ void P2PManager::CreateP2PGroup(
   if (!p2p_dev) {
     LOG(ERROR) << "Failed to create a WiFi P2P interface.";
     PostResult(kCreateP2PGroupResultOperationFailed, std::nullopt,
-               std::move(callback));
+               std::move(result_callback_));
     DisconnectFromSupplicantPrimaryP2PDeviceProxy();
     return;
   }
   if (!p2p_dev->SetEnabled(true)) {
     LOG(ERROR) << "Failed to enable a WiFi P2P interface.";
     PostResult(kCreateP2PGroupResultOperationFailed, std::nullopt,
-               std::move(callback));
+               std::move(result_callback_));
     DisconnectFromSupplicantPrimaryP2PDeviceProxy();
     return;
   }
@@ -185,7 +189,7 @@ void P2PManager::CreateP2PGroup(
   if (!p2p_dev->CreateGroup(std::move(service))) {
     LOG(ERROR) << "Failed to initiate group creation";
     PostResult(kCreateP2PGroupResultOperationFailed, std::nullopt,
-               std::move(callback));
+               std::move(result_callback_));
     DeleteP2PDevice(p2p_dev);
     return;
   }
@@ -194,26 +198,30 @@ void P2PManager::CreateP2PGroup(
   p2p_group_owners_[p2p_dev->shill_id()] = p2p_dev;
   supplicant_primary_p2pdevice_pending_event_delegate_ = p2p_dev.get();
   PostResult(kCreateP2PGroupResultSuccess, p2p_dev->shill_id(),
-             std::move(callback));
+             std::move(result_callback_));
 }
 
-void P2PManager::ConnectToP2PGroup(
-    base::OnceCallback<void(KeyValueStore result)> callback,
-    const KeyValueStore& args) {
+void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
+                                   const KeyValueStore& args) {
   LOG(INFO) << __func__;
-
-  if (supplicant_primary_p2pdevice_pending_event_delegate_) {
+  if (!callback) {
+    LOG(ERROR) << "Callback is empty";
+    return;
+  }
+  if (supplicant_primary_p2pdevice_pending_event_delegate_ ||
+      result_callback_) {
     LOG(WARNING) << "Failed to connect to P2P group, operation is already "
                     "in progress";
-    PostResult(kConnectToP2PGroupResultOperationFailed, std::nullopt,
+    PostResult(kConnectToP2PGroupResultOperationInProgress, std::nullopt,
                std::move(callback));
     return;
   }
 
+  result_callback_ = std::move(callback);
   if (!args.Contains<std::string>(kP2PDeviceSSID)) {
     LOG(ERROR) << std::string(kP2PDeviceSSID) + " argument is mandatory";
     PostResult(kConnectToP2PGroupResultInvalidArguments, std::nullopt,
-               std::move(callback));
+               std::move(result_callback_));
     return;
   }
   std::string ssid = args.Get<std::string>(kP2PDeviceSSID);
@@ -221,7 +229,7 @@ void P2PManager::ConnectToP2PGroup(
   if (!args.Contains<std::string>(kP2PDevicePassphrase)) {
     LOG(ERROR) << std::string(kP2PDevicePassphrase) + " argument is mandatory";
     PostResult(kConnectToP2PGroupResultInvalidArguments, std::nullopt,
-               std::move(callback));
+               std::move(result_callback_));
     return;
   }
   std::string passphrase = args.Get<std::string>(kP2PDevicePassphrase);
@@ -245,18 +253,17 @@ void P2PManager::ConnectToP2PGroup(
                           base::Unretained(this)),
       next_unique_id_);
   next_unique_id_++;
-
   if (!p2p_dev) {
     LOG(ERROR) << "Failed to create a WiFi P2P interface.";
     PostResult(kConnectToP2PGroupResultOperationFailed, std::nullopt,
-               std::move(callback));
+               std::move(result_callback_));
     DisconnectFromSupplicantPrimaryP2PDeviceProxy();
     return;
   }
   if (!p2p_dev->SetEnabled(true)) {
     LOG(ERROR) << "Failed to enable a WiFi P2P interface.";
     PostResult(kConnectToP2PGroupResultOperationFailed, std::nullopt,
-               std::move(callback));
+               std::move(result_callback_));
     DisconnectFromSupplicantPrimaryP2PDeviceProxy();
     return;
   }
@@ -265,7 +272,7 @@ void P2PManager::ConnectToP2PGroup(
   if (!p2p_dev->Connect(std::move(service))) {
     LOG(ERROR) << "Failed to initiate connection";
     PostResult(kConnectToP2PGroupResultOperationFailed, std::nullopt,
-               std::move(callback));
+               std::move(result_callback_));
     DeleteP2PDevice(p2p_dev);
     return;
   }
@@ -274,38 +281,58 @@ void P2PManager::ConnectToP2PGroup(
   p2p_clients_[p2p_dev->shill_id()] = p2p_dev;
   supplicant_primary_p2pdevice_pending_event_delegate_ = p2p_dev.get();
   PostResult(kConnectToP2PGroupResultSuccess, p2p_dev->shill_id(),
-             std::move(callback));
+             std::move(result_callback_));
 }
 
-void P2PManager::DestroyP2PGroup(
-    base::OnceCallback<void(KeyValueStore result)> callback, int shill_id) {
+void P2PManager::DestroyP2PGroup(P2PResultCallback callback, int shill_id) {
   LOG(INFO) << __func__;
+  if (!callback) {
+    LOG(ERROR) << "Callback is empty";
+    return;
+  }
+  if (result_callback_) {
+    PostResult(kDestroyP2PGroupResultOperationInProgress, std::nullopt,
+               std::move(callback));
+    return;
+  }
+  result_callback_ = std::move(callback);
   if (!base::Contains(p2p_group_owners_, shill_id)) {
     LOG(ERROR) << "There is no P2P client at the requested shill_id: "
                << shill_id;
     PostResult(kDestroyP2PGroupResultNoGroup, std::nullopt,
-               std::move(callback));
+               std::move(result_callback_));
     return;
   }
   P2PDeviceRefPtr p2p_dev = p2p_group_owners_[shill_id];
   DeleteP2PDevice(p2p_dev);
-  PostResult(kDestroyP2PGroupResultSuccess, shill_id, std::move(callback));
+  PostResult(kDestroyP2PGroupResultSuccess, shill_id,
+             std::move(result_callback_));
 }
 
-void P2PManager::DisconnectFromP2PGroup(
-    base::OnceCallback<void(KeyValueStore result)> callback, int shill_id) {
+void P2PManager::DisconnectFromP2PGroup(P2PResultCallback callback,
+                                        int shill_id) {
   LOG(INFO) << __func__;
+  if (!callback) {
+    LOG(ERROR) << "Callback is empty";
+    return;
+  }
+  if (result_callback_) {
+    PostResult(kDisconnectFromP2PGroupResultOperationInProgress, std::nullopt,
+               std::move(callback));
+    return;
+  }
+  result_callback_ = std::move(callback);
   if (p2p_clients_.find(shill_id) == p2p_clients_.end()) {
     LOG(ERROR) << "There is no P2P client at the requested shill_id: "
                << shill_id;
     PostResult(kDisconnectFromP2PGroupResultNotConnected, std::nullopt,
-               std::move(callback));
+               std::move(result_callback_));
     return;
   }
   P2PDeviceRefPtr p2p_dev = p2p_clients_[shill_id];
   DeleteP2PDevice(p2p_dev);
   PostResult(kDisconnectFromP2PGroupResultSuccess, shill_id,
-             std::move(callback));
+             std::move(result_callback_));
 }
 
 void P2PManager::HelpRegisterDerivedBool(PropertyStore* store,
@@ -348,10 +375,13 @@ bool P2PManager::SetAllowed(const bool& value, Error* error) {
   return true;
 }
 
-void P2PManager::PostResult(
-    std::string result_code,
-    std::optional<uint32_t> shill_id,
-    base::OnceCallback<void(KeyValueStore result)> callback) {
+void P2PManager::PostResult(std::string result_code,
+                            std::optional<uint32_t> shill_id,
+                            P2PResultCallback callback) {
+  if (!callback) {
+    LOG(ERROR) << "Callback is not set";
+    return;
+  }
   KeyValueStore response_dict;
   response_dict.Set<std::string>(kP2PResultCode, result_code);
   if (shill_id) {

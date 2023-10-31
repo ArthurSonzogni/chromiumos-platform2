@@ -1169,6 +1169,8 @@ constexpr char kCreateP2PGroupResultTimeout[] = "timeout";
 constexpr char kCreateP2PGroupResultFrequencyNotSupported[] =
     "frequency_not_supported";
 constexpr char kCreateP2PGroupResultBadSSID[] = "bad_ssid";
+constexpr char kCreateP2PGroupResultOperationInProgress[] =
+    "operation_in_progress";
 constexpr char kCreateP2PGroupResultOperationFailed[] = "operation_failed";
 
 // Manager ConnectToP2PGroup result values
@@ -1184,6 +1186,8 @@ constexpr char kConnectToP2PGroupResultFrequencyNotSupported[] =
 constexpr char kConnectToP2PGroupResultGroupNotFound[] = "group_not_found";
 constexpr char kConnectToP2PGroupResultAlreadyConnected[] = "already_connected";
 constexpr char kConnectToP2PGroupResultInvalidArguments[] = "invalid_arguments";
+constexpr char kConnectToP2PGroupResultOperationInProgress[] =
+    "operation_in_progress";
 constexpr char kConnectToP2PGroupResultOperationFailed[] = "operation_failed";
 
 // Manager DestroyP2PGroup result values
@@ -1192,6 +1196,8 @@ constexpr char kDestroyP2PGroupResultNotAllowed[] = "not_allowed";
 constexpr char kDestroyP2PGroupResultNotSupported[] = "not_supported";
 constexpr char kDestroyP2PGroupResultTimeout[] = "timeout";
 constexpr char kDestroyP2PGroupResultNoGroup[] = "no_group";
+constexpr char kDestroyP2PGroupResultOperationInProgress[] =
+    "operation_in_progress";
 constexpr char kDestroyP2PGroupResultOperationFailed[] = "operation_failed";
 
 // Manager DisconnectFromP2PGroup result values
@@ -1200,6 +1206,8 @@ constexpr char kDisconnectFromP2PGroupResultNotAllowed[] = "not_allowed";
 constexpr char kDisconnectFromP2PGroupResultNotSupported[] = "not_supported";
 constexpr char kDisconnectFromP2PGroupResultTimeout[] = "timeout";
 constexpr char kDisconnectFromP2PGroupResultNotConnected[] = "not_connected";
+constexpr char kDisconnectFromP2PGroupResultOperationInProgress[] =
+    "operation_in_progress";
 constexpr char kDisconnectFromP2PGroupResultOperationFailed[] =
     "operation_failed";
 
