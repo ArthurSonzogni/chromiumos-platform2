@@ -103,12 +103,17 @@ int TimberSlide::OnInit() {
 
   if (tokenized_logging_) {
     LOG(INFO) << "EC logging: tokenized";
-    token_watcher_ = std::make_unique<base::FilePathWatcher>();
-    token_watcher_->Watch(tokens_db_,
-                          base::FilePathWatcher::Type::kNonRecursive,
-                          base::BindRepeating(&TimberSlide::OnEventTokenChange,
-                                              base::Unretained(this)));
-    detokenizer_ = OpenDatabase(tokens_db_);
+    if (base::PathExists(tokens_db_)) {
+      token_watcher_ = std::make_unique<base::FilePathWatcher>();
+      token_watcher_->Watch(
+          tokens_db_, base::FilePathWatcher::Type::kNonRecursive,
+          base::BindRepeating(&TimberSlide::OnEventTokenChange,
+                              base::Unretained(this)));
+      detokenizer_ = OpenDatabase(tokens_db_);
+    } else {
+      LOG(ERROR) << "EC token database not found";
+      return EX_OSERR;
+    }
   } else {
     LOG(INFO) << "EC logging: raw text";
   }
