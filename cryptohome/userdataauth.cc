@@ -18,9 +18,10 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_path.h>
-#include <base/functional/callback.h>
 #include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/functional/callback_forward.h>
+#include <base/functional/callback_helpers.h>
 #include <base/json/json_writer.h>
 #include <base/location.h>
 #include <base/logging.h>
@@ -469,6 +470,57 @@ void HandleAuthenticationResult(
       break;
     }
   }
+}
+
+// Wrapper around AuthSessionManager::RunWhenAvailable that will execute the
+// given block of code with the in use session if the session has an OK status.
+// The call expects to be given:
+//  - the AuthSession manager
+//  - a location to wrap the error with if the session is not OK
+//  - the request being handled
+//  - the on_done callback for the request
+//  - a run_with callback that consists of the actual handler
+// The run_with callback can assume that the InUseAuthSession object that it is
+// given is OK, i.e. CHECK(auth_session.AuthSessionStatus().ok()).
+template <typename RequestType, typename ReplyType>
+void RunWithAuthSessionWhenAvailable(
+    AuthSessionManager* auth_session_manager,
+    CryptohomeError::ErrorLocationPair err_loc,
+    RequestType request,
+    base::OnceCallback<void(const ReplyType&)> on_done,
+    base::OnceCallback<void(RequestType request,
+                            base::OnceCallback<void(const ReplyType&)>,
+                            InUseAuthSession)> run_with) {
+  // Wrap run_with in a callback which will check if InUseAuthSession is OK. If
+  // the session is not okay then call ReplyWithError, wrapping the session
+  // status. Otherwise, call run_with and pass on all of the parameters.
+  auth_session_manager->RunWhenAvailable(
+      request.auth_session_id(),
+      base::BindOnce(
+          [](CryptohomeError::ErrorLocationPair err_loc, RequestType request,
+             base::OnceCallback<void(const ReplyType&)> on_done,
+             base::OnceCallback<void(RequestType request,
+                                     base::OnceCallback<void(const ReplyType&)>,
+                                     InUseAuthSession)> run_with,
+             InUseAuthSession auth_session) {
+            CryptohomeStatus status = auth_session.AuthSessionStatus();
+            if (!status.ok()) {
+              ReplyWithError(
+                  std::move(on_done), ReplyType{},
+                  MakeStatus<CryptohomeError>(
+                      err_loc,
+                      ErrorActionSet(
+                          {PossibleAction::kDevCheckUnexpectedState}),
+                      user_data_auth::CryptohomeErrorCode::
+                          CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
+                      .Wrap(std::move(status).err_status()));
+              return;
+            }
+            std::move(run_with).Run(std::move(request), std::move(on_done),
+                                    std::move(auth_session));
+          },
+          std::move(err_loc), std::move(request), std::move(on_done),
+          std::move(run_with)));
 }
 
 }  // namespace
@@ -3907,27 +3959,22 @@ void UserDataAuth::PrepareAuthFactor(
     base::OnceCallback<void(const user_data_auth::PrepareAuthFactorReply&)>
         on_done) {
   AssertOnMountThread();
-  user_data_auth::PrepareAuthFactorReply reply;
-  InUseAuthSession auth_session =
-      auth_session_manager_->FindAuthSession(request.auth_session_id());
-  CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
-  if (!auth_session_status.ok()) {
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocUserDataAuthPrepareAuthFactorAuthSessionNotFound),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-            user_data_auth::CryptohomeErrorCode::
-                CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
-            .Wrap(std::move(auth_session_status).err_status()));
-    return;
-  }
-  AuthSession* auth_session_ptr = auth_session.Get();
-  auth_session_ptr->PrepareAuthFactor(
-      request,
-      base::BindOnce(&ReplyWithStatus<user_data_auth::PrepareAuthFactorReply>,
-                     std::move(auth_session), std::move(on_done)));
+  RunWithAuthSessionWhenAvailable(
+      auth_session_manager_,
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthPrepareAuthFactorAuthSessionNotFound),
+      std::move(request), std::move(on_done),
+      base::BindOnce(
+          [](user_data_auth::PrepareAuthFactorRequest request,
+             base::OnceCallback<void(
+                 const user_data_auth::PrepareAuthFactorReply&)> on_done,
+             InUseAuthSession auth_session) {
+            AuthSession* auth_session_ptr = auth_session.Get();
+            auth_session_ptr->PrepareAuthFactor(
+                request,
+                base::BindOnce(
+                    &ReplyWithStatus<user_data_auth::PrepareAuthFactorReply>,
+                    std::move(auth_session), std::move(on_done)));
+          }));
 }
 
 void UserDataAuth::TerminateAuthFactor(
@@ -3935,37 +3982,22 @@ void UserDataAuth::TerminateAuthFactor(
     base::OnceCallback<void(const user_data_auth::TerminateAuthFactorReply&)>
         on_done) {
   AssertOnMountThread();
-  auth_session_manager_->RunWhenAvailable(
-      request.auth_session_id(),
+  RunWithAuthSessionWhenAvailable(
+      auth_session_manager_,
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthTerminateAuthFactorNoAuthSession),
+      std::move(request), std::move(on_done),
       base::BindOnce(
-          [](const user_data_auth::TerminateAuthFactorRequest& request,
+          [](user_data_auth::TerminateAuthFactorRequest request,
              base::OnceCallback<void(
                  const user_data_auth::TerminateAuthFactorReply&)> on_done,
              InUseAuthSession auth_session) {
-            user_data_auth::TerminateAuthFactorReply reply;
-            CryptohomeStatus auth_session_status =
-                auth_session.AuthSessionStatus();
-            if (!auth_session_status.ok()) {
-              ReplyWithError(
-                  std::move(on_done), reply,
-                  MakeStatus<CryptohomeError>(
-                      CRYPTOHOME_ERR_LOC(
-                          kLocUserDataAuthTerminateAuthFactorNoAuthSession),
-                      ErrorActionSet(
-                          {PossibleAction::kDevCheckUnexpectedState}),
-                      user_data_auth::CryptohomeErrorCode::
-                          CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
-                      .Wrap(std::move(auth_session_status).err_status()));
-              return;
-            }
             AuthSession* auth_session_ptr = auth_session.Get();
             auth_session_ptr->TerminateAuthFactor(
                 request,
                 base::BindOnce(
                     &ReplyWithStatus<user_data_auth::TerminateAuthFactorReply>,
                     std::move(auth_session), std::move(on_done)));
-          },
-          request, std::move(on_done)));
+          }));
 }
 
 void UserDataAuth::GetAuthSessionStatus(
