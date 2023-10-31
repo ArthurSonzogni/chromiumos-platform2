@@ -4,6 +4,8 @@
 
 #include "shill/network/slaac_controller.h"
 
+#include <string>
+
 #include <net-base/byte_utils.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
@@ -59,6 +61,10 @@ class SLAACControllerTest : public testing::Test {
       net_base::RTNLMessage::Mode mode,
       uint32_t lifetime,
       const std::vector<net_base::IPv6Address>& dns_servers);
+  std::unique_ptr<net_base::RTNLMessage> BuildDnsslMessage(
+      net_base::RTNLMessage::Mode mode,
+      uint32_t lifetime,
+      const std::vector<std::string>& domains);
   std::unique_ptr<net_base::RTNLMessage> BuildAddressMessage(
       net_base::RTNLMessage::Mode mode,
       const net_base::IPCIDR& address,
@@ -78,8 +84,11 @@ void SLAACControllerTest::SendRTNLMessage(
     const net_base::RTNLMessage& message) {
   if (message.type() == net_base::RTNLMessage::kTypeAddress) {
     slaac_controller_.AddressMsgHandler(message);
-  } else if (message.type() == net_base::RTNLMessage::kTypeRdnss) {
-    slaac_controller_.RDNSSMsgHandler(message);
+  } else if (message.type() == net_base::RTNLMessage::kTypeRoute) {
+    slaac_controller_.RouteMsgHandler(message);
+  } else if (message.type() == net_base::RTNLMessage::kTypeRdnss ||
+             message.type() == net_base::RTNLMessage::kTypeDnssl) {
+    slaac_controller_.NDOptionMsgHandler(message);
   } else {
     NOTREACHED();
   }
@@ -93,6 +102,19 @@ std::unique_ptr<net_base::RTNLMessage> SLAACControllerTest::BuildRdnssMessage(
       net_base::RTNLMessage::kTypeRdnss, mode, 0, 0, 0, kTestIfindex, AF_INET6);
   message->set_rdnss_option(
       net_base::RTNLMessage::RdnssOption(lifetime, dns_servers));
+  return message;
+}
+
+std::unique_ptr<net_base::RTNLMessage> SLAACControllerTest::BuildDnsslMessage(
+    net_base::RTNLMessage::Mode mode,
+    uint32_t lifetime,
+    const std::vector<std::string>& domains) {
+  auto message = std::make_unique<net_base::RTNLMessage>(
+      net_base::RTNLMessage::kTypeDnssl, mode, 0, 0, 0, kTestIfindex, AF_INET6);
+  net_base::RTNLMessage::DnsslOption dnssl_option;
+  dnssl_option.lifetime = lifetime;
+  dnssl_option.domains = domains;
+  message->set_dnssl_option(dnssl_option);
   return message;
 }
 
@@ -161,6 +183,24 @@ TEST_F(SLAACControllerTest, IPv6DnsServerAddressesChanged) {
   network_config_out = slaac_controller_.GetNetworkConfig();
   // Verify addresses.
   EXPECT_EQ(dns_server_addresses_expected_out, network_config_out.dns_servers);
+}
+
+TEST_F(SLAACControllerTest, DNSSL) {
+  auto network_config_out = slaac_controller_.GetNetworkConfig();
+  EXPECT_EQ(0, network_config_out.dns_search_domains.size());
+
+  std::vector<std::string> dnssl_in = {"foo.bar", "foo.2.bar"};
+
+  // Infinite lifetime
+  const uint32_t kInfiniteLifetime = 0xffffffff;
+  auto message = BuildDnsslMessage(net_base::RTNLMessage::kModeAdd,
+                                   kInfiniteLifetime, dnssl_in);
+
+  EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kDNSSL))
+      .Times(1);
+  SendRTNLMessage(*message);
+  network_config_out = slaac_controller_.GetNetworkConfig();
+  EXPECT_EQ(dnssl_in, network_config_out.dns_search_domains);
 }
 
 TEST_F(SLAACControllerTest, IPv6AddressChanged) {

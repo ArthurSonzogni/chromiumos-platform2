@@ -17,6 +17,7 @@
 #include <net-base/byte_utils.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/rtnl_message.h>
 
 namespace shill {
 
@@ -49,9 +50,9 @@ void SLAACController::Start(
       base::BindRepeating(&SLAACController::RouteMsgHandler,
                           weak_factory_.GetWeakPtr()),
       rtnl_handler_);
-  rdnss_listener_ = std::make_unique<net_base::RTNLListener>(
+  nd_option_listener_ = std::make_unique<net_base::RTNLListener>(
       net_base::RTNLHandler::kRequestNdUserOption,
-      base::BindRepeating(&SLAACController::RDNSSMsgHandler,
+      base::BindRepeating(&SLAACController::NDOptionMsgHandler,
                           weak_factory_.GetWeakPtr()),
       rtnl_handler_);
 
@@ -93,7 +94,7 @@ void SLAACController::RegisterCallback(UpdateCallback update_callback) {
 void SLAACController::Stop() {
   StopRDNSSTimer();
   address_listener_.reset();
-  rdnss_listener_.reset();
+  nd_option_listener_.reset();
   last_provision_timer_.reset();
 }
 
@@ -237,11 +238,26 @@ void SLAACController::RouteMsgHandler(const net_base::RTNLMessage& msg) {
   }
 }
 
-void SLAACController::RDNSSMsgHandler(const net_base::RTNLMessage& msg) {
-  if (msg.type() != net_base::RTNLMessage::kTypeRdnss) {
-    // DNSSL and other ND options are not supported yet.
-    return;
+void SLAACController::NDOptionMsgHandler(const net_base::RTNLMessage& msg) {
+  switch (msg.type()) {
+    case net_base::RTNLMessage::kTypeRdnss:
+      RDNSSMsgHandler(msg);
+      break;
+    case net_base::RTNLMessage::kTypeDnssl:
+      DNSSLMsgHandler(msg);
+      break;
+    case net_base::RTNLMessage::kTypeNdUserOption:
+      LOG(INFO) << "Received unknown ND user option type "
+                << static_cast<int>(msg.nd_user_option().type)
+                << " on interface " << interface_index_;
+      break;
+    default:
+      LOG(ERROR) << __func__ << ": Unexpected RTNLMessage type " << msg.type()
+                 << " on interface " << interface_index_;
   }
+}
+
+void SLAACController::RDNSSMsgHandler(const net_base::RTNLMessage& msg) {
   if (msg.interface_index() != interface_index_) {
     return;
   }
@@ -271,6 +287,31 @@ void SLAACController::RDNSSMsgHandler(const net_base::RTNLMessage& msg) {
   }
 }
 
+void SLAACController::DNSSLMsgHandler(const net_base::RTNLMessage& msg) {
+  if (msg.interface_index() != interface_index_) {
+    return;
+  }
+
+  const net_base::RTNLMessage::DnsslOption& dnssl_option = msg.dnssl_option();
+  uint32_t dnssl_lifetime_seconds = dnssl_option.lifetime;
+
+  auto old_domains = network_config_.dns_search_domains;
+  network_config_.dns_search_domains = dnssl_option.domains;
+
+  StopDNSSLTimer();
+
+  if (dnssl_lifetime_seconds == 0) {
+    network_config_.dns_search_domains.clear();
+  } else if (dnssl_lifetime_seconds != ND_OPT_LIFETIME_INFINITY) {
+    base::TimeDelta delay = base::Seconds(dnssl_lifetime_seconds);
+    StartDNSSLTimer(delay);
+  }
+
+  if (update_callback_ && old_domains != network_config_.dns_search_domains) {
+    update_callback_.Run(UpdateType::kDNSSL);
+  }
+}
+
 void SLAACController::StartRDNSSTimer(base::TimeDelta delay) {
   rdnss_expired_callback_.Reset(base::BindOnce(&SLAACController::RDNSSExpired,
                                                weak_factory_.GetWeakPtr()));
@@ -286,6 +327,24 @@ void SLAACController::RDNSSExpired() {
   network_config_.dns_servers.clear();
   if (update_callback_) {
     update_callback_.Run(UpdateType::kRDNSS);
+  }
+}
+
+void SLAACController::StartDNSSLTimer(base::TimeDelta delay) {
+  dnssl_expired_callback_.Reset(base::BindOnce(&SLAACController::DNSSLExpired,
+                                               weak_factory_.GetWeakPtr()));
+  dispatcher_->PostDelayedTask(FROM_HERE, dnssl_expired_callback_.callback(),
+                               delay);
+}
+
+void SLAACController::StopDNSSLTimer() {
+  dnssl_expired_callback_.Cancel();
+}
+
+void SLAACController::DNSSLExpired() {
+  network_config_.dns_search_domains.clear();
+  if (update_callback_) {
+    update_callback_.Run(UpdateType::kDNSSL);
   }
 }
 

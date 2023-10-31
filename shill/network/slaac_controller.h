@@ -31,6 +31,7 @@ class SLAACController {
     kAddress = 1,
     kRDNSS = 2,
     kDefaultRoute = 3,
+    kDNSSL = 4,
   };
   using UpdateCallback = base::RepeatingCallback<void(UpdateType)>;
 
@@ -80,14 +81,20 @@ class SLAACController {
   };
 
   void AddressMsgHandler(const net_base::RTNLMessage& msg);
-  void RDNSSMsgHandler(const net_base::RTNLMessage& msg);
   void RouteMsgHandler(const net_base::RTNLMessage& msg);
+  void NDOptionMsgHandler(const net_base::RTNLMessage& msg);
+  void RDNSSMsgHandler(const net_base::RTNLMessage& msg);
+  void DNSSLMsgHandler(const net_base::RTNLMessage& msg);
 
   // Timer function for monitoring RDNSS's lifetime.
   void StartRDNSSTimer(base::TimeDelta lifetime);
   void StopRDNSSTimer();
   // Called when the lifetime for RDNSS expires.
   void RDNSSExpired();
+
+  void StartDNSSLTimer(base::TimeDelta lifetime);
+  void StopDNSSLTimer();
+  void DNSSLExpired();
 
   void ConfigureLinkLocalAddress();
   void SendRouterSolicitation();
@@ -99,8 +106,9 @@ class SLAACController {
   std::vector<AddressData> slaac_addresses_;
   NetworkConfig network_config_;
 
-  // Internal timer for RDNSS expiration.
+  // Internal timer for RDNSS and DNSSL expiration.
   base::CancelableOnceClosure rdnss_expired_callback_;
+  base::CancelableOnceClosure dnssl_expired_callback_;
 
   // Callbacks registered by RegisterCallbacks().
   UpdateCallback update_callback_;
@@ -115,7 +123,7 @@ class SLAACController {
   net_base::RTNLHandler* rtnl_handler_;
   std::unique_ptr<net_base::RTNLListener> address_listener_;
   std::unique_ptr<net_base::RTNLListener> route_listener_;
-  std::unique_ptr<net_base::RTNLListener> rdnss_listener_;
+  std::unique_ptr<net_base::RTNLListener> nd_option_listener_;
 
   EventDispatcher* dispatcher_;
 

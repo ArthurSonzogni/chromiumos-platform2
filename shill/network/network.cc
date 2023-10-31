@@ -542,6 +542,13 @@ void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
       SLOG(2) << *this << ": " << __func__ << " DNS server list is unchanged.";
       return;
     }
+  } else if (update_type == SLAACController::UpdateType::kDNSSL) {
+    if (old_network_config.dns_search_domains ==
+        new_network_config.dns_search_domains) {
+      SLOG(2) << *this << ": " << __func__
+              << " DNS search domain list is unchanged.";
+      return;
+    }
   } else if (update_type == SLAACController::UpdateType::kDefaultRoute) {
     // Nothing to do except updating IPConfig.
     return;
