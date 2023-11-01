@@ -64,12 +64,8 @@ std::optional<FeatureProfile::DeviceMetadata> ProbeDeviceMetadata() {
   // GetPlatformCameraInfo() makes camera LED flash while reading
   // EEPROM. Since it is only used for brya, skip calling it in
   // strongbad series. (b/213525227).
-  const std::set<std::string> kIgnoreGetPlatformCameraInfoBoards = {
-      "strongbad",
-      "strongbad64",
-  };
-  const std::string board = base::SysInfo::GetLsbReleaseBoard();
-  if (!base::Contains(kIgnoreGetPlatformCameraInfoBoards, board)) {
+  if (base::SysInfo::GetLsbReleaseBoard().rfind("strongbad", 0) ==
+      std::string::npos) {
     for (const auto& info : conf->GetPlatformCameraInfo()) {
       m.camera_info.push_back(
           {.module_id = info.module_id(), .sensor_id = info.sensor_id()});
