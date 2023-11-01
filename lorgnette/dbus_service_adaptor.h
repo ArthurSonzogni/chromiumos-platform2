@@ -61,6 +61,8 @@ class DBusServiceAdaptor : public org::chromium::lorgnette::ManagerAdaptor,
   CloseScannerResponse CloseScanner(
       const CloseScannerRequest& request) override;
   SetOptionsResponse SetOptions(const SetOptionsRequest& request) override;
+  GetCurrentConfigResponse GetCurrentConfig(
+      const GetCurrentConfigRequest& request) override;
   StartPreparedScanResponse StartPreparedScan(
       const StartPreparedScanRequest& request) override;
   ReadScanDataResponse ReadScanData(

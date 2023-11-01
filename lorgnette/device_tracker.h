@@ -107,6 +107,11 @@ class DeviceTracker {
   // then returns the updated config.
   virtual SetOptionsResponse SetOptions(const SetOptionsRequest& request);
 
+  // GetCurrentConfig will get the current config for a scanner previously
+  // opened by OpenScanner.
+  virtual GetCurrentConfigResponse GetCurrentConfig(
+      const GetCurrentConfigRequest& request);
+
   // StartPreparedScan initiates a scan using the current option values.  Any
   // previous in-progress jobs will be canceled.
   virtual StartPreparedScanResponse StartPreparedScan(

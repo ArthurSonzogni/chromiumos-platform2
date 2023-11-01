@@ -171,6 +171,13 @@ SetOptionsResponse DBusServiceAdaptor::SetOptions(
   return device_tracker_->SetOptions(request);
 }
 
+GetCurrentConfigResponse DBusServiceAdaptor::GetCurrentConfig(
+    const GetCurrentConfigRequest& request) {
+  ScopeLogger scope("DBusServiceAdaptor::GetCurrentConfig");
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return device_tracker_->GetCurrentConfig(request);
+}
+
 StartPreparedScanResponse DBusServiceAdaptor::StartPreparedScan(
     const StartPreparedScanRequest& request) {
   ScopeLogger scope("DBusServiceAdaptor::StartPreparedScan");

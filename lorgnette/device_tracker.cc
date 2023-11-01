@@ -630,6 +630,48 @@ SetOptionsResponse DeviceTracker::SetOptions(const SetOptionsRequest& request) {
   return response;
 }
 
+GetCurrentConfigResponse DeviceTracker::GetCurrentConfig(
+    const GetCurrentConfigRequest& request) {
+  LOG(INFO) << __func__ << ": Getting current config for device: "
+            << request.scanner().token();
+
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  GetCurrentConfigResponse response;
+  *response.mutable_scanner() = request.scanner();
+
+  if (!request.has_scanner() || request.scanner().token().empty()) {
+    LOG(ERROR) << __func__
+               << ": GetCurrentConfigRequest is missing scanner handle";
+    response.set_result(OPERATION_RESULT_INVALID);
+    return response;
+  }
+  const std::string& handle = request.scanner().token();
+
+  if (!base::Contains(open_scanners_, handle)) {
+    LOG(ERROR) << __func__ << ": No open handle: " << handle;
+    response.set_result(OPERATION_RESULT_MISSING);
+    return response;
+  }
+  OpenScannerState& state = open_scanners_[handle];
+  state.last_activity = base::Time::Now();
+
+  brillo::ErrorPtr error;
+  std::optional<ScannerConfig> config = state.device->GetCurrentConfig(&error);
+  if (!config.has_value()) {
+    LOG(ERROR) << __func__
+               << ": Unable to get scanner config: " << error->GetMessage();
+    response.set_result(OPERATION_RESULT_INTERNAL_ERROR);
+    return response;
+  }
+
+  LOG(INFO) << __func__ << ": Done retrieving scanner config";
+
+  response.set_result(OPERATION_RESULT_SUCCESS);
+  *response.mutable_config() = std::move(config.value());
+  return response;
+}
+
 StartPreparedScanResponse DeviceTracker::StartPreparedScan(
     const StartPreparedScanRequest& request) {
   LOG(INFO) << __func__

@@ -94,6 +94,27 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="GetCurrentConfig">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <tp:docstring>
+        Get the current config for the specified scanner.  The scanner must have
+        been previously opened with OpenScanner.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::GetCurrentConfigRequest" />
+        <tp:docstring>
+          Serialized GetCurrentConfigRequest proto specifying the scanner handle.
+        </tp:docstring>
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::GetCurrentConfigResponse" />
+        <tp:docstring>
+          Serialized GetCurrentConfigResponse proto.
+        </tp:docstring>
+      </arg>
+    </method>
     <method name="StartPreparedScan">
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
       <tp:docstring>
