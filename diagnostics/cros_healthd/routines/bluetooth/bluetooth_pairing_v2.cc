@@ -407,13 +407,12 @@ void BluetoothPairingRoutineV2::StoreDeviceUuids(
   }
   for (const auto& uuid : uuids) {
     auto out_uuid = floss_utils::ParseUuidBytes(uuid);
-    if (!out_uuid.has_value()) {
+    if (!out_uuid.is_valid()) {
       SetResultAndStop(
           base::unexpected("Failed to parse UUID from device UUIDs."));
       return;
     }
-    routine_output_->pairing_peripheral->uuids.push_back(
-        base::Uuid::ParseLowercase(out_uuid.value()));
+    routine_output_->pairing_peripheral->uuids.push_back(out_uuid);
   }
 }
 

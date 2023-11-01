@@ -340,13 +340,13 @@ void State::HandleAdapterUuidsResponse(
   adapter_info_ptr->uuids = std::vector<std::string>{};
   for (const auto& uuid : uuids) {
     auto out_uuid = floss_utils::ParseUuidBytes(uuid);
-    if (!out_uuid.has_value()) {
+    if (!out_uuid.is_valid()) {
       error_ =
           CreateAndLogProbeError(mojom::ErrorType::kParseError,
                                  "Failed to parse UUID from adapter UUIDs");
       return;
     }
-    adapter_info_ptr->uuids->push_back(out_uuid.value());
+    adapter_info_ptr->uuids->push_back(out_uuid.AsLowercaseString());
   }
 }
 
@@ -374,13 +374,14 @@ void State::HandleAdapterAllowedServicesResponse(
   adapter_info_ptr->service_allow_list = std::vector<std::string>{};
   for (const auto& uuid : services) {
     auto out_uuid = floss_utils::ParseUuidBytes(uuid);
-    if (!out_uuid.has_value()) {
+    if (!out_uuid.is_valid()) {
       error_ =
           CreateAndLogProbeError(mojom::ErrorType::kParseError,
                                  "Failed to parse UUID from allowed services");
       return;
     }
-    adapter_info_ptr->service_allow_list->push_back(out_uuid.value());
+    adapter_info_ptr->service_allow_list->push_back(
+        out_uuid.AsLowercaseString());
   }
 }
 
@@ -569,12 +570,12 @@ void State::HandleDeviceUuidsResponse(
   device_info_ptr->uuids = std::vector<std::string>{};
   for (const auto& uuid : uuids) {
     auto out_uuid = floss_utils::ParseUuidBytes(uuid);
-    if (!out_uuid.has_value()) {
+    if (!out_uuid.is_valid()) {
       error_ = CreateAndLogProbeError(mojom::ErrorType::kParseError,
                                       "Failed to parse UUID from device UUIDs");
       return;
     }
-    device_info_ptr->uuids->push_back(out_uuid.value());
+    device_info_ptr->uuids->push_back(out_uuid.AsLowercaseString());
   }
 }
 

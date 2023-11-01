@@ -4,19 +4,19 @@
 
 #include "diagnostics/cros_healthd/utils/floss_utils.h"
 
-#include <optional>
 #include <string>
 
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/uuid.h>
 
 namespace diagnostics {
 
 namespace {
 
-// Return the hexadecimal characters of `bytes` in index [`start`, `end`).
+// Return hexadecimal lowercase characters of `bytes` in index [`start`, `end`).
 std::string BytesToHex(const std::vector<uint8_t>& bytes, int start, int end) {
   CHECK(end <= bytes.size());
   std::string out;
@@ -30,17 +30,19 @@ std::string BytesToHex(const std::vector<uint8_t>& bytes, int start, int end) {
 
 namespace floss_utils {
 
-std::optional<std::string> ParseUuidBytes(const std::vector<uint8_t>& bytes) {
+base::Uuid ParseUuidBytes(const std::vector<uint8_t>& bytes) {
   // UUID should be 128 bits.
   if (bytes.size() != 16) {
     LOG(ERROR) << "Get invalid UUID bytes, size: " << bytes.size();
-    return std::nullopt;
+    return base::Uuid();
   }
-  // Convert to 8-4-4-4-12 format: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX.
-  return base::JoinString({BytesToHex(bytes, 0, 4), BytesToHex(bytes, 4, 6),
-                           BytesToHex(bytes, 6, 8), BytesToHex(bytes, 8, 10),
-                           BytesToHex(bytes, 10, 16)},
-                          "-");
+  // Convert these bytes to the string of 32 hexadecimal lowercase characters in
+  // the 8-4-4-4-12 format: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX.
+  return base::Uuid::ParseLowercase(
+      base::JoinString({BytesToHex(bytes, 0, 4), BytesToHex(bytes, 4, 6),
+                        BytesToHex(bytes, 6, 8), BytesToHex(bytes, 8, 10),
+                        BytesToHex(bytes, 10, 16)},
+                       /*separator=*/"-"));
 }
 
 }  // namespace floss_utils

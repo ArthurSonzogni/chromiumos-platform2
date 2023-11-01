@@ -5,18 +5,15 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_UTILS_FLOSS_UTILS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_UTILS_FLOSS_UTILS_H_
 
-#include <optional>
-#include <string>
 #include <vector>
 
-#include <brillo/variant_dictionary.h>
-#include <dbus/object_path.h>
+#include <base/uuid.h>
 
 namespace diagnostics::floss_utils {
 
-// Parse and convert 128 bits UUID to the string of 32 hexadecimal lowercase
-// characters in the 8-4-4-4-12 format.
-std::optional<std::string> ParseUuidBytes(const std::vector<uint8_t>& bytes);
+// Parse and convert 128 bits UUID to the base::Uuid object. If any error
+// happens, return an invalid base::Uuid object.
+base::Uuid ParseUuidBytes(const std::vector<uint8_t>& bytes);
 
 }  // namespace diagnostics::floss_utils
 
