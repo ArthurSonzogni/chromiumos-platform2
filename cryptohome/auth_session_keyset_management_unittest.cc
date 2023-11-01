@@ -645,10 +645,10 @@ TEST_F(AuthSessionTestWithKeysetManagement, StartAuthSessionWithoutKeyData) {
       AuthSession::GetTokenFromSerializedString(
           auth_session_reply.auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
-  InUseAuthSession auth_session =
-      userdataauth_.auth_session_manager_->FindAuthSession(
-          auth_session_id.value());
-  EXPECT_TRUE(auth_session.AuthSessionStatus().ok());
+  userdataauth_.auth_session_manager_->RunWhenAvailable(
+      *auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
+        ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
+      }));
 }
 
 // Test that a VaultKeyset without KeyData migration succeeds during login.

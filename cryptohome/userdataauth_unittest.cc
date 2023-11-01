@@ -51,11 +51,13 @@
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
+#include "cryptohome/auth_session_manager.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/cleanup/mock_disk_cleanup.h"
 #include "cryptohome/cleanup/mock_low_disk_space_handler.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/common/print_UserDataAuth_proto.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
 #include "cryptohome/fake_features.h"
 #include "cryptohome/features.h"
@@ -84,6 +86,9 @@
 #include "cryptohome/user_session/mock_user_session_factory.h"
 #include "cryptohome/username.h"
 
+namespace cryptohome {
+namespace {
+
 using base::FilePath;
 using base::test::TestFuture;
 using brillo::SecureBlob;
@@ -104,6 +109,7 @@ using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::kAesGcm256KeySize;
 using ::hwsec_foundation::Sha1;
 using ::hwsec_foundation::error::testing::IsOk;
+using ::hwsec_foundation::error::testing::NotOk;
 using ::hwsec_foundation::error::testing::ReturnError;
 using ::hwsec_foundation::error::testing::ReturnOk;
 using ::hwsec_foundation::error::testing::ReturnValue;
@@ -129,10 +135,6 @@ using ::testing::SaveArg;
 using ::testing::SaveArgPointee;
 using ::testing::SetArgPointee;
 using ::testing::UnorderedElementsAre;
-
-namespace cryptohome {
-
-namespace {
 
 // Set to match the 5 minute timer and a 1 minute extension in AuthSession.
 constexpr int kAuthSessionExtensionDuration = 60;
@@ -2003,13 +2005,11 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
 
   // Get the session into an authenticated state by treating it as if we just
   // freshly created the user.
-  {
-    InUseAuthSession auth_session =
-        userdataauth_->auth_session_manager_->FindAuthSession(
-            auth_session_id.value());
-    ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
-    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
-  }
+  userdataauth_->auth_session_manager_->RunWhenAvailable(
+      *auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
+        ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
+        ASSERT_THAT(auth_session->OnUserCreated(), IsOk());
+      }));
 
   // Mount user vault.
   user_data_auth::PreparePersistentVaultRequest prepare_request;
@@ -2128,13 +2128,11 @@ TEST_F(UserDataAuthTest,
 
   // Get the session into an authenticated state by treating it as if we just
   // freshly created the user.
-  {
-    InUseAuthSession auth_session =
-        userdataauth_->auth_session_manager_->FindAuthSession(
-            auth_session_id.value());
-    ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
-    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
-  }
+  userdataauth_->auth_session_manager_->RunWhenAvailable(
+      *auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
+        ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
+        ASSERT_THAT(auth_session->OnUserCreated(), IsOk());
+      }));
 
   // Mount user vault.
   user_data_auth::PreparePersistentVaultRequest prepare_request;
@@ -2460,13 +2458,11 @@ TEST_F(UserDataAuthExTest,
 
   // Get the session into an authenticated state by treating it as if we just
   // freshly created the user.
-  {
-    InUseAuthSession auth_session =
-        userdataauth_->auth_session_manager_->FindAuthSession(
-            auth_session_id.value());
-    ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
-    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
-  }
+  userdataauth_->auth_session_manager_->RunWhenAvailable(
+      *auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
+        ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
+        ASSERT_THAT(auth_session->OnUserCreated(), IsOk());
+      }));
 
   user_data_auth::StartMigrateToDircryptoRequest request;
   request.set_auth_session_id(
@@ -2513,10 +2509,10 @@ TEST_F(UserDataAuthExTest,
           auth_session_reply_future.Get().auth_session_id());
   ASSERT_TRUE(auth_session_id.has_value());
 
-  InUseAuthSession auth_session =
-      userdataauth_->auth_session_manager_->FindAuthSession(
-          auth_session_id.value());
-  ASSERT_TRUE(auth_session.AuthSessionStatus().ok());
+  userdataauth_->auth_session_manager_->RunWhenAvailable(
+      *auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
+        ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
+      }));
 
   user_data_auth::StartMigrateToDircryptoRequest request;
   request.set_auth_session_id(
@@ -2647,9 +2643,10 @@ TEST_F(UserDataAuthExTest, RemoveValidityWithAuthSession) {
       user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
   // Verify
-  InUseAuthSession auth_session =
-      userdataauth_->auth_session_manager_->FindAuthSession(auth_session_id);
-  EXPECT_FALSE(auth_session.AuthSessionStatus().ok());
+  userdataauth_->auth_session_manager_->RunWhenAvailable(
+      auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
+        ASSERT_THAT(auth_session.AuthSessionStatus(), NotOk());
+      }));
 }
 
 TEST_F(UserDataAuthExTest, StartAuthSession) {
@@ -2667,16 +2664,20 @@ TEST_F(UserDataAuthExTest, StartAuthSession) {
       AuthSession::GetTokenFromSerializedString(
           auth_session_reply_future.Get().auth_session_id());
   ASSERT_TRUE(auth_session_id.has_value());
-  InUseAuthSession auth_session =
-      userdataauth_->auth_session_manager_->FindAuthSession(
-          auth_session_id.value());
-  ASSERT_TRUE(auth_session.AuthSessionStatus().ok());
-  EXPECT_EQ(auth_session->token(), *auth_session_id);
   std::optional<base::UnguessableToken> broadcast_id =
       AuthSession::GetTokenFromSerializedString(
           auth_session_reply_future.Get().broadcast_id());
   ASSERT_TRUE(broadcast_id.has_value());
-  EXPECT_EQ(auth_session->public_token(), *broadcast_id);
+  userdataauth_->auth_session_manager_->RunWhenAvailable(
+      *auth_session_id,
+      base::BindOnce(
+          [](base::UnguessableToken token, base::UnguessableToken public_token,
+             InUseAuthSession auth_session) {
+            ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
+            ASSERT_THAT(auth_session->token(), Eq(token));
+            ASSERT_THAT(auth_session->public_token(), Eq(public_token));
+          },
+          *auth_session_id, *broadcast_id));
 }
 
 TEST_F(UserDataAuthExTest, StartAuthSessionUnusableClobber) {
@@ -2697,10 +2698,10 @@ TEST_F(UserDataAuthExTest, StartAuthSessionUnusableClobber) {
       AuthSession::GetTokenFromSerializedString(
           auth_session_reply_future.Get().auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
-  InUseAuthSession auth_session =
-      userdataauth_->auth_session_manager_->FindAuthSession(
-          auth_session_id.value());
-  EXPECT_TRUE(auth_session.AuthSessionStatus().ok());
+  userdataauth_->auth_session_manager_->RunWhenAvailable(
+      *auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
+        ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
+      }));
 }
 
 TEST_F(UserDataAuthExTest, InvalidateAuthSession) {
@@ -2719,10 +2720,10 @@ TEST_F(UserDataAuthExTest, InvalidateAuthSession) {
       AuthSession::GetTokenFromSerializedString(
           auth_session_reply_future.Get().auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
-  InUseAuthSession auth_session =
-      userdataauth_->auth_session_manager_->FindAuthSession(
-          auth_session_id.value());
-  EXPECT_TRUE(auth_session.AuthSessionStatus().ok());
+  userdataauth_->auth_session_manager_->RunWhenAvailable(
+      *auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
+        ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
+      }));
 
   // Test.
   user_data_auth::InvalidateAuthSessionRequest inv_auth_session_req;
@@ -2737,9 +2738,10 @@ TEST_F(UserDataAuthExTest, InvalidateAuthSession) {
           .GetCallback<const user_data_auth::InvalidateAuthSessionReply&>());
   EXPECT_EQ(reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  auth_session = userdataauth_->auth_session_manager_->FindAuthSession(
-      auth_session_id.value());
-  EXPECT_FALSE(auth_session.AuthSessionStatus().ok());
+  userdataauth_->auth_session_manager_->RunWhenAvailable(
+      *auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
+        ASSERT_THAT(auth_session.AuthSessionStatus(), NotOk());
+      }));
 }
 
 TEST_F(UserDataAuthExTest, ExtendAuthSession) {
@@ -2762,13 +2764,11 @@ TEST_F(UserDataAuthExTest, ExtendAuthSession) {
 
   // Get the session into an authenticated state by treating it as if we just
   // freshly created the user.
-  {
-    InUseAuthSession auth_session =
-        userdataauth_->auth_session_manager_->FindAuthSession(
-            auth_session_id.value());
-    ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
-    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
-  }
+  userdataauth_->auth_session_manager_->RunWhenAvailable(
+      *auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
+        ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
+        ASSERT_THAT(auth_session->OnUserCreated(), IsOk());
+      }));
 
   // Test.
   user_data_auth::ExtendAuthSessionRequest ext_auth_session_req;
@@ -2788,12 +2788,13 @@ TEST_F(UserDataAuthExTest, ExtendAuthSession) {
   EXPECT_GT(reply_future.Get().seconds_left(), kAuthSessionExtensionDuration);
 
   // Verify that timer has changed, within a resaonsable degree of error.
-  InUseAuthSession auth_session =
-      userdataauth_->auth_session_manager_->FindAuthSession(
-          auth_session_id.value());
-  auto requested_delay = auth_session.GetRemainingTime();
-  auto time_difference = kAuthSessionTimeout - requested_delay;
-  EXPECT_LT(time_difference, base::Seconds(1));
+  userdataauth_->auth_session_manager_->RunWhenAvailable(
+      *auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
+        ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
+        auto requested_delay = auth_session.GetRemainingTime();
+        auto time_difference = kAuthSessionTimeout - requested_delay;
+        EXPECT_LT(time_difference, base::Seconds(1));
+      }));
 }
 
 TEST_F(UserDataAuthExTest, ExtendUnAuthenticatedAuthSessionFail) {
@@ -2813,13 +2814,10 @@ TEST_F(UserDataAuthExTest, ExtendUnAuthenticatedAuthSessionFail) {
       AuthSession::GetTokenFromSerializedString(
           auth_session_reply_future.Get().auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
-
-  {
-    InUseAuthSession auth_session =
-        userdataauth_->auth_session_manager_->FindAuthSession(
-            auth_session_id.value());
-    ASSERT_TRUE(auth_session.AuthSessionStatus().ok());
-  }
+  userdataauth_->auth_session_manager_->RunWhenAvailable(
+      *auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
+        ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
+      }));
 
   // Test.
   user_data_auth::ExtendAuthSessionRequest ext_auth_session_req;
@@ -2856,19 +2854,17 @@ TEST_F(UserDataAuthExTest, CheckTimeoutTimerSetAfterAuthentication) {
           auth_session_reply_future.Get().auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
 
-  InUseAuthSession auth_session =
-      userdataauth_->auth_session_manager_->FindAuthSession(
-          auth_session_id.value());
-  ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
+  userdataauth_->auth_session_manager_->RunWhenAvailable(
+      *auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
+        ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
 
-  // Timer is not set before authentication.
-  EXPECT_TRUE(auth_session.GetRemainingTime().is_max());
-
-  // Extension only happens for authenticated auth session.
-  EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
-
-  // Test timer is correctly set after authentication.
-  EXPECT_FALSE(auth_session.GetRemainingTime().is_max());
+        // Timer is not set before authentication.
+        EXPECT_TRUE(auth_session.GetRemainingTime().is_max());
+        // Extension only happens for authenticated auth session.
+        EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
+        // Test timer is correctly set after authentication.
+        EXPECT_FALSE(auth_session.GetRemainingTime().is_max());
+      }));
 }
 
 TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {
