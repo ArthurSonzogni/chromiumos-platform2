@@ -19,6 +19,7 @@
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
+#include "patchpanel/dbus_client_notifier.h"
 #include "patchpanel/forwarding_service.h"
 #include "patchpanel/ipc.h"
 #include "patchpanel/mac_address_generator.h"
@@ -113,14 +114,6 @@ class CrostiniService {
     std::optional<net_base::IPv4Address> lxd_ipv4_address_;
   };
 
-  enum class CrostiniDeviceEvent {
-    kAdded,
-    kRemoved,
-  };
-
-  using CrostiniDeviceEventHandler =
-      base::RepeatingCallback<void(const CrostiniDevice&, CrostiniDeviceEvent)>;
-
   static TrafficSource TrafficSourceFromVMType(VMType vm_type);
   // Converts VMType to an internal IPC GuestMessage::GuestType value. This type
   // is needed by Manager for IPCs to patchpanel subprocesses.
@@ -135,7 +128,7 @@ class CrostiniService {
   CrostiniService(AddressManager* addr_mgr,
                   Datapath* datapath,
                   ForwardingService* forwarding_service,
-                  CrostiniDeviceEventHandler event_handler);
+                  DbusClientNotifier* dbus_client_notifier);
   CrostiniService(const CrostiniService&) = delete;
   CrostiniService& operator=(const CrostiniService&) = delete;
 
@@ -185,9 +178,9 @@ class CrostiniService {
   // Service for starting and stopping IPv6 and multicast forwarding between an
   // CrostiniDevice and its upstream shill Device, owned by Manager.
   ForwardingService* forwarding_service_;
-  // Client callback for notifying CrostiniDevice creation or destruction
-  // events.
-  CrostiniDeviceEventHandler event_handler_;
+  // Interface for notifying DBus client about CrostiniDevice creation and
+  // removal events.
+  DbusClientNotifier* dbus_client_notifier_;
   // Indicates if adb port forwarding from Crostini to patchpanel's adb-proxy
   // service should be enabled when a Termina VM starts.
   bool adb_sideloading_enabled_;

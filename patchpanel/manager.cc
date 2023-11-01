@@ -86,10 +86,8 @@ Manager::Manager(const base::FilePath& cmd_path,
   arc_svc_ =
       std::make_unique<ArcService>(arc_type, datapath_.get(), &addr_mgr_, this,
                                    metrics_, dbus_client_notifier_);
-  cros_svc_ = std::make_unique<CrostiniService>(
-      &addr_mgr_, datapath_.get(), this,
-      base::BindRepeating(&Manager::OnCrostiniDeviceEvent,
-                          weak_factory_.GetWeakPtr()));
+  cros_svc_ = std::make_unique<CrostiniService>(&addr_mgr_, datapath_.get(),
+                                                this, dbus_client_notifier_);
 
   network_monitor_svc_ = std::make_unique<NetworkMonitorService>(
       shill_client_.get(),
@@ -404,24 +402,6 @@ void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
 void Manager::OnDoHProvidersChanged(
     const ShillClient::DoHProviders& doh_providers) {
   qos_svc_->UpdateDoHProviders(doh_providers);
-}
-
-void Manager::OnCrostiniDeviceEvent(
-    const CrostiniService::CrostiniDevice& virtual_device,
-    CrostiniService::CrostiniDeviceEvent event) {
-  auto signal_device = std::make_unique<NetworkDevice>();
-  NetworkDeviceChangedSignal::Event signal_event;
-  virtual_device.ConvertToProto(signal_device.get());
-  switch (event) {
-    case CrostiniService::CrostiniDeviceEvent::kAdded:
-      signal_event = NetworkDeviceChangedSignal::DEVICE_ADDED;
-      break;
-    case CrostiniService::CrostiniDeviceEvent::kRemoved:
-      signal_event = NetworkDeviceChangedSignal::DEVICE_REMOVED;
-      break;
-  }
-  dbus_client_notifier_->OnNetworkDeviceChanged(std::move(signal_device),
-                                                signal_event);
 }
 
 bool Manager::ArcStartup(pid_t pid) {

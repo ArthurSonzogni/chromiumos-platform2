@@ -190,10 +190,6 @@ class Manager : public ForwardingService {
   void OnIPv6NetworkChanged(const ShillClient::Device& shill_device);
   void OnDoHProvidersChanged(const ShillClient::DoHProviders& doh_providers);
 
-  void OnCrostiniDeviceEvent(
-      const CrostiniService::CrostiniDevice& virtual_device,
-      CrostiniService::CrostiniDeviceEvent event);
-
   // Callback from |network_monitor_svc_|.
   void OnNeighborReachabilityEvent(
       int ifindex,

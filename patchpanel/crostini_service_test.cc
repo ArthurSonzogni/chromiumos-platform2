@@ -12,8 +12,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/functional/bind.h>
-#include <base/functional/callback_helpers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
@@ -22,6 +20,7 @@
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
+#include "patchpanel/dbus_client_notifier.h"
 #include "patchpanel/mock_datapath.h"
 #include "patchpanel/mock_forwarding_service.h"
 #include "patchpanel/routing_service.h"
@@ -49,30 +48,40 @@ MATCHER_P(ShillDeviceHasInterfaceName, expected_ifname, "") {
   return arg.ifname == expected_ifname;
 }
 
-class CrostiniServiceTest : public testing::Test {
+class CrostiniServiceTest : public testing::Test,
+                            public patchpanel::DbusClientNotifier {
  protected:
   void SetUp() override {
     datapath_ = std::make_unique<MockDatapath>();
     addr_mgr_ = std::make_unique<AddressManager>();
     forwarding_service_ = std::make_unique<MockForwardingService>();
+    network_device_signals_.clear();
   }
 
   std::unique_ptr<CrostiniService> NewService() {
-    return std::make_unique<CrostiniService>(
-        addr_mgr_.get(), datapath_.get(), forwarding_service_.get(),
-        base::BindRepeating(&CrostiniServiceTest::DeviceHandler,
-                            base::Unretained(this)));
+    return std::make_unique<CrostiniService>(addr_mgr_.get(), datapath_.get(),
+                                             forwarding_service_.get(), this);
   }
 
-  void DeviceHandler(const CrostiniService::CrostiniDevice& device,
-                     CrostiniService::CrostiniDeviceEvent event) {
-    guest_devices_[device.tap_device_ifname()] = event;
+  // DbusClientNotifier overrides
+  void OnNetworkDeviceChanged(
+      std::unique_ptr<NetworkDevice> virtual_device,
+      NetworkDeviceChangedSignal::Event event) override {
+    guest_device_events_[virtual_device->ifname()] = event;
+    network_device_signals_[virtual_device->ifname()].CopyFrom(*virtual_device);
   }
+  void OnNetworkConfigurationChanged() override {}
+  void OnNeighborReachabilityEvent(
+      int ifindex,
+      const net_base::IPAddress& ip_addr,
+      NeighborLinkMonitor::NeighborRole role,
+      NeighborReachabilityEventSignal::EventType event_type) override {}
 
   std::unique_ptr<AddressManager> addr_mgr_;
   std::unique_ptr<MockDatapath> datapath_;
   std::unique_ptr<MockForwardingService> forwarding_service_;
-  std::map<std::string, CrostiniService::CrostiniDeviceEvent> guest_devices_;
+  std::map<std::string, NetworkDeviceChangedSignal::Event> guest_device_events_;
+  std::map<std::string, NetworkDevice> network_device_signals_;
 };
 
 TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
@@ -110,10 +119,10 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
   EXPECT_NE(std::nullopt, device->lxd_ipv4_subnet());
   EXPECT_NE(std::nullopt, device->lxd_ipv4_address());
   EXPECT_EQ("vmtap0", device->tap_device_ifname());
-  auto it = guest_devices_.find("vmtap0");
-  ASSERT_NE(guest_devices_.end(), it);
-  EXPECT_EQ(CrostiniService::CrostiniDeviceEvent::kAdded, it->second);
-  guest_devices_.clear();
+  auto it = guest_device_events_.find("vmtap0");
+  ASSERT_NE(guest_device_events_.end(), it);
+  EXPECT_EQ(NetworkDeviceChangedSignal::DEVICE_ADDED, it->second);
+  guest_device_events_.clear();
 
   // After starting, there should be a virtual device.
   EXPECT_EQ(device, crostini->GetDevice(vm_id));
@@ -129,9 +138,9 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
               StopForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
                              kForwardingSet));
   crostini->Stop(vm_id);
-  it = guest_devices_.find("vmtap0");
-  ASSERT_NE(guest_devices_.end(), it);
-  EXPECT_EQ(CrostiniService::CrostiniDeviceEvent::kRemoved, it->second);
+  it = guest_device_events_.find("vmtap0");
+  ASSERT_NE(guest_device_events_.end(), it);
+  EXPECT_EQ(NetworkDeviceChangedSignal::DEVICE_REMOVED, it->second);
 
   // After stopping the datapath setup, there should be no virtual device.
   EXPECT_EQ(nullptr, crostini->GetDevice(vm_id));
@@ -176,10 +185,10 @@ TEST_F(CrostiniServiceTest, StartStopParallelsVM) {
   Mock::VerifyAndClearExpectations(datapath_.get());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
-  auto it = guest_devices_.find("vmtap0");
-  ASSERT_NE(guest_devices_.end(), it);
-  EXPECT_EQ(CrostiniService::CrostiniDeviceEvent::kAdded, it->second);
-  guest_devices_.clear();
+  auto it = guest_device_events_.find("vmtap0");
+  ASSERT_NE(guest_device_events_.end(), it);
+  EXPECT_EQ(NetworkDeviceChangedSignal::DEVICE_ADDED, it->second);
+  guest_device_events_.clear();
 
   // After starting, there should be a virtual device.
   EXPECT_EQ(device, crostini->GetDevice(vm_id));
@@ -199,9 +208,9 @@ TEST_F(CrostiniServiceTest, StartStopParallelsVM) {
               StopForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
                              kForwardingSet));
   crostini->Stop(vm_id);
-  it = guest_devices_.find("vmtap0");
-  ASSERT_NE(guest_devices_.end(), it);
-  EXPECT_EQ(CrostiniService::CrostiniDeviceEvent::kRemoved, it->second);
+  it = guest_device_events_.find("vmtap0");
+  ASSERT_NE(guest_device_events_.end(), it);
+  EXPECT_EQ(NetworkDeviceChangedSignal::DEVICE_REMOVED, it->second);
 
   // After stopping the datapath setup, there should be no virtual device.
   EXPECT_EQ(nullptr, crostini->GetDevice(vm_id));
@@ -243,10 +252,10 @@ TEST_F(CrostiniServiceTest, StartStopBruschettaVM) {
   EXPECT_EQ(std::nullopt, device->lxd_ipv4_subnet());
   EXPECT_EQ(std::nullopt, device->lxd_ipv4_address());
   EXPECT_EQ("vmtap0", device->tap_device_ifname());
-  auto it = guest_devices_.find("vmtap0");
-  ASSERT_NE(guest_devices_.end(), it);
-  EXPECT_EQ(CrostiniService::CrostiniDeviceEvent::kAdded, it->second);
-  guest_devices_.clear();
+  auto it = guest_device_events_.find("vmtap0");
+  ASSERT_NE(guest_device_events_.end(), it);
+  EXPECT_EQ(NetworkDeviceChangedSignal::DEVICE_ADDED, it->second);
+  guest_device_events_.clear();
 
   // After starting, there should be a virtual device.
   EXPECT_EQ(device, crostini->GetDevice(vm_id));
@@ -263,9 +272,9 @@ TEST_F(CrostiniServiceTest, StartStopBruschettaVM) {
               StopForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
                              kForwardingSet));
   crostini->Stop(vm_id);
-  it = guest_devices_.find("vmtap0");
-  ASSERT_NE(guest_devices_.end(), it);
-  EXPECT_EQ(CrostiniService::CrostiniDeviceEvent::kRemoved, it->second);
+  it = guest_device_events_.find("vmtap0");
+  ASSERT_NE(guest_device_events_.end(), it);
+  EXPECT_EQ(NetworkDeviceChangedSignal::DEVICE_REMOVED, it->second);
 
   // After stopping the datapath setup, there should be no virtual device.
   EXPECT_EQ(nullptr, crostini->GetDevice(vm_id));
@@ -306,10 +315,10 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
                                  /*subnet_index=*/0);
   ASSERT_NE(nullptr, device);
   ASSERT_EQ("vmtap0", device->tap_device_ifname());
-  auto it = guest_devices_.find("vmtap0");
-  ASSERT_NE(guest_devices_.end(), it);
-  ASSERT_EQ(CrostiniService::CrostiniDeviceEvent::kAdded, it->second);
-  guest_devices_.clear();
+  auto it = guest_device_events_.find("vmtap0");
+  ASSERT_NE(guest_device_events_.end(), it);
+  ASSERT_EQ(NetworkDeviceChangedSignal::DEVICE_ADDED, it->second);
+  guest_device_events_.clear();
   Mock::VerifyAndClearExpectations(datapath_.get());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
@@ -336,10 +345,10 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
                            /*subnet_index=*/0);
   ASSERT_NE(nullptr, device);
   ASSERT_EQ("vmtap1", device->tap_device_ifname());
-  it = guest_devices_.find("vmtap1");
-  ASSERT_NE(guest_devices_.end(), it);
-  ASSERT_EQ(CrostiniService::CrostiniDeviceEvent::kAdded, it->second);
-  guest_devices_.clear();
+  it = guest_device_events_.find("vmtap1");
+  ASSERT_NE(guest_device_events_.end(), it);
+  ASSERT_EQ(NetworkDeviceChangedSignal::DEVICE_ADDED, it->second);
+  guest_device_events_.clear();
   Mock::VerifyAndClearExpectations(datapath_.get());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
@@ -363,10 +372,10 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
                            /*subnet_index=*/0);
   ASSERT_NE(nullptr, device);
   ASSERT_EQ("vmtap2", device->tap_device_ifname());
-  it = guest_devices_.find("vmtap2");
-  ASSERT_NE(guest_devices_.end(), it);
-  ASSERT_EQ(CrostiniService::CrostiniDeviceEvent::kAdded, it->second);
-  guest_devices_.clear();
+  it = guest_device_events_.find("vmtap2");
+  ASSERT_NE(guest_device_events_.end(), it);
+  ASSERT_EQ(NetworkDeviceChangedSignal::DEVICE_ADDED, it->second);
+  guest_device_events_.clear();
   Mock::VerifyAndClearExpectations(datapath_.get());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
@@ -397,10 +406,10 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
                              kForwardingSet));
   crostini->Stop(vm_id1);
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id1));
-  it = guest_devices_.find("vmtap0");
-  ASSERT_NE(guest_devices_.end(), it);
-  ASSERT_EQ(CrostiniService::CrostiniDeviceEvent::kRemoved, it->second);
-  guest_devices_.clear();
+  it = guest_device_events_.find("vmtap0");
+  ASSERT_NE(guest_device_events_.end(), it);
+  ASSERT_EQ(NetworkDeviceChangedSignal::DEVICE_REMOVED, it->second);
+  guest_device_events_.clear();
   Mock::VerifyAndClearExpectations(datapath_.get());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
@@ -413,10 +422,10 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
                              kForwardingSet));
   crostini->Stop(vm_id3);
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id3));
-  it = guest_devices_.find("vmtap2");
-  ASSERT_NE(guest_devices_.end(), it);
-  ASSERT_EQ(CrostiniService::CrostiniDeviceEvent::kRemoved, it->second);
-  guest_devices_.clear();
+  it = guest_device_events_.find("vmtap2");
+  ASSERT_NE(guest_device_events_.end(), it);
+  ASSERT_EQ(NetworkDeviceChangedSignal::DEVICE_REMOVED, it->second);
+  guest_device_events_.clear();
   Mock::VerifyAndClearExpectations(datapath_.get());
 
   // Stop Parallels VM. Its virtual device is destroyed.
@@ -432,9 +441,9 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
                              kForwardingSet));
   crostini->Stop(vm_id2);
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id2));
-  it = guest_devices_.find("vmtap1");
-  ASSERT_NE(guest_devices_.end(), it);
-  ASSERT_EQ(CrostiniService::CrostiniDeviceEvent::kRemoved, it->second);
+  it = guest_device_events_.find("vmtap1");
+  ASSERT_NE(guest_device_events_.end(), it);
+  ASSERT_EQ(NetworkDeviceChangedSignal::DEVICE_REMOVED, it->second);
 
   // There are no more virtual devices left.
   ASSERT_TRUE(crostini->GetDevices().empty());

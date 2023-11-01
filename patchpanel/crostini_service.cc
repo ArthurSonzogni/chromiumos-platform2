@@ -120,15 +120,14 @@ void CrostiniService::CrostiniDevice::ConvertToProto(
   // NetworkDevice does not have a field for the LXD container IPv4 allocation.
 }
 
-CrostiniService::CrostiniService(
-    AddressManager* addr_mgr,
-    Datapath* datapath,
-    ForwardingService* forwarding_service,
-    CrostiniService::CrostiniDeviceEventHandler event_handler)
+CrostiniService::CrostiniService(AddressManager* addr_mgr,
+                                 Datapath* datapath,
+                                 ForwardingService* forwarding_service,
+                                 DbusClientNotifier* dbus_client_notifier)
     : addr_mgr_(addr_mgr),
       datapath_(datapath),
       forwarding_service_(forwarding_service),
-      event_handler_(event_handler),
+      dbus_client_notifier_(dbus_client_notifier),
       adb_sideloading_enabled_(false) {
   DCHECK(addr_mgr_);
   DCHECK(datapath_);
@@ -186,7 +185,10 @@ const CrostiniService::CrostiniDevice* CrostiniService::Start(
   LOG(INFO) << __func__ << " " << vm_info
             << ": Crostini network service started on "
             << dev->tap_device_ifname();
-  event_handler_.Run(*dev, CrostiniDeviceEvent::kAdded);
+  auto signal_device = std::make_unique<NetworkDevice>();
+  dev->ConvertToProto(signal_device.get());
+  dbus_client_notifier_->OnNetworkDeviceChanged(
+      std::move(signal_device), NetworkDeviceChangedSignal::DEVICE_ADDED);
   auto [it, _] = devices_.emplace(vm_id, std::move(dev));
   return it->second.get();
 }
@@ -201,7 +203,10 @@ void CrostiniService::Stop(uint64_t vm_id) {
   auto vm_type = it->second->type();
   const auto vm_info = std::make_pair(vm_id, vm_type);
 
-  event_handler_.Run(*it->second, CrostiniDeviceEvent::kRemoved);
+  auto signal_device = std::make_unique<NetworkDevice>();
+  it->second->ConvertToProto(signal_device.get());
+  dbus_client_notifier_->OnNetworkDeviceChanged(
+      std::move(signal_device), NetworkDeviceChangedSignal::DEVICE_REMOVED);
   const std::string tap_ifname = it->second->tap_device_ifname();
   if (default_logical_device_) {
     forwarding_service_->StopForwarding(*default_logical_device_,
