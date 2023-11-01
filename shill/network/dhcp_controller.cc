@@ -198,6 +198,15 @@ void DHCPController::ProcessEventSignal(ClientEventReason reason,
   }
 
   const bool is_gateway_arp = reason == ClientEventReason::kGatewayArp;
+
+  // b/298696921#17: a race between GATEWAY-ARP response and DHCPACK can cause a
+  // GATEWAY-ARP event incoming with no DHCP lease information. This empty lease
+  // should be ignored.
+  if (is_gateway_arp && !network_config.ipv4_address) {
+    LOG(WARNING) << "Get GATEWAY-ARP reply after DHCP state change, ignored.";
+    return;
+  }
+
   // This is a non-authoritative confirmation that we or on the same
   // network as the one we received a lease on previously.  The DHCP
   // client is still running, so we should not cancel the timeout
