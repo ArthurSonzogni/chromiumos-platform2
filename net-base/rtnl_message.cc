@@ -705,19 +705,19 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
   }
 
   // Determine option data pointer and data length.
-  const uint8_t* option_data =
-      reinterpret_cast<const uint8_t*>(nd_user_option_header + 1);
   const size_t data_len = opt_len - sizeof(NDUserOptionHeader);
   if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(min_payload_len + data_len)) {
     return nullptr;
   }
+  const base::span<const uint8_t> option_data{
+      reinterpret_cast<const uint8_t*>(nd_user_option_header + 1), data_len};
 
   std::unique_ptr<RTNLMessage> msg;
   switch (nd_user_option_header->type) {
     case ND_OPT_DNSSL: {
       msg = std::make_unique<RTNLMessage>(kTypeDnssl, mode, 0, 0, 0,
                                           interface_index, family);
-      if (!msg->ParseDnsslOption(option_data, data_len, lifetime)) {
+      if (!msg->ParseDnsslOption(option_data, lifetime)) {
         LOG(ERROR) << "Invalid DNSSL RTNL packet.";
         return nullptr;
       }
@@ -727,7 +727,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
       // Parse RNDSS (Recursive DNS Server) option.
       msg = std::make_unique<RTNLMessage>(kTypeRdnss, mode, 0, 0, 0,
                                           interface_index, family);
-      if (!msg->ParseRdnssOption(option_data, data_len, lifetime)) {
+      if (!msg->ParseRdnssOption(option_data, lifetime)) {
         LOG(ERROR) << "Invalid RDNSS RTNL packet.";
         return nullptr;
       }
@@ -736,37 +736,38 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
     default:
       msg = std::make_unique<RTNLMessage>(kTypeNdUserOption, mode, 0, 0, 0,
                                           interface_index, family);
-      msg->SetNdUserOptionBytes(
-          reinterpret_cast<const uint8_t*>(nd_user_option_header), opt_len);
+      msg->SetNdUserOptionBytes(base::span(
+          reinterpret_cast<const uint8_t*>(nd_user_option_header), opt_len));
       return msg;
   }
 }
 
-void RTNLMessage::SetNdUserOptionBytes(const uint8_t* data, size_t length) {
-  nd_user_option_.option_bytes.assign(data, data + length);
-  nd_user_option_.type = *data;
+void RTNLMessage::SetNdUserOptionBytes(base::span<const uint8_t> data) {
+  LOG_IF(DFATAL, data.empty()) << "ND user option data should not be empty";
+  nd_user_option_.type = data[0];
+  nd_user_option_.option_bytes.assign(std::begin(data), std::end(data));
 }
 
-bool RTNLMessage::ParseDnsslOption(const uint8_t* data,
-                                   size_t length,
+bool RTNLMessage::ParseDnsslOption(base::span<const uint8_t> data,
                                    uint32_t lifetime) {
   // Section 3.1 of RFC1035.
   std::vector<std::string> domains;
   std::vector<std::string_view> tokens;
-  for (size_t offset = 0; offset < length;) {
-    const uint8_t token_size = data[offset];
-    if (offset + token_size >= length) {
+  while (!data.empty()) {
+    const uint8_t token_size = data[0];
+    data = data.subspan(1);
+
+    if (data.size() < token_size) {
       return false;
     }
     if (token_size > 0) {
       tokens.push_back(std::string_view(
-          reinterpret_cast<const char*>(data) + offset + 1,
-          reinterpret_cast<const char*>(data) + offset + 1 + token_size));
+          reinterpret_cast<const char*>(data.data()), token_size));
+      data = data.subspan(token_size);
     } else if (!tokens.empty()) {
       domains.push_back(base::JoinString(tokens, "."));
       tokens.clear();
     }
-    offset += (token_size + 1);
   }
   if (!tokens.empty()) {
     domains.push_back(base::JoinString(tokens, "."));
@@ -776,23 +777,21 @@ bool RTNLMessage::ParseDnsslOption(const uint8_t* data,
   return true;
 }
 
-bool RTNLMessage::ParseRdnssOption(const uint8_t* data,
-                                   size_t length,
+bool RTNLMessage::ParseRdnssOption(base::span<const uint8_t> data,
                                    uint32_t lifetime) {
   const size_t addr_length = net_base::IPv6Address::kAddressLength;
 
   // Verify data size are multiple of individual address size.
-  if (length % addr_length != 0) {
+  if (data.size() % addr_length != 0) {
     return false;
   }
 
   // Parse the DNS server addresses.
   std::vector<net_base::IPv6Address> dns_server_addresses;
-  while (length > 0) {
+  while (!data.empty()) {
     dns_server_addresses.push_back(
-        *net_base::IPv6Address::CreateFromBytes({data, addr_length}));
-    length -= addr_length;
-    data += addr_length;
+        *net_base::IPv6Address::CreateFromBytes(data.subspan(0, addr_length)));
+    data = data.subspan(addr_length);
   }
   set_rdnss_option(RdnssOption(lifetime, dns_server_addresses));
   return true;

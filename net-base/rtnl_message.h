@@ -304,9 +304,9 @@ class NET_BASE_EXPORT RTNLMessage {
   static std::unique_ptr<RTNLMessage> DecodeNeighbor(Mode mode,
                                                      const RTNLHeader* hdr);
 
-  void SetNdUserOptionBytes(const uint8_t* data, size_t length);
-  bool ParseDnsslOption(const uint8_t* data, size_t length, uint32_t lifetime);
-  bool ParseRdnssOption(const uint8_t* data, size_t length, uint32_t lifetime);
+  void SetNdUserOptionBytes(base::span<const uint8_t> data);
+  bool ParseDnsslOption(base::span<const uint8_t> data, uint32_t lifetime);
+  bool ParseRdnssOption(base::span<const uint8_t> data, uint32_t lifetime);
   bool EncodeLink(RTNLHeader* hdr) const;
   bool EncodeAddress(RTNLHeader* hdr) const;
   bool EncodeRoute(RTNLHeader* hdr) const;
