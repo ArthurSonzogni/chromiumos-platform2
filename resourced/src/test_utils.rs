@@ -8,6 +8,7 @@ pub(crate) mod tests {
     use std::path::Path;
     use std::path::PathBuf;
     use std::str;
+    use std::time::Duration;
 
     use anyhow::Result;
 
@@ -296,5 +297,36 @@ model name      : {model_name}"#
     pub fn set_intel_gpu_boost(root: &Path, val: u32) {
         let gpu_boot_path = root.join(GPU0_DEVICE_PATH).join("gt_boost_freq_mhz");
         std::fs::write(gpu_boot_path, val.to_string()).unwrap();
+    }
+
+    pub struct ProcessForTest {
+        process_id: u32,
+    }
+
+    impl Drop for ProcessForTest {
+        fn drop(&mut self) {
+            let process_id = self.process_id as libc::pid_t;
+            unsafe {
+                libc::kill(process_id, libc::SIGKILL);
+                libc::waitpid(process_id, std::ptr::null_mut(), 0);
+            }
+        }
+    }
+
+    pub(crate) fn fork_process_for_test() -> (u32, ProcessForTest) {
+        let child_process_id = unsafe { libc::fork() };
+        if child_process_id == 0 {
+            loop {
+                std::thread::sleep(Duration::from_secs(1));
+            }
+        }
+        assert!(child_process_id > 0);
+        let child_process_id = child_process_id as u32;
+        (
+            child_process_id,
+            ProcessForTest {
+                process_id: child_process_id,
+            },
+        )
     }
 }

@@ -42,6 +42,7 @@ use crate::memory;
 use crate::power;
 use crate::psi;
 use crate::qos;
+use crate::qos::set_process_state;
 use crate::vm_memory_management_client::VmMemoryManagementClient;
 
 const SERVICE_NAME: &str = "org.chromium.ResourceManager";
@@ -521,11 +522,9 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                     let Some(sched_ctx) = sched_ctx else {
                         return sender_context.reply(Err(MethodErr::failed("no schedqos context")));
                     };
-                    let mut sched_ctx = sched_ctx.lock().expect("lock schedqos context");
 
-                    let result = sched_ctx.set_process_state(process_id, state);
-                    match result {
-                        Ok(()) => sender_context.reply(Ok(())),
+                    match set_process_state(sched_ctx, process_id, state) {
+                        Ok(_) => sender_context.reply(Ok(())),
                         Err(e) => {
                             error!("change_process_state failed: {}, pid={:#}", e, process_id);
                             sender_context
