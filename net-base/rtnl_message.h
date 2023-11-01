@@ -15,6 +15,7 @@
 #include <base/containers/span.h>
 
 #include "net-base/export.h"
+#include "net-base/http_url.h"
 #include "net-base/ip_address.h"
 #include "net-base/ipv6_address.h"
 
@@ -39,6 +40,7 @@ class NET_BASE_EXPORT RTNLMessage {
     kTypeRule,
     kTypeRdnss,
     kTypeDnssl,
+    kTypeCaptivePortal,
     kTypeNeighbor,
     kTypeNdUserOption,  // Unknown ND user options that does not have own types.
   };
@@ -215,6 +217,10 @@ class NET_BASE_EXPORT RTNLMessage {
   void set_dnssl_option(const DnsslOption& dnssl_option) {
     dnssl_option_ = dnssl_option;
   }
+  const HttpUrl& captive_portal_uri() const { return captive_portal_uri_; }
+  void set_captive_portal_uri(const HttpUrl& captive_portal_uri) {
+    captive_portal_uri_ = captive_portal_uri;
+  }
   const NdUserOption& nd_user_option() const { return nd_user_option_; }
   const NeighborStatus& neighbor_status() const { return neighbor_status_; }
   void set_neighbor_status(const NeighborStatus& neighbor_status) {
@@ -307,6 +313,7 @@ class NET_BASE_EXPORT RTNLMessage {
   void SetNdUserOptionBytes(base::span<const uint8_t> data);
   bool ParseDnsslOption(base::span<const uint8_t> data);
   bool ParseRdnssOption(base::span<const uint8_t> data);
+  bool ParseCaptivePortalOption(base::span<const uint8_t> data);
   bool EncodeLink(RTNLHeader* hdr) const;
   bool EncodeAddress(RTNLHeader* hdr) const;
   bool EncodeRoute(RTNLHeader* hdr) const;
@@ -338,6 +345,7 @@ class NET_BASE_EXPORT RTNLMessage {
   NeighborStatus neighbor_status_;
   RdnssOption rdnss_option_;
   DnsslOption dnssl_option_;
+  HttpUrl captive_portal_uri_;
   NdUserOption nd_user_option_;
   // Additional rtattr contained in the message.
   RTNLAttrMap attributes_;

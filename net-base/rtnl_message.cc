@@ -28,14 +28,16 @@
 #include <base/strings/string_number_conversions.h>
 
 #include "net-base/byte_utils.h"
+#include "net-base/http_url.h"
 
 namespace net_base {
 namespace {
 
 // Defined in the kernel at include/net/ndisc.h and not exposed in user space
 // headers. Neighbor Discovery user option type definition.
-#define ND_OPT_RDNSS 25 /* RFC 5006 */
-#define ND_OPT_DNSSL 31 /* RFC 6106 */
+#define ND_OPT_RDNSS 25          /* RFC 5006 */
+#define ND_OPT_DNSSL 31          /* RFC 6106 */
+#define ND_OPT_CAPTIVE_PORTAL 37 /* RFC 8910 */
 
 using flag_info_t = std::pair<uint32_t, const char*>;
 
@@ -728,6 +730,16 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
       }
       return msg;
     }
+    case ND_OPT_CAPTIVE_PORTAL: {
+      // Parse Captive portal URI option.
+      msg = std::make_unique<RTNLMessage>(kTypeCaptivePortal, mode, 0, 0, 0,
+                                          interface_index, family);
+      if (!msg->ParseCaptivePortalOption(option_data)) {
+        LOG(ERROR) << "Invalid captive portal URI RTNL packet.";
+        return nullptr;
+      }
+      return msg;
+    }
     default:
       msg = std::make_unique<RTNLMessage>(kTypeNdUserOption, mode, 0, 0, 0,
                                           interface_index, family);
@@ -823,6 +835,28 @@ bool RTNLMessage::ParseRdnssOption(base::span<const uint8_t> data) {
     data = data.subspan(addr_length);
   }
   set_rdnss_option(RdnssOption(lifetime, dns_server_addresses));
+  return true;
+}
+
+bool RTNLMessage::ParseCaptivePortalOption(base::span<const uint8_t> data) {
+  // Section 2.3 of RFC8910.
+  // The layout of RDNSS option after the type and length field is:
+  // - URI: padded with 0 to make the total option length a multiple of 8 bytes
+  if (data.empty()) {
+    LOG(ERROR) << "Empty payload for captive portal URI";
+    return false;
+  }
+
+  // The string is not guaranteed to be null terminated, so we need to find the
+  // length by strnlen().
+  const char* str = reinterpret_cast<const char*>(data.data());
+  const std::string_view str_view(str, strnlen(str, data.size()));
+  const std::optional<HttpUrl> url = HttpUrl::CreateFromString(str_view);
+  if (!url.has_value() || url->protocol() != HttpUrl::Protocol::kHttps) {
+    LOG(ERROR) << "Invalid captive portal URI: " << str_view;
+    return false;
+  }
+  set_captive_portal_uri(*url);
   return true;
 }
 

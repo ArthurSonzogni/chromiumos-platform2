@@ -19,6 +19,7 @@
 #include <re2/re2.h>
 
 #include "net-base/byte_utils.h"
+#include "net-base/http_url.h"
 
 using testing::Optional;
 using testing::Test;
@@ -411,6 +412,38 @@ const uint8_t kNdDnsslMessage[] = {
     0x00, 0x03, 0x66, 0x6f, 0x6f, 0x01, 0x32, 0x03, 0x62, 0x61, 0x72, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 0x01, 0x00, 0xfe, 0x80, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x88, 0xb9, 0xec, 0xff, 0xfe, 0x20, 0x7e, 0x26,
+};
+
+// CaptivePortal notification
+// ifindex: 7
+// URI: https://example.org/api
+const uint8_t kNdCaptivePortalMessage[] = {
+    // struct nlmsghdr
+    0x50, 0x00, 0x00, 0x00,  // nlmsg_len = 80
+    0x44, 0x00,              // nlmsg_type = RTM_NEWNDUSEROPT
+    0x00, 0x00,              // nlmsg_flags
+    0x00, 0x00, 0x00, 0x00,  // nlmsg_seq
+    0x00, 0x00, 0x00, 0x00,  // nlmsg_pid
+
+    // struct nduseroptmsg
+    0x0a,                    // nduseropt_family = AF_INET6
+    0x00,                    // nduseropt_pad1
+    0x20, 0x00,              // nduseropt_opts_len = 32
+    0x07, 0x00, 0x00, 0x00,  // nduseropt_ifindex = 7
+    0x86,                    // nduseropt_icmp_type
+    0x00,                    // nduseropt_icmp_code
+    0x00, 0x00,              // nduseropt_pad2
+    0x00, 0x00, 0x00, 0x00,  // nduseropt_pad3
+
+    // RA option defined by RFC8910 Section 2.3
+    0x25,  // Type = ND_OPT_CAPTIVE_PORTAL
+    0x04,  // Length = 4 (32 bytes)
+    0x68, 0x74, 0x74, 0x70, 0x73, 0x3a, 0x2f, 0x2f, 0x65, 0x78, 0x61, 0x6d,
+    0x70, 0x6c, 0x65, 0x2e, 0x6f, 0x72, 0x67, 0x2f, 0x61, 0x70, 0x69, 0x2f,
+    0x61, 0x73, 0x64, 0x66, 0x67, 0x68,  // URI = https://example.org/api/asdfgh
+
+    0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x88, 0xb9, 0xec, 0xff,
+    0xfe, 0x20, 0x7e, 0x26,  // Link local source address of the RA packet.
 };
 
 // Add IPv4 rule for src 100.87.84.110/24 table 1002
@@ -818,6 +851,18 @@ TEST_F(RTNLMessageTest, DnsslOption) {
   // Verify life time and addresses.
   EXPECT_EQ(600, dnssl.lifetime);
   EXPECT_EQ(expected_domains, dnssl.domains);
+}
+
+TEST_F(RTNLMessageTest, CaptivePortalOption) {
+  const auto msg = RTNLMessage::Decode(kNdCaptivePortalMessage);
+  const HttpUrl expected_uri =
+      *HttpUrl::CreateFromString("https://example.org/api/asdfgh");
+
+  ASSERT_TRUE(msg);
+  EXPECT_EQ(RTNLMessage::kTypeCaptivePortal, msg->type());
+  EXPECT_EQ(RTNLMessage::kModeAdd, msg->mode());
+  EXPECT_EQ(7, msg->interface_index());
+  EXPECT_EQ(expected_uri, msg->captive_portal_uri());
 }
 
 TEST_F(RTNLMessageTest, ParseRuleEvents) {
