@@ -121,8 +121,6 @@ source_set("example_preprocessor") {
   deps = [ ":ml_assist_ranker_proto" ]
 }
 
-ondevice_image_content_annotation_enabled =
-    use.ondevice_image_content_annotation && use.internal
 static_library("ml_common") {
   sources = [
     "custom_ops/transpose_conv_bias.cc",
@@ -181,7 +179,7 @@ static_library("ml_common") {
     "USE_ONDEVICE_GRAMMAR=${use.ondevice_grammar}",
     "USE_ONDEVICE_TEXT_SUGGESTIONS=${use.ondevice_text_suggestions}",
     "USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION=" +
-        "${ondevice_image_content_annotation_enabled}",
+        "${use.ondevice_image_content_annotation}",
     "TC3_VOCAB_ANNOTATOR_IMPL",
   ]
   public_deps = [ ":ml_mojo_bindings_lib" ]
@@ -204,7 +202,7 @@ static_library("ml_common") {
   } else {
     sources += [ "soda_recognizer_impl_fake.cc" ]
   }
-  if (ondevice_image_content_annotation_enabled) {
+  if (use.ondevice_image_content_annotation) {
     sources += [
       "image_content_annotation.cc",
       "image_content_annotation_impl.cc",
@@ -317,7 +315,7 @@ if (use.test) {
       "USE_ONDEVICE_HANDWRITING_DLC=${use.ondevice_handwriting_dlc}",
       "USE_ONDEVICE_TEXT_SUGGESTIONS=${use.ondevice_text_suggestions}",
       "USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION=" +
-          "${ondevice_image_content_annotation_enabled}",
+          "${use.ondevice_image_content_annotation}",
     ]
     if (!use.asan) {
       defines += [ "USE_ONDEVICE_SPEECH=${use.ondevice_speech}" ]
@@ -339,7 +337,7 @@ if (use.test) {
         "soda_test.cc",
       ]
     }
-    if (ondevice_image_content_annotation_enabled) {
+    if (use.ondevice_image_content_annotation) {
       sources += [ "image_content_annotation_test.cc" ]
       pkg_deps += [ "opencv4" ]
     }
