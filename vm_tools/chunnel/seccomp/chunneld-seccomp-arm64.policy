@@ -55,6 +55,7 @@ exit: 1
 exit_group: 1
 rt_sigreturn: 1
 getpid: 1
+gettid: 1
 pipe2: 1
 clock_gettime: 1
 ioctl: arg1 == FIONBIO
