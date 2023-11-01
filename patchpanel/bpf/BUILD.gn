@@ -9,6 +9,9 @@ group("patchpanel_ebpf") {
     ":ebpf_webrtc_detection",
     ":patchpanel_bpf_loader",
   ]
+  if (use.test) {
+    deps += [ ":patchpanel_bpf_test_runner" ]
+  }
 }
 
 generate_vmlinux("vmlinux_h") {
@@ -35,4 +38,22 @@ executable("patchpanel_bpf_loader") {
     "libchrome",
   ]
   install_path = "bin"
+}
+
+if (use.test) {
+  executable("patchpanel_bpf_test_runner") {
+    run_test = true
+    sources = [
+      "unit_test_utils.c",
+      "webrtc_detection.c",
+      "webrtc_detection_test.cc",
+    ]
+    cflags = [ "-Wconversion" ]
+    defines = [ "UNIT_TEST" ]
+    deps = [ "//common-mk/testrunner" ]
+    pkg_deps = [
+      "libchrome",
+      "libnet-base",
+    ]
+  }
 }
