@@ -51,9 +51,6 @@ available:
 :   Override the guest kernel path to /set/to/new_path. KERNEL_PATH must consist
     of capital letters.
 
-`O_DIRECT=true`
-:   Force O_DIRECT on all virtio-blk devices.
-
 `O_DIRECT_N=N`
 :   Force O_DIRECT on Nth virtio-blk device. N starts from 0. For example,
     `O_DIRECT_N=0` for turning on O_DIRECT on system.img on ARCVM.

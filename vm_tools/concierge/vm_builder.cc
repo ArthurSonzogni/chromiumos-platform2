@@ -26,9 +26,6 @@ constexpr char kWaylandSocket[] = "/run/chrome/wayland-0";
 
 constexpr char kVirglRenderServerPath[] = "/usr/libexec/virgl_render_server";
 
-// Custom parameter key to override the o_direct= disk parameter.
-constexpr char kKeyToOverrideODirect[] = "O_DIRECT";
-
 // Custom parameter key to override the o_direct= disk parameter for specific
 // Nth entry.
 constexpr char kKeyToOverrideODirectN[] = "O_DIRECT_N";
@@ -284,13 +281,6 @@ VmBuilder& VmBuilder::EnablePerVmCoreScheduling(bool enable) {
   return *this;
 }
 
-VmBuilder& VmBuilder::EnableODirect(bool enable) {
-  for (auto& d : disks_) {
-    d.o_direct = enable;
-  }
-  return *this;
-}
-
 VmBuilder& VmBuilder::EnableODirectN(int n, bool enable) {
   disks_.at(n).o_direct = enable;
   return *this;
@@ -329,12 +319,6 @@ VmBuilder& VmBuilder::SetVmmSwapDir(base::FilePath vmm_swap_dir) {
 
 bool VmBuilder::ProcessCustomParameters(
     const CustomParametersForDev& devparams) {
-  if (devparams.ObtainSpecialParameter(kKeyToOverrideODirect)
-          .value_or("false") == "true") {
-    EnableODirect(true);
-    /* block size for DM-verity root file system */
-    SetBlockSize(4096);
-  }
   for (auto value : devparams.ObtainSpecialParameters(kKeyToOverrideODirectN)) {
     int64_t n;
     if (!base::StringToInt64(value, &n)) {

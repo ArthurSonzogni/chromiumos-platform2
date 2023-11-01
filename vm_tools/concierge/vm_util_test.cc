@@ -193,20 +193,6 @@ SOME_OTHER_PATH=/a/b/c)");
   EXPECT_THAT(resolved_kernel_path, "default_path");
 }
 
-TEST(CustomParametersForDevTest, ODirect) {
-  base::StringPairs args = {{"--Key1", "Value1"}};
-  CustomParametersForDev custom(R"(O_DIRECT=true)");
-  custom.Apply(args);
-  const std::string o_direct =
-      custom.ObtainSpecialParameter("O_DIRECT").value_or("false");
-
-  base::StringPairs expected{
-      {"--Key1", "Value1"},
-  };
-  EXPECT_THAT(args, testing::ContainerEq(expected));
-  EXPECT_THAT(o_direct, "true");
-}
-
 TEST(CustomParametersForDevTest, BlockMultipleWorkers) {
   base::StringPairs args = {{"--Key1", "Value1"}};
   CustomParametersForDev custom(R"(BLOCK_MULTIPLE_WORKERS=true)");

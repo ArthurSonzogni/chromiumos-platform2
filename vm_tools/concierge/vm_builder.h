@@ -89,8 +89,6 @@ class VmBuilder {
   VmBuilder& EnableDelayRt(bool enable);
   VmBuilder& EnablePerVmCoreScheduling(bool enable);
 
-  // Override flags for O_DIRECT for already appended disks.
-  VmBuilder& EnableODirect(bool enable);
   // Override flags for O_DIRECT for already appended Nth disk.
   VmBuilder& EnableODirectN(int n, bool enable);
   // Override flags for multiple_workers for already appended disks.
