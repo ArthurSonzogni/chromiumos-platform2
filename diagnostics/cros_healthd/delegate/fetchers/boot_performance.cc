@@ -188,8 +188,8 @@ mojom::ProbeErrorPtr PopulateBootUpInfo(mojom::BootPerformanceInfoPtr& info) {
     return error;
   }
   // Calculate the timestamp when power on.
-  info->boot_up_timestamp =
-      base::Time::Now().ToDoubleT() - proc_uptime - firmware_time;
+  info->boot_up_timestamp = base::Time::Now().InSecondsFSinceUnixEpoch() -
+                            proc_uptime - firmware_time;
 
   return nullptr;
 }
@@ -220,7 +220,7 @@ bool ParsePreviousPowerdLog(double& shutdown_start_timestamp,
         RE2::FullMatch(*it, restart_regex, &time_raw, &shutdown_reason)) {
       base::Time time;
       if (base::Time::FromUTCString(time_raw.c_str(), &time)) {
-        shutdown_start_timestamp = time.ToDoubleT();
+        shutdown_start_timestamp = time.InSecondsFSinceUnixEpoch();
       }
       break;
     }
@@ -236,7 +236,7 @@ bool GetShutdownEndTimestamp(double& shutdown_end_timestamp) {
     return false;
   }
 
-  shutdown_end_timestamp = file_info.last_modified.ToDoubleT();
+  shutdown_end_timestamp = file_info.last_modified.InSecondsFSinceUnixEpoch();
 
   return true;
 }

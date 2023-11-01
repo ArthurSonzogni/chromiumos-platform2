@@ -57,7 +57,8 @@ bool Parser::IsValid(const std::string& line, LogRecord& log_record) {
   }
   log_record.tag = tag_;
   log_record.message = log_message;
-  log_record.timestamp = base::Time::FromDoubleT(log_time_in_seconds);
+  log_record.timestamp =
+      base::Time::FromSecondsSinceUnixEpoch(log_time_in_seconds);
   return true;
 }
 

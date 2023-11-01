@@ -57,7 +57,7 @@ bool AddEventToJson(scoped_refptr<JsonStore> json_store,
                     LogEventType event_type,
                     base::Value::Dict&& details) {
   base::Value::Dict event;
-  event.Set(kTimestamp, base::Time::Now().ToDoubleT());
+  event.Set(kTimestamp, base::Time::Now().InSecondsFSinceUnixEpoch());
   event.Set(kStateId, static_cast<int>(state));
   event.Set(kType, static_cast<int>(event_type));
   event.Set(kDetails, std::move(details));
@@ -98,7 +98,8 @@ std::string GenerateTextLogString(scoped_refptr<JsonStore> json_store) {
 
     // Append the timestamp prefix.
     base::Time::Exploded exploded;
-    base::Time::FromDoubleT(event_dict.FindDouble(kTimestamp).value())
+    base::Time::FromSecondsSinceUnixEpoch(
+        event_dict.FindDouble(kTimestamp).value())
         .LocalExplode(&exploded);
     generated_text_log.append(
         base::StringPrintf(kLogTimestampFormat, exploded.year, exploded.month,

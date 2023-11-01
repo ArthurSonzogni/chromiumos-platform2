@@ -295,7 +295,8 @@ void AgentPlugin::SendAgentEvent(bool is_agent_start) {
         tcb_attributes_);
   }
   agent_event->mutable_common()->set_create_timestamp_us(
-      base::Time::Now().ToJavaTime() * base::Time::kMicrosecondsPerMillisecond);
+      base::Time::Now().InMillisecondsSinceUnixEpoch() *
+      base::Time::kMicrosecondsPerMillisecond);
   device_user_->GetDeviceUserAsync(
       base::BindOnce(&AgentPlugin::OnDeviceUserRetrieved,
                      weak_ptr_factory_.GetWeakPtr(), std::move(agent_event)));

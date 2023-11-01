@@ -486,7 +486,7 @@ class MetricsUtilsImplTest : public testing::Test {
                                     bool returning_owner = true,
                                     bool mlb_replacement = true,
                                     bool wp_method = true) {
-    double current_timestamp = base::Time::Now().ToDoubleT();
+    double current_timestamp = base::Time::Now().InSecondsFSinceUnixEpoch();
     if (first_timestamp) {
       EXPECT_TRUE(MetricsUtils::SetMetricsValue(
           json_store_, kMetricsFirstSetupTimestamp, current_timestamp));

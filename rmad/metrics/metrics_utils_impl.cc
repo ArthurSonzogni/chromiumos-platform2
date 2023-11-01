@@ -37,7 +37,7 @@ MetricsUtilsImpl::MetricsUtilsImpl(bool record_to_system)
 bool MetricsUtilsImpl::RecordShimlessRmaReport(
     scoped_refptr<JsonStore> json_store) {
   auto report = StructuredShimlessRmaReport();
-  double current_timestamp = base::Time::Now().ToDoubleT();
+  double current_timestamp = base::Time::Now().InSecondsFSinceUnixEpoch();
   double first_setup_timestamp;
   if (!GetMetricsValue(json_store, kMetricsFirstSetupTimestamp,
                        &first_setup_timestamp)) {

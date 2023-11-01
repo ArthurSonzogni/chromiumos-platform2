@@ -96,7 +96,7 @@ bool InsertSessionForTesting(const base::FilePath& db_path,
       "INSERT INTO sessions (id,source,timestamp,status) VALUES "
       "(%" PRId64 ", '%s', %" PRId64 ", %" PRId32 ")",
       session.id, EscapeSQLString(session.source).c_str(),
-      session.timestamp.ToJavaTime(), session.status);
+      session.timestamp.InMillisecondsSinceUnixEpoch(), session.status);
   return ExecSQL(db_path, {sql}) == SQLITE_OK;
 }
 
@@ -126,8 +126,8 @@ bool InsertFileEntryForTesting(const base::FilePath& db_path,
       file_entry.id, EscapeSQLString(file_entry.package_name).c_str(),
       file_entry.version_code, EscapeSQLString(file_entry.type).c_str(),
       attributes_in_sql.c_str(), file_entry.size, hash_in_sql.c_str(),
-      file_entry.access_time.ToJavaTime(), file_entry.priority,
-      file_entry.session_id);
+      file_entry.access_time.InMillisecondsSinceUnixEpoch(),
+      file_entry.priority, file_entry.session_id);
   return ExecSQL(db_path, {sql}) == SQLITE_OK;
 }
 
@@ -136,7 +136,7 @@ bool UpdateSessionTimestampForTesting(const base::FilePath& db_path,
                                       const base::Time& timestamp) {
   const std::string sql = base::StringPrintf(
       "UPDATE sessions SET timestamp = %" PRId64 " WHERE id = %" PRId64,
-      timestamp.ToJavaTime(), id);
+      timestamp.InMillisecondsSinceUnixEpoch(), id);
   return ExecSQL(db_path, {sql}) == SQLITE_OK;
 }
 
@@ -154,7 +154,7 @@ bool UpdateFileAccessTimeForTesting(const base::FilePath& db_path,
                                     const base::Time& access_time) {
   const std::string sql = base::StringPrintf(
       "UPDATE file_entries SET access_time = %" PRId64 " WHERE id = %" PRId64,
-      access_time.ToJavaTime(), id);
+      access_time.InMillisecondsSinceUnixEpoch(), id);
   return ExecSQL(db_path, {sql}) == SQLITE_OK;
 }
 

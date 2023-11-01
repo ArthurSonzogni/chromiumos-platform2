@@ -61,7 +61,7 @@ int GetSessionsCallback(void* data, int count, char** row, char** names) {
     LOG(ERROR) << "Session.timestamp is not a number";
     return SQLITE_ERROR;
   }
-  session.timestamp = base::Time::FromJavaTime(timestamp);
+  session.timestamp = base::Time::FromMillisecondsSinceUnixEpoch(timestamp);
 
   if (!row[3]) {
     LOG(ERROR) << "Session.status is null";
@@ -134,7 +134,8 @@ int GetFileEntriesCallback(void* data, int count, char** row, char** names) {
     LOG(ERROR) << "FileEntry.access_time is not a number";
     return SQLITE_ERROR;
   }
-  file_entry.access_time = base::Time::FromJavaTime(access_time);
+  file_entry.access_time =
+      base::Time::FromMillisecondsSinceUnixEpoch(access_time);
 
   if (!row[8]) {
     LOG(ERROR) << "FileEntry.priority is null";
@@ -231,8 +232,8 @@ int64_t ApkCacheDatabase::InsertSession(const Session& session) const {
   const std::string sql = base::StringPrintf(
       "INSERT INTO sessions (source, timestamp, status)"
       " VALUES ('%s', %" PRId64 ", %d)",
-      EscapeSQLString(session.source).c_str(), session.timestamp.ToJavaTime(),
-      session.status);
+      EscapeSQLString(session.source).c_str(),
+      session.timestamp.InMillisecondsSinceUnixEpoch(), session.status);
   ExecResult result = ExecSQL(sql);
   if (result.code != SQLITE_OK) {
     LOG(ERROR) << "Failed to insert session: (" << result.code << ") "

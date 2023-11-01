@@ -88,7 +88,7 @@ void VerifyDefaultShutdownInfo(
 }
 
 base::Time FakeTimeNow() {
-  return base::Time::FromDoubleT(kCurrentTimestamp);
+  return base::Time::FromSecondsSinceUnixEpoch(kCurrentTimestamp);
 }
 
 class BootPerformanceFetcherTest : public ::testing::Test {
@@ -167,7 +167,7 @@ TEST_F(BootPerformanceFetcherTest, FetchBootPerformanceInfo) {
   ASSERT_TRUE(
       base::Time::FromUTCString(kFakeShutdownMetricsModifiedTime, &time));
   EXPECT_EQ(info->shutdown_reason, kShutdownReason);
-  EXPECT_NEAR(info->shutdown_timestamp, time.ToDoubleT(), 0.1);
+  EXPECT_NEAR(info->shutdown_timestamp, time.InSecondsFSinceUnixEpoch(), 0.1);
   EXPECT_NEAR(info->shutdown_seconds, kShutdownSeconds, 0.1);
   EXPECT_NEAR(info->tpm_initialization_seconds->value,
               kTpmInitializationSeconds, 0.1);
@@ -259,7 +259,7 @@ TEST_F(BootPerformanceFetcherTest, TestPowerdRebootLog) {
   ASSERT_TRUE(
       base::Time::FromUTCString(kFakeShutdownMetricsModifiedTime, &time));
   EXPECT_EQ(info->shutdown_reason, kShutdownReason);
-  EXPECT_NEAR(info->shutdown_timestamp, time.ToDoubleT(), 0.1);
+  EXPECT_NEAR(info->shutdown_timestamp, time.InSecondsFSinceUnixEpoch(), 0.1);
   EXPECT_NEAR(info->shutdown_seconds, kShutdownSeconds, 0.1);
 }
 

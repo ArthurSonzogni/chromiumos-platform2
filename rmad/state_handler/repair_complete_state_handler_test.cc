@@ -109,7 +109,7 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
     if (args.state_metrics_recorded) {
       EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
           json_store_, RmadState::STATE_NOT_SET, RmadState::kRepairComplete,
-          base::Time::Now().ToDoubleT()));
+          base::Time::Now().InSecondsFSinceUnixEpoch()));
     }
 
     // Register signal callback.

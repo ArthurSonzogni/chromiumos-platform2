@@ -461,12 +461,13 @@ void OutputCrashEventInfo(const mojom::CrashEventInfoPtr& info) {
   base::Value::Dict output;
   output.Set("crash_type", static_cast<int>(info->crash_type));
   output.Set("local_id", info->local_id);
-  output.Set("capture_time", info->capture_time.ToDoubleT());
+  output.Set("capture_time", info->capture_time.InSecondsFSinceUnixEpoch());
   if (!info->upload_info.is_null()) {
     base::Value::Dict upload_info;
     upload_info.Set("crash_report_id", info->upload_info->crash_report_id);
-    upload_info.Set("creation_time",
-                    info->upload_info->creation_time.ToDoubleT());
+    upload_info.Set(
+        "creation_time",
+        info->upload_info->creation_time.InSecondsFSinceUnixEpoch());
     upload_info.Set("offset", static_cast<int>(info->upload_info->offset));
     output.Set("upload_info", std::move(upload_info));
   }

@@ -39,7 +39,8 @@ std::string MaybeWhereClause(const base::Time& start_time,
       << "Invalid time range: start_time must >= UnixEpoch()";
   return base::StringPrintf("WHERE timestamp>%" PRId64
                             " AND timestamp<=%" PRId64,
-                            start_time.ToJavaTime(), end_time.ToJavaTime());
+                            start_time.InMillisecondsSinceUnixEpoch(),
+                            end_time.InMillisecondsSinceUnixEpoch());
 }
 
 // Used in ExampleCount to return number of examples.
@@ -218,7 +219,8 @@ absl::StatusOr<ExampleRecord> ExampleDatabase::Iterator::Next() {
   example_record.id = id;
   example_record.serialized_example =
       std::string(example_buffer, example_buffer + example_buffer_len);
-  example_record.timestamp = base::Time::FromJavaTime(java_ts);
+  example_record.timestamp =
+      base::Time::FromMillisecondsSinceUnixEpoch(java_ts);
   return example_record;
 }
 
@@ -343,9 +345,9 @@ bool ExampleDatabase::DeleteOutdatedExamples(
     if (table_name.find("sqlite_") == 0)
       continue;
 
-    const ExecResult result = ExecSql(
-        base::StringPrintf("DELETE FROM '%s' WHERE timestamp < %" PRId64 ";",
-                           table_name.c_str(), expired_timestamp.ToJavaTime()));
+    const ExecResult result = ExecSql(base::StringPrintf(
+        "DELETE FROM '%s' WHERE timestamp < %" PRId64 ";", table_name.c_str(),
+        expired_timestamp.InMillisecondsSinceUnixEpoch()));
     if (result.code != SQLITE_OK) {
       error_count++;
       LOG(ERROR) << "Failed to delete expired examples from table "
@@ -388,8 +390,10 @@ std::optional<MetaRecord> ExampleDatabase::GetMetaRecord(
     MetaRecord record;
     record.last_used_example_id = sqlite3_column_int64(stmt, 0);
     record.last_used_example_timestamp =
-        base::Time::FromJavaTime(sqlite3_column_int64(stmt, 1));
-    record.timestamp = base::Time::FromJavaTime(sqlite3_column_int64(stmt, 2));
+        base::Time::FromMillisecondsSinceUnixEpoch(
+            sqlite3_column_int64(stmt, 1));
+    record.timestamp = base::Time::FromMillisecondsSinceUnixEpoch(
+        sqlite3_column_int64(stmt, 2));
     result = std::move(record);
   } else if (sqlite_code == SQLITE_DONE) {
     DVLOG(1) << "Metatable doesn't have record for identifier = " << identifier;
@@ -419,8 +423,9 @@ bool ExampleDatabase::UpdateMetaRecord(
       "last_used_example_timestamp=excluded.last_used_example_timestamp, "
       "timestamp=excluded.timestamp;",
       kMetaTableName, identifier.c_str(), new_meta_record.last_used_example_id,
-      new_meta_record.last_used_example_timestamp.ToJavaTime(),
-      new_meta_record.timestamp.ToJavaTime());
+      new_meta_record.last_used_example_timestamp
+          .InMillisecondsSinceUnixEpoch(),
+      new_meta_record.timestamp.InMillisecondsSinceUnixEpoch());
 
   ExecResult result = ExecSql(sql);
   if (result.code != SQLITE_OK) {
@@ -472,7 +477,8 @@ bool ExampleDatabase::InsertExample(const std::string& client_name,
       sqlite3_bind_blob(stmt, 1, example_record.serialized_example.c_str(),
                         example_record.serialized_example.length(),
                         nullptr) == SQLITE_OK &&
-      sqlite3_bind_int64(stmt, 2, example_record.timestamp.ToJavaTime()) ==
+      sqlite3_bind_int64(
+          stmt, 2, example_record.timestamp.InMillisecondsSinceUnixEpoch()) ==
           SQLITE_OK &&
       sqlite3_step(stmt) == SQLITE_DONE;
   sqlite3_finalize(stmt);

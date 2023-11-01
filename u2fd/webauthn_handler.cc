@@ -82,7 +82,8 @@ void AppendAttestedCredential(const std::vector<uint8_t>& credential_id,
 // signature counter. Because of the conversion to a 32-bit unsigned integer,
 // the counter will overflow in the year 2108.
 std::vector<uint8_t> GetTimestampSignatureCounter() {
-  uint32_t sign_counter = static_cast<uint32_t>(base::Time::Now().ToDoubleT());
+  uint32_t sign_counter =
+      static_cast<uint32_t>(base::Time::Now().InSecondsFSinceUnixEpoch());
   return std::vector<uint8_t>{
       static_cast<uint8_t>((sign_counter >> 24) & 0xff),
       static_cast<uint8_t>((sign_counter >> 16) & 0xff),
@@ -563,7 +564,7 @@ void WebAuthnHandler::DoMakeCredential(
     record.rp_display_name = session.request.rp_display_name();
     record.user_id = session.request.user_id();
     record.user_display_name = session.request.user_display_name();
-    record.timestamp = base::Time::Now().ToDoubleT();
+    record.timestamp = base::Time::Now().InSecondsFSinceUnixEpoch();
     record.is_resident_key = session.request.resident_key_required();
     if (!webauthn_storage_->WriteRecord(std::move(record))) {
       LOG(ERROR)

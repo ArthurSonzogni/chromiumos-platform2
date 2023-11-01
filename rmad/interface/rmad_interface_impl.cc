@@ -234,7 +234,7 @@ bool RmadInterfaceImpl::SetUp(scoped_refptr<DaemonCallback> daemon_callback) {
     }
   }
 
-  double current_timestamp = base::Time::Now().ToDoubleT();
+  double current_timestamp = base::Time::Now().InSecondsFSinceUnixEpoch();
   if (!MetricsUtils::UpdateStateMetricsOnStateTransition(
           json_store_, RmadState::STATE_NOT_SET, current_state_case_,
           current_timestamp)) {
@@ -377,7 +377,7 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
   // Update state metrics.
   if (!MetricsUtils::UpdateStateMetricsOnStateTransition(
           json_store_, current_state_case_, next_state_case,
-          base::Time::Now().ToDoubleT())) {
+          base::Time::Now().InSecondsFSinceUnixEpoch())) {
     // TODO(genechang): Add error replies when failed to update state metrics
     //                  in |json_store| -> |metrics| -> |state_metrics|.
     LOG(ERROR) << "Could not update state metrics.";
@@ -461,7 +461,7 @@ GetStateReply RmadInterfaceImpl::TransitionPreviousStateInternal() {
   // Update state metrics.
   if (!MetricsUtils::UpdateStateMetricsOnStateTransition(
           json_store_, current_state_case_, prev_state_case,
-          base::Time::Now().ToDoubleT())) {
+          base::Time::Now().InSecondsFSinceUnixEpoch())) {
     // TODO(genechang): Add error replies when failed to update state metrics
     //                  in |json_store| -> |metrics| -> |state_metrics|.
     LOG(ERROR) << "Could not update state metrics.";
@@ -491,7 +491,8 @@ void RmadInterfaceImpl::AbortRma(AbortRmaCallback callback) {
   } else if (can_abort_) {
     VLOG(1) << "AbortRma: Abort allowed.";
     if (!MetricsUtils::UpdateStateMetricsOnAbort(
-            json_store_, current_state_case_, base::Time::Now().ToDoubleT())) {
+            json_store_, current_state_case_,
+            base::Time::Now().InSecondsFSinceUnixEpoch())) {
       // TODO(genechang): Add error replies when failed to update state metrics
       //                  in |json_store| -> |metrics| -> |state_metrics|.
       LOG(ERROR) << "AbortRma: Failed to update state metrics.";

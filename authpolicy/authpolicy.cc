@@ -427,7 +427,7 @@ void AuthPolicy::StoreSinglePolicy(
 
   // TODO(crbug.com/831995): Use timer that can never run backwards and enable
   // timestamp validation in the Chromium Active Directory policy manager.
-  policy_data.set_timestamp(base::Time::Now().ToJavaTime());
+  policy_data.set_timestamp(base::Time::Now().InMillisecondsSinceUnixEpoch());
   policy_data.set_management_mode(em::PolicyData::ENTERPRISE_MANAGED);
   policy_data.set_machine_name(samba_.machine_name());
   if (DomainRequiresComponentId(descriptor.domain())) {

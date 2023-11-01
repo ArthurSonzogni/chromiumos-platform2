@@ -222,7 +222,8 @@ TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_Success) {
                   kExpectedPowerCycleActivities.end(),
                   activity) != kExpectedPowerCycleActivities.end()) {
       EXPECT_TRUE(MetricsUtils::SetMetricsValue(
-          json_store_, kMetricsSetupTimestamp, base::Time::Now().ToDoubleT()));
+          json_store_, kMetricsSetupTimestamp,
+          base::Time::Now().InSecondsFSinceUnixEpoch()));
       task_environment_.FastForwardBy(base::Seconds(kDelayTimeInSec));
 
       double pre_running_time = 0.0;
@@ -252,8 +253,9 @@ TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_Success) {
 }
 
 TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_JsonFailed) {
-  EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kMetricsSetupTimestamp,
-                                            base::Time::Now().ToDoubleT()));
+  EXPECT_TRUE(MetricsUtils::SetMetricsValue(
+      json_store_, kMetricsSetupTimestamp,
+      base::Time::Now().InSecondsFSinceUnixEpoch()));
   base::SetPosixFilePermissions(GetStateFilePath(), 0444);
 
   for (AdditionalActivity activity : kTestAdditionalActivities) {
@@ -306,7 +308,8 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_Sucesss) {
                   kExpectedPowerCycleActivities.end(),
                   activity) != kExpectedPowerCycleActivities.end()) {
       EXPECT_TRUE(MetricsUtils::SetMetricsValue(
-          json_store_, kMetricsSetupTimestamp, base::Time::Now().ToDoubleT()));
+          json_store_, kMetricsSetupTimestamp,
+          base::Time::Now().InSecondsFSinceUnixEpoch()));
       task_environment_.FastForwardBy(base::Seconds(kDelayTimeInSec));
 
       double pre_running_time = 0.0;

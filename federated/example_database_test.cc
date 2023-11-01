@@ -70,7 +70,7 @@ int PopulateTableForTesting(sqlite3* const db,
     const std::string sql = base::StringPrintf(
         "INSERT INTO '%s' (example, timestamp) VALUES ('example_%d', "
         "%" PRId64 ")",
-        table.c_str(), i, SecondsAfterEpoch(i).ToJavaTime());
+        table.c_str(), i, SecondsAfterEpoch(i).InMillisecondsSinceUnixEpoch());
     const int result = sqlite3_exec(db, sql.c_str(), nullptr, nullptr, nullptr);
     if (result != SQLITE_OK) {
       return result;

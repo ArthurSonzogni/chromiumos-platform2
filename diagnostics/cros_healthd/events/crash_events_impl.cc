@@ -91,7 +91,8 @@ mojom::CrashEventInfoPtr ParseUploadsLogEntry(const std::string& line,
     LOG(ERROR) << "Invalid capture time: " << line;
     return nullptr;
   }
-  result->capture_time = base::Time::FromDoubleT(capture_time_double);
+  result->capture_time =
+      base::Time::FromSecondsSinceUnixEpoch(capture_time_double);
 
   return result;
 }

@@ -86,7 +86,7 @@ MaybeLogEntry LogParserAudit::ParseInternal(std::string&& entire_line) {
     pid = -1;
   }
 
-  base::Time time = base::Time::FromDoubleT(time_in_seconds);
+  base::Time time = base::Time::FromSecondsSinceUnixEpoch(time_in_seconds);
 
   // Generate a string with the same format as syslog.
   std::string generated_entire_line = base::StringPrintf(

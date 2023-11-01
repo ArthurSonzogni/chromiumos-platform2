@@ -54,7 +54,7 @@ bool AuditReader::ReadLine(const std::string& line, LogEntry* entry) {
 
   entry->tag = "audit";
   entry->message = std::move(log_message);
-  entry->timestamp = base::Time::FromDoubleT(time_in_seconds);
+  entry->timestamp = base::Time::FromSecondsSinceUnixEpoch(time_in_seconds);
   return true;
 }
 

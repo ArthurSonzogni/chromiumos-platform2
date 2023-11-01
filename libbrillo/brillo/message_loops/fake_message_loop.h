@@ -70,7 +70,7 @@ class BRILLO_EXPORT FakeMessageLoop : public MessageLoop {
       fire_order_;
 
   base::SimpleTestClock* test_clock_ = nullptr;
-  base::Time current_time_ = base::Time::FromDoubleT(1246996800.);
+  base::Time current_time_ = base::Time::FromSecondsSinceUnixEpoch(1246996800.);
 
   MessageLoop::TaskId last_id_ = kTaskIdNull;
 };

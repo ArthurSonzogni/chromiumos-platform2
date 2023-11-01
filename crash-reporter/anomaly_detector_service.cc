@@ -187,7 +187,9 @@ void Service::ReadLogs() {
           entry.message.find("Out of memory: Kill process") !=
               std::string::npos)
         exported_object_->SendSignal(
-            MakeOomSignal(static_cast<int>(entry.timestamp.ToDoubleT() * 1000))
+            MakeOomSignal(
+                static_cast<int>(entry.timestamp.InSecondsFSinceUnixEpoch() *
+                                 1000))
                 .get());
     }
   }

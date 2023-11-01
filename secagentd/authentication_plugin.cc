@@ -151,7 +151,8 @@ void AuthenticationPlugin::HandleScreenLock() {
   auto screen_lock = std::make_unique<pb::UserEventAtomicVariant>();
   screen_lock->mutable_lock();
   screen_lock->mutable_common()->set_create_timestamp_us(
-      base::Time::Now().ToJavaTime() * base::Time::kMicrosecondsPerMillisecond);
+      base::Time::Now().InMillisecondsSinceUnixEpoch() *
+      base::Time::kMicrosecondsPerMillisecond);
   device_user_->GetDeviceUserAsync(
       base::BindOnce(&AuthenticationPlugin::OnDeviceUserRetrieved,
                      weak_ptr_factory_.GetWeakPtr(), std::move(screen_lock)));
@@ -160,7 +161,8 @@ void AuthenticationPlugin::HandleScreenLock() {
 void AuthenticationPlugin::HandleScreenUnlock() {
   auto screen_unlock = std::make_unique<pb::UserEventAtomicVariant>();
   screen_unlock->mutable_common()->set_create_timestamp_us(
-      base::Time::Now().ToJavaTime() * base::Time::kMicrosecondsPerMillisecond);
+      base::Time::Now().InMillisecondsSinceUnixEpoch() *
+      base::Time::kMicrosecondsPerMillisecond);
   latest_successful_login_timestamp_ =
       screen_unlock->common().create_timestamp_us();
 
@@ -187,7 +189,8 @@ void AuthenticationPlugin::HandleScreenUnlock() {
 void AuthenticationPlugin::HandleSessionStateChange(const std::string& state) {
   auto log_event = std::make_unique<pb::UserEventAtomicVariant>();
   log_event->mutable_common()->set_create_timestamp_us(
-      base::Time::Now().ToJavaTime() * base::Time::kMicrosecondsPerMillisecond);
+      base::Time::Now().InMillisecondsSinceUnixEpoch() *
+      base::Time::kMicrosecondsPerMillisecond);
 
   if (state == kStarted) {
     latest_successful_login_timestamp_ =
@@ -244,8 +247,8 @@ void AuthenticationPlugin::HandleAuthenticateAuthFactorCompleted(
       // TODO(b:305093271): Update logic to handle if password is actually used.
       if (it->second ==
           AuthFactorType::Authentication_AuthenticationType_AUTH_PIN) {
-        latest_pin_failure_ =
-            base::Time::Now().ToJavaTime() / base::Time::kMillisecondsPerSecond;
+        latest_pin_failure_ = base::Time::Now().InMillisecondsSinceUnixEpoch() /
+                              base::Time::kMillisecondsPerSecond;
         last_auth_was_password_ = false;
       } else if (it->second ==
                  AuthFactorType::
@@ -253,7 +256,7 @@ void AuthenticationPlugin::HandleAuthenticateAuthFactorCompleted(
         if (auth_factor_type_ ==
                 AuthFactorType::Authentication_AuthenticationType_AUTH_PIN &&
             !last_auth_was_password_ &&
-            (base::Time::Now().ToJavaTime() /
+            (base::Time::Now().InMillisecondsSinceUnixEpoch() /
              base::Time::kMillisecondsPerSecond) -
                     latest_pin_failure_ <=
                 kMaxDelayForLockscreenAttemptsS) {
@@ -277,7 +280,7 @@ void AuthenticationPlugin::HandleAuthenticateAuthFactorCompleted(
       // Create new event if no matching failure event found and updated.
       auto failure_event = std::make_unique<pb::UserEventAtomicVariant>();
       failure_event->mutable_common()->set_create_timestamp_us(
-          base::Time::Now().ToJavaTime() *
+          base::Time::Now().InMillisecondsSinceUnixEpoch() *
           base::Time::kMicrosecondsPerMillisecond);
 
       auto* authentication =

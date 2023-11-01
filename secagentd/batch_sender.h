@@ -95,7 +95,7 @@ class BatchSender
 
   void Enqueue(std::unique_ptr<AtomicVariantMessage> atomic_event) override {
     atomic_event->mutable_common()->set_create_timestamp_us(
-        base::Time::Now().ToJavaTime() *
+        base::Time::Now().InMillisecondsSinceUnixEpoch() *
         base::Time::kMicrosecondsPerMillisecond);
     base::AutoLock lock(events_lock_);
     size_t event_byte_size = atomic_event->ByteSizeLong();

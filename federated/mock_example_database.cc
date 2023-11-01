@@ -43,7 +43,7 @@ MockExampleDatabase::FakeIterator(const int n) {
     const std::string sql_code = base::StringPrintf(
         "INSERT INTO fake_client (example, timestamp) VALUES "
         "('example_%d', %" PRId64 ")",
-        i, SecondsAfterEpoch(i).ToJavaTime());
+        i, SecondsAfterEpoch(i).InMillisecondsSinceUnixEpoch());
 
     CHECK_EQ(sqlite3_exec(db, sql_code.c_str(), nullptr, nullptr, nullptr),
              SQLITE_OK);

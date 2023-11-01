@@ -43,13 +43,13 @@ const auto kExpectedUnuploadedResultForValidLogLine =
     mojom::CrashEventInfo::New(
         /*crash_type=*/mojom::CrashEventInfo::CrashType::kKernel,
         /*local_id=*/"a_local_id",
-        /*capture_time=*/base::Time::FromDoubleT(9876543.0),
+        /*capture_time=*/base::Time::FromSecondsSinceUnixEpoch(9876543.0),
         /*upload_info=*/nullptr);
 
 const auto kExpectedUploadedResultForValidLogLine = mojom::CrashEventInfo::New(
     /*crash_type=*/mojom::CrashEventInfo::CrashType::kKernel,
     /*local_id=*/"a_local_id",
-    /*capture_time=*/base::Time::FromDoubleT(9876543.0),
+    /*capture_time=*/base::Time::FromSecondsSinceUnixEpoch(9876543.0),
     /*upload_info=*/
     mojom::CrashUploadInfo::New(
         /*crash_report_id=*/"a_crash_report_id",
@@ -94,8 +94,10 @@ TEST_P(UploadsLogParserValidFieldTest, ParseCaptureTime) {
       /*creation_time=*/base::Time(),
       /*init_offset=*/0u);
   ASSERT_EQ(result.size(), 2u);
-  EXPECT_EQ(result[0]->capture_time, base::Time::FromDoubleT(10.0));
-  EXPECT_EQ(result[1]->capture_time, base::Time::FromDoubleT(100.0));
+  EXPECT_EQ(result[0]->capture_time,
+            base::Time::FromSecondsSinceUnixEpoch(10.0));
+  EXPECT_EQ(result[1]->capture_time,
+            base::Time::FromSecondsSinceUnixEpoch(100.0));
 }
 
 TEST_P(UploadsLogParserValidFieldTest, ParseCrashType) {

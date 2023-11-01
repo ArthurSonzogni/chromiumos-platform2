@@ -141,7 +141,7 @@ bool BaseStateHandler::StoreAdditionalActivity(AdditionalActivity activity) {
   if (std::find(kExpectedPowerCycleActivities.begin(),
                 kExpectedPowerCycleActivities.end(),
                 activity) != kExpectedPowerCycleActivities.end()) {
-    double current_timestamp = base::Time::Now().ToDoubleT();
+    double current_timestamp = base::Time::Now().InSecondsFSinceUnixEpoch();
     double setup_timestamp;
     if (!MetricsUtils::GetMetricsValue(json_store_, kMetricsSetupTimestamp,
                                        &setup_timestamp)) {

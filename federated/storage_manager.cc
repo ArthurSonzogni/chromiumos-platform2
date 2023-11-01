@@ -131,7 +131,7 @@ std::optional<ExampleDatabase::Iterator> StorageManager::GetExampleIterator(
     } else if (criteria.has_last_successful_contribution_time()) {
       // This is an approximate and only works when there's no limit.
       DCHECK_EQ(limit, 0);
-      start_timestamp = base::Time::FromJavaTime(
+      start_timestamp = base::Time::FromMillisecondsSinceUnixEpoch(
           ::google::protobuf::util::TimeUtil::TimestampToMilliseconds(
               criteria.last_successful_contribution_time()));
     } else {

@@ -141,7 +141,7 @@ BaseStateHandler::GetNextStateCaseReply RepairCompleteStateHandler::ExitRma() {
   // need to do a powerwash, or a powerwash is already done.
   if (!MetricsUtils::UpdateStateMetricsOnStateTransition(
           json_store_, GetStateCase(), RmadState::STATE_NOT_SET,
-          base::Time::Now().ToDoubleT()) ||
+          base::Time::Now().InSecondsFSinceUnixEpoch()) ||
       !MetricsUtils::SetMetricsValue(json_store_, kMetricsIsComplete, true) ||
       !metrics_utils_->RecordAll(json_store_)) {
     LOG(ERROR) << "RepairCompleteState: Failed to record metrics to the file";

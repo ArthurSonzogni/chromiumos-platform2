@@ -34,7 +34,7 @@ class LogListenerImplMock : public LogListener {
 };
 
 TEST(TimberslideTest, ProcessLogBuffer_GetEcUptimeSupported) {
-  auto now = base::Time::FromDoubleT(1.0);
+  auto now = base::Time::FromSecondsSinceUnixEpoch(1.0);
   NiceMock<MockTimberSlide> mock;
   EXPECT_CALL(mock, GetEcUptime).WillOnce([](int64_t* time) {
     *time = 1 * base::Time::kMillisecondsPerSecond;
@@ -45,7 +45,7 @@ TEST(TimberslideTest, ProcessLogBuffer_GetEcUptimeSupported) {
 }
 
 TEST(TimberslideTest, ProcessLogBuffer_GetEcUptimeNotSupported) {
-  auto now = base::Time::FromDoubleT(1.0);
+  auto now = base::Time::FromSecondsSinceUnixEpoch(1.0);
   NiceMock<MockTimberSlide> mock;
   EXPECT_CALL(mock, GetEcUptime).WillOnce(Return(false));
   std::string ret = mock.ProcessLogBuffer(kSampleLogs, now);

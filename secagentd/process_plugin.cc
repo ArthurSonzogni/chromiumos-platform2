@@ -54,7 +54,7 @@ std::string GetBatchedEventKey(
 bool SetTerminateTimestamp(pb::ProcessEventAtomicVariant* exec) {
   if (exec->has_process_exec()) {
     exec->mutable_process_exec()->set_terminate_timestamp_us(
-        base::Time::Now().ToJavaTime() *
+        base::Time::Now().InMillisecondsSinceUnixEpoch() *
         base::Time::kMicrosecondsPerMillisecond);
     return true;
   }
