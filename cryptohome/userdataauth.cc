@@ -15,6 +15,7 @@
 #include <utility>
 #include <vector>
 
+#include <absl/cleanup/cleanup.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_path.h>
@@ -2742,26 +2743,135 @@ void UserDataAuth::CreatePersistentUser(
     base::OnceCallback<void(const user_data_auth::CreatePersistentUserReply&)>
         on_done) {
   AssertOnMountThread();
-  user_data_auth::CreatePersistentUserReply reply;
+  RunWithAuthSessionWhenAvailable(
+      auth_session_manager_,
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInCreatePersistentUser),
+      std::move(request), std::move(on_done),
+      base::BindOnce(&UserDataAuth::CreatePersistentUserWithSession,
+                     base::Unretained(this)));
+}
 
+void UserDataAuth::CreatePersistentUserWithSession(
+    user_data_auth::CreatePersistentUserRequest request,
+    base::OnceCallback<void(const user_data_auth::CreatePersistentUserReply&)>
+        on_done,
+    InUseAuthSession auth_session) {
   LOG(INFO) << "Creating persistent user";
-  // Record current time for timing how long CreatePersistentUserImpl will
-  // take.
+  // Record the time in between now and when this function exits.
   auto start_time = base::TimeTicks::Now();
+  absl::Cleanup report_time = [&start_time]() {
+    ReportTimerDuration(kCreatePersistentUserTimer, start_time, "");
+  };
 
-  StatusChain<CryptohomeError> ret =
-      CreatePersistentUserImpl(request.auth_session_id());
-
-  ReportTimerDuration(kCreatePersistentUserTimer, start_time, "");
-
-  if (ret.ok()) {
-    InUseAuthSession auth_session =
-        auth_session_manager_->FindAuthSession(request.auth_session_id());
-    PopulateAuthSessionProperties(auth_session,
-                                  reply.mutable_auth_properties());
-    reply.set_sanitized_username(*auth_session->obfuscated_username());
+  user_data_auth::CreatePersistentUserReply reply;
+  if (auth_session->ephemeral_user()) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthCreatePersistentUserInEphemeralSession),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kReboot,
+                            PossibleAction::kPowerwash}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
   }
-  ReplyWithError(std::move(on_done), std::move(reply), std::move(ret));
+
+  const ObfuscatedUsername& obfuscated_username =
+      auth_session->obfuscated_username();
+
+  // This checks presence of the actual encrypted vault. We fail if Create is
+  // called while actual persistent vault is present.
+  auto exists_or = homedirs_->CryptohomeExists(obfuscated_username);
+  if (exists_or.ok() && exists_or.value()) {
+    LOG(ERROR) << "User already exists: " << obfuscated_username;
+    // TODO(b/208898186, dlunev): replace with a more appropriate error
+    ReplyWithError(std::move(on_done), reply,
+                   MakeStatus<CryptohomeError>(
+                       CRYPTOHOME_ERR_LOC(
+                           kLocUserDataAuthUserExistsInCreatePersistentUser),
+                       ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                                       PossibleAction::kDeleteVault}),
+                       user_data_auth::CryptohomeErrorCode::
+                           CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
+    return;
+  }
+
+  if (!exists_or.ok()) {
+    MountError mount_error = exists_or.err_status()->error();
+    LOG(ERROR) << "Failed to query vault existance for: " << obfuscated_username
+               << ", code: " << mount_error;
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeMountError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthCheckExistsFailedInCreatePersistentUser),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kReboot}),
+            mount_error, MountErrorToCryptohomeError(mount_error)));
+    return;
+  }
+
+  // This check seems superfluous after the `HomeDirs::CryptohomeExists()` check
+  // above, but it can happen that the user directory exists without any vault
+  // in it. We perform both checks for completeness and also to distinguish
+  // between these two error cases in metrics and logs.
+  if (auth_session->user_exists()) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthUserDirExistsInCreatePersistentUser),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kDeleteVault,
+                            PossibleAction::kPowerwash}),
+            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
+    return;
+  }
+
+  // This checks and creates if missing the user's directory in shadow root.
+  // We need to disambiguate with vault presence, because it is possible that
+  // we have an empty shadow root directory for the user left behind after
+  // removing a profile (due to a bug or for some other reasons). To avoid weird
+  // failures in the case, just let the creation succeed, since the user is
+  // effectively not there. Eventually |Exists| will check for the presence of
+  // the USS/auth factors to determine if the user is intended to be there.
+  // This call will not create the actual volume (for efficiency, idempotency,
+  // and because that would require going the full sequence of mount and unmount
+  // because of ecryptfs possibility).
+  if (!homedirs_->Exists(obfuscated_username) &&
+      !homedirs_->Create(auth_session->username())) {
+    LOG(ERROR) << "Failed to create shadow directory for: "
+               << obfuscated_username;
+    ReplyWithError(std::move(on_done), reply,
+                   MakeStatus<CryptohomeError>(
+                       CRYPTOHOME_ERR_LOC(
+                           kLocUserDataAuthCreateFailedInCreatePersistentUser),
+                       ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                                       PossibleAction::kReboot,
+                                       PossibleAction::kPowerwash}),
+                       user_data_auth::CryptohomeErrorCode::
+                           CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
+    return;
+  }
+
+  // Let the auth session perform any finalization operations for a newly
+  // created user.
+  CryptohomeStatus ret = auth_session->OnUserCreated();
+  if (!ret.ok()) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthFinalizeFailedInCreatePersistentUser))
+            .Wrap(std::move(ret)));
+    return;
+  }
+
+  PopulateAuthSessionProperties(auth_session, reply.mutable_auth_properties());
+  reply.set_sanitized_username(*auth_session->obfuscated_username());
+  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 
 CryptohomeStatus UserDataAuth::PrepareGuestVaultImpl() {
@@ -2942,110 +3052,6 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
   return OkStatus<CryptohomeError>();
 }
 
-CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
-    const std::string& auth_session_id) {
-  AssertOnMountThread();
-
-  InUseAuthSession auth_session =
-      auth_session_manager_->FindAuthSession(auth_session_id);
-  CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
-  if (!auth_session_status.ok()) {
-    LOG(ERROR) << "AuthSession not found.";
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocUserDataAuthSessionNotFoundInCreatePersistentUser),
-               ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                               PossibleAction::kReboot}),
-               user_data_auth::CryptohomeErrorCode::
-                   CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
-        .Wrap(std::move(auth_session_status));
-  }
-
-  if (auth_session->ephemeral_user()) {
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocUserDataAuthEphemeralAuthSessionAttemptCreatePersistentUser),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                        PossibleAction::kReboot, PossibleAction::kPowerwash}),
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-  }
-
-  const ObfuscatedUsername& obfuscated_username =
-      auth_session->obfuscated_username();
-
-  // This checks presence of the actual encrypted vault. We fail if Create is
-  // called while actual persistent vault is present.
-  auto exists_or = homedirs_->CryptohomeExists(obfuscated_username);
-  if (exists_or.ok() && exists_or.value()) {
-    LOG(ERROR) << "User already exists: " << obfuscated_username;
-    // TODO(b/208898186, dlunev): replace with a more appropriate error
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUserDataAuthUserExistsInCreatePersistentUser),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                        PossibleAction::kDeleteVault}),
-        user_data_auth::CryptohomeErrorCode::
-            CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
-  }
-
-  if (!exists_or.ok()) {
-    MountError mount_error = exists_or.err_status()->error();
-    LOG(ERROR) << "Failed to query vault existance for: " << obfuscated_username
-               << ", code: " << mount_error;
-    return MakeStatus<CryptohomeMountError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocUserDataAuthCheckExistsFailedInCreatePersistentUser),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                        PossibleAction::kReboot}),
-        mount_error, MountErrorToCryptohomeError(mount_error));
-  }
-
-  // This check seems superfluous after the `HomeDirs::CryptohomeExists()` check
-  // above, but it can happen that the user directory exists without any vault
-  // in it. We perform both checks for completeness and also to distinguish
-  // between these two error cases in metrics and logs.
-  if (auth_session->user_exists()) {
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUserDataAuthUserDirExistsInCreatePersistentUser),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                        PossibleAction::kDeleteVault,
-                        PossibleAction::kPowerwash}),
-        user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
-  }
-
-  // This checks and creates if missing the user's directory in shadow root.
-  // We need to disambiguate with vault presence, because it is possible that
-  // we have an empty shadow root directory for the user left behind after
-  // removing a profile (due to a bug or for some other reasons). To avoid weird
-  // failures in the case, just let the creation succeed, since the user is
-  // effectively not there. Eventually |Exists| will check for the presence of
-  // the USS/auth factors to determine if the user is intended to be there.
-  // This call will not create the actual volume (for efficiency, idempotency,
-  // and because that would require going the full sequence of mount and unmount
-  // because of ecryptfs possibility).
-  if (!homedirs_->Exists(obfuscated_username) &&
-      !homedirs_->Create(auth_session->username())) {
-    LOG(ERROR) << "Failed to create shadow directory for: "
-               << obfuscated_username;
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUserDataAuthCreateFailedInCreatePersistentUser),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                        PossibleAction::kReboot, PossibleAction::kPowerwash}),
-        user_data_auth::CryptohomeErrorCode::
-            CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
-  }
-
-  // Let the auth session perform any finalization operations for a newly
-  // created user.
-  CryptohomeStatus ret = auth_session->OnUserCreated();
-  if (!ret.ok()) {
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocUserDataAuthFinalizeFailedInCreatePersistentUser))
-        .Wrap(std::move(ret));
-  }
-  return OkStatus<CryptohomeError>();
-}
-
 void UserDataAuth::EvictDeviceKey(
     user_data_auth::EvictDeviceKeyRequest request,
     base::OnceCallback<void(const user_data_auth::EvictDeviceKeyReply&)>
@@ -3175,8 +3181,19 @@ void UserDataAuth::AuthenticateAuthFactor(
     base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
         on_done) {
   AssertOnMountThread();
-  user_data_auth::AuthenticateAuthFactorReply reply;
+  RunWithAuthSessionWhenAvailable(
+      auth_session_manager_,
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInAuthAuthFactor),
+      std::move(request), std::move(on_done),
+      base::BindOnce(&UserDataAuth::AuthenticateAuthFactorWithSession,
+                     base::Unretained(this)));
+}
 
+void UserDataAuth::AuthenticateAuthFactorWithSession(
+    user_data_auth::AuthenticateAuthFactorRequest request,
+    base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
+        on_done,
+    InUseAuthSession auth_session) {
   // Wrap callback to signal AuthenticateAuthFactorCompleted.
   base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
       on_done_wrapped_with_signal_cb = base::BindOnce(
@@ -3206,22 +3223,7 @@ void UserDataAuth::AuthenticateAuthFactor(
               DetermineFactorTypeFromAuthInput(request.auth_input())
                   .value_or(AuthFactorType::kUnspecified)));
 
-  InUseAuthSession auth_session =
-      auth_session_manager_->FindAuthSession(request.auth_session_id());
-  CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
-  if (!auth_session_status.ok()) {
-    LOG(ERROR) << "Invalid AuthSession token provided.";
-    ReplyWithError(
-        std::move(on_done_wrapped_with_signal_cb), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInAuthAuthFactor),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                            PossibleAction::kReboot}),
-            user_data_auth::CryptohomeErrorCode::
-                CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
-            .Wrap(std::move(auth_session_status).err_status()));
-    return;
-  }
+  user_data_auth::AuthenticateAuthFactorReply reply;
 
   // |auth_factor_labels| is intended to replace |auth_factor_label|, reject
   // requests specifying both fields.
@@ -3239,6 +3241,15 @@ void UserDataAuth::AuthenticateAuthFactor(
                 CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
+  std::vector<std::string> auth_factor_labels;
+  if (!request.auth_factor_label().empty()) {
+    auth_factor_labels.push_back(request.auth_factor_label());
+  } else {
+    for (auto label : request.auth_factor_labels()) {
+      auth_factor_labels.push_back(label);
+    }
+  }
+
   auto user_policy_file_status =
       LoadUserPolicyFile(auth_session->obfuscated_username());
   if (!user_policy_file_status.ok()) {
@@ -3251,6 +3262,7 @@ void UserDataAuth::AuthenticateAuthFactor(
                             PossibleAction::kReboot})));
     return;
   }
+
   std::optional<AuthFactorType> auth_factor_type =
       DetermineFactorTypeFromAuthInput(request.auth_input());
   SerializedUserAuthFactorTypePolicy auth_factor_type_policy;
@@ -3267,15 +3279,6 @@ void UserDataAuth::AuthenticateAuthFactor(
   } else {
     auth_factor_type_policy = GetAuthFactorPolicyFromUserPolicy(
         (*user_policy_file_status)->GetUserPolicy(), *auth_factor_type);
-  }
-
-  std::vector<std::string> auth_factor_labels;
-  if (!request.auth_factor_label().empty()) {
-    auth_factor_labels.push_back(request.auth_factor_label());
-  } else {
-    for (auto label : request.auth_factor_labels()) {
-      auth_factor_labels.push_back(label);
-    }
   }
 
   AuthSession::AuthenticateAuthFactorRequest authenticate_auth_factor_request{
@@ -4004,27 +4007,21 @@ void UserDataAuth::GetAuthSessionStatus(
     base::OnceCallback<void(const user_data_auth::GetAuthSessionStatusReply&)>
         on_done) {
   AssertOnMountThread();
-  user_data_auth::GetAuthSessionStatusReply reply;
-
-  InUseAuthSession auth_session =
-      auth_session_manager_->FindAuthSession(request.auth_session_id());
-  CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
-  if (!auth_session_status.ok()) {
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocUserDataAuthGetAuthSessionStatusNoAuthSession),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-            user_data_auth::CryptohomeErrorCode::
-                CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
-            .Wrap(std::move(auth_session_status).err_status()));
-    return;
-  }
-
-  PopulateAuthSessionProperties(auth_session, reply.mutable_auth_properties());
-  ReplyWithError(std::move(on_done), std::move(reply),
-                 OkStatus<CryptohomeError>());
+  RunWithAuthSessionWhenAvailable(
+      auth_session_manager_,
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthGetAuthSessionStatusNoAuthSession),
+      std::move(request), std::move(on_done),
+      base::BindOnce(
+          [](user_data_auth::GetAuthSessionStatusRequest request,
+             base::OnceCallback<void(
+                 const user_data_auth::GetAuthSessionStatusReply&)> on_done,
+             InUseAuthSession auth_session) {
+            user_data_auth::GetAuthSessionStatusReply reply;
+            PopulateAuthSessionProperties(auth_session,
+                                          reply.mutable_auth_properties());
+            ReplyWithError(std::move(on_done), std::move(reply),
+                           OkStatus<CryptohomeError>());
+          }));
 }
 
 void UserDataAuth::GetRecoveryRequest(
@@ -4032,25 +4029,18 @@ void UserDataAuth::GetRecoveryRequest(
     base::OnceCallback<void(const user_data_auth::GetRecoveryRequestReply&)>
         on_done) {
   AssertOnMountThread();
-
-  user_data_auth::GetRecoveryRequestReply reply;
-  InUseAuthSession auth_session =
-      auth_session_manager_->FindAuthSession(request.auth_session_id());
-  CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
-  if (!auth_session_status.ok()) {
-    LOG(ERROR) << "Invalid AuthSession token provided.";
-    ReplyWithError(std::move(on_done), reply,
-                   MakeStatus<CryptohomeError>(
-                       CRYPTOHOME_ERR_LOC(
-                           kLocUserDataAuthSessionNotFoundInGetRecoveryRequest),
-                       ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                                       PossibleAction::kReboot}),
-                       user_data_auth::CryptohomeErrorCode::
-                           CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
-                       .Wrap(std::move(auth_session_status).err_status()));
-    return;
-  }
-  auth_session->GetRecoveryRequest(request, std::move(on_done));
+  RunWithAuthSessionWhenAvailable(
+      auth_session_manager_,
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInGetRecoveryRequest),
+      std::move(request), std::move(on_done),
+      base::BindOnce(
+          [](user_data_auth::GetRecoveryRequestRequest request,
+             base::OnceCallback<void(
+                 const user_data_auth::GetRecoveryRequestReply&)> on_done,
+             InUseAuthSession auth_session) {
+            user_data_auth::GetRecoveryRequestReply reply;
+            auth_session->GetRecoveryRequest(request, std::move(on_done));
+          }));
 }
 
 void UserDataAuth::CreateVaultKeyset(

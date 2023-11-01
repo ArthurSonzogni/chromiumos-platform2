@@ -58,6 +58,7 @@
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
+namespace {
 
 using ::testing::_;
 using ::testing::AllOf;
@@ -68,6 +69,7 @@ using ::testing::Eq;
 using ::testing::Gt;
 using ::testing::Invoke;
 using ::testing::IsEmpty;
+using ::testing::IsFalse;
 using ::testing::IsNull;
 using ::testing::Le;
 using ::testing::NiceMock;
@@ -95,8 +97,6 @@ using user_data_auth::AUTH_INTENT_DECRYPT;
 using user_data_auth::AUTH_INTENT_VERIFY_ONLY;
 using user_data_auth::AUTH_INTENT_WEBAUTHN;
 using user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
-
-namespace {
 
 using AuthenticateAuthFactorCallback = base::OnceCallback<void(
     const user_data_auth::AuthenticateAuthFactorReply&)>;
@@ -208,9 +208,16 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
                                                     vault_options);
   }
 
-  CryptohomeStatus CreatePersistentUserImpl(
+  user_data_auth::CreatePersistentUserReply CreatePersistentUserImpl(
       const std::string& auth_session_id) {
-    return userdataauth_.CreatePersistentUserImpl(auth_session_id);
+    user_data_auth::CreatePersistentUserRequest req;
+    *req.mutable_auth_session_id() = auth_session_id;
+    TestFuture<user_data_auth::CreatePersistentUserReply> reply_future;
+    userdataauth_.CreatePersistentUser(
+        req,
+        reply_future
+            .GetCallback<const user_data_auth::CreatePersistentUserReply&>());
+    return reply_future.Get();
   }
 
   void GetAuthSessionStatusImpl(
@@ -498,7 +505,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultNoShadowDir) {
 TEST_F(AuthSessionInterfaceTest, CreatePersistentUserInvalidAuthSession) {
   // No auth session.
 
-  ASSERT_THAT(CreatePersistentUserImpl("")->local_legacy_error().value(),
+  ASSERT_THAT(CreatePersistentUserImpl("").error(),
               Eq(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
 }
 
@@ -518,11 +525,11 @@ TEST_F(AuthSessionInterfaceTest,
         auth_session_status.value()->serialized_token().length(), '\0');
   }
   // Test.
-  CryptohomeStatus status = CreatePersistentUserImpl(all_zeroes_token);
+  user_data_auth::CreatePersistentUserReply reply =
+      CreatePersistentUserImpl(all_zeroes_token);
 
   // Verify.
-  ASSERT_THAT(status, NotOk());
-  EXPECT_EQ(status->local_legacy_error(),
+  EXPECT_EQ(reply.error(),
             user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
 }
 
@@ -545,9 +552,8 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserFailedCreate) {
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
       .WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Create(kUsername)).WillOnce(Return(false));
-  auto status = CreatePersistentUserImpl(serialized_token);
-  EXPECT_THAT(status, NotOk());
-  ASSERT_THAT(status->local_legacy_error(),
+  auto reply = CreatePersistentUserImpl(serialized_token);
+  ASSERT_THAT(reply.error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
 }
 
@@ -565,9 +571,8 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserVaultExists) {
 
   EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername)))
       .WillOnce(ReturnValue(true));
-  ASSERT_THAT(
-      CreatePersistentUserImpl(serialized_token)->local_legacy_error().value(),
-      Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
+  ASSERT_THAT(CreatePersistentUserImpl(serialized_token).error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
 }
 
 // Test CreatePersistentUserImpl with Ephemeral AuthSession.
@@ -582,9 +587,8 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserWithEphemeralAuthSession) {
     serialized_token = auth_session->serialized_token();
   }
 
-  ASSERT_THAT(
-      CreatePersistentUserImpl(serialized_token)->local_legacy_error().value(),
-      Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+  ASSERT_THAT(CreatePersistentUserImpl(serialized_token).error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
 
 // Test CreatePersistentUserImpl with a session broadcast ID.
@@ -599,9 +603,8 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserWithBroadcastId) {
     serialized_token = auth_session->serialized_public_token();
   }
 
-  ASSERT_THAT(
-      CreatePersistentUserImpl(serialized_token)->local_legacy_error().value(),
-      Eq(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
+  ASSERT_THAT(CreatePersistentUserImpl(serialized_token).error(),
+              Eq(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
 }
 
 TEST_F(AuthSessionInterfaceTest, GetAuthSessionStatus) {
@@ -1361,7 +1364,8 @@ class AuthSessionInterfaceMockAuthTest : public AuthSessionInterfaceTestBase {
     EXPECT_CALL(homedirs_, CryptohomeExists(obfuscated_username))
         .WillOnce(ReturnValue(false));
     EXPECT_CALL(homedirs_, Create(username)).WillRepeatedly(Return(true));
-    EXPECT_THAT(CreatePersistentUserImpl(serialized_token), IsOk());
+    EXPECT_THAT(CreatePersistentUserImpl(serialized_token).has_error_info(),
+                IsFalse());
 
     // Prepare the user vault. Use the real user session class to exercise
     // internal state transitions.

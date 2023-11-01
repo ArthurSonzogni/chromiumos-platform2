@@ -1606,7 +1606,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./userdataauth.cc */
   kLocUserDataAuthEphemeralAuthSessionAttemptPreparePersistentVault = 2502,
   /* ./userdataauth.cc */
-  kLocUserDataAuthEphemeralAuthSessionAttemptCreatePersistentUser = 2503,
+  kLocUserDataAuthCreatePersistentUserInEphemeralSession = 2503,
   /* ./auth_session.cc */
   kLocUpdateAuthInputNoWrappedSeedInVaultKeyset = 2504,
   /* ./auth_session.cc */

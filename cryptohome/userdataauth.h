@@ -896,7 +896,20 @@ class UserDataAuth {
       const std::string& auth_session_id,
       const CryptohomeVault::Options& vault_options);
 
-  CryptohomeStatus CreatePersistentUserImpl(const std::string& auth_session_id);
+  // =============== Async Subtask Methods ===============
+
+  // Async helper functions for public APIs that require auth sessions. Executed
+  // when the AuthSession becomes available.
+  void CreatePersistentUserWithSession(
+      user_data_auth::CreatePersistentUserRequest request,
+      base::OnceCallback<void(const user_data_auth::CreatePersistentUserReply&)>
+          on_done,
+      InUseAuthSession auth_session);
+  void AuthenticateAuthFactorWithSession(
+      user_data_auth::AuthenticateAuthFactorRequest request,
+      base::OnceCallback<
+          void(const user_data_auth::AuthenticateAuthFactorReply&)> on_done,
+      InUseAuthSession auth_session);
 
   // =============== Feature Experiment Related Methods ===============
 
