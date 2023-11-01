@@ -292,14 +292,14 @@ void BluetoothPairingRoutineV2::CheckTargetPeripheralBonded(
     return;
   }
   for (const auto& device : devices) {
-    if (!device.contains("name") || !device.contains("address")) {
+    auto devie_info = floss_utils::ParseDeviceInfo(device);
+    if (!devie_info.has_value()) {
       SetResultAndStop(base::unexpected("Failed to parse device info."));
       return;
     }
 
-    auto address =
-        brillo::GetVariantValueOrDefault<std::string>(device, "address");
-    if (peripheral_id_ == base::NumberToString(base::FastHash(address))) {
+    if (peripheral_id_ ==
+        base::NumberToString(base::FastHash(devie_info->address))) {
       SetResultAndStop(
           base::unexpected("The target peripheral is already paired."));
       return;
@@ -324,14 +324,14 @@ void BluetoothPairingRoutineV2::OnDeviceAdded(
   if (step_ != TestStep::kScanTargetDevice)
     return;
 
-  if (!device.contains("name") || !device.contains("address")) {
+  auto devie_info = floss_utils::ParseDeviceInfo(device);
+  if (!devie_info.has_value()) {
     SetResultAndStop(base::unexpected("Failed to parse device info."));
     return;
   }
 
-  auto address =
-      brillo::GetVariantValueOrDefault<std::string>(device, "address");
-  if (base::NumberToString(base::FastHash(address)) != peripheral_id_) {
+  if (base::NumberToString(base::FastHash(devie_info->address)) !=
+      peripheral_id_) {
     return;
   }
   // Copy the device dictionary.
@@ -367,7 +367,8 @@ void BluetoothPairingRoutineV2::HandleUpdateAliasResponse(
 
 void BluetoothPairingRoutineV2::GetDeviceProperties() {
   CHECK(step_ == TestStep::kCollectDeviceInfo);
-  CHECK(target_device_.contains("name") && target_device_.contains("address"));
+  CHECK(floss_utils::ParseDeviceInfo(target_device_).has_value());
+
   if (auto adapter = GetDefaultAdapterOrStop(); adapter != nullptr) {
     CallbackBarrier barrier{
         base::BindOnce(&BluetoothPairingRoutineV2::RunNextStep,
@@ -429,15 +430,15 @@ void BluetoothPairingRoutineV2::StoreDeviceClass(brillo::Error* error,
 void BluetoothPairingRoutineV2::StoreDeviceAddressType(brillo::Error* error,
                                                        uint32_t address_type) {
   CHECK(step_ == TestStep::kCollectDeviceInfo);
-  CHECK(target_device_.contains("address"));
+  auto devie_info = floss_utils::ParseDeviceInfo(target_device_);
+  CHECK(devie_info.has_value());
   if (error) {
     SetResultAndStop(base::unexpected("Failed to get device address type."));
     return;
   }
 
   auto [is_address_valid, failed_manufacturer_id] = ValidatePeripheralAddress(
-      brillo::GetVariantValueOrDefault<std::string>(target_device_, "address"),
-      /*address_type=*/GetAddressTypeString(address_type));
+      devie_info->address, /*address_type=*/GetAddressTypeString(address_type));
   routine_output_->pairing_peripheral->address_type =
       GetAddressTypeEnum(address_type);
   routine_output_->pairing_peripheral->is_address_valid = is_address_valid;
@@ -521,9 +522,9 @@ void BluetoothPairingRoutineV2::HandlePairingConfirmationResponse(
 void BluetoothPairingRoutineV2::OnDeviceBondChanged(uint32_t bt_status,
                                                     const std::string& address,
                                                     BondState bond_state) {
-  if (step_ != TestStep::kBondTargetDevice ||
-      address != brillo::GetVariantValueOrDefault<std::string>(target_device_,
-                                                               "address")) {
+  auto devie_info = floss_utils::ParseDeviceInfo(target_device_);
+  CHECK(devie_info.has_value());
+  if (step_ != TestStep::kBondTargetDevice || address != devie_info->address) {
     return;
   }
   // |bt_status| is 0 for Success. We can check the meaning of non-zero status

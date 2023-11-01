@@ -398,14 +398,6 @@ void State::FetchConnectedDevicesInfo(
     return;
   }
 
-  for (const auto& device : devices) {
-    if (!device.contains("address") || !device.contains("name")) {
-      error_ = CreateAndLogProbeError(mojom::ErrorType::kParseError,
-                                      "Failed to parse connected devices");
-      return;
-    }
-  }
-
   // |on_complete| is only called when all device info callbacks are triggered.
   // Otherwise, |on_complete| will be dropped and |State::HandleResult| will
   // catch the error.
@@ -414,12 +406,15 @@ void State::FetchConnectedDevicesInfo(
   auto battery_manager =
       GetTargetBatteryManager(floss_controller_, hci_interface);
   for (const auto& device : devices) {
+    auto parse_result = floss_utils::ParseDeviceInfo(device);
+    if (!parse_result.has_value()) {
+      error_ = CreateAndLogProbeError(mojom::ErrorType::kParseError,
+                                      "Failed to parse connected devices");
+      return;
+    }
     auto device_info = mojom::BluetoothDeviceInfo::New();
-    const auto address =
-        brillo::GetVariantValueOrDefault<std::string>(device, "address");
-    device_info->address = address;
-    device_info->name =
-        brillo::GetVariantValueOrDefault<std::string>(device, "name");
+    device_info->address = parse_result->address;
+    device_info->name = parse_result->name;
 
     // Type.
     auto type_cb = SplitDbusCallback(barrier.Depend(
@@ -463,7 +458,7 @@ void State::FetchConnectedDevicesInfo(
           base::BindOnce(&State::HandleDeviceBatteryInformationResponse,
                          base::Unretained(this), device_info.get())));
       battery_manager->GetBatteryInformationAsync(
-          address, std::move(battery_percentage_cb.first),
+          parse_result->address, std::move(battery_percentage_cb.first),
           std::move(battery_percentage_cb.second));
     }
 

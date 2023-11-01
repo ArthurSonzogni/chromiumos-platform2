@@ -4,10 +4,11 @@
 
 #include "diagnostics/cros_healthd/utils/floss_utils.h"
 
+#include <string>
 #include <vector>
 
 #include <base/uuid.h>
-
+#include <brillo/variant_dictionary.h>
 #include <gtest/gtest.h>
 
 namespace diagnostics::floss_utils {
@@ -43,6 +44,26 @@ TEST(FlossUtilsTest, ParseUuidBytesEmpty) {
 
 TEST(FlossUtilsTest, ParseUuidBytesWrongBytesSize) {
   EXPECT_FALSE(ParseUuidBytes({0, 1, 2, 3}).is_valid());
+}
+
+TEST(FlossUtilsTest, ParseDeviceInfoSuccess) {
+  auto device_info = ParseDeviceInfo(
+      brillo::VariantDictionary{{"address", std::string("AA:BB:CC:DD:EE:FF")},
+                                {"name", std::string("TEST_DEVICE")}});
+  EXPECT_EQ(device_info->address, "AA:BB:CC:DD:EE:FF");
+  EXPECT_EQ(device_info->name, "TEST_DEVICE");
+}
+
+TEST(FlossUtilsTest, ParseDeviceInfoNoAddress) {
+  EXPECT_EQ(ParseDeviceInfo(brillo::VariantDictionary{
+                {"no_address", std::string("")}, {"name", std::string("")}}),
+            std::nullopt);
+}
+
+TEST(FlossUtilsTest, ParseDeviceInfoNoName) {
+  EXPECT_EQ(ParseDeviceInfo(brillo::VariantDictionary{
+                {"address", std::string("")}, {"no_name", std::string("")}}),
+            std::nullopt);
 }
 
 }  // namespace

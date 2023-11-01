@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/utils/floss_utils.h"
 
+#include <optional>
 #include <string>
 
 #include <base/logging.h>
@@ -11,6 +12,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/uuid.h>
+#include <brillo/variant_dictionary.h>
 
 namespace diagnostics {
 
@@ -43,6 +45,20 @@ base::Uuid ParseUuidBytes(const std::vector<uint8_t>& bytes) {
                         BytesToHex(bytes, 6, 8), BytesToHex(bytes, 8, 10),
                         BytesToHex(bytes, 10, 16)},
                        /*separator=*/"-"));
+}
+
+std::optional<DeviceInfo> ParseDeviceInfo(
+    const brillo::VariantDictionary& device) {
+  // According to |BluetoothDeviceDBus| struct in the Android codebase:
+  // packages/modules/Bluetooth/system/gd/rust/topshim/src/iface_bluetooth.rs,
+  // a valid device dictionary should contain "address" and "name" keys.
+  if (!device.contains("address") || !device.contains("name")) {
+    return std::nullopt;
+  }
+  return DeviceInfo{
+      .address =
+          brillo::GetVariantValueOrDefault<std::string>(device, "address"),
+      .name = brillo::GetVariantValueOrDefault<std::string>(device, "name")};
 }
 
 }  // namespace floss_utils

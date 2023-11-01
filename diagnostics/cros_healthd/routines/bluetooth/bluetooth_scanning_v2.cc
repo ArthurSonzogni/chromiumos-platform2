@@ -24,6 +24,7 @@
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/floss_event_hub.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
+#include "diagnostics/cros_healthd/utils/floss_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
@@ -223,24 +224,22 @@ void BluetoothScanningRoutineV2::OnDevicePropertyChanged(
 
 void BluetoothScanningRoutineV2::StoreScannedPeripheral(
     const brillo::VariantDictionary& device) {
-  if (!device.contains("name") || !device.contains("address")) {
+  auto devie_info = floss_utils::ParseDeviceInfo(device);
+  if (!devie_info.has_value()) {
     SetResultAndStop(base::unexpected("Failed to parse device info."));
     return;
   }
-  auto address =
-      brillo::GetVariantValueOrDefault<std::string>(device, "address");
-  if (!scanned_peripherals_.contains(address)) {
-    scanned_peripherals_[address].name =
-        brillo::GetVariantValueOrDefault<std::string>(device, "name");
+  if (!scanned_peripherals_.contains(devie_info->address)) {
+    scanned_peripherals_[devie_info->address].name = devie_info->name;
   }
 
   // TODO(b/300239430): Remove polling after RSSI changed event is supported.
-  if (!polling_rssi_callbacks_.contains(address)) {
+  if (!polling_rssi_callbacks_.contains(devie_info->address)) {
     // Start polling for the new found peripheral.
-    polling_rssi_callbacks_[address] =
+    polling_rssi_callbacks_[devie_info->address] =
         base::BindRepeating(&BluetoothScanningRoutineV2::GetPeripheralRssi,
                             weak_ptr_factory_.GetWeakPtr(), device);
-    polling_rssi_callbacks_[address].Run();
+    polling_rssi_callbacks_[devie_info->address].Run();
   }
 }
 
@@ -251,11 +250,12 @@ void BluetoothScanningRoutineV2::GetPeripheralRssi(
     SetResultAndStop(base::unexpected("Failed to get default adapter."));
     return;
   }
-  auto address =
-      brillo::GetVariantValueOrDefault<std::string>(device, "address");
+
+  auto devie_info = floss_utils::ParseDeviceInfo(device);
+  CHECK(devie_info.has_value());
   auto [on_success, on_error] = SplitDbusCallback(
       base::BindOnce(&BluetoothScanningRoutineV2::HandleRssiResponse,
-                     weak_ptr_factory_.GetWeakPtr(), address));
+                     weak_ptr_factory_.GetWeakPtr(), devie_info->address));
   adapter->GetRemoteRSSIAsync(device, std::move(on_success),
                               std::move(on_error));
 }
