@@ -13,12 +13,13 @@
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/callback.h>
+#include <base/observer_list_types.h>
 #include <libnetfilter_conntrack/libnetfilter_conntrack.h>
 #include <net-base/ip_address.h>
 #include <net-base/socket.h>
 
 namespace patchpanel {
-
 // This class manages a conntrack monitor that can observe changes of socket
 // connections in conntrack table in a non-blocking way. Other components can
 // get notifications of socket connection updates by registering a callback.
@@ -50,11 +51,45 @@ class ConntrackMonitor {
   };
 
   // Callback for listening to conntrack table socket connection changes
-  // of specified types set in `Create()`.
+  // of specified types set in `AddListener()`.
   using ConntrackEventHandler =
       base::RepeatingCallback<void(const Event& sock_event)>;
 
-  // Create conntrack monitor. Event types we want to monitor can be specified.
+  // This class is a listener for conntrack events. Callbacks can be resgitered
+  // for conntrack events by calling `ConntrackMonitor::AddListener()` and
+  // event types (list of ConntrackMonitor::EventType) can be specified when
+  // adding listener.
+  // User will take over ownership of listener by obtaining and unique pointer
+  // of this object when calling `ConntrackMonitor::AddListener()` and
+  // a listener will be automatically unregistered from listener list when it
+  // is deconstructed.
+  class Listener : public base::CheckedObserver {
+   public:
+    Listener(const Listener&) = delete;
+    Listener& operator=(const Listener&) = delete;
+
+    ~Listener() override;
+
+   private:
+    friend class ConntrackMonitor;
+    Listener(base::span<const EventType> events,
+             const ConntrackEventHandler& callback);
+
+    void NotifyEvent(uint8_t type, const Event& msg) const;
+
+    uint8_t listen_flags_;
+    const base::RepeatingCallback<void(const Event&)> callback_;
+  };
+
+  // Gets a pointer for this singleton class.
+  static ConntrackMonitor* GetInstance();
+
+  // Adds an conntrack event listener to the list of entities that will
+  // be notified of conntrack events.
+  std::unique_ptr<Listener> AddListener(base::span<const EventType> events,
+                                        const ConntrackEventHandler& callback);
+
+  // Creates conntrack monitor. Event types we want to monitor can be specified.
   // The caller must pass a valid |factory| to the method.
   static std::unique_ptr<ConntrackMonitor> Create(
       base::span<const EventType> events,
@@ -65,7 +100,7 @@ class ConntrackMonitor {
   ConntrackMonitor(const ConntrackMonitor&) = delete;
   ConntrackMonitor& operator=(const ConntrackMonitor&) = delete;
 
-  // Register a callback to listen to conntrack updates.
+  // Registers a callback to listen to conntrack updates.
   void RegisterConntrackEventHandler(const ConntrackEventHandler& handler);
 
  protected:
@@ -74,9 +109,9 @@ class ConntrackMonitor {
  private:
   static constexpr int kDefaultBufSize = 4096;
 
-  // Receive and parse buffer from socket when socket is readable.
+  // Receives and parses buffer from socket when socket is readable.
   void OnSocketReadable();
-  // Parse buffer received from sockets and notify registered handlers of
+  // Parses buffer received from sockets and notify registered handlers of
   // conntrack table updates.
   void Process(ssize_t len);
 

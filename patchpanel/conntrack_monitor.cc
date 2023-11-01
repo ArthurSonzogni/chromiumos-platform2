@@ -82,15 +82,15 @@ std::unique_ptr<ConntrackMonitor> ConntrackMonitor::Create(
   }
 
   uint8_t event_mask = 0;
-  for (ConntrackMonitor::EventType event : events) {
+  for (EventType event : events) {
     switch (event) {
-      case ConntrackMonitor::EventType::kNew:
+      case EventType::kNew:
         event_mask = event_mask | kNewEventBitMask;
         break;
-      case ConntrackMonitor::EventType::kUpdate:
+      case EventType::kUpdate:
         event_mask = event_mask | kUpdateEventBitMask;
         break;
-      case ConntrackMonitor::EventType::kDestroy:
+      case EventType::kDestroy:
         event_mask = event_mask | kDestroyEventBitMask;
         break;
     }
@@ -226,6 +226,49 @@ void ConntrackMonitor::Process(ssize_t len) {
     for (const auto& h : event_handlers_) {
       h.Run(event);
     }
+  }
+}
+
+// TODO(chuweih): Add implementation.
+ConntrackMonitor* GetInstance() {
+  return nullptr;
+}
+
+// TODO(chuweih): Add implementation to instantiate a listener and return its
+// unique pointer.
+std::unique_ptr<ConntrackMonitor::Listener> ConntrackMonitor::AddListener(
+    base::span<const ConntrackMonitor::EventType> events,
+    const ConntrackMonitor::ConntrackEventHandler& callback) {
+  return nullptr;
+}
+
+ConntrackMonitor::Listener::Listener(
+    base::span<const EventType> events,
+    const ConntrackMonitor::ConntrackEventHandler& callback)
+    : callback_(callback) {
+  listen_flags_ = 0;
+  for (EventType event : events) {
+    switch (event) {
+      case EventType::kNew:
+        listen_flags_ = listen_flags_ | kNewEventBitMask;
+        break;
+      case EventType::kUpdate:
+        listen_flags_ = listen_flags_ | kUpdateEventBitMask;
+        break;
+      case EventType::kDestroy:
+        listen_flags_ = listen_flags_ | kDestroyEventBitMask;
+        break;
+    }
+  }
+}
+
+// TODO(chuweih): Add implementation to remove listener from ConntrackMonitor.
+ConntrackMonitor::Listener::~Listener() {}
+
+void ConntrackMonitor::Listener::NotifyEvent(uint8_t type,
+                                             const Event& msg) const {
+  if (type & listen_flags_) {
+    callback_.Run(msg);
   }
 }
 
