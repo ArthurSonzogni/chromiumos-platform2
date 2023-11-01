@@ -152,9 +152,9 @@ bool FillRsaPrivateKeyFromSecretPrime(const brillo::SecureBlob& secret_prime,
 // any known plaintext. This approach also requires brute-force attempts on k to
 // go through the TPM, since there's no way to test a potential decryption
 // without doing UnRSA-on-TPM() to see if the message is valid now.
-bool ObscureRsaMessage(const brillo::SecureBlob& plaintext,
+bool ObscureRsaMessage(const brillo::Blob& plaintext,
                        const brillo::SecureBlob& key,
-                       brillo::SecureBlob* ciphertext) {
+                       brillo::Blob* ciphertext) {
   unsigned int aes_block_size = GetAesBlockSize();
   if (plaintext.size() < aes_block_size * 2) {
     LOG(ERROR) << "Plaintext is too small.";
@@ -163,7 +163,8 @@ bool ObscureRsaMessage(const brillo::SecureBlob& plaintext,
   unsigned int offset = plaintext.size() - aes_block_size;
 
   brillo::Blob obscured_chunk;
-  if (!AesEncryptSpecifyBlockMode(plaintext, offset, aes_block_size, key,
+  brillo::SecureBlob message(plaintext.begin(), plaintext.end());
+  if (!AesEncryptSpecifyBlockMode(message, offset, aes_block_size, key,
                                   brillo::Blob(0), PaddingScheme::kPaddingNone,
                                   BlockMode::kEcb, &obscured_chunk)) {
     LOG(ERROR) << "AES encryption failed.";
@@ -176,9 +177,9 @@ bool ObscureRsaMessage(const brillo::SecureBlob& plaintext,
   return true;
 }
 
-bool UnobscureRsaMessage(const brillo::SecureBlob& ciphertext,
+bool UnobscureRsaMessage(const brillo::Blob& ciphertext,
                          const brillo::SecureBlob& key,
-                         brillo::SecureBlob* plaintext) {
+                         brillo::Blob* plaintext) {
   unsigned int aes_block_size = GetAesBlockSize();
   if (ciphertext.size() < aes_block_size * 2) {
     LOG(ERROR) << "Ciphertext is is too small.";

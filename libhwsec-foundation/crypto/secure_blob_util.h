@@ -16,6 +16,7 @@ namespace hwsec_foundation {
 HWSEC_FOUNDATION_EXPORT void GetSecureRandom(unsigned char* bytes, size_t len);
 HWSEC_FOUNDATION_EXPORT brillo::SecureBlob CreateSecureRandomBlob(
     size_t length);
+HWSEC_FOUNDATION_EXPORT brillo::Blob CreateRandomBlob(size_t length);
 
 // Encodes a binary blob to hex-ascii. Similar to base::HexEncode but
 // produces lowercase letters for hex digits.

@@ -73,7 +73,7 @@ static_assert(sizeof(LibScryptHeader) == kLibScryptHeaderSize,
 
 // This generates the header which is specific to libscrypt. It's inserted at
 // the beginning |output|.
-void GenerateHeader(const brillo::SecureBlob& salt,
+void GenerateHeader(const brillo::Blob& salt,
                     const brillo::SecureBlob& derived_key,
                     const ScryptParameters& params,
                     LibScryptHeader* header_struct) {
@@ -106,7 +106,7 @@ void GenerateHeader(const brillo::SecureBlob& salt,
          sizeof(header_struct->signature));
 }
 
-bool VerifyDerivedKey(const brillo::SecureBlob& encrypted_blob,
+bool VerifyDerivedKey(const brillo::Blob& encrypted_blob,
                       const brillo::SecureBlob& derived_key) {
   const LibScryptHeader* header =
       reinterpret_cast<const LibScryptHeader*>(encrypted_blob.data());
@@ -131,10 +131,10 @@ bool VerifyDerivedKey(const brillo::SecureBlob& encrypted_blob,
 
 // static
 bool LibScryptCompat::Encrypt(const brillo::SecureBlob& derived_key,
-                              const brillo::SecureBlob& salt,
+                              const brillo::Blob& salt,
                               const brillo::SecureBlob& data_to_encrypt,
                               const ScryptParameters& params,
-                              brillo::SecureBlob* encrypted_data) {
+                              brillo::Blob* encrypted_data) {
   encrypted_data->resize(data_to_encrypt.size() + kLibScryptHeaderSize +
                          kLibScryptHMACSize);
 
@@ -174,9 +174,9 @@ bool LibScryptCompat::Encrypt(const brillo::SecureBlob& derived_key,
 }
 
 // static
-bool LibScryptCompat::ParseHeader(const brillo::SecureBlob& encrypted_blob,
+bool LibScryptCompat::ParseHeader(const brillo::Blob& encrypted_blob,
                                   ScryptParameters* out_params,
-                                  brillo::SecureBlob* salt) {
+                                  brillo::Blob* salt) {
   if (encrypted_blob.size() < kLibScryptHeaderSize + kLibScryptHMACSize) {
     LOG(ERROR) << "Incomplete header present.";
     return false;
@@ -221,7 +221,7 @@ bool LibScryptCompat::ParseHeader(const brillo::SecureBlob& encrypted_blob,
 }
 
 // static
-bool LibScryptCompat::Decrypt(const brillo::SecureBlob& encrypted_data,
+bool LibScryptCompat::Decrypt(const brillo::Blob& encrypted_data,
                               const brillo::SecureBlob& derived_key,
                               brillo::SecureBlob* decrypted_data) {
   if (!VerifyDerivedKey(encrypted_data, derived_key))

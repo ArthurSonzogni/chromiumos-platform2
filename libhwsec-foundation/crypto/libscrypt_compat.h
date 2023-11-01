@@ -31,21 +31,21 @@ class HWSEC_FOUNDATION_EXPORT LibScryptCompat {
   // will generate an AES-256 key, and the rest of the key hierarchy is
   // universal.
   static bool Encrypt(const brillo::SecureBlob& derived_key,
-                      const brillo::SecureBlob& salt,
+                      const brillo::Blob& salt,
                       const brillo::SecureBlob& data_to_encrypt,
                       const ScryptParameters& params,
-                      brillo::SecureBlob* encrypted_data);
+                      brillo::Blob* encrypted_data);
 
   // This parses the header from |encrypted_blob| which is a blob previously
   // output by libscrypt's `scryptenc_buf` or this compatibility library's
   // `GenerateEncryptedOutput`. This returns the salt as well.
-  static bool ParseHeader(const brillo::SecureBlob& encrypted_blob,
+  static bool ParseHeader(const brillo::Blob& encrypted_blob,
                           ScryptParameters* out_params,
-                          brillo::SecureBlob* salt);
+                          brillo::Blob* salt);
 
   // This decrypts a blob that was encrypted by libscrypt. It's basically
   // AES-256-CTR with libscrypt's custom HMAC check.
-  static bool Decrypt(const brillo::SecureBlob& encrypted_blob,
+  static bool Decrypt(const brillo::Blob& encrypted_blob,
                       const brillo::SecureBlob& derived_key,
                       brillo::SecureBlob* decrypted_data);
 };

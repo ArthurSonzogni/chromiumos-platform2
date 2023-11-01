@@ -34,6 +34,7 @@ bool HWSEC_FOUNDATION_EXPORT CreateRsaKey(size_t key_bits,
 bool HWSEC_FOUNDATION_EXPORT FillRsaPrivateKeyFromSecretPrime(
     const brillo::SecureBlob& secret_prime, RSA* rsa);
 
+// [Deprecated]
 // Obscure an RSA message by encrypting part of it.
 // The TPM could _in theory_ produce an RSA message (as a response from Bind)
 // that contains a header of a known format. If it did, and we encrypted the
@@ -47,14 +48,17 @@ bool HWSEC_FOUNDATION_EXPORT FillRsaPrivateKeyFromSecretPrime(
 // (as far as the author knows, although no proof is known) indistinguishable
 // from random data, and hence the attack this would protect against is
 // infeasible.
-bool HWSEC_FOUNDATION_EXPORT
-ObscureRsaMessage(const brillo::SecureBlob& plaintext,
-                  const brillo::SecureBlob& key,
-                  brillo::SecureBlob* ciphertext);
-bool HWSEC_FOUNDATION_EXPORT
-UnobscureRsaMessage(const brillo::SecureBlob& ciphertext,
-                    const brillo::SecureBlob& key,
-                    brillo::SecureBlob* plaintext);
+//
+// Parameters |plaintext| and |ciphertext| are misnomers because
+// |ciphertext| only encrypts one last chunk of |plaintext| and copies the
+// rest. In practice, |plaintext| must be a blob already contains random
+// or encrypted bytes.
+bool HWSEC_FOUNDATION_EXPORT ObscureRsaMessage(const brillo::Blob& plaintext,
+                                               const brillo::SecureBlob& key,
+                                               brillo::Blob* ciphertext);
+bool HWSEC_FOUNDATION_EXPORT UnobscureRsaMessage(const brillo::Blob& ciphertext,
+                                                 const brillo::SecureBlob& key,
+                                                 brillo::Blob* plaintext);
 
 // Encrypts data using the RSA OAEP scheme with the SHA-1 hash function, the
 // MGF1 mask function, and an empty label parameter.

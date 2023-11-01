@@ -79,7 +79,7 @@ inline constexpr ScryptParameters kTestScryptParams = {1024, 8, 1};
 //
 bool HWSEC_FOUNDATION_EXPORT
 DeriveSecretsScrypt(const brillo::SecureBlob& passkey,
-                    const brillo::SecureBlob& salt,
+                    const brillo::Blob& salt,
                     std::vector<brillo::SecureBlob*> gen_secrets);
 
 // |passkey| - The User Passkey, from which to derive the secrets.
@@ -92,7 +92,7 @@ DeriveSecretsScrypt(const brillo::SecureBlob& passkey,
 //
 //  Returns true on success.
 bool HWSEC_FOUNDATION_EXPORT Scrypt(const brillo::SecureBlob& passkey,
-                                    const brillo::SecureBlob& salt,
+                                    const brillo::Blob& salt,
                                     int work_factor,
                                     int block_size,
                                     int parallel_factor,
@@ -111,7 +111,7 @@ bool HWSEC_FOUNDATION_EXPORT Scrypt(const brillo::SecureBlob& passkey,
 bool HWSEC_FOUNDATION_EXPORT
 DeprecatedEncryptScryptBlob(const brillo::SecureBlob& blob,
                             const brillo::SecureBlob& key_source,
-                            brillo::SecureBlob* wrapped_blob);
+                            brillo::Blob* wrapped_blob);
 
 // This verifies that the default scrypt params are used in production.
 void HWSEC_FOUNDATION_EXPORT AssertProductionScryptParams();

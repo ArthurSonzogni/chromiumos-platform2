@@ -30,10 +30,10 @@ size_t GetAesBlockSize() {
 }
 
 bool PasskeyToAesKey(const brillo::SecureBlob& passkey,
-                     const brillo::SecureBlob& salt,
+                     const brillo::Blob& salt,
                      unsigned int rounds,
                      brillo::SecureBlob* key,
-                     brillo::SecureBlob* iv) {
+                     brillo::Blob* iv) {
   if (salt.size() != PKCS5_SALT_LEN) {
     LOG(ERROR) << "Bad salt size.";
     return false;
@@ -41,7 +41,7 @@ bool PasskeyToAesKey(const brillo::SecureBlob& passkey,
 
   const EVP_CIPHER* cipher = EVP_aes_256_cbc();
   brillo::SecureBlob aes_key(EVP_CIPHER_key_length(cipher));
-  brillo::SecureBlob local_iv(EVP_CIPHER_iv_length(cipher));
+  brillo::Blob local_iv(EVP_CIPHER_iv_length(cipher));
 
   // Convert the passkey to a key
   if (!EVP_BytesToKey(cipher, EVP_sha1(), salt.data(), passkey.data(),

@@ -47,6 +47,12 @@ brillo::SecureBlob CreateSecureRandomBlob(size_t length) {
   return blob;
 }
 
+brillo::Blob CreateRandomBlob(size_t length) {
+  brillo::Blob blob(length);
+  GetSecureRandom(reinterpret_cast<unsigned char*>(blob.data()), length);
+  return blob;
+}
+
 std::string BlobToHex(const brillo::Blob& blob) {
   std::string buffer(blob.size() * 2, '\x00');
   BlobToHexToBuffer(blob, &buffer[0], buffer.size());

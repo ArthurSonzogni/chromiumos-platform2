@@ -20,7 +20,7 @@ namespace hwsec_foundation {
 
 TEST(ScryptTest, DeriveSecretsScrypt) {
   brillo::SecureBlob passkey("passkey");
-  brillo::SecureBlob salt("salt");
+  auto salt = brillo::BlobFromString("salt");
 
   const size_t secret_size = 16;
   brillo::SecureBlob result1(secret_size), result2(secret_size),
@@ -36,7 +36,7 @@ TEST(ScryptTest, DeriveSecretsScrypt) {
 
 TEST(ScryptTest, DeriveSecretsScryptEmptySecrets) {
   brillo::SecureBlob passkey("passkey");
-  brillo::SecureBlob salt("salt");
+  auto salt = brillo::BlobFromString("salt");
 
   std::vector<brillo::SecureBlob*> gen_secrets;
   EXPECT_FALSE(DeriveSecretsScrypt(passkey, salt, gen_secrets));

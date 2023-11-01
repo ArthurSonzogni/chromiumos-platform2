@@ -29,8 +29,6 @@
 #include "libhwsec-foundation/crypto/libscrypt_compat.h"
 #include "libhwsec-foundation/crypto/secure_blob_util.h"
 
-using brillo::SecureBlob;
-
 namespace hwsec_foundation {
 
 namespace {
@@ -60,7 +58,7 @@ ScryptParameters gScryptParams = kDefaultScryptParams;
 }  // namespace
 
 bool DeriveSecretsScrypt(const brillo::SecureBlob& passkey,
-                         const brillo::SecureBlob& salt,
+                         const brillo::Blob& salt,
                          std::vector<brillo::SecureBlob*> gen_secrets) {
   if (gen_secrets.empty()) {
     LOG(ERROR) << "No secrets requested from scrypt derivation.";
@@ -75,7 +73,7 @@ bool DeriveSecretsScrypt(const brillo::SecureBlob& passkey,
     total_len += secret->size();
   }
 
-  SecureBlob generated(total_len);
+  brillo::SecureBlob generated(total_len);
   if (!Scrypt(passkey, salt, kDefaultScryptParams.n_factor,
               kDefaultScryptParams.r_factor, kDefaultScryptParams.p_factor,
               &generated)) {
@@ -93,7 +91,7 @@ bool DeriveSecretsScrypt(const brillo::SecureBlob& passkey,
 }
 
 bool Scrypt(const brillo::SecureBlob& input,
-            const brillo::SecureBlob& salt,
+            const brillo::Blob& salt,
             int work_factor,
             int block_size,
             int parallel_factor,
@@ -124,10 +122,10 @@ bool Scrypt(const brillo::SecureBlob& input,
 
 bool DeprecatedEncryptScryptBlob(const brillo::SecureBlob& blob,
                                  const brillo::SecureBlob& key_source,
-                                 brillo::SecureBlob* wrapped_blob) {
+                                 brillo::Blob* wrapped_blob) {
   wrapped_blob->resize(blob.size() + kScryptMetadataSize);
 
-  brillo::SecureBlob salt = CreateSecureRandomBlob(kLibScryptSaltSize);
+  brillo::Blob salt = CreateRandomBlob(kLibScryptSaltSize);
   brillo::SecureBlob derived_key(kLibScryptDerivedKeySize, '0');
   if (!Scrypt(key_source, salt, gScryptParams.n_factor, gScryptParams.r_factor,
               gScryptParams.p_factor, &derived_key) != 0) {
