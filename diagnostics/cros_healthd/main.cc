@@ -16,10 +16,12 @@
 #include <brillo/udev/udev_monitor.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/platform/platform_channel.h>
+#include <vboot/crossystem.h>
 
 #include "diagnostics/cros_healthd/cros_healthd_daemon.h"
 #include "diagnostics/cros_healthd/executor/executor_daemon.h"
 #include "diagnostics/cros_healthd/minijail/minijail_configuration.h"
+#include "diagnostics/cros_healthd/service_config.h"
 
 namespace {
 void SetVerbosityLevel(uint32_t verbosity_level) {
@@ -27,16 +29,35 @@ void SetVerbosityLevel(uint32_t verbosity_level) {
   // VLOG uses negative log level.
   logging::SetMinLogLevel(-(static_cast<int32_t>(verbosity_level)));
 }
+
+bool IsDevMode() {
+  int value = ::VbGetSystemPropertyInt("cros_debug");
+  LOG_IF(ERROR, value == -1) << "Cannot get cros_debug from crossystem.";
+  // If fails to get value, the value will be -1. Treat it as false.
+  return value == 1;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
   DEFINE_uint32(verbosity, 0, "Set verbosity level. Allowed value: 0 to 3");
+  DEFINE_bool(test_cros_config, false,
+              "If set, load chromeos-config from /run/chromeos-config/test. "
+              "Can only be set in dev mode.");
   brillo::FlagHelper::Init(
       argc, argv, "cros_healthd - Device telemetry and diagnostics daemon.");
 
   SetVerbosityLevel(FLAGS_verbosity);
+
+  diagnostics::ServiceConfig service_config;
+  if (IsDevMode()) {
+    service_config.test_cros_config = FLAGS_test_cros_config;
+  } else {
+    LOG_IF(ERROR, FLAGS_test_cros_config)
+        << "test_cros_config can only be set in dev mode.";
+  }
 
   // Init the Mojo Embedder API here, since both the executor and
   // cros_healthd use it.
@@ -90,11 +111,11 @@ int main(int argc, char** argv) {
   }
 
   // Sandbox the Healthd process.
-  diagnostics::EnterHealthdMinijail();
+  diagnostics::EnterHealthdMinijail(service_config);
 
   // Run the cros_healthd daemon.
   executor_endpoint.reset();
-  auto service = diagnostics::CrosHealthdDaemon(std::move(healthd_endpoint),
-                                                std::move(udev_monitor));
+  auto service = diagnostics::CrosHealthdDaemon(
+      std::move(healthd_endpoint), std::move(udev_monitor), service_config);
   return service.Run();
 }

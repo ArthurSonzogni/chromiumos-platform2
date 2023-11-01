@@ -14,6 +14,8 @@
 #include <libminijail.h>
 #include <scoped_minijail.h>
 
+#include "diagnostics/cros_healthd/service_config.h"
+
 namespace diagnostics {
 
 namespace {
@@ -41,7 +43,7 @@ int BindMountIfPathExists(struct minijail* jail,
 
 }  // namespace
 
-void EnterHealthdMinijail() {
+void EnterHealthdMinijail(const ServiceConfig& service_config) {
   ScopedMinijail jail(minijail_new());
   minijail_no_new_privs(jail.get());           // The no_new_privs bit.
   minijail_remount_proc_readonly(jail.get());  // Remount /proc readonly.
@@ -67,6 +69,10 @@ void EnterHealthdMinijail() {
   // Needed for access to chromeos-config.
   minijail_bind(jail.get(), "/run/chromeos-config/v1",
                 "/run/chromeos-config/v1", 0);
+  if (service_config.test_cros_config) {
+    PCHECK(0 == BindMountIfPathExists(
+                    jail.get(), base::FilePath("/run/chromeos-config/test")));
+  }
   // Needed for udev events.
   minijail_bind(jail.get(), "/run/udev", "/run/udev", 0);
 

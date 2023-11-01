@@ -64,8 +64,10 @@ class bluezProxy;
 namespace diagnostics {
 class BluezController;
 class BluezEventHub;
+class CrosConfig;
 class FlossController;
 class FlossEventHub;
+struct ServiceConfig;
 
 // A context class for holding the helper objects used in cros_healthd, which
 // simplifies the passing of the helper objects to other objects. For instance,
@@ -75,6 +77,7 @@ class Context {
  public:
   Context(mojo::PlatformChannelEndpoint executor_endpoint,
           std::unique_ptr<brillo::UdevMonitor>&& udev_monitor,
+          const ServiceConfig& service_config,
           base::OnceClosure shutdown_callback);
   Context(const Context&) = delete;
   Context& operator=(const Context&) = delete;
@@ -95,7 +98,7 @@ class Context {
   // Use the object returned by cros_config() to query the device's
   // configuration file.
   brillo::CrosConfigInterface* cros_config() const {
-    return cros_config_.get();
+    return cros_config_legacy_.get();
   }
   // Use the object returned by debugd_proxy() to make calls to debugd. Example:
   // cros_healthd calls out to debugd when it needs to collect smart battery
@@ -198,7 +201,7 @@ class Context {
 
   // Used by this object to initialize the SystemConfig. Used for reading
   // cros_config properties to determine device feature support.
-  std::unique_ptr<brillo::CrosConfigInterface> cros_config_;
+  std::unique_ptr<brillo::CrosConfigInterface> cros_config_legacy_;
 
   // Used to watch udev events.
   std::unique_ptr<brillo::UdevMonitor> udev_monitor_;
@@ -213,6 +216,7 @@ class Context {
   // Members accessed via the accessor functions defined above.
   std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy_;
   std::unique_ptr<org::chromium::cras::ControlProxyInterface> cras_proxy_;
+  std::unique_ptr<CrosConfig> cros_config_;
   std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;
   std::unique_ptr<org::freedesktop::fwupdProxyInterface> fwupd_proxy_;
   std::unique_ptr<MojoService> mojo_service_;

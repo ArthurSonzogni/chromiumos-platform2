@@ -14,6 +14,7 @@ pkg_config("libcros_healthd_pkg_deps") {
     "libmetrics",
     "libmojo",
     "mojo_service_manager",
+    "vboot_host",
   ]
 }
 

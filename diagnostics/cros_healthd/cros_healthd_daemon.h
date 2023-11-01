@@ -19,13 +19,15 @@
 #include "diagnostics/cros_healthd/system/context.h"
 
 namespace diagnostics {
+struct ServiceConfig;
 
 // Daemon class for cros_healthd.
 class CrosHealthdDaemon final : public brillo::Daemon {
  public:
   explicit CrosHealthdDaemon(
       mojo::PlatformChannelEndpoint endpoint,
-      std::unique_ptr<brillo::UdevMonitor>&& udev_monitor);
+      std::unique_ptr<brillo::UdevMonitor>&& udev_monitor,
+      const ServiceConfig& service_config);
   CrosHealthdDaemon(const CrosHealthdDaemon&) = delete;
   CrosHealthdDaemon& operator=(const CrosHealthdDaemon&) = delete;
   ~CrosHealthdDaemon() override;

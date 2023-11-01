@@ -7,10 +7,12 @@
 
 namespace diagnostics {
 
+struct ServiceConfig;
+
 // Configures cros_healthd's minijail, then enters it. Any errors encountered
 // during configuration result in a CHECK, and the daemon will crash rather than
 // start without a sandbox.
-void EnterHealthdMinijail();
+void EnterHealthdMinijail(const ServiceConfig& service_config);
 
 // Enters a new mount namespace for the executor. We don't want anyone other
 // than our descendants to see our tmpfs.

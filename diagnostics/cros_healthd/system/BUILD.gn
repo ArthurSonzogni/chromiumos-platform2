@@ -53,6 +53,7 @@ source_set("libcros_healthd_system") {
     "bluez_controller.cc",
     "bluez_event_hub.cc",
     "context.cc",
+    "cros_config.cc",
     "floss_callback_services.cc",
     "floss_controller.cc",
     "floss_event_hub.cc",
@@ -102,6 +103,7 @@ if (use.test || use.fuzzer) {
     public_configs = [ ":libcros_healthd_system_test_utils_public_pkg_deps" ]
     deps = [
       ":libcros_healthd_system",
+      "//diagnostics/base",
       "//diagnostics/cros_healthd/fake:libfake_cros_healthd",
       "//diagnostics/cros_healthd/network:libnetwork_health_adapter_test_utils",
       "//diagnostics/cros_healthd/network_diagnostics:libnetwork_diagnostics_adapter_test_utils",
@@ -136,6 +138,7 @@ if (use.test) {
   source_set("libcros_healthd_system_test") {
     sources = [
       "bluez_event_hub_test.cc",
+      "cros_config_test.cc",
       "floss_event_hub_test.cc",
       "ground_truth_test.cc",
       "powerd_adapter_impl_test.cc",

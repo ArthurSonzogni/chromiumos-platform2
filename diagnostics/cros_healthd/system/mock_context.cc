@@ -19,6 +19,8 @@
 #include <spaced/dbus-proxy-mocks.h>
 #include <gmock/gmock.h>
 
+#include "diagnostics/cros_healthd/service_config.h"
+#include "diagnostics/cros_healthd/system/cros_config.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
 #include "diagnostics/cros_healthd/utils/resource_queue.h"
 
@@ -27,7 +29,8 @@ namespace diagnostics {
 MockContext::MockContext() {
   attestation_proxy_ = std::make_unique<
       testing::StrictMock<org::chromium::AttestationProxyMock>>();
-  cros_config_ = std::make_unique<brillo::FakeCrosConfig>();
+  cros_config_legacy_ = std::make_unique<brillo::FakeCrosConfig>();
+  cros_config_ = std::make_unique<CrosConfig>(ServiceConfig{});
   cras_proxy_ = std::make_unique<
       testing::StrictMock<org::chromium::cras::ControlProxyMock>>();
   debugd_proxy_ =
@@ -75,7 +78,7 @@ ash::cros_healthd::mojom::Executor* MockContext::executor() {
 }
 
 brillo::FakeCrosConfig* MockContext::fake_cros_config() const {
-  return static_cast<brillo::FakeCrosConfig*>(cros_config_.get());
+  return static_cast<brillo::FakeCrosConfig*>(cros_config_legacy_.get());
 }
 
 org::chromium::debugdProxyMock* MockContext::mock_debugd_proxy() const {

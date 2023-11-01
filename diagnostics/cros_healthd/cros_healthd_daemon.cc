@@ -15,13 +15,15 @@ namespace diagnostics {
 
 CrosHealthdDaemon::CrosHealthdDaemon(
     mojo::PlatformChannelEndpoint endpoint,
-    std::unique_ptr<brillo::UdevMonitor>&& udev_monitor)
+    std::unique_ptr<brillo::UdevMonitor>&& udev_monitor,
+    const ServiceConfig& service_config)
     : ipc_support_(base::SingleThreadTaskRunner::GetCurrentDefault(),
                    mojo::core::ScopedIPCSupport::ShutdownPolicy::
                        CLEAN /* blocking shutdown */),
       context_(
           std::move(endpoint),
           std::move(udev_monitor),
+          service_config,
           base::BindOnce(&CrosHealthdDaemon::Quit, base::Unretained(this))) {}
 
 CrosHealthdDaemon::~CrosHealthdDaemon() = default;
