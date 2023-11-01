@@ -108,7 +108,7 @@ bool Dlc::Mount(HelperProcessProxy* proxy, const base::FilePath& path) {
   Manifest manifest;
   if (!entry || !manifest.ParseManifest(entry->manifest)) {
     LOG(ERROR) << "Could not get compressed metadata for DLC=" << id_
-               << "fallback to uncompressed.";
+               << " fallback to uncompressed.";
     return Mount(proxy, path, GetManifestPath(), GetTablePath(),
                  GetMountPoint());
   }
