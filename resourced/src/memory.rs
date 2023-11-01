@@ -556,7 +556,7 @@ async fn try_vmms_reclaim_memory(
     let perceptible_actual = if protected_memory > 0 {
         vmms_client
             .try_reclaim_memory(
-                protected_memory,
+                std::cmp::min(protected_memory, reclaim_target),
                 ResizePriority::RESIZE_PRIORITY_PERCEPTIBLE_TAB,
             )
             .await
