@@ -40,13 +40,7 @@ inline std::vector<std::string> Split(const std::string& str,
 BRILLO_EXPORT std::pair<std::string, std::string> SplitAtFirst(
     const std::string& str,
     const std::string& delimiter,
-    bool trim_whitespaces);
-// Splits the string into two pieces at the first position of the specified
-// delimiter. Both parts have all whitespaces trimmed off.
-inline std::pair<std::string, std::string> SplitAtFirst(
-    const std::string& str, const std::string& delimiter) {
-  return SplitAtFirst(str, delimiter, true);
-}
+    bool trim_whitespaces = true);
 
 // The following overload returns false if the delimiter was not found in the
 // source string. In this case, |left_part| will be set to |str| and
@@ -55,14 +49,7 @@ BRILLO_EXPORT bool SplitAtFirst(const std::string& str,
                                 const std::string& delimiter,
                                 std::string* left_part,
                                 std::string* right_part,
-                                bool trim_whitespaces);
-// Always trims the white spaces in the split parts.
-inline bool SplitAtFirst(const std::string& str,
-                         const std::string& delimiter,
-                         std::string* left_part,
-                         std::string* right_part) {
-  return SplitAtFirst(str, delimiter, left_part, right_part, true);
-}
+                                bool trim_whitespaces = true);
 
 // Joins strings into a single string separated by |delimiter|.
 template <class InputIterator>
