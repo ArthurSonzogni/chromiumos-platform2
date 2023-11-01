@@ -19,6 +19,7 @@ shared_library("libdiagnostics_base") {
   sources = [
     "file_utils.cc",
     "mojo_utils.cc",
+    "path_utils.cc",
   ]
   public_configs = [ ":libdiagnostics_base_config" ]
   assert_no_deps = [
@@ -78,6 +79,7 @@ if (use.test) {
       "file_test_utils_test.cc",
       "file_utils_test.cc",
       "mojo_utils_test.cc",
+      "path_utils_test.cc",
     ]
     configs += [ ":test_pkg_deps" ]
     deps = [ ":libdiagnostics_base" ]

@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_utils.h"
+#include "diagnostics/base/path_utils.h"
 
 namespace diagnostics {
 
@@ -65,6 +66,11 @@ class BaseFileTest : public ::testing::Test {
         : file_path_(path) {}
     PathType(base::FilePath&& path)  // NOLINT(runtime/explicit)
         : file_path_(std::move(path)) {}
+    PathType(PathLiteral path)  // NOLINT(runtime/explicit)
+        : file_path_(path.ToPath()) {}
+    template <std::size_t Size>
+    PathType(StaticPathLiteral<Size> path)  // NOLINT(runtime/explicit)
+        : file_path_(path.ToPath()) {}
     // Join each part of path into a single path. For example, {"a/b", "c"} =>
     // "a/b/c". This is convenient for the following case:
     //    SetFile({kDir, kDir2, kFilename}, ...);

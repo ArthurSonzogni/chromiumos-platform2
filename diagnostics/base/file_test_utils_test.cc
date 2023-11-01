@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_test_utils.h"
+#include "diagnostics/base/path_utils.h"
 
 namespace diagnostics {
 namespace {
@@ -60,6 +61,9 @@ TEST_F(FileTest, BaseTest) {
   EXPECT_EQ(GetPathUnderRoot(base::FilePath("a/b/c")), expected_path);
   EXPECT_EQ(GetPathUnderRoot({"a", "b", "c"}), expected_path);
   EXPECT_EQ(GetPathUnderRoot({"/a", "b/c"}), expected_path);
+
+  SetFile(MakePathLiteral("a", "b", "c"), "content");
+  CheckFile("a/b/c", "content");
 }
 
 }  // namespace
