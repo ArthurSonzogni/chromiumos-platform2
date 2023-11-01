@@ -312,6 +312,9 @@ bool MojoProxy::OnData(arc_proxy::Data* data) {
         if (!created)
           return false;
         std::tie(remote_fd, local_fd) = std::move(*created);
+        // Set local_fd (the mojo proxy side) fd as non-blocking, leaving fd to
+        // be passed to other processes as blocking.
+        fcntl(local_fd.get(), F_SETFL, O_NONBLOCK);
         break;
       }
       case arc_proxy::FileDescriptor::FIFO_WRITE: {
@@ -319,6 +322,9 @@ bool MojoProxy::OnData(arc_proxy::Data* data) {
         if (!created)
           return false;
         std::tie(local_fd, remote_fd) = std::move(*created);
+        // Set local_fd (the mojo proxy side) fd as non-blocking, leaving fd to
+        // be passed to other processes as blocking.
+        fcntl(local_fd.get(), F_SETFL, O_NONBLOCK);
         break;
       }
       case arc_proxy::FileDescriptor::REGULAR_FILE: {

@@ -392,6 +392,11 @@ class PipeStreamTest : public testing::Test {
     auto pipes = CreatePipe();
     ASSERT_TRUE(pipes.has_value());
     std::tie(read_fd_, write_fd_) = std::move(pipes.value());
+    // Since both sides of the pipe are going to be used for what equates to
+    // local_fd (fd not passed to another process) in various tests, make them
+    // both non blocking.
+    fcntl(read_fd_.get(), F_SETFL, O_NONBLOCK);
+    fcntl(write_fd_.get(), F_SETFL, O_NONBLOCK);
   }
 
  protected:
