@@ -6,6 +6,7 @@
 #define ROUTING_SIMULATOR_PACKET_H_
 
 #include <cstdint>
+#include <iostream>
 #include <string>
 
 #include <net-base/ip_address.h>
@@ -27,14 +28,15 @@ class Packet {
   // valid strings for source ip.
   // Prompts a user to input the following fields:
   // - protocol (TCP, UDP or ICMP)
-  // - input interface (if the packet type is egress, it's optional)
-  // - source ip (if the input interface is not given, it's optional)
-  // - source port (if the input interface is not given, it's optional)
   // - destination ip
+  // TODO(b/307460180): Make it possible to take items below.
+  // - input interface
+  // - source ip
+  // - source port
   // - destination port
-  // TODO(b/307460180): Make source ip optional and make it possible to take
-  // user id.
-  static std::optional<Packet> CreatePacketFromStdin();
+  // - uid
+  static std::optional<Packet> CreatePacketFromStdin(std::istream& std_input,
+                                                     std::ostream& std_output);
 
   // Packet is only copyable.
   Packet(const Packet& other);
@@ -54,7 +56,9 @@ class Packet {
   bool operator==(const Packet& rhs) const;
 
  private:
-  explicit Packet(net_base::IPFamily ip_family);
+  Packet(net_base::IPFamily ip_family,
+         Protocol protocol,
+         net_base::IPAddress destination_ip);
 
   net_base::IPFamily ip_family_;
   Protocol protocol_;
