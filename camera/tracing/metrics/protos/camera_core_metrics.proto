@@ -26,6 +26,12 @@ message Stream {
   optional int32 format = 4;
 }
 
+message CaptureResultMetrics {
+  optional int64 partial_result_number = 1;
+  optional int32 num_output_buffers = 2;
+  repeated FunctionMetrics function_metrics = 3;
+}
+
 message CaptureResultBufferMetrics {
   // The stream this capture result buffer is for.
   optional Stream stream = 1;
@@ -36,6 +42,7 @@ message CaptureResultBufferMetrics {
 message CameraStreamMetrics {
   repeated FunctionMetrics function_metrics = 1;
   repeated CaptureResultBufferMetrics result_buffer_metrics = 2;
+  repeated CaptureResultMetrics result_metrics = 3;
 }
 
 message CameraCoreMetrics {
