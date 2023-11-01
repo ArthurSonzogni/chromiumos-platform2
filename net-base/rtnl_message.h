@@ -305,8 +305,8 @@ class NET_BASE_EXPORT RTNLMessage {
                                                      const RTNLHeader* hdr);
 
   void SetNdUserOptionBytes(base::span<const uint8_t> data);
-  bool ParseDnsslOption(base::span<const uint8_t> data, uint32_t lifetime);
-  bool ParseRdnssOption(base::span<const uint8_t> data, uint32_t lifetime);
+  bool ParseDnsslOption(base::span<const uint8_t> data);
+  bool ParseRdnssOption(base::span<const uint8_t> data);
   bool EncodeLink(RTNLHeader* hdr) const;
   bool EncodeAddress(RTNLHeader* hdr) const;
   bool EncodeRoute(RTNLHeader* hdr) const;

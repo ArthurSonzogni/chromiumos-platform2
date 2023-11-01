@@ -412,11 +412,8 @@ struct RTNLHeader {
 
 // Neighbor Discovery user option header definition.
 struct NDUserOptionHeader {
-  NDUserOptionHeader() { memset(this, 0, sizeof(*this)); }
   uint8_t type;
   uint8_t length;
-  uint16_t reserved;
-  uint32_t lifetime;
 } __attribute__((__packed__));
 
 std::string RTNLMessage::NeighborStatus::ToString() const {
@@ -695,7 +692,6 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
       reinterpret_cast<const NDUserOptionHeader*>(
           reinterpret_cast<const uint8_t*>(&hdr->nd_user_opt) +
           sizeof(struct nduseroptmsg));
-  const uint32_t lifetime = ntohl(nd_user_option_header->lifetime);
 
   // Verify option length.
   // The length field in the header is in units of 8 octets.
@@ -717,7 +713,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
     case ND_OPT_DNSSL: {
       msg = std::make_unique<RTNLMessage>(kTypeDnssl, mode, 0, 0, 0,
                                           interface_index, family);
-      if (!msg->ParseDnsslOption(option_data, lifetime)) {
+      if (!msg->ParseDnsslOption(option_data)) {
         LOG(ERROR) << "Invalid DNSSL RTNL packet.";
         return nullptr;
       }
@@ -727,7 +723,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
       // Parse RNDSS (Recursive DNS Server) option.
       msg = std::make_unique<RTNLMessage>(kTypeRdnss, mode, 0, 0, 0,
                                           interface_index, family);
-      if (!msg->ParseRdnssOption(option_data, lifetime)) {
+      if (!msg->ParseRdnssOption(option_data)) {
         LOG(ERROR) << "Invalid RDNSS RTNL packet.";
         return nullptr;
       }
@@ -748,9 +744,26 @@ void RTNLMessage::SetNdUserOptionBytes(base::span<const uint8_t> data) {
   nd_user_option_.option_bytes.assign(std::begin(data), std::end(data));
 }
 
-bool RTNLMessage::ParseDnsslOption(base::span<const uint8_t> data,
-                                   uint32_t lifetime) {
-  // Section 3.1 of RFC1035.
+bool RTNLMessage::ParseDnsslOption(base::span<const uint8_t> data) {
+  // Section 5.2 of RFC8106.
+  // The layout of DNSSL option after the type and length field is:
+  // - Reserved: 2 bytes
+  // - Lifetime: 4 bytes
+  // - Domain names of DNS search list: one or more domain name that is encoded
+  //   as Section 3.1 of RFC1035.
+
+  if (data.size() < 2 + 4) {
+    return false;
+  }
+
+  // Skip the reserved field.
+  data = data.subspan(2);
+
+  // Parse the lifetime.
+  const uint32_t lifetime =
+      ntohl(*byte_utils::FromBytes<uint32_t>(data.subspan(0, 4)));
+  data = data.subspan(4);
+
   std::vector<std::string> domains;
   std::vector<std::string_view> tokens;
   while (!data.empty()) {
@@ -777,10 +790,27 @@ bool RTNLMessage::ParseDnsslOption(base::span<const uint8_t> data,
   return true;
 }
 
-bool RTNLMessage::ParseRdnssOption(base::span<const uint8_t> data,
-                                   uint32_t lifetime) {
+bool RTNLMessage::ParseRdnssOption(base::span<const uint8_t> data) {
+  // Section 5.1 of RFC8106.
+  // The layout of RDNSS option after the type and length field is:
+  // - Reserved: 2 bytes
+  // - Lifetime: 4 bytes
+  // - IPv6 Recursive DNS servers: one or more 16-byte IPv6 addresses
   const size_t addr_length = net_base::IPv6Address::kAddressLength;
 
+  if (data.size() < 2 + 4 + addr_length) {
+    return false;
+  }
+
+  // Skip the reserved field.
+  data = data.subspan(2);
+
+  // Parse the lifetime.
+  const uint32_t lifetime =
+      ntohl(*byte_utils::FromBytes<uint32_t>(data.subspan(0, 4)));
+  data = data.subspan(4);
+
+  // Parse the recursive DNS servers.
   // Verify data size are multiple of individual address size.
   if (data.size() % addr_length != 0) {
     return false;
