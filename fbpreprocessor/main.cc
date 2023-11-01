@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <sysexits.h>
-
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
@@ -46,6 +44,5 @@ int main(int argc, char* argv[]) {
   config.set_default_expirations_secs(file_expiration);
 
   fbpreprocessor::FbPreprocessorDaemon daemon(config);
-  int rc = daemon.Run();
-  return rc == EX_UNAVAILABLE ? EX_OK : rc;
+  return daemon.Run();
 }

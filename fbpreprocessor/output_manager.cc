@@ -25,15 +25,18 @@
 
 namespace {
 void DeleteFirmwareDump(const fbpreprocessor::FirmwareDump& fw_dump) {
-  fw_dump.Delete();
+  // TODO(b/307593542): remove filenames from logs.
+  LOG(INFO) << "Deleting file " << fw_dump;
+  if (!fw_dump.Delete()) {
+    LOG(ERROR) << "Failed to delete firmware dump.";
+  }
 }
 }  // namespace
 
 namespace fbpreprocessor {
 
 OutputManager::OutputManager(Manager* manager)
-    : default_expiration_(
-          base::Seconds(manager->default_file_expiration_in_secs())),
+    : expire_after_(base::Seconds(manager->default_file_expiration_in_secs())),
       manager_(manager) {
   manager_->session_state_manager()->AddObserver(this);
   manager_->platform_features()->AddObserver(this);
@@ -69,27 +72,20 @@ void OutputManager::OnFeatureChanged(bool allowed) {
   }
 }
 
-void OutputManager::AddNewFile(const FirmwareDump& fw_dump,
-                               const base::TimeDelta& expiration) {
+void OutputManager::AddFirmwareDump(const FirmwareDump& fw_dump) {
   if (!manager_->platform_features()->FirmwareDumpsAllowed()) {
     // The value of the Finch flag may have been changed during the
     // pseudonymization process, delete the files here.
     LOG(INFO) << "Feature disabled, deleting firmware dump.";
-    fw_dump.Delete();
+    DeleteFirmwareDump(fw_dump);
     return;
   }
-  // TODO(b/307593542): remove filenames from logs.
-  LOG(INFO) << "File " << fw_dump << " will expire in " << expiration;
   base::Time now = base::Time::Now();
-  OutputFile file(fw_dump, now + expiration);
+  OutputFile file(fw_dump, now + expire_after_);
   files_lock_.Acquire();
   files_.insert(file);
   RestartExpirationTask(now);
   files_lock_.Release();
-}
-
-void OutputManager::AddNewFile(const FirmwareDump& fw_dump) {
-  AddNewFile(fw_dump, default_expiration_);
 }
 
 std::forward_list<FirmwareDump> OutputManager::AvailableDumps() {
@@ -126,8 +122,8 @@ void OutputManager::OnExpiredFile() {
   base::Time now = base::Time::Now();
   for (auto it = files_.begin(); it != files_.end();) {
     if (it->expiration() <= now) {
-      // TODO(b/307593542): remove filenames from logs.
-      LOG(INFO) << "Deleting file " << it->fw_dump();
+      // Run the file deletion task asynchronously to avoid blocking on I/O
+      // while we're holding the lock.
       base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
           FROM_HERE, base::BindOnce(&DeleteFirmwareDump, it->fw_dump()));
       it = files_.erase(it);
@@ -142,9 +138,7 @@ void OutputManager::OnExpiredFile() {
 void OutputManager::DeleteAllManagedFiles() {
   files_lock_.Acquire();
   for (auto f : files_) {
-    if (!f.fw_dump().Delete()) {
-      LOG(ERROR) << "Failed to delete file.";
-    }
+    DeleteFirmwareDump(f.fw_dump());
   }
   files_.clear();
   files_lock_.Release();

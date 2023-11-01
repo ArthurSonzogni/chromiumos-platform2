@@ -38,11 +38,8 @@ class OutputManager : public SessionStateManager::Observer,
   void OnFeatureChanged(bool allowed) override;
 
   // Adds a new firmware dump to be managed by the lifecycle manager. It will
-  // automatically be deleted after |expiration|.
-  void AddNewFile(const FirmwareDump& fw_dump,
-                  const base::TimeDelta& expiration);
-
-  void AddNewFile(const FirmwareDump& fw_dump);
+  // automatically be deleted after |expire_after_|.
+  void AddFirmwareDump(const FirmwareDump& fw_dump);
 
   std::forward_list<FirmwareDump> AvailableDumps();
 
@@ -84,7 +81,8 @@ class OutputManager : public SessionStateManager::Observer,
 
   base::OneShotTimer expiration_timer_;
 
-  base::TimeDelta default_expiration_;
+  // Delete pseudonymized firmware dumps from disk after |expire_after_|.
+  base::TimeDelta expire_after_;
 
   base::FilePath user_root_dir_;
 
