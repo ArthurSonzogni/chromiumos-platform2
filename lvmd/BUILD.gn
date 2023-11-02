@@ -13,7 +13,6 @@ group("all") {
     ":install_upstart_config",
     ":lvmd",
     ":lvmd_client",
-    ":lvmd_dbus_adaptors",
   ]
 }
 
@@ -47,6 +46,7 @@ executable("lvmd") {
     "main.cc",
   ]
   configs += [ ":target_defaults" ]
+  deps = [ ":lvmd_dbus_adaptors" ]
   install_path = "sbin"
 }
 
@@ -71,5 +71,6 @@ executable("lvmd_client") {
     ":target_defaults",
     ":lvmd_client_config",
   ]
+  deps = [ ":lvmd_dbus_adaptors" ]
   install_path = "sbin"
 }
