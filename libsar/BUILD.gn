@@ -9,13 +9,10 @@ group("all") {
     ":install_headers",
     ":libsar",
     ":libsar_pkg_config",
+    ":libsar_test_support",
   ]
   if (use.test) {
-    deps += [
-      ":libsar_test_support",
-      ":libsar_test_support_pkg_config",
-      ":libsar_testrunner",
-    ]
+    deps += [ ":libsar_testrunner" ]
   }
 }
 
@@ -53,22 +50,25 @@ install_config("install_headers") {
   install_path = "/usr/include/chromeos/sar_config_reader"
 }
 
+shared_library("libsar_test_support") {
+  sources = [ "test_fakes.cc" ]
+  configs += [ ":target_defaults_pkg_deps" ]
+  install_path = "/build/lib"
+  deps = [
+    ":libsar",
+    ":libsar_test_support_pkg_config",
+  ]
+}
+
+generate_pkg_config("libsar_test_support_pkg_config") {
+  name = "libsar_test_support"
+  description = "Test helper library to support SAR sensor for ChromiumOS"
+  version = "0.1"
+  libs = [ "-lsar_test_support" ]
+  install = true
+}
+
 if (use.test) {
-  shared_library("libsar_test_support") {
-    sources = [ "test_fakes.cc" ]
-    configs += [ ":target_defaults_pkg_deps" ]
-    install_path = "lib"
-    deps = [ ":libsar" ]
-  }
-
-  generate_pkg_config("libsar_test_support_pkg_config") {
-    name = "libsar_test_support"
-    description = "Test helper library to support SAR sensor for ChromiumOS"
-    version = "0.1"
-    libs = [ "-lsar_test_support" ]
-    install = true
-  }
-
   pkg_config("libsar_testrunner_pkg_deps") {
     pkg_deps = [ "libbrillo-test" ]
   }
