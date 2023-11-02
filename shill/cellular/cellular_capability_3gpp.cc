@@ -2215,7 +2215,8 @@ void CellularCapability3gpp::OnModem3gppPropertiesChanged(
 
 void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   SLOG(this, 3) << __func__;
-  profiles_.clear();
+  std::vector<MobileOperatorMapper::MobileAPN> old_profiles =
+      std::move(profiles_);
   for (const auto& profile : profiles) {
     MobileOperatorMapper::MobileAPN apn_info;
     apn_info.apn = brillo::GetVariantValueOrDefault<std::string>(
@@ -2245,6 +2246,15 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
 
     profiles_.push_back(std::move(apn_info));
   }
+
+  // Ignore if the built profiles are the same as the ones we already had.
+  // We don't care about the order of the list at this point.
+  if (profiles_ == old_profiles) {
+    LOG(INFO) << "No update in stored profiles";
+    return;
+  }
+
+  LOG(INFO) << "Stored profiles updated";
 
   // The cellular object may need to update the APN list now.
   cellular()->OnProfilesChanged();

@@ -48,6 +48,7 @@
 
 using testing::_;
 using testing::AnyNumber;
+using testing::AtLeast;
 using testing::InSequence;
 using testing::Invoke;
 using testing::Mock;
@@ -1502,6 +1503,46 @@ TEST_F(CellularCapability3gppTest, UpdateActiveBearers) {
   EXPECT_EQ(nullptr, capability_->GetActiveBearer(ApnList::ApnType::kDefault));
   EXPECT_EQ(nullptr, capability_->GetActiveBearer(ApnList::ApnType::kDun));
   EXPECT_EQ(nullptr, capability_->default_bearer_dbus_properties_proxy_.get());
+}
+
+TEST_F(CellularCapability3gppTest, ProfilesChanged) {
+  std::vector<MobileOperatorMapper::MobileAPN> profile_list;
+
+  // Start with an empty list of profiles.
+  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
+      .Times(0);
+  capability_->OnProfilesChanged(CellularCapability3gpp::Profiles());
+  Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
+
+  // Same empty list again.
+  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
+      .Times(0);
+  capability_->OnProfilesChanged(CellularCapability3gpp::Profiles());
+  Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
+
+  // Set a one element list.
+  constexpr char kApn1[] = "internet";
+  brillo::VariantDictionary profile1;
+  profile1[CellularBearer::kMMApnProperty] = std::string(kApn1);
+  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
+      .Times(AtLeast(1));
+  capability_->OnProfilesChanged({profile1});
+  Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
+
+  // Same list again.
+  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
+      .Times(0);
+  capability_->OnProfilesChanged({profile1});
+  Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
+
+  // Slightly different element in the list.
+  constexpr char kApn2[] = "internet2";
+  brillo::VariantDictionary profile2;
+  profile2[CellularBearer::kMMApnProperty] = std::string(kApn2);
+  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
+      .Times(AtLeast(1));
+  capability_->OnProfilesChanged({profile2});
+  Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
 }
 
 TEST_F(CellularCapability3gppTest, SetInitialEpsBearer) {

@@ -355,6 +355,7 @@ class CellularCapability3gpp {
   FRIEND_TEST(CellularCapability3gppTest, OnLockTypeChanged);
   FRIEND_TEST(CellularCapability3gppTest, OnModemCurrentCapabilitiesChanged);
   FRIEND_TEST(CellularCapability3gppTest, OnSimLockPropertiesChanged);
+  FRIEND_TEST(CellularCapability3gppTest, ProfilesChanged);
   FRIEND_TEST(CellularCapability3gppTest, PropertiesChanged);
   FRIEND_TEST(CellularCapability3gppTest, SignalPropertiesChanged);
   FRIEND_TEST(CellularCapability3gppTest, Reset);
