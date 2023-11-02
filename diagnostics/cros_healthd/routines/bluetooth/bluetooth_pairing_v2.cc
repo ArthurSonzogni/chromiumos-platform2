@@ -248,17 +248,9 @@ void BluetoothPairingRoutineV2::RunNextStep() {
                                  std::move(on_error));
       }
       break;
-    case TestStep::kCancelDiscovery:
-      if (auto adapter = GetDefaultAdapterOrStop(); adapter != nullptr) {
-        adapter_stop_discovery_.ReplaceClosure(base::DoNothing());
-        auto [on_success, on_error] = SplitDbusCallback(base::BindOnce(
-            &BluetoothPairingRoutineV2::HandleUpdateDiscoveryResponse,
-            weak_ptr_factory_.GetWeakPtr()));
-        adapter->CancelDiscoveryAsync(std::move(on_success),
-                                      std::move(on_error));
-      }
-      break;
     case TestStep::kComplete:
+      // The adapter will stop discovery when pairing devices, so we don't need
+      // to stop discovery at the end of pairing routine.
       SetResultAndStop(/*result=*/base::ok(true));
       break;
   }
@@ -310,8 +302,7 @@ void BluetoothPairingRoutineV2::CheckTargetPeripheralBonded(
 
 void BluetoothPairingRoutineV2::HandleUpdateDiscoveryResponse(
     brillo::Error* error, bool is_success) {
-  CHECK(step_ == TestStep::kStartDiscovery ||
-        step_ == TestStep::kCancelDiscovery);
+  CHECK(step_ == TestStep::kStartDiscovery);
   if (error || !is_success) {
     SetResultAndStop(base::unexpected("Failed to update discovery mode."));
     return;

@@ -128,8 +128,7 @@ class BluetoothPairingRoutineV2 final : public BaseRoutineControl,
     kBondTargetDevice = 8,
     kResetDeviceTag = 9,
     kRemoveTargetDevice = 10,
-    kCancelDiscovery = 11,
-    kComplete = 12,  // Should be the last one. New step should be added before
+    kComplete = 11,  // Should be the last one. New step should be added before
                      // it.
   };
   TestStep step_ = TestStep::kInitialize;
