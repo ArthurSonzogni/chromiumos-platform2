@@ -30,7 +30,7 @@ class InputManager : public SessionStateManager::Observer {
   void OnUserLoggedOut() override;
 
  private:
-  void OnNewInputFile(const FirmwareDump& fw_dump);
+  void OnNewFirmwareDump(const FirmwareDump& fw_dump);
 
   void OnFirmwareDumpCreated(dbus::Signal* signal);
 

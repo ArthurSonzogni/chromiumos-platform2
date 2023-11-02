@@ -95,7 +95,7 @@ void InputManager::OnFirmwareDumpCreated(dbus::Signal* signal) {
 
       if (base::SequencedTaskRunner::HasCurrentDefault()) {
         base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-            FROM_HERE, base::BindOnce(&InputManager::OnNewInputFile,
+            FROM_HERE, base::BindOnce(&InputManager::OnNewFirmwareDump,
                                       weak_factory_.GetWeakPtr(), fw_dump));
       } else {
         LOG(ERROR) << "No task runner.";
@@ -123,7 +123,7 @@ void InputManager::OnUserLoggedOut() {
   user_root_dir_.clear();
 }
 
-void InputManager::OnNewInputFile(const FirmwareDump& fw_dump) {
+void InputManager::OnNewFirmwareDump(const FirmwareDump& fw_dump) {
   manager_->pseudonymization_manager()->StartPseudonymization(fw_dump);
 }
 
