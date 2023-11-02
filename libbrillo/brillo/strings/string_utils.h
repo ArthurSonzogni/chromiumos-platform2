@@ -5,10 +5,13 @@
 #ifndef LIBBRILLO_BRILLO_STRINGS_STRING_UTILS_H_
 #define LIBBRILLO_BRILLO_STRINGS_STRING_UTILS_H_
 
+#include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
+#include "base/strings/string_split.h"
 #include <brillo/brillo_export.h>
 
 namespace brillo {
@@ -36,7 +39,16 @@ inline std::vector<std::string> Split(const std::string& str,
 }
 
 // Splits the string into two pieces at the first position of the specified
+// delimiter. If the delimiter couldn't be found, returns std::nullopt.
+BRILLO_EXPORT std::optional<std::pair<std::string_view, std::string_view>>
+SplitAtFirst(std::string_view str,
+             std::string_view delimiter,
+             base::WhitespaceHandling whitespace_action);
+
+// Splits the string into two pieces at the first position of the specified
 // delimiter.
+// DEPRECATED - use the SplitAtFirst that takes base::WhitepaceHandling
+// TODO(b/308856327): remove this function
 BRILLO_EXPORT std::pair<std::string, std::string> SplitAtFirst(
     const std::string& str,
     const std::string& delimiter,
@@ -45,6 +57,8 @@ BRILLO_EXPORT std::pair<std::string, std::string> SplitAtFirst(
 // The following overload returns false if the delimiter was not found in the
 // source string. In this case, |left_part| will be set to |str| and
 // |right_part| will be empty.
+// DEPRECATED - use the SplitAtFirst that takes base::WhitepaceHandling
+// TODO(b/308856327): remove this function
 BRILLO_EXPORT bool SplitAtFirst(const std::string& str,
                                 const std::string& delimiter,
                                 std::string* left_part,

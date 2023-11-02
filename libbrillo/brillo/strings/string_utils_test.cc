@@ -119,6 +119,67 @@ TEST(StringUtils, SplitAtFirst) {
   EXPECT_EQ("abc", pair.second);
 }
 
+TEST(StringUtils, SplitAtFirstSV) {
+  auto p = string_utils::SplitAtFirst("", ":", base::TRIM_WHITESPACE);
+  ASSERT_FALSE(p.has_value());
+
+  p = string_utils::SplitAtFirst(" 123 4 56 789 ", ":", base::TRIM_WHITESPACE);
+  ASSERT_FALSE(p.has_value());
+
+  p = string_utils::SplitAtFirst(" 123 : 4 : 56 : 789 ", ":",
+                                 base::TRIM_WHITESPACE);
+  ASSERT_TRUE(p.has_value());
+  EXPECT_EQ("123", p.value().first);
+  EXPECT_EQ("4 : 56 : 789", p.value().second);
+
+  p = string_utils::SplitAtFirst(" 123 : 4 : 56 : 789 ", ":",
+                                 base::KEEP_WHITESPACE);
+  ASSERT_TRUE(p.has_value());
+  EXPECT_EQ(" 123 ", p.value().first);
+  EXPECT_EQ(" 4 : 56 : 789 ", p.value().second);
+
+  p = string_utils::SplitAtFirst("", "=", base::TRIM_WHITESPACE);
+  ASSERT_FALSE(p.has_value());
+
+  p = string_utils::SplitAtFirst("=", "=", base::TRIM_WHITESPACE);
+  ASSERT_TRUE(p.has_value());
+  EXPECT_EQ("", p.value().first);
+  EXPECT_EQ("", p.value().second);
+
+  p = string_utils::SplitAtFirst("a=", "=", base::TRIM_WHITESPACE);
+  ASSERT_TRUE(p.has_value());
+  EXPECT_EQ("a", p.value().first);
+  EXPECT_EQ("", p.value().second);
+
+  p = string_utils::SplitAtFirst("abc=", "=", base::TRIM_WHITESPACE);
+  ASSERT_TRUE(p.has_value());
+  EXPECT_EQ("abc", p.value().first);
+  EXPECT_EQ("", p.value().second);
+
+  p = string_utils::SplitAtFirst("=a", "=", base::TRIM_WHITESPACE);
+  ASSERT_TRUE(p.has_value());
+  EXPECT_EQ("", p.value().first);
+  EXPECT_EQ("a", p.value().second);
+
+  p = string_utils::SplitAtFirst("=abc=", "=", base::TRIM_WHITESPACE);
+  ASSERT_TRUE(p.has_value());
+  EXPECT_EQ("", p.value().first);
+  EXPECT_EQ("abc=", p.value().second);
+
+  p = string_utils::SplitAtFirst("abc", "=", base::TRIM_WHITESPACE);
+  ASSERT_FALSE(p.has_value());
+
+  p = string_utils::SplitAtFirst("abc:=xyz", ":=", base::TRIM_WHITESPACE);
+  ASSERT_TRUE(p.has_value());
+  EXPECT_EQ("abc", p.value().first);
+  EXPECT_EQ("xyz", p.value().second);
+
+  p = string_utils::SplitAtFirst("abc", "", base::TRIM_WHITESPACE);
+  ASSERT_TRUE(p.has_value());
+  EXPECT_EQ("", p.value().first);
+  EXPECT_EQ("abc", p.value().second);
+}
+
 TEST(StringUtils, Join_String) {
   EXPECT_EQ("", string_utils::Join(",", {}));
   EXPECT_EQ("abc", string_utils::Join(",", {"abc"}));

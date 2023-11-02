@@ -61,6 +61,25 @@ bool SplitAtFirst(const std::string& str,
   return delimiter_found;
 }
 
+std::optional<std::pair<std::string_view, std::string_view>> SplitAtFirst(
+    std::string_view str,
+    std::string_view delimiter,
+    base::WhitespaceHandling whitespace_action) {
+  std::string::size_type pos = str.find(delimiter);
+  if (pos == std::string::npos) {
+    return std::nullopt;
+  }
+  std::string_view left_part = str.substr(0, pos);
+  std::string_view right_part = str.substr(pos + delimiter.size());
+
+  if (whitespace_action == base::TRIM_WHITESPACE) {
+    left_part = base::TrimWhitespaceASCII(left_part, base::TRIM_ALL);
+    right_part = base::TrimWhitespaceASCII(right_part, base::TRIM_ALL);
+  }
+
+  return std::make_pair(left_part, right_part);
+}
+
 std::pair<std::string, std::string> SplitAtFirst(const std::string& str,
                                                  const std::string& delimiter,
                                                  bool trim_whitespaces) {
