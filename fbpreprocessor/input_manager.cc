@@ -118,10 +118,6 @@ void InputManager::OnUserLoggedOut() {
   user_root_dir_.clear();
 }
 
-void InputManager::DeleteFirmwareDump(const FirmwareDump& fw_dump) {
-  fw_dump.Delete();
-}
-
 void InputManager::OnNewInputFile(const FirmwareDump& fw_dump) {
   manager_->pseudonymization_manager()->StartPseudonymization(fw_dump);
 }

@@ -7,9 +7,7 @@
 #include <ostream>
 
 #include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/strings/string_util.h>
 #include <brillo/files/file_util.h>
 
 namespace {
@@ -26,10 +24,11 @@ base::FilePath FirmwareDump::BaseName() const {
 }
 
 bool FirmwareDump::Delete() const {
-  if (base::PathExists(dmp_file_)) {
-    return brillo::DeleteFile(dmp_file_);
+  bool success = brillo::DeleteFile(dmp_file_);
+  if (!success) {
+    LOG(ERROR) << "Failed to delete firmware dump.";
   }
-  return true;
+  return success;
 }
 
 std::ostream& operator<<(std::ostream& os, const FirmwareDump& dump) {

@@ -17,7 +17,6 @@
 #include <base/time/time.h>
 
 #include "fbpreprocessor/firmware_dump.h"
-#include "fbpreprocessor/input_manager.h"
 #include "fbpreprocessor/manager.h"
 #include "fbpreprocessor/output_manager.h"
 #include "fbpreprocessor/session_state_manager.h"
@@ -53,7 +52,9 @@ void PseudonymizationManager::StartPseudonymization(
     // TODO(b/307593542): remove filenames from logs.
     LOG(INFO) << "Too many recent pseudonymizations, rejecting the request for "
               << fw_dump.DumpFile();
-    manager_->input_manager()->DeleteFirmwareDump(fw_dump);
+    if (!fw_dump.Delete()) {
+      LOG(ERROR) << "Failed to delete input firmware dump.";
+    }
     return;
   }
   FirmwareDump output(
@@ -106,7 +107,10 @@ void PseudonymizationManager::OnPseudonymizationComplete(
                  << "pseudonymization failure.";
     }
   }
-  manager_->input_manager()->DeleteFirmwareDump(input);
+  if (!input.Delete()) {
+    LOG(ERROR) << "Failed to delete input firmware dump after "
+               << "pseudonymization.";
+  }
 }
 
 bool PseudonymizationManager::RateLimitingAllowsNewPseudonymization() {

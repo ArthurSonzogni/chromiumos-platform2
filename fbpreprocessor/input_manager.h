@@ -29,8 +29,6 @@ class InputManager : public SessionStateManager::Observer {
   void OnUserLoggedIn(const std::string& user_dir) override;
   void OnUserLoggedOut() override;
 
-  void DeleteFirmwareDump(const FirmwareDump& fw_dump);
-
  private:
   void OnNewInputFile(const FirmwareDump& fw_dump);
 
