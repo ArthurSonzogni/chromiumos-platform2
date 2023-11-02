@@ -16,15 +16,13 @@ source_set("filesystem") {
   configs += [ "//common-mk:pic" ]
 }
 
-if (use.test || use.fuzzer) {
-  source_set("filesystem_for_testing") {
-    sources = [ "file_handler_for_testing.cc" ]
-    configs += [ "//common-mk:test" ]
-    deps = [ ":filesystem" ]
+source_set("filesystem_for_testing") {
+  sources = [ "file_handler_for_testing.cc" ]
+  configs += [ "//common-mk:test" ]
+  deps = [ ":filesystem" ]
 
-    # PIC is required for shared libraries and their dependencies.
-    configs += [ "//common-mk:pic" ]
-  }
+  # PIC is required for shared libraries and their dependencies.
+  configs += [ "//common-mk:pic" ]
 }
 
 if (use.test) {

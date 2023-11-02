@@ -15,7 +15,9 @@ group("all") {
     ":oobe_config_save",
     ":rollback_cleanup",
     "metrics:install_headers",
+    "metrics:install_headers-test",
     "metrics:install_pkgconfig",
+    "metrics:install_pkgconfig-test",
     "metrics:install_proto_header",
     "metrics:libenterprise_rollback_metrics",
   ]
@@ -24,8 +26,6 @@ group("all") {
       ":oobe_config_test",
       "filesystem:filesystem_test",
       "metrics:enterprise_rollback_metrics_tests",
-      "metrics:install_headers-test",
-      "metrics:install_pkgconfig-test",
       "metrics:libenterprise_rollback_metrics-test",
     ]
   }
