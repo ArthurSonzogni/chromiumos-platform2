@@ -17,9 +17,9 @@ pub const GSC_NAME: &str = "ti50";
 pub const GSC_NAME: &str = "cr50";
 
 #[cfg(feature = "ti50_onboard")]
-pub const GSC_IMAGE_BASE_NAME: &str = "/opt/google/ti50/firmware/ti50.bin";
+pub const GSC_IMAGE_BASE_NAME: &str = "opt/google/ti50/firmware/ti50.bin";
 #[cfg(not(feature = "ti50_onboard"))]
-pub const GSC_IMAGE_BASE_NAME: &str = "/opt/google/cr50/firmware/cr50.bin";
+pub const GSC_IMAGE_BASE_NAME: &str = "opt/google/cr50/firmware/cr50.bin";
 
 #[cfg(feature = "ti50_onboard")]
 pub const GSC_METRICS_PREFIX: &str = "Platform.Ti50";

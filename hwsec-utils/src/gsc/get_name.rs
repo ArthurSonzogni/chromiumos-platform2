@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::path::PathBuf;
+
 use log::info;
 
 use crate::context::Context;
@@ -15,7 +17,7 @@ use crate::tpm2::ERASED_BOARD_ID;
 pub fn gsc_get_name(
     ctx: &mut impl Context,
     gsctool_command_options: &[&str],
-) -> Result<String, HwsecError> {
+) -> Result<PathBuf, HwsecError> {
     const PRE_PVT_FLAG: u32 = 0x10;
 
     info!("updater is {}", GSCTOOL_CMD_NAME);
@@ -49,7 +51,7 @@ pub fn gsc_get_name(
         board_id.part_1, board_id.part_2, board_id.flag, board_flags, ext
     );
 
-    Ok(format!("{}.{}", GSC_IMAGE_BASE_NAME, ext))
+    Ok(PathBuf::from(format!("{}.{}", GSC_IMAGE_BASE_NAME, ext)))
 }
 
 #[cfg(test)]
@@ -75,7 +77,10 @@ mod tests {
 
         let name = gsc_get_name(&mut mock_ctx, &["--any"]);
 
-        assert_eq!(name, Ok(String::from(GSC_IMAGE_BASE_NAME) + ".prod"));
+        assert_eq!(
+            name,
+            Ok(PathBuf::from(String::from(GSC_IMAGE_BASE_NAME) + ".prod"))
+        );
     }
 
     #[test]
@@ -116,6 +121,9 @@ mod tests {
 
         let name = gsc_get_name(&mut mock_ctx, &["--any"]);
 
-        assert_eq!(name, Ok(String::from(GSC_IMAGE_BASE_NAME) + ".prepvt"));
+        assert_eq!(
+            name,
+            Ok(PathBuf::from(String::from(GSC_IMAGE_BASE_NAME) + ".prepvt"))
+        );
     }
 }

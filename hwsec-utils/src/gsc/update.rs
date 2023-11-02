@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::path::Path;
+
 use log::error;
 use log::info;
 
@@ -15,11 +17,11 @@ use crate::gsc::GSCTOOL_CMD_NAME;
 const MAX_RETRIES: u32 = 3;
 const SLEEP_DURATION: u64 = 70;
 
-pub fn gsc_update(ctx: &mut impl Context) -> Result<(), HwsecError> {
+pub fn gsc_update(ctx: &mut impl Context, root: &Path) -> Result<(), HwsecError> {
     info!("Starting");
 
     let options: Vec<&str>;
-    // determine the best way to communicate with the Cr50.
+    // determine the best way to communicate with the GSC.
     if gsctool_cmd_successful(ctx, vec!["--fwver", "--systemdev"]) {
         info!("Will use /dev/tpm0");
         options = vec!["--systemdev"];
@@ -27,27 +29,32 @@ pub fn gsc_update(ctx: &mut impl Context) -> Result<(), HwsecError> {
         info!("Will use trunks_send");
         options = vec!["--trunks_send"];
     } else {
-        error!("Could not communicate with Cr50");
+        error!("Could not communicate with GSC");
         return Err(HwsecError::GsctoolError(1));
     }
 
-    let gsc_image = gsc_get_name(ctx, &options[..])?;
+    let gsc_image = root.join(gsc_get_name(ctx, &options[..])?);
+    let gsc_image_str = gsc_image.to_str().ok_or_else(|| {
+        error!("Cannot convert {} to string.", gsc_image.display());
+        HwsecError::GsctoolResponseBadFormatError
+    })?;
 
-    if !ctx.path_exists(gsc_image.as_str()) {
-        info!("{} not found, quitting.", gsc_image);
+    if !ctx.path_exists(gsc_image_str) {
+        info!("{} not found, quitting.", gsc_image.display());
         return Err(HwsecError::GsctoolError(1));
     }
 
     let mut exit_status: i32 = 0;
     for retries in 0..MAX_RETRIES {
         if retries != 0 {
-            // Need to sleep for at least a minute to get around cr50 update throttling:
+            // Need to sleep for at least a minute to get around GSC update throttling:
             // it rejects repeat update attempts happening sooner than 60 seconds after
             // the previous one.
             ctx.sleep(SLEEP_DURATION);
         }
 
-        let exe_result = run_gsctool_cmd(ctx, [&options[..], &["--upstart", &gsc_image]].concat())?;
+        let exe_result =
+            run_gsctool_cmd(ctx, [&options[..], &["--upstart", gsc_image_str]].concat())?;
         exit_status = exe_result.status.code().unwrap();
 
         // Exit status values 2 or below indicate successful update, nonzero
@@ -91,6 +98,8 @@ pub fn gsc_update(ctx: &mut impl Context) -> Result<(), HwsecError> {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use crate::context::mock::MockContext;
     use crate::context::Context;
     use crate::error::HwsecError;
@@ -107,7 +116,7 @@ mod tests {
         mock_ctx
             .cmd_runner()
             .add_gsctool_interaction(vec!["--fwver", "--trunks_send"], 1, "", "");
-        let result = gsc_update(&mut mock_ctx);
+        let result = gsc_update(&mut mock_ctx, Path::new("/"));
         assert_eq!(result, Err(HwsecError::GsctoolError(1)));
     }
 
@@ -123,7 +132,7 @@ mod tests {
             "Board ID space: 43425559:bcbdaaa6:00007f10",
             "",
         );
-        let result = gsc_update(&mut mock_ctx);
+        let result = gsc_update(&mut mock_ctx, Path::new("/"));
         assert_eq!(result, Err(HwsecError::GsctoolError(1)));
     }
 
@@ -140,7 +149,7 @@ mod tests {
             "",
         );
 
-        let path = String::from(GSC_IMAGE_BASE_NAME) + ".prepvt";
+        let path = "/".to_owned() + &String::from(GSC_IMAGE_BASE_NAME) + ".prepvt";
         mock_ctx.create_path(path.as_str());
 
         mock_ctx.cmd_runner().add_gsctool_interaction(
@@ -150,7 +159,7 @@ mod tests {
             "",
         );
 
-        let result = gsc_update(&mut mock_ctx);
+        let result = gsc_update(&mut mock_ctx, Path::new("/"));
         assert_eq!(result, Ok(()));
     }
 
@@ -167,7 +176,7 @@ mod tests {
             "",
         );
 
-        let path = String::from(GSC_IMAGE_BASE_NAME) + ".prepvt";
+        let path = "/".to_owned() + &String::from(GSC_IMAGE_BASE_NAME) + ".prepvt";
         mock_ctx.create_path(path.as_str());
 
         for _ in 0..MAX_RETRIES {
@@ -179,7 +188,7 @@ mod tests {
             );
         }
 
-        let result = gsc_update(&mut mock_ctx);
+        let result = gsc_update(&mut mock_ctx, Path::new("/"));
         assert_eq!(result, Err(HwsecError::GsctoolError(3)));
     }
 }
