@@ -5,6 +5,7 @@
 #ifndef LIBBRILLO_BRILLO_COMPRESSION_ZLIB_COMPRESSOR_H_
 #define LIBBRILLO_BRILLO_COMPRESSION_ZLIB_COMPRESSOR_H_
 
+#include <zconf.h>
 #include <zlib.h>
 
 #include <memory>
@@ -16,6 +17,11 @@
 #include "brillo/compression/compressor_interface.h"
 
 namespace brillo {
+
+// Window bit values taken from https://www.zlib.net/manual.html. See
+// deflateInit2() and inflateInit2().
+inline constexpr int kGzipFormatWbits = 16;
+inline constexpr int kZlibOrGzipFormatWbits = 32;
 
 // ZlibCompressor generates raw compressed data with the best compression
 // setting. The current implementation will only generate raw compressed data
@@ -41,7 +47,21 @@ namespace brillo {
 // }
 class BRILLO_EXPORT ZlibCompressor : public CompressorInterface {
  public:
-  ZlibCompressor();
+  enum class DeflateFormat {
+    // Generates a simple zlib header and trailer around the compressed data.
+    Zlib = MAX_WBITS,
+    // Generates a simple gzip header and trailer around the compressed data.
+    // The gzip header will have no file name, no extra data, no comment, no
+    // modification time (set to zero), no header crc, and the operating system
+    // will be set to the appropriate value, if the operating system was
+    // determined at compile time.
+    Gzip = MAX_WBITS + kGzipFormatWbits,
+    // Generates raw deflate data with no zlib header or trailer, and will not
+    // compute a check value.
+    Raw = -MAX_WBITS,
+  };
+
+  explicit ZlibCompressor(DeflateFormat window_bits);
   ~ZlibCompressor() override;
 
   ZlibCompressor(const ZlibCompressor&) = delete;
@@ -71,6 +91,15 @@ class BRILLO_EXPORT ZlibCompressor : public CompressorInterface {
 
  private:
   z_stream zstream_;
+
+  // The base two logarithm of the maximum window size (the size of the history
+  // buffer). This value determines how the output is formatted.
+  //
+  // Initialized to process raw data by default. The intention is that the
+  // member variable is created with a valid value so no undefined behavior
+  // occurs (eg. if someone makes a new constructor and forgets to initialize
+  // this variable).
+  DeflateFormat window_bits_ = DeflateFormat::Raw;
 };
 
 // ZlibDecompressor decompresses raw compressed data. The current implementation
@@ -85,7 +114,22 @@ class BRILLO_EXPORT ZlibCompressor : public CompressorInterface {
 // See ZlibCompressor comments above for similar usage.
 class BRILLO_EXPORT ZlibDecompressor : public CompressorInterface {
  public:
-  ZlibDecompressor();
+  enum class InflateFormat {
+    // Decodes only zlib compressed data.
+    Zlib = MAX_WBITS,
+    // Processes raw compressed data, not looking for a zlib or gzip header, not
+    // generating a check value, and not looking for any check values for
+    // comparison at the end of the stream. This is for use with other formats
+    // that use the deflate compressed data format such as zip.
+    Raw = -MAX_WBITS,
+    // Decodes only the gzip compressed data.
+    Gzip = MAX_WBITS + kGzipFormatWbits,
+    // Enables decoding zlib and gzip compressed data by automatic header
+    // detection.
+    ZlibOrGzip = MAX_WBITS + kZlibOrGzipFormatWbits,
+  };
+
+  explicit ZlibDecompressor(InflateFormat window_bits);
   ~ZlibDecompressor() override;
 
   ZlibDecompressor(const ZlibDecompressor&) = delete;
@@ -115,6 +159,15 @@ class BRILLO_EXPORT ZlibDecompressor : public CompressorInterface {
 
  private:
   z_stream zstream_;
+
+  // The base two logarithm of the maximum window size (the size of the history
+  // buffer). This value is used to determine how the input is formatted.
+  //
+  // Initialized to process raw data by default. The intention is that the
+  // member variable is created with a valid value so no undefined behavior
+  // occurs (eg. if someone makes a new constructor and forgets to initialize
+  // this variable).
+  InflateFormat window_bits_ = InflateFormat::Raw;
 };
 
 }  // namespace brillo

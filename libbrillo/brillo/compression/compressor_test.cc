@@ -19,56 +19,146 @@ namespace {
 constexpr size_t kUncompressedTestDataSize = 10000;
 }  // namespace
 
-class CompressorTest : public testing::Test {
- public:
-  void SetUp() override {
-    testing::Test::SetUp();
-    compressor_ = std::make_unique<ZlibCompressor>();
-    decompressor_ = std::make_unique<ZlibDecompressor>();
-    EXPECT_TRUE(compressor_->Initialize());
-    EXPECT_TRUE(decompressor_->Initialize());
-  }
-
- protected:
-  std::unique_ptr<CompressorInterface> compressor_;
-  std::unique_ptr<CompressorInterface> decompressor_;
+struct CompressionDecompressionFormatTestParams {
+  ZlibCompressor::DeflateFormat deflate_format;
+  ZlibDecompressor::InflateFormat inflate_format;
 };
 
-TEST_F(CompressorTest, CompressDecompressFlush) {
+class CompressorFunctionalityTest
+    : public testing::Test,
+      public ::testing::WithParamInterface<
+          CompressionDecompressionFormatTestParams> {};
+
+class CompressorFormatTest : public CompressorFunctionalityTest {};
+
+TEST_P(CompressorFunctionalityTest, CompressDecompressImmediateFlush) {
+  const CompressionDecompressionFormatTestParams& test_param = GetParam();
+  std::unique_ptr<ZlibCompressor> compressor =
+      std::make_unique<ZlibCompressor>(test_param.deflate_format);
+  std::unique_ptr<ZlibDecompressor> decompressor =
+      std::make_unique<ZlibDecompressor>(test_param.inflate_format);
+  EXPECT_TRUE(compressor->Initialize());
+  EXPECT_TRUE(decompressor->Initialize());
+
   std::vector<uint8_t> data_in(kUncompressedTestDataSize, 'x');
 
-  auto compressed = compressor_->Process(data_in, /*flush=*/true);
+  auto compressed = compressor->Process(data_in, /*flush=*/true);
   ASSERT_TRUE(compressed);
 
-  auto data_out = decompressor_->Process(compressed.value(), /*flush=*/true);
+  auto data_out = decompressor->Process(compressed.value(), /*flush=*/true);
   ASSERT_TRUE(data_out);
 
   EXPECT_EQ(data_in, data_out);
 }
 
-TEST_F(CompressorTest, CompressDecompressNoFlush) {
+TEST_P(CompressorFunctionalityTest, CompressDecompressDelayedFlush) {
+  const CompressionDecompressionFormatTestParams& test_param = GetParam();
+  std::unique_ptr<ZlibCompressor> compressor =
+      std::make_unique<ZlibCompressor>(test_param.deflate_format);
+  std::unique_ptr<ZlibDecompressor> decompressor =
+      std::make_unique<ZlibDecompressor>(test_param.inflate_format);
+  EXPECT_TRUE(compressor->Initialize());
+  EXPECT_TRUE(decompressor->Initialize());
+
   std::vector<uint8_t> data_in(kUncompressedTestDataSize, 'x');
 
-  auto compressed = compressor_->Process(data_in, /*flush=*/false);
+  auto compressed = compressor->Process(data_in, /*flush=*/false);
   ASSERT_TRUE(compressed);
 
-  auto flushed = compressor_->Process({}, /*flush=*/true);
+  auto flushed = compressor->Process({}, /*flush=*/true);
   ASSERT_TRUE(flushed);
   compressed->insert(compressed->end(), flushed->begin(), flushed->end());
 
-  auto data_out = decompressor_->Process(compressed.value(), /*flush=*/true);
+  auto data_out = decompressor->Process(compressed.value(), /*flush=*/true);
   ASSERT_TRUE(data_out);
 
   EXPECT_EQ(data_in, data_out);
 }
 
-TEST_F(CompressorTest, CompressDecompressClone) {
+TEST_P(CompressorFunctionalityTest, EmptyFlush) {
+  const CompressionDecompressionFormatTestParams& test_param = GetParam();
+  std::unique_ptr<ZlibCompressor> compressor =
+      std::make_unique<ZlibCompressor>(test_param.deflate_format);
+  EXPECT_TRUE(compressor->Initialize());
+
+  auto flushed = compressor->Process({}, true);
+  EXPECT_TRUE(flushed);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    CompressorFunctionalityTestSuite,
+    CompressorFunctionalityTest,
+    testing::ValuesIn<CompressionDecompressionFormatTestParams>({
+        {ZlibCompressor::DeflateFormat::Raw,
+         ZlibDecompressor::InflateFormat::Raw},
+        {ZlibCompressor::DeflateFormat::Zlib,
+         ZlibDecompressor::InflateFormat::Zlib},
+        {ZlibCompressor::DeflateFormat::Zlib,
+         ZlibDecompressor::InflateFormat::ZlibOrGzip},
+        {ZlibCompressor::DeflateFormat::Gzip,
+         ZlibDecompressor::InflateFormat::Gzip},
+        {ZlibCompressor::DeflateFormat::Gzip,
+         ZlibDecompressor::InflateFormat::ZlibOrGzip},
+    }));
+
+TEST_P(CompressorFormatTest, CompressDecompressWrongFormat) {
+  const CompressionDecompressionFormatTestParams& test_param = GetParam();
+  std::unique_ptr<ZlibCompressor> compressor =
+      std::make_unique<ZlibCompressor>(test_param.deflate_format);
+  std::unique_ptr<ZlibDecompressor> decompressor =
+      std::make_unique<ZlibDecompressor>(test_param.inflate_format);
+  EXPECT_TRUE(compressor->Initialize());
+  EXPECT_TRUE(decompressor->Initialize());
+
   std::vector<uint8_t> data_in(kUncompressedTestDataSize, 'x');
 
-  auto compressed = compressor_->Process(data_in, /*flush=*/false);
+  auto compressed = compressor->Process(data_in, /*flush=*/true);
   ASSERT_TRUE(compressed);
 
-  auto clone = compressor_->Clone();
+  auto data_out = decompressor->Process(compressed.value(), /*flush=*/true);
+  EXPECT_FALSE(data_out);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    CompressorDecomtTestSuite,
+    CompressorFormatTest,
+    testing::ValuesIn<CompressionDecompressionFormatTestParams>({
+        {ZlibCompressor::DeflateFormat::Zlib,
+         ZlibDecompressor::InflateFormat::Raw},
+        {ZlibCompressor::DeflateFormat::Zlib,
+         ZlibDecompressor::InflateFormat::Gzip},
+        {ZlibCompressor::DeflateFormat::Raw,
+         ZlibDecompressor::InflateFormat::Zlib},
+        {ZlibCompressor::DeflateFormat::Raw,
+         ZlibDecompressor::InflateFormat::Gzip},
+        {ZlibCompressor::DeflateFormat::Raw,
+         ZlibDecompressor::InflateFormat::ZlibOrGzip},
+        {ZlibCompressor::DeflateFormat::Gzip,
+         ZlibDecompressor::InflateFormat::Raw},
+        {ZlibCompressor::DeflateFormat::Gzip,
+         ZlibDecompressor::InflateFormat::Zlib},
+    }));
+
+// This test only works with raw inflate and deflate data since no headers and
+// trailers are created. This allows clone_data to be the correct format for
+// decompressing even when appending to it. With zlib or gzip compression,
+// clone_data would be the concatenation of two compressed blocks that each have
+// their own trailer and header, which can not be decompressed due to impromper
+// formatting.
+TEST(CompressorCloneTest, CompressDecompressClone) {
+  std::unique_ptr<ZlibCompressor> compressor =
+      std::make_unique<ZlibCompressor>(ZlibCompressor::DeflateFormat::Raw);
+  std::unique_ptr<ZlibDecompressor> decompressor =
+      std::make_unique<ZlibDecompressor>(ZlibDecompressor::InflateFormat::Raw);
+  EXPECT_TRUE(compressor->Initialize());
+  EXPECT_TRUE(decompressor->Initialize());
+
+  std::vector<uint8_t> data_in(kUncompressedTestDataSize, 'x');
+
+  auto compressed = compressor->Process(data_in, /*flush=*/false);
+  ASSERT_TRUE(compressed);
+
+  auto clone = compressor->Clone();
   ASSERT_TRUE(clone);
 
   // Process another data_in with the clone object and flush.
@@ -79,27 +169,22 @@ TEST_F(CompressorTest, CompressDecompressClone) {
                     clone_flushed->end());
 
   // Also flush the original object.
-  auto flushed = compressor_->Process({}, /*flush=*/true);
+  auto flushed = compressor->Process({}, /*flush=*/true);
   ASSERT_TRUE(flushed);
   compressed->insert(compressed->end(), flushed->begin(), flushed->end());
 
   // Original data unchanged.
-  auto data_out = decompressor_->Process(compressed.value(), /*flush=*/true);
+  auto data_out = decompressor->Process(compressed.value(), /*flush=*/true);
   ASSERT_TRUE(data_out);
   EXPECT_EQ(data_in, data_out);
 
   // Cloned one has processed data_in twice.
-  auto clone_data_out = decompressor_->Process(clone_data, /*flush=*/true);
+  auto clone_data_out = decompressor->Process(clone_data, /*flush=*/true);
   ASSERT_TRUE(clone_data_out);
   std::vector<uint8_t> expected_clone_data = data_in;
   expected_clone_data.insert(expected_clone_data.end(), data_in.begin(),
                              data_in.end());
   EXPECT_EQ(expected_clone_data, clone_data_out);
-}
-
-TEST_F(CompressorTest, EmptyFlush) {
-  auto flushed = compressor_->Process({}, true);
-  EXPECT_TRUE(flushed);
 }
 
 }  // namespace brillo

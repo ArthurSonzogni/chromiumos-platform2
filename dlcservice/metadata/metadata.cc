@@ -52,10 +52,12 @@ Metadata::Metadata(const base::FilePath& metadata_path,
       compressor_(std::move(compressor)),
       decompressor_(std::move(decompressor)) {
   if (!compressor_) {
-    compressor_ = std::make_unique<brillo::ZlibCompressor>();
+    compressor_ = std::make_unique<brillo::ZlibCompressor>(
+        brillo::ZlibCompressor::DeflateFormat::Raw);
   }
   if (!decompressor_) {
-    decompressor_ = std::make_unique<brillo::ZlibDecompressor>();
+    decompressor_ = std::make_unique<brillo::ZlibDecompressor>(
+        brillo::ZlibDecompressor::InflateFormat::Raw);
   }
   compressed_metadata_.reserve(max_file_size_);
 }

@@ -62,10 +62,11 @@ std::optional<std::vector<uint8_t>> ProcessImpl(
 }
 }  // namespace
 
-ZlibCompressor::ZlibCompressor() {
+ZlibCompressor::ZlibCompressor(DeflateFormat window_bits)
+    : window_bits_(window_bits) {
   // Initialized the zlib compression/deflate with default memory allocation
-  // routines, best compression setting, maximum windowBits and default
-  // strategy.
+  // routines, best compression setting, default strategy, and specified
+  // windowBits.
   zstream_.zalloc = Z_NULL;
   zstream_.zfree = Z_NULL;
   zstream_.opaque = Z_NULL;
@@ -77,8 +78,9 @@ ZlibCompressor::~ZlibCompressor() {
 }
 
 bool ZlibCompressor::Initialize() {
-  int ret = deflateInit2(&zstream_, Z_BEST_COMPRESSION, Z_DEFLATED, -MAX_WBITS,
-                         MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY);
+  int ret = deflateInit2(&zstream_, Z_BEST_COMPRESSION, Z_DEFLATED,
+                         static_cast<int>(window_bits_), MAX_MEM_LEVEL,
+                         Z_DEFAULT_STRATEGY);
   if (ret != Z_OK) {
     LOG(ERROR) << "Unable to initialize Zlib compressor, error=" << ret;
     return false;
@@ -87,7 +89,7 @@ bool ZlibCompressor::Initialize() {
 }
 
 std::unique_ptr<CompressorInterface> ZlibCompressor::Clone() {
-  auto clone = std::make_unique<ZlibCompressor>();
+  auto clone = std::make_unique<ZlibCompressor>(window_bits_);
   int ret = deflateCopy(&(clone->zstream_), &zstream_);
   if (ret != Z_OK) {
     LOG(ERROR) << "Failed to make a copy of the compressor, error: " << ret;
@@ -111,9 +113,10 @@ bool ZlibCompressor::Reset() {
   return Z_OK == deflateReset(&zstream_);
 }
 
-ZlibDecompressor::ZlibDecompressor() {
+ZlibDecompressor::ZlibDecompressor(InflateFormat window_bits)
+    : window_bits_(window_bits) {
   // Initialized the zlib decompression/inflate with default memory allocation
-  // routines and maximum windowBits.
+  // routines and specified windowBits.
   zstream_.zalloc = Z_NULL;
   zstream_.zfree = Z_NULL;
   zstream_.opaque = Z_NULL;
@@ -127,7 +130,7 @@ ZlibDecompressor::~ZlibDecompressor() {
 }
 
 bool ZlibDecompressor::Initialize() {
-  int ret = inflateInit2(&zstream_, -MAX_WBITS);
+  int ret = inflateInit2(&zstream_, static_cast<int>(window_bits_));
   if (ret != Z_OK) {
     LOG(ERROR) << "Unable to initialize Zlib decompressor, error=" << ret;
     return false;
@@ -136,7 +139,7 @@ bool ZlibDecompressor::Initialize() {
 }
 
 std::unique_ptr<CompressorInterface> ZlibDecompressor::Clone() {
-  auto clone = std::make_unique<ZlibDecompressor>();
+  auto clone = std::make_unique<ZlibDecompressor>(window_bits_);
   int ret = inflateCopy(&(clone->zstream_), &zstream_);
   if (ret != Z_OK) {
     LOG(ERROR) << "Failed to make a copy of the decompressor, error: " << ret;
