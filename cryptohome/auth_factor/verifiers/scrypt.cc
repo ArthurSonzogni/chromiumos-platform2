@@ -30,6 +30,7 @@ using ::cryptohome::error::CryptohomeError;
 using ::cryptohome::error::ErrorActionSet;
 using ::cryptohome::error::PossibleAction;
 using ::cryptohome::error::PrimaryAction;
+using ::hwsec_foundation::CreateRandomBlob;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::Scrypt;
 using ::hwsec_foundation::status::MakeStatus;
@@ -46,7 +47,7 @@ constexpr int kScryptOutputSize = 256 / CHAR_BIT;
 std::unique_ptr<ScryptVerifier> ScryptVerifier::Create(
     std::string auth_factor_label, const brillo::SecureBlob& passkey) {
   // Create a salt and try to scrypt the passkey with it.
-  brillo::SecureBlob scrypt_salt = CreateSecureRandomBlob(kScryptSaltSize);
+  brillo::Blob scrypt_salt = CreateRandomBlob(kScryptSaltSize);
   brillo::SecureBlob verifier(kScryptOutputSize, 0);
   if (Scrypt(passkey, scrypt_salt, kScryptNFactor, kScryptRFactor,
              kScryptPFactor, &verifier)) {
@@ -59,7 +60,7 @@ std::unique_ptr<ScryptVerifier> ScryptVerifier::Create(
 }
 
 ScryptVerifier::ScryptVerifier(std::string auth_factor_label,
-                               brillo::SecureBlob scrypt_salt,
+                               brillo::Blob scrypt_salt,
                                brillo::SecureBlob verifier)
     : SyncCredentialVerifier(AuthFactorType::kPassword,
                              std::move(auth_factor_label),

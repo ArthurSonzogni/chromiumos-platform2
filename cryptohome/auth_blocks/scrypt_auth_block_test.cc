@@ -103,7 +103,7 @@ TEST_F(ScryptAuthBlockTest, DeriveMissState) {
   auth_state = AuthBlockState{
       .state =
           ScryptAuthBlockState{
-              .salt = brillo::SecureBlob("salt"),
+              .salt = brillo::BlobFromString("salt"),
           },
   };
 

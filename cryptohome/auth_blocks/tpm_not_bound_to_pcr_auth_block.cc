@@ -40,6 +40,7 @@ using cryptohome::error::PossibleAction;
 using cryptohome::error::PrimaryAction;
 using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
+using hwsec_foundation::CreateRandomBlob;
 using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::DeriveSecretsScrypt;
 using hwsec_foundation::HmacSha256;
@@ -176,7 +177,7 @@ void TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
     return;
   }
 
-  brillo::SecureBlob tpm_public_key_hash;
+  brillo::Blob tpm_public_key_hash;
   if (tpm_state->tpm_public_key_hash.has_value()) {
     tpm_public_key_hash = tpm_state->tpm_public_key_hash.value();
   }
@@ -194,10 +195,10 @@ void TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
     return;
   }
   auto key_blobs = std::make_unique<KeyBlobs>();
-  key_blobs->vkk_iv = brillo::SecureBlob(kAesBlockSize);
   key_blobs->vkk_key = brillo::SecureBlob(kDefaultAesKeySize);
   brillo::SecureBlob aes_skey(kDefaultAesKeySize);
   brillo::SecureBlob kdf_skey(kDefaultAesKeySize);
+  brillo::SecureBlob vkk_iv(kAesBlockSize);
 
   unsigned int rounds = tpm_state->password_rounds.has_value()
                             ? tpm_state->password_rounds.value()
@@ -205,9 +206,9 @@ void TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
 
   // TODO(b/204200132): check if this branch is unnecessary.
   if (tpm_state->scrypt_derived.value()) {
-    if (!DeriveSecretsScrypt(
-            auth_input.user_input.value(), tpm_state->salt.value(),
-            {&aes_skey, &kdf_skey, &key_blobs->vkk_iv.value()})) {
+    if (!DeriveSecretsScrypt(auth_input.user_input.value(),
+                             tpm_state->salt.value(),
+                             {&aes_skey, &kdf_skey, &vkk_iv})) {
       std::move(callback).Run(
           MakeStatus<CryptohomeCryptoError>(
               CRYPTOHOME_ERR_LOC(
@@ -231,9 +232,9 @@ void TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
     }
   }
 
-  brillo::SecureBlob unobscure_key;
+  brillo::Blob encrypted_key;
   if (!UnobscureRsaMessage(tpm_state->tpm_key.value(), aes_skey,
-                           &unobscure_key)) {
+                           &encrypted_key)) {
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
@@ -247,7 +248,6 @@ void TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
 
   brillo::SecureBlob local_vault_key(auth_input.user_input.value().begin(),
                                      auth_input.user_input.value().end());
-  brillo::Blob encrypted_key(unobscure_key.begin(), unobscure_key.end());
 
   hwsec::Key cryptohome_key = cryptohome_key_loader_->GetCryptohomeKey();
   hwsec::StatusOr<brillo::SecureBlob> result =
@@ -286,6 +286,7 @@ void TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
       return;
     }
   }
+  key_blobs->vkk_iv = brillo::Blob(vkk_iv.begin(), vkk_iv.end());
   key_blobs->chaps_iv = key_blobs->vkk_iv;
 
   std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
@@ -307,8 +308,7 @@ void TpmNotBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   }
 
   const brillo::SecureBlob& vault_key = user_input.user_input.value();
-  brillo::SecureBlob salt =
-      CreateSecureRandomBlob(kCryptohomeDefaultKeySaltSize);
+  brillo::Blob salt = CreateRandomBlob(kCryptohomeDefaultKeySaltSize);
 
   // If the key still isn't loaded, fail the operation.
   if (!cryptohome_key_loader_->HasCryptohomeKey()) {
@@ -324,7 +324,7 @@ void TpmNotBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   }
 
   const auto local_blob = CreateSecureRandomBlob(kDefaultAesKeySize);
-  brillo::SecureBlob tpm_key;
+  brillo::Blob tpm_key;
   brillo::SecureBlob aes_skey(kDefaultAesKeySize);
   brillo::SecureBlob kdf_skey(kDefaultAesKeySize);
   brillo::SecureBlob vkk_iv(kAesBlockSize);
@@ -358,8 +358,7 @@ void TpmNotBoundToPcrAuthBlock::Create(const AuthInput& user_input,
         nullptr, nullptr);
     return;
   }
-  if (!ObscureRsaMessage(brillo::SecureBlob(result->begin(), result->end()),
-                         aes_skey, &tpm_key)) {
+  if (!ObscureRsaMessage(result.value(), aes_skey, &tpm_key)) {
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
@@ -383,8 +382,7 @@ void TpmNotBoundToPcrAuthBlock::Create(const AuthInput& user_input,
     LOG(ERROR) << "Failed to get tpm public key hash: "
                << pub_key_hash.status();
   } else {
-    auth_state.tpm_public_key_hash =
-        brillo::SecureBlob(pub_key_hash->begin(), pub_key_hash->end());
+    auth_state.tpm_public_key_hash = pub_key_hash.value();
   }
 
   auth_state.scrypt_derived = true;
@@ -396,8 +394,8 @@ void TpmNotBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   // Note that one might expect the IV to be part of the AuthBlockState. But
   // since it's taken from the scrypt output, it's actually created by the auth
   // block, not used to initialize the auth block.
-  key_blobs->vkk_iv = vkk_iv;
-  key_blobs->chaps_iv = vkk_iv;
+  key_blobs->vkk_iv = brillo::Blob(vkk_iv.begin(), vkk_iv.end());
+  key_blobs->chaps_iv = key_blobs->vkk_iv;
 
   auth_block_state->state = std::move(auth_state);
   std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),

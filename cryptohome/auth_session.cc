@@ -90,6 +90,7 @@ using cryptohome::error::PossibleAction;
 using cryptohome::error::PrimaryAction;
 using cryptohome::error::PrimaryActionIs;
 using cryptohome::error::ReportCryptohomeOk;
+using hwsec_foundation::CreateRandomBlob;
 using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::HmacSha256;
 using hwsec_foundation::kAesBlockSize;
@@ -189,9 +190,11 @@ CryptohomeStatusOr<AuthInput> UpdateAuthInputWithResetParamsFromPasswordVk(
   }
   AuthInput out_auth_input = auth_input;
   out_auth_input.reset_seed = vault_keyset.GetResetSeed();
-  out_auth_input.reset_salt = CreateSecureRandomBlob(kAesBlockSize);
-  out_auth_input.reset_secret = HmacSha256(out_auth_input.reset_salt.value(),
-                                           out_auth_input.reset_seed.value());
+  out_auth_input.reset_salt = CreateRandomBlob(kAesBlockSize);
+  auto secure_reset_salt = brillo::SecureBlob(
+      out_auth_input.reset_salt->begin(), out_auth_input.reset_salt->end());
+  out_auth_input.reset_secret =
+      HmacSha256(secure_reset_salt, out_auth_input.reset_seed.value());
   LOG(INFO) << "Reset seed, to generate the reset_secret for the PIN factor, "
                "is obtained from password VaultKeyset with label: "
             << vault_keyset.GetLabel();
@@ -267,13 +270,15 @@ std::optional<brillo::SecureBlob> GetResetSecretFromVaultKeyset(
                  << ".";
     return std::nullopt;
   }
-  brillo::SecureBlob reset_salt = vk->GetResetSalt();
+  brillo::Blob reset_salt = vk->GetResetSalt();
+  auto secure_reset_salt =
+      brillo::SecureBlob(reset_salt.begin(), reset_salt.end());
   if (reset_salt.empty()) {
     LOG(WARNING) << "Reset salt is empty in VK  with label: " << label;
     return std::nullopt;
   }
   std::optional<brillo::SecureBlob> reset_secret =
-      HmacSha256(reset_salt, reset_seed);
+      HmacSha256(secure_reset_salt, reset_seed);
   LOG(INFO) << "Reset secret for " << label << " is captured from VaultKeyset";
   return reset_secret;
 }

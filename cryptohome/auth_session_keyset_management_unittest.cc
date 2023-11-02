@@ -543,17 +543,18 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   }
 
   // Standard key blob and TPM state objects to use in testing.
-  const brillo::SecureBlob kBlob32{std::string(32, 'A')};
-  const brillo::SecureBlob kBlob16{std::string(16, 'C')};
+  const brillo::SecureBlob kSecureBlob32 = brillo::SecureBlob(32, 'A');
+  const brillo::Blob kBlob32 = brillo::Blob(32, 'B');
+  const brillo::Blob kBlob16 = brillo::Blob(16, 'C');
   const KeyBlobs kKeyBlobs{
-      .vkk_key = kBlob32, .vkk_iv = kBlob16, .chaps_iv = kBlob16};
+      .vkk_key = kSecureBlob32, .vkk_iv = kBlob16, .chaps_iv = kBlob16};
   const TpmEccAuthBlockState kTpmState = {
-      .salt = brillo::SecureBlob(kSalt),
+      .salt = brillo::BlobFromString(kSalt),
       .vkk_iv = kBlob32,
       .auth_value_rounds = kAuthValueRounds,
       .sealed_hvkkm = kBlob32,
       .extended_sealed_hvkkm = kBlob32,
-      .tpm_public_key_hash = brillo::SecureBlob(kPublicHash),
+      .tpm_public_key_hash = brillo::BlobFromString(kPublicHash),
   };
 
   base::test::TaskEnvironment task_environment_;

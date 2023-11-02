@@ -22,6 +22,7 @@ using ::cryptohome::error::CryptohomeCryptoError;
 using ::cryptohome::error::ErrorActionSet;
 using ::cryptohome::error::PossibleAction;
 using ::cryptohome::error::PrimaryAction;
+using ::hwsec_foundation::CreateRandomBlob;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::kAesBlockSize;
 using ::hwsec_foundation::kDefaultAesKeySize;
@@ -48,9 +49,9 @@ ScryptAuthBlock::ScryptAuthBlock(DerivationType derivation_type)
     : AuthBlock(derivation_type) {}
 
 CryptoStatus CreateScryptHelper(const brillo::SecureBlob& input_key,
-                                brillo::SecureBlob* out_salt,
+                                brillo::Blob* out_salt,
                                 brillo::SecureBlob* out_derived_key) {
-  *out_salt = CreateSecureRandomBlob(kLibScryptSaltSize);
+  *out_salt = CreateRandomBlob(kLibScryptSaltSize);
 
   out_derived_key->resize(kLibScryptDerivedKeySize);
   if (!Scrypt(input_key, *out_salt, kDefaultScryptParams.n_factor,
@@ -69,7 +70,8 @@ void ScryptAuthBlock::Create(const AuthInput& auth_input,
                              CreateCallback callback) {
   const brillo::SecureBlob input_key = auth_input.user_input.value();
 
-  brillo::SecureBlob salt, derived_key;
+  brillo::Blob salt;
+  brillo::SecureBlob derived_key;
   CryptoStatus error = CreateScryptHelper(input_key, &salt, &derived_key);
   if (!error.ok()) {
     std::move(callback).Run(
@@ -81,7 +83,8 @@ void ScryptAuthBlock::Create(const AuthInput& auth_input,
     return;
   }
 
-  brillo::SecureBlob chaps_salt, derived_scrypt_chaps_key;
+  brillo::Blob chaps_salt;
+  brillo::SecureBlob derived_scrypt_chaps_key;
   error = CreateScryptHelper(input_key, &chaps_salt, &derived_scrypt_chaps_key);
   if (!error.ok()) {
     std::move(callback).Run(
@@ -93,7 +96,8 @@ void ScryptAuthBlock::Create(const AuthInput& auth_input,
     return;
   }
 
-  brillo::SecureBlob reset_seed_salt, derived_scrypt_reset_seed_key;
+  brillo::Blob reset_seed_salt;
+  brillo::SecureBlob derived_scrypt_reset_seed_key;
   error = CreateScryptHelper(input_key, &reset_seed_salt,
                              &derived_scrypt_reset_seed_key);
   if (!error.ok()) {

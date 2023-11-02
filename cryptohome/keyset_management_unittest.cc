@@ -95,12 +95,6 @@ constexpr char kNewPasskey[] = "new pass";
 constexpr char kNewLabel[] = "new_label";
 constexpr char kSalt[] = "salt";
 
-const brillo::SecureBlob kInitialBlob64(64, 'A');
-const brillo::SecureBlob kInitialBlob32(32, 'A');
-const brillo::SecureBlob kAdditionalBlob32(32, 'B');
-const brillo::SecureBlob kInitialBlob16(16, 'C');
-const brillo::SecureBlob kAdditionalBlob16(16, 'D');
-
 using CreateTestFuture = TestFuture<CryptohomeStatus,
                                     std::unique_ptr<KeyBlobs>,
                                     std::unique_ptr<AuthBlockState>>;
@@ -175,6 +169,12 @@ class KeysetManagementTest : public ::testing::Test {
         challenge_credentials_keyset_info;
   };
 
+  const brillo::Blob kInitialBlob64 = brillo::Blob(64, 'A');
+  const brillo::Blob kInitialBlob32 = brillo::Blob(32, 'A');
+  const brillo::Blob kAdditionalBlob32 = brillo::Blob(32, 'B');
+  const brillo::Blob kInitialBlob16 = brillo::Blob(16, 'C');
+  const brillo::Blob kAdditionalBlob16 = brillo::Blob(16, 'D');
+  const brillo::SecureBlob kSecureBlob32 = brillo::SecureBlob(32, 'F');
   const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
       CryptohomeError::ErrorLocationPair(
           static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
@@ -226,25 +226,26 @@ class KeysetManagementTest : public ::testing::Test {
       vk.Initialize(&platform_, &crypto_);
       vk.CreateFromFileSystemKeyset(file_system_keyset_);
       vk.SetKeyData(key_data);
-      key_blobs_.vkk_key = kInitialBlob32;
+      key_blobs_.vkk_key = kSecureBlob32;
       key_blobs_.vkk_iv = kInitialBlob16;
       key_blobs_.chaps_iv = kInitialBlob16;
 
       if (key_data.has_policy() && key_data.policy().low_entropy_credential()) {
         PinWeaverAuthBlockState pin_state = {
             .le_label = 0xbaadf00d,
-            .salt = brillo::SecureBlob("fake salt"),
-            .chaps_iv = brillo::SecureBlob("fake chaps IV"),
-            .fek_iv = brillo::SecureBlob("fake file encryption IV"),
-            .reset_salt = brillo::SecureBlob("more fake salt"),
+            .salt = brillo::BlobFromString("fake salt"),
+            .chaps_iv = brillo::BlobFromString("fake chaps IV"),
+            .fek_iv = brillo::BlobFromString("fake file encryption IV"),
+            .reset_salt = brillo::BlobFromString("more fake salt"),
         };
         auth_state_->state = pin_state;
 
       } else {
         TpmBoundToPcrAuthBlockState pcr_state = {
-            .salt = brillo::SecureBlob("fake salt"),
-            .tpm_key = brillo::SecureBlob("fake tpm key"),
-            .extended_tpm_key = brillo::SecureBlob("fake extended tpm key")};
+            .salt = brillo::BlobFromString("fake salt"),
+            .tpm_key = brillo::BlobFromString("fake tpm key"),
+            .extended_tpm_key =
+                brillo::BlobFromString("fake extended tpm key")};
         auth_state_->state = pcr_state;
       }
 
@@ -259,12 +260,12 @@ class KeysetManagementTest : public ::testing::Test {
       VaultKeyset vk;
       vk.Initialize(&platform_, &crypto_);
       vk.CreateFromFileSystemKeyset(file_system_keyset_);
-      key_blobs_.vkk_key = kInitialBlob32;
+      key_blobs_.vkk_key = kSecureBlob32;
       key_blobs_.vkk_iv = kInitialBlob16;
       key_blobs_.chaps_iv = kInitialBlob16;
 
-      TpmBoundToPcrAuthBlockState pcr_state = {.salt =
-                                                   brillo::SecureBlob(kSalt)};
+      TpmBoundToPcrAuthBlockState pcr_state = {
+          .salt = brillo::BlobFromString(kSalt)};
       auth_state_->state = pcr_state;
 
       ASSERT_THAT(vk.EncryptEx(key_blobs_, *auth_state_), IsOk());
@@ -297,8 +298,8 @@ class KeysetManagementTest : public ::testing::Test {
   void VerifyWrappedKeysetNotPresent(
       const ObfuscatedUsername& obfuscated_username,
       const brillo::SecureBlob& vkk_key,
-      const brillo::SecureBlob& vkk_iv,
-      const brillo::SecureBlob& chaps_iv,
+      const brillo::Blob& vkk_iv,
+      const brillo::Blob& chaps_iv,
       const std::string& label) {
     KeyBlobs key_blobs;
     key_blobs.vkk_key = vkk_key;
@@ -313,8 +314,8 @@ class KeysetManagementTest : public ::testing::Test {
   void VerifyWrappedKeysetPresentAtIndex(
       const ObfuscatedUsername& obfuscated_username,
       const brillo::SecureBlob& vkk_key,
-      const brillo::SecureBlob& vkk_iv,
-      const brillo::SecureBlob& chaps_iv,
+      const brillo::Blob& vkk_iv,
+      const brillo::Blob& chaps_iv,
       const std::string& label,
       int index) {
     KeyBlobs key_blobs;
@@ -342,7 +343,8 @@ TEST_F(KeysetManagementTest, AddInitialKeysetSaveError) {
   EXPECT_CALL(*mock_vault_keyset_factory_, New(&platform_, &crypto_))
       .WillOnce(Return(vk.release()));
 
-  TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob(kSalt)};
+  TpmBoundToPcrAuthBlockState pcr_state = {.salt =
+                                               brillo::BlobFromString(kSalt)};
   auth_state_ = std::make_unique<AuthBlockState>();
   auth_state_->state = pcr_state;
   users_[0].key_data = DefaultKeyData();
@@ -369,8 +371,8 @@ TEST_F(KeysetManagementTest, GetValidKeysetInvalidCreds) {
 
   KeyBlobs invalid_key_blobs;
   invalid_key_blobs.vkk_key = brillo::SecureBlob("vkk_key");
-  invalid_key_blobs.chaps_iv = brillo::SecureBlob("chaps_iv");
-  invalid_key_blobs.vkk_iv = brillo::SecureBlob("vkk_iv");
+  invalid_key_blobs.chaps_iv = brillo::BlobFromString("chaps_iv");
+  invalid_key_blobs.vkk_iv = brillo::BlobFromString("vkk_iv");
 
   // TEST
   // It uses the right and expected label but wrong credentials.
@@ -388,14 +390,14 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFail) {
   KeysetSetUpWithKeyDataAndKeyBlobs(DefaultKeyData());
 
   MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-      keyset_management_->GetValidKeyset(users_[0].obfuscated,
-                                         std::move(key_blobs_), kPasswordLabel);
+      keyset_management_->GetValidKeyset(users_[0].obfuscated, key_blobs_,
+                                         kPasswordLabel);
   ASSERT_THAT(vk_status, IsOk());
   KeyData new_data;
   new_data.set_label(kNewLabel);
 
   KeyBlobs new_key_blobs;
-  new_key_blobs.vkk_key = kAdditionalBlob32;
+  new_key_blobs.vkk_key = kSecureBlob32;
   new_key_blobs.chaps_iv = kAdditionalBlob16;
   new_key_blobs.vkk_iv = kAdditionalBlob16;
 
@@ -404,7 +406,7 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFail) {
   // Mock vk for existing keyset.
 
   vk_status.value()->CreateRandomResetSeed();
-  vk_status.value()->SetWrappedResetSeed(brillo::SecureBlob("reset_seed"));
+  vk_status.value()->SetWrappedResetSeed(brillo::BlobFromString("reset_seed"));
   // ON_CALL(*mock_vault_keyset_factory_, New(&platform_, &crypto_))
   //    .WillByDefault(Return(mock_vk_to_add));
   EXPECT_CALL(*mock_vault_keyset_factory_, New(&platform_, &crypto_))
@@ -420,7 +422,7 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFail) {
   // TEST
   CryptohomeStatus status = keyset_management_->AddKeyset(
       VaultKeysetIntent{.backup = false}, users_[0].obfuscated,
-      new_data.label(), new_data, *vk_status.value(), std::move(new_key_blobs),
+      new_data.label(), new_data, *vk_status.value(), new_key_blobs,
       std::move(auth_state_), false /*clobber*/);
 
   ASSERT_THAT(status, NotOk());
@@ -532,13 +534,15 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestRegularCreds) {
   EXPECT_TRUE(keyset_management_->ShouldReSaveKeyset(vk0_status.value().get()));
 
   // Tpm wrapped not pcr bound, public hash - resave.
-  vk0_status.value()->SetTpmPublicKeyHash(brillo::SecureBlob("public hash"));
+  vk0_status.value()->SetTpmPublicKeyHash(
+      brillo::BlobFromString("public hash"));
   vk0_status.value()->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
                                SerializedVaultKeyset::SCRYPT_DERIVED);
   EXPECT_TRUE(keyset_management_->ShouldReSaveKeyset(vk0_status.value().get()));
 
   // Tpm wrapped pcr bound, public hash - no resave.
-  vk0_status.value()->SetTpmPublicKeyHash(brillo::SecureBlob("public hash"));
+  vk0_status.value()->SetTpmPublicKeyHash(
+      brillo::BlobFromString("public hash"));
   vk0_status.value()->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
                                SerializedVaultKeyset::SCRYPT_DERIVED |
                                SerializedVaultKeyset::PCR_BOUND);
@@ -546,7 +550,8 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestRegularCreds) {
       keyset_management_->ShouldReSaveKeyset(vk0_status.value().get()));
 
   // Tpm wrapped pcr bound and ECC key, public hash - no resave.
-  vk0_status.value()->SetTpmPublicKeyHash(brillo::SecureBlob("public hash"));
+  vk0_status.value()->SetTpmPublicKeyHash(
+      brillo::BlobFromString("public hash"));
   vk0_status.value()->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
                                SerializedVaultKeyset::SCRYPT_DERIVED |
                                SerializedVaultKeyset::PCR_BOUND |
@@ -592,8 +597,8 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
   // Setup initial user.
   KeysetSetUpWithKeyDataAndKeyBlobs(DefaultKeyData());
   MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-      keyset_management_->GetValidKeyset(users_[0].obfuscated,
-                                         std::move(key_blobs_), kPasswordLabel);
+      keyset_management_->GetValidKeyset(users_[0].obfuscated, key_blobs_,
+                                         kPasswordLabel);
   ASSERT_THAT(vk_status, IsOk());
 
   // Setup pin credentials.
@@ -617,15 +622,15 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
   KeyData key_data = DefaultLEKeyData();
 
   KeyBlobs new_key_blobs;
-  new_key_blobs.vkk_key = kAdditionalBlob32;
+  new_key_blobs.vkk_key = kSecureBlob32;
   new_key_blobs.vkk_iv = kAdditionalBlob16;
   new_key_blobs.chaps_iv = kAdditionalBlob16;
 
   // TEST
   ASSERT_THAT(keyset_management_->AddKeyset(
                   VaultKeysetIntent{.backup = false}, users_[0].obfuscated,
-                  key_data.label(), key_data, *vk_status.value(),
-                  std::move(new_key_blobs), std::move(auth_state), false),
+                  key_data.label(), key_data, *vk_status.value(), new_key_blobs,
+                  std::move(auth_state), false),
               IsOk());
 
   // When adding new keyset with an new label we expect it to have another
@@ -752,11 +757,12 @@ TEST_F(KeysetManagementTest, AddKeysetSuccess) {
   new_data.set_label(kNewLabel);
 
   KeyBlobs new_key_blobs;
-  new_key_blobs.vkk_key = kAdditionalBlob32;
+  new_key_blobs.vkk_key = kSecureBlob32;
   new_key_blobs.vkk_iv = kAdditionalBlob16;
   new_key_blobs.chaps_iv = kAdditionalBlob16;
 
-  TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob(kSalt)};
+  TpmBoundToPcrAuthBlockState pcr_state = {.salt =
+                                               brillo::BlobFromString(kSalt)};
   auto auth_state = std::make_unique<AuthBlockState>();
   auth_state->state = pcr_state;
 
@@ -780,10 +786,10 @@ TEST_F(KeysetManagementTest, AddKeysetSuccess) {
   int index = vk_status.value()->GetLegacyIndex();
   VerifyKeysetIndicies({kInitialKeysetIndex, index});
 
-  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kInitialBlob32,
+  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kSecureBlob32,
                                     kInitialBlob16, kInitialBlob16,
                                     kPasswordLabel, kInitialKeysetIndex);
-  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kAdditionalBlob32,
+  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kSecureBlob32,
                                     kAdditionalBlob16, kAdditionalBlob16,
                                     kNewLabel, index);
 }
@@ -803,11 +809,12 @@ TEST_F(KeysetManagementTest, AddKeysetClobberSuccess) {
   KeyData new_key_data = DefaultKeyData();
 
   KeyBlobs new_key_blobs;
-  new_key_blobs.vkk_key = kAdditionalBlob32;
+  new_key_blobs.vkk_key = kSecureBlob32;
   new_key_blobs.vkk_iv = kAdditionalBlob16;
   new_key_blobs.chaps_iv = kAdditionalBlob16;
 
-  TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob(kSalt)};
+  TpmBoundToPcrAuthBlockState pcr_state = {.salt =
+                                               brillo::BlobFromString(kSalt)};
   auto auth_state = std::make_unique<AuthBlockState>();
   auth_state->state = pcr_state;
   // TEST
@@ -824,9 +831,9 @@ TEST_F(KeysetManagementTest, AddKeysetClobberSuccess) {
 
   VerifyKeysetIndicies({kInitialKeysetIndex});
 
-  VerifyWrappedKeysetNotPresent(users_[0].obfuscated, kInitialBlob32,
+  VerifyWrappedKeysetNotPresent(users_[0].obfuscated, kSecureBlob32,
                                 kInitialBlob16, kInitialBlob16, kPasswordLabel);
-  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kAdditionalBlob32,
+  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kSecureBlob32,
                                     kAdditionalBlob16, kAdditionalBlob16,
                                     kPasswordLabel, kInitialKeysetIndex);
 }
@@ -841,11 +848,12 @@ TEST_F(KeysetManagementTest, AddKeysetNoClobber) {
   KeyData new_key_data = DefaultKeyData();
 
   KeyBlobs new_key_blobs;
-  new_key_blobs.vkk_key = kAdditionalBlob32;
+  new_key_blobs.vkk_key = kSecureBlob32;
   new_key_blobs.vkk_iv = kAdditionalBlob16;
   new_key_blobs.chaps_iv = kAdditionalBlob16;
 
-  TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob(kSalt)};
+  TpmBoundToPcrAuthBlockState pcr_state = {.salt =
+                                               brillo::BlobFromString(kSalt)};
   auto auth_state = std::make_unique<AuthBlockState>();
   auth_state->state = pcr_state;
   // TEST
@@ -866,10 +874,10 @@ TEST_F(KeysetManagementTest, AddKeysetNoClobber) {
   // After we add an additional keyset, we can list and read both of them.
   VerifyKeysetIndicies({kInitialKeysetIndex});
 
-  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kInitialBlob32,
+  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kSecureBlob32,
                                     kInitialBlob16, kInitialBlob16,
                                     kPasswordLabel, kInitialKeysetIndex);
-  VerifyWrappedKeysetNotPresent(users_[0].obfuscated, kAdditionalBlob32,
+  VerifyWrappedKeysetNotPresent(users_[0].obfuscated, kSecureBlob32,
                                 kAdditionalBlob16, kAdditionalBlob16,
                                 kPasswordLabel);
 }
@@ -896,7 +904,7 @@ TEST_F(KeysetManagementTest, GetValidKeysetInvalidKeyBlobs) {
   KeysetSetUpWithKeyDataAndKeyBlobs(DefaultKeyData());
 
   KeyBlobs wrong_key_blobs;
-  wrong_key_blobs.vkk_key = kAdditionalBlob32;
+  wrong_key_blobs.vkk_key = kSecureBlob32;
   wrong_key_blobs.vkk_iv = kAdditionalBlob16;
   wrong_key_blobs.chaps_iv = kAdditionalBlob16;
 
@@ -919,7 +927,7 @@ TEST_F(KeysetManagementTest, AddKeysetNoFreeIndices) {
   KeyData new_data;
   new_data.set_label(kNewLabel);
   KeyBlobs new_key_blobs;
-  new_key_blobs.vkk_key = kAdditionalBlob32;
+  new_key_blobs.vkk_key = kSecureBlob32;
   new_key_blobs.vkk_iv = kAdditionalBlob16;
   new_key_blobs.chaps_iv = kAdditionalBlob16;
 
@@ -951,10 +959,10 @@ TEST_F(KeysetManagementTest, AddKeysetNoFreeIndices) {
 
   VerifyKeysetIndicies({kInitialKeysetIndex});
 
-  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kInitialBlob32,
+  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kSecureBlob32,
                                     kInitialBlob16, kInitialBlob16,
                                     kPasswordLabel, kInitialKeysetIndex);
-  VerifyWrappedKeysetNotPresent(users_[0].obfuscated, kAdditionalBlob32,
+  VerifyWrappedKeysetNotPresent(users_[0].obfuscated, kSecureBlob32,
                                 kAdditionalBlob16, kAdditionalBlob16,
                                 new_data.label());
 }
@@ -970,7 +978,7 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFail) {
 
   // To fail Encrypt() vkk_iv is missing in the key blobs.
   KeyBlobs new_key_blobs;
-  new_key_blobs.vkk_key = kAdditionalBlob32;
+  new_key_blobs.vkk_key = kSecureBlob32;
   new_key_blobs.chaps_iv = kAdditionalBlob16;
 
   MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
@@ -993,10 +1001,10 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFail) {
 
   VerifyKeysetIndicies({kInitialKeysetIndex});
 
-  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kInitialBlob32,
+  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kSecureBlob32,
                                     kInitialBlob16, kInitialBlob16,
                                     "" /*label*/, kInitialKeysetIndex);
-  VerifyWrappedKeysetNotPresent(users_[0].obfuscated, kAdditionalBlob32,
+  VerifyWrappedKeysetNotPresent(users_[0].obfuscated, kSecureBlob32,
                                 kAdditionalBlob16, kAdditionalBlob16,
                                 new_data.label());
 }
@@ -1004,11 +1012,12 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFail) {
 // Successfully adds initial keyset
 TEST_F(KeysetManagementTest, AddInitialKeyset) {
   // SETUP
-  key_blobs_ = {.vkk_key = kInitialBlob32,
+  key_blobs_ = {.vkk_key = kSecureBlob32,
                 .vkk_iv = kInitialBlob16,
                 .chaps_iv = kInitialBlob16};
 
-  TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob(kSalt)};
+  TpmBoundToPcrAuthBlockState pcr_state = {.salt =
+                                               brillo::BlobFromString(kSalt)};
   auth_state_ = std::make_unique<AuthBlockState>();
   auth_state_->state = pcr_state;
   users_[0].key_data = DefaultKeyData();
@@ -1025,7 +1034,7 @@ TEST_F(KeysetManagementTest, AddInitialKeyset) {
 
   // VERIFY
 
-  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kInitialBlob32,
+  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kSecureBlob32,
                                     kInitialBlob16, kInitialBlob16,
                                     "" /*label*/, kInitialKeysetIndex);
 }

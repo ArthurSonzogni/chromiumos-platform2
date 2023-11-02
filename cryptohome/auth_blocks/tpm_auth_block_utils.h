@@ -36,13 +36,13 @@ class TpmAuthBlockUtils {
 
   // Checks if the specified |hash| is the same as the hash for the |tpm_| used
   // by the class.
-  CryptoStatus IsTPMPubkeyHash(const brillo::SecureBlob& hash) const;
+  CryptoStatus IsTPMPubkeyHash(const brillo::Blob& hash) const;
 
   // This checks that the TPM is ready and that the vault keyset was encrypted
   // with this machine's TPM.
   CryptoStatus CheckTPMReadiness(bool has_tpm_key,
                                  bool has_tpm_public_key_hash,
-                                 const brillo::SecureBlob& tpm_public_key_hash);
+                                 const brillo::Blob& tpm_public_key_hash);
 
  private:
   const hwsec::CryptohomeFrontend* hwsec_;

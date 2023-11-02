@@ -344,9 +344,10 @@ TEST_F(ChallengeCredentialAuthBlockTest, Derive) {
           ChallengeCredentialAuthBlockState{
               .scrypt_state =
                   ScryptAuthBlockState{
-                      .salt = brillo::SecureBlob("salt"),
-                      .chaps_salt = brillo::SecureBlob("chaps_salt"),
-                      .reset_seed_salt = brillo::SecureBlob("reset_seed_salt"),
+                      .salt = brillo::BlobFromString("salt"),
+                      .chaps_salt = brillo::BlobFromString("chaps_salt"),
+                      .reset_seed_salt =
+                          brillo::BlobFromString("reset_seed_salt"),
                       .work_factor =
                           hwsec_foundation::kDefaultScryptParams.n_factor,
                       .block_size =

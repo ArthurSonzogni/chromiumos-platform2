@@ -110,8 +110,8 @@ class VaultKeyset {
   virtual const int GetLegacyIndex() const;
 
   virtual bool HasTpmPublicKeyHash() const;
-  virtual const brillo::SecureBlob& GetTpmPublicKeyHash() const;
-  virtual void SetTpmPublicKeyHash(const brillo::SecureBlob& hash);
+  virtual const brillo::Blob& GetTpmPublicKeyHash() const;
+  virtual void SetTpmPublicKeyHash(const brillo::Blob& hash);
 
   virtual bool HasPasswordRounds() const;
   virtual int32_t GetPasswordRounds() const;
@@ -144,54 +144,54 @@ class VaultKeyset {
   // Sets the label on |key_data_|. |key_data_| is created if empty.
   virtual void SetKeyDataLabel(const std::string& key_label);
 
-  virtual void SetResetIV(const brillo::SecureBlob& iv);
+  virtual void SetResetIV(const brillo::Blob& iv);
   virtual bool HasResetIV() const;
-  virtual const brillo::SecureBlob& GetResetIV() const;
+  virtual const brillo::Blob& GetResetIV() const;
 
   virtual void SetLELabel(uint64_t label);
   virtual bool HasLELabel() const;
   virtual uint64_t GetLELabel() const;
 
-  virtual void SetLEFekIV(const brillo::SecureBlob& iv);
+  virtual void SetLEFekIV(const brillo::Blob& iv);
   virtual bool HasLEFekIV() const;
-  virtual const brillo::SecureBlob& GetLEFekIV() const;
+  virtual const brillo::Blob& GetLEFekIV() const;
 
-  virtual void SetLEChapsIV(const brillo::SecureBlob& iv);
+  virtual void SetLEChapsIV(const brillo::Blob& iv);
   virtual bool HasLEChapsIV() const;
-  virtual const brillo::SecureBlob& GetLEChapsIV() const;
+  virtual const brillo::Blob& GetLEChapsIV() const;
 
-  virtual void SetResetSalt(const brillo::SecureBlob& reset_salt);
+  virtual void SetResetSalt(const brillo::Blob& reset_salt);
   virtual bool HasResetSalt() const;
-  virtual const brillo::SecureBlob& GetResetSalt() const;
+  virtual const brillo::Blob& GetResetSalt() const;
 
   virtual void SetFSCryptPolicyVersion(int32_t policy_version);
   virtual bool HasFSCryptPolicyVersion() const;
   virtual int32_t GetFSCryptPolicyVersion() const;
 
   virtual bool HasVkkIv() const;
-  virtual const brillo::SecureBlob& GetVkkIv() const;
+  virtual const brillo::Blob& GetVkkIv() const;
 
   // Group 2. Fields containing wrapped data.
 
-  virtual void SetWrappedKeyset(const brillo::SecureBlob& wrapped_keyset);
-  virtual const brillo::SecureBlob& GetWrappedKeyset() const;
+  virtual void SetWrappedKeyset(const brillo::Blob& wrapped_keyset);
+  virtual const brillo::Blob& GetWrappedKeyset() const;
 
   virtual bool HasWrappedChapsKey() const;
-  virtual void SetWrappedChapsKey(const brillo::SecureBlob& wrapped_chaps_key);
-  virtual const brillo::SecureBlob& GetWrappedChapsKey() const;
+  virtual void SetWrappedChapsKey(const brillo::Blob& wrapped_chaps_key);
+  virtual const brillo::Blob& GetWrappedChapsKey() const;
   virtual void ClearWrappedChapsKey();
 
   virtual bool HasTPMKey() const;
-  virtual void SetTPMKey(const brillo::SecureBlob& tpm_key);
-  virtual const brillo::SecureBlob& GetTPMKey() const;
+  virtual void SetTPMKey(const brillo::Blob& tpm_key);
+  virtual const brillo::Blob& GetTPMKey() const;
 
   virtual bool HasExtendedTPMKey() const;
-  virtual void SetExtendedTPMKey(const brillo::SecureBlob& tpm_key);
-  virtual const brillo::SecureBlob& GetExtendedTPMKey() const;
+  virtual void SetExtendedTPMKey(const brillo::Blob& tpm_key);
+  virtual const brillo::Blob& GetExtendedTPMKey() const;
 
   virtual bool HasWrappedResetSeed() const;
-  virtual void SetWrappedResetSeed(const brillo::SecureBlob& reset_seed);
-  virtual const brillo::SecureBlob& GetWrappedResetSeed() const;
+  virtual void SetWrappedResetSeed(const brillo::Blob& reset_seed);
+  virtual const brillo::Blob& GetWrappedResetSeed() const;
 
   virtual bool HasSignatureChallengeInfo() const;
   virtual const SerializedVaultKeyset::SignatureChallengeInfo&
@@ -342,9 +342,9 @@ class VaultKeyset {
   // Field to tag the VaultKeyset as a migrated VaultKeyset to USS.
   bool migrated_vk_;
   // The salt used to derive the user input in auth block.
-  brillo::SecureBlob auth_salt_;
+  brillo::Blob auth_salt_;
   // The IV used to encrypt the encryption key.
-  std::optional<brillo::SecureBlob> vkk_iv_;
+  std::optional<brillo::Blob> vkk_iv_;
   // legacy_index_ is the index of the keyset for the user. It is called legacy
   // due to previous plans to fully switch to label-based addressing, which,
   // unfortunately, wasn't followed through.
@@ -353,7 +353,7 @@ class VaultKeyset {
   bool auth_locked_;
   // This is used by the TPM AuthBlocks to make sure the keyset was sealed to
   // the TPM on this system. It's not a security check, but a diagnostic.
-  std::optional<brillo::SecureBlob> tpm_public_key_hash_;
+  std::optional<brillo::Blob> tpm_public_key_hash_;
   // Passwords which are TPM backed, not PCR bound, and not run through scrypt
   // before the TPM operation, have a number of rounds to run the key derivation
   // function.
@@ -364,31 +364,31 @@ class VaultKeyset {
   // Plaintet metadata describing the key.
   std::optional<KeyData> key_data_;
   // Used for the reset seed wrapping.
-  std::optional<brillo::SecureBlob> reset_iv_;
+  std::optional<brillo::Blob> reset_iv_;
   // The label for PinWeaver secrets.
   std::optional<uint64_t> le_label_;
   // IV for the file encryption key of PinWeaver credentials.
-  std::optional<brillo::SecureBlob> le_fek_iv_;
+  std::optional<brillo::Blob> le_fek_iv_;
   // IV for the chaps key wrapping of PinWeaver credentials.
-  std::optional<brillo::SecureBlob> le_chaps_iv_;
+  std::optional<brillo::Blob> le_chaps_iv_;
   // Used with the resed seed to derive the reset secret. PinWeaver only.
-  std::optional<brillo::SecureBlob> reset_salt_;
+  std::optional<brillo::Blob> reset_salt_;
   // Specifies which version of fscrypt encryption policy this is used with.
   std::optional<int32_t> fscrypt_policy_version_;
 
   // Group 2. Wrapped stuff.
   // An encrypted copy of the VaultKeysetKeys struct, which holds important
   // fields such as a the file encryption key.
-  brillo::SecureBlob wrapped_keyset_;
+  brillo::Blob wrapped_keyset_;
   // Wrapped copy of the key used to authenticate with the PKCS#11 service.
-  std::optional<brillo::SecureBlob> wrapped_chaps_key_;
+  std::optional<brillo::Blob> wrapped_chaps_key_;
   // The VaultKeysetKey encrypted with the user's password and TPM.
-  std::optional<brillo::SecureBlob> tpm_key_;
+  std::optional<brillo::Blob> tpm_key_;
   // Used by the PCR bound AuthBlock where the TPM's PCR is extended with the
   // username.
-  std::optional<brillo::SecureBlob> extended_tpm_key_;
-  // The reset seed for LE credentials.
-  std::optional<brillo::SecureBlob> wrapped_reset_seed_;
+  std::optional<brillo::Blob> extended_tpm_key_;
+  // The wrapped reset seed for LE credentials.
+  std::optional<brillo::Blob> wrapped_reset_seed_;
   // Information specific to the signature-challenge response protection. This
   // has plaintext metadata in it, but also the sealed secret, so it goes here.
   std::optional<SerializedVaultKeyset::SignatureChallengeInfo>

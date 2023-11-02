@@ -103,14 +103,13 @@ TEST_F(TpmNotBoundToPcrTest, Success) {
   auto& tpm_state = std::get<TpmNotBoundToPcrAuthBlockState>(auth_state->state);
 
   EXPECT_TRUE(tpm_state.salt.has_value());
-  const brillo::SecureBlob& salt = tpm_state.salt.value();
+  const brillo::Blob& salt = tpm_state.salt.value();
   brillo::SecureBlob aes_skey_result(kDefaultAesKeySize);
   EXPECT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&aes_skey_result}));
 
-  brillo::SecureBlob tpm_key_retult;
-  EXPECT_TRUE(hwsec_foundation::ObscureRsaMessage(
-      brillo::SecureBlob(encrypt_out.begin(), encrypt_out.end()),
-      aes_skey_result, &tpm_key_retult));
+  brillo::Blob tpm_key_retult;
+  EXPECT_TRUE(hwsec_foundation::ObscureRsaMessage(encrypt_out, aes_skey_result,
+                                                  &tpm_key_retult));
 
   EXPECT_EQ(tpm_state.tpm_key.value(), tpm_key_retult);
 
@@ -171,7 +170,7 @@ TEST_F(TpmNotBoundToPcrTest, CreateFailNoUserInput) {
 // Check required field |salt| in TpmNotBoundToPcrAuthBlockState.
 TEST_F(TpmNotBoundToPcrTest, DeriveFailureMissingSalt) {
   // Setup
-  brillo::SecureBlob tpm_key(20, 'C');
+  brillo::Blob tpm_key(20, 'C');
   AuthBlockState auth_state;
   TpmNotBoundToPcrAuthBlockState state;
   state.scrypt_derived = true;
@@ -193,7 +192,7 @@ TEST_F(TpmNotBoundToPcrTest, DeriveFailureMissingSalt) {
 
 // Check required field |tpm_key| in TpmNotBoundToPcrAuthBlockState.
 TEST_F(TpmNotBoundToPcrTest, DeriveFailureMissingTpmKey) {
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
+  brillo::Blob salt(PKCS5_SALT_LEN, 'A');
   AuthBlockState auth_state;
   TpmNotBoundToPcrAuthBlockState state;
   state.scrypt_derived = true;
@@ -216,8 +215,8 @@ TEST_F(TpmNotBoundToPcrTest, DeriveFailureMissingTpmKey) {
 // Test TpmNotBoundToPcrAuthBlock derive fails when there's no user_input
 // provided.
 TEST_F(TpmNotBoundToPcrTest, DeriveFailureNoUserInput) {
-  brillo::SecureBlob tpm_key(20, 'C');
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
+  brillo::Blob tpm_key(20, 'C');
+  brillo::Blob salt(PKCS5_SALT_LEN, 'A');
   AuthBlockState auth_state;
   TpmBoundToPcrAuthBlockState state;
   state.scrypt_derived = true;
@@ -241,11 +240,11 @@ TEST_F(TpmNotBoundToPcrTest, DeriveFailureNoUserInput) {
 }
 
 TEST_F(TpmNotBoundToPcrTest, DeriveSuccess) {
-  brillo::SecureBlob tpm_key(20, 'A');
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'B');
+  brillo::Blob tpm_key(20, 'A');
+  brillo::Blob salt(PKCS5_SALT_LEN, 'B');
   brillo::SecureBlob vault_key(20, 'C');
   brillo::SecureBlob aes_key(kDefaultAesKeySize);
-  brillo::SecureBlob encrypt_out(64, 'X');
+  brillo::Blob encrypt_out(64, 'X');
   ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&aes_key}));
   ASSERT_TRUE(
       hwsec_foundation::ObscureRsaMessage(encrypt_out, aes_key, &tpm_key));

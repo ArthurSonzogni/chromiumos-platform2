@@ -53,6 +53,7 @@ using cryptohome::error::PossibleAction;
 using cryptohome::error::PrimaryAction;
 using hwsec_foundation::AesDecryptDeprecated;
 using hwsec_foundation::AesEncryptDeprecated;
+using hwsec_foundation::CreateRandomBlob;
 using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::HmacSha256;
 using hwsec_foundation::kAesBlockSize;
@@ -326,10 +327,8 @@ CryptoStatus VaultKeyset::DecryptVaultKeysetEx(const KeyBlobs& key_blobs) {
 CryptoStatus VaultKeyset::UnwrapVKKVaultKeyset(
     const SerializedVaultKeyset& serialized, const KeyBlobs& vkk_data) {
   const SecureBlob& vkk_key = vkk_data.vkk_key.value();
-  const Blob& vkk_iv =
-      Blob(vkk_data.vkk_iv.value().begin(), vkk_data.vkk_iv.value().end());
-  const Blob& chaps_iv =
-      Blob(vkk_data.chaps_iv.value().begin(), vkk_data.chaps_iv.value().end());
+  const Blob& vkk_iv = vkk_data.vkk_iv.value();
+  const Blob& chaps_iv = vkk_data.chaps_iv.value();
   // Decrypt the keyset protobuf.
   brillo::Blob local_encrypted_keyset(serialized.wrapped_keyset().begin(),
                                       serialized.wrapped_keyset().end());
@@ -404,7 +403,7 @@ CryptoStatus VaultKeyset::UnwrapVKKVaultKeyset(
 
 CryptoStatus VaultKeyset::UnwrapScryptVaultKeyset(
     const SerializedVaultKeyset& serialized, const KeyBlobs& key_blobs) {
-  SecureBlob blob = SecureBlob(serialized.wrapped_keyset());
+  auto blob = brillo::BlobFromString(serialized.wrapped_keyset());
   SecureBlob decrypted(blob.size());
   if (!LibScryptCompat::Decrypt(blob, key_blobs.vkk_key.value(), &decrypted)) {
     // Note that Decrypt() checks the validity of the key. Also, it is possible
@@ -419,8 +418,9 @@ CryptoStatus VaultKeyset::UnwrapScryptVaultKeyset(
   }
 
   if (serialized.has_wrapped_chaps_key()) {
+    auto wrapped_chaps_key =
+        brillo::BlobFromString(serialized.wrapped_chaps_key());
     SecureBlob chaps_key;
-    SecureBlob wrapped_chaps_key = SecureBlob(serialized.wrapped_chaps_key());
     chaps_key.resize(wrapped_chaps_key.size());
     if (!LibScryptCompat::Decrypt(wrapped_chaps_key,
                                   key_blobs.scrypt_chaps_key.value(),
@@ -435,8 +435,9 @@ CryptoStatus VaultKeyset::UnwrapScryptVaultKeyset(
   }
 
   if (serialized.has_wrapped_reset_seed()) {
+    auto wrapped_reset_seed =
+        brillo::BlobFromString(serialized.wrapped_reset_seed());
     SecureBlob reset_seed;
-    SecureBlob wrapped_reset_seed = SecureBlob(serialized.wrapped_reset_seed());
     reset_seed.resize(wrapped_reset_seed.size());
     if (!LibScryptCompat::Decrypt(wrapped_reset_seed,
                                   key_blobs.scrypt_reset_seed_key.value(),
@@ -494,18 +495,16 @@ CryptohomeStatus VaultKeyset::WrapVaultKeysetWithAesDeprecated(
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
-  Blob vault_cipher_text;
   if (!AesEncryptDeprecated(
           vault_blob, blobs.vkk_key.value(),
           Blob(blobs.vkk_iv.value().begin(), blobs.vkk_iv.value().end()),
-          &vault_cipher_text)) {
+          &wrapped_keyset_)) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetEncryptFailedInWrapAESD),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
-  wrapped_keyset_ = brillo::SecureBlob(vault_cipher_text);
-  le_fek_iv_ = SecureBlob(blobs.vkk_iv.value());
+  le_fek_iv_ = blobs.vkk_iv.value();
 
   if (GetChapsKey().size() == kCryptohomeChapsKeyLength) {
     Blob wrapped_chaps_key;
@@ -518,16 +517,15 @@ CryptohomeStatus VaultKeyset::WrapVaultKeysetWithAesDeprecated(
           ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
     }
-    wrapped_chaps_key_ = SecureBlob(wrapped_chaps_key);
-    le_chaps_iv_ = SecureBlob(blobs.chaps_iv.value());
+    wrapped_chaps_key_ = wrapped_chaps_key;
+    le_chaps_iv_ = blobs.chaps_iv.value();
   }
 
   // If a reset seed is present, encrypt and store it, else clear the field.
   if (!IsLECredential() && GetResetSeed().size() != 0) {
-    const auto reset_iv = CreateSecureRandomBlob(kAesBlockSize);
+    const auto reset_iv = CreateRandomBlob(kAesBlockSize);
     Blob wrapped_reset_seed;
-    if (!AesEncryptDeprecated(GetResetSeed(), blobs.vkk_key.value(),
-                              brillo::Blob(reset_iv.begin(), reset_iv.end()),
+    if (!AesEncryptDeprecated(GetResetSeed(), blobs.vkk_key.value(), reset_iv,
                               &wrapped_reset_seed)) {
       LOG(ERROR) << "AES encryption of Reset seed failed.";
       return MakeStatus<CryptohomeError>(
@@ -535,7 +533,7 @@ CryptohomeStatus VaultKeyset::WrapVaultKeysetWithAesDeprecated(
           ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
     }
-    wrapped_reset_seed_ = SecureBlob(wrapped_reset_seed);
+    wrapped_reset_seed_ = wrapped_reset_seed;
     reset_iv_ = reset_iv;
   }
 
@@ -567,7 +565,6 @@ CryptohomeStatus VaultKeyset::WrapScryptVaultKeyset(
   // it is redundant.
   brillo::SecureBlob hash = Sha1(blob);
   brillo::SecureBlob local_blob = SecureBlob::Combine(blob, hash);
-  brillo::SecureBlob cipher_text;
   auto* state = std::get_if<ScryptAuthBlockState>(&auth_block_state.state);
   auto* cc_state =
       std::get_if<ChallengeCredentialAuthBlockState>(&auth_block_state.state);
@@ -588,17 +585,16 @@ CryptohomeStatus VaultKeyset::WrapScryptVaultKeyset(
 
   if (!LibScryptCompat::Encrypt(key_blobs.vkk_key.value(), state->salt.value(),
                                 local_blob, kDefaultScryptParams,
-                                &cipher_text)) {
+                                &wrapped_keyset_)) {
     LOG(ERROR) << "Scrypt encrypt of keyset blob failed.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetEncryptKeysetFailedInWrapScrypt),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   }
-  wrapped_keyset_ = cipher_text;
 
   if (GetChapsKey().size() == kCryptohomeChapsKeyLength) {
-    SecureBlob wrapped_chaps_key;
+    brillo::Blob wrapped_chaps_key;
     if (!LibScryptCompat::Encrypt(key_blobs.scrypt_chaps_key.value(),
                                   state->chaps_salt.value(), GetChapsKey(),
                                   kDefaultScryptParams, &wrapped_chaps_key)) {
@@ -613,7 +609,7 @@ CryptohomeStatus VaultKeyset::WrapScryptVaultKeyset(
 
   // If there is a reset seed, encrypt and store it.
   if (GetResetSeed().size() != 0) {
-    brillo::SecureBlob wrapped_reset_seed;
+    brillo::Blob wrapped_reset_seed;
     if (!LibScryptCompat::Encrypt(key_blobs.scrypt_reset_seed_key.value(),
                                   state->reset_seed_salt.value(),
                                   GetResetSeed(), kDefaultScryptParams,
@@ -903,14 +899,14 @@ bool VaultKeyset::GetScryptState(AuthBlockState* auth_state) const {
   ScryptAuthBlockState state;
 
   hwsec_foundation::ScryptParameters params;
-  brillo::SecureBlob salt;
+  brillo::Blob salt;
   if (!LibScryptCompat::ParseHeader(wrapped_keyset_, &params, &salt)) {
     LOG(ERROR) << "Failed to parse scrypt header for wrapped_keyset_.";
     return false;
   }
   state.salt = std::move(salt);
 
-  brillo::SecureBlob chaps_salt;
+  brillo::Blob chaps_salt;
   if (HasWrappedChapsKey()) {
     if (!LibScryptCompat::ParseHeader(GetWrappedChapsKey(), &params,
                                       &chaps_salt)) {
@@ -920,7 +916,7 @@ bool VaultKeyset::GetScryptState(AuthBlockState* auth_state) const {
     state.chaps_salt = std::move(chaps_salt);
   }
 
-  brillo::SecureBlob reset_seed_salt;
+  brillo::Blob reset_seed_salt;
   if (HasWrappedResetSeed()) {
     if (!LibScryptCompat::ParseHeader(GetWrappedResetSeed(), &params,
                                       &reset_seed_salt)) {
@@ -1042,12 +1038,12 @@ bool VaultKeyset::HasTpmPublicKeyHash() const {
   return tpm_public_key_hash_.has_value();
 }
 
-const brillo::SecureBlob& VaultKeyset::GetTpmPublicKeyHash() const {
+const brillo::Blob& VaultKeyset::GetTpmPublicKeyHash() const {
   CHECK(tpm_public_key_hash_.has_value());
   return tpm_public_key_hash_.value();
 }
 
-void VaultKeyset::SetTpmPublicKeyHash(const brillo::SecureBlob& hash) {
+void VaultKeyset::SetTpmPublicKeyHash(const brillo::Blob& hash) {
   tpm_public_key_hash_ = hash;
 }
 
@@ -1105,12 +1101,12 @@ bool VaultKeyset::HasVkkIv() const {
   return vkk_iv_.has_value();
 }
 
-const brillo::SecureBlob& VaultKeyset::GetVkkIv() const {
+const brillo::Blob& VaultKeyset::GetVkkIv() const {
   CHECK(HasVkkIv());
   return vkk_iv_.value();
 }
 
-void VaultKeyset::SetResetIV(const brillo::SecureBlob& iv) {
+void VaultKeyset::SetResetIV(const brillo::Blob& iv) {
   reset_iv_ = iv;
 }
 
@@ -1118,7 +1114,7 @@ bool VaultKeyset::HasResetIV() const {
   return reset_iv_.has_value();
 }
 
-const brillo::SecureBlob& VaultKeyset::GetResetIV() const {
+const brillo::Blob& VaultKeyset::GetResetIV() const {
   CHECK(reset_iv_.has_value());
   return reset_iv_.value();
 }
@@ -1150,7 +1146,7 @@ uint64_t VaultKeyset::GetLELabel() const {
   return le_label_.value();
 }
 
-void VaultKeyset::SetLEFekIV(const brillo::SecureBlob& iv) {
+void VaultKeyset::SetLEFekIV(const brillo::Blob& iv) {
   le_fek_iv_ = iv;
 }
 
@@ -1158,12 +1154,12 @@ bool VaultKeyset::HasLEFekIV() const {
   return le_fek_iv_.has_value();
 }
 
-const brillo::SecureBlob& VaultKeyset::GetLEFekIV() const {
+const brillo::Blob& VaultKeyset::GetLEFekIV() const {
   CHECK(le_fek_iv_.has_value());
   return le_fek_iv_.value();
 }
 
-void VaultKeyset::SetLEChapsIV(const brillo::SecureBlob& iv) {
+void VaultKeyset::SetLEChapsIV(const brillo::Blob& iv) {
   le_chaps_iv_ = iv;
 }
 
@@ -1171,12 +1167,12 @@ bool VaultKeyset::HasLEChapsIV() const {
   return le_chaps_iv_.has_value();
 }
 
-const brillo::SecureBlob& VaultKeyset::GetLEChapsIV() const {
+const brillo::Blob& VaultKeyset::GetLEChapsIV() const {
   CHECK(le_chaps_iv_.has_value());
   return le_chaps_iv_.value();
 }
 
-void VaultKeyset::SetResetSalt(const brillo::SecureBlob& reset_salt) {
+void VaultKeyset::SetResetSalt(const brillo::Blob& reset_salt) {
   reset_salt_ = reset_salt;
 }
 
@@ -1184,7 +1180,7 @@ bool VaultKeyset::HasResetSalt() const {
   return reset_salt_.has_value();
 }
 
-const brillo::SecureBlob& VaultKeyset::GetResetSalt() const {
+const brillo::Blob& VaultKeyset::GetResetSalt() const {
   CHECK(reset_salt_.has_value());
   return reset_salt_.value();
 }
@@ -1202,11 +1198,11 @@ int32_t VaultKeyset::GetFSCryptPolicyVersion() const {
   return fscrypt_policy_version_.value();
 }
 
-void VaultKeyset::SetWrappedKeyset(const brillo::SecureBlob& wrapped_keyset) {
+void VaultKeyset::SetWrappedKeyset(const brillo::Blob& wrapped_keyset) {
   wrapped_keyset_ = wrapped_keyset;
 }
 
-const brillo::SecureBlob& VaultKeyset::GetWrappedKeyset() const {
+const brillo::Blob& VaultKeyset::GetWrappedKeyset() const {
   return wrapped_keyset_;
 }
 
@@ -1214,12 +1210,11 @@ bool VaultKeyset::HasWrappedChapsKey() const {
   return wrapped_chaps_key_.has_value();
 }
 
-void VaultKeyset::SetWrappedChapsKey(
-    const brillo::SecureBlob& wrapped_chaps_key) {
+void VaultKeyset::SetWrappedChapsKey(const brillo::Blob& wrapped_chaps_key) {
   wrapped_chaps_key_ = wrapped_chaps_key;
 }
 
-const brillo::SecureBlob& VaultKeyset::GetWrappedChapsKey() const {
+const brillo::Blob& VaultKeyset::GetWrappedChapsKey() const {
   CHECK(wrapped_chaps_key_.has_value());
   return wrapped_chaps_key_.value();
 }
@@ -1232,11 +1227,11 @@ bool VaultKeyset::HasTPMKey() const {
   return tpm_key_.has_value();
 }
 
-void VaultKeyset::SetTPMKey(const brillo::SecureBlob& tpm_key) {
+void VaultKeyset::SetTPMKey(const brillo::Blob& tpm_key) {
   tpm_key_ = tpm_key;
 }
 
-const brillo::SecureBlob& VaultKeyset::GetTPMKey() const {
+const brillo::Blob& VaultKeyset::GetTPMKey() const {
   CHECK(tpm_key_.has_value());
   return tpm_key_.value();
 }
@@ -1245,12 +1240,11 @@ bool VaultKeyset::HasExtendedTPMKey() const {
   return extended_tpm_key_.has_value();
 }
 
-void VaultKeyset::SetExtendedTPMKey(
-    const brillo::SecureBlob& extended_tpm_key) {
+void VaultKeyset::SetExtendedTPMKey(const brillo::Blob& extended_tpm_key) {
   extended_tpm_key_ = extended_tpm_key;
 }
 
-const brillo::SecureBlob& VaultKeyset::GetExtendedTPMKey() const {
+const brillo::Blob& VaultKeyset::GetExtendedTPMKey() const {
   CHECK(extended_tpm_key_.has_value());
   return extended_tpm_key_.value();
 }
@@ -1259,12 +1253,11 @@ bool VaultKeyset::HasWrappedResetSeed() const {
   return wrapped_reset_seed_.has_value();
 }
 
-void VaultKeyset::SetWrappedResetSeed(
-    const brillo::SecureBlob& wrapped_reset_seed) {
+void VaultKeyset::SetWrappedResetSeed(const brillo::Blob& wrapped_reset_seed) {
   wrapped_reset_seed_ = wrapped_reset_seed;
 }
 
-const brillo::SecureBlob& VaultKeyset::GetWrappedResetSeed() const {
+const brillo::Blob& VaultKeyset::GetWrappedResetSeed() const {
   CHECK(wrapped_reset_seed_.has_value());
   return wrapped_reset_seed_.value();
 }
@@ -1423,21 +1416,17 @@ void VaultKeyset::ResetVaultKeyset() {
 void VaultKeyset::InitializeFromSerialized(
     const SerializedVaultKeyset& serialized) {
   flags_ = serialized.flags();
-  auth_salt_ =
-      brillo::SecureBlob(serialized.salt().begin(), serialized.salt().end());
+  auth_salt_ = brillo::BlobFromString(serialized.salt());
 
-  wrapped_keyset_ = brillo::SecureBlob(serialized.wrapped_keyset().begin(),
-                                       serialized.wrapped_keyset().end());
+  wrapped_keyset_ = brillo::BlobFromString(serialized.wrapped_keyset());
 
   if (serialized.has_tpm_key()) {
-    tpm_key_ = brillo::SecureBlob(serialized.tpm_key().begin(),
-                                  serialized.tpm_key().end());
+    tpm_key_ = brillo::BlobFromString(serialized.tpm_key());
   }
 
   if (serialized.has_tpm_public_key_hash()) {
     tpm_public_key_hash_ =
-        brillo::SecureBlob(serialized.tpm_public_key_hash().begin(),
-                           serialized.tpm_public_key_hash().end());
+        brillo::BlobFromString(serialized.tpm_public_key_hash());
   }
 
   if (serialized.has_password_rounds()) {
@@ -1463,20 +1452,16 @@ void VaultKeyset::InitializeFromSerialized(
   }
 
   if (serialized.has_wrapped_chaps_key()) {
-    wrapped_chaps_key_ =
-        brillo::SecureBlob(serialized.wrapped_chaps_key().begin(),
-                           serialized.wrapped_chaps_key().end());
+    wrapped_chaps_key_ = brillo::BlobFromString(serialized.wrapped_chaps_key());
   }
 
   if (serialized.has_wrapped_reset_seed()) {
     wrapped_reset_seed_ =
-        brillo::SecureBlob(serialized.wrapped_reset_seed().begin(),
-                           serialized.wrapped_reset_seed().end());
+        brillo::BlobFromString(serialized.wrapped_reset_seed());
   }
 
   if (serialized.has_reset_iv()) {
-    reset_iv_ = brillo::SecureBlob(serialized.reset_iv().begin(),
-                                   serialized.reset_iv().end());
+    reset_iv_ = brillo::BlobFromString(serialized.reset_iv());
   }
 
   if (serialized.has_le_label()) {
@@ -1484,18 +1469,15 @@ void VaultKeyset::InitializeFromSerialized(
   }
 
   if (serialized.has_le_fek_iv()) {
-    le_fek_iv_ = brillo::SecureBlob(serialized.le_fek_iv().begin(),
-                                    serialized.le_fek_iv().end());
+    le_fek_iv_ = brillo::BlobFromString(serialized.le_fek_iv());
   }
 
   if (serialized.has_le_chaps_iv()) {
-    le_chaps_iv_ = brillo::SecureBlob(serialized.le_chaps_iv().begin(),
-                                      serialized.le_chaps_iv().end());
+    le_chaps_iv_ = brillo::BlobFromString(serialized.le_chaps_iv());
   }
 
   if (serialized.has_reset_salt()) {
-    reset_salt_ = brillo::SecureBlob(serialized.reset_salt().begin(),
-                                     serialized.reset_salt().end());
+    reset_salt_ = brillo::BlobFromString(serialized.reset_salt());
   }
 
   if (serialized.has_signature_challenge_info()) {
@@ -1503,9 +1485,7 @@ void VaultKeyset::InitializeFromSerialized(
   }
 
   if (serialized.has_extended_tpm_key()) {
-    extended_tpm_key_ =
-        brillo::SecureBlob(serialized.extended_tpm_key().begin(),
-                           serialized.extended_tpm_key().end());
+    extended_tpm_key_ = brillo::BlobFromString(serialized.extended_tpm_key());
   }
 
   if (serialized.has_fscrypt_policy_version()) {
@@ -1513,8 +1493,7 @@ void VaultKeyset::InitializeFromSerialized(
   }
 
   if (serialized.has_vkk_iv()) {
-    vkk_iv_ = brillo::SecureBlob(serialized.vkk_iv().begin(),
-                                 serialized.vkk_iv().end());
+    vkk_iv_ = brillo::BlobFromString(serialized.vkk_iv());
   }
 
   backup_vk_ = serialized.backup_vk();

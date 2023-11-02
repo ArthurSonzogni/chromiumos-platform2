@@ -21,9 +21,9 @@ namespace {
 constexpr int kWorkFactor = 16384;
 constexpr int kBlockSize = 8;
 constexpr int kParallelFactor = 1;
-const SecureBlob kSalt = SecureBlob("salt");
-const SecureBlob kChapsSalt = SecureBlob("chaps_salt");
-const SecureBlob kResetSeedSalt = SecureBlob("reset_seed_salt");
+const Blob kSalt = BlobFromString("salt");
+const Blob kChapsSalt = BlobFromString("chaps_salt");
+const Blob kResetSeedSalt = BlobFromString("reset_seed_salt");
 }  // namespace
 
 TEST(AuthBlockStateBindingTest, EmptyState) {
@@ -71,9 +71,9 @@ TEST(AuthBlockStateBindingTest, LibScryptCompatAuthBlockStateNotEqual) {
       AuthBlockState::Deserialize(blob.value());
   ASSERT_TRUE(state2.has_value());
   state.state = ScryptAuthBlockState{
-      .salt = SecureBlob(""),
-      .chaps_salt = SecureBlob(""),
-      .reset_seed_salt = SecureBlob(""),
+      .salt = BlobFromString(""),
+      .chaps_salt = BlobFromString(""),
+      .reset_seed_salt = BlobFromString(""),
       .work_factor = kWorkFactor,
       .block_size = kBlockSize,
       .parallel_factor = kParallelFactor,
@@ -87,8 +87,8 @@ TEST(AuthBlockStateBindingTest, TpmNotBoundToPcrAuthBlockState) {
           .scrypt_derived = true,
           .salt = kSalt,
           .password_rounds = 1234,
-          .tpm_key = SecureBlob("tpm_key"),
-          .tpm_public_key_hash = SecureBlob("tpm_public_key_hash"),
+          .tpm_key = BlobFromString("tpm_key"),
+          .tpm_public_key_hash = BlobFromString("tpm_public_key_hash"),
       }};
   std::optional<SecureBlob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
@@ -160,9 +160,9 @@ TEST(AuthBlockStateBindingTest, TpmNotBoundToPcrAuthBlockStateOptional) {
 
 TEST(AuthBlockStateBindingTest, TpmNotBoundToPcrAuthBlockStateEmpty) {
   AuthBlockState state = {.state = TpmNotBoundToPcrAuthBlockState{
-                              .salt = SecureBlob(""),
-                              .tpm_key = SecureBlob(""),
-                              .tpm_public_key_hash = SecureBlob(""),
+                              .salt = BlobFromString(""),
+                              .tpm_key = BlobFromString(""),
+                              .tpm_public_key_hash = BlobFromString(""),
                           }};
   std::optional<SecureBlob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
@@ -188,8 +188,8 @@ TEST(AuthBlockStateBindingTest, DoubleWrappedCompatAuthBlockState) {
               .scrypt_derived = true,
               .salt = kSalt,
               .password_rounds = 1234,
-              .tpm_key = SecureBlob("tpm_key"),
-              .tpm_public_key_hash = SecureBlob("tpm_public_key_hash"),
+              .tpm_key = BlobFromString("tpm_key"),
+              .tpm_public_key_hash = BlobFromString("tpm_public_key_hash"),
           }}};
   std::optional<SecureBlob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
@@ -311,9 +311,9 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateEmpty) {
       .state = ChallengeCredentialAuthBlockState{
           .scrypt_state =
               ScryptAuthBlockState{
-                  .salt = SecureBlob(""),
-                  .chaps_salt = SecureBlob(""),
-                  .reset_seed_salt = SecureBlob(""),
+                  .salt = BlobFromString(""),
+                  .chaps_salt = BlobFromString(""),
+                  .reset_seed_salt = BlobFromString(""),
                   .work_factor = kWorkFactor,
                   .block_size = kBlockSize,
                   .parallel_factor = kParallelFactor,
@@ -393,9 +393,9 @@ TEST(AuthBlockStateBindingTest, TpmBoundToPcrAuthBlockState) {
       .state = TpmBoundToPcrAuthBlockState{
           .scrypt_derived = false,
           .salt = kSalt,
-          .tpm_key = SecureBlob("tpm_key"),
-          .extended_tpm_key = SecureBlob("extended_tpm_key"),
-          .tpm_public_key_hash = SecureBlob("tpm_public_key_hash"),
+          .tpm_key = BlobFromString("tpm_key"),
+          .extended_tpm_key = BlobFromString("extended_tpm_key"),
+          .tpm_public_key_hash = BlobFromString("tpm_public_key_hash"),
       }};
   std::optional<SecureBlob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
@@ -409,8 +409,8 @@ TEST(AuthBlockStateBindingTest, PinWeaverAuthBlockState) {
   AuthBlockState state = {.state = PinWeaverAuthBlockState{
                               .le_label = 0x1337,
                               .salt = kSalt,
-                              .chaps_iv = SecureBlob("chaps_iv"),
-                              .fek_iv = SecureBlob("fek_iv"),
+                              .chaps_iv = BlobFromString("chaps_iv"),
+                              .fek_iv = BlobFromString("fek_iv"),
                           }};
   std::optional<SecureBlob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
@@ -440,12 +440,12 @@ TEST(AuthBlockStateBindingTest, TpmEccAuthBlockState) {
   AuthBlockState state = {
       .state = TpmEccAuthBlockState{
           .salt = kSalt,
-          .vkk_iv = SecureBlob("vkk_iv"),
+          .vkk_iv = BlobFromString("vkk_iv"),
           .auth_value_rounds = 5,
-          .sealed_hvkkm = SecureBlob("sealed_hvkkm"),
-          .extended_sealed_hvkkm = SecureBlob("extended_sealed_hvkkm"),
+          .sealed_hvkkm = BlobFromString("sealed_hvkkm"),
+          .extended_sealed_hvkkm = BlobFromString("extended_sealed_hvkkm"),
           .tpm_public_key_hash = std::nullopt,
-          .wrapped_reset_seed = SecureBlob("wrapped_reset_seed"),
+          .wrapped_reset_seed = BlobFromString("wrapped_reset_seed"),
       }};
   std::optional<SecureBlob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());

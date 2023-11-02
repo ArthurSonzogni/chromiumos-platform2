@@ -22,6 +22,7 @@ using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::ErrorActionSet;
 using cryptohome::error::PossibleAction;
+using hwsec_foundation::CreateRandomBlob;
 using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::HmacSha256;
 using hwsec_foundation::kAesBlockSize;
@@ -127,9 +128,11 @@ void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
           user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
     }
     auth_input.reset_seed = initial_vault_keyset_->GetResetSeed();
-    auth_input.reset_salt = CreateSecureRandomBlob(kAesBlockSize);
-    auth_input.reset_secret = HmacSha256(auth_input.reset_salt.value(),
-                                         auth_input.reset_seed.value());
+    auth_input.reset_salt = CreateRandomBlob(kAesBlockSize);
+    auto secure_reset_salt = brillo::SecureBlob(auth_input.reset_salt->begin(),
+                                                auth_input.reset_salt->end());
+    auth_input.reset_secret =
+        HmacSha256(secure_reset_salt, auth_input.reset_seed.value());
     LOG(INFO) << "Reset seed, to generate the reset_secret for the test PIN "
                  "VaultKeyset, "
                  "is obtained from password VaultKeyset with label: "

@@ -47,6 +47,7 @@ using ::cryptohome::error::CryptohomeTPMError;
 using ::cryptohome::error::ErrorActionSet;
 using ::cryptohome::error::PossibleAction;
 using ::cryptohome::error::PrimaryAction;
+using ::hwsec_foundation::CreateRandomBlob;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::DeriveSecretsScrypt;
 using ::hwsec_foundation::HmacSha256;
@@ -191,7 +192,9 @@ void PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   PinWeaverAuthBlockState pin_auth_state;
   pin_auth_state.reset_salt = auth_input.reset_salt.has_value()
                                   ? auth_input.reset_salt.value()
-                                  : CreateSecureRandomBlob(kAesBlockSize);
+                                  : CreateRandomBlob(kAesBlockSize);
+  auto secure_reset_salt = brillo::SecureBlob(
+      pin_auth_state.reset_salt->begin(), pin_auth_state.reset_salt->end());
   brillo::SecureBlob reset_secret;
   if (auth_input.reset_secret.has_value()) {
     // This case be used for USS as we do not have the concept of reset seed and
@@ -205,14 +208,12 @@ void PinWeaverAuthBlock::Create(const AuthInput& auth_input,
     // world.
     LOG(INFO) << "PinWeaverAuthBlock: ResetSecret is derived from the "
                  "reset_seed and passed to KeyBlobs.";
-    reset_secret = HmacSha256(pin_auth_state.reset_salt.value(),
-                              auth_input.reset_seed.value());
+    reset_secret = HmacSha256(secure_reset_salt, auth_input.reset_seed.value());
   }
 
   brillo::SecureBlob le_secret(kDefaultSecretSize);
   brillo::SecureBlob kdf_skey(kDefaultSecretSize);
-  brillo::SecureBlob salt =
-      CreateSecureRandomBlob(kCryptohomeDefaultKeySaltSize);
+  brillo::Blob salt = CreateRandomBlob(kCryptohomeDefaultKeySaltSize);
   if (!DeriveSecretsScrypt(auth_input.user_input.value(), salt,
                            {&le_secret, &kdf_skey})) {
     std::move(callback).Run(
@@ -237,8 +238,8 @@ void PinWeaverAuthBlock::Create(const AuthInput& auth_input,
 
   // Generate and store random new IVs for file-encryption keys and
   // chaps key encryption.
-  const auto fek_iv = CreateSecureRandomBlob(kAesBlockSize);
-  const auto chaps_iv = CreateSecureRandomBlob(kAesBlockSize);
+  const auto fek_iv = CreateRandomBlob(kAesBlockSize);
+  const auto chaps_iv = CreateRandomBlob(kAesBlockSize);
 
   brillo::SecureBlob vkk_key = HmacSha256(kdf_skey, vkk_seed);
   auto key_blobs = std::make_unique<KeyBlobs>();
@@ -353,7 +354,7 @@ void PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
         nullptr, std::nullopt);
     return;
   }
-  brillo::SecureBlob salt = auth_state->salt.value();
+  brillo::Blob salt = auth_state->salt.value();
   if (!DeriveSecretsScrypt(auth_input.user_input.value(), salt,
                            {&le_secret, &kdf_skey})) {
     std::move(callback).Run(

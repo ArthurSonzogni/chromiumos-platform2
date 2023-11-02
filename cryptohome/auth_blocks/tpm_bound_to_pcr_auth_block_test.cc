@@ -116,7 +116,7 @@ TEST_F(TpmBoundToPcrTest, CreateTest) {
   auto& tpm_state = std::get<TpmBoundToPcrAuthBlockState>(auth_state->state);
 
   EXPECT_TRUE(tpm_state.salt.has_value());
-  const brillo::SecureBlob& salt = tpm_state.salt.value();
+  const brillo::Blob& salt = tpm_state.salt.value();
   brillo::SecureBlob scrypt_derived_key_result(kDefaultPassBlobSize);
   EXPECT_TRUE(
       DeriveSecretsScrypt(vault_key, salt, {&scrypt_derived_key_result}));
@@ -181,12 +181,13 @@ TEST_F(TpmBoundToPcrTest, CreateFailNoObfuscated) {
 }
 
 TEST_F(TpmBoundToPcrTest, DecryptBoundToPcrTest) {
+  brillo::Blob salt = brillo::Blob(PKCS5_SALT_LEN, 'S');
   AuthBlockState auth_state;
   TpmBoundToPcrAuthBlockState state;
   state.scrypt_derived = true;
-  state.salt = brillo::SecureBlob(PKCS5_SALT_LEN, 'S');
-  state.tpm_key = brillo::SecureBlob(20, 'T');
-  state.extended_tpm_key = brillo::SecureBlob(20, 'T');
+  state.salt = salt;
+  state.tpm_key = brillo::Blob(20, 'T');
+  state.extended_tpm_key = brillo::Blob(20, 'T');
   auth_state.state = std::move(state);
 
   AuthInput auth_input;
@@ -194,8 +195,8 @@ TEST_F(TpmBoundToPcrTest, DecryptBoundToPcrTest) {
   auth_input.locked_to_single_user = false;
 
   brillo::SecureBlob pass_blob(kDefaultPassBlobSize);
-  ASSERT_TRUE(
-      DeriveSecretsScrypt(*auth_input.user_input, *state.salt, {&pass_blob}));
+  brillo::SecureBlob vkk_iv(kDefaultAesKeySize);
+  ASSERT_TRUE(DeriveSecretsScrypt(*auth_input.user_input, salt, {&pass_blob}));
 
   EXPECT_CALL(hwsec_, PreloadSealedData(_)).WillOnce(Invoke([&](auto&&) {
     return hwsec::ScopedKey(hwsec::Key{.token = 5566},
@@ -222,12 +223,13 @@ TEST_F(TpmBoundToPcrTest, DecryptBoundToPcrTest) {
 
 TEST_F(TpmBoundToPcrTest, DecryptBoundToPcrNoPreloadTest) {
   // Setup
+  brillo::Blob salt = brillo::Blob(PKCS5_SALT_LEN, 'S');
   AuthBlockState auth_state;
   TpmBoundToPcrAuthBlockState state;
   state.scrypt_derived = true;
-  state.salt = brillo::SecureBlob(PKCS5_SALT_LEN, 'S');
-  state.tpm_key = brillo::SecureBlob(20, 'T');
-  state.extended_tpm_key = brillo::SecureBlob(20, 'T');
+  state.salt = salt;
+  state.tpm_key = brillo::Blob(20, 'T');
+  state.extended_tpm_key = brillo::Blob(20, 'T');
   auth_state.state = std::move(state);
 
   AuthInput auth_input;
@@ -237,8 +239,7 @@ TEST_F(TpmBoundToPcrTest, DecryptBoundToPcrNoPreloadTest) {
   EXPECT_CALL(hwsec_, PreloadSealedData(_)).WillOnce(ReturnValue(std::nullopt));
   brillo::SecureBlob auth_value(256, 'a');
   brillo::SecureBlob pass_blob(kDefaultPassBlobSize);
-  ASSERT_TRUE(
-      DeriveSecretsScrypt(*auth_input.user_input, *state.salt, {&pass_blob}));
+  ASSERT_TRUE(DeriveSecretsScrypt(*auth_input.user_input, salt, {&pass_blob}));
 
   EXPECT_CALL(hwsec_, GetAuthValue(_, pass_blob))
       .WillOnce(ReturnValue(auth_value));
@@ -261,9 +262,9 @@ TEST_F(TpmBoundToPcrTest, DecryptBoundToPcrPreloadFailedTest) {
   AuthBlockState auth_state;
   TpmBoundToPcrAuthBlockState state;
   state.scrypt_derived = true;
-  state.salt = brillo::SecureBlob(PKCS5_SALT_LEN, 'S');
-  state.tpm_key = brillo::SecureBlob(20, 'T');
-  state.extended_tpm_key = brillo::SecureBlob(20, 'T');
+  state.salt = brillo::Blob(PKCS5_SALT_LEN, 'S');
+  state.tpm_key = brillo::Blob(20, 'T');
+  state.extended_tpm_key = brillo::Blob(20, 'T');
   auth_state.state = std::move(state);
 
   AuthInput auth_input;
@@ -286,9 +287,9 @@ TEST_F(TpmBoundToPcrTest, DeriveTest) {
   AuthBlockState auth_state;
   TpmBoundToPcrAuthBlockState state;
   state.scrypt_derived = true;
-  state.salt = brillo::SecureBlob(PKCS5_SALT_LEN, 'S');
-  state.tpm_key = brillo::SecureBlob(20, 'T');
-  state.extended_tpm_key = brillo::SecureBlob(20, 'T');
+  state.salt = brillo::Blob(PKCS5_SALT_LEN, 'S');
+  state.tpm_key = brillo::Blob(20, 'T');
+  state.extended_tpm_key = brillo::Blob(20, 'T');
   auth_state.state = std::move(state);
 
   // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
@@ -319,8 +320,8 @@ TEST_F(TpmBoundToPcrTest, DeriveTest) {
 
 // Test TpmBoundToPcrAuthBlock derive fails when there's no user_input provided.
 TEST_F(TpmBoundToPcrTest, DeriveFailureNoUserInput) {
-  brillo::SecureBlob tpm_key(20, 'C');
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
+  brillo::Blob tpm_key(20, 'C');
+  brillo::Blob salt(PKCS5_SALT_LEN, 'A');
   AuthBlockState auth_state;
   TpmBoundToPcrAuthBlockState state;
   state.scrypt_derived = true;
@@ -344,7 +345,7 @@ TEST_F(TpmBoundToPcrTest, DeriveFailureNoUserInput) {
 
 // Check required field |salt| in TpmBoundToPcrAuthBlockState.
 TEST_F(TpmBoundToPcrTest, DeriveFailureMissingSalt) {
-  brillo::SecureBlob tpm_key(20, 'C');
+  brillo::Blob tpm_key(20, 'C');
   brillo::SecureBlob user_input("foo");
   AuthBlockState auth_state;
   TpmBoundToPcrAuthBlockState state;
@@ -368,8 +369,8 @@ TEST_F(TpmBoundToPcrTest, DeriveFailureMissingSalt) {
 
 // Check required field |tpm_key| in TpmBoundToPcrAuthBlockState.
 TEST_F(TpmBoundToPcrTest, DeriveFailureMissingTpmKey) {
-  brillo::SecureBlob tpm_key(20, 'C');
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
+  brillo::Blob tpm_key(20, 'C');
+  brillo::Blob salt(PKCS5_SALT_LEN, 'A');
   brillo::SecureBlob user_input("foo");
 
   AuthBlockState auth_state;
@@ -394,8 +395,8 @@ TEST_F(TpmBoundToPcrTest, DeriveFailureMissingTpmKey) {
 
 // Check required field |extended_tpm_key| in TpmBoundToPcrAuthBlockState.
 TEST_F(TpmBoundToPcrTest, DeriveFailureMissingExtendedTpmKey) {
-  brillo::SecureBlob tpm_key(20, 'C');
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
+  brillo::Blob tpm_key(20, 'C');
+  brillo::Blob salt(PKCS5_SALT_LEN, 'A');
   brillo::SecureBlob user_input("foo");
 
   AuthBlockState auth_state;

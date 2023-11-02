@@ -42,6 +42,7 @@ using cryptohome::error::PrimaryAction;
 using hwsec::TPMError;
 using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
+using hwsec_foundation::CreateRandomBlob;
 using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::DeriveSecretsScrypt;
 using hwsec_foundation::kAesBlockSize;
@@ -145,8 +146,7 @@ void TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   }
 
   const brillo::SecureBlob& vault_key = user_input.user_input.value();
-  brillo::SecureBlob salt =
-      CreateSecureRandomBlob(kCryptohomeDefaultKeySaltSize);
+  brillo::Blob salt = CreateRandomBlob(kCryptohomeDefaultKeySaltSize);
 
   const ObfuscatedUsername& obfuscated_username =
       user_input.obfuscated_username.value();
@@ -242,14 +242,12 @@ void TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
     LOG(ERROR) << "Failed to get the TPM public key hash: "
                << pub_key_hash.status();
   } else {
-    tpm_state.tpm_public_key_hash =
-        brillo::SecureBlob(pub_key_hash->begin(), pub_key_hash->end());
+    tpm_state.tpm_public_key_hash = pub_key_hash.value();
   }
 
   tpm_state.scrypt_derived = true;
-  tpm_state.tpm_key = brillo::SecureBlob(tpm_key->begin(), tpm_key->end());
-  tpm_state.extended_tpm_key =
-      brillo::SecureBlob(extended_tpm_key->begin(), extended_tpm_key->end());
+  tpm_state.tpm_key = tpm_key.value();
+  tpm_state.extended_tpm_key = extended_tpm_key.value();
   tpm_state.salt = std::move(salt);
 
   // Pass back the vkk_key and vkk_iv so the generic secret wrapping can use it.
@@ -257,8 +255,8 @@ void TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   // Note that one might expect the IV to be part of the AuthBlockState. But
   // since it's taken from the scrypt output, it's actually created by the auth
   // block, not used to initialize the auth block.
-  key_blobs->vkk_iv = vkk_iv;
-  key_blobs->chaps_iv = vkk_iv;
+  key_blobs->vkk_iv = brillo::Blob(vkk_iv.begin(), vkk_iv.end());
+  key_blobs->chaps_iv = key_blobs->vkk_iv;
 
   auth_block_state->state = std::move(tpm_state);
   std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
@@ -359,8 +357,8 @@ void TpmBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
     return;
   }
 
-  brillo::SecureBlob tpm_public_key_hash =
-      tpm_state->tpm_public_key_hash.value_or(brillo::SecureBlob());
+  brillo::Blob tpm_public_key_hash =
+      tpm_state->tpm_public_key_hash.value_or(brillo::Blob());
 
   CryptoStatus error = utils_.CheckTPMReadiness(
       tpm_state->tpm_key.has_value(),
@@ -374,41 +372,41 @@ void TpmBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
     return;
   }
   auto key_blobs = std::make_unique<KeyBlobs>();
-  key_blobs->vkk_iv = brillo::SecureBlob(kAesBlockSize);
+  key_blobs->vkk_iv = brillo::Blob(kAesBlockSize);
   key_blobs->vkk_key = brillo::SecureBlob(kDefaultAesKeySize);
 
   bool locked_to_single_user = auth_input.locked_to_single_user.value_or(false);
-  brillo::SecureBlob salt = tpm_state->salt.value();
-  brillo::SecureBlob tpm_key = locked_to_single_user
-                                   ? tpm_state->extended_tpm_key.value()
-                                   : tpm_state->tpm_key.value();
+  brillo::Blob salt = tpm_state->salt.value();
+  brillo::Blob tpm_key = locked_to_single_user
+                             ? tpm_state->extended_tpm_key.value()
+                             : tpm_state->tpm_key.value();
 
   brillo::Blob sealed_data(tpm_key.begin(), tpm_key.end());
 
   bool derive_result = false;
   brillo::SecureBlob pass_blob(kDefaultPassBlobSize);
+  brillo::SecureBlob vkk_iv(kAesBlockSize);
   std::optional<hwsec::ScopedKey> preload_scoped_key;
   {
     // Prepare the parameters for scrypt.
-    std::vector<brillo::SecureBlob*> gen_secrets{&pass_blob,
-                                                 &key_blobs->vkk_iv.value()};
+    std::vector<brillo::SecureBlob*> gen_secrets{&pass_blob, &vkk_iv};
 
     base::WaitableEvent done(base::WaitableEvent::ResetPolicy::MANUAL,
                              base::WaitableEvent::InitialState::NOT_SIGNALED);
 
     // Derive secrets on scrypt task runner.
     scrypt_task_runner_->PostTask(
-        FROM_HERE, base::BindOnce(
-                       [](const brillo::SecureBlob& passkey,
-                          const brillo::SecureBlob& salt,
-                          std::vector<brillo::SecureBlob*> gen_secrets,
-                          bool* result, base::WaitableEvent* done) {
-                         *result = DeriveSecretsScrypt(passkey, salt,
-                                                       std::move(gen_secrets));
-                         done->Signal();
-                       },
-                       auth_input.user_input.value(), salt, gen_secrets,
-                       &derive_result, &done));
+        FROM_HERE,
+        base::BindOnce(
+            [](const brillo::SecureBlob& passkey, const brillo::Blob& salt,
+               std::vector<brillo::SecureBlob*> gen_secrets, bool* result,
+               base::WaitableEvent* done) {
+              *result =
+                  DeriveSecretsScrypt(passkey, salt, std::move(gen_secrets));
+              done->Signal();
+            },
+            auth_input.user_input.value(), salt, gen_secrets, &derive_result,
+            &done));
 
     // The scrypt should be finished before exiting this scope.
     absl::Cleanup joiner = [&done]() { done.Wait(); };
@@ -486,6 +484,7 @@ void TpmBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
 
   *&key_blobs->vkk_key = std::move(*unsealed_data);
 
+  key_blobs->vkk_iv = brillo::Blob(vkk_iv.begin(), vkk_iv.end());
   key_blobs->chaps_iv = key_blobs->vkk_iv;
   std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
                           std::move(key_blobs), std::nullopt);

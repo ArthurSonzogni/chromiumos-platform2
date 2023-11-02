@@ -86,7 +86,7 @@ struct AuthInput {
   std::optional<brillo::SecureBlob> reset_seed;
   // reset_salt used to generate a reset secret.
   // This will be removed after full migration to USS.
-  std::optional<brillo::SecureBlob> reset_salt;
+  std::optional<brillo::Blob> reset_salt;
   // The PinWeaver leaf label of the rate-limiter.
   std::optional<uint64_t> rate_limiter_label;
   // Data required for Cryptohome Recovery flow.
@@ -116,9 +116,9 @@ struct KeyBlobs {
   std::optional<brillo::SecureBlob> scrypt_reset_seed_key;
 
   // The file encryption IV.
-  std::optional<brillo::SecureBlob> vkk_iv;
+  std::optional<brillo::Blob> vkk_iv;
   // The IV to use with the chaps key.
-  std::optional<brillo::SecureBlob> chaps_iv;
+  std::optional<brillo::Blob> chaps_iv;
   // The reset secret used for LE credentials.
   std::optional<brillo::SecureBlob> reset_secret;
   // The PinWeaver leaf label of the created rate-limiter.

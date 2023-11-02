@@ -56,10 +56,10 @@ constexpr char kUsername[] = "fake_username";
 
 TpmEccAuthBlockState GetDefaultEccAuthBlockState() {
   TpmEccAuthBlockState auth_block__state;
-  auth_block__state.salt = brillo::SecureBlob(32, 'A');
-  auth_block__state.vkk_iv = brillo::SecureBlob(32, 'B');
-  auth_block__state.sealed_hvkkm = brillo::SecureBlob(32, 'C');
-  auth_block__state.extended_sealed_hvkkm = brillo::SecureBlob(32, 'D');
+  auth_block__state.salt = brillo::Blob(32, 'A');
+  auth_block__state.vkk_iv = brillo::Blob(32, 'B');
+  auth_block__state.sealed_hvkkm = brillo::Blob(32, 'C');
+  auth_block__state.extended_sealed_hvkkm = brillo::Blob(32, 'D');
   auth_block__state.auth_value_rounds = 5;
   return auth_block__state;
 }
@@ -124,7 +124,7 @@ TEST_F(TpmEccAuthBlockTest, CreateTest) {
   auto& tpm_state = std::get<TpmEccAuthBlockState>(auth_state->state);
 
   EXPECT_TRUE(tpm_state.salt.has_value());
-  const brillo::SecureBlob& salt = tpm_state.salt.value();
+  const brillo::Blob& salt = tpm_state.salt.value();
   brillo::SecureBlob scrypt_derived_key_result(kDefaultPassBlobSize);
   EXPECT_TRUE(
       DeriveSecretsScrypt(vault_key, salt, {&scrypt_derived_key_result}));
@@ -177,7 +177,7 @@ TEST_F(TpmEccAuthBlockTest, CreateRetryTest) {
   auto& tpm_state = std::get<TpmEccAuthBlockState>(auth_state->state);
 
   EXPECT_TRUE(tpm_state.salt.has_value());
-  const brillo::SecureBlob& salt = tpm_state.salt.value();
+  const brillo::Blob& salt = tpm_state.salt.value();
   brillo::SecureBlob scrypt_derived_key_result(kDefaultPassBlobSize);
   EXPECT_TRUE(
       DeriveSecretsScrypt(vault_key, salt, {&scrypt_derived_key_result}));
@@ -329,8 +329,7 @@ TEST_F(TpmEccAuthBlockTest, DeriveTest) {
   TpmEccAuthBlockState auth_block__state = GetDefaultEccAuthBlockState();
 
   brillo::Blob fake_hash(32, 'X');
-  auth_block__state.tpm_public_key_hash =
-      brillo::SecureBlob(fake_hash.begin(), fake_hash.end());
+  auth_block__state.tpm_public_key_hash = fake_hash;
 
   // Set up the mock expectations.
   EXPECT_CALL(hwsec_, GetPubkeyHash(_)).WillOnce(ReturnValue(fake_hash));
@@ -342,7 +341,7 @@ TEST_F(TpmEccAuthBlockTest, DeriveTest) {
       .Times(Exactly(5))
       .WillRepeatedly(ReturnValue(brillo::SecureBlob()));
 
-  brillo::SecureBlob fake_hvkkm(32, 'F');
+  brillo::Blob fake_hvkkm(32, 'F');
   EXPECT_CALL(hwsec_, UnsealWithCurrentUser(_, _, _))
       .WillOnce(ReturnValue(fake_hvkkm));
 
@@ -438,7 +437,7 @@ TEST_F(TpmEccAuthBlockTest, DerivePreloadSealedDataFailTest) {
 TEST_F(TpmEccAuthBlockTest, DeriveGetPublicKeyHashFailTest) {
   TpmEccAuthBlockState auth_block__state = GetDefaultEccAuthBlockState();
 
-  auth_block__state.tpm_public_key_hash = brillo::SecureBlob(32, 'X');
+  auth_block__state.tpm_public_key_hash = brillo::Blob(32, 'X');
 
   // Set up the mock expectations.
   EXPECT_CALL(hwsec_, GetPubkeyHash(_))
@@ -463,7 +462,7 @@ TEST_F(TpmEccAuthBlockTest, DeriveGetPublicKeyHashFailTest) {
 TEST_F(TpmEccAuthBlockTest, DerivePublicKeyHashMismatchTest) {
   TpmEccAuthBlockState auth_block__state = GetDefaultEccAuthBlockState();
 
-  auth_block__state.tpm_public_key_hash = brillo::SecureBlob(32, 'X');
+  auth_block__state.tpm_public_key_hash = brillo::Blob(32, 'X');
 
   brillo::Blob fake_hash(32, 'Z');
   // Set up the mock expectations.
@@ -517,7 +516,8 @@ TEST_F(TpmEccAuthBlockTest, DeriveRetryFailTest) {
 TEST_F(TpmEccAuthBlockTest, DeriveUnsealFailTest) {
   TpmEccAuthBlockState auth_block__state = GetDefaultEccAuthBlockState();
 
-  auth_block__state.tpm_public_key_hash = brillo::SecureBlob("public key hash");
+  auth_block__state.tpm_public_key_hash =
+      brillo::BlobFromString("public key hash");
 
   // Set up the mock expectations.
   EXPECT_CALL(hwsec_, PreloadSealedData(_)).WillOnce(ReturnValue(std::nullopt));
@@ -525,7 +525,6 @@ TEST_F(TpmEccAuthBlockTest, DeriveUnsealFailTest) {
       .Times(Exactly(5))
       .WillRepeatedly(ReturnValue(brillo::SecureBlob()));
 
-  brillo::SecureBlob fake_hvkkm(32, 'F');
   EXPECT_CALL(hwsec_, UnsealWithCurrentUser(_, _, _))
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 

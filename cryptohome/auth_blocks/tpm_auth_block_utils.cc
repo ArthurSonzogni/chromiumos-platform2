@@ -64,7 +64,7 @@ TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
 }
 
 CryptoStatus TpmAuthBlockUtils::IsTPMPubkeyHash(
-    const brillo::SecureBlob& hash) const {
+    const brillo::Blob& hash) const {
   hwsec::StatusOr<brillo::Blob> pub_key_hash =
       hwsec_->GetPubkeyHash(cryptohome_key_loader_->GetCryptohomeKey());
   if (!pub_key_hash.ok()) {
@@ -96,7 +96,7 @@ CryptoStatus TpmAuthBlockUtils::IsTPMPubkeyHash(
 CryptoStatus TpmAuthBlockUtils::CheckTPMReadiness(
     bool has_tpm_key,
     bool has_tpm_public_key_hash,
-    const brillo::SecureBlob& tpm_public_key_hash) {
+    const brillo::Blob& tpm_public_key_hash) {
   if (!has_tpm_key) {
     LOG(ERROR) << "Decrypting with TPM, but no TPM key present.";
     ReportCryptohomeError(kDecryptAttemptButTpmKeyMissing);

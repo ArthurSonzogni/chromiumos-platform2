@@ -43,6 +43,7 @@ using cryptohome::error::PrimaryAction;
 using hwsec::TPMError;
 using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
+using hwsec_foundation::CreateRandomBlob;
 using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::DeriveSecretsScrypt;
 using hwsec_foundation::kAesBlockSize;
@@ -209,7 +210,7 @@ void TpmEccAuthBlock::TryCreate(const AuthInput& user_input,
   // |extended_sealed_hvkkm|, which are stored in the serialized vault keyset.
   hwsec::Key cryptohome_key = cryptohome_key_loader_->GetCryptohomeKey();
 
-  auth_state.salt = CreateSecureRandomBlob(kCryptohomeDefaultKeySaltSize);
+  auth_state.salt = CreateRandomBlob(kCryptohomeDefaultKeySaltSize);
 
   if (auth_state.salt.value().size() != kCryptohomeDefaultKeySaltSize) {
     LOG(ERROR) << __func__ << ": Wrong salt size.";
@@ -336,10 +337,8 @@ void TpmEccAuthBlock::TryCreate(const AuthInput& user_input,
     return;
   }
 
-  auth_state.sealed_hvkkm =
-      brillo::SecureBlob(sealed_hvkkm->begin(), sealed_hvkkm->end());
-  auth_state.extended_sealed_hvkkm = brillo::SecureBlob(
-      extended_sealed_hvkkm->begin(), extended_sealed_hvkkm->end());
+  auth_state.sealed_hvkkm = std::move(*sealed_hvkkm);
+  auth_state.extended_sealed_hvkkm = std::move(*extended_sealed_hvkkm);
 
   hwsec::StatusOr<brillo::Blob> pub_key_hash =
       hwsec_->GetPubkeyHash(cryptohome_key);
@@ -354,13 +353,12 @@ void TpmEccAuthBlock::TryCreate(const AuthInput& user_input,
         nullptr, nullptr);
     return;
   } else {
-    auth_state.tpm_public_key_hash =
-        brillo::SecureBlob(pub_key_hash->begin(), pub_key_hash->end());
+    auth_state.tpm_public_key_hash = std::move(*pub_key_hash);
   }
 
   auto key_blobs = std::make_unique<KeyBlobs>();
   auto auth_block_state = std::make_unique<AuthBlockState>();
-  auth_state.vkk_iv = CreateSecureRandomBlob(kAesBlockSize);
+  auth_state.vkk_iv = CreateRandomBlob(kAesBlockSize);
 
   // Pass back the vkk and vkk_iv so the generic secret wrapping can use it.
   key_blobs->vkk_key = std::move(vkk);
@@ -437,8 +435,8 @@ void TpmEccAuthBlock::Derive(const AuthInput& user_input,
     return;
   }
 
-  brillo::SecureBlob tpm_public_key_hash =
-      auth_state->tpm_public_key_hash.value_or(brillo::SecureBlob());
+  brillo::Blob tpm_public_key_hash =
+      auth_state->tpm_public_key_hash.value_or(brillo::Blob());
 
   CryptoStatus error = utils_.CheckTPMReadiness(
       auth_state->sealed_hvkkm.has_value(),
@@ -481,10 +479,10 @@ CryptoStatus TpmEccAuthBlock::DeriveVkk(bool locked_to_single_user,
                                         const brillo::SecureBlob& user_input,
                                         const TpmEccAuthBlockState& auth_state,
                                         brillo::SecureBlob* vkk) {
-  const brillo::SecureBlob& salt = auth_state.salt.value();
+  const brillo::Blob& salt = auth_state.salt.value();
 
   // HVKKM: Hardware Vault Keyset Key Material.
-  const brillo::SecureBlob& sealed_hvkkm =
+  const brillo::Blob& sealed_hvkkm =
       locked_to_single_user ? auth_state.extended_sealed_hvkkm.value()
                             : auth_state.sealed_hvkkm.value();
 
@@ -506,8 +504,7 @@ CryptoStatus TpmEccAuthBlock::DeriveVkk(bool locked_to_single_user,
     scrypt_task_runner_->PostTask(
         FROM_HERE,
         base::BindOnce(
-            [](const brillo::SecureBlob& user_input,
-               const brillo::SecureBlob& salt,
+            [](const brillo::SecureBlob& user_input, const brillo::Blob& salt,
                std::vector<brillo::SecureBlob*> gen_secrets, bool* result,
                base::WaitableEvent* done) {
               *result =
@@ -519,11 +516,9 @@ CryptoStatus TpmEccAuthBlock::DeriveVkk(bool locked_to_single_user,
     // The scrypt should be finished before exiting this socope.
     absl::Cleanup joiner = [&scrypt_done]() { scrypt_done.Wait(); };
 
-    brillo::Blob sealed_data(sealed_hvkkm.begin(), sealed_hvkkm.end());
-
     // Preload the sealed data while deriving secrets in scrypt.
     hwsec::StatusOr<std::optional<hwsec::ScopedKey>> preload_data =
-        hwsec_->PreloadSealedData(sealed_data);
+        hwsec_->PreloadSealedData(sealed_hvkkm);
     if (!preload_data.ok()) {
       return MakeStatus<CryptohomeCryptoError>(
                  CRYPTOHOME_ERR_LOC(
@@ -589,7 +584,7 @@ CryptoStatus TpmEccAuthBlock::DeriveVkk(bool locked_to_single_user,
 CryptoStatus TpmEccAuthBlock::DeriveHvkkm(
     bool locked_to_single_user,
     brillo::SecureBlob pass_blob,
-    const brillo::SecureBlob& sealed_hvkkm,
+    const brillo::Blob& sealed_hvkkm,
     const std::optional<hwsec::ScopedKey>& preload_key,
     uint32_t auth_value_rounds,
     brillo::SecureBlob* hvkkm) {
@@ -624,10 +619,8 @@ CryptoStatus TpmEccAuthBlock::DeriveHvkkm(
 
   ReportTimerStop(kGenerateEccAuthValueTimer);
 
-  brillo::Blob sealed_data(sealed_hvkkm.begin(), sealed_hvkkm.end());
-
   hwsec::StatusOr<brillo::SecureBlob> unsealed_data =
-      hwsec_->UnsealWithCurrentUser(sealed_hvkkm_key, auth_value, sealed_data);
+      hwsec_->UnsealWithCurrentUser(sealed_hvkkm_key, auth_value, sealed_hvkkm);
   if (!unsealed_data.ok()) {
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockUnsealFailedInDeriveHVKKM),

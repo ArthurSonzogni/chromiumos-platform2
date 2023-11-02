@@ -30,6 +30,7 @@ namespace cryptohome {
 namespace {
 
 using ::base::test::TestFuture;
+using ::brillo::BlobFromString;
 using ::brillo::SecureBlob;
 using ::brillo::cryptohome::home::SanitizeUserName;
 using ::cryptohome::error::CryptohomeError;
@@ -54,10 +55,10 @@ constexpr char kChromeVersion[] = "a.b.c.d";
 AuthBlockState CreatePasswordAuthBlockState(const std::string& suffix = "") {
   TpmBoundToPcrAuthBlockState tpm_bound_to_pcr_auth_block_state = {
       .scrypt_derived = false,
-      .salt = SecureBlob("fake salt " + suffix),
-      .tpm_key = SecureBlob("fake tpm key " + suffix),
-      .extended_tpm_key = SecureBlob("fake extended tpm key " + suffix),
-      .tpm_public_key_hash = SecureBlob("fake tpm public key hash"),
+      .salt = BlobFromString("fake salt " + suffix),
+      .tpm_key = BlobFromString("fake tpm key " + suffix),
+      .extended_tpm_key = BlobFromString("fake extended tpm key " + suffix),
+      .tpm_public_key_hash = BlobFromString("fake tpm public key hash"),
   };
   AuthBlockState auth_block_state = {.state =
                                          tpm_bound_to_pcr_auth_block_state};
@@ -609,7 +610,7 @@ std::unique_ptr<VaultKeyset> CreateBackupVaultKeyset(const std::string& label) {
   auto backup_vk = CreatePasswordVaultKeyset(label);
   backup_vk->set_backup_vk_for_testing(true);
   backup_vk->SetResetSeed(brillo::SecureBlob(32, 'A'));
-  backup_vk->SetWrappedResetSeed(brillo::SecureBlob(32, 'B'));
+  backup_vk->SetWrappedResetSeed(brillo::Blob(32, 'B'));
   return backup_vk;
 }
 

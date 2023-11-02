@@ -123,7 +123,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateTest) {
   auto& pin_state = std::get<PinWeaverAuthBlockState>(auth_state->state);
 
   EXPECT_TRUE(pin_state.salt.has_value());
-  const brillo::SecureBlob& salt = pin_state.salt.value();
+  const brillo::Blob& salt = pin_state.salt.value();
   brillo::SecureBlob le_secret_result(kDefaultAesKeySize);
   EXPECT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret_result}));
   EXPECT_EQ(le_secret, le_secret_result);
@@ -161,7 +161,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateTestWithoutMigratePin) {
   auto& pin_state = std::get<PinWeaverAuthBlockState>(auth_state->state);
 
   EXPECT_TRUE(pin_state.salt.has_value());
-  const brillo::SecureBlob& salt = pin_state.salt.value();
+  const brillo::Blob& salt = pin_state.salt.value();
   brillo::SecureBlob le_secret_result(kDefaultAesKeySize);
   EXPECT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret_result}));
   EXPECT_EQ(le_secret, le_secret_result);
@@ -253,9 +253,9 @@ TEST_F(PinWeaverAuthBlockTest, CreateFailureNoResetSecret) {
 // Check required field |le_label| in PinWeaverAuthBlockState.
 TEST_F(PinWeaverAuthBlockTest, DeriveFailureMissingLeLabel) {
   brillo::SecureBlob user_input(20, 'C');
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
-  brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
-  brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
+  brillo::Blob salt(PKCS5_SALT_LEN, 'A');
+  brillo::Blob chaps_iv(kAesBlockSize, 'F');
+  brillo::Blob fek_iv(kAesBlockSize, 'X');
 
   // Construct the auth block state. le_label is not set.
   AuthBlockState auth_state;
@@ -279,8 +279,8 @@ TEST_F(PinWeaverAuthBlockTest, DeriveFailureMissingLeLabel) {
 // Check required field |salt| in PinWeaverAuthBlockState.
 TEST_F(PinWeaverAuthBlockTest, DeriveFailureMissingSalt) {
   brillo::SecureBlob user_input(20, 'C');
-  brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
-  brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
+  brillo::Blob chaps_iv(kAesBlockSize, 'F');
+  brillo::Blob fek_iv(kAesBlockSize, 'X');
 
   // Construct the auth block state. salt is not set.
   AuthBlockState auth_state;
@@ -303,9 +303,9 @@ TEST_F(PinWeaverAuthBlockTest, DeriveFailureMissingSalt) {
 
 // Check PinWeaverAuthBlock derive fails if user_input is missing.
 TEST_F(PinWeaverAuthBlockTest, DeriveFailureNoUserInput) {
-  brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
-  brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
+  brillo::Blob chaps_iv(kAesBlockSize, 'F');
+  brillo::Blob fek_iv(kAesBlockSize, 'X');
+  brillo::Blob salt(PKCS5_SALT_LEN, 'A');
 
   // Construct the auth block state.
   AuthBlockState auth_state;
@@ -325,9 +325,9 @@ TEST_F(PinWeaverAuthBlockTest, DeriveFailureNoUserInput) {
 
 TEST_F(PinWeaverAuthBlockTest, DeriveTest) {
   brillo::SecureBlob vault_key(20, 'C');
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
-  brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
-  brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
+  brillo::Blob salt(PKCS5_SALT_LEN, 'A');
+  brillo::Blob chaps_iv(kAesBlockSize, 'F');
+  brillo::Blob fek_iv(kAesBlockSize, 'X');
 
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
@@ -376,9 +376,9 @@ TEST_F(PinWeaverAuthBlockTest, DeriveTest) {
 
 TEST_F(PinWeaverAuthBlockTest, DeriveTestWithLockoutPin) {
   brillo::SecureBlob vault_key(20, 'C');
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
-  brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
-  brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
+  brillo::Blob salt(PKCS5_SALT_LEN, 'A');
+  brillo::Blob chaps_iv(kAesBlockSize, 'F');
+  brillo::Blob fek_iv(kAesBlockSize, 'X');
 
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
@@ -425,9 +425,9 @@ TEST_F(PinWeaverAuthBlockTest, DeriveTestWithLockoutPin) {
 
 TEST_F(PinWeaverAuthBlockTest, DeriveTestWithoutMigratePin) {
   brillo::SecureBlob vault_key(20, 'C');
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
-  brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
-  brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
+  brillo::Blob salt(PKCS5_SALT_LEN, 'A');
+  brillo::Blob chaps_iv(kAesBlockSize, 'F');
+  brillo::Blob fek_iv(kAesBlockSize, 'X');
 
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
@@ -475,7 +475,7 @@ TEST_F(PinWeaverAuthBlockTest, DeriveTestWithoutMigratePin) {
 // not set.
 TEST_F(PinWeaverAuthBlockTest, DeriveOptionalValuesTest) {
   brillo::SecureBlob vault_key(20, 'C');
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
+  brillo::Blob salt(PKCS5_SALT_LEN, 'A');
 
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
@@ -522,9 +522,9 @@ TEST_F(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
           std::string("Testing1"));
 
   brillo::SecureBlob vault_key(20, 'C');
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
-  brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
-  brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
+  brillo::Blob salt(PKCS5_SALT_LEN, 'A');
+  brillo::Blob chaps_iv(kAesBlockSize, 'F');
+  brillo::Blob fek_iv(kAesBlockSize, 'X');
 
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
@@ -567,9 +567,9 @@ TEST_F(PinWeaverAuthBlockTest, CheckCredentialFailureLeFiniteTimeout) {
           std::string("Testing1"));
 
   brillo::SecureBlob vault_key(20, 'C');
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
-  brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
-  brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
+  brillo::Blob salt(PKCS5_SALT_LEN, 'A');
+  brillo::Blob chaps_iv(kAesBlockSize, 'F');
+  brillo::Blob fek_iv(kAesBlockSize, 'X');
 
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
@@ -608,9 +608,9 @@ TEST_F(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
           std::string("Testing1"));
 
   brillo::SecureBlob vault_key(20, 'C');
-  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
-  brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
-  brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
+  brillo::Blob salt(PKCS5_SALT_LEN, 'A');
+  brillo::Blob chaps_iv(kAesBlockSize, 'F');
+  brillo::Blob fek_iv(kAesBlockSize, 'X');
 
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));

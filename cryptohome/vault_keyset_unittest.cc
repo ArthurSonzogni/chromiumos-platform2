@@ -56,6 +56,7 @@ using cryptohome::error::CryptohomeError;
 using cryptohome::error::ErrorActionSet;
 using cryptohome::error::PossibleAction;
 using cryptohome::error::PrimaryAction;
+using hwsec_foundation::CreateRandomBlob;
 using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::GetSecureRandom;
 using hwsec_foundation::HmacSha256;
@@ -238,16 +239,17 @@ TEST_F(VaultKeysetTest, WriteError) {
   vault_keyset.Initialize(&platform_, &crypto_);
   vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
-  const auto reset_iv = CreateSecureRandomBlob(kAesBlockSize);
+  const auto reset_iv = CreateRandomBlob(kAesBlockSize);
   static const int kFscryptPolicyVersion = 2;
   vault_keyset.SetResetIV(reset_iv);
   vault_keyset.SetFSCryptPolicyVersion(kFscryptPolicyVersion);
   vault_keyset.SetLegacyIndex(kLegacyIndex);
   KeyBlobs key_blobs = {.vkk_key = brillo::SecureBlob(32, 'A'),
-                        .vkk_iv = brillo::SecureBlob(16, 'B'),
-                        .chaps_iv = brillo::SecureBlob(16, 'C')};
+                        .vkk_iv = brillo::Blob(16, 'B'),
+                        .chaps_iv = brillo::Blob(16, 'C')};
 
-  TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob("salt")};
+  TpmBoundToPcrAuthBlockState pcr_state = {.salt =
+                                               brillo::BlobFromString("salt")};
   AuthBlockState auth_state = {.state = pcr_state};
   ASSERT_THAT(vault_keyset.EncryptEx(key_blobs, auth_state),
               hwsec_foundation::error::testing::IsOk());
@@ -281,9 +283,9 @@ TEST_F(VaultKeysetTest, GetPcrBoundAuthBlockStateTest) {
   keyset.SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
                   SerializedVaultKeyset::SCRYPT_DERIVED |
                   SerializedVaultKeyset::PCR_BOUND);
-  keyset.SetTpmPublicKeyHash(brillo::SecureBlob("yadayada"));
-  keyset.SetTPMKey(brillo::SecureBlob("blabla"));
-  keyset.SetExtendedTPMKey(brillo::SecureBlob("foobaz"));
+  keyset.SetTpmPublicKeyHash(brillo::BlobFromString("yadayada"));
+  keyset.SetTPMKey(brillo::BlobFromString("blabla"));
+  keyset.SetExtendedTPMKey(brillo::BlobFromString("foobaz"));
 
   AuthBlockState auth_state;
   EXPECT_TRUE(GetAuthBlockState(keyset, auth_state));
@@ -307,12 +309,12 @@ TEST_F(VaultKeysetTest, GetEccAuthBlockStateTest) {
                   SerializedVaultKeyset::SCRYPT_DERIVED |
                   SerializedVaultKeyset::ECC |
                   SerializedVaultKeyset::PCR_BOUND);
-  keyset.SetTpmPublicKeyHash(brillo::SecureBlob("yadayada"));
-  keyset.SetTPMKey(brillo::SecureBlob("blabla"));
-  keyset.SetExtendedTPMKey(brillo::SecureBlob("foobaz"));
+  keyset.SetTpmPublicKeyHash(brillo::BlobFromString("yadayada"));
+  keyset.SetTPMKey(brillo::BlobFromString("blabla"));
+  keyset.SetExtendedTPMKey(brillo::BlobFromString("foobaz"));
   keyset.password_rounds_ = 5;
-  keyset.vkk_iv_ = brillo::SecureBlob("wowowow");
-  keyset.auth_salt_ = brillo::SecureBlob("salt");
+  keyset.vkk_iv_ = brillo::BlobFromString("wowowow");
+  keyset.auth_salt_ = brillo::BlobFromString("salt");
 
   AuthBlockState auth_state;
   EXPECT_TRUE(GetAuthBlockState(keyset, auth_state));
@@ -335,8 +337,8 @@ TEST_F(VaultKeysetTest, GetNotPcrBoundAuthBlockState) {
 
   keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   keyset.SetFlags(SerializedVaultKeyset::TPM_WRAPPED);
-  keyset.SetTpmPublicKeyHash(brillo::SecureBlob("yadayada"));
-  keyset.SetTPMKey(brillo::SecureBlob("blabla"));
+  keyset.SetTpmPublicKeyHash(brillo::BlobFromString("yadayada"));
+  keyset.SetTPMKey(brillo::BlobFromString("blabla"));
 
   AuthBlockState auth_state;
   EXPECT_TRUE(GetAuthBlockState(keyset, auth_state));
@@ -378,9 +380,9 @@ TEST_F(VaultKeysetTest, GetChallengeCredentialAuthBlockState) {
   const brillo::Blob kScryptPlaintext = brillo::BlobFromString("plaintext");
   const auto blob_to_encrypt = brillo::SecureBlob(brillo::CombineBlobs(
       {kScryptPlaintext, hwsec_foundation::Sha1(kScryptPlaintext)}));
-  brillo::SecureBlob wrapped_keyset;
-  brillo::SecureBlob wrapped_chaps_key;
-  brillo::SecureBlob wrapped_reset_seed;
+  brillo::Blob wrapped_keyset;
+  brillo::Blob wrapped_chaps_key;
+  brillo::Blob wrapped_reset_seed;
   brillo::SecureBlob derived_key = {
       0x67, 0xeb, 0xcd, 0x84, 0x49, 0x5e, 0xa2, 0xf3, 0xb1, 0xe6, 0xe7,
       0x5b, 0x13, 0xb9, 0x16, 0x2f, 0x5a, 0x39, 0xc8, 0xfe, 0x6a, 0x60,
@@ -388,9 +390,9 @@ TEST_F(VaultKeysetTest, GetChallengeCredentialAuthBlockState) {
       0x97, 0x9f, 0x2d, 0x06, 0xf5, 0xd0, 0xd3, 0xa6, 0xe7, 0xac, 0x9b,
       0x02, 0xaf, 0x3c, 0x08, 0xce, 0x43, 0x46, 0x32, 0x6d, 0xd7, 0x2b,
       0xe9, 0xdf, 0x8b, 0x38, 0x0e, 0x60, 0x3d, 0x64, 0x12};
-  brillo::SecureBlob scrypt_salt = brillo::SecureBlob("salt");
-  brillo::SecureBlob chaps_salt = brillo::SecureBlob("chaps_salt");
-  brillo::SecureBlob reset_seed_salt = brillo::SecureBlob("reset_seed_salt");
+  brillo::Blob scrypt_salt = brillo::BlobFromString("salt");
+  brillo::Blob chaps_salt = brillo::BlobFromString("chaps_salt");
+  brillo::Blob reset_seed_salt = brillo::BlobFromString("reset_seed_salt");
 
   scrypt_salt.resize(hwsec_foundation::kLibScryptSaltSize);
   chaps_salt.resize(hwsec_foundation::kLibScryptSaltSize);
@@ -425,9 +427,9 @@ TEST_F(VaultKeysetTest, GetScryptAuthBlockState) {
   const brillo::Blob kScryptPlaintext = brillo::BlobFromString("plaintext");
   const auto blob_to_encrypt = brillo::SecureBlob(brillo::CombineBlobs(
       {kScryptPlaintext, hwsec_foundation::Sha1(kScryptPlaintext)}));
-  brillo::SecureBlob wrapped_keyset;
-  brillo::SecureBlob wrapped_chaps_key;
-  brillo::SecureBlob wrapped_reset_seed;
+  brillo::Blob wrapped_keyset;
+  brillo::Blob wrapped_chaps_key;
+  brillo::Blob wrapped_reset_seed;
   brillo::SecureBlob derived_key = {
       0x67, 0xeb, 0xcd, 0x84, 0x49, 0x5e, 0xa2, 0xf3, 0xb1, 0xe6, 0xe7,
       0x5b, 0x13, 0xb9, 0x16, 0x2f, 0x5a, 0x39, 0xc8, 0xfe, 0x6a, 0x60,
@@ -435,9 +437,9 @@ TEST_F(VaultKeysetTest, GetScryptAuthBlockState) {
       0x97, 0x9f, 0x2d, 0x06, 0xf5, 0xd0, 0xd3, 0xa6, 0xe7, 0xac, 0x9b,
       0x02, 0xaf, 0x3c, 0x08, 0xce, 0x43, 0x46, 0x32, 0x6d, 0xd7, 0x2b,
       0xe9, 0xdf, 0x8b, 0x38, 0x0e, 0x60, 0x3d, 0x64, 0x12};
-  brillo::SecureBlob scrypt_salt = brillo::SecureBlob("salt");
-  brillo::SecureBlob chaps_salt = brillo::SecureBlob("chaps_salt");
-  brillo::SecureBlob reset_seed_salt = brillo::SecureBlob("reset_seed_salt");
+  brillo::Blob scrypt_salt = brillo::BlobFromString("salt");
+  brillo::Blob chaps_salt = brillo::BlobFromString("chaps_salt");
+  brillo::Blob reset_seed_salt = brillo::BlobFromString("reset_seed_salt");
 
   scrypt_salt.resize(hwsec_foundation::kLibScryptSaltSize);
   chaps_salt.resize(hwsec_foundation::kLibScryptSaltSize);
@@ -480,9 +482,9 @@ TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockStateFailure) {
   const brillo::Blob kScryptPlaintext = brillo::BlobFromString("plaintext");
   const auto blob_to_encrypt = brillo::SecureBlob(brillo::CombineBlobs(
       {kScryptPlaintext, hwsec_foundation::Sha1(kScryptPlaintext)}));
-  brillo::SecureBlob wrapped_keyset;
-  brillo::SecureBlob wrapped_chaps_key;
-  brillo::SecureBlob wrapped_reset_seed;
+  brillo::Blob wrapped_keyset;
+  brillo::Blob wrapped_chaps_key;
+  brillo::Blob wrapped_reset_seed;
   brillo::SecureBlob derived_key = {
       0x67, 0xeb, 0xcd, 0x84, 0x49, 0x5e, 0xa2, 0xf3, 0xb1, 0xe6, 0xe7,
       0x5b, 0x13, 0xb9, 0x16, 0x2f, 0x5a, 0x39, 0xc8, 0xfe, 0x6a, 0x60,
@@ -490,9 +492,9 @@ TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockStateFailure) {
       0x97, 0x9f, 0x2d, 0x06, 0xf5, 0xd0, 0xd3, 0xa6, 0xe7, 0xac, 0x9b,
       0x02, 0xaf, 0x3c, 0x08, 0xce, 0x43, 0x46, 0x32, 0x6d, 0xd7, 0x2b,
       0xe9, 0xdf, 0x8b, 0x38, 0x0e, 0x60, 0x3d, 0x64, 0x12};
-  brillo::SecureBlob scrypt_salt = brillo::SecureBlob("salt");
-  brillo::SecureBlob chaps_salt = brillo::SecureBlob("chaps_salt");
-  brillo::SecureBlob reset_seed_salt = brillo::SecureBlob("reset_seed_salt");
+  brillo::Blob scrypt_salt = brillo::BlobFromString("salt");
+  brillo::Blob chaps_salt = brillo::BlobFromString("chaps_salt");
+  brillo::Blob reset_seed_salt = brillo::BlobFromString("reset_seed_salt");
 
   scrypt_salt.resize(hwsec_foundation::kLibScryptSaltSize);
   chaps_salt.resize(hwsec_foundation::kLibScryptSaltSize);
@@ -527,13 +529,13 @@ TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockState) {
   keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   keyset.SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED |
                   SerializedVaultKeyset::TPM_WRAPPED);
-  keyset.SetTPMKey(brillo::SecureBlob("blabla"));
+  keyset.SetTPMKey(brillo::BlobFromString("blabla"));
   const brillo::Blob kScryptPlaintext = brillo::BlobFromString("plaintext");
   const auto blob_to_encrypt = brillo::SecureBlob(brillo::CombineBlobs(
       {kScryptPlaintext, hwsec_foundation::Sha1(kScryptPlaintext)}));
-  brillo::SecureBlob wrapped_keyset;
-  brillo::SecureBlob wrapped_chaps_key;
-  brillo::SecureBlob wrapped_reset_seed;
+  brillo::Blob wrapped_keyset;
+  brillo::Blob wrapped_chaps_key;
+  brillo::Blob wrapped_reset_seed;
   brillo::SecureBlob derived_key = {
       0x67, 0xeb, 0xcd, 0x84, 0x49, 0x5e, 0xa2, 0xf3, 0xb1, 0xe6, 0xe7,
       0x5b, 0x13, 0xb9, 0x16, 0x2f, 0x5a, 0x39, 0xc8, 0xfe, 0x6a, 0x60,
@@ -541,9 +543,9 @@ TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockState) {
       0x97, 0x9f, 0x2d, 0x06, 0xf5, 0xd0, 0xd3, 0xa6, 0xe7, 0xac, 0x9b,
       0x02, 0xaf, 0x3c, 0x08, 0xce, 0x43, 0x46, 0x32, 0x6d, 0xd7, 0x2b,
       0xe9, 0xdf, 0x8b, 0x38, 0x0e, 0x60, 0x3d, 0x64, 0x12};
-  brillo::SecureBlob scrypt_salt = brillo::SecureBlob("salt");
-  brillo::SecureBlob chaps_salt = brillo::SecureBlob("chaps_salt");
-  brillo::SecureBlob reset_seed_salt = brillo::SecureBlob("reset_seed_salt");
+  brillo::Blob scrypt_salt = brillo::BlobFromString("salt");
+  brillo::Blob chaps_salt = brillo::BlobFromString("chaps_salt");
+  brillo::Blob reset_seed_salt = brillo::BlobFromString("reset_seed_salt");
 
   scrypt_salt.resize(hwsec_foundation::kLibScryptSaltSize);
   chaps_salt.resize(hwsec_foundation::kLibScryptSaltSize);
@@ -610,16 +612,17 @@ TEST_F(VaultKeysetTest, InitializeToAdd) {
   vault_keyset.Initialize(&platform_, &crypto_);
   vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
-  const auto reset_iv = CreateSecureRandomBlob(kAesBlockSize);
+  const auto reset_iv = CreateRandomBlob(kAesBlockSize);
   static const int kFscryptPolicyVersion = 2;
   vault_keyset.SetResetIV(reset_iv);
   vault_keyset.SetFSCryptPolicyVersion(kFscryptPolicyVersion);
   vault_keyset.SetLegacyIndex(kLegacyIndex);
   KeyBlobs key_blobs = {.vkk_key = brillo::SecureBlob(32, 'A'),
-                        .vkk_iv = brillo::SecureBlob(16, 'B'),
-                        .chaps_iv = brillo::SecureBlob(16, 'C')};
+                        .vkk_iv = brillo::Blob(16, 'B'),
+                        .chaps_iv = brillo::Blob(16, 'C')};
 
-  TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob("salt")};
+  TpmBoundToPcrAuthBlockState pcr_state = {.salt =
+                                               brillo::BlobFromString("salt")};
   AuthBlockState auth_state = {.state = pcr_state};
   ASSERT_THAT(vault_keyset.EncryptEx(key_blobs, auth_state),
               hwsec_foundation::error::testing::IsOk());
@@ -666,7 +669,7 @@ TEST_F(VaultKeysetTest, GetTpmWritePasswordRounds) {
   keyset.InitializeFromSerialized(serialized_vk);
   keyset.Initialize(&platform_, &crypto_);
 
-  keyset.SetTPMKey(brillo::SecureBlob(kFakePasswordKey));
+  keyset.SetTPMKey(brillo::BlobFromString(kFakePasswordKey));
 
   AuthBlockState tpm_state;
   EXPECT_TRUE(GetAuthBlockState(keyset, tpm_state));
@@ -692,10 +695,11 @@ TEST_F(VaultKeysetTest, DecryptionTestWithKeyBlobs) {
       .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
 
   KeyBlobs key_blobs = {.vkk_key = brillo::SecureBlob(32, 'A'),
-                        .vkk_iv = brillo::SecureBlob(16, 'B'),
-                        .chaps_iv = brillo::SecureBlob(16, 'C')};
+                        .vkk_iv = brillo::Blob(16, 'B'),
+                        .chaps_iv = brillo::Blob(16, 'C')};
 
-  TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob("salt")};
+  TpmBoundToPcrAuthBlockState pcr_state = {.salt =
+                                               brillo::BlobFromString("salt")};
   AuthBlockState auth_state = {.state = pcr_state};
   ASSERT_TRUE(vault_keyset.EncryptEx(key_blobs, auth_state).ok());
   EXPECT_TRUE(vault_keyset.Save(FilePath(kFilePath)));
@@ -726,10 +730,11 @@ TEST_F(VaultKeysetTest, DecryptWithAuthBlockFailNotLoaded) {
   vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
   KeyBlobs key_blobs = {.vkk_key = brillo::SecureBlob(32, 'A'),
-                        .vkk_iv = brillo::SecureBlob(16, 'B'),
-                        .chaps_iv = brillo::SecureBlob(16, 'C')};
+                        .vkk_iv = brillo::Blob(16, 'B'),
+                        .chaps_iv = brillo::Blob(16, 'C')};
 
-  TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob("salt")};
+  TpmBoundToPcrAuthBlockState pcr_state = {.salt =
+                                               brillo::BlobFromString("salt")};
   AuthBlockState auth_state = {.state = pcr_state};
 
   EXPECT_TRUE(vault_keyset.EncryptEx(key_blobs, auth_state).ok());
@@ -783,7 +788,8 @@ TEST_F(VaultKeysetTest, KeyData) {
 TEST_F(VaultKeysetTest, TPMBoundToPCRAuthBlockTypeToVKFlagNoScrypt) {
   VaultKeyset vault_keyset;
   // TPMBoundToPCR test, no Scrypt derived.
-  TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob("salt")};
+  TpmBoundToPcrAuthBlockState pcr_state = {.salt =
+                                               brillo::BlobFromString("salt")};
   AuthBlockState auth_state = {.state = pcr_state};
   vault_keyset.SetAuthBlockState(auth_state);
 
@@ -809,14 +815,14 @@ TEST_F(VaultKeysetTest, TPMBoundToPCRAuthBlockTypeToVKFlagNoScrypt) {
 TEST_F(VaultKeysetTest, TPMBoundToPCRAuthBlockTypeToVKFlagScrypt) {
   // TPMBoundToPCR test, Scrypt derived.
   VaultKeyset vault_keyset;
-  brillo::SecureBlob tpm_key = brillo::SecureBlob("tpm_key");
-  brillo::SecureBlob extended_tpm_key = brillo::SecureBlob("extended_tpm_key");
-  brillo::SecureBlob tpm_public_key_hash =
-      brillo::SecureBlob("tpm_public_key_hash");
+  brillo::Blob tpm_key = brillo::BlobFromString("tpm_key");
+  brillo::Blob extended_tpm_key = brillo::BlobFromString("extended_tpm_key");
+  brillo::Blob tpm_public_key_hash =
+      brillo::BlobFromString("tpm_public_key_hash");
 
   TpmBoundToPcrAuthBlockState pcr_state = {
       .scrypt_derived = true,
-      .salt = brillo::SecureBlob("salt"),
+      .salt = brillo::BlobFromString("salt"),
       .tpm_key = tpm_key,
       .extended_tpm_key = extended_tpm_key,
       .tpm_public_key_hash = tpm_public_key_hash};
@@ -850,8 +856,8 @@ TEST_F(VaultKeysetTest, TPMBoundToPCRAuthBlockTypeToVKFlagScrypt) {
 TEST_F(VaultKeysetTest, TPMNotBoundToPCRAuthBlockTypeToVKFlagNoScrypt) {
   VaultKeyset vault_keyset;
   // TPMNotBoundToPCR test, no Scrypt derived.
-  TpmNotBoundToPcrAuthBlockState pcr_state = {.salt =
-                                                  brillo::SecureBlob("salt")};
+  TpmNotBoundToPcrAuthBlockState pcr_state = {
+      .salt = brillo::BlobFromString("salt")};
   AuthBlockState auth_state = {.state = pcr_state};
   vault_keyset.SetAuthBlockState(auth_state);
 
@@ -875,13 +881,13 @@ TEST_F(VaultKeysetTest, TPMNotBoundToPCRAuthBlockTypeToVKFlagNoScrypt) {
 TEST_F(VaultKeysetTest, TPMNotBoundToPCRAuthBlockTypeToVKFlagScrypt) {
   // TPMNotBoundToPCR test, Scrypt derived.
   VaultKeyset vault_keyset;
-  brillo::SecureBlob tpm_key = brillo::SecureBlob("tpm_key");
-  brillo::SecureBlob tpm_public_key_hash =
-      brillo::SecureBlob("tpm_public_key_hash");
+  brillo::Blob tpm_key = brillo::BlobFromString("tpm_key");
+  brillo::Blob tpm_public_key_hash =
+      brillo::BlobFromString("tpm_public_key_hash");
 
   TpmNotBoundToPcrAuthBlockState pcr_state = {
       .scrypt_derived = true,
-      .salt = brillo::SecureBlob("salt"),
+      .salt = brillo::BlobFromString("salt"),
       .tpm_key = tpm_key,
       .tpm_public_key_hash = tpm_public_key_hash};
   AuthBlockState auth_state = {.state = pcr_state};
@@ -910,8 +916,8 @@ TEST_F(VaultKeysetTest, TPMNotBoundToPCRAuthBlockTypeToVKFlagScrypt) {
 TEST_F(VaultKeysetTest, PinWeaverAuthBlockTypeToVKFlagNoValuesSet) {
   VaultKeyset vault_keyset;
   // PinWeaver test, no Scrypt derived.
-  PinWeaverAuthBlockState pin_weaver_state = {.salt =
-                                                  brillo::SecureBlob("salt")};
+  PinWeaverAuthBlockState pin_weaver_state = {
+      .salt = brillo::BlobFromString("salt")};
   AuthBlockState auth_state = {.state = pin_weaver_state};
   vault_keyset.SetAuthBlockState(auth_state);
 
@@ -933,11 +939,11 @@ TEST_F(VaultKeysetTest, PinWeaverAuthBlockTypeToVKFlagNoValuesSet) {
 TEST_F(VaultKeysetTest, PinWeaverAuthBlockTypeToVKFlagValuesSet) {
   // PinWeaver test.
   VaultKeyset vault_keyset;
-  brillo::SecureBlob reset_salt = brillo::SecureBlob("reset_salt");
+  brillo::Blob reset_salt = brillo::BlobFromString("reset_salt");
   unsigned int le_label = 12345;  // random number;
   PinWeaverAuthBlockState pin_weaver_state = {
       .le_label = le_label,
-      .salt = brillo::SecureBlob("salt"),
+      .salt = brillo::BlobFromString("salt"),
       .reset_salt = reset_salt};
   AuthBlockState auth_state = {.state = pin_weaver_state};
   vault_keyset.SetAuthBlockState(auth_state);
@@ -962,7 +968,7 @@ TEST_F(VaultKeysetTest, ScryptAuthBlockTypeToVKFlagValuesSet) {
   // Scrypt test.
   VaultKeyset vault_keyset;
   ScryptAuthBlockState scrypt_state = {
-      .salt = brillo::SecureBlob("salt"),
+      .salt = brillo::BlobFromString("salt"),
   };
   AuthBlockState auth_state = {.state = scrypt_state};
   vault_keyset.SetAuthBlockState(auth_state);
@@ -1004,7 +1010,7 @@ TEST_F(VaultKeysetTest, ChallengeCredentialAuthBlockTypeToVKFlagValuesSet) {
 TEST_F(VaultKeysetTest, TpmEccAuthBlockTypeToVKFlagNoValues) {
   VaultKeyset vault_keyset;
   // TpmEcc test. Ensure that all fields are set to what is expected.
-  TpmEccAuthBlockState ecc_state = {.salt = brillo::SecureBlob("salt")};
+  TpmEccAuthBlockState ecc_state = {.salt = brillo::BlobFromString("salt")};
   AuthBlockState auth_state = {.state = ecc_state};
   vault_keyset.SetAuthBlockState(auth_state);
 
@@ -1028,14 +1034,14 @@ TEST_F(VaultKeysetTest, TpmEccAuthBlockTypeToVKFlagNoValues) {
 TEST_F(VaultKeysetTest, TpmEccAuthBlockTypeToVKFlagHasValues) {
   // TpmEcc test. Ensure all values are set correctly.
   VaultKeyset vault_keyset;
-  brillo::SecureBlob tpm_key = brillo::SecureBlob("tpm_key");
-  brillo::SecureBlob extended_tpm_key = brillo::SecureBlob("extended_tpm_key");
-  brillo::SecureBlob tpm_public_key_hash =
-      brillo::SecureBlob("tpm_public_key_hash");
-  brillo::SecureBlob vkk_iv = brillo::SecureBlob("vkk_iv");
+  brillo::Blob tpm_key = brillo::BlobFromString("tpm_key");
+  brillo::Blob extended_tpm_key = brillo::BlobFromString("extended_tpm_key");
+  brillo::Blob tpm_public_key_hash =
+      brillo::BlobFromString("tpm_public_key_hash");
+  brillo::Blob vkk_iv = brillo::BlobFromString("vkk_iv");
 
   unsigned int passwords_round = 233;  // random number;.
-  TpmEccAuthBlockState ecc_state = {.salt = brillo::SecureBlob("salt"),
+  TpmEccAuthBlockState ecc_state = {.salt = brillo::BlobFromString("salt"),
                                     .vkk_iv = vkk_iv,
                                     .auth_value_rounds = passwords_round,
                                     .sealed_hvkkm = tpm_key,

@@ -123,7 +123,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
     keyset_management_ = std::make_unique<KeysetManagement>(
         &platform_, &crypto_, std::make_unique<VaultKeysetFactory>());
     system_salt_ =
-        brillo::SecureBlob(*brillo::cryptohome::home::GetSystemSalt());
+        brillo::BlobFromString(*brillo::cryptohome::home::GetSystemSalt());
     ON_CALL(hwsec_, IsEnabled()).WillByDefault(ReturnValue(true));
     ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
     ON_CALL(hwsec_, IsSealingSupported()).WillByDefault(ReturnValue(true));
@@ -175,7 +175,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
 
   MockPlatform platform_;
   MockFingerprintManager fp_manager_;
-  brillo::SecureBlob system_salt_;
+  brillo::Blob system_salt_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
@@ -247,9 +247,9 @@ TEST_F(AuthBlockUtilityImplTest, DerivePinWeaverAuthBlock) {
       .obfuscated_username = kObfuscated,
   };
   brillo::SecureBlob le_secret(32);
-  brillo::SecureBlob chaps_iv(16, 'F');
-  brillo::SecureBlob fek_iv(16, 'X');
-  brillo::SecureBlob salt(system_salt_);
+  brillo::Blob chaps_iv(16, 'F');
+  brillo::Blob fek_iv(16, 'X');
+  brillo::Blob salt(system_salt_);
 
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
   crypto_.Init();
@@ -352,8 +352,8 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedPcrBoundAuthBlock) {
       .username = kUser,
       .obfuscated_username = kObfuscated,
   };
-  brillo::SecureBlob tpm_key(20, 'B');
-  brillo::SecureBlob salt(system_salt_);
+  brillo::Blob tpm_key(20, 'B');
+  brillo::Blob salt(system_salt_);
   crypto_.Init();
 
   // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
@@ -454,16 +454,15 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedNonPcrBoundAuthBlock) {
       .username = kUser,
       .obfuscated_username = kObfuscated,
   };
-  brillo::SecureBlob tpm_key;
-  brillo::SecureBlob salt(system_salt_);
+  brillo::Blob tpm_key;
+  brillo::Blob salt(system_salt_);
   brillo::SecureBlob aes_key(32);
   crypto_.Init();
   ASSERT_TRUE(DeriveSecretsScrypt(*auth_input.user_input, salt, {&aes_key}));
 
   brillo::Blob encrypt_out(64, 'X');
-  EXPECT_TRUE(hwsec_foundation::ObscureRsaMessage(
-      brillo::SecureBlob(encrypt_out.begin(), encrypt_out.end()), aes_key,
-      &tpm_key));
+  EXPECT_TRUE(
+      hwsec_foundation::ObscureRsaMessage(encrypt_out, aes_key, &tpm_key));
 
   EXPECT_CALL(hwsec_, Decrypt(_, encrypt_out))
       .WillOnce(ReturnValue(brillo::SecureBlob()));
@@ -558,8 +557,8 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedEccAuthBlock) {
       .username = kUser,
       .obfuscated_username = kObfuscated,
   };
-  brillo::SecureBlob salt(system_salt_);
-  brillo::SecureBlob fake_hash("public key hash");
+  brillo::Blob salt(system_salt_);
+  brillo::Blob fake_hash = brillo::BlobFromString("public key hash");
   crypto_.Init();
 
   EXPECT_CALL(hwsec_, PreloadSealedData(_)).WillOnce(ReturnValue(std::nullopt));
@@ -567,15 +566,15 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedEccAuthBlock) {
       .Times(Exactly(5))
       .WillRepeatedly(ReturnValue(brillo::SecureBlob()));
 
-  brillo::SecureBlob fake_hvkkm(32, 'D');
+  brillo::Blob fake_hvkkm(32, 'D');
   EXPECT_CALL(hwsec_, UnsealWithCurrentUser(_, _, _))
       .WillOnce(ReturnValue(fake_hvkkm));
 
   TpmEccAuthBlockState tpm_state;
   tpm_state.salt = salt;
-  tpm_state.vkk_iv = brillo::SecureBlob(32, 'E');
-  tpm_state.sealed_hvkkm = brillo::SecureBlob(32, 'F');
-  tpm_state.extended_sealed_hvkkm = brillo::SecureBlob(32, 'G');
+  tpm_state.vkk_iv = brillo::Blob(32, 'E');
+  tpm_state.sealed_hvkkm = brillo::Blob(32, 'F');
+  tpm_state.extended_sealed_hvkkm = brillo::Blob(32, 'G');
   tpm_state.auth_value_rounds = 5;
   tpm_state.tpm_public_key_hash = fake_hash;
   AuthBlockState auth_state = {.state = tpm_state};
@@ -626,7 +625,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateScryptAuthBlockTest) {
 // AuthBlockType::kScrypt.
 TEST_F(AuthBlockUtilityImplTest, DeriveScryptAuthBlock) {
   // Setup test inputs and the mock expectations.
-  brillo::SecureBlob wrapped_keyset = {
+  brillo::Blob wrapped_keyset = {
       0x73, 0x63, 0x72, 0x79, 0x70, 0x74, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x08,
       0x00, 0x00, 0x00, 0x01, 0x4D, 0xEE, 0xFC, 0x79, 0x0D, 0x79, 0x08, 0x79,
       0xD5, 0xF6, 0x07, 0x65, 0xDF, 0x76, 0x5A, 0xAE, 0xD1, 0xBD, 0x1D, 0xCF,
@@ -654,7 +653,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveScryptAuthBlock) {
       0xC7, 0x90, 0x9C, 0xF7, 0xED, 0x0B, 0xED, 0x90, 0xB1, 0x4D, 0x6D, 0xB4,
       0x3D, 0x04, 0x7E, 0x7B, 0x16, 0x59, 0xFF, 0xFE};
 
-  brillo::SecureBlob wrapped_chaps_key = {
+  brillo::Blob wrapped_chaps_key = {
       0x73, 0x63, 0x72, 0x79, 0x70, 0x74, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x08,
       0x00, 0x00, 0x00, 0x01, 0xC9, 0x80, 0xA1, 0x30, 0x82, 0x40, 0xE6, 0xCF,
       0xC8, 0x59, 0xE9, 0xB6, 0xB0, 0xE8, 0xBF, 0x95, 0x82, 0x79, 0x71, 0xF9,
@@ -668,7 +667,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveScryptAuthBlock) {
       0x5B, 0x14, 0xA1, 0x3F, 0x0B, 0x17, 0x9C, 0x75, 0xA5, 0x9E, 0x36, 0x14,
       0x5B, 0xC4, 0xAC, 0x77, 0x28, 0xDE, 0xEB, 0xB4, 0x51, 0x5F, 0x33, 0x36};
 
-  brillo::SecureBlob wrapped_reset_seed = {
+  brillo::Blob wrapped_reset_seed = {
       0x73, 0x63, 0x72, 0x79, 0x70, 0x74, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x08,
       0x00, 0x00, 0x00, 0x01, 0x7F, 0x40, 0x30, 0x51, 0x2F, 0x15, 0x62, 0x15,
       0xB1, 0x2E, 0x58, 0x27, 0x52, 0xE4, 0xFF, 0xC5, 0x3C, 0x1E, 0x19, 0x05,
@@ -695,9 +694,9 @@ TEST_F(AuthBlockUtilityImplTest, DeriveScryptAuthBlock) {
       .obfuscated_username = kObfuscated,
   };
   ScryptAuthBlockState scrypt_state = {
-      .salt = brillo::SecureBlob("salt"),
-      .chaps_salt = brillo::SecureBlob("chaps_salt"),
-      .reset_seed_salt = brillo::SecureBlob("reset_seed_salt"),
+      .salt = brillo::BlobFromString("salt"),
+      .chaps_salt = brillo::BlobFromString("chaps_salt"),
+      .reset_seed_salt = brillo::BlobFromString("reset_seed_salt"),
       .work_factor = kWorkFactor,
       .block_size = kBlockSize,
       .parallel_factor = kParallelFactor,
@@ -723,7 +722,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveScryptAuthBlock) {
 TEST_F(AuthBlockUtilityImplTest, DeriveDoubleWrappedAuthBlock) {
   // Setup test inputs and the mock expectations.
   crypto_.Init();
-  brillo::SecureBlob wrapped_keyset = {
+  brillo::Blob wrapped_keyset = {
       0x73, 0x63, 0x72, 0x79, 0x70, 0x74, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x08,
       0x00, 0x00, 0x00, 0x01, 0x4D, 0xEE, 0xFC, 0x79, 0x0D, 0x79, 0x08, 0x79,
       0xD5, 0xF6, 0x07, 0x65, 0xDF, 0x76, 0x5A, 0xAE, 0xD1, 0xBD, 0x1D, 0xCF,
@@ -751,7 +750,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveDoubleWrappedAuthBlock) {
       0xC7, 0x90, 0x9C, 0xF7, 0xED, 0x0B, 0xED, 0x90, 0xB1, 0x4D, 0x6D, 0xB4,
       0x3D, 0x04, 0x7E, 0x7B, 0x16, 0x59, 0xFF, 0xFE};
 
-  brillo::SecureBlob wrapped_chaps_key = {
+  brillo::Blob wrapped_chaps_key = {
       0x73, 0x63, 0x72, 0x79, 0x70, 0x74, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x08,
       0x00, 0x00, 0x00, 0x01, 0xC9, 0x80, 0xA1, 0x30, 0x82, 0x40, 0xE6, 0xCF,
       0xC8, 0x59, 0xE9, 0xB6, 0xB0, 0xE8, 0xBF, 0x95, 0x82, 0x79, 0x71, 0xF9,
@@ -765,7 +764,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveDoubleWrappedAuthBlock) {
       0x5B, 0x14, 0xA1, 0x3F, 0x0B, 0x17, 0x9C, 0x75, 0xA5, 0x9E, 0x36, 0x14,
       0x5B, 0xC4, 0xAC, 0x77, 0x28, 0xDE, 0xEB, 0xB4, 0x51, 0x5F, 0x33, 0x36};
 
-  brillo::SecureBlob wrapped_reset_seed = {
+  brillo::Blob wrapped_reset_seed = {
       0x73, 0x63, 0x72, 0x79, 0x70, 0x74, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x08,
       0x00, 0x00, 0x00, 0x01, 0x7F, 0x40, 0x30, 0x51, 0x2F, 0x15, 0x62, 0x15,
       0xB1, 0x2E, 0x58, 0x27, 0x52, 0xE4, 0xFF, 0xC5, 0x3C, 0x1E, 0x19, 0x05,
@@ -792,17 +791,16 @@ TEST_F(AuthBlockUtilityImplTest, DeriveDoubleWrappedAuthBlock) {
       .obfuscated_username = kObfuscated,
   };
   ScryptAuthBlockState scrypt_state = {
-      .salt = brillo::SecureBlob("salt"),
-      .chaps_salt = brillo::SecureBlob("chaps_salt"),
-      .reset_seed_salt = brillo::SecureBlob("reset_seed_salt"),
+      .salt = brillo::BlobFromString("salt"),
+      .chaps_salt = brillo::BlobFromString("chaps_salt"),
+      .reset_seed_salt = brillo::BlobFromString("reset_seed_salt"),
       .work_factor = kWorkFactor,
       .block_size = kBlockSize,
       .parallel_factor = kParallelFactor,
   };
-  TpmNotBoundToPcrAuthBlockState tpm_state = {
-      .scrypt_derived = false,
-      .salt = system_salt_,
-      .tpm_key = brillo::SecureBlob(20, 'A')};
+  TpmNotBoundToPcrAuthBlockState tpm_state = {.scrypt_derived = false,
+                                              .salt = system_salt_,
+                                              .tpm_key = brillo::Blob(20, 'A')};
   DoubleWrappedCompatAuthBlockState double_wrapped_state = {
       .scrypt_state = scrypt_state, .tpm_state = tpm_state};
   AuthBlockState auth_state = {.state = double_wrapped_state};
@@ -914,9 +912,10 @@ TEST_F(AuthBlockUtilityImplTest, ChallengeCredentialDerive) {
           ChallengeCredentialAuthBlockState{
               .scrypt_state =
                   ScryptAuthBlockState{
-                      .salt = brillo::SecureBlob("salt"),
-                      .chaps_salt = brillo::SecureBlob("chaps_salt"),
-                      .reset_seed_salt = brillo::SecureBlob("reset_seed_salt"),
+                      .salt = brillo::BlobFromString("salt"),
+                      .chaps_salt = brillo::BlobFromString("chaps_salt"),
+                      .reset_seed_salt =
+                          brillo::BlobFromString("reset_seed_salt"),
                       .work_factor = kWorkFactor,
                       .block_size = kBlockSize,
                       .parallel_factor = kParallelFactor,

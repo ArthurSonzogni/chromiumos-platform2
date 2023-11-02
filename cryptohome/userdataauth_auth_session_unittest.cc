@@ -1983,17 +1983,18 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
 // WebAuthn secret is prepared when `AuthIntent::kWebAuthn` is requested.
 TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWebAuthnIntent) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
-  const brillo::SecureBlob kBlob32{std::string(32, 'A')};
-  const brillo::SecureBlob kBlob16{std::string(16, 'C')};
+  const brillo::SecureBlob kSecureBlob32{std::string(32, 'A')};
+  const brillo::Blob kBlob32(32, 'A');
+  const brillo::Blob kBlob16(16, 'C');
   const KeyBlobs kKeyBlobs{
-      .vkk_key = kBlob32, .vkk_iv = kBlob16, .chaps_iv = kBlob16};
+      .vkk_key = kSecureBlob32, .vkk_iv = kBlob16, .chaps_iv = kBlob16};
   const TpmEccAuthBlockState kTpmState = {
-      .salt = brillo::SecureBlob(kSalt),
+      .salt = brillo::BlobFromString(kSalt),
       .vkk_iv = kBlob32,
       .auth_value_rounds = kAuthValueRounds,
       .sealed_hvkkm = kBlob32,
       .extended_sealed_hvkkm = kBlob32,
-      .tpm_public_key_hash = brillo::SecureBlob(kPublicHash),
+      .tpm_public_key_hash = brillo::BlobFromString(kPublicHash),
   };
   // Arrange.
   std::string serialized_token = StartAuthenticatedAuthSession(
@@ -2054,17 +2055,18 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWebAuthnIntent) {
 }
 
 TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorCheckSignal) {
-  const brillo::SecureBlob kBlob32{std::string(32, 'A')};
-  const brillo::SecureBlob kBlob16{std::string(16, 'C')};
+  const brillo::SecureBlob kSecureBlob32{std::string(32, 'A')};
+  const brillo::Blob kBlob32(32, 'B');
+  const brillo::Blob kBlob16(16, 'C');
   const KeyBlobs kKeyBlobs{
-      .vkk_key = kBlob32, .vkk_iv = kBlob16, .chaps_iv = kBlob16};
+      .vkk_key = kSecureBlob32, .vkk_iv = kBlob16, .chaps_iv = kBlob16};
   const TpmEccAuthBlockState kTpmState = {
-      .salt = brillo::SecureBlob(kSalt),
+      .salt = brillo::BlobFromString(kSalt),
       .vkk_iv = kBlob32,
       .auth_value_rounds = kAuthValueRounds,
       .sealed_hvkkm = kBlob32,
       .extended_sealed_hvkkm = kBlob32,
-      .tpm_public_key_hash = brillo::SecureBlob(kPublicHash),
+      .tpm_public_key_hash = brillo::BlobFromString(kPublicHash),
   };
   // Arrange.
   std::string serialized_token = StartAuthenticatedAuthSession(

@@ -63,7 +63,7 @@ class TpmEccAuthBlock : public AuthBlock {
   // Derive the HVKKM from sealed HVKKM, preload handle.
   CryptoStatus DeriveHvkkm(bool locked_to_single_user,
                            brillo::SecureBlob pass_blob,
-                           const brillo::SecureBlob& sealed_hvkkm,
+                           const brillo::Blob& sealed_hvkkm,
                            const std::optional<hwsec::ScopedKey>& preload_key,
                            uint32_t auth_value_rounds,
                            brillo::SecureBlob* vkk);

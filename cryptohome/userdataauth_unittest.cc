@@ -91,6 +91,7 @@ namespace {
 
 using base::FilePath;
 using base::test::TestFuture;
+using brillo::BlobFromString;
 using brillo::SecureBlob;
 using brillo::cryptohome::home::GetGuestUsername;
 using brillo::cryptohome::home::SanitizeUserName;
@@ -2888,8 +2889,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {
         vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
                      SerializedVaultKeyset::PCR_BOUND);
         vk->SetKeyData(key_data);
-        vk->SetTPMKey(SecureBlob("fake tpm key"));
-        vk->SetExtendedTPMKey(SecureBlob("fake extended tpm key"));
+        vk->SetTPMKey(BlobFromString("fake tpm key"));
+        vk->SetExtendedTPMKey(BlobFromString("fake extended tpm key"));
         return vk;
       });
 
@@ -2951,8 +2952,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionVerifyOnlyFactors) {
         vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
                      SerializedVaultKeyset::PCR_BOUND);
         vk->SetKeyData(key_data);
-        vk->SetTPMKey(SecureBlob("fake tpm key"));
-        vk->SetExtendedTPMKey(SecureBlob("fake extended tpm key"));
+        vk->SetTPMKey(BlobFromString("fake tpm key"));
+        vk->SetExtendedTPMKey(BlobFromString("fake extended tpm key"));
         return vk;
       });
   // Add a verifier as well.
@@ -3285,8 +3286,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
         key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
         key_data.set_label("password-label");
         vk->SetKeyData(key_data);
-        vk->SetTPMKey(SecureBlob("fake tpm key"));
-        vk->SetExtendedTPMKey(SecureBlob("fake extended tpm key"));
+        vk->SetTPMKey(BlobFromString("fake tpm key"));
+        vk->SetExtendedTPMKey(BlobFromString("fake extended tpm key"));
         return vk;
       });
   EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(kObfuscatedUser, 1))
@@ -3303,9 +3304,9 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
             brillo::BlobFromString("plaintext");
         const auto blob_to_encrypt = brillo::SecureBlob(brillo::CombineBlobs(
             {kScryptPlaintext, hwsec_foundation::Sha1(kScryptPlaintext)}));
-        brillo::SecureBlob wrapped_keyset;
-        brillo::SecureBlob wrapped_chaps_key;
-        brillo::SecureBlob wrapped_reset_seed;
+        brillo::Blob wrapped_keyset;
+        brillo::Blob wrapped_chaps_key;
+        brillo::Blob wrapped_reset_seed;
         brillo::SecureBlob derived_key = {
             0x67, 0xeb, 0xcd, 0x84, 0x49, 0x5e, 0xa2, 0xf3, 0xb1, 0xe6, 0xe7,
             0x5b, 0x13, 0xb9, 0x16, 0x2f, 0x5a, 0x39, 0xc8, 0xfe, 0x6a, 0x60,
@@ -3313,10 +3314,10 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
             0x97, 0x9f, 0x2d, 0x06, 0xf5, 0xd0, 0xd3, 0xa6, 0xe7, 0xac, 0x9b,
             0x02, 0xaf, 0x3c, 0x08, 0xce, 0x43, 0x46, 0x32, 0x6d, 0xd7, 0x2b,
             0xe9, 0xdf, 0x8b, 0x38, 0x0e, 0x60, 0x3d, 0x64, 0x12};
-        brillo::SecureBlob scrypt_salt = brillo::SecureBlob("salt");
-        brillo::SecureBlob chaps_salt = brillo::SecureBlob("chaps_salt");
-        brillo::SecureBlob reset_seed_salt =
-            brillo::SecureBlob("reset_seed_salt");
+        brillo::Blob scrypt_salt = brillo::BlobFromString("salt");
+        brillo::Blob chaps_salt = brillo::BlobFromString("chaps_salt");
+        brillo::Blob reset_seed_salt =
+            brillo::BlobFromString("reset_seed_salt");
         scrypt_salt.resize(hwsec_foundation::kLibScryptSaltSize);
         chaps_salt.resize(hwsec_foundation::kLibScryptSaltSize);
         reset_seed_salt.resize(hwsec_foundation::kLibScryptSaltSize);
@@ -3425,10 +3426,10 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
       AuthBlockState{
           .state = TpmBoundToPcrAuthBlockState{
               .scrypt_derived = false,
-              .salt = SecureBlob("fake salt"),
-              .tpm_key = SecureBlob("fake tpm key"),
-              .extended_tpm_key = SecureBlob("fake extended tpm key"),
-              .tpm_public_key_hash = SecureBlob("fake tpm public key hash"),
+              .salt = BlobFromString("fake salt"),
+              .tpm_key = BlobFromString("fake tpm key"),
+              .extended_tpm_key = BlobFromString("fake extended tpm key"),
+              .tpm_public_key_hash = BlobFromString("fake tpm public key hash"),
           }});
   ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *password_factor),
               IsOk());
@@ -3437,10 +3438,10 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
       AuthFactorMetadata{.metadata = PinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState{
                          .le_label = 0xbaadf00d,
-                         .salt = SecureBlob("fake salt"),
-                         .chaps_iv = SecureBlob("fake chaps IV"),
-                         .fek_iv = SecureBlob("fake file encryption IV"),
-                         .reset_salt = SecureBlob("more fake salt"),
+                         .salt = BlobFromString("fake salt"),
+                         .chaps_iv = BlobFromString("fake chaps IV"),
+                         .fek_iv = BlobFromString("fake file encryption IV"),
+                         .reset_salt = BlobFromString("more fake salt"),
                      }});
   ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *pin_factor), IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
@@ -3573,10 +3574,10 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithIncompleteFactorsFromUss) {
       AuthBlockState{
           .state = TpmBoundToPcrAuthBlockState{
               .scrypt_derived = false,
-              .salt = SecureBlob("fake salt"),
-              .tpm_key = SecureBlob("fake tpm key"),
-              .extended_tpm_key = SecureBlob("fake extended tpm key"),
-              .tpm_public_key_hash = SecureBlob("fake tpm public key hash"),
+              .salt = BlobFromString("fake salt"),
+              .tpm_key = BlobFromString("fake tpm key"),
+              .extended_tpm_key = BlobFromString("fake extended tpm key"),
+              .tpm_public_key_hash = BlobFromString("fake tpm public key hash"),
           }});
   ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *password_factor),
               IsOk());
@@ -3585,10 +3586,10 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithIncompleteFactorsFromUss) {
       AuthFactorMetadata{.metadata = PinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState{
                          .le_label = 0xbaadf00d,
-                         .salt = SecureBlob("fake salt"),
-                         .chaps_iv = SecureBlob("fake chaps IV"),
-                         .fek_iv = SecureBlob("fake file encryption IV"),
-                         .reset_salt = SecureBlob("more fake salt"),
+                         .salt = BlobFromString("fake salt"),
+                         .chaps_iv = BlobFromString("fake chaps IV"),
+                         .fek_iv = BlobFromString("fake file encryption IV"),
+                         .reset_salt = BlobFromString("more fake salt"),
                      }});
   ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *pin_factor), IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label"});
@@ -3669,10 +3670,10 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
       AuthBlockState{
           .state = TpmBoundToPcrAuthBlockState{
               .scrypt_derived = false,
-              .salt = SecureBlob("fake salt"),
-              .tpm_key = SecureBlob("fake tpm key"),
-              .extended_tpm_key = SecureBlob("fake extended tpm key"),
-              .tpm_public_key_hash = SecureBlob("fake tpm public key hash"),
+              .salt = BlobFromString("fake salt"),
+              .tpm_key = BlobFromString("fake tpm key"),
+              .extended_tpm_key = BlobFromString("fake extended tpm key"),
+              .tpm_public_key_hash = BlobFromString("fake tpm public key hash"),
           }});
   ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *password_factor),
               IsOk());
@@ -3681,10 +3682,10 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
       AuthFactorMetadata{.metadata = PinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState{
                          .le_label = 0xbaadf00d,
-                         .salt = SecureBlob("fake salt"),
-                         .chaps_iv = SecureBlob("fake chaps IV"),
-                         .fek_iv = SecureBlob("fake file encryption IV"),
-                         .reset_salt = SecureBlob("more fake salt"),
+                         .salt = BlobFromString("fake salt"),
+                         .chaps_iv = BlobFromString("fake chaps IV"),
+                         .fek_iv = BlobFromString("fake file encryption IV"),
+                         .reset_salt = BlobFromString("more fake salt"),
                      }});
   ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *pin_factor), IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
@@ -3786,10 +3787,10 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
       AuthBlockState{
           .state = TpmBoundToPcrAuthBlockState{
               .scrypt_derived = false,
-              .salt = SecureBlob("fake salt"),
-              .tpm_key = SecureBlob("fake tpm key"),
-              .extended_tpm_key = SecureBlob("fake extended tpm key"),
-              .tpm_public_key_hash = SecureBlob("fake tpm public key hash"),
+              .salt = BlobFromString("fake salt"),
+              .tpm_key = BlobFromString("fake tpm key"),
+              .extended_tpm_key = BlobFromString("fake extended tpm key"),
+              .tpm_public_key_hash = BlobFromString("fake tpm public key hash"),
           }});
   ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *password_factor),
               IsOk());
@@ -3801,10 +3802,10 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
           .metadata = PinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState{
                          .le_label = 0xbaadf00d,
-                         .salt = SecureBlob("fake salt"),
-                         .chaps_iv = SecureBlob("fake chaps IV"),
-                         .fek_iv = SecureBlob("fake file encryption IV"),
-                         .reset_salt = SecureBlob("more fake salt"),
+                         .salt = BlobFromString("fake salt"),
+                         .chaps_iv = BlobFromString("fake chaps IV"),
+                         .fek_iv = BlobFromString("fake file encryption IV"),
+                         .reset_salt = BlobFromString("more fake salt"),
                      }});
   ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *pin_factor), IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
@@ -3906,10 +3907,10 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedLegacy) {
       AuthBlockState{
           .state = TpmBoundToPcrAuthBlockState{
               .scrypt_derived = false,
-              .salt = SecureBlob("fake salt"),
-              .tpm_key = SecureBlob("fake tpm key"),
-              .extended_tpm_key = SecureBlob("fake extended tpm key"),
-              .tpm_public_key_hash = SecureBlob("fake tpm public key hash"),
+              .salt = BlobFromString("fake salt"),
+              .tpm_key = BlobFromString("fake tpm key"),
+              .extended_tpm_key = BlobFromString("fake extended tpm key"),
+              .tpm_public_key_hash = BlobFromString("fake tpm public key hash"),
           }});
   ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *password_factor),
               IsOk());
@@ -3918,10 +3919,10 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedLegacy) {
       AuthFactorMetadata{.metadata = PinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState{
                          .le_label = 0xbaadf00d,
-                         .salt = SecureBlob("fake salt"),
-                         .chaps_iv = SecureBlob("fake chaps IV"),
-                         .fek_iv = SecureBlob("fake file encryption IV"),
-                         .reset_salt = SecureBlob("more fake salt"),
+                         .salt = BlobFromString("fake salt"),
+                         .chaps_iv = BlobFromString("fake chaps IV"),
+                         .fek_iv = BlobFromString("fake file encryption IV"),
+                         .reset_salt = BlobFromString("more fake salt"),
                      }});
   ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *pin_factor), IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
@@ -4030,10 +4031,10 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
       AuthBlockState{
           .state = TpmBoundToPcrAuthBlockState{
               .scrypt_derived = false,
-              .salt = SecureBlob("fake salt"),
-              .tpm_key = SecureBlob("fake tpm key"),
-              .extended_tpm_key = SecureBlob("fake extended tpm key"),
-              .tpm_public_key_hash = SecureBlob("fake tpm public key hash"),
+              .salt = BlobFromString("fake salt"),
+              .tpm_key = BlobFromString("fake tpm key"),
+              .extended_tpm_key = BlobFromString("fake extended tpm key"),
+              .tpm_public_key_hash = BlobFromString("fake tpm public key hash"),
           }});
   ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *password_factor),
               IsOk());
@@ -4045,10 +4046,10 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
           .metadata = PinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState{
                          .le_label = 0xbaadf00d,
-                         .salt = SecureBlob("fake salt"),
-                         .chaps_iv = SecureBlob("fake chaps IV"),
-                         .fek_iv = SecureBlob("fake file encryption IV"),
-                         .reset_salt = SecureBlob("more fake salt"),
+                         .salt = BlobFromString("fake salt"),
+                         .chaps_iv = BlobFromString("fake chaps IV"),
+                         .fek_iv = BlobFromString("fake file encryption IV"),
+                         .reset_salt = BlobFromString("more fake salt"),
                      }});
   ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *pin_factor), IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
@@ -4161,8 +4162,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
         key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
         key_data.set_label("password-label");
         vk->SetKeyData(key_data);
-        vk->SetTPMKey(SecureBlob("fake tpm key"));
-        vk->SetExtendedTPMKey(SecureBlob("fake extended tpm key"));
+        vk->SetTPMKey(BlobFromString("fake tpm key"));
+        vk->SetExtendedTPMKey(BlobFromString("fake extended tpm key"));
         return vk;
       });
   // Add an AuthFactor backed by USS.
@@ -4171,10 +4172,10 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
       AuthFactorMetadata{.metadata = PinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState{
                          .le_label = 0xbaadf00d,
-                         .salt = SecureBlob("fake salt"),
-                         .chaps_iv = SecureBlob("fake chaps IV"),
-                         .fek_iv = SecureBlob("fake file encryption IV"),
-                         .reset_salt = SecureBlob("more fake salt"),
+                         .salt = BlobFromString("fake salt"),
+                         .chaps_iv = BlobFromString("fake chaps IV"),
+                         .fek_iv = BlobFromString("fake file encryption IV"),
+                         .reset_salt = BlobFromString("more fake salt"),
                      }});
   ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *pin_factor), IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"pin-label"});
