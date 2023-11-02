@@ -674,9 +674,11 @@ Status PinWeaverManagerImpl::ReplayLogEntries(
       return MakeStatus<TPMError>("Failure to replay pinweaver log entries")
           .Wrap(std::move(ret));
     }
-    // Update the replay_type for the following entry (if exists). Currently GSC
+    // Update the replay_type for the following entry. Note that currently GSC
     // only has two entries.
-    replay_type = ReplayEntryType::kSecondEntry;
+    if (replay_type == ReplayEntryType::kMismatchedHash) {
+      replay_type = ReplayEntryType::kSecondEntry;
+    }
   }
 
   // Remove any inserted leaves since they are unusable.
