@@ -21,6 +21,10 @@ import chromite_init  # pylint: disable=unused-import
 from chromite.lib import git
 
 
+# Sub-directories that need to be verified for #includes correctness.
+# Any platform2/project that is ready can be added.
+PROJECTS_TO_VERIFY = frozenset({"missive"})
+
 # Suffixes of files that need to be verifies for #includes correctness.
 SUFFIXES_TO_VERIFY = frozenset({".h", ".hpp", ".cc", ".cpp", ".cxx", ".c"})
 
@@ -132,6 +136,8 @@ def check_files(files: List[Path], commit: Optional[str]) -> Iterator[str]:
         Error messages reporting incorrect #includes.
     """
     for file in files:
+        if not file.parts[0] in PROJECTS_TO_VERIFY:
+            continue
         if not file.suffix in SUFFIXES_TO_VERIFY:
             continue
         lines = get_lines_from_commit(file, commit)
