@@ -134,7 +134,10 @@ if (use.test) {
       sources += [ "test_utils/tpm1/test_fixture.cc" ]
     }
     pkg_deps = [ "libcrossystem-test" ]
-    configs += [ ":target_defaults" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
     libs = [
       "tpm2",
       "tpm2_simulator_executor",
@@ -143,7 +146,11 @@ if (use.test) {
       "trunksd_lib",
       "pinweaver",
     ]
-    install_path = "lib"
+    if (use.cros_host) {
+      install_path = "lib"
+    } else {
+      install_path = "/build/lib"
+    }
     deps = [
       ":hardware_abstraction_internal_library",
       ":libhwsec",
