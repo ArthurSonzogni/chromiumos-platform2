@@ -14,15 +14,12 @@ group("all") {
     ":install_tmpfiles_config",
     ":internal_protos",
     ":libsegmentation",
+    ":libsegmentation-test",
     ":libsegmentation_pc",
     ":libsegmentation_static",
   ]
   if (use.test) {
-    deps += [
-      ":libsegmentation-test",
-      ":libsegmentation-test_pc",
-      ":libsegmentation_tests",
-    ]
+    deps += [ ":libsegmentation_tests" ]
   }
 }
 
@@ -123,7 +120,7 @@ shared_library("libsegmentation-test") {
   sources = [ "feature_management_fake.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libsegmentation-test_pc" ]
-  install_path = "lib"
+  install_path = "/build/lib"
 }
 
 generate_pkg_config("libsegmentation_pc") {
