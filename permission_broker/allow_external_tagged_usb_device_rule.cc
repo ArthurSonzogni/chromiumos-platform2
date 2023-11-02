@@ -13,6 +13,7 @@
 #include "featured/feature_library.h"
 #include "permission_broker/rule.h"
 #include "permission_broker/rule_utils.h"
+#include "permission_broker/udev_scopers.h"
 
 namespace permission_broker {
 
@@ -66,14 +67,70 @@ Rule::Result ProcessUsbDevice(udev_device* device,
     return Rule::DENY;
   }
 
+  // Loop through the child nodes (interfaces, really) to ascertain if any of
+  // them have an attached driver - meaning they are 'claimed' by the host
+  // kernel.
+  udev* udev = udev_device_get_udev(device);
+  ScopedUdevEnumeratePtr enumerate(udev_enumerate_new(udev));
+  udev_enumerate_add_match_subsystem(enumerate.get(), "usb");
+  udev_enumerate_add_match_parent(enumerate.get(), device);
+  udev_enumerate_scan_devices(enumerate.get());
+
+  bool found_claimed_interface = false;
+  bool found_unclaimed_interface = false;
+  struct udev_list_entry* child = nullptr;
+  udev_list_entry_foreach(child,
+                          udev_enumerate_get_list_entry(enumerate.get())) {
+    const char* entry_path = udev_list_entry_get_name(child);
+    // udev_enumerate_add_match_parent includes the parent entry, skip it.
+    if (!strcmp(udev_device_get_syspath(device), entry_path)) {
+      continue;
+    }
+    ScopedUdevDevicePtr child(udev_device_new_from_syspath(udev, entry_path));
+
+    const char* child_type = udev_device_get_devtype(child.get());
+    // Safety check - child nodes of a USB device should only be interfaces.
+    if (!child_type || strcmp(child_type, "usb_interface") != 0) {
+      LOG(WARNING) << "Found a child interface '" << entry_path
+                   << "' with unexpected type: "
+                   << (child_type ? child_type : "(null)");
+      return Rule::DENY;
+    }
+
+    const char* driver = udev_device_get_driver(child.get());
+    if (driver) {
+      found_claimed_interface = true;
+    } else {
+      found_unclaimed_interface = true;
+    }
+  }
+
+  // The basic logic for what decision this rule will reach:
+  // - If no claimed interfaces exist for the device in question, we will likely
+  //   allow (pending connection to an external port).
+  // - If there are claimed interfaces but no unclaimed ones, we allow the
+  //   device to be used on successfully detaching kernel drivers.
+  // - If there are both claimed and unclaimed interfaces, we allow the device
+  //   to be used if privileges on the device are dropped.
+  Rule::Result allow_variant;
+  if (found_claimed_interface) {
+    allow_variant = found_unclaimed_interface ? Rule::ALLOW_WITH_LOCKDOWN
+                                              : Rule::ALLOW_WITH_DETACH;
+  } else {
+    allow_variant = Rule::ALLOW;
+  }
+
+  // The top level ALLOW/DENY decision hinges on the internal/external property
+  // of the device in question, and we also want to check for devices that
+  // mistakenly identify as internal when they are really not.
   if (location == CrosUsbLocationProperty::kExternal) {
-    return Rule::ALLOW_WITH_DETACH;
+    return allow_variant;
   } else if ((location == CrosUsbLocationProperty::kInternal ||
               location == CrosUsbLocationProperty::kUnknown) &&
              ancestors_location == CrosUsbLocationProperty::kExternal) {
     // device erroneously reported that it is not external, but has an external
     // ancestor.
-    return Rule::ALLOW_WITH_DETACH;
+    return allow_variant;
   } else if (location == CrosUsbLocationProperty::kInternal) {
     return Rule::DENY;
   }

@@ -233,6 +233,7 @@ Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {
   udev* udev = udev_device_get_udev(device);
   ScopedUdevEnumeratePtr enumerate(udev_enumerate_new(udev));
   udev_enumerate_add_match_subsystem(enumerate.get(), "usb");
+  udev_enumerate_add_match_parent(enumerate.get(), device);
   udev_enumerate_scan_devices(enumerate.get());
 
   bool found_claimed_interface = false;
@@ -243,17 +244,11 @@ Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {
   udev_list_entry_foreach(entry,
                           udev_enumerate_get_list_entry(enumerate.get())) {
     const char* entry_path = udev_list_entry_get_name(entry);
+    // udev_enumerate_add_match_parent includes the parent entry, skip it.
+    if (!strcmp(udev_device_get_syspath(device), entry_path)) {
+      continue;
+    }
     ScopedUdevDevicePtr child(udev_device_new_from_syspath(udev, entry_path));
-
-    // Find out if this entry's direct parent is the device in question.
-    struct udev_device* parent = udev_device_get_parent(child.get());
-    if (!parent) {
-      continue;
-    }
-    const char* parent_syspath = udev_device_get_syspath(parent);
-    if (!parent_syspath || strcmp(device_syspath, parent_syspath) != 0) {
-      continue;
-    }
 
     const char* child_type = udev_device_get_devtype(child.get());
     if (!child_type || strcmp(child_type, "usb_interface") != 0) {
