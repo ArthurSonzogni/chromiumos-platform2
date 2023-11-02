@@ -87,7 +87,9 @@ void InputManager::OnFirmwareDumpCreated(dbus::Signal* signal) {
         // The feature is disabled, but firmware dumps were created anyway.
         // Delete those firmware dumps.
         LOG(INFO) << "Feature disabled, deleting firmware dump.";
-        fw_dump.Delete();
+        if (!fw_dump.Delete()) {
+          LOG(ERROR) << "Failed to delete firmware dump.";
+        }
         continue;
       }
 
@@ -97,6 +99,9 @@ void InputManager::OnFirmwareDumpCreated(dbus::Signal* signal) {
                                       weak_factory_.GetWeakPtr(), fw_dump));
       } else {
         LOG(ERROR) << "No task runner.";
+        if (!fw_dump.Delete()) {
+          LOG(ERROR) << "Failed to delete firmware dump.";
+        }
       }
     }
   }

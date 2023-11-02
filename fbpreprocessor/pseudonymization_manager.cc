@@ -46,6 +46,9 @@ void PseudonymizationManager::StartPseudonymization(
   // long-running operations for now.
   if (user_root_dir_.empty()) {
     LOG(ERROR) << "Can't start pseudonymization without output directory.";
+    if (!fw_dump.Delete()) {
+      LOG(ERROR) << "Failed to delete input firmware dump.";
+    }
     return;
   }
   if (!RateLimitingAllowsNewPseudonymization()) {
@@ -66,6 +69,9 @@ void PseudonymizationManager::StartPseudonymization(
                        weak_factory_.GetWeakPtr(), fw_dump, output));
   } else {
     LOG(ERROR) << "No task runner.";
+    if (!fw_dump.Delete()) {
+      LOG(ERROR) << "Failed to delete input firmware dump.";
+    }
   }
 }
 

@@ -124,8 +124,12 @@ void OutputManager::OnExpiredFile() {
     if (it->expiration() <= now) {
       // Run the file deletion task asynchronously to avoid blocking on I/O
       // while we're holding the lock.
-      base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-          FROM_HERE, base::BindOnce(&DeleteFirmwareDump, it->fw_dump()));
+      if (base::SequencedTaskRunner::HasCurrentDefault()) {
+        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+            FROM_HERE, base::BindOnce(&DeleteFirmwareDump, it->fw_dump()));
+      } else {
+        DeleteFirmwareDump(it->fw_dump());
+      }
       it = files_.erase(it);
     } else {
       ++it;
