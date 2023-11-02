@@ -56,6 +56,10 @@ readonly POWER_STATUS_ON_SUSPEND_FILE="${ROOT_RUN_DIR}"/power-status-on-suspend
 # across reboots.
 readonly LAST_RESUME_TIMINGS_FILE="${ROOT_RUN_DIR}"/last_resume_timings
 
+# File whose presence indicates that the system should reboot after a successful
+# hibernation instead of shutting down.
+readonly REBOOT_AFTER_HIBERNATE_FILE="${ROOT_RUN_DIR}"/reboot_after_hibernate
+
 # Directory where this script (running as root) writes files that must
 # persist across reboots.
 readonly ROOT_SPOOL_DIR=/var/spool/power_manager/root
@@ -326,10 +330,15 @@ else
   # For hibernate, invoke the hiberman helper process to take us all the way
   # down.
   if [ "${FLAGS_suspend_to_disk}" -eq 0 ]; then
+    reboot_flag=""
+
+    if [ -e "${REBOOT_AFTER_HIBERNATE_FILE}" ]; then
+      reboot_flag="-r"
+    fi
+
     error="Failed to hibernate"
     /sbin/minijail0 --config=/usr/share/minijail/hiberman.conf \
-        -- /usr/sbin/hiberman hibernate
-
+        -- /usr/sbin/hiberman hibernate "${reboot_flag}"
   else
     # Echo freeze to /sys/power/state on platforms that support suspend to idle.
     action='mem'
