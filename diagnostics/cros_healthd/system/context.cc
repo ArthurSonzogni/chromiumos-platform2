@@ -131,8 +131,8 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
 
   powerd_adapter_ =
       std::make_unique<PowerdAdapterImpl>(power_manager_proxy_.get());
-  system_config_ = std::make_unique<SystemConfig>(cros_config_legacy_.get(),
-                                                  debugd_proxy_.get());
+  system_config_ =
+      std::make_unique<SystemConfig>(cros_config_.get(), debugd_proxy_.get());
   system_utils_ = std::make_unique<SystemUtilitiesImpl>();
   bluez_controller_ = std::make_unique<BluezController>(bluez_proxy_.get());
   bluez_event_hub_ = std::make_unique<BluezEventHub>(bluez_proxy_.get());

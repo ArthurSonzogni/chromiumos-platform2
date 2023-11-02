@@ -9,7 +9,6 @@
 #include <string>
 #include <utility>
 
-#include <chromeos/chromeos-config/libcros_config/cros_config.h>
 #include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
@@ -22,6 +21,9 @@
 #include <brillo/errors/error.h>
 #include <debugd/dbus-proxies.h>
 
+#include "diagnostics/base/file_utils.h"
+#include "diagnostics/base/paths.h"
+#include "diagnostics/cros_healthd/system/cros_config.h"
 #include "diagnostics/cros_healthd/system/debugd_constants.h"
 #include "diagnostics/cros_healthd/system/system_config_constants.h"
 
@@ -77,20 +79,20 @@ void NvmeSelfTestSupportedByDebugd(
       }).Then(base::BindOnce(std::move(cb2), false)));
 }
 
-std::string GetSensorPropertyName(SensorType sensor) {
+PathLiteral GetSensorPropertyPath(SensorType sensor) {
   switch (sensor) {
     case SensorType::kBaseAccelerometer:
-      return kHasBaseAccelerometer;
+      return paths::cros_config::kHasBaseAccelerometer;
     case SensorType::kBaseGyroscope:
-      return kHasBaseGyroscope;
+      return paths::cros_config::kHasBaseGyroscope;
     case SensorType::kBaseMagnetometer:
-      return kHasBaseMagnetometer;
+      return paths::cros_config::kHasBaseMagnetometer;
     case SensorType::kLidAccelerometer:
-      return kHasLidAccelerometer;
+      return paths::cros_config::kHasLidAccelerometer;
     case SensorType::kLidGyroscope:
-      return kHasLidGyroscope;
+      return paths::cros_config::kHasLidGyroscope;
     case SensorType::kLidMagnetometer:
-      return kHasLidMagnetometer;
+      return paths::cros_config::kHasLidMagnetometer;
     case SensorType::kBaseGravitySensor:
     case SensorType::kLidGravitySensor:
       // There are no |has-base-gravity-sensor| and |has-lid-gravity-sensor|
@@ -108,16 +110,9 @@ std::optional<bool> HasGravitySensor(std::optional<bool> has_accel,
 
 }  // namespace
 
-SystemConfig::SystemConfig(brillo::CrosConfigInterface* cros_config,
+SystemConfig::SystemConfig(CrosConfig* cros_config,
                            org::chromium::debugdProxyInterface* debugd_proxy)
-    : SystemConfig(cros_config, debugd_proxy, base::FilePath("/")) {}
-
-SystemConfig::SystemConfig(brillo::CrosConfigInterface* cros_config,
-                           org::chromium::debugdProxyInterface* debugd_proxy,
-                           const base::FilePath& root_dir)
-    : cros_config_(cros_config),
-      debugd_proxy_(debugd_proxy),
-      root_dir_(root_dir) {
+    : cros_config_(cros_config), debugd_proxy_(debugd_proxy) {
   CHECK(cros_config_);
   CHECK(debugd_proxy_);
 }
@@ -125,65 +120,45 @@ SystemConfig::SystemConfig(brillo::CrosConfigInterface* cros_config,
 SystemConfig::~SystemConfig() = default;
 
 bool SystemConfig::HasBacklight() {
-  std::string has_backlight;
+  auto has_backlight = cros_config_->Get(paths::cros_config::kHasBacklight);
   // Assume that device has a backlight unless otherwise configured.
-  if (!cros_config_->GetString(kHardwarePropertiesPath, kHasBacklightProperty,
-                               &has_backlight)) {
-    return true;
-  }
-  return has_backlight != "false";
+  return !has_backlight || has_backlight != "false";
 }
 
 bool SystemConfig::HasBattery() {
-  std::string psu_type;
+  auto psu_type = cros_config_->Get(paths::cros_config::kPsuType);
   // Assume that device has a battery unless otherwise configured.
-  if (!cros_config_->GetString(kHardwarePropertiesPath, kPsuTypeProperty,
-                               &psu_type)) {
-    return true;
-  }
-  return psu_type != "AC_only";
+  return !psu_type || psu_type != "AC_only";
 }
 
 bool SystemConfig::HasSkuNumber() {
-  std::string has_sku_number;
+  auto has_sku_number = cros_config_->Get(paths::cros_config::kHasSkuNumber);
   // Assume that device have does NOT have a SKU number unless otherwise
   // configured.
-  if (!cros_config_->GetString(kCachedVpdPropertiesPath, kHasSkuNumberProperty,
-                               &has_sku_number)) {
-    return false;
-  }
-  return has_sku_number == "true";
+  return has_sku_number && has_sku_number == "true";
 }
 
 bool SystemConfig::HasSmartBattery() {
-  std::string has_smart_battery_info;
+  auto has_smart_battery_info =
+      cros_config_->Get(paths::cros_config::kHasSmartBatteryInfo);
   // Assume that device does NOT have a smart battery unless otherwise
   // configured.
-  if (!cros_config_->GetString(kBatteryPropertiesPath,
-                               kHasSmartBatteryInfoProperty,
-                               &has_smart_battery_info)) {
-    return false;
-  }
-  return has_smart_battery_info == "true";
+  return has_smart_battery_info && has_smart_battery_info == "true";
 }
 
 bool SystemConfig::HasPrivacyScreen() {
-  std::string has_privacy_screen;
-  if (!cros_config_->GetString(kHardwarePropertiesPath,
-                               kHasPrivacyScreenProperty,
-                               &has_privacy_screen)) {
-    return false;
-  }
-  return has_privacy_screen == "true";
+  auto has_privacy_screen =
+      cros_config_->Get(paths::cros_config::kHasPrivacyScreen);
+  return has_privacy_screen && has_privacy_screen == "true";
 }
 
 bool SystemConfig::HasChromiumEC() {
-  return base::PathExists(root_dir_.AppendASCII(kChromiumECPath));
+  return base::PathExists(GetRootedPath(kChromiumECPath));
 }
 
 bool SystemConfig::NvmeSupported() {
-  return base::PathExists(root_dir_.AppendASCII(kNvmeToolPath)) &&
-         !base::FileEnumerator(root_dir_.AppendASCII(kDevicePath), false,
+  return base::PathExists(GetRootedPath(kNvmeToolPath)) &&
+         !base::FileEnumerator(GetRootedPath(kDevicePath), false,
                                base::FileEnumerator::FILES, "nvme*")
               .Next()
               .empty();
@@ -211,20 +186,17 @@ void SystemConfig::NvmeSelfTestSupported(
 }
 
 bool SystemConfig::SmartCtlSupported() {
-  return base::PathExists(root_dir_.AppendASCII(kSmartctlToolPath));
+  return base::PathExists(GetRootedPath(kSmartctlToolPath));
 }
 
 bool SystemConfig::MmcSupported() {
-  return base::PathExists(root_dir_.AppendASCII(kMmcToolPath));
+  return base::PathExists(GetRootedPath(kMmcToolPath));
 }
 
 bool SystemConfig::FingerprintDiagnosticSupported() {
-  std::string enable;
-  if (!cros_config_->GetString(kFingerprintPropertiesPath,
-                               kFingerprintRoutineEnable, &enable)) {
-    return false;
-  }
-  return enable == "true";
+  auto enable =
+      cros_config_->Get(paths::cros_config::kFingerprintDiagRoutineEnable);
+  return enable && enable == "true";
 }
 
 bool SystemConfig::IsWilcoDevice() {
@@ -239,31 +211,19 @@ bool SystemConfig::IsWilcoDevice() {
 }
 
 std::optional<std::string> SystemConfig::GetMarketingName() {
-  std::string marketing_name;
-  if (!cros_config_->GetString(kBrandingPath, kMarketingNameProperty,
-                               &marketing_name)) {
-    return std::nullopt;
-  }
-  return marketing_name;
+  return cros_config_->Get(paths::cros_config::kMarketingName);
 }
 
 std::optional<std::string> SystemConfig::GetOemName() {
-  std::string oem_name;
-  if (!cros_config_->GetString(kBrandingPath, kOemNameProperty, &oem_name)) {
-    return std::nullopt;
-  }
-  return oem_name;
+  return cros_config_->Get(paths::cros_config::kOemName);
 }
 
 std::string SystemConfig::GetCodeName() {
-  std::string code_name;
-  if (!cros_config_->GetString(kRootPath, kCodeNameProperty, &code_name)) {
-    // "/name" is a required field in cros config. This should not be reached in
-    // normal situation. However, if in a device which is in the early
-    // development stage or in a vm environment, this could still happen.
-    return "";
-  }
-  return code_name;
+  auto code_name = cros_config_->Get(paths::cros_config::kCodeName);
+  // "/name" is a required field in cros config. This should not be reached in
+  // normal situation. However, if in a device which is in the early development
+  // stage or in a vm environment, this could still happen.
+  return code_name ? code_name.value() : "";
 }
 
 std::optional<bool> SystemConfig::HasSensor(SensorType sensor) {
@@ -277,9 +237,8 @@ std::optional<bool> SystemConfig::HasSensor(SensorType sensor) {
     return HasGravitySensor(HasSensor(SensorType::kLidAccelerometer),
                             HasSensor(SensorType::kLidGyroscope));
   }
-  std::string has_sensor;
-  if (!cros_config_->GetString(kHardwarePropertiesPath,
-                               GetSensorPropertyName(sensor), &has_sensor)) {
+  auto has_sensor = cros_config_->Get(GetSensorPropertyPath(sensor));
+  if (!has_sensor) {
     return std::nullopt;
   }
   return has_sensor == "true";

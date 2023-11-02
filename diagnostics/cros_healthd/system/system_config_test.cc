@@ -6,13 +6,11 @@
 #include <string>
 #include <utility>
 
-#include <base/files/scoped_temp_dir.h>
 #include <base/functional/callback.h>
 #include <base/test/gmock_callback_support.h>
 #include <base/test/scoped_chromeos_version_info.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
-#include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
 #include <dbus/mock_object_proxy.h>
 #include <dbus/object_path.h>
 #include <debugd/dbus-proxy-mocks.h>
@@ -20,6 +18,9 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_test_utils.h"
+#include "diagnostics/base/paths.h"
+#include "diagnostics/cros_healthd/service_config.h"
+#include "diagnostics/cros_healthd/system/cros_config.h"
 #include "diagnostics/cros_healthd/system/debugd_constants.h"
 #include "diagnostics/cros_healthd/system/system_config.h"
 #include "diagnostics/cros_healthd/system/system_config_constants.h"
@@ -31,6 +32,8 @@ using ::testing::WithArg;
 namespace diagnostics {
 namespace {
 
+namespace paths = paths::cros_config;
+
 // Fake marketing name used for testing cros config.
 constexpr char kFakeMarketingName[] = "chromebook X 1234";
 // Fake OEM name used for testing cros config.
@@ -38,12 +41,11 @@ constexpr char kFakeOemName[] = "Foo Bar OEM";
 // Fake code name used for testing cros config.
 constexpr char kFakeCodeName[] = "CodeName";
 
-class SystemConfigTest : public ::testing::Test {
+class SystemConfigTest : public BaseFileTest {
  protected:
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    system_config_ = std::make_unique<SystemConfig>(
-        &fake_cros_config_, &debugd_proxy_, temp_dir_.GetPath());
+    system_config_ =
+        std::make_unique<SystemConfig>(&cros_config_, &debugd_proxy_);
     debugd_object_proxy_ =
         new dbus::MockObjectProxy(nullptr, "", dbus::ObjectPath("/"));
     ON_CALL(debugd_proxy_, GetObjectProxy())
@@ -67,31 +69,26 @@ class SystemConfigTest : public ::testing::Test {
             }));
   }
 
-  brillo::FakeCrosConfig* fake_cros_config() { return &fake_cros_config_; }
+  void SetFakeCrosConfig(const PathLiteral& path, const std::string& data) {
+    SetFile(paths::kRoot.ToPath().Append(path.ToPath()), data);
+  }
 
   SystemConfig* system_config() { return system_config_.get(); }
 
-  const base::FilePath& GetTempPath() const { return temp_dir_.GetPath(); }
-
+  base::test::SingleThreadTaskEnvironment task_environment_;
+  CrosConfig cros_config_{ServiceConfig{}};
+  std::unique_ptr<SystemConfig> system_config_;
   testing::NiceMock<org::chromium::debugdProxyMock> debugd_proxy_;
   scoped_refptr<dbus::MockObjectProxy> debugd_object_proxy_;
-
- private:
-  base::test::SingleThreadTaskEnvironment task_environment_;
-  brillo::FakeCrosConfig fake_cros_config_;
-  base::ScopedTempDir temp_dir_;
-  std::unique_ptr<SystemConfig> system_config_;
 };
 
 TEST_F(SystemConfigTest, TestBacklightTrue) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBacklightProperty,
-                                "");
+  SetFakeCrosConfig(paths::kHasBacklight, "");
   EXPECT_TRUE(system_config()->HasBacklight());
 }
 
 TEST_F(SystemConfigTest, TestBacklightFalse) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBacklightProperty,
-                                "false");
+  SetFakeCrosConfig(paths::kHasBacklight, "false");
   EXPECT_FALSE(system_config()->HasBacklight());
 }
 
@@ -100,13 +97,12 @@ TEST_F(SystemConfigTest, TestBacklightUnset) {
 }
 
 TEST_F(SystemConfigTest, TestBatteryTrue) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kPsuTypeProperty, "");
+  SetFakeCrosConfig(paths::kPsuType, "");
   EXPECT_TRUE(system_config()->HasBattery());
 }
 
 TEST_F(SystemConfigTest, TestBatteryFalse) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kPsuTypeProperty,
-                                "AC_only");
+  SetFakeCrosConfig(paths::kPsuType, "AC_only");
   EXPECT_FALSE(system_config()->HasBattery());
 }
 
@@ -115,14 +111,12 @@ TEST_F(SystemConfigTest, TestBatteryUnset) {
 }
 
 TEST_F(SystemConfigTest, TestSkuNumberTrue) {
-  fake_cros_config()->SetString(kCachedVpdPropertiesPath, kHasSkuNumberProperty,
-                                "true");
+  SetFakeCrosConfig(paths::kHasSkuNumber, "true");
   EXPECT_TRUE(system_config()->HasSkuNumber());
 }
 
 TEST_F(SystemConfigTest, TestSkuNumberFalse) {
-  fake_cros_config()->SetString(kCachedVpdPropertiesPath, kHasSkuNumberProperty,
-                                "");
+  SetFakeCrosConfig(paths::kHasSkuNumber, "");
   EXPECT_FALSE(system_config()->HasSkuNumber());
 }
 
@@ -131,14 +125,12 @@ TEST_F(SystemConfigTest, TestSkuNumberUnset) {
 }
 
 TEST_F(SystemConfigTest, TestSmartBatteryTrue) {
-  fake_cros_config()->SetString(kBatteryPropertiesPath,
-                                kHasSmartBatteryInfoProperty, "true");
+  SetFakeCrosConfig(paths::kHasSmartBatteryInfo, "true");
   EXPECT_TRUE(system_config()->HasSmartBattery());
 }
 
 TEST_F(SystemConfigTest, TestSmartBatteryFalse) {
-  fake_cros_config()->SetString(kBatteryPropertiesPath,
-                                kHasSmartBatteryInfoProperty, "");
+  SetFakeCrosConfig(paths::kHasSmartBatteryInfo, "");
   EXPECT_FALSE(system_config()->HasSmartBattery());
 }
 
@@ -147,14 +139,12 @@ TEST_F(SystemConfigTest, TestSmartBatteryUnset) {
 }
 
 TEST_F(SystemConfigTest, TestPrivacyScreenTrue) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath,
-                                kHasPrivacyScreenProperty, "true");
+  SetFakeCrosConfig(paths::kHasPrivacyScreen, "true");
   EXPECT_TRUE(system_config()->HasPrivacyScreen());
 }
 
 TEST_F(SystemConfigTest, TestPrivacyScreenFalse) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath,
-                                kHasPrivacyScreenProperty, "");
+  SetFakeCrosConfig(paths::kHasPrivacyScreen, "");
   EXPECT_FALSE(system_config()->HasPrivacyScreen());
 }
 
@@ -163,7 +153,7 @@ TEST_F(SystemConfigTest, TestPrivacyScreenUnset) {
 }
 
 TEST_F(SystemConfigTest, TestChromiumECTrue) {
-  WriteFileAndCreateParentDirs(GetTempPath().AppendASCII(kChromiumECPath), "");
+  SetFile(kChromiumECPath, "");
   EXPECT_TRUE(system_config()->HasChromiumEC());
 }
 
@@ -172,14 +162,13 @@ TEST_F(SystemConfigTest, TestChromiumECFalse) {
 }
 
 TEST_F(SystemConfigTest, NvmeSupportedTrue) {
-  WriteFileAndCreateParentDirs(GetTempPath().AppendASCII(kNvmeToolPath), "");
-  WriteFileAndCreateParentDirs(
-      GetTempPath().AppendASCII(kDevicePath).AppendASCII("nvme01p1"), "");
+  SetFile(kNvmeToolPath, "");
+  SetFile({kDevicePath, "nvme01p1"}, "");
   ASSERT_TRUE(system_config()->NvmeSupported());
 }
 
 TEST_F(SystemConfigTest, NvmeSupportedToolOnlyFalse) {
-  WriteFileAndCreateParentDirs(GetTempPath().AppendASCII(kNvmeToolPath), "");
+  SetFile(kNvmeToolPath, "");
   ASSERT_FALSE(system_config()->NvmeSupported());
 }
 
@@ -209,8 +198,7 @@ TEST_F(SystemConfigTest, NvmeSelfTestSupportedDebugdUnavailable) {
 }
 
 TEST_F(SystemConfigTest, SmartCtlSupportedTrue) {
-  WriteFileAndCreateParentDirs(GetTempPath().AppendASCII(kSmartctlToolPath),
-                               "");
+  SetFile(kSmartctlToolPath, "");
   ASSERT_TRUE(system_config()->SmartCtlSupported());
 }
 
@@ -219,7 +207,7 @@ TEST_F(SystemConfigTest, SmartCtlSupportedFalse) {
 }
 
 TEST_F(SystemConfigTest, MmcSupportedTrue) {
-  WriteFileAndCreateParentDirs(GetTempPath().AppendASCII(kMmcToolPath), "");
+  SetFile(kMmcToolPath, "");
   ASSERT_TRUE(system_config()->MmcSupported());
 }
 
@@ -228,14 +216,12 @@ TEST_F(SystemConfigTest, MmcSupportedFalse) {
 }
 
 TEST_F(SystemConfigTest, FingerprintDiagnosticSupportedTrue) {
-  fake_cros_config()->SetString(kFingerprintPropertiesPath,
-                                kFingerprintRoutineEnable, "true");
+  SetFakeCrosConfig(paths::kFingerprintDiagRoutineEnable, "true");
   EXPECT_TRUE(system_config()->FingerprintDiagnosticSupported());
 }
 
 TEST_F(SystemConfigTest, FingerprintDiagnosticSupportedFalse) {
-  fake_cros_config()->SetString(kFingerprintPropertiesPath,
-                                kFingerprintRoutineEnable, "");
+  SetFakeCrosConfig(paths::kFingerprintDiagRoutineEnable, "");
   EXPECT_FALSE(system_config()->FingerprintDiagnosticSupported());
 }
 
@@ -264,8 +250,7 @@ TEST_F(SystemConfigTest, WilcoDeviceFalse) {
 }
 
 TEST_F(SystemConfigTest, CorrectMarketingName) {
-  fake_cros_config()->SetString(kBrandingPath, kMarketingNameProperty,
-                                kFakeMarketingName);
+  SetFakeCrosConfig(paths::kMarketingName, kFakeMarketingName);
   EXPECT_TRUE(system_config()->GetMarketingName().has_value());
   EXPECT_EQ(system_config()->GetMarketingName().value(), kFakeMarketingName);
 }
@@ -275,7 +260,7 @@ TEST_F(SystemConfigTest, MarketingNameUnset) {
 }
 
 TEST_F(SystemConfigTest, CorrectOemName) {
-  fake_cros_config()->SetString(kBrandingPath, kOemNameProperty, kFakeOemName);
+  SetFakeCrosConfig(paths::kOemName, kFakeOemName);
   EXPECT_TRUE(system_config()->GetOemName().has_value());
   EXPECT_EQ(system_config()->GetOemName().value(), kFakeOemName);
 }
@@ -285,7 +270,7 @@ TEST_F(SystemConfigTest, OemNameUnset) {
 }
 
 TEST_F(SystemConfigTest, CorrectCodeName) {
-  fake_cros_config()->SetString(kRootPath, kCodeNameProperty, kFakeCodeName);
+  SetFakeCrosConfig(paths::kCodeName, kFakeCodeName);
   EXPECT_EQ(system_config()->GetCodeName(), kFakeCodeName);
 }
 
@@ -294,8 +279,7 @@ TEST_F(SystemConfigTest, CodeNameUnset) {
 }
 
 TEST_F(SystemConfigTest, TestBaseAccelerometerTrue) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBaseAccelerometer,
-                                "true");
+  SetFakeCrosConfig(paths::kHasBaseAccelerometer, "true");
   const auto& has_sensor =
       system_config()->HasSensor(SensorType::kBaseAccelerometer);
   ASSERT_TRUE(has_sensor.has_value());
@@ -303,8 +287,7 @@ TEST_F(SystemConfigTest, TestBaseAccelerometerTrue) {
 }
 
 TEST_F(SystemConfigTest, TestBaseAccelerometerFalse) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBaseAccelerometer,
-                                "false");
+  SetFakeCrosConfig(paths::kHasBaseAccelerometer, "false");
   const auto& has_sensor =
       system_config()->HasSensor(SensorType::kBaseAccelerometer);
   ASSERT_TRUE(has_sensor.has_value());
@@ -317,8 +300,7 @@ TEST_F(SystemConfigTest, TestBaseAccelerometerUnset) {
 }
 
 TEST_F(SystemConfigTest, TestBaseGyroscopeTrue) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBaseGyroscope,
-                                "true");
+  SetFakeCrosConfig(paths::kHasBaseGyroscope, "true");
   const auto& has_sensor =
       system_config()->HasSensor(SensorType::kBaseGyroscope);
   ASSERT_TRUE(has_sensor.has_value());
@@ -326,8 +308,7 @@ TEST_F(SystemConfigTest, TestBaseGyroscopeTrue) {
 }
 
 TEST_F(SystemConfigTest, TestBaseGyroscopeFalse) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBaseGyroscope,
-                                "false");
+  SetFakeCrosConfig(paths::kHasBaseGyroscope, "false");
   const auto& has_sensor =
       system_config()->HasSensor(SensorType::kBaseGyroscope);
   ASSERT_TRUE(has_sensor.has_value());
@@ -340,8 +321,7 @@ TEST_F(SystemConfigTest, TestBaseGyroscopeUnset) {
 }
 
 TEST_F(SystemConfigTest, TestBaseMagnetometerTrue) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBaseMagnetometer,
-                                "true");
+  SetFakeCrosConfig(paths::kHasBaseMagnetometer, "true");
   const auto& has_sensor =
       system_config()->HasSensor(SensorType::kBaseMagnetometer);
   ASSERT_TRUE(has_sensor.has_value());
@@ -349,8 +329,7 @@ TEST_F(SystemConfigTest, TestBaseMagnetometerTrue) {
 }
 
 TEST_F(SystemConfigTest, TestBaseMagnetometerFalse) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBaseMagnetometer,
-                                "false");
+  SetFakeCrosConfig(paths::kHasBaseMagnetometer, "false");
   const auto& has_sensor =
       system_config()->HasSensor(SensorType::kBaseMagnetometer);
   ASSERT_TRUE(has_sensor.has_value());
@@ -363,10 +342,8 @@ TEST_F(SystemConfigTest, TestBaseMagnetometerUnset) {
 }
 
 TEST_F(SystemConfigTest, TestBaseGravitySensorTrue) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBaseAccelerometer,
-                                "true");
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBaseGyroscope,
-                                "true");
+  SetFakeCrosConfig(paths::kHasBaseAccelerometer, "true");
+  SetFakeCrosConfig(paths::kHasBaseGyroscope, "true");
   const auto& has_sensor =
       system_config()->HasSensor(SensorType::kBaseGravitySensor);
   ASSERT_TRUE(has_sensor.has_value());
@@ -374,10 +351,8 @@ TEST_F(SystemConfigTest, TestBaseGravitySensorTrue) {
 }
 
 TEST_F(SystemConfigTest, TestBaseGravitySensorFalse) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBaseAccelerometer,
-                                "false");
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBaseGyroscope,
-                                "false");
+  SetFakeCrosConfig(paths::kHasBaseAccelerometer, "false");
+  SetFakeCrosConfig(paths::kHasBaseGyroscope, "false");
   const auto& has_sensor =
       system_config()->HasSensor(SensorType::kBaseGravitySensor);
   ASSERT_TRUE(has_sensor.has_value());
@@ -390,8 +365,7 @@ TEST_F(SystemConfigTest, TestBaseGravitySensorUnset) {
 }
 
 TEST_F(SystemConfigTest, TestLidAccelerometerTrue) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidAccelerometer,
-                                "true");
+  SetFakeCrosConfig(paths::kHasLidAccelerometer, "true");
   const auto& has_sensor =
       system_config()->HasSensor(SensorType::kLidAccelerometer);
   ASSERT_TRUE(has_sensor.has_value());
@@ -399,8 +373,7 @@ TEST_F(SystemConfigTest, TestLidAccelerometerTrue) {
 }
 
 TEST_F(SystemConfigTest, TestLidAccelerometerFalse) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidAccelerometer,
-                                "false");
+  SetFakeCrosConfig(paths::kHasLidAccelerometer, "false");
   const auto& has_sensor =
       system_config()->HasSensor(SensorType::kLidAccelerometer);
   ASSERT_TRUE(has_sensor.has_value());
@@ -413,8 +386,7 @@ TEST_F(SystemConfigTest, TestLidAccelerometerUnset) {
 }
 
 TEST_F(SystemConfigTest, TestLidGyroscopeTrue) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidGyroscope,
-                                "true");
+  SetFakeCrosConfig(paths::kHasLidGyroscope, "true");
   const auto& has_sensor =
       system_config()->HasSensor(SensorType::kLidGyroscope);
   ASSERT_TRUE(has_sensor.has_value());
@@ -422,8 +394,7 @@ TEST_F(SystemConfigTest, TestLidGyroscopeTrue) {
 }
 
 TEST_F(SystemConfigTest, TestLidGyroscopeFalse) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidGyroscope,
-                                "false");
+  SetFakeCrosConfig(paths::kHasLidGyroscope, "false");
   const auto& has_sensor =
       system_config()->HasSensor(SensorType::kLidGyroscope);
   ASSERT_TRUE(has_sensor.has_value());
@@ -436,8 +407,7 @@ TEST_F(SystemConfigTest, TestLidGyroscopeUnset) {
 }
 
 TEST_F(SystemConfigTest, TestLidMagnetometerTrue) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidMagnetometer,
-                                "true");
+  SetFakeCrosConfig(paths::kHasLidMagnetometer, "true");
   const auto& has_sensor =
       system_config()->HasSensor(SensorType::kLidMagnetometer);
   ASSERT_TRUE(has_sensor.has_value());
@@ -445,8 +415,7 @@ TEST_F(SystemConfigTest, TestLidMagnetometerTrue) {
 }
 
 TEST_F(SystemConfigTest, TestLidMagnetometerFalse) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidMagnetometer,
-                                "false");
+  SetFakeCrosConfig(paths::kHasLidMagnetometer, "false");
   const auto& has_sensor =
       system_config()->HasSensor(SensorType::kLidMagnetometer);
   ASSERT_TRUE(has_sensor.has_value());
@@ -459,10 +428,8 @@ TEST_F(SystemConfigTest, TestLidMagnetometerUnset) {
 }
 
 TEST_F(SystemConfigTest, TestLidGravitySensorTrue) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidAccelerometer,
-                                "true");
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidGyroscope,
-                                "true");
+  SetFakeCrosConfig(paths::kHasLidAccelerometer, "true");
+  SetFakeCrosConfig(paths::kHasLidGyroscope, "true");
   const auto& has_sensor =
       system_config()->HasSensor(SensorType::kLidGravitySensor);
   ASSERT_TRUE(has_sensor.has_value());
@@ -470,10 +437,8 @@ TEST_F(SystemConfigTest, TestLidGravitySensorTrue) {
 }
 
 TEST_F(SystemConfigTest, TestLidGravitySensorFalse) {
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidAccelerometer,
-                                "false");
-  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidGyroscope,
-                                "false");
+  SetFakeCrosConfig(paths::kHasLidAccelerometer, "false");
+  SetFakeCrosConfig(paths::kHasLidGyroscope, "false");
   const auto& has_sensor =
       system_config()->HasSensor(SensorType::kLidGravitySensor);
   ASSERT_TRUE(has_sensor.has_value());

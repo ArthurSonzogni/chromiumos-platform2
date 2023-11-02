@@ -8,7 +8,6 @@
 #include <optional>
 #include <string>
 
-#include <chromeos/chromeos-config/libcros_config/cros_config_interface.h>
 #include <base/files/file_path.h>
 
 #include "diagnostics/cros_healthd/system/system_config_interface.h"
@@ -18,15 +17,13 @@ class debugdProxyInterface;
 }  // namespace org::chromium
 
 namespace diagnostics {
+class CrosConfig;
 
+// Deprecated: Don't add new fields to this class. Use `GroundTruth` instead.
 class SystemConfig final : public SystemConfigInterface {
  public:
-  SystemConfig(brillo::CrosConfigInterface* cros_config,
+  SystemConfig(CrosConfig* cros_config,
                org::chromium::debugdProxyInterface* debugd_proxy);
-  // Constructor that overrides root_dir is only meant to be used for testing.
-  SystemConfig(brillo::CrosConfigInterface* cros_config,
-               org::chromium::debugdProxyInterface* debugd_proxy,
-               const base::FilePath& root_dir);
   SystemConfig(const SystemConfig&) = delete;
   SystemConfig& operator=(const SystemConfig&) = delete;
   ~SystemConfig() override;
@@ -51,10 +48,9 @@ class SystemConfig final : public SystemConfigInterface {
 
  private:
   // Unowned pointer. The CrosConfigInterface should outlive this instance.
-  brillo::CrosConfigInterface* cros_config_;
+  CrosConfig* cros_config_;
   // Unowned pointer. The debugdProxyInterface should outlive this instance.
   org::chromium::debugdProxyInterface* debugd_proxy_;
-  base::FilePath root_dir_;
 };
 
 }  // namespace diagnostics
