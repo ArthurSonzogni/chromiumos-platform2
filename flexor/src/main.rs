@@ -2,10 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// TODO(bkersting): Remove this once we added calls to all function and type
+// definitions.
+#![allow(dead_code)]
+
 use anyhow::Result;
 use libchromeos::panic_handler;
 use log::info;
 
+mod cgpt;
 mod chromeos_install;
 mod gpt;
 mod mount;
