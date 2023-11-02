@@ -178,3 +178,97 @@ pub unsafe extern "C" fn GenerateGuid(newguid: *mut std::ffi::c_void) -> std::ff
 
     0
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::gpt::Gpt;
+
+    use super::*;
+    use std::{fs::File, process::Command};
+
+    use anyhow::Result;
+    use gpt_disk_types::{BlockSize, Lba};
+
+    const TEST_IMAGE_PATH: &str = "fake_disk.bin";
+    const NUM_SECTORS: u32 = 1000;
+
+    const DATA_START: u64 = 100;
+    const DATA_SIZE: u64 = 20;
+    const DATA_LABEL: &str = "data stuff";
+    const DATA_GUID: &str = "0fc63daf-8483-4772-8e79-3d69d8477de4";
+    const DATA_NUM: u32 = 1;
+
+    fn setup_test_disk_environment() -> Result<tempfile::TempDir> {
+        // Create a tempdir to mount a tempfs to.
+        let tmp_dir = tempfile::tempdir()?;
+        let path = tmp_dir.path().join(TEST_IMAGE_PATH);
+        let path = path.as_path();
+
+        // Create a fake disk at path.
+        let status = Command::new("dd")
+            .arg("if=/dev/zero")
+            .arg(&format!("of={}", path.display()))
+            .arg("conv=fsync")
+            .arg("bs=512")
+            .arg(&format!("count={NUM_SECTORS}"))
+            .status()?;
+        assert!(status.success());
+
+        // Create a GPT header table.
+        let status = Command::new("cgpt").arg("create").arg(path).status()?;
+        assert!(status.success());
+
+        // Add the initial data partition.
+        let status = Command::new("cgpt")
+            .arg("add")
+            .args(["-b", &format!("{DATA_START}")])
+            .args(["-s", &format!("{DATA_SIZE}")])
+            .args(["-t", DATA_GUID])
+            .args(["-l", DATA_LABEL])
+            .arg(path)
+            .status()?;
+        assert!(status.success());
+
+        Ok(tmp_dir)
+    }
+
+    #[test]
+    fn test_cgpt_resize_and_add() -> Result<()> {
+        // Setup.
+        let temp_dir = setup_test_disk_environment()?;
+        let path = temp_dir.path().join(TEST_IMAGE_PATH);
+        let path = path.as_path();
+        assert!(matches!(path.try_exists(), Ok(true)));
+
+        // Test `resize_partition_gpt_partition`.
+        let data_part_end = DATA_START + 2;
+        let new_range = LbaRangeInclusive::new(Lba(DATA_START), Lba(data_part_end)).unwrap();
+        resize_cgpt_partition(DATA_NUM, path, DATA_LABEL.to_owned(), new_range);
+
+        let mut file = File::open(path)?;
+        let mut gpt = Gpt::from_file(&mut file, BlockSize::BS_512)?;
+
+        let partition = gpt.get_entry_for_partition_with_label(DATA_LABEL.parse()?)?;
+        assert!(partition.is_some());
+
+        assert_eq!(partition.unwrap().ending_lba.to_u64(), data_part_end);
+
+        // Test `add_cgpt_partition`.
+        let new_part_end = DATA_START + 4;
+        let range = LbaRangeInclusive::new(Lba(data_part_end + 1), Lba(new_part_end)).unwrap();
+        let new_part_label = "TEST".to_string();
+        add_cgpt_partition(DATA_NUM + 1, path, new_part_label.clone(), range);
+
+        let mut file = File::open(path)?;
+        let mut gpt = Gpt::from_file(&mut file, BlockSize::BS_512)?;
+
+        let partition = gpt.get_entry_for_partition_with_label(new_part_label.parse()?)?;
+        assert!(partition.is_some());
+
+        assert_eq!(partition.unwrap().starting_lba.to_u64(), data_part_end + 1);
+
+        assert_eq!(partition.unwrap().ending_lba.to_u64(), new_part_end);
+
+        Ok(())
+    }
+}
