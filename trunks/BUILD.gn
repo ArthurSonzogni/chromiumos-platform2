@@ -17,6 +17,7 @@ group("all") {
     ":trunks",
     ":trunks_client",
     ":trunks_send",
+    ":trunks_test",
     ":trunksd",
   ]
 
