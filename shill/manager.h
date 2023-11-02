@@ -216,6 +216,12 @@ class Manager {
   std::map<std::string, std::vector<GeolocationInfo>>
   GetNetworksForGeolocation() const;
 
+  // Retrieve WiFi geolocation data from the Manager.
+  std::vector<GeolocationInfo> GetWiFiNetworksForGeolocation() const;
+
+  // Retrieve cellular geolocation data from the Manager.
+  std::vector<GeolocationInfo> GetCellularNetworksForGeolocation() const;
+
   // Called by Device when its geolocation data has been updated.
   virtual void OnDeviceGeolocationInfoUpdated(const DeviceRefPtr& device);
 

@@ -102,6 +102,12 @@
 		<method name="GetNetworksForGeolocation">
 		        <arg type="a{sv}" direction="out"/>
 		</method>
+		<method name="GetWiFiNetworksForGeolocation">
+		        <arg type="a{sv}" direction="out"/>
+		</method>
+		<method name="GetCellularNetworksForGeolocation">
+		        <arg type="a{sv}" direction="out"/>
+		</method>
 		<method name="ScanAndConnectToBestServices"/>
 		<method name="CreateConnectivityReport"/>
 		<method name="ClaimInterface">

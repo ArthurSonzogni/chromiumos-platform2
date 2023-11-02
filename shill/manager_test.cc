@@ -69,6 +69,7 @@ using ::testing::AnyNumber;
 using ::testing::AtLeast;
 using ::testing::ContainerEq;
 using ::testing::DoAll;
+using ::testing::DoDefault;
 using ::testing::ElementsAre;
 using ::testing::Ge;
 using ::testing::HasSubstr;
@@ -3825,7 +3826,12 @@ TEST_F(ManagerTest, CustomSetterNoopChange) {
 }
 
 TEST_F(ManagerTest, GeoLocation) {
-  EXPECT_TRUE(manager()->GetNetworksForGeolocation().empty());
+  auto location_infos = manager()->GetNetworksForGeolocation();
+  EXPECT_EQ(2, location_infos.size());
+  EXPECT_TRUE(base::Contains(location_infos, kGeoWifiAccessPointsProperty));
+  EXPECT_TRUE(base::Contains(location_infos, kGeoCellTowersProperty));
+  EXPECT_TRUE(location_infos[kGeoWifiAccessPointsProperty].empty());
+  EXPECT_TRUE(location_infos[kGeoCellTowersProperty].empty());
 
   auto device = base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "device",
                                                            "addr_1", 0);
@@ -3835,36 +3841,56 @@ TEST_F(ManagerTest, GeoLocation) {
       .Times(AtLeast(1))
       .WillRepeatedly(Return(Technology::kEthernet));
   manager()->OnDeviceGeolocationInfoUpdated(device);
-  EXPECT_TRUE(manager()->GetNetworksForGeolocation().empty());
+  location_infos = manager()->GetNetworksForGeolocation();
+  EXPECT_EQ(2, location_infos.size());
+  EXPECT_TRUE(base::Contains(location_infos, kGeoWifiAccessPointsProperty));
+  EXPECT_TRUE(base::Contains(location_infos, kGeoCellTowersProperty));
+  EXPECT_TRUE(location_infos[kGeoWifiAccessPointsProperty].empty());
+  EXPECT_TRUE(location_infos[kGeoCellTowersProperty].empty());
   Mock::VerifyAndClearExpectations(device.get());
 
   // Manager should add WiFi geolocation info.
+  GeolocationInfo info_1;
+  info_1["location"] = "abc";
   EXPECT_CALL(*device, technology())
       .Times(AtLeast(1))
       .WillRepeatedly(Return(Technology::kWiFi));
-  EXPECT_CALL(*device, UpdateGeolocationObjects(_)).Times(1);
+  EXPECT_CALL(*device, UpdateGeolocationObjects(_))
+      .WillOnce(SetArgPointee<0>(std::vector<GeolocationInfo>{info_1}));
   manager()->OnDeviceGeolocationInfoUpdated(device);
-  auto location_infos = manager()->GetNetworksForGeolocation();
-  EXPECT_EQ(1, location_infos.size());
+  location_infos = manager()->GetNetworksForGeolocation();
+  EXPECT_EQ(2, location_infos.size());
   EXPECT_TRUE(base::Contains(location_infos, kGeoWifiAccessPointsProperty));
+  EXPECT_TRUE(base::Contains(location_infos, kGeoCellTowersProperty));
+  EXPECT_EQ(1, location_infos[kGeoWifiAccessPointsProperty].size());
+  EXPECT_TRUE(location_infos[kGeoCellTowersProperty].empty());
 
   auto cellular_device = base::MakeRefCounted<NiceMock<MockDevice>>(
       manager(), "modem", "addr_2", 1);
-
+  GeolocationInfo info_2;
+  info_2["location"] = "def";
   // Manager should inclusively add cellular info.
   EXPECT_CALL(*cellular_device, technology())
       .Times(AtLeast(1))
       .WillRepeatedly(Return(Technology::kCellular));
-  EXPECT_CALL(*cellular_device, UpdateGeolocationObjects(_)).Times(1);
+  EXPECT_CALL(*cellular_device, UpdateGeolocationObjects(_))
+      .WillOnce(SetArgPointee<0>(std::vector<GeolocationInfo>{info_2}));
   manager()->OnDeviceGeolocationInfoUpdated(cellular_device);
   location_infos = manager()->GetNetworksForGeolocation();
   EXPECT_EQ(2, location_infos.size());
   EXPECT_TRUE(base::Contains(location_infos, kGeoWifiAccessPointsProperty));
   EXPECT_TRUE(base::Contains(location_infos, kGeoCellTowersProperty));
+  EXPECT_EQ(1, location_infos[kGeoWifiAccessPointsProperty].size());
+  EXPECT_EQ(1, location_infos[kGeoCellTowersProperty].size());
 }
 
 TEST_F(ManagerTest, GeoLocation_MultipleDevicesOneTechnology) {
-  EXPECT_TRUE(manager()->GetNetworksForGeolocation().empty());
+  auto location_infos = manager()->GetNetworksForGeolocation();
+  EXPECT_EQ(2, location_infos.size());
+  EXPECT_TRUE(base::Contains(location_infos, kGeoWifiAccessPointsProperty));
+  EXPECT_TRUE(base::Contains(location_infos, kGeoCellTowersProperty));
+  EXPECT_TRUE(location_infos[kGeoWifiAccessPointsProperty].empty());
+  EXPECT_TRUE(location_infos[kGeoCellTowersProperty].empty());
 
   auto device_1 = base::MakeRefCounted<NiceMock<MockDevice>>(
       manager(), "device_1", "addr_1", 0);
@@ -3889,32 +3915,217 @@ TEST_F(ManagerTest, GeoLocation_MultipleDevicesOneTechnology) {
       .WillOnce(SetArgPointee<0>(std::vector<GeolocationInfo>{info_2}));
   manager()->OnDeviceGeolocationInfoUpdated(device_2);
 
-  auto location_infos = manager()->GetNetworksForGeolocation();
-  EXPECT_EQ(1, location_infos.size());
+  location_infos = manager()->GetNetworksForGeolocation();
+  EXPECT_EQ(2, location_infos.size());
   EXPECT_TRUE(base::Contains(location_infos, kGeoWifiAccessPointsProperty));
-
+  EXPECT_TRUE(base::Contains(location_infos, kGeoCellTowersProperty));
   // Check that both entries are in the list.
   EXPECT_EQ(2, location_infos[kGeoWifiAccessPointsProperty].size());
+  EXPECT_TRUE(location_infos[kGeoCellTowersProperty].empty());
 }
 
 TEST_F(ManagerTest, GeoLocation_DeregisterDevice) {
-  EXPECT_TRUE(manager()->GetNetworksForGeolocation().empty());
+  auto location_infos = manager()->GetNetworksForGeolocation();
+  EXPECT_EQ(2, location_infos.size());
+  EXPECT_TRUE(base::Contains(location_infos, kGeoWifiAccessPointsProperty));
+  EXPECT_TRUE(base::Contains(location_infos, kGeoCellTowersProperty));
+  EXPECT_TRUE(location_infos[kGeoWifiAccessPointsProperty].empty());
+  EXPECT_TRUE(location_infos[kGeoCellTowersProperty].empty());
 
   auto device = base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "device",
                                                            "addr_1", 0);
+  GeolocationInfo info;
+  info["location"] = "abc";
   manager()->RegisterDevice(device);
 
   EXPECT_CALL(*device, technology()).WillRepeatedly(Return(Technology::kWiFi));
-  EXPECT_CALL(*device, UpdateGeolocationObjects(_)).Times(1);
+  EXPECT_CALL(*device, UpdateGeolocationObjects(_))
+      .WillOnce(SetArgPointee<0>(std::vector<GeolocationInfo>{info}));
   manager()->OnDeviceGeolocationInfoUpdated(device);
 
-  auto location_infos = manager()->GetNetworksForGeolocation();
-  EXPECT_EQ(1, location_infos.size());
+  location_infos = manager()->GetNetworksForGeolocation();
+  EXPECT_EQ(2, location_infos.size());
   EXPECT_TRUE(base::Contains(location_infos, kGeoWifiAccessPointsProperty));
+  EXPECT_TRUE(base::Contains(location_infos, kGeoCellTowersProperty));
+  EXPECT_EQ(1, location_infos[kGeoWifiAccessPointsProperty].size());
+  EXPECT_TRUE(location_infos[kGeoCellTowersProperty].empty());
 
   // When we deregister, the entries should go away.
   manager()->DeregisterDevice(device);
   location_infos = manager()->GetNetworksForGeolocation();
+  EXPECT_EQ(2, location_infos.size());
+  EXPECT_TRUE(base::Contains(location_infos, kGeoWifiAccessPointsProperty));
+  EXPECT_TRUE(base::Contains(location_infos, kGeoCellTowersProperty));
+  EXPECT_TRUE(location_infos[kGeoWifiAccessPointsProperty].empty());
+  EXPECT_TRUE(location_infos[kGeoCellTowersProperty].empty());
+}
+
+TEST_F(ManagerTest, WiFiGeoLocation) {
+  EXPECT_TRUE(manager()->GetWiFiNetworksForGeolocation().empty());
+
+  auto device = base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "device",
+                                                           "addr_1", 0);
+  GeolocationInfo info;
+  info["location"] = "abc";
+
+  // Manager should ignore gelocation info from technologies it does not know.
+  EXPECT_CALL(*device, technology())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(Technology::kEthernet));
+  manager()->OnDeviceGeolocationInfoUpdated(device);
+  EXPECT_TRUE(manager()->GetWiFiNetworksForGeolocation().empty());
+  Mock::VerifyAndClearExpectations(device.get());
+
+  // Manager should add WiFi geolocation info.
+  EXPECT_CALL(*device, technology())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(Technology::kWiFi));
+  EXPECT_CALL(*device, UpdateGeolocationObjects(_))
+      .WillOnce(DoDefault())
+      .WillOnce(SetArgPointee<0>(std::vector<GeolocationInfo>{info}));
+  manager()->OnDeviceGeolocationInfoUpdated(device);
+  auto location_infos = manager()->GetWiFiNetworksForGeolocation();
+  EXPECT_EQ(0, location_infos.size());
+  manager()->OnDeviceGeolocationInfoUpdated(device);
+  location_infos = manager()->GetWiFiNetworksForGeolocation();
+  EXPECT_EQ(1, location_infos.size());
+}
+
+TEST_F(ManagerTest, WiFiGeoLocation_MultipleDevices) {
+  EXPECT_TRUE(manager()->GetWiFiNetworksForGeolocation().empty());
+
+  auto device_1 = base::MakeRefCounted<NiceMock<MockDevice>>(
+      manager(), "device_1", "addr_1", 0);
+  GeolocationInfo info_1;
+  info_1["location"] = "abc";
+
+  auto device_2 = base::MakeRefCounted<NiceMock<MockDevice>>(
+      manager(), "device_2", "addr_2", 1);
+  GeolocationInfo info_2;
+  info_2["location"] = "def";
+
+  // Make both devices WiFi technology and have geolocation info.
+  EXPECT_CALL(*device_1, technology())
+      .WillRepeatedly(Return(Technology::kWiFi));
+  EXPECT_CALL(*device_1, UpdateGeolocationObjects(_))
+      .WillOnce(SetArgPointee<0>(std::vector<GeolocationInfo>{info_1}));
+  manager()->OnDeviceGeolocationInfoUpdated(device_1);
+
+  EXPECT_CALL(*device_2, technology())
+      .WillRepeatedly(Return(Technology::kWiFi));
+  EXPECT_CALL(*device_2, UpdateGeolocationObjects(_))
+      .WillOnce(SetArgPointee<0>(std::vector<GeolocationInfo>{info_2}));
+  manager()->OnDeviceGeolocationInfoUpdated(device_2);
+
+  auto location_infos = manager()->GetWiFiNetworksForGeolocation();
+  EXPECT_EQ(2, location_infos.size());
+}
+
+TEST_F(ManagerTest, WiFiGeoLocation_DeregisterDevice) {
+  EXPECT_TRUE(manager()->GetWiFiNetworksForGeolocation().empty());
+
+  auto device = base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "device",
+                                                           "addr_1", 0);
+  GeolocationInfo info;
+  info["location"] = "abc";
+  manager()->RegisterDevice(device);
+
+  EXPECT_CALL(*device, technology()).WillRepeatedly(Return(Technology::kWiFi));
+  EXPECT_CALL(*device, UpdateGeolocationObjects(_))
+      .WillOnce(SetArgPointee<0>(std::vector<GeolocationInfo>{info}));
+  manager()->OnDeviceGeolocationInfoUpdated(device);
+
+  auto location_infos = manager()->GetWiFiNetworksForGeolocation();
+  EXPECT_EQ(1, location_infos.size());
+
+  // When we deregister, the entries should go away.
+  manager()->DeregisterDevice(device);
+  location_infos = manager()->GetWiFiNetworksForGeolocation();
+  EXPECT_EQ(0, location_infos.size());
+}
+
+TEST_F(ManagerTest, CellularGeoLocation) {
+  EXPECT_TRUE(manager()->GetCellularNetworksForGeolocation().empty());
+
+  auto device = base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "device",
+                                                           "addr_1", 0);
+  GeolocationInfo info;
+  info["location"] = "abc";
+
+  // Manager should ignore gelocation info from technologies it does not know.
+  EXPECT_CALL(*device, technology())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(Technology::kEthernet));
+  manager()->OnDeviceGeolocationInfoUpdated(device);
+  EXPECT_TRUE(manager()->GetCellularNetworksForGeolocation().empty());
+  Mock::VerifyAndClearExpectations(device.get());
+
+  // Manager should add Cellular geolocation info.
+  EXPECT_CALL(*device, technology())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(Technology::kCellular));
+  EXPECT_CALL(*device, UpdateGeolocationObjects(_))
+      .WillOnce(DoDefault())
+      .WillOnce(SetArgPointee<0>(std::vector<GeolocationInfo>{info}));
+  manager()->OnDeviceGeolocationInfoUpdated(device);
+  auto location_infos = manager()->GetCellularNetworksForGeolocation();
+  EXPECT_EQ(0, location_infos.size());
+  manager()->OnDeviceGeolocationInfoUpdated(device);
+  location_infos = manager()->GetCellularNetworksForGeolocation();
+  EXPECT_EQ(1, location_infos.size());
+}
+
+TEST_F(ManagerTest, CellularGeoLocation_MultipleDevices) {
+  EXPECT_TRUE(manager()->GetCellularNetworksForGeolocation().empty());
+
+  auto device_1 = base::MakeRefCounted<NiceMock<MockDevice>>(
+      manager(), "device_1", "addr_1", 0);
+  GeolocationInfo info_1;
+  info_1["location"] = "abc";
+
+  auto device_2 = base::MakeRefCounted<NiceMock<MockDevice>>(
+      manager(), "device_2", "addr_2", 1);
+  GeolocationInfo info_2;
+  info_2["location"] = "def";
+
+  // Make both devices Cellular technology and have geolocation info.
+  EXPECT_CALL(*device_1, technology())
+      .WillRepeatedly(Return(Technology::kCellular));
+  EXPECT_CALL(*device_1, UpdateGeolocationObjects(_))
+      .WillOnce(SetArgPointee<0>(std::vector<GeolocationInfo>{info_1}));
+  manager()->OnDeviceGeolocationInfoUpdated(device_1);
+
+  EXPECT_CALL(*device_2, technology())
+      .WillRepeatedly(Return(Technology::kCellular));
+  EXPECT_CALL(*device_2, UpdateGeolocationObjects(_))
+      .WillOnce(SetArgPointee<0>(std::vector<GeolocationInfo>{info_2}));
+  manager()->OnDeviceGeolocationInfoUpdated(device_2);
+
+  auto location_infos = manager()->GetCellularNetworksForGeolocation();
+  EXPECT_EQ(2, location_infos.size());
+}
+
+TEST_F(ManagerTest, CellularGeoLocation_DeregisterDevice) {
+  EXPECT_TRUE(manager()->GetCellularNetworksForGeolocation().empty());
+
+  auto device = base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "device",
+                                                           "addr_1", 0);
+  GeolocationInfo info;
+  info["location"] = "abc";
+  manager()->RegisterDevice(device);
+
+  EXPECT_CALL(*device, technology())
+      .WillRepeatedly(Return(Technology::kCellular));
+  EXPECT_CALL(*device, UpdateGeolocationObjects(_))
+      .WillOnce(SetArgPointee<0>(std::vector<GeolocationInfo>{info}));
+  manager()->OnDeviceGeolocationInfoUpdated(device);
+
+  auto location_infos = manager()->GetCellularNetworksForGeolocation();
+  EXPECT_EQ(1, location_infos.size());
+
+  // When we deregister, the entries should go away.
+  manager()->DeregisterDevice(device);
+  location_infos = manager()->GetCellularNetworksForGeolocation();
   EXPECT_EQ(0, location_infos.size());
 }
 

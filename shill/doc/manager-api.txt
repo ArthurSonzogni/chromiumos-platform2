@@ -356,6 +356,8 @@ Methods		dict GetProperties()
 
 		dict GetNetworksForGeolocation()
 
+			Deprecated: Use Manager.GetCellularNetworksForGeolocation()
+			and Manager.GetWiFiNetworksForGeolocation() instead.
 			Returns a dictionary (array of dictionary entries)
 			containing information about visible cellular and WiFi
 			networks which may be then used for Geolocation.
@@ -370,6 +372,35 @@ Methods		dict GetProperties()
 			For more details, see:
 			https://developers.google.com/maps/documentation/business/geolocation/
 
+		dict GetCellularNetworksForGeolocation()
+
+			Returns a dictionary (array of dictionary entries)
+			containing information about visible cellular networks which
+			may be then used for Geolocation.
+			The key is a string representing cellular network type, and
+			the value itself is an array of dictionaries mapping string
+			key-value pairs. Each of these (sub) dictionaries contains
+			information about one single cellular network for
+			Geolocation.
+			If there are several cellular devices, this method will
+			return all of the information from all of the cellular
+			devices.
+			For more details, see:
+			https://developers.google.com/maps/documentation/business/geolocation/
+
+		dict GetWiFiNetworksForGeolocation()
+
+			Returns a dictionary (array of dictionary entries)
+			containing information about visible WiFi networks which may
+			be then used for Geolocation.
+			The key is a string representing WiFi network type, and the
+			value itself is an array of dictionaries mapping string
+			key-value pairs. Each of these (sub) dictionaries contains
+			information about one single WiFi network for Geolocation.
+			If there are several WiFi devices, this method will return
+			all of the information from all of the WiFi devices.
+			For more details, see:
+			https://developers.google.com/maps/documentation/business/geolocation/
 
 		boolean SetNetworkThrottlingStatus(bool enabled,
 						   uint32 upload_rate_kbits,

@@ -2604,46 +2604,61 @@ ServiceRefPtr Manager::GetFirstEthernetService() {
 
 std::map<std::string, std::vector<GeolocationInfo>>
 Manager::GetNetworksForGeolocation() const {
+  std::map<std::string, std::vector<GeolocationInfo>> geolocation_infos;
+  geolocation_infos.emplace(kGeoWifiAccessPointsProperty,
+                            GetWiFiNetworksForGeolocation());
+  geolocation_infos.emplace(kGeoCellTowersProperty,
+                            GetCellularNetworksForGeolocation());
+  return geolocation_infos;
+}
+
+std::vector<GeolocationInfo> Manager::GetWiFiNetworksForGeolocation() const {
   base::Time oldest_timestamp = base::Time::Max();
   base::Time newest_timestamp = base::Time::Min();
-  std::map<std::string, std::vector<GeolocationInfo>> geolocation_infos;
+  std::vector<GeolocationInfo> geolocation_infos;
   for (const auto& entry : device_geolocation_info_) {
     const DeviceConstRefPtr& device = entry.first;
     const std::vector<GeolocationInfo>& device_info = entry.second;
-    std::vector<GeolocationInfo>* network_geolocation_info = nullptr;
-    if (device->technology() == Technology::kWiFi) {
-      network_geolocation_info =
-          &geolocation_infos[kGeoWifiAccessPointsProperty];
-      GeolocationInfoAgeRange(device_info, &oldest_timestamp,
-                              &newest_timestamp);
-    } else if (device->technology() == Technology::kCellular) {
-      network_geolocation_info = &geolocation_infos[kGeoCellTowersProperty];
-    } else {
+    if (device->technology() != Technology::kWiFi) {
       // Ignore other technologies.
       continue;
     }
-
+    GeolocationInfoAgeRange(device_info, &oldest_timestamp, &newest_timestamp);
     // Insert new info objects, but ensure that the last seen field is
     // replaced with an age field, if it exists.
-    DCHECK(network_geolocation_info);
     std::transform(device_info.begin(), device_info.end(),
-                   std::back_inserter(*network_geolocation_info),
+                   std::back_inserter(geolocation_infos),
                    &PrepareGeolocationInfoForExport);
   }
-  if (!base::Contains(geolocation_infos, kGeoWifiAccessPointsProperty)) {
+  if (geolocation_infos.empty()) {
     LOG(INFO) << "The WiFi AP list is empty";
   } else {
-    LOG(INFO) << "The size of the WiFi AP list is "
-              << geolocation_infos[kGeoWifiAccessPointsProperty].size();
+    LOG(INFO) << "The size of the WiFi AP list is " << geolocation_infos.size();
     if (!oldest_timestamp.is_inf() && !newest_timestamp.is_inf()) {
       LOG(INFO) << "The oldest endpoint was seen at " << oldest_timestamp
                 << ", the newest endpoint was seen at " << newest_timestamp;
     }
-    for (auto geoinfo : geolocation_infos[kGeoWifiAccessPointsProperty]) {
+    for (auto geoinfo : geolocation_infos) {
       SLOG(4) << GeolocationInfoToString(geoinfo);
     }
   }
+  return geolocation_infos;
+}
 
+std::vector<GeolocationInfo> Manager::GetCellularNetworksForGeolocation()
+    const {
+  std::vector<GeolocationInfo> geolocation_infos;
+  for (const auto& entry : device_geolocation_info_) {
+    const DeviceConstRefPtr& device = entry.first;
+    const auto& device_info = entry.second;
+    if (device->technology() != Technology::kCellular) {
+      // Ignore other technologies.
+      continue;
+    }
+    std::transform(device_info.begin(), device_info.end(),
+                   std::back_inserter(geolocation_infos),
+                   &PrepareGeolocationInfoForExport);
+  }
   return geolocation_infos;
 }
 

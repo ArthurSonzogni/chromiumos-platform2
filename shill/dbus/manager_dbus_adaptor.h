@@ -113,6 +113,10 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
   bool ListDebugTags(brillo::ErrorPtr* error, std::string* tags) override;
   bool GetNetworksForGeolocation(brillo::ErrorPtr* error,
                                  brillo::VariantDictionary* networks) override;
+  bool GetWiFiNetworksForGeolocation(
+      brillo::ErrorPtr* error, brillo::VariantDictionary* networks) override;
+  bool GetCellularNetworksForGeolocation(
+      brillo::ErrorPtr* error, brillo::VariantDictionary* networks) override;
   bool ScanAndConnectToBestServices(brillo::ErrorPtr* error) override;
   bool CreateConnectivityReport(brillo::ErrorPtr* error) override;
   bool ClaimInterface(brillo::ErrorPtr* error,

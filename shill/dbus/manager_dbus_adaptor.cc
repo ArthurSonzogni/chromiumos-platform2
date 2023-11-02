@@ -384,6 +384,22 @@ bool ManagerDBusAdaptor::GetNetworksForGeolocation(
   return true;
 }
 
+bool ManagerDBusAdaptor::GetWiFiNetworksForGeolocation(
+    brillo::ErrorPtr* /*error*/, brillo::VariantDictionary* networks) {
+  SLOG(this, 2) << __func__;
+  networks->emplace(kGeoWifiAccessPointsProperty,
+                    manager_->GetWiFiNetworksForGeolocation());
+  return true;
+}
+
+bool ManagerDBusAdaptor::GetCellularNetworksForGeolocation(
+    brillo::ErrorPtr* /*error*/, brillo::VariantDictionary* networks) {
+  SLOG(this, 2) << __func__;
+  networks->emplace(kGeoCellTowersProperty,
+                    manager_->GetCellularNetworksForGeolocation());
+  return true;
+}
+
 bool ManagerDBusAdaptor::ScanAndConnectToBestServices(brillo::ErrorPtr* error) {
   SLOG(this, 2) << __func__;
   Error e;

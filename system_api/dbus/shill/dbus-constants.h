@@ -34,6 +34,10 @@ constexpr char kDisableTechnologyFunction[] = "DisableTechnology";
 constexpr char kEnableTechnologyFunction[] = "EnableTechnology";
 constexpr char kFindMatchingServiceFunction[] = "FindMatchingService";
 constexpr char kGetNetworksForGeolocation[] = "GetNetworksForGeolocation";
+constexpr char kGetCellularNetworksForGeolocation[] =
+    "GetCellularNetworksForGeolocation";
+constexpr char kGetWiFiNetworksForGeolocation[] =
+    "GetWiFiNetworksForGeolocation";
 constexpr char kGetServiceFunction[] = "GetService";
 constexpr char kSetLOHSEnabledFunction[] = "SetLOHSEnabled";
 constexpr char kRequestScanFunction[] = "RequestScan";
