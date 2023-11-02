@@ -9,13 +9,10 @@ group("all") {
     ":install_headers",
     ":libmems",
     ":libmems_pkg_config",
+    ":libmems_test_support",
   ]
   if (use.test) {
-    deps += [
-      ":libmems_test_support",
-      ":libmems_test_support_pkg_config",
-      ":libmems_testrunner",
-    ]
+    deps += [ ":libmems_testrunner" ]
   }
 }
 
@@ -67,27 +64,25 @@ generate_pkg_config("libmems_pkg_config") {
   install = true
 }
 
+shared_library("libmems_test_support") {
+  sources = [ "test_fakes.cc" ]
+  configs += [ ":target_defaults_pkg_deps" ]
+  install_path = "/build/lib"
+  deps = [
+    ":libmems",
+    ":libmems_test_support_pkg_config",
+  ]
+}
+
+generate_pkg_config("libmems_test_support_pkg_config") {
+  name = "libmems_test_support"
+  description = "MEMS support library test helpers"
+  version = "0.1"
+  libs = [ "-lmems_test_support" ]
+  install = true
+}
+
 if (use.test) {
-  shared_library("libmems_test_support") {
-    sources = [ "test_fakes.cc" ]
-    configs += [ ":target_defaults_pkg_deps" ]
-    install_path = "lib"
-    deps = [ ":libmems" ]
-  }
-
-  generate_pkg_config("libmems_test_support_pkg_config") {
-    name = "libmems_test_support"
-    description = "MEMS support library test helpers"
-    version = "0.1"
-    libs = [ "-lmems_test_support" ]
-    install = true
-  }
-
-  install_config("install_test_pkg_config") {
-    sources = [ "libmems_test_support.pc" ]
-    install_path = "${libdir}/pkgconfig"
-  }
-
   pkg_config("libmems_testrunner_pkg_deps") {
     pkg_deps = [
       "libbrillo-test",
