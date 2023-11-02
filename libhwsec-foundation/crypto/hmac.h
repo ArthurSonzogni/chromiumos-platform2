@@ -17,11 +17,15 @@ brillo::SecureBlob HWSEC_FOUNDATION_EXPORT
 HmacSha512(const brillo::SecureBlob& key, const brillo::Blob& data);
 brillo::SecureBlob HWSEC_FOUNDATION_EXPORT
 HmacSha512(const brillo::SecureBlob& key, const brillo::SecureBlob& data);
+brillo::SecureBlob HWSEC_FOUNDATION_EXPORT
+HmacSha512Kdf(const brillo::Blob& salt, const brillo::SecureBlob& data);
 
 brillo::SecureBlob HWSEC_FOUNDATION_EXPORT
 HmacSha256(const brillo::SecureBlob& key, const brillo::Blob& data);
 brillo::SecureBlob HWSEC_FOUNDATION_EXPORT
 HmacSha256(const brillo::SecureBlob& key, const brillo::SecureBlob& data);
+brillo::SecureBlob HWSEC_FOUNDATION_EXPORT
+HmacSha256Kdf(const brillo::Blob& salt, const brillo::SecureBlob& data);
 
 }  // namespace hwsec_foundation
 
