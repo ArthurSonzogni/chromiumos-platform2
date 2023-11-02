@@ -9,15 +9,10 @@ group("all") {
   deps = [
     ":install_libcrossystem_headers",
     ":libcrossystem",
+    ":libcrossystem-test",
     ":libcrossystem_pc",
     ":libcrossystem_static",
   ]
-  if (use.test || use.fuzzer) {
-    deps += [
-      ":libcrossystem-test",
-      ":libcrossystem-test_pc",
-    ]
-  }
   if (use.test) {
     deps += [ ":libcrossystem_tests" ]
   }
@@ -75,7 +70,11 @@ shared_library("libcrossystem-test") {
   sources = [ "crossystem_fake.cc" ]
   configs += [ ":target_defaults_pkg_deps" ]
   deps = [ ":libcrossystem-test_pc" ]
-  install_path = "lib"
+  if (use.cros_host) {
+    install_path = "lib"
+  } else {
+    install_path = "/build/lib"
+  }
 }
 
 generate_pkg_config("libcrossystem_pc") {
