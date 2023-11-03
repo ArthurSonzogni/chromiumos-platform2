@@ -194,7 +194,6 @@ _IUSE = [
     "udev",
     "usb",
     "user_session_isolation",
-    "uss_migration",
     "v4l2_codec",
     "vaapi",
     "video_cards_msm",
