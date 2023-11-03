@@ -5,11 +5,15 @@
 #include <memory>
 #include <utility>
 
+#include <base/base64.h>
 #include <base/dcheck_is_on.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/test/bind.h>
+#include <brillo/compression/compressor_interface.h>
+#include <brillo/compression/mock_compressor.h>
+#include <brillo/strings/string_utils.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
@@ -31,6 +35,14 @@ using ::testing::StrictMock;
 namespace featured {
 
 namespace {
+const char kTestData[] = "test";
+// base64-encoded string of kTestData.
+const char kTestEncodedData[] = "dGVzdA==";
+
+const char kTestDifferentData[] = "different";
+// base64-encoded string of kTestDifferentData.
+const char kTestDifferentEncodedData[] = "ZGlmZmVyZW50";
+
 void ResponseSenderCallback(const std::string& expected_message,
                             std::unique_ptr<dbus::Response> response) {
   EXPECT_EQ(expected_message, response->ToString());
@@ -647,8 +659,12 @@ class DbusFeaturedServiceTestBase : public testing::Test {
     // will take ownership.
     mock_store_impl_ = mock_store_impl.get();
     mock_tmp_storage_impl_ = mock_tmp_storage_impl.get();
+    std::unique_ptr<brillo::MockCompressor> mock_decompressor =
+        std::make_unique<brillo::MockCompressor>();
+    mock_decompressor_ = mock_decompressor.get();
     service_ = std::make_shared<DbusFeaturedService>(
-        std::move(mock_store_impl), std::move(mock_tmp_storage_impl));
+        std::move(mock_store_impl), std::move(mock_tmp_storage_impl),
+        std::move(mock_decompressor));
 
     ON_CALL(*mock_bus_, GetExportedObject(_))
         .WillByDefault(Return(mock_exported_object_.get()));
@@ -678,6 +694,7 @@ class DbusFeaturedServiceTestBase : public testing::Test {
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
   MockStoreImpl* mock_store_impl_;
   MockTmpStorageImpl* mock_tmp_storage_impl_;
+  brillo::MockCompressor* mock_decompressor_;
   std::shared_ptr<DbusFeaturedService> service_;
 };
 
@@ -719,16 +736,20 @@ reply_serial: 123
 )--";
 
   SeedDetails used;
-  used.set_compressed_data("fake");
+  used.set_b64_compressed_data(kTestEncodedData);
   EXPECT_CALL(*mock_tmp_storage_impl_, GetUsedSeedDetails())
       .WillOnce(Return(used));
   EXPECT_CALL(*mock_store_impl_, SetLastGoodSeed(_)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_decompressor_, Process(_, _))
+      .Times(2)
+      .WillRepeatedly(
+          Return(brillo::string_utils::GetStringAsBytes(kTestData)));
 
   dbus::MethodCall method_call("com.example.Interface", "SomeMethod");
   dbus::MessageWriter writer(&method_call);
   // Should match |used|.
   SeedDetails seed;
-  seed.set_compressed_data("fake");
+  seed.set_b64_compressed_data(kTestEncodedData);
   writer.AppendProtoAsArrayOfBytes(seed);
   // Not setting the serial causes a crash.
   method_call.SetSerial(123);
@@ -746,16 +767,20 @@ reply_serial: 123
 )--";
 
   SeedDetails used;
-  used.set_compressed_data("fake");
+  used.set_b64_compressed_data(kTestEncodedData);
   EXPECT_CALL(*mock_tmp_storage_impl_, GetUsedSeedDetails())
       .WillOnce(Return(used));
   EXPECT_CALL(*mock_store_impl_, SetLastGoodSeed(_)).Times(0);
+  EXPECT_CALL(*mock_decompressor_, Process(_, _))
+      .WillOnce(Return(brillo::string_utils::GetStringAsBytes(kTestData)))
+      .WillOnce(
+          Return(brillo::string_utils::GetStringAsBytes(kTestDifferentData)));
 
   dbus::MethodCall method_call("com.example.Interface", "SomeMethod");
   dbus::MessageWriter writer(&method_call);
   // Should be different than |used|.
   SeedDetails seed;
-  seed.set_compressed_data("different");
+  seed.set_b64_compressed_data(kTestDifferentEncodedData);
   writer.AppendProtoAsArrayOfBytes(seed);
   // Not setting the serial causes a crash.
   method_call.SetSerial(123);

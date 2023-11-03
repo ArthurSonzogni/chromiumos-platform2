@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <brillo/compression/compressor_interface.h>
+#include <brillo/compression/zlib_compressor.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/flag_helper.h>
 #include <brillo/message_loops/message_loop.h>
@@ -51,13 +53,24 @@ int main(int argc, char** argv) {
     LOG(ERROR) << "Could not create StoreImpl instance.";
     return EX_UNAVAILABLE;
   }
+
   std::unique_ptr<featured::TmpStorageInterface> tmp_storage_impl(nullptr);
   if (store) {
     tmp_storage_impl = std::make_unique<featured::TmpStorageImpl>();
   }
+
+  std::unique_ptr<brillo::CompressorInterface> decompressor =
+      std::make_unique<brillo::ZlibDecompressor>(
+          brillo::ZlibDecompressor::InflateFormat::Gzip);
+  if (!decompressor->Initialize()) {
+    LOG(ERROR) << "Could not initialize ZlibDecompressor instance.";
+    return EX_UNAVAILABLE;
+  }
+
   std::shared_ptr<featured::DbusFeaturedService> service =
       std::make_shared<featured::DbusFeaturedService>(
-          std::move(store), std::move(tmp_storage_impl));
+          std::move(store), std::move(tmp_storage_impl),
+          std::move(decompressor));
 
   CHECK(service->Start(bus.get(), service)) << "Failed to start featured!";
 

@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include <base/base64.h>
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -18,6 +19,8 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/compression/compressor_interface.h>
+#include <brillo/strings/string_utils.h>
 #include <build/build_config.h>
 #include <build/buildflag.h>
 #include <featured/proto_bindings/featured.pb.h>
@@ -367,9 +370,33 @@ void OnSignalConnected(const std::string& interface,
   }
 }
 
-// Compare two SeedDetails protos for equality.
-bool SeedsEqual(const SeedDetails& a, const SeedDetails& b) {
-  if (a.compressed_data() != b.compressed_data()) {
+bool DbusFeaturedService::CompressedDataEquals(const std::string& a,
+                                               const std::string& b) {
+  std::string decoded_a;
+  std::string decoded_b;
+
+  if (!base::Base64Decode(a, &decoded_a)) {
+    LOG(ERROR) << "Failed to decode base-64-encoded-string \"a\"";
+    return false;
+  }
+  if (!base::Base64Decode(b, &decoded_b)) {
+    LOG(ERROR) << "Failed to decode base-64-encoded string \"b\"";
+    return false;
+  }
+
+  std::optional<std::vector<uint8_t>> uncompressed_a = decompressor_->Process(
+      brillo::string_utils::GetStringAsBytes(decoded_a), /*flush=*/true);
+  std::optional<std::vector<uint8_t>> uncompressed_b = decompressor_->Process(
+      brillo::string_utils::GetStringAsBytes(decoded_b), /*flush=*/true);
+
+  return uncompressed_a == uncompressed_b;
+}
+
+bool DbusFeaturedService::SeedsEqual(const SeedDetails& a,
+                                     const SeedDetails& b) {
+  bool compressed_data_equals =
+      CompressedDataEquals(a.b64_compressed_data(), b.b64_compressed_data());
+  if (!compressed_data_equals) {
     return false;
   }
   if (a.locale() != b.locale()) {

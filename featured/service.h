@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/memory/weak_ptr.h>
 #include <base/values.h>
+#include <brillo/compression/compressor_interface.h>
 #include <brillo/dbus/exported_object_manager.h>
 #include <brillo/dbus/exported_property_set.h>
 #include <brillo/dbus/dbus_method_response.h>
@@ -202,11 +203,14 @@ class JsonFeatureParser : public FeatureParserBase {
 
 class DbusFeaturedService {
  public:
-  explicit DbusFeaturedService(std::unique_ptr<StoreInterface> store,
-                               std::unique_ptr<TmpStorageInterface> tmp_storage)
+  explicit DbusFeaturedService(
+      std::unique_ptr<StoreInterface> store,
+      std::unique_ptr<TmpStorageInterface> tmp_storage,
+      std::unique_ptr<brillo::CompressorInterface> decompressor)
       : parser_(std::make_unique<JsonFeatureParser>()),
         store_(std::move(store)),
-        tmp_storage_(std::move(tmp_storage)) {}
+        tmp_storage_(std::move(tmp_storage)),
+        decompressor_(std::move(decompressor)) {}
   DbusFeaturedService(const DbusFeaturedService&) = delete;
   DbusFeaturedService& operator=(const DbusFeaturedService&) = delete;
 
@@ -226,6 +230,12 @@ class DbusFeaturedService {
 
   void OnSessionStateChanged(const std::string& state);
 
+  // Compares two SeedDetails::b64_compressed_data proto fields for equality.
+  bool CompressedDataEquals(const std::string& a, const std::string& b);
+
+  // Compares two SeedDetails protos for equality.
+  bool SeedsEqual(const SeedDetails& a, const SeedDetails& b);
+
   // Save fetched finch seed from Chrome to disk.
   void HandleSeedFetched(dbus::MethodCall* method_call,
                          dbus::ExportedObject::ResponseSender sender);
@@ -233,6 +243,8 @@ class DbusFeaturedService {
   std::unique_ptr<FeatureParserBase> parser_;
   std::unique_ptr<StoreInterface> store_;
   std::unique_ptr<TmpStorageInterface> tmp_storage_;
+  // To decompress the safe seed sent from Chrome.
+  std::unique_ptr<brillo::CompressorInterface> decompressor_;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
       session_manager_ = nullptr;
   bool evaluated_platform_features_json_ = false;

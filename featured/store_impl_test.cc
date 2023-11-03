@@ -36,6 +36,9 @@ MATCHER_P(EqualsProto,
 constexpr char kInitialBootKey[] = "01234567890123456789012345678901";
 constexpr char kCorruptFileContent[] = "test_corrupted_data";
 
+// base64-encoded string of "test".
+const char kTestEncodedData[] = "dGVzdA==";
+
 class StoreImplTest : public testing::Test {
  public:
   StoreImplTest()
@@ -63,7 +66,7 @@ class StoreImplTest : public testing::Test {
   void InitializeStore(Store& store) {
     store.set_boot_attempts_since_last_seed_update(0);
     SeedDetails* seed = store.mutable_last_good_seed();
-    seed->set_compressed_data("test_compressed_data");
+    seed->set_b64_compressed_data(kTestEncodedData);
     seed->set_date(1);
     seed->set_fetch_time(1);
     seed->set_locale("test_locale");
@@ -383,7 +386,7 @@ TEST_F(StoreImplTest, UpdateSeed_Success) {
               EqualsProto(seed));  // Check for empty seed.
 
   // Update seed.
-  seed.set_compressed_data("test_compressed_data");
+  seed.set_b64_compressed_data(kTestEncodedData);
   EXPECT_TRUE(store_interface->SetLastGoodSeed(seed));
   EXPECT_THAT(store_interface->GetLastGoodSeed(), EqualsProto(seed));
 
@@ -409,7 +412,7 @@ TEST_F(StoreImplTest, UpdateSeed_Failure_StoreWrongPermissions) {
 
   // Update seed.
   SeedDetails seed;
-  seed.set_compressed_data("test_compressed_data");
+  seed.set_b64_compressed_data(kTestEncodedData);
   EXPECT_FALSE(store_interface->SetLastGoodSeed(seed));
 }
 }  // namespace featured
