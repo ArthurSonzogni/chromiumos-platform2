@@ -51,6 +51,7 @@ using ::hwsec_foundation::CreateRandomBlob;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::DeriveSecretsScrypt;
 using ::hwsec_foundation::HmacSha256;
+using ::hwsec_foundation::HmacSha256Kdf;
 using ::hwsec_foundation::kAesBlockSize;
 using ::hwsec_foundation::kDefaultAesKeySize;
 using ::hwsec_foundation::Sha256;
@@ -193,8 +194,6 @@ void PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   pin_auth_state.reset_salt = auth_input.reset_salt.has_value()
                                   ? auth_input.reset_salt.value()
                                   : CreateRandomBlob(kAesBlockSize);
-  auto secure_reset_salt = brillo::SecureBlob(
-      pin_auth_state.reset_salt->begin(), pin_auth_state.reset_salt->end());
   brillo::SecureBlob reset_secret;
   if (auth_input.reset_secret.has_value()) {
     // This case be used for USS as we do not have the concept of reset seed and
@@ -208,7 +207,8 @@ void PinWeaverAuthBlock::Create(const AuthInput& auth_input,
     // world.
     LOG(INFO) << "PinWeaverAuthBlock: ResetSecret is derived from the "
                  "reset_seed and passed to KeyBlobs.";
-    reset_secret = HmacSha256(secure_reset_salt, auth_input.reset_seed.value());
+    reset_secret = HmacSha256Kdf(pin_auth_state.reset_salt.value(),
+                                 auth_input.reset_seed.value());
   }
 
   brillo::SecureBlob le_secret(kDefaultSecretSize);
