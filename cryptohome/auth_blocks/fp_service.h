@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/functional/callback.h>
+#include <base/memory/weak_ptr.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/auth_blocks/prepare_token.h"
@@ -102,6 +103,9 @@ class FingerprintAuthBlockService {
   // A callback to send cryptohome ScanResult signal.
   base::RepeatingCallback<void(user_data_auth::FingerprintScanResult)>
       signal_sender_;
+
+  // The last member, to invalidate weak references first on destruction.
+  base::WeakPtrFactory<FingerprintAuthBlockService> weak_factory_{this};
 };
 
 // Implementation of the credential verifier API. Acts as a simple wrapper

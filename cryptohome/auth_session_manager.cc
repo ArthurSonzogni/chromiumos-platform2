@@ -82,7 +82,7 @@ InUseAuthSession AuthSessionManager::AddAuthSession(
   // should always outlive all of the sessions it owns.
   in_use->AddOnAuthCallback(
       base::BindOnce(&AuthSessionManager::SessionOnAuthCallback,
-                     base::Unretained(this), token));
+                     weak_factory_.GetWeakPtr(), token));
 
   // Set the AuthFactorStatusUpdate signal handler to the auth session.
   if (auth_factor_status_update_callback_) {
@@ -162,7 +162,7 @@ void AuthSessionManager::ResetExpirationTimer() {
     expiration_timer_.Start(
         FROM_HERE, expiration_map_.cbegin()->first,
         base::BindOnce(&AuthSessionManager::ExpireAuthSessions,
-                       base::Unretained(this)));
+                       weak_factory_.GetWeakPtr()));
   }
 }
 

@@ -11,6 +11,7 @@
 #include <string>
 #include <string_view>
 
+#include <base/memory/weak_ptr.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
@@ -112,6 +113,9 @@ class AuthFactorManager final {
 
   // Unowned pointer that must outlive this object.
   Platform* const platform_;
+
+  // The last member, to invalidate weak references first on destruction.
+  base::WeakPtrFactory<AuthFactorManager> weak_factory_{this};
 };
 
 }  // namespace cryptohome

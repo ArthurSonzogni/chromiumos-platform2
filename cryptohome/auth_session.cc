@@ -606,7 +606,7 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
       auth_factor_status_update_timer_->Start(
           FROM_HERE, base::Time::Now() + next_signal_delay,
           base::BindOnce(&AuthSession::SendAuthFactorStatusUpdateSignal,
-                         base::Unretained(this)));
+                         weak_factory_.GetWeakPtr()));
     }
   }
 }
@@ -1472,7 +1472,7 @@ void AuthSession::AuthForDecrypt::RemoveAuthFactor(
     session_->RemoveAuthFactorViaUserSecretStash(
         auth_factor_label, stored_auth_factor->auth_factor(),
         base::BindOnce(&AuthSession::ClearAuthFactorInMemoryObjects,
-                       base::Unretained(session_), auth_factor_label,
+                       session_->weak_factory_.GetWeakPtr(), auth_factor_label,
                        *stored_auth_factor, remove_timer_start,
                        std::move(on_done)));
     return;
@@ -1593,7 +1593,7 @@ void AuthSession::RemoveAuthFactorViaUserSecretStash(
   auth_factor_manager_->RemoveAuthFactor(
       obfuscated_username_, auth_factor, auth_block_utility_,
       base::BindOnce(&AuthSession::ResaveUssWithFactorRemoved,
-                     base::Unretained(this), auth_factor_label, auth_factor,
+                     weak_factory_.GetWeakPtr(), auth_factor_label, auth_factor,
                      std::move(on_done)));
 }
 
@@ -1825,7 +1825,7 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
   auth_factor_manager_->UpdateAuthFactor(
       obfuscated_username_, auth_factor_label, auth_factor, auth_block_utility_,
       base::BindOnce(
-          &AuthSession::ResaveUssWithFactorUpdated, base::Unretained(this),
+          &AuthSession::ResaveUssWithFactorUpdated, weak_factory_.GetWeakPtr(),
           auth_factor_type, auth_factor, std::move(key_blobs), auth_input,
           std::move(auth_session_performance_timer), std::move(on_done)));
 }
@@ -2840,9 +2840,9 @@ AuthBlockType AuthSession::ResaveVaultKeysetIfNeeded(
                           .challenge_credential_auth_input = std::nullopt,
                           .fingerprint_auth_input = std::nullopt};
 
-  AuthBlock::CreateCallback create_callback =
-      base::BindOnce(&AuthSession::ResaveKeysetOnKeyBlobsGenerated,
-                     base::Unretained(this), std::move(updated_vault_keyset));
+  AuthBlock::CreateCallback create_callback = base::BindOnce(
+      &AuthSession::ResaveKeysetOnKeyBlobsGenerated, weak_factory_.GetWeakPtr(),
+      std::move(updated_vault_keyset));
   auth_block_utility_->CreateKeyBlobsWithAuthBlock(
       out_auth_block_type.value(), auth_input,
       /*CreateCallback*/ std::move(create_callback));

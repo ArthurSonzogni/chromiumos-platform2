@@ -364,8 +364,8 @@ void AuthFactorManager::RemoveAuthFactor(
   auth_block_utility->PrepareAuthBlockForRemoval(
       obfuscated_username, auth_factor.auth_block_state(),
       base::BindOnce(&AuthFactorManager::RemoveAuthFactorFiles,
-                     base::Unretained(this), obfuscated_username, auth_factor,
-                     std::move(callback)));
+                     weak_factory_.GetWeakPtr(), obfuscated_username,
+                     auth_factor, std::move(callback)));
 }
 
 void AuthFactorManager::UpdateAuthFactor(
@@ -410,8 +410,8 @@ void AuthFactorManager::UpdateAuthFactor(
   auth_block_utility->PrepareAuthBlockForRemoval(
       obfuscated_username, existing_auth_factor->auth_block_state(),
       base::BindOnce(&AuthFactorManager::LogPrepareForRemovalStatus,
-                     base::Unretained(this), obfuscated_username, auth_factor,
-                     std::move(callback)));
+                     weak_factory_.GetWeakPtr(), obfuscated_username,
+                     auth_factor, std::move(callback)));
 }
 
 void AuthFactorManager::RemoveAuthFactorFiles(

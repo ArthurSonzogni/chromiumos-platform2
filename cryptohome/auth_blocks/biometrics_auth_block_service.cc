@@ -38,12 +38,14 @@ BiometricsAuthBlockService::BiometricsAuthBlockService(
       enroll_signal_sender_(enroll_signal_sender),
       auth_signal_sender_(auth_signal_sender) {
   // Unretained is safe here because processor_ is owned by this.
-  processor_->SetEnrollScanDoneCallback(base::BindRepeating(
-      &BiometricsAuthBlockService::OnEnrollScanDone, base::Unretained(this)));
+  processor_->SetEnrollScanDoneCallback(
+      base::BindRepeating(&BiometricsAuthBlockService::OnEnrollScanDone,
+                          weak_factory_.GetWeakPtr()));
   processor_->SetAuthScanDoneCallback(base::BindRepeating(
-      &BiometricsAuthBlockService::OnAuthScanDone, base::Unretained(this)));
-  processor_->SetSessionFailedCallback(base::BindRepeating(
-      &BiometricsAuthBlockService::OnSessionFailed, base::Unretained(this)));
+      &BiometricsAuthBlockService::OnAuthScanDone, weak_factory_.GetWeakPtr()));
+  processor_->SetSessionFailedCallback(
+      base::BindRepeating(&BiometricsAuthBlockService::OnSessionFailed,
+                          weak_factory_.GetWeakPtr()));
 }
 
 bool BiometricsAuthBlockService::IsReady() {
@@ -69,7 +71,7 @@ void BiometricsAuthBlockService::StartEnrollSession(
                               std::move(obfuscated_username));
   processor_->StartEnrollSession(
       base::BindOnce(&BiometricsAuthBlockService::CheckSessionStartResult,
-                     base::Unretained(this), std::move(on_done)));
+                     weak_factory_.GetWeakPtr(), std::move(on_done)));
 }
 
 void BiometricsAuthBlockService::CreateCredential(OperationInput payload,
@@ -116,7 +118,7 @@ void BiometricsAuthBlockService::StartAuthenticateSession(
   processor_->StartAuthenticateSession(
       std::move(obfuscated_username),
       base::BindOnce(&BiometricsAuthBlockService::CheckSessionStartResult,
-                     base::Unretained(this), std::move(on_done)));
+                     weak_factory_.GetWeakPtr(), std::move(on_done)));
 }
 
 void BiometricsAuthBlockService::MatchCredential(OperationInput payload,
@@ -134,7 +136,7 @@ void BiometricsAuthBlockService::MatchCredential(OperationInput payload,
   processor_->MatchCredential(
       std::move(payload),
       base::BindOnce(&BiometricsAuthBlockService::OnMatchCredentialResponse,
-                     base::Unretained(this), std::move(on_done)));
+                     weak_factory_.GetWeakPtr(), std::move(on_done)));
 }
 
 void BiometricsAuthBlockService::EndAuthenticateSession() {
@@ -296,7 +298,7 @@ void BiometricsAuthBlockService::OnMatchCredentialResponse(
   processor_->StartAuthenticateSession(
       active_token_->user_id(),
       base::BindOnce(&BiometricsAuthBlockService::OnSessionRestartResult,
-                     base::Unretained(this), std::move(callback),
+                     weak_factory_.GetWeakPtr(), std::move(callback),
                      std::move(resp)));
 }
 

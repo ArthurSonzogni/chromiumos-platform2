@@ -10,6 +10,7 @@
 #include <string>
 
 #include <base/functional/callback.h>
+#include <base/memory/weak_ptr.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
@@ -173,6 +174,9 @@ class BiometricsAuthBlockService {
   // A callback to send cryptohome AuthScanDone signal.
   base::RepeatingCallback<void(user_data_auth::AuthScanDone)>
       auth_signal_sender_;
+
+  // The last member, to invalidate weak references first on destruction.
+  base::WeakPtrFactory<BiometricsAuthBlockService> weak_factory_{this};
 };
 
 }  // namespace cryptohome

@@ -10,6 +10,7 @@
 #include <queue>
 #include <string>
 
+#include <base/memory/weak_ptr.h>
 #include <base/time/clock.h>
 #include <base/time/tick_clock.h>
 #include <base/time/time.h>
@@ -147,6 +148,9 @@ class AuthSessionManager {
   std::multimap<base::Time, base::UnguessableToken> expiration_map_;
   const base::Clock* clock_;
   base::WallClockTimer expiration_timer_;
+
+  // The last member, to invalidate weak references first on destruction.
+  base::WeakPtrFactory<AuthSessionManager> weak_factory_{this};
 };
 
 // The InUseAuthSession class is a wrapper around AuthSession that indicates

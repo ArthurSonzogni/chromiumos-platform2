@@ -12,6 +12,7 @@
 #include <string>
 
 #include <base/functional/callback.h>
+#include <base/memory/weak_ptr.h>
 #include <biod/biod_proxy/auth_stack_manager_proxy_base.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/secure_blob.h>
@@ -104,6 +105,9 @@ class BiometricsCommandProcessorImpl : public BiometricsCommandProcessor {
   // When the count is zero, this command processor is in ready state for
   // commands.
   int pending_signal_connections_;
+
+  // The last member, to invalidate weak references first on destruction.
+  base::WeakPtrFactory<BiometricsCommandProcessorImpl> weak_factory_{this};
 };
 
 }  // namespace cryptohome

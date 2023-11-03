@@ -75,7 +75,7 @@ void FingerprintAuthBlockService::CheckSessionStartResult(
 
   std::move(clear_active_token).Cancel();
   fp_manager_->SetSignalCallback(base::BindRepeating(
-      &FingerprintAuthBlockService::Capture, base::Unretained(this)));
+      &FingerprintAuthBlockService::Capture, weak_factory_.GetWeakPtr()));
   token->AttachToService(this);
   std::move(on_done).Run(std::move(token));
 }
@@ -162,7 +162,7 @@ void FingerprintAuthBlockService::Start(
   fp_manager_->StartAuthSessionAsyncForUser(
       obfuscated_username,
       base::BindOnce(&FingerprintAuthBlockService::CheckSessionStartResult,
-                     base::Unretained(this), std::move(token),
+                     weak_factory_.GetWeakPtr(), std::move(token),
                      std::move(on_done)));
 }
 

@@ -261,9 +261,10 @@ void FingerprintManager::StartAuthSessionAsyncForUser(
   // Wrapper callback around the client's callback for starting auth session,
   // so that we can set |current_user_| in addition to running the client's
   // callback.
-  auto auth_session_start_callback = base::BindOnce(
-      &FingerprintManager::SetUserAndRunClientCallback, base::Unretained(this),
-      std::move(auth_session_start_client_callback), user);
+  auto auth_session_start_callback =
+      base::BindOnce(&FingerprintManager::SetUserAndRunClientCallback,
+                     weak_factory_.GetWeakPtr(),
+                     std::move(auth_session_start_client_callback), user);
 
   proxy_->StartAuthSessionAsync(std::move(auth_session_start_callback));
 }

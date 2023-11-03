@@ -350,19 +350,19 @@ BiometricsCommandProcessorImpl::BiometricsCommandProcessorImpl(
   pending_signal_connections_ = 3;
   proxy_->ConnectToEnrollScanDoneSignal(
       base::BindRepeating(&BiometricsCommandProcessorImpl::OnEnrollScanDone,
-                          base::Unretained(this)),
+                          weak_factory_.GetWeakPtr()),
       base::BindOnce(&BiometricsCommandProcessorImpl::OnSignalConnected,
-                     base::Unretained(this)));
+                     weak_factory_.GetWeakPtr()));
   proxy_->ConnectToAuthScanDoneSignal(
       base::BindRepeating(&BiometricsCommandProcessorImpl::OnAuthScanDone,
-                          base::Unretained(this)),
+                          weak_factory_.GetWeakPtr()),
       base::BindOnce(&BiometricsCommandProcessorImpl::OnSignalConnected,
-                     base::Unretained(this)));
+                     weak_factory_.GetWeakPtr()));
   proxy_->ConnectToSessionFailedSignal(
       base::BindRepeating(&BiometricsCommandProcessorImpl::OnSessionFailed,
-                          base::Unretained(this)),
+                          weak_factory_.GetWeakPtr()),
       base::BindOnce(&BiometricsCommandProcessorImpl::OnSignalConnected,
-                     base::Unretained(this)));
+                     weak_factory_.GetWeakPtr()));
 }
 
 bool BiometricsCommandProcessorImpl::IsReady() {
@@ -431,7 +431,7 @@ void BiometricsCommandProcessorImpl::CreateCredential(
   proxy_->CreateCredential(
       request,
       base::BindOnce(&BiometricsCommandProcessorImpl::OnCreateCredentialReply,
-                     base::Unretained(this), std::move(on_done),
+                     weak_factory_.GetWeakPtr(), std::move(on_done),
                      std::move(*key)));
 }
 
@@ -467,7 +467,7 @@ void BiometricsCommandProcessorImpl::MatchCredential(
       request,
       base::BindOnce(
           &BiometricsCommandProcessorImpl::OnAuthenticateCredentialReply,
-          base::Unretained(this), std::move(on_done), std::move(*key)));
+          weak_factory_.GetWeakPtr(), std::move(on_done), std::move(*key)));
 }
 
 void BiometricsCommandProcessorImpl::EndEnrollSession() {
@@ -489,7 +489,7 @@ void BiometricsCommandProcessorImpl::DeleteCredential(
   proxy_->DeleteCredential(
       request,
       base::BindOnce(&BiometricsCommandProcessorImpl::OnDeleteCredentialReply,
-                     base::Unretained(this), std::move(on_done)));
+                     weak_factory_.GetWeakPtr(), std::move(on_done)));
 }
 
 void BiometricsCommandProcessorImpl::OnSignalConnected(

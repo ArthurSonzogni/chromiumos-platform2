@@ -109,7 +109,7 @@ void SmartCardVerifier::VerifyAsync(const AuthInput& auth_input,
       std::move(auth_input.username), std::move(public_key_info),
       std::move(key_challenge_service),
       base::BindOnce(&SmartCardVerifier::OnVerifyContinue,
-                     base::Unretained(this), std::move(callback)));
+                     weak_factory_.GetWeakPtr(), std::move(callback)));
 }
 
 void SmartCardVerifier::OnVerifyContinue(StatusCallback callback,
