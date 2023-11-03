@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_scanning.h"
+
 #include <memory>
 #include <optional>
 #include <utility>
@@ -17,7 +19,6 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_scanning.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_bluez_controller.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -52,18 +53,20 @@ class BluetoothScanningRoutineTest : public testing::Test {
     return mock_context_.fake_bluez_event_hub();
   }
 
+  void SetUpGetAdaptersCall(
+      const std::vector<org::bluez::Adapter1ProxyInterface*>& adapters) {
+    EXPECT_CALL(*mock_context_.mock_bluez_controller(), GetAdapters())
+        .WillOnce(Return(adapters));
+  }
+
   void SetUpRoutine(const std::optional<base::TimeDelta>& exec_duration) {
-    EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
-        .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
-            &mock_adapter_proxy_}));
+    SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
     routine_ = std::make_unique<BluetoothScanningRoutine>(&mock_context_,
                                                           exec_duration);
   }
 
   void SetUpNullAdapter() {
-    EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
-        .WillOnce(
-            Return(std::vector<org::bluez::Adapter1ProxyInterface*>{nullptr}));
+    SetUpGetAdaptersCall(/*adapters=*/{nullptr});
     routine_ = std::make_unique<BluetoothScanningRoutine>(&mock_context_,
                                                           std::nullopt);
   }
@@ -229,6 +232,7 @@ TEST_F(BluetoothScanningRoutineTest, RoutineSuccess) {
   // Start scanning.
   SetSwitchDiscoveryCall();
   // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
@@ -250,6 +254,7 @@ TEST_F(BluetoothScanningRoutineTest, RoutineSuccessNoDevices) {
   // Start scanning.
   SetSwitchDiscoveryCall();
   // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
@@ -270,6 +275,7 @@ TEST_F(BluetoothScanningRoutineTest, FailedPowerOnAdapter) {
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true,
                        /*is_success=*/false);
   // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
@@ -289,6 +295,7 @@ TEST_F(BluetoothScanningRoutineTest, FailedStartDiscovery) {
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<1>(nullptr));
   // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
@@ -311,6 +318,7 @@ TEST_F(BluetoothScanningRoutineTest, FailedStopDiscovery) {
   EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<1>(nullptr));
   // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
@@ -338,8 +346,6 @@ TEST_F(BluetoothScanningRoutineTest, PreCheckFailed) {
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   // The adapter is in discovery mode.
   EXPECT_CALL(mock_adapter_proxy_, discovering()).WillOnce(Return(true));
-  // Reset powered.
-  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/true);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
@@ -357,6 +363,7 @@ TEST_F(BluetoothScanningRoutineTest, RoutineTimeoutOccurred) {
   // Start discovery.
   EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _));
   // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();

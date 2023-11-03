@@ -5,7 +5,6 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_BASE_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_BASE_H_
 
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -14,7 +13,7 @@
 
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxies.h"
-#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom-forward.h"
 
 namespace diagnostics {
 
@@ -41,9 +40,6 @@ class BluetoothRoutineBase {
           void(ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status,
                const std::string& error_message)> on_failed);
 
-  // Set the adapter powered state back to |initial_powered_state_|.
-  void ResetPoweredState();
-
  protected:
   // Unowned pointer that should outlive this instance.
   Context* const context_;
@@ -51,12 +47,13 @@ class BluetoothRoutineBase {
   base::TimeTicks start_ticks_;
   // The callback will be unregistered when the subscription is destructured.
   std::vector<base::CallbackListSubscription> event_subscriptions_;
+  // A callback that should be run regardless of the execution status. This
+  // callback will reset the adapter powered to initial powered state.
+  base::ScopedClosureRunner reset_bluetooth_powered_;
 
  private:
   // The adapters from Bluetooth proxy.
   std::vector<org::bluez::Adapter1ProxyInterface*> adapters_;
-  // The initial powered state of the adapter.
-  std::optional<bool> initial_powered_state_;
 };
 
 }  // namespace diagnostics

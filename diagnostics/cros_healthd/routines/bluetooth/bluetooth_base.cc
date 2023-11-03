@@ -18,6 +18,18 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
+void ResetPoweredState(BluezController* bluez_controller,
+                       bool initial_powered) {
+  auto adapters = bluez_controller->GetAdapters();
+  if (adapters.empty()) {
+    return;
+  }
+  if (adapters[0]->powered() == initial_powered) {
+    return;
+  }
+  adapters[0]->set_powered(initial_powered, base::DoNothing());
+}
+
 }  // namespace
 
 BluetoothRoutineBase::BluetoothRoutineBase(Context* context)
@@ -59,22 +71,19 @@ void BluetoothRoutineBase::RunPreCheck(
   }
 
   // Ensure the adapter is not in discovery mode. We should avoid running
-  // Bluetooth routines when the adapter is actively scaninng or pairing.
-  initial_powered_state_ = GetAdapter()->powered();
-  if (initial_powered_state_.value() && GetAdapter()->discovering()) {
+  // Bluetooth routines when the adapter is actively scanning or pairing.
+  bool initial_powered = GetAdapter()->powered();
+  if (initial_powered && GetAdapter()->discovering()) {
     std::move(on_failed).Run(mojom::DiagnosticRoutineStatusEnum::kFailed,
                              kBluetoothRoutineFailedDiscoveryMode);
     return;
   }
+  // Set up scoped closure runner for resetting adapter powered back to initial
+  // powered state.
+  reset_bluetooth_powered_ = base::ScopedClosureRunner(base::BindOnce(
+      &ResetPoweredState, context_->bluez_controller(), initial_powered));
 
   std::move(on_passed).Run();
-}
-
-void BluetoothRoutineBase::ResetPoweredState() {
-  if (!initial_powered_state_.has_value()) {
-    return;
-  }
-  EnsureAdapterPoweredState(initial_powered_state_.value(), base::DoNothing());
 }
 
 }  // namespace diagnostics

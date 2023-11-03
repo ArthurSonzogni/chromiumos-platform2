@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_pairing.h"
+
 #include <memory>
 #include <utility>
 #include <vector>
@@ -16,7 +18,6 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_pairing.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_bluez_controller.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -43,9 +44,7 @@ class BluetoothPairingRoutineTest : public testing::Test {
       delete;
 
   void SetUp() override {
-    EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
-        .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
-            &mock_adapter_proxy_}));
+    SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
     routine_ = std::make_unique<BluetoothPairingRoutine>(
         &mock_context_, base::NumberToString(base::FastHash(target_address_)));
   }
@@ -60,10 +59,14 @@ class BluetoothPairingRoutineTest : public testing::Test {
     return mock_context_.fake_bluez_event_hub();
   }
 
+  void SetUpGetAdaptersCall(
+      const std::vector<org::bluez::Adapter1ProxyInterface*>& adapters) {
+    EXPECT_CALL(*mock_context_.mock_bluez_controller(), GetAdapters())
+        .WillOnce(Return(adapters));
+  }
+
   void SetUpNullAdapter() {
-    EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
-        .WillOnce(
-            Return(std::vector<org::bluez::Adapter1ProxyInterface*>{nullptr}));
+    SetUpGetAdaptersCall(/*adapters=*/{nullptr});
     routine_ = std::make_unique<BluetoothPairingRoutine>(
         &mock_context_, base::NumberToString(base::FastHash(target_address_)));
   }
@@ -287,6 +290,7 @@ TEST_F(BluetoothPairingRoutineTest, RoutineSuccess) {
   // Stop Discovery.
   SetStopDiscoveryCall(/*is_success=*/true);
   // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
@@ -324,6 +328,7 @@ TEST_F(BluetoothPairingRoutineTest, RoutineSuccessOnlyConnect) {
   // Stop Discovery.
   SetStopDiscoveryCall(/*is_success=*/true);
   // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
@@ -341,6 +346,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedPowerOnAdapter) {
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true,
                        /*is_success=*/false);
   // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
@@ -373,6 +379,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedRemoveCachedPeripheral) {
               RemoveDeviceAsync(target_device_path_, _, _, _))
       .WillOnce(base::test::RunOnceCallback<2>(nullptr));
   // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
@@ -398,6 +405,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedPeripheralAlreadyPaired) {
   EXPECT_CALL(mock_target_device_, alias()).WillOnce(ReturnRef(""));
   EXPECT_CALL(mock_target_device_, paired()).WillOnce(Return(true));
   // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
@@ -421,6 +429,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedStartDiscovery) {
   SetStartDiscoveryCall(/*is_success=*/false, /*added_devices=*/{});
   SetStopDiscoveryCall(/*is_success=*/false);
   // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
@@ -445,6 +454,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedFindTargetPeripheral) {
   // Stop Discovery.
   SetStopDiscoveryCall(/*is_success=*/true);
   // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
@@ -477,6 +487,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedTagTargetPeripheral) {
   // Stop Discovery.
   SetStopDiscoveryCall(/*is_success=*/true);
   // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
@@ -517,6 +528,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedCreateBasebandConnection) {
   // Stop Discovery.
   SetStopDiscoveryCall(/*is_success=*/true);
   // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
@@ -548,6 +560,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedVerifyConnected) {
   // Stop Discovery.
   SetStopDiscoveryCall(/*is_success=*/true);
   // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
@@ -590,6 +603,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedToPair) {
   // Stop Discovery.
   SetStopDiscoveryCall(/*is_success=*/true);
   // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
@@ -622,6 +636,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedVerifyPaired) {
   // Stop Discovery.
   SetStopDiscoveryCall(/*is_success=*/true);
   // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
@@ -666,6 +681,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedRemovePairedPeripheral) {
   // Stop Discovery.
   SetStopDiscoveryCall(/*is_success=*/true);
   // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
@@ -700,6 +716,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedStopDiscovery) {
   // Failed to stop discovery.
   SetStopDiscoveryCall(/*is_success=*/false);
   // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
 
   routine_->Start();
@@ -725,8 +742,6 @@ TEST_F(BluetoothPairingRoutineTest, PreCheckFailed) {
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   // The adapter is in discovery mode.
   EXPECT_CALL(mock_adapter_proxy_, discovering()).WillOnce(Return(true));
-  // Reset powered.
-  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/true);
 
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,

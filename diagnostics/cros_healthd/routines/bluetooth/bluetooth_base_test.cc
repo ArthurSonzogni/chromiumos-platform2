@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_base.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -12,7 +14,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_base.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/system/mock_bluez_controller.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -45,6 +46,12 @@ class BluetoothRoutineBaseTest : public testing::Test {
     return mock_context_.mock_bluez_controller();
   }
 
+  void SetUpGetAdaptersCall(
+      const std::vector<org::bluez::Adapter1ProxyInterface*>& adapters) {
+    EXPECT_CALL(*mock_context_.mock_bluez_controller(), GetAdapters())
+        .WillOnce(Return(adapters));
+  }
+
   MockContext mock_context_;
   StrictMock<org::bluez::Adapter1ProxyMock> mock_adapter_proxy_;
 
@@ -54,26 +61,21 @@ class BluetoothRoutineBaseTest : public testing::Test {
 
 // Test that the BluetoothRoutineBase can get adapter successfully.
 TEST_F(BluetoothRoutineBaseTest, GetAdapterSuccess) {
-  EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
-      .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
-          &mock_adapter_proxy_}));
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   auto routine_base = std::make_unique<BluetoothRoutineBase>(&mock_context_);
   EXPECT_EQ(routine_base->GetAdapter(), &mock_adapter_proxy_);
 }
 
 // Test that the BluetoothRoutineBase can handle empty adapters and return null.
 TEST_F(BluetoothRoutineBaseTest, EmptyAdapter) {
-  EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
-      .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{}));
+  SetUpGetAdaptersCall(/*adapters=*/{});
   auto routine_base = std::make_unique<BluetoothRoutineBase>(&mock_context_);
   ASSERT_EQ(routine_base->GetAdapter(), nullptr);
 }
 
 // Test that the BluetoothRoutineBase can handle null adapter and return null.
 TEST_F(BluetoothRoutineBaseTest, NullAdapter) {
-  EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
-      .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
-          nullptr, &mock_adapter_proxy_}));
+  SetUpGetAdaptersCall(/*adapters=*/{nullptr, &mock_adapter_proxy_});
   auto routine_base = std::make_unique<BluetoothRoutineBase>(&mock_context_);
   ASSERT_EQ(routine_base->GetAdapter(), nullptr);
 }
@@ -82,9 +84,7 @@ TEST_F(BluetoothRoutineBaseTest, NullAdapter) {
 // successfully.
 TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPowerOnSuccess) {
   InSequence s;
-  EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
-      .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
-          &mock_adapter_proxy_}));
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
   EXPECT_CALL(mock_adapter_proxy_, set_powered(true, _))
       .WillOnce(base::test::RunOnceCallback<1>(true));
@@ -97,9 +97,7 @@ TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPowerOnSuccess) {
 // successfully.
 TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPowerOffSuccess) {
   InSequence s;
-  EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
-      .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
-          &mock_adapter_proxy_}));
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   EXPECT_CALL(mock_adapter_proxy_, set_powered(false, _))
       .WillOnce(base::test::RunOnceCallback<1>(true));
@@ -112,9 +110,7 @@ TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPowerOffSuccess) {
 // successfully when the adapter is already powered on.
 TEST_F(BluetoothRoutineBaseTest, AdapterAlreadyPoweredOn) {
   InSequence s;
-  EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
-      .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
-          &mock_adapter_proxy_}));
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
 
   auto routine_base = std::make_unique<BluetoothRoutineBase>(&mock_context_);
@@ -124,9 +120,7 @@ TEST_F(BluetoothRoutineBaseTest, AdapterAlreadyPoweredOn) {
 // Test that the BluetoothRoutineBase can handle null adapter when powering on
 // the adapter.
 TEST_F(BluetoothRoutineBaseTest, NoAdapterPoweredOn) {
-  EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
-      .WillOnce(
-          Return(std::vector<org::bluez::Adapter1ProxyInterface*>{nullptr}));
+  SetUpGetAdaptersCall(/*adapters=*/{nullptr});
 
   auto routine_base = std::make_unique<BluetoothRoutineBase>(&mock_context_);
   EXPECT_FALSE(EnsureAdapterPoweredStateSync(routine_base.get(), true));
@@ -135,9 +129,7 @@ TEST_F(BluetoothRoutineBaseTest, NoAdapterPoweredOn) {
 // Test that the BluetoothRoutineBase can pass the pre-check.
 TEST_F(BluetoothRoutineBaseTest, PreCheckPassed) {
   InSequence s;
-  EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
-      .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
-          &mock_adapter_proxy_}));
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   EXPECT_CALL(mock_adapter_proxy_, discovering()).WillOnce(Return(false));
 
@@ -146,15 +138,16 @@ TEST_F(BluetoothRoutineBaseTest, PreCheckPassed) {
   routine_base->RunPreCheck(future.GetCallback(), base::DoNothing());
 
   EXPECT_TRUE(future.Wait());
+
+  // Report empty adapters to ignore calls when routine is deconstructed.
+  SetUpGetAdaptersCall(/*adapters=*/{});
 }
 
 // Test that the BluetoothRoutineBase can handle null adapter when running
 // pre-check.
 TEST_F(BluetoothRoutineBaseTest, PreCheckFailedNoAdapter) {
   InSequence s;
-  EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
-      .WillOnce(
-          Return(std::vector<org::bluez::Adapter1ProxyInterface*>{nullptr}));
+  SetUpGetAdaptersCall(/*adapters=*/{nullptr});
 
   base::test::TestFuture<mojom::DiagnosticRoutineStatusEnum, const std::string&>
       future;
@@ -170,9 +163,7 @@ TEST_F(BluetoothRoutineBaseTest, PreCheckFailedNoAdapter) {
 // discovery mode when running pre-check.
 TEST_F(BluetoothRoutineBaseTest, PreCheckFailedDiscoveringOn) {
   InSequence s;
-  EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
-      .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
-          &mock_adapter_proxy_}));
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   EXPECT_CALL(mock_adapter_proxy_, discovering()).WillOnce(Return(true));
 
@@ -184,6 +175,47 @@ TEST_F(BluetoothRoutineBaseTest, PreCheckFailedDiscoveringOn) {
   auto [status, error_message] = future.Take();
   EXPECT_EQ(status, mojom::DiagnosticRoutineStatusEnum::kFailed);
   EXPECT_EQ(error_message, kBluetoothRoutineFailedDiscoveryMode);
+}
+
+// Test that the BluetoothRoutineBase can reset powered state to on when
+// deconstructed.
+TEST_F(BluetoothRoutineBaseTest, ResetPoweredOnDeconstructed) {
+  InSequence s;
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
+  EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
+  EXPECT_CALL(mock_adapter_proxy_, discovering()).WillOnce(Return(false));
+
+  base::test::TestFuture<void> future;
+  auto routine_base = std::make_unique<BluetoothRoutineBase>(&mock_context_);
+  routine_base->RunPreCheck(future.GetCallback(), base::DoNothing());
+
+  EXPECT_TRUE(future.Wait());
+
+  // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
+  EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
+  EXPECT_CALL(mock_adapter_proxy_, set_powered(true, _));
+  routine_base.reset();
+}
+
+// Test that the BluetoothRoutineBase can reset powered state to off when
+// deconstructed.
+TEST_F(BluetoothRoutineBaseTest, ResetPoweredOffDeconstructed) {
+  InSequence s;
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
+  EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
+
+  base::test::TestFuture<void> future;
+  auto routine_base = std::make_unique<BluetoothRoutineBase>(&mock_context_);
+  routine_base->RunPreCheck(future.GetCallback(), base::DoNothing());
+
+  EXPECT_TRUE(future.Wait());
+
+  // Reset powered.
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
+  EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
+  EXPECT_CALL(mock_adapter_proxy_, set_powered(false, _));
+  routine_base.reset();
 }
 
 }  // namespace

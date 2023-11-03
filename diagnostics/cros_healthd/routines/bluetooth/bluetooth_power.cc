@@ -230,7 +230,7 @@ void BluetoothPowerRoutine::SetResultAndStop(
     const std::string& status_message) {
   // Cancel all pending callbacks.
   weak_ptr_factory_.InvalidateWeakPtrs();
-  ResetPoweredState();
+  reset_bluetooth_powered_.RunAndReset();
   UpdateStatus(status, std::move(status_message));
 }
 
