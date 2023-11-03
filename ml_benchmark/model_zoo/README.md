@@ -10,7 +10,7 @@ DUT via the `chromeos-base/ml-test-assets` package:
 
 `emerge-${BOARD} ml-test-assets && cros deploy <DUT> ml-test-assets`
 
-The models can be downloaded directly [here](https://commondatastorage.googleapis.com/chromeos-localmirror/distfiles/ml-test-assets-0.0.5.tar.xz)
+The models can be downloaded directly [here](https://commondatastorage.googleapis.com/chromeos-localmirror/distfiles/ml-test-assets-0.0.6.tar.gz)
 
 ## Tools
 
