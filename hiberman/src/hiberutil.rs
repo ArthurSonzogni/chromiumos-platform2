@@ -24,7 +24,6 @@ use std::time::Duration;
 use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
-use dbus::blocking::Connection;
 
 use lazy_static::lazy_static;
 use libc::c_ulong;
@@ -36,7 +35,6 @@ use log::warn;
 use regex::Regex;
 use sha2::Digest;
 use sha2::Sha256;
-use system_api::client::OrgChromiumSessionManagerInterface;
 use thiserror::Error as ThisError;
 
 use crate::cookie::set_hibernate_cookie;
@@ -49,9 +47,6 @@ use crate::metrics::METRICS_LOGGER;
 use crate::mmapbuf::MmapBuffer;
 
 const KEYCTL_PATH: &str = "/bin/keyctl";
-
-// 25 seconds is the default timeout for dbus-send.
-const DBUS_TIMEOUT: Duration = Duration::from_secs(25);
 
 lazy_static! {
     static ref USER_LOGGED_OUT_PATH: PathBuf = {
@@ -661,21 +656,6 @@ pub fn record_user_logout() {
 /// Returns true if the hiberimage was torn down because the user logged out.
 pub fn has_user_logged_out() -> bool {
     USER_LOGGED_OUT_PATH.exists()
-}
-
-/// Returns the account id of the primary user.
-pub fn get_account_id() -> Result<String> {
-    let connection = Connection::new_system()?;
-
-    let conn_path = connection.with_proxy(
-        "org.chromium.SessionManager",
-        "/org/chromium/SessionManager",
-        DBUS_TIMEOUT,
-    );
-
-    let (account_id, _) = conn_path.retrieve_primary_session()?;
-
-    Ok(account_id)
 }
 
 /// Obfuscates the given username.

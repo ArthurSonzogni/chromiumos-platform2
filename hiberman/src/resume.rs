@@ -8,6 +8,7 @@ use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Read;
+use std::io::Write;
 use std::mem;
 use std::time::Duration;
 use std::time::Instant;
@@ -171,6 +172,12 @@ impl ResumeConductor {
             self.setup_snapshot_device(true, user_key)?;
 
             volume_manager.lockdown_hiberimage()?;
+
+            // Record the account id of the user who might be hibernating in the future.
+            // This is done at login instead of at hibernate time because obtaining the
+            // account id at hibernate time would be involved (b/308631058). This can be
+            // changed if hiberman ever becomes a daemon.
+            self.record_hibernating_user()?;
 
             return Err(e);
         }
@@ -397,6 +404,22 @@ impl ResumeConductor {
         let result = snap_dev.atomic_restore();
         error!("Resume failed");
         result
+    }
+
+    // Record the account id of the user that is hibernating.
+    fn record_hibernating_user(&self) -> Result<()> {
+        let mut f = File::create(HIBERNATING_USER_FILE.as_path()).context(format!(
+            "failed to create {}",
+            HIBERNATING_USER_FILE.display()
+        ))?;
+        // The account id has already been sanitized.
+        f.write_all(self.current_user.as_ref().unwrap().as_bytes())
+            .context(format!(
+                "failed to write account id to {}",
+                HIBERNATING_USER_FILE.display()
+            ))?;
+
+        Ok(())
     }
 
     fn get_hibernating_user() -> Result<String> {
