@@ -241,8 +241,8 @@ TEST_F(CrosConfigPropertiesTest, Fingerprint_NotSet) {
   EXPECT_EQ("Fingerprint:No", GetHasFingerprintDescription(GetRootPath()));
 }
 
-// Audio.
-TEST_F(CrosConfigPropertiesTest, Audio_Set) {
+// Audio UCM suffix.
+TEST_F(CrosConfigPropertiesTest, UcmSuffix_Set) {
   const base::FilePath property_dir_path =
       GetRootPath().Append(kCrosAudioPath).Append(kCrosAudioMainPath);
   const base::FilePath property_file_path =
@@ -250,11 +250,28 @@ TEST_F(CrosConfigPropertiesTest, Audio_Set) {
   EXPECT_TRUE(base::CreateDirectory(property_dir_path));
   EXPECT_TRUE(base::WriteFile(property_file_path, "ucm-suffix"));
 
-  EXPECT_EQ("Audio:ucm-suffix", GetAudioDescription(GetRootPath()));
+  EXPECT_EQ("Audio:ucm-suffix", GetAudioUcmSuffixDescription(GetRootPath()));
 }
 
-TEST_F(CrosConfigPropertiesTest, Audio_NotSet) {
-  EXPECT_EQ("Audio:N/A", GetAudioDescription(GetRootPath()));
+TEST_F(CrosConfigPropertiesTest, UcmSuffix_NotSet) {
+  EXPECT_EQ("Audio:N/A", GetAudioUcmSuffixDescription(GetRootPath()));
+}
+
+// Audio Cras config.
+TEST_F(CrosConfigPropertiesTest, CrasConfig_Set) {
+  const base::FilePath property_dir_path =
+      GetRootPath().Append(kCrosAudioPath).Append(kCrosAudioMainPath);
+  const base::FilePath property_file_path =
+      property_dir_path.Append(kCrosAudioCrasConfigDirKey);
+  EXPECT_TRUE(base::CreateDirectory(property_dir_path));
+  EXPECT_TRUE(base::WriteFile(property_file_path, "config"));
+
+  EXPECT_EQ("CrasConfig:config",
+            GetAudioCrasConfigDirDescription(GetRootPath()));
+}
+
+TEST_F(CrosConfigPropertiesTest, CrasConfig_NotSet) {
+  EXPECT_EQ("CrasConfig:N/A", GetAudioCrasConfigDirDescription(GetRootPath()));
 }
 
 // Keyboard backlight.
@@ -301,10 +318,61 @@ TEST_F(CrosConfigPropertiesTest, CameraCount_NotSet) {
   EXPECT_EQ("CameraCount:N/A", GetCameraCountDescription(GetRootPath()));
 }
 
+// 1080p camera.
+TEST_F(CrosConfigPropertiesTest, Has1080pCamera_Yes) {
+  const base::FilePath property_dir_path_1 = GetRootPath()
+                                                 .Append(kCrosCameraPath)
+                                                 .Append(kCrosCameraDevicesPath)
+                                                 .Append("1")
+                                                 .Append(kCrosCameraFlagsPath);
+  const base::FilePath property_dir_path_2 = GetRootPath()
+                                                 .Append(kCrosCameraPath)
+                                                 .Append(kCrosCameraDevicesPath)
+                                                 .Append("2")
+                                                 .Append(kCrosCameraFlagsPath);
+  const base::FilePath property_file_path_1 =
+      property_dir_path_1.Append(kCrosCameraSupport1080pKey);
+  const base::FilePath property_file_path_2 =
+      property_dir_path_2.Append(kCrosCameraSupport1080pKey);
+  EXPECT_TRUE(base::CreateDirectory(property_dir_path_1));
+  EXPECT_TRUE(base::CreateDirectory(property_dir_path_2));
+  EXPECT_TRUE(base::WriteFile(property_file_path_1, "false"));
+  EXPECT_TRUE(base::WriteFile(property_file_path_2, "true"));
+
+  EXPECT_EQ("Camera1080p:Yes", GetHas1080pCameraDescription(GetRootPath()));
+}
+
+TEST_F(CrosConfigPropertiesTest, Has1080pCamera_No) {
+  const base::FilePath property_dir_path_1 = GetRootPath()
+                                                 .Append(kCrosCameraPath)
+                                                 .Append(kCrosCameraDevicesPath)
+                                                 .Append("1")
+                                                 .Append(kCrosCameraFlagsPath);
+  const base::FilePath property_dir_path_2 = GetRootPath()
+                                                 .Append(kCrosCameraPath)
+                                                 .Append(kCrosCameraDevicesPath)
+                                                 .Append("2")
+                                                 .Append(kCrosCameraFlagsPath);
+  const base::FilePath property_file_path_1 =
+      property_dir_path_1.Append(kCrosCameraSupport1080pKey);
+  const base::FilePath property_file_path_2 =
+      property_dir_path_2.Append(kCrosCameraSupport1080pKey);
+  EXPECT_TRUE(base::CreateDirectory(property_dir_path_1));
+  EXPECT_TRUE(base::CreateDirectory(property_dir_path_2));
+  EXPECT_TRUE(base::WriteFile(property_file_path_1, "false"));
+  EXPECT_TRUE(base::WriteFile(property_file_path_2, "false"));
+
+  EXPECT_EQ("Camera1080p:No", GetHas1080pCameraDescription(GetRootPath()));
+}
+
+TEST_F(CrosConfigPropertiesTest, Has1080pCamera_NotSet) {
+  EXPECT_EQ("Camera1080p:No", GetHas1080pCameraDescription(GetRootPath()));
+}
+
 // Proximity sensor.
 TEST_F(CrosConfigPropertiesTest, ProximitySensor_Set) {
   const base::FilePath property_dir_path =
-      GetRootPath().Append(kCrosProximitySensor);
+      GetRootPath().Append(kCrosProximitySensorPath);
   EXPECT_TRUE(base::CreateDirectory(property_dir_path));
 
   EXPECT_EQ("ProximitySensor:Yes",
@@ -314,6 +382,65 @@ TEST_F(CrosConfigPropertiesTest, ProximitySensor_Set) {
 TEST_F(CrosConfigPropertiesTest, ProximitySensor_NotSet) {
   EXPECT_EQ("ProximitySensor:No",
             GetHasProximitySensorDescription(GetRootPath()));
+}
+
+// Wifi.
+TEST_F(CrosConfigPropertiesTest, Wifi_Ath10k_Tablet) {
+  const base::FilePath property_dir_path =
+      GetRootPath().Append(kCrosWifiPath).Append(kCrosWifiAth10kTabletModePath);
+  EXPECT_TRUE(base::CreateDirectory(property_dir_path));
+
+  EXPECT_EQ("Wifi:Qualcomm", GetWifiDescription(GetRootPath()));
+}
+
+TEST_F(CrosConfigPropertiesTest, Wifi_Ath10k_NonTablet) {
+  const base::FilePath property_dir_path =
+      GetRootPath()
+          .Append(kCrosWifiPath)
+          .Append(kCrosWifiAth10kNonTabletModePath);
+  EXPECT_TRUE(base::CreateDirectory(property_dir_path));
+
+  EXPECT_EQ("Wifi:Qualcomm", GetWifiDescription(GetRootPath()));
+}
+
+TEST_F(CrosConfigPropertiesTest, Wifi_Rtw_Tablet) {
+  const base::FilePath property_dir_path =
+      GetRootPath().Append(kCrosWifiPath).Append(kCrosWifiRtwTabletModePath);
+  EXPECT_TRUE(base::CreateDirectory(property_dir_path));
+
+  EXPECT_EQ("Wifi:Realtek", GetWifiDescription(GetRootPath()));
+}
+
+TEST_F(CrosConfigPropertiesTest, Wifi_Rtw_NonTablet) {
+  const base::FilePath property_dir_path =
+      GetRootPath().Append(kCrosWifiPath).Append(kCrosWifiRtwNonTabletModePath);
+  EXPECT_TRUE(base::CreateDirectory(property_dir_path));
+
+  EXPECT_EQ("Wifi:Realtek", GetWifiDescription(GetRootPath()));
+}
+
+TEST_F(CrosConfigPropertiesTest, Wifi_Mtk_Tablet) {
+  const base::FilePath property_dir_path =
+      GetRootPath().Append(kCrosWifiPath).Append(kCrosWifiMtkTabletModePath);
+  EXPECT_TRUE(base::CreateDirectory(property_dir_path));
+
+  EXPECT_EQ("Wifi:MediaTek", GetWifiDescription(GetRootPath()));
+}
+
+TEST_F(CrosConfigPropertiesTest, Wifi_Mtk_NonTablet) {
+  const base::FilePath property_dir_path =
+      GetRootPath().Append(kCrosWifiPath).Append(kCrosWifiMtkNonTabletModePath);
+  EXPECT_TRUE(base::CreateDirectory(property_dir_path));
+
+  EXPECT_EQ("Wifi:MediaTek", GetWifiDescription(GetRootPath()));
+}
+
+TEST_F(CrosConfigPropertiesTest, Wifi_Intel) {
+  const base::FilePath property_dir_path =
+      GetRootPath().Append(kCrosWifiPath).Append(kCrosWifiSarFilePath);
+  EXPECT_TRUE(base::CreateDirectory(property_dir_path));
+
+  EXPECT_EQ("Wifi:Intel", GetWifiDescription(GetRootPath()));
 }
 
 }  // namespace rmad

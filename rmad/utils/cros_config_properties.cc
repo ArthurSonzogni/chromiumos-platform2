@@ -7,8 +7,11 @@
 #include <optional>
 #include <string>
 
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
+
+namespace rmad {
 
 namespace {
 
@@ -53,9 +56,42 @@ std::string CellularDescription(const std::optional<std::string>& value) {
   return "Yes";
 }
 
-}  // namespace
+bool Has1080pSupport(const base::FilePath& camera_devices_path) {
+  base::FileEnumerator e(camera_devices_path,
+                         /*recursive=*/false,
+                         base::FileEnumerator::FileType::DIRECTORIES);
+  for (base::FilePath device_path = e.Next(); !device_path.empty();
+       device_path = e.Next()) {
+    base::FilePath path = device_path.Append(kCrosCameraFlagsPath)
+                              .Append(kCrosCameraSupport1080pKey);
+    std::optional<std::string> value = ReadProperty(path);
+    if (value.has_value() && value.value() == "true") {
+      return true;
+    }
+  }
+  return false;
+}
 
-namespace rmad {
+std::string GetWifiType(const base::FilePath& wifi_path) {
+  if (base::PathExists(wifi_path.Append(kCrosWifiAth10kTabletModePath)) ||
+      base::PathExists(wifi_path.Append(kCrosWifiAth10kNonTabletModePath))) {
+    return "Qualcomm";
+  }
+  if (base::PathExists(wifi_path.Append(kCrosWifiRtwTabletModePath)) ||
+      base::PathExists(wifi_path.Append(kCrosWifiRtwNonTabletModePath))) {
+    return "Realtek";
+  }
+  if (base::PathExists(wifi_path.Append(kCrosWifiMtkTabletModePath)) ||
+      base::PathExists(wifi_path.Append(kCrosWifiMtkNonTabletModePath))) {
+    return "MediaTek";
+  }
+  if (base::PathExists(wifi_path.Append(kCrosWifiSarFilePath))) {
+    return "Intel";
+  }
+  return "N/A";
+}
+
+}  // namespace
 
 std::string GetHasTouchscreenDescription(const base::FilePath& root_path) {
   base::FilePath path = root_path.Append(kCrosHardwarePropertiesPath)
@@ -122,12 +158,20 @@ std::string GetHasFingerprintDescription(const base::FilePath& root_path) {
   return std::string("Fingerprint:") + StringNotEmptyDescription(value);
 }
 
-std::string GetAudioDescription(const base::FilePath& root_path) {
+std::string GetAudioUcmSuffixDescription(const base::FilePath& root_path) {
   base::FilePath path = root_path.Append(kCrosAudioPath)
                             .Append(kCrosAudioMainPath)
                             .Append(kCrosAudioUcmSuffixKey);
   std::optional<std::string> value = ReadProperty(path);
   return std::string("Audio:") + StringDescription(value);
+}
+
+std::string GetAudioCrasConfigDirDescription(const base::FilePath& root_path) {
+  base::FilePath path = root_path.Append(kCrosAudioPath)
+                            .Append(kCrosAudioMainPath)
+                            .Append(kCrosAudioCrasConfigDirKey);
+  std::optional<std::string> value = ReadProperty(path);
+  return std::string("CrasConfig:") + StringDescription(value);
 }
 
 std::string GetHasKeyboardBacklightDescription(
@@ -146,11 +190,23 @@ std::string GetCameraCountDescription(const base::FilePath& root_path) {
   return std::string("CameraCount:") + StringDescription(value);
 }
 
+std::string GetHas1080pCameraDescription(const base::FilePath& root_path) {
+  base::FilePath camera_devices_path =
+      root_path.Append(kCrosCameraPath).Append(kCrosCameraDevicesPath);
+  return std::string("Camera1080p:") +
+         (Has1080pSupport(camera_devices_path) ? "Yes" : "No");
+}
+
 std::string GetHasProximitySensorDescription(const base::FilePath& root_path) {
-  base::FilePath path = root_path.Append(kCrosProximitySensor);
+  base::FilePath path = root_path.Append(kCrosProximitySensorPath);
   std::optional<std::string> value = ReadProperty(path);
   return std::string("ProximitySensor:") +
          (base::PathExists(path) ? "Yes" : "No");
+}
+
+std::string GetWifiDescription(const base::FilePath& root_path) {
+  base::FilePath wifi_path = root_path.Append(kCrosWifiPath);
+  return std::string("Wifi:") + GetWifiType(wifi_path);
 }
 
 }  // namespace rmad

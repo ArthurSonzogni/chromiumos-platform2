@@ -352,9 +352,12 @@ std::vector<std::string> CrosConfigUtilsImpl::GetSkuPropertyDescriptions(
   ret.push_back(GetHasProximitySensorDescription(root_path));
   ret.push_back(GetStorageTypeDescription(root_path));
   ret.push_back(GetCameraCountDescription(root_path));
+  ret.push_back(GetHas1080pCameraDescription(root_path));
   ret.push_back(GetStylusCategoryDescription(root_path));
+  ret.push_back(GetWifiDescription(root_path));
   ret.push_back(GetCellularDescription(root_path));
-  ret.push_back(GetAudioDescription(root_path));
+  ret.push_back(GetAudioUcmSuffixDescription(root_path));
+  ret.push_back(GetAudioCrasConfigDirDescription(root_path));
   return ret;
 }
 

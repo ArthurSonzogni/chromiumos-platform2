@@ -73,7 +73,10 @@ constexpr char kCrosAudioPath[] = "audio";
 constexpr char kCrosAudioMainPath[] = "main";
 // cros_config property /audio/main/ucm-suffix.
 constexpr char kCrosAudioUcmSuffixKey[] = "ucm-suffix";
-std::string GetAudioDescription(const base::FilePath& root_path);
+std::string GetAudioUcmSuffixDescription(const base::FilePath& root_path);
+// cros_config property /audio/main/cras-config-dir.
+constexpr char kCrosAudioCrasConfigDirKey[] = "cras-config-dir";
+std::string GetAudioCrasConfigDirDescription(const base::FilePath& root_path);
 
 // cros_config path /power.
 constexpr char kCrosPowerPath[] = "power";
@@ -86,10 +89,39 @@ constexpr char kCrosCameraPath[] = "camera";
 // cros_config property /camera/count.
 constexpr char kCrosCameraCountKey[] = "count";
 std::string GetCameraCountDescription(const base::FilePath& root_path);
+// cros_config path /camera/devices.
+constexpr char kCrosCameraDevicesPath[] = "devices";
+// cros_config path /camera/devices/*/flags.
+constexpr char kCrosCameraFlagsPath[] = "flags";
+// cros_config property /camera/devices/*/flags/support-1080p.
+constexpr char kCrosCameraSupport1080pKey[] = "support-1080p";
+std::string GetHas1080pCameraDescription(const base::FilePath& root_path);
 
 // cros_config path /proximity-sensor.
-constexpr char kCrosProximitySensor[] = "proximity-sensor";
+constexpr char kCrosProximitySensorPath[] = "proximity-sensor";
 std::string GetHasProximitySensorDescription(const base::FilePath& root_path);
+
+// cros_config path /wifi.
+constexpr char kCrosWifiPath[] = "wifi";
+// cros_config path /wifi/tablet-mode-power-table-ath10k.
+constexpr char kCrosWifiAth10kTabletModePath[] =
+    "tablet-mode-power-table-ath10k";
+// cros_config path /wifi/non-tablet-mode-power-table-ath10k.
+constexpr char kCrosWifiAth10kNonTabletModePath[] =
+    "non-tablet-mode-power-table-ath10k";
+// cros_config path /wifi/tablet-mode-power-table-rtw.
+constexpr char kCrosWifiRtwTabletModePath[] = "tablet-mode-power-table-rtw";
+// cros_config path /wifi/non-tablet-mode-power-table-rtw.
+constexpr char kCrosWifiRtwNonTabletModePath[] =
+    "non-tablet-mode-power-table-rtw";
+// cros_config path /wifi/tablet-mode-power-table-mtk.
+constexpr char kCrosWifiMtkTabletModePath[] = "tablet-mode-power-table-mtk";
+// cros_config path /wifi/non-tablet-mode-power-table-mtk.
+constexpr char kCrosWifiMtkNonTabletModePath[] =
+    "non-tablet-mode-power-table-mtk";
+// cros_config path /wifi/sar-file.
+constexpr char kCrosWifiSarFilePath[] = "sar-file";
+std::string GetWifiDescription(const base::FilePath& root_path);
 
 // cros_config path /rmad.
 constexpr char kCrosRmadPath[] = "rmad";
