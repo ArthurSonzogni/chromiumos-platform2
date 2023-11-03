@@ -159,6 +159,12 @@ class UdevCollectorTest : public ::testing::Test {
         << strerrordesc_np(errno);
   }
 
+  void SetupFirmwareDumpsFinchFlag(const std::string& val) {
+    FilePath fwdump_allowed_path =
+        paths::Get(paths::kAllowFirmwareDumpsFlagPath);
+    ASSERT_TRUE(test_util::CreateFile(fwdump_allowed_path, val));
+  }
+
   void SetUpCollector(UdevCollectorMock* collector) {
     // Reset the g_test_prefix in Path.
     paths::SetPrefixForTesting(temp_dir_generator_.GetPath());
@@ -171,7 +177,8 @@ class UdevCollectorTest : public ::testing::Test {
     FilePath dev_coredump_path =
         temp_dir_generator_.GetPath().Append(kDevCoredumpDirectory);
     collector->dev_coredump_directory_ = dev_coredump_path.value();
-    collector->EnableConnectivityFwdumpForTest();
+    SetupFirmwareDumpsFinchFlag("1");
+    collector->EnableConnectivityFwdumpForTest(true);
   }
 
   // This function creates input request blob required to call
@@ -426,6 +433,77 @@ TEST_F(UdevCollectorTest, RunAsRoot_TestConnectivityWiFiDevCoredumpPolicySet) {
   FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
   HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
   EXPECT_EQ(1, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
+}
+
+// Ensure fwdump is not generated when disallowed by finch.
+TEST_F(UdevCollectorTest, TestConnectivityWiFiDevCoredumpDisabledByFinch) {
+  GenerateDevCoredump("devcd0", kConnectivityWiFiDriverName);
+  auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
+  collector_.SetSessionManagerProxy(mock);
+  SetupFirmwareDumpsFinchFlag("0");
+
+  FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
+  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(0, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
+}
+
+// Ensure fwdump is not generated when finch cache file does not exist.
+TEST_F(UdevCollectorTest,
+       TestConnectivityWiFiDevCoredumpDisabledNoFinchFilePresent) {
+  GenerateDevCoredump("devcd0", kConnectivityWiFiDriverName);
+  auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
+  collector_.SetSessionManagerProxy(mock);
+
+  FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
+  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(0, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
+}
+
+// Ensure fwdump is not generated when finch flag has unexpected value.
+TEST_F(UdevCollectorTest,
+       TestConnectivityWiFiDevCoredumpDisabledByCorruptFinchValue) {
+  GenerateDevCoredump("devcd0", kConnectivityWiFiDriverName);
+  auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
+  collector_.SetSessionManagerProxy(mock);
+
+  // AllowedFirmwareDumpsFlagPath contains some corrupted value.
+  SetupFirmwareDumpsFinchFlag("10");
+
+  FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
+  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(0, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
+}
+
+// Ensure fwdump is not generated when there is trailing whitespace in finch
+// status.
+TEST_F(UdevCollectorTest,
+       TestConnectivityWiFiDevCoredumpEnabledByFinchValueWithWhiteSpace) {
+  GenerateDevCoredump("devcd0", kConnectivityWiFiDriverName);
+  auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
+  collector_.SetSessionManagerProxy(mock);
+  // White space in finch flag, gets rejected.
+  SetupFirmwareDumpsFinchFlag("1 ");
+
+  FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
+  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(0, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
+}
+
+// Ensure fwdump is not generated even if allowed by finch because it is
+// disabled by connectivity_fwdump_feature_enabled_ to not mistakenly enabled
+// fwdumps in feedback report feature.
+TEST_F(UdevCollectorTest,
+       TestConnectivityWiFiDevCoredumpAllowedByFinchButDisabled) {
+  GenerateDevCoredump("devcd0", kConnectivityWiFiDriverName);
+  auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
+  collector_.SetSessionManagerProxy(mock);
+
+  // Disable fwdump feature.
+  collector_.EnableConnectivityFwdumpForTest(false);
+
+  FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
+  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(0, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
 }
 
 // Ensures that there is no fwdump file generated if policy is not set

@@ -53,9 +53,14 @@ class UdevCollector : public CrashCollector {
 
   // This function is to be called from unit tests to specifically enable
   // connectivity fwdump feature for unit test.
-  void EnableConnectivityFwdumpForTest() {
-    connectivity_fwdump_feature_enabled_ = true;
+  void EnableConnectivityFwdumpForTest(bool status) {
+    connectivity_fwdump_feature_enabled_ = status;
   }
+
+  // This function checks if connectivity fwdump is allowed via finch flag
+  // or not. This is fail safe mechanism and if any regression observed,
+  // the fwdump feature will be disabled by fbpreprocessord.
+  bool CheckConnectivityFwdumpAllowedFinchFlagStatus();
 
   static CollectorInfo GetHandlerInfo(
       const std::string& udev_event,

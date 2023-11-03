@@ -29,6 +29,7 @@
 
 #include "crash-reporter/connectivity_util.h"
 #include "crash-reporter/constants.h"
+#include "crash-reporter/paths.h"
 #include "crash-reporter/udev_bluetooth_util.h"
 #include "crash-reporter/util.h"
 
@@ -114,6 +115,25 @@ bool UdevCollector::IsConnectivityWiFiFwdump(int instance_number) {
   return driver_name == kIntelWiFiDriverName;
 }
 
+bool UdevCollector::CheckConnectivityFwdumpAllowedFinchFlagStatus() {
+  std::string val;
+
+  if (!base::ReadFileToStringWithMaxSize(
+          paths::Get(paths::kAllowFirmwareDumpsFlagPath), &val,
+          /*max_size*/ 1)) {
+    if (val.empty()) {
+      LOG(ERROR) << "Failed to read "
+                 << paths::Get(paths::kAllowFirmwareDumpsFlagPath) << ".";
+      return false;
+    }
+    LOG(ERROR)
+        << "Connectivity fwdump Finch value is larger than expected size (1).";
+    return false;
+  }
+
+  return val == "1";
+}
+
 std::optional<connectivity_util::Session>
 UdevCollector::ConnectivityFwdumpAllowedForUserSession(
     std::map<std::string, std::string>& udev_event_map,
@@ -122,6 +142,7 @@ UdevCollector::ConnectivityFwdumpAllowedForUserSession(
   std::optional<connectivity_util::Session> user_session;
   if ((udev_event_map[kUdevSubsystem] == kUdevSubsystemDevCoredump) &&
       IsConnectivityWiFiFwdump(instance_number) &&
+      CheckConnectivityFwdumpAllowedFinchFlagStatus() &&
       connectivity_fwdump_feature_enabled_) {
     SetUpDBus();
     user_session =

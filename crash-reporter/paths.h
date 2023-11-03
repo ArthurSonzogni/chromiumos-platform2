@@ -77,6 +77,11 @@ inline constexpr char kCryptohomeCrashDirectory[] = "/run/daemon-store/crash";
 inline constexpr char kCryptohomeFbPreprocessorBaseDirectory[] =
     "/run/daemon-store/fbpreprocessord";
 
+// This path contains value 1 if fwdump feature is enabled and 0 if not.
+// The value 1/0 is set internally by fbpreprocessord based on finch flag.
+inline constexpr char kAllowFirmwareDumpsFlagPath[] =
+    "/run/fbpreprocessord/allow_firmware_dumps";
+
 // File whose existence indicates this is a developer image.
 inline constexpr char kLeaveCoreFile[] = "/root/.leave_core";
 
