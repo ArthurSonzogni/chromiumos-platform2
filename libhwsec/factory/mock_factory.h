@@ -25,10 +25,6 @@ class MockFactory : public Factory {
               GetCryptohomeFrontend,
               (),
               (override));
-  MOCK_METHOD(std::unique_ptr<const PinWeaverFrontend>,
-              GetPinWeaverFrontend,
-              (),
-              (override));
   MOCK_METHOD(std::unique_ptr<const PinWeaverManagerFrontend>,
               GetPinWeaverManagerFrontend,
               (),

@@ -727,8 +727,6 @@ TEST_F(AuthSessionTestWithKeysetManagement,
 
   // Setup low entropy credential manager.
   hwsec::Tpm2SimulatorFactoryForTest factory;
-  std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver =
-      factory.GetPinWeaverFrontend();
   auto pw_manager = factory.GetPinWeaverManagerFrontend();
   crypto_.set_pinweaver_manager_for_testing(pw_manager.get());
   crypto_.Init();

@@ -17,7 +17,6 @@
 #include "libhwsec/frontend/local_data_migration/frontend_impl.h"
 #include "libhwsec/frontend/oobe_config/frontend_impl.h"
 #include "libhwsec/frontend/optee-plugin/frontend_impl.h"
-#include "libhwsec/frontend/pinweaver/frontend_impl.h"
 #include "libhwsec/frontend/pinweaver_manager/frontend_impl.h"
 #include "libhwsec/frontend/recovery_crypto/frontend_impl.h"
 #include "libhwsec/frontend/u2fd/frontend_impl.h"
@@ -38,10 +37,6 @@ FactoryImpl::~FactoryImpl() {}
 
 std::unique_ptr<const CryptohomeFrontend> FactoryImpl::GetCryptohomeFrontend() {
   return std::make_unique<CryptohomeFrontendImpl>(middleware_.Derive());
-}
-
-std::unique_ptr<const PinWeaverFrontend> FactoryImpl::GetPinWeaverFrontend() {
-  return std::make_unique<PinWeaverFrontendImpl>(middleware_.Derive());
 }
 
 std::unique_ptr<const PinWeaverManagerFrontend>

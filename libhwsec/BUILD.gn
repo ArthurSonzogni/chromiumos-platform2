@@ -280,7 +280,6 @@ source_set("hardware_abstraction_internal_library") {
     "frontend/local_data_migration/frontend_impl.cc",
     "frontend/oobe_config/frontend_impl.cc",
     "frontend/optee-plugin/frontend_impl.cc",
-    "frontend/pinweaver/frontend_impl.cc",
     "frontend/pinweaver_manager/frontend_impl.cc",
     "frontend/recovery_crypto/frontend_impl.cc",
     "frontend/u2fd/frontend_impl.cc",

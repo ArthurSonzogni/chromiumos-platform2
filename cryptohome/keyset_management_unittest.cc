@@ -563,8 +563,6 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestRegularCreds) {
 TEST_F(KeysetManagementTest, ReSaveOnLoadTestLeCreds) {
   // SETUP
   hwsec::Tpm2SimulatorFactoryForTest factory;
-  std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver =
-      factory.GetPinWeaverFrontend();
   crypto_.Init();
 
   KeysetSetUpWithKeyDataAndKeyBlobs(DefaultLEKeyData());
@@ -588,8 +586,6 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestLeCreds) {
 TEST_F(KeysetManagementTest, RemoveLECredentials) {
   // SETUP
   hwsec::Tpm2SimulatorFactoryForTest factory;
-  std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver =
-      factory.GetPinWeaverFrontend();
   auto pw_manager = factory.GetPinWeaverManagerFrontend();
   crypto_.set_pinweaver_manager_for_testing(pw_manager.get());
   crypto_.Init();

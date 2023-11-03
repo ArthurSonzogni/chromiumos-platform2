@@ -206,7 +206,7 @@ class PinWeaverManagerImplTest : public ::testing::Test {
   }
 
   void GeneratePk(uint8_t auth_channel) {
-    hwsec::PinWeaverFrontend::PinWeaverEccPoint pt;
+    hwsec::PinWeaverManagerFrontend::PinWeaverEccPoint pt;
     brillo::Blob x_blob, y_blob;
     base::HexStringToBytes(kClientEccPointXHex, &x_blob);
     base::HexStringToBytes(kClientEccPointYHex, &y_blob);

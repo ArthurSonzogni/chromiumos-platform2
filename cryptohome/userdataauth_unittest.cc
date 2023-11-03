@@ -137,8 +137,6 @@ using ::testing::SaveArgPointee;
 using ::testing::SetArgPointee;
 using ::testing::UnorderedElementsAre;
 
-using CredentialTreeResult = hwsec::PinWeaverFrontend::CredentialTreeResult;
-
 // Set to match the 5 minute timer and a 1 minute extension in AuthSession.
 constexpr int kAuthSessionExtensionDuration = 60;
 constexpr auto kAuthSessionTimeout = base::Minutes(5);

@@ -608,7 +608,6 @@ UserDataAuth::UserDataAuth()
       mount_thread_(nullptr),
       hwsec_factory_(nullptr),
       hwsec_(nullptr),
-      pinweaver_(nullptr),
       hwsec_pw_manager_(nullptr),
       recovery_crypto_(nullptr),
       default_cryptohome_keys_manager_(nullptr),
@@ -690,11 +689,6 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   if (!hwsec_) {
     default_hwsec_ = hwsec_factory_->GetCryptohomeFrontend();
     hwsec_ = default_hwsec_.get();
-  }
-
-  if (!pinweaver_) {
-    default_pinweaver_ = hwsec_factory_->GetPinWeaverFrontend();
-    pinweaver_ = default_pinweaver_.get();
   }
 
   if (!hwsec_pw_manager_) {

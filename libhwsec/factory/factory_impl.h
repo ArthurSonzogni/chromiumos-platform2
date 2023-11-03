@@ -18,7 +18,6 @@
 #include "libhwsec/frontend/local_data_migration/frontend.h"
 #include "libhwsec/frontend/oobe_config/frontend.h"
 #include "libhwsec/frontend/optee-plugin/frontend.h"
-#include "libhwsec/frontend/pinweaver/frontend.h"
 #include "libhwsec/frontend/recovery_crypto/frontend.h"
 #include "libhwsec/frontend/u2fd/frontend.h"
 #include "libhwsec/frontend/u2fd/vendor_frontend.h"
@@ -40,7 +39,6 @@ class HWSEC_EXPORT FactoryImpl : public Factory {
   ~FactoryImpl() override;
 
   std::unique_ptr<const CryptohomeFrontend> GetCryptohomeFrontend() override;
-  std::unique_ptr<const PinWeaverFrontend> GetPinWeaverFrontend() override;
   std::unique_ptr<const PinWeaverManagerFrontend> GetPinWeaverManagerFrontend()
       override;
   std::unique_ptr<const RecoveryCryptoFrontend> GetRecoveryCryptoFrontend()

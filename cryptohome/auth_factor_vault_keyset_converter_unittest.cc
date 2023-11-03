@@ -61,8 +61,7 @@ constexpr char kThirdIndex[] = "2";
 class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
  public:
   AuthFactorVaultKeysetConverterTest()
-      : pinweaver_(tpm2_factory_.GetPinWeaverFrontend()),
-        hwsec_pw_manager_(tpm2_factory_.GetPinWeaverManagerFrontend()),
+      : hwsec_pw_manager_(tpm2_factory_.GetPinWeaverManagerFrontend()),
         crypto_(&hwsec_,
                 hwsec_pw_manager_.get(),
                 &cryptohome_keys_manager_,
@@ -101,7 +100,6 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
 
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   hwsec::Tpm2SimulatorFactoryForTest tpm2_factory_;
-  std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver_;
   std::unique_ptr<const hwsec::PinWeaverManagerFrontend> hwsec_pw_manager_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_;

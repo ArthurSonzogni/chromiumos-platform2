@@ -17,7 +17,6 @@
 #include "libhwsec/frontend/local_data_migration/frontend.h"
 #include "libhwsec/frontend/oobe_config/frontend.h"
 #include "libhwsec/frontend/optee-plugin/frontend.h"
-#include "libhwsec/frontend/pinweaver/frontend.h"
 #include "libhwsec/frontend/pinweaver_manager/frontend.h"
 #include "libhwsec/frontend/recovery_crypto/frontend.h"
 #include "libhwsec/frontend/u2fd/frontend.h"
@@ -33,7 +32,6 @@ class Factory {
  public:
   virtual ~Factory() = default;
   virtual std::unique_ptr<const CryptohomeFrontend> GetCryptohomeFrontend() = 0;
-  virtual std::unique_ptr<const PinWeaverFrontend> GetPinWeaverFrontend() = 0;
   virtual std::unique_ptr<const PinWeaverManagerFrontend>
   GetPinWeaverManagerFrontend() = 0;
   virtual std::unique_ptr<const RecoveryCryptoFrontend>
