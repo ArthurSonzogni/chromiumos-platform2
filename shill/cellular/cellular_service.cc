@@ -982,8 +982,11 @@ bool CellularService::SetCustomApnList(const Stringmaps& value, Error* error) {
   adaptor()->EmitStringmapsChanged(kCellularCustomApnListProperty,
                                    custom_apn_list_.value());
 
-  bool configure_attach_apn =
-      exist_attach || ApnList::IsAttachApn(last_attach_apn_info_);
+  // will be nullptr if it was not set
+  Stringmap* last_attach_apn_info = GetLastAttachApn();
+
+  bool configure_attach_apn = exist_attach || !last_attach_apn_info ||
+                              ApnList::IsAttachApn(*last_attach_apn_info);
   return CustomApnUpdated(configure_attach_apn, error);
 }
 
