@@ -223,14 +223,6 @@ bool UdevCollector::HandleCrash(const std::string& udev_event) {
 
 std::optional<base::FilePath> UdevCollector::GetConnectivityFwdumpStoragePath(
     const connectivity_util::Session& user_session) {
-  // For testing until fbpreprocessord daemon is available.
-  // TODO(b/308535192): Once fbpreprocessord is implemented, we can
-  // remove this check and unit test this function completely.
-  // Without fbpreprocessord implementation GetGroupInfo() will fail.
-  if (!forced_crash_directory_.empty()) {
-    return forced_crash_directory_;
-  }
-
   std::optional<base::FilePath> maybe_directory =
       connectivity_util::GetDaemonStoreFbPreprocessordDirectory(user_session);
 

@@ -4,9 +4,7 @@
 
 #include "crash-reporter/udev_collector.h"
 
-#include <map>
 #include <memory>
-#include <utility>
 #include <vector>
 
 #include <base/files/file_enumerator.h>
@@ -37,6 +35,9 @@ namespace {
 // TODO(b/203034370): Remove this once the feature is fully launched and the
 // feature flag is removed.
 constexpr char kBluetoothDumpFlagPath[] = "/run/bluetooth/coredump_disabled";
+
+constexpr char kFbpreprocessordBaseDirectory[] =
+    "/run/daemon-store/fbpreprocessord/user_hash";
 
 // Dummy log config file name.
 const char kLogConfigFileName[] = "log_config_file";
@@ -140,7 +141,27 @@ class UdevCollectorTest : public ::testing::Test {
         test_util::CreateFile(uevent_path, "DRIVER=" + driver_name + "\n"));
   }
 
+  // This function creates fbpreprocessord daemon-store directory and sets
+  // it to expected user, mode and group. The test invoking this function
+  // need to run as root to be able to change the group and ownership.
+  void CreateFbpreprocessordDirectoryForTest(UdevCollectorMock* collector) {
+    const int kFbPreprocessordAccessGid = 429;
+    const int kFbPreprocessordUid = 20213;
+    const mode_t kExpectedMode = 03770;
+
+    FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
+    ASSERT_TRUE(base::CreateDirectory(user_hash_path));
+    ASSERT_EQ(chown(user_hash_path.value().c_str(), kFbPreprocessordUid,
+                    kFbPreprocessordAccessGid),
+              0)
+        << strerrordesc_np(errno);
+    ASSERT_EQ(chmod(user_hash_path.value().c_str(), kExpectedMode), 0)
+        << strerrordesc_np(errno);
+  }
+
   void SetUpCollector(UdevCollectorMock* collector) {
+    // Reset the g_test_prefix in Path.
+    paths::SetPrefixForTesting(temp_dir_generator_.GetPath());
     EXPECT_CALL(*collector, SetUpDBus()).WillRepeatedly(testing::Return());
     collector->Initialize(false);
 
@@ -222,6 +243,8 @@ class UdevCollectorTest : public ::testing::Test {
     brillo::ClearLog();
   }
 
+  void TearDown() override { paths::SetPrefixForTesting(base::FilePath()); }
+
   FilePath log_config_path_;
 };
 
@@ -268,11 +291,13 @@ TEST_F(UdevCollectorTest, TestDevCoredump) {
 
 // Ensure that subsequent fwdumps are generated on back to back udev events
 // for allowed users.
-TEST_F(UdevCollectorTest, TestConnectivityWiFiDevCoredumpUserAllowed) {
+TEST_F(UdevCollectorTest,
+       RunAsRoot_TestConnectivityWiFiDevCoredumpUserAllowed) {
   GenerateDevCoredump("devcd0", kConnectivityWiFiDriverName);
 
   auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
   collector_.SetSessionManagerProxy(mock);
+  CreateFbpreprocessordDirectoryForTest(&collector_);
 
   EXPECT_CALL(*mock, RetrievePrimarySession)
       .WillOnce(WithArgs<0, 1>(
@@ -295,9 +320,9 @@ TEST_F(UdevCollectorTest, TestConnectivityWiFiDevCoredumpUserAllowed) {
         return true;
       })));
 
+  FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
   HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
-  EXPECT_EQ(
-      1, GetNumFiles(temp_dir_generator_.GetPath(), kWiFiCoredumpFilePattern));
+  EXPECT_EQ(1, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
 
   // Generate another coredump and check additional fwdump file is generated.
   GenerateDevCoredump("devcd1", kConnectivityWiFiDriverName);
@@ -307,6 +332,7 @@ TEST_F(UdevCollectorTest, TestConnectivityWiFiDevCoredumpUserAllowed) {
   SetUpCollector(&second_collector);
   auto* mock2 = new org::chromium::SessionManagerInterfaceProxyMock;
   second_collector.SetSessionManagerProxy(mock2);
+  CreateFbpreprocessordDirectoryForTest(&second_collector);
 
   EXPECT_CALL(*mock2, RetrievePrimarySession)
       .WillOnce(WithArgs<0, 1>(
@@ -330,16 +356,17 @@ TEST_F(UdevCollectorTest, TestConnectivityWiFiDevCoredumpUserAllowed) {
       })));
   second_collector.HandleCrash(
       "ACTION=add:KERNEL_NUMBER=1:SUBSYSTEM=devcoredump");
-  EXPECT_EQ(
-      2, GetNumFiles(temp_dir_generator_.GetPath(), kWiFiCoredumpFilePattern));
+  EXPECT_EQ(2, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
 }
 
 // Ensure that connectivity fwdump is generated for user in allowlist.
-TEST_F(UdevCollectorTest, TestConnectivityWiFiDevCoredumpUserInAllowList) {
+TEST_F(UdevCollectorTest,
+       RunAsRoot_TestConnectivityWiFiDevCoredumpUserInAllowList) {
   GenerateDevCoredump("devcd0", kConnectivityWiFiDriverName);
 
   auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
   collector_.SetSessionManagerProxy(mock);
+  CreateFbpreprocessordDirectoryForTest(&collector_);
 
   EXPECT_CALL(*mock, RetrievePrimarySession)
       .WillOnce(WithArgs<0, 1>(
@@ -362,17 +389,18 @@ TEST_F(UdevCollectorTest, TestConnectivityWiFiDevCoredumpUserInAllowList) {
         return true;
       })));
 
+  FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
   HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
-  EXPECT_EQ(
-      1, GetNumFiles(temp_dir_generator_.GetPath(), kWiFiCoredumpFilePattern));
+  EXPECT_EQ(1, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
   GenerateDevCoredump("devcd1", kConnectivityWiFiDriverName);
 }
 
 // Ensure fwdump is generated if policy is set and user is allowed.
-TEST_F(UdevCollectorTest, TestConnectivityWiFiDevCoredumpPolicySet) {
+TEST_F(UdevCollectorTest, RunAsRoot_TestConnectivityWiFiDevCoredumpPolicySet) {
   GenerateDevCoredump("devcd0", kConnectivityWiFiDriverName);
   auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
   collector_.SetSessionManagerProxy(mock);
+  CreateFbpreprocessordDirectoryForTest(&collector_);
 
   EXPECT_CALL(*mock, RetrievePrimarySession)
       .WillOnce(WithArgs<0, 1>(
@@ -395,9 +423,9 @@ TEST_F(UdevCollectorTest, TestConnectivityWiFiDevCoredumpPolicySet) {
         return true;
       })));
 
+  FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
   HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
-  EXPECT_EQ(
-      1, GetNumFiles(temp_dir_generator_.GetPath(), kWiFiCoredumpFilePattern));
+  EXPECT_EQ(1, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
 }
 
 // Ensures that there is no fwdump file generated if policy is not set
