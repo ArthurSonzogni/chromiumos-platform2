@@ -889,9 +889,6 @@ class UserDataAuth {
 
   CryptohomeStatus PrepareGuestVaultImpl();
 
-  CryptohomeStatus PrepareEphemeralVaultImpl(
-      const std::string& auth_session_id);
-
   CryptohomeStatus PreparePersistentVaultImpl(
       const std::string& auth_session_id,
       const CryptohomeVault::Options& vault_options);
@@ -900,6 +897,11 @@ class UserDataAuth {
 
   // Async helper functions for public APIs that require auth sessions. Executed
   // when the AuthSession becomes available.
+  void PrepareEphemeralVaultWithSession(
+      user_data_auth::PrepareEphemeralVaultRequest request,
+      base::OnceCallback<
+          void(const user_data_auth::PrepareEphemeralVaultReply&)> on_done,
+      InUseAuthSession auth_session);
   void CreatePersistentUserWithSession(
       user_data_auth::CreatePersistentUserRequest request,
       base::OnceCallback<void(const user_data_auth::CreatePersistentUserReply&)>

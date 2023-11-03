@@ -71,6 +71,7 @@ using ::testing::Invoke;
 using ::testing::IsEmpty;
 using ::testing::IsFalse;
 using ::testing::IsNull;
+using ::testing::IsTrue;
 using ::testing::Le;
 using ::testing::NiceMock;
 using ::testing::NotNull;
@@ -196,9 +197,16 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
     return userdataauth_.PrepareGuestVaultImpl();
   }
 
-  CryptohomeStatus PrepareEphemeralVaultImpl(
+  user_data_auth::PrepareEphemeralVaultReply PrepareEphemeralVaultImpl(
       const std::string& auth_session_id) {
-    return userdataauth_.PrepareEphemeralVaultImpl(auth_session_id);
+    user_data_auth::PrepareEphemeralVaultRequest req;
+    *req.mutable_auth_session_id() = auth_session_id;
+    TestFuture<user_data_auth::PrepareEphemeralVaultReply> reply_future;
+    userdataauth_.PrepareEphemeralVault(
+        req,
+        reply_future
+            .GetCallback<const user_data_auth::PrepareEphemeralVaultReply&>());
+    return reply_future.Get();
   }
 
   CryptohomeStatus PreparePersistentVaultImpl(
@@ -394,10 +402,8 @@ TEST_F(AuthSessionInterfaceTest,
 
   // User authed and exists.
   auto user_session = std::make_unique<MockUserSession>();
-  CryptohomeStatus status = PrepareEphemeralVaultImpl(serialized_token);
-  EXPECT_THAT(status, NotOk());
-  ASSERT_EQ(status->local_legacy_error(),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  ASSERT_THAT(PrepareEphemeralVaultImpl(serialized_token).error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
 
 // Test if PreparePersistentVaultImpl can succeed with invalid authSession. It
@@ -784,10 +790,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareGuestVault) {
     serialized_token = auth_session->serialized_token();
   }
 
-  status = PrepareEphemeralVaultImpl(serialized_token);
-  EXPECT_THAT(status, NotOk());
-  ASSERT_EQ(status->local_legacy_error(),
-            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+  ASSERT_THAT(PrepareEphemeralVaultImpl(serialized_token).error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
   auth_session_manager_->RemoveAllAuthSessions();
 
   // ... or regular.
@@ -914,7 +918,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareGuestVaultAfterFailedEphemeral) {
       .WillOnce(Return(ByMove(std::move(user_session2))));
 
   // We set first invocation to fail, but the second should succeed.
-  ASSERT_THAT(PrepareEphemeralVaultImpl(serialized_token), NotOk());
+  ASSERT_THAT(PrepareEphemeralVaultImpl(serialized_token).has_error_info(),
+              IsTrue());
   ASSERT_THAT(PrepareGuestVaultImpl(), IsOk());
 }
 
@@ -922,10 +927,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   MockOwnerUser("whoever", homedirs_);
 
   // No auth session.
-  CryptohomeStatus status = PrepareEphemeralVaultImpl("");
-  EXPECT_THAT(status, NotOk());
-  ASSERT_EQ(status->local_legacy_error(),
-            user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+  ASSERT_THAT(PrepareEphemeralVaultImpl("").error(),
+              Eq(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
 
   // Auth session is initially not authenticated for ephemeral users.
   std::string serialized_token;
@@ -942,10 +945,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   }
 
   // Using the broadcast ID as the session ID should fail.
-  status = PrepareEphemeralVaultImpl(serialized_public_token);
-  EXPECT_THAT(status, NotOk());
-  ASSERT_EQ(status->local_legacy_error(),
-            user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+  ASSERT_THAT(PrepareEphemeralVaultImpl(serialized_public_token).error(),
+              Eq(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
 
   // User authed and exists.
   auto user_session = std::make_unique<MockUserSession>();
@@ -959,7 +960,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   EXPECT_CALL(user_session_factory_, New(_, _, _))
       .WillOnce(Return(ByMove(std::move(user_session))));
 
-  EXPECT_THAT(PrepareEphemeralVaultImpl(serialized_token), IsOk());
+  EXPECT_THAT(PrepareEphemeralVaultImpl(serialized_token).has_error_info(),
+              IsFalse());
   auth_session_manager_->RunWhenAvailable(
       serialized_token, base::BindOnce([](InUseAuthSession auth_session) {
         EXPECT_THAT(auth_session->authorized_intents(),
@@ -984,13 +986,11 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   ASSERT_THAT(reply.error(), Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
 
   // Trying to mount again will yield busy.
-  status = PrepareEphemeralVaultImpl(serialized_token);
-  EXPECT_THAT(status, NotOk());
-  ASSERT_EQ(status->local_legacy_error(),
-            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+  ASSERT_THAT(PrepareEphemeralVaultImpl(serialized_token).error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
 
   // Guest fails if other sessions present.
-  status = PrepareGuestVaultImpl();
+  CryptohomeStatus status = PrepareGuestVaultImpl();
   EXPECT_THAT(status, NotOk());
   ASSERT_EQ(status->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
@@ -1005,10 +1005,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
     AuthSession* auth_session2 = auth_session2_status.value().Get();
     serialized_token = auth_session2->serialized_token();
   }
-  status = PrepareEphemeralVaultImpl(serialized_token);
-  EXPECT_THAT(status, NotOk());
-  ASSERT_EQ(status->local_legacy_error(),
-            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+  ASSERT_THAT(PrepareEphemeralVaultImpl(serialized_token).error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
 
   // But a different regular mount succeeds.
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername3);
@@ -1293,10 +1291,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndEphemeral) {
   EXPECT_TRUE(found_user_session->IsActive());
 
   // Trying to mount again will yield busy.
-  prepare_status = PrepareEphemeralVaultImpl(serialized_token);
-  EXPECT_THAT(prepare_status, NotOk());
-  ASSERT_EQ(prepare_status->local_legacy_error(),
-            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+  ASSERT_THAT(PrepareEphemeralVaultImpl(serialized_token).error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
 }
 
 }  // namespace
@@ -1408,7 +1404,8 @@ class AuthSessionInterfaceMockAuthTest : public AuthSessionInterfaceTestBase {
     EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
         .WillOnce(Return(ByMove(std::move(user_session))));
 
-    EXPECT_THAT(PrepareEphemeralVaultImpl(serialized_token), IsOk());
+    EXPECT_THAT(PrepareEphemeralVaultImpl(serialized_token).has_error_info(),
+                IsFalse());
     return serialized_token;
   }
 
