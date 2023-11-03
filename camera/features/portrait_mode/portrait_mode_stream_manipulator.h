@@ -67,7 +67,7 @@ class PortraitModeStreamManipulator : public StreamManipulator {
     bool has_portrait_result = false;
     bool has_updated_metadata = false;
     std::optional<CameraBufferPool::Buffer> still_yuv_buffer;
-    std::optional<SegmentationResult> segmentation_result;
+    std::optional<mojom::PortraitModeSegResult> segmentation_result;
     // Holds the last partial result if it comes before the buffer returns.
     std::optional<Camera3CaptureDescriptor> pending_result_;
   };

@@ -56,7 +56,7 @@ int32_t PortraitModeEffect::Initialize(CameraMojoChannelManagerToken* token) {
 int32_t PortraitModeEffect::ProcessRequest(
     buffer_handle_t input_buffer,
     uint32_t orientation,
-    SegmentationResult* segmentation_result,
+    mojom::PortraitModeSegResult* segmentation_result,
     buffer_handle_t output_buffer) {
   constexpr base::TimeDelta kPortraitProcessorTimeout = base::Seconds(15);
   if (!input_buffer || !output_buffer) {
@@ -180,12 +180,12 @@ int32_t PortraitModeEffect::ProcessRequest(
 }
 
 void PortraitModeEffect::UpdateSegmentationResult(
-    SegmentationResult* segmentation_result, const int* result) {
+    mojom::PortraitModeSegResult* segmentation_result, const int* result) {
   *segmentation_result =
-      (*result == 0)            ? SegmentationResult::kSuccess
-      : (*result == -ETIMEDOUT) ? SegmentationResult::kTimeout
-      : (*result == -ECANCELED) ? SegmentationResult::kNoFaces
-                                : SegmentationResult::kFailure;
+      (*result == 0)            ? mojom::PortraitModeSegResult::kSuccess
+      : (*result == -ETIMEDOUT) ? mojom::PortraitModeSegResult::kTimeout
+      : (*result == -ECANCELED) ? mojom::PortraitModeSegResult::kNoFaces
+                                : mojom::PortraitModeSegResult::kFailure;
 }
 
 void PortraitModeEffect::ReturnCallback(uint32_t status,

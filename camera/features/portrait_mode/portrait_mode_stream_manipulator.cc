@@ -22,7 +22,7 @@ namespace cros {
 namespace {
 
 bool UpdateResultMetadata(Camera3CaptureDescriptor* result,
-                          SegmentationResult seg_result) {
+                          mojom::PortraitModeSegResult seg_result) {
   return result->UpdateMetadata<uint8_t>(
       kPortraitModeSegmentationResultVendorKey,
       std::array<uint8_t, 1>{base::checked_cast<unsigned char>(seg_result)});
@@ -437,7 +437,8 @@ bool PortraitModeStreamManipulator::ProcessCaptureResultOnThread(
       return false;
     }
     metrics_.last_process_time_start = base::TimeTicks::Now();
-    SegmentationResult seg_result = SegmentationResult::kUnknown;
+    mojom::PortraitModeSegResult seg_result =
+        mojom::PortraitModeSegResult::kUnknown;
     if (portrait_mode_->ProcessRequest(*still_yuv_buffer->buffer(),
                                        ctx->orientation, &seg_result,
                                        *ctx->still_yuv_buffer->handle()) != 0) {
@@ -457,15 +458,16 @@ bool PortraitModeStreamManipulator::ProcessCaptureResultOnThread(
       (ctx->pending_result_ || result.has_metadata())) {
     Camera3CaptureDescriptor* res =
         ctx->pending_result_ ? &ctx->pending_result_.value() : &result;
-    SegmentationResult seg_result = *ctx->segmentation_result;
-    if (seg_result == SegmentationResult::kUnknown ||
+    mojom::PortraitModeSegResult seg_result = *ctx->segmentation_result;
+    if (seg_result == mojom::PortraitModeSegResult::kUnknown ||
         !UpdateResultMetadata(res, seg_result)) {
       LOGF(ERROR) << "Cannot update kPortraitModeSegmentationResultVendorKey "
                      "in result "
                   << res->frame_number();
       ++metrics_.errors[PortraitModeError::kProcessResultError];
     }
-    ctx->has_portrait_result = seg_result == SegmentationResult::kSuccess;
+    ctx->has_portrait_result =
+        seg_result == mojom::PortraitModeSegResult::kSuccess;
     if (ctx->pending_result_) {
       callbacks_.result_callback.Run(std::move(ctx->pending_result_.value()));
       ctx->pending_result_.reset();
