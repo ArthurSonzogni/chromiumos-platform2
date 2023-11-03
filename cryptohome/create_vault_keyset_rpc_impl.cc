@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/strings/string_number_conversions.h>
 #include <libhwsec-foundation/crypto/aes.h>
@@ -176,11 +177,21 @@ void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
         return;
       }
-      // TPM 1.2 only supports SHA1, otherwise default to SHA512.
-      auto algo =
-          ((family.value() == kTpm12Family)
-               ? SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1
-               : SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512);
+      // TPM 1.2 only supports SHA1, otherwise default to entire list of
+      // SHA algorithms.
+      std::vector<SerializedChallengeSignatureAlgorithm> algos;
+      if (family.value() == kTpm12Family) {
+        algos.push_back(
+            SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1);
+      } else {
+        for (auto algo :
+             {SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512,
+              SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384,
+              SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
+              SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1}) {
+          algos.push_back(algo);
+        }
+      }
 
       // Initializes a ChallengeCredentialAuthInput.
       // Append challenge algorithm and key_delegate_dbus_service_name for
@@ -190,7 +201,7 @@ void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
         auth_input.challenge_credential_auth_input =
             ChallengeCredentialAuthInput{
                 .public_key_spki_der = brillo::BlobFromString(challenge_spki),
-                .challenge_signature_algorithms = {algo},
+                .challenge_signature_algorithms = algos,
                 .dbus_service_name = request.key_delegate_dbus_service_name(),
             };
         auto* challenge_key = key_data.add_challenge_response_key();
