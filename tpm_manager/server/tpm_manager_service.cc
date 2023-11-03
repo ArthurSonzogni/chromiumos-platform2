@@ -101,23 +101,6 @@ namespace tpm_manager {
 
 namespace {
 
-const std::string ToString(
-    TpmManagerService::ReplaceOwnerPasswordResult enum_param) {
-  switch (enum_param) {
-    case TpmManagerService::ReplaceOwnerPasswordResult::kSuccess:
-      return "kSuccess";
-    case TpmManagerService::ReplaceOwnerPasswordResult::
-        kClearSuccessButWriteFail:
-      return "kClearSuccessButWriteFail";
-    case TpmManagerService::ReplaceOwnerPasswordResult::kPasswordGenerationFail:
-      return "kPasswordGenerationFail";
-    case TpmManagerService::ReplaceOwnerPasswordResult::kFail:
-      return "kFail";
-    default:
-      LOG(ERROR) << __func__ << "Unimplemented enum!";
-  }
-}
-
 GetTpmNonsensitiveStatusReply ToGetTpmNonSensitiveStatusReply(
     const GetTpmStatusReply& from) {
   GetTpmNonsensitiveStatusReply to;
@@ -978,8 +961,6 @@ TpmManagerService::ClearStoredOwnerPasswordTask(
   auto ReplaceOwnerPasswordResult =
       ClearOwnerPasswordAndReplaceWithRandomPasswordIfPossible(local_data);
 
-  LOG(INFO) << __func__ << "ReplaceOwnerPasswordResult: "
-            << ToString(ReplaceOwnerPasswordResult);
   if (ReplaceOwnerPasswordResult ==
       ReplaceOwnerPasswordResult::kClearSuccessButWriteFail) {
     reply->set_status(STATUS_DEVICE_ERROR);
@@ -1200,7 +1181,6 @@ TpmManagerService::ReplaceOwnerPasswordResult
 TpmManagerService::ClearOwnerPasswordAndReplaceWithRandomPasswordIfPossible(
     LocalData& local_data) {
   if (!local_data.has_owner_password()) {
-    LOG(ERROR) << __func__ << ": missing owner password.";
     return ReplaceOwnerPasswordResult::kFail;
   }
 
