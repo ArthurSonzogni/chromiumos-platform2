@@ -52,10 +52,19 @@ struct sl_host_linux_dmabuf {
   std::vector<sl_linux_dmabuf_modifier> modifiers;
 };
 
+struct sl_linux_dmabuf_packed_format {
+  uint32_t format;
+  uint32_t _padding;
+  uint64_t modifier;
+};
+
 struct sl_host_linux_dmabuf_feedback {
   sl_host_linux_dmabuf* host_linux_dmabuf;
   struct wl_resource* resource;
   struct zwp_linux_dmabuf_feedback_v1* proxy;
+
+  uint32_t map_size;
+  struct sl_linux_dmabuf_packed_format* mapped_format_table;
 };
 
 struct sl_host_linux_buffer_params {
@@ -80,6 +89,8 @@ struct sl_host_buffer* sl_linux_dmabuf_create_host_buffer(
     struct wl_buffer* buffer_proxy,
     uint32_t buffer_id,
     const struct sl_linux_dmabuf_host_buffer_create_info* create_info) {
+  assert(sl_drm_format_is_supported(create_info->format));
+
   struct sl_host_buffer* host_buffer =
       sl_create_host_buffer(ctx, client, buffer_id, buffer_proxy,
                             create_info->width, create_info->height, true);
@@ -199,9 +210,21 @@ static void sl_linux_dmabuf_feedback_format_table(
     uint32_t size) {
   struct sl_host_linux_dmabuf_feedback* host_feedback =
       static_cast<struct sl_host_linux_dmabuf_feedback*>(data);
+  struct sl_context* ctx = host_feedback->host_linux_dmabuf->linux_dmabuf->ctx;
 
-  zwp_linux_dmabuf_feedback_v1_send_format_table(host_feedback->resource, fd,
-                                                 size);
+  void* map_addr = mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
+  if (map_addr == MAP_FAILED) {
+    wl_client_post_implementation_error(
+        ctx->client, "failed to map format table with error %d", errno);
+  } else {
+    host_feedback->map_size = size;
+    host_feedback->mapped_format_table =
+        static_cast<struct sl_linux_dmabuf_packed_format*>(map_addr);
+
+    zwp_linux_dmabuf_feedback_v1_send_format_table(host_feedback->resource, fd,
+                                                   size);
+  }
+
   close(fd);
 }
 
@@ -297,9 +320,32 @@ static void sl_linux_dmabuf_feedback_tranche_formats(
     struct wl_array* indices) {
   struct sl_host_linux_dmabuf_feedback* host_feedback =
       static_cast<struct sl_host_linux_dmabuf_feedback*>(data);
+  struct sl_context* ctx = host_feedback->host_linux_dmabuf->linux_dmabuf->ctx;
+
+  wl_array filtered;
+  wl_array_init(&filtered);
+
+  // TODO(b/309012293): format filtering added to match wl_drm behavior while
+  // sommelier+virgl depend on a known list of supported formats.
+  uint16_t* index;
+  sl_array_for_each(index, indices) {
+    const sl_linux_dmabuf_packed_format* packed =
+        &host_feedback->mapped_format_table[*index];
+    if (sl_drm_format_is_supported(packed->format)) {
+      uint16_t* dst =
+          static_cast<uint16_t*>(wl_array_add(&filtered, sizeof(uint16_t)));
+      if (!dst) {
+        wl_array_release(&filtered);
+        wl_client_post_no_memory(ctx->client);
+        return;
+      }
+      *dst = *index;
+    }
+  }
 
   zwp_linux_dmabuf_feedback_v1_send_tranche_formats(host_feedback->resource,
-                                                    indices);
+                                                    &filtered);
+  wl_array_release(&filtered);
 }
 
 static void sl_linux_dmabuf_feedback_tranche_flags(
@@ -330,6 +376,12 @@ static void sl_linux_dmabuf_feedback_resource_destroy(
   struct sl_host_linux_dmabuf_feedback* host_feedback =
       static_cast<struct sl_host_linux_dmabuf_feedback*>(
           wl_resource_get_user_data(resource));
+
+  if (host_feedback->mapped_format_table) {
+    int ret =
+        munmap(host_feedback->mapped_format_table, host_feedback->map_size);
+    assert(!ret);
+  }
 
   zwp_linux_dmabuf_feedback_v1_destroy(host_feedback->proxy);
   delete host_feedback;
@@ -469,6 +521,13 @@ static void sl_linux_buffer_params_create(struct wl_client* client,
       static_cast<struct sl_host_linux_buffer_params*>(
           wl_resource_get_user_data(resource));
 
+  if (!sl_drm_format_is_supported(format)) {
+    wl_resource_post_error(resource,
+                           ZWP_LINUX_BUFFER_PARAMS_V1_ERROR_INVALID_FORMAT,
+                           "invalid format %u", format);
+    return;
+  }
+
   host_params->width = width;
   host_params->height = height;
   host_params->format = format;
@@ -487,6 +546,13 @@ static void sl_linux_buffer_params_create_immed(struct wl_client* client,
       static_cast<struct sl_host_linux_buffer_params*>(
           wl_resource_get_user_data(resource));
   struct sl_context* ctx = host_params->host_linux_dmabuf->linux_dmabuf->ctx;
+
+  if (!sl_drm_format_is_supported(format)) {
+    wl_resource_post_error(resource,
+                           ZWP_LINUX_BUFFER_PARAMS_V1_ERROR_INVALID_FORMAT,
+                           "invalid format %u", format);
+    return;
+  }
 
   struct wl_buffer* buffer_proxy = zwp_linux_buffer_params_v1_create_immed(
       host_params->proxy, width, height, format, flags);
@@ -638,10 +704,12 @@ static void sl_linux_dmabuf_format(
   assert(host_linux_dmabuf->version <
          ZWP_LINUX_DMABUF_V1_GET_DEFAULT_FEEDBACK_SINCE_VERSION);
 
-  const struct sl_linux_dmabuf_format fmt = {
-      .format = format,
-  };
-  host_linux_dmabuf->formats.push_back(fmt);
+  if (sl_drm_format_is_supported(format)) {
+    const struct sl_linux_dmabuf_format fmt = {
+        .format = format,
+    };
+    host_linux_dmabuf->formats.push_back(fmt);
+  }
 }
 
 static void sl_linux_dmabuf_modifier(
@@ -657,12 +725,14 @@ static void sl_linux_dmabuf_modifier(
   assert(host_linux_dmabuf->version <
          ZWP_LINUX_DMABUF_V1_GET_DEFAULT_FEEDBACK_SINCE_VERSION);
 
-  const struct sl_linux_dmabuf_modifier mod = {
-      .format = format,
-      .modifier_hi = modifier_hi,
-      .modifier_lo = modifier_lo,
-  };
-  host_linux_dmabuf->modifiers.push_back(mod);
+  if (sl_drm_format_is_supported(format)) {
+    const struct sl_linux_dmabuf_modifier mod = {
+        .format = format,
+        .modifier_hi = modifier_hi,
+        .modifier_lo = modifier_lo,
+    };
+    host_linux_dmabuf->modifiers.push_back(mod);
+  }
 }
 
 static struct zwp_linux_dmabuf_v1_listener sl_linux_dmabuf_listener = {

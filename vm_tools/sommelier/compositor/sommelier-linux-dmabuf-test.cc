@@ -30,6 +30,23 @@ struct FormatModifier {
   }
 };
 
+bool format_in_list(uint32_t format, const std::vector<uint32_t>& format_list) {
+  for (const auto& fmt : format_list) {
+    if (fmt == format)
+      return true;
+  }
+  return false;
+}
+
+bool modifier_in_list(struct FormatModifier modifier,
+                      const std::vector<struct FormatModifier>& modifier_list) {
+  for (auto& mod : modifier_list) {
+    if (mod == modifier)
+      return true;
+  }
+  return false;
+}
+
 }  // namespace
 
 namespace vm_tools::sommelier {
@@ -98,6 +115,12 @@ class LinuxDmabufTest : public WaylandTestBase {
                    fmt);
     }
 
+    for (const auto& fmt : unsupported_formats) {
+      HostEventHandler(linux_dmabuf_fixture.proxy)
+          ->format(linux_dmabuf_fixture.user_data, linux_dmabuf_fixture.proxy,
+                   fmt);
+    }
+
     // signal sommelier that all bind-time events have been sent by the server
     HostEventHandler(linux_dmabuf_fixture.bind_callback_proxy)
         ->done(linux_dmabuf_fixture.user_data,
@@ -106,6 +129,12 @@ class LinuxDmabufTest : public WaylandTestBase {
 
   void SpoofServerModifierEvents() {
     for (const auto& mod : supported_modifiers) {
+      HostEventHandler(linux_dmabuf_fixture.proxy)
+          ->modifier(linux_dmabuf_fixture.user_data, linux_dmabuf_fixture.proxy,
+                     mod.format, mod.modifier >> 32, mod.modifier & 0xFFFFFFFF);
+    }
+
+    for (const auto& mod : unsupported_modifiers) {
       HostEventHandler(linux_dmabuf_fixture.proxy)
           ->modifier(linux_dmabuf_fixture.user_data, linux_dmabuf_fixture.proxy,
                      mod.format, mod.modifier >> 32, mod.modifier & 0xFFFFFFFF);
@@ -127,8 +156,10 @@ class LinuxDmabufTest : public WaylandTestBase {
   struct linux_dmabuf_test_fixture linux_dmabuf_fixture;
 
   const std::vector<uint32_t> supported_formats = {
-      DRM_FORMAT_NV12,        DRM_FORMAT_XRGB8888,    DRM_FORMAT_ARGB8888,
-      DRM_FORMAT_XBGR8888,    DRM_FORMAT_ABGR8888,    DRM_FORMAT_RGB565,
+      DRM_FORMAT_NV12,     DRM_FORMAT_XRGB8888, DRM_FORMAT_ARGB8888,
+      DRM_FORMAT_XBGR8888, DRM_FORMAT_ABGR8888, DRM_FORMAT_RGB565,
+  };
+  const std::vector<uint32_t> unsupported_formats = {
       DRM_FORMAT_RGB332,      DRM_FORMAT_XRGB2101010, DRM_FORMAT_ARGB2101010,
       DRM_FORMAT_XBGR2101010, DRM_FORMAT_ABGR2101010,
   };
@@ -139,6 +170,8 @@ class LinuxDmabufTest : public WaylandTestBase {
       {DRM_FORMAT_XBGR8888, DRM_FORMAT_MOD_LINEAR},
       {DRM_FORMAT_ABGR8888, DRM_FORMAT_MOD_INVALID},
       {DRM_FORMAT_RGB565, DRM_FORMAT_MOD_LINEAR},
+  };
+  const std::vector<struct FormatModifier> unsupported_modifiers = {
       {DRM_FORMAT_RGB332, DRM_FORMAT_MOD_LINEAR},
       {DRM_FORMAT_XRGB2101010, DRM_FORMAT_MOD_INVALID},
       {DRM_FORMAT_ARGB2101010, DRM_FORMAT_MOD_INVALID},
@@ -211,6 +244,24 @@ TEST_F(LinuxDmabufTest, BindVersion2_SendsOnlyFormats) {
   ASSERT_EQ(callback_data.modifiers.size(), 0);
 }
 
+TEST_F(LinuxDmabufTest, BindVersion2_SendsOnlySupportedFormats) {
+  zwp_linux_dmabuf_v1* linux_dmabuf = BindClientToLinuxDmabuf(2);
+
+  struct bind_callback_data callback_data;
+  zwp_linux_dmabuf_v1_add_listener(linux_dmabuf, &linux_dmabuf_listener,
+                                   &callback_data);
+
+  SpoofServerFormatEvents();
+
+  FlushClients();
+  client->DispatchEvents();
+
+  ASSERT_EQ(callback_data.formats.size(), supported_formats.size());
+  for (auto& fmt : callback_data.formats) {
+    ASSERT_TRUE(format_in_list(fmt, supported_formats));
+  }
+}
+
 TEST_F(LinuxDmabufTest, BindVersion3_SendsModifiers) {
   zwp_linux_dmabuf_v1* linux_dmabuf = BindClientToLinuxDmabuf(3);
 
@@ -224,6 +275,24 @@ TEST_F(LinuxDmabufTest, BindVersion3_SendsModifiers) {
   client->DispatchEvents();
 
   ASSERT_GT(callback_data.modifiers.size(), 0);
+}
+
+TEST_F(LinuxDmabufTest, BindVersion3_SendsOnlySupportedModifiers) {
+  zwp_linux_dmabuf_v1* linux_dmabuf = BindClientToLinuxDmabuf(3);
+
+  struct bind_callback_data callback_data;
+  zwp_linux_dmabuf_v1_add_listener(linux_dmabuf, &linux_dmabuf_listener,
+                                   &callback_data);
+
+  SpoofServerModifierEvents();
+
+  FlushClients();
+  client->DispatchEvents();
+
+  ASSERT_EQ(callback_data.modifiers.size(), supported_modifiers.size());
+  for (auto& mod : callback_data.modifiers) {
+    ASSERT_TRUE(modifier_in_list(mod, supported_modifiers));
+  }
 }
 
 TEST_F(LinuxDmabufTest, BindVersion4_DoesntSendBindEvents) {
