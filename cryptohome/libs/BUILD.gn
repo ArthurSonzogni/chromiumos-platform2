@@ -637,7 +637,6 @@ static_library("libcryptohome") {
     "../cryptorecovery/recovery_crypto.cc",
     "../cryptorecovery/recovery_crypto_hsm_cbor_serialization.cc",
     "../cryptorecovery/recovery_crypto_impl.cc",
-    "../cryptorecovery/recovery_crypto_util.cc",
     "../data_migrator/migration_helper.cc",
     "../error/converter.cc",
     "../error/cryptohome_crypto_error.cc",

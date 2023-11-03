@@ -80,8 +80,7 @@ class AuthFactorMap final {
 
     value_type operator*() const { return value_type{&iter_->second}; }
 
-    bool operator==(const iterator& rhs) const { return iter_ == rhs.iter_; }
-    bool operator!=(const iterator& rhs) const { return !(*this == rhs); }
+    bool operator==(const iterator& rhs) const = default;
 
    private:
     friend class AuthFactorMap;

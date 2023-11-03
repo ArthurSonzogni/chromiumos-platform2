@@ -66,10 +66,10 @@ struct OnboardingMetadata {
   // Generated anew after each successful recovery, hex-encoded sha-256 hash
   // string.
   std::string recovery_id;
-};
 
-bool operator==(const OnboardingMetadata& lhs, const OnboardingMetadata& rhs);
-bool operator!=(const OnboardingMetadata& lhs, const OnboardingMetadata& rhs);
+  friend bool operator==(const OnboardingMetadata& lhs,
+                         const OnboardingMetadata& rhs) = default;
+};
 
 // PublicLedgerEntry is the structure of the ledger messages logging the
 // recoveries.

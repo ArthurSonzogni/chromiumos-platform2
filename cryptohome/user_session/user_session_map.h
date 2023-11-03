@@ -60,10 +60,7 @@ class UserSessionMap final {
       return value_type(iter_->first, *iter_->second);
     }
 
-    bool operator==(const iterator_base& rhs) const {
-      return iter_ == rhs.iter_;
-    }
-    bool operator!=(const iterator_base& rhs) const { return !(*this == rhs); }
+    bool operator==(const iterator_base& rhs) const = default;
 
    private:
     friend class UserSessionMap;

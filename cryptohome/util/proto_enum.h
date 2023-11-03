@@ -78,12 +78,7 @@ class ProtobufEnumIterator {
 
   E operator*() const { return static_cast<E>(current_); }
 
-  bool operator==(const ProtobufEnumIterator& rhs) const {
-    return current_ == rhs.current_;
-  }
-  bool operator!=(const ProtobufEnumIterator& rhs) const {
-    return !(*this == rhs);
-  }
+  bool operator==(const ProtobufEnumIterator& rhs) const = default;
 
  private:
   friend class ProtobufEnumAllValuesView<E, kMin, kMax, IsValidFunc>;
