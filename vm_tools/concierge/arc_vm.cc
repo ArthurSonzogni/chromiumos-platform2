@@ -1475,6 +1475,8 @@ std::vector<std::string> ArcVm::GetKernelParams(
       base::StringPrintf("androidboot.zram_size=%" PRId64, zram_size),
       base::StringPrintf("androidboot.arc_switch_to_keymint=%d",
                          mini_instance_request.arc_switch_to_keymint()),
+      base::StringPrintf("androidboot.arc.signed_in=%d",
+                         mini_instance_request.arc_signed_in()),
       // Avoid the RCU synchronization from blocking. See b/285791678#comment74
       // for the context.
       "rcupdate.rcu_expedited=1",

@@ -1421,6 +1421,7 @@ bool SessionManagerImpl::StartArcMiniContainer(
       base::StringPrintf("HOST_UREADAHEAD_GENERATION=%d",
                          request.host_ureadahead_generation()),
       base::StringPrintf("USE_DEV_CACHES=%d", request.use_dev_caches()),
+      base::StringPrintf("ARC_SIGNED_IN=%d", request.arc_signed_in()),
   };
 
   if (request.arc_generate_pai())

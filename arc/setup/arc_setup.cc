@@ -1403,6 +1403,10 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
   LOG(INFO) << "enable_privacy_hub_for_chrome is "
             << enable_privacy_hub_for_chrome;
 
+  const int arc_signed_in = config_.GetBoolOrDie("ARC_SIGNED_IN");
+  if (arc_signed_in)
+    LOG(INFO) << "arc_signed_in is enabled";
+
   std::string native_bridge;
   switch (IdentifyBinaryTranslationType()) {
     case ArcBinaryTranslationType::NONE:
@@ -1463,7 +1467,8 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       "androidboot.enable_consumer_auto_update_toggle=%d "
       "androidboot.arc.ureadahead_generation=%d "
       "%s" /* Use dev caches */
-      "androidboot.enable_privacy_hub_for_chrome=%d\n",
+      "androidboot.enable_privacy_hub_for_chrome=%d "
+      "androidboot.arc.signed_in=%d\n",
       is_dev_mode, !is_dev_mode, is_inside_vm, arc_lcd_density,
       native_bridge.c_str(), arc_file_picker, arc_custom_tabs,
       chromeos_channel.c_str(),
@@ -1475,7 +1480,8 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       ts.tv_sec * base::Time::kNanosecondsPerSecond + ts.tv_nsec,
       enable_notifications_refresh, enable_tts_caching,
       enable_consumer_auto_update_toggle, host_ureadahead_generation,
-      GetUseDevCaches(use_dev_caches).c_str(), enable_privacy_hub_for_chrome);
+      GetUseDevCaches(use_dev_caches).c_str(), enable_privacy_hub_for_chrome,
+      arc_signed_in);
 
   EXIT_IF(!WriteToFile(arc_paths_->android_cmdline, 0644, content));
 }
@@ -2817,7 +2823,7 @@ void ArcSetup::OnUnmountSdcard() {
 void ArcSetup::OnUpdateRestoreconLast() {
   if (GetSdkVersion() > AndroidSdkVersion::ANDROID_P) {
     // Currently R container does not support setting security.sehash.
-    // TODO: b/292031836 - Support setting security.sehash on R container.
+    // TODO(b/292031836): Support setting security.sehash on R container.
     return;
   }
 

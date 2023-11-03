@@ -432,6 +432,28 @@ TEST(ArcVmParamsTest, GuestZramSizeMiB) {
   EXPECT_TRUE(base::Contains(params, "androidboot.zram_size=104857600"));
 }
 
+TEST(ArcVmParamsTest, ArcSignedInTrue) {
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
+  StartArcVmRequest request;
+  auto* mini_instance_request = request.mutable_mini_instance_request();
+  mini_instance_request->set_arc_signed_in(true);
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
+  EXPECT_TRUE(base::Contains(params, "androidboot.arc.signed_in=1"));
+}
+
+TEST(ArcVmParamsTest, ArcSignedInFalse) {
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
+  StartArcVmRequest request;
+  auto* mini_instance_request = request.mutable_mini_instance_request();
+  mini_instance_request->set_arc_signed_in(false);
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
+  EXPECT_TRUE(base::Contains(params, "androidboot.arc.signed_in=0"));
+}
+
 TEST(ArcVmParamsTest, ChromeOsChannelStable) {
   base::test::ScopedChromeOSVersionInfo info(
       "CHROMEOS_RELEASE_TRACK=stable-channel", base::Time::Now());
