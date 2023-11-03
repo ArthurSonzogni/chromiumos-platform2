@@ -537,7 +537,8 @@ int CachedFrame::CompressNV12(const android::CameraMetadata& static_metadata,
   }
 
   // TODO(shik): Regenerate if thumbnail is too large.
-  if (!utils.GenerateApp1(thumbnail.data(), thumbnail.size())) {
+  if (!utils.GenerateApp1(thumbnail.data(), thumbnail.size(),
+                          ExifUtils::Compression::kJpeg)) {
     LOGF(ERROR) << "Generating APP1 segment failed.";
     return -EINVAL;
   }

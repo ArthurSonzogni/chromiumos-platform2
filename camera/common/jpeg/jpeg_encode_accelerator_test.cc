@@ -326,7 +326,7 @@ void JpegEncodeAcceleratorTest::EncodeTest(Frame* frame) {
   ASSERT_TRUE(utils.SetImageLength(frame->height));
   std::vector<uint8_t> thumbnail;
   thumbnail.resize(0);
-  utils.GenerateApp1(thumbnail.data(), 0);
+  utils.GenerateApp1(thumbnail.data(), 0, ExifUtils::Compression::kJpeg);
 
   auto GetDmaBufPlanes = [&](buffer_handle_t handle) {
     std::vector<JpegCompressor::DmaBufPlane> planes;

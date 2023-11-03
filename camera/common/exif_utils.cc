@@ -141,7 +141,7 @@ bool ExifUtils::SetComponentsConfiguration(
   return true;
 }
 
-bool ExifUtils::SetCompression(uint16_t compression) {
+bool ExifUtils::SetCompression(Compression compression) {
   SET_SHORT(EXIF_IFD_0, EXIF_TAG_COMPRESSION, compression);
   return true;
 }
@@ -476,11 +476,15 @@ bool ExifUtils::SetYResolution(uint32_t numerator, uint32_t denominator) {
   return true;
 }
 
-bool ExifUtils::GenerateApp1(const void* thumbnail_buffer, uint32_t size) {
+bool ExifUtils::GenerateApp1(const void* thumbnail_buffer,
+                             uint32_t size,
+                             Compression compression) {
   DestroyApp1();
   exif_data_->data =
       const_cast<uint8_t*>(static_cast<const uint8_t*>(thumbnail_buffer));
   exif_data_->size = size;
+  // Thumbnail lives in IFD1.
+  SET_SHORT(EXIF_IFD_1, EXIF_TAG_COMPRESSION, compression);
   // Save the result into |app1_buffer_|.
   exif_data_save_data(exif_data_, &app1_buffer_, &app1_length_);
   if (!app1_length_) {

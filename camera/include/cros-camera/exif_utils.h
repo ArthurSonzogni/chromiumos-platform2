@@ -33,7 +33,8 @@ namespace cros {
 //  ...
 //  // Call ExifUtils functions to set Exif tags.
 //  ...
-//  utils.GenerateApp1(thumbnail_buffer, thumbnail_size);
+//  utils.GenerateApp1(thumbnail_buffer, thumbnail_size,
+//    ExifUtils::Compression::kJpeg);
 //  unsigned int app1Length = utils.GetApp1Length();
 //  uint8_t* app1Buffer = new uint8_t[app1Length];
 //  memcpy(app1Buffer, utils.GetApp1Buffer(), app1Length);
@@ -41,6 +42,12 @@ class CROS_CAMERA_EXPORT ExifUtils {
  public:
   ExifUtils();
   ~ExifUtils();
+
+  // Ref: https://web.archive.org/web/20131018091152/http://exif.org/Exif2-2.PDF
+  enum Compression {
+    kNone = 1,
+    kJpeg = 6,
+  };
 
   // Initialize() can be called multiple times. The setting of Exif tags will be
   // cleared.
@@ -65,7 +72,7 @@ class CROS_CAMERA_EXPORT ExifUtils {
 
   // Sets the compression scheme used for the image data.
   // Returns false if memory allocation fails.
-  bool SetCompression(uint16_t compression);
+  bool SetCompression(Compression compression);
 
   // Sets image contrast.
   // Returns false if memory allocation fails.
@@ -213,7 +220,9 @@ class CROS_CAMERA_EXPORT ExifUtils {
 
   // Generates APP1 segment.
   // Returns false if generating APP1 segment fails.
-  bool GenerateApp1(const void* thumbnail_buffer, uint32_t size);
+  bool GenerateApp1(const void* thumbnail_buffer,
+                    uint32_t size,
+                    Compression compression);
 
   // Gets buffer of APP1 segment. This method must be called only after calling
   // GenerateAPP1().

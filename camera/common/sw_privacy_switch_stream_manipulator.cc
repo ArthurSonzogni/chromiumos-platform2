@@ -244,7 +244,8 @@ bool SWPrivacySwitchStreamManipulator::RedactJpegFrame(buffer_handle_t handle,
   RedactNV12Frame(in_mapping);
 
   std::vector<uint8_t> empty_thumbnail;
-  if (!utils.GenerateApp1(empty_thumbnail.data(), empty_thumbnail.size())) {
+  if (!utils.GenerateApp1(empty_thumbnail.data(), empty_thumbnail.size(),
+                          ExifUtils::Compression::kJpeg)) {
     LOGF(ERROR) << "Failed to generate APP1 segment";
     return false;
   }

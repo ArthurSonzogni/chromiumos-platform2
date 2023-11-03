@@ -582,7 +582,8 @@ void StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread(
               break;
             }
             if (!exif_utils.GenerateApp1(context->thumbnail_buffer.data(),
-                                         context->thumbnail_buffer.size())) {
+                                         context->thumbnail_buffer.size(),
+                                         ExifUtils::Compression::kJpeg)) {
               LOGF(ERROR) << "Cannot generate APP1 segment with thumbnail";
               break;
             }
