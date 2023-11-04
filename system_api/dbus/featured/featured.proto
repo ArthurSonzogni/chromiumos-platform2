@@ -38,19 +38,6 @@ message FeatureOverride {
 // Information about the last known "safe" seed.
 // Keep in sync with featured::SeedsEqual when adding new fields.
 message SeedDetails {
-  // NOTE: This field is *deprecated* and will eventually be replaced by
-  // b64_compresssed_data. It is not annotated with `[deprecated = false]`
-  // since that results in a compile error. This field will be deleted after
-  // all existing references to it are removed. Future code should *not* use
-  // this field.
-  // Last known "safe" seed represented as the serialized form of the
-  // variations.VariationsSeed protobuf.
-  // NOTE: Despite the name, this is decompressed -- it comes from
-  // VariationsSeedStore::LoadSeed. It is infeasible to rename this field, as we
-  // would need to first land the rename in platform2 (as this is where the
-  // proto lives) and then it would uprev into chromium without the necessary
-  // changes to the code that uses it.
-  bytes compressed_data = 1;
   // The active client locale that was successfully used in association with the
   // last known "safe" seed.
   string locale = 4;
@@ -79,13 +66,16 @@ message SeedDetails {
   // serialized form of the variations.VariationsSeed protobuf.
   bytes b64_compressed_data = 11;
 
-  // Tags 2 and 3 are reserved since they have been deleted.
+  // Tags 1, 2, and 3 are reserved since they have been deleted.
+  // Tag 1 was the last known "safe" seed represented as the serialized form of
+  // the variations.VariationsSeed protobuf. Despite the name, it was
+  // decompressed data that came from VariationsSeedStore::LoadSeed.
   // Tags 2 and 3 were used for older versions of the date and fetch_time
   // fields, which were both of type google.protobuf.Timestamp. Importing
   // google.protobuf.Timestamp is not supported in Chromium's
   // third_party/cros_system_api, so both fields were changed to type int64 (the
   // same data type finch protos use for dates).
-  reserved 2, 3;
+  reserved 1, 2, 3;
 }
 
 // Message containing all the chrome://flags overrides.
