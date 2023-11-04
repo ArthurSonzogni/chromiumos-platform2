@@ -2040,9 +2040,7 @@ std::vector<std::string> SessionManagerImpl::CreateUpgradeArcEnvVars(
                          arc_sideload_status_->IsAdbSideloadAllowed() &&
                              is_adb_sideloading_allowed_for_request),
       base::StringPrintf("ENABLE_ARC_NEARBY_SHARE=%d",
-                         request.enable_arc_nearby_share()),
-      base::StringPrintf("DISABLE_UREADAHEAD=%d",
-                         request.disable_ureadahead())};
+                         request.enable_arc_nearby_share())};
 
   switch (request.packages_cache_mode()) {
     case arc::
