@@ -56,6 +56,7 @@ connect: 1
 getsockname: 1
 sysinfo: 1
 madvise: 1
+process_vm_readv: 1
 
 # The syscalls below are manually added using strace.
 
