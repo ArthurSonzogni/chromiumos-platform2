@@ -50,8 +50,17 @@ class Manager {
     return default_file_expiration_in_secs_;
   }
 
+  // Makes it possible to bypass the checks for policy, finch, etc. This must
+  // only be used in unit tests to avoid having to fake the whole
+  // policy/finch/.../ environment.
+  void BypassAllowedForTests(bool bypass);
+
  private:
   int default_file_expiration_in_secs_;
+
+  // If true, fbprocessord will process firmware dumps even if the
+  // policy/finch/.../ settings would disable that. Only allowed for unit tests.
+  bool bypass_allowed_for_tests_ = false;
 
   std::unique_ptr<PseudonymizationManager> pseudonymization_manager_;
   std::unique_ptr<OutputManager> output_manager_;
