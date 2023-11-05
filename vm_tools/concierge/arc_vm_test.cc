@@ -898,6 +898,28 @@ TEST(ArcVmParamsTest, GetOemEtcSharedDataParam) {
       "false");
 }
 
+TEST(ArcVmParamsTest, ArcSwitchToKeymintTrue) {
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
+  StartArcVmRequest request;
+  auto* mini_instance_request = request.mutable_mini_instance_request();
+  mini_instance_request->set_arc_switch_to_keymint(true);
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
+  EXPECT_TRUE(base::Contains(params, "androidboot.arc_switch_to_keymint=1"));
+}
+
+TEST(ArcVmParamsTest, ArcSwitchToKeymintFalse) {
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
+  StartArcVmRequest request;
+  auto* mini_instance_request = request.mutable_mini_instance_request();
+  mini_instance_request->set_arc_switch_to_keymint(false);
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
+  EXPECT_TRUE(base::Contains(params, "androidboot.arc_switch_to_keymint=0"));
+}
+
 TEST(ArcVmParamsTest, ForceMaxAcquiredBuffersExperimentDefault) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
