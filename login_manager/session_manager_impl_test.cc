@@ -2550,11 +2550,10 @@ TEST_F(SessionManagerImplTest, DisableMediaStoreMaintenance) {
   EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
 }
 
-TEST_F(SessionManagerImplTest,
-       UpgradeArcContainer_ConsumerAutoUpdateToggleEnabled) {
+TEST_F(SessionManagerImplTest, EnableConsumerAutoUpdateToggle) {
   ExpectAndRunStartSession(kSaneEmail);
 
-  // Expect continue-arc-boot and start-arc-network impulses.
+  // First, start ARC for login screen.
   EXPECT_CALL(*init_controller_,
               TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
                              StartArcInstanceExpectationsBuilder()
@@ -2571,31 +2570,10 @@ TEST_F(SessionManagerImplTest,
   EXPECT_FALSE(error.get());
 }
 
-TEST_F(SessionManagerImplTest,
-       UpgradeArcContainer_ConsumerAutoUpdateToggleDisabled) {
+TEST_F(SessionManagerImplTest, EnablePrivacyHubForChrome) {
   ExpectAndRunStartSession(kSaneEmail);
 
-  // Expect continue-arc-boot and start-arc-network impulses.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
-                             StartArcInstanceExpectationsBuilder()
-                                 .SetEnableConsumerAutoUpdateToggle(false)
-                                 .Build(),
-                             InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
-
-  brillo::ErrorPtr error;
-  arc::StartArcMiniInstanceRequest request;
-  request.set_enable_consumer_auto_update_toggle(false);
-
-  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
-  EXPECT_FALSE(error.get());
-}
-
-TEST_F(SessionManagerImplTest, UpgradeArcContainer_PrivacyHubForChromeEnabled) {
-  ExpectAndRunStartSession(kSaneEmail);
-
-  // Expect continue-arc-boot and start-arc-network impulses.
+  // First, start ARC for login screen.
   EXPECT_CALL(*init_controller_,
               TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
                              StartArcInstanceExpectationsBuilder()
@@ -2607,27 +2585,6 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer_PrivacyHubForChromeEnabled) {
   brillo::ErrorPtr error;
   arc::StartArcMiniInstanceRequest request;
   request.set_enable_privacy_hub_for_chrome(true);
-
-  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
-  EXPECT_FALSE(error.get());
-}
-
-TEST_F(SessionManagerImplTest,
-       UpgradeArcContainer_PrivacyHubForChromeEDisabled) {
-  ExpectAndRunStartSession(kSaneEmail);
-
-  // Expect continue-arc-boot and start-arc-network impulses.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
-                             StartArcInstanceExpectationsBuilder()
-                                 .SetEnablePrivacyHubForChrome(false)
-                                 .Build(),
-                             InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
-
-  brillo::ErrorPtr error;
-  arc::StartArcMiniInstanceRequest request;
-  request.set_enable_privacy_hub_for_chrome(false);
 
   EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
   EXPECT_FALSE(error.get());
