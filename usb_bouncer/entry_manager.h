@@ -95,7 +95,15 @@ class EntryManager {
   void ReportMetrics(const std::string& devpath,
                      const std::string& rule,
                      UMADeviceRecognized recognized,
-                     UMAEventTiming timing);
+                     UMAEventTiming timing,
+                     bool is_user_login);
+
+  void ReportMetricsCameraModule(base::FilePath normalized_devpath);
+
+  void ReportMetricsExternal(base::FilePath normalized_devpath,
+                             const std::string& rule,
+                             UMADeviceRecognized new_entry,
+                             UMAEventTiming timing);
 
   // Represents whether the lock screen is being shown.
   bool user_db_read_only_;

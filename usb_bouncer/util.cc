@@ -552,6 +552,26 @@ void StructuredMetricsExternalDeviceAttached(
       .Record();
 }
 
+void StructuredMetricsInternalCameraModule(int VendorId,
+                                           std::string VendorName,
+                                           int ProductId,
+                                           std::string ProductName,
+                                           int BcdDevice) {
+  // Limit string length to prevent badly behaving device from creating huge
+  // metrics packet.
+  int string_len_limit = 200;
+  VendorName = VendorName.substr(0, string_len_limit);
+  ProductName = ProductName.substr(0, string_len_limit);
+
+  metrics::structured::events::usb_camera_module::UsbCameraModuleInfo()
+      .SetVendorId(VendorId)
+      .SetVendorName(VendorName)
+      .SetProductId(ProductId)
+      .SetProductName(ProductName)
+      .SetBcdDevice(BcdDevice)
+      .Record();
+}
+
 void StructuredMetricsUsbSessionEvent(UsbSessionMetric session_metric) {
   // Only record UsbSessionEvents for devices in the USB metrics allowlist.
   if (!DeviceInMetricsAllowlist(session_metric.vid, session_metric.pid))
@@ -869,6 +889,28 @@ std::ostream& operator<<(std::ostream& out, UMADeviceRecognized recognized) {
 std::ostream& operator<<(std::ostream& out, UMAPortType port) {
   out << to_string(port);
   return out;
+}
+
+bool IsCamera(std::vector<int64_t> interfaces) {
+  for (auto& interface : interfaces) {
+    if (interface == 0xe)
+      return true;
+  }
+  return false;
+}
+
+int GetBcdDevice(base::FilePath normalized_devpath) {
+  std::string bcdDevice;
+  int bcdDevice_int;
+  if (base::ReadFileToString(normalized_devpath.Append("bcdDevice"),
+                             &bcdDevice)) {
+    base::TrimWhitespaceASCII(bcdDevice, base::TRIM_ALL, &bcdDevice);
+    if (base::HexStringToInt(bcdDevice, &bcdDevice_int)) {
+      return bcdDevice_int;
+    }
+  }
+
+  return 0;
 }
 
 usbguard::Rule GetRuleFromString(const std::string& to_parse) {

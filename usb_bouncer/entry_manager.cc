@@ -187,7 +187,8 @@ bool EntryManager::HandleUdev(UdevAction action, const std::string& devpath) {
                                           ? UMAEventTiming::kLocked
                                           : UMAEventTiming::kLoggedIn;
 
-        ReportMetrics(devpath, rule, new_entry, timing);
+        ReportMetrics(devpath, rule, new_entry, timing,
+                      false /*is_user_login*/);
 
         if (!user_db_read_only_) {
           (*user_db_.Get().mutable_entries())[user_key] = entry;
@@ -250,7 +251,8 @@ bool EntryManager::HandleUserLogin() {
                                       : std::string();
 
       for (const auto& rule : entry.second.rules()) {
-        ReportMetrics(devpath, rule, new_entry, UMAEventTiming::kLoggedOut);
+        ReportMetrics(devpath, rule, new_entry, UMAEventTiming::kLoggedOut,
+                      true /*is_user_login*/);
       }
 
       (*user_entries)[user_key] = entry.second;
@@ -310,10 +312,34 @@ bool EntryManager::PersistChanges() {
   return success;
 }
 
+void EntryManager::ReportMetricsCameraModule(
+    base::FilePath normalized_devpath) {
+  StructuredMetricsInternalCameraModule(
+      GetVendorId(normalized_devpath), GetVendorName(normalized_devpath),
+      GetProductId(normalized_devpath), GetProductName(normalized_devpath),
+      GetBcdDevice(normalized_devpath));
+}
+
+void EntryManager::ReportMetricsExternal(base::FilePath normalized_devpath,
+                                         const std::string& rule,
+                                         UMADeviceRecognized new_entry,
+                                         UMAEventTiming timing) {
+  UMALogExternalDeviceAttached(&metrics_, rule, new_entry, timing,
+                               GetPortType(normalized_devpath),
+                               GetDeviceSpeed(normalized_devpath));
+
+  StructuredMetricsExternalDeviceAttached(
+      GetVendorId(normalized_devpath), GetVendorName(normalized_devpath),
+      GetProductId(normalized_devpath), GetProductName(normalized_devpath),
+      GetDeviceClass(normalized_devpath),
+      GetInterfaceClass(normalized_devpath));
+}
+
 void EntryManager::ReportMetrics(const std::string& devpath,
                                  const std::string& rule,
                                  UMADeviceRecognized new_entry,
-                                 UMAEventTiming timing) {
+                                 UMAEventTiming timing,
+                                 bool is_user_login) {
   LOG(INFO) << "Reporting metrics for " << devpath;
 
   UMALogDeviceAttached(&metrics_, rule, new_entry, timing);
@@ -325,20 +351,16 @@ void EntryManager::ReportMetrics(const std::string& devpath,
   base::FilePath normalized_devpath =
       root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
 
-  // Report further metrics only for external USB devices. We cannot distinguish
-  // external devices on Flex, so exclude it from reporting further metrics.
-  if (IsFlexBoard() || !IsExternalDevice(normalized_devpath))
+  // We cannot distinguish external devices on Flex, so exclude it from
+  // reporting further metrics.
+  if (IsFlexBoard())
     return;
 
-  UMALogExternalDeviceAttached(&metrics_, rule, new_entry, timing,
-                               GetPortType(normalized_devpath),
-                               GetDeviceSpeed(normalized_devpath));
-
-  StructuredMetricsExternalDeviceAttached(
-      GetVendorId(normalized_devpath), GetVendorName(normalized_devpath),
-      GetProductId(normalized_devpath), GetProductName(normalized_devpath),
-      GetDeviceClass(normalized_devpath),
-      GetInterfaceClass(normalized_devpath));
+  // Report further metrics only for external USB devices.
+  if (IsExternalDevice(normalized_devpath))
+    ReportMetricsExternal(normalized_devpath, rule, new_entry, timing);
+  else if (IsCamera(GetInterfaceClass(normalized_devpath)) && is_user_login)
+    ReportMetricsCameraModule(normalized_devpath);
 }
 
 }  // namespace usb_bouncer

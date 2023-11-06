@@ -137,6 +137,13 @@ void StructuredMetricsExternalDeviceAttached(
     int DeviceClass,
     std::vector<int64_t> InterfaceClass);
 
+// Report structured metrics on internal camera modules
+void StructuredMetricsInternalCameraModule(int VendorId,
+                                           std::string VendorName,
+                                           int ProductId,
+                                           std::string ProductName,
+                                           int BcdDevice);
+
 // Report structured metric on device attach and removal with topology and
 // system boot information. Device topology information only gets recorded
 // on device connection. This will only record the metric for devices in the
@@ -226,6 +233,12 @@ UMAPortType GetPortType(base::FilePath normalized_devpath);
 
 // Returns USB device speed for a sysfs device.
 UMADeviceSpeed GetDeviceSpeed(base::FilePath normalized_devpath);
+
+// Determine if any of the devices implements the UVC interface.
+bool IsCamera(std::vector<int64_t> interfaces);
+
+// Returns bcdDevice (FW version) for a sysfs device.
+int GetBcdDevice(base::FilePath normalized_devpath);
 
 // Returns vendor ID for a sysfs device.
 int GetVendorId(base::FilePath normalized_devpath);
