@@ -84,6 +84,17 @@ class UserDataAuth {
     bool to_migrate_from_ecryptfs = false;
   };
 
+  // Standard alias for the on_done callback for requests.
+  template <typename ReplyType>
+  using OnDoneCallback = base::OnceCallback<void(const ReplyType&)>;
+  // Standard alias for a callback that handles a request with an
+  // InUseAuthSession. The internal helper functions of the form XxxWithSession
+  // all generally use this signature and are designed to be used to construct a
+  // RunWhenAvailable callback for AuthSessionManager.
+  template <typename RequestType, typename ReplyType>
+  using HandlerWithSessionCallback = base::OnceCallback<void(
+      RequestType, OnDoneCallback<ReplyType>, InUseAuthSession)>;
+
   UserDataAuth();
   ~UserDataAuth();
 
@@ -858,11 +869,6 @@ class UserDataAuth {
   CryptohomeStatusOr<InUseAuthSession> GetAuthenticatedAuthSession(
       const std::string& auth_session_id);
 
-  // Returns sanitized username for an existing auth session or an empty string
-  // if the session wasn't found.
-  ObfuscatedUsername SanitizedUserNameForSession(
-      const std::string& auth_session_id);
-
   // Returns a reference to the user session, if the session is mountable. The
   // session is mountable if it is not already mounted, and the guest is not
   // mounted. If user session object doesn't exist, this method will create
@@ -890,8 +896,10 @@ class UserDataAuth {
 
   CryptohomeStatus PrepareGuestVaultImpl();
 
+  // Helper that can prepare persistent vaults with different options, for reuse
+  // from different Prepare operations.
   CryptohomeStatus PreparePersistentVaultImpl(
-      const std::string& auth_session_id,
+      InUseAuthSession& auth_session,
       const CryptohomeVault::Options& vault_options);
 
   // =============== Async Subtask Methods ===============
@@ -906,6 +914,16 @@ class UserDataAuth {
       user_data_auth::PrepareEphemeralVaultRequest request,
       base::OnceCallback<
           void(const user_data_auth::PrepareEphemeralVaultReply&)> on_done,
+      InUseAuthSession auth_session);
+  void PreparePersistentVaultWithSession(
+      user_data_auth::PreparePersistentVaultRequest request,
+      base::OnceCallback<
+          void(const user_data_auth::PreparePersistentVaultReply&)> on_done,
+      InUseAuthSession auth_session);
+  void PrepareVaultForMigrationWithSession(
+      user_data_auth::PrepareVaultForMigrationRequest request,
+      base::OnceCallback<
+          void(const user_data_auth::PrepareVaultForMigrationReply&)> on_done,
       InUseAuthSession auth_session);
   void CreatePersistentUserWithSession(
       user_data_auth::CreatePersistentUserRequest request,

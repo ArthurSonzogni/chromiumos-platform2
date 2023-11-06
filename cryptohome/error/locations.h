@@ -789,7 +789,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthGetSessionFailedInPrepareEphemeralVault = 481,
   /* ./userdataauth.cc */
   kLocUserDataAuthMountFailedInPrepareEphemeralVault = 482,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoAuthSessionInPreparePersistentVault = 483,
   /* ./userdataauth.cc */
   kLocUserDataAuthNonExistentInPreparePersistentVault = 484,
@@ -1533,6 +1533,14 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUSSMainKeyWrongSizeInCreateUss = 2169,
   /* ./userdataauth.cc */
   kLocUserDataAuthSessionNotFoundInRemove = 2170,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotFoundInPreparePersistentVault = 2171,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotAuthInPreparePersistentVault = 2172,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotFoundInPrepareVaultForMigration = 2173,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotAuthInPrepareVaultForMigration = 2174,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.
