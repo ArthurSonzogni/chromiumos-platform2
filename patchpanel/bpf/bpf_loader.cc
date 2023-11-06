@@ -71,7 +71,7 @@ base::Version GetKernelVersion() {
 
 // This function equivalently performs the following actions:
 // - `mkdir $path`;
-// - `mount bpffs $path -t bpf`.
+// - `mount bpffs $path -t bpf -o nosuid,nodev,noexec`.
 // Note that we use the existence of the mount path to check if this program has
 // already been executed, so that path is created in this function instead of in
 // tmpfiles.d.
@@ -81,7 +81,8 @@ bool MountPathForBPF(const base::FilePath& path) {
     return false;
   }
 
-  int ret = mount("bpffs", path.value().c_str(), "bpf", /*mountflags=*/0,
+  int ret = mount("bpffs", path.value().c_str(), "bpf",
+                  MS_NOSUID | MS_NODEV | MS_NOEXEC,
                   /*data=*/nullptr);
   if (ret != 0) {
     PLOG(ERROR) << "Failed to mount bpffs to " << kBPFMountPath;
