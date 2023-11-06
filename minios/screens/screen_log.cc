@@ -28,7 +28,6 @@ const int kSmallLogLinesPerPage = 13;
 // y-coord of the upper edge of the log area, 16px below title.
 const int kLogAreaY = 196;
 
-const char kLogPath[] = "/var/log/messages";
 }  // namespace
 
 ScreenLog::ScreenLog(std::shared_ptr<DrawInterface> draw_utils,
@@ -39,7 +38,7 @@ ScreenLog::ScreenLog(std::shared_ptr<DrawInterface> draw_utils,
           State::DEBUG_LOGS,
           draw_utils,
           screen_controller),
-      log_path_(base::FilePath(kLogPath)),
+      log_path_(base::FilePath(kLogFilePath)),
       log_offset_idx_(0),
       log_offsets_({0}) {}
 
