@@ -63,7 +63,7 @@ constexpr uint8_t kDefaultFailedHeartbeatsBeforeRecovery = 3;
 constexpr uint8_t kFM101FailedHeartbeatsBeforeRecovery = 6;
 constexpr char kEM060DeviceID[] = "usb:2c7c:0128";
 constexpr char kFM101DeviceID[] = "usb:2cb7:01a2";
-constexpr char kFM350DeviceID[] = "pci:14c3:4d75";
+constexpr char kFM350DeviceID[] = "pci:14c3:4d75 (External)";
 constexpr char kL850DeviceID[] = "usb:2cb7:0007";
 constexpr char kNL668DeviceID[] = "usb:2cb7:01a0";
 
