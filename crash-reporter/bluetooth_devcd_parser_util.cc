@@ -732,8 +732,9 @@ bool ReportDefaultPC(base::File& file, std::string* pc) {
 }
 
 bool ReportParseError(ParseErrorReason error_code, base::File& file) {
-  std::string line = CreateDumpEntry("Parse Failure Reason",
-                                     base::StringPrintf("%d", error_code));
+  std::string line =
+      CreateDumpEntry("Parse Failure Reason",
+                      base::StringPrintf("%d", static_cast<int>(error_code)));
   return file.WriteAtCurrentPosAndCheck(base::as_bytes(base::make_span(line)));
 }
 
