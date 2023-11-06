@@ -32,6 +32,16 @@ VAR_(PATH_("hardware-properties", "has-lid-accelerometer"),
      kHasLidAccelerometer);
 VAR_(PATH_("hardware-properties", "has-lid-gyroscope"), kHasLidGyroscope);
 VAR_(PATH_("hardware-properties", "has-lid-magnetometer"), kHasLidMagnetometer);
+VAR_(PATH_("hardware-properties", "form-factor"), kFormFactor);
+VAR_(PATH_("hardware-properties", "stylus-category"), kStylusCategory);
+VAR_(PATH_("hardware-properties", "has-touchscreen"), kHasTouchscreen);
+VAR_(PATH_("hardware-properties", "has-hdmi"), kHasHdmi);
+VAR_(PATH_("hardware-properties", "has-audio-jack"), kHasAudioJack);
+VAR_(PATH_("hardware-properties", "has-sd-reader"), kHasSdReader);
+VAR_(PATH_("hardware-properties", "has-side-volume-button"),
+     kHasSideVolumeButton);
+VAR_(PATH_("hardware-properties", "storage-type"), kStorageType);
+VAR_(PATH_("hardware-properties", "fan-count"), kFanCount);
 VAR_(PATH_("cros-healthd", "cached-vpd", "has-sku-number"), kHasSkuNumber);
 VAR_(PATH_("cros-healthd", "battery", "has-smart-battery-info"),
      kHasSmartBatteryInfo);

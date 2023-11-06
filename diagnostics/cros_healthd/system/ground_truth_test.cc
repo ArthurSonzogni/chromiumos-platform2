@@ -14,6 +14,7 @@
 
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/base/file_utils.h"
+#include "diagnostics/base/paths.h"
 #include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/system/ground_truth_constants.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -26,6 +27,7 @@ namespace diagnostics {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
+namespace cros_config_property = paths::cros_config;
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -33,7 +35,7 @@ using ::testing::Return;
 using ::testing::StrictMock;
 using ::testing::WithArg;
 
-class GroundTruthTest : public testing::Test {
+class GroundTruthTest : public BaseFileTest {
  protected:
   GroundTruthTest() = default;
   GroundTruthTest(const GroundTruthTest&) = delete;
@@ -68,10 +70,8 @@ class GroundTruthTest : public testing::Test {
     ExpectRoutineStatus(std::move(arg), mojom::SupportStatus::Tag::kException);
   }
 
-  void SetCrosConfig(const std::string& path,
-                     const std::string& property,
-                     const std::string& value) {
-    mock_context_.fake_cros_config()->SetString(path, property, value);
+  void SetFakeCrosConfig(const PathLiteral& path, const std::string& value) {
+    SetFile(cros_config_property::kRoot.ToPath().Append(path.ToPath()), value);
   }
 
   StrictMock<org::chromium::bluetooth::ManagerProxyMock> mock_manager_proxy_;
@@ -108,7 +108,6 @@ class GroundTruthTest : public testing::Test {
     EXPECT_EQ(TagToString(status->which()), TagToString(expect_status));
   }
 
-  ScopedRootDirOverrides root_overrides_;
   MockContext mock_context_;
   GroundTruth ground_truth_{&mock_context_};
 };
@@ -158,8 +157,7 @@ TEST_F(GroundTruthTest, LidEvent) {
   ExpectEventUnsupported(mojom::EventCategoryEnum::kLid);
 
   for (const auto& [form_factor, supported] : test_combinations) {
-    SetCrosConfig(cros_config_path::kHardwareProperties,
-                  cros_config_property::kFormFactor, form_factor);
+    SetFakeCrosConfig(cros_config_property::kFormFactor, form_factor);
     if (supported) {
       ExpectEventSupported(mojom::EventCategoryEnum::kLid);
     } else {
@@ -182,8 +180,7 @@ TEST_F(GroundTruthTest, StylusGarageEvent) {
   ExpectEventUnsupported(mojom::EventCategoryEnum::kStylusGarage);
 
   for (const auto& [stylus_category, supported] : test_combinations) {
-    SetCrosConfig(cros_config_path::kHardwareProperties,
-                  cros_config_property::kStylusCategory, stylus_category);
+    SetFakeCrosConfig(cros_config_property::kStylusCategory, stylus_category);
     if (supported) {
       ExpectEventSupported(mojom::EventCategoryEnum::kStylusGarage);
     } else {
@@ -206,8 +203,7 @@ TEST_F(GroundTruthTest, StylusEvent) {
   ExpectEventUnsupported(mojom::EventCategoryEnum::kStylus);
 
   for (const auto& [stylus_category, supported] : test_combinations) {
-    SetCrosConfig(cros_config_path::kHardwareProperties,
-                  cros_config_property::kStylusCategory, stylus_category);
+    SetFakeCrosConfig(cros_config_property::kStylusCategory, stylus_category);
     if (supported) {
       ExpectEventSupported(mojom::EventCategoryEnum::kStylus);
     } else {
@@ -228,8 +224,7 @@ TEST_F(GroundTruthTest, TouchscreenEvent) {
   ExpectEventUnsupported(mojom::EventCategoryEnum::kTouchscreen);
 
   for (const auto& [has_touchscreen, supported] : test_combinations) {
-    SetCrosConfig(cros_config_path::kHardwareProperties,
-                  cros_config_property::kHasTouchscreen, has_touchscreen);
+    SetFakeCrosConfig(cros_config_property::kHasTouchscreen, has_touchscreen);
     if (supported) {
       ExpectEventSupported(mojom::EventCategoryEnum::kTouchscreen);
     } else {
@@ -255,8 +250,7 @@ TEST_F(GroundTruthTest, TouchpadEvent) {
   ExpectEventUnsupported(mojom::EventCategoryEnum::kTouchpad);
 
   for (const auto& [form_factor, supported] : test_combinations) {
-    SetCrosConfig(cros_config_path::kHardwareProperties,
-                  cros_config_property::kFormFactor, form_factor);
+    SetFakeCrosConfig(cros_config_property::kFormFactor, form_factor);
     if (supported) {
       ExpectEventSupported(mojom::EventCategoryEnum::kTouchpad);
     } else {
@@ -282,8 +276,7 @@ TEST_F(GroundTruthTest, KeyboardDiagnosticEvent) {
   ExpectEventUnsupported(mojom::EventCategoryEnum::kKeyboardDiagnostic);
 
   for (const auto& [form_factor, supported] : test_combinations) {
-    SetCrosConfig(cros_config_path::kHardwareProperties,
-                  cros_config_property::kFormFactor, form_factor);
+    SetFakeCrosConfig(cros_config_property::kFormFactor, form_factor);
     if (supported) {
       ExpectEventSupported(mojom::EventCategoryEnum::kKeyboardDiagnostic);
     } else {
@@ -304,8 +297,7 @@ TEST_F(GroundTruthTest, AudioJackEvent) {
   ExpectEventUnsupported(mojom::EventCategoryEnum::kAudioJack);
 
   for (const auto& [has_audio_jack, supported] : test_combinations) {
-    SetCrosConfig(cros_config_path::kHardwareProperties,
-                  cros_config_property::kHasAudioJack, has_audio_jack);
+    SetFakeCrosConfig(cros_config_property::kHasAudioJack, has_audio_jack);
     if (supported) {
       ExpectEventSupported(mojom::EventCategoryEnum::kAudioJack);
     } else {
@@ -326,8 +318,7 @@ TEST_F(GroundTruthTest, SdCardEvent) {
   ExpectEventUnsupported(mojom::EventCategoryEnum::kSdCard);
 
   for (const auto& [has_sd_reader, supported] : test_combinations) {
-    SetCrosConfig(cros_config_path::kHardwareProperties,
-                  cros_config_property::kHasSdReader, has_sd_reader);
+    SetFakeCrosConfig(cros_config_property::kHasSdReader, has_sd_reader);
     if (supported) {
       ExpectEventSupported(mojom::EventCategoryEnum::kSdCard);
     } else {
@@ -353,8 +344,7 @@ TEST_F(GroundTruthTest, UfsLifetimeRoutine) {
   ExpectRoutineUnsupported(mojom::RoutineArgument::NewUfsLifetime(arg.Clone()));
 
   for (const auto& [storage_type, supported] : test_combinations) {
-    SetCrosConfig(cros_config_path::kHardwareProperties,
-                  cros_config_property::kStorageType, storage_type);
+    SetFakeCrosConfig(cros_config_property::kStorageType, storage_type);
     if (supported) {
       ExpectRoutineSupported(
           mojom::RoutineArgument::NewUfsLifetime(arg.Clone()));
@@ -371,14 +361,12 @@ TEST_F(GroundTruthTest, FanRoutine) {
       mojom::RoutineArgument::NewFan(mojom::FanRoutineArgument::New()));
 
   // Test that if there is no fan on the device, the test is not supported.
-  SetCrosConfig(cros_config_path::kHardwareProperties,
-                cros_config_property::kFanCount, "0");
+  SetFakeCrosConfig(cros_config_property::kFanCount, "0");
   ExpectRoutineUnsupported(
       mojom::RoutineArgument::NewFan(mojom::FanRoutineArgument::New()));
 
   // Test that if there is fan on the device, the test is supported.
-  SetCrosConfig(cros_config_path::kHardwareProperties,
-                cros_config_property::kFanCount, "1");
+  SetFakeCrosConfig(cros_config_property::kFanCount, "1");
   ExpectRoutineSupported(
       mojom::RoutineArgument::NewFan(mojom::FanRoutineArgument::New()));
 }
@@ -437,9 +425,8 @@ TEST_F(GroundTruthTest, VolumeButtonRoutine) {
       mojom::RoutineArgument::NewVolumeButton(arg.Clone()));
 
   for (const auto& [has_side_volume_button, supported] : test_combinations) {
-    SetCrosConfig(cros_config_path::kHardwareProperties,
-                  cros_config_property::kHasSideVolumeButton,
-                  has_side_volume_button);
+    SetFakeCrosConfig(cros_config_property::kHasSideVolumeButton,
+                      has_side_volume_button);
     if (supported) {
       ExpectRoutineSupported(
           mojom::RoutineArgument::NewVolumeButton(arg.Clone()));

@@ -115,6 +115,11 @@ class BaseFileTest : public ::testing::Test {
     ASSERT_TRUE(base::WriteFile(file, std::forward<ContentType>(content)));
   }
 
+  // Sets fake cros config data. If `nullopt` is passed the cros config field
+  // will be removed.
+  void SetFakeCrosConfig(const PathType& path,
+                         const std::optional<std::string>& data);
+
  private:
   std::unique_ptr<ScopedRootDirOverrides> scoped_root_dir_ =
       std::make_unique<ScopedRootDirOverrides>();

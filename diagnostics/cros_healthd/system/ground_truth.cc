@@ -13,6 +13,9 @@
 #include <brillo/errors/error.h>
 
 #include "diagnostics/base/file_utils.h"
+#include "diagnostics/base/path_utils.h"
+#include "diagnostics/base/paths.h"
+#include "diagnostics/cros_healthd/system/cros_config.h"
 #include "diagnostics/cros_healthd/system/floss_controller.h"
 #include "diagnostics/cros_healthd/system/ground_truth_constants.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
@@ -26,16 +29,13 @@ namespace diagnostics {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
+namespace cros_config_property = paths::cros_config;
 
-void LogCrosConfigFail(const std::string& path, const std::string& property) {
-  LOG(ERROR) << "Failed to read cros_config: " << path << "/" << property;
-}
-
-std::string WrapUnsupportedString(const std::string& cros_config_property,
+std::string WrapUnsupportedString(const PathLiteral& cros_config_property,
                                   const std::string& cros_config_value) {
   std::string msg = base::StringPrintf(
       "Not supported cros_config property [%s]: [%s]",
-      cros_config_property.c_str(), cros_config_value.c_str());
+      cros_config_property.ToStr().c_str(), cros_config_value.c_str());
   return msg;
 }
 
@@ -329,54 +329,45 @@ void GroundTruth::IsRoutineArgumentSupported(
 }
 
 std::string GroundTruth::FormFactor() {
-  return ReadCrosConfig(cros_config_path::kHardwareProperties,
-                        cros_config_property::kFormFactor);
+  return ReadCrosConfig(cros_config_property::kFormFactor);
 }
 
 std::string GroundTruth::StylusCategory() {
-  return ReadCrosConfig(cros_config_path::kHardwareProperties,
-                        cros_config_property::kStylusCategory);
+  return ReadCrosConfig(cros_config_property::kStylusCategory);
 }
 
 std::string GroundTruth::HasTouchscreen() {
-  return ReadCrosConfig(cros_config_path::kHardwareProperties,
-                        cros_config_property::kHasTouchscreen);
+  return ReadCrosConfig(cros_config_property::kHasTouchscreen);
 }
 
 std::string GroundTruth::HasAudioJack() {
-  return ReadCrosConfig(cros_config_path::kHardwareProperties,
-                        cros_config_property::kHasAudioJack);
+  return ReadCrosConfig(cros_config_property::kHasAudioJack);
 }
 
 std::string GroundTruth::HasSdReader() {
-  return ReadCrosConfig(cros_config_path::kHardwareProperties,
-                        cros_config_property::kHasSdReader);
+  return ReadCrosConfig(cros_config_property::kHasSdReader);
 }
 
 std::string GroundTruth::HasSideVolumeButton() {
-  return ReadCrosConfig(cros_config_path::kHardwareProperties,
-                        cros_config_property::kHasSideVolumeButton);
+  return ReadCrosConfig(cros_config_property::kHasSideVolumeButton);
 }
 
 std::string GroundTruth::StorageType() {
-  return ReadCrosConfig(cros_config_path::kHardwareProperties,
-                        cros_config_property::kStorageType);
+  return ReadCrosConfig(cros_config_property::kStorageType);
 }
 
 std::string GroundTruth::FanCount() {
-  return ReadCrosConfig(cros_config_path::kHardwareProperties,
-                        cros_config_property::kFanCount);
+  return ReadCrosConfig(cros_config_property::kFanCount);
 }
 
-std::string GroundTruth::ReadCrosConfig(const std::string& path,
-                                        const std::string& property) {
-  std::string value;
-  if (!context_->cros_config()->GetString(path, property, &value)) {
-    LogCrosConfigFail(path, property);
+std::string GroundTruth::ReadCrosConfig(const PathLiteral& path) {
+  auto value = context_->cros_config()->Get(path);
+  if (!value) {
+    LOG(ERROR) << "Failed to read cros_config: " << path.ToStr();
     return "";
   }
 
-  return value;
+  return value.value();
 }
 
 }  // namespace diagnostics

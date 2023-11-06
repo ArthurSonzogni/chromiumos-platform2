@@ -48,8 +48,8 @@ struct GetNvmeWearLevelParametersTestParams {
 class RoutineParameterFetcherTest : public testing::Test {
  protected:
   void SetUp() override {
-    parameter_fetcher_ =
-        std::make_unique<RoutineParameterFetcher>(mock_context_.cros_config());
+    parameter_fetcher_ = std::make_unique<RoutineParameterFetcher>(
+        mock_context_.cros_config_legacy());
   }
 
   RoutineParameterFetcher* parameter_fetcher() const {

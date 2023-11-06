@@ -54,7 +54,7 @@ CrosHealthdRoutineFactoryImpl::CrosHealthdRoutineFactoryImpl(Context* context)
   CHECK(context_);
 
   parameter_fetcher_ =
-      std::make_unique<RoutineParameterFetcher>(context_->cros_config());
+      std::make_unique<RoutineParameterFetcher>(context_->cros_config_legacy());
 }
 
 CrosHealthdRoutineFactoryImpl::~CrosHealthdRoutineFactoryImpl() = default;

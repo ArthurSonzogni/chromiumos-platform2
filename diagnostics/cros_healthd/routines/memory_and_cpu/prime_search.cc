@@ -38,7 +38,7 @@ PrimeSearchRoutine::PrimeSearchRoutine(
     exec_duration_ = base::Seconds(1);
   }
   CHECK(context_);
-  RoutineParameterFetcher parameter_fetcher(context_->cros_config());
+  RoutineParameterFetcher parameter_fetcher(context_->cros_config_legacy());
   std::optional<uint64_t> max_num;
   parameter_fetcher.GetPrimeSearchParameters(&max_num);
 

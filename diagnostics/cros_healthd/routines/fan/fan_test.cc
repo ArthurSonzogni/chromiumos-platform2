@@ -12,6 +12,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/base/file_test_utils.h"
+#include "diagnostics/base/paths.h"
 #include "diagnostics/cros_healthd/executor/executor.h"
 #include "diagnostics/cros_healthd/routines/fan/fan.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
@@ -25,7 +27,7 @@ namespace mojom = ash::cros_healthd::mojom;
 
 using ::testing::_;
 
-class FanRoutineTest : public testing::Test {
+class FanRoutineTest : public BaseFileTest {
  protected:
   FanRoutineTest() = default;
   FanRoutineTest(const FanRoutineTest&) = delete;
@@ -61,8 +63,7 @@ class FanRoutineTest : public testing::Test {
   }
 
   void SetFanCrosConfig(const std::string& value) {
-    mock_context_.fake_cros_config()->SetString("/hardware-properties",
-                                                "fan-count", value);
+    SetFakeCrosConfig(paths::cros_config::kFanCount, value);
   }
 
   base::test::TaskEnvironment task_environment_{

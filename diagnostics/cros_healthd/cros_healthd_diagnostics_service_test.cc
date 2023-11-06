@@ -16,6 +16,8 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 
+#include "diagnostics/base/file_test_utils.h"
+#include "diagnostics/base/paths.h"
 #include "diagnostics/cros_healthd/cros_healthd_diagnostics_service.h"
 #include "diagnostics/cros_healthd/fake_cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/routines/routine_service.h"
@@ -140,7 +142,7 @@ std::set<mojom::DiagnosticRoutineEnum> GetUfsRoutines() {
 }
 
 // Tests for the CrosHealthdDiagnosticsService class.
-class CrosHealthdDiagnosticsServiceTest : public testing::Test {
+class CrosHealthdDiagnosticsServiceTest : public BaseFileTest {
  protected:
   void SetUp() override {
     mock_context_.fake_mojo_service()->InitializeFakeMojoService();
@@ -151,9 +153,8 @@ class CrosHealthdDiagnosticsServiceTest : public testing::Test {
     mock_context_.fake_system_config()->SetSmartCtrlSupported(true);
     mock_context_.fake_system_config()->SetIsWilcoDevice(true);
     mock_context_.fake_system_config()->SetMmcSupported(true);
-    mock_context_.fake_cros_config()->SetString(
-        cros_config_path::kHardwareProperties,
-        cros_config_property::kStorageType, cros_config_value::kStorageTypeUfs);
+    SetFakeCrosConfig(paths::cros_config::kStorageType,
+                      cros_config_value::kStorageTypeUfs);
 
     CreateService();
   }
@@ -298,9 +299,8 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoMmc) {
 // Test that GetAvailableRoutines returns the expected list of routines when
 // storage type is not UFS.
 TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoUfs) {
-  mock_context()->fake_cros_config()->SetString(
-      cros_config_path::kHardwareProperties, cros_config_property::kStorageType,
-      cros_config_value::kStorageTypeUnknown);
+  SetFakeCrosConfig(paths::cros_config::kStorageType,
+                    cros_config_value::kStorageTypeUnknown);
   CreateService();
   auto reply = ExecuteGetAvailableRoutines();
   std::set<mojom::DiagnosticRoutineEnum> reply_set(reply.begin(), reply.end());

@@ -14,6 +14,7 @@
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
+class PathLiteral;
 
 class GroundTruth final {
  public:
@@ -44,8 +45,7 @@ class GroundTruth final {
   ash::cros_healthd::mojom::SupportStatusPtr GetEventSupportStatus(
       ash::cros_healthd::mojom::EventCategoryEnum category);
 
-  std::string ReadCrosConfig(const std::string& path,
-                             const std::string& property);
+  std::string ReadCrosConfig(const PathLiteral& path);
 
   // Unowned. Should outlive this instance.
   Context* const context_ = nullptr;

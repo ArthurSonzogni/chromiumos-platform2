@@ -10,26 +10,6 @@ namespace diagnostics {
 // Used to determine whether a device has a Google EC.
 constexpr char kCrosEcSysPath[] = "/sys/class/chromeos/cros_ec";
 
-namespace cros_config_path {
-
-inline constexpr char kHardwareProperties[] = "/hardware-properties";
-
-}  // namespace cros_config_path
-
-namespace cros_config_property {
-
-inline constexpr char kFormFactor[] = "form-factor";
-inline constexpr char kStylusCategory[] = "stylus-category";
-inline constexpr char kHasTouchscreen[] = "has-touchscreen";
-inline constexpr char kHasHdmi[] = "has-hdmi";
-inline constexpr char kHasAudioJack[] = "has-audio-jack";
-inline constexpr char kHasSdReader[] = "has-sd-reader";
-inline constexpr char kHasSideVolumeButton[] = "has-side-volume-button";
-inline constexpr char kStorageType[] = "storage-type";
-inline constexpr char kFanCount[] = "fan-count";
-
-}  // namespace cros_config_property
-
 namespace cros_config_value {
 
 // Possible values of /hardware-properties/form-factor.

@@ -97,7 +97,8 @@ class Context {
   }
   // Use the object returned by cros_config() to query the device's
   // configuration file.
-  brillo::CrosConfigInterface* cros_config() const {
+  CrosConfig* cros_config() const { return cros_config_.get(); }
+  brillo::CrosConfigInterface* cros_config_legacy() const {
     return cros_config_legacy_.get();
   }
   // Use the object returned by debugd_proxy() to make calls to debugd. Example:

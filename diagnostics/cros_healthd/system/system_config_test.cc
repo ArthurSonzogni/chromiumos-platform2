@@ -69,10 +69,6 @@ class SystemConfigTest : public BaseFileTest {
             }));
   }
 
-  void SetFakeCrosConfig(const PathLiteral& path, const std::string& data) {
-    SetFile(paths::kRoot.ToPath().Append(path.ToPath()), data);
-  }
-
   SystemConfig* system_config() { return system_config_.get(); }
 
   base::test::SingleThreadTaskEnvironment task_environment_;

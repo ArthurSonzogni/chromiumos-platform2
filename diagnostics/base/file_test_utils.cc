@@ -14,6 +14,8 @@
 #include <base/files/scoped_temp_dir.h>
 #include <brillo/files/file_util.h>
 
+#include "diagnostics/base/paths.h"
+
 namespace diagnostics {
 namespace {
 
@@ -124,6 +126,17 @@ base::FilePath BaseFileTest::GetPathUnderRoot(const PathType& path) const {
 
 const base::FilePath& BaseFileTest::root_dir() const {
   return RootDir();
+}
+
+void BaseFileTest::SetFakeCrosConfig(const PathType& path,
+                                     const std::optional<std::string>& data) {
+  base::FilePath full_path =
+      paths::cros_config::kRoot.ToPath().Append(path.file_path());
+  if (data) {
+    SetFile(full_path, data.value());
+  } else {
+    UnsetPath(full_path);
+  }
 }
 
 }  // namespace diagnostics
