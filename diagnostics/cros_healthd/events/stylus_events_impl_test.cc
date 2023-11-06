@@ -31,10 +31,11 @@ class StylusEventsImplTest : public testing::Test {
 
   void SetUp() override {
     EXPECT_CALL(*mock_executor(), MonitorStylus(_, _))
-        .WillOnce([=](auto stylus_observer, auto pending_process_control) {
-          stylus_observer_.Bind(std::move(stylus_observer));
-          process_control_.BindReceiver(std::move(pending_process_control));
-        });
+        .WillOnce(
+            [=, this](auto stylus_observer, auto pending_process_control) {
+              stylus_observer_.Bind(std::move(stylus_observer));
+              process_control_.BindReceiver(std::move(pending_process_control));
+            });
   }
 
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }

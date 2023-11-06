@@ -57,7 +57,8 @@ class CpuStressRoutineTestBase : public BaseFileTest {
     EXPECT_CALL(*mock_context_.mock_executor(),
                 RunStressAppTest(_, _, mojom::StressAppTestType::kCpuStress, _))
         .WillRepeatedly(WithArgs<1, 3>(
-            [=](uint32_t test_seconds,
+            [=, this](
+                uint32_t test_seconds,
                 mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
                     receiver) {
               fake_process_control_.BindReceiver(std::move(receiver));

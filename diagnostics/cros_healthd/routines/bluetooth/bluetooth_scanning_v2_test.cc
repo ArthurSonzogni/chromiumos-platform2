@@ -110,7 +110,7 @@ class BluetoothScanningRoutineV2Test : public testing::Test {
   void SetSwitchDiscoveryCall() {
     EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
         .WillOnce(WithArg<0>(
-            [=](base::OnceCallback<void(bool is_success)> on_success) {
+            [=, this](base::OnceCallback<void(bool is_success)> on_success) {
               std::move(on_success).Run(/*is_success=*/true);
               for (const auto& peripheral : fake_peripherals_) {
                 fake_floss_event_hub()->SendDeviceAdded(peripheral.device_dict);

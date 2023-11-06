@@ -32,10 +32,11 @@ class TouchscreenEventsImplTest : public testing::Test {
 
   void SetUp() override {
     EXPECT_CALL(*mock_executor(), MonitorTouchscreen(_, _))
-        .WillOnce([=](auto touchscreen_observer, auto pending_process_control) {
-          touchscreen_observer_.Bind(std::move(touchscreen_observer));
-          process_control_.BindReceiver(std::move(pending_process_control));
-        });
+        .WillOnce(
+            [=, this](auto touchscreen_observer, auto pending_process_control) {
+              touchscreen_observer_.Bind(std::move(touchscreen_observer));
+              process_control_.BindReceiver(std::move(pending_process_control));
+            });
   }
 
   void AddEventObserver(mojo::PendingRemote<mojom::EventObserver> observer) {

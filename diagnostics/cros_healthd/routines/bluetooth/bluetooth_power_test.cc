@@ -66,14 +66,14 @@ class BluetoothPowerRoutineTest : public testing::Test {
         .WillOnce(Return(current_powered));
     if (current_powered != target_powered) {
       EXPECT_CALL(mock_adapter_proxy_, set_powered(_, _))
-          .WillOnce(
-              [=](bool powered, base::OnceCallback<void(bool)> on_finish) {
-                std::move(on_finish).Run(is_success);
-                if (is_success) {
-                  fake_bluez_event_hub()->SendAdapterPropertyChanged(
-                      &mock_adapter_proxy_, mock_adapter_proxy_.PoweredName());
-                }
-              });
+          .WillOnce([=, this](bool powered,
+                              base::OnceCallback<void(bool)> on_finish) {
+            std::move(on_finish).Run(is_success);
+            if (is_success) {
+              fake_bluez_event_hub()->SendAdapterPropertyChanged(
+                  &mock_adapter_proxy_, mock_adapter_proxy_.PoweredName());
+            }
+          });
     }
   }
 

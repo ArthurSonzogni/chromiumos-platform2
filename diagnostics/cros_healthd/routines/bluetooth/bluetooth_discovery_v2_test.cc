@@ -118,7 +118,7 @@ class BluetoothDiscoveryRoutineV2Test : public testing::Test {
   void SetupStartDiscoveryCall(bool result_discovering = true) {
     EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
         .WillOnce(WithArg<0>(
-            [=](base::OnceCallback<void(bool is_success)> on_success) {
+            [=, this](base::OnceCallback<void(bool is_success)> on_success) {
               std::move(on_success).Run(/*is_success=*/true);
               fake_floss_event_hub()->SendAdapterDiscoveringChanged(
                   kDefaultAdapterPath, result_discovering);
@@ -128,7 +128,7 @@ class BluetoothDiscoveryRoutineV2Test : public testing::Test {
   void SetupCancelDiscoveryCall(bool result_discovering = false) {
     EXPECT_CALL(mock_adapter_proxy_, CancelDiscoveryAsync(_, _, _))
         .WillOnce(WithArg<0>(
-            [=](base::OnceCallback<void(bool is_success)> on_success) {
+            [=, this](base::OnceCallback<void(bool is_success)> on_success) {
               std::move(on_success).Run(/*is_success=*/true);
               fake_floss_event_hub()->SendAdapterDiscoveringChanged(
                   kDefaultAdapterPath, result_discovering);

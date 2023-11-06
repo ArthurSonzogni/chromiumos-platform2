@@ -97,7 +97,8 @@ class MemoryRoutineTestBase : public BaseFileTest {
   void SetExecutorResponse() {
     EXPECT_CALL(*mock_context_.mock_executor(), RunMemtester(_, _))
         .WillRepeatedly(WithArgs<0, 1>(
-            [=](uint32_t testing_mem_kib,
+            [=, this](
+                uint32_t testing_mem_kib,
                 mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
                     receiver) {
               fake_process_control_.BindReceiver(std::move(receiver));

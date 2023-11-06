@@ -28,7 +28,7 @@ class PowerButtonRoutineTest : public testing::Test {
 
   void ExpectBindEventObserver() {
     EXPECT_CALL(*mock_executor(), MonitorPowerButton)
-        .WillOnce(WithArg<0>([=](auto power_button_observer) {
+        .WillOnce(WithArg<0>([=, this](auto power_button_observer) {
           power_button_observer_.Bind(std::move(power_button_observer));
         }));
   }

@@ -60,7 +60,8 @@ class DlcManagerTest : public testing::Test {
   void SetRegisterDlcStateChangedCall(bool is_success) {
     EXPECT_CALL(mock_dlc_service_, DoRegisterDlcStateChangedSignalHandler(_, _))
         .WillOnce(WithArgs<0, 1>(
-            [=](const base::RepeatingCallback<void(
+            [=, this](
+                const base::RepeatingCallback<void(
                     const dlcservice::DlcState&)>& signal_callback,
                 dbus::ObjectProxy::OnConnectedCallback* on_connected_callback) {
               if (is_success)
@@ -83,9 +84,9 @@ class DlcManagerTest : public testing::Test {
   void SetInstallDlcCall(const dlcservice::DlcState& state, bool is_success) {
     EXPECT_CALL(mock_dlc_service_, InstallAsync(_, _, _, _))
         .WillOnce(WithArgs<0, 1, 2>(
-            [=](const dlcservice::InstallRequest& in_install_request,
-                base::OnceCallback<void()> success_callback,
-                base::OnceCallback<void(brillo::Error*)> error_callback) {
+            [=, this](const dlcservice::InstallRequest& in_install_request,
+                      base::OnceCallback<void()> success_callback,
+                      base::OnceCallback<void(brillo::Error*)> error_callback) {
               last_install_dlc_id = in_install_request.id();
               if (is_success) {
                 std::move(success_callback).Run();

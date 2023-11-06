@@ -61,7 +61,7 @@ class VolumeButtonRoutineTest : public testing::Test {
 
   void ExpectBindEventObserver() {
     EXPECT_CALL(*mock_executor(), MonitorVolumeButton)
-        .WillOnce(WithArg<0>([=](auto volume_button_observer) {
+        .WillOnce(WithArg<0>([=, this](auto volume_button_observer) {
           volume_button_observer_.Bind(std::move(volume_button_observer));
         }));
   }

@@ -44,7 +44,8 @@ class FloatingPointRoutineV2TestBase : public testing::Test {
   void SetUp() override {
     EXPECT_CALL(*mock_context_.mock_executor(), RunFloatingPoint(_, _, _))
         .WillRepeatedly(
-            [=](base::TimeDelta exec_duration,
+            [=, this](
+                base::TimeDelta exec_duration,
                 mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
                     receiver,
                 Executor::RunFloatingPointCallback callback) {

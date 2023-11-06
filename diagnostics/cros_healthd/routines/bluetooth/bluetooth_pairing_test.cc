@@ -87,12 +87,13 @@ class BluetoothPairingRoutineTest : public testing::Test {
       const std::vector<org::bluez::Device1ProxyInterface*>& added_devices) {
     if (is_success) {
       EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
-          .WillOnce(WithArg<0>([=](base::OnceCallback<void()> on_success) {
-            std::move(on_success).Run();
-            // Send out peripheral in |added_devices|.
-            for (const auto& device : added_devices)
-              fake_bluez_event_hub()->SendDeviceAdded(device);
-          }));
+          .WillOnce(
+              WithArg<0>([=, this](base::OnceCallback<void()> on_success) {
+                std::move(on_success).Run();
+                // Send out peripheral in |added_devices|.
+                for (const auto& device : added_devices)
+                  fake_bluez_event_hub()->SendDeviceAdded(device);
+              }));
     } else {
       EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
           .WillOnce(base::test::RunOnceCallback<1>(nullptr));

@@ -55,10 +55,11 @@ class TouchpadEventsImplTest : public testing::Test {
 
   void SetExecutorMonitorTouchpad() {
     EXPECT_CALL(*mock_executor(), MonitorTouchpad(_, _))
-        .WillOnce([=](auto touchpad_observer, auto pending_process_control) {
-          touchpad_observer_.Bind(std::move(touchpad_observer));
-          process_control_.BindReceiver(std::move(pending_process_control));
-        });
+        .WillOnce(
+            [=, this](auto touchpad_observer, auto pending_process_control) {
+              touchpad_observer_.Bind(std::move(touchpad_observer));
+              process_control_.BindReceiver(std::move(pending_process_control));
+            });
   }
 
   void ResetEventObserver() { event_observer_.reset(); }

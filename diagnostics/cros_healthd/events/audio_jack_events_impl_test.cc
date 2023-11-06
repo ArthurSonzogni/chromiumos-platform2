@@ -39,10 +39,11 @@ class AudioJackEventsImplTest : public testing::Test {
 
   void SetExecutorMonitorAudioJack() {
     EXPECT_CALL(*mock_executor(), MonitorAudioJack(_, _))
-        .WillOnce([=](auto audio_jack_observer, auto pending_process_control) {
-          audio_jack_observer_.Bind(std::move(audio_jack_observer));
-          process_control_.BindReceiver(std::move(pending_process_control));
-        });
+        .WillOnce(
+            [=, this](auto audio_jack_observer, auto pending_process_control) {
+              audio_jack_observer_.Bind(std::move(audio_jack_observer));
+              process_control_.BindReceiver(std::move(pending_process_control));
+            });
   }
 
   void EmitAudioJackAddEventMicrophone() {
