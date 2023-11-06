@@ -10,6 +10,7 @@
 
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
+#include <base/synchronization/lock.h>
 #include <base/time/time.h>
 
 #include "fbpreprocessor/firmware_dump.h"
@@ -38,11 +39,21 @@ class PseudonymizationManager : public SessionStateManager::Observer {
                                   const FirmwareDump& output,
                                   bool success);
 
+  // Returns true if we haven't handled "too many" pseudonymizations recently
+  // and we can start a new one without exceeding the rate limits.
+  // Returns false otherwise.
   bool RateLimitingAllowsNewPseudonymization();
 
   base::FilePath user_root_dir_;
 
+  // Keep track of the timestamps when recent pseudonymization operations were
+  // started. Every time we receive a request to start a pseudonymization, we
+  // look up how many operations happened recently and check that we're not
+  // exceeding the rate limits.
   std::set<base::Time> recently_processed_;
+
+  // Lock that protects accesses to |recently_processed_|.
+  base::Lock recently_processed_lock_;
 
   Manager* manager_;
 
