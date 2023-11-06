@@ -82,6 +82,8 @@ bool RecorderImpl::Record(const EventBase& event) {
           events::rollback_enterprise::RollbackPolicyActivated::
               kProjectNameHash &&
       event.project_name_hash() !=
+          events::usb_camera_module::UsbCameraModuleInfo::kProjectNameHash &&
+      event.project_name_hash() !=
           events::usb_device::UsbDeviceInfo::kProjectNameHash &&
       event.project_name_hash() !=
           events::usb_session::UsbSessionEvent::kProjectNameHash &&

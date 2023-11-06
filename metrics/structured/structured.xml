@@ -1071,6 +1071,46 @@
   </event>
 </project>
 
+<project name="UsbCameraModule">
+  <owner>ribalda@google.com</owner>
+  <owner>chromeos-camera-eng@google.com</owner>
+  <id>none</id>
+  <summary>
+    Project for recording the most common camera modules in the field.
+  </summary>
+
+  <event name="UsbCameraModuleInfo">
+    <summary>
+      Records the information about the Internal USB Camera Module.
+    </summary>
+    <metric name="VendorId" type="int">
+      <summary>
+        The vendor id of the USB Camera Module.
+      </summary>
+    </metric>
+    <metric name="VendorName" type="raw-string">
+      <summary>
+        The vendor name of the USB Camera Module.
+      </summary>
+    </metric>
+    <metric name="ProductId" type="int">
+      <summary>
+        The product id of the USB Camera Module.
+      </summary>
+    </metric>
+    <metric name="ProductName" type="raw-string">
+      <summary>
+        The product name of the USB Camera Module.
+      </summary>
+    </metric>
+    <metric name="BcdDevice" type="int">
+      <summary>
+        Firmware version of the device.
+      </summary>
+    </metric>
+  </event>
+</project>
+
 <project name="UsbDevice">
   <owner>wonchung@google.com</owner>
   <owner>chromeos-usb@google.com</owner>
