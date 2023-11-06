@@ -34,6 +34,13 @@ constexpr uint64_t kNetAdminCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
 constexpr uint64_t kNetRawAdminCapMask =
     CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
 
+// - 39 for CAP_BPF. This does not exist on all kernels so we need to define it
+//   here.
+// - CAP_TO_MASK() only works for a CAP whose index is less than 32.
+//
+// TODO(b/311100871): Switch to use CAP_BPF after all kernels are 5.8+.
+constexpr uint64_t kBPFCapMask = 1ull << 39;
+
 // `ip netns` needs CAP_SYS_ADMIN for mount(), and CAP_SYS_PTRACE for accessing
 // `/proc/${pid}/ns/net` of other processes.
 constexpr uint64_t kIpNetnsCapMask =
@@ -326,7 +333,10 @@ int MinijailedProcessRunner::RunIptables(std::string_view iptables_path,
 
   minijail* jail = mj_->New();
   CHECK(mj_->DropRoot(jail, kPatchpaneldUser, kPatchpaneldGroup));
-  mj_->UseCapabilities(jail, kNetRawAdminCapMask);
+
+  // TODO(b/311100871): Only add CAP_BPF for iptables commands required that but
+  // not all.
+  mj_->UseCapabilities(jail, kNetRawAdminCapMask | kBPFCapMask);
 
   // Set up seccomp filter.
   mj_->UseSeccompFilter(jail, kIptablesSeccompFilterPath);

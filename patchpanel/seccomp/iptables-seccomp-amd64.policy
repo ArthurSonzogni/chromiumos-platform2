@@ -46,3 +46,6 @@ uname: 1
 sysinfo: 1
 sendmmsg: 1
 writev: 1
+
+# 7 for BPF_OBJ_GET
+bpf: arg0 == 7

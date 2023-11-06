@@ -22,6 +22,7 @@
 #include <string_view>
 
 #include <base/check.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
@@ -33,6 +34,7 @@
 
 #include "patchpanel/adb_proxy.h"
 #include "patchpanel/arc_service.h"
+#include "patchpanel/bpf/constants.h"
 #include "patchpanel/dhcp_server_controller.h"
 #include "patchpanel/iptables.h"
 #include "patchpanel/net_util.h"
@@ -2476,6 +2478,8 @@ void Datapath::SetupQoSDetectChain() {
   const std::string default_mark = QoSFwmarkWithMask(QoSCategory::kDefault);
   const std::string network_control_mark =
       QoSFwmarkWithMask(QoSCategory::kNetworkControl);
+  const std::string multimedia_conferencing_mark =
+      QoSFwmarkWithMask(QoSCategory::kMultimediaConferencing);
 
   // Reset the QoS-related bits in fwmark. Some sockets will set their own
   // fwmarks when sending packets, while this is not compatible with the rules
@@ -2525,9 +2529,25 @@ void Datapath::SetupQoSDetectChain() {
   // installed dynamically in UpdateDoHProvidersForQoS().
   install_rule(IpFamily::kDual, {"-j", kQoSDetectDoHChain, "-w"});
 
-  // TODO(b/296952085): Add rules for WebRTC detection. Also need to add an
-  // early-return rule above for packets marked by rules for network control, to
-  // avoid marks on TCP handshake packets being persisted into connmark.
+  // Rules for WebRTC detection. Notes:
+  // - In short, this is implemented by detecting the client hello packet in a
+  //   WebRTC connection, and mark the whole connection on success. See the
+  //   WebRTC detection section in go/cros-wifi-qos-dd for more details.
+  // - The BPF program will only be installed on 5.8+ kernels, where CAP_BPF is
+  //   available. We check if the existence of the program instead of the kernel
+  //   version here.
+  // - Marking the whole connection is implemented by saving the mark into
+  //   connmark. To avoid saving the mark for unrelated connections, we check if
+  //   the packet already have a mark at first.
+  if (system_->IsEbpfEnabled()) {
+    install_rule(IpFamily::kDual, {"-m", "mark", "!", "--mark", default_mark,
+                                   "-j", "RETURN", "-w"});
+    install_rule(IpFamily::kDual,
+                 {"-m", "bpf", "--object-pinned", kWebRTCMatcherPinPath, "-j",
+                  "MARK", "--set-xmark", multimedia_conferencing_mark, "-w"});
+    install_rule(IpFamily::kDual, {"-j", "CONNMARK", "--save-mark", "--nfmask",
+                                   qos_mask, "--ctmask", qos_mask, "-w"});
+  }
 }
 
 void Datapath::SetupQoSApplyDSCPChain() {

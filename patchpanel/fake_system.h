@@ -106,6 +106,8 @@ class FakeSystem : public System {
               (base::FilePath, std::string_view),
               (override));
 
+  bool IsEbpfEnabled() const override { return true; }
+
   std::vector<ioctl_req_t> ioctl_reqs;
   std::vector<std::pair<std::string, struct rtentry>> ioctl_rtentry_args;
   std::vector<std::pair<std::string, struct ifreq>> ioctl_ifreq_args;

@@ -26,9 +26,6 @@ namespace {
 // 5.10 here is that CAP_BPF is only supported since 5.8.
 constexpr char kBPFMinimumKernelVersion[] = "5.10";
 
-// This path is created in this program.
-constexpr char kBPFMountPath[] = "/run/patchpanel/bpf";
-
 // Represents a BPF program to be load by LoadAndPinBPFProgram(). Use `const
 // char*` instead of `std::string_view` since all the APIs used in that function
 // takes c-style strings.

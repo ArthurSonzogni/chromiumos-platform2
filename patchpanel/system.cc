@@ -19,6 +19,8 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/files/file_util.h>
 
+#include "patchpanel/bpf/constants.h"
+
 namespace patchpanel {
 
 namespace {
@@ -212,6 +214,10 @@ bool System::WriteConfigFile(base::FilePath path, std::string_view contents) {
     return false;
   }
   return true;
+}
+
+bool System::IsEbpfEnabled() const {
+  return base::PathExists(base::FilePath(kBPFMountPath));
 }
 
 }  // namespace patchpanel

@@ -110,6 +110,9 @@ class System {
   // Writes |contents| into |path| and changes the owner and group to
   // `patchpaneld:patchpaneld`. Returns true if all the steps succeed.
   virtual bool WriteConfigFile(base::FilePath path, std::string_view contents);
+
+  // Returns if the eBPF is enabled on the system.
+  virtual bool IsEbpfEnabled() const;
 };
 
 }  // namespace patchpanel

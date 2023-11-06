@@ -114,7 +114,8 @@ void Verify_ip6(MockProcessRunner& runner, const std::string& args) {
 
 void Verify_iptables(MockProcessRunner& runner,
                      IpFamily family,
-                     const std::string& args) {
+                     const std::string& args,
+                     int call_count = 1) {
   auto argv = SplitArgs(args);
   const auto table = Iptables::TableFromName(argv[0]);
   const auto command = Iptables::CommandFromName(argv[1]);
@@ -129,12 +130,14 @@ void Verify_iptables(MockProcessRunner& runner,
   if (family == IpFamily::kIPv4 || family == IpFamily::kDual) {
     EXPECT_CALL(runner, iptables(*table, *command, StrEq(chain),
                                  ElementsAreArray(argv), _, _, nullptr))
-        .WillOnce(Return(0));
+        .Times(call_count)
+        .WillRepeatedly(Return(0));
   }
   if (family == IpFamily::kIPv6 || family == IpFamily::kDual) {
     EXPECT_CALL(runner, ip6tables(*table, *command, StrEq(chain),
                                   ElementsAreArray(argv), _, _, nullptr))
-        .WillOnce(Return(0));
+        .Times(call_count)
+        .WillRepeatedly(Return(0));
   }
 }
 
@@ -200,7 +203,7 @@ TEST(DatapathTest, Start) {
   static struct {
     IpFamily family;
     std::string args;
-    int call_count;
+    int call_count = 1;
   } iptables_commands[] = {
       // Asserts for iptables chain reset.
       {IpFamily::kDual, "filter -D INPUT -j ingress_port_firewall -w"},
@@ -458,7 +461,8 @@ TEST(DatapathTest, Start) {
        "--ctmask 0x000000e0 -w"},
       {IpFamily::kDual,
        "mangle -A qos_detect -m mark ! --mark 0x00000000/0x000000e0 -j RETURN "
-       "-w"},
+       "-w",
+       /*call_count=*/2},
       {IpFamily::kIPv4,
        "mangle -A qos_detect -p icmp -j MARK --set-xmark 0x00000060/0x000000e0 "
        "-w"},
@@ -474,6 +478,13 @@ TEST(DatapathTest, Start) {
       {IpFamily::kDual,
        "mangle -A qos_detect -p tcp --dport 53 -j MARK --set-xmark "
        "0x00000060/0x000000e0 -w"},
+      {IpFamily::kDual,
+       "mangle -A qos_detect -m bpf --object-pinned "
+       "/run/patchpanel/bpf/match_dtls_srtp -j MARK --set-xmark "
+       "0x00000040/0x000000e0 -w"},
+      {IpFamily::kDual,
+       "mangle -A qos_detect -j CONNMARK --save-mark --nfmask 0x000000e0 "
+       "--ctmask 0x000000e0 -w"},
       {IpFamily::kDual, "mangle -N qos_detect_doh -w"},
       {IpFamily::kDual, "mangle -A qos_detect -j qos_detect_doh -w"},
       // Asserts for QoS apply DSCP chain.
@@ -496,7 +507,7 @@ TEST(DatapathTest, Start) {
        "filter -A enforce_ipv6_src_prefix -s fc00::/7 -j DROP -w"},
   };
   for (const auto& c : iptables_commands) {
-    Verify_iptables(*runner, c.family, c.args);
+    Verify_iptables(*runner, c.family, c.args, c.call_count);
   }
 
   Datapath datapath(runner, firewall, &system);
