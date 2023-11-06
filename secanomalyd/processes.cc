@@ -14,6 +14,7 @@
 #include <iterator>
 #include <optional>
 #include <string>
+#include <string_view>
 
 #include <absl/cleanup/cleanup.h>
 #include <base/files/file_path.h>
@@ -23,8 +24,6 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece_forward.h>
-#include <base/strings/string_split.h>
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -161,7 +160,7 @@ MaybeProcEntry ProcEntry::CreateFromPath(const base::FilePath& pid_path) {
   // `NoNewPrivs` and `Seccomp`.
   base::StringTokenizer t(status_file_content, "\n");
   while (t.GetNext()) {
-    base::StringPiece line = t.token_piece();
+    std::string_view line = t.token_piece();
     if (base::StartsWith(line, "Name:")) {
       comm = std::string(line.substr(line.rfind("\t") + 1));
     }
@@ -175,7 +174,7 @@ MaybeProcEntry ProcEntry::CreateFromPath(const base::FilePath& pid_path) {
       // The UID field includes real, effective, saved set and filesystem UIDs.
       // We use the real UID to determine whether the process is running as
       // root.
-      base::StringPiece all_uids = line.substr(line.find("\t") + 1);
+      std::string_view all_uids = line.substr(line.find("\t") + 1);
       size_t real_uid_len =
           all_uids.length() - all_uids.substr(all_uids.find("\t")).length();
       if (std::string(all_uids.substr(0, real_uid_len)) != "0") {

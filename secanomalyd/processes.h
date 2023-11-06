@@ -14,7 +14,6 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/strings/string_piece.h>
 
 #include <brillo/process/process.h>
 

@@ -6,6 +6,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -205,7 +206,7 @@ MaybeReport GenerateAnomalousSystemReport(
   return MaybeReport(base::JoinString(lines, "\n"));
 }
 
-bool SendReport(base::StringPiece report,
+bool SendReport(std::string_view report,
                 brillo::Process* crash_reporter,
                 int weight,
                 bool report_in_dev_mode) {

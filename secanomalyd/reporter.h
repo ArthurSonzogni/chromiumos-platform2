@@ -7,6 +7,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 
 #include "secanomalyd/mount_entry.h"
 #include "secanomalyd/mounts.h"
@@ -31,7 +32,7 @@ MaybeReport GenerateAnomalousSystemReport(
     const MaybeMountEntries& all_mounts,
     const MaybeProcEntries& all_procs);
 
-bool SendReport(base::StringPiece report,
+bool SendReport(std::string_view report,
                 brillo::Process* crash_reporter,
                 int weight,
                 bool report_in_dev_mode);

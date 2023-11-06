@@ -6,12 +6,11 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
-#include <base/strings/string_util.h>
 
 namespace secanomalyd {
 
@@ -31,7 +30,7 @@ MaybeMountEntries ReadMounts() {
 }
 
 MaybeMountEntries ReadMountsFromString(const std::string& mounts) {
-  std::vector<base::StringPiece> pieces = base::SplitStringPiece(
+  std::vector<std::string_view> pieces = base::SplitStringPiece(
       mounts, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   if (pieces.empty()) {

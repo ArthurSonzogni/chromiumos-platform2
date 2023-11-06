@@ -6,12 +6,12 @@
 
 #include <algorithm>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <re2/re2.h>
@@ -41,10 +41,10 @@ const re2::RE2 sha1_re("[a-f0-9]{40}");
 
 }  // namespace
 
-MountEntry::MountEntry(base::StringPiece mount_str) {
+MountEntry::MountEntry(std::string_view mount_str) {
   // These entries are of the form:
   // /dev/root / ext2 rw,seclabel,relatime 0 0
-  std::vector<base::StringPiece> fields =
+  std::vector<std::string_view> fields =
       base::SplitStringPiece(mount_str, base::kWhitespaceASCII,
                              base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 

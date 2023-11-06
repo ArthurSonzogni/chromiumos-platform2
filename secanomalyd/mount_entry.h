@@ -10,10 +10,10 @@
 
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/strings/string_piece.h>
 
 #include "secanomalyd/system_context.h"
 
@@ -45,9 +45,9 @@ using MountEntryMap = std::map<base::FilePath, MountEntry>;
 
 class MountEntry {
  public:
-  MountEntry() : src_{}, dest_{}, type_{}, opts_{} {}
+  MountEntry() = default;
 
-  explicit MountEntry(base::StringPiece mount_str);
+  explicit MountEntry(std::string_view mount_str);
 
   // Copying the private fields is fine.
   MountEntry(const MountEntry& other) = default;
