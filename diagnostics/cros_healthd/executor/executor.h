@@ -23,6 +23,7 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/unique_receiver_set.h>
 
+#include "diagnostics/cros_healthd/executor/utils/delegate_process.h"
 #include "diagnostics/cros_healthd/executor/utils/sandboxed_process.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 
@@ -33,6 +34,7 @@ class DlcServiceInterfaceProxyInterface;
 namespace diagnostics {
 class DlcManager;
 class ProcessControl;
+struct ServiceConfig;
 
 bool IsValidWirelessInterfaceName(const std::string& interface_name);
 
@@ -42,7 +44,8 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   Executor(const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner,
            mojo::PendingReceiver<ash::cros_healthd::mojom::Executor> receiver,
            brillo::ProcessReaper* process_reaper,
-           base::OnceClosure on_disconnect);
+           base::OnceClosure on_disconnect,
+           const ServiceConfig& service_config);
   Executor(const Executor&) = delete;
   Executor& operator=(const Executor&) = delete;
   ~Executor() override;
@@ -191,6 +194,17 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver,
       std::optional<base::FilePath> dlc_root_path);
 
+  // Create a |SandboxedProcess| instance.
+  std::unique_ptr<SandboxedProcess> CreateProcess(
+      const std::vector<std::string>& command,
+      std::string_view seccomp_filename,
+      const SandboxedProcess::Options& options) const;
+
+  // Create a |DelegateProcess| instance.
+  std::unique_ptr<DelegateProcess> CreateDelegateProcess(
+      std::string_view seccomp_filename,
+      const SandboxedProcess::Options& options) const;
+
   // Task runner for all Mojo callbacks.
   const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner_;
 
@@ -217,6 +231,9 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface>
       dlcservice_proxy_;
   std::unique_ptr<DlcManager> dlc_manager_;
+
+  // Whether to override the sandboxing option when creating the processes.
+  bool skip_sandbox_ = false;
 
   // Must be the last member of the class.
   base::WeakPtrFactory<Executor> weak_factory_{this};

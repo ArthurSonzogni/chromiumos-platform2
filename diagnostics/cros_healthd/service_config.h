@@ -11,6 +11,8 @@ namespace diagnostics {
 struct ServiceConfig {
   // If set, load chromeos-config from /run/chromeos-config/test
   bool test_cros_config = false;
+  // If set, run the service with factory config.
+  bool factory_mode = false;
 };
 
 }  // namespace diagnostics

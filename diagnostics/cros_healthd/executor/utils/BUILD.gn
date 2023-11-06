@@ -11,6 +11,7 @@ pkg_config("pkg_deps") {
     "libchrome",
     "libdlcservice-client",
     "libmojo",
+    "vboot_host",
   ]
 }
 

@@ -27,6 +27,7 @@ class MockSandboxedProcess : public SandboxedProcess {
   MOCK_METHOD(void, BrilloProcessAddArg, (const std::string&), (override));
   MOCK_METHOD(bool, BrilloProcessStart, (), (override));
   MOCK_METHOD(bool, IsPathExists, (const base::FilePath&), (const override));
+  MOCK_METHOD(bool, IsDevMode, (), (const override));
 };
 
 constexpr char kTestSeccompName[] = "test_seccomp.policy";
@@ -190,6 +191,37 @@ TEST_F(SandboxedProcessTest, MOUNT_DLC) {
       minijail_args_set_,
       Contains(std::vector<std::string>{
           "-k", "/run/imageloader,/run/imageloader,none,MS_BIND|MS_REC"}));
+}
+
+TEST_F(SandboxedProcessTest, SkipSandbox) {
+  std::vector<std::string> expected_cmd{"ls", "-al"};
+  MockSandboxedProcess process{/*command=*/expected_cmd,
+                               /*seccomp_filename=*/kTestSeccompName,
+                               /*options=*/
+                               SandboxedProcess::Options{
+                                   .skip_sandbox = true,
+                               }};  // namespace
+
+  EXPECT_CALL(process, IsDevMode()).WillRepeatedly(Return(true));
+  EXPECT_CALL(process, BrilloProcessStart()).WillRepeatedly(Return(true));
+  EXPECT_CALL(process, BrilloProcessAddArg(_))
+      .WillRepeatedly([&](const std::string& arg) { cmd_.push_back(arg); });
+  EXPECT_TRUE(process.Start());
+  EXPECT_EQ(cmd_, expected_cmd);
+  EXPECT_EQ(minijail_args_set_.size(), 0);
+}  // namespace diagnostics
+
+TEST_F(SandboxedProcessTest, SkipSandboxInNormalMode) {
+  std::vector<std::string> expected_cmd{"ls", "-al"};
+  MockSandboxedProcess process{/*command=*/expected_cmd,
+                               /*seccomp_filename=*/kTestSeccompName,
+                               /*options=*/
+                               SandboxedProcess::Options{
+                                   .skip_sandbox = true,
+                               }};
+
+  EXPECT_CALL(process, IsDevMode()).WillRepeatedly(Return(false));
+  EXPECT_FALSE(process.Start());
 }
 
 }  // namespace

@@ -17,11 +17,13 @@
 #include "diagnostics/cros_healthd/executor/executor.h"
 
 namespace diagnostics {
+struct ServiceConfig;
 
 // Daemon class for cros_healthd's root-level executor.
 class ExecutorDaemon final : public brillo::Daemon {
  public:
-  explicit ExecutorDaemon(mojo::PlatformChannelEndpoint endpoint);
+  explicit ExecutorDaemon(mojo::PlatformChannelEndpoint endpoint,
+                          const ServiceConfig& service_config);
   ExecutorDaemon(const ExecutorDaemon&) = delete;
   ExecutorDaemon& operator=(const ExecutorDaemon&) = delete;
   ~ExecutorDaemon() override;

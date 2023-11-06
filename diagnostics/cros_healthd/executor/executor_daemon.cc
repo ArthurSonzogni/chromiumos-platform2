@@ -14,12 +14,14 @@
 #include <mojo/public/cpp/system/message_pipe.h>
 
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
+#include "diagnostics/cros_healthd/service_config.h"
 
 namespace diagnostics {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-ExecutorDaemon::ExecutorDaemon(mojo::PlatformChannelEndpoint endpoint)
+ExecutorDaemon::ExecutorDaemon(mojo::PlatformChannelEndpoint endpoint,
+                               const ServiceConfig& service_config)
     : mojo_task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()) {
   DCHECK(endpoint.is_valid());
 
@@ -40,7 +42,8 @@ ExecutorDaemon::ExecutorDaemon(mojo::PlatformChannelEndpoint endpoint)
   mojo_service_ = std::make_unique<Executor>(
       mojo_task_runner_,
       mojo::PendingReceiver<mojom::Executor>(std::move(pipe)), &process_reaper_,
-      base::BindOnce(&ExecutorDaemon::Quit, base::Unretained(this)));
+      base::BindOnce(&ExecutorDaemon::Quit, base::Unretained(this)),
+      service_config);
 }
 
 ExecutorDaemon::~ExecutorDaemon() = default;

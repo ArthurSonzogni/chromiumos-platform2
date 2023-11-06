@@ -16,7 +16,7 @@ void EnterHealthdMinijail(const ServiceConfig& service_config);
 
 // Enters a new mount namespace for the executor. We don't want anyone other
 // than our descendants to see our tmpfs.
-void EnterExecutorMinijail();
+void EnterExecutorMinijail(const ServiceConfig& service_config);
 
 }  // namespace diagnostics
 

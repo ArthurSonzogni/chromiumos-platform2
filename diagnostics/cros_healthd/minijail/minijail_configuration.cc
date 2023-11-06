@@ -44,6 +44,11 @@ int BindMountIfPathExists(struct minijail* jail,
 }  // namespace
 
 void EnterHealthdMinijail(const ServiceConfig& service_config) {
+  if (service_config.factory_mode) {
+    LOG(INFO) << "Skip healthd minijail in factory mode.";
+    return;
+  }
+
   ScopedMinijail jail(minijail_new());
   minijail_no_new_privs(jail.get());           // The no_new_privs bit.
   minijail_remount_proc_readonly(jail.get());  // Remount /proc readonly.
@@ -175,7 +180,12 @@ void EnterHealthdMinijail(const ServiceConfig& service_config) {
   minijail_enter(jail.get());
 }
 
-void EnterExecutorMinijail() {
+void EnterExecutorMinijail(const ServiceConfig& service_config) {
+  if (service_config.factory_mode) {
+    LOG(INFO) << "Skip executor minijail in factory mode.";
+    return;
+  }
+
   ScopedMinijail j(minijail_new());
 
   minijail_namespace_vfs(j.get());

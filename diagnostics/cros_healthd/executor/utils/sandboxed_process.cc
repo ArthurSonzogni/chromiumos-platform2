@@ -21,6 +21,7 @@
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <brillo/process/process.h>
+#include <vboot/crossystem.h>
 
 #include "diagnostics/base/file_utils.h"
 
@@ -76,7 +77,9 @@ SandboxedProcess::~SandboxedProcess() {
 SandboxedProcess::SandboxedProcess(const std::vector<std::string>& command,
                                    std::string_view seccomp_filename,
                                    const Options& options)
-    : command_(command), readonly_mount_points_(options.readonly_mount_points) {
+    : command_(command),
+      readonly_mount_points_(options.readonly_mount_points),
+      skip_sandbox_(options.skip_sandbox) {
   // Per our security requirement, it is not allowed to invoke a sandboxed
   // process as root. In addition, minijail would refuse to start the subprocess
   // when the user is specified as root.
@@ -172,11 +175,20 @@ bool SandboxedProcess::Start() {
     BrilloProcessAddArg("--");
   }
 
-  BrilloProcessAddArg(kMinijailBinary);
-  for (const std::string& arg : sandbox_arguments_) {
-    BrilloProcessAddArg(arg);
+  if (!skip_sandbox_) {
+    BrilloProcessAddArg(kMinijailBinary);
+    for (const std::string& arg : sandbox_arguments_) {
+      BrilloProcessAddArg(arg);
+    }
+    BrilloProcessAddArg("--");
+  } else {
+    // Should skip the sandbox.
+    if (!IsDevMode()) {
+      LOG(ERROR) << "Cannot skip sandbox in normal mode.";
+      return false;
+    }
   }
-  BrilloProcessAddArg("--");
+
   for (const std::string& arg : command_) {
     BrilloProcessAddArg(arg);
   }
@@ -222,7 +234,11 @@ int SandboxedProcess::KillJailedProcess(int signal, base::TimeDelta timeout) {
   base::TimeTicks start_signal = base::TimeTicks::Now();
   do {
     if (jailed_process_pid == 0) {
-      jailed_process_pid = FetchJailedProcessPid(pid());
+      if (skip_sandbox_) {
+        jailed_process_pid = pid();
+      } else {
+        jailed_process_pid = FetchJailedProcessPid(pid());
+      }
       // If jailed_process_pid is 0, the jailed process could be not started yet
       // or had terminated. So we need to retry for the first case.
       if (jailed_process_pid != 0 && kill(jailed_process_pid, signal) < 0) {
@@ -281,6 +297,13 @@ bool SandboxedProcess::BrilloProcessStart() {
 // Checks if a file exist. For mocking.
 bool SandboxedProcess::IsPathExists(const base::FilePath& path) const {
   return base::PathExists(path);
+}
+
+bool SandboxedProcess::IsDevMode() const {
+  int value = ::VbGetSystemPropertyInt("cros_debug");
+  LOG_IF(ERROR, value == -1) << "Cannot get cros_debug from crossystem.";
+  // If fails to get value, the value will be -1. Treat it as false.
+  return value == 1;
 }
 
 #undef GENERATE_STRACE_LOG_MODE

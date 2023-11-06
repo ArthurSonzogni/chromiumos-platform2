@@ -44,6 +44,8 @@ class SandboxedProcess : public brillo::ProcessImpl {
   //     minijail. Default to |true|.
   // * |mount_dlc|: Mount /run/imageloader for accessing DLC. Default to
   //     |false|.
+  // * |skip_sandbox|: Skip putting the process into the sandbox. This is only
+  //     allowed in dev mode or factory flow. Default to |false|.
   struct Options {
     std::string user = kCrosHealthdSandboxUser;
     uint64_t capabilities_mask = 0;
@@ -51,6 +53,7 @@ class SandboxedProcess : public brillo::ProcessImpl {
     std::vector<base::FilePath> writable_mount_points;
     bool enter_network_namespace = true;
     bool mount_dlc = false;
+    bool skip_sandbox = false;
   };
 
   SandboxedProcess(const std::vector<std::string>& command,
@@ -92,6 +95,9 @@ class SandboxedProcess : public brillo::ProcessImpl {
   // Checks if a file exist. For mocking.
   virtual bool IsPathExists(const base::FilePath& path) const;
 
+  // Check if the system is running in dev mode. For mocking.
+  virtual bool IsDevMode() const;
+
   // Kill the jailed process and wait for the minijail process. Return the exit
   // status of the minijail process on success, or -1 on error or timeout.
   int KillJailedProcess(int signal, base::TimeDelta timeout);
@@ -102,6 +108,8 @@ class SandboxedProcess : public brillo::ProcessImpl {
   std::vector<std::string> command_;
   // The paths to be mounted readonly.
   std::vector<base::FilePath> readonly_mount_points_;
+  // Whether to skip the sandbox.
+  bool skip_sandbox_ = false;
 };
 
 }  // namespace diagnostics

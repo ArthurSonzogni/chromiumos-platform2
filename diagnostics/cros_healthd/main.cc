@@ -46,6 +46,9 @@ int main(int argc, char** argv) {
   DEFINE_bool(test_cros_config, false,
               "If set, load chromeos-config from /run/chromeos-config/test. "
               "Can only be set in dev mode.");
+  DEFINE_bool(factory_mode, false,
+              "If set, run the daemon with factory config. "
+              "Can only be set in dev mode.");
   brillo::FlagHelper::Init(
       argc, argv, "cros_healthd - Device telemetry and diagnostics daemon.");
 
@@ -54,9 +57,12 @@ int main(int argc, char** argv) {
   diagnostics::ServiceConfig service_config;
   if (IsDevMode()) {
     service_config.test_cros_config = FLAGS_test_cros_config;
+    service_config.factory_mode = FLAGS_factory_mode;
   } else {
     LOG_IF(ERROR, FLAGS_test_cros_config)
         << "test_cros_config can only be set in dev mode.";
+    LOG_IF(ERROR, FLAGS_factory_mode)
+        << "factory_mode can only be set in dev mode.";
   }
 
   // Init the Mojo Embedder API here, since both the executor and
@@ -90,11 +96,13 @@ int main(int argc, char** argv) {
     }
 
     // Put the root-level executor in a light sandbox.
-    diagnostics::EnterExecutorMinijail();
+    diagnostics::EnterExecutorMinijail(service_config);
 
     // Run the root-level executor.
     healthd_endpoint.reset();
-    return diagnostics::ExecutorDaemon(std::move(executor_endpoint)).Run();
+    auto service = diagnostics::ExecutorDaemon(std::move(executor_endpoint),
+                                               service_config);
+    return service.Run();
   }
 
   // Parent process.

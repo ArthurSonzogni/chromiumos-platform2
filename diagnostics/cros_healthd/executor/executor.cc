@@ -47,6 +47,7 @@
 #include "diagnostics/cros_healthd/executor/utils/process_control.h"
 #include "diagnostics/cros_healthd/executor/utils/sandboxed_process.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
+#include "diagnostics/cros_healthd/service_config.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
@@ -174,7 +175,7 @@ base::FilePath FileEnumToFilePath(mojom::Executor::File file_enum) {
 // disconnect), the `default_args` is used to reply the callback.
 //
 // Example:
-//   auto delegate = std::make_unique<DelegateProcess>(...);
+//   auto delegate = CreateDelegateProcess(...);
 //   // Get pointer and move the delegate into the callback.
 //   auto* delegate_ptr = delegate.get();
 //   delegate_ptr->remote()->SomeMethod(
@@ -251,10 +252,12 @@ Executor::Executor(
     const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner,
     mojo::PendingReceiver<mojom::Executor> receiver,
     brillo::ProcessReaper* process_reaper,
-    base::OnceClosure on_disconnect)
+    base::OnceClosure on_disconnect,
+    const ServiceConfig& service_config)
     : mojo_task_runner_(mojo_task_runner),
       receiver_{this /* impl */, std::move(receiver)},
-      process_reaper_(process_reaper) {
+      process_reaper_(process_reaper),
+      skip_sandbox_(service_config.factory_mode) {
   receiver_.set_disconnect_handler(std::move(on_disconnect));
 
   // Initialize the D-Bus connection.
@@ -306,7 +309,7 @@ void Executor::GetFileInfo(File file_enum, GetFileInfoCallback callback) {
 }
 
 void Executor::GetAllFanSpeed(GetAllFanSpeedCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kFan,
       SandboxedProcess::Options{
           .user = user::kEc,
@@ -360,11 +363,10 @@ void Executor::RunIw(IwCommand cmd,
       break;
   }
 
-  auto process =
-      std::make_unique<SandboxedProcess>(command, seccomp_file::kIw,
-                                         SandboxedProcess::Options{
-                                             .enter_network_namespace = false,
-                                         });
+  auto process = CreateProcess(command, seccomp_file::kIw,
+                               SandboxedProcess::Options{
+                                   .enter_network_namespace = false,
+                               });
 
   RunAndWaitProcess(std::move(process), std::move(callback),
                     /*combine_stdout_and_stderr=*/false);
@@ -376,11 +378,11 @@ void Executor::RunMemtester(
   // Run with test_mem_kib memory and run for 1 loop.
   std::vector<std::string> command = {
       path::kMemtesterBinary, base::StringPrintf("%uK", test_mem_kib), "1"};
-  auto process = std::make_unique<SandboxedProcess>(
-      command, seccomp_file::kMemtester,
-      SandboxedProcess::Options{
-          .capabilities_mask = CAP_TO_MASK(CAP_IPC_LOCK),
-      });
+  auto process =
+      CreateProcess(command, seccomp_file::kMemtester,
+                    SandboxedProcess::Options{
+                        .capabilities_mask = CAP_TO_MASK(CAP_IPC_LOCK),
+                    });
 
   RunLongRunningProcess(std::move(process), std::move(receiver),
                         /*combine_stdout_and_stderr=*/true);
@@ -436,7 +438,7 @@ void Executor::ReadMsr(const uint32_t msr_reg,
 }
 
 void Executor::GetLidAngle(GetLidAngleCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kLidAngle,
       SandboxedProcess::Options{
           .user = user::kEc,
@@ -451,7 +453,7 @@ void Executor::GetLidAngle(GetLidAngleCallback callback) {
 
 void Executor::GetFingerprintFrame(mojom::FingerprintCaptureType type,
                                    GetFingerprintFrameCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kFingerprint,
       SandboxedProcess::Options{
           .user = user::kFingerprint,
@@ -467,7 +469,7 @@ void Executor::GetFingerprintFrame(mojom::FingerprintCaptureType type,
 }
 
 void Executor::GetFingerprintInfo(GetFingerprintInfoCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kFingerprint,
       SandboxedProcess::Options{
           .user = user::kFingerprint,
@@ -482,7 +484,7 @@ void Executor::GetFingerprintInfo(GetFingerprintInfoCallback callback) {
 }
 
 void Executor::GetPsr(GetPsrCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kPsr,
       SandboxedProcess::Options{
           .user = user::kPsr,
@@ -523,7 +525,7 @@ void Executor::FetchCrashFromCrashSender(
 void Executor::SetLedColor(mojom::LedName name,
                            mojom::LedColor color,
                            SetLedColorCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kLed,
       SandboxedProcess::Options{
           .user = user::kEc,
@@ -540,7 +542,7 @@ void Executor::SetLedColor(mojom::LedName name,
 
 void Executor::ResetLedColor(ash::cros_healthd::mojom::LedName name,
                              ResetLedColorCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kLed,
       SandboxedProcess::Options{
           .user = user::kEc,
@@ -558,11 +560,10 @@ void Executor::GetHciDeviceConfig(int32_t hci_interface,
                                   GetHciDeviceConfigCallback callback) {
   std::vector<std::string> command = {
       path::kHciconfigBinary, "hci" + base::NumberToString(hci_interface)};
-  auto process =
-      std::make_unique<SandboxedProcess>(command, seccomp_file::kHciconfig,
-                                         SandboxedProcess::Options{
-                                             .enter_network_namespace = false,
-                                         });
+  auto process = CreateProcess(command, seccomp_file::kHciconfig,
+                               SandboxedProcess::Options{
+                                   .enter_network_namespace = false,
+                               });
 
   RunAndWaitProcess(std::move(process), std::move(callback),
                     /*combine_stdout_and_stderr=*/false);
@@ -571,7 +572,7 @@ void Executor::GetHciDeviceConfig(int32_t hci_interface,
 void Executor::MonitorAudioJack(
     mojo::PendingRemote<mojom::AudioJackObserver> observer,
     mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kEvdev,
       SandboxedProcess::Options{
           .user = user::kEvdev,
@@ -592,7 +593,7 @@ void Executor::MonitorAudioJack(
 void Executor::MonitorTouchpad(
     mojo::PendingRemote<mojom::TouchpadObserver> observer,
     mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kEvdev,
       SandboxedProcess::Options{
           .user = user::kEvdev,
@@ -625,18 +626,18 @@ void Executor::RunStressAppTest(
   if (test_type == mojom::StressAppTestType::kCpuCache) {
     command.push_back("--cc_test");
   }
-  auto process = std::make_unique<SandboxedProcess>(
-      command, seccomp_file::kStressAppTest,
-      SandboxedProcess::Options{
-          .capabilities_mask = CAP_TO_MASK(CAP_IPC_LOCK),
-      });
+  auto process =
+      CreateProcess(command, seccomp_file::kStressAppTest,
+                    SandboxedProcess::Options{
+                        .capabilities_mask = CAP_TO_MASK(CAP_IPC_LOCK),
+                    });
 
   RunLongRunningProcess(std::move(process), std::move(receiver),
                         /*combine_stdout_and_stderr=*/true);
 }
 
 void Executor::FetchBootPerformance(FetchBootPerformanceCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kReadOnlyFetchers,
       SandboxedProcess::Options{
           .readonly_mount_points =
@@ -660,7 +661,7 @@ void Executor::FetchBootPerformance(FetchBootPerformanceCallback callback) {
 void Executor::MonitorTouchscreen(
     mojo::PendingRemote<mojom::TouchscreenObserver> observer,
     mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kEvdev,
       SandboxedProcess::Options{
           .user = user::kEvdev,
@@ -681,7 +682,7 @@ void Executor::MonitorTouchscreen(
 void Executor::MonitorStylusGarage(
     mojo::PendingRemote<mojom::StylusGarageObserver> observer,
     mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kEvdev,
       SandboxedProcess::Options{
           .user = user::kEvdev,
@@ -702,7 +703,7 @@ void Executor::MonitorStylusGarage(
 void Executor::MonitorStylus(
     mojo::PendingRemote<mojom::StylusObserver> observer,
     mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kEvdev,
       SandboxedProcess::Options{
           .user = user::kEvdev,
@@ -754,25 +755,25 @@ void Executor::RunFioWithDlcRoot(
     receiver.reset();
     return;
   }
-  auto process = std::make_unique<SandboxedProcess>(
-      command.value(), seccomp_file::kFio,
-      SandboxedProcess::Options{
-          .readonly_mount_points = readonly_mount_points,
-          .writable_mount_points = writable_mount_points,
-          .mount_dlc = true,
-      });
+  auto process =
+      CreateProcess(command.value(), seccomp_file::kFio,
+                    SandboxedProcess::Options{
+                        .readonly_mount_points = readonly_mount_points,
+                        .writable_mount_points = writable_mount_points,
+                        .mount_dlc = true,
+                    });
   RunLongRunningProcess(std::move(process), std::move(receiver),
                         /*combine_stdout_and_stderr=*/false);
 }
 
 void Executor::RemoveFioTestFile(RemoveFioTestFileCallback callback) {
   std::vector<std::string> command = {"/bin/rm", "-f", path::kFioCacheFile};
-  auto process = std::make_unique<SandboxedProcess>(
-      command, seccomp_file::kRm,
-      SandboxedProcess::Options{
-          .writable_mount_points =
-              {base::FilePath(path::kFioCacheFile).DirName()},
-      });
+  auto process =
+      CreateProcess(command, seccomp_file::kRm,
+                    SandboxedProcess::Options{
+                        .writable_mount_points =
+                            {base::FilePath(path::kFioCacheFile).DirName()},
+                    });
 
   RunAndWaitProcess(std::move(process), std::move(callback),
                     /*combine_stdout_and_stderr=*/false);
@@ -781,7 +782,7 @@ void Executor::RemoveFioTestFile(RemoveFioTestFileCallback callback) {
 void Executor::MonitorPowerButton(
     mojo::PendingRemote<mojom::PowerButtonObserver> observer,
     mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kEvdev,
       SandboxedProcess::Options{
           .user = user::kEvdev,
@@ -804,8 +805,8 @@ void Executor::RunPrimeSearch(
     uint64_t max_num,
     mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver,
     RunPrimeSearchCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
-      seccomp_file::kPrimeSearch, SandboxedProcess::Options{});
+  auto delegate = CreateDelegateProcess(seccomp_file::kPrimeSearch,
+                                        SandboxedProcess::Options{});
   delegate->remote()->RunPrimeSearch(
       exec_duration, max_num,
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback), false));
@@ -822,7 +823,7 @@ void Executor::RunPrimeSearch(
 void Executor::MonitorVolumeButton(
     mojo::PendingRemote<mojom::VolumeButtonObserver> observer,
     mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kEvdev,
       SandboxedProcess::Options{
           .user = user::kEvdev,
@@ -844,8 +845,8 @@ void Executor::RunFloatingPoint(
     base::TimeDelta exec_duration,
     mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver,
     RunFloatingPointCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
-      seccomp_file::kFloatingPoint, SandboxedProcess::Options{});
+  auto delegate = CreateDelegateProcess(seccomp_file::kFloatingPoint,
+                                        SandboxedProcess::Options{});
   delegate->remote()->RunFloatingPoint(
       exec_duration,
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback), false));
@@ -865,14 +866,14 @@ void Executor::StartBtmon(
   std::vector<std::string> command = {path::kBtmonBinary, "--index",
                                       base::NumberToString(hci_interface), "-w",
                                       path::kBtmonLogFile};
-  auto process = std::make_unique<SandboxedProcess>(
-      command, seccomp_file::kBtmon,
-      SandboxedProcess::Options{
-          .capabilities_mask = CAP_TO_MASK(CAP_NET_RAW),
-          .writable_mount_points =
-              {base::FilePath{path::kBtmonLogFile}.DirName()},
-          .enter_network_namespace = false,
-      });
+  auto process =
+      CreateProcess(command, seccomp_file::kBtmon,
+                    SandboxedProcess::Options{
+                        .capabilities_mask = CAP_TO_MASK(CAP_NET_RAW),
+                        .writable_mount_points =
+                            {base::FilePath{path::kBtmonLogFile}.DirName()},
+                        .enter_network_namespace = false,
+                    });
 
   RunLongRunningProcess(std::move(process), std::move(receiver),
                         /*combine_stdout_and_stderr=*/false);
@@ -883,7 +884,7 @@ void Executor::ReadBtmonLog(ReadBtmonLogCallback callback) {
       path::kBtmonBinary, "-r", path::kBtmonLogFile,
       // Set the output width to an arbitrary value 100 to get the full log.
       "--columns", "100"};
-  auto process = std::make_unique<SandboxedProcess>(
+  auto process = CreateProcess(
       command, seccomp_file::kBtmon,
       SandboxedProcess::Options{
           .readonly_mount_points = {base::FilePath{path::kBtmonLogFile}},
@@ -895,12 +896,12 @@ void Executor::ReadBtmonLog(ReadBtmonLogCallback callback) {
 
 void Executor::RemoveBtmonLog(RemoveBtmonLogCallback callback) {
   std::vector<std::string> command = {"/bin/rm", "-f", path::kBtmonLogFile};
-  auto process = std::make_unique<SandboxedProcess>(
-      command, seccomp_file::kRm,
-      SandboxedProcess::Options{
-          .writable_mount_points =
-              {base::FilePath(path::kBtmonLogFile).DirName()},
-      });
+  auto process =
+      CreateProcess(command, seccomp_file::kRm,
+                    SandboxedProcess::Options{
+                        .writable_mount_points =
+                            {base::FilePath(path::kBtmonLogFile).DirName()},
+                    });
 
   RunAndWaitProcess(std::move(process), std::move(callback),
                     /*combine_stdout_and_stderr=*/false);
@@ -956,7 +957,7 @@ void Executor::RunLongRunningDelegate(
 void Executor::GetConnectedExternalDisplayConnectors(
     const std::optional<std::vector<uint32_t>>& last_known_connectors,
     GetConnectedExternalDisplayConnectorsCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kDrm,
       SandboxedProcess::Options{
           .readonly_mount_points = {base::FilePath{path::kDrmDevice}},
@@ -972,7 +973,7 @@ void Executor::GetConnectedExternalDisplayConnectors(
 }
 
 void Executor::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kDrm,
       SandboxedProcess::Options{
           .readonly_mount_points = {base::FilePath{path::kDrmDevice}},
@@ -985,7 +986,7 @@ void Executor::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {
 }
 
 void Executor::FetchDisplayInfo(FetchDisplayInfoCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kDrm,
       SandboxedProcess::Options{
           .readonly_mount_points = {base::FilePath{path::kDrmDevice}},
@@ -1001,7 +1002,7 @@ void Executor::FetchDisplayInfo(FetchDisplayInfoCallback callback) {
 void Executor::SetFanSpeed(
     const base::flat_map<uint8_t, uint16_t>& fan_id_to_rpm,
     SetFanSpeedCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kFan,
       SandboxedProcess::Options{
           .user = user::kEc,
@@ -1017,7 +1018,7 @@ void Executor::SetFanSpeed(
 }
 
 void Executor::SetAllFanAutoControl(SetAllFanAutoControlCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kFan,
       SandboxedProcess::Options{
           .user = user::kEc,
@@ -1031,7 +1032,7 @@ void Executor::SetAllFanAutoControl(SetAllFanAutoControlCallback callback) {
 }
 
 void Executor::GetTouchpadDevices(GetTouchpadDevicesCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kTouchpadFetcher,
       SandboxedProcess::Options{
           .readonly_mount_points =
@@ -1048,7 +1049,7 @@ void Executor::GetTouchpadDevices(GetTouchpadDevicesCallback callback) {
 }
 
 void Executor::GetEcThermalSensors(GetEcThermalSensorsCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kThermal,
       SandboxedProcess::Options{
           .user = user::kEc,
@@ -1064,7 +1065,7 @@ void Executor::GetEcThermalSensors(GetEcThermalSensorsCallback callback) {
 
 void Executor::GetSmartBatteryManufactureDate(
     uint8_t i2c_port, GetSmartBatteryManufactureDateCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kI2CRead,
       SandboxedProcess::Options{
           .user = user::kEc,
@@ -1080,7 +1081,7 @@ void Executor::GetSmartBatteryManufactureDate(
 
 void Executor::GetSmartBatteryTemperature(
     uint8_t i2c_port, GetSmartBatteryTemperatureCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kI2CRead,
       SandboxedProcess::Options{
           .user = user::kEc,
@@ -1092,6 +1093,24 @@ void Executor::GetSmartBatteryTemperature(
       i2c_port, CreateOnceDelegateCallback(std::move(delegate),
                                            std::move(callback), std::nullopt));
   delegate_ptr->StartAsync();
+}
+
+std::unique_ptr<SandboxedProcess> Executor::CreateProcess(
+    const std::vector<std::string>& command,
+    std::string_view seccomp_filename,
+    const SandboxedProcess::Options& options) const {
+  auto override_options = options;
+  override_options.skip_sandbox = skip_sandbox_;
+  return std::make_unique<SandboxedProcess>(command, seccomp_filename,
+                                            override_options);
+}
+
+std::unique_ptr<DelegateProcess> Executor::CreateDelegateProcess(
+    std::string_view seccomp_filename,
+    const SandboxedProcess::Options& options) const {
+  auto override_options = options;
+  override_options.skip_sandbox = skip_sandbox_;
+  return std::make_unique<DelegateProcess>(seccomp_filename, override_options);
 }
 
 }  // namespace diagnostics
