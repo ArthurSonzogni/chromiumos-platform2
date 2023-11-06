@@ -1,0 +1,83 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":libmodemloggerd",
+    ":modemloggerd",
+  ]
+  if (use.test) {
+    deps += [ ":modemloggerd_test" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo",
+    "libchrome",
+    "libcros_config",
+    "protobuf",
+  ]
+}
+
+generate_dbus_adaptors("modemloggerd_adaptors") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/modemloggerd/dbus_bindings"
+  sources = [
+    "dbus_bindings/org.chromium.Modemloggerd.Manager.xml",
+    "dbus_bindings/org.chromium.Modemloggerd.Modem.xml",
+  ]
+}
+
+proto_library("modemloggerd-protos") {
+  proto_in_dir = "./proto/"
+  proto_out_dir = "include/modemloggerd/"
+  sources = [ "${proto_in_dir}/helper_manifest.proto" ]
+}
+
+static_library("libmodemloggerd") {
+  sources = [
+    "adaptor_factory.cc",
+    "daemon.cc",
+    "manager.cc",
+    "manager_dbus_adaptor.cc",
+    "modem.cc",
+    "modem_dbus_adaptor.cc",
+  ]
+
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":modemloggerd-protos",
+    ":modemloggerd_adaptors",
+  ]
+}
+
+executable("modemloggerd") {
+  sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libmodemloggerd" ]
+}
+
+if (use.test) {
+  pkg_config("test_config") {
+    pkg_deps = [ "libchrome-test" ]
+  }
+
+  executable("modemloggerd_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    deps = [
+      ":libmodemloggerd",
+      "//common-mk/testrunner",
+    ]
+  }
+}

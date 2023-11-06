@@ -126,6 +126,7 @@ copies.
 | [ml_core](./ml_core/) | Machine learning feature library |
 | [modem-utilities](./modem-utilities/) ||
 | [modemfwd](./modemfwd/) | Daemon for managing modem firmware updaters |
+| [modemloggerd](./modemloggerd/) | Daemon for managing modem logging tools |
 | [mojo_service_manager](./mojo_service_manager/) | Daemon for managing mojo services |
 | [mtpd](./mtpd/) | Daemon for handling Media Transfer Protocol (MTP) with devices (e.g. phones) |
 | [net-base](./net-base/) | library of networking primitive data structure and common utilities |

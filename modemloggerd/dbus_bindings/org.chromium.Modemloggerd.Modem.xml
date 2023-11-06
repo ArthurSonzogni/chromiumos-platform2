@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  Copyright 2023 The Chromium Authors
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+-->
+<node>
+  <interface name="org.chromium.Modemloggerd.Modem">
+    <method name="Start">
+      <tp:docstring>
+        Start logging
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+    </method>
+    <method name="Stop">
+      <tp:docstring>
+        Stop logging
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+    </method>
+    <method name="SetOutputDir">
+      <tp:docstring>
+        Set output directory for modem logs
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg name="output_dir" type="s" direction="in">
+        <tp:docstring>
+          Output directory for modem logs
+        </tp:docstring>
+      </arg>
+    </method>
+  </interface>
+</node>
