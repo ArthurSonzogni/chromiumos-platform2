@@ -28,12 +28,12 @@ class Packet {
   // valid strings for source ip.
   // Prompts a user to input the following fields:
   // - protocol (TCP, UDP or ICMP)
+  // - source ip
   // - destination ip
+  // - destination port (if protocol is ICMP, this step will be skipped)
   // TODO(b/307460180): Make it possible to take items below.
   // - input interface
-  // - source ip
-  // - source port
-  // - destination port
+  // - source port (if protocol is ICMP, this step will be skipped)
   // - uid
   static std::optional<Packet> CreatePacketFromStdin(std::istream& std_input,
                                                      std::ostream& std_output);
@@ -50,25 +50,34 @@ class Packet {
   int source_port() const { return source_port_; }
   int destination_port() const { return destination_port_; }
   uint32_t fwmark() const { return fwmark_; }
-  const std::string& output_interface() const { return output_interface_; }
-  const std::string& input_interface() const { return input_interface_; }
+  std::optional<std::string> output_interface() const {
+    return output_interface_;
+  }
+  std::optional<std::string> input_interface() const {
+    return input_interface_;
+  }
 
   bool operator==(const Packet& rhs) const;
 
  private:
   Packet(net_base::IPFamily ip_family,
          Protocol protocol,
-         net_base::IPAddress destination_ip);
+         net_base::IPAddress source_ip,
+         net_base::IPAddress destination_ip,
+         int destination_port);
 
   net_base::IPFamily ip_family_;
   Protocol protocol_;
+  // TODO(b/307460180): Support source ip selection by setting |source_ip_| to
+  // default "0.0.0.0" for IPv4 or "::" for IPv6 when source ip is not given.
   net_base::IPAddress source_ip_;
   net_base::IPAddress destination_ip_;
+  // If protocol is ICMP, port number is set to 0, which means it doesn't exist.
   int source_port_;
   int destination_port_;
   uint32_t fwmark_;
-  std::string output_interface_;
-  std::string input_interface_;
+  std::optional<std::string> output_interface_;
+  std::optional<std::string> input_interface_;
   // TODO(b/307460180): Add uid.
 };
 
