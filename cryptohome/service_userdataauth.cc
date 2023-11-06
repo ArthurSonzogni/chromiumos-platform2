@@ -710,8 +710,14 @@ void UserDataAuthAdaptor::DoRemove(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::RemoveReply>> response,
     const user_data_auth::RemoveRequest& in_request) {
-  user_data_auth::RemoveReply reply = service_->Remove(in_request);
-  response->Return(reply);
+  service_->Remove(
+      in_request, base::BindOnce(
+                      [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                             user_data_auth::RemoveReply>> local_response,
+                         const user_data_auth::RemoveReply& reply) {
+                        local_response->Return(reply);
+                      },
+                      std::move(response)));
 }
 
 void UserDataAuthAdaptor::GetWebAuthnSecret(

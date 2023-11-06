@@ -1021,7 +1021,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocRecoveryAuthBlockInvalidStateInPrepareForRemoval = 597,
   /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
   kLocRecoveryAuthBlockNoRevocationInPrepareForRemoval = 598,
-  /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
+  /* =Obsolete= */
   kLocRecoveryAuthBlockNoLEManagerInPrepareForRemoval = 599,
   /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
   kLocRecoveryAuthBlockRevocationFailedInPrepareForRemoval = 600,
@@ -1531,6 +1531,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUssInitializeAlreadySetFpRateLimiterId = 2168,
   /* ./user_secret_stash/decrypted.cc */
   kLocUSSMainKeyWrongSizeInCreateUss = 2169,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotFoundInRemove = 2170,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.
@@ -1677,7 +1679,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocPinWeaverAuthBlockPinWeaverCheckFailInIsSupported = 2724,
   /* ./auth_blocks/pin_weaver_auth_block.cc */
   kLocPinWeaverAuthBlockNoPinWeaverInIsSupported = 2725,
-  /* ./auth_blocks/pin_weaver_auth_block.cc */
+  /* =Obsolete= */
   kLocPinWeaverAuthBlockNullLeManagerInIsSupported = 2726,
   /* =Obsolete= */
   kLocPinWeaverAuthBlockNoKeyLoaderInIsSupported = 2727,
@@ -1795,7 +1797,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFingerprintAuthBlockPinWeaverCheckFailInIsSupported = 3343,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockPinWeaverNotEnabledInIsSupported = 3344,
-  /* ./auth_blocks/fingerprint_auth_block.cc */
+  /* =Obsolete= */
   kLocFingerprintAuthBlockNullLeManagerInIsSupported = 3345,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockNoUsernameInCreate = 3346,

@@ -1724,57 +1724,64 @@ void UserDataAuth::InitForChallengeResponseAuth() {
   challenge_credentials_helper_initialized_ = true;
 }
 
-user_data_auth::RemoveReply UserDataAuth::Remove(
-    const user_data_auth::RemoveRequest& request) {
+void UserDataAuth::Remove(
+    user_data_auth::RemoveRequest request,
+    base::OnceCallback<void(const user_data_auth::RemoveReply&)> on_done) {
   AssertOnMountThread();
 
-  user_data_auth::RemoveReply reply;
   if (!request.has_identifier() && request.auth_session_id().empty()) {
     // RemoveRequest must have identifier or an AuthSession Id
-    PopulateReplyWithError(
+    ReplyWithError(
+        std::move(on_done), {},
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoIDInRemove),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
-        &reply);
-    return reply;
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
   }
 
-  InUseAuthSession auth_session;
   if (!request.auth_session_id().empty()) {
-    auth_session =
-        auth_session_manager_->FindAuthSession(request.auth_session_id());
-    CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
-    if (!auth_session_status.ok()) {
-      PopulateReplyWithError(auth_session_status.status(), &reply);
-      return reply;
-    }
+    // If the caller supplies an auth session, schedule the remove to be run
+    // when the session is available.
+    RunWithAuthSessionWhenAvailable(
+        auth_session_manager_,
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInRemove),
+        std::move(request), std::move(on_done),
+        base::BindOnce(&UserDataAuth::RemoveWithSession,
+                       base::Unretained(this)));
   } else {
-    // Start an auth session internally because we need an auth session to
-    // cleanup the auth factors.
+    // If the caller supplies an account identifier then we need to start a new
+    // session to do the cleanup. We can execute the cleanup immediately.
     CryptohomeStatusOr<InUseAuthSession> auth_session_status =
         auth_session_manager_->CreateAuthSession(
             GetAccountId(request.identifier()), /*flags=*/0,
             AuthIntent::kDecrypt);
     if (!auth_session_status.ok()) {
-      PopulateReplyWithError(auth_session_status.status(), &reply);
-      return reply;
+      ReplyWithError(std::move(on_done), {}, auth_session_status.status());
+      return;
     }
-    auth_session = std::move(auth_session_status).value();
+    RemoveWithSession(std::move(request), std::move(on_done),
+                      std::move(*auth_session_status));
   }
+}
+
+void UserDataAuth::RemoveWithSession(
+    user_data_auth::RemoveRequest request,
+    base::OnceCallback<void(const user_data_auth::RemoveReply&)> on_done,
+    InUseAuthSession auth_session) {
+  user_data_auth::RemoveReply reply;
 
   Username account_id = auth_session->username();
   if (account_id->empty()) {
     // RemoveRequest must have valid account_id.
-    PopulateReplyWithError(
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocUserDataAuthNoAccountIdWithAuthSessionInRemove),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                            PossibleAction::kReboot}),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
-        &reply);
-    return reply;
+    ReplyWithError(std::move(on_done), reply,
+                   MakeStatus<CryptohomeError>(
+                       CRYPTOHOME_ERR_LOC(
+                           kLocUserDataAuthNoAccountIdWithAuthSessionInRemove),
+                       ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                                       PossibleAction::kReboot}),
+                       user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
   }
 
   ObfuscatedUsername obfuscated = SanitizeUserName(account_id);
@@ -1782,27 +1789,26 @@ user_data_auth::RemoveReply UserDataAuth::Remove(
   const UserSession* const session = sessions_->Find(account_id);
   if (session && session->IsActive()) {
     // Can't remove active user
-    PopulateReplyWithError(
+    ReplyWithError(
+        std::move(on_done), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthUserActiveInRemove),
             ErrorActionSet({PossibleAction::kReboot}),
-            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY),
-        &reply);
-    return reply;
+            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
+    return;
   }
 
   auth_session->PrepareUserForRemoval();
 
   if (!homedirs_->Remove(obfuscated)) {
     // User vault removal failed.
-    PopulateReplyWithError(
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocUserDataAuthRemoveFailedInRemove),
-            ErrorActionSet(
-                {PossibleAction::kPowerwash, PossibleAction::kReboot}),
-            user_data_auth::CRYPTOHOME_ERROR_REMOVE_FAILED),
-        &reply);
-    return reply;
+    ReplyWithError(std::move(on_done), reply,
+                   MakeStatus<CryptohomeError>(
+                       CRYPTOHOME_ERR_LOC(kLocUserDataAuthRemoveFailedInRemove),
+                       ErrorActionSet({PossibleAction::kPowerwash,
+                                       PossibleAction::kReboot}),
+                       user_data_auth::CRYPTOHOME_ERROR_REMOVE_FAILED));
+    return;
   }
 
   // Since the user is now removed, any further operations require a fresh
@@ -1812,9 +1818,7 @@ user_data_auth::RemoveReply UserDataAuth::Remove(
       NOTREACHED() << "Failed to remove AuthSession when removing user.";
     }
   }
-
-  PopulateReplyWithError(OkStatus<CryptohomeError>(), &reply);
-  return reply;
+  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 
 user_data_auth::ResetApplicationContainerReply

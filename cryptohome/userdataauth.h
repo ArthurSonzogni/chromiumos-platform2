@@ -216,8 +216,9 @@ class UserDataAuth {
 
   // Remove the cryptohome (user's home directory) specified in
   // |request.identifier|. See definition of RemoveReply for what is returned.
-  user_data_auth::RemoveReply Remove(
-      const user_data_auth::RemoveRequest& request);
+  void Remove(
+      user_data_auth::RemoveRequest request,
+      base::OnceCallback<void(const user_data_auth::RemoveReply&)> on_done);
 
   // Reset the application container specified in the request for the user
   // identified by authsession id.
@@ -897,6 +898,10 @@ class UserDataAuth {
 
   // Async helper functions for public APIs that require auth sessions. Executed
   // when the AuthSession becomes available.
+  void RemoveWithSession(
+      user_data_auth::RemoveRequest request,
+      base::OnceCallback<void(const user_data_auth::RemoveReply&)> on_done,
+      InUseAuthSession auth_session);
   void PrepareEphemeralVaultWithSession(
       user_data_auth::PrepareEphemeralVaultRequest request,
       base::OnceCallback<

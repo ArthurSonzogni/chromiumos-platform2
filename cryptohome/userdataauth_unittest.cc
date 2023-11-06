@@ -2570,16 +2570,22 @@ TEST_F(UserDataAuthExTest, RemoveValidity) {
   // Test for successful case.
   EXPECT_CALL(homedirs_, Remove(GetObfuscatedUsername(kUsername1)))
       .WillOnce(Return(true));
-  EXPECT_EQ(
-      userdataauth_->Remove(*remove_homedir_req_).error_info().primary_action(),
-      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
+  TestFuture<user_data_auth::RemoveReply> remove_reply_future1;
+  userdataauth_->Remove(
+      *remove_homedir_req_,
+      remove_reply_future1.GetCallback<const user_data_auth::RemoveReply&>());
+  EXPECT_EQ(remove_reply_future1.Get().error_info().primary_action(),
+            user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
   // Test for unsuccessful case.
   EXPECT_CALL(homedirs_, Remove(GetObfuscatedUsername(kUsername1)))
       .WillOnce(Return(false));
-  EXPECT_NE(
-      userdataauth_->Remove(*remove_homedir_req_).error_info().primary_action(),
-      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
+  TestFuture<user_data_auth::RemoveReply> remove_reply_future2;
+  userdataauth_->Remove(
+      *remove_homedir_req_,
+      remove_reply_future2.GetCallback<const user_data_auth::RemoveReply&>());
+  EXPECT_NE(remove_reply_future2.Get().error_info().primary_action(),
+            user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 }
 
 TEST_F(UserDataAuthExTest, RemoveBusyMounted) {
@@ -2587,24 +2593,33 @@ TEST_F(UserDataAuthExTest, RemoveBusyMounted) {
   SetupMount(*kUser);
   remove_homedir_req_->mutable_identifier()->set_account_id(*kUser);
   ON_CALL(*session_, IsActive()).WillByDefault(Return(true));
-  EXPECT_NE(
-      userdataauth_->Remove(*remove_homedir_req_).error_info().primary_action(),
-      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
+  TestFuture<user_data_auth::RemoveReply> remove_reply_future;
+  userdataauth_->Remove(
+      *remove_homedir_req_,
+      remove_reply_future.GetCallback<const user_data_auth::RemoveReply&>());
+  EXPECT_NE(remove_reply_future.Get().error_info().primary_action(),
+            user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 }
 
 TEST_F(UserDataAuthExTest, RemoveInvalidArguments) {
   PrepareArguments();
 
   // No account_id and AuthSession ID
-  EXPECT_NE(
-      userdataauth_->Remove(*remove_homedir_req_).error_info().primary_action(),
-      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
+  TestFuture<user_data_auth::RemoveReply> remove_reply_future1;
+  userdataauth_->Remove(
+      *remove_homedir_req_,
+      remove_reply_future1.GetCallback<const user_data_auth::RemoveReply&>());
+  EXPECT_NE(remove_reply_future1.Get().error_info().primary_action(),
+            user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
   // Empty account_id
   remove_homedir_req_->mutable_identifier()->set_account_id("");
-  EXPECT_NE(
-      userdataauth_->Remove(*remove_homedir_req_).error_info().primary_action(),
-      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
+  TestFuture<user_data_auth::RemoveReply> remove_reply_future2;
+  userdataauth_->Remove(
+      *remove_homedir_req_,
+      remove_reply_future2.GetCallback<const user_data_auth::RemoveReply&>());
+  EXPECT_NE(remove_reply_future2.Get().error_info().primary_action(),
+            user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 }
 
 TEST_F(UserDataAuthExTest, RemoveInvalidAuthSession) {
@@ -2613,9 +2628,12 @@ TEST_F(UserDataAuthExTest, RemoveInvalidAuthSession) {
   remove_homedir_req_->set_auth_session_id(invalid_token);
 
   // Test.
-  EXPECT_NE(
-      userdataauth_->Remove(*remove_homedir_req_).error_info().primary_action(),
-      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
+  TestFuture<user_data_auth::RemoveReply> remove_reply_future;
+  userdataauth_->Remove(
+      *remove_homedir_req_,
+      remove_reply_future.GetCallback<const user_data_auth::RemoveReply&>());
+  EXPECT_NE(remove_reply_future.Get().error_info().primary_action(),
+            user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 }
 
 TEST_F(UserDataAuthExTest, RemoveValidityWithAuthSession) {
@@ -2639,9 +2657,12 @@ TEST_F(UserDataAuthExTest, RemoveValidityWithAuthSession) {
   remove_homedir_req_->set_auth_session_id(auth_session_id);
   EXPECT_CALL(homedirs_, Remove(GetObfuscatedUsername(kUsername1)))
       .WillOnce(Return(true));
-  EXPECT_EQ(
-      userdataauth_->Remove(*remove_homedir_req_).error_info().primary_action(),
-      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
+  TestFuture<user_data_auth::RemoveReply> remove_reply_future;
+  userdataauth_->Remove(
+      *remove_homedir_req_,
+      remove_reply_future.GetCallback<const user_data_auth::RemoveReply&>());
+  EXPECT_EQ(remove_reply_future.Get().error_info().primary_action(),
+            user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
   // Verify
   userdataauth_->auth_session_manager_->RunWhenAvailable(
@@ -4965,13 +4986,15 @@ TEST_F(UserDataAuthApiTest, RemoveStillMounted) {
 
   user_data_auth::RemoveRequest req;
   req.set_auth_session_id(session_id.value());
-  user_data_auth::RemoveReply reply;
 
-  reply = userdataauth_->Remove(req);
+  TestFuture<user_data_auth::RemoveReply> remove_reply_future;
+  userdataauth_->Remove(
+      req,
+      remove_reply_future.GetCallback<const user_data_auth::RemoveReply&>());
 
   // Failure to Remove() due to still mounted vault should result in Reboot and
   // Powerwash recommendation.
-  EXPECT_THAT(reply.error_info(),
+  EXPECT_THAT(remove_reply_future.Get().error_info(),
               HasPossibleActions(std::set(
                   {user_data_auth::PossibleAction::POSSIBLY_REBOOT,
                    user_data_auth::PossibleAction::POSSIBLY_POWERWASH})));
@@ -4979,14 +5002,16 @@ TEST_F(UserDataAuthApiTest, RemoveStillMounted) {
 
 TEST_F(UserDataAuthApiTest, RemoveNoID) {
   user_data_auth::RemoveRequest req;
-  user_data_auth::RemoveReply reply;
 
-  reply = userdataauth_->Remove(req);
+  TestFuture<user_data_auth::RemoveReply> remove_reply_future;
+  userdataauth_->Remove(
+      req,
+      remove_reply_future.GetCallback<const user_data_auth::RemoveReply&>());
 
   // Failure to Remove() due to the lack of username in the request is
   // unexpected, and should result in POSSIBLY_DEV_CHECK_UNEXPECTED_STATE.
   EXPECT_THAT(
-      reply.error_info(),
+      remove_reply_future.Get().error_info(),
       HasPossibleAction(
           user_data_auth::PossibleAction::POSSIBLY_DEV_CHECK_UNEXPECTED_STATE));
 }
