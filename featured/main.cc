@@ -2,23 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <fcntl.h>
+#include <stdlib.h>
+#include <sysexits.h>
+
+#include <memory>
+
 #include <brillo/compression/compressor_interface.h>
 #include <brillo/compression/zlib_compressor.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/flag_helper.h>
 #include <brillo/message_loops/message_loop.h>
 #include <brillo/syslog_logging.h>
+#include <chromeos/dbus/service_constants.h>
+#include <dbus/bus.h>
+#include <dbus/exported_object.h>
+#include <dbus/message.h>
+#include <dbus/object_proxy.h>
 
-#include <fcntl.h>
-#include <memory>
-#include <stdlib.h>
-#include <sysexits.h>
-
-#include "chromeos/dbus/service_constants.h"
-#include "dbus/bus.h"
-#include "dbus/exported_object.h"
-#include "dbus/message.h"
-#include "dbus/object_proxy.h"
 #include "featured/service.h"
 #include "featured/store_impl.h"
 #include "featured/store_interface.h"

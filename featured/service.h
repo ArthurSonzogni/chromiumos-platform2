@@ -5,9 +5,12 @@
 #ifndef FEATURED_SERVICE_H_
 #define FEATURED_SERVICE_H_
 
-#include "dbus/exported_object.h"
-#include <dbus/object_path.h>
-#include <chromeos/dbus/service_constants.h>
+#include <memory>
+#include <optional>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include <base/command_line.h>
 #include <base/files/file_util.h>
@@ -20,16 +23,12 @@
 #include <brillo/errors/error.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/variant_dictionary.h>
+#include <chromeos/dbus/service_constants.h>
+#include <dbus/exported_object.h>
+#include <dbus/object_path.h>
 #include <featured/feature_library.h>
 #include <featured/proto_bindings/featured.pb.h>
 #include <session_manager/dbus-proxies.h>
-
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <optional>
-#include <utility>
-#include <vector>
 
 #include "featured/store_interface.h"
 #include "featured/tmp_storage_interface.h"
