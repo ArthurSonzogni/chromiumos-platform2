@@ -56,6 +56,11 @@ VAR_(PATH_("cros-healthd",
            "battery-health",
            "percent-battery-wear-allowed"),
      kBatteryHealthPercentBatteryWearAllowed);
+VAR_(PATH_("cros-healthd", "routines", "prime-search", "max-num"),
+     kPrimeSearchMaxNum);
+VAR_(PATH_(
+         "cros-healthd", "routines", "nvme-wear-level", "wear-level-threshold"),
+     kNvmeWearLevelThreshold);
 VAR_(PATH_("cros-healthd", "routines", "fingerprint-diag", "routine-enable"),
      kFingerprintDiagRoutineEnable);
 VAR_(PATH_("branding", "oem-name"), kOemName);

@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_test_utils.h"
+#include "diagnostics/base/paths.h"
 #include "diagnostics/cros_healthd/executor/executor.h"
 #include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
 #include "diagnostics/cros_healthd/routine_adapter.h"
@@ -32,7 +33,7 @@ namespace mojom = ash::cros_healthd::mojom;
 
 using ::testing::_;
 
-class PrimeSearchRoutineTestBase : public testing::Test {
+class PrimeSearchRoutineTestBase : public BaseFileTest {
  protected:
   PrimeSearchRoutineTestBase() = default;
   PrimeSearchRoutineTestBase(const PrimeSearchRoutineTestBase&) = delete;
@@ -232,8 +233,7 @@ TEST_F(PrimeSearchRoutineTest, DefaultPrimeSearchParameter) {
 
 // Test that the routine can customize search paramater.
 TEST_F(PrimeSearchRoutineTest, CustomizePrimeSearchParameter) {
-  mock_context_.fake_cros_config()->SetString(
-      "/cros-healthd/routines/prime-search", "max-num", "1000");
+  SetFakeCrosConfig(paths::cros_config::kPrimeSearchMaxNum, "1000");
   routine_ = std::make_unique<PrimeSearchRoutine>(
       &mock_context_, mojom::PrimeSearchRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(60)));
@@ -243,8 +243,7 @@ TEST_F(PrimeSearchRoutineTest, CustomizePrimeSearchParameter) {
 
 // Test that the routine can default to minimum for invalid search paramater.
 TEST_F(PrimeSearchRoutineTest, InvalidPrimeSearchParameter) {
-  mock_context_.fake_cros_config()->SetString(
-      "/cros-healthd/routines/prime-search", "max-num", "0");
+  SetFakeCrosConfig(paths::cros_config::kPrimeSearchMaxNum, "0");
   routine_ = std::make_unique<PrimeSearchRoutine>(
       &mock_context_, mojom::PrimeSearchRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(60)));

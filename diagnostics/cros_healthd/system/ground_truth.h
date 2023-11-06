@@ -50,6 +50,12 @@ class GroundTruth final {
   ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineBatteryHealth(
       std::optional<uint32_t>& maximum_cycle_count,
       std::optional<uint8_t>& percent_battery_wear_allowed) const;
+
+  ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutinePrimeSearch(
+      std::optional<uint64_t>& max_num) const;
+
+  ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineNvmeWearLevel(
+      std::optional<uint32_t>& threshold) const;
   // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 
   // cros_config related functions.

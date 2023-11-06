@@ -8,18 +8,8 @@
 namespace diagnostics {
 
 // Path to each routine's properties in cros_config.
-inline constexpr char kPrimeSearchPropertiesPath[] =
-    "/cros-healthd/routines/prime-search";
-inline constexpr char kNvmeWearLevelPropertiesPath[] =
-    "/cros-healthd/routines/nvme-wear-level";
 inline constexpr char kFingerprintPropertiesPath[] =
     "/cros-healthd/routines/fingerprint-diag";
-
-// Prime search property read from cros_config.
-inline constexpr char kMaxNumProperty[] = "max-num";
-
-// NVMe wear level property read from cros_config.
-inline constexpr char kWearLevelThresholdProperty[] = "wear-level-threshold";
 
 // Fingerprint routine properties read from cros_config.
 inline constexpr char kMaxDeadPixels[] = "max-dead-pixels";

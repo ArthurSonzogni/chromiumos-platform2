@@ -30,12 +30,6 @@ class RoutineParameterFetcher {
 
   // TODO(b/251696072): Replace pointer arguments with return values.
 
-  // Fetches the parameter for the prime search routine.
-  void GetPrimeSearchParameters(std::optional<uint64_t>* max_num_out) const;
-
-  // Fetches the parameter for the NVMe wear level routine.
-  std::optional<uint32_t> GetNvmeWearLevelParameters() const;
-
   // Fetches the parameter for the fingerprint routine.
   FingerprintParameter GetFingerprintParameters() const;
 

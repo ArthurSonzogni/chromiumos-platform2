@@ -370,6 +370,22 @@ mojom::SupportStatusPtr GroundTruth::PrepareRoutineBatteryHealth(
       percent_battery_wear_allowed);
   return MakeSupported();
 }
+
+mojom::SupportStatusPtr GroundTruth::PrepareRoutinePrimeSearch(
+    std::optional<uint64_t>& max_num) const {
+  AssignAndDropError(
+      cros_config()->GetU64CrosConfig(cros_config_property::kPrimeSearchMaxNum),
+      max_num);
+  return MakeSupported();
+}
+
+mojom::SupportStatusPtr GroundTruth::PrepareRoutineNvmeWearLevel(
+    std::optional<uint32_t>& threshold) const {
+  AssignAndDropError(cros_config()->GetU32CrosConfig(
+                         cros_config_property::kNvmeWearLevelThreshold),
+                     threshold);
+  return MakeSupported();
+}
 // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 
 std::string GroundTruth::FormFactor() {

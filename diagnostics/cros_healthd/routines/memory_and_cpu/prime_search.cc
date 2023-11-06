@@ -11,8 +11,8 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 
-#include "diagnostics/cros_healthd/routine_parameter_fetcher.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
+#include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
@@ -29,35 +29,28 @@ PrimeSearchRoutine::PrimeSearchRoutine(
     Context* context,
     const ash::cros_healthd::mojom::PrimeSearchRoutineArgumentPtr& arg)
     : context_(context) {
-  exec_duration_ = arg->exec_duration.value_or(kDefaultCpuStressRuntime);
+  CHECK(context_);
 
+  // TODO(chungsheng): Consider just make routine raise unsupported error.
+
+  exec_duration_ = arg->exec_duration.value_or(kDefaultCpuStressRuntime);
+  // Routine run time must be larger than 0.
   if (exec_duration_.InSeconds() < 1) {
     LOG(ERROR)
         << "Routine run time must be larger than 1 second. Running minimum "
            "exec duration of 1 second instead.";
     exec_duration_ = base::Seconds(1);
   }
-  CHECK(context_);
-  RoutineParameterFetcher parameter_fetcher(context_->cros_config_legacy());
+
   std::optional<uint64_t> max_num;
-  parameter_fetcher.GetPrimeSearchParameters(&max_num);
-
-  if (!max_num.has_value()) {
-    max_num_ = kPrimeSearchDefaultMaxNum;
-  } else {
-    if (max_num.value() <= 1) {
-      LOG(ERROR)
-          << "Cros config value for prime search maximum number should be "
-             "larger than 1";
-      max_num_ = 2;
-    } else {
-      max_num_ = max_num.value();
-    }
+  context_->ground_truth()->PrepareRoutinePrimeSearch(max_num);
+  max_num_ = max_num.value_or(kPrimeSearchDefaultMaxNum);
+  // Routine max num must be larger than 1.
+  if (max_num_ < 2) {
+    LOG(ERROR) << "Cros config value for prime search maximum number should be "
+                  "larger than 1";
+    max_num_ = 2;
   }
-
-  CHECK(exec_duration_.InSeconds() > 0)
-      << "Routine run time must be larger than 0";
-  CHECK(max_num_ > 1) << "Routine max num must be larger than 1";
 }
 
 PrimeSearchRoutine::~PrimeSearchRoutine() = default;

@@ -25,20 +25,6 @@ RoutineParameterFetcher::RoutineParameterFetcher(
 
 RoutineParameterFetcher::~RoutineParameterFetcher() = default;
 
-void RoutineParameterFetcher::GetPrimeSearchParameters(
-    std::optional<uint64_t>* max_num_out) const {
-  FetchUint64Parameter(kPrimeSearchPropertiesPath, kMaxNumProperty,
-                       max_num_out);
-}
-
-std::optional<uint32_t> RoutineParameterFetcher::GetNvmeWearLevelParameters()
-    const {
-  std::optional<uint32_t> wear_level_threshold;
-  FetchUint32Parameter(kNvmeWearLevelPropertiesPath,
-                       kWearLevelThresholdProperty, &wear_level_threshold);
-  return wear_level_threshold;
-}
-
 FingerprintParameter RoutineParameterFetcher::GetFingerprintParameters() const {
   FingerprintParameter param;
   FetchUint32Parameter(kFingerprintPropertiesPath, kMaxDeadPixels,

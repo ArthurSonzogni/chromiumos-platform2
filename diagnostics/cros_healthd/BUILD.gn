@@ -74,7 +74,6 @@ if (use.test) {
     sources = [
       "cros_healthd_diagnostics_service_test.cc",
       "fake_cros_healthd_routine_factory.cc",
-      "routine_parameter_fetcher_test.cc",
     ]
     configs += [ ":cros_healthd_test_pkg_deps" ]
     deps = [

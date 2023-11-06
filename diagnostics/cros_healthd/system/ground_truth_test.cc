@@ -554,5 +554,23 @@ TEST_F(GroundTruthTest, PrepareRoutineBatteryHealth) {
   EXPECT_EQ(percent_battery_wear_allowed, 45);
 }
 
+TEST_F(GroundTruthTest, PrepareRoutinePrimeSearch) {
+  SetFakeCrosConfig(cros_config_property::kPrimeSearchMaxNum, "123");
+
+  std::optional<uint64_t> max_num;
+  EXPECT_EQ(ground_truth()->PrepareRoutinePrimeSearch(max_num),
+            mojom::SupportStatus::NewSupported(mojom::Supported::New()));
+  EXPECT_EQ(max_num, 123);
+}
+
+TEST_F(GroundTruthTest, PrepareRoutineNvmeWearLevel) {
+  SetFakeCrosConfig(cros_config_property::kNvmeWearLevelThreshold, "123");
+
+  std::optional<uint32_t> threshold;
+  EXPECT_EQ(ground_truth()->PrepareRoutineNvmeWearLevel(threshold),
+            mojom::SupportStatus::NewSupported(mojom::Supported::New()));
+  EXPECT_EQ(threshold, 123);
+}
+
 }  // namespace
 }  // namespace diagnostics
