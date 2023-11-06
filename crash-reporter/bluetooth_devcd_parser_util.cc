@@ -4,6 +4,7 @@
 
 #include "crash-reporter/bluetooth_devcd_parser_util.h"
 
+#include <utility>
 #include <vector>
 
 #include <base/containers/span.h>
@@ -702,6 +703,197 @@ bool ParseRealtekDump(const base::FilePath& coredump_path,
 
 }  // namespace realtek
 
+namespace mediatek {
+
+// More information about MediaTek telemetry spec: go/cros-bt-mediatek-telemetry
+
+constexpr char kVendorName[] = "MediaTek";
+constexpr int kTotalLogRegisters = 32;
+
+enum class ParserState {
+  kParseAssertLine,
+  kParseProgCounter,
+  kParseLogRegisters,
+  kParseDone,
+};
+
+bool ParseAssertLine(base::File& file, std::string& out) {
+  std::string line;
+
+  if (!util::GetNextLine(file, line))
+    return false;
+
+  std::vector<std::string> tokens = base::SplitString(
+      line, ";,", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+
+  // Record the first part after ";" which is the file name and line number of
+  // the crash
+  if (tokens.size() > 1)
+    out = CreateDumpEntry("Crash Location", tokens[1]);
+
+  return true;
+}
+
+bool ParseProgCounter(base::File& file, std::string& out, std::string* pc) {
+  std::string line;
+
+  if (!util::GetNextLine(file, line))
+    return false;
+
+  std::vector<std::string> out_vec;
+  std::vector<std::string> tokens = base::SplitString(
+      line, ";()", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+
+  for (const auto& token : tokens) {
+    std::vector<std::pair<std::string, std::string>> target_keyval;
+
+    // SplitStringIntoKeyValuePairs() returns true only if all key-value pairs
+    // are non-empty. So, no need to check the return value here, instead,
+    // process all key-value pairs and report the non-empty ones.
+    base::SplitStringIntoKeyValuePairs(token, '=', '\0', &target_keyval);
+
+    for (const auto& key_value : target_keyval) {
+      // The dump emitted by MediaTek firmware has a typo "contorl". So, check
+      // for both "contorl" and "control" to avoid future breakages if and when
+      // they fix it.
+      if (key_value.first == "PC log contorl" ||
+          key_value.first == "PC log control") {
+        *pc = key_value.second;
+        out_vec.push_back(CreateDumpEntry("PC", key_value.second));
+      } else if (!key_value.first.empty()) {
+        out_vec.push_back(CreateDumpEntry(key_value.first, key_value.second));
+      }
+    }
+  }
+
+  out = base::StrCat(out_vec);
+
+  return true;
+}
+
+bool ParseLogRegisters(base::File& file, std::string& out) {
+  std::vector<std::string> out_vec;
+
+  for (int i = 0; i < kTotalLogRegisters; i++) {
+    std::string line;
+
+    if (!util::GetNextLine(file, line))
+      return false;
+
+    std::vector<std::pair<std::string, std::string>> target_keyval;
+
+    // SplitStringIntoKeyValuePairs() returns true only if all key-value pairs
+    // are non-empty. So, no need to check the return value here, instead,
+    // process all key-value pairs and report the non-empty ones.
+    base::SplitStringIntoKeyValuePairs(line, '=', ';', &target_keyval);
+
+    for (const auto& key_value : target_keyval) {
+      if (!key_value.first.empty())
+        out_vec.push_back(CreateDumpEntry(key_value.first, key_value.second));
+    }
+  }
+
+  out = base::StrCat(out_vec);
+
+  return true;
+}
+
+bool ParseMediatekDump(const base::FilePath& coredump_path,
+                       const base::FilePath& target_path,
+                       const int64_t dump_start,
+                       std::string* pc) {
+  base::File dump_file(coredump_path,
+                       base::File::FLAG_OPEN | base::File::FLAG_READ);
+  base::File target_file(target_path,
+                         base::File::FLAG_OPEN | base::File::FLAG_APPEND);
+
+  if (!target_file.IsValid()) {
+    LOG(ERROR) << "Error opening file " << target_path << " Error: "
+               << base::File::ErrorToString(target_file.error_details());
+    return false;
+  }
+
+  if (!dump_file.IsValid()) {
+    LOG(ERROR) << "Error opening file " << coredump_path << " Error: "
+               << base::File::ErrorToString(dump_file.error_details());
+    // Use the default value for PC and report an empty dump.
+    if (!ReportDefaultPC(target_file, pc) ||
+        !ReportParseError(ParseErrorReason::kErrorFileIO, target_file)) {
+      PLOG(ERROR) << "Error writing to target file " << target_path;
+      return false;
+    }
+    return true;
+  }
+
+  if (dump_file.Seek(base::File::FROM_BEGIN, dump_start) == -1) {
+    PLOG(ERROR) << "Error seeking file " << coredump_path;
+    // Use the default value for PC and report an empty dump.
+    if (!ReportDefaultPC(target_file, pc) ||
+        !ReportParseError(ParseErrorReason::kErrorFileIO, target_file)) {
+      PLOG(ERROR) << "Error writing to target file " << target_path;
+      return false;
+    }
+    return true;
+  }
+
+  ParserState state = ParserState::kParseAssertLine;
+
+  while (state != ParserState::kParseDone) {
+    std::string parsed_lines;
+    bool parse_status = true;
+
+    switch (state) {
+      case ParserState::kParseAssertLine:
+        parse_status = ParseAssertLine(dump_file, parsed_lines);
+        state = ParserState::kParseProgCounter;
+        break;
+      case ParserState::kParseProgCounter:
+        parse_status = ParseProgCounter(dump_file, parsed_lines, pc);
+        state = ParserState::kParseLogRegisters;
+        break;
+      case ParserState::kParseLogRegisters:
+        parse_status = ParseLogRegisters(dump_file, parsed_lines);
+        state = ParserState::kParseDone;
+        break;
+      default:
+        LOG(ERROR) << "Incorrect parsing state";
+        return false;
+    }
+
+    if (!parse_status) {
+      // Do not continue if parsing of any of the line fails because once we are
+      // out of sync with the dump, parsing further information is going to be
+      // erroneous information.
+      PLOG(ERROR) << "Error parsing file " << coredump_path;
+      if (!ReportParseError(ParseErrorReason::kErrorEventDataParsing,
+                            target_file)) {
+        PLOG(ERROR) << "Error writing to target file " << target_path;
+        return false;
+      }
+      break;
+    }
+
+    if (!parsed_lines.empty() &&
+        !target_file.WriteAtCurrentPosAndCheck(
+            base::as_bytes(base::make_span(parsed_lines)))) {
+      PLOG(ERROR) << "Error writing to target file " << target_path;
+      return false;
+    }
+  }
+
+  if (pc->empty()) {
+    // If no PC found in the coredump blob, use the default value for PC
+    if (!ReportDefaultPC(target_file, pc)) {
+      PLOG(ERROR) << "Error writing to target file " << target_path;
+      return false;
+    }
+  }
+
+  return true;
+}
+
+}  // namespace mediatek
+
 }  // namespace vendor
 
 namespace {
@@ -860,6 +1052,8 @@ bool ParseDumpHeader(const base::FilePath& coredump_path,
   return true;
 }
 
+// TODO(b/310978711): non-optional output parameter pc should be a reference,
+// not a pointer.
 bool ParseDumpData(const base::FilePath& coredump_path,
                    const base::FilePath& target_path,
                    const int64_t dump_start,
@@ -881,6 +1075,9 @@ bool ParseDumpData(const base::FilePath& coredump_path,
   } else if (vendor_name == vendor::realtek::kVendorName) {
     return vendor::realtek::ParseRealtekDump(coredump_path, target_path,
                                              dump_start, pc);
+  } else if (vendor_name == vendor::mediatek::kVendorName) {
+    return vendor::mediatek::ParseMediatekDump(coredump_path, target_path,
+                                               dump_start, pc);
   }
 
   LOG(WARNING) << "Unsupported bluetooth devcoredump vendor - " << vendor_name;

@@ -1335,3 +1335,257 @@ TEST_F(BluetoothDevcdParserUtilTest, TestRealtekIncompleteData) {
   };
   VerifyProcessedDump(want_lines);
 }
+
+// Verify all MediaTek dump data is parsed correctly and the PC is included in
+// the crash signature.
+TEST_F(BluetoothDevcdParserUtilTest, TestMediaTekCompleteDump) {
+  std::string data =
+      R"(oo;<ASSERT> test.c #123, 0x0, 0x0, rc=*, BGF0, id=0x4 idle
+oo;PC log control=0x01010101(T=0x110011)
+oo;PC log(0)=0x000000
+oo;PC log(1)=0x000001
+oo;PC log(2)=0x000010
+oo;PC log(3)=0x000011
+oo;PC log(4)=0x000100
+oo;PC log(5)=0x000101
+oo;PC log(6)=0x000110
+oo;PC log(7)=0x000111
+oo;PC log(8)=0x001000
+oo;PC log(9)=0x001001
+oo;PC log(10)=0x001010
+oo;PC log(11)=0x001011
+oo;PC log(12)=0x001100
+oo;PC log(13)=0x001101
+oo;PC log(14)=0x001110
+oo;PC log(15)=0x001111
+oo;PC log(16)=0x010000
+oo;PC log(17)=0x010001
+oo;PC log(18)=0x010010
+oo;PC log(19)=0x010011
+oo;PC log(20)=0x010100
+oo;PC log(21)=0x010101
+oo;PC log(22)=0x010110
+oo;PC log(23)=0x010111
+oo;PC log(24)=0x011000
+oo;PC log(25)=0x011001
+oo;PC log(26)=0x011010
+oo;PC log(27)=0x011011
+oo;PC log(28)=0x011100
+oo;PC log(29)=0x011101
+oo;PC log(30)=0x011110
+oo;PC log(31)=0x011111
+oo;other dump data
+oo;rest of the dump data)";
+
+  std::vector<std::string> meta_data = {
+      kMetaHeader,
+      "State: 2",
+      "Driver: btusb",
+      "Vendor: MediaTek",
+      "Controller Name: 0x34",
+  };
+  CreateDumpFile(meta_data, std::vector<uint8_t>(data.begin(), data.end()));
+
+  std::string sig;
+  EXPECT_TRUE(bluetooth_util::ParseBluetoothCoredump(dump_path_, output_dir_,
+                                                     false, &sig));
+  EXPECT_EQ(sig, "bt_firmware-btusb-MediaTek_0x34-0x01010101");
+
+  std::vector<std::string> want_lines = {
+      "State=Devcoredump Complete",
+      "Driver=btusb",
+      "Vendor=MediaTek",
+      "Controller Name=0x34",
+      "Crash Location=<ASSERT> test.c #123",
+      "PC=0x01010101",
+      "T=0x110011",
+      "PC log(0)=0x000000",
+      "PC log(1)=0x000001",
+      "PC log(2)=0x000010",
+      "PC log(3)=0x000011",
+      "PC log(4)=0x000100",
+      "PC log(5)=0x000101",
+      "PC log(6)=0x000110",
+      "PC log(7)=0x000111",
+      "PC log(8)=0x001000",
+      "PC log(9)=0x001001",
+      "PC log(10)=0x001010",
+      "PC log(11)=0x001011",
+      "PC log(12)=0x001100",
+      "PC log(13)=0x001101",
+      "PC log(14)=0x001110",
+      "PC log(15)=0x001111",
+      "PC log(16)=0x010000",
+      "PC log(17)=0x010001",
+      "PC log(18)=0x010010",
+      "PC log(19)=0x010011",
+      "PC log(20)=0x010100",
+      "PC log(21)=0x010101",
+      "PC log(22)=0x010110",
+      "PC log(23)=0x010111",
+      "PC log(24)=0x011000",
+      "PC log(25)=0x011001",
+      "PC log(26)=0x011010",
+      "PC log(27)=0x011011",
+      "PC log(28)=0x011100",
+      "PC log(29)=0x011101",
+      "PC log(30)=0x011110",
+      "PC log(31)=0x011111",
+  };
+  VerifyProcessedDump(want_lines);
+}
+
+// Verify all MediaTek dump data is parsed correctly and the PC is included in
+// the crash signature.
+TEST_F(BluetoothDevcdParserUtilTest, TestMediaTekCompleteDumpWithContorl) {
+  std::string data =
+      R"(oo;<ASSERT> test.c #123, 0x0, 0x0, rc=*, BGF0, id=0x4 idle
+oo;PC log contorl=0x01010101(T=0x110011)
+oo;PC log(0)=0x000000
+oo;PC log(1)=0x000001
+oo;PC log(2)=0x000010
+oo;PC log(3)=0x000011
+oo;PC log(4)=0x000100
+oo;PC log(5)=0x000101
+oo;PC log(6)=0x000110
+oo;PC log(7)=0x000111
+oo;PC log(8)=0x001000
+oo;PC log(9)=0x001001
+oo;PC log(10)=0x001010
+oo;PC log(11)=0x001011
+oo;PC log(12)=0x001100
+oo;PC log(13)=0x001101
+oo;PC log(14)=0x001110
+oo;PC log(15)=0x001111
+oo;PC log(16)=0x010000
+oo;PC log(17)=0x010001
+oo;PC log(18)=0x010010
+oo;PC log(19)=0x010011
+oo;PC log(20)=0x010100
+oo;PC log(21)=0x010101
+oo;PC log(22)=0x010110
+oo;PC log(23)=0x010111
+oo;PC log(24)=0x011000
+oo;PC log(25)=0x011001
+oo;PC log(26)=0x011010
+oo;PC log(27)=0x011011
+oo;PC log(28)=0x011100
+oo;PC log(29)=0x011101
+oo;PC log(30)=0x011110
+oo;PC log(31)=0x011111
+oo;other dump data
+oo;rest of the dump data)";
+
+  std::vector<std::string> meta_data = {
+      kMetaHeader,
+      "State: 2",
+      "Driver: btusb",
+      "Vendor: MediaTek",
+      "Controller Name: 0x34",
+  };
+  CreateDumpFile(meta_data, std::vector<uint8_t>(data.begin(), data.end()));
+
+  std::string sig;
+  EXPECT_TRUE(bluetooth_util::ParseBluetoothCoredump(dump_path_, output_dir_,
+                                                     false, &sig));
+  EXPECT_EQ(sig, "bt_firmware-btusb-MediaTek_0x34-0x01010101");
+
+  std::vector<std::string> want_lines = {
+      "State=Devcoredump Complete",
+      "Driver=btusb",
+      "Vendor=MediaTek",
+      "Controller Name=0x34",
+      "Crash Location=<ASSERT> test.c #123",
+      "PC=0x01010101",
+      "T=0x110011",
+      "PC log(0)=0x000000",
+      "PC log(1)=0x000001",
+      "PC log(2)=0x000010",
+      "PC log(3)=0x000011",
+      "PC log(4)=0x000100",
+      "PC log(5)=0x000101",
+      "PC log(6)=0x000110",
+      "PC log(7)=0x000111",
+      "PC log(8)=0x001000",
+      "PC log(9)=0x001001",
+      "PC log(10)=0x001010",
+      "PC log(11)=0x001011",
+      "PC log(12)=0x001100",
+      "PC log(13)=0x001101",
+      "PC log(14)=0x001110",
+      "PC log(15)=0x001111",
+      "PC log(16)=0x010000",
+      "PC log(17)=0x010001",
+      "PC log(18)=0x010010",
+      "PC log(19)=0x010011",
+      "PC log(20)=0x010100",
+      "PC log(21)=0x010101",
+      "PC log(22)=0x010110",
+      "PC log(23)=0x010111",
+      "PC log(24)=0x011000",
+      "PC log(25)=0x011001",
+      "PC log(26)=0x011010",
+      "PC log(27)=0x011011",
+      "PC log(28)=0x011100",
+      "PC log(29)=0x011101",
+      "PC log(30)=0x011110",
+      "PC log(31)=0x011111",
+  };
+  VerifyProcessedDump(want_lines);
+}
+
+// Verify that the partial devcoredump is processed successfully and all the
+// available data is parsed and reported.
+TEST_F(BluetoothDevcdParserUtilTest, TestMediaTekPartialDump) {
+  std::string data =
+      "oo;<ASSERT> test.c #123, 0x0, 0x0, rc=*, BGF0, id=0x4 idle";
+
+  std::vector<std::string> meta_data = {
+      kMetaHeader,
+      "State: 2",
+      "Driver: btusb",
+      "Vendor: MediaTek",
+      "Controller Name: 0x34",
+  };
+  CreateDumpFile(meta_data, std::vector<uint8_t>(data.begin(), data.end()));
+
+  std::string sig;
+  EXPECT_TRUE(bluetooth_util::ParseBluetoothCoredump(dump_path_, output_dir_,
+                                                     false, &sig));
+  EXPECT_EQ(sig, "bt_firmware-btusb-MediaTek_0x34-00000000");
+
+  std::vector<std::string> want_lines = {
+      "State=Devcoredump Complete",
+      "Driver=btusb",
+      "Vendor=MediaTek",
+      "Controller Name=0x34",
+      "Crash Location=<ASSERT> test.c #123",
+      "Parse Failure Reason=4",
+      "PC=00000000",
+  };
+  VerifyProcessedDump(want_lines);
+}
+
+// A bluetooth devcoredump with just a header but no vendor specific binary
+// data is a valid dump too. Verify that the empty dump is reported properly.
+TEST_F(BluetoothDevcdParserUtilTest, TestMediaTekEmptyDump) {
+  std::vector<std::string> meta_data = {
+      kMetaHeader,
+      "State: 2",
+      "Driver: btusb",
+      "Vendor: MediaTek",
+      "Controller Name: 0x34",
+  };
+  CreateDumpFile(meta_data);
+
+  std::string sig;
+  EXPECT_TRUE(bluetooth_util::ParseBluetoothCoredump(dump_path_, output_dir_,
+                                                     false, &sig));
+  EXPECT_EQ(sig, "bt_firmware-btusb-MediaTek_0x34-00000000");
+
+  std::vector<std::string> want_lines = {
+      "State=Devcoredump Complete", "Driver=btusb",           "Vendor=MediaTek",
+      "Controller Name=0x34",       "Parse Failure Reason=4", "PC=00000000",
+  };
+  VerifyProcessedDump(want_lines);
+}
