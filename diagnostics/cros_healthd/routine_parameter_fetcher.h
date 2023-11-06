@@ -30,16 +30,6 @@ class RoutineParameterFetcher {
 
   // TODO(b/251696072): Replace pointer arguments with return values.
 
-  // Fetches the parameters for the battery capacity routine.
-  void GetBatteryCapacityParameters(
-      std::optional<uint32_t>* low_mah_out,
-      std::optional<uint32_t>* high_mah_out) const;
-
-  // Fetches the parameters for the battery health routine.
-  void GetBatteryHealthParameters(
-      std::optional<uint32_t>* maximum_cycle_count_out,
-      std::optional<uint8_t>* percent_battery_wear_allowed_out) const;
-
   // Fetches the parameter for the prime search routine.
   void GetPrimeSearchParameters(std::optional<uint64_t>* max_num_out) const;
 

@@ -10,11 +10,13 @@
 
 #include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/types/expected.h>
 #include <brillo/errors/error.h>
 
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/base/path_utils.h"
 #include "diagnostics/base/paths.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/cros_config.h"
 #include "diagnostics/cros_healthd/system/floss_controller.h"
 #include "diagnostics/cros_healthd/system/ground_truth_constants.h"
@@ -30,6 +32,20 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 namespace cros_config_property = paths::cros_config;
+
+mojom::SupportStatusPtr MakeSupported() {
+  return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+}
+
+template <typename T>
+void AssignAndDropError(const base::expected<T, std::string>& got,
+                        std::optional<T>& out) {
+  if (!got.has_value()) {
+    out = std::nullopt;
+    return;
+  }
+  out = got.value();
+}
 
 std::string WrapUnsupportedString(const PathLiteral& cros_config_property,
                                   const std::string& cros_config_value) {
@@ -328,6 +344,34 @@ void GroundTruth::IsRoutineArgumentSupported(
   // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 }
 
+// Please update docs/routine_supportability.md.
+// Add "NO_IFTTT=<reason>" in the commit message if it's not applicable.
+// LINT.IfChange
+mojom::SupportStatusPtr GroundTruth::PrepareRoutineBatteryCapacity(
+    std::optional<uint32_t>& low_mah, std::optional<uint32_t>& high_mah) const {
+  AssignAndDropError(cros_config()->GetU32CrosConfig(
+                         cros_config_property::kBatteryCapacityLowMah),
+                     low_mah);
+  AssignAndDropError(cros_config()->GetU32CrosConfig(
+                         cros_config_property::kBatteryCapacityHighMah),
+                     high_mah);
+  return MakeSupported();
+}
+
+mojom::SupportStatusPtr GroundTruth::PrepareRoutineBatteryHealth(
+    std::optional<uint32_t>& maximum_cycle_count,
+    std::optional<uint8_t>& percent_battery_wear_allowed) const {
+  AssignAndDropError(cros_config()->GetU32CrosConfig(
+                         cros_config_property::kBatteryHealthMaximumCycleCount),
+                     maximum_cycle_count);
+  AssignAndDropError(
+      cros_config()->GetU8CrosConfig(
+          cros_config_property::kBatteryHealthPercentBatteryWearAllowed),
+      percent_battery_wear_allowed);
+  return MakeSupported();
+}
+// LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
+
 std::string GroundTruth::FormFactor() {
   return ReadCrosConfig(cros_config_property::kFormFactor);
 }
@@ -361,13 +405,17 @@ std::string GroundTruth::FanCount() {
 }
 
 std::string GroundTruth::ReadCrosConfig(const PathLiteral& path) {
-  auto value = context_->cros_config()->Get(path);
+  auto value = cros_config()->Get(path);
   if (!value) {
     LOG(ERROR) << "Failed to read cros_config: " << path.ToStr();
     return "";
   }
 
   return value.value();
+}
+
+CrosConfig* GroundTruth::cros_config() const {
+  return context_->cros_config();
 }
 
 }  // namespace diagnostics

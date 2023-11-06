@@ -13,7 +13,6 @@
 
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
 #include "diagnostics/cros_healthd/system/context.h"
-#include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
@@ -72,9 +71,6 @@ class RoutineService
 
   // Unowned. The following instances should outlive this instance.
   Context* const context_ = nullptr;
-
-  // Used for performing the routine support status check.
-  std::unique_ptr<GroundTruth> ground_truth_ = nullptr;
 
   // Must be the last class member.
   base::WeakPtrFactory<RoutineService> weak_ptr_factory_{this};

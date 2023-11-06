@@ -34,6 +34,7 @@
 #include "diagnostics/cros_healthd/system/cros_config.h"
 #include "diagnostics/cros_healthd/system/floss_controller.h"
 #include "diagnostics/cros_healthd/system/floss_event_hub.h"
+#include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/system/mojo_service_impl.h"
 #include "diagnostics/cros_healthd/system/pci_util_impl.h"
 #include "diagnostics/cros_healthd/system/powerd_adapter_impl.h"
@@ -133,6 +134,7 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
       std::make_unique<PowerdAdapterImpl>(power_manager_proxy_.get());
   system_config_ =
       std::make_unique<SystemConfig>(cros_config_.get(), debugd_proxy_.get());
+  ground_truth_ = std::make_unique<GroundTruth>(this);
   system_utils_ = std::make_unique<SystemUtilitiesImpl>();
   bluez_controller_ = std::make_unique<BluezController>(bluez_proxy_.get());
   bluez_event_hub_ = std::make_unique<BluezEventHub>(bluez_proxy_.get());

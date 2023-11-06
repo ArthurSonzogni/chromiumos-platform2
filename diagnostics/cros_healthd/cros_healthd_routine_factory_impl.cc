@@ -45,6 +45,7 @@
 #include "diagnostics/cros_healthd/routines/storage/nvme_self_test.h"
 #include "diagnostics/cros_healthd/routines/storage/nvme_wear_level.h"
 #include "diagnostics/cros_healthd/routines/storage/smartctl_check.h"
+#include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
@@ -72,7 +73,7 @@ std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeBatteryCapacityRoutine() {
   std::optional<uint32_t> low_mah;
   std::optional<uint32_t> high_mah;
-  parameter_fetcher_->GetBatteryCapacityParameters(&low_mah, &high_mah);
+  context_->ground_truth()->PrepareRoutineBatteryCapacity(low_mah, high_mah);
   return CreateBatteryCapacityRoutine(context_, low_mah, high_mah);
 }
 
@@ -80,8 +81,8 @@ std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeBatteryHealthRoutine() {
   std::optional<uint32_t> maximum_cycle_count;
   std::optional<uint8_t> percent_battery_wear_allowed;
-  parameter_fetcher_->GetBatteryHealthParameters(&maximum_cycle_count,
-                                                 &percent_battery_wear_allowed);
+  context_->ground_truth()->PrepareRoutineBatteryHealth(
+      maximum_cycle_count, percent_battery_wear_allowed);
   return CreateBatteryHealthRoutine(context_, maximum_cycle_count,
                                     percent_battery_wear_allowed);
 }

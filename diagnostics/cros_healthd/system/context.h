@@ -67,6 +67,7 @@ class BluezEventHub;
 class CrosConfig;
 class FlossController;
 class FlossEventHub;
+class GroundTruth;
 struct ServiceConfig;
 
 // A context class for holding the helper objects used in cros_healthd, which
@@ -122,6 +123,8 @@ class Context {
   org::freedesktop::fwupdProxyInterface* fwupd_proxy() const {
     return fwupd_proxy_.get();
   }
+  // Gets GroundTruth to determine conditional features.
+  GroundTruth* ground_truth() const { return ground_truth_.get(); }
   // Use the object returned by network_health_adapter() to make requests to the
   // NetworkHealthService. Example: cros_healthd calls out to the
   // NetworkHealthService to get network telemetry data.
@@ -220,6 +223,7 @@ class Context {
   std::unique_ptr<CrosConfig> cros_config_;
   std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;
   std::unique_ptr<org::freedesktop::fwupdProxyInterface> fwupd_proxy_;
+  std::unique_ptr<GroundTruth> ground_truth_;
   std::unique_ptr<MojoService> mojo_service_;
   std::unique_ptr<NetworkHealthAdapter> network_health_adapter_;
   std::unique_ptr<NetworkDiagnosticsAdapter> network_diagnostics_adapter_;

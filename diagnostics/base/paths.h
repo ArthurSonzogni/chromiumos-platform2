@@ -45,6 +45,17 @@ VAR_(PATH_("hardware-properties", "fan-count"), kFanCount);
 VAR_(PATH_("cros-healthd", "cached-vpd", "has-sku-number"), kHasSkuNumber);
 VAR_(PATH_("cros-healthd", "battery", "has-smart-battery-info"),
      kHasSmartBatteryInfo);
+VAR_(PATH_("cros-healthd", "routines", "battery-capacity", "low-mah"),
+     kBatteryCapacityLowMah);
+VAR_(PATH_("cros-healthd", "routines", "battery-capacity", "high-mah"),
+     kBatteryCapacityHighMah);
+VAR_(PATH_("cros-healthd", "routines", "battery-health", "maximum-cycle-count"),
+     kBatteryHealthMaximumCycleCount);
+VAR_(PATH_("cros-healthd",
+           "routines",
+           "battery-health",
+           "percent-battery-wear-allowed"),
+     kBatteryHealthPercentBatteryWearAllowed);
 VAR_(PATH_("cros-healthd", "routines", "fingerprint-diag", "routine-enable"),
      kFingerprintDiagRoutineEnable);
 VAR_(PATH_("branding", "oem-name"), kOemName);

@@ -24,6 +24,7 @@
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_search.h"
 #include "diagnostics/cros_healthd/routines/storage/disk_read.h"
 #include "diagnostics/cros_healthd/routines/storage/ufs_lifetime.h"
+#include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
@@ -33,7 +34,6 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 RoutineService::RoutineService(Context* context) : context_(context) {
   CHECK(context_);
-  ground_truth_ = std::make_unique<GroundTruth>(context_);
 }
 
 RoutineService::~RoutineService() = default;
@@ -141,8 +141,8 @@ void RoutineService::IsRoutineArgumentSupported(
     mojom::RoutineArgumentPtr routine_arg,
     mojom::CrosHealthdRoutinesService::IsRoutineArgumentSupportedCallback
         callback) {
-  ground_truth_->IsRoutineArgumentSupported(std::move(routine_arg),
-                                            std::move(callback));
+  context_->ground_truth()->IsRoutineArgumentSupported(std::move(routine_arg),
+                                                       std::move(callback));
 }
 
 void RoutineService::AddRoutine(

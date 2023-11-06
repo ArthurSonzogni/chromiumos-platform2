@@ -22,6 +22,7 @@
 #include "diagnostics/cros_healthd/service_config.h"
 #include "diagnostics/cros_healthd/system/cros_config.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
+#include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/utils/resource_queue.h"
 
 namespace diagnostics {
@@ -37,6 +38,7 @@ MockContext::MockContext() {
       std::make_unique<testing::StrictMock<org::chromium::debugdProxyMock>>();
   fwupd_proxy_ =
       std::make_unique<testing::StrictMock<org::freedesktop::fwupdProxyMock>>();
+  ground_truth_ = std::make_unique<GroundTruth>(this);
   mojo_service_ = std::make_unique<FakeMojoService>();
   network_health_adapter_ = std::make_unique<FakeNetworkHealthAdapter>();
   network_diagnostics_adapter_ =

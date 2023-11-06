@@ -74,6 +74,8 @@ class GroundTruthTest : public BaseFileTest {
     SetFile(cros_config_property::kRoot.ToPath().Append(path.ToPath()), value);
   }
 
+  GroundTruth* ground_truth() { return mock_context_.ground_truth(); }
+
   StrictMock<org::chromium::bluetooth::ManagerProxyMock> mock_manager_proxy_;
 
  private:
@@ -94,7 +96,8 @@ class GroundTruthTest : public BaseFileTest {
   void ExpectEventStatus(mojom::EventCategoryEnum category,
                          mojom::SupportStatus::Tag expect_status) {
     base::test::TestFuture<mojom::SupportStatusPtr> future;
-    ground_truth_.IsEventSupported(category, future.GetCallback());
+    mock_context_.ground_truth()->IsEventSupported(category,
+                                                   future.GetCallback());
     auto status = future.Take();
     EXPECT_EQ(TagToString(status->which()), TagToString(expect_status));
   }
@@ -102,14 +105,13 @@ class GroundTruthTest : public BaseFileTest {
   void ExpectRoutineStatus(mojom::RoutineArgumentPtr arg,
                            mojom::SupportStatus::Tag expect_status) {
     base::test::TestFuture<mojom::SupportStatusPtr> future;
-    ground_truth_.IsRoutineArgumentSupported(std::move(arg),
-                                             future.GetCallback());
+    mock_context_.ground_truth()->IsRoutineArgumentSupported(
+        std::move(arg), future.GetCallback());
     auto status = future.Take();
     EXPECT_EQ(TagToString(status->which()), TagToString(expect_status));
   }
 
   MockContext mock_context_;
-  GroundTruth ground_truth_{&mock_context_};
 };
 
 TEST_F(GroundTruthTest, AlwaysSupportedEvents) {
@@ -523,6 +525,33 @@ TEST_F(GroundTruthTest, BluetoothScanningRoutineNullDuration) {
   auto arg = mojom::BluetoothScanningRoutineArgument::New();
   ExpectRoutineSupported(
       mojom::RoutineArgument::NewBluetoothScanning(std::move(arg)));
+}
+
+TEST_F(GroundTruthTest, PrepareRoutineBatteryCapacity) {
+  SetFakeCrosConfig(cros_config_property::kBatteryCapacityLowMah, "123");
+  SetFakeCrosConfig(cros_config_property::kBatteryCapacityHighMah, "456");
+
+  std::optional<uint32_t> low_mah;
+  std::optional<uint32_t> high_mah;
+  EXPECT_EQ(ground_truth()->PrepareRoutineBatteryCapacity(low_mah, high_mah),
+            mojom::SupportStatus::NewSupported(mojom::Supported::New()));
+  EXPECT_EQ(low_mah, 123);
+  EXPECT_EQ(high_mah, 456);
+}
+
+TEST_F(GroundTruthTest, PrepareRoutineBatteryHealth) {
+  SetFakeCrosConfig(cros_config_property::kBatteryHealthMaximumCycleCount,
+                    "123");
+  SetFakeCrosConfig(
+      cros_config_property::kBatteryHealthPercentBatteryWearAllowed, "45");
+
+  std::optional<uint32_t> maximum_cycle_count;
+  std::optional<uint8_t> percent_battery_wear_allowed;
+  EXPECT_EQ(ground_truth()->PrepareRoutineBatteryHealth(
+                maximum_cycle_count, percent_battery_wear_allowed),
+            mojom::SupportStatus::NewSupported(mojom::Supported::New()));
+  EXPECT_EQ(maximum_cycle_count, 123);
+  EXPECT_EQ(percent_battery_wear_allowed, 45);
 }
 
 }  // namespace
