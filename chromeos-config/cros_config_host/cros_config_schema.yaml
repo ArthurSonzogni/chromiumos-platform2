@@ -1280,6 +1280,10 @@ properties:
                     if not defined.
                   type: string
                   pattern: "[0-9]+"
+                modem-type:
+                  description: The type of modem present on the device.
+                  type: string
+                  pattern: "[0-9]+"
               additionalProperties: false
             uwb:
               type: object

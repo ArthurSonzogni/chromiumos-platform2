@@ -2723,6 +2723,8 @@ def _build_modem(config):
         result["wedge-reboot-delay-ms"] = str(
             hw_features.cellular.wedge_timeout_in_ms
         )
+    if hw_features.cellular.modem_type:
+        result["modem-type"] = str(hw_features.cellular.modem_type)
 
     return result
 
