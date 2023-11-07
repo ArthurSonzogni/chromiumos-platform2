@@ -27,7 +27,7 @@ class RoutingTable {
   // Does the longest prefix matching for |address| among the matched routes in
   // the routing table and returns the matched route whose prefix matches
   // |address|. Returns nullptr if there is no matching route for |address|.
-  const Route* LookUpRoute(net_base::IPAddress& address);
+  const Route* LookUpRoute(net_base::IPAddress& address) const;
 
   // Getter methods for the internal data.
   const std::vector<Route>& routes() const { return routes_; }

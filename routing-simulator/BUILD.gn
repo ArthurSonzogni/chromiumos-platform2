@@ -23,6 +23,7 @@ static_library("librouting-simulator") {
     "packet.cc",
     "process_executor.cc",
     "route.cc",
+    "route_manager.cc",
     "routing_policy_entry.cc",
     "routing_table.cc",
   ]
@@ -44,6 +45,7 @@ if (use.test) {
     run_test = true
     sources = [
       "packet_test.cc",
+      "route_manager_test.cc",
       "route_test.cc",
       "routing_policy_entry_test.cc",
       "routing_table_test.cc",
