@@ -74,3 +74,7 @@ ioctl: arg1 == TCGETS
 # Manually added because structured metrics library asks for it.
 lchown: 1
 fstatfs: 1
+
+# Manually added later because only used rarely.
+clock_getres: 1
+clock_gettime: 1
