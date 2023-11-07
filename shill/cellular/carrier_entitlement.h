@@ -104,11 +104,16 @@ class CarrierEntitlement {
   Metrics* metrics_;
   base::RepeatingCallback<void(Result)> check_cb_;
   MobileOperatorMapper::EntitlementConfig config_;
-  std::shared_ptr<brillo::http::Transport> transport_;
-  brillo::http::RequestID request_id_;
-  bool request_in_progress_;
   base::CancelableOnceClosure background_check_cancelable;
   Result last_result_ = Result::kGenericError;
+
+  // Transport and request id will be set exclusively during an ongoing check.
+  std::shared_ptr<brillo::http::Transport> transport_;
+  brillo::http::RequestID request_id_;
+
+  // May be set during testing to be used instead of the newly created ones.
+  std::shared_ptr<brillo::http::Transport> transport_for_testing_;
+
   base::WeakPtrFactory<CarrierEntitlement> weak_ptr_factory_;
 };
 

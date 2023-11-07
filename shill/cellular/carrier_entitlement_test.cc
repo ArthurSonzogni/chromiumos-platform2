@@ -123,13 +123,12 @@ class CarrierEntitlementTest : public testing::Test {
   void SetUp() override {
     shill::ScopeLogger::GetInstance()->set_verbose_level(3);
     shill::ScopeLogger::GetInstance()->EnableScopesByName("cellular");
-    carrier_entitlement_->transport_ = transport_;
+    carrier_entitlement_->transport_for_testing_ = transport_;
   }
 
   void TearDown() override {
     VerifyAllExpectations();
     brillo_connection_.reset();
-    EXPECT_CALL(*transport_, CancelRequest(_));
     transport_.reset();
   }
 

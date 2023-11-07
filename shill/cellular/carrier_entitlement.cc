@@ -36,13 +36,13 @@ CarrierEntitlement::CarrierEntitlement(
     : cellular_(cellular),
       metrics_(metrics),
       check_cb_(check_cb),
-      transport_(brillo::http::Transport::CreateDefault()),
-      request_in_progress_(false),
       weak_ptr_factory_(this) {}
 
 CarrierEntitlement::~CarrierEntitlement() {
   // cancel pending request if it exists
-  transport_->CancelRequest(request_id_);
+  if (transport_) {
+    transport_->CancelRequest(request_id_);
+  }
   background_check_cancelable.Cancel();
 }
 
@@ -59,7 +59,7 @@ void CarrierEntitlement::Check(
 
 void CarrierEntitlement::CheckInternal(bool user_triggered) {
   SLOG(3) << __func__;
-  if (request_in_progress_) {
+  if (transport_) {
     LOG(WARNING)
         << "Entitlement check already in progress. New request ignored.";
     metrics_->NotifyCellularEntitlementCheckResult(
@@ -117,10 +117,19 @@ void CarrierEntitlement::CheckInternal(bool user_triggered) {
     return;
   }
 
+  SLOG(3) << __func__ << " launching request at interface: " << network;
+
   std::vector<std::string> dns_list_str;
   for (auto& ip : network->GetDNSServers()) {
     dns_list_str.push_back(ip.ToString());
   }
+
+  if (transport_for_testing_) {
+    transport_ = transport_for_testing_;
+  } else {
+    transport_ = brillo::http::Transport::CreateDefault();
+  }
+
   transport_->SetDnsServers(dns_list_str);
   transport_->SetDnsInterface(network->interface_name());
   transport_->SetInterface(network->interface_name());
@@ -133,7 +142,6 @@ void CarrierEntitlement::CheckInternal(bool user_triggered) {
   auto cb_http_error =
       base::BindOnce(&CarrierEntitlement::HttpRequestErrorCallback,
                      weak_ptr_factory_.GetWeakPtr());
-  request_in_progress_ = true;
   if (config_.method == brillo::http::request_type::kGet) {
     // No content is sent.
     request_id_ =
@@ -157,11 +165,14 @@ void CarrierEntitlement::PostBackgroundCheck() {
 
 void CarrierEntitlement::Reset() {
   SLOG(3) << __func__;
+
   // cancel pending request if it exists
-  transport_->CancelRequest(request_id_);
+  if (transport_) {
+    transport_->CancelRequest(request_id_);
+    transport_.reset();
+  }
   last_result_ = Result::kGenericError;
   background_check_cancelable.Cancel();
-  request_in_progress_ = false;
 }
 
 std::unique_ptr<base::Value> CarrierEntitlement::BuildContentPayload(
@@ -174,7 +185,8 @@ std::unique_ptr<base::Value> CarrierEntitlement::BuildContentPayload(
 }
 
 void CarrierEntitlement::SendResult(Result result) {
-  request_in_progress_ = false;
+  if (transport_)
+    transport_.reset();
   dispatcher()->PostTask(FROM_HERE, base::BindOnce(check_cb_, result));
 }
 
