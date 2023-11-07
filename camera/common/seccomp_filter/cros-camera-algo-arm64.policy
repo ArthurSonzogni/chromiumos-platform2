@@ -43,6 +43,7 @@ kill: 1
 listen: 1
 madvise: 1
 memfd_create: 1
+mkdirat: 1
 # Prevent PROT_WRITE | PROT_EXEC.
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
