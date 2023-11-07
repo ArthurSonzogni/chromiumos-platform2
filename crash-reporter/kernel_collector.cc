@@ -253,7 +253,7 @@ bool KernelCollector::LoadLastBootBiosLog(std::string* contents) {
     }
 
     if (!previous_boot.empty()) {
-      previous_boot.CopyToString(contents);
+      contents->append(std::string(previous_boot));
       return true;
     }
 
