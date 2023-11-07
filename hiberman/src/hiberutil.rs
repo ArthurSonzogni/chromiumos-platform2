@@ -622,12 +622,10 @@ pub fn get_kernel_restore_time() -> Result<Duration> {
             Some(restore_start) => {
                 if line.contains("PM: restore of devices complete after") {
                     let cap = re.captures(&line).unwrap();
-                    let restore_done = Some(Duration::new(
-                        cap[1].parse()?,
-                        cap[2].parse::<u32>()? * 1000,
-                    ));
+                    let restore_done =
+                        Duration::new(cap[1].parse()?, cap[2].parse::<u32>()? * 1000);
 
-                    return Ok(restore_done.unwrap() - restore_start);
+                    return Ok(restore_done - restore_start);
                 }
             }
         }
