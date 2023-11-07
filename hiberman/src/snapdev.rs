@@ -7,14 +7,10 @@
 use std::fs::metadata;
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::io::Read;
-use std::io::Write;
 use std::os::unix::fs::FileTypeExt;
 use std::path::Path;
 
-use anyhow::anyhow;
 use anyhow::Context;
-use anyhow::Error;
 use anyhow::Result;
 use libc::c_int;
 use libc::c_long;
@@ -34,7 +30,6 @@ use crate::ioctl::ioctl_with_ptr;
 use crate::ioctl::ioctl_with_val;
 
 const SNAPSHOT_PATH: &str = "/dev/snapshot";
-const HIBERIMAGE_BLOCK_SIZE: usize = 4096;
 
 // Define snapshot device ioctl numbers.
 const SNAPSHOT_IOC_MAGIC: u32 = '3' as u32;
@@ -104,53 +99,12 @@ impl SnapshotDevice {
     }
 
     /// Load a snapshot image from a file into the kernel.
-    pub fn load_image(&mut self, mut image_file: File) -> Result<u64> {
-        let mut image_size: u64 = 0;
-
-        loop {
-            let mut buf = [0; HIBERIMAGE_BLOCK_SIZE];
-
-            let res = image_file.read(&mut buf);
-
-            let bytes_written = self
-                .file
-                .write(&buf)
-                .context("Failed to transfer snapshot image to kernel")?;
-
-            if bytes_written == 0 {
-                // A complete hibernation image has been written.
-                break;
-            }
-
-            if res.is_err() {
-                // When the end of the hiberimage is reached the read() above
-                // *may* return an I/O error due to invalid dm-integrity
-                // metadata. However the read() doesn't fail always when the
-                // end of the image is reached, because an earlier hibernate
-                // cycle could have written a larger hiberimage. In that case
-                // read() returns data from the old image with valid
-                // integrity data.
-                //
-                // write() returns 0 when a complete hibernation image has
-                // been written. A value other than 0 means that the read
-                // error was an actual error, not an EOF condition.
-                return Err(Error::from(res.err().unwrap())).context("Failed to read image file");
-            }
-
-            if bytes_written < HIBERIMAGE_BLOCK_SIZE {
-                let bytes_read = res.ok().unwrap();
-
-                return Err(anyhow!(
-                    "unexpectedly short write transfer to snapshot \
-                     device ({bytes_written} bytes). Got {bytes_read} \
-                     bytes from previous read."
-                ));
-            }
-
-            image_size += bytes_written as u64;
+    pub fn load_image(&mut self) -> Result<u64> {
+        if let Err(e) = self.transfer_block_device() {
+            error!("Failed to load image: {:?}", e);
+            return Err(e);
         }
-
-        Ok(image_size)
+        self.get_image_size()
     }
 
     /// Freeze userspace, stopping all userspace processes except this one.
