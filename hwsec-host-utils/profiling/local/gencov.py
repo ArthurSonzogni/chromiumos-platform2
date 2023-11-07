@@ -10,49 +10,133 @@ html coverage reports from the raw profiles.
 """
 
 import argparse
-from enum import Enum
+import enum
+import itertools
 import json
 from pathlib import Path
-from shutil import rmtree
+import shutil
 import subprocess
 import sys
+import types
 from typing import List, Optional
 
+
+# Max number of profraws to be processes at once.
+MAX_CHUNK_SIZE = 2000
+
+# Max number of times the profdata generation should be executed.
+MAX_TRIES = 3
 
 # Absolute path of gencov.py.
 SRC_DIR = Path(__file__).resolve().parent
 
 # Default excluded files.
-# TODO(b/264759042): libhwsec will be included after this.
-EXCLUDED_FILES = [
-    ".*/metrics_library.h",
-    ".*/usr/include/*",
-    ".*/var/cache/*",
-    ".*/libhwsec-foundation/*",
-    ".*/libhwsec/*",
-]
+EXCLUDED_FILES = tuple(
+    (
+        ".*/metrics_library.h",
+        ".*/usr/include/*",
+        ".*/var/cache/*",
+    )
+)
 
-# Exclude cov reports from other daemons.
-EXCLUDED_FILES_FROM_PACKAGE = {
-    "attestation": [".*/tpm_manager/*", ".*/trunks/*", ".*/chaps/*"],
-    "tpm_manager": [".*/trunks/*"],
-    "vtpm": [".*/tpm_manager/*", ".*/trunks/*"],
-}
+# Include coverage info for shared libs only.
+EXCLUDED_FILES_FROM_SHARED_LIBS = tuple(
+    (
+        ".*/tpm_manager/*",
+        ".*/trunks/*",
+        ".*/chaps/*",
+        ".*/attestation/*",
+        ".*/bootlockbox/*",
+        ".*/u2fd/*",
+        ".*/vtpm/*",
+        ".*/cryptohome/*",
+        ".*/pca_agent/*",
+        ".*/libchrome/*",
+        ".*/platform2/metrics/*",
+    )
+)
 
-BIN_PATH = {
-    "attestation": "/sbin/attestationd",
-    "bootlockbox": "/sbin/bootlockboxd",
-    "chaps": "/sbin/chapsd",
-    "cryptohome": "/sbin/cryptohomed",
-    "pca_agent": "/sbin/pca_agentd",
-    "tpm_manager": "/sbin/tpm_managerd",
-    "trunks": "/sbin/trunksd",
-    "u2fd": "/bin/u2fd",
-    "vtpm": "/sbin/vtpmd",
-}
+# Include coverage info for relevant packages only.
+EXCLUDED_FILES_FROM_PACKAGE = types.MappingProxyType(
+    {
+        "attestation": [
+            ".*/tpm_manager/*",
+            ".*/trunks/*",
+            ".*/chaps/*",
+            ".*/libhwsec/*",
+            ".*/libhwsec-foundation/*",
+        ],
+        "bootlockbox": [
+            ".*/trunks/*",
+            ".*/libhwsec/*",
+            ".*/libhwsec-foundation/*",
+        ],
+        "tpm_manager": [
+            ".*/trunks/*",
+            ".*/libhwsec/*",
+            ".*/libhwsec-foundation/*",
+        ],
+        "vtpm": [
+            ".*/tpm_manager/*",
+            ".*/trunks/*",
+            ".*/libhwsec/*",
+            ".*/libhwsec-foundation/*",
+        ],
+        "chaps": [
+            ".*/trunks/*",
+            ".*/libhwsec/*",
+            ".*/libhwsec-foundation/*",
+            ".*/metrics/*",
+        ],
+        "cryptohome": [
+            ".*/trunks/*",
+            ".*/libhwsec/*",
+            ".*/libhwsec-foundation/*",
+            ".*/metrics/*",
+        ],
+        "pca_agent": [
+            ".*/trunks/*",
+            ".*/libhwsec/*",
+            ".*/libhwsec-foundation/*",
+            ".*/metrics/*",
+        ],
+        "trunks": [
+            ".*/libhwsec/*",
+            ".*/libhwsec-foundation/*",
+            ".*/metrics/*",
+        ],
+        "u2fd": [
+            ".*/trunks/*",
+            ".*/libhwsec/*",
+            ".*/libhwsec-foundation/*",
+            ".*/metrics/*",
+        ],
+    }
+)
+
+BIN_PATH = types.MappingProxyType(
+    {
+        "attestation": "/sbin/attestationd",
+        "bootlockbox": "/sbin/bootlockboxd",
+        "chaps": "/sbin/chapsd",
+        "cryptohome": "/sbin/cryptohomed",
+        "pca_agent": "/sbin/pca_agentd",
+        "tpm_manager": "/sbin/tpm_managerd",
+        "trunks": "/sbin/trunksd",
+        "u2fd": "/bin/u2fd",
+        "vtpm": "/sbin/vtpmd",
+    }
+)
+
+LIB_PATH = types.MappingProxyType(
+    {
+        "libhwsec": "lib64/libhwsec.so",
+        "libhwsec-foundation": "lib64/libhwsec-foundation.so",
+    }
+)
 
 
-class bcolors(Enum):
+class bcolors(enum.Enum):
     """Colors to decorate messages"""
 
     HEADER = "\033[95m"
@@ -76,7 +160,8 @@ class DUT:
         self.packages = packages
 
     def __repr__(self):
-        return f"DUT(ip={self.ip}, port={self.port}, board={self.board}, packages={self.packages})"
+        return f"""DUT(ip={self.ip}, port={self.port},
+board={self.board}, packages={self.packages})"""
 
 
 def dut_object(arg):
@@ -86,14 +171,18 @@ def dut_object(arg):
 
 
 def remove_file(path):
-    """Remove a file at path if exists.
+    """Remove a file at path if exists."""
+    path.unlink(missing_ok=True)
 
-    TODO: Once we require Python 3.8+, switch to missing_ok=True.
+
+def move_file(source_path, destination_directory):
+    """Moves a file from source_path to destination_directory.
+
+    Creates the destination_directory if not present.
     """
-    try:
-        path.unlink()
-    except FileNotFoundError:
-        pass
+    destination_directory.mkdir(parents=True, exist_ok=True)
+    destination_file_path = destination_directory / source_path.name
+    shutil.move(source_path, destination_file_path)
 
 
 def cleanup_contents(content_type):
@@ -102,7 +191,7 @@ def cleanup_contents(content_type):
         if path.is_file():
             path.unlink()
         elif path.is_dir():
-            rmtree(path)
+            shutil.rmtree(path)
     print(f"Done cleaning {content_type} dir.")
 
 
@@ -117,18 +206,23 @@ def cleanup():
     cleanup_contents("profdata")
 
 
-def run_command(command, stdout=subprocess.DEVNULL):
+def split_list(lst, chunk_size):
+    """Split the list `lst` in maximum of `chunk_size` each"""
+    for i in range(0, len(lst), chunk_size):
+        yield lst[i : i + chunk_size]
+
+
+def run_command(command):
     """Runs a shell command
 
     Args:
         command: Command to run as string.
-        stdout: Captured stdout from the child process.
     """
     print(f"{bcolors.OKGREEN.value}Running: {command}")
     try:
-        subprocess.run(command, check=True, stdout=stdout)
-    except subprocess.CalledProcessError:
-        print(f"failed running {command}!")
+        subprocess.run(command, check=True, capture_output=True)
+    except subprocess.CalledProcessError as e:
+        return e.stderr
 
 
 def modify_binary_name_if_necessary(package):
@@ -175,20 +269,22 @@ def restart_daemons(duts):
 def fetch_profraws(duts):
     """Fetch profraws from DUTs.
 
-    Each DUT object might contain multiple packages. This function would
-    collect profraws by package from each DUT and store them in profraws/{package} dir.
+    Each DUT object might contain multiple packages. This function
+    would collect profraws by package from each DUT and store them
+    in profraws/{package} dir.
     """
 
     (SRC_DIR / "profraws").mkdir(exist_ok=True)
 
-    def fetch(dut, package):
+    def fetch(dut, package="merged"):
         (SRC_DIR / "profraws" / package).mkdir(exist_ok=True)
+        file_prefix = "" if package == "merged" else package
         cmd = [
             "rsync",
             f"--rsh=ssh -p{dut.port}",
             (
                 f"root@{dut.ip}:"
-                f"/mnt/stateful_partition/unencrypted/profraws/{package}*"
+                f"/mnt/stateful_partition/unencrypted/profraws/{file_prefix}*"
             ),
             SRC_DIR / "profraws" / package,
         ]
@@ -198,6 +294,43 @@ def fetch_profraws(duts):
     for dut in duts:
         for package in dut.packages:
             fetch(dut, package)
+
+    # There are profraws generated by various services using shared libs.
+    # So generally they don't have common prefixes like package-wise profraws.
+    # Fetch them all.
+    for dut in duts:
+        fetch(dut)
+
+
+def merge_profdata(profdata_path, file_list):
+    """Merge list of profraws into profdata
+
+    Args:
+        profdata_path: path to profdata file
+        file_list: list of raw profiles
+    """
+    cmd = [
+        "llvm-profdata",
+        "merge",
+        profdata_path,
+        "-o",
+        profdata_path,
+    ] + file_list
+    err = run_command(cmd)
+    if err is not None:
+        try:
+            corrupted_path = Path(
+                [
+                    word
+                    for word in err.decode("utf-8").split()
+                    if word.endswith(".profraw:")
+                ][0][:-1]
+            )
+            move_file(corrupted_path, SRC_DIR / "corrupted_profraws")
+            return False
+        except Exception as e:
+            print(f"Error occurred while merging profdata: {e}")
+    return True
 
 
 def create_indexed_profdata(duts):
@@ -212,32 +345,40 @@ def create_indexed_profdata(duts):
     merged_profdata_path.parent.mkdir(parents=True, exist_ok=True)
     merged_profdata_path.touch()
 
-    # Generate profdata for each individual package from duts.
-    for dut in duts:
-        for package in dut.packages:
-            profdata_path = SRC_DIR / "profdata" / f"{package}.profdata"
-            profdata_path.parent.mkdir(parents=True, exist_ok=True)
-            profdata_path.touch(exist_ok=True)
+    for _ in range(MAX_TRIES):
+        corrupted_profraw_detected = False
+        # Generate profdata for each individual package from duts.
+        for dut in duts:
+            for package in dut.packages:
+                profdata_path = SRC_DIR / "profdata" / f"{package}.profdata"
+                profdata_path.parent.mkdir(parents=True, exist_ok=True)
+                profdata_path.touch(exist_ok=True)
 
-            for file in (SRC_DIR / "profraws" / package).glob("*.profraw"):
-                cmd = [
-                    "llvm-profdata",
-                    "merge",
-                    file,
-                    profdata_path,
-                    "-o",
-                    profdata_path,
+                files = [
+                    str(file)
+                    for file in (SRC_DIR / "profraws" / package).glob(
+                        "*.profraw"
+                    )
                 ]
-                run_command(cmd)
-                cmd = [
-                    "llvm-profdata",
-                    "merge",
-                    file,
-                    merged_profdata_path,
-                    "-o",
-                    merged_profdata_path,
-                ]
-                run_command(cmd)
+                file_chunks = list(split_list(files, MAX_CHUNK_SIZE))
+                for file_list in file_chunks:
+                    corrupted_profraw_detected = merge_profdata(
+                        profdata_path, file_list
+                    ) or merge_profdata(merged_profdata_path, file_list)
+
+        # Process profraws from shared libs.
+        files = [
+            str(file)
+            for file in (SRC_DIR / "profraws" / "merged").glob("*.profraw")
+        ]
+        file_chunks = list(split_list(files, MAX_CHUNK_SIZE))
+        for file_list in file_chunks:
+            corrupted_profraw_detected = merge_profdata(
+                merged_profdata_path, file_list
+            )
+
+        if corrupted_profraw_detected is False:
+            break
 
 
 def generate_html_report(opts):
@@ -261,11 +402,23 @@ def generate_html_report(opts):
             f"-output-dir={SRC_DIR}/coverage-reports/{package}/",
             f"-instr-profile={SRC_DIR}/profdata/{package}.profdata",
         ]
+
+        boards = []
         for idx, bin_location in enumerate(bin_list):
             # As per https://llvm.org/docs/CommandGuide/llvm-cov.html#id3,
             # if we have more than one instrumented binaries to pass, we
             # need to pass them by -object arg (starting from the latter).
             cmd.append(bin_location if idx == 0 else f"-object={bin_location}")
+            boards.append(bin_location.parent.parent.parent.name)
+
+        # In the merged report, include the shared lib coverage too.
+        if package == "merged":
+            for board in boards:
+                for libpath in LIB_PATH.values():
+                    # Currently we support "elm" as our TPM1.2 candidate.
+                    if board in ["elm"]:
+                        libpath = libpath.replace("lib64", "lib")
+                    cmd.append(f"-object=/build/{board}/usr/{libpath}")
 
         # Exclude default files.
         for filename in EXCLUDED_FILES:
@@ -280,23 +433,46 @@ def generate_html_report(opts):
         print(f"Generating report for {package}...")
         run_command(cmd)
 
+    def gen_report_for_shared_lib():
+        # Generate cov report for shared libs.
+        for lib, libpath in LIB_PATH.items():
+            instantiations_stat = str(opts.show_instantiations).lower()
+            cmd = [
+                "llvm-cov",
+                "show",
+                "-format=html",
+                "-use-color",
+                f"--show-instantiations={instantiations_stat}",
+                f"-output-dir={SRC_DIR}/coverage-reports/{lib}/",
+                f"-instr-profile={SRC_DIR}/profdata/merged.profdata",
+            ]
+            for dut in opts.duts:
+                if dut.board == "elm":
+                    libpath = libpath.replace("lib64", "lib")
+                cmd.append(f"-object=/build/{dut.board}/usr/{libpath}")
+            for exfile in EXCLUDED_FILES_FROM_SHARED_LIBS:
+                cmd.append(f"-ignore-filename-regex={exfile}")
+            print(f"Generating report for {lib}...")
+            run_command(cmd)
+
     # Generate bin locations and make a list by package name.
     pkgbin = {}
     for dut in opts.duts:
         for package in dut.packages:
             if package not in pkgbin:
                 pkgbin[package] = []
-            pkgbin[package].append(
-                Path(f"/build/{dut.board}/usr/{BIN_PATH[package]}")
-            )
+            pkg_path = Path(f"/build/{dut.board}/usr/{BIN_PATH[package]}")
+            pkgbin[package].append(pkg_path)
 
-    for package in pkgbin:
-        gen_report(pkgbin[package], package)
+    # Generate package-wise cov report.
+    for pkg_name, bin_list in pkgbin.items():
+        gen_report(bin_list, pkg_name)
 
-    merged_bin_list = []
-    for package in pkgbin:
-        merged_bin_list += pkgbin[package]
-    gen_report(merged_bin_list)
+    # Generate cov report for all packages.
+    gen_report(list(itertools.chain.from_iterable(pkgbin.values())))
+
+    # Generate cov report for shared libs.
+    gen_report_for_shared_lib()
 
 
 def parse_command_arguments(argv):
@@ -306,7 +482,8 @@ def parse_command_arguments(argv):
         "--duts",
         type=argparse.FileType("r"),
         required=True,
-        help='JSON string representing DUT instances with "ip", "board", "port", "packages" attributes.',
+        help="""JSON string representing DUT instances with "ip", "board",
+                "port", "packages" attributes.""",
     )
     parser.add_argument(
         "--show-instantiations",
