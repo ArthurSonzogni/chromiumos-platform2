@@ -155,6 +155,9 @@ enum FeedbackLogType {
   OS_RELEASE_INFO = 8,
   VAR_LOG_FILES = 9,
   PMT_DATA = 10,
+  // The dumps may be added to feedback reports only if the
+  // UserFeedbackWithLowLevelDebugDataAllowed policy is enabled for all or wifi.
+  WIFI_FIRMWARE_DUMPS = 11,
 };
 
 // PrintscanDebugCategories flags. These values must align with those in
