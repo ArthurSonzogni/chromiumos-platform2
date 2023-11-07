@@ -18,7 +18,7 @@ class Bus;
 
 namespace federated {
 
-// Monitors the dpower supply status and answers whether there the conditions
+// Monitors the power supply status and answers whether there the conditions
 // are satisfied. Currently, we check that the battery level is above 90% or
 // the device is not discharging.
 class PowerSupplyTrainingCondition : public TrainingCondition {

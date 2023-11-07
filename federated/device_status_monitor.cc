@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "federated/device_status_monitor.h"
+#include "federated/memory_pressure_training_condition.h"
 #include "federated/network_status_training_condition.h"
 #include "federated/power_supply_training_condition.h"
 
@@ -23,10 +24,16 @@ DeviceStatusMonitor::DeviceStatusMonitor(
 
 std::unique_ptr<DeviceStatusMonitor> DeviceStatusMonitor::CreateFromDBus(
     dbus::Bus* bus) {
-  std::vector<std::unique_ptr<TrainingCondition>> training_conditions(2);
-  training_conditions[0] = std::make_unique<PowerSupplyTrainingCondition>(bus);
-  training_conditions[1] = std::make_unique<NetworkStatusTrainingCondition>(
-      std::make_unique<shill::Client>(bus));
+  std::vector<std::unique_ptr<TrainingCondition>> training_conditions;
+  training_conditions.push_back(
+      std::make_unique<PowerSupplyTrainingCondition>(bus));
+
+  training_conditions.push_back(
+      std::make_unique<NetworkStatusTrainingCondition>(
+          std::make_unique<shill::Client>(bus)));
+
+  training_conditions.push_back(
+      std::make_unique<MemoryPressureTrainingCondition>(bus));
 
   return std::make_unique<DeviceStatusMonitor>(std::move(training_conditions));
 }

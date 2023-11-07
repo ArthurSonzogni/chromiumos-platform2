@@ -77,6 +77,7 @@ static_library("federated_common") {
     "federated_library.cc",
     "federated_metadata.cc",
     "federated_service_impl.cc",
+    "memory_pressure_training_condition.cc",
     "metrics.cc",
     "network_status_training_condition.cc",
     "power_supply_training_condition.cc",
@@ -163,6 +164,7 @@ if (use.test) {
     sources = [
       "device_status_monitor_test.cc",
       "example_database_test.cc",
+      "memory_pressure_training_condition_test.cc",
       "mock_example_database.cc",
       "network_status_training_condition_test.cc",
       "power_supply_training_condition_test.cc",
