@@ -227,9 +227,8 @@ class UserDataAuth {
 
   // Remove the cryptohome (user's home directory) specified in
   // |request.identifier|. See definition of RemoveReply for what is returned.
-  void Remove(
-      user_data_auth::RemoveRequest request,
-      base::OnceCallback<void(const user_data_auth::RemoveReply&)> on_done);
+  void Remove(user_data_auth::RemoveRequest request,
+              OnDoneCallback<user_data_auth::RemoveReply> on_done);
 
   // Reset the application container specified in the request for the user
   // identified by authsession id.
@@ -607,128 +606,103 @@ class UserDataAuth {
 
   void StartAuthSession(
       user_data_auth::StartAuthSessionRequest request,
-      base::OnceCallback<void(const user_data_auth::StartAuthSessionReply&)>
-          on_done);
+      OnDoneCallback<user_data_auth::StartAuthSessionReply> on_done);
 
   void InvalidateAuthSession(
       user_data_auth::InvalidateAuthSessionRequest request,
-      base::OnceCallback<
-          void(const user_data_auth::InvalidateAuthSessionReply&)> on_done);
+      OnDoneCallback<user_data_auth::InvalidateAuthSessionReply> on_done);
 
   void ExtendAuthSession(
       user_data_auth::ExtendAuthSessionRequest request,
-      base::OnceCallback<void(const user_data_auth::ExtendAuthSessionReply&)>
-          on_done);
+      OnDoneCallback<user_data_auth::ExtendAuthSessionReply> on_done);
 
   void PrepareGuestVault(
       user_data_auth::PrepareGuestVaultRequest request,
-      base::OnceCallback<void(const user_data_auth::PrepareGuestVaultReply&)>
-          on_done);
+      OnDoneCallback<user_data_auth::PrepareGuestVaultReply> on_done);
 
   void PrepareEphemeralVault(
       user_data_auth::PrepareEphemeralVaultRequest request,
-      base::OnceCallback<
-          void(const user_data_auth::PrepareEphemeralVaultReply&)> on_done);
+      OnDoneCallback<user_data_auth::PrepareEphemeralVaultReply> on_done);
 
   void EvictDeviceKey(
       user_data_auth::EvictDeviceKeyRequest request,
-      base::OnceCallback<void(const user_data_auth::EvictDeviceKeyReply&)>
-          on_done);
+      OnDoneCallback<user_data_auth::EvictDeviceKeyReply> on_done);
 
   void PreparePersistentVault(
       user_data_auth::PreparePersistentVaultRequest request,
-      base::OnceCallback<
-          void(const user_data_auth::PreparePersistentVaultReply&)> on_done);
+      OnDoneCallback<user_data_auth::PreparePersistentVaultReply> on_done);
 
   void PrepareVaultForMigration(
       user_data_auth::PrepareVaultForMigrationRequest request,
-      base::OnceCallback<
-          void(const user_data_auth::PrepareVaultForMigrationReply&)> on_done);
+      OnDoneCallback<user_data_auth::PrepareVaultForMigrationReply> on_done);
 
   void CreatePersistentUser(
       user_data_auth::CreatePersistentUserRequest request,
-      base::OnceCallback<void(const user_data_auth::CreatePersistentUserReply&)>
-          on_done);
+      OnDoneCallback<user_data_auth::CreatePersistentUserReply> on_done);
 
   void AddAuthFactor(
       user_data_auth::AddAuthFactorRequest request,
-      base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
-          on_done);
+      OnDoneCallback<user_data_auth::AddAuthFactorReply> on_done);
 
   void AuthenticateAuthFactor(
       user_data_auth::AuthenticateAuthFactorRequest request,
-      base::OnceCallback<
-          void(const user_data_auth::AuthenticateAuthFactorReply&)> on_done);
+      OnDoneCallback<user_data_auth::AuthenticateAuthFactorReply> on_done);
 
   void UpdateAuthFactor(
       user_data_auth::UpdateAuthFactorRequest request,
-      base::OnceCallback<void(const user_data_auth::UpdateAuthFactorReply&)>
-          on_done);
+      OnDoneCallback<user_data_auth::UpdateAuthFactorReply> on_done);
 
   void UpdateAuthFactorMetadata(
       user_data_auth::UpdateAuthFactorMetadataRequest request,
-      base::OnceCallback<
-          void(const user_data_auth::UpdateAuthFactorMetadataReply&)> on_done);
+      OnDoneCallback<user_data_auth::UpdateAuthFactorMetadataReply> on_done);
 
   void RelabelAuthFactor(
       user_data_auth::RelabelAuthFactorRequest request,
-      base::OnceCallback<void(const user_data_auth::RelabelAuthFactorReply&)>
-          on_done);
+      OnDoneCallback<user_data_auth::RelabelAuthFactorReply> on_done);
 
   void ReplaceAuthFactor(
       user_data_auth::ReplaceAuthFactorRequest request,
-      base::OnceCallback<void(const user_data_auth::ReplaceAuthFactorReply&)>
-          on_done);
+      OnDoneCallback<user_data_auth::ReplaceAuthFactorReply> on_done);
 
   void RemoveAuthFactor(
       user_data_auth::RemoveAuthFactorRequest request,
-      base::OnceCallback<void(const user_data_auth::RemoveAuthFactorReply&)>
-          on_done);
+      OnDoneCallback<user_data_auth::RemoveAuthFactorReply> on_done);
 
   void ListAuthFactors(
       user_data_auth::ListAuthFactorsRequest request,
-      base::OnceCallback<void(const user_data_auth::ListAuthFactorsReply&)>
-          on_done);
+      OnDoneCallback<user_data_auth::ListAuthFactorsReply> on_done);
 
   void ModifyAuthFactorIntents(
       user_data_auth::ModifyAuthFactorIntentsRequest request,
-      base::OnceCallback<
-          void(const user_data_auth::ModifyAuthFactorIntentsReply&)> on_done);
+      OnDoneCallback<user_data_auth::ModifyAuthFactorIntentsReply> on_done);
 
   void GetAuthFactorExtendedInfo(
       user_data_auth::GetAuthFactorExtendedInfoRequest request,
-      base::OnceCallback<
-          void(const user_data_auth::GetAuthFactorExtendedInfoReply&)> on_done);
+      OnDoneCallback<user_data_auth::GetAuthFactorExtendedInfoReply> on_done);
 
   void PrepareAuthFactor(
       user_data_auth::PrepareAuthFactorRequest request,
-      base::OnceCallback<void(const user_data_auth::PrepareAuthFactorReply&)>
-          on_done);
+      OnDoneCallback<user_data_auth::PrepareAuthFactorReply> on_done);
 
   void TerminateAuthFactor(
       user_data_auth::TerminateAuthFactorRequest request,
-      base::OnceCallback<void(const user_data_auth::TerminateAuthFactorReply&)>
-          on_done);
+      OnDoneCallback<user_data_auth::TerminateAuthFactorReply> on_done);
 
   void GetAuthSessionStatus(
       user_data_auth::GetAuthSessionStatusRequest request,
-      base::OnceCallback<void(const user_data_auth::GetAuthSessionStatusReply&)>
-          on_done);
+      OnDoneCallback<user_data_auth::GetAuthSessionStatusReply> on_done);
 
   void GetRecoveryRequest(
       user_data_auth::GetRecoveryRequestRequest request,
-      base::OnceCallback<void(const user_data_auth::GetRecoveryRequestReply&)>
-          on_done);
+      OnDoneCallback<user_data_auth::GetRecoveryRequestReply> on_done);
 
   void CreateVaultKeyset(
       user_data_auth::CreateVaultKeysetRequest request,
-      base::OnceCallback<void(const user_data_auth::CreateVaultKeysetReply&)>
-          on_done);
+      OnDoneCallback<user_data_auth::CreateVaultKeysetReply> on_done);
 
   void RestoreDeviceKey(
       user_data_auth::RestoreDeviceKeyRequest request,
-      base::OnceCallback<void(const user_data_auth::RestoreDeviceKeyReply&)>
-          on_done);
+      OnDoneCallback<user_data_auth::RestoreDeviceKeyReply> on_done);
 
  private:
   // base::Thread subclass so we can implement CleanUp.
@@ -906,34 +880,28 @@ class UserDataAuth {
 
   // Async helper functions for public APIs that require auth sessions. Executed
   // when the AuthSession becomes available.
-  void RemoveWithSession(
-      user_data_auth::RemoveRequest request,
-      base::OnceCallback<void(const user_data_auth::RemoveReply&)> on_done,
-      InUseAuthSession auth_session);
+  void RemoveWithSession(user_data_auth::RemoveRequest request,
+                         OnDoneCallback<user_data_auth::RemoveReply> on_done,
+                         InUseAuthSession auth_session);
   void PrepareEphemeralVaultWithSession(
       user_data_auth::PrepareEphemeralVaultRequest request,
-      base::OnceCallback<
-          void(const user_data_auth::PrepareEphemeralVaultReply&)> on_done,
+      OnDoneCallback<user_data_auth::PrepareEphemeralVaultReply> on_done,
       InUseAuthSession auth_session);
   void PreparePersistentVaultWithSession(
       user_data_auth::PreparePersistentVaultRequest request,
-      base::OnceCallback<
-          void(const user_data_auth::PreparePersistentVaultReply&)> on_done,
+      OnDoneCallback<user_data_auth::PreparePersistentVaultReply> on_done,
       InUseAuthSession auth_session);
   void PrepareVaultForMigrationWithSession(
       user_data_auth::PrepareVaultForMigrationRequest request,
-      base::OnceCallback<
-          void(const user_data_auth::PrepareVaultForMigrationReply&)> on_done,
+      OnDoneCallback<user_data_auth::PrepareVaultForMigrationReply> on_done,
       InUseAuthSession auth_session);
   void CreatePersistentUserWithSession(
       user_data_auth::CreatePersistentUserRequest request,
-      base::OnceCallback<void(const user_data_auth::CreatePersistentUserReply&)>
-          on_done,
+      OnDoneCallback<user_data_auth::CreatePersistentUserReply> on_done,
       InUseAuthSession auth_session);
   void AuthenticateAuthFactorWithSession(
       user_data_auth::AuthenticateAuthFactorRequest request,
-      base::OnceCallback<
-          void(const user_data_auth::AuthenticateAuthFactorReply&)> on_done,
+      OnDoneCallback<user_data_auth::AuthenticateAuthFactorReply> on_done,
       InUseAuthSession auth_session);
 
   // =============== Feature Experiment Related Methods ===============

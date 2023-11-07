@@ -126,7 +126,7 @@ constexpr base::TimeDelta kDefaultExtensionTime = base::Seconds(60);
 // completed.
 template <typename ReplyType>
 void ReplyWithStatus(InUseAuthSession unused_auth_session,
-                     base::OnceCallback<void(const ReplyType&)> on_done,
+                     UserDataAuth::OnDoneCallback<ReplyType> on_done,
                      CryptohomeStatus status) {
   ReplyType reply;
   ReplyWithError(std::move(on_done), std::move(reply), std::move(status));
@@ -320,7 +320,7 @@ void ReplyWithAuthFactorStatus(
     AuthFactorDriverManager* auth_factor_driver_manager,
     UserSession* user_session,
     std::string auth_factor_label,
-    base::OnceCallback<void(const ReplyType&)> on_done,
+    UserDataAuth::OnDoneCallback<ReplyType> on_done,
     CryptohomeStatus status) {
   ReplyType reply;
   if (!status.ok()) {
@@ -426,7 +426,7 @@ void PopulateAuthSessionProperties(
 void HandleAuthenticationResult(
     InUseAuthSession auth_session,
     const SerializedUserAuthFactorTypePolicy& user_policy,
-    base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
+    UserDataAuth::OnDoneCallback<user_data_auth::AuthenticateAuthFactorReply>
         on_done,
     const AuthSession::PostAuthAction& post_auth_action,
     CryptohomeStatus status) {
@@ -1780,9 +1780,8 @@ void UserDataAuth::InitForChallengeResponseAuth() {
   challenge_credentials_helper_initialized_ = true;
 }
 
-void UserDataAuth::Remove(
-    user_data_auth::RemoveRequest request,
-    base::OnceCallback<void(const user_data_auth::RemoveReply&)> on_done) {
+void UserDataAuth::Remove(user_data_auth::RemoveRequest request,
+                          OnDoneCallback<user_data_auth::RemoveReply> on_done) {
   AssertOnMountThread();
 
   if (!request.has_identifier() && request.auth_session_id().empty()) {
@@ -1823,7 +1822,7 @@ void UserDataAuth::Remove(
 
 void UserDataAuth::RemoveWithSession(
     user_data_auth::RemoveRequest request,
-    base::OnceCallback<void(const user_data_auth::RemoveReply&)> on_done,
+    OnDoneCallback<user_data_auth::RemoveReply> on_done,
     InUseAuthSession auth_session) {
   user_data_auth::RemoveReply reply;
 
@@ -2370,8 +2369,7 @@ bool UserDataAuth::IsArcQuotaSupported() {
 
 void UserDataAuth::StartAuthSession(
     user_data_auth::StartAuthSessionRequest request,
-    base::OnceCallback<void(const user_data_auth::StartAuthSessionReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::StartAuthSessionReply> on_done) {
   AssertOnMountThread();
   user_data_auth::StartAuthSessionReply reply;
 
@@ -2539,8 +2537,7 @@ void UserDataAuth::StartAuthSession(
 
 void UserDataAuth::InvalidateAuthSession(
     user_data_auth::InvalidateAuthSessionRequest request,
-    base::OnceCallback<void(const user_data_auth::InvalidateAuthSessionReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::InvalidateAuthSessionReply> on_done) {
   AssertOnMountThread();
 
   user_data_auth::InvalidateAuthSessionReply reply;
@@ -2553,8 +2550,7 @@ void UserDataAuth::InvalidateAuthSession(
 
 void UserDataAuth::ExtendAuthSession(
     user_data_auth::ExtendAuthSessionRequest request,
-    base::OnceCallback<void(const user_data_auth::ExtendAuthSessionReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::ExtendAuthSessionReply> on_done) {
   AssertOnMountThread();
 
   user_data_auth::ExtendAuthSessionReply reply;
@@ -2710,8 +2706,7 @@ EncryptedContainerType UserDataAuth::DbusEncryptionTypeToContainerType(
 
 void UserDataAuth::PrepareGuestVault(
     user_data_auth::PrepareGuestVaultRequest request,
-    base::OnceCallback<void(const user_data_auth::PrepareGuestVaultReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::PrepareGuestVaultReply> on_done) {
   AssertOnMountThread();
 
   LOG(INFO) << "Preparing guest vault";
@@ -2724,8 +2719,7 @@ void UserDataAuth::PrepareGuestVault(
 
 void UserDataAuth::PrepareEphemeralVault(
     user_data_auth::PrepareEphemeralVaultRequest request,
-    base::OnceCallback<void(const user_data_auth::PrepareEphemeralVaultReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::PrepareEphemeralVaultReply> on_done) {
   AssertOnMountThread();
   RunWithAuthSessionWhenAvailable(
       auth_session_manager_,
@@ -2737,8 +2731,7 @@ void UserDataAuth::PrepareEphemeralVault(
 
 void UserDataAuth::PrepareEphemeralVaultWithSession(
     user_data_auth::PrepareEphemeralVaultRequest request,
-    base::OnceCallback<void(const user_data_auth::PrepareEphemeralVaultReply&)>
-        on_done,
+    OnDoneCallback<user_data_auth::PrepareEphemeralVaultReply> on_done,
     InUseAuthSession auth_session) {
   AssertOnMountThread();
 
@@ -2823,8 +2816,7 @@ void UserDataAuth::PrepareEphemeralVaultWithSession(
 
 void UserDataAuth::PreparePersistentVault(
     user_data_auth::PreparePersistentVaultRequest request,
-    base::OnceCallback<void(const user_data_auth::PreparePersistentVaultReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::PreparePersistentVaultReply> on_done) {
   AssertOnMountThread();
   RunWithDecryptAuthSessionWhenAvailable(
       auth_session_manager_,
@@ -2839,8 +2831,7 @@ void UserDataAuth::PreparePersistentVault(
 
 void UserDataAuth::PreparePersistentVaultWithSession(
     user_data_auth::PreparePersistentVaultRequest request,
-    base::OnceCallback<void(const user_data_auth::PreparePersistentVaultReply&)>
-        on_done,
+    OnDoneCallback<user_data_auth::PreparePersistentVaultReply> on_done,
     InUseAuthSession auth_session) {
   LOG(INFO) << "Preparing persistent vault";
   CryptohomeVault::Options options = {
@@ -2862,8 +2853,7 @@ void UserDataAuth::PreparePersistentVaultWithSession(
 
 void UserDataAuth::PrepareVaultForMigration(
     user_data_auth::PrepareVaultForMigrationRequest request,
-    base::OnceCallback<
-        void(const user_data_auth::PrepareVaultForMigrationReply&)> on_done) {
+    OnDoneCallback<user_data_auth::PrepareVaultForMigrationReply> on_done) {
   AssertOnMountThread();
   RunWithDecryptAuthSessionWhenAvailable(
       auth_session_manager_,
@@ -2878,8 +2868,7 @@ void UserDataAuth::PrepareVaultForMigration(
 
 void UserDataAuth::PrepareVaultForMigrationWithSession(
     user_data_auth::PrepareVaultForMigrationRequest request,
-    base::OnceCallback<
-        void(const user_data_auth::PrepareVaultForMigrationReply&)> on_done,
+    OnDoneCallback<user_data_auth::PrepareVaultForMigrationReply> on_done,
     InUseAuthSession auth_session) {
   AssertOnMountThread();
 
@@ -2895,8 +2884,7 @@ void UserDataAuth::PrepareVaultForMigrationWithSession(
 
 void UserDataAuth::CreatePersistentUser(
     user_data_auth::CreatePersistentUserRequest request,
-    base::OnceCallback<void(const user_data_auth::CreatePersistentUserReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::CreatePersistentUserReply> on_done) {
   AssertOnMountThread();
   RunWithAuthSessionWhenAvailable(
       auth_session_manager_,
@@ -2908,8 +2896,7 @@ void UserDataAuth::CreatePersistentUser(
 
 void UserDataAuth::CreatePersistentUserWithSession(
     user_data_auth::CreatePersistentUserRequest request,
-    base::OnceCallback<void(const user_data_auth::CreatePersistentUserReply&)>
-        on_done,
+    OnDoneCallback<user_data_auth::CreatePersistentUserReply> on_done,
     InUseAuthSession auth_session) {
   LOG(INFO) << "Creating persistent user";
   // Record the time in between now and when this function exits.
@@ -3127,8 +3114,7 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
 
 void UserDataAuth::EvictDeviceKey(
     user_data_auth::EvictDeviceKeyRequest request,
-    base::OnceCallback<void(const user_data_auth::EvictDeviceKeyReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::EvictDeviceKeyReply> on_done) {
   // This method touches the |sessions_| object so it needs to run on
   // |mount_thread_|
   AssertOnMountThread();
@@ -3200,8 +3186,7 @@ void UserDataAuth::EvictDeviceKey(
 
 void UserDataAuth::AddAuthFactor(
     user_data_auth::AddAuthFactorRequest request,
-    base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::AddAuthFactorReply> on_done) {
   AssertOnMountThread();
   user_data_auth::AddAuthFactorReply reply;
   CryptohomeStatusOr<InUseAuthSession> auth_session_status =
@@ -3251,8 +3236,7 @@ void UserDataAuth::AddAuthFactor(
 
 void UserDataAuth::AuthenticateAuthFactor(
     user_data_auth::AuthenticateAuthFactorRequest request,
-    base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::AuthenticateAuthFactorReply> on_done) {
   AssertOnMountThread();
   RunWithAuthSessionWhenAvailable(
       auth_session_manager_,
@@ -3264,17 +3248,15 @@ void UserDataAuth::AuthenticateAuthFactor(
 
 void UserDataAuth::AuthenticateAuthFactorWithSession(
     user_data_auth::AuthenticateAuthFactorRequest request,
-    base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
-        on_done,
+    OnDoneCallback<user_data_auth::AuthenticateAuthFactorReply> on_done,
     InUseAuthSession auth_session) {
   // Wrap callback to signal AuthenticateAuthFactorCompleted.
-  base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
+  OnDoneCallback<user_data_auth::AuthenticateAuthFactorReply>
       on_done_wrapped_with_signal_cb = base::BindOnce(
           [](base::RepeatingCallback<void(
                  user_data_auth::AuthenticateAuthFactorCompleted)>
                  authenticate_auth_factor_result_callback,
-             base::OnceCallback<void(
-                 const user_data_auth::AuthenticateAuthFactorReply&)> cb,
+             OnDoneCallback<user_data_auth::AuthenticateAuthFactorReply> cb,
              user_data_auth::AuthFactorType auth_factor_type,
              const user_data_auth::AuthenticateAuthFactorReply& reply) {
             user_data_auth::AuthenticateAuthFactorCompleted completed_proto;
@@ -3372,8 +3354,7 @@ void UserDataAuth::AuthenticateAuthFactorWithSession(
 
 void UserDataAuth::UpdateAuthFactor(
     user_data_auth::UpdateAuthFactorRequest request,
-    base::OnceCallback<void(const user_data_auth::UpdateAuthFactorReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::UpdateAuthFactorReply> on_done) {
   AssertOnMountThread();
 
   user_data_auth::UpdateAuthFactorReply reply;
@@ -3426,8 +3407,7 @@ void UserDataAuth::UpdateAuthFactor(
 
 void UserDataAuth::UpdateAuthFactorMetadata(
     user_data_auth::UpdateAuthFactorMetadataRequest request,
-    base::OnceCallback<
-        void(const user_data_auth::UpdateAuthFactorMetadataReply&)> on_done) {
+    OnDoneCallback<user_data_auth::UpdateAuthFactorMetadataReply> on_done) {
   AssertOnMountThread();
   user_data_auth::UpdateAuthFactorMetadataReply reply;
   CryptohomeStatusOr<InUseAuthSession> auth_session_status =
@@ -3468,8 +3448,7 @@ void UserDataAuth::UpdateAuthFactorMetadata(
 
 void UserDataAuth::RelabelAuthFactor(
     user_data_auth::RelabelAuthFactorRequest request,
-    base::OnceCallback<void(const user_data_auth::RelabelAuthFactorReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::RelabelAuthFactorReply> on_done) {
   AssertOnMountThread();
   user_data_auth::RelabelAuthFactorReply reply;
 
@@ -3520,8 +3499,7 @@ void UserDataAuth::RelabelAuthFactor(
 
 void UserDataAuth::ReplaceAuthFactor(
     user_data_auth::ReplaceAuthFactorRequest request,
-    base::OnceCallback<void(const user_data_auth::ReplaceAuthFactorReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::ReplaceAuthFactorReply> on_done) {
   AssertOnMountThread();
   user_data_auth::ReplaceAuthFactorReply reply;
 
@@ -3572,8 +3550,7 @@ void UserDataAuth::ReplaceAuthFactor(
 
 void UserDataAuth::RemoveAuthFactor(
     user_data_auth::RemoveAuthFactorRequest request,
-    base::OnceCallback<void(const user_data_auth::RemoveAuthFactorReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::RemoveAuthFactorReply> on_done) {
   AssertOnMountThread();
   user_data_auth::RemoveAuthFactorReply reply;
 
@@ -3609,8 +3586,7 @@ void UserDataAuth::RemoveAuthFactor(
 
 void UserDataAuth::ListAuthFactors(
     user_data_auth::ListAuthFactorsRequest request,
-    base::OnceCallback<void(const user_data_auth::ListAuthFactorsReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::ListAuthFactorsReply> on_done) {
   AssertOnMountThread();
   user_data_auth::ListAuthFactorsReply reply;
 
@@ -3809,8 +3785,7 @@ void UserDataAuth::ListAuthFactors(
 
 void UserDataAuth::ModifyAuthFactorIntents(
     user_data_auth::ModifyAuthFactorIntentsRequest request,
-    base::OnceCallback<
-        void(const user_data_auth::ModifyAuthFactorIntentsReply&)> on_done) {
+    OnDoneCallback<user_data_auth::ModifyAuthFactorIntentsReply> on_done) {
   AssertOnMountThread();
   user_data_auth::ModifyAuthFactorIntentsReply reply;
   CryptohomeStatusOr<InUseAuthSession> auth_session_status =
@@ -3938,8 +3913,7 @@ void UserDataAuth::ModifyAuthFactorIntents(
 
 void UserDataAuth::GetAuthFactorExtendedInfo(
     user_data_auth::GetAuthFactorExtendedInfoRequest request,
-    base::OnceCallback<
-        void(const user_data_auth::GetAuthFactorExtendedInfoReply&)> on_done) {
+    OnDoneCallback<user_data_auth::GetAuthFactorExtendedInfoReply> on_done) {
   AssertOnMountThread();
 
   user_data_auth::GetAuthFactorExtendedInfoReply reply;
@@ -4031,8 +4005,7 @@ void UserDataAuth::GetAuthFactorExtendedInfo(
 
 void UserDataAuth::PrepareAuthFactor(
     user_data_auth::PrepareAuthFactorRequest request,
-    base::OnceCallback<void(const user_data_auth::PrepareAuthFactorReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::PrepareAuthFactorReply> on_done) {
   AssertOnMountThread();
   RunWithAuthSessionWhenAvailable(
       auth_session_manager_,
@@ -4040,8 +4013,7 @@ void UserDataAuth::PrepareAuthFactor(
       std::move(request), std::move(on_done),
       base::BindOnce(
           [](user_data_auth::PrepareAuthFactorRequest request,
-             base::OnceCallback<void(
-                 const user_data_auth::PrepareAuthFactorReply&)> on_done,
+             OnDoneCallback<user_data_auth::PrepareAuthFactorReply> on_done,
              InUseAuthSession auth_session) {
             AuthSession* auth_session_ptr = auth_session.Get();
             auth_session_ptr->PrepareAuthFactor(
@@ -4054,8 +4026,7 @@ void UserDataAuth::PrepareAuthFactor(
 
 void UserDataAuth::TerminateAuthFactor(
     user_data_auth::TerminateAuthFactorRequest request,
-    base::OnceCallback<void(const user_data_auth::TerminateAuthFactorReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::TerminateAuthFactorReply> on_done) {
   AssertOnMountThread();
   RunWithAuthSessionWhenAvailable(
       auth_session_manager_,
@@ -4063,8 +4034,7 @@ void UserDataAuth::TerminateAuthFactor(
       std::move(request), std::move(on_done),
       base::BindOnce(
           [](user_data_auth::TerminateAuthFactorRequest request,
-             base::OnceCallback<void(
-                 const user_data_auth::TerminateAuthFactorReply&)> on_done,
+             OnDoneCallback<user_data_auth::TerminateAuthFactorReply> on_done,
              InUseAuthSession auth_session) {
             AuthSession* auth_session_ptr = auth_session.Get();
             auth_session_ptr->TerminateAuthFactor(
@@ -4077,8 +4047,7 @@ void UserDataAuth::TerminateAuthFactor(
 
 void UserDataAuth::GetAuthSessionStatus(
     user_data_auth::GetAuthSessionStatusRequest request,
-    base::OnceCallback<void(const user_data_auth::GetAuthSessionStatusReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::GetAuthSessionStatusReply> on_done) {
   AssertOnMountThread();
   RunWithAuthSessionWhenAvailable(
       auth_session_manager_,
@@ -4086,8 +4055,7 @@ void UserDataAuth::GetAuthSessionStatus(
       std::move(request), std::move(on_done),
       base::BindOnce(
           [](user_data_auth::GetAuthSessionStatusRequest request,
-             base::OnceCallback<void(
-                 const user_data_auth::GetAuthSessionStatusReply&)> on_done,
+             OnDoneCallback<user_data_auth::GetAuthSessionStatusReply> on_done,
              InUseAuthSession auth_session) {
             user_data_auth::GetAuthSessionStatusReply reply;
             PopulateAuthSessionProperties(auth_session,
@@ -4099,8 +4067,7 @@ void UserDataAuth::GetAuthSessionStatus(
 
 void UserDataAuth::GetRecoveryRequest(
     user_data_auth::GetRecoveryRequestRequest request,
-    base::OnceCallback<void(const user_data_auth::GetRecoveryRequestReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::GetRecoveryRequestReply> on_done) {
   AssertOnMountThread();
   RunWithAuthSessionWhenAvailable(
       auth_session_manager_,
@@ -4108,8 +4075,7 @@ void UserDataAuth::GetRecoveryRequest(
       std::move(request), std::move(on_done),
       base::BindOnce(
           [](user_data_auth::GetRecoveryRequestRequest request,
-             base::OnceCallback<void(
-                 const user_data_auth::GetRecoveryRequestReply&)> on_done,
+             OnDoneCallback<user_data_auth::GetRecoveryRequestReply> on_done,
              InUseAuthSession auth_session) {
             user_data_auth::GetRecoveryRequestReply reply;
             auth_session->GetRecoveryRequest(request, std::move(on_done));
@@ -4118,8 +4084,7 @@ void UserDataAuth::GetRecoveryRequest(
 
 void UserDataAuth::CreateVaultKeyset(
     user_data_auth::CreateVaultKeysetRequest request,
-    base::OnceCallback<void(const user_data_auth::CreateVaultKeysetReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::CreateVaultKeysetReply> on_done) {
   user_data_auth::CreateVaultKeysetReply reply;
   CryptohomeStatusOr<InUseAuthSession> auth_session_status =
       GetAuthenticatedAuthSession(request.auth_session_id());
@@ -4142,8 +4107,7 @@ void UserDataAuth::CreateVaultKeyset(
 
 void UserDataAuth::RestoreDeviceKey(
     user_data_auth::RestoreDeviceKeyRequest request,
-    base::OnceCallback<void(const user_data_auth::RestoreDeviceKeyReply&)>
-        on_done) {
+    OnDoneCallback<user_data_auth::RestoreDeviceKeyReply> on_done) {
   AssertOnMountThread();
   user_data_auth::RestoreDeviceKeyReply reply;
 
