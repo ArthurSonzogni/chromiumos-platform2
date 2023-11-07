@@ -59,6 +59,10 @@ static_library("libtpm2_simulator_executor") {
     sources += [ "tpm_executor_tpm1_impl.cc" ]
     libs += [ "tpms" ]
   }
+  if (use.test) {
+    # To link with tpm2 library.
+    configs += [ "//common-mk:test" ]
+  }
   if (use.tpm2 || use.test) {
     sources += [
       "pinweaver_eal.cc",
