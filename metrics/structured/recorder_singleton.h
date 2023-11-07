@@ -5,8 +5,6 @@
 #ifndef METRICS_STRUCTURED_RECORDER_SINGLETON_H_
 #define METRICS_STRUCTURED_RECORDER_SINGLETON_H_
 
-#include "metrics/structured/recorder_impl.h"
-
 #include <memory>
 
 #include <base/no_destructor.h>
@@ -14,6 +12,8 @@
 
 namespace metrics {
 namespace structured {
+
+class Recorder;
 
 // RecorderSingleton provides a way to set MockRecorder or FakeRecorder for
 // testing. This is used internally by events, but shouldn't need to be

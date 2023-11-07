@@ -4,11 +4,13 @@
 
 #include "metrics/structured/event_base.h"
 
-#include "metrics/structured/recorder_singleton.h"
+#include <algorithm>
 
 #include <base/logging.h>
 #include <base/notreached.h>
-#include <algorithm>
+
+#include "metrics/structured/recorder.h"
+#include "metrics/structured/recorder_singleton.h"
 
 namespace metrics {
 namespace structured {

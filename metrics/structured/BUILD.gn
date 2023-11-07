@@ -77,6 +77,18 @@ shared_library("libstructuredmetrics") {
   ]
 }
 
+# Install missing headers using new approach to be able to use mock recorder
+# outside of platform2. TODO(crbug/1184602): Move install logic of all other
+# include files from ebuild to here.
+install_config("libstructuredmetrics_install_headers") {
+  sources = [
+    "mock_recorder.h",
+    "recorder.h",
+    "recorder_singleton.h",
+  ]
+  install_path = "/usr/include/metrics/structured"
+}
+
 generate_pkg_config("libstructuredmetrics_pkg_config") {
   name = "libstructuredmetrics"
   deps = [ ":libstructuredmetrics" ]

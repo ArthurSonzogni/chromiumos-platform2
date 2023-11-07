@@ -6,6 +6,8 @@
 
 #include <utility>
 
+#include "metrics/structured/recorder_impl.h"
+
 namespace metrics {
 namespace structured {
 namespace {

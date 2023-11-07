@@ -17,6 +17,7 @@ group("all") {
     ":libupload_service",
     ":metrics_client",
     "//metrics/structured:libstructuredmetrics",
+    "//metrics/structured:libstructuredmetrics_install_headers",
     "//metrics/structured:libstructuredmetrics_pkg_config",
     "//metrics/structured:update_reset_counter",
   ]
