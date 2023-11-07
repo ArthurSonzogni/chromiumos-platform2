@@ -13,6 +13,7 @@ namespace hwsec_foundation {
 // needs to be called from the main function in order to
 // start profiling.
 HWSEC_FOUNDATION_EXPORT void SetUpProfiling();
+HWSEC_FOUNDATION_EXPORT void End();
 
 }  // namespace hwsec_foundation
 

@@ -50,6 +50,16 @@ pkg_config("target_defaults") {
     "re2",
   ]
   cflags = [ "-Wconsumed" ]
+  if (use.profiling) {
+    cflags += [
+      "-fprofile-instr-generate",
+      "-fcoverage-mapping",
+    ]
+    ldflags = [
+      "-fprofile-instr-generate",
+      "-fcoverage-mapping",
+    ]
+  }
   cflags_cc = [ "-Wno-error=deprecated-declarations" ]
 
   if (use.tpm2) {
@@ -75,6 +85,7 @@ shared_library("libhwsec-foundation") {
     "crypto/secure_box.cc",
     "crypto/sha.cc",
     "da_reset/da_resetter.cc",
+    "profiling/profiling.cc",
     "syscaller/syscaller_impl.cc",
     "tlcl_wrapper/tlcl_wrapper.cc",
     "tpm/tpm_clear.cc",

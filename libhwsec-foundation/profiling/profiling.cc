@@ -16,10 +16,23 @@
 #include <base/rand_util.h>
 #include <base/strings/string_util.h>
 
+#if ENABLE_PROFILING
 extern "C" {
 const char* __llvm_profile_get_filename();
 void __llvm_profile_set_filename(const char*);
+int __llvm_profile_write_file(void);
 }
+
+namespace {
+class CodeProfiler {
+ public:
+  CodeProfiler() { hwsec_foundation::SetUpProfiling(); }
+  ~CodeProfiler() { hwsec_foundation::End(); }
+};
+// This global variable handles the profraw generation for libhwsec-foundation.
+CodeProfiler g_code_profiler;
+}  // namespace
+#endif
 
 namespace hwsec_foundation {
 
@@ -81,9 +94,17 @@ void SetUpProfiling() {
   __llvm_profile_set_filename(profile_file_path.c_str());
 }
 
+void End() {
+  __llvm_profile_write_file();
+}
+
 #else
 
 void SetUpProfiling() {
+  // No-ops.
+}
+
+void End() {
   // No-ops.
 }
 
