@@ -20,7 +20,7 @@ class MockHttpSender : public HttpSender {
               DeleteDevice,
               (const hwis_proto::DeleteDevice& device_info),
               (override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(DeviceUpdateResult,
               UpdateDevice,
               (const hwis_proto::Device& device_info),
               (override));

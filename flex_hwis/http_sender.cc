@@ -4,6 +4,7 @@
 
 #include "flex_hwis/http_sender.h"
 
+#include <memory>
 #include <string>
 
 #include <base/logging.h>
@@ -16,11 +17,30 @@
 
 namespace flex_hwis {
 
-constexpr char kApiVersion[] = "/v1/";
+namespace {
+bool FailedBecauseDeviceNotFoundOnServer(
+    std::unique_ptr<brillo::http::Response>& response) {
+  const auto response_content = response->ExtractDataAsString();
+  const std::string device_not_found_msg_from_server =
+      "Requested entity was not found.";
+  if (response->GetStatusCode() == /*not found error=*/404 &&
+      response_content.find(device_not_found_msg_from_server) !=
+          std::string::npos) {
+    LOG(INFO) << "Device was not found on the server";
+    return true;
+  } else {
+    LOG(WARNING) << "Send HTTP request failed with error: " << response_content;
+    return false;
+  }
+}
+}  // namespace
 
+constexpr char kApiVersion[] = "/v1/";
+// TODO(b/309690409): Create unit tests to verify network interactions.
 HttpSender::HttpSender(ServerInfo& server_info) : server_info_(server_info) {}
 
 bool HttpSender::DeleteDevice(const hwis_proto::DeleteDevice& device_info) {
+  LOG(INFO) << "Delete a device on server";
   if (server_info_.GetServerUrl().empty()) {
     LOG(WARNING) << "flex_hwis_tool has no server configured";
     return false;
@@ -34,20 +54,27 @@ bool HttpSender::DeleteDevice(const hwis_proto::DeleteDevice& device_info) {
       /*data=*/nullptr,
       /*data_size=*/0, brillo::mime::application::kProtobuf, kApiHeaders,
       brillo::http::Transport::CreateDefault(), &error);
-  if (!response || !response->IsSuccessful()) {
-    LOG(WARNING) << "Failed to delete device";
+  if (!response) {
     if (error) {
-      LOG(WARNING) << error->GetMessage();
+      LOG(WARNING) << "Delete device failed with error: "
+                   << error->GetMessage();
     }
     return false;
+  }
+  if (!response->IsSuccessful()) {
+    // If the device to be deleted is not found on the server, the
+    // deletion is considered successful.
+    return FailedBecauseDeviceNotFoundOnServer(response);
   }
   return true;
 }
 
-bool HttpSender::UpdateDevice(const hwis_proto::Device& device_info) {
+DeviceUpdateResult HttpSender::UpdateDevice(
+    const hwis_proto::Device& device_info) {
+  LOG(INFO) << "Update a device on server";
   if (server_info_.GetServerUrl().empty()) {
     LOG(WARNING) << "flex_hwis_tool has no server configured";
-    return false;
+    return DeviceUpdateResult::Fail;
   }
   brillo::ErrorPtr error;
   const brillo::http::HeaderList kApiHeaders = {
@@ -59,18 +86,30 @@ bool HttpSender::UpdateDevice(const hwis_proto::Device& device_info) {
       device_info.SerializeAsString().size(),
       brillo::mime::application::kProtobuf, kApiHeaders,
       brillo::http::Transport::CreateDefault(), &error);
-  if (!response || !response->IsSuccessful()) {
-    LOG(WARNING) << "Failed to update device";
+  if (!response) {
     if (error) {
-      LOG(WARNING) << error->GetMessage();
+      LOG(WARNING) << "Update device failed with error: "
+                   << error->GetMessage();
     }
-    return false;
+    return DeviceUpdateResult::Fail;
   }
-  return true;
+  if (!response->IsSuccessful()) {
+    if (FailedBecauseDeviceNotFoundOnServer(response)) {
+      return DeviceUpdateResult::DeviceNotFound;
+    }
+    // Most errors in update requests are related to the data content and
+    // format. Therefore, the request body is logged.
+    LOG(WARNING) << "Update device failed with request body: "
+                 << device_info.DebugString();
+    return DeviceUpdateResult::Fail;
+  }
+
+  return DeviceUpdateResult::Success;
 }
 
 DeviceRegisterResult HttpSender::RegisterNewDevice(
     const hwis_proto::Device& device_info) {
+  LOG(INFO) << "Register a device on server";
   if (server_info_.GetServerUrl().empty()) {
     LOG(WARNING) << "flex_hwis_tool has no server configured";
     return DeviceRegisterResult(/*success=*/false, /*device_name=*/"");
@@ -86,19 +125,22 @@ DeviceRegisterResult HttpSender::RegisterNewDevice(
       brillo::http::Transport::CreateDefault(), &error);
 
   DeviceRegisterResult register_result;
-  if (!response || !response->IsSuccessful()) {
-    LOG(WARNING) << "Failed to register a new device";
-    if (error) {
-      LOG(WARNING) << error->GetMessage();
-    }
-    register_result.success = false;
-    return register_result;
-  }
+  register_result.success = false;
 
-  hwis_proto::Device device_proto;
-  device_proto.ParseFromString(response->ExtractDataAsString());
-  register_result.device_name = device_proto.name();
-  register_result.success = true;
+  if (response) {
+    if (response->IsSuccessful()) {
+      hwis_proto::Device device_proto;
+      device_proto.ParseFromString(response->ExtractDataAsString());
+      register_result.device_name = device_proto.name();
+      register_result.success = true;
+    } else {
+      LOG(WARNING) << "Register device failed with error: "
+                   << response->ExtractDataAsString();
+    }
+  } else if (error) {
+    LOG(WARNING) << "Register device failed with error: "
+                 << error->GetMessage();
+  }
   return register_result;
 }
 

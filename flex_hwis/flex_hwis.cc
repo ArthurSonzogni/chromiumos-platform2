@@ -48,10 +48,94 @@ void SendServerMetric(std::string metric_name,
     LOG(INFO) << "Failed to send hwis server metric";
   }
 }
+
+// Verify that the user has granted permission or that all necessary policies
+// are enabled to send hardware information.
+bool CheckPermission(flex_hwis::FlexHwisCheck& check,
+                     HttpSender& sender,
+                     MetricsLibraryInterface& metrics) {
+  PermissionInfo permission_info = check.CheckPermission();
+  SendPermissionMetric(permission_info, metrics);
+  if (permission_info.permission) {
+    return true;
+  }
+
+  const std::optional<std::string> device_name = check.GetDeviceName();
+  if (device_name) {
+    // If the user does not consent to share hardware data, the HWIS service
+    // must delete the device name file after confirming that the request to
+    // delete the hardware data to the server is successfully.
+    hwis_proto::DeleteDevice delete_device;
+    delete_device.set_name(device_name.value());
+    bool api_delete_success = false;
+    if (sender.DeleteDevice(delete_device)) {
+      LOG(INFO) << "Device has been deleted";
+      check.DeleteDeviceName();
+      api_delete_success = true;
+    }
+    const std::string kDeleteMetricName =
+        "Platform.FlexHwis.ServerDeleteSuccess";
+    SendServerMetric(kDeleteMetricName, api_delete_success, metrics);
+  }
+  return false;
+}
+
+bool RegisterNewDevice(flex_hwis::FlexHwisCheck& check,
+                       HttpSender& sender,
+                       hwis_proto::Device& hardware_info) {
+  DeviceRegisterResult register_result =
+      sender.RegisterNewDevice(hardware_info);
+  if (!register_result.success) {
+    return false;
+  }
+  // If the device is successfully registered, the server will return a
+  // device name. The client must save this device name in the local file.
+  LOG(INFO) << "Device has been registered";
+  check.SetDeviceName(register_result.device_name);
+  return true;
+}
+
+// Use the One Platform APIs to send hardware information to the server.
+// Metrics will be used to track the status of the interaction.
+bool SendHardwareInfo(flex_hwis::FlexHwisCheck& check,
+                      HttpSender& sender,
+                      hwis_proto::Device& hardware_info,
+                      MetricsLibraryInterface& metrics) {
+  bool api_call_success = false;
+  const std::optional<std::string> device_name = check.GetDeviceName();
+
+  // If device name already exists on the client side, then the client service
+  // should update the device on the server.
+  if (device_name) {
+    hardware_info.set_name(device_name.value());
+    DeviceUpdateResult update_result = sender.UpdateDevice(hardware_info);
+    switch (update_result) {
+      case DeviceUpdateResult::Success:
+        LOG(INFO) << "Device has been updated";
+        api_call_success = true;
+        break;
+      // TODO(b/309651923): Collect UMA metric for device not found error.
+      case DeviceUpdateResult::DeviceNotFound:
+        hardware_info.set_name("");
+        // If the device name is on the client but not found on the server,
+        // the client should register the device again.
+        api_call_success = RegisterNewDevice(check, sender, hardware_info);
+        break;
+      case DeviceUpdateResult::Fail:
+        break;
+    }
+  } else {
+    api_call_success = RegisterNewDevice(check, sender, hardware_info);
+  }
+
+  const std::string metric_name =
+      hardware_info.name().empty()
+          ? /*register status metric=*/"Platform.FlexHwis.ServerPostSuccess"
+          : /*update status metric=*/"Platform.FlexHwis.ServerPutSuccess";
+  SendServerMetric(metric_name, api_call_success, metrics);
+  return api_call_success;
+}
 }  // namespace
-constexpr char kPutMetricName[] = "Platform.FlexHwis.ServerPutSuccess";
-constexpr char kPostMetricName[] = "Platform.FlexHwis.ServerPostSuccess";
-constexpr char kDeleteMetricName[] = "Platform.FlexHwis.ServerDeleteSuccess";
 
 FlexHwisSender::FlexHwisSender(const base::FilePath& base_path,
                                policy::PolicyProvider& provider,
@@ -68,61 +152,19 @@ Result FlexHwisSender::CollectAndSend(MetricsLibraryInterface& metrics,
   if (check_.HasRunRecently()) {
     return Result::HasRunRecently;
   }
-
-  PermissionInfo permission_info = check_.CheckPermission();
-  SendPermissionMetric(permission_info, metrics);
-  hwis_proto::Device hardware_info;
-  const std::optional<std::string> device_name = check_.GetDeviceName();
-
   // Exit if the device does not have permission to send data to the server.
-  if (!permission_info.permission) {
-    if (device_name) {
-      // If the user does not consent to share hardware data, the HWIS service
-      // must delete the device name file after confirming that the request to
-      // delete the hardware data to the server is successfully.
-      hwis_proto::DeleteDevice delete_device;
-      delete_device.set_name(device_name.value());
-      bool api_delete_success = false;
-      if (sender_.DeleteDevice(delete_device)) {
-        check_.DeleteDeviceName();
-        api_delete_success = true;
-      }
-      SendServerMetric(kDeleteMetricName, api_delete_success, metrics);
-    }
+  if (!CheckPermission(check_, sender_, metrics)) {
     return Result::NotAuthorized;
   }
-
+  // Collect hardware information from cros_healthd via its mojo interface.
+  hwis_proto::Device hardware_info;
   mojo_.SetHwisInfo(&hardware_info);
-
-  bool api_call_success = false;
-  std::string metric_name;
-
-  // If device name is not in client side, client should register a new device.
-  // If device name already exists, then the client should update the device.
-  if (device_name) {
-    hardware_info.set_name(device_name.value());
-    api_call_success = sender_.UpdateDevice(hardware_info);
-    metric_name = kPutMetricName;
-  } else {
-    DeviceRegisterResult register_result =
-        sender_.RegisterNewDevice(hardware_info);
-    api_call_success = register_result.success;
-    metric_name = kPostMetricName;
-
-    // If the device is successfully registered, the server will return a
-    // device name. The client must save this device name in the local file.
-    if (api_call_success) {
-      check_.SetDeviceName(register_result.device_name);
-    }
-  }
-
-  SendServerMetric(metric_name, api_call_success, metrics);
-  if (!api_call_success) {
+  // Exit if the hardware information is not successfully sent.
+  if (!SendHardwareInfo(check_, sender_, hardware_info, metrics)) {
     return Result::Error;
   }
 
   check_.RecordSendTime();
-
   if (debug == Debug::Print) {
     LOG(INFO) << hardware_info.DebugString();
   }

@@ -17,6 +17,17 @@ class DeviceRegisterResult {
   std::string device_name;
 };
 
+enum class DeviceUpdateResult {
+  // Device data update succeeded.
+  Success,
+  // Device data update failed because the server
+  // does not have a device entity that needs to be updated.
+  DeviceNotFound,
+  // Device data update failed for reasons other than not
+  // finding the device.
+  Fail,
+};
+
 // Sender implemented using brillo HTTP library.
 class HttpSender {
  public:
@@ -37,7 +48,8 @@ class HttpSender {
       const hwis_proto::Device& device_info);
   // Send a put request to the HWIS server to replace an existing device
   // entry in the database if the device name exists on the client side.
-  virtual bool UpdateDevice(const hwis_proto::Device& device_info);
+  virtual DeviceUpdateResult UpdateDevice(
+      const hwis_proto::Device& device_info);
 
  private:
   ServerInfo server_info_;
