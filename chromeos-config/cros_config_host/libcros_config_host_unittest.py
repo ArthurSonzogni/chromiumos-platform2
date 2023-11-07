@@ -2,15 +2,15 @@
 # Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-# pylint: disable=class-missing-docstring
+# pylint: disable=missing-class-docstring
 
 """The unit test suite for the libcros_config_host.py library"""
 
 from __future__ import print_function
 
-from collections import OrderedDict
-from contextlib import contextmanager
-from io import StringIO
+import collections
+import contextlib
+import io
 import os
 import sys
 import unittest
@@ -56,9 +56,9 @@ TOUCH_FIRMWARE = "/opt/google/touch/firmware/"
 # Use this to suppress stdout/stderr output:
 # with capture_sys_output() as (stdout, stderr)
 #   ...do something...
-@contextmanager
+@contextlib.contextmanager
 def capture_sys_output():
-    capture_out, capture_err = StringIO(), StringIO()
+    capture_out, capture_err = io.StringIO(), io.StringIO()
     old_out, old_err = sys.stdout, sys.stderr
     try:
         sys.stdout, sys.stderr = capture_out, capture_err
@@ -221,7 +221,7 @@ class CrosConfigHostTest(unittest.TestCase):
     def testFirmwareBuildCombinations(self):
         """Test generating a dict of firmware build combinations."""
         config = CrosConfig(self.filepath)
-        expected = OrderedDict(
+        expected = collections.OrderedDict(
             [
                 ("another", ["another", "another"]),
                 ("badrecovery1", ["badrecovery1", "badrecovery1"]),
@@ -237,7 +237,7 @@ class CrosConfigHostTest(unittest.TestCase):
         self.assertEqual(result, expected)
 
         # Unspecified targets should be represented as None.
-        expected = OrderedDict(
+        expected = collections.OrderedDict(
             [
                 ("another", ["some/another"]),
                 ("badrecovery1", [None]),
@@ -251,7 +251,9 @@ class CrosConfigHostTest(unittest.TestCase):
         self.assertEqual(result, expected)
 
         os.environ["FW_NAME"] = "another"
-        expected = OrderedDict([("another", ["another", "another"])])
+        expected = collections.OrderedDict(
+            [("another", ["another", "another"])]
+        )
         result = config.GetFirmwareBuildCombinations(
             ["coreboot", "depthcharge"]
         )
@@ -489,7 +491,7 @@ class CrosConfigHostTest(unittest.TestCase):
 
     def testFirmware(self):
         """Test access to firmware information"""
-        expected = OrderedDict(
+        expected = collections.OrderedDict(
             [
                 (
                     "another",

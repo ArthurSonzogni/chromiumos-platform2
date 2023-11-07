@@ -6,8 +6,7 @@
 
 from __future__ import print_function
 
-from collections import namedtuple
-from collections import OrderedDict
+import collections
 import os
 import sys
 
@@ -32,12 +31,14 @@ sys.path.pop(0)
 #       in /opt/google/touch/firmware
 #   symlink: name of symbolic link to put in LIB_FIRMWARE to point to the target
 #       firmware. This is where Linux finds the firmware at runtime.
-SymlinkedFile = namedtuple("SymlinkedFile", ["source", "dest", "symlink"])
+SymlinkedFile = collections.namedtuple(
+    "SymlinkedFile", ["source", "dest", "symlink"]
+)
 
 # Represents a single file which needs to be installed:
 #   source: Source filename within ${FILESDIR}
 #   dest: Destination filename in the root filesystem
-BaseFile = namedtuple("BaseFile", ["source", "dest"])
+BaseFile = collections.namedtuple("BaseFile", ["source", "dest"])
 
 # Represents information needed to create firmware for a model:
 #   model: Name of model (e.g 'reef'). Also used as the signature ID for signing
@@ -66,7 +67,7 @@ BaseFile = namedtuple("BaseFile", ["source", "dest"])
 #       zero-touch whitelabel this is 'sig-id-in-customization-id' since we do
 #       not know the signature ID until we look up in VPD.
 #   brand-code: Uniquely identifies a given brand (see go/chromeos-rlz)
-FirmwareInfo = namedtuple(
+FirmwareInfo = collections.namedtuple(
     "FirmwareInfo",
     [
         "model",
@@ -89,14 +90,16 @@ FirmwareInfo = namedtuple(
 #   type\: one of 'ap', 'ap_rw', 'ec', 'ec_rw', 'pd'.
 #   build_target: The build target for given firmware image.
 #   image_uri: The BCS image URI.
-FirmwareImage = namedtuple(
+FirmwareImage = collections.namedtuple(
     "FirmwareImage", ["type", "build_target", "image_uri"]
 )
 
 # Represents the signer data for a device.
 #   key_id: The key ID of the device.
 #   sig_id: Teh signature ID of the device.
-DeviceSignerInfo = namedtuple("DeviceSignerInfo", ["key_id", "sig_id"])
+DeviceSignerInfo = collections.namedtuple(
+    "DeviceSignerInfo", ["key_id", "sig_id"]
+)
 
 
 class PathComponent:
@@ -636,7 +639,7 @@ class CrosConfigBaseImpl:
         """
         firmware_filter = self._GetFirmwareFilter()
 
-        combos = OrderedDict()
+        combos = collections.OrderedDict()
         for device in self.GetDeviceConfigs():
             device_targets = device.GetProperties("/firmware/build-targets")
             # Skip device_targetss with no build targets
@@ -655,7 +658,7 @@ class CrosConfigBaseImpl:
                     "%s, %s" % (key, targets, combos[key])
                 )
             combos[key] = targets
-        return OrderedDict(sorted(combos.items()))
+        return collections.OrderedDict(sorted(combos.items()))
 
     def GetThermalFiles(self):
         """Get a list of unique thermal files for all models
@@ -719,7 +722,7 @@ class CrosConfigBaseImpl:
         return sorted({device.GetName() for device in self.GetDeviceConfigs()})
 
     def GetFirmwareInfo(self):
-        firmware_info = OrderedDict()
+        firmware_info = collections.OrderedDict()
         for name in self.GetModelList():
             for device in self.GetDeviceConfigs():
                 if device.GetName() == name:
@@ -762,7 +765,7 @@ class CrosConfigBaseImpl:
             multiple recovery inputs
         """
         # Try to retrieve recovery-input first
-        methods = OrderedDict()
+        methods = collections.OrderedDict()
         for device in self.GetDeviceConfigs():
             key = device.GetProperties(
                 "/firmware/build-targets/%s" % build_target_name
@@ -846,7 +849,7 @@ class CrosConfigBaseImpl:
         Raises:
             ValidationError if conflicting values are found for a key
         """
-        pairs = OrderedDict()
+        pairs = collections.OrderedDict()
         for device in self.GetDeviceConfigs():
             key = device.GetProperty(key_path, key_name)
             value = device.GetProperty(value_path, value_name)
@@ -896,7 +899,7 @@ class CrosConfigBaseImpl:
         Raises:
             ValidationError if conflicting values are found for the key
         """
-        values = OrderedDict()
+        values = collections.OrderedDict()
         for device in self.GetDeviceConfigs():
             key = device.GetProperty(key_path, key_name)
             value = device.GetProperty(value_path, value_name)

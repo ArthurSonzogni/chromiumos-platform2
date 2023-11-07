@@ -11,7 +11,7 @@ for CLI access to this library.
 
 from __future__ import print_function
 
-from collections import OrderedDict
+import collections
 import copy
 import json
 import os
@@ -49,7 +49,7 @@ class DeviceConfigJson(DeviceConfig):
     def __init__(self, config):
         self._schema_properties = GetValidSchemaProperties()
         self._config = config
-        self.firmware_info = OrderedDict()
+        self.firmware_info = collections.OrderedDict()
 
     def GetName(self):
         return str(self._config["name"])

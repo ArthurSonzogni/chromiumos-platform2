@@ -3,11 +3,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# pylint: disable=module-missing-docstring,class-missing-docstring
+# pylint: disable=missing-module-docstring,missing-class-docstring
 
 import contextlib
 import io
-from itertools import zip_longest
+import itertools
 import json
 import os
 import re
@@ -874,7 +874,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
             file_actual, "r", encoding="utf-8"
         ) as actual:
             for line_num, (line_expected, line_actual) in enumerate(
-                zip_longest(expected, actual)
+                itertools.zip_longest(expected, actual)
             ):
                 self.assertEqual(
                     line_expected,
@@ -893,7 +893,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
         expected = str_expected.strip().split("\n")
         actual = str_actual.strip().split("\n")
         for line_num, (line_expected, line_actual) in enumerate(
-            zip_longest(expected, actual)
+            itertools.zip_longest(expected, actual)
         ):
             self.assertEqual(
                 line_expected,

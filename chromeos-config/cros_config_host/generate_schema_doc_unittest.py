@@ -3,7 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# pylint: disable=module-missing-docstring,class-missing-docstring
+# pylint: disable=missing-module-docstring,missing-class-docstring
 
 from __future__ import print_function
 
