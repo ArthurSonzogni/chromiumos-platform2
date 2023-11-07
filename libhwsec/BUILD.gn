@@ -53,6 +53,7 @@ pkg_config("target_defaults") {
 
   defines = [
     "BUILD_LIBHWSEC",
+    "ENABLE_PROFILING=${use.profiling}",
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
     "USE_TPM1=${use.tpm}||${use.test}",
     "USE_TPM2=${use.tpm2}||${use.test}",
@@ -60,6 +61,16 @@ pkg_config("target_defaults") {
   ]
 
   cflags = [ "-Wconsumed" ]
+  if (use.profiling) {
+    cflags += [
+      "-fprofile-instr-generate",
+      "-fcoverage-mapping",
+    ]
+    ldflags = [
+      "-fprofile-instr-generate",
+      "-fcoverage-mapping",
+    ]
+  }
 }
 
 static_library("overalls_library") {
@@ -237,6 +248,7 @@ source_set("hardware_abstraction_external_library") {
   sources = [
     "${root_gen_dir}/include/libhwsec/structures/signature_sealed_data.cc",
     "factory/factory_impl.cc",
+    "factory/instr_profiling.cc",
     "structures/key.cc",
   ]
 

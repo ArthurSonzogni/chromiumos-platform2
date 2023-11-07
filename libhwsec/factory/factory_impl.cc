@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "libhwsec/backend/backend.h"
+#include "libhwsec/factory/instr_profiling.h"
 #include "libhwsec/frontend/arc_attestation/frontend_impl.h"
 #include "libhwsec/frontend/attestation/frontend_impl.h"
 #include "libhwsec/frontend/bootlockbox/frontend_impl.h"
@@ -27,13 +28,19 @@ namespace hwsec {
 
 FactoryImpl::FactoryImpl(ThreadingMode mode)
     : default_middleware_(std::make_unique<MiddlewareOwner>(mode)),
-      middleware_(*default_middleware_) {}
+      middleware_(*default_middleware_) {
+  hwsec::register_profiling::SetUp();
+}
 
 FactoryImpl::FactoryImpl(std::unique_ptr<MiddlewareOwner> middleware)
     : default_middleware_(std::move(middleware)),
-      middleware_(*default_middleware_) {}
+      middleware_(*default_middleware_) {
+  hwsec::register_profiling::SetUp();
+}
 
-FactoryImpl::~FactoryImpl() {}
+FactoryImpl::~FactoryImpl() {
+  hwsec::register_profiling::End();
+}
 
 std::unique_ptr<const CryptohomeFrontend> FactoryImpl::GetCryptohomeFrontend() {
   return std::make_unique<CryptohomeFrontendImpl>(middleware_.Derive());
