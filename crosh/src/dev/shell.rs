@@ -9,6 +9,7 @@ use std::path::Path;
 use std::process;
 
 use crate::dispatcher::{self, wait_for_result, Arguments, Command, Dispatcher};
+use crate::util::is_no_new_privs_set;
 
 static DEFAULT_SHELL: &str = "/bin/sh";
 static BASH_SHELL: &str = "/bin/bash";
@@ -25,8 +26,9 @@ pub fn register(dispatcher: &mut Dispatcher) {
 }
 
 fn execute_shell(_cmd: &Command, _args: &Arguments) -> Result<(), dispatcher::Error> {
-    println!(
-        r#"Sudo commands will not succeed by default.
+    if is_no_new_privs_set() {
+        println!(
+            r#"Sudo commands will not succeed by default.
 If you want to use sudo commands, use the VT-2 shell
 (Ctrl-Alt-{{F2/Right arrow/Refresh}}) or build the image with the
 login_enable_crosh_sudo USE flag:
@@ -35,7 +37,8 @@ $ USE=login_enable_crosh_sudo emerge-$BOARD chromeos-login
 or
 $ USE=login_enable_crosh_sudo cros build-packages --board=$BOARD
     "#
-    );
+        );
+    }
     wait_for_result(
         process::Command::new(get_shell())
             .arg("-l")

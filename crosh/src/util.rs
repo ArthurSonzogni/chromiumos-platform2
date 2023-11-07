@@ -144,6 +144,11 @@ pub fn is_chrome_feature_enabled(method_name: &str) -> Result<bool> {
     Ok(reply)
 }
 
+pub fn is_no_new_privs_set() -> bool {
+    // Safe because this retrieves a value without side effects.
+    return unsafe { libc::prctl(libc::PR_GET_NO_NEW_PRIVS, 0, 0, 0, 0) } > 0;
+}
+
 pub fn is_removable() -> Result<bool> {
     let dev = root_dev()?;
     let groups = Regex::new(r#"/dev/([^/]+?)p?[0-9]+$"#)?
