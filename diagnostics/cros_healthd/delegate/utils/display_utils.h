@@ -79,6 +79,7 @@ class DisplayUtil {
   bool FillEdidInfo(const uint32_t connector_id, EdidInfo* info);
   bool FillDisplayRefreshRate(const uint32_t connector_id,
                               double* refresh_rate);
+  std::vector<uint32_t> GetHdmiConnectorIDs();
   ash::cros_healthd::mojom::ExternalDisplayInfoPtr GetExternalDisplayInfo(
       const uint32_t connector_id);
   ash::cros_healthd::mojom::EmbeddedDisplayInfoPtr GetEmbeddedDisplayInfo();

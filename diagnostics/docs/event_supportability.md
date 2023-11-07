@@ -165,7 +165,18 @@ defined in [hw_topology.star] to set it up.
 
 ### External Display
 
-Always supported.
+Currently the External Display event only supports detecting events based on
+HDMI input. Therefore the event is supported only when `has-hdmi` is explicitly
+configured as "true".
+
+You can run the following commands on your DUT:
+1. `cros_config /hardware-properties has-hdmi` This is helpful to understand
+   what the value of `has-hdmi` is.
+2. `cros-health-tool event --category=external_display --check_supported` Use this
+   to see if healthd reports the correct support status.
+
+To configure `has-hdmi` in Boxster, you can use the `create_hdmi` function
+defined in [hw_topology.star] to set it up.
 
 ### Touchscreen
 

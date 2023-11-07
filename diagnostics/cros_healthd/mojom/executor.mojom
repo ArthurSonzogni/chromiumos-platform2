@@ -373,7 +373,7 @@ interface Executor {
   RemoveFioTestFile() => (ExecutedProcessResult result);
 
   // Returns a map of connector_ids to display info that records the
-  // active external display connectors.
+  // active HDMI connectors.
   //
   // The request:
   // * |last_known_connectors| - The set of connectors last identified.
@@ -381,7 +381,7 @@ interface Executor {
   // The response:
   // * |connectors| - Maps the connector_id to its corresponding display info.
   // * |err| - Error message if existed.
-  GetConnectedExternalDisplayConnectors(array<uint32>? last_known_connectors)
+  GetConnectedHdmiConnectors(array<uint32>? last_known_connectors)
       => (map<uint32, ExternalDisplayInfo> connectors, string? err);
 
   // Returns whether a privacy screen is supported and whether is enabled on the

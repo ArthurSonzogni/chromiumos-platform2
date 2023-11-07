@@ -118,9 +118,9 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
               mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
                   receiver) override;
   void RemoveFioTestFile(RemoveFioTestFileCallback callback) override;
-  void GetConnectedExternalDisplayConnectors(
+  void GetConnectedHdmiConnectors(
       const std::optional<std::vector<uint32_t>>& last_known_connectors,
-      GetConnectedExternalDisplayConnectorsCallback callback) override;
+      GetConnectedHdmiConnectorsCallback callback) override;
   void GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) override;
   void FetchDisplayInfo(FetchDisplayInfoCallback callback) override;
   void MonitorPowerButton(
