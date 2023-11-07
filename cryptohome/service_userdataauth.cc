@@ -953,6 +953,11 @@ void UserDataAuthAdaptor::AuthSessionExpiringCallback(
   SendAuthSessionExpiringSignal(signal);
 }
 
+void UserDataAuthAdaptor::EvictedKeyRestoredCallback(
+    user_data_auth::EvictedKeyRestored signal) {
+  SendEvictedKeyRestoredSignal(signal);
+}
+
 void Pkcs11Adaptor::Pkcs11IsTpmTokenReady(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::Pkcs11IsTpmTokenReadyReply>> response,

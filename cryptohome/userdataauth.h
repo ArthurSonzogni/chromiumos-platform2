@@ -252,6 +252,12 @@ class UserDataAuth {
       const base::RepeatingCallback<void(user_data_auth::AuthSessionExpiring)>&
           callback);
 
+  // Set the EvictedKeyRestored callback. This is usually called by
+  // the DBus adaptor.
+  void SetEvictedKeyRestoredCallback(
+      const base::RepeatingCallback<void(user_data_auth::EvictedKeyRestored)>&
+          callback);
+
   // Remove the cryptohome (user's home directory) specified in
   // |request.identifier|. See definition of RemoveReply for what is returned.
   void Remove(user_data_auth::RemoveRequest request,
@@ -1217,6 +1223,10 @@ class UserDataAuth {
   // The repeating callback to send AuthSessionExpiring signal.
   base::RepeatingCallback<void(user_data_auth::AuthSessionExpiring)>
       auth_session_expiring_callback_;
+
+  // The repeating callback to send EvictedKeyRestored signal.
+  base::RepeatingCallback<void(user_data_auth::EvictedKeyRestored)>
+      evicted_key_restored_callback_;
 
   // The object used to instantiate AuthBlocks.
   std::unique_ptr<AuthBlockUtility> default_auth_block_utility_;

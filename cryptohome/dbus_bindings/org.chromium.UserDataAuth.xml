@@ -654,6 +654,16 @@ do.
                     value="user_data_auth::AuthSessionExpiring" />
       </arg>
     </signal>
+
+    <!-- EvictedKeyRestored: Emitted when RestoreDeviceKey is completed with the result. -->
+    <signal name="EvictedKeyRestored">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="status" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::EvictedKeyRestored" />
+      </arg>
+    </signal>
   </interface>
 
   <interface name="org.chromium.CryptohomePkcs11Interface">

@@ -51,6 +51,9 @@ class UserDataAuthAdaptor
     service_->SetAuthSessionExpiringCallback(
         base::BindRepeating(&UserDataAuthAdaptor::AuthSessionExpiringCallback,
                             base::Unretained(this)));
+    service_->SetEvictedKeyRestoredCallback(
+        base::BindRepeating(&UserDataAuthAdaptor::EvictedKeyRestoredCallback,
+                            base::Unretained(this)));
   }
   UserDataAuthAdaptor(const UserDataAuthAdaptor&) = delete;
   UserDataAuthAdaptor& operator=(const UserDataAuthAdaptor&) = delete;
@@ -446,6 +449,10 @@ class UserDataAuthAdaptor
   // AuthSessionExpiringCallback is sent when AuthSession has less than a
   // minute remaining.
   void AuthSessionExpiringCallback(user_data_auth::AuthSessionExpiring signal);
+
+  // This is called by UserDataAuth for sending a signal when DeviceKeyRestore
+  // succeeds.
+  void EvictedKeyRestoredCallback(user_data_auth::EvictedKeyRestored signal);
 
  private:
   brillo::dbus_utils::DBusObject* dbus_object_;

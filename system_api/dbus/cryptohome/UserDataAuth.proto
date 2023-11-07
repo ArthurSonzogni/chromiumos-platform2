@@ -1671,9 +1671,8 @@ message AuthenticateAuthFactorCompleted {
 
 // The message sent in signal EvictedKeyRestoreSignal
 message EvictedKeyRestored {
-  bool done = 1;
   // Unique ID associated with the current suspend request,
   // when RestoreDeviceKey completes, correlated to a unique
   // suspend attempt.
-  int64 eviction_id = 2;
+  int64 eviction_id = 1;
 }

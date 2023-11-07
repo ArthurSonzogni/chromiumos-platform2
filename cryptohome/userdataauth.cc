@@ -1642,6 +1642,12 @@ void UserDataAuth::SetAuthenticateAuthFactorCompletedCallback(
   authenticate_auth_factor_completed_callback_ = callback;
 }
 
+void UserDataAuth::SetEvictedKeyRestoredCallback(
+    const base::RepeatingCallback<void(user_data_auth::EvictedKeyRestored)>&
+        callback) {
+  evicted_key_restored_callback_ = callback;
+}
+
 void UserDataAuth::SetAuthFactorAddedCallback(
     const base::RepeatingCallback<void(user_data_auth::AuthFactorAdded)>&
         callback) {
