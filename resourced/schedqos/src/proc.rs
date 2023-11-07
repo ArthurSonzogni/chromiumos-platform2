@@ -41,7 +41,11 @@ impl Display for Error {
 
 impl From<io::Error> for Error {
     fn from(e: io::Error) -> Self {
-        Self::Io(e)
+        if e.raw_os_error() == Some(libc::ESRCH) {
+            Self::NotFound
+        } else {
+            Self::Io(e)
+        }
     }
 }
 

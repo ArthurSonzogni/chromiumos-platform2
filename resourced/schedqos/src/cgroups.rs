@@ -151,7 +151,7 @@ impl CpuCgroup {
 }
 
 /// Cpuset cgroups
-#[derive(Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum CpusetCgroup {
     All,
     Efficient,

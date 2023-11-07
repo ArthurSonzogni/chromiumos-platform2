@@ -4,6 +4,8 @@
 
 use std::fs::File;
 use std::io::Read;
+use std::os::fd::OwnedFd;
+use std::os::unix::net::UnixDatagram;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::sync::Barrier;
@@ -13,6 +15,7 @@ use std::time::Duration;
 
 use crate::proc::ThreadChecker;
 pub(crate) use crate::sched_attr::assert_sched_attr;
+pub(crate) use crate::sched_attr::SchedAttrChecker;
 use crate::CgroupContext;
 use crate::ProcessId;
 use crate::ThreadId;
@@ -25,40 +28,73 @@ pub struct FakeCgroupFiles {
     pub cpuset_efficient: File,
 }
 
+fn create_fake_file_pair() -> (File, File) {
+    let (s1, s2) = UnixDatagram::pair().unwrap();
+    s1.set_nonblocking(true).unwrap();
+    s2.set_nonblocking(true).unwrap();
+    let fd1: OwnedFd = s1.into();
+    let fd2: OwnedFd = s2.into();
+    (fd1.into(), fd2.into())
+}
+
+/// Create fake cgroup files backed by unix datagram sockets.
+///
+/// unix datagram socket is useful because there is no delimiters between process/thread ids.
+///
+/// [FakeCgroupFiles] must be retained while [CgroupContext] is used. Otherwise writes fail as
+/// `ECONNREFUSED`.
 pub fn create_fake_cgroup_context_pair() -> (CgroupContext, FakeCgroupFiles) {
-    let cpu_normal = tempfile::NamedTempFile::new().unwrap();
-    let cpu_background = tempfile::NamedTempFile::new().unwrap();
-    let cpuset_all = tempfile::NamedTempFile::new().unwrap();
-    let cpuset_efficient = tempfile::NamedTempFile::new().unwrap();
+    let cpu_normal = create_fake_file_pair();
+    let cpu_background = create_fake_file_pair();
+    let cpuset_all = create_fake_file_pair();
+    let cpuset_efficient = create_fake_file_pair();
     (
         CgroupContext {
-            cpu_normal: cpu_normal.reopen().unwrap(),
-            cpu_background: cpu_background.reopen().unwrap(),
-            cpuset_all: cpuset_all.reopen().unwrap(),
-            cpuset_efficient: cpuset_efficient.reopen().unwrap(),
+            cpu_normal: cpu_normal.0,
+            cpu_background: cpu_background.0,
+            cpuset_all: cpuset_all.0,
+            cpuset_efficient: cpuset_efficient.0,
         },
         FakeCgroupFiles {
-            cpu_normal: cpu_normal.reopen().unwrap(),
-            cpu_background: cpu_background.reopen().unwrap(),
-            cpuset_all: cpuset_all.reopen().unwrap(),
-            cpuset_efficient: cpuset_efficient.reopen().unwrap(),
+            cpu_normal: cpu_normal.1,
+            cpu_background: cpu_background.1,
+            cpuset_all: cpuset_all.1,
+            cpuset_efficient: cpuset_efficient.1,
         },
     )
 }
 
 pub fn read_number(file: &mut File) -> Option<u32> {
     let mut buf = [0; 1024];
-    let n = file.read(buf.as_mut_slice()).unwrap();
-    if n == 0 {
-        None
-    } else {
-        Some(
+    match file.read(buf.as_mut_slice()) {
+        Ok(0) => None,
+        Ok(n) => Some(
             String::from_utf8(buf[..n].to_vec())
                 .unwrap()
                 .parse::<u32>()
                 .unwrap(),
-        )
+        ),
+        Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => None,
+        Err(e) => panic!("failed to read file: {:#}", e),
     }
+}
+
+pub struct CgroupFileIterator<'a>(&'a mut File);
+
+impl Iterator for CgroupFileIterator<'_> {
+    type Item = u32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        read_number(self.0)
+    }
+}
+
+pub fn read_numbers(file: &mut File) -> CgroupFileIterator {
+    CgroupFileIterator(file)
+}
+
+pub fn drain_file(file: &mut File) {
+    while read_number(file).is_some() {}
 }
 
 pub(crate) fn get_current_thread_id() -> ThreadId {
