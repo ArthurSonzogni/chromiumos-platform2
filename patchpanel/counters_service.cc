@@ -286,12 +286,19 @@ TrafficCounter::Source TrafficSourceToProto(TrafficSource source) {
       return TrafficCounter::VPN;
     case TrafficSource::kArc:
       return TrafficCounter::ARC;
-    case TrafficSource::kCrosVM:
-    case TrafficSource::kBruschetta:
+    case TrafficSource::kCrostiniVM:
+    // TODO(b/309607419): Define proto TrafficCounter for Bruschetta and
+    // Borealis
+    case TrafficSource::kBruschettaVM:
+    case TrafficSource::kBorealisVM:
       return TrafficCounter::CROSVM;
     case TrafficSource::kParallelsVM:
       return TrafficCounter::PARALLELS_VM;
+    // TODO(b/309607419): Define proto TrafficCounter for Tethering, WiFi
+    // Direct, and WiFi local only Hotspot.
     case TrafficSource::kTetherDownstream:
+    case TrafficSource::kWiFiDirect:
+    case TrafficSource::kWiFiLOHS:
       return TrafficCounter::SYSTEM;
     case TrafficSource::kArcVpn:
       return TrafficCounter::VPN;
@@ -316,9 +323,11 @@ TrafficSource ProtoToTrafficSource(TrafficCounter::Source source) {
     case TrafficCounter::ARC:
       return TrafficSource::kArc;
     case TrafficCounter::CROSVM:
-      return TrafficSource::kCrosVM;
+      return TrafficSource::kCrostiniVM;
     case TrafficCounter::PARALLELS_VM:
       return TrafficSource::kParallelsVM;
+    // TODO(b/309607419): Added cases for Bruschetta, Borealis, Tethering, WiFi
+    // Direct, and WiFi local only Hotspot.
     default:
     case TrafficCounter::UNKNOWN:
       return TrafficSource::kUnknown;

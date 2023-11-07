@@ -96,7 +96,7 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
       .WillOnce(Return("vmtap0"));
   EXPECT_CALL(*datapath_, AddIPv4Route).WillOnce(Return(true));
   EXPECT_CALL(*datapath_,
-              StartRoutingDeviceAsUser("vmtap0", TrafficSource::kCrosVM, _,
+              StartRoutingDeviceAsUser("vmtap0", TrafficSource::kCrostiniVM, _,
                                        Eq(std::nullopt), Eq(std::nullopt),
                                        Eq(std::nullopt)));
   EXPECT_CALL(*datapath_, AddInboundIPv4DNAT).Times(0);
@@ -132,7 +132,8 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
 
   // The virtual datapath for the Crostini VM can successfully stop.
   EXPECT_CALL(*datapath_, RemoveInterface("vmtap0"));
-  EXPECT_CALL(*datapath_, StopRoutingDevice("vmtap0", TrafficSource::kCrosVM));
+  EXPECT_CALL(*datapath_,
+              StopRoutingDevice("vmtap0", TrafficSource::kCrostiniVM));
   EXPECT_CALL(*datapath_, RemoveInboundIPv4DNAT).Times(0);
   EXPECT_CALL(*forwarding_service_,
               StopForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
@@ -229,8 +230,8 @@ TEST_F(CrostiniServiceTest, StartStopBruschettaVM) {
       .WillOnce(Return("vmtap0"));
   EXPECT_CALL(*datapath_, AddIPv4Route).Times(0);
   EXPECT_CALL(*datapath_,
-              StartRoutingDeviceAsUser("vmtap0", TrafficSource::kBruschetta, _,
-                                       Eq(std::nullopt), Eq(std::nullopt),
+              StartRoutingDeviceAsUser("vmtap0", TrafficSource::kBruschettaVM,
+                                       _, Eq(std::nullopt), Eq(std::nullopt),
                                        Eq(std::nullopt)));
   EXPECT_CALL(*datapath_, AddInboundIPv4DNAT).Times(0);
   EXPECT_CALL(
@@ -266,7 +267,7 @@ TEST_F(CrostiniServiceTest, StartStopBruschettaVM) {
   // The virtual datapath for the Bruschetta VM can successfully stop.
   EXPECT_CALL(*datapath_, RemoveInterface("vmtap0"));
   EXPECT_CALL(*datapath_,
-              StopRoutingDevice("vmtap0", TrafficSource::kBruschetta));
+              StopRoutingDevice("vmtap0", TrafficSource::kBruschettaVM));
   EXPECT_CALL(*datapath_, RemoveInboundIPv4DNAT).Times(0);
   EXPECT_CALL(*forwarding_service_,
               StopForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
@@ -303,7 +304,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
 
       .WillOnce(Return("vmtap0"));
   EXPECT_CALL(*datapath_,
-              StartRoutingDeviceAsUser("vmtap0", TrafficSource::kCrosVM, _,
+              StartRoutingDeviceAsUser("vmtap0", TrafficSource::kCrostiniVM, _,
                                        Eq(std::nullopt), Eq(std::nullopt),
                                        Eq(std::nullopt)));
   EXPECT_CALL(*datapath_, AddInboundIPv4DNAT).Times(0);
@@ -360,7 +361,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   EXPECT_CALL(*datapath_, AddTunTap("", _, _, "crosvm", DeviceMode::kTap))
       .WillOnce(Return("vmtap2"));
   EXPECT_CALL(*datapath_,
-              StartRoutingDeviceAsUser("vmtap2", TrafficSource::kCrosVM, _,
+              StartRoutingDeviceAsUser("vmtap2", TrafficSource::kCrostiniVM, _,
                                        Eq(std::nullopt), Eq(std::nullopt),
                                        Eq(std::nullopt)));
   EXPECT_CALL(
@@ -399,7 +400,8 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
 
   // Stop first Crostini VM. Its virtual device is destroyed.
   EXPECT_CALL(*datapath_, RemoveInterface("vmtap0"));
-  EXPECT_CALL(*datapath_, StopRoutingDevice("vmtap0", TrafficSource::kCrosVM));
+  EXPECT_CALL(*datapath_,
+              StopRoutingDevice("vmtap0", TrafficSource::kCrostiniVM));
   EXPECT_CALL(*datapath_, RemoveInboundIPv4DNAT).Times(0);
   EXPECT_CALL(*forwarding_service_,
               StopForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
@@ -415,7 +417,8 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
 
   // Stop second Crostini VM. Its virtual device is destroyed.
   EXPECT_CALL(*datapath_, RemoveInterface("vmtap2"));
-  EXPECT_CALL(*datapath_, StopRoutingDevice("vmtap2", TrafficSource::kCrosVM));
+  EXPECT_CALL(*datapath_,
+              StopRoutingDevice("vmtap2", TrafficSource::kCrostiniVM));
   EXPECT_CALL(*datapath_, RemoveInboundIPv4DNAT).Times(0);
   EXPECT_CALL(*forwarding_service_,
               StopForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap2",
@@ -461,7 +464,7 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
       .WillOnce(Return("vmtap0"))
       .WillOnce(Return("vmtap1"));
   EXPECT_CALL(*datapath_,
-              StartRoutingDeviceAsUser("vmtap0", TrafficSource::kCrosVM, _,
+              StartRoutingDeviceAsUser("vmtap0", TrafficSource::kCrostiniVM, _,
                                        Eq(std::nullopt), Eq(std::nullopt),
                                        Eq(std::nullopt)));
   EXPECT_CALL(*datapath_,
@@ -541,8 +544,9 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
 }
 
 TEST_F(CrostiniServiceTest, VMTypeConversions) {
-  EXPECT_EQ(TrafficSource::kCrosVM, CrostiniService::TrafficSourceFromVMType(
-                                        CrostiniService::VMType::kTermina));
+  EXPECT_EQ(TrafficSource::kCrostiniVM,
+            CrostiniService::TrafficSourceFromVMType(
+                CrostiniService::VMType::kTermina));
   EXPECT_EQ(TrafficSource::kParallelsVM,
             CrostiniService::TrafficSourceFromVMType(
                 CrostiniService::VMType::kParallels));

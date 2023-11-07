@@ -14,6 +14,7 @@
 #include <optional>
 #include <ostream>
 #include <string>
+#include <string_view>
 
 #include <base/strings/stringprintf.h>
 #include <base/types/cxx23_to_underlying.h>
@@ -59,16 +60,22 @@ enum TrafficSource {
   // Forwarded sources:
   // ARC++ and ARCVM.
   kArc = 0x20,
-  // Crostini VMs and lxc containers.
-  kCrosVM = 0x21,
+  // Crostini VMs and lxd containers.
+  kCrostiniVM = 0x21,
   // Parallels VMs.
   kParallelsVM = 0x22,
-  // A tethered downstream network. Currently reserved for future use.
+  // A tethered downstream network.
   kTetherDownstream = 0x23,
   // Traffic emitted by Android VPNs for their tunnelled connections.
   kArcVpn = 0x24,
   // Bruschetta VMs.
-  kBruschetta = 0x25,
+  kBruschettaVM = 0x25,
+  // Borealis VMs.
+  kBorealisVM = 0x26,
+  // WiFi Direct network.
+  kWiFiDirect = 0x27,
+  // WiFi local only hotspot network.
+  kWiFiLOHS = 0x28,
 };
 
 // QoSCategory in fwmark indicates the inferred result from each QoS detector
@@ -91,7 +98,7 @@ enum class QoSCategory : uint8_t {
   kWebRTC = 4,
 };
 
-const std::string& TrafficSourceName(TrafficSource source);
+std::string_view TrafficSourceName(TrafficSource source);
 
 // Returns the "mark/mask" string for `category` which can be used as an
 // argument to call iptables, e.g., "0x00000040/0x000000e0".
@@ -264,13 +271,15 @@ constexpr std::array<TrafficSource, 5> kLocalSources{
     {kChrome, kUser, kUpdateEngine, kSystem, kHostVpn}};
 
 // All forwarded sources
-constexpr std::array<TrafficSource, 5> kForwardedSources{
-    {kArc, kCrosVM, kParallelsVM, kTetherDownstream, kArcVpn}};
+constexpr std::array<TrafficSource, 9> kForwardedSources{
+    {kArc, kBorealisVM, kBruschettaVM, kCrostiniVM, kParallelsVM,
+     kTetherDownstream, kWiFiDirect, kWiFiLOHS, kArcVpn}};
 
 // All sources
-constexpr std::array<TrafficSource, 10> kAllSources{
-    {kChrome, kUser, kUpdateEngine, kSystem, kHostVpn, kArc, kCrosVM,
-     kParallelsVM, kTetherDownstream, kArcVpn}};
+constexpr std::array<TrafficSource, 14> kAllSources{
+    {kChrome, kUser, kUpdateEngine, kSystem, kHostVpn, kArc, kBorealisVM,
+     kBruschettaVM, kCrostiniVM, kParallelsVM, kTetherDownstream, kWiFiDirect,
+     kWiFiLOHS, kArcVpn}};
 
 // Constant fwmark value for tagging traffic with the "route-on-vpn" intent.
 constexpr const Fwmark kFwmarkRouteOnVpn = {.policy = 0x80};

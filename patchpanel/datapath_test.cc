@@ -1273,7 +1273,7 @@ TEST(DatapathTest, StartRoutingDeviceAsUser) {
                   "mangle -A PREROUTING_vmtap0 -j apply_vpn_mark -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.StartRoutingDeviceAsUser("vmtap0", TrafficSource::kCrosVM,
+  datapath.StartRoutingDeviceAsUser("vmtap0", TrafficSource::kCrostiniVM,
                                     IPv4Address(1, 2, 3, 4),
                                     /*int_ipv4_addr=*/std::nullopt);
 }
@@ -1309,7 +1309,7 @@ TEST(DatapathTest, StopRoutingDeviceAsUser) {
   Verify_iptables(*runner, IpFamily::kDual, "mangle -X PREROUTING_vmtap0 -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.StopRoutingDevice("vmtap0", TrafficSource::kCrosVM);
+  datapath.StopRoutingDevice("vmtap0", TrafficSource::kCrostiniVM);
 }
 
 TEST(DatapathTest, StartStopConnectionPinning) {

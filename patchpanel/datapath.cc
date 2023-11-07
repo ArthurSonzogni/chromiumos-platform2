@@ -1282,7 +1282,7 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
 void Datapath::AddDownstreamInterfaceRules(const std::string& int_ifname,
                                            TrafficSource source,
                                            bool static_ipv6) {
-  if (source != TrafficSource::kBruschetta) {
+  if (source != TrafficSource::kBruschettaVM) {
     if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                         Iptables::Command::kA, "FORWARD", "ACCEPT", /*iif=*/"",
                         int_ifname)) {
@@ -1296,7 +1296,7 @@ void Datapath::AddDownstreamInterfaceRules(const std::string& int_ifname,
     LOG(ERROR) << "Failed to enable IP forwarding to " << int_ifname;
   }
 
-  if (source == TrafficSource::kBruschetta) {
+  if (source == TrafficSource::kBruschettaVM) {
     if (!ModifyIsolatedGuestDropRule(Iptables::Command::kA, int_ifname)) {
       LOG(ERROR) << "Fail to setup Bruschetta traffic block rule on "
                  << int_ifname;
@@ -1437,7 +1437,7 @@ void Datapath::StartRoutingDeviceAsUser(
 
 void Datapath::StopRoutingDevice(const std::string& int_ifname,
                                  TrafficSource source) {
-  if (source != TrafficSource::kBruschetta) {
+  if (source != TrafficSource::kBruschettaVM) {
     ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                    Iptables::Command::kD, "FORWARD", "ACCEPT", /*iif=*/"",
                    int_ifname);
@@ -1445,7 +1445,7 @@ void Datapath::StopRoutingDevice(const std::string& int_ifname,
   ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                  Iptables::Command::kD, "FORWARD", "ACCEPT", int_ifname,
                  /*oif=*/"");
-  if (source == TrafficSource::kBruschetta) {
+  if (source == TrafficSource::kBruschettaVM) {
     ModifyIsolatedGuestDropRule(Iptables::Command::kD, int_ifname);
   }
 

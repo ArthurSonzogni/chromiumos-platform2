@@ -5,8 +5,9 @@
 #include "patchpanel/routing_service.h"
 
 #include <iostream>
-#include <map>
+#include <string_view>
 
+#include <base/containers/fixed_flat_map.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 
@@ -78,25 +79,27 @@ std::string QoSFwmarkWithMask(QoSCategory category) {
       {mark.ToString(), "/", kFwmarkQoSCategoryMask.ToString()});
 }
 
-const std::string& TrafficSourceName(TrafficSource source) {
-  static std::map<TrafficSource, std::string> kTrafficSourceNames = {
-      {kChrome, "CHROME"},
-      {kUser, "USER"},
-      {kUpdateEngine, "UPDATE_ENGINE"},
-      {kSystem, "SYSTEM"},
-      {kHostVpn, "HOST_VPN"},
-      {kArc, "ARC"},
-      {kCrosVM, "CROSVM"},
-      {kParallelsVM, "PARALLELS_VM"},
-      {kTetherDownstream, "TETHER_DOWNSTREAM"},
-      {kArcVpn, "ARC_VPN"},
-      {kUnknown, "UNKNOWN"},
-  };
-  const auto& it = kTrafficSourceNames.find(source);
-  if (it == kTrafficSourceNames.end()) {
-    return kTrafficSourceNames.find(kUnknown)->second;
-  }
-  return it->second;
+std::string_view TrafficSourceName(TrafficSource source) {
+  static constexpr auto kTrafficSourceNames =
+      base::MakeFixedFlatMap<TrafficSource, std::string_view>({
+          {kArc, "ARC"},
+          {kArcVpn, "ARC_VPN"},
+          {kBorealisVM, "BOREALIS_VM"},
+          {kBruschettaVM, "BRUSCHETTA_VM"},
+          {kChrome, "CHROME"},
+          {kCrostiniVM, "CROSTINI_VM"},
+          {kHostVpn, "HOST_VPN"},
+          {kParallelsVM, "PARALLELS_VM"},
+          {kSystem, "SYSTEM"},
+          {kTetherDownstream, "TETHER_DOWNSTREAM"},
+          {kUnknown, "UNKNOWN"},
+          {kUpdateEngine, "UPDATE_ENGINE"},
+          {kUser, "USER"},
+          {kWiFiDirect, "WIFI_DIRECT"},
+          {kWiFiLOHS, "WIFI_LOHS"},
+      });
+  const auto it = kTrafficSourceNames.find(source);
+  return it != kTrafficSourceNames.end() ? it->second : "UNKNOWN";
 }
 
 std::ostream& operator<<(std::ostream& stream, const LocalSourceSpecs& source) {

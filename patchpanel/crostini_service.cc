@@ -438,15 +438,13 @@ TrafficSource CrostiniService::TrafficSourceFromVMType(
     CrostiniService::VMType vm_type) {
   switch (vm_type) {
     case VMType::kTermina:
-      return TrafficSource::kCrosVM;
+      return TrafficSource::kCrostiniVM;
     case VMType::kParallels:
       return TrafficSource::kParallelsVM;
     case VMType::kBruschetta:
-      return TrafficSource::kBruschetta;
+      return TrafficSource::kBruschettaVM;
     case VMType::kBorealis:
-      // TODO(b/279994478): Clarify whether Borealis needs its own traffic
-      // source type.
-      return TrafficSource::kCrosVM;
+      return TrafficSource::kBorealisVM;
   }
 }
 
