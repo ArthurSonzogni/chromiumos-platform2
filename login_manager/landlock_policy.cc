@@ -9,13 +9,23 @@ namespace login_manager {
 namespace {
 
 // Landlock allowlisted paths.
-constexpr base::StringPiece kAllowedPaths[] = {
-    "/dev",      "/home/chronos", "/home/user",
-    "/media",    "/mnt",          "/opt",
-    "/proc",     "/run",          "/sys/fs/cgroup/",
-    "/tmp",      "/var/cache",    "/var/lib",
-    "/var/lock", "/var/log",      "/var/spool/support",
-    "/var/tmp"};
+constexpr base::StringPiece kAllowedPaths[] = {"/dev",
+                                               "/home/chronos",
+                                               "/home/user",
+                                               "/media",
+                                               "/mnt",
+                                               "/opt",
+                                               "/proc",
+                                               "/run",
+                                               "/sys/fs/cgroup/",
+                                               "/tmp",
+                                               "/usr/local",
+                                               "/var/cache",
+                                               "/var/lib",
+                                               "/var/lock",
+                                               "/var/log",
+                                               "/var/spool/support",
+                                               "/var/tmp"};
 
 constexpr char kRootPath[] = "/";
 
@@ -32,9 +42,6 @@ LandlockPolicy::GetPolicySnapshotForTesting() {
 
 void LandlockPolicy::SetupPolicy(minijail* j) {
   minijail_add_fs_restriction_rx(j, kRootPath);
-
-  // TODO(b/286058542): allowlist paths for dev-mode only once the list of
-  // required paths is narrowed down.
 
   // Add paths to the Minijail.
   for (const auto& path : kAllowedPaths) {
