@@ -10,11 +10,14 @@ use gpt_disk_types::{BlockSize, GptPartitionEntry, Lba, LbaRangeInclusive};
 use log::{error, info};
 use std::{
     fs::File,
+    io::BufReader,
     os::unix::ffi::OsStrExt,
     path::{Path, PathBuf},
     process::Command,
     str::from_utf8,
 };
+use tar::Archive;
+use xz2::bufread::XzDecoder;
 
 // Executes a command and logs its result. There are three outcomes when
 // executing a command:
@@ -86,6 +89,39 @@ pub fn reload_partitions(device: &Path) -> Result<()> {
     blockdev_cmd.arg("--rereadpt").arg(device);
 
     execute_command(blockdev_cmd)
+}
+
+/// Uncompresses a tar from `src` to `dst`. In this case `src` needs to point to
+/// a tar archive and `dst` to a folder where the items are unpacked to. This
+/// also returns an `Vec<PathBuf>` of the entries that have been successfully
+/// unpacked to `dst`. Please note that these paths are relative to `dst´.
+pub fn uncompress_tar_xz<P1: AsRef<Path>, P2: AsRef<Path>>(
+    src: P1,
+    dst: P2,
+) -> Result<Vec<PathBuf>> {
+    let file = File::open(src).context("Unable to open tar archive")?;
+    let xz_decoder = XzDecoder::new(BufReader::new(file));
+
+    let mut result: Vec<PathBuf> = vec![];
+    let mut archive = Archive::new(xz_decoder);
+    for entry in archive
+        .entries()
+        .context("Unable to access all contents of the tar")?
+    {
+        let mut entry = entry.context("Unable to read entry of the tar")?;
+        entry
+            .unpack_in(dst.as_ref())
+            .context("Unable to unpack entry of the tar")?;
+
+        result.push(
+            entry
+                .path()
+                .context("Unable to get tar entries path")?
+                .to_path_buf(),
+        );
+    }
+
+    Ok(result)
 }
 
 /// Creates an EXT4 filesystem on `device`.
@@ -163,6 +199,54 @@ fn add_partition_after(range: LbaRangeInclusive, size_in_lba: u64) -> Result<Lba
 mod tests {
     use super::*;
     use gpt_disk_types::LbaLe;
+    use std::ffi::OsStr;
+
+    const FILE_CONTENTS: &[u8] = b"Hello World!";
+    const FILE_NAME: &str = "foo.txt";
+    const TAR_NAME: &str = "foo.tar.xz";
+
+    fn setup_tar_xz() -> Result<tempfile::TempDir> {
+        // First setup a tempdir.
+        let tempdir = tempfile::tempdir()?;
+
+        // Next create a file in there.
+        let file_path = tempdir.path().join(FILE_NAME);
+        std::fs::write(&file_path, FILE_CONTENTS)?;
+
+        // Now create a tar.xz of that file.
+        let mut tar_cmd = Command::new("tar");
+        // Tell tar to (c)ompress an xz (J) of a (f)ile.
+        tar_cmd.arg("-cJf").arg(tempdir.path().join(TAR_NAME));
+        // Change dir to the temp path so that that the file is added
+        // without a directory prefix.
+        tar_cmd.arg("-C");
+        tar_cmd.arg(tempdir.path());
+        // We want to compress the newly created file.
+        tar_cmd.arg(FILE_NAME);
+        execute_command(tar_cmd)?;
+
+        Ok(tempdir)
+    }
+
+    #[test]
+    fn test_uncompress_tar_xz() -> Result<()> {
+        let tempdir = setup_tar_xz()?;
+        // Create a new dir where we uncompress to.
+        let new_dir_path = tempdir.path().join("uncompressed");
+        std::fs::create_dir(&new_dir_path)?;
+
+        // Uncompress the file.
+        let file_path = tempdir.path().join(TAR_NAME);
+        let result = uncompress_tar_xz(file_path, &new_dir_path)?;
+
+        // Compare for equality.
+        assert_eq!(result, vec![Path::new(FILE_NAME)]);
+
+        let buf = std::fs::read(new_dir_path.join(&result[0]))?;
+
+        assert_eq!(&buf, FILE_CONTENTS);
+        Ok(())
+    }
 
     #[test]
     fn test_execute_bad_commands() {
