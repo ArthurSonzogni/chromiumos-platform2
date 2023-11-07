@@ -3203,7 +3203,7 @@ void UserDataAuth::EvictDeviceKey(
         std::move(on_done), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoActiveMountInEvictDeviceKey),
-            ErrorActionSet({PossibleAction::kAuth}),
+            ErrorActionSet({PossibleAction::kAuth, PossibleAction::kReboot}),
             user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL));
     return;
   }

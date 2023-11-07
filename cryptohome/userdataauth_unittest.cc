@@ -4824,6 +4824,16 @@ class UserDataAuthApiTest : public UserDataAuthTest {
     return reply_future.Get();
   }
 
+  std::optional<user_data_auth::EvictDeviceKeyReply> EvictDeviceKeySync(
+      const user_data_auth::EvictDeviceKeyRequest& in_request) {
+    TestFuture<user_data_auth::EvictDeviceKeyReply> reply_future;
+    userdataauth_->EvictDeviceKey(
+        in_request,
+        reply_future.GetCallback<const user_data_auth::EvictDeviceKeyReply&>());
+    RunUntilIdle();
+    return reply_future.Get();
+  }
+
   std::optional<user_data_auth::ModifyAuthFactorIntentsReply>
   ModifyAuthFactorIntentsSync(
       const user_data_auth::ModifyAuthFactorIntentsRequest& in_request) {
@@ -5043,6 +5053,125 @@ TEST_F(UserDataAuthApiTest, MountFailed) {
                    user_data_auth::PossibleAction::POSSIBLY_REBOOT,
                    user_data_auth::PossibleAction::POSSIBLY_DELETE_VAULT,
                    user_data_auth::PossibleAction::POSSIBLY_POWERWASH})));
+}
+
+TEST_F(UserDataAuthApiTest, EvictDeviceKeyFailedNoSessionFound) {
+  // Check that EvictDeviceKey fails when there is no user session.
+  user_data_auth::EvictDeviceKeyRequest evict_req;
+  std::optional<user_data_auth::EvictDeviceKeyReply> evict_reply =
+      EvictDeviceKeySync(evict_req);
+  ASSERT_TRUE(evict_reply.has_value());
+
+  EXPECT_THAT(evict_reply->error_info(),
+              HasPossibleActions(
+                  std::set({user_data_auth::PossibleAction::POSSIBLY_AUTH,
+                            user_data_auth::PossibleAction::POSSIBLY_REBOOT})));
+}
+
+TEST_F(UserDataAuthApiTest, EvictDeviceKeyFailedNoMountedSession) {
+  // Prepare an account.
+  ASSERT_TRUE(CreateTestUser());
+
+  // Session is available after mounting.
+  SetupMount("foo@example.com");
+  EXPECT_CALL(*session_, IsActive()).WillOnce(Return(false));
+
+  // Check that EvictDeviceKey fails when there is no mounted user session.
+  user_data_auth::EvictDeviceKeyRequest evict_req;
+  std::optional<user_data_auth::EvictDeviceKeyReply> evict_reply =
+      EvictDeviceKeySync(evict_req);
+  ASSERT_TRUE(evict_reply.has_value());
+
+  EXPECT_THAT(evict_reply->error_info(),
+              HasPossibleActions(
+                  std::set({user_data_auth::PossibleAction::POSSIBLY_AUTH,
+                            user_data_auth::PossibleAction::POSSIBLY_REBOOT})));
+}
+
+TEST_F(UserDataAuthApiTest, EvictDeviceKeyFailedNoHomedirs) {
+  // Prepare an account.
+  ASSERT_TRUE(CreateTestUser());
+  std::optional<std::string> session_id = GetTestAuthedAuthSession();
+  ASSERT_TRUE(session_id.has_value());
+
+  //   // Session is mounted but vault doesn't exist.
+  SetupMount("foo@example.com");
+  EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(false));
+
+  // Check that EvictDeviceKey fails when the mounted session doesn't have a
+  // homdirs.
+  user_data_auth::EvictDeviceKeyRequest evict_req;
+  std::optional<user_data_auth::EvictDeviceKeyReply> evict_reply =
+      EvictDeviceKeySync(evict_req);
+  ASSERT_TRUE(evict_reply.has_value());
+
+  EXPECT_THAT(evict_reply->error_info(),
+              HasPossibleActions(
+                  std::set({user_data_auth::PossibleAction::POSSIBLY_AUTH})));
+}
+
+TEST_F(UserDataAuthApiTest, EvictDeviceKeyFailedDuringSessionKeyEviction) {
+  // Prepare an account.
+  ASSERT_TRUE(CreateTestUser());
+  std::optional<std::string> session_id = GetTestAuthedAuthSession();
+  ASSERT_TRUE(session_id.has_value());
+
+  // Session is mounted and vault exists.
+  SetupMount("foo@example.com");
+  EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
+  const CryptohomeError::ErrorLocationPair fake_error_location =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<CryptohomeError::ErrorLocation>(1),
+          std::string("FakeErrorLocation"));
+
+  // Error happens during the actual key eviction in the user session.
+  EXPECT_CALL(*session_, EvictDeviceKey()).WillOnce(Invoke([&]() {
+    return MakeStatus<CryptohomeMountError>(
+        fake_error_location,
+        error::ErrorActionSet({error::PossibleAction::kReboot}),
+        MOUNT_ERROR_FATAL, std::nullopt);
+  }));
+
+  // Check that EvictDeviceKey fails when the key eviction operation fails.
+  user_data_auth::EvictDeviceKeyRequest evict_req;
+  std::optional<user_data_auth::EvictDeviceKeyReply> evict_reply =
+      EvictDeviceKeySync(evict_req);
+  ASSERT_TRUE(evict_reply.has_value());
+
+  EXPECT_EQ(evict_reply->error(), CRYPTOHOME_ERROR_MOUNT_FATAL);
+
+  ASSERT_TRUE(evict_reply->has_error_info());
+  EXPECT_THAT(evict_reply->error_info(),
+              HasPossibleActions(
+                  std::set({user_data_auth::PossibleAction::POSSIBLY_REBOOT})));
+}
+
+TEST_F(UserDataAuthApiTest, EvictDeviceKeySuccess) {
+  // Prepare an account.
+  ASSERT_TRUE(CreateTestUser());
+  std::optional<std::string> session_id = GetTestAuthedAuthSession();
+  ASSERT_TRUE(session_id.has_value());
+
+  // Session is mounted and vault exists.
+  SetupMount("foo@example.com");
+  EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
+
+  // Error happens during the actual key eviction in the user session.
+  EXPECT_CALL(*session_, EvictDeviceKey()).WillOnce(Invoke([]() {
+    return OkStatus<CryptohomeMountError>();
+  }));
+
+  // Check that EvictDeviceKey fails when the key eviction operation fails.
+  user_data_auth::EvictDeviceKeyRequest evict_req;
+  std::optional<user_data_auth::EvictDeviceKeyReply> evict_reply =
+      EvictDeviceKeySync(evict_req);
+
+  ASSERT_TRUE(evict_reply.has_value());
+  EXPECT_EQ(evict_reply->error(), CRYPTOHOME_ERROR_NOT_SET);
+  ASSERT_FALSE(evict_reply->has_error_info());
 }
 
 TEST_F(UserDataAuthApiTest, RestoreDeviceKeyFailedWithoutPersistentVault) {
