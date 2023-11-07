@@ -786,6 +786,8 @@ vm_tools::tremplin::UpgradeContainerRequest::Version ConvertVersion(
       return vm_tools::tremplin::UpgradeContainerRequest::DEBIAN_BUSTER;
     case UpgradeContainerRequest::DEBIAN_BULLSEYE:
       return vm_tools::tremplin::UpgradeContainerRequest::DEBIAN_BULLSEYE;
+    case UpgradeContainerRequest::DEBIAN_BOOKWORM:
+      return vm_tools::tremplin::UpgradeContainerRequest::DEBIAN_BOOKWORM;
     default:
       return vm_tools::tremplin::UpgradeContainerRequest::UNKNOWN;
   }

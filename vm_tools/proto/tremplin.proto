@@ -777,6 +777,9 @@ message UpgradeContainerRequest {
 
     // Debian 11 AKA Bullseye.
     DEBIAN_BULLSEYE = 3;
+
+    // Debian 12 AKA Bookworm.
+    DEBIAN_BOOKWORM = 4;
   }
 
   // Name of the container e.g. penguin.
