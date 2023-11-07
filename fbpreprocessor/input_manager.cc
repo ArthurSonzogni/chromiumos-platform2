@@ -92,17 +92,7 @@ void InputManager::OnFirmwareDumpCreated(dbus::Signal* signal) {
         }
         continue;
       }
-
-      if (base::SequencedTaskRunner::HasCurrentDefault()) {
-        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-            FROM_HERE, base::BindOnce(&InputManager::OnNewFirmwareDump,
-                                      weak_factory_.GetWeakPtr(), fw_dump));
-      } else {
-        LOG(ERROR) << "No task runner.";
-        if (!fw_dump.Delete()) {
-          LOG(ERROR) << "Failed to delete firmware dump.";
-        }
-      }
+      OnNewFirmwareDump(fw_dump);
     }
   }
 }
