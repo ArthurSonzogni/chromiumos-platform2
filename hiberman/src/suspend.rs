@@ -42,7 +42,6 @@ use crate::hiberutil::get_kernel_restore_time;
 use crate::hiberutil::get_page_size;
 use crate::hiberutil::get_ram_size;
 use crate::hiberutil::has_user_logged_out;
-use crate::hiberutil::intel_keylocker_enabled;
 use crate::hiberutil::path_to_stateful_block;
 use crate::hiberutil::prealloc_mem;
 use crate::hiberutil::HibernateError;
@@ -329,12 +328,7 @@ impl SuspendConductor<'_> {
             // Power the thing down.
             if !dry_run {
                 if !self.options.reboot {
-                    if intel_keylocker_enabled()? {
-                        snap_dev.power_off_platform_mode()?;
-                    } else {
-                        Self::power_off()?;
-                    }
-
+                    Self::power_off()?;
                     error!("Returned from power off");
                 } else {
                     Self::reboot()?;
