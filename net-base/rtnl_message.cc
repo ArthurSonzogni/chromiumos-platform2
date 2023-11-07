@@ -668,9 +668,8 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeRule(Mode mode,
 
 std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
     Mode mode, const RTNLHeader* hdr) {
-  size_t min_payload_len = sizeof(hdr->nd_user_opt) +
-                           sizeof(struct nduseroptmsg) +
-                           sizeof(NDUserOptionHeader);
+  const size_t min_payload_len =
+      sizeof(hdr->nd_user_opt) + sizeof(NDUserOptionHeader);
   if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(min_payload_len)) {
     return nullptr;
   }
