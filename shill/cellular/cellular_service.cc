@@ -19,15 +19,14 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/dbus/shill/dbus-constants.h>
 
-#include "dbus/shill/dbus-constants.h"
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular/apn_list.h"
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_consts.h"
 #include "shill/data_types.h"
 #include "shill/dbus/dbus_control.h"
-#include "shill/dbus-constants.h"
 #include "shill/manager.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"

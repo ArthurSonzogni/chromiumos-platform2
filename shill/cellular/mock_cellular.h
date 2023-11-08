@@ -31,6 +31,7 @@ class MockCellular : public Cellular {
 
   MOCK_METHOD(void, Connect, (CellularService*, Error*), (override));
   MOCK_METHOD(void, Disconnect, (Error*, const char*), (override));
+  MOCK_METHOD(void, ConfigureAttachApn, (), (override));
   MOCK_METHOD(Network*, GetPrimaryNetwork, (), (const override));
   MOCK_METHOD(void, StartPPP, (const std::string&), (override));
   MOCK_METHOD(void,

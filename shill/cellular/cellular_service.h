@@ -180,6 +180,14 @@ class CellularService : public Service {
   FRIEND_TEST(CellularServiceTest, MergeDetailsFromApnList);
   FRIEND_TEST(CellularServiceTest, CustomSetterNoopChange);
   FRIEND_TEST(CellularServiceTest, SetAllowRoaming);
+  FRIEND_TEST(CellularServiceTest, SetCustomApnListWhileConnectedNoReattach);
+  FRIEND_TEST(CellularServiceTest, SetCustomApnListWhileConnectedReattachNewIA);
+  FRIEND_TEST(CellularServiceTest,
+              SetCustomApnListWhileConnectedReattachNoLastAttach);
+  FRIEND_TEST(CellularServiceTest,
+              SetCustomApnListWhileConnectedReattachLastAttachIA);
+  FRIEND_TEST(CellularServiceTest, SetCustomApnListWhileDisconnected);
+  FRIEND_TEST(CellularServiceTest, SetCustomApnListNoChange);
 
   // Used in CellularServiceTest
   static const char kAutoConnActivating[];

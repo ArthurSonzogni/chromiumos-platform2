@@ -698,4 +698,157 @@ TEST_F(CellularServiceTest, SetRoamingState) {
   service_->SetRoamingState(kRoamingStateRoaming);
 }
 
+TEST_F(CellularServiceTest, SetCustomApnListWhileConnectedNoReattach) {
+  // No IA APN given.
+  Stringmap apnQ({{kApnProperty, "apnQ"},
+                  {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeDefault})},
+                  {kApnSourceProperty, kApnSourceUi}});
+  Stringmaps custom_list = {apnQ};
+  Error error;
+
+  // Last attach APN info set to a non-IA APN
+  Stringmap apnP({{kApnProperty, "apnP"},
+                  {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeDefault})},
+                  {kApnSourceProperty, kApnSourceUi}});
+  service_->last_attach_apn_info_ = apnP;
+
+  // Assume the service is connected.
+  service_->SetState(Service::kStateConnected);
+
+  // We'll be explicitly disconnected, but without reconfiguring attach APN.
+  EXPECT_CALL(*adaptor_,
+              EmitStringmapsChanged(kCellularCustomApnListProperty, _));
+  EXPECT_CALL(*device_, Disconnect(_, _));
+  EXPECT_CALL(*device_, ConfigureAttachApn()).Times(0);
+  service_->SetCustomApnList(custom_list, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(service_->state(), Service::kStateDisconnecting);
+}
+
+TEST_F(CellularServiceTest, SetCustomApnListWhileConnectedReattachNewIA) {
+  // IA APN given, will reattach.
+  Stringmap apnP({{kApnProperty, "apnP"},
+                  {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeIA})},
+                  {kApnSourceProperty, kApnSourceUi}});
+  Stringmap apnQ({{kApnProperty, "apnQ"},
+                  {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeDefault})},
+                  {kApnSourceProperty, kApnSourceUi}});
+  Stringmaps custom_list = {apnP, apnQ};
+  Error error;
+
+  // Assume the service is connected.
+  service_->SetState(Service::kStateConnected);
+
+  // We'll be explicitly disconnected, but not reconnected because we need to
+  // reattach.
+  EXPECT_CALL(*adaptor_,
+              EmitStringmapsChanged(kCellularCustomApnListProperty, _));
+  EXPECT_CALL(*device_, Disconnect(_, _));
+  EXPECT_CALL(*device_, ConfigureAttachApn());
+  service_->SetCustomApnList(custom_list, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(service_->state(), Service::kStateDisconnecting);
+}
+
+TEST_F(CellularServiceTest,
+       SetCustomApnListWhileConnectedReattachNoLastAttach) {
+  // IA APN not given.
+  Stringmap apnQ({{kApnProperty, "apnQ"},
+                  {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeDefault})},
+                  {kApnSourceProperty, kApnSourceUi}});
+  Stringmaps custom_list = {apnQ};
+  Error error;
+
+  // Last attach APN info is empty.
+  service_->last_attach_apn_info_ = {};
+
+  // Assume the service is connected.
+  service_->SetState(Service::kStateConnected);
+
+  // We'll be explicitly disconnected, but not reconnected because we need to
+  // reattach.
+  EXPECT_CALL(*adaptor_,
+              EmitStringmapsChanged(kCellularCustomApnListProperty, _));
+  EXPECT_CALL(*device_, Disconnect(_, _));
+  EXPECT_CALL(*device_, ConfigureAttachApn());
+  service_->SetCustomApnList(custom_list, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(service_->state(), Service::kStateDisconnecting);
+}
+
+TEST_F(CellularServiceTest,
+       SetCustomApnListWhileConnectedReattachLastAttachIA) {
+  // IA APN not given.
+  Stringmap apnQ({{kApnProperty, "apnQ"},
+                  {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeDefault})},
+                  {kApnSourceProperty, kApnSourceUi}});
+  Stringmaps custom_list = {apnQ};
+  Error error;
+
+  // But last attach APN info contains an IA APN
+  Stringmap apnP({{kApnProperty, "apnP"},
+                  {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeIA})},
+                  {kApnSourceProperty, kApnSourceUi}});
+  service_->last_attach_apn_info_ = apnP;
+
+  // Assume the service is connected.
+  service_->SetState(Service::kStateConnected);
+
+  // We'll be explicitly disconnected, but not reconnected because we need to
+  // reattach.
+  EXPECT_CALL(*adaptor_,
+              EmitStringmapsChanged(kCellularCustomApnListProperty, _));
+  EXPECT_CALL(*device_, Disconnect(_, _));
+  EXPECT_CALL(*device_, ConfigureAttachApn());
+  service_->SetCustomApnList(custom_list, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(service_->state(), Service::kStateDisconnecting);
+}
+
+TEST_F(CellularServiceTest, SetCustomApnListWhileDisconnected) {
+  Stringmap apnP({{kApnProperty, "apnP"},
+                  {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeIA})},
+                  {kApnSourceProperty, kApnSourceUi}});
+  Stringmap apnQ({{kApnProperty, "apnQ"},
+                  {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeDefault})},
+                  {kApnSourceProperty, kApnSourceUi}});
+  Stringmaps custom_list = {apnP, apnQ};
+  Error error;
+
+  // Assume the service is not connected.
+  service_->SetState(Service::kStateIdle);
+
+  // There won't be any disconnection requested.
+  EXPECT_CALL(*adaptor_,
+              EmitStringmapsChanged(kCellularCustomApnListProperty, _));
+  EXPECT_CALL(*device_, Disconnect(_, _)).Times(0);
+  service_->SetCustomApnList(custom_list, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(service_->state(), Service::kStateIdle);
+}
+
+TEST_F(CellularServiceTest, SetCustomApnListNoChange) {
+  Stringmap apnP({{kApnProperty, "apnP"},
+                  {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeIA})},
+                  {kApnSourceProperty, kApnSourceUi}});
+  Stringmap apnQ({{kApnProperty, "apnQ"},
+                  {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeDefault})},
+                  {kApnSourceProperty, kApnSourceUi}});
+  Stringmaps custom_list = {apnP, apnQ};
+  Error error;
+
+  // Add initial list, expect property update.
+  EXPECT_CALL(*adaptor_,
+              EmitStringmapsChanged(kCellularCustomApnListProperty, _));
+  service_->SetCustomApnList(custom_list, &error);
+  EXPECT_TRUE(error.IsSuccess());
+
+  // Repeat same list, no property update.
+  EXPECT_CALL(*adaptor_,
+              EmitStringmapsChanged(kCellularCustomApnListProperty, _))
+      .Times(0);
+  service_->SetCustomApnList(custom_list, &error);
+  EXPECT_TRUE(error.IsSuccess());
+}
+
 }  // namespace shill

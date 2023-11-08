@@ -182,9 +182,6 @@ class Cellular : public Device,
   // once an online payment has been done.
   void CompleteActivation(Error* error);
 
-  // Configures the attach APN in the modem.
-  virtual void ConfigureAttachApn();
-
   bool GetForceInitEpsBearerSettings();
   void SetForceInitEpsBearerSettings(bool force);
 
@@ -216,6 +213,9 @@ class Cellular : public Device,
   // Asynchronously disconnects the modem from the current network and populates
   // |error| on failure, leaves it unchanged otherwise.
   virtual void Disconnect(Error* error, const char* reason);
+
+  // Configures the attach APN in the modem.
+  virtual void ConfigureAttachApn();
 
   // Called when the Modem object is created to set the initial properties.
   void SetInitialProperties(const InterfaceToProperties& properties);
