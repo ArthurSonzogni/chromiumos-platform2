@@ -99,12 +99,6 @@ class StubStorage : public StoreInterface {
                      const std::vector<std::string>& value) override {
     return false;
   }
-  bool GetCryptedString(std::string_view group,
-                        std::string_view deprecated_key,
-                        std::string_view plaintext_key,
-                        std::string* value) const override {
-    return false;
-  }
   bool GetStringmaps(
       std::string_view group,
       std::string_view key,

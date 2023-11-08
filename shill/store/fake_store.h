@@ -77,10 +77,6 @@ class FakeStore : public StoreInterface {
   bool SetStringList(std::string_view group,
                      std::string_view key,
                      const std::vector<std::string>& value) override;
-  bool GetCryptedString(std::string_view group,
-                        std::string_view deprecated_key,
-                        std::string_view plaintext_key,
-                        std::string* value) const override;
   bool GetStringmaps(
       std::string_view group,
       std::string_view key,

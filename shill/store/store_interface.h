@@ -157,20 +157,6 @@ class StoreInterface {
                              std::string_view key,
                              const std::vector<std::string>& value) = 0;
 
-  // Gets the string associated with |group|:|plaintext_key|. If that doesn't
-  // exist, gets and decrypts string |value| associated with
-  // |group|:|deprecated_key|. Returns true on success and false on failure
-  // (including when neither |group|:|plaintext_key| nor
-  // |group|:|deprecated_key| are present in the store).  It is not an error to
-  // pass NULL as |value| to simply test for the presence of this value.
-  //
-  // For migration from ROT47 to plaintext. New use cases should use GetString.
-  // TODO(crbug.com/1084279) Remove after migration is complete.
-  virtual bool GetCryptedString(std::string_view group,
-                                std::string_view deprecated_key,
-                                std::string_view plaintext_key,
-                                std::string* value) const = 0;
-
   // Gets a Stringmaps |value| associated with |group|:|key|. Returns true on
   // success and false on failure (including when |group|:|key| is not present
   // in the store). It is not an error to pass NULL as |value| to simply test

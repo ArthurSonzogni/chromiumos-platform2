@@ -710,27 +710,6 @@ bool KeyFileStore::SetStringList(std::string_view group,
   return true;
 }
 
-bool KeyFileStore::GetCryptedString(std::string_view group,
-                                    std::string_view deprecated_key,
-                                    std::string_view plaintext_key,
-                                    std::string* value) const {
-  if (GetString(group, plaintext_key, value)) {
-    return true;
-  }
-
-  if (!GetString(group, deprecated_key, value)) {
-    return false;
-  }
-  if (value) {
-    auto plaintext = Crypto::Decrypt(*value);
-    if (!plaintext.has_value()) {
-      return false;
-    }
-    *value = std::move(plaintext).value();
-  }
-  return true;
-}
-
 bool KeyFileStore::DoesGroupMatchProperties(
     std::string_view group, const KeyValueStore& properties) const {
   for (const auto& property : properties.properties()) {

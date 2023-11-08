@@ -805,31 +805,6 @@ TEST_F(KeyFileStoreTest, EscapeSeparatorInList) {
             ReadKeyFile());
 }
 
-TEST_F(KeyFileStoreTest, GetDeprecatedCryptedString) {
-  static const char kPlainText[] = "This is a test!";
-  static const char kROT47Text[] = "rot47:%9:D :D 2 E6DEP";
-
-  static const char kGroup[] = "crypto-group";
-  static const char kDeprecatedKey[] = "deprecated";
-  static const char kPlaintextKey[] = "plaintext";
-  WriteKeyFile(
-      base::StringPrintf("[%s]\n"
-                         "%s=%s\n",
-                         kGroup, kDeprecatedKey, kROT47Text));
-  ASSERT_TRUE(store_->Open());
-  std::string value;
-  EXPECT_TRUE(
-      store_->GetCryptedString(kGroup, kDeprecatedKey, kPlaintextKey, &value));
-  EXPECT_EQ(kPlainText, value);
-  EXPECT_FALSE(store_->GetCryptedString("something-else", kDeprecatedKey,
-                                        kPlaintextKey, &value));
-  EXPECT_FALSE(store_->GetCryptedString(kGroup, "non-secret-deprecated",
-                                        "non-secret", &value));
-  EXPECT_TRUE(
-      store_->GetCryptedString(kGroup, kDeprecatedKey, kPlaintextKey, nullptr));
-  ASSERT_TRUE(store_->Close());
-}
-
 TEST_F(KeyFileStoreTest, PersistAcrossClose) {
   static const char kGroup[] = "string-group";
   static const char kKey1[] = "test-string";

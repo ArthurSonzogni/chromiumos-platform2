@@ -81,12 +81,6 @@ pkcs11::Slot GetPkcs11Slot(const std::string& pkcs11_id,
   return slot_getter->GetSlotType(parsed->slot_id);
 }
 
-// Deprecated to migrate from ROT47 to plaintext.
-// TODO(crbug.com/1084279) Remove after migration is complete.
-const char kStorageDeprecatedEapAnonymousIdentity[] = "EAP.AnonymousIdentity";
-const char kStorageDeprecatedEapIdentity[] = "EAP.Identity";
-const char kStorageDeprecatedEapPassword[] = "EAP.Password";
-
 }  // namespace
 
 namespace Logging {
@@ -342,18 +336,15 @@ bool EapCredentials::IsConnectableUsingPassphrase() const {
 void EapCredentials::Load(const StoreInterface* storage,
                           const std::string& id) {
   // Authentication properties.
-  storage->GetCryptedString(id, kStorageDeprecatedEapAnonymousIdentity,
-                            kStorageCredentialEapAnonymousIdentity,
-                            &anonymous_identity_);
+  storage->GetString(id, kStorageCredentialEapAnonymousIdentity,
+                     &anonymous_identity_);
   storage->GetString(id, kStorageEapCertID, &cert_id_);
-  storage->GetCryptedString(id, kStorageDeprecatedEapIdentity,
-                            kStorageCredentialEapIdentity, &identity_);
+  storage->GetString(id, kStorageCredentialEapIdentity, &identity_);
   storage->GetString(id, kStorageEapKeyID, &key_id_);
   std::string key_management;
   storage->GetString(id, kStorageEapKeyManagement, &key_management);
   SetKeyManagement(key_management, nullptr);
-  storage->GetCryptedString(id, kStorageDeprecatedEapPassword,
-                            kStorageCredentialEapPassword, &password_);
+  storage->GetString(id, kStorageCredentialEapPassword, &password_);
   storage->GetString(id, kStorageEapPin, &pin_);
   storage->GetBool(id, kStorageEapUseLoginPassword, &use_login_password_);
 

@@ -676,8 +676,7 @@ bool WiFiService::Load(const StoreInterface* storage) {
   // Load() as they are provided from the scan.
 
   std::string passphrase;
-  if (storage->GetCryptedString(id, kStorageDeprecatedPassphrase,
-                                kStorageCredentialPassphrase, &passphrase)) {
+  if (storage->GetString(id, kStorageCredentialPassphrase, &passphrase)) {
     if (SetPassphraseInternal(passphrase, Service::kReasonCredentialsLoaded)) {
       SLOG(this, 2) << "Loaded passphrase in WiFiService::Load.";
     }

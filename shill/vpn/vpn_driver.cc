@@ -72,8 +72,8 @@ bool VPNDriver::Load(const StoreInterface* storage,
     } else {
       std::string value;
       bool loaded = (properties_[i].flags & Property::kCredential)
-                        ? storage->GetCryptedString(
-                              storage_id, property,
+                        ? storage->GetString(
+                              storage_id,
                               std::string(kCredentialPrefix) + property, &value)
                         : storage->GetString(storage_id, property, &value);
       if (loaded) {
