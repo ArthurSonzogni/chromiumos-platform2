@@ -317,18 +317,18 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
   const auto old_uplink_ip = GetUplinkIp(ifname);
 
   if (!upstream_shill_device.ipconfig.ipv6_cidr) {
-    if (forward_record_.find(ifname) == forward_record_.end()) {
-      return;
-    }
     LOG(INFO) << __func__ << ": " << ifname << ", {"
               << ((old_uplink_ip) ? old_uplink_ip->ToString() : "")
               << "} to {}";
+    uplink_ips_.erase(ifname);
+    if (!old_uplink_ip ||
+        forward_record_.find(ifname) == forward_record_.end()) {
+      return;
+    }
     for (const auto& ifname_downlink :
          forward_record_[ifname].downstream_ifnames) {
       // Remove ip neigh proxy entry
-      if (old_uplink_ip) {
-        datapath_->RemoveIPv6NeighborProxy(ifname_downlink, *old_uplink_ip);
-      }
+      datapath_->RemoveIPv6NeighborProxy(ifname_downlink, *old_uplink_ip);
       // Remove downlink /128 routes
       for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
         datapath_->RemoveIPv6HostRoute(
@@ -336,12 +336,10 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
       }
       downstream_neighbors_[ifname_downlink].clear();
       // Stop RA servers
-      if (old_uplink_ip &&
-          forward_record_[ifname].method == ForwardMethod::kMethodRAServer) {
+      if (forward_record_[ifname].method == ForwardMethod::kMethodRAServer) {
         StopRAServer(ifname_downlink);
       }
     }
-    uplink_ips_.erase(ifname);
     return;
   }
 
