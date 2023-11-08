@@ -82,6 +82,9 @@ constexpr char kPreservationRequestFile[] = "preservation_request";
 // This file is created after the TPM is owned/ready and before the
 // enterprise enrollment.
 constexpr char kCryptohomeKeyFile[] = "home/.shadow/cryptohome.key";
+// This file should not exist on the newer system after the TPM is cleared.
+constexpr char kEncStatefulNeedFinalizationFile[] =
+    "encrypted.need-finalization";
 // File used to trigger a stateful reset. Contains arguments for the
 // clobber-state" call. This file may exist at boot time, as some use cases
 // operate by creating this file with the necessary arguments and then
@@ -195,15 +198,29 @@ bool ChromeosStartup::IsTPMOwned() {
 bool ChromeosStartup::NeedsClobberWithoutDevModeFile() {
   base::FilePath preservation_request =
       stateful_.Append(kPreservationRequestFile);
-  base::FilePath install_attrs = stateful_.Append(kCryptohomeKeyFile);
+  base::FilePath cryptohome_key = stateful_.Append(kCryptohomeKeyFile);
+  base::FilePath need_finalization =
+      stateful_.Append(kEncStatefulNeedFinalizationFile);
   struct stat statbuf;
-  if (!IsTPMOwned() &&
-      (!platform_->Stat(preservation_request, &statbuf) ||
-       statbuf.st_uid != getuid()) &&
-      (platform_->Stat(install_attrs, &statbuf) &&
-       statbuf.st_uid == getuid())) {
+
+  if (IsTPMOwned()) {
+    return false;
+  }
+
+  if (platform_->Stat(need_finalization, &statbuf)) {
     return true;
   }
+
+  // This should only be supported on the non-TPM2 device.
+  if (!USE_TPM2 && platform_->Stat(preservation_request, &statbuf) &&
+      statbuf.st_uid == getuid()) {
+    return false;
+  }
+
+  if (platform_->Stat(cryptohome_key, &statbuf)) {
+    return true;
+  }
+
   return false;
 }
 

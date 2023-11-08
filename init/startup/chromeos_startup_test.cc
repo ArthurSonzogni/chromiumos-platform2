@@ -299,19 +299,35 @@ TEST_F(TPMTest, NeedsClobberTPMOwned) {
   EXPECT_EQ(startup_->NeedsClobberWithoutDevModeFile(), false);
 }
 
+TEST_F(TPMTest, NeedsClobberTPMNotOwnedEmptyDisk) {
+  base::FilePath tpm_file = base_dir.Append(kTPMOwnedPath);
+  ASSERT_TRUE(CreateDirAndWriteFile(tpm_file, "0"));
+  EXPECT_EQ(startup_->IsTPMOwned(), false);
+  EXPECT_EQ(startup_->NeedsClobberWithoutDevModeFile(), false);
+}
+
+#if !USE_TPM2
+
 TEST_F(TPMTest, NeedsClobberPreservationFile) {
+  LOG(INFO) << "test getuid " << getuid();
   base::FilePath tpm_file = base_dir.Append(kTPMOwnedPath);
   ASSERT_TRUE(CreateDirAndWriteFile(tpm_file, "0"));
   EXPECT_EQ(startup_->IsTPMOwned(), false);
   base::FilePath preservation_file = base_dir.Append("preservation_request");
   ASSERT_TRUE(CreateDirAndWriteFile(preservation_file, "0"));
   struct stat st;
-  st.st_uid = -1;
+  st.st_uid = getuid();
   platform_->SetStatResultForPath(preservation_file, st);
+  base::FilePath cryptohome_key_file =
+      base_dir.Append("home/.shadow/cryptohome.key");
+  ASSERT_TRUE(CreateDirAndWriteFile(cryptohome_key_file, "0"));
+  st.st_uid = getuid();
+  platform_->SetStatResultForPath(cryptohome_key_file, st);
   EXPECT_EQ(startup_->NeedsClobberWithoutDevModeFile(), false);
 }
 
-TEST_F(TPMTest, NeedsClobberCryptohomeKeyFile) {
+TEST_F(TPMTest, NeedsClobberPreservationFileWrongerUid) {
+  LOG(INFO) << "test getuid " << getuid();
   base::FilePath tpm_file = base_dir.Append(kTPMOwnedPath);
   ASSERT_TRUE(CreateDirAndWriteFile(tpm_file, "0"));
   EXPECT_EQ(startup_->IsTPMOwned(), false);
@@ -323,9 +339,38 @@ TEST_F(TPMTest, NeedsClobberCryptohomeKeyFile) {
   base::FilePath cryptohome_key_file =
       base_dir.Append("home/.shadow/cryptohome.key");
   ASSERT_TRUE(CreateDirAndWriteFile(cryptohome_key_file, "0"));
-  LOG(INFO) << "test getuid " << getuid();
   st.st_uid = getuid();
   platform_->SetStatResultForPath(cryptohome_key_file, st);
+  EXPECT_EQ(startup_->NeedsClobberWithoutDevModeFile(), true);
+}
+
+#endif  // !USE_TPM2
+
+TEST_F(TPMTest, NeedsClobberCryptohomeKeyFile) {
+  LOG(INFO) << "test getuid " << getuid();
+  base::FilePath tpm_file = base_dir.Append(kTPMOwnedPath);
+  ASSERT_TRUE(CreateDirAndWriteFile(tpm_file, "0"));
+  EXPECT_EQ(startup_->IsTPMOwned(), false);
+  struct stat st;
+  base::FilePath cryptohome_key_file =
+      base_dir.Append("home/.shadow/cryptohome.key");
+  ASSERT_TRUE(CreateDirAndWriteFile(cryptohome_key_file, "0"));
+  st.st_uid = getuid();
+  platform_->SetStatResultForPath(cryptohome_key_file, st);
+  EXPECT_EQ(startup_->NeedsClobberWithoutDevModeFile(), true);
+}
+
+TEST_F(TPMTest, NeedsClobberNeedFinalization) {
+  LOG(INFO) << "test getuid " << getuid();
+  base::FilePath tpm_file = base_dir.Append(kTPMOwnedPath);
+  ASSERT_TRUE(CreateDirAndWriteFile(tpm_file, "0"));
+  EXPECT_EQ(startup_->IsTPMOwned(), false);
+  struct stat st;
+  base::FilePath need_finalization_file =
+      base_dir.Append("encrypted.need-finalization");
+  ASSERT_TRUE(CreateDirAndWriteFile(need_finalization_file, "0"));
+  st.st_uid = getuid();
+  platform_->SetStatResultForPath(need_finalization_file, st);
   EXPECT_EQ(startup_->NeedsClobberWithoutDevModeFile(), true);
 }
 
