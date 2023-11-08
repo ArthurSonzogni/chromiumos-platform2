@@ -744,8 +744,8 @@ void WiFiService::MigrateDeprecatedStorage(StoreInterface* storage) {
   // Save the plaintext passphrase in M86+. TODO: Remove code after M89.
   storage->SetString(id, kStorageCredentialPassphrase, passphrase_);
 
-  // M85 key to delete after M89:
-  // kStorageDeprecatedPassphrase (crbug.com/1084279)
+  // TODO(b/309756186): Remove this in the next stepping milestone after M121.
+  storage->DeleteKey(id, kStorageDeprecatedPassphrase);
 }
 
 bool WiFiService::Save(StoreInterface* storage) {
@@ -769,10 +769,7 @@ bool WiFiService::Save(StoreInterface* storage) {
   storage->SetUint64(
       id, kStorageDisconnectTime,
       disconnect_time_.ToDeltaSinceWindowsEpoch().InMicroseconds());
-  // This saves both the plaintext and rot47 versions of the passphrase.
-  // TODO(crbug.com/1084279): Save just the plaintext passphrase after M89.
-  storage->SetCryptedString(id, kStorageDeprecatedPassphrase,
-                            kStorageCredentialPassphrase, passphrase_);
+  storage->SetString(id, kStorageCredentialPassphrase, passphrase_);
   storage->SetString(id, kStorageSecurityClass, security_class());
   if (security_.IsValid() && security_.IsFrozen()) {
     storage->SetString(id, kStorageSecurity, security_.ToString());

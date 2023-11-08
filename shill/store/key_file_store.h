@@ -91,10 +91,6 @@ class KeyFileStore : public StoreInterface {
                         std::string_view deprecated_key,
                         std::string_view plaintext_key,
                         std::string* value) const override;
-  bool SetCryptedString(std::string_view group,
-                        std::string_view deprecated_key,
-                        std::string_view plaintext_key,
-                        std::string_view value) override;
   bool GetStringmaps(
       std::string_view group,
       std::string_view key,

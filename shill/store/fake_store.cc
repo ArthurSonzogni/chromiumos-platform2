@@ -211,13 +211,6 @@ bool FakeStore::GetCryptedString(std::string_view group,
   return GetString(group, plaintext_key, value);
 }
 
-bool FakeStore::SetCryptedString(std::string_view group,
-                                 std::string_view deprecated_key,
-                                 std::string_view plaintext_key,
-                                 std::string_view value) {
-  return SetString(group, plaintext_key, value);
-}
-
 bool FakeStore::GetStringmaps(
     std::string_view group,
     std::string_view key,

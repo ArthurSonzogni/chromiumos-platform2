@@ -171,14 +171,6 @@ class StoreInterface {
                                 std::string_view plaintext_key,
                                 std::string* value) const = 0;
 
-  // Sets the string associated with |group|:|deprecated_key| with an encrypted
-  // value and sets |plaintext_key| with |value|. Returns true on success.
-  // For ROT47 compatibility for rollback. See crbug.com/1120161 for details.
-  virtual bool SetCryptedString(std::string_view group,
-                                std::string_view deprecated_key,
-                                std::string_view plaintext_key,
-                                std::string_view value) = 0;
-
   // Gets a Stringmaps |value| associated with |group|:|key|. Returns true on
   // success and false on failure (including when |group|:|key| is not present
   // in the store). It is not an error to pass NULL as |value| to simply test

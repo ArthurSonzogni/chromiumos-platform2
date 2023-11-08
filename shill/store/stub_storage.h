@@ -105,12 +105,6 @@ class StubStorage : public StoreInterface {
                         std::string* value) const override {
     return false;
   }
-  bool SetCryptedString(std::string_view group,
-                        std::string_view deprecated_key,
-                        std::string_view plaintext_key,
-                        std::string_view value) override {
-    return false;
-  }
   bool GetStringmaps(
       std::string_view group,
       std::string_view key,

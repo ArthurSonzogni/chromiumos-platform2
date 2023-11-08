@@ -233,15 +233,13 @@ TEST_F(EapCredentialsTest, LoadAndSave) {
   FakeStore store;
   const std::string kId("storage-id");
   const std::string kIdentity("Purple Onion");
-  store.SetCryptedString(kId, /*deprecated_key=*/"",
-                         EapCredentials::kStorageCredentialEapIdentity,
-                         kIdentity);
+  store.SetString(kId, EapCredentials::kStorageCredentialEapIdentity,
+                  kIdentity);
   const std::string kManagement("Shave and a Haircut");
   store.SetString(kId, EapCredentials::kStorageEapKeyManagement, kManagement);
   const std::string kPassword("Two Bits");
-  store.SetCryptedString(kId, /*deprecated_key=*/"",
-                         EapCredentials::kStorageCredentialEapPassword,
-                         kPassword);
+  store.SetString(kId, EapCredentials::kStorageCredentialEapPassword,
+                  kPassword);
 
   eap_.Load(&store, kId);
   Mock::VerifyAndClearExpectations(&store);

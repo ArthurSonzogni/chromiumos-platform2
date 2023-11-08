@@ -731,14 +731,6 @@ bool KeyFileStore::GetCryptedString(std::string_view group,
   return true;
 }
 
-bool KeyFileStore::SetCryptedString(std::string_view group,
-                                    std::string_view deprecated_key,
-                                    std::string_view plaintext_key,
-                                    std::string_view value) {
-  SetString(group, deprecated_key, Crypto::Encrypt(value));
-  return SetString(group, plaintext_key, value);
-}
-
 bool KeyFileStore::DoesGroupMatchProperties(
     std::string_view group, const KeyValueStore& properties) const {
   for (const auto& property : properties.properties()) {
