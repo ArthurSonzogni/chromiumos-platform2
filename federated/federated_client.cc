@@ -39,8 +39,8 @@ constexpr base::TimeDelta kDefaultRetryWindow = base::Minutes(30);
 constexpr base::TimeDelta kMinimalRetryWindow = base::Minutes(1);
 #endif
 
-// Limits each round to 60 minutes.
-constexpr base::TimeDelta kMaximalExecutionTime = base::Minutes(60);
+// Limits each round to 10 minutes.
+constexpr base::TimeDelta kMaximalExecutionTime = base::Minutes(10);
 
 // TODO(b/251378482): Just dummpy impl for now, might need to log to UMA.
 void LogCrosEvent(const fcp::client::CrosEvent& cros_event) {
