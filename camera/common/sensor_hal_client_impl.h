@@ -16,6 +16,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/synchronization/lock.h>
 #include <base/task/single_thread_task_runner.h>
+#include <base/threading/sequence_bound.h>
 #include <iioservice/mojo/cros_sensor_service.mojom.h>
 #include <iioservice/mojo/sensor.mojom.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
@@ -58,9 +59,6 @@ class SensorHalClientImpl : public SensorHalClient {
 
     // It should only be triggered on IPC thread to ensure thread-safety.
     ~IPCBridge() override;
-
-    // Will only be called once, right after the c'tor.
-    void Start();
 
     void HasDevice(mojom::DeviceType type,
                    Location location,
@@ -152,9 +150,6 @@ class SensorHalClientImpl : public SensorHalClient {
     CameraMojoChannelManager* mojo_manager_;
     CancellationRelay* cancellation_relay_;
 
-    // The Mojo IPC task runner.
-    const scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner_;
-
     std::unique_ptr<MojoServiceManagerObserver> mojo_service_manager_observer_;
 
     mojo::Remote<mojom::SensorService> sensor_service_remote_;
@@ -183,13 +178,11 @@ class SensorHalClientImpl : public SensorHalClient {
     base::WeakPtrFactory<IPCBridge> weak_ptr_factory_{this};
   };
 
-  CameraMojoChannelManager* mojo_manager_;
-
   std::unique_ptr<CancellationRelay> cancellation_relay_;
 
-  // The instance which deals with the IPC-related calls. It should always run
-  // and be deleted on IPC thread.
-  std::unique_ptr<IPCBridge> ipc_bridge_;
+  // The instance which deals with the IPC-related calls. It's bound on the IPC
+  // thread.
+  base::SequenceBound<IPCBridge> ipc_bridge_;
 };
 
 }  // namespace cros

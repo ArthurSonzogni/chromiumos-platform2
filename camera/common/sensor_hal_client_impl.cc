@@ -92,14 +92,13 @@ SensorHalClient* SensorHalClient::GetInstance(
 }
 
 SensorHalClientImpl::SensorHalClientImpl(CameraMojoChannelManager* mojo_manager)
-    : mojo_manager_(mojo_manager),
-      cancellation_relay_(new CancellationRelay),
-      ipc_bridge_(new IPCBridge(mojo_manager_, cancellation_relay_.get())) {}
+    : cancellation_relay_(new CancellationRelay),
+      ipc_bridge_(mojo_manager->GetIpcTaskRunner(),
+                  mojo_manager,
+                  cancellation_relay_.get()) {}
 
 SensorHalClientImpl::~SensorHalClientImpl() {
-  bool result = mojo_manager_->GetIpcTaskRunner()->DeleteSoon(
-      FROM_HERE, std::move(ipc_bridge_));
-  DCHECK(result);
+  ipc_bridge_.Reset();
   cancellation_relay_.reset();
 }
 
@@ -110,10 +109,9 @@ bool SensorHalClientImpl::HasDevice(DeviceType type, Location location) {
   }
 
   auto future = cros::Future<bool>::Create(cancellation_relay_.get());
-  mojo_manager_->GetIpcTaskRunner()->PostTask(
-      FROM_HERE, base::BindOnce(&SensorHalClientImpl::IPCBridge::HasDevice,
-                                ipc_bridge_->GetWeakPtr(), *device_type,
-                                location, GetFutureCallback(future)));
+
+  ipc_bridge_.AsyncCall(&SensorHalClientImpl::IPCBridge::HasDevice)
+      .WithArgs(*device_type, location, GetFutureCallback(future));
 
   if (!future->Wait())
     return false;
@@ -142,11 +140,11 @@ bool SensorHalClientImpl::RegisterSamplesObserver(
   }
 
   auto future = cros::Future<bool>::Create(cancellation_relay_.get());
-  mojo_manager_->GetIpcTaskRunner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&SensorHalClientImpl::IPCBridge::RegisterSamplesObserver,
-                     ipc_bridge_->GetWeakPtr(), *device_type, location,
-                     frequency, samples_observer, GetFutureCallback(future)));
+
+  ipc_bridge_
+      .AsyncCall(&SensorHalClientImpl::IPCBridge::RegisterSamplesObserver)
+      .WithArgs(*device_type, location, frequency, samples_observer,
+                GetFutureCallback(future));
 
   if (!future->Wait())
     return false;
@@ -160,32 +158,15 @@ void SensorHalClientImpl::UnregisterSamplesObserver(
     return;
   }
 
-  mojo_manager_->GetIpcTaskRunner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&SensorHalClientImpl::IPCBridge::UnregisterSamplesObserver,
-                     ipc_bridge_->GetWeakPtr(), samples_observer));
+  ipc_bridge_
+      .AsyncCall(&SensorHalClientImpl::IPCBridge::UnregisterSamplesObserver)
+      .WithArgs(samples_observer);
 }
 
 SensorHalClientImpl::IPCBridge::IPCBridge(
     CameraMojoChannelManager* mojo_manager,
     CancellationRelay* cancellation_relay)
-    : mojo_manager_(mojo_manager),
-      cancellation_relay_(cancellation_relay),
-      ipc_task_runner_(mojo_manager_->GetIpcTaskRunner()) {
-  ipc_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(&SensorHalClientImpl::IPCBridge::Start, GetWeakPtr()));
-}
-
-SensorHalClientImpl::IPCBridge::~IPCBridge() {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
-  ResetSensorService();
-}
-
-void SensorHalClientImpl::IPCBridge::Start() {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
+    : mojo_manager_(mojo_manager), cancellation_relay_(cancellation_relay) {
   mojo_service_manager_observer_ =
       mojo_manager_->CreateMojoServiceManagerObserver(
           /*service_name=*/chromeos::mojo_services::kIioSensor,
@@ -198,9 +179,11 @@ void SensorHalClientImpl::IPCBridge::Start() {
               GetWeakPtr()));
 }
 
-void SensorHalClientImpl::IPCBridge::RequestService() {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+SensorHalClientImpl::IPCBridge::~IPCBridge() {
+  ResetSensorService();
+}
 
+void SensorHalClientImpl::IPCBridge::RequestService() {
   mojo::PendingRemote<cros::mojom::SensorService> sensor_service_remote;
   mojo_manager_->RequestServiceFromMojoServiceManager(
       /*service_name=*/chromeos::mojo_services::kIioSensor,
@@ -210,8 +193,6 @@ void SensorHalClientImpl::IPCBridge::RequestService() {
 }
 
 void SensorHalClientImpl::IPCBridge::OnUnregisterCallback() {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   LOGF(WARNING)
       << "IioSensor service is no longer registered in mojo service manager.";
 }
@@ -220,8 +201,6 @@ void SensorHalClientImpl::IPCBridge::HasDevice(
     mojom::DeviceType type,
     Location location,
     base::OnceCallback<void(bool)> callback) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   if (HasDeviceInternal(type, location)) {
     std::move(callback).Run(true);
     return;
@@ -239,7 +218,7 @@ void SensorHalClientImpl::IPCBridge::HasDevice(
 
   // As there are devices uninitialized, wait for iioservice to report device
   // info to us before the query times out.
-  ipc_task_runner_->PostDelayedTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&SensorHalClientImpl::IPCBridge::OnDeviceQueryTimedOut,
                      GetWeakPtr(), info_id),
@@ -252,7 +231,6 @@ void SensorHalClientImpl::IPCBridge::RegisterSamplesObserver(
     double frequency,
     SamplesObserver* samples_observer,
     base::OnceCallback<void(bool)> callback) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK_GT(frequency, 0.0);
   DCHECK(samples_observer);
 
@@ -286,9 +264,8 @@ void SensorHalClientImpl::IPCBridge::RegisterSamplesObserver(
       .type = type,
       .frequency = frequency,
       .sensor_reader = std::make_unique<SensorReader>(
-          ipc_task_runner_, iio_device_id, type, frequency,
-          devices_[iio_device_id].scale.value(), samples_observer,
-          GetSensorDeviceRemote(iio_device_id))};
+          iio_device_id, type, frequency, devices_[iio_device_id].scale.value(),
+          samples_observer, GetSensorDeviceRemote(iio_device_id))};
   readers_.emplace(samples_observer, std::move(reader_data));
 
   std::move(callback).Run(true);
@@ -296,7 +273,6 @@ void SensorHalClientImpl::IPCBridge::RegisterSamplesObserver(
 
 void SensorHalClientImpl::IPCBridge::UnregisterSamplesObserver(
     SamplesObserver* samples_observer) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK(samples_observer);
 
   readers_.erase(samples_observer);
@@ -304,8 +280,6 @@ void SensorHalClientImpl::IPCBridge::UnregisterSamplesObserver(
 
 void SensorHalClientImpl::IPCBridge::SetUpChannel(
     mojo::PendingRemote<mojom::SensorService> pending_remote) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   if (IsReady()) {
     LOGF(ERROR) << "Ignoring the second Remote<SensorService>";
     return;
@@ -328,8 +302,7 @@ void SensorHalClientImpl::IPCBridge::SetUpChannel(
   // Re-establish mojo channels for the existing observers with SensorReaders.
   for (auto& [samples_observer, reader_data] : readers_) {
     reader_data.sensor_reader = std::make_unique<SensorReader>(
-        ipc_task_runner_, reader_data.iio_device_id, reader_data.type,
-        reader_data.frequency,
+        reader_data.iio_device_id, reader_data.type, reader_data.frequency,
         devices_[reader_data.iio_device_id].scale.value(), samples_observer,
         GetSensorDeviceRemote(reader_data.iio_device_id));
   }
@@ -337,8 +310,6 @@ void SensorHalClientImpl::IPCBridge::SetUpChannel(
 
 void SensorHalClientImpl::IPCBridge::OnNewDeviceAdded(
     int32_t iio_device_id, const std::vector<mojom::DeviceType>& types) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   if (base::Contains(devices_, iio_device_id))
     return;
 
@@ -353,8 +324,6 @@ SensorHalClientImpl::IPCBridge::GetWeakPtr() {
 void SensorHalClientImpl::IPCBridge::GetAllDeviceIdsCallback(
     const base::flat_map<int32_t, std::vector<mojom::DeviceType>>&
         iio_device_ids_types) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   devices_retrieved_ = true;
 
   for (const auto& [iio_device_id, types] : iio_device_ids_types) {
@@ -363,8 +332,6 @@ void SensorHalClientImpl::IPCBridge::GetAllDeviceIdsCallback(
 }
 
 void SensorHalClientImpl::IPCBridge::OnDeviceQueryTimedOut(uint32_t info_id) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   auto it = device_queries_info_.find(info_id);
   if (it == device_queries_info_.end()) {
     // Task was already processed.
@@ -380,8 +347,6 @@ void SensorHalClientImpl::IPCBridge::OnDeviceQueryTimedOut(uint32_t info_id) {
 
 void SensorHalClientImpl::IPCBridge::RegisterDevice(
     int32_t iio_device_id, const std::vector<mojom::DeviceType>& types) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   DeviceData& device = devices_[iio_device_id];
 
   if (device.ignored)
@@ -431,7 +396,6 @@ void SensorHalClientImpl::IPCBridge::RegisterDevice(
 
 mojo::Remote<mojom::SensorDevice>
 SensorHalClientImpl::IPCBridge::GetSensorDeviceRemote(int32_t iio_device_id) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK(sensor_service_remote_.is_bound());
 
   mojo::Remote<mojom::SensorDevice> sensor_device_remote;
@@ -451,8 +415,6 @@ void SensorHalClientImpl::IPCBridge::GetAttributesCallback(
     int32_t iio_device_id,
     const std::vector<std::string> attr_names,
     const std::vector<std::optional<std::string>>& values) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   auto it = devices_.find(iio_device_id);
   DCHECK(it != devices_.end());
   auto& device = it->second;
@@ -500,8 +462,6 @@ void SensorHalClientImpl::IPCBridge::GetAttributesCallback(
 }
 
 void SensorHalClientImpl::IPCBridge::IgnoreDevice(int32_t iio_device_id) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   auto& device = devices_[iio_device_id];
   device.ignored = true;
   device.remote.reset();
@@ -513,8 +473,6 @@ void SensorHalClientImpl::IPCBridge::IgnoreDevice(int32_t iio_device_id) {
 
 bool SensorHalClientImpl::IPCBridge::AreAllDevicesOfTypeInitialized(
     mojom::DeviceType type) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   if (!devices_retrieved_) {
     return false;
   }
@@ -532,8 +490,6 @@ bool SensorHalClientImpl::IPCBridge::AreAllDevicesOfTypeInitialized(
 
 void SensorHalClientImpl::IPCBridge::RunDeviceQueriesForType(
     mojom::DeviceType type) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   bool all_initialized = AreAllDevicesOfTypeInitialized(type);
 
   for (auto it = device_queries_info_.begin();
@@ -559,15 +515,11 @@ void SensorHalClientImpl::IPCBridge::RunDeviceQueriesForType(
 
 bool SensorHalClientImpl::IPCBridge::HasDeviceInternal(mojom::DeviceType type,
                                                        Location location) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   return base::Contains(device_maps_, type) &&
          base::Contains(device_maps_[type], location);
 }
 
 void SensorHalClientImpl::IPCBridge::ResetSensorService() {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   cancellation_relay_->CancelAllFutures();
 
   for (auto& [id, device] : devices_) {
@@ -586,16 +538,12 @@ void SensorHalClientImpl::IPCBridge::ResetSensorService() {
 }
 
 void SensorHalClientImpl::IPCBridge::OnSensorServiceDisconnect() {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   LOGF(ERROR) << "Wait for IIO Service's reconnection.";
 
   ResetSensorService();
 }
 
 void SensorHalClientImpl::IPCBridge::OnNewDevicesObserverDisconnect() {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   LOGF(ERROR) << "Wait for IIO Service's reconnection.";
 
   // Assumes IIO Service has crashed and waits for its relaunch.
@@ -606,8 +554,6 @@ void SensorHalClientImpl::IPCBridge::OnSensorDeviceDisconnect(
     int32_t iio_device_id,
     uint32_t custom_reason_code,
     const std::string& description) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   const auto reason = static_cast<cros::mojom::SensorDeviceDisconnectReason>(
       custom_reason_code);
   LOG(WARNING) << "SensorDevice disconnected with id: " << iio_device_id

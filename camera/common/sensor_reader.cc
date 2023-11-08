@@ -45,22 +45,18 @@ std::string GetChannelPrefix(cros::mojom::DeviceType type) {
 // static
 constexpr int SensorReader::kNumberOfAxes;
 
-SensorReader::SensorReader(
-    scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner,
-    int32_t iio_device_id,
-    cros::mojom::DeviceType type,
-    double frequency,
-    double scale,
-    SamplesObserver* samples_observer,
-    mojo::Remote<mojom::SensorDevice> remote)
-    : ipc_task_runner_(std::move(ipc_task_runner)),
-      iio_device_id_(iio_device_id),
+SensorReader::SensorReader(int32_t iio_device_id,
+                           cros::mojom::DeviceType type,
+                           double frequency,
+                           double scale,
+                           SamplesObserver* samples_observer,
+                           mojo::Remote<mojom::SensorDevice> remote)
+    : iio_device_id_(iio_device_id),
       type_(type),
       frequency_(frequency),
       scale_(scale),
       samples_observer_(samples_observer),
       sensor_device_remote_(std::move(remote)) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK_GT(frequency_, 0.0);
   DCHECK(samples_observer_);
 
@@ -71,13 +67,10 @@ SensorReader::SensorReader(
       &SensorReader::GetAllChannelIdsCallback, weak_ptr_factory_.GetWeakPtr()));
 }
 
-SensorReader::~SensorReader() {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-}
+SensorReader::~SensorReader() = default;
 
 void SensorReader::OnSampleUpdated(
     const base::flat_map<int32_t, int64_t>& sample) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK(timestamp_index_);
 
   if (sample.size() != kNumberOfAxes + 1) {
@@ -114,8 +107,6 @@ void SensorReader::OnSampleUpdated(
 }
 
 void SensorReader::OnErrorOccurred(mojom::ObserverErrorType type) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   switch (type) {
     case mojom::ObserverErrorType::ALREADY_STARTED:
       LOGF(ERROR) << "Device " << iio_device_id_
@@ -162,22 +153,16 @@ void SensorReader::OnErrorOccurred(mojom::ObserverErrorType type) {
 }
 
 void SensorReader::ResetOnError() {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   LOGF(ERROR) << "ResetOnError";
   sensor_device_remote_.reset();
   receiver_.reset();
 }
 
 double SensorReader::GetScaledValue(int64_t value) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   return value * scale_;
 }
 
 void SensorReader::OnSensorDeviceDisconnect() {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   LOGF(ERROR) << "SensorDevice disconnected with id: " << iio_device_id_
               << ", and type: " << type_;
 
@@ -186,7 +171,6 @@ void SensorReader::OnSensorDeviceDisconnect() {
 
 void SensorReader::GetAllChannelIdsCallback(
     const std::vector<std::string>& iio_channel_ids) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK(sensor_device_remote_.is_bound());
 
   std::string prefix = GetChannelPrefix(type_);
@@ -221,7 +205,6 @@ void SensorReader::GetAllChannelIdsCallback(
 }
 
 void SensorReader::SetChannelsEnabled() {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK(timestamp_index_);
 
   std::vector<int32_t> indices;
@@ -246,7 +229,6 @@ void SensorReader::SetChannelsEnabled() {
 
 void SensorReader::SetChannelsEnabledCallback(
     const std::vector<int32_t>& failed_indices) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK(timestamp_index_);
 
   if (failed_indices.empty()) {
@@ -285,7 +267,6 @@ void SensorReader::SetChannelsEnabledCallback(
 }
 
 void SensorReader::SetFrequencyCallback(double result_freq) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   if (result_freq > 0.0) {
     return;
   }

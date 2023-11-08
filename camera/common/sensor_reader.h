@@ -25,8 +25,7 @@ class SensorReader : public mojom::SensorDeviceSamplesObserver {
  public:
   static constexpr int kNumberOfAxes = 3;
 
-  SensorReader(scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner,
-               int32_t iio_device_id,
+  SensorReader(int32_t iio_device_id,
                cros::mojom::DeviceType type,
                double frequency,
                double scale,
@@ -54,7 +53,6 @@ class SensorReader : public mojom::SensorDeviceSamplesObserver {
   void OnReadFailure();
 
   // The Mojo IPC task runner.
-  const scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner_;
   int32_t iio_device_id_;
   cros::mojom::DeviceType type_;
   double frequency_;
