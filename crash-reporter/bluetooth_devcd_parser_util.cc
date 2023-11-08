@@ -894,6 +894,142 @@ bool ParseMediatekDump(const base::FilePath& coredump_path,
 
 }  // namespace mediatek
 
+namespace qualcomm {
+
+// More information about Qualcomm telemetry spec: go/cros-bt-qualcomm-telemetry
+
+constexpr char kVendorName[] = "qca";
+constexpr int kPCOffset = 0xFEE8;
+constexpr int kReasonOffset = 0xFEEC;
+
+enum class ParserState {
+  kParsePC,
+  kParseReason,
+  kParseDone,
+};
+
+bool ParsePC(base::File& file,
+             int64_t dump_start,
+             std::string& out,
+             std::string* pc) {
+  if (file.Seek(base::File::FROM_BEGIN, dump_start + kPCOffset) == -1) {
+    LOG(WARNING) << "Error seeking file";
+    return false;
+  }
+
+  uint32_t val;
+
+  if (file.ReadAtCurrentPos(reinterpret_cast<char*>(&val), sizeof(val)) <
+      sizeof(val)) {
+    LOG(WARNING) << "Error reading PC value";
+    return false;
+  }
+
+  out = CreateDumpEntry("PC", base::HexEncode(&val, sizeof(val)));
+  *pc = base::HexEncode(&val, sizeof(val));
+
+  return true;
+}
+
+bool ParseReason(base::File& file, int64_t dump_start, std::string& out) {
+  if (file.Seek(base::File::FROM_BEGIN, dump_start + kReasonOffset) == -1) {
+    LOG(WARNING) << "Error seeking file";
+    return false;
+  }
+
+  uint32_t val;
+
+  if (file.ReadAtCurrentPos(reinterpret_cast<char*>(&val), sizeof(val)) <
+      sizeof(val)) {
+    LOG(WARNING) << "Error reading Reason Code value";
+    return false;
+  }
+
+  out = CreateDumpEntry("Reason Code", base::HexEncode(&val, sizeof(val)));
+
+  return true;
+}
+
+bool ParseQualcommDump(const base::FilePath& coredump_path,
+                       const base::FilePath& target_path,
+                       const int64_t dump_start,
+                       std::string* pc) {
+  base::File dump_file(coredump_path,
+                       base::File::FLAG_OPEN | base::File::FLAG_READ);
+  base::File target_file(target_path,
+                         base::File::FLAG_OPEN | base::File::FLAG_APPEND);
+
+  if (!target_file.IsValid()) {
+    LOG(ERROR) << "Error opening file " << target_path << " Error: "
+               << base::File::ErrorToString(target_file.error_details());
+    return false;
+  }
+
+  if (!dump_file.IsValid()) {
+    LOG(ERROR) << "Error opening file " << coredump_path << " Error: "
+               << base::File::ErrorToString(dump_file.error_details());
+    // Use the default value for PC and report an empty dump.
+    if (!ReportDefaultPC(target_file, pc) ||
+        !ReportParseError(ParseErrorReason::kErrorFileIO, target_file)) {
+      PLOG(ERROR) << "Error writing to target file " << target_path;
+      return false;
+    }
+    return true;
+  }
+
+  ParserState state = ParserState::kParsePC;
+
+  while (state != ParserState::kParseDone) {
+    std::string line;
+    bool parse_status = true;
+
+    switch (state) {
+      case ParserState::kParsePC:
+        parse_status = ParsePC(dump_file, dump_start, line, pc);
+        state = ParserState::kParseReason;
+        break;
+      case ParserState::kParseReason:
+        parse_status = ParseReason(dump_file, dump_start, line);
+        state = ParserState::kParseDone;
+        break;
+      default:
+        LOG(ERROR) << "Incorrect parsing state";
+        return false;
+    }
+
+    if (!parse_status) {
+      // Do not continue if parsing of any of the line fails because once we are
+      // out of sync with the dump, parsing further information is going to be
+      // erroneous information.
+      PLOG(ERROR) << "Error parsing file " << coredump_path;
+      if (!ReportParseError(ParseErrorReason::kErrorEventDataParsing,
+                            target_file)) {
+        PLOG(ERROR) << "Error writing to target file " << target_path;
+        return false;
+      }
+      break;
+    }
+
+    if (!line.empty() && !target_file.WriteAtCurrentPosAndCheck(
+                             base::as_bytes(base::make_span(line)))) {
+      PLOG(ERROR) << "Error writing to target file " << target_path;
+      return false;
+    }
+  }
+
+  if (pc->empty()) {
+    // If no PC found in the coredump blob, use the default value for PC
+    if (!ReportDefaultPC(target_file, pc)) {
+      PLOG(ERROR) << "Error writing to target file " << target_path;
+      return false;
+    }
+  }
+
+  return true;
+}
+
+}  // namespace qualcomm
+
 }  // namespace vendor
 
 namespace {
@@ -1077,6 +1213,9 @@ bool ParseDumpData(const base::FilePath& coredump_path,
                                              dump_start, pc);
   } else if (vendor_name == vendor::mediatek::kVendorName) {
     return vendor::mediatek::ParseMediatekDump(coredump_path, target_path,
+                                               dump_start, pc);
+  } else if (vendor_name == vendor::qualcomm::kVendorName) {
+    return vendor::qualcomm::ParseQualcommDump(coredump_path, target_path,
                                                dump_start, pc);
   }
 

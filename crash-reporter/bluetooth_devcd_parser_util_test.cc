@@ -1589,3 +1589,97 @@ TEST_F(BluetoothDevcdParserUtilTest, TestMediaTekEmptyDump) {
   };
   VerifyProcessedDump(want_lines);
 }
+
+// Verify all Qualcomm dump data is parsed correctly and the PC is included in
+// the crash signature.
+TEST_F(BluetoothDevcdParserUtilTest, TestQualcommCompleteDump) {
+  std::string data(0xFFFF, 'a');
+
+  // PC is at offset 0xFEE8, size 4 bytes
+  data[0xFEE8] = 0x01;
+  data[0xFEE9] = 0x02;
+  data[0xFEEA] = 0x03;
+  data[0xFEEB] = 0x04;
+
+  // Reason Code is at offset 0xFEEC, size 4 bytes
+  data[0xFEEC] = 0x05;
+  data[0xFEED] = 0x06;
+  data[0xFEEE] = 0x07;
+  data[0xFEEF] = 0x08;
+
+  std::vector<std::string> meta_data = {
+      kMetaHeader,
+      "State: 2",
+      "Driver: btusb",
+      "Vendor: qca",
+      "Controller Name: 0x45",
+  };
+  CreateDumpFile(meta_data, std::vector<uint8_t>(data.begin(), data.end()));
+
+  std::string sig;
+  EXPECT_TRUE(bluetooth_util::ParseBluetoothCoredump(dump_path_, output_dir_,
+                                                     false, &sig));
+  EXPECT_EQ(sig, "bt_firmware-btusb-qca_0x45-01020304");
+
+  std::vector<std::string> want_lines = {
+      "State=Devcoredump Complete", "Driver=btusb", "Vendor=qca",
+      "Controller Name=0x45",       "PC=01020304",  "Reason Code=05060708",
+  };
+  VerifyProcessedDump(want_lines);
+}
+
+// Verify that the partial devcoredump is processed successfully and all the
+// available data is parsed and reported.
+TEST_F(BluetoothDevcdParserUtilTest, TestQualcommPartialDump) {
+  std::string data(0xFEEC, 'a');
+
+  // PC is at offset 0xFEE8, size 4 bytes
+  data[0xFEE8] = 0x01;
+  data[0xFEE9] = 0x02;
+  data[0xFEEA] = 0x03;
+  data[0xFEEB] = 0x04;
+
+  std::vector<std::string> meta_data = {
+      kMetaHeader,
+      "State: 2",
+      "Driver: btusb",
+      "Vendor: qca",
+      "Controller Name: 0x45",
+  };
+  CreateDumpFile(meta_data, std::vector<uint8_t>(data.begin(), data.end()));
+
+  std::string sig;
+  EXPECT_TRUE(bluetooth_util::ParseBluetoothCoredump(dump_path_, output_dir_,
+                                                     false, &sig));
+  EXPECT_EQ(sig, "bt_firmware-btusb-qca_0x45-01020304");
+
+  std::vector<std::string> want_lines = {
+      "State=Devcoredump Complete", "Driver=btusb", "Vendor=qca",
+      "Controller Name=0x45",       "PC=01020304",  "Parse Failure Reason=4",
+  };
+  VerifyProcessedDump(want_lines);
+}
+
+// A bluetooth devcoredump with just a header but no vendor specific binary
+// data is a valid dump too. Verify that the empty dump is reported properly.
+TEST_F(BluetoothDevcdParserUtilTest, TestQualcommEmptyDump) {
+  std::vector<std::string> meta_data = {
+      kMetaHeader,
+      "State: 2",
+      "Driver: btusb",
+      "Vendor: qca",
+      "Controller Name: 0x45",
+  };
+  CreateDumpFile(meta_data);
+
+  std::string sig;
+  EXPECT_TRUE(bluetooth_util::ParseBluetoothCoredump(dump_path_, output_dir_,
+                                                     false, &sig));
+  EXPECT_EQ(sig, "bt_firmware-btusb-qca_0x45-00000000");
+
+  std::vector<std::string> want_lines = {
+      "State=Devcoredump Complete", "Driver=btusb",           "Vendor=qca",
+      "Controller Name=0x45",       "Parse Failure Reason=4", "PC=00000000",
+  };
+  VerifyProcessedDump(want_lines);
+}
