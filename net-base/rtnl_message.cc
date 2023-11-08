@@ -480,14 +480,24 @@ RTNLMessage::RTNLMessage(Type type,
 // static
 std::unique_ptr<RTNLMessage> RTNLMessage::Decode(
     base::span<const uint8_t> data) {
-  const RTNLHeader* hdr = reinterpret_cast<const RTNLHeader*>(data.data());
-  if (data.size() < sizeof(hdr->hdr) || data.size() < hdr->hdr.nlmsg_len ||
-      hdr->hdr.nlmsg_len < sizeof(hdr->hdr)) {
+  // Parse the nlmsghdr, and trim the data to the size |nlmsg_len|.
+  if (data.size() < sizeof(struct nlmsghdr)) {
     return nullptr;
   }
+  const nlmsghdr* header = reinterpret_cast<const nlmsghdr*>(data.data());
+  if (data.size() < header->nlmsg_len) {
+    return nullptr;
+  }
+  data = data.subspan(0, header->nlmsg_len);
+
+  // Split the remaining data after the header.
+  if (data.size() < NLMSG_HDRLEN) {
+    return nullptr;
+  }
+  const base::span<const uint8_t> payload = data.subspan(NLMSG_HDRLEN);
 
   Mode mode = kModeUnknown;
-  switch (hdr->hdr.nlmsg_type) {
+  switch (header->nlmsg_type) {
     case RTM_NEWLINK:
     case RTM_NEWADDR:
     case RTM_NEWROUTE:
@@ -512,44 +522,44 @@ std::unique_ptr<RTNLMessage> RTNLMessage::Decode(
   rtattr* attr_data = nullptr;
   size_t attr_length = 0;
   std::unique_ptr<RTNLMessage> msg;
-  switch (hdr->hdr.nlmsg_type) {
+  switch (header->nlmsg_type) {
     case RTM_NEWLINK:
     case RTM_DELLINK:
-      attr_data = IFLA_RTA(NLMSG_DATA(&hdr->hdr));
-      attr_length = IFLA_PAYLOAD(&hdr->hdr);
-      msg = DecodeLink(mode, hdr);
+      attr_data = IFLA_RTA(NLMSG_DATA(header));
+      attr_length = IFLA_PAYLOAD(header);
+      msg = DecodeLink(mode, reinterpret_cast<const RTNLHeader*>(header));
       break;
 
     case RTM_NEWADDR:
     case RTM_DELADDR:
-      attr_data = IFA_RTA(NLMSG_DATA(&hdr->hdr));
-      attr_length = IFA_PAYLOAD(&hdr->hdr);
-      msg = DecodeAddress(mode, hdr);
+      attr_data = IFA_RTA(NLMSG_DATA(header));
+      attr_length = IFA_PAYLOAD(header);
+      msg = DecodeAddress(mode, reinterpret_cast<const RTNLHeader*>(header));
       break;
 
     case RTM_NEWROUTE:
     case RTM_DELROUTE:
-      attr_data = RTM_RTA(NLMSG_DATA(&hdr->hdr));
-      attr_length = RTM_PAYLOAD(&hdr->hdr);
-      msg = DecodeRoute(mode, hdr);
+      attr_data = RTM_RTA(NLMSG_DATA(header));
+      attr_length = RTM_PAYLOAD(header);
+      msg = DecodeRoute(mode, reinterpret_cast<const RTNLHeader*>(header));
       break;
 
     case RTM_NEWRULE:
     case RTM_DELRULE:
-      attr_data = RTM_RTA(NLMSG_DATA(&hdr->hdr));
-      attr_length = RTM_PAYLOAD(&hdr->hdr);
-      msg = DecodeRule(mode, hdr);
+      attr_data = RTM_RTA(NLMSG_DATA(header));
+      attr_length = RTM_PAYLOAD(header);
+      msg = DecodeRule(mode, reinterpret_cast<const RTNLHeader*>(header));
       break;
 
     case RTM_NEWNDUSEROPT:
-      msg = DecodeNdUserOption(mode, hdr);
+      msg = DecodeNdUserOption(mode, payload);
       break;
 
     case RTM_NEWNEIGH:
     case RTM_DELNEIGH:
-      attr_data = RTM_RTA(NLMSG_DATA(&hdr->hdr));
-      attr_length = RTM_PAYLOAD(&hdr->hdr);
-      msg = DecodeNeighbor(mode, hdr);
+      attr_data = RTM_RTA(NLMSG_DATA(header));
+      attr_length = RTM_PAYLOAD(header);
+      msg = DecodeNeighbor(mode, reinterpret_cast<const RTNLHeader*>(header));
       break;
 
     default:
@@ -559,9 +569,9 @@ std::unique_ptr<RTNLMessage> RTNLMessage::Decode(
     return nullptr;
   }
 
-  msg->flags_ = hdr->hdr.nlmsg_flags;
-  msg->seq_ = hdr->hdr.nlmsg_seq;
-  msg->pid_ = hdr->hdr.nlmsg_pid;
+  msg->flags_ = header->nlmsg_flags;
+  msg->seq_ = header->nlmsg_seq;
+  msg->pid_ = header->nlmsg_pid;
 
   const std::unique_ptr<RTNLAttrMap> attrs = ParseAttrs(attr_data, attr_length);
   if (!attrs) {
@@ -669,52 +679,48 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeRule(Mode mode,
 }
 
 std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
-    Mode mode, const RTNLHeader* hdr) {
-  const size_t min_payload_len =
-      sizeof(hdr->nd_user_opt) + sizeof(NDUserOptionHeader);
-  if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(min_payload_len)) {
+    Mode mode, base::span<const uint8_t> payload) {
+  // Parse the nduseroptmsg struct.
+  if (payload.size() < sizeof(struct nduseroptmsg)) {
     return nullptr;
   }
-
-  const int32_t interface_index = hdr->nd_user_opt.nduseropt_ifindex;
-  const sa_family_t family = hdr->nd_user_opt.nduseropt_family;
+  const struct nduseroptmsg* nd_user_opt =
+      reinterpret_cast<const struct nduseroptmsg*>(payload.data());
+  payload = payload.subspan(sizeof(struct nduseroptmsg));
 
   // Verify IP family.
+  const int32_t interface_index = nd_user_opt->nduseropt_ifindex;
+  const sa_family_t family = nd_user_opt->nduseropt_family;
   if (net_base::FromSAFamily(family) != net_base::IPFamily::kIPv6) {
-    return nullptr;
-  }
-  // Verify message must at-least contain the option header.
-  if (hdr->nd_user_opt.nduseropt_opts_len < sizeof(NDUserOptionHeader)) {
     return nullptr;
   }
 
   // Parse the option header.
+  if (payload.size() < sizeof(NDUserOptionHeader)) {
+    return nullptr;
+  }
   const NDUserOptionHeader* nd_user_option_header =
-      reinterpret_cast<const NDUserOptionHeader*>(
-          reinterpret_cast<const uint8_t*>(&hdr->nd_user_opt) +
-          sizeof(struct nduseroptmsg));
+      reinterpret_cast<const NDUserOptionHeader*>(payload.data());
+  payload = payload.subspan(sizeof(NDUserOptionHeader));
 
   // Verify option length.
-  // The length field in the header is in units of 8 octets.
+  // The length field in the header is in units of 8 octets, which indicates the
+  // size of payload, including the NDUserOptionHeader.
   const size_t opt_len = nd_user_option_header->length * 8;
-  if (opt_len != hdr->nd_user_opt.nduseropt_opts_len) {
+  if (opt_len != nd_user_opt->nduseropt_opts_len) {
     return nullptr;
   }
-
-  // Determine option data pointer and data length.
-  const size_t data_len = opt_len - sizeof(NDUserOptionHeader);
-  if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(min_payload_len + data_len)) {
+  if (payload.size() < opt_len - sizeof(NDUserOptionHeader)) {
     return nullptr;
   }
-  const base::span<const uint8_t> option_data{
-      reinterpret_cast<const uint8_t*>(nd_user_option_header + 1), data_len};
+  payload = payload.subspan(0, opt_len - sizeof(NDUserOptionHeader));
 
   std::unique_ptr<RTNLMessage> msg;
   switch (nd_user_option_header->type) {
     case ND_OPT_DNSSL: {
       msg = std::make_unique<RTNLMessage>(kTypeDnssl, mode, 0, 0, 0,
                                           interface_index, family);
-      if (!msg->ParseDnsslOption(option_data)) {
+      if (!msg->ParseDnsslOption(payload)) {
         LOG(ERROR) << "Invalid DNSSL RTNL packet.";
         return nullptr;
       }
@@ -724,7 +730,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
       // Parse RNDSS (Recursive DNS Server) option.
       msg = std::make_unique<RTNLMessage>(kTypeRdnss, mode, 0, 0, 0,
                                           interface_index, family);
-      if (!msg->ParseRdnssOption(option_data)) {
+      if (!msg->ParseRdnssOption(payload)) {
         LOG(ERROR) << "Invalid RDNSS RTNL packet.";
         return nullptr;
       }
@@ -734,7 +740,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
       // Parse Captive portal URI option.
       msg = std::make_unique<RTNLMessage>(kTypeCaptivePortal, mode, 0, 0, 0,
                                           interface_index, family);
-      if (!msg->ParseCaptivePortalOption(option_data)) {
+      if (!msg->ParseCaptivePortalOption(payload)) {
         LOG(ERROR) << "Invalid captive portal URI RTNL packet.";
         return nullptr;
       }
