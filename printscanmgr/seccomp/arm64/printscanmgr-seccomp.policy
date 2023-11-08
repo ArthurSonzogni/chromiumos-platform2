@@ -69,3 +69,4 @@ writev: 1
 socketpair: 1
 memfd_create: 1
 eventfd2: 1
+mremap: 1
