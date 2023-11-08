@@ -35,6 +35,7 @@ inline constexpr char kStartFingerprintAuthSession[] =
 inline constexpr char kEndFingerprintAuthSession[] =
     "EndFingerprintAuthSession";
 inline constexpr char kGetWebAuthnSecret[] = "GetWebAuthnSecret";
+inline constexpr char kGetRecoverableKeyStores[] = "GetRecoverableKeyStores";
 inline constexpr char kGetHibernateSecret[] = "GetHibernateSecret";
 inline constexpr char kGetEncryptionInfo[] = "GetEncryptionInfo";
 inline constexpr char kStartMigrateToDircrypto[] = "StartMigrateToDircrypto";

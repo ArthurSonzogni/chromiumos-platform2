@@ -194,6 +194,7 @@ proto_library("system_api-cryptohome-protos") {
     "${proto_in_dir}/auth_factor.proto",
     "${proto_in_dir}/fido.proto",
     "${proto_in_dir}/key.proto",
+    "${proto_in_dir}/recoverable_key_store.proto",
     "${proto_in_dir}/rpc.proto",
   ]
   standalone = true
@@ -212,6 +213,7 @@ goproto_library("system_api-cryptohome-goprotos") {
     "${proto_in_dir}/auth_factor.proto",
     "${proto_in_dir}/fido.proto",
     "${proto_in_dir}/key.proto",
+    "${proto_in_dir}/recoverable_key_store.proto",
     "${proto_in_dir}/rpc.proto",
   ]
 }

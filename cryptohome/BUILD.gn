@@ -79,6 +79,7 @@ action("print_proto_library") {
   inputs = [
     "${dbus_proto_path}/auth_factor.proto",
     "${dbus_proto_path}/fido.proto",
+    "${dbus_proto_path}/recoverable_key_store.proto",
     "${dbus_proto_path}/key.proto",
     "${dbus_proto_path}/rpc.proto",
     "${dbus_proto_path}/UserDataAuth.proto",
@@ -86,6 +87,7 @@ action("print_proto_library") {
   outputs = [
     "${target_gen_dir}/common/print_auth_factor_proto.cc",
     "${target_gen_dir}/common/print_fido_proto.cc",
+    "${target_gen_dir}/common/print_recoverable_key_store_proto.cc",
     "${target_gen_dir}/common/print_key_proto.cc",
     "${target_gen_dir}/common/print_rpc_proto.cc",
     "${target_gen_dir}/common/print_UserDataAuth_proto.cc",
