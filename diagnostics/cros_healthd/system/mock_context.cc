@@ -30,7 +30,6 @@ namespace diagnostics {
 MockContext::MockContext() {
   attestation_proxy_ = std::make_unique<
       testing::StrictMock<org::chromium::AttestationProxyMock>>();
-  cros_config_legacy_ = std::make_unique<brillo::FakeCrosConfig>();
   cros_config_ = std::make_unique<CrosConfig>(ServiceConfig{});
   cras_proxy_ = std::make_unique<
       testing::StrictMock<org::chromium::cras::ControlProxyMock>>();
@@ -77,10 +76,6 @@ org::chromium::AttestationProxyMock* MockContext::mock_attestation_proxy()
 
 ash::cros_healthd::mojom::Executor* MockContext::executor() {
   return &mock_executor_;
-}
-
-brillo::FakeCrosConfig* MockContext::fake_cros_config() const {
-  return static_cast<brillo::FakeCrosConfig*>(cros_config_legacy_.get());
 }
 
 org::chromium::debugdProxyMock* MockContext::mock_debugd_proxy() const {

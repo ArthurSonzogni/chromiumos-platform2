@@ -15,7 +15,6 @@ pkg_config("libcros_healthd_fetchers_pkg_deps") {
     "iioservice_ipc",
     "libbrillo",
     "libchrome",
-    "libcros_config",
     "libdebugd-client",
     "libmojo",
     "libspaced",
@@ -71,7 +70,6 @@ if (use.test) {
       "libbrillo",
       "libchrome",
       "libchrome-test",
-      "libcros_config",
       "libdebugd-client",
       "libdebugd-client-test",
       "libspaced",
@@ -119,10 +117,7 @@ if (use.test) {
 
 if (use.fuzzer) {
   pkg_config("fetch_system_info_fuzzer_pkg_deps") {
-    pkg_deps = [
-      "libchrome",
-      "libcros_config",
-    ]
+    pkg_deps = [ "libchrome" ]
   }
 
   executable("fetch_system_info_fuzzer") {

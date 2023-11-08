@@ -12,7 +12,6 @@
 #include <base/time/tick_clock.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/udev/udev_monitor.h>
-#include <chromeos/chromeos-config/libcros_config/cros_config_interface.h>
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 #include <mojo/public/cpp/bindings/remote.h>
@@ -99,9 +98,6 @@ class Context {
   // Use the object returned by cros_config() to query the device's
   // configuration file.
   CrosConfig* cros_config() const { return cros_config_.get(); }
-  brillo::CrosConfigInterface* cros_config_legacy() const {
-    return cros_config_legacy_.get();
-  }
   // Use the object returned by debugd_proxy() to make calls to debugd. Example:
   // cros_healthd calls out to debugd when it needs to collect smart battery
   // metrics like manufacture_date_smart and temperature_smart.
@@ -202,10 +198,6 @@ class Context {
   // This should be the only connection to D-Bus. Use |connection_| to get the
   // |dbus_bus|.
   brillo::DBusConnection connection_;
-
-  // Used by this object to initialize the SystemConfig. Used for reading
-  // cros_config properties to determine device feature support.
-  std::unique_ptr<brillo::CrosConfigInterface> cros_config_legacy_;
 
   // Used to watch udev events.
   std::unique_ptr<brillo::UdevMonitor> udev_monitor_;

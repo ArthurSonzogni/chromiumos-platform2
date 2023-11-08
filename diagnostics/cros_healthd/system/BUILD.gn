@@ -12,7 +12,6 @@ pkg_config("libcros_healthd_system_pkg_deps") {
     "libattestation-client",
     "libbrillo",
     "libchrome",
-    "libcros_config",
     "libdebugd-client",
     "libmojo",
     "libpci",
@@ -74,7 +73,6 @@ if (use.test || use.fuzzer) {
       "libattestation-client-test",
       "libchrome",
       "libchrome-test",
-      "libcros_config",
       "libdebugd-client",
       "libdebugd-client-test",
       "libpower_manager-client",
@@ -127,7 +125,6 @@ if (use.test) {
     pkg_deps = [
       "libchrome",
       "libchrome-test",
-      "libcros_config",
       "libdebugd-client",
       "libdebugd-client-test",
       "libpower_manager-client",

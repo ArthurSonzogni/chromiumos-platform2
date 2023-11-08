@@ -14,7 +14,6 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/default_tick_clock.h>
 #include <brillo/udev/udev.h>
-#include <chromeos/chromeos-config/libcros_config/cros_config.h>
 #include <chromeos/dbus/service_constants.h>
 #include <cras/dbus-proxies.h>
 #include <debugd/dbus-proxies.h>
@@ -127,7 +126,6 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
   }));
 
   // Create others.
-  cros_config_legacy_ = std::make_unique<brillo::CrosConfig>();
   cros_config_ = std::make_unique<CrosConfig>(service_config);
 
   powerd_adapter_ =

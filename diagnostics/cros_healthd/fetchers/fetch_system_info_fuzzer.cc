@@ -15,7 +15,6 @@
 #include <base/test/scoped_chromeos_version_info.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_timeouts.h>
-#include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
 #include "diagnostics/base/file_test_utils.h"
