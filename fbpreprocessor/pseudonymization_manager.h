@@ -33,11 +33,11 @@ class PseudonymizationManager : public SessionStateManager::Observer {
 
  private:
   void DoNoOpPseudonymization(const FirmwareDump& input,
-                              const FirmwareDump& output);
+                              const FirmwareDump& output) const;
 
   void OnPseudonymizationComplete(const FirmwareDump& input,
                                   const FirmwareDump& output,
-                                  bool success);
+                                  bool success) const;
 
   // Returns true if we haven't handled "too many" pseudonymizations recently
   // and we can start a new one without exceeding the rate limits.

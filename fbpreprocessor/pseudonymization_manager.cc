@@ -110,7 +110,7 @@ void PseudonymizationManager::OnUserLoggedOut() {
 }
 
 void PseudonymizationManager::DoNoOpPseudonymization(
-    const FirmwareDump& input, const FirmwareDump& output) {
+    const FirmwareDump& input, const FirmwareDump& output) const {
   bool success = true;
   LOG(INFO) << "Pseudonymizing " << input;
   if (!base::Move(input.DumpFile(), output.DumpFile())) {
@@ -121,7 +121,7 @@ void PseudonymizationManager::DoNoOpPseudonymization(
 }
 
 void PseudonymizationManager::OnPseudonymizationComplete(
-    const FirmwareDump& input, const FirmwareDump& output, bool success) {
+    const FirmwareDump& input, const FirmwareDump& output, bool success) const {
   // TODO(b/307593542): remove filenames from logs.
   LOG(INFO) << "Completed pseudonymization of " << input
             << (success ? " " : " un") << "successfully.";

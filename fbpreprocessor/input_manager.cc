@@ -55,7 +55,7 @@ InputManager::~InputManager() {
 
 void InputManager::OnSignalConnected(const std::string& interface_name,
                                      const std::string& signal_name,
-                                     bool success) {
+                                     bool success) const {
   if (!success)
     LOG(ERROR) << "Failed to connect to signal " << signal_name
                << " of interface " << interface_name;
@@ -65,7 +65,7 @@ void InputManager::OnSignalConnected(const std::string& interface_name,
   }
 }
 
-void InputManager::OnFirmwareDumpCreated(dbus::Signal* signal) {
+void InputManager::OnFirmwareDumpCreated(dbus::Signal* signal) const {
   CHECK(signal != nullptr) << "Invalid " << __func__ << " signal.";
   dbus::MessageReader signal_reader(signal);
   DebugDumps dumps;
@@ -112,11 +112,11 @@ void InputManager::OnUserLoggedOut() {
   user_root_dir_.clear();
 }
 
-void InputManager::OnNewFirmwareDump(const FirmwareDump& fw_dump) {
+void InputManager::OnNewFirmwareDump(const FirmwareDump& fw_dump) const {
   manager_->pseudonymization_manager()->StartPseudonymization(fw_dump);
 }
 
-void InputManager::DeleteAllFiles() {
+void InputManager::DeleteAllFiles() const {
   base::FileEnumerator files(user_root_dir_.Append(kInputDirectory),
                              false /* recursive */,
                              base::FileEnumerator::FILES);

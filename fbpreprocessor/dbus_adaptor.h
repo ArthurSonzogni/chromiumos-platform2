@@ -31,7 +31,7 @@ class DBusAdaptor : public org::chromium::FbPreprocessorInterface,
   }
 
   bool GetDebugDumps(brillo::ErrorPtr* error,
-                     DebugDumps* out_DebugDumps) override;
+                     DebugDumps* out_DebugDumps) const override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;

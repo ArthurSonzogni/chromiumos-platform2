@@ -53,7 +53,7 @@ class SessionStateManager : public SessionStateManagerInterface {
 
   // Returns true if the user is allowed to include firmware dumps in feedback
   // reports, false otherwise.
-  bool FirmwareDumpsAllowedByPolicy();
+  bool FirmwareDumpsAllowedByPolicy() const;
 
  private:
   void OnSessionStateChanged(const std::string& state);
@@ -82,15 +82,15 @@ class SessionStateManager : public SessionStateManagerInterface {
 
   // Create directories in the daemon-store where the input and output files
   // will live.
-  bool CreateUserDirectories();
+  bool CreateUserDirectories() const;
 
   void OnSignalConnected(const std::string& interface_name,
                          const std::string& signal_name,
-                         bool success);
+                         bool success) const;
 
   // Returns true if the primary user is in the allowlist of domains or users
   // who are allowed to include firmware dumps in feedback reports.
-  bool PrimaryUserInAllowlist();
+  bool PrimaryUserInAllowlist() const;
 
   // Proxy for dbus communication with session manager / login.
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>

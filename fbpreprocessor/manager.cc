@@ -40,7 +40,7 @@ void Manager::Start(dbus::Bus* bus) {
 
 Manager::~Manager() = default;
 
-bool Manager::FirmwareDumpsAllowed() {
+bool Manager::FirmwareDumpsAllowed() const {
   if (session_state_manager_.get() == nullptr) {
     LOG(ERROR) << "SessionStateManager not instantiated.";
     return false;

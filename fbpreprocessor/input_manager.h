@@ -30,15 +30,15 @@ class InputManager : public SessionStateManager::Observer {
   void OnUserLoggedOut() override;
 
  private:
-  void OnNewFirmwareDump(const FirmwareDump& fw_dump);
+  void OnNewFirmwareDump(const FirmwareDump& fw_dump) const;
 
-  void OnFirmwareDumpCreated(dbus::Signal* signal);
+  void OnFirmwareDumpCreated(dbus::Signal* signal) const;
 
   void OnSignalConnected(const std::string& interface_name,
                          const std::string& signal_name,
-                         bool success);
+                         bool success) const;
 
-  void DeleteAllFiles();
+  void DeleteAllFiles() const;
 
   base::FilePath user_root_dir_;
 

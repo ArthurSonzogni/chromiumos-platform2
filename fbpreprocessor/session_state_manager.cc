@@ -129,7 +129,7 @@ void SessionStateManager::RemoveObserver(Observer* observer) {
   observers_.RemoveObserver(observer);
 }
 
-bool SessionStateManager::PrimaryUserInAllowlist() {
+bool SessionStateManager::PrimaryUserInAllowlist() const {
   return primary_user_.ends_with("@google.com") ||
          base::Contains(kUserAllowlist, primary_user_);
 }
@@ -180,7 +180,7 @@ bool SessionStateManager::UpdatePolicy() {
   return true;
 }
 
-bool SessionStateManager::FirmwareDumpsAllowedByPolicy() {
+bool SessionStateManager::FirmwareDumpsAllowedByPolicy() const {
   return (active_sessions_num_ == 1) && PrimaryUserInAllowlist() &&
          fw_dumps_allowed_by_policy_;
 }
@@ -265,7 +265,7 @@ bool SessionStateManager::RefreshPrimaryUser() {
   return update_result;
 }
 
-bool SessionStateManager::CreateUserDirectories() {
+bool SessionStateManager::CreateUserDirectories() const {
   bool success = true;
   if (primary_user_hash_.empty()) {
     LOG(ERROR) << "Can't create input/output directories without daemon store.";
@@ -292,7 +292,7 @@ bool SessionStateManager::CreateUserDirectories() {
 
 void SessionStateManager::OnSignalConnected(const std::string& interface_name,
                                             const std::string& signal_name,
-                                            bool success) {
+                                            bool success) const {
   if (!success)
     LOG(ERROR) << "Failed to connect to signal " << signal_name
                << " of interface " << interface_name;

@@ -20,7 +20,7 @@ DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus, Manager* manager)
       manager_(manager) {}
 
 bool DBusAdaptor::GetDebugDumps(brillo::ErrorPtr* error,
-                                DebugDumps* out_DebugDumps) {
+                                DebugDumps* out_DebugDumps) const {
   auto dumps = manager_->output_manager()->AvailableDumps();
   for (auto dump : dumps) {
     // TODO(b/308984163): Add the metadata information to

@@ -36,7 +36,7 @@ class PlatformFeaturesClient : public PlatformFeaturesClientInterface {
   void AddObserver(Observer* observer) override;
   void RemoveObserver(Observer* observer) override;
 
-  bool FirmwareDumpsAllowedByFinch() { return allowed_; }
+  bool FirmwareDumpsAllowedByFinch() const { return allowed_; }
 
  private:
   void Refetch();
