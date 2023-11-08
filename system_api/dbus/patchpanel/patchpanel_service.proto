@@ -421,7 +421,10 @@ message ConnectNamespaceResponse {
 // counter will keep growing until the system (CrOS) shuts down.
 // Used in TrafficCountersResponse.
 message TrafficCounter {
-  // Possible traffic sources.
+  // Possible traffic sources. The names of these entries are used in shill to
+  // associate storage keys for persisting traffic counter data. Changing the
+  // name of an existing entry or removing an entry should be accompanied with
+  // the appropriate data migration or cleanup code in shill::Service::Save().
   enum Source {
     UNKNOWN = 0;
     // Traffic associated with user chronos.
@@ -429,16 +432,35 @@ message TrafficCounter {
     // Traffic associated with user debugd, cups, and tlsdate, i.e., other user
     // traffic except for that for user chronos.
     USER = 2;
-    ARC = 3;
-    CROSVM = 4;
-    PARALLELS_VM = 5;
-    UPDATE_ENGINE = 6;
+    UPDATE_ENGINE = 3;
+    // Other system traffic.
+    SYSTEM = 4;
     // As a source, VPN means traffic initiated by the VPN app/program and going
     // to the underlying physical network (or from physical network to the VPN
     // app/program).
-    VPN = 7;
-    // All other traffic.
-    SYSTEM = 8;
+    VPN = 5;
+    // Traffic from ARC container or ARCVM.
+    ARC = 6;
+    // Traffic from a Borealis VM.
+    BOREALIS_VM = 7;
+    // Traffic from a Bruschetta VM.
+    BRUSCHETTA_VM = 8;
+    // Traffic from a Crostini VM.
+    CROSTINI_VM = 9;
+    // Traffic from a Parallels VM.
+    PARALLELS_VM = 10;
+    // Traffic from a tethered client.
+    TETHERING = 11;
+    // Traffic from a WiFi Direct client. This entry is defined for consistency
+    // with patchpanel's source enum but it is not expected to be used in
+    // traffic counters since WiFi Direct traffic should not be forwarded to any
+    // other Network.
+    WIFI_DIRECT = 12;
+    // Traffic from a WiFi local only hotspot client. This entry is defined for
+    // consistency with patchpanel's source enum but it is not expected to be
+    // used in traffic counters since WiFi local only hotspot traffic should not
+    // be forwarded to any other Network.
+    WIFI_LOHS = 13;
   }
 
   // Possible IP address family numbers.

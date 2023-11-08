@@ -287,19 +287,19 @@ TrafficCounter::Source TrafficSourceToProto(TrafficSource source) {
     case TrafficSource::kArc:
       return TrafficCounter::ARC;
     case TrafficSource::kCrostiniVM:
-    // TODO(b/309607419): Define proto TrafficCounter for Bruschetta and
-    // Borealis
+      return TrafficCounter::CROSTINI_VM;
     case TrafficSource::kBruschettaVM:
+      return TrafficCounter::BRUSCHETTA_VM;
     case TrafficSource::kBorealisVM:
-      return TrafficCounter::CROSVM;
+      return TrafficCounter::BOREALIS_VM;
     case TrafficSource::kParallelsVM:
       return TrafficCounter::PARALLELS_VM;
-    // TODO(b/309607419): Define proto TrafficCounter for Tethering, WiFi
-    // Direct, and WiFi local only Hotspot.
     case TrafficSource::kTetherDownstream:
+      return TrafficCounter::TETHERING;
     case TrafficSource::kWiFiDirect:
+      return TrafficCounter::WIFI_DIRECT;
     case TrafficSource::kWiFiLOHS:
-      return TrafficCounter::SYSTEM;
+      return TrafficCounter::WIFI_LOHS;
     case TrafficSource::kArcVpn:
       return TrafficCounter::VPN;
     case TrafficSource::kUnknown:
@@ -322,12 +322,20 @@ TrafficSource ProtoToTrafficSource(TrafficCounter::Source source) {
       return TrafficSource::kHostVpn;
     case TrafficCounter::ARC:
       return TrafficSource::kArc;
-    case TrafficCounter::CROSVM:
+    case TrafficCounter::BOREALIS_VM:
+      return TrafficSource::kBorealisVM;
+    case TrafficCounter::BRUSCHETTA_VM:
+      return TrafficSource::kBruschettaVM;
+    case TrafficCounter::CROSTINI_VM:
       return TrafficSource::kCrostiniVM;
     case TrafficCounter::PARALLELS_VM:
       return TrafficSource::kParallelsVM;
-    // TODO(b/309607419): Added cases for Bruschetta, Borealis, Tethering, WiFi
-    // Direct, and WiFi local only Hotspot.
+    case TrafficCounter::TETHERING:
+      return TrafficSource::kTetherDownstream;
+    case TrafficCounter::WIFI_DIRECT:
+      return TrafficSource::kWiFiDirect;
+    case TrafficCounter::WIFI_LOHS:
+      return TrafficSource::kWiFiLOHS;
     default:
     case TrafficCounter::UNKNOWN:
       return TrafficSource::kUnknown;

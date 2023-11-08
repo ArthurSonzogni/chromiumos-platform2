@@ -7,6 +7,7 @@
 #include <stdio.h>
 
 #include <algorithm>
+#include <array>
 #include <map>
 #include <optional>
 #include <set>
@@ -906,6 +907,21 @@ void Service::MigrateDeprecatedStorage(StoreInterface* storage) {
   if (source_ == ONCSource::kONCSourceUnknown) {
     source_ = ParseONCSourceFromUIData();
     storage->SetInt(id, kStorageONCSource, toUnderlying(source_));
+  }
+
+  // TODO(b/309607419): Remove code deleting traffic counter storage keys made
+  // obsolete by crrev/c/5014643 and crrev/c/4535677.
+  constexpr static std::array<std::string_view, 2>
+      kObsoleteTrafficCounterSourceNames({"CROSVM", "PLUGINVM"});
+  for (auto source : kObsoleteTrafficCounterSourceNames) {
+    storage->DeleteKey(
+        id, base::StrCat({source, kStorageTrafficCounterRxBytesSuffix}));
+    storage->DeleteKey(
+        id, base::StrCat({source, kStorageTrafficCounterTxBytesSuffix}));
+    storage->DeleteKey(
+        id, base::StrCat({source, kStorageTrafficCounterRxPacketsSuffix}));
+    storage->DeleteKey(
+        id, base::StrCat({source, kStorageTrafficCounterTxPacketsSuffix}));
   }
 }
 

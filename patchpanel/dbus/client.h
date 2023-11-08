@@ -51,21 +51,27 @@ class BRILLO_EXPORT Client {
     kUnknown,
     kChrome,
     kUser,
-    kArc,
-    kCrosVm,
-    kParallelsVm,
     kUpdateEngine,
-    kVpn,
     kSystem,
+    kVpn,
+    kArc,
+    kBorealisVM,
+    kBruschettaVM,
+    kCrostiniVM,
+    kParallelsVM,
+    kTethering,
+    kWiFiDirect,
+    kWiFiLOHS,
   };
 
   static constexpr std::initializer_list<TrafficSource> kAllTrafficSources = {
       TrafficSource::kUnknown,      TrafficSource::kChrome,
-      TrafficSource::kUser,         TrafficSource::kArc,
-      TrafficSource::kCrosVm,       TrafficSource::kParallelsVm,
-      TrafficSource::kUpdateEngine, TrafficSource::kVpn,
-      TrafficSource::kSystem,
-  };
+      TrafficSource::kUser,         TrafficSource::kUpdateEngine,
+      TrafficSource::kSystem,       TrafficSource::kVpn,
+      TrafficSource::kArc,          TrafficSource::kBorealisVM,
+      TrafficSource::kBruschettaVM, TrafficSource::kCrostiniVM,
+      TrafficSource::kParallelsVM,  TrafficSource::kTethering,
+      TrafficSource::kWiFiDirect,   TrafficSource::kWiFiLOHS};
 
   // See TrafficCounter in patchpanel_service.proto.
   struct TrafficCounter {

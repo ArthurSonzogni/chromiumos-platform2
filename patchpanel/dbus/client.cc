@@ -41,18 +41,28 @@ patchpanel::TrafficCounter::Source ConvertTrafficSource(
       return patchpanel::TrafficCounter::CHROME;
     case Client::TrafficSource::kUser:
       return patchpanel::TrafficCounter::USER;
-    case Client::TrafficSource::kArc:
-      return patchpanel::TrafficCounter::ARC;
-    case Client::TrafficSource::kCrosVm:
-      return patchpanel::TrafficCounter::CROSVM;
-    case Client::TrafficSource::kParallelsVm:
-      return patchpanel::TrafficCounter::PARALLELS_VM;
     case Client::TrafficSource::kUpdateEngine:
       return patchpanel::TrafficCounter::UPDATE_ENGINE;
-    case Client::TrafficSource::kVpn:
-      return patchpanel::TrafficCounter::VPN;
     case Client::TrafficSource::kSystem:
       return patchpanel::TrafficCounter::SYSTEM;
+    case Client::TrafficSource::kVpn:
+      return patchpanel::TrafficCounter::VPN;
+    case Client::TrafficSource::kArc:
+      return patchpanel::TrafficCounter::ARC;
+    case Client::TrafficSource::kBorealisVM:
+      return patchpanel::TrafficCounter::BOREALIS_VM;
+    case Client::TrafficSource::kBruschettaVM:
+      return patchpanel::TrafficCounter::BRUSCHETTA_VM;
+    case Client::TrafficSource::kCrostiniVM:
+      return patchpanel::TrafficCounter::CROSTINI_VM;
+    case Client::TrafficSource::kParallelsVM:
+      return patchpanel::TrafficCounter::PARALLELS_VM;
+    case Client::TrafficSource::kTethering:
+      return patchpanel::TrafficCounter::TETHERING;
+    case Client::TrafficSource::kWiFiDirect:
+      return patchpanel::TrafficCounter::WIFI_DIRECT;
+    case Client::TrafficSource::kWiFiLOHS:
+      return patchpanel::TrafficCounter::WIFI_LOHS;
   }
 }
 
@@ -63,18 +73,28 @@ Client::TrafficSource ConvertTrafficSource(
       return Client::TrafficSource::kChrome;
     case patchpanel::TrafficCounter::USER:
       return Client::TrafficSource::kUser;
-    case patchpanel::TrafficCounter::ARC:
-      return Client::TrafficSource::kArc;
-    case patchpanel::TrafficCounter::CROSVM:
-      return Client::TrafficSource::kCrosVm;
-    case patchpanel::TrafficCounter::PARALLELS_VM:
-      return Client::TrafficSource::kParallelsVm;
     case patchpanel::TrafficCounter::UPDATE_ENGINE:
       return Client::TrafficSource::kUpdateEngine;
-    case patchpanel::TrafficCounter::VPN:
-      return Client::TrafficSource::kVpn;
     case patchpanel::TrafficCounter::SYSTEM:
       return Client::TrafficSource::kSystem;
+    case patchpanel::TrafficCounter::VPN:
+      return Client::TrafficSource::kVpn;
+    case patchpanel::TrafficCounter::ARC:
+      return Client::TrafficSource::kArc;
+    case patchpanel::TrafficCounter::BOREALIS_VM:
+      return Client::TrafficSource::kBorealisVM;
+    case patchpanel::TrafficCounter::BRUSCHETTA_VM:
+      return Client::TrafficSource::kBruschettaVM;
+    case patchpanel::TrafficCounter::CROSTINI_VM:
+      return Client::TrafficSource::kCrostiniVM;
+    case patchpanel::TrafficCounter::PARALLELS_VM:
+      return Client::TrafficSource::kParallelsVM;
+    case patchpanel::TrafficCounter::TETHERING:
+      return Client::TrafficSource::kTethering;
+    case patchpanel::TrafficCounter::WIFI_DIRECT:
+      return Client::TrafficSource::kWiFiDirect;
+    case patchpanel::TrafficCounter::WIFI_LOHS:
+      return Client::TrafficSource::kWiFiLOHS;
     default:
       return Client::TrafficSource::kUnknown;
   }
