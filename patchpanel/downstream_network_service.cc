@@ -8,8 +8,65 @@
 
 #include <base/logging.h>
 #include <base/rand_util.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 namespace patchpanel {
+namespace {
+bool CopyIPv4Configuration(const IPv4Configuration& ipv4_config,
+                           DownstreamNetworkInfo* info) {
+  info->enable_ipv4_dhcp = true;
+  if (ipv4_config.has_ipv4_subnet()) {
+    // Fill the parameters from protobuf.
+    const auto ipv4_cidr = net_base::IPv4CIDR::CreateFromBytesAndPrefix(
+        ipv4_config.gateway_addr(),
+        static_cast<int>(ipv4_config.ipv4_subnet().prefix_len()));
+    const auto ipv4_dhcp_start_addr =
+        net_base::IPv4Address::CreateFromBytes(ipv4_config.dhcp_start_addr());
+    const auto ipv4_dhcp_end_addr =
+        net_base::IPv4Address::CreateFromBytes(ipv4_config.dhcp_end_addr());
+    if (!ipv4_cidr || !ipv4_dhcp_start_addr || !ipv4_dhcp_end_addr) {
+      LOG(ERROR) << "Invalid arguments, gateway_addr: "
+                 << ipv4_config.gateway_addr()
+                 << ", dhcp_start_addr: " << ipv4_config.dhcp_start_addr()
+                 << ", dhcp_end_addr: " << ipv4_config.dhcp_end_addr();
+      return false;
+    }
+
+    info->ipv4_cidr = *ipv4_cidr;
+    info->ipv4_dhcp_start_addr = *ipv4_dhcp_start_addr;
+    info->ipv4_dhcp_end_addr = *ipv4_dhcp_end_addr;
+  } else {
+    // Randomly pick a /24 subnet from 172.16.0.0/16 prefix, which is a subnet
+    // of the Class B private prefix 172.16.0.0/12.
+    const uint8_t x = static_cast<uint8_t>(base::RandInt(0, 255));
+    info->ipv4_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+        net_base::IPv4Address(172, 16, x, 1), 24);
+    info->ipv4_dhcp_start_addr = net_base::IPv4Address(172, 16, x, 50);
+    info->ipv4_dhcp_end_addr = net_base::IPv4Address(172, 16, x, 150);
+  }
+
+  // Fill the DNS server.
+  for (const auto& ip_str : ipv4_config.dns_servers()) {
+    const auto ip = net_base::IPv4Address::CreateFromBytes(ip_str);
+    if (!ip) {
+      LOG(WARNING) << "Invalid DNS server, length of IP: " << ip_str.length();
+    } else {
+      info->dhcp_dns_servers.push_back(*ip);
+    }
+  }
+
+  // Fill the domain search list.
+  info->dhcp_domain_searches = {ipv4_config.domain_searches().begin(),
+                                ipv4_config.domain_searches().end()};
+
+  // Fill the DHCP options.
+  for (const auto& option : ipv4_config.options()) {
+    info->dhcp_options.emplace_back(option.code(), option.content());
+  }
+
+  return true;
+}
+}  // namespace
 
 CreateDownstreamNetworkResult DownstreamNetworkResultToUMAEvent(
     patchpanel::DownstreamNetworkResult result) {
@@ -39,7 +96,6 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
     const TetheredNetworkRequest& request,
     const ShillClient::Device& shill_device) {
   auto info = std::make_optional<DownstreamNetworkInfo>();
-
   info->topology = DownstreamNetworkTopology::kTethering;
   info->enable_ipv6 = request.enable_ipv6();
   info->upstream_device = shill_device;
@@ -47,79 +103,31 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
   if (request.has_mtu()) {
     info->mtu = request.mtu();
   }
-
   // Fill the DHCP parameters if needed.
   if (request.has_ipv4_config()) {
-    const auto ipv4_config = request.ipv4_config();
-
-    info->enable_ipv4_dhcp = true;
-    if (ipv4_config.has_ipv4_subnet()) {
-      // Fill the parameters from protobuf.
-      const auto ipv4_cidr = net_base::IPv4CIDR::CreateFromBytesAndPrefix(
-          ipv4_config.gateway_addr(),
-          static_cast<int>(ipv4_config.ipv4_subnet().prefix_len()));
-      const auto ipv4_dhcp_start_addr =
-          net_base::IPv4Address::CreateFromBytes(ipv4_config.dhcp_start_addr());
-      const auto ipv4_dhcp_end_addr =
-          net_base::IPv4Address::CreateFromBytes(ipv4_config.dhcp_end_addr());
-      if (!ipv4_cidr || !ipv4_dhcp_start_addr || !ipv4_dhcp_end_addr) {
-        LOG(ERROR) << "Invalid arguments, gateway_addr: "
-                   << ipv4_config.gateway_addr()
-                   << ", dhcp_start_addr: " << ipv4_config.dhcp_start_addr()
-                   << ", dhcp_end_addr: " << ipv4_config.dhcp_end_addr();
-        return std::nullopt;
-      }
-
-      info->ipv4_cidr = *ipv4_cidr;
-      info->ipv4_dhcp_start_addr = *ipv4_dhcp_start_addr;
-      info->ipv4_dhcp_end_addr = *ipv4_dhcp_end_addr;
-    } else {
-      // Randomly pick a /24 subnet from 172.16.0.0/16 prefix, which is a subnet
-      // of the Class B private prefix 172.16.0.0/12.
-      const uint8_t x = static_cast<uint8_t>(base::RandInt(0, 255));
-      info->ipv4_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-          net_base::IPv4Address(172, 16, x, 1), 24);
-      info->ipv4_dhcp_start_addr = net_base::IPv4Address(172, 16, x, 50);
-      info->ipv4_dhcp_end_addr = net_base::IPv4Address(172, 16, x, 150);
+    if (!CopyIPv4Configuration(request.ipv4_config(), info.operator->())) {
+      return std::nullopt;
     }
-
-    // Fill the DNS server.
-    for (const auto& ip_str : ipv4_config.dns_servers()) {
-      const auto ip = net_base::IPv4Address::CreateFromBytes(ip_str);
-      if (!ip) {
-        LOG(WARNING) << "Invalid DNS server, length of IP: " << ip_str.length();
-      } else {
-        info->dhcp_dns_servers.push_back(*ip);
-      }
-    }
-
-    // Fill the domain search list.
-    info->dhcp_domain_searches = {ipv4_config.domain_searches().begin(),
-                                  ipv4_config.domain_searches().end()};
-
-    // Fill the DHCP options.
-    for (const auto& option : ipv4_config.options()) {
-      info->dhcp_options.emplace_back(option.code(), option.content());
-    }
-
-    // TODO(b/239559602) Copy or generate the IPv6 prefix configuration for
-    // LocalOnlyHotspot mode.
   }
-
+  // TODO(b/239559602) Copy the IPv6 configuration if needed.
   return info;
 }
 
 std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
     const LocalOnlyNetworkRequest& request) {
   auto info = std::make_optional<DownstreamNetworkInfo>();
-
   info->topology = DownstreamNetworkTopology::kLocalOnly;
-  // TODO(b/239559602) Enable IPv6 LocalOnlyNetwork with RAServer
+  // TODO(b/239559602) If IPv6 is specified, enable IPv6 LocalOnlyNetwork with
+  // RAServer and copy or generate the IPv6 configuration is needed.
   info->enable_ipv6 = false;
   info->upstream_device = std::nullopt;
   info->downstream_ifname = request.ifname();
-  // TODO(b/239559602) Copy IPv4 configuration if any.
-  // TODO(b/239559602) Copy IPv6 configuration if any.
+  // Fill the DHCP parameters if needed.
+  if (request.has_ipv4_config()) {
+    if (!CopyIPv4Configuration(request.ipv4_config(), info.operator->())) {
+      return std::nullopt;
+    }
+  }
   return info;
 }
 

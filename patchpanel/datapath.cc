@@ -143,8 +143,13 @@ IpFamily ConvertIpFamily(net_base::IPFamily family) {
 
 TrafficSource DownstreamNetworkInfoTrafficSource(
     const DownstreamNetworkInfo& info) {
-  // TODO(b/257880335): define source for LocalOnlyNetwork.
-  return TrafficSource::kTetherDownstream;
+  switch (info.topology) {
+    case DownstreamNetworkTopology::kTethering:
+      return TrafficSource::kTetherDownstream;
+    // TODO(b/257880335): Distinguish between WiFi Direct and WiFi LOHS
+    case DownstreamNetworkTopology::kLocalOnly:
+      return TrafficSource::kWiFiDirect;
+  }
 }
 
 std::string AutoDNATTargetChainName(AutoDNATTarget auto_dnat_target) {

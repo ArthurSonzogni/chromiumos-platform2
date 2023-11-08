@@ -112,10 +112,68 @@ TEST(DownstreamNetworkService,
   LocalOnlyNetworkRequest request;
   request.set_ifname("wlan1");
 
+  const auto ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("172.31.10.1/24");
+  const auto subnet_cidr = ipv4_cidr.GetPrefixCIDR();
+  const IPv4Address start_ip = IPv4Address(172, 31, 10, 2);
+  const IPv4Address end_ip = IPv4Address(172, 31, 10, 127);
+  const std::vector<IPv4Address> dns_servers = {
+      IPv4Address(172, 31, 10, 1),
+  };
+  const std::vector<std::string> domain_searches = {"domain.local0",
+                                                    "domain.local1"};
+  const DHCPServerController::Config::DHCPOptions dhcp_options = {
+      {60, "chromeos"}};
+
+  IPv4Subnet* ipv4_subnet = new IPv4Subnet();
+  ipv4_subnet->set_addr(subnet_cidr.address().ToByteString());
+  ipv4_subnet->set_prefix_len(
+      static_cast<unsigned int>(subnet_cidr.prefix_length()));
+
+  IPv4Configuration* ipv4_config = new IPv4Configuration();
+  ipv4_config->set_allocated_ipv4_subnet(ipv4_subnet);
+  ipv4_config->set_gateway_addr(ipv4_cidr.address().ToByteString());
+  ipv4_config->set_use_dhcp(true);
+  ipv4_config->set_dhcp_start_addr(start_ip.ToByteString());
+  ipv4_config->set_dhcp_end_addr(end_ip.ToByteString());
+  ipv4_config->add_dns_servers(dns_servers[0].ToByteString());
+  ipv4_config->add_domain_searches(domain_searches[0]);
+  ipv4_config->add_domain_searches(domain_searches[1]);
+  auto dhcp_option = ipv4_config->add_options();
+  dhcp_option->set_code(dhcp_options[0].first);
+  dhcp_option->set_content(dhcp_options[0].second);
+  request.set_allocated_ipv4_config(ipv4_config);
+
   const auto info = DownstreamNetworkInfo::Create(request);
   ASSERT_NE(info, std::nullopt);
   EXPECT_EQ(info->topology, DownstreamNetworkTopology::kLocalOnly);
+  EXPECT_FALSE(info->upstream_device.has_value());
   EXPECT_EQ(info->downstream_ifname, "wlan1");
+  EXPECT_EQ(info->ipv4_cidr, ipv4_cidr);
+  EXPECT_EQ(info->ipv4_dhcp_start_addr, start_ip);
+  EXPECT_EQ(info->ipv4_dhcp_end_addr, end_ip);
+  EXPECT_EQ(info->dhcp_dns_servers, dns_servers);
+  EXPECT_EQ(info->dhcp_domain_searches, domain_searches);
+  EXPECT_FALSE(info->mtu.has_value());
+  EXPECT_FALSE(info->enable_ipv6);
+  EXPECT_EQ(info->dhcp_options, dhcp_options);
+}
+
+TEST(DownstreamNetworkService,
+     CreateDownstreamNetworkInfoFromLocalOnlyNetworkRandomRequest) {
+  LocalOnlyNetworkRequest request;
+  request.set_ifname("wlan1");
+
+  const auto info = DownstreamNetworkInfo::Create(request);
+  ASSERT_NE(info, std::nullopt);
+  EXPECT_EQ(info->topology, DownstreamNetworkTopology::kLocalOnly);
+  EXPECT_FALSE(info->upstream_device.has_value());
+  EXPECT_EQ(info->downstream_ifname, "wlan1");
+  // When the request doesn't have |ipv4_config|, the info should be randomly
+  // assigned the valid host IP and DHCP range.
+  EXPECT_TRUE(info->ipv4_cidr.InSameSubnetWith(info->ipv4_dhcp_start_addr));
+  EXPECT_TRUE(info->ipv4_cidr.InSameSubnetWith(info->ipv4_dhcp_end_addr));
+  EXPECT_FALSE(info->mtu.has_value());
+  EXPECT_FALSE(info->enable_ipv6);
 }
 
 TEST(DownstreamNetworkService, DownstreamNetworkInfoToDHCPServerConfig) {
