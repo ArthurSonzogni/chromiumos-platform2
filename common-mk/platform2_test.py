@@ -171,6 +171,7 @@ class Platform2Test:
         test_bin_args,
         pid_uid,
         pid_gid,
+        quiet,
     ):
         self.env_vars = env_vars
         self.args = test_bin_args
@@ -185,6 +186,7 @@ class Platform2Test:
         )
         self.pid_uid = pid_uid
         self.pid_gid = pid_gid
+        self.quiet = quiet
 
         if sysroot:
             self.sysroot = sysroot
@@ -790,14 +792,19 @@ class Platform2Test:
         # sudo -u $SUDO_UID -g $SUDO_GID chroot $SYSROOT bash -c 'cd $CWD; $BIN'
         child = os.fork()
         if child == 0:
-            print("chroot: %s" % self.sysroot)
-            print("cwd: %s" % cwd)
-            if self.env_vars:
-                print(
-                    "extra_env: %s"
-                    % (", ".join("%s=%s" % x for x in self.env_vars.items()))
-                )
-            print("cmd: {%s} %s" % (cmd, " ".join(repr(x) for x in argv)))
+            if not self.quiet:
+                print("chroot: %s" % self.sysroot)
+                print("cwd: %s" % cwd)
+                if self.env_vars:
+                    print(
+                        "extra_env: %s"
+                        % (
+                            ", ".join(
+                                "%s=%s" % x for x in self.env_vars.items()
+                            )
+                        )
+                    )
+                print("cmd: {%s} %s" % (cmd, " ".join(repr(x) for x in argv)))
 
             if self.framework == "qemu" and self.strategy == "unprivileged":
                 cmd = "proot"
@@ -1118,6 +1125,11 @@ def GetParser():
         choices=("sudo", "unprivileged"),
         help="strategy to enter sysroot",
     )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="print fewer messages",
+    )
     parser.add_argument("cmdline", nargs="*")
 
     return parser
@@ -1195,6 +1207,7 @@ def main(argv):
         options.cmdline,
         options.pid_uid,
         options.pid_gid,
+        options.quiet,
     )
     getattr(p2test, options.action)()
 
