@@ -9,6 +9,8 @@
 
 #include <net-base/ip_address.h>
 
+#include "routing-simulator/packet.h"
+
 namespace routing_simulator {
 
 // Represents a routing policy entry in the routing policy table.
@@ -38,6 +40,9 @@ class RoutingPolicyEntry {
   const std::string& fwmark() const { return fwmark_; }
 
   bool operator==(const RoutingPolicyEntry& rhs) const;
+
+  // Checks if a policy matches the input packet and returns true if it does.
+  bool IsMatch(const Packet& packet) const;
 
  private:
   explicit RoutingPolicyEntry(net_base::IPFamily ip_family);

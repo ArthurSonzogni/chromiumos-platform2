@@ -23,7 +23,7 @@ void RoutingTable::AddRoute(const Route& new_route) {
 }
 
 const Route* RoutingTable::LookUpRoute(
-    net_base::IPAddress& destination_address) const {
+    const net_base::IPAddress& destination_address) const {
   const Route* longest_prefix_route_ptr = nullptr;
   for (const auto& route : routes_) {
     if (!route.destination_prefix().InSameSubnetWith(destination_address)) {

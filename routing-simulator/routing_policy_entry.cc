@@ -162,4 +162,11 @@ bool RoutingPolicyEntry::SetItems(
   return true;
 }
 
+// TODO(b/307460180): Implement below.
+// TODO(b/307460180): Change the interface (output/input parameter or returned
+// value type) to save the matched policy.
+bool RoutingPolicyEntry::IsMatch(const Packet& packet) const {
+  return false;
+}
+
 }  // namespace routing_simulator

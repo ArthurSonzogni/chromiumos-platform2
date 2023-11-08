@@ -4,12 +4,12 @@
 
 #include "routing-simulator/route_manager.h"
 
+#include <map>
 #include <optional>
 #include <string>
 #include <string_view>
-#include <vector>
 
-#include <base/containers/span.h>
+#include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <net-base/ip_address.h>
 
@@ -19,6 +19,65 @@
 
 namespace routing_simulator {
 namespace {
+
+bool CheckPriorityOrder(
+    const std::vector<RoutingPolicyEntry>& routing_policy_table) {
+  if (routing_policy_table.empty()) {
+    return false;
+  }
+  int previous_priority = routing_policy_table.front().priority();
+  for (const auto& policy : routing_policy_table) {
+    if (previous_priority > policy.priority()) {
+      return false;
+    }
+    previous_priority = policy.priority();
+  }
+  return true;
+}
+
+// Creates a vector that represents a routing policy table from 'ip rule' and
+// returns it.
+std::vector<RoutingPolicyEntry> BuildRoutingPolicyTable(
+    net_base::IPFamily ip_family, std::string_view output) {
+  std::vector<RoutingPolicyEntry> routing_policy_table;
+  const auto output_lines = base::SplitStringPiece(
+      output, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  for (const auto& line : output_lines) {
+    const auto policy =
+        RoutingPolicyEntry::CreateFromPolicyString(line, ip_family);
+    if (!policy) {
+      LOG(FATAL) << "Output of 'ip rule' is not valid";
+      continue;
+    }
+    routing_policy_table.push_back(*policy);
+  }
+  if (!CheckPriorityOrder(routing_policy_table)) {
+    LOG(FATAL) << "Output of 'ip rule' is not sorted by priority";
+  }
+  return routing_policy_table;
+}
+
+// Creates a map that represents routing tables from |output| and returns it.
+std::map<std::string, RoutingTable> BuildRoutingTable(
+    net_base::IPFamily ip_family, std::string_view output) {
+  std::map<std::string, RoutingTable> routing_tables;
+  const auto output_lines = base::SplitStringPiece(
+      output, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  for (const auto& line : output_lines) {
+    const auto route = Route::CreateFromRouteString(line, ip_family);
+    if (!route) {
+      LOG(FATAL) << "Output of 'ip route' is not valid";
+      continue;
+    }
+    const auto table_id = route->table_id();
+    routing_tables[table_id].AddRoute(*route);
+  }
+  return routing_tables;
+}
+
+}  // namespace
+
+RouteManager::RouteManager() = default;
 
 // TODO(b/307460180): Add implementations.
 // Executes 'ip rule' according to the ip family.
@@ -34,45 +93,55 @@ std::string ExecuteIPRoute(net_base::IPFamily ip_family) {
   return output;
 }
 
-// TODO(b/307460180): Add implementations.
-// Builds a routing policy table from |output|.
-void BuildRoutingPolicyTable(
-    net_base::IPFamily ip_family,
-    std::string_view output,
-    std::vector<RoutingPolicyEntry>* routing_policy_table_ptr) {}
+// TODO(b/307460180): Change the interface (output/input parameter or returned
+// value type) to save the matched policy with matched routes (or no matched
+// route for the policy).
+const Route* RouteManager::LookUpRoute(const Packet& packet) const {
+  const std::map<std::string, RoutingTable>* routing_tables_ptr;
+  const std::vector<RoutingPolicyEntry>* routing_policy_table_ptr;
+  switch (packet.ip_family()) {
+    case net_base::IPFamily::kIPv4:
+      routing_tables_ptr = &routing_tables_ipv4_;
+      routing_policy_table_ptr = &routing_policy_table_ipv4_;
+      break;
+    case net_base::IPFamily::kIPv6:
+      routing_tables_ptr = &routing_tables_ipv6_;
+      routing_policy_table_ptr = &routing_policy_table_ipv6_;
+      break;
+  }
+  for (const auto& policy : *routing_policy_table_ptr) {
+    if (!policy.IsMatch(packet)) {
+      continue;
+    }
+    // Look up a matched route if the routing table that a policy points to
+    // exists.
+    if (const auto it = routing_tables_ptr->find(policy.table_id());
+        it != routing_tables_ptr->end()) {
+      const auto* matched_route_ptr =
+          it->second.LookUpRoute(packet.destination_ip());
+      if (!matched_route_ptr) {
+        continue;
+      }
+      return matched_route_ptr;
+    }
+  }
 
-// TODO(b/307460180): Add implementations.
-// Builds routing tables from |output|.
-void BuildRoutingTable(
-    net_base::IPFamily ip_family,
-    std::string_view output,
-    std::map<std::string_view, RoutingTable>* routing_table_map_ptr) {}
-
-// TODO(b/307460180): Add implementations.
-// Looks up a route which matches a packet input referring to the routing policy
-// table and routing tables and returns the matched route. Returns std::nullopt
-// if no matched route is found.
-const Route* LookUpRoute(const Packet& packet) {
   return nullptr;
 }
-
-}  // namespace
-
-RouteManager::RouteManager() = default;
 
 void RouteManager::BuildTables() {
   const auto policy_output_ipv4 = ExecuteIPRule(net_base::IPFamily::kIPv4);
   const auto policy_output_ipv6 = ExecuteIPRule(net_base::IPFamily::kIPv6);
   const auto route_output_ipv4 = ExecuteIPRoute(net_base::IPFamily::kIPv4);
   const auto route_output_ipv6 = ExecuteIPRoute(net_base::IPFamily::kIPv6);
-  BuildRoutingPolicyTable(net_base::IPFamily::kIPv4, policy_output_ipv4,
-                          &routing_policy_table_ipv4_);
-  BuildRoutingPolicyTable(net_base::IPFamily::kIPv6, policy_output_ipv6,
-                          &routing_policy_table_ipv6_);
-  BuildRoutingTable(net_base::IPFamily::kIPv4, route_output_ipv4,
-                    &routing_tables_ipv4_);
-  BuildRoutingTable(net_base::IPFamily::kIPv6, route_output_ipv6,
-                    &routing_tables_ipv6_);
+  routing_policy_table_ipv4_ =
+      BuildRoutingPolicyTable(net_base::IPFamily::kIPv4, policy_output_ipv4);
+  routing_policy_table_ipv6_ =
+      BuildRoutingPolicyTable(net_base::IPFamily::kIPv6, policy_output_ipv6);
+  routing_tables_ipv4_ =
+      BuildRoutingTable(net_base::IPFamily::kIPv4, route_output_ipv4);
+  routing_tables_ipv6_ =
+      BuildRoutingTable(net_base::IPFamily::kIPv6, route_output_ipv6);
 }
 
 // TODO(b/307460180): Change the return value to contains both matched

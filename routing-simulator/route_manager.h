@@ -6,6 +6,7 @@
 #define ROUTING_SIMULATOR_ROUTE_MANAGER_H_
 
 #include <map>
+#include <string>
 #include <vector>
 
 #include <net-base/ip_address.h>
@@ -28,8 +29,9 @@ class RouteManager {
   RouteManager(const RouteManager&) = delete;
   RouteManager& operator=(const RouteManager&) = delete;
 
-  // Builds a routing policy table and routing tables from the output strings of
-  // 'ip rule' and 'ip route show table all' execution for both IPv4 and IPv6.
+  // Builds internal states in a routing policy table and routing tables from
+  // the output strings of 'ip rule' and 'ip route show table all' execution for
+  // both IPv4 and IPv6.
   void BuildTables();
 
   // TODO(b/307460180): Support source ip selection by setting source ip
@@ -43,8 +45,13 @@ class RouteManager {
   std::vector<RoutingPolicyEntry> routing_policy_table_ipv4_;
   std::vector<RoutingPolicyEntry> routing_policy_table_ipv6_;
   // Maps from tables ids to RoutingTable objects.
-  std::map<std::string_view, RoutingTable> routing_tables_ipv4_;
-  std::map<std::string_view, RoutingTable> routing_tables_ipv6_;
+  std::map<std::string, RoutingTable> routing_tables_ipv4_;
+  std::map<std::string, RoutingTable> routing_tables_ipv6_;
+
+  // Looks up a route which matches a packet input referring to the routing
+  // policy table and routing tables and returns the matched route. Returns
+  // std::nullopt if no matched route is found.
+  const Route* LookUpRoute(const Packet& packet) const;
 };
 
 }  // namespace routing_simulator
