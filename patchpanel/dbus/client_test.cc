@@ -238,9 +238,21 @@ TEST_F(ClientTest, NotifyBruschettaVmShutdown) {
 TEST_F(ClientTest, NotifyBorealisVmStartup) {
   const uint32_t id = 6;
   const std::string tap_ifname = "vmtap3";
+  const auto borealis_ipv4_subnet =
+      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29");
+  const auto borealis_ipv4_address =
+      *net_base::IPv4Address::CreateFromString("100.115.93.2");
+  const auto gateway_ipv4_address =
+      *net_base::IPv4Address::CreateFromString("100.115.93.1");
 
   BorealisVmStartupResponse response_proto;
   response_proto.set_tap_device_ifname(tap_ifname);
+  auto* response_subnet = response_proto.mutable_ipv4_subnet();
+  response_subnet->set_addr(borealis_ipv4_subnet.address().ToByteString());
+  response_subnet->set_prefix_len(
+      static_cast<uint32_t>(borealis_ipv4_subnet.prefix_length()));
+  response_proto.set_ipv4_address(borealis_ipv4_address.ToByteString());
+  response_proto.set_gateway_ipv4_address(gateway_ipv4_address.ToByteString());
 
   EXPECT_CALL(
       *proxy_,
@@ -250,6 +262,9 @@ TEST_F(ClientTest, NotifyBorealisVmStartup) {
   auto result = client_->NotifyBorealisVmStartup(id);
   ASSERT_TRUE(result.has_value());
   EXPECT_EQ(result->tap_device_ifname, tap_ifname);
+  EXPECT_EQ(result->borealis_ipv4_subnet, borealis_ipv4_subnet);
+  EXPECT_EQ(result->borealis_ipv4_address, borealis_ipv4_address);
+  EXPECT_EQ(result->gateway_ipv4_address, gateway_ipv4_address);
 }
 
 TEST_F(ClientTest, NotifyBorealisVmShutdown) {
