@@ -212,12 +212,12 @@ TEST_F(SystemConfigTest, MmcSupportedFalse) {
 }
 
 TEST_F(SystemConfigTest, FingerprintDiagnosticSupportedTrue) {
-  SetFakeCrosConfig(paths::kFingerprintDiagRoutineEnable, "true");
+  SetFakeCrosConfig(paths::fingerprint::kRoutineEnable, "true");
   EXPECT_TRUE(system_config()->FingerprintDiagnosticSupported());
 }
 
 TEST_F(SystemConfigTest, FingerprintDiagnosticSupportedFalse) {
-  SetFakeCrosConfig(paths::kFingerprintDiagRoutineEnable, "");
+  SetFakeCrosConfig(paths::fingerprint::kRoutineEnable, "");
   EXPECT_FALSE(system_config()->FingerprintDiagnosticSupported());
 }
 

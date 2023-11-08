@@ -195,7 +195,7 @@ bool SystemConfig::MmcSupported() {
 
 bool SystemConfig::FingerprintDiagnosticSupported() {
   auto enable =
-      cros_config_->Get(paths::cros_config::kFingerprintDiagRoutineEnable);
+      cros_config_->Get(paths::cros_config::fingerprint::kRoutineEnable);
   return enable && enable == "true";
 }
 

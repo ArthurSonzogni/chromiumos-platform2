@@ -34,14 +34,24 @@ class CrosConfig {
   // Gets cros config which has an expected value. Returns error if value
   // doesn't match.
   base::expected<void, std::string> CheckExpectedCrosConfig(
+      const base::FilePath& path, const std::string& expected_value) const;
+  base::expected<void, std::string> CheckExpectedCrosConfig(
       const PathLiteral& path, const std::string& expected_value) const;
 
   // Gets cros config which is a true boolean value. Returns error if it isn't.
+  base::expected<void, std::string> CheckTrueCrosConfig(
+      const base::FilePath& path) const;
   base::expected<void, std::string> CheckTrueCrosConfig(
       const PathLiteral& path) const;
 
   // Gets cros config which is a unsigned integer value. Returns its value if it
   // is an integer. Returns error if it isn't. Supports different integer types.
+  base::expected<uint8_t, std::string> GetU8CrosConfig(
+      const base::FilePath& path) const;
+  base::expected<uint32_t, std::string> GetU32CrosConfig(
+      const base::FilePath& path) const;
+  base::expected<uint64_t, std::string> GetU64CrosConfig(
+      const base::FilePath& path) const;
   base::expected<uint8_t, std::string> GetU8CrosConfig(
       const PathLiteral& path) const;
   base::expected<uint32_t, std::string> GetU32CrosConfig(
@@ -52,7 +62,7 @@ class CrosConfig {
  private:
   template <typename T>
   base::expected<T, std::string> GetUintCrosConfig(
-      const PathLiteral& path, const std::string& type_name) const;
+      const base::FilePath& path, const std::string& type_name) const;
 
   // If set, load chromeos-config from /run/chromeos-config/test.
   bool test_cros_config_ = false;

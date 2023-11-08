@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/files/file_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/types/expected.h>
 #include <brillo/errors/error.h>
@@ -16,6 +17,7 @@
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/base/path_utils.h"
 #include "diagnostics/base/paths.h"
+#include "diagnostics/cros_healthd/routines/fingerprint/fingerprint.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/cros_config.h"
 #include "diagnostics/cros_healthd/system/floss_controller.h"
@@ -32,6 +34,7 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 namespace cros_config_property = paths::cros_config;
+namespace fingerprint = paths::cros_config::fingerprint;
 
 mojom::SupportStatusPtr MakeSupported() {
   return mojom::SupportStatus::NewSupported(mojom::Supported::New());
@@ -45,6 +48,13 @@ void AssignAndDropError(const base::expected<T, std::string>& got,
     return;
   }
   out = got.value();
+}
+
+template <typename T>
+void AssignWithDefaultAndDropError(const base::expected<T, std::string>& got,
+                                   const T& default_value,
+                                   T& out) {
+  out = got.value_or(default_value);
 }
 
 std::string WrapUnsupportedString(const PathLiteral& cros_config_property,
@@ -384,6 +394,77 @@ mojom::SupportStatusPtr GroundTruth::PrepareRoutineNvmeWearLevel(
   AssignAndDropError(cros_config()->GetU32CrosConfig(
                          cros_config_property::kNvmeWearLevelThreshold),
                      threshold);
+  return MakeSupported();
+}
+
+mojom::SupportStatusPtr GroundTruth::PrepareRoutineFingerprint(
+    FingerprintParameter& param) const {
+  AssignWithDefaultAndDropError(
+      cros_config()->GetU32CrosConfig(fingerprint::kMaxDeadPixels), 0u,
+      param.max_dead_pixels);
+  AssignWithDefaultAndDropError(
+      cros_config()->GetU32CrosConfig(fingerprint::kMaxDeadPixelsInDetectZone),
+      0u, param.max_dead_pixels_in_detect_zone);
+  AssignWithDefaultAndDropError(
+      cros_config()->GetU32CrosConfig(fingerprint::kMaxPixelDev), 0u,
+      param.max_pixel_dev);
+  AssignWithDefaultAndDropError(
+      cros_config()->GetU32CrosConfig(fingerprint::kMaxErrorResetPixels), 0u,
+      param.max_error_reset_pixels);
+  AssignWithDefaultAndDropError(
+      cros_config()->GetU32CrosConfig(fingerprint::kMaxResetPixelDev), 0u,
+      param.max_reset_pixel_dev);
+
+  AssignWithDefaultAndDropError(
+      cros_config()->GetU8CrosConfig(fingerprint::kCbType1Lower),
+      static_cast<uint8_t>(0), param.pixel_median.cb_type1_lower);
+  AssignWithDefaultAndDropError(
+      cros_config()->GetU8CrosConfig(fingerprint::kCbType1Upper),
+      static_cast<uint8_t>(0), param.pixel_median.cb_type1_upper);
+  AssignWithDefaultAndDropError(
+      cros_config()->GetU8CrosConfig(fingerprint::kCbType2Lower),
+      static_cast<uint8_t>(0), param.pixel_median.cb_type2_lower);
+  AssignWithDefaultAndDropError(
+      cros_config()->GetU8CrosConfig(fingerprint::kCbType2Upper),
+      static_cast<uint8_t>(0), param.pixel_median.cb_type2_upper);
+  AssignWithDefaultAndDropError(
+      cros_config()->GetU8CrosConfig(fingerprint::kIcbType1Lower),
+      static_cast<uint8_t>(0), param.pixel_median.icb_type1_lower);
+  AssignWithDefaultAndDropError(
+      cros_config()->GetU8CrosConfig(fingerprint::kIcbType1Upper),
+      static_cast<uint8_t>(0), param.pixel_median.icb_type1_upper);
+  AssignWithDefaultAndDropError(
+      cros_config()->GetU8CrosConfig(fingerprint::kIcbType2Lower),
+      static_cast<uint8_t>(0), param.pixel_median.icb_type2_lower);
+  AssignWithDefaultAndDropError(
+      cros_config()->GetU8CrosConfig(fingerprint::kIcbType2Upper),
+      static_cast<uint8_t>(0), param.pixel_median.icb_type2_upper);
+
+  // Fill |FingerprintZone| value;
+  uint32_t num_detect_zone =
+      cros_config()->GetU32CrosConfig(fingerprint::kNumDetectZone).value_or(0);
+  for (int i = 0; i < num_detect_zone; ++i) {
+    base::FilePath dir =
+        fingerprint::kDetectZones.ToPath().Append(base::NumberToString(i));
+
+    FingerprintZone zone;
+    AssignWithDefaultAndDropError(
+        cros_config()->GetU32CrosConfig(dir.Append(fingerprint::kX1)), 0u,
+        zone.x1);
+    AssignWithDefaultAndDropError(
+        cros_config()->GetU32CrosConfig(dir.Append(fingerprint::kY1)), 0u,
+        zone.y1);
+    AssignWithDefaultAndDropError(
+        cros_config()->GetU32CrosConfig(dir.Append(fingerprint::kX2)), 0u,
+        zone.x2);
+    AssignWithDefaultAndDropError(
+        cros_config()->GetU32CrosConfig(dir.Append(fingerprint::kY2)), 0u,
+        zone.y2);
+    param.detect_zones.push_back(std::move(zone));
+  }
+
+  // TODO(chungsheng): Migrate SystemConfig::FingerprintDiagnosticSupported to
+  // this function and return not supported status.
   return MakeSupported();
 }
 // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)

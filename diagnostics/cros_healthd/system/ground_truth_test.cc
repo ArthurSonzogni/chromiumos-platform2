@@ -15,6 +15,7 @@
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/base/paths.h"
+#include "diagnostics/cros_healthd/routines/fingerprint/fingerprint.h"
 #include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/system/ground_truth_constants.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -28,6 +29,7 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 namespace cros_config_property = paths::cros_config;
+namespace fingerprint = paths::cros_config::fingerprint;
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -68,10 +70,6 @@ class GroundTruthTest : public BaseFileTest {
 
   void ExpectRoutineException(mojom::RoutineArgumentPtr arg) {
     ExpectRoutineStatus(std::move(arg), mojom::SupportStatus::Tag::kException);
-  }
-
-  void SetFakeCrosConfig(const PathLiteral& path, const std::string& value) {
-    SetFile(cros_config_property::kRoot.ToPath().Append(path.ToPath()), value);
   }
 
   GroundTruth* ground_truth() { return mock_context_.ground_truth(); }
@@ -570,6 +568,53 @@ TEST_F(GroundTruthTest, PrepareRoutineNvmeWearLevel) {
   EXPECT_EQ(ground_truth()->PrepareRoutineNvmeWearLevel(threshold),
             mojom::SupportStatus::NewSupported(mojom::Supported::New()));
   EXPECT_EQ(threshold, 123);
+}
+
+TEST_F(GroundTruthTest, PrepareRoutineFingerprint) {
+  SetFakeCrosConfig(fingerprint::kMaxDeadPixels, "0");
+  SetFakeCrosConfig(fingerprint::kMaxDeadPixelsInDetectZone, "1");
+  SetFakeCrosConfig(fingerprint::kMaxPixelDev, "2");
+  SetFakeCrosConfig(fingerprint::kMaxErrorResetPixels, "3");
+  SetFakeCrosConfig(fingerprint::kMaxResetPixelDev, "4");
+  SetFakeCrosConfig(fingerprint::kCbType1Lower, "5");
+  SetFakeCrosConfig(fingerprint::kCbType1Upper, "6");
+  SetFakeCrosConfig(fingerprint::kCbType2Lower, "7");
+  SetFakeCrosConfig(fingerprint::kCbType2Upper, "8");
+  SetFakeCrosConfig(fingerprint::kIcbType1Lower, "9");
+  SetFakeCrosConfig(fingerprint::kIcbType1Upper, "10");
+  SetFakeCrosConfig(fingerprint::kIcbType2Lower, "11");
+  SetFakeCrosConfig(fingerprint::kIcbType2Upper, "12");
+  SetFakeCrosConfig(fingerprint::kNumDetectZone, "1");
+  SetFakeCrosConfig({fingerprint::kDetectZones.ToStr(), "0", fingerprint::kX1},
+                    "1");
+  SetFakeCrosConfig({fingerprint::kDetectZones.ToStr(), "0", fingerprint::kY1},
+                    "2");
+  SetFakeCrosConfig({fingerprint::kDetectZones.ToStr(), "0", fingerprint::kX2},
+                    "3");
+  SetFakeCrosConfig({fingerprint::kDetectZones.ToStr(), "0", fingerprint::kY2},
+                    "4");
+
+  FingerprintParameter param;
+  EXPECT_EQ(ground_truth()->PrepareRoutineFingerprint(param),
+            mojom::SupportStatus::NewSupported(mojom::Supported::New()));
+  EXPECT_EQ(param.max_dead_pixels, 0);
+  EXPECT_EQ(param.max_dead_pixels_in_detect_zone, 1);
+  EXPECT_EQ(param.max_pixel_dev, 2);
+  EXPECT_EQ(param.max_error_reset_pixels, 3);
+  EXPECT_EQ(param.max_reset_pixel_dev, 4);
+  EXPECT_EQ(param.pixel_median.cb_type1_lower, 5);
+  EXPECT_EQ(param.pixel_median.cb_type1_upper, 6);
+  EXPECT_EQ(param.pixel_median.cb_type2_lower, 7);
+  EXPECT_EQ(param.pixel_median.cb_type2_upper, 8);
+  EXPECT_EQ(param.pixel_median.icb_type1_lower, 9);
+  EXPECT_EQ(param.pixel_median.icb_type1_upper, 10);
+  EXPECT_EQ(param.pixel_median.icb_type2_lower, 11);
+  EXPECT_EQ(param.pixel_median.icb_type2_upper, 12);
+  EXPECT_EQ(param.detect_zones.size(), 1);
+  EXPECT_EQ(param.detect_zones[0].x1, 1);
+  EXPECT_EQ(param.detect_zones[0].y1, 2);
+  EXPECT_EQ(param.detect_zones[0].x2, 3);
+  EXPECT_EQ(param.detect_zones[0].y2, 4);
 }
 
 }  // namespace

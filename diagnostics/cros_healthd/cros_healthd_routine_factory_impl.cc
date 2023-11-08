@@ -53,9 +53,6 @@ namespace diagnostics {
 CrosHealthdRoutineFactoryImpl::CrosHealthdRoutineFactoryImpl(Context* context)
     : context_(context) {
   CHECK(context_);
-
-  parameter_fetcher_ =
-      std::make_unique<RoutineParameterFetcher>(context_->cros_config_legacy());
 }
 
 CrosHealthdRoutineFactoryImpl::~CrosHealthdRoutineFactoryImpl() = default;
@@ -236,7 +233,8 @@ CrosHealthdRoutineFactoryImpl::MakeSensitiveSensorRoutine() {
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeFingerprintRoutine() {
-  auto params = parameter_fetcher_->GetFingerprintParameters();
+  FingerprintParameter params;
+  context_->ground_truth()->PrepareRoutineFingerprint(params);
 
   return std::make_unique<FingerprintRoutine>(context_, std::move(params));
 }

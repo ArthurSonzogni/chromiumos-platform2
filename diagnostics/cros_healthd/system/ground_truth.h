@@ -16,6 +16,7 @@ namespace diagnostics {
 class Context;
 class CrosConfig;
 class PathLiteral;
+struct FingerprintParameter;
 
 class GroundTruth final {
  public:
@@ -56,6 +57,9 @@ class GroundTruth final {
 
   ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineNvmeWearLevel(
       std::optional<uint32_t>& threshold) const;
+
+  ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineFingerprint(
+      FingerprintParameter& param) const;
   // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 
   // cros_config related functions.

@@ -11,7 +11,6 @@
 #include <string>
 
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
-#include "diagnostics/cros_healthd/routine_parameter_fetcher.h"
 #include "diagnostics/cros_healthd/system/context.h"
 
 namespace diagnostics {
@@ -87,9 +86,6 @@ class CrosHealthdRoutineFactoryImpl final : public CrosHealthdRoutineFactory {
  private:
   // Unowned pointer that should outlive this instance.
   Context* const context_ = nullptr;
-
-  // Used to fetch default parameters for routines.
-  std::unique_ptr<RoutineParameterFetcher> parameter_fetcher_;
 };
 
 }  // namespace diagnostics

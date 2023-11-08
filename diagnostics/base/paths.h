@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_BASE_PATHS_H_
 #define DIAGNOSTICS_BASE_PATHS_H_
 
+#include <array>
+
 #include "diagnostics/base/path_utils.h"
 
 // VAR_ put the paths before the variable names so it is easier to read.
@@ -61,8 +63,39 @@ VAR_(PATH_("cros-healthd", "routines", "prime-search", "max-num"),
 VAR_(PATH_(
          "cros-healthd", "routines", "nvme-wear-level", "wear-level-threshold"),
      kNvmeWearLevelThreshold);
-VAR_(PATH_("cros-healthd", "routines", "fingerprint-diag", "routine-enable"),
-     kFingerprintDiagRoutineEnable);
+
+namespace fingerprint {
+
+VAR_(PATH_("cros-healthd", "routines", "fingerprint-diag"), kFingerprintDiag);
+
+VAR_(PATH_(kFingerprintDiag, "routine-enable"), kRoutineEnable);
+VAR_(PATH_(kFingerprintDiag, "max-dead-pixels"), kMaxDeadPixels);
+VAR_(PATH_(kFingerprintDiag, "max-dead-pixels-in-detect-zone"),
+     kMaxDeadPixelsInDetectZone);
+VAR_(PATH_(kFingerprintDiag, "max-pixel-dev"), kMaxPixelDev);
+VAR_(PATH_(kFingerprintDiag, "max-error-reset-pixels"), kMaxErrorResetPixels);
+VAR_(PATH_(kFingerprintDiag, "max-reset-pixel-dev"), kMaxResetPixelDev);
+VAR_(PATH_(kFingerprintDiag, "pixel-median", "cb-type1-lower"), kCbType1Lower);
+VAR_(PATH_(kFingerprintDiag, "pixel-median", "cb-type1-upper"), kCbType1Upper);
+VAR_(PATH_(kFingerprintDiag, "pixel-median", "cb-type2-lower"), kCbType2Lower);
+VAR_(PATH_(kFingerprintDiag, "pixel-median", "cb-type2-upper"), kCbType2Upper);
+VAR_(PATH_(kFingerprintDiag, "pixel-median", "icb-type1-lower"),
+     kIcbType1Lower);
+VAR_(PATH_(kFingerprintDiag, "pixel-median", "icb-type1-upper"),
+     kIcbType1Upper);
+VAR_(PATH_(kFingerprintDiag, "pixel-median", "icb-type2-lower"),
+     kIcbType2Lower);
+VAR_(PATH_(kFingerprintDiag, "pixel-median", "icb-type2-upper"),
+     kIcbType2Upper);
+VAR_(PATH_(kFingerprintDiag, "num-detect-zone"), kNumDetectZone);
+VAR_(PATH_(kFingerprintDiag, "detect-zones"), kDetectZones);
+inline constexpr char kX1[] = "x1";
+inline constexpr char kY1[] = "y1";
+inline constexpr char kX2[] = "x2";
+inline constexpr char kY2[] = "y2";
+
+}  // namespace fingerprint
+
 VAR_(PATH_("branding", "oem-name"), kOemName);
 VAR_(PATH_("branding", "marketing-name"), kMarketingName);
 VAR_(PATH_("name"), kCodeName);

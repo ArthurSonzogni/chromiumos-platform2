@@ -11,7 +11,6 @@
 #include <base/time/time.h>
 #include <base/task/single_thread_task_runner.h>
 
-#include "diagnostics/cros_healthd/routine_parameter_fetcher.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 

@@ -30,11 +30,11 @@ base::FilePath GetCrosConfigFilePath(bool test_cros_config_,
 }
 
 base::unexpected<std::string> UnexpetedCrosConfig(
-    const PathLiteral& cros_config_property,
+    const base::FilePath& cros_config_property,
     const std::string& expected_value,
     const std::optional<std::string>& got_value) {
   return base::unexpected("Expected cros_config property [" +
-                          cros_config_property.ToStr() + "] to be [" +
+                          cros_config_property.value() + "] to be [" +
                           expected_value + "], but got [" +
                           got_value.value_or("") + "]");
 }
@@ -61,12 +61,22 @@ std::optional<std::string> CrosConfig::Get(const PathLiteral& path) const {
 }
 
 base::expected<void, std::string> CrosConfig::CheckExpectedCrosConfig(
-    const PathLiteral& path, const std::string& expected) const {
+    const base::FilePath& path, const std::string& expected) const {
   auto got = Get(path);
   if (got == expected) {
     return base::ok();
   }
   return UnexpetedCrosConfig(path, expected, got);
+}
+
+base::expected<void, std::string> CrosConfig::CheckExpectedCrosConfig(
+    const PathLiteral& path, const std::string& expected) const {
+  return CheckExpectedCrosConfig(path.ToPath(), expected);
+}
+
+base::expected<void, std::string> CrosConfig::CheckTrueCrosConfig(
+    const base::FilePath& path) const {
+  return CheckExpectedCrosConfig(path, cros_config_value::kTrue);
 }
 
 base::expected<void, std::string> CrosConfig::CheckTrueCrosConfig(
@@ -76,14 +86,14 @@ base::expected<void, std::string> CrosConfig::CheckTrueCrosConfig(
 
 template <typename T>
 base::expected<T, std::string> CrosConfig::GetUintCrosConfig(
-    const PathLiteral& path, const std::string& type_name) const {
+    const base::FilePath& path, const std::string& type_name) const {
   auto got = Get(path);
   uint64_t value = 0;
   if (!got || !base::StringToUint64(got.value(), &value)) {
     return UnexpetedCrosConfig(path, type_name, got);
   }
   if (value > std::numeric_limits<T>::max()) {
-    LOG(ERROR) << "Cros_config " << path.ToPath() << " value " << got.value()
+    LOG(ERROR) << "Cros_config " << path.value() << " value " << got.value()
                << " overflow " << std::numeric_limits<T>::max();
     return UnexpetedCrosConfig(path, type_name, got);
   }
@@ -91,18 +101,33 @@ base::expected<T, std::string> CrosConfig::GetUintCrosConfig(
 }
 
 base::expected<uint8_t, std::string> CrosConfig::GetU8CrosConfig(
-    const PathLiteral& path) const {
+    const base::FilePath& path) const {
   return GetUintCrosConfig<uint8_t>(path, "uint8");
 }
 
 base::expected<uint32_t, std::string> CrosConfig::GetU32CrosConfig(
-    const PathLiteral& path) const {
+    const base::FilePath& path) const {
   return GetUintCrosConfig<uint32_t>(path, "uint32");
 }
 
 base::expected<uint64_t, std::string> CrosConfig::GetU64CrosConfig(
-    const PathLiteral& path) const {
+    const base::FilePath& path) const {
   return GetUintCrosConfig<uint64_t>(path, "uint64");
+}
+
+base::expected<uint8_t, std::string> CrosConfig::GetU8CrosConfig(
+    const PathLiteral& path) const {
+  return GetUintCrosConfig<uint8_t>(path.ToPath(), "uint8");
+}
+
+base::expected<uint32_t, std::string> CrosConfig::GetU32CrosConfig(
+    const PathLiteral& path) const {
+  return GetUintCrosConfig<uint32_t>(path.ToPath(), "uint32");
+}
+
+base::expected<uint64_t, std::string> CrosConfig::GetU64CrosConfig(
+    const PathLiteral& path) const {
+  return GetUintCrosConfig<uint64_t>(path.ToPath(), "uint64");
 }
 
 }  // namespace diagnostics
