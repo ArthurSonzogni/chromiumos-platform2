@@ -2207,41 +2207,59 @@ user_data_auth::GetWebAuthnSecretHashReply UserDataAuth::GetWebAuthnSecretHash(
   return reply;
 }
 
-user_data_auth::GetHibernateSecretReply UserDataAuth::GetHibernateSecret(
-    const user_data_auth::GetHibernateSecretRequest& request) {
+void UserDataAuth::GetHibernateSecret(
+    user_data_auth::GetHibernateSecretRequest request,
+    OnDoneCallback<user_data_auth::GetHibernateSecretReply> on_done) {
   AssertOnMountThread();
-  user_data_auth::GetHibernateSecretReply reply;
 
   // If there's an auth_session_id, use that to create the hibernate
   // secret on demand (otherwise it's not available until later).
   if (!request.auth_session_id().empty()) {
-    CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-        GetAuthenticatedAuthSession(request.auth_session_id());
-    if (!auth_session_status.ok()) {
-      LOG(ERROR) << "Invalid AuthSession for HibernateSecret.";
-      reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-      return reply;
-    }
+    RunWithDecryptAuthSessionWhenAvailable(
+        auth_session_manager_,
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInGetHibernateSecret),
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthInGetHibernateSecret),
+        std::move(request), std::move(on_done),
+        base::BindOnce(
+            [](user_data_auth::GetHibernateSecretRequest request,
+               OnDoneCallback<user_data_auth::GetHibernateSecretReply> on_done,
+               InUseAuthSession auth_session) {
+              user_data_auth::GetHibernateSecretReply reply;
 
-    std::unique_ptr<brillo::SecureBlob> secret =
-        auth_session_status.value()->GetHibernateSecret();
-
-    reply.set_hibernate_secret(secret->to_string());
-    return reply;
+              std::unique_ptr<brillo::SecureBlob> secret =
+                  auth_session->GetHibernateSecret();
+              reply.set_hibernate_secret(secret->to_string());
+              ReplyWithError(std::move(on_done), reply,
+                             OkStatus<CryptohomeError>());
+            }));
+    return;
   }
 
+  user_data_auth::GetHibernateSecretReply reply;
   LOG(INFO) << "Getting the hibernate secret via legacy account_id";
   if (!request.has_account_id()) {
     LOG(ERROR) << "GetHibernateSecretRequest must have account_id.";
-    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-    return reply;
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthNoAccountIdForGetHibernateSecret),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
   }
 
   Username account_id = GetAccountId(request.account_id());
   if (account_id->empty()) {
     LOG(ERROR) << "GetHibernateSecretRequest must have valid account_id.";
-    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-    return reply;
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthInvalidAccountIdForGetHibernateSecret),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
   }
 
   UserSession* const session = sessions_->Find(account_id);
@@ -2251,12 +2269,18 @@ user_data_auth::GetHibernateSecretReply UserDataAuth::GetHibernateSecret(
   }
   if (!secret) {
     LOG(ERROR) << "Failed to get hibernate secret hash.";
-    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
-    return reply;
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthNoSecretFoundInGetHibernateSecret),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND));
+    return;
   }
 
   reply.set_hibernate_secret(secret->to_string());
-  return reply;
+  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 
 user_data_auth::GetEncryptionInfoReply UserDataAuth::GetEncryptionInfo(

@@ -430,6 +430,7 @@ message GetHibernateSecretRequest {
 // Output parameters for GetHibernateSecret()
 message GetHibernateSecretReply {
   CryptohomeErrorCode error = 1;
+  CryptohomeErrorInfo error_info = 3;
 
   // The hibernate secret.
   bytes hibernate_secret = 2;

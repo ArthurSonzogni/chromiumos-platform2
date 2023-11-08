@@ -778,7 +778,15 @@ void UserDataAuthAdaptor::DoGetHibernateSecret(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::GetHibernateSecretReply>> response,
     const user_data_auth::GetHibernateSecretRequest& in_request) {
-  response->Return(service_->GetHibernateSecret(in_request));
+  service_->GetHibernateSecret(
+      in_request,
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 user_data_auth::GetHibernateSecretReply>> local_response,
+             const user_data_auth::GetHibernateSecretReply& reply) {
+            local_response->Return(reply);
+          },
+          std::move(response)));
 }
 
 void UserDataAuthAdaptor::GetEncryptionInfo(

@@ -684,8 +684,13 @@ TEST_F(AuthSessionInterfaceTest, GetHibernateSecretUnauthenticatedTest) {
   // Verify an unauthenticated session fails in producing a hibernate secret.
   user_data_auth::GetHibernateSecretRequest request;
   request.set_auth_session_id(auth_session->serialized_token());
-  user_data_auth::GetHibernateSecretReply hs_reply =
-      userdataauth_.GetHibernateSecret(request);
+  TestFuture<user_data_auth::GetHibernateSecretReply> reply_future;
+  userdataauth_.GetHibernateSecret(
+      request,
+      reply_future
+          .GetCallback<const user_data_auth::GetHibernateSecretReply&>());
+  user_data_auth::GetHibernateSecretReply hs_reply = reply_future.Take();
+
   ASSERT_NE(hs_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   ASSERT_FALSE(hs_reply.hibernate_secret().length());
 }
@@ -1478,8 +1483,12 @@ TEST_F(AuthSessionInterfaceMockAuthTest, GetHibernateSecretTest) {
 
   user_data_auth::GetHibernateSecretRequest hs_request;
   hs_request.set_auth_session_id(serialized_token);
-  user_data_auth::GetHibernateSecretReply hs_reply =
-      userdataauth_.GetHibernateSecret(hs_request);
+  TestFuture<user_data_auth::GetHibernateSecretReply> reply_future;
+  userdataauth_.GetHibernateSecret(
+      hs_request,
+      reply_future
+          .GetCallback<const user_data_auth::GetHibernateSecretReply&>());
+  user_data_auth::GetHibernateSecretReply hs_reply = reply_future.Take();
 
   // Assert.
   EXPECT_EQ(hs_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -1503,8 +1512,12 @@ TEST_F(AuthSessionInterfaceMockAuthTest, GetHibernateSecretWithBroadcastId) {
   // Act.
   user_data_auth::GetHibernateSecretRequest hs_request;
   hs_request.set_auth_session_id(serialized_public_token);
-  user_data_auth::GetHibernateSecretReply hs_reply =
-      userdataauth_.GetHibernateSecret(hs_request);
+  TestFuture<user_data_auth::GetHibernateSecretReply> reply_future;
+  userdataauth_.GetHibernateSecret(
+      hs_request,
+      reply_future
+          .GetCallback<const user_data_auth::GetHibernateSecretReply&>());
+  user_data_auth::GetHibernateSecretReply hs_reply = reply_future.Take();
 
   // Assert.
   EXPECT_EQ(hs_reply.error(),

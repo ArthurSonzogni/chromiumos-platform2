@@ -314,8 +314,9 @@ class UserDataAuth {
       const user_data_auth::GetWebAuthnSecretHashRequest& request);
 
   // =============  Hibernate Secret Public Methods ==============
-  user_data_auth::GetHibernateSecretReply GetHibernateSecret(
-      const user_data_auth::GetHibernateSecretRequest& request);
+  void GetHibernateSecret(
+      user_data_auth::GetHibernateSecretRequest request,
+      OnDoneCallback<user_data_auth::GetHibernateSecretReply> on_done);
 
   // Retrieves information on what encryption features are in use in cryptohome,
   // such as Intel Keylocker. This allows other services such as hiberate

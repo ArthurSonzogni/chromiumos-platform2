@@ -1561,6 +1561,16 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthSessionNotAuthInCreateVaultKeyset = 2183,
   /* ./userdataauth.cc */
   kLocUserDataAuthSessionNotAuthInRestoreDeviceKey = 2184,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotFoundInGetHibernateSecret = 2185,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotAuthInGetHibernateSecret = 2186,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoAccountIdForGetHibernateSecret = 2187,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthInvalidAccountIdForGetHibernateSecret = 2188,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoSecretFoundInGetHibernateSecret = 2189,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.
