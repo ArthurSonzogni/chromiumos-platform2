@@ -617,6 +617,26 @@
         </tp:docstring>
       </arg>
     </method>
+    <!-- TODO(b/305120263): Remove owner_id from StopVmRequest and merge this
+         method into StopVm. -->
+    <method name="StopVmWithoutOwnerId">
+      <tp:docstring>
+        Similar to StopVm but works without passing owner_id and stops the given
+        VM for all owners.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::StopVmRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::StopVmResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, failure_reason is set on failure.
+        </tp:docstring>
+      </arg>
+    </method>
     <method name="SuspendVm">
       <tp:docstring>
         Suspends a VM.

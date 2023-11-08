@@ -153,6 +153,12 @@ class Service final : public org::chromium::VmConciergeInterface,
   // Handles a request to stop a VM.
   StopVmResponse StopVm(const StopVmRequest& request) override;
 
+  // Handles a request to stop a VM, but ignores the owner_id in the request and
+  // stops the given VM for all owners.
+  // TODO(b/305120263): Remove owner_id from StopVmRequest and merge this method
+  // into StopVm.
+  StopVmResponse StopVmWithoutOwnerId(const StopVmRequest& request) override;
+
   // Handles a request to stop a VM.
   bool StopVmInternal(const VmId& vm_id, VmStopReason reason);
   // Wrapper to post |StopVmInternal| as a task. Only difference is that we

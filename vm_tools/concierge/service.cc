@@ -2387,6 +2387,35 @@ StopVmResponse Service::StopVm(const StopVmRequest& request) {
   return response;
 }
 
+StopVmResponse Service::StopVmWithoutOwnerId(const StopVmRequest& request) {
+  LOG(INFO) << "Received request: " << __func__;
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  StopVmResponse response;
+
+  if (request.name().empty()) {
+    return response;
+  }
+
+  std::vector<VmId> vms_to_stop;
+  for (const auto& [vm_id, _] : vms_) {
+    if (vm_id.name() == request.name()) {
+      vms_to_stop.push_back(vm_id);
+    }
+  }
+
+  for (const auto& vm_to_stop : vms_to_stop) {
+    if (!StopVmInternal(vm_to_stop, STOP_VM_REQUESTED)) {
+      LOG(ERROR) << "Unable to shut down VM";
+      response.set_failure_reason("Unable to shut down VM");
+      return response;
+    }
+  }
+
+  response.set_success(true);
+  return response;
+}
+
 bool Service::StopVmInternal(const VmId& vm_id, VmStopReason reason) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   auto iter = FindVm(vm_id);
