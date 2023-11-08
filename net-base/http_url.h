@@ -2,17 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_HTTP_URL_H_
-#define SHILL_HTTP_URL_H_
+#ifndef NET_BASE_HTTP_URL_H_
+#define NET_BASE_HTTP_URL_H_
 
 #include <optional>
 #include <string>
 #include <string_view>
 
-namespace shill {
+#include "net-base/export.h"
+
+namespace net_base {
 
 // Simple URL parsing class.
-class HttpUrl {
+class NET_BASE_EXPORT HttpUrl {
  public:
   enum class Protocol { kUnknown, kHttp, kHttps };
 
@@ -43,6 +45,6 @@ class HttpUrl {
   Protocol protocol_;
 };
 
-}  // namespace shill
+}  // namespace net_base
 
-#endif  // SHILL_HTTP_URL_H_
+#endif  // NET_BASE_HTTP_URL_H_

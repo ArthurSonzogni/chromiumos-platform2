@@ -16,9 +16,9 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <base/types/expected.h>
+#include <net-base/http_url.h>
 #include <net-base/ip_address.h>
 
-#include "shill/http_url.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
 
@@ -27,7 +27,6 @@ namespace shill {
 class DnsClient;
 class Error;
 class EventDispatcher;
-class HttpUrl;
 class IcmpSession;
 class IcmpSessionFactory;
 
@@ -139,7 +138,7 @@ class ConnectionDiagnostics {
   virtual ~ConnectionDiagnostics();
 
   // Performs connectivity diagnostics for the hostname of the URL |url|.
-  mockable bool Start(const HttpUrl& url);
+  mockable bool Start(const net_base::HttpUrl& url);
   void Stop();
 
   // Returns a string representation of |event|.
@@ -228,7 +227,7 @@ class ConnectionDiagnostics {
 
   // The URL whose hostname is being diagnosed. Only defined when the
   // diagnostics is running.
-  std::optional<HttpUrl> target_url_;
+  std::optional<net_base::HttpUrl> target_url_;
 
   // Used to ping multiple DNS servers in parallel.
   std::map<int, std::unique_ptr<IcmpSession>>

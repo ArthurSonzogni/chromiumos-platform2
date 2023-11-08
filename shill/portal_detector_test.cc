@@ -16,9 +16,9 @@
 #include <brillo/http/mock_transport.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/http_url.h>
 
 #include "shill/http_request.h"
-#include "shill/http_url.h"
 #include "shill/mock_event_dispatcher.h"
 
 using testing::_;
@@ -62,7 +62,7 @@ class MockHttpRequest : public HttpRequest {
       HttpRequest::Result,
       Start,
       (const std::string&,
-       const HttpUrl&,
+       const net_base::HttpUrl&,
        const brillo::http::HeaderList&,
        base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>,
        base::OnceCallback<void(Result)>),
@@ -137,15 +137,15 @@ class PortalDetectorTest : public Test {
 
   static PortalDetector::ProbingConfiguration MakeProbingConfiguration() {
     PortalDetector::ProbingConfiguration config;
-    config.portal_http_url = *HttpUrl::CreateFromString(kHttpUrl);
-    config.portal_https_url = *HttpUrl::CreateFromString(kHttpsUrl);
+    config.portal_http_url = *net_base::HttpUrl::CreateFromString(kHttpUrl);
+    config.portal_https_url = *net_base::HttpUrl::CreateFromString(kHttpsUrl);
     for (const auto& url : kFallbackHttpUrls) {
       config.portal_fallback_http_urls.push_back(
-          *HttpUrl::CreateFromString(url));
+          *net_base::HttpUrl::CreateFromString(url));
     }
     for (const auto& url : kFallbackHttpsUrls) {
       config.portal_fallback_https_urls.push_back(
-          *HttpUrl::CreateFromString(url));
+          *net_base::HttpUrl::CreateFromString(url));
     }
     return config;
   }
@@ -706,9 +706,9 @@ TEST_F(PortalDetectorTest, StatusToString) {
 }
 
 TEST_F(PortalDetectorTest, PickProbeUrlTest) {
-  const auto url1 = *HttpUrl::CreateFromString("http://www.url1.com");
-  const auto url2 = *HttpUrl::CreateFromString("http://www.url2.com");
-  const auto url3 = *HttpUrl::CreateFromString("http://www.url3.com");
+  const auto url1 = *net_base::HttpUrl::CreateFromString("http://www.url1.com");
+  const auto url2 = *net_base::HttpUrl::CreateFromString("http://www.url2.com");
+  const auto url3 = *net_base::HttpUrl::CreateFromString("http://www.url3.com");
   const std::set<std::string> all_urls = {url1.ToString(), url2.ToString(),
                                           url3.ToString()};
   std::set<std::string> all_found_urls;

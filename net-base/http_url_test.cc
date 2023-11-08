@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/http_url.h"
+#include "net-base/http_url.h"
 
 #include <string>
 
 #include <gtest/gtest.h>
 
-namespace shill {
+namespace net_base {
 
 struct StringAndResult {
   explicit StringAndResult(const std::string& in_url_string)
@@ -105,4 +105,4 @@ INSTANTIATE_TEST_SUITE_P(
                                       443,
                                       "/bar")));
 
-}  // namespace shill
+}  // namespace net_base

@@ -8,9 +8,9 @@
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
-#include "shill/http_url.h"
+#include "net-base/http_url.h"
 
-namespace shill {
+namespace net_base {
 
 class Environment {
  public:
@@ -32,4 +32,4 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   return 0;
 }
 
-}  // namespace shill
+}  // namespace net_base

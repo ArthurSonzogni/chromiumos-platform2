@@ -13,8 +13,7 @@
 #include <base/json/json_reader.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport.h>
-
-#include "shill/http_url.h"
+#include <net-base/http_url.h>
 
 namespace shill {
 namespace {
@@ -54,8 +53,9 @@ std::optional<CapportStatus> CapportStatus::ParseFromJson(
   // Parse the optional fields.
   if (const std::string* value = dict->FindString(kUserPortalUrlKey);
       value != nullptr) {
-    const auto url = HttpUrl::CreateFromString(*value);
-    if (!url.has_value() || url->protocol() != HttpUrl::Protocol::kHttps) {
+    const auto url = net_base::HttpUrl::CreateFromString(*value);
+    if (!url.has_value() ||
+        url->protocol() != net_base::HttpUrl::Protocol::kHttps) {
       LOG(WARNING) << "User portal URL is not invalid: " << *value;
       return std::nullopt;
     }
@@ -63,7 +63,7 @@ std::optional<CapportStatus> CapportStatus::ParseFromJson(
   }
   if (const std::string* value = dict->FindString(kVenueInfoUrlKey);
       value != nullptr) {
-    const auto url = HttpUrl::CreateFromString(*value);
+    const auto url = net_base::HttpUrl::CreateFromString(*value);
     if (!url.has_value()) {
       LOG(WARNING) << "Venue info URL is not invalid: " << *value;
       return std::nullopt;
@@ -91,8 +91,10 @@ std::unique_ptr<CapportProxy> CapportProxy::Create(
     std::string_view api_url,
     std::shared_ptr<brillo::http::Transport> http_transport,
     base::TimeDelta transport_timeout) {
-  const std::optional<HttpUrl> url = HttpUrl::CreateFromString(api_url);
-  if (!url.has_value() || url->protocol() != HttpUrl::Protocol::kHttps) {
+  const std::optional<net_base::HttpUrl> url =
+      net_base::HttpUrl::CreateFromString(api_url);
+  if (!url.has_value() ||
+      url->protocol() != net_base::HttpUrl::Protocol::kHttps) {
     LOG(ERROR) << "The URL of CAPPORT API is invalid: " << api_url;
     return nullptr;
   }

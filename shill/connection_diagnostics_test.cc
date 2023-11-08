@@ -12,9 +12,9 @@
 
 #include <base/time/time.h>
 #include <gtest/gtest.h>
+#include <net-base/http_url.h>
 #include <net-base/ip_address.h>
 
-#include "shill/http_url.h"
 #include "shill/icmp_session.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
@@ -211,7 +211,8 @@ class ConnectionDiagnosticsTest : public Test {
   }
 
   bool Start(const std::string& url) {
-    return connection_diagnostics_.Start(*HttpUrl::CreateFromString(url));
+    return connection_diagnostics_.Start(
+        *net_base::HttpUrl::CreateFromString(url));
   }
 
   void VerifyStopped() {

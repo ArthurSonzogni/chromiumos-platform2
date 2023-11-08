@@ -35,7 +35,6 @@ group("all") {
     deps += [
       ":cellular_pco_fuzzer",
       ":dhcpv4_static_routes_fuzzer",
-      ":shill_http_url_fuzzer",
       ":shill_profile_fuzzer",
       ":shill_service_fuzzer",
       ":shill_technology_fuzzer",
@@ -329,7 +328,6 @@ static_library("libshill") {
     "geolocation_info.cc",
     "hook_table.cc",
     "http_request.cc",
-    "http_url.cc",
     "icmp.cc",
     "icmp_session.cc",
     "ipconfig.cc",
@@ -567,15 +565,6 @@ if (use.fuzzer) {
     ]
     deps = [ ":libshill" ]
   }
-  executable("shill_http_url_fuzzer") {
-    sources = [ "http_url_fuzzer.cc" ]
-    configs += [
-      "//common-mk/common_fuzzer",
-      ":fuzzed_data_config",
-      ":target_defaults",
-    ]
-    deps = [ ":libshill" ]
-  }
   executable("shill_profile_fuzzer") {
     sources = [ "profile_fuzzer.cc" ]
     configs += [
@@ -751,7 +740,6 @@ if (use.test) {
       "external_task_test.cc",
       "hook_table_test.cc",
       "http_request_test.cc",
-      "http_url_test.cc",
       "icmp_session_test.cc",
       "icmp_test.cc",
       "ipconfig_test.cc",

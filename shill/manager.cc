@@ -36,6 +36,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
+#include <net-base/http_url.h>
 #include <net-base/ip_address.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -58,7 +59,6 @@
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
 #include "shill/hook_table.h"
-#include "shill/http_url.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/network/network.h"
@@ -2949,7 +2949,7 @@ bool Manager::SetDNSProxyDOHProviders(const KeyValueStore& providers,
     return false;
 
   for (const auto& [url, nameservers] : providers.properties()) {
-    if (!HttpUrl().ParseFromString(url)) {
+    if (!net_base::HttpUrl().ParseFromString(url)) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                             "Invalid URL: " + url);
       return false;
@@ -3122,8 +3122,8 @@ void Manager::TetheringStatusChanged() {
 PortalDetector::ProbingConfiguration
 Manager::GetPortalDetectorProbingConfiguration() const {
   PortalDetector::ProbingConfiguration config;
-  auto http_url = HttpUrl::CreateFromString(props_.portal_http_url);
-  auto https_url = HttpUrl::CreateFromString(props_.portal_https_url);
+  auto http_url = net_base::HttpUrl::CreateFromString(props_.portal_http_url);
+  auto https_url = net_base::HttpUrl::CreateFromString(props_.portal_https_url);
   if (!http_url) {
     LOG(WARNING) << __func__ << ": could not parse default HTTP URL "
                  << props_.portal_http_url;
@@ -3137,7 +3137,7 @@ Manager::GetPortalDetectorProbingConfiguration() const {
   config.portal_http_url = *http_url;
   config.portal_https_url = *https_url;
   for (const auto& url_string : props_.portal_fallback_http_urls) {
-    auto url = HttpUrl::CreateFromString(url_string);
+    auto url = net_base::HttpUrl::CreateFromString(url_string);
     if (!url) {
       LOG(WARNING) << __func__ << ": could not parse fallback HTTP URL "
                    << url_string;
@@ -3146,7 +3146,7 @@ Manager::GetPortalDetectorProbingConfiguration() const {
     config.portal_fallback_http_urls.push_back(*url);
   }
   for (const auto& url_string : props_.portal_fallback_https_urls) {
-    auto url = HttpUrl::CreateFromString(url_string);
+    auto url = net_base::HttpUrl::CreateFromString(url_string);
     if (!url) {
       LOG(WARNING) << __func__ << ": could not parse fallback HTTPS URL "
                    << url_string;

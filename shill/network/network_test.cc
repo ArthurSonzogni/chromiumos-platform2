@@ -18,11 +18,11 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/http_url.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 
-#include "shill/http_url.h"
 #include "shill/ipconfig.h"
 #include "shill/metrics.h"
 #include "shill/mock_control.h"
@@ -172,7 +172,7 @@ class MockConnectionDiagnostics : public ConnectionDiagnostics {
       delete;
   ~MockConnectionDiagnostics() = default;
 
-  MOCK_METHOD(bool, Start, (const HttpUrl& url), (override));
+  MOCK_METHOD(bool, Start, (const net_base::HttpUrl& url), (override));
 };
 
 // Allows us to fake/mock some functions in this test.

@@ -18,10 +18,10 @@
 #include <base/time/time.h>
 #include <brillo/http/http_request.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/http_url.h>
 #include <net-base/ip_address.h>
 
 #include "shill/http_request.h"
-#include "shill/http_url.h"
 
 namespace shill {
 
@@ -93,16 +93,16 @@ class PortalDetector {
   struct ProbingConfiguration {
     // URL used for the first HTTP probe sent by PortalDetector on a new network
     // connection.
-    HttpUrl portal_http_url;
+    net_base::HttpUrl portal_http_url;
     // URL used for the first HTTPS probe sent by PortalDetector on a new
     // network connection.
-    HttpUrl portal_https_url;
+    net_base::HttpUrl portal_https_url;
     // Set of fallback URLs used for retrying the HTTP probe when portal
     // detection is not conclusive.
-    std::vector<HttpUrl> portal_fallback_http_urls;
+    std::vector<net_base::HttpUrl> portal_fallback_http_urls;
     // Set of fallback URLs used for retrying the HTTPS probe when portal
     // detection is not conclusive.
-    std::vector<HttpUrl> portal_fallback_https_urls;
+    std::vector<net_base::HttpUrl> portal_fallback_https_urls;
   };
 
   // Returns the default ProbingConfiguration using the default URLs defined in
@@ -277,8 +277,9 @@ class PortalDetector {
   // Picks the next probe URL based on |attempt_count_|. Returns |default_url|
   // if this is the first attempt. Otherwise, randomly returns with equal
   // probability |default_url| or an element of |fallback_urls|.
-  const HttpUrl& PickProbeUrl(const HttpUrl& default_url,
-                              const std::vector<HttpUrl>& fallback_urls) const;
+  const net_base::HttpUrl& PickProbeUrl(
+      const net_base::HttpUrl& default_url,
+      const std::vector<net_base::HttpUrl>& fallback_urls) const;
 
   // Internal method used to start the actual connectivity trial, called after
   // the start delay completes.
@@ -323,8 +324,8 @@ class PortalDetector {
   std::unique_ptr<HttpRequest> http_request_;
   std::unique_ptr<HttpRequest> https_request_;
   std::unique_ptr<Result> result_;
-  HttpUrl http_url_;
-  HttpUrl https_url_;
+  net_base::HttpUrl http_url_;
+  net_base::HttpUrl https_url_;
   ProbingConfiguration probing_configuration_;
   base::CancelableOnceClosure trial_;
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_{this};

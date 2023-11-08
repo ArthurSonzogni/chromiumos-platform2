@@ -9,9 +9,9 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#include <net-base/http_url.h>
 #include <net-base/ipv4_address.h>
 
-#include "shill/http_url.h"
 #include "shill/network/network_config.h"
 
 namespace shill {
@@ -32,7 +32,8 @@ class NetworkConfigMergeTest : public ::testing::Test {
             {*net_base::IPv4CIDR::CreateFromCIDRString("10.1.0.0/16"),
              *net_base::IPv4Address::CreateFromString("192.168.1.2")}};
     dhcp_config_.captive_portal_uri =
-        HttpUrl::CreateFromString("https://example.org/portal.html").value();
+        net_base::HttpUrl::CreateFromString("https://example.org/portal.html")
+            .value();
     dhcp_config_.dns_servers = {
         *net_base::IPAddress::CreateFromString("192.168.1.99"),
         *net_base::IPAddress::CreateFromString("192.168.1.98")};

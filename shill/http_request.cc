@@ -15,11 +15,11 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <brillo/http/http_utils.h>
+#include <net-base/http_url.h>
 
 #include "shill/dns_client.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
-#include "shill/http_url.h"
 #include "shill/logging.h"
 
 namespace {
@@ -73,7 +73,7 @@ HttpRequest::~HttpRequest() {
 
 HttpRequest::Result HttpRequest::Start(
     const std::string& logging_tag,
-    const HttpUrl& url,
+    const net_base::HttpUrl& url,
     const brillo::http::HeaderList& headers,
     base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
         request_success_callback,

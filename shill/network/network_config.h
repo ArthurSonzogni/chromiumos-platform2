@@ -11,11 +11,10 @@
 #include <utility>
 #include <vector>
 
+#include <net-base/http_url.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
-
-#include "shill/http_url.h"
 
 namespace shill {
 
@@ -65,7 +64,7 @@ struct NetworkConfig {
   std::optional<int> mtu;
 
   // The captive portal URI gained from DHCP option 114, defined at RFC 8910.
-  std::optional<HttpUrl> captive_portal_uri;
+  std::optional<net_base::HttpUrl> captive_portal_uri;
 };
 
 std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config);

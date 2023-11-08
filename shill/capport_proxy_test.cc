@@ -17,8 +17,7 @@
 #include <brillo/http/mock_transport.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-
-#include "shill/http_url.h"
+#include <net-base/http_url.h>
 
 namespace shill {
 namespace {
@@ -51,8 +50,10 @@ TEST(CapportStatusTest, ParseFromJsonSuccess) {
 
   const CapportStatus expected{
       .is_captive = false,
-      .user_portal_url = HttpUrl::CreateFromString(kUserPortalUrl).value(),
-      .venue_info_url = HttpUrl::CreateFromString(kVenueInfoUrl).value(),
+      .user_portal_url =
+          net_base::HttpUrl::CreateFromString(kUserPortalUrl).value(),
+      .venue_info_url =
+          net_base::HttpUrl::CreateFromString(kVenueInfoUrl).value(),
       .can_extend_session = true,
       .seconds_remaining = base::Seconds(326),
       .bytes_remaining = 65536,
@@ -69,7 +70,8 @@ TEST(CapportStatusTest, ParseFromJsonMissingOptionalField) {
 
   const CapportStatus expected{
       .is_captive = true,
-      .user_portal_url = HttpUrl::CreateFromString(kUserPortalUrl).value(),
+      .user_portal_url =
+          net_base::HttpUrl::CreateFromString(kUserPortalUrl).value(),
       .venue_info_url = std::nullopt,
       .can_extend_session = std::nullopt,
       .seconds_remaining = std::nullopt,
@@ -134,7 +136,8 @@ TEST(CapportProxyTest, SendRequestSuccess) {
 })";
   const CapportStatus status{
       .is_captive = true,
-      .user_portal_url = HttpUrl::CreateFromString(kUserPortalUrl).value(),
+      .user_portal_url =
+          net_base::HttpUrl::CreateFromString(kUserPortalUrl).value(),
       .venue_info_url = std::nullopt,
       .can_extend_session = std::nullopt,
       .seconds_remaining = std::nullopt,

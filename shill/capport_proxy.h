@@ -15,8 +15,8 @@
 #include <base/time/time.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport.h>
+#include <net-base/http_url.h>
 
-#include "shill/http_url.h"
 #include "shill/mockable.h"
 
 namespace shill {
@@ -29,8 +29,8 @@ struct CapportStatus {
   bool operator!=(const CapportStatus& rhs) const = default;
 
   bool is_captive;
-  std::optional<HttpUrl> user_portal_url;
-  std::optional<HttpUrl> venue_info_url;
+  std::optional<net_base::HttpUrl> user_portal_url;
+  std::optional<net_base::HttpUrl> venue_info_url;
   std::optional<bool> can_extend_session;
   std::optional<base::TimeDelta> seconds_remaining;
   std::optional<int> bytes_remaining;

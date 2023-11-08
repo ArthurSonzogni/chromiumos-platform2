@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/http_url.h"
+#include "net-base/http_url.h"
 
+#include <compare>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -13,7 +14,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
-namespace shill {
+namespace net_base {
 
 namespace {
 
@@ -121,13 +122,7 @@ std::string HttpUrl::ToString() const {
   return url_string;
 }
 
-bool HttpUrl::operator==(const HttpUrl& rhs) const {
-  return host_ == rhs.host_ && path_ == rhs.path_ && port_ == rhs.port_ &&
-         protocol_ == rhs.protocol_;
-}
+bool HttpUrl::operator==(const HttpUrl& rhs) const = default;
+bool HttpUrl::operator!=(const HttpUrl& rhs) const = default;
 
-bool HttpUrl::operator!=(const HttpUrl& rhs) const {
-  return !(*this == rhs);
-}
-
-}  // namespace shill
+}  // namespace net_base

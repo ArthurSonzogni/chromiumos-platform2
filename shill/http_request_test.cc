@@ -20,9 +20,9 @@
 #include <brillo/streams/mock_stream.h>
 #include <curl/curl.h>
 #include <gtest/gtest.h>
+#include <net-base/http_url.h>
 #include <net-base/ip_address.h>
 
-#include "shill/http_url.h"
 #include "shill/mock_control.h"
 #include "shill/mock_dns_client.h"
 #include "shill/mock_manager.h"
@@ -161,7 +161,7 @@ class HttpRequestTest : public Test {
     request_->GetDNSResult(address);
   }
   HttpRequest::Result StartRequest(const std::string& url_string) {
-    auto url = HttpUrl::CreateFromString(url_string);
+    auto url = net_base::HttpUrl::CreateFromString(url_string);
     return request_->Start(kLoggingTag, *url, {},
                            target_.request_success_callback(),
                            target_.request_error_callback());
@@ -267,7 +267,7 @@ TEST_F(HttpRequestTest, TextRequestSuccess) {
 
   const std::string resp{"Sample response."};
   ExpectRequestSuccessCallback(resp);
-  HttpUrl url;
+  net_base::HttpUrl url;
   EXPECT_TRUE(url.ParseFromString(kTextURL));
   ExpectResolveHostToIp(url.host(), url.port(), kServerAddress);
   ExpectCreateConnection(kTextURL);

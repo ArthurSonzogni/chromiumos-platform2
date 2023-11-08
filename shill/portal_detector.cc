@@ -57,15 +57,17 @@ static std::string ObjectID(const PortalDetector* pd) {
 PortalDetector::ProbingConfiguration
 PortalDetector::DefaultProbingConfiguration() {
   ProbingConfiguration config;
-  config.portal_http_url = *HttpUrl::CreateFromString(kDefaultHttpUrl);
-  config.portal_https_url = *HttpUrl::CreateFromString(kDefaultHttpsUrl);
+  config.portal_http_url =
+      *net_base::HttpUrl::CreateFromString(kDefaultHttpUrl);
+  config.portal_https_url =
+      *net_base::HttpUrl::CreateFromString(kDefaultHttpsUrl);
   for (const auto& url_string : kDefaultFallbackHttpUrls) {
     config.portal_fallback_http_urls.push_back(
-        *HttpUrl::CreateFromString(url_string));
+        *net_base::HttpUrl::CreateFromString(url_string));
   }
   for (const auto& url_string : kDefaultFallbackHttpsUrls) {
     config.portal_fallback_https_urls.push_back(
-        *HttpUrl::CreateFromString(url_string));
+        *net_base::HttpUrl::CreateFromString(url_string));
   }
   return config;
 }
@@ -82,9 +84,9 @@ PortalDetector::~PortalDetector() {
   Stop();
 }
 
-const HttpUrl& PortalDetector::PickProbeUrl(
-    const HttpUrl& default_url,
-    const std::vector<HttpUrl>& fallback_urls) const {
+const net_base::HttpUrl& PortalDetector::PickProbeUrl(
+    const net_base::HttpUrl& default_url,
+    const std::vector<net_base::HttpUrl>& fallback_urls) const {
   if (attempt_count_ == 0 || fallback_urls.empty()) {
     return default_url;
   }
@@ -230,7 +232,8 @@ void PortalDetector::HttpRequestSuccessCallback(
       LOG(INFO) << LoggingTag() << ": Received redirection status code "
                 << status_code << " but there was no Location header";
     } else {
-      const auto redirect_url = HttpUrl::CreateFromString(redirect_url_string);
+      const auto redirect_url =
+          net_base::HttpUrl::CreateFromString(redirect_url_string);
       if (!redirect_url) {
         // Do not log |redirect_url_string| if it is not a valid URL and cannot
         // be obfuscated by the redaction tool.

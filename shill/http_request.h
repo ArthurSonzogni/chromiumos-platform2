@@ -16,10 +16,10 @@
 #include <base/types/expected.h>
 #include <brillo/errors/error.h>
 #include <brillo/http/http_transport.h>
+#include <net-base/http_url.h>
 #include <net-base/ip_address.h>
 
 #include "shill/dns_client.h"
-#include "shill/http_url.h"
 
 namespace shill {
 
@@ -66,7 +66,7 @@ class HttpRequest {
   // has started successfully and is now in progress.
   virtual Result Start(
       const std::string& logging_tag,
-      const HttpUrl& url,
+      const net_base::HttpUrl& url,
       const brillo::http::HeaderList& headers,
       base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
           request_success_callback,
@@ -104,7 +104,7 @@ class HttpRequest {
   std::unique_ptr<DnsClient> dns_client_;
   std::shared_ptr<brillo::http::Transport> transport_;
   brillo::http::RequestID request_id_;
-  HttpUrl url_;
+  net_base::HttpUrl url_;
   brillo::http::HeaderList headers_;
   bool is_running_;
 };

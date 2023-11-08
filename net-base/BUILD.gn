@@ -10,7 +10,10 @@ group("all") {
     ":libnet-base_pc",
   ]
   if (use.fuzzer) {
-    deps += [ ":rtnl_handler_fuzzer" ]
+    deps += [
+      ":http_url_fuzzer",
+      ":rtnl_handler_fuzzer",
+    ]
   }
   if (use.test) {
     deps += [ ":libnet-base-testrunner" ]
@@ -35,6 +38,7 @@ shared_library("libnet-base") {
     "ares_interface.cc",
     "byte_utils.cc",
     "dns_client.cc",
+    "http_url.cc",
     "ip_address.cc",
     "ip_address_utils.cc",
     "ipv4_address.cc",
@@ -61,6 +65,14 @@ generate_pkg_config("libnet-base_pc") {
 }
 
 if (use.fuzzer) {
+  executable("http_url_fuzzer") {
+    sources = [ "http_url_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    deps = [ ":libnet-base" ]
+  }
   executable("rtnl_handler_fuzzer") {
     sources = [ "rtnl_handler_fuzzer.cc" ]
     configs += [
@@ -93,6 +105,7 @@ if (use.test) {
     sources = [
       "byte_utils_test.cc",
       "dns_client_test.cc",
+      "http_url_test.cc",
       "ip_address_test.cc",
       "ipv4_address_test.cc",
       "ipv6_address_test.cc",

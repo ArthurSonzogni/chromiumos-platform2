@@ -15,10 +15,10 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/http_url.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 
-#include "shill/http_url.h"
 #include "shill/logging.h"
 
 namespace shill {
@@ -157,8 +157,10 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
       }
     } else if (key == kConfigurationKeyCaptivePortalUri) {
       // RFC 8910 specifies that the protocol of the URI must be HTTPS.
-      const auto uri = HttpUrl::CreateFromString(value.Get<std::string>());
-      if (!uri.has_value() || uri->protocol() != HttpUrl::Protocol::kHttps) {
+      const auto uri =
+          net_base::HttpUrl::CreateFromString(value.Get<std::string>());
+      if (!uri.has_value() ||
+          uri->protocol() != net_base::HttpUrl::Protocol::kHttps) {
         LOG(ERROR) << "Ignoring invalid captive portal uri: "
                    << value.Get<std::string>();
         has_error = true;

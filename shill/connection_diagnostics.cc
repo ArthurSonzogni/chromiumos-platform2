@@ -10,11 +10,11 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <net-base/http_url.h>
 
 #include "shill/dns_client.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
-#include "shill/http_url.h"
 #include "shill/icmp_session.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -131,7 +131,7 @@ ConnectionDiagnostics::~ConnectionDiagnostics() {
   Stop();
 }
 
-bool ConnectionDiagnostics::Start(const HttpUrl& url) {
+bool ConnectionDiagnostics::Start(const net_base::HttpUrl& url) {
   if (running()) {
     LOG(ERROR) << iface_name_ << ": Diagnostics already started";
     return false;

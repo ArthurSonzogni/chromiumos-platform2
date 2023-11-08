@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#include <net-base/http_url.h>
 #include <net-base/ipv4_address.h>
 
 #include "shill/network/network_config.h"
@@ -145,7 +146,7 @@ TEST(DHCPv4ConfigTest, ParseConfigurationCaptivePortalUri) {
   EXPECT_TRUE(
       DHCPv4Config::ParseConfiguration(conf, &network_config, &dhcp_data));
   EXPECT_EQ(network_config.captive_portal_uri,
-            HttpUrl::CreateFromString(kCaptivePortalUri).value());
+            net_base::HttpUrl::CreateFromString(kCaptivePortalUri).value());
 }
 
 TEST(DHCPv4ConfigTest, ParseConfigurationCaptivePortalUriFailed) {
