@@ -12,10 +12,16 @@ import functools
 import json
 import os
 import subprocess
+import sys
 import tempfile
 
 import configfs  # pylint: disable=import-error
 
+
+# Find chromite!  Assume this code only runs inside the SDK.
+sys.path.insert(0, "/mnt/host/source")
+
+# pylint: disable=wrong-import-position
 from chromite.lib import cros_test_lib
 from chromite.lib import osutils
 
