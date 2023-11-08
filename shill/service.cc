@@ -907,10 +907,6 @@ void Service::MigrateDeprecatedStorage(StoreInterface* storage) {
   // TODO(b/182744859): Remove code after M93.
   storage->DeleteKey(id, "DNSAutoFallback");
 
-  if (eap()) {
-    eap()->MigrateDeprecatedStorage(storage, id);
-  }
-
   // Prior to M91, Chrome did not tell us the source directly. We derive it
   // from UIData for old services. Remove this migration code in M97+.
   if (source_ == ONCSource::kONCSourceUnknown) {

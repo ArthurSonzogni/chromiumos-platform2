@@ -270,7 +270,6 @@ void VPNService::MigrateDeprecatedStorage(StoreInterface* storage) {
 
   const std::string id = GetStorageIdentifier();
   CHECK(storage->ContainsGroup(id));
-  driver_->MigrateDeprecatedStorage(storage, id);
 
   // Can be removed after the next stepping stone version after M114. Note that
   // a VPN service will not be saved automatically if there is no change on

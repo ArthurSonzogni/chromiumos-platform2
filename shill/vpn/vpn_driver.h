@@ -113,8 +113,6 @@ class VPNDriver {
   // and VPNService.
   virtual bool Load(const StoreInterface* storage,
                     const std::string& storage_id);
-  void MigrateDeprecatedStorage(StoreInterface* storage,
-                                const std::string& storage_id);
   virtual bool Save(StoreInterface* storage,
                     const std::string& storage_id,
                     bool save_credentials);

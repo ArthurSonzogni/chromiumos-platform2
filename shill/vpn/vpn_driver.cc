@@ -91,30 +91,6 @@ bool VPNDriver::Load(const StoreInterface* storage,
   return true;
 }
 
-void VPNDriver::MigrateDeprecatedStorage(StoreInterface* storage,
-                                         const std::string& storage_id) {
-  SLOG(2) << __func__;
-  // Migrate from ROT47 to plaintext.
-  // TODO(crbug.com/1084279) Migrate back to not using kCredentialPrefix once
-  // ROT47 migration is complete.
-  for (size_t i = 0; i < property_count_; i++) {
-    if (!(properties_[i].flags & Property::kCredential)) {
-      continue;
-    }
-
-    CHECK(!(properties_[i].flags & Property::kArray))
-        << "Property cannot be both an array and a credential";
-    const auto& deprecated_key = properties_[i].property;
-    const auto credentials_key =
-        std::string(kCredentialPrefix) + deprecated_key;
-
-    if (storage->DeleteKey(storage_id, deprecated_key)) {
-      const auto& value = args_.Get<std::string>(properties_[i].property);
-      storage->SetString(storage_id, credentials_key, value);
-    }
-  }
-}
-
 bool VPNDriver::Save(StoreInterface* storage,
                      const std::string& storage_id,
                      bool save_credentials) {

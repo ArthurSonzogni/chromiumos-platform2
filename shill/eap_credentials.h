@@ -59,9 +59,6 @@ class EapCredentials {
   // Load EAP properties from another EapCredentials set |eap|.
   virtual void Load(const EapCredentials& eap);
 
-  void MigrateDeprecatedStorage(StoreInterface* storage,
-                                const std::string& id) const;
-
   // Set PKCS#11 slot type by comparing slot ID value from |cert_id_| with the
   // slot ID value taken from chaps through |slot_getter|.
   void SetEapSlotGetter(Pkcs11SlotGetter* slot_getter);

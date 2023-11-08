@@ -455,25 +455,6 @@ void EapCredentials::ReplacePkcs11SlotIds(CK_SLOT_ID slot_id) {
   key_id_ = cert_id_;
 }
 
-void EapCredentials::MigrateDeprecatedStorage(StoreInterface* storage,
-                                              const std::string& id) const {
-  // Note that if we found any of these keys, then we already know that
-  // save_credentials was true during the last Save, and therefore can set the
-  // new (key, plaintext_value).
-  //
-  // TODO(crbug.com/1084279) Remove after migration is complete.
-  if (storage->DeleteKey(id, kStorageDeprecatedEapAnonymousIdentity)) {
-    storage->SetString(id, kStorageCredentialEapAnonymousIdentity,
-                       anonymous_identity_);
-  }
-  if (storage->DeleteKey(id, kStorageDeprecatedEapIdentity)) {
-    storage->SetString(id, kStorageCredentialEapIdentity, identity_);
-  }
-  if (storage->DeleteKey(id, kStorageDeprecatedEapPassword)) {
-    storage->SetString(id, kStorageCredentialEapPassword, password_);
-  }
-}
-
 void EapCredentials::SetEapSlotGetter(Pkcs11SlotGetter* slot_getter) {
   slot_getter_ = slot_getter;
 }
