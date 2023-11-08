@@ -3,6 +3,4 @@ iby@chromium.org
 mutexlox@chromium.org
 
 # Backup reviewer.
-vapier@chromium.org
-
-# COMPONENT: OS>Systems>Metrics
+vapier@chromium.org #{LAST_RESORT_SUGGESTION}
