@@ -4,6 +4,9 @@
 
 #include "libhwsec-foundation/crypto/hkdf.h"
 
+#include <string>
+
+#include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -11,18 +14,28 @@
 
 namespace hwsec_foundation {
 
+namespace {
+bool HexStringToBlob(const std::string& hex, brillo::Blob* blob) {
+  std::string str;
+  if (!base::HexStringToString(hex, &str)) {
+    return false;
+  }
+  *blob = brillo::BlobFromString(str);
+  return true;
+}
+}  // namespace
+
 // Tests HKDF using RFC test case for SHA-256 hash:
 // https://tools.ietf.org/html/rfc5869#appendix-A
 TEST(HkdfTest, Hkdf) {
   constexpr HkdfHash kHash = HkdfHash::kSha256;
   constexpr size_t kKeyLen = 42;
-  brillo::SecureBlob ikm, info, salt, prk, okm, expected_prk, expected_okm;
+  brillo::SecureBlob ikm, prk, okm, expected_prk, expected_okm;
+  brillo::Blob info, salt;
   ASSERT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(
       "0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B", &ikm));
-  ASSERT_TRUE(
-      brillo::SecureBlob::HexStringToSecureBlob("F0F1F2F3F4F5F6F7F8F9", &info));
-  ASSERT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(
-      "000102030405060708090A0B0C", &salt));
+  ASSERT_TRUE(HexStringToBlob("F0F1F2F3F4F5F6F7F8F9", &info));
+  ASSERT_TRUE(HexStringToBlob("000102030405060708090A0B0C", &salt));
   ASSERT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(
       "077709362C2E32DF0DDC3F0DC47BBA6390B6C73BB50F9C3122EC844AD7C2B3E5",
       &expected_prk));
@@ -46,8 +59,8 @@ TEST(HkdfTest, Hkdf) {
 TEST(HkdfTest, HkdfKeyLengthEqualToHashSize) {
   constexpr HkdfHash kHash = HkdfHash::kSha256;
   brillo::SecureBlob key("test_key");
-  brillo::SecureBlob salt("test_salt");
-  brillo::SecureBlob info("test_info");
+  brillo::Blob salt = brillo::BlobFromString("test_salt");
+  brillo::Blob info = brillo::BlobFromString("test_info");
   brillo::SecureBlob result;
   EXPECT_TRUE(HkdfExtract(kHash, key, salt, &result));
   EXPECT_EQ(result.size(), SHA256_DIGEST_LENGTH);
@@ -67,8 +80,8 @@ TEST(HkdfTest, HkdfKeyLengthTooBig) {
   constexpr HkdfHash kHash = HkdfHash::kSha256;
   constexpr size_t kKeyLen = 255 * SHA256_DIGEST_LENGTH + 1;
   brillo::SecureBlob key("test_key");
-  brillo::SecureBlob salt("test_salt");
-  brillo::SecureBlob info("test_info");
+  brillo::Blob salt = brillo::BlobFromString("test_salt");
+  brillo::Blob info = brillo::BlobFromString("test_info");
   brillo::SecureBlob result;
 
   EXPECT_FALSE(HkdfExpand(kHash, key, info, kKeyLen, &result));
@@ -80,8 +93,8 @@ TEST(HkdfTest, HkdfWithEmptyInfoAndSalt) {
   constexpr HkdfHash kHash = HkdfHash::kSha256;
   constexpr size_t kKeyLen = 42;
   brillo::SecureBlob key("test_key");
-  brillo::SecureBlob salt;
-  brillo::SecureBlob info;
+  brillo::Blob salt;
+  brillo::Blob info;
   brillo::SecureBlob result;
 
   EXPECT_TRUE(Hkdf(kHash, key, info, salt, kKeyLen, &result));

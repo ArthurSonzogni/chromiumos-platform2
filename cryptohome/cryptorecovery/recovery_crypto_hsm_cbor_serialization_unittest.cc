@@ -187,12 +187,17 @@ class HsmPayloadCborHelperTest : public testing::Test {
     ASSERT_TRUE(context_);
     ec_ = EllipticCurve::Create(kCurve, context_.get());
     ASSERT_TRUE(ec_);
-    ASSERT_TRUE(ec_->GenerateKeysAsSecureBlobs(
-        &publisher_pub_key_, &publisher_priv_key_, context_.get()));
-    ASSERT_TRUE(ec_->GenerateKeysAsSecureBlobs(
-        &channel_pub_key_, &channel_priv_key_, context_.get()));
-    ASSERT_TRUE(ec_->GenerateKeysAsSecureBlobs(
-        &dealer_pub_key_, &dealer_priv_key_, context_.get()));
+    // TODO(b/309748204): Use Blobs for non-sensitive data.
+    brillo::Blob pub_key;
+    ASSERT_TRUE(ec_->GenerateKeysAsSecureBlobs(&pub_key, &publisher_priv_key_,
+                                               context_.get()));
+    publisher_pub_key_.assign(pub_key.begin(), pub_key.end());
+    ASSERT_TRUE(ec_->GenerateKeysAsSecureBlobs(&pub_key, &channel_priv_key_,
+                                               context_.get()));
+    channel_pub_key_.assign(pub_key.begin(), pub_key.end());
+    ASSERT_TRUE(ec_->GenerateKeysAsSecureBlobs(&pub_key, &dealer_priv_key_,
+                                               context_.get()));
+    dealer_pub_key_.assign(pub_key.begin(), pub_key.end());
 
     OnboardingMetadata onboarding_meta_data;
     onboarding_meta_data.cryptohome_user_type = UserType::kGaiaId;
@@ -327,8 +332,11 @@ class RecoveryRequestCborHelperTest : public testing::Test {
     ASSERT_TRUE(context_);
     ec_ = EllipticCurve::Create(kCurve, context_.get());
     ASSERT_TRUE(ec_);
-    ASSERT_TRUE(ec_->GenerateKeysAsSecureBlobs(
-        &epoch_pub_key_, &epoch_priv_key_, context_.get()));
+    // TODO(b/309748204): Use Blobs for non-sensitive data.
+    brillo::Blob pub_key;
+    ASSERT_TRUE(ec_->GenerateKeysAsSecureBlobs(&pub_key, &epoch_priv_key_,
+                                               context_.get()));
+    epoch_pub_key_.assign(pub_key.begin(), pub_key.end());
   }
 
  protected:

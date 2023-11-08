@@ -22,8 +22,8 @@ enum class HkdfHash { kSha256 };
 // HkdfExpand. Returns false if operation failed.
 bool HWSEC_FOUNDATION_EXPORT Hkdf(HkdfHash hash,
                                   const brillo::SecureBlob& key,
-                                  const brillo::SecureBlob& info,
-                                  const brillo::SecureBlob& salt,
+                                  const brillo::Blob& info,
+                                  const brillo::Blob& salt,
                                   size_t result_len,
                                   brillo::SecureBlob* result);
 
@@ -33,7 +33,7 @@ bool HWSEC_FOUNDATION_EXPORT Hkdf(HkdfHash hash,
 // Returns false if operation failed.
 bool HWSEC_FOUNDATION_EXPORT HkdfExpand(HkdfHash hash,
                                         const brillo::SecureBlob& key,
-                                        const brillo::SecureBlob& info,
+                                        const brillo::Blob& info,
                                         size_t result_len,
                                         brillo::SecureBlob* result);
 
@@ -43,7 +43,7 @@ bool HWSEC_FOUNDATION_EXPORT HkdfExpand(HkdfHash hash,
 // for detailed description. Returns false if operation failed.
 bool HWSEC_FOUNDATION_EXPORT HkdfExtract(HkdfHash hash,
                                          const brillo::SecureBlob& key,
-                                         const brillo::SecureBlob& salt,
+                                         const brillo::Blob& salt,
                                          brillo::SecureBlob* result);
 
 }  // namespace hwsec_foundation

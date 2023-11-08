@@ -30,8 +30,8 @@ std::optional<brillo::SecureBlob> KeyBlobs::DeriveUssCredentialSecret() const {
   }
   brillo::SecureBlob uss_credential_secret;
   if (!Hkdf(HkdfHash::kSha256, /*key=*/vkk_key.value(),
-            /*info=*/brillo::SecureBlob(kUssCredentialSecretHkdfInfo),
-            /*salt=*/brillo::SecureBlob(),
+            /*info=*/brillo::BlobFromString(kUssCredentialSecretHkdfInfo),
+            /*salt=*/brillo::Blob(),
             /*result_len=*/0, &uss_credential_secret)) {
     LOG(ERROR) << "USS credential secret HKDF derivation failed";
     return std::nullopt;

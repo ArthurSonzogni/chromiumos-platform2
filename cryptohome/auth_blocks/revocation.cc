@@ -78,12 +78,12 @@ CryptoError RevokeTPMRetryActionToCryptoError(
 }
 
 bool DeriveSecret(const brillo::SecureBlob& key,
-                  const brillo::SecureBlob& hkdf_info,
+                  const brillo::Blob& hkdf_info,
                   brillo::SecureBlob* gen_secret) {
   // Note: the key is high entropy, so the salt can be empty.
   if (!Hkdf(HkdfHash::kSha256, /*key=*/key,
             /*info=*/hkdf_info,
-            /*salt=*/brillo::SecureBlob(),
+            /*salt=*/brillo::Blob(),
             /*result_len=*/gen_secret->size(), gen_secret)) {
     LOG(ERROR) << "HKDF failed for revocation during secret derivation.";
     return false;
@@ -120,9 +120,9 @@ CryptoStatus Create(const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
   // kdf_skey to be combined with he_secret for vkk_key generation.
   brillo::SecureBlob le_secret(kDefaultSecretSize);
   brillo::SecureBlob kdf_skey(kDefaultSecretSize);
-  if (!DeriveSecret(per_credential_secret, brillo::SecureBlob(kLeSecretInfo),
-                    &le_secret) ||
-      !DeriveSecret(per_credential_secret, brillo::SecureBlob(kKdfSkeyInfo),
+  if (!DeriveSecret(per_credential_secret,
+                    brillo::BlobFromString(kLeSecretInfo), &le_secret) ||
+      !DeriveSecret(per_credential_secret, brillo::BlobFromString(kKdfSkeyInfo),
                     &kdf_skey)) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRevocationDeriveSecretsFailedInCreate),
@@ -161,8 +161,8 @@ CryptoStatus Create(const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
   brillo::SecureBlob vkk_key;
   if (!Hkdf(HkdfHash::kSha256,
             /*key=*/brillo::SecureBlob::Combine(he_secret, kdf_skey),
-            /*info=*/brillo::SecureBlob(),
-            /*salt=*/brillo::SecureBlob(kHESecretHkdfData),
+            /*info=*/brillo::Blob(),
+            /*salt=*/brillo::BlobFromString(kHESecretHkdfData),
             /*result_len=*/0, &vkk_key)) {
     LOG(ERROR) << "vkk_key HKDF derivation failed for revocation";
     return MakeStatus<CryptohomeCryptoError>(
@@ -200,9 +200,9 @@ CryptoStatus Derive(const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
   brillo::SecureBlob per_credential_secret = key_blobs->vkk_key.value();
   brillo::SecureBlob le_secret(kDefaultSecretSize);
   brillo::SecureBlob kdf_skey(kDefaultSecretSize);
-  if (!DeriveSecret(per_credential_secret, brillo::SecureBlob(kLeSecretInfo),
-                    &le_secret) ||
-      !DeriveSecret(per_credential_secret, brillo::SecureBlob(kKdfSkeyInfo),
+  if (!DeriveSecret(per_credential_secret,
+                    brillo::BlobFromString(kLeSecretInfo), &le_secret) ||
+      !DeriveSecret(per_credential_secret, brillo::BlobFromString(kKdfSkeyInfo),
                     &kdf_skey)) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRevocationDeriveSecretsFailedInDerive),
@@ -229,8 +229,8 @@ CryptoStatus Derive(const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
   if (!Hkdf(HkdfHash::kSha256,
             /*key=*/
             brillo::SecureBlob::Combine(result->he_secret, kdf_skey),
-            /*info=*/brillo::SecureBlob(),
-            /*salt=*/brillo::SecureBlob(kHESecretHkdfData),
+            /*info=*/brillo::Blob(),
+            /*salt=*/brillo::BlobFromString(kHESecretHkdfData),
             /*result_len=*/0, &vkk_key)) {
     LOG(ERROR) << "vkk_key HKDF derivation failed for revocation";
     return MakeStatus<CryptohomeCryptoError>(

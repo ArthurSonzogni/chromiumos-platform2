@@ -296,7 +296,7 @@ crypto::ScopedEC_KEY EllipticCurve::PointToEccKey(const EC_POINT& point) const {
 }
 
 bool EllipticCurve::EncodeToSpkiDer(const crypto::ScopedEC_KEY& key,
-                                    brillo::SecureBlob* result,
+                                    brillo::Blob* result,
                                     BN_CTX* context) const {
   if (!IsPointValidAndFinite(*EC_KEY_get0_public_key(key.get()), context)) {
     LOG(ERROR) << "Failed to EncodeToSpkiDer: input point is invalid or "
@@ -317,7 +317,7 @@ bool EllipticCurve::EncodeToSpkiDer(const crypto::ScopedEC_KEY& key,
 }
 
 crypto::ScopedEC_POINT EllipticCurve::DecodeFromSpkiDer(
-    const brillo::SecureBlob& public_key_spki_der, BN_CTX* context) const {
+    const brillo::Blob& public_key_spki_der, BN_CTX* context) const {
   crypto::ScopedEC_KEY ecc;
 
   const unsigned char* data_start = public_key_spki_der.data();
@@ -345,6 +345,24 @@ crypto::ScopedEC_POINT EllipticCurve::DecodeFromSpkiDer(
   return result;
 }
 
+bool EllipticCurve::EncodeToSpkiDer(const crypto::ScopedEC_KEY& key,
+                                    brillo::SecureBlob* result,
+                                    BN_CTX* context) const {
+  brillo::Blob tmp;
+  if (!EncodeToSpkiDer(key, &tmp, context)) {
+    return false;
+  }
+  result->assign(tmp.begin(), tmp.end());
+  return true;
+}
+
+crypto::ScopedEC_POINT EllipticCurve::DecodeFromSpkiDer(
+    const brillo::SecureBlob& public_key_spki_der, BN_CTX* context) const {
+  return DecodeFromSpkiDer(
+      brillo::Blob(public_key_spki_der.begin(), public_key_spki_der.end()),
+      context);
+}
+
 crypto::ScopedEC_Key EllipticCurve::GenerateKey(BN_CTX* context) const {
   crypto::ScopedEC_Key key(EC_KEY_new());
   if (!key) {
@@ -362,10 +380,9 @@ crypto::ScopedEC_Key EllipticCurve::GenerateKey(BN_CTX* context) const {
   return key;
 }
 
-bool EllipticCurve::GenerateKeysAsSecureBlobs(
-    brillo::SecureBlob* public_key_spki_der,
-    brillo::SecureBlob* private_key,
-    BN_CTX* context) const {
+bool EllipticCurve::GenerateKeysAsSecureBlobs(brillo::Blob* public_key_spki_der,
+                                              brillo::SecureBlob* private_key,
+                                              BN_CTX* context) const {
   crypto::ScopedEC_Key key = GenerateKey(context);
   if (!key) {
     LOG(ERROR) << "Failed to generate EC_KEY";

@@ -24,8 +24,8 @@ namespace {
 // Returns false if error occurred.
 bool HkdfInternal(HkdfHash hash,
                   const brillo::SecureBlob& key,
-                  const brillo::SecureBlob* info,
-                  const brillo::SecureBlob* salt,
+                  const brillo::Blob* info,
+                  const brillo::Blob* salt,
                   int mode,
                   size_t result_len,
                   brillo::SecureBlob* result) {
@@ -93,8 +93,8 @@ bool HkdfInternal(HkdfHash hash,
 
 bool Hkdf(HkdfHash hash,
           const brillo::SecureBlob& key,
-          const brillo::SecureBlob& info,
-          const brillo::SecureBlob& salt,
+          const brillo::Blob& info,
+          const brillo::Blob& salt,
           size_t result_len,
           brillo::SecureBlob* result) {
   return HkdfInternal(hash, key, &info, &salt,
@@ -104,7 +104,7 @@ bool Hkdf(HkdfHash hash,
 
 bool HkdfExpand(HkdfHash hash,
                 const brillo::SecureBlob& key,
-                const brillo::SecureBlob& info,
+                const brillo::Blob& info,
                 size_t result_len,
                 brillo::SecureBlob* result) {
   return HkdfInternal(hash, key, &info, /*salt=*/nullptr,
@@ -113,7 +113,7 @@ bool HkdfExpand(HkdfHash hash,
 
 bool HkdfExtract(HkdfHash hash,
                  const brillo::SecureBlob& key,
-                 const brillo::SecureBlob& salt,
+                 const brillo::Blob& salt,
                  brillo::SecureBlob* result) {
   return HkdfInternal(hash, key, /*info=*/nullptr, &salt,
                       EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY, /*result_len=*/0,

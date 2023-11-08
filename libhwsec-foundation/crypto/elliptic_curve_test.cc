@@ -5,13 +5,14 @@
 #include "libhwsec-foundation/crypto/elliptic_curve.h"
 
 #include <optional>
+#include <string>
+
+#include <base/strings/string_number_conversions.h>
+#include <base/logging.h>
+#include <gtest/gtest.h>
 
 #include "libhwsec-foundation/crypto/big_num_util.h"
 #include "libhwsec-foundation/crypto/error_util.h"
-
-#include <gtest/gtest.h>
-
-#include <base/logging.h>
 
 namespace hwsec_foundation {
 
@@ -27,11 +28,20 @@ const char kSpkiDerPoint[] =
     "0B0C0D0E0F101112131415161718191A1B1C1D1E1F202122232425262728292A2B2C2D2E2F"
     "303132333435363738393A3B3C3D3E3F40";
 
-brillo::SecureBlob CreateBogusPointSpkiDer() {
-  brillo::SecureBlob spki_der;
-  if (!brillo::SecureBlob::HexStringToSecureBlob(kSpkiDerPoint, &spki_der)) {
+bool HexStringToBlob(const std::string& hex, brillo::Blob* blob) {
+  std::string str;
+  if (!base::HexStringToString(hex, &str)) {
+    return false;
+  }
+  *blob = brillo::BlobFromString(str);
+  return true;
+}
+
+brillo::Blob CreateBogusPointSpkiDer() {
+  brillo::Blob spki_der;
+  if (!HexStringToBlob(kSpkiDerPoint, &spki_der)) {
     ADD_FAILURE() << "Failed to convert hex to SecureBlob";
-    return brillo::SecureBlob();
+    return brillo::Blob();
   }
 
   return spki_der;
@@ -173,7 +183,7 @@ TEST_F(EllipticCurveTest, SubjectPublicKeyInfoConversions) {
   crypto::ScopedEC_KEY key = ec_->GenerateKey(context_.get());
   ASSERT_TRUE(key);
   // Encode the public key:
-  brillo::SecureBlob spki_der_point_blob;
+  brillo::Blob spki_der_point_blob;
   ASSERT_TRUE(ec_->EncodeToSpkiDer(key, &spki_der_point_blob, context_.get()));
   // Decode the public key:
   crypto::ScopedEC_POINT spki_der_decoded_key =
@@ -183,7 +193,7 @@ TEST_F(EllipticCurveTest, SubjectPublicKeyInfoConversions) {
                             *spki_der_decoded_key, context_.get()));
 
   // Test conversions of invalid or infinite points.
-  brillo::SecureBlob point_blob;
+  brillo::Blob point_blob;
   crypto::ScopedEC_POINT invalid_point = CreateInvalidPoint();
   ASSERT_TRUE(invalid_point);
   crypto::ScopedEC_KEY invalid_point_key =
@@ -200,8 +210,8 @@ TEST_F(EllipticCurveTest, SubjectPublicKeyInfoConversions) {
   EXPECT_FALSE(
       ec_->EncodeToSpkiDer(point_at_inf_key, &point_blob, context_.get()));
 
-  crypto::ScopedEC_POINT decoded_key =
-      ec_->DecodeFromSpkiDer(brillo::SecureBlob("not_a_point"), context_.get());
+  crypto::ScopedEC_POINT decoded_key = ec_->DecodeFromSpkiDer(
+      brillo::BlobFromString("not_a_point"), context_.get());
   EXPECT_FALSE(decoded_key);
   decoded_key =
       ec_->DecodeFromSpkiDer(CreateBogusPointSpkiDer(), context_.get());
@@ -242,7 +252,7 @@ TEST_F(EllipticCurveTest, PointToEccKeySubjectPublicKeyInfoConversions) {
   crypto::ScopedEC_KEY key_1 = ec_->PointToEccKey(*public_key);
   ASSERT_TRUE(key_1);
 
-  brillo::SecureBlob spki_der_public_key, spki_der_public_key_1;
+  brillo::Blob spki_der_public_key, spki_der_public_key_1;
   ASSERT_TRUE(ec_->EncodeToSpkiDer(key, &spki_der_public_key, context_.get()));
   ASSERT_TRUE(
       ec_->EncodeToSpkiDer(key_1, &spki_der_public_key_1, context_.get()));
@@ -435,7 +445,7 @@ TEST_F(EllipticCurveTest, GenerateKey) {
 }
 
 TEST_F(EllipticCurveTest, GenerateKeysAsSecureBlobs) {
-  brillo::SecureBlob public_blob;
+  brillo::Blob public_blob;
   brillo::SecureBlob private_blob;
   ASSERT_TRUE(ec_->GenerateKeysAsSecureBlobs(&public_blob, &private_blob,
                                              context_.get()));

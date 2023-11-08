@@ -111,11 +111,20 @@ class HWSEC_FOUNDATION_EXPORT EllipticCurve final {
   // SubjectPublicKeyInfo format. Returns false if error occurred, otherwise
   // stores resulting blob in `result`.
   bool EncodeToSpkiDer(const crypto::ScopedEC_KEY& key,
-                       brillo::SecureBlob* result,
+                       brillo::Blob* result,
                        BN_CTX* context) const;
 
   // Converts `blob` from DER encoded SubjectPublicKeyInfo format to ECC public
   // key and returns it as EC_POINT. Returns nullptr if error occurred.
+  crypto::ScopedEC_POINT DecodeFromSpkiDer(
+      const brillo::Blob& public_key_spki_der, BN_CTX* context) const;
+
+  // TODO(b/309748204): These are overloads with SecureBlob params which the
+  // recovery crypto implementation uses. Remove these after recovery switches
+  // to the new interface.
+  bool EncodeToSpkiDer(const crypto::ScopedEC_KEY& key,
+                       brillo::SecureBlob* result,
+                       BN_CTX* context) const;
   crypto::ScopedEC_POINT DecodeFromSpkiDer(
       const brillo::SecureBlob& public_key_spki_der, BN_CTX* context) const;
 
@@ -128,7 +137,7 @@ class HWSEC_FOUNDATION_EXPORT EllipticCurve final {
   // Generates a pair of public (in DER-encoded X.509
   // SubjectPublicKeyInfo format) and private keys. Returns false if error
   // occurred.
-  bool GenerateKeysAsSecureBlobs(brillo::SecureBlob* public_key_spki_der,
+  bool GenerateKeysAsSecureBlobs(brillo::Blob* public_key_spki_der,
                                  brillo::SecureBlob* private_key,
                                  BN_CTX* context) const;
 

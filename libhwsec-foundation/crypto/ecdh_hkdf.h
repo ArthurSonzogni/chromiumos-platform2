@@ -51,9 +51,9 @@ ComputeEcdhSharedSecret(const EllipticCurve& ec,
 // HKDF as hkdf info field.
 bool HWSEC_FOUNDATION_EXPORT
 ComputeHkdfWithInfoSuffix(const brillo::SecureBlob& hkdf_secret,
-                          const brillo::SecureBlob& hkdf_info_suffix,
-                          const brillo::SecureBlob& source_pub_key,
-                          const brillo::SecureBlob& hkdf_salt,
+                          const brillo::Blob& hkdf_info_suffix,
+                          const brillo::Blob& source_pub_key,
+                          const brillo::Blob& hkdf_salt,
                           HkdfHash hkdf_hash,
                           size_t symmetric_key_len,
                           brillo::SecureBlob* symmetric_key);
@@ -65,6 +65,27 @@ ComputeHkdfWithInfoSuffix(const brillo::SecureBlob& hkdf_secret,
 //   shared_secret = (shared_secret_point).x
 //   symmetric_key = HKDF(shared_secret, (source_pub_key, hkdf_info_suffix),
 //     hkdf_salt)
+bool HWSEC_FOUNDATION_EXPORT
+GenerateEcdhHkdfSymmetricKey(const EllipticCurve& ec,
+                             const EC_POINT& shared_secret_point,
+                             const brillo::Blob& source_pub_key,
+                             const brillo::Blob& hkdf_info_suffix,
+                             const brillo::Blob& hkdf_salt,
+                             HkdfHash hkdf_hash,
+                             size_t symmetric_key_len,
+                             brillo::SecureBlob* symmetric_key);
+
+// TODO(b/309748204): These are overloads with SecureBlob params which the
+// recovery crypto implementation uses. Remove these after recovery switches to
+// the new interface.
+bool HWSEC_FOUNDATION_EXPORT
+ComputeHkdfWithInfoSuffix(const brillo::SecureBlob& hkdf_secret,
+                          const brillo::SecureBlob& hkdf_info_suffix,
+                          const brillo::SecureBlob& source_pub_key,
+                          const brillo::SecureBlob& hkdf_salt,
+                          HkdfHash hkdf_hash,
+                          size_t symmetric_key_len,
+                          brillo::SecureBlob* symmetric_key);
 bool HWSEC_FOUNDATION_EXPORT
 GenerateEcdhHkdfSymmetricKey(const EllipticCurve& ec,
                              const EC_POINT& shared_secret_point,
