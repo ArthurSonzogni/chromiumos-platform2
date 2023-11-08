@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <base/types/expected.h>
 
@@ -34,9 +35,15 @@ class CrosConfig {
   // Gets cros config which has an expected value. Returns error if value
   // doesn't match.
   base::expected<void, std::string> CheckExpectedCrosConfig(
-      const base::FilePath& path, const std::string& expected_value) const;
+      const base::FilePath& path, const std::string& expected) const;
   base::expected<void, std::string> CheckExpectedCrosConfig(
-      const PathLiteral& path, const std::string& expected_value) const;
+      const PathLiteral& path, const std::string& expected) const;
+  // Same as above but check if it match any value in a list.
+  base::expected<void, std::string> CheckExpectedsCrosConfig(
+      const base::FilePath& path,
+      const std::vector<std::string>& expecteds) const;
+  base::expected<void, std::string> CheckExpectedsCrosConfig(
+      const PathLiteral& path, const std::vector<std::string>& expecteds) const;
 
   // Gets cros config which is a true boolean value. Returns error if it isn't.
   base::expected<void, std::string> CheckTrueCrosConfig(

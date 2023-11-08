@@ -62,6 +62,24 @@ TEST_F(CrosConfigTest, CheckExpectedCrosConfig) {
             "[]");
 }
 
+TEST_F(CrosConfigTest, CheckExpectedsCrosConfig) {
+  SetFakeCrosConfig(kTestPath, "A");
+  EXPECT_TRUE(
+      cros_config_.CheckExpectedsCrosConfig(kTestPath, {"A", "B"}).has_value());
+
+  SetFakeCrosConfig(kTestPath, "NotMatch");
+  EXPECT_EQ(
+      cros_config_.CheckExpectedsCrosConfig(kTestPath, {"A", "B"}).error(),
+      "Expected cros_config property [a/b/c] to be [A] or [B], but got "
+      "[NotMatch]");
+
+  SetFakeCrosConfig(kTestPath, std::nullopt);
+  EXPECT_EQ(
+      cros_config_.CheckExpectedsCrosConfig(kTestPath, {"A", "B"}).error(),
+      "Expected cros_config property [a/b/c] to be [A] or [B], but got "
+      "[]");
+}
+
 TEST_F(CrosConfigTest, CheckTrueCrosConfig) {
   SetFakeCrosConfig(kTestPath, cros_config_value::kTrue);
   EXPECT_TRUE(cros_config_.CheckTrueCrosConfig(kTestPath).has_value());

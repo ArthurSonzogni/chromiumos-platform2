@@ -10,6 +10,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <base/types/expected.h>
 
 #include "diagnostics/base/file_utils.h"
@@ -72,6 +73,23 @@ base::expected<void, std::string> CrosConfig::CheckExpectedCrosConfig(
 base::expected<void, std::string> CrosConfig::CheckExpectedCrosConfig(
     const PathLiteral& path, const std::string& expected) const {
   return CheckExpectedCrosConfig(path.ToPath(), expected);
+}
+
+base::expected<void, std::string> CrosConfig::CheckExpectedsCrosConfig(
+    const base::FilePath& path,
+    const std::vector<std::string>& expecteds) const {
+  auto got = Get(path);
+  for (const auto& expected : expecteds) {
+    if (got == expected) {
+      return base::ok();
+    }
+  }
+  return UnexpetedCrosConfig(path, base::JoinString(expecteds, "] or ["), got);
+}
+
+base::expected<void, std::string> CrosConfig::CheckExpectedsCrosConfig(
+    const PathLiteral& path, const std::vector<std::string>& expecteds) const {
+  return CheckExpectedsCrosConfig(path.ToPath(), expecteds);
 }
 
 base::expected<void, std::string> CrosConfig::CheckTrueCrosConfig(

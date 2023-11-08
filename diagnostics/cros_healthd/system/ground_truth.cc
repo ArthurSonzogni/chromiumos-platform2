@@ -40,6 +40,17 @@ mojom::SupportStatusPtr MakeSupported() {
   return mojom::SupportStatus::NewSupported(mojom::Supported::New());
 }
 
+mojom::SupportStatusPtr MakeUnsupported(const std::string& debug_message) {
+  return mojom::SupportStatus::NewUnsupported(
+      mojom::Unsupported::New(debug_message, /*reason=*/nullptr));
+}
+
+mojom::SupportStatusPtr MakeSupportStatus(
+    const base::expected<void, std::string>& expected) {
+  return expected.has_value() ? MakeSupported()
+                              : MakeUnsupported(expected.error());
+}
+
 template <typename T>
 void AssignAndDropError(const base::expected<T, std::string>& got,
                         std::optional<T>& out) {
@@ -164,77 +175,36 @@ mojom::SupportStatusPtr GroundTruth::GetEventSupportStatus(
     case mojom::EventCategoryEnum::kKeyboardDiagnostic:
     case mojom::EventCategoryEnum::kTouchpad:
     case mojom::EventCategoryEnum::kLid: {
-      std::vector<std::string> supported_form_factors = {
-          cros_config_value::kClamshell,
-          cros_config_value::kConvertible,
-          cros_config_value::kDetachable,
-      };
-      auto form_factor = FormFactor();
-
-      if (std::count(supported_form_factors.begin(),
-                     supported_form_factors.end(), form_factor)) {
-        return mojom::SupportStatus::NewSupported(mojom::Supported::New());
-      }
-
-      return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-          WrapUnsupportedString(cros_config_property::kFormFactor, form_factor),
-          nullptr));
+      return MakeSupportStatus(cros_config()->CheckExpectedsCrosConfig(
+          cros_config_property::kFormFactor,
+          {
+              cros_config_value::kClamshell,
+              cros_config_value::kConvertible,
+              cros_config_value::kDetachable,
+          }));
     }
     case mojom::EventCategoryEnum::kAudioJack: {
-      auto has_audio_jack = HasAudioJack();
-      if (has_audio_jack == "true") {
-        return mojom::SupportStatus::NewSupported(mojom::Supported::New());
-      }
-
-      return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-          WrapUnsupportedString(cros_config_property::kHasAudioJack,
-                                has_audio_jack),
-          nullptr));
+      return MakeSupportStatus(cros_config()->CheckTrueCrosConfig(
+          cros_config_property::kHasAudioJack));
     }
     case mojom::EventCategoryEnum::kSdCard: {
-      auto has_sd_reader = HasSdReader();
-      if (has_sd_reader == "true") {
-        return mojom::SupportStatus::NewSupported(mojom::Supported::New());
-      }
-
-      return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-          WrapUnsupportedString(cros_config_property::kHasSdReader,
-                                has_sd_reader),
-          nullptr));
+      return MakeSupportStatus(cros_config()->CheckTrueCrosConfig(
+          cros_config_property::kHasSdReader));
     }
     case mojom::EventCategoryEnum::kTouchscreen: {
-      auto has_touchscreen = HasTouchscreen();
-      if (has_touchscreen == "true") {
-        return mojom::SupportStatus::NewSupported(mojom::Supported::New());
-      }
-
-      return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-          WrapUnsupportedString(cros_config_property::kHasTouchscreen,
-                                has_touchscreen),
-          nullptr));
+      return MakeSupportStatus(cros_config()->CheckTrueCrosConfig(
+          cros_config_property::kHasTouchscreen));
     }
     case mojom::EventCategoryEnum::kStylusGarage: {
-      auto stylus_category = StylusCategory();
-      if (stylus_category == cros_config_value::kStylusCategoryInternal) {
-        return mojom::SupportStatus::NewSupported(mojom::Supported::New());
-      }
-
-      return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-          WrapUnsupportedString(cros_config_property::kStylusCategory,
-                                stylus_category),
-          nullptr));
+      return MakeSupportStatus(cros_config()->CheckExpectedCrosConfig(
+          cros_config_property::kStylusCategory,
+          cros_config_value::kStylusCategoryInternal));
     }
     case mojom::EventCategoryEnum::kStylus: {
-      auto stylus_category = StylusCategory();
-      if (stylus_category == cros_config_value::kStylusCategoryInternal ||
-          stylus_category == cros_config_value::kStylusCategoryExternal) {
-        return mojom::SupportStatus::NewSupported(mojom::Supported::New());
-      }
-
-      return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-          WrapUnsupportedString(cros_config_property::kStylusCategory,
-                                stylus_category),
-          nullptr));
+      return MakeSupportStatus(cros_config()->CheckExpectedsCrosConfig(
+          cros_config_property::kStylusCategory,
+          {cros_config_value::kStylusCategoryInternal,
+           cros_config_value::kStylusCategoryExternal}));
     }
   }
   // LINT.ThenChange(//diagnostics/docs/event_supportability.md)
@@ -274,16 +244,10 @@ void GroundTruth::IsRoutineArgumentSupported(
       return;
     // Need to be determined by boxster/cros_config.
     case mojom::RoutineArgument::Tag::kUfsLifetime: {
-      auto storage_type = StorageType();
-      if (storage_type == cros_config_value::kStorageTypeUfs) {
-        status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
-      } else {
-        status = mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-            WrapUnsupportedString(cros_config_property::kStorageType,
-                                  storage_type),
-            nullptr));
-      }
-      std::move(callback).Run(std::move(status));
+      std::move(callback).Run(
+          MakeSupportStatus(cros_config()->CheckExpectedCrosConfig(
+              cros_config_property::kStorageType,
+              cros_config_value::kStorageTypeUfs)));
       return;
     }
     case mojom::RoutineArgument::Tag::kFan: {
@@ -310,16 +274,9 @@ void GroundTruth::IsRoutineArgumentSupported(
       return;
     }
     case mojom::RoutineArgument::Tag::kVolumeButton: {
-      auto has_side_volume_button = HasSideVolumeButton();
-      if (has_side_volume_button == "true") {
-        status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
-      } else {
-        status = mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-            WrapUnsupportedString(cros_config_property::kHasSideVolumeButton,
-                                  has_side_volume_button),
-            nullptr));
-      }
-      std::move(callback).Run(std::move(status));
+      std::move(callback).Run(
+          MakeSupportStatus(cros_config()->CheckTrueCrosConfig(
+              cros_config_property::kHasSideVolumeButton)));
       return;
     }
     case mojom::RoutineArgument::Tag::kLedLitUp: {
@@ -468,30 +425,6 @@ mojom::SupportStatusPtr GroundTruth::PrepareRoutineFingerprint(
   return MakeSupported();
 }
 // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
-
-std::string GroundTruth::FormFactor() {
-  return ReadCrosConfig(cros_config_property::kFormFactor);
-}
-
-std::string GroundTruth::StylusCategory() {
-  return ReadCrosConfig(cros_config_property::kStylusCategory);
-}
-
-std::string GroundTruth::HasTouchscreen() {
-  return ReadCrosConfig(cros_config_property::kHasTouchscreen);
-}
-
-std::string GroundTruth::HasAudioJack() {
-  return ReadCrosConfig(cros_config_property::kHasAudioJack);
-}
-
-std::string GroundTruth::HasSdReader() {
-  return ReadCrosConfig(cros_config_property::kHasSdReader);
-}
-
-std::string GroundTruth::HasSideVolumeButton() {
-  return ReadCrosConfig(cros_config_property::kHasSideVolumeButton);
-}
 
 std::string GroundTruth::StorageType() {
   return ReadCrosConfig(cros_config_property::kStorageType);

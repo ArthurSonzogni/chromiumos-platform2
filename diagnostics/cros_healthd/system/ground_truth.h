@@ -63,12 +63,6 @@ class GroundTruth final {
   // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 
   // cros_config related functions.
-  std::string FormFactor();
-  std::string StylusCategory();
-  std::string HasTouchscreen();
-  std::string HasAudioJack();
-  std::string HasSdReader();
-  std::string HasSideVolumeButton();
   std::string StorageType();
   std::string FanCount();
 
