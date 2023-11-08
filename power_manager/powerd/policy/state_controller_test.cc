@@ -56,12 +56,12 @@ const char kNoActions[] = "";
 
 // Return a string representation of DimEvent.
 std::string GetDimEventString(metrics::DimEvent sample) {
-  return base::StringPrintf("DimEvent-%d", sample);
+  return base::StringPrintf("DimEvent-%d", static_cast<int>(sample));
 }
 
 // Return a string representation of LockEvent.
 std::string GetLockEventString(metrics::LockEvent sample) {
-  return base::StringPrintf("LockEvent-%d", sample);
+  return base::StringPrintf("LockEvent-%d", static_cast<int>(sample));
 }
 
 // Return a string representation of event name and duration.
