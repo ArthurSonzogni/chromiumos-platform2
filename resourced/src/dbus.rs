@@ -4,8 +4,6 @@
 
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::os::fd::FromRawFd;
-use std::os::fd::OwnedFd;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicI32;
@@ -15,7 +13,6 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
 
-use anyhow::anyhow;
 use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
@@ -40,9 +37,11 @@ use crate::config;
 use crate::feature;
 use crate::memory;
 use crate::power;
+use crate::proc::load_euid;
 use crate::psi;
 use crate::qos;
 use crate::qos::set_process_state;
+use crate::qos::set_thread_state;
 use crate::vm_memory_management_client::VmMemoryManagementClient;
 
 const SERVICE_NAME: &str = "org.chromium.ResourceManager";
@@ -78,12 +77,6 @@ struct DbusContext {
     reset_vm_boot_mode_timer_id: Arc<AtomicUsize>,
 
     scheduler_context: Option<Arc<Mutex<SchedQosContext>>>,
-}
-
-fn is_unspported_error(e: &anyhow::Error) -> bool {
-    return e
-        .downcast_ref::<std::io::Error>()
-        .is_some_and(|e2| e2.kind() == std::io::ErrorKind::Unsupported);
 }
 
 fn send_pressure_signal(
@@ -138,92 +131,26 @@ fn set_game_mode_and_tune_swappiness(
     Ok(())
 }
 
-async fn get_sender_pid(sender_id: String, conn: Arc<SyncConnection>) -> Result<u32> {
-    let proxy = Proxy::new(
+async fn get_sender_euid(conn: Arc<SyncConnection>, bus_name: Option<String>) -> Result<u32> {
+    let Some(bus_name) = bus_name else {
+        bail!("sender bus name is empty");
+    };
+
+    let (sender_pid,): (u32,) = Proxy::new(
         "org.freedesktop.DBus",
         "/org/freedesktop/DBus",
         DEFAULT_DBUS_TIMEOUT,
         conn,
-    );
+    )
+    .method_call(
+        "org.freedesktop.DBus",
+        "GetConnectionUnixProcessID",
+        (bus_name,),
+    )
+    .await
+    .context("get sender pid")?;
 
-    match proxy
-        .method_call(
-            "org.freedesktop.DBus",
-            "GetConnectionUnixProcessID",
-            (sender_id.to_string(),),
-        )
-        .await
-    {
-        Ok::<(u32,), _>((pid,)) => Ok(pid),
-        Err(e) => {
-            error!("Could not get sender pid: {:#}", e);
-            bail!(e);
-        }
-    }
-}
-
-fn get_pid_euid(pid: u32) -> Result<u32> {
-    // TODO(kawasin): Stop using procfs crate
-    let proc: procfs::process::Process =
-        procfs::process::Process::new(pid as i32).map_err(|e| {
-            error!("Failed to find process {} {}", pid, e);
-            anyhow!("Failed to find pid")
-        })?;
-
-    let stat: procfs::process::Status = proc.status().map_err(|e| {
-        error!("Failed to find status {} {}", pid, e);
-        anyhow!("Failed to find status")
-    })?;
-
-    Ok(stat.euid)
-}
-
-fn check_process_euids_match(pid_1: u32, pid_2: u32) -> Result<()> {
-    let euid1 = get_pid_euid(pid_1)?;
-    let euid2 = get_pid_euid(pid_2)?;
-    if euid1 != euid2 {
-        error!("Mismatching euids {} != {}", euid1, euid2);
-        bail!("Mismatching euids");
-    }
-
-    Ok(())
-}
-
-// Validates that the target pid and the calling pid have the same euid.
-//
-// sender_id: The bus name of the sender (retrieved from the message)
-// target_pid: The pid of the target thread/process
-// conn: The DBus connection
-//
-// Return value:
-// On success returns an OwnedFd object that owns the
-// pidfd of the target_pid returned from pidfd_open. The object should
-// be kept as long as resourced is making changes to the target thread/process.
-async fn validate_target_pid(
-    sender_id: String,
-    target_pid: u32,
-    conn: Arc<SyncConnection>,
-) -> Result<OwnedFd> {
-    let sender_pid = get_sender_pid(sender_id, conn).await?;
-
-    // hold a fd for the target pid to avoid pid reuse
-    let target_pidfd_raw = unsafe { libc::syscall(libc::SYS_pidfd_open, target_pid, 0) as i32 };
-    if target_pidfd_raw < 0 {
-        let e = std::io::Error::last_os_error();
-        if e.raw_os_error()
-            .is_some_and(|raw_errno| raw_errno == libc::ENOSYS)
-        {
-            bail!(std::io::Error::new(
-                std::io::ErrorKind::Unsupported,
-                "pidfd_open unsupported"
-            ));
-        }
-        bail!(e);
-    }
-
-    let target_pidfd = unsafe { OwnedFd::from_raw_fd(target_pidfd_raw) };
-    check_process_euids_match(target_pid, sender_pid)?;
-    Ok(target_pidfd)
+    load_euid(sender_pid).context("load euid")
 }
 
 fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceToken<DbusContext> {
@@ -479,7 +406,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                 Ok(())
             },
         );
-        let conn_clone3 = conn.clone();
+        let conn_clone = conn.clone();
         b.method_with_cr_async(
             "ChangeProcessState",
             ("ProcessId", "ProcessState"),
@@ -487,54 +414,33 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             move |mut sender_context, cr, (process_id, process_state): (u32, u8)| {
                 let context: Option<&mut DbusContext> = cr.data_mut(sender_context.path());
                 let sched_ctx = context.and_then(|ctx| ctx.scheduler_context.clone());
-                let conn_clone = conn_clone3.clone();
+                let sender_bus_name = sender_context.message().sender().map(|s| s.to_string());
+                let sender_euid = get_sender_euid(conn_clone.clone(), sender_bus_name);
                 async move {
-                    let state = match schedqos::ProcessState::try_from(process_state) {
-                        Ok(s) => s,
-                        Err(_) => {
-                            return sender_context
-                                .reply(Err(MethodErr::failed("Unsupported process state")))
-                        }
-                    };
-
-                    let sender_id: String = match sender_context.message().sender() {
-                        Some(s) => s.to_string(),
-                        None => {
-                            return sender_context
-                                .reply(Err(MethodErr::failed("Failed to get sender id")))
-                        }
-                    };
-
-                    let _target_pidfd: OwnedFd =
-                        match validate_target_pid(sender_id, process_id, conn_clone).await {
-                            Ok(pidfd) => pidfd,
-                            Err(e) => {
-                                if is_unspported_error(&e) {
-                                    return sender_context.reply(Err(MethodErr::no_method(&e)));
-                                }
-                                error!("Failed to validate target pid: {:#}", e);
-                                return sender_context.reply(Err(MethodErr::failed(
-                                    format!("Failed to validate pid {}", e).as_str(),
-                                )));
-                            }
-                        };
-
                     let Some(sched_ctx) = sched_ctx else {
                         return sender_context.reply(Err(MethodErr::failed("no schedqos context")));
                     };
 
-                    match set_process_state(sched_ctx, process_id, state) {
+                    let sender_euid = match sender_euid.await {
+                        Ok(euid) => euid,
+                        Err(e) => {
+                            error!("failed to get sender euid: {:#}", e);
+                            return sender_context
+                                .reply(Err(MethodErr::failed("failed to get sender info")));
+                        }
+                    };
+
+                    match set_process_state(sched_ctx, process_id, process_state, sender_euid) {
                         Ok(_) => sender_context.reply(Ok(())),
                         Err(e) => {
-                            error!("change_process_state failed: {}, pid={:#}", e, process_id);
-                            sender_context
-                                .reply(Err(MethodErr::failed("Failed to update process state")))
+                            error!("change_process_state failed: {:#}, pid={}", e, process_id);
+                            sender_context.reply(Err(e.to_dbus_error()))
                         }
                     }
                 }
             },
         );
-        let conn_clone4 = conn.clone();
+        let conn_clone = conn.clone();
         b.method_with_cr_async(
             "ChangeThreadState",
             ("ProcessId", "ThreadId", "ThreadState"),
@@ -542,50 +448,33 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             move |mut sender_context, cr, (process_id, thread_id, thread_state): (u32, u32, u8)| {
                 let context: Option<&mut DbusContext> = cr.data_mut(sender_context.path());
                 let sched_ctx = context.and_then(|ctx| ctx.scheduler_context.clone());
-                let conn_clone = conn_clone4.clone();
+                let sender_bus_name = sender_context.message().sender().map(|s| s.to_string());
+                let sender_euid = get_sender_euid(conn_clone.clone(), sender_bus_name);
                 async move {
-                    let state = match schedqos::ThreadState::try_from(thread_state) {
-                        Ok(s) => s,
-                        Err(_) => {
-                            return sender_context
-                                .reply(Err(MethodErr::failed("Unsupported thread state")))
-                        }
-                    };
-
-                    let sender_id: String = match sender_context.message().sender() {
-                        Some(s) => s.to_string(),
-                        None => {
-                            return sender_context
-                                .reply(Err(MethodErr::failed("Failed to get sender id")))
-                        }
-                    };
-
-                    let _target_pidfd: OwnedFd =
-                        match validate_target_pid(sender_id, process_id, conn_clone).await {
-                            Ok(pidfd) => pidfd,
-                            Err(e) => {
-                                if is_unspported_error(&e) {
-                                    return sender_context.reply(Err(MethodErr::no_method(&e)));
-                                }
-                                error!("Failed to validate target pid: {:#}", e);
-                                return sender_context.reply(Err(MethodErr::failed(
-                                    format!("Failed to validate pid {}", e).as_str(),
-                                )));
-                            }
-                        };
-
                     let Some(sched_ctx) = sched_ctx else {
                         return sender_context.reply(Err(MethodErr::failed("no schedqos context")));
                     };
-                    let mut sched_ctx = sched_ctx.lock().expect("lock schedqos context");
 
-                    let result = sched_ctx.set_thread_state(process_id, thread_id, state);
-                    match result {
-                        Ok(()) => sender_context.reply(Ok(())),
+                    let sender_euid = match sender_euid.await {
+                        Ok(euid) => euid,
                         Err(e) => {
-                            error!("change_thread_state failed: {}, pid={:#}", e, process_id);
-                            sender_context
-                                .reply(Err(MethodErr::failed("Failed to update thread state")))
+                            error!("failed to get sender euid: {:#}", e);
+                            return sender_context
+                                .reply(Err(MethodErr::failed("failed to get sender info")));
+                        }
+                    };
+
+                    match set_thread_state(
+                        sched_ctx,
+                        process_id,
+                        thread_id,
+                        thread_state,
+                        sender_euid,
+                    ) {
+                        Ok(_) => sender_context.reply(Ok(())),
+                        Err(e) => {
+                            error!("change_thread_state failed: {:#}, pid={}", e, process_id);
+                            sender_context.reply(Err(e.to_dbus_error()))
                         }
                     }
                 }

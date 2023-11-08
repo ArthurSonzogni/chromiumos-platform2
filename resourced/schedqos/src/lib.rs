@@ -40,6 +40,7 @@ pub enum Error {
     LatencySensitive(io::Error),
     Proc(proc::Error),
     ProcessNotFound,
+    ProcessNotRegistered,
     ThreadNotFound,
 }
 
@@ -52,6 +53,7 @@ impl std::error::Error for Error {
             Self::LatencySensitive(e) => Some(e),
             Self::Proc(e) => Some(e),
             Self::ProcessNotFound => None,
+            Self::ProcessNotRegistered => None,
             Self::ThreadNotFound => None,
         }
     }
@@ -66,6 +68,7 @@ impl Display for Error {
             Self::LatencySensitive(e) => f.write_fmt(format_args!("latency sensitive file: {e}")),
             Self::Proc(e) => f.write_fmt(format_args!("procfs: {e}")),
             Self::ProcessNotFound => f.write_str("process not found"),
+            Self::ProcessNotRegistered => f.write_str("process not registered"),
             Self::ThreadNotFound => f.write_str("thread not found"),
         }
     }
@@ -432,7 +435,7 @@ impl SchedQosContext {
         let thread_id = ThreadId(thread_id);
 
         let Entry::Occupied(mut entry) = self.state_map.entry(process_id) else {
-            return Err(Error::ProcessNotFound);
+            return Err(Error::ProcessNotRegistered);
         };
         let process = entry.get_mut();
 
@@ -931,7 +934,7 @@ mod tests {
             ctx.set_thread_state(process_id, thread_id.0, ThreadState::Balanced)
                 .err()
                 .unwrap(),
-            Error::ProcessNotFound
+            Error::ProcessNotRegistered
         ));
     }
 

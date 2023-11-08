@@ -9,6 +9,7 @@ mod dbus;
 mod feature;
 mod memory;
 mod power;
+mod proc;
 mod psi;
 mod qos;
 mod vm_concierge_client;
