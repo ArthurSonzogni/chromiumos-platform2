@@ -98,23 +98,23 @@ class NET_BASE_EXPORT DNSClient {
 
     // Maximum number of attempts to each name server. The value set in
     // resolv.conf will be used if not set.
-    std::optional<int> number_of_tries;
+    std::optional<int> number_of_tries = std::nullopt;
 
     // The timeout value for the first try to each name server. The value set in
     // resolv.conf will be used if not set. The timeout for the following tries
     // will be controlled by the c-ares library. For more details, see comments
     // for ARES_OPT_TIMEOUTMS in https://c-ares.org/ares_init_options.html .
-    std::optional<base::TimeDelta> per_query_initial_timeout;
+    std::optional<base::TimeDelta> per_query_initial_timeout = std::nullopt;
 
     // If not empty, the query will be bound to this interface. Note that the
     // program needs CAP_NET_RAW to set this option.
-    std::string interface;
+    std::string interface = "";
 
     // The name server used for the query. The name servers in resolv.conf will
     // be used if this option in empty. Only support one name server here by
     // intention. The caller should create one DNSClient for each name server to
     // query multiple server.
-    std::optional<IPAddress> name_server;
+    std::optional<IPAddress> name_server = std::nullopt;
   };
 
   DNSClient() = default;
