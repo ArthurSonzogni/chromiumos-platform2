@@ -116,7 +116,19 @@ impl ResumeConductor {
         // Mount hibermeta for access to logs and metrics. Create it if it doesn't exist yet.
         let _hibermeta_mount = {
             let volume_manager = VOLUME_MANAGER.read().unwrap();
-            volume_manager.setup_hibermeta_lv(true)?
+            let res = volume_manager.setup_hibermeta_lv(true);
+            match res {
+                Ok(mount) => mount,
+                Err(e) => {
+                    if result.is_ok() {
+                        return Err(e);
+                    } else {
+                        error!("{e:?}");
+                        // Return the error returned by resume_inner().
+                        return result;
+                    }
+                }
+            }
         };
 
         // Now replay earlier logs. Don't wipe the logs out if this is just a dry
