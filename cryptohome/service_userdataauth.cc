@@ -761,6 +761,35 @@ void UserDataAuthAdaptor::DoGetWebAuthnSecretHash(
   response->Return(service_->GetWebAuthnSecretHash(in_request));
 }
 
+void UserDataAuthAdaptor::GetRecoverableKeyStores(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetRecoverableKeyStoresReply>> response,
+    const user_data_auth::GetRecoverableKeyStoresRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(&UserDataAuthAdaptor::DoGetRecoverableKeyStores,
+                     base::Unretained(this),
+                     ThreadSafeDBusMethodResponse<
+                         user_data_auth::GetRecoverableKeyStoresReply>::
+                         MakeThreadSafe(std::move(response)),
+                     in_request));
+}
+
+void UserDataAuthAdaptor::DoGetRecoverableKeyStores(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetRecoverableKeyStoresReply>> response,
+    const user_data_auth::GetRecoverableKeyStoresRequest& in_request) {
+  service_->GetRecoverableKeyStores(
+      in_request,
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 user_data_auth::GetRecoverableKeyStoresReply>> local_response,
+             const user_data_auth::GetRecoverableKeyStoresReply& reply) {
+            local_response->Return(reply);
+          },
+          std::move(response)));
+}
+
 void UserDataAuthAdaptor::GetHibernateSecret(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::GetHibernateSecretReply>> response,

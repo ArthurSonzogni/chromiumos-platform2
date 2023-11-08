@@ -2287,6 +2287,38 @@ user_data_auth::GetWebAuthnSecretHashReply UserDataAuth::GetWebAuthnSecretHash(
   return reply;
 }
 
+void UserDataAuth::GetRecoverableKeyStores(
+    user_data_auth::GetRecoverableKeyStoresRequest request,
+    OnDoneCallback<user_data_auth::GetRecoverableKeyStoresReply> on_done) {
+  AssertOnMountThread();
+  user_data_auth::GetRecoverableKeyStoresReply reply;
+
+  // Check whether user exists.
+  // Compute the raw and sanitized user name from the request.
+  Username username = GetAccountId(request.account_id());
+  ObfuscatedUsername obfuscated_username = SanitizeUserName(username);
+  UserSession* user_session = sessions_->Find(username);  // May be null!
+  bool is_persistent_user =
+      (user_session && !user_session->IsEphemeral()) ||
+      platform_->DirectoryExists(UserPath(obfuscated_username));
+  bool is_ephemeral_user = user_session && user_session->IsEphemeral();
+  if (!is_persistent_user && !is_ephemeral_user) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthUserNonexistentInGetRecoverableKeyStores),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+
+  // TODO(b/300578783): Read the user's recoverable key stores and populate them
+  // into the reply.
+  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
+}
+
 void UserDataAuth::GetHibernateSecret(
     user_data_auth::GetHibernateSecretRequest request,
     OnDoneCallback<user_data_auth::GetHibernateSecretReply> on_done) {

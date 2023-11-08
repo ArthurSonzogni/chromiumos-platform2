@@ -334,7 +334,7 @@ class UserDataAuth {
     return enterprise_owned_;
   }
 
-  // ============= WebAuthn Related Public Methods ==============
+  // ============= WebAuthn / Passkey Related Public Methods ==============
 
   // TODO(b/184393647): This api is not currently used because secret
   // enforcement in the WebAuthn flow haven't been implemented yet. After
@@ -345,6 +345,14 @@ class UserDataAuth {
 
   user_data_auth::GetWebAuthnSecretHashReply GetWebAuthnSecretHash(
       const user_data_auth::GetWebAuthnSecretHashRequest& request);
+
+  // Get all the recoverable key stores of the user. These key stores, for
+  // example, allow the user to recover their passkeys on other devices by
+  // providing this device's lock screen knowledge factors.
+  void GetRecoverableKeyStores(
+      user_data_auth::GetRecoverableKeyStoresRequest request,
+      base::OnceCallback<
+          void(const user_data_auth::GetRecoverableKeyStoresReply&)> on_done);
 
   // =============  Hibernate Secret Public Methods ==============
   void GetHibernateSecret(
