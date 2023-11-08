@@ -78,6 +78,7 @@ executable("flex_hwis_tool") {
 install_config("install_minijail_config") {
   sources = [
     "minijail/flex_device_metrics.conf",
+    "minijail/flex_hardware_cache.conf",
     "minijail/flex_hwis.conf",
   ]
   install_path = "minijail_conf"
@@ -87,10 +88,12 @@ install_config("install_seccomp_policy") {
   install_path = "seccomp_policy"
   sources = [
     "seccomp_filters/flex_device_metrics.policy",
+    "seccomp_filters/flex_hardware_cache.policy",
     "seccomp_filters/flex_hwis.policy",
   ]
   outputs = [
     "flex_device_metrics-seccomp.policy",
+    "flex_hardware_cache-seccomp.policy",
     "flex_hwis-seccomp.policy",
   ]
 }

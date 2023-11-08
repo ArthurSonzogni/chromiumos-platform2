@@ -1,0 +1,38 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+brk: 1
+clock_gettime: 1
+clock_nanosleep: 1
+close: 1
+creat: 1
+epoll_create1: 1
+epoll_ctl: 1
+epoll_wait: 1
+eventfd2: 1
+exit: 1
+exit_group: 1
+fcntl: 1
+getegid: 1
+geteuid: 1
+getgid: 1
+getpid: 1
+getrandom: arg2 in ~GRND_RANDOM
+gettid: 1
+gettimeofday: 1
+getuid: 1
+memfd_create: 1
+openat: 1
+pipe2: 1
+read: 1
+recvmsg: 1
+restart_syscall: 1
+rt_sigreturn: 1
+uname: 1
+write: 1
+
+# Allow syslog.
+socket: arg0 == AF_UNIX
+connect: 1
+sendto: 1
