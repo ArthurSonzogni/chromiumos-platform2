@@ -559,6 +559,16 @@ void Manager::BruschettaVmShutdown(uint64_t vm_id) {
   StopCrosVm(vm_id, CrostiniService::VMType::kBruschetta);
 }
 
+const CrostiniService::CrostiniDevice* const Manager::BorealisVmStartup(
+    uint64_t vm_id) {
+  // TODO(b/298650342): implement this method.
+  return nullptr;
+}
+
+void Manager::BorealisVmShutdown(uint64_t vm_id) {
+  // TODO(b/298650342): implement this method.
+}
+
 bool Manager::SetVpnIntent(SetVpnIntentRequest::VpnRoutingPolicy policy,
                            const base::ScopedFD& sockfd) {
   return routing_svc_->SetVpnFwmark(sockfd.get(), policy);

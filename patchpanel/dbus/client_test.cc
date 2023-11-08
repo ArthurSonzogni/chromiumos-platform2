@@ -235,6 +235,35 @@ TEST_F(ClientTest, NotifyBruschettaVmShutdown) {
   EXPECT_TRUE(result);
 }
 
+TEST_F(ClientTest, NotifyBorealisVmStartup) {
+  const uint32_t id = 6;
+  const std::string tap_ifname = "vmtap3";
+
+  BorealisVmStartupResponse response_proto;
+  response_proto.set_tap_device_ifname(tap_ifname);
+
+  EXPECT_CALL(
+      *proxy_,
+      BorealisVmStartup(Property(&BorealisVmStartupRequest::id, id), _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(response_proto), Return(true)));
+
+  auto result = client_->NotifyBorealisVmStartup(id);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(result->tap_device_ifname, tap_ifname);
+}
+
+TEST_F(ClientTest, NotifyBorealisVmShutdown) {
+  const uint32_t id = 6;
+
+  EXPECT_CALL(
+      *proxy_,
+      BorealisVmShutdown(Property(&BorealisVmShutdownRequest::id, id), _, _, _))
+      .WillOnce(Return(true));
+
+  const bool result = client_->NotifyBorealisVmShutdown(id);
+  EXPECT_TRUE(result);
+}
+
 TEST_F(ClientTest, ConnectNamespace_Fail) {
   const pid_t invalid_pid = 3456;
   const std::string outbound_ifname = "";

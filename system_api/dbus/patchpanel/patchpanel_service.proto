@@ -284,6 +284,31 @@ message BruschettaVmShutdownRequest {
 // Intentionally empty response.
 message BruschettaVmShutdownResponse {}
 
+// Notification that a Borealis VM is starting up.
+message BorealisVmStartupRequest {
+  // The content ID of the VM.
+  uint32 id = 1;
+}
+
+// Information required by Concierge to continue the Borealis VM startup.
+message BorealisVmStartupResponse {
+  // The TAP device to be used for the VM.
+  string tap_device_ifname = 1;
+}
+
+// Notification that the Borealis VM is shutting down.
+// This message must also be sent if the startup process fails so any
+// allocated resources, including the subnets, are properly freed.
+message BorealisVmShutdownRequest {
+  // The CID of the Borealis VM; must match the PID that was sent at
+  // startup.
+  // Required.
+  uint32 id = 1;
+}
+
+// Intentionally empty response.
+message BorealisVmShutdownResponse {}
+
 // Request to set the VPN routing policy for a socket. The socket file
 // descriptor must be immediately appended to the DBUS message after the
 // serialized SetVpnIntentRequest message. The request must be sent before

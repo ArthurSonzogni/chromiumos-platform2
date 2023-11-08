@@ -83,6 +83,10 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
       const BruschettaVmShutdownRequest& request) override;
   BruschettaVmStartupResponse BruschettaVmStartup(
       const BruschettaVmStartupRequest& request) override;
+  BorealisVmShutdownResponse BorealisVmShutdown(
+      const BorealisVmShutdownRequest& request) override;
+  BorealisVmStartupResponse BorealisVmStartup(
+      const BorealisVmStartupRequest& request) override;
   SetDnsRedirectionRuleResponse SetDnsRedirectionRule(
       const SetDnsRedirectionRuleRequest& request,
       const base::ScopedFD& client_fd) override;

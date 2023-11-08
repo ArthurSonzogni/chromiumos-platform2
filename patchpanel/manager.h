@@ -92,6 +92,13 @@ class Manager : public ForwardingService {
   // Handles notification indicating a Bruschetta VM is spinning down.
   void BruschettaVmShutdown(uint64_t vm_id);
 
+  // Handles notification indicating a Borealis VM is booting up.
+  const CrostiniService::CrostiniDevice* const BorealisVmStartup(
+      uint64_t vm_id);
+
+  // Handles notification indicating a Borealis VM is spinning down.
+  void BorealisVmShutdown(uint64_t vm_id);
+
   // Sets a VPN intent fwmark on a socket.
   bool SetVpnIntent(SetVpnIntentRequest::VpnRoutingPolicy policy,
                     const base::ScopedFD& sockfd);

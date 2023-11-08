@@ -123,6 +123,19 @@ TEST_F(ProtoUtilsTest, FillBruschettaAllocationProto) {
             proto.ipv4_subnet().prefix_len());
 }
 
+TEST_F(ProtoUtilsTest, FillBorealisAllocationProto) {
+  auto ipv4_subnet =
+      addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kParallelsVM, 0);
+
+  CrostiniService::CrostiniDevice borealis_device(
+      CrostiniService::VMType::kBorealis, "vmtap1", {}, std::move(ipv4_subnet),
+      nullptr);
+
+  BorealisVmStartupResponse proto;
+  FillBorealisAllocationProto(borealis_device, &proto);
+  ASSERT_EQ("vmtap1", proto.tap_device_ifname());
+}
+
 TEST_F(ProtoUtilsTest, FillNetworkClientInfoProto) {
   DownstreamClientInfo info;
   info.mac_addr = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66};

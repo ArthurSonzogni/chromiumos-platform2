@@ -276,6 +276,35 @@ BruschettaVmStartupResponse PatchpanelAdaptor::BruschettaVmStartup(
   return response;
 }
 
+BorealisVmShutdownResponse PatchpanelAdaptor::BorealisVmShutdown(
+    const BorealisVmShutdownRequest& request) {
+  LOG(INFO) << "Borealis VM shutting down";
+  RecordDbusEvent(DbusUmaEvent::kBorealisVmShutdown);
+
+  manager_->BorealisVmShutdown(request.id());
+
+  RecordDbusEvent(DbusUmaEvent::kBorealisVmShutdownSuccess);
+  return {};
+}
+
+BorealisVmStartupResponse PatchpanelAdaptor::BorealisVmStartup(
+    const BorealisVmStartupRequest& request) {
+  const uint64_t vm_id = request.id();
+  LOG(INFO) << __func__ << "(cid: " << vm_id << ")";
+  RecordDbusEvent(DbusUmaEvent::kBorealisVmStartup);
+
+  const auto* const borealis_device = manager_->BorealisVmStartup(vm_id);
+  if (!borealis_device) {
+    LOG(ERROR) << __func__ << "(cid: " << vm_id
+               << "): Failed to create virtual Device";
+    return {};
+  }
+  BorealisVmStartupResponse response;
+  FillBorealisAllocationProto(*borealis_device, &response);
+  RecordDbusEvent(DbusUmaEvent::kBorealisVmStartupSuccess);
+  return response;
+}
+
 SetDnsRedirectionRuleResponse PatchpanelAdaptor::SetDnsRedirectionRule(
     const SetDnsRedirectionRuleRequest& request,
     const base::ScopedFD& client_fd) {

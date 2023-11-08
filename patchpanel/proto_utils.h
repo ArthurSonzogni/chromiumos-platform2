@@ -35,6 +35,12 @@ void FillBruschettaAllocationProto(
     const CrostiniService::CrostiniDevice& Bruschetta_device,
     BruschettaVmStartupResponse* output);
 
+// Fills a protobuf BorealisVmStartupResponse object with the given
+// |borealis_device| device.
+void FillBorealisAllocationProto(
+    const CrostiniService::CrostiniDevice& borealis_device,
+    BorealisVmStartupResponse* output);
+
 // Fills a protobuf IPv4Subnet object with the IPv4CIDR.
 void FillSubnetProto(const net_base::IPv4CIDR& cidr, IPv4Subnet* output);
 void FillSubnetProto(const Subnet& virtual_subnet, IPv4Subnet* output);

@@ -260,6 +260,38 @@ class MockPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
               (override));
 
   MOCK_METHOD(bool,
+              BorealisVmShutdown,
+              (const BorealisVmShutdownRequest&,
+               BorealisVmShutdownResponse*,
+               brillo::ErrorPtr*,
+               int),
+              (override));
+
+  MOCK_METHOD(void,
+              BorealisVmShutdownAsync,
+              (const BorealisVmShutdownRequest&,
+               base::OnceCallback<void(const BorealisVmShutdownResponse&)>,
+               base::OnceCallback<void(brillo::Error*)>,
+               int),
+              (override));
+
+  MOCK_METHOD(bool,
+              BorealisVmStartup,
+              (const BorealisVmStartupRequest&,
+               BorealisVmStartupResponse*,
+               brillo::ErrorPtr*,
+               int),
+              (override));
+
+  MOCK_METHOD(void,
+              BorealisVmStartupAsync,
+              (const BorealisVmStartupRequest&,
+               base::OnceCallback<void(const BorealisVmStartupResponse&)>,
+               base::OnceCallback<void(brillo::Error*)>,
+               int),
+              (override));
+
+  MOCK_METHOD(bool,
               SetDnsRedirectionRule,
               (const SetDnsRedirectionRuleRequest&,
                const base::ScopedFD&,

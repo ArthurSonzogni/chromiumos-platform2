@@ -337,6 +337,17 @@ std::optional<Client::BruschettaAllocation> ConvertBruschettaAllocation(
   return bruschetta_alloc;
 }
 
+std::optional<Client::BorealisAllocation> ConvertBorealisAllocation(
+    const BorealisVmStartupResponse& in) {
+  if (in.tap_device_ifname().empty()) {
+    return std::nullopt;
+  }
+
+  Client::BorealisAllocation borealis_alloc;
+  borealis_alloc.tap_device_ifname = in.tap_device_ifname();
+  return borealis_alloc;
+}
+
 std::optional<Client::NetworkClientInfo> ConvertNetworkClientInfo(
     const NetworkClientInfo& in) {
   auto out = std::make_optional<Client::NetworkClientInfo>();
@@ -682,6 +693,10 @@ class ClientImpl : public Client {
   std::optional<BruschettaAllocation> NotifyBruschettaVmStartup(
       uint64_t vm_id) override;
   bool NotifyBruschettaVmShutdown(uint64_t vm_id) override;
+
+  std::optional<BorealisAllocation> NotifyBorealisVmStartup(
+      uint32_t vm_id) override;
+  bool NotifyBorealisVmShutdown(uint32_t vm_id) override;
 
   bool DefaultVpnRouting(const base::ScopedFD& socket) override;
 
@@ -1075,6 +1090,57 @@ bool ClientImpl::NotifyBruschettaVmShutdown(uint64_t vm_id) {
       proxy_.get(), request, &response, &error));
   if (!result) {
     LOG(ERROR) << "BruschettaVM network shutdown failed: "
+               << error->GetMessage();
+    return false;
+  }
+  return true;
+}
+
+std::optional<Client::BorealisAllocation> ClientImpl::NotifyBorealisVmStartup(
+    uint32_t vm_id) {
+  BorealisVmStartupRequest request;
+  request.set_id(vm_id);
+
+  BorealisVmStartupResponse response;
+  brillo::ErrorPtr error;
+  const bool result = RunOnDBusThreadSync(base::BindOnce(
+      [](PatchPanelProxyInterface* proxy,
+         const BorealisVmStartupRequest& request,
+         BorealisVmStartupResponse* response, brillo::ErrorPtr* error) {
+        return proxy->BorealisVmStartup(request, response, error);
+      },
+      proxy_.get(), request, &response, &error));
+
+  if (!result) {
+    LOG(ERROR) << __func__ << "(vm_id: " << vm_id
+               << "): Borealis VM network startup failed: "
+               << error->GetMessage();
+    return std::nullopt;
+  }
+
+  const auto network_alloc = ConvertBorealisAllocation(response);
+  if (!network_alloc) {
+    LOG(ERROR) << __func__ << "(vm_id: " << vm_id
+               << "): Failed to convert Borealis VM network configuration";
+  }
+  return network_alloc;
+}
+
+bool ClientImpl::NotifyBorealisVmShutdown(uint32_t vm_id) {
+  BorealisVmShutdownRequest request;
+  request.set_id(vm_id);
+
+  BorealisVmShutdownResponse response;
+  brillo::ErrorPtr error;
+  const bool result = RunOnDBusThreadSync(base::BindOnce(
+      [](PatchPanelProxyInterface* proxy,
+         const BorealisVmShutdownRequest& request,
+         BorealisVmShutdownResponse* response, brillo::ErrorPtr* error) {
+        return proxy->BorealisVmShutdown(request, response, error);
+      },
+      proxy_.get(), request, &response, &error));
+  if (!result) {
+    LOG(ERROR) << "Borealis VM network shutdown failed: "
                << error->GetMessage();
     return false;
   }

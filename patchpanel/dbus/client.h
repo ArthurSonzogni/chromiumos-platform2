@@ -250,6 +250,14 @@ class BRILLO_EXPORT Client {
     net_base::IPv4Address gateway_ipv4_address;
   };
 
+  // Contains the network IPv4 subnet assigned to a Borealis VM and the name
+  // of the tap device created by patchpanel for the VM. See
+  // BorealisVmStartupResponse in patchpanel_service.proto.
+  struct BorealisAllocation {
+    // Tap device interface name created for the VM.
+    std::string tap_device_ifname;
+  };
+
   // Contains the list of tap devices initially created by patchpanel as well as
   // the IPv4 address of the "arc0" legacy management interface.
   struct ArcVMAllocation {
@@ -318,6 +326,10 @@ class BRILLO_EXPORT Client {
   virtual std::optional<BruschettaAllocation> NotifyBruschettaVmStartup(
       uint64_t vm_id) = 0;
   virtual bool NotifyBruschettaVmShutdown(uint64_t vm_id) = 0;
+
+  virtual std::optional<BorealisAllocation> NotifyBorealisVmStartup(
+      uint32_t vm_id) = 0;
+  virtual bool NotifyBorealisVmShutdown(uint32_t vm_id) = 0;
 
   // Reset the VPN routing intent mark on a socket to the default policy for
   // the current uid. This is in general incorrect to call this method for
