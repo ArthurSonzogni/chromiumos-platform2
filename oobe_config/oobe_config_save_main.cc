@@ -7,6 +7,7 @@
 #include <base/logging.h>
 #include <brillo/syslog_logging.h>
 
+#include "oobe_config/features/features.h"
 #include "oobe_config/metrics/enterprise_rollback_metrics_handler.h"
 #include "oobe_config/metrics/metrics_uma.h"
 #include "oobe_config/oobe_config.h"
@@ -24,6 +25,12 @@ void InitLog() {
 // the target you are rolling back to knows about TPM encryption and is able to
 // clear out the TPM rollback space.
 constexpr char kWithTpmEncryption[] = "tpm_encrypt";
+
+bool TpmEncryptionEnabledByCommandLineFlag() {
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
+  return cl->HasSwitch(kWithTpmEncryption);
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -40,9 +47,13 @@ int main(int argc, char* argv[]) {
       hwsec_factory.GetOobeConfigFrontend();
   oobe_config::OobeConfig oobe_config(hwsec_oobe_config.get());
 
-  base::CommandLine::Init(argc, argv);
-  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
-  bool run_tpm_encryption = cl->HasSwitch(kWithTpmEncryption);
+  // TPM encryption is run if either the command line flag is passed to run it,
+  // or the feature is turned on.
+  // TODO(b:263065223) Remove feature flag and command line flag and make TPM
+  // encryption the default behavior once M125 is stable (assuming we
+  // encountered no issues).
+  bool run_tpm_encryption = TpmEncryptionEnabledByCommandLineFlag() ||
+                            oobe_config::TpmEncryptionFeatureEnabled();
 
   bool save_result = oobe_config.EncryptedRollbackSave(run_tpm_encryption);
 

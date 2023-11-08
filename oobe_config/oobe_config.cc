@@ -82,12 +82,11 @@ bool OobeConfig::EncryptedRollbackSave(bool run_tpm_encryption) const {
     return false;
   }
 
-  // TODO(b/263065223): We are in migration stage 1. In production, only encrypt
-  // data with OpenSSL. `run_tpm_encryption` is true during unit and tast tests.
-  // This allows us to test TPM-based decryption works.
   if (run_tpm_encryption && TpmRollbackSpaceReady()) {
     TpmEncryptedRollbackSave(serialized_rollback_data);
   }
+  // TODO(b:263065223) Stop running openssl as backup if we use TPM encryption
+  // once M123 is stable (assuming we encountered no issues).
   bool openssl_success = OpenSslEncryptedRollbackSave(serialized_rollback_data);
 
   // While we run both encryptions, we consider success to save
@@ -136,9 +135,10 @@ bool OobeConfig::TpmRollbackSpaceReady() const {
   if (!space_ready.ok()) {
     if (space_ready->ToTPMRetryAction() ==
         hwsec::TPMRetryAction::kSpaceNotFound) {
-      // TODO(b/262235959): Maybe add a metric here, but make sure it is only
-      // reported on data restore because data save reporting is unreliable.
-      // Not finding space is expected, log as informational.
+      // TODO(b/262235959): Maybe add a metric here to track when all devices
+      // have a TPM space, but make sure it is only reported on data restore
+      // because data save reporting is unreliable. Not finding space is
+      // expected, log as informational.
       LOG(INFO) << "Rollback space does not exist. Status: "
                 << space_ready.status();
     } else {

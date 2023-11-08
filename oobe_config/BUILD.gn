@@ -109,6 +109,7 @@ executable("oobe_config_save") {
     ":install_policy_config_save",
     ":install_tmpfilesd_config_save",
     ":liboobeconfig",
+    "features:features",
   ]
 }
 
