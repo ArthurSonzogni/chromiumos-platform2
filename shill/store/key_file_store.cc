@@ -35,7 +35,6 @@
 #include <unistd.h>
 
 #include "shill/logging.h"
-#include "shill/store/crypto.h"
 #include "shill/store/key_value_store.h"
 #include "shill/store/pkcs11_data_store.h"
 #include "shill/store/pkcs11_slot_getter.h"
