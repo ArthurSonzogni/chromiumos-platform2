@@ -12,6 +12,7 @@ group("all") {
 pkg_config("target_defaults") {
   cflags = [ "-Wconversion" ]
   pkg_deps = [
+    "libbrillo",
     "libchrome",
     "libnet-base",
   ]
@@ -20,6 +21,7 @@ pkg_config("target_defaults") {
 static_library("librouting-simulator") {
   sources = [
     "packet.cc",
+    "process_executor.cc",
     "route.cc",
     "routing_policy_entry.cc",
     "routing_table.cc",
