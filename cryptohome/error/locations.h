@@ -798,7 +798,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./userdataauth.cc */
   kLocUserDataAuthMountFailedInPreparePersistentVault = 486,
   /* ./userdataauth.cc */
-  kLocUserDataAuthNoAuthSessionInAddAuthFactor = 487,
+  kLocUserDataAuthAuthSessionNotFoundInAddAuthFactor = 487,
   /* =Obsolete= */
   kLocUserDataAuthAddAuthFactorFailedInAddAuthFactor = 488,
   /* ./user_secret_stash/storage.cc */
@@ -1084,7 +1084,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./userdataauth.cc */
   kLocUserDataAuthUserNonexistentInListAuthFactors = 629,
   /* ./userdataauth.cc */
-  kLocUserDataAuthNoAuthSessionInUpdateAuthFactor = 630,
+  kLocUserDataAuthSessionNotFoundInUpdateAuthFactor = 630,
   /* =Obsolete= */
   kLocAuthSessionRemoveFromUssFailedInRemoveAuthFactor = 631,
   /* ./userdataauth.cc */
@@ -1306,7 +1306,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./userdataauth.cc */
   kLocAuthFactorTypeNotFoundInModifyAuthFactorIntents = 740,
   /* ./userdataauth.cc */
-  kLocUserDataAuthNoAuthSessionInModifyAuthFactorIntents = 741,
+  kLocUserDataAuthSessionNotFoundInModifyAuthFactorIntents = 741,
   /* ./userdataauth.cc */
   kLocCouldntLoadUserPolicyFileInModifyAuthFactorIntents = 742,
   /* ./userdataauth.cc */
@@ -1444,7 +1444,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./auth_session.cc */
   kLocAuthSessionFactorIsVaultKeysetInRelabelAuthFactor = 2125,
   /* ./userdataauth.cc */
-  kLocUserDataAuthNoAuthSessionInRelabelAuthFactor = 2126,
+  kLocUserDataAuthSessionNotFoundInRelabelAuthFactor = 2126,
   /* ./userdataauth.cc */
   kLocCouldntLoadUserPolicyFileInRelabelAuthFactor = 2127,
   /* ./userdataauth.cc */
@@ -1468,7 +1468,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./auth_session.cc */
   kLocAuthSessionNewLabelAlreadyExistsInRelabelAuthFactorEphemeral = 2137,
   /* ./userdataauth.cc */
-  kLocUserDataAuthNoAuthSessionInReplaceAuthFactor = 2138,
+  kLocUserDataAuthSessionNotFoundInReplaceAuthFactor = 2138,
   /* ./userdataauth.cc */
   kLocUserDataAuthUnauthedInReplaceAuthFactor = 2139,
   /* ./userdataauth.cc */
@@ -1541,6 +1541,26 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthSessionNotFoundInPrepareVaultForMigration = 2173,
   /* ./userdataauth.cc */
   kLocUserDataAuthSessionNotAuthInPrepareVaultForMigration = 2174,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotAuthInExtendAuthSession = 2175,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthAuthSessionNotAuthInAddAuthFactor = 2176,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotAuthInUpdateAuthFactor = 2177,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotAuthInUpdateAuthFactorMetadata = 2178,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotAuthInRelabelAuthFactor = 2179,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotAuthInReplaceAuthFactor = 2180,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotAuthInRemoveAuthFactor = 2181,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotAuthInModifyAuthFactorIntents = 2182,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotAuthInCreateVaultKeyset = 2183,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotAuthInRestoreDeviceKey = 2184,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.
@@ -1570,7 +1590,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./auth_blocks/pin_weaver_auth_block.cc */
   kLocPinWeaverAuthBlockCheckCredTPMLockedInDerive = 2311,
   /* ./userdataauth.cc */
-  kLocUserDataAuthNoAuthSessionInCreateVaultKeyset = 2312,
+  kLocUserDataAuthSessionNotFoundInCreateVaultKeyset = 2312,
   /* ./create_vault_keyset_rpc_impl.cc */
   kLocCreateVaultKeysetRpcImplNoAuthFactorType = 2313,
   /* ./create_vault_keyset_rpc_impl.cc */
@@ -2032,7 +2052,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* =Obsolete= */
   kLocFingerprintAuthBlockNoLabelInPrepareForRemoval = 3530,
   /* ./userdataauth.cc */
-  kLocUserDataAuthNoAuthSessionInUpdateAuthFactorMetadata = 3531,
+  kLocUserDataAuthSessionNotFoundInUpdateAuthFactorMetadata = 3531,
   /* =Obsolete= */
   kLocUserDataAuthNoAuthFactorInUpdateAuthFactorMetadata = 3532,
   /* ./userdataauth.cc */
@@ -2058,7 +2078,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./user_session/real_user_session.cc */
   kLocUserSessionRestoreKeyFailed = 3543,
   /* ./userdataauth.cc */
-  kLocUserDataAuthNoAuthSessionInRestoreDeviceKey = 3544,
+  kLocUserDataAuthSessionNotFoundInRestoreDeviceKey = 3544,
   /* ./userdataauth.cc */
   kLocUserDataAuthEphemeralAuthSessionAttemptRestoreDeviceKey = 3545,
   /* ./userdataauth.cc */

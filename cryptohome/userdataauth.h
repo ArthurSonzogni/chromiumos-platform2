@@ -899,9 +899,37 @@ class UserDataAuth {
       user_data_auth::CreatePersistentUserRequest request,
       OnDoneCallback<user_data_auth::CreatePersistentUserReply> on_done,
       InUseAuthSession auth_session);
+  void AddAuthFactorWithSession(
+      user_data_auth::AddAuthFactorRequest request,
+      OnDoneCallback<user_data_auth::AddAuthFactorReply> on_done,
+      InUseAuthSession auth_session);
   void AuthenticateAuthFactorWithSession(
       user_data_auth::AuthenticateAuthFactorRequest request,
       OnDoneCallback<user_data_auth::AuthenticateAuthFactorReply> on_done,
+      InUseAuthSession auth_session);
+  void UpdateAuthFactorWithSession(
+      user_data_auth::UpdateAuthFactorRequest request,
+      OnDoneCallback<user_data_auth::UpdateAuthFactorReply> on_done,
+      InUseAuthSession auth_session);
+  void UpdateAuthFactorMetadataWithSession(
+      user_data_auth::UpdateAuthFactorMetadataRequest request,
+      OnDoneCallback<user_data_auth::UpdateAuthFactorMetadataReply> on_done,
+      InUseAuthSession auth_session);
+  void RelabelAuthFactorWithSession(
+      user_data_auth::RelabelAuthFactorRequest request,
+      OnDoneCallback<user_data_auth::RelabelAuthFactorReply> on_done,
+      InUseAuthSession auth_session);
+  void ReplaceAuthFactorWithSession(
+      user_data_auth::ReplaceAuthFactorRequest request,
+      OnDoneCallback<user_data_auth::ReplaceAuthFactorReply> on_done,
+      InUseAuthSession auth_session);
+  void ModifyAuthFactorIntentsWithSession(
+      user_data_auth::ModifyAuthFactorIntentsRequest request,
+      OnDoneCallback<user_data_auth::ModifyAuthFactorIntentsReply> on_done,
+      InUseAuthSession auth_session);
+  void RestoreDeviceKeyWithSession(
+      user_data_auth::RestoreDeviceKeyRequest request,
+      OnDoneCallback<user_data_auth::RestoreDeviceKeyReply> on_done,
       InUseAuthSession auth_session);
 
   // =============== Feature Experiment Related Methods ===============

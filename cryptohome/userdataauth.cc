@@ -74,6 +74,7 @@
 #include "cryptohome/cleanup/disk_cleanup.h"
 #include "cryptohome/cleanup/low_disk_space_handler.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
+#include "cryptohome/create_vault_keyset_rpc_impl.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
@@ -2568,39 +2569,33 @@ void UserDataAuth::ExtendAuthSession(
     OnDoneCallback<user_data_auth::ExtendAuthSessionReply> on_done) {
   AssertOnMountThread();
 
-  user_data_auth::ExtendAuthSessionReply reply;
-  // Fetch only authenticated authsession. This is because the timer only runs
-  // AuthSession is authenticated. If the timer is not running, then there is
-  // nothing to extend.
-  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-      GetAuthenticatedAuthSession(request.auth_session_id());
-  if (!auth_session_status.ok()) {
-    ReplyWithError(std::move(on_done), reply,
-                   MakeStatus<CryptohomeError>(
-                       CRYPTOHOME_ERR_LOC(
-                           kLocUserDataAuthSessionNotFoundInExtendAuthSession))
-                       .Wrap(std::move(auth_session_status).err_status()));
-    return;
-  }
-  InUseAuthSession& auth_session = *auth_session_status;
+  RunWithDecryptAuthSessionWhenAvailable(
+      auth_session_manager_,
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInExtendAuthSession),
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthInExtendAuthSession),
+      std::move(request), std::move(on_done),
+      base::BindOnce(
+          [](user_data_auth::ExtendAuthSessionRequest request,
+             OnDoneCallback<user_data_auth::ExtendAuthSessionReply> on_done,
+             InUseAuthSession auth_session) {
+            user_data_auth::ExtendAuthSessionReply reply;
 
-  // Extend specified AuthSession.
-  auto timer_extension = request.extension_duration() != 0
-                             ? base::Seconds(request.extension_duration())
-                             : kDefaultExtensionTime;
-  CryptohomeStatus ret = auth_session.ExtendTimeout(timer_extension);
-
-  CryptohomeStatus err = OkStatus<CryptohomeError>();
-  if (!ret.ok()) {
-    // TODO(b/229688435): Wrap the error after AuthSession is migrated to use
-    // CryptohomeError.
-    err =
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocUserDataAuthExtendFailedInExtendAuthSession))
-            .Wrap(std::move(ret));
-  }
-  reply.set_seconds_left(auth_session.GetRemainingTime().InSeconds());
-  ReplyWithError(std::move(on_done), reply, std::move(err));
+            // Extend specified AuthSession.
+            auto timer_extension =
+                request.extension_duration() != 0
+                    ? base::Seconds(request.extension_duration())
+                    : kDefaultExtensionTime;
+            CryptohomeStatus result =
+                auth_session.ExtendTimeout(timer_extension);
+            if (!result.ok()) {
+              result = MakeStatus<CryptohomeError>(
+                           CRYPTOHOME_ERR_LOC(
+                               kLocUserDataAuthExtendFailedInExtendAuthSession))
+                           .Wrap(std::move(result));
+            }
+            reply.set_seconds_left(auth_session.GetRemainingTime().InSeconds());
+            ReplyWithError(std::move(on_done), reply, std::move(result));
+          }));
 }
 
 CryptohomeStatusOr<InUseAuthSession> UserDataAuth::GetAuthenticatedAuthSession(
@@ -3203,22 +3198,25 @@ void UserDataAuth::AddAuthFactor(
     user_data_auth::AddAuthFactorRequest request,
     OnDoneCallback<user_data_auth::AddAuthFactorReply> on_done) {
   AssertOnMountThread();
+  RunWithDecryptAuthSessionWhenAvailable(
+      auth_session_manager_,
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthAuthSessionNotFoundInAddAuthFactor),
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthAuthSessionNotAuthInAddAuthFactor),
+      std::move(request), std::move(on_done),
+      base::BindOnce(&UserDataAuth::AddAuthFactorWithSession,
+                     base::Unretained(this)));
+}
+
+void UserDataAuth::AddAuthFactorWithSession(
+    user_data_auth::AddAuthFactorRequest request,
+    OnDoneCallback<user_data_auth::AddAuthFactorReply> on_done,
+    InUseAuthSession auth_session) {
   user_data_auth::AddAuthFactorReply reply;
-  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-      GetAuthenticatedAuthSession(request.auth_session_id());
-  if (!auth_session_status.ok()) {
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoAuthSessionInAddAuthFactor))
-            .Wrap(std::move(auth_session_status).err_status()));
-    return;
-  }
 
   // Populate the request auth factor with accurate sysinfo.
   PopulateAuthFactorProtoWithSysinfo(*request.mutable_auth_factor());
   auto user_policy_file_status =
-      LoadUserPolicyFile(auth_session_status.value()->obfuscated_username());
+      LoadUserPolicyFile(auth_session->obfuscated_username());
   if (!user_policy_file_status.ok()) {
     ReplyWithError(
         std::move(on_done), reply,
@@ -3228,7 +3226,7 @@ void UserDataAuth::AddAuthFactor(
                             PossibleAction::kReboot})));
     return;
   }
-  auto* session_decrypt = auth_session_status.value()->GetAuthForDecrypt();
+  auto* session_decrypt = auth_session->GetAuthForDecrypt();
   if (!session_decrypt) {
     ReplyWithError(
         std::move(on_done), reply,
@@ -3238,15 +3236,14 @@ void UserDataAuth::AddAuthFactor(
             user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
     return;
   }
-  const Username& username = auth_session_status.value()->username();
+  const Username& username = auth_session->username();
   session_decrypt->AddAuthFactor(
       request,
       base::BindOnce(
           &ReplyWithAuthFactorStatus<user_data_auth::AddAuthFactorReply>,
-          std::move(auth_session_status.value()),
-          user_policy_file_status.value(), auth_factor_driver_manager_,
-          sessions_->Find(username), request.auth_factor().label(),
-          std::move(on_done)));
+          std::move(auth_session), user_policy_file_status.value(),
+          auth_factor_driver_manager_, sessions_->Find(username),
+          request.auth_factor().label(), std::move(on_done)));
 }
 
 void UserDataAuth::AuthenticateAuthFactor(
@@ -3371,25 +3368,26 @@ void UserDataAuth::UpdateAuthFactor(
     user_data_auth::UpdateAuthFactorRequest request,
     OnDoneCallback<user_data_auth::UpdateAuthFactorReply> on_done) {
   AssertOnMountThread();
+  RunWithDecryptAuthSessionWhenAvailable(
+      auth_session_manager_,
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInUpdateAuthFactor),
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthInUpdateAuthFactor),
+      std::move(request), std::move(on_done),
+      base::BindOnce(&UserDataAuth::UpdateAuthFactorWithSession,
+                     base::Unretained(this)));
+}
 
+void UserDataAuth::UpdateAuthFactorWithSession(
+    user_data_auth::UpdateAuthFactorRequest request,
+    OnDoneCallback<user_data_auth::UpdateAuthFactorReply> on_done,
+    InUseAuthSession auth_session) {
   user_data_auth::UpdateAuthFactorReply reply;
-
-  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-      GetAuthenticatedAuthSession(request.auth_session_id());
-  if (!auth_session_status.ok()) {
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoAuthSessionInUpdateAuthFactor))
-            .Wrap(std::move(auth_session_status).err_status()));
-    return;
-  }
 
   // Populate the request auth factor with accurate sysinfo.
   PopulateAuthFactorProtoWithSysinfo(*request.mutable_auth_factor());
 
   auto user_policy_file_status =
-      LoadUserPolicyFile(auth_session_status.value()->obfuscated_username());
+      LoadUserPolicyFile(auth_session->obfuscated_username());
   if (!user_policy_file_status.ok()) {
     ReplyWithError(
         std::move(on_done), reply,
@@ -3399,7 +3397,7 @@ void UserDataAuth::UpdateAuthFactor(
                             PossibleAction::kReboot})));
     return;
   }
-  auto* session_decrypt = auth_session_status.value()->GetAuthForDecrypt();
+  auto* session_decrypt = auth_session->GetAuthForDecrypt();
   if (!session_decrypt) {
     ReplyWithError(
         std::move(on_done), reply,
@@ -3409,37 +3407,40 @@ void UserDataAuth::UpdateAuthFactor(
             user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
     return;
   }
-  const Username& username = auth_session_status.value()->username();
+  const Username& username = auth_session->username();
   session_decrypt->UpdateAuthFactor(
       request,
       base::BindOnce(
           &ReplyWithAuthFactorStatus<user_data_auth::UpdateAuthFactorReply>,
-          std::move(auth_session_status.value()),
-          user_policy_file_status.value(), auth_factor_driver_manager_,
-          sessions_->Find(username), request.auth_factor().label(),
-          std::move(on_done)));
+          std::move(auth_session), user_policy_file_status.value(),
+          auth_factor_driver_manager_, sessions_->Find(username),
+          request.auth_factor().label(), std::move(on_done)));
 }
 
 void UserDataAuth::UpdateAuthFactorMetadata(
     user_data_auth::UpdateAuthFactorMetadataRequest request,
     OnDoneCallback<user_data_auth::UpdateAuthFactorMetadataReply> on_done) {
   AssertOnMountThread();
+  RunWithDecryptAuthSessionWhenAvailable(
+      auth_session_manager_,
+      CRYPTOHOME_ERR_LOC(
+          kLocUserDataAuthSessionNotFoundInUpdateAuthFactorMetadata),
+      CRYPTOHOME_ERR_LOC(
+          kLocUserDataAuthSessionNotAuthInUpdateAuthFactorMetadata),
+      std::move(request), std::move(on_done),
+      base::BindOnce(&UserDataAuth::UpdateAuthFactorMetadataWithSession,
+                     base::Unretained(this)));
+}
+
+void UserDataAuth::UpdateAuthFactorMetadataWithSession(
+    user_data_auth::UpdateAuthFactorMetadataRequest request,
+    OnDoneCallback<user_data_auth::UpdateAuthFactorMetadataReply> on_done,
+    InUseAuthSession auth_session) {
   user_data_auth::UpdateAuthFactorMetadataReply reply;
-  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-      GetAuthenticatedAuthSession(request.auth_session_id());
-  if (!auth_session_status.ok()) {
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocUserDataAuthNoAuthSessionInUpdateAuthFactorMetadata))
-            .Wrap(std::move(auth_session_status).err_status()));
-    return;
-  }
 
   // Populate the request auth factor with accurate sysinfo.
   auto user_policy_file_status =
-      LoadUserPolicyFile(auth_session_status.value()->obfuscated_username());
+      LoadUserPolicyFile(auth_session->obfuscated_username());
   if (!user_policy_file_status.ok()) {
     ReplyWithError(
         std::move(on_done), reply,
@@ -3450,36 +3451,36 @@ void UserDataAuth::UpdateAuthFactorMetadata(
                             PossibleAction::kReboot})));
     return;
   }
-  AuthSession* auth_session_ptr = auth_session_status->Get();
+  AuthSession* auth_session_ptr = auth_session.Get();
   auth_session_ptr->UpdateAuthFactorMetadata(
-      request, base::BindOnce(
-                   &ReplyWithAuthFactorStatus<
-                       user_data_auth::UpdateAuthFactorMetadataReply>,
-                   std::move(auth_session_status.value()),
-                   user_policy_file_status.value(), auth_factor_driver_manager_,
-                   sessions_->Find(auth_session_ptr->username()),
-                   request.auth_factor().label(), std::move(on_done)));
+      request,
+      base::BindOnce(&ReplyWithAuthFactorStatus<
+                         user_data_auth::UpdateAuthFactorMetadataReply>,
+                     std::move(auth_session), user_policy_file_status.value(),
+                     auth_factor_driver_manager_,
+                     sessions_->Find(auth_session_ptr->username()),
+                     request.auth_factor().label(), std::move(on_done)));
 }
 
 void UserDataAuth::RelabelAuthFactor(
     user_data_auth::RelabelAuthFactorRequest request,
     OnDoneCallback<user_data_auth::RelabelAuthFactorReply> on_done) {
   AssertOnMountThread();
-  user_data_auth::RelabelAuthFactorReply reply;
+  RunWithDecryptAuthSessionWhenAvailable(
+      auth_session_manager_,
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInRelabelAuthFactor),
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthInRelabelAuthFactor),
+      std::move(request), std::move(on_done),
+      base::BindOnce(&UserDataAuth::RelabelAuthFactorWithSession,
+                     base::Unretained(this)));
+}
 
-  // Find the auth session.
-  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-      GetAuthenticatedAuthSession(request.auth_session_id());
-  if (!auth_session_status.ok()) {
-    ReplyWithError(std::move(on_done), reply,
-                   MakeStatus<CryptohomeError>(
-                       CRYPTOHOME_ERR_LOC(
-                           kLocUserDataAuthNoAuthSessionInRelabelAuthFactor))
-                       .Wrap(std::move(auth_session_status).err_status()));
-    return;
-  }
-  AuthSession& auth_session = **auth_session_status;
-  auto* session_decrypt = auth_session.GetAuthForDecrypt();
+void UserDataAuth::RelabelAuthFactorWithSession(
+    user_data_auth::RelabelAuthFactorRequest request,
+    OnDoneCallback<user_data_auth::RelabelAuthFactorReply> on_done,
+    InUseAuthSession auth_session) {
+  user_data_auth::RelabelAuthFactorReply reply;
+  auto* session_decrypt = auth_session->GetAuthForDecrypt();
   if (!session_decrypt) {
     ReplyWithError(
         std::move(on_done), reply,
@@ -3492,7 +3493,7 @@ void UserDataAuth::RelabelAuthFactor(
 
   // Load the user policy, also needed for the final result.
   auto user_policy_file =
-      LoadUserPolicyFile(auth_session.obfuscated_username());
+      LoadUserPolicyFile(auth_session->obfuscated_username());
   if (!user_policy_file.ok()) {
     ReplyWithError(std::move(on_done), reply,
                    MakeStatus<CryptohomeError>(
@@ -3503,12 +3504,14 @@ void UserDataAuth::RelabelAuthFactor(
   }
 
   // Execute the actual relabel.
+  AuthSession* auth_session_ptr = auth_session.Get();
   session_decrypt->RelabelAuthFactor(
       request,
       base::BindOnce(
           &ReplyWithAuthFactorStatus<user_data_auth::RelabelAuthFactorReply>,
-          std::move(auth_session_status.value()), *user_policy_file,
-          auth_factor_driver_manager_, sessions_->Find(auth_session.username()),
+          std::move(auth_session), *user_policy_file,
+          auth_factor_driver_manager_,
+          sessions_->Find(auth_session_ptr->username()),
           request.new_auth_factor_label(), std::move(on_done)));
 }
 
@@ -3516,21 +3519,21 @@ void UserDataAuth::ReplaceAuthFactor(
     user_data_auth::ReplaceAuthFactorRequest request,
     OnDoneCallback<user_data_auth::ReplaceAuthFactorReply> on_done) {
   AssertOnMountThread();
-  user_data_auth::ReplaceAuthFactorReply reply;
+  RunWithDecryptAuthSessionWhenAvailable(
+      auth_session_manager_,
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInReplaceAuthFactor),
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthInReplaceAuthFactor),
+      std::move(request), std::move(on_done),
+      base::BindOnce(&UserDataAuth::ReplaceAuthFactorWithSession,
+                     base::Unretained(this)));
+}
 
-  // Find the auth session.
-  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-      GetAuthenticatedAuthSession(request.auth_session_id());
-  if (!auth_session_status.ok()) {
-    ReplyWithError(std::move(on_done), reply,
-                   MakeStatus<CryptohomeError>(
-                       CRYPTOHOME_ERR_LOC(
-                           kLocUserDataAuthNoAuthSessionInReplaceAuthFactor))
-                       .Wrap(std::move(auth_session_status).err_status()));
-    return;
-  }
-  AuthSession& auth_session = **auth_session_status;
-  auto* session_decrypt = auth_session.GetAuthForDecrypt();
+void UserDataAuth::ReplaceAuthFactorWithSession(
+    user_data_auth::ReplaceAuthFactorRequest request,
+    OnDoneCallback<user_data_auth::ReplaceAuthFactorReply> on_done,
+    InUseAuthSession auth_session) {
+  user_data_auth::ReplaceAuthFactorReply reply;
+  auto* session_decrypt = auth_session->GetAuthForDecrypt();
   if (!session_decrypt) {
     ReplyWithError(
         std::move(on_done), reply,
@@ -3543,7 +3546,7 @@ void UserDataAuth::ReplaceAuthFactor(
 
   // Load the user policy, also needed for the final result.
   auto user_policy_file =
-      LoadUserPolicyFile(auth_session.obfuscated_username());
+      LoadUserPolicyFile(auth_session->obfuscated_username());
   if (!user_policy_file.ok()) {
     ReplyWithError(std::move(on_done), reply,
                    MakeStatus<CryptohomeError>(
@@ -3554,12 +3557,14 @@ void UserDataAuth::ReplaceAuthFactor(
   }
 
   // Execute the actual relabel.
+  AuthSession* auth_session_ptr = auth_session.Get();
   session_decrypt->ReplaceAuthFactor(
       request,
       base::BindOnce(
           &ReplyWithAuthFactorStatus<user_data_auth::ReplaceAuthFactorReply>,
-          std::move(auth_session_status.value()), *user_policy_file,
-          auth_factor_driver_manager_, sessions_->Find(auth_session.username()),
+          std::move(auth_session), *user_policy_file,
+          auth_factor_driver_manager_,
+          sessions_->Find(auth_session_ptr->username()),
           request.auth_factor().label(), std::move(on_done)));
 }
 
@@ -3567,36 +3572,36 @@ void UserDataAuth::RemoveAuthFactor(
     user_data_auth::RemoveAuthFactorRequest request,
     OnDoneCallback<user_data_auth::RemoveAuthFactorReply> on_done) {
   AssertOnMountThread();
-  user_data_auth::RemoveAuthFactorReply reply;
+  RunWithDecryptAuthSessionWhenAvailable(
+      auth_session_manager_,
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInRemoveAuthFactor),
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthInRemoveAuthFactor),
+      std::move(request), std::move(on_done),
+      base::BindOnce(
+          [](user_data_auth::RemoveAuthFactorRequest request,
+             OnDoneCallback<user_data_auth::RemoveAuthFactorReply> on_done,
+             InUseAuthSession auth_session) {
+            user_data_auth::RemoveAuthFactorReply reply;
+            auto* session_decrypt = auth_session->GetAuthForDecrypt();
+            if (!session_decrypt) {
+              ReplyWithError(
+                  std::move(on_done), reply,
+                  MakeStatus<CryptohomeError>(
+                      CRYPTOHOME_ERR_LOC(
+                          kLocUserDataAuthUnauthedInRemoveAuthFactor),
+                      ErrorActionSet(
+                          {PossibleAction::kDevCheckUnexpectedState}),
+                      user_data_auth::
+                          CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
+              return;
+            }
 
-  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-      GetAuthenticatedAuthSession(request.auth_session_id());
-  if (!auth_session_status.ok()) {
-    ReplyWithError(std::move(on_done), reply,
-                   MakeStatus<CryptohomeError>(
-                       CRYPTOHOME_ERR_LOC(
-                           kLocUserDataAuthSessionNotFoundInRemoveAuthFactor))
-                       .Wrap(std::move(auth_session_status).err_status()));
-    return;
-  }
-
-  auto* session_decrypt = auth_session_status.value()->GetAuthForDecrypt();
-  if (!session_decrypt) {
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocUserDataAuthUnauthedInRemoveAuthFactor),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-            user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
-    return;
-  }
-
-  StatusCallback on_remove_auth_factor_finished = base::BindOnce(
-      &ReplyWithStatus<user_data_auth::RemoveAuthFactorReply>,
-      std::move(auth_session_status.value()), std::move(on_done));
-
-  session_decrypt->RemoveAuthFactor(request,
-                                    std::move(on_remove_auth_factor_finished));
+            StatusCallback on_remove_auth_factor_finished = base::BindOnce(
+                &ReplyWithStatus<user_data_auth::RemoveAuthFactorReply>,
+                std::move(auth_session), std::move(on_done));
+            session_decrypt->RemoveAuthFactor(
+                request, std::move(on_remove_auth_factor_finished));
+          }));
 }
 
 void UserDataAuth::ListAuthFactors(
@@ -3802,9 +3807,22 @@ void UserDataAuth::ModifyAuthFactorIntents(
     user_data_auth::ModifyAuthFactorIntentsRequest request,
     OnDoneCallback<user_data_auth::ModifyAuthFactorIntentsReply> on_done) {
   AssertOnMountThread();
+  RunWithDecryptAuthSessionWhenAvailable(
+      auth_session_manager_,
+      CRYPTOHOME_ERR_LOC(
+          kLocUserDataAuthSessionNotFoundInModifyAuthFactorIntents),
+      CRYPTOHOME_ERR_LOC(
+          kLocUserDataAuthSessionNotAuthInModifyAuthFactorIntents),
+      std::move(request), std::move(on_done),
+      base::BindOnce(&UserDataAuth::ModifyAuthFactorIntentsWithSession,
+                     base::Unretained(this)));
+}
+
+void UserDataAuth::ModifyAuthFactorIntentsWithSession(
+    user_data_auth::ModifyAuthFactorIntentsRequest request,
+    OnDoneCallback<user_data_auth::ModifyAuthFactorIntentsReply> on_done,
+    InUseAuthSession auth_session) {
   user_data_auth::ModifyAuthFactorIntentsReply reply;
-  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-      GetAuthenticatedAuthSession(request.auth_session_id());
   std::optional<AuthFactorType> type = AuthFactorTypeFromProto(request.type());
   if (!type.has_value()) {
     ReplyWithError(
@@ -3816,17 +3834,8 @@ void UserDataAuth::ModifyAuthFactorIntents(
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
-  if (!auth_session_status.ok()) {
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocUserDataAuthNoAuthSessionInModifyAuthFactorIntents))
-            .Wrap(std::move(auth_session_status).err_status()));
-    return;
-  }
   auto user_policy_file_status =
-      LoadUserPolicyFile(auth_session_status.value()->obfuscated_username());
+      LoadUserPolicyFile(auth_session->obfuscated_username());
   if (!user_policy_file_status.ok()) {
     ReplyWithError(
         std::move(on_done), reply,
@@ -3856,7 +3865,7 @@ void UserDataAuth::ModifyAuthFactorIntents(
   new_auth_factor_policy.type = SerializeAuthFactorType(*type);
   const AuthFactorDriver& driver =
       auth_factor_driver_manager_->GetDriver(*type);
-  bool is_ephemeral_user = auth_session_status.value()->ephemeral_user();
+  bool is_ephemeral_user = auth_session->ephemeral_user();
 
   // Any intent that is enabled should be both supported by the hardware and be
   // configurable.
@@ -4101,43 +4110,45 @@ void UserDataAuth::CreateVaultKeyset(
     user_data_auth::CreateVaultKeysetRequest request,
     OnDoneCallback<user_data_auth::CreateVaultKeysetReply> on_done) {
   user_data_auth::CreateVaultKeysetReply reply;
-  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-      GetAuthenticatedAuthSession(request.auth_session_id());
-  if (!auth_session_status.ok()) {
-    ReplyWithError(std::move(on_done), reply,
-                   MakeStatus<CryptohomeError>(
-                       CRYPTOHOME_ERR_LOC(
-                           kLocUserDataAuthNoAuthSessionInCreateVaultKeyset))
-                       .Wrap(std::move(auth_session_status).err_status()));
-    return;
-  }
-  AuthSession& auth_session = **auth_session_status;
 
-  create_vault_keyset_impl_->CreateVaultKeyset(
-      request, auth_session,
-      base::BindOnce(&ReplyWithStatus<user_data_auth::CreateVaultKeysetReply>,
-                     std::move(auth_session_status.value()),
-                     std::move(on_done)));
+  RunWithDecryptAuthSessionWhenAvailable(
+      auth_session_manager_,
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInCreateVaultKeyset),
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthInCreateVaultKeyset),
+      std::move(request), std::move(on_done),
+      base::BindOnce(
+          [](CreateVaultKeysetRpcImpl* create_vault_keyset_impl,
+             user_data_auth::CreateVaultKeysetRequest request,
+             OnDoneCallback<user_data_auth::CreateVaultKeysetReply> on_done,
+             InUseAuthSession auth_session) {
+            AuthSession* auth_session_ptr = auth_session.Get();
+            create_vault_keyset_impl->CreateVaultKeyset(
+                request, *auth_session_ptr,
+                base::BindOnce(
+                    &ReplyWithStatus<user_data_auth::CreateVaultKeysetReply>,
+                    std::move(auth_session), std::move(on_done)));
+          },
+          create_vault_keyset_impl_.get()));
 }
 
 void UserDataAuth::RestoreDeviceKey(
     user_data_auth::RestoreDeviceKeyRequest request,
     OnDoneCallback<user_data_auth::RestoreDeviceKeyReply> on_done) {
   AssertOnMountThread();
+  RunWithDecryptAuthSessionWhenAvailable(
+      auth_session_manager_,
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInRestoreDeviceKey),
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthInRestoreDeviceKey),
+      std::move(request), std::move(on_done),
+      base::BindOnce(&UserDataAuth::RestoreDeviceKeyWithSession,
+                     base::Unretained(this)));
+}
+
+void UserDataAuth::RestoreDeviceKeyWithSession(
+    user_data_auth::RestoreDeviceKeyRequest request,
+    OnDoneCallback<user_data_auth::RestoreDeviceKeyReply> on_done,
+    InUseAuthSession auth_session) {
   user_data_auth::RestoreDeviceKeyReply reply;
-
-  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-      GetAuthenticatedAuthSession(request.auth_session_id());
-  if (!auth_session_status.ok()) {
-    auto status =
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoAuthSessionInRestoreDeviceKey))
-            .Wrap(std::move(auth_session_status).err_status());
-    ReplyWithError(std::move(on_done), reply, status);
-    return;
-  }
-
-  InUseAuthSession& auth_session = *auth_session_status;
   if (auth_session->ephemeral_user()) {
     auto status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(

@@ -2854,7 +2854,7 @@ TEST_F(UserDataAuthExTest, ExtendUnAuthenticatedAuthSessionFail) {
       reply_future
           .GetCallback<const user_data_auth::ExtendAuthSessionReply&>());
   EXPECT_EQ(reply_future.Get().error(),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+            user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION);
   EXPECT_FALSE(reply_future.Get().has_seconds_left());
 }
 
