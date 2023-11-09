@@ -294,6 +294,7 @@ TEST_F(DeviceTest, ConnectionUpdated) {
   EXPECT_CALL(*service, IsConnected(nullptr))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service, IsDisconnecting()).WillRepeatedly(Return(false));
   EXPECT_CALL(*service, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service, SetState(Service::kStateConnected));
@@ -313,6 +314,7 @@ TEST_F(DeviceTest, ConnectionUpdatedAlreadyOnline) {
   SelectService(service);
   EXPECT_CALL(*service, SetState(Service::kStateConnected)).Times(0);
   EXPECT_CALL(*service, IsConnected(nullptr)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*service, IsDisconnecting()).WillRepeatedly(Return(false));
   EXPECT_CALL(*service, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(true));
 

@@ -45,6 +45,7 @@ class MockService : public Service {
               (override));
   MOCK_METHOD(bool, IsConnected, (Error*), (const, override));
   MOCK_METHOD(bool, IsConnecting, (), (const, override));
+  MOCK_METHOD(bool, IsDisconnecting, (), (const, override));
   MOCK_METHOD(bool, IsFailed, (), (const, override));
   MOCK_METHOD(bool, IsOnline, (), (const, override));
   MOCK_METHOD(bool, IsVisible, (), (const, override));

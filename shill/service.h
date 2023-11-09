@@ -312,7 +312,7 @@ class Service : public base::RefCounted<Service> {
 
   mockable bool IsConnected(Error* error = nullptr) const;
   mockable bool IsConnecting() const;
-  bool IsDisconnecting() const;
+  mockable bool IsDisconnecting() const;
   mockable bool IsPortalled() const;
   mockable bool IsFailed() const;
   mockable bool IsInFailState() const;

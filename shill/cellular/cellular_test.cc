@@ -3351,16 +3351,20 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefault) {
   // Operation doesn't finish yet.
   EXPECT_FALSE(future.IsReady());
 
-  // State check must be called twice. The first time will control the
-  // transition to Connected state (so must be not connected first). The second
-  // time controls whether portal detection should be started (so must be
-  // connected).
-  EXPECT_CALL(*service, state())
-      .WillOnce(Return(Service::kStateConfiguring))
-      .WillOnce(Return(Service::kStateConnected));
+  // State check will be called in two different contexts. The first time will
+  // control the transition to Connected state (so must be not connected first).
+  // The second time controls whether portal detection should be started (so
+  // must be connected).
+  {
+    ::testing::InSequence s;
+    EXPECT_CALL(*service, state())
+        .WillRepeatedly(Return(Service::kStateConfiguring));
+    // Service will transition to Connected.
+    EXPECT_CALL(*service, SetState(Service::kStateConnected));
 
-  // Service will transition to Connected.
-  EXPECT_CALL(*service, SetState(Service::kStateConnected));
+    EXPECT_CALL(*service, state())
+        .WillRepeatedly(Return(Service::kStateConnected));
+  }
 
   // Once the new Network is started, portal detection should be explicitly
   // requested.
@@ -3728,16 +3732,20 @@ TEST_F(CellularTest, ReleaseTetheringNetwork_DunAsDefault) {
   // Operation doesn't finish yet.
   EXPECT_FALSE(future.IsReady());
 
-  // State check must be called twice. The first time will control the
-  // transition to Connected state (so must be not connected first). The second
-  // time controls whether portal detection should be started (so must be
-  // connected).
-  EXPECT_CALL(*service, state())
-      .WillOnce(Return(Service::kStateConfiguring))
-      .WillOnce(Return(Service::kStateConnected));
+  // State check will be called in two different contexts. The first time will
+  // control the transition to Connected state (so must be not connected first).
+  // The second time controls whether portal detection should be started (so
+  // must be connected).
+  {
+    ::testing::InSequence s;
+    EXPECT_CALL(*service, state())
+        .WillRepeatedly(Return(Service::kStateConfiguring));
+    // Service will transition to Connected.
+    EXPECT_CALL(*service, SetState(Service::kStateConnected));
 
-  // Service will transition to Connected.
-  EXPECT_CALL(*service, SetState(Service::kStateConnected));
+    EXPECT_CALL(*service, state())
+        .WillRepeatedly(Return(Service::kStateConnected));
+  }
 
   // Once the new Network is started, portal detection should be explicitly
   // requested.

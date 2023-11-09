@@ -451,6 +451,12 @@ void Device::OnConnectionUpdated(int interface_index) {
     return;
   }
 
+  // If the service is already disconnecting, ignore any update from Network to
+  // avoid disrupting the disconnection procedure.
+  if (selected_service_->IsDisconnecting()) {
+    return;
+  }
+
   // If the service is already in a Connected state (this happens during a roam
   // or DHCP renewal), transitioning back to Connected isn't productive. Avoid
   // this transition entirely and wait for portal detection to transition us to
