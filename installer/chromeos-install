@@ -67,6 +67,8 @@ information on failure"
 DEFINE_boolean lvm_stateful "${FLAGS_FALSE}" "Create LVM-based stateful \
 partition"
 DEFINE_boolean minimal_copy "${FLAGS_FALSE}" "Minimal copy of partitions."
+DEFINE_boolean skip_gpt_creation "${FLAGS_FALSE}" "Skips creating the \
+GPT partition table."
 
 
 # Parse command line
@@ -1173,9 +1175,13 @@ main() {
 
   # Write the GPT using the board specific script. The parameters are ignored
   # on MTD devices.
-  write_base_table "${DST}" "$(get_pmbr_code)"
-  legacy_offset_size_export "${DST}"
-  reload_partitions
+  if [ "${FLAGS_skip_gpt_creation}" -eq "${FLAGS_FALSE}" ]; then
+    write_base_table "${DST}" "$(get_pmbr_code)"
+    legacy_offset_size_export "${DST}"
+    reload_partitions
+  else
+    legacy_offset_size_export "${DST}"
+  fi
 
   if [ "${FLAGS_skip_rootfs}" -eq "${FLAGS_TRUE}" ]; then
     echo "Clearing and reinstalling the stateful partition."
