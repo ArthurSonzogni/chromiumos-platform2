@@ -8,6 +8,7 @@
 #include <libcrossystem/crossystem_impl.h>
 #include <libcrossystem/crossystem_vboot_interface.h>
 #include <optional>
+#include <string>
 
 namespace crossystem {
 
@@ -67,6 +68,10 @@ bool Crossystem::OnlyBootSignedKernel() const {
   std::optional<bool> ret = GetSystemPropertyBool(kDevBootSignedOnly);
   CHECK(ret.has_value());
   return *ret;
+}
+
+std::optional<std::string> Crossystem::GetMiniOsPriority() const {
+  return VbGetSystemPropertyString(kMiniosPriorityProperty);
 }
 
 }  // namespace crossystem

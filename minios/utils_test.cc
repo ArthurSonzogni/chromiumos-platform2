@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -15,10 +16,14 @@
 #include <brillo/udev/mock_udev_device.h>
 #include <brillo/udev/mock_udev_enumerate.h>
 #include <brillo/udev/mock_udev_list_entry.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libcrossystem/crossystem.h>
+#include <libcrossystem/crossystem_fake.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
-#include "gmock/gmock.h"
+#include "minios/log_store_manifest.h"
+#include "minios/mock_cgpt_util.h"
 #include "minios/mock_process_manager.h"
 #include "minios/utils.h"
 
@@ -232,7 +237,7 @@ TEST(UtilsTest, CompressLogsTest) {
   std::vector<std::string> expected_cmd = {
       "/usr/bin/tar",         "-czhf",
       archive_path,           "/var/log/update_engine.log",
-      "/var/log/upstart.log", "/var/log/messages"};
+      "/var/log/upstart.log", "/var/log/minios.log"};
   EXPECT_CALL(*mock_process_manager, RunCommand(expected_cmd, _));
 
   CompressLogs(mock_process_manager, base::FilePath{archive_path});
@@ -438,6 +443,20 @@ TEST(UtilsTest, SaveLogKeyTest) {
   EXPECT_TRUE(SaveLogStoreKey(mock_process_manager_, kValidKey));
 }
 
+TEST(UtilsTest, ClearLogStoreKeyTest) {
+  auto mock_process_manager_ =
+      std::make_shared<StrictMock<MockProcessManager>>();
+
+  const std::vector<std::string> expected_args = {
+      "/usr/bin/vpd", "-s",
+      "minios_log_store_key=" +
+          brillo::SecureBlobToSecureHex(kZeroKey).to_string()};
+
+  EXPECT_CALL(*mock_process_manager_, RunCommand(expected_args, _))
+      .WillOnce(::testing::Return(0));
+  EXPECT_TRUE(ClearLogStoreKey(mock_process_manager_));
+}
+
 TEST(UtilsTest, EncryptDecryptTest) {
   const auto& encrypted_contents = EncryptLogArchiveData(kTestData, kValidKey);
   EXPECT_TRUE(encrypted_contents.has_value());
@@ -469,6 +488,33 @@ TEST(UtilsTest, WriteSecureBlobToFileTest) {
   const auto& file_contents = ReadFileToSecureBlob(file_path);
   EXPECT_TRUE(file_contents.has_value());
   EXPECT_EQ(file_contents.value(), kTestData);
+}
+
+TEST(UtilsTest, GetPartitionSizeTest) {
+  const auto mock_cgpt_util = std::make_shared<MockCgptUtil>();
+  EXPECT_CALL(*mock_cgpt_util, GetSize(1)).WillOnce(Return(10));
+  EXPECT_CALL(*mock_cgpt_util, GetSize(2)).WillOnce(Return(std::nullopt));
+  EXPECT_THAT(GetPartitionSize(1, mock_cgpt_util), Optional(10 * kBlockSize));
+  EXPECT_EQ(GetPartitionSize(2, mock_cgpt_util), std::nullopt);
+}
+
+TEST(UtilsTest, GetMiniOsPriorityPartitionTest) {
+  const auto stub_crossystem = std::make_shared<crossystem::Crossystem>(
+      std::make_unique<crossystem::fake::CrossystemFake>());
+
+  EXPECT_EQ(GetMiniOsPriorityPartition(stub_crossystem), std::nullopt);
+
+  stub_crossystem->VbSetSystemPropertyString(
+      crossystem::Crossystem::kMiniosPriorityProperty, "A");
+  EXPECT_THAT(GetMiniOsPriorityPartition(stub_crossystem), Optional(9));
+
+  stub_crossystem->VbSetSystemPropertyString(
+      crossystem::Crossystem::kMiniosPriorityProperty, "B");
+  EXPECT_THAT(GetMiniOsPriorityPartition(stub_crossystem), Optional(10));
+
+  stub_crossystem->VbSetSystemPropertyString(
+      crossystem::Crossystem::kMiniosPriorityProperty, "C");
+  EXPECT_EQ(GetMiniOsPriorityPartition(stub_crossystem), std::nullopt);
 }
 
 }  // namespace minios

@@ -4,6 +4,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <optional>
 
 #include "libcrossystem/crossystem.h"
 #include "libcrossystem/crossystem_fake.h"
@@ -113,6 +114,18 @@ TEST_F(CrossystemTest, OnlyBootSignedKernelNotBoolean) {
 
 TEST_F(CrossystemTest, OnlyBootSignedKernelPropertyDoesNotExist) {
   EXPECT_DEATH(crossystem_->OnlyBootSignedKernel(), kCheckFailedRegex);
+}
+
+TEST_F(CrossystemTest, GetMiniOsPriority) {
+  const std::string kPriorityValue{"abc123"};
+  fake_->VbSetSystemPropertyString(Crossystem::kMiniosPriorityProperty,
+                                   kPriorityValue);
+  EXPECT_THAT(crossystem_->GetMiniOsPriority(),
+              testing::Optional(kPriorityValue));
+}
+
+TEST_F(CrossystemTest, GetMiniOsPriorityNotSet) {
+  EXPECT_EQ(crossystem_->GetMiniOsPriority(), std::nullopt);
 }
 
 }  // namespace

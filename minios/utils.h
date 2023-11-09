@@ -16,8 +16,10 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/secure_blob.h>
 #include <brillo/udev/udev.h>
+#include <libcrossystem/crossystem.h>
 #include <minios/proto_bindings/minios.pb.h>
 
+#include "minios/cgpt_util_interface.h"
 #include "minios/process_manager_interface.h"
 
 namespace minios {
@@ -31,6 +33,8 @@ extern const char kLogFilePath[];
 
 extern const base::FilePath kDefaultArchivePath;
 extern const char kStatefulPath[];
+extern const int kLogStoreKeySizeBytes;
+extern const brillo::SecureBlob kZeroKey;
 
 // Reads the content of `file_path` from `start_offset` to `end_offset` with
 // maximum characters per line being `max_columns` at max. If the file ends
@@ -132,6 +136,10 @@ std::optional<brillo::SecureBlob> GetLogStoreKey(
 bool SaveLogStoreKey(std::shared_ptr<ProcessManagerInterface> process_manager,
                      const brillo::SecureBlob& key);
 
+// Overwrite log store key in VPD with zeros. Returns true on success, false
+// otherwise.
+bool ClearLogStoreKey(std::shared_ptr<ProcessManagerInterface> process_manager);
+
 // Read contents of a given file into a secureblob. Returns file contents on
 // success and nullopt otherwise.
 std::optional<brillo::SecureBlob> ReadFileToSecureBlob(
@@ -151,6 +159,14 @@ std::optional<EncryptedLogFile> EncryptLogArchiveData(
 // plain text data on success, nullopt otherwise.
 std::optional<brillo::SecureBlob> DecryptLogArchiveData(
     const EncryptedLogFile& encrypted_contents, const brillo::SecureBlob& key);
+
+// Get the size of a partition in bytes. Returns size on success, or nullopt on
+// failure.
+std::optional<uint64_t> GetPartitionSize(
+    uint64_t partition_number, std::shared_ptr<CgptUtilInterface> cgpt_util);
+
+std::optional<uint64_t> GetMiniOsPriorityPartition(
+    std::shared_ptr<crossystem::Crossystem> cros_system);
 
 }  // namespace minios
 

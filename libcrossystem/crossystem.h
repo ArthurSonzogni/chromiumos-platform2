@@ -73,6 +73,11 @@ class BRILLO_EXPORT Crossystem {
   /// @return true if only signed kernels will boot; false otherwise.
   bool OnlyBootSignedKernel() const;
 
+  /// Get the priority slot of MiniOS.
+  ///
+  /// @return slot of the priority minios if present, nullopt otherwise.
+  std::optional<std::string> GetMiniOsPriority() const;
+
   // Use the helper methods (e.g., HardwareProtectIsEnabled()) rather than
   // using these constants directly.
   BRILLO_PRIVATE static constexpr char kHardwareWriteProtect[] = "wpsw_cur";
@@ -112,6 +117,10 @@ class BRILLO_EXPORT Crossystem {
 
   // Name of property contianing the enrollment status.
   BRILLO_PRIVATE static constexpr char kCheckEnrollment[] = "check_enrollment";
+
+  // Name of property that indicates minios priority slot.
+  BRILLO_PRIVATE static constexpr char kMiniosPriorityProperty[] =
+      "minios_priority";
 
  private:
   std::unique_ptr<CrossystemVbootInterface> impl_;

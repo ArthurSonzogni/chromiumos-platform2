@@ -28,7 +28,7 @@
 #include <libhwsec-foundation/crypto/aes.h>
 #include <minios/proto_bindings/minios.pb.h>
 
-#include "minios/minios.h"
+#include "minios/log_store_manifest.h"
 #include "minios/process_manager.h"
 
 namespace {
@@ -48,8 +48,9 @@ const char kVpdAddValueFlag[] = "-s";
 const char kVpdRetrieveValueFlag[] = "-g";
 const char kVpdLogStoreSecretKey[] = "minios_log_store_key";
 
-const std::vector<std::string> kFilesToCompress{
-    "/var/log/update_engine.log", "/var/log/upstart.log", "/var/log/messages"};
+const std::vector<std::string> kFilesToCompress{"/var/log/update_engine.log",
+                                                "/var/log/upstart.log",
+                                                "/var/log/minios.log"};
 // NOLINTNEXTLINE
 const std::string kFutilityShowCmd[]{"/usr/bin/futility", "show", "-P"};
 const char kKeyblockSizePrefix[] = "kernel::keyblock::size::";
@@ -62,9 +63,9 @@ const char kBlockSubsystem[] = "block";
 const char kFileSystemProperty[] = "ID_FS_USAGE";
 const char kFilesystem[] = "filesystem";
 
-constexpr int kLogStoreKeySizeBytes = 32;
 // Hex representations of keys would be twice the size.
 constexpr int kLogStoreHexKeySizeBytes = 64;
+
 }  // namespace
 
 namespace minios {
@@ -77,6 +78,8 @@ const char kLogFilePath[] = "/var/log/minios.log";
 
 const base::FilePath kDefaultArchivePath{"/tmp/logs.tar"};
 const char kStatefulPath[] = "/stateful";
+const int kLogStoreKeySizeBytes = 32;
+const brillo::SecureBlob kZeroKey{std::string(kLogStoreKeySizeBytes, '0')};
 
 std::tuple<bool, std::string> ReadFileContentWithinRange(
     const base::FilePath& file_path,
@@ -475,6 +478,11 @@ bool SaveLogStoreKey(std::shared_ptr<ProcessManagerInterface> process_manager,
   return true;
 }
 
+bool ClearLogStoreKey(
+    std::shared_ptr<ProcessManagerInterface> process_manager) {
+  return SaveLogStoreKey(process_manager, kZeroKey);
+}
+
 std::optional<brillo::SecureBlob> ReadFileToSecureBlob(
     const base::FilePath& file_path) {
   base::File file{file_path, base::File::FLAG_OPEN | base::File::FLAG_READ};
@@ -534,6 +542,33 @@ std::optional<brillo::SecureBlob> DecryptLogArchiveData(
     return std::nullopt;
   }
   return plain_data;
+}
+
+std::optional<uint64_t> GetPartitionSize(
+    uint64_t partition_number, std::shared_ptr<CgptUtilInterface> cgpt_util) {
+  auto partition_blocks = cgpt_util->GetSize(partition_number);
+  if (!partition_blocks.has_value()) {
+    LOG(ERROR) << "Couldn't determine size of partition=" << partition_number;
+    return std::nullopt;
+  }
+  // `CgptUtil` returns sizes of partitions in blocks, multiply by kBlockSize to
+  // get size in bytes.
+  return partition_blocks.value() * kBlockSize;
+}
+
+std::optional<uint64_t> GetMiniOsPriorityPartition(
+    std::shared_ptr<crossystem::Crossystem> cros_system) {
+  const auto minios_priority = cros_system->GetMiniOsPriority();
+  if (!minios_priority.has_value()) {
+    LOG(ERROR) << "Couldn't find MiniOS priority.";
+    return std::nullopt;
+  }
+  if (minios_priority == "A")
+    return 9;
+  else if (minios_priority == "B")
+    return 10;
+  LOG(ERROR) << "Invalid MiniOS priority.";
+  return std::nullopt;
 }
 
 }  // namespace minios
