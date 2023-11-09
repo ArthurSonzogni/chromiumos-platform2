@@ -178,6 +178,7 @@ std::optional<Route> Route::CreateFromRouteString(
     LOG(ERROR) << "Failed to parse next hop in " << route_string;
     return std::nullopt;
   }
+  route.route_str_ = route_string;
   return route;
 }
 

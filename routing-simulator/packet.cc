@@ -11,6 +11,7 @@
 #include <string_view>
 
 #include <base/containers/fixed_flat_map.h>
+#include <base/logging.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -197,6 +198,25 @@ Packet Packet::CreatePacketFromStdin(std::istream& std_input,
       ParsePort(DstOrSrc::kDst, protocol, std_input, std_output);
   const int source_port =
       ParsePort(DstOrSrc::kSrc, protocol, std_input, std_output);
+  return Packet(ip_family, protocol, destination_ip, source_ip,
+                destination_port, source_port, input_interface);
+}
+
+// static
+std::optional<Packet> Packet::CreatePacketForTesting(
+    net_base::IPFamily ip_family,
+    Packet::Protocol protocol,
+    const net_base::IPAddress& destination_ip,
+    const net_base::IPAddress& source_ip,
+    int destination_port,
+    int source_port,
+    std::string_view input_interface) {
+  if (ip_family != destination_ip.GetFamily() ||
+      ip_family != source_ip.GetFamily()) {
+    LOG(ERROR)
+        << "Input destination IP or source IP contradicts input IP family";
+    return std::nullopt;
+  }
   return Packet(ip_family, protocol, destination_ip, source_ip,
                 destination_port, source_port, input_interface);
 }

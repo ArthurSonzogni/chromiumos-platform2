@@ -82,11 +82,9 @@ const std::map<std::string, std::vector<std::string_view>>
           "100.115.92.133"}},
         {"local",
          {"local 100.86.210.153 dev wlan0 table local proto kernel scope "
-          "host "
-          "src 100.86.210.153",
+          "host src 100.86.210.153",
           "broadcast 100.86.211.255 dev wlan0 table local proto kernel "
-          "scope "
-          "link src 100.86.210.153"}}};
+          "scope link src 100.86.210.153"}}};
 
 const std::map<std::string, std::vector<std::string_view>>
     kExpectedTableToRoutesIpv6 = {

@@ -16,6 +16,30 @@
 #include <net-base/ip_address.h>
 
 namespace routing_simulator {
+namespace {
+
+// Parse an input string to Fwmark and returns it if the parsing is successful.
+// Otherwise, returns std::nullopt.
+std::optional<RoutingPolicyEntry::Fwmark> ParseFmwarkWithMask(
+    std::string_view fwmark_str) {
+  RoutingPolicyEntry::Fwmark fwmark;
+  const auto fwmark_tokens = base::SplitStringPiece(
+      fwmark_str, "/", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  if (fwmark_tokens.size() != 2) {
+    return std::nullopt;
+  }
+  if ((!base::HexStringToUInt(fwmark_tokens[0], &fwmark.mark)) ||
+      (!base::HexStringToUInt(fwmark_tokens[1], &fwmark.mask))) {
+    return std::nullopt;
+  }
+  return fwmark;
+}
+
+}  // namespace
+
+bool RoutingPolicyEntry::Fwmark::operator==(const Fwmark& rhs) const {
+  return ((mark == rhs.mark) && (mask == rhs.mask));
+}
 
 // static
 std::optional<RoutingPolicyEntry> RoutingPolicyEntry::CreateFromPolicyString(
@@ -54,6 +78,7 @@ std::optional<RoutingPolicyEntry> RoutingPolicyEntry::CreateFromPolicyString(
     LOG(ERROR) << "There is no table id in: " << policy_string;
     return std::nullopt;
   }
+  policy.policy_str_ = policy_string;
   return policy;
 }
 
@@ -64,6 +89,28 @@ RoutingPolicyEntry& RoutingPolicyEntry::operator=(
 
 bool RoutingPolicyEntry::operator==(const RoutingPolicyEntry& rhs) const =
     default;
+
+// TODO(b/307460180): Change the interface (output/input parameter or returned
+// value type) to save the matched policy to the result.
+bool RoutingPolicyEntry::Matches(const Packet& packet) const {
+  if (!source_prefix().InSameSubnetWith(packet.source_ip())) {
+    return false;
+  }
+  if (!output_interface().empty()) {
+    if (packet.output_interface() != output_interface()) {
+      return false;
+    }
+  }
+  if (!input_interface().empty()) {
+    if (packet.input_interface() != input_interface()) {
+      return false;
+    }
+  }
+  if ((packet.fwmark() & fwmark().mask) != (fwmark().mark & fwmark().mask)) {
+    return false;
+  }
+  return true;
+}
 
 RoutingPolicyEntry::RoutingPolicyEntry(net_base::IPFamily ip_family)
     : source_prefix_(net_base::IPCIDR(ip_family)) {}
@@ -126,6 +173,7 @@ bool RoutingPolicyEntry::SetItems(
   static constexpr std::string_view kInputInterfaceIdentifier = "iif";
   static constexpr std::string_view kFwmarkIdentifier = "fwmark";
   static constexpr std::string_view kTableIdIdentifier = "lookup";
+  std::string fwmark_str;
   // map: {[key]:identifier, [value]: {member name, a pointer to the member}}
   // We need a "member name" only for logging.
   const std::map<std::string_view, std::pair<std::string_view, std::string*>>
@@ -133,7 +181,7 @@ bool RoutingPolicyEntry::SetItems(
           {kOutputInterfaceIdentifier,
            {"output interface", &output_interface_}},
           {kInputInterfaceIdentifier, {"input interface", &input_interface_}},
-          {kFwmarkIdentifier, {"fwmark", &fwmark_}},
+          {kFwmarkIdentifier, {"fwmark", &fwmark_str}},
           {kTableIdIdentifier, {"table id", &table_id_}}};
   while (!policy_tokens_span.empty()) {
     if (auto it = identifier_map.find(policy_tokens_span.front());
@@ -152,6 +200,14 @@ bool RoutingPolicyEntry::SetItems(
         return false;
       }
       *member_to_set_ptr = policy_tokens_span.front();
+      if (name == kFwmarkIdentifier) {
+        const auto fwmark = ParseFmwarkWithMask(fwmark_str);
+        if (!fwmark) {
+          LOG(ERROR) << "Formats of fwmark is invalid in: " << fwmark_str;
+          return false;
+        }
+        fwmark_ = *fwmark;
+      }
       policy_tokens_span = policy_tokens_span.subspan(1);
     } else {
       // There is a token without the corresponding identifier before it.
@@ -160,13 +216,6 @@ bool RoutingPolicyEntry::SetItems(
     }
   }
   return true;
-}
-
-// TODO(b/307460180): Implement below.
-// TODO(b/307460180): Change the interface (output/input parameter or returned
-// value type) to save the matched policy.
-bool RoutingPolicyEntry::IsMatch(const Packet& packet) const {
-  return false;
 }
 
 }  // namespace routing_simulator

@@ -55,6 +55,8 @@ class Route {
   }
   Type type() const { return type_; }
   const std::string& table_id() const { return table_id_; }
+  // The original string in ip route show to construct this object.
+  const std::string& route_str() const { return route_str_; }
 
   bool operator==(const Route& rhs) const;
 
@@ -66,6 +68,7 @@ class Route {
   std::optional<net_base::IPAddress> next_hop_;
   Type type_;
   std::string table_id_;
+  std::string route_str_;
 };
 
 }  // namespace routing_simulator

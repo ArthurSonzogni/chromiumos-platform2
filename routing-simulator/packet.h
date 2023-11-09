@@ -39,6 +39,18 @@ class Packet {
   static Packet CreatePacketFromStdin(std::istream& std_input,
                                       std::ostream& std_output);
 
+  // Creates a packet object from a private constructor to use in a test file.
+  // Checks if |destination_ip| and |source_ip| contradicts |ip_family| and if
+  // so, returns std::nullopt.
+  static std::optional<Packet> CreatePacketForTesting(
+      net_base::IPFamily ip_family,
+      Protocol protocol,
+      const net_base::IPAddress& destination_ip,
+      const net_base::IPAddress& source_ip,
+      int destination_port,
+      int source_port,
+      std::string_view input_interface);
+
   // Packet is only copyable.
   Packet(const Packet& other);
   Packet& operator=(const Packet& other);
@@ -51,10 +63,14 @@ class Packet {
   int destination_port() const { return destination_port_; }
   int source_port() const { return source_port_; }
   uint32_t fwmark() const { return fwmark_; }
-  std::optional<std::string> output_interface() const {
-    return output_interface_;
-  }
+  std::string output_interface() const { return output_interface_; }
   std::string input_interface() const { return input_interface_; }
+
+  // Setter methods for the internal data.
+  void set_fwmark(uint32_t fwmark) { fwmark_ = fwmark; }
+  void set_output_interface(std::string_view output_interface) {
+    output_interface_ = output_interface;
+  }
 
   bool operator==(const Packet& rhs) const;
 

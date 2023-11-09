@@ -116,7 +116,7 @@ const Route* RouteManager::LookUpRoute(const Packet& packet) const {
       break;
   }
   for (const auto& policy : *routing_policy_table_ptr) {
-    if (!policy.IsMatch(packet)) {
+    if (!policy.Matches(packet)) {
       continue;
     }
     // Look up a matched route if the routing table that a policy points to
@@ -155,7 +155,7 @@ void RouteManager::BuildTables() {
 const Route* RouteManager::ProcessPacketWithMutation(Packet& packet) {
   const auto matched_route_ptr = LookUpRoute(packet);
   if (matched_route_ptr) {
-    packet.output_interface() = matched_route_ptr->output_interface();
+    packet.set_output_interface(matched_route_ptr->output_interface());
   }
   return matched_route_ptr;
 }
