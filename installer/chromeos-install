@@ -88,8 +88,12 @@ fast_dd() {
   local chunk_num="$4"
   local total_chunks="$5"
   shift 5
-  # Provide some simple progress updates to the user.
-  set -- "$@" status=progress
+
+  if ! "${BUSYBOX_DD_FOUND}"; then
+    # Provide some simple progress updates to the user.
+    # This was made available from coreutils version 8.24.
+    set -- "$@" status=progress
+  fi
   # Find the largest block size that all the parameters are a factor of.
   local block_size=$((2 * 1024 * 1024))
   while [ $(((user_count * SRC_BLKSIZE) % block_size)) -ne 0 ] || \
@@ -284,8 +288,9 @@ write_partition() {
     #   device each time. It should also be noted that it appears most
     #   efficient not to drop the cache on the output as part of the same "dd"
     #   doing the transfer (presumably it makes write buffers less efficient).
-    local dd_cache_arg="";
-    if ! "${cache_input}"; then
+    local dd_cache_arg=;
+    # The iflag is unsupported in older versions of "dd".
+    if ! "${cache_input}" && ! "${BUSYBOX_DD_FOUND}"; then
       dd_cache_arg="iflag=nocache"
     fi
 
@@ -294,7 +299,7 @@ write_partition() {
       ${dd_cache_arg}
 
     # Incantation to advise the kernel to drop cache on the whole dst.
-    dd if="${dst}" iflag=nocache count=0 status=none
+    dd if="${dst}" ${dd_cache_arg} count=0 status=none
     ;;
   esac
 }
@@ -378,9 +383,11 @@ loop_offset_setup() {
   fi
 
   local losetup_path="losetup"
+  # For environments that use busybox, we expect a newer version of `losetup``
+  # to be present in `/bin/losetup`.
   # TODO(b/186151064): Change default from busybox losetup used in minios.
-  if [ "${FLAGS_skip_rootfs}" -eq "${FLAGS_TRUE}" ]; then
-    losetup_path="./bin/losetup"
+  if "${BUSYBOX_LOSETUP_FOUND}"; then
+    losetup_path="/bin/losetup"
   fi
 
   LOOP_DEV=$("${losetup_path}" -f "$@" --show -o $((offset * blocksize)) \
@@ -1080,6 +1087,19 @@ main() {
   set -eu
   if [ "${FLAGS_debug}" = "${FLAGS_TRUE}" ]; then
     set -x
+  fi
+
+  # On some systems (e.g. MiniOS or Flexor), we use utils from busybox.
+  # Those utils might be at an older version and don't support some
+  # flags, so we don't use them. This can be checked by looking at `dd`
+  # and `losetup` and whether it is coming from BusyBox or not.
+  BUSYBOX_DD_FOUND=false
+  if dd --version 2>&1 | grep -q "BusyBox"; then
+    BUSYBOX_DD_FOUND=true
+  fi
+  BUSYBOX_LOSETUP_FOUND=false
+  if losetup --version 2>&1 | grep -q "BusyBox"; then
+    BUSYBOX_LOSETUP_FOUND=true
   fi
 
   check_payload_image
