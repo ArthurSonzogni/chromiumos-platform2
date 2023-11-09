@@ -24,11 +24,11 @@ class ProcessExecutorImpl : public ProcessExecutor {
 
   std::optional<std::string> RunAndGetStdout(
       const base::FilePath& program,
-      const std::vector<std::string> args) override;
+      const std::vector<std::string>& args) override;
 };
 
 std::optional<std::string> ProcessExecutorImpl::RunAndGetStdout(
-    const base::FilePath& program, const std::vector<std::string> args) {
+    const base::FilePath& program, const std::vector<std::string>& args) {
   brillo::ProcessImpl process;
 
   process.AddArg(program.value());

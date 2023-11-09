@@ -28,7 +28,7 @@ class ProcessExecutor {
   //   stdout.
   // - If not, return std::nullopt, and LOG stdout and stderr if available.
   virtual std::optional<std::string> RunAndGetStdout(
-      const base::FilePath& program, const std::vector<std::string> args) = 0;
+      const base::FilePath& program, const std::vector<std::string>& args) = 0;
 
  protected:
   ProcessExecutor() = default;
