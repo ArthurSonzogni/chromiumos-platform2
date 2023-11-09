@@ -128,6 +128,7 @@ using ::testing::Eq;
 using ::testing::InSequence;
 using ::testing::Invoke;
 using ::testing::IsEmpty;
+using ::testing::IsFalse;
 using ::testing::NiceMock;
 using ::testing::Pointee;
 using ::testing::Property;
@@ -2215,8 +2216,11 @@ TEST_F(UserDataAuthTest, StartMigrateToDircryptoValidity) {
 
   int success_cnt = 0;
   {
+    TestFuture<user_data_auth::StartMigrateToDircryptoReply> reply_future;
     userdataauth_->StartMigrateToDircrypto(
         request,
+        reply_future
+            .GetCallback<const user_data_auth::StartMigrateToDircryptoReply&>(),
         base::BindRepeating(
             [](int* success_cnt_ptr,
                const user_data_auth::DircryptoMigrationProgress& progress) {
@@ -2225,6 +2229,7 @@ TEST_F(UserDataAuthTest, StartMigrateToDircryptoValidity) {
               (*success_cnt_ptr)++;
             },
             base::Unretained(&success_cnt)));
+    EXPECT_THAT(reply_future.Get().has_error_info(), IsFalse());
   }
   EXPECT_EQ(success_cnt, 1);
 }
@@ -2239,8 +2244,11 @@ TEST_F(UserDataAuthTest, StartMigrateToDircryptoFailure) {
   // Test mount non-existent.
   int call_cnt = 0;
   {
+    TestFuture<user_data_auth::StartMigrateToDircryptoReply> reply_future;
     userdataauth_->StartMigrateToDircrypto(
         request,
+        reply_future
+            .GetCallback<const user_data_auth::StartMigrateToDircryptoReply&>(),
         base::BindRepeating(
             [](int* call_cnt_ptr,
                const user_data_auth::DircryptoMigrationProgress& progress) {
@@ -2249,6 +2257,7 @@ TEST_F(UserDataAuthTest, StartMigrateToDircryptoFailure) {
               (*call_cnt_ptr)++;
             },
             base::Unretained(&call_cnt)));
+    EXPECT_THAT(reply_future.Get().has_error_info(), IsFalse());
   }
   EXPECT_EQ(call_cnt, 1);
 
@@ -2260,8 +2269,11 @@ TEST_F(UserDataAuthTest, StartMigrateToDircryptoFailure) {
 
   call_cnt = 0;
   {
+    TestFuture<user_data_auth::StartMigrateToDircryptoReply> reply_future;
     userdataauth_->StartMigrateToDircrypto(
         request,
+        reply_future
+            .GetCallback<const user_data_auth::StartMigrateToDircryptoReply&>(),
         base::BindRepeating(
             [](int* call_cnt_ptr,
                const user_data_auth::DircryptoMigrationProgress& progress) {
@@ -2270,8 +2282,8 @@ TEST_F(UserDataAuthTest, StartMigrateToDircryptoFailure) {
               (*call_cnt_ptr)++;
             },
             base::Unretained(&call_cnt)));
+    EXPECT_THAT(reply_future.Get().has_error_info(), IsFalse());
   }
-
   EXPECT_EQ(call_cnt, 1);
 }
 
@@ -2477,8 +2489,11 @@ TEST_F(UserDataAuthExTest,
 
   int success_cnt = 0;
   {
+    TestFuture<user_data_auth::StartMigrateToDircryptoReply> reply_future;
     userdataauth_->StartMigrateToDircrypto(
         request,
+        reply_future
+            .GetCallback<const user_data_auth::StartMigrateToDircryptoReply&>(),
         base::BindRepeating(
             [](int* success_cnt_ptr,
                const user_data_auth::DircryptoMigrationProgress& progress) {
@@ -2487,6 +2502,7 @@ TEST_F(UserDataAuthExTest,
               (*success_cnt_ptr)++;
             },
             base::Unretained(&success_cnt)));
+    EXPECT_THAT(reply_future.Get().has_error_info(), IsFalse());
   }
   EXPECT_EQ(success_cnt, 1);
 }
@@ -2522,8 +2538,11 @@ TEST_F(UserDataAuthExTest,
 
   int called_ctr = 0;
   {
+    TestFuture<user_data_auth::StartMigrateToDircryptoReply> reply_future;
     userdataauth_->StartMigrateToDircrypto(
         request,
+        reply_future
+            .GetCallback<const user_data_auth::StartMigrateToDircryptoReply&>(),
         base::BindRepeating(
             [](int* called_ctr_ptr,
                const user_data_auth::DircryptoMigrationProgress& progress) {
@@ -2532,6 +2551,7 @@ TEST_F(UserDataAuthExTest,
               (*called_ctr_ptr)++;
             },
             base::Unretained(&called_ctr)));
+    EXPECT_THAT(reply_future.Get().has_error_info(), IsFalse());
   }
   EXPECT_EQ(called_ctr, 1);
 }
@@ -2546,8 +2566,11 @@ TEST_F(UserDataAuthExTest, StartMigrateToDircryptoWithInvalidAuthSession) {
 
   int called_ctr = 0;
   {
+    TestFuture<user_data_auth::StartMigrateToDircryptoReply> reply_future;
     userdataauth_->StartMigrateToDircrypto(
         request,
+        reply_future
+            .GetCallback<const user_data_auth::StartMigrateToDircryptoReply&>(),
         base::BindRepeating(
             [](int* called_ctr_ptr,
                const user_data_auth::DircryptoMigrationProgress& progress) {
@@ -2556,6 +2579,7 @@ TEST_F(UserDataAuthExTest, StartMigrateToDircryptoWithInvalidAuthSession) {
               (*called_ctr_ptr)++;
             },
             base::Unretained(&called_ctr)));
+    EXPECT_THAT(reply_future.Get().has_error_info(), IsFalse());
   }
   EXPECT_EQ(called_ctr, 1);
 }

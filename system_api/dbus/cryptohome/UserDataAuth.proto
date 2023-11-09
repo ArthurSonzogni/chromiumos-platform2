@@ -469,6 +469,7 @@ message StartMigrateToDircryptoRequest {
 // Output parameters for StartMigrateToDircrypto().
 message StartMigrateToDircryptoReply {
   CryptohomeErrorCode error = 1;
+  CryptohomeErrorInfo error_info = 2;
 }
 
 // Status code for the message DircryptoMigrationProgress below.

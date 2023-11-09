@@ -130,11 +130,14 @@ class UserDataAuth {
   // eCryptfs). |request| contains the account whose cryptohome to migrate, and
   // what whether minimal migration is to be performed. See definition of
   // message StartMigrateToDircryptoRequest for more information on minimal
-  // migration. |progress_callback| is a callback that will be called whenever
+  // migration. |on_done| is a standard request completion callback that is
+  // called when starting the migration is completed (NOT when the migration is
+  // completed). |progress_callback| is a callback that will be called whenever
   // there's progress update from the migration, or if the migration
   // completes/fails.
   void StartMigrateToDircrypto(
-      const user_data_auth::StartMigrateToDircryptoRequest& request,
+      user_data_auth::StartMigrateToDircryptoRequest request,
+      OnDoneCallback<user_data_auth::StartMigrateToDircryptoReply> on_done,
       Mount::MigrationCallback progress_callback);
 
   // Determine if the account specified by |account| needs to do Dircrypto
@@ -844,13 +847,6 @@ class UserDataAuth {
 
   // =============== Auth Session Related Helpers ===============
 
-  // The method takes serialized auth session id and returns an authenticated
-  // auth session associated with the id. If the session is missing or not
-  // authenticated, an error status is returned. The returned pointer is owner
-  // by |auth_session_manager|.
-  CryptohomeStatusOr<InUseAuthSession> GetAuthenticatedAuthSession(
-      const std::string& auth_session_id);
-
   // Returns a reference to the user session, if the session is mountable. The
   // session is mountable if it is not already mounted, and the guest is not
   // mounted. If user session object doesn't exist, this method will create
@@ -885,6 +881,16 @@ class UserDataAuth {
       const CryptohomeVault::Options& vault_options);
 
   // =============== Async Subtask Methods ===============
+
+  // Async helper function for StartMigrateToDircrypto which runs once the
+  // Username is available. This may be run synchronously if the request is
+  // called with an explicit username, but if the operation is executed with an
+  // auth session it gets run asynchronously.
+  void StartMigrateToDircryptoWithUsername(
+      user_data_auth::StartMigrateToDircryptoRequest request,
+      OnDoneCallback<user_data_auth::StartMigrateToDircryptoReply> on_done,
+      Mount::MigrationCallback progress_callback,
+      Username username);
 
   // Async helper functions for public APIs that require auth sessions. Executed
   // when the AuthSession becomes available.

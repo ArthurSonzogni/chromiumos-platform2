@@ -1943,40 +1943,72 @@ UserDataAuth::ResetApplicationContainer(
 }
 
 void UserDataAuth::StartMigrateToDircrypto(
-    const user_data_auth::StartMigrateToDircryptoRequest& request,
+    user_data_auth::StartMigrateToDircryptoRequest request,
+    OnDoneCallback<user_data_auth::StartMigrateToDircryptoReply> on_done,
     Mount::MigrationCallback progress_callback) {
   AssertOnMountThread();
 
+  // If the request does not specify an auth session then just directly execute
+  // using the specified username.
+  if (request.auth_session_id().empty()) {
+    Username username = GetAccountId(request.account_id());
+    StartMigrateToDircryptoWithUsername(std::move(request), std::move(on_done),
+                                        std::move(progress_callback),
+                                        std::move(username));
+    return;
+  }
+
+  // Schedule the request to run with the username associated with the specified
+  // auth session once that session is available to run.
+  auth_session_manager_->RunWhenAvailable(
+      request.auth_session_id(),
+      base::BindOnce(
+          [](user_data_auth::StartMigrateToDircryptoRequest request,
+             OnDoneCallback<user_data_auth::StartMigrateToDircryptoReply>
+                 on_done,
+             Mount::MigrationCallback progress_callback, UserDataAuth* this_uda,
+             InUseAuthSession auth_session) {
+            CryptohomeStatus status = auth_session.AuthSessionStatus();
+            if (!status.ok()) {
+              LOG(ERROR) << "StartMigrateToDircrypto: Invalid auth_session_id.";
+              user_data_auth::DircryptoMigrationProgress progress;
+              progress.set_status(user_data_auth::DIRCRYPTO_MIGRATION_FAILED);
+              progress_callback.Run(progress);
+              // Note that we still reply with "ok" because failures are
+              // reported via the progress callback.
+              ReplyWithError(std::move(on_done),
+                             user_data_auth::StartMigrateToDircryptoReply{},
+                             OkStatus<CryptohomeError>());
+              return;
+            }
+            this_uda->StartMigrateToDircryptoWithUsername(
+                std::move(request), std::move(on_done),
+                std::move(progress_callback), auth_session->username());
+          },
+          std::move(request), std::move(on_done), std::move(progress_callback),
+          this));
+}
+
+void UserDataAuth::StartMigrateToDircryptoWithUsername(
+    user_data_auth::StartMigrateToDircryptoRequest request,
+    OnDoneCallback<user_data_auth::StartMigrateToDircryptoReply> on_done,
+    Mount::MigrationCallback progress_callback,
+    Username username) {
   MigrationType migration_type = request.minimal_migration()
                                      ? MigrationType::MINIMAL
                                      : MigrationType::FULL;
+  user_data_auth::StartMigrateToDircryptoReply reply;
+  user_data_auth::DircryptoMigrationProgress progress;
 
   // Note that total_bytes and current_bytes field in |progress| is discarded by
   // client whenever |progress.status| is not DIRCRYPTO_MIGRATION_IN_PROGRESS,
   // this is why they are left with the default value of 0 here.
-  user_data_auth::DircryptoMigrationProgress progress;
-  AuthSession* auth_session = nullptr;
-  InUseAuthSession in_use_auth_session;
-  if (!request.auth_session_id().empty()) {
-    CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-        GetAuthenticatedAuthSession(request.auth_session_id());
-    if (!auth_session_status.ok()) {
-      LOG(ERROR) << "StartMigrateToDircrypto: Invalid auth_session_id.";
-      progress.set_status(user_data_auth::DIRCRYPTO_MIGRATION_FAILED);
-      progress_callback.Run(progress);
-      return;
-    }
-    in_use_auth_session = std::move(auth_session_status.value());
-    auth_session = in_use_auth_session.Get();
-  }
-
-  Username account_id = auth_session ? auth_session->username()
-                                     : GetAccountId(request.account_id());
-  UserSession* const session = sessions_->Find(account_id);
+  UserSession* const session = sessions_->Find(username);
   if (!session) {
     LOG(ERROR) << "StartMigrateToDircrypto: Failed to get session.";
     progress.set_status(user_data_auth::DIRCRYPTO_MIGRATION_FAILED);
     progress_callback.Run(progress);
+    ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
     return;
   }
   LOG(INFO) << "StartMigrateToDircrypto: Migrating to dircrypto.";
@@ -1984,11 +2016,13 @@ void UserDataAuth::StartMigrateToDircrypto(
     LOG(ERROR) << "StartMigrateToDircrypto: Failed to migrate.";
     progress.set_status(user_data_auth::DIRCRYPTO_MIGRATION_FAILED);
     progress_callback.Run(progress);
+    ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
     return;
   }
   LOG(INFO) << "StartMigrateToDircrypto: Migration done.";
   progress.set_status(user_data_auth::DIRCRYPTO_MIGRATION_SUCCESS);
   progress_callback.Run(progress);
+  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 
 user_data_auth::CryptohomeErrorCode UserDataAuth::NeedsDircryptoMigration(
@@ -2626,37 +2660,6 @@ void UserDataAuth::ExtendAuthSession(
             reply.set_seconds_left(auth_session.GetRemainingTime().InSeconds());
             ReplyWithError(std::move(on_done), reply, std::move(result));
           }));
-}
-
-CryptohomeStatusOr<InUseAuthSession> UserDataAuth::GetAuthenticatedAuthSession(
-    const std::string& auth_session_id) {
-  AssertOnMountThread();
-
-  // Check if the token refers to a valid AuthSession.
-  InUseAuthSession auth_session =
-      auth_session_manager_->FindAuthSession(auth_session_id);
-  CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
-  if (!auth_session_status.ok()) {
-    LOG(ERROR) << "AuthSession not found.";
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInGetAuthedAS),
-               ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                               PossibleAction::kReboot}),
-               user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
-        .Wrap(std::move(auth_session_status));
-  }
-
-  // Check if the AuthSession is properly authenticated.
-  if (!auth_session->authorized_intents().contains(AuthIntent::kDecrypt)) {
-    LOG(ERROR) << "AuthSession is not authenticated.";
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthedInGetAuthedAS),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                        PossibleAction::kReboot}),
-        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-  }
-
-  return auth_session;
 }
 
 CryptohomeStatusOr<UserSession*> UserDataAuth::GetMountableUserSession(

@@ -769,9 +769,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocPinWeaverAuthBlockNoUserInputInDerive = 471,
   /* ./keyset_management.cc */
   kLocKeysetManagementEncryptAndSaveFailedInAddInitialKeyset = 472,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthSessionNotFoundInGetAuthedAS = 473,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthSessionNotAuthedInGetAuthedAS = 474,
   /* ./userdataauth.cc */
   kLocUserDataAuthGuestAlreadyMountedInGetMountableUS = 475,
