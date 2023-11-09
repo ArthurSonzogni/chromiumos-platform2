@@ -230,6 +230,10 @@ void DeviceTracker::StartDiscoverySessionInternal(std::string session_id) {
   // signals for those right away.  Any newly-plugged devices will be added
   // later when we re-enumerate everything.
   for (const auto& device : known_devices_) {
+    if (session->local_only &&
+        device.connection_type() != lorgnette::CONNECTION_USB) {
+      continue;
+    }
     ScannerListChangedSignal signal;
     signal.set_event_type(ScannerListChangedSignal::SCANNER_ADDED);
     signal.set_session_id(session_id);
@@ -344,16 +348,18 @@ void DeviceTracker::EnumerateSANEDevices(std::string session_id) {
     LOG(ERROR) << __func__ << ": Failed to get session " << session_id;
     return;
   }
+  DiscoverySessionState* session = maybe_session.value();
 
   LOG(INFO) << __func__ << ": Checking for SANE devices in " << session_id;
 
   brillo::ErrorPtr error_ptr;
   std::optional<std::vector<ScannerInfo>> devices =
-      sane_client_->ListDevices(&error_ptr);
+      sane_client_->ListDevices(&error_ptr, session->local_only);
 
   if (!devices.has_value()) {
     LOG(ERROR) << __func__ << ": Failed to get SANE devices";
-    return;
+    // Loop over nothing so we can still tell the client the session ended.
+    devices = std::vector<ScannerInfo>{};
   }
 
   for (ScannerInfo& scanner_info : devices.value()) {
@@ -386,6 +392,13 @@ void DeviceTracker::ProbeSANEDevice(std::string session_id,
   }
 
   DiscoverySessionState* session = *maybe_session;
+
+  // Don't waste time checking network scanners if only local scanners are
+  // requested.
+  if (session->local_only &&
+      scanner_info.connection_type() != lorgnette::CONNECTION_USB) {
+    return;
+  }
 
   // The preferred_only flag tells us whether or not we want to drop any
   // duplicates of IPP-USB devices that were already discovered.

@@ -30,8 +30,8 @@ class SaneClientImpl : public SaneClient {
   static std::unique_ptr<SaneClientImpl> Create(LibsaneWrapper* libsane);
   ~SaneClientImpl();
 
-  std::optional<std::vector<ScannerInfo>> ListDevices(
-      brillo::ErrorPtr* error) override;
+  std::optional<std::vector<ScannerInfo>> ListDevices(brillo::ErrorPtr* error,
+                                                      bool local_only) override;
 
   static std::optional<std::vector<ScannerInfo>> DeviceListToScannerInfo(
       const SANE_Device** device_list);

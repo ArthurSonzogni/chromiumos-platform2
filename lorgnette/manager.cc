@@ -271,7 +271,7 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
 
   LOG(INFO) << "Getting list of SANE scanners.";
   std::optional<std::vector<ScannerInfo>> sane_scanners =
-      sane_client_->ListDevices(error);
+      sane_client_->ListDevices(error, /*local_only=*/false);
   if (!sane_scanners.has_value()) {
     return false;  // brillo::Error::AddTo already called.
   }

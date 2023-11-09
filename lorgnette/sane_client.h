@@ -29,7 +29,7 @@ class SaneClient {
   virtual ~SaneClient() {}
 
   virtual std::optional<std::vector<ScannerInfo>> ListDevices(
-      brillo::ErrorPtr* error) = 0;
+      brillo::ErrorPtr* error, bool local_only) = 0;
   std::unique_ptr<SaneDevice> ConnectToDevice(brillo::ErrorPtr* error,
                                               SANE_Status* sane_status,
                                               const std::string& device_name);

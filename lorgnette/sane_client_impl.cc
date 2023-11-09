@@ -40,10 +40,11 @@ SaneClientImpl::~SaneClientImpl() {
 }
 
 std::optional<std::vector<ScannerInfo>> SaneClientImpl::ListDevices(
-    brillo::ErrorPtr* error) {
+    brillo::ErrorPtr* error, bool local_only) {
   base::AutoLock auto_lock(lock_);
   const SANE_Device** device_list;
-  SANE_Status status = libsane_->sane_get_devices(&device_list, SANE_FALSE);
+  SANE_Status status = libsane_->sane_get_devices(
+      &device_list, local_only ? SANE_TRUE : SANE_FALSE);
   if (status != SANE_STATUS_GOOD) {
     brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
                          "Unable to get device list from SANE");

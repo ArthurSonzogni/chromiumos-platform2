@@ -5,6 +5,7 @@
 #include "lorgnette/device_tracker.h"
 
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -39,6 +40,9 @@ using ::testing::UnorderedElementsAre;
 namespace lorgnette {
 
 namespace {
+
+constexpr char kEpson2Name[] = "epson2:net:127.0.0.1";
+constexpr char kEpsonDsName[] = "epsonds:libusb:001:002";
 
 ScanParameters MakeScanParameters(int width, int height) {
   return {
@@ -314,18 +318,16 @@ TEST(DeviceTrackerTest, CompleteDiscoverySession) {
                                 std::move(epson2_scanner));
 
   // Unique USB device without ippusb support that is added during SANE probing.
-  sane_client->AddDevice("epsonds:libusb:001:002", "GoogleTest",
-                         "SANE Scanner 4000", "USB");
+  sane_client->AddDevice(kEpsonDsName, "GoogleTest", "SANE Scanner 4000",
+                         "USB");
   auto epsonds_scanner = std::make_unique<SaneDeviceFake>();
-  sane_client->SetDeviceForName("epsonds:libusb:001:002",
-                                std::move(epsonds_scanner));
+  sane_client->SetDeviceForName(kEpsonDsName, std::move(epsonds_scanner));
 
   // Unique non-eSCL network device that is added during SANE probing.
-  sane_client->AddDevice("epson2:net:127.0.0.1", "GoogleTest",
+  sane_client->AddDevice(kEpson2Name, "GoogleTest",
                          "GoogleTest SANE NetScan 4200", "Network");
   auto epson2_netscan = std::make_unique<SaneDeviceFake>();
-  sane_client->SetDeviceForName("epson2:net:127.0.0.1",
-                                std::move(epson2_netscan));
+  sane_client->SetDeviceForName(kEpson2Name, std::move(epson2_netscan));
   auto tracker =
       std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
 
@@ -393,6 +395,115 @@ TEST(DeviceTrackerTest, CompleteDiscoverySession) {
   EXPECT_THAT(scanners, UnorderedElementsAre(MatchesScannerInfo(escl3000),
                                              MatchesScannerInfo(sane4000),
                                              MatchesScannerInfo(sane4200)));
+}
+
+TEST(DeviceTrackerTest, DiscoverySessionLocalDevices) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+  base::RunLoop run_loop;
+
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  sane_client->SetListDevicesResult(true);
+  // Unique USB device without ippusb support that is added during SANE probing.
+  sane_client->AddDevice(kEpsonDsName, "GoogleTest", "SANE Scanner 4000",
+                         "USB");
+  auto epsonds_scanner = std::make_unique<SaneDeviceFake>();
+  sane_client->SetDeviceForName(kEpsonDsName,
+                                epsonds_scanner->CloneForTesting());
+
+  // Unique non-eSCL network device that is added during SANE probing.
+  sane_client->AddDevice(kEpson2Name, "GoogleTest",
+                         "GoogleTest SANE NetScan 4200", "Network");
+  auto epson2_netscan = std::make_unique<SaneDeviceFake>();
+  sane_client->SetDeviceForName(kEpson2Name, epson2_netscan->CloneForTesting());
+
+  MockFirewallManager firewall_manager(/*interface=*/"test");
+  EXPECT_CALL(firewall_manager, RequestUdpPortAccess(8612)).WillRepeatedly([] {
+    return PortToken(/*firewall_manager=*/nullptr,
+                     /*port=*/8612);
+  });
+  tracker->SetFirewallManager(&firewall_manager);
+
+  // Signal handler that tracks all the events of interest.
+  std::set<std::string> open_sessions;
+  std::map<std::string, std::set<std::unique_ptr<ScannerInfo>>> scanners;
+  std::string full_session_id;
+  auto signal_handler = base::BindLambdaForTesting(
+      [&run_loop, &tracker, &open_sessions, &scanners, &sane_client,
+       &epsonds_scanner,
+       &epson2_netscan](const ScannerListChangedSignal& signal) {
+        if (signal.event_type() == ScannerListChangedSignal::ENUM_COMPLETE) {
+          StopScannerDiscoveryRequest stop_request;
+          stop_request.set_session_id(signal.session_id());
+          tracker->StopScannerDiscovery(stop_request);
+        }
+        if (signal.event_type() == ScannerListChangedSignal::SESSION_ENDING) {
+          open_sessions.erase(signal.session_id());
+          if (open_sessions.empty()) {
+            run_loop.Quit();
+          }
+        }
+        if (signal.event_type() == ScannerListChangedSignal::SCANNER_ADDED) {
+          std::unique_ptr<ScannerInfo> info(signal.scanner().New());
+          info->CopyFrom(signal.scanner());
+          LOG(ERROR) << "Adding " << info->name() << " for session "
+                     << signal.session_id();
+          // SaneClientFake normally consumes the device when a client connects,
+          // so put back another copy.
+          if (info->name() == kEpson2Name) {
+            sane_client->SetDeviceForName(kEpson2Name,
+                                          epson2_netscan->CloneForTesting());
+          } else {
+            sane_client->SetDeviceForName(kEpsonDsName,
+                                          epsonds_scanner->CloneForTesting());
+          }
+          scanners[signal.session_id()].insert(std::move(info));
+        }
+      });
+  tracker->SetScannerListChangedSignalSender(signal_handler);
+
+  // Session that should get both local and net devices.
+  StartScannerDiscoveryRequest full_start_request;
+  full_start_request.set_client_id("full_discovery");
+  StartScannerDiscoveryResponse full_response =
+      tracker->StartScannerDiscovery(full_start_request);
+  EXPECT_TRUE(full_response.started());
+  EXPECT_FALSE(full_response.session_id().empty());
+  open_sessions.insert(full_response.session_id());
+
+  // Session that only gets local devices.
+  StartScannerDiscoveryRequest local_start_request;
+  local_start_request.set_client_id("local_discovery");
+  local_start_request.set_local_only(true);
+  StartScannerDiscoveryResponse local_response =
+      tracker->StartScannerDiscovery(local_start_request);
+  EXPECT_TRUE(local_response.started());
+  EXPECT_FALSE(local_response.session_id().empty());
+  open_sessions.insert(local_response.session_id());
+
+  run_loop.Run();
+
+  ScannerInfo usb_device;
+  usb_device.set_manufacturer("GoogleTest");
+  usb_device.set_model("SANE Scanner 4000");
+  usb_device.set_display_name("GoogleTest SANE Scanner 4000 (USB)");
+  usb_device.set_connection_type(lorgnette::CONNECTION_USB);
+  usb_device.set_secure(true);
+  ScannerInfo net_device;
+  net_device.set_manufacturer("GoogleTest");
+  net_device.set_model("GoogleTest SANE NetScan 4200");
+  net_device.set_display_name("GoogleTest SANE NetScan 4200");
+  net_device.set_connection_type(lorgnette::CONNECTION_NETWORK);
+  net_device.set_secure(false);
+
+  EXPECT_THAT(scanners[full_response.session_id()],
+              UnorderedElementsAre(MatchesScannerInfo(usb_device),
+                                   MatchesScannerInfo(net_device)));
+  EXPECT_THAT(scanners[local_response.session_id()],
+              ElementsAre(MatchesScannerInfo(usb_device)));
 }
 
 TEST(DeviceTrackerTest, OpenScannerEmptyDevice) {

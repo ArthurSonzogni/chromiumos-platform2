@@ -236,12 +236,12 @@ TEST_F(ManagerTest, ListScannerSuccess) {
   sane_client_->AddDevice("TestName", "TestMaker", "TestModel", "TestType");
   sane_client_->SetListDevicesResult(true);
   std::optional<std::vector<ScannerInfo>> result =
-      sane_client_->ListDevices(&error);
+      sane_client_->ListDevices(&error, /*local_only=*/false);
   EXPECT_EQ(error, nullptr);
   EXPECT_NE(result, std::nullopt);
   EXPECT_EQ(result.value().size(), 1);
   sane_client_->RemoveDevice("TestName");
-  result = sane_client_->ListDevices(&error);
+  result = sane_client_->ListDevices(&error, /*local_only=*/false);
   EXPECT_NE(result, std::nullopt);
   EXPECT_EQ(result.value().size(), 0);
   EXPECT_EQ(error, nullptr);
@@ -251,7 +251,7 @@ TEST_F(ManagerTest, ListScannersFailure) {
   brillo::ErrorPtr error;
   sane_client_->SetListDevicesResult(false);
   std::optional<std::vector<ScannerInfo>> result =
-      sane_client_->ListDevices(&error);
+      sane_client_->ListDevices(&error, /*local_only=*/false);
   EXPECT_EQ(result, std::nullopt);
 }
 

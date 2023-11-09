@@ -23,6 +23,11 @@ class SaneDeviceFake : public SaneDevice {
   SaneDeviceFake();
   ~SaneDeviceFake();
 
+  // We can't create a copy constructor because SaneDevice is move-only.
+  // This does the equivalent operation minus the non-copyable fields that
+  // aren't used in tests.
+  std::unique_ptr<SaneDeviceFake> CloneForTesting() const;
+
   std::optional<ValidOptionValues> GetValidOptionValues(
       brillo::ErrorPtr* error) override;
 

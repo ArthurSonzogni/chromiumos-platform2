@@ -33,6 +33,30 @@ SaneDeviceFake::SaneDeviceFake()
 
 SaneDeviceFake::~SaneDeviceFake() {}
 
+std::unique_ptr<SaneDeviceFake> SaneDeviceFake::CloneForTesting() const {
+  auto device = std::make_unique<SaneDeviceFake>();
+  device->resolution_ = resolution_;
+  device->source_name_ = source_name_;
+  device->color_mode_ = color_mode_;
+  device->config_ = config_;
+  device->values_ = values_;
+  device->set_option_status_ = set_option_status_;
+  device->start_scan_result_ = start_scan_result_;
+  device->call_start_job_ = call_start_job_;
+  device->read_scan_data_result_ = read_scan_data_result_;
+  device->cancel_scan_result_ = cancel_scan_result_;
+  device->scan_running_ = scan_running_;
+  device->cancelled_ = cancelled_;
+  device->params_ = params_;
+  device->scan_data_ = scan_data_;
+  device->max_read_size_ = max_read_size_;
+  device->initial_empty_reads_ = initial_empty_reads_;
+  device->num_empty_reads_ = num_empty_reads_;
+  device->current_page_ = current_page_;
+  device->scan_data_offset_ = scan_data_offset_;
+  return device;
+}
+
 std::optional<ValidOptionValues> SaneDeviceFake::GetValidOptionValues(
     brillo::ErrorPtr* error) {
   if (!values_.has_value()) {
