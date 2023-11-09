@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 use std::fmt::Display;
-use std::fs;
 use std::fs::File;
 use std::io;
 use std::io::Read;
@@ -111,19 +110,27 @@ fn load_starttime(path: &Path) -> Result<u64> {
     Ok(starttime)
 }
 
-pub(crate) fn load_threads_ids(
-    process_id: ProcessId,
-) -> Result<impl Iterator<Item = Result<ThreadId>>> {
-    let dirs = fs::read_dir(format!("/proc/{}/task", process_id.0))?;
-    Ok(dirs.map(|name| {
-        name?
-            .file_name()
-            .to_str()
-            .ok_or(Error::FormatCorrupt)?
-            .parse::<u32>()
-            .map_err(|_| Error::FormatCorrupt)
-            .map(ThreadId)
-    }))
+pub struct ThreadChecker {
+    prefix: String,
+}
+
+impl ThreadChecker {
+    pub(crate) fn new(process_id: ProcessId) -> Self {
+        // "/proc/" (6 bytes) + pid (at most 10 bytes) "/task/" (6 bytes) + tid (at most 10 bytes).
+        let mut prefix = String::with_capacity(32);
+        prefix.push_str("/proc/");
+        prefix.push_str(&process_id.0.to_string());
+        prefix.push_str("/task/");
+        Self { prefix }
+    }
+
+    pub(crate) fn thread_exists(&mut self, thread_id: ThreadId) -> bool {
+        let original_len = self.prefix.len();
+        self.prefix.push_str(&thread_id.0.to_string());
+        let result = Path::new(&self.prefix).exists();
+        self.prefix.truncate(original_len);
+        result
+    }
 }
 
 #[cfg(test)]
@@ -252,5 +259,24 @@ mod tests {
             load_starttime(file.path()).err().unwrap(),
             Error::FormatCorrupt
         ));
+    }
+
+    #[test]
+    fn test_thread_exists() {
+        let process_id = ProcessId(std::process::id());
+        let mut checker = ThreadChecker::new(process_id);
+        let (thread_id, thread) = spawn_thread_for_test();
+        let (another_process_id, another_thread_id, process) = fork_process_for_test();
+        let mut another_checker = ThreadChecker::new(another_process_id);
+
+        assert!(checker.thread_exists(thread_id));
+        assert!(!checker.thread_exists(another_thread_id));
+        assert!(another_checker.thread_exists(another_thread_id));
+        assert!(!another_checker.thread_exists(thread_id));
+        drop(thread);
+        wait_for_thread_removed(process_id, thread_id);
+        assert!(!checker.thread_exists(thread_id));
+        drop(process);
+        assert!(!another_checker.thread_exists(another_thread_id));
     }
 }

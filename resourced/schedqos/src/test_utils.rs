@@ -11,7 +11,7 @@ use std::thread::sleep;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use crate::proc;
+use crate::proc::ThreadChecker;
 pub(crate) use crate::sched_attr::assert_sched_attr;
 use crate::CgroupContext;
 use crate::ProcessId;
@@ -101,11 +101,9 @@ pub(crate) fn spawn_thread_for_test() -> (ThreadId, ThreadForTest) {
 /// Poll the procfs file until the files for the thread is removed. If the files
 /// are not removed, this returns [false].
 pub(crate) fn wait_for_thread_removed(process_id: ProcessId, thread_id: ThreadId) -> bool {
+    let mut checker = ThreadChecker::new(process_id);
     for _ in 0..100 {
-        if matches!(
-            proc::load_thread_timestamp(process_id, thread_id),
-            Err(proc::Error::NotFound)
-        ) {
+        if !checker.thread_exists(thread_id) {
             return true;
         }
         sleep(Duration::from_millis(1));

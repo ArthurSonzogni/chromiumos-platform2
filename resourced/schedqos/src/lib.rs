@@ -13,7 +13,6 @@ mod test_utils;
 
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::fmt::Display;
 use std::io;
 
@@ -22,7 +21,7 @@ pub use cgroups::CpuCgroup;
 pub use cgroups::CpusetCgroup;
 use proc::load_process_timestamp;
 use proc::load_thread_timestamp;
-use proc::load_threads_ids;
+use proc::ThreadChecker;
 use sched_attr::SchedAttrContext;
 use sched_attr::UCLAMP_BOOSTED_MIN;
 pub use sched_attr::UCLAMP_MAX;
@@ -383,16 +382,14 @@ impl SchedQosContext {
                 thread.state = thread_state;
             }
             Entry::Vacant(_) => {
-                // GC threads in the map before adding a new thread context to
-                // the map. This is for the case a process spawns many
-                // short-term threads while the process state keeps the same.
+                // GC threads in the map before adding a new thread context to the map. This is for
+                // the case a process spawns many short-term threads while the process state keeps
+                // the same.
                 {
-                    let thread_ids_set: proc::Result<HashSet<ThreadId>> =
-                        load_threads_ids(process_id)?.collect();
-                    let thread_ids_set = thread_ids_set?;
+                    let mut thread_checker = ThreadChecker::new(process_id);
                     process
                         .threads
-                        .retain(|thread_id, _| thread_ids_set.contains(thread_id));
+                        .retain(|thread_id, _| thread_checker.thread_exists(*thread_id));
                 }
 
                 let timestamp = match load_thread_timestamp(process_id, thread_id) {
