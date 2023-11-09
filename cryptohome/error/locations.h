@@ -1593,7 +1593,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocSmartCardVerifierCannotVerify = 2307,
   /* ./challenge_credentials/challenge_credentials_helper_impl.cc */
   kLocChalCredHelperTpmUnavailableInCheckTpmStatus = 2308,
-  /* ./auth_session_manager.cc */
+  /* =Obsolete= */
   kLocAuthSessionManagerAuthSessionActive = 2309,
   /* ./auth_session_manager.cc */
   kLocAuthSessionManagerAuthSessionNotFound = 2310,

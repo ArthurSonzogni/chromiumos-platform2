@@ -63,12 +63,6 @@ class AuthSessionManager {
   // be used when UnMountall() API is called.
   void RemoveAllAuthSessions();
 
-  // Finds existing auth session with token.
-  InUseAuthSession FindAuthSession(const base::UnguessableToken& token);
-
-  // Overload for find to avoid deserialization client side.
-  InUseAuthSession FindAuthSession(const std::string& serialized_token);
-
   // Used to set the auth factor status update callback inside class so it could
   // be passed to each auth session.
   void SetAuthFactorStatusUpdateCallback(
@@ -76,9 +70,9 @@ class AuthSessionManager {
 
   // Finds existing auth session with token and invoke |callback| with the auth
   // session. If the auth session is available or doesn't exist, the callback is
-  // invoked directly with identical behavior to |FindAuthSession|. If the auth
-  // session exists but is currently active, |callback| will be invoked when the
-  // auth session becomes available (released from active usage).
+  // invoked immediately. If the auth session exists but is currently active,
+  // |callback| will be invoked when the auth session becomes available
+  // (released from active usage).
   void RunWhenAvailable(const base::UnguessableToken& token,
                         base::OnceCallback<void(InUseAuthSession)> callback);
   // Overload to avoid deserialization on client side.
@@ -158,17 +152,21 @@ class AuthSessionManager {
 // of the session from the session manager when it is constructed, and then it
 // returns ownership back when it is destroyed.
 //
-// This is used to prevent multiple operations from attempting to use the same
-// session at the same time. Normally the implementation of a dbus operation
-// will use FindAuthSession to get the session it is running on, storing the
-// returned InUseAuthSession into a local variable. When the operation
-// terminates and the local InUseAuthSession is destroyed, the session will go
-// back to the manager and again be available for other operations to find.
+// Conceptually, this is similar to a smart pointer but instead of signalling "I
+// own this session" it signals "I am using this session". Destroying the InUse
+// object signals that you are no longer using the session and makes it
+// available for use by others, rather than terminating the session.
+//
+// Normally the implementation of a dbus operation will use RunWhenAvailable to
+// schedule work (via a callback) against the session when it is not busy. The
+// callback will be given an InUseAuthSession which it can do work against and
+// then release upon completion to make the session available again for other
+// callbacks and operations.
 //
 // This object behaves similarly to a StatusOk<AuthSession>. It can have a
 // not-OK status (via AuthSessionStatus()) to indicate that there is not a valid
-// underlying AuthSession object, and it provides deference operators (* and ->)
-// for accessing said object when it IS valid.
+// underlying AuthSession object, and it provides dereference operators (* and
+// ->) for accessing said object when it IS valid.
 class InUseAuthSession {
  public:
   InUseAuthSession();
@@ -178,7 +176,9 @@ class InUseAuthSession {
 
   ~InUseAuthSession();
 
-  // Pointer operators.
+  // Pointer operators. Note that the references and pointers to the AuthSession
+  // returned by these are only guaranteed to be valid so long as the
+  // InUseAuthSession that they came from is live.
   AuthSession& operator*() { return *session_; }
   const AuthSession& operator*() const { return *session_; }
   AuthSession* operator->() { return session_.get(); }
@@ -203,11 +203,9 @@ class InUseAuthSession {
   friend class AuthSessionManager;
 
   InUseAuthSession(AuthSessionManager& manager,
-                   bool is_session_active,
                    std::unique_ptr<AuthSession> session);
 
   AuthSessionManager* manager_;
-  bool is_session_active_;
   std::unique_ptr<AuthSession> session_;
 };
 

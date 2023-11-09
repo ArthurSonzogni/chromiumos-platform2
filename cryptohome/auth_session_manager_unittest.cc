@@ -51,6 +51,37 @@ using ::testing::UnorderedElementsAre;
 
 class AuthSessionManagerTest : public ::testing::Test {
  protected:
+  // Helper function that will try and "take" control of an auth session in a
+  // synchronous manner. If the session is in use then it will immediately
+  // return null.
+  template <typename T>
+  std::optional<InUseAuthSession> TryTakeAuthSession(const T& token) {
+    TestFuture<InUseAuthSession> session_future;
+    auth_session_manager_.RunWhenAvailable(token, session_future.GetCallback());
+    if (session_future.IsReady()) {
+      return session_future.Take();
+    }
+    return std::nullopt;
+  }
+
+  // Assert that the session for a given token is in use.
+  template <typename T>
+  void AssertAuthSessionInUse(const T& token) {
+    ASSERT_THAT(TryTakeAuthSession(token), Eq(std::nullopt));
+  }
+
+  // Version of TryTake that assumes that the session is available and
+  // CHECK-fails if it is not. This makes code easier to read but you should
+  // only use it in tests where it is easy to see that the session is not
+  // already in use. Ideally we'd use ASSERT instead of CHECK but that does not
+  // work with functions that do not return void.
+  template <typename T>
+  InUseAuthSession TakeAuthSession(const T& token) {
+    std::optional<InUseAuthSession> session = TryTakeAuthSession(token);
+    CHECK(session.has_value());
+    return std::move(*session);
+  }
+
   const Username kUsername{"foo@example.com"};
 
   base::test::ScopedPowerMonitorTestSource test_power_monitor_;
@@ -92,7 +123,7 @@ class AuthSessionManagerTest : public ::testing::Test {
   AuthSessionManager auth_session_manager_{backing_apis_};
 };
 
-TEST_F(AuthSessionManagerTest, CreateFindRemove) {
+TEST_F(AuthSessionManagerTest, CreateRemove) {
   base::UnguessableToken token;
   // Start scope for first InUseAuthSession
   {
@@ -104,11 +135,8 @@ TEST_F(AuthSessionManagerTest, CreateFindRemove) {
     ASSERT_THAT(auth_session, NotNull());
     token = auth_session->token();
 
-    // FindAuthSession on the same token doesn't work, the actual session is
-    // owned by auth_session_status.
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(token);
-    ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+    // You can't get the session, it's still in use after creation.
+    AssertAuthSessionInUse(token);
     // Scope ends here to free the InUseAuthSession and return it to
     // AuthSessionManager.
   }
@@ -116,8 +144,7 @@ TEST_F(AuthSessionManagerTest, CreateFindRemove) {
   // After InUseAuthSession is freed, then AuthSessionManager can operate on the
   // token and remove it.
   EXPECT_TRUE(auth_session_manager_.RemoveAuthSession(token));
-  InUseAuthSession in_use_auth_session =
-      auth_session_manager_.FindAuthSession(token);
+  InUseAuthSession in_use_auth_session = TakeAuthSession(token);
   ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
 
   // Repeat with serialized_token overload.
@@ -129,14 +156,12 @@ TEST_F(AuthSessionManagerTest, CreateFindRemove) {
     ASSERT_TRUE(auth_session_status.ok());
     AuthSession* auth_session = auth_session_status.value().Get();
     serialized_token = auth_session->serialized_token();
-    in_use_auth_session =
-        auth_session_manager_.FindAuthSession(serialized_token);
-    ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+    AssertAuthSessionInUse(serialized_token);
   }
 
   // Should succeed now that AuthSessionManager owns the AuthSession.
   EXPECT_TRUE(auth_session_manager_.RemoveAuthSession(serialized_token));
-  in_use_auth_session = auth_session_manager_.FindAuthSession(serialized_token);
+  in_use_auth_session = TakeAuthSession(serialized_token);
   ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
 }
 
@@ -153,22 +178,17 @@ TEST_F(AuthSessionManagerTest, CreateExpire) {
     AuthSession* auth_session = auth_session_status.value().Get();
     ASSERT_THAT(auth_session, NotNull());
     token = auth_session->token();
-
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(token);
-    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
+    AssertAuthSessionInUse(token);
   }
   for (const auto& token : tokens) {
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(token);
+    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
     EXPECT_THAT(in_use_auth_session.GetRemainingTime().is_max(), IsTrue());
   }
 
   // Authenticate the sessions. Theys should now have finite timeouts.
   for (auto& token : tokens) {
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(token);
+    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
     EXPECT_THAT(in_use_auth_session->OnUserCreated(), IsOk());
     EXPECT_THAT(
@@ -176,8 +196,7 @@ TEST_F(AuthSessionManagerTest, CreateExpire) {
         UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
   }
   for (const auto& token : tokens) {
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(token);
+    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
     EXPECT_THAT(
         in_use_auth_session.GetRemainingTime(),
@@ -189,8 +208,7 @@ TEST_F(AuthSessionManagerTest, CreateExpire) {
 
   // After expiration the sessions should be gone.
   for (const auto& token : tokens) {
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(token);
+    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
   }
 }
@@ -208,10 +226,7 @@ TEST_F(AuthSessionManagerTest, ExtendExpire) {
     AuthSession* auth_session = auth_session_status.value().Get();
     ASSERT_THAT(auth_session, NotNull());
     token = auth_session->token();
-
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(token);
-    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
+    AssertAuthSessionInUse(token);
 
     EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
     EXPECT_THAT(
@@ -221,8 +236,7 @@ TEST_F(AuthSessionManagerTest, ExtendExpire) {
 
   // Before expiration we should be able to look up the sessions again.
   for (const auto& token : tokens) {
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(token);
+    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
     EXPECT_THAT(
         in_use_auth_session.GetRemainingTime(),
@@ -231,8 +245,7 @@ TEST_F(AuthSessionManagerTest, ExtendExpire) {
 
   // Extend the first session to seven minutes.
   {
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(tokens[0]);
+    InUseAuthSession in_use_auth_session = TakeAuthSession(tokens[0]);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
     EXPECT_THAT(in_use_auth_session.ExtendTimeout(
                     AuthSessionManager::kAuthTimeout + base::Minutes(2)),
@@ -244,8 +257,7 @@ TEST_F(AuthSessionManagerTest, ExtendExpire) {
 
   // Extend the second session to two minutes (this is a no-op)
   {
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(tokens[1]);
+    InUseAuthSession in_use_auth_session = TakeAuthSession(tokens[1]);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
     EXPECT_THAT(in_use_auth_session.ExtendTimeout(base::Minutes(2)), IsOk());
     EXPECT_THAT(
@@ -258,15 +270,13 @@ TEST_F(AuthSessionManagerTest, ExtendExpire) {
 
   // Both Session should be good be good.
   {
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(tokens[0]);
+    InUseAuthSession in_use_auth_session = TakeAuthSession(tokens[0]);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
     EXPECT_THAT(in_use_auth_session.GetRemainingTime(),
                 AllOf(Gt(base::TimeDelta()), Le(base::Minutes(5))));
   }
   {
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(tokens[1]);
+    InUseAuthSession in_use_auth_session = TakeAuthSession(tokens[1]);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
     EXPECT_THAT(in_use_auth_session.GetRemainingTime(),
                 AllOf(Gt(base::TimeDelta()), Le(base::Minutes(3))));
@@ -277,15 +287,13 @@ TEST_F(AuthSessionManagerTest, ExtendExpire) {
   // minutes).
   task_environment_.FastForwardBy(base::Minutes(4));
   {
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(tokens[0]);
+    InUseAuthSession in_use_auth_session = TakeAuthSession(tokens[0]);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
     EXPECT_THAT(in_use_auth_session.GetRemainingTime(),
                 AllOf(Gt(base::TimeDelta()), Le(base::Minutes(1))));
   }
   {
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(tokens[1]);
+    InUseAuthSession in_use_auth_session = TakeAuthSession(tokens[1]);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
   }
 
@@ -294,8 +302,7 @@ TEST_F(AuthSessionManagerTest, ExtendExpire) {
 
   // Now both sessions should be gone.
   for (const auto& token : tokens) {
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(token);
+    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
   }
 }
@@ -317,8 +324,7 @@ TEST_F(AuthSessionManagerTest, CreateExpireAfterPowerSuspend) {
         UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
   }
   {
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(token);
+    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
     EXPECT_THAT(
         in_use_auth_session.GetRemainingTime(),
@@ -331,8 +337,7 @@ TEST_F(AuthSessionManagerTest, CreateExpireAfterPowerSuspend) {
   task_environment_.SuspendedFastForwardBy(time_passed);
   test_power_monitor_.Resume();
   {
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(token);
+    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
     EXPECT_THAT(in_use_auth_session.GetRemainingTime(),
                 AllOf(Gt(base::TimeDelta()),
@@ -345,13 +350,12 @@ TEST_F(AuthSessionManagerTest, CreateExpireAfterPowerSuspend) {
 
   // After expiration the session should be gone.
   {
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(token);
+    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
   }
 }
 
-TEST_F(AuthSessionManagerTest, AddFindRemove) {
+TEST_F(AuthSessionManagerTest, AddRemove) {
   base::UnguessableToken token;
 
   // Start scope for first InUseAuthSession
@@ -372,11 +376,8 @@ TEST_F(AuthSessionManagerTest, AddFindRemove) {
     ASSERT_THAT(auth_session.Get(), Eq(created_auth_session_ptr));
     token = auth_session->token();
 
-    // FindAuthSession on the same token doesn't work, the actual session is
-    // owned by |auth_session|.
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(token);
-    ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+    // You can't get the session, it's still in use.
+    AssertAuthSessionInUse(token);
     // Scope ends here to free the InUseAuthSession and return it to
     // AuthSessionManager.
   }
@@ -384,9 +385,8 @@ TEST_F(AuthSessionManagerTest, AddFindRemove) {
   // After InUseAuthSession is freed, then AuthSessionManager can operate on the
   // token and remove it.
   EXPECT_TRUE(auth_session_manager_.RemoveAuthSession(token));
-  InUseAuthSession in_use_auth_session =
-      auth_session_manager_.FindAuthSession(token);
-  ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+  InUseAuthSession in_use_auth_session = TakeAuthSession(token);
+  ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
 
   // Repeat with serialized_token overload.
   std::string serialized_token;
@@ -405,20 +405,21 @@ TEST_F(AuthSessionManagerTest, AddFindRemove) {
     InUseAuthSession auth_session =
         auth_session_manager_.AddAuthSession(std::move(created_auth_session));
     ASSERT_THAT(auth_session.Get(), Eq(created_auth_session_ptr));
-
     serialized_token = auth_session->serialized_token();
-    in_use_auth_session =
-        auth_session_manager_.FindAuthSession(serialized_token);
-    ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+
+    // You can't get the session, it's still in use.
+    AssertAuthSessionInUse(serialized_token);
+    // Scope ends here to free the InUseAuthSession and return it to
+    // AuthSessionManager.
   }
 
   // Should succeed now that AuthSessionManager owns the AuthSession.
   EXPECT_TRUE(auth_session_manager_.RemoveAuthSession(serialized_token));
-  in_use_auth_session = auth_session_manager_.FindAuthSession(serialized_token);
-  ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+  in_use_auth_session = TakeAuthSession(serialized_token);
+  ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
 }
 
-TEST_F(AuthSessionManagerTest, AddFindAndWaitRemove) {
+TEST_F(AuthSessionManagerTest, AddAndWaitRemove) {
   base::UnguessableToken token;
   bool is_called = false;
   InUseAuthSession saved_session;
@@ -446,13 +447,7 @@ TEST_F(AuthSessionManagerTest, AddFindAndWaitRemove) {
     ASSERT_THAT(auth_session.Get(), Eq(created_auth_session_ptr));
     token = auth_session->token();
 
-    // FindAuthSession on the same token doesn't work, the actual session is
-    // owned by |auth_session|.
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(token);
-    ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
-
-    // FindAndWaitAuthSession on the same token will not trigger the callback
+    // RunWhenAvailable on the same token will not trigger the callback
     // directly, but wait for the session is not in use instead.
     auth_session_manager_.RunWhenAvailable(
         token, base::BindLambdaForTesting(callback));
@@ -544,11 +539,8 @@ TEST_F(AuthSessionManagerTest, AddFindUnMount) {
     ASSERT_THAT(auth_session.Get(), Eq(created_auth_session_ptr));
     token = auth_session->token();
 
-    // FindAuthSession on the same token doesn't work, the actual session is
-    // owned by |auth_session|.
-    InUseAuthSession in_use_auth_session =
-        auth_session_manager_.FindAuthSession(token);
-    ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+    // You can't get the session, it's still in use.
+    AssertAuthSessionInUse(token);
     // Scope ends here to free the InUseAuthSession and return it to
     // AuthSessionManager.
   }
@@ -556,9 +548,8 @@ TEST_F(AuthSessionManagerTest, AddFindUnMount) {
   // After InUseAuthSession is freed, then AuthSessionManager can operate on the
   // token and remove it.
   EXPECT_TRUE(auth_session_manager_.RemoveAuthSession(token));
-  InUseAuthSession in_use_auth_session =
-      auth_session_manager_.FindAuthSession(token);
-  ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+  InUseAuthSession in_use_auth_session = TakeAuthSession(token);
+  ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
 
   // Repeat with serialized_token overload.
   std::string serialized_token;
@@ -579,15 +570,16 @@ TEST_F(AuthSessionManagerTest, AddFindUnMount) {
     ASSERT_THAT(auth_session.Get(), Eq(created_auth_session_ptr));
 
     serialized_token = auth_session->serialized_token();
-    in_use_auth_session =
-        auth_session_manager_.FindAuthSession(serialized_token);
-    ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+    // You can't get the session, it's still in use.
+    AssertAuthSessionInUse(serialized_token);
+    // Scope ends here to free the InUseAuthSession and return it to
+    // AuthSessionManager.
   }
 
   // Should succeed now that AuthSessionManager owns the AuthSession.
   auth_session_manager_.RemoveAllAuthSessions();
-  in_use_auth_session = auth_session_manager_.FindAuthSession(serialized_token);
-  ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+  in_use_auth_session = TakeAuthSession(serialized_token);
+  ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
 }
 
 }  // namespace

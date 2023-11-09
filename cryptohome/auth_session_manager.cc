@@ -66,8 +66,7 @@ InUseAuthSession AuthSessionManager::AddAuthSession(
   // Add an entry to the session map. Note that we're deliberately initializing
   // things into an in-use state by only adding a blank entry in the map.
   auth_sessions_.emplace_hint(iter, token, AuthSessionMapEntry{});
-  InUseAuthSession in_use(*this, /*is_session_active=*/true,
-                          std::move(auth_session));
+  InUseAuthSession in_use(*this, std::move(auth_session));
 
   // Add an expiration entry for the session set to the end of time.
   base::Time expiration_time = base::Time::Max();
@@ -123,36 +122,6 @@ bool AuthSessionManager::RemoveAuthSession(
     return false;
   }
   return RemoveAuthSession(token.value());
-}
-
-InUseAuthSession AuthSessionManager::FindAuthSession(
-    const std::string& serialized_token) {
-  std::optional<base::UnguessableToken> token =
-      AuthSession::GetTokenFromSerializedString(serialized_token);
-  if (!token.has_value()) {
-    LOG(ERROR) << "Unparsable AuthSession token for find";
-    return InUseAuthSession(*this, /*is_session_active=*/false, nullptr);
-  }
-  return FindAuthSession(token.value());
-}
-
-InUseAuthSession AuthSessionManager::FindAuthSession(
-    const base::UnguessableToken& token) {
-  auto it = auth_sessions_.find(token);
-  if (it == auth_sessions_.end()) {
-    return InUseAuthSession(*this, /*is_session_active=*/false, nullptr);
-  }
-
-  // If the AuthSessionManager doesn't own the AuthSession unique_ptr,
-  // then the AuthSession is actively in use for another dbus operation.
-  if (!it->second.session) {
-    return InUseAuthSession(*this, /*is_session_active=*/true, nullptr);
-  } else {
-    // By giving ownership of the unique_ptr we are marking
-    // the AuthSession as in active use.
-    return InUseAuthSession(*this, /*is_session_active=*/false,
-                            std::move(it->second.session));
-  }
 }
 
 void AuthSessionManager::ResetExpirationTimer() {
@@ -222,8 +191,8 @@ void AuthSessionManager::MarkNotInUse(std::unique_ptr<AuthSession> session) {
     return;
   }
   if (!it->second.pending_callbacks.IsEmpty()) {
-    it->second.pending_callbacks.Pop().Run(InUseAuthSession(
-        *this, /*is_session_active=*/false, std::move(session)));
+    it->second.pending_callbacks.Pop().Run(
+        InUseAuthSession(*this, std::move(session)));
     return;
   }
   it->second.session = std::move(session);
@@ -241,8 +210,7 @@ void AuthSessionManager::RunWhenAvailable(
       AuthSession::GetTokenFromSerializedString(serialized_token);
   if (!token.has_value()) {
     LOG(ERROR) << "Unparsable AuthSession token for find";
-    std::move(callback).Run(
-        InUseAuthSession(*this, /*is_session_active=*/false, nullptr));
+    std::move(callback).Run(InUseAuthSession(*this, nullptr));
     return;
   }
   RunWhenAvailable(token.value(), std::move(callback));
@@ -253,8 +221,7 @@ void AuthSessionManager::RunWhenAvailable(
     base::OnceCallback<void(InUseAuthSession)> callback) {
   auto it = auth_sessions_.find(token);
   if (it == auth_sessions_.end()) {
-    std::move(callback).Run(
-        InUseAuthSession(*this, /*is_session_active=*/false, nullptr));
+    std::move(callback).Run(InUseAuthSession(*this, nullptr));
     return;
   }
 
@@ -268,8 +235,8 @@ void AuthSessionManager::RunWhenAvailable(
 
   // By giving ownership of the unique_ptr we are marking
   // the AuthSession as in active use.
-  std::move(callback).Run(InUseAuthSession(*this, /*is_session_active=*/false,
-                                           std::move(it->second.session)));
+  std::move(callback).Run(
+      InUseAuthSession(*this, std::move(it->second.session)));
 }
 
 AuthSessionManager::PendingCallbacksQueue::~PendingCallbacksQueue() {
@@ -295,24 +262,18 @@ AuthSessionManager::PendingCallbacksQueue::Pop() {
   return callback;
 }
 
-InUseAuthSession::InUseAuthSession()
-    : manager_(nullptr), is_session_active_(false), session_(nullptr) {}
+InUseAuthSession::InUseAuthSession() : manager_(nullptr), session_(nullptr) {}
 
 InUseAuthSession::InUseAuthSession(AuthSessionManager& manager,
-                                   bool is_session_active,
                                    std::unique_ptr<AuthSession> session)
-    : manager_(&manager),
-      is_session_active_(is_session_active),
-      session_(std::move(session)) {}
+    : manager_(&manager), session_(std::move(session)) {}
 
 InUseAuthSession::InUseAuthSession(InUseAuthSession&& auth_session)
     : manager_(auth_session.manager_),
-      is_session_active_(auth_session.is_session_active_),
       session_(std::move(auth_session.session_)) {}
 
 InUseAuthSession& InUseAuthSession::operator=(InUseAuthSession&& auth_session) {
   manager_ = auth_session.manager_;
-  is_session_active_ = auth_session.is_session_active_;
   session_ = std::move(auth_session.session_);
   return *this;
 }
@@ -326,24 +287,14 @@ InUseAuthSession::~InUseAuthSession() {
 CryptohomeStatus InUseAuthSession::AuthSessionStatus() const {
   if (!session_) {
     // InUseAuthSession wasn't made with a valid AuthSession unique_ptr
-    if (is_session_active_) {
-      LOG(ERROR) << "Existing AuthSession is locked in a previous opertaion.";
-      return MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionManagerAuthSessionActive),
-          ErrorActionSet({PossibleAction::kReboot}),
-          user_data_auth::CryptohomeErrorCode::
-              CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-    } else {
-      LOG(ERROR) << "Invalid AuthSession token provided.";
-      return MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionManagerAuthSessionNotFound),
-          ErrorActionSet({PossibleAction::kReboot}),
-          user_data_auth::CryptohomeErrorCode::
-              CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-    }
-  } else {
-    return OkStatus<CryptohomeError>();
+    LOG(ERROR) << "Invalid AuthSession token provided.";
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionManagerAuthSessionNotFound),
+        ErrorActionSet({PossibleAction::kReboot}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
   }
+  return OkStatus<CryptohomeError>();
 }
 
 base::TimeDelta InUseAuthSession::GetRemainingTime() const {
