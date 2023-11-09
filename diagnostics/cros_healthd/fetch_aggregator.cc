@@ -101,7 +101,8 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kBattery: {
-        info->battery_result = FetchBatteryInfo(context_);
+        FetchBatteryInfo(context_,
+                         CreateFetchCallback(&barrier, &info->battery_result));
         break;
       }
       case mojom::ProbeCategoryEnum::kCpu: {
