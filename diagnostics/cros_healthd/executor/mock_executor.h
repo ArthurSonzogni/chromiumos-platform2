@@ -14,7 +14,6 @@
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
-#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
 
@@ -199,6 +198,15 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
   MOCK_METHOD(void,
               GetTouchpadDevices,
               (GetTouchpadDevicesCallback callback),
+              (override));
+  MOCK_METHOD(void,
+              GetSmartBatteryTemperature,
+              (uint8_t i2c_port, GetSmartBatteryTemperatureCallback callback),
+              (override));
+  MOCK_METHOD(void,
+              GetSmartBatteryManufactureDate,
+              (uint8_t i2c_port,
+               GetSmartBatteryManufactureDateCallback callback),
               (override));
 };
 

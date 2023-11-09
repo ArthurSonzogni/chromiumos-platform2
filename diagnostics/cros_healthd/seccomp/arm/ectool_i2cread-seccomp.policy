@@ -25,3 +25,7 @@ clock_getres_time64: 1
 clock_gettime: 1
 clock_gettime64: 1
 gettimeofday: 1
+getrandom: arg2 in ~GRND_RANDOM
+connect: 1
+# Required syscall for delegate process.
+socket: arg0 == AF_UNIX

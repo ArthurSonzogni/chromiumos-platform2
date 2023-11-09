@@ -505,4 +505,24 @@ interface Executor {
   // * |devices| - A list of TouchpadDevice pointers.
   // * |err| - Error message if existed.
   GetTouchpadDevices() => (array<TouchpadDevice> devices, string? err);
+
+  // Get the manufacture date of smart battery by reading I2C bus from EC.
+  //
+  // The request:
+  // * |i2c_port| - I2C port number, which is different across models.
+  //
+  // The response:
+  // * |manufacture_date| - 32-bit datetime formats. Return null if error
+  //                        occurs.
+  GetSmartBatteryManufactureDate(uint8 i2c_port) => (uint32? manufacture_date);
+
+  // Get the internal temperature of smart battery by reading I2C bus from EC.
+  //
+  // The request:
+  // * |i2c_port| - I2C port number, which is different across models.
+  //
+  // The response:
+  // * |temperature| - temperature in tenth degree Kelvin increments. Return
+  //                   null if error occurs.
+  GetSmartBatteryTemperature(uint8 i2c_port) => (uint32? temperature);
 };

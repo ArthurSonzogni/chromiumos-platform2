@@ -32,6 +32,7 @@
 #include <libec/get_features_command.h>
 #include <libec/get_protocol_info_command.h>
 #include <libec/get_version_command.h>
+#include <libec/i2c_read_command.h>
 #include <libec/led_control_command.h>
 #include <libec/mkbp_event.h>
 #include <libec/motion_sense_command_lid_angle.h>
@@ -66,6 +67,11 @@ constexpr int kMaximumGetExternalDisplayInfoRetry = 10;
 // The interval to wait between retrying to get external display info.
 constexpr base::TimeDelta kGetExternalDisplayInfoRetryPeriod =
     base::Milliseconds(500);
+
+// The i2c address defined at platform/ec/include/battery_smart.h is 7-bit i2c
+// address, which is 0x0B (BATTERY_ADDR_FLAGS). We should pass the 8-bit i2c
+// address, which is 0x16, to libec.
+constexpr uint8_t kBatteryI2cAddress = 0x16;
 
 ec::FpMode ToEcFpMode(mojom::FingerprintCaptureType type) {
   switch (type) {
@@ -862,4 +868,33 @@ void DelegateImpl::GetTouchpadDevices(GetTouchpadDevicesCallback callback) {
   }
   std::move(callback).Run(std::move(result.value()), std::nullopt);
 }
+
+void DelegateImpl::GetSmartBatteryManufactureDate(
+    uint8_t i2c_port, GetSmartBatteryManufactureDateCallback callback) {
+  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDONLY));
+  // Offset of manufacture date is 0x1B and the number of reading bytes is 2.
+  std::unique_ptr<ec::I2cReadCommand> cmd = ec::I2cReadCommand::Create(
+      /*port=*/i2c_port, /*addr8=*/kBatteryI2cAddress,
+      /*offset=*/0x1B, /*read_len=*/2);
+  if (!cmd || !cmd->Run(cros_fd.get())) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+  std::move(callback).Run(cmd->Data());
+}
+
+void DelegateImpl::GetSmartBatteryTemperature(
+    uint8_t i2c_port, GetSmartBatteryTemperatureCallback callback) {
+  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDONLY));
+  // Offset of temperature is 0x08 and the number of reading bytes is 2.
+  std::unique_ptr<ec::I2cReadCommand> cmd = ec::I2cReadCommand::Create(
+      /*port=*/i2c_port, /*addr8=*/kBatteryI2cAddress,
+      /*offset=*/0x08, /*read_len=*/2);
+  if (!cmd || !cmd->Run(cros_fd.get())) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+  std::move(callback).Run(cmd->Data());
+}
+
 }  // namespace diagnostics

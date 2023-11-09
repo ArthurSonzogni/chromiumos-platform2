@@ -5,7 +5,6 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_EXECUTOR_H_
 #define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_EXECUTOR_H_
 
-#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -24,10 +23,8 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/unique_receiver_set.h>
 
-#include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/executor/utils/sandboxed_process.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
-#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace org::chromium {
 class DlcServiceInterfaceProxyInterface;
@@ -155,6 +152,11 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   void SetAllFanAutoControl(SetAllFanAutoControlCallback callback) override;
   void GetEcThermalSensors(GetEcThermalSensorsCallback callback) override;
   void GetTouchpadDevices(GetTouchpadDevicesCallback callback) override;
+  void GetSmartBatteryManufactureDate(
+      uint8_t i2c_port,
+      GetSmartBatteryManufactureDateCallback callback) override;
+  void GetSmartBatteryTemperature(
+      uint8_t i2c_port, GetSmartBatteryTemperatureCallback callback) override;
 
  private:
   // Runs the given process and wait for it to die. Does not track the process

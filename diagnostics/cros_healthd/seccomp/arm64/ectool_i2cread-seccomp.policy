@@ -37,3 +37,7 @@ set_tid_address: 1
 set_robust_list: 1
 prlimit64: 1
 getrandom: arg2 in ~GRND_RANDOM
+connect: 1
+process_vm_readv: 1
+# Required syscall for delegate process.
+socket: arg0 == AF_UNIX

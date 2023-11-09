@@ -40,13 +40,13 @@
 
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/delegate/constants.h"
+#include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/executor/utils/delegate_process.h"
 #include "diagnostics/cros_healthd/executor/utils/dlc_manager.h"
 #include "diagnostics/cros_healthd/executor/utils/file.h"
 #include "diagnostics/cros_healthd/executor/utils/process_control.h"
 #include "diagnostics/cros_healthd/executor/utils/sandboxed_process.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
@@ -111,6 +111,9 @@ constexpr char kBtmon[] = "btmon-seccomp.policy";
 constexpr char kThermal[] = "ec_thermal-seccomp.policy";
 // SECCOMP policy for udev
 constexpr char kTouchpadFetcher[] = "touchpad_fetcher-seccomp.policy";
+// SECCOMP policy for reading I2C bus from EC.
+// TODO(b/187371195): Replace `ectool` with `ec` after removing debugd usages.
+constexpr char kI2CRead[] = "ectool_i2cread-seccomp.policy";
 
 }  // namespace seccomp_file
 
@@ -1026,6 +1029,7 @@ void Executor::SetAllFanAutoControl(SetAllFanAutoControlCallback callback) {
       std::move(delegate), std::move(callback), kFailToLaunchDelegate));
   delegate_ptr->StartAsync();
 }
+
 void Executor::GetTouchpadDevices(GetTouchpadDevicesCallback callback) {
   auto delegate = std::make_unique<DelegateProcess>(
       seccomp_file::kTouchpadFetcher,
@@ -1055,6 +1059,38 @@ void Executor::GetEcThermalSensors(GetEcThermalSensorsCallback callback) {
   delegate_ptr->remote()->GetEcThermalSensors(CreateOnceDelegateCallback(
       std::move(delegate), std::move(callback),
       std::vector<mojom::ThermalSensorInfoPtr>{}, kFailToLaunchDelegate));
+  delegate_ptr->StartAsync();
+}
+
+void Executor::GetSmartBatteryManufactureDate(
+    uint8_t i2c_port, GetSmartBatteryManufactureDateCallback callback) {
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kI2CRead,
+      SandboxedProcess::Options{
+          .user = user::kEc,
+          .readonly_mount_points = {base::FilePath{path::kCrosEcDevice}},
+      });
+
+  auto* delegate_ptr = delegate.get();
+  delegate_ptr->remote()->GetSmartBatteryManufactureDate(
+      i2c_port, CreateOnceDelegateCallback(std::move(delegate),
+                                           std::move(callback), std::nullopt));
+  delegate_ptr->StartAsync();
+}
+
+void Executor::GetSmartBatteryTemperature(
+    uint8_t i2c_port, GetSmartBatteryTemperatureCallback callback) {
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kI2CRead,
+      SandboxedProcess::Options{
+          .user = user::kEc,
+          .readonly_mount_points = {base::FilePath{path::kCrosEcDevice}},
+      });
+
+  auto* delegate_ptr = delegate.get();
+  delegate_ptr->remote()->GetSmartBatteryTemperature(
+      i2c_port, CreateOnceDelegateCallback(std::move(delegate),
+                                           std::move(callback), std::nullopt));
   delegate_ptr->StartAsync();
 }
 

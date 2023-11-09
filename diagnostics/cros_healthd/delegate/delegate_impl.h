@@ -75,6 +75,11 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
   void SetAllFanAutoControl(SetAllFanAutoControlCallback callback) override;
   void GetEcThermalSensors(GetEcThermalSensorsCallback callback) override;
   void GetTouchpadDevices(GetTouchpadDevicesCallback callback) override;
+  void GetSmartBatteryManufactureDate(
+      uint8_t i2c_port,
+      GetSmartBatteryManufactureDateCallback callback) override;
+  void GetSmartBatteryTemperature(
+      uint8_t i2c_port, GetSmartBatteryTemperatureCallback callback) override;
 
  private:
   void GetConnectedExternalDisplayConnectorsHelper(
