@@ -72,27 +72,26 @@ extern const int kLedgerSignedProofSchemaVersion;
 
 // Constructs cbor-encoded binary blob for the Recovery Request payload.
 [[nodiscard]] bool SerializeRecoveryRequestPayloadToCbor(
-    const RequestPayload& request_payload,
-    brillo::SecureBlob* request_payload_cbor);
+    const RequestPayload& request_payload, brillo::Blob* request_payload_cbor);
 
 // Constructs cbor-encoded binary blob for the Recovery Request.
 [[nodiscard]] bool SerializeRecoveryRequestToCbor(
-    const RecoveryRequest& request, brillo::SecureBlob* request_cbor);
+    const RecoveryRequest& request, brillo::Blob* request_cbor);
 
 // Constructs cbor-encoded binary blob with HSM associated data.
-[[nodiscard]] bool SerializeHsmAssociatedDataToCbor(
-    const HsmAssociatedData& ad, brillo::SecureBlob* ad_cbor);
+[[nodiscard]] bool SerializeHsmAssociatedDataToCbor(const HsmAssociatedData& ad,
+                                                    brillo::Blob* ad_cbor);
 
 // Constructs cbor-encoded binary blob with associated data for request payload.
 [[nodiscard]] bool SerializeRecoveryRequestAssociatedDataToCbor(
     const RecoveryRequestAssociatedData& request_ad,
-    brillo::SecureBlob* request_ad_cbor);
+    brillo::Blob* request_ad_cbor);
 
 // Constructs cbor-encoded binary blob with associated data for response
 // payload.
 [[nodiscard]] bool SerializeHsmResponseAssociatedDataToCbor(
     const HsmResponseAssociatedData& response_ad,
-    brillo::SecureBlob* response_ad_cbor);
+    brillo::Blob* response_ad_cbor);
 
 // Constructs cbor-encoded binary blob from plain text of data that will
 // be subsequently encrypted and in HSM payload.
@@ -107,7 +106,7 @@ extern const int kLedgerSignedProofSchemaVersion;
 
 // Constructs cbor-encoded binary blob for the Recovery Response.
 [[nodiscard]] bool SerializeResponsePayloadToCbor(
-    const ResponsePayload& response, brillo::SecureBlob* response_cbor);
+    const ResponsePayload& response, brillo::Blob* response_cbor);
 
 // Constructs cbor-encoded binary blob from plain text of data that will
 // be subsequently encrypted and in response payload.
@@ -117,8 +116,8 @@ extern const int kLedgerSignedProofSchemaVersion;
 
 // Constructs cbor-encoded binary blob from HsmPayload to be saved on the
 // device.
-[[nodiscard]] bool SerializeHsmPayloadToCbor(
-    const HsmPayload& hsm_payload, brillo::SecureBlob* serialized_cbor);
+[[nodiscard]] bool SerializeHsmPayloadToCbor(const HsmPayload& hsm_payload,
+                                             brillo::Blob* serialized_cbor);
 
 // Constructs cbor-encoded binary blob from PublicLedgerEntry.
 [[nodiscard]] bool SerializePublicLedgerEntryToCbor(
@@ -131,7 +130,7 @@ extern const int kLedgerSignedProofSchemaVersion;
 
 // Extracts data from HSM payload cbor.
 [[nodiscard]] bool DeserializeHsmPayloadFromCbor(
-    const brillo::SecureBlob& serialized_cbor, HsmPayload* hsm_payload);
+    const brillo::Blob& serialized_cbor, HsmPayload* hsm_payload);
 
 // Extracts data from HSM plain text cbor.
 [[nodiscard]] bool DeserializeHsmPlainTextFromCbor(
@@ -140,7 +139,7 @@ extern const int kLedgerSignedProofSchemaVersion;
 
 // Extracts data from HSM associated data cbor.
 [[nodiscard]] bool DeserializeHsmAssociatedDataFromCbor(
-    const brillo::SecureBlob& hsm_associated_data_cbor,
+    const brillo::Blob& hsm_associated_data_cbor,
     HsmAssociatedData* hsm_associated_data);
 
 // Extracts data from Recovery Request plain text cbor.
@@ -150,12 +149,12 @@ extern const int kLedgerSignedProofSchemaVersion;
 
 // Extracts data from Recovery Request cbor.
 [[nodiscard]] bool DeserializeRecoveryRequestFromCbor(
-    const brillo::SecureBlob& recovery_request_cbor,
+    const brillo::Blob& recovery_request_cbor,
     RecoveryRequest* recovery_request);
 
 // Extracts data from Recovery Request payload cbor.
 [[nodiscard]] bool DeserializeRecoveryRequestPayloadFromCbor(
-    const brillo::SecureBlob& serialized_cbor, RequestPayload* request_payload);
+    const brillo::Blob& serialized_cbor, RequestPayload* request_payload);
 
 // Extracts data from response plain text cbor.
 [[nodiscard]] bool DeserializeHsmResponsePlainTextFromCbor(
@@ -164,17 +163,16 @@ extern const int kLedgerSignedProofSchemaVersion;
 
 // Extracts data from HSM Response associated data cbor.
 [[nodiscard]] bool DeserializeHsmResponseAssociatedDataFromCbor(
-    const brillo::SecureBlob& response_ad_cbor,
+    const brillo::Blob& response_ad_cbor,
     HsmResponseAssociatedData* response_ad);
 
 // Extracts data from Recovery Response cbor.
 [[nodiscard]] bool DeserializeResponsePayloadFromCbor(
-    const brillo::SecureBlob& response_cbor, ResponsePayload* response);
+    const brillo::Blob& response_cbor, ResponsePayload* response);
 
 // Extracts data from Epoch Metadata cbor.
 [[nodiscard]] bool DeserializeEpochMetadataFromCbor(
-    const brillo::SecureBlob& epoch_metadata_cbor,
-    EpochMetadata* epoch_metadata);
+    const brillo::Blob& epoch_metadata_cbor, EpochMetadata* epoch_metadata);
 
 // Extracts data from PublicLedgerEntry cbor.
 [[nodiscard]] bool DeserializePublicLedgerEntryFromCbor(
@@ -193,22 +191,36 @@ extern const int kLedgerSignedProofSchemaVersion;
 bool GetValueFromCborMapByKeyForTesting(const brillo::SecureBlob& input_cbor,
                                         const std::string& map_key,
                                         cbor::Value* value);
+bool GetValueFromCborMapByKeyForTesting(const brillo::Blob& input_cbor,
+                                        const std::string& map_key,
+                                        cbor::Value* value);
 
 bool GetBytestringValueFromCborMapByKeyForTesting(
     const brillo::SecureBlob& input_cbor,
     const std::string& map_key,
     brillo::SecureBlob* value);
+bool GetBytestringValueFromCborMapByKeyForTesting(
+    const brillo::SecureBlob& input_cbor,
+    const std::string& map_key,
+    brillo::Blob* value);
+bool GetBytestringValueFromCborMapByKeyForTesting(
+    const brillo::Blob& input_cbor,
+    const std::string& map_key,
+    brillo::Blob* value);
 
 bool GetHsmPayloadFromRequestAdForTesting(
-    const brillo::SecureBlob& request_payload_cbor, HsmPayload* hsm_payload);
+    const brillo::Blob& request_payload_cbor, HsmPayload* hsm_payload);
 
 // Returns number of values in CBOR map. Returns -1 if provided blob is not a
 // CBOR map.
 int GetCborMapSize(const brillo::SecureBlob& input_cbor);
+int GetCborMapSize(const brillo::Blob& input_cbor);
 
-// Serialize cbor::Value to SecureBlob.
+// Serialize cbor::Value to SecureBlob or Blob.
 bool SerializeCborForTesting(const cbor::Value& cbor,
                              brillo::SecureBlob* serialized_cbor);
+bool SerializeCborForTesting(const cbor::Value& cbor,
+                             brillo::Blob* serialized_cbor);
 
 }  // namespace cryptorecovery
 }  // namespace cryptohome

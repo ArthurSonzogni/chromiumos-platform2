@@ -23,6 +23,7 @@
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/username.h"
 
+using brillo::Blob;
 using brillo::SecureBlob;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::ErrorActionSet;
@@ -50,27 +51,27 @@ const char kFakeGaiaId[] = "fake gaia id";
 const char kFakeRapt[] = "fake rapt";
 const char kFakeUserId[] = "fake user id";
 
-SecureBlob GeneratePublicKey() {
+Blob GeneratePublicKey() {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context) {
     ADD_FAILURE() << "CreateBigNumContext failed";
-    return SecureBlob();
+    return Blob();
   }
   std::optional<EllipticCurve> ec =
       EllipticCurve::Create(kCurve, context.get());
   if (!ec) {
     ADD_FAILURE() << "EllipticCurve::Create failed";
-    return SecureBlob();
+    return Blob();
   }
   crypto::ScopedEC_KEY key = ec->GenerateKey(context.get());
   if (!key) {
     ADD_FAILURE() << "GenerateKey failed";
-    return SecureBlob();
+    return Blob();
   }
-  SecureBlob result;
+  Blob result;
   if (!ec->EncodeToSpkiDer(key, &result, context.get())) {
     ADD_FAILURE() << "EncodeToSpkiDer failed";
-    return SecureBlob();
+    return Blob();
   }
   return result;
 }
@@ -145,9 +146,9 @@ class RecoveryCryptoTest : public testing::Test {
 
  protected:
   void GenerateSecretsAndMediate(SecureBlob* recovery_key,
-                                 SecureBlob* destination_share,
-                                 SecureBlob* channel_priv_key,
-                                 SecureBlob* ephemeral_pub_key,
+                                 Blob* encrypted_destination_share,
+                                 Blob* encrypted_channel_priv_key,
+                                 Blob* ephemeral_pub_key,
                                  CryptoRecoveryRpcResponse* response_proto,
                                  HsmPayload* hsm_payload) {
     // Generates HSM payload that would be persisted on a chromebook.
@@ -158,10 +159,10 @@ class RecoveryCryptoTest : public testing::Test {
     GenerateHsmPayloadResponse generate_hsm_payload_response;
     EXPECT_TRUE(recovery_->GenerateHsmPayload(generate_hsm_payload_request,
                                               &generate_hsm_payload_response));
-    *destination_share =
+    *encrypted_destination_share =
         generate_hsm_payload_response.encrypted_destination_share;
     *recovery_key = generate_hsm_payload_response.recovery_key;
-    *channel_priv_key =
+    *encrypted_channel_priv_key =
         generate_hsm_payload_response.encrypted_channel_priv_key;
     *hsm_payload = generate_hsm_payload_response.hsm_payload;
 
@@ -187,7 +188,6 @@ class RecoveryCryptoTest : public testing::Test {
         response_proto));
   }
 
-  SecureBlob rsa_pub_key_;
   OnboardingMetadata onboarding_metadata_;
   RequestMetadata request_metadata_;
 
@@ -196,9 +196,9 @@ class RecoveryCryptoTest : public testing::Test {
   std::unique_ptr<const hwsec::RecoveryCryptoFrontend>
       recovery_crypto_fake_backend_;
 
-  SecureBlob mediator_pub_key_;
+  Blob mediator_pub_key_;
   SecureBlob mediator_priv_key_;
-  SecureBlob epoch_pub_key_;
+  Blob epoch_pub_key_;
   SecureBlob epoch_priv_key_;
   CryptoRecoveryEpochResponse epoch_response_;
   LedgerInfo ledger_info_;
@@ -231,7 +231,7 @@ TEST_F(RecoveryCryptoTest, RecoveryTestSuccess) {
        .channel_pub_key = generate_hsm_payload_response.channel_pub_key,
        .obfuscated_username = ObfuscatedUsername()});
   CryptoRecoveryRpcRequest recovery_request;
-  SecureBlob ephemeral_pub_key;
+  Blob ephemeral_pub_key;
   EXPECT_TRUE(recovery_->GenerateRecoveryRequest(
       generate_recovery_request_input_param, &recovery_request,
       &ephemeral_pub_key));
@@ -260,16 +260,16 @@ TEST_F(RecoveryCryptoTest, RecoveryTestSuccess) {
                   decrypt_response_payload_request, &response_plain_text),
               IsOk());
 
-  RecoverDestinationRequest recover_destination_request(
-      {.dealer_pub_key = response_plain_text.dealer_pub_key,
-       .key_auth_value = response_plain_text.key_auth_value,
-       .encrypted_destination_share =
-           generate_hsm_payload_response.encrypted_destination_share,
-       .extended_pcr_bound_destination_share =
-           generate_hsm_payload_response.extended_pcr_bound_destination_share,
-       .ephemeral_pub_key = ephemeral_pub_key,
-       .mediated_publisher_pub_key = response_plain_text.mediated_point,
-       .obfuscated_username = ObfuscatedUsername()});
+  RecoverDestinationRequest recover_destination_request{
+      .dealer_pub_key = response_plain_text.dealer_pub_key,
+      .key_auth_value = response_plain_text.key_auth_value,
+      .encrypted_destination_share =
+          generate_hsm_payload_response.encrypted_destination_share,
+      .extended_pcr_bound_destination_share =
+          generate_hsm_payload_response.extended_pcr_bound_destination_share,
+      .ephemeral_pub_key = ephemeral_pub_key,
+      .mediated_publisher_pub_key = response_plain_text.mediated_point,
+      .obfuscated_username = ObfuscatedUsername()};
   SecureBlob mediated_recovery_key;
   EXPECT_TRUE(recovery_->RecoverDestination(recover_destination_request,
                                             &mediated_recovery_key));
@@ -281,7 +281,7 @@ TEST_F(RecoveryCryptoTest, RecoveryTestSuccess) {
 
 TEST_F(RecoveryCryptoTest, GenerateHsmPayloadInvalidMediatorKey) {
   GenerateHsmPayloadRequest generate_hsm_payload_request(
-      {.mediator_pub_key = SecureBlob("not a key"),
+      {.mediator_pub_key = brillo::BlobFromString("not a key"),
        .onboarding_metadata = onboarding_metadata_,
        .obfuscated_username = ObfuscatedUsername()});
   GenerateHsmPayloadResponse generate_hsm_payload_response;
@@ -311,12 +311,12 @@ TEST_F(RecoveryCryptoTest, MediateWithInvalidEpochPublicKey) {
        .channel_pub_key = generate_hsm_payload_response.channel_pub_key,
        .obfuscated_username = ObfuscatedUsername()});
   CryptoRecoveryRpcRequest recovery_request;
-  SecureBlob ephemeral_pub_key;
+  Blob ephemeral_pub_key;
   EXPECT_TRUE(recovery_->GenerateRecoveryRequest(
       generate_recovery_request_input_param, &recovery_request,
       &ephemeral_pub_key));
 
-  SecureBlob random_key = GeneratePublicKey();
+  Blob random_key = GeneratePublicKey();
 
   // Simulates mediation performed by HSM.
   CryptoRecoveryRpcResponse response_proto;
@@ -347,12 +347,13 @@ TEST_F(RecoveryCryptoTest, MediateWithInvalidEpochPublicKey) {
 }
 
 TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDealerPublicKey) {
-  SecureBlob recovery_key, destination_share, channel_priv_key,
+  SecureBlob recovery_key;
+  Blob encrypted_destination_share, encrypted_channel_priv_key,
       ephemeral_pub_key;
   CryptoRecoveryRpcResponse response_proto;
   HsmPayload hsm_payload;
-  GenerateSecretsAndMediate(&recovery_key, &destination_share,
-                            &channel_priv_key, &ephemeral_pub_key,
+  GenerateSecretsAndMediate(&recovery_key, &encrypted_destination_share,
+                            &encrypted_channel_priv_key, &ephemeral_pub_key,
                             &response_proto, &hsm_payload);
 
   HsmAssociatedData hsm_associated_data;
@@ -360,7 +361,7 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDealerPublicKey) {
                                                    &hsm_associated_data));
 
   DecryptResponsePayloadRequest decrypt_response_payload_request(
-      {.encrypted_channel_priv_key = channel_priv_key,
+      {.encrypted_channel_priv_key = encrypted_channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
        .obfuscated_username = ObfuscatedUsername(),
@@ -371,16 +372,16 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDealerPublicKey) {
                   decrypt_response_payload_request, &response_plain_text),
               IsOk());
 
-  SecureBlob random_key = GeneratePublicKey();
+  Blob random_key = GeneratePublicKey();
 
-  RecoverDestinationRequest recover_destination_request(
-      {.dealer_pub_key = random_key,
-       .key_auth_value = response_plain_text.key_auth_value,
-       .encrypted_destination_share = destination_share,
-       .extended_pcr_bound_destination_share = SecureBlob(),
-       .ephemeral_pub_key = ephemeral_pub_key,
-       .mediated_publisher_pub_key = response_plain_text.mediated_point,
-       .obfuscated_username = ObfuscatedUsername()});
+  RecoverDestinationRequest recover_destination_request{
+      .dealer_pub_key = random_key,
+      .key_auth_value = response_plain_text.key_auth_value,
+      .encrypted_destination_share = encrypted_destination_share,
+      .extended_pcr_bound_destination_share = Blob(),
+      .ephemeral_pub_key = ephemeral_pub_key,
+      .mediated_publisher_pub_key = response_plain_text.mediated_point,
+      .obfuscated_username = ObfuscatedUsername()};
   SecureBlob mediated_recovery_key;
   EXPECT_TRUE(recovery_->RecoverDestination(recover_destination_request,
                                             &mediated_recovery_key));
@@ -391,12 +392,13 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDealerPublicKey) {
 }
 
 TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDestinationShare) {
-  SecureBlob recovery_key, destination_share, channel_priv_key,
-      ephemeral_pub_key, response_cbor;
+  SecureBlob recovery_key;
+  Blob encrypted_destination_share, encrypted_channel_priv_key,
+      ephemeral_pub_key;
   CryptoRecoveryRpcResponse response_proto;
   HsmPayload hsm_payload;
-  GenerateSecretsAndMediate(&recovery_key, &destination_share,
-                            &channel_priv_key, &ephemeral_pub_key,
+  GenerateSecretsAndMediate(&recovery_key, &encrypted_destination_share,
+                            &encrypted_channel_priv_key, &ephemeral_pub_key,
                             &response_proto, &hsm_payload);
 
   HsmAssociatedData hsm_associated_data;
@@ -404,7 +406,7 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDestinationShare) {
                                                    &hsm_associated_data));
 
   DecryptResponsePayloadRequest decrypt_response_payload_request(
-      {.encrypted_channel_priv_key = channel_priv_key,
+      {.encrypted_channel_priv_key = encrypted_channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
        .obfuscated_username = ObfuscatedUsername(),
@@ -417,14 +419,15 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDestinationShare) {
 
   SecureBlob random_scalar = GenerateScalar();
 
-  RecoverDestinationRequest recover_destination_request(
-      {.dealer_pub_key = response_plain_text.dealer_pub_key,
-       .key_auth_value = response_plain_text.key_auth_value,
-       .encrypted_destination_share = random_scalar,
-       .extended_pcr_bound_destination_share = SecureBlob(),
-       .ephemeral_pub_key = ephemeral_pub_key,
-       .mediated_publisher_pub_key = response_plain_text.mediated_point,
-       .obfuscated_username = ObfuscatedUsername()});
+  RecoverDestinationRequest recover_destination_request{
+      .dealer_pub_key = response_plain_text.dealer_pub_key,
+      .key_auth_value = response_plain_text.key_auth_value,
+      .encrypted_destination_share =
+          Blob(random_scalar.begin(), random_scalar.end()),
+      .extended_pcr_bound_destination_share = Blob(),
+      .ephemeral_pub_key = ephemeral_pub_key,
+      .mediated_publisher_pub_key = response_plain_text.mediated_point,
+      .obfuscated_username = ObfuscatedUsername()};
   SecureBlob mediated_recovery_key;
 
   // Recover with invalid destination share should fail.
@@ -433,12 +436,13 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDestinationShare) {
 }
 
 TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidEphemeralKey) {
-  SecureBlob recovery_key, destination_share, channel_priv_key,
-      ephemeral_pub_key, response_cbor;
+  SecureBlob recovery_key;
+  Blob encrypted_destination_share, encrypted_channel_priv_key,
+      ephemeral_pub_key;
   CryptoRecoveryRpcResponse response_proto;
   HsmPayload hsm_payload;
-  GenerateSecretsAndMediate(&recovery_key, &destination_share,
-                            &channel_priv_key, &ephemeral_pub_key,
+  GenerateSecretsAndMediate(&recovery_key, &encrypted_destination_share,
+                            &encrypted_channel_priv_key, &ephemeral_pub_key,
                             &response_proto, &hsm_payload);
 
   HsmAssociatedData hsm_associated_data;
@@ -446,7 +450,7 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidEphemeralKey) {
                                                    &hsm_associated_data));
 
   DecryptResponsePayloadRequest decrypt_response_payload_request(
-      {.encrypted_channel_priv_key = channel_priv_key,
+      {.encrypted_channel_priv_key = encrypted_channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
        .obfuscated_username = ObfuscatedUsername(),
@@ -457,13 +461,13 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidEphemeralKey) {
                   decrypt_response_payload_request, &response_plain_text),
               IsOk());
 
-  SecureBlob random_key = GeneratePublicKey();
+  Blob random_key = GeneratePublicKey();
 
   RecoverDestinationRequest recover_destination_request(
       {.dealer_pub_key = response_plain_text.dealer_pub_key,
        .key_auth_value = response_plain_text.key_auth_value,
-       .encrypted_destination_share = destination_share,
-       .extended_pcr_bound_destination_share = SecureBlob(),
+       .encrypted_destination_share = encrypted_destination_share,
+       .extended_pcr_bound_destination_share = Blob(),
        .ephemeral_pub_key = random_key,
        .mediated_publisher_pub_key = response_plain_text.mediated_point,
        .obfuscated_username = ObfuscatedUsername("obfuscated_username")});
@@ -475,12 +479,13 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidEphemeralKey) {
 }
 
 TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPointValue) {
-  SecureBlob recovery_key, destination_share, channel_priv_key,
-      ephemeral_pub_key, response_cbor;
+  SecureBlob recovery_key;
+  Blob encrypted_destination_share, encrypted_channel_priv_key,
+      ephemeral_pub_key;
   CryptoRecoveryRpcResponse response_proto;
   HsmPayload hsm_payload;
-  GenerateSecretsAndMediate(&recovery_key, &destination_share,
-                            &channel_priv_key, &ephemeral_pub_key,
+  GenerateSecretsAndMediate(&recovery_key, &encrypted_destination_share,
+                            &encrypted_channel_priv_key, &ephemeral_pub_key,
                             &response_proto, &hsm_payload);
 
   HsmAssociatedData hsm_associated_data;
@@ -488,7 +493,7 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPointValue) {
                                                    &hsm_associated_data));
 
   DecryptResponsePayloadRequest decrypt_response_payload_request(
-      {.encrypted_channel_priv_key = channel_priv_key,
+      {.encrypted_channel_priv_key = encrypted_channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
        .obfuscated_username = ObfuscatedUsername(),
@@ -499,16 +504,16 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPointValue) {
                   decrypt_response_payload_request, &response_plain_text),
               IsOk());
 
-  SecureBlob random_key = GeneratePublicKey();
+  Blob random_key = GeneratePublicKey();
 
-  RecoverDestinationRequest recover_destination_request(
-      {.dealer_pub_key = response_plain_text.dealer_pub_key,
-       .key_auth_value = response_plain_text.key_auth_value,
-       .encrypted_destination_share = destination_share,
-       .extended_pcr_bound_destination_share = SecureBlob(),
-       .ephemeral_pub_key = ephemeral_pub_key,
-       .mediated_publisher_pub_key = random_key,
-       .obfuscated_username = ObfuscatedUsername()});
+  RecoverDestinationRequest recover_destination_request{
+      .dealer_pub_key = response_plain_text.dealer_pub_key,
+      .key_auth_value = response_plain_text.key_auth_value,
+      .encrypted_destination_share = encrypted_destination_share,
+      .extended_pcr_bound_destination_share = Blob(),
+      .ephemeral_pub_key = ephemeral_pub_key,
+      .mediated_publisher_pub_key = brillo::SecureBlob(random_key),
+      .obfuscated_username = ObfuscatedUsername()};
   SecureBlob mediated_recovery_key;
   EXPECT_TRUE(recovery_->RecoverDestination(recover_destination_request,
                                             &mediated_recovery_key));
@@ -519,12 +524,13 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPointValue) {
 }
 
 TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPoint) {
-  SecureBlob recovery_key, destination_share, channel_priv_key,
-      ephemeral_pub_key, response_cbor;
+  SecureBlob recovery_key;
+  Blob encrypted_destination_share, encrypted_channel_priv_key,
+      ephemeral_pub_key;
   CryptoRecoveryRpcResponse response_proto;
   HsmPayload hsm_payload;
-  GenerateSecretsAndMediate(&recovery_key, &destination_share,
-                            &channel_priv_key, &ephemeral_pub_key,
+  GenerateSecretsAndMediate(&recovery_key, &encrypted_destination_share,
+                            &encrypted_channel_priv_key, &ephemeral_pub_key,
                             &response_proto, &hsm_payload);
 
   HsmAssociatedData hsm_associated_data;
@@ -532,7 +538,7 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPoint) {
                                                    &hsm_associated_data));
 
   DecryptResponsePayloadRequest decrypt_response_payload_request(
-      {.encrypted_channel_priv_key = channel_priv_key,
+      {.encrypted_channel_priv_key = encrypted_channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
        .obfuscated_username = ObfuscatedUsername(),
@@ -544,14 +550,14 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPoint) {
               IsOk());
 
   // `RecoverDestination` fails when `mediated_point` is not a point.
-  RecoverDestinationRequest recover_destination_request(
-      {.dealer_pub_key = response_plain_text.dealer_pub_key,
-       .key_auth_value = response_plain_text.key_auth_value,
-       .encrypted_destination_share = destination_share,
-       .extended_pcr_bound_destination_share = SecureBlob(),
-       .ephemeral_pub_key = ephemeral_pub_key,
-       .mediated_publisher_pub_key = SecureBlob("not a point"),
-       .obfuscated_username = ObfuscatedUsername()});
+  RecoverDestinationRequest recover_destination_request{
+      .dealer_pub_key = response_plain_text.dealer_pub_key,
+      .key_auth_value = response_plain_text.key_auth_value,
+      .encrypted_destination_share = encrypted_destination_share,
+      .extended_pcr_bound_destination_share = Blob(),
+      .ephemeral_pub_key = ephemeral_pub_key,
+      .mediated_publisher_pub_key = brillo::SecureBlob("not a point"),
+      .obfuscated_username = ObfuscatedUsername()};
   SecureBlob mediated_recovery_key;
   EXPECT_FALSE(recovery_->RecoverDestination(recover_destination_request,
                                              &mediated_recovery_key));
@@ -660,12 +666,13 @@ TEST_F(RecoveryCryptoTest, GenerateOnboardingMetadataFileCorrupted) {
 }
 
 TEST_F(RecoveryCryptoTest, DecryptResponsePayloadServerError) {
-  SecureBlob recovery_key, destination_share, channel_priv_key,
-      ephemeral_pub_key, response_cbor;
+  SecureBlob recovery_key;
+  Blob encrypted_destination_share, encrypted_channel_priv_key,
+      ephemeral_pub_key;
   CryptoRecoveryRpcResponse response_proto;
   HsmPayload hsm_payload;
-  GenerateSecretsAndMediate(&recovery_key, &destination_share,
-                            &channel_priv_key, &ephemeral_pub_key,
+  GenerateSecretsAndMediate(&recovery_key, &encrypted_destination_share,
+                            &encrypted_channel_priv_key, &ephemeral_pub_key,
                             &response_proto, &hsm_payload);
 
   // Generate fake error response.
@@ -676,7 +683,7 @@ TEST_F(RecoveryCryptoTest, DecryptResponsePayloadServerError) {
                                                    &hsm_associated_data));
 
   DecryptResponsePayloadRequest decrypt_response_payload_request(
-      {.encrypted_channel_priv_key = channel_priv_key,
+      {.encrypted_channel_priv_key = encrypted_channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
        .obfuscated_username = ObfuscatedUsername(),

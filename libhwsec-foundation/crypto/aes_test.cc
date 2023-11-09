@@ -84,7 +84,7 @@ TEST(AesTest, AesGcmTestWithAd) {
   brillo::SecureBlob plaintext(message.begin(), message.end());
 
   std::string ad_value = "This is authentication data.";
-  brillo::SecureBlob ad(ad_value.begin(), ad_value.end());
+  brillo::Blob ad = brillo::BlobFromString(ad_value);
 
   GetSecureRandom(key.data(), key.size());
 
@@ -112,7 +112,7 @@ TEST(AesTest, AesGcmTestWrongAd) {
   brillo::SecureBlob plaintext(message.begin(), message.end());
 
   std::string ad_value = "This is authentication data.";
-  brillo::SecureBlob ad(ad_value.begin(), ad_value.end());
+  brillo::Blob ad = brillo::BlobFromString(ad_value);
 
   GetSecureRandom(key.data(), key.size());
 
@@ -123,7 +123,7 @@ TEST(AesTest, AesGcmTestWrongAd) {
   EXPECT_EQ(ciphertext.size(), plaintext.size());
 
   std::string new_ad_value = "Wrong authentication data.";
-  brillo::SecureBlob new_ad(new_ad_value.begin(), new_ad_value.end());
+  brillo::Blob new_ad = brillo::BlobFromString(new_ad_value);
   {
     brillo::SecureBlob decrypted_plaintext(4096);
     EXPECT_FALSE(

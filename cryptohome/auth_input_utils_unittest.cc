@@ -129,13 +129,14 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputRecoveryCreate) {
   EXPECT_EQ(auth_input.value()
                 .cryptohome_recovery_auth_input.value()
                 .mediator_pub_key,
-            SecureBlob(kMediatorPubKey));
+            brillo::BlobFromString(kMediatorPubKey));
 }
 
 TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputRecoveryDerive) {
   constexpr char kEpochResponse[] = "fake_epoch_response";
   constexpr char kResponsePayload[] = "fake_recovery_response";
-  SecureBlob ephemeral_pub_key = SecureBlob("fake_ephemeral_pub_key");
+  brillo::Blob ephemeral_pub_key =
+      brillo::BlobFromString("fake_ephemeral_pub_key");
 
   user_data_auth::AuthInput proto;
   proto.mutable_cryptohome_recovery_input()->set_epoch_response(kEpochResponse);
@@ -150,14 +151,14 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputRecoveryDerive) {
   ASSERT_TRUE(auth_input.value().cryptohome_recovery_auth_input.has_value());
   EXPECT_EQ(
       auth_input.value().cryptohome_recovery_auth_input.value().epoch_response,
-      SecureBlob(kEpochResponse));
+      brillo::BlobFromString(kEpochResponse));
   EXPECT_EQ(auth_input.value()
                 .cryptohome_recovery_auth_input.value()
                 .recovery_response,
-            SecureBlob(kResponsePayload));
+            brillo::BlobFromString(kResponsePayload));
   EXPECT_EQ(auth_input.value()
                 .cryptohome_recovery_auth_input.value()
-                .ephemeral_pub_key,
+                .ephemeral_pub_key.value(),
             ephemeral_pub_key);
 }
 

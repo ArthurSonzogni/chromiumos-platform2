@@ -37,7 +37,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   bool GenerateRecoveryRequest(
       const GenerateRecoveryRequestRequest& request_param,
       CryptoRecoveryRpcRequest* recovery_request,
-      brillo::SecureBlob* ephemeral_pub_key) const override;
+      brillo::Blob* ephemeral_pub_key) const override;
   bool GenerateHsmPayload(const GenerateHsmPayloadRequest& request,
                           GenerateHsmPayloadResponse* response) const override;
   bool RecoverDestination(const RecoverDestinationRequest& request,
@@ -84,14 +84,14 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
       brillo::SecureBlob* recovery_key) const;
   // Generate ephemeral public and inverse public keys {G*x, G*-x}
   [[nodiscard]] bool GenerateEphemeralKey(
-      brillo::SecureBlob* ephemeral_spki_der,
-      brillo::SecureBlob* ephemeral_inv_spki_der) const;
+      brillo::Blob* ephemeral_spki_der,
+      brillo::Blob* ephemeral_inv_spki_der) const;
   [[nodiscard]] bool GenerateHsmAssociatedData(
-      const brillo::SecureBlob& channel_pub_key,
-      const brillo::SecureBlob& rsa_pub_key,
+      const brillo::Blob& channel_pub_key,
+      const brillo::Blob& rsa_pub_key,
       const crypto::ScopedEC_KEY& publisher_key_pair,
       const OnboardingMetadata& onboarding_metadata,
-      brillo::SecureBlob* hsm_associated_data) const;
+      brillo::Blob* hsm_associated_data) const;
   [[nodiscard]] bool IsRecoveryIdAvailable(
       const base::FilePath& recovery_id_path) const;
   [[nodiscard]] bool RotateRecoveryId(

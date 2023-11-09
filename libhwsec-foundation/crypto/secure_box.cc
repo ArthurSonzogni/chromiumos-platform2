@@ -233,9 +233,9 @@ std::optional<brillo::Blob> Encrypt(const brillo::Blob& their_public_key,
     return std::nullopt;
   }
   brillo::Blob nonce, tag, ciphertext;
-  std::optional<brillo::SecureBlob> ad;
+  std::optional<brillo::Blob> ad;
   if (!header.empty()) {
-    ad = brillo::SecureBlob(header.begin(), header.end());
+    ad = header;
   }
   if (!AesGcmEncrypt(payload, ad, secret_key, &nonce, &tag, &ciphertext)) {
     LOG(ERROR) << "Failed to perform AES-GCM.";

@@ -93,6 +93,15 @@ bool GenerateOnboardingMetadata(const FilePath& file_path,
   return true;
 }
 
+bool HexStringToBlob(const std::string& hex, brillo::Blob* blob) {
+  std::string str;
+  if (!base::HexStringToString(hex, &str)) {
+    return false;
+  }
+  *blob = brillo::BlobFromString(str);
+  return true;
+}
+
 // Note: This function is not thread safe.
 const hwsec::RecoveryCryptoFrontend* GetRecoveryCryptoFrontend() {
   static std::unique_ptr<hwsec::Factory> hwsec_factory;
@@ -134,7 +143,7 @@ std::optional<LedgerInfo> LoadLedgerInfoFromJsonFile(
   }
   return LedgerInfo{.name = *name,
                     .key_hash = key_hash_val,
-                    .public_key = SecureBlob(*public_key)};
+                    .public_key = brillo::BlobFromString(*public_key)};
 }
 
 bool CheckMandatoryFlag(const std::string& flag_name,
@@ -145,28 +154,31 @@ bool CheckMandatoryFlag(const std::string& flag_name,
   return false;
 }
 
-bool ReadHexFileToSecureBlobLogged(const FilePath& file_path,
-                                   SecureBlob* contents) {
+bool ReadHexFileToBlobLogged(const FilePath& file_path,
+                             brillo::Blob* contents) {
   std::string contents_string;
   if (!base::ReadFileToString(file_path, &contents_string)) {
     LOG(ERROR) << "Failed to read from file " << file_path.value() << ".";
     return false;
   }
   if (contents_string.empty()) {
-    // The content of the file is empty. Return with empty SecureBlob.
+    // The content of the file is empty. Return with empty Blob.
     contents->clear();
     return true;
   }
-  if (!SecureBlob::HexStringToSecureBlob(contents_string, contents)) {
-    LOG(ERROR) << "Failed to convert hex to SecureBlob from file "
+  if (!HexStringToBlob(contents_string, contents)) {
+    LOG(ERROR) << "Failed to convert hex to Blob from file "
                << file_path.value() << ".";
     return false;
   }
   return true;
 }
 
-bool WriteHexFileLogged(const FilePath& file_path, const SecureBlob& contents) {
-  if (base::WriteFile(file_path, hwsec_foundation::SecureBlobToHex(contents)))
+template <typename Alloc>
+bool WriteHexFileLogged(const FilePath& file_path,
+                        const std::vector<uint8_t, Alloc>& contents) {
+  if (base::WriteFile(file_path,
+                      base::HexEncode(contents.data(), contents.size())))
     return true;
   LOG(ERROR) << "Failed to write to file " << file_path.value() << ".";
   return false;
@@ -203,12 +215,12 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
     LOG(ERROR) << "Failed to create recovery crypto object.";
     return false;
   }
-  SecureBlob mediator_pub_key;
+  brillo::Blob mediator_pub_key;
   if (mediator_pub_key_in_file_path.empty()) {
     CHECK(FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(
         &mediator_pub_key));
-  } else if (!ReadHexFileToSecureBlobLogged(mediator_pub_key_in_file_path,
-                                            &mediator_pub_key)) {
+  } else if (!ReadHexFileToBlobLogged(mediator_pub_key_in_file_path,
+                                      &mediator_pub_key)) {
     return false;
   }
 
@@ -234,7 +246,7 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
     return false;
   }
 
-  SecureBlob serialized_hsm_payload;
+  brillo::Blob serialized_hsm_payload;
   if (!SerializeHsmPayloadToCbor(generate_hsm_payload_response.hsm_payload,
                                  &serialized_hsm_payload)) {
     LOG(ERROR) << "Failed to serialize HSM payload.";
@@ -271,18 +283,17 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
     const FilePath& ephemeral_pub_key_out_file_path,
     const FilePath& recovery_request_out_file_path,
     Platform* platform) {
-  SecureBlob rsa_priv_key;
-  SecureBlob channel_pub_key;
-  SecureBlob channel_priv_key;
-  SecureBlob serialized_hsm_payload;
-  if (!ReadHexFileToSecureBlobLogged(rsa_priv_key_in_file_path,
-                                     &rsa_priv_key) ||
-      !ReadHexFileToSecureBlobLogged(channel_pub_key_in_file_path,
-                                     &channel_pub_key) ||
-      !ReadHexFileToSecureBlobLogged(channel_priv_key_in_file_path,
-                                     &channel_priv_key) ||
-      !ReadHexFileToSecureBlobLogged(serialized_hsm_payload_in_file_path,
-                                     &serialized_hsm_payload)) {
+  brillo::Blob rsa_priv_key;
+  brillo::Blob channel_pub_key;
+  brillo::Blob channel_priv_key;
+  brillo::Blob serialized_hsm_payload;
+  if (!ReadHexFileToBlobLogged(rsa_priv_key_in_file_path, &rsa_priv_key) ||
+      !ReadHexFileToBlobLogged(channel_pub_key_in_file_path,
+                               &channel_pub_key) ||
+      !ReadHexFileToBlobLogged(channel_priv_key_in_file_path,
+                               &channel_priv_key) ||
+      !ReadHexFileToBlobLogged(serialized_hsm_payload_in_file_path,
+                               &serialized_hsm_payload)) {
     return false;
   }
 
@@ -303,12 +314,13 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
   if (epoch_response_in_file_path.empty()) {
     CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochResponse(&epoch_response));
   } else {
-    SecureBlob epoch_response_bytes;
-    if (!ReadHexFileToSecureBlobLogged(epoch_response_in_file_path,
-                                       &epoch_response_bytes)) {
+    brillo::Blob epoch_response_bytes;
+    if (!ReadHexFileToBlobLogged(epoch_response_in_file_path,
+                                 &epoch_response_bytes)) {
       return false;
     }
-    if (!epoch_response.ParseFromString(epoch_response_bytes.to_string())) {
+    if (!epoch_response.ParseFromArray(epoch_response_bytes.data(),
+                                       epoch_response_bytes.size())) {
       LOG(ERROR) << "Failed to parse epoch response.";
       return false;
     }
@@ -316,11 +328,12 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
 
   RequestMetadata request_metadata;
   if (!gaia_rapt_in_file_path.empty()) {
-    SecureBlob gaia_rapt;
-    if (!ReadHexFileToSecureBlobLogged(gaia_rapt_in_file_path, &gaia_rapt)) {
+    brillo::Blob gaia_rapt;
+    if (!ReadHexFileToBlobLogged(gaia_rapt_in_file_path, &gaia_rapt)) {
       return false;
     }
-    request_metadata.auth_claim.gaia_reauth_proof_token = gaia_rapt.to_string();
+    request_metadata.auth_claim.gaia_reauth_proof_token =
+        brillo::BlobToString(gaia_rapt);
   }
   cryptorecovery::GenerateRecoveryRequestRequest
       generate_recovery_request_input_param(
@@ -331,7 +344,7 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
            .encrypted_channel_priv_key = channel_priv_key,
            .channel_pub_key = channel_pub_key,
            .obfuscated_username = GetTestObfuscatedUsername()});
-  brillo::SecureBlob ephemeral_pub_key;
+  brillo::Blob ephemeral_pub_key;
   CryptoRecoveryRpcRequest recovery_request;
   if (!recovery_crypto->GenerateRecoveryRequest(
           generate_recovery_request_input_param, &recovery_request,
@@ -349,14 +362,14 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
 bool DoRecoveryCryptoMediateAction(
     const FilePath& recovery_request_in_file_path,
     const FilePath& recovery_response_out_file_path) {
-  SecureBlob serialized_recovery_request;
-  if (!ReadHexFileToSecureBlobLogged(recovery_request_in_file_path,
-                                     &serialized_recovery_request)) {
+  brillo::Blob serialized_recovery_request;
+  if (!ReadHexFileToBlobLogged(recovery_request_in_file_path,
+                               &serialized_recovery_request)) {
     return false;
   }
   CryptoRecoveryRpcRequest recovery_request;
-  if (!recovery_request.ParseFromString(
-          serialized_recovery_request.to_string())) {
+  if (!recovery_request.ParseFromArray(serialized_recovery_request.data(),
+                                       serialized_recovery_request.size())) {
     LOG(ERROR) << "Failed to parse CryptoRecoveryRpcRequest.";
     return false;
   }
@@ -368,7 +381,8 @@ bool DoRecoveryCryptoMediateAction(
     return false;
   }
 
-  SecureBlob mediator_priv_key, epoch_pub_key, epoch_priv_key;
+  brillo::Blob epoch_pub_key;
+  SecureBlob mediator_priv_key, epoch_priv_key;
   CHECK(FakeRecoveryMediatorCrypto::GetFakeMediatorPrivateKey(
       &mediator_priv_key));
   CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key));
@@ -397,27 +411,28 @@ bool DoRecoveryCryptoDecryptAction(
     const FilePath& serialized_hsm_payload_in_file_path,
     const FilePath& recovery_secret_out_file_path,
     Platform* platform) {
-  SecureBlob recovery_response, ephemeral_pub_key, channel_priv_key,
+  brillo::Blob recovery_response, ephemeral_pub_key, channel_priv_key,
       destination_share, extended_pcr_bound_destination_share,
       serialized_hsm_payload;
-  if (!ReadHexFileToSecureBlobLogged(recovery_response_in_file_path,
-                                     &recovery_response) ||
-      !ReadHexFileToSecureBlobLogged(channel_priv_key_in_file_path,
-                                     &channel_priv_key) ||
-      !ReadHexFileToSecureBlobLogged(ephemeral_pub_key_in_file_path,
-                                     &ephemeral_pub_key) ||
-      !ReadHexFileToSecureBlobLogged(destination_share_in_file_path,
-                                     &destination_share) ||
-      !ReadHexFileToSecureBlobLogged(serialized_hsm_payload_in_file_path,
-                                     &serialized_hsm_payload) ||
-      !ReadHexFileToSecureBlobLogged(
+  if (!ReadHexFileToBlobLogged(recovery_response_in_file_path,
+                               &recovery_response) ||
+      !ReadHexFileToBlobLogged(channel_priv_key_in_file_path,
+                               &channel_priv_key) ||
+      !ReadHexFileToBlobLogged(ephemeral_pub_key_in_file_path,
+                               &ephemeral_pub_key) ||
+      !ReadHexFileToBlobLogged(destination_share_in_file_path,
+                               &destination_share) ||
+      !ReadHexFileToBlobLogged(serialized_hsm_payload_in_file_path,
+                               &serialized_hsm_payload) ||
+      !ReadHexFileToBlobLogged(
           extended_pcr_bound_destination_share_in_file_path,
           &extended_pcr_bound_destination_share)) {
     return false;
   }
 
   CryptoRecoveryRpcResponse recovery_response_proto;
-  if (!recovery_response_proto.ParseFromString(recovery_response.to_string())) {
+  if (!recovery_response_proto.ParseFromArray(recovery_response.data(),
+                                              recovery_response.size())) {
     LOG(ERROR) << "Failed to parse CryptoRecoveryRpcResponse.";
     return false;
   }
@@ -426,12 +441,13 @@ bool DoRecoveryCryptoDecryptAction(
   if (epoch_response_in_file_path.empty()) {
     CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochResponse(&epoch_response));
   } else {
-    SecureBlob epoch_response_bytes;
-    if (!ReadHexFileToSecureBlobLogged(epoch_response_in_file_path,
-                                       &epoch_response_bytes)) {
+    brillo::Blob epoch_response_bytes;
+    if (!ReadHexFileToBlobLogged(epoch_response_in_file_path,
+                                 &epoch_response_bytes)) {
       return false;
     }
-    if (!epoch_response.ParseFromString(epoch_response_bytes.to_string())) {
+    if (!epoch_response.ParseFromArray(epoch_response_bytes.data(),
+                                       epoch_response_bytes.size())) {
       LOG(ERROR) << "Failed to parse epoch response.";
       return false;
     }
@@ -507,12 +523,12 @@ bool DoRecoveryCryptoGetFakeEpochAction(
   CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochResponse(&epoch_response));
   return WriteHexFileLogged(
       epoch_response_out_file_path,
-      brillo::SecureBlob(epoch_response.SerializeAsString()));
+      brillo::BlobFromString(epoch_response.SerializeAsString()));
 }
 
 bool DoRecoveryCryptoGetFakeMediatorPublicKeyAction(
     const FilePath& mediator_pub_key_out_file_path) {
-  SecureBlob mediator_pub_key;
+  brillo::Blob mediator_pub_key;
   CHECK(
       FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(&mediator_pub_key));
   return WriteHexFileLogged(mediator_pub_key_out_file_path, mediator_pub_key);
@@ -527,7 +543,8 @@ bool DoRecoveryCryptoGetLedgerInfoAction(
           // Convert the key hash to string, for easier parsing by the test,
           // since it doesn't need to read/change the content.
           .Set(kLedgerInfoKeyHashKey, std::to_string(*ledger_info.key_hash))
-          .Set(kLedgerInfoPubKeyKey, ledger_info.public_key->to_string());
+          .Set(kLedgerInfoPubKeyKey,
+               brillo::BlobToString(*ledger_info.public_key));
   std::string ledger_info_json;
   if (!base::JSONWriter::Write(dict, &ledger_info_json)) {
     LOG(ERROR) << "Failed to write to json.";

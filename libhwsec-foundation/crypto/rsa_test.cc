@@ -42,10 +42,10 @@ bool GenerateRsaKey(RSA* rsa) {
 }
 
 // Sign the input data with a RSA private key using RSASSA-PKCS1-v1_5 Sha256
-bool SignRsaPkcs1Sha256(const brillo::SecureBlob& input_data,
+bool SignRsaPkcs1Sha256(const brillo::Blob& input_data,
                         RSA* rsa,
-                        brillo::SecureBlob* signature) {
-  const brillo::SecureBlob digest = Sha256(input_data);
+                        brillo::Blob* signature) {
+  const brillo::Blob digest = Sha256(input_data);
   signature->resize(kKeySizeBytes);
   unsigned int siglen = 0;
   if (!RSA_sign(NID_sha256, digest.data(), digest.size(), signature->data(),
@@ -59,7 +59,7 @@ bool SignRsaPkcs1Sha256(const brillo::SecureBlob& input_data,
 
 // Convert RSA public key to DER-encoded X.509 SubjectPublicKeyInfo structure.
 bool ConvertRsaToSpkiDer(const crypto::ScopedRSA& rsa,
-                         brillo::SecureBlob* rsa_public_key_spki_der) {
+                         brillo::Blob* rsa_public_key_spki_der) {
   int der_length = i2d_RSA_PUBKEY(rsa.get(), /*unsigned char**=*/nullptr);
   if (der_length < 0) {
     LOG(ERROR) << "Failed to DER-encode public key using SubjectPublicKeyInfo.";
@@ -174,14 +174,14 @@ TEST(RsaTest, RsaVerifySignatureSha256Success) {
   // Generate the input data.
   crypto::ScopedRSA rsa(RSA_new());
   ASSERT_TRUE(GenerateRsaKey(rsa.get()));
-  const auto input_data = CreateSecureRandomBlob(kKeySizeBytes);
+  const auto input_data = CreateRandomBlob(kKeySizeBytes);
 
   // Sign the input text with the private key
-  brillo::SecureBlob signature;
+  brillo::Blob signature;
   ASSERT_TRUE(SignRsaPkcs1Sha256(input_data, rsa.get(), &signature));
 
   // Convert the public key to DER-encoded X.509 SubjectPublicKeyInfo
-  brillo::SecureBlob rsa_public_key_spki_der;
+  brillo::Blob rsa_public_key_spki_der;
   EXPECT_TRUE(ConvertRsaToSpkiDer(rsa, &rsa_public_key_spki_der));
 
   EXPECT_TRUE(
@@ -192,15 +192,15 @@ TEST(RsaTest, RsaVerifySignatureSha256WithInvalidInputData) {
   // Generate the input data.
   crypto::ScopedRSA rsa(RSA_new());
   ASSERT_TRUE(GenerateRsaKey(rsa.get()));
-  const auto input_data = CreateSecureRandomBlob(kKeySizeBytes);
-  const auto invalid_input_data = CreateSecureRandomBlob(kKeySizeBytes);
+  const auto input_data = CreateRandomBlob(kKeySizeBytes);
+  const auto invalid_input_data = CreateRandomBlob(kKeySizeBytes);
 
   // Sign the input text with the private key
-  brillo::SecureBlob signature;
+  brillo::Blob signature;
   ASSERT_TRUE(SignRsaPkcs1Sha256(input_data, rsa.get(), &signature));
 
   // Convert the public key to DER-encoded X.509 SubjectPublicKeyInfo
-  brillo::SecureBlob rsa_public_key_spki_der;
+  brillo::Blob rsa_public_key_spki_der;
   EXPECT_TRUE(ConvertRsaToSpkiDer(rsa, &rsa_public_key_spki_der));
 
   EXPECT_FALSE(VerifyRsaSignatureSha256(invalid_input_data, signature,
@@ -211,17 +211,17 @@ TEST(RsaTest, RsaVerifySignatureSha256WithInvalidSignature) {
   // Generate the input data.
   crypto::ScopedRSA rsa(RSA_new());
   ASSERT_TRUE(GenerateRsaKey(rsa.get()));
-  const auto input_data = CreateSecureRandomBlob(kKeySizeBytes);
+  const auto input_data = CreateRandomBlob(kKeySizeBytes);
 
   // Sign the input text with the private key
-  brillo::SecureBlob signature;
+  brillo::Blob signature;
   ASSERT_TRUE(SignRsaPkcs1Sha256(input_data, rsa.get(), &signature));
 
   // Make the signature invalid by resizing it shorter
   signature.resize(signature.size() - 1);
 
   // Convert the public key to DER-encoded X.509 SubjectPublicKeyInfo
-  brillo::SecureBlob rsa_public_key_spki_der;
+  brillo::Blob rsa_public_key_spki_der;
   EXPECT_TRUE(ConvertRsaToSpkiDer(rsa, &rsa_public_key_spki_der));
 
   EXPECT_FALSE(
@@ -232,14 +232,14 @@ TEST(RsaTest, RsaVerifySignatureSha256WithInvalidPublicKey) {
   // Generate the input data.
   crypto::ScopedRSA rsa(RSA_new());
   ASSERT_TRUE(GenerateRsaKey(rsa.get()));
-  const auto input_data = CreateSecureRandomBlob(kKeySizeBytes);
+  const auto input_data = CreateRandomBlob(kKeySizeBytes);
 
   // Sign the input text with the private key
-  brillo::SecureBlob signature;
+  brillo::Blob signature;
   ASSERT_TRUE(SignRsaPkcs1Sha256(input_data, rsa.get(), &signature));
 
   // Convert the public key to DER-encoded X.509 SubjectPublicKeyInfo
-  brillo::SecureBlob rsa_public_key_spki_der;
+  brillo::Blob rsa_public_key_spki_der;
   EXPECT_TRUE(ConvertRsaToSpkiDer(rsa, &rsa_public_key_spki_der));
   // Make the public key invalid by resizing it shorter
   rsa_public_key_spki_der.resize(rsa_public_key_spki_der.size() - 1);

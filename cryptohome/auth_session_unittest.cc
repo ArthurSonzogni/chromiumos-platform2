@@ -2444,9 +2444,9 @@ TEST_F(AuthSessionWithUssTest, AuthenticateCryptohomeRecoveryAuthFactor) {
                    const brillo::Blob& epoch_response,
                    const CryptohomeRecoveryAuthBlockState& state,
                    const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
-                   brillo::SecureBlob* out_recovery_request,
-                   brillo::SecureBlob* out_ephemeral_pub_key) {
-        *out_ephemeral_pub_key = brillo::SecureBlob("test");
+                   brillo::Blob* out_recovery_request,
+                   brillo::Blob* out_ephemeral_pub_key) {
+        *out_ephemeral_pub_key = brillo::BlobFromString("test");
         return OkStatus<CryptohomeCryptoError>();
       });
   EXPECT_FALSE(auth_session.has_user_secret_stash());
@@ -2485,7 +2485,7 @@ TEST_F(AuthSessionWithUssTest, AuthenticateCryptohomeRecoveryAuthFactor) {
                     AuthBlock::DeriveCallback derive_callback) {
         EXPECT_THAT(
             auth_input.cryptohome_recovery_auth_input->ephemeral_pub_key,
-            Optional(brillo::SecureBlob("test")));
+            Optional(brillo::BlobFromString("test")));
         auto key_blobs = std::make_unique<KeyBlobs>();
         key_blobs->vkk_key = kFakePerCredentialSecret;
         std::move(derive_callback)

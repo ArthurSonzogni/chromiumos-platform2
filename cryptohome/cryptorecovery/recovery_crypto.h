@@ -27,7 +27,7 @@ namespace cryptorecovery {
 
 // RecoveryCrypto input parameters for function GenerateHsmPayload.
 struct GenerateHsmPayloadRequest {
-  hwsec_foundation::NoDefault<brillo::SecureBlob> mediator_pub_key;
+  hwsec_foundation::NoDefault<brillo::Blob> mediator_pub_key;
   // The metadata generated during the Onboarding workflow on a Chromebook
   // (OMD).
   hwsec_foundation::NoDefault<OnboardingMetadata> onboarding_metadata;
@@ -38,12 +38,12 @@ struct GenerateHsmPayloadRequest {
 // RecoveryCrypto output parameters for function GenerateHsmPayload.
 struct GenerateHsmPayloadResponse {
   HsmPayload hsm_payload;
-  brillo::SecureBlob encrypted_rsa_priv_key;
-  brillo::SecureBlob encrypted_destination_share;
-  brillo::SecureBlob extended_pcr_bound_destination_share;
+  brillo::Blob encrypted_rsa_priv_key;
+  brillo::Blob encrypted_destination_share;
+  brillo::Blob extended_pcr_bound_destination_share;
   brillo::SecureBlob recovery_key;
-  brillo::SecureBlob channel_pub_key;
-  brillo::SecureBlob encrypted_channel_priv_key;
+  brillo::Blob channel_pub_key;
+  brillo::Blob encrypted_channel_priv_key;
 };
 
 // RecoveryCrypto input parameters for function GenerateRecoveryRequest.
@@ -51,27 +51,27 @@ struct GenerateRecoveryRequestRequest {
   hwsec_foundation::NoDefault<HsmPayload> hsm_payload;
   hwsec_foundation::NoDefault<RequestMetadata> request_meta_data;
   CryptoRecoveryEpochResponse epoch_response;
-  hwsec_foundation::NoDefault<brillo::SecureBlob> encrypted_rsa_priv_key;
-  hwsec_foundation::NoDefault<brillo::SecureBlob> encrypted_channel_priv_key;
-  hwsec_foundation::NoDefault<brillo::SecureBlob> channel_pub_key;
+  hwsec_foundation::NoDefault<brillo::Blob> encrypted_rsa_priv_key;
+  hwsec_foundation::NoDefault<brillo::Blob> encrypted_channel_priv_key;
+  hwsec_foundation::NoDefault<brillo::Blob> channel_pub_key;
   hwsec_foundation::NoDefault<ObfuscatedUsername> obfuscated_username;
 };
 
 // RecoveryCrypto input parameters for function RecoverDestination.
 struct RecoverDestinationRequest {
-  hwsec_foundation::NoDefault<brillo::SecureBlob> dealer_pub_key;
+  hwsec_foundation::NoDefault<brillo::Blob> dealer_pub_key;
   hwsec_foundation::NoDefault<brillo::SecureBlob> key_auth_value;
-  hwsec_foundation::NoDefault<brillo::SecureBlob> encrypted_destination_share;
-  hwsec_foundation::NoDefault<brillo::SecureBlob>
+  hwsec_foundation::NoDefault<brillo::Blob> encrypted_destination_share;
+  hwsec_foundation::NoDefault<brillo::Blob>
       extended_pcr_bound_destination_share;
-  hwsec_foundation::NoDefault<brillo::SecureBlob> ephemeral_pub_key;
+  hwsec_foundation::NoDefault<brillo::Blob> ephemeral_pub_key;
   hwsec_foundation::NoDefault<brillo::SecureBlob> mediated_publisher_pub_key;
   hwsec_foundation::NoDefault<ObfuscatedUsername> obfuscated_username;
 };
 
 // RecoveryCrypto input parameters for function DecryptResponsePayload.
 struct DecryptResponsePayloadRequest {
-  hwsec_foundation::NoDefault<brillo::SecureBlob> encrypted_channel_priv_key;
+  hwsec_foundation::NoDefault<brillo::Blob> encrypted_channel_priv_key;
   CryptoRecoveryEpochResponse epoch_response;
   CryptoRecoveryRpcResponse recovery_response_proto;
   hwsec_foundation::NoDefault<ObfuscatedUsername> obfuscated_username;
@@ -131,7 +131,7 @@ class RecoveryCrypto {
   [[nodiscard]] virtual bool GenerateRecoveryRequest(
       const GenerateRecoveryRequestRequest& request,
       CryptoRecoveryRpcRequest* recovery_request,
-      brillo::SecureBlob* ephemeral_pub_key) const = 0;
+      brillo::Blob* ephemeral_pub_key) const = 0;
 
   // Generates HSM payload that will be persisted on a chromebook at enrollment
   // to be subsequently used for recovery.

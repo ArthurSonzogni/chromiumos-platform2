@@ -85,7 +85,7 @@ table DoubleWrappedCompatAuthBlockState {
   tpm_state:TpmNotBoundToPcrAuthBlockState (id: 1);
 }
 
-table CryptohomeRecoveryAuthBlockState (secure) {
+table CryptohomeRecoveryAuthBlockState {
   // HSM Payload is created at onboarding and contains all the data that are
   // persisted on a chromebook and will be eventually used for recovery,
   // serialized to CBOR.
@@ -140,7 +140,7 @@ table ScryptAuthBlockState {
   parallel_factor:uint = null (id: 5, optional);
 }
 
-union AuthBlockStateUnion (secure) {
+union AuthBlockStateUnion {
   TpmBoundToPcrAuthBlockState,
   TpmNotBoundToPcrAuthBlockState,
   PinWeaverAuthBlockState,
@@ -157,7 +157,7 @@ table RevocationState {
   le_label:ulong = null (id: 0, optional);
 }
 
-table AuthBlockState (serializable, secure) {
+table AuthBlockState (serializable) {
   state:AuthBlockStateUnion (id:1);
   revocation_state:RevocationState (id: 2, optional);
 }

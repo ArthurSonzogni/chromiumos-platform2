@@ -875,7 +875,7 @@ class AuthSession final {
   // Key used by AuthenticateAuthFactor for cryptohome recovery AuthFactor.
   // It's set only after GetRecoveryRequest() call, and is std::nullopt in other
   // cases.
-  std::optional<brillo::SecureBlob> cryptohome_recovery_ephemeral_pub_key_;
+  std::optional<brillo::Blob> cryptohome_recovery_ephemeral_pub_key_;
   // Tokens from active auth factors, keyed off of the token's auth factor type.
   std::map<AuthFactorType, std::unique_ptr<PreparedAuthFactorToken>>
       active_auth_factor_tokens_;

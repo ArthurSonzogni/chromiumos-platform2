@@ -198,9 +198,10 @@ bool VerifySignature(const std::string& text,
 
   // Import Public key of PKIX, ASN.1 DER form to EC_KEY.
   std::string ledger_public_key_decoded;
-  if (!base::Base64UrlDecode(ledger_info.public_key.value().to_string(),
-                             base::Base64UrlDecodePolicy::IGNORE_PADDING,
-                             &ledger_public_key_decoded)) {
+  if (!base::Base64UrlDecode(
+          brillo::BlobToString(ledger_info.public_key.value()),
+          base::Base64UrlDecodePolicy::IGNORE_PADDING,
+          &ledger_public_key_decoded)) {
     LOG(ERROR) << "Failed at decoding from url base64.";
     return false;
   }

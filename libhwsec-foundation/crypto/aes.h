@@ -111,7 +111,7 @@ AesDecryptDeprecated(const brillo::Blob& ciphertext,
 //   plaintext - On success, the decrypted data.
 bool HWSEC_FOUNDATION_EXPORT
 AesGcmDecrypt(const brillo::Blob& ciphertext,
-              const std::optional<brillo::SecureBlob>& ad,
+              const std::optional<brillo::Blob>& ad,
               const brillo::Blob& tag,
               const brillo::SecureBlob& key,
               const brillo::Blob& iv,
@@ -130,7 +130,7 @@ AesGcmDecrypt(const brillo::Blob& ciphertext,
 //   ciphertext - On success, the encrypted data.
 bool HWSEC_FOUNDATION_EXPORT
 AesGcmEncrypt(const brillo::SecureBlob& plaintext,
-              const std::optional<brillo::SecureBlob>& ad,
+              const std::optional<brillo::Blob>& ad,
               const brillo::SecureBlob& key,
               brillo::Blob* iv,
               brillo::Blob* tag,

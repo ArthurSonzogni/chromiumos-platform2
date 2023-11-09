@@ -78,9 +78,9 @@ RsaOaepDecrypt(const brillo::SecureBlob& ciphertext,
 // using the provided input_data and a private key, of which the corresponding
 // public key (DER-encoded X.509 SubjectPublicKeyInfo structure) is provided.
 bool HWSEC_FOUNDATION_EXPORT
-VerifyRsaSignatureSha256(const brillo::SecureBlob& input_data,
-                         const brillo::SecureBlob& signature,
-                         const brillo::SecureBlob& public_key_spki_der);
+VerifyRsaSignatureSha256(const brillo::Blob& input_data,
+                         const brillo::Blob& signature,
+                         const brillo::Blob& public_key_spki_der);
 
 // Encrypts data using the TPM_ES_RSAESOAEP_SHA1_MGF1 scheme.
 //

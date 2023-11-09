@@ -309,8 +309,8 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
     const brillo::Blob& epoch_response,
     const CryptohomeRecoveryAuthBlockState& state,
     const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
-    brillo::SecureBlob* out_recovery_request,
-    brillo::SecureBlob* out_ephemeral_pub_key) const {
+    brillo::Blob* out_recovery_request,
+    brillo::Blob* out_ephemeral_pub_key) const {
   // Check if the required fields are set on CryptohomeRecoveryAuthBlockState.
   if (state.hsm_payload.empty() || state.channel_pub_key.empty() ||
       state.encrypted_channel_priv_key.empty()) {
@@ -335,8 +335,8 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
 
   // Parse epoch response, which is sent from Chrome, to proto.
   cryptorecovery::CryptoRecoveryEpochResponse epoch_response_proto;
-  if (!epoch_response_proto.ParseFromString(
-          brillo::BlobToString(epoch_response))) {
+  if (!epoch_response_proto.ParseFromArray(epoch_response.data(),
+                                           epoch_response.size())) {
     LOG(ERROR) << "Failed to parse epoch response";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
@@ -359,14 +359,14 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
   // Generate recovery request proto which will be sent back to Chrome, and then
   // to the recovery server.
   cryptorecovery::GenerateRecoveryRequestRequest
-      generate_recovery_request_input_param(
-          {.hsm_payload = hsm_payload,
-           .request_meta_data = request_metadata,
-           .epoch_response = epoch_response_proto,
-           .encrypted_rsa_priv_key = state.encrypted_rsa_priv_key,
-           .encrypted_channel_priv_key = state.encrypted_channel_priv_key,
-           .channel_pub_key = state.channel_pub_key,
-           .obfuscated_username = obfuscated_username});
+      generate_recovery_request_input_param{
+          .hsm_payload = hsm_payload,
+          .request_meta_data = request_metadata,
+          .epoch_response = epoch_response_proto,
+          .encrypted_rsa_priv_key = state.encrypted_rsa_priv_key,
+          .encrypted_channel_priv_key = state.encrypted_channel_priv_key,
+          .channel_pub_key = state.channel_pub_key,
+          .obfuscated_username = obfuscated_username};
   cryptorecovery::CryptoRecoveryRpcRequest recovery_request;
   if (!recovery->GenerateRecoveryRequest(generate_recovery_request_input_param,
                                          &recovery_request,
@@ -381,7 +381,7 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
 
   // Serialize recovery request proto.
   *out_recovery_request =
-      brillo::SecureBlob(recovery_request.SerializeAsString());
+      brillo::BlobFromString(recovery_request.SerializeAsString());
   return OkStatus<CryptohomeCryptoError>();
 }
 

@@ -41,21 +41,21 @@ AuthInput FromPinAuthInput(const user_data_auth::PinAuthInput& proto) {
 
 AuthInput FromCryptohomeRecoveryAuthInput(
     const user_data_auth::CryptohomeRecoveryAuthInput& proto,
-    const std::optional<brillo::SecureBlob>&
-        cryptohome_recovery_ephemeral_pub_key) {
+    const std::optional<brillo::Blob>& cryptohome_recovery_ephemeral_pub_key) {
   CryptohomeRecoveryAuthInput recovery_auth_input{
       // These fields are used for `Create`:
-      .mediator_pub_key = SecureBlob(proto.mediator_pub_key()),
+      .mediator_pub_key = brillo::BlobFromString(proto.mediator_pub_key()),
       .user_gaia_id = proto.user_gaia_id(),
       .device_user_id = proto.device_user_id(),
       // These fields are used for `Derive`:
-      .epoch_response = SecureBlob(proto.epoch_response()),
+      .epoch_response = brillo::BlobFromString(proto.epoch_response()),
       .ephemeral_pub_key =
-          cryptohome_recovery_ephemeral_pub_key.value_or(SecureBlob()),
-      .recovery_response = SecureBlob(proto.recovery_response()),
+          cryptohome_recovery_ephemeral_pub_key.value_or(brillo::Blob()),
+      .recovery_response = brillo::BlobFromString(proto.recovery_response()),
       .ledger_name = proto.ledger_info().name(),
       .ledger_key_hash = proto.ledger_info().key_hash(),
-      .ledger_public_key = SecureBlob(proto.ledger_info().public_key()),
+      .ledger_public_key =
+          brillo::BlobFromString(proto.ledger_info().public_key()),
   };
 
   return AuthInput{.cryptohome_recovery_auth_input = recovery_auth_input};
@@ -127,8 +127,7 @@ std::optional<AuthInput> CreateAuthInput(
     const Username& username,
     const ObfuscatedUsername& obfuscated_username,
     bool locked_to_single_user,
-    const std::optional<brillo::SecureBlob>&
-        cryptohome_recovery_ephemeral_pub_key,
+    const std::optional<brillo::Blob>& cryptohome_recovery_ephemeral_pub_key,
     const AuthFactorMetadata& auth_factor_metadata) {
   std::optional<AuthInput> auth_input;
   switch (auth_input_proto.input_case()) {

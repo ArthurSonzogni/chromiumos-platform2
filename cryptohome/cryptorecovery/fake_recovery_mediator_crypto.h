@@ -39,7 +39,7 @@ class FakeRecoveryMediatorCrypto {
   // Returns hardcoded fake mediator public key for encrypting mediator share.
   // Do not use this key in production!
   // Returns false if error occurred.
-  static bool GetFakeMediatorPublicKey(brillo::SecureBlob* mediator_pub_key);
+  static bool GetFakeMediatorPublicKey(brillo::Blob* mediator_pub_key);
 
   // Returns hardcoded fake mediator private key for decrypting mediator share.
   // Do not use this key in production!
@@ -49,7 +49,7 @@ class FakeRecoveryMediatorCrypto {
   // Returns hardcoded fake epoch public key for encrypting request payload.
   // Do not use this key in production!
   // Returns false if error occurred.
-  static bool GetFakeEpochPublicKey(brillo::SecureBlob* epoch_pub_key);
+  static bool GetFakeEpochPublicKey(brillo::Blob* epoch_pub_key);
 
   // Returns hardcoded fake epoch private key for decrypting request payload.
   // Do not use this key in production!
@@ -72,7 +72,7 @@ class FakeRecoveryMediatorCrypto {
   // 5. Do `MediateHsmPayload` with `hsm_payload` and keys (`epoch_pub_key`,
   // `epoch_priv_key`, `mediator_priv_key`).
   bool MediateRequestPayload(
-      const brillo::SecureBlob& epoch_pub_key,
+      const brillo::Blob& epoch_pub_key,
       const brillo::SecureBlob& epoch_priv_key,
       const brillo::SecureBlob& mediator_priv_key,
       const CryptoRecoveryRpcRequest& recovery_request_proto,
@@ -97,9 +97,9 @@ class FakeRecoveryMediatorCrypto {
   // `recovery_response_proto.cbor_cryptorecoveryresponse`.
   bool MediateHsmPayload(
       const brillo::SecureBlob& mediator_priv_key,
-      const brillo::SecureBlob& epoch_pub_key,
+      const brillo::Blob& epoch_pub_key,
       const brillo::SecureBlob& epoch_priv_key,
-      const brillo::SecureBlob& ephemeral_pub_inv_key,
+      const brillo::Blob& ephemeral_pub_inv_key,
       const HsmPayload& hsm_payload,
       CryptoRecoveryRpcResponse* recovery_response_proto) const;
 

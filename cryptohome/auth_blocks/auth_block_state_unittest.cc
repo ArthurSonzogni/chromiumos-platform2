@@ -28,7 +28,7 @@ const Blob kResetSeedSalt = BlobFromString("reset_seed_salt");
 
 TEST(AuthBlockStateBindingTest, EmptyState) {
   AuthBlockState state;
-  std::optional<SecureBlob> blob = state.Serialize();
+  std::optional<Blob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
   std::optional<AuthBlockState> state2 =
       AuthBlockState::Deserialize(blob.value());
@@ -45,7 +45,7 @@ TEST(AuthBlockStateBindingTest, ScryptAuthBlockState) {
                               .block_size = kBlockSize,
                               .parallel_factor = kParallelFactor,
                           }};
-  std::optional<SecureBlob> blob = state.Serialize();
+  std::optional<Blob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
   std::optional<AuthBlockState> state2 =
       AuthBlockState::Deserialize(blob.value());
@@ -55,7 +55,7 @@ TEST(AuthBlockStateBindingTest, ScryptAuthBlockState) {
 
 TEST(AuthBlockStateBindingTest, ScryptAuthBlockStateEmpty) {
   AuthBlockState state = {.state = ScryptAuthBlockState{}};
-  std::optional<SecureBlob> blob = state.Serialize();
+  std::optional<Blob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
   std::optional<AuthBlockState> state2 =
       AuthBlockState::Deserialize(blob.value());
@@ -65,7 +65,7 @@ TEST(AuthBlockStateBindingTest, ScryptAuthBlockStateEmpty) {
 
 TEST(AuthBlockStateBindingTest, LibScryptCompatAuthBlockStateNotEqual) {
   AuthBlockState state = {.state = ScryptAuthBlockState{}};
-  std::optional<SecureBlob> blob = state.Serialize();
+  std::optional<Blob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
   std::optional<AuthBlockState> state2 =
       AuthBlockState::Deserialize(blob.value());
@@ -90,7 +90,7 @@ TEST(AuthBlockStateBindingTest, TpmNotBoundToPcrAuthBlockState) {
           .tpm_key = BlobFromString("tpm_key"),
           .tpm_public_key_hash = BlobFromString("tpm_public_key_hash"),
       }};
-  std::optional<SecureBlob> blob = state.Serialize();
+  std::optional<Blob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
   std::optional<AuthBlockState> state2 =
       AuthBlockState::Deserialize(blob.value());
@@ -100,7 +100,7 @@ TEST(AuthBlockStateBindingTest, TpmNotBoundToPcrAuthBlockState) {
 
 TEST(AuthBlockStateBindingTest, TpmNotBoundToPcrAuthBlockStateOptional) {
   AuthBlockState state1 = {.state = TpmNotBoundToPcrAuthBlockState{}};
-  std::optional<SecureBlob> blob1 = state1.Serialize();
+  std::optional<Blob> blob1 = state1.Serialize();
   ASSERT_TRUE(blob1.has_value());
   std::optional<AuthBlockState> state1_new =
       AuthBlockState::Deserialize(blob1.value());
@@ -110,7 +110,7 @@ TEST(AuthBlockStateBindingTest, TpmNotBoundToPcrAuthBlockStateOptional) {
   AuthBlockState state2 = {.state = TpmNotBoundToPcrAuthBlockState{
                                .password_rounds = 0,
                            }};
-  std::optional<SecureBlob> blob2 = state2.Serialize();
+  std::optional<Blob> blob2 = state2.Serialize();
   ASSERT_TRUE(blob2.has_value());
   std::optional<AuthBlockState> state2_new =
       AuthBlockState::Deserialize(blob2.value());
@@ -120,7 +120,7 @@ TEST(AuthBlockStateBindingTest, TpmNotBoundToPcrAuthBlockStateOptional) {
   AuthBlockState state3 = {.state = TpmNotBoundToPcrAuthBlockState{
                                .scrypt_derived = false,
                            }};
-  std::optional<SecureBlob> blob3 = state3.Serialize();
+  std::optional<Blob> blob3 = state3.Serialize();
   ASSERT_TRUE(blob3.has_value());
   std::optional<AuthBlockState> state3_new =
       AuthBlockState::Deserialize(blob3.value());
@@ -131,7 +131,7 @@ TEST(AuthBlockStateBindingTest, TpmNotBoundToPcrAuthBlockStateOptional) {
                                .scrypt_derived = false,
                                .password_rounds = 0,
                            }};
-  std::optional<SecureBlob> blob4 = state4.Serialize();
+  std::optional<Blob> blob4 = state4.Serialize();
   ASSERT_TRUE(blob4.has_value());
   std::optional<AuthBlockState> state4_new =
       AuthBlockState::Deserialize(blob4.value());
@@ -164,7 +164,7 @@ TEST(AuthBlockStateBindingTest, TpmNotBoundToPcrAuthBlockStateEmpty) {
                               .tpm_key = BlobFromString(""),
                               .tpm_public_key_hash = BlobFromString(""),
                           }};
-  std::optional<SecureBlob> blob = state.Serialize();
+  std::optional<Blob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
   std::optional<AuthBlockState> state2 =
       AuthBlockState::Deserialize(blob.value());
@@ -191,7 +191,7 @@ TEST(AuthBlockStateBindingTest, DoubleWrappedCompatAuthBlockState) {
               .tpm_key = BlobFromString("tpm_key"),
               .tpm_public_key_hash = BlobFromString("tpm_public_key_hash"),
           }}};
-  std::optional<SecureBlob> blob = state.Serialize();
+  std::optional<Blob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
   std::optional<AuthBlockState> state2 =
       AuthBlockState::Deserialize(blob.value());
@@ -256,7 +256,7 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateTpm12) {
                       SerializedChallengeSignatureAlgorithm::
                           kRsassaPkcs1V15Sha256,
               }}};
-  std::optional<SecureBlob> blob = state.Serialize();
+  std::optional<Blob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
   std::optional<AuthBlockState> state2 =
       AuthBlockState::Deserialize(blob.value());
@@ -298,7 +298,7 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateTpm2) {
               .salt_signature_algorithm =
                   SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
           }}};
-  std::optional<SecureBlob> blob = state.Serialize();
+  std::optional<Blob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
   std::optional<AuthBlockState> state2 =
       AuthBlockState::Deserialize(blob.value());
@@ -334,7 +334,7 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateEmpty) {
                   },
               .salt = BlobFromString(""),
           }}};
-  std::optional<SecureBlob> blob = state.Serialize();
+  std::optional<Blob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
   std::optional<AuthBlockState> state2 =
       AuthBlockState::Deserialize(blob.value());
@@ -354,7 +354,7 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateNoInfo) {
                                       .parallel_factor = kParallelFactor,
                                   },
                           }};
-  std::optional<SecureBlob> blob = state.Serialize();
+  std::optional<Blob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
   std::optional<AuthBlockState> state2 =
       AuthBlockState::Deserialize(blob.value());
@@ -368,7 +368,7 @@ TEST(AuthBlockStateBindingTest, ChallengeCredentialAuthBlockStateDefault) {
           .keyset_challenge_info = SerializedSignatureChallengeInfo{
               .sealed_secret = hwsec::Tpm2PolicySignedData{},
           }}};
-  std::optional<SecureBlob> blob = state.Serialize();
+  std::optional<Blob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
   std::optional<AuthBlockState> state2 =
       AuthBlockState::Deserialize(blob.value());
@@ -397,7 +397,7 @@ TEST(AuthBlockStateBindingTest, TpmBoundToPcrAuthBlockState) {
           .extended_tpm_key = BlobFromString("extended_tpm_key"),
           .tpm_public_key_hash = BlobFromString("tpm_public_key_hash"),
       }};
-  std::optional<SecureBlob> blob = state.Serialize();
+  std::optional<Blob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
   std::optional<AuthBlockState> state2 =
       AuthBlockState::Deserialize(blob.value());
@@ -412,7 +412,7 @@ TEST(AuthBlockStateBindingTest, PinWeaverAuthBlockState) {
                               .chaps_iv = BlobFromString("chaps_iv"),
                               .fek_iv = BlobFromString("fek_iv"),
                           }};
-  std::optional<SecureBlob> blob = state.Serialize();
+  std::optional<Blob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
   std::optional<AuthBlockState> state2 =
       AuthBlockState::Deserialize(blob.value());
@@ -422,13 +422,13 @@ TEST(AuthBlockStateBindingTest, PinWeaverAuthBlockState) {
 
 TEST(AuthBlockStateBindingTest, CryptohomeRecoveryAuthBlockState) {
   AuthBlockState state = {.state = CryptohomeRecoveryAuthBlockState{
-                              .hsm_payload = SecureBlob("hsm_payload"),
+                              .hsm_payload = BlobFromString("hsm_payload"),
                               .encrypted_destination_share =
-                                  SecureBlob("encrypted_destination_share"),
-                              .channel_pub_key = SecureBlob(),
-                              .encrypted_channel_priv_key = SecureBlob(),
+                                  BlobFromString("encrypted_destination_share"),
+                              .channel_pub_key = Blob(),
+                              .encrypted_channel_priv_key = Blob(),
                           }};
-  std::optional<SecureBlob> blob = state.Serialize();
+  std::optional<Blob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
   std::optional<AuthBlockState> state2 =
       AuthBlockState::Deserialize(blob.value());
@@ -447,7 +447,7 @@ TEST(AuthBlockStateBindingTest, TpmEccAuthBlockState) {
           .tpm_public_key_hash = std::nullopt,
           .wrapped_reset_seed = BlobFromString("wrapped_reset_seed"),
       }};
-  std::optional<SecureBlob> blob = state.Serialize();
+  std::optional<Blob> blob = state.Serialize();
   ASSERT_TRUE(blob.has_value());
   std::optional<AuthBlockState> state2 =
       AuthBlockState::Deserialize(blob.value());

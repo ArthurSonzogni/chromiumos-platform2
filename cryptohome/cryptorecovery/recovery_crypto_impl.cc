@@ -49,6 +49,7 @@ using ::hwsec_foundation::AesGcmEncrypt;
 using ::hwsec_foundation::BigNumToSecureBlob;
 using ::hwsec_foundation::CreateBigNum;
 using ::hwsec_foundation::CreateBigNumContext;
+using ::hwsec_foundation::CreateRandomBlob;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::EllipticCurve;
 using ::hwsec_foundation::GenerateEcdhHkdfSymmetricKey;
@@ -67,21 +68,21 @@ namespace {
 constexpr char kDeviceUnknown[] = "UNKNOWN";
 constexpr int kRecoveryIdSeedLength = 32;
 
-brillo::SecureBlob GetRecoveryKeyHkdfInfo() {
-  return brillo::SecureBlob("CryptoHome Wrapping Key");
+brillo::Blob GetRecoveryKeyHkdfInfo() {
+  return brillo::BlobFromString("CryptoHome Wrapping Key");
 }
 
-brillo::SecureBlob GetMediatorShareHkdfInfo() {
-  return brillo::SecureBlob(RecoveryCrypto::kMediatorShareHkdfInfoValue);
+brillo::Blob GetMediatorShareHkdfInfo() {
+  return brillo::BlobFromString(RecoveryCrypto::kMediatorShareHkdfInfoValue);
 }
 
-brillo::SecureBlob GetRequestPayloadPlainTextHkdfInfo() {
-  return brillo::SecureBlob(
+brillo::Blob GetRequestPayloadPlainTextHkdfInfo() {
+  return brillo::BlobFromString(
       RecoveryCrypto::kRequestPayloadPlainTextHkdfInfoValue);
 }
 
-brillo::SecureBlob GetResponsePayloadPlainTextHkdfInfo() {
-  return brillo::SecureBlob(
+brillo::Blob GetResponsePayloadPlainTextHkdfInfo() {
+  return brillo::BlobFromString(
       RecoveryCrypto::kResponsePayloadPlainTextHkdfInfoValue);
 }
 
@@ -107,21 +108,21 @@ bool GenerateRecoveryRequestAssociatedData(
     LOG(ERROR) << "Epoch response doesn't have epoch metadata";
     return false;
   }
-  brillo::SecureBlob epoch_meta_data(epoch_response.epoch_meta_data().begin(),
-                                     epoch_response.epoch_meta_data().end());
+  brillo::Blob epoch_meta_data(epoch_response.epoch_meta_data().begin(),
+                               epoch_response.epoch_meta_data().end());
   if (!DeserializeEpochMetadataFromCbor(epoch_meta_data,
                                         &request_ad->epoch_meta_data)) {
     LOG(ERROR) << "Failed to deserialize epoch metadata from cbor";
     return false;
   }
   request_ad->request_payload_salt =
-      CreateSecureRandomBlob(RecoveryCrypto::kHkdfSaltLength);
+      CreateRandomBlob(RecoveryCrypto::kHkdfSaltLength);
   return true;
 }
 
 bool GenerateRecoveryRequestProto(const RecoveryRequest& request,
                                   CryptoRecoveryRpcRequest* recovery_request) {
-  brillo::SecureBlob request_cbor;
+  brillo::Blob request_cbor;
   if (!SerializeRecoveryRequestToCbor(request, &request_cbor)) {
     LOG(ERROR) << "Failed to serialize Recovery Request to CBOR";
     return false;
@@ -140,7 +141,7 @@ bool GetResponsePayloadFromProto(
         << "No cbor_cryptorecoveryresponse field in recovery_response_proto";
     return false;
   }
-  brillo::SecureBlob recovery_response_cbor(
+  brillo::Blob recovery_response_cbor(
       recovery_response_proto.cbor_cryptorecoveryresponse().begin(),
       recovery_response_proto.cbor_cryptorecoveryresponse().end());
   if (!DeserializeResponsePayloadFromCbor(recovery_response_cbor,
@@ -195,7 +196,7 @@ ErrorActionSet ErrorActionSetFromRecoveryResponseError(
 bool EncryptHsmPlainText(const HsmPlainText& plain_text,
                          const EllipticCurve& ec,
                          const EC_POINT& shared_secret_point,
-                         const brillo::SecureBlob& publisher_pub_key,
+                         const brillo::Blob& publisher_pub_key,
                          HsmPayload* hsm_payload) {
   brillo::SecureBlob plain_text_cbor;
   if (!SerializeHsmPlainTextToCbor(plain_text, &plain_text_cbor)) {
@@ -209,7 +210,7 @@ bool EncryptHsmPlainText(const HsmPlainText& plain_text,
   // key as input to HKDF the output will already be non-deterministic.
   if (!GenerateEcdhHkdfSymmetricKey(ec, shared_secret_point, publisher_pub_key,
                                     GetMediatorShareHkdfInfo(),
-                                    /*hkdf_salt=*/brillo::SecureBlob(),
+                                    /*hkdf_salt=*/brillo::Blob(),
                                     RecoveryCrypto::kHkdfHash,
                                     kAesGcm256KeySize, &aes_gcm_key)) {
     LOG(ERROR) << "Failed to generate ECDH+HKDF sender keys for HSM plain text "
@@ -305,13 +306,13 @@ bool RecoveryCryptoImpl::GenerateRecoveryKey(
     LOG(ERROR) << "Failed to get dealer_pub_point";
     return false;
   }
-  brillo::SecureBlob dealer_pub_key;
+  brillo::Blob dealer_pub_key;
   if (!ec_.EncodeToSpkiDer(dealer_key_pair, &dealer_pub_key, context.get())) {
     LOG(ERROR) << "Failed to convert dealer_pub_key to SubjectPublicKeyInfo";
     return false;
   }
   if (!ComputeHkdfWithInfoSuffix(hkdf_secret, GetRecoveryKeyHkdfInfo(),
-                                 dealer_pub_key, /*salt=*/brillo::SecureBlob(),
+                                 dealer_pub_key, /*salt=*/brillo::Blob(),
                                  HkdfHash::kSha256, /*result_len=*/0,
                                  recovery_key)) {
     LOG(ERROR) << "Failed to compute HKDF of recovery_dh";
@@ -321,8 +322,8 @@ bool RecoveryCryptoImpl::GenerateRecoveryKey(
 }
 
 bool RecoveryCryptoImpl::GenerateEphemeralKey(
-    brillo::SecureBlob* ephemeral_spki_der,
-    brillo::SecureBlob* ephemeral_inv_spki_der) const {
+    brillo::Blob* ephemeral_spki_der,
+    brillo::Blob* ephemeral_inv_spki_der) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
@@ -378,7 +379,7 @@ bool RecoveryCryptoImpl::GenerateEphemeralKey(
 bool RecoveryCryptoImpl::GenerateRecoveryRequest(
     const GenerateRecoveryRequestRequest& request_param,
     CryptoRecoveryRpcRequest* recovery_request,
-    brillo::SecureBlob* ephemeral_pub_key) const {
+    brillo::Blob* ephemeral_pub_key) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
@@ -400,7 +401,7 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
     return false;
   }
 
-  brillo::SecureBlob epoch_pub_key;
+  brillo::Blob epoch_pub_key;
   epoch_pub_key.assign(request_param.epoch_response.epoch_pub_key().begin(),
                        request_param.epoch_response.epoch_pub_key().end());
 
@@ -448,7 +449,7 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
   // Dispose shared_secret_point after used
   shared_secret_point.value().reset();
 
-  brillo::SecureBlob ephemeral_inverse_pub_key;
+  brillo::Blob ephemeral_inverse_pub_key;
   if (!GenerateEphemeralKey(ephemeral_pub_key, &ephemeral_inverse_pub_key)) {
     LOG(ERROR) << "Failed to generate Ephemeral keys";
     return false;
@@ -471,17 +472,15 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
   }
 
   // Sign the request payload with the rsa private key
-  brillo::SecureBlob request_payload_secure_blob;
+  brillo::Blob request_payload_blob;
   if (!SerializeRecoveryRequestPayloadToCbor(request_payload,
-                                             &request_payload_secure_blob)) {
+                                             &request_payload_blob)) {
     LOG(ERROR) << "Failed to serialize Recovery Request payload";
     return false;
   }
   brillo::Blob encrypted_rsa_priv_key(
       request_param.encrypted_rsa_priv_key.begin(),
       request_param.encrypted_rsa_priv_key.end());
-  brillo::Blob request_payload_blob(request_payload_secure_blob.begin(),
-                                    request_payload_secure_blob.end());
   hwsec::StatusOr<std::optional<brillo::Blob>> rsa_signature =
       hwsec_backend_->SignRequestPayload(encrypted_rsa_priv_key,
                                          request_payload_blob);
@@ -492,9 +491,9 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
   }
 
   RecoveryRequest request;
-  request.request_payload = std::move(request_payload_secure_blob);
+  request.request_payload = std::move(request_payload_blob);
   if (rsa_signature.value().has_value()) {
-    request.rsa_signature = brillo::SecureBlob(rsa_signature.value().value());
+    request.rsa_signature = brillo::Blob(rsa_signature.value().value());
   }
   if (!GenerateRecoveryRequestProto(request, recovery_request)) {
     LOG(ERROR) << "Failed to generate Recovery Request proto";
@@ -567,10 +566,10 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
                << backend_response_destination_share.status();
     return false;
   }
-  response->encrypted_destination_share = brillo::SecureBlob(
-      backend_response_destination_share->encrypted_own_priv_key);
-  response->extended_pcr_bound_destination_share = brillo::SecureBlob(
-      backend_response_destination_share->extended_pcr_bound_own_priv_key);
+  response->encrypted_destination_share =
+      backend_response_destination_share->encrypted_own_priv_key;
+  response->extended_pcr_bound_destination_share =
+      backend_response_destination_share->extended_pcr_bound_own_priv_key;
 
   // ==========================================================================
   // Generate and encrypt channel key pair.
@@ -602,8 +601,8 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     return false;
   }
 
-  response->encrypted_channel_priv_key = brillo::SecureBlob(
-      backend_response_channel_priv_key->encrypted_own_priv_key);
+  response->encrypted_channel_priv_key =
+      backend_response_channel_priv_key->encrypted_own_priv_key;
 
   // ==========================================================================
   // Generate HSM Associated Data.
@@ -623,17 +622,17 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     return false;
   }
 
-  brillo::SecureBlob rsa_public_key_der;
+  brillo::Blob channel_pub_key = response->channel_pub_key;
+  brillo::Blob rsa_public_key_der;
   if (rsa_key_pair.value().has_value()) {
     response->encrypted_rsa_priv_key =
-        brillo::SecureBlob(rsa_key_pair.value()->encrypted_rsa_private_key);
-    rsa_public_key_der =
-        brillo::SecureBlob(rsa_key_pair.value()->rsa_public_key_spki_der);
+        rsa_key_pair.value()->encrypted_rsa_private_key;
+    rsa_public_key_der = rsa_key_pair.value()->rsa_public_key_spki_der;
   }
 
   // Construct associated data for HSM payload: AD = CBOR({publisher_pub_key,
   // channel_pub_key, rsa_pub_key, onboarding_metadata}).
-  if (!GenerateHsmAssociatedData(response->channel_pub_key, rsa_public_key_der,
+  if (!GenerateHsmAssociatedData(channel_pub_key, rsa_public_key_der,
                                  publisher_key_pair,
                                  request.onboarding_metadata,
                                  &(response->hsm_payload.associated_data))) {
@@ -652,7 +651,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   }
   // Construct plain text for HSM payload PT = CBOR({dealer_pub_key,
   // mediator_share, kav}).
-  brillo::SecureBlob dealer_pub_key;
+  brillo::Blob dealer_pub_key;
   if (!ec_.EncodeToSpkiDer(dealer_key_pair, &dealer_pub_key, context.get())) {
     LOG(ERROR) << "Failed to convert dealer_pub_key to SubjectPublicKeyInfo";
     return false;
@@ -679,7 +678,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
                   "publisher_priv_key";
     return false;
   }
-  brillo::SecureBlob publisher_pub_key_blob;
+  brillo::Blob publisher_pub_key_blob;
   if (!ec_.EncodeToSpkiDer(publisher_key_pair, &publisher_pub_key_blob,
                            context.get())) {
     LOG(ERROR) << "Failed to convert publisher_pub_key to SubjectPublicKeyInfo";
@@ -814,10 +813,10 @@ bool RecoveryCryptoImpl::RecoverDestination(
     LOG(ERROR) << "Failed to convert destination_dh_x BIGNUM to SecureBlob";
     return false;
   }
-  if (!ComputeHkdfWithInfoSuffix(
-          hkdf_secret, GetRecoveryKeyHkdfInfo(), request.dealer_pub_key,
-          /*salt=*/brillo::SecureBlob(), HkdfHash::kSha256, /*result_len=*/0,
-          destination_recovery_key)) {
+  if (!ComputeHkdfWithInfoSuffix(hkdf_secret, GetRecoveryKeyHkdfInfo(),
+                                 request.dealer_pub_key,
+                                 /*salt=*/brillo::Blob(), HkdfHash::kSha256,
+                                 /*result_len=*/0, destination_recovery_key)) {
     LOG(ERROR) << "Failed to compute HKDF of destination_dh";
     return false;
   }
@@ -888,7 +887,8 @@ CryptoStatus RecoveryCryptoImpl::DecryptResponsePayload(
             {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kFatal}),
         CryptoError::CE_RECOVERY_FATAL);
   }
-  brillo::SecureBlob epoch_pub_key(request.epoch_response.epoch_pub_key());
+  brillo::Blob epoch_pub_key =
+      brillo::BlobFromString(request.epoch_response.epoch_pub_key());
   crypto::ScopedEC_POINT epoch_pub_point =
       ec_.DecodeFromSpkiDer(epoch_pub_key, context.get());
   if (!epoch_pub_point) {
@@ -984,11 +984,11 @@ CryptoStatus RecoveryCryptoImpl::DecryptResponsePayload(
 }
 
 bool RecoveryCryptoImpl::GenerateHsmAssociatedData(
-    const brillo::SecureBlob& channel_pub_key,
-    const brillo::SecureBlob& rsa_pub_key,
+    const brillo::Blob& channel_pub_key,
+    const brillo::Blob& rsa_pub_key,
     const crypto::ScopedEC_KEY& publisher_key_pair,
     const OnboardingMetadata& onboarding_metadata,
-    brillo::SecureBlob* hsm_associated_data) const {
+    brillo::Blob* hsm_associated_data) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
@@ -997,7 +997,7 @@ bool RecoveryCryptoImpl::GenerateHsmAssociatedData(
 
   // Construct associated data for HSM payload: AD = CBOR({publisher_pub_key,
   // channel_pub_key, rsa_pub_key, onboarding_metadata}).
-  brillo::SecureBlob publisher_pub_key;
+  brillo::Blob publisher_pub_key;
   if (!ec_.EncodeToSpkiDer(publisher_key_pair, &publisher_pub_key,
                            context.get())) {
     LOG(ERROR) << "Failed to convert publisher_pub_key to SubjectPublicKeyInfo";
@@ -1057,9 +1057,9 @@ std::string RecoveryCryptoImpl::LoadStoredRecoveryIdFromFile(
     LOG(ERROR) << "Serialized protobuf does not contain the actual RecoveryId";
     return "";
   }
-  return hwsec_foundation::SecureBlobToHex(
-      brillo::SecureBlob(recovery_id_pb.recovery_id().begin(),
-                         recovery_id_pb.recovery_id().end()));
+  return hwsec_foundation::BlobToHex(
+      brillo::Blob(recovery_id_pb.recovery_id().begin(),
+                   recovery_id_pb.recovery_id().end()));
 }
 
 std::string RecoveryCryptoImpl::LoadStoredRecoveryId(

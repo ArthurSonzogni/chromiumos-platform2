@@ -2788,7 +2788,7 @@ void AuthSession::GetRecoveryRequest(
     return;
   }
 
-  brillo::SecureBlob ephemeral_pub_key, recovery_request;
+  brillo::Blob ephemeral_pub_key, recovery_request;
   // GenerateRecoveryRequest will set:
   // - `recovery_request` on the `reply` object
   // - `ephemeral_pub_key` which is saved in AuthSession and retrieved during
@@ -2813,7 +2813,7 @@ void AuthSession::GetRecoveryRequest(
   }
 
   cryptohome_recovery_ephemeral_pub_key_ = ephemeral_pub_key;
-  reply.set_recovery_request(recovery_request.to_string());
+  reply.set_recovery_request(brillo::BlobToString(recovery_request));
   std::move(on_done).Run(reply);
 }
 

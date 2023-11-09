@@ -187,7 +187,7 @@ CryptohomeStatus AuthenticatePinFactor(const std::string& label,
 }
 
 CryptohomeStatus AddRecoveryFactor(AuthSession& auth_session) {
-  brillo::SecureBlob mediator_pub_key;
+  brillo::Blob mediator_pub_key;
   EXPECT_TRUE(
       FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(&mediator_pub_key));
 
@@ -199,7 +199,7 @@ CryptohomeStatus AddRecoveryFactor(AuthSession& auth_session) {
   factor.mutable_cryptohome_recovery_metadata();
   user_data_auth::CryptohomeRecoveryAuthInput& input =
       *request.mutable_auth_input()->mutable_cryptohome_recovery_input();
-  input.set_mediator_pub_key(mediator_pub_key.to_string());
+  input.set_mediator_pub_key(brillo::BlobToString(mediator_pub_key));
   input.set_user_gaia_id(kUserGaiaId);
   input.set_device_user_id(kDeviceUserId);
   return RunAddAuthFactor(request, auth_session);
@@ -207,7 +207,7 @@ CryptohomeStatus AddRecoveryFactor(AuthSession& auth_session) {
 
 CryptohomeStatus AuthenticateRecoveryFactor(AuthSession& auth_session) {
   // Retrieve fake server parameters.
-  brillo::SecureBlob epoch_pub_key;
+  brillo::Blob epoch_pub_key;
   EXPECT_TRUE(
       FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key));
   brillo::SecureBlob epoch_priv_key;
@@ -261,7 +261,7 @@ CryptohomeStatus AuthenticateRecoveryFactor(AuthSession& auth_session) {
   input.mutable_ledger_info()->set_name(ledger_info.name);
   input.mutable_ledger_info()->set_key_hash(ledger_info.key_hash.value());
   input.mutable_ledger_info()->set_public_key(
-      ledger_info.public_key.value().to_string());
+      brillo::BlobToString(ledger_info.public_key.value()));
   return RunAuthenticateAuthFactor(request, auth_session);
 }
 

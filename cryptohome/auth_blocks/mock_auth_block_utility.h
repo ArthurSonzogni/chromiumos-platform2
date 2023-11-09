@@ -73,8 +73,8 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                const brillo::Blob& epoch_response,
                const CryptohomeRecoveryAuthBlockState& state,
                const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
-               brillo::SecureBlob* out_recovery_request,
-               brillo::SecureBlob* out_ephemeral_pub_key),
+               brillo::Blob* out_recovery_request,
+               brillo::Blob* out_ephemeral_pub_key),
               (const, override));
 };
 

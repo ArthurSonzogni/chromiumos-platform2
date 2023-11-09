@@ -14,6 +14,7 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/big_num_util.h>
@@ -32,6 +33,7 @@
 using ::hwsec_foundation::AesGcmDecrypt;
 using ::hwsec_foundation::AesGcmEncrypt;
 using ::hwsec_foundation::CreateBigNumContext;
+using ::hwsec_foundation::CreateRandomBlob;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::EllipticCurve;
 using ::hwsec_foundation::GenerateEcdhHkdfSymmetricKey;
@@ -73,17 +75,26 @@ constexpr char kFakeEpochPublicKeyHex[] =
     "8454BBB6F2AAA18E05834BB6DBBD05721FC81ED3BED33D08A8EFD44F6786CAE7ADEB8E26A3"
     "55CD9714F59C78F063A3CA3A7D74877A8A";
 
-brillo::SecureBlob GetMediatorShareHkdfInfo() {
-  return brillo::SecureBlob(RecoveryCrypto::kMediatorShareHkdfInfoValue);
+bool HexStringToBlob(const std::string& hex, brillo::Blob* blob) {
+  std::string decoded;
+  if (!base::HexStringToString(hex, &decoded)) {
+    return false;
+  }
+  *blob = brillo::BlobFromString(decoded);
+  return true;
 }
 
-brillo::SecureBlob GetRequestPayloadPlainTextHkdfInfo() {
-  return brillo::SecureBlob(
+brillo::Blob GetMediatorShareHkdfInfo() {
+  return brillo::BlobFromString(RecoveryCrypto::kMediatorShareHkdfInfoValue);
+}
+
+brillo::Blob GetRequestPayloadPlainTextHkdfInfo() {
+  return brillo::BlobFromString(
       RecoveryCrypto::kRequestPayloadPlainTextHkdfInfoValue);
 }
 
-brillo::SecureBlob GetResponsePayloadPlainTextHkdfInfo() {
-  return brillo::SecureBlob(
+brillo::Blob GetResponsePayloadPlainTextHkdfInfo() {
+  return brillo::BlobFromString(
       RecoveryCrypto::kResponsePayloadPlainTextHkdfInfoValue);
 }
 
@@ -95,7 +106,7 @@ bool GetRecoveryRequestFromProto(
         << "No cbor_cryptorecoveryrequest field in recovery_request_proto";
     return false;
   }
-  brillo::SecureBlob recovery_request_cbor(
+  brillo::Blob recovery_request_cbor(
       recovery_request_proto.cbor_cryptorecoveryrequest().begin(),
       recovery_request_proto.cbor_cryptorecoveryrequest().end());
   if (!DeserializeRecoveryRequestFromCbor(recovery_request_cbor,
@@ -109,7 +120,7 @@ bool GetRecoveryRequestFromProto(
 bool GenerateRecoveryRequestProto(
     const ResponsePayload& response,
     CryptoRecoveryRpcResponse* recovery_response) {
-  brillo::SecureBlob recovery_response_cbor;
+  brillo::Blob recovery_response_cbor;
   if (!SerializeResponsePayloadToCbor(response, &recovery_response_cbor)) {
     LOG(ERROR) << "Failed to serialize Recovery Response to cbor";
     return false;
@@ -120,19 +131,19 @@ bool GenerateRecoveryRequestProto(
   return true;
 }
 
-brillo::SecureBlob GetFakeLedgerPublicKeyBase64() {
-  return brillo::SecureBlob(kFakeLedgerPublicKeyBase64);
+brillo::Blob GetFakeLedgerPublicKeyBase64() {
+  return brillo::BlobFromString(kFakeLedgerPublicKeyBase64);
 }
 
-bool GetFakeLedgerPublicKey(brillo::SecureBlob* key) {
+bool GetFakeLedgerPublicKey(brillo::Blob* key) {
   std::string ledger_public_key_decoded;
-  if (!base::Base64UrlDecode(GetFakeLedgerPublicKeyBase64().to_string(),
+  if (!base::Base64UrlDecode(std::string(kFakeLedgerPublicKeyBase64),
                              base::Base64UrlDecodePolicy::IGNORE_PADDING,
                              &ledger_public_key_decoded)) {
     LOG(ERROR) << "Failed at decoding from url base64.";
     return false;
   }
-  *key = brillo::SecureBlob(ledger_public_key_decoded);
+  *key = brillo::BlobFromString(ledger_public_key_decoded);
   return true;
 }
 }  // namespace
@@ -191,7 +202,7 @@ bool FakeRecoveryMediatorCrypto::GetFakeLedgerPrivateKey(EC_KEY* key) {
     return false;
   }
 
-  brillo::SecureBlob pub_key_blob;
+  brillo::Blob pub_key_blob;
   if (!GetFakeLedgerPublicKey(&pub_key_blob)) {
     LOG(ERROR) << "Failed to get public key";
     return false;
@@ -227,10 +238,9 @@ LedgerInfo FakeRecoveryMediatorCrypto::GetFakeLedgerInfo() {
 
 // static
 bool FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(
-    brillo::SecureBlob* mediator_pub_key) {
-  if (!brillo::SecureBlob::HexStringToSecureBlob(kFakeMediatorPublicKeyHex,
-                                                 mediator_pub_key)) {
-    LOG(ERROR) << "Failed to convert hex to SecureBlob";
+    brillo::Blob* mediator_pub_key) {
+  if (!HexStringToBlob(kFakeMediatorPublicKeyHex, mediator_pub_key)) {
+    LOG(ERROR) << "Failed to convert hex to Blob";
     return false;
   }
   return true;
@@ -249,10 +259,9 @@ bool FakeRecoveryMediatorCrypto::GetFakeMediatorPrivateKey(
 
 // static
 bool FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(
-    brillo::SecureBlob* epoch_pub_key) {
-  if (!brillo::SecureBlob::HexStringToSecureBlob(kFakeEpochPublicKeyHex,
-                                                 epoch_pub_key)) {
-    LOG(ERROR) << "Failed to convert hex to SecureBlob";
+    brillo::Blob* epoch_pub_key) {
+  if (!HexStringToBlob(kFakeEpochPublicKeyHex, epoch_pub_key)) {
+    LOG(ERROR) << "Failed to convert hex to Blob";
     return false;
   }
   return true;
@@ -272,12 +281,12 @@ bool FakeRecoveryMediatorCrypto::GetFakeEpochPrivateKey(
 // static
 bool FakeRecoveryMediatorCrypto::GetFakeEpochResponse(
     CryptoRecoveryEpochResponse* epoch_response) {
-  brillo::SecureBlob epoch_pub_key;
+  brillo::Blob epoch_pub_key;
   if (!GetFakeEpochPublicKey(&epoch_pub_key)) {
     LOG(ERROR) << "Failed to get fake epoch public key";
     return false;
   }
-  brillo::SecureBlob epoch_metadata_cbor;
+  brillo::Blob epoch_metadata_cbor;
   cbor::Value::MapValue meta_data_cbor;
   meta_data_cbor.emplace("meta_data_cbor_key", "meta_data_cbor_value");
   if (!SerializeCborForTesting(cbor::Value(meta_data_cbor),
@@ -302,7 +311,7 @@ bool FakeRecoveryMediatorCrypto::DecryptHsmPayloadPlainText(
     return false;
   }
 
-  brillo::SecureBlob publisher_pub_key_blob;
+  brillo::Blob publisher_pub_key_blob;
   if (!GetBytestringValueFromCborMapByKeyForTesting(hsm_payload.associated_data,
                                                     kPublisherPublicKey,
                                                     &publisher_pub_key_blob)) {
@@ -331,7 +340,7 @@ bool FakeRecoveryMediatorCrypto::DecryptHsmPayloadPlainText(
   if (!GenerateEcdhHkdfSymmetricKey(
           ec_, *shared_secret_point, publisher_pub_key_blob,
           GetMediatorShareHkdfInfo(),
-          /*hkdf_salt=*/brillo::SecureBlob(), RecoveryCrypto::kHkdfHash,
+          /*hkdf_salt=*/brillo::Blob(), RecoveryCrypto::kHkdfHash,
           kAesGcm256KeySize, &aes_gcm_key)) {
     LOG(ERROR) << "Failed to generate ECDH+HKDF recipient key for HSM "
                   "plaintext decryption";
@@ -358,7 +367,7 @@ bool FakeRecoveryMediatorCrypto::DecryptRequestPayloadPlainText(
     return false;
   }
 
-  brillo::SecureBlob salt;
+  brillo::Blob salt;
   if (!GetBytestringValueFromCborMapByKeyForTesting(
           request_payload.associated_data, kRequestPayloadSalt, &salt)) {
     LOG(ERROR) << "Unable to deserialize salt from request_payload";
@@ -370,7 +379,7 @@ bool FakeRecoveryMediatorCrypto::DecryptRequestPayloadPlainText(
     LOG(ERROR) << "Unable to deserialize hsm_payload from request_payload";
     return false;
   }
-  brillo::SecureBlob channel_pub_key_blob;
+  brillo::Blob channel_pub_key_blob;
   if (!GetBytestringValueFromCborMapByKeyForTesting(hsm_payload.associated_data,
                                                     kChannelPublicKey,
                                                     &channel_pub_key_blob)) {
@@ -418,9 +427,9 @@ bool FakeRecoveryMediatorCrypto::DecryptRequestPayloadPlainText(
 
 bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
     const brillo::SecureBlob& mediator_priv_key,
-    const brillo::SecureBlob& epoch_pub_key,
+    const brillo::Blob& epoch_pub_key,
     const brillo::SecureBlob& epoch_priv_key,
-    const brillo::SecureBlob& ephemeral_pub_inv_key,
+    const brillo::Blob& ephemeral_pub_inv_key,
     const HsmPayload& hsm_payload,
     CryptoRecoveryRpcResponse* recovery_response_proto) const {
   ScopedBN_CTX context = CreateBigNumContext();
@@ -487,8 +496,7 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
     return false;
   }
 
-  brillo::SecureBlob salt =
-      CreateSecureRandomBlob(RecoveryCrypto::kHkdfSaltLength);
+  brillo::Blob salt = CreateRandomBlob(RecoveryCrypto::kHkdfSaltLength);
   ResponsePayload response_payload;
   HsmResponseAssociatedData response_ad;
   response_ad.response_payload_salt = salt;
@@ -525,7 +533,7 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
     return false;
   }
 
-  brillo::SecureBlob channel_pub_key_blob;
+  brillo::Blob channel_pub_key_blob;
   if (!GetBytestringValueFromCborMapByKeyForTesting(hsm_payload.associated_data,
                                                     kChannelPublicKey,
                                                     &channel_pub_key_blob)) {
@@ -582,7 +590,7 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
 }
 
 bool FakeRecoveryMediatorCrypto::MediateRequestPayload(
-    const brillo::SecureBlob& epoch_pub_key,
+    const brillo::Blob& epoch_pub_key,
     const brillo::SecureBlob& epoch_priv_key,
     const brillo::SecureBlob& mediator_priv_key,
     const CryptoRecoveryRpcRequest& recovery_request_proto,

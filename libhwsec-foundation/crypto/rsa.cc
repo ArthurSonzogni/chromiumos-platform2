@@ -256,10 +256,10 @@ bool RsaOaepDecrypt(const brillo::SecureBlob& ciphertext,
   return true;
 }
 
-bool VerifyRsaSignatureSha256(const brillo::SecureBlob& input_data,
-                              const brillo::SecureBlob& signature,
-                              const brillo::SecureBlob& public_key_spki_der) {
-  const brillo::SecureBlob digest = Sha256(input_data);
+bool VerifyRsaSignatureSha256(const brillo::Blob& input_data,
+                              const brillo::Blob& signature,
+                              const brillo::Blob& public_key_spki_der) {
+  const brillo::Blob digest = Sha256(input_data);
 
   const unsigned char* public_key_data = public_key_spki_der.data();
   crypto::ScopedRSA rsa(d2i_RSA_PUBKEY(/*RSA=*/nullptr, &public_key_data,

@@ -24,7 +24,7 @@ namespace cryptohome {
 // fields should be set.
 struct CryptohomeRecoveryAuthInput {
   // Public key of the mediator for Cryptohome recovery flow.
-  std::optional<brillo::SecureBlob> mediator_pub_key;
+  std::optional<brillo::Blob> mediator_pub_key;
   // GaiaId of the owner of cryptohome to be recovered.
   std::string user_gaia_id;
   // Unique identifier generated on cryptohome creation.
@@ -32,13 +32,13 @@ struct CryptohomeRecoveryAuthInput {
   // Serialized cryptorecovery::CryptoRecoveryEpochResponse.
   // An epoch response received from Recovery Mediator service containing epoch
   // beacon value for Cryptohome recovery flow.
-  std::optional<brillo::SecureBlob> epoch_response;
+  std::optional<brillo::Blob> epoch_response;
   // Ephemeral public key for Cryptohome recovery flow.
-  std::optional<brillo::SecureBlob> ephemeral_pub_key;
+  std::optional<brillo::Blob> ephemeral_pub_key;
   // Serialized cryptorecovery::CryptoRecoveryRpcResponse.
   // A response received from Recovery Mediator service and used by Cryptohome
   // recovery flow to derive the wrapping keys.
-  std::optional<brillo::SecureBlob> recovery_response;
+  std::optional<brillo::Blob> recovery_response;
 
   // The ledger info from the chrome side and used by Cryptohome
   // recovery flow to determine which ledger is used:
@@ -47,7 +47,7 @@ struct CryptohomeRecoveryAuthInput {
   // Ledger's public key hash.
   uint32_t ledger_key_hash;
   // Ledger's public key.
-  std::optional<brillo::SecureBlob> ledger_public_key;
+  std::optional<brillo::Blob> ledger_public_key;
 };
 
 // Data required for Challenge Credential flow.

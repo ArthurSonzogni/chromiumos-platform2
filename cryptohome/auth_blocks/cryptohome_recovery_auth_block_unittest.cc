@@ -85,7 +85,7 @@ class CryptohomeRecoveryAuthBlockTest : public testing::Test {
       const hwsec::RecoveryCryptoFrontend* recovery_crypto,
       const CryptohomeRecoveryAuthBlockState& cryptohome_recovery_state,
       cryptorecovery::CryptoRecoveryRpcResponse* response_proto,
-      brillo::SecureBlob* ephemeral_pub_key) {
+      brillo::Blob* ephemeral_pub_key) {
     EXPECT_FALSE(cryptohome_recovery_state.hsm_payload.empty());
     EXPECT_FALSE(cryptohome_recovery_state.encrypted_destination_share.empty());
     EXPECT_FALSE(cryptohome_recovery_state.encrypted_channel_priv_key.empty());
@@ -100,19 +100,19 @@ class CryptohomeRecoveryAuthBlockTest : public testing::Test {
     std::unique_ptr<cryptorecovery::RecoveryCryptoImpl> recovery =
         cryptorecovery::RecoveryCryptoImpl::Create(recovery_crypto, &platform_);
     ASSERT_TRUE(recovery);
-    brillo::SecureBlob rsa_priv_key;
+    brillo::Blob encrypted_rsa_priv_key;
 
     cryptorecovery::RequestMetadata request_metadata;
     cryptorecovery::GenerateRecoveryRequestRequest
-        generate_recovery_request_input_param(
-            {.hsm_payload = hsm_payload,
-             .request_meta_data = request_metadata,
-             .epoch_response = epoch_response_,
-             .encrypted_rsa_priv_key = rsa_priv_key,
-             .encrypted_channel_priv_key =
-                 cryptohome_recovery_state.encrypted_channel_priv_key,
-             .channel_pub_key = cryptohome_recovery_state.channel_pub_key,
-             .obfuscated_username = ObfuscatedUsername(kObfuscatedUsername)});
+        generate_recovery_request_input_param{
+            .hsm_payload = hsm_payload,
+            .request_meta_data = request_metadata,
+            .epoch_response = epoch_response_,
+            .encrypted_rsa_priv_key = encrypted_rsa_priv_key,
+            .encrypted_channel_priv_key =
+                cryptohome_recovery_state.encrypted_channel_priv_key,
+            .channel_pub_key = cryptohome_recovery_state.channel_pub_key,
+            .obfuscated_username = ObfuscatedUsername(kObfuscatedUsername)};
     cryptorecovery::CryptoRecoveryRpcRequest recovery_request;
     ASSERT_TRUE(recovery->GenerateRecoveryRequest(
         generate_recovery_request_input_param, &recovery_request,
@@ -146,8 +146,8 @@ class CryptohomeRecoveryAuthBlockTest : public testing::Test {
   }
 
  protected:
-  brillo::SecureBlob mediator_pub_key_;
-  brillo::SecureBlob epoch_pub_key_;
+  brillo::Blob mediator_pub_key_;
+  brillo::Blob epoch_pub_key_;
   cryptorecovery::CryptoRecoveryEpochResponse epoch_response_;
   cryptorecovery::LedgerInfo ledger_info_;
   FakePlatform platform_;
@@ -182,7 +182,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
   const CryptohomeRecoveryAuthBlockState& cryptohome_recovery_state =
       std::get<CryptohomeRecoveryAuthBlockState>(auth_state->state);
 
-  brillo::SecureBlob ephemeral_pub_key;
+  brillo::Blob ephemeral_pub_key;
   cryptorecovery::CryptoRecoveryRpcResponse response_proto;
   PerformRecovery(recovery_crypto_fake_backend_.get(),
                   cryptohome_recovery_state, &response_proto,
@@ -194,9 +194,9 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
   EXPECT_TRUE(response_proto.SerializeToString(&serialized_response_proto));
   EXPECT_TRUE(epoch_response_.SerializeToString(&serialized_epoch_response));
   derive_cryptohome_recovery_auth_input.recovery_response =
-      brillo::SecureBlob(serialized_response_proto);
+      brillo::BlobFromString(serialized_response_proto);
   derive_cryptohome_recovery_auth_input.epoch_response =
-      brillo::SecureBlob(serialized_epoch_response);
+      brillo::BlobFromString(serialized_epoch_response);
   derive_cryptohome_recovery_auth_input.ledger_name = ledger_info_.name;
   derive_cryptohome_recovery_auth_input.ledger_key_hash =
       ledger_info_.key_hash.value();
@@ -247,7 +247,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithNoDeviceUserId) {
   const CryptohomeRecoveryAuthBlockState& cryptohome_recovery_state =
       std::get<CryptohomeRecoveryAuthBlockState>(auth_state->state);
 
-  brillo::SecureBlob ephemeral_pub_key;
+  brillo::Blob ephemeral_pub_key;
   cryptorecovery::CryptoRecoveryRpcResponse response_proto;
   PerformRecovery(recovery_crypto_fake_backend_.get(),
                   cryptohome_recovery_state, &response_proto,
@@ -259,9 +259,9 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithNoDeviceUserId) {
   EXPECT_TRUE(response_proto.SerializeToString(&serialized_response_proto));
   EXPECT_TRUE(epoch_response_.SerializeToString(&serialized_epoch_response));
   derive_cryptohome_recovery_auth_input.recovery_response =
-      brillo::SecureBlob(serialized_response_proto);
+      brillo::BlobFromString(serialized_response_proto);
   derive_cryptohome_recovery_auth_input.epoch_response =
-      brillo::SecureBlob(serialized_epoch_response);
+      brillo::BlobFromString(serialized_epoch_response);
   derive_cryptohome_recovery_auth_input.ledger_name = ledger_info_.name;
   derive_cryptohome_recovery_auth_input.ledger_key_hash =
       ledger_info_.key_hash.value();
@@ -325,7 +325,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
   const CryptohomeRecoveryAuthBlockState& cryptohome_recovery_state =
       std::get<CryptohomeRecoveryAuthBlockState>(auth_state->state);
 
-  brillo::SecureBlob ephemeral_pub_key;
+  brillo::Blob ephemeral_pub_key;
   cryptorecovery::CryptoRecoveryRpcResponse response_proto;
   PerformRecovery(recovery_crypto_fake_backend_.get(),
                   cryptohome_recovery_state, &response_proto,
@@ -337,9 +337,9 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
   EXPECT_TRUE(response_proto.SerializeToString(&serialized_response_proto));
   EXPECT_TRUE(epoch_response_.SerializeToString(&serialized_epoch_response));
   derive_cryptohome_recovery_auth_input.recovery_response =
-      brillo::SecureBlob(serialized_response_proto);
+      brillo::BlobFromString(serialized_response_proto);
   derive_cryptohome_recovery_auth_input.epoch_response =
-      brillo::SecureBlob(serialized_epoch_response);
+      brillo::BlobFromString(serialized_epoch_response);
   derive_cryptohome_recovery_auth_input.ephemeral_pub_key = ephemeral_pub_key;
   derive_cryptohome_recovery_auth_input.ledger_name = ledger_info_.name;
   derive_cryptohome_recovery_auth_input.ledger_key_hash =

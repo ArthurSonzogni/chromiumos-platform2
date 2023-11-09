@@ -25,6 +25,7 @@
 using ::hwsec_foundation::BigNumFromValue;
 using ::hwsec_foundation::BigNumToSecureBlob;
 using ::hwsec_foundation::CreateBigNumContext;
+using ::hwsec_foundation::CreateRandomBlob;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::EllipticCurve;
 using ::hwsec_foundation::ScopedBN_CTX;
@@ -124,6 +125,11 @@ bool CreateCborMapForTesting(const cbor::Value::MapValue& map,
   return SerializeCborForTesting(cbor::Value(map), serialized_cbor_map);
 }
 
+bool CreateCborMapForTesting(const cbor::Value::MapValue& map,
+                             brillo::Blob* serialized_cbor_map) {
+  return SerializeCborForTesting(cbor::Value(map), serialized_cbor_map);
+}
+
 bool FindMapValueInCborMap(const cbor::Value::MapValue& map,
                            const std::string& key,
                            cbor::Value* value) {
@@ -136,8 +142,17 @@ bool FindMapValueInCborMap(const cbor::Value::MapValue& map,
   return true;
 }
 
-MATCHER_P2(SerializedCborMapContainsSecureBlobValue, key, expected_value, "") {
-  brillo::SecureBlob deserialized_value;
+bool HexStringToBlob(const std::string& hex, brillo::Blob* blob) {
+  std::string str;
+  if (!base::HexStringToString(hex, &str)) {
+    return false;
+  }
+  *blob = brillo::BlobFromString(str);
+  return true;
+}
+
+MATCHER_P2(SerializedCborMapContainsValue, key, expected_value, "") {
+  expected_value_type deserialized_value;
   if (!GetBytestringValueFromCborMapByKeyForTesting(arg, key,
                                                     &deserialized_value)) {
     return false;
@@ -145,14 +160,14 @@ MATCHER_P2(SerializedCborMapContainsSecureBlobValue, key, expected_value, "") {
   return deserialized_value == expected_value;
 }
 
-MATCHER_P2(CborMapContainsSecureBlobValue, key, expected_value, "") {
+MATCHER_P2(CborMapContainsBlobValue, key, expected_value, "") {
   const auto entry = arg.find(cbor::Value(key));
   if (entry == arg.end() || !entry->second.is_bytestring()) {
     return false;
   }
 
-  brillo::SecureBlob result(entry->second.GetBytestring().begin(),
-                            entry->second.GetBytestring().end());
+  brillo::Blob result(entry->second.GetBytestring().begin(),
+                      entry->second.GetBytestring().end());
   return result == expected_value;
 }
 
@@ -238,13 +253,13 @@ class HsmPayloadCborHelperTest : public testing::Test {
  protected:
   ScopedBN_CTX context_;
   std::optional<EllipticCurve> ec_;
-  brillo::SecureBlob publisher_pub_key_;
+  brillo::Blob publisher_pub_key_;
   brillo::SecureBlob publisher_priv_key_;
-  brillo::SecureBlob channel_pub_key_;
+  brillo::Blob channel_pub_key_;
   brillo::SecureBlob channel_priv_key_;
-  brillo::SecureBlob dealer_pub_key_;
+  brillo::Blob dealer_pub_key_;
   brillo::SecureBlob dealer_priv_key_;
-  brillo::SecureBlob rsa_public_key_;
+  brillo::Blob rsa_public_key_;
   HsmAssociatedData hsm_associated_data_;
 };
 
@@ -253,7 +268,7 @@ class AeadPayloadHelper {
   AeadPayloadHelper() {
     fake_aead_payload_.cipher_text =
         brillo::BlobFromString(kFakePayloadCipherText);
-    fake_aead_payload_.associated_data = brillo::SecureBlob(kFakePayloadAd);
+    fake_aead_payload_.associated_data = brillo::BlobFromString(kFakePayloadAd);
     fake_aead_payload_.iv = brillo::BlobFromString(kFakePayloadIv);
     fake_aead_payload_.tag = brillo::BlobFromString(kFakePayloadTag);
   }
@@ -269,19 +284,15 @@ class AeadPayloadHelper {
     return payload;
   }
 
-  void ExpectEqualsToFakeAeadPayload(const brillo::SecureBlob& payload) const {
-    EXPECT_THAT(payload,
-                SerializedCborMapContainsSecureBlobValue(
-                    kAeadCipherText,
-                    brillo::SecureBlob(fake_aead_payload_.cipher_text)));
-    EXPECT_THAT(payload, SerializedCborMapContainsSecureBlobValue(
+  void ExpectEqualsToFakeAeadPayload(const brillo::Blob& payload) const {
+    EXPECT_THAT(payload, SerializedCborMapContainsValue(
+                             kAeadCipherText, fake_aead_payload_.cipher_text));
+    EXPECT_THAT(payload, SerializedCborMapContainsValue(
                              kAeadAd, fake_aead_payload_.associated_data));
     EXPECT_THAT(payload,
-                SerializedCborMapContainsSecureBlobValue(
-                    kAeadIv, brillo::SecureBlob(fake_aead_payload_.iv)));
-    EXPECT_THAT(payload,
-                SerializedCborMapContainsSecureBlobValue(
-                    kAeadTag, brillo::SecureBlob(fake_aead_payload_.tag)));
+                SerializedCborMapContainsValue(kAeadIv, fake_aead_payload_.iv));
+    EXPECT_THAT(payload, SerializedCborMapContainsValue(
+                             kAeadTag, fake_aead_payload_.tag));
   }
 
   void ExpectEqualsToFakeAeadPayload(const AeadPayload& payload) const {
@@ -293,18 +304,14 @@ class AeadPayloadHelper {
 
   void ExpectEqualsToFakeAeadPayload(
       const cbor::Value::MapValue& cbor_map) const {
-    EXPECT_THAT(cbor_map,
-                CborMapContainsSecureBlobValue(
-                    kAeadCipherText,
-                    brillo::SecureBlob(fake_aead_payload_.cipher_text)));
-    EXPECT_THAT(cbor_map, CborMapContainsSecureBlobValue(
+    EXPECT_THAT(cbor_map, CborMapContainsBlobValue(
+                              kAeadCipherText, fake_aead_payload_.cipher_text));
+    EXPECT_THAT(cbor_map, CborMapContainsBlobValue(
                               kAeadAd, fake_aead_payload_.associated_data));
     EXPECT_THAT(cbor_map,
-                CborMapContainsSecureBlobValue(
-                    kAeadIv, brillo::SecureBlob(fake_aead_payload_.iv)));
+                CborMapContainsBlobValue(kAeadIv, fake_aead_payload_.iv));
     EXPECT_THAT(cbor_map,
-                CborMapContainsSecureBlobValue(
-                    kAeadTag, brillo::SecureBlob(fake_aead_payload_.tag)));
+                CborMapContainsBlobValue(kAeadTag, fake_aead_payload_.tag));
   }
 
  private:
@@ -367,11 +374,10 @@ class ResponsePayloadCborHelperTest : public testing::Test {
 
  protected:
   AeadPayloadHelper aead_helper_;
-  const brillo::SecureBlob fake_pub_key_ =
-      CreateSecureRandomBlob(kEc256PubKeySize);
+  const brillo::Blob fake_pub_key_ = CreateRandomBlob(kEc256PubKeySize);
   const brillo::SecureBlob fake_priv_key_ =
       CreateSecureRandomBlob(kEc256PrivKeySize);
-  const brillo::SecureBlob salt_{kFakeResponseSalt};
+  const brillo::Blob salt_ = brillo::BlobFromString(kFakeResponseSalt);
 
   const std::vector<uint8_t> kFakeCheckpointNote = {100, 200, 250};
   const std::vector<std::vector<uint8_t>> kFakeInclusionProof = {
@@ -401,9 +407,9 @@ TEST_F(ResponsePayloadCborHelperTest, DeserializePrivateLogEntryFromCbor) {
 
 // Verifies serialization of HSM payload associated data to CBOR.
 TEST_F(HsmPayloadCborHelperTest, GenerateAdCborWithEmptyRsaPublicKey) {
-  brillo::SecureBlob cbor_output;
+  brillo::Blob cbor_output;
   HsmAssociatedData hsm_associated_data = hsm_associated_data_;
-  hsm_associated_data.rsa_public_key = brillo::SecureBlob();
+  hsm_associated_data.rsa_public_key = brillo::Blob();
   ASSERT_TRUE(
       SerializeHsmAssociatedDataToCbor(hsm_associated_data_, &cbor_output));
 
@@ -414,10 +420,10 @@ TEST_F(HsmPayloadCborHelperTest, GenerateAdCborWithEmptyRsaPublicKey) {
               CborIntegerEq(kHsmAssociatedDataSchemaVersion));
 
   EXPECT_THAT(cbor_output,
-              SerializedCborMapContainsSecureBlobValue(
+              SerializedCborMapContainsValue(
                   kPublisherPublicKey, hsm_associated_data_.publisher_pub_key));
   EXPECT_THAT(cbor_output,
-              SerializedCborMapContainsSecureBlobValue(
+              SerializedCborMapContainsValue(
                   kChannelPublicKey, hsm_associated_data_.channel_pub_key));
 
   cbor::Value deserialized_onboarding_metadata;
@@ -481,10 +487,10 @@ TEST_F(HsmPayloadCborHelperTest, GeneratePlainTextHsmPayloadCborWithKav) {
   hsm_plain_text.key_auth_value = key_auth_value;
   ASSERT_TRUE(SerializeHsmPlainTextToCbor(hsm_plain_text, &cbor_output));
 
-  EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
-                               kDealerPublicKey, dealer_pub_key_));
-  EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
-                               kKeyAuthValue, key_auth_value));
+  EXPECT_THAT(cbor_output, SerializedCborMapContainsValue(kDealerPublicKey,
+                                                          dealer_pub_key_));
+  EXPECT_THAT(cbor_output,
+              SerializedCborMapContainsValue(kKeyAuthValue, key_auth_value));
   brillo::SecureBlob deserialized_mediator_share;
   EXPECT_TRUE(GetBytestringValueFromCborMapByKeyForTesting(
       cbor_output, kMediatorShare, &deserialized_mediator_share));
@@ -509,8 +515,8 @@ TEST_F(HsmPayloadCborHelperTest, GeneratePlainTextHsmPayloadCbor) {
   hsm_plain_text.dealer_pub_key = dealer_pub_key_;
   ASSERT_TRUE(SerializeHsmPlainTextToCbor(hsm_plain_text, &cbor_output));
 
-  EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
-                               kDealerPublicKey, dealer_pub_key_));
+  EXPECT_THAT(cbor_output, SerializedCborMapContainsValue(kDealerPublicKey,
+                                                          dealer_pub_key_));
   brillo::SecureBlob deserialized_mediator_share;
   EXPECT_TRUE(GetBytestringValueFromCborMapByKeyForTesting(
       cbor_output, kMediatorShare, &deserialized_mediator_share));
@@ -521,7 +527,7 @@ TEST_F(HsmPayloadCborHelperTest, GeneratePlainTextHsmPayloadCbor) {
 
 // Verifies deserialization of HSM associated data from CBOR.
 TEST_F(HsmPayloadCborHelperTest, SerializeDeserializeHsmAssociatedData) {
-  brillo::SecureBlob cbor_output;
+  brillo::Blob cbor_output;
   ASSERT_TRUE(
       SerializeHsmAssociatedDataToCbor(hsm_associated_data_, &cbor_output));
 
@@ -536,7 +542,7 @@ TEST_F(HsmPayloadCborHelperTest, SerializeDeserializeHsmAssociatedData) {
 // if input is not a CBOR.
 TEST_F(HsmPayloadCborHelperTest, DeserializeAssociatedDataHsmPayloadNotCbor) {
   HsmAssociatedData hsm_associated_data;
-  brillo::SecureBlob hsm_cbor("actually not a CBOR");
+  brillo::Blob hsm_cbor = brillo::BlobFromString("actually not a CBOR");
   EXPECT_FALSE(
       DeserializeHsmAssociatedDataFromCbor(hsm_cbor, &hsm_associated_data));
 }
@@ -548,8 +554,7 @@ TEST_F(HsmPayloadCborHelperTest, DeserializeAssociatedDataHsmPayloadNotMap) {
   std::optional<std::vector<uint8_t>> serialized =
       cbor::Writer::Write(cbor::Value("a CBOR but not a map"));
   ASSERT_TRUE(serialized.has_value());
-  brillo::SecureBlob hsm_cbor(serialized.value().begin(),
-                              serialized.value().end());
+  brillo::Blob hsm_cbor(serialized.value().begin(), serialized.value().end());
   EXPECT_FALSE(
       DeserializeHsmAssociatedDataFromCbor(hsm_cbor, &hsm_associated_data));
 }
@@ -559,12 +564,11 @@ TEST_F(HsmPayloadCborHelperTest, DeserializeAssociatedDataHsmPayloadNotMap) {
 TEST_F(HsmPayloadCborHelperTest,
        DeserializeAssociatedDataHsmPayloadWrongFormat) {
   HsmAssociatedData hsm_associated_data;
-  brillo::SecureBlob cbor_output;
   cbor::Value::MapValue fake_map;
   fake_map.emplace(kMediatorShare, "a string value instead of bytes");
   fake_map.emplace(kDealerPublicKey, dealer_pub_key_);
   fake_map.emplace(kKeyAuthValue, brillo::SecureBlob());
-  brillo::SecureBlob hsm_cbor;
+  brillo::Blob hsm_cbor;
   ASSERT_TRUE(CreateCborMapForTesting(fake_map, &hsm_cbor));
   EXPECT_FALSE(
       DeserializeHsmAssociatedDataFromCbor(hsm_cbor, &hsm_associated_data));
@@ -573,7 +577,6 @@ TEST_F(HsmPayloadCborHelperTest,
 // Verifies deserialization of HSM payload plain text from CBOR.
 TEST_F(HsmPayloadCborHelperTest, DeserializePlainTextHsmPayload) {
   brillo::SecureBlob mediator_share;
-  brillo::SecureBlob cbor_output;
 
   crypto::ScopedBIGNUM scalar = BigNumFromValue(123123123u);
   ASSERT_TRUE(scalar);
@@ -632,25 +635,25 @@ TEST_F(HsmPayloadCborHelperTest, DeserializePlainTextHsmPayloadWrongFormat) {
 // Simulates failed attempt to get dealer public key from the Hsm payload
 // associated data.
 TEST_F(HsmPayloadCborHelperTest, FailedAttemptToGetPlainTextFieldFromAd) {
-  brillo::SecureBlob cbor_output;
+  brillo::Blob cbor_output;
   HsmAssociatedData args;
   args.publisher_pub_key = publisher_pub_key_;
   args.channel_pub_key = channel_pub_key_;
   args.onboarding_meta_data = hsm_associated_data_.onboarding_meta_data;
   ASSERT_TRUE(SerializeHsmAssociatedDataToCbor(args, &cbor_output));
-  brillo::SecureBlob deserialized_dealer_pub_key;
+  brillo::Blob deserialized_dealer_pub_key;
   EXPECT_FALSE(GetBytestringValueFromCborMapByKeyForTesting(
       cbor_output, kDealerPublicKey, &deserialized_dealer_pub_key));
 }
 
 // Verifies serialization of Recovery Request payload associated data to CBOR.
 TEST_F(RecoveryRequestCborHelperTest, GenerateAd) {
-  brillo::SecureBlob salt("fake salt");
-  brillo::SecureBlob cbor_output;
+  brillo::Blob salt = brillo::BlobFromString("fake salt");
+  brillo::Blob cbor_output;
 
   HsmPayload hsm_payload;
   hsm_payload.cipher_text = brillo::BlobFromString(kFakeHsmPayloadCipherText);
-  hsm_payload.associated_data = brillo::SecureBlob(kFakeHsmPayloadAd);
+  hsm_payload.associated_data = brillo::BlobFromString(kFakeHsmPayloadAd);
   hsm_payload.iv = brillo::BlobFromString(kFakeHsmPayloadIv);
   hsm_payload.tag = brillo::BlobFromString(kFakeHsmPayloadTag);
 
@@ -667,15 +670,16 @@ TEST_F(RecoveryRequestCborHelperTest, GenerateAd) {
                                                    &deserialized_hsm_payload));
   EXPECT_EQ(brillo::BlobToString(deserialized_hsm_payload.cipher_text),
             kFakeHsmPayloadCipherText);
-  EXPECT_EQ(deserialized_hsm_payload.associated_data.to_string(),
+  EXPECT_EQ(brillo::BlobToString(deserialized_hsm_payload.associated_data),
             kFakeHsmPayloadAd);
   EXPECT_EQ(brillo::BlobToString(deserialized_hsm_payload.iv),
             kFakeHsmPayloadIv);
   EXPECT_EQ(brillo::BlobToString(deserialized_hsm_payload.tag),
             kFakeHsmPayloadTag);
 
-  EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
-                               kRequestPayloadSalt, salt));
+  brillo::Blob temp_salt = brillo::BlobFromString("fake salt");
+  EXPECT_THAT(cbor_output,
+              SerializedCborMapContainsValue(kRequestPayloadSalt, temp_salt));
 
   cbor::Value deserialized_request_meta_data;
   EXPECT_TRUE(GetValueFromCborMapByKeyForTesting(
@@ -711,12 +715,12 @@ TEST_F(RecoveryRequestCborHelperTest, GenerateAd) {
   EXPECT_TRUE(GetValueFromCborMapByKeyForTesting(
       cbor_output, kEpochMetaData, &deserialized_epoch_meta_data));
 
-  brillo::SecureBlob epoch_meta_data_blob, expected_epoch_meta_data_blob;
-  ASSERT_TRUE(SerializeCborForTesting(deserialized_epoch_meta_data,
-                                      &epoch_meta_data_blob));
+  brillo::Blob epoch_meta_data, expected_epoch_meta_data;
+  ASSERT_TRUE(
+      SerializeCborForTesting(deserialized_epoch_meta_data, &epoch_meta_data));
   ASSERT_TRUE(SerializeCborForTesting(epoch_meta_data_.meta_data_cbor,
-                                      &expected_epoch_meta_data_blob));
-  EXPECT_EQ(epoch_meta_data_blob, expected_epoch_meta_data_blob);
+                                      &expected_epoch_meta_data));
+  EXPECT_EQ(epoch_meta_data, expected_epoch_meta_data);
 
   EXPECT_EQ(GetCborMapSize(cbor_output), 4);
 }
@@ -724,7 +728,7 @@ TEST_F(RecoveryRequestCborHelperTest, GenerateAd) {
 // Verifies serialization of Recovery Request payload plain text encrypted
 // payload to CBOR.
 TEST_F(RecoveryRequestCborHelperTest, GeneratePlainText) {
-  brillo::SecureBlob ephemeral_inverse_key;
+  brillo::Blob ephemeral_inverse_key;
   crypto::ScopedBIGNUM scalar = BigNumFromValue(123u);
   ASSERT_TRUE(scalar);
   BN_set_negative(scalar.get(), 1);
@@ -742,7 +746,7 @@ TEST_F(RecoveryRequestCborHelperTest, GeneratePlainText) {
   ASSERT_TRUE(
       SerializeRecoveryRequestPlainTextToCbor(plain_text, &cbor_output));
 
-  EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
+  EXPECT_THAT(cbor_output, SerializedCborMapContainsValue(
                                kEphemeralPublicInvKey, ephemeral_inverse_key));
   EXPECT_EQ(GetCborMapSize(cbor_output), 1);
 }
@@ -754,7 +758,7 @@ TEST_F(RecoveryRequestCborHelperTest, SerializeRecoveryRequest) {
   ASSERT_TRUE(SerializeRecoveryRequestPayloadToCbor(request_payload,
                                                     &request.request_payload));
 
-  brillo::SecureBlob cbor_output;
+  brillo::Blob cbor_output;
   EXPECT_TRUE(SerializeRecoveryRequestToCbor(request, &cbor_output));
 
   RequestPayload deserialized_request_payload;
@@ -765,7 +769,7 @@ TEST_F(RecoveryRequestCborHelperTest, SerializeRecoveryRequest) {
 
 // Verifies deserialization of Recovery Request from CBOR.
 TEST_F(RecoveryRequestCborHelperTest, DeserializeRecoveryRequestPayload) {
-  brillo::SecureBlob request_payload_cbor;
+  brillo::Blob request_payload_cbor;
   ASSERT_TRUE(SerializeRecoveryRequestPayloadToCbor(
       aead_helper_.GetFakePayload(), &request_payload_cbor));
 
@@ -783,7 +787,7 @@ TEST_F(RecoveryRequestCborHelperTest,
   // Remove `iv` value.
   payload.erase(payload.find(cbor::Value(kAeadIv)));
 
-  brillo::SecureBlob request_payload_cbor;
+  brillo::Blob request_payload_cbor;
   ASSERT_TRUE(CreateCborMapForTesting(payload, &request_payload_cbor));
   RequestPayload request_payload;
   EXPECT_FALSE(DeserializeRecoveryRequestPayloadFromCbor(request_payload_cbor,
@@ -794,11 +798,11 @@ TEST_F(RecoveryRequestCborHelperTest,
 TEST_F(RecoveryRequestCborHelperTest, DeserializeRecoveryRequest) {
   cbor::Value::MapValue request;
   RequestPayload payload = aead_helper_.GetFakePayload();
-  brillo::SecureBlob request_payload_cbor;
+  brillo::Blob request_payload_cbor;
   ASSERT_TRUE(
       SerializeRecoveryRequestPayloadToCbor(payload, &request_payload_cbor));
   request.emplace(kRequestAead, request_payload_cbor);
-  brillo::SecureBlob request_cbor;
+  brillo::Blob request_cbor;
   ASSERT_TRUE(CreateCborMapForTesting(request, &request_cbor));
 
   RecoveryRequest recovery_request;
@@ -816,7 +820,7 @@ TEST_F(RecoveryRequestCborHelperTest, DeserializeRecoveryRequestWrongFormat) {
   cbor::Value::MapValue request;
   // Field value is nested map instead of serialized CBOR.
   request.emplace(kRequestAead, aead_helper_.GetFakePayloadCborMap());
-  brillo::SecureBlob request_cbor;
+  brillo::Blob request_cbor;
   ASSERT_TRUE(CreateCborMapForTesting(request, &request_cbor));
 
   RecoveryRequest recovery_request;
@@ -829,7 +833,7 @@ TEST_F(RecoveryRequestCborHelperTest, DeserializeRecoveryRequestWrongFormat) {
 TEST_F(RecoveryRequestCborHelperTest, DeserializeRecoveryRequestMissingField) {
   cbor::Value::MapValue request;
   // Does not emplace `kRequestAead` value.
-  brillo::SecureBlob request_cbor;
+  brillo::Blob request_cbor;
   ASSERT_TRUE(CreateCborMapForTesting(request, &request_cbor));
 
   RecoveryRequest recovery_request;
@@ -843,7 +847,7 @@ TEST_F(ResponsePayloadCborHelperTest, SerializeAssociatedData) {
   response_ad.response_payload_salt = salt_;
   response_ad.ledger_signed_proof = ledger_signed_proof_;
   EXPECT_EQ(ledger_signed_proof_.inclusion_proof[0][0], 100);
-  brillo::SecureBlob cbor_output;
+  brillo::Blob cbor_output;
   ASSERT_TRUE(
       SerializeHsmResponseAssociatedDataToCbor(response_ad, &cbor_output));
 
@@ -867,8 +871,9 @@ TEST_F(ResponsePayloadCborHelperTest, SerializeAssociatedData) {
                                           kLedgerSignedProofSchemaVersion));
   EXPECT_EQ(deserialized_ledger_signed_proof.GetMap().size(), 4);
 
-  EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
-                               kResponsePayloadSalt, salt_));
+  auto temp_salt = brillo::Blob(salt_.begin(), salt_.end());
+  EXPECT_THAT(cbor_output,
+              SerializedCborMapContainsValue(kResponsePayloadSalt, temp_salt));
   EXPECT_EQ(GetCborMapSize(cbor_output), 3);
 }
 
@@ -884,11 +889,11 @@ TEST_F(ResponsePayloadCborHelperTest, SerializePlainTextWithoutKav) {
   ASSERT_TRUE(
       SerializeHsmResponsePlainTextToCbor(response_plain_text, &cbor_output));
 
-  EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
-                               kMediatedShare, mediated_point));
-  EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
-                               kDealerPublicKey, fake_pub_key_));
-  EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
+  EXPECT_THAT(cbor_output,
+              SerializedCborMapContainsValue(kMediatedShare, mediated_point));
+  EXPECT_THAT(cbor_output,
+              SerializedCborMapContainsValue(kDealerPublicKey, fake_pub_key_));
+  EXPECT_THAT(cbor_output, SerializedCborMapContainsValue(
                                kKeyAuthValue, brillo::SecureBlob()));
   EXPECT_EQ(GetCborMapSize(cbor_output), 3);
 }
@@ -906,12 +911,12 @@ TEST_F(ResponsePayloadCborHelperTest, SerializePlainText) {
   ASSERT_TRUE(
       SerializeHsmResponsePlainTextToCbor(response_plain_text, &cbor_output));
 
-  EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
-                               kMediatedShare, mediated_point));
-  EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
-                               kDealerPublicKey, fake_pub_key_));
-  EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
-                               kKeyAuthValue, key_auth_value));
+  EXPECT_THAT(cbor_output,
+              SerializedCborMapContainsValue(kMediatedShare, mediated_point));
+  EXPECT_THAT(cbor_output,
+              SerializedCborMapContainsValue(kDealerPublicKey, fake_pub_key_));
+  EXPECT_THAT(cbor_output,
+              SerializedCborMapContainsValue(kKeyAuthValue, key_auth_value));
   EXPECT_EQ(GetCborMapSize(cbor_output), 3);
 }
 
@@ -920,7 +925,7 @@ TEST_F(ResponsePayloadCborHelperTest, DeserializeAssociatedData) {
   HsmResponseAssociatedData expected_response_ad;
   expected_response_ad.response_payload_salt = salt_;
   expected_response_ad.ledger_signed_proof = ledger_signed_proof_;
-  brillo::SecureBlob response_cbor;
+  brillo::Blob response_cbor;
   ASSERT_TRUE(SerializeHsmResponseAssociatedDataToCbor(expected_response_ad,
                                                        &response_cbor));
 
@@ -961,8 +966,8 @@ TEST_F(ResponsePayloadCborHelperTest, DeserializeAssociatedDataNotMap) {
   std::optional<std::vector<uint8_t>> serialized =
       cbor::Writer::Write(cbor::Value("a CBOR but not a map"));
   ASSERT_TRUE(serialized.has_value());
-  brillo::SecureBlob response_cbor(serialized.value().begin(),
-                                   serialized.value().end());
+  brillo::Blob response_cbor(serialized.value().begin(),
+                             serialized.value().end());
 
   HsmResponseAssociatedData response_ad;
   EXPECT_FALSE(DeserializeHsmResponseAssociatedDataFromCbor(response_cbor,
@@ -975,7 +980,7 @@ TEST_F(ResponsePayloadCborHelperTest, DeserializeAssociatedDataWrongFormat) {
   cbor::Value::MapValue fake_map;
   fake_map.emplace(kResponseHsmMetaData, "a string value instead of bytes");
   fake_map.emplace(kResponsePayloadSalt, salt_);
-  brillo::SecureBlob response_cbor;
+  brillo::Blob response_cbor;
   ASSERT_TRUE(CreateCborMapForTesting(fake_map, &response_cbor));
 
   HsmResponseAssociatedData response_ad;
@@ -1034,7 +1039,7 @@ TEST_F(ResponsePayloadCborHelperTest, DeserializePlainTextWrongFormat) {
 TEST_F(ResponsePayloadCborHelperTest, SerializeResponsePayload) {
   ResponsePayload response_payload = aead_helper_.GetFakePayload();
 
-  brillo::SecureBlob cbor_output;
+  brillo::Blob cbor_output;
   EXPECT_TRUE(SerializeResponsePayloadToCbor(response_payload, &cbor_output));
 
   aead_helper_.ExpectEqualsToFakeAeadPayload(cbor_output);
@@ -1042,7 +1047,7 @@ TEST_F(ResponsePayloadCborHelperTest, SerializeResponsePayload) {
 
 // Verifies deserialization of Recovery Response from CBOR.
 TEST_F(ResponsePayloadCborHelperTest, DeserializeResponsePayload) {
-  brillo::SecureBlob response_cbor;
+  brillo::Blob response_cbor;
   ASSERT_TRUE(CreateCborMapForTesting(aead_helper_.GetFakePayloadCborMap(),
                                       &response_cbor));
 
@@ -1057,7 +1062,7 @@ TEST_F(ResponsePayloadCborHelperTest, DeserializeResponsePayload) {
 TEST_F(ResponsePayloadCborHelperTest, DeserializeResponsePayloadWrongFormat) {
   cbor::Value::MapValue response = aead_helper_.GetFakePayloadCborMap();
   response.erase(cbor::Value(kAeadIv));
-  brillo::SecureBlob payload_cbor;
+  brillo::Blob payload_cbor;
   ASSERT_TRUE(CreateCborMapForTesting(response, &payload_cbor));
 
   ResponsePayload recovery_response;
@@ -1066,9 +1071,9 @@ TEST_F(ResponsePayloadCborHelperTest, DeserializeResponsePayloadWrongFormat) {
 }
 
 TEST_F(ResponsePayloadCborHelperTest, DeserializeFakeResponsePayload) {
-  brillo::SecureBlob response_cbor;
-  ASSERT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(
-      kFakeResponsePayloadWithOutOfOrderKeyHex, &response_cbor));
+  brillo::Blob response_cbor;
+  ASSERT_TRUE(HexStringToBlob(kFakeResponsePayloadWithOutOfOrderKeyHex,
+                              &response_cbor));
 
   ResponsePayload recovery_response;
   EXPECT_TRUE(

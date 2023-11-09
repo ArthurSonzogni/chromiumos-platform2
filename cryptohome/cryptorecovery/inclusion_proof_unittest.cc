@@ -180,7 +180,7 @@ bool GetDevLedgerSignedProof(LedgerSignedProof* ledger_signed_proof) {
 LedgerInfo GetDevLedgerInfo() {
   return LedgerInfo{.name = kDevLedgerName,
                     .key_hash = kDevLedgerPublicKeyHash,
-                    .public_key = brillo::SecureBlob(kDevLedgerPublicKey)};
+                    .public_key = brillo::BlobFromString(kDevLedgerPublicKey)};
 }
 
 crypto::ScopedEC_KEY GenerateKeyPair() {
@@ -201,7 +201,7 @@ crypto::ScopedEC_KEY GenerateKeyPair() {
 // Encode the `key` to the DER-encoded X.509 SubjectPublicKeyInfo format, and
 // apply base 64 url encoding afterwards.
 bool GetLedgerPublicKeyEncoded(const crypto::ScopedEC_KEY& key,
-                               brillo::SecureBlob* result) {
+                               brillo::Blob* result) {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
@@ -213,15 +213,15 @@ bool GetLedgerPublicKeyEncoded(const crypto::ScopedEC_KEY& key,
     LOG(ERROR) << "Failed to create EllipticCurve";
     return false;
   }
-  brillo::SecureBlob spki_der;
+  brillo::Blob spki_der;
   if (!ec->EncodeToSpkiDer(key, &spki_der, context.get())) {
     LOG(ERROR) << "Failed to encode EC_POINT to SubjectPublicKeyInfo";
     return false;
   }
   std::string encoded;
-  base::Base64UrlEncode(spki_der.to_string(),
+  base::Base64UrlEncode(brillo::BlobToString(spki_der),
                         base::Base64UrlEncodePolicy::INCLUDE_PADDING, &encoded);
-  *result = brillo::SecureBlob(encoded);
+  *result = brillo::BlobFromString(encoded);
   return true;
 }
 
@@ -244,7 +244,7 @@ class InclusionProofTest : public testing::Test {
 
 TEST_F(InclusionProofTest, SuccessFromGeneratedData) {
   auto generated_ledger_keys = GenerateKeyPair();
-  brillo::SecureBlob public_key;
+  brillo::Blob public_key;
   ASSERT_TRUE(GetLedgerPublicKeyEncoded(generated_ledger_keys, &public_key));
   LedgerInfo info{.name = "fake-ledger-name",
                   .key_hash = 1234567890,
@@ -257,7 +257,7 @@ TEST_F(InclusionProofTest, SuccessFromGeneratedData) {
 
 TEST_F(InclusionProofTest, FailedWithWrongTimestamp) {
   auto generated_ledger_keys = GenerateKeyPair();
-  brillo::SecureBlob public_key;
+  brillo::Blob public_key;
   ASSERT_TRUE(GetLedgerPublicKeyEncoded(generated_ledger_keys, &public_key));
   LedgerInfo info{.name = "fake-ledger-name",
                   .key_hash = 1234567890,
@@ -275,7 +275,7 @@ TEST_F(InclusionProofTest, FailedWithWrongTimestamp) {
 
 TEST_F(InclusionProofTest, FailedWithWrongMetadata) {
   auto generated_ledger_keys = GenerateKeyPair();
-  brillo::SecureBlob public_key;
+  brillo::Blob public_key;
   ASSERT_TRUE(GetLedgerPublicKeyEncoded(generated_ledger_keys, &public_key));
   LedgerInfo info{.name = "fake-ledger-name",
                   .key_hash = 1234567890,
@@ -290,7 +290,7 @@ TEST_F(InclusionProofTest, FailedWithWrongMetadata) {
 
 TEST_F(InclusionProofTest, FailedWithWrongSignature) {
   auto generated_ledger_keys = GenerateKeyPair();
-  brillo::SecureBlob public_key;
+  brillo::Blob public_key;
   ASSERT_TRUE(GetLedgerPublicKeyEncoded(generated_ledger_keys, &public_key));
   LedgerInfo info{.name = "fake-ledger-name",
                   .key_hash = 1234567890,
@@ -312,7 +312,7 @@ TEST_F(InclusionProofTest, FailedWithWrongSignature) {
                                     kFakeMetadata));
 
   auto different_generated_ledger_keys = GenerateKeyPair();
-  brillo::SecureBlob different_public_key;
+  brillo::Blob different_public_key;
   ASSERT_TRUE(GetLedgerPublicKeyEncoded(different_generated_ledger_keys,
                                         &different_public_key));
   EXPECT_FALSE(
@@ -326,12 +326,12 @@ TEST_F(InclusionProofTest, FailedWithWrongSignature) {
 // Can successfully verify inclusion proof if it's signed with multiple keys.
 TEST_F(InclusionProofTest, SuccessWithMultipleSignatures) {
   auto old_generated_ledger_keys = GenerateKeyPair();
-  brillo::SecureBlob old_public_key;
+  brillo::Blob old_public_key;
   ASSERT_TRUE(
       GetLedgerPublicKeyEncoded(old_generated_ledger_keys, &old_public_key));
 
   auto new_generated_ledger_keys = GenerateKeyPair();
-  brillo::SecureBlob new_public_key;
+  brillo::Blob new_public_key;
   ASSERT_TRUE(
       GetLedgerPublicKeyEncoded(new_generated_ledger_keys, &new_public_key));
 

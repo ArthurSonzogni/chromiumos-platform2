@@ -80,7 +80,7 @@ bool AesDecryptDeprecated(const brillo::Blob& ciphertext,
 }
 
 bool AesGcmDecrypt(const brillo::Blob& ciphertext,
-                   const std::optional<brillo::SecureBlob>& ad,
+                   const std::optional<brillo::Blob>& ad,
                    const brillo::Blob& tag,
                    const brillo::SecureBlob& key,
                    const brillo::Blob& iv,
@@ -185,7 +185,7 @@ bool AesGcmDecrypt(const brillo::Blob& ciphertext,
 }
 
 bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
-                   const std::optional<brillo::SecureBlob>& ad,
+                   const std::optional<brillo::Blob>& ad,
                    const brillo::SecureBlob& key,
                    brillo::Blob* iv,
                    brillo::Blob* tag,
