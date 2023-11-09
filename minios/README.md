@@ -1,12 +1,10 @@
 # MiniOS
-MiniOS is a subset of CrOS, also known as the Network Based Recovery Project
-(go/cros-nbr). MiniOS consumer facing feature used to help recover devices
-using only a network or ethernet connection. Once connected to the network,
-MiniOS will automatically repartition the disk, wipe the stateful partition and
-all user data, and update to the latest stable version. The UI theme and
-elements are an extension of the Groot recovery flow.
+MiniOS, also known as the Network Based Recovery (go/cros-nbr), is a "mini"
+version of CrOS designed specifically for device recovery.
+It is used to recover ChromeOS devices that are unable to boot normally.
 
-The main MiniOS components include D-bus, update_engine, and network manager.
+MiniOS can be used to repartition the disk, wipe the stateful partition and
+all user data, and update to the latest stable version of ChromeOS.
 
 ## Upstart
 MiniOS is brought up with Upstart, similar to ChromeOS. The majority of the
