@@ -54,8 +54,7 @@ class SensorHalClientImpl : public SensorHalClient {
   // be run on IPC thread.
   class IPCBridge : public mojom::SensorServiceNewDevicesObserver {
    public:
-    IPCBridge(CameraMojoChannelManager* mojo_manager,
-              CancellationRelay* cancellation_relay);
+    explicit IPCBridge(CameraMojoChannelManager* mojo_manager);
 
     // It should only be triggered on IPC thread to ensure thread-safety.
     ~IPCBridge() override;
@@ -148,7 +147,6 @@ class SensorHalClientImpl : public SensorHalClient {
                                   const std::string& description);
 
     CameraMojoChannelManager* mojo_manager_;
-    CancellationRelay* cancellation_relay_;
 
     std::unique_ptr<MojoServiceManagerObserver> mojo_service_manager_observer_;
 

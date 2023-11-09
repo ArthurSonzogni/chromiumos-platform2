@@ -93,9 +93,7 @@ SensorHalClient* SensorHalClient::GetInstance(
 
 SensorHalClientImpl::SensorHalClientImpl(CameraMojoChannelManager* mojo_manager)
     : cancellation_relay_(new CancellationRelay),
-      ipc_bridge_(mojo_manager->GetIpcTaskRunner(),
-                  mojo_manager,
-                  cancellation_relay_.get()) {}
+      ipc_bridge_(mojo_manager->GetIpcTaskRunner(), mojo_manager) {}
 
 SensorHalClientImpl::~SensorHalClientImpl() {
   ipc_bridge_.Reset();
@@ -164,9 +162,8 @@ void SensorHalClientImpl::UnregisterSamplesObserver(
 }
 
 SensorHalClientImpl::IPCBridge::IPCBridge(
-    CameraMojoChannelManager* mojo_manager,
-    CancellationRelay* cancellation_relay)
-    : mojo_manager_(mojo_manager), cancellation_relay_(cancellation_relay) {
+    CameraMojoChannelManager* mojo_manager)
+    : mojo_manager_(mojo_manager) {
   mojo_service_manager_observer_ =
       mojo_manager_->CreateMojoServiceManagerObserver(
           /*service_name=*/chromeos::mojo_services::kIioSensor,
@@ -259,13 +256,18 @@ void SensorHalClientImpl::IPCBridge::RegisterSamplesObserver(
   int32_t iio_device_id = device_maps_[type][location];
   DCHECK(devices_[iio_device_id].scale.has_value());
 
+  // If iioservice is not connected, delay constructing SensorReader.
   ReaderData reader_data = {
       .iio_device_id = iio_device_id,
       .type = type,
       .frequency = frequency,
-      .sensor_reader = std::make_unique<SensorReader>(
-          iio_device_id, type, frequency, devices_[iio_device_id].scale.value(),
-          samples_observer, GetSensorDeviceRemote(iio_device_id))};
+      .sensor_reader =
+          sensor_service_remote_.is_bound()
+              ? std::make_unique<SensorReader>(
+                    iio_device_id, type, frequency,
+                    devices_[iio_device_id].scale.value(), samples_observer,
+                    GetSensorDeviceRemote(iio_device_id))
+              : nullptr};
   readers_.emplace(samples_observer, std::move(reader_data));
 
   std::move(callback).Run(true);
@@ -520,8 +522,6 @@ bool SensorHalClientImpl::IPCBridge::HasDeviceInternal(mojom::DeviceType type,
 }
 
 void SensorHalClientImpl::IPCBridge::ResetSensorService() {
-  cancellation_relay_->CancelAllFutures();
-
   for (auto& [id, device] : devices_) {
     // Only reset the mojo pipe and keep all the other initialized types and
     // attributes, so that it won't need to be initialized twice when iioservice
