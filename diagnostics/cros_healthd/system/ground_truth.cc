@@ -219,7 +219,7 @@ void GroundTruth::IsEventSupported(
 
 void GroundTruth::IsRoutineArgumentSupported(
     mojom::RoutineArgumentPtr routine_arg,
-    mojom::CrosHealthdRoutinesService::IsRoutineArgumentSupportedCallback
+    base::OnceCallback<void(mojom::RoutineArgumentPtr, mojom::SupportStatusPtr)>
         callback) {
   // Please update docs/routine_supportability.md.
   // Add "NO_IFTTT=<reason>" in the commit message if it's not applicable.
@@ -228,9 +228,11 @@ void GroundTruth::IsRoutineArgumentSupported(
   switch (routine_arg->which()) {
     // UnrecognizedArgument.
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument:
-      std::move(callback).Run(mojom::SupportStatus::NewException(
-          mojom::Exception::New(mojom::Exception::Reason::kUnexpected,
-                                "Got kUnrecognizedArgument")));
+      std::move(callback).Run(
+          std::move(routine_arg),
+          mojom::SupportStatus::NewException(
+              mojom::Exception::New(mojom::Exception::Reason::kUnexpected,
+                                    "Got kUnrecognizedArgument")));
       return;
     // Always supported. There is no rule on the routine arguments.
     case mojom::RoutineArgument::Tag::kMemory:
@@ -240,11 +242,12 @@ void GroundTruth::IsRoutineArgumentSupported(
     case mojom::RoutineArgument::Tag::kPrimeSearch:
     case mojom::RoutineArgument::Tag::kFloatingPoint:
       status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
-      std::move(callback).Run(std::move(status));
+      std::move(callback).Run(std::move(routine_arg), std::move(status));
       return;
     // Need to be determined by boxster/cros_config.
     case mojom::RoutineArgument::Tag::kUfsLifetime: {
       std::move(callback).Run(
+          std::move(routine_arg),
           MakeSupportStatus(cros_config()->CheckExpectedCrosConfig(
               cros_config_property::kStorageType,
               cros_config_value::kStorageTypeUfs)));
@@ -257,24 +260,25 @@ void GroundTruth::IsRoutineArgumentSupported(
       // since fan routine can handle both fans are present and absent cases.
       if (fan_count != "0") {
         status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
-        std::move(callback).Run(std::move(status));
+        std::move(callback).Run(std::move(routine_arg), std::move(status));
         return;
       }
 
       status = mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
           WrapUnsupportedString(cros_config_property::kFanCount, fan_count),
           nullptr));
-      std::move(callback).Run(std::move(status));
+      std::move(callback).Run(std::move(routine_arg), std::move(status));
       return;
     }
     // Need to check the routine arguments.
     case mojom::RoutineArgument::Tag::kDiskRead: {
-      std::move(callback).Run(
-          GetDiskReadArgSupportStatus(routine_arg->get_disk_read()));
+      auto status = GetDiskReadArgSupportStatus(routine_arg->get_disk_read());
+      std::move(callback).Run(std::move(routine_arg), std::move(status));
       return;
     }
     case mojom::RoutineArgument::Tag::kVolumeButton: {
       std::move(callback).Run(
+          std::move(routine_arg),
           MakeSupportStatus(cros_config()->CheckTrueCrosConfig(
               cros_config_property::kHasSideVolumeButton)));
       return;
@@ -286,13 +290,15 @@ void GroundTruth::IsRoutineArgumentSupported(
         status = mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
             "Not supported on a non-CrosEC device", nullptr));
       }
-      std::move(callback).Run(std::move(status));
+      std::move(callback).Run(std::move(routine_arg), std::move(status));
       return;
     }
     case mojom::RoutineArgument::Tag::kBluetoothPower:
     case mojom::RoutineArgument::Tag::kBluetoothDiscovery:
     case mojom::RoutineArgument::Tag::kBluetoothPairing: {
-      GetFlossSupportStatus(context_->floss_controller(), std::move(callback));
+      GetFlossSupportStatus(
+          context_->floss_controller(),
+          base::BindOnce(std::move(callback), std::move(routine_arg)));
       return;
     }
     case mojom::RoutineArgument::Tag::kBluetoothScanning: {
@@ -301,10 +307,12 @@ void GroundTruth::IsRoutineArgumentSupported(
         status = mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
             "Execution duration should be strictly greater than zero",
             nullptr));
-        std::move(callback).Run(std::move(status));
+        std::move(callback).Run(std::move(routine_arg), std::move(status));
         return;
       }
-      GetFlossSupportStatus(context_->floss_controller(), std::move(callback));
+      GetFlossSupportStatus(
+          context_->floss_controller(),
+          base::BindOnce(std::move(callback), std::move(routine_arg)));
       return;
     }
   }

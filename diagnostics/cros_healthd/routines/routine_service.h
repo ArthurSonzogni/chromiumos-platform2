@@ -52,10 +52,26 @@ class RoutineService
   // `RoutineArgumentPtr`. If the provided arguments are invalid, the
   // `PendingReceiver` is reset with a specific error message and this method
   // returns `nullptr`.
-  std::unique_ptr<BaseRoutineControl> CreateRoutineControl(
+  using CheckAndCreateRoutineCallback = base::OnceCallback<void(
+      base::expected<std::unique_ptr<BaseRoutineControl>,
+                     ash::cros_healthd::mojom::SupportStatusPtr>)>;
+  void CheckAndCreateRoutine(
       ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg,
-      mojo::PendingReceiver<ash::cros_healthd::mojom::RoutineControl>&
-          routine_receiver);
+      CheckAndCreateRoutineCallback callback);
+
+  void HandleGroundTruthRoutineSupportedResponse(
+      ash::cros_healthd::mojom::CrosHealthdRoutinesService::
+          IsRoutineArgumentSupportedCallback callback,
+      ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg,
+      ash::cros_healthd::mojom::SupportStatusPtr support_status);
+
+  void HandleCheckAndCreateRoutineResponseForCreateRoutine(
+      mojo::PendingReceiver<ash::cros_healthd::mojom::RoutineControl>
+          routine_receiver,
+      mojo::PendingRemote<ash::cros_healthd::mojom::RoutineObserver>
+          routine_observer,
+      base::expected<std::unique_ptr<BaseRoutineControl>,
+                     ash::cros_healthd::mojom::SupportStatusPtr> result);
 
   // A function to be run by Routines in CrosHealthdRoutineService. When routine
   // encounters an exception, this function should be able to disconnect its

@@ -348,10 +348,21 @@ TEST_F(RoutineServiceTest, BluetoothDiscovery) {
 }
 
 TEST_F(RoutineServiceTest, Fan) {
+  SetFakeCrosConfig(paths::cros_config::kFanCount, "1");
+
   CheckIsRoutineArgumentSupported(
       MakeSupported(),
       mojom::RoutineArgument::NewFan(mojom::FanRoutineArgument::New()));
-  // TODO(b/309080271): Fix the diverge.
+  CheckCreateRoutine(MakeSupported(), mojom::RoutineArgument::NewFan(
+                                          mojom::FanRoutineArgument::New()));
+}
+
+TEST_F(RoutineServiceTest, FanNoCrosConfig) {
+  SetFakeCrosConfig(paths::cros_config::kFanCount, std::nullopt);
+
+  CheckIsRoutineArgumentSupported(
+      MakeUnsupported("cros config fan count must be a valid number"),
+      mojom::RoutineArgument::NewFan(mojom::FanRoutineArgument::New()));
   CheckCreateRoutine(
       MakeUnsupported("cros config fan count must be a valid number"),
       mojom::RoutineArgument::NewFan(mojom::FanRoutineArgument::New()));

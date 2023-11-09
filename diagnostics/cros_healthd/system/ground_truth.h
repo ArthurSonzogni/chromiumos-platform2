@@ -30,8 +30,9 @@ class GroundTruth final {
                             IsEventSupportedCallback callback);
   void IsRoutineArgumentSupported(
       ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg,
-      ash::cros_healthd::mojom::CrosHealthdRoutinesService::
-          IsRoutineArgumentSupportedCallback callback);
+      base::OnceCallback<void(ash::cros_healthd::mojom::RoutineArgumentPtr,
+                              ash::cros_healthd::mojom::SupportStatusPtr)>
+          callback);
 
   // These methods check if a routine is supported and prepare its parameters
   // from system configurations.

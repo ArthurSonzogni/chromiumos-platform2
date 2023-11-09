@@ -6,6 +6,9 @@
 
 #include <utility>
 
+#include <base/check.h>
+#include <base/logging.h>
+#include <base/notreached.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
@@ -29,8 +32,11 @@
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
+namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
+
+}  // namespace
 
 RoutineService::RoutineService(Context* context) : context_(context) {
   CHECK(context_);
@@ -38,118 +44,166 @@ RoutineService::RoutineService(Context* context) : context_(context) {
 
 RoutineService::~RoutineService() = default;
 
-void RoutineService::CreateRoutine(
+void RoutineService::CheckAndCreateRoutine(
     mojom::RoutineArgumentPtr routine_arg,
-    mojo::PendingReceiver<mojom::RoutineControl> routine_receiver,
-    mojo::PendingRemote<mojom::RoutineObserver> routine_observer) {
-  auto routine_control =
-      CreateRoutineControl(std::move(routine_arg), routine_receiver);
-  if (!routine_control) {
-    return;
-  }
-
-  AddRoutine(std::move(routine_control), std::move(routine_receiver),
-             std::move(routine_observer));
-}
-
-std::unique_ptr<BaseRoutineControl> RoutineService::CreateRoutineControl(
-    ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg,
-    mojo::PendingReceiver<mojom::RoutineControl>& routine_receiver) {
+    CheckAndCreateRoutineCallback callback) {
   switch (routine_arg->which()) {
-    case mojom::RoutineArgument::Tag::kPrimeSearch:
-      return std::make_unique<PrimeSearchRoutine>(
+    case mojom::RoutineArgument::Tag::kPrimeSearch: {
+      auto routine = std::make_unique<PrimeSearchRoutine>(
           context_, routine_arg->get_prime_search());
-    case mojom::RoutineArgument::Tag::kFloatingPoint:
-      return std::make_unique<FloatingPointRoutineV2>(
+      std::move(callback).Run(base::ok(std::move(routine)));
+      return;
+    }
+    case mojom::RoutineArgument::Tag::kFloatingPoint: {
+      auto routine = std::make_unique<FloatingPointRoutineV2>(
           context_, routine_arg->get_floating_point());
-    case mojom::RoutineArgument::Tag::kMemory:
-      return std::make_unique<MemoryRoutine>(context_,
-                                             routine_arg->get_memory());
-    case mojom::RoutineArgument::Tag::kAudioDriver:
-      return std::make_unique<AudioDriverRoutine>(
+      std::move(callback).Run(base::ok(std::move(routine)));
+      return;
+    }
+    case mojom::RoutineArgument::Tag::kMemory: {
+      auto routine =
+          std::make_unique<MemoryRoutine>(context_, routine_arg->get_memory());
+      std::move(callback).Run(base::ok(std::move(routine)));
+      return;
+    }
+    case mojom::RoutineArgument::Tag::kAudioDriver: {
+      auto routine = std::make_unique<AudioDriverRoutine>(
           context_, routine_arg->get_audio_driver());
-    case mojom::RoutineArgument::Tag::kCpuStress:
-      return std::make_unique<CpuStressRoutine>(context_,
-                                                routine_arg->get_cpu_stress());
-    case mojom::RoutineArgument::Tag::kUfsLifetime:
-      return std::make_unique<UfsLifetimeRoutine>(
+      std::move(callback).Run(base::ok(std::move(routine)));
+      return;
+    }
+    case mojom::RoutineArgument::Tag::kCpuStress: {
+      auto routine = std::make_unique<CpuStressRoutine>(
+          context_, routine_arg->get_cpu_stress());
+      std::move(callback).Run(base::ok(std::move(routine)));
+      return;
+    }
+    case mojom::RoutineArgument::Tag::kUfsLifetime: {
+      auto routine = std::make_unique<UfsLifetimeRoutine>(
           context_, routine_arg->get_ufs_lifetime());
+      std::move(callback).Run(base::ok(std::move(routine)));
+      return;
+    }
     case mojom::RoutineArgument::Tag::kDiskRead: {
       auto routine =
           DiskReadRoutine::Create(context_, routine_arg->get_disk_read());
       if (routine.has_value()) {
-        return std::move(routine.value());
+        std::move(callback).Run(base::ok(std::move(routine.value())));
+      } else {
+        std::move(callback).Run(
+            base::unexpected(mojom::SupportStatus::NewUnsupported(
+                mojom::Unsupported::New(routine.error(), /*reason=*/nullptr))));
       }
-      routine_receiver.ResetWithReason(
-          static_cast<uint32_t>(mojom::Exception::Reason::kUnsupported),
-          routine.error());
-
-      return nullptr;
+      return;
     }
-    case mojom::RoutineArgument::Tag::kCpuCache:
-      return std::make_unique<CpuCacheRoutine>(context_,
-                                               routine_arg->get_cpu_cache());
-    case mojom::RoutineArgument::Tag::kVolumeButton:
-      return std::make_unique<VolumeButtonRoutine>(
+    case mojom::RoutineArgument::Tag::kCpuCache: {
+      auto routine = std::make_unique<CpuCacheRoutine>(
+          context_, routine_arg->get_cpu_cache());
+      std::move(callback).Run(base::ok(std::move(routine)));
+      return;
+    }
+    case mojom::RoutineArgument::Tag::kVolumeButton: {
+      auto routine = std::make_unique<VolumeButtonRoutine>(
           context_, routine_arg->get_volume_button());
-    case mojom::RoutineArgument::Tag::kLedLitUp:
-      return std::make_unique<LedLitUpV2Routine>(
+      std::move(callback).Run(base::ok(std::move(routine)));
+      return;
+    }
+    case mojom::RoutineArgument::Tag::kLedLitUp: {
+      auto routine = std::make_unique<LedLitUpV2Routine>(
           context_, std::move(routine_arg->get_led_lit_up()));
-    case mojom::RoutineArgument::Tag::kBluetoothPower:
-      return std::make_unique<BluetoothPowerRoutineV2>(
+      std::move(callback).Run(base::ok(std::move(routine)));
+      return;
+    }
+    case mojom::RoutineArgument::Tag::kBluetoothPower: {
+      auto routine = std::make_unique<BluetoothPowerRoutineV2>(
           context_, std::move(routine_arg->get_bluetooth_power()));
-    case mojom::RoutineArgument::Tag::kBluetoothDiscovery:
-      return std::make_unique<BluetoothDiscoveryRoutineV2>(
+      std::move(callback).Run(base::ok(std::move(routine)));
+      return;
+    }
+    case mojom::RoutineArgument::Tag::kBluetoothDiscovery: {
+      auto routine = std::make_unique<BluetoothDiscoveryRoutineV2>(
           context_, std::move(routine_arg->get_bluetooth_discovery()));
+      std::move(callback).Run(base::ok(std::move(routine)));
+      return;
+    }
     case mojom::RoutineArgument::Tag::kFan: {
       auto routine = FanRoutine::Create(context_, routine_arg->get_fan());
       if (routine.has_value()) {
-        return std::move(routine.value());
+        std::move(callback).Run(base::ok(std::move(routine.value())));
+      } else {
+        std::move(callback).Run(
+            base::unexpected(mojom::SupportStatus::NewUnsupported(
+                mojom::Unsupported::New(routine.error(), /*reason=*/nullptr))));
       }
-      routine_receiver.ResetWithReason(
-          static_cast<uint32_t>(mojom::Exception::Reason::kUnsupported),
-          routine.error());
-
-      return nullptr;
+      return;
     }
     case mojom::RoutineArgument::Tag::kBluetoothScanning: {
       auto routine = BluetoothScanningRoutineV2::Create(
           context_, routine_arg->get_bluetooth_scanning());
       if (routine.has_value()) {
-        return std::move(routine.value());
+        std::move(callback).Run(base::ok(std::move(routine.value())));
+      } else {
+        std::move(callback).Run(
+            base::unexpected(mojom::SupportStatus::NewUnsupported(
+                mojom::Unsupported::New(routine.error(), /*reason=*/nullptr))));
       }
-      routine_receiver.ResetWithReason(
-          static_cast<uint32_t>(mojom::Exception::Reason::kUnsupported),
-          routine.error());
-
-      return nullptr;
+      return;
     }
-    case mojom::RoutineArgument::Tag::kBluetoothPairing:
-      return std::make_unique<BluetoothPairingRoutineV2>(
+    case mojom::RoutineArgument::Tag::kBluetoothPairing: {
+      auto routine = std::make_unique<BluetoothPairingRoutineV2>(
           context_, std::move(routine_arg->get_bluetooth_pairing()));
+      std::move(callback).Run(base::ok(std::move(routine)));
+      return;
+    }
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument: {
-      LOG(ERROR) << "Routine Argument not recognized/supported";
-      routine_receiver.ResetWithReason(
-          static_cast<uint32_t>(mojom::Exception::Reason::kUnsupported),
-          "Routine Argument not recognized/supported");
-      return nullptr;
+      LOG(ERROR) << "Got RoutineArgument::UnrecognizedArgument";
+      std::move(callback).Run(base::unexpected(
+          mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
+              "Routine Argument not recognized/supported",
+              /*reason=*/nullptr))));
+      return;
     }
   }
+}
+
+void RoutineService::HandleGroundTruthRoutineSupportedResponse(
+    mojom::CrosHealthdRoutinesService::IsRoutineArgumentSupportedCallback
+        callback,
+    mojom::RoutineArgumentPtr routine_arg,
+    mojom::SupportStatusPtr support_status) {
+  if (support_status->which() != mojom::SupportStatus::Tag::kSupported) {
+    std::move(callback).Run(std::move(support_status));
+    return;
+  }
+  auto wrapped_callback =
+      base::BindOnce([](base::expected<std::unique_ptr<BaseRoutineControl>,
+                                       mojom::SupportStatusPtr> result) {
+        if (result.has_value()) {
+          return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+        }
+        return std::move(result.error());
+      }).Then(std::move(callback));
+  CheckAndCreateRoutine(std::move(routine_arg), std::move(wrapped_callback));
 }
 
 void RoutineService::IsRoutineArgumentSupported(
     mojom::RoutineArgumentPtr routine_arg,
     mojom::CrosHealthdRoutinesService::IsRoutineArgumentSupportedCallback
         callback) {
-  context_->ground_truth()->IsRoutineArgumentSupported(std::move(routine_arg),
-                                                       std::move(callback));
+  // Call `GroundTruth::IsRoutineArgumentSupported` first, if it is supported
+  // then call `CheckAndCreateRoutine` and see if it is still supported.
+  // TODO(b/309080271): Remove `GroundTruth::IsRoutineArgumentSupported` and
+  // call `CheckAndCreateRoutine` directly.
+  context_->ground_truth()->IsRoutineArgumentSupported(
+      std::move(routine_arg),
+      base::BindOnce(&RoutineService::HandleGroundTruthRoutineSupportedResponse,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
 void RoutineService::AddRoutine(
     std::unique_ptr<BaseRoutineControl> routine,
     mojo::PendingReceiver<mojom::RoutineControl> routine_receiver,
-    mojo::PendingRemote<ash::cros_healthd::mojom::RoutineObserver>
-        routine_observer) {
+    mojo::PendingRemote<mojom::RoutineObserver> routine_observer) {
   auto routine_ptr = routine.get();
   mojo::ReceiverId receiver_id =
       receiver_set_.Add(std::move(routine), std::move(routine_receiver));
@@ -159,6 +213,45 @@ void RoutineService::AddRoutine(
   if (routine_observer.is_valid()) {
     routine_ptr->SetObserver(std::move(routine_observer));
   }
+}
+
+void RoutineService::HandleCheckAndCreateRoutineResponseForCreateRoutine(
+    mojo::PendingReceiver<mojom::RoutineControl> routine_receiver,
+    mojo::PendingRemote<mojom::RoutineObserver> routine_observer,
+    base::expected<std::unique_ptr<BaseRoutineControl>, mojom::SupportStatusPtr>
+        result) {
+  if (result.has_value()) {
+    AddRoutine(std::move(result.value()), std::move(routine_receiver),
+               std::move(routine_observer));
+    return;
+  }
+  switch (result.error()->which()) {
+    case mojom::SupportStatus::Tag::kUnmappedUnionField:
+    case mojom::SupportStatus::Tag::kSupported:
+      NOTREACHED_NORETURN();
+    case mojom::SupportStatus::Tag::kException:
+      routine_receiver.ResetWithReason(
+          static_cast<uint32_t>(mojom::Exception::Reason::kUnexpected),
+          result.error()->get_exception()->debug_message);
+      return;
+    case mojom::SupportStatus::Tag::kUnsupported:
+      routine_receiver.ResetWithReason(
+          static_cast<uint32_t>(mojom::Exception::Reason::kUnsupported),
+          result.error()->get_unsupported()->debug_message);
+      return;
+  }
+}
+
+void RoutineService::CreateRoutine(
+    mojom::RoutineArgumentPtr routine_arg,
+    mojo::PendingReceiver<mojom::RoutineControl> routine_receiver,
+    mojo::PendingRemote<mojom::RoutineObserver> routine_observer) {
+  CheckAndCreateRoutine(
+      std::move(routine_arg),
+      base::BindOnce(
+          &RoutineService::HandleCheckAndCreateRoutineResponseForCreateRoutine,
+          weak_ptr_factory_.GetWeakPtr(), std::move(routine_receiver),
+          std::move(routine_observer)));
 }
 
 void RoutineService::OnRoutineException(mojo::ReceiverId receiver_id,

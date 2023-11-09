@@ -102,10 +102,11 @@ class GroundTruthTest : public BaseFileTest {
 
   void ExpectRoutineStatus(mojom::RoutineArgumentPtr arg,
                            mojom::SupportStatus::Tag expect_status) {
-    base::test::TestFuture<mojom::SupportStatusPtr> future;
+    base::test::TestFuture<mojom::RoutineArgumentPtr, mojom::SupportStatusPtr>
+        future;
     mock_context_.ground_truth()->IsRoutineArgumentSupported(
         std::move(arg), future.GetCallback());
-    auto status = future.Take();
+    auto [unused_arg, status] = future.Take();
     EXPECT_EQ(TagToString(status->which()), TagToString(expect_status));
   }
 
