@@ -3,21 +3,23 @@
 // found in the LICENSE file.
 
 #include <cstdint>
+#include <string>
 
 #include <base/memory/scoped_refptr.h>
 #include <brillo/errors/error.h>
+#include <debugd/dbus-proxy-mocks.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <power_manager/proto_bindings/power_supply_properties.pb.h>
 
-#include "debugd/dbus-proxy-mocks.h"
 #include "diagnostics/cros_healthd/fetchers/battery_fetcher.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
-#include "power_manager/proto_bindings/power_supply_properties.pb.h"
 
 namespace diagnostics {
 namespace {
 
-using ::ash::cros_healthd::mojom::ErrorType;
+namespace mojom = ::ash::cros_healthd::mojom;
+
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Return;
@@ -57,7 +59,9 @@ class BatteryFetcherTest : public ::testing::Test {
 
   void SetUp() override { SetHasSmartBatteryInfo(true); }
 
-  BatteryFetcher* battery_fetcher() { return &battery_fetcher_; }
+  mojom::BatteryResultPtr FetchBatteryInfoInner() {
+    return FetchBatteryInfo(&mock_context_);
+  }
 
   org::chromium::debugdProxyMock* mock_debugd_proxy() {
     return mock_context_.mock_debugd_proxy();
@@ -77,7 +81,6 @@ class BatteryFetcherTest : public ::testing::Test {
 
  private:
   MockContext mock_context_;
-  BatteryFetcher battery_fetcher_{&mock_context_};
 };
 
 // Test that we can fetch all battery metrics correctly.
@@ -116,7 +119,7 @@ TEST_F(BatteryFetcherTest, FetchBatteryInfo) {
                       }),
                       Return(true)));
 
-  auto battery_result = battery_fetcher()->FetchBatteryInfo();
+  auto battery_result = FetchBatteryInfoInner();
   ASSERT_TRUE(battery_result->is_battery_info());
 
   const auto& battery = battery_result->get_battery_info();
@@ -144,9 +147,10 @@ TEST_F(BatteryFetcherTest, FetchBatteryInfo) {
 TEST_F(BatteryFetcherTest, EmptyProtoPowerManagerDbusResponse) {
   power_manager::PowerSupplyProperties power_supply_proto;
   fake_powerd_adapter()->SetPowerSupplyProperties(power_supply_proto);
-  auto battery_result = battery_fetcher()->FetchBatteryInfo();
+  auto battery_result = FetchBatteryInfoInner();
   ASSERT_TRUE(battery_result->is_error());
-  EXPECT_EQ(battery_result->get_error()->type, ErrorType::kSystemUtilityError);
+  EXPECT_EQ(battery_result->get_error()->type,
+            mojom::ErrorType::kSystemUtilityError);
 }
 
 // Test that debugd failing to collect battery manufacture date returns an
@@ -165,9 +169,10 @@ TEST_F(BatteryFetcherTest, ManufactureDateRetrievalFailure) {
                       }),
                       Return(false)));
 
-  auto battery_result = battery_fetcher()->FetchBatteryInfo();
+  auto battery_result = FetchBatteryInfoInner();
   ASSERT_TRUE(battery_result->is_error());
-  EXPECT_EQ(battery_result->get_error()->type, ErrorType::kSystemUtilityError);
+  EXPECT_EQ(battery_result->get_error()->type,
+            mojom::ErrorType::kSystemUtilityError);
 }
 
 // Test that debugd failing to collect battery temperature returns an error.
@@ -192,9 +197,10 @@ TEST_F(BatteryFetcherTest, TemperatureRetrievalFailure) {
                       }),
                       Return(false)));
 
-  auto battery_result = battery_fetcher()->FetchBatteryInfo();
+  auto battery_result = FetchBatteryInfoInner();
   ASSERT_TRUE(battery_result->is_error());
-  EXPECT_EQ(battery_result->get_error()->type, ErrorType::kSystemUtilityError);
+  EXPECT_EQ(battery_result->get_error()->type,
+            mojom::ErrorType::kSystemUtilityError);
 }
 
 // Test that failing to match the regex to the debugd responses returns an
@@ -213,9 +219,9 @@ TEST_F(BatteryFetcherTest, SmartMetricRegexFailure) {
                       }),
                       Return(true)));
 
-  auto battery_result = battery_fetcher()->FetchBatteryInfo();
+  auto battery_result = FetchBatteryInfoInner();
   ASSERT_TRUE(battery_result->is_error());
-  EXPECT_EQ(battery_result->get_error()->type, ErrorType::kParseError);
+  EXPECT_EQ(battery_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that Smart Battery metrics are not fetched when a device does not have a
@@ -228,7 +234,7 @@ TEST_F(BatteryFetcherTest, NoSmartBattery) {
   power_supply_proto.set_battery_state(kBatteryStateFull);
   fake_powerd_adapter()->SetPowerSupplyProperties(power_supply_proto);
 
-  auto battery_result = battery_fetcher()->FetchBatteryInfo();
+  auto battery_result = FetchBatteryInfoInner();
   ASSERT_TRUE(battery_result->is_battery_info());
   const auto& battery = battery_result->get_battery_info();
 
@@ -239,7 +245,7 @@ TEST_F(BatteryFetcherTest, NoSmartBattery) {
 // Test that no battery info is returned when a device does not have a battery.
 TEST_F(BatteryFetcherTest, NoBattery) {
   SetHasBattery(false);
-  auto battery_result = battery_fetcher()->FetchBatteryInfo();
+  auto battery_result = FetchBatteryInfoInner();
   ASSERT_TRUE(battery_result->get_battery_info().is_null());
 }
 

@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "diagnostics/cros_healthd/fetchers/backlight_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/battery_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/disk_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/fan_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/input_fetcher.h"
@@ -17,7 +16,7 @@
 #include "diagnostics/cros_healthd/fetchers/tpm_fetcher.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace diagnostics {
 
@@ -40,7 +39,6 @@ class FetchAggregator final {
 
  private:
   BacklightFetcher backlight_fetcher_;
-  BatteryFetcher battery_fetcher_;
   DiskFetcher disk_fetcher_;
   FanFetcher fan_fetcher_;
   InputFetcher input_fetcher_;

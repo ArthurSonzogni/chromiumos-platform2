@@ -11,19 +11,14 @@
 #include <string>
 #include <utility>
 
-#include <base/check.h>
-#include <base/files/file_util.h>
-#include <base/functional/bind.h>
-#include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/values.h>
+#include <debugd/dbus-proxies.h>
+#include <power_manager/proto_bindings/power_supply_properties.pb.h>
 #include <re2/re2.h>
 
-#include "debugd/dbus-proxies.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
-#include "power_manager/proto_bindings/power_supply_properties.pb.h"
 
 namespace diagnostics {
 
@@ -51,99 +46,50 @@ std::string ConvertSmartBatteryManufactureDate(uint32_t manufacture_date) {
   return base::StringPrintf("%04d-%02d-%02d", year, month, day);
 }
 
-}  // namespace
-
-mojom::BatteryResultPtr BatteryFetcher::FetchBatteryInfo() {
-  if (!context_->system_config()->HasBattery())
-    return mojom::BatteryResult::NewBatteryInfo(mojom::BatteryInfoPtr());
-
-  mojom::BatteryInfo info;
+std::optional<mojom::ProbeErrorPtr> PopulateBatteryInfoFromPowerdResponse(
+    Context* context, const mojom::BatteryInfoPtr& info) {
   auto power_supply_proto =
-      context_->powerd_adapter()->GetPowerSupplyProperties();
-  if (!power_supply_proto) {
-    return mojom::BatteryResult::NewError(CreateAndLogProbeError(
+      context->powerd_adapter()->GetPowerSupplyProperties();
+  if (!power_supply_proto.has_value()) {
+    return CreateAndLogProbeError(
         mojom::ErrorType::kSystemUtilityError,
-        "Failed to obtain power supply properties from powerd"));
+        "Failed to obtain power supply properties from powerd");
   }
 
-  auto error =
-      PopulateBatteryInfoFromPowerdResponse(power_supply_proto.value(), &info);
-  if (error.has_value()) {
-    return mojom::BatteryResult::NewError(std::move(error.value()));
-  }
-
-  if (context_->system_config()->HasSmartBattery()) {
-    error = PopulateSmartBatteryInfo(&info);
-    if (error.has_value()) {
-      return mojom::BatteryResult::NewError(std::move(error.value()));
-    }
-  }
-
-  return mojom::BatteryResult::NewBatteryInfo(info.Clone());
-}
-
-std::optional<mojom::ProbeErrorPtr>
-BatteryFetcher::PopulateBatteryInfoFromPowerdResponse(
-    const power_manager::PowerSupplyProperties& power_supply_proto,
-    mojom::BatteryInfo* info) {
-  DCHECK(info);
-
-  if (!power_supply_proto.has_battery_state() ||
-      power_supply_proto.battery_state() ==
+  if (!power_supply_proto->has_battery_state() ||
+      power_supply_proto->battery_state() ==
           power_manager::PowerSupplyProperties_BatteryState_NOT_PRESENT) {
     return CreateAndLogProbeError(
         mojom::ErrorType::kSystemUtilityError,
         "PowerSupplyProperties protobuf indicates battery is not present");
   }
 
-  info->cycle_count = power_supply_proto.battery_cycle_count();
-  info->vendor = power_supply_proto.battery_vendor();
-  info->voltage_now = power_supply_proto.battery_voltage();
-  info->charge_full = power_supply_proto.battery_charge_full();
-  info->charge_full_design = power_supply_proto.battery_charge_full_design();
-  info->serial_number = power_supply_proto.battery_serial_number();
-  info->voltage_min_design = power_supply_proto.battery_voltage_min_design();
-  info->model_name = power_supply_proto.battery_model_name();
-  info->charge_now = power_supply_proto.battery_charge();
-  info->current_now = power_supply_proto.battery_current();
-  info->technology = power_supply_proto.battery_technology();
-  info->status = power_supply_proto.battery_status();
-
-  return std::nullopt;
-}
-
-std::optional<mojom::ProbeErrorPtr> BatteryFetcher::PopulateSmartBatteryInfo(
-    mojom::BatteryInfo* info) {
-  uint32_t manufacture_date;
-  auto error = GetSmartBatteryMetric(kManufactureDateSmart,
-                                     base::BindOnce(&base::HexStringToUInt),
-                                     &manufacture_date);
-  if (error.has_value()) {
-    return error;
-  }
-  info->manufacture_date = ConvertSmartBatteryManufactureDate(manufacture_date);
-
-  uint64_t temperature;
-  error = GetSmartBatteryMetric(kTemperatureSmart,
-                                base::BindOnce(&base::HexStringToUInt64),
-                                &temperature);
-  if (error.has_value()) {
-    return error;
-  }
-  info->temperature = mojom::NullableUint64::New(temperature);
+  info->cycle_count = power_supply_proto->battery_cycle_count();
+  info->vendor = power_supply_proto->battery_vendor();
+  info->voltage_now = power_supply_proto->battery_voltage();
+  info->charge_full = power_supply_proto->battery_charge_full();
+  info->charge_full_design = power_supply_proto->battery_charge_full_design();
+  info->serial_number = power_supply_proto->battery_serial_number();
+  info->voltage_min_design = power_supply_proto->battery_voltage_min_design();
+  info->model_name = power_supply_proto->battery_model_name();
+  info->charge_now = power_supply_proto->battery_charge();
+  info->current_now = power_supply_proto->battery_current();
+  info->technology = power_supply_proto->battery_technology();
+  info->status = power_supply_proto->battery_status();
 
   return std::nullopt;
 }
 
 template <typename T>
-std::optional<mojom::ProbeErrorPtr> BatteryFetcher::GetSmartBatteryMetric(
+std::optional<mojom::ProbeErrorPtr> GetSmartBatteryMetric(
+    Context* context,
     const std::string& metric_name,
-    base::OnceCallback<bool(base::StringPiece input, T* output)>
+    base::OnceCallback<bool(std::string_view input, T* output)>
         convert_string_to_num,
     T* metric_value) {
   brillo::ErrorPtr error;
   std::string debugd_result;
-  if (!context_->debugd_proxy()->CollectSmartBatteryMetric(
+  if (!context->debugd_proxy()->CollectSmartBatteryMetric(
           metric_name, &debugd_result, &error, kDebugdDBusTimeout)) {
     return CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
                                   "Failed retrieving " + metric_name +
@@ -169,6 +115,51 @@ std::optional<mojom::ProbeErrorPtr> BatteryFetcher::GetSmartBatteryMetric(
   }
 
   return std::nullopt;
+}
+
+std::optional<mojom::ProbeErrorPtr> PopulateSmartBatteryInfo(
+    Context* context, const mojom::BatteryInfoPtr& info) {
+  uint32_t manufacture_date;
+  auto error = GetSmartBatteryMetric(context, kManufactureDateSmart,
+                                     base::BindOnce(&base::HexStringToUInt),
+                                     &manufacture_date);
+  if (error.has_value()) {
+    return error;
+  }
+  info->manufacture_date = ConvertSmartBatteryManufactureDate(manufacture_date);
+
+  uint64_t temperature;
+  error = GetSmartBatteryMetric(context, kTemperatureSmart,
+                                base::BindOnce(&base::HexStringToUInt64),
+                                &temperature);
+  if (error.has_value()) {
+    return error;
+  }
+  info->temperature = mojom::NullableUint64::New(temperature);
+
+  return std::nullopt;
+}
+
+}  // namespace
+
+mojom::BatteryResultPtr FetchBatteryInfo(Context* context) {
+  if (!context->system_config()->HasBattery())
+    return mojom::BatteryResult::NewBatteryInfo(mojom::BatteryInfoPtr());
+
+  auto info = mojom::BatteryInfo::New();
+  auto error = PopulateBatteryInfoFromPowerdResponse(context, info);
+  if (error.has_value()) {
+    return mojom::BatteryResult::NewError(std::move(error.value()));
+  }
+
+  if (context->system_config()->HasSmartBattery()) {
+    error = PopulateSmartBatteryInfo(context, info);
+    if (error.has_value()) {
+      return mojom::BatteryResult::NewError(std::move(error.value()));
+    }
+  }
+
+  return mojom::BatteryResult::NewBatteryInfo(std::move(info));
 }
 
 }  // namespace diagnostics
