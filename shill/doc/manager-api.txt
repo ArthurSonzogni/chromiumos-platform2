@@ -1048,6 +1048,10 @@ Properties	object ActiveProfile [readonly]
 		dict TetheringConfig [readwrite]
 
 			Dictionary that contains the following Tethering related properties.
+			Writing this property while a tethering session is active will restart
+			the tethering session with new configs. If upstream_technology is not
+			changed and is cellular, the upstream network will remain unchanged
+			during the tethering restart process.
 
 			boolean auto_disable
 				automatically disable tethering if no devices have been
@@ -1061,7 +1065,7 @@ Properties	object ActiveProfile [readonly]
 			string band
 				the tethering band preference (WiFi downstream only)
 				this should be either “2.4GHz” or “5GHz”. If absent, the band will
-                                be picked by Shill.
+				be picked by the platform.
 			string security
 				the tethering security to be used (WiFi downstream only)
 				this should be one of "wpa2", "wpa3", "wpa2+wpa3"
@@ -1089,11 +1093,11 @@ Properties	object ActiveProfile [readonly]
 				one of "wifi", "cellular", "ethernet"
 			string state
 				state of the tethering instance. The state could be any one of
-				"idle", "starting", "active" or "stopping"
+				"idle", "starting", "active", "stopping" or "restarting"
 			string idle_reason
 				the reason why tethering is in idle state. Could be any one of
 				"initial_state", "client_stop", "user_exit", "inactive", "error"
-				"upstream_disconnect" or "suspend"
+				"upstream_disconnect", "suspend" or "config_change"
 			array{dict} active_clients
 				string IPv4
 					IPv4 address of the associated client expressed in the

@@ -1706,4 +1706,49 @@ TEST_F(TetheringManagerTest, OnCellularUpstreamEvent) {
                          kTetheringIdleReasonUpstreamDisconnect);
 }
 
+TEST_F(TetheringManagerTest, ChangeSSIDWhileIdle) {
+  TetheringPrerequisite(tethering_manager_);
+  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonInitialState);
+  // Change SSID and set to TetheringConfig.
+  KeyValueStore config = GetConfig(tethering_manager_);
+  SetConfigSSID(config, kTestAPHexSSID);
+  EXPECT_TRUE(SetAndPersistConfig(tethering_manager_, config));
+  DispatchPendingEvents();
+  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonInitialState);
+}
+
+TEST_F(TetheringManagerTest, ChangeSSIDWhileActive) {
+  TetheringPrerequisite(tethering_manager_);
+  SetEnabledVerifyResult(tethering_manager_, true,
+                         TetheringManager::SetEnabledResult::kSuccess);
+
+  // Change SSID and set to TetheringConfig.
+  KeyValueStore config = GetConfig(tethering_manager_);
+  SetConfigSSID(config, kTestAPHexSSID);
+  EXPECT_TRUE(SetAndPersistConfig(tethering_manager_, config));
+  // Changing SSID should not touch the upstream network.
+  EXPECT_CALL(*cellular_service_provider_, ReleaseTetheringNetwork(_, _))
+      .Times(0);
+  DispatchPendingEvents();
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringRestarting);
+}
+
+TEST_F(TetheringManagerTest, ChangeUpstreamTechWhileActive) {
+  TetheringPrerequisite(tethering_manager_);
+  SetEnabledVerifyResult(tethering_manager_, true,
+                         TetheringManager::SetEnabledResult::kSuccess);
+
+  // Change upstream tech from cellular to eth and set to TetheringConfig.
+  KeyValueStore config = GetConfig(tethering_manager_);
+  SetConfigUpstream(config, TechnologyName(Technology::kEthernet));
+  EXPECT_TRUE(SetAndPersistConfig(tethering_manager_, config));
+  // Changing upstream technology should release the upstream network.
+  EXPECT_CALL(*cellular_service_provider_, ReleaseTetheringNetwork(_, _))
+      .WillOnce(Return());
+  DispatchPendingEvents();
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringRestarting);
+}
+
 }  // namespace shill

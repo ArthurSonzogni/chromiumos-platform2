@@ -94,6 +94,7 @@ class TetheringManager : public Network::EventHandler {
     kTetheringStarting,
     kTetheringActive,
     kTetheringStopping,
+    kTetheringRestarting,
   };
   using AcquireNetworkCallback = base::OnceCallback<void(
       TetheringManager::SetEnabledResult, Network*, ServiceRefPtr)>;
@@ -153,6 +154,7 @@ class TetheringManager : public Network::EventHandler {
     kUpstreamDisconnect,  // Upstream network disconnects.
     kInactive,            // Inactive timer fires.
     kError,               // Internal error.
+    kConfigChange,        // Config is changed.
   };
 
   // Convert stop reason enum to string.
@@ -257,7 +259,8 @@ class TetheringManager : public Network::EventHandler {
   // Prepare tethering resources to start a tethering session.
   void StartTetheringSession();
   // Stop and free tethering resources due to reason |reason|.
-  void StopTetheringSession(StopReason reason);
+  // Keep upstream network untouched if |bypass_upstream| is true.
+  void StopTetheringSession(StopReason reason, bool bypass_upstream = false);
   // Kick off the tethering inactive timer when auto_disable_ is true and
   // TetheringState is kTetheringActive. Will not rearm the timer if it is
   // already running. It will tear down tethering session after timer fires.
@@ -341,8 +344,6 @@ class TetheringManager : public Network::EventHandler {
   bool hotspot_service_up_;
   // The reason why tethering is stopped.
   StopReason stop_reason_;
-
-  base::WeakPtrFactory<TetheringManager> weak_ptr_factory_{this};
 };
 
 inline std::ostream& operator<<(std::ostream& stream,

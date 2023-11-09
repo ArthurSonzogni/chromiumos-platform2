@@ -385,6 +385,7 @@ bool TetheringManager::SetAndPersistConfig(const KeyValueStore& config,
   }
 
   auto old_ssid = hex_ssid_;
+  auto old_upstream_technology = upstream_technology_;
   if (!FromProperties(config)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Invalid tethering configuration");
@@ -400,6 +401,24 @@ bool TetheringManager::SetAndPersistConfig(const KeyValueStore& config,
                           "Failed to save config to user profile");
     return false;
   }
+
+  if (state_ == TetheringState::kTetheringActive ||
+      state_ == TetheringState::kTetheringStarting) {
+    bool bypass_upstream = false;
+    if (upstream_technology_ == old_upstream_technology &&
+        upstream_technology_ == Technology::kCellular) {
+      // Do not stop upstream cellular network in session restart if upstream
+      // is not changed as PDN switching is costly.
+      bypass_upstream = true;
+    }
+    // StopTetheringSession with StopReason kConfigChange restarts tethering.
+    // Need to send D-Bus result first. So defer restart work to event loop.
+    manager_->dispatcher()->PostTask(
+        FROM_HERE, base::BindOnce(&TetheringManager::StopTetheringSession,
+                                  base::Unretained(this),
+                                  StopReason::kConfigChange, bypass_upstream));
+  }
+
   return true;
 }
 
@@ -494,6 +513,8 @@ const char* TetheringManager::TetheringStateName(const TetheringState& state) {
       return kTetheringStateActive;
     case TetheringState::kTetheringStopping:
       return kTetheringStateStopping;
+    case TetheringState::kTetheringRestarting:
+      return kTetheringStateRestarting;
     default:
       NOTREACHED() << "Unhandled tethering state " << static_cast<int>(state);
       return "Invalid";
@@ -597,8 +618,13 @@ void TetheringManager::CheckAndPostTetheringStopResult() {
 
   // TODO(b/235762439): Routine to check other tethering modules.
 
-  SetState(TetheringState::kTetheringIdle);
   stop_timer_callback_.Cancel();
+  if (state_ == TetheringState::kTetheringRestarting) {
+    StartTetheringSession();
+    return;
+  }
+
+  SetState(TetheringState::kTetheringIdle);
   if (stop_reason_ == StopReason::kClientStop) {
     PostSetEnabledResult(SetEnabledResult::kSuccess);
   }
@@ -678,8 +704,9 @@ void TetheringManager::OnStoppingTetheringTimeout() {
 }
 
 void TetheringManager::StartTetheringSession() {
-  if (state_ != TetheringState::kTetheringIdle) {
-    LOG(ERROR) << __func__ << ": tethering session is not in idle state";
+  if (state_ != TetheringState::kTetheringIdle &&
+      state_ != TetheringState::kTetheringRestarting) {
+    LOG(ERROR) << __func__ << ": unexpected tethering state " << state_;
     PostSetEnabledResult(SetEnabledResult::kWrongState);
     return;
   }
@@ -692,8 +719,11 @@ void TetheringManager::StartTetheringSession() {
     return;
   }
 
-  LOG(INFO) << __func__;
-  SetState(TetheringState::kTetheringStarting);
+  LOG(INFO) << __func__ << ": in state " << state_;
+  // Keep the state if it is restarting.
+  if (state_ != TetheringState::kTetheringRestarting) {
+    SetState(TetheringState::kTetheringStarting);
+  }
   start_timer_callback_.Reset(base::BindOnce(
       &TetheringManager::OnStartingTetheringTimeout, base::Unretained(this)));
   manager_->dispatcher()->PostDelayedTask(
@@ -727,6 +757,12 @@ void TetheringManager::StartTetheringSession() {
     LOG(ERROR) << __func__ << ": failed to create a WiFi AP interface";
     PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
     StopTetheringSession(StopReason::kError);
+    return;
+  }
+
+  if (upstream_network_) {
+    // No need to acquire a new upstream network.
+    CheckAndStartDownstreamTetheredNetwork();
     return;
   }
 
@@ -782,7 +818,7 @@ void TetheringManager::OnDownstreamDeviceEnabled() {
   }
 }
 
-void TetheringManager::StopTetheringSession(StopReason reason) {
+void TetheringManager::StopTetheringSession(StopReason reason, bool bypass_upstream) {
   if (state_ == TetheringState::kTetheringIdle ||
       state_ == TetheringState::kTetheringStopping) {
     if (reason == StopReason::kClientStop) {
@@ -793,12 +829,13 @@ void TetheringManager::StopTetheringSession(StopReason reason) {
   }
 
   LOG(INFO) << __func__ << ": " << StopReasonToString(reason);
-  SetState(TetheringState::kTetheringStopping);
   stop_reason_ = reason;
-  stop_timer_callback_.Reset(base::BindOnce(
-      &TetheringManager::OnStoppingTetheringTimeout, base::Unretained(this)));
-  manager_->dispatcher()->PostDelayedTask(
-      FROM_HERE, stop_timer_callback_.callback(), kStopTimeout);
+  if (reason == StopReason::kConfigChange) {
+    // Restart the tethering session due to config change.
+    SetState(TetheringState::kTetheringRestarting);
+  } else {
+    SetState(TetheringState::kTetheringStopping);
+  }
   start_timer_callback_.Cancel();
   StopInactiveTimer();
 
@@ -816,7 +853,23 @@ void TetheringManager::StopTetheringSession(StopReason reason) {
   }
   hotspot_service_up_ = false;
 
-  if (upstream_technology_ == Technology::kCellular) {
+  if (bypass_upstream && state_ == TetheringState::kTetheringRestarting) {
+    // Downstream down, bypass upstream, restart tethering session immediately.
+    StartTetheringSession();
+    return;
+  }
+  stop_timer_callback_.Reset(base::BindOnce(
+      &TetheringManager::OnStoppingTetheringTimeout, base::Unretained(this)));
+  manager_->dispatcher()->PostDelayedTask(
+      FROM_HERE, stop_timer_callback_.callback(), kStopTimeout);
+
+  if ((upstream_network_ &&
+      upstream_network_->technology() == Technology::kCellular) ||
+      (!upstream_network_ && upstream_technology_ == Technology::kCellular)) {
+    // If the upstream_network_ is a cellular network type or if the current
+    // upstream technology is cellular and the upstream_network_ has not been
+    // acquired yet, ask CellularServiceProvider to release it and restore to
+    // the original PDN.
     manager_->cellular_service_provider()->ReleaseTetheringNetwork(
         upstream_network_,  // may be nullptr if attempt is ongoing
         base::BindOnce(&TetheringManager::OnUpstreamNetworkReleased,
@@ -844,7 +897,7 @@ void TetheringManager::StartInactiveTimer() {
 
   inactive_timer_callback_.Reset(
       base::BindOnce(&TetheringManager::StopTetheringSession,
-                     base::Unretained(this), StopReason::kInactive));
+                     base::Unretained(this), StopReason::kInactive, false));
   manager_->dispatcher()->PostDelayedTask(
       FROM_HERE, inactive_timer_callback_.callback(), kAutoDisableDelay);
 }
@@ -915,7 +968,8 @@ void TetheringManager::OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
 
 void TetheringManager::OnDownstreamNetworkReady(
     base::ScopedFD downstream_network_fd) {
-  if (state_ != TetheringState::kTetheringStarting) {
+  if (state_ != TetheringState::kTetheringStarting &&
+      state_ != TetheringState::kTetheringRestarting) {
     LOG(WARNING) << __func__ << ": unexpected tethering state " << state_;
     PostSetEnabledResult(SetEnabledResult::kFailure);
     StopTetheringSession(StopReason::kError);
@@ -1254,6 +1308,8 @@ const char* TetheringManager::StopReasonToString(StopReason reason) {
       return kTetheringIdleReasonInactive;
     case StopReason::kError:
       return kTetheringIdleReasonError;
+    case StopReason::kConfigChange:
+      return kTetheringIdleReasonConfigChange;
     default:
       NOTREACHED() << "Unhandled stop reason " << static_cast<int>(reason);
       return "Invalid";
@@ -1312,13 +1368,18 @@ void TetheringManager::OnNetworkValidationResult(
 }
 
 void TetheringManager::OnNetworkStopped(int interface_index, bool is_failure) {
-  if (state_ == TetheringState::kTetheringIdle) {
+  if (state_ == TetheringState::kTetheringIdle ||
+      state_ == TetheringState::kTetheringRestarting) {
     return;
   }
   StopTetheringSession(StopReason::kUpstreamDisconnect);
 }
 
 void TetheringManager::OnNetworkDestroyed(int interface_index) {
+  if (state_ == TetheringState::kTetheringIdle ||
+      state_ == TetheringState::kTetheringRestarting) {
+    return;
+  }
   upstream_network_ = nullptr;
   upstream_service_ = nullptr;
   StopTetheringSession(StopReason::kUpstreamDisconnect);
