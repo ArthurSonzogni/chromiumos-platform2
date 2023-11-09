@@ -16,6 +16,7 @@
 #include <base/logging.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/values.h>
 #include <crypto/secure_hash.h>
 #include <crypto/sha2.h>
 
@@ -181,6 +182,16 @@ std::shared_ptr<imageloader::Manifest> GetDlcManifest(
     const FilePath& dlc_manifest_path,
     std::unique_ptr<UtilsInterface> utils) {
   return utils->GetDlcManifest(id, dlc_manifest_path);
+}
+
+DlcIdList Utils::GetSupportedDlcIds(const base::FilePath& metadata_path) {
+  InitializeDlcMetadata(metadata_path);
+  if (metadata_) {
+    return metadata_->ListDlcIds(metadata::Metadata::FilterKey::kNone,
+                                 base::Value());
+  }
+
+  return {};
 }
 
 bool Utils::InitializeDlcMetadata(const base::FilePath& path) {

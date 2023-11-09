@@ -31,6 +31,7 @@
 #include "dlcservice/prefs.h"
 #include "dlcservice/proto_utils.h"
 #include "dlcservice/test_utils.h"
+#include "dlcservice/types.h"
 #include "dlcservice/utils.h"
 #include "dlcservice/utils/mock_utils.h"
 
@@ -124,6 +125,9 @@ TEST_F(DlcServiceTest, InitializeTest) {
       .WillOnce(Return(std::move(mock_dlc_4)))
       .WillOnce(Return(std::move(mock_dlc_scaled)));
 
+  EXPECT_CALL(*mock_utils_, GetSupportedDlcIds)
+      .WillOnce(Return(DlcIdList(
+          {kFirstDlc, kSecondDlc, kThirdDlc, kFourthDlc, kScaledDlc})));
   dlc_service_->Initialize();
 }
 
@@ -795,6 +799,10 @@ class DlcServiceTestLegacy : public BaseTest {
 
     dlc_service_ =
         std::make_unique<DlcService>(std::move(dlc_creator), mock_utils_);
+
+    EXPECT_CALL(*mock_utils_, GetSupportedDlcIds)
+        .WillOnce(Return(DlcIdList(
+            {kFirstDlc, kSecondDlc, kThirdDlc, kFourthDlc, kScaledDlc})));
     dlc_service_->Initialize();
   }
 

@@ -42,8 +42,7 @@ bool DlcBase::Initialize() {
   const auto* system_state = SystemState::Get();
   const auto& manifest_dir = system_state->manifest_dir();
   package_ = *ScanDirectory(manifest_dir.Append(id_)).begin();
-  manifest_ =
-      utils_->GetDlcManifest(system_state->manifest_dir(), id_, package_);
+  manifest_ = utils_->GetDlcManifest(id_, system_state->manifest_dir());
   if (!manifest_) {
     // Failing to read the manifest will be considered a blocker.
     LOG(ERROR) << "Failed to read the manifest of DLC " << id_;

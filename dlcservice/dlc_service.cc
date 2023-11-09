@@ -100,20 +100,27 @@ void DlcService::Initialize() {
       base::BindOnce(&DlcService::OnWaitForUpdateEngineServiceToBeAvailable,
                      weak_ptr_factory_.GetWeakPtr()));
 
-  auto manager_initialize = [this]() -> void {
-    supported_.clear();
-
-    // Initialize supported DLC(s).
-    for (const auto& id : ScanDirectory(SystemState::Get()->manifest_dir())) {
-      auto result = supported_.emplace(id, dlc_creator_->Create(id));
-      if (!result.first->second->Initialize()) {
-        LOG(ERROR) << "Failed to initialize DLC " << id;
-        supported_.erase(id);
-      }
+  supported_.clear();
+  auto initialize_dlc = [this](const DlcId& id) -> void {
+    auto result = supported_.emplace(id, dlc_creator_->Create(id));
+    if (!result.first->second->Initialize()) {
+      LOG(ERROR) << "Failed to initialize DLC " << id;
+      supported_.erase(id);
     }
-    CleanupUnsupported();
   };
-  manager_initialize();
+
+  // Get supported DLCs from compressed metadata, and initialize them.
+  for (const auto& id :
+       utils_->GetSupportedDlcIds(SystemState::Get()->manifest_dir())) {
+    initialize_dlc(id);
+  }
+
+  // Initialize supported DLC(s).
+  for (const auto& id : ScanDirectory(SystemState::Get()->manifest_dir())) {
+    if (supported_.find(id) == supported_.end())
+      initialize_dlc(id);
+  }
+  CleanupUnsupported();
 }
 
 void DlcService::CleanupUnsupported() {

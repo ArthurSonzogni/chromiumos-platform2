@@ -13,6 +13,8 @@
 #include <brillo/brillo_export.h>
 #include <libimageloader/manifest.h>
 
+#include "dlcservice/types.h"
+
 namespace dlcservice {
 
 enum class BRILLO_EXPORT PartitionSlot {
@@ -52,6 +54,8 @@ class BRILLO_EXPORT UtilsInterface {
   // Retrieves the given DLC (id) manifest from metadata.
   virtual std::shared_ptr<imageloader::Manifest> GetDlcManifest(
       const std::string& id, const base::FilePath& dlc_manifest_path) = 0;
+
+  virtual DlcIdList GetSupportedDlcIds(const base::FilePath& metadata_path) = 0;
 };
 
 }  // namespace dlcservice
