@@ -85,12 +85,31 @@ fn send_pressure_signal(
     level: u8,
     reclaim_target_kb: u64,
 ) {
+    let mut ts = libc::timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    };
+
+    let mut signal_origin_timestamp_ms = -1;
+
+    // SAFETY: Safe because the only side-effects of this function are modifications via the
+    // passed pointer, and we pass a pointer of the proper type.
+    let result =
+        unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts as *mut libc::timespec) };
+    if result == 0 {
+        signal_origin_timestamp_ms = ts.tv_sec * 1000 + ts.tv_nsec / 1_000_000;
+    } else {
+        error!("Failed to get current time.");
+    }
+
     let msg = Message::signal(
         &PATH_NAME.into(),
         &INTERFACE_NAME.into(),
         &signal_name.into(),
     )
-    .append2(level, reclaim_target_kb);
+    // Since the origin timestamp originates from CLOCK_MONOTONIC,
+    // it should not be used from any guest context. It can only be compared within the host.
+    .append3(level, reclaim_target_kb, signal_origin_timestamp_ms);
     if conn.send(msg).is_err() {
         error!("Send Chrome pressure signal failed.");
     }
