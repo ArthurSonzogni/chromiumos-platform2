@@ -113,7 +113,6 @@ class StorageQueueTest
         .WillRepeatedly(Invoke([this](UploaderInterface::UploadReason reason) {
           return TestUploader::SetUpDummy(this);
         }));
-    ResetExpectedUploadsCount();
   }
 
   void TearDown() override {
@@ -698,8 +697,6 @@ class StorageQueueTest
     // TODO(b/254418902): The next line is not logically necessary, but for
     // unknown reason the tests becomes flaky without it, keeping it for now.
     task_environment_.RunUntilIdle();
-    // All expected uploads should have happened.
-    EXPECT_THAT(expected_uploads_count_, Eq(0u));
     // Make sure all memory is deallocated.
     EXPECT_THAT(options_.memory_resource()->GetUsed(), Eq(0u));
     // Make sure all disk is not reserved (files remain, but Storage is not
@@ -756,22 +753,8 @@ class StorageQueueTest
             [](UploaderInterface::UploadReason reason,
                UploaderInterface::UploaderInterfaceResultCb start_uploader_cb,
                StorageQueueTest* self) {
-              if (self->expected_uploads_count_ == 0u) {
-                LOG(ERROR) << "Upload not expected, reason="
-                           << UploaderInterface::ReasonToString(reason);
-                std::move(start_uploader_cb)
-                    .Run(Status(
-                        error::CANCELLED,
-                        base::StrCat(
-                            {"Unexpected upload ignored, reason=",
-                             UploaderInterface::ReasonToString(reason)})));
-                return;
-              }
-              --(self->expected_uploads_count_);
               LOG(ERROR) << "Attempt upload, reason="
                          << UploaderInterface::ReasonToString(reason);
-              LOG_IF(FATAL, ++(self->upload_count_) >= 8uL)
-                  << "Too many uploads";
               auto result = self->set_mock_uploader_expectations_.Call(reason);
               if (!result.ok()) {
                 LOG(ERROR) << "Upload not allowed, reason="
@@ -830,20 +813,6 @@ class StorageQueueTest
     ASSERT_OK(c_result) << c_result;
   }
 
-  void ResetExpectedUploadsCount() { expected_uploads_count_ = 0u; }
-
-  void SetExpectedUploadsCount(size_t count = 1u, size_t uma_count = 1u) {
-    EXPECT_THAT(expected_uploads_count_, Eq(0u));
-    EXPECT_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-                SendSparseToUMA(
-                    StrEq(base::StrCat(
-                        {StorageQueue::kUploadToStorageRatePrefix, kUmaId})),
-                    Gt(0)))
-        .Times(uma_count)
-        .WillRepeatedly(Return(true));
-    expected_uploads_count_ = count;
-  }
-
   void DeleteGenerationIdFromRecordFilePaths(const QueueOptions options) {
     // Remove the generation id from the path of all data files in the storage
     // queue directory
@@ -883,20 +852,7 @@ class StorageQueueTest
   // digest. Serves all TestUploaders created by test fixture.
   TestUploader::LastRecordDigest::Map last_record_digest_map_;
 
-  size_t upload_count_ = 0uL;
-
-  // Counter indicating how many upload calls are expected.
-  // Can be set only if before that it is zero.
-  // Needs to be set to a positive number (usually 1) before executing an action
-  // that would trigger upload (e.g., advancing time or FLUSH or calling write
-  // to IMMEDIATE/SECURITY queue). As long as the counter is positive, uploads
-  // will be permitted, and the counter will decrement by 1. Once the counter
-  // becomes zero, upload calls will be ignored (they may be caused by mocked
-  // time being advanced more than requested).
-  size_t expected_uploads_count_ = 0u;
-
   // Mock to be called for setting up the uploader.
-  // Allowed only if expected_uploads_count_ is positive.
   ::testing::MockFunction<StatusOr<std::unique_ptr<TestUploader>>(
       UploaderInterface::UploadReason /*reason*/)>
       set_mock_uploader_expectations_;
@@ -928,7 +884,6 @@ TEST_P(StorageQueueTest, WriteIntoStorageQueueAndReopen) {
       .RetiresOnSaturation();
 
   // Reopening will cause INIT_RESUME
-  SetExpectedUploadsCount();
   CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
 }
 
@@ -956,7 +911,6 @@ TEST_P(StorageQueueTest, WriteIntoStorageQueueReopenAndWriteMore) {
         .RetiresOnSaturation();
 
     // Reopening will cause INIT_RESUME
-    SetExpectedUploadsCount();
     CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   }
 
@@ -985,7 +939,6 @@ TEST_P(StorageQueueTest, WriteIntoStorageQueueAndUpload) {
       .RetiresOnSaturation();
 
   // Trigger upload.
-  SetExpectedUploadsCount();
   task_environment_.FastForwardBy(base::Seconds(1));
 }
 
@@ -1019,7 +972,6 @@ TEST_P(StorageQueueTest, WriteIntoStorageQueueAndUploadWithFailures) {
       .RetiresOnSaturation();
 
   // Trigger upload.
-  SetExpectedUploadsCount();
   task_environment_.FastForwardBy(base::Seconds(1));
 }
 
@@ -1047,7 +999,6 @@ TEST_P(StorageQueueTest, WriteIntoStorageQueueReopenWriteMoreAndUpload) {
         .RetiresOnSaturation();
 
     // Reopening will cause INIT_RESUME
-    SetExpectedUploadsCount();
     CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   }
 
@@ -1072,7 +1023,6 @@ TEST_P(StorageQueueTest, WriteIntoStorageQueueReopenWriteMoreAndUpload) {
       .RetiresOnSaturation();
 
   // Trigger upload.
-  SetExpectedUploadsCount();
   task_environment_.FastForwardBy(base::Seconds(1));
 }
 
@@ -1105,9 +1055,6 @@ TEST_P(StorageQueueTest,
         }))
         .RetiresOnSaturation();
 
-    // Reopening will cause INIT_RESUME
-    SetExpectedUploadsCount(/*count=*/1u,
-                            /*uma_count=*/0u);  // INIT_RESUME is empty, no UMA.
     // Reopen, starting a new generation.
     CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   }
@@ -1133,7 +1080,6 @@ TEST_P(StorageQueueTest,
       .RetiresOnSaturation();
 
   // Trigger upload.
-  SetExpectedUploadsCount();
   task_environment_.FastForwardBy(base::Seconds(1));
 }
 
@@ -1178,9 +1124,6 @@ TEST_P(StorageQueueTest,
         }))
         .RetiresOnSaturation();
 
-    // Reopening will cause INIT_RESUME
-    SetExpectedUploadsCount(/*count=*/1u,
-                            /*uma_count=*/0u);  // INIT_RESUME is empty, no UMA.
     // Reopen, starting a new generation.
     CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   }
@@ -1206,7 +1149,6 @@ TEST_P(StorageQueueTest,
       .RetiresOnSaturation();
 
   // Trigger upload.
-  SetExpectedUploadsCount();
   task_environment_.FastForwardBy(base::Seconds(1));
 }
 
@@ -1233,9 +1175,6 @@ TEST_P(StorageQueueTest,
         }))
         .RetiresOnSaturation();
 
-    // Reopening will cause INIT_RESUME
-    SetExpectedUploadsCount(/*count=*/1u,
-                            /*uma_count=*/0u);  // INIT_RESUME is empty, no UMA.
     // Reopen with the same generation and sequencing information.
     CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   }
@@ -1308,7 +1247,6 @@ TEST_P(StorageQueueTest,
   }
 
   // Trigger upload.
-  SetExpectedUploadsCount();
   task_environment_.FastForwardBy(base::Seconds(1));
 }
 
@@ -1332,7 +1270,6 @@ TEST_P(StorageQueueTest, WriteIntoStorageQueueAndFlush) {
       .RetiresOnSaturation();
 
   // Flush manually.
-  SetExpectedUploadsCount();
   FlushOrDie();
 }
 
@@ -1355,9 +1292,6 @@ TEST_P(StorageQueueTest, WriteIntoStorageQueueReopenWriteMoreAndFlush) {
         }))
         .RetiresOnSaturation();
 
-    // Reopening will cause INIT_RESUME
-    SetExpectedUploadsCount(/*count=*/1u,
-                            /*uma_count=*/0u);  // INIT_RESUME is empty, no UMA.
     CreateTestStorageQueueOrDie(BuildStorageQueueOptionsOnlyManual());
   }
 
@@ -1382,7 +1316,6 @@ TEST_P(StorageQueueTest, WriteIntoStorageQueueReopenWriteMoreAndFlush) {
       .RetiresOnSaturation();
 
   // Flush manually.
-  SetExpectedUploadsCount();
   FlushOrDie();
 }
 
@@ -1411,7 +1344,6 @@ TEST_P(StorageQueueTest, ValidateVariousRecordSizes) {
       .RetiresOnSaturation();
 
   // Flush manually.
-  SetExpectedUploadsCount();
   FlushOrDie();
 }
 
@@ -1438,7 +1370,6 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyUploadWithConfirmations) {
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
   // Confirm #0 and forward time again, removing record #0
@@ -1458,7 +1389,6 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyUploadWithConfirmations) {
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
 
@@ -1478,7 +1408,6 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyUploadWithConfirmations) {
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
 
@@ -1502,7 +1431,6 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyUploadWithConfirmations) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
 
@@ -1523,7 +1451,6 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyUploadWithConfirmations) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
 }
@@ -1551,7 +1478,6 @@ TEST_P(StorageQueueTest, WriteAndUploadWithBadConfirmation) {
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
 
@@ -1590,7 +1516,6 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyUploadWithConfirmationsAndReopen) {
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
 
@@ -1611,7 +1536,6 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyUploadWithConfirmationsAndReopen) {
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
 
@@ -1631,7 +1555,6 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyUploadWithConfirmationsAndReopen) {
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
 
@@ -1648,9 +1571,6 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyUploadWithConfirmationsAndReopen) {
         }))
         .RetiresOnSaturation();
 
-    // Reopening will cause INIT_RESUME
-    SetExpectedUploadsCount(/*count=*/1u,
-                            /*uma_count=*/0u);  // INIT_RESUME is empty, no UMA.
     CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   }
 
@@ -1676,7 +1596,6 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyUploadWithConfirmationsAndReopen) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
 
@@ -1697,7 +1616,6 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyUploadWithConfirmationsAndReopen) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
 }
@@ -1726,7 +1644,6 @@ TEST_P(StorageQueueTest,
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
 
@@ -1747,7 +1664,6 @@ TEST_P(StorageQueueTest,
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
 
@@ -1767,7 +1683,6 @@ TEST_P(StorageQueueTest,
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
 
@@ -1784,9 +1699,6 @@ TEST_P(StorageQueueTest,
         }))
         .RetiresOnSaturation();
 
-    // Reopening will cause INIT_RESUME
-    SetExpectedUploadsCount(/*count=*/1u,
-                            /*uma_count=*/0u);  // INIT_RESUME is empty, no UMA.
     CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   }
 
@@ -1824,7 +1736,6 @@ TEST_P(StorageQueueTest,
                   .Complete();
             }))
         .RetiresOnSaturation();
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
 
@@ -1852,7 +1763,6 @@ TEST_P(StorageQueueTest,
                   .Complete();
             }))
         .RetiresOnSaturation();
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
 }
@@ -1876,7 +1786,6 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyImmediateUpload) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    SetExpectedUploadsCount();
     WriteStringOrDie(kData[0]);
   }
 
@@ -1893,7 +1802,6 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyImmediateUpload) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    SetExpectedUploadsCount();
     WriteStringOrDie(kData[1]);
   }
 
@@ -1910,7 +1818,6 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyImmediateUpload) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    SetExpectedUploadsCount();
     WriteStringOrDie(kData[2]);
   }
 }
@@ -1933,7 +1840,6 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyImmediateUploadWithConfirmations) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    SetExpectedUploadsCount();
     WriteStringOrDie(kData[0]);
   }
 
@@ -1949,7 +1855,6 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyImmediateUploadWithConfirmations) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    SetExpectedUploadsCount();
     WriteStringOrDie(kData[1]);
   }
 
@@ -1966,7 +1871,6 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyImmediateUploadWithConfirmations) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    SetExpectedUploadsCount();
     WriteStringOrDie(kData[2]);
   }
 
@@ -1989,7 +1893,6 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyImmediateUploadWithConfirmations) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    SetExpectedUploadsCount();
     WriteStringOrDie(kMoreData[0]);
   }
 
@@ -2006,7 +1909,6 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyImmediateUploadWithConfirmations) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    SetExpectedUploadsCount();
     WriteStringOrDie(kMoreData[1]);
   }
 
@@ -2024,7 +1926,6 @@ TEST_P(StorageQueueTest, WriteAndRepeatedlyImmediateUploadWithConfirmations) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    SetExpectedUploadsCount();
     WriteStringOrDie(kMoreData[2]);
   }
 }
@@ -2053,7 +1954,6 @@ TEST_P(StorageQueueTest, WriteAndImmediateUploadWithFailure) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    SetExpectedUploadsCount(2u);
     WriteStringOrDie(kData[0]);  // Immediately uploads and fails.
     // Let it retry upload and verify.
     task_environment_.FastForwardBy(base::Seconds(1));
@@ -2078,7 +1978,6 @@ TEST_P(StorageQueueTest, WriteAndImmediateUploadWithoutConfirmation) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    SetExpectedUploadsCount();
     WriteStringOrDie(kData[0]);  // Immediately uploads and does not confirm.
   }
 
@@ -2094,7 +1993,6 @@ TEST_P(StorageQueueTest, WriteAndImmediateUploadWithoutConfirmation) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(5));
   }
 
@@ -2143,7 +2041,6 @@ TEST_P(StorageQueueTest, ForceConfirm) {
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
 
@@ -2164,7 +2061,6 @@ TEST_P(StorageQueueTest, ForceConfirm) {
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
 
@@ -2195,7 +2091,6 @@ TEST_P(StorageQueueTest, ForceConfirm) {
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
 
@@ -2223,7 +2118,6 @@ TEST_P(StorageQueueTest, ForceConfirm) {
         .RetiresOnSaturation();
 
     // Forward time to trigger upload
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
 }
@@ -2588,8 +2482,6 @@ TEST_P(StorageQueueTest, UploadWithInsufficientMemory) {
             }))
         .RetiresOnSaturation();
     // Trigger upload which will experience insufficient memory.
-    SetExpectedUploadsCount(/*count=*/1u,
-                            /*uma_count=*/0u);  // INIT_RESUME is empty, no UMA.
     task_environment_.FastForwardBy(base::Seconds(5));
   }
 
@@ -2609,7 +2501,6 @@ TEST_P(StorageQueueTest, UploadWithInsufficientMemory) {
         .RetiresOnSaturation();
 
     // Trigger another (failure retry) upload resetting the memory resource.
-    SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
 }
@@ -2650,7 +2541,6 @@ TEST_P(StorageQueueTest, WriteIntoStorageQueueReopenWithCorruptData) {
       .RetiresOnSaturation();
 
   // Trigger upload.
-  SetExpectedUploadsCount();
   task_environment_.FastForwardBy(base::Seconds(1));
 }
 
@@ -2681,7 +2571,6 @@ TEST_P(StorageQueueTest, WriteWithUnencryptedCopy) {
       .RetiresOnSaturation();
 
   // Flush manually.
-  SetExpectedUploadsCount();
   FlushOrDie();
 }
 
