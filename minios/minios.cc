@@ -6,13 +6,12 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 
 #include <base/logging.h>
 #include <brillo/message_loops/message_loop.h>
 
+#include "minios/draw_utils.h"
 #include "minios/process_manager.h"
-#include "minios/recovery_installer.h"
 #include "minios/state_reporter_interface.h"
 #include "minios/utils.h"
 

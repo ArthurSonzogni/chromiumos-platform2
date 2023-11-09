@@ -8,7 +8,6 @@
 #include <gmock/gmock.h>
 
 #include <string>
-#include <vector>
 
 #include "minios/draw_utils.h"
 

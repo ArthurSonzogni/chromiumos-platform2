@@ -16,8 +16,6 @@
 #include <base/files/scoped_file.h>
 #include <xkbcommon/xkbcommon.h>
 
-#include "minios/process_manager.h"
-
 namespace minios {
 
 constexpr int kMaxInputLength = 64;

@@ -5,8 +5,6 @@
 #ifndef MINIOS_METRICS_REPORTER_INTERFACE_H_
 #define MINIOS_METRICS_REPORTER_INTERFACE_H_
 
-#include <string>
-
 namespace minios {
 
 class MetricsReporterInterface {

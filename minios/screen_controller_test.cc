@@ -13,7 +13,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "minios/draw_interface.h"
 #include "minios/mock_draw_interface.h"
 #include "minios/mock_network_manager.h"
 #include "minios/mock_process_manager.h"

@@ -6,7 +6,6 @@
 
 #include <cstdint>
 #include <optional>
-#include <utility>
 
 #include <base/logging.h>
 #include <vboot/cgpt_params.h>

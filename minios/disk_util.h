@@ -5,8 +5,6 @@
 #ifndef MINIOS_DISK_UTIL_H_
 #define MINIOS_DISK_UTIL_H_
 
-#include <string>
-
 #include <base/files/file_path.h>
 
 namespace minios {

@@ -4,7 +4,7 @@
 
 #include "minios/daemon.h"
 
-#include <utility>
+#include <memory>
 
 #include <base/check.h>
 #include <brillo/message_loops/message_loop.h>

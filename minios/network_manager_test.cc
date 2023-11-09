@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <brillo/dbus/mock_dbus_method_response.h>
@@ -11,7 +12,6 @@
 #include <dbus/shill/dbus-constants.h>
 #include <gtest/gtest.h>
 
-#include "minios/minios.h"
 #include "minios/mock_network_manager.h"
 #include "minios/mock_shill_proxy.h"
 #include "minios/network_manager.h"

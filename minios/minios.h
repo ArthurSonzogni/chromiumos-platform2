@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include "minios/draw_interface.h"
 #include "minios/minios_interface.h"
 #include "minios/network_manager_interface.h"
 #include "minios/process_manager.h"

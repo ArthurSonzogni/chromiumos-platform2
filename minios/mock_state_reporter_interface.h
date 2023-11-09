@@ -5,8 +5,6 @@
 #ifndef MINIOS_MOCK_STATE_REPORTER_INTERFACE_H_
 #define MINIOS_MOCK_STATE_REPORTER_INTERFACE_H_
 
-#include <string>
-
 #include <brillo/errors/error.h>
 #include <gmock/gmock.h>
 #include <minios/proto_bindings/minios.pb.h>

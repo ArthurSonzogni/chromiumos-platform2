@@ -4,13 +4,13 @@
 
 #include "minios/disk_util.h"
 
+#include <string>
+
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-
-#include "minios/process_manager.h"
 
 namespace minios {
 

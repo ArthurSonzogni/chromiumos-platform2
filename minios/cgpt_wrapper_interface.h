@@ -5,9 +5,6 @@
 #ifndef MINIOS_CGPT_WRAPPER_INTERFACE_H_
 #define MINIOS_CGPT_WRAPPER_INTERFACE_H_
 
-#include <optional>
-#include <string>
-
 #include <vboot/cgpt_params.h>
 
 namespace minios {

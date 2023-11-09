@@ -6,8 +6,6 @@
 
 #include <cstdint>
 #include <optional>
-#include <string>
-#include <vector>
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>

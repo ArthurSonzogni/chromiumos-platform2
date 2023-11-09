@@ -365,8 +365,8 @@ TEST_F(DrawUtilsTestMocks, ShowButtonFocused) {
 
   brillo::TouchFile(
       screens_path_.Append("en-US").Append(message + "_focused.png"));
-  mock_draw_utils_.ShowButton(message, offset_y, /*focus=*/true, inner_width,
-                              false);
+  mock_draw_utils_.ShowButton(message, offset_y, /*is_selected=*/true,
+                              inner_width, false);
 }
 
 TEST_F(DrawUtilsTestMocks, ShowButton) {
@@ -392,8 +392,8 @@ TEST_F(DrawUtilsTestMocks, ShowButton) {
       .WillRepeatedly(testing::Return(true));
 
   brillo::TouchFile(screens_path_.Append("en-US").Append(message + ".png"));
-  mock_draw_utils_.ShowButton(message, offset_y, /*focus=*/false, inner_width,
-                              false);
+  mock_draw_utils_.ShowButton(message, offset_y, /*is_selected=*/false,
+                              inner_width, false);
 }
 
 TEST_F(DrawUtilsTestMocks, ShowButtonTextFocused) {
@@ -417,7 +417,7 @@ TEST_F(DrawUtilsTestMocks, ShowButtonTextFocused) {
   EXPECT_CALL(mock_draw_utils_, ShowText(text_message, _, _, "black"))
       .WillOnce(testing::Return(true));
 
-  mock_draw_utils_.ShowButton(text_message, offset_y, /*focus=*/true,
+  mock_draw_utils_.ShowButton(text_message, offset_y, /*is_selected=*/true,
                               inner_width, true);
 }
 
@@ -443,7 +443,7 @@ TEST_F(DrawUtilsTestMocks, ShowButtonText) {
       .Times(2)
       .WillRepeatedly(testing::Return(true));
 
-  mock_draw_utils_.ShowButton(text_message, offset_y, /*focus=*/false,
+  mock_draw_utils_.ShowButton(text_message, offset_y, /*is_selected=*/false,
                               inner_width, true);
 }
 
@@ -506,7 +506,7 @@ TEST_F(DrawUtilsTestMocks, ShowLanguageMenu) {
   EXPECT_CALL(mock_draw_utils_, ShowMessage("language_folded", _, _))
       .WillOnce(testing::Return(true));
 
-  mock_draw_utils_.ShowLanguageMenu(/* focus=*/true);
+  mock_draw_utils_.ShowLanguageMenu(/*is_selected=*/true);
 }
 
 TEST_F(DrawUtilsTestMocks, ShowFooter) {

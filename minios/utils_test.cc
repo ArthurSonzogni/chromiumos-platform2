@@ -90,7 +90,7 @@ TEST_F(UtilTest, ReadFileContentMissingFile) {
 
 TEST_F(UtilTest, ReadFileContentWrappedTextCutoff) {
   auto [success, content, bytes_read] = ReadFileContent(
-      file_path_, /*start_offset=*/0, /*num_lines=*/3, /*num_cols=*/4);
+      file_path_, /*offset=*/0, /*num_lines=*/3, /*num_cols=*/4);
   EXPECT_TRUE(success);
   EXPECT_EQ(content, "line\n1\nline\n");
   EXPECT_LT(bytes_read, content.size());
@@ -98,7 +98,7 @@ TEST_F(UtilTest, ReadFileContentWrappedTextCutoff) {
 
 TEST_F(UtilTest, ReadFileContentWrappedTextPerfectAlignmentColumns) {
   auto [success, content, bytes_read] = ReadFileContent(
-      file_path_, /*start_offset=*/0, /*num_lines=*/5, /*num_cols=*/5);
+      file_path_, /*offset=*/0, /*num_lines=*/5, /*num_cols=*/5);
   EXPECT_TRUE(success);
   // There should be no double newlining.
   EXPECT_EQ(content, "line1\nline2\naaaaa\naaaaa\naaaaa\n");
@@ -107,7 +107,7 @@ TEST_F(UtilTest, ReadFileContentWrappedTextPerfectAlignmentColumns) {
 
 TEST_F(UtilTest, ReadFileContentWrappedTextExceedsColumnLimit) {
   auto [success, content, bytes_read] = ReadFileContent(
-      file_path_, /*start_offset=*/0, /*num_lines=*/5, /*num_cols=*/6);
+      file_path_, /*offset=*/0, /*num_lines=*/5, /*num_cols=*/6);
   EXPECT_TRUE(success);
   EXPECT_EQ(content, "line1\nline2\naaaaaa\naaaaaa\naaaaaa\n");
   EXPECT_LT(bytes_read, content.size());
@@ -115,7 +115,7 @@ TEST_F(UtilTest, ReadFileContentWrappedTextExceedsColumnLimit) {
 
 TEST_F(UtilTest, ReadFileContentZeroLimits) {
   auto [success, content, bytes_read] = ReadFileContent(
-      file_path_, /*start_offset=*/0, /*num_lines=*/0, /*num_cols=*/0);
+      file_path_, /*offset=*/0, /*num_lines=*/0, /*num_cols=*/0);
   EXPECT_TRUE(success);
   EXPECT_EQ(content, "");
   EXPECT_EQ(bytes_read, 0);
@@ -123,7 +123,7 @@ TEST_F(UtilTest, ReadFileContentZeroLimits) {
 
 TEST_F(UtilTest, ReadFileContent) {
   auto [success, content, bytes_read] =
-      ReadFileContent(file_path_, /*start_offset=*/0, /*num_lines=*/4,
+      ReadFileContent(file_path_, /*offset=*/0, /*num_lines=*/4,
                       /*num_cols=*/200);
   EXPECT_TRUE(success);
   EXPECT_EQ(content, content_);
@@ -132,7 +132,7 @@ TEST_F(UtilTest, ReadFileContent) {
 
 TEST_F(UtilTest, ReadFileContentStartOffset) {
   auto [success, content, bytes_read] =
-      ReadFileContent(file_path_, /*start_offset=*/12, /*num_lines=*/3,
+      ReadFileContent(file_path_, /*offset=*/12, /*num_lines=*/3,
                       /*num_cols=*/1);
   EXPECT_TRUE(success);
   EXPECT_EQ(content, "a\na\na\n");

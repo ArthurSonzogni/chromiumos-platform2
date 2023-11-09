@@ -9,16 +9,15 @@
 #include <optional>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <base/files/file_path_watcher.h>
 #include <brillo/errors/error.h>
 #include <minios/proto_bindings/minios.pb.h>
 
-#include "minios/draw_utils.h"
+#include "minios/draw_interface.h"
 #include "minios/key_reader.h"
 #include "minios/network_manager_interface.h"
-#include "minios/process_manager.h"
+#include "minios/process_manager_interface.h"
 #include "minios/screen_controller_interface.h"
 #include "minios/screen_interface.h"
 #include "minios/state_reporter_interface.h"

@@ -6,9 +6,8 @@
 #define MINIOS_RECOVERY_INSTALLER_H_
 
 #include <memory>
-#include <string>
 
-#include "minios/process_manager.h"
+#include "minios/process_manager_interface.h"
 #include "minios/recovery_installer_interface.h"
 
 namespace minios {

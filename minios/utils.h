@@ -13,10 +13,11 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/secure_blob.h>
 #include <brillo/udev/udev.h>
 
-#include "minios/process_manager.h"
+#include "minios/process_manager_interface.h"
 
 namespace minios {
 
