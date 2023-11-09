@@ -933,7 +933,6 @@ bool Service::Unload() {
   }
   current_traffic_counters_.clear();
   static_ip_parameters_.Reset();
-  NotifyStaticIPConfigChanged();
   return false;
 }
 
