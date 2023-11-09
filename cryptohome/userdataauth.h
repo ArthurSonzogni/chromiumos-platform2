@@ -778,6 +778,13 @@ class UserDataAuth {
       InUseAuthSession& auth_session,
       user_data_auth::GetAuthSessionStatusReply& reply);
 
+  // Completes remaining steps of |UserDataAuth::Remove| after
+  // |AuthSession::PrepareUserForRemoval| has completed.
+  void OnPreparedUserForRemoval(
+      const ObfuscatedUsername& obfuscated,
+      const base::UnguessableToken& token,
+      base::OnceCallback<void(const user_data_auth::RemoveReply&)> on_done);
+
   // ================ Fingerprint Auth Related Methods ==================
 
   // Called on Mount thread. This creates a dbus proxy for Biometrics Daemon

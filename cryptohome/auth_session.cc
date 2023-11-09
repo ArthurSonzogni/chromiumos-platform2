@@ -17,6 +17,7 @@
 #include <vector>
 
 #include <absl/cleanup/cleanup.h>
+#include <base/barrier_closure.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/containers/flat_set.h>
@@ -1538,26 +1539,30 @@ void AuthSession::AuthForDecrypt::RemoveAuthFactor(
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
-void AuthSession::PrepareUserForRemoval() {
+void AuthSession::PrepareUserForRemoval(base::OnceClosure on_finish) {
+  // Remove rate-limiters separately, as it won't be removed by any auth
+  // factor's removal.
+  RemoveRateLimiters();
+
   // All auth factors of the user are being removed when we remove the user, so
   // we should PrepareForRemoval() all auth factors.
+  base::RepeatingClosure barrier =
+      base::BarrierClosure(auth_factor_map_.size(), std::move(on_finish));
   for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map_) {
     const AuthFactor& auth_factor = stored_auth_factor.auth_factor();
     auto log_status = [](const AuthFactor& auth_factor,
+                         base::OnceClosure on_finish,
                          CryptohomeStatus remove_status) {
       if (!remove_status.ok()) {
         LOG(WARNING) << "Failed to prepare auth factor " << auth_factor.label()
                      << " for removal: " << remove_status;
       }
+      std::move(on_finish).Run();
     };
     auth_block_utility_->PrepareAuthBlockForRemoval(
         obfuscated_username_, auth_factor.auth_block_state(),
-        base::BindOnce(log_status, auth_factor));
+        base::BindOnce(log_status, auth_factor, barrier));
   }
-
-  // Remove rate-limiter here, as it won't be removed by any auth factor's
-  // removal.
-  RemoveRateLimiters();
 }
 
 void AuthSession::RemoveRateLimiters() {

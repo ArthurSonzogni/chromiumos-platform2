@@ -1869,8 +1869,16 @@ void UserDataAuth::RemoveWithSession(
     return;
   }
 
-  auth_session->PrepareUserForRemoval();
+  auth_session->PrepareUserForRemoval(base::BindOnce(
+      &UserDataAuth::OnPreparedUserForRemoval, base::Unretained(this),
+      obfuscated, auth_session->token(), std::move(on_done)));
+}
 
+void UserDataAuth::OnPreparedUserForRemoval(
+    const ObfuscatedUsername& obfuscated,
+    const base::UnguessableToken& token,
+    base::OnceCallback<void(const user_data_auth::RemoveReply&)> on_done) {
+  user_data_auth::RemoveReply reply;
   if (!homedirs_->Remove(obfuscated)) {
     // User vault removal failed.
     ReplyWithError(std::move(on_done), reply,
@@ -1884,10 +1892,8 @@ void UserDataAuth::RemoveWithSession(
 
   // Since the user is now removed, any further operations require a fresh
   // AuthSession.
-  if (auth_session.AuthSessionStatus().ok()) {
-    if (!auth_session_manager_->RemoveAuthSession(auth_session->token())) {
-      NOTREACHED() << "Failed to remove AuthSession when removing user.";
-    }
+  if (!auth_session_manager_->RemoveAuthSession(token)) {
+    NOTREACHED() << "Failed to remove AuthSession when removing user.";
   }
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }

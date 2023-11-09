@@ -255,7 +255,7 @@ class AuthSession final {
 
   // PrepareUserForRemoval is called to perform the necessary steps before
   // removing a user, like preparing each auth factor for removal.
-  void PrepareUserForRemoval();
+  void PrepareUserForRemoval(base::OnceClosure on_finish);
 
   // UpdateAuthFactorMetadata updates the auth factor without new credentials.
   void UpdateAuthFactorMetadata(
