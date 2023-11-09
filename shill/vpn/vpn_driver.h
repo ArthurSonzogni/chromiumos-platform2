@@ -140,7 +140,7 @@ class VPNDriver {
   struct Property {
     enum Flags {
       kEphemeral = 1 << 0,   // Never load or save.
-      kCredential = 1 << 1,  // Save if saving credentials (crypted).
+      kCredential = 1 << 1,  // Save if saving credentials.
       kWriteOnly = 1 << 2,   // Never read over RPC.
       kReadOnly = 1 << 3,    // Never write over RPC.
       kArray = 1 << 4,       // Property is an array of strings.
@@ -172,8 +172,9 @@ class VPNDriver {
  private:
   friend class VPNDriverTest;
 
-  // TODO(crbug.com/1084279): Migrate back to storing property names after
-  // crypto code is removed.
+  // The property with `kCredential` will be saved with this prefix in the
+  // storage. We need this prefix because historically the property is stored in
+  // another format. See crbug.com/1084279 for the context.
   static constexpr char kCredentialPrefix[] = "Credential.";
 
   void ClearMappedStringProperty(const size_t& index, Error* error);
