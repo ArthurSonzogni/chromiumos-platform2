@@ -4,6 +4,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
 #include "minios/disk_util.h"
@@ -65,13 +66,13 @@ TEST_F(DiskUtilTest, GetStatefulPartition) {
   const auto drive_partition_1 = base::FilePath(drive.value() + "1");
   ASSERT_TRUE(base::CreateDirectory(drive_partition_1));
   EXPECT_FALSE(disk_util_.GetStatefulPartition(drive).empty());
-  ASSERT_TRUE(base::DeleteFile(drive_partition_1));
+  ASSERT_TRUE(brillo::DeleteFile(drive_partition_1));
 
   // Create a fake stateful partition (e.g. /dev/nvme0n1p1).
   const auto drive_partition_p1 = base::FilePath(drive.value() + "p1");
   ASSERT_TRUE(base::CreateDirectory(drive_partition_p1));
   EXPECT_FALSE(disk_util_.GetStatefulPartition(drive).empty());
-  ASSERT_TRUE(base::DeleteFile(drive_partition_p1));
+  ASSERT_TRUE(brillo::DeleteFile(drive_partition_p1));
 }
 
 }  // namespace minios
