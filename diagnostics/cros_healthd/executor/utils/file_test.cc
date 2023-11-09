@@ -5,10 +5,10 @@
 #include "diagnostics/cros_healthd/executor/utils/file.h"
 
 #include <cstdint>
+#include <string_view>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/strings/string_piece.h>
 #include <base/test/test_file_util.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
@@ -64,7 +64,7 @@ TEST_F(ReadFilePartUtilsTest, ReadEmptyFileReturnEmpty) {
 }
 
 TEST_F(ReadFilePartUtilsTest, ReadNormalFileReturnReadContent) {
-  constexpr base::StringPiece kFileContent = "0123456789";
+  constexpr std::string_view kFileContent = "0123456789";
   constexpr uint64_t kNonZeroBegin = 2u;
   constexpr uint64_t kSize = 5u;
 
@@ -74,7 +74,7 @@ TEST_F(ReadFilePartUtilsTest, ReadNormalFileReturnReadContent) {
 }
 
 TEST_F(ReadFilePartUtilsTest, ReadBeyondEOFReturnContentUntilEOF) {
-  constexpr base::StringPiece kFileContent = "0123456789";
+  constexpr std::string_view kFileContent = "0123456789";
 
   ASSERT_TRUE(base::WriteFile(temp_file_path(), kFileContent));
   EXPECT_EQ(ReadFilePart(temp_file_path(), 0u, kFileContent.size() + 1u),
@@ -82,7 +82,7 @@ TEST_F(ReadFilePartUtilsTest, ReadBeyondEOFReturnContentUntilEOF) {
 }
 
 TEST_F(ReadFilePartUtilsTest, DontProvideSizeReturnContentUntilEOF) {
-  constexpr base::StringPiece kFileContent = "0123456789";
+  constexpr std::string_view kFileContent = "0123456789";
 
   ASSERT_TRUE(base::WriteFile(temp_file_path(), kFileContent));
   EXPECT_EQ(ReadFilePart(temp_file_path(), 0u, std::nullopt), kFileContent);

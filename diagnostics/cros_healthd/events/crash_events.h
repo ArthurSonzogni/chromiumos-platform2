@@ -7,10 +7,10 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
-#include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
@@ -140,7 +140,7 @@ class CrashEvents final {
 //
 // Exported for test reasons.
 std::vector<ash::cros_healthd::mojom::CrashEventInfoPtr> ParseUploadsLog(
-    base::StringPiece log,
+    std::string_view log,
     bool is_uploaded,
     base::Time creation_time,
     uint64_t init_offset,

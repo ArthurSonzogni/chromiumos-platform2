@@ -6,6 +6,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -190,12 +191,12 @@ bool ContainsVendorId(const DeviceInfo& device_info,
   if (!device_info.joined_vendor_id.has_value()) {
     return false;
   }
-  std::vector<base::StringPiece> ids =
+  std::vector<std::string_view> ids =
       base::SplitStringPiece(device_info.joined_vendor_id.value(), "|",
                              base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   return std::any_of(
       ids.begin(), ids.end(),
-      [&vendor_id](base::StringPiece value) { return value == vendor_id; });
+      [&vendor_id](std::string_view value) { return value == vendor_id; });
 }
 
 std::optional<std::string> InstanceIdToGuid(const std::string& instance_id) {

@@ -22,8 +22,8 @@ base::FilePath GetRootDir();
 // implementations. The root directory can be overridden in unit tests. Note
 // that the path must be absolute.
 base::FilePath GetRootedPath(base::FilePath path);
-// Just like the above but turns a base::StringPiece into base::FilePath.
-inline base::FilePath GetRootedPath(base::StringPiece path) {
+// Just like the above but turns a std::string_view into base::FilePath.
+inline base::FilePath GetRootedPath(std::string_view path) {
   return GetRootedPath(base::FilePath{path});
 }
 
@@ -73,7 +73,7 @@ bool ReadAndTrimString(const base::FilePath& directory,
 // function. Returns true on success.
 template <typename T>
 bool ReadInteger(const base::FilePath& file_path,
-                 bool (*StringToInteger)(base::StringPiece, T*),
+                 bool (*StringToInteger)(std::string_view, T*),
                  T* out) {
   DCHECK(StringToInteger);
   DCHECK(out);
@@ -90,7 +90,7 @@ bool ReadInteger(const base::FilePath& file_path,
 template <typename T>
 bool ReadInteger(const base::FilePath& directory,
                  std::string_view filename,
-                 bool (*StringToInteger)(base::StringPiece, T*),
+                 bool (*StringToInteger)(std::string_view, T*),
                  T* out) {
   return ReadInteger(directory.AppendASCII(filename), StringToInteger, out);
 }

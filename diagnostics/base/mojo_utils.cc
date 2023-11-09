@@ -5,6 +5,7 @@
 #include "diagnostics/base/mojo_utils.h"
 
 #include <cstring>
+#include <string_view>
 #include <utility>
 
 #include <base/files/file.h>
@@ -39,7 +40,7 @@ base::ReadOnlySharedMemoryMapping GetReadOnlySharedMemoryMappingFromMojoHandle(
 }
 
 mojo::ScopedHandle CreateReadOnlySharedMemoryRegionMojoHandle(
-    base::StringPiece content) {
+    std::string_view content) {
   if (content.empty())
     return mojo::ScopedHandle();
   base::MappedReadOnlyRegion region_mapping =

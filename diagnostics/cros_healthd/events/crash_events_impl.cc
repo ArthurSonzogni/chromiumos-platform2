@@ -297,7 +297,7 @@ void CrashEvents::HandleUploadedCrashReadFileResult(
                                 std::make_move_iterator(results.end()));
 }
 
-std::vector<mojom::CrashEventInfoPtr> ParseUploadsLog(base::StringPiece log,
+std::vector<mojom::CrashEventInfoPtr> ParseUploadsLog(std::string_view log,
                                                       bool is_uploaded,
                                                       base::Time creation_time,
                                                       uint64_t init_offset,

@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -14,7 +15,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/udev/udev.h>
 #include <brillo/udev/udev_device.h>
@@ -35,7 +35,7 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 template <typename T>
-bool HexToUInt(base::StringPiece in, T* out) {
+bool HexToUInt(std::string_view in, T* out) {
   uint32_t raw;
   if (!base::HexStringToUInt(in, &raw))
     return false;
@@ -46,7 +46,7 @@ bool HexToUInt(base::StringPiece in, T* out) {
 const auto& HexToU8 = HexToUInt<uint8_t>;
 const auto& HexToU16 = HexToUInt<uint16_t>;
 
-bool HexToNullableUint16WithZeroHandling(base::StringPiece in,
+bool HexToNullableUint16WithZeroHandling(std::string_view in,
                                          mojom::NullableUint16Ptr* out) {
   uint16_t raw;
   if (!HexToU16(in, &raw))

@@ -7,6 +7,7 @@
 #include "diagnostics/cros_healthd/events/crash_events.h"
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/time/time.h>
@@ -15,7 +16,6 @@
 #include <base/values.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
 namespace diagnostics {
@@ -40,7 +40,7 @@ std::string ConsumeAlphabeticalString(FuzzedDataProvider& data_provider) {
 }
 
 // Converts crash type string to crash type.
-mojom::CrashEventInfo::CrashType GetCrashTypeFromString(base::StringPiece s) {
+mojom::CrashEventInfo::CrashType GetCrashTypeFromString(std::string_view s) {
   if (s == "kernel") {
     return mojom::CrashEventInfo::CrashType::kKernel;
   } else if (s == "ec") {

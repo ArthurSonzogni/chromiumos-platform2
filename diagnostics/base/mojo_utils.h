@@ -5,8 +5,9 @@
 #ifndef DIAGNOSTICS_BASE_MOJO_UTILS_H_
 #define DIAGNOSTICS_BASE_MOJO_UTILS_H_
 
+#include <string_view>
+
 #include <base/memory/read_only_shared_memory_region.h>
-#include <base/strings/string_piece.h>
 #include <brillo/brillo_export.h>
 #include <mojo/public/cpp/system/handle.h>
 
@@ -29,7 +30,7 @@ GetReadOnlySharedMemoryMappingFromMojoHandle(mojo::ScopedHandle handle);
 //
 // Returns invalid |mojo::ScopedHandle| if error happened or |content| is empty.
 BRILLO_EXPORT mojo::ScopedHandle CreateReadOnlySharedMemoryRegionMojoHandle(
-    base::StringPiece content);
+    std::string_view content);
 
 }  // namespace diagnostics
 

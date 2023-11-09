@@ -11,6 +11,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -53,7 +54,7 @@ constexpr char kProcessIOFileRegex[] =
 // |mojo_state_out| to the converted value. If the conversion fails,
 // |mojo_state_out| is invalid and an appropriate error is returned.
 std::optional<mojom::ProbeErrorPtr> GetProcessState(
-    base::StringPiece raw_state, mojom::ProcessState* mojo_state_out) {
+    std::string_view raw_state, mojom::ProcessState* mojo_state_out) {
   DCHECK(mojo_state_out);
   // See https://man7.org/linux/man-pages/man5/proc.5.html for allowable raw
   // state values.
@@ -85,7 +86,7 @@ std::optional<mojom::ProbeErrorPtr> GetProcessState(
 // Converts |str| to a signed, 8-bit integer. If the conversion is successful,
 // returns std::nullopt and sets |int_out| to the converted value. If the
 // conversion fails, |int_out| is invalid and an appropriate error is returned.
-std::optional<mojom::ProbeErrorPtr> GetInt8FromString(base::StringPiece str,
+std::optional<mojom::ProbeErrorPtr> GetInt8FromString(std::string_view str,
                                                       int8_t* int_out) {
   DCHECK(int_out);
 
@@ -393,7 +394,7 @@ std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
                                   "Failed to read " + kProcPidStatFile.value());
   }
 
-  std::vector<base::StringPiece> stat_tokens =
+  std::vector<std::string_view> stat_tokens =
       base::SplitStringPiece(stat_contents, base::kWhitespaceASCII,
                              base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
@@ -416,16 +417,14 @@ std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
   if (error.has_value())
     return error;
 
-  base::StringPiece start_time_str =
-      stat_tokens[ProcPidStatIndices::kStartTime];
+  std::string_view start_time_str = stat_tokens[ProcPidStatIndices::kStartTime];
   if (!base::StringToUint64(start_time_str, start_time_ticks)) {
     return CreateAndLogProbeError(mojom::ErrorType::kParseError,
                                   "Failed to convert starttime to uint64: " +
                                       std::string(start_time_str));
   }
 
-  base::StringPiece process_id_str =
-      stat_tokens[ProcPidStatIndices::kProcessID];
+  std::string_view process_id_str = stat_tokens[ProcPidStatIndices::kProcessID];
   if (!base::StringToUint(process_id_str, process_id)) {
     return CreateAndLogProbeError(mojom::ErrorType::kParseError,
                                   "Failed to convert process id to uint32: " +
@@ -438,7 +437,7 @@ std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
   name_str = name_str.substr(1, name_str.size() - 2);
   *name = std::optional<std::string>(name_str);
 
-  base::StringPiece parent_process_id_str =
+  std::string_view parent_process_id_str =
       stat_tokens[ProcPidStatIndices::kParentProcessID];
   if (!base::StringToUint(parent_process_id_str, parent_process_id)) {
     return CreateAndLogProbeError(
@@ -447,7 +446,7 @@ std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
             std::string(parent_process_id_str));
   }
 
-  base::StringPiece process_group_id_str =
+  std::string_view process_group_id_str =
       stat_tokens[ProcPidStatIndices::kProcessGroupID];
   if (!base::StringToUint(process_group_id_str, process_group_id)) {
     return CreateAndLogProbeError(
@@ -456,7 +455,7 @@ std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
             std::string(process_group_id_str));
   }
 
-  base::StringPiece threads_str = stat_tokens[ProcPidStatIndices::kThreads];
+  std::string_view threads_str = stat_tokens[ProcPidStatIndices::kThreads];
   if (!base::StringToUint(threads_str, threads)) {
     return CreateAndLogProbeError(
         mojom::ErrorType::kParseError,

@@ -7,12 +7,12 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <utility>
 #include <vector>
 
 #include <base/strings/strcat.h>
-#include <base/strings/string_piece.h>
 #include <base/test/gmock_callback_support.h>
 #include <base/test/repeating_test_future.h>
 #include <base/test/task_environment.h>
@@ -414,7 +414,7 @@ class CrashEventsTest : public testing::Test {
   // Sets mock executor's reading and getting info from uploads.log.
   // |uploads_log| is the content of uploads.log to mock. If |begin| is larger
   // than the size of |uploads_log|, file reading returns std::nullopt.
-  void SetExecutorFileNormalResponse(base::StringPiece uploads_log,
+  void SetExecutorFileNormalResponse(std::string_view uploads_log,
                                      uint64_t begin = 0u,
                                      base::Time creation_time = base::Time()) {
     EXPECT_CALL(*mock_executor(), ReadFilePart(mojom::Executor::File::kCrashLog,
@@ -568,7 +568,7 @@ TEST_F(CrashEventsTest, PeriodicUploadedSecondTimeNewEvent) {
   // Second time, should only receive the second event.
   SetExecutorFileNormalResponse(
       base::StrCat({kUninterestingValidLogLine, "\n", kValidLogLine}),
-      /*begin=*/base::StringPiece(kUninterestingValidLogLine).size());
+      /*begin=*/std::string_view(kUninterestingValidLogLine).size());
   SetExecutorCrashSenderEmptyResponse();
   AdvanceClockByOnePeriod();
   auto expected_result = kExpectedUploadedResultForValidLogLine.Clone();
@@ -586,7 +586,7 @@ TEST_F(CrashEventsTest, PeriodicUploadedSecondTimeNoNewEvent) {
   // Second time, should receive no event.
   SetExecutorFileNormalResponse(
       kUninterestingValidLogLine,
-      /*begin=*/base::StringPiece(kUninterestingValidLogLine).size());
+      /*begin=*/std::string_view(kUninterestingValidLogLine).size());
   SetExecutorCrashSenderEmptyResponse();
   ExpectNoEvent();
   AdvanceClockByOnePeriod();
@@ -602,9 +602,9 @@ TEST_F(CrashEventsTest, PeriodicUploadedSecondTimeAbnormallyShortUploadsLog) {
   // Second time, should receive no event. The system should continue working as
   // normal.
   SetExecutorFileNormalResponse(
-      base::StringPiece(kUninterestingValidLogLine)
+      std::string_view(kUninterestingValidLogLine)
           .substr(0u, std::size(kUninterestingValidLogLine) / 2),
-      /*begin=*/base::StringPiece(kUninterestingValidLogLine).size());
+      /*begin=*/std::string_view(kUninterestingValidLogLine).size());
   SetExecutorCrashSenderEmptyResponse();
   ExpectNoEvent();
   AdvanceClockByOnePeriod();

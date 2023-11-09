@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -37,7 +38,7 @@ namespace mojom = ::ash::cros_healthd::mojom;
 template <typename T>
 bool ReadIntegerAndLogError(const base::FilePath& directory,
                             const std::string& filename,
-                            bool (*StringToInteger)(base::StringPiece, T*),
+                            bool (*StringToInteger)(std::string_view, T*),
                             T* out) {
   if (!ReadInteger(directory, filename, StringToInteger, out)) {
     LOG(ERROR) << "Failed to read " << directory.Append(filename);

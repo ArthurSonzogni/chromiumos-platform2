@@ -3,9 +3,9 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <string_view>
 #include <utility>
 
-#include <base/strings/string_piece.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/system/handle.h>
 
@@ -15,7 +15,7 @@ namespace diagnostics {
 namespace {
 
 TEST(RoutineUtilsTest, CreateMojoHandleAndRetrieveContent) {
-  const base::StringPiece content("{\"key\": \"value\"}");
+  const std::string_view content("{\"key\": \"value\"}");
 
   mojo::ScopedHandle handle =
       CreateReadOnlySharedMemoryRegionMojoHandle(content);
@@ -25,8 +25,8 @@ TEST(RoutineUtilsTest, CreateMojoHandleAndRetrieveContent) {
       GetReadOnlySharedMemoryMappingFromMojoHandle(std::move(handle));
   ASSERT_TRUE(shm_mapping.IsValid());
 
-  base::StringPiece actual(shm_mapping.GetMemoryAs<char>(),
-                           shm_mapping.mapped_size());
+  std::string_view actual(shm_mapping.GetMemoryAs<char>(),
+                          shm_mapping.mapped_size());
   EXPECT_EQ(content, actual);
 }
 
