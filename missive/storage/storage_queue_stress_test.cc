@@ -179,6 +179,11 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
                   // Returns empty candidates queue - no degradation allowed.
                   std::move(result_cb).Run({});
                 }),
+            .disconnect_queue_cb = base::BindRepeating(
+                [](GenerationGuid generation_guid, base::OnceClosure done_cb) {
+                  // Finished disconnect.
+                  std::move(done_cb).Run();
+                }),
             .encryption_module = test_encryption_module,
             .compression_module =
                 base::MakeRefCounted<test::TestCompressionModule>(),

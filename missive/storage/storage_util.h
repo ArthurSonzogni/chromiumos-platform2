@@ -44,6 +44,11 @@ class StorageDirectory {
   static bool DeleteEmptyMultigenerationQueueDirectories(
       const base::FilePath& directory);
 
+  // Returns false if `queue_directory` contains records that have not been
+  // confirmed by the server. Returns true otherwise.
+  static bool QueueDirectoryContainsNoUnconfirmedRecords(
+      const base::FilePath& queue_directory);
+
  private:
   // Returns priority/generation guid tuple from a filepath, or error status.
   static StatusOr<std::tuple<Priority, GenerationGuid>>
@@ -63,11 +68,6 @@ class StorageDirectory {
   // Returns true if the filepath matches the format of a metadata file. Returns
   // false otherwise.
   static bool IsMetaDataFile(const base::FilePath& filepath);
-
-  // Returns false if `queue_directory` contains records that have not been
-  // confirmed by the server. Returns true otherwise.
-  static bool QueueDirectoryContainsNoUnconfirmedRecords(
-      const base::FilePath& queue_directory);
 };
 }  // namespace reporting
 

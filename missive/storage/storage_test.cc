@@ -35,6 +35,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "base/location.h"
 #include "missive/analytics/metrics.h"
 #include "missive/analytics/metrics_test_util.h"
 #include "missive/compression/test_compression_module.h"
@@ -69,9 +70,12 @@ using ::testing::Eq;
 using ::testing::Gt;
 using ::testing::HasSubstr;
 using ::testing::Invoke;
+using ::testing::IsEmpty;
+using ::testing::Ne;
 using ::testing::Property;
 using ::testing::Return;
 using ::testing::Sequence;
+using ::testing::SizeIs;
 using ::testing::StrEq;
 using ::testing::WithArg;
 using ::testing::WithoutArgs;
@@ -325,6 +329,23 @@ class StorageTest : public ::testing::TestWithParam<
   void SetUp() override {
     ASSERT_TRUE(location_.CreateUniqueTempDir());
     options_.set_directory(location_.GetPath());
+
+    // Ignore collector UMA unless set explicitly.
+    ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+            SendToUMA)
+        .WillByDefault(Return(true));
+    ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+            SendPercentageToUMA)
+        .WillByDefault(Return(true));
+    ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+            SendLinearToUMA)
+        .WillByDefault(Return(true));
+    ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+            SendSparseToUMA)
+        .WillByDefault(Return(true));
+    ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+            SendEnumToUMA)
+        .WillByDefault(Return(true));
 
     // Turn uploads to no-ops unless other expectation is set (any later
     // EXPECT_CALL will take precedence over this one).
@@ -1583,12 +1604,9 @@ TEST_P(StorageTest, EmptyMultigenerationalQueuesAreDeletedOnStartup) {
   // records have been confirmed and theoretically deleted from the directory.
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
-  const int expected_num_queue_directories = 0;
-  const int num_queue_directories =
-      StorageDirectory::FindQueueDirectories(
-          options_.directory(), options_.ProduceQueuesOptionsList())
-          .size();
-  EXPECT_THAT(num_queue_directories, Eq(expected_num_queue_directories));
+  EXPECT_THAT(StorageDirectory::FindQueueDirectories(
+                  options_.directory(), options_.ProduceQueuesOptionsList()),
+              IsEmpty());
 }
 
 TEST_P(StorageTest, WriteAndRepeatedlyUploadWithConfirmations) {
@@ -2490,6 +2508,133 @@ TEST_P(StorageTest, MultipleUsersWriteSamePriorityAndUpload) {
   // Trigger upload.
   task_environment_.FastForwardBy(base::Seconds(1));
   task_environment_.RunUntilIdle();
+}
+
+TEST_P(StorageTest, GarbageCollectEmptyMultigenerationQueueWithDefaultPeriod) {
+  StorageOptions options(BuildTestStorageOptions());
+  // Extend key update period to avoid extraneous key delivery.
+  options.set_key_check_period(base::Days(30));
+  // Only multigeneration queues are garbage collected.
+  options.set_multi_generational(MANUAL_BATCH, true);
+
+  CreateTestStorageOrDie(options);
+
+  WriteStringOrDie(MANUAL_BATCH, kData[0]);
+
+  // Record current queue settings for the later check.
+  const auto directories = StorageDirectory::FindQueueDirectories(
+      options_.directory(), options_.ProduceQueuesOptionsList());
+  ASSERT_THAT(directories, SizeIs(1u));
+  const auto [priority, generation_guid] = *directories.begin();
+  EXPECT_THAT(priority, Eq(MANUAL_BATCH));
+
+  {
+    // Set uploader expectations.
+    test::TestCallbackAutoWaiter waiter;
+    EXPECT_CALL(set_mock_uploader_expectations_,
+                Call(Eq(UploaderInterface::UploadReason::MANUAL)))
+        .WillRepeatedly(
+            Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+              return TestUploader::SetUp(MANUAL_BATCH, &waiter, this)
+                  .Required(0, kData[0])
+                  .Complete();
+            }))
+        .RetiresOnSaturation();
+
+    // Forward time to trigger upload
+    FlushOrDie(MANUAL_BATCH);
+  }
+
+  // Confirm #0 and forward time again, removing data #0
+  ConfirmOrDie(MANUAL_BATCH, /*sequencing_id=*/0);
+
+  // Trigger garbage collection.
+  task_environment_.FastForwardBy(
+      StorageOptions::kDefaultQueueGarbageCollectionPeriod);
+
+  // Empty multigeneration queue should have been garbage collected.
+  EXPECT_THAT(StorageDirectory::FindQueueDirectories(
+                  options_.directory(), options_.ProduceQueuesOptionsList()),
+              IsEmpty());
+
+  // Attempt to write into the same priority with the same DM token;
+  // make sure we end up in a different directory.
+  WriteStringOrDie(MANUAL_BATCH, kData[1]);
+
+  // Make sure new queue settings have been assigned.
+  const auto new_directories = StorageDirectory::FindQueueDirectories(
+      options_.directory(), options_.ProduceQueuesOptionsList());
+  ASSERT_THAT(new_directories, SizeIs(1u));
+  const auto [new_priority, new_generation_guid] = *new_directories.begin();
+  // Expected the same priority but different generation guid.
+  EXPECT_THAT(new_priority, Eq(MANUAL_BATCH));
+  EXPECT_THAT(new_generation_guid, Ne(generation_guid));
+}
+
+TEST_P(StorageTest, DoNotGarbageCollectQueuesWithUnconfirmedRecords) {
+  StorageOptions options(BuildTestStorageOptions());
+  // Extend key update period to avoid extraneous key delivery.
+  options.set_key_check_period(base::Days(30));
+  // Use a shorter collection period to keep test fast.
+  options.set_inactive_queue_self_destruct_delay(base::Hours(1));
+  options.set_multi_generational(MANUAL_BATCH, true);
+
+  CreateTestStorageOrDie(options);
+
+  WriteStringOrDie(MANUAL_BATCH, kData[0]);
+
+  // Trigger garbage collection.
+  task_environment_.FastForwardBy(
+      StorageOptions::kDefaultQueueGarbageCollectionPeriod);
+
+  // We didn't confirm the record, so the queue still has data, and we expect it
+  // to not be garbage collected.
+  EXPECT_THAT(StorageDirectory::FindQueueDirectories(
+                  options_.directory(), options_.ProduceQueuesOptionsList()),
+              SizeIs(1));
+}
+
+TEST_P(StorageTest, LegacyQueuesAreNeverGarbageCollected) {
+  StorageOptions options(BuildTestStorageOptions());
+  // Extend key update period to avoid extraneous key delivery.
+  options.set_key_check_period(base::Days(30));
+  // Set queue to legacy mode.
+  options.set_multi_generational(MANUAL_BATCH, false);
+  ASSERT_THAT(options.inactive_queue_self_destruct_delay(),
+              Eq(StorageOptions::kDefaultQueueGarbageCollectionPeriod));
+
+  CreateTestStorageOrDie(options);
+
+  WriteStringOrDie(MANUAL_BATCH, kData[0]);
+
+  {
+    // Set uploader expectations.
+    test::TestCallbackAutoWaiter waiter;
+    EXPECT_CALL(set_mock_uploader_expectations_,
+                Call(Eq(UploaderInterface::UploadReason::MANUAL)))
+        .WillRepeatedly(
+            Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+              return TestUploader::SetUp(MANUAL_BATCH, &waiter, this)
+                  .Required(0, kData[0])
+                  .Complete();
+            }))
+        .RetiresOnSaturation();
+
+    // Trigger upload
+    FlushOrDie(MANUAL_BATCH);
+  }
+
+  // Confirm #0 and forward time again, removing data #0
+  ConfirmOrDie(MANUAL_BATCH, /*sequencing_id=*/0);
+
+  // Trigger garbage collection.
+  task_environment_.FastForwardBy(
+      StorageOptions::kDefaultQueueGarbageCollectionPeriod);
+
+  // Legacy queue should still exist and not be garbage collected.
+  EXPECT_THAT(StorageDirectory::FindQueueDirectories(
+                  options_.directory(), options_.ProduceQueuesOptionsList()),
+              SizeIs(1));
 }
 
 INSTANTIATE_TEST_SUITE_P(

@@ -34,6 +34,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "base/functional/callback_forward.h"
 #include "missive/analytics/metrics.h"
 #include "missive/analytics/metrics_test_util.h"
 #include "missive/compression/compression_module.h"
@@ -107,6 +108,18 @@ class StorageQueueTest
     ASSERT_TRUE(location_.CreateUniqueTempDir());
     dm_token_ = testing::get<1>(GetParam());
     options_.set_directory(base::FilePath(location_.GetPath()));
+
+    // Ignore collector UMA unless set explicitly.
+    ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+            SendToUMA)
+        .WillByDefault(Return(true));
+    ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+            SendPercentageToUMA)
+        .WillByDefault(Return(true));
+    ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+            SendLinearToUMA)
+        .WillByDefault(Return(true));
+
     // Turn uploads to no-ops unless other expectation is set (any later
     // EXPECT_CALL will take precedence over this one).
     EXPECT_CALL(set_mock_uploader_expectations_, Call(_))
@@ -673,6 +686,11 @@ class StorageQueueTest
                        std::queue<scoped_refptr<StorageQueue>>)> result_cb) {
                   // Returns empty candidates queue - no degradation allowed.
                   std::move(result_cb).Run({});
+                }),
+            .disconnect_queue_cb = base::BindRepeating(
+                [](GenerationGuid generation_guid, base::OnceClosure done_cb) {
+                  // Finished disconnect.
+                  std::move(done_cb).Run();
                 }),
             .encryption_module = test_encryption_module_,
             .compression_module = CompressionModule::Create(

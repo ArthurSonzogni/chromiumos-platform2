@@ -44,8 +44,12 @@ class QueueOptions;
 //                 callback);
 class StorageOptions {
  public:
-  // Default period for Storage to check for encryption key
+  // Default period for Storage to check for encryption key.
   static constexpr base::TimeDelta kDefaultKeyCheckPeriod = base::Seconds(1);
+
+  // Default delay until unused queue is garbage collected.
+  static constexpr base::TimeDelta kDefaultQueueGarbageCollectionPeriod =
+      base::Days(5);
 
   using QueuesOptionsList = std::vector<std::pair<Priority, QueueOptions>>;
 
@@ -122,6 +126,11 @@ class StorageOptions {
     key_check_period_ = key_check_period;
     return *this;
   }
+  StorageOptions& set_inactive_queue_self_destruct_delay(
+      base::TimeDelta inactive_queue_self_destruct_delay) {
+    inactive_queue_self_destruct_delay_ = inactive_queue_self_destruct_delay;
+    return *this;
+  }
 
   const base::FilePath& directory() const { return directory_; }
   std::string_view signature_verification_public_key() const {
@@ -153,6 +162,10 @@ class StorageOptions {
 
   base::TimeDelta key_check_period() const { return key_check_period_; }
 
+  base::TimeDelta inactive_queue_self_destruct_delay() const {
+    return inactive_queue_self_destruct_delay_;
+  }
+
  private:
   // Populates queue options for the given priority.
   QueueOptions PopulateQueueOptions(Priority priority) const;
@@ -165,8 +178,12 @@ class StorageOptions {
   std::string signature_verification_public_key_;
 
   // Frequency with which Storage will check to see if a new encryption key
-  // should be requested
+  // should be requested.
   base::TimeDelta key_check_period_;
+
+  // Delay until inactive queue self-destruct.
+  base::TimeDelta inactive_queue_self_destruct_delay_ =
+      StorageOptions::kDefaultQueueGarbageCollectionPeriod;
 
   // Maximum record size.
   size_t max_record_size_ = 1U * 1024UL * 1024UL;  // 1 MiB
@@ -236,6 +253,9 @@ class QueueOptions {
   uint64_t max_single_file_size() const { return max_single_file_size_; }
   base::TimeDelta upload_period() const { return upload_period_; }
   base::TimeDelta upload_retry_delay() const { return upload_retry_delay_; }
+  base::TimeDelta inactive_queue_self_destruct_delay() const {
+    return storage_options_.inactive_queue_self_destruct_delay();
+  }
   bool can_shed_records() const { return can_shed_records_; }
   scoped_refptr<ResourceManager> disk_space_resource() const {
     return storage_options_.disk_space_resource();

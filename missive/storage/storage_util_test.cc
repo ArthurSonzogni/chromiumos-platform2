@@ -20,9 +20,13 @@
 #include <base/uuid.h>
 #include <gtest/gtest.h>
 
+#include "gmock/gmock.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_queue.h"
 #include "missive/storage/storage_util.h"
+
+using ::testing::Eq;
+using ::testing::SizeIs;
 
 namespace reporting {
 
@@ -130,10 +134,10 @@ TEST_F(StorageDirectoryTest, MultigenerationQueueDirectoriesAreFound) {
           storage_options_.directory(),
           storage_options_.ProduceQueuesOptionsList());
 
-  EXPECT_EQ(priority_generation_guid_pairs.size(),
-            kExpectedNumQueueDirectories);
-  EXPECT_EQ(priority_generation_guid_pairs,
-            expected_priority_generation_guid_pairs);
+  EXPECT_THAT(priority_generation_guid_pairs,
+              SizeIs(kExpectedNumQueueDirectories));
+  EXPECT_THAT(priority_generation_guid_pairs,
+              Eq(expected_priority_generation_guid_pairs));
 }
 
 TEST_F(StorageDirectoryTest, LegacyQueueDirectoriesAreFound) {
@@ -161,10 +165,10 @@ TEST_F(StorageDirectoryTest, LegacyQueueDirectoriesAreFound) {
           storage_options_.directory(),
           storage_options_.ProduceQueuesOptionsList());
 
-  EXPECT_EQ(priority_generation_guid_pairs.size(),
-            kExpectedNumLegacyQueueDirectories);
-  EXPECT_EQ(priority_generation_guid_pairs,
-            expected_priority_generation_guid_pairs);
+  EXPECT_THAT(priority_generation_guid_pairs,
+              SizeIs(kExpectedNumLegacyQueueDirectories));
+  EXPECT_THAT(priority_generation_guid_pairs,
+              Eq(expected_priority_generation_guid_pairs));
 }
 
 TEST_F(StorageDirectoryTest, MixedQueueDirectoriesAreFound) {
@@ -179,13 +183,13 @@ TEST_F(StorageDirectoryTest, MixedQueueDirectoriesAreFound) {
   ASSERT_TRUE(base::CreateDirectory(legacy_queue_directory_path));
 
   const int expected_num_queue_directories = 2;
-  const int num_queue_directories =
+  const auto priority_generation_guid_pairs =
       StorageDirectory::FindQueueDirectories(
           storage_options_.directory(),
-          storage_options_.ProduceQueuesOptionsList())
-          .size();
+          storage_options_.ProduceQueuesOptionsList());
 
-  EXPECT_EQ(num_queue_directories, expected_num_queue_directories);
+  EXPECT_THAT(priority_generation_guid_pairs,
+              SizeIs(expected_num_queue_directories));
 }
 
 TEST_F(StorageDirectoryTest, EmptyLegacyQueueDirectoriesAreNotDeleted) {
@@ -207,12 +211,12 @@ TEST_F(StorageDirectoryTest, EmptyLegacyQueueDirectoriesAreNotDeleted) {
   EXPECT_TRUE(base::DirectoryExists(legacy_queue_directory_path));
 
   const int expected_num_queue_directories = 1;
-  const int num_queue_directories =
+  const auto priority_generation_guid_pairs =
       StorageDirectory::FindQueueDirectories(
           storage_options_.directory(),
-          storage_options_.ProduceQueuesOptionsList())
-          .size();
-  EXPECT_EQ(num_queue_directories, expected_num_queue_directories);
+          storage_options_.ProduceQueuesOptionsList());
+  EXPECT_THAT(priority_generation_guid_pairs,
+              SizeIs(expected_num_queue_directories));
 }
 
 // Verifies that multigenerational queue directories are deleted when they
@@ -237,12 +241,12 @@ TEST_F(StorageDirectoryTest, EmptyMultigenerationQueueDirectoriesAreDeleted) {
 
   // We should find zero queue directories
   const int expected_num_queue_directories = 0;
-  const int num_queue_directories =
+  const auto priority_generation_guid_pairs =
       StorageDirectory::FindQueueDirectories(
           storage_options_.directory(),
-          storage_options_.ProduceQueuesOptionsList())
-          .size();
-  EXPECT_EQ(num_queue_directories, expected_num_queue_directories);
+          storage_options_.ProduceQueuesOptionsList());
+  EXPECT_THAT(priority_generation_guid_pairs,
+              SizeIs(expected_num_queue_directories));
 }
 
 TEST_F(StorageDirectoryTest,
@@ -267,12 +271,12 @@ TEST_F(StorageDirectoryTest,
   // it contains a record with data.
   EXPECT_TRUE(base::DirectoryExists(multigenerational_queue_directory_path));
   const int expected_num_queue_directories = 1;
-  const int num_queue_directories =
+  const auto priority_generation_guid_pairs =
       StorageDirectory::FindQueueDirectories(
           storage_options_.directory(),
-          storage_options_.ProduceQueuesOptionsList())
-          .size();
-  EXPECT_EQ(num_queue_directories, expected_num_queue_directories);
+          storage_options_.ProduceQueuesOptionsList());
+  EXPECT_THAT(priority_generation_guid_pairs,
+              SizeIs(expected_num_queue_directories));
 }
 
 }  // namespace

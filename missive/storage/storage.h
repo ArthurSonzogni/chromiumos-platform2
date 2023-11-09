@@ -6,9 +6,6 @@
 #define MISSIVE_STORAGE_STORAGE_H_
 
 #include <memory>
-#include <string>
-#include <tuple>
-#include <unordered_map>
 
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
@@ -127,24 +124,6 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
   // Private helper class to flush all queues with a given priority
   friend class FlushContext;
 
-  // Map that associates <DM token, Priority> of users or the device with a
-  // unique GenerationGuid which is then associated to a queue in the `queues_`
-  // map. Only queues with their GenerationGuid in this map can be written to
-  // and are considered "active". Queues that are not accepting new events (i.e.
-  // queues that contained data before storage was shut down), will not have
-  // their GenerationGuid in this map, but will still exists in the `queues_`
-  // map so that they can send their remaining events.
-  struct Hash {
-    size_t operator()(const std::tuple<DMtoken, Priority>& v) const noexcept {
-      static constexpr std::hash<DMtoken> dm_token_hasher;
-      static constexpr std::hash<Priority> priority_hasher;
-      const auto& [token, priority] = v;
-      return dm_token_hasher(token) ^ priority_hasher(priority);
-    }
-  };
-  using GenerationGuidMap =
-      std::unordered_map<std::tuple<DMtoken, Priority>, GenerationGuid, Hash>;
-
   // Private constructor, to be called by Create factory method only.
   // Queues need to be added afterwards.
   explicit Storage(const Settings& settings);
@@ -158,28 +137,9 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
   Status Init();
 
   // Helper method to select queue by priority on the Storage task runner and
-  // then perform `queue_action`, if succeeded. Returns failure on any stage
-  // with `completion_cb`.
-  void AsyncGetQueueAndProceed(
-      Priority priority,
-      base::OnceCallback<void(scoped_refptr<StorageQueue>,
-                              base::OnceCallback<void(Status)>)> queue_action,
-      base::OnceCallback<void(Status)> completion_cb,
-      StatusOr<GenerationGuid> generation_guid);
-
-  // Creates a generation guid for this dm token, maps it to the dm token,
-  // and returns the generation guid. Returns error if a generation guid exists
-  // for this dm token already.
-  StatusOr<GenerationGuid> CreateGenerationGuidForDMToken(
-      const DMtoken& dm_token, Priority priority);
-
-  // Returns the generation guid associated with `dm_token` or error if no
-  // generation guid exists for `dm_token`.
-  StatusOr<GenerationGuid> GetGenerationGuid(const DMtoken& dm_token,
-                                             Priority priority);
-
-  StatusOr<GenerationGuid> GetOrCreateGenerationGuid(const DMtoken& dm_token,
-                                                     Priority priority);
+  // return it, if succeeded, or return failure status otherwise.
+  StatusOr<scoped_refptr<StorageQueue>> TryGetQueue(
+      Priority priority, StatusOr<GenerationGuid> generation_guid);
 
   // Writes a record to the given queue.
   void WriteToQueue(Record record,
@@ -213,10 +173,6 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
 
   // Upload provider callback.
   const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb_;
-
-  // <DM token, Priority> -> Generation guid map
-  GenerationGuidMap dmtoken_to_generation_guid_map_
-      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Queues container and storage degradation controller. If degradation is
   // enabled, in case of disk space pressure it facilitates dropping low

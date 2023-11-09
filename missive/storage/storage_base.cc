@@ -31,6 +31,7 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/timer/timer.h>
+#include <base/uuid.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
 #include "missive/analytics/metrics.h"
@@ -39,6 +40,7 @@
 #include "missive/encryption/verification.h"
 #include "missive/health/health_module.h"
 #include "missive/proto/health.pb.h"
+#include "missive/proto/priority_name.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage_configuration.h"
@@ -221,6 +223,51 @@ size_t QueuesContainer::RunActionOnAllQueues(
   return count;
 }
 
+GenerationGuid QueuesContainer::GetOrCreateGenerationGuid(
+    const DMtoken& dm_token, Priority priority) {
+  StatusOr<GenerationGuid> generation_guid_result;
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (generation_guid_result = GetGenerationGuid(dm_token, priority);
+      !generation_guid_result.ok()) {
+    // Create a generation guid for this dm token and priority
+    generation_guid_result = CreateGenerationGuidForDMToken(dm_token, priority);
+    // Creation should never fail.
+    CHECK(generation_guid_result.ok()) << generation_guid_result.status();
+  }
+  return generation_guid_result.ValueOrDie();
+}
+
+StatusOr<GenerationGuid> QueuesContainer::GetGenerationGuid(
+    const DMtoken& dm_token, Priority priority) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (dmtoken_to_generation_guid_map_.find(std::make_tuple(
+          dm_token, priority)) == dmtoken_to_generation_guid_map_.end()) {
+    return Status(
+        error::NOT_FOUND,
+        base::StrCat({"No generation guid exists for DM token: ", dm_token}));
+  }
+  return dmtoken_to_generation_guid_map_[std::make_tuple(dm_token, priority)];
+}
+
+StatusOr<GenerationGuid> QueuesContainer::CreateGenerationGuidForDMToken(
+    const DMtoken& dm_token, Priority priority) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (auto generation_guid = GetGenerationGuid(dm_token, priority);
+      generation_guid.ok()) {
+    return Status(
+        error::FAILED_PRECONDITION,
+        base::StrCat({"Generation guid for dm_token ", dm_token,
+                      " already exists! guid=", generation_guid.ValueOrDie()}));
+  }
+
+  GenerationGuid generation_guid =
+      base::Uuid::GenerateRandomV4().AsLowercaseString();
+
+  dmtoken_to_generation_guid_map_[std::make_tuple(dm_token, priority)] =
+      generation_guid;
+  return generation_guid;
+}
+
 namespace {
 
 // Comparator class for ordering degradation candidates queue.
@@ -309,6 +356,47 @@ void QueuesContainer::GetDegradationCandidates(
   std::move(result_cb).Run(std::move(result));
 }
 
+// static
+void QueuesContainer::DisableQueue(base::WeakPtr<QueuesContainer> container,
+                                   Priority priority,
+                                   GenerationGuid generation_guid,
+                                   base::OnceClosure done_cb) {
+  if (!container) {
+    std::move(done_cb).Run();
+    return;
+  }
+  DCHECK_CALLED_ON_VALID_SEQUENCE(container->sequence_checker_);
+  const auto count = std::erase_if(container->dmtoken_to_generation_guid_map_,
+                                   [&generation_guid](const auto& key_value) {
+                                     const auto& [_, guid] = key_value;
+                                     return guid == generation_guid;
+                                   });
+  CHECK_EQ(count, 1u) << Priority_Name_Substitute(priority) << "/"
+                      << generation_guid;
+  // The specified queue has been removed from DM_Token map, resume the
+  // queue-owned action.
+  std::move(done_cb).Run();
+}
+
+// static
+void QueuesContainer::DisconnectQueue(base::WeakPtr<QueuesContainer> container,
+                                      Priority priority,
+                                      GenerationGuid generation_guid,
+                                      base::OnceClosure done_cb) {
+  if (!container) {
+    std::move(done_cb).Run();
+    return;
+  }
+  DCHECK_CALLED_ON_VALID_SEQUENCE(container->sequence_checker_);
+  const auto count =
+      container->queues_.erase(std::make_tuple(priority, generation_guid));
+  CHECK_EQ(count, 1u) << Priority_Name_Substitute(priority) << "/"
+                      << generation_guid;
+  // The specified queue has been removed, resume the queue-owned
+  // action to remove the queue files from the disk.
+  std::move(done_cb).Run();
+}
+
 void QueuesContainer::RegisterCompletionCallback(base::OnceClosure callback) {
   CHECK(callback);
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -348,7 +436,7 @@ std::unique_ptr<KeyDelivery, base::OnTaskRunnerDeleter> KeyDelivery::Create(
 
 KeyDelivery::~KeyDelivery() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  upload_timer_.AbandonAndStop();
+  upload_timer_.Stop();
   PostResponses(
       Status(error::UNAVAILABLE, "Key not delivered - Storage shuts down"));
 }

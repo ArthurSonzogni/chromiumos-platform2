@@ -324,6 +324,17 @@ class LegacyStorageTest
     ASSERT_TRUE(location_.CreateUniqueTempDir());
     options_.set_directory(location_.GetPath());
 
+    // Ignore collector UMA unless set explicitly.
+    ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+            SendToUMA)
+        .WillByDefault(Return(true));
+    ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+            SendPercentageToUMA)
+        .WillByDefault(Return(true));
+    ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+            SendLinearToUMA)
+        .WillByDefault(Return(true));
+
     // Turn uploads to no-ops unless other expectation is set (any later
     // EXPECT_CALL will take precedence over this one).
     EXPECT_CALL(set_mock_uploader_expectations_, Call(_))

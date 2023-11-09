@@ -97,6 +97,16 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
       base::OnceCallback<void(std::queue<scoped_refptr<StorageQueue>>)>
           result_cb)>;
 
+  // Declaration of a callback to make `StorageQueue` unfit for writing after
+  // a prolonged inactivity.
+  using DisableQueueCb =
+      base::RepeatingCallback<void(GenerationGuid, base::OnceClosure done_cb)>;
+
+  // Declaration of a callback to remove `StorageQueue` from `QueuesContainer`
+  // (called before erasing the queue files).
+  using DisconnectQueueCb =
+      base::RepeatingCallback<void(GenerationGuid, base::OnceClosure done_cb)>;
+
   // Declaration of a callback to be invoked when `StorageQueue::Init` fails, to
   // determine whether we should just accept a failure or to back off and retry.
   // The callback returns delay value if `Init` can be retried, or Status
@@ -115,6 +125,8 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
     const QueueOptions& options;
     const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb;
     const DegradationCandidatesCb degradation_candidates_cb;
+    const DisableQueueCb disable_queue_cb;
+    const DisconnectQueueCb disconnect_queue_cb;
     const scoped_refptr<EncryptionModuleInterface> encryption_module;
     const scoped_refptr<CompressionModule> compression_module;
     const InitRetryCb init_retry_cb;
@@ -402,7 +414,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // Adds used metadata file to the set.
   Status RestoreMetadata(std::unordered_set<base::FilePath>* used_files_set);
 
-  // Delete all files except those listed in |used_file_set|.
+  // Deletes all files except those listed in |used_file_set|.
   void DeleteUnusedFiles(
       const std::unordered_set<base::FilePath>& used_files_set) const;
 
@@ -482,6 +494,15 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // oldest to newest until disk_space_resource has more space available than
   // `space_to_recover`.
   bool ShedFiles(size_t space_to_recover);
+
+  // Helper function for inactive queue self-destruct (called only when
+  // `is_self_destructing_`  flag is set). If `status` is not OK or the thread
+  // is found to be non-empty, attempt to `Flush` it unless already in progress.
+  void MaybeSelfDestructInactiveQueue(Status status);
+
+  // Timer callback detects inactive thread and initiates its self-destruct
+  // (even if it is not empty yet).
+  void InactivityCheck();
 
   // Sequential task runner for all activities in this StorageQueue
   // (must be first member in class).
@@ -572,11 +593,32 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   base::RetainingOneShotTimer check_back_timer_
       GUARDED_BY_CONTEXT(storage_queue_sequence_checker_);
 
+  // inactivity check and destruct timer (started upon initialization and
+  // restarted after every write to the queue). If it fires, the queue is not
+  // used for long enough time, and if it is empty, its file can be deleted and
+  // the queue itself can self-destruct.
+  base::RetainingOneShotTimer inactivity_check_and_destruct_timer_
+      GUARDED_BY_CONTEXT(storage_queue_sequence_checker_);
+
+  // Inactivity self-destruct flag. This flag is set once the queue has been
+  // removed from DM-token map in `QueuesContainer` (thus disabling `Write`s to
+  // this queue), and also indicates that once the queue is found having no
+  // data, it will be removed from `QueuesContainer` altogether, and all its
+  // files will be deleted.
+  bool is_self_destructing_
+      GUARDED_BY_CONTEXT(storage_queue_sequence_checker_) = false;
+
   // Upload provider callback.
   const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb_;
 
   // Degradation queues request callback.
   const DegradationCandidatesCb degradation_candidates_cb_;
+
+  // Callback to disable queue for writing.
+  const DisableQueueCb disable_queue_cb_;
+
+  // Callback to diconnect queue from QueuesContainer.
+  const DisconnectQueueCb disconnect_queue_cb_;
 
   // Encryption module.
   const scoped_refptr<EncryptionModuleInterface> encryption_module_;

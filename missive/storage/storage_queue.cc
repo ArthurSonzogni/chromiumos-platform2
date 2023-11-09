@@ -54,8 +54,10 @@
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_managed_buffer.h"
 #include "missive/resources/resource_manager.h"
+#include "missive/storage/storage.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_uploader_interface.h"
+#include "missive/storage/storage_util.h"
 #include "missive/util/file.h"
 #include "missive/util/refcounted_closure_list.h"
 #include "missive/util/status.h"
@@ -240,6 +242,8 @@ StorageQueue::StorageQueue(
       generation_guid_(std::move(settings.generation_guid)),
       async_start_upload_cb_(settings.async_start_upload_cb),
       degradation_candidates_cb_(settings.degradation_candidates_cb),
+      disable_queue_cb_(settings.disable_queue_cb),
+      disconnect_queue_cb_(settings.disconnect_queue_cb),
       encryption_module_(settings.encryption_module),
       compression_module_(settings.compression_module),
       uma_id_(settings.uma_id) {
@@ -251,8 +255,9 @@ StorageQueue::~StorageQueue() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
 
   // Stop timers.
-  upload_timer_.AbandonAndStop();
-  check_back_timer_.AbandonAndStop();
+  upload_timer_.Stop();
+  check_back_timer_.Stop();
+  inactivity_check_and_destruct_timer_.Stop();
   // Make sure no pending writes is present.
   CHECK(write_contexts_queue_.empty());
 
@@ -341,6 +346,14 @@ Status StorageQueue::Init() {
   if (first_sequencing_id_ < next_sequencing_id_) {
     Start<ReadContext>(UploaderInterface::UploadReason::INIT_RESUME,
                        base::DoNothing(), this);
+  }
+  // Initiate inactivity check and for multi-gen queue self-destruct timer.
+  CHECK_GT(options_.inactive_queue_self_destruct_delay(), base::TimeDelta());
+  if (!generation_guid_.empty()) {
+    inactivity_check_and_destruct_timer_.Start(
+        FROM_HERE, options_.inactive_queue_self_destruct_delay(),
+        base::BindRepeating(&StorageQueue::InactivityCheck,
+                            weakptr_factory_.GetWeakPtr()));
   }
   return Status::StatusOK();
 }
@@ -914,6 +927,65 @@ Status StorageQueue::RestoreMetadata(
                 base::StrCat({"Cannot recover last record digest at ",
                               base::NumberToString(next_sequencing_id_ - 1)}));
 }  // namespace reporting
+
+void StorageQueue::MaybeSelfDestructInactiveQueue(Status status) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
+  CHECK(is_self_destructing_) << "Self-destructing unexpectedly";
+  CHECK(!generation_guid_.empty()) << "Self-destructing a legacy directory";
+
+  if (!status.ok()) {
+    // Attempted action failed, bail out until the next check.
+    return;
+  }
+  if (!StorageDirectory::QueueDirectoryContainsNoUnconfirmedRecords(
+          options_.directory())) {
+    // Queue still has data, bail out until the next check.
+    return;
+  }
+  // Asynchronously delete the queue from `QueueContainer`.
+  disconnect_queue_cb_.Run(
+      generation_guid_,
+      base::BindPostTaskToCurrentDefault(base::BindOnce(
+          [](base::FilePath directory) {
+            const bool deleted_queue_files_successfully =
+                DeleteFilesWarnIfFailed(base::FileEnumerator(
+                    directory, false, base::FileEnumerator::FILES));
+            LOG_IF(ERROR, !deleted_queue_files_successfully)
+                << "Cannot delete queue directory " << directory.MaybeAsASCII()
+                << ". Failed to delete files within directory.";
+            const bool deleted_queue_dir_successfully = DeleteFile(directory);
+            LOG_IF(ERROR, !deleted_queue_dir_successfully)
+                << "Cannot delete queue directory " << directory.MaybeAsASCII()
+                << ".";
+          },
+          options_.directory())));
+}
+
+void StorageQueue::InactivityCheck() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
+  CHECK(!generation_guid_.empty()) << "Inactivity check on legacy directory";
+
+  // Queue has been inactive for a long time.
+  // Disable it in `QueueContainer` for `Writes`, and eventually we will `Flush`
+  // it, remove from `QueueContainer` completely and erase its directory.
+  disable_queue_cb_.Run(
+      generation_guid_,
+      base::BindPostTaskToCurrentDefault(base::BindOnce(
+          [](scoped_refptr<StorageQueue> self) {
+            // Note: by this moment the queue object may already be disabled,
+            // new Writes will never be started in it, but those started earlier
+            // will be allowed to finish.
+            DCHECK_CALLED_ON_VALID_SEQUENCE(
+                self->storage_queue_sequence_checker_);
+            self->is_self_destructing_ = true;
+            // Upload the data if the queue is not empty. Note that periodic
+            // queues will repeat uploads, and MANUAL queues will retry until
+            // the data is confirmed.
+            self->Flush(base::BindPostTaskToCurrentDefault(base::BindOnce(
+                &StorageQueue::MaybeSelfDestructInactiveQueue, self)));
+          },
+          base::WrapRefCounted(this))));
+}
 
 void StorageQueue::DeleteUnusedFiles(
     const std::unordered_set<base::FilePath>& used_files_set) const {
@@ -1574,6 +1646,11 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
     DCHECK_CALLED_ON_VALID_SEQUENCE(
         storage_queue_->storage_queue_sequence_checker_);
 
+    // For mult-generation directory delay timer, since we now perform `Write`.
+    if (!storage_queue_->generation_guid_.empty()) {
+      storage_queue_->inactivity_check_and_destruct_timer_.Reset();
+    }
+
     if (recorder_) {
       // Expected enqueue action.
       recorder_->mutable_storage_queue_action()->mutable_storage_enqueue();
@@ -2053,6 +2130,8 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
   }
 
   void OnCompletion(const Status& status) override {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(
+        storage_queue_->storage_queue_sequence_checker_);
     if (recorder_) {
       auto* const write_queue_record =
           recorder_->mutable_storage_queue_action();
@@ -2293,6 +2372,8 @@ class StorageQueue::ConfirmContext : public TaskRunnerContext<Status> {
   }
 
   void OnCompletion(const Status& status) override {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(
+        storage_queue_->storage_queue_sequence_checker_);
     if (recorder_) {
       auto* const write_queue_record =
           recorder_->mutable_storage_queue_action();
@@ -2305,6 +2386,10 @@ class StorageQueue::ConfirmContext : public TaskRunnerContext<Status> {
       // attached to write response request and thus immediately visible
       // on Chrome.
       const auto finished_recording = std::move(recorder_);
+    }
+    if (storage_queue_->is_self_destructing_) {
+      // Queue scheduled for self-destruct, once it becomes empty.
+      storage_queue_->MaybeSelfDestructInactiveQueue(status);
     }
   }
 

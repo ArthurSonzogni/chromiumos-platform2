@@ -4,7 +4,6 @@
 
 #include "missive/storage/storage.h"
 
-#include <tuple>
 #include <utility>
 
 #include <base/barrier_closure.h>
@@ -33,7 +32,6 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/sequence_checker.h>
 #include <base/time/time.h>
-#include <base/uuid.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
 #include "missive/encryption/encryption_module_interface.h"
@@ -57,21 +55,25 @@ namespace reporting {
 
 // Context for creating a single queue. Upon success, calls the callback with
 // the GenerationGuid passed into the context, otherwise error status.
-class CreateQueueContext : public TaskRunnerContext<StatusOr<GenerationGuid>> {
+class CreateQueueContext : public TaskRunnerContext<Status> {
  public:
   CreateQueueContext(
       Priority priority,
       QueueOptions queue_options,
       scoped_refptr<Storage> storage,
       GenerationGuid generation_guid,
-      base::OnceCallback<void(StatusOr<GenerationGuid>)> callback)
-      : TaskRunnerContext<StatusOr<GenerationGuid>>(
-            std::move(callback),
+      base::OnceCallback<void(scoped_refptr<reporting::StorageQueue>,
+                              base::OnceCallback<void(reporting::Status)>)>
+          queue_created_cb,
+      base::OnceCallback<void(Status)> completion_cb)
+      : TaskRunnerContext<Status>(
+            std::move(completion_cb),
             storage->sequenced_task_runner_),  // Same runner as the Storage!
         queue_options_(queue_options),
         storage_(storage),
         generation_guid_(generation_guid),
-        priority_(priority) {}
+        priority_(priority),
+        queue_created_cb_(std::move(queue_created_cb)) {}
 
   CreateQueueContext(const CreateQueueContext&) = delete;
   CreateQueueContext& operator=(const CreateQueueContext&) = delete;
@@ -110,6 +112,16 @@ class CreateQueueContext : public TaskRunnerContext<StatusOr<GenerationGuid>> {
                 base::BindRepeating(&QueuesContainer::GetDegradationCandidates,
                                     storage_->queues_container_->GetWeakPtr(),
                                     priority)),
+            .disable_queue_cb = base::BindPostTask(
+                storage_->sequenced_task_runner_,
+                base::BindRepeating(&QueuesContainer::DisableQueue,
+                                    storage_->queues_container_->GetWeakPtr(),
+                                    priority)),
+            .disconnect_queue_cb = base::BindPostTask(
+                storage_->sequenced_task_runner_,
+                base::BindRepeating(&QueuesContainer::DisconnectQueue,
+                                    storage_->queues_container_->GetWeakPtr(),
+                                    priority)),
             .encryption_module = storage_->encryption_module_,
             .compression_module = storage_->compression_module_,
             .init_retry_cb =
@@ -140,14 +152,20 @@ class CreateQueueContext : public TaskRunnerContext<StatusOr<GenerationGuid>> {
       return;
     }
 
-    // Return the generation_guid this queue was initialized with
-    Response(generation_guid_);
+    // Report success.
+    std::move(queue_created_cb_)
+        .Run(storage_queue_result.ValueOrDie(),
+             base::BindPostTaskToCurrentDefault(base::BindOnce(
+                 &CreateQueueContext::Response, base::Unretained(this))));
   }
 
   QueueOptions queue_options_;
   const scoped_refptr<Storage> storage_;
   const GenerationGuid generation_guid_;
   const Priority priority_;
+  base::OnceCallback<void(scoped_refptr<reporting::StorageQueue>,
+                          base::OnceCallback<void(reporting::Status)>)>
+      queue_created_cb_;
 };
 
 void Storage::Create(
@@ -176,8 +194,6 @@ void Storage::Create(
 
     void OnStart() override {
       CheckOnValidSequence();
-      // TODO(b/300553971): delete empty queues periodically, not just during
-      // storage creation.
       StorageDirectory::DeleteEmptyMultigenerationQueueDirectories(
           storage_->options_.directory());
 
@@ -248,20 +264,27 @@ void Storage::Create(
             // we need to return `storage_` in the response
             priority, storage_->options_.ProduceQueueOptions(priority),
             storage_, generation_guid,
+            base::BindOnce(&StorageInitContext::QueueCreated,
+                           base::Unretained(this)),
             base::BindPostTaskToCurrentDefault(
                 base::BindOnce(&StorageInitContext::RespondIfAllQueuesCreated,
                                base::Unretained(this))));
       }
     }
 
-    void RespondIfAllQueuesCreated(
-        StatusOr<GenerationGuid> create_queue_result) {
+    void QueueCreated(scoped_refptr<StorageQueue> created_queue,
+                      base::OnceCallback<void(Status)> completion_cb) {
+      CheckOnValidSequence();
+      std::move(completion_cb).Run(Status::StatusOK());
+    }
+
+    void RespondIfAllQueuesCreated(Status status) {
       CheckOnValidSequence();
       DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
-      if (!create_queue_result.status().ok()) {
+      if (!status.ok()) {
         LOG(ERROR) << "Failed to create queue during Storage creation, error="
-                   << create_queue_result.status();
-        final_status_ = create_queue_result.status();
+                   << status;
+        final_status_ = status;
       }
       CHECK_GT(count_, 0u);
       if (--count_ > 0u) {
@@ -316,49 +339,6 @@ Storage::Storage(const Storage::Settings& settings)
 
 Storage::~Storage() = default;
 
-StatusOr<GenerationGuid> Storage::GetOrCreateGenerationGuid(
-    const DMtoken& dm_token, Priority priority) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  StatusOr<GenerationGuid> generation_guid_result;
-  if (generation_guid_result = GetGenerationGuid(dm_token, priority);
-      !generation_guid_result.ok()) {
-    // Create a generation guid for this dm token and priority
-    generation_guid_result = CreateGenerationGuidForDMToken(dm_token, priority);
-  }
-  return generation_guid_result;
-}
-
-StatusOr<GenerationGuid> Storage::GetGenerationGuid(const DMtoken& dm_token,
-                                                    Priority priority) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (dmtoken_to_generation_guid_map_.find(std::make_tuple(
-          dm_token, priority)) == dmtoken_to_generation_guid_map_.end()) {
-    return Status(
-        error::NOT_FOUND,
-        base::StrCat({"No generation guid exists for DM token: ", dm_token}));
-  }
-  return dmtoken_to_generation_guid_map_[std::make_tuple(dm_token, priority)];
-}
-
-StatusOr<GenerationGuid> Storage::CreateGenerationGuidForDMToken(
-    const DMtoken& dm_token, Priority priority) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (auto generation_guid = GetGenerationGuid(dm_token, priority);
-      generation_guid.ok()) {
-    return Status(
-        error::FAILED_PRECONDITION,
-        base::StrCat({"Generation guid for dm_token ", dm_token,
-                      " already exists! guid=", generation_guid.ValueOrDie()}));
-  }
-
-  GenerationGuid generation_guid =
-      base::Uuid::GenerateRandomV4().AsLowercaseString();
-
-  dmtoken_to_generation_guid_map_[std::make_tuple(dm_token, priority)] =
-      generation_guid;
-  return generation_guid;
-}
-
 void Storage::Write(Priority priority,
                     Record record,
                     base::OnceCallback<void(Status)> completion_cb) {
@@ -408,24 +388,17 @@ void Storage::Write(Priority priority,
             }
 
             // Callback that writes to the queue.
-            auto queue_action =
+            auto write_queue_action =
                 base::BindOnce(&Storage::WriteToQueue, self, std::move(record),
                                std::move(recorder));
-
-            // Callback for `AsyncGetQueue` so that we can either run it here or
-            // have it run after we create any necessary queues. We attach
-            // `queue_action` which will execute the write when `AsyncGetQueue`
-            // calls it.
-            auto call_async_get_queue = base::BindOnce(
-                &Storage::AsyncGetQueueAndProceed, self, priority,
-                std::move(queue_action), std::move(completion_cb));
 
             GenerationGuid generation_guid;
             if (self->options_.is_multi_generational(priority)) {
               // Get or create the generation guid associated with the dm token
               // and priority in this record.
               StatusOr<GenerationGuid> generation_guid_result =
-                  self->GetOrCreateGenerationGuid(dm_token, priority);
+                  self->queues_container_->GetOrCreateGenerationGuid(dm_token,
+                                                                     priority);
 
               if (!generation_guid_result.ok()) {
                 // This should never happen. We should always be able to create
@@ -437,19 +410,21 @@ void Storage::Write(Priority priority,
 
             // Find the queue for this generation guid + priority and write to
             // it.
-            if (!self->queues_container_->GetQueue(priority, generation_guid)
-                     .ok()) {
-              // We don't have a queue for this priority + generation guid, so
-              // create one, and then let the context execute the write
-              // via `call_async_get_queue`.
-              Start<CreateQueueContext>(
-                  priority, self->options_.ProduceQueueOptions(priority), self,
-                  generation_guid, std::move(call_async_get_queue));
+            auto queue_result = self->TryGetQueue(priority, generation_guid);
+            if (queue_result.ok()) {
+              // The queue we need already exists, so we can write to it.
+              std::move(write_queue_action)
+                  .Run(std::move(queue_result.ValueOrDie()),
+                       std::move(completion_cb));
               return;
             }
-
-            // The queue we need already exists, so we can write to it.
-            std::move(call_async_get_queue).Run(generation_guid);
+            // We don't have a queue for this priority + generation guid, so
+            // create one, and then let the context execute the write
+            // via `call_async_get_queue`.
+            Start<CreateQueueContext>(
+                priority, self->options_.ProduceQueueOptions(priority), self,
+                generation_guid, std::move(write_queue_action),
+                std::move(completion_cb));
           },
           base::WrapRefCounted(this), priority, std::move(record),
           std::move(completion_cb)));
@@ -538,17 +513,37 @@ void Storage::Confirm(SequenceInformation sequence_information,
     queue_action_record->mutable_storage_dequeue();  // expected dequeue action
   }
 
-  AsyncGetQueueAndProceed(
-      priority,
+  // Prepare an async confirmation action to be directed to the queue.
+  auto queue_confirm_action = base::BindOnce(
+      [](SequenceInformation sequence_information, bool force,
+         HealthModule::Recorder recorder, scoped_refptr<StorageQueue> queue,
+         base::OnceCallback<void(Status)> completion_cb) {
+        queue->Confirm(std::move(sequence_information), force,
+                       std::move(recorder), std::move(completion_cb));
+      },
+      std::move(sequence_information), force, std::move(recorder));
+  // Locate or create a queue, pass it to the action callback.
+  sequenced_task_runner_->PostTask(
+      FROM_HERE,
       base::BindOnce(
-          [](SequenceInformation sequence_information, bool force,
-             HealthModule::Recorder recorder, scoped_refptr<StorageQueue> queue,
+          [](scoped_refptr<Storage> self, Priority priority,
+             StatusOr<GenerationGuid> generation_guid,
+             base::OnceCallback<void(scoped_refptr<StorageQueue>,
+                                     base::OnceCallback<void(Status)>)>
+                 queue_action,
              base::OnceCallback<void(Status)> completion_cb) {
-            queue->Confirm(std::move(sequence_information), force,
-                           std::move(recorder), std::move(completion_cb));
+            auto queue_result = self->TryGetQueue(priority, generation_guid);
+            if (!queue_result.ok()) {
+              std::move(completion_cb).Run(queue_result.status());
+              return;
+            }
+            // Queue found, execute the action (it should relocate on
+            // queue thread soon, to not block Storage task runner).
+            std::move(queue_action)
+                .Run(queue_result.ValueOrDie(), std::move(completion_cb));
           },
-          std::move(sequence_information), force, std::move(recorder)),
-      std::move(completion_cb), generation_guid);
+          base::WrapRefCounted(this), priority, std::move(generation_guid),
+          std::move(queue_confirm_action), std::move(completion_cb)));
 }
 
 class FlushContext : public TaskRunnerContext<Status> {
@@ -684,41 +679,22 @@ void Storage::UpdateEncryptionKey(SignedEncryptionInfo signed_encryption_key) {
           std::move(signed_encryption_key), base::WrapRefCounted(this)));
 }
 
-void Storage::AsyncGetQueueAndProceed(
-    Priority priority,
-    base::OnceCallback<void(scoped_refptr<StorageQueue>,
-                            base::OnceCallback<void(Status)>)> queue_action,
-    base::OnceCallback<void(Status)> completion_cb,
-    StatusOr<GenerationGuid> generation_guid) {
-  sequenced_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](scoped_refptr<Storage> self,
-             StatusOr<GenerationGuid> generation_guid, Priority priority,
-             base::OnceCallback<void(scoped_refptr<StorageQueue>,
-                                     base::OnceCallback<void(Status)>)>
-                 queue_action,
-             base::OnceCallback<void(Status)> completion_cb) {
-            if (!generation_guid.ok()) {
-              std::move(completion_cb).Run(generation_guid.status());
-              return;
-            }
-            // Attempt to get queue by priority and generation_guid on
-            // the Storage task runner.
-            auto queue_result = self->queues_container_->GetQueue(
-                priority, generation_guid.ValueOrDie());
-            if (!queue_result.ok()) {
-              // Queue not found, abort.
-              std::move(completion_cb).Run(queue_result.status());
-              return;
-            }
-            // Queue found, execute the action (it should relocate on
-            // queue thread soon, to not block Storage task runner).
-            std::move(queue_action)
-                .Run(queue_result.ValueOrDie(), std::move(completion_cb));
-          },
-          base::WrapRefCounted(this), std::move(generation_guid), priority,
-          std::move(queue_action), std::move(completion_cb)));
+StatusOr<scoped_refptr<StorageQueue>> Storage::TryGetQueue(
+    Priority priority, StatusOr<GenerationGuid> generation_guid) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!generation_guid.ok()) {
+    return generation_guid.status();
+  }
+  // Attempt to get queue by priority and generation_guid on
+  // the Storage task runner.
+  auto queue_result =
+      queues_container_->GetQueue(priority, generation_guid.ValueOrDie());
+  if (!queue_result.ok()) {
+    // Queue not found, abort.
+    return queue_result.status();
+  }
+  // Queue found, return it.
+  return queue_result.ValueOrDie();
 }
 
 void Storage::RegisterCompletionCallback(base::OnceClosure callback) {
