@@ -25,6 +25,9 @@ namespace {
 // to 8-bit gives us 249.
 constexpr int kIpu6WhiteLevel = 249;
 
+constexpr char kOverrideKey[] = "override";
+constexpr char kIpu6SensorModeBinningKey[] = "ipu6::sensor_mode_binning";
+
 }  // namespace
 
 GcamAeDeviceAdapterIpu6::GcamAeDeviceAdapterIpu6()
@@ -268,6 +271,41 @@ AeParameters GcamAeDeviceAdapterIpu6::ComputeAeParameters(
   ae_parameters.long_tet = ae_result.long_tet;
   ae_parameters.log_scene_brightness = ae_result.log_scene_brightness;
   return ae_parameters;
+}
+
+std::optional<base::Value::Dict> GcamAeDeviceAdapterIpu6::MaybeOverrideOptions(
+    const base::Value::Dict& json_values,
+    const Camera3CaptureDescriptor& result) {
+  base::span<const int32_t> sensor_mode =
+      result.GetMetadata<int32_t>(INTEL_VENDOR_CAMERA_SENSOR_MODE);
+  if (sensor_mode.empty() || sensor_mode[0] == sensor_mode_) {
+    return std::nullopt;
+  }
+  sensor_mode_ = sensor_mode[0];
+  return GetOverriddenOptions(json_values);
+}
+
+base::Value::Dict GcamAeDeviceAdapterIpu6::GetOverriddenOptions(
+    const base::Value::Dict& json_values) {
+  // The default config is for the non-binning mode, i.e. the full mode.
+  if (sensor_mode_ != INTEL_VENDOR_CAMERA_SENSOR_MODE_BINNING) {
+    return json_values.Clone();
+  }
+
+  const base::Value::Dict* overrides = json_values.FindDict(kOverrideKey);
+  if (!overrides) {
+    return json_values.Clone();
+  }
+
+  const base::Value::Dict* binning_override =
+      overrides->FindDict(kIpu6SensorModeBinningKey);
+  if (!binning_override) {
+    return json_values.Clone();
+  }
+
+  base::Value::Dict overridden_json_values = json_values.Clone();
+  overridden_json_values.Merge(binning_override->Clone());
+  return overridden_json_values;
 }
 
 std::optional<GcamAeDeviceAdapterIpu6::AeStatsEntry*>

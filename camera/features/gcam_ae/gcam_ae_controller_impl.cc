@@ -175,6 +175,12 @@ void GcamAeControllerImpl::RecordYuvBuffer(int frame_number,
 }
 
 void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
+  std::optional<base::Value::Dict> overridden_json_values =
+      ae_device_adapter_->MaybeOverrideOptions(json_values_, *result);
+  if (overridden_json_values.has_value()) {
+    SetOptions(*overridden_json_values, metadata_logger_);
+  }
+
   AeFrameInfo* frame_info = GetAeFrameInfoEntry(result->frame_number());
   if (!frame_info) {
     return;
@@ -343,100 +349,9 @@ void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
 void GcamAeControllerImpl::OnOptionsUpdated(
     const base::Value::Dict& json_values,
     std::optional<MetadataLogger*> metadata_logger) {
-  bool enabled;
-  if (LoadIfExist(json_values, kGcamAeEnableKey, &enabled)) {
-    if (options_.enabled && !enabled) {
-      ae_state_machine_.OnReset();
-    }
-    options_.enabled = enabled;
-  }
-
-  int ae_frame_interval;
-  if (LoadIfExist(json_values, kAeFrameIntervalKey, &ae_frame_interval)) {
-    if (ae_frame_interval > 0) {
-      options_.ae_frame_interval = ae_frame_interval;
-    } else {
-      LOGF(ERROR) << "Invalid AE frame interval: " << ae_frame_interval;
-    }
-  }
-
-  auto max_hdr_ratio = json_values.FindDict(kMaxHdrRatioKey);
-  if (max_hdr_ratio) {
-    base::flat_map<float, float> hdr_ratio_map;
-    for (auto [k, v] : *max_hdr_ratio) {
-      double gain;
-      if (!base::StringToDouble(k, &gain)) {
-        LOGF(ERROR) << "Invalid gain value: " << k;
-        continue;
-      }
-      std::optional<double> ratio = v.GetIfDouble();
-      if (!ratio) {
-        LOGF(ERROR) << "Invalid max_hdr_ratio";
-        continue;
-      }
-      hdr_ratio_map.insert({gain, *ratio});
-    }
-    options_.max_hdr_ratio = std::move(hdr_ratio_map);
-  }
-
-  int ae_stats_input_mode;
-  if (LoadIfExist(json_values, kAeStatsInputModeKey, &ae_stats_input_mode)) {
-    if (ae_stats_input_mode ==
-            static_cast<int>(AeStatsInputMode::kFromVendorAeStats) ||
-        ae_stats_input_mode ==
-            static_cast<int>(AeStatsInputMode::kFromYuvImage)) {
-      options_.ae_stats_input_mode =
-          static_cast<AeStatsInputMode>(ae_stats_input_mode);
-    } else {
-      LOGF(ERROR) << "Invalid AE stats input mode: " << ae_stats_input_mode;
-    }
-  }
-
-  int ae_override_mode;
-  if (LoadIfExist(json_values, kAeOverrideModeKey, &ae_override_mode)) {
-    if (ae_override_mode ==
-            static_cast<int>(AeOverrideMode::kWithManualSensorControl) ||
-        ae_override_mode == static_cast<int>(AeOverrideMode::kWithVendorTag)) {
-      options_.ae_override_mode = static_cast<AeOverrideMode>(ae_override_mode);
-    } else {
-      LOGF(ERROR) << "Invalid AE override method: " << ae_override_mode;
-    }
-  }
-
-  LoadIfExist(json_values, kExposureCompensationKey,
-              &options_.exposure_compensation);
-
-  LoadIfExist(json_values, kGainMultiplier, &options_.gain_multiplier);
-  // We need to recompute the sensitivity range when the multiplier changes.
-  max_analog_gain_ = options_.gain_multiplier *
-                     (static_cast<float>(max_analog_sensitivity_) /
-                      static_cast<float>(sensitivity_range_.lower()));
-  max_total_gain_ = options_.gain_multiplier *
-                    (static_cast<float>(sensitivity_range_.upper()) /
-                     static_cast<float>(sensitivity_range_.lower()));
-
-  if (metadata_logger) {
-    metadata_logger_ = *metadata_logger;
-  }
-
-  if (VLOG_IS_ON(1)) {
-    VLOGF(1) << "GcamAeController config:"
-             << " enabled=" << options_.enabled
-             << " ae_frame_interval=" << options_.ae_frame_interval
-             << " ae_stats_input_mode="
-             << static_cast<int>(options_.ae_stats_input_mode)
-             << " exposure_compensation=" << options_.exposure_compensation
-             << " gain_multiplier=" << options_.gain_multiplier
-             << " max_analog_gain=" << max_analog_gain_
-             << " max_total_gain=" << max_total_gain_
-             << " log_frame_metadata=" << !!metadata_logger_;
-    VLOGF(1) << "max_hdr_ratio:";
-    for (auto [gain, ratio] : options_.max_hdr_ratio) {
-      VLOGF(1) << "  " << gain << ": " << ratio;
-    }
-  }
-
-  ae_state_machine_.OnOptionsUpdated(json_values);
+  json_values_ = json_values.Clone();
+  SetOptions(ae_device_adapter_->GetOverriddenOptions(json_values_),
+             metadata_logger_);
 }
 
 std::optional<float> GcamAeControllerImpl::GetCalculatedHdrRatio(
@@ -797,6 +712,105 @@ void GcamAeControllerImpl::SetManualSensorControls(
     metadata_logger_->Log(request->frame_number(), kTagRequestSensitivity,
                           sensitivity[0]);
   }
+}
+
+void GcamAeControllerImpl::SetOptions(
+    const base::Value::Dict& json_values,
+    std::optional<MetadataLogger*> metadata_logger) {
+  bool enabled;
+  if (LoadIfExist(json_values, kGcamAeEnableKey, &enabled)) {
+    if (options_.enabled && !enabled) {
+      ae_state_machine_.OnReset();
+    }
+    options_.enabled = enabled;
+  }
+
+  int ae_frame_interval;
+  if (LoadIfExist(json_values, kAeFrameIntervalKey, &ae_frame_interval)) {
+    if (ae_frame_interval > 0) {
+      options_.ae_frame_interval = ae_frame_interval;
+    } else {
+      LOGF(ERROR) << "Invalid AE frame interval: " << ae_frame_interval;
+    }
+  }
+
+  auto max_hdr_ratio = json_values.FindDict(kMaxHdrRatioKey);
+  if (max_hdr_ratio) {
+    base::flat_map<float, float> hdr_ratio_map;
+    for (auto [k, v] : *max_hdr_ratio) {
+      double gain;
+      if (!base::StringToDouble(k, &gain)) {
+        LOGF(ERROR) << "Invalid gain value: " << k;
+        continue;
+      }
+      std::optional<double> ratio = v.GetIfDouble();
+      if (!ratio) {
+        LOGF(ERROR) << "Invalid max_hdr_ratio";
+        continue;
+      }
+      hdr_ratio_map.insert({gain, *ratio});
+    }
+    options_.max_hdr_ratio = std::move(hdr_ratio_map);
+  }
+
+  int ae_stats_input_mode;
+  if (LoadIfExist(json_values, kAeStatsInputModeKey, &ae_stats_input_mode)) {
+    if (ae_stats_input_mode ==
+            static_cast<int>(AeStatsInputMode::kFromVendorAeStats) ||
+        ae_stats_input_mode ==
+            static_cast<int>(AeStatsInputMode::kFromYuvImage)) {
+      options_.ae_stats_input_mode =
+          static_cast<AeStatsInputMode>(ae_stats_input_mode);
+    } else {
+      LOGF(ERROR) << "Invalid AE stats input mode: " << ae_stats_input_mode;
+    }
+  }
+
+  int ae_override_mode;
+  if (LoadIfExist(json_values, kAeOverrideModeKey, &ae_override_mode)) {
+    if (ae_override_mode ==
+            static_cast<int>(AeOverrideMode::kWithManualSensorControl) ||
+        ae_override_mode == static_cast<int>(AeOverrideMode::kWithVendorTag)) {
+      options_.ae_override_mode = static_cast<AeOverrideMode>(ae_override_mode);
+    } else {
+      LOGF(ERROR) << "Invalid AE override method: " << ae_override_mode;
+    }
+  }
+
+  LoadIfExist(json_values, kExposureCompensationKey,
+              &options_.exposure_compensation);
+
+  LoadIfExist(json_values, kGainMultiplier, &options_.gain_multiplier);
+  // We need to recompute the sensitivity range when the multiplier changes.
+  max_analog_gain_ = options_.gain_multiplier *
+                     (static_cast<float>(max_analog_sensitivity_) /
+                      static_cast<float>(sensitivity_range_.lower()));
+  max_total_gain_ = options_.gain_multiplier *
+                    (static_cast<float>(sensitivity_range_.upper()) /
+                     static_cast<float>(sensitivity_range_.lower()));
+
+  if (metadata_logger) {
+    metadata_logger_ = *metadata_logger;
+  }
+
+  if (VLOG_IS_ON(1)) {
+    VLOGF(1) << "GcamAeController config:"
+             << " enabled=" << options_.enabled
+             << " ae_frame_interval=" << options_.ae_frame_interval
+             << " ae_stats_input_mode="
+             << static_cast<int>(options_.ae_stats_input_mode)
+             << " exposure_compensation=" << options_.exposure_compensation
+             << " gain_multiplier=" << options_.gain_multiplier
+             << " max_analog_gain=" << max_analog_gain_
+             << " max_total_gain=" << max_total_gain_
+             << " log_frame_metadata=" << !!metadata_logger_;
+    VLOGF(1) << "max_hdr_ratio:";
+    for (auto [gain, ratio] : options_.max_hdr_ratio) {
+      VLOGF(1) << "  " << gain << ": " << ratio;
+    }
+  }
+
+  ae_state_machine_.OnOptionsUpdated(json_values);
 }
 
 bool GcamAeControllerImpl::ShouldRunAe(int frame_number) const {

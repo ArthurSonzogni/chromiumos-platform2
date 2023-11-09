@@ -38,8 +38,14 @@ class GcamAeDeviceAdapterIpu6 : public GcamAeDeviceAdapter {
                                    const AeFrameInfo& frame_info,
                                    const Range<float>& device_tet_range,
                                    float max_hdr_ratio) override;
+  std::optional<base::Value::Dict> MaybeOverrideOptions(
+      const base::Value::Dict& json_values,
+      const Camera3CaptureDescriptor& result) override;
+  base::Value::Dict GetOverriddenOptions(
+      const base::Value::Dict& json_values) override;
 
  private:
+  static constexpr int32_t kInvalidSensorMode = -1;
   static constexpr size_t kAeStatsRingBufferSize = 6;
   struct AeStatsEntry {
     int frame_number = -1;
@@ -53,6 +59,9 @@ class GcamAeDeviceAdapterIpu6 : public GcamAeDeviceAdapter {
   std::array<AeStatsEntry, kAeStatsRingBufferSize> ae_stats_;
 
   std::unique_ptr<GcamAe> gcam_ae_;
+
+  // Initially, set an invalid sensor mode.
+  int32_t sensor_mode_ = kInvalidSensorMode;
 };
 
 }  // namespace cros

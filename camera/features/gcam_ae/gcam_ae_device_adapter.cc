@@ -51,4 +51,15 @@ AeParameters GcamAeDeviceAdapter::ComputeAeParameters(
   return AeParameters();
 }
 
+std::optional<base::Value::Dict> GcamAeDeviceAdapter::MaybeOverrideOptions(
+    const base::Value::Dict& json_values,
+    const Camera3CaptureDescriptor& result) {
+  return std::nullopt;
+}
+
+base::Value::Dict GcamAeDeviceAdapter::GetOverriddenOptions(
+    const base::Value::Dict& json_values) {
+  return json_values.Clone();
+}
+
 }  // namespace cros

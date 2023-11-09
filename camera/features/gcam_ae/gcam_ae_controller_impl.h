@@ -59,6 +59,9 @@ class GcamAeControllerImpl : public GcamAeController {
 
   void SetManualSensorControls(Camera3CaptureDescriptor* request);
 
+  void SetOptions(const base::Value::Dict& json_values,
+                  std::optional<MetadataLogger*> metadata_logger);
+
   // Internal helper methods.
   bool ShouldRunAe(int frame_number) const;
   bool ShouldRunFd(int frame_number) const;
@@ -93,6 +96,10 @@ class GcamAeControllerImpl : public GcamAeController {
 
   // Metadata logger for tests and debugging.
   MetadataLogger* metadata_logger_ = nullptr;
+
+  // Stores the full content of the Gcam AE config file including override
+  // values if specified.
+  base::Value::Dict json_values_;
 };
 
 }  // namespace cros
