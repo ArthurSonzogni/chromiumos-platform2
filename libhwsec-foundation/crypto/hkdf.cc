@@ -48,6 +48,9 @@ bool HkdfInternal(HkdfHash hash,
     case HkdfHash::kSha256:
       md = EVP_sha256();
       break;
+    case HkdfHash::kSha512:
+      md = EVP_sha512();
+      break;
   }
   if (!md) {
     LOG(ERROR) << "Invalid HKDF hash type: " << static_cast<int>(hash);

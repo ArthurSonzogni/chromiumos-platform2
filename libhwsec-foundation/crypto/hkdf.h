@@ -13,7 +13,10 @@ namespace hwsec_foundation {
 
 // The list of possible hashes for HKDF operations. For now we only need
 // SHA-256, but the list can be easily extended if required.
-enum class HkdfHash { kSha256 };
+enum class HkdfHash {
+  kSha256,
+  kSha512,
+};
 
 // Derives HKDF from `key`, `info` and `salt` and stores as
 // `result` of a desired `result_len`. If `result_len` is zero, the resulting
