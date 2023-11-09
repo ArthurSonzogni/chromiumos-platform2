@@ -26,6 +26,7 @@
 #include "dlcservice/metrics.h"
 #include "dlcservice/prefs.h"
 #include "dlcservice/system_state.h"
+#include "dlcservice/utils/utils.h"
 
 namespace dlcservice {
 
@@ -72,14 +73,15 @@ void Daemon::RegisterDBusObjectsAsync(
   metrics->Init();
 
   {
+    auto dlc_utils = std::make_shared<Utils>();
     auto dlc_creator =
 #if USE_LVM_STATEFUL_PARTITION
-        std::make_unique<DlcLvmCreator>();
+        std::make_unique<DlcLvmCreator>(dlc_utils);
 #else
-        std::make_unique<DlcBaseCreator>();
+        std::make_unique<DlcBaseCreator>(dlc_utils);
 #endif  // USE_LVM_STATEFUL_PARTITION
-    dlc_service_ = std::make_unique<DlcService>(std::move(dlc_creator),
-                                                std::make_unique<Utils>());
+    dlc_service_ =
+        std::make_unique<DlcService>(std::move(dlc_creator), dlc_utils);
     // NOTE: `dlc_creator` should not be used beyond this line.
   }
 

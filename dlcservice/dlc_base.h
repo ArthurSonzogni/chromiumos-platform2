@@ -25,6 +25,8 @@
 #include "dlcservice/boot/boot_slot.h"
 #include "dlcservice/dlc_interface.h"
 #include "dlcservice/types.h"
+#include "dlcservice/utils/utils.h"
+#include "dlcservice/utils/utils_interface.h"
 
 namespace dlcservice {
 
@@ -32,7 +34,10 @@ namespace dlcservice {
 // implementation truly common methods.
 class DlcBase : public DlcInterface {
  public:
-  explicit DlcBase(DlcId id) : id_(std::move(id)), weak_ptr_factory_{this} {}
+  explicit DlcBase(DlcId id)
+      : DlcBase(std::move(id), std::make_shared<Utils>()) {}
+  DlcBase(DlcId id, std::shared_ptr<UtilsInterface> utils)
+      : id_(std::move(id)), utils_(utils), weak_ptr_factory_{this} {}
   virtual ~DlcBase() = default;
 
   DlcBase(const DlcBase&) = delete;
@@ -162,6 +167,8 @@ class DlcBase : public DlcInterface {
   base::FilePath mount_point_;
 
   std::shared_ptr<imageloader::Manifest> manifest_;
+
+  std::shared_ptr<UtilsInterface> utils_;
 
   // Indicator to keep DLC in cache even if installation fails.
   bool reserve_ = false;

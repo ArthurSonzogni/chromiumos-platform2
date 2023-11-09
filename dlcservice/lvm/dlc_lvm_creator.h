@@ -9,18 +9,25 @@
 
 #include "dlcservice/dlc_creator_interface.h"
 #include "dlcservice/dlc_interface.h"
+#include "dlcservice/utils/utils.h"
+#include "dlcservice/utils/utils_interface.h"
 
 namespace dlcservice {
 
 class DlcLvmCreator : public DlcCreatorInterface {
  public:
-  DlcLvmCreator() = default;
+  DlcLvmCreator() : DlcLvmCreator(std::make_shared<Utils>()) {}
+  explicit DlcLvmCreator(std::shared_ptr<UtilsInterface> utils)
+      : utils_(utils) {}
   ~DlcLvmCreator() = default;
 
   DlcLvmCreator(const DlcLvmCreator&) = delete;
   DlcLvmCreator& operator=(const DlcLvmCreator&) = delete;
 
   std::unique_ptr<DlcInterface> Create(const DlcId&) override;
+
+ private:
+  std::shared_ptr<UtilsInterface> utils_;
 };
 
 }  // namespace dlcservice

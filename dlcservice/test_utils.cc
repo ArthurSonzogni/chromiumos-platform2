@@ -4,6 +4,7 @@
 
 #include "dlcservice/test_utils.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -91,6 +92,8 @@ void BaseTest::SetUp() {
       std::make_unique<testing::StrictMock<MockSystemProperties>>();
   mock_system_properties_ = mock_system_properties.get();
 
+  utils_ = std::make_shared<Utils>();
+
   SystemState::Initialize(
 #if USE_LVM_STATEFUL_PARTITION
       std::move(mock_lvmd_proxy_wrapper_),
@@ -156,7 +159,7 @@ int64_t GetFileSize(const base::FilePath& path) {
 
 base::FilePath BaseTest::SetUpImage(const base::FilePath& root,
                                     const DlcId& id) {
-  auto manifest = dlcservice::GetDlcManifest(manifest_path_, id, kPackage);
+  auto manifest = utils_->GetDlcManifest(manifest_path_, id, kPackage);
   base::FilePath image_path = JoinPaths(root, id, kPackage, kDlcImageFileName);
   CreateFile(image_path, manifest->size());
   EXPECT_TRUE(base::PathExists(image_path));
@@ -181,7 +184,7 @@ base::FilePath BaseTest::SetUpDlcDeployedImage(const DlcId& id) {
 
 // Will create |path/|id|/|package|/dlc_[a|b]/dlc.img files.
 void BaseTest::SetUpDlcWithSlots(const DlcId& id) {
-  auto manifest = dlcservice::GetDlcManifest(manifest_path_, id, kPackage);
+  auto manifest = utils_->GetDlcManifest(manifest_path_, id, kPackage);
   // Create DLC content sub-directories and empty images.
   for (const auto& slot : {BootSlot::Slot::A, BootSlot::Slot::B}) {
     base::FilePath image_path =
@@ -193,7 +196,7 @@ void BaseTest::SetUpDlcWithSlots(const DlcId& id) {
 
 void BaseTest::InstallWithUpdateEngine(const vector<string>& ids) {
   for (const auto& id : ids) {
-    auto manifest = dlcservice::GetDlcManifest(manifest_path_, id, kPackage);
+    auto manifest = utils_->GetDlcManifest(manifest_path_, id, kPackage);
     base::FilePath image_path = GetDlcImagePath(
         content_path_, id, kPackage, SystemState::Get()->active_boot_slot());
 

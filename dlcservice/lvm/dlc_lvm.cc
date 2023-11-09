@@ -5,6 +5,7 @@
 #include "dlcservice/lvm/dlc_lvm.h"
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -15,11 +16,12 @@
 
 #include "dlcservice/system_state.h"
 #include "dlcservice/utils.h"
-#include "dlcservice/utils/utils.h"
+#include "dlcservice/utils/utils_interface.h"
 
 namespace dlcservice {
 
-DlcLvm::DlcLvm(DlcId id) : DlcBase(std::move(id)) {}
+DlcLvm::DlcLvm(DlcId id, std::shared_ptr<UtilsInterface> utils)
+    : DlcBase(std::move(id), utils) {}
 
 bool DlcLvm::CreateDlc(brillo::ErrorPtr* err) {
   if (!UseLogicalVolume()) {
@@ -45,8 +47,8 @@ bool DlcLvm::CreateDlc(brillo::ErrorPtr* err) {
 
 bool DlcLvm::CreateDlcLogicalVolumes() {
   lvmd::LogicalVolumeConfiguration lv_config_a, lv_config_b;
-  lv_config_a.set_name(LogicalVolumeName(id_, PartitionSlot::A));
-  lv_config_b.set_name(LogicalVolumeName(id_, PartitionSlot::B));
+  lv_config_a.set_name(utils_->LogicalVolumeName(id_, PartitionSlot::A));
+  lv_config_b.set_name(utils_->LogicalVolumeName(id_, PartitionSlot::B));
   auto size = manifest_->preallocated_size();
   // Convert to MiB from bytes.
   size /= 1024 * 1024;
@@ -87,8 +89,8 @@ bool DlcLvm::DeleteInternal(brillo::ErrorPtr* err) {
 
 bool DlcLvm::DeleteInternalLogicalVolumes() {
   return SystemState::Get()->lvmd_wrapper()->RemoveLogicalVolumes({
-      LogicalVolumeName(id_, PartitionSlot::A),
-      LogicalVolumeName(id_, PartitionSlot::B),
+      utils_->LogicalVolumeName(id_, PartitionSlot::A),
+      utils_->LogicalVolumeName(id_, PartitionSlot::B),
   });
 }
 
@@ -125,7 +127,7 @@ bool DlcLvm::MakeReadyForUpdateInternal() const {
     return DlcBase::MakeReadyForUpdateInternal();
   }
 
-  auto inactive_lv_name = LogicalVolumeName(
+  auto inactive_lv_name = utils_->LogicalVolumeName(
       id_, ToPartitionSlot(SystemState::Get()->inactive_boot_slot()));
   if (!SystemState::Get()->lvmd_wrapper()->ActivateLogicalVolume(
           inactive_lv_name)) {
@@ -142,8 +144,8 @@ bool DlcLvm::VerifyInternal(const base::FilePath& image_path,
     return DlcBase::VerifyInternal(image_path, image_sha256);
   }
 
-  if (!HashFile(image_path, manifest_->size(), image_sha256,
-                /*skip_size_check=*/true)) {
+  if (!utils_->HashFile(image_path, manifest_->size(), image_sha256,
+                        /*skip_size_check=*/true)) {
     LOG(ERROR) << "Failed to hash logical volume: " << image_path.value();
     return false;
   }
@@ -155,7 +157,7 @@ base::FilePath DlcLvm::GetImagePath(BootSlot::Slot slot) const {
   if (!UseLogicalVolume()) {
     return DlcBase::GetImagePath(slot);
   }
-  auto lv_name = LogicalVolumeName(id_, ToPartitionSlot(slot));
+  auto lv_name = utils_->LogicalVolumeName(id_, ToPartitionSlot(slot));
   return base::FilePath(
       SystemState::Get()->lvmd_wrapper()->GetLogicalVolumePath(lv_name));
 }
@@ -165,7 +167,7 @@ bool DlcLvm::IsActiveImagePresent() const {
     return DlcBase::IsActiveImagePresent();
   }
 
-  auto active_lv_name = LogicalVolumeName(
+  auto active_lv_name = utils_->LogicalVolumeName(
       id_, ToPartitionSlot(SystemState::Get()->active_boot_slot()));
   return SystemState::Get()->lvmd_wrapper()->ActivateLogicalVolume(
       active_lv_name);

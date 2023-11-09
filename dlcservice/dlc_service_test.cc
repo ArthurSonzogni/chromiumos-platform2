@@ -67,11 +67,10 @@ class DlcServiceTest : public BaseTest {
     auto mock_dlc_creator = std::make_unique<NiceMock<MockDlcCreator>>();
     mock_dlc_creator_ptr_ = mock_dlc_creator.get();
 
-    auto mock_utils = std::make_unique<StrictMock<MockUtils>>();
-    mock_utils_ptr_ = mock_utils.get();
+    mock_utils_ = std::make_shared<StrictMock<MockUtils>>();
 
-    dlc_service_ = std::make_unique<DlcService>(std::move(mock_dlc_creator),
-                                                std::move(mock_utils));
+    dlc_service_ =
+        std::make_unique<DlcService>(std::move(mock_dlc_creator), mock_utils_);
   }
 
   void CheckDlcState(const DlcId& id,
@@ -86,7 +85,7 @@ class DlcServiceTest : public BaseTest {
  protected:
   std::unique_ptr<DlcService> dlc_service_;
   MockDlcCreator* mock_dlc_creator_ptr_ = nullptr;
-  MockUtils* mock_utils_ptr_ = nullptr;
+  std::shared_ptr<MockUtils> mock_utils_;
 
  private:
   DlcServiceTest(const DlcServiceTest&) = delete;
@@ -503,7 +502,7 @@ TEST_F(DlcServiceTest, GetExistingDlcsWithLogicalVolumesWithFileSupported) {
   lv->set_name(lv_name);
   EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, ListLogicalVolumes(_))
       .WillOnce(DoAll(SetArgPointee<0>(lvs), Return(true)));
-  EXPECT_CALL(*mock_utils_ptr_, LogicalVolumeNameToId(lv_name))
+  EXPECT_CALL(*mock_utils_, LogicalVolumeNameToId(lv_name))
       .WillOnce(Return(std::string("lv-ok-dlc")));
 
   auto dlcs = dlc_service_->GetExistingDlcs();
@@ -525,7 +524,7 @@ TEST_F(DlcServiceTest, GetExistingDlcsWithLogicalVolumes) {
   lv->set_name(lv_name);
   EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, ListLogicalVolumes(_))
       .WillOnce(DoAll(SetArgPointee<0>(lvs), Return(true)));
-  EXPECT_CALL(*mock_utils_ptr_, LogicalVolumeNameToId(lv_name))
+  EXPECT_CALL(*mock_utils_, LogicalVolumeNameToId(lv_name))
       .WillOnce(Return(std::string("lv-ok-dlc")));
 
   auto dlcs = dlc_service_->GetExistingDlcs();
@@ -792,11 +791,10 @@ class DlcServiceTestLegacy : public BaseTest {
         std::make_unique<DlcBaseCreator>();
 #endif  // USE_LVM_STATEFUL_PARTITION
 
-    auto mock_utils = std::make_unique<StrictMock<MockUtils>>();
-    mock_utils_ptr_ = mock_utils.get();
+    mock_utils_ = std::make_shared<StrictMock<MockUtils>>();
 
-    dlc_service_ = std::make_unique<DlcService>(std::move(dlc_creator),
-                                                std::move(mock_utils));
+    dlc_service_ =
+        std::make_unique<DlcService>(std::move(dlc_creator), mock_utils_);
     dlc_service_->Initialize();
   }
 
@@ -847,7 +845,7 @@ class DlcServiceTestLegacy : public BaseTest {
 
  protected:
   std::unique_ptr<DlcService> dlc_service_;
-  MockUtils* mock_utils_ptr_ = nullptr;
+  std::shared_ptr<MockUtils> mock_utils_;
 
  private:
   DlcServiceTestLegacy(const DlcServiceTestLegacy&) = delete;
@@ -874,7 +872,7 @@ TEST_F(DlcServiceTestLegacy, GetExistingDlcs) {
   lv->set_name("dlc_foo_a");
   EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, ListLogicalVolumes(_))
       .WillOnce(DoAll(SetArgPointee<0>(lvs), Return(true)));
-  EXPECT_CALL(*mock_utils_ptr_, LogicalVolumeNameToId("dlc_foo_a"))
+  EXPECT_CALL(*mock_utils_, LogicalVolumeNameToId("dlc_foo_a"))
       .WillOnce(Return(std::string("foo")));
 #endif  // USE_LVM_STATEFUL_PARTITION
 

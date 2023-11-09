@@ -100,7 +100,7 @@ class DlcService : public DlcServiceInterface {
   static constexpr base::TimeDelta kUECheckTimeout = base::Seconds(5);
 
   DlcService(std::unique_ptr<DlcCreatorInterface> dlc_creator,
-             std::unique_ptr<UtilsInterface> utils);
+             std::shared_ptr<UtilsInterface> utils);
   ~DlcService() override;
 
   void Initialize() override;
@@ -223,7 +223,7 @@ class DlcService : public DlcServiceInterface {
   std::unique_ptr<DlcCreatorInterface> dlc_creator_;
 
   // Holds utils.
-  std::unique_ptr<UtilsInterface> utils_;
+  std::shared_ptr<UtilsInterface> utils_;
 
   base::WeakPtrFactory<DlcService> weak_ptr_factory_;
 

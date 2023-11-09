@@ -24,16 +24,9 @@
 #include <dbus/dlcservice/dbus-constants.h>
 #include <lvmd/proto_bindings/lvmd.pb.h>
 
-#include "dlcservice/dlc_base.h"
-#include "dlcservice/dlc_base_creator.h"
-#include "dlcservice/utils/utils.h"
-#include "dlcservice/utils/utils_interface.h"
-#if USE_LVM_STATEFUL_PARTITION
-#include "dlcservice/lvm/dlc_lvm.h"
-#include "dlcservice/lvm/dlc_lvm_creator.h"
-#endif  // USE_LVM_STATEFUL_PARTITION
 #include "dlcservice/error.h"
 #include "dlcservice/utils.h"
+#include "dlcservice/utils/utils_interface.h"
 
 using brillo::ErrorPtr;
 using brillo::MessageLoop;
@@ -66,10 +59,10 @@ DlcIdList ToDlcIdList(const DlcMap& dlcs,
 }  // namespace
 
 DlcService::DlcService(std::unique_ptr<DlcCreatorInterface> dlc_creator,
-                       std::unique_ptr<UtilsInterface> utils)
+                       std::shared_ptr<UtilsInterface> utils)
     : periodic_install_check_id_(MessageLoop::kTaskIdNull),
       dlc_creator_(std::move(dlc_creator)),
-      utils_(std::move(utils)),
+      utils_(utils),
       weak_ptr_factory_(this) {}
 
 DlcService::~DlcService() {

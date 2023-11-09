@@ -5,11 +5,15 @@
 #ifndef DLCSERVICE_LVM_DLC_LVM_H_
 #define DLCSERVICE_LVM_DLC_LVM_H_
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "dlcservice/dlc_base.h"
 #include "dlcservice/types.h"
+#include "dlcservice/utils/utils.h"
+#include "dlcservice/utils/utils_interface.h"
 
 namespace dlcservice {
 
@@ -19,7 +23,9 @@ namespace dlcservice {
 // DLC class that is LVM backed.
 class DlcLvm : public DlcBase {
  public:
-  explicit DlcLvm(DlcId id);
+  explicit DlcLvm(DlcId id)
+      : DlcLvm(std::move(id), std::make_shared<Utils>()) {}
+  DlcLvm(DlcId id, std::shared_ptr<UtilsInterface> utils);
   virtual ~DlcLvm() = default;
 
   DlcLvm(const DlcLvm&) = delete;

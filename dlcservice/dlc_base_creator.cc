@@ -12,7 +12,7 @@
 namespace dlcservice {
 
 std::unique_ptr<DlcInterface> DlcBaseCreator::Create(const DlcId& id) {
-  return std::make_unique<DlcBase>(id);
+  return std::make_unique<DlcBase>(id, utils_);
 }
 
 }  // namespace dlcservice

@@ -28,7 +28,6 @@
 #include "dlcservice/prefs.h"
 #include "dlcservice/system_state.h"
 #include "dlcservice/utils.h"
-#include "dlcservice/utils/utils.h"
 
 using base::FilePath;
 using brillo::ErrorPtr;
@@ -43,7 +42,8 @@ bool DlcBase::Initialize() {
   const auto* system_state = SystemState::Get();
   const auto& manifest_dir = system_state->manifest_dir();
   package_ = *ScanDirectory(manifest_dir.Append(id_)).begin();
-  manifest_ = GetDlcManifest(system_state->manifest_dir(), id_, package_);
+  manifest_ =
+      utils_->GetDlcManifest(system_state->manifest_dir(), id_, package_);
   if (!manifest_) {
     // Failing to read the manifest will be considered a blocker.
     LOG(ERROR) << "Failed to read the manifest of DLC " << id_;
@@ -368,7 +368,7 @@ bool DlcBase::Verify() {
 
 bool DlcBase::VerifyInternal(const base::FilePath& image_path,
                              vector<uint8_t>* image_sha256) {
-  if (!HashFile(image_path, manifest_->size(), image_sha256)) {
+  if (!utils_->HashFile(image_path, manifest_->size(), image_sha256)) {
     LOG(ERROR) << "Failed to hash image file: " << image_path.value();
     return false;
   }
