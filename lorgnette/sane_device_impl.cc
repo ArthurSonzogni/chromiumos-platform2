@@ -114,6 +114,8 @@ std::optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
     }
 
     for (DocumentSource& source : values.sources) {
+      LOG(INFO) << __func__
+                << ": Loading options for source: " << source.name();
       if (!SetDocumentSource(error, source.name())) {
         return std::nullopt;  // brillo::Error::AddTo already called.
       }
@@ -158,6 +160,8 @@ std::optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
     }
 
     // Restore DocumentSource to its initial value.
+    LOG(INFO) << __func__
+              << ": Restoring original source: " << initial_source.value();
     if (!SetDocumentSource(error, initial_source.value())) {
       return std::nullopt;  // brillo::Error::AddTo already called.
     }
@@ -602,10 +606,11 @@ bool SaneDeviceImpl::LoadOptions(brillo::ErrorPtr* error) {
     all_options_.emplace(sane_option.GetName(), std::move(sane_option));
   }
 
+  std::string current_source = GetDocumentSource(nullptr).value_or("Unknown");
   LOG(INFO) << __func__ << ": Successfully loaded " << active_options
             << " active and " << inactive_options
             << " inactive device options in " << option_groups_.size()
-            << " groups";
+            << " groups with active source: " << current_source;
   return true;
 }
 
