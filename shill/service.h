@@ -92,7 +92,6 @@ class Service : public base::RefCounted<Service> {
   static const char kStorageSaveCredentials[];
   static const char kStorageType[];
   static const char kStorageUIData[];
-  static const char kStorageConnectionId[];
   static const char kStorageLinkMonitorDisabled[];
   static const char kStorageManagedCredentials[];
   static const char kStorageMeteredOverride[];

@@ -157,7 +157,6 @@ const char Service::kStorageSaveCredentials[] = "SaveCredentials";
 const char Service::kStorageType[] = "Type";
 const char Service::kStorageUIData[] = "UIData";
 const char Service::kStorageONCSource[] = "ONCSource";
-const char Service::kStorageConnectionId[] = "ConnectionId";
 const char Service::kStorageLinkMonitorDisabled[] = "LinkMonitorDisabled";
 const char Service::kStorageManagedCredentials[] = "ManagedCredentials";
 const char Service::kStorageMeteredOverride[] = "MeteredOverride";
@@ -902,21 +901,12 @@ void Service::MigrateDeprecatedStorage(StoreInterface* storage) {
   const auto id = GetStorageIdentifier();
   CHECK(storage->ContainsGroup(id));
 
-  // Deprecated key removed in M91 by patch with Change-Id
-  // Ic45f1fff097a1e54e0d762cacb3d2bdf7d8f5341
-  // TODO(b/182744859): Remove code after M93.
-  storage->DeleteKey(id, "DNSAutoFallback");
-
   // Prior to M91, Chrome did not tell us the source directly. We derive it
   // from UIData for old services. Remove this migration code in M97+.
   if (source_ == ONCSource::kONCSourceUnknown) {
     source_ = ParseONCSourceFromUIData();
     storage->SetInt(id, kStorageONCSource, toUnderlying(source_));
   }
-
-  // This property is deprecated in M92 in crrev.com/c/2814180. Remove this
-  // migration code in M94+.
-  storage->DeleteKey(id, kStorageConnectionId);
 }
 
 bool Service::Unload() {

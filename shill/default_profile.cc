@@ -22,13 +22,6 @@
 namespace shill {
 
 namespace {
-// ConnectionIdSalt was removed in crrev.com/c/2814180.
-// This was left here to remove ConnectionIdSalt entries from profiles.
-const char kStorageConnectionIdSaltDeprecated[] = "ConnectionIdSalt";
-// LinkMonitorTechnologies was removed in crrev.com/c/2827849.
-// This was left here to remove ConnectionIdSalt entries from profiles.
-const char kStorageLinkMonitorTechnologiesDeprecated[] =
-    "LinkMonitorTechnologies";
 // UseSwanctlDriver was removed in crrev.com/c/3857326.
 // This was left here to remove UseSwanctlDriver entries from profiles.
 constexpr char kStorageUseSwanctlDriver[] = "UseSwanctlDriver";
@@ -159,10 +152,6 @@ bool DefaultProfile::ConfigureService(const ServiceRefPtr& service) {
 }
 
 bool DefaultProfile::Save() {
-  // ConnectionIdSalt was removed in crrev.com/c/2814180.
-  storage()->DeleteKey(kStorageId, kStorageConnectionIdSaltDeprecated);
-  // LinkMonitorTechnologies was removed in crrev.com/c/2827849.
-  storage()->DeleteKey(kStorageId, kStorageLinkMonitorTechnologiesDeprecated);
   // UseSwanctlDriver was removed in crrev.com/c/3857326.
   storage()->DeleteKey(kStorageId, kStorageUseSwanctlDriver);
 
