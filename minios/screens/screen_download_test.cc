@@ -9,6 +9,7 @@
 
 #include "minios/mock_draw_interface.h"
 #include "minios/mock_metrics_reporter.h"
+#include "minios/mock_process_manager.h"
 #include "minios/mock_recovery_installer.h"
 #include "minios/mock_screen_controller.h"
 #include "minios/mock_update_engine_proxy.h"
@@ -42,11 +43,17 @@ class ScreenDownloadTest : public ::testing::Test {
       mock_metrics_reporter_.get();
 
   StrictMock<MockScreenControllerInterface> mock_screen_controller_;
+  std::shared_ptr<MockProcessManager> process_manager_ =
+      std::make_shared<NiceMock<MockProcessManager>>();
 
   ScreenDownload screen_download_{
-      std::move(mock_recovery_installer_), std::move(mock_update_engine_proxy_),
-      mock_draw_interface_, std::move(mock_metrics_reporter_),
-      &mock_screen_controller_};
+      std::move(mock_recovery_installer_),
+      std::move(mock_update_engine_proxy_),
+      mock_draw_interface_,
+      std::move(mock_metrics_reporter_),
+      process_manager_,
+      &mock_screen_controller_,
+  };
 };
 
 TEST_F(ScreenDownloadTest, RepartitionDiskFailed) {

@@ -8,9 +8,11 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "metrics/metrics_library_mock.h"
+#include <base/files/file_path.h>
+#include <base/files/scoped_temp_dir.h>
+#include <metrics/metrics_library_mock.h>
+
 #include "minios/metrics_reporter.h"
-#include "minios/mock_process_manager.h"
 
 using ::testing::_;
 using ::testing::StrictMock;
@@ -19,25 +21,22 @@ namespace minios {
 
 class MetricsReporterTest : public ::testing::Test {
  protected:
-  std::shared_ptr<MockProcessManager> mock_process_manager_ =
-      std::make_shared<StrictMock<MockProcessManager>>();
-
   std::unique_ptr<MetricsLibraryMock> metrics_library_mock_ =
       std::make_unique<StrictMock<MetricsLibraryMock>>();
   MetricsLibraryMock* metrics_library_mock_ptr_ = metrics_library_mock_.get();
+  base::FilePath stateful_path_;
 
   std::unique_ptr<MetricsReporter> reporter_;
-
-  void SetUp() override {
-    reporter_ = std::make_unique<MetricsReporter>(
-        mock_process_manager_, std::move(metrics_library_mock_));
-  }
 };
 
 TEST_F(MetricsReporterTest, ReportNBRComplete) {
-  EXPECT_CALL(*mock_process_manager_, RunCommand)
-      .WillOnce(::testing::Return(0));
-  EXPECT_CALL(*metrics_library_mock_ptr_, SetOutputFile(kStatefulEventsPath));
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  reporter_ = std::make_unique<MetricsReporter>(
+      std::move(metrics_library_mock_), temp_dir.GetPath());
+  EXPECT_CALL(
+      *metrics_library_mock_ptr_,
+      SetOutputFile(temp_dir.GetPath().value() + "/" + kEventsFile.value()));
   EXPECT_CALL(*metrics_library_mock_ptr_,
               SendEnumToUMA(kRecoveryReason, kRecoveryReasonCode_NBR,
                             kRecoveryReasonCode_MAX));
@@ -49,8 +48,8 @@ TEST_F(MetricsReporterTest, ReportNBRComplete) {
 }
 
 TEST_F(MetricsReporterTest, ReportNBRCompleteFailToMountStateful) {
-  EXPECT_CALL(*mock_process_manager_, RunCommand)
-      .WillOnce(::testing::Return(1));
+  reporter_ = std::make_unique<MetricsReporter>(
+      std::move(metrics_library_mock_), base::FilePath{"/unmounted_dir"});
   reporter_->ReportNBRComplete();
 }
 

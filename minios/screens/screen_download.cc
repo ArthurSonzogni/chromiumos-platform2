@@ -10,6 +10,8 @@
 #include <minios/proto_bindings/minios.pb.h>
 
 #include "minios/draw_utils.h"
+#include "minios/process_manager_interface.h"
+#include "minios/utils.h"
 
 namespace minios {
 
@@ -18,6 +20,7 @@ ScreenDownload::ScreenDownload(
     std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
     std::shared_ptr<DrawInterface> draw_utils,
     std::unique_ptr<MetricsReporterInterface> metrics_reporter,
+    std::shared_ptr<ProcessManagerInterface> process_manager,
     ScreenControllerInterface* screen_controller)
     : ScreenBase(
           /*button_count=*/3,
@@ -28,7 +31,8 @@ ScreenDownload::ScreenDownload(
       recovery_installer_(std::move(recovery_installer)),
       update_engine_proxy_(update_engine_proxy),
       display_update_engine_state_(false),
-      metrics_reporter_(std::move(metrics_reporter)) {
+      metrics_reporter_(std::move(metrics_reporter)),
+      process_manager_(process_manager) {
   update_engine_proxy_->SetDelegate(this);
 }
 
@@ -54,7 +58,14 @@ void ScreenDownload::Completed() {
   draw_utils_->MessageBaseScreen();
   draw_utils_->ShowInstructions("title_MiniOS_complete");
   draw_utils_->ShowStepper({"done", "done", "done"});
-  metrics_reporter_->ReportNBRComplete();
+  if (MountStatefulPartition(process_manager_)) {
+    metrics_reporter_->ReportNBRComplete();
+    if (!UnmountStatefulPartition(process_manager_)) {
+      LOG(WARNING) << "Failed to unmount stateful partition";
+    }
+  } else {
+    LOG(WARNING) << "Failed to mount stateful, unable to report metrics.";
+  }
   SetState(State::COMPLETED);
   update_engine_proxy_->TriggerReboot();
 }

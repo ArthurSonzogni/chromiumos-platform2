@@ -209,6 +209,23 @@ TEST(UtilsTest, MountStatefulPartitionTest) {
   EXPECT_FALSE(MountStatefulPartition(nullptr));
 }
 
+TEST(UtilsTest, UnmountPathTest) {
+  auto mock_process_manager_ =
+      std::make_shared<StrictMock<MockProcessManager>>();
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  std::vector<std::string> expected_args = {"/bin/busybox", "umount",
+                                            temp_dir.GetPath().value()};
+
+  EXPECT_CALL(*mock_process_manager_, RunCommand(expected_args, _))
+      .WillOnce(::testing::Return(0));
+
+  EXPECT_TRUE(UnmountPath(mock_process_manager_, temp_dir.GetPath()));
+
+  // Verify invalid process manager.
+  EXPECT_FALSE(UnmountPath(nullptr, temp_dir.GetPath()));
+}
+
 TEST(UtilsTest, CompressLogsTest) {
   auto mock_process_manager = std::make_shared<MockProcessManager>();
   const auto archive_path = "/path/to/store/archive";

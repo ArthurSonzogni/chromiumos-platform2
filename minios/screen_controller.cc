@@ -102,7 +102,7 @@ std::unique_ptr<ScreenInterface> ScreenController::CreateScreen(
       return std::make_unique<ScreenDownload>(
           std::make_unique<RecoveryInstaller>(process_manager_),
           update_engine_proxy_, draw_utils_,
-          std::make_unique<MetricsReporter>(process_manager_), this);
+          std::make_unique<MetricsReporter>(), process_manager_, this);
     case ScreenType::kDownloadError:
     case ScreenType::kNetworkError:
     case ScreenType::kPasswordError:

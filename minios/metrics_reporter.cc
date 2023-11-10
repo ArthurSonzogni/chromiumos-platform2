@@ -12,14 +12,12 @@
 #include <base/time/time.h>
 
 #include "minios/metrics_reporter.h"
-#include "minios/process_manager_interface.h"
-#include "minios/utils.h"
 
 namespace minios {
 
 const char kRecoveryDurationMinutes[] = "Installer.Recovery.NbrDurationMinutes";
 const char kRecoveryReason[] = "Installer.Recovery.Reason";
-const char kStatefulEventsPath[] = "/stateful/.recovery_histograms";
+const base::FilePath kEventsFile{".recovery_histograms"};
 
 // NOTE: The metrics should be renamed if the following settings are changed.
 const int kRecoveryDurationMinutes_Buckets = 50;
@@ -28,9 +26,9 @@ const int kRecoveryReasonCode_NBR = 200;
 const int kRecoveryReasonCode_MAX = 255;
 
 MetricsReporter::MetricsReporter(
-    std::shared_ptr<ProcessManagerInterface> process_manager,
-    std::unique_ptr<MetricsLibraryInterface> metrics_lib)
-    : process_manager_(process_manager) {
+    std::unique_ptr<MetricsLibraryInterface> metrics_lib,
+    const base::FilePath& stateful_path)
+    : stateful_path_(stateful_path) {
   if (metrics_lib)
     metrics_lib_ = std::move(metrics_lib);
   else
@@ -42,12 +40,12 @@ void MetricsReporter::RecordNBRStart() {
 }
 
 void MetricsReporter::ReportNBRComplete() {
-  if (!MountStatefulPartition(process_manager_)) {
-    PLOG(WARNING) << "Stateful mounting failed, skipping metrics reporting.";
+  if (!base::PathExists(stateful_path_)) {
+    LOG(WARNING) << "Stateful not mounted, skipping metrics reporting.";
     return;
   }
 
-  metrics_lib_->SetOutputFile(kStatefulEventsPath);
+  metrics_lib_->SetOutputFile(stateful_path_.Append(kEventsFile).value());
   // Report recovery reason code.
   metrics_lib_->SendEnumToUMA(kRecoveryReason, kRecoveryReasonCode_NBR,
                               kRecoveryReasonCode_MAX);

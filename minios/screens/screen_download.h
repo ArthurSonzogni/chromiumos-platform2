@@ -22,6 +22,7 @@ class ScreenDownload : public UpdateEngineProxy::UpdaterDelegate,
                  std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
                  std::shared_ptr<DrawInterface> draw_utils,
                  std::unique_ptr<MetricsReporterInterface> metrics_reporter,
+                 std::shared_ptr<ProcessManagerInterface> process_manager,
                  ScreenControllerInterface* screen_controller);
 
   ~ScreenDownload() = default;
@@ -81,6 +82,9 @@ class ScreenDownload : public UpdateEngineProxy::UpdaterDelegate,
 
   // Used to report network-based recovery metrics.
   std::unique_ptr<MetricsReporterInterface> metrics_reporter_;
+
+  // Used for mounting operations.
+  std::shared_ptr<ProcessManagerInterface> process_manager_;
 };
 
 }  // namespace minios

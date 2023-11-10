@@ -30,6 +30,7 @@ extern const char kCategoryUpdate[];
 extern const char kLogFilePath[];
 
 extern const base::FilePath kDefaultArchivePath;
+extern const char kStatefulPath[];
 
 // Reads the content of `file_path` from `start_offset` to `end_offset` with
 // maximum characters per line being `max_columns` at max. If the file ends
@@ -82,13 +83,21 @@ inline std::string AlertLogTag(const std::string& category) {
   return base::StringPrintf("[CoreServicesAlert<%s>] ", category.c_str());
 }
 
-// Mount the stateful partition at `/stateful/` if its not currently mounted.
-// Returns true if successfully mounted, false otherwise.
+// Mount the stateful partition at `/stateful/`. Returns true if successfully
+// mounted, false otherwise.
 bool MountStatefulPartition(
     std::shared_ptr<ProcessManagerInterface> process_manager);
 
-// Compress a pre-determined list of NBR logs and save it to the provided path.
-// Returns the result of running a `tar` command.
+// Unmount path. Returns true if successfully unmounted, false otherwise.
+bool UnmountPath(std::shared_ptr<ProcessManagerInterface> process_manager,
+                 const base::FilePath& path);
+
+// Unmount `kStatefulPath`. Returns true if successful, false otherwise.
+bool UnmountStatefulPartition(
+    std::shared_ptr<ProcessManagerInterface> process_manager);
+
+// Compress a pre-determined list of NBR logs and save it to the provided
+// path. Returns the result of running a `tar` command.
 int CompressLogs(std::shared_ptr<ProcessManagerInterface> process_manager,
                  const base::FilePath& archive_path = kDefaultArchivePath);
 

@@ -35,7 +35,8 @@ namespace {
 constexpr char kLogConsole[] = "/run/frecon/vt1";
 const char kMountStatefulCommand[] = "/usr/bin/stateful_partition_for_recovery";
 const char kMountFlag[] = "--mount";
-const char kStatefulPath[] = "/stateful";
+
+const std::vector<std::string> kUnmountCommand{"/bin/busybox", "umount"};
 
 const char kTarCommand[] = "/usr/bin/tar";
 // Compress and archive. Also resolve symlinks.
@@ -75,6 +76,7 @@ const char kCategoryUpdate[] = "update";
 const char kLogFilePath[] = "/var/log/minios.log";
 
 const base::FilePath kDefaultArchivePath{"/tmp/logs.tar"};
+const char kStatefulPath[] = "/stateful";
 
 std::tuple<bool, std::string> ReadFileContentWithinRange(
     const base::FilePath& file_path,
@@ -233,10 +235,6 @@ base::FilePath GetLogConsole() {
 
 bool MountStatefulPartition(
     std::shared_ptr<ProcessManagerInterface> process_manager) {
-  if (base::PathExists(base::FilePath{kStatefulPath})) {
-    LOG(INFO) << "Stateful already mounted";
-    return true;
-  }
   if (!process_manager) {
     PLOG(WARNING) << "Invalid process manager";
     return false;
@@ -252,6 +250,28 @@ bool MountStatefulPartition(
   }
   return true;
 }
+
+bool UnmountPath(std::shared_ptr<ProcessManagerInterface> process_manager,
+                 const base::FilePath& path) {
+  if (!process_manager) {
+    LOG(WARNING) << "Invalid process manager";
+    return false;
+  }
+
+  auto unmount_cmd = kUnmountCommand;
+  unmount_cmd.push_back(path.value());
+  if (process_manager->RunCommand(unmount_cmd, {}) != 0) {
+    PLOG(WARNING) << "Failed to umount path=" << path;
+    return false;
+  }
+  return true;
+}
+
+bool UnmountStatefulPartition(
+    std::shared_ptr<ProcessManagerInterface> process_manager) {
+  return UnmountPath(process_manager, base::FilePath{kStatefulPath});
+}
+
 int CompressLogs(std::shared_ptr<ProcessManagerInterface> process_manager,
                  const base::FilePath& archive_path) {
   // Note: These are the explicit set of logs that are approved by privacy team.

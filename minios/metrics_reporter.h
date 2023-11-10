@@ -7,11 +7,12 @@
 
 #include <memory>
 
+#include <base/files/file_path.h>
 #include <base/time/time.h>
+#include <metrics/metrics_library.h>
 
-#include "metrics/metrics_library.h"
 #include "minios/metrics_reporter_interface.h"
-#include "minios/process_manager.h"
+#include "minios/utils.h"
 
 namespace minios {
 
@@ -19,7 +20,7 @@ extern const char kRecoveryDurationMinutes[];
 extern const char kRecoveryReason[];
 // Metrics file path in the stateful partition. See:
 // init/upstart/send-recovery-metrics.conf
-extern const char kStatefulEventsPath[];
+extern const base::FilePath kEventsFile;
 
 extern const int kRecoveryDurationMinutes_Buckets;
 extern const int kRecoveryDurationMinutes_MAX;
@@ -29,8 +30,8 @@ extern const int kRecoveryReasonCode_MAX;
 class MetricsReporter : public MetricsReporterInterface {
  public:
   explicit MetricsReporter(
-      std::shared_ptr<ProcessManagerInterface> process_manager,
-      std::unique_ptr<MetricsLibraryInterface> metrics_lib = nullptr);
+      std::unique_ptr<MetricsLibraryInterface> metrics_lib = nullptr,
+      const base::FilePath& stateful_path = base::FilePath{kStatefulPath});
   virtual ~MetricsReporter() = default;
 
   MetricsReporter(const MetricsReporter&) = delete;
@@ -41,7 +42,7 @@ class MetricsReporter : public MetricsReporterInterface {
 
  private:
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
-  std::shared_ptr<ProcessManagerInterface> process_manager_;
+  base::FilePath stateful_path_;
 
   base::Time start_time_;
 };
