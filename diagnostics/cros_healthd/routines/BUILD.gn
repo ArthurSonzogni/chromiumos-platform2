@@ -173,6 +173,7 @@ if (use.test) {
       "network/signal_strength_test.cc",
       "network/video_conferencing_test.cc",
       "privacy_screen/privacy_screen_test.cc",
+      "routine_service_test.cc",
       "routine_v2_test_utils_test.cc",
       "sensor/sensitive_sensor_test.cc",
       "sensor/sensor_existence_checker_test.cc",

@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 
 #include <base/check.h>
 #include <base/functional/bind.h>
@@ -17,6 +18,15 @@ BaseRoutineControl::ExceptionCallback UnexpectedRoutineExceptionCallback() {
     CHECK(false) << "An unexpected routine exception has occurred; error="
                  << error << ", reason=" << reason;
   });
+}
+
+FakeRoutineObserver::FakeRoutineObserver() = default;
+
+FakeRoutineObserver::~FakeRoutineObserver() = default;
+
+void FakeRoutineObserver::OnRoutineStateChange(
+    ash::cros_healthd::mojom::RoutineStatePtr state) {
+  last_routine_state_ = std::move(state);
 }
 
 }  // namespace diagnostics
