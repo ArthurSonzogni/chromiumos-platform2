@@ -60,20 +60,28 @@ TEST(DeviceIdentifierGeneratorStaticTest,
       "\"root_disk_serial_number\"=\"sn_1\"\n"
       "\"root_disk_serial_number\"=\"sn_2\"\n";
   std::map<std::string, std::string> map;
-  DeviceIdentifierGenerator::ParseMachineInfo(machine_info_file_contents, &map);
+  const std::map<std::string, std::string> ro_vpd;
+  const std::map<std::string, std::string> rw_vpd = {
+      {"root_disk_serial_number", "sn_3"}};
+  DeviceIdentifierGenerator::ParseMachineInfo(machine_info_file_contents,
+                                              ro_vpd, rw_vpd, &map);
   ASSERT_EQ("sn_1", map["root_disk_serial_number"]);
 }
 
 TEST(DeviceIdentifierGeneratorStaticTest, ParseMachineInfoSuccess) {
   std::map<std::string, std::string> params;
+  const std::map<std::string, std::string> ro_vpd = {
+      {"serial_number", "fake-machine-serial-number"},
+      {"root_disk_serial_number", "IGNORE THIS ONE - IT'S NOT FROM UDEV"},
+      {"stable_device_secret_DO_NOT_SHARE",
+       "11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff"},
+  };
+  const std::map<std::string, std::string> rw_vpd = {
+      {"serial_number", "key collision"},
+  };
   EXPECT_TRUE(DeviceIdentifierGenerator::ParseMachineInfo(
-      "\"serial_number\"=\"fake-machine-serial-number\"\n"
-      "# This is a comment.\n"
-      "\"root_disk_serial_number\"=\"fake disk-serial-number\"\n"
-      "\"serial_number\"=\"key_collision\"\n"
-      "\"stable_device_secret_DO_NOT_SHARE\"="
-      "\"11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff\"\n",
-      &params));
+      "\"root_disk_serial_number\"=\"fake disk-serial-number\"\n", ro_vpd,
+      rw_vpd, &params));
   EXPECT_EQ(3, params.size());
   EXPECT_EQ("fake-machine-serial-number", params["serial_number"]);
   EXPECT_EQ("fake disk-serial-number", params["root_disk_serial_number"]);
@@ -81,7 +89,10 @@ TEST(DeviceIdentifierGeneratorStaticTest, ParseMachineInfoSuccess) {
 
 TEST(DeviceIdentifierGeneratorStaticTest, ParseMachineInfoFailure) {
   std::map<std::string, std::string> params;
-  EXPECT_FALSE(DeviceIdentifierGenerator::ParseMachineInfo("bad!", &params));
+  const std::map<std::string, std::string> ro_vpd;
+  const std::map<std::string, std::string> rw_vpd;
+  EXPECT_FALSE(DeviceIdentifierGenerator::ParseMachineInfo("bad!", ro_vpd,
+                                                           rw_vpd, &params));
 }
 
 class DeviceIdentifierGeneratorTest : public ::testing::Test {

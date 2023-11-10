@@ -51,6 +51,7 @@
 #include <libcrossystem/crossystem.h>
 #include <libpasswordprovider/password.h>
 #include <libpasswordprovider/password_provider.h>
+#include <vpd/vpd.h>
 
 #include "arc/arc.pb.h"
 #include "bindings/chrome_device_policy.pb.h"
@@ -1391,7 +1392,13 @@ void SessionManagerImpl::OnGotSystemClockLastSyncInfo(
 bool SessionManagerImpl::InitMachineInfo(brillo::ErrorPtr* error,
                                          const std::string& in_data) {
   std::map<std::string, std::string> params;
-  if (!DeviceIdentifierGenerator::ParseMachineInfo(in_data, &params)) {
+
+  vpd::Vpd vpd;
+  const auto ro_vpd = vpd.GetValues(vpd::VpdRo);
+  const auto rw_vpd = vpd.GetValues(vpd::VpdRw);
+
+  if (!DeviceIdentifierGenerator::ParseMachineInfo(in_data, ro_vpd, rw_vpd,
+                                                   &params)) {
     *error = CreateError(dbus_error::kInitMachineInfoFail, "Parse failure.");
     return false;
   }

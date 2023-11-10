@@ -58,10 +58,13 @@ class DeviceIdentifierGenerator {
 
   virtual ~DeviceIdentifierGenerator();
 
-  // Parses a machine information string containing newline-separated key=value
-  // pairs. Removes quoting from names and values. Returns true if parsing is
+  // Parses and combines a few sources of information: a machine information
+  // string containing newline-separated key=value pairs, and RO/RW VPD data.
+  // Removes quoting from names and values. Returns true if parsing is
   // successful.
   static bool ParseMachineInfo(const std::string& data,
+                               const std::map<std::string, std::string>& ro_vpd,
+                               const std::map<std::string, std::string>& rw_vpd,
                                std::map<std::string, std::string>* params);
 
   // Sets a machine information parameters. Returns false if a parameter is

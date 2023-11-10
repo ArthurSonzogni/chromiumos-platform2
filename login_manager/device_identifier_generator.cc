@@ -5,6 +5,7 @@
 #include "login_manager/device_identifier_generator.h"
 
 #include <iterator>
+#include <map>
 #include <utility>
 
 #include <base/functional/bind.h>
@@ -81,12 +82,15 @@ DeviceIdentifierGenerator::~DeviceIdentifierGenerator() {}
 
 // static
 bool DeviceIdentifierGenerator::ParseMachineInfo(
-    const std::string& data, std::map<std::string, std::string>* params) {
+    const std::string& data,
+    const std::map<std::string, std::string>& ro_vpd,
+    const std::map<std::string, std::string>& rw_vpd,
+    std::map<std::string, std::string>* params) {
   params->clear();
 
   // Parse the name-value pairs list. The return value of
   // SplitStringIntoKeyValuePairs is deliberately ignored in order to handle
-  // comment lines (those start with a #) emitted by dump_vpd_log.
+  // comment lines (those start with a #).
   base::StringPairs pairs;
   base::SplitStringIntoKeyValuePairs(data, '=', '\n', &pairs);
 
@@ -97,15 +101,23 @@ bool DeviceIdentifierGenerator::ParseMachineInfo(
     if (name.empty())
       continue;
 
-    // Use the first pair present in the input. This is so values originating
-    // from read-only VPD are given precedence over values from read-write VPD.
-    // dump_vpd_log always dumps the former first.
+    // Use the first pair present in the input.
     if (params->find(name) != params->end())
       continue;
 
     std::string value;
     base::TrimString(pair->second, kTrimChars, &value);
     (*params)[name] = value;
+  }
+
+  // Process RO first, then RW. Earlier contents override later, as we don't
+  // want RW (modifiable) to override RO, and we don't want RO or RW to
+  // override udev data that's passed in |data|.
+  for (const auto& dict : std::array{ro_vpd, rw_vpd}) {
+    for (const auto& [name, value] : dict) {
+      // Use the first pair present in the input.
+      params->try_emplace(name, value);
+    }
   }
 
   return !params->empty();

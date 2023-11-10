@@ -129,6 +129,7 @@ static_library("libsession_manager") {
     "bootstat",
     "installattributes",
     "policy",
+    "vpd",
   ]
   deps = [
     ":login_manager-login_screen_storage-protos",

@@ -15,13 +15,12 @@ UI_MACHINE_INFO_FILE=/run/session_manager/machine-info
 
 # Note the tr command below that fixes up the input data to only
 # contain ASCII characters. Well-formed input should only contain
-# ASCII characters anyways. However, there are devices in the wild
-# that have random invalid binary data in their VPD.
+# ASCII characters anyways.
 #
 # Sanitization is necessary here because dbus-send asserts the input
 # string to be valid UTF-8. Without sanitization, these asserts
 # generate crash reports for dbus-send and fail to forward potentially
-# intact VPD contents. See also http://crbug.com/438166.
+# intact contents. See also http://crbug.com/438166.
 dbus-send --system --dest=org.chromium.SessionManager \
           --type=method_call /org/chromium/SessionManager \
           org.chromium.SessionManagerInterface.InitMachineInfo \
