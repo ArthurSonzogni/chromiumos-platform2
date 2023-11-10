@@ -7,6 +7,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <brillo/variant_dictionary.h>
@@ -75,7 +76,7 @@ DeviceList ParseDbusFwupdDeviceList(
 // Returns whether |device_info| contains a specific |vendor_id|, e.g.
 // "USB:0x1234".
 bool ContainsVendorId(const DeviceInfo& device_info,
-                      const std::string& vendor_id);
+                      std::string_view vendor_id);
 
 // Returns the device GUID generated from the instance ID or NULL if the
 // conversion fails.

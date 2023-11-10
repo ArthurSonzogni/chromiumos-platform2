@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/contains.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -29,19 +30,17 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 // Returns whether some instance id of |device_info| starts with |instance_id|.
 bool MatchInstanceIdPrefix(const DeviceInfo& device_info,
-                           const std::string& instance_id) {
+                           std::string_view instance_id) {
   return std::any_of(device_info.instance_ids.begin(),
                      device_info.instance_ids.end(),
                      [&instance_id](const std::string& value) {
-                       return base::StartsWith(value, instance_id);
+                       return value.starts_with(instance_id);
                      });
 }
 
 // Returns whether the |device_info| contains a specific |guid|.
-bool MatchGuid(const DeviceInfo& device_info, const std::string& guid) {
-  return std::any_of(
-      device_info.guids.begin(), device_info.guids.end(),
-      [&guid](const std::string& value) { return value == guid; });
+bool MatchGuid(const DeviceInfo& device_info, std::string_view guid) {
+  return base::Contains(device_info.guids, guid);
 }
 
 // Returns whether |device_info| contains a vendor id "USB:0x{VID}".
@@ -88,8 +87,8 @@ bool MatchUsbDevice(const DeviceInfo& device_info,
 // when the key does not exist or the type conversion fails.
 template <typename T>
 const std::optional<T> GetVariantOptionalValue(
-    const brillo::VariantDictionary& dictionary, const std::string& key) {
-  auto it = dictionary.find(key);
+    const brillo::VariantDictionary& dictionary, std::string_view key) {
+  brillo::VariantDictionary::const_iterator it = dictionary.find(key);
   if (it == dictionary.end()) {
     return std::nullopt;
   }
@@ -137,7 +136,7 @@ mojom::FwupdVersionFormat ConvertFwupdVersionFormatToMojo(
 
 // Gets the version format from |dictionary| with the given |key|.
 mojom::FwupdVersionFormat GetVersionFormat(
-    const brillo::VariantDictionary& dictionary, const std::string& key) {
+    const brillo::VariantDictionary& dictionary, std::string_view key) {
   // Can not use brillo::GetVariantValueOrDefault here because when that
   // function returns 0, we cannot tell whether it represents a valid enum or
   // it means the key does not exist.
@@ -187,16 +186,14 @@ DeviceList ParseDbusFwupdDeviceList(
 }
 
 bool ContainsVendorId(const DeviceInfo& device_info,
-                      const std::string& vendor_id) {
+                      std::string_view vendor_id) {
   if (!device_info.joined_vendor_id.has_value()) {
     return false;
   }
   std::vector<std::string_view> ids =
       base::SplitStringPiece(device_info.joined_vendor_id.value(), "|",
                              base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  return std::any_of(
-      ids.begin(), ids.end(),
-      [&vendor_id](std::string_view value) { return value == vendor_id; });
+  return base::Contains(ids, vendor_id);
 }
 
 std::optional<std::string> InstanceIdToGuid(const std::string& instance_id) {
@@ -212,8 +209,7 @@ mojom::FwupdFirmwareVersionInfoPtr FetchUsbFirmwareVersion(
   std::set<std::pair<std::optional<std::string>, mojom::FwupdVersionFormat>>
       version_info_set;
 
-  for (int i = 0; i < device_infos.size(); ++i) {
-    const auto& device = device_infos[i];
+  for (const auto& device : device_infos) {
     if (MatchUsbDevice(device, target_usb_device)) {
       version_info_set.emplace(device.version, device.version_format);
     }
