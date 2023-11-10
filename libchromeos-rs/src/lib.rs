@@ -39,6 +39,7 @@ pub mod chromeos {
 }
 
 pub mod deprecated;
+pub mod disk;
 pub mod panic_handler;
 pub mod rand;
 pub mod scoped_path;
