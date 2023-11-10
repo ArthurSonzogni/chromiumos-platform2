@@ -561,12 +561,17 @@ void Manager::BruschettaVmShutdown(uint64_t vm_id) {
 
 const CrostiniService::CrostiniDevice* const Manager::BorealisVmStartup(
     uint64_t vm_id) {
-  // TODO(b/298650342): implement this method.
-  return nullptr;
+  const auto* guest_device =
+      StartCrosVm(vm_id, CrostiniService::VMType::kBorealis);
+  if (!guest_device) {
+    LOG(ERROR) << "Failed to start Borealis VM network service";
+    return nullptr;
+  }
+  return guest_device;
 }
 
 void Manager::BorealisVmShutdown(uint64_t vm_id) {
-  // TODO(b/298650342): implement this method.
+  StopCrosVm(vm_id, CrostiniService::VMType::kBorealis);
 }
 
 bool Manager::SetVpnIntent(SetVpnIntentRequest::VpnRoutingPolicy policy,
