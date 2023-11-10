@@ -12,6 +12,7 @@
 #include <net-base/ip_address.h>
 
 #include "routing-simulator/packet.h"
+#include "routing-simulator/process_executor.h"
 #include "routing-simulator/routing_policy_entry.h"
 #include "routing-simulator/routing_table.h"
 
@@ -23,7 +24,7 @@ namespace routing_simulator {
 // modifies the packet (only output interface for now).
 class RouteManager {
  public:
-  RouteManager();
+  explicit RouteManager(ProcessExecutor* process_executor);
 
   // RouteManager is neither copyable nor movable.
   RouteManager(const RouteManager&) = delete;
@@ -41,12 +42,34 @@ class RouteManager {
   // matched route is found.
   const Route* ProcessPacketWithMutation(Packet& packet);
 
+  // Getter methods for the internal data only for a test file.
+  std::vector<RoutingPolicyEntry> routing_policy_table_ipv4() const {
+    return routing_policy_table_ipv4_;
+  }
+  std::vector<RoutingPolicyEntry> routing_policy_table_ipv6() const {
+    return routing_policy_table_ipv6_;
+  }
+  std::map<std::string, RoutingTable> routing_tables_ipv4() const {
+    return routing_tables_ipv4_;
+  }
+  std::map<std::string, RoutingTable> routing_tables_ipv6() const {
+    return routing_tables_ipv6_;
+  }
+  ProcessExecutor* process_executor() const { return process_executor_; }
+
  private:
   std::vector<RoutingPolicyEntry> routing_policy_table_ipv4_;
   std::vector<RoutingPolicyEntry> routing_policy_table_ipv6_;
   // Maps from tables ids to RoutingTable objects.
   std::map<std::string, RoutingTable> routing_tables_ipv4_;
   std::map<std::string, RoutingTable> routing_tables_ipv6_;
+  ProcessExecutor* process_executor_;
+
+  // Executes 'ip rule' according to the ip family.
+  std::string ExecuteIPRule(net_base::IPFamily ip_family);
+
+  // Executes 'ip route show table all' according to the ip family.
+  std::string ExecuteIPRoute(net_base::IPFamily ip_family);
 
   // Looks up a route which matches a packet input referring to the routing
   // policy table and routing tables and returns the matched route. Returns

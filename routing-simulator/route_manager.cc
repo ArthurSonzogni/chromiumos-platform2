@@ -14,6 +14,7 @@
 #include <net-base/ip_address.h>
 
 #include "routing-simulator/packet.h"
+#include "routing-simulator/process_executor.h"
 #include "routing-simulator/routing_policy_entry.h"
 #include "routing-simulator/routing_table.h"
 
@@ -41,13 +42,12 @@ std::vector<RoutingPolicyEntry> BuildRoutingPolicyTable(
     net_base::IPFamily ip_family, std::string_view output) {
   std::vector<RoutingPolicyEntry> routing_policy_table;
   const auto output_lines = base::SplitStringPiece(
-      output, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+      output, "\n\t", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   for (const auto& line : output_lines) {
     const auto policy =
         RoutingPolicyEntry::CreateFromPolicyString(line, ip_family);
     if (!policy) {
       LOG(FATAL) << "Output of 'ip rule' is not valid";
-      continue;
     }
     routing_policy_table.push_back(*policy);
   }
@@ -67,7 +67,6 @@ std::map<std::string, RoutingTable> BuildRoutingTable(
     const auto route = Route::CreateFromRouteString(line, ip_family);
     if (!route) {
       LOG(FATAL) << "Output of 'ip route' is not valid";
-      continue;
     }
     const auto table_id = route->table_id();
     routing_tables[table_id].AddRoute(*route);
@@ -77,25 +76,32 @@ std::map<std::string, RoutingTable> BuildRoutingTable(
 
 }  // namespace
 
-RouteManager::RouteManager() = default;
+RouteManager::RouteManager(ProcessExecutor* process_executor)
+    : process_executor_(process_executor) {}
 
-// TODO(b/307460180): Add implementations.
-// Executes 'ip rule' according to the ip family.
-std::string ExecuteIPRule(net_base::IPFamily ip_family) {
-  std::string output;
-  return output;
+std::string RouteManager::ExecuteIPRule(net_base::IPFamily ip_family) {
+  std::string family = (ip_family == net_base::IPFamily::kIPv4) ? "-4" : "-6";
+  auto result = process_executor_->RunAndGetStdout(base::FilePath("/bin/ip"),
+                                                   {family, "rule", "show"});
+  if (!result) {
+    LOG(FATAL) << "output from 'ip rule show' is invalid";
+  }
+  return *result;
 }
 
-// TODO(b/307460180): Add implementations.
-// Executes 'ip route show table all' according to the ip family.
-std::string ExecuteIPRoute(net_base::IPFamily ip_family) {
-  std::string output;
-  return output;
+std::string RouteManager::ExecuteIPRoute(net_base::IPFamily ip_family) {
+  std::string family = (ip_family == net_base::IPFamily::kIPv4) ? "-4" : "-6";
+  auto result = process_executor_->RunAndGetStdout(
+      base::FilePath("/bin/ip"), {family, "route", "show", "table", "all"});
+  if (!result) {
+    LOG(FATAL) << "output from 'ip route show' is invalid";
+  }
+  return *result;
 }
 
-// TODO(b/307460180): Change the interface (output/input parameter or returned
-// value type) to save the matched policy with matched routes (or no matched
-// route for the policy).
+// TODO(b/307460180): Change the interface (output/input parameter or
+// returned value type) to save the matched policy with matched routes (or
+// no matched route for the policy).
 const Route* RouteManager::LookUpRoute(const Packet& packet) const {
   const std::map<std::string, RoutingTable>* routing_tables_ptr;
   const std::vector<RoutingPolicyEntry>* routing_policy_table_ptr;

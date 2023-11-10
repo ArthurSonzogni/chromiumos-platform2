@@ -44,6 +44,7 @@ if (use.test) {
   executable("routing_simulator_testrunner") {
     run_test = true
     sources = [
+      "mock_process_executor.cc",
       "packet_test.cc",
       "route_manager_test.cc",
       "route_test.cc",
