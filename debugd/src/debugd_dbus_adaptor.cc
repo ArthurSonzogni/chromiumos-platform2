@@ -52,7 +52,6 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus,
   crash_sender_tool_ = std::make_unique<CrashSenderTool>();
   crosh_tool_ = std::make_unique<CroshTool>();
   cups_tool_ = std::make_unique<CupsTool>();
-  cros_healthd_tool_ = std::make_unique<CrosHealthdTool>();
   debug_logs_tool_ = std::make_unique<DebugLogsTool>(bus);
   debug_mode_tool_ = std::make_unique<DebugModeTool>(bus);
   dev_features_tool_wrapper_ =
@@ -663,14 +662,6 @@ bool DebugdDBusAdaptor::EvaluateProbeFunction(
     base::ScopedFD* errfd) {
   return probe_tool_->EvaluateProbeFunction(error, probe_statement, log_level,
                                             outfd, errfd);
-}
-
-bool DebugdDBusAdaptor::CollectSmartBatteryMetric(
-    brillo::ErrorPtr* error,
-    const std::string& metric_name,
-    std::string* output) {
-  return cros_healthd_tool_->CollectSmartBatteryMetric(error, metric_name,
-                                                       output);
 }
 
 std::string DebugdDBusAdaptor::EcGetInventory() {

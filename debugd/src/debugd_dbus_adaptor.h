@@ -26,7 +26,6 @@
 #include "debugd/src/container_tool.h"
 #include "debugd/src/crash_sender_tool.h"
 #include "debugd/src/crosh_tool.h"
-#include "debugd/src/cros_healthd_tool.h"
 #include "debugd/src/cups_tool.h"
 #include "debugd/src/debug_logs_tool.h"
 #include "debugd/src/debug_mode_tool.h"
@@ -79,9 +78,9 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   // org::chromium::debugdInterface overrides; D-Bus methods.
   std::string BatteryFirmware(const std::string& option) override;
   bool CroshStart(brillo::ErrorPtr* error,
-                 const base::ScopedFD& infd,
-                 const base::ScopedFD& outfd,
-                 std::string* handle) override;
+                  const base::ScopedFD& infd,
+                  const base::ScopedFD& outfd,
+                  std::string* handle) override;
   bool PingStart(brillo::ErrorPtr* error,
                  const base::ScopedFD& outfd,
                  const std::string& dest,
@@ -232,9 +231,6 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
                              int log_level,
                              base::ScopedFD* outfd,
                              base::ScopedFD* errfd) override;
-  bool CollectSmartBatteryMetric(brillo::ErrorPtr* error,
-                                 const std::string& metric_name,
-                                 std::string* output) override;
   std::string EcGetInventory() override;
   bool CallDmesg(brillo::ErrorPtr* error,
                  const brillo::VariantDictionary& options,
@@ -315,7 +311,6 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<WifiFWDumpTool> wifi_fw_dump_tool_;
   std::unique_ptr<WifiPowerTool> wifi_power_tool_;
   std::unique_ptr<ProbeTool> probe_tool_;
-  std::unique_ptr<CrosHealthdTool> cros_healthd_tool_;
   std::unique_ptr<KernelFeatureTool> kernel_feature_tool_;
 };
 

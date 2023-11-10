@@ -108,7 +108,6 @@ static_library("libdebugd") {
     "src/constants.cc",
     "src/container_tool.cc",
     "src/crash_sender_tool.cc",
-    "src/cros_healthd_tool.cc",
     "src/crosh_tool.cc",
     "src/cups_tool.cc",
     "src/debug_logs_tool.cc",
