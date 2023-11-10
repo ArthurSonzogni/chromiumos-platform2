@@ -55,20 +55,26 @@ lazy_static! {
             // axe variant
             (u16::from_str_radix("9a49", 16).unwrap(), DLC_VARIANT_AXE),  // volteer
             (u16::from_str_radix("46a6", 16).unwrap(), DLC_VARIANT_AXE),  // brya
+            (u16::from_str_radix("46d0", 16).unwrap(), DLC_VARIANT_AXE),  // nissa
+            (u16::from_str_radix("9b41", 16).unwrap(), DLC_VARIANT_AXE),  // hatch
 
             // batrider variant
             (u16::from_str_radix("9a40", 16).unwrap(), DLC_VARIANT_BATRIDER),  // volteer
             (u16::from_str_radix("46b3", 16).unwrap(), DLC_VARIANT_BATRIDER),  // brya
+            (u16::from_str_radix("9bcc", 16).unwrap(), DLC_VARIANT_BATRIDER),  // hatch
 
             // clinkz variant
             (u16::from_str_radix("9a78", 16).unwrap(), DLC_VARIANT_CLINKZ),  // volteer
             (u16::from_str_radix("a7a0", 16).unwrap(), DLC_VARIANT_CLINKZ),  // brya
+            (u16::from_str_radix("9bca", 16).unwrap(), DLC_VARIANT_CLINKZ),  // hatch
 
             // dazzle variant
             (u16::from_str_radix("a7a9", 16).unwrap(), DLC_VARIANT_DAZZLE),  // brya
+            (u16::from_str_radix("9bac", 16).unwrap(), DLC_VARIANT_DAZZLE),  // hatch
 
             // enigma variant
             (u16::from_str_radix("a7a1", 16).unwrap(), DLC_VARIANT_ENIGMA),  // brya
+            (u16::from_str_radix("9b21", 16).unwrap(), DLC_VARIANT_ENIGMA),  // hatch
 
             // grimstroke variant
             (u16::from_str_radix("46a8", 16).unwrap(), DLC_VARIANT_GRIMSTROKE),  // brya
