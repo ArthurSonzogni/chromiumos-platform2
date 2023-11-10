@@ -201,7 +201,7 @@ TEST_F(HpsDaemonTest, GetFeatureResultNotEnabled) {
 }
 
 TEST_F(HpsDaemonTest, TestPollTimer) {
-  FeatureResult feature_result{.valid = true};
+  FeatureResult feature_result{.inference_result = 0, .valid = true};
   {
     InSequence sequence;
     EXPECT_CALL(*mock_hps_, Boot());
@@ -233,7 +233,7 @@ TEST_F(HpsDaemonTest, TestPollTimer) {
 }
 
 TEST_F(HpsDaemonTest, TestPollTimerMultipleFeatures) {
-  FeatureResult feature_result{.valid = true};
+  FeatureResult feature_result{.inference_result = 0, .valid = true};
   {
     InSequence sequence;
     EXPECT_CALL(*mock_hps_, Boot());
@@ -329,7 +329,7 @@ TEST_F(HpsDaemonTest, DISABLED_TestSignals) {
 }
 
 TEST_F(HpsDaemonTest, TestSuspendAndResume) {
-  FeatureResult feature_result{.valid = true};
+  FeatureResult feature_result{.inference_result = 0, .valid = true};
   {
     InSequence sequence;
     EXPECT_CALL(*mock_hps_, Boot());
