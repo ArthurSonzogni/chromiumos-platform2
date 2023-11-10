@@ -39,6 +39,7 @@ class BiometricsManagerWrapper : public SessionStateManagerInterface::Observer {
   void OnUserLoggedIn(const std::string& sanitized_username,
                       bool is_new_login) override;
   void OnUserLoggedOut() override;
+  void OnSessionResumedFromHibernate() override;
 
   void FinalizeEnrollSessionObject();
   void FinalizeAuthSessionObject();

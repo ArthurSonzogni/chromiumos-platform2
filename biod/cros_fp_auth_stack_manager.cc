@@ -442,6 +442,12 @@ void CrosFpAuthStackManager::OnUserLoggedIn(const std::string& user_id) {
   LoadUser(user_id, true);
 }
 
+void CrosFpAuthStackManager::OnSessionResumedFromHibernate() {
+  // TODO(hcyang@google.com): Session restart logic has been added to
+  // biod_manager, as of today restarting a session transparently in auth stack
+  // manager is not possible.
+}
+
 void CrosFpAuthStackManager::SetEnrollScanDoneHandler(
     const AuthStackManager::EnrollScanDoneCallback& on_enroll_scan_done) {
   on_enroll_scan_done_ = on_enroll_scan_done;

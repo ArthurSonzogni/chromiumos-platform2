@@ -5,11 +5,14 @@
 #ifndef BIOD_SESSION_STATE_MANAGER_H_
 #define BIOD_SESSION_STATE_MANAGER_H_
 
+#include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <base/observer_list.h>
 #include <dbus/object_proxy.h>
+#include <power_manager/dbus-proxies.h>
 
 #include "biod/biod_constants.h"
 #include "biod/biod_metrics.h"
@@ -40,6 +43,9 @@ class SessionStateManagerInterface {
 
     // Called when user was logged out.
     virtual void OnUserLoggedOut() = 0;
+
+    // Called when an existing session has resumed.
+    virtual void OnSessionResumedFromHibernate() = 0;
 
     virtual ~Observer() = default;
   };
@@ -78,12 +84,18 @@ class SessionStateManager : public SessionStateManagerInterface {
   // Read or delete records in memory when users log in or out.
   void OnSessionStateChanged(dbus::Signal* signal);
 
+  // A received signal when the system has resumed (suspend done).
+  void OnSuspendDone(const std::vector<uint8_t>& serialized_proto);
+
   // Called when org.chromium.SessionManager name changes owner.
   void OnSessionManagerNameOwnerChanged(const std::string& old_owner,
                                         const std::string& new_owner);
 
   // Proxy for dbus communication with session manager / login.
   scoped_refptr<dbus::ObjectProxy> session_manager_proxy_;
+
+  // Proxy for dbus communication with power manager, for suspend/resume.
+  std::unique_ptr<org::chromium::PowerManagerProxy> power_manager_proxy_;
 
   // Sanitized username of the primary user. Empty if no primary user present.
   std::string primary_user_;

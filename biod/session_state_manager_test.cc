@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/test/task_environment.h>
+#include <chromeos/dbus/service_constants.h>
 #include <biod/mock_biod_metrics.h>
 #include <biod/session_state_manager.h>
 #include <dbus/error.h>
@@ -17,6 +18,7 @@
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <dbus/object_path.h>
+#include <power_manager/proto_bindings/suspend.pb.h>
 
 namespace biod {
 namespace {
@@ -50,6 +52,7 @@ class MockSessionStateObserver : public SessionStateManagerInterface::Observer {
               (const std::string& sanitized_username, bool is_new_login),
               (override));
   MOCK_METHOD(void, OnUserLoggedOut, (), (override));
+  MOCK_METHOD(void, OnSessionResumedFromHibernate, (), (override));
 };
 
 class SessionStateManagerTest : public ::testing::Test {
@@ -67,8 +70,17 @@ class SessionStateManagerTest : public ::testing::Test {
                 GetObjectProxy(login_manager::kSessionManagerServiceName, _))
         .WillRepeatedly(Return(proxy_.get()));
 
+    EXPECT_CALL(*bus_,
+                GetObjectProxy(power_manager::kPowerManagerServiceName, _))
+        .WillRepeatedly(Return(proxy_.get()));
+
     EXPECT_CALL(*proxy_, DoConnectToSignal(
                              login_manager::kSessionManagerInterface, _, _, _))
+        .WillRepeatedly(
+            Invoke(this, &SessionStateManagerTest::ConnectToSignal));
+
+    EXPECT_CALL(*proxy_, DoConnectToSignal(
+                             power_manager::kPowerManagerInterface, _, _, _))
         .WillRepeatedly(
             Invoke(this, &SessionStateManagerTest::ConnectToSignal));
 
@@ -83,6 +95,8 @@ class SessionStateManagerTest : public ::testing::Test {
 
  protected:
   void EmitStateChangedSignal(const std::string& state);
+  void EmitSuspendDone(const std::vector<uint8_t>& msg);
+
   std::unique_ptr<dbus::Response> RetrievePrimarySessionResponse(
       const char* username, const char* sanitized_username);
 
@@ -110,7 +124,8 @@ void SessionStateManagerTest::ConnectToSignal(
     const std::string& signal_name,
     dbus::ObjectProxy::SignalCallback signal_callback,
     dbus::ObjectProxy::OnConnectedCallback* on_connected_callback) {
-  EXPECT_EQ(interface_name, login_manager::kSessionManagerInterface);
+  EXPECT_TRUE(interface_name == login_manager::kSessionManagerInterface ||
+              interface_name == power_manager::kPowerManagerInterface);
   signal_callbacks_[signal_name] = std::move(signal_callback);
   task_environment_.GetMainThreadTaskRunner()->PostTask(
       FROM_HERE,
@@ -143,6 +158,18 @@ SessionStateManagerTest::RetrievePrimarySessionResponse(
   writer.AppendString(sanitized_username);
 
   return response;
+}
+
+void SessionStateManagerTest::EmitSuspendDone(const std::vector<uint8_t>& msg) {
+  const auto it = signal_callbacks_.find(power_manager::kSuspendDoneSignal);
+  ASSERT_TRUE(it != signal_callbacks_.end())
+      << "Client didn't register for OnSuspendDone signal";
+
+  dbus::Signal signal(power_manager::kPowerManagerInterface,
+                      power_manager::kSuspendDoneSignal);
+  dbus::MessageWriter writer(&signal);
+  writer.AppendArrayOfBytes(msg.data(), msg.size());
+  it->second.Run(&signal);
 }
 
 // Tests that check biod behavior on SessionManager communication errors.
@@ -665,6 +692,39 @@ TEST_F(SessionStateManagerTest, TestOnNameOwnerChangedNewOwnerNotEmpty) {
   const auto& old_owner = "";
   const auto& new_owner = kExampleConnectionName;
   on_name_owner_changed_.Run(old_owner, new_owner);
+}
+
+// This test validates that the PowerManager SuspendDone signal will trigger
+// a OnSessionResumedFromHibernate when it's deepest state was "ToDisk".
+TEST_F(SessionStateManagerTest, TestPowerManagerSuspendDoneToDisk) {
+  manager_->AddObserver(&observer_);
+
+  EXPECT_CALL(observer_, OnSessionResumedFromHibernate).Times(1);
+
+  power_manager::SuspendDone signal;
+  signal.set_deepest_state(power_manager::SuspendDone_SuspendState_TO_DISK);
+
+  std::vector<uint8_t> msg(signal.ByteSizeLong());
+  signal.SerializeToArray(&msg[0], msg.size());
+
+  EmitSuspendDone(msg);
+}
+
+// This test validates that a SuspendDone where the deepest state is to RAM does
+// not trigger OnSessionResumedFromHibernate.
+TEST_F(SessionStateManagerTest, TestPowerManagerSuspendDoneToRam) {
+  manager_->AddObserver(&observer_);
+
+  // We suspend to ram only so we will not call OnSessionResumedFromHibernate.
+  EXPECT_CALL(observer_, OnSessionResumedFromHibernate).Times(0);
+
+  power_manager::SuspendDone signal;
+  signal.set_deepest_state(power_manager::SuspendDone_SuspendState_TO_RAM);
+
+  std::vector<uint8_t> msg(signal.ByteSizeLong());
+  signal.SerializeToArray(&msg[0], msg.size());
+
+  EmitSuspendDone(msg);
 }
 
 }  // namespace

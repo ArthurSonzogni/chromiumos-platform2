@@ -97,6 +97,7 @@ class CrosFpAuthStackManager : public AuthStackManager {
       const DeleteCredentialRequest& request) override;
   void OnUserLoggedOut() override;
   void OnUserLoggedIn(const std::string& user_id) override;
+  void OnSessionResumedFromHibernate() override;
   void SetEnrollScanDoneHandler(const AuthStackManager::EnrollScanDoneCallback&
                                     on_enroll_scan_done) override;
   void SetAuthScanDoneHandler(

@@ -421,4 +421,39 @@ void BiometricsManagerWrapper::OnUserLoggedOut() {
   RefreshRecordObjects();
 }
 
+void BiometricsManagerWrapper::OnSessionResumedFromHibernate() {
+  if (enroll_session_) {
+    LOG(WARNING) << "Ending existing enroll session";
+    enroll_session_.End();
+  }
+
+  if (enroll_session_dbus_object_) {
+    LOG(WARNING) << "Finalizing existing EnrollSessionObject";
+    dbus::Signal session_failed_signal(kBiometricsManagerInterface,
+                                       kBiometricsManagerSessionFailedSignal);
+    dbus_object_.SendSignal(&session_failed_signal);
+    FinalizeEnrollSessionObject();
+  }
+
+  std::string primary_user = session_state_manager_->GetPrimaryUser();
+  if (primary_user.empty()) {
+    return;
+  }
+  biometrics_manager_->ReadRecordsForSingleUser(primary_user);
+
+  if (auth_session_) {
+    LOG(INFO) << "End existing auth session and create a new one";
+    auth_session_.End();
+    BiometricsManager::AuthSession auth_session =
+        biometrics_manager_->StartAuthSession();
+    if (!auth_session) {
+      LOG(ERROR) << "Unable to create a new auth session";
+      OnSessionFailed();
+      return;
+    }
+
+    auth_session_ = std::move(auth_session);
+  }
+}
+
 }  // namespace biod

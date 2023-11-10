@@ -1090,5 +1090,93 @@ TEST_F(BiometricsManagerWrapperTest, TestOnUserLoggedOut) {
   wrapper_->OnUserLoggedOut();
 }
 
+// This test will validate that a hibernate resume ends existing enroll sessions
+TEST_F(BiometricsManagerWrapperTest,
+       TestHibernateResumeEndsExistingEnrollSessions) {
+  // Start an enroll session before we "resume".
+  dbus::ObjectPath object_path;
+  auto enroll_session = BiometricsManager::EnrollSession(
+      bio_manager_->session_weak_factory_.GetWeakPtr());
+  EXPECT_CALL(*bio_manager_, StartEnrollSession)
+      .WillOnce(Return(ByMove(std::move(enroll_session))));
+
+  // We will expect a call to GetPrimaryUser for starting the enroll session,
+  // and we will get a second call for ReadRecordsForSingleUser which is called
+  // on OnSessionResumedFromHibernate.
+  EXPECT_CALL(*session_manager_, GetPrimaryUser)
+      .Times(2)
+      .WillRepeatedly(Return(kUserID));
+
+  // The enroll session will start normally.
+  auto response = StartEnrollSession(kUserID, kLabel, &object_path);
+  EXPECT_TRUE(response->GetMessageType() ==
+              dbus::Message::MESSAGE_METHOD_RETURN);
+
+  // Now by calling OnSessionResumedFromHibernate we will expect that the
+  // session will be ended.
+  EXPECT_CALL(*bio_manager_, EndEnrollSession).Times(1);
+
+  wrapper_->OnSessionResumedFromHibernate();
+}
+
+// This test will validate that a hibernate resume ends existing auth sessions
+// and starts a new one.
+TEST_F(BiometricsManagerWrapperTest,
+       TestHibernateResumeEndsExistingAuthSessions) {
+  // Start an AuthSession before our resume so we can verify it is ended.
+  dbus::ObjectPath object_path;
+  auto auth_session_pre_resume = BiometricsManager::AuthSession(
+      bio_manager_->session_weak_factory_.GetWeakPtr());
+
+  // The first auth session will be ended and we will return this auth session
+  // the second time.
+  auto auth_session_post_resume = BiometricsManager::AuthSession(
+      bio_manager_->session_weak_factory_.GetWeakPtr());
+
+  // We're creating an auth session before resume and the resume will cause that
+  // session to be ended and a new one to be created.
+  EXPECT_CALL(*bio_manager_, StartAuthSession)
+      .WillOnce(Return(ByMove(std::move(auth_session_pre_resume))))
+      .WillOnce(Return(ByMove(std::move(auth_session_post_resume))));
+
+  EXPECT_CALL(*session_manager_, GetPrimaryUser)
+      .Times(2)
+      .WillRepeatedly(Return(kUserID));
+
+  auto response = StartAuthSession(&object_path);
+  EXPECT_TRUE(response->GetMessageType() ==
+              dbus::Message::MESSAGE_METHOD_RETURN);
+  dbus::ObjectPath expected_object_path(mock_bio_path_.value() +
+                                        "/AuthSession");
+  EXPECT_EQ(object_path, expected_object_path);
+
+  // We expect the first auth session to be ended by the resume and the second
+  // one to be ended when the test ends.
+  EXPECT_CALL(*bio_manager_, EndAuthSession).Times(2);
+
+  wrapper_->OnSessionResumedFromHibernate();
+}
+
+// This test will validate that a hibernate resume reloads the fpmcu state.
+TEST_F(BiometricsManagerWrapperTest,
+       TestHibernateResumeReloadsPrimaryUserRecords) {
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
+
+  EXPECT_CALL(*bio_manager_, ReadRecordsForSingleUser(kUserID));
+
+  wrapper_->OnSessionResumedFromHibernate();
+}
+
+// This test will validate that a hibernate resume without a primary user does
+// nothing.
+TEST_F(BiometricsManagerWrapperTest,
+       TestHibernateResumeOnlyProceedWithPrimaryUser) {
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(""));
+
+  EXPECT_CALL(*bio_manager_, ReadRecordsForSingleUser).Times(0);
+
+  wrapper_->OnSessionResumedFromHibernate();
+}
+
 }  // namespace
 }  // namespace biod

@@ -337,4 +337,8 @@ void AuthStackManagerWrapper::OnUserLoggedOut() {
   auth_stack_manager_->OnUserLoggedOut();
 }
 
+void AuthStackManagerWrapper::OnSessionResumedFromHibernate() {
+  auth_stack_manager_->OnSessionResumedFromHibernate();
+}
+
 }  // namespace biod
