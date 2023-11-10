@@ -12,6 +12,7 @@
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec-foundation/crypto/aes.h>
+#include <libhwsec-foundation/crypto/hkdf.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/status/status_chain.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
@@ -34,6 +35,9 @@ using ::cryptohome::error::ErrorActionSet;
 using ::cryptohome::error::PossibleAction;
 using ::hwsec_foundation::AesGcmEncrypt;
 using ::hwsec_foundation::CreateSecureRandomBlob;
+using ::hwsec_foundation::HkdfExpand;
+using ::hwsec_foundation::HkdfExtract;
+using ::hwsec_foundation::HkdfHash;
 using ::hwsec_foundation::kAesGcm256KeySize;
 using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::OkStatus;
@@ -42,6 +46,12 @@ using ::hwsec_foundation::status::OkStatus;
 // key with modular reduction method. 512-bit is chosen here such that we can
 // use HMAC-SHA512 to derive keys with enough entropy.
 constexpr size_t kKeyDerivationSeedSize = 512 / CHAR_BIT;
+
+constexpr size_t kSecurityDomainWrappingKeySize = 256 / CHAR_BIT;
+
+const char kSecurityDomainSeedSalt[] = "security_domain_seed_salt";
+const char kSecurityDomainWrappingKeyInfo[] =
+    "security_domain_wrapping_key_info";
 
 // Construct a FileSystemKeyset from a given USS payload. Returns an error if
 // any of the components of the keyset appear to be missing.
@@ -530,6 +540,40 @@ std::optional<brillo::SecureBlob> DecryptedUss::GetRateLimiterResetSecret(
     return std::nullopt;
   }
   return iter->second;
+}
+
+const DecryptedUss::SecurityDomainKeys* DecryptedUss::GetSecurityDomainKeys()
+    const {
+  // If we have already calculated the keys before, return them directly.
+  if (security_domain_keys_.has_value()) {
+    return &*security_domain_keys_;
+  }
+
+  brillo::SecureBlob seed;
+  if (!hwsec_foundation::HkdfExtract(
+          HkdfHash::kSha512, key_derivation_seed(),
+          brillo::BlobFromString(kSecurityDomainSeedSalt), &seed)) {
+    LOG(ERROR) << "Failed to derive security domain seed.";
+    return nullptr;
+  }
+  std::optional<hwsec_foundation::secure_box::KeyPair> key_pair =
+      hwsec_foundation::secure_box::DeriveKeyPairFromSeed(seed);
+  if (!key_pair.has_value()) {
+    LOG(ERROR) << "Failed to derive key pair from seed.";
+    return nullptr;
+  }
+  brillo::SecureBlob wrapping_key;
+  if (!hwsec_foundation::HkdfExpand(
+          HkdfHash::kSha512, seed,
+          brillo::BlobFromString(kSecurityDomainWrappingKeyInfo),
+          kSecurityDomainWrappingKeySize, &wrapping_key)) {
+    LOG(ERROR) << "Failed to derive security domain wrapping key.";
+    return nullptr;
+  }
+  security_domain_keys_ =
+      SecurityDomainKeys{.key_pair = std::move(*key_pair),
+                         .wrapping_key = std::move(wrapping_key)};
+  return &*security_domain_keys_;
 }
 
 DecryptedUss::Transaction DecryptedUss::StartTransaction() {

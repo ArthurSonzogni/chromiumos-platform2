@@ -746,5 +746,13 @@ TEST_F(DecryptedUssTest, KeyDerivationSeedBackfilled) {
   EXPECT_FALSE(decrypted_uss->key_derivation_seed().empty());
 }
 
+TEST_F(DecryptedUssTest, GetSecurityDomainKeys) {
+  auto decrypted_uss =
+      DecryptedUss::CreateWithRandomMainKey(user_uss_storage_, CreateTestFsk());
+  ASSERT_THAT(decrypted_uss, IsOk());
+  const auto* keys = decrypted_uss->GetSecurityDomainKeys();
+  EXPECT_NE(keys, nullptr);
+}
+
 }  // namespace
 }  // namespace cryptohome

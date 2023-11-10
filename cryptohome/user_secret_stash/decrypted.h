@@ -6,9 +6,11 @@
 #define CRYPTOHOME_USER_SECRET_STASH_DECRYPTED_H_
 
 #include <map>
+#include <optional>
 #include <string>
 
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/crypto/secure_box.h>
 
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/storage/file_system_keyset.h"
@@ -187,6 +189,19 @@ class DecryptedUss {
   std::optional<brillo::SecureBlob> GetRateLimiterResetSecret(
       AuthFactorType auth_factor_type) const;
 
+  // Key objects associated with a security domain, derived from the key
+  // derivation seed. It includes an asymmetric security domain member key pair,
+  // which will be uploaded to the corresponding recoverable key store and
+  // protected by:
+  // - The private key of the key pair will be wrapped by the wrapping key
+  // - The wrapping key will be wrapped by the recovery key
+  // - The recovery key will be protected by the lock screen knowledge factor
+  struct SecurityDomainKeys {
+    hwsec_foundation::secure_box::KeyPair key_pair;
+    brillo::SecureBlob wrapping_key;
+  };
+  const SecurityDomainKeys* GetSecurityDomainKeys() const;
+
   // Begin a transaction which can be used to modify this object.
   Transaction StartTransaction();
 
@@ -227,6 +242,9 @@ class DecryptedUss {
   std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets_;
   // The seed to derive other key materials.
   brillo::SecureBlob key_derivation_seed_;
+  // Cache the security domain keys after they're first calculated to prevent
+  // re-calculation.
+  mutable std::optional<SecurityDomainKeys> security_domain_keys_;
 };
 
 }  // namespace cryptohome
