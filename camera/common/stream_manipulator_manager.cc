@@ -407,8 +407,7 @@ void StreamManipulatorManager::StopProcessing() {
 
 void StreamManipulatorManager::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
-  TRACE_COMMON("frame_number", result.frame_number(), "partial_result",
-               result.partial_result());
+  TRACE_COMMON("frame_number", result.frame_number());
 
   if (stop_processing_) {
     for (auto& result_buffer : result.AcquireOutputBuffers()) {

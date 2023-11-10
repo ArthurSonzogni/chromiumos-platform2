@@ -60,8 +60,7 @@ void Camera3CallbackOpsDelegate::ReturnStreamBuffers(
 void Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread(
     mojom::Camera3CaptureResultPtr result) {
   DCHECK(task_runner_->BelongsToCurrentThread());
-  TRACE_HAL_ADAPTER("frame_number", result->frame_number, "partial_result",
-                    result->partial_result);
+  TRACE_HAL_ADAPTER("frame_number", result->frame_number);
 
   remote_->ProcessCaptureResult(std::move(result));
 }
