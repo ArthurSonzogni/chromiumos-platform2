@@ -26,6 +26,8 @@ use crate::vm_memory_management_client::VmMemoryManagementClient;
 
 // Critical margin is 5.2% of total memory, moderate margin is 40% of total
 // memory. See also /usr/share/cros/init/swap.sh on DUT. BPS are basis points.
+// TODO(b/226425011): Please do not change DEFAULT_CRITICAL_MARGIN_BPS before
+// 2024/06.
 const DEFAULT_CRITICAL_MARGIN_BPS: u64 = 520;
 const DEFAULT_MODERATE_MARGIN_BPS: u64 = 4000;
 
