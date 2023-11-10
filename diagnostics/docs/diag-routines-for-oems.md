@@ -1248,7 +1248,6 @@ Errors:
 - `Failed to resolve host.`
 - `ARC DNS resolution routine did not run.`
 
-
 ## Sensor Routines
 
 ### Sensitive Sensor
@@ -1677,8 +1676,9 @@ Errors:
 - `Timeout cannot be longer than 600 seconds.`
 - `Unable to listen for volume button events.`
 
+## Fan Routines
 
-## Fan
+### Fan
 
 Check the device's fan by setting and reading different fan speed configuration.
 
@@ -1688,7 +1688,6 @@ crosh> diag fan
 # or
 crosh> diag fan_v1
 ```
-
 
 From cros-health-tool:
 ```bash
