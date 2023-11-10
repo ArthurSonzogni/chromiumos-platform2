@@ -7,6 +7,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use super::install_logger;
+use anyhow::Context;
+use libchromeos;
 use log::{error, info};
 use os_install_service::disk::{self, Disk};
 use os_install_service::mount::Mount;
@@ -154,7 +156,9 @@ fn run_chromeos_install(dest: &Path, boot_mode: BootMode) -> Result {
 fn save_install_log(dest: &Path) -> anyhow::Result<()> {
     // Mount the installed stateful partition.
     let stateful_partition_num = 1;
-    let dest_stateful_partition = disk::get_partition_device(dest, stateful_partition_num);
+    let dest_stateful_partition =
+        libchromeos::disk::get_partition_device(dest, stateful_partition_num)
+            .context("Unable to find correct partition path")?;
     let stateful_partition_mount = Mount::mount_ext4(&dest_stateful_partition)?;
     // Get the instance log and write it to the stateful partition.
     let instance_log = install_logger::read_file_log();

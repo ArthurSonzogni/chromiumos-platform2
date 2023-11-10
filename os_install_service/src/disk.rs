@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 use std::{
-    os::unix::ffi::OsStrExt,
     path::{Path, PathBuf},
     process,
 };
@@ -116,25 +115,6 @@ fn classify_disk_layout(devices: &[LsBlkDevice]) -> DiskLayout {
     } else {
         DiskLayout::NotCros
     }
-}
-
-/// Get a disk partition device path.
-///
-/// This handles inserting a 'p' before the number if needed.
-pub fn get_partition_device(disk_device: &Path, num: u32) -> PathBuf {
-    let mut buf = disk_device.as_os_str().to_os_string();
-
-    // If the disk path ends in a number, e.g. "/dev/nvme0n1", append
-    // a "p" before the partition number.
-    if let Some(byte) = buf.as_bytes().last() {
-        if byte.is_ascii_digit() {
-            buf.push("p");
-        }
-    }
-
-    buf.push(num.to_string());
-
-    PathBuf::from(buf)
 }
 
 /// Check if the root device is an installer.
