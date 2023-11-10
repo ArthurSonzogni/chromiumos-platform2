@@ -29,6 +29,7 @@
 #include <base/time/time.h>
 #include <base/uuid.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <oobe_config/metrics/enterprise_rollback_metrics_handler.h>
 
 #include "update_engine/certificate_checker.h"
 #include "update_engine/client_library/include/update_engine/update_status.h"
@@ -354,6 +355,8 @@ class UpdateAttempter : public ActionProcessorDelegate,
   FRIEND_TEST(UpdateAttempterTest, RollbackMetricsNotRollbackFailure);
   FRIEND_TEST(UpdateAttempterTest, RollbackMetricsNotRollbackSuccess);
   FRIEND_TEST(UpdateAttempterTest, RollbackMetricsRollbackFailure);
+  FRIEND_TEST(UpdateAttempterTest,
+              RollbackMetricsRollbackFailureMetricsDisabled);
   FRIEND_TEST(UpdateAttempterTest, RollbackMetricsRollbackSuccess);
   FRIEND_TEST(UpdateAttempterTest, ScheduleErrorEventActionNoEventTest);
   FRIEND_TEST(UpdateAttempterTest, ScheduleErrorEventActionTest);
@@ -711,6 +714,9 @@ class UpdateAttempter : public ActionProcessorDelegate,
 
   // If the application of update should be skipped.
   bool skip_applying_ = false;
+
+  std::unique_ptr<oobe_config::EnterpriseRollbackMetricsHandler>
+      rollback_metrics_;
 
   base::WeakPtrFactory<UpdateAttempter> weak_ptr_factory_;
 };

@@ -144,6 +144,8 @@ ErrorCode GetErrorCodeForAction(AbstractAction* action, ErrorCode code) {
 UpdateAttempter::UpdateAttempter(CertificateChecker* cert_checker)
     : processor_(new ActionProcessor()),
       cert_checker_(cert_checker),
+      rollback_metrics_(
+          std::make_unique<oobe_config::EnterpriseRollbackMetricsHandler>()),
       weak_ptr_factory_(this) {}
 
 UpdateAttempter::~UpdateAttempter() {
@@ -2088,6 +2090,12 @@ bool UpdateAttempter::ScheduleErrorEventAction() {
 
   // Send metrics if it was a rollback.
   if (install_plan_ && install_plan_->is_rollback) {
+    // Powerwash is not imminent because the Enterprise Rollback update failed,
+    // report the failure immediately.
+    rollback_metrics_->ReportEventNow(
+        oobe_config::EnterpriseRollbackMetricsHandler::CreateEventData(
+            EnterpriseRollbackEvent::ROLLBACK_UPDATE_FAILURE));
+    // TODO(b/301924474): Clean old UMA metric.
     SystemState::Get()->metrics_reporter()->ReportEnterpriseRollbackMetrics(
         metrics::kMetricEnterpriseRollbackFailure, install_plan_->version);
   }

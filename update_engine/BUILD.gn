@@ -610,6 +610,7 @@ if (use.test) {
       "libpower_manager-client-test",
       "libsession_manager-client-test",
       "libshill-client-test",
+      "libstructuredmetrics",
     ]
     deps = [
       ":libpayload_generator",

@@ -31,11 +31,17 @@
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/task/single_thread_task_executor.h>
+#include <base/version.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <brillo/message_loops/message_loop.h>
 #include <brillo/message_loops/message_loop_utils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/structured/event_base.h>
+#include <metrics/structured/mock_recorder.h>
+#include <metrics/structured/recorder_singleton.h>
+#include <metrics/structured_events.h>
+#include <oobe_config/metrics/enterprise_rollback_metrics_handler_for_testing.h>
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
 #include <policy/mock_libpolicy.h>
@@ -168,6 +174,9 @@ class MockDlcService : public DlcServiceInterface {
   MOCK_METHOD1(UpdateCompleted, bool(const vector<string>&));
 };
 
+const base::Version kDeviceVersionM108("15183.1.2");
+const base::Version kTargetVersionM107("15117.0.0");
+
 }  // namespace
 
 const char kRollbackVersion[] = "10575.39.2";
@@ -246,6 +255,18 @@ class UpdateAttempterTest : public ::testing::Test {
 
     attempter_.set_forced_update_pending_callback(
         new base::RepeatingCallback<void(bool, bool)>(base::DoNothing()));
+
+    auto rollback_metrics = std::make_unique<
+        oobe_config::EnterpriseRollbackMetricsHandlerForTesting>();
+    rollback_metrics_ptr_ = rollback_metrics.get();
+    attempter_.rollback_metrics_ = std::move(rollback_metrics);
+
+    // Set mock recorder for structured metrics.
+    auto recorder = std::make_unique<::metrics::structured::MockRecorder>();
+    recorder_ptr_ = recorder.get();
+    ::metrics::structured::RecorderSingleton::GetInstance()->SetRecorderForTest(
+        std::move(recorder));
+
     // Finish initializing the attempter.
     attempter_.Init();
 
@@ -325,6 +346,9 @@ class UpdateAttempterTest : public ::testing::Test {
   // |ProcessingDone()| related member functions.
   void TestProcessingDone();
 
+  void EnableRollbackMetricsReporting();
+  void ExpectRollbackUpdateFailureMetricRecord(int times);
+
   base::SingleThreadTaskExecutor base_loop_{base::MessagePumpType::IO};
   brillo::BaseMessageLoop loop_{base_loop_.task_runner()};
 
@@ -350,6 +374,10 @@ class UpdateAttempterTest : public ::testing::Test {
 
   bool actual_using_p2p_for_downloading_;
   bool actual_using_p2p_for_sharing_;
+
+  oobe_config::EnterpriseRollbackMetricsHandlerForTesting*
+      rollback_metrics_ptr_;
+  ::metrics::structured::MockRecorder* recorder_ptr_;
 };
 
 void UpdateAttempterTest::TestCheckForUpdate() {
@@ -410,6 +438,22 @@ void UpdateAttempterTest::TestProcessingDone() {
   EXPECT_EQ(pd_params_.should_schedule_updates_be_called,
             attempter_.WasScheduleUpdatesCalled());
   EXPECT_EQ(pd_params_.expected_exit_status, attempter_.status_);
+}
+
+void UpdateAttempterTest::EnableRollbackMetricsReporting() {
+  ASSERT_TRUE(rollback_metrics_ptr_->EnableMetrics());
+  ASSERT_TRUE(rollback_metrics_ptr_->StartTrackingRollback(kDeviceVersionM108,
+                                                           kTargetVersionM107));
+  ASSERT_TRUE(rollback_metrics_ptr_->IsTrackingRollback());
+}
+
+void UpdateAttempterTest::ExpectRollbackUpdateFailureMetricRecord(int times) {
+  EXPECT_CALL(*recorder_ptr_,
+              Record(testing::Property(
+                  &::metrics::structured::EventBase::name_hash,
+                  ::metrics::structured::events::rollback_enterprise::
+                      RollbackUpdateFailure::kEventNameHash)))
+      .Times(times);
 }
 
 void UpdateAttempterTest::ScheduleQuitMainLoop() {
@@ -1911,6 +1955,25 @@ TEST_F(UpdateAttempterTest, RollbackMetricsNotRollbackSuccess) {
 }
 
 TEST_F(UpdateAttempterTest, RollbackMetricsRollbackFailure) {
+  EnableRollbackMetricsReporting();
+  ExpectRollbackUpdateFailureMetricRecord(1);
+
+  attempter_.install_plan_.reset(new InstallPlan);
+  attempter_.install_plan_->is_rollback = true;
+  attempter_.install_plan_->version = kRollbackVersion;
+
+  EXPECT_CALL(*FakeSystemState::Get()->mock_metrics_reporter(),
+              ReportEnterpriseRollbackMetrics(
+                  metrics::kMetricEnterpriseRollbackFailure, kRollbackVersion))
+      .Times(1);
+  MockAction action;
+  attempter_.CreatePendingErrorEvent(&action, ErrorCode::kRollbackNotPossible);
+  attempter_.ProcessingDone(nullptr, ErrorCode::kRollbackNotPossible);
+}
+
+TEST_F(UpdateAttempterTest, RollbackMetricsRollbackFailureMetricsDisabled) {
+  ExpectRollbackUpdateFailureMetricRecord(0);
+
   attempter_.install_plan_.reset(new InstallPlan);
   attempter_.install_plan_->is_rollback = true;
   attempter_.install_plan_->version = kRollbackVersion;
@@ -1925,6 +1988,9 @@ TEST_F(UpdateAttempterTest, RollbackMetricsRollbackFailure) {
 }
 
 TEST_F(UpdateAttempterTest, RollbackMetricsNotRollbackFailure) {
+  EnableRollbackMetricsReporting();
+  ExpectRollbackUpdateFailureMetricRecord(0);
+
   attempter_.install_plan_.reset(new InstallPlan);
   attempter_.install_plan_->is_rollback = false;
   attempter_.install_plan_->version = kRollbackVersion;
