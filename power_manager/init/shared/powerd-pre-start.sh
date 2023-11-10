@@ -21,18 +21,12 @@ fi
 
 # Read the real maximum backlight luminance (i.e. not the value reported by
 # the driver) from VPD and pass it to powerd via a pref file.
-if [ -e "${VPD_CACHE_FILE}" ]; then
-  MAX_NITS=$(sed -nre 's/^"panel_backlight_max_nits"="(.+)"$/\1/p' \
-    <"${VPD_CACHE_FILE}")
-  if [ -n "${MAX_NITS}" ]; then
-    TEMP_FILE="$(mktemp --tmpdir powerd_nits.XXXXXXXXXX)"
-    echo "${MAX_NITS}" >"${TEMP_FILE}"
-    PREF_FILE="${PREFS_DIR}/${MAX_NITS_PREF}"
-    mv "${TEMP_FILE}" "${PREF_FILE}"
-    [ -x "/sbin/restorecon" ] && restorecon "${PREF_FILE}"
-    chown power:power "${PREF_FILE}"
-    chmod 644 "${PREF_FILE}"
-  fi
+if [ -e /sys/firmware/vpd/ro/panel_backlight_max_nits ]; then
+  PREF_FILE="${PREFS_DIR}/${MAX_NITS_PREF}"
+  cp /sys/firmware/vpd/ro/panel_backlight_max_nits "${PREF_FILE}"
+  [ -x "/sbin/restorecon" ] && restorecon "${PREF_FILE}"
+  chown power:power "${PREF_FILE}"
+  chmod 644 "${PREF_FILE}"
 fi
 
 # Change ownership of files used by powerd.
