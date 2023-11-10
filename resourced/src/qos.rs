@@ -6,24 +6,29 @@ use std::fmt::Display;
 use std::io;
 use std::os::fd::FromRawFd;
 use std::os::fd::OwnedFd;
+use std::path::Path;
 use std::sync::Arc;
 use std::sync::Mutex;
 
 use dbus::MethodErr;
 use log::error;
+use log::info;
 use schedqos::cgroups::open_cpuset_cgroup;
 use schedqos::cgroups::setup_cpu_cgroup;
 use schedqos::CgroupContext;
 use schedqos::Config;
 use schedqos::ProcessKey;
 use schedqos::ProcessState;
-use schedqos::SchedQosContext;
 use schedqos::ThreadState;
 use tokio::io::unix::AsyncFd;
 use tokio::io::Interest;
 use tokio::task::JoinHandle;
 
 use crate::proc::load_ruid;
+
+pub type SchedQosContext = schedqos::RestorableSchedQosContext;
+
+const STATE_FILE_PATH: &str = "/run/resourced/schedqos_states";
 
 /// Error of parsing /proc/pid/status
 #[derive(Debug)]
@@ -108,7 +113,7 @@ pub fn create_schedqos_context() -> anyhow::Result<SchedQosContext> {
     let cpuset_all = open_cpuset_cgroup("chrome/urgent")?;
     let cpuset_efficient = open_cpuset_cgroup("chrome/non-urgent")?;
 
-    let ctx = SchedQosContext::new(Config {
+    let config = Config {
         cgroup_context: CgroupContext {
             cpu_normal,
             cpu_background,
@@ -117,7 +122,16 @@ pub fn create_schedqos_context() -> anyhow::Result<SchedQosContext> {
         },
         process_configs: Config::default_process_config(),
         thread_configs: Config::default_thread_config(),
-    })?;
+    };
+
+    let file_path = Path::new(STATE_FILE_PATH);
+    let ctx = if file_path.exists() {
+        info!("Loading schedqos state from {:?}", file_path);
+        SchedQosContext::load_from_file(config, file_path)?
+    } else {
+        info!("Initialize schedqos state at {:?}", file_path);
+        SchedQosContext::new_file(config, file_path)?
+    };
     Ok(ctx)
 }
 
@@ -225,18 +239,20 @@ mod tests {
     use crate::test_utils::tests::*;
 
     fn create_schedqos_context_for_test() -> Arc<Mutex<SchedQosContext>> {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("states");
+        let config = Config {
+            cgroup_context: CgroupContext {
+                cpu_normal: tempfile::tempfile().unwrap(),
+                cpu_background: tempfile::tempfile().unwrap(),
+                cpuset_all: tempfile::tempfile().unwrap(),
+                cpuset_efficient: tempfile::tempfile().unwrap(),
+            },
+            process_configs: Config::default_process_config(),
+            thread_configs: Config::default_thread_config(),
+        };
         Arc::new(Mutex::new(
-            SchedQosContext::new(Config {
-                cgroup_context: CgroupContext {
-                    cpu_normal: tempfile::tempfile().unwrap(),
-                    cpu_background: tempfile::tempfile().unwrap(),
-                    cpuset_all: tempfile::tempfile().unwrap(),
-                    cpuset_efficient: tempfile::tempfile().unwrap(),
-                },
-                process_configs: Config::default_process_config(),
-                thread_configs: Config::default_thread_config(),
-            })
-            .unwrap(),
+            SchedQosContext::new_file(config, &file_path).unwrap(),
         ))
     }
 

@@ -29,7 +29,6 @@ use dbus_crossroads::MethodErr;
 use dbus_tokio::connection;
 use log::error;
 use log::LevelFilter;
-use schedqos::SchedQosContext;
 use system_api::battery_saver::BatterySaverModeState;
 
 use crate::common;
@@ -42,6 +41,7 @@ use crate::psi;
 use crate::qos;
 use crate::qos::set_process_state;
 use crate::qos::set_thread_state;
+use crate::qos::SchedQosContext;
 use crate::vm_memory_management_client::VmMemoryManagementClient;
 
 const SERVICE_NAME: &str = "org.chromium.ResourceManager";

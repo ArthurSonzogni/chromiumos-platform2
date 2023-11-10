@@ -6,15 +6,16 @@
 // process. QoS definitions map to performance characteristics.
 
 pub mod cgroups;
+mod mmap;
 mod proc;
 mod sched_attr;
+mod storage;
 #[cfg(test)]
 mod test_utils;
 
-use std::collections::hash_map::Entry;
-use std::collections::HashMap;
 use std::fmt::Display;
 use std::io;
+use std::path::Path;
 
 pub use cgroups::CgroupContext;
 pub use cgroups::CpuCgroup;
@@ -25,6 +26,11 @@ use proc::ThreadChecker;
 use sched_attr::SchedAttrContext;
 use sched_attr::UCLAMP_BOOSTED_MIN;
 pub use sched_attr::UCLAMP_MAX;
+use storage::restorable::RestorableProcessMap;
+use storage::simple::SimpleProcessMap;
+use storage::ProcessContext;
+use storage::ProcessMap;
+use storage::ThreadMap;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -39,6 +45,7 @@ pub enum Error {
     SchedAttr(io::Error),
     LatencySensitive(io::Error),
     Proc(proc::Error),
+    Storage(storage::restorable::Error),
     ProcessNotFound,
     ProcessNotRegistered,
     ThreadNotFound,
@@ -52,6 +59,7 @@ impl std::error::Error for Error {
             Self::SchedAttr(e) => Some(e),
             Self::LatencySensitive(e) => Some(e),
             Self::Proc(e) => Some(e),
+            Self::Storage(e) => Some(e),
             Self::ProcessNotFound => None,
             Self::ProcessNotRegistered => None,
             Self::ThreadNotFound => None,
@@ -67,6 +75,7 @@ impl Display for Error {
             Self::SchedAttr(e) => f.write_fmt(format_args!("sched_setattr(2): {e}")),
             Self::LatencySensitive(e) => f.write_fmt(format_args!("latency sensitive file: {e}")),
             Self::Proc(e) => f.write_fmt(format_args!("procfs: {e}")),
+            Self::Storage(e) => f.write_fmt(format_args!("storage: {e}")),
             Self::ProcessNotFound => f.write_str("process not found"),
             Self::ProcessNotRegistered => f.write_str("process not registered"),
             Self::ThreadNotFound => f.write_str("thread not found"),
@@ -256,7 +265,7 @@ impl ThreadStateConfig {
 /// Using u32 for both process id and thread id is confusing in this library.
 /// This is to prevent unexpected typo by the explicit typing.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-struct ProcessId(u32);
+pub struct ProcessId(u32);
 
 /// Wrap u32 TID with [ThreadId] internally.
 ///
@@ -265,34 +274,42 @@ struct ProcessId(u32);
 /// [std::thread::ThreadId] is not our use case because it is only for thread in
 /// the running process and not expected for threads of other processes.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-struct ThreadId(u32);
+pub struct ThreadId(u32);
 
 pub struct ProcessKey {
     process_id: ProcessId,
     timestamp: u64,
 }
 
-#[derive(Debug)]
-struct ProcessContext {
-    state: ProcessState,
-    timestamp: u64,
-    threads: HashMap<ThreadId, ThreadContext>,
-}
+pub type SimpleSchedQosContext = SchedQosContext<SimpleProcessMap>;
+pub type RestorableSchedQosContext = SchedQosContext<RestorableProcessMap>;
 
-#[derive(Debug)]
-struct ThreadContext {
-    state: ThreadState,
-    timestamp: u64,
-}
-
-pub struct SchedQosContext {
+pub struct SchedQosContext<PM: ProcessMap> {
     config: Config,
     sched_attr_context: SchedAttrContext,
-    state_map: HashMap<ProcessId, ProcessContext>,
+    process_map: PM,
 }
 
-impl SchedQosContext {
-    pub fn new(config: Config) -> Result<Self> {
+impl SimpleSchedQosContext {
+    pub fn new_simple(config: Config) -> Result<Self> {
+        Self::new(config, SimpleProcessMap::new())
+    }
+}
+
+impl RestorableSchedQosContext {
+    pub fn new_file(config: Config, path: &Path) -> Result<Self> {
+        let storage = RestorableProcessMap::new(path).map_err(Error::Storage)?;
+        Self::new(config, storage)
+    }
+
+    pub fn load_from_file(config: Config, path: &Path) -> Result<Self> {
+        let storage = RestorableProcessMap::load(path).map_err(Error::Storage)?;
+        Self::new(config, storage)
+    }
+}
+
+impl<PM: ProcessMap> SchedQosContext<PM> {
+    fn new(config: Config, process_map: PM) -> Result<Self> {
         for thread_config in &config.thread_configs {
             thread_config
                 .validate()
@@ -302,7 +319,7 @@ impl SchedQosContext {
         Ok(Self {
             config,
             sched_attr_context: SchedAttrContext::new().map_err(Error::SchedAttr)?,
-            state_map: HashMap::new(),
+            process_map,
         })
     }
 
@@ -315,87 +332,13 @@ impl SchedQosContext {
 
         let process_config = &self.config.process_configs[process_state as usize];
 
-        enum ProcessResult<T, U> {
-            Exist(T),
-            New(U),
-        }
-        let new_process = match self.state_map.entry(process_id) {
-            Entry::Occupied(mut entry) => {
-                let process = entry.get_mut();
-
-                // We don't check whether the process is dead or not here
-                // because processes are supposed to be removed via
-                // remove_process() as soon as they die.
-                process.state = process_state;
-
-                // Cache the last error while updating thread settings. This will be returned as
-                // this method's error if process setting update succeeds. Errors while updating
-                // thread settings do not stop other setting updates.
-                let mut result = Ok(None);
-                // Only apply process state thread restrictions to managed threads. Although we
-                // could theoretically try to apply the restrictions to unmanaged threads as well,
-                // defining coherent state transitions and properly restoring state later would be
-                // overly complicated.
-                process.threads.retain(|thread_id, thread| {
-                    // If the thread is dead, remove the thread from the map.
-                    match load_thread_timestamp(process_id, *thread_id) {
-                        Ok(starttime) if starttime == thread.timestamp => {}
-                        Ok(_) => return false,
-                        Err(e) => {
-                            if !matches!(e, proc::Error::NotFound) {
-                                result = Err(Error::Proc(e));
-                            }
-                            return false;
-                        }
-                    }
-                    let thread_config = &self.config.thread_configs[thread.state as usize];
-                    if thread_config.rt_priority.is_some() {
-                        // Ignore the error. There is rare cases that the thread die after the
-                        // timestamp check above.
-                        if let Err(e) = self.sched_attr_context.set_thread_sched_attr(
-                            *thread_id,
-                            thread_config,
-                            process_config.allow_rt,
-                        ) {
-                            result = Err(Error::SchedAttr(e));
-                        }
-                    }
-
-                    if thread_config.cpuset_cgroup != CpusetCgroup::Efficient {
-                        let cpuset_cgroup = if process_config.allow_all_cores {
-                            thread_config.cpuset_cgroup
-                        } else {
-                            CpusetCgroup::Efficient
-                        };
-                        // Ignore the error. There is rare cases that the thread die after the
-                        // timestamp check above.
-                        if let Err(e) = self
-                            .config
-                            .cgroup_context
-                            .set_cpuset_cgroup(*thread_id, cpuset_cgroup)
-                        {
-                            result = Err(Error::Cgroup(cpuset_cgroup.name(), e))
-                        }
-                    }
-                    true
-                });
-
-                ProcessResult::Exist(result)
+        let timestamp = match load_process_timestamp(process_id) {
+            Err(proc::Error::NotFound) => {
+                self.process_map.remove_process(process_id, None);
+                self.process_map.compact();
+                return Err(Error::ProcessNotFound);
             }
-            Entry::Vacant(entry) => {
-                let timestamp = match load_process_timestamp(process_id) {
-                    Err(proc::Error::NotFound) => {
-                        return Err(Error::ProcessNotFound);
-                    }
-                    other => other?,
-                };
-                let process_ctx = ProcessContext {
-                    state: process_state,
-                    timestamp,
-                    threads: HashMap::new(),
-                };
-                ProcessResult::New((entry, process_ctx))
-            }
+            other => other?,
         };
 
         self.config
@@ -403,26 +346,81 @@ impl SchedQosContext {
             .set_cpu_cgroup(process_id, process_config.cpu_cgroup)
             .map_err(|e| Error::Cgroup(process_config.cpu_cgroup.name(), e))?;
 
-        match new_process {
-            ProcessResult::Exist(result) => result,
-            ProcessResult::New((entry, process_ctx)) => {
-                let timestamp = process_ctx.timestamp;
-                entry.insert(process_ctx);
-                Ok(Some(ProcessKey {
-                    process_id,
-                    timestamp,
-                }))
+        // Update the timestamp to the latest one. Even if there are obsolete threads in the
+        // process context, those will be drained below.
+        let Some(mut process) =
+            self.process_map
+                .insert_or_update(process_id, timestamp, process_state)
+        else {
+            return Ok(Some(ProcessKey {
+                process_id,
+                timestamp,
+            }));
+        };
+
+        // Cache the last error while updating thread settings. This will be returned as
+        // this method's error if process setting update succeeds. Errors while updating
+        // thread settings do not stop other setting updates.
+        let mut result = Ok(None);
+        // Only apply process state thread restrictions to managed threads. Although we
+        // could theoretically try to apply the restrictions to unmanaged threads as well,
+        // defining coherent state transitions and properly restoring state later would be
+        // overly complicated.
+        process.thread_map().retain_threads(|thread_id, thread| {
+            // If the thread is dead, remove the thread from the map.
+            match load_thread_timestamp(process_id, *thread_id) {
+                Ok(starttime) if starttime == thread.timestamp => {}
+                Ok(_) => return false,
+                Err(e) => {
+                    if !matches!(e, proc::Error::NotFound) {
+                        result = Err(Error::Proc(e));
+                    }
+                    return false;
+                }
             }
-        }
+            let thread_config = &self.config.thread_configs[thread.state as usize];
+            if thread_config.rt_priority.is_some() {
+                // Ignore the error. There is rare cases that the thread die after the
+                // timestamp check above.
+                if let Err(e) = self.sched_attr_context.set_thread_sched_attr(
+                    *thread_id,
+                    thread_config,
+                    process_config.allow_rt,
+                ) {
+                    result = Err(Error::SchedAttr(e));
+                }
+            }
+
+            if thread_config.cpuset_cgroup != CpusetCgroup::Efficient {
+                let cpuset_cgroup = if process_config.allow_all_cores {
+                    thread_config.cpuset_cgroup
+                } else {
+                    CpusetCgroup::Efficient
+                };
+                // Ignore the error. There is rare cases that the thread die after the
+                // timestamp check above.
+                if let Err(e) = self
+                    .config
+                    .cgroup_context
+                    .set_cpuset_cgroup(*thread_id, cpuset_cgroup)
+                {
+                    result = Err(Error::Cgroup(cpuset_cgroup.name(), e));
+                }
+            }
+            true
+        });
+
+        drop(process);
+        self.process_map.compact();
+
+        result
     }
 
     /// Stop managing QoS state associated with the given [ProcessKey].
     pub fn remove_process(&mut self, process_key: ProcessKey) {
-        if let Entry::Occupied(entry) = self.state_map.entry(process_key.process_id) {
-            if entry.get().timestamp == process_key.timestamp {
-                entry.remove();
-            }
-        }
+        self.process_map
+            .remove_process(process_key.process_id, Some(process_key.timestamp));
+        self.process_map.compact();
     }
 
     pub fn set_thread_state(
@@ -434,50 +432,31 @@ impl SchedQosContext {
         let process_id = ProcessId(process_id);
         let thread_id = ThreadId(thread_id);
 
-        let Entry::Occupied(mut entry) = self.state_map.entry(process_id) else {
+        let Some(mut process) = self.process_map.get_process(process_id) else {
             return Err(Error::ProcessNotRegistered);
         };
-        let process = entry.get_mut();
+        let process_state = process.state();
 
-        match process.threads.entry(thread_id) {
-            Entry::Occupied(mut entry) => {
-                let thread = entry.get_mut();
-                let timestamp = match load_thread_timestamp(process_id, thread_id) {
-                    Err(proc::Error::NotFound) => {
-                        entry.remove();
-                        return Err(Error::ThreadNotFound);
-                    }
-                    other => other?,
-                };
-                thread.timestamp = timestamp;
-                thread.state = thread_state;
+        let timestamp = match load_thread_timestamp(process_id, thread_id) {
+            Err(proc::Error::NotFound) => {
+                process.thread_map().remove_thread(thread_id);
+                drop(process);
+                self.process_map.compact();
+                return Err(Error::ThreadNotFound);
             }
-            Entry::Vacant(_) => {
-                // GC threads in the map before adding a new thread context to the map. This is for
-                // the case a process spawns many short-term threads while the process state keeps
-                // the same.
-                {
-                    let mut thread_checker = ThreadChecker::new(process_id);
-                    process
-                        .threads
-                        .retain(|thread_id, _| thread_checker.thread_exists(*thread_id));
-                }
-
-                let timestamp = match load_thread_timestamp(process_id, thread_id) {
-                    Err(proc::Error::NotFound) => {
-                        return Err(Error::ThreadNotFound);
-                    }
-                    other => other?,
-                };
-                let thread = ThreadContext {
-                    state: thread_state,
-                    timestamp,
-                };
-                process.threads.insert(thread_id, thread);
-            }
+            other => other?,
         };
 
-        let process_config = &self.config.process_configs[process.state as usize];
+        let mut thread_checker = ThreadChecker::new(process_id);
+        process
+            .thread_map()
+            .insert_or_update(thread_id, timestamp, thread_state, |thread_id| {
+                thread_checker.thread_exists(*thread_id)
+            });
+        drop(process);
+        self.process_map.compact();
+
+        let process_config = &self.config.process_configs[process_state as usize];
         let thread_config = &self.config.thread_configs[thread_state as usize];
 
         self.sched_attr_context
@@ -546,7 +525,7 @@ mod tests {
     #[test]
     fn test_set_process_state() {
         let (cgroup_context, mut cgroup_files) = create_fake_cgroup_context_pair();
-        let mut ctx = SchedQosContext::new(Config {
+        let mut ctx = SchedQosContext::new_simple(Config {
             cgroup_context,
             process_configs: [
                 // ProcessState::Normal
@@ -605,7 +584,7 @@ mod tests {
         thread_configs[thread_state_rt_all as usize] = thread_config_rt_all.clone();
         thread_configs[thread_state_all as usize] = thread_config_all.clone();
         thread_configs[thread_state_efficient as usize] = thread_config_efficient.clone();
-        let mut ctx = SchedQosContext::new(Config {
+        let mut ctx = SchedQosContext::new_simple(Config {
             cgroup_context,
             process_configs: [
                 // ProcessState::Normal
@@ -695,7 +674,7 @@ mod tests {
     #[test]
     fn test_set_process_state_invalid_process() {
         let (cgroup_context, _files) = create_fake_cgroup_context_pair();
-        let mut ctx = SchedQosContext::new(Config {
+        let mut ctx = SchedQosContext::new_simple(Config {
             cgroup_context,
             process_configs: Config::default_process_config(),
             thread_configs: Config::default_thread_config(),
@@ -715,7 +694,7 @@ mod tests {
     #[test]
     fn test_set_process_state_for_new_process() {
         let (cgroup_context, _files) = create_fake_cgroup_context_pair();
-        let mut ctx = SchedQosContext::new(Config {
+        let mut ctx = SchedQosContext::new_simple(Config {
             cgroup_context,
             process_configs: Config::default_process_config(),
             thread_configs: Config::default_thread_config(),
@@ -731,7 +710,7 @@ mod tests {
         assert!(process_key.is_some());
         let process_key = process_key.unwrap();
         assert_eq!(process_key.process_id, ProcessId(process_id));
-        assert_eq!(ctx.state_map.len(), 1);
+        assert_eq!(ctx.process_map.len(), 1);
 
         let process_key = ctx
             .set_process_state(process_id, ProcessState::Background)
@@ -749,13 +728,52 @@ mod tests {
         assert!(process_key.is_some());
         let process_key = process_key.unwrap();
         assert_eq!(process_key.process_id, process_id);
-        assert_eq!(ctx.state_map.len(), 2);
+        assert_eq!(ctx.process_map.len(), 2);
+    }
+
+    #[test]
+    fn test_set_process_state_compact() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("states");
+        let (cgroup_context, _files) = create_fake_cgroup_context_pair();
+        let mut ctx = SchedQosContext::new_file(
+            Config {
+                cgroup_context,
+                process_configs: Config::default_process_config(),
+                thread_configs: Config::default_thread_config(),
+            },
+            &file_path,
+        )
+        .unwrap();
+
+        let process_id = ProcessId(std::process::id());
+        ctx.set_process_state(process_id.0, ProcessState::Normal)
+            .unwrap();
+        let (thread_id1, dead_thread1) = spawn_thread_for_test();
+        ctx.set_thread_state(process_id.0, thread_id1.0, ThreadState::Urgent)
+            .unwrap();
+        let (thread_id2, _thread2) = spawn_thread_for_test();
+        ctx.set_thread_state(process_id.0, thread_id2.0, ThreadState::Utility)
+            .unwrap();
+
+        let mut process_ctx = ctx.process_map.get_process(process_id).unwrap();
+        assert_eq!(process_ctx.thread_map().len(), 2);
+        assert_eq!(ctx.process_map.n_cells(), 3);
+
+        drop(dead_thread1);
+        wait_for_thread_removed(process_id, thread_id1);
+
+        ctx.set_process_state(process_id.0, ProcessState::Background)
+            .unwrap();
+        let mut process_ctx = ctx.process_map.get_process(process_id).unwrap();
+        assert_eq!(process_ctx.thread_map().len(), 1);
+        assert_eq!(ctx.process_map.n_cells(), 2);
     }
 
     #[test]
     fn test_remove_process() {
         let (cgroup_context, _files) = create_fake_cgroup_context_pair();
-        let mut ctx = SchedQosContext::new(Config {
+        let mut ctx = SchedQosContext::new_simple(Config {
             cgroup_context,
             process_configs: Config::default_process_config(),
             thread_configs: Config::default_thread_config(),
@@ -775,7 +793,7 @@ mod tests {
             .set_process_state(process_id.0, ProcessState::Normal)
             .unwrap()
             .unwrap();
-        assert_eq!(ctx.state_map.len(), 4);
+        assert_eq!(ctx.process_map.len(), 4);
 
         // Process is not cloneable. This is for testing purpose.
         let cloned_process_key = ProcessKey {
@@ -786,11 +804,41 @@ mod tests {
         drop(process);
 
         ctx.remove_process(process_key);
-        assert_eq!(ctx.state_map.len(), 3);
+        assert_eq!(ctx.process_map.len(), 3);
 
         // If the process is removed, remove_process() is no-op.
         ctx.remove_process(cloned_process_key);
-        assert_eq!(ctx.state_map.len(), 3);
+        assert_eq!(ctx.process_map.len(), 3);
+    }
+
+    #[test]
+    fn test_remove_process_compact() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("states");
+        let (cgroup_context, _files) = create_fake_cgroup_context_pair();
+        let mut ctx = SchedQosContext::new_file(
+            Config {
+                cgroup_context,
+                process_configs: Config::default_process_config(),
+                thread_configs: Config::default_thread_config(),
+            },
+            &file_path,
+        )
+        .unwrap();
+
+        let (process_id, thread_id, process) = fork_process_for_test();
+        let process_key = ctx
+            .set_process_state(process_id.0, ProcessState::Normal)
+            .unwrap()
+            .unwrap();
+        ctx.set_thread_state(process_id.0, thread_id.0, ThreadState::Balanced)
+            .unwrap();
+
+        assert_eq!(ctx.process_map.n_cells(), 2);
+
+        drop(process);
+        ctx.remove_process(process_key);
+        assert_eq!(ctx.process_map.n_cells(), 0);
     }
 
     #[test]
@@ -838,7 +886,7 @@ mod tests {
                 ..ThreadStateConfig::default()
             },
         ];
-        let mut ctx = SchedQosContext::new(Config {
+        let mut ctx = SchedQosContext::new_simple(Config {
             cgroup_context,
             process_configs: [
                 // ProcessState::Normal
@@ -921,7 +969,7 @@ mod tests {
     fn test_set_thread_state_without_process() {
         let process_id = std::process::id();
         let (cgroup_context, _files) = create_fake_cgroup_context_pair();
-        let mut ctx = SchedQosContext::new(Config {
+        let mut ctx = SchedQosContext::new_simple(Config {
             cgroup_context,
             process_configs: Config::default_process_config(),
             thread_configs: Config::default_thread_config(),
@@ -942,7 +990,7 @@ mod tests {
     fn test_set_thread_state_invalid_thread() {
         let process_id = ProcessId(std::process::id());
         let (cgroup_context, _files) = create_fake_cgroup_context_pair();
-        let mut ctx = SchedQosContext::new(Config {
+        let mut ctx = SchedQosContext::new_simple(Config {
             cgroup_context,
             process_configs: Config::default_process_config(),
             thread_configs: Config::default_thread_config(),
@@ -994,7 +1042,7 @@ mod tests {
     fn test_set_thread_state_gc() {
         let process_id = ProcessId(std::process::id());
         let (cgroup_context, _files) = create_fake_cgroup_context_pair();
-        let mut ctx = SchedQosContext::new(Config {
+        let mut ctx = SchedQosContext::new_simple(Config {
             cgroup_context,
             process_configs: Config::default_process_config(),
             thread_configs: Config::default_thread_config(),
@@ -1007,8 +1055,8 @@ mod tests {
         let (thread_id, _thread1) = spawn_thread_for_test();
         ctx.set_thread_state(process_id.0, thread_id.0, ThreadState::Balanced)
             .unwrap();
-        let process_ctx = ctx.state_map.get(&process_id).unwrap();
-        assert_eq!(process_ctx.threads.len(), 1);
+        let mut process_ctx = ctx.process_map.get_process(process_id).unwrap();
+        assert_eq!(process_ctx.thread_map().len(), 1);
 
         for _ in 0..10 {
             let (thread_id, thread) = spawn_thread_for_test();
@@ -1021,13 +1069,109 @@ mod tests {
         let (thread_id, _thread2) = spawn_thread_for_test();
         ctx.set_thread_state(process_id.0, thread_id.0, ThreadState::Balanced)
             .unwrap();
-        let process_ctx = ctx.state_map.get(&process_id).unwrap();
-        assert_eq!(process_ctx.threads.len(), 2);
+        let mut process_ctx = ctx.process_map.get_process(process_id).unwrap();
+        assert_eq!(process_ctx.thread_map().len(), 2);
 
         let (thread_id, _thread3) = spawn_thread_for_test();
         ctx.set_thread_state(process_id.0, thread_id.0, ThreadState::Balanced)
             .unwrap();
-        let process_ctx = ctx.state_map.get(&process_id).unwrap();
-        assert_eq!(process_ctx.threads.len(), 3);
+        let mut process_ctx = ctx.process_map.get_process(process_id).unwrap();
+        assert_eq!(process_ctx.thread_map().len(), 3);
+    }
+
+    #[test]
+    fn test_set_thread_state_compact() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("states");
+        let (cgroup_context, _files) = create_fake_cgroup_context_pair();
+        let mut ctx = SchedQosContext::new_file(
+            Config {
+                cgroup_context,
+                process_configs: Config::default_process_config(),
+                thread_configs: Config::default_thread_config(),
+            },
+            &file_path,
+        )
+        .unwrap();
+
+        let process_id = ProcessId(std::process::id());
+        ctx.set_process_state(process_id.0, ProcessState::Normal)
+            .unwrap();
+        let (thread_id1, dead_thread1) = spawn_thread_for_test();
+        ctx.set_thread_state(process_id.0, thread_id1.0, ThreadState::Urgent)
+            .unwrap();
+        let (thread_id2, _thread2) = spawn_thread_for_test();
+        ctx.set_thread_state(process_id.0, thread_id2.0, ThreadState::Utility)
+            .unwrap();
+
+        let mut process_ctx = ctx.process_map.get_process(process_id).unwrap();
+        assert_eq!(process_ctx.thread_map().len(), 2);
+        assert_eq!(ctx.process_map.n_cells(), 3);
+
+        drop(dead_thread1);
+        wait_for_thread_removed(process_id, thread_id1);
+
+        let (thread_id3, _thread3) = spawn_thread_for_test();
+        ctx.set_thread_state(process_id.0, thread_id3.0, ThreadState::Background)
+            .unwrap();
+        let mut process_ctx = ctx.process_map.get_process(process_id).unwrap();
+        assert_eq!(process_ctx.thread_map().len(), 2);
+        assert_eq!(ctx.process_map.n_cells(), 3);
+    }
+
+    #[test]
+    fn test_restart() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("states");
+        let (cgroup_context, _files) = create_fake_cgroup_context_pair();
+        let mut ctx = SchedQosContext::new_file(
+            Config {
+                cgroup_context,
+                process_configs: Config::default_process_config(),
+                thread_configs: Config::default_thread_config(),
+            },
+            &file_path,
+        )
+        .unwrap();
+
+        let process_id = ProcessId(std::process::id());
+        ctx.set_process_state(process_id.0, ProcessState::Normal)
+            .unwrap();
+        let (thread_id1, _thread1) = spawn_thread_for_test();
+        ctx.set_thread_state(process_id.0, thread_id1.0, ThreadState::UrgentBursty)
+            .unwrap();
+
+        let (process_id2, thread_id2, _process) = fork_process_for_test();
+        ctx.set_process_state(process_id2.0, ProcessState::Background)
+            .unwrap()
+            .unwrap();
+        ctx.set_thread_state(process_id2.0, thread_id2.0, ThreadState::Background)
+            .unwrap();
+
+        let (cgroup_context, mut files) = create_fake_cgroup_context_pair();
+        let mut ctx = SchedQosContext::load_from_file(
+            Config {
+                cgroup_context,
+                process_configs: Config::default_process_config(),
+                thread_configs: Config::default_thread_config(),
+            },
+            &file_path,
+        )
+        .unwrap();
+
+        ctx.set_process_state(process_id.0, ProcessState::Background)
+            .unwrap();
+        assert_eq!(
+            read_number(&mut files.cpuset_efficient).unwrap(),
+            thread_id1.0
+        );
+        assert!(read_number(&mut files.cpuset_efficient).is_none());
+
+        ctx.set_thread_state(process_id2.0, thread_id2.0, ThreadState::UrgentBursty)
+            .unwrap();
+        assert_eq!(
+            read_number(&mut files.cpuset_efficient).unwrap(),
+            thread_id2.0
+        );
     }
 }

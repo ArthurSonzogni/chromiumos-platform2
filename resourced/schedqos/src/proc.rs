@@ -5,6 +5,8 @@
 use std::fmt::Display;
 use std::fs::File;
 use std::io;
+use std::io::BufRead;
+use std::io::BufReader;
 use std::io::Read;
 use std::path::Path;
 
@@ -41,7 +43,7 @@ impl Display for Error {
 
 impl From<io::Error> for Error {
     fn from(e: io::Error) -> Self {
-        if e.raw_os_error() == Some(libc::ESRCH) {
+        if e.kind() == io::ErrorKind::NotFound || e.raw_os_error() == Some(libc::ESRCH) {
             Self::NotFound
         } else {
             Self::Io(e)
@@ -61,10 +63,7 @@ pub(crate) fn load_thread_timestamp(process_id: ProcessId, thread_id: ThreadId) 
 }
 
 fn load_starttime(path: &Path) -> Result<u64> {
-    let mut stat_file = match File::open(path) {
-        Err(e) if e.kind() == io::ErrorKind::NotFound => return Err(Error::NotFound),
-        other => other?,
-    };
+    let mut stat_file = File::open(path)?;
     // starttime is the 22th column in /proc/pid/stat. Each numeric column in /proc/pid/stat has at
     // most 21 bytes. (1 byte for sign + 19 bytes for u64 + 1 byte space). The 2nd column (comm) is
     // at most 67 bytes including the wrapping parenthesis (proc_task_name() of kernel uses 64 bytes
@@ -112,6 +111,20 @@ fn load_starttime(path: &Path) -> Result<u64> {
     let starttime = starttime.parse().map_err(|_| Error::FormatCorrupt)?;
 
     Ok(starttime)
+}
+
+pub fn load_tgid(thread_id: ThreadId) -> Result<ProcessId> {
+    let file = File::open(format!("/proc/{}/status", thread_id.0))?;
+    let r = BufReader::with_capacity(1024, file);
+    for line in r.lines() {
+        let line = line.map_err(Error::Io)?;
+        const TGID_TAG: &str = "Tgid:";
+        if let Some(tgid) = line.strip_prefix(TGID_TAG) {
+            let tgid = tgid.trim().parse().map_err(|_| Error::FormatCorrupt)?;
+            return Ok(ProcessId(tgid));
+        }
+    }
+    Err(Error::FormatCorrupt)
 }
 
 pub struct ThreadChecker {
@@ -263,6 +276,21 @@ mod tests {
             load_starttime(file.path()).err().unwrap(),
             Error::FormatCorrupt
         ));
+    }
+
+    #[test]
+    fn test_load_tgid() {
+        let process_id = ProcessId(std::process::id());
+        assert_eq!(load_tgid(ThreadId(process_id.0)).unwrap(), process_id);
+
+        let (thread_id, thread) = spawn_thread_for_test();
+        assert_eq!(load_tgid(thread_id).unwrap(), process_id);
+        drop(thread);
+        wait_for_thread_removed(process_id, thread_id);
+        assert!(matches!(load_tgid(thread_id), Err(Error::NotFound)));
+
+        let (process_id, thread_id, _process) = fork_process_for_test();
+        assert_eq!(load_tgid(thread_id).unwrap(), process_id);
     }
 
     #[test]
