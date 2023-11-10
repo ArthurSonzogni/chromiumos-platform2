@@ -67,6 +67,15 @@ bool BigNumToSecureBlob(const BIGNUM& bn,
   return true;
 }
 
+bool BigNumToBlob(const BIGNUM& bn, int result_len, brillo::Blob* result) {
+  result->resize(result_len);
+  if (BN_bn2binpad(&bn, result->data(), result_len) < 0) {
+    LOG(ERROR) << "Failed to convert BIGNUM to Blob: " << GetOpenSSLErrors();
+    return false;
+  }
+  return true;
+}
+
 crypto::ScopedBIGNUM BlobToBigNum(const brillo::Blob& blob) {
   crypto::ScopedBIGNUM result(BN_new());
   if (!result) {

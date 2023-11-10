@@ -41,6 +41,10 @@ SecureBlobToBigNum(const brillo::SecureBlob& blob);
 bool HWSEC_FOUNDATION_EXPORT BigNumToSecureBlob(const BIGNUM& bn,
                                                 int result_len,
                                                 brillo::SecureBlob* result);
+// Like above, but with Blob output parameter.
+bool HWSEC_FOUNDATION_EXPORT BigNumToBlob(const BIGNUM& bn,
+                                          int result_len,
+                                          brillo::Blob* result);
 
 // Converts Blob to BIGNUM. Returns nullptr if error occurred.
 // Empty Blob is interpreted as zero.

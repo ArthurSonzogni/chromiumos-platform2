@@ -33,6 +33,18 @@ TEST(BigNumUtilTest, SecureBlobPaddedConversions) {
   EXPECT_EQ(BN_get_word(scalar.get()), BN_get_word(scalar2.get()));
 }
 
+TEST(BigNumUtilTest, BlobPaddedConversions) {
+  crypto::ScopedBIGNUM scalar = BigNumFromValue(123123123u);
+  ASSERT_TRUE(scalar);
+  brillo::Blob blob;
+  EXPECT_FALSE(BigNumToBlob(*scalar, 1, &blob));
+  ASSERT_TRUE(BigNumToBlob(*scalar, 10, &blob));
+  EXPECT_EQ(blob.size(), 10);
+  EXPECT_FALSE(blob.empty());
+  crypto::ScopedBIGNUM scalar2 = BlobToBigNum(blob);
+  EXPECT_EQ(BN_get_word(scalar.get()), BN_get_word(scalar2.get()));
+}
+
 TEST(BigNumUtilTest, ZeroConversions) {
   brillo::SecureBlob blob;
   EXPECT_TRUE(blob.empty());

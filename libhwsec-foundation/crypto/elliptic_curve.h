@@ -54,6 +54,11 @@ class HWSEC_FOUNDATION_EXPORT EllipticCurve final {
   // Returns true if scalar is inside the curve order.
   bool IsScalarValid(const BIGNUM& scalar) const;
 
+  // Returns the scalar modulo (order - 1) plus 1, such that it becomes a valid
+  // non-zero scalar inside the curve order, and can be used as the private key.
+  crypto::ScopedBIGNUM ModToValidNonZeroScalar(const BIGNUM& scalar,
+                                               BN_CTX* context) const;
+
   // Returns field element (affine coordinate) size in bytes.
   int AffineCoordinateSizeInBytes() const;
 

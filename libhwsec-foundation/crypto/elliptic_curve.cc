@@ -108,6 +108,34 @@ bool EllipticCurve::IsScalarValid(const BIGNUM& scalar) const {
   return BN_is_negative(&scalar) == 0 && BN_cmp(&scalar, order_.get()) < 0;
 }
 
+crypto::ScopedBIGNUM EllipticCurve::ModToValidNonZeroScalar(
+    const BIGNUM& scalar, BN_CTX* context) const {
+  crypto::ScopedBIGNUM order_minus_1(BN_dup(order_.get()));
+  if (!order_minus_1) {
+    LOG(ERROR) << "Failed to allocate BIGNUM structure: " << GetOpenSSLErrors();
+    return nullptr;
+  }
+  if (BN_sub_word(order_minus_1.get(), 1) != 1) {
+    LOG(ERROR) << "Failed to perform BIGNUM subtraction: "
+               << GetOpenSSLErrors();
+    return nullptr;
+  }
+  crypto::ScopedBIGNUM result(BN_secure_new());
+  if (!result) {
+    LOG(ERROR) << "Failed to allocate BIGNUM structure: " << GetOpenSSLErrors();
+    return nullptr;
+  }
+  if (BN_mod(result.get(), &scalar, order_minus_1.get(), context) != 1) {
+    LOG(ERROR) << "Failed to perform BIGNUM modulo: " << GetOpenSSLErrors();
+    return nullptr;
+  }
+  if (BN_add_word(result.get(), 1) != 1) {
+    LOG(ERROR) << "Failed to perform BIGNUM addition: " << GetOpenSSLErrors();
+    return nullptr;
+  }
+  return result;
+}
+
 int EllipticCurve::AffineCoordinateSizeInBytes() const {
   unsigned int degree_bits = EC_GROUP_get_degree(group_.get());
   return (degree_bits + 7) >> 3;

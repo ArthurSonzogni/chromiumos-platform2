@@ -179,6 +179,16 @@ TEST_F(EllipticCurveTest, RandomNonZeroScalar) {
   EXPECT_EQ(BN_is_zero(secret.get()), 0);
 }
 
+TEST_F(EllipticCurveTest, ModToValidNonZeroScalar) {
+  crypto::ScopedBIGNUM bn(BN_dup(ec_->GetOrderForTesting()));
+  ASSERT_TRUE(bn);
+  ASSERT_EQ(BN_mul_word(bn.get(), 3), 1);
+  crypto::ScopedBIGNUM scalar =
+      ec_->ModToValidNonZeroScalar(*bn, context_.get());
+  ASSERT_TRUE(scalar);
+  EXPECT_EQ(BN_is_word(scalar.get(), 4), 1);
+}
+
 TEST_F(EllipticCurveTest, SubjectPublicKeyInfoConversions) {
   crypto::ScopedEC_KEY key = ec_->GenerateKey(context_.get());
   ASSERT_TRUE(key);
