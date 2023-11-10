@@ -24,7 +24,7 @@ constexpr char kHelp[] = "help";
 constexpr char kHelpMessage[] =
     "\n"
     "Available Switches: \n"
-    "  --feature=wifi,clat\n"
+    "  --feature=wifi-qos,clat\n"
     "    The keyword to identify the feature you want to enable or disable.\n"
     "  --enable\n"
     "    Enable a feature you specify. You can't use this with --disable.\n"
