@@ -6,11 +6,9 @@
 
 #include <sys/types.h>
 
-#include <algorithm>
 #include <cstdlib>
 #include <iostream>
 #include <map>
-#include <memory>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -29,8 +27,6 @@
 
 #include "diagnostics/cros_health_tool/mojo_util.h"
 #include "diagnostics/cros_health_tool/output_util.h"
-#include "diagnostics/mojom/external/network_health_types.mojom.h"
-#include "diagnostics/mojom/external/network_types.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
@@ -39,8 +35,6 @@ namespace diagnostics {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
-namespace network_config_mojom = ::chromeos::network_config::mojom;
-namespace network_health_mojom = ::chromeos::network_health::mojom;
 
 constexpr std::pair<const char*, mojom::ProbeCategoryEnum> kCategorySwitches[] =
     {
@@ -951,8 +945,7 @@ base::Value::Dict GetBusDeviceJson(const mojom::BusDevicePtr& device) {
       break;
     }
     case mojom::BusInfo::Tag::kUnmappedField: {
-      NOTREACHED();
-      break;
+      NOTREACHED_NORETURN();
     }
   }
   out_device.Set("bus_info", std::move(out_bus_info));

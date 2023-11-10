@@ -360,9 +360,7 @@ class CpuFetcherTest : public testing::Test {
     } else if (logical_id == kThirdLogicalId) {
       return kThirdCStates;
     }
-
-    NOTREACHED();
-    return kFirstCStates;
+    NOTREACHED_NORETURN();
   }
 
   // Verifies that the received PhysicalCpuInfoPtrs matched the expected default
@@ -1164,10 +1162,8 @@ class ParseCpuArchitectureTest
       public testing::WithParamInterface<ParseCpuArchitectureTestParams> {
  protected:
   // Accessors to the test parameters returned by gtest's GetParam():
-  ParseCpuArchitectureTestParams params() const {
-    return GetParam();
-  }  // namespace
-};   // namespace diagnostics
+  ParseCpuArchitectureTestParams params() const { return GetParam(); }
+};
 
 // Test that we can parse the given uname response for CPU architecture.
 TEST_P(ParseCpuArchitectureTest, ParseUnameResponse) {
