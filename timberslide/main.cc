@@ -17,17 +17,17 @@ namespace {
 const char kDefaultDeviceLogFile[] = "/sys/kernel/debug/cros_ec/console_log";
 const char kDefaultDeviceUptimeFile[] = "/sys/kernel/debug/cros_ec/uptime";
 const char kDefaultLogDirectory[] = "/var/log/";
-const std::array<std::string, 3> kDefaultTokenDatabasePaths = {
-    "/usr/share/misc/tokens.bin",
-    "/usr/local/usr/share/misc/tokens.bin",
-    "/usr/local/tokens.bin",
+const std::array<std::string_view, 3> kDefaultTokenDatabasePaths = {
+    "/usr/share/cros_ec/tokens.bin",
+    "/usr/local/usr/share/cros_ec/tokens.bin",
+    "/usr/local/cros_ec/tokens.bin",
 };
 }  // namespace
 
 // Return the first valid path found to token database. If none found
 // return empty string.
 template <typename It>
-std::string FindTokenDatabase(It begin, It end) {
+std::string_view FindTokenDatabase(It begin, It end) {
   for (; begin != end; begin++) {
     if (base::PathExists(base::FilePath(*begin))) {
       LOG(INFO) << "Found Token DB: " << *begin;
