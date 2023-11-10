@@ -53,8 +53,8 @@ std::string GetCategoryHelp() {
   std::stringstream ss;
   ss << "Category of events to subscribe to: [";
   const char* sep = "";
-  for (auto pair : kCategorySwitches) {
-    ss << sep << pair.first;
+  for (const auto& [category_name, unused_enum] : kCategorySwitches) {
+    ss << sep << category_name;
     sep = ", ";
   }
   ss << "]";

@@ -220,10 +220,9 @@ void State::HandleLink(Context* context,
   }
   bool tx_bitrate_found = false;
   bool signal_found = false;
-  for (int i = 0; i < keyVals.size(); i++) {
-    if (keyVals[i].first == "signal") {
-      if (GetDoubleValueWithUnit(keyVals[i].second, "dBm",
-                                 &link_info->signal_level_dBm)) {
+  for (const auto& [key, value] : keyVals) {
+    if (key == "signal") {
+      if (GetDoubleValueWithUnit(value, "dBm", &link_info->signal_level_dBm)) {
         if (link_info->signal_level_dBm < -110) {
           link_info->link_quality = 0;
         } else if (link_info->signal_level_dBm > -40) {
@@ -233,11 +232,10 @@ void State::HandleLink(Context* context,
         }
         signal_found = true;
       }
-    } else if (keyVals[i].first == "rx bitrate") {
-      GetDoubleValueWithUnit(keyVals[i].second, "MBit/s",
-                             &link_info->rx_bit_rate_mbps);
-    } else if (keyVals[i].first == "tx bitrate") {
-      if (GetDoubleValueWithUnit(keyVals[i].second, "MBit/s",
+    } else if (key == "rx bitrate") {
+      GetDoubleValueWithUnit(value, "MBit/s", &link_info->rx_bit_rate_mbps);
+    } else if (key == "tx bitrate") {
+      if (GetDoubleValueWithUnit(value, "MBit/s",
                                  &link_info->tx_bit_rate_mbps)) {
         tx_bitrate_found = true;
       }

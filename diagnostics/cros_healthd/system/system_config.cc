@@ -47,22 +47,21 @@ bool NvmeSelfTestSupportedFromIdentity(const std::string& nvmeIdentity) {
   // frmw      : 0x16
   base::StringPairs pairs;
   base::SplitStringIntoKeyValuePairs(nvmeIdentity, ':', '\n', &pairs);
-  for (auto& p : pairs) {
-    if (base::TrimWhitespaceASCII(p.first,
-                                  base::TrimPositions::TRIM_TRAILING) !=
+  for (const auto& [key, value] : pairs) {
+    if (base::TrimWhitespaceASCII(key, base::TrimPositions::TRIM_TRAILING) !=
         kNvmeSelfTestCtrlField) {
       continue;
     }
 
-    u_int32_t value;
+    u_int32_t oacs_value;
     if (!base::HexStringToUInt(
-            base::TrimWhitespaceASCII(p.second, base::TrimPositions::TRIM_ALL),
-            &value)) {
+            base::TrimWhitespaceASCII(value, base::TrimPositions::TRIM_ALL),
+            &oacs_value)) {
       return false;
     }
 
     // Check to see if the device-self-test support bit is set
-    return ((value & kNvmeSelfTestBitmask) == kNvmeSelfTestBitmask);
+    return ((oacs_value & kNvmeSelfTestBitmask) == kNvmeSelfTestBitmask);
   }
 
   return false;

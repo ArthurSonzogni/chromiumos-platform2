@@ -53,10 +53,9 @@ bool ScrapeSmartctlAttributes(const std::string& output,
   bool found_critical_warning = false;
   base::StringPairs pairs;
   base::SplitStringIntoKeyValuePairs(output, ':', '\n', &pairs);
-  for (const auto& pair : pairs) {
-    const std::string& key = pair.first;
+  for (const auto& [key, value] : pairs) {
     std::string_view value_str =
-        base::TrimWhitespaceASCII(pair.second, base::TRIM_ALL);
+        base::TrimWhitespaceASCII(value, base::TRIM_ALL);
     if (key == "Available Spare") {
       found_available_spare |=
           RE2::FullMatch(value_str, kPercentStringRegex, available_spare);

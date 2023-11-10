@@ -84,10 +84,10 @@ void MemoryFetcher::ParseProcVmStat(mojom::MemoryInfo* info) {
   }
 
   bool pgfault_found = false;
-  for (int i = 0; i < keyVals.size(); i++) {
-    if (keyVals[i].first == "pgfault") {
+  for (const auto& [key, value] : keyVals) {
+    if (key == "pgfault") {
       uint64_t num_page_faults;
-      if (base::StringToUint64(keyVals[i].second, &num_page_faults)) {
+      if (base::StringToUint64(value, &num_page_faults)) {
         info->page_faults_since_last_boot = num_page_faults;
         pgfault_found = true;
         break;
