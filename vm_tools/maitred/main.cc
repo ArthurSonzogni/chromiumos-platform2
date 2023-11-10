@@ -355,7 +355,7 @@ int main(int argc, char** argv) {
 
   if (maitred_is_pid1) {
     LOG(INFO) << "Shutting down system NOW";
-    reboot(RB_AUTOBOOT);
+    reboot(RB_POWER_OFF);
   }
 
   return 0;

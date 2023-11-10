@@ -82,6 +82,22 @@ constexpr char kDefaultPath[] = "/usr/bin:/usr/sbin:/bin:/sbin";
 constexpr char kHostnameConfigFile[] = "/etc/hostname";
 #endif
 
+// Path to the LXD binary.
+constexpr char kLxdPath[] = "/usr/bin/lxd";
+// Alternate path to the LXD binary.
+constexpr char kLxdAlternatePath[] = "/opt/google/lxd-next/usr/bin/lxd";
+
+// Action to take for process shutdown.
+enum class KillAction {
+  // Do not kill or wait for the process.
+  IGNORE,
+  // Kill the process and wait for it to exit.
+  KILL_AND_WAIT,
+  // Do not kill the process, and wait for it to exit.
+  // Useful if termination is delegated to another process.
+  WAIT_ONLY,
+};
+
 // Retry threshould and duration for processes that respawn.  If a process needs
 // to be respawned more than kMaxRespawnCount times in the last
 // kRespawnWindowSeconds, then it will stop being respawned.
@@ -95,6 +111,9 @@ constexpr base::TimeDelta kShutdownTimeout = base::Seconds(10);
 // Number of seconds that we should wait for tremplin to attempt to gracefully
 // shut down containers.
 constexpr base::TimeDelta kTremplinShutdownTimeout = base::Seconds(2);
+
+// Time that we should wait for vm_syslog to stop.
+constexpr base::TimeDelta kVmSyslogShutdownTimeout = base::Milliseconds(300);
 
 // Maximum number of bytes to capture from a single spawned process.
 constexpr size_t kMaxOutputCaptureSize = 65536;
@@ -451,7 +470,8 @@ ino_t GetInode(const base::FilePath& path) {
 
 // Given a file with text in the format used by /proc/PID/cmdline i.e. a bunch
 // of null-separated strings, read it into a string replacing null bytes with
-// spaces. This is a lossy conversion if args have spaces within them.
+// spaces (except the last null byte). This is a lossy conversion if args have
+// spaces within them.
 std::string ReadCmdline(const base::FilePath& path) {
   // Embedded nulls seem to confuse the base:: string functions so we don't get
   // to use them :'(. Instead read it as bytes then step through byte-by-byte
@@ -466,11 +486,13 @@ std::string ReadCmdline(const base::FilePath& path) {
     return ret;
   }
   ret.reserve(cmdline->size());
-  for (auto b : *cmdline) {
-    if (b == '\0') {
-      ret.push_back(' ');
+  for (auto it = cmdline->begin(); it != cmdline->end(); ++it) {
+    if (*it == '\0') {
+      if (it + 1 != cmdline->end()) {
+        ret.push_back(' ');
+      }
     } else {
-      ret.push_back(b);
+      ret.push_back(*it);
     }
   }
   return ret;
@@ -488,8 +510,8 @@ std::string SanitiseCmdline(const std::string& cmdline,
     return "unknown process";
   }
   if (root_inode != 0 && root_inode == proc_inode) {
-    // /ns/mnt inodes match, so the process is _not_ inside a mount namespace,
-    // so it's not inside a container. So we can log the entire cmdline.
+    // /ns/pid inodes match, so the process is _not_ inside a PID namespace, so
+    // it's not inside a container. So we can log the entire cmdline.
     return cmdline;
   }
   if (cmdline.find("/opt/google") != string::npos) {
@@ -515,7 +537,7 @@ void LogTimedOutProcess(ino_t root_inode, pid_t pid) {
   auto path = base::FilePath("/proc").Append(base::NumberToString(pid));
 
   auto cmdline = SanitiseCmdline(ReadCmdline(path.Append("cmdline")),
-                                 root_inode, GetInode(path.Append("ns/mnt")));
+                                 root_inode, GetInode(path.Append("ns/pid")));
   LOG(ERROR) << "Sending SIGKILL to " << cmdline << " (PID=" << pid << ")";
 }
 
@@ -606,68 +628,58 @@ void WaitForChildren(std::set<pid_t> pids, base::Time deadline) {
 // and set in ShouldKillProcess().
 static pid_t cached_pid = 0;
 
-// Returns true if it is safe to kill |process| either with a SIGTERM or a
-// SIGKILL.  |path| must be the path to the process directory in /proc.
-bool ShouldKillProcess(pid_t process, const base::FilePath& path) {
+// Returns the action to take to kill |process| either with the given |signo|.
+// |path| must be the path to the process directory in /proc.
+KillAction ShouldKillProcess(int signo,
+                             pid_t process,
+                             const base::FilePath& path,
+                             ino_t root_pidns_inode) {
   if (cached_pid == 0) {
     cached_pid = getpid();
   }
 
   if (process == 1 || process == cached_pid) {
     // Probably not a good idea to kill ourselves.
-    return false;
+    return KillAction::IGNORE;
   }
 
-  // Get the process's UID.
-  uid_t uid = -1;
-  string status;
-  if (!base::ReadFileToString(path.Append("status"), &status)) {
-    PLOG(WARNING) << "Failed to read status for process " << process;
-
-    // Don't send a signal to this process just to be on the safe side.
-    return false;
+  // Check if the process is a container process. Don't kill container processes
+  // except using SIGKILL as a last resort.
+  if (GetInode(path.Append("ns/pid")) != root_pidns_inode && signo != SIGKILL) {
+    return KillAction::WAIT_ONLY;
   }
 
-  for (const auto& line : base::SplitStringPiece(
-           status, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
-    if (!base::StartsWith(line, "Uid:")) {
-      continue;
+  // Check the process executable.
+  // buf must be larger than kLxdPath and kLxdAlternatePath.
+  char buf[256];
+  ssize_t ret = readlink(path.Append("exe").value().c_str(), buf, sizeof(buf));
+  if (ret < 0) {
+    if (errno == ENOENT) {
+      // Kernel processes have no executable. Or the process is gone.
+      return KillAction::IGNORE;
     }
-
-    std::vector<base::StringPiece> tokens = base::SplitStringPiece(
-        line, base::kWhitespaceASCII, base::TRIM_WHITESPACE,
-        base::SPLIT_WANT_NONEMPTY);
-    DCHECK_EQ(tokens.size(), 5);
-    if (!base::StringToUint(tokens[1], &uid)) {
-      LOG(WARNING) << "Failed to parse uid (" << tokens[1] << ") for process "
-                   << process;
-      return false;
-    }
-
-    break;
   }
 
-  DCHECK_NE(uid, -1);
-  if (uid != 0) {
-    // All non-root processes can be killed.
-    return true;
+  // Check if the process is a LXD process. Don't kill LXD processes except
+  // using SIGKILL as a last resort.
+  std::string_view ev(buf, ret);
+  if ((ev == kLxdPath || ev == kLxdAlternatePath) && signo != SIGKILL) {
+    return KillAction::WAIT_ONLY;
   }
 
-  // Check if this is a kernel process.
-  char buf;
-  if (readlink(path.Append("exe").value().c_str(), &buf, sizeof(buf)) < 0 &&
-      errno == ENOENT) {
-    // Kernel processes have no executable.
-    return false;
+  // Check if the process is vm_syslog. Special-case to allow vm_syslog to run
+  // until later in the shutdown process.
+  if (ReadCmdline(path.Append("cmdline")) == "vm_syslog" && signo != SIGKILL) {
+    return KillAction::IGNORE;
   }
 
-  return true;
+  return KillAction::KILL_AND_WAIT;
 }
 
 // Broadcast the signal |signo| to all processes.  |signo| must be either
 // SIGTERM or SIGKILL.  If |pids| is not nullptr, then it is filled with the
 // pids of the processes to which |signo| was successfully sent.
-void BroadcastSignal(int signo, std::set<pid_t>* pids) {
+void BroadcastSignal(int signo, std::set<pid_t>* pids, ino_t root_pidns_inode) {
   DCHECK(signo == SIGTERM || signo == SIGKILL);
 
   // We are about to walk the process tree.  Pause all processes so that new
@@ -687,20 +699,6 @@ void BroadcastSignal(int signo, std::set<pid_t>* pids) {
     PLOG(WARNING) << "Unable to send SIGSTOP to all processes.  System "
                   << "thrashing may occur";
   }
-  ino_t root_inode;
-  if (signo == SIGKILL) {
-    // Only used for SIGKILL, to log processes which are going to get killed.
-    // We use the inode of init's mount namespace as an identifier to figure out
-    // if other processes are in the same namespace as us or a different one
-    // (i.e. inside a container).
-    root_inode = GetInode(base::FilePath("/proc/1/ns/mnt"));
-    if (root_inode == 0) {
-      // Unable to get the root inode so log an error. Still continue, this
-      // means everything will be treated as an in-container process (since no
-      // inodes will match) but we can still get pids in that case.
-      PLOG(ERROR) << "Unable to get inode for root mount namespace";
-    }
-  }
 
   base::FileEnumerator enumerator(base::FilePath("/proc"),
                                   false /* recursive */,
@@ -713,17 +711,18 @@ void BroadcastSignal(int signo, std::set<pid_t>* pids) {
       continue;
     }
 
-    if (!ShouldKillProcess(process, path)) {
-      continue;
-    }
+    KillAction action =
+        ShouldKillProcess(signo, process, path, root_pidns_inode);
+    if (action == KillAction::KILL_AND_WAIT) {
+      if (signo == SIGKILL) {
+        LogTimedOutProcess(root_pidns_inode, process);
+      }
 
-    if (signo == SIGKILL) {
-      LogTimedOutProcess(root_inode, process);
-    }
-    if (kill(process, signo) < 0) {
-      PLOG(ERROR) << "Failed to send " << strsignal(signo) << " to process "
-                  << process;
-      continue;
+      if (kill(process, signo) < 0) {
+        PLOG(ERROR) << "Failed to send " << strsignal(signo) << " to process "
+                    << process;
+        continue;
+      }
     }
 
     // Now that we've sent the signal to the process wake it up.  This way we
@@ -735,7 +734,8 @@ void BroadcastSignal(int signo, std::set<pid_t>* pids) {
       PLOG(WARNING) << "Failed to wake up process " << process;
     }
 
-    if (pids) {
+    if (pids && (action == KillAction::KILL_AND_WAIT ||
+                 action == KillAction::WAIT_ONLY)) {
       pids->insert(process);
     }
   }
@@ -1094,13 +1094,19 @@ void Init::Worker::Spawn(struct ChildInfo info,
 void Init::Worker::Shutdown(int notify_fd) {
   DCHECK_NE(notify_fd, -1);
 
+  ino_t root_pidns_inode = GetInode(base::FilePath("/proc/1/ns/pid"));
+  if (root_pidns_inode == 0) {
+    // Unable to get the root inode so log an error. Still continue, this
+    // means everything will be treated as an in-container process (since no
+    // inodes will match) but we can still get pids in that case.
+    PLOG(ERROR) << "Unable to get inode for root PID namespace";
+  }
+
   // Stop watching for SIGCHLD.  We will do it manually here.
   watcher_.reset();
   signal_fd_.reset();
 
-  // First send SIGPWR to tremplin, if it is running. This runs "poweroff"
-  // in every container, which is necessary to work around the version
-  // of systemd in stretch that hangs after receiving SIGRTMIN + 3.
+  // First send SIGPWR to tremplin, if it is running.
   pid_t tremplin_pid = FindProcessByName("tremplin");
   if (tremplin_pid != 0 && kill(tremplin_pid, SIGPWR) == 0) {
     WaitForChildren({tremplin_pid},
@@ -1109,13 +1115,20 @@ void Init::Worker::Shutdown(int notify_fd) {
 
   // Now send SIGTERM to all remaining processes.
   std::set<pid_t> pids;
-  BroadcastSignal(SIGTERM, &pids);
+  BroadcastSignal(SIGTERM, &pids, root_pidns_inode);
 
   // Wait for those processes to terminate.
   WaitForChildren(std::move(pids), base::Time::Now() + kShutdownTimeout);
 
+  // Send SIGTERM to vm_syslog.
+  pid_t vm_syslog_pid = FindProcessByName("vm_syslog");
+  if (vm_syslog_pid != 0 && kill(vm_syslog_pid, SIGTERM) == 0) {
+    WaitForChildren({vm_syslog_pid},
+                    base::Time::Now() + kVmSyslogShutdownTimeout);
+  }
+
   // Kill anything left with SIGKILL.
-  BroadcastSignal(SIGKILL, &pids);
+  BroadcastSignal(SIGKILL, &pids, root_pidns_inode);
 
   // Detach loopback devices.
   DetachLoopback();
