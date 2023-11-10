@@ -2,7 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Next MinVersion: 4
+// Next MinVersion: 5
+
+// API intended for retrieving a snapshot of the network health state. Returns
+// properties of any available network technologies and any connected or
+// connecting network when available.
 
 // NOTE: This mojom exists in two places and must be kept in sync:
 //       Chromium: chromeos/services/network_health/public/mojom/

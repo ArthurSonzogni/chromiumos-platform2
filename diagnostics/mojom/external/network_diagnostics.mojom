@@ -4,12 +4,9 @@
 //
 // Next MinVersion: 2
 //
-// Definitions for the NetworkDiagnosticsRoutines API exposed by the browser.
-// This API is consumed by cros_healthd to retrieve network diagnostics from
-// the browser.
-//
-// NOTE: This mojom should be kept in sync with the copy in Chromium's repo in
-// src/chromeos/services/network_health/public/mojom/network_diagnostics.mojom.
+// NOTE: This mojom exists in two places and must be kept in sync:
+//       Chromium: chromeos/services/network_health/public/mojom/
+//       ChromeOS: src/platform2/diagnostics/mojom/external/
 
 module chromeos.network_diagnostics.mojom;
 
