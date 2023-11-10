@@ -10,6 +10,9 @@ BasedOnStyle: Chromium
 # This defaults to 'Auto'. Explicitly set it so behavior is consistent.
 Standard: c++20
 
+# Always end files with a newline.
+InsertNewlineAtEOF: true
+
 # This is permitted by the Google and Chromium style guides, and existing code
 # uses it heavily.
 AllowAllParametersOfDeclarationOnNextLine: true

@@ -1351,5 +1351,3 @@ typedef enum camera_metadata_enum_android_automotive_lens_facing {
     ANDROID_AUTOMOTIVE_LENS_FACING_INTERIOR_SEAT_ROW_3_CENTER       , // HIDL v3.8
     ANDROID_AUTOMOTIVE_LENS_FACING_INTERIOR_SEAT_ROW_3_RIGHT        , // HIDL v3.8
 } camera_metadata_enum_android_automotive_lens_facing_t;
-
-
