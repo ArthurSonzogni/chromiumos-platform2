@@ -13707,6 +13707,7 @@ mno {
         name: "Kajeet"
       }
       mccmnc: "310260"
+      mccmnc: "311882"
       prioritizes_name: true
       mobile_apn {
         apn: "iot.kajeet"
