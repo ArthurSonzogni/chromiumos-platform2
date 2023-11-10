@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# This file lists out the seccomp policy.
-
 # The following are generic syscalls.
 # rseq should be first due to frequency and purpose to decrease nptl latency
 rseq: 1
@@ -30,8 +28,6 @@ poll: 1
 read: 1
 openat: 1
 set_robust_list: 1
-# base::FileEnumerator::Next()
-getdents: 1
 wait4: 1
 munmap: 1
 sendto: 1
@@ -46,12 +42,7 @@ faccessat: 1
 faccessat2: 1
 sched_getattr: 1
 sched_setattr: 1
-
-# The following are syscalls enabled by -L in minijail.
 connect: 1
-lseek: 1
-
-# The following are syscalls required for ectool_i2cread
 rt_sigaction: 1
 uname: 1
 lstat: 1
@@ -64,20 +55,10 @@ arch_prctl: 1
 getpid: 1
 set_tid_address: 1
 getdents64: 1
-# ioctl:
-# arg1 == _IOC(_IOC_READ|_IOC_WRITE, 0xec, 0x1, 0x108) (0xc108ec01) ||
-# arg1 == _IOC(_IOC_READ|_IOC_WRITE, 0xec, 0, 0x14) (0xc014ec00) ||
-# arg1 == _IOC(_IOC_READ|_IOC_WRITE, 0x3a, 0, 0x28) (0xc0283a00)
-#
-# Driver type 0x3a (":") = CROS_EC_DEV_IOC
-# (Old iotcl format, used by ChromeOS 3.18 and older)
-#
-# Driver type 0xec = CROS_EC_DEV_IOC_V2
-# (New ioctl format,  used by ChromeOS 4.4 or later as well as upstream 4.0+)
-# Please refer to src/platform/ec/util/cros_ec_dev.h for more info
+# CROS_EC_DEV_IOCXCMD = 0xc0283a00
+# CROS_EC_DEV_IOCRDMEM_V2 = 0xc108ec01
+# CROS_EC_DEV_IOCXCMD_V2 = 0xc014ec00
 ioctl: arg1 == 0xc108ec01 || arg1 == 0xc0283a00 || arg1 == 0xc014ec00
-# TODO(b/120826467) Disallow execve when accessing /dev/cros_ec
-# without ectool is possible
 pipe: 1
 prlimit64: 1
 setgroups: 1

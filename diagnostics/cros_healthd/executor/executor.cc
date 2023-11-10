@@ -113,8 +113,7 @@ constexpr char kThermal[] = "ec_thermal-seccomp.policy";
 // SECCOMP policy for udev
 constexpr char kTouchpadFetcher[] = "touchpad_fetcher-seccomp.policy";
 // SECCOMP policy for reading I2C bus from EC.
-// TODO(b/187371195): Replace `ectool` with `ec` after removing debugd usages.
-constexpr char kI2CRead[] = "ectool_i2cread-seccomp.policy";
+constexpr char kI2CRead[] = "ec_i2cread-seccomp.policy";
 
 }  // namespace seccomp_file
 
