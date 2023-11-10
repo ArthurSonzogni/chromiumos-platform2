@@ -26,7 +26,7 @@ pub fn install_image_to_disk<P: AsRef<Path>>(dst: P, image_path: P) -> Result<()
     // Target BIOS is EFI.
     cmd.arg("--target_bios").arg("efi");
     // Skip writing the partition table since we already put this before.
-    cmd.arg("--skip_writing_part_table");
+    cmd.arg("--skip_gpt_creation");
 
     execute_command(cmd)
 }
