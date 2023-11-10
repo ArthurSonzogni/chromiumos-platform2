@@ -73,7 +73,7 @@ class FeedbackUploader : public base::SupportsWeakPtr<FeedbackUploader> {
   // Priority queue of reports prioritized by the time the report is supposed
   // to be uploaded at.
   std::priority_queue<scoped_refptr<FeedbackReport>,
-                      std::vector<scoped_refptr<FeedbackReport> >,
+                      std::vector<scoped_refptr<FeedbackReport>>,
                       ReportsUploadTimeComparator>
       reports_queue_;
 
