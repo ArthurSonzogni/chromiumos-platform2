@@ -128,3 +128,4 @@ exit_group: 1
 clock_getres: 1
 clock_gettime: 1
 gettimeofday: 1
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
