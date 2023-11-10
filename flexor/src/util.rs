@@ -55,25 +55,6 @@ pub fn execute_command(mut command: Command) -> Result<()> {
     }
 }
 
-/// Get a disk partition device path.
-///
-/// This handles inserting a 'p' before the number if needed.
-pub fn get_partition_device(disk_device: &Path, num: u32) -> PathBuf {
-    let mut buf = disk_device.as_os_str().to_os_string();
-
-    // If the disk path ends in a number, e.g. "/dev/nvme0n1", append
-    // a "p" before the partition number.
-    if let Some(byte) = buf.as_bytes().last() {
-        if byte.is_ascii_digit() {
-            buf.push("p");
-        }
-    }
-
-    buf.push(num.to_string());
-
-    PathBuf::from(buf)
-}
-
 /// Reload the partition table on block devices.
 pub fn reload_partitions(device: &Path) -> Result<()> {
     // In some cases, we may be racing with udev for access to the
@@ -266,21 +247,6 @@ mod tests {
     fn test_execute_good_command() {
         let result = execute_command(Command::new("ls"));
         assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_get_partition_device() {
-        let result = get_partition_device(Path::new("/dev/nvme0n1"), 4);
-        assert_eq!(Path::new("/dev/nvme0n1p4").to_path_buf(), result);
-
-        let result = get_partition_device(Path::new("/dev/loop0"), 1);
-        assert_eq!(Path::new("/dev/loop0p1").to_path_buf(), result);
-
-        let result = get_partition_device(Path::new("/dev/mmcblk0"), 2);
-        assert_eq!(Path::new("/dev/mmcblk0p2").to_path_buf(), result);
-
-        let result = get_partition_device(Path::new("/dev/sda"), 3);
-        assert_eq!(Path::new("/dev/sda3").to_path_buf(), result);
     }
 
     #[test]

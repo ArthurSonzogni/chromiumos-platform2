@@ -36,7 +36,8 @@ struct Args {
 /// the image size is about 2.5GB, we assume that much free space in RAM.
 fn copy_image_to_rootfs(device_path: &Path) -> Result<()> {
     // We expect our data in partition 4, with a vFAT filesystem.
-    let data_partition_path = util::get_partition_device(device_path, DATA_PART_NUM);
+    let data_partition_path = libchromeos::disk::get_partition_device(device_path, DATA_PART_NUM)
+        .context("Unable to find correct partition path")?;
     let mount = mount::Mount::mount_by_path(data_partition_path, mount::FsType::Vfat)?;
 
     // Copy the image to rootfs.
@@ -65,7 +66,9 @@ fn setup_disk(device_path: &Path, block_size: BlockSize) -> Result<()> {
 /// provided image on the device.
 fn setup_flex_deploy_partition_and_install(device_path: &Path) -> Result<()> {
     // Create an ext4 filesystem on the disk.
-    let new_partition_path = util::get_partition_device(device_path, FLEX_DEPLOY_PART_NUM);
+    let new_partition_path =
+        libchromeos::disk::get_partition_device(device_path, FLEX_DEPLOY_PART_NUM)
+            .context("Unable to find correct partition path")?;
     util::mkfs_ext4(new_partition_path.as_path())?;
     let new_part_mount =
         mount::Mount::mount_by_path(new_partition_path.as_path(), mount::FsType::EXT4)?;
