@@ -12,14 +12,14 @@ use tempfile::TempDir;
 
 pub enum FsType {
     EXT4,
-    VFAT,
+    Vfat,
 }
 
 impl fmt::Display for FsType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::EXT4 => f.write_str("ext4"),
-            Self::VFAT => f.write_str("vfat"),
+            Self::Vfat => f.write_str("vfat"),
         }
     }
 }

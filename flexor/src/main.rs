@@ -37,7 +37,7 @@ struct Args {
 fn copy_image_to_rootfs(device_path: &Path) -> Result<()> {
     // We expect our data in partition 4, with a vFAT filesystem.
     let data_partition_path = util::get_partition_device(device_path, DATA_PART_NUM);
-    let mount = mount::Mount::mount_by_path(data_partition_path, mount::FsType::VFAT)?;
+    let mount = mount::Mount::mount_by_path(data_partition_path, mount::FsType::Vfat)?;
 
     // Copy the image to rootfs.
     std::fs::copy(

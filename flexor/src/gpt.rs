@@ -14,6 +14,7 @@ use gpt_disk_types::{BlockSize, GptPartitionEntry, GptPartitionName};
 // TODO(b/308389814): Replace this with gpt_disk_io::BlockIoAdapter once released.
 enum BlockIoImpls<'a> {
     FileBacked(StdBlockIo<'a, File>),
+    #[allow(dead_code)]
     SliceBacked(MutSliceBlockIo<'a>),
 }
 
@@ -90,6 +91,7 @@ impl<'a> Gpt<'a> {
 
     // Used for testing, creates a [`Gpt`] from a byte slice that should contain
     // a valid GPT header table.
+    #[allow(dead_code)]
     fn from_slice(slice: &'a mut [u8], block_size: BlockSize) -> Result<Self> {
         let block_io = BlockIoImpls::SliceBacked(MutSliceBlockIo::new(slice, block_size));
         let mut disk = Disk::new(block_io)?;
@@ -155,8 +157,8 @@ mod tests {
 
     use crate::gpt::Gpt;
 
-    fn setup_disk_with_valid_header<'a>(
-        disk_storage: &'a mut [u8],
+    fn setup_disk_with_valid_header(
+        disk_storage: &mut [u8],
         block_size: BlockSize,
     ) -> Result<()> {
         let block_io = MutSliceBlockIo::new(disk_storage, block_size);

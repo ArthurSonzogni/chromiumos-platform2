@@ -199,7 +199,6 @@ fn add_partition_after(range: LbaRangeInclusive, size_in_lba: u64) -> Result<Lba
 mod tests {
     use super::*;
     use gpt_disk_types::LbaLe;
-    use std::ffi::OsStr;
 
     const FILE_CONTENTS: &[u8] = b"Hello World!";
     const FILE_NAME: &str = "foo.txt";
@@ -211,7 +210,7 @@ mod tests {
 
         // Next create a file in there.
         let file_path = tempdir.path().join(FILE_NAME);
-        std::fs::write(&file_path, FILE_CONTENTS)?;
+        std::fs::write(file_path, FILE_CONTENTS)?;
 
         // Now create a tar.xz of that file.
         let mut tar_cmd = Command::new("tar");

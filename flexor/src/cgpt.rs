@@ -243,7 +243,7 @@ mod tests {
         // Test `resize_partition_gpt_partition`.
         let data_part_end = DATA_START + 2;
         let new_range = LbaRangeInclusive::new(Lba(DATA_START), Lba(data_part_end)).unwrap();
-        resize_cgpt_partition(DATA_NUM, path, DATA_LABEL, new_range);
+        resize_cgpt_partition(DATA_NUM, path, DATA_LABEL, new_range)?;
 
         let mut file = File::open(path)?;
         let mut gpt = Gpt::from_file(&mut file, BlockSize::BS_512)?;
@@ -257,7 +257,7 @@ mod tests {
         let new_part_end = DATA_START + 4;
         let range = LbaRangeInclusive::new(Lba(data_part_end + 1), Lba(new_part_end)).unwrap();
         let new_part_label = "TEST".to_string();
-        add_cgpt_partition(DATA_NUM + 1, path, &new_part_label, range);
+        add_cgpt_partition(DATA_NUM + 1, path, &new_part_label, range)?;
 
         let mut file = File::open(path)?;
         let mut gpt = Gpt::from_file(&mut file, BlockSize::BS_512)?;
