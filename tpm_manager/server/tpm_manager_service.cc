@@ -326,19 +326,7 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
   reply->set_enabled(true);
   tpm_initializer_->VerifiedBootHelper();
 
-  if (tpm_status_->GetGscVersion() == GscVersion::GSC_VERSION_TI50) {
-    uint32_t fs_time = 0;
-    uint32_t fs_size = 0;
-    uint32_t aprov_time = 0;
-    uint32_t aprov_status = 0;
-    if (tpm_status_->GetTi50Stats(&fs_time, &fs_size, &aprov_time,
-                                  &aprov_status)) {
-      tpm_manager_metrics_->ReportFilesystemInitTime(fs_time);
-      tpm_manager_metrics_->ReportFilesystemUtilization(fs_size);
-      tpm_manager_metrics_->ReportApRoVerificationTime(aprov_time);
-      tpm_manager_metrics_->ReportExpApRoVerificationStatus(aprov_status);
-    }
-  }
+  tpm_status_->SendVendorSpecificMetrics(tpm_manager_metrics_);
 
   TpmStatus::TpmOwnershipStatus ownership_status;
   if (!tpm_status_->GetTpmOwned(&ownership_status)) {

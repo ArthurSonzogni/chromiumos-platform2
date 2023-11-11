@@ -174,4 +174,34 @@ TEST_F(TpmManagerMetricsTest, ReportExpApRoVerificationStatus) {
   tpm_manager_metrics_.ReportExpApRoVerificationStatus(status);
 }
 
+TEST_F(TpmManagerMetricsTest, ReportCryptoBusyCount) {
+  const uint32_t count = 987;
+  EXPECT_CALL(mock_metrics_library_, SendToUMA(kCryptoBusyCount, 987, _, _, _))
+      .WillOnce(Return(true));
+  tpm_manager_metrics_.ReportCryptoBusyCount(count);
+}
+
+TEST_F(TpmManagerMetricsTest, ReportDispatcherBusyCount) {
+  const uint32_t count = 987;
+  EXPECT_CALL(mock_metrics_library_,
+              SendToUMA(kDispatcherBusyCount, 987, _, _, _))
+      .WillOnce(Return(true));
+  tpm_manager_metrics_.ReportDispatcherBusyCount(count);
+}
+
+TEST_F(TpmManagerMetricsTest, ReportTimeslicesExpiredCount) {
+  const uint32_t count = 987;
+  EXPECT_CALL(mock_metrics_library_,
+              SendToUMA(kTimeslicesExpired, 987, _, _, _))
+      .WillOnce(Return(true));
+  tpm_manager_metrics_.ReportTimeslicesExpired(count);
+}
+
+TEST_F(TpmManagerMetricsTest, ReportCryptoInitTime) {
+  const uint32_t count = 987;
+  EXPECT_CALL(mock_metrics_library_, SendToUMA(kCryptoInitTime, 987, _, _, _))
+      .WillOnce(Return(true));
+  tpm_manager_metrics_.ReportCryptoInitTime(count);
+}
+
 }  // namespace tpm_manager

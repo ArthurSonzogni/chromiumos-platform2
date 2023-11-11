@@ -387,10 +387,7 @@ class MockTpmUtility : public TpmUtility {
               (const std::string& command),
               (override));
   MOCK_METHOD(TPM_RC, CreateSaltingKey, (TPM_HANDLE*, TPM2B_NAME*), (override));
-  MOCK_METHOD(TPM_RC,
-              GetTi50Stats,
-              (uint32_t*, uint32_t*, uint32_t*, uint32_t*),
-              (override));
+  MOCK_METHOD(TPM_RC, GetTi50Stats, (Ti50Stats*), (override));
   MOCK_METHOD(TPM_RC,
               GetRwVersion,
               (uint32_t*, uint32_t*, uint32_t*),

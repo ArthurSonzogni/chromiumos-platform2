@@ -62,6 +62,20 @@ struct PinWeaverEccPoint {
   uint8_t y[PinWeaverEccPointSize];
 };
 
+struct Ti50Stats {
+  uint32_t fs_init_time;
+  uint32_t fs_size;
+  uint32_t aprov_time;
+  uint32_t aprov_status;
+  uint32_t misc_status;
+  uint32_t version;
+  uint32_t filesystem_busy_count;
+  uint32_t crypto_busy_count;
+  uint32_t dispatcher_busy_count;
+  uint32_t timeslices_expired;
+  uint32_t crypto_init_time;
+};
+
 // An interface which provides convenient methods for common TPM operations.
 class TRUNKS_EXPORT TpmUtility {
  public:
@@ -1058,10 +1072,7 @@ class TRUNKS_EXPORT TpmUtility {
 
   // Get Ti50 metrics: filesystem init time, filesystem size, AP RO verification
   // time, and AP RO verifiction status.
-  virtual TPM_RC GetTi50Stats(uint32_t* fs_init_time,
-                              uint32_t* fs_size,
-                              uint32_t* aprov_time,
-                              uint32_t* aprov_status) = 0;
+  virtual TPM_RC GetTi50Stats(Ti50Stats* stats) = 0;
 
   // Get the RW firmware version number.
   virtual TPM_RC GetRwVersion(uint32_t* epoch,

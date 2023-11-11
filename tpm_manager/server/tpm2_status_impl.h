@@ -49,11 +49,8 @@ class Tpm2StatusImpl : public TpmStatus {
   bool GetRoVerificationStatus(
       tpm_manager::RoVerificationStatus* status) override;
   bool GetAlertsData(AlertsData* alerts) override;
-  bool GetTi50Stats(uint32_t* fs_init_time,
-                    uint32_t* fs_size,
-                    uint32_t* aprov_time,
-                    uint32_t* aprov_status) override;
   bool GetRwVersion(std::string* rw_version) override;
+  void SendVendorSpecificMetrics(TpmManagerMetrics* metrics) override;
 
  private:
   // Refreshes the Tpm state information. Can be called as many times as needed
@@ -66,6 +63,9 @@ class Tpm2StatusImpl : public TpmStatus {
   // 1. true if the test succeed.
   // 2. false if any error.
   bool TestTpmSrkAndSaltingSession();
+
+  // Attempts to get Ti50 specific metrics. Returns false on failure.
+  bool GetTi50Stats(trunks::Ti50Stats* stats);
 
   bool initialized_{false};
   TpmOwnershipStatus ownership_status_{kTpmUnowned};

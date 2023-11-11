@@ -3645,32 +3645,67 @@ TPM_RC TpmUtilityImpl::GetMaxNVChunkSize(size_t* size) {
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC TpmUtilityImpl::GetTi50Stats(uint32_t* fs_init_time,
-                                    uint32_t* fs_size,
-                                    uint32_t* aprov_time,
-                                    uint32_t* aprov_status) {
-  CHECK(fs_init_time);
-  CHECK(fs_size);
-  CHECK(aprov_time);
-  CHECK(aprov_status);
+TPM_RC TpmUtilityImpl::GetTi50Stats(Ti50Stats* stats) {
+  CHECK(stats);
   std::string res;
   TPM_RC result = GscVendorCommand(kTi50GetMetrics, std::string(), &res);
   if (result != TPM_RC_SUCCESS)
     return result;
 
-  result = Parse_UINT32(&res, fs_init_time, nullptr);
+  result = Parse_UINT32(&res, &stats->fs_init_time, nullptr);
   if (result != TPM_RC_SUCCESS)
     return result;
 
-  result = Parse_UINT32(&res, fs_size, nullptr);
+  result = Parse_UINT32(&res, &stats->fs_size, nullptr);
   if (result != TPM_RC_SUCCESS)
     return result;
 
-  result = Parse_UINT32(&res, aprov_time, nullptr);
+  result = Parse_UINT32(&res, &stats->aprov_time, nullptr);
   if (result != TPM_RC_SUCCESS)
     return result;
 
-  result = Parse_UINT32(&res, aprov_status, nullptr);
+  result = Parse_UINT32(&res, &stats->aprov_status, nullptr);
+  if (result != TPM_RC_SUCCESS)
+    return result;
+
+  result = Parse_UINT32(&res, &stats->misc_status, nullptr);
+  // If the response ends here, we got the original version of the struct. Set
+  // version 0 and return.
+  if (result == TPM_RC_INSUFFICIENT) {
+    stats->version = 0;
+    return TPM_RC_SUCCESS;
+  }
+  if (result != TPM_RC_SUCCESS)
+    return result;
+
+  result = Parse_UINT32(&res, &stats->version, nullptr);
+  // If the response ends here, we got version 1 of the struct. Set version 1
+  // and return.
+  if (result == TPM_RC_INSUFFICIENT) {
+    stats->version = 1;
+    return TPM_RC_SUCCESS;
+  }
+  if (result != TPM_RC_SUCCESS)
+    return result;
+
+  result = Parse_UINT32(&res, &stats->filesystem_busy_count, nullptr);
+  if (result != TPM_RC_SUCCESS)
+    return result;
+
+  result = Parse_UINT32(&res, &stats->crypto_busy_count, nullptr);
+  if (result != TPM_RC_SUCCESS)
+    return result;
+
+  result = Parse_UINT32(&res, &stats->dispatcher_busy_count, nullptr);
+  if (result != TPM_RC_SUCCESS)
+    return result;
+
+  result = Parse_UINT32(&res, &stats->timeslices_expired, nullptr);
+  if (result != TPM_RC_SUCCESS)
+    return result;
+
+  result = Parse_UINT32(&res, &stats->crypto_init_time, nullptr);
+
   return result;
 }
 

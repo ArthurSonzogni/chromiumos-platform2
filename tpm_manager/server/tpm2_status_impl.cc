@@ -12,6 +12,9 @@
 #include <trunks/tpm_generated.h>
 #include <trunks/trunks_factory_impl.h>
 #include <trunks/cr50_headers/ap_ro_status.h>
+#include <trunks/tpm_utility.h>
+
+#include "tpm_manager/server/tpm_manager_metrics.h"
 
 using trunks::TPM_RC;
 using trunks::TPM_RC_SUCCESS;
@@ -413,12 +416,8 @@ bool Tpm2StatusImpl::GetAlertsData(AlertsData* alerts) {
   return true;
 }
 
-bool Tpm2StatusImpl::GetTi50Stats(uint32_t* fs_init_time,
-                                  uint32_t* fs_size,
-                                  uint32_t* aprov_time,
-                                  uint32_t* aprov_status) {
-  TPM_RC result = trunks_tpm_utility_->GetTi50Stats(fs_init_time, fs_size,
-                                                    aprov_time, aprov_status);
+bool Tpm2StatusImpl::GetTi50Stats(trunks::Ti50Stats* stats) {
+  TPM_RC result = trunks_tpm_utility_->GetTi50Stats(stats);
   if (result != trunks::TPM_RC_SUCCESS) {
     return false;
   }
@@ -446,5 +445,22 @@ bool Tpm2StatusImpl::GetRwVersion(std::string* rw_version) {
   *rw_version = std::to_string(epoch) + "." + std::to_string(major) + "." +
                 std::to_string(minor);
   return true;
+}
+
+void Tpm2StatusImpl::SendVendorSpecificMetrics(TpmManagerMetrics* metrics) {
+  trunks::Ti50Stats stats = {0};
+  if (GetTi50Stats(&stats)) {
+    metrics->ReportFilesystemInitTime(stats.fs_init_time);
+    metrics->ReportFilesystemUtilization(stats.fs_size);
+    metrics->ReportApRoVerificationTime(stats.aprov_time);
+    metrics->ReportExpApRoVerificationStatus(stats.aprov_status);
+    if (stats.version > 1) {
+      metrics->ReportFilesystemBusyCount(stats.filesystem_busy_count);
+      metrics->ReportCryptoBusyCount(stats.crypto_busy_count);
+      metrics->ReportDispatcherBusyCount(stats.dispatcher_busy_count);
+      metrics->ReportTimeslicesExpired(stats.timeslices_expired);
+      metrics->ReportCryptoInitTime(stats.crypto_init_time);
+    }
+  }
 }
 }  // namespace tpm_manager

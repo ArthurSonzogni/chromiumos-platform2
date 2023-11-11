@@ -3813,6 +3813,41 @@ TEST_F(TpmUtilityTest, GetRoVerificationStatusForNotGsc) {
 TEST_F(TpmUtilityTest, GetTi50Stats) {
   std::string command_response(
       "\x80\x01"           // tag=TPM_STD_NO_SESSIONS
+      "\x00\x00\x00\x38"   // size=56
+      "\x00\x00\x00\x00"   // code=TPM_RC_SUCCESS
+      "\x00\x41"           // subcommand=kTi50GetMetrics
+      "\xAA\xBB\xCC\xDD"   // fs_init_time = 0xAABBCCDD
+      "\x11\x22\x33\x44"   // fs_size = 0x11223344
+      "\x55\x66\x77\x88"   // aprov_time = 0x55667788
+      "\x99\x00\xAA\xBB"   // aprov_status = 0x9900AABB
+      "\x00\x00\x00\xAA"   // misc_status = 0x000000AA
+      "\x00\x00\x00\x02"   // version = 0x00000002
+      "\xAA\x00\x00\x00"   // filesystem_busy_count = 0xAA000000
+      "\x00\xBB\x00\x00"   // crypto_busy_count = 0x00BB0000
+      "\x00\x00\xCC\x00"   // dispatcher_busy_count = 0x0000CC00
+      "\x00\x00\x00\xDD"   // timeslices_expired = 0x000000DD
+      "\x00\x00\xEE\x00",  // crypto_init_time = 0x0000EE00
+      56);
+  EXPECT_CALL(mock_transceiver_, SendCommandAndWait(_))
+      .WillOnce(Return(command_response));
+  Ti50Stats stats = {0};
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetTi50Stats(&stats));
+  EXPECT_EQ(stats.fs_init_time, 0xAABBCCDD);
+  EXPECT_EQ(stats.fs_size, 0x11223344);
+  EXPECT_EQ(stats.aprov_time, 0x55667788);
+  EXPECT_EQ(stats.aprov_status, 0x9900AABB);
+  EXPECT_EQ(stats.misc_status, 0x000000AA);
+  EXPECT_EQ(stats.version, 0x00000002);
+  EXPECT_EQ(stats.filesystem_busy_count, 0xAA000000);
+  EXPECT_EQ(stats.crypto_busy_count, 0x00BB0000);
+  EXPECT_EQ(stats.dispatcher_busy_count, 0x0000CC00);
+  EXPECT_EQ(stats.timeslices_expired, 0x000000DD);
+  EXPECT_EQ(stats.crypto_init_time, 0x0000EE00);
+}
+
+TEST_F(TpmUtilityTest, GetTi50StatsV0) {
+  std::string command_response(
+      "\x80\x01"           // tag=TPM_STD_NO_SESSIONS
       "\x00\x00\x00\x1C"   // size=28
       "\x00\x00\x00\x00"   // code=TPM_RC_SUCCESS
       "\x00\x41"           // subcommand=kTi50GetMetrics
@@ -3823,16 +3858,48 @@ TEST_F(TpmUtilityTest, GetTi50Stats) {
       28);
   EXPECT_CALL(mock_transceiver_, SendCommandAndWait(_))
       .WillOnce(Return(command_response));
-  uint32_t fs_time = 0;
-  uint32_t fs_size = 0;
-  uint32_t aprov_time = 0;
-  uint32_t aprov_status = 0;
-  EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetTi50Stats(&fs_time, &fs_size,
-                                                  &aprov_time, &aprov_status));
-  EXPECT_EQ(fs_time, 0xAABBCCDD);
-  EXPECT_EQ(fs_size, 0x11223344);
-  EXPECT_EQ(aprov_time, 0x55667788);
-  EXPECT_EQ(aprov_status, 0x9900AABB);
+  Ti50Stats stats = {0};
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetTi50Stats(&stats));
+  EXPECT_EQ(stats.fs_init_time, 0xAABBCCDD);
+  EXPECT_EQ(stats.fs_size, 0x11223344);
+  EXPECT_EQ(stats.aprov_time, 0x55667788);
+  EXPECT_EQ(stats.aprov_status, 0x9900AABB);
+  EXPECT_EQ(stats.misc_status, 0);
+  EXPECT_EQ(stats.version, 0);
+  EXPECT_EQ(stats.filesystem_busy_count, 0);
+  EXPECT_EQ(stats.crypto_busy_count, 0);
+  EXPECT_EQ(stats.dispatcher_busy_count, 0);
+  EXPECT_EQ(stats.timeslices_expired, 0);
+  EXPECT_EQ(stats.crypto_init_time, 0);
+}
+
+TEST_F(TpmUtilityTest, GetTi50StatsV1) {
+  std::string command_response(
+      "\x80\x01"           // tag=TPM_STD_NO_SESSIONS
+      "\x00\x00\x00\x20"   // size=32
+      "\x00\x00\x00\x00"   // code=TPM_RC_SUCCESS
+      "\x00\x41"           // subcommand=kTi50GetMetrics
+      "\xAA\xBB\xCC\xDD"   // fs_init_time = 0xAABBCCDD
+      "\x11\x22\x33\x44"   // fs_size = 0x11223344
+      "\x55\x66\x77\x88"   // aprov_time = 0x55667788
+      "\x99\x00\xAA\xBB"   // aprov_status = 0x9900AABB
+      "\x00\x00\x00\xAA",  // misc_status = 0x000000AA
+      32);
+  EXPECT_CALL(mock_transceiver_, SendCommandAndWait(_))
+      .WillOnce(Return(command_response));
+  Ti50Stats stats = {0};
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetTi50Stats(&stats));
+  EXPECT_EQ(stats.fs_init_time, 0xAABBCCDD);
+  EXPECT_EQ(stats.fs_size, 0x11223344);
+  EXPECT_EQ(stats.aprov_time, 0x55667788);
+  EXPECT_EQ(stats.aprov_status, 0x9900AABB);
+  EXPECT_EQ(stats.misc_status, 0x000000AA);
+  EXPECT_EQ(stats.version, 0x00000001);
+  EXPECT_EQ(stats.filesystem_busy_count, 0);
+  EXPECT_EQ(stats.crypto_busy_count, 0);
+  EXPECT_EQ(stats.dispatcher_busy_count, 0);
+  EXPECT_EQ(stats.timeslices_expired, 0);
+  EXPECT_EQ(stats.crypto_init_time, 0);
 }
 
 TEST_F(TpmUtilityTest, GetRwVersion) {

@@ -5,6 +5,7 @@
 #include "tpm_manager/server/tpm_manager_metrics.h"
 #include "tpm_manager/server/tpm_manager_metrics_names.h"
 
+#include <base/time/time.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 
 namespace tpm_manager {
@@ -25,6 +26,18 @@ constexpr int kFilesystemInitTimeBuckets = 50;
 constexpr uint32_t kApRoVerificationTimeMin = 1;
 constexpr uint32_t kApRoVerificationTimeMax = 60000;
 constexpr int kApRoVerificationTimeBuckets = 50;
+
+constexpr uint32_t kBusyCountMin = 1;
+constexpr uint32_t kBusyCountMax = 500;
+constexpr int kBusyCountBuckets = 50;
+
+constexpr uint32_t kTimeslicesExpiredMin = 1;
+constexpr uint32_t kTimeslicesExpiredMax = 1000;
+constexpr int kTimeslicesExpiredBuckets = 50;
+
+constexpr uint32_t kCryptoInitTimeMin = 1;
+constexpr uint32_t kCryptoInitTimeMax = 5000;
+constexpr int kCryptoInitTimeBuckets = 50;
 
 }  // namespace
 
@@ -124,6 +137,31 @@ void TpmManagerMetrics::ReportApRoVerificationTime(uint32_t time) {
 
 void TpmManagerMetrics::ReportExpApRoVerificationStatus(uint32_t status) {
   metrics_library_->SendSparseToUMA(kExpandedApRoVerificationStatus, status);
+}
+
+void TpmManagerMetrics::ReportFilesystemBusyCount(uint32_t count) {
+  metrics_library_->SendToUMA(kFilesystemBusyCount, count, kBusyCountMin,
+                              kBusyCountMax, kBusyCountBuckets);
+}
+
+void TpmManagerMetrics::ReportCryptoBusyCount(uint32_t count) {
+  metrics_library_->SendToUMA(kCryptoBusyCount, count, kBusyCountMin,
+                              kBusyCountMax, kBusyCountBuckets);
+}
+
+void TpmManagerMetrics::ReportDispatcherBusyCount(uint32_t count) {
+  metrics_library_->SendToUMA(kDispatcherBusyCount, count, kBusyCountMin,
+                              kBusyCountMax, kBusyCountBuckets);
+}
+
+void TpmManagerMetrics::ReportTimeslicesExpired(uint32_t count) {
+  metrics_library_->SendToUMA(kTimeslicesExpired, count, kTimeslicesExpiredMin,
+                              kTimeslicesExpiredMax, kTimeslicesExpiredBuckets);
+}
+
+void TpmManagerMetrics::ReportCryptoInitTime(uint32_t time) {
+  metrics_library_->SendToUMA(kCryptoInitTime, time, kCryptoInitTimeMin,
+                              kCryptoInitTimeMax, kCryptoInitTimeBuckets);
 }
 
 }  // namespace tpm_manager

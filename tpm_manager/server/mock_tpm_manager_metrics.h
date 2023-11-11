@@ -36,6 +36,11 @@ class MockTpmManagerMetrics : public TpmManagerMetrics {
   MOCK_METHOD(void, ReportFilesystemInitTime, (uint32_t), (override));
   MOCK_METHOD(void, ReportApRoVerificationTime, (uint32_t), (override));
   MOCK_METHOD(void, ReportExpApRoVerificationStatus, (uint32_t), (override));
+  MOCK_METHOD(void, ReportFilesystemBusyCount, (uint32_t), (override));
+  MOCK_METHOD(void, ReportCryptoBusyCount, (uint32_t), (override));
+  MOCK_METHOD(void, ReportDispatcherBusyCount, (uint32_t), (override));
+  MOCK_METHOD(void, ReportTimeslicesExpired, (uint32_t), (override));
+  MOCK_METHOD(void, ReportCryptoInitTime, (uint32_t), (override));
 };
 
 }  // namespace tpm_manager

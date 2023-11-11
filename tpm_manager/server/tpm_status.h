@@ -14,6 +14,8 @@
 
 namespace tpm_manager {
 
+class TpmManagerMetrics;
+
 // TpmStatus is an interface class that reports status information for some kind
 // of TPM device.
 class TpmStatus {
@@ -105,15 +107,11 @@ class TpmStatus {
   // Returns true is hardware supports Alerts reporting, false otherwise
   virtual bool GetAlertsData(AlertsData* alerts) = 0;
 
-  // Gets Ti50 specific metrics filesystem init time, filesystem size, AP RO
-  // verification time, and expanded AP RO verification status.
-  virtual bool GetTi50Stats(uint32_t* fs_init_time,
-                            uint32_t* fs_size,
-                            uint32_t* aprov_time,
-                            uint32_t* aprov_status) = 0;
-
   // Get RW firmware version.
   virtual bool GetRwVersion(std::string* rw_version) = 0;
+
+  // Sends vendor specific metrics to UMA.
+  virtual void SendVendorSpecificMetrics(TpmManagerMetrics* metrics) = 0;
 };
 
 }  // namespace tpm_manager

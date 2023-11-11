@@ -49,12 +49,9 @@ class TpmStatusImpl : public TpmStatus {
   bool GetRoVerificationStatus(
       tpm_manager::RoVerificationStatus* status) override;
   bool GetAlertsData(AlertsData* alerts) override;
-  bool GetTi50Stats(uint32_t* fs_init_time,
-                    uint32_t* fs_size,
-                    uint32_t* aprov_time,
-                    uint32_t* aprov_status) override;
   // This function returns all 0s version number for TPM1.2 device.
   bool GetRwVersion(std::string* rw_version) override;
+  void SendVendorSpecificMetrics(TpmManagerMetrics* metrics) override;
 
  private:
   // Tests if the TPM owner password is the default one. Returns:

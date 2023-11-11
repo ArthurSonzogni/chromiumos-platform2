@@ -44,11 +44,11 @@ class MockTpmStatus : public TpmStatus {
               (tpm_manager::RoVerificationStatus*),
               (override));
   MOCK_METHOD(bool, GetAlertsData, (AlertsData * alerts), (override));
-  MOCK_METHOD(bool,
-              GetTi50Stats,
-              (uint32_t*, uint32_t*, uint32_t*, uint32_t*),
-              (override));
   MOCK_METHOD(bool, GetRwVersion, (std::string*), (override));
+  MOCK_METHOD(void,
+              SendVendorSpecificMetrics,
+              (TpmManagerMetrics*),
+              (override));
 };
 
 }  // namespace tpm_manager

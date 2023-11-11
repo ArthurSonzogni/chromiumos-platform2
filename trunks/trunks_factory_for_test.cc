@@ -759,12 +759,8 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->CreateSaltingKey(key, key_name);
   }
 
-  TPM_RC GetTi50Stats(uint32_t* fs_init_time,
-                      uint32_t* fs_size,
-                      uint32_t* aprov_time,
-                      uint32_t* aprov_status) override {
-    return target_->GetTi50Stats(fs_init_time, fs_size, aprov_time,
-                                 aprov_status);
+  TPM_RC GetTi50Stats(Ti50Stats* stats) override {
+    return target_->GetTi50Stats(stats);
   }
 
   TPM_RC GetRwVersion(uint32_t* epoch,

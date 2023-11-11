@@ -78,6 +78,16 @@ class TpmManagerMetrics : private MetricsLibrary {
 
   virtual void ReportExpApRoVerificationStatus(uint32_t status);
 
+  virtual void ReportFilesystemBusyCount(uint32_t count);
+
+  virtual void ReportCryptoBusyCount(uint32_t count);
+
+  virtual void ReportDispatcherBusyCount(uint32_t count);
+
+  virtual void ReportTimeslicesExpired(uint32_t count);
+
+  virtual void ReportCryptoInitTime(uint32_t time);
+
   void set_metrics_library_for_testing(
       MetricsLibraryInterface* metrics_library) {
     metrics_library_ = metrics_library;

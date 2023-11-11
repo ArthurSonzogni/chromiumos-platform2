@@ -18,6 +18,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
+#include <trunks/tpm_utility.h>
 
 #include "tpm_manager/server/mock_local_data_store.h"
 #include "tpm_manager/server/mock_pinweaver_provision.h"
@@ -145,6 +146,7 @@ TEST_F(TpmManagerServiceTest_Preinit, AutoInitialize) {
       .Times(1)
       .WillRepeatedly(
           DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
+  EXPECT_CALL(mock_tpm_status_, SendVendorSpecificMetrics(_));
 
   // Make sure InitializeTpm doesn't get multiple calls.
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_));
@@ -152,39 +154,6 @@ TEST_F(TpmManagerServiceTest_Preinit, AutoInitialize) {
   EXPECT_CALL(mock_tpm_manager_metrics_, ReportTimeToTakeOwnership(_)).Times(1);
   SetupService();
   RunServiceWorkerAndQuit();
-}
-
-TEST_F(TpmManagerServiceTest_Preinit, InitializeMetrics) {
-  // Called in InitializeTask()
-  EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
-      .Times(1)
-      .WillRepeatedly(
-          DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
-
-  EXPECT_CALL(mock_tpm_status_, GetVersionInfo(_, _, _, _, _, _))
-      .WillOnce(Return(true));
-
-  EXPECT_CALL(mock_tpm_status_, GetAlertsData(_)).WillOnce(Return(true));
-
-  EXPECT_CALL(mock_tpm_status_, GetGscVersion())
-      .WillRepeatedly(Return(GscVersion::GSC_VERSION_TI50));
-
-  EXPECT_CALL(mock_tpm_status_, GetTi50Stats(_, _, _, _))
-      .WillOnce(Return(true));
-
-  EXPECT_CALL(mock_tpm_manager_metrics_, ReportTimeToTakeOwnership(_)).Times(1);
-  EXPECT_CALL(mock_tpm_manager_metrics_, ReportVersionFingerprint(_)).Times(1);
-  EXPECT_CALL(mock_tpm_manager_metrics_, ReportAlertsData(_))
-      .WillOnce([this](auto&&) { Quit(); });
-  EXPECT_CALL(mock_tpm_manager_metrics_, ReportFilesystemInitTime(_)).Times(1);
-  EXPECT_CALL(mock_tpm_manager_metrics_, ReportFilesystemUtilization(_))
-      .Times(1);
-  EXPECT_CALL(mock_tpm_manager_metrics_, ReportApRoVerificationTime(_))
-      .Times(1);
-  EXPECT_CALL(mock_tpm_manager_metrics_, ReportExpApRoVerificationStatus(_))
-      .Times(1);
-  SetupService();
-  Run();
 }
 
 TEST_F(TpmManagerServiceTest_Preinit, NoNeedToInitialize) {

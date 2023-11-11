@@ -388,10 +388,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
 
   TPM_RC CreateSaltingKey(TPM_HANDLE* key, TPM2B_NAME* key_name) override;
 
-  TPM_RC GetTi50Stats(uint32_t* fs_init_time,
-                      uint32_t* fs_size,
-                      uint32_t* aprov_time,
-                      uint32_t* aprov_status) override;
+  TPM_RC GetTi50Stats(Ti50Stats* stats) override;
 
   TPM_RC GetRwVersion(uint32_t* epoch,
                       uint32_t* major,
