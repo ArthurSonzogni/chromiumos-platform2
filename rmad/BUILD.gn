@@ -85,6 +85,7 @@ install_config("install_service_manager_policy_config") {
 if (use.test) {
   executable("rmad_test") {
     run_test = true
+    configs += [ "//common-mk:test" ]
     deps = [
       "daemon:libdaemon_test",
       "executor:libexecutor_test",
