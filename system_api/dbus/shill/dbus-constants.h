@@ -976,15 +976,23 @@ constexpr char kAlwaysOnVpnModeStrict[] = "strict";
 // Possible traffic sources. Note that these sources should be kept in sync with
 // the sources defined in TrafficCounter::Source at:
 // src/platform2/system_api/dbus/patchpanel/patchpanel_service.proto
-constexpr char kTrafficCounterSourceUnknown[] = "unknown";
-constexpr char kTrafficCounterSourceChrome[] = "chrome";
-constexpr char kTrafficCounterSourceUser[] = "user";
-constexpr char kTrafficCounterSourceArc[] = "arc";
+constexpr char kTrafficCounterSourceUnknown[] = "UNKNOWN";
+constexpr char kTrafficCounterSourceChrome[] = "CHROME";
+constexpr char kTrafficCounterSourceUser[] = "USER";
+constexpr char kTrafficCounterSourceUpdateEngine[] = "UPDATE_ENGINE";
+constexpr char kTrafficCounterSourceSystem[] = "SYSTEM";
+constexpr char kTrafficCounterSourceVpn[] = "VPN";
+constexpr char kTrafficCounterSourceArc[] = "ARC";
+constexpr char kTrafficCounterSourceBorealisVM[] = "BOREALIS_VM";
+constexpr char kTrafficCounterSourceBruschettaVM[] = "BRUSCHETTA_VM";
+constexpr char kTrafficCounterSourceCrostiniVM[] = "CROSTINI_VM";
+constexpr char kTrafficCounterSourceParallelsVM[] = "PARALLELS_VM";
+constexpr char kTrafficCounterSourceTethering[] = "TETHERING";
+constexpr char kTrafficCounterSourceWiFiDirect[] = "WIFI_DIRECT";
+constexpr char kTrafficCounterSourceWiFiLOHS[] = "WIFI_LOHS";
+// Deprecated
 constexpr char kTrafficCounterSourceCrosvm[] = "crosvm";
 constexpr char kTrafficCounterSourcePluginvm[] = "pluginvm";
-constexpr char kTrafficCounterSourceUpdateEngine[] = "update_engine";
-constexpr char kTrafficCounterSourceVpn[] = "vpn";
-constexpr char kTrafficCounterSourceSystem[] = "system";
 
 // Manager kTetheringConfigProperty dictionary key names.
 constexpr char kTetheringConfAutoDisableProperty[] = "auto_disable";
