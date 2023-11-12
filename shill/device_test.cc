@@ -150,15 +150,11 @@ class DeviceTest : public testing::Test {
   }
 
   patchpanel::Client::TrafficCounter CreateCounter(
-      const std::valarray<uint64_t>& vals,
+      patchpanel::Client::TrafficVector counters,
       patchpanel::Client::TrafficSource source,
       const std::string& ifname) {
-    EXPECT_EQ(4, vals.size());
     patchpanel::Client::TrafficCounter counter;
-    counter.rx_bytes = vals[0];
-    counter.tx_bytes = vals[1];
-    counter.rx_packets = vals[2];
-    counter.tx_packets = vals[3];
+    counter.traffic = counters;
     counter.source = source;
     counter.ifname = ifname;
     return counter;
@@ -652,37 +648,39 @@ TEST_F(DeviceTest, SetMacAddress) {
 TEST_F(DeviceTest, FetchTrafficCounters) {
   auto source0 = patchpanel::Client::TrafficSource::kChrome;
   auto source1 = patchpanel::Client::TrafficSource::kUser;
-  std::valarray<uint64_t> counter_arr0{2842, 1243, 240598, 43095};
-  std::valarray<uint64_t> counter_arr1{4554666, 43543, 5999, 500000};
-  patchpanel::Client::TrafficCounter counter0 =
-      CreateCounter(counter_arr0, source0, kDeviceName);
-  patchpanel::Client::TrafficCounter counter1 =
-      CreateCounter(counter_arr1, source1, kDeviceName);
+  patchpanel::Client::TrafficVector counter_arr0 = {.rx_bytes = 2842,
+                                                    .tx_bytes = 1243,
+                                                    .rx_packets = 240598,
+                                                    .tx_packets = 43095};
+  patchpanel::Client::TrafficVector counter_arr1 = {.rx_bytes = 4554666,
+                                                    .tx_bytes = 43543,
+                                                    .rx_packets = 5999,
+                                                    .tx_packets = 500000};
+  auto counter0 = CreateCounter(counter_arr0, source0, kDeviceName);
+  auto counter1 = CreateCounter(counter_arr1, source1, kDeviceName);
   std::vector<patchpanel::Client::TrafficCounter> counters{counter0, counter1};
   patchpanel_client_->set_stored_traffic_counters(counters);
 
   EXPECT_EQ(nullptr, device_->selected_service_);
   scoped_refptr<MockService> service0(new NiceMock<MockService>(manager()));
-  EXPECT_TRUE(service0->traffic_counter_snapshot_.empty());
-  EXPECT_TRUE(service0->current_traffic_counters_.empty());
+  EXPECT_TRUE(service0->traffic_counter_snapshot().empty());
+  EXPECT_TRUE(service0->current_traffic_counters().empty());
   EXPECT_CALL(*service0,
               AttachNetwork(IsWeakPtrTo(device_->GetPrimaryNetwork())));
   device_->SelectService(service0);
   EXPECT_EQ(service0, device_->selected_service_);
-  EXPECT_TRUE(service0->current_traffic_counters_.empty());
-  EXPECT_EQ(2, service0->traffic_counter_snapshot_.size());
-  for (size_t i = 0; i < Service::kTrafficCounterArraySize; i++) {
-    EXPECT_EQ(counter_arr0[i], service0->traffic_counter_snapshot_[source0][i]);
-    EXPECT_EQ(counter_arr1[i], service0->traffic_counter_snapshot_[source1][i]);
-  }
+  EXPECT_TRUE(service0->current_traffic_counters().empty());
+  EXPECT_EQ(2, service0->traffic_counter_snapshot().size());
+  EXPECT_EQ(counter_arr0, service0->traffic_counter_snapshot()[source0]);
+  EXPECT_EQ(counter_arr1, service0->traffic_counter_snapshot()[source1]);
 
-  std::valarray<uint64_t> counter_diff0{12, 98, 34, 76};
-  std::valarray<uint64_t> counter_diff1{324534, 23434, 785676, 256};
-  std::valarray<uint64_t> new_total0 = counter_arr0 + counter_diff0;
-  std::valarray<uint64_t> new_total1 = counter_arr1 + counter_diff1;
-  counter0 = CreateCounter(new_total0, source0, kDeviceName);
-  counter1 = CreateCounter(new_total1, source1, kDeviceName);
-  counters = {counter0, counter1};
+  patchpanel::Client::TrafficVector counter_diff0{12, 98, 34, 76};
+  patchpanel::Client::TrafficVector counter_diff1{324534, 23434, 785676, 256};
+  auto new_total0 = counter_arr0 + counter_diff0;
+  auto new_total1 = counter_arr1 + counter_diff1;
+  auto new_counter0 = CreateCounter(new_total0, source0, kDeviceName);
+  auto new_counter1 = CreateCounter(new_total1, source1, kDeviceName);
+  counters = {new_counter0, new_counter1};
   patchpanel_client_->set_stored_traffic_counters(counters);
 
   scoped_refptr<MockService> service1(new NiceMock<MockService>(manager()));
@@ -691,16 +689,11 @@ TEST_F(DeviceTest, FetchTrafficCounters) {
               AttachNetwork(IsWeakPtrTo(device_->GetPrimaryNetwork())));
   device_->SelectService(service1);
   EXPECT_EQ(service1, device_->selected_service_);
-  for (size_t i = 0; i < Service::kTrafficCounterArraySize; i++) {
-    EXPECT_EQ(counter_diff0[i],
-              service0->current_traffic_counters_[source0][i]);
-    EXPECT_EQ(counter_diff1[i],
-              service0->current_traffic_counters_[source1][i]);
-
-    EXPECT_EQ(new_total0[i], service1->traffic_counter_snapshot_[source0][i]);
-    EXPECT_EQ(new_total1[i], service1->traffic_counter_snapshot_[source1][i]);
-  }
-  EXPECT_TRUE(service1->current_traffic_counters_.empty());
+  EXPECT_EQ(counter_diff0, service0->current_traffic_counters()[source0]);
+  EXPECT_EQ(counter_diff1, service0->current_traffic_counters()[source1]);
+  EXPECT_EQ(new_total0, service1->traffic_counter_snapshot()[source0]);
+  EXPECT_EQ(new_total1, service1->traffic_counter_snapshot()[source1]);
+  EXPECT_TRUE(service1->current_traffic_counters().empty());
 }
 
 class DevicePortalDetectionTest : public DeviceTest {

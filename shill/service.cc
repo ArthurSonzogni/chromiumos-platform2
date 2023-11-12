@@ -82,12 +82,6 @@ constexpr char kEphemeralPriorityProperty[] = "EphemeralPriority";
 constexpr char kServiceProxyConfigMode[] = "mode";
 constexpr char kServiceProxyConfigModeDirect[] = "direct";
 
-std::valarray<uint64_t> CounterToValArray(
-    const patchpanel::Client::TrafficCounter& counter) {
-  return std::valarray<uint64_t>{counter.rx_bytes, counter.tx_bytes,
-                                 counter.rx_packets, counter.tx_packets};
-}
-
 // Extracts enum value but with enum's underlying type.
 // This is a part of c++23, but it's quite useful even now.
 template <typename T>
@@ -168,18 +162,12 @@ const char Service::kStorageTrafficCounterRxBytesSuffix[] = "RxBytes";
 const char Service::kStorageTrafficCounterTxBytesSuffix[] = "TxBytes";
 const char Service::kStorageTrafficCounterRxPacketsSuffix[] = "RxPackets";
 const char Service::kStorageTrafficCounterTxPacketsSuffix[] = "TxPackets";
-const char* const Service::kStorageTrafficCounterSuffixes[] = {
-    kStorageTrafficCounterRxBytesSuffix, kStorageTrafficCounterTxBytesSuffix,
-    kStorageTrafficCounterRxPacketsSuffix,
-    kStorageTrafficCounterTxPacketsSuffix};
 const char Service::kStorageTrafficCounterResetTime[] =
     "TrafficCounterResetTime";
 const char Service::kStorageLastManualConnectAttempt[] =
     "LastManualConnectAttempt";
 const char Service::kStorageLastConnected[] = "LastConnected";
 const char Service::kStorageLastOnline[] = "LastOnline";
-
-const size_t Service::kTrafficCounterArraySize = 4;
 
 const uint8_t Service::kStrengthMax = 100;
 const uint8_t Service::kStrengthMin = 0;
@@ -869,18 +857,24 @@ bool Service::Load(const StoreInterface* storage) {
   storage->GetBool(id, kStorageHasEverConnected, &has_ever_connected_);
 
   for (auto source : patchpanel::Client::kAllTrafficSources) {
-    std::valarray<uint64_t> counter_array(kTrafficCounterArraySize);
-    for (size_t i = 0; i < kTrafficCounterArraySize; i++) {
-      storage->GetUint64(id,
-                         GetCurrentTrafficCounterKey(
-                             source, kStorageTrafficCounterSuffixes[i]),
-                         &counter_array[i]);
-    }
-    if (counter_array.sum()) {
-      current_traffic_counters_[source] = counter_array;
-    } else {
-      current_traffic_counters_.erase(source);
-    }
+    patchpanel::Client::TrafficVector counters = {};
+    storage->GetUint64(id,
+                       GetCurrentTrafficCounterKey(
+                           source, kStorageTrafficCounterRxBytesSuffix),
+                       &counters.rx_bytes);
+    storage->GetUint64(id,
+                       GetCurrentTrafficCounterKey(
+                           source, kStorageTrafficCounterTxBytesSuffix),
+                       &counters.tx_bytes);
+    storage->GetUint64(id,
+                       GetCurrentTrafficCounterKey(
+                           source, kStorageTrafficCounterRxPacketsSuffix),
+                       &counters.rx_packets);
+    storage->GetUint64(id,
+                       GetCurrentTrafficCounterKey(
+                           source, kStorageTrafficCounterTxPacketsSuffix),
+                       &counters.tx_packets);
+    current_traffic_counters_[source] = counters;
   }
 
   uint64_t temp_ms;
@@ -1008,17 +1002,26 @@ bool Service::Save(StoreInterface* storage) {
   }
 
   for (auto source : patchpanel::Client::kAllTrafficSources) {
-    bool in_storage = current_traffic_counters_.find(source) !=
-                      current_traffic_counters_.end();
-    for (size_t i = 0; i < kTrafficCounterArraySize; i++) {
-      std::string key = GetCurrentTrafficCounterKey(
-          source, kStorageTrafficCounterSuffixes[i]);
-      if (in_storage) {
-        storage->SetUint64(id, key, current_traffic_counters_[source][i]);
-      } else {
-        storage->DeleteKey(id, key);
-      }
+    const auto& counter = current_traffic_counters_[source];
+    if (counter == patchpanel::Client::kZeroTraffic) {
+      continue;
     }
+    storage->SetUint64(id,
+                       GetCurrentTrafficCounterKey(
+                           source, kStorageTrafficCounterRxBytesSuffix),
+                       counter.rx_bytes);
+    storage->SetUint64(id,
+                       GetCurrentTrafficCounterKey(
+                           source, kStorageTrafficCounterTxBytesSuffix),
+                       counter.tx_bytes);
+    storage->SetUint64(id,
+                       GetCurrentTrafficCounterKey(
+                           source, kStorageTrafficCounterRxPacketsSuffix),
+                       counter.rx_packets);
+    storage->SetUint64(id,
+                       GetCurrentTrafficCounterKey(
+                           source, kStorageTrafficCounterTxPacketsSuffix),
+                       counter.tx_packets);
   }
 
   storage->SetUint64(id, kStorageTrafficCounterResetTime,
@@ -1681,28 +1684,16 @@ bool Service::IsMeteredByServiceProperties() const {
 void Service::InitializeTrafficCounterSnapshot(
     const std::vector<patchpanel::Client::TrafficCounter>& counters) {
   for (const auto& counter : counters) {
-    traffic_counter_snapshot_[counter.source] = CounterToValArray(counter);
+    traffic_counter_snapshot_[counter.source] = counter.traffic;
   }
 }
 
 void Service::RefreshTrafficCounters(
     const std::vector<patchpanel::Client::TrafficCounter>& counters) {
   for (const auto& counter : counters) {
-    std::valarray<uint64_t> counter_array = CounterToValArray(counter);
-    if (current_traffic_counters_.find(counter.source) ==
-        current_traffic_counters_.end()) {
-      current_traffic_counters_[counter.source] =
-          std::valarray<uint64_t>(kTrafficCounterArraySize);
-    }
-    if (traffic_counter_snapshot_[counter.source].size() ==
-        kTrafficCounterArraySize) {
-      current_traffic_counters_[counter.source] +=
-          counter_array - traffic_counter_snapshot_[counter.source];
-    } else {
-      LOG(WARNING) << "Uninitialized traffic counter snapshot for source "
-                   << patchpanel::Client::TrafficSourceName(counter.source);
-    }
-    traffic_counter_snapshot_[counter.source] = counter_array;
+    current_traffic_counters_[counter.source] +=
+        counter.traffic - traffic_counter_snapshot_[counter.source];
+    traffic_counter_snapshot_[counter.source] = counter.traffic;
   }
   SaveToProfile();
 }
@@ -1712,13 +1703,12 @@ void Service::RequestTrafficCountersCallback(
     const std::vector<patchpanel::Client::TrafficCounter>& counters) {
   RefreshTrafficCounters(counters);
   std::vector<brillo::VariantDictionary> traffic_counters;
-  for (const auto& [source, counters] : current_traffic_counters_) {
+  for (const auto& [source, traffic] : current_traffic_counters_) {
     brillo::VariantDictionary dict;
-    // Select only the first two |counters| elements, corresponding to rx_bytes
-    // and tx_bytes.
+    // Only export rx_bytes and tx_bytes.
     dict.emplace("source", patchpanel::Client::TrafficSourceName(source));
-    dict.emplace("rx_bytes", counters[TrafficCounterVals::kRxBytes]);
-    dict.emplace("tx_bytes", counters[TrafficCounterVals::kTxBytes]);
+    dict.emplace("rx_bytes", traffic.rx_bytes);
+    dict.emplace("tx_bytes", traffic.tx_bytes);
     traffic_counters.push_back(std::move(dict));
   }
   std::move(callback).Run(Error(Error::kSuccess), std::move(traffic_counters));

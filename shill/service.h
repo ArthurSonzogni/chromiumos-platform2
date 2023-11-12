@@ -13,7 +13,6 @@
 #include <string>
 #include <string_view>
 #include <utility>
-#include <valarray>
 #include <vector>
 
 #include <base/cancelable_callback.h>
@@ -61,18 +60,8 @@ class StoreInterface;
 // becomes populated over time.
 class Service : public base::RefCounted<Service> {
  public:
-  // Map from traffic source to a valarray containing {rx_bytes, tx_bytes,
-  // rx_packets, tx_packets} in that order.
-  using TrafficCounterMap =
-      std::map<patchpanel::Client::TrafficSource, std::valarray<uint64_t>>;
-
-  // Enum values representing values retrieved from patchpanel.
-  enum TrafficCounterVals {
-    kRxBytes = 0,
-    kTxBytes,
-    kRxPackets,
-    kTxPackets,
-  };
+  using TrafficCounterMap = std::map<patchpanel::Client::TrafficSource,
+                                     patchpanel::Client::TrafficVector>;
 
   static const char kCheckPortalAuto[];
   static const char kCheckPortalFalse[];
@@ -740,10 +729,6 @@ class Service : public base::RefCounted<Service> {
   // state has changed if the new state is an error state. Visible for unit
   // tests.
   void UpdateStateTransitionMetrics(Service::ConnectState new_state);
-
-  // The components of this array are rx_bytes, tx_bytes, rx_packets, tx_packets
-  // in that order.
-  static const size_t kTrafficCounterArraySize;
 
  protected:
   friend class base::RefCounted<Service>;

@@ -442,5 +442,29 @@ TEST_F(ClientTest, SendSetFeatureFlagRequest) {
   EXPECT_TRUE(result);
 }
 
+TEST_F(ClientTest, TrafficVector) {
+  patchpanel::Client::TrafficVector a = {
+      .rx_bytes = 234, .tx_bytes = 78, .rx_packets = 31, .tx_packets = 15};
+  patchpanel::Client::TrafficVector b = {
+      .rx_bytes = 100, .tx_bytes = 200, .rx_packets = 10, .tx_packets = 20};
+  patchpanel::Client::TrafficVector c = {
+      .rx_bytes = 334, .tx_bytes = 278, .rx_packets = 41, .tx_packets = 35};
+
+  EXPECT_EQ(c, a + b);
+  EXPECT_EQ(c, b + a);
+  EXPECT_EQ(c - b, a);
+  EXPECT_EQ(c - a, b);
+  EXPECT_EQ(b - c, -a);
+  EXPECT_EQ(a - c, -b);
+
+  auto d = a;
+  d += b;
+  EXPECT_EQ(c, d);
+
+  auto e = c;
+  e -= a;
+  EXPECT_EQ(b, e);
+}
+
 }  // namespace
 }  // namespace patchpanel

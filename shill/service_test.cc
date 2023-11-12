@@ -213,15 +213,11 @@ class ServiceTest : public PropertyStoreTest {
   }
 
   patchpanel::Client::TrafficCounter CreateCounter(
-      const std::valarray<uint64_t>& vals,
+      patchpanel::Client::TrafficVector counters,
       patchpanel::Client::TrafficSource source,
       const std::string& device_name) {
-    EXPECT_EQ(4, vals.size());
     patchpanel::Client::TrafficCounter counter;
-    counter.rx_bytes = vals[0];
-    counter.tx_bytes = vals[1];
-    counter.rx_packets = vals[2];
-    counter.tx_packets = vals[3];
+    counter.traffic = counters;
     counter.source = source;
     counter.ifname = device_name;
     return counter;
@@ -445,8 +441,15 @@ TEST_F(ServiceTest, LoadTrafficCounters) {
   FakeStore storage;
   const uint64_t kUserRxBytes = 1234;
   const uint64_t kChromeTxPackets = 9876;
-  std::vector<uint64_t> kUserCounters{kUserRxBytes, 0, 0, 0};
-  std::vector<uint64_t> kChromeCounters{0, 0, 0, kChromeTxPackets};
+  patchpanel::Client::TrafficVector kUserCounters = {.rx_bytes = kUserRxBytes,
+                                                     .tx_bytes = 0,
+                                                     .rx_packets = 0,
+                                                     .tx_packets = 0};
+  patchpanel::Client::TrafficVector kChromeCounters = {
+      .rx_bytes = 0,
+      .tx_bytes = 0,
+      .rx_packets = 0,
+      .tx_packets = kChromeTxPackets};
   storage.SetUint64(storage_id_,
                     Service::GetCurrentTrafficCounterKey(
                         patchpanel::Client::TrafficSource::kUser,
@@ -458,15 +461,12 @@ TEST_F(ServiceTest, LoadTrafficCounters) {
                         Service::kStorageTrafficCounterTxPacketsSuffix),
                     kChromeTxPackets);
   EXPECT_TRUE(service_->Load(&storage));
-  EXPECT_EQ(service_->current_traffic_counters_.size(), 2);
-  for (size_t i = 0; i < Service::kTrafficCounterArraySize; i++) {
-    EXPECT_EQ(service_->current_traffic_counters_
-                  [patchpanel::Client::TrafficSource::kUser][i],
-              kUserCounters[i]);
-    EXPECT_EQ(service_->current_traffic_counters_
-                  [patchpanel::Client::TrafficSource::kChrome][i],
-              kChromeCounters[i]);
-  }
+  EXPECT_EQ(service_->current_traffic_counters()
+                [patchpanel::Client::TrafficSource::kUser],
+            kUserCounters);
+  EXPECT_EQ(service_->current_traffic_counters()
+                [patchpanel::Client::TrafficSource::kChrome],
+            kChromeCounters);
 }
 
 TEST_F(ServiceTest, Load) {
@@ -592,35 +592,34 @@ TEST_F(ServiceTest, SaveString) {
 
 TEST_F(ServiceTest, SaveTrafficCounters) {
   FakeStore storage;
-  std::valarray<uint64_t> kVPNCounters{0, 19, 28, 0};
-  std::valarray<uint64_t> kUnknownCounters{333, 222, 555, 888};
-  service_->current_traffic_counters_[patchpanel::Client::TrafficSource::kVpn] =
+  patchpanel::Client::TrafficVector kVPNCounters = {
+      .rx_bytes = 0, .tx_bytes = 19, .rx_packets = 28, .tx_packets = 0};
+  service_
+      ->current_traffic_counters()[patchpanel::Client::TrafficSource::kVpn] =
       kVPNCounters;
   EXPECT_TRUE(service_->Save(&storage));
-  std::vector<uint64_t> kActualVPNCounters(Service::kTrafficCounterArraySize);
+  patchpanel::Client::TrafficVector kActualVPNCounters;
   storage.GetUint64(storage_id_,
                     Service::GetCurrentTrafficCounterKey(
                         patchpanel::Client::TrafficSource::kVpn,
                         Service::kStorageTrafficCounterRxBytesSuffix),
-                    &kActualVPNCounters[0]);
+                    &kActualVPNCounters.rx_bytes);
   storage.GetUint64(storage_id_,
                     Service::GetCurrentTrafficCounterKey(
                         patchpanel::Client::TrafficSource::kVpn,
                         Service::kStorageTrafficCounterTxBytesSuffix),
-                    &kActualVPNCounters[1]);
+                    &kActualVPNCounters.tx_bytes);
   storage.GetUint64(storage_id_,
                     Service::GetCurrentTrafficCounterKey(
                         patchpanel::Client::TrafficSource::kVpn,
                         Service::kStorageTrafficCounterRxPacketsSuffix),
-                    &kActualVPNCounters[2]);
+                    &kActualVPNCounters.rx_packets);
   storage.GetUint64(storage_id_,
                     Service::GetCurrentTrafficCounterKey(
                         patchpanel::Client::TrafficSource::kVpn,
                         Service::kStorageTrafficCounterTxPacketsSuffix),
-                    &kActualVPNCounters[3]);
-  for (size_t i = 0; i < Service::kTrafficCounterArraySize; i++) {
-    EXPECT_EQ(kVPNCounters[i], kActualVPNCounters[i]);
-  }
+                    &kActualVPNCounters.tx_packets);
+  EXPECT_EQ(kVPNCounters, kActualVPNCounters);
 }
 
 TEST_F(ServiceTest, Save) {
@@ -2522,70 +2521,68 @@ TEST_F(ServiceTest, RequestPortalDetection) {
 TEST_F(ServiceTest, TrafficCounters) {
   patchpanel::Client::TrafficCounter counter0, counter1;
   counter0.source = patchpanel::Client::TrafficSource::kChrome;
-  counter0.rx_bytes = 12;
-  counter0.tx_bytes = 34;
-  counter0.rx_packets = 56;
-  counter0.tx_packets = 78;
+  counter0.traffic.rx_bytes = 12;
+  counter0.traffic.tx_bytes = 34;
+  counter0.traffic.rx_packets = 56;
+  counter0.traffic.tx_packets = 78;
   counter1.source = patchpanel::Client::TrafficSource::kUser;
-  counter1.rx_bytes = 90;
-  counter1.tx_bytes = 87;
-  counter1.rx_packets = 65;
-  counter1.tx_packets = 43;
+  counter1.traffic.rx_bytes = 90;
+  counter1.traffic.tx_bytes = 87;
+  counter1.traffic.rx_packets = 65;
+  counter1.traffic.tx_packets = 43;
 
   service_->InitializeTrafficCounterSnapshot({counter0, counter1});
-  EXPECT_EQ(service_->traffic_counter_snapshot_.size(), 2);
-  std::vector<uint64_t> chrome_counters{12, 34, 56, 78};
-  std::vector<uint64_t> user_counters{90, 87, 65, 43};
-  for (size_t i = 0; i < Service::kTrafficCounterArraySize; i++) {
-    EXPECT_EQ(service_->traffic_counter_snapshot_
-                  [patchpanel::Client::TrafficSource::kChrome][i],
-              chrome_counters[i]);
-    EXPECT_EQ(service_->traffic_counter_snapshot_
-                  [patchpanel::Client::TrafficSource::kUser][i],
-              user_counters[i]);
-  }
-  EXPECT_EQ(service_->current_traffic_counters_.size(), 0);
+  EXPECT_EQ(service_->traffic_counter_snapshot().size(), 2);
+  patchpanel::Client::TrafficVector chrome_counters = {
+      .rx_bytes = 12, .tx_bytes = 34, .rx_packets = 56, .tx_packets = 78};
+  patchpanel::Client::TrafficVector user_counters = {
+      .rx_bytes = 90, .tx_bytes = 87, .rx_packets = 65, .tx_packets = 43};
+  EXPECT_EQ(service_->traffic_counter_snapshot()
+                [patchpanel::Client::TrafficSource::kChrome],
+            chrome_counters);
+  EXPECT_EQ(service_->traffic_counter_snapshot()
+                [patchpanel::Client::TrafficSource::kUser],
+            user_counters);
+  EXPECT_EQ(service_->current_traffic_counters().size(), 0);
 
-  counter0.rx_bytes = 20;
-  counter0.tx_bytes = 40;
-  counter0.rx_packets = 60;
-  counter0.tx_packets = 80;
-  counter1.rx_bytes = 100;
-  counter1.tx_bytes = 90;
-  counter1.rx_packets = 80;
-  counter1.tx_packets = 70;
+  counter0.traffic.rx_bytes = 20;
+  counter0.traffic.tx_bytes = 40;
+  counter0.traffic.rx_packets = 60;
+  counter0.traffic.tx_packets = 80;
+  counter1.traffic.rx_bytes = 100;
+  counter1.traffic.tx_bytes = 90;
+  counter1.traffic.rx_packets = 80;
+  counter1.traffic.tx_packets = 70;
 
   service_->RefreshTrafficCounters({counter0, counter1});
-  EXPECT_EQ(service_->traffic_counter_snapshot_.size(), 2);
+  EXPECT_EQ(service_->traffic_counter_snapshot().size(), 2);
   chrome_counters = {20, 40, 60, 80};
   user_counters = {100, 90, 80, 70};
-  for (size_t i = 0; i < Service::kTrafficCounterArraySize; i++) {
-    EXPECT_EQ(service_->traffic_counter_snapshot_
-                  [patchpanel::Client::TrafficSource::kChrome][i],
-              chrome_counters[i]);
-    EXPECT_EQ(service_->traffic_counter_snapshot_
-                  [patchpanel::Client::TrafficSource::kUser][i],
-              user_counters[i]);
-  }
-  EXPECT_EQ(service_->current_traffic_counters_.size(), 2);
-  std::vector<uint64_t> chrome_counters_diff{8, 6, 4, 2};
-  std::vector<uint64_t> user_counters_diff{10, 3, 15, 27};
-  for (size_t i = 0; i < Service::kTrafficCounterArraySize; i++) {
-    EXPECT_EQ(service_->current_traffic_counters_
-                  [patchpanel::Client::TrafficSource::kChrome][i],
-              chrome_counters_diff[i]);
-    EXPECT_EQ(service_->current_traffic_counters_
-                  [patchpanel::Client::TrafficSource::kUser][i],
-              user_counters_diff[i]);
-  }
+  EXPECT_EQ(service_->traffic_counter_snapshot()
+                [patchpanel::Client::TrafficSource::kChrome],
+            chrome_counters);
+  EXPECT_EQ(service_->traffic_counter_snapshot()
+                [patchpanel::Client::TrafficSource::kUser],
+            user_counters);
+  EXPECT_EQ(service_->current_traffic_counters().size(), 2);
+  patchpanel::Client::TrafficVector chrome_counters_diff = {
+      .rx_bytes = 8, .tx_bytes = 6, .rx_packets = 4, .tx_packets = 2};
+  patchpanel::Client::TrafficVector user_counters_diff = {
+      .rx_bytes = 10, .tx_bytes = 3, .rx_packets = 15, .tx_packets = 27};
+  EXPECT_EQ(service_->current_traffic_counters()
+                [patchpanel::Client::TrafficSource::kChrome],
+            chrome_counters_diff);
+  EXPECT_EQ(service_->current_traffic_counters()
+                [patchpanel::Client::TrafficSource::kUser],
+            user_counters_diff);
 }
 
 TEST_F(ServiceTest, RequestTrafficCounters) {
   auto source0 = patchpanel::Client::TrafficSource::kChrome;
   auto source1 = patchpanel::Client::TrafficSource::kUser;
 
-  std::valarray<uint64_t> init_counter_arr0{0, 0, 0, 0};
-  std::valarray<uint64_t> init_counter_arr1{0, 0, 0, 0};
+  patchpanel::Client::TrafficVector init_counter_arr0 = {0, 0, 0, 0};
+  patchpanel::Client::TrafficVector init_counter_arr1 = {0, 0, 0, 0};
   patchpanel::Client::TrafficCounter init_counter0 =
       CreateCounter(init_counter_arr0, source0, kDeviceName);
   patchpanel::Client::TrafficCounter init_counter1 =
@@ -2593,8 +2590,10 @@ TEST_F(ServiceTest, RequestTrafficCounters) {
 
   service_->InitializeTrafficCounterSnapshot({init_counter0, init_counter1});
 
-  std::valarray<uint64_t> counter_arr0{12, 34, 56, 78};
-  std::valarray<uint64_t> counter_arr1{90, 87, 65, 43};
+  patchpanel::Client::TrafficVector counter_arr0 = {
+      .rx_bytes = 12, .tx_bytes = 34, .rx_packets = 56, .tx_packets = 78};
+  patchpanel::Client::TrafficVector counter_arr1 = {
+      .rx_bytes = 90, .tx_bytes = 87, .rx_packets = 65, .tx_packets = 43};
   patchpanel::Client::TrafficCounter counter0 =
       CreateCounter(counter_arr0, source0, kDeviceName);
   patchpanel::Client::TrafficCounter counter1 =
@@ -2653,8 +2652,10 @@ TEST_F(ServiceTest, ResetTrafficCounters) {
   auto source1 = patchpanel::Client::TrafficSource::kUser;
 
   // Initialize the Service's traffic counter snapshot.
-  std::valarray<uint64_t> init_counter_arr0{10, 20, 30, 40};
-  std::valarray<uint64_t> init_counter_arr1{50, 60, 70, 80};
+  patchpanel::Client::TrafficVector init_counter_arr0 = {
+      .rx_bytes = 10, .tx_bytes = 20, .rx_packets = 30, .tx_packets = 40};
+  patchpanel::Client::TrafficVector init_counter_arr1 = {
+      .rx_bytes = 50, .tx_bytes = 60, .rx_packets = 70, .tx_packets = 80};
   patchpanel::Client::TrafficCounter init_counter0 =
       CreateCounter(init_counter_arr0, source0, kDeviceName);
   patchpanel::Client::TrafficCounter init_counter1 =
@@ -2663,74 +2664,80 @@ TEST_F(ServiceTest, ResetTrafficCounters) {
 
   // Refresh traffic counters, updating the traffic counter snapshot and current
   // traffic counters.
-  std::valarray<uint64_t> counter_arr0{100, 200, 300, 400};
-  std::valarray<uint64_t> counter_arr1{500, 600, 700, 800};
+  patchpanel::Client::TrafficVector counter_arr0 = {
+      .rx_bytes = 100, .tx_bytes = 200, .rx_packets = 300, .tx_packets = 400};
+  patchpanel::Client::TrafficVector counter_arr1 = {
+      .rx_bytes = 500, .tx_bytes = 600, .rx_packets = 700, .tx_packets = 800};
   patchpanel::Client::TrafficCounter counter0 =
       CreateCounter(counter_arr0, source0, kDeviceName);
   patchpanel::Client::TrafficCounter counter1 =
       CreateCounter(counter_arr1, source1, kDeviceName);
   service_->RefreshTrafficCounters({counter0, counter1});
   EXPECT_EQ(service_->traffic_counter_snapshot().size(), 2);
-  for (size_t i = 0; i < Service::kTrafficCounterArraySize; i++) {
-    EXPECT_EQ(service_->traffic_counter_snapshot()
-                  [patchpanel::Client::TrafficSource::kChrome][i],
-              counter_arr0[i]);
-    EXPECT_EQ(service_->traffic_counter_snapshot()
-                  [patchpanel::Client::TrafficSource::kUser][i],
-              counter_arr1[i]);
-  }
+  EXPECT_EQ(service_->traffic_counter_snapshot()
+                [patchpanel::Client::TrafficSource::kChrome],
+            counter_arr0);
+  EXPECT_EQ(service_->traffic_counter_snapshot()
+                [patchpanel::Client::TrafficSource::kUser],
+            counter_arr1);
   EXPECT_EQ(service_->current_traffic_counters().size(), 2);
-  std::vector<uint64_t> chrome_counters_diff{90, 180, 270, 360};
-  std::vector<uint64_t> user_counters_diff{450, 540, 630, 720};
-  for (size_t i = 0; i < Service::kTrafficCounterArraySize; i++) {
-    EXPECT_EQ(service_->current_traffic_counters()
-                  [patchpanel::Client::TrafficSource::kChrome][i],
-              chrome_counters_diff[i]);
-    EXPECT_EQ(service_->current_traffic_counters()
-                  [patchpanel::Client::TrafficSource::kUser][i],
-              user_counters_diff[i]);
-  }
+  patchpanel::Client::TrafficVector chrome_counters_diff = {
+      .rx_bytes = 90, .tx_bytes = 180, .rx_packets = 270, .tx_packets = 360};
+  patchpanel::Client::TrafficVector user_counters_diff = {
+      .rx_bytes = 450, .tx_bytes = 540, .rx_packets = 630, .tx_packets = 720};
+  EXPECT_EQ(service_->current_traffic_counters()
+                [patchpanel::Client::TrafficSource::kChrome],
+            chrome_counters_diff);
+  EXPECT_EQ(service_->current_traffic_counters()
+                [patchpanel::Client::TrafficSource::kUser],
+            user_counters_diff);
 
   // Reset the traffic counters.
   service_->ResetTrafficCounters(/*error=*/nullptr);
   EXPECT_EQ(service_->current_traffic_counters().size(), 0);
   EXPECT_EQ(service_->traffic_counter_snapshot().size(), 2);
-  for (size_t i = 0; i < Service::kTrafficCounterArraySize; i++) {
-    EXPECT_EQ(service_->traffic_counter_snapshot()
-                  [patchpanel::Client::TrafficSource::kChrome][i],
-              counter_arr0[i]);
-    EXPECT_EQ(service_->traffic_counter_snapshot()
-                  [patchpanel::Client::TrafficSource::kUser][i],
-              counter_arr1[i]);
-  }
+  EXPECT_EQ(service_->traffic_counter_snapshot()
+                [patchpanel::Client::TrafficSource::kChrome],
+            counter_arr0);
+  EXPECT_EQ(service_->traffic_counter_snapshot()
+                [patchpanel::Client::TrafficSource::kUser],
+            counter_arr1);
 
   // Refresh traffic counters, updating the traffic counter snapshot and current
   // traffic counters.
-  counter_arr0 = {1000, 2000, 3000, 4000};
-  counter_arr1 = {5000, 6000, 7000, 8000};
+  counter_arr0 = {.rx_bytes = 1000,
+                  .tx_bytes = 2000,
+                  .rx_packets = 3000,
+                  .tx_packets = 4000};
+  counter_arr1 = {.rx_bytes = 5000,
+                  .tx_bytes = 6000,
+                  .rx_packets = 7000,
+                  .tx_packets = 8000};
   counter0 = CreateCounter(counter_arr0, source0, kDeviceName);
   counter1 = CreateCounter(counter_arr1, source1, kDeviceName);
   service_->RefreshTrafficCounters({counter0, counter1});
   EXPECT_EQ(service_->traffic_counter_snapshot().size(), 2);
-  for (size_t i = 0; i < Service::kTrafficCounterArraySize; i++) {
-    EXPECT_EQ(service_->traffic_counter_snapshot()
-                  [patchpanel::Client::TrafficSource::kChrome][i],
-              counter_arr0[i]);
-    EXPECT_EQ(service_->traffic_counter_snapshot()
-                  [patchpanel::Client::TrafficSource::kUser][i],
-              counter_arr1[i]);
-  }
+  EXPECT_EQ(service_->traffic_counter_snapshot()
+                [patchpanel::Client::TrafficSource::kChrome],
+            counter_arr0);
+  EXPECT_EQ(service_->traffic_counter_snapshot()
+                [patchpanel::Client::TrafficSource::kUser],
+            counter_arr1);
   EXPECT_EQ(service_->current_traffic_counters().size(), 2);
-  chrome_counters_diff = {900, 1800, 2700, 3600};
-  user_counters_diff = {4500, 5400, 6300, 7200};
-  for (size_t i = 0; i < Service::kTrafficCounterArraySize; i++) {
-    EXPECT_EQ(service_->current_traffic_counters()
-                  [patchpanel::Client::TrafficSource::kChrome][i],
-              chrome_counters_diff[i]);
-    EXPECT_EQ(service_->current_traffic_counters()
-                  [patchpanel::Client::TrafficSource::kUser][i],
-              user_counters_diff[i]);
-  }
+  chrome_counters_diff = {.rx_bytes = 900,
+                          .tx_bytes = 1800,
+                          .rx_packets = 2700,
+                          .tx_packets = 3600};
+  user_counters_diff = {.rx_bytes = 4500,
+                        .tx_bytes = 5400,
+                        .rx_packets = 6300,
+                        .tx_packets = 7200};
+  EXPECT_EQ(service_->current_traffic_counters()
+                [patchpanel::Client::TrafficSource::kChrome],
+            chrome_counters_diff);
+  EXPECT_EQ(service_->current_traffic_counters()
+                [patchpanel::Client::TrafficSource::kUser],
+            user_counters_diff);
 }
 
 TEST_F(ServiceTest, UpdateLinkSpeed) {

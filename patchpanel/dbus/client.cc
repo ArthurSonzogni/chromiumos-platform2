@@ -6,6 +6,7 @@
 
 #include <fcntl.h>
 
+#include <compare>
 #include <algorithm>
 #include <optional>
 #include <ostream>
@@ -189,10 +190,10 @@ std::optional<net_base::IPv4CIDR> ConvertIPv4Subnet(const IPv4Subnet& in) {
 std::optional<Client::TrafficCounter> ConvertTrafficCounter(
     const TrafficCounter& in) {
   auto out = std::make_optional<Client::TrafficCounter>();
-  out->rx_bytes = in.rx_bytes();
-  out->tx_bytes = in.tx_bytes();
-  out->rx_packets = in.rx_packets();
-  out->tx_packets = in.tx_packets();
+  out->traffic.rx_bytes = in.rx_bytes();
+  out->traffic.tx_bytes = in.tx_bytes();
+  out->traffic.rx_packets = in.rx_packets();
+  out->traffic.tx_packets = in.tx_packets();
   out->ifname = in.device();
   out->source = ConvertTrafficSource(in.source());
   switch (in.ip_family()) {
@@ -1703,6 +1704,50 @@ std::string Client::NeighborStatusName(
     patchpanel::Client::NeighborStatus status) {
   return NeighborReachabilityEventSignal::EventType_Name(
       ConvertNeighborStatus(status));
+}
+
+bool Client::TrafficVector::operator==(
+    const Client::TrafficVector& that) const = default;
+
+Client::TrafficVector& Client::TrafficVector::operator+=(
+    const TrafficVector& that) {
+  rx_bytes += that.rx_bytes;
+  tx_bytes += that.tx_bytes;
+  rx_packets += that.rx_packets;
+  tx_packets += that.tx_packets;
+  return *this;
+}
+
+Client::TrafficVector& Client::TrafficVector::operator-=(
+    const TrafficVector& that) {
+  rx_bytes -= that.rx_bytes;
+  tx_bytes -= that.tx_bytes;
+  rx_packets -= that.rx_packets;
+  tx_packets -= that.tx_packets;
+  return *this;
+}
+
+Client::TrafficVector Client::TrafficVector::operator+(
+    const TrafficVector& that) const {
+  auto r = *this;
+  r += that;
+  return r;
+}
+
+Client::TrafficVector Client::TrafficVector::operator-(
+    const TrafficVector& that) const {
+  auto r = *this;
+  r -= that;
+  return r;
+}
+
+Client::TrafficVector Client::TrafficVector::operator-() const {
+  auto r = *this;
+  r.rx_bytes = -r.rx_bytes;
+  r.tx_bytes = -r.tx_bytes;
+  r.rx_packets = -r.rx_packets;
+  r.tx_packets = -r.tx_packets;
+  return r;
 }
 
 BRILLO_EXPORT std::ostream& operator<<(

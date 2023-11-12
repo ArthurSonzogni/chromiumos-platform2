@@ -73,15 +73,32 @@ class BRILLO_EXPORT Client {
       TrafficSource::kParallelsVM,  TrafficSource::kTethering,
       TrafficSource::kWiFiDirect,   TrafficSource::kWiFiLOHS};
 
-  // See TrafficCounter in patchpanel_service.proto.
-  struct TrafficCounter {
+  struct TrafficVector {
     uint64_t rx_bytes;
     uint64_t tx_bytes;
     uint64_t rx_packets;
     uint64_t tx_packets;
+
+    bool operator==(const TrafficVector&) const;
+    TrafficVector& operator+=(const TrafficVector&);
+    TrafficVector& operator-=(const TrafficVector&);
+    TrafficVector operator+(const TrafficVector&) const;
+    TrafficVector operator-(const TrafficVector&) const;
+    TrafficVector operator-() const;
+  };
+
+  static constexpr TrafficVector kZeroTraffic = {
+      .rx_bytes = 0,
+      .tx_bytes = 0,
+      .rx_packets = 0,
+      .tx_packets = 0,
+  };
+
+  struct TrafficCounter {
     TrafficSource source;
     std::string ifname;
     IPFamily ip_family;
+    TrafficVector traffic;
   };
 
   // See NetworkDevice.GuestType in patchpanel_service.proto.
