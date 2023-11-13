@@ -26,19 +26,19 @@ message Stream {
   optional int32 format = 4;
 }
 
-message CaptureResultBufferMetrics {
+message ResultBufferMetrics {
   // The stream this capture result buffer is for.
   optional Stream stream = 1;
 
   repeated FunctionMetrics function_metrics = 2;
 }
 
-message CameraStreamMetrics {
+message ConfigMetrics {
   repeated FunctionMetrics function_metrics = 1;
-  repeated CaptureResultBufferMetrics result_buffer_metrics = 2;
+  repeated ResultBufferMetrics result_buffer_metrics = 2;
 }
 
-message CameraCoreMetrics {
+message SessionMetrics {
   // Camera session identifier.
   optional int32 sid = 1;
 
@@ -48,11 +48,11 @@ message CameraCoreMetrics {
   // per-stream result buffer latency of each set of stream configuration. A
   // camera session can call configure_streams() multiple times to configure
   // different set of streams.
-  repeated CameraStreamMetrics stream_metrics = 3;
+  repeated ConfigMetrics config_metrics = 3;
 }
 
 message CameraCoreMetricsPerSession {
-  repeated CameraCoreMetrics sessions = 1;
+  repeated SessionMetrics session_metrics = 1;
 }
 
 extend TraceMetrics {

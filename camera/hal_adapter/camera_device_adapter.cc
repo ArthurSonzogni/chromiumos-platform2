@@ -930,6 +930,7 @@ void CameraDeviceAdapter::ProcessCaptureResult(
   TRACE_HAL_ADAPTER([&](perfetto::EventContext ctx) {
     ctx.AddDebugAnnotation("frame_number", result->frame_number);
     ctx.AddDebugAnnotation("partial_result", result->partial_result);
+    ctx.AddDebugAnnotation("num_output_buffers", result->num_output_buffers);
     if (result->input_buffer != nullptr) {
       perfetto::Flow::ProcessScoped(
           reinterpret_cast<uintptr_t>(*result->input_buffer->buffer))(ctx);
