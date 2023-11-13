@@ -125,6 +125,7 @@ static_library("libcrash_reporter") {
     "chrome_collector.cc",
     "clobber_state_collector.cc",
     "connectivity_util.cc",
+    "crash_adaptor.cc",
     "crash_collector.cc",
     "crash_reporter_failure_collector.cc",
     "ec_collector.cc",
@@ -152,6 +153,7 @@ static_library("libcrash_reporter") {
   libs = [
     "policy",
     "redaction_tool",
+    "system_api-fbpreprocessor-protos",
   ]
   deps = [
     ":crash-reporter-adaptors",

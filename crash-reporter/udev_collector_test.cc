@@ -17,6 +17,9 @@
 #include <bindings/device_management_backend.pb.h>
 #include <brillo/strings/string_utils.h>
 #include <brillo/syslog_logging.h>
+#include <dbus/mock_bus.h>
+#include <dbus/mock_exported_object.h>
+#include <crash-reporter-client/crash-reporter/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <login_manager/proto_bindings/policy_descriptor.pb.h>
@@ -75,6 +78,9 @@ constexpr char kAffiliationID[] = "affiliation_id";
 // Driver names for a coredump that should be collected:
 constexpr const char* kCollectedDriverNames[] = {"adreno", "qcom-venus", "amdgpu"};
 
+const char kCrashReporterInterface[] = "org.chromium.CrashReporterInterface";
+const char kDebugDumpCreatedSignalName[] = "DebugDumpCreated";
+
 // Returns the number of files found in the given path that matches the
 // specified file name pattern.
 int GetNumFiles(const FilePath& path, const std::string& file_pattern) {
@@ -110,6 +116,8 @@ class UdevCollectorMock : public UdevCollector {
     // deleted when the UdevCollectorMock is deleted.
     session_manager_proxy_.reset(mock);
   }
+
+  void SetBus(scoped_refptr<dbus::MockBus> bus) { bus_ = bus.get(); }
 };
 
 class UdevCollectorTest : public ::testing::Test {
@@ -179,6 +187,8 @@ class UdevCollectorTest : public ::testing::Test {
     collector->dev_coredump_directory_ = dev_coredump_path.value();
     SetupFirmwareDumpsFinchFlag("1");
     collector->EnableConnectivityFwdumpForTest(true);
+    dbus::Bus::Options bus_options;
+    mock_bus_ = base::MakeRefCounted<dbus::MockBus>(bus_options);
   }
 
   // This function creates input request blob required to call
@@ -202,6 +212,32 @@ class UdevCollectorTest : public ::testing::Test {
     std::string descriptor_string = descriptor.SerializeAsString();
     return std::vector<uint8_t>(descriptor_string.begin(),
                                 descriptor_string.end());
+  }
+
+  void OnDebugDumpCreated(dbus::Signal* signal) {
+    EXPECT_EQ(signal->GetInterface(), kCrashReporterInterface);
+    EXPECT_EQ(signal->GetMember(), kDebugDumpCreatedSignalName);
+  }
+
+  void SetDebugDumpCreatedSignalExpectation(
+      UdevCollectorMock* collector,
+      scoped_refptr<dbus::MockExportedObject> exported_object,
+      dbus::ObjectPath obj_path) {
+    EXPECT_CALL(*exported_object, ExportMethodAndBlock(_, _, _))
+        .WillRepeatedly(testing::Return(true));
+
+    EXPECT_CALL(*mock_bus_, GetExportedObject(testing::Eq(obj_path)))
+        .WillOnce(testing::Return(exported_object.get()));
+
+    EXPECT_CALL(*mock_bus_, RequestOwnershipAndBlock(_, _))
+        .WillOnce(testing::Return(true));
+
+    EXPECT_CALL(*exported_object, Unregister())
+        .WillRepeatedly(testing::Return());
+
+    EXPECT_CALL(*exported_object, SendSignal(testing::A<dbus::Signal*>()))
+        .WillOnce(Invoke(this, &UdevCollectorTest::OnDebugDumpCreated));
+    collector->SetBus(mock_bus_);
   }
 
   // This function creates Policy Fetch Response blob to simulate expected
@@ -237,6 +273,7 @@ class UdevCollectorTest : public ::testing::Test {
   }
 
   UdevCollectorMock collector_;
+  scoped_refptr<dbus::MockBus> mock_bus_;
 
  private:
   void SetUp() override {
@@ -305,6 +342,11 @@ TEST_F(UdevCollectorTest,
   auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
   collector_.SetSessionManagerProxy(mock);
   CreateFbpreprocessordDirectoryForTest(&collector_);
+  auto obj_path = dbus::ObjectPath(crash_reporter::kCrashReporterServicePath);
+  auto exported_object =
+      base::MakeRefCounted<dbus::MockExportedObject>(mock_bus_.get(), obj_path);
+
+  SetDebugDumpCreatedSignalExpectation(&collector_, exported_object, obj_path);
 
   EXPECT_CALL(*mock, RetrievePrimarySession)
       .WillOnce(WithArgs<0, 1>(
@@ -340,6 +382,8 @@ TEST_F(UdevCollectorTest,
   auto* mock2 = new org::chromium::SessionManagerInterfaceProxyMock;
   second_collector.SetSessionManagerProxy(mock2);
   CreateFbpreprocessordDirectoryForTest(&second_collector);
+  SetDebugDumpCreatedSignalExpectation(&second_collector, exported_object,
+                                       obj_path);
 
   EXPECT_CALL(*mock2, RetrievePrimarySession)
       .WillOnce(WithArgs<0, 1>(
@@ -374,6 +418,11 @@ TEST_F(UdevCollectorTest,
   auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
   collector_.SetSessionManagerProxy(mock);
   CreateFbpreprocessordDirectoryForTest(&collector_);
+  auto obj_path = dbus::ObjectPath(crash_reporter::kCrashReporterServicePath);
+  auto exported_object =
+      base::MakeRefCounted<dbus::MockExportedObject>(mock_bus_.get(), obj_path);
+
+  SetDebugDumpCreatedSignalExpectation(&collector_, exported_object, obj_path);
 
   EXPECT_CALL(*mock, RetrievePrimarySession)
       .WillOnce(WithArgs<0, 1>(
@@ -399,7 +448,6 @@ TEST_F(UdevCollectorTest,
   FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
   HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
   EXPECT_EQ(1, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
-  GenerateDevCoredump("devcd1", kConnectivityWiFiDriverName);
 }
 
 // Ensure fwdump is generated if policy is set and user is allowed.
@@ -408,6 +456,10 @@ TEST_F(UdevCollectorTest, RunAsRoot_TestConnectivityWiFiDevCoredumpPolicySet) {
   auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
   collector_.SetSessionManagerProxy(mock);
   CreateFbpreprocessordDirectoryForTest(&collector_);
+  auto obj_path = dbus::ObjectPath(crash_reporter::kCrashReporterServicePath);
+  auto exported_object =
+      base::MakeRefCounted<dbus::MockExportedObject>(mock_bus_.get(), obj_path);
+  SetDebugDumpCreatedSignalExpectation(&collector_, exported_object, obj_path);
 
   EXPECT_CALL(*mock, RetrievePrimarySession)
       .WillOnce(WithArgs<0, 1>(

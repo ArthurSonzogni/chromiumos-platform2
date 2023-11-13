@@ -116,7 +116,8 @@ class UdevCollector : public CrashCollector {
   // |instance_number| is the kernel number of the virtual device for the device
   // coredump instance.
   bool ProcessDevCoredump(const base::FilePath& crash_directory,
-                          int instance_number);
+                          int instance_number,
+                          bool is_connectivity_fwdump);
   // Copy bluetooth device coredump file to crash directory, and perform
   // necessary coredump file management.
   bool AppendBluetoothCoredump(const base::FilePath& crash_directory,
@@ -126,7 +127,8 @@ class UdevCollector : public CrashCollector {
   // coredump file management.
   bool AppendDevCoredump(const base::FilePath& crash_directory,
                          const base::FilePath& coredump_path,
-                         int instance_number);
+                         int instance_number,
+                         bool is_connectivity_fwdump);
   // Clear the device coredump file by performing a dummy write to it.
   bool ClearDevCoredump(const base::FilePath& coredump_path);
   // Generate the driver path of the failing device from instance and sub-path.
@@ -137,6 +139,10 @@ class UdevCollector : public CrashCollector {
       const base::FilePath& failing_uevent_path);
   // Return the driver name of the device that generates the coredump.
   std::string GetFailingDeviceDriverName(int instance_number);
+
+  // This function emits DebugDumpCreated signal when connectivity
+  // firmware dump is created.
+  void EmitConnectivityDebugDumpCreatedSignal(const std::string& file_name);
 
   // This variable is set false by default and set to true from
   // unit test to invoke connectivity fwdump feature for testing.

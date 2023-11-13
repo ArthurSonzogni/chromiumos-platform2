@@ -25,10 +25,14 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
 #include <brillo/userdb_utils.h>
+#include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 #include <metrics/metrics_library.h>
+
+#include <crash-reporter/dbus_adaptors/org.chromium.CrashReporterInterface.h>
 
 #include "crash-reporter/connectivity_util.h"
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_adaptor.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/udev_bluetooth_util.h"
 #include "crash-reporter/util.h"
@@ -237,7 +241,8 @@ bool UdevCollector::HandleCrash(const std::string& udev_event) {
   }
 
   if (udev_event_map[kUdevSubsystem] == kUdevSubsystemDevCoredump) {
-    return ProcessDevCoredump(crash_directory, instance_number);
+    return ProcessDevCoredump(crash_directory, instance_number,
+                              is_connectivity_fwdump);
   }
 
   return ProcessUdevCrashLogs(crash_directory, udev_event_map[kUdevAction],
@@ -318,7 +323,8 @@ bool UdevCollector::ProcessUdevCrashLogs(const FilePath& crash_directory,
 }
 
 bool UdevCollector::ProcessDevCoredump(const FilePath& crash_directory,
-                                       int instance_number) {
+                                       int instance_number,
+                                       bool is_connectivity_fwdump) {
   FilePath coredump_path = FilePath(base::StringPrintf(
       "%s/devcd%d/data", dev_coredump_directory_.c_str(), instance_number));
   if (!base::PathExists(coredump_path)) {
@@ -338,7 +344,8 @@ bool UdevCollector::ProcessDevCoredump(const FilePath& crash_directory,
   }
 
   // Add coredump file to the crash directory.
-  if (!AppendDevCoredump(crash_directory, coredump_path, instance_number)) {
+  if (!AppendDevCoredump(crash_directory, coredump_path, instance_number,
+                         is_connectivity_fwdump)) {
     ClearDevCoredump(coredump_path);
     return false;
   }
@@ -375,9 +382,29 @@ bool UdevCollector::AppendBluetoothCoredump(const FilePath& crash_directory,
   return true;
 }
 
+void UdevCollector::EmitConnectivityDebugDumpCreatedSignal(
+    const std::string& file_name) {
+  SetUpDBus();
+  auto crash_interface = std::make_unique<CrashAdaptor>(bus_);
+
+  ::fbpreprocessor::DebugDumps fw_dumps;
+  ::fbpreprocessor::DebugDump* dump = fw_dumps.add_dump();
+
+  // TODO(b/313483598): Support other DebugDump types e.g. BT, cellular.
+  dump->set_type(fbpreprocessor::DebugDump::WIFI);
+  auto wifi_dump = dump->mutable_wifi_dump();
+  wifi_dump->set_dmpfile(file_name);
+  wifi_dump->set_state(fbpreprocessor::WiFiDump::RAW);
+  wifi_dump->set_vendor(fbpreprocessor::WiFiDump::IWLWIFI);
+
+  LOG(INFO) << "Going to emit connectivity DebugDumpCreated signal.";
+  crash_interface.get()->SendDebugDumpCreatedSignal(fw_dumps);
+}
+
 bool UdevCollector::AppendDevCoredump(const FilePath& crash_directory,
                                       const FilePath& coredump_path,
-                                      int instance_number) {
+                                      int instance_number,
+                                      bool is_connectivity_fwdump) {
   // Retrieve the driver name of the failing device.
   std::string driver_name = GetFailingDeviceDriverName(instance_number);
   if (driver_name.empty()) {
@@ -427,6 +454,12 @@ bool UdevCollector::AppendDevCoredump(const FilePath& crash_directory,
   AddCrashMetaData(kUdevSignatureKey, udev_log_name);
 
   FinishCrash(meta_path, coredump_prefix, core_path.BaseName().value());
+
+  // Generate debug dump created signal for connectivity firmware dumps for
+  // fbpreprocessord to process.
+  if (is_connectivity_fwdump) {
+    EmitConnectivityDebugDumpCreatedSignal(core_path.value());
+  }
 
   return true;
 }
