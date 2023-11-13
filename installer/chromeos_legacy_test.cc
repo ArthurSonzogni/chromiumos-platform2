@@ -214,9 +214,10 @@ TEST_F(UpdateEfiBootloadersTest, Success) {
   CHECK(base::CreateDirectory(src_dir_));
   CHECK(base::CreateDirectory(dst_dir_));
 
-  // These files will be copied due to ".efi" extension.
+  // These files will be copied due to ".efi" and ".sig" extensions.
   CHECK(base::WriteFile(src_dir_.Append("bootia32.efi"), "123"));
   CHECK(base::WriteFile(src_dir_.Append("bootx64.efi"), "456"));
+  CHECK(base::WriteFile(src_dir_.Append("bootx64.sig"), "789"));
 
   // These files won't be copied.
   CHECK(base::WriteFile(src_dir_.Append("bootx64.EFI"), ""));
@@ -235,6 +236,9 @@ TEST_F(UpdateEfiBootloadersTest, Success) {
   EXPECT_TRUE(
       base::ReadFileToString(dst_dir_.Append("bootx64.efi"), &contents));
   EXPECT_EQ(contents, "456");
+  EXPECT_TRUE(
+      base::ReadFileToString(dst_dir_.Append("bootx64.sig"), &contents));
+  EXPECT_EQ(contents, "789");
 
   // Check that only those files were copied.
   base::FileEnumerator file_enum(dst_dir_, /*recursive=*/false,
@@ -242,7 +246,7 @@ TEST_F(UpdateEfiBootloadersTest, Success) {
   int num_files = 0;
   file_enum.ForEach(
       [&num_files](const base::FilePath& item) { num_files += 1; });
-  EXPECT_EQ(num_files, 2);
+  EXPECT_EQ(num_files, 3);
 }
 
 TEST_F(UpdateEfiBootloadersTest, InvalidDestDir) {

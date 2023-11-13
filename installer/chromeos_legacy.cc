@@ -267,9 +267,17 @@ bool UpdateEfiBootloaders(const InstallConfig& install_config) {
       install_config.root.mount().Append("boot/efi/boot");
   const base::FilePath dest_dir =
       install_config.boot.mount().Append("efi/boot");
-  base::FileEnumerator file_enum(src_dir, false, base::FileEnumerator::FILES,
-                                 "*.efi");
+  base::FileEnumerator file_enum(src_dir, /*recursive=*/false,
+                                 base::FileEnumerator::FILES);
   for (auto src = file_enum.Next(); !src.empty(); src = file_enum.Next()) {
+    // Filter files by extension.
+    // .efi files are UEFI executables.
+    // .sig files are detached signatures.
+    const auto extension = src.FinalExtension();
+    if (extension != ".efi" && extension != ".sig") {
+      continue;
+    }
+
     const base::FilePath dest = dest_dir.Append(src.BaseName());
     if (!base::CopyFile(src, dest))
       result = false;
