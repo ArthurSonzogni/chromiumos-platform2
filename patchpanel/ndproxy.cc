@@ -286,12 +286,14 @@ ssize_t NDProxy::TranslateNDPacket(
   }
 
   if (new_src_ip) {
-    ip6->ip6_src = new_src_ip->ToIn6Addr();
-
-    // Turn off onlink flag if we are pretending to be the router.
+    // b/309528384: Only change the source IP if RA contains a PIO. This is to
+    // avoid downstream confusing router lifetime from different RA senders.
     nd_opt_prefix_info* prefix_info =
         GetPrefixInfoOption(reinterpret_cast<uint8_t*>(icmp6), icmp6_len);
     if (prefix_info) {
+      ip6->ip6_src = new_src_ip->ToIn6Addr();
+
+      // Turn off onlink flag if we are pretending to be the router.
       prefix_info->nd_opt_pi_flags_reserved &= ~ND_OPT_PI_FLAG_ONLINK;
     }
   }
