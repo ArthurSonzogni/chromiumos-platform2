@@ -117,6 +117,10 @@ class BRILLO_EXPORT ThinpoolMigrator {
   // migration, set up the vpd key asynchronously ahead of time.
   virtual bool PersistMigrationStatus();
 
+  // Replays the ext4 journal before the migration to ensure that the
+  // filesystem is in a pristine state before calling resize2fs.
+  virtual bool ReplayExt4Journal();
+
  private:
   // Generates the payload to be written to at the beginning of the stateful
   // partition.

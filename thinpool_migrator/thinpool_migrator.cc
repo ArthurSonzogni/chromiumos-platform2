@@ -187,6 +187,9 @@ bool ThinpoolMigrator::Migrate(bool dry_run) {
 bool ThinpoolMigrator::ShrinkStatefulFilesystem() {
   ScopedTimerReporter timer(kResizeTimeHistogram);
 
+  if (!ReplayExt4Journal())
+    return false;
+
   if (!ResizeStatefulFilesystem(resized_filesystem_size_)) {
     LOG(ERROR) << "Failed to resize filesystem";
     return false;
@@ -448,6 +451,25 @@ bool ThinpoolMigrator::RetrieveMigrationStatus() {
   base::Base64Decode(encoded, &decoded_pb);
   if (!status_.ParseFromString(decoded_pb)) {
     LOG(ERROR) << "Failed to parse invalid migration status";
+    return false;
+  }
+
+  return true;
+}
+
+bool ThinpoolMigrator::ReplayExt4Journal() {
+  brillo::ProcessImpl e2fsck;
+  e2fsck.AddArg("/sbin/e2fsck");
+  e2fsck.AddArg("-p");
+  e2fsck.AddArg("-E");
+  e2fsck.AddArg("journal_only");
+  e2fsck.AddArg(block_device_.value());
+  e2fsck.RedirectOutputToMemory(true);
+
+  int ret = e2fsck.Run();
+  if (ret > 1) {
+    LOG(INFO) << e2fsck.GetOutputString(STDOUT_FILENO);
+    PLOG(WARNING) << "e2fsck failed with code " << ret;
     return false;
   }
 
