@@ -32,6 +32,7 @@ class SLAACController {
     kRDNSS = 2,
     kDefaultRoute = 3,
     kDNSSL = 4,
+    kCaptivePortal = 5,
   };
   using UpdateCallback = base::RepeatingCallback<void(UpdateType)>;
 
@@ -85,6 +86,7 @@ class SLAACController {
   void NDOptionMsgHandler(const net_base::RTNLMessage& msg);
   void RDNSSMsgHandler(const net_base::RTNLMessage& msg);
   void DNSSLMsgHandler(const net_base::RTNLMessage& msg);
+  void CaptivePortalMsgHandler(const net_base::RTNLMessage& msg);
 
   // Timer function for monitoring RDNSS's lifetime.
   void StartRDNSSTimer(base::TimeDelta lifetime);

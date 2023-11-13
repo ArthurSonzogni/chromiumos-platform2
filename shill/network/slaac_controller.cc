@@ -15,6 +15,7 @@
 #include <base/logging.h>
 #include <metrics/timer.h>
 #include <net-base/byte_utils.h>
+#include <net-base/http_url.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv6_address.h>
 #include <net-base/rtnl_message.h>
@@ -239,12 +240,19 @@ void SLAACController::RouteMsgHandler(const net_base::RTNLMessage& msg) {
 }
 
 void SLAACController::NDOptionMsgHandler(const net_base::RTNLMessage& msg) {
+  if (msg.interface_index() != interface_index_) {
+    return;
+  }
+
   switch (msg.type()) {
     case net_base::RTNLMessage::kTypeRdnss:
       RDNSSMsgHandler(msg);
       break;
     case net_base::RTNLMessage::kTypeDnssl:
       DNSSLMsgHandler(msg);
+      break;
+    case net_base::RTNLMessage::kTypeCaptivePortal:
+      CaptivePortalMsgHandler(msg);
       break;
     case net_base::RTNLMessage::kTypeNdUserOption:
       LOG(INFO) << "Received unknown ND user option type "
@@ -258,10 +266,6 @@ void SLAACController::NDOptionMsgHandler(const net_base::RTNLMessage& msg) {
 }
 
 void SLAACController::RDNSSMsgHandler(const net_base::RTNLMessage& msg) {
-  if (msg.interface_index() != interface_index_) {
-    return;
-  }
-
   const net_base::RTNLMessage::RdnssOption& rdnss_option = msg.rdnss_option();
   uint32_t rdnss_lifetime_seconds = rdnss_option.lifetime;
 
@@ -288,10 +292,6 @@ void SLAACController::RDNSSMsgHandler(const net_base::RTNLMessage& msg) {
 }
 
 void SLAACController::DNSSLMsgHandler(const net_base::RTNLMessage& msg) {
-  if (msg.interface_index() != interface_index_) {
-    return;
-  }
-
   const net_base::RTNLMessage::DnsslOption& dnssl_option = msg.dnssl_option();
   uint32_t dnssl_lifetime_seconds = dnssl_option.lifetime;
 
@@ -309,6 +309,21 @@ void SLAACController::DNSSLMsgHandler(const net_base::RTNLMessage& msg) {
 
   if (update_callback_ && old_domains != network_config_.dns_search_domains) {
     update_callback_.Run(UpdateType::kDNSSL);
+  }
+}
+
+void SLAACController::CaptivePortalMsgHandler(
+    const net_base::RTNLMessage& msg) {
+  const net_base::HttpUrl& uri = msg.captive_portal_uri();
+  if (uri.protocol() != net_base::HttpUrl::Protocol::kHttps) {
+    LOG(WARNING) << __func__ << "Captive portal URI should be HTTPS";
+    return;
+  }
+
+  const bool is_updated = (network_config_.captive_portal_uri != uri);
+  network_config_.captive_portal_uri = uri;
+  if (update_callback_ && is_updated) {
+    update_callback_.Run(UpdateType::kCaptivePortal);
   }
 }
 

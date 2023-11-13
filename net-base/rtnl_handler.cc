@@ -292,6 +292,7 @@ void RTNLHandler::ParseRTNL(base::span<const uint8_t> data) {
         // Various ND user options.
         case RTNLMessage::kTypeRdnss:
         case RTNLMessage::kTypeDnssl:
+        case RTNLMessage::kTypeCaptivePortal:
         case RTNLMessage::kTypeNdUserOption:
           DispatchEvent(kRequestNdUserOption, *msg);
           break;

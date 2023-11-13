@@ -7,6 +7,7 @@
 #include <string>
 
 #include <net-base/byte_utils.h>
+#include <net-base/http_url.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
@@ -70,6 +71,8 @@ class SLAACControllerTest : public testing::Test {
       const net_base::IPCIDR& address,
       unsigned char flags,
       unsigned char scope);
+  std::unique_ptr<net_base::RTNLMessage> BuildCaptivePortalMessage(
+      const net_base::HttpUrl& captive_portal_uri);
 
   MOCK_METHOD(void, UpdateCallback, (SLAACController::UpdateType));
 
@@ -87,7 +90,8 @@ void SLAACControllerTest::SendRTNLMessage(
   } else if (message.type() == net_base::RTNLMessage::kTypeRoute) {
     slaac_controller_.RouteMsgHandler(message);
   } else if (message.type() == net_base::RTNLMessage::kTypeRdnss ||
-             message.type() == net_base::RTNLMessage::kTypeDnssl) {
+             message.type() == net_base::RTNLMessage::kTypeDnssl ||
+             message.type() == net_base::RTNLMessage::kTypeCaptivePortal) {
     slaac_controller_.NDOptionMsgHandler(message);
   } else {
     NOTREACHED();
@@ -129,6 +133,16 @@ std::unique_ptr<net_base::RTNLMessage> SLAACControllerTest::BuildAddressMessage(
   message->SetAttribute(IFA_ADDRESS, cidr.address().ToBytes());
   message->set_address_status(
       net_base::RTNLMessage::AddressStatus(cidr.prefix_length(), flags, scope));
+  return message;
+}
+
+std::unique_ptr<net_base::RTNLMessage>
+SLAACControllerTest::BuildCaptivePortalMessage(
+    const net_base::HttpUrl& captive_portal_uri) {
+  auto message = std::make_unique<net_base::RTNLMessage>(
+      net_base::RTNLMessage::kTypeCaptivePortal,
+      net_base::RTNLMessage::kModeAdd, 0, 0, 0, kTestIfindex, AF_INET6);
+  message->set_captive_portal_uri(captive_portal_uri);
   return message;
 }
 
@@ -201,6 +215,35 @@ TEST_F(SLAACControllerTest, DNSSL) {
   SendRTNLMessage(*message);
   network_config_out = slaac_controller_.GetNetworkConfig();
   EXPECT_EQ(dnssl_in, network_config_out.dns_search_domains);
+}
+
+TEST_F(SLAACControllerTest, CaptivePortalMsg) {
+  const net_base::HttpUrl kCaptivePortalUri =
+      *net_base::HttpUrl::CreateFromString("https://example.org/api/asdf");
+  const auto message = BuildCaptivePortalMessage(kCaptivePortalUri);
+
+  // Only send the callback once when getting the same message twice.
+  EXPECT_CALL(*this,
+              UpdateCallback(SLAACController::UpdateType::kCaptivePortal))
+      .Times(1);
+
+  EXPECT_EQ(slaac_controller_.GetNetworkConfig().captive_portal_uri,
+            std::nullopt);
+  SendRTNLMessage(*message);
+  EXPECT_EQ(slaac_controller_.GetNetworkConfig().captive_portal_uri,
+            kCaptivePortalUri);
+  SendRTNLMessage(*message);
+}
+
+TEST_F(SLAACControllerTest, InvalidCaptivePortalMsg) {
+  // The captive portal URI should be HTTPS.
+  const net_base::HttpUrl kInvalidUri =
+      *net_base::HttpUrl::CreateFromString("http://example.org/api/asdf");
+  const auto message = BuildCaptivePortalMessage(kInvalidUri);
+
+  SendRTNLMessage(*message);
+  EXPECT_EQ(slaac_controller_.GetNetworkConfig().captive_portal_uri,
+            std::nullopt);
 }
 
 TEST_F(SLAACControllerTest, IPv6AddressChanged) {
