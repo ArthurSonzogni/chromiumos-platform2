@@ -156,12 +156,29 @@ bool CompoundNetworkConfig::Recalculate() {
         link_protocol_network_config_->included_route_prefixes;
   }
 
-  // |rfc3442_routes| and |captive_portal_uri| can only be from DHCP.
+  // |rfc3442_routes| can only be from DHCP.
   if (dhcp_network_config_) {
     combined_network_config_->rfc3442_routes =
         dhcp_network_config_->rfc3442_routes;
+  }
+
+  // |captive_portal_uri| can be from DHCP or SLAAC. Use the value coming first.
+  if (!(dhcp_network_config_ &&
+        dhcp_network_config_->captive_portal_uri.has_value()) &&
+      !(slaac_network_config_ &&
+        slaac_network_config_->captive_portal_uri.has_value())) {
+    // No captive portal URI found, do nothing.
+  } else if (old_network_config->captive_portal_uri.has_value()) {
+    combined_network_config_->captive_portal_uri =
+        old_network_config->captive_portal_uri;
+  } else if (dhcp_network_config_ &&
+             dhcp_network_config_->captive_portal_uri.has_value()) {
     combined_network_config_->captive_portal_uri =
         dhcp_network_config_->captive_portal_uri;
+  } else if (slaac_network_config_ &&
+             slaac_network_config_->captive_portal_uri.has_value()) {
+    combined_network_config_->captive_portal_uri =
+        slaac_network_config_->captive_portal_uri;
   }
 
   // DNS and DNSSL preference: static > non-static source merged.

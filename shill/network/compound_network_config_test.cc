@@ -32,7 +32,7 @@ class NetworkConfigMergeTest : public ::testing::Test {
             {*net_base::IPv4CIDR::CreateFromCIDRString("10.1.0.0/16"),
              *net_base::IPv4Address::CreateFromString("192.168.1.2")}};
     dhcp_config_.captive_portal_uri =
-        net_base::HttpUrl::CreateFromString("https://example.org/portal.html")
+        net_base::HttpUrl::CreateFromString("https://example.org/api/dhcp")
             .value();
     dhcp_config_.dns_servers = {
         *net_base::IPAddress::CreateFromString("192.168.1.99"),
@@ -48,6 +48,9 @@ class NetworkConfigMergeTest : public ::testing::Test {
     slaac_config_.dns_servers = {
         *net_base::IPAddress::CreateFromString("2001:db8:0:1::1"),
         *net_base::IPAddress::CreateFromString("2001:db8:0:1::2")};
+    slaac_config_.captive_portal_uri =
+        net_base::HttpUrl::CreateFromString("https://example.org/api/slaac")
+            .value();
     slaac_config_.dns_search_domains = {"host1.domain", "host3.domain"};
     slaac_config_.mtu = 1402;
   }
@@ -96,6 +99,8 @@ TEST_F(NetworkConfigMergeTest, DHCPWithStatic) {
   EXPECT_EQ(static_config.dns_servers, cnc.Get().dns_servers);
   EXPECT_EQ(static_config.dns_search_domains, cnc.Get().dns_search_domains);
   EXPECT_EQ(static_config.mtu, cnc.Get().mtu);
+
+  EXPECT_EQ(dhcp_config_.captive_portal_uri, cnc.Get().captive_portal_uri);
 }
 
 TEST_F(NetworkConfigMergeTest, SLAACOnly) {
@@ -122,6 +127,7 @@ TEST_F(NetworkConfigMergeTest, SLAACWithStatic) {
   EXPECT_EQ(static_config.dns_servers, cnc.Get().dns_servers);
   EXPECT_EQ(static_config.dns_search_domains, cnc.Get().dns_search_domains);
   EXPECT_EQ(slaac_config_.mtu, cnc.Get().mtu);
+  EXPECT_EQ(slaac_config_.captive_portal_uri, cnc.Get().captive_portal_uri);
 }
 
 TEST_F(NetworkConfigMergeTest, DHCPAndSLAAC) {
@@ -148,6 +154,10 @@ TEST_F(NetworkConfigMergeTest, DHCPAndSLAAC) {
                                       "host2.domain"}),
             cnc.Get().dns_search_domains);
   EXPECT_EQ(1401, cnc.Get().mtu);  // Smaller value
+
+  // SLAAC config is set prior than DHCP, so use the value from SLAAC.
+  // (Although in practice these two value should be the same).
+  EXPECT_EQ(slaac_config_.captive_portal_uri, cnc.Get().captive_portal_uri);
 }
 
 TEST_F(NetworkConfigMergeTest, IPv4VPNWithStatic) {
