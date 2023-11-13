@@ -53,4 +53,3 @@ if [ -n "${last_line}" ]; then
 fi
 
 echo "END-OF-LOG"
-

@@ -79,7 +79,7 @@ class ChromeCollectorForFuzzing : public ChromeCollector {
     session_manager_proxy_ = std::move(session_manager_mock);
 
     auto proxy_mock = std::make_unique<org::chromium::debugdProxyMock>();
-    std::function<void(base::OnceCallback<void(const std::string&)> &&)>
+    std::function<void(base::OnceCallback<void(const std::string&)>&&)>
         handler_dri_error_state =
             [this](base::OnceCallback<void(const std::string&)> callback) {
               task_environment_.GetMainThreadTaskRunner()->PostNonNestableTask(
@@ -89,7 +89,7 @@ class ChromeCollectorForFuzzing : public ChromeCollector {
     ON_CALL(*proxy_mock, GetLogAsync("i915_error_state", _, _, _))
         .WillByDefault(WithArgs<1>(handler_dri_error_state));
 
-    std::function<void(base::OnceCallback<void(const std::string&)> &&)>
+    std::function<void(base::OnceCallback<void(const std::string&)>&&)>
         handler_dmesg =
             [this](base::OnceCallback<void(const std::string&)> callback) {
               task_environment_.GetMainThreadTaskRunner()->PostNonNestableTask(

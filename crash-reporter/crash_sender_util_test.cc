@@ -1219,7 +1219,6 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
   EXPECT_THAT(reason, HasSubstr("Not an official OS version"));
   EXPECT_FALSE(base::PathExists(good_meta_.ReplaceExtension(".processing")));
 
-
   // Valid crash files should be kept in the guest mode.
   ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsDisabled,
                             raw_metrics_lib));
