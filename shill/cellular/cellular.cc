@@ -3812,8 +3812,12 @@ void Cellular::UpdateHomeProvider() {
   ApnList apn_list(merge_similar_apns);
   // TODO(b:180004055): remove this when we have captive portal checks that
   // mark APNs as bad and can skip the null APN for data connections
-  if (manufacturer_ != kQ6V5ModemManufacturerName)
-    apn_list.AddApns(capability_->GetProfiles(), ApnList::ApnSource::kModem);
+  if (manufacturer_ != kQ6V5ModemManufacturerName) {
+    auto profiles = capability_->GetProfiles();
+    if (profiles) {
+      apn_list.AddApns(*profiles, ApnList::ApnSource::kModem);
+    }
+  }
   apn_list.AddApns(mobile_operator_info_->apn_list(),
                    ApnList::ApnSource::kModb);
   SetApnList(apn_list.GetList());

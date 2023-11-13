@@ -1508,13 +1508,15 @@ TEST_F(CellularCapability3gppTest, UpdateActiveBearers) {
 TEST_F(CellularCapability3gppTest, ProfilesChanged) {
   std::vector<MobileOperatorMapper::MobileAPN> profile_list;
 
-  // Start with an empty list of profiles.
+  // Start with an empty list of profiles. The first time we process
+  // the list of profiles we must not ignore it.
   EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
-      .Times(0);
+      .Times(AtLeast(1));
   capability_->OnProfilesChanged(CellularCapability3gpp::Profiles());
   Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
 
-  // Same empty list again.
+  // Same empty list again. This time the stored list and the new one
+  // are both empty, so we expect to ignore the event.
   EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
       .Times(0);
   capability_->OnProfilesChanged(CellularCapability3gpp::Profiles());

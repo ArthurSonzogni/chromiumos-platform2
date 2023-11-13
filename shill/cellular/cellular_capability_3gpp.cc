@@ -1709,7 +1709,7 @@ CellularBearer* CellularCapability3gpp::GetActiveBearer(
              : nullptr;
 }
 
-const std::vector<MobileOperatorMapper::MobileAPN>&
+const std::optional<std::vector<MobileOperatorMapper::MobileAPN>>&
 CellularCapability3gpp::GetProfiles() const {
   return profiles_;
 }
@@ -2215,8 +2215,12 @@ void CellularCapability3gpp::OnModem3gppPropertiesChanged(
 
 void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   SLOG(this, 3) << __func__;
-  std::vector<MobileOperatorMapper::MobileAPN> old_profiles =
-      std::move(profiles_);
+  auto old_profiles = std::move(profiles_);
+
+  // Initialized to empty list. From now on |profiles_| will never be unset.
+  profiles_ =
+      std::make_optional<std::vector<MobileOperatorMapper::MobileAPN>>({});
+
   for (const auto& profile : profiles) {
     MobileOperatorMapper::MobileAPN apn_info;
     apn_info.apn = brillo::GetVariantValueOrDefault<std::string>(
@@ -2244,17 +2248,20 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
     if (apn_info.apn_types.empty())
       apn_info.apn_types = {kApnTypeDefault};
 
-    profiles_.push_back(std::move(apn_info));
+    profiles_->push_back(std::move(apn_info));
   }
 
   // Ignore if the built profiles are the same as the ones we already had.
+  // The first time we receive a profile list (|old_profiles| would be unset)
+  // must never be ignored, because we rely on it to set the initial EPS bearer
+  // settings at least once.
   // We don't care about the order of the list at this point.
-  if (profiles_ == old_profiles) {
+  if (old_profiles && *profiles_ == *old_profiles) {
     LOG(INFO) << "No update in stored profiles";
     return;
   }
 
-  LOG(INFO) << "Stored profiles updated";
+  LOG(INFO) << "Stored profiles " << (old_profiles ? "updated" : "initialized");
 
   // The cellular object may need to update the APN list now.
   cellular()->OnProfilesChanged();
