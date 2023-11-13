@@ -148,6 +148,8 @@ bool ChromeCollector::HandleCrashWithDumpData(
   signal_ = signal;
   is_lacros_crash_ = is_lacros_crash;
   crash_type_ = crash_type;
+  AddCrashMetaUploadData("crashpad_signal_number",
+                         base::NumberToString(signal_));
 
   if (payload_path.empty()) {
     if (crash_type == kJavaScriptError) {

@@ -675,6 +675,7 @@ TEST_F(ChromeCollectorTest, HandleCrash) {
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value3=ok"));
+  EXPECT_THAT(meta_file_contents, HasSubstr("crashpad_signal_number=-1"));
 }
 
 TEST_F(ChromeCollectorTest, HandleCrashWithEmbeddedNuls) {
@@ -731,6 +732,7 @@ TEST_F(ChromeCollectorTest, HandleCrashWithEmbeddedNuls) {
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value3=ok"));
+  EXPECT_THAT(meta_file_contents, HasSubstr("crashpad_signal_number=-1"));
 }
 
 TEST_F(ChromeCollectorTest, HandleCrashWithWeirdFilename) {
@@ -785,6 +787,7 @@ TEST_F(ChromeCollectorTest, HandleCrashWithWeirdFilename) {
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value3=ok"));
+  EXPECT_THAT(meta_file_contents, HasSubstr("crashpad_signal_number=-1"));
 }
 
 TEST_F(ChromeCollectorTest, HandleCrashWithLogsAndDriErrorStateAndDmesg) {
@@ -849,6 +852,7 @@ TEST_F(ChromeCollectorTest, HandleCrashWithLogsAndDriErrorStateAndDmesg) {
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value3=ok"));
+  EXPECT_THAT(meta_file_contents, HasSubstr("crashpad_signal_number=-1"));
 }
 
 TEST_F(ChromeCollectorTest, HandleCrashSkipsSupplementalFilesIfDumpFileLarge) {
@@ -899,6 +903,7 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsSupplementalFilesIfDumpFileLarge) {
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value3=ok"));
+  EXPECT_THAT(meta_file_contents, HasSubstr("crashpad_signal_number=-1"));
 }
 
 TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeLogFiles) {
@@ -955,6 +960,7 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeLogFiles) {
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value3=ok"));
+  EXPECT_THAT(meta_file_contents, HasSubstr("crashpad_signal_number=-1"));
 }
 
 TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeDriErrorFiles) {
@@ -1013,6 +1019,7 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeDriErrorFiles) {
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value3=ok"));
+  EXPECT_THAT(meta_file_contents, HasSubstr("crashpad_signal_number=-1"));
 }
 
 TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeDmesgFiles) {
@@ -1068,6 +1075,7 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeDmesgFiles) {
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value3=ok"));
+  EXPECT_THAT(meta_file_contents, HasSubstr("crashpad_signal_number=-1"));
 }
 
 TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeSupplementalFiles) {
@@ -1121,6 +1129,7 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeSupplementalFiles) {
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value3=ok"));
+  EXPECT_THAT(meta_file_contents, HasSubstr("crashpad_signal_number=-1"));
 }
 
 TEST_F(ChromeCollectorTest, HandleCrashWithDumpData_ShutdownHang) {
@@ -1244,6 +1253,7 @@ TEST_F(ChromeCollectorTest, HandleDbusTimeouts) {
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value3=ok"));
+  EXPECT_THAT(meta_file_contents, HasSubstr("crashpad_signal_number=-1"));
 }
 
 TEST_F(ChromeCollectorTest, HandleDbusErrors) {
@@ -1311,6 +1321,7 @@ TEST_F(ChromeCollectorTest, HandleDbusErrors) {
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value3=ok"));
+  EXPECT_THAT(meta_file_contents, HasSubstr("crashpad_signal_number=-1"));
 }
 
 TEST_F(ChromeCollectorTest, HandleCrashForJavaScript) {
@@ -1378,6 +1389,7 @@ TEST_F(ChromeCollectorTest, HandleCrashForJavaScript) {
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value3=ok"));
   EXPECT_THAT(meta_file_contents, HasSubstr("done=1"));
+  EXPECT_THAT(meta_file_contents, HasSubstr("crashpad_signal_number=-1"));
 }
 
 TEST_F(ChromeCollectorTest, HandleCrashForJavaScriptLacros) {
