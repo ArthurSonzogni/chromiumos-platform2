@@ -564,6 +564,10 @@ wipe_stateful() {
     ;;
   esac
 
+  # Zero out the first block of the stateful partition to ensure that
+  # mkfs/pvcreate don't get confused by existing state.
+  dd if=/dev/zero of="${DEV}" bs=${DST_BLKSIZE} count=1 >/dev/null 2>&1
+
   if [ "${FLAGS_lvm_stateful}" -eq "${FLAGS_TRUE}" ]; then
     # Now we recreate the logical volume set up.
     # Create physical volume on the partition.
@@ -1143,7 +1147,7 @@ main() {
     local dst_stateful="$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE}")"
     local vg_name="$(get_volume_group "${dst_stateful}")"
     if [ -n "${vg_name}" ]; then
-      vgchange -an --force "${vg_name}"
+      vgchange -an --force "${vg_name}" || true
     fi
   fi
 
