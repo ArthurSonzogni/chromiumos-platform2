@@ -7,6 +7,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <base/files/file_enumerator.h>
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/strings/string_util.h"
@@ -187,4 +188,70 @@ TEST_F(EfiGrubCfgTest, ReplaceKernelCommand) {
   lines[6] = test_b_dm;
   EXPECT_EQ(cfg.ToString(), base::JoinString(lines, "\n"));
 }
+
+class UpdateEfiBootloadersTest : public ::testing::Test {
+ public:
+  void SetUp() override {
+    CHECK(temp_dir_.CreateUniqueTempDir());
+
+    const auto root_dir = temp_dir_.GetPath().Append("root");
+    const auto boot_dir = temp_dir_.GetPath().Append("boot");
+    install_config_.root = Partition(base::FilePath(), root_dir);
+    install_config_.boot = Partition(base::FilePath(), boot_dir);
+
+    src_dir_ = root_dir.Append("boot/efi/boot");
+    dst_dir_ = boot_dir.Append("efi/boot");
+  }
+
+ protected:
+  base::ScopedTempDir temp_dir_;
+  InstallConfig install_config_;
+  base::FilePath src_dir_;
+  base::FilePath dst_dir_;
+};
+
+TEST_F(UpdateEfiBootloadersTest, Success) {
+  CHECK(base::CreateDirectory(src_dir_));
+  CHECK(base::CreateDirectory(dst_dir_));
+
+  // These files will be copied due to ".efi" extension.
+  CHECK(base::WriteFile(src_dir_.Append("bootia32.efi"), "123"));
+  CHECK(base::WriteFile(src_dir_.Append("bootx64.efi"), "456"));
+
+  // These files won't be copied.
+  CHECK(base::WriteFile(src_dir_.Append("bootx64.EFI"), ""));
+  CHECK(base::WriteFile(src_dir_.Append("bootx64.txt"), ""));
+  CHECK(base::WriteFile(src_dir_.Append("bootx64.efi.bak"), ""));
+  CHECK(base::WriteFile(src_dir_.Append("definition"), ""));
+  CHECK(base::WriteFile(src_dir_.Append("efi.txt"), ""));
+
+  EXPECT_TRUE(UpdateEfiBootloaders(install_config_));
+
+  // Check files were copied as expected.
+  std::string contents;
+  EXPECT_TRUE(
+      base::ReadFileToString(dst_dir_.Append("bootia32.efi"), &contents));
+  EXPECT_EQ(contents, "123");
+  EXPECT_TRUE(
+      base::ReadFileToString(dst_dir_.Append("bootx64.efi"), &contents));
+  EXPECT_EQ(contents, "456");
+
+  // Check that only those files were copied.
+  base::FileEnumerator file_enum(dst_dir_, /*recursive=*/false,
+                                 base::FileEnumerator::FILES);
+  int num_files = 0;
+  file_enum.ForEach(
+      [&num_files](const base::FilePath& item) { num_files += 1; });
+  EXPECT_EQ(num_files, 2);
+}
+
+TEST_F(UpdateEfiBootloadersTest, InvalidDestDir) {
+  CHECK(base::CreateDirectory(src_dir_));
+  CHECK(base::WriteFile(src_dir_.Append("bootx64.efi"), ""));
+
+  // The destination directory does not exist, so the copy operation
+  // will fail.
+  EXPECT_FALSE(UpdateEfiBootloaders(install_config_));
+}
+
 }  // namespace

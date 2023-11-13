@@ -22,6 +22,12 @@ bool RunLegacyUBootPostInstall(const InstallConfig& install_config);
 // (grub config files) on the boot partition. Returns false on error.
 bool RunEfiPostInstall(const InstallConfig& install_config);
 
+// Copy UEFI bootloader files from the rootfs to the ESP (EFI System
+// Partition).
+//
+// Returns true if all copies succeed, false otherwise.
+bool UpdateEfiBootloaders(const InstallConfig& install_config);
+
 // Valid boot slots for kernel command lines.
 enum class BootSlot { A, B };
 
