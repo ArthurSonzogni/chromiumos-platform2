@@ -5,6 +5,8 @@
 #ifndef SWAP_MANAGEMENT_SWAP_TOOL_H_
 #define SWAP_MANAGEMENT_SWAP_TOOL_H_
 
+#include "featured/feature_library.h"
+
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -15,8 +17,6 @@
 #include <base/files/file_path.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/swap_management/dbus-constants.h>
-
-#include "featured/feature_library.h"
 
 namespace swap_management {
 

@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "swap_management/swap_tool.h"
 #include "dbus/swap_management/dbus-constants.h"
-#include "swap_management/swap_tool_util.h"
+#include "swap_management/swap_tool.h"
+#include "swap_management/utils.h"
 
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -30,11 +31,11 @@ const char kZramDisksize8G[] = "16679780352";
 const int kZramMemTotal8G = 8144424;
 }  // namespace
 
-class MockSwapToolUtil : public swap_management::SwapToolUtil {
+class MockUtils : public swap_management::Utils {
  public:
-  MockSwapToolUtil() = default;
-  MockSwapToolUtil& operator=(const MockSwapToolUtil&) = delete;
-  MockSwapToolUtil(const MockSwapToolUtil&) = delete;
+  MockUtils() = default;
+  MockUtils& operator=(const MockUtils&) = delete;
+  MockUtils(const MockUtils&) = delete;
 
   MOCK_METHOD(absl::Status,
               RunProcessHelper,
@@ -105,13 +106,13 @@ class SwapToolTest : public ::testing::Test {
  public:
   void SetUp() override {
     swap_tool_ = std::make_unique<SwapTool>();
-    // Init SwapToolUtil and then replace with mocked one.
-    SwapToolUtil::OverrideForTesting(&mock_util_);
+    // Init Utils and then replace with mocked one.
+    Utils::OverrideForTesting(&mock_util_);
   }
 
  protected:
   std::unique_ptr<SwapTool> swap_tool_;
-  MockSwapToolUtil mock_util_;
+  MockUtils mock_util_;
 };
 
 TEST_F(SwapToolTest, SwapIsAlreadyOnOrOff) {

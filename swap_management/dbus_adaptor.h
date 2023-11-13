@@ -2,8 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SWAP_MANAGEMENT_SWAP_MANAGEMENT_DBUS_ADAPTOR_H_
-#define SWAP_MANAGEMENT_SWAP_MANAGEMENT_DBUS_ADAPTOR_H_
+#ifndef SWAP_MANAGEMENT_DBUS_ADAPTOR_H_
+#define SWAP_MANAGEMENT_DBUS_ADAPTOR_H_
+
+#include "swap_management/dbus_adaptors/org.chromium.SwapManagement.h"
+#include "swap_management/swap_tool.h"
 
 #include <memory>
 #include <string>
@@ -13,16 +16,12 @@
 #include <brillo/dbus/exported_property_set.h>
 #include <brillo/dbus/dbus_method_response.h>
 
-#include "swap_management/dbus_adaptors/org.chromium.SwapManagement.h"
-#include "swap_management/swap_tool.h"
-
 namespace swap_management {
 
-class SwapManagementDBusAdaptor
-    : public org::chromium::SwapManagementAdaptor,
-      public org::chromium::SwapManagementInterface {
+class DBusAdaptor : public org::chromium::SwapManagementAdaptor,
+                    public org::chromium::SwapManagementInterface {
  public:
-  explicit SwapManagementDBusAdaptor(scoped_refptr<dbus::Bus> bus);
+  explicit DBusAdaptor(scoped_refptr<dbus::Bus> bus);
 
   // Register the D-Bus object and interfaces.
   void RegisterAsync(
@@ -57,4 +56,4 @@ class SwapManagementDBusAdaptor
 
 }  // namespace swap_management
 
-#endif  // SWAP_MANAGEMENT_SWAP_MANAGEMENT_DBUS_ADAPTOR_H_
+#endif  // SWAP_MANAGEMENT_DBUS_ADAPTOR_H_

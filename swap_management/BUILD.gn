@@ -33,11 +33,11 @@ pkg_config("target_defaults") {
 
 static_library("libswapmanagement") {
   sources = [
-    "swap_management_dbus_adaptor.cc",
+    "dbus_adaptor.cc",
+    "metrics.cc",
+    "status.cc",
     "swap_tool.cc",
-    "swap_tool_metrics.cc",
-    "swap_tool_status.cc",
-    "swap_tool_util.cc",
+    "utils.cc",
   ]
 
   configs += [ ":target_defaults" ]

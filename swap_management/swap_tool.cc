@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "swap_management/swap_tool.h"
 #include "featured/c_feature_library.h"
-#include "swap_management/swap_tool_util.h"
+#include "swap_management/swap_tool.h"
+#include "swap_management/utils.h"
 
 #include <cinttypes>
+#include <memory>
 #include <utility>
 
 #include <absl/status/status.h>
@@ -74,8 +75,7 @@ absl::StatusOr<std::unique_ptr<LoopDev>> LoopDev::Create(
   command.push_back(path);
 
   std::string loop_dev_path;
-  absl::Status status =
-      SwapToolUtil::Get()->RunProcessHelper(command, &loop_dev_path);
+  absl::Status status = Utils::Get()->RunProcessHelper(command, &loop_dev_path);
   if (!status.ok())
     return status;
   base::TrimWhitespaceASCII(loop_dev_path, base::TRIM_ALL, &loop_dev_path);
@@ -87,8 +87,7 @@ LoopDev::~LoopDev() {
   absl::Status status = absl::OkStatus();
 
   if (!path_.empty()) {
-    status =
-        SwapToolUtil::Get()->RunProcessHelper({"/sbin/losetup", "-d", path_});
+    status = Utils::Get()->RunProcessHelper({"/sbin/losetup", "-d", path_});
     LOG_IF(ERROR, !status.ok()) << status;
     path_.clear();
   }
@@ -102,7 +101,7 @@ absl::StatusOr<std::unique_ptr<DmDev>> DmDev::Create(
     const std::string& name, const std::string& table_fmt) {
   absl::Status status = absl::OkStatus();
 
-  status = SwapToolUtil::Get()->RunProcessHelper(
+  status = Utils::Get()->RunProcessHelper(
       {"/sbin/dmsetup", "create", name, "--table", table_fmt});
   if (!status.ok())
     return status;
@@ -120,7 +119,7 @@ DmDev::~DmDev() {
   absl::Status status = absl::OkStatus();
 
   if (!name_.empty()) {
-    status = SwapToolUtil::Get()->RunProcessHelper(
+    status = Utils::Get()->RunProcessHelper(
         {"/sbin/dmsetup", "remove", "--deferred", name_});
     LOG_IF(ERROR, !status.ok()) << status;
     name_.clear();
@@ -143,7 +142,7 @@ absl::Status DmDev::Wait() {
           path + " is not available after " +
           std::to_string(kMaxWaitTime.InMilliseconds()) + " ms.");
 
-    if (SwapToolUtil::Get()
+    if (Utils::Get()
             ->PathExists(base::FilePath("/dev/mapper/").Append(name_))
             .ok())
       return absl::OkStatus();
@@ -162,8 +161,8 @@ SwapTool::SwapTool(feature::PlatformFeatures* platform_features)
 // Check if swap is already turned on.
 absl::StatusOr<bool> SwapTool::IsZramSwapOn() {
   std::string swaps;
-  absl::Status status = SwapToolUtil::Get()->ReadFileToString(
-      base::FilePath("/proc/swaps"), &swaps);
+  absl::Status status =
+      Utils::Get()->ReadFileToString(base::FilePath("/proc/swaps"), &swaps);
   if (!status.ok())
     return status;
 
@@ -187,7 +186,7 @@ absl::StatusOr<bool> SwapTool::IsZramSwapOn() {
 absl::StatusOr<uint64_t> SwapTool::GetUserConfigZramSizeBytes() {
   // For security, only read first few bytes of kSwapSizeFile.
   std::string buf;
-  absl::Status status = SwapToolUtil::Get()->ReadFileToStringWithMaxSize(
+  absl::Status status = Utils::Get()->ReadFileToStringWithMaxSize(
       base::FilePath(kSwapSizeFile), &buf, 5);
   if (!status.ok())
     return status;
@@ -219,7 +218,7 @@ void SwapTool::SetCompAlgorithmIfOverriden() {
       GetFeatureParam(kSwapZramCompAlgorithmFeature, "comp_algorithm");
   if (comp_algorithm.has_value()) {
     LOG(INFO) << "Setting zram comp_algorithm to " << *comp_algorithm;
-    absl::Status status = SwapToolUtil::Get()->WriteFile(
+    absl::Status status = Utils::Get()->WriteFile(
         base::FilePath(kZramSysfsDir).Append("comp_algorithm"),
         *comp_algorithm);
     LOG_IF(WARNING, !status.ok()) << status;
@@ -249,7 +248,7 @@ absl::StatusOr<uint64_t> SwapTool::GetZramSizeBytes() {
   // 2. Feature
   // First, read /proc/meminfo for MemTotal in kiB.
   absl::StatusOr<base::SystemMemoryInfoKB> meminfo =
-      SwapToolUtil::Get()->GetSystemMemoryInfo();
+      Utils::Get()->GetSystemMemoryInfo();
   if (!meminfo.ok())
     return meminfo.status();
 
@@ -276,12 +275,12 @@ absl::StatusOr<uint64_t> SwapTool::GetZramSizeBytes() {
 // description in SwapZramSetRecompAlgorithms.
 void SwapTool::SetRecompAlgorithms() {
   std::string buf;
-  absl::Status status = SwapToolUtil::Get()->ReadFileToString(
+  absl::Status status = Utils::Get()->ReadFileToString(
       base::FilePath(kSwapRecompAlgorithmFile), &buf);
   std::vector<std::string> algos = base::SplitString(
       buf, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   for (uint8_t i = 0; i < algos.size(); i++) {
-    absl::Status status = SwapToolUtil::Get()->WriteFile(
+    absl::Status status = Utils::Get()->WriteFile(
         base::FilePath(kZramSysfsDir).Append("recomp_algorithm"),
         "algo=" + algos[i] + " priority=" + std::to_string(i + 1));
     LOG_IF(WARNING, !status.ok()) << status;
@@ -317,8 +316,7 @@ absl::Status SwapTool::EnableZramSwapping() {
   absl::Status status = absl::OkStatus();
 
   for (size_t i = 0; i < kMaxEnableTries; i++) {
-    status = SwapToolUtil::Get()->RunProcessHelper(
-        {"/sbin/swapon", kZramDeviceFile});
+    status = Utils::Get()->RunProcessHelper({"/sbin/swapon", kZramDeviceFile});
     if (status.ok())
       return status;
 
@@ -340,11 +338,11 @@ absl::Status SwapTool::EnableZramSwapping() {
 void SwapTool::CleanupWriteback() {
   absl::Status status = absl::OkStatus();
 
-  status = SwapToolUtil::Get()->Umount(kZramWritebackIntegrityMount);
+  status = Utils::Get()->Umount(kZramWritebackIntegrityMount);
   LOG_IF(ERROR, !status.ok()) << status;
 
-  status = SwapToolUtil::Get()->DeleteFile(
-      base::FilePath(kZramWritebackIntegrityMount));
+  status =
+      Utils::Get()->DeleteFile(base::FilePath(kZramWritebackIntegrityMount));
   LOG_IF(ERROR, !status.ok()) << status;
 }
 
@@ -360,8 +358,8 @@ absl::Status SwapTool::ZramWritebackPrerequisiteCheck(uint32_t size) {
 
   // kZramBackingDevice must contains none, no writeback is setup before.
   std::string backing_dev;
-  status = SwapToolUtil::Get()->ReadFileToString(
-      base::FilePath(kZramBackingDevice), &backing_dev);
+  status = Utils::Get()->ReadFileToString(base::FilePath(kZramBackingDevice),
+                                          &backing_dev);
   if (!status.ok())
     return status;
   base::TrimWhitespaceASCII(backing_dev, base::TRIM_ALL, &backing_dev);
@@ -372,8 +370,8 @@ absl::Status SwapTool::ZramWritebackPrerequisiteCheck(uint32_t size) {
   // kZramWritebackIntegrityMount must not be mounted.
   // rmdir(2) will return -EBUSY if the target is mounted.
   // DeleteFile returns absl::OkStatus() if the target does not exist.
-  status = SwapToolUtil::Get()->DeleteFile(
-      base::FilePath(kZramWritebackIntegrityMount));
+  status =
+      Utils::Get()->DeleteFile(base::FilePath(kZramWritebackIntegrityMount));
 
   return status;
 }
@@ -386,7 +384,7 @@ absl::Status SwapTool::GetZramWritebackInfo(uint32_t size) {
   // f_bfree is free blocks in file system.
   // f_bsize is the optimal transfer block size.
   absl::StatusOr<struct statfs> stateful_statfs =
-      SwapToolUtil::Get()->GetStatfs(kStatefulPartitionDir);
+      Utils::Get()->GetStatfs(kStatefulPartitionDir);
   if (!stateful_statfs.ok())
     return stateful_statfs.status();
 
@@ -431,11 +429,10 @@ absl::Status SwapTool::CreateDmDevicesAndEnableWriteback() {
   constexpr char kZramWritebackBackFileName[] = "zram_writeback.swap";
   ScopedFilePath scoped_filepath(
       base::FilePath(kStatefulPartitionDir).Append(kZramWritebackBackFileName));
-  status = SwapToolUtil::Get()->WriteFile(scoped_filepath.get(), std::string());
+  status = Utils::Get()->WriteFile(scoped_filepath.get(), std::string());
   if (!status.ok())
     return status;
-  status =
-      SwapToolUtil::Get()->Fallocate(scoped_filepath.get(), wb_size_bytes_);
+  status = Utils::Get()->Fallocate(scoped_filepath.get(), wb_size_bytes_);
   if (!status.ok())
     return status;
 
@@ -452,17 +449,16 @@ absl::Status SwapTool::CreateDmDevicesAndEnableWriteback() {
   std::string writeback_loop_path = (*writeback_loop)->GetPath();
 
   // Create and mount ramfs for integrity loop device back file.
-  status = SwapToolUtil::Get()->CreateDirectory(
+  status = Utils::Get()->CreateDirectory(
       base::FilePath(kZramWritebackIntegrityMount));
   if (!status.ok())
     return status;
-  status = SwapToolUtil::Get()->SetPosixFilePermissions(
+  status = Utils::Get()->SetPosixFilePermissions(
       base::FilePath(kZramWritebackIntegrityMount), 0700);
   if (!status.ok())
     return status;
-  status =
-      SwapToolUtil::Get()->Mount("none", kZramWritebackIntegrityMount, "ramfs",
-                                 0, "noexec,nosuid,noatime,mode=0700");
+  status = Utils::Get()->Mount("none", kZramWritebackIntegrityMount, "ramfs", 0,
+                               "noexec,nosuid,noatime,mode=0700");
   if (!status.ok())
     return status;
 
@@ -500,8 +496,8 @@ absl::Status SwapTool::CreateDmDevicesAndEnableWriteback() {
                                        .Append(kZramIntegrityBackFileName));
   // Truncate the file to the length of |integrity_size_bytes| by filling with
   // 0s.
-  status = SwapToolUtil::Get()->WriteFile(scoped_filepath.get(),
-                                          std::string(integrity_size_bytes, 0));
+  status = Utils::Get()->WriteFile(scoped_filepath.get(),
+                                   std::string(integrity_size_bytes, 0));
   if (!status.ok())
     return status;
 
@@ -524,8 +520,7 @@ absl::Status SwapTool::CreateDmDevicesAndEnableWriteback() {
     return integrity_dm.status();
 
   // Create a dm-crypt device for writeback.
-  absl::StatusOr<std::string> rand_hex32 =
-      SwapToolUtil::Get()->GenerateRandHex(32);
+  absl::StatusOr<std::string> rand_hex32 = Utils::Get()->GenerateRandHex(32);
   if (!rand_hex32.ok())
     return rand_hex32.status();
 
@@ -541,8 +536,8 @@ absl::Status SwapTool::CreateDmDevicesAndEnableWriteback() {
     return writeback_dm.status();
 
   // Set up dm-crypt device as the zram writeback backing device.
-  return SwapToolUtil::Get()->WriteFile(base::FilePath(kZramBackingDevice),
-                                        (*writeback_dm)->GetPath());
+  return Utils::Get()->WriteFile(base::FilePath(kZramBackingDevice),
+                                 (*writeback_dm)->GetPath());
 }
 
 absl::Status SwapTool::SwapStart() {
@@ -563,7 +558,7 @@ absl::Status SwapTool::SwapStart() {
     return status;
 
   // Load zram module. Ignore failure (it could be compiled in the kernel).
-  if (!SwapToolUtil::Get()->RunProcessHelper({"/sbin/modprobe", "zram"}).ok())
+  if (!Utils::Get()->RunProcessHelper({"/sbin/modprobe", "zram"}).ok())
     LOG(WARNING) << "modprobe zram failed (compiled?)";
 
   // Set zram recompress algorithm if user has config.
@@ -574,15 +569,14 @@ absl::Status SwapTool::SwapStart() {
 
   // Set zram size.
   LOG(INFO) << "Setting zram disksize to " << *size_byte << " bytes";
-  status = SwapToolUtil::Get()->WriteFile(
-      base::FilePath(kZramSysfsDir).Append("disksize"),
-      std::to_string(*size_byte));
+  status =
+      Utils::Get()->WriteFile(base::FilePath(kZramSysfsDir).Append("disksize"),
+                              std::to_string(*size_byte));
   if (!status.ok())
     return status;
 
   // Set swap area.
-  status =
-      SwapToolUtil::Get()->RunProcessHelper({"/sbin/mkswap", kZramDeviceFile});
+  status = Utils::Get()->RunProcessHelper({"/sbin/mkswap", kZramDeviceFile});
   if (!status.ok())
     return status;
 
@@ -605,8 +599,8 @@ absl::Status SwapTool::SwapStop() {
   // At this point we already know swap is on, with the only swap device
   // /dev/zram0 we have, anyway we turn off /dev/zram0, regardless what
   // /proc/swaps shows.
-  absl::Status status = SwapToolUtil::Get()->RunProcessHelper(
-      {"/sbin/swapoff", "-v", kZramDeviceFile});
+  absl::Status status =
+      Utils::Get()->RunProcessHelper({"/sbin/swapoff", "-v", kZramDeviceFile});
   if (!status.ok())
     return status;
 
@@ -614,8 +608,8 @@ absl::Status SwapTool::SwapStop() {
   // be reconfigured on the fly.  Reset it so we can changes its params.
   // If there was a backing device being used, it will be automatically
   // removed because after it's created it was removed with deferred remove.
-  return SwapToolUtil::Get()->WriteFile(
-      base::FilePath(kZramSysfsDir).Append("reset"), "1");
+  return Utils::Get()->WriteFile(base::FilePath(kZramSysfsDir).Append("reset"),
+                                 "1");
 }
 
 // Set zram disksize in MiB.
@@ -625,15 +619,15 @@ absl::Status SwapTool::SwapStop() {
 absl::Status SwapTool::SwapSetSize(int32_t size) {
   // Remove kSwapSizeFile so SwapStart will use default size for zram.
   if (size == 0) {
-    return SwapToolUtil::Get()->DeleteFile(base::FilePath(kSwapSizeFile));
+    return Utils::Get()->DeleteFile(base::FilePath(kSwapSizeFile));
   } else if (size < 0) {
     size = 0;
   } else if (size < 128 || size > 65000) {
     return absl::InvalidArgumentError("Size is not between 128 and 65000 MiB.");
   }
 
-  return SwapToolUtil::Get()->WriteFile(base::FilePath(kSwapSizeFile),
-                                        std::to_string(size));
+  return Utils::Get()->WriteFile(base::FilePath(kSwapSizeFile),
+                                 std::to_string(size));
 }
 
 absl::Status SwapTool::SwapSetSwappiness(uint32_t swappiness) {
@@ -642,8 +636,8 @@ absl::Status SwapTool::SwapSetSwappiness(uint32_t swappiness) {
     return absl::OutOfRangeError("Invalid swappiness " +
                                  std::to_string(swappiness));
 
-  return SwapToolUtil::Get()->WriteFile(
-      base::FilePath("/proc/sys/vm/swappiness"), std::to_string(swappiness));
+  return Utils::Get()->WriteFile(base::FilePath("/proc/sys/vm/swappiness"),
+                                 std::to_string(swappiness));
 }
 
 std::string SwapTool::SwapStatus() {
@@ -651,18 +645,16 @@ std::string SwapTool::SwapStatus() {
   std::string tmp;
 
   // Show general swap info first.
-  if (SwapToolUtil::Get()
-          ->ReadFileToString(base::FilePath("/proc/swaps"), &tmp)
-          .ok())
+  if (Utils::Get()->ReadFileToString(base::FilePath("/proc/swaps"), &tmp).ok())
     output << tmp;
 
   // Show tunables.
-  if (SwapToolUtil::Get()
+  if (Utils::Get()
           ->ReadFileToString(base::FilePath("/proc/sys/vm/min_filelist_kbytes"),
                              &tmp)
           .ok())
     output << "min_filelist_kbytes (KiB): " + tmp;
-  if (SwapToolUtil::Get()
+  if (Utils::Get()
           ->ReadFileToString(base::FilePath("/proc/sys/vm/extra_free_kbytes"),
                              &tmp)
           .ok())
@@ -677,9 +669,7 @@ std::string SwapTool::SwapStatus() {
     while (dir_reader.Next()) {
       std::string name = dir_reader.name();
 
-      if (SwapToolUtil::Get()
-              ->ReadFileToString(zram_sysfs.Append(name), &tmp)
-              .ok() &&
+      if (Utils::Get()->ReadFileToString(zram_sysfs.Append(name), &tmp).ok() &&
           !tmp.empty()) {
         std::vector<std::string> lines = base::SplitString(
             tmp, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
@@ -719,13 +709,13 @@ absl::Status SwapTool::SwapZramSetWritebackLimit(uint32_t num_pages) {
   base::FilePath filepath =
       base::FilePath(kZramSysfsDir).Append("writeback_limit_enable");
 
-  absl::Status status = SwapToolUtil::Get()->WriteFile(filepath, "1");
+  absl::Status status = Utils::Get()->WriteFile(filepath, "1");
   if (!status.ok())
     return status;
 
   filepath = base::FilePath(kZramSysfsDir).Append("writeback_limit");
 
-  return SwapToolUtil::Get()->WriteFile(filepath, std::to_string(num_pages));
+  return Utils::Get()->WriteFile(filepath, std::to_string(num_pages));
 }
 
 absl::Status SwapTool::SwapZramMarkIdle(uint32_t age_seconds) {
@@ -736,8 +726,7 @@ absl::Status SwapTool::SwapZramMarkIdle(uint32_t age_seconds) {
     return absl::OutOfRangeError("Invalid age " + std::to_string(age_seconds));
 
   base::FilePath filepath = base::FilePath(kZramSysfsDir).Append("idle");
-  return SwapToolUtil::Get()->WriteFile(filepath,
-                                        std::to_string(age.InSeconds()));
+  return Utils::Get()->WriteFile(filepath, std::to_string(age.InSeconds()));
 }
 
 absl::Status SwapTool::InitiateSwapZramWriteback(ZramWritebackMode mode) {
@@ -753,11 +742,11 @@ absl::Status SwapTool::InitiateSwapZramWriteback(ZramWritebackMode mode) {
     return absl::InvalidArgumentError("Invalid mode");
   }
 
-  return SwapToolUtil::Get()->WriteFile(filepath, mode_str);
+  return Utils::Get()->WriteFile(filepath, mode_str);
 }
 
 absl::Status SwapTool::MGLRUSetEnable(uint8_t value) {
-  return SwapToolUtil::Get()->WriteFile(
+  return Utils::Get()->WriteFile(
       base::FilePath("/sys/kernel/mm/lru_gen/enabled"), std::to_string(value));
 }
 
@@ -785,7 +774,7 @@ absl::Status SwapTool::InitiateSwapZramRecompression(ZramRecompressionMode mode,
   if (!algo.empty())
     ss << " algo=" << algo;
 
-  return SwapToolUtil::Get()->WriteFile(filepath, ss.str());
+  return Utils::Get()->WriteFile(filepath, ss.str());
 }
 
 absl::Status SwapTool::SwapZramSetRecompAlgorithms(
@@ -799,12 +788,11 @@ absl::Status SwapTool::SwapZramSetRecompAlgorithms(
   // With empty |algos|, we disable zram recompression by removing
   // |kSwapRecompAlgorithmFile|
   if (algos.empty())
-    return SwapToolUtil::Get()->DeleteFile(
-        base::FilePath(kSwapRecompAlgorithmFile));
+    return Utils::Get()->DeleteFile(base::FilePath(kSwapRecompAlgorithmFile));
 
   const std::string joined = base::JoinString(algos, " ");
-  return SwapToolUtil::Get()->WriteFile(
-      base::FilePath(kSwapRecompAlgorithmFile), joined);
+  return Utils::Get()->WriteFile(base::FilePath(kSwapRecompAlgorithmFile),
+                                 joined);
 }
 
 }  // namespace swap_management

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SWAP_MANAGEMENT_SWAP_TOOL_STATUS_H_
-#define SWAP_MANAGEMENT_SWAP_TOOL_STATUS_H_
+#ifndef SWAP_MANAGEMENT_STATUS_H_
+#define SWAP_MANAGEMENT_STATUS_H_
 
 #include <absl/status/status.h>
 
@@ -14,4 +14,4 @@ absl::Status ErrnoToStatus(int error_number, absl::string_view message);
 
 }  // namespace swap_management
 
-#endif  // SWAP_MANAGEMENT_SWAP_TOOL_STATUS_H_
+#endif  // SWAP_MANAGEMENT_STATUS_H_

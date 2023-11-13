@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "swap_management/swap_management_dbus_adaptor.h"
 #include "dbus/swap_management/dbus-constants.h"
 #include "featured/feature_library.h"
-#include "swap_management/swap_tool_metrics.h"
+#include "swap_management/dbus_adaptor.h"
+#include "swap_management/metrics.h"
 
 #include <memory>
 #include <utility>
@@ -34,13 +34,12 @@ feature::PlatformFeatures* GetPlatformFeatures() {
 
 namespace swap_management {
 
-SwapManagementDBusAdaptor::SwapManagementDBusAdaptor(
-    scoped_refptr<dbus::Bus> bus)
+DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus)
     : org::chromium::SwapManagementAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kSwapManagementServicePath)),
       swap_tool_(std::make_unique<SwapTool>(GetPlatformFeatures())) {}
 
-void SwapManagementDBusAdaptor::RegisterAsync(
+void DBusAdaptor::RegisterAsync(
     brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
   auto* my_interface = dbus_object_.AddOrGetInterface(kSwapManagementInterface);
   DCHECK(my_interface);
@@ -48,9 +47,9 @@ void SwapManagementDBusAdaptor::RegisterAsync(
   dbus_object_.RegisterAsync(std::move(cb));
 }
 
-bool SwapManagementDBusAdaptor::SwapStart(brillo::ErrorPtr* error) {
+bool DBusAdaptor::SwapStart(brillo::ErrorPtr* error) {
   absl::Status status = swap_tool_->SwapStart();
-  swap_management::SwapToolMetrics::Get()->ReportSwapStartStatus(status);
+  swap_management::Metrics::Get()->ReportSwapStartStatus(status);
   if (!status.ok()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          "org.chromium.SwapManagement.error.SwapStart",
@@ -60,9 +59,9 @@ bool SwapManagementDBusAdaptor::SwapStart(brillo::ErrorPtr* error) {
   return true;
 }
 
-bool SwapManagementDBusAdaptor::SwapStop(brillo::ErrorPtr* error) {
+bool DBusAdaptor::SwapStop(brillo::ErrorPtr* error) {
   absl::Status status = swap_tool_->SwapStop();
-  swap_management::SwapToolMetrics::Get()->ReportSwapStopStatus(status);
+  swap_management::Metrics::Get()->ReportSwapStopStatus(status);
   if (!status.ok()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          "org.chromium.SwapManagement.error.SwapStop",
@@ -72,12 +71,11 @@ bool SwapManagementDBusAdaptor::SwapStop(brillo::ErrorPtr* error) {
   return true;
 }
 
-bool SwapManagementDBusAdaptor::SwapRestart(brillo::ErrorPtr* error) {
+bool DBusAdaptor::SwapRestart(brillo::ErrorPtr* error) {
   return SwapStop(error) && SwapStart(error);
 }
 
-bool SwapManagementDBusAdaptor::SwapSetSize(brillo::ErrorPtr* error,
-                                            int32_t size) {
+bool DBusAdaptor::SwapSetSize(brillo::ErrorPtr* error, int32_t size) {
   absl::Status status = swap_tool_->SwapSetSize(size);
   if (!status.ok()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
@@ -89,8 +87,8 @@ bool SwapManagementDBusAdaptor::SwapSetSize(brillo::ErrorPtr* error,
   return true;
 }
 
-bool SwapManagementDBusAdaptor::SwapSetSwappiness(brillo::ErrorPtr* error,
-                                                  uint32_t swappiness) {
+bool DBusAdaptor::SwapSetSwappiness(brillo::ErrorPtr* error,
+                                    uint32_t swappiness) {
   absl::Status status = swap_tool_->SwapSetSwappiness(swappiness);
   if (!status.ok()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
@@ -101,12 +99,12 @@ bool SwapManagementDBusAdaptor::SwapSetSwappiness(brillo::ErrorPtr* error,
   return true;
 }
 
-std::string SwapManagementDBusAdaptor::SwapStatus() {
+std::string DBusAdaptor::SwapStatus() {
   return swap_tool_->SwapStatus();
 }
 
-bool SwapManagementDBusAdaptor::SwapZramEnableWriteback(brillo::ErrorPtr* error,
-                                                        uint32_t size_mb) {
+bool DBusAdaptor::SwapZramEnableWriteback(brillo::ErrorPtr* error,
+                                          uint32_t size_mb) {
   absl::Status status = swap_tool_->SwapZramEnableWriteback(size_mb);
   if (!status.ok()) {
     brillo::Error::AddTo(
@@ -118,8 +116,7 @@ bool SwapManagementDBusAdaptor::SwapZramEnableWriteback(brillo::ErrorPtr* error,
   return true;
 }
 
-bool SwapManagementDBusAdaptor::SwapZramMarkIdle(brillo::ErrorPtr* error,
-                                                 uint32_t age) {
+bool DBusAdaptor::SwapZramMarkIdle(brillo::ErrorPtr* error, uint32_t age) {
   absl::Status status = swap_tool_->SwapZramMarkIdle(age);
   if (!status.ok()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
@@ -130,8 +127,8 @@ bool SwapManagementDBusAdaptor::SwapZramMarkIdle(brillo::ErrorPtr* error,
   return true;
 }
 
-bool SwapManagementDBusAdaptor::SwapZramSetWritebackLimit(
-    brillo::ErrorPtr* error, uint32_t limit) {
+bool DBusAdaptor::SwapZramSetWritebackLimit(brillo::ErrorPtr* error,
+                                            uint32_t limit) {
   absl::Status status = swap_tool_->SwapZramSetWritebackLimit(limit);
   if (!status.ok()) {
     brillo::Error::AddTo(
@@ -143,8 +140,8 @@ bool SwapManagementDBusAdaptor::SwapZramSetWritebackLimit(
   return true;
 }
 
-bool SwapManagementDBusAdaptor::InitiateSwapZramWriteback(
-    brillo::ErrorPtr* error, uint32_t mode) {
+bool DBusAdaptor::InitiateSwapZramWriteback(brillo::ErrorPtr* error,
+                                            uint32_t mode) {
   absl::Status status = swap_tool_->InitiateSwapZramWriteback(
       static_cast<ZramWritebackMode>(mode));
   if (!status.ok()) {
@@ -157,8 +154,7 @@ bool SwapManagementDBusAdaptor::InitiateSwapZramWriteback(
   return true;
 }
 
-bool SwapManagementDBusAdaptor::MGLRUSetEnable(brillo::ErrorPtr* error,
-                                               uint8_t value) {
+bool DBusAdaptor::MGLRUSetEnable(brillo::ErrorPtr* error, uint8_t value) {
   absl::Status status = swap_tool_->MGLRUSetEnable(value);
   if (!status.ok()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
@@ -169,11 +165,10 @@ bool SwapManagementDBusAdaptor::MGLRUSetEnable(brillo::ErrorPtr* error,
   return true;
 }
 
-bool SwapManagementDBusAdaptor::InitiateSwapZramRecompression(
-    brillo::ErrorPtr* error,
-    uint32_t mode,
-    uint32_t threshold,
-    const std::string& algo) {
+bool DBusAdaptor::InitiateSwapZramRecompression(brillo::ErrorPtr* error,
+                                                uint32_t mode,
+                                                uint32_t threshold,
+                                                const std::string& algo) {
   absl::Status status = swap_tool_->InitiateSwapZramRecompression(
       static_cast<ZramRecompressionMode>(mode), threshold, algo);
   if (!status.ok()) {
@@ -186,7 +181,7 @@ bool SwapManagementDBusAdaptor::InitiateSwapZramRecompression(
   return true;
 }
 
-bool SwapManagementDBusAdaptor::SwapZramSetRecompAlgorithms(
+bool DBusAdaptor::SwapZramSetRecompAlgorithms(
     brillo::ErrorPtr* error, const std::vector<std::string>& algos) {
   absl::Status status = swap_tool_->SwapZramSetRecompAlgorithms(algos);
   if (!status.ok()) {

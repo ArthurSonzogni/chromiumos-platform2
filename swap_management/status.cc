@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "swap_management/swap_tool_status.h"
+#include "swap_management/status.h"
 
 #include <base/posix/safe_strerror.h>
 

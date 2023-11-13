@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "swap_management/dbus_adaptor.h"
+#include "swap_management/metrics.h"
+
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sysexits.h>
@@ -18,9 +21,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <memory>
 
-#include "swap_management/swap_management_dbus_adaptor.h"
-#include "swap_management/swap_tool_metrics.h"
-
 namespace {
 
 class Daemon : public brillo::DBusServiceDaemon {
@@ -32,13 +32,13 @@ class Daemon : public brillo::DBusServiceDaemon {
  protected:
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
-    adaptor_.reset(new swap_management::SwapManagementDBusAdaptor(bus_));
+    adaptor_.reset(new swap_management::DBusAdaptor(bus_));
     adaptor_->RegisterAsync(
         sequencer->GetHandler("RegisterAsync() failed.", true));
   }
 
  private:
-  std::unique_ptr<swap_management::SwapManagementDBusAdaptor> adaptor_;
+  std::unique_ptr<swap_management::DBusAdaptor> adaptor_;
 };
 
 }  // namespace
@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
         std::make_unique<swap_management::SwapTool>();
 
     absl::Status status = swap_tool->SwapStop();
-    swap_management::SwapToolMetrics::Get()->ReportSwapStopStatus(status);
+    swap_management::Metrics::Get()->ReportSwapStopStatus(status);
 
     if (!status.ok()) {
       LOG(ERROR) << status.ToString();

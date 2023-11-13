@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SWAP_MANAGEMENT_SWAP_TOOL_UTIL_H_
-#define SWAP_MANAGEMENT_SWAP_TOOL_UTIL_H_
+#ifndef SWAP_MANAGEMENT_UTILS_H_
+#define SWAP_MANAGEMENT_UTILS_H_
 
 #include <string>
 #include <vector>
@@ -17,12 +17,12 @@
 
 namespace swap_management {
 
-class SwapToolUtil {
+class Utils {
  public:
-  friend class MockSwapToolUtil;
+  friend class MockUtils;
 
-  static SwapToolUtil* Get();
-  static void OverrideForTesting(SwapToolUtil* util);
+  static Utils* Get();
+  static void OverrideForTesting(Utils* util);
 
   // Virtual for testing
   virtual absl::Status RunProcessHelper(
@@ -53,11 +53,11 @@ class SwapToolUtil {
   virtual absl::StatusOr<base::SystemMemoryInfoKB> GetSystemMemoryInfo();
 
  private:
-  SwapToolUtil() = default;
-  SwapToolUtil& operator=(const SwapToolUtil&) = delete;
-  SwapToolUtil(const SwapToolUtil&) = delete;
+  Utils() = default;
+  Utils& operator=(const Utils&) = delete;
+  Utils(const Utils&) = delete;
 
-  virtual ~SwapToolUtil() = default;
+  virtual ~Utils() = default;
 };
 
 struct ScopedFilePathTraits {
@@ -71,4 +71,4 @@ using ScopedFilePath =
 
 }  // namespace swap_management
 
-#endif  // SWAP_MANAGEMENT_SWAP_TOOL_UTIL_H_
+#endif  // SWAP_MANAGEMENT_UTILS_H_
