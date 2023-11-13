@@ -2518,13 +2518,15 @@ TEST_F(ServiceTest, RequestPortalDetection) {
   Mock::VerifyAndClearExpectations(mock_device.get());
 }
 
-TEST_F(ServiceTest, TrafficCounters) {
-  patchpanel::Client::TrafficCounter counter0, counter1;
+TEST_F(ServiceTest, TrafficCountersRefreshWithMultipleSources) {
+  patchpanel::Client::TrafficCounter counter0;
   counter0.source = patchpanel::Client::TrafficSource::kChrome;
   counter0.traffic.rx_bytes = 12;
   counter0.traffic.tx_bytes = 34;
   counter0.traffic.rx_packets = 56;
   counter0.traffic.tx_packets = 78;
+
+  patchpanel::Client::TrafficCounter counter1;
   counter1.source = patchpanel::Client::TrafficSource::kUser;
   counter1.traffic.rx_bytes = 90;
   counter1.traffic.tx_bytes = 87;
@@ -2575,6 +2577,53 @@ TEST_F(ServiceTest, TrafficCounters) {
   EXPECT_EQ(service_->current_traffic_counters()
                 [patchpanel::Client::TrafficSource::kUser],
             user_counters_diff);
+}
+
+TEST_F(ServiceTest, TrafficCountersRefreshWithSameSource) {
+  patchpanel::Client::TrafficCounter ipv4_counters;
+  ipv4_counters.source = patchpanel::Client::TrafficSource::kChrome;
+  ipv4_counters.traffic.rx_bytes = 2345;
+  ipv4_counters.traffic.tx_bytes = 723;
+  ipv4_counters.traffic.rx_packets = 10;
+  ipv4_counters.traffic.tx_packets = 20;
+
+  patchpanel::Client::TrafficCounter ipv6_counters;
+  ipv6_counters.source = patchpanel::Client::TrafficSource::kChrome;
+  ipv6_counters.traffic.rx_bytes = 4592;
+  ipv6_counters.traffic.tx_bytes = 489;
+  ipv6_counters.traffic.rx_packets = 73;
+  ipv6_counters.traffic.tx_packets = 34;
+
+  service_->InitializeTrafficCounterSnapshot({ipv4_counters, ipv6_counters});
+  EXPECT_EQ(service_->traffic_counter_snapshot().size(), 1);
+  patchpanel::Client::TrafficVector chrome_counters = {
+      .rx_bytes = 6937, .tx_bytes = 1212, .rx_packets = 83, .tx_packets = 54};
+  EXPECT_EQ(service_->traffic_counter_snapshot()
+                [patchpanel::Client::TrafficSource::kChrome],
+            chrome_counters);
+  EXPECT_EQ(service_->current_traffic_counters().size(), 0);
+
+  ipv4_counters.traffic.rx_bytes = 3000;
+  ipv4_counters.traffic.tx_bytes = 800;
+  ipv4_counters.traffic.rx_packets = 30;
+  ipv4_counters.traffic.tx_packets = 20;
+  ipv6_counters.traffic.rx_bytes = 5000;
+  ipv6_counters.traffic.tx_bytes = 500;
+  ipv6_counters.traffic.rx_packets = 80;
+  ipv6_counters.traffic.tx_packets = 40;
+
+  service_->RefreshTrafficCounters({ipv4_counters, ipv6_counters});
+  EXPECT_EQ(service_->traffic_counter_snapshot().size(), 1);
+  chrome_counters = {8000, 1300, 110, 60};
+  EXPECT_EQ(service_->traffic_counter_snapshot()
+                [patchpanel::Client::TrafficSource::kChrome],
+            chrome_counters);
+  EXPECT_EQ(service_->current_traffic_counters().size(), 1);
+  patchpanel::Client::TrafficVector chrome_counters_diff = {
+      .rx_bytes = 1063, .tx_bytes = 88, .rx_packets = 27, .tx_packets = 6};
+  EXPECT_EQ(service_->current_traffic_counters()
+                [patchpanel::Client::TrafficSource::kChrome],
+            chrome_counters_diff);
 }
 
 TEST_F(ServiceTest, RequestTrafficCounters) {

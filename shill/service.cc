@@ -1683,18 +1683,34 @@ bool Service::IsMeteredByServiceProperties() const {
 
 void Service::InitializeTrafficCounterSnapshot(
     const std::vector<patchpanel::Client::TrafficCounter>& counters) {
+  traffic_counter_snapshot_.clear();
   for (const auto& counter : counters) {
-    traffic_counter_snapshot_[counter.source] = counter.traffic;
+    traffic_counter_snapshot_[counter.source] += counter.traffic;
   }
 }
 
 void Service::RefreshTrafficCounters(
     const std::vector<patchpanel::Client::TrafficCounter>& counters) {
+  // 1: Group all counters by source over all other dimensions (IP family, ...).
+  TrafficCounterMap new_snapshot;
   for (const auto& counter : counters) {
-    current_traffic_counters_[counter.source] +=
-        counter.traffic - traffic_counter_snapshot_[counter.source];
-    traffic_counter_snapshot_[counter.source] = counter.traffic;
+    new_snapshot[counter.source] += counter.traffic;
   }
+
+  // 2: Compute the delta compared to the last snapshot.
+  TrafficCounterMap delta = new_snapshot;
+  for (const auto& [source, traffic] : traffic_counter_snapshot_) {
+    delta[source] -= traffic;
+  }
+
+  // 3: Update the current counters.
+  for (const auto& [source, traffic] : delta) {
+    current_traffic_counters_[source] += traffic;
+  }
+
+  // 4: Replace the snapshot point.
+  traffic_counter_snapshot_ = new_snapshot;
+
   SaveToProfile();
 }
 
