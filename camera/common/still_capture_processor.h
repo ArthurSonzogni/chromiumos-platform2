@@ -57,7 +57,8 @@ class StillCaptureProcessor {
 
   // Queues pending |output_buffer| that StillCaptureProcessor will need to fill
   // with the assembled image data for result |frame_number|.  This needs to be
-  // called after QueuePendingRequest().
+  // called after QueuePendingRequest(). This can only be called once for
+  // each |frame_number|.
   virtual void QueuePendingOutputBuffer(
       int frame_number, camera3_stream_buffer_t output_buffer) = 0;
 

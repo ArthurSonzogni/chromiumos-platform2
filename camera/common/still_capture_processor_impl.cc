@@ -277,6 +277,7 @@ void StillCaptureProcessorImpl::Reset() {
 
 void StillCaptureProcessorImpl::QueuePendingRequest(
     int frame_number, const Camera3CaptureDescriptor& request) {
+  TRACE_COMMON("frame_number", frame_number);
   RequestContext req;
 
   auto buf_mgr = CameraBufferManager::GetInstance();
@@ -311,29 +312,51 @@ void StillCaptureProcessorImpl::QueuePendingRequest(
     req.orientation = orientation[0];
   }
 
+  base::AutoLock lock(request_contexts_lock_);
+  const auto [it_inserted, was_inserted] =
+      request_contexts_.insert({frame_number, std::move(req)});
+  CHECK(was_inserted) << "Request already queued for frame " << frame_number;
+
   VLOGFID(1, frame_number) << "Request queued. thumbnail_size = "
-                           << req.thumbnail_size.ToString()
-                           << " thumbnail_quality=" << req.thumbnail_quality
-                           << " jpeg_quality=" << req.jpeg_quality;
-  thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&StillCaptureProcessorImpl::QueuePendingRequestOnThread,
-                     base::Unretained(this), frame_number, std::move(req)));
+                           << it_inserted->second.thumbnail_size.ToString()
+                           << " thumbnail_quality="
+                           << it_inserted->second.thumbnail_quality
+                           << " jpeg_quality="
+                           << it_inserted->second.jpeg_quality;
 }
 
 void StillCaptureProcessorImpl::QueuePendingOutputBuffer(
     int frame_number, camera3_stream_buffer_t output_buffer) {
-  thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          &StillCaptureProcessorImpl::QueuePendingOutputBufferOnThread,
-          base::Unretained(this), frame_number, std::move(output_buffer)));
+  TRACE_COMMON("frame_number", frame_number, "width",
+               output_buffer.stream->width, "height",
+               output_buffer.stream->height);
+
+  base::AutoLock lock(request_contexts_lock_);
+  auto iter = request_contexts_.find(frame_number);
+  if (iter == request_contexts_.end()) {
+    LOGF(ERROR) << "No request queued";
+    return;
+  }
+  RequestContext& context = iter->second;
+  CHECK(!context.client_requested_buffer.has_value())
+      << "The pending output buffer has been already queued for frame number "
+      << frame_number;
+  context.client_requested_buffer = std::move(output_buffer);
+
+  if (CanProduceCaptureResult(context)) {
+    thread_.task_runner()->PostTask(
+        FROM_HERE,
+        base::BindOnce(
+            &StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread,
+            base::Unretained(this), frame_number));
+  }
 }
 
 void StillCaptureProcessorImpl::QueuePendingAppsSegments(
     int frame_number,
     buffer_handle_t blob_buffer,
     base::ScopedFD release_fence) {
+  TRACE_COMMON("frame_number", frame_number);
   VLOGFID(1, frame_number) << "APPs segments queued";
 
   std::vector<uint8_t> apps_segments_buffer;
@@ -348,13 +371,27 @@ void StillCaptureProcessorImpl::QueuePendingAppsSegments(
     apps_segments_buffer.clear();
     apps_segments_index.clear();
   }
+
+  base::AutoLock lock(request_contexts_lock_);
+  auto iter = request_contexts_.find(frame_number);
+  if (iter == request_contexts_.end()) {
+    LOGF(ERROR) << "No request queued";
+    return;
+  }
+
+  RequestContext& context = iter->second;
+  context.apps_segments_buffer = std::move(apps_segments_buffer);
+  context.apps_segments_index = std::move(apps_segments_index);
+  context.has_apps_segments = true;
+
   // We can still produce the JPEG image without the metadata.
-  thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          &StillCaptureProcessorImpl::QueuePendingAppsSegmentsOnThread,
-          base::Unretained(this), frame_number, std::move(apps_segments_buffer),
-          std::move(apps_segments_index)));
+  if (CanProduceCaptureResult(context)) {
+    thread_.task_runner()->PostTask(
+        FROM_HERE,
+        base::BindOnce(
+            &StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread,
+            base::Unretained(this), frame_number));
+  }
 }
 
 void StillCaptureProcessorImpl::QueuePendingYuvImage(
@@ -371,68 +408,15 @@ void StillCaptureProcessorImpl::QueuePendingYuvImage(
 
 bool StillCaptureProcessorImpl::IsPendingOutputBufferQueued(int frame_number) {
   base::AutoLock lock(request_contexts_lock_);
-  if (request_contexts_.count(frame_number) == 0) {
-    return false;
-  }
-  return request_contexts_[frame_number].client_requested_buffer.has_value();
+  const auto iter = request_contexts_.find(frame_number);
+  return iter != request_contexts_.end() &&
+         iter->second.client_requested_buffer.has_value();
 }
 
-void StillCaptureProcessorImpl::QueuePendingRequestOnThread(
-    int frame_number, RequestContext request_context) {
-  DCHECK(thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_COMMON("frame_number", frame_number);
-
-  base::AutoLock lock(request_contexts_lock_);
-  request_contexts_.insert({frame_number, std::move(request_context)});
-}
-
-void StillCaptureProcessorImpl::QueuePendingOutputBufferOnThread(
-    int frame_number, camera3_stream_buffer_t client_requested_buffer) {
-  DCHECK(thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_COMMON("frame_number", frame_number, "width",
-               client_requested_buffer.stream->width, "height",
-               client_requested_buffer.stream->height);
-
-  {
-    base::AutoLock lock(request_contexts_lock_);
-
-    if (request_contexts_.count(frame_number) == 0) {
-      LOGF(ERROR) << "No request queued";
-      return;
-    }
-
-    RequestContext& context = request_contexts_[frame_number];
-    CHECK(!context.client_requested_buffer.has_value())
-        << "The pending output buffer has been already queued for frame number "
-        << frame_number;
-    context.client_requested_buffer = std::move(client_requested_buffer);
-  }
-
-  MaybeProduceCaptureResultOnThread(frame_number);
-}
-
-void StillCaptureProcessorImpl::QueuePendingAppsSegmentsOnThread(
-    int frame_number,
-    std::vector<uint8_t> apps_segments_buffer,
-    std::map<uint16_t, base::span<uint8_t>> apps_segments_index) {
-  DCHECK(thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_COMMON("frame_number", frame_number);
-
-  {
-    base::AutoLock lock(request_contexts_lock_);
-
-    if (request_contexts_.count(frame_number) == 0) {
-      LOGF(ERROR) << "No request queued";
-      return;
-    }
-
-    RequestContext& context = request_contexts_[frame_number];
-    context.apps_segments_buffer = std::move(apps_segments_buffer);
-    context.apps_segments_index = std::move(apps_segments_index);
-    context.has_apps_segments = true;
-  }
-
-  MaybeProduceCaptureResultOnThread(frame_number);
+bool StillCaptureProcessorImpl::CanProduceCaptureResult(
+    const RequestContext& context) {
+  return context.has_apps_segments && context.has_jpeg &&
+         context.client_requested_buffer.has_value();
 }
 
 void StillCaptureProcessorImpl::QueuePendingYuvImageOnThread(
@@ -445,11 +429,12 @@ void StillCaptureProcessorImpl::QueuePendingYuvImageOnThread(
   RequestContext* context = nullptr;
   {
     base::AutoLock lock(request_contexts_lock_);
-    if (request_contexts_.count(frame_number) == 0) {
+    auto iter = request_contexts_.find(frame_number);
+    if (iter == request_contexts_.end()) {
       LOGF(ERROR) << "No request queued";
       return;
     }
-    context = &request_contexts_[frame_number];
+    context = &(iter->second);
   }
   {
     TRACE_COMMON_EVENT(
@@ -540,10 +525,15 @@ void StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread(
   RequestContext* context = nullptr;
   {
     base::AutoLock lock(request_contexts_lock_);
-    DCHECK_EQ(request_contexts_.count(frame_number), 1);
-    context = &request_contexts_.at(frame_number);
-    if (!(context->has_apps_segments && context->has_jpeg &&
-          context->client_requested_buffer.has_value())) {
+    auto iter = request_contexts_.find(frame_number);
+    // We assume, the context was valid when this task was posted. A context
+    // can only be erased at the end of this function. So, we can safely ignore.
+    if (iter == request_contexts_.end()) {
+      VLOGFID(1, frame_number) << "Capture result has already been produced";
+      return;
+    }
+    context = &(iter->second);
+    if (!CanProduceCaptureResult(*context)) {
       return;
     }
   }

@@ -70,14 +70,7 @@ class StillCaptureProcessorImpl : public StillCaptureProcessor {
     std::optional<camera3_stream_buffer_t> client_requested_buffer;
   };
 
-  void QueuePendingRequestOnThread(int frame_number,
-                                   RequestContext request_context);
-  void QueuePendingOutputBufferOnThread(
-      int frame_number, camera3_stream_buffer_t client_requested_buffer);
-  void QueuePendingAppsSegmentsOnThread(
-      int frame_number,
-      std::vector<uint8_t> apps_segments_buffer,
-      std::map<uint16_t, base::span<uint8_t>> apps_segments_index);
+  bool CanProduceCaptureResult(const RequestContext& context);
   void QueuePendingYuvImageOnThread(int frame_number,
                                     buffer_handle_t yuv_buffer,
                                     base::ScopedFD release_fence);
