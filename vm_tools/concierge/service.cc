@@ -97,6 +97,7 @@
 #include "vm_tools/concierge/dlc_helper.h"
 #include "vm_tools/concierge/if_method_exists.h"
 #include "vm_tools/concierge/metrics/duration_recorder.h"
+#include "vm_tools/concierge/network/borealis_network.h"
 #include "vm_tools/concierge/network/bruschetta_network.h"
 #include "vm_tools/concierge/network/guest_os_network.h"
 #include "vm_tools/concierge/network/termina_network.h"
@@ -1903,8 +1904,9 @@ StartVmResponse Service::StartVmInternal(
   std::unique_ptr<GuestOsNetwork> network;
   if (classification == apps::BRUSCHETTA) {
     network = BruschettaNetwork::Create(bus_, vsock_cid);
+  } else if (classification == apps::BOREALIS) {
+    network = BorealisNetwork::Create(bus_, vsock_cid);
   } else {
-    // TODO(b/298650342): Special-case borealis too.
     network = TerminaNetwork::Create(bus_, vsock_cid);
   }
   if (!network) {
