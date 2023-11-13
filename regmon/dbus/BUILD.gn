@@ -1,0 +1,38 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/pkg_config.gni")
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "dbus-1",
+    "libchrome",
+
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "protobuf-lite",
+    "system_api",
+  ]
+}
+
+generate_dbus_adaptors("regmon_dbus_adaptors") {
+  dbus_adaptors_out_dir = "include/dbus_adaptors"
+  dbus_service_config = "dbus-service-config.json"
+  sources = [ "org.chromium.Regmond.xml" ]
+}
+
+static_library("dbus_adaptor") {
+  sources = [
+    "dbus_adaptor.cc",
+    "dbus_adaptor.h",
+  ]
+  configs += [ ":target_defaults" ]
+  public_deps = [ ":regmon_dbus_adaptors" ]
+  deps = [
+    "//regmon/proto:libregmonprotopolicyviolation",
+    "//regmon/regmon:regmon_service",
+  ]
+}

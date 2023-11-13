@@ -155,6 +155,7 @@ copies.
 | [private_computing](./private_computing/) | Daemon to save and retrieve device active date status into and from preserved file.
 | [pwgtocanonij](./pwgtocanonij/) | CUPS filter for certain Canon printers |
 | [regions](./regions/) ||
+| [regmon](./regmon/) | Daemon to report policy violations of first-party network traffic. |
 | [resourced](./resourced/) | Resource Management Daemon |
 | [rgbkbd](./rgbkbd/) | ChromeOS RGB Keyboard Daemon |
 | [rmad](./rmad/) | ChromeOS RMA Daemon |

@@ -1,0 +1,37 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+ioctl: 1
+openat: 1
+# Required for DBus connection
+socket: arg0 == AF_UNIX
+gettid: 1
+epoll_wait: 1
+poll: 1
+recvmsg: 1
+geteuid: 1
+epoll_ctl: 1
+sendmsg: 1
+getpid: 1
+connect: 1
+getuid: 1
+getgid: 1
+getegid: 1
+rt_sigprocmask: 1
+signalfd4: 1
+sendto: 1
+read: 1
+close: 1
+pipe2: 1
+fcntl: 1
+write: 1
+epoll_create1: 1
+getresuid: 1
+getresgid: 1
+getsockname: 1
+restart_syscall: 1
+exit: 1
+exit_group: 1
+rt_sigreturn: 1
+newfstatat: 1

@@ -1,0 +1,21 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "protobuf-lite",
+  ]
+}
+
+proto_library("libregmonprotopolicyviolation") {
+  sources = [ "policy_violation.proto" ]
+  proto_in_dir = "//regmon/proto"
+  proto_out_dir = "include/regmon/proto"
+  standalone = true
+}

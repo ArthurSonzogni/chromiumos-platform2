@@ -1,0 +1,30 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+}
+
+static_library("regmon_daemon") {
+  sources = [
+    "regmon_daemon.cc",
+    "regmon_daemon.h",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    "//regmon/dbus:dbus_adaptor",
+    "//regmon/regmon:regmon_service",
+  ]
+}
+
+source_set("unit_tests") {
+  sources = [ "regmon_daemon_test.cc" ]
+  deps = [ ":regmon_daemon" ]
+  configs += [ ":target_defaults" ]
+}

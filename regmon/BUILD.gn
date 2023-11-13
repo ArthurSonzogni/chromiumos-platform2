@@ -1,0 +1,87 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":install_dbus_activation_config",
+    ":install_dbus_config",
+    ":install_minijail_config",
+    ":install_seccomp_policy",
+    ":install_upstart_config",
+    ":regmond",
+  ]
+  if (use.test) {
+    deps += [ ":regmond_testrunner" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo",
+    "libchrome",
+    "system_api",
+  ]
+}
+
+executable("regmond") {
+  sources = [ "main.cc" ]
+  install_path = "bin"
+  configs += [ ":target_defaults" ]
+  deps = [
+    "//regmon/daemon:regmon_daemon",
+    "//regmon/dbus:dbus_adaptor",
+    "//regmon/regmon:regmon_impl",
+    "//regmon/regmon:regmon_service",
+  ]
+}
+
+install_config("install_upstart_config") {
+  sources = [ "init/regmond.conf" ]
+  install_path = "upstart"
+}
+
+install_config("install_minijail_config") {
+  sources = [ "init/minijail/regmond.conf" ]
+  install_path = "minijail_conf"
+}
+
+install_config("install_dbus_config") {
+  sources = [ "dbus/org.chromium.Regmond.conf" ]
+  install_path = "dbus_system_d"
+}
+
+install_config("install_dbus_activation_config") {
+  sources = [ "dbus/org.chromium.Regmond.service" ]
+  install_path = "dbus_system_services"
+}
+
+install_config("install_seccomp_policy") {
+  _arch = getenv("ARCH")
+
+  sources = [ "seccomp/regmond-seccomp-${_arch}.policy" ]
+  outputs = [ "regmond-seccomp.policy" ]
+  install_path = "seccomp_policy"
+}
+
+if (use.test) {
+  pkg_config("target_test") {
+    pkg_deps = [ "libchrome-test" ]
+  }
+
+  executable("regmond_testrunner") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":target_test",
+    ]
+    run_test = true
+    deps = [
+      "//common-mk/testrunner",
+      "//regmon/daemon:unit_tests",
+    ]
+  }
+}
