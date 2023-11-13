@@ -2248,7 +2248,17 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
     if (apn_info.apn_types.empty())
       apn_info.apn_types = {kApnTypeDefault};
 
-    profiles_->push_back(std::move(apn_info));
+    // In theory the modem should really never report duplicated entries, but it
+    // may happen when using the very-limited MBIM 1.0 profile management
+    // operations, e.g. if we have two profiles with same APN and APN type, but
+    // different IP type. Due to this, the logic deciding whether a profile list
+    // update should be processed or not is very limited. This check will become
+    // much stricter, and therefore likely obsolete, if we switch to MBIMEx 2.0
+    // profile management.
+    if (std::find(profiles_->begin(), profiles_->end(), apn_info) ==
+        profiles_->end()) {
+      profiles_->push_back(std::move(apn_info));
+    }
   }
 
   // Ignore if the built profiles are the same as the ones we already had.

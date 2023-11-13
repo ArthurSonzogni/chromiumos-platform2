@@ -1545,6 +1545,12 @@ TEST_F(CellularCapability3gppTest, ProfilesChanged) {
       .Times(AtLeast(1));
   capability_->OnProfilesChanged({profile2});
   Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
+
+  // Same list as before plus an extra duplicated item.
+  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
+      .Times(0);
+  capability_->OnProfilesChanged({profile2, profile2});
+  Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
 }
 
 TEST_F(CellularCapability3gppTest, SetInitialEpsBearer) {
