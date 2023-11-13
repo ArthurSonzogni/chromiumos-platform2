@@ -7,6 +7,7 @@
 #include <ostream>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include <base/no_destructor.h>
 #include <base/strings/strcat.h>
@@ -71,12 +72,10 @@ Status::Status(Status&&) = default;
 Status& Status::operator=(Status&&) = default;
 Status::~Status() = default;
 
-Status::Status(error::Code error_code, std::string_view error_message)
-    : error_code_(error_code) {
-  if (error_code != error::OK) {
-    error_message_ = std::string(error_message);
-  }
-}
+Status::Status(error::Code error_code, std::string error_message)
+    : error_code_(error_code),
+      error_message_{error_code != error::OK ? std::move(error_message)
+                                             : std::string()} {}
 
 bool Status::operator==(const Status& x) const {
   return error_code_ == x.error_code_ && error_message_ == x.error_message_;
