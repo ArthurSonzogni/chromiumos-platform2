@@ -5,8 +5,9 @@
 #ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_UTILS_MOJO_UTILS_H_
 #define DIAGNOSTICS_WILCO_DTC_SUPPORTD_UTILS_MOJO_UTILS_H_
 
+#include <string_view>
+
 #include <base/memory/read_only_shared_memory_region.h>
-#include <base/strings/string_piece.h>
 #include <mojo/public/cpp/system/handle.h>
 
 namespace diagnostics {
@@ -29,7 +30,7 @@ base::ReadOnlySharedMemoryMapping GetReadOnlySharedMemoryMappingFromMojoHandle(
 //
 // Returns invalid |mojo::ScopedHandle| if error happened or |content| is empty.
 mojo::ScopedHandle CreateReadOnlySharedMemoryRegionMojoHandle(
-    base::StringPiece content);
+    std::string_view content);
 
 }  // namespace wilco
 }  // namespace diagnostics

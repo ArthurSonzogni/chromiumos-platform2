@@ -7,11 +7,11 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
-#include <base/strings/string_piece.h>
 #include <google/protobuf/repeated_field.h>
 #include <grpcpp/grpcpp.h>
 
@@ -62,11 +62,11 @@ class GrpcService final {
     };
 
     using SendMessageToUiCallback = base::OnceCallback<void(
-        grpc::Status, base::StringPiece response_json_message)>;
+        grpc::Status, std::string_view response_json_message)>;
     using PerformWebRequestToBrowserCallback =
         base::OnceCallback<void(WebRequestStatus status,
                                 int http_status,
-                                base::StringPiece response_body)>;
+                                std::string_view response_body)>;
     using GetAvailableRoutinesToServiceCallback = base::OnceCallback<void(
         const std::vector<grpc_api::DiagnosticRoutine>& routines,
         grpc_api::RoutineServiceStatus service_status)>;

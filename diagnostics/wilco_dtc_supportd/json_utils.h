@@ -6,8 +6,7 @@
 #define DIAGNOSTICS_WILCO_DTC_SUPPORTD_JSON_UTILS_H_
 
 #include <string>
-
-#include <base/strings/string_piece.h>
+#include <string_view>
 
 namespace diagnostics {
 namespace wilco {
@@ -18,7 +17,7 @@ namespace wilco {
 // |json_error_message| must be non-NULL.
 //
 // Returns true if |json| is valid, otherwise false.
-bool IsJsonValid(base::StringPiece json, std::string* json_error_message);
+bool IsJsonValid(std::string_view json, std::string* json_error_message);
 
 }  // namespace wilco
 }  // namespace diagnostics

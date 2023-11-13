@@ -4,6 +4,8 @@
 
 #include "diagnostics/wilco_dtc_supportd/json_utils.h"
 
+#include <string_view>
+
 #include <base/check.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
@@ -12,7 +14,7 @@
 namespace diagnostics {
 namespace wilco {
 
-bool IsJsonValid(base::StringPiece json, std::string* json_error_message) {
+bool IsJsonValid(std::string_view json, std::string* json_error_message) {
   DCHECK(json_error_message);
   auto result = base::JSONReader::ReadAndReturnValueWithError(
       json, base::JSONParserOptions::JSON_ALLOW_TRAILING_COMMAS);

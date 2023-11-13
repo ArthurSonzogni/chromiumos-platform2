@@ -8,11 +8,11 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/strings/string_piece.h>
 #include <brillo/grpc/async_grpc_client.h>
 #include <brillo/grpc/async_grpc_server.h>
 #include <dbus/bus.h>

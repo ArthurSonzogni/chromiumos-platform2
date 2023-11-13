@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <string_view>
 #include <utility>
 
 #include <base/barrier_closure.h>
@@ -312,7 +313,7 @@ void Core::PerformWebRequestToBrowser(
       base::BindOnce(
           [](PerformWebRequestToBrowserCallback callback,
              MojomWilcoDtcSupportdWebRequestStatus mojo_status, int http_status,
-             base::StringPiece response_body) {
+             std::string_view response_body) {
             WebRequestStatus status;
             if (!ConvertStatusFromMojom(mojo_status, &status)) {
               LOG(ERROR) << "Unknown mojo web request status: " << mojo_status;

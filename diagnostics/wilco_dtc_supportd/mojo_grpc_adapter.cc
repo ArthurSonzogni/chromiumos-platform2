@@ -5,10 +5,10 @@
 #include "diagnostics/wilco_dtc_supportd/mojo_grpc_adapter.h"
 
 #include <memory>
+#include <string_view>
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 
 #include "diagnostics/wilco_dtc_supportd/grpc_client_manager.h"
 #include "diagnostics/wilco_dtc_supportd/json_utils.h"
@@ -24,7 +24,7 @@ MojoGrpcAdapter::MojoGrpcAdapter(GrpcClientManager* grpc_client_manager)
 MojoGrpcAdapter::~MojoGrpcAdapter() = default;
 
 void MojoGrpcAdapter::SendGrpcUiMessageToWilcoDtc(
-    base::StringPiece json_message,
+    std::string_view json_message,
     const SendGrpcUiMessageToWilcoDtcCallback& callback) {
   VLOG(1) << "Core::SendGrpcMessageToWilcoDtc";
 
@@ -59,7 +59,7 @@ void MojoGrpcAdapter::SendGrpcUiMessageToWilcoDtc(
 
             std::string json_error_message;
             if (!IsJsonValid(
-                    base::StringPiece(response->response_json_message()),
+                    std::string_view(response->response_json_message()),
                     &json_error_message)) {
               LOG(ERROR) << "Invalid JSON error: " << json_error_message;
               callback.Run(std::string() /* response_json_message */);

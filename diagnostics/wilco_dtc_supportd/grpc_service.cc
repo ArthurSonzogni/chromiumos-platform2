@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <iterator>
+#include <string_view>
 #include <utility>
 
 #include <base/check.h>
@@ -65,7 +66,7 @@ int64_t CalculateWebRequestParameterSize(
 // Forwards and wraps the result of a SendMessageToUi into gRPC response.
 void ForwardSendMessageToUiResponse(SendMessageToUiCallback callback,
                                     grpc::Status status,
-                                    base::StringPiece response_json_message) {
+                                    std::string_view response_json_message) {
   auto reply = std::make_unique<grpc_api::SendMessageToUiResponse>();
   reply->set_response_json_message(std::string(response_json_message));
   std::move(callback).Run(status, std::move(reply));
@@ -75,7 +76,7 @@ void ForwardSendMessageToUiResponse(SendMessageToUiCallback callback,
 void ForwardWebGrpcResponse(PerformWebRequestResponseCallback callback,
                             DelegateWebRequestStatus status,
                             int http_status,
-                            base::StringPiece response_body) {
+                            std::string_view response_body) {
   auto reply = std::make_unique<grpc_api::PerformWebRequestResponse>();
   switch (status) {
     case DelegateWebRequestStatus::kOk:

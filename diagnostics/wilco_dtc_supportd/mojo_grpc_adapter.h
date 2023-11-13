@@ -6,9 +6,9 @@
 #define DIAGNOSTICS_WILCO_DTC_SUPPORTD_MOJO_GRPC_ADAPTER_H_
 
 #include <string>
+#include <string_view>
 
 #include <base/functional/callback.h>
-#include <base/strings/string_piece_forward.h>
 
 namespace diagnostics {
 namespace wilco {
@@ -34,7 +34,7 @@ class MojoGrpcAdapter final {
   // Result of the call is returned via |callback|; if the request succeeded,
   // it will receive the message returned by the wilco_dtc.
   void SendGrpcUiMessageToWilcoDtc(
-      base::StringPiece json_message,
+      std::string_view json_message,
       const SendGrpcUiMessageToWilcoDtcCallback& callback);
 
   // Called when wilco_dtc_supportd daemon mojo function

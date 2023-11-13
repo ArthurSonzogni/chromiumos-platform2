@@ -7,6 +7,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -16,7 +17,6 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/run_loop.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 #include <base/test/task_environment.h>
@@ -331,7 +331,7 @@ class GrpcServiceTest : public testing::Test {
     EXPECT_CALL(delegate_, SendWilcoDtcMessageToUi(json_message, _))
         .WillOnce(WithArgs<1>(Invoke(
             [json_message](base::OnceCallback<void(
-                               grpc::Status, base::StringPiece)> callback) {
+                               grpc::Status, std::string_view)> callback) {
               std::move(callback).Run(grpc::Status::OK, json_message);
             })));
     service()->SendMessageToUi(std::move(request),
@@ -400,7 +400,7 @@ class GrpcServiceTest : public testing::Test {
                                              string_headers, request_body, _))
           .WillOnce(WithArgs<4>(
               Invoke([](base::OnceCallback<void(DelegateWebRequestStatus, int,
-                                                base::StringPiece)> callback) {
+                                                std::string_view)> callback) {
                 std::move(callback).Run(DelegateWebRequestStatus::kOk,
                                         kHttpStatusOk, kFakeWebResponseBody);
               })));

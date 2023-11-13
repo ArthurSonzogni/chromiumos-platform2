@@ -6,10 +6,10 @@
 #define DIAGNOSTICS_WILCO_DTC_SUPPORTD_MOJO_SERVICE_H_
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/functional/callback.h>
-#include <base/strings/string_piece.h>
 #include <grpcpp/grpcpp.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
@@ -43,9 +43,9 @@ class MojoService final
   using MojomWilcoDtcSupportdEvent =
       chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
   using MojomSendWilcoDtcMessageToUiCallback =
-      base::OnceCallback<void(grpc::Status, base::StringPiece)>;
+      base::OnceCallback<void(grpc::Status, std::string_view)>;
   using MojomPerformWebRequestCallback = base::OnceCallback<void(
-      MojomWilcoDtcSupportdWebRequestStatus, int, base::StringPiece)>;
+      MojomWilcoDtcSupportdWebRequestStatus, int, std::string_view)>;
   using MojomGetConfigurationDataCallback =
       base::OnceCallback<void(const std::string&)>;
 

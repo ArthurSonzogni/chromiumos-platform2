@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -11,7 +12,6 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/run_loop.h>
-#include <base/strings/string_piece.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -94,8 +94,8 @@ TEST_F(MojoServiceTest, SendWilcoDtcMessageToUi) {
       kJsonMessageToUi,
       base::BindOnce(
           [](base::OnceClosure quit_closure,
-             base::StringPiece expected_json_message, grpc::Status status,
-             base::StringPiece json_message) {
+             std::string_view expected_json_message, grpc::Status status,
+             std::string_view json_message) {
             EXPECT_EQ(json_message, expected_json_message);
             std::move(quit_closure).Run();
           },
@@ -107,7 +107,7 @@ TEST_F(MojoServiceTest, SendWilcoDtcMessageToUiEmptyMessage) {
   base::RunLoop run_loop;
   auto callback = base::BindOnce(
       [](base::OnceClosure quit_closure, grpc::Status status,
-         base::StringPiece json_message) {
+         std::string_view json_message) {
         EXPECT_TRUE(json_message.empty());
         std::move(quit_closure).Run();
       },
@@ -147,7 +147,7 @@ TEST_F(MojoServiceTest, PerformWebRequest) {
              MojomWilcoDtcSupportdWebRequestStatus expected_status,
              int expected_http_status, std::string expected_response_body,
              MojomWilcoDtcSupportdWebRequestStatus status, int http_status,
-             base::StringPiece response_body) {
+             std::string_view response_body) {
             EXPECT_EQ(expected_status, status);
             EXPECT_EQ(expected_http_status, http_status);
             EXPECT_EQ(expected_response_body, response_body);

@@ -5,11 +5,11 @@
 #include "diagnostics/wilco_dtc_supportd/fake_browser.h"
 
 #include <memory>
+#include <string_view>
 #include <utility>
 
 #include <base/check.h>
 #include <base/functional/bind.h>
-#include <base/strings/string_piece.h>
 #include <dbus/message.h>
 #include <dbus/wilco_dtc_supportd/dbus-constants.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
@@ -54,7 +54,7 @@ bool FakeBrowser::SendUiMessageToWilcoDtc(
     const std::string& json_message,
     base::OnceCallback<void(mojo::ScopedHandle)> callback) {
   mojo::ScopedHandle handle = CreateReadOnlySharedMemoryRegionMojoHandle(
-      base::StringPiece(json_message));
+      std::string_view(json_message));
   if (!handle.is_valid()) {
     return false;
   }
