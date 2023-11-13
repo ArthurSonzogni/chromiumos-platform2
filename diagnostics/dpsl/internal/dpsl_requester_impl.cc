@@ -31,9 +31,8 @@ std::string DpslRequesterImpl::GetWilcoDtcSupportdGrpcUri(
     case DpslRequester::GrpcClientUri::kVmVsock:
       return GetWilcoDtcSupportdGrpcGuestVsockUri();
   }
-  NOTREACHED() << "Unexpected GrpcClientUri: "
-               << static_cast<int>(grpc_client_uri);
-  return "";
+  NOTREACHED_NORETURN() << "Unexpected GrpcClientUri: "
+                        << static_cast<int>(grpc_client_uri);
 }
 
 DpslRequesterImpl::DpslRequesterImpl(

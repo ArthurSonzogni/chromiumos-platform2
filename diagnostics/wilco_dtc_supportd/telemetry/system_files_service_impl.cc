@@ -40,7 +40,7 @@ base::FilePath SystemFilesServiceImpl::GetPathForFile(
       return base::FilePath("proc/vmstat");
   }
 
-  NOTREACHED();
+  NOTREACHED_NORETURN();
 }
 
 // static
@@ -65,7 +65,7 @@ base::FilePath SystemFilesServiceImpl::GetPathForDirectory(
       return base::FilePath("sys/devices/system/cpu/");
   }
 
-  NOTREACHED();
+  NOTREACHED_NORETURN();
 }
 
 // static
@@ -89,7 +89,7 @@ base::FilePath SystemFilesServiceImpl::GetPathForVpdField(VpdField vpd_field) {
       return base::FilePath("run/wilco_dtc/vpd_fields/uuid_id");
   }
 
-  NOTREACHED();
+  NOTREACHED_NORETURN();
 }
 
 SystemFilesServiceImpl::SystemFilesServiceImpl() = default;

@@ -19,7 +19,6 @@
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/constants/grpc_constants.h"
 #include "diagnostics/dpsl/internal/dpsl_global_context_impl.h"
 #include "diagnostics/dpsl/internal/dpsl_requester_impl.h"
 #include "diagnostics/dpsl/internal/dpsl_thread_context_impl.h"
@@ -36,14 +35,8 @@ TEST(GetWilcoDtcSupportdGrpcUriTestDeathTest, InvalidValue) {
   constexpr auto kInvalidUri = static_cast<DpslRequester::GrpcClientUri>(
       std::numeric_limits<
           std::underlying_type<DpslRequester::GrpcClientUri>::type>::max());
-#ifdef NDEBUG
-  // In release builds the error is signaled by returning an empty URI.
-  EXPECT_EQ(DpslRequesterImpl::GetWilcoDtcSupportdGrpcUri(kInvalidUri), "");
-#else
-  // In debug builds an assertion crash is expected.
   ASSERT_DEATH(DpslRequesterImpl::GetWilcoDtcSupportdGrpcUri(kInvalidUri),
                "Unexpected GrpcClientUri");
-#endif
 }
 
 TEST(GetWilcoDtcSupportdGrpcUriTest, Unix) {
@@ -114,14 +107,8 @@ TEST_F(DpslRequesterImplDeathTest, CreateWithInvalidServerUri) {
   constexpr auto kInvalidUri = static_cast<DpslRequester::GrpcClientUri>(
       std::numeric_limits<
           std::underlying_type<DpslRequester::GrpcClientUri>::type>::max());
-#ifdef NDEBUG
-  // In release builds the error is signaled by returning null.
-  EXPECT_FALSE(DpslRequester::Create(main_thread_context_.get(), kInvalidUri));
-#else
-  // In debug builds an assertion crash is expected.
   EXPECT_DEATH(DpslRequester::Create(main_thread_context_.get(), kInvalidUri),
                "Unexpected GrpcClientUri");
-#endif
 }
 
 // Generic template for the type of a member function of DpslRequesterImpl

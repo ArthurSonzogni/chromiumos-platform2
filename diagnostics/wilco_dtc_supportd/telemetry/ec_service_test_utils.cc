@@ -108,7 +108,8 @@ EcEvent GetEcEventWithReason(EcEvent::Reason reason) {
     case EcEvent::Reason::kNonSysNotification:
       return kEcEventNonSysNotification;
   }
-  NOTREACHED() << "Invalid EcEvent::Reason: " << static_cast<int>(reason);
+  NOTREACHED_NORETURN() << "Invalid EcEvent::Reason: "
+                        << static_cast<int>(reason);
 }
 
 }  // namespace wilco

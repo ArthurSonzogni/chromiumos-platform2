@@ -4,7 +4,6 @@
 
 #include "diagnostics/dpsl/internal/dpsl_rpc_server_impl.h"
 
-#include <functional>
 #include <utility>
 
 #include <base/check.h>
@@ -32,9 +31,8 @@ std::string GetWilcoDtcGrpcUri(DpslRpcServer::GrpcServerUri grpc_server_uri) {
     case DpslRpcServer::GrpcServerUri::kUiMessageReceiverVmVsock:
       return GetUiMessageReceiverWilcoDtcGrpcGuestVsockUri();
   }
-  NOTREACHED() << "Unexpected GrpcServerUri: "
-               << static_cast<int>(grpc_server_uri);
-  return "";
+  NOTREACHED_NORETURN() << "Unexpected GrpcServerUri: "
+                        << static_cast<int>(grpc_server_uri);
 }
 
 }  // namespace

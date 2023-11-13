@@ -107,12 +107,12 @@ dbus::PropertySet* BluetoothClientImpl::CreateProperties(
                                       object_path, interface_name);
   if (interface_name == bluetooth_adapter::kBluetoothAdapterInterface) {
     return new AdapterProperties(object_proxy, callback);
-  }
-  if (interface_name == bluetooth_device::kBluetoothDeviceInterface) {
+  } else if (interface_name == bluetooth_device::kBluetoothDeviceInterface) {
     return new DeviceProperties(object_proxy, callback);
+  } else {
+    LOG(WARNING) << "Invalid interface name: " << interface_name;
+    return nullptr;
   }
-  NOTREACHED() << "Invalid interface name: " << interface_name;
-  return nullptr;
 }
 
 void BluetoothClientImpl::ObjectAdded(const dbus::ObjectPath& object_path,
@@ -134,8 +134,7 @@ void BluetoothClientImpl::ObjectAdded(const dbus::ObjectPath& object_path,
     for (auto& observer : observers_)
       observer.AdapterAdded(object_path, *adapter_properties);
     return;
-  }
-  if (interface_name == bluetooth_device::kBluetoothDeviceInterface) {
+  } else if (interface_name == bluetooth_device::kBluetoothDeviceInterface) {
     auto device_properties = static_cast<DeviceProperties*>(properties);
     if (!AreDevicePropertiesValid(*device_properties)) {
       return;
@@ -143,8 +142,9 @@ void BluetoothClientImpl::ObjectAdded(const dbus::ObjectPath& object_path,
     for (auto& observer : observers_)
       observer.DeviceAdded(object_path, *device_properties);
     return;
+  } else {
+    LOG(WARNING) << "Invalid interface name: " << interface_name;
   }
-  NOTREACHED() << "Invalid interface name: " << interface_name;
 }
 
 void BluetoothClientImpl::ObjectRemoved(const dbus::ObjectPath& object_path,
@@ -155,13 +155,13 @@ void BluetoothClientImpl::ObjectRemoved(const dbus::ObjectPath& object_path,
     for (auto& observer : observers_)
       observer.AdapterRemoved(object_path);
     return;
-  }
-  if (interface_name == bluetooth_device::kBluetoothDeviceInterface) {
+  } else if (interface_name == bluetooth_device::kBluetoothDeviceInterface) {
     for (auto& observer : observers_)
       observer.DeviceRemoved(object_path);
     return;
+  } else {
+    LOG(WARNING) << "Invalid interface name: " << interface_name;
   }
-  NOTREACHED() << "Invalid interface name: " << interface_name;
 }
 
 void BluetoothClientImpl::PropertyChanged(const dbus::ObjectPath& object_path,
@@ -185,8 +185,7 @@ void BluetoothClientImpl::PropertyChanged(const dbus::ObjectPath& object_path,
     for (auto& observer : observers_)
       observer.AdapterPropertyChanged(object_path, *adapter_properties);
     return;
-  }
-  if (interface_name == bluetooth_device::kBluetoothDeviceInterface) {
+  } else if (interface_name == bluetooth_device::kBluetoothDeviceInterface) {
     auto device_properties = static_cast<DeviceProperties*>(properties);
     if (!AreDevicePropertiesValid(*device_properties)) {
       return;
@@ -194,8 +193,9 @@ void BluetoothClientImpl::PropertyChanged(const dbus::ObjectPath& object_path,
     for (auto& observer : observers_)
       observer.DevicePropertyChanged(object_path, *device_properties);
     return;
+  } else {
+    LOG(WARNING) << "Invalid interface name: " << interface_name;
   }
-  NOTREACHED() << "Invalid interface name: " << interface_name;
 }
 
 }  // namespace wilco

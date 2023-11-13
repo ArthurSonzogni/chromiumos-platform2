@@ -16,7 +16,6 @@
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/constants/grpc_constants.h"
 #include "diagnostics/dpsl/internal/dpsl_global_context_impl.h"
 #include "diagnostics/dpsl/internal/dpsl_rpc_server_impl.h"
 #include "diagnostics/dpsl/internal/dpsl_thread_context_impl.h"
@@ -26,10 +25,8 @@
 #include "diagnostics/dpsl/public/dpsl_rpc_handler.h"
 #include "diagnostics/dpsl/public/dpsl_rpc_server.h"
 #include "diagnostics/dpsl/public/dpsl_thread_context.h"
-#include "diagnostics/dpsl/test_utils/common.h"
 
-#include "wilco_dtc.grpc.pb.h"           // NOLINT(build/include_directory)
-#include "wilco_dtc_supportd.grpc.pb.h"  // NOLINT(build/include_directory)
+#include "wilco_dtc.grpc.pb.h"  // NOLINT(build/include_directory)
 
 using testing::_;
 using testing::ReturnRef;
@@ -160,16 +157,9 @@ TEST_F(DpslRpcServerImplBaseDeathTest, CreateWithNullRpcHandler) {
 }
 
 TEST_F(DpslRpcServerImplBaseDeathTest, CreateWithInvalidServerUri) {
-#ifdef NDEBUG
-  // In release builds the error is reported by returning null.
-  EXPECT_FALSE(DpslRpcServer::Create(thread_context_.get(), &mock_handler_,
-                                     kGrpcServerUriInvalidValue));
-#else
-  // In debug builds an assertion crash is expected.
   EXPECT_DEATH(DpslRpcServer::Create(thread_context_.get(), &mock_handler_,
                                      kGrpcServerUriInvalidValue),
                "Unexpected GrpcServerUri");
-#endif
 }
 
 TEST_F(DpslRpcServerImplBaseDeathTest, MultiThreadInvalidThreadContext) {
