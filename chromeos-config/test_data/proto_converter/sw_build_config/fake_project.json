@@ -176,6 +176,8 @@
           "ec-ro-image": "bcs://Fake_EC.11111.2.0.tbz2",
           "ec-rw-image": "bcs://Fake_EC.11111.2.4.tbz2",
           "firmware-config": 90913,
+          "has-alt-firmware": true,
+          "has-splash-screen": true,
           "image-name": "fake_ref_design",
           "main-ro-image": "bcs://Fake.11111.0.0.tbz2",
           "main-rw-image": "bcs://Fake.11111.2.3.tbz2",

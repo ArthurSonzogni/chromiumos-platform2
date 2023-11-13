@@ -467,7 +467,6 @@ In the tables below,
 ### model
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| alt-firmware | [alt-firmware](#alt_firmware) |  | False |  | False |  |
 | arc | [arc](#arc) |  | False |  | False |  |
 | audio | [audio](#audio) |  | False |  | False |  |
 | auto-night-light | boolean |  | False |  | False | Whether the auto-night-light feature is enabled on the device, which sets the schedule for Night light automatically to sunset-to-sunrise. |
@@ -512,11 +511,6 @@ In the tables below,
 | uwb | [uwb](#uwb) |  | False |  | False | Contains details about the model's uwb implementation. |
 | wallpaper | string |  | False |  | False | Base filename of the default wallpaper to show on this device. |
 | wifi | [wifi](#wifi) |  | False |  | False | Sets limits on maximum WiFi transmit power for tablet and non-tablet device configurations. This config must contain properties for ath10k driver, rtw88 driver, rtw89 driver, mtk driver, or intel driver. Note that configs for the intel driver are delivered as encoded wifi sar hex files. |
-
-### alt-firmware
-| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
-| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| has-alt-firmware | boolean |  | False |  | False | Indicates whether the altfw feature is present |
 
 ### arc
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -785,6 +779,8 @@ In the tables below,
 | ec-ro-image | string |  | False |  | True | Name of the file located in BCS under the respective bcs-overlay. |
 | ec-rw-image | string |  | False |  | True | Name of the file located in BCS under the respective bcs-overlay. |
 | firmware-config | integer |  | False |  | False | The firmware config bitmap to be flashed to the CBI. This field is used in the factory. |
+| has-alt-firmware | boolean |  | False |  | False | Contains attributes from the runtime firmware, to be used by the system in different aspects, such as tast tests and upstart. |
+| has-splash-screen | boolean |  | False |  | False | Indicates if firmware is setting up the initial splash screen. |
 | image-name | string |  | False |  | False | The name of the firmware image used by the firmware updater. Typically the device name, but can differ when a device may have two or more different firmware images. |
 | key-id | string |  | False |  | True | Key ID from the signer key set that is used to sign the given firmware image. |
 | main-ro-image | string |  | False |  | True | Name of the file located in BCS under the respective bcs-overlay. |

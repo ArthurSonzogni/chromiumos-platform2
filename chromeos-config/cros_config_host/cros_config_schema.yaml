@@ -901,6 +901,15 @@ properties:
                     used in the factory.
                   type: integer
                   build-only-element: false
+                has-alt-firmware:
+                  description: Contains attributes from the runtime firmware, to be used by
+                    the system in different aspects, such as tast tests and upstart.
+                  type: boolean
+                  build-only-element: false
+                has-splash-screen:
+                  description: Indicates if firmware is setting up the initial splash screen.
+                  type: boolean
+                  build-only-element: false
               additionalProperties: false
             firmware-signing:
               type: object
@@ -1391,13 +1400,6 @@ properties:
                 form-factor: *form-factor
                 recovery-input: *recovery-input
                 storage-type: *storage-type
-              additionalProperties: false
-            alt-firmware:
-              type: object
-              properties:
-                has-alt-firmware:
-                  description: Indicates whether the altfw feature is present
-                  type: boolean
               additionalProperties: false
             cros-healthd:
               type: object
