@@ -1230,8 +1230,7 @@ mod tests {
     }
 
     #[test]
-    /// Tests the CPU offline when BSM on
-    fn test_power_update_power_preferences_hotplug_cpus() -> Result<()> {
+    fn test_apply_hotplug_cpus() -> Result<()> {
         struct Test<'a> {
             cpus: &'a str,
             big_little: bool,
@@ -1239,8 +1238,7 @@ mod tests {
             cluster2_state: [&'a str; 2],
             cluster1_freq: [u32; 2],
             cluster2_freq: [u32; 2],
-            bsm: common::BatterySaverMode,
-            config_provider: FakeConfigProvider,
+            preferences: config::PowerPreferences,
             smt_offlined: bool,
             smt_orig_state: &'a str,
             cluster1_expected_state: [&'a str; 2],
@@ -1257,18 +1255,12 @@ mod tests {
                 cluster2_state: ["1"; 2],
                 cluster1_freq: [2400000; 2],
                 cluster2_freq: [1800000; 2],
-                bsm: common::BatterySaverMode::Active,
-                config_provider: FakeConfigProvider {
-                    battery_saver_power_preferences: |_| {
-                        Ok(Some(config::PowerPreferences {
-                            governor: Some(config::Governor::Conservative),
-                            epp: None,
-                            cpu_offline: Some(config::CpuOfflinePreference::SmallCore {
-                                min_active_threads: 2,
-                            }),
-                        }))
-                    },
-                    ..Default::default()
+                preferences: config::PowerPreferences {
+                    governor: Some(config::Governor::Conservative),
+                    epp: None,
+                    cpu_offline: Some(config::CpuOfflinePreference::SmallCore {
+                        min_active_threads: 2,
+                    }),
                 },
                 smt_offlined: false,
                 smt_orig_state: "on",
@@ -1284,18 +1276,12 @@ mod tests {
                 cluster2_state: ["1"; 2],
                 cluster1_freq: [2400000; 2],
                 cluster2_freq: [2400000; 2],
-                bsm: common::BatterySaverMode::Active,
-                config_provider: FakeConfigProvider {
-                    battery_saver_power_preferences: |_| {
-                        Ok(Some(config::PowerPreferences {
-                            governor: Some(config::Governor::Conservative),
-                            epp: None,
-                            cpu_offline: Some(config::CpuOfflinePreference::Smt {
-                                min_active_threads: 2,
-                            }),
-                        }))
-                    },
-                    ..Default::default()
+                preferences: config::PowerPreferences {
+                    governor: None,
+                    epp: None,
+                    cpu_offline: Some(config::CpuOfflinePreference::Smt {
+                        min_active_threads: 2,
+                    }),
                 },
                 smt_offlined: true,
                 smt_orig_state: "on",
@@ -1311,18 +1297,12 @@ mod tests {
                 cluster2_state: ["1"; 2],
                 cluster1_freq: [2400000; 2],
                 cluster2_freq: [2400000; 2],
-                bsm: common::BatterySaverMode::Active,
-                config_provider: FakeConfigProvider {
-                    battery_saver_power_preferences: |_| {
-                        Ok(Some(config::PowerPreferences {
-                            governor: Some(config::Governor::Conservative),
-                            epp: None,
-                            cpu_offline: Some(config::CpuOfflinePreference::Half {
-                                min_active_threads: 2,
-                            }),
-                        }))
-                    },
-                    ..Default::default()
+                preferences: config::PowerPreferences {
+                    governor: Some(config::Governor::Conservative),
+                    epp: None,
+                    cpu_offline: Some(config::CpuOfflinePreference::Half {
+                        min_active_threads: 2,
+                    }),
                 },
                 smt_offlined: false,
                 smt_orig_state: "on",
@@ -1338,23 +1318,10 @@ mod tests {
                 cluster2_state: ["0"; 2],
                 cluster1_freq: [2400000; 2],
                 cluster2_freq: [2400000; 2],
-                bsm: common::BatterySaverMode::Inactive,
-                config_provider: FakeConfigProvider {
-                    battery_saver_power_preferences: |_| {
-                        Ok(Some(config::PowerPreferences {
-                            governor: None,
-                            epp: None,
-                            cpu_offline: None,
-                        }))
-                    },
-                    default_power_preferences: |_| {
-                        Ok(Some(config::PowerPreferences {
-                            governor: None,
-                            epp: None,
-                            cpu_offline: None,
-                        }))
-                    },
-                    ..Default::default()
+                preferences: config::PowerPreferences {
+                    governor: None,
+                    epp: None,
+                    cpu_offline: None,
                 },
                 smt_offlined: false,
                 smt_orig_state: "on",
@@ -1368,31 +1335,17 @@ mod tests {
             //Setup
             let temp_dir = tempdir()?;
             let root = temp_dir.path();
-
             let manager = DirectoryPowerPreferencesManager {
                 root: root.to_path_buf(),
-                config_provider: test.config_provider,
+                config_provider: FakeConfigProvider {
+                    ..Default::default()
+                },
                 power_source_provider: FakePowerSourceProvider {
                     power_source: config::PowerSourceType::DC,
                 },
             };
             test_write_cpuset_root_cpus(root, test.cpus);
             test_write_smt_control(root, test.smt_orig_state);
-            write_per_policy_scaling_governor(
-                root,
-                vec![
-                    PolicyConfigs {
-                        policy_path: TEST_CPUFREQ_POLICIES[0],
-                        governor: &config::Governor::Performance,
-                        affected_cpus: "0-1",
-                    },
-                    PolicyConfigs {
-                        policy_path: TEST_CPUFREQ_POLICIES[1],
-                        governor: &config::Governor::Performance,
-                        affected_cpus: "2-3",
-                    },
-                ],
-            );
             // Setup core cpus list for two physical cores and two virtual cores
             test_write_core_cpus_list(root, 0, "0,2");
             test_write_core_cpus_list(root, 1, "1,3");
@@ -1421,13 +1374,7 @@ mod tests {
             }
 
             // Call function to test
-            manager.update_power_preferences(
-                common::RTCAudioActive::Inactive,
-                common::FullscreenVideo::Inactive,
-                common::GameMode::Off,
-                common::VmBootMode::Inactive,
-                test.bsm,
-            )?;
+            manager.apply_cpu_hotplug(test.preferences)?;
 
             // Check result.
             if test.smt_offlined {
