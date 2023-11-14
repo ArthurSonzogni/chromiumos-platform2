@@ -22,7 +22,6 @@
 #include <brillo/map_utils.h>
 #include <gmock/gmock.h>
 #include <google/protobuf/stubs/port.h>
-#include <google/protobuf/stubs/strutil.h>
 #include <gtest/gtest.h>
 #include <openssl/sha.h>
 
