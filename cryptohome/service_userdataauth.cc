@@ -933,6 +933,26 @@ void UserDataAuthAdaptor::AuthenticateAuthFactorCompletedCallback(
   SendAuthenticateAuthFactorCompletedSignal(signal);
 }
 
+void UserDataAuthAdaptor::AuthFactorAddedCallback(
+    user_data_auth::AuthFactorAdded signal) {
+  SendAuthFactorAddedSignal(signal);
+}
+
+void UserDataAuthAdaptor::AuthFactorRemovedCallback(
+    user_data_auth::AuthFactorRemoved signal) {
+  SendAuthFactorRemovedSignal(signal);
+}
+
+void UserDataAuthAdaptor::AuthFactorUpdatedCallback(
+    user_data_auth::AuthFactorUpdated signal) {
+  SendAuthFactorUpdatedSignal(signal);
+}
+
+void UserDataAuthAdaptor::AuthSessionExpiringCallback(
+    user_data_auth::AuthSessionExpiring signal) {
+  SendAuthSessionExpiringSignal(signal);
+}
+
 void Pkcs11Adaptor::Pkcs11IsTpmTokenReady(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::Pkcs11IsTpmTokenReadyReply>> response,

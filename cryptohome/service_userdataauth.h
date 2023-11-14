@@ -40,6 +40,17 @@ class UserDataAuthAdaptor
     service_->SetAuthenticateAuthFactorCompletedCallback(base::BindRepeating(
         &UserDataAuthAdaptor::AuthenticateAuthFactorCompletedCallback,
         base::Unretained(this)));
+    service_->SetAuthFactorAddedCallback(base::BindRepeating(
+        &UserDataAuthAdaptor::AuthFactorAddedCallback, base::Unretained(this)));
+    service_->SetAuthFactorRemovedCallback(
+        base::BindRepeating(&UserDataAuthAdaptor::AuthFactorRemovedCallback,
+                            base::Unretained(this)));
+    service_->SetAuthFactorUpdatedCallback(
+        base::BindRepeating(&UserDataAuthAdaptor::AuthFactorUpdatedCallback,
+                            base::Unretained(this)));
+    service_->SetAuthSessionExpiringCallback(
+        base::BindRepeating(&UserDataAuthAdaptor::AuthSessionExpiringCallback,
+                            base::Unretained(this)));
   }
   UserDataAuthAdaptor(const UserDataAuthAdaptor&) = delete;
   UserDataAuthAdaptor& operator=(const UserDataAuthAdaptor&) = delete;
@@ -422,6 +433,19 @@ class UserDataAuthAdaptor
   // the AuthFactor. All we do here is send the signal.
   void AuthenticateAuthFactorCompletedCallback(
       user_data_auth::AuthenticateAuthFactorCompleted signal);
+
+  // This is called by UserDataAuth when a new AuthFactor is added for a user.
+  void AuthFactorAddedCallback(user_data_auth::AuthFactorAdded signal);
+
+  // This is called by UserDataAuth when an AuthFactor is removed for a user.
+  void AuthFactorRemovedCallback(user_data_auth::AuthFactorRemoved signal);
+
+  // This is called by UserDataAuth when an AuthFactor is updated for a user.
+  void AuthFactorUpdatedCallback(user_data_auth::AuthFactorUpdated signal);
+
+  // AuthSessionExpiringCallback is sent when AuthSession has less than a
+  // minute remaining.
+  void AuthSessionExpiringCallback(user_data_auth::AuthSessionExpiring signal);
 
  private:
   brillo::dbus_utils::DBusObject* dbus_object_;

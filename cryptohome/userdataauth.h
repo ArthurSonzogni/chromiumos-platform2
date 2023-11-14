@@ -228,6 +228,30 @@ class UserDataAuth {
       const base::RepeatingCallback<
           void(user_data_auth::AuthenticateAuthFactorCompleted)>& callback);
 
+  // Set the AuthFactorAdded callback. This is usually called by the
+  // DBus adaptor.
+  void SetAuthFactorAddedCallback(
+      const base::RepeatingCallback<void(user_data_auth::AuthFactorAdded)>&
+          callback);
+
+  // Set the AuthFactorRemoved callback. This is usually called by the
+  // DBus adaptor.
+  void SetAuthFactorRemovedCallback(
+      const base::RepeatingCallback<void(user_data_auth::AuthFactorRemoved)>&
+          callback);
+
+  // Set the AuthFactorUpdated callback. This is usually called by the
+  // DBus adaptor.
+  void SetAuthFactorUpdatedCallback(
+      const base::RepeatingCallback<void(user_data_auth::AuthFactorUpdated)>&
+          callback);
+
+  // Set the AuthSessionExpiring callback. This is usually called by the
+  // DBus adaptor.
+  void SetAuthSessionExpiringCallback(
+      const base::RepeatingCallback<void(user_data_auth::AuthSessionExpiring)>&
+          callback);
+
   // Remove the cryptohome (user's home directory) specified in
   // |request.identifier|. See definition of RemoveReply for what is returned.
   void Remove(user_data_auth::RemoveRequest request,
@@ -1169,6 +1193,22 @@ class UserDataAuth {
   // The repeating callback to send AuthenticateAuthFactorCompleted signal.
   base::RepeatingCallback<void(user_data_auth::AuthenticateAuthFactorCompleted)>
       authenticate_auth_factor_completed_callback_;
+
+  // The repeating callback to send AuthFactorAdded signal.
+  base::RepeatingCallback<void(user_data_auth::AuthFactorAdded)>
+      auth_factor_added_callback_;
+
+  // The repeating callback to send AuthFactorRemoved signal.
+  base::RepeatingCallback<void(user_data_auth::AuthFactorRemoved)>
+      auth_factor_removed_callback_;
+
+  // The repeating callback to send AuthFactorUpdated signal.
+  base::RepeatingCallback<void(user_data_auth::AuthFactorUpdated)>
+      auth_factor_updated_callback_;
+
+  // The repeating callback to send AuthSessionExpiring signal.
+  base::RepeatingCallback<void(user_data_auth::AuthSessionExpiring)>
+      auth_session_expiring_callback_;
 
   // The object used to instantiate AuthBlocks.
   std::unique_ptr<AuthBlockUtility> default_auth_block_utility_;

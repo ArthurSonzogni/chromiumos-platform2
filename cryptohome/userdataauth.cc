@@ -1625,6 +1625,30 @@ void UserDataAuth::SetAuthenticateAuthFactorCompletedCallback(
   authenticate_auth_factor_completed_callback_ = callback;
 }
 
+void UserDataAuth::SetAuthFactorAddedCallback(
+    const base::RepeatingCallback<void(user_data_auth::AuthFactorAdded)>&
+        callback) {
+  auth_factor_added_callback_ = callback;
+}
+
+void UserDataAuth::SetAuthFactorRemovedCallback(
+    const base::RepeatingCallback<void(user_data_auth::AuthFactorRemoved)>&
+        callback) {
+  auth_factor_removed_callback_ = callback;
+}
+
+void UserDataAuth::SetAuthFactorUpdatedCallback(
+    const base::RepeatingCallback<void(user_data_auth::AuthFactorUpdated)>&
+        callback) {
+  auth_factor_updated_callback_ = callback;
+}
+
+void UserDataAuth::SetAuthSessionExpiringCallback(
+    const base::RepeatingCallback<void(user_data_auth::AuthSessionExpiring)>&
+        callback) {
+  auth_session_expiring_callback_ = callback;
+}
+
 void UserDataAuth::SetAuthFactorStatusUpdateCallback(
     const AuthFactorStatusUpdateCallback& callback) {
   auth_session_manager_->SetAuthFactorStatusUpdateCallback(callback);

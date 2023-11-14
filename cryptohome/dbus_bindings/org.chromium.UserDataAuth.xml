@@ -613,6 +613,47 @@ do.
                     value="user_data_auth::AuthenticateAuthFactorCompleted" />
       </arg>
     </signal>
+
+    <!-- AuthFactorAdded: Emitted to when a new AuthFactor has been added -->
+    <signal name="AuthFactorAdded">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="status" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::AuthFactorAdded" />
+      </arg>
+    </signal>
+
+    <!-- AuthFactorRemoved: Emitted to when AuthFactor has been removed -->
+    <signal name="AuthFactorRemoved">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="status" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::AuthFactorRemoved" />
+      </arg>
+    </signal>
+
+    <!-- AuthFactorUpdated: Emitted to when AuthFactor has been updated -->
+    <signal name="AuthFactorUpdated">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="status" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::AuthFactorUpdated" />
+      </arg>
+    </signal>
+
+    <!-- AuthSessionExpiring: Emitted to when an AuthSession has less than
+      a minute to expiration -->
+    <signal name="AuthSessionExpiring">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="status" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::AuthSessionExpiring" />
+      </arg>
+    </signal>
   </interface>
 
   <interface name="org.chromium.CryptohomePkcs11Interface">
