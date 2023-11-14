@@ -64,12 +64,6 @@ class AuthSessionManagerTest : public ::testing::Test {
     return std::nullopt;
   }
 
-  // Assert that the session for a given token is in use.
-  template <typename T>
-  void AssertAuthSessionInUse(const T& token) {
-    ASSERT_THAT(TryTakeAuthSession(token), Eq(std::nullopt));
-  }
-
   // Version of TryTake that assumes that the session is available and
   // CHECK-fails if it is not. This makes code easier to read but you should
   // only use it in tests where it is easy to see that the session is not
@@ -124,45 +118,25 @@ class AuthSessionManagerTest : public ::testing::Test {
 };
 
 TEST_F(AuthSessionManagerTest, CreateRemove) {
-  base::UnguessableToken token;
-  // Start scope for first InUseAuthSession
-  {
-    CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-        auth_session_manager_.CreateAuthSession(kUsername, 0,
-                                                AuthIntent::kDecrypt);
-    ASSERT_TRUE(auth_session_status.ok());
-    AuthSession* auth_session = auth_session_status.value().Get();
-    ASSERT_THAT(auth_session, NotNull());
-    token = auth_session->token();
-
-    // You can't get the session, it's still in use after creation.
-    AssertAuthSessionInUse(token);
-    // Scope ends here to free the InUseAuthSession and return it to
-    // AuthSessionManager.
-  }
+  base::UnguessableToken token = auth_session_manager_.CreateAuthSession(
+      kUsername, 0, AuthIntent::kDecrypt);
 
   // After InUseAuthSession is freed, then AuthSessionManager can operate on the
   // token and remove it.
   EXPECT_TRUE(auth_session_manager_.RemoveAuthSession(token));
   InUseAuthSession in_use_auth_session = TakeAuthSession(token);
-  ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+  ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
 
   // Repeat with serialized_token overload.
-  std::string serialized_token;
-  {
-    CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-        auth_session_manager_.CreateAuthSession(kUsername, 0,
-                                                AuthIntent::kDecrypt);
-    ASSERT_TRUE(auth_session_status.ok());
-    AuthSession* auth_session = auth_session_status.value().Get();
-    serialized_token = auth_session->serialized_token();
-    AssertAuthSessionInUse(serialized_token);
-  }
+  token = auth_session_manager_.CreateAuthSession(kUsername, 0,
+                                                  AuthIntent::kDecrypt);
+  std::string serialized_token =
+      *AuthSession::GetSerializedStringFromToken(token);
 
   // Should succeed now that AuthSessionManager owns the AuthSession.
   EXPECT_TRUE(auth_session_manager_.RemoveAuthSession(serialized_token));
   in_use_auth_session = TakeAuthSession(serialized_token);
-  ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+  ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
 }
 
 TEST_F(AuthSessionManagerTest, CreateExpire) {
@@ -171,14 +145,10 @@ TEST_F(AuthSessionManagerTest, CreateExpire) {
   // Create a pair of auth sessions. Before they're authenticated they should
   // have infinite time remaining.
   for (auto& token : tokens) {
-    CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-        auth_session_manager_.CreateAuthSession(kUsername, 0,
-                                                AuthIntent::kDecrypt);
-    ASSERT_THAT(auth_session_status, IsOk());
-    AuthSession* auth_session = auth_session_status.value().Get();
-    ASSERT_THAT(auth_session, NotNull());
-    token = auth_session->token();
-    AssertAuthSessionInUse(token);
+    token = auth_session_manager_.CreateAuthSession(kUsername, 0,
+                                                    AuthIntent::kDecrypt);
+    InUseAuthSession auth_session = TakeAuthSession(token);
+    ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
   }
   for (const auto& token : tokens) {
     InUseAuthSession in_use_auth_session = TakeAuthSession(token);
@@ -219,15 +189,10 @@ TEST_F(AuthSessionManagerTest, ExtendExpire) {
   // Create and set up a pair of auth sessions, setting them to authenticated so
   // that they can eventually get expired.
   for (auto& token : tokens) {
-    CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-        auth_session_manager_.CreateAuthSession(kUsername, 0,
-                                                AuthIntent::kDecrypt);
-    ASSERT_THAT(auth_session_status, IsOk());
-    AuthSession* auth_session = auth_session_status.value().Get();
-    ASSERT_THAT(auth_session, NotNull());
-    token = auth_session->token();
-    AssertAuthSessionInUse(token);
-
+    token = auth_session_manager_.CreateAuthSession(kUsername, 0,
+                                                    AuthIntent::kDecrypt);
+    InUseAuthSession auth_session = TakeAuthSession(token);
+    ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
     EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
     EXPECT_THAT(
         auth_session->authorized_intents(),
@@ -309,25 +274,17 @@ TEST_F(AuthSessionManagerTest, ExtendExpire) {
 
 TEST_F(AuthSessionManagerTest, CreateExpireAfterPowerSuspend) {
   // Create and authenticate a session.
-  base::UnguessableToken token;
+  base::UnguessableToken token = auth_session_manager_.CreateAuthSession(
+      kUsername, 0, AuthIntent::kDecrypt);
   {
-    CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-        auth_session_manager_.CreateAuthSession(kUsername, 0,
-                                                AuthIntent::kDecrypt);
-    ASSERT_THAT(auth_session_status, IsOk());
-    AuthSession* auth_session = auth_session_status.value().Get();
-    ASSERT_THAT(auth_session, NotNull());
-    token = auth_session->token();
+    InUseAuthSession auth_session = TakeAuthSession(token);
+    ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
     EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
     EXPECT_THAT(
         auth_session->authorized_intents(),
         UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-  }
-  {
-    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
-    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
     EXPECT_THAT(
-        in_use_auth_session.GetRemainingTime(),
+        auth_session.GetRemainingTime(),
         AllOf(Gt(base::TimeDelta()), Le(AuthSessionManager::kAuthTimeout)));
   }
 
@@ -337,9 +294,9 @@ TEST_F(AuthSessionManagerTest, CreateExpireAfterPowerSuspend) {
   task_environment_.SuspendedFastForwardBy(time_passed);
   test_power_monitor_.Resume();
   {
-    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
-    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
-    EXPECT_THAT(in_use_auth_session.GetRemainingTime(),
+    InUseAuthSession auth_session = TakeAuthSession(token);
+    ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(auth_session.GetRemainingTime(),
                 AllOf(Gt(base::TimeDelta()),
                       Le(AuthSessionManager::kAuthTimeout - time_passed)));
   }
@@ -350,37 +307,20 @@ TEST_F(AuthSessionManagerTest, CreateExpireAfterPowerSuspend) {
 
   // After expiration the session should be gone.
   {
-    InUseAuthSession in_use_auth_session = TakeAuthSession(token);
-    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
+    InUseAuthSession auth_session = TakeAuthSession(token);
+    ASSERT_THAT(auth_session.AuthSessionStatus(), NotOk());
   }
 }
 
 TEST_F(AuthSessionManagerTest, AddRemove) {
-  base::UnguessableToken token;
-
-  // Start scope for first InUseAuthSession
-  {
-    auto created_auth_session = std::make_unique<AuthSession>(
-        AuthSession::Params{.username = kUsername,
-                            .is_ephemeral_user = false,
-                            .intent = AuthIntent::kDecrypt,
-                            .auth_factor_status_update_timer =
-                                std::make_unique<base::WallClockTimer>(),
-                            .user_exists = false,
-                            .auth_factor_map = AuthFactorMap()},
-        backing_apis_);
-    auto* created_auth_session_ptr = created_auth_session.get();
-
-    InUseAuthSession auth_session =
-        auth_session_manager_.AddAuthSession(std::move(created_auth_session));
-    ASSERT_THAT(auth_session.Get(), Eq(created_auth_session_ptr));
-    token = auth_session->token();
-
-    // You can't get the session, it's still in use.
-    AssertAuthSessionInUse(token);
-    // Scope ends here to free the InUseAuthSession and return it to
-    // AuthSessionManager.
-  }
+  base::UnguessableToken token = auth_session_manager_.CreateAuthSession(
+      AuthSession::Params{.username = kUsername,
+                          .is_ephemeral_user = false,
+                          .intent = AuthIntent::kDecrypt,
+                          .auth_factor_status_update_timer =
+                              std::make_unique<base::WallClockTimer>(),
+                          .user_exists = false,
+                          .auth_factor_map = AuthFactorMap()});
 
   // After InUseAuthSession is freed, then AuthSessionManager can operate on the
   // token and remove it.
@@ -389,29 +329,16 @@ TEST_F(AuthSessionManagerTest, AddRemove) {
   ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
 
   // Repeat with serialized_token overload.
-  std::string serialized_token;
-  {
-    auto created_auth_session = std::make_unique<AuthSession>(
-        AuthSession::Params{.username = kUsername,
-                            .is_ephemeral_user = false,
-                            .intent = AuthIntent::kDecrypt,
-                            .auth_factor_status_update_timer =
-                                std::make_unique<base::WallClockTimer>(),
-                            .user_exists = false,
-                            .auth_factor_map = AuthFactorMap()},
-        backing_apis_);
-    auto* created_auth_session_ptr = created_auth_session.get();
-
-    InUseAuthSession auth_session =
-        auth_session_manager_.AddAuthSession(std::move(created_auth_session));
-    ASSERT_THAT(auth_session.Get(), Eq(created_auth_session_ptr));
-    serialized_token = auth_session->serialized_token();
-
-    // You can't get the session, it's still in use.
-    AssertAuthSessionInUse(serialized_token);
-    // Scope ends here to free the InUseAuthSession and return it to
-    // AuthSessionManager.
-  }
+  token = auth_session_manager_.CreateAuthSession(
+      AuthSession::Params{.username = kUsername,
+                          .is_ephemeral_user = false,
+                          .intent = AuthIntent::kDecrypt,
+                          .auth_factor_status_update_timer =
+                              std::make_unique<base::WallClockTimer>(),
+                          .user_exists = false,
+                          .auth_factor_map = AuthFactorMap()});
+  std::string serialized_token =
+      *AuthSession::GetSerializedStringFromToken(token);
 
   // Should succeed now that AuthSessionManager owns the AuthSession.
   EXPECT_TRUE(auth_session_manager_.RemoveAuthSession(serialized_token));
@@ -431,21 +358,18 @@ TEST_F(AuthSessionManagerTest, AddAndWaitRemove) {
 
   // Start scope for first InUseAuthSession
   {
-    auto created_auth_session = std::make_unique<AuthSession>(
+    token = auth_session_manager_.CreateAuthSession(
         AuthSession::Params{.username = kUsername,
                             .is_ephemeral_user = false,
                             .intent = AuthIntent::kDecrypt,
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
-                            .auth_factor_map = AuthFactorMap()},
-        backing_apis_);
-    auto* created_auth_session_ptr = created_auth_session.get();
-
-    InUseAuthSession auth_session =
-        auth_session_manager_.AddAuthSession(std::move(created_auth_session));
-    ASSERT_THAT(auth_session.Get(), Eq(created_auth_session_ptr));
-    token = auth_session->token();
+                            .auth_factor_map = AuthFactorMap()});
+    TestFuture<InUseAuthSession> created_future;
+    auth_session_manager_.RunWhenAvailable(token, created_future.GetCallback());
+    InUseAuthSession auth_session = created_future.Take();
+    ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
 
     // RunWhenAvailable on the same token will not trigger the callback
     // directly, but wait for the session is not in use instead.
@@ -453,11 +377,11 @@ TEST_F(AuthSessionManagerTest, AddAndWaitRemove) {
         token, base::BindLambdaForTesting(callback));
     EXPECT_FALSE(is_called);
 
-    // |future| will be queued behind |future1|.
+    // |future| will be queued behind |callback|.
     auth_session_manager_.RunWhenAvailable(token, future.GetCallback());
     EXPECT_FALSE(future.IsReady());
 
-    // Scope ends here to free the InUseAuthSession, after this |future1| will
+    // Scope ends here to free the InUseAuthSession, after this |future| will
     // be executed.
   }
 
@@ -480,18 +404,16 @@ TEST_F(AuthSessionManagerTest, RemoveNonExisting) {
 
 TEST_F(AuthSessionManagerTest, FlagPassing) {
   // Arrange.
-  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
+  base::UnguessableToken session_token =
       auth_session_manager_.CreateAuthSession(kUsername, 0,
                                               AuthIntent::kDecrypt);
-  ASSERT_TRUE(auth_session_status.ok());
-  AuthSession* auth_session = auth_session_status.value().Get();
-  CryptohomeStatusOr<InUseAuthSession> ephemral_auth_session_status =
+  InUseAuthSession auth_session = TakeAuthSession(session_token);
+  base::UnguessableToken ephemeral_session_token =
       auth_session_manager_.CreateAuthSession(
           kUsername, user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER,
           AuthIntent::kDecrypt);
-  ASSERT_TRUE(ephemral_auth_session_status.ok());
-  AuthSession* ephemeral_auth_session =
-      ephemral_auth_session_status.value().Get();
+  InUseAuthSession ephemeral_auth_session =
+      TakeAuthSession(ephemeral_session_token);
 
   // Assert
   EXPECT_FALSE(auth_session->ephemeral_user());
@@ -500,18 +422,16 @@ TEST_F(AuthSessionManagerTest, FlagPassing) {
 
 TEST_F(AuthSessionManagerTest, IntentPassing) {
   // Arrange.
-  CryptohomeStatusOr<InUseAuthSession> decryption_auth_session_status =
+  base::UnguessableToken decryption_session_token =
       auth_session_manager_.CreateAuthSession(kUsername, 0,
                                               AuthIntent::kDecrypt);
-  ASSERT_TRUE(decryption_auth_session_status.ok());
-  AuthSession* decryption_auth_session =
-      decryption_auth_session_status.value().Get();
-  CryptohomeStatusOr<InUseAuthSession> verification_auth_session_status =
+  InUseAuthSession decryption_auth_session =
+      TakeAuthSession(decryption_session_token);
+  base::UnguessableToken verification_session_token =
       auth_session_manager_.CreateAuthSession(kUsername, 0,
                                               AuthIntent::kVerifyOnly);
-  ASSERT_TRUE(verification_auth_session_status.ok());
-  AuthSession* verification_auth_session =
-      verification_auth_session_status.value().Get();
+  InUseAuthSession verification_auth_session =
+      TakeAuthSession(verification_session_token);
 
   // Assert.
   EXPECT_EQ(decryption_auth_session->auth_intent(), AuthIntent::kDecrypt);
@@ -519,31 +439,15 @@ TEST_F(AuthSessionManagerTest, IntentPassing) {
 }
 
 TEST_F(AuthSessionManagerTest, AddFindUnMount) {
-  base::UnguessableToken token;
-
   // Start scope for first InUseAuthSession
-  {
-    auto created_auth_session = std::make_unique<AuthSession>(
-        AuthSession::Params{.username = kUsername,
-                            .is_ephemeral_user = false,
-                            .intent = AuthIntent::kDecrypt,
-                            .auth_factor_status_update_timer =
-                                std::make_unique<base::WallClockTimer>(),
-                            .user_exists = false,
-                            .auth_factor_map = AuthFactorMap()},
-        backing_apis_);
-    auto* created_auth_session_ptr = created_auth_session.get();
-
-    InUseAuthSession auth_session =
-        auth_session_manager_.AddAuthSession(std::move(created_auth_session));
-    ASSERT_THAT(auth_session.Get(), Eq(created_auth_session_ptr));
-    token = auth_session->token();
-
-    // You can't get the session, it's still in use.
-    AssertAuthSessionInUse(token);
-    // Scope ends here to free the InUseAuthSession and return it to
-    // AuthSessionManager.
-  }
+  base::UnguessableToken token = auth_session_manager_.CreateAuthSession(
+      AuthSession::Params{.username = kUsername,
+                          .is_ephemeral_user = false,
+                          .intent = AuthIntent::kDecrypt,
+                          .auth_factor_status_update_timer =
+                              std::make_unique<base::WallClockTimer>(),
+                          .user_exists = false,
+                          .auth_factor_map = AuthFactorMap()});
 
   // After InUseAuthSession is freed, then AuthSessionManager can operate on the
   // token and remove it.
@@ -552,29 +456,16 @@ TEST_F(AuthSessionManagerTest, AddFindUnMount) {
   ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
 
   // Repeat with serialized_token overload.
-  std::string serialized_token;
-  {
-    auto created_auth_session = std::make_unique<AuthSession>(
-        AuthSession::Params{.username = kUsername,
-                            .is_ephemeral_user = false,
-                            .intent = AuthIntent::kDecrypt,
-                            .auth_factor_status_update_timer =
-                                std::make_unique<base::WallClockTimer>(),
-                            .user_exists = false,
-                            .auth_factor_map = AuthFactorMap()},
-        backing_apis_);
-    auto* created_auth_session_ptr = created_auth_session.get();
-
-    InUseAuthSession auth_session =
-        auth_session_manager_.AddAuthSession(std::move(created_auth_session));
-    ASSERT_THAT(auth_session.Get(), Eq(created_auth_session_ptr));
-
-    serialized_token = auth_session->serialized_token();
-    // You can't get the session, it's still in use.
-    AssertAuthSessionInUse(serialized_token);
-    // Scope ends here to free the InUseAuthSession and return it to
-    // AuthSessionManager.
-  }
+  token = auth_session_manager_.CreateAuthSession(
+      AuthSession::Params{.username = kUsername,
+                          .is_ephemeral_user = false,
+                          .intent = AuthIntent::kDecrypt,
+                          .auth_factor_status_update_timer =
+                              std::make_unique<base::WallClockTimer>(),
+                          .user_exists = false,
+                          .auth_factor_map = AuthFactorMap()});
+  std::string serialized_token =
+      *AuthSession::GetSerializedStringFromToken(token);
 
   // Should succeed now that AuthSessionManager owns the AuthSession.
   auth_session_manager_.RemoveAllAuthSessions();

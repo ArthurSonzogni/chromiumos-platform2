@@ -393,7 +393,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocLECredManEmptyAuxInRetrieveLabel = 283,
   /* =Obsolete= */
   kLocLECredManConvertTpmError = 284,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthCreateFailedInStartAuthSession = 285,
   /* =Obsolete= */
   kLocUserDataAuthSessionNotFoundInAuthAuthSession = 286,
@@ -1571,6 +1571,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthInvalidAccountIdForGetHibernateSecret = 2188,
   /* ./userdataauth.cc */
   kLocUserDataAuthNoSecretFoundInGetHibernateSecret = 2189,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotFoundInStartAuthSession = 2190,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.
@@ -2023,7 +2025,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthTerminateAuthFactorAuthSessionNotFound = 3510,
   /* ./auth_session.cc */
   kLocAuthSessionInvalidAuthFactorTypeInTerminateAuthFactor = 3511,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionTerminateBadAuthFactorType = 3512,
   /* ./auth_session.cc */
   kLocAuthSessionTerminateInactiveAuthFactor = 3513,

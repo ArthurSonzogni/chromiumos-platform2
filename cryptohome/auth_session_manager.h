@@ -42,21 +42,20 @@ class AuthSessionManager {
 
   ~AuthSessionManager() = default;
 
-  // Creates new auth session for account_id. AuthSessionManager owns the
-  // created AuthSession and the method returns a pointer to it.
-  CryptohomeStatusOr<InUseAuthSession> CreateAuthSession(
-      const Username& account_id, uint32_t flags, AuthIntent auth_intent);
-
-  // Adds a pre-existing auth session to the manager, which will take ownership
-  // over the session.
-  InUseAuthSession AddAuthSession(std::unique_ptr<AuthSession> auth_session);
+  // Creates new auth session for account_id with the specified flags and
+  // intent. Returns the token for the newly created session.
+  base::UnguessableToken CreateAuthSession(const Username& account_id,
+                                           uint32_t flags,
+                                           AuthIntent auth_intent);
+  // Allow for the explicit control over the AuthSession parameters. This should
+  // generally only be used in testing.
+  base::UnguessableToken CreateAuthSession(
+      AuthSession::Params auth_session_params);
 
   // Removes existing auth session with token. Returns false if there's no auth
   // session with this token.
   bool RemoveAuthSession(const base::UnguessableToken& token);
-
-  // Overload for remove to avoid deserialization client side. Returns false if
-  // there's no auth session with the given token.
+  // Overload for remove to avoid deserialization client side.
   bool RemoveAuthSession(const std::string& serialized_token);
 
   // Removes all the authsession and calls their destructor. This is supposed to
@@ -105,6 +104,11 @@ class AuthSessionManager {
     // The operations that are waiting for the session to be released.
     PendingCallbacksQueue pending_callbacks;
   };
+
+  // Add a new session. Implements the common portion of the CreateAuthSession
+  // calls, after the session has successfully been created.
+  base::UnguessableToken AddAuthSession(
+      std::unique_ptr<AuthSession> auth_session);
 
   // Starts/Restarts/Stops the expiration timer based on the current contents of
   // the expiration map.

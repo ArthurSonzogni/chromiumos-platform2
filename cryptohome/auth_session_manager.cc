@@ -16,6 +16,7 @@
 #include <base/notreached.h>
 #include <base/time/default_clock.h>
 #include <base/time/time.h>
+#include <base/unguessable_token.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec/status.h>
 
@@ -47,55 +48,17 @@ AuthSessionManager::AuthSessionManager(AuthSession::BackingApis backing_apis)
   CHECK(backing_apis.features);
 }
 
-CryptohomeStatusOr<InUseAuthSession> AuthSessionManager::CreateAuthSession(
+base::UnguessableToken AuthSessionManager::CreateAuthSession(
     const Username& account_id, uint32_t flags, AuthIntent auth_intent) {
-  // Assumption here is that keyset_management_ will outlive this AuthSession.
   std::unique_ptr<AuthSession> auth_session =
       AuthSession::Create(account_id, flags, auth_intent, backing_apis_);
   return AddAuthSession(std::move(auth_session));
 }
 
-InUseAuthSession AuthSessionManager::AddAuthSession(
-    std::unique_ptr<AuthSession> auth_session) {
-  // We should never, ever, be able to get a token collision.
-  const auto& token = auth_session->token();
-  auto iter = auth_sessions_.lower_bound(token);
-  CHECK(iter == auth_sessions_.end() || iter->first != token)
-      << "AuthSession token collision";
-
-  // Add an entry to the session map. Note that we're deliberately initializing
-  // things into an in-use state by only adding a blank entry in the map.
-  auth_sessions_.emplace_hint(iter, token, AuthSessionMapEntry{});
-  InUseAuthSession in_use(*this, std::move(auth_session));
-
-  // Add an expiration entry for the session set to the end of time.
-  base::Time expiration_time = base::Time::Max();
-  expiration_map_.emplace(expiration_time, token);
-  ResetExpirationTimer();
-
-  // Attach the OnAuth handler to the AuthSession. It's important that we do
-  // this after creating the map entries and in_use object because the callback
-  // may immediately fire.
-  //
-  // Note that it is safe for use to use |Unretained| here because the manager
-  // should always outlive all of the sessions it owns.
-  in_use->AddOnAuthCallback(
-      base::BindOnce(&AuthSessionManager::SessionOnAuthCallback,
-                     weak_factory_.GetWeakPtr(), token));
-
-  // Set the AuthFactorStatusUpdate signal handler to the auth session.
-  if (auth_factor_status_update_callback_) {
-    in_use->SetAuthFactorStatusUpdateCallback(
-        base::BindRepeating(auth_factor_status_update_callback_));
-    in_use->SendAuthFactorStatusUpdateSignal();
-  }
-
-  return in_use;
-}
-
-void AuthSessionManager::RemoveAllAuthSessions() {
-  auth_sessions_.clear();
-  expiration_map_.clear();
+base::UnguessableToken AuthSessionManager::CreateAuthSession(
+    AuthSession::Params auth_session_params) {
+  return AddAuthSession(std::make_unique<AuthSession>(
+      std::move(auth_session_params), backing_apis_));
 }
 
 bool AuthSessionManager::RemoveAuthSession(
@@ -122,6 +85,90 @@ bool AuthSessionManager::RemoveAuthSession(
     return false;
   }
   return RemoveAuthSession(token.value());
+}
+
+void AuthSessionManager::RemoveAllAuthSessions() {
+  auth_sessions_.clear();
+  expiration_map_.clear();
+}
+
+void AuthSessionManager::RunWhenAvailable(
+    const std::string& serialized_token,
+    base::OnceCallback<void(InUseAuthSession)> callback) {
+  std::optional<base::UnguessableToken> token =
+      AuthSession::GetTokenFromSerializedString(serialized_token);
+  if (!token.has_value()) {
+    LOG(ERROR) << "Unparsable AuthSession token for find";
+    std::move(callback).Run(InUseAuthSession(*this, nullptr));
+    return;
+  }
+  RunWhenAvailable(token.value(), std::move(callback));
+}
+
+void AuthSessionManager::SetAuthFactorStatusUpdateCallback(
+    const AuthFactorStatusUpdateCallback& callback) {
+  auth_factor_status_update_callback_ = callback;
+}
+
+void AuthSessionManager::RunWhenAvailable(
+    const base::UnguessableToken& token,
+    base::OnceCallback<void(InUseAuthSession)> callback) {
+  auto it = auth_sessions_.find(token);
+  if (it == auth_sessions_.end()) {
+    std::move(callback).Run(InUseAuthSession(*this, nullptr));
+    return;
+  }
+
+  // If the AuthSessionManager doesn't own the AuthSession unique_ptr,
+  // then the AuthSession is actively in use for another dbus operation. Put the
+  // callback into the pending_callbacks queue.
+  if (!it->second.session) {
+    it->second.pending_callbacks.Push(std::move(callback));
+    return;
+  }
+
+  // By giving ownership of the unique_ptr we are marking
+  // the AuthSession as in active use.
+  std::move(callback).Run(
+      InUseAuthSession(*this, std::move(it->second.session)));
+}
+
+base::UnguessableToken AuthSessionManager::AddAuthSession(
+    std::unique_ptr<AuthSession> auth_session) {
+  // We should never, ever, be able to get a token collision.
+  const auto token = auth_session->token();
+  auto iter = auth_sessions_.lower_bound(token);
+  CHECK(iter == auth_sessions_.end() || iter->first != token)
+      << "AuthSession token collision";
+
+  // Add an entry to the session map.
+  iter = auth_sessions_.emplace_hint(
+      iter, token,
+      AuthSessionMapEntry{.session = std::move(auth_session),
+                          .pending_callbacks = {}});
+  AuthSession& added_session = *iter->second.session;
+
+  // Add an expiration entry for the session set to the end of time.
+  base::Time expiration_time = base::Time::Max();
+  expiration_map_.emplace(expiration_time, token);
+  ResetExpirationTimer();
+
+  // Set the AuthFactorStatusUpdate signal handler to the auth session.
+  if (auth_factor_status_update_callback_) {
+    added_session.SetAuthFactorStatusUpdateCallback(
+        base::BindRepeating(auth_factor_status_update_callback_));
+    added_session.SendAuthFactorStatusUpdateSignal();
+  }
+
+  // Attach the OnAuth handler to the AuthSession. It's important that we do
+  // this after creating the map entries because the callback may immediately
+  // fire. We should also avoid touching the session after this because it's
+  // technically possible for it to have been destroyed.
+  added_session.AddOnAuthCallback(
+      base::BindOnce(&AuthSessionManager::SessionOnAuthCallback,
+                     weak_factory_.GetWeakPtr(), token));
+
+  return token;
 }
 
 void AuthSessionManager::ResetExpirationTimer() {
@@ -196,47 +243,6 @@ void AuthSessionManager::MarkNotInUse(std::unique_ptr<AuthSession> session) {
     return;
   }
   it->second.session = std::move(session);
-}
-
-void AuthSessionManager::SetAuthFactorStatusUpdateCallback(
-    const AuthFactorStatusUpdateCallback& callback) {
-  auth_factor_status_update_callback_ = callback;
-}
-
-void AuthSessionManager::RunWhenAvailable(
-    const std::string& serialized_token,
-    base::OnceCallback<void(InUseAuthSession)> callback) {
-  std::optional<base::UnguessableToken> token =
-      AuthSession::GetTokenFromSerializedString(serialized_token);
-  if (!token.has_value()) {
-    LOG(ERROR) << "Unparsable AuthSession token for find";
-    std::move(callback).Run(InUseAuthSession(*this, nullptr));
-    return;
-  }
-  RunWhenAvailable(token.value(), std::move(callback));
-}
-
-void AuthSessionManager::RunWhenAvailable(
-    const base::UnguessableToken& token,
-    base::OnceCallback<void(InUseAuthSession)> callback) {
-  auto it = auth_sessions_.find(token);
-  if (it == auth_sessions_.end()) {
-    std::move(callback).Run(InUseAuthSession(*this, nullptr));
-    return;
-  }
-
-  // If the AuthSessionManager doesn't own the AuthSession unique_ptr,
-  // then the AuthSession is actively in use for another dbus operation. Put the
-  // callback into the pending_callbacks queue.
-  if (!it->second.session) {
-    it->second.pending_callbacks.Push(std::move(callback));
-    return;
-  }
-
-  // By giving ownership of the unique_ptr we are marking
-  // the AuthSession as in active use.
-  std::move(callback).Run(
-      InUseAuthSession(*this, std::move(it->second.session)));
 }
 
 AuthSessionManager::PendingCallbacksQueue::~PendingCallbacksQueue() {

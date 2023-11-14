@@ -921,6 +921,10 @@ class UserDataAuth {
   void RemoveWithSession(user_data_auth::RemoveRequest request,
                          OnDoneCallback<user_data_auth::RemoveReply> on_done,
                          InUseAuthSession auth_session);
+  void StartAuthSessionWithSession(
+      user_data_auth::StartAuthSessionRequest request,
+      OnDoneCallback<user_data_auth::StartAuthSessionReply> on_done,
+      InUseAuthSession auth_session);
   void PrepareEphemeralVaultWithSession(
       user_data_auth::PrepareEphemeralVaultRequest request,
       OnDoneCallback<user_data_auth::PrepareEphemeralVaultReply> on_done,

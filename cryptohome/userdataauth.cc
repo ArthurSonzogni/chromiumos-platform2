@@ -32,6 +32,7 @@
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
+#include <base/unguessable_token.h>
 #include <biod/biod_proxy/auth_stack_manager_proxy_base.h>
 #include <bootlockbox/boot_lockbox_client.h>
 #include <brillo/cryptohome.h>
@@ -501,15 +502,20 @@ void HandleAuthenticationResult(
 // The call expects to be given:
 //  - the AuthSession manager
 //  - a location to wrap the error with if the session is not OK
-//  - the request being handled
 //  - the on_done callback for the request
 //  - a run_with callback that consists of the actual handler
 // The run_with callback can assume that the InUseAuthSession object that it is
 // given is OK, i.e. CHECK(auth_session.AuthSessionStatus().ok()).
-template <typename RequestType, typename ReplyType>
+//
+// By default the function will select the session token from an auth_session_id
+// field in the request. However, there is also an overload that accepts an
+// explicit token argument for use in cases where the request has no such field,
+// or where the session ID is selected in some other way.
+template <typename RequestType, typename ReplyType, typename TokenType>
 void RunWithAuthSessionWhenAvailable(
     AuthSessionManager* auth_session_manager,
     CryptohomeError::ErrorLocationPair err_loc,
+    const TokenType& token,
     RequestType request,
     UserDataAuth::OnDoneCallback<ReplyType> on_done,
     UserDataAuth::HandlerWithSessionCallback<RequestType, ReplyType> run_with) {
@@ -517,7 +523,7 @@ void RunWithAuthSessionWhenAvailable(
   // the session is not okay then call ReplyWithError, wrapping the session
   // status. Otherwise, call run_with and pass on all of the parameters.
   auth_session_manager->RunWhenAvailable(
-      request.auth_session_id(),
+      token,
       base::BindOnce(
           [](CryptohomeError::ErrorLocationPair err_loc, RequestType request,
              UserDataAuth::OnDoneCallback<ReplyType> on_done,
@@ -542,6 +548,17 @@ void RunWithAuthSessionWhenAvailable(
           },
           std::move(err_loc), std::move(request), std::move(on_done),
           std::move(run_with)));
+}
+template <typename RequestType, typename ReplyType>
+void RunWithAuthSessionWhenAvailable(
+    AuthSessionManager* auth_session_manager,
+    CryptohomeError::ErrorLocationPair err_loc,
+    RequestType request,
+    UserDataAuth::OnDoneCallback<ReplyType> on_done,
+    UserDataAuth::HandlerWithSessionCallback<RequestType, ReplyType> run_with) {
+  RunWithAuthSessionWhenAvailable(auth_session_manager, std::move(err_loc),
+                                  request.auth_session_id(), std::move(request),
+                                  std::move(on_done), std::move(run_with));
 }
 
 // Wrapper around AuthSessionManager::RunWhenAvailable that provides all of the
@@ -1836,29 +1853,27 @@ void UserDataAuth::Remove(user_data_auth::RemoveRequest request,
     return;
   }
 
-  if (!request.auth_session_id().empty()) {
-    // If the caller supplies an auth session, schedule the remove to be run
-    // when the session is available.
-    RunWithAuthSessionWhenAvailable(
-        auth_session_manager_,
-        CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInRemove),
-        std::move(request), std::move(on_done),
-        base::BindOnce(&UserDataAuth::RemoveWithSession,
-                       base::Unretained(this)));
-  } else {
-    // If the caller supplies an account identifier then we need to start a new
-    // session to do the cleanup. We can execute the cleanup immediately.
-    CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-        auth_session_manager_->CreateAuthSession(
-            GetAccountId(request.identifier()), /*flags=*/0,
-            AuthIntent::kDecrypt);
-    if (!auth_session_status.ok()) {
-      ReplyWithError(std::move(on_done), {}, auth_session_status.status());
-      return;
+  // If the caller supplies an account identifier then we need to start a new
+  // session to do the cleanup.
+  if (request.auth_session_id().empty()) {
+    base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
+        GetAccountId(request.identifier()), /*flags=*/0, AuthIntent::kDecrypt);
+    // Rewrite the request to use the new session ID and not the account ID.
+    std::optional<std::string> serialized_token =
+        AuthSession::GetSerializedStringFromToken(token);
+    if (!serialized_token.has_value()) {
+      // This should never, ever happen.
+      LOG(FATAL) << "Auth Session somehow started with a null token";
     }
-    RemoveWithSession(std::move(request), std::move(on_done),
-                      std::move(*auth_session_status));
+    request.clear_identifier();
+    request.set_auth_session_id(std::move(*serialized_token));
   }
+
+  RunWithAuthSessionWhenAvailable(
+      auth_session_manager_,
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInRemove),
+      std::move(request), std::move(on_done),
+      base::BindOnce(&UserDataAuth::RemoveWithSession, base::Unretained(this)));
 }
 
 void UserDataAuth::RemoveWithSession(
@@ -2495,21 +2510,23 @@ void UserDataAuth::StartAuthSession(
     return;
   }
 
-  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-      auth_session_manager_->CreateAuthSession(
-          GetAccountId(request.account_id()), request.flags(), *auth_intent);
-  if (!auth_session_status.ok()) {
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocUserDataAuthCreateFailedInStartAuthSession),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                            PossibleAction::kReboot}))
-            .Wrap(std::move(auth_session_status).err_status()));
-    return;
-  }
-  AuthSession* auth_session = auth_session_status.value().Get();
+  base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
+      GetAccountId(request.account_id()), request.flags(), *auth_intent);
 
+  // Now that the session exists, queue up the work to run on it.
+  RunWithAuthSessionWhenAvailable(
+      auth_session_manager_,
+      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInStartAuthSession),
+      token, std::move(request), std::move(on_done),
+      base::BindOnce(&UserDataAuth::StartAuthSessionWithSession,
+                     base::Unretained(this)));
+}
+
+void UserDataAuth::StartAuthSessionWithSession(
+    user_data_auth::StartAuthSessionRequest request,
+    OnDoneCallback<user_data_auth::StartAuthSessionReply> on_done,
+    InUseAuthSession auth_session) {
+  user_data_auth::StartAuthSessionReply reply;
   reply.set_auth_session_id(auth_session->serialized_token());
   reply.set_broadcast_id(auth_session->serialized_public_token());
   reply.set_user_exists(auth_session->user_exists());

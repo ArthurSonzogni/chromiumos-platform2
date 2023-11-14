@@ -15,6 +15,7 @@
 #include <base/test/mock_callback.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
+#include <base/unguessable_token.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
@@ -1302,11 +1303,16 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapUserSecretStash) {
           &crypto_, &platform_, &user_session_map_, &keyset_management_,
           &mock_auth_block_utility_, &auth_factor_driver_manager_,
           &auth_factor_manager_, &uss_storage_, &features_.async});
-  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-      auth_session_manager_mock->CreateAuthSession(Username(kUsername), flags,
-                                                   AuthIntent::kDecrypt);
-  EXPECT_TRUE(auth_session_status.ok());
-  AuthSession* auth_session = auth_session_status.value().Get();
+
+  base::UnguessableToken token = auth_session_manager_mock->CreateAuthSession(
+      Username(kUsername), flags, AuthIntent::kDecrypt);
+
+  TestFuture<InUseAuthSession> session_future;
+  auth_session_manager_mock->RunWhenAvailable(token,
+                                              session_future.GetCallback());
+  InUseAuthSession auth_session = session_future.Take();
+  EXPECT_THAT(auth_session.AuthSessionStatus(), IsOk());
+
   EXPECT_THAT(auth_session->authorized_intents(), IsEmpty());
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
   EXPECT_THAT(
