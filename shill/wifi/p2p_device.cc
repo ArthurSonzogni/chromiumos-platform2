@@ -36,6 +36,7 @@ P2PDevice::P2PDevice(Manager* manager,
                   ? "p2p_go_" + std::to_string(shill_id)
                   : "p2p_client_" + std::to_string(shill_id);
   supplicant_p2pdevice_proxy_.reset();
+  supplicant_persistent_group_path_ = RpcIdentifier("");
   LOG(INFO) << log_name() << ": P2PDevice created";
 }
 
@@ -146,8 +147,14 @@ bool P2PDevice::Connect(std::unique_ptr<P2PService> service) {
                   "has a service configured.";
     return false;
   }
+  KeyValueStore properties = service->GetSupplicantConfigurationParameters();
+  if (!StartSupplicantGroupForClient(properties)) {
+    return false;
+  }
   SetService(std::move(service));
   SetState(P2PDeviceState::kClientAssociating);
+  // TODO(b/308081318): set service up on GroupStarted or NetworkStarted
+  // service_->SetState(LocalService::LocalServiceState::kStateUp);
   return true;
 }
 
@@ -170,7 +177,9 @@ bool P2PDevice::Disconnect() {
                  << P2PDeviceStateName(state_);
     return false;
   }
+  FinishSupplicantGroup();
   SetState(P2PDeviceState::kClientDisconnecting);
+  // TODO(b/308081318): delete service on GroupFinished
   DeleteService();
   return true;
 }
@@ -207,6 +216,49 @@ bool P2PDevice::StartSupplicantGroupForGO(const KeyValueStore& properties) {
   if (!SupplicantPrimaryP2PDeviceProxy()->GroupAdd(properties)) {
     LOG(ERROR) << log_name()
                << ": Failed to GroupAdd via the primary P2PDevice proxy";
+    return false;
+  }
+  return true;
+}
+
+bool P2PDevice::StartSupplicantGroupForClient(const KeyValueStore& properties) {
+  if (!SupplicantPrimaryP2PDeviceProxy()) {
+    LOG(WARNING) << log_name()
+                 << ": Tried to join group while the primary "
+                    "P2PDevice proxy is not connected";
+    return false;
+  }
+  // Right now, there are no commands available in wpa_supplicant to bypass
+  // P2P discovery and join an existing P2P group directly. Instead `GroupAdd`
+  // with persistent group object path and role specified as client can be used
+  // to join the P2P network. For client mode, even if group is specified as
+  // persistent, it will still follow the GO's lead and join as a non-persistent
+  // group. For GO mode, the `GroupAdd` is used directly so that it creates
+  // a non-persistent group.
+  if (!SupplicantPrimaryP2PDeviceProxy()->AddPersistentGroup(
+          properties, &supplicant_persistent_group_path_)) {
+    LOG(ERROR) << log_name()
+               << ": Failed to AddPersistentGroup via the primary"
+                  " P2PDevice proxy";
+    return false;
+  }
+  if (supplicant_persistent_group_path_.value().empty()) {
+    LOG(ERROR) << log_name()
+               << ": Got empty persistent group path from "
+                  "the primary P2PDevice proxy";
+    return false;
+  }
+  KeyValueStore p2pgroup_args;
+  p2pgroup_args.Set<RpcIdentifier>(
+      WPASupplicant::kGroupAddPropertyPersistentPath,
+      supplicant_persistent_group_path_);
+  if (!SupplicantPrimaryP2PDeviceProxy()->GroupAdd(p2pgroup_args)) {
+    LOG(ERROR) << log_name()
+               << ": Failed to GroupAdd via the primary "
+                  "P2PDevice proxy";
+    SupplicantPrimaryP2PDeviceProxy()->RemovePersistentGroup(
+        supplicant_persistent_group_path_);
+    supplicant_persistent_group_path_ = RpcIdentifier("");
     return false;
   }
   return true;
@@ -294,6 +346,12 @@ bool P2PDevice::SetupGroup(const KeyValueStore& properties) {
 
 void P2PDevice::TeardownGroup() {
   DisconnectFromSupplicantP2PDeviceProxy();
+
+  if (!supplicant_persistent_group_path_.value().empty()) {
+    SupplicantPrimaryP2PDeviceProxy()->RemovePersistentGroup(
+        supplicant_persistent_group_path_);
+    supplicant_persistent_group_path_ = RpcIdentifier("");
+  }
 }
 
 void P2PDevice::GroupStarted(const KeyValueStore& properties) {

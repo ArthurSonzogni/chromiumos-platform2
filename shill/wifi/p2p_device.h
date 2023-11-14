@@ -114,7 +114,9 @@ class P2PDevice : public LocalDevice,
   friend class P2PDeviceTest;
   FRIEND_TEST(P2PDeviceTest, DeviceOnOff);
   FRIEND_TEST(P2PDeviceTest, CreateAndRemove);
+  FRIEND_TEST(P2PDeviceTest, ConnectAndDisconnect);
   FRIEND_TEST(P2PDeviceTest, BadState_GO);
+  FRIEND_TEST(P2PDeviceTest, BadState_Client);
   FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantP2PDeviceProxy);
   FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantP2PDeviceProxy_WhileConnected);
   FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantP2PDeviceProxy_Failure);
@@ -148,6 +150,7 @@ class P2PDevice : public LocalDevice,
   // to the wpa_supplicant D-Bus method calls. On success they result with
   // GroupStarted/GroupFinished signal, respectively.
   bool StartSupplicantGroupForGO(const KeyValueStore& properties);
+  bool StartSupplicantGroupForClient(const KeyValueStore& properties);
   bool FinishSupplicantGroup();
 
   // These helper methods provide final operations for group setup/teardown
@@ -174,6 +177,9 @@ class P2PDevice : public LocalDevice,
   // and destroyed on GroupFinished signal via DisconnectP2PDeviceProxy()
   std::unique_ptr<SupplicantP2PDeviceProxyInterface>
       supplicant_p2pdevice_proxy_;
+
+  // The wpa_supplicant persistent group path used for p2p client connection.
+  RpcIdentifier supplicant_persistent_group_path_;
 };
 
 }  // namespace shill
