@@ -1134,7 +1134,7 @@ fn get_snapshot_data_sectors(name: &str) -> Result<u64> {
     let allocated_element =
         get_nth_element(&status, 3).context("Failed to get dm status allocated element")?;
 
-    let allocated = allocated_element.split('/').next().unwrap();
+    let allocated = allocated_element.split('/').next().context("Failed to extract dm allocation field")?;
     let metadata =
         get_nth_element(&status, 4).context("Failed to get dm status metadata element")?;
 
