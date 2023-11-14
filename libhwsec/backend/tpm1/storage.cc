@@ -317,11 +317,13 @@ Status StorageTpm1::Prepare(Space space, uint32_t size) {
 
   ASSIGN_OR_RETURN(const SpaceInfo& space_info, GetSpaceInfo(space));
 
-  if (ready_state.readable && ready_state.writable) {
+  // If the space is bound to PCR0, we should not reuse the previous storage.
+  if (ready_state.readable && ready_state.writable &&
+      !space_info.bind_to_pcr0) {
     return OkStatus();
   }
 
-  if (!ready_state.preparable) {
+  if (!ready_state.preparable && !space_info.bind_to_pcr0) {
     return MakeStatus<TPMError>("The space is not preparable",
                                 TPMRetryAction::kNoRetry);
   }
