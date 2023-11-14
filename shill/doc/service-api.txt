@@ -437,7 +437,7 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			dictionaries, with each (string, string) entry from the following
 			properties:
 
-			When an apn_type is not present in the CustomAPNList, shill will try
+			When no APNs are present in the CustomAPNList, shill will try
 			each modem and modb APN in a round robin fashion. When the list
 			contains at least 1 APN, shill will run all APN logic in manual
 			mode. This means that the round robin will only include APNs from
