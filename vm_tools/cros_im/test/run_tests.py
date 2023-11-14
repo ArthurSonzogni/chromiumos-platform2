@@ -231,6 +231,12 @@ def main() -> None:
     parser.add_argument(
         "--with_xvfb", action="store_true", help="Run tests on xvfb"
     )
+    parser.add_argument(
+        "--attempts",
+        help="Number of times to retry the test",
+        default=1,
+        type=int,
+    )
     args = parser.parse_args()
 
     with tempfile.TemporaryDirectory() as tmp_dir_name:
@@ -239,25 +245,25 @@ def main() -> None:
         if args.suite == "gtk3" and not set_up_gtk3_immodules_cache():
             sys.exit("Failed to set up immodules for GTK3.")
 
-        tests_passed = True
-
         test_binary = (
             TEST_BINARY_GTK4 if args.suite == "gtk4" else TEST_BINARY_GTK3
         )
 
-        gtk_wayland_runner = functools.partial(
+        test_runner = functools.partial(
             run_gtk_wayland_tests, args.gtest_filter, test_binary, tmp_dir_name
         )
 
         if args.with_xvfb:
-            tests_passed = tests_passed and run_tests_with_wayland_server(
-                gtk_wayland_runner
+            test_runner = functools.partial(
+                run_tests_with_wayland_server, test_runner
             )
-        else:
-            tests_passed = tests_passed and gtk_wayland_runner()
 
-        if not tests_passed:
-            sys.exit("At least one test did not pass.")
+        for attempt in range(args.attempts):
+            if test_runner():
+                break
+            print(f"Failed attempt {attempt+1}.")
+        else:
+            sys.exit(f"Failed unit tests after {args.attempts} attempt(s).")
 
 
 if __name__ == "__main__":

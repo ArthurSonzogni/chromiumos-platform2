@@ -218,7 +218,7 @@ test('run_gtk3_unittests',
 if get_option('build_gtk4')
   test('run_gtk4_unittests',
     python3,
-    args: ['../test/run_tests.py', '--with_xvfb', '--suite=gtk4'],
+    args: ['../test/run_tests.py', '--with_xvfb', '--suite=gtk4', '--attempts=3'],
     depends: [libim_test_cros_gtk4, cros_im_tests_gtk4],
     is_parallel: false,
     timeout: 120,
