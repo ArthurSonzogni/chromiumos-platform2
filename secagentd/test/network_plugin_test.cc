@@ -262,6 +262,76 @@ TEST_F(NetworkPluginTestFixture, TestSyntheticFlowEvent) {
   EXPECT_EQ(actual_sent_event->network_flow().network_flow().community_id_v1(),
             "1:xQuGZjr6e08tldWqhl7702m03YU=");
 }
+TEST_F(NetworkPluginTestFixture, TestSSDPFiltering) {
+  // UUT should ignore SSDP broadcast traffic from patchpanel.
+  const uint32_t kPatchPanelPid{0xDEADBEEF};
+  const uint32_t kPatchPanelPpid{0xFEED};
+  const uint32_t kPatchPanelStartTime{123098};
+
+  std::vector<std::unique_ptr<pb::Process>> patch_panel_hierarchy;
+  patch_panel_hierarchy.push_back(std::make_unique<pb::Process>());
+  patch_panel_hierarchy.back()->set_canonical_pid(kPatchPanelPid);
+  pb::FileImage patch_panel_image = pb::FileImage();
+  patch_panel_image.set_pathname("/usr/bin/patchpaneld");
+  *patch_panel_hierarchy.back()->mutable_image() = patch_panel_image;
+
+  patch_panel_hierarchy.push_back(std::make_unique<pb::Process>());
+  patch_panel_hierarchy.back()->set_canonical_pid(kPatchPanelPpid);
+  EXPECT_CALL(*process_cache_,
+              GetProcessHierarchy(kPatchPanelPid, kPatchPanelStartTime, 2))
+      .WillOnce(Return(ByMove(std::move(patch_panel_hierarchy))));
+
+  EXPECT_CALL(*batch_sender_, Enqueue(_)).Times(0);
+
+  bpf::cros_synthetic_network_flow patchpaneld_flow;
+  auto& patchpaneld_tuple = patchpaneld_flow.flow_map_key.five_tuple;
+  auto& patchpaneld_value = patchpaneld_flow.flow_map_value;
+  patchpaneld_value.rx_bytes = 24;
+  patchpaneld_value.tx_bytes = 48;
+  inet_pton(AF_INET, "10.10.10.10", &patchpaneld_tuple.remote_addr.addr4);
+  inet_pton(AF_INET, "239.255.255.250", &patchpaneld_tuple.local_addr.addr4);
+  patchpaneld_tuple.local_port = 1900;
+  patchpaneld_tuple.protocol = bpf::CROS_PROTOCOL_UDP;
+  patchpaneld_value.direction = bpf::CROS_SOCKET_DIRECTION_OUT;
+  patchpaneld_value.task_info.pid = kPatchPanelPid;
+  patchpaneld_value.task_info.start_time = kPatchPanelStartTime;
+  patchpaneld_flow.flow_map_value.task_info.pid = kPatchPanelPid;
+  auto flow_event = CreateCrosFlowEvent(patchpaneld_flow);
+  cbs_.ring_buffer_event_callback.Run(flow_event);
+}
+
+TEST_F(NetworkPluginTestFixture, TestAvahiScriptFiltering) {
+  // UUT should ignore spammy network traffic from avahi bash script.
+  const uint32_t kAvahiPid{0xFADE};
+  const uint32_t kAvahiPpid{0xEDAF};
+  const uint32_t kAvahiStartTime{9876};
+
+  std::vector<std::unique_ptr<pb::Process>> avahi_hierarchy;
+  avahi_hierarchy.push_back(std::make_unique<pb::Process>());
+  avahi_hierarchy.back()->set_canonical_pid(kAvahiPid);
+  avahi_hierarchy.back()->set_commandline("avahi-daemon: running");
+  avahi_hierarchy.push_back(std::make_unique<pb::Process>());
+  avahi_hierarchy.back()->set_canonical_pid(kAvahiPpid);
+  EXPECT_CALL(*process_cache_,
+              GetProcessHierarchy(kAvahiPid, kAvahiStartTime, 2))
+      .WillOnce(Return(ByMove(std::move(avahi_hierarchy))));
+  EXPECT_CALL(*batch_sender_, Enqueue(_)).Times(0);
+
+  bpf::cros_synthetic_network_flow avahi_flow;
+  auto& avahi_tuple = avahi_flow.flow_map_key.five_tuple;
+  auto& avahi_value = avahi_flow.flow_map_value;
+  avahi_value.rx_bytes = 24;
+  avahi_value.tx_bytes = 48;
+  inet_pton(AF_INET, "10.10.10.10", &avahi_tuple.remote_addr.addr4);
+  inet_pton(AF_INET, "239.255.255.250", &avahi_tuple.local_addr.addr4);
+  avahi_tuple.local_port = 12;
+  avahi_tuple.protocol = bpf::CROS_PROTOCOL_TCP;
+  avahi_value.task_info.pid = kAvahiPid;
+  avahi_value.task_info.start_time = kAvahiStartTime;
+  auto avahi_event = CreateCrosFlowEvent(avahi_flow);
+  cbs_.ring_buffer_event_callback.Run(avahi_event);
+}
+
 TEST_F(NetworkPluginTestFixture, TestNetworkPluginListenEvent) {
   // Descending order in time starting from the youngest.
   std::vector<std::unique_ptr<pb::Process>> hierarchy;

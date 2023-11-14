@@ -65,6 +65,34 @@ pb::NetworkProtocol BpfProtocolToPbProtocol(
   }
   return rv;
 }
+
+bool IsFilteredOut(const pb::NetworkFlowEvent& flow_event) {
+  if (!flow_event.has_process() || !flow_event.has_network_flow()) {
+    return true;
+  }
+  const auto process = flow_event.process();
+  const auto flow = flow_event.network_flow();
+
+  // patchpanel SSDP creates an incredible amount of network spam
+  // in certain environments.
+  if (flow.has_protocol() && flow.protocol() == pb::UDP &&
+      flow.has_local_port() && flow.local_port() == 1900) {
+    if (flow.has_local_ip() && (flow.local_ip() == "239.255.255.250" ||
+                                flow.local_ip().starts_with("ff05::c"))) {
+      if (process.has_image() && process.image().has_pathname() &&
+          process.image().pathname().starts_with("/usr/bin/patchpaneld")) {
+        return true;
+      }
+    }
+  }
+
+  // Filter out avahi-daemon spam.
+  if (process.commandline().starts_with("\'avahi-daemon: running")) {
+    return true;
+  }
+  return false;
+}
+
 }  // namespace
 
 std::string NetworkPlugin::ComputeCommunityHashv1(
@@ -305,11 +333,11 @@ NetworkPlugin::MakeFlowEvent(
       flow->set_direction(pb::NetworkFlow::DIRECTION_UNKNOWN);
       break;
   }
+
   FillProcessTree(flow_proto.get(), flow_event.flow_map_value.task_info);
   // TODO(b:294579287): Make event filtering more generic, before doing that
   // process cache hits need to be drastically improved.
-  if (flow_proto->process().commandline().starts_with(
-          "\'avahi-daemon: running")) {
+  if (IsFilteredOut(*flow_proto)) {
     return nullptr;
   }
   return flow_proto;
