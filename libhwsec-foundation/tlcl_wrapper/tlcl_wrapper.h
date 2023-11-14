@@ -6,7 +6,8 @@
 #define LIBHWSEC_FOUNDATION_TLCL_WRAPPER_TLCL_WRAPPER_H_
 
 #include <stdint.h>
-#include <vector>
+
+#include <brillo/secure_blob.h>
 
 #include "libhwsec-foundation/hwsec-foundation_export.h"
 
@@ -28,8 +29,8 @@ class HWSEC_FOUNDATION_EXPORT TlclWrapper {
 
   // Extend the PCR |pcr_num| with |in_digest|.
   virtual uint32_t Extend(int pcr_num,
-                          const std::vector<uint8_t> in_digest,
-                          std::vector<uint8_t>* out_digest) = 0;
+                          const brillo::Blob& in_digest,
+                          brillo::Blob* out_digest) = 0;
 };
 
 // TlclWrapper is a simple wrapper around the vboot tlcl library so that we can
@@ -42,8 +43,8 @@ class HWSEC_FOUNDATION_EXPORT TlclWrapperImpl : public TlclWrapper {
   uint32_t Init() override;
   uint32_t Close() override;
   uint32_t Extend(int pcr_num,
-                  const std::vector<uint8_t> in_digest,
-                  std::vector<uint8_t>* out_digest) override;
+                  const brillo::Blob& in_digest,
+                  brillo::Blob* out_digest) override;
 };
 
 }  // namespace hwsec_foundation

@@ -4,8 +4,7 @@
 
 #include "libhwsec-foundation/tlcl_wrapper/tlcl_wrapper.h"
 
-#include <vector>
-
+#include <brillo/secure_blob.h>
 #include <openssl/sha.h>
 #include <vboot/tlcl.h>
 
@@ -25,13 +24,13 @@ uint32_t TlclWrapperImpl::Close() {
 }
 
 uint32_t TlclWrapperImpl::Extend(int pcr_num,
-                                 const std::vector<uint8_t> in_digest,
-                                 std::vector<uint8_t>* out_digest) {
-  unsigned char out_buffer[TPM_PCR_DIGEST];
+                                 const brillo::Blob& in_digest,
+                                 brillo::Blob* out_digest) {
+  uint8_t out_buffer[TPM_PCR_DIGEST];
   memset(out_buffer, 0, TPM_PCR_DIGEST);
   uint32_t result = TlclExtend(pcr_num, in_digest.data(), out_buffer);
   if (out_digest) {
-    *out_digest = std::vector<uint8_t>(out_buffer, out_buffer + TPM_PCR_DIGEST);
+    *out_digest = brillo::Blob(out_buffer, out_buffer + TPM_PCR_DIGEST);
   }
   return result;
 }
