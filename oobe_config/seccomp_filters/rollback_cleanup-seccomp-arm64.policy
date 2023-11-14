@@ -79,3 +79,4 @@ fstatfs: 1
 # Manually added later because only used rarely.
 clock_gettime: 1
 clock_getres: 1
+gettimeofday: 1

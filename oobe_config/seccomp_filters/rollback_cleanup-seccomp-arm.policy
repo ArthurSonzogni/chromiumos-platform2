@@ -78,3 +78,6 @@ ioctl: arg1 == TCGETS
 lchown: 1
 fstatfs: 1
 fstatfs64: 1
+
+# Manually added later because only used rarely.
+gettimeofday: 1
