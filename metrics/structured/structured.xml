@@ -997,7 +997,41 @@
       <summary>ChromeOS patch target version selected by the policy.</summary>
     </metric>
   </event>
-  <!-- TODO(b/300861453): Add P1 and P2 Enterprise Rollback metrics -->
+
+  <event name="RollbackCompleted">
+    <summary>
+      Enterprise Rollback took place and the device is owned.
+      This event happens after powerwash.
+    </summary>
+    <metric name="origin_chromeos_version_major" type="int">
+      <summary>ChromeOS major version of the device when the policy was set.</summary>
+    </metric>
+    <metric name="origin_chromeos_version_minor" type="int">
+      <summary>ChromeOS minor version of the device when the policy was set.</summary>
+    </metric>
+    <metric name="origin_chromeos_version_patch" type="int">
+      <summary>ChromeOS patch version of the device when the policy was set.</summary>
+    </metric>
+    <metric name="target_chromeos_version_major" type="int">
+      <summary>ChromeOS major target version selected in the policy.</summary>
+    </metric>
+    <metric name="target_chromeos_version_minor" type="int">
+      <summary>ChromeOS minor target version selected in the policy.</summary>
+    </metric>
+    <metric name="target_chromeos_version_patch" type="int">
+      <summary>ChromeOS patch target version selected by the policy.</summary>
+    </metric>
+    <metric name="result_chromeos_version_major" type="int">
+      <summary>ChromeOS major version of the device when reporting the event.</summary>
+    </metric>
+    <metric name="result_chromeos_version_minor" type="int">
+      <summary>ChromeOS minor version of the device when reporting the event.</summary>
+    </metric>
+    <metric name="result_chromeos_version_patch" type="int">
+      <summary>ChromeOS patch version of the device when reporting the event.</summary>
+    </metric>
+  </event>
+  <!-- TODO(b/300861453): Add P2 Enterprise Rollback metrics -->
 </project>
 
 <project name="rmad">
