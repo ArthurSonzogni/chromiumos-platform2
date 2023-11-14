@@ -491,16 +491,16 @@ pub fn emergency_reboot(reason: &str) {
     // Redirect the log to in-memory, which flushes out any pending logs if
     // logging is already directed to a file.
     redirect_log(HiberlogOut::BufferInMemory);
-    reboot_system().unwrap();
+    reboot_system();
     // Exit with a weird error code to avoid going through this path multiple
     // times.
     exit(9);
 }
 
 /// Perform an orderly reboot.
-fn reboot_system() -> Result<()> {
+fn reboot_system() {
     error!("Rebooting system!");
-    checked_command(&mut Command::new("/sbin/reboot")).context("Failed to reboot system")
+    let _ = checked_command(&mut Command::new("/sbin/reboot")).expect("Failed to reboot system");
 }
 
 pub fn mount_filesystem<P: AsRef<OsStr>>(
