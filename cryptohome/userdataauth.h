@@ -1314,7 +1314,7 @@ class UserDataAuth {
               StartMigrateToDircryptoWithAuthenticatedAuthSession);
   FRIEND_TEST(UserDataAuthExTest,
               StartMigrateToDircryptoWithUnAuthenticatedAuthSession);
-
+  FRIEND_TEST(UserDataAuthApiTest, EvictDeviceKeySuccess);
   friend class AuthSessionInterfaceTestBase;
   friend class AuthSessionInterfaceTest;
   friend class AuthSessionInterfaceMockAuthTest;

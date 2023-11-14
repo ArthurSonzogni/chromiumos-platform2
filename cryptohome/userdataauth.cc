@@ -118,6 +118,7 @@ namespace {
 
 constexpr char kMountThreadName[] = "MountThread";
 constexpr char kNotFirstBootFilePath[] = "/run/cryptohome/not_first_boot";
+constexpr char kEncDeviceEvictedPath[] = "/run/cryptohome/device_evicted";
 constexpr char kDeviceMapperDevicePrefix[] = "/dev/mapper/dmcrypt";
 constexpr base::TimeDelta kDefaultExtensionTime = base::Seconds(60);
 // Some utility functions used by UserDataAuth.
@@ -3224,6 +3225,15 @@ void UserDataAuth::EvictDeviceKey(
     return;
   }
 
+  // Persist the Suspend ID of the current suspend attempt.
+  if (!base::WriteFile(base::FilePath(kEncDeviceEvictedPath),
+                       std::to_string(request.eviction_id()))) {
+    LOG(ERROR) << "Couldn't create " << kEncDeviceEvictedPath;
+  }
+
+  // If key eviction is successful, we should invalidate all authenticated
+  // AuthSessions, similar to unmounting.
+  auth_session_manager_->RemoveAllAuthSessions();
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 
@@ -4215,6 +4225,12 @@ void UserDataAuth::RestoreDeviceKeyWithSession(
             .Wrap(std::move(mount_status).err_status());
     ReplyWithError(std::move(on_done), reply, status);
     return;
+  }
+
+  // Since key was restored, delete record of the suspend attempt key was
+  // evicted on.
+  if (!platform_->DeleteFile(base::FilePath(kEncDeviceEvictedPath))) {
+    LOG(ERROR) << "Couldn't delete " << kEncDeviceEvictedPath;
   }
 
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());

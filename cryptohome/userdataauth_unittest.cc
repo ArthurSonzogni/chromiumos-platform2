@@ -5164,6 +5164,12 @@ TEST_F(UserDataAuthApiTest, EvictDeviceKeySuccess) {
     return OkStatus<CryptohomeMountError>();
   }));
 
+  // Verify AuthSession is valid before eviction.
+  userdataauth_->auth_session_manager_->RunWhenAvailable(
+      session_id.value(), base::BindOnce([](InUseAuthSession auth_session) {
+        ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
+      }));
+
   // Check that EvictDeviceKey fails when the key eviction operation fails.
   user_data_auth::EvictDeviceKeyRequest evict_req;
   std::optional<user_data_auth::EvictDeviceKeyReply> evict_reply =
@@ -5172,6 +5178,12 @@ TEST_F(UserDataAuthApiTest, EvictDeviceKeySuccess) {
   ASSERT_TRUE(evict_reply.has_value());
   EXPECT_EQ(evict_reply->error(), CRYPTOHOME_ERROR_NOT_SET);
   ASSERT_FALSE(evict_reply->has_error_info());
+
+  // Verify AuthSession is invalidated after eviction.
+  userdataauth_->auth_session_manager_->RunWhenAvailable(
+      session_id.value(), base::BindOnce([](InUseAuthSession auth_session) {
+        ASSERT_THAT(auth_session.AuthSessionStatus(), NotOk());
+      }));
 }
 
 TEST_F(UserDataAuthApiTest, RestoreDeviceKeyFailedWithoutPersistentVault) {
