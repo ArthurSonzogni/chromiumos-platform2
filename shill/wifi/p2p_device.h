@@ -242,6 +242,13 @@ class P2PDevice : public LocalDevice,
   void TeardownGroup(const KeyValueStore& properties);
   void TeardownGroup();
 
+  // These helper methods provide operation required for network setup/teardown.
+  // Depending on device role, they may be called in response to events either
+  // from patchpanel or Shill::Network, in case of GO and Client, respectively.
+  void NetworkStarted();
+  void NetworkFinished();
+  void NetworkFailure(const std::string& reason);
+
   // TODO(b/308081318) move to P2PPeer class
   KeyValueStore PeerProperties(const dbus::ObjectPath& peer);
 

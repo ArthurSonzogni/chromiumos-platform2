@@ -657,12 +657,26 @@ void P2PDevice::GroupStarted(const KeyValueStore& properties) {
       SetupGroup(properties);
       SetState(P2PDeviceState::kClientConfiguring);
       PostDeviceEvent(DeviceEvent::kLinkUp);
+      // TODO(b/299915001): Depending on device role, NetworkStarted handler
+      // should be called in response to events either from patchpanel or
+      // Shill::Network, in case of GO and Client, respectively. Just for now
+      // it's posted from here, to push device into next state.
+      Dispatcher()->PostTask(
+          FROM_HERE,
+          base::BindOnce(&P2PDevice::NetworkStarted, base::Unretained(this)));
       break;
     // Expected P2P GO state for GroupStarted event
     case P2PDeviceState::kGOStarting:
       SetupGroup(properties);
       SetState(P2PDeviceState::kGOConfiguring);
       PostDeviceEvent(DeviceEvent::kLinkUp);
+      // TODO(b/299915001): Depending on device role, NetworkStarted handler
+      // should be called in response to events either from patchpanel or
+      // Shill::Network, in case of GO and Client, respectively. Just for now
+      // it's posted from here, to push device into next state.
+      Dispatcher()->PostTask(
+          FROM_HERE,
+          base::BindOnce(&P2PDevice::NetworkStarted, base::Unretained(this)));
       break;
     // Common states for all roles.
     case P2PDeviceState::kUninitialized:
@@ -760,6 +774,51 @@ void P2PDevice::GroupFormationFailure(const std::string& reason) {
                    << " while in state " << P2PDeviceStateName(state_);
       break;
   }
+}
+
+void P2PDevice::NetworkStarted() {
+  LOG(INFO) << log_name() << ": Got " << __func__ << " while in state "
+            << P2PDeviceStateName(state_);
+  switch (state_) {
+    // Expected P2P client state for NetworkStarted signal
+    case P2PDeviceState::kClientConfiguring:
+      SetState(P2PDeviceState::kClientConnected);
+      PostDeviceEvent(DeviceEvent::kNetworkUp);
+      break;
+    // Expected P2P GO state for NetworkStarted signal
+    case P2PDeviceState::kGOConfiguring:
+      SetState(P2PDeviceState::kGOActive);
+      PostDeviceEvent(DeviceEvent::kNetworkUp);
+      break;
+    // Common states for all roles.
+    case P2PDeviceState::kUninitialized:
+    case P2PDeviceState::kReady:
+    // P2P client states.
+    case P2PDeviceState::kClientAssociating:
+    case P2PDeviceState::kClientConnected:
+    case P2PDeviceState::kClientDisconnecting:
+    // P2P GO states.
+    case P2PDeviceState::kGOStarting:
+    case P2PDeviceState::kGOActive:
+    case P2PDeviceState::kGOStopping:
+      LOG(WARNING) << log_name() << ": Ignored " << __func__
+                   << " while in state " << P2PDeviceStateName(state_);
+      break;
+  }
+}
+
+void P2PDevice::NetworkFinished() {
+  LOG(INFO) << log_name() << ": Got " << __func__ << " while in state "
+            << P2PDeviceStateName(state_);
+  // TODO(b/308081318): teardown group/connection or ignore unexpected state
+  PostDeviceEvent(DeviceEvent::kNetworkDown);
+}
+
+void P2PDevice::NetworkFailure(const std::string& reason) {
+  LOG(WARNING) << log_name() << ": Got " << __func__ << " while in state "
+               << P2PDeviceStateName(state_) << ", reason: " << reason;
+  // TODO(b/308081318): teardown group/connection or ignore unexpected state
+  PostDeviceEvent(DeviceEvent::kNetworkFailure);
 }
 
 KeyValueStore P2PDevice::PeerProperties(const dbus::ObjectPath& peer) {
