@@ -254,8 +254,6 @@ bool P2PDevice::CreateGroup(std::unique_ptr<P2PService> service) {
   }
   SetService(std::move(service));
   SetState(P2PDeviceState::kGOStarting);
-  // TODO(b/308081318): set service up on GroupStarted or NetworkStarted
-  // service_->SetState(LocalService::LocalServiceState::kStateUp);
   return true;
 }
 
@@ -278,8 +276,6 @@ bool P2PDevice::Connect(std::unique_ptr<P2PService> service) {
   }
   SetService(std::move(service));
   SetState(P2PDeviceState::kClientAssociating);
-  // TODO(b/308081318): set service up on GroupStarted or NetworkStarted
-  // service_->SetState(LocalService::LocalServiceState::kStateUp);
   return true;
 }
 
@@ -606,6 +602,10 @@ bool P2PDevice::SetupGroup(const KeyValueStore& properties) {
   if (!group_passphrase_.empty())
     LOG(INFO) << log_name() << ": Passphrase configured: " << group_passphrase_;
 
+  // TODO(b/308081318): This requires HotspotDevice to be fully responsible
+  // for states and events handling. Currently DeviceEvent::kLinkUp/Down events
+  // are partially handled by LocalService.
+  // service_->SetState(LocalService::LocalServiceState::kStateUp);
   return true;
 }
 
@@ -656,11 +656,13 @@ void P2PDevice::GroupStarted(const KeyValueStore& properties) {
     case P2PDeviceState::kClientAssociating:
       SetupGroup(properties);
       SetState(P2PDeviceState::kClientConfiguring);
+      PostDeviceEvent(DeviceEvent::kLinkUp);
       break;
     // Expected P2P GO state for GroupStarted event
     case P2PDeviceState::kGOStarting:
       SetupGroup(properties);
       SetState(P2PDeviceState::kGOConfiguring);
+      PostDeviceEvent(DeviceEvent::kLinkUp);
       break;
     // Common states for all roles.
     case P2PDeviceState::kUninitialized:
@@ -688,6 +690,7 @@ void P2PDevice::GroupFinished(const KeyValueStore& properties) {
     case P2PDeviceState::kGOStopping:
       TeardownGroup(properties);
       SetState(P2PDeviceState::kReady);
+      PostDeviceEvent(DeviceEvent::kLinkDown);
       break;
     // P2P client link failure states for GroupFinished event
     case P2PDeviceState::kClientConfiguring:
@@ -697,6 +700,7 @@ void P2PDevice::GroupFinished(const KeyValueStore& properties) {
                    << P2PDeviceStateName(state_);
       TeardownGroup(properties);
       SetState(P2PDeviceState::kClientDisconnecting);
+      PostDeviceEvent(DeviceEvent::kLinkFailure);
       break;
     // P2P GO link failure states for GroupFinished event
     case P2PDeviceState::kGOConfiguring:
@@ -706,6 +710,7 @@ void P2PDevice::GroupFinished(const KeyValueStore& properties) {
                    << P2PDeviceStateName(state_);
       TeardownGroup(properties);
       SetState(P2PDeviceState::kGOStopping);
+      PostDeviceEvent(DeviceEvent::kLinkFailure);
       break;
     // P2P client/GO unknown error states for GroupFinished event
     case P2PDeviceState::kClientAssociating:
@@ -731,12 +736,14 @@ void P2PDevice::GroupFormationFailure(const std::string& reason) {
       LOG(ERROR) << log_name()
                  << ": Failed to connect Client, group formation failure";
       SetState(P2PDeviceState::kClientDisconnecting);
+      PostDeviceEvent(DeviceEvent::kLinkFailure);
       break;
     // Expected P2P GO state for GroupFormationFailure signal
     case P2PDeviceState::kGOStarting:
       LOG(ERROR) << log_name()
                  << ": Failed to start GO, group formation failure";
       SetState(P2PDeviceState::kGOStopping);
+      PostDeviceEvent(DeviceEvent::kLinkFailure);
       break;
     // Common states for all roles.
     case P2PDeviceState::kUninitialized:
@@ -781,6 +788,7 @@ void P2PDevice::PeerJoined(const dbus::ObjectPath& peer) {
       KeyValueStore properties = PeerProperties(peer);
       LOG(INFO) << log_name() << ": Peer connected, path: " << peer.value();
       group_peers_[peer] = properties;
+      PostDeviceEvent(DeviceEvent::kPeerConnected);
     } break;
     case P2PDeviceState::kUninitialized:
     case P2PDeviceState::kReady:
@@ -810,6 +818,7 @@ void P2PDevice::PeerDisconnected(const dbus::ObjectPath& peer) {
       // TODO(b/308081318): implement P2PPeer class
       LOG(INFO) << log_name() << ": Peer disconnected, path: " << peer.value();
       group_peers_.erase(peer);
+      PostDeviceEvent(DeviceEvent::kPeerDisconnected);
     } break;
     case P2PDeviceState::kUninitialized:
     case P2PDeviceState::kReady:

@@ -150,6 +150,8 @@ class P2PDeviceTest : public testing::Test {
     return properties;
   }
 
+  void DispatchPendingEvents() { dispatcher_.DispatchPendingEvents(); }
+
  protected:
   StrictMock<base::MockRepeatingCallback<void(LocalDevice::DeviceEvent,
                                               const LocalDevice*)>>
@@ -223,8 +225,10 @@ TEST_F(P2PDeviceTest, GroupInfo) {
   EXPECT_EQ(group_info.Get<Stringmaps>(kP2PGroupInfoClientsProperty).size(), 0);
 
   // Emulate GroupStarted signal from wpa_supplicant.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
   device->GroupStarted(DefaultGroupStartedProperties());
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
+  DispatchPendingEvents();
 
   group_info = device->GetGroupInfo();
   EXPECT_TRUE(group_info.Contains<Integer>(kP2PGroupInfoShillIDProperty));
@@ -271,6 +275,8 @@ TEST_F(P2PDeviceTest, GroupInfo) {
 
   // Emulate PeerJoined signals from wpa_supplicant.
   int num_of_peers = 10;
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kPeerConnected, _))
+      .Times(num_of_peers);
   EXPECT_CALL(control_interface_, CreateSupplicantPeerProxy(_))
       .Times(num_of_peers);
   for (int peer_id = 0; peer_id < num_of_peers; peer_id++) {
@@ -288,6 +294,7 @@ TEST_F(P2PDeviceTest, GroupInfo) {
     EXPECT_EQ(device->group_peers_[peer_path], peer_properties);
     EXPECT_EQ(device->group_peers_.size(), peer_id + 1);
   }
+  DispatchPendingEvents();
 
   group_info = device->GetGroupInfo();
   EXPECT_TRUE(group_info.Contains<Integer>(kP2PGroupInfoShillIDProperty));
@@ -340,8 +347,10 @@ TEST_F(P2PDeviceTest, GroupInfo) {
             num_of_peers);
 
   // Emulate GroupFinished signal from wpa_supplicant
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkDown, _)).Times(1);
   device->GroupFinished(DefaultGroupFinishedProperties());
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kReady);
+  DispatchPendingEvents();
 
   group_info = device->GetGroupInfo();
   EXPECT_TRUE(group_info.Contains<Integer>(kP2PGroupInfoShillIDProperty));
@@ -409,8 +418,10 @@ TEST_F(P2PDeviceTest, ClientInfo) {
             kP2PClientInfoStateAssociating);
 
   // Emulate GroupStarted signal from wpa_supplicant.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
   device->GroupStarted(DefaultGroupStartedProperties());
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kClientConfiguring);
+  DispatchPendingEvents();
 
   client_info = device->GetClientInfo();
   EXPECT_TRUE(client_info.Contains<Integer>(kP2PClientInfoShillIDProperty));
@@ -477,8 +488,10 @@ TEST_F(P2PDeviceTest, ClientInfo) {
             kP2PPassphrase);
 
   // Emulate GroupFinished signal from wpa_supplicant
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkDown, _)).Times(1);
   device->GroupFinished(DefaultGroupFinishedProperties());
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kReady);
+  DispatchPendingEvents();
 
   client_info = device->GetClientInfo();
   EXPECT_TRUE(client_info.Contains<Integer>(kP2PClientInfoShillIDProperty));
@@ -515,6 +528,8 @@ TEST_F(P2PDeviceTest, PeerJoinAndDisconnect) {
   device->SetState(P2PDevice::P2PDeviceState::kGOActive);
 
   // Emulate PeerJoined signals from wpa_supplicant.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kPeerConnected, _))
+      .Times(num_of_peers);
   EXPECT_CALL(control_interface_, CreateSupplicantPeerProxy(_))
       .Times(num_of_peers);
   for (int peer_id = 0; peer_id < num_of_peers; peer_id++) {
@@ -532,15 +547,20 @@ TEST_F(P2PDeviceTest, PeerJoinAndDisconnect) {
     EXPECT_EQ(device->group_peers_[peer_path], peer_properties);
     EXPECT_EQ(device->group_peers_.size(), peer_id + 1);
   }
+  DispatchPendingEvents();
 
   // Emulate PeerJoined duplicate signals from wpa_supplicant.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kPeerConnected, _)).Times(0);
   EXPECT_CALL(control_interface_, CreateSupplicantPeerProxy(_)).Times(0);
   for (int peer_id = 0; peer_id < num_of_peers; peer_id++) {
     device->PeerJoined(DefaultPeerObjectPath(peer_id));
     EXPECT_EQ(device->group_peers_.size(), num_of_peers);
   }
+  DispatchPendingEvents();
 
   // Emulate PeerDisconnected signals from wpa_supplicant.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kPeerDisconnected, _))
+      .Times(num_of_peers);
   for (int peer_id = 0; peer_id < num_of_peers; peer_id++) {
     auto peer_path = DefaultPeerObjectPath(peer_id);
 
@@ -549,6 +569,7 @@ TEST_F(P2PDeviceTest, PeerJoinAndDisconnect) {
     EXPECT_FALSE(base::Contains(device->group_peers_, peer_path));
     EXPECT_EQ(device->group_peers_.size(), num_of_peers - peer_id - 1);
   }
+  DispatchPendingEvents();
 }
 
 TEST_F(P2PDeviceTest, PeerJoinAndDisconnect_WhileNotReady) {
@@ -558,17 +579,21 @@ TEST_F(P2PDeviceTest, PeerJoinAndDisconnect_WhileNotReady) {
   int num_of_peers = 10;
 
   // Emulate PeerJoined signals from wpa_supplicant.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kPeerConnected, _)).Times(0);
   EXPECT_CALL(control_interface_, CreateSupplicantPeerProxy(_)).Times(0);
   for (int peer_id = 0; peer_id < num_of_peers; peer_id++) {
     device->PeerJoined(DefaultPeerObjectPath(peer_id));
     EXPECT_EQ(device->group_peers_.size(), 0);
   }
+  DispatchPendingEvents();
 
   // Emulate PeerDisconnected signals from wpa_supplicant.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kPeerDisconnected, _)).Times(0);
   for (int peer_id = 0; peer_id < num_of_peers; peer_id++) {
     device->PeerDisconnected(DefaultPeerObjectPath(peer_id));
     EXPECT_EQ(device->group_peers_.size(), 0);
   }
+  DispatchPendingEvents();
 }
 
 TEST_F(P2PDeviceTest, CreateAndRemove) {
@@ -592,6 +617,7 @@ TEST_F(P2PDeviceTest, CreateAndRemove) {
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kGOStarting);
 
   // Emulate GroupStarted signal from wpa_supplicant.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
   EXPECT_CALL(control_interface_,
               CreateSupplicantInterfaceProxy(_, kInterfacePath));
   EXPECT_CALL(control_interface_,
@@ -606,6 +632,7 @@ TEST_F(P2PDeviceTest, CreateAndRemove) {
   EXPECT_EQ(device->group_frequency_, kP2PFrequency);
   EXPECT_EQ(device->group_passphrase_, kP2PPassphrase);
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
+  DispatchPendingEvents();
 
   // Attempting to create group again should be a no-op and and return false.
   auto service1 = std::make_unique<MockP2PService>(
@@ -621,11 +648,13 @@ TEST_F(P2PDeviceTest, CreateAndRemove) {
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kGOStopping);
 
   // Emulate GroupFinished signal from wpa_supplicant
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkDown, _)).Times(1);
   device->GroupFinished(DefaultGroupFinishedProperties());
   EXPECT_EQ(device->supplicant_interface_proxy_, nullptr);
   EXPECT_EQ(device->supplicant_p2pdevice_proxy_, nullptr);
   EXPECT_EQ(device->supplicant_group_proxy_, nullptr);
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kReady);
+  DispatchPendingEvents();
 
   // Stop device
   EXPECT_TRUE(device->Stop());
@@ -655,6 +684,7 @@ TEST_F(P2PDeviceTest, ConnectAndDisconnect) {
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kClientAssociating);
 
   // Emulate GroupStarted signal from wpa_supplicant.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
   EXPECT_CALL(control_interface_,
               CreateSupplicantInterfaceProxy(_, kInterfacePath));
   EXPECT_CALL(control_interface_,
@@ -669,6 +699,7 @@ TEST_F(P2PDeviceTest, ConnectAndDisconnect) {
   EXPECT_EQ(device->group_frequency_, kP2PFrequency);
   EXPECT_EQ(device->group_passphrase_, kP2PPassphrase);
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kClientConfiguring);
+  DispatchPendingEvents();
 
   // Attempting to connect again should be a no-op and and return false.
   auto service1 = std::make_unique<MockP2PService>(
@@ -686,6 +717,7 @@ TEST_F(P2PDeviceTest, ConnectAndDisconnect) {
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kClientDisconnecting);
 
   // Emulate GroupFinished signal from wpa_supplicant
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkDown, _)).Times(1);
   EXPECT_CALL(*supplicant_primary_p2pdevice_proxy_, RemovePersistentGroup(_));
   device->GroupFinished(DefaultGroupFinishedProperties());
   EXPECT_EQ(device->supplicant_interface_proxy_, nullptr);
@@ -693,6 +725,7 @@ TEST_F(P2PDeviceTest, ConnectAndDisconnect) {
   EXPECT_EQ(device->supplicant_group_proxy_, nullptr);
   EXPECT_TRUE(device->supplicant_persistent_group_path_.value().empty());
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kReady);
+  DispatchPendingEvents();
 
   // Stop device
   EXPECT_TRUE(device->Stop());
@@ -1042,8 +1075,10 @@ TEST_F(P2PDeviceTest, GroupStarted_WhileNotExpected) {
   CHECK_EQ(device->state_, P2PDevice::P2PDeviceState::kReady);
 
   // Ignore unextected signal from wpa_supplicant.
+  EXPECT_CALL(cb, Run(_, _)).Times(0);
   device->GroupStarted(DefaultGroupStartedProperties());
   CHECK_EQ(device->state_, P2PDevice::P2PDeviceState::kReady);
+  DispatchPendingEvents();
 
   // Stop device
   device->Stop();
@@ -1073,11 +1108,13 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileGOStarting) {
   // Emulate GroupFinished signal from wpa_supplicant (unknown failure).
   // Uexpected signal, we are going to ignore finished signal for group
   // which was never started. Let the start timer to expire.
+  EXPECT_CALL(cb, Run(_, _)).Times(0);
   device->GroupFinished(DefaultGroupFinishedProperties());
   EXPECT_EQ(device->supplicant_interface_proxy_, nullptr);
   EXPECT_EQ(device->supplicant_p2pdevice_proxy_, nullptr);
   EXPECT_EQ(device->supplicant_group_proxy_, nullptr);
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kGOStarting);
+  DispatchPendingEvents();
 
   // TODO(b:308081318): Implement start/stop timers
   // Emulate start timer expired.
@@ -1109,6 +1146,7 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileGOConfiguring) {
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kGOStarting);
 
   // Emulate GroupStarted signal from wpa_supplicant.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
   EXPECT_CALL(control_interface_,
               CreateSupplicantInterfaceProxy(_, kInterfacePath));
   EXPECT_CALL(control_interface_,
@@ -1123,13 +1161,16 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileGOConfiguring) {
   EXPECT_EQ(device->group_frequency_, kP2PFrequency);
   EXPECT_EQ(device->group_passphrase_, kP2PPassphrase);
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
+  DispatchPendingEvents();
 
   // Emulate GroupFinished signal from wpa_supplicant (link failure).
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkFailure, _)).Times(1);
   device->GroupFinished(DefaultGroupFinishedProperties());
   EXPECT_EQ(device->supplicant_interface_proxy_, nullptr);
   EXPECT_EQ(device->supplicant_p2pdevice_proxy_, nullptr);
   EXPECT_EQ(device->supplicant_group_proxy_, nullptr);
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kGOStopping);
+  DispatchPendingEvents();
 
   // Stop device
   device->Stop();
@@ -1157,6 +1198,7 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileGOActive) {
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kGOStarting);
 
   // Emulate GroupStarted signal from wpa_supplicant.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
   EXPECT_CALL(control_interface_,
               CreateSupplicantInterfaceProxy(_, kInterfacePath));
   EXPECT_CALL(control_interface_,
@@ -1171,16 +1213,19 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileGOActive) {
   EXPECT_EQ(device->group_frequency_, kP2PFrequency);
   EXPECT_EQ(device->group_passphrase_, kP2PPassphrase);
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
+  DispatchPendingEvents();
 
   // Emulate network layer initialization.
   device->SetState(P2PDevice::P2PDeviceState::kGOActive);
 
   // Emulate GroupFinished signal from wpa_supplicant (link failure).
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkFailure, _)).Times(1);
   device->GroupFinished(DefaultGroupFinishedProperties());
   EXPECT_EQ(device->supplicant_interface_proxy_, nullptr);
   EXPECT_EQ(device->supplicant_p2pdevice_proxy_, nullptr);
   EXPECT_EQ(device->supplicant_group_proxy_, nullptr);
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kGOStopping);
+  DispatchPendingEvents();
 
   // Stop device
   device->Stop();
@@ -1210,11 +1255,13 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileClientAssociating) {
   // Emulate GroupFinished signal from wpa_supplicant (unknown failure).
   // Uexpected signal, we are going to ignore finished signal for group
   // which was never started. Let the start timer to expire.
+  EXPECT_CALL(cb, Run(_, _)).Times(0);
   device->GroupFinished(DefaultGroupFinishedProperties());
   EXPECT_EQ(device->supplicant_interface_proxy_, nullptr);
   EXPECT_EQ(device->supplicant_p2pdevice_proxy_, nullptr);
   EXPECT_EQ(device->supplicant_group_proxy_, nullptr);
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kClientAssociating);
+  DispatchPendingEvents();
 
   // TODO(b:308081318): Implement start/stop timers
   // Emulate start timer expired.
@@ -1246,6 +1293,7 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileClientConfiguring) {
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kClientAssociating);
 
   // Emulate GroupStarted signal from wpa_supplicant.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
   EXPECT_CALL(control_interface_,
               CreateSupplicantInterfaceProxy(_, kInterfacePath));
   EXPECT_CALL(control_interface_,
@@ -1260,13 +1308,16 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileClientConfiguring) {
   EXPECT_EQ(device->group_frequency_, kP2PFrequency);
   EXPECT_EQ(device->group_passphrase_, kP2PPassphrase);
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kClientConfiguring);
+  DispatchPendingEvents();
 
   // Emulate GroupFinished signal from wpa_supplicant (link failure).
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkFailure, _)).Times(1);
   device->GroupFinished(DefaultGroupFinishedProperties());
   EXPECT_EQ(device->supplicant_interface_proxy_, nullptr);
   EXPECT_EQ(device->supplicant_p2pdevice_proxy_, nullptr);
   EXPECT_EQ(device->supplicant_group_proxy_, nullptr);
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kClientDisconnecting);
+  DispatchPendingEvents();
 
   // Stop device
   device->Stop();
@@ -1294,6 +1345,7 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileClientConnected) {
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kClientAssociating);
 
   // Emulate GroupStarted signal from wpa_supplicant.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
   EXPECT_CALL(control_interface_,
               CreateSupplicantInterfaceProxy(_, kInterfacePath));
   EXPECT_CALL(control_interface_,
@@ -1308,16 +1360,19 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileClientConnected) {
   EXPECT_EQ(device->group_frequency_, kP2PFrequency);
   EXPECT_EQ(device->group_passphrase_, kP2PPassphrase);
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kClientConfiguring);
+  DispatchPendingEvents();
 
   // Emulate network layer initialization.
   device->SetState(P2PDevice::P2PDeviceState::kClientConnected);
 
   // Emulate GroupFinished signal from wpa_supplicant (link failure).
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkFailure, _)).Times(1);
   device->GroupFinished(DefaultGroupFinishedProperties());
   EXPECT_EQ(device->supplicant_interface_proxy_, nullptr);
   EXPECT_EQ(device->supplicant_p2pdevice_proxy_, nullptr);
   EXPECT_EQ(device->supplicant_group_proxy_, nullptr);
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kClientDisconnecting);
+  DispatchPendingEvents();
 
   // Stop device
   device->Stop();
@@ -1334,8 +1389,10 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileNotExpected) {
   CHECK_EQ(device->state_, P2PDevice::P2PDeviceState::kReady);
 
   // Ignore unextected signal from wpa_supplicant.
+  EXPECT_CALL(cb, Run(_, _)).Times(0);
   device->GroupFinished(DefaultGroupFinishedProperties());
   CHECK_EQ(device->state_, P2PDevice::P2PDeviceState::kReady);
+  DispatchPendingEvents();
 
   // Stop device
   device->Stop();
