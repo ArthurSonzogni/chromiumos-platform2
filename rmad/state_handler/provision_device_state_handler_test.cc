@@ -850,6 +850,21 @@ TEST_F(ProvisionDeviceStateHandlerTest,
                ProvisionStatus::RMAD_PROVISION_ERROR_GBB);
 }
 
+TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_ResetGbbBypassed) {
+  // Set up normal environment.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+  // Bypass resetting GBB flags.
+  EXPECT_TRUE(brillo::TouchFile(GetTempDirPath().Append(kTestDirPath)));
+
+  auto handler = CreateInitializedStateHandler({.reset_gbb_success = false});
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+}
+
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_CannotReadBoardIdBlocking) {
   // Set up normal environment.

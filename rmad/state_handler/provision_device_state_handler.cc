@@ -478,7 +478,10 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
                kProgressFlushOutVpdCache);
 
   // Reset GBB flags.
-  if (std::string output; !cmd_utils_->GetOutput(kResetGbbFlagsArgv, &output)) {
+  if (base::PathExists(working_dir_path_.Append(kTestDirPath))) {
+    DLOG(INFO) << "GBB flags preserved for testing.";
+  } else if (std::string output;
+             !cmd_utils_->GetOutput(kResetGbbFlagsArgv, &output)) {
     LOG(ERROR) << "Failed to reset GBB flags";
     LOG(ERROR) << output;
     UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
