@@ -442,7 +442,6 @@ void DisplayBluetoothInfo(const mojom::BluetoothResultPtr& result) {
         SET_DICT(appearance, device, &device_data);
         SET_DICT(modalias, device, &device_data);
         SET_DICT(rssi, device, &device_data);
-        SET_DICT(mtu, device, &device_data);
         SET_DICT(uuids, device, &device_data);
         SET_DICT(battery_percentage, device, &device_data);
         SET_DICT(bluetooth_class, device, &device_data);

@@ -55,7 +55,6 @@ std::unique_ptr<org::bluez::Device1Proxy::PropertySet> GetDeviceProperties() {
   properties->appearance.ReplaceValue(2371);
   properties->modalias.ReplaceValue("bluetooth:v000ApFFFFdFFFF");
   properties->rssi.ReplaceValue(-55);
-  properties->mtu.ReplaceValue(12320);
   properties->uuids.ReplaceValue({"00001107-d102-11e1-9b23-00025b00a5a5",
                                   "0000110c-0000-1000-8000-00805f9b34fb",
                                   "0000110e-0000-1000-8000-00805f9b34fb",
@@ -206,12 +205,6 @@ class BluetoothFetcherTest : public ::testing::Test {
     EXPECT_CALL(*mock_device_proxy(), rssi())
         .Times(device_call_times)
         .WillRepeatedly(Return(device_properties->rssi.value()));
-    EXPECT_CALL(*mock_device_proxy(), is_mtu_valid())
-        .Times(device_call_times)
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(*mock_device_proxy(), mtu())
-        .Times(device_call_times)
-        .WillRepeatedly(Return(device_properties->mtu.value()));
     EXPECT_CALL(*mock_device_proxy(), is_uuids_valid())
         .Times(device_call_times)
         .WillRepeatedly(Return(true));
@@ -245,7 +238,6 @@ class BluetoothFetcherTest : public ::testing::Test {
     EXPECT_CALL(*mock_device_proxy(), is_modalias_valid())
         .WillOnce(Return(false));
     EXPECT_CALL(*mock_device_proxy(), is_rssi_valid()).WillOnce(Return(false));
-    EXPECT_CALL(*mock_device_proxy(), is_mtu_valid()).WillOnce(Return(false));
     EXPECT_CALL(*mock_device_proxy(), is_uuids_valid()).WillOnce(Return(false));
     EXPECT_CALL(*mock_device_proxy(), is_bluetooth_class_valid())
         .WillOnce(Return(false));
@@ -360,7 +352,6 @@ TEST_F(BluetoothFetcherTest, FetchBluetoothInfo) {
             device_properties->appearance.value());
   EXPECT_EQ(device_info->modalias, device_properties->modalias.value());
   EXPECT_EQ(device_info->rssi->value, device_properties->rssi.value());
-  EXPECT_EQ(device_info->mtu->value, device_properties->mtu.value());
   EXPECT_EQ(device_info->uuids, device_properties->uuids.value());
   EXPECT_EQ(device_info->bluetooth_class->value,
             device_properties->bluetooth_class.value());
@@ -453,7 +444,6 @@ TEST_F(BluetoothFetcherTest, DeviceWithInvalidProperties) {
   EXPECT_FALSE(device_info->appearance);
   EXPECT_FALSE(device_info->modalias.has_value());
   EXPECT_FALSE(device_info->rssi);
-  EXPECT_FALSE(device_info->mtu);
   EXPECT_FALSE(device_info->uuids.has_value());
   EXPECT_FALSE(device_info->battery_percentage);
   EXPECT_FALSE(device_info->bluetooth_class);

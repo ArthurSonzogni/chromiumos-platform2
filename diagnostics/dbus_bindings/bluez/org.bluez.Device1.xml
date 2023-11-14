@@ -49,11 +49,6 @@
         Received Signal Strength Indicator of the remote device.
       </tp:docstring>
     </property>
-    <property name="MTU" type="q" access="read">
-      <tp:docstring>
-        The Maximum Transmission Unit used in ATT communication.
-      </tp:docstring>
-    </property>
     <property name="UUIDs" type="as" access="read">
       <tp:docstring>
        The list of the available remote services.

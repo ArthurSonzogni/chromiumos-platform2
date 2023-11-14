@@ -91,8 +91,6 @@ void ParseDevicesInfo(
       info.modalias = device->modalias();
     if (device->is_rssi_valid())
       info.rssi = mojom::NullableInt16::New(device->rssi());
-    if (device->is_mtu_valid())
-      info.mtu = mojom::NullableUint16::New(device->mtu());
     if (device->is_uuids_valid())
       info.uuids = device->uuids();
     if (device->is_bluetooth_class_valid())
