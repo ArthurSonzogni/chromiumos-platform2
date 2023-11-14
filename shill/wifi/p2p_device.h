@@ -145,6 +145,10 @@ class P2PDevice : public LocalDevice,
  private:
   friend class P2PDeviceTest;
   FRIEND_TEST(P2PDeviceTest, DeviceOnOff);
+  FRIEND_TEST(P2PDeviceTest, GroupInfo);
+  FRIEND_TEST(P2PDeviceTest, GroupInfo_EmptyOnClient);
+  FRIEND_TEST(P2PDeviceTest, ClientInfo);
+  FRIEND_TEST(P2PDeviceTest, ClientInfo_EmptyOnGO);
   FRIEND_TEST(P2PDeviceTest, CreateAndRemove);
   FRIEND_TEST(P2PDeviceTest, ConnectAndDisconnect);
   FRIEND_TEST(P2PDeviceTest, BadState_GO);

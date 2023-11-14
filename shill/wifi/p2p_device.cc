@@ -22,6 +22,52 @@
 
 namespace shill {
 
+namespace {
+static const char* GroupInfoState(P2PDevice::P2PDeviceState state) {
+  switch (state) {
+    case P2PDevice::P2PDeviceState::kGOStarting:
+      return kP2PGroupInfoStateStarting;
+    case P2PDevice::P2PDeviceState::kGOConfiguring:
+      return kP2PGroupInfoStateConfiguring;
+    case P2PDevice::P2PDeviceState::kGOActive:
+      return kP2PGroupInfoStateActive;
+    case P2PDevice::P2PDeviceState::kGOStopping:
+      return kP2PGroupInfoStateStopping;
+    case P2PDevice::P2PDeviceState::kUninitialized:
+    case P2PDevice::P2PDeviceState::kReady:
+    case P2PDevice::P2PDeviceState::kClientAssociating:
+    case P2PDevice::P2PDeviceState::kClientConfiguring:
+    case P2PDevice::P2PDeviceState::kClientConnected:
+    case P2PDevice::P2PDeviceState::kClientDisconnecting:
+      return kP2PGroupInfoStateIdle;
+  }
+  NOTREACHED() << "Unhandled P2P state " << static_cast<int>(state);
+  return kP2PGroupInfoStateIdle;
+}
+
+static const char* ClientInfoState(P2PDevice::P2PDeviceState state) {
+  switch (state) {
+    case P2PDevice::P2PDeviceState::kClientAssociating:
+      return kP2PClientInfoStateAssociating;
+    case P2PDevice::P2PDeviceState::kClientConfiguring:
+      return kP2PClientInfoStateConfiguring;
+    case P2PDevice::P2PDeviceState::kClientConnected:
+      return kP2PClientInfoStateConnected;
+    case P2PDevice::P2PDeviceState::kClientDisconnecting:
+      return kP2PClientInfoStateDisconnecting;
+    case P2PDevice::P2PDeviceState::kUninitialized:
+    case P2PDevice::P2PDeviceState::kReady:
+    case P2PDevice::P2PDeviceState::kGOStarting:
+    case P2PDevice::P2PDeviceState::kGOConfiguring:
+    case P2PDevice::P2PDeviceState::kGOActive:
+    case P2PDevice::P2PDeviceState::kGOStopping:
+      return kP2PClientInfoStateIdle;
+  }
+  NOTREACHED() << "Unhandled P2P state " << static_cast<int>(state);
+  return kP2PClientInfoStateIdle;
+}
+}  // namespace
+
 // Constructor function
 P2PDevice::P2PDevice(Manager* manager,
                      LocalDevice::IfaceType iface_type,
@@ -45,6 +91,10 @@ P2PDevice::P2PDevice(Manager* manager,
   supplicant_group_proxy_.reset();
   supplicant_group_path_ = RpcIdentifier("");
   supplicant_persistent_group_path_ = RpcIdentifier("");
+  group_ssid_ = "";
+  group_bssid_ = "";
+  group_frequency_ = 0;
+  group_passphrase_ = "";
   LOG(INFO) << log_name() << ": P2PDevice created";
 }
 
@@ -81,21 +131,60 @@ const char* P2PDevice::P2PDeviceStateName(P2PDeviceState state) {
 }
 
 KeyValueStore P2PDevice::GetGroupInfo() const {
-  // TODO(b/301049348): integration with supplicant D-Bus is required
-  // to provide properties of active p2p group.
-  KeyValueStore groupInfo;
-  groupInfo.Set<Integer>(kP2PGroupInfoShillIDProperty, shill_id());
-  groupInfo.Set<String>(kP2PGroupInfoStateProperty, kP2PGroupInfoStateIdle);
-  return groupInfo;
+  KeyValueStore group_info;
+  if (iface_type() != LocalDevice::IfaceType::kP2PGO) {
+    LOG(WARNING) << log_name() << ": Tried to get group info for iface_type "
+                 << iface_type();
+    return group_info;
+  }
+  group_info.Set<Integer>(kP2PGroupInfoShillIDProperty, shill_id());
+  group_info.Set<String>(kP2PGroupInfoStateProperty, GroupInfoState(state_));
+
+  if (!group_ssid_.empty())
+    group_info.Set<String>(kP2PGroupInfoSSIDProperty, group_ssid_);
+
+  if (!group_bssid_.empty())
+    group_info.Set<String>(kP2PGroupInfoBSSIDProperty, group_bssid_);
+
+  if (group_frequency_)
+    group_info.Set<Integer>(kP2PGroupInfoFrequencyProperty, group_frequency_);
+
+  if (!group_passphrase_.empty())
+    group_info.Set<String>(kP2PGroupInfoPassphraseProperty, group_passphrase_);
+
+  // TODO(b/299915001): retrieve IPv4/IPv6Address from patchpanel
+  // TODO(b/301049348): retrieve MacAddress from wpa_supplicant
+  // TODO(b/301049348): handle PeerJoin/Disconnected from wpa_supplicant
+  return group_info;
 }
 
 KeyValueStore P2PDevice::GetClientInfo() const {
-  // TODO(b/301049348): integration with supplicant D-Bus is required
-  // to provide properties of connected p2p client.
-  KeyValueStore clientInfo;
-  clientInfo.Set<Integer>(kP2PClientInfoShillIDProperty, shill_id());
-  clientInfo.Set<String>(kP2PClientInfoStateProperty, kP2PClientInfoStateIdle);
-  return clientInfo;
+  KeyValueStore client_info;
+  if (iface_type() != LocalDevice::IfaceType::kP2PClient) {
+    LOG(WARNING) << log_name() << ": Tried to get client info for iface_type "
+                 << iface_type();
+    return client_info;
+  }
+  client_info.Set<Integer>(kP2PClientInfoShillIDProperty, shill_id());
+  client_info.Set<String>(kP2PClientInfoStateProperty, ClientInfoState(state_));
+
+  if (!group_ssid_.empty())
+    client_info.Set<String>(kP2PClientInfoSSIDProperty, group_ssid_);
+
+  if (!group_bssid_.empty())
+    client_info.Set<String>(kP2PClientInfoGroupBSSIDProperty, group_bssid_);
+
+  if (group_frequency_)
+    client_info.Set<Integer>(kP2PClientInfoFrequencyProperty, group_frequency_);
+
+  if (!group_passphrase_.empty())
+    client_info.Set<String>(kP2PClientInfoPassphraseProperty,
+                            group_passphrase_);
+
+  // TODO(b/299915001): retrieve IPv4/IPv6Address from Shill::Network class
+  // TODO(b/301049348): retrieve MacAddress from wpa_supplicant
+  // TODO(b/301049348): retrieve GO properties from wpa_supplicant
+  return client_info;
 }
 
 bool P2PDevice::Start() {
@@ -514,6 +603,11 @@ void P2PDevice::TeardownGroup(const KeyValueStore& properties) {
 }
 
 void P2PDevice::TeardownGroup() {
+  group_ssid_ = "";
+  group_bssid_ = "";
+  group_frequency_ = 0;
+  group_passphrase_ = "";
+
   DisconnectFromSupplicantGroupProxy();
   DisconnectFromSupplicantP2PDeviceProxy();
   DisconnectFromSupplicantInterfaceProxy();

@@ -164,28 +164,267 @@ TEST_F(P2PDeviceTest, GroupInfo) {
   scoped_refptr<P2PDevice> device =
       new P2PDevice(&manager_, LocalDevice::IfaceType::kP2PGO,
                     kPrimaryInterfaceName, kPhyIndex, kShillId, cb.Get());
+  // Start device
+  EXPECT_TRUE(device->Start());
+  EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kReady);
 
-  KeyValueStore groupInfo = device->GetGroupInfo();
-  EXPECT_TRUE(groupInfo.Contains<Integer>(kP2PGroupInfoShillIDProperty));
-  EXPECT_TRUE(groupInfo.Contains<String>(kP2PGroupInfoStateProperty));
+  KeyValueStore group_info = device->GetGroupInfo();
+  EXPECT_TRUE(group_info.Contains<Integer>(kP2PGroupInfoShillIDProperty));
+  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoStateProperty));
+  EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoSSIDProperty));
+  EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoBSSIDProperty));
+  EXPECT_FALSE(group_info.Contains<Integer>(kP2PGroupInfoFrequencyProperty));
+  EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoPassphraseProperty));
 
-  EXPECT_EQ(groupInfo.Get<Integer>(kP2PGroupInfoShillIDProperty), kShillId);
-  EXPECT_EQ(groupInfo.Get<String>(kP2PGroupInfoStateProperty),
+  EXPECT_EQ(group_info.Get<Integer>(kP2PGroupInfoShillIDProperty), kShillId);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoStateProperty),
             kP2PGroupInfoStateIdle);
+
+  // Initiate group creation.
+  auto service = std::make_unique<MockP2PService>(
+      device, kP2PSSID, kP2PPassphrase, kP2PFrequency);
+  EXPECT_TRUE(device->CreateGroup(std::move(service)));
+  EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kGOStarting);
+
+  group_info = device->GetGroupInfo();
+  EXPECT_TRUE(group_info.Contains<Integer>(kP2PGroupInfoShillIDProperty));
+  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoStateProperty));
+  EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoSSIDProperty));
+  EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoBSSIDProperty));
+  EXPECT_FALSE(group_info.Contains<Integer>(kP2PGroupInfoFrequencyProperty));
+  EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoPassphraseProperty));
+
+  EXPECT_EQ(group_info.Get<Integer>(kP2PGroupInfoShillIDProperty), kShillId);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoStateProperty),
+            kP2PGroupInfoStateStarting);
+
+  // Emulate GroupStarted signal from wpa_supplicant.
+  device->GroupStarted(DefaultGroupStartedProperties());
+  EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
+
+  group_info = device->GetGroupInfo();
+  EXPECT_TRUE(group_info.Contains<Integer>(kP2PGroupInfoShillIDProperty));
+  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoStateProperty));
+  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoSSIDProperty));
+  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoBSSIDProperty));
+  EXPECT_TRUE(group_info.Contains<Integer>(kP2PGroupInfoFrequencyProperty));
+  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoPassphraseProperty));
+
+  EXPECT_EQ(group_info.Get<Integer>(kP2PGroupInfoShillIDProperty), kShillId);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoStateProperty),
+            kP2PGroupInfoStateConfiguring);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoSSIDProperty), kP2PSSID);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoBSSIDProperty), kP2PBSSID);
+  EXPECT_EQ(group_info.Get<Integer>(kP2PGroupInfoFrequencyProperty),
+            kP2PFrequency);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoPassphraseProperty),
+            kP2PPassphrase);
+
+  // Emulate network layer initialization.
+  device->SetState(P2PDevice::P2PDeviceState::kGOActive);
+
+  group_info = device->GetGroupInfo();
+  EXPECT_TRUE(group_info.Contains<Integer>(kP2PGroupInfoShillIDProperty));
+  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoStateProperty));
+  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoSSIDProperty));
+  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoBSSIDProperty));
+  EXPECT_TRUE(group_info.Contains<Integer>(kP2PGroupInfoFrequencyProperty));
+  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoPassphraseProperty));
+
+  EXPECT_EQ(group_info.Get<Integer>(kP2PGroupInfoShillIDProperty), kShillId);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoStateProperty),
+            kP2PGroupInfoStateActive);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoSSIDProperty), kP2PSSID);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoBSSIDProperty), kP2PBSSID);
+  EXPECT_EQ(group_info.Get<Integer>(kP2PGroupInfoFrequencyProperty),
+            kP2PFrequency);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoPassphraseProperty),
+            kP2PPassphrase);
+
+  // Remove group.
+  EXPECT_TRUE(device->RemoveGroup());
+  EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kGOStopping);
+
+  group_info = device->GetGroupInfo();
+  EXPECT_TRUE(group_info.Contains<Integer>(kP2PGroupInfoShillIDProperty));
+  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoStateProperty));
+  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoSSIDProperty));
+  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoBSSIDProperty));
+  EXPECT_TRUE(group_info.Contains<Integer>(kP2PGroupInfoFrequencyProperty));
+  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoPassphraseProperty));
+
+  EXPECT_EQ(group_info.Get<Integer>(kP2PGroupInfoShillIDProperty), kShillId);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoStateProperty),
+            kP2PGroupInfoStateStopping);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoSSIDProperty), kP2PSSID);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoBSSIDProperty), kP2PBSSID);
+  EXPECT_EQ(group_info.Get<Integer>(kP2PGroupInfoFrequencyProperty),
+            kP2PFrequency);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoPassphraseProperty),
+            kP2PPassphrase);
+
+  // Emulate GroupFinished signal from wpa_supplicant
+  device->GroupFinished(DefaultGroupFinishedProperties());
+  EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kReady);
+
+  group_info = device->GetGroupInfo();
+  EXPECT_TRUE(group_info.Contains<Integer>(kP2PGroupInfoShillIDProperty));
+  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoStateProperty));
+  EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoSSIDProperty));
+  EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoBSSIDProperty));
+  EXPECT_FALSE(group_info.Contains<Integer>(kP2PGroupInfoFrequencyProperty));
+  EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoPassphraseProperty));
+
+  EXPECT_EQ(group_info.Get<Integer>(kP2PGroupInfoShillIDProperty), kShillId);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoStateProperty),
+            kP2PGroupInfoStateIdle);
+
+  // Stop device
+  EXPECT_TRUE(device->Stop());
+  EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kUninitialized);
+}
+
+TEST_F(P2PDeviceTest, GroupInfo_EmptyOnClient) {
+  scoped_refptr<P2PDevice> device =
+      new P2PDevice(&manager_, LocalDevice::IfaceType::kP2PClient,
+                    kPrimaryInterfaceName, kPhyIndex, kShillId, cb.Get());
+  KeyValueStore group_info = device->GetGroupInfo();
+  EXPECT_TRUE(group_info.IsEmpty());
 }
 
 TEST_F(P2PDeviceTest, ClientInfo) {
   scoped_refptr<P2PDevice> device =
       new P2PDevice(&manager_, LocalDevice::IfaceType::kP2PClient,
                     kPrimaryInterfaceName, kPhyIndex, kShillId, cb.Get());
+  // Start device
+  EXPECT_TRUE(device->Start());
+  EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kReady);
 
-  KeyValueStore clientInfo = device->GetClientInfo();
-  EXPECT_TRUE(clientInfo.Contains<Integer>(kP2PGroupInfoShillIDProperty));
-  EXPECT_TRUE(clientInfo.Contains<String>(kP2PGroupInfoStateProperty));
+  KeyValueStore client_info = device->GetClientInfo();
+  EXPECT_TRUE(client_info.Contains<Integer>(kP2PClientInfoShillIDProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoStateProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoSSIDProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoGroupBSSIDProperty));
+  EXPECT_FALSE(client_info.Contains<Integer>(kP2PClientInfoFrequencyProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoPassphraseProperty));
 
-  EXPECT_EQ(clientInfo.Get<Integer>(kP2PGroupInfoShillIDProperty), kShillId);
-  EXPECT_EQ(clientInfo.Get<String>(kP2PGroupInfoStateProperty),
-            kP2PGroupInfoStateIdle);
+  EXPECT_EQ(client_info.Get<Integer>(kP2PClientInfoShillIDProperty), kShillId);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoStateProperty),
+            kP2PClientInfoStateIdle);
+
+  // Initiate group connection.
+  auto service = std::make_unique<MockP2PService>(
+      device, kP2PSSID, kP2PPassphrase, kP2PFrequency);
+  EXPECT_TRUE(device->Connect(std::move(service)));
+  EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kClientAssociating);
+
+  client_info = device->GetClientInfo();
+  EXPECT_TRUE(client_info.Contains<Integer>(kP2PClientInfoShillIDProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoStateProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoSSIDProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoGroupBSSIDProperty));
+  EXPECT_FALSE(client_info.Contains<Integer>(kP2PClientInfoFrequencyProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoPassphraseProperty));
+
+  EXPECT_EQ(client_info.Get<Integer>(kP2PClientInfoShillIDProperty), kShillId);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoStateProperty),
+            kP2PClientInfoStateAssociating);
+
+  // Emulate GroupStarted signal from wpa_supplicant.
+  device->GroupStarted(DefaultGroupStartedProperties());
+  EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kClientConfiguring);
+
+  client_info = device->GetClientInfo();
+  EXPECT_TRUE(client_info.Contains<Integer>(kP2PClientInfoShillIDProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoStateProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoSSIDProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoGroupBSSIDProperty));
+  EXPECT_TRUE(client_info.Contains<Integer>(kP2PClientInfoFrequencyProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoPassphraseProperty));
+
+  EXPECT_EQ(client_info.Get<Integer>(kP2PClientInfoShillIDProperty), kShillId);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoStateProperty),
+            kP2PClientInfoStateConfiguring);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoSSIDProperty), kP2PSSID);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoGroupBSSIDProperty),
+            kP2PBSSID);
+  EXPECT_EQ(client_info.Get<Integer>(kP2PClientInfoFrequencyProperty),
+            kP2PFrequency);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoPassphraseProperty),
+            kP2PPassphrase);
+
+  // Emulate network layer initialization.
+  device->SetState(P2PDevice::P2PDeviceState::kClientConnected);
+
+  client_info = device->GetClientInfo();
+  EXPECT_TRUE(client_info.Contains<Integer>(kP2PClientInfoShillIDProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoStateProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoSSIDProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoGroupBSSIDProperty));
+  EXPECT_TRUE(client_info.Contains<Integer>(kP2PClientInfoFrequencyProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoPassphraseProperty));
+
+  EXPECT_EQ(client_info.Get<Integer>(kP2PClientInfoShillIDProperty), kShillId);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoStateProperty),
+            kP2PClientInfoStateConnected);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoSSIDProperty), kP2PSSID);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoGroupBSSIDProperty),
+            kP2PBSSID);
+  EXPECT_EQ(client_info.Get<Integer>(kP2PClientInfoFrequencyProperty),
+            kP2PFrequency);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoPassphraseProperty),
+            kP2PPassphrase);
+
+  // Disconnect group.
+  EXPECT_TRUE(device->Disconnect());
+  EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kClientDisconnecting);
+
+  client_info = device->GetClientInfo();
+  EXPECT_TRUE(client_info.Contains<Integer>(kP2PClientInfoShillIDProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoStateProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoSSIDProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoGroupBSSIDProperty));
+  EXPECT_TRUE(client_info.Contains<Integer>(kP2PClientInfoFrequencyProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoPassphraseProperty));
+
+  EXPECT_EQ(client_info.Get<Integer>(kP2PClientInfoShillIDProperty), kShillId);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoStateProperty),
+            kP2PClientInfoStateDisconnecting);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoSSIDProperty), kP2PSSID);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoGroupBSSIDProperty),
+            kP2PBSSID);
+  EXPECT_EQ(client_info.Get<Integer>(kP2PClientInfoFrequencyProperty),
+            kP2PFrequency);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoPassphraseProperty),
+            kP2PPassphrase);
+
+  // Emulate GroupFinished signal from wpa_supplicant
+  device->GroupFinished(DefaultGroupFinishedProperties());
+  EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kReady);
+
+  client_info = device->GetClientInfo();
+  EXPECT_TRUE(client_info.Contains<Integer>(kP2PClientInfoShillIDProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoStateProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoSSIDProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoGroupBSSIDProperty));
+  EXPECT_FALSE(client_info.Contains<Integer>(kP2PClientInfoFrequencyProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoPassphraseProperty));
+
+  EXPECT_EQ(client_info.Get<Integer>(kP2PClientInfoShillIDProperty), kShillId);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoStateProperty),
+            kP2PClientInfoStateIdle);
+
+  // Stop device
+  EXPECT_TRUE(device->Stop());
+  EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kUninitialized);
+}
+
+TEST_F(P2PDeviceTest, ClientInfo_EmptyOnGO) {
+  scoped_refptr<P2PDevice> device =
+      new P2PDevice(&manager_, LocalDevice::IfaceType::kP2PGO,
+                    kPrimaryInterfaceName, kPhyIndex, kShillId, cb.Get());
+  KeyValueStore client_info = device->GetClientInfo();
+  EXPECT_TRUE(client_info.IsEmpty());
 }
 
 TEST_F(P2PDeviceTest, CreateAndRemove) {
