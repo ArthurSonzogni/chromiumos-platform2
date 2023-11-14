@@ -20,13 +20,11 @@ class VpdProcess {
 
   // Update values in RW_VPD by running the update_rw_vpd utility in a separate
   // process. Keys with empty string values are deleted. update_rw_vpd will not
-  // perform unnecessary writes if the already cache matches the update unless
-  // |ignore_cache| is set to true which will unconditionally update the VPD.
+  // perform unnecessary writes if the already cache matches the update.
   //
   // Takes ownership of |completion| if process starts successfully. Returns
   // whether fork() was successful.
   virtual bool RunInBackground(const KeyValuePairs& updates,
-                               bool ignore_cache,
                                CompletionCallback completion) = 0;
 };
 

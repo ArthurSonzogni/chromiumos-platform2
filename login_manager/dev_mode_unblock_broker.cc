@@ -328,7 +328,6 @@ void DevModeUnblockBroker::UnblockDevModeInVpd(CompletionCallback completion) {
   if (!vpd_process_->RunInBackground(
           {{crossystem::Crossystem::kBlockDevmode, "0"},
            {crossystem::Crossystem::kCheckEnrollment, "0"}},
-          false,
           base::BindOnce(&DevModeUnblockBroker::HandleVpdDevModeUnblockResult,
                          weak_ptr_factory_.GetWeakPtr(), false,
                          std::move(completion)))) {

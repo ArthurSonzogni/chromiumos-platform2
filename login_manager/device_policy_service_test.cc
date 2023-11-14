@@ -188,7 +188,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
     proto->mutable_system_settings()->set_block_devmode(false);
     SetSettings(service_.get(), std::move(proto));
 
-    EXPECT_CALL(vpd_process_, RunInBackground(_, false, _))
+    EXPECT_CALL(vpd_process_, RunInBackground(_, _))
         .WillRepeatedly(Return(true));
   }
 
@@ -616,8 +616,7 @@ TEST_F(DevicePolicyServiceTest, SetBlockDevModeInNvram) {
   proto->mutable_system_settings()->set_block_devmode(true);
   SetSettings(service_.get(), std::move(proto));
 
-  EXPECT_CALL(vpd_process_, RunInBackground(_, false, _))
-      .WillOnce(Return(true));
+  EXPECT_CALL(vpd_process_, RunInBackground(_, _)).WillOnce(Return(true));
 
   // This file should be removed, because the device is cloud managed.
   EXPECT_CALL(utils_, RemoveFile(kChromadMigrationFilePath))
@@ -646,8 +645,7 @@ TEST_F(DevicePolicyServiceTest, UnsetBlockDevModeInNvram) {
   proto->mutable_system_settings()->set_block_devmode(false);
   SetSettings(service_.get(), std::move(proto));
 
-  EXPECT_CALL(vpd_process_, RunInBackground(_, false, _))
-      .WillOnce(Return(true));
+  EXPECT_CALL(vpd_process_, RunInBackground(_, _)).WillOnce(Return(true));
 
   // This file should be removed, because the device is cloud managed.
   EXPECT_CALL(utils_, RemoveFile(kChromadMigrationFilePath))
@@ -694,8 +692,7 @@ TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
       {crossystem::Crossystem::kBlockDevmode, "0"},
       {crossystem::Crossystem::kCheckEnrollment, "0"},
   };
-  EXPECT_CALL(vpd_process_, RunInBackground(updates, false, _))
-      .WillOnce(Return(true));
+  EXPECT_CALL(vpd_process_, RunInBackground(updates, _)).WillOnce(Return(true));
 
   // This file should be removed, because the device is owned by a consumer.
   EXPECT_CALL(utils_, RemoveFile(kChromadMigrationFilePath))
@@ -736,8 +733,7 @@ TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
       {crossystem::Crossystem::kBlockDevmode, "0"},
       {crossystem::Crossystem::kCheckEnrollment, "1"},
   };
-  EXPECT_CALL(vpd_process_, RunInBackground(updates, false, _))
-      .WillOnce(Return(true));
+  EXPECT_CALL(vpd_process_, RunInBackground(updates, _)).WillOnce(Return(true));
 
   // This file should be removed, because the device is cloud managed.
   EXPECT_CALL(utils_, RemoveFile(kChromadMigrationFilePath))
@@ -772,7 +768,7 @@ TEST_F(DevicePolicyServiceTest, CheckFailUpdateVPD) {
       {crossystem::Crossystem::kBlockDevmode, "0"},
       {crossystem::Crossystem::kCheckEnrollment, "1"},
   };
-  EXPECT_CALL(vpd_process_, RunInBackground(updates, false, _))
+  EXPECT_CALL(vpd_process_, RunInBackground(updates, _))
       .WillOnce(Return(false));
 
   // This file should be removed, because the device is cloud managed.
@@ -798,7 +794,7 @@ TEST_F(DevicePolicyServiceTest, CheckMissingInstallAttributes) {
 
   SetInstallAttributesMissing();
 
-  EXPECT_CALL(vpd_process_, RunInBackground(_, _, _)).Times(0);
+  EXPECT_CALL(vpd_process_, RunInBackground(_, _)).Times(0);
 
   // No file should be removed, because the management mode is unknown.
   EXPECT_CALL(utils_, RemoveFile(_)).Times(0);
@@ -822,7 +818,7 @@ TEST_F(DevicePolicyServiceTest, CheckWeirdInstallAttributes) {
 
   SetDataInInstallAttributes(std::string());
 
-  EXPECT_CALL(vpd_process_, RunInBackground(_, _, _)).Times(0);
+  EXPECT_CALL(vpd_process_, RunInBackground(_, _)).Times(0);
 
   // This file should be removed, because the device is owned by a consumer.
   EXPECT_CALL(utils_, RemoveFile(kChromadMigrationFilePath))
@@ -1054,7 +1050,7 @@ TEST_F(DevicePolicyServiceTest, TestClearBlockDevmode) {
 
   EXPECT_TRUE(crossystem_.VbSetSystemPropertyInt(
       crossystem::Crossystem::kBlockDevmode, 1));
-  EXPECT_CALL(vpd_process_, RunInBackground(kExpectedUpdate, false, _))
+  EXPECT_CALL(vpd_process_, RunInBackground(kExpectedUpdate, _))
       .Times(1)
       .WillOnce(Return(true));
   service_->ClearBlockDevmode(MockPolicyService::CreateDoNothing());
@@ -1067,7 +1063,7 @@ TEST_F(DevicePolicyServiceTest, TestClearBlockDevmode) {
 
   EXPECT_TRUE(crossystem_.VbSetSystemPropertyInt(
       crossystem::Crossystem::kBlockDevmode, 1));
-  EXPECT_CALL(vpd_process_, RunInBackground(kExpectedUpdate, false, _))
+  EXPECT_CALL(vpd_process_, RunInBackground(kExpectedUpdate, _))
       .Times(1)
       .WillOnce(Return(false));
   service_->ClearBlockDevmode(MockPolicyService::CreateExpectFailureCallback());

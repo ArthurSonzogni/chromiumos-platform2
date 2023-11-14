@@ -23,7 +23,7 @@ class MockVpdProcess : public VpdProcess {
   MockVpdProcess() : VpdProcess() {}
   MOCK_METHOD(bool,
               RunInBackground,
-              (const KeyValuePairs&, bool, CompletionCallback),
+              (const KeyValuePairs&, CompletionCallback),
               (override));
 };
 

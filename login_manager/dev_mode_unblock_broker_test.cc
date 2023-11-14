@@ -231,8 +231,7 @@ TEST_F(DevModeUnblockBrokerTest, VerifyFwmpVpdUpdatOneUnblockFromAll) {
               DoCallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
       .WillOnce(MovePointee<2>(&fwmp_removal_callback));
 
-  EXPECT_CALL(vpd_process_, RunInBackground(updates, false, _))
-      .WillOnce(Return(true));
+  EXPECT_CALL(vpd_process_, RunInBackground(updates, _)).WillOnce(Return(true));
   broker_->UnblockDevModeForCarrierLock(base::BindRepeating(&UnblockAtInit));
   broker_->UnblockDevModeForInitialStateDetermination(
       base::BindRepeating(&UnblockAtInit));
@@ -295,8 +294,7 @@ TEST_F(DevModeUnblockBrokerTest, VerifyRestartInterrupted) {
   VpdProcess::KeyValuePairs updates{
       {crossystem::Crossystem::kBlockDevmode, "0"},
       {crossystem::Crossystem::kCheckEnrollment, "0"}};
-  EXPECT_CALL(vpd_process_, RunInBackground(updates, false, _))
-      .WillOnce(Return(true));
+  EXPECT_CALL(vpd_process_, RunInBackground(updates, _)).WillOnce(Return(true));
 
   InitBroker();
   InvokeServiceAvailableFromStored();

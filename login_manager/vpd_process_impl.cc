@@ -45,7 +45,6 @@ void VpdProcessImpl::EnsureJobExit(base::TimeDelta timeout) {
 }
 
 bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
-                                     bool ignore_cache,
                                      CompletionCallback completion) {
   DUMP_WILL_BE_CHECK(!subprocess_ || subprocess_->GetPid() <= 0)
       << "Another subprocess is running";
@@ -57,12 +56,7 @@ bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
     argv.push_back(entry.second);
   }
 
-  std::vector<std::string> env;
-  if (ignore_cache) {
-    env.push_back("VPD_IGNORE_CACHE=1");
-  }
-
-  if (!subprocess_->ForkAndExec(argv, env)) {
+  if (!subprocess_->ForkAndExec(argv, std::vector<std::string>())) {
     subprocess_.reset();
     // The caller remains responsible for running |completion|.
     return false;

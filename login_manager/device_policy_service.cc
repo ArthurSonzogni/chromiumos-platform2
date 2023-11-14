@@ -579,9 +579,8 @@ bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
   // Note that VPD update errors will be ignored if the device is not enrolled.
   bool ignore_errors = !is_enrolled;
   return vpd_process_->RunInBackground(
-      updates, false,
-      base::BindOnce(&HandleVpdUpdateCompletion, ignore_errors,
-                     std::move(completion)));
+      updates, base::BindOnce(&HandleVpdUpdateCompletion, ignore_errors,
+                              std::move(completion)));
 }
 
 void DevicePolicyService::ClearBlockDevmode(Completion completion) {
@@ -598,7 +597,7 @@ void DevicePolicyService::ClearBlockDevmode(Completion completion) {
   }
   auto split_callback = base::SplitOnceCallback(std::move(completion));
   if (!vpd_process_->RunInBackground(
-          {{crossystem::Crossystem::kBlockDevmode, "0"}}, false,
+          {{crossystem::Crossystem::kBlockDevmode, "0"}},
           base::BindOnce(&HandleVpdUpdateCompletion, false,
                          std::move(split_callback.first)))) {
     std::move(split_callback.second)
