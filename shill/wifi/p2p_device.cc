@@ -40,8 +40,10 @@ P2PDevice::P2PDevice(Manager* manager,
                   ? "p2p_go_" + std::to_string(shill_id)
                   : "p2p_client_" + std::to_string(shill_id);
   supplicant_interface_proxy_.reset();
+  supplicant_interface_path_ = RpcIdentifier("");
   supplicant_p2pdevice_proxy_.reset();
   supplicant_group_proxy_.reset();
+  supplicant_group_path_ = RpcIdentifier("");
   supplicant_persistent_group_path_ = RpcIdentifier("");
   LOG(INFO) << log_name() << ": P2PDevice created";
 }
@@ -321,16 +323,19 @@ bool P2PDevice::ConnectToSupplicantInterfaceProxy(
                << object_path.value();
     return false;
   }
-  LOG(INFO) << log_name()
-            << ": Interface proxy connected, path: " << object_path.value();
+  supplicant_interface_path_ = object_path;
+  LOG(INFO) << log_name() << ": Interface proxy connected, path: "
+            << supplicant_interface_path_.value();
   return true;
 }
 
 void P2PDevice::DisconnectFromSupplicantInterfaceProxy() {
   if (supplicant_interface_proxy_) {
-    supplicant_interface_proxy_.reset();
-    LOG(INFO) << log_name() << ": Interface proxy disconnected";
+    LOG(INFO) << log_name() << ": Interface proxy disconnected, path: "
+              << supplicant_interface_path_.value();
   }
+  supplicant_interface_path_ = RpcIdentifier("");
+  supplicant_interface_proxy_.reset();
 }
 
 String P2PDevice::GetInterfaceName() const {
@@ -383,15 +388,19 @@ bool P2PDevice::ConnectToSupplicantGroupProxy(const RpcIdentifier& group) {
                << group.value();
     return false;
   }
-  LOG(INFO) << log_name() << ": Group proxy connected, path: " << group.value();
+  supplicant_group_path_ = group;
+  LOG(INFO) << log_name() << ": Group proxy connected, path: "
+            << supplicant_group_path_.value();
   return true;
 }
 
 void P2PDevice::DisconnectFromSupplicantGroupProxy(void) {
   if (supplicant_group_proxy_) {
-    supplicant_group_proxy_.reset();
-    LOG(INFO) << log_name() << ": Group proxy disconnected";
+    LOG(INFO) << log_name() << ": Group proxy disconnected, path: "
+              << supplicant_group_path_.value();
   }
+  supplicant_group_path_ = RpcIdentifier("");
+  supplicant_group_proxy_.reset();
 }
 
 String P2PDevice::GetGroupSSID() const {
@@ -483,6 +492,27 @@ bool P2PDevice::SetupGroup(const KeyValueStore& properties) {
   return true;
 }
 
+void P2PDevice::TeardownGroup(const KeyValueStore& properties) {
+  RpcIdentifier interface_path = RpcIdentifier("");
+  if (properties.Contains<RpcIdentifier>(
+          WPASupplicant::kGroupFinishedPropertyInterfaceObject)) {
+    interface_path = properties.Get<RpcIdentifier>(
+        WPASupplicant::kGroupFinishedPropertyInterfaceObject);
+  }
+  CHECK(interface_path == supplicant_interface_path_);
+  RpcIdentifier group_path = RpcIdentifier("");
+  if (properties.Contains<RpcIdentifier>(
+          WPASupplicant::kGroupFinishedPropertyGroupObject)) {
+    group_path = properties.Get<RpcIdentifier>(
+        WPASupplicant::kGroupFinishedPropertyGroupObject);
+  }
+  if (group_path != supplicant_group_path_) {
+    LOG(WARNING) << log_name() << ": " << __func__
+                 << " for unknown object, path: " << group_path.value();
+  }
+  TeardownGroup();
+}
+
 void P2PDevice::TeardownGroup() {
   DisconnectFromSupplicantGroupProxy();
   DisconnectFromSupplicantP2PDeviceProxy();
@@ -498,18 +528,108 @@ void P2PDevice::TeardownGroup() {
 void P2PDevice::GroupStarted(const KeyValueStore& properties) {
   LOG(INFO) << log_name() << ": Got " << __func__ << " while in state "
             << P2PDeviceStateName(state_);
-  SetupGroup(properties);
+  switch (state_) {
+    // Expected P2P client state for GroupStarted event
+    case P2PDeviceState::kClientAssociating:
+      SetupGroup(properties);
+      SetState(P2PDeviceState::kClientConfiguring);
+      break;
+    // Expected P2P GO state for GroupStarted event
+    case P2PDeviceState::kGOStarting:
+      SetupGroup(properties);
+      SetState(P2PDeviceState::kGOConfiguring);
+      break;
+    // Common states for all roles.
+    case P2PDeviceState::kUninitialized:
+    case P2PDeviceState::kReady:
+    // P2P client states.
+    case P2PDeviceState::kClientConfiguring:
+    case P2PDeviceState::kClientConnected:
+    case P2PDeviceState::kClientDisconnecting:
+    // P2P GO states.
+    case P2PDeviceState::kGOConfiguring:
+    case P2PDeviceState::kGOActive:
+    case P2PDeviceState::kGOStopping:
+      LOG(WARNING) << log_name() << ": Ignored " << __func__
+                   << " while in state " << P2PDeviceStateName(state_);
+      break;
+  }
 }
 
 void P2PDevice::GroupFinished(const KeyValueStore& properties) {
   LOG(INFO) << log_name() << ": Got " << __func__ << " while in state "
             << P2PDeviceStateName(state_);
-  TeardownGroup();
+  switch (state_) {
+    // Expected P2P client/GO state for GroupFinished event
+    case P2PDeviceState::kClientDisconnecting:
+    case P2PDeviceState::kGOStopping:
+      TeardownGroup(properties);
+      SetState(P2PDeviceState::kReady);
+      break;
+    // P2P client link failure states for GroupFinished event
+    case P2PDeviceState::kClientConfiguring:
+    case P2PDeviceState::kClientConnected:
+      LOG(WARNING) << log_name()
+                   << ": Client link failure, group finished while in state "
+                   << P2PDeviceStateName(state_);
+      TeardownGroup(properties);
+      SetState(P2PDeviceState::kClientDisconnecting);
+      break;
+    // P2P GO link failure states for GroupFinished event
+    case P2PDeviceState::kGOConfiguring:
+    case P2PDeviceState::kGOActive:
+      LOG(WARNING) << log_name()
+                   << ": GO link failure, group finished while in state "
+                   << P2PDeviceStateName(state_);
+      TeardownGroup(properties);
+      SetState(P2PDeviceState::kGOStopping);
+      break;
+    // P2P client/GO unknown error states for GroupFinished event
+    case P2PDeviceState::kClientAssociating:
+    case P2PDeviceState::kGOStarting:
+      LOG(ERROR) << log_name() << ": Ignored " << __func__ << " while in state "
+                 << P2PDeviceStateName(state_);
+      break;
+    // Common states for all roles.
+    case P2PDeviceState::kUninitialized:
+    case P2PDeviceState::kReady:
+      LOG(WARNING) << log_name() << ": Ignored " << __func__
+                   << " while in state " << P2PDeviceStateName(state_);
+      break;
+  }
 }
 
 void P2PDevice::GroupFormationFailure(const std::string& reason) {
   LOG(WARNING) << log_name() << ": Got " << __func__ << " while in state "
                << P2PDeviceStateName(state_);
+  switch (state_) {
+    // Expected P2P client state for GroupFormationFailure signal
+    case P2PDeviceState::kClientAssociating:
+      LOG(ERROR) << log_name()
+                 << ": Failed to connect Client, group formation failure";
+      SetState(P2PDeviceState::kClientDisconnecting);
+      break;
+    // Expected P2P GO state for GroupFormationFailure signal
+    case P2PDeviceState::kGOStarting:
+      LOG(ERROR) << log_name()
+                 << ": Failed to start GO, group formation failure";
+      SetState(P2PDeviceState::kGOStopping);
+      break;
+    // Common states for all roles.
+    case P2PDeviceState::kUninitialized:
+    case P2PDeviceState::kReady:
+    // P2P client states.
+    case P2PDeviceState::kClientConfiguring:
+    case P2PDeviceState::kClientConnected:
+    case P2PDeviceState::kClientDisconnecting:
+    // P2P GO states.
+    case P2PDeviceState::kGOConfiguring:
+    case P2PDeviceState::kGOActive:
+    case P2PDeviceState::kGOStopping:
+      LOG(WARNING) << log_name() << ": Ignored " << __func__
+                   << " while in state " << P2PDeviceStateName(state_);
+      break;
+  }
 }
 
 void P2PDevice::PeerJoined(const dbus::ObjectPath& peer) {

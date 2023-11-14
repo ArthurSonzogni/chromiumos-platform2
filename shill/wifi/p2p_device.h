@@ -161,7 +161,14 @@ class P2PDevice : public LocalDevice,
   FRIEND_TEST(P2PDeviceTest, SetupGroup);
   FRIEND_TEST(P2PDeviceTest, SetupGroup_EmptyProperties);
   FRIEND_TEST(P2PDeviceTest, SetupGroup_MissingGroupPath);
-  FRIEND_TEST(P2PDeviceTest, GroupStartedAndFinished);
+  FRIEND_TEST(P2PDeviceTest, GroupStarted_WhileNotExpected);
+  FRIEND_TEST(P2PDeviceTest, GroupFinished_WhileGOStarting);
+  FRIEND_TEST(P2PDeviceTest, GroupFinished_WhileGOConfiguring);
+  FRIEND_TEST(P2PDeviceTest, GroupFinished_WhileGOActive);
+  FRIEND_TEST(P2PDeviceTest, GroupFinished_WhileClientAssociating);
+  FRIEND_TEST(P2PDeviceTest, GroupFinished_WhileClientConfiguring);
+  FRIEND_TEST(P2PDeviceTest, GroupFinished_WhileClientConnected);
+  FRIEND_TEST(P2PDeviceTest, GroupFinished_WhileNotExpected);
 
   // Set service_ to |service|.
   void SetService(std::unique_ptr<P2PService> service);
@@ -222,6 +229,7 @@ class P2PDevice : public LocalDevice,
   // which are executed on wpa_supplicant GroupStarted/GroupFinished signal,
   // respectively.
   bool SetupGroup(const KeyValueStore& properties);
+  void TeardownGroup(const KeyValueStore& properties);
   void TeardownGroup();
 
   // Primary interface link name.
@@ -243,6 +251,9 @@ class P2PDevice : public LocalDevice,
   std::unique_ptr<SupplicantInterfaceProxyInterface>
       supplicant_interface_proxy_;
 
+  // The wpa_supplicant interface object path.
+  RpcIdentifier supplicant_interface_path_;
+
   // The wpa_supplicant p2p device proxy of the p2p network interface created
   // for wifi direct connectivity. It provides group Disconnect method.
   // It is initialized on GroupStarted signal via ConnectP2PDeviceProxy()
@@ -253,6 +264,9 @@ class P2PDevice : public LocalDevice,
   // The wpa_supplicant group proxy. It provides the following signals:
   // PeerJoined and PeerDisconnected. Initialized by ConnectP2PGroupProxy().
   std::unique_ptr<SupplicantGroupProxyInterface> supplicant_group_proxy_;
+
+  // The wpa_supplicant group object path.
+  RpcIdentifier supplicant_group_path_;
 
   // The wpa_supplicant group properties.
   String group_ssid_;
