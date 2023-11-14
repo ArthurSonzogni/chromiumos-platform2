@@ -69,7 +69,7 @@ class FanRoutineTest : public BaseFileTest {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   MockContext mock_context_;
-  std::unique_ptr<FanRoutine> routine_;
+  std::unique_ptr<BaseRoutineControl> routine_;
   std::unique_ptr<RoutineObserverForTesting> observer_;
 };
 
@@ -466,28 +466,6 @@ TEST_F(FanRoutineTest, RoutineFailureByChangeBelowDelta) {
   EXPECT_EQ(fan_detail->passed_fan_ids.size(), 0);
   EXPECT_THAT(fan_detail->failed_fan_ids,
               testing::UnorderedElementsAreArray({0}));
-}
-
-// Test that the routine will be unsupported if there is no fan.
-TEST_F(FanRoutineTest, RoutineUnsupportedByNoCrosConfig) {
-  SetFanCrosConfig("");
-
-  auto routine_create =
-      FanRoutine::Create(&mock_context_, mojom::FanRoutineArgument::New());
-  EXPECT_FALSE(routine_create.has_value());
-  EXPECT_EQ(routine_create.error(),
-            "cros config fan count must be a valid number");
-}
-
-// Test that the routine will be unsupported if there is no fan.
-TEST_F(FanRoutineTest, RoutineUnsupportedByNoFan) {
-  SetFanCrosConfig("0");
-
-  auto routine_create =
-      FanRoutine::Create(&mock_context_, mojom::FanRoutineArgument::New());
-  EXPECT_FALSE(routine_create.has_value());
-  EXPECT_EQ(routine_create.error(),
-            "routine unsupported for device with no fan");
 }
 
 // Test that the routine will raise error if it encounters error from calling

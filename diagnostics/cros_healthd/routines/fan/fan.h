@@ -16,15 +16,17 @@
 
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
 #include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 
 class FanRoutine final : public BaseRoutineControl {
  public:
-  static base::expected<std::unique_ptr<FanRoutine>, std::string> Create(
-      Context* context,
-      const ash::cros_healthd::mojom::FanRoutineArgumentPtr& arg);
+  static base::expected<std::unique_ptr<BaseRoutineControl>,
+                        ash::cros_healthd::mojom::SupportStatusPtr>
+  Create(Context* context,
+         const ash::cros_healthd::mojom::FanRoutineArgumentPtr& arg);
   FanRoutine(const FanRoutine&) = delete;
   FanRoutine& operator=(const FanRoutine&) = delete;
   ~FanRoutine() override;
@@ -46,9 +48,7 @@ class FanRoutine final : public BaseRoutineControl {
       base::Seconds(1);
 
  protected:
-  explicit FanRoutine(
-      Context* context,
-      const ash::cros_healthd::mojom::FanRoutineArgumentPtr& arg);
+  explicit FanRoutine(Context* context, uint8_t expected_fan_count);
 
  private:
   // An enum to describe what stage the fan routine is currently in.
@@ -68,9 +68,6 @@ class FanRoutine final : public BaseRoutineControl {
     // achieved.
     kVerifyDecrease,
   };
-
-  // Get the expected fan count from cros config.
-  static std::optional<uint8_t> GetExpectedFanCount(Context* context);
 
   // The |Run| function is added to the memory cpu resource queue as a callback
   // and will be called when resource is available.
@@ -105,6 +102,8 @@ class FanRoutine final : public BaseRoutineControl {
 
   // Context object used to communicate with the executor.
   Context* context_;
+  // Expected fan count from cros_config.
+  uint8_t expected_fan_count_;
   // Records the current stage of the fan routine execution.
   Stage stage_ = Stage::kInitialize;
   // Records how many times the fan speed has been verified at each stage.

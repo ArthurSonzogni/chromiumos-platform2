@@ -51,6 +51,11 @@ CreateRoutineResult CreateRoutineHelperSync(
   return base::ok(std::make_unique<UfsLifetimeRoutine>(context, arg));
 }
 
+CreateRoutineResult CreateRoutineHelperSync(Context* context,
+                                            mojom::FanRoutineArgumentPtr arg) {
+  return FanRoutine::Create(context, std::move(arg));
+}
+
 // Default implementation of `CreateRoutineHelperSync` raises compile error.
 template <typename Arg>
 CreateRoutineResult CreateRoutineHelperSync(Context* context, Arg arg) {
@@ -158,14 +163,8 @@ void RoutineService::CheckAndCreateRoutine(
       return;
     }
     case mojom::RoutineArgument::Tag::kFan: {
-      auto routine = FanRoutine::Create(context_, routine_arg->get_fan());
-      if (routine.has_value()) {
-        std::move(callback).Run(base::ok(std::move(routine.value())));
-      } else {
-        std::move(callback).Run(
-            base::unexpected(mojom::SupportStatus::NewUnsupported(
-                mojom::Unsupported::New(routine.error(), /*reason=*/nullptr))));
-      }
+      CreateRoutineHelper(context_, std::move(routine_arg->get_fan()),
+                          std::move(callback));
       return;
     }
     case mojom::RoutineArgument::Tag::kBluetoothScanning: {

@@ -328,22 +328,6 @@ TEST_F(GroundTruthTest, SdCardEvent) {
   }
 }
 
-TEST_F(GroundTruthTest, FanRoutine) {
-  // Test that if the cros config is not set, the test is supported.
-  ExpectRoutineSupported(
-      mojom::RoutineArgument::NewFan(mojom::FanRoutineArgument::New()));
-
-  // Test that if there is no fan on the device, the test is not supported.
-  SetFakeCrosConfig(cros_config_property::kFanCount, "0");
-  ExpectRoutineUnsupported(
-      mojom::RoutineArgument::NewFan(mojom::FanRoutineArgument::New()));
-
-  // Test that if there is fan on the device, the test is supported.
-  SetFakeCrosConfig(cros_config_property::kFanCount, "1");
-  ExpectRoutineSupported(
-      mojom::RoutineArgument::NewFan(mojom::FanRoutineArgument::New()));
-}
-
 TEST_F(GroundTruthTest, DiskReadRoutine) {
   auto arg = mojom::DiskReadRoutineArgument::New();
   arg->type = mojom::DiskReadTypeEnum::kLinearRead;

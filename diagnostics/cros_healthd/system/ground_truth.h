@@ -63,16 +63,14 @@ class GroundTruth final {
       FingerprintParameter& param) const;
 
   ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineUfsLifetime() const;
-  // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 
-  // cros_config related functions.
-  std::string FanCount();
+  ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineFan(
+      uint8_t& fan_count) const;
+  // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 
  private:
   ash::cros_healthd::mojom::SupportStatusPtr GetEventSupportStatus(
       ash::cros_healthd::mojom::EventCategoryEnum category);
-
-  std::string ReadCrosConfig(const PathLiteral& path);
 
   CrosConfig* cros_config() const;
 

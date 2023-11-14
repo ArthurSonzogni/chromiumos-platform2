@@ -356,12 +356,23 @@ TEST_F(RoutineServiceTest, Fan) {
 TEST_F(RoutineServiceTest, FanNoCrosConfig) {
   SetFakeCrosConfig(paths::cros_config::kFanCount, std::nullopt);
 
+  auto status = MakeUnsupported(
+      "Expected cros_config property [hardware-properties/fan-count] to be "
+      "[uint8], but got []");
   CheckIsRoutineArgumentSupported(
-      MakeUnsupported("cros config fan count must be a valid number"),
-      mojom::RoutineArgument::NewFan(mojom::FanRoutineArgument::New()));
+      status, mojom::RoutineArgument::NewFan(mojom::FanRoutineArgument::New()));
   CheckCreateRoutine(
-      MakeUnsupported("cros config fan count must be a valid number"),
-      mojom::RoutineArgument::NewFan(mojom::FanRoutineArgument::New()));
+      status, mojom::RoutineArgument::NewFan(mojom::FanRoutineArgument::New()));
+}
+
+TEST_F(RoutineServiceTest, FanNoFan) {
+  SetFakeCrosConfig(paths::cros_config::kFanCount, "0");
+
+  auto status = MakeUnsupported("Doesn't support device with no fan.");
+  CheckIsRoutineArgumentSupported(
+      status, mojom::RoutineArgument::NewFan(mojom::FanRoutineArgument::New()));
+  CheckCreateRoutine(
+      status, mojom::RoutineArgument::NewFan(mojom::FanRoutineArgument::New()));
 }
 
 TEST_F(RoutineServiceTest, BluetoothScanning) {

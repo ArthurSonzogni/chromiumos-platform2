@@ -30,25 +30,22 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 }  // namespace
 
-base::expected<std::unique_ptr<FanRoutine>, std::string> FanRoutine::Create(
-    Context* context, const mojom::FanRoutineArgumentPtr& arg) {
+base::expected<std::unique_ptr<BaseRoutineControl>,
+               ash::cros_healthd::mojom::SupportStatusPtr>
+FanRoutine::Create(Context* context, const mojom::FanRoutineArgumentPtr& arg) {
   CHECK(!arg.is_null());
 
-  auto expected_fan_count = GetExpectedFanCount(context);
-  if (!expected_fan_count.has_value()) {
-    return base::unexpected("cros config fan count must be a valid number");
+  uint8_t expected_fan_count;
+  auto status = context->ground_truth()->PrepareRoutineFan(expected_fan_count);
+  if (!status->is_supported()) {
+    return base::unexpected(std::move(status));
   }
-
-  if (expected_fan_count.value() == 0) {
-    return base::unexpected("routine unsupported for device with no fan");
-  }
-
-  return base::ok(base::WrapUnique(new FanRoutine(context, arg)));
+  return base::ok(
+      base::WrapUnique(new FanRoutine(context, expected_fan_count)));
 }
 
-FanRoutine::FanRoutine(Context* context,
-                       const mojom::FanRoutineArgumentPtr& arg)
-    : context_(context) {
+FanRoutine::FanRoutine(Context* context, uint8_t expected_fan_count)
+    : context_(context), expected_fan_count_(expected_fan_count) {
   CHECK(context_);
 }
 
@@ -227,28 +224,12 @@ void FanRoutine::HandleSetFanSpeed(const std::optional<std::string>& error) {
   DelayGetFanSpeed();
 }
 
-std::optional<uint8_t> FanRoutine::GetExpectedFanCount(Context* context) {
-  GroundTruth ground_truth = GroundTruth{context};
-  uint32_t fan_count;
-  if (!base::StringToUint(ground_truth.FanCount(), &fan_count)) {
-    return std::nullopt;
-  }
-  return base::checked_cast<uint8_t>(fan_count);
-}
-
 mojom::HardwarePresenceStatus FanRoutine::CheckFanCount() {
-  auto expected_fan_count = GetExpectedFanCount(context_);
   auto actual_fan_count = original_fan_speed_.size();
 
-  if (!expected_fan_count.has_value()) {
-    // No expected value.
-    return mojom::HardwarePresenceStatus::kNotConfigured;
-  }
-
-  if (actual_fan_count == expected_fan_count.value()) {
-    return mojom::HardwarePresenceStatus::kMatched;
-  }
-  return mojom::HardwarePresenceStatus::kNotMatched;
+  return actual_fan_count == expected_fan_count_
+             ? mojom::HardwarePresenceStatus::kMatched
+             : mojom::HardwarePresenceStatus::kNotMatched;
 }
 
 void FanRoutine::TerminateFanRoutine() {

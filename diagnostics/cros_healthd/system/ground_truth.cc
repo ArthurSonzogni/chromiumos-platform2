@@ -53,6 +53,20 @@ mojom::SupportStatusPtr MakeSupportStatus(
 }
 
 template <typename T>
+void AssignOrAppendError(const base::expected<T, std::string>& got,
+                         T& out,
+                         std::string& error) {
+  if (got.has_value()) {
+    out = got.value();
+    return;
+  }
+  if (!error.empty()) {
+    error += ' ';
+  }
+  error += got.error();
+}
+
+template <typename T>
 void AssignAndDropError(const base::expected<T, std::string>& got,
                         std::optional<T>& out) {
   if (!got.has_value()) {
@@ -67,14 +81,6 @@ void AssignWithDefaultAndDropError(const base::expected<T, std::string>& got,
                                    const T& default_value,
                                    T& out) {
   out = got.value_or(default_value);
-}
-
-std::string WrapUnsupportedString(const PathLiteral& cros_config_property,
-                                  const std::string& cros_config_value) {
-  std::string msg = base::StringPrintf(
-      "Not supported cros_config property [%s]: [%s]",
-      cros_config_property.ToStr().c_str(), cros_config_value.c_str());
-  return msg;
 }
 
 bool HasCrosEC() {
@@ -247,26 +253,10 @@ void GroundTruth::IsRoutineArgumentSupported(
     case mojom::RoutineArgument::Tag::kPrimeSearch:
     case mojom::RoutineArgument::Tag::kFloatingPoint:
     case mojom::RoutineArgument::Tag::kUfsLifetime:
+    case mojom::RoutineArgument::Tag::kFan:
       status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
       std::move(callback).Run(std::move(routine_arg), std::move(status));
       return;
-    case mojom::RoutineArgument::Tag::kFan: {
-      auto fan_count = FanCount();
-      // We support testing either when the fan count is larger than 0, or when
-      // the cros config is not set. We intentionally allow empty cros config
-      // since fan routine can handle both fans are present and absent cases.
-      if (fan_count != "0") {
-        status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
-        std::move(callback).Run(std::move(routine_arg), std::move(status));
-        return;
-      }
-
-      status = mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-          WrapUnsupportedString(cros_config_property::kFanCount, fan_count),
-          nullptr));
-      std::move(callback).Run(std::move(routine_arg), std::move(status));
-      return;
-    }
     // Need to check the routine arguments.
     case mojom::RoutineArgument::Tag::kDiskRead: {
       auto status = GetDiskReadArgSupportStatus(routine_arg->get_disk_read());
@@ -434,21 +424,23 @@ mojom::SupportStatusPtr GroundTruth::PrepareRoutineUfsLifetime() const {
   return MakeSupportStatus(cros_config()->CheckExpectedCrosConfig(
       cros_config_property::kStorageType, cros_config_value::kStorageTypeUfs));
 }
-// LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 
-std::string GroundTruth::FanCount() {
-  return ReadCrosConfig(cros_config_property::kFanCount);
-}
+mojom::SupportStatusPtr GroundTruth::PrepareRoutineFan(
+    uint8_t& fan_count) const {
+  std::string error;
+  AssignOrAppendError(
+      cros_config()->GetU8CrosConfig(cros_config_property::kFanCount),
+      fan_count, error);
 
-std::string GroundTruth::ReadCrosConfig(const PathLiteral& path) {
-  auto value = cros_config()->Get(path);
-  if (!value) {
-    LOG(ERROR) << "Failed to read cros_config: " << path.ToStr();
-    return "";
+  if (!error.empty()) {
+    return MakeUnsupported(error);
   }
-
-  return value.value();
+  if (fan_count == 0) {
+    return MakeUnsupported("Doesn't support device with no fan.");
+  }
+  return MakeSupported();
 }
+// LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 
 CrosConfig* GroundTruth::cros_config() const {
   return context_->cros_config();
