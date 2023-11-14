@@ -713,17 +713,6 @@ std::optional<ShillClient::Device> Manager::StartTetheringUpstreamNetwork(
   upstream_network.type = ShillClient::Device::Type::kCellular;
   upstream_network.ifindex = ifindex;
   upstream_network.ifname = upstream_ifname;
-
-  // Setup the datapath for this interface, as if the device was advertised in
-  // OnShillDevicesChanged. We skip services or setup that don'tr apply to
-  // cellular (multicast traffic counters) or that are not interacting with the
-  // separate PDN network exclusively used for tethering (ConnectNamespace,
-  // dns-proxy redirection, ArcService, CrostiniService, neighbor monitoring).
-  LOG(INFO) << __func__ << ": Configuring datapath for fake shill Device "
-            << upstream_network;
-  counters_svc_->OnPhysicalDeviceAdded(upstream_ifname);
-  datapath_->StartConnectionPinning(upstream_network);
-
   // b/294287313: copy the IPv6 configuration of the upstream Network
   // directly from shill's tethering request, notify GuestIPv6Service about
   // the prefix of the upstream Network, and also call
@@ -733,6 +722,9 @@ std::optional<ShillClient::Device> Manager::StartTetheringUpstreamNetwork(
         net_base::IPv6CIDR::CreateFromBytesAndPrefix(
             request.uplink_ipv6_config().uplink_ipv6_cidr().addr(),
             request.uplink_ipv6_config().uplink_ipv6_cidr().prefix_len());
+    if (!upstream_network.ipconfig.ipv6_cidr) {
+      LOG(WARNING) << __func__ << ": failed to parse uplink IPv6 configuration";
+    }
     for (const auto& dns : request.uplink_ipv6_config().dns_servers()) {
       auto addr = net_base::IPv6Address::CreateFromBytes(dns);
       if (addr) {
@@ -740,18 +732,26 @@ std::optional<ShillClient::Device> Manager::StartTetheringUpstreamNetwork(
             addr->ToString());
       }
     }
-    if (upstream_network.ipconfig.ipv6_cidr) {
-      ipv6_svc_->OnUplinkIPv6Changed(upstream_network);
-      ipv6_svc_->UpdateUplinkIPv6DNS(upstream_network);
-      datapath_->StartSourceIPv6PrefixEnforcement(upstream_network);
-      // TODO(b/279871350): Support prefix shorter than /64.
-      const auto ipv6_prefix = GuestIPv6Service::IPAddressTo64BitPrefix(
-          upstream_network.ipconfig.ipv6_cidr->address());
-      datapath_->UpdateSourceEnforcementIPv6Prefix(upstream_network,
-                                                   ipv6_prefix);
-    } else {
-      LOG(WARNING) << __func__ << ": failed to parse uplink IPv6 configuration";
-    }
+  }
+
+  // Setup the datapath for this interface, as if the device was advertised in
+  // OnShillDevicesChanged. We skip services or setup that don'tr apply to
+  // cellular (multicast traffic counters) or that are not interacting with the
+  // separate PDN network exclusively used for tethering (ConnectNamespace,
+  // dns-proxy redirection, ArcService, CrostiniService, neighbor monitoring).
+  LOG(INFO) << __func__ << ": Configuring datapath for fake shill Device "
+            << upstream_network << " with IPConfig "
+            << upstream_network.ipconfig;
+  counters_svc_->OnPhysicalDeviceAdded(upstream_ifname);
+  datapath_->StartConnectionPinning(upstream_network);
+  if (upstream_network.ipconfig.ipv6_cidr) {
+    ipv6_svc_->OnUplinkIPv6Changed(upstream_network);
+    ipv6_svc_->UpdateUplinkIPv6DNS(upstream_network);
+    datapath_->StartSourceIPv6PrefixEnforcement(upstream_network);
+    // TODO(b/279871350): Support prefix shorter than /64.
+    const auto ipv6_prefix = GuestIPv6Service::IPAddressTo64BitPrefix(
+        upstream_network.ipconfig.ipv6_cidr->address());
+    datapath_->UpdateSourceEnforcementIPv6Prefix(upstream_network, ipv6_prefix);
   }
 
   return upstream_network;

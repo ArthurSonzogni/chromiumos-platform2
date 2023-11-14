@@ -11,9 +11,12 @@
 #include <sys/signal.h>
 
 #include <algorithm>
+#include <iostream>
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_util.h>
@@ -54,6 +57,16 @@ GuestIPv6Service::ForwardMethod GetForwardMethodByDeviceType(
       return GuestIPv6Service::ForwardMethod::kMethodUnknown;
   }
 }
+// Helper struct local to this file for logging an uplink / downlink interface
+// pair.
+struct LinkPair {
+  std::string_view uplink;
+  std::string_view downlink;
+};
+
+std::ostream& operator<<(std::ostream& stream, const LinkPair& pair) {
+  return stream << "uplink: " << pair.uplink << ", downlink: " << pair.downlink;
+}
 
 }  // namespace
 
@@ -83,12 +96,12 @@ void GuestIPv6Service::StartForwarding(
     const std::optional<int>& mtu,
     const std::optional<int>& hop_limit,
     bool downlink_is_tethering) {
-  LOG(INFO) << "Starting IPv6 forwarding between uplink: "
-            << upstream_shill_device << ", downlink: " << ifname_downlink
+  const std::string& ifname_uplink = upstream_shill_device.ifname;
+  const LinkPair pair = {.uplink = ifname_uplink, .downlink = ifname_downlink};
+  LOG(INFO) << __func__ << ": " << pair
             << ", mtu: " << (mtu ? std::to_string(*mtu) : "default")
             << ", hop_limit: "
             << (hop_limit ? std::to_string(*hop_limit) : "default");
-  const std::string& ifname_uplink = upstream_shill_device.ifname;
   int if_id_uplink = system_->IfNametoindex(ifname_uplink);
   if (if_id_uplink == 0) {
     PLOG(ERROR) << "Get interface index failed on " << ifname_uplink;
@@ -97,7 +110,8 @@ void GuestIPv6Service::StartForwarding(
   if_cache_[ifname_uplink] = if_id_uplink;
   int if_id_downlink = system_->IfNametoindex(ifname_downlink);
   if (if_id_downlink == 0) {
-    PLOG(ERROR) << "Get interface index failed on " << ifname_downlink;
+    PLOG(ERROR) << __func__ << ": " << pair
+                << ", Get interface index failed on " << ifname_downlink;
     return;
   }
   if_cache_[ifname_downlink] = if_id_downlink;
@@ -117,8 +131,8 @@ void GuestIPv6Service::StartForwarding(
     forward_method = GetForwardMethodByDeviceType(upstream_shill_device.type);
 
     if (forward_method == ForwardMethod::kMethodUnknown) {
-      LOG(INFO) << "IPv6 forwarding not supported on device type of "
-                << ifname_uplink << ", skipped";
+      LOG(INFO) << __func__ << ": " << pair
+                << ", IPv6 forwarding not supported on device type";
       return;
     }
     forward_record_[ifname_uplink] = {
@@ -134,12 +148,12 @@ void GuestIPv6Service::StartForwarding(
   }
 
   if (!datapath_->MaskInterfaceFlags(ifname_uplink, IFF_ALLMULTI)) {
-    LOG(WARNING) << "Failed to setup all multicast mode for interface "
-                 << ifname_uplink;
+    LOG(WARNING) << __func__ << ": " << pair
+                 << ", Failed to setup all multicast mode";
   }
   if (!datapath_->MaskInterfaceFlags(ifname_downlink, IFF_ALLMULTI)) {
-    LOG(WARNING) << "Failed to setup all multicast mode for interface "
-                 << ifname_downlink;
+    LOG(WARNING) << __func__ << ": " << pair
+                 << ", Failed to setup all multicast mode";
   }
 
   switch (forward_method) {
@@ -179,8 +193,9 @@ void GuestIPv6Service::StartForwarding(
 
   // Allow IPv6 address on uplink to be resolvable on the downlink
   if (!datapath_->AddIPv6NeighborProxy(ifname_downlink, *uplink_ip)) {
-    LOG(WARNING) << "Failed to setup the IPv6 neighbor: " << *uplink_ip
-                 << " proxy on dev " << ifname_downlink;
+    LOG(WARNING) << __func__ << ": " << pair
+                 << ", Failed to setup the IPv6 neighbor {" << *uplink_ip
+                 << "} proxy on dev " << ifname_downlink;
   }
 
   if (forward_method == ForwardMethod::kMethodRAServer) {
@@ -188,9 +203,9 @@ void GuestIPv6Service::StartForwarding(
                        uplink_dns_[ifname_uplink],
                        forward_record_[ifname_uplink].mtu,
                        forward_record_[ifname_uplink].hop_limit)) {
-      LOG(WARNING) << "Failed to start RA server on downlink "
-                   << ifname_downlink << " with uplink " << ifname_uplink
-                   << " ip " << *uplink_ip;
+      LOG(WARNING) << __func__ << ": " << pair
+                   << ", Failed to start RA server on downlink with uplink IP {"
+                   << *uplink_ip << "}";
     }
   }
 }
@@ -198,10 +213,10 @@ void GuestIPv6Service::StartForwarding(
 void GuestIPv6Service::StopForwarding(
     const ShillClient::Device& upstream_shill_device,
     const std::string& ifname_downlink) {
-  LOG(INFO) << "Stopping IPv6 forwarding between uplink: "
-            << upstream_shill_device << ", downlink: " << ifname_downlink;
-
   const std::string& ifname_uplink = upstream_shill_device.ifname;
+  const LinkPair pair = {.uplink = ifname_uplink, .downlink = ifname_downlink};
+  LOG(INFO) << __func__ << ": " << pair;
+
   const auto it = forward_record_.find(ifname_uplink);
   if (it == forward_record_.end()) {
     return;
@@ -256,10 +271,9 @@ void GuestIPv6Service::StopForwarding(
 
 void GuestIPv6Service::StopUplink(
     const ShillClient::Device& upstream_shill_device) {
-  LOG(INFO) << "Stopping all IPv6 forwarding with uplink: "
-            << upstream_shill_device;
-
   const std::string& ifname_uplink = upstream_shill_device.ifname;
+  LOG(INFO) << __func__ << ": uplink: " << ifname_uplink;
+
   if (forward_record_.find(ifname_uplink) == forward_record_.end()) {
     return;
   }
@@ -317,7 +331,7 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
   const auto old_uplink_ip = GetUplinkIp(ifname);
 
   if (!upstream_shill_device.ipconfig.ipv6_cidr) {
-    LOG(INFO) << __func__ << ": " << ifname << ", {"
+    LOG(INFO) << __func__ << ": uplink: " << ifname << ", {"
               << ((old_uplink_ip) ? old_uplink_ip->ToString() : "")
               << "} to {}";
     uplink_ips_.erase(ifname);
@@ -345,7 +359,7 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
 
   const auto new_uplink_ip =
       upstream_shill_device.ipconfig.ipv6_cidr->address();
-  LOG(INFO) << __func__ << ": " << ifname << ", {"
+  LOG(INFO) << __func__ << ": uplink: " << ifname << ", {"
             << ((old_uplink_ip) ? old_uplink_ip->ToString() : "") << "} to {"
             << new_uplink_ip << "}";
   if (old_uplink_ip == new_uplink_ip) {
@@ -363,29 +377,33 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
     // yet).
     for (const auto& ifname_downlink :
          forward_record_[ifname].downstream_ifnames) {
+      const LinkPair pair = {.uplink = ifname, .downlink = ifname_downlink};
       // Update ip neigh proxy entries
       if (old_uplink_ip) {
         datapath_->RemoveIPv6NeighborProxy(ifname_downlink, *old_uplink_ip);
       }
       if (!datapath_->AddIPv6NeighborProxy(ifname_downlink, new_uplink_ip)) {
-        LOG(WARNING) << "Failed to setup the IPv6 neighbor: " << new_uplink_ip
-                     << " proxy on dev " << ifname_downlink;
+        LOG(WARNING) << __func__ << ": " << pair
+                     << ", Failed to setup the IPv6 neighbor {" << new_uplink_ip
+                     << "} proxy on dev " << ifname_downlink;
       }
 
       // Update downlink /128 routes source IP. Note AddIPv6HostRoute uses `ip
       // route replace` so we don't need to remove the old one first.
       for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
-        LOG(INFO) << __func__ << ": update /128 route to " << ifname_downlink
-                  << " for existing neighbor IP " << neighbor_ip
-                  << " because of new uplink IP " << new_uplink_ip << " on "
-                  << ifname;
+        LOG(INFO) << __func__ << ": " << pair << ", update /128 route to "
+                  << ifname_downlink << " for existing neighbor IP {"
+                  << neighbor_ip << "} because of new uplink IP {"
+                  << new_uplink_ip << "} on " << ifname;
         if (!datapath_->AddIPv6HostRoute(
                 ifname_downlink,
                 *net_base::IPv6CIDR::CreateFromAddressAndPrefix(neighbor_ip,
                                                                 128),
                 new_uplink_ip)) {
-          LOG(WARNING) << "Failed to setup the IPv6 route: " << neighbor_ip
-                       << " dev " << ifname << " src " << new_uplink_ip;
+          LOG(WARNING) << __func__ << ": " << pair
+                       << ": Failed to setup the IPv6 route {" << neighbor_ip
+                       << "} dev " << ifname << " src {" << new_uplink_ip
+                       << "}";
         }
       }
 
@@ -401,9 +419,10 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
         if (!StartRAServer(ifname_downlink, new_prefix, uplink_dns_[ifname],
                            forward_record_[ifname].mtu,
                            forward_record_[ifname].hop_limit)) {
-          LOG(WARNING) << "Failed to start RA server on downlink "
-                       << ifname_downlink << " with uplink " << ifname << " ip "
-                       << new_uplink_ip;
+          LOG(WARNING)
+              << __func__ << ": " << pair
+              << ", Failed to start RA server on downlink with uplink IP {"
+              << new_uplink_ip << "}";
         }
       }
     }
@@ -450,9 +469,11 @@ void GuestIPv6Service::UpdateUplinkIPv6DNS(
         StopRAServer(ifname_downlink);
         if (!StartRAServer(ifname_downlink, prefix, sorted_dns, it->second.mtu,
                            it->second.hop_limit)) {
-          LOG(WARNING) << "Failed to start RA server on downlink "
-                       << ifname_downlink << " with uplink " << ifname << " ip "
-                       << *uplink_ip;
+          const LinkPair pair = {.uplink = ifname, .downlink = ifname_downlink};
+          LOG(WARNING)
+              << __func__ << ": " << pair
+              << ", Failed to start RA server on downlink with uplink IP {"
+              << *uplink_ip << "}";
         }
       }
     }
@@ -545,22 +566,24 @@ void GuestIPv6Service::RegisterDownstreamNeighborIP(
 
   const auto& uplink = DownlinkToUplink(ifname_downlink);
   if (!uplink) {
-    LOG(INFO) << __func__ << ": " << ifname_downlink << ", neighbor IP " << ip
-              << ", no corresponding uplink IP yet, postponing /128 route";
+    LOG(INFO) << __func__ << ": downlink: " << ifname_downlink
+              << ", neighbor IP {" << ip
+              << "}, no corresponding uplink IP yet, postponing /128 route";
     return;
   }
 
+  const LinkPair pair = {.uplink = uplink.value(), .downlink = ifname_downlink};
   const auto uplink_ip = GetUplinkIp(uplink.value());
   const std::string uplink_ip_str = uplink_ip ? uplink_ip->ToString() : "";
-  LOG(INFO) << __func__ << ": " << ifname_downlink << ", neighbor IP " << ip
-            << ", corresponding uplink " << uplink.value() << "["
-            << uplink_ip_str << "]";
+  LOG(INFO) << __func__ << ": " << pair << ", neighbor IP {" << ip
+            << "}, uplink IP {" << uplink_ip_str << "}";
   if (!datapath_->AddIPv6HostRoute(
           ifname_downlink,
           *net_base::IPv6CIDR::CreateFromAddressAndPrefix(ip, 128),
           uplink_ip)) {
-    LOG(WARNING) << "Failed to setup the IPv6 route: " << ip << " dev "
-                 << ifname_downlink << " src " << uplink_ip_str;
+    LOG(WARNING) << __func__ << ": " << pair
+                 << ", Failed to setup the IPv6 route: " << ip << " dev "
+                 << ifname_downlink << " src {" << uplink_ip_str << "}";
   }
 }
 
