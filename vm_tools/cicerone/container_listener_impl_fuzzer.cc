@@ -45,10 +45,6 @@ struct SetupOnce {
     logging::SetMinLogLevel(logging::LOGGING_FATAL);
   }
 
-  // Protobuf Mutator will create invalid protos sometimes (with duplicate
-  // map keys). Silence those warnings as well.
-  protobuf_mutator::protobuf::LogSilencer log_silencer_;
-
   base::AtExitManager at_exit_;
 };
 
