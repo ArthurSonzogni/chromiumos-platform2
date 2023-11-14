@@ -18,6 +18,7 @@
 #include <dbus/message.h>
 #include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 
+#include "fbpreprocessor/constants.h"
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
 #include "fbpreprocessor/pseudonymization_manager.h"
@@ -66,6 +67,7 @@ void InputManager::OnSignalConnected(const std::string& interface_name,
 }
 
 void InputManager::OnFirmwareDumpCreated(dbus::Signal* signal) const {
+  VLOG(kLocalDebugVerbosity) << __func__;
   CHECK(signal != nullptr) << "Invalid " << __func__ << " signal.";
   dbus::MessageReader signal_reader(signal);
   DebugDumps dumps;
@@ -79,8 +81,8 @@ void InputManager::OnFirmwareDumpCreated(dbus::Signal* signal) const {
     if (dump.has_wifi_dump()) {
       base::FilePath path(dump.wifi_dump().dmpfile());
       FirmwareDump fw_dump(path.RemoveExtension());
-      // TODO(b/307593542): remove filenames from logs.
-      LOG(INFO) << "Detected new file " << fw_dump << ".";
+      LOG(INFO) << __func__ << ": New WiFi dump file detected.";
+      VLOG(kLocalOnlyDebugVerbosity) << "Detected new file " << fw_dump << ".";
 
       if (!manager_->FirmwareDumpsAllowed()) {
         // The feature is disabled, but firmware dumps were created anyway.
@@ -117,15 +119,15 @@ void InputManager::OnNewFirmwareDump(const FirmwareDump& fw_dump) const {
 }
 
 void InputManager::DeleteAllFiles() const {
+  VLOG(kLocalDebugVerbosity) << __func__;
   base::FileEnumerator files(user_root_dir_.Append(kInputDirectory),
                              false /* recursive */,
                              base::FileEnumerator::FILES);
   files.ForEach([](const base::FilePath& path) {
-    // TODO(b/307593542): remove filenames from logs.
-    LOG(INFO) << "Cleaning up file " << path.BaseName();
+    VLOG(kLocalOnlyDebugVerbosity) << "Cleaning up file " << path.BaseName();
     if (!brillo::DeleteFile(path)) {
-      // TODO(b/307593542): remove filenames from logs.
-      LOG(ERROR) << "Failed to delete " << path.BaseName();
+      LOG(ERROR) << __func__ << ": File deletion failure detected.";
+      VLOG(kLocalOnlyDebugVerbosity) << "Failed to delete " << path.BaseName();
     }
   });
 }

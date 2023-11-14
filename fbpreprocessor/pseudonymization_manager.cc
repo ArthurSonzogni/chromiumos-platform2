@@ -17,6 +17,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
 
+#include "fbpreprocessor/constants.h"
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
 #include "fbpreprocessor/output_manager.h"
@@ -42,6 +43,7 @@ PseudonymizationManager::~PseudonymizationManager() {
 
 void PseudonymizationManager::StartPseudonymization(
     const FirmwareDump& fw_dump) {
+  VLOG(kLocalDebugVerbosity) << __func__;
   // For the MVP we're not pseudonymizing, so the pseudonymization operation
   // is merely a move which is ~immediate. No need to handle multiple concurrent
   // long-running operations for now.
@@ -53,9 +55,10 @@ void PseudonymizationManager::StartPseudonymization(
     return;
   }
   if (!RateLimitingAllowsNewPseudonymization()) {
-    // TODO(b/307593542): remove filenames from logs.
-    LOG(INFO) << "Too many recent pseudonymizations, rejecting the request for "
-              << fw_dump.DumpFile();
+    LOG(INFO) << "Too many recent pseudonymizations, rejecting the current "
+                 "request.";
+    VLOG(kLocalOnlyDebugVerbosity)
+        << "Rejected request for file" << fw_dump.DumpFile();
     if (!fw_dump.Delete()) {
       LOG(ERROR) << "Failed to delete input firmware dump.";
     }
@@ -122,9 +125,9 @@ void PseudonymizationManager::DoNoOpPseudonymization(
 
 void PseudonymizationManager::OnPseudonymizationComplete(
     const FirmwareDump& input, const FirmwareDump& output, bool success) const {
-  // TODO(b/307593542): remove filenames from logs.
-  LOG(INFO) << "Completed pseudonymization of " << input
-            << (success ? " " : " un") << "successfully.";
+  LOG(INFO) << "Pseudonymization completed" << (success ? " " : " un")
+            << "successfully.";
+  VLOG(kLocalOnlyDebugVerbosity) << "Completed pseudonymization of " << input;
   if (success) {
     manager_->output_manager()->AddFirmwareDump(output);
   } else {

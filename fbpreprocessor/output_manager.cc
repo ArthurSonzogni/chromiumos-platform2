@@ -6,6 +6,7 @@
 
 #include <forward_list>
 #include <string>
+#include <string_view>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -18,15 +19,17 @@
 #include <base/timer/timer.h>
 #include <brillo/files/file_util.h>
 
+#include "fbpreprocessor/constants.h"
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
 #include "fbpreprocessor/platform_features_client.h"
 #include "fbpreprocessor/storage.h"
 
 namespace {
-void DeleteFirmwareDump(const fbpreprocessor::FirmwareDump& fw_dump) {
-  // TODO(b/307593542): remove filenames from logs.
-  LOG(INFO) << "Deleting file " << fw_dump;
+void DeleteFirmwareDump(const fbpreprocessor::FirmwareDump& fw_dump,
+                        std::string_view reason) {
+  LOG(INFO) << "Deleting WiFi dump file triggered by: " << reason;
+  VLOG(fbpreprocessor::kLocalOnlyDebugVerbosity) << "Deleting file " << fw_dump;
   if (!fw_dump.Delete()) {
     LOG(ERROR) << "Failed to delete firmware dump.";
   }
@@ -67,17 +70,19 @@ void OutputManager::OnUserLoggedOut() {
 }
 
 void OutputManager::OnFeatureChanged(bool allowed) {
+  VLOG(kLocalDebugVerbosity) << __func__;
   if (!allowed) {
     DeleteAllFiles();
   }
 }
 
 void OutputManager::AddFirmwareDump(const FirmwareDump& fw_dump) {
+  VLOG(kLocalDebugVerbosity) << __func__;
   if (!manager_->FirmwareDumpsAllowed()) {
     // The value of the Finch flag or the policy may have been changed during
     // the pseudonymization process, delete the files here.
     LOG(INFO) << "Feature disabled, deleting firmware dump.";
-    DeleteFirmwareDump(fw_dump);
+    DeleteFirmwareDump(fw_dump, __func__);
     return;
   }
   base::Time now = base::Time::Now();
@@ -126,9 +131,10 @@ void OutputManager::OnExpiredFile() {
       // while we're holding the lock.
       if (base::SequencedTaskRunner::HasCurrentDefault()) {
         base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-            FROM_HERE, base::BindOnce(&DeleteFirmwareDump, it->fw_dump()));
+            FROM_HERE, base::BindOnce(&DeleteFirmwareDump, it->fw_dump(),
+                                      "scheduled task"));
       } else {
-        DeleteFirmwareDump(it->fw_dump());
+        DeleteFirmwareDump(it->fw_dump(), __func__);
       }
       it = files_.erase(it);
     } else {
@@ -142,20 +148,20 @@ void OutputManager::OnExpiredFile() {
 void OutputManager::DeleteAllManagedFiles() {
   files_lock_.Acquire();
   for (auto f : files_) {
-    DeleteFirmwareDump(f.fw_dump());
+    DeleteFirmwareDump(f.fw_dump(), __func__);
   }
   files_.clear();
   files_lock_.Release();
 }
 
 void OutputManager::DeleteAllFiles() {
+  VLOG(kLocalDebugVerbosity) << __func__;
   DeleteAllManagedFiles();
   base::FileEnumerator files(user_root_dir_.Append(kProcessedDirectory),
                              false /* recursive */,
                              base::FileEnumerator::FILES);
   files.ForEach([](const base::FilePath& path) {
-    // TODO(b/307593542): remove filenames from logs.
-    LOG(INFO) << "Cleaning up file " << path.BaseName();
+    VLOG(kLocalOnlyDebugVerbosity) << "Cleaning up file " << path.BaseName();
     if (!brillo::DeleteFile(path)) {
       LOG(ERROR) << "Failed to delete file.";
     }
