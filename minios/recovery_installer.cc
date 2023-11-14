@@ -9,6 +9,7 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <unistd.h>
 
 #include "minios/utils.h"
 
@@ -51,6 +52,8 @@ bool RecoveryInstaller::RepartitionDisk() {
   }
 
   LOG(INFO) << consolidated_output;
+
+  sync();
 
   return partiton_success;
 }
