@@ -2612,10 +2612,10 @@ bool Datapath::ModifyIsolatedGuestDropRule(Iptables::Command command,
                                            std::string_view ifname) {
   bool success = true;
   success &= ModifyIptables(IpFamily::kDual, Iptables::Table::kFilter, command,
-                            kDropForwardToBruschettaChain,
+                            kDropOutputToBruschettaChain,
                             {"-o", std::string(ifname), "-j", "DROP", "-w"});
   success &= ModifyIptables(IpFamily::kDual, Iptables::Table::kFilter, command,
-                            kDropOutputToBruschettaChain,
+                            kDropForwardToBruschettaChain,
                             {"-m", "state", "--state", "NEW", "-o",
                              std::string(ifname), "-j", "DROP", "-w"});
   return success;
