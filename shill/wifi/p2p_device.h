@@ -113,6 +113,12 @@ class P2PDevice : public LocalDevice,
  private:
   friend class P2PDeviceTest;
   FRIEND_TEST(P2PDeviceTest, DeviceOnOff);
+  FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantP2PDeviceProxy);
+  FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantP2PDeviceProxy_WhileConnected);
+  FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantP2PDeviceProxy_Failure);
+  FRIEND_TEST(P2PDeviceTest, SetupGroup);
+  FRIEND_TEST(P2PDeviceTest, SetupGroup_EmptyProperties);
+  FRIEND_TEST(P2PDeviceTest, GroupStartedAndFinished);
 
   // Set service_ to |service|.
   bool SetService(std::unique_ptr<P2PService> service);
@@ -126,6 +132,19 @@ class P2PDevice : public LocalDevice,
   // Returns true if the device is in an active Client state.
   bool InClientState() const;
 
+  // Connect to wpa_supplicant p2p device proxy of interface object received
+  // on GroupStarted signal.
+  bool ConnectToSupplicantP2PDeviceProxy(const RpcIdentifier& interface);
+
+  // Disconnect from wpa_supplicant p2p device proxy on GroupFinished signal.
+  void DisconnectFromSupplicantP2PDeviceProxy();
+
+  // These helper methods provide final operations for group setup/teardown
+  // which are executed on wpa_supplicant GroupStarted/GroupFinished signal,
+  // respectively.
+  bool SetupGroup(const KeyValueStore& properties);
+  void TeardownGroup();
+
   // Primary interface link name.
   std::string primary_link_name_;
 
@@ -137,6 +156,13 @@ class P2PDevice : public LocalDevice,
   P2PDeviceState state_;
   // P2P service configured on this device.
   std::unique_ptr<P2PService> service_;
+
+  // The wpa_supplicant p2p device proxy of the p2p network interface created
+  // for wifi direct connectivity. It provides group Disconnect method.
+  // It is initialized on GroupStarted signal via ConnectP2PDeviceProxy()
+  // and destroyed on GroupFinished signal via DisconnectP2PDeviceProxy()
+  std::unique_ptr<SupplicantP2PDeviceProxyInterface>
+      supplicant_p2pdevice_proxy_;
 };
 
 }  // namespace shill

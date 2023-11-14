@@ -11,7 +11,10 @@
 
 #include <chromeos/dbus/shill/dbus-constants.h>
 
+#include "shill/control_interface.h"
 #include "shill/manager.h"
+#include "shill/supplicant/supplicant_p2pdevice_proxy_interface.h"
+#include "shill/supplicant/wpa_supplicant.h"
 
 namespace shill {
 
@@ -32,6 +35,7 @@ P2PDevice::P2PDevice(Manager* manager,
   log_name_ = (iface_type == LocalDevice::IfaceType::kP2PGO)
                   ? "p2p_go_" + std::to_string(shill_id)
                   : "p2p_client_" + std::to_string(shill_id);
+  supplicant_p2pdevice_proxy_.reset();
   LOG(INFO) << log_name() << ": P2PDevice created";
 }
 
@@ -191,14 +195,67 @@ void P2PDevice::SetState(P2PDeviceState state) {
   state_ = state;
 }
 
+bool P2PDevice::ConnectToSupplicantP2PDeviceProxy(
+    const RpcIdentifier& interface) {
+  if (supplicant_p2pdevice_proxy_) {
+    LOG(WARNING) << log_name()
+                 << ": Tried to connect to P2PDevice proxy while "
+                    "already connected";
+    return false;
+  }
+  supplicant_p2pdevice_proxy_ =
+      ControlInterface()->CreateSupplicantP2PDeviceProxy(this, interface);
+  if (!supplicant_p2pdevice_proxy_) {
+    LOG(ERROR) << log_name()
+               << ": Failed to connect to P2PDevice proxy, "
+                  "path: "
+               << interface.value();
+    return false;
+  }
+  LOG(INFO) << log_name()
+            << ": P2PDevice proxy connected, path: " << interface.value();
+  return true;
+}
+
+void P2PDevice::DisconnectFromSupplicantP2PDeviceProxy() {
+  if (supplicant_p2pdevice_proxy_) {
+    supplicant_p2pdevice_proxy_.reset();
+    LOG(INFO) << log_name() << ": P2PDevice proxy disconnected";
+  }
+}
+
+bool P2PDevice::SetupGroup(const KeyValueStore& properties) {
+  RpcIdentifier interface_path = RpcIdentifier("");
+  if (properties.Contains<RpcIdentifier>(
+          WPASupplicant::kGroupStartedPropertyInterfaceObject)) {
+    interface_path = properties.Get<RpcIdentifier>(
+        WPASupplicant::kGroupStartedPropertyInterfaceObject);
+  }
+  if (interface_path.value().empty()) {
+    LOG(ERROR) << log_name() << ": Failed to " << __func__
+               << " without interface path";
+    return false;
+  }
+  if (!ConnectToSupplicantP2PDeviceProxy(interface_path)) {
+    return false;
+  }
+  return true;
+}
+
+void P2PDevice::TeardownGroup() {
+  DisconnectFromSupplicantP2PDeviceProxy();
+}
+
 void P2PDevice::GroupStarted(const KeyValueStore& properties) {
   LOG(INFO) << log_name() << ": Got " << __func__ << " while in state "
             << P2PDeviceStateName(state_);
+  SetupGroup(properties);
 }
 
 void P2PDevice::GroupFinished(const KeyValueStore& properties) {
   LOG(INFO) << log_name() << ": Got " << __func__ << " while in state "
             << P2PDeviceStateName(state_);
+  TeardownGroup();
 }
 
 void P2PDevice::GroupFormationFailure(const std::string& reason) {
