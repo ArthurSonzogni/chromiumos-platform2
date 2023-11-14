@@ -18,12 +18,26 @@
 #include "shill/supplicant/supplicant_group_proxy_interface.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_p2pdevice_proxy_interface.h"
+#include "shill/supplicant/supplicant_peer_proxy_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
 
 namespace shill {
 
 namespace {
-static const char* GroupInfoState(P2PDevice::P2PDeviceState state) {
+// TODO(b/308081318): move to P2PPeer class
+String PeerMacAddress(const KeyValueStore& properties) {
+  std::string mac_address;
+  if (properties.Contains<ByteArray>(
+          WPASupplicant::kPeerPropertyDeviceAddress)) {
+    mac_address = net_base::MacAddress::CreateFromBytes(
+                      properties.Get<ByteArray>(
+                          WPASupplicant::kPeerPropertyDeviceAddress))
+                      ->ToString();
+  }
+  return mac_address;
+}
+
+const char* GroupInfoState(P2PDevice::P2PDeviceState state) {
   switch (state) {
     case P2PDevice::P2PDeviceState::kGOStarting:
       return kP2PGroupInfoStateStarting;
@@ -45,7 +59,7 @@ static const char* GroupInfoState(P2PDevice::P2PDeviceState state) {
   return kP2PGroupInfoStateIdle;
 }
 
-static const char* ClientInfoState(P2PDevice::P2PDeviceState state) {
+const char* ClientInfoState(P2PDevice::P2PDeviceState state) {
   switch (state) {
     case P2PDevice::P2PDeviceState::kClientAssociating:
       return kP2PClientInfoStateAssociating;
@@ -130,6 +144,19 @@ const char* P2PDevice::P2PDeviceStateName(P2PDeviceState state) {
   return "Invalid";
 }
 
+Stringmaps P2PDevice::GroupInfoClients() const {
+  Stringmaps clients;
+  for (auto const& peer : group_peers_) {
+    Stringmap client;
+    client.insert(
+        {kP2PGroupInfoClientMACAddressProperty, PeerMacAddress(peer.second)});
+    // TODO(b/299915001): retrieve IPv4/IPv6Address and Hostname from patchpanel
+    // TODO(b/301049348): retrieve vendor class from wpa_supplicant
+    clients.push_back(client);
+  }
+  return clients;
+}
+
 KeyValueStore P2PDevice::GetGroupInfo() const {
   KeyValueStore group_info;
   if (iface_type() != LocalDevice::IfaceType::kP2PGO) {
@@ -152,9 +179,10 @@ KeyValueStore P2PDevice::GetGroupInfo() const {
   if (!group_passphrase_.empty())
     group_info.Set<String>(kP2PGroupInfoPassphraseProperty, group_passphrase_);
 
+  group_info.Set<Stringmaps>(kP2PGroupInfoClientsProperty, GroupInfoClients());
+
   // TODO(b/299915001): retrieve IPv4/IPv6Address from patchpanel
   // TODO(b/301049348): retrieve MacAddress from wpa_supplicant
-  // TODO(b/301049348): handle PeerJoin/Disconnected from wpa_supplicant
   return group_info;
 }
 
@@ -607,6 +635,7 @@ void P2PDevice::TeardownGroup() {
   group_bssid_ = "";
   group_frequency_ = 0;
   group_passphrase_ = "";
+  group_peers_.clear();
 
   DisconnectFromSupplicantGroupProxy();
   DisconnectFromSupplicantP2PDeviceProxy();
@@ -726,14 +755,74 @@ void P2PDevice::GroupFormationFailure(const std::string& reason) {
   }
 }
 
+KeyValueStore P2PDevice::PeerProperties(const dbus::ObjectPath& peer) {
+  // TODO(b/308081318): move to P2PPeer class
+  KeyValueStore properties;
+  std::unique_ptr<SupplicantPeerProxyInterface> proxy =
+      ControlInterface()->CreateSupplicantPeerProxy(
+          RpcIdentifier(peer.value()));
+  proxy->GetProperties(&properties);
+  proxy.reset();
+  return properties;
+}
+
 void P2PDevice::PeerJoined(const dbus::ObjectPath& peer) {
   LOG(INFO) << log_name() << ": Got " << __func__ << " while in state "
             << P2PDeviceStateName(state_);
+  switch (state_) {
+    case P2PDeviceState::kGOConfiguring:
+    case P2PDeviceState::kGOActive: {
+      if (base::Contains(group_peers_, peer)) {
+        LOG(WARNING) << "Ignored " << __func__
+                     << " while already connected, path: " << peer.value();
+        return;
+      }
+      // TODO(b/308081318): implement P2PPeer class
+      KeyValueStore properties = PeerProperties(peer);
+      LOG(INFO) << log_name() << ": Peer connected, path: " << peer.value();
+      group_peers_[peer] = properties;
+    } break;
+    case P2PDeviceState::kUninitialized:
+    case P2PDeviceState::kReady:
+    case P2PDeviceState::kClientAssociating:
+    case P2PDeviceState::kClientConfiguring:
+    case P2PDeviceState::kClientConnected:
+    case P2PDeviceState::kClientDisconnecting:
+    case P2PDeviceState::kGOStarting:
+    case P2PDeviceState::kGOStopping:
+      LOG(WARNING) << log_name() << ": Ignored " << __func__
+                   << " while in state " << P2PDeviceStateName(state_);
+      break;
+  }
 }
 
 void P2PDevice::PeerDisconnected(const dbus::ObjectPath& peer) {
   LOG(INFO) << log_name() << ": Got " << __func__ << " while in state "
             << P2PDeviceStateName(state_);
+  switch (state_) {
+    case P2PDeviceState::kGOConfiguring:
+    case P2PDeviceState::kGOActive: {
+      if (!base::Contains(group_peers_, peer)) {
+        LOG(WARNING) << "Ignored " << __func__
+                     << " while not connected, path: " << peer.value();
+        return;
+      }
+      // TODO(b/308081318): implement P2PPeer class
+      LOG(INFO) << log_name() << ": Peer disconnected, path: " << peer.value();
+      group_peers_.erase(peer);
+    } break;
+    case P2PDeviceState::kUninitialized:
+    case P2PDeviceState::kReady:
+    case P2PDeviceState::kClientAssociating:
+    case P2PDeviceState::kClientConfiguring:
+    case P2PDeviceState::kClientConnected:
+    case P2PDeviceState::kClientDisconnecting:
+    case P2PDeviceState::kGOStarting:
+    case P2PDeviceState::kGOStopping:
+      LOG(WARNING) << log_name() << ": Ignored " << __func__
+                   << " while in state " << P2PDeviceStateName(state_);
+      break;
+  }
 }
 
 }  // namespace shill

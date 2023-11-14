@@ -5,6 +5,7 @@
 #ifndef SHILL_WIFI_P2P_DEVICE_H_
 #define SHILL_WIFI_P2P_DEVICE_H_
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -149,6 +150,8 @@ class P2PDevice : public LocalDevice,
   FRIEND_TEST(P2PDeviceTest, GroupInfo_EmptyOnClient);
   FRIEND_TEST(P2PDeviceTest, ClientInfo);
   FRIEND_TEST(P2PDeviceTest, ClientInfo_EmptyOnGO);
+  FRIEND_TEST(P2PDeviceTest, PeerJoinAndDisconnect);
+  FRIEND_TEST(P2PDeviceTest, PeerJoinAndDisconnect_WhileNotReady);
   FRIEND_TEST(P2PDeviceTest, CreateAndRemove);
   FRIEND_TEST(P2PDeviceTest, ConnectAndDisconnect);
   FRIEND_TEST(P2PDeviceTest, BadState_GO);
@@ -173,6 +176,9 @@ class P2PDevice : public LocalDevice,
   FRIEND_TEST(P2PDeviceTest, GroupFinished_WhileClientConfiguring);
   FRIEND_TEST(P2PDeviceTest, GroupFinished_WhileClientConnected);
   FRIEND_TEST(P2PDeviceTest, GroupFinished_WhileNotExpected);
+
+  // This helper method converts GO peer properties to D-Bus properties.
+  Stringmaps GroupInfoClients() const;
 
   // Set service_ to |service|.
   void SetService(std::unique_ptr<P2PService> service);
@@ -236,6 +242,9 @@ class P2PDevice : public LocalDevice,
   void TeardownGroup(const KeyValueStore& properties);
   void TeardownGroup();
 
+  // TODO(b/308081318) move to P2PPeer class
+  KeyValueStore PeerProperties(const dbus::ObjectPath& peer);
+
   // Primary interface link name.
   std::string primary_link_name_;
 
@@ -280,6 +289,9 @@ class P2PDevice : public LocalDevice,
 
   // The wpa_supplicant persistent group path used for p2p client connection.
   RpcIdentifier supplicant_persistent_group_path_;
+
+  // TODO(b/308081318) move to P2PPeer class
+  std::map<dbus::ObjectPath, KeyValueStore> group_peers_;
 };
 
 }  // namespace shill
