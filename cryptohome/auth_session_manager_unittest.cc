@@ -4,9 +4,11 @@
 
 #include "cryptohome/auth_session_manager.h"
 
+#include <array>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/test/bind.h>
 #include <base/test/power_monitor_test.h>
@@ -39,8 +41,10 @@ using ::hwsec_foundation::error::testing::NotOk;
 using ::testing::_;
 using ::testing::AllOf;
 using ::testing::ByMove;
+using ::testing::ElementsAre;
 using ::testing::Eq;
 using ::testing::Gt;
+using ::testing::IsEmpty;
 using ::testing::IsNull;
 using ::testing::IsTrue;
 using ::testing::Le;
@@ -77,6 +81,7 @@ class AuthSessionManagerTest : public ::testing::Test {
   }
 
   const Username kUsername{"foo@example.com"};
+  const Username kUsername2{"bar@example.com"};
 
   base::test::ScopedPowerMonitorTestSource test_power_monitor_;
   TaskEnvironment task_environment_{
@@ -389,11 +394,243 @@ TEST_F(AuthSessionManagerTest, AddAndWaitRemove) {
   EXPECT_THAT(saved_session.AuthSessionStatus(), IsOk());
   EXPECT_FALSE(future.IsReady());
 
-  // If we remove the token now, the callback should be called with a
-  // non-existing auth session.
+  // If we remove the token now, the callback is still not called until we
+  // release the ongoing session.
   EXPECT_TRUE(auth_session_manager_.RemoveAuthSession(token));
-  ASSERT_TRUE(future.IsReady());
+  EXPECT_FALSE(future.IsReady());
+
+  // Release the existing in-use instance. The callback should now happen with
+  // an invalid session.
+  saved_session = InUseAuthSession();
+  EXPECT_TRUE(future.IsReady());
   EXPECT_THAT(future.Get().AuthSessionStatus(), NotOk());
+}
+
+TEST_F(AuthSessionManagerTest, MultiUserBlocking) {
+  // Four session tokens. The first two tokens are sessions for user 1, and the
+  // other two for user 2.
+  std::array<base::UnguessableToken, 4> tokens;
+
+  // Create two sessions each for two users.
+  tokens[0] = auth_session_manager_.CreateAuthSession(
+      AuthSession::Params{.username = kUsername,
+                          .is_ephemeral_user = false,
+                          .intent = AuthIntent::kDecrypt,
+                          .auth_factor_status_update_timer =
+                              std::make_unique<base::WallClockTimer>(),
+                          .user_exists = false,
+                          .auth_factor_map = AuthFactorMap()});
+  tokens[1] = auth_session_manager_.CreateAuthSession(
+      AuthSession::Params{.username = kUsername,
+                          .is_ephemeral_user = false,
+                          .intent = AuthIntent::kDecrypt,
+                          .auth_factor_status_update_timer =
+                              std::make_unique<base::WallClockTimer>(),
+                          .user_exists = false,
+                          .auth_factor_map = AuthFactorMap()});
+  tokens[2] = auth_session_manager_.CreateAuthSession(
+      AuthSession::Params{.username = kUsername2,
+                          .is_ephemeral_user = false,
+                          .intent = AuthIntent::kDecrypt,
+                          .auth_factor_status_update_timer =
+                              std::make_unique<base::WallClockTimer>(),
+                          .user_exists = false,
+                          .auth_factor_map = AuthFactorMap()});
+  tokens[3] = auth_session_manager_.CreateAuthSession(
+      AuthSession::Params{.username = kUsername2,
+                          .is_ephemeral_user = false,
+                          .intent = AuthIntent::kDecrypt,
+                          .auth_factor_status_update_timer =
+                              std::make_unique<base::WallClockTimer>(),
+                          .user_exists = false,
+                          .auth_factor_map = AuthFactorMap()});
+
+  // Take ownership of a session for the first user. Work should be blocked on
+  // both sessions for that user, but runnable on the second user's sessions.
+  {
+    std::vector<size_t> work_done;
+    {
+      InUseAuthSession u1_session = TakeAuthSession(tokens[0]);
+      ASSERT_THAT(u1_session.AuthSessionStatus(), IsOk());
+
+      // Try to schedule work on every session.
+      for (size_t i = 0; i < tokens.size(); ++i) {
+        auth_session_manager_.RunWhenAvailable(
+            tokens[i],
+            base::BindLambdaForTesting(
+                [&work_done, i](InUseAuthSession) { work_done.push_back(i); }));
+      }
+
+      // Check that the expected work was blocked (or not).
+      EXPECT_THAT(work_done, ElementsAre(2, 3));
+
+      // Scope ends here to free the InUseAuthSession, after this all the
+      // remaining work should get run.
+    }
+    EXPECT_THAT(work_done, ElementsAre(2, 3, 0, 1));
+  }
+
+  // Run the same test, but now with a session from the second user being held.
+  {
+    std::vector<size_t> work_done;
+    {
+      InUseAuthSession u2_session = TakeAuthSession(tokens[2]);
+      ASSERT_THAT(u2_session.AuthSessionStatus(), IsOk());
+
+      // Try to schedule work on every session.
+      for (size_t i = 0; i < tokens.size(); ++i) {
+        auth_session_manager_.RunWhenAvailable(
+            tokens[i],
+            base::BindLambdaForTesting(
+                [&work_done, i](InUseAuthSession) { work_done.push_back(i); }));
+      }
+
+      // Check that the expected work was blocked (or not).
+      EXPECT_THAT(work_done, ElementsAre(0, 1));
+
+      // Scope ends here to free the InUseAuthSession, after this all the
+      // remaining work should get run.
+    }
+    EXPECT_THAT(work_done, ElementsAre(0, 1, 2, 3));
+  }
+
+  // Run the same test but hold sessions for both users.
+  {
+    std::vector<size_t> work_done;
+    {
+      InUseAuthSession u1_session = TakeAuthSession(tokens[1]);
+      ASSERT_THAT(u1_session.AuthSessionStatus(), IsOk());
+      InUseAuthSession u2_session = TakeAuthSession(tokens[3]);
+      ASSERT_THAT(u2_session.AuthSessionStatus(), IsOk());
+
+      // Try to schedule work on every session.
+      for (size_t i = 0; i < tokens.size(); ++i) {
+        auth_session_manager_.RunWhenAvailable(
+            tokens[i],
+            base::BindLambdaForTesting(
+                [&work_done, i](InUseAuthSession) { work_done.push_back(i); }));
+      }
+
+      // Check that all of the work was blocked.
+      EXPECT_THAT(work_done, IsEmpty());
+
+      // Scope ends here to free the sessions, all the work should execute. Note
+      // that the session for user 2 should be ended first.
+    }
+    EXPECT_THAT(work_done, ElementsAre(2, 3, 0, 1));
+  }
+}
+
+TEST_F(AuthSessionManagerTest, PendingWorkStaysBlockedAfterRemove) {
+  // Session tokens for two sessions for a user.
+  std::array<base::UnguessableToken, 2> tokens;
+  tokens[0] = auth_session_manager_.CreateAuthSession(
+      AuthSession::Params{.username = kUsername,
+                          .is_ephemeral_user = false,
+                          .intent = AuthIntent::kDecrypt,
+                          .auth_factor_status_update_timer =
+                              std::make_unique<base::WallClockTimer>(),
+                          .user_exists = false,
+                          .auth_factor_map = AuthFactorMap()});
+  tokens[1] = auth_session_manager_.CreateAuthSession(
+      AuthSession::Params{.username = kUsername,
+                          .is_ephemeral_user = false,
+                          .intent = AuthIntent::kDecrypt,
+                          .auth_factor_status_update_timer =
+                              std::make_unique<base::WallClockTimer>(),
+                          .user_exists = false,
+                          .auth_factor_map = AuthFactorMap()});
+
+  // Track when work was done, and when work was done with a valid session.
+  std::vector<size_t> work_done, work_done_with_session;
+  {
+    InUseAuthSession session = TakeAuthSession(tokens[1]);
+    ASSERT_THAT(session.AuthSessionStatus(), IsOk());
+
+    // Try to schedule work alternating between both sessions. All of this work
+    // should be blocked because we're holding the second session.
+    for (size_t i = 0; i < 4 * tokens.size(); ++i) {
+      auth_session_manager_.RunWhenAvailable(
+          tokens[i % 2],
+          base::BindLambdaForTesting([&work_done, &work_done_with_session,
+                                      i](InUseAuthSession in_use_session) {
+            work_done.push_back(i);
+            if (in_use_session.AuthSessionStatus().ok()) {
+              work_done_with_session.push_back(i);
+            }
+          }));
+    }
+    EXPECT_THAT(work_done, IsEmpty());
+    EXPECT_THAT(work_done_with_session, IsEmpty());
+
+    // Remove the session we're using. This should NOT unblock anything.
+    EXPECT_THAT(auth_session_manager_.RemoveAuthSession(session->token()),
+                IsTrue());
+    EXPECT_THAT(work_done, IsEmpty());
+    EXPECT_THAT(work_done_with_session, IsEmpty());
+
+    // Scope ends here to free the InUseAuthSession, after this all the
+    // remaining work should get run. However, only the work on the first
+    // session should be given a valid session to work with.
+  }
+  EXPECT_THAT(work_done, ElementsAre(0, 1, 2, 3, 4, 5, 6, 7));
+  EXPECT_THAT(work_done_with_session, ElementsAre(0, 2, 4, 6));
+}
+
+TEST_F(AuthSessionManagerTest, RemovedSessionsStillBlockNewWork) {
+  // Session tokens for two sessions for a user.
+  std::array<base::UnguessableToken, 2> tokens;
+  tokens[0] = auth_session_manager_.CreateAuthSession(
+      AuthSession::Params{.username = kUsername,
+                          .is_ephemeral_user = false,
+                          .intent = AuthIntent::kDecrypt,
+                          .auth_factor_status_update_timer =
+                              std::make_unique<base::WallClockTimer>(),
+                          .user_exists = false,
+                          .auth_factor_map = AuthFactorMap()});
+  tokens[1] = auth_session_manager_.CreateAuthSession(
+      AuthSession::Params{.username = kUsername,
+                          .is_ephemeral_user = false,
+                          .intent = AuthIntent::kDecrypt,
+                          .auth_factor_status_update_timer =
+                              std::make_unique<base::WallClockTimer>(),
+                          .user_exists = false,
+                          .auth_factor_map = AuthFactorMap()});
+
+  // Track when work was done, and when work was done with a valid session.
+  std::vector<size_t> work_done, work_done_with_session;
+  {
+    InUseAuthSession session = TakeAuthSession(tokens[1]);
+    ASSERT_THAT(session.AuthSessionStatus(), IsOk());
+
+    // Remove the session. It should still stay in use and block any work that
+    // we try to schedule for this user.
+    EXPECT_THAT(auth_session_manager_.RemoveAuthSession(session->token()),
+                IsTrue());
+
+    // Try to schedule work alternating between both sessions. Even though the
+    // second session has been removed it's still in use and so should still
+    // block any work against the first session.
+    for (size_t i = 0; i < 4 * tokens.size(); ++i) {
+      auth_session_manager_.RunWhenAvailable(
+          tokens[i % 2],
+          base::BindLambdaForTesting([&work_done, &work_done_with_session,
+                                      i](InUseAuthSession in_use_session) {
+            work_done.push_back(i);
+            if (in_use_session.AuthSessionStatus().ok()) {
+              work_done_with_session.push_back(i);
+            }
+          }));
+    }
+    EXPECT_THAT(work_done, ElementsAre(1, 3, 5, 7));
+    EXPECT_THAT(work_done_with_session, IsEmpty());
+
+    // Scope ends here to free the InUseAuthSession, after this all the
+    // remaining work should get run. However, only the work on the first
+    // session should be given a valid session to work with.
+  }
+  EXPECT_THAT(work_done, ElementsAre(1, 3, 5, 7, 0, 2, 4, 6));
+  EXPECT_THAT(work_done_with_session, ElementsAre(0, 2, 4, 6));
 }
 
 TEST_F(AuthSessionManagerTest, RemoveNonExisting) {
@@ -410,7 +647,7 @@ TEST_F(AuthSessionManagerTest, FlagPassing) {
   InUseAuthSession auth_session = TakeAuthSession(session_token);
   base::UnguessableToken ephemeral_session_token =
       auth_session_manager_.CreateAuthSession(
-          kUsername, user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER,
+          kUsername2, user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER,
           AuthIntent::kDecrypt);
   InUseAuthSession ephemeral_auth_session =
       TakeAuthSession(ephemeral_session_token);
@@ -428,7 +665,7 @@ TEST_F(AuthSessionManagerTest, IntentPassing) {
   InUseAuthSession decryption_auth_session =
       TakeAuthSession(decryption_session_token);
   base::UnguessableToken verification_session_token =
-      auth_session_manager_.CreateAuthSession(kUsername, 0,
+      auth_session_manager_.CreateAuthSession(kUsername2, 0,
                                               AuthIntent::kVerifyOnly);
   InUseAuthSession verification_auth_session =
       TakeAuthSession(verification_session_token);

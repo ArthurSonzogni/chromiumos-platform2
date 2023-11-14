@@ -81,28 +81,38 @@ class AuthSessionManager {
  private:
   friend class InUseAuthSession;
 
-  // A simple wrapper around
-  // |std::queue<base::OnceCallback<void(InUseAuthSession)>>|, that invokes each
-  // pending callback with error when destructed.
-  class PendingCallbacksQueue {
+  // Represents an instance of pending work scheduled for an auth session. If
+  // the work object is destroyed before it has been executed then the work
+  // callback will be called with an error.
+  class PendingWork {
    public:
-    PendingCallbacksQueue() = default;
-    ~PendingCallbacksQueue();
-    PendingCallbacksQueue(PendingCallbacksQueue&& queue) = default;
-    PendingCallbacksQueue& operator=(PendingCallbacksQueue&& queue) = default;
+    using Callback = base::OnceCallback<void(InUseAuthSession)>;
 
-    bool IsEmpty();
-    void Push(base::OnceCallback<void(InUseAuthSession)> callback);
-    base::OnceCallback<void(InUseAuthSession)> Pop();
+    PendingWork(base::UnguessableToken session_token, Callback work_callback);
+
+    // Pending work objects can be moved but not copied, because the underlying
+    // work callback cannot be copied. A moved-from work object is considered to
+    // be in a null state and can only be assigned to or destroyed.
+    PendingWork(const PendingWork&) = delete;
+    PendingWork& operator=(const PendingWork&) = delete;
+    PendingWork(PendingWork&& other);
+    PendingWork& operator=(PendingWork&& other);
+
+    ~PendingWork();
+
+    const base::UnguessableToken& session_token() const {
+      return session_token_;
+    }
+
+    // Execute the pending work against the given session. Attempting to run
+    // this work twice is a CHECK failure.
+    void Run(InUseAuthSession session) &&;
 
    private:
-    std::queue<base::OnceCallback<void(InUseAuthSession)>> callbacks_;
-  };
-
-  struct AuthSessionMapEntry {
-    std::unique_ptr<AuthSession> session;
-    // The operations that are waiting for the session to be released.
-    PendingCallbacksQueue pending_callbacks;
+    // Token that identifies the session this work is targeted to.
+    base::UnguessableToken session_token_;
+    // The work callback. Once the callback is executed this will be cleared.
+    std::optional<Callback> work_callback_;
   };
 
   // Add a new session. Implements the common portion of the CreateAuthSession
@@ -131,10 +141,23 @@ class AuthSessionManager {
   // The repeating callback to send AuthFactorStatusUpdateSignal.
   AuthFactorStatusUpdateCallback auth_factor_status_update_callback_;
 
-  // Track all of the managed auth sessions by token. For AuthSessions in active
-  // use, the unique_ptr for the AuthSession for a given token will be nullptr,
-  // as the ownership is being held by an InUseAuthSession object.
-  std::map<base::UnguessableToken, AuthSessionMapEntry> auth_sessions_;
+  // Map of session tokens to the session user.
+  std::map<base::UnguessableToken, ObfuscatedUsername> token_to_user_;
+
+  // For each user, stores all of their sessions as well as a work queue.
+  struct UserAuthSessions {
+    // All of the auth sessions for this user. If one of the sessions is in
+    // active use then it will still have an entry in this map but the value
+    // will be nullptr with the ownership being held by an InUseAuthSession.
+    std::map<base::UnguessableToken, std::unique_ptr<AuthSession>>
+        auth_sessions;
+    // A queue of pending work for the session.
+    std::queue<PendingWork> work_queue;
+    // Populated with the token of the currently in use session if that session
+    // is removed while it is in use.
+    std::optional<base::UnguessableToken> zombie_session;
+  };
+  std::map<ObfuscatedUsername, UserAuthSessions> user_auth_sessions_;
 
   // Timer infrastructure used to track sessions for expiration. This is done by
   // using a map of expiration time -> token to keep track of when sessions

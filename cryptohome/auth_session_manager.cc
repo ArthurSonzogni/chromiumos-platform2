@@ -22,6 +22,7 @@
 
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 namespace {
@@ -64,7 +65,7 @@ base::UnguessableToken AuthSessionManager::CreateAuthSession(
 bool AuthSessionManager::RemoveAuthSession(
     const base::UnguessableToken& token) {
   // Remove the session from the expiration map. If we don't find an entry we
-  // ignore this and rely on the session map removal step to catch the error.
+  // ignore this and still try to remove the underlying session.
   for (auto iter = expiration_map_.begin(); iter != expiration_map_.end();
        ++iter) {
     if (iter->second == token) {
@@ -72,8 +73,33 @@ bool AuthSessionManager::RemoveAuthSession(
       break;
     }
   }
-  // Remove the session from the session map.
-  return auth_sessions_.erase(token) == 1;
+  // Find entries for the token in the token and user maps. If any of the
+  // lookups fail we report an error.
+  auto token_iter = token_to_user_.find(token);
+  if (token_iter == token_to_user_.end()) {
+    return false;
+  }
+  auto user_iter = user_auth_sessions_.find(token_iter->second);
+  if (user_iter == user_auth_sessions_.end()) {
+    return false;
+  }
+  auto session_iter = user_iter->second.auth_sessions.find(token);
+  if (session_iter == user_iter->second.auth_sessions.end()) {
+    return false;
+  }
+  // If we get here we found all the entries for this session, remove them all
+  // and report success. If the session is in use, also mark is as the zombie
+  // session so that we know the user is still busy.
+  if (session_iter->second == nullptr) {
+    user_iter->second.zombie_session = token;
+  }
+  user_iter->second.auth_sessions.erase(session_iter);
+  if (!user_iter->second.zombie_session.has_value() &&
+      user_iter->second.auth_sessions.empty()) {
+    user_auth_sessions_.erase(user_iter);
+  }
+  token_to_user_.erase(token_iter);
+  return true;
 }
 
 bool AuthSessionManager::RemoveAuthSession(
@@ -88,21 +114,9 @@ bool AuthSessionManager::RemoveAuthSession(
 }
 
 void AuthSessionManager::RemoveAllAuthSessions() {
-  auth_sessions_.clear();
+  token_to_user_.clear();
+  user_auth_sessions_.clear();
   expiration_map_.clear();
-}
-
-void AuthSessionManager::RunWhenAvailable(
-    const std::string& serialized_token,
-    base::OnceCallback<void(InUseAuthSession)> callback) {
-  std::optional<base::UnguessableToken> token =
-      AuthSession::GetTokenFromSerializedString(serialized_token);
-  if (!token.has_value()) {
-    LOG(ERROR) << "Unparsable AuthSession token for find";
-    std::move(callback).Run(InUseAuthSession(*this, nullptr));
-    return;
-  }
-  RunWhenAvailable(token.value(), std::move(callback));
 }
 
 void AuthSessionManager::SetAuthFactorStatusUpdateCallback(
@@ -113,40 +127,77 @@ void AuthSessionManager::SetAuthFactorStatusUpdateCallback(
 void AuthSessionManager::RunWhenAvailable(
     const base::UnguessableToken& token,
     base::OnceCallback<void(InUseAuthSession)> callback) {
-  auto it = auth_sessions_.find(token);
-  if (it == auth_sessions_.end()) {
-    std::move(callback).Run(InUseAuthSession(*this, nullptr));
+  PendingWork work(token, std::move(callback));
+
+  // Look up the user sessions instance for the given token. If it doesn't exist
+  // just execute the callback immediately with an invalid InUse object.
+  auto token_iter = token_to_user_.find(token);
+  if (token_iter == token_to_user_.end()) {
+    return;
+  }
+  auto user_iter = user_auth_sessions_.find(token_iter->second);
+  if (user_iter == user_auth_sessions_.end()) {
     return;
   }
 
-  // If the AuthSessionManager doesn't own the AuthSession unique_ptr,
-  // then the AuthSession is actively in use for another dbus operation. Put the
-  // callback into the pending_callbacks queue.
-  if (!it->second.session) {
-    it->second.pending_callbacks.Push(std::move(callback));
+  // Check if the user is busy, i.e. if they have any sessions that are
+  // currently in use. If they are, add an item to the pending work queue.
+  if (user_iter->second.zombie_session.has_value()) {
+    user_iter->second.work_queue.push(std::move(work));
     return;
   }
+  for (const auto& [unused_token, session] : user_iter->second.auth_sessions) {
+    if (!session) {
+      user_iter->second.work_queue.push(std::move(work));
+      return;
+    }
+  }
 
-  // By giving ownership of the unique_ptr we are marking
-  // the AuthSession as in active use.
-  std::move(callback).Run(
-      InUseAuthSession(*this, std::move(it->second.session)));
+  // If we get here then the user is not busy, execute the callback immediately.
+  auto session_iter = user_iter->second.auth_sessions.find(token);
+  if (session_iter == user_iter->second.auth_sessions.end()) {
+    return;
+  }
+  std::move(work).Run(InUseAuthSession(*this, std::move(session_iter->second)));
+}
+
+void AuthSessionManager::RunWhenAvailable(
+    const std::string& serialized_token,
+    base::OnceCallback<void(InUseAuthSession)> callback) {
+  std::optional<base::UnguessableToken> token =
+      AuthSession::GetTokenFromSerializedString(serialized_token);
+  if (!token.has_value()) {
+    LOG(ERROR) << "Unparsable AuthSession token for find";
+    std::move(callback).Run(InUseAuthSession());
+    return;
+  }
+  RunWhenAvailable(token.value(), std::move(callback));
 }
 
 base::UnguessableToken AuthSessionManager::AddAuthSession(
     std::unique_ptr<AuthSession> auth_session) {
-  // We should never, ever, be able to get a token collision.
+  // Find the insertion location in the token->user map. We should never, ever,
+  // be able to get a token collision.
   const auto token = auth_session->token();
-  auto iter = auth_sessions_.lower_bound(token);
-  CHECK(iter == auth_sessions_.end() || iter->first != token)
+  const ObfuscatedUsername username = auth_session->obfuscated_username();
+  auto token_iter = token_to_user_.lower_bound(token);
+  CHECK(token_iter == token_to_user_.end() || token_iter->first != token)
       << "AuthSession token collision";
 
-  // Add an entry to the session map.
-  iter = auth_sessions_.emplace_hint(
-      iter, token,
-      AuthSessionMapEntry{.session = std::move(auth_session),
-                          .pending_callbacks = {}});
-  AuthSession& added_session = *iter->second.session;
+  // Find the insertion location in the user->session map. This may create a new
+  // map implicitly if this is the first session for this user. Again, we should
+  // never, ever be able to get a token collision.
+  auto& user_entry = user_auth_sessions_[username];
+  auto session_iter = user_entry.auth_sessions.lower_bound(token);
+  CHECK(session_iter == user_entry.auth_sessions.end() ||
+        session_iter->first != token)
+      << "AuthSession token collision";
+
+  // Add entries to both maps.
+  token_to_user_.emplace_hint(token_iter, token, username);
+  session_iter = user_entry.auth_sessions.emplace_hint(session_iter, token,
+                                                       std::move(auth_session));
+  AuthSession& added_session = *session_iter->second;
 
   // Add an expiration entry for the session set to the end of time.
   base::Time expiration_time = base::Time::Max();
@@ -216,8 +267,26 @@ void AuthSessionManager::ExpireAuthSessions() {
   auto iter = expiration_map_.begin();
   bool first_entry = true;
   while (iter != expiration_map_.end() && (first_entry || iter->first <= now)) {
-    if (auth_sessions_.erase(iter->second) == 0) {
+    auto token_iter = token_to_user_.find(iter->second);
+    if (token_iter == token_to_user_.end()) {
       LOG(FATAL) << "AuthSessionManager expired a session it is not managing";
+    }
+    auto user_iter = user_auth_sessions_.find(token_iter->second);
+    if (user_iter == user_auth_sessions_.end()) {
+      LOG(FATAL) << "AuthSessionManager expired a session it is not managing";
+    }
+    auto session_iter = user_iter->second.auth_sessions.find(iter->second);
+    if (session_iter == user_iter->second.auth_sessions.end()) {
+      LOG(FATAL) << "AuthSessionManager expired a session it is not managing";
+    }
+    if (session_iter->second == nullptr) {
+      user_iter->second.zombie_session = iter->second;
+    }
+    user_iter->second.auth_sessions.erase(session_iter);
+    token_to_user_.erase(token_iter);
+    if (!user_iter->second.zombie_session.has_value() &&
+        user_iter->second.auth_sessions.empty()) {
+      user_auth_sessions_.erase(user_iter);
     }
     ++iter;
     first_entry = false;
@@ -229,43 +298,73 @@ void AuthSessionManager::ExpireAuthSessions() {
 }
 
 void AuthSessionManager::MarkNotInUse(std::unique_ptr<AuthSession> session) {
-  // If the session token still exists in the session map then return ownership
-  // of the session back to the manager.
-  auto it = auth_sessions_.find(session->token());
-  if (it == auth_sessions_.end()) {
-    // If it doesn't exist then that means the session has been removed and so
-    // just return and allow the object to be destroyed.
+  // Find the session map for this session's user. If no such map exists then
+  // this session has been removed and there are no sessions (or work) left for
+  // this user. Just return and let |session| be destroyed.
+  auto user_iter = user_auth_sessions_.find(session->obfuscated_username());
+  if (user_iter == user_auth_sessions_.end()) {
     return;
   }
-  if (!it->second.pending_callbacks.IsEmpty()) {
-    it->second.pending_callbacks.Pop().Run(
-        InUseAuthSession(*this, std::move(session)));
-    return;
+  // The user is still active. Return this session to the session map. If its
+  // entry no longer exists then the session has been removed and we can destroy
+  // |session|, but we still need to kick off any pending work the user has.
+  auto& session_map = user_iter->second.auth_sessions;
+  auto session_iter = session_map.find(session->token());
+  if (session_iter == session_map.end()) {
+    CHECK_EQ(*user_iter->second.zombie_session, session->token());
+    user_iter->second.zombie_session = std::nullopt;
+    session = nullptr;
+  } else {
+    session_iter->second = std::move(session);
   }
-  it->second.session = std::move(session);
-}
-
-AuthSessionManager::PendingCallbacksQueue::~PendingCallbacksQueue() {
-  while (!IsEmpty()) {
-    Pop().Run(InUseAuthSession());
+  // Run the next item in the work queue. Note that if the next element was
+  // scheduled against a session that no longer exists, we need to keep going
+  // until we find work that can actually run (or until the queue is empty).
+  auto& work_queue = user_iter->second.work_queue;
+  while (!work_queue.empty()) {
+    PendingWork work = std::move(work_queue.front());
+    work_queue.pop();
+    session_iter = session_map.find(work.session_token());
+    if (session_iter != session_map.end()) {
+      std::move(work).Run(
+          InUseAuthSession(*this, std::move(session_iter->second)));
+      return;
+    }
   }
 }
 
-bool AuthSessionManager::PendingCallbacksQueue::IsEmpty() {
-  return callbacks_.empty();
+AuthSessionManager::PendingWork::PendingWork(
+    base::UnguessableToken session_token, Callback work_callback)
+    : session_token_(std::move(session_token)),
+      work_callback_(std::move(work_callback)) {}
+
+AuthSessionManager::PendingWork::PendingWork(PendingWork&& other)
+    : session_token_(std::move(other.session_token_)),
+      work_callback_(std::move(other.work_callback_)) {
+  other.work_callback_ = std::nullopt;
 }
 
-void AuthSessionManager::PendingCallbacksQueue::Push(
-    base::OnceCallback<void(InUseAuthSession)> callback) {
-  callbacks_.push(std::move(callback));
+AuthSessionManager::PendingWork& AuthSessionManager::PendingWork::operator=(
+    PendingWork&& other) {
+  session_token_ = std::move(other.session_token_);
+  work_callback_ = std::move(other.work_callback_);
+  other.work_callback_ = std::nullopt;
+  return *this;
 }
 
-base::OnceCallback<void(InUseAuthSession)>
-AuthSessionManager::PendingCallbacksQueue::Pop() {
-  base::OnceCallback<void(InUseAuthSession)> callback =
-      std::move(callbacks_.front());
-  callbacks_.pop();
-  return callback;
+AuthSessionManager::PendingWork::~PendingWork() {
+  if (work_callback_) {
+    std::move(*work_callback_).Run(InUseAuthSession());
+  }
+}
+
+void AuthSessionManager::PendingWork::Run(InUseAuthSession session) && {
+  if (!work_callback_) {
+    LOG(FATAL) << "Attempting to run work multiple times";
+  }
+  Callback work = std::move(*work_callback_);
+  work_callback_ = std::nullopt;
+  std::move(work).Run(std::move(session));
 }
 
 InUseAuthSession::InUseAuthSession() : manager_(nullptr), session_(nullptr) {}
@@ -279,6 +378,9 @@ InUseAuthSession::InUseAuthSession(InUseAuthSession&& auth_session)
       session_(std::move(auth_session.session_)) {}
 
 InUseAuthSession& InUseAuthSession::operator=(InUseAuthSession&& auth_session) {
+  if (session_ && manager_) {
+    manager_->MarkNotInUse(std::move(session_));
+  }
   manager_ = auth_session.manager_;
   session_ = std::move(auth_session.session_);
   return *this;
@@ -292,8 +394,6 @@ InUseAuthSession::~InUseAuthSession() {
 
 CryptohomeStatus InUseAuthSession::AuthSessionStatus() const {
   if (!session_) {
-    // InUseAuthSession wasn't made with a valid AuthSession unique_ptr
-    LOG(ERROR) << "Invalid AuthSession token provided.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionManagerAuthSessionNotFound),
         ErrorActionSet({PossibleAction::kReboot}),

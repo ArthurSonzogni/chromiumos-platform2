@@ -680,15 +680,19 @@ TEST_F(AuthSessionInterfaceTest, GetAuthSessionStatus) {
 }
 
 TEST_F(AuthSessionInterfaceTest, GetHibernateSecretUnauthenticatedTest) {
-  base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-      kUsername, 0, AuthIntent::kDecrypt);
-  TestFuture<InUseAuthSession> future;
-  auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
-  InUseAuthSession auth_session = future.Take();
+  std::string serialized_token;
+  {
+    base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
+        kUsername, 0, AuthIntent::kDecrypt);
+    TestFuture<InUseAuthSession> future;
+    auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
+    InUseAuthSession auth_session = future.Take();
+    serialized_token = auth_session->serialized_token();
+  }
 
   // Verify an unauthenticated session fails in producing a hibernate secret.
   user_data_auth::GetHibernateSecretRequest request;
-  request.set_auth_session_id(auth_session->serialized_token());
+  request.set_auth_session_id(serialized_token);
   TestFuture<user_data_auth::GetHibernateSecretReply> reply_future;
   userdataauth_.GetHibernateSecret(
       request,
