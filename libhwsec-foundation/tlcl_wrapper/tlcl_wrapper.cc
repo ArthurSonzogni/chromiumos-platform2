@@ -35,4 +35,13 @@ uint32_t TlclWrapperImpl::Extend(int pcr_num,
   return result;
 }
 
+uint32_t TlclWrapperImpl::GetOwnership(bool* owned) {
+  uint8_t owned_out = 0;
+  uint32_t result = TlclGetOwnership(&owned_out);
+  if (owned) {
+    *owned = static_cast<bool>(owned_out);
+  }
+  return result;
+}
+
 }  // namespace hwsec_foundation

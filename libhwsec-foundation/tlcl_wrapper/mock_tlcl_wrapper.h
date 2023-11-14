@@ -29,6 +29,8 @@ class HWSEC_FOUNDATION_EXPORT MockTlclWrapper : public TlclWrapper {
               Extend,
               (int pcr_num, const brillo::Blob&, brillo::Blob*),
               (override));
+
+  MOCK_METHOD(uint32_t, GetOwnership, (bool*), (override));
 };
 
 }  // namespace hwsec_foundation

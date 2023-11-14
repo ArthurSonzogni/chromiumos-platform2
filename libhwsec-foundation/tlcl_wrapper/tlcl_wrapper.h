@@ -31,6 +31,9 @@ class HWSEC_FOUNDATION_EXPORT TlclWrapper {
   virtual uint32_t Extend(int pcr_num,
                           const brillo::Blob& in_digest,
                           brillo::Blob* out_digest) = 0;
+
+  // Get the ownership status, return 0 iff successful.
+  virtual uint32_t GetOwnership(bool* owned) = 0;
 };
 
 // TlclWrapper is a simple wrapper around the vboot tlcl library so that we can
@@ -45,6 +48,7 @@ class HWSEC_FOUNDATION_EXPORT TlclWrapperImpl : public TlclWrapper {
   uint32_t Extend(int pcr_num,
                   const brillo::Blob& in_digest,
                   brillo::Blob* out_digest) override;
+  uint32_t GetOwnership(bool* owned) override;
 };
 
 }  // namespace hwsec_foundation
