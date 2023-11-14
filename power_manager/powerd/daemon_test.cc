@@ -43,6 +43,7 @@
 #include "power_manager/powerd/system/backlight_stub.h"
 #include "power_manager/powerd/system/charge_controller_helper_stub.h"
 #include "power_manager/powerd/system/cros_ec_helper_stub.h"
+#include "power_manager/powerd/system/cryptohome_client.h"
 #include "power_manager/powerd/system/dark_resume_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/display/display_power_setter_stub.h"
@@ -51,6 +52,7 @@
 #include "power_manager/powerd/system/input_watcher_stub.h"
 #include "power_manager/powerd/system/lockfile_checker_stub.h"
 #include "power_manager/powerd/system/machine_quirks_stub.h"
+#include "power_manager/powerd/system/mock_cryptohome_client.h"
 #include "power_manager/powerd/system/mock_power_supply.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/power_supply.h"
@@ -123,6 +125,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
         passed_user_proximity_watcher_(new system::UserProximityWatcherStub()),
         passed_dark_resume_(new system::DarkResumeStub()),
         passed_audio_client_(new system::AudioClientStub()),
+        passed_cryptohome_client_(new system::MockCryptohomeClient()),
         passed_lockfile_checker_(new system::LockfileCheckerStub()),
         passed_machine_quirks_(new system::MachineQuirksStub()),
         passed_metrics_sender_(new MetricsSenderStub()),
@@ -162,6 +165,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
         user_proximity_watcher_(passed_user_proximity_watcher_.get()),
         dark_resume_(passed_dark_resume_.get()),
         audio_client_(passed_audio_client_.get()),
+        cryptohome_client_(passed_cryptohome_client_.get()),
         lockfile_checker_(passed_lockfile_checker_.get()),
         machine_quirks_(passed_machine_quirks_.get()),
         metrics_sender_(passed_metrics_sender_.get()),
@@ -413,6 +417,11 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
     return std::move(passed_audio_client_);
   }
+  std::unique_ptr<system::CryptohomeClient> CreateCryptohomeClient(
+      system::DBusWrapperInterface* dbus_wrapper) override {
+    EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
+    return std::move(passed_cryptohome_client_);
+  }
   std::unique_ptr<system::LockfileCheckerInterface> CreateLockfileChecker(
       const base::FilePath& dir,
       const std::vector<base::FilePath>& files) override {
@@ -509,6 +518,15 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     return response;
   }
 
+  // DBusWrapperStub::MethodCallback implementation used to handle resourced
+  // D-Bus call (resource_manager::kSetFullscreenVideoWithTimeout).
+  std::unique_ptr<dbus::Response> HandleEvictCryptohomeDeviceResponse(
+      dbus::ObjectProxy* proxy, dbus::MethodCall* method_call) {
+    std::unique_ptr<dbus::Response> response =
+        dbus::Response::FromMethodCall(method_call);
+    return response;
+  }
+
  protected:
   // Send the appropriate events to put StateController into docked mode.
   void EnterDockedMode() {
@@ -532,7 +550,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     std::string suspend_arg = "--suspend_to_idle";
     async_commands_.clear();
     sync_commands_.clear();
-    daemon_->DoSuspend(1, true, base::Milliseconds(0), false);
+    daemon_->DoSuspend(1, true, base::Milliseconds(0), kFakeSuspendID, false);
     return sync_commands_[0].find(suspend_arg) != std::string::npos;
   }
 
@@ -574,6 +592,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
       passed_user_proximity_watcher_;
   std::unique_ptr<system::DarkResumeStub> passed_dark_resume_;
   std::unique_ptr<system::AudioClientStub> passed_audio_client_;
+  std::unique_ptr<system::MockCryptohomeClient> passed_cryptohome_client_;
   std::unique_ptr<system::LockfileCheckerStub> passed_lockfile_checker_;
   std::unique_ptr<system::MachineQuirksStub> passed_machine_quirks_;
   std::unique_ptr<MetricsSenderStub> passed_metrics_sender_;
@@ -613,6 +632,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   system::UserProximityWatcherStub* user_proximity_watcher_;
   system::DarkResumeStub* dark_resume_;
   system::AudioClientStub* audio_client_;
+  system::MockCryptohomeClient* cryptohome_client_;
   system::LockfileCheckerStub* lockfile_checker_;
   system::MachineQuirksStub* machine_quirks_;
   MetricsSenderStub* metrics_sender_;
@@ -636,6 +656,9 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
 
   // Value to return from GetPid().
   pid_t pid_ = 2;
+
+  // Value for EvictDeviceKey(), relays the current suspend attempt.
+  const int kFakeSuspendID = 0;
 
   // Command lines executed via Launch() and Run(), respectively.
   std::vector<std::string> async_commands_;
@@ -1213,7 +1236,18 @@ TEST_F(DaemonTest, PrepareToSuspendAndResume) {
   daemon_->PrepareToSuspend();
   EXPECT_TRUE(power_supply_->suspended());
 
-  daemon_->DoSuspend(1, true, base::Milliseconds(0), false);
+// Set method_callback_ for daemon_, so that EvictCryptohomeDevice within
+// DoSuspend will return with a value for testing.
+#if USE_KEY_EVICTION
+  // TODO(b:311232193, thomascedeno): This should be gated by a finch feature
+  // flag and controlled by chrome://settings ideally.
+  EXPECT_CALL(*cryptohome_client_, EvictDeviceKey(_));
+  dbus_wrapper_->SetMethodCallback(
+      base::BindRepeating(&DaemonTest::HandleEvictCryptohomeDeviceResponse,
+                          base::Unretained(this)));
+#endif  // USE_KEY_EVICTION
+
+  daemon_->DoSuspend(1, true, base::Milliseconds(0), kFakeSuspendID, false);
 
   input_watcher_->set_lid_state(LidState::OPEN);
   daemon_->UndoPrepareToSuspend(true, 0, false);

@@ -772,8 +772,9 @@ Suspender::State Suspender::Suspend() {
   }
 
   current_num_attempts_++;
-  Delegate::SuspendResult result = delegate_->DoSuspend(
-      wakeup_count_, wakeup_count_valid_, suspend_duration_, hibernate);
+  Delegate::SuspendResult result =
+      delegate_->DoSuspend(wakeup_count_, wakeup_count_valid_,
+                           suspend_duration_, suspend_request_id_, hibernate);
 
   wakeup_source_identifier_->HandleResume();
 

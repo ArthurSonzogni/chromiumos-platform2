@@ -556,6 +556,8 @@ void Daemon::Init() {
     audio_client_->AddObserver(this);
   }
 
+  cryptohome_client_ = delegate_->CreateCryptohomeClient(dbus_wrapper_.get());
+
   bluetooth_controller_->Init(udev_.get(), platform_features_,
                               dbus_wrapper_.get(), tablet_mode);
   wifi_controller_->Init(this, prefs_.get(), udev_.get(), tablet_mode);
@@ -878,6 +880,7 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
     uint64_t wakeup_count,
     bool wakeup_count_valid,
     base::TimeDelta duration,
+    int suspend_request_id,
     bool to_hibernate) {
   // If power management is overridden by a lockfile, spin for a bit to wait for
   // the process to finish: http://crosbug.com/p/38947
@@ -948,6 +951,16 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
 
     return policy::Suspender::Delegate::SuspendResult::CANCELED;
   }
+
+// Evict users' home encryption devices only after other processes have
+// announced suspend readiness and frozen the filesystem, specifically the
+// user's encrypted home directory.
+#if USE_KEY_EVICTION
+  // TODO(b:311232193, thomascedeno): This should be gated by a finch feature
+  // flag and controlled by chrome://settings ideally.
+  if (cryptohome_client_)
+    cryptohome_client_->EvictDeviceKey(suspend_request_id);
+#endif  // USE_KEY_EVICTION
 
   wakealarm_time_ = suspend_configurator_->PrepareForSuspend(duration);
 

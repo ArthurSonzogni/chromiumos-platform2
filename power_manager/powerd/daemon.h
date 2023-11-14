@@ -38,6 +38,7 @@
 #include "power_manager/powerd/policy/user_proximity_handler.h"
 #include "power_manager/powerd/policy/wifi_controller.h"
 #include "power_manager/powerd/system/audio_observer.h"
+#include "power_manager/powerd/system/cryptohome_client.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/machine_quirks.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
@@ -173,6 +174,7 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   SuspendResult DoSuspend(uint64_t wakeup_count,
                           bool wakeup_count_valid,
                           base::TimeDelta duration,
+                          int suspend_request_id,
                           bool to_hibernate) override;
   void UndoPrepareToSuspend(bool success,
                             int num_suspend_attempts,
@@ -400,6 +402,7 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   std::unique_ptr<system::CrosEcHelperInterface> ec_helper_;
   std::unique_ptr<policy::InputDeviceController> input_device_controller_;
   std::unique_ptr<system::AudioClientInterface> audio_client_;  // May be null.
+  std::unique_ptr<system::CryptohomeClient> cryptohome_client_;
   std::unique_ptr<system::PeripheralBatteryWatcher>
       peripheral_battery_watcher_;  // May be null.
   std::unique_ptr<system::PowerSupplyInterface> power_supply_;

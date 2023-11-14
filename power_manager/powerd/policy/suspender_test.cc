@@ -126,6 +126,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   SuspendResult DoSuspend(uint64_t wakeup_count,
                           bool wakeup_count_valid,
                           base::TimeDelta duration,
+                          int suspend_request_id,
                           bool to_hibernate) override {
     AppendAction(kSuspend);
     suspend_wakeup_count_ = wakeup_count;
