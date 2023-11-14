@@ -41,7 +41,9 @@
 using testing::_;
 using testing::AnyNumber;
 using testing::ByMove;
+using testing::DoAll;
 using testing::Return;
+using testing::SetArgPointee;
 using testing::StrictMock;
 
 namespace startup {
@@ -283,29 +285,42 @@ class TPMTest : public ::testing::Test {
   std::unique_ptr<startup::ChromeosStartup> startup_;
 };
 
-TEST_F(TPMTest, OwnedFileTrue) {
-  base::FilePath tpm_file = base_dir.Append(kTPMOwnedPath);
-  ASSERT_TRUE(CreateDirAndWriteFile(tpm_file, "1"));
+TEST_F(TPMTest, OwnedTrue) {
+  EXPECT_CALL(*tlcl_, Init()).WillOnce(Return(0));
+  EXPECT_CALL(*tlcl_, GetOwnership(_))
+      .WillOnce(DoAll(SetArgPointee<0>(true), Return(0)));
+  EXPECT_CALL(*tlcl_, Close()).WillOnce(Return(0));
   EXPECT_EQ(startup_->IsTPMOwned(), true);
 }
 
-TEST_F(TPMTest, OwnedFileFalse) {
-  base::FilePath tpm_file = base_dir.Append(kTPMOwnedPath);
-  ASSERT_TRUE(CreateDirAndWriteFile(tpm_file, "0"));
+TEST_F(TPMTest, OwnedFalse) {
+  EXPECT_CALL(*tlcl_, Init()).WillOnce(Return(0));
+  EXPECT_CALL(*tlcl_, GetOwnership(_))
+      .WillOnce(DoAll(SetArgPointee<0>(false), Return(0)));
+  EXPECT_CALL(*tlcl_, Close()).WillOnce(Return(0));
   EXPECT_EQ(startup_->IsTPMOwned(), false);
 }
 
-TEST_F(TPMTest, NeedsClobberTPMOwned) {
-  base::FilePath tpm_file = base_dir.Append(kTPMOwnedPath);
-  ASSERT_TRUE(CreateDirAndWriteFile(tpm_file, "1"));
+TEST_F(TPMTest, OwnedUnknown) {
+  EXPECT_CALL(*tlcl_, Init()).WillOnce(Return(0));
+  EXPECT_CALL(*tlcl_, GetOwnership(_)).WillOnce(Return(1));
+  EXPECT_CALL(*tlcl_, Close()).WillOnce(Return(0));
   EXPECT_EQ(startup_->IsTPMOwned(), true);
+}
+
+TEST_F(TPMTest, NeedsClobberTPMOwned) {
+  EXPECT_CALL(*tlcl_, Init()).WillOnce(Return(0));
+  EXPECT_CALL(*tlcl_, GetOwnership(_))
+      .WillOnce(DoAll(SetArgPointee<0>(true), Return(0)));
+  EXPECT_CALL(*tlcl_, Close()).WillOnce(Return(0));
   EXPECT_EQ(startup_->NeedsClobberWithoutDevModeFile(), false);
 }
 
 TEST_F(TPMTest, NeedsClobberTPMNotOwnedEmptyDisk) {
-  base::FilePath tpm_file = base_dir.Append(kTPMOwnedPath);
-  ASSERT_TRUE(CreateDirAndWriteFile(tpm_file, "0"));
-  EXPECT_EQ(startup_->IsTPMOwned(), false);
+  EXPECT_CALL(*tlcl_, Init()).WillOnce(Return(0));
+  EXPECT_CALL(*tlcl_, GetOwnership(_))
+      .WillOnce(DoAll(SetArgPointee<0>(false), Return(0)));
+  EXPECT_CALL(*tlcl_, Close()).WillOnce(Return(0));
   EXPECT_EQ(startup_->NeedsClobberWithoutDevModeFile(), false);
 }
 
@@ -313,8 +328,10 @@ TEST_F(TPMTest, NeedsClobberTPMNotOwnedEmptyDisk) {
 
 TEST_F(TPMTest, NeedsClobberPreservationFile) {
   LOG(INFO) << "test getuid " << getuid();
-  base::FilePath tpm_file = base_dir.Append(kTPMOwnedPath);
-  ASSERT_TRUE(CreateDirAndWriteFile(tpm_file, "0"));
+  EXPECT_CALL(*tlcl_, Init()).WillRepeatedly(Return(0));
+  EXPECT_CALL(*tlcl_, GetOwnership(_))
+      .WillRepeatedly(DoAll(SetArgPointee<0>(false), Return(0)));
+  EXPECT_CALL(*tlcl_, Close()).WillRepeatedly(Return(0));
   EXPECT_EQ(startup_->IsTPMOwned(), false);
   base::FilePath preservation_file = base_dir.Append("preservation_request");
   ASSERT_TRUE(CreateDirAndWriteFile(preservation_file, "0"));
@@ -331,8 +348,10 @@ TEST_F(TPMTest, NeedsClobberPreservationFile) {
 
 TEST_F(TPMTest, NeedsClobberPreservationFileWrongerUid) {
   LOG(INFO) << "test getuid " << getuid();
-  base::FilePath tpm_file = base_dir.Append(kTPMOwnedPath);
-  ASSERT_TRUE(CreateDirAndWriteFile(tpm_file, "0"));
+  EXPECT_CALL(*tlcl_, Init()).WillRepeatedly(Return(0));
+  EXPECT_CALL(*tlcl_, GetOwnership(_))
+      .WillRepeatedly(DoAll(SetArgPointee<0>(false), Return(0)));
+  EXPECT_CALL(*tlcl_, Close()).WillRepeatedly(Return(0));
   EXPECT_EQ(startup_->IsTPMOwned(), false);
   base::FilePath preservation_file = base_dir.Append("preservation_request");
   ASSERT_TRUE(CreateDirAndWriteFile(preservation_file, "0"));
@@ -351,8 +370,10 @@ TEST_F(TPMTest, NeedsClobberPreservationFileWrongerUid) {
 
 TEST_F(TPMTest, NeedsClobberCryptohomeKeyFile) {
   LOG(INFO) << "test getuid " << getuid();
-  base::FilePath tpm_file = base_dir.Append(kTPMOwnedPath);
-  ASSERT_TRUE(CreateDirAndWriteFile(tpm_file, "0"));
+  EXPECT_CALL(*tlcl_, Init()).WillRepeatedly(Return(0));
+  EXPECT_CALL(*tlcl_, GetOwnership(_))
+      .WillRepeatedly(DoAll(SetArgPointee<0>(false), Return(0)));
+  EXPECT_CALL(*tlcl_, Close()).WillRepeatedly(Return(0));
   EXPECT_EQ(startup_->IsTPMOwned(), false);
   struct stat st;
   base::FilePath cryptohome_key_file =
@@ -365,8 +386,10 @@ TEST_F(TPMTest, NeedsClobberCryptohomeKeyFile) {
 
 TEST_F(TPMTest, NeedsClobberNeedFinalization) {
   LOG(INFO) << "test getuid " << getuid();
-  base::FilePath tpm_file = base_dir.Append(kTPMOwnedPath);
-  ASSERT_TRUE(CreateDirAndWriteFile(tpm_file, "0"));
+  EXPECT_CALL(*tlcl_, Init()).WillRepeatedly(Return(0));
+  EXPECT_CALL(*tlcl_, GetOwnership(_))
+      .WillRepeatedly(DoAll(SetArgPointee<0>(false), Return(0)));
+  EXPECT_CALL(*tlcl_, Close()).WillRepeatedly(Return(0));
   EXPECT_EQ(startup_->IsTPMOwned(), false);
   struct stat st;
   base::FilePath need_finalization_file =

@@ -17,6 +17,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/strcat.h>
@@ -197,18 +198,26 @@ void ChromeosStartup::Sysctl() {
 
 // Returns if the TPM is owned or couldn't determine.
 bool ChromeosStartup::IsTPMOwned() {
-  int output = 0;
-  base::FilePath owned = root_.Append(kTPMOwnedPath);
-  // Check file contents
-  if (!utils::ReadFileToInt(owned, &output)) {
-    PLOG(WARNING) << "Could not determine TPM owned, failed to read "
-                  << owned.value();
+  if (tlcl_->Init() != 0) {
+    PLOG(WARNING) << "Failed to init TlclWrapper.";
     return true;
   }
-  if (output == 0) {
-    return false;
+
+  base::ScopedClosureRunner close(base::BindOnce(
+      [](hwsec_foundation::TlclWrapper* tlcl) {
+        if (tlcl->Close() != 0) {
+          PLOG(WARNING) << "Failed to shutdown TlclWrapper.";
+        }
+      },
+      tlcl_.get()));
+
+  bool owned = false;
+  if (tlcl_->GetOwnership(&owned) != 0) {
+    PLOG(WARNING) << "Failed to get ownership.";
+    return true;
   }
-  return true;
+
+  return owned;
 }
 
 // Returns if device needs to clobber even though there's no devmode file
