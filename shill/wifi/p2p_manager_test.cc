@@ -6,6 +6,7 @@
 
 #include <map>
 #include <string>
+#include <utility>
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/test/mock_callback.h>
@@ -15,19 +16,31 @@
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/supplicant/mock_supplicant_p2pdevice_proxy.h"
+#include "shill/supplicant/mock_supplicant_process_proxy.h"
 #include "shill/test_event_dispatcher.h"
+#include "shill/testing.h"
 #include "shill/wifi/mock_p2p_device.h"
 #include "shill/wifi/mock_wifi_phy.h"
 #include "shill/wifi/mock_wifi_provider.h"
 
 using testing::_;
+using testing::ByMove;
+using testing::DoAll;
 using testing::NiceMock;
 using testing::Return;
 using testing::SaveArg;
+using testing::SetArgPointee;
 using testing::StrictMock;
 using testing::Test;
 
 namespace shill {
+
+namespace {
+const uint32_t kDefaultShillId = 0;
+const char kPrimaryInterfaceName[] = "wlan0";
+const RpcIdentifier kPrimaryIfacePath = RpcIdentifier("/interface/wlan0");
+}  // namespace
 
 class P2PManagerTest : public testing::Test {
  public:
@@ -37,11 +50,24 @@ class P2PManagerTest : public testing::Test {
         manager_(
             &control_interface_, &dispatcher_, &metrics_, path_, path_, path_),
         wifi_provider_(new NiceMock<MockWiFiProvider>(&manager_)),
-        p2p_manager_(wifi_provider_->p2p_manager()) {
+        p2p_manager_(wifi_provider_->p2p_manager()),
+        supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
+        supplicant_primary_p2pdevice_proxy_(
+            new NiceMock<MockSupplicantP2PDeviceProxy>()) {
     // Replace the Manager's WiFi provider with a mock.
     manager_.wifi_provider_.reset(wifi_provider_);
     // Update the Manager's map from technology to provider.
     manager_.UpdateProviderMapping();
+    manager_.supplicant_manager()->set_proxy(supplicant_process_proxy_);
+    ON_CALL(*wifi_provider_, GetPrimaryLinkName())
+        .WillByDefault(Return(kPrimaryInterfaceName));
+    ON_CALL(*supplicant_process_proxy_, CreateInterface(_, _))
+        .WillByDefault(
+            DoAll(SetArgPointee<1>(kPrimaryIfacePath), Return(true)));
+    ON_CALL(control_interface_,
+            CreateSupplicantP2PDeviceProxy(_, kPrimaryIfacePath))
+        .WillByDefault(
+            Return(ByMove(std::move(supplicant_primary_p2pdevice_proxy_))));
   }
 
   ~P2PManagerTest() override = default;
@@ -85,6 +111,73 @@ class P2PManagerTest : public testing::Test {
 
   void DispatchPendingEvents() { dispatcher_.DispatchPendingEvents(); }
 
+  void CreateP2PGroup(MockP2PDevice* p2p_device) {
+    KeyValueStore properties;
+    properties.Set<std::string>(kP2PDeviceSSID, "DIRECT-ab");
+    properties.Set<std::string>(kP2PDevicePassphrase, "test0000");
+    properties.Set<uint32_t>(kP2PDeviceFrequency, 1234);
+    base::MockOnceCallback<void(KeyValueStore)> cb;
+    ON_CALL(*wifi_provider_, CreateP2PDevice(_, _, _))
+        .WillByDefault(Return(p2p_device));
+    ON_CALL(*p2p_device, CreateGroup(_)).WillByDefault(Return(true));
+    p2p_manager_->CreateP2PGroup(cb.Get(), properties);
+  }
+
+  std::string DefaultInterfaceName(int shill_id) {
+    return "p2p-wlan0-" + std::to_string(shill_id);
+  }
+
+  RpcIdentifier DefaultInterfacePath(int shill_id) {
+    return RpcIdentifier("/interface/" + DefaultInterfaceName(shill_id));
+  }
+
+  RpcIdentifier DefaultGroupPath(int shill_id) {
+    return RpcIdentifier("/interface/" + DefaultInterfaceName(shill_id) +
+                         "/Group/xx");
+  }
+
+  KeyValueStore DefaultGroupStartedProperties(int shill_id) {
+    KeyValueStore properties;
+    properties.Set<RpcIdentifier>(
+        WPASupplicant::kGroupStartedPropertyInterfaceObject,
+        DefaultInterfacePath(shill_id));
+    properties.Set<RpcIdentifier>(
+        WPASupplicant::kGroupStartedPropertyGroupObject,
+        DefaultGroupPath(shill_id));
+    return properties;
+  }
+
+  KeyValueStore DefaultGroupFinishedProperties(int shill_id) {
+    KeyValueStore properties;
+    properties.Set<RpcIdentifier>(
+        WPASupplicant::kGroupFinishedPropertyInterfaceObject,
+        DefaultInterfacePath(shill_id));
+    properties.Set<RpcIdentifier>(
+        WPASupplicant::kGroupFinishedPropertyGroupObject,
+        DefaultGroupPath(shill_id));
+    return properties;
+  }
+
+  void PostGroupStarted(int shill_id) {
+    PostGroupStarted(DefaultGroupStartedProperties(shill_id));
+  }
+
+  void PostGroupStarted(const KeyValueStore& properties) {
+    p2p_manager_->GroupStarted(properties);
+  }
+
+  void PostGroupFinished(int shill_id) {
+    PostGroupFinished(DefaultGroupFinishedProperties(shill_id));
+  }
+
+  void PostGroupFinished(const KeyValueStore& properties) {
+    p2p_manager_->GroupFinished(properties);
+  }
+
+  void PostGroupFormationFailure(const std::string& reason = "Unknown") {
+    p2p_manager_->GroupFormationFailure(reason);
+  }
+
  protected:
   StrictMock<base::MockRepeatingCallback<void(LocalDevice::DeviceEvent,
                                               const LocalDevice*)>>
@@ -101,6 +194,9 @@ class P2PManagerTest : public testing::Test {
   std::map<uint32_t, MockP2PDevice> p2p_group_owners_;
   // Map of unique IDs to P2P clients.
   std::map<uint32_t, MockP2PDevice> p2p_clients_;
+  MockSupplicantProcessProxy* supplicant_process_proxy_;
+  std::unique_ptr<MockSupplicantP2PDeviceProxy>
+      supplicant_primary_p2pdevice_proxy_;
 };
 
 TEST_F(P2PManagerTest, SetP2PAllowed) {
@@ -335,6 +431,7 @@ TEST_F(P2PManagerTest, ShillIDs) {
     EXPECT_CALL(*p2p_device, Connect(_)).WillOnce(Return(true));
     p2p_manager_->ConnectToP2PGroup(cb.Get(), properties);
     EXPECT_EQ(p2p_manager_->p2p_clients_[current_id], p2p_device);
+    PostGroupStarted(current_id);
     current_id++;
   }
 
@@ -350,6 +447,7 @@ TEST_F(P2PManagerTest, ShillIDs) {
     EXPECT_CALL(*p2p_device, CreateGroup(_)).WillOnce(Return(true));
     p2p_manager_->CreateP2PGroup(cb.Get(), properties);
     EXPECT_EQ(p2p_manager_->p2p_group_owners_[current_id], p2p_device);
+    PostGroupStarted(current_id);
     current_id++;
   }
 }
@@ -387,6 +485,379 @@ TEST_F(P2PManagerTest, MissingArgs_ConnectClient) {
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kConnectToP2PGroupResultInvalidArguments);
   ASSERT_EQ(p2p_manager_->p2p_clients_.count(expected_shill_id), 0);
+}
+
+TEST_F(P2PManagerTest, GroupStarted) {
+  KeyValueStore properties = DefaultGroupStartedProperties(kDefaultShillId);
+  RpcIdentifier interface_path = properties.Get<RpcIdentifier>(
+      WPASupplicant::kGroupStartedPropertyInterfaceObject);
+  MockP2PDevice* p2p_device =
+      new NiceMock<MockP2PDevice>(&manager_, LocalDevice::IfaceType::kP2PGO,
+                                  "wlan0", 0, kDefaultShillId, event_cb_.Get());
+
+  CreateP2PGroup(p2p_device);
+
+  EXPECT_EQ(p2p_manager_->p2p_group_owners_[kDefaultShillId], p2p_device);
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            p2p_device);
+
+  EXPECT_CALL(*p2p_device, GroupStarted(properties)).Times(1);
+  PostGroupStarted(properties);
+
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            nullptr);
+  EXPECT_EQ(p2p_manager_
+                ->supplicant_primary_p2pdevice_event_delegates_[interface_path],
+            p2p_device);
+}
+
+TEST_F(P2PManagerTest, GroupStarted_IgnoreDuplicates) {
+  KeyValueStore properties = DefaultGroupStartedProperties(kDefaultShillId);
+  RpcIdentifier interface_path = properties.Get<RpcIdentifier>(
+      WPASupplicant::kGroupStartedPropertyInterfaceObject);
+  MockP2PDevice* p2p_device =
+      new NiceMock<MockP2PDevice>(&manager_, LocalDevice::IfaceType::kP2PGO,
+                                  "wlan0", 0, kDefaultShillId, event_cb_.Get());
+
+  CreateP2PGroup(p2p_device);
+
+  EXPECT_EQ(p2p_manager_->p2p_group_owners_[kDefaultShillId], p2p_device);
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            p2p_device);
+
+  EXPECT_CALL(*p2p_device, GroupStarted(properties)).Times(1);
+  PostGroupStarted(properties);
+
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            nullptr);
+  EXPECT_EQ(p2p_manager_
+                ->supplicant_primary_p2pdevice_event_delegates_[interface_path],
+            p2p_device);
+
+  EXPECT_CALL(*p2p_device, GroupStarted(_)).Times(0);
+  for (int i = 0; i < 10; i++)
+    PostGroupStarted(properties);
+
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            nullptr);
+  EXPECT_EQ(p2p_manager_
+                ->supplicant_primary_p2pdevice_event_delegates_[interface_path],
+            p2p_device);
+}
+
+TEST_F(P2PManagerTest, GroupStarted_IgnoreMissingDevice) {
+  KeyValueStore properties = DefaultGroupStartedProperties(kDefaultShillId);
+  RpcIdentifier interface_path = properties.Get<RpcIdentifier>(
+      WPASupplicant::kGroupStartedPropertyInterfaceObject);
+  MockP2PDevice* p2p_device =
+      new NiceMock<MockP2PDevice>(&manager_, LocalDevice::IfaceType::kP2PGO,
+                                  "wlan0", 0, kDefaultShillId, event_cb_.Get());
+
+  CreateP2PGroup(p2p_device);
+
+  EXPECT_EQ(p2p_manager_->p2p_group_owners_[kDefaultShillId], p2p_device);
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            p2p_device);
+
+  EXPECT_CALL(*p2p_device, GroupStarted(properties)).Times(1);
+  PostGroupStarted(properties);
+
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            nullptr);
+  EXPECT_EQ(p2p_manager_
+                ->supplicant_primary_p2pdevice_event_delegates_[interface_path],
+            p2p_device);
+
+  EXPECT_CALL(*p2p_device, GroupStarted(_)).Times(0);
+  for (int i = 0; i < 10; i++)
+    PostGroupStarted(kDefaultShillId + 1);
+
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            nullptr);
+  EXPECT_EQ(p2p_manager_
+                ->supplicant_primary_p2pdevice_event_delegates_[interface_path],
+            p2p_device);
+
+  interface_path = DefaultInterfacePath(kDefaultShillId + 1);
+  EXPECT_EQ(p2p_manager_
+                ->supplicant_primary_p2pdevice_event_delegates_[interface_path],
+            nullptr);
+}
+
+TEST_F(P2PManagerTest, GroupStarted_IgnoreMissingProperties) {
+  KeyValueStore properties; /* empty properties */
+  MockP2PDevice* p2p_device =
+      new NiceMock<MockP2PDevice>(&manager_, LocalDevice::IfaceType::kP2PGO,
+                                  "wlan0", 0, kDefaultShillId, event_cb_.Get());
+
+  CreateP2PGroup(p2p_device);
+
+  EXPECT_EQ(p2p_manager_->p2p_group_owners_[kDefaultShillId], p2p_device);
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            p2p_device);
+
+  EXPECT_CALL(*p2p_device, GroupStarted(_)).Times(0);
+  for (int i = 0; i < 10; i++)
+    PostGroupStarted(properties);
+
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            p2p_device);
+}
+
+TEST_F(P2PManagerTest, GroupFinished) {
+  KeyValueStore properties[3];
+  RpcIdentifier interface_path[3];
+  MockP2PDevice* p2p_device[3];
+
+  // Create three groups
+  for (int i = 0; i < 3; i++) {
+    properties[i] = DefaultGroupFinishedProperties(kDefaultShillId + i);
+    interface_path[i] = DefaultInterfacePath(kDefaultShillId + i);
+    p2p_device[i] = new NiceMock<MockP2PDevice>(
+        &manager_, LocalDevice::IfaceType::kP2PGO, "wlan0", 0,
+        kDefaultShillId + i, event_cb_.Get());
+
+    CreateP2PGroup(p2p_device[i]);
+
+    EXPECT_EQ(p2p_manager_->p2p_group_owners_[kDefaultShillId + i],
+              p2p_device[i]);
+    EXPECT_EQ(
+        p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+        p2p_device[i]);
+
+    // Start two of them
+    if (i < 2) {
+      EXPECT_CALL(*(p2p_device[i]), GroupStarted(properties[i])).Times(1);
+      PostGroupStarted(properties[i]);
+
+      EXPECT_EQ(
+          p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+          nullptr);
+      EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_event_delegates_
+                    [interface_path[i]],
+                p2p_device[i]);
+    }
+  }
+
+  // Finish the first one
+  EXPECT_CALL(*p2p_device[0], GroupFinished(properties[0])).Times(1);
+  EXPECT_CALL(*p2p_device[1], GroupFinished(_)).Times(0);
+  EXPECT_CALL(*p2p_device[2], GroupFinished(_)).Times(0);
+  PostGroupFinished(properties[0]);
+
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            p2p_device[2]);
+  EXPECT_EQ(
+      p2p_manager_
+          ->supplicant_primary_p2pdevice_event_delegates_[interface_path[0]],
+      nullptr);
+  EXPECT_EQ(
+      p2p_manager_
+          ->supplicant_primary_p2pdevice_event_delegates_[interface_path[1]],
+      p2p_device[1]);
+  EXPECT_EQ(
+      p2p_manager_
+          ->supplicant_primary_p2pdevice_event_delegates_[interface_path[2]],
+      nullptr);
+}
+
+TEST_F(P2PManagerTest, GroupFinished_BeforeStarted) {
+  KeyValueStore properties = DefaultGroupFinishedProperties(kDefaultShillId);
+  RpcIdentifier interface_path = properties.Get<RpcIdentifier>(
+      WPASupplicant::kGroupFinishedPropertyInterfaceObject);
+  MockP2PDevice* p2p_device =
+      new NiceMock<MockP2PDevice>(&manager_, LocalDevice::IfaceType::kP2PGO,
+                                  "wlan0", 0, kDefaultShillId, event_cb_.Get());
+
+  CreateP2PGroup(p2p_device);
+
+  EXPECT_EQ(p2p_manager_->p2p_group_owners_[kDefaultShillId], p2p_device);
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            p2p_device);
+
+  EXPECT_CALL(*p2p_device, GroupFinished(properties)).Times(1);
+  PostGroupFinished(properties);
+
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            nullptr);
+}
+
+TEST_F(P2PManagerTest, GroupFinished_IgnoreDuplicates) {
+  KeyValueStore properties = DefaultGroupFinishedProperties(kDefaultShillId);
+  RpcIdentifier interface_path = properties.Get<RpcIdentifier>(
+      WPASupplicant::kGroupFinishedPropertyInterfaceObject);
+  MockP2PDevice* p2p_device =
+      new NiceMock<MockP2PDevice>(&manager_, LocalDevice::IfaceType::kP2PGO,
+                                  "wlan0", 0, kDefaultShillId, event_cb_.Get());
+
+  CreateP2PGroup(p2p_device);
+
+  EXPECT_EQ(p2p_manager_->p2p_group_owners_[kDefaultShillId], p2p_device);
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            p2p_device);
+
+  EXPECT_CALL(*p2p_device, GroupStarted(properties)).Times(1);
+  PostGroupStarted(properties);
+
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            nullptr);
+  EXPECT_EQ(p2p_manager_
+                ->supplicant_primary_p2pdevice_event_delegates_[interface_path],
+            p2p_device);
+
+  EXPECT_CALL(*p2p_device, GroupFinished(properties)).Times(1);
+  PostGroupFinished(properties);
+
+  EXPECT_EQ(p2p_manager_
+                ->supplicant_primary_p2pdevice_event_delegates_[interface_path],
+            nullptr);
+
+  EXPECT_CALL(*p2p_device, GroupFinished(_)).Times(0);
+  for (int i = 0; i < 10; i++)
+    PostGroupFinished(properties);
+
+  EXPECT_EQ(p2p_manager_
+                ->supplicant_primary_p2pdevice_event_delegates_[interface_path],
+            nullptr);
+}
+
+TEST_F(P2PManagerTest, GroupFinished_IgnoreMissingDevice) {
+  KeyValueStore properties = DefaultGroupFinishedProperties(kDefaultShillId);
+  RpcIdentifier interface_path = properties.Get<RpcIdentifier>(
+      WPASupplicant::kGroupFinishedPropertyInterfaceObject);
+  MockP2PDevice* p2p_device =
+      new NiceMock<MockP2PDevice>(&manager_, LocalDevice::IfaceType::kP2PGO,
+                                  "wlan0", 0, kDefaultShillId, event_cb_.Get());
+
+  CreateP2PGroup(p2p_device);
+
+  EXPECT_EQ(p2p_manager_->p2p_group_owners_[kDefaultShillId], p2p_device);
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            p2p_device);
+
+  EXPECT_CALL(*p2p_device, GroupStarted(properties)).Times(1);
+  PostGroupStarted(properties);
+
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            nullptr);
+  EXPECT_EQ(p2p_manager_
+                ->supplicant_primary_p2pdevice_event_delegates_[interface_path],
+            p2p_device);
+
+  EXPECT_CALL(*p2p_device, GroupFinished(_)).Times(0);
+  for (int i = 0; i < 10; i++)
+    PostGroupFinished(kDefaultShillId + 1);
+
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            nullptr);
+  EXPECT_EQ(p2p_manager_
+                ->supplicant_primary_p2pdevice_event_delegates_[interface_path],
+            p2p_device);
+
+  interface_path = DefaultInterfacePath(kDefaultShillId + 1);
+  EXPECT_EQ(p2p_manager_
+                ->supplicant_primary_p2pdevice_event_delegates_[interface_path],
+            nullptr);
+}
+
+TEST_F(P2PManagerTest, GroupFinished_IgnoreMissingProperties) {
+  KeyValueStore properties; /* empty properties */
+  MockP2PDevice* p2p_device =
+      new NiceMock<MockP2PDevice>(&manager_, LocalDevice::IfaceType::kP2PGO,
+                                  "wlan0", 0, kDefaultShillId, event_cb_.Get());
+
+  CreateP2PGroup(p2p_device);
+
+  EXPECT_EQ(p2p_manager_->p2p_group_owners_[kDefaultShillId], p2p_device);
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            p2p_device);
+
+  EXPECT_CALL(*p2p_device, GroupFinished(_)).Times(0);
+  for (int i = 0; i < 10; i++)
+    PostGroupFinished(properties);
+
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            p2p_device);
+}
+
+TEST_F(P2PManagerTest, GroupFormationFailure) {
+  std::string reason = "Unknown";
+  MockP2PDevice* p2p_device =
+      new NiceMock<MockP2PDevice>(&manager_, LocalDevice::IfaceType::kP2PGO,
+                                  "wlan0", 0, kDefaultShillId, event_cb_.Get());
+
+  CreateP2PGroup(p2p_device);
+
+  EXPECT_EQ(p2p_manager_->p2p_group_owners_[kDefaultShillId], p2p_device);
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            p2p_device);
+
+  EXPECT_CALL(*p2p_device, GroupFormationFailure(reason)).Times(1);
+  PostGroupFormationFailure(reason);
+
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            nullptr);
+}
+
+TEST_F(P2PManagerTest, GroupFormationFailure_IgnoreDuplicates) {
+  std::string reason = "Unknown";
+  MockP2PDevice* p2p_device =
+      new NiceMock<MockP2PDevice>(&manager_, LocalDevice::IfaceType::kP2PGO,
+                                  "wlan0", 0, kDefaultShillId, event_cb_.Get());
+
+  CreateP2PGroup(p2p_device);
+
+  EXPECT_EQ(p2p_manager_->p2p_group_owners_[kDefaultShillId], p2p_device);
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            p2p_device);
+
+  EXPECT_CALL(*p2p_device, GroupFormationFailure(reason)).Times(1);
+  PostGroupFormationFailure(reason);
+
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            nullptr);
+
+  EXPECT_CALL(*p2p_device, GroupFormationFailure(_)).Times(0);
+  for (int i = 0; i < 10; i++)
+    PostGroupFormationFailure(reason);
+
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            nullptr);
+}
+
+TEST_F(P2PManagerTest, GroupFormationFailure_IgnoreMissingDevice) {
+  std::string reason = "Unknown";
+  KeyValueStore properties = DefaultGroupStartedProperties(kDefaultShillId);
+  RpcIdentifier interface_path = properties.Get<RpcIdentifier>(
+      WPASupplicant::kGroupStartedPropertyInterfaceObject);
+  MockP2PDevice* p2p_device =
+      new NiceMock<MockP2PDevice>(&manager_, LocalDevice::IfaceType::kP2PGO,
+                                  "wlan0", 0, kDefaultShillId, event_cb_.Get());
+
+  CreateP2PGroup(p2p_device);
+
+  EXPECT_EQ(p2p_manager_->p2p_group_owners_[kDefaultShillId], p2p_device);
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            p2p_device);
+
+  EXPECT_CALL(*p2p_device, GroupStarted(properties)).Times(1);
+  PostGroupStarted(properties);
+
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            nullptr);
+  EXPECT_EQ(p2p_manager_
+                ->supplicant_primary_p2pdevice_event_delegates_[interface_path],
+            p2p_device);
+
+  EXPECT_CALL(*p2p_device, GroupFormationFailure(_)).Times(0);
+  for (int i = 0; i < 10; i++)
+    PostGroupFormationFailure(reason);
+
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            nullptr);
+  EXPECT_EQ(p2p_manager_
+                ->supplicant_primary_p2pdevice_event_delegates_[interface_path],
+            p2p_device);
 }
 
 }  // namespace shill

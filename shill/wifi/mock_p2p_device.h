@@ -39,6 +39,9 @@ class MockP2PDevice : public P2PDevice {
   MOCK_METHOD(KeyValueStore, GetClientInfo, (), (const));
   MOCK_METHOD(bool, CreateGroup, (std::unique_ptr<P2PService>), ());
   MOCK_METHOD(bool, Connect, (std::unique_ptr<P2PService>), ());
+  MOCK_METHOD(void, GroupStarted, (const KeyValueStore&), (override));
+  MOCK_METHOD(void, GroupFinished, (const KeyValueStore&), (override));
+  MOCK_METHOD(void, GroupFormationFailure, (const std::string&), (override));
 };
 
 }  // namespace shill

@@ -59,6 +59,7 @@ class SupplicantManager {
   friend class SupplicantManagerTest;
   friend class WiFiObjectTest;
   friend class DaemonTaskTest;
+  friend class P2PManagerTest;
 
   FRIEND_TEST(DaemonTaskTest, SupplicantAppearsAfterStop);
 

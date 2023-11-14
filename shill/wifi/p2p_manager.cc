@@ -13,16 +13,25 @@
 #include <base/logging.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 
+#include "shill/control_interface.h"
 #include "shill/error.h"
 #include "shill/mac_address.h"
 #include "shill/manager.h"
 #include "shill/store/property_accessor.h"
+#include "shill/supplicant/supplicant_p2pdevice_proxy_interface.h"
+#include "shill/supplicant/supplicant_process_proxy_interface.h"
+#include "shill/supplicant/wpa_supplicant.h"
 #include "shill/wifi/local_device.h"
 
 namespace shill {
 
 P2PManager::P2PManager(Manager* manager)
-    : manager_(manager), allowed_(false), next_unique_id_(0) {}
+    : manager_(manager),
+      allowed_(false),
+      next_unique_id_(0),
+      supplicant_primary_p2pdevice_pending_event_delegate_(nullptr) {
+  supplicant_primary_p2pdevice_proxy_.reset();
+}
 
 P2PManager::~P2PManager() = default;
 
@@ -104,12 +113,26 @@ KeyValueStores P2PManager::GetClientInfos(Error* /* error */) {
 
 void P2PManager::Start() {}
 
-void P2PManager::Stop() {}
+void P2PManager::Stop() {
+  // TODO(b/308081318) Cleanup active sessions.
+  if (!p2p_group_owners_.empty() || !p2p_clients_.empty()) {
+    LOG(WARNING) << "P2PManager has been stopped while some of P2P devices "
+                    "are still active";
+  }
+}
 
 void P2PManager::CreateP2PGroup(
     base::OnceCallback<void(KeyValueStore result)> callback,
     const KeyValueStore& args) {
   LOG(INFO) << __func__;
+
+  if (supplicant_primary_p2pdevice_pending_event_delegate_) {
+    LOG(WARNING) << "Failed to create P2P group, operation is already "
+                    "in progress";
+    PostResult(kCreateP2PGroupResultOperationFailed, std::nullopt,
+               std::move(callback));
+    return;
+  }
 
   std::optional<std::string> ssid;
   if (args.Contains<std::string>(kP2PDeviceSSID)) {
@@ -126,6 +149,14 @@ void P2PManager::CreateP2PGroup(
     freq = args.Get<uint32_t>(kP2PDeviceFrequency);
   }
 
+  if (!ConnectToSupplicantPrimaryP2PDeviceProxy()) {
+    LOG(ERROR) << "Failed to create P2P group, primary P2PDevice proxy "
+                  "is not connected";
+    PostResult(kCreateP2PGroupResultOperationFailed, std::nullopt,
+               std::move(callback));
+    return;
+  }
+
   P2PDeviceRefPtr p2p_dev = manager_->wifi_provider()->CreateP2PDevice(
       LocalDevice::IfaceType::kP2PGO,
       base::BindRepeating(&P2PManager::OnP2PDeviceEvent,
@@ -137,12 +168,14 @@ void P2PManager::CreateP2PGroup(
     LOG(ERROR) << "Failed to create a WiFi P2P interface.";
     PostResult(kCreateP2PGroupResultOperationFailed, std::nullopt,
                std::move(callback));
+    DisconnectFromSupplicantPrimaryP2PDeviceProxy();
     return;
   }
   if (!p2p_dev->SetEnabled(true)) {
     LOG(ERROR) << "Failed to enable a WiFi P2P interface.";
     PostResult(kCreateP2PGroupResultOperationFailed, std::nullopt,
                std::move(callback));
+    DisconnectFromSupplicantPrimaryP2PDeviceProxy();
     return;
   }
   std::unique_ptr<P2PService> service =
@@ -157,6 +190,7 @@ void P2PManager::CreateP2PGroup(
 
   manager_->wifi_provider()->RegisterP2PDevice(p2p_dev);
   p2p_group_owners_[p2p_dev->shill_id()] = p2p_dev;
+  supplicant_primary_p2pdevice_pending_event_delegate_ = p2p_dev.get();
   PostResult(kCreateP2PGroupResultSuccess, p2p_dev->shill_id(),
              std::move(callback));
 }
@@ -165,6 +199,14 @@ void P2PManager::ConnectToP2PGroup(
     base::OnceCallback<void(KeyValueStore result)> callback,
     const KeyValueStore& args) {
   LOG(INFO) << __func__;
+
+  if (supplicant_primary_p2pdevice_pending_event_delegate_) {
+    LOG(WARNING) << "Failed to connect to P2P group, operation is already "
+                    "in progress";
+    PostResult(kConnectToP2PGroupResultOperationFailed, std::nullopt,
+               std::move(callback));
+    return;
+  }
 
   if (!args.Contains<std::string>(kP2PDeviceSSID)) {
     LOG(ERROR) << std::string(kP2PDeviceSSID) + " argument is mandatory";
@@ -187,6 +229,14 @@ void P2PManager::ConnectToP2PGroup(
     freq = args.Get<uint32_t>(kP2PDeviceFrequency);
   }
 
+  if (!ConnectToSupplicantPrimaryP2PDeviceProxy()) {
+    LOG(ERROR) << "Failed to connect to P2P group, primary P2PDevice proxy "
+                  "is not connected";
+    PostResult(kConnectToP2PGroupResultOperationFailed, std::nullopt,
+               std::move(callback));
+    return;
+  }
+
   P2PDeviceRefPtr p2p_dev = manager_->wifi_provider()->CreateP2PDevice(
       LocalDevice::IfaceType::kP2PClient,
       base::BindRepeating(&P2PManager::OnP2PDeviceEvent,
@@ -198,12 +248,14 @@ void P2PManager::ConnectToP2PGroup(
     LOG(ERROR) << "Failed to create a WiFi P2P interface.";
     PostResult(kConnectToP2PGroupResultOperationFailed, std::nullopt,
                std::move(callback));
+    DisconnectFromSupplicantPrimaryP2PDeviceProxy();
     return;
   }
   if (!p2p_dev->SetEnabled(true)) {
     LOG(ERROR) << "Failed to enable a WiFi P2P interface.";
     PostResult(kConnectToP2PGroupResultOperationFailed, std::nullopt,
                std::move(callback));
+    DisconnectFromSupplicantPrimaryP2PDeviceProxy();
     return;
   }
   std::unique_ptr<P2PService> service =
@@ -218,6 +270,7 @@ void P2PManager::ConnectToP2PGroup(
 
   manager_->wifi_provider()->RegisterP2PDevice(p2p_dev);
   p2p_clients_[p2p_dev->shill_id()] = p2p_dev;
+  supplicant_primary_p2pdevice_pending_event_delegate_ = p2p_dev.get();
   PostResult(kConnectToP2PGroupResultSuccess, p2p_dev->shill_id(),
              std::move(callback));
 }
@@ -316,6 +369,145 @@ void P2PManager::DeleteP2PDevice(P2PDeviceRefPtr p2p_dev) {
   } else {
     p2p_clients_.erase(p2p_dev->shill_id());
   }
+
+  DisconnectFromSupplicantPrimaryP2PDeviceProxy();
+}
+
+std::string P2PManager::PrimaryLinkName() const {
+  return manager_->wifi_provider()->GetPrimaryLinkName();
+}
+
+SupplicantProcessProxyInterface* P2PManager::SupplicantProcessProxy() const {
+  return manager_->supplicant_manager()->proxy();
+}
+
+ControlInterface* P2PManager::ControlInterface() const {
+  return manager_->control_interface();
+}
+
+bool P2PManager::ConnectToSupplicantPrimaryP2PDeviceProxy() {
+  if (supplicant_primary_p2pdevice_proxy_) {
+    LOG(INFO) << "Primary P2PDevice proxy is already connected";
+    return true;
+  }
+  std::string link_name = PrimaryLinkName();
+  if (link_name.empty()) {
+    LOG(ERROR) << "Failed to get the primary link name for WiFi technology";
+    return false;
+  }
+  // TODO(b/311161440) Centralize the primary interface proxy ownership
+  // in WiFiProvider so that all interfaces can access it without having to
+  // create their own connection.
+  RpcIdentifier interface_path;
+  if (!SupplicantProcessProxy()->GetInterface(link_name, &interface_path)) {
+    // Connect wpa_supplicant to the primary interface.
+    KeyValueStore create_interface_args;
+    create_interface_args.Set<std::string>(
+        WPASupplicant::kInterfacePropertyName, link_name);
+    create_interface_args.Set<std::string>(
+        WPASupplicant::kInterfacePropertyDriver, WPASupplicant::kDriverNL80211);
+    create_interface_args.Set<std::string>(
+        WPASupplicant::kInterfacePropertyConfigFile,
+        WPASupplicant::kSupplicantConfPath);
+    if (!SupplicantProcessProxy()->CreateInterface(create_interface_args,
+                                                   &interface_path)) {
+      LOG(ERROR) << "Cannot connect to the primary interface " << link_name;
+      return false;
+    }
+  }
+  supplicant_primary_p2pdevice_proxy_ =
+      ControlInterface()->CreateSupplicantP2PDeviceProxy(this, interface_path);
+  if (!supplicant_primary_p2pdevice_proxy_) {
+    LOG(ERROR) << "Failed to connect to the primary P2PDevice proxy: "
+               << interface_path.value();
+    return false;
+  }
+  LOG(INFO) << "Primary P2PDevice proxy connected: " << interface_path.value();
+  return true;
+}
+
+void P2PManager::DisconnectFromSupplicantPrimaryP2PDeviceProxy() {
+  if (supplicant_primary_p2pdevice_proxy_ && p2p_group_owners_.empty() &&
+      p2p_clients_.empty()) {
+    supplicant_primary_p2pdevice_proxy_.reset();
+    LOG(INFO) << "Primary P2PDevice proxy disconnected";
+  }
+}
+
+void P2PManager::GroupStarted(const KeyValueStore& properties) {
+  RpcIdentifier interface_path = RpcIdentifier("");
+  if (properties.Contains<RpcIdentifier>(
+          WPASupplicant::kGroupStartedPropertyInterfaceObject)) {
+    interface_path = properties.Get<RpcIdentifier>(
+        WPASupplicant::kGroupStartedPropertyInterfaceObject);
+  }
+  if (interface_path.value().empty()) {
+    LOG(WARNING) << "Ignored " << __func__ << " without interface";
+    return;
+  }
+  if (base::Contains(supplicant_primary_p2pdevice_event_delegates_,
+                     interface_path)) {
+    LOG(WARNING) << "Ignored " << __func__
+                 << " with assigned interface: " << interface_path.value();
+    return;
+  }
+  auto delegate = supplicant_primary_p2pdevice_pending_event_delegate_;
+  if (!delegate) {
+    LOG(WARNING) << "Ignored " << __func__ << " while not expected, interface: "
+                 << interface_path.value();
+    return;
+  }
+  supplicant_primary_p2pdevice_pending_event_delegate_ = nullptr;
+  supplicant_primary_p2pdevice_event_delegates_[interface_path] = delegate;
+
+  LOG(INFO) << "Got " << __func__ << ", interface: " << interface_path.value();
+  delegate->GroupStarted(properties);
+}
+
+void P2PManager::GroupFinished(const KeyValueStore& properties) {
+  RpcIdentifier interface_path = RpcIdentifier("");
+  if (properties.Contains<RpcIdentifier>(
+          WPASupplicant::kGroupFinishedPropertyInterfaceObject)) {
+    interface_path = properties.Get<RpcIdentifier>(
+        WPASupplicant::kGroupFinishedPropertyInterfaceObject);
+  }
+  if (interface_path.value().empty()) {
+    LOG(WARNING) << "Ignored " << __func__ << " without interface";
+    return;
+  }
+  auto delegate =
+      base::Contains(supplicant_primary_p2pdevice_event_delegates_,
+                     interface_path)
+          ? supplicant_primary_p2pdevice_event_delegates_[interface_path]
+          : nullptr;
+  if (!delegate) {
+    delegate = supplicant_primary_p2pdevice_pending_event_delegate_;
+    if (!delegate) {
+      LOG(WARNING) << "Ignored " << __func__
+                   << " while not expected, interface: "
+                   << interface_path.value();
+      return;
+    }
+    supplicant_primary_p2pdevice_pending_event_delegate_ = nullptr;
+  } else {
+    supplicant_primary_p2pdevice_event_delegates_.erase(interface_path);
+  }
+
+  LOG(INFO) << "Got " << __func__ << ", interface: " << interface_path.value();
+  delegate->GroupFinished(properties);
+}
+
+void P2PManager::GroupFormationFailure(const std::string& reason) {
+  auto delegate = supplicant_primary_p2pdevice_pending_event_delegate_;
+  if (!delegate) {
+    LOG(WARNING) << "Ignored " << __func__
+                 << " while not expected, reason: " << reason;
+    return;
+  }
+  supplicant_primary_p2pdevice_pending_event_delegate_ = nullptr;
+
+  LOG(INFO) << "Got " << __func__ << ", reason: " << reason;
+  delegate->GroupFormationFailure(reason);
 }
 
 }  // namespace shill

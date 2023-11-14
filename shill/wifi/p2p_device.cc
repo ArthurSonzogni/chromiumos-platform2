@@ -191,4 +191,19 @@ void P2PDevice::SetState(P2PDeviceState state) {
   state_ = state;
 }
 
+void P2PDevice::GroupStarted(const KeyValueStore& properties) {
+  LOG(INFO) << log_name() << ": Got " << __func__ << " while in state "
+            << P2PDeviceStateName(state_);
+}
+
+void P2PDevice::GroupFinished(const KeyValueStore& properties) {
+  LOG(INFO) << log_name() << ": Got " << __func__ << " while in state "
+            << P2PDeviceStateName(state_);
+}
+
+void P2PDevice::GroupFormationFailure(const std::string& reason) {
+  LOG(WARNING) << log_name() << ": Got " << __func__ << " while in state "
+               << P2PDeviceStateName(state_);
+}
+
 }  // namespace shill

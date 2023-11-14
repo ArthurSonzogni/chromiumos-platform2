@@ -9,14 +9,18 @@
 #include <optional>
 #include <string>
 
+#include "shill/store/key_value_store.h"
+#include "shill/supplicant/supplicant_p2pdevice_event_delegate_interface.h"
 #include "shill/wifi/local_device.h"
 #include "shill/wifi/p2p_service.h"
 
 namespace shill {
 
 class Manager;
+class SupplicantP2PDeviceProxyInterface;
 
-class P2PDevice : public LocalDevice {
+class P2PDevice : public LocalDevice,
+                  public SupplicantP2PDeviceEventDelegateInterface {
  public:
   enum class P2PDeviceState {
     // Common states for all roles.
@@ -98,6 +102,13 @@ class P2PDevice : public LocalDevice {
 
   // Get shill_id_.
   uint32_t shill_id() const { return shill_id_; }
+
+  // Implementation of SupplicantP2PDeviceEventDelegateInterface. These
+  // methods are called by the P2PManager, in response to events from
+  // wpa_supplicant.
+  mockable void GroupStarted(const KeyValueStore& properties) override;
+  mockable void GroupFinished(const KeyValueStore& properties) override;
+  mockable void GroupFormationFailure(const std::string& reason) override;
 
  private:
   friend class P2PDeviceTest;

@@ -6,6 +6,7 @@
 #define SHILL_WIFI_P2P_MANAGER_H_
 
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -16,15 +17,17 @@
 #include "shill/error.h"
 #include "shill/store/key_value_store.h"
 #include "shill/store/property_store.h"
+#include "shill/supplicant/supplicant_p2pdevice_event_delegate_interface.h"
 #include "shill/wifi/p2p_device.h"
 
 namespace shill {
 
 class Manager;
 class StoreInterface;
+class SupplicantP2PDeviceProxyInterface;
 
 // P2PManager handles P2P related logic. It is created by the Manager class.
-class P2PManager {
+class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
  public:
   explicit P2PManager(Manager* manager);
   P2PManager(const P2PManager&) = delete;
@@ -64,6 +67,19 @@ class P2PManager {
   // This property is temporary and will be removed when the feature is mature.
   bool allowed() const { return allowed_; }
 
+  // Implementation of SupplicantP2PDeviceEventDelegateInterface. These
+  // methods are called by SupplicantP2PDeviceProxy, in response to events
+  // from wpa_supplicant.
+  void GroupStarted(const KeyValueStore& properties) override;
+  void GroupFinished(const KeyValueStore& properties) override;
+  void GroupFormationFailure(const std::string& reason) override;
+
+  // This returns wpa_supplicant p2p device proxy owned by P2PManager.
+  mockable SupplicantP2PDeviceProxyInterface* SupplicantPrimaryP2PDeviceProxy()
+      const {
+    return supplicant_primary_p2pdevice_proxy_.get();
+  }
+
  private:
   friend class P2PManagerTest;
   FRIEND_TEST(P2PManagerTest, SetP2PAllowed);
@@ -77,6 +93,18 @@ class P2PManager {
   FRIEND_TEST(P2PManagerTest, ShillIDs);
   FRIEND_TEST(P2PManagerTest, MissingArgs_CreateGroup);
   FRIEND_TEST(P2PManagerTest, MissingArgs_ConnectClient);
+  FRIEND_TEST(P2PManagerTest, GroupStarted);
+  FRIEND_TEST(P2PManagerTest, GroupStarted_IgnoreDuplicates);
+  FRIEND_TEST(P2PManagerTest, GroupStarted_IgnoreMissingDevice);
+  FRIEND_TEST(P2PManagerTest, GroupStarted_IgnoreMissingProperties);
+  FRIEND_TEST(P2PManagerTest, GroupFinished);
+  FRIEND_TEST(P2PManagerTest, GroupFinished_BeforeStarted);
+  FRIEND_TEST(P2PManagerTest, GroupFinished_IgnoreDuplicates);
+  FRIEND_TEST(P2PManagerTest, GroupFinished_IgnoreMissingDevice);
+  FRIEND_TEST(P2PManagerTest, GroupFinished_IgnoreMissingProperties);
+  FRIEND_TEST(P2PManagerTest, GroupFormationFailure);
+  FRIEND_TEST(P2PManagerTest, GroupFormationFailure_IgnoreDuplicates);
+  FRIEND_TEST(P2PManagerTest, GroupFormationFailure_IgnoreMissingDevice);
 
   // This checks whether the platform supports P2P operations.
   bool IsP2PSupported();
@@ -136,6 +164,23 @@ class P2PManager {
   // references.
   void DeleteP2PDevice(P2PDeviceRefPtr p2p_dev_);
 
+  // This returns link name of the primary interface.
+  std::string PrimaryLinkName() const;
+
+  // This returns wpa_supplicant process proxy.
+  SupplicantProcessProxyInterface* SupplicantProcessProxy() const;
+
+  // This returns wpa_supplicant D-Bus control interface.
+  ControlInterface* ControlInterface() const;
+
+  // Connect to wpa_supplicant p2p device proxy of the primary interface.
+  // The primary interface is also created if it wasn't already controlled
+  // by wpa_supplicant before.
+  bool ConnectToSupplicantPrimaryP2PDeviceProxy();
+
+  // Disconnect from wpa_supplicant device proxy of the primary interface.
+  void DisconnectFromSupplicantPrimaryP2PDeviceProxy();
+
   // Reference to the main Shill Manager instance. P2PManager is created and
   // owned by WiFiProvider, which can be accessed indirectly through manager_.
   Manager* manager_;
@@ -151,6 +196,22 @@ class P2PManager {
   // Increases by 1 for each new device and resets to 0 when P2PManager is
   // reset.
   uint32_t next_unique_id_;
+
+  // The wpa_supplicant p2p device proxy of the primary network interface.
+  // It provides group status signals which are handled by P2PManager and
+  // then delegated to proper P2PDevice. It also provides group configuration
+  // methods which are used directly by P2PDevice.
+  std::unique_ptr<SupplicantP2PDeviceProxyInterface>
+      supplicant_primary_p2pdevice_proxy_;
+
+  // The wpa_supplicant event delegate object of pending P2PDevice.
+  SupplicantP2PDeviceEventDelegateInterface*
+      supplicant_primary_p2pdevice_pending_event_delegate_;
+
+  // Map of unique wpa_supplicant interface object paths to associated
+  // event delegate objects (active P2PDevices).
+  std::map<RpcIdentifier, SupplicantP2PDeviceEventDelegateInterface*>
+      supplicant_primary_p2pdevice_event_delegates_;
 };
 
 }  // namespace shill
