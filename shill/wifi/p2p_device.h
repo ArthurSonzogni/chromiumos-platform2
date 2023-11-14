@@ -10,6 +10,7 @@
 #include <string>
 
 #include "shill/store/key_value_store.h"
+#include "shill/supplicant/supplicant_event_delegate_interface.h"
 #include "shill/supplicant/supplicant_p2pdevice_event_delegate_interface.h"
 #include "shill/wifi/local_device.h"
 #include "shill/wifi/p2p_service.h"
@@ -17,9 +18,11 @@
 namespace shill {
 
 class Manager;
+class SupplicantInterfaceProxyInterface;
 class SupplicantP2PDeviceProxyInterface;
 
 class P2PDevice : public LocalDevice,
+                  public SupplicantEventDelegateInterface,
                   public SupplicantP2PDeviceEventDelegateInterface {
  public:
   enum class P2PDeviceState {
@@ -103,6 +106,26 @@ class P2PDevice : public LocalDevice,
   // Get shill_id_.
   uint32_t shill_id() const { return shill_id_; }
 
+  // Implementation of SupplicantEventDelegateInterface.  These methods
+  // are called by SupplicantInterfaceProxy, in response to events from
+  // wpa_supplicant.
+  void PropertiesChanged(const KeyValueStore& properties) override{};
+  void BSSAdded(const RpcIdentifier& BSS,
+                const KeyValueStore& properties) override{};
+  void BSSRemoved(const RpcIdentifier& BSS) override{};
+  void Certification(const KeyValueStore& properties) override{};
+  void EAPEvent(const std::string& status,
+                const std::string& parameter) override{};
+  void InterworkingAPAdded(const RpcIdentifier& BSS,
+                           const RpcIdentifier& cred,
+                           const KeyValueStore& properties) override{};
+  void InterworkingSelectDone() override{};
+  void ScanDone(const bool& success) override{};
+  void StationAdded(const RpcIdentifier& Station,
+                    const KeyValueStore& properties) override{};
+  void StationRemoved(const RpcIdentifier& Station) override{};
+  void PskMismatch() override{};
+
   // Implementation of SupplicantP2PDeviceEventDelegateInterface. These
   // methods are called by the P2PManager, in response to events from
   // wpa_supplicant.
@@ -117,6 +140,9 @@ class P2PDevice : public LocalDevice,
   FRIEND_TEST(P2PDeviceTest, ConnectAndDisconnect);
   FRIEND_TEST(P2PDeviceTest, BadState_GO);
   FRIEND_TEST(P2PDeviceTest, BadState_Client);
+  FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantInterfaceProxy);
+  FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantInterfaceProxy_WhileConnected);
+  FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantInterfaceProxy_Failure);
   FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantP2PDeviceProxy);
   FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantP2PDeviceProxy_WhileConnected);
   FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantP2PDeviceProxy_Failure);
@@ -135,6 +161,17 @@ class P2PDevice : public LocalDevice,
 
   // Returns true if the device is in an active Client state.
   bool InClientState() const;
+
+  // Connect to wpa_supplicant interface proxy of interface object received
+  // on GroupStarted signal. It's link name is used as P2PDevice link name.
+  bool ConnectToSupplicantInterfaceProxy(const RpcIdentifier& interface);
+
+  // Disconnect from wpa_supplicant interface proxy on GroupFinished signal.
+  void DisconnectFromSupplicantInterfaceProxy();
+
+  // This helper method retrieves P2PDevice link name via wpa_supplicant
+  // interface proxy.
+  String GetInterfaceName() const;
 
   // Connect to wpa_supplicant p2p device proxy of interface object received
   // on GroupStarted signal.
@@ -170,6 +207,13 @@ class P2PDevice : public LocalDevice,
   P2PDeviceState state_;
   // P2P service configured on this device.
   std::unique_ptr<P2PService> service_;
+
+  // The wpa_supplicant interface proxy of the p2p network interface created
+  // for wifi direct connectivity. It is initialized on GroupStarted signal
+  // via ConnectToSupplicantInterfaceProxy() and destroyed on GroupFinished
+  // signal via DisconnectFromSupplicantInterfaceProxy().
+  std::unique_ptr<SupplicantInterfaceProxyInterface>
+      supplicant_interface_proxy_;
 
   // The wpa_supplicant p2p device proxy of the p2p network interface created
   // for wifi direct connectivity. It provides group Disconnect method.

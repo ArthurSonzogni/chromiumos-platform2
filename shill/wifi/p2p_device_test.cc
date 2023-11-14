@@ -14,6 +14,7 @@
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/supplicant/mock_supplicant_interface_proxy.h"
 #include "shill/supplicant/mock_supplicant_p2pdevice_proxy.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/wifi/local_device.h"
@@ -36,6 +37,7 @@ namespace shill {
 
 namespace {
 const char kPrimaryInterfaceName[] = "wlan0";
+const char kInterfaceName[] = "p2p-wlan0-0";
 const RpcIdentifier kInterfacePath = RpcIdentifier("/interface/p2p-wlan0-0");
 const RpcIdentifier kGroupPath =
     RpcIdentifier("/interface/p2p-wlan0-0/Groups/xx");
@@ -57,7 +59,9 @@ class P2PDeviceTest : public testing::Test {
         supplicant_primary_p2pdevice_proxy_(
             new NiceMock<MockSupplicantP2PDeviceProxy>()),
         supplicant_p2pdevice_proxy_(
-            new NiceMock<MockSupplicantP2PDeviceProxy>()) {
+            new NiceMock<MockSupplicantP2PDeviceProxy>()),
+        supplicant_interface_proxy_(
+            new NiceMock<MockSupplicantInterfaceProxy>()) {
     // Replace the WiFi provider's P2PManager with a mock.
     wifi_provider_->p2p_manager_.reset(p2p_manager_);
     // Replace the Manager's WiFi provider with a mock.
@@ -72,12 +76,18 @@ class P2PDeviceTest : public testing::Test {
         .WillByDefault(DoAll(SetArgPointee<1>(kGroupPath), Return(true)));
     ON_CALL(*supplicant_p2pdevice_proxy_, Disconnect())
         .WillByDefault(Return(true));
+    ON_CALL(*supplicant_interface_proxy_, GetIfname(_))
+        .WillByDefault(DoAll(SetArgPointee<0>(kInterfaceName), Return(true)));
     ON_CALL(*p2p_manager_, SupplicantPrimaryP2PDeviceProxy())
         .WillByDefault(Return(supplicant_primary_p2pdevice_proxy_.get()));
     std::unique_ptr<SupplicantP2PDeviceProxyInterface> p2pdevice_proxy(
         supplicant_p2pdevice_proxy_);
     ON_CALL(control_interface_, CreateSupplicantP2PDeviceProxy(_, _))
         .WillByDefault(Return(ByMove(std::move(p2pdevice_proxy))));
+    std::unique_ptr<SupplicantInterfaceProxyInterface> interface_proxy(
+        supplicant_interface_proxy_);
+    ON_CALL(control_interface_, CreateSupplicantInterfaceProxy(_, _))
+        .WillByDefault(Return(ByMove(std::move(interface_proxy))));
   }
 
   KeyValueStore DefaultGroupStartedProperties() {
@@ -113,6 +123,7 @@ class P2PDeviceTest : public testing::Test {
   std::unique_ptr<MockSupplicantP2PDeviceProxy>
       supplicant_primary_p2pdevice_proxy_;
   MockSupplicantP2PDeviceProxy* supplicant_p2pdevice_proxy_;
+  MockSupplicantInterfaceProxy* supplicant_interface_proxy_;
 };
 
 TEST_F(P2PDeviceTest, DeviceOnOff) {
@@ -176,9 +187,13 @@ TEST_F(P2PDeviceTest, CreateAndRemove) {
 
   // Emulate GroupStarted signal from wpa_supplicant.
   EXPECT_CALL(control_interface_,
+              CreateSupplicantInterfaceProxy(_, kInterfacePath));
+  EXPECT_CALL(control_interface_,
               CreateSupplicantP2PDeviceProxy(_, kInterfacePath));
   device->GroupStarted(DefaultGroupStartedProperties());
+  EXPECT_NE(device->supplicant_interface_proxy_, nullptr);
   EXPECT_NE(device->supplicant_p2pdevice_proxy_, nullptr);
+  EXPECT_EQ(device->link_name_.value(), kInterfaceName);
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kGOStarting);
 
   // Attempting to create group again should be a no-op and and return false.
@@ -196,6 +211,7 @@ TEST_F(P2PDeviceTest, CreateAndRemove) {
 
   // Emulate GroupFinished signal from wpa_supplicant
   device->GroupFinished(DefaultGroupFinishedProperties());
+  EXPECT_EQ(device->supplicant_interface_proxy_, nullptr);
   EXPECT_EQ(device->supplicant_p2pdevice_proxy_, nullptr);
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kGOStopping);
 
@@ -228,9 +244,13 @@ TEST_F(P2PDeviceTest, ConnectAndDisconnect) {
 
   // Emulate GroupStarted signal from wpa_supplicant.
   EXPECT_CALL(control_interface_,
+              CreateSupplicantInterfaceProxy(_, kInterfacePath));
+  EXPECT_CALL(control_interface_,
               CreateSupplicantP2PDeviceProxy(_, kInterfacePath));
   device->GroupStarted(DefaultGroupStartedProperties());
+  EXPECT_NE(device->supplicant_interface_proxy_, nullptr);
   EXPECT_NE(device->supplicant_p2pdevice_proxy_, nullptr);
+  EXPECT_EQ(device->link_name_.value(), kInterfaceName);
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kClientAssociating);
 
   // Attempting to connect again should be a no-op and and return false.
@@ -251,6 +271,7 @@ TEST_F(P2PDeviceTest, ConnectAndDisconnect) {
   // Emulate GroupFinished signal from wpa_supplicant
   EXPECT_CALL(*supplicant_primary_p2pdevice_proxy_, RemovePersistentGroup(_));
   device->GroupFinished(DefaultGroupFinishedProperties());
+  EXPECT_EQ(device->supplicant_interface_proxy_, nullptr);
   EXPECT_EQ(device->supplicant_p2pdevice_proxy_, nullptr);
   EXPECT_TRUE(device->supplicant_persistent_group_path_.value().empty());
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kClientDisconnecting);
@@ -296,9 +317,13 @@ TEST_F(P2PDeviceTest, BadState_Client) {
 
   // Emulate GroupStarted signal from wpa_supplicant.
   EXPECT_CALL(control_interface_,
+              CreateSupplicantInterfaceProxy(_, kInterfacePath));
+  EXPECT_CALL(control_interface_,
               CreateSupplicantP2PDeviceProxy(_, kInterfacePath));
   device->GroupStarted(DefaultGroupStartedProperties());
+  EXPECT_NE(device->supplicant_interface_proxy_, nullptr);
   EXPECT_NE(device->supplicant_p2pdevice_proxy_, nullptr);
+  EXPECT_EQ(device->link_name_.value(), kInterfaceName);
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kClientAssociating);
 
   // Attempting to connect again should be a no-op and and return false.
@@ -319,6 +344,7 @@ TEST_F(P2PDeviceTest, BadState_Client) {
   // Emulate GroupFinished signal from wpa_supplicant
   EXPECT_CALL(*supplicant_primary_p2pdevice_proxy_, RemovePersistentGroup(_));
   device->GroupFinished(DefaultGroupFinishedProperties());
+  EXPECT_EQ(device->supplicant_interface_proxy_, nullptr);
   EXPECT_EQ(device->supplicant_p2pdevice_proxy_, nullptr);
   EXPECT_TRUE(device->supplicant_persistent_group_path_.value().empty());
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kClientDisconnecting);
@@ -373,9 +399,13 @@ TEST_F(P2PDeviceTest, BadState_GO) {
 
   // Emulate GroupStarted signal from wpa_supplicant.
   EXPECT_CALL(control_interface_,
+              CreateSupplicantInterfaceProxy(_, kInterfacePath));
+  EXPECT_CALL(control_interface_,
               CreateSupplicantP2PDeviceProxy(_, kInterfacePath));
   device->GroupStarted(DefaultGroupStartedProperties());
+  EXPECT_NE(device->supplicant_interface_proxy_, nullptr);
   EXPECT_NE(device->supplicant_p2pdevice_proxy_, nullptr);
+  EXPECT_EQ(device->link_name_.value(), kInterfaceName);
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kGOStarting);
 
   // Attempting to create group again should be a no-op and and return false.
@@ -393,6 +423,7 @@ TEST_F(P2PDeviceTest, BadState_GO) {
 
   // Emulate GroupFinished signal from wpa_supplicant
   device->GroupFinished(DefaultGroupFinishedProperties());
+  EXPECT_EQ(device->supplicant_interface_proxy_, nullptr);
   EXPECT_EQ(device->supplicant_p2pdevice_proxy_, nullptr);
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kGOStopping);
 
@@ -410,6 +441,42 @@ TEST_F(P2PDeviceTest, BadState_GO) {
   // Remove group while not created
   EXPECT_FALSE(device->RemoveGroup());
   EXPECT_EQ(device->state_, P2PDevice::P2PDeviceState::kUninitialized);
+}
+
+TEST_F(P2PDeviceTest, ConnectToSupplicantInterfaceProxy) {
+  scoped_refptr<P2PDevice> device =
+      new P2PDevice(&manager_, LocalDevice::IfaceType::kP2PGO,
+                    kPrimaryInterfaceName, kPhyIndex, kShillId, cb.Get());
+  EXPECT_CALL(control_interface_,
+              CreateSupplicantInterfaceProxy(_, kInterfacePath));
+  EXPECT_TRUE(device->ConnectToSupplicantInterfaceProxy(kInterfacePath));
+  EXPECT_NE(device->supplicant_interface_proxy_, nullptr);
+}
+
+TEST_F(P2PDeviceTest, ConnectToSupplicantInterfaceProxy_WhileConnected) {
+  scoped_refptr<P2PDevice> device =
+      new P2PDevice(&manager_, LocalDevice::IfaceType::kP2PGO,
+                    kPrimaryInterfaceName, kPhyIndex, kShillId, cb.Get());
+  EXPECT_CALL(control_interface_,
+              CreateSupplicantInterfaceProxy(_, kInterfacePath));
+  EXPECT_TRUE(device->ConnectToSupplicantInterfaceProxy(kInterfacePath));
+  EXPECT_NE(device->supplicant_interface_proxy_, nullptr);
+
+  EXPECT_CALL(control_interface_, CreateSupplicantInterfaceProxy(_, _))
+      .Times(0);
+  EXPECT_FALSE(device->ConnectToSupplicantInterfaceProxy(kInterfacePath));
+  EXPECT_NE(device->supplicant_interface_proxy_, nullptr);
+}
+
+TEST_F(P2PDeviceTest, ConnectToSupplicantInterfaceProxy_Failure) {
+  scoped_refptr<P2PDevice> device =
+      new P2PDevice(&manager_, LocalDevice::IfaceType::kP2PGO,
+                    kPrimaryInterfaceName, kPhyIndex, kShillId, cb.Get());
+  EXPECT_CALL(control_interface_,
+              CreateSupplicantInterfaceProxy(_, kInterfacePath))
+      .WillOnce(Return(nullptr));
+  EXPECT_FALSE(device->ConnectToSupplicantInterfaceProxy(kInterfacePath));
+  EXPECT_EQ(device->supplicant_interface_proxy_, nullptr);
 }
 
 TEST_F(P2PDeviceTest, ConnectToSupplicantP2PDeviceProxy) {
@@ -454,9 +521,13 @@ TEST_F(P2PDeviceTest, SetupGroup) {
       new P2PDevice(&manager_, LocalDevice::IfaceType::kP2PGO,
                     kPrimaryInterfaceName, kPhyIndex, kShillId, cb.Get());
   EXPECT_CALL(control_interface_,
+              CreateSupplicantInterfaceProxy(_, kInterfacePath));
+  EXPECT_CALL(control_interface_,
               CreateSupplicantP2PDeviceProxy(_, kInterfacePath));
   device->SetupGroup(properties);
+  EXPECT_NE(device->supplicant_interface_proxy_, nullptr);
   EXPECT_NE(device->supplicant_p2pdevice_proxy_, nullptr);
+  EXPECT_EQ(device->link_name_.value(), kInterfaceName);
 }
 
 TEST_F(P2PDeviceTest, SetupGroup_EmptyProperties) {
@@ -464,9 +535,12 @@ TEST_F(P2PDeviceTest, SetupGroup_EmptyProperties) {
   scoped_refptr<P2PDevice> device =
       new P2PDevice(&manager_, LocalDevice::IfaceType::kP2PGO,
                     kPrimaryInterfaceName, kPhyIndex, kShillId, cb.Get());
+  EXPECT_CALL(control_interface_, CreateSupplicantInterfaceProxy(_, _))
+      .Times(0);
   EXPECT_CALL(control_interface_, CreateSupplicantP2PDeviceProxy(_, _))
       .Times(0);
   device->SetupGroup(properties);
+  EXPECT_EQ(device->supplicant_interface_proxy_, nullptr);
   EXPECT_EQ(device->supplicant_p2pdevice_proxy_, nullptr);
 }
 
@@ -477,11 +551,16 @@ TEST_F(P2PDeviceTest, GroupStartedAndFinished) {
                     kPrimaryInterfaceName, kPhyIndex, kShillId, cb.Get());
 
   EXPECT_CALL(control_interface_,
+              CreateSupplicantInterfaceProxy(_, kInterfacePath));
+  EXPECT_CALL(control_interface_,
               CreateSupplicantP2PDeviceProxy(_, kInterfacePath));
   device->GroupStarted(properties);
+  EXPECT_NE(device->supplicant_interface_proxy_, nullptr);
   EXPECT_NE(device->supplicant_p2pdevice_proxy_, nullptr);
+  EXPECT_EQ(device->link_name_.value(), kInterfaceName);
 
   device->GroupFinished(properties);
+  EXPECT_EQ(device->supplicant_interface_proxy_, nullptr);
   EXPECT_EQ(device->supplicant_p2pdevice_proxy_, nullptr);
 }
 

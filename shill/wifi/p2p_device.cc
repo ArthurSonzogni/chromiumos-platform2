@@ -13,6 +13,7 @@
 
 #include "shill/control_interface.h"
 #include "shill/manager.h"
+#include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_p2pdevice_proxy_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
 
@@ -35,6 +36,7 @@ P2PDevice::P2PDevice(Manager* manager,
   log_name_ = (iface_type == LocalDevice::IfaceType::kP2PGO)
                   ? "p2p_go_" + std::to_string(shill_id)
                   : "p2p_client_" + std::to_string(shill_id);
+  supplicant_interface_proxy_.reset();
   supplicant_p2pdevice_proxy_.reset();
   supplicant_persistent_group_path_ = RpcIdentifier("");
   LOG(INFO) << log_name() << ": P2PDevice created";
@@ -299,6 +301,43 @@ void P2PDevice::SetState(P2PDeviceState state) {
   state_ = state;
 }
 
+bool P2PDevice::ConnectToSupplicantInterfaceProxy(
+    const RpcIdentifier& object_path) {
+  if (supplicant_interface_proxy_) {
+    LOG(WARNING) << log_name()
+                 << ": Tried to connect to the Interface proxy while it is "
+                    "already connected";
+    return false;
+  }
+  supplicant_interface_proxy_ =
+      ControlInterface()->CreateSupplicantInterfaceProxy(this, object_path);
+  if (!supplicant_interface_proxy_) {
+    LOG(ERROR) << log_name()
+               << ": Failed to connect to the Interface proxy, path: "
+               << object_path.value();
+    return false;
+  }
+  LOG(INFO) << log_name()
+            << ": Interface proxy connected, path: " << object_path.value();
+  return true;
+}
+
+void P2PDevice::DisconnectFromSupplicantInterfaceProxy() {
+  if (supplicant_interface_proxy_) {
+    supplicant_interface_proxy_.reset();
+    LOG(INFO) << log_name() << ": Interface proxy disconnected";
+  }
+}
+
+String P2PDevice::GetInterfaceName() const {
+  String ifname;
+  if (!supplicant_interface_proxy_->GetIfname(&ifname)) {
+    LOG(ERROR) << log_name() << ": Failed to GetIfname via Interface proxy";
+    return "";
+  }
+  return ifname;
+}
+
 bool P2PDevice::ConnectToSupplicantP2PDeviceProxy(
     const RpcIdentifier& interface) {
   if (supplicant_p2pdevice_proxy_) {
@@ -338,14 +377,20 @@ bool P2PDevice::SetupGroup(const KeyValueStore& properties) {
                << " without interface path";
     return false;
   }
-  if (!ConnectToSupplicantP2PDeviceProxy(interface_path)) {
+  if (!ConnectToSupplicantInterfaceProxy(interface_path) ||
+      !ConnectToSupplicantP2PDeviceProxy(interface_path)) {
+    TeardownGroup();
     return false;
   }
+  link_name_ = GetInterfaceName();
+  if (!link_name_.value().empty())
+    LOG(INFO) << log_name() << ": Link name configured: " << link_name_.value();
   return true;
 }
 
 void P2PDevice::TeardownGroup() {
   DisconnectFromSupplicantP2PDeviceProxy();
+  DisconnectFromSupplicantInterfaceProxy();
 
   if (!supplicant_persistent_group_path_.value().empty()) {
     SupplicantPrimaryP2PDeviceProxy()->RemovePersistentGroup(
