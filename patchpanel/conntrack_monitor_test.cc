@@ -23,8 +23,8 @@ using testing::Return;
 
 namespace patchpanel {
 namespace {
-constexpr uint8_t kNewEventBitMask = (1 << 0);
 constexpr uint8_t kDefaultEventBitMask = 0;
+constexpr uint8_t kNewEventBitMask = (1 << 0);
 constexpr ConntrackMonitor::EventType kEventType[] = {
     ConntrackMonitor::EventType::kNew};
 
@@ -404,6 +404,7 @@ class MockCallback {
               OnConntrackEventReceived,
               (const ConntrackMonitor::Event& event));
 };
+}  // namespace
 
 class ConntrackMonitorTest : public testing::Test {
  protected:
@@ -411,6 +412,17 @@ class ConntrackMonitorTest : public testing::Test {
     CHECK_EQ(pipe(pipe_fds_), 0);
     write_fd_ = base::ScopedFD(pipe_fds_[1]);
     read_fd_ = base::ScopedFD(pipe_fds_[0]);
+
+    auto socket_factory = std::make_unique<net_base::MockSocketFactory>();
+    socket_factory_ = socket_factory.get();
+    ConntrackMonitor::GetInstance()->SetSocketFactoryForTesting(
+        std::move(socket_factory));
+  }
+
+  ~ConntrackMonitorTest() {
+    // Need to clear the state for the singleton manually after each test,
+    // otherwise its state will affect following tests.
+    ConntrackMonitor::GetInstance()->StopForTesting();
   }
   int read_fd() const { return pipe_fds_[0]; }
   int write_fd() const { return pipe_fds_[1]; }
@@ -420,8 +432,7 @@ class ConntrackMonitorTest : public testing::Test {
   // they are the last things to be cleaned up.
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::MainThreadType::IO};
-  std::unique_ptr<net_base::MockSocketFactory> socket_factory_ =
-      std::make_unique<net_base::MockSocketFactory>();
+  net_base::MockSocketFactory* socket_factory_;  // Owned by ConntrackMonitor
   int pipe_fds_[2];
   base::ScopedFD write_fd_, read_fd_;
 };
@@ -442,7 +453,7 @@ MATCHER_P(IsConntrackEvent, event, "") {
   return arg == event;
 }
 
-TEST_F(ConntrackMonitorTest, Create) {
+TEST_F(ConntrackMonitorTest, Start) {
   auto socket = std::make_unique<net_base::MockSocket>(
       base::ScopedFD(std::move(read_fd_)));
   bool read_once = 0;
@@ -470,13 +481,13 @@ TEST_F(ConntrackMonitorTest, Create) {
             }));
         return std::move(socket);
       });
-  auto monitor =
-      ConntrackMonitor::Create(kEventType, std::move(socket_factory_));
+  auto* monitor = ConntrackMonitor::GetInstance();
   ASSERT_NE(monitor, nullptr);
-
+  monitor->Start(kEventType);
   MockCallback event_cb;
-  monitor->RegisterConntrackEventHandler(base::BindRepeating(
-      &MockCallback::OnConntrackEventReceived, base::Unretained(&event_cb)));
+  auto listener = monitor->AddListener(
+      kEventType, base::BindRepeating(&MockCallback::OnConntrackEventReceived,
+                                      base::Unretained(&event_cb)));
   EXPECT_CALL(event_cb, OnConntrackEventReceived(IsConntrackEvent(kEvent1)));
   EXPECT_CALL(event_cb, OnConntrackEventReceived(IsConntrackEvent(kEvent2)));
   // Write a message to fill buffer and trigger file descriptor watcher.
@@ -496,8 +507,10 @@ TEST_F(ConntrackMonitorTest, CreateGetSockNameFailed) {
         return socket;
       });
 
-  EXPECT_EQ(ConntrackMonitor::Create(kEventType, std::move(socket_factory_)),
-            nullptr);
+  auto monitor = ConntrackMonitor::GetInstance();
+  ASSERT_NE(monitor, nullptr);
+  monitor->Start(kEventType);
+  EXPECT_TRUE(monitor->IsSocketNullForTesting());
 }
 
 TEST_F(ConntrackMonitorTest, CreateBindFailed) {
@@ -515,15 +528,19 @@ TEST_F(ConntrackMonitorTest, CreateBindFailed) {
         return socket;
       });
 
-  EXPECT_EQ(ConntrackMonitor::Create(kEventType, std::move(socket_factory_)),
-            nullptr);
+  auto monitor = ConntrackMonitor::GetInstance();
+  ASSERT_NE(monitor, nullptr);
+  monitor->Start(kEventType);
+  EXPECT_TRUE(monitor->IsSocketNullForTesting());
 }
 
 TEST_F(ConntrackMonitorTest, CreateSocketIsNull) {
   EXPECT_CALL(*socket_factory_, Create(AF_NETLINK, SOCK_RAW, NETLINK_NETFILTER))
       .WillOnce(Return(nullptr));
-  EXPECT_EQ(ConntrackMonitor::Create(kEventType, std::move(socket_factory_)),
-            nullptr);
+
+  auto monitor = ConntrackMonitor::GetInstance();
+  ASSERT_NE(monitor, nullptr);
+  monitor->Start(kEventType);
+  EXPECT_TRUE(monitor->IsSocketNullForTesting());
 }
-}  // namespace
 }  // namespace patchpanel
