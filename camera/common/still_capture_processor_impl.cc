@@ -197,8 +197,6 @@ void GetCropSizeAndXySkips(int src_width,
                            int* out_height,
                            int* out_start_x,
                            int* out_start_y) {
-  CHECK_GE(src_width, dst_width);
-  CHECK_GE(src_height, dst_height);
   if (src_width * dst_height == src_height * dst_width) {
     *out_width = src_width;
     *out_height = src_height;
