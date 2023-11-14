@@ -20,6 +20,7 @@
 #include "diagnostics/cros_healthd/routines/fingerprint/fingerprint.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/cros_config.h"
+#include "diagnostics/cros_healthd/system/cros_config_constants.h"
 #include "diagnostics/cros_healthd/system/floss_controller.h"
 #include "diagnostics/cros_healthd/system/ground_truth_constants.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
@@ -221,6 +222,10 @@ void GroundTruth::IsRoutineArgumentSupported(
     mojom::RoutineArgumentPtr routine_arg,
     base::OnceCallback<void(mojom::RoutineArgumentPtr, mojom::SupportStatusPtr)>
         callback) {
+  // TODO(b/309080271): Migrate this function to
+  // RoutineService::CheckAndCreateRoutine and just return supported here. After
+  // migrate all routine, remove this function.
+
   // Please update docs/routine_supportability.md.
   // Add "NO_IFTTT=<reason>" in the commit message if it's not applicable.
   // LINT.IfChange
@@ -241,18 +246,10 @@ void GroundTruth::IsRoutineArgumentSupported(
     case mojom::RoutineArgument::Tag::kCpuCache:
     case mojom::RoutineArgument::Tag::kPrimeSearch:
     case mojom::RoutineArgument::Tag::kFloatingPoint:
+    case mojom::RoutineArgument::Tag::kUfsLifetime:
       status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
       std::move(callback).Run(std::move(routine_arg), std::move(status));
       return;
-    // Need to be determined by boxster/cros_config.
-    case mojom::RoutineArgument::Tag::kUfsLifetime: {
-      std::move(callback).Run(
-          std::move(routine_arg),
-          MakeSupportStatus(cros_config()->CheckExpectedCrosConfig(
-              cros_config_property::kStorageType,
-              cros_config_value::kStorageTypeUfs)));
-      return;
-    }
     case mojom::RoutineArgument::Tag::kFan: {
       auto fan_count = FanCount();
       // We support testing either when the fan count is larger than 0, or when
@@ -432,11 +429,12 @@ mojom::SupportStatusPtr GroundTruth::PrepareRoutineFingerprint(
   // this function and return not supported status.
   return MakeSupported();
 }
-// LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 
-std::string GroundTruth::StorageType() {
-  return ReadCrosConfig(cros_config_property::kStorageType);
+mojom::SupportStatusPtr GroundTruth::PrepareRoutineUfsLifetime() const {
+  return MakeSupportStatus(cros_config()->CheckExpectedCrosConfig(
+      cros_config_property::kStorageType, cros_config_value::kStorageTypeUfs));
 }
+// LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 
 std::string GroundTruth::FanCount() {
   return ReadCrosConfig(cros_config_property::kFanCount);

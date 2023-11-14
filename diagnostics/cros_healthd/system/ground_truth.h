@@ -61,10 +61,11 @@ class GroundTruth final {
 
   ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineFingerprint(
       FingerprintParameter& param) const;
+
+  ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineUfsLifetime() const;
   // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 
   // cros_config related functions.
-  std::string StorageType();
   std::string FanCount();
 
  private:

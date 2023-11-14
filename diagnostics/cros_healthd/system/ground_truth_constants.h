@@ -27,14 +27,6 @@ inline constexpr char kStylusCategoryNone[] = "none";
 inline constexpr char kStylusCategoryInternal[] = "internal";
 inline constexpr char kStylusCategoryExternal[] = "external";
 
-// Possible values of /hardware-properties/storage-type.
-inline constexpr char kStorageTypeUnknown[] = "STORAGE_TYPE_UNKNOWN";
-inline constexpr char kStorageTypeEmmc[] = "EMMC";
-inline constexpr char kStorageTypeNvme[] = "NVME";
-inline constexpr char kStorageTypeSata[] = "SATA";
-inline constexpr char kStorageTypeUfs[] = "UFS";
-inline constexpr char kStorageTypeBridgedEmmc[] = "BRIDGED_EMMC";
-
 }  // namespace cros_config_value
 
 }  // namespace diagnostics

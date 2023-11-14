@@ -24,7 +24,6 @@
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 #include "diagnostics/cros_healthd/system/floss_controller.h"
 #include "diagnostics/cros_healthd/system/ground_truth.h"
-#include "diagnostics/cros_healthd/system/ground_truth_constants.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
 #include "diagnostics/cros_healthd/utils/metrics_utils.h"
@@ -780,7 +779,7 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
     available_routines_.insert(mojom::DiagnosticRoutineEnum::kEmmcLifetime);
   }
 
-  if (ground_truth_->StorageType() == cros_config_value::kStorageTypeUfs) {
+  if (ground_truth_->PrepareRoutineUfsLifetime()->is_supported()) {
     available_routines_.insert(mojom::DiagnosticRoutineEnum::kUfsLifetime);
   }
 }

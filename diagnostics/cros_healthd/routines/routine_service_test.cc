@@ -67,8 +67,7 @@ class RoutineServiceTest : public BaseFileTest {
     control.FlushForTesting();
     observer.receiver().FlushForTesting();
 
-    if (expected_support_status->which() ==
-        mojom::SupportStatus::Tag::kSupported) {
+    if (expected_support_status->is_supported()) {
       // Check if routine initialize successfully and return initialized state.
       EXPECT_TRUE(control.is_connected());
       auto init_state = mojom::RoutineState::New(
@@ -76,29 +75,27 @@ class RoutineServiceTest : public BaseFileTest {
                                 mojom::RoutineStateInitialized::New()));
       EXPECT_EQ(observer.last_routine_state(), init_state);
       EXPECT_EQ(get_state_future.Get(), init_state);
+      return;
+    }
+    // Check if routine raise expected exception.
+    EXPECT_FALSE(control.is_connected());
+    EXPECT_FALSE(get_state_future.IsReady())
+        << "Routine shouldn't return any state if it fails to initialize.";
+    EXPECT_TRUE(observer.last_routine_state().is_null())
+        << "Routine shouldn't return any state if it fails to initialize.";
+    // Check we set correct disconnection error code.
+    if (expected_support_status->is_unsupported()) {
+      EXPECT_EQ(error,
+                static_cast<uint32_t>(mojom::Exception::Reason::kUnsupported));
+      EXPECT_EQ(message,
+                expected_support_status->get_unsupported()->debug_message);
+    } else if (expected_support_status->is_exception()) {
+      EXPECT_EQ(error,
+                static_cast<uint32_t>(mojom::Exception::Reason::kUnexpected));
+      EXPECT_EQ(message,
+                expected_support_status->get_exception()->debug_message);
     } else {
-      // Check if routine raise expected exception.
-      EXPECT_FALSE(control.is_connected());
-      EXPECT_FALSE(get_state_future.IsReady())
-          << "Routine shouldn't return any state if it fails to initialize.";
-      EXPECT_TRUE(observer.last_routine_state().is_null())
-          << "Routine shouldn't return any state if it fails to initialize.";
-      // Check we set correct disconnection error code.
-      if (expected_support_status->which() ==
-          mojom::SupportStatus::Tag::kUnsupported) {
-        EXPECT_EQ(error, static_cast<uint32_t>(
-                             mojom::Exception::Reason::kUnsupported));
-        EXPECT_EQ(message,
-                  expected_support_status->get_unsupported()->debug_message);
-      } else if (expected_support_status->which() ==
-                 mojom::SupportStatus::Tag::kException) {
-        EXPECT_EQ(error,
-                  static_cast<uint32_t>(mojom::Exception::Reason::kUnexpected));
-        EXPECT_EQ(message,
-                  expected_support_status->get_exception()->debug_message);
-      } else {
-        EXPECT_TRUE(false) << "Don't expect to get other error code.";
-      }
+      EXPECT_TRUE(false) << "Don't expect to get other status type.";
     }
   }
 
@@ -219,16 +216,15 @@ TEST_F(RoutineServiceTest, UfsLifetime) {
 TEST_F(RoutineServiceTest, UfsLifetimeWrongStorageType) {
   SetFakeCrosConfig(paths::cros_config::kStorageType, "WrongType");
 
+  auto status = MakeUnsupported(
+      "Expected cros_config property [hardware-properties/storage-type] to "
+      "be [UFS], but got [WrongType]");
+
   CheckIsRoutineArgumentSupported(
-      MakeUnsupported(
-          "Expected cros_config property [hardware-properties/storage-type] to "
-          "be [UFS], but got [WrongType]"),
-      mojom::RoutineArgument::NewUfsLifetime(
-          mojom::UfsLifetimeRoutineArgument::New()));
-  // TODO(b/309080271): Fix the diverge.
-  CheckCreateRoutine(MakeSupported(),
-                     mojom::RoutineArgument::NewUfsLifetime(
-                         mojom::UfsLifetimeRoutineArgument::New()));
+      status, mojom::RoutineArgument::NewUfsLifetime(
+                  mojom::UfsLifetimeRoutineArgument::New()));
+  CheckCreateRoutine(status, mojom::RoutineArgument::NewUfsLifetime(
+                                 mojom::UfsLifetimeRoutineArgument::New()));
 }
 
 TEST_F(RoutineServiceTest, DiskRead) {

@@ -35,6 +35,38 @@ namespace diagnostics {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
+using CreateRoutineResult = base::expected<std::unique_ptr<BaseRoutineControl>,
+                                           mojom::SupportStatusPtr>;
+using CreateRoutineCallback = base::OnceCallback<void(CreateRoutineResult)>;
+
+// Overload a `CreateRoutineHelperSync` if creation is synchronous. Otherwise,
+// overload a `CreateRoutineHelper`.
+
+CreateRoutineResult CreateRoutineHelperSync(
+    Context* context, mojom::UfsLifetimeRoutineArgumentPtr arg) {
+  auto status = context->ground_truth()->PrepareRoutineUfsLifetime();
+  if (!status->is_supported()) {
+    return base::unexpected(std::move(status));
+  }
+  return base::ok(std::make_unique<UfsLifetimeRoutine>(context, arg));
+}
+
+// Default implementation of `CreateRoutineHelperSync` raises compile error.
+template <typename Arg>
+CreateRoutineResult CreateRoutineHelperSync(Context* context, Arg arg) {
+  static_assert(false,
+                "CreateRoutineHelperSync for specific type not defined.");
+  NOTREACHED_NORETURN();
+}
+
+// Default implementation of `CreateRoutineHelper` calls
+// `CreateRoutineHelperSync`.
+template <typename ArgumentPtr>
+void CreateRoutineHelper(Context* context,
+                         ArgumentPtr arg,
+                         CreateRoutineCallback callback) {
+  std::move(callback).Run(CreateRoutineHelperSync(context, std::move(arg)));
+}
 
 }  // namespace
 
@@ -79,9 +111,8 @@ void RoutineService::CheckAndCreateRoutine(
       return;
     }
     case mojom::RoutineArgument::Tag::kUfsLifetime: {
-      auto routine = std::make_unique<UfsLifetimeRoutine>(
-          context_, routine_arg->get_ufs_lifetime());
-      std::move(callback).Run(base::ok(std::move(routine)));
+      CreateRoutineHelper(context_, std::move(routine_arg->get_ufs_lifetime()),
+                          std::move(callback));
       return;
     }
     case mojom::RoutineArgument::Tag::kDiskRead: {
@@ -218,8 +249,7 @@ void RoutineService::AddRoutine(
 void RoutineService::HandleCheckAndCreateRoutineResponseForCreateRoutine(
     mojo::PendingReceiver<mojom::RoutineControl> routine_receiver,
     mojo::PendingRemote<mojom::RoutineObserver> routine_observer,
-    base::expected<std::unique_ptr<BaseRoutineControl>, mojom::SupportStatusPtr>
-        result) {
+    CheckAndCreateRoutineResult result) {
   if (result.has_value()) {
     AddRoutine(std::move(result.value()), std::move(routine_receiver),
                std::move(routine_observer));

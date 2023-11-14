@@ -11,6 +11,11 @@ namespace cros_config_value {
 
 inline constexpr char kTrue[] = "true";
 
+// Possible values of /hardware-properties/storage-type.
+// Other unused possible values: STORAGE_TYPE_UNKNOWN, EMMC, NVME, SATA,
+// BRIDGED_EMMC.
+inline constexpr char kStorageTypeUfs[] = "UFS";
+
 }  // namespace cros_config_value
 
 }  // namespace diagnostics

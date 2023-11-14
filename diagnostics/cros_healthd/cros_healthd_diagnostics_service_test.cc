@@ -22,6 +22,7 @@
 #include "diagnostics/cros_healthd/fake_cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/routines/routine_service.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
+#include "diagnostics/cros_healthd/system/cros_config_constants.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
 #include "diagnostics/cros_healthd/system/ground_truth_constants.h"
@@ -299,8 +300,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoMmc) {
 // Test that GetAvailableRoutines returns the expected list of routines when
 // storage type is not UFS.
 TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoUfs) {
-  SetFakeCrosConfig(paths::cros_config::kStorageType,
-                    cros_config_value::kStorageTypeUnknown);
+  SetFakeCrosConfig(paths::cros_config::kStorageType, "UnknownType");
   CreateService();
   auto reply = ExecuteGetAvailableRoutines();
   std::set<mojom::DiagnosticRoutineEnum> reply_set(reply.begin(), reply.end());

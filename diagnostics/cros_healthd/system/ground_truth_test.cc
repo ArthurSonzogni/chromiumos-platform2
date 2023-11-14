@@ -328,34 +328,6 @@ TEST_F(GroundTruthTest, SdCardEvent) {
   }
 }
 
-TEST_F(GroundTruthTest, UfsLifetimeRoutine) {
-  std::vector<std::pair</*storage-type=*/std::string, /*supported=*/bool>>
-      test_combinations = {
-          {cros_config_value::kStorageTypeUfs, true},
-          {cros_config_value::kStorageTypeUnknown, false},
-          {cros_config_value::kStorageTypeEmmc, false},
-          {cros_config_value::kStorageTypeNvme, false},
-          {cros_config_value::kStorageTypeSata, false},
-          {cros_config_value::kStorageTypeBridgedEmmc, false},
-          {"Others", false},
-      };
-  mojom::UfsLifetimeRoutineArgument arg;
-
-  // Test not set the cros_config first to simulate file not found.
-  ExpectRoutineUnsupported(mojom::RoutineArgument::NewUfsLifetime(arg.Clone()));
-
-  for (const auto& [storage_type, supported] : test_combinations) {
-    SetFakeCrosConfig(cros_config_property::kStorageType, storage_type);
-    if (supported) {
-      ExpectRoutineSupported(
-          mojom::RoutineArgument::NewUfsLifetime(arg.Clone()));
-    } else {
-      ExpectRoutineUnsupported(
-          mojom::RoutineArgument::NewUfsLifetime(arg.Clone()));
-    }
-  }
-}
-
 TEST_F(GroundTruthTest, FanRoutine) {
   // Test that if the cros config is not set, the test is supported.
   ExpectRoutineSupported(
