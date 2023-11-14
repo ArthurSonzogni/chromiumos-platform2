@@ -29,9 +29,15 @@ P2PDevice::P2PDevice(Manager* manager,
   // A P2PDevice with a non-P2P interface type makes no sense.
   CHECK(iface_type == LocalDevice::IfaceType::kP2PGO ||
         iface_type == LocalDevice::IfaceType::kP2PClient);
+  log_name_ = (iface_type == LocalDevice::IfaceType::kP2PGO)
+                  ? "p2p_go_" + std::to_string(shill_id)
+                  : "p2p_client_" + std::to_string(shill_id);
+  LOG(INFO) << log_name() << ": P2PDevice created";
 }
 
-P2PDevice::~P2PDevice() {}
+P2PDevice::~P2PDevice() {
+  LOG(INFO) << log_name() << ": P2PDevice destroyed";
+}
 
 // static
 const char* P2PDevice::P2PDeviceStateName(P2PDeviceState state) {
@@ -101,7 +107,7 @@ bool P2PDevice::Stop() {
 
 bool P2PDevice::CreateGroup(std::unique_ptr<P2PService> service) {
   if (state_ != P2PDeviceState::kReady) {
-    LOG(WARNING) << "Tried to create group while in state "
+    LOG(WARNING) << log_name() << ": Tried to create group while in state "
                  << P2PDeviceStateName(state_);
     return false;
   }
@@ -111,7 +117,7 @@ bool P2PDevice::CreateGroup(std::unique_ptr<P2PService> service) {
 
 bool P2PDevice::Connect(std::unique_ptr<P2PService> service) {
   if (state_ != P2PDeviceState::kReady) {
-    LOG(WARNING) << "Tried to connect while in state "
+    LOG(WARNING) << log_name() << ": Tried to connect while in state "
                  << P2PDeviceStateName(state_);
     return false;
   }
@@ -121,7 +127,7 @@ bool P2PDevice::Connect(std::unique_ptr<P2PService> service) {
 
 bool P2PDevice::RemoveGroup() {
   if (!InGOState()) {
-    LOG(WARNING) << "Tried to remove a group while in state "
+    LOG(WARNING) << log_name() << ": Tried to remove a group while in state "
                  << P2PDeviceStateName(state_);
     return false;
   }
@@ -132,7 +138,7 @@ bool P2PDevice::RemoveGroup() {
 
 bool P2PDevice::Disconnect() {
   if (!InClientState()) {
-    LOG(WARNING) << "Tried to discconnect while in state "
+    LOG(WARNING) << log_name() << ": Tried to disconnect while in state "
                  << P2PDeviceStateName(state_);
     return false;
   }
@@ -157,15 +163,13 @@ bool P2PDevice::InClientState() const {
 
 bool P2PDevice::SetService(std::unique_ptr<P2PService> service) {
   CHECK(service);
-
   if (service_) {
     // Device has service configured.
-    LOG(ERROR) << __func__
-               << ": Attempted to set service on a device which already "
-                  "has a service configured.";
+    LOG(ERROR) << log_name()
+               << ": Attempted to set service on a device which "
+                  "already has a service configured.";
     return false;
   }
-
   service_ = std::move(service);
   service_->SetState(LocalService::LocalServiceState::kStateStarting);
   return true;
@@ -182,10 +186,8 @@ void P2PDevice::DeleteService() {
 void P2PDevice::SetState(P2PDeviceState state) {
   if (state_ == state)
     return;
-
-  LOG(INFO) << "P2PDevice with ID: " << shill_id_ << " state changed from "
-            << P2PDeviceStateName(state_) << " to "
-            << P2PDeviceStateName(state);
+  LOG(INFO) << log_name() << ": State changed: " << P2PDeviceStateName(state_)
+            << " -> " << P2PDeviceStateName(state);
   state_ = state;
 }
 

@@ -93,6 +93,9 @@ class P2PDevice : public LocalDevice {
   // Set P2PDeviceState.
   void SetState(P2PDeviceState state);
 
+  // Get log name prefix.
+  const std::string& log_name() const { return log_name_; }
+
   // Get shill_id_.
   uint32_t shill_id() const { return shill_id_; }
 
@@ -115,6 +118,8 @@ class P2PDevice : public LocalDevice {
   // Primary interface link name.
   std::string primary_link_name_;
 
+  // Name used for logging.
+  std::string log_name_;
   // Uniquely identifies this device relative to all other P2P devices in Shill.
   uint32_t shill_id_;
   // P2P device state as listed in enum P2PDeviceState.
