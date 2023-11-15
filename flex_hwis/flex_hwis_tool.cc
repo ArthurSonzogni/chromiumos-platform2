@@ -29,10 +29,11 @@ int main(int argc, char** argv) {
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
   mojo::core::Init();
   mojo::core::ScopedIPCSupport ipc_support(
-      base::SingleThreadTaskRunner::
-          GetCurrentDefault() /* io_thread_task_runner */,
-      mojo::core::ScopedIPCSupport::ShutdownPolicy::
-          CLEAN /* blocking shutdown */);
+      base::SingleThreadTaskRunner::GetCurrentDefault(),
+      // We don't pass message pipes to other processes, so use FAST shutdown.
+      // See scoped_ipc_support.h
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
+
   auto server_info = flex_hwis::ServerInfo();
   auto sender = flex_hwis::HttpSender(server_info);
   auto provider = policy::PolicyProvider();
