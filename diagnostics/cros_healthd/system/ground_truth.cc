@@ -239,16 +239,10 @@ void GroundTruth::IsRoutineArgumentSupported(
     case mojom::RoutineArgument::Tag::kUfsLifetime:
     case mojom::RoutineArgument::Tag::kFan:
     case mojom::RoutineArgument::Tag::kDiskRead:
+    case mojom::RoutineArgument::Tag::kVolumeButton:
       status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
       std::move(callback).Run(std::move(routine_arg), std::move(status));
       return;
-    case mojom::RoutineArgument::Tag::kVolumeButton: {
-      std::move(callback).Run(
-          std::move(routine_arg),
-          MakeSupportStatus(cros_config()->CheckTrueCrosConfig(
-              cros_config_property::kHasSideVolumeButton)));
-      return;
-    }
     case mojom::RoutineArgument::Tag::kLedLitUp: {
       if (HasCrosEC()) {
         status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
@@ -418,6 +412,11 @@ mojom::SupportStatusPtr GroundTruth::PrepareRoutineFan(
     return MakeUnsupported("Doesn't support device with no fan.");
   }
   return MakeSupported();
+}
+
+mojom::SupportStatusPtr GroundTruth::PrepareRoutineVolumeButton() const {
+  return MakeSupportStatus(cros_config()->CheckTrueCrosConfig(
+      cros_config_property::kHasSideVolumeButton));
 }
 // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 

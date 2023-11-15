@@ -41,16 +41,22 @@ using CreateRoutineResult = base::expected<std::unique_ptr<BaseRoutineControl>,
                                            mojom::SupportStatusPtr>;
 using CreateRoutineCallback = base::OnceCallback<void(CreateRoutineResult)>;
 
+template <typename RoutineType, typename... Args>
+CreateRoutineResult MakeRoutineIfSupported(mojom::SupportStatusPtr status,
+                                           Args&&... args) {
+  if (status->is_supported()) {
+    return base::ok(std::make_unique<RoutineType>(std::forward<Args>(args)...));
+  }
+  return base::unexpected(std::move(status));
+}
+
 // Overload a `CreateRoutineHelperSync` if creation is synchronous. Otherwise,
 // overload a `CreateRoutineHelper`.
 
 CreateRoutineResult CreateRoutineHelperSync(
     Context* context, mojom::UfsLifetimeRoutineArgumentPtr arg) {
-  auto status = context->ground_truth()->PrepareRoutineUfsLifetime();
-  if (!status->is_supported()) {
-    return base::unexpected(std::move(status));
-  }
-  return base::ok(std::make_unique<UfsLifetimeRoutine>(context, arg));
+  return MakeRoutineIfSupported<UfsLifetimeRoutine>(
+      context->ground_truth()->PrepareRoutineUfsLifetime(), context, arg);
 }
 
 CreateRoutineResult CreateRoutineHelperSync(Context* context,
@@ -61,6 +67,12 @@ CreateRoutineResult CreateRoutineHelperSync(Context* context,
 CreateRoutineResult CreateRoutineHelperSync(
     Context* context, mojom::DiskReadRoutineArgumentPtr arg) {
   return DiskReadRoutine::Create(context, arg);
+}
+
+CreateRoutineResult CreateRoutineHelperSync(
+    Context* context, mojom::VolumeButtonRoutineArgumentPtr arg) {
+  return MakeRoutineIfSupported<VolumeButtonRoutine>(
+      context->ground_truth()->PrepareRoutineVolumeButton(), context, arg);
 }
 
 // Default implementation of `CreateRoutineHelperSync` raises compile error.
@@ -139,9 +151,8 @@ void RoutineService::CheckAndCreateRoutine(
       return;
     }
     case mojom::RoutineArgument::Tag::kVolumeButton: {
-      auto routine = std::make_unique<VolumeButtonRoutine>(
-          context_, routine_arg->get_volume_button());
-      std::move(callback).Run(base::ok(std::move(routine)));
+      CreateRoutineHelper(context_, std::move(routine_arg->get_volume_button()),
+                          std::move(callback));
       return;
     }
     case mojom::RoutineArgument::Tag::kLedLitUp: {

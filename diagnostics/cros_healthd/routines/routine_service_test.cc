@@ -305,16 +305,15 @@ TEST_F(RoutineServiceTest, VolumeButton) {
 TEST_F(RoutineServiceTest, VolumeButtonNoButton) {
   SetFakeCrosConfig(paths::cros_config::kHasSideVolumeButton, std::nullopt);
 
+  auto status = MakeUnsupported(
+      "Expected cros_config property "
+      "[hardware-properties/has-side-volume-button] to be "
+      "[true], but got []");
   CheckIsRoutineArgumentSupported(
-      MakeUnsupported("Expected cros_config property "
-                      "[hardware-properties/has-side-volume-button] to be "
-                      "[true], but got []"),
-      mojom::RoutineArgument::NewVolumeButton(
-          mojom::VolumeButtonRoutineArgument::New()));
-  // TODO(b/309080271): Fix the diverge.
-  CheckCreateRoutine(MakeSupported(),
-                     mojom::RoutineArgument::NewVolumeButton(
-                         mojom::VolumeButtonRoutineArgument::New()));
+      status, mojom::RoutineArgument::NewVolumeButton(
+                  mojom::VolumeButtonRoutineArgument::New()));
+  CheckCreateRoutine(status, mojom::RoutineArgument::NewVolumeButton(
+                                 mojom::VolumeButtonRoutineArgument::New()));
 }
 
 TEST_F(RoutineServiceTest, LedLitUp) {

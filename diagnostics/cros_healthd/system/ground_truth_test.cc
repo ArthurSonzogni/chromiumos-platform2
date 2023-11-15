@@ -348,36 +348,6 @@ TEST_F(GroundTruthTest, SdCardEvent) {
   }
 }
 
-TEST_F(GroundTruthTest, VolumeButtonRoutine) {
-  mojom::VolumeButtonRoutineArgument arg;
-  arg.type = mojom::VolumeButtonRoutineArgument::ButtonType::kVolumeUp;
-  arg.timeout = base::Seconds(10);
-
-  std::vector<
-      std::pair</*has-side-volume-button=*/std::string, /*supported=*/bool>>
-      test_combinations = {
-          {"true", true},
-          {"false", false},
-          {"Others", false},
-      };
-
-  // Test not set the cros_config first to simulate file not found.
-  ExpectRoutineUnsupported(
-      mojom::RoutineArgument::NewVolumeButton(arg.Clone()));
-
-  for (const auto& [has_side_volume_button, supported] : test_combinations) {
-    SetFakeCrosConfig(cros_config_property::kHasSideVolumeButton,
-                      has_side_volume_button);
-    if (supported) {
-      ExpectRoutineSupported(
-          mojom::RoutineArgument::NewVolumeButton(arg.Clone()));
-    } else {
-      ExpectRoutineUnsupported(
-          mojom::RoutineArgument::NewVolumeButton(arg.Clone()));
-    }
-  }
-}
-
 TEST_F(GroundTruthTest, LedLitUpRoutineSupportedWithCrosEc) {
   ASSERT_TRUE(base::CreateDirectory(GetRootedPath(kCrosEcSysPath)));
 
