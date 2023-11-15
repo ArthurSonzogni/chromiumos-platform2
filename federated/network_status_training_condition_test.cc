@@ -90,14 +90,13 @@ class NetworkStatusTrainingConditionTest : public ::testing::Test {
       network_status_training_condition_;
 };
 
-TEST_F(NetworkStatusTrainingConditionTest, IsTrainingConditionSatisfied) {
+TEST_F(NetworkStatusTrainingConditionTest, IsNetworkMetered) {
   // No dictionary returned
   {
     EXPECT_CALL(*mock_dbus_client(), GetDefaultServiceProperties(_))
         .WillOnce(Return(ByMove(nullptr)));
 
-    EXPECT_FALSE(
-        network_status_training_condition()->IsTrainingConditionSatisfied());
+    EXPECT_TRUE(network_status_training_condition()->IsNetworkMetered());
   }
 
   // No Metered property
@@ -106,8 +105,7 @@ TEST_F(NetworkStatusTrainingConditionTest, IsTrainingConditionSatisfied) {
     EXPECT_CALL(*mock_dbus_client(), GetDefaultServiceProperties(_))
         .WillOnce(Return(ByMove(std::move(dict))));
 
-    EXPECT_FALSE(
-        network_status_training_condition()->IsTrainingConditionSatisfied());
+    EXPECT_TRUE(network_status_training_condition()->IsNetworkMetered());
   }
 
   // Network is metered
@@ -117,8 +115,7 @@ TEST_F(NetworkStatusTrainingConditionTest, IsTrainingConditionSatisfied) {
     EXPECT_CALL(*mock_dbus_client(), GetDefaultServiceProperties(_))
         .WillOnce(Return(ByMove(std::move(dict))));
 
-    EXPECT_FALSE(
-        network_status_training_condition()->IsTrainingConditionSatisfied());
+    EXPECT_TRUE(network_status_training_condition()->IsNetworkMetered());
   }
 
   // Network is not metered
@@ -128,8 +125,7 @@ TEST_F(NetworkStatusTrainingConditionTest, IsTrainingConditionSatisfied) {
     EXPECT_CALL(*mock_dbus_client(), GetDefaultServiceProperties(_))
         .WillOnce(Return(ByMove(std::move(dict))));
 
-    EXPECT_TRUE(
-        network_status_training_condition()->IsTrainingConditionSatisfied());
+    EXPECT_FALSE(network_status_training_condition()->IsNetworkMetered());
   }
 }
 

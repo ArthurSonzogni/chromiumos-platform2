@@ -21,7 +21,11 @@ class MockTrainingCondition : public TrainingCondition {
  public:
   MockTrainingCondition() = default;
   ~MockTrainingCondition() override = default;
-  MOCK_METHOD(bool, IsTrainingConditionSatisfied, (), (const, override));
+  MOCK_METHOD(bool, IsTrainingConditionSatisfiedToStart, (), (const, override));
+  MOCK_METHOD(bool,
+              IsTrainingConditionSatisfiedToContinue,
+              (),
+              (const, override));
 };
 }  // namespace
 
@@ -42,13 +46,13 @@ TEST_F(DeviceStatusMonitorTest, OneTrainingCondition) {
   auto device_status_monitor =
       DeviceStatusMonitor(std::move(training_conditions));
 
-  EXPECT_CALL(*training_condition_1, IsTrainingConditionSatisfied())
+  EXPECT_CALL(*training_condition_1, IsTrainingConditionSatisfiedToStart())
       .WillOnce(Return(false));
-  EXPECT_FALSE(device_status_monitor.TrainingConditionsSatisfied());
+  EXPECT_FALSE(device_status_monitor.TrainingConditionsSatisfiedToStart());
 
-  EXPECT_CALL(*training_condition_1, IsTrainingConditionSatisfied())
+  EXPECT_CALL(*training_condition_1, IsTrainingConditionSatisfiedToStart())
       .WillOnce(Return(true));
-  EXPECT_TRUE(device_status_monitor.TrainingConditionsSatisfied());
+  EXPECT_TRUE(device_status_monitor.TrainingConditionsSatisfiedToStart());
 }
 
 TEST_F(DeviceStatusMonitorTest, TwoTrainingConditions) {
@@ -67,23 +71,23 @@ TEST_F(DeviceStatusMonitorTest, TwoTrainingConditions) {
       DeviceStatusMonitor(std::move(training_conditions));
 
   // false, any -> false
-  EXPECT_CALL(*training_condition_1, IsTrainingConditionSatisfied())
+  EXPECT_CALL(*training_condition_1, IsTrainingConditionSatisfiedToContinue())
       .WillOnce(Return(false));
   // Expect tc2 not to be called
-  EXPECT_FALSE(device_status_monitor.TrainingConditionsSatisfied());
+  EXPECT_FALSE(device_status_monitor.TrainingConditionsSatisfiedToContinue());
 
   // true, false -> false
-  EXPECT_CALL(*training_condition_1, IsTrainingConditionSatisfied())
+  EXPECT_CALL(*training_condition_1, IsTrainingConditionSatisfiedToContinue())
       .WillOnce(Return(true));
-  EXPECT_CALL(*training_condition_2, IsTrainingConditionSatisfied())
+  EXPECT_CALL(*training_condition_2, IsTrainingConditionSatisfiedToContinue())
       .WillOnce(Return(false));
-  EXPECT_FALSE(device_status_monitor.TrainingConditionsSatisfied());
+  EXPECT_FALSE(device_status_monitor.TrainingConditionsSatisfiedToContinue());
 
   // true, true -> true
-  EXPECT_CALL(*training_condition_1, IsTrainingConditionSatisfied())
+  EXPECT_CALL(*training_condition_1, IsTrainingConditionSatisfiedToContinue())
       .WillOnce(Return(true));
-  EXPECT_CALL(*training_condition_2, IsTrainingConditionSatisfied())
+  EXPECT_CALL(*training_condition_2, IsTrainingConditionSatisfiedToContinue())
       .WillOnce(Return(true));
-  EXPECT_TRUE(device_status_monitor.TrainingConditionsSatisfied());
+  EXPECT_TRUE(device_status_monitor.TrainingConditionsSatisfiedToContinue());
 }
 }  // namespace federated

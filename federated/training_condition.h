@@ -12,9 +12,11 @@ namespace federated {
 class TrainingCondition {
  public:
   virtual ~TrainingCondition() = default;
-  // Called before training to see if the device is in a good condition, and
-  // during the training to see if the training should be aborted.
-  [[nodiscard]] virtual bool IsTrainingConditionSatisfied() const = 0;
+  // Called before new jobs to see if the device is in a good condition
+  [[nodiscard]] virtual bool IsTrainingConditionSatisfiedToStart() const = 0;
+
+  // Called during the training to see if the existing jobs should be aborted.
+  [[nodiscard]] virtual bool IsTrainingConditionSatisfiedToContinue() const = 0;
 };
 
 }  // namespace federated

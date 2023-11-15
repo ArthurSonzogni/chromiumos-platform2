@@ -146,12 +146,18 @@ class PowerSupplyTrainingConditionTest : public ::testing::Test {
 TEST_F(PowerSupplyTrainingConditionTest, EmptyPowerSupplyPollSignal) {
   // Initialized as false;
   EXPECT_FALSE(
-      power_supply_training_condition()->IsTrainingConditionSatisfied());
+      power_supply_training_condition()->IsTrainingConditionSatisfiedToStart());
+
+  EXPECT_FALSE(power_supply_training_condition()
+                   ->IsTrainingConditionSatisfiedToContinue());
 
   // Invoke kPowerSupplyPollSignal with an empty proto message.
   CreateSignalAndInvoke("", kPowerSupplyPollSignal);
   EXPECT_FALSE(
-      power_supply_training_condition()->IsTrainingConditionSatisfied());
+      power_supply_training_condition()->IsTrainingConditionSatisfiedToStart());
+
+  EXPECT_FALSE(power_supply_training_condition()
+                   ->IsTrainingConditionSatisfiedToContinue());
 }
 
 TEST_F(PowerSupplyTrainingConditionTest, PowerSupplySatisfied) {
@@ -166,7 +172,9 @@ TEST_F(PowerSupplyTrainingConditionTest, PowerSupplySatisfied) {
           .SerializeAsString(),
       kPowerSupplyPollSignal);
   EXPECT_TRUE(
-      power_supply_training_condition()->IsTrainingConditionSatisfied());
+      power_supply_training_condition()->IsTrainingConditionSatisfiedToStart());
+  EXPECT_TRUE(power_supply_training_condition()
+                  ->IsTrainingConditionSatisfiedToContinue());
 
   // battery = 50, state = charging, satisfied.
   CreateSignalAndInvoke(
@@ -175,7 +183,9 @@ TEST_F(PowerSupplyTrainingConditionTest, PowerSupplySatisfied) {
           .SerializeAsString(),
       kPowerSupplyPollSignal);
   EXPECT_TRUE(
-      power_supply_training_condition()->IsTrainingConditionSatisfied());
+      power_supply_training_condition()->IsTrainingConditionSatisfiedToStart());
+  EXPECT_TRUE(power_supply_training_condition()
+                  ->IsTrainingConditionSatisfiedToContinue());
 
   // battery = 100, state = full, satisfied.
   CreateSignalAndInvoke(GeneratePowerSupplyProto(
@@ -183,18 +193,23 @@ TEST_F(PowerSupplyTrainingConditionTest, PowerSupplySatisfied) {
                             .SerializeAsString(),
                         kPowerSupplyPollSignal);
   EXPECT_TRUE(
-      power_supply_training_condition()->IsTrainingConditionSatisfied());
+      power_supply_training_condition()->IsTrainingConditionSatisfiedToStart());
+  EXPECT_TRUE(power_supply_training_condition()
+                  ->IsTrainingConditionSatisfiedToContinue());
 }
 
-TEST_F(PowerSupplyTrainingConditionTest, PowerSupplyNotSatisfied) {
-  // battery = 80, state = discharging, unsatisfied.
+// Tests that the criteria for new & existing jobs are different.
+TEST_F(PowerSupplyTrainingConditionTest, ForbidStartingButAllowContinuing) {
+  // battery = 87, state = discharging.
   CreateSignalAndInvoke(
       GeneratePowerSupplyProto(
-          80.0, power_manager::PowerSupplyProperties::DISCHARGING)
+          87.0, power_manager::PowerSupplyProperties::DISCHARGING)
           .SerializeAsString(),
       kPowerSupplyPollSignal);
   EXPECT_FALSE(
-      power_supply_training_condition()->IsTrainingConditionSatisfied());
+      power_supply_training_condition()->IsTrainingConditionSatisfiedToStart());
+  EXPECT_TRUE(power_supply_training_condition()
+                  ->IsTrainingConditionSatisfiedToContinue());
 }
 
 TEST_F(PowerSupplyTrainingConditionTest, RespectBatterySaverMode) {
@@ -204,7 +219,9 @@ TEST_F(PowerSupplyTrainingConditionTest, RespectBatterySaverMode) {
                             .SerializeAsString(),
                         kPowerSupplyPollSignal);
   EXPECT_TRUE(
-      power_supply_training_condition()->IsTrainingConditionSatisfied());
+      power_supply_training_condition()->IsTrainingConditionSatisfiedToStart());
+  EXPECT_TRUE(power_supply_training_condition()
+                  ->IsTrainingConditionSatisfiedToContinue());
 
   // When battery_saver is enabled, power supply conditions are not satisfied.
   power_manager::BatterySaverModeState battery_saver_mode_state;
@@ -212,12 +229,16 @@ TEST_F(PowerSupplyTrainingConditionTest, RespectBatterySaverMode) {
   CreateSignalAndInvoke(battery_saver_mode_state.SerializeAsString(),
                         kBatterySaverModeStateChanged);
   EXPECT_FALSE(
-      power_supply_training_condition()->IsTrainingConditionSatisfied());
+      power_supply_training_condition()->IsTrainingConditionSatisfiedToStart());
+  EXPECT_FALSE(power_supply_training_condition()
+                   ->IsTrainingConditionSatisfiedToContinue());
 
   battery_saver_mode_state.set_enabled(false);
   CreateSignalAndInvoke(battery_saver_mode_state.SerializeAsString(),
                         kBatterySaverModeStateChanged);
   EXPECT_TRUE(
-      power_supply_training_condition()->IsTrainingConditionSatisfied());
+      power_supply_training_condition()->IsTrainingConditionSatisfiedToStart());
+  EXPECT_TRUE(power_supply_training_condition()
+                  ->IsTrainingConditionSatisfiedToContinue());
 }
 }  // namespace federated

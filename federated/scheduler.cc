@@ -221,8 +221,8 @@ void Scheduler::TryToStartJobForClient(
   DVLOG(1) << "In TryToStartJobForClient, client name is "
            << federated_client->GetClientName();
   federated_client->ResetRetryDelay();
-  if (!device_status_monitor_->TrainingConditionsSatisfied()) {
-    DVLOG(1) << "Device is not in a good condition for training now.";
+  if (!device_status_monitor_->TrainingConditionsSatisfiedToStart()) {
+    DVLOG(1) << "Device is not in a good condition to start training now.";
     Metrics::GetInstance()->LogServiceEvent(ServiceEvent::kTaskSkipped);
     KeepSchedulingJobForClient(federated_client);
     return;

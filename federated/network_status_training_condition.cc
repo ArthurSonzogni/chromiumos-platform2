@@ -20,22 +20,31 @@ NetworkStatusTrainingCondition::NetworkStatusTrainingCondition(
   DVLOG(1) << "Construct NetworkStatusTrainingCondition";
 }
 
+bool NetworkStatusTrainingCondition::IsTrainingConditionSatisfiedToStart()
+    const {
+  return !IsNetworkMetered();
+}
+
+bool NetworkStatusTrainingCondition::IsTrainingConditionSatisfiedToContinue()
+    const {
+  return !IsNetworkMetered();
+}
+
 // Check whether the network metered or not
-bool NetworkStatusTrainingCondition::IsTrainingConditionSatisfied() const {
+bool NetworkStatusTrainingCondition::IsNetworkMetered() const {
   auto service_properties = dbus_network_client_->GetDefaultServiceProperties();
+  // Let's be conservative and treat unexpected result as metered network.
   if (service_properties == nullptr ||
       service_properties->find(shill::kMeteredProperty) ==
           service_properties->end()) {
     // TODO(b/229921446): Make a new metric
-    return false;
+    return true;
   }
 
   auto is_metered = brillo::GetVariantValueOrDefault<bool>(
       *service_properties, shill::kMeteredProperty);
-  DVLOG(1) << "NetworkStatusTrainingCondition::IsTrainingConditionSatisfied: "
-           << !is_metered;
 
-  return !is_metered;
+  return is_metered;
 }
 
 }  // namespace federated

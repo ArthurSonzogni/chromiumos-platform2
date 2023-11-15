@@ -5,9 +5,11 @@
 #ifndef FEDERATED_NETWORK_STATUS_TRAINING_CONDITION_H_
 #define FEDERATED_NETWORK_STATUS_TRAINING_CONDITION_H_
 
-#include <base/memory/ref_counted.h>
-#include <shill/dbus/client/client.h>
 #include <memory>
+
+#include <base/memory/ref_counted.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <shill/dbus/client/client.h>
 
 #include "federated/training_condition.h"
 
@@ -30,9 +32,14 @@ class NetworkStatusTrainingCondition : public TrainingCondition {
   ~NetworkStatusTrainingCondition() override = default;
 
   // TrainingCondition:
-  [[nodiscard]] bool IsTrainingConditionSatisfied() const override;
+  [[nodiscard]] bool IsTrainingConditionSatisfiedToStart() const override;
+  [[nodiscard]] bool IsTrainingConditionSatisfiedToContinue() const override;
 
  private:
+  // friend class NetworkStatusTrainingConditionTest;
+  FRIEND_TEST(NetworkStatusTrainingConditionTest, IsNetworkMetered);
+
+  bool IsNetworkMetered() const;
   const std::unique_ptr<shill::Client> dbus_network_client_;
 };
 

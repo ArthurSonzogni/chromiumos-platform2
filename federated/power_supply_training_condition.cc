@@ -19,8 +19,9 @@
 namespace federated {
 namespace {
 
-// TODO(alanlxl): use 90% for now.
-constexpr double kMinimumAdequateBatteryLevel = 90.0;
+// Allows to start new jobs if battery >= 90%, and to continue jobs if >=85%.
+constexpr double kMinimumAdequateStartBatteryLevel = 90.0;
+constexpr double kMinimumAdequateContinueBatteryLevel = 85.0;
 
 void OnSignalConnected(const std::string& interface_name,
                        const std::string& signal_name,
@@ -53,7 +54,8 @@ PowerSupplyTrainingCondition::PowerSupplyTrainingCondition(dbus::Bus* bus)
     : powerd_dbus_proxy_(bus->GetObjectProxy(
           power_manager::kPowerManagerServiceName,
           dbus::ObjectPath(power_manager::kPowerManagerServicePath))),
-      enough_battery_(false),
+      enough_battery_to_start_(false),
+      enough_battery_to_continue_(false),
       battery_saver_enabled_(true),
       weak_ptr_factory_(this) {
   DCHECK_NE(powerd_dbus_proxy_, nullptr);
@@ -85,11 +87,21 @@ PowerSupplyTrainingCondition::PowerSupplyTrainingCondition(dbus::Bus* bus)
   DVLOG(1) << "Construct PowerSupplyTrainingCondition";
 }
 
-bool PowerSupplyTrainingCondition::IsTrainingConditionSatisfied() const {
+bool PowerSupplyTrainingCondition::IsTrainingConditionSatisfiedToStart() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DVLOG(1) << "PowerSupplyTrainingCondition::IsTrainingConditionSatisfied: "
-           << enough_battery_;
-  return enough_battery_ && !battery_saver_enabled_;
+  DVLOG(1)
+      << "PowerSupplyTrainingCondition::IsTrainingConditionSatisfiedToStart: "
+      << enough_battery_to_start_;
+  return enough_battery_to_start_ && !battery_saver_enabled_;
+}
+
+bool PowerSupplyTrainingCondition::IsTrainingConditionSatisfiedToContinue()
+    const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DVLOG(1) << "PowerSupplyTrainingCondition::"
+              "IsTrainingConditionSatisfiedToContinue: "
+           << enough_battery_to_continue_;
+  return enough_battery_to_continue_ && !battery_saver_enabled_;
 }
 
 void PowerSupplyTrainingCondition::OnPowerManagerServiceAvailable(
@@ -121,9 +133,10 @@ void PowerSupplyTrainingCondition::OnPowerManagerServiceAvailable(
 void PowerSupplyTrainingCondition::OnPowerSupplyReceived(
     dbus::Signal* const signal) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  enough_battery_to_start_ = false;
+  enough_battery_to_continue_ = false;
   if (signal == nullptr) {
     DVLOG(1) << "Received a null signal in OnPowerSupplyReceived.";
-    enough_battery_ = false;
     return;
   }
 
@@ -131,17 +144,21 @@ void PowerSupplyTrainingCondition::OnPowerSupplyReceived(
   power_manager::PowerSupplyProperties power_supply_proto;
   if (!reader.PopArrayOfBytesAsProto(&power_supply_proto)) {
     DVLOG(1) << "Failed to read PowerSupplyProperties proto from dbus message.";
-    enough_battery_ = false;
     return;
   }
 
-  // When battery is enough, or the device is plugged-in.
-  enough_battery_ =
-      (power_supply_proto.has_battery_percent() &&
-       power_supply_proto.battery_percent() > kMinimumAdequateBatteryLevel) ||
-      (power_supply_proto.has_battery_state() &&
-       power_supply_proto.battery_state() !=
-           power_manager::PowerSupplyProperties::DISCHARGING);
+  // If the device is plugged-in or if battery percent is enough.
+  if (power_supply_proto.has_battery_state() &&
+      power_supply_proto.battery_state() !=
+          power_manager::PowerSupplyProperties::DISCHARGING) {
+    enough_battery_to_start_ = true;
+    enough_battery_to_continue_ = true;
+  } else if (power_supply_proto.has_battery_percent()) {
+    enough_battery_to_start_ = power_supply_proto.battery_percent() >
+                               kMinimumAdequateStartBatteryLevel;
+    enough_battery_to_continue_ = power_supply_proto.battery_percent() >
+                                  kMinimumAdequateContinueBatteryLevel;
+  }
 }
 
 void PowerSupplyTrainingCondition::OnBatterySaverModeReceived(

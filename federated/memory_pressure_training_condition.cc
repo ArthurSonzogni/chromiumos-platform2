@@ -20,11 +20,17 @@ namespace {
 
 // Resource manager defines several Enums to represent the memory level.
 // For signal MemoryPressureChrome, the items are 0=None, 1=Moderate,
-// 2=Critical. For MemoryPressureArcvm,  they are 0=None, 1=Cached,
-// 2=Perceptible, 3=Foreground. We treat 0 and 1 as acceptable. See
-// system_api/dbus/resource_manager/dbus-constants.h.
-// TODO(b:306077663): use fine-grained levels for different signals.
-const uint8_t kMaxAcceptableLevel = 1;
+// 2=Critical.
+// For MemoryPressureArcvm,  they are 0=None, 1=Cached, 2=Perceptible,
+// 3=Foreground.
+// See system_api/dbus/resource_manager/dbus-constants.h.
+
+// Allow to start new jobs when Chrome memory pressure level is None.
+const uint32_t kMaxAcceptableChromeLevelToStart = 0;
+// Allow to continue existing jobs when Arc vm memory pressure level <= Cached.
+const uint32_t kMaxAcceptableArcvmLevelToContinue = 1;
+// This default value is greater than any possible levels.
+const uint32_t kDefaultUnsatisfiedLevel = 100;
 
 void OnSignalConnected(const std::string& interface_name,
                        const std::string& signal_name,
@@ -66,19 +72,32 @@ MemoryPressureTrainingCondition::MemoryPressureTrainingCondition(dbus::Bus* bus)
   DVLOG(1) << "Construct MemoryPressureTrainingCondition";
 }
 
-bool MemoryPressureTrainingCondition::IsTrainingConditionSatisfied() const {
+bool MemoryPressureTrainingCondition::IsTrainingConditionSatisfiedToStart()
+    const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  // Requires all signals are satisfied.
-  // `std::all_of` returns true if the container is empty (i.e. when no signals
-  // received yet), which is an intended behavior.
-  return std::all_of(memory_levels_.begin(), memory_levels_.end(),
-                     [](auto const& iter) { return iter.second; });
+
+  const auto iter =
+      memory_levels_.find(resource_manager::kMemoryPressureChrome);
+  // Non existing signal in `memory_levels_` means it's None.
+  return iter == memory_levels_.end() ||
+         iter->second <= kMaxAcceptableChromeLevelToStart;
+}
+
+bool MemoryPressureTrainingCondition::IsTrainingConditionSatisfiedToContinue()
+    const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  const auto iter = memory_levels_.find(resource_manager::kMemoryPressureArcvm);
+  // Non existing signal in `memory_levels_` means it's None.
+  return iter == memory_levels_.end() ||
+         iter->second <= kMaxAcceptableArcvmLevelToContinue;
 }
 
 void MemoryPressureTrainingCondition::OnMemoryPressureSignalReceived(
     const std::string& signal_name, dbus::Signal* const signal) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  memory_levels_[signal_name] = false;
+  memory_levels_[signal_name] = kDefaultUnsatisfiedLevel;
+
   if (signal == nullptr) {
     DVLOG(1) << "Received a null signal in OnMemoryPressureSignalReceived.";
     return;
@@ -102,12 +121,10 @@ void MemoryPressureTrainingCondition::OnMemoryPressureSignalReceived(
     return;
   }
 
-  memory_levels_[signal_name] = pressure_level <= kMaxAcceptableLevel;
+  memory_levels_[signal_name] = static_cast<uint32_t>(pressure_level);
 
   DVLOG(1) << "Set memory_levels_[" << signal_name
-           << "] = " << memory_levels_[signal_name]
-           << " because its pressure_level="
-           << static_cast<uint32_t>(pressure_level);
+           << "] = " << static_cast<uint32_t>(pressure_level);
 }
 
 }  // namespace federated

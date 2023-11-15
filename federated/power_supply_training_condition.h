@@ -30,7 +30,8 @@ class PowerSupplyTrainingCondition : public TrainingCondition {
   ~PowerSupplyTrainingCondition() override = default;
 
   // TrainingCondition:
-  [[nodiscard]] bool IsTrainingConditionSatisfied() const override;
+  [[nodiscard]] bool IsTrainingConditionSatisfiedToStart() const override;
+  [[nodiscard]] bool IsTrainingConditionSatisfiedToContinue() const override;
 
  private:
   // Processes powerd dbus signals/responses.
@@ -41,10 +42,11 @@ class PowerSupplyTrainingCondition : public TrainingCondition {
   // Obtained from dbus, should never delete it.
   dbus::ObjectProxy* const powerd_dbus_proxy_;
 
-  // Whether the device has enough battery for a federated computation task.
+  // Whether the device has enough battery to start / continue jobs.
   // Updated in `OnPowerSupplyReceived` and used in
   // `TrainingConditionsSatisfied`.
-  bool enough_battery_;
+  bool enough_battery_to_start_;
+  bool enough_battery_to_continue_;
 
   // If `battery_saver_enabled_`, do not run the tasks.
   // Updated in `OnBatterySaverModeReceived` and `OnGetBatterySaverModeState`,

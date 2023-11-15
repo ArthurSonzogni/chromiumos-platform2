@@ -30,9 +30,10 @@ class DeviceStatusMonitor {
   // A builder functions that construct DeviceStatusMonitor from dbus
   static std::unique_ptr<DeviceStatusMonitor> CreateFromDBus(dbus::Bus* bus);
 
-  // Called before training to see if the device is in a good condition, and
-  // during the training to see if the training should be aborted.
-  bool TrainingConditionsSatisfied() const;
+  // Called before training to see if the device is in a good condition.
+  bool TrainingConditionsSatisfiedToStart() const;
+  // Called during the training to see if the training should be aborted.
+  bool TrainingConditionsSatisfiedToContinue() const;
 
  private:
   const std::vector<std::unique_ptr<TrainingCondition>> training_conditions_;

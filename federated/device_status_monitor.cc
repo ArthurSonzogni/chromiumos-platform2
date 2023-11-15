@@ -38,12 +38,21 @@ std::unique_ptr<DeviceStatusMonitor> DeviceStatusMonitor::CreateFromDBus(
   return std::make_unique<DeviceStatusMonitor>(std::move(training_conditions));
 }
 
-bool DeviceStatusMonitor::TrainingConditionsSatisfied() const {
-  DVLOG(1) << "DeviceStatusMonitor::TrainingConditionsSatisfied()";
+bool DeviceStatusMonitor::TrainingConditionsSatisfiedToStart() const {
+  DVLOG(1) << "DeviceStatusMonitor::TrainingConditionsSatisfiedToStart()";
   return std::all_of(training_conditions_.begin(), training_conditions_.end(),
                      [](auto const& condition) {
-                       return condition->IsTrainingConditionSatisfied();
+                       return condition->IsTrainingConditionSatisfiedToStart();
                      });
+}
+
+bool DeviceStatusMonitor::TrainingConditionsSatisfiedToContinue() const {
+  DVLOG(1) << "DeviceStatusMonitor::TrainingConditionsSatisfiedToContinue()";
+  return std::all_of(
+      training_conditions_.begin(), training_conditions_.end(),
+      [](auto const& condition) {
+        return condition->IsTrainingConditionSatisfiedToContinue();
+      });
 }
 
 }  // namespace federated

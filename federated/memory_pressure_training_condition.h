@@ -33,7 +33,8 @@ class MemoryPressureTrainingCondition : public TrainingCondition {
   ~MemoryPressureTrainingCondition() override = default;
 
   // TrainingCondition:
-  [[nodiscard]] bool IsTrainingConditionSatisfied() const override;
+  [[nodiscard]] bool IsTrainingConditionSatisfiedToStart() const override;
+  [[nodiscard]] bool IsTrainingConditionSatisfiedToContinue() const override;
 
  private:
   // Processes memory level dbus signals.
@@ -44,7 +45,7 @@ class MemoryPressureTrainingCondition : public TrainingCondition {
   dbus::ObjectProxy* const resource_dbus_proxy_ = nullptr;
 
   // Stores the received memory levels.
-  std::map<std::string, bool> memory_levels_;
+  std::map<std::string, uint32_t> memory_levels_;
 
   base::WeakPtrFactory<MemoryPressureTrainingCondition> weak_ptr_factory_{this};
 

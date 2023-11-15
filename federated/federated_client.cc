@@ -96,8 +96,8 @@ bool FederatedClient::Context::PrepareExamples(const char* const criteria_data,
 
   if (criteria.task_name().empty()) {
     LOG(ERROR) << "No valid task_name";
-    Metrics::GetInstance()->LogClientEvent(
-        client_name, ClientEvent::kTaskNameEmptyError);
+    Metrics::GetInstance()->LogClientEvent(client_name,
+                                           ClientEvent::kTaskNameEmptyError);
     return false;
   }
 
@@ -150,7 +150,8 @@ bool FederatedClient::Context::GetNextExample(const char** const data,
 
   if (absl::IsInvalidArgument(record.status())) {
     Metrics::GetInstance()->LogClientEvent(
-        typed_context->client_name_, ClientEvent::kGetNextExampleInvalidArgumentError);
+        typed_context->client_name_,
+        ClientEvent::kGetNextExampleInvalidArgumentError);
     return false;
   }
 
@@ -195,7 +196,8 @@ bool FederatedClient::Context::TrainingConditionsSatisfied(
   }
 
   const bool condition_satisfied =
-      typed_context->device_status_monitor_->TrainingConditionsSatisfied();
+      typed_context->device_status_monitor_
+          ->TrainingConditionsSatisfiedToContinue();
 
   if (!condition_satisfied) {
     Metrics::GetInstance()->LogClientEvent(
