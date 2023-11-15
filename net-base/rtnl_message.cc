@@ -535,7 +535,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::Decode(
     case RTM_DELADDR:
       attr_data = IFA_RTA(NLMSG_DATA(header));
       attr_length = IFA_PAYLOAD(header);
-      msg = DecodeAddress(mode, reinterpret_cast<const RTNLHeader*>(header));
+      msg = DecodeAddress(mode, payload);
       break;
 
     case RTM_NEWROUTE:
@@ -632,19 +632,17 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeLink(
 }
 
 // static
-std::unique_ptr<RTNLMessage> RTNLMessage::DecodeAddress(Mode mode,
-                                                        const RTNLHeader* hdr) {
-  if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(sizeof(hdr->ifa))) {
+std::unique_ptr<RTNLMessage> RTNLMessage::DecodeAddress(
+    Mode mode, base::span<const uint8_t> payload) {
+  if (payload.size() < sizeof(struct ifaddrmsg)) {
     return nullptr;
   }
+  const ifaddrmsg* ifa = reinterpret_cast<const ifaddrmsg*>(payload.data());
 
-  const Type type = kTypeAddress;
-  const sa_family_t family = hdr->ifa.ifa_family;
-  const int interface_index = static_cast<int>(hdr->ifa.ifa_index);
-  auto msg = std::make_unique<RTNLMessage>(type, mode, 0, 0, 0, interface_index,
-                                           family);
-  msg->set_address_status(AddressStatus(
-      hdr->ifa.ifa_prefixlen, hdr->ifa.ifa_flags, hdr->ifa.ifa_scope));
+  auto msg = std::make_unique<RTNLMessage>(kTypeAddress, mode, 0, 0, 0,
+                                           ifa->ifa_index, ifa->ifa_family);
+  msg->set_address_status(
+      AddressStatus(ifa->ifa_prefixlen, ifa->ifa_flags, ifa->ifa_scope));
   return msg;
 }
 
