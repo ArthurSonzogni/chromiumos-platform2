@@ -53,10 +53,7 @@ class Fmap {
 
   bool Create(uint64_t base, uint32_t size, const char* name) {
     Destroy();
-    // fmap_create does not modify name internally
-    fmap_ = fmap_create(
-        base, size,
-        const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(name)));
+    fmap_ = fmap_create(base, size, reinterpret_cast<const uint8_t*>(name));
     return (fmap_ != nullptr);
   }
   bool AppendArea(uint32_t offset,
