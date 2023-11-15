@@ -18,6 +18,7 @@ enum EnterpriseRollbackEvent {
   ROLLBACK_OOBE_CONFIG_RESTORE_FAILURE_PARSE = 7;
   ROLLBACK_OOBE_CONFIG_RESTORE_FAILURE_CONFIG = 8;
   ROLLBACK_UPDATE_FAILURE = 9;
+  ROLLBACK_COMPLETED = 10;
 }
 
 // ChromeOS version is a string with format "15270.0.0". As strings are not

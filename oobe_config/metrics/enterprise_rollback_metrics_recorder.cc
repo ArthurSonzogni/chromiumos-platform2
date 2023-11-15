@@ -89,13 +89,27 @@ void StructuredMetricRollbackUpdateFailure(
   event.Record();
 }
 
-// TODO(b/261850979): Create methods to report metrics for each Rollback event.
+void StructuredMetricRollbackCompleted(
+    const RollbackMetadata& rollback_metadata, ChromeOSVersion result_version) {
+  LOG(INFO) << "Record RollbackCompleted event in version "
+            << result_version.major() << "." << result_version.minor() << "."
+            << result_version.patch() << ".";
+  auto event =
+      metrics::structured::events::rollback_enterprise::RollbackCompleted();
+  SetEventMetadata(event, rollback_metadata);
+  event.Setresult_chromeos_version_major(result_version.major())
+      .Setresult_chromeos_version_minor(result_version.minor())
+      .Setresult_chromeos_version_patch(result_version.patch());
+  event.Record();
+}
+
+// TODO(b/300861453): Create methods to report metrics for each Rollback event.
 
 }  // namespace
 
 void RecordEnterpriseRollbackMetric(const EventData& event_data,
                                     const RollbackMetadata& rollback_metadata) {
-  // TODO(b/261850979): Report all events.
+  // TODO(b/300861453): Report all events.
   switch (event_data.event()) {
     case EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED:
       StructuredMetricRollbackPolicyActivated(rollback_metadata);
@@ -138,6 +152,11 @@ void RecordEnterpriseRollbackMetric(const EventData& event_data,
 
     case EnterpriseRollbackEvent::ROLLBACK_UPDATE_FAILURE:
       StructuredMetricRollbackUpdateFailure(rollback_metadata);
+      break;
+
+    case EnterpriseRollbackEvent::ROLLBACK_COMPLETED:
+      StructuredMetricRollbackCompleted(rollback_metadata,
+                                        event_data.event_chromeos_version());
       break;
 
     case EnterpriseRollbackEvent::EVENT_UNSPECIFIED:

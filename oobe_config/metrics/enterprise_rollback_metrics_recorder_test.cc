@@ -52,7 +52,7 @@ class StructuredMetricsRecorderTest : public ::testing::Test {
   metrics::structured::MockRecorder* recorder_;
 };
 
-// TODO(b/261850979): Add test for all metrics when we support them.
+// TODO(b/300861453): Add test for all metrics when we support them.
 
 TEST_F(StructuredMetricsRecorderTest,
        ReportStructuredMetricRollbackPolicyActivated) {
@@ -202,6 +202,20 @@ TEST_F(StructuredMetricsRecorderTest,
                               &metrics::structured::EventBase::name_hash,
                               metrics::structured::events::rollback_enterprise::
                                   RollbackUpdateFailure::kEventNameHash)))
+      .Times(1);
+
+  RecordEnterpriseRollbackMetric(event_data, GetTestRollbackMetadata());
+}
+
+TEST_F(StructuredMetricsRecorderTest, ReportStructuredMetricRollbackCompleted) {
+  EventData event_data;
+  event_data.set_event(EnterpriseRollbackEvent::ROLLBACK_COMPLETED);
+  SetTestChromeOSVersion(event_data.mutable_event_chromeos_version());
+
+  EXPECT_CALL(*recorder_, Record(testing::Property(
+                              &metrics::structured::EventBase::name_hash,
+                              metrics::structured::events::rollback_enterprise::
+                                  RollbackCompleted::kEventNameHash)))
       .Times(1);
 
   RecordEnterpriseRollbackMetric(event_data, GetTestRollbackMetadata());
