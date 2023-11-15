@@ -6,7 +6,6 @@
 
 module cros.mojom;
 
-import "iioservice/mojo/cros_sensor_service.mojom";
 import "camera/mojo/camera_common.mojom";
 import "camera/mojo/effects/effects_pipeline.mojom";
 import "camera/mojo/gpu/jpeg_encode_accelerator.mojom";
