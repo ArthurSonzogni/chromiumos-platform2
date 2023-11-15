@@ -22,7 +22,6 @@
 #include <crypto/sha2.h>
 #include <vboot/crossystem.h>
 
-#include "secanomalyd/daemon.h"
 #include "secanomalyd/mount_entry.h"
 #include "secanomalyd/mounts.h"
 #include "secanomalyd/processes.h"
