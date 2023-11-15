@@ -41,6 +41,7 @@ class ConntrackMonitor {
   };
 
   // Struct for a conntrack table socket event.
+  // TODO(chuweih): Change |proto| and |state| into enum class.
   struct Event {
     net_base::IPAddress src;
     net_base::IPAddress dst;
@@ -120,17 +121,28 @@ class ConntrackMonitor {
       const ConntrackEventHandler& callback);
 
  protected:
+  static constexpr uint8_t kDefaultEventBitMask = 0;
+  static constexpr uint8_t kNewEventBitMask = (1 << 0);
+  static constexpr uint8_t kUpdateEventBitMask = (1 << 1);
+  static constexpr uint8_t kDestroyEventBitMask = (1 << 2);
+
   explicit ConntrackMonitor(std::unique_ptr<net_base::Socket>);
   ConntrackMonitor();
   virtual ~ConntrackMonitor();
+
+  // Convert EventType enum into bit mask.
+  static uint8_t EventTypeToMask(ConntrackMonitor::EventType event);
+
+  // Dispatches a conntrack event to all listeners.
+  void DispatchEvent(const Event& msg);
+
+  // Setter for |event_mask_|, only used for testing.
+  void SetEventMaskForTesting(uint8_t mask) { event_mask_ = mask; }
 
  private:
   friend base::LazyInstanceTraitsBase<ConntrackMonitor>;
 
   static constexpr int kDefaultBufSize = 4096;
-
-  // Dispatches a conntrack event to all listeners.
-  void DispatchEvent(const Event& msg);
 
   // Receives and parses buffer from socket when socket is readable.
   void OnSocketReadable();
@@ -150,8 +162,6 @@ class ConntrackMonitor {
   // changes.
   std::vector<ConntrackEventHandler> event_handlers_;
 
-  base::WeakPtrFactory<ConntrackMonitor> weak_factory_{this};
-
   // List of listeners for conntrack table socket connection changes.
   base::ObserverList<Listener> listeners_;
 
@@ -162,6 +172,8 @@ class ConntrackMonitor {
   // by caller when `Start()` is called. Listeners can only listen to events
   // this monior handles.
   uint8_t event_mask_;
+
+  base::WeakPtrFactory<ConntrackMonitor> weak_factory_{this};
 };
 }  // namespace patchpanel
 

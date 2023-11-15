@@ -19,6 +19,8 @@
 #include <net-base/dns_client.h>
 #include <net-base/ipv4_address.h>
 
+#include "patchpanel/conntrack_monitor.h"
+#include "patchpanel/mock_conntrack_monitor.h"
 #include "patchpanel/mock_datapath.h"
 #include "patchpanel/mock_process_runner.h"
 #include "patchpanel/routing_service.h"
@@ -31,6 +33,7 @@ using ::testing::_;
 using ::testing::ElementsAreArray;
 using ::testing::Eq;
 using ::testing::Mock;
+using ::testing::Return;
 using ::testing::StrEq;
 using ::testing::StrictMock;
 using DNSClient = net_base::DNSClient;
@@ -40,6 +43,8 @@ constexpr char kIPAddress1[] = "8.8.8.8";
 constexpr char kIPAddress2[] = "8.8.8.4";
 constexpr int kPort1 = 10000;
 constexpr int kPort2 = 20000;
+constexpr ConntrackMonitor::EventType kConntrackEvents[] = {
+    ConntrackMonitor::EventType::kNew};
 
 std::unique_ptr<patchpanel::SocketConnectionEvent>
 CreateOpenSocketConnectionEvent() {
@@ -164,7 +169,8 @@ TEST(QoSServiceTest, EnableDisableQoSFeature) {
   };
 
   StrictMock<MockDatapath> datapath;
-  QoSService qos_svc(&datapath);
+  MockConntrackMonitor conntrack_monitor;
+  QoSService qos_svc(&datapath, &conntrack_monitor);
 
   // No interaction with Datapath before feature is enabled.
   qos_svc.OnPhysicalDeviceAdded(kEth0);
@@ -214,8 +220,9 @@ TEST(QoSServiceTest, ProcessSocketConnectionEvent) {
   auto datapath = MockDatapath();
   auto runner = std::make_unique<MockProcessRunner>();
   auto runner_ptr = runner.get();
+  MockConntrackMonitor conntrack_monitor;
   QoSService qos_svc(&datapath, /*dns_client_factory=*/nullptr,
-                     std::move(runner));
+                     std::move(runner), &conntrack_monitor);
   std::unique_ptr<patchpanel::SocketConnectionEvent> open_msg =
       CreateOpenSocketConnectionEvent();
   std::unique_ptr<patchpanel::SocketConnectionEvent> close_msg =
@@ -261,8 +268,9 @@ TEST(QoSServiceTest, ProcessSocketConnectionEvent) {
 TEST(QoSServiceTest, UpdateDoHProviders) {
   MockDatapath mock_datapath;
   FakeDNSClientFactory* dns_factory = new FakeDNSClientFactory();
+  MockConntrackMonitor conntrack_monitor;
   QoSService svc(&mock_datapath, base::WrapUnique(dns_factory),
-                 /*minijailed_process_runner=*/nullptr);
+                 /*minijailed_process_runner=*/nullptr, &conntrack_monitor);
 
   // Update DoH list with 2 valid entries. There should be 4 DNS requests in
   // total.
@@ -316,8 +324,9 @@ TEST(QoSServiceTest, UpdateDoHProviders) {
 TEST(QoSServiceTest, UpdateDoHProvidersEmptyInput) {
   MockDatapath mock_datapath;
   FakeDNSClientFactory* dns_factory = new FakeDNSClientFactory();
+  MockConntrackMonitor conntrack_monitor;
   QoSService svc(&mock_datapath, base::WrapUnique(dns_factory),
-                 /*minijailed_process_runner=*/nullptr);
+                 /*minijailed_process_runner=*/nullptr, &conntrack_monitor);
 
   EXPECT_CALL(mock_datapath,
               UpdateDoHProvidersForQoS(IpFamily::kIPv4,
@@ -333,8 +342,9 @@ TEST(QoSServiceTest, UpdateDoHProvidersEmptyInput) {
 TEST(QoSServiceTest, UpdateDoHProvidersEmptyResolveResult) {
   MockDatapath mock_datapath;
   FakeDNSClientFactory* dns_factory = new FakeDNSClientFactory();
+  MockConntrackMonitor conntrack_monitor;
   QoSService svc(&mock_datapath, base::WrapUnique(dns_factory),
-                 /*minijailed_process_runner=*/nullptr);
+                 /*minijailed_process_runner=*/nullptr, &conntrack_monitor);
 
   svc.UpdateDoHProviders({"https://url-a", "https://url-b"});
 
@@ -359,8 +369,9 @@ TEST(QoSServiceTest, UpdateDoHProvidersEmptyResolveResult) {
 TEST(QoSServiceTest, UpdateDoHProvidersInvalidateOngoingQueries) {
   MockDatapath mock_datapath;
   FakeDNSClientFactory* dns_factory = new FakeDNSClientFactory();
+  MockConntrackMonitor conntrack_monitor;
   QoSService svc(&mock_datapath, base::WrapUnique(dns_factory),
-                 /*minijailed_process_runner=*/nullptr);
+                 /*minijailed_process_runner=*/nullptr, &conntrack_monitor);
 
   svc.UpdateDoHProviders({"https://url-a", "https://url-b"});
 
@@ -376,8 +387,9 @@ TEST(QoSServiceTest, UpdateDoHProvidersInvalidateOngoingQueries) {
 TEST(QoSServiceTest, OnBorealisVMStarted) {
   MockDatapath mock_datapath;
   FakeDNSClientFactory* dns_factory = new FakeDNSClientFactory();
+  MockConntrackMonitor conntrack_monitor;
   QoSService svc(&mock_datapath, base::WrapUnique(dns_factory),
-                 /*minijailed_process_runner=*/nullptr);
+                 /*minijailed_process_runner=*/nullptr, &conntrack_monitor);
 
   const auto borealis_ipv4_subnet =
       net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29").value();
@@ -395,8 +407,9 @@ TEST(QoSServiceTest, OnBorealisVMStarted) {
 TEST(QoSServiceTest, OnBorealisVMStopped) {
   MockDatapath mock_datapath;
   FakeDNSClientFactory* dns_factory = new FakeDNSClientFactory();
+  MockConntrackMonitor conntrack_monitor;
   QoSService svc(&mock_datapath, base::WrapUnique(dns_factory),
-                 /*minijailed_process_runner=*/nullptr);
+                 /*minijailed_process_runner=*/nullptr, &conntrack_monitor);
 
   const auto borealis_ipv4_subnet =
       *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29");
@@ -411,5 +424,100 @@ TEST(QoSServiceTest, OnBorealisVMStopped) {
   svc.OnBorealisVMStopped("vmtap1");
 }
 
+// QoSService should add conntrack listener once when enabled from disabled
+// state.
+TEST(QoSServiceTest, AddListener) {
+  MockDatapath mock_datapath;
+  StrictMock<MockConntrackMonitor> conntrack_monitor;
+  QoSService qos_svc(&mock_datapath, &conntrack_monitor);
+
+  // Listener will be added when QoSService is enabled.
+  EXPECT_CALL(conntrack_monitor,
+              AddListener(ElementsAreArray(kConntrackEvents), _));
+  qos_svc.Enable();
+  Mock::VerifyAndClearExpectations(&conntrack_monitor);
+
+  qos_svc.Enable();
+  Mock::VerifyAndClearExpectations(&conntrack_monitor);
+
+  // Listener will be added again when QoSService is re-enabled.
+  EXPECT_CALL(conntrack_monitor,
+              AddListener(ElementsAreArray(kConntrackEvents), _));
+  qos_svc.Disable();
+  qos_svc.Enable();
+  Mock::VerifyAndClearExpectations(&conntrack_monitor);
+}
+
+// When failing to update connmark for UDP socket event, QoSService should
+// try updating again when getting conntrack event from ConntrackMonitor.
+TEST(QoSServiceTest, HandleConntrackEvent) {
+  MockDatapath mock_datapath;
+  auto runner = std::make_unique<MockProcessRunner>();
+  auto runner_ptr = runner.get();
+  std::unique_ptr<patchpanel::SocketConnectionEvent> open_msg =
+      CreateOpenSocketConnectionEvent();
+
+  MockConntrackMonitor monitor;
+  monitor.Start(kConntrackEvents);
+  QoSService qos_svc(&mock_datapath, /*dns_client_factory=*/nullptr,
+                     std::move(runner), &monitor);
+  qos_svc.Enable();
+
+  // When updating connmark for TCP sockets fails, it will not be updated again
+  // even getting conntrack event from ConntrackMonitor.
+  std::vector<std::string> argv = {
+      "-p",      "TCP",
+      "-s",      kIPAddress1,
+      "-d",      kIPAddress2,
+      "--sport", std::to_string(kPort1),
+      "--dport", std::to_string(kPort2),
+      "-m",      QoSFwmarkWithMask(QoSCategory::kRealTimeInteractive)};
+  EXPECT_CALL(*runner_ptr, conntrack("-U", ElementsAreArray(argv), _))
+      .WillOnce(Return(-1));
+  qos_svc.ProcessSocketConnectionEvent(*open_msg);
+  Mock::VerifyAndClearExpectations(runner_ptr);
+  EXPECT_CALL(*runner_ptr, conntrack("-U", _, _)).Times(0);
+  const ConntrackMonitor::Event kTCPEvent = ConntrackMonitor::Event{
+      .src = *net_base::IPAddress::CreateFromString(kIPAddress1),
+      .dst = (*net_base::IPAddress::CreateFromString(kIPAddress2)),
+      .sport = kPort1,
+      .dport = kPort2,
+      .proto = IPPROTO_TCP,
+      .type = ConntrackMonitor::EventType::kNew};
+  monitor.DispatchEventForTesting(kTCPEvent);
+  Mock::VerifyAndClearExpectations(runner_ptr);
+
+  // When updating connmark for UDP sockets fails, it will be updated again
+  // when getting event notifications from ConntrackMonitor.
+  argv = {"-p",      "UDP",
+          "-s",      kIPAddress1,
+          "-d",      kIPAddress2,
+          "--sport", std::to_string(kPort1),
+          "--dport", std::to_string(kPort2),
+          "-m",      QoSFwmarkWithMask(QoSCategory::kRealTimeInteractive)};
+  EXPECT_CALL(*runner_ptr, conntrack("-U", ElementsAreArray(argv), _))
+      .WillOnce(Return(-1));
+
+  open_msg->set_proto(patchpanel::SocketConnectionEvent::IpProtocol::
+                          SocketConnectionEvent_IpProtocol_UDP);
+  qos_svc.ProcessSocketConnectionEvent(*open_msg);
+  Mock::VerifyAndClearExpectations(runner_ptr);
+  EXPECT_CALL(*runner_ptr, conntrack("-U", ElementsAreArray(argv), _));
+  const ConntrackMonitor::Event kUDPEvent = ConntrackMonitor::Event{
+      .src = *net_base::IPAddress::CreateFromString(kIPAddress1),
+      .dst = (*net_base::IPAddress::CreateFromString(kIPAddress2)),
+      .sport = kPort1,
+      .dport = kPort2,
+      .proto = IPPROTO_UDP,
+      .type = ConntrackMonitor::EventType::kNew};
+  monitor.DispatchEventForTesting(kUDPEvent);
+  Mock::VerifyAndClearExpectations(runner_ptr);
+
+  // Update will not be triggered when getting another identical event
+  // notification from ConntrackMonitor.
+  EXPECT_CALL(*runner_ptr, conntrack("-U", _, _)).Times(0);
+  monitor.DispatchEventForTesting(kUDPEvent);
+  Mock::VerifyAndClearExpectations(runner_ptr);
+}
 }  // namespace
 }  // namespace patchpanel

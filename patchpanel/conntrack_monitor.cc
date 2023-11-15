@@ -37,11 +37,6 @@ namespace {
 base::LazyInstance<ConntrackMonitor>::DestructorAtExit g_conntrack_monitor =
     LAZY_INSTANCE_INITIALIZER;
 
-constexpr uint8_t kDefaultEventBitMask = 0;
-constexpr uint8_t kNewEventBitMask = (1 << 0);
-constexpr uint8_t kUpdateEventBitMask = (1 << 1);
-constexpr uint8_t kDestroyEventBitMask = (1 << 2);
-
 // Get the message type of this netlink message.
 std::optional<ConntrackMonitor::EventType> GetEventType(
     const struct nlmsghdr* nlh) {
@@ -63,21 +58,6 @@ bool NetlinkMessageError(const struct nlmsghdr* nlh) {
          (nlh->nlmsg_type == NLMSG_DONE && nlh->nlmsg_flags & NLM_F_MULTI);
 }
 
-uint8_t EventTypeToMask(ConntrackMonitor::EventType event) {
-  switch (event) {
-    case ConntrackMonitor::EventType::kNew:
-      return kNewEventBitMask;
-      break;
-    case ConntrackMonitor::EventType::kUpdate:
-      return kUpdateEventBitMask;
-      break;
-    case ConntrackMonitor::EventType::kDestroy:
-      return kDestroyEventBitMask;
-      break;
-  }
-  LOG(ERROR) << "Unknown event type: " << static_cast<int>(event);
-  return kDefaultEventBitMask;
-}
 }  // namespace
 
 ConntrackMonitor::ConntrackMonitor() = default;
@@ -300,6 +280,22 @@ void ConntrackMonitor::Listener::NotifyEvent(const Event& msg) const {
   if (type & listen_flags_) {
     callback_.Run(msg);
   }
+}
+
+uint8_t ConntrackMonitor::EventTypeToMask(ConntrackMonitor::EventType event) {
+  switch (event) {
+    case ConntrackMonitor::EventType::kNew:
+      return kNewEventBitMask;
+      break;
+    case ConntrackMonitor::EventType::kUpdate:
+      return kUpdateEventBitMask;
+      break;
+    case ConntrackMonitor::EventType::kDestroy:
+      return kDestroyEventBitMask;
+      break;
+  }
+  LOG(ERROR) << "Unknown event type: " << static_cast<int>(event);
+  return kDefaultEventBitMask;
 }
 
 bool operator==(const ConntrackMonitor::Event&,

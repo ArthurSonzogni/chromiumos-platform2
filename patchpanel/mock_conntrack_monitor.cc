@@ -6,7 +6,15 @@
 
 namespace patchpanel {
 
-MockConntrackMonitor::MockConntrackMonitor() = default;
+MockConntrackMonitor::MockConntrackMonitor() {
+  SetEventMaskForTesting(kNewEventBitMask | kDestroyEventBitMask |
+                         kUpdateEventBitMask);
+  ON_CALL(*this, AddListener)
+      .WillByDefault([&, this](base::span<const EventType> events,
+                               const ConntrackEventHandler& callback) {
+        return this->ConntrackMonitor::AddListener(events, callback);
+      });
+}
 
 MockConntrackMonitor::~MockConntrackMonitor() = default;
 

@@ -172,7 +172,8 @@ class QoSService::DoHUpdater {
   Datapath* datapath_;
 };
 
-QoSService::QoSService(Datapath* datapath) : datapath_(datapath) {
+QoSService::QoSService(Datapath* datapath, ConntrackMonitor* monitor)
+    : datapath_(datapath), conntrack_monitor_(monitor) {
   dns_client_factory_ = std::make_unique<net_base::DNSClientFactory>();
   process_runner_ = std::make_unique<MinijailedProcessRunner>();
 }
@@ -180,8 +181,9 @@ QoSService::QoSService(Datapath* datapath) : datapath_(datapath) {
 QoSService::QoSService(
     Datapath* datapath,
     std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
-    std::unique_ptr<MinijailedProcessRunner> process_runner)
-    : datapath_(datapath) {
+    std::unique_ptr<MinijailedProcessRunner> process_runner,
+    ConntrackMonitor* monitor)
+    : datapath_(datapath), conntrack_monitor_(monitor) {
   dns_client_factory_ = std::move(dns_client_factory);
   process_runner_ = std::move(process_runner);
 }
@@ -195,6 +197,13 @@ constexpr char kProtocolTCP[] = "TCP";
 // UDP protocol used to set protocol field in conntrack command.
 constexpr char kProtocolUDP[] = "UDP";
 
+// Limit of how many pending UDP connections can be added to
+// |pending_connections_|.
+constexpr int kPendingConnectionListLimit = 128;
+
+// Types of conntrack events QoSService gets notified.
+constexpr ConntrackMonitor::EventType kConntrackEvents[] = {
+    ConntrackMonitor::EventType::kNew};
 }  // namespace
 
 void QoSService::Enable() {
@@ -207,6 +216,9 @@ void QoSService::Enable() {
   for (const auto& ifname : interfaces_) {
     datapath_->EnableQoSApplyingDSCP(ifname);
   }
+  listener_ = conntrack_monitor_->AddListener(
+      kConntrackEvents, base::BindRepeating(&QoSService::HandleConntrackEvent,
+                                            weak_factory_.GetWeakPtr()));
 }
 
 void QoSService::Disable() {
@@ -219,6 +231,39 @@ void QoSService::Disable() {
     datapath_->DisableQoSApplyingDSCP(ifname);
   }
   datapath_->DisableQoSDetection();
+  listener_.reset();
+  pending_connections_.clear();
+}
+
+void QoSService::HandleConntrackEvent(const ConntrackMonitor::Event& event) {
+  // Currently we only cares about UDP connections, see more explanation in the
+  // comment of |pending_connections_|.
+  if (event.proto != IPPROTO_UDP) {
+    return;
+  }
+  UDPConnection conn = {.src_addr = event.src,
+                        .dst_addr = event.dst,
+                        .sport = event.sport,
+                        .dport = event.dport};
+  // Find the connection in |pending_connections_|, if it is in the list, try
+  // updating connmark and delete the connection from the list.
+  auto it = pending_connections_.find(conn);
+  if (it == pending_connections_.end()) {
+    return;
+  }
+  std::vector<std::string> args = {"-p",      kProtocolUDP,
+                                   "-s",      event.src.ToString(),
+                                   "-d",      event.dst.ToString(),
+                                   "--sport", std::to_string(event.sport),
+                                   "--dport", std::to_string(event.dport),
+                                   "-m",      QoSFwmarkWithMask(it->second)};
+  if (process_runner_->conntrack("-U", args) != 0) {
+    LOG(ERROR) << "Updating connmark failed, deleting connection from pending "
+                  "connection list.";
+  }
+  // Whether the update succeeded or not, there would not be another conntrack
+  // event to trigger update, delete the connection from pending list.
+  pending_connections_.erase(it);
 }
 
 void QoSService::OnPhysicalDeviceAdded(const ShillClient::Device& device) {
@@ -247,6 +292,19 @@ void QoSService::OnPhysicalDeviceRemoved(const ShillClient::Device& device) {
     return;
   }
   datapath_->DisableQoSApplyingDSCP(device.ifname);
+}
+
+void QoSService::OnPhysicalDeviceDisconnected(
+    const ShillClient::Device& device) {
+  if (device.type != ShillClient::Device::Type::kWifi) {
+    return;
+  }
+  // Clean up pending connections list to avoid excessive unused entries in the
+  // list.
+  // Currently |pending_connections_| only tracks connections on the WiFi
+  // interface and we assume that there will be only one active WiFi interface
+  // on the CrOS device, so we can clear this map directly here.
+  pending_connections_.clear();
 }
 
 void QoSService::ProcessSocketConnectionEvent(
@@ -278,24 +336,22 @@ void QoSService::ProcessSocketConnectionEvent(
     LOG(ERROR) << __func__ << ": invalid protocol: " << msg.proto();
   }
 
-  std::string mark;
+  QoSCategory qos_category;
   if (msg.category() ==
       patchpanel::SocketConnectionEvent::QosCategory::
           SocketConnectionEvent_QosCategory_REALTIME_INTERACTIVE) {
-    mark = QoSFwmarkWithMask(QoSCategory::kRealTimeInteractive);
+    qos_category = QoSCategory::kRealTimeInteractive;
   } else if (msg.category() ==
              patchpanel::SocketConnectionEvent::QosCategory::
                  SocketConnectionEvent_QosCategory_MULTIMEDIA_CONFERENCING) {
-    mark = QoSFwmarkWithMask(QoSCategory::kMultimediaConferencing);
+    qos_category = QoSCategory::kMultimediaConferencing;
   } else {
     LOG(ERROR) << __func__ << ": invalid QoS category: " << msg.category();
   }
 
-  // TODO(chuweih): Add check to make sure socket connection exists in
-  // conntrack table before updating its connmark.
   if (msg.event() == patchpanel::SocketConnectionEvent::SocketEvent::
                          SocketConnectionEvent_SocketEvent_CLOSE) {
-    mark = QoSFwmarkWithMask(QoSCategory::kDefault);
+    qos_category = QoSCategory::kDefault;
   } else if (msg.event() != patchpanel::SocketConnectionEvent::SocketEvent::
                                 SocketConnectionEvent_SocketEvent_OPEN) {
     LOG(ERROR) << __func__ << ": invalid socket event: " << msg.event();
@@ -308,8 +364,26 @@ void QoSService::ProcessSocketConnectionEvent(
                                    "-d",      dst_addr.value().ToString(),
                                    "--sport", std::to_string(msg.sport()),
                                    "--dport", std::to_string(msg.dport()),
-                                   "-m",      mark};
-  process_runner_->conntrack("-U", args);
+                                   "-m",      QoSFwmarkWithMask(qos_category)};
+  // Only add UDP connections that failed to update connmark to pending list
+  // because TCP connections are guaranteed to be established on ARC side.
+  if (process_runner_->conntrack("-U", args) != 0) {
+    if (proto == kProtocolTCP) {
+      LOG(ERROR) << "Failed to update connmark for TCP connection.";
+      return;
+    }
+    if (pending_connections_.size() >= kPendingConnectionListLimit) {
+      LOG(WARNING) << "Failed to add UDP connection to pending connection "
+                      "list, reaching limit size.";
+      return;
+    }
+    pending_connections_.insert(
+        {UDPConnection{.src_addr = *src_addr,
+                       .dst_addr = *dst_addr,
+                       .sport = static_cast<uint16_t>(msg.sport()),
+                       .dport = static_cast<uint16_t>(msg.dport())},
+         qos_category});
+  }
 }
 
 void QoSService::UpdateDoHProviders(
@@ -332,5 +406,8 @@ void QoSService::OnBorealisVMStarted(const std::string_view ifname) {
 void QoSService::OnBorealisVMStopped(const std::string_view ifname) {
   datapath_->RemoveBorealisQoSRule(ifname);
 }
+
+std::strong_ordering operator<=>(const QoSService::UDPConnection&,
+                                 const QoSService::UDPConnection&) = default;
 
 }  // namespace patchpanel

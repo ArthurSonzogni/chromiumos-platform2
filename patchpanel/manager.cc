@@ -31,6 +31,11 @@ namespace patchpanel {
 namespace {
 // Delay to restart IPv6 in a namespace to trigger SLAAC in the kernel.
 constexpr int kIPv6RestartDelayMs = 300;
+
+// Types of conntrack events ConntrackMonitor handles. Listeners added to the
+// monitor can only listen to types of events included in this list.
+constexpr ConntrackMonitor::EventType kConntrackEvents[] = {
+    ConntrackMonitor::EventType::kNew};
 }  // namespace
 
 Manager::Manager(const base::FilePath& cmd_path,
@@ -46,6 +51,9 @@ Manager::Manager(const base::FilePath& cmd_path,
       shill_client_(std::move(shill_client)),
       rtnl_client_(std::move(rtnl_client)) {
   DCHECK(rtnl_client_);
+
+  auto conntrack_monitor = ConntrackMonitor::GetInstance();
+  conntrack_monitor->Start(kConntrackEvents);
 
   datapath_ = std::make_unique<Datapath>(system);
   adb_proxy_ = std::make_unique<patchpanel::SubprocessController>(
@@ -70,7 +78,7 @@ Manager::Manager(const base::FilePath& cmd_path,
   multicast_counters_svc_->Start();
   multicast_metrics_->Start(MulticastMetrics::Type::kTotal);
 
-  qos_svc_ = std::make_unique<QoSService>(datapath_.get());
+  qos_svc_ = std::make_unique<QoSService>(datapath_.get(), conntrack_monitor);
 
   shill_client_->RegisterDevicesChangedHandler(base::BindRepeating(
       &Manager::OnShillDevicesChanged, weak_factory_.GetWeakPtr()));
@@ -365,6 +373,10 @@ void Manager::OnIPConfigsChanged(const ShillClient::Device& shill_device) {
   if (default_logical_device &&
       shill_device.ifname == default_logical_device->ifname) {
     clat_svc_->OnDefaultLogicalDeviceIPConfigChanged(shill_device);
+  }
+
+  if (!shill_device.IsConnected()) {
+    qos_svc_->OnPhysicalDeviceDisconnected(shill_device);
   }
 }
 

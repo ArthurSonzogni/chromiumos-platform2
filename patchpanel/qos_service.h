@@ -5,6 +5,8 @@
 #ifndef PATCHPANEL_QOS_SERVICE_H_
 #define PATCHPANEL_QOS_SERVICE_H_
 
+#include <cstdint>
+#include <map>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -13,8 +15,10 @@
 #include <base/containers/flat_set.h>
 #include <net-base/dns_client.h>
 
+#include "patchpanel/conntrack_monitor.h"
 #include "patchpanel/crostini_service.h"
 #include "patchpanel/minijailed_process_runner.h"
+#include "patchpanel/routing_service.h"
 #include "patchpanel/shill_client.h"
 
 namespace patchpanel {
@@ -40,15 +44,29 @@ class SocketConnectionEvent;
 //   - There are iptables rules to save/restore the QoS category bits between
 //     fwmark and connmark.
 //   - Conntrack table will be updated directly from this class on QoS-related
-//     socket connection events from other components.
+//     socket connection events from other components. If the connmark update
+//     fails, a UDP connection will be added to pending list and try updating
+//     connmark again when it is notified to be established.
 //
 class QoSService {
  public:
-  explicit QoSService(Datapath* datapath);
+  struct UDPConnection {
+    net_base::IPAddress src_addr;
+    net_base::IPAddress dst_addr;
+    uint16_t sport;
+    uint16_t dport;
+
+    // 3-way comparison operator for able to be keyed in a map.
+    friend std::strong_ordering operator<=>(const UDPConnection&,
+                                            const UDPConnection&);
+  };
+
+  explicit QoSService(Datapath* datapath, ConntrackMonitor* monitor);
   // Provided for testing.
   QoSService(Datapath* datapath,
              std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
-             std::unique_ptr<MinijailedProcessRunner> process_runner);
+             std::unique_ptr<MinijailedProcessRunner> process_runner,
+             ConntrackMonitor* monitor);
 
   ~QoSService();
 
@@ -67,6 +85,7 @@ class QoSService {
   // Currently this class only care about WiFi interfaces.
   void OnPhysicalDeviceAdded(const ShillClient::Device& device);
   void OnPhysicalDeviceRemoved(const ShillClient::Device& device);
+  void OnPhysicalDeviceDisconnected(const ShillClient::Device& device);
 
   // Process socket connection events from ARC App monitor and modify connmark
   // based on socket information.
@@ -81,10 +100,15 @@ class QoSService {
   void OnBorealisVMStopped(const std::string_view ifname);
 
  private:
+  // Handles conntrack events from ConntrackMonitor and updates connmark
+  // for UDP connections in |pending_connections_| if applies.
+  void HandleConntrackEvent(const ConntrackMonitor::Event& event);
+
   // Dependencies.
   Datapath* datapath_;
   std::unique_ptr<net_base::DNSClientFactory> dns_client_factory_;
   std::unique_ptr<MinijailedProcessRunner> process_runner_;
+  ConntrackMonitor* conntrack_monitor_;
 
   // QoS feature is disabled by default. This value can be changed in `Enable()`
   // and `Disable()`.
@@ -102,6 +126,19 @@ class QoSService {
   // update the iptables rules related to DoH. Reset in UpdateDoHProviders().
   class DoHUpdater;
   std::unique_ptr<DoHUpdater> doh_updater_;
+
+  // Pending list of QoS UDP connections whose connmark need to be updated.
+  // Currently only UDP connections are added to this list since TCP connections
+  // are guaranteed to be established on ARC side before SocketConnectionEvent
+  // is sent. A UDP connection will be deleted from this list after getting
+  // conntrack event from ConntrackMonitor and trying to update connmark again
+  // regardless of the result of update.
+  std::map<UDPConnection, QoSCategory> pending_connections_;
+
+  // Listener that listen to conntrack events.
+  std::unique_ptr<ConntrackMonitor::Listener> listener_;
+
+  base::WeakPtrFactory<QoSService> weak_factory_{this};
 };
 
 }  // namespace patchpanel

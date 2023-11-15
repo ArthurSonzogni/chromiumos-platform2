@@ -22,6 +22,7 @@ class MockConntrackMonitor : public ConntrackMonitor {
 
   ~MockConntrackMonitor() override;
 
+  void DispatchEventForTesting(const Event& msg) { DispatchEvent(msg); }
   MOCK_METHOD(void, Start, (base::span<const EventType>), (override));
   MOCK_METHOD(std::unique_ptr<Listener>,
               AddListener,
