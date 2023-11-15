@@ -744,8 +744,6 @@ std::string CrosFpAuthStackManager::CurrentStateToString() {
       return "Auth";
     case State::kAuthDone:
       return "AuthDone";
-    case State::kMatch:
-      return "Match";
     case State::kWaitForFingerUp:
       return "WaitForFingerUp";
     case State::kAuthWaitForFingerUp:
@@ -765,7 +763,6 @@ bool CrosFpAuthStackManager::IsActiveState() {
     case State::kNone:
     case State::kEnrollDone:
     case State::kAuthDone:
-    case State::kMatch:
     case State::kLocked:
       return false;
   }
@@ -780,7 +777,6 @@ bool CrosFpAuthStackManager::CanStartEnroll() {
       return true;
     case State::kEnroll:
     case State::kAuth:
-    case State::kMatch:
     case State::kAuthWaitForFingerUp:
     case State::kLocked:
       return false;
@@ -800,7 +796,6 @@ bool CrosFpAuthStackManager::CanStartAuth() {
       return true;
     case State::kEnroll:
     case State::kAuth:
-    case State::kMatch:
     case State::kLocked:
     case State::kAuthWaitForFingerUp:
       return false;

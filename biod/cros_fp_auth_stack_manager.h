@@ -45,14 +45,12 @@ class CrosFpAuthStackManager : public AuthStackManager {
     // An AuthSession is completed successfully and we're expecting a
     // AuthenticateCredential command.
     kAuthDone,
-    // An asynchronous matching operation is ongoing.
-    kMatch,
     // An AuthenticateCredential is completed, and we're waiting for user to
     // lift their finger before the next auth attempt.
     kWaitForFingerUp,
     // If during WaitForFingerUp state, we received an AuthenticateCredential
     // command, we transition to this state so that after finger is up we
-    // immediately start to detect finger down event.
+    // immediately start the next match.
     kAuthWaitForFingerUp,
     // Something went wrong in keeping sync between biod and FPMCU, and it's
     // better to not process any Enroll/Auth commands in this state.
