@@ -68,6 +68,8 @@ class GroundTruth final {
       uint8_t& fan_count) const;
 
   ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineVolumeButton() const;
+
+  ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineLedLitUp() const;
   // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 
  private:

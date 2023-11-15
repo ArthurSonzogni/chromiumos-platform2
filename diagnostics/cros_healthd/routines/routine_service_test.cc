@@ -330,14 +330,12 @@ TEST_F(RoutineServiceTest, LedLitUp) {
 TEST_F(RoutineServiceTest, LedLitUpNoEc) {
   UnsetPath(kCrosEcSysPath);
 
-  CheckIsRoutineArgumentSupported(
-      MakeUnsupported("Not supported on a non-CrosEC device"),
-      mojom::RoutineArgument::NewLedLitUp(
-          mojom::LedLitUpRoutineArgument::New()));
-  // TODO(b/309080271): Fix the diverge.
-  CheckCreateRoutine(MakeSupported(),
-                     mojom::RoutineArgument::NewLedLitUp(
-                         mojom::LedLitUpRoutineArgument::New()));
+  auto status = MakeUnsupported("Not supported on a non-CrosEC device");
+  CheckIsRoutineArgumentSupported(status,
+                                  mojom::RoutineArgument::NewLedLitUp(
+                                      mojom::LedLitUpRoutineArgument::New()));
+  CheckCreateRoutine(status, mojom::RoutineArgument::NewLedLitUp(
+                                 mojom::LedLitUpRoutineArgument::New()));
 }
 
 TEST_F(RoutineServiceTest, BluetoothPower) {

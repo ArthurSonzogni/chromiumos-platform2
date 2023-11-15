@@ -348,22 +348,6 @@ TEST_F(GroundTruthTest, SdCardEvent) {
   }
 }
 
-TEST_F(GroundTruthTest, LedLitUpRoutineSupportedWithCrosEc) {
-  ASSERT_TRUE(base::CreateDirectory(GetRootedPath(kCrosEcSysPath)));
-
-  auto arg = mojom::LedLitUpRoutineArgument::New();
-  arg->name = mojom::LedName::kBattery;
-  arg->color = mojom::LedColor::kRed;
-  ExpectRoutineSupported(mojom::RoutineArgument::NewLedLitUp(std::move(arg)));
-}
-
-TEST_F(GroundTruthTest, LedLitUpRoutineUnsupportedWithoutCrosEc) {
-  auto arg = mojom::LedLitUpRoutineArgument::New();
-  arg->name = mojom::LedName::kBattery;
-  arg->color = mojom::LedColor::kRed;
-  ExpectRoutineUnsupported(mojom::RoutineArgument::NewLedLitUp(std::move(arg)));
-}
-
 TEST_F(GroundTruthTest, BluetoothPowerRoutineFlossEnabled) {
   EXPECT_CALL(*mock_floss_controller(), GetManager())
       .WillOnce(Return(&mock_manager_proxy_));

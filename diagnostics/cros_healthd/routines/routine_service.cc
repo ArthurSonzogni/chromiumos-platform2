@@ -75,6 +75,13 @@ CreateRoutineResult CreateRoutineHelperSync(
       context->ground_truth()->PrepareRoutineVolumeButton(), context, arg);
 }
 
+CreateRoutineResult CreateRoutineHelperSync(
+    Context* context, mojom::LedLitUpRoutineArgumentPtr arg) {
+  return MakeRoutineIfSupported<LedLitUpV2Routine>(
+      context->ground_truth()->PrepareRoutineLedLitUp(), context,
+      std::move(arg));
+}
+
 // Default implementation of `CreateRoutineHelperSync` raises compile error.
 template <typename Arg>
 CreateRoutineResult CreateRoutineHelperSync(Context* context, Arg arg) {
@@ -156,9 +163,8 @@ void RoutineService::CheckAndCreateRoutine(
       return;
     }
     case mojom::RoutineArgument::Tag::kLedLitUp: {
-      auto routine = std::make_unique<LedLitUpV2Routine>(
-          context_, std::move(routine_arg->get_led_lit_up()));
-      std::move(callback).Run(base::ok(std::move(routine)));
+      CreateRoutineHelper(context_, std::move(routine_arg->get_led_lit_up()),
+                          std::move(callback));
       return;
     }
     case mojom::RoutineArgument::Tag::kBluetoothPower: {

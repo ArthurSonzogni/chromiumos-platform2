@@ -87,6 +87,13 @@ bool HasCrosEC() {
   return base::PathExists(GetRootedPath(kCrosEcSysPath));
 }
 
+base::expected<void, std::string> CheckCrosEc() {
+  if (HasCrosEC()) {
+    return base::ok();
+  }
+  return base::unexpected("Not supported on a non-CrosEC device");
+}
+
 void HandleFlossEnabledResponse(
     mojom::CrosHealthdRoutinesService::IsRoutineArgumentSupportedCallback
         callback,
@@ -240,19 +247,10 @@ void GroundTruth::IsRoutineArgumentSupported(
     case mojom::RoutineArgument::Tag::kFan:
     case mojom::RoutineArgument::Tag::kDiskRead:
     case mojom::RoutineArgument::Tag::kVolumeButton:
+    case mojom::RoutineArgument::Tag::kLedLitUp:
       status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
       std::move(callback).Run(std::move(routine_arg), std::move(status));
       return;
-    case mojom::RoutineArgument::Tag::kLedLitUp: {
-      if (HasCrosEC()) {
-        status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
-      } else {
-        status = mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-            "Not supported on a non-CrosEC device", nullptr));
-      }
-      std::move(callback).Run(std::move(routine_arg), std::move(status));
-      return;
-    }
     case mojom::RoutineArgument::Tag::kBluetoothPower:
     case mojom::RoutineArgument::Tag::kBluetoothDiscovery:
     case mojom::RoutineArgument::Tag::kBluetoothPairing: {
@@ -417,6 +415,10 @@ mojom::SupportStatusPtr GroundTruth::PrepareRoutineFan(
 mojom::SupportStatusPtr GroundTruth::PrepareRoutineVolumeButton() const {
   return MakeSupportStatus(cros_config()->CheckTrueCrosConfig(
       cros_config_property::kHasSideVolumeButton));
+}
+
+mojom::SupportStatusPtr GroundTruth::PrepareRoutineLedLitUp() const {
+  return MakeSupportStatus(CheckCrosEc());
 }
 // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 
