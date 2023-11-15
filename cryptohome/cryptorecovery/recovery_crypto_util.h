@@ -15,6 +15,10 @@
 namespace cryptohome {
 namespace cryptorecovery {
 
+// These CBOR definitions should stay synchronized with their server side
+// definitions:
+// google3/chromeos/identity/go/cryptorecovery/shared/cbor/hsmcbor.go
+
 // AEAD-encrypted payload.
 struct AeadPayload {
   // AES-GCM tag for encryption.
