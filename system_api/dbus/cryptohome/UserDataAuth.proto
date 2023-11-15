@@ -350,22 +350,6 @@ message RemoveReply {
   CryptohomeErrorInfo error_info = 2;
 }
 
-// Input parameters to CheckKey()
-message CheckKeyRequest {
-  // We only check against keys that belongs to the user identified by
-  // account_id.
-  cryptohome.AccountIdentifier account_id = 1;
-  // The authentication credentials to check against the keys
-  cryptohome.AuthorizationRequest authorization_request = 2;
-  // Whether the webauthn secret should be unlocked.
-  bool unlock_webauthn_secret = 3;
-}
-
-// Output parameters for CheckKey()
-message CheckKeyReply {
-  CryptohomeErrorCode error = 1;
-}
-
 // Deprecated.
 // Input parameters to StartFingerprintAuthSession()
 message StartFingerprintAuthSessionRequest {
