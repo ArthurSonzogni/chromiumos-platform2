@@ -149,7 +149,6 @@ static_library("libconcierge") {
   sources = [
     "../concierge/arc_vm.cc",
     "../concierge/balloon_policy.cc",
-    "../concierge/concierge_daemon.cc",
     "../concierge/crosvm_control.cc",
     "../concierge/disk_image.cc",
     "../concierge/dlc_helper.cc",

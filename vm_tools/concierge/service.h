@@ -41,7 +41,6 @@
 #include <spaced/disk_usage_proxy.h>
 #include <vm_concierge/concierge_service.pb.h>
 
-#include "base/functional/callback_forward.h"
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/dbus_adaptors/org.chromium.VmConcierge.h"
 #include "vm_tools/concierge/disk_image.h"
@@ -66,15 +65,12 @@ class DlcHelper;
 class Service final : public org::chromium::VmConciergeInterface,
                       public spaced::SpacedObserverInterface {
  public:
-  // Creates and hosts a service asynchronously on the current sequence, using
-  // |signal_fd| to monitor for exits of pending VMs. Invokes |on_hosted| when
-  // the service is up (with a service object) or when it fails to start (with
-  // nullptr).
-  //
-  // TODO(b/304896852): remove signal_fd.
-  static void CreateAndHost(
-      int signal_fd,
-      base::OnceCallback<void(std::unique_ptr<Service>)> on_hosted);
+  // Helper definition for the callback used to signal the service has stopped.
+  using ServiceShutdownCallback = base::OnceCallback<void(bool)>;
+
+  // Creates a service instance. The service won't do anything until
+  // Host<sync>() is called.
+  Service();
 
   // Services should not be moved or copied.
   Service(const Service&) = delete;
@@ -82,16 +78,18 @@ class Service final : public org::chromium::VmConciergeInterface,
 
   ~Service() override;
 
-  // Called when the daemon notices that one of the child (VM) processes exited.
-  void ChildExited();
+  // Hosts this service on the current thread. This operation blocks the current
+  // thread until the service stops, either because SIGTERM was sent to the
+  // parent process (with a return of "true") or because the service failed to
+  // spawn (with a return of "false").
+  bool HostBlocking();
 
-  // Stops the service from being hosted asynchronously. Invokes
-  // |on_stopped| when the service is finished cleaning up.
-  void Stop(base::OnceClosure on_stopped);
+  // Hosts this service asynchronously on the current sequence. Invokes
+  // |on_shutdown| when the service ends, see HostBlocking() for details on
+  // how/why the callback will be invoked.
+  void HostAsync(ServiceShutdownCallback on_shutdown);
 
  private:
-  explicit Service(int signal_fd);
-
   // Describes GPU shader cache paths.
   struct VMGpuCacheSpec {
     base::FilePath device;
@@ -106,6 +104,12 @@ class Service final : public org::chromium::VmConciergeInterface,
   // disabled or enabled successfully. Returns false on failure to enable the
   // service.
   bool InitVmMemoryManagementService();
+
+  // Handles the termination of a child process.
+  void HandleChildExit();
+
+  // Handles a SIGTERM.
+  void HandleSigterm();
 
   // Helper function that is used by StartVm, StartPluginVm and StartArcVm
   //
@@ -488,11 +492,9 @@ class Service final : public org::chromium::VmConciergeInterface,
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   // File descriptor for the SIGCHLD events.
-  //
-  // TODO(b/304896852): remove this, notify the service of child exits with a
-  // top-down API rather than expecting the startup checker to monitor the
-  // signal fd.
-  int signal_fd_ GUARDED_BY_CONTEXT(sequence_checker_);
+  base::ScopedFD signal_fd_ GUARDED_BY_CONTEXT(sequence_checker_);
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Connection to the system bus.
   base::Thread dbus_thread_{"dbus thread"};
@@ -535,6 +537,10 @@ class Service final : public org::chromium::VmConciergeInterface,
 
   // The server where the StartupListener service lives.
   std::shared_ptr<grpc::Server> grpc_server_vm_;
+
+  // Callback that's posted to the current sequence's TaskRunner when the
+  // service stops running (or fails to start running).
+  ServiceShutdownCallback on_shutdown_;
 
   // Ensure calls are made on the right thread.
   SEQUENCE_CHECKER(sequence_checker_);
