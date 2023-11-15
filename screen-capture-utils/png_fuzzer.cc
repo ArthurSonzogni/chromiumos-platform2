@@ -5,6 +5,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
