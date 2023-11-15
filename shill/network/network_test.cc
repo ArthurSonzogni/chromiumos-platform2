@@ -1080,10 +1080,12 @@ TEST_F(NetworkTest, PortalDetectionResult_AfterDisconnection) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kSuccess;
+  result.http_status_code = 204;
+  result.http_content_length = 0;
   result.https_error = HttpRequest::Error::kHTTPTimeout;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
-  EXPECT_EQ(PortalDetector::ValidationState::kNoConnectivity,
+  ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             result.GetValidationState());
   EXPECT_CALL(event_handler_, OnNetworkValidationResult).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkValidationResult).Times(0);
@@ -1097,13 +1099,14 @@ TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kSuccess;
+  result.http_status_code = 204;
+  result.http_content_length = 0;
   result.https_error = HttpRequest::Error::kConnectionFailure;
   result.http_duration = base::Milliseconds(100);
   result.https_duration = base::Milliseconds(200);
-  result.http_status_code = 204;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
-  EXPECT_EQ(PortalDetector::ValidationState::kNoConnectivity,
+  ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             result.GetValidationState());
   MockConnectionDiagnostics* conn_diag = new MockConnectionDiagnostics();
   MockPortalDetector* portal_detector = new MockPortalDetector();
@@ -1147,7 +1150,7 @@ TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
   result.https_duration = base::Milliseconds(200);
   result.http_probe_completed = true;
   result.https_probe_completed = true;
-  EXPECT_EQ(PortalDetector::ValidationState::kNoConnectivity,
+  ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             result.GetValidationState());
   MockConnectionDiagnostics* conn_diag = new MockConnectionDiagnostics();
   MockPortalDetector* portal_detector = new MockPortalDetector();
@@ -1183,9 +1186,10 @@ TEST_F(NetworkTest, PortalDetectionResult_InternetConnectivity) {
   result.http_duration = base::Milliseconds(100);
   result.https_duration = base::Milliseconds(200);
   result.http_status_code = 204;
+  result.http_content_length = 0;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
-  EXPECT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
+  ASSERT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
             result.GetValidationState());
   MockPortalDetector* portal_detector = new MockPortalDetector();
   ON_CALL(*portal_detector, IsInProgress()).WillByDefault(Return(true));
@@ -1222,14 +1226,17 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kRedirect;
+  result.http_status_code = 302;
+  result.http_content_length = 0;
   result.redirect_url =
       net_base::HttpUrl::CreateFromString("https://portal.com/login");
+  result.probe_url = net_base::HttpUrl::CreateFromString(
+      "https://service.google.com/generate_204");
   result.http_duration = base::Milliseconds(100);
   result.https_duration = base::Milliseconds(200);
-  result.http_status_code = 302;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
-  EXPECT_EQ(PortalDetector::ValidationState::kPortalRedirect,
+  ASSERT_EQ(PortalDetector::ValidationState::kPortalRedirect,
             result.GetValidationState());
   MockPortalDetector* portal_detector = new MockPortalDetector();
   ON_CALL(*portal_detector, IsInProgress()).WillByDefault(Return(true));
@@ -1265,14 +1272,15 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalInvalidRedirect) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kRedirect;
+  result.http_status_code = 302;
+  result.http_content_length = 0;
   result.https_error = HttpRequest::Error::kConnectionFailure;
   result.redirect_url = std::nullopt;
   result.http_duration = base::Milliseconds(100);
   result.https_duration = base::Milliseconds(200);
-  result.http_status_code = 302;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
-  EXPECT_EQ(PortalDetector::ValidationState::kPartialConnectivity,
+  ASSERT_EQ(PortalDetector::ValidationState::kPortalSuspected,
             result.GetValidationState());
 
   MockConnectionDiagnostics* conn_diag = new MockConnectionDiagnostics();
@@ -1295,7 +1303,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalInvalidRedirect) {
                   Metrics::kPortalDetectorHTTPResponseCode, Technology::kWiFi,
                   Metrics::kPortalDetectorHTTPResponseCodeIncompleteRedirect));
   network_->OnPortalDetectorResult(result);
-  EXPECT_EQ(PortalDetector::ValidationState::kPartialConnectivity,
+  EXPECT_EQ(PortalDetector::ValidationState::kPortalSuspected,
             network_->network_validation_result()->GetValidationState());
 }
 
@@ -1305,11 +1313,14 @@ TEST_F(NetworkTest, PortalDetectionResult_ClearAfterStop) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kSuccess;
+  result.http_status_code = 204;
+  result.http_content_length = 0;
   result.http_duration = base::Milliseconds(100);
   result.https_duration = base::Milliseconds(200);
-  result.http_status_code = 204;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
+  ASSERT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
+            result.GetValidationState());
   MockPortalDetector* portal_detector = new MockPortalDetector();
   ON_CALL(*portal_detector, IsInProgress()).WillByDefault(Return(true));
   network_->set_portal_detector_for_testing(portal_detector);
@@ -2214,25 +2225,40 @@ TEST(ValidationLogTest, ValidationLogRecordMetrics) {
   // |i| -> kInternetConnectivity
   i.http_phase = PortalDetector::Phase::kContent;
   i.http_status = PortalDetector::Status::kSuccess;
+  i.http_status_code = 204;
+  i.http_content_length = 0;
   i.http_probe_completed = true;
   i.https_probe_completed = true;
+  ASSERT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
+            i.GetValidationState());
 
   // |r| -> kPortalRedirect
   r.http_phase = PortalDetector::Phase::kContent;
   r.http_status = PortalDetector::Status::kRedirect;
+  r.http_status_code = 302;
+  r.http_content_length = 0;
   r.https_error = HttpRequest::Error::kConnectionFailure;
   r.redirect_url =
       net_base::HttpUrl::CreateFromString("https://portal.com/login");
+  r.probe_url = net_base::HttpUrl::CreateFromString(
+      "https://service.google.com/generate_204");
   r.http_probe_completed = true;
   r.https_probe_completed = true;
+  ASSERT_EQ(PortalDetector::ValidationState::kPortalRedirect,
+            r.GetValidationState());
 
-  // |p| -> kPartialConnectivity
+  // |p| -> kPortalSuspected
   p.http_phase = PortalDetector::Phase::kContent;
   p.http_status = PortalDetector::Status::kSuccess;
-  p.http_status_code = 302;
+  p.http_status_code = 200;
+  p.http_content_length = 678;
   p.https_error = HttpRequest::Error::kConnectionFailure;
+  p.probe_url = net_base::HttpUrl::CreateFromString(
+      "https://service.google.com/generate_204");
   p.http_probe_completed = true;
   p.https_probe_completed = true;
+  ASSERT_EQ(PortalDetector::ValidationState::kPortalSuspected,
+            p.GetValidationState());
 
   // |n| -> kNoConnectivity
   n.http_phase = PortalDetector::Phase::kConnection;
@@ -2240,6 +2266,8 @@ TEST(ValidationLogTest, ValidationLogRecordMetrics) {
   n.https_error = HttpRequest::Error::kConnectionFailure;
   n.http_probe_completed = true;
   n.https_probe_completed = true;
+  ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
+            n.GetValidationState());
 
   struct {
     std::vector<PortalDetector::Result> results;
@@ -2339,9 +2367,13 @@ TEST(ValidationLogTest, ValidationLogRecordMetricsCapportSupported) {
   PortalDetector::Result redirect_result;
   redirect_result.http_phase = PortalDetector::Phase::kContent;
   redirect_result.http_status = PortalDetector::Status::kRedirect;
+  redirect_result.http_status_code = 302;
+  redirect_result.http_content_length = 0;
   redirect_result.https_error = HttpRequest::Error::kConnectionFailure;
   redirect_result.redirect_url =
       net_base::HttpUrl::CreateFromString("https://portal.com/login");
+  redirect_result.probe_url = net_base::HttpUrl::CreateFromString(
+      "https://service.google.com/generate_204");
   redirect_result.http_probe_completed = true;
   redirect_result.https_probe_completed = true;
 

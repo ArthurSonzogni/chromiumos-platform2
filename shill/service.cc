@@ -2722,7 +2722,7 @@ void Service::NetworkEventHandler::OnNetworkValidationResult(
       break;
     case PortalDetector::ValidationState::kNoConnectivity:
       break;
-    case PortalDetector::ValidationState::kPartialConnectivity:
+    case PortalDetector::ValidationState::kPortalSuspected:
       break;
   }
 

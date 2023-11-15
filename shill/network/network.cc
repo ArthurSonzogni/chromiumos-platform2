@@ -918,7 +918,7 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
 
   switch (result.GetValidationState()) {
     case PortalDetector::ValidationState::kNoConnectivity:
-    case PortalDetector::ValidationState::kPartialConnectivity:
+    case PortalDetector::ValidationState::kPortalSuspected:
       // If portal detection was not conclusive, also start additional
       // connection diagnostics for the current network connection.
       StartConnectionDiagnostics();
@@ -1160,7 +1160,7 @@ void Network::ValidationLog::RecordMetrics() const {
 
   bool has_internet = false;
   bool has_redirect = false;
-  bool has_partial_connectivity = false;
+  bool has_suspected_redirect = false;
   base::TimeDelta time_to_internet;
   base::TimeDelta time_to_redirect;
   base::TimeDelta time_to_internet_after_redirect;
@@ -1168,8 +1168,8 @@ void Network::ValidationLog::RecordMetrics() const {
     switch (result) {
       case PortalDetector::ValidationState::kNoConnectivity:
         break;
-      case PortalDetector::ValidationState::kPartialConnectivity:
-        has_partial_connectivity = true;
+      case PortalDetector::ValidationState::kPortalSuspected:
+        has_suspected_redirect = true;
         break;
       case PortalDetector::ValidationState::kPortalRedirect:
         if (!has_redirect) {
@@ -1198,14 +1198,14 @@ void Network::ValidationLog::RecordMetrics() const {
   if (has_internet && has_redirect) {
     netval_result =
         Metrics::kPortalDetectorAggregateResultInternetAfterRedirect;
-  } else if (has_internet && has_partial_connectivity) {
+  } else if (has_internet && has_suspected_redirect) {
     netval_result =
         Metrics::kPortalDetectorAggregateResultInternetAfterPartialConnectivity;
   } else if (has_internet) {
     netval_result = Metrics::kPortalDetectorAggregateResultInternet;
   } else if (has_redirect) {
     netval_result = Metrics::kPortalDetectorAggregateResultRedirect;
-  } else if (has_partial_connectivity) {
+  } else if (has_suspected_redirect) {
     netval_result = Metrics::kPortalDetectorAggregateResultPartialConnectivity;
   } else {
     netval_result = Metrics::kPortalDetectorAggregateResultNoConnectivity;

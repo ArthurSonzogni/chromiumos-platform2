@@ -257,11 +257,11 @@ bool TetheringManager::ToProperties(KeyValueStore* properties) const {
 std::optional<bool> TetheringManager::FromProperties(
     const KeyValueStore& properties) {
   // sanity check.
-  auto ssid = properties.GetOptionalValue<std::string>(
-      kTetheringConfSSIDProperty);
+  auto ssid =
+      properties.GetOptionalValue<std::string>(kTetheringConfSSIDProperty);
   if (ssid.has_value() &&
-         (ssid->empty() || ssid->length() > kMaxWiFiHexSSIDLength ||
-          !std::all_of(ssid->begin(), ssid->end(), ::isxdigit))) {
+      (ssid->empty() || ssid->length() > kMaxWiFiHexSSIDLength ||
+       !std::all_of(ssid->begin(), ssid->end(), ::isxdigit))) {
     LOG(ERROR) << "Invalid SSID provided in tethering config: " << *ssid;
     return std::nullopt;
   }
@@ -269,11 +269,10 @@ std::optional<bool> TetheringManager::FromProperties(
   auto passphrase = properties.GetOptionalValue<std::string>(
       kTetheringConfPassphraseProperty);
   if (passphrase.has_value() &&
-         (passphrase->length() < kMinWiFiPassphraseLength ||
-          passphrase->length() > kMaxWiFiPassphraseLength)) {
-    LOG(ERROR)
-        << "Passphrase provided in tethering config has invalid length: "
-        << *passphrase;
+      (passphrase->length() < kMinWiFiPassphraseLength ||
+       passphrase->length() > kMaxWiFiPassphraseLength)) {
+    LOG(ERROR) << "Passphrase provided in tethering config has invalid length: "
+               << *passphrase;
     return std::nullopt;
   }
 
@@ -321,8 +320,8 @@ std::optional<bool> TetheringManager::FromProperties(
     // does not require session restart.
     auto_disable_ = properties.Get<bool>(kTetheringConfAutoDisableProperty);
     if (state_ == TetheringState::kTetheringActive) {
-      (auto_disable_ && GetClientCount() == 0) ?
-          StartInactiveTimer() : StopInactiveTimer();
+      (auto_disable_ && GetClientCount() == 0) ? StartInactiveTimer()
+                                               : StopInactiveTimer();
     }
   }
 
@@ -359,8 +358,9 @@ std::optional<bool> TetheringManager::FromProperties(
 
   if (properties.Contains<std::string>(
           kTetheringConfDownstreamDeviceForTestProperty) &&
-      downstream_device_for_test_ != properties.Get<std::string>(
-          kTetheringConfDownstreamDeviceForTestProperty)) {
+      downstream_device_for_test_ !=
+          properties.Get<std::string>(
+              kTetheringConfDownstreamDeviceForTestProperty)) {
     downstream_device_for_test_ = properties.Get<std::string>(
         kTetheringConfDownstreamDeviceForTestProperty);
     restart = true;
@@ -368,8 +368,9 @@ std::optional<bool> TetheringManager::FromProperties(
 
   if (properties.Contains<uint32_t>(
           kTetheringConfDownstreamPhyIndexForTestProperty) &&
-      downstream_phy_index_for_test_ != properties.Get<uint32_t>(
-          kTetheringConfDownstreamPhyIndexForTestProperty)) {
+      downstream_phy_index_for_test_ !=
+          properties.Get<uint32_t>(
+              kTetheringConfDownstreamPhyIndexForTestProperty)) {
     downstream_phy_index_for_test_ = properties.Get<uint32_t>(
         kTetheringConfDownstreamPhyIndexForTestProperty);
     restart = true;
@@ -422,8 +423,9 @@ bool TetheringManager::SetAndPersistConfig(const KeyValueStore& config,
     return false;
   }
 
-  if (restart_needed.value() && (state_ == TetheringState::kTetheringActive ||
-      state_ == TetheringState::kTetheringStarting)) {
+  if (restart_needed.value() &&
+      (state_ == TetheringState::kTetheringActive ||
+       state_ == TetheringState::kTetheringStarting)) {
     bool bypass_upstream = false;
     if (upstream_technology_ == old_upstream_technology &&
         upstream_technology_ == Technology::kCellular) {
@@ -595,9 +597,8 @@ void TetheringManager::CheckAndStartDownstreamTetheredNetwork() {
           base::BindOnce(&TetheringManager::OnDownstreamNetworkReady,
                          base::Unretained(this)));
   if (!downstream_network_started_) {
-    LOG(ERROR) << "Failed requesting "
-               << "downstream network " << downstream_ifname << " tethered to "
-               << upstream_ifname;
+    LOG(ERROR) << "Failed requesting downstream network " << downstream_ifname
+               << " tethered to " << upstream_ifname;
     PostSetEnabledResult(SetEnabledResult::kFailure);
     StopTetheringSession(StopReason::kError);
     return;
@@ -838,7 +839,8 @@ void TetheringManager::OnDownstreamDeviceEnabled() {
   }
 }
 
-void TetheringManager::StopTetheringSession(StopReason reason, bool bypass_upstream) {
+void TetheringManager::StopTetheringSession(StopReason reason,
+                                            bool bypass_upstream) {
   if (state_ == TetheringState::kTetheringIdle ||
       state_ == TetheringState::kTetheringStopping) {
     if (reason == StopReason::kClientStop) {
@@ -884,7 +886,7 @@ void TetheringManager::StopTetheringSession(StopReason reason, bool bypass_upstr
       FROM_HERE, stop_timer_callback_.callback(), kStopTimeout);
 
   if ((upstream_network_ &&
-      upstream_network_->technology() == Technology::kCellular) ||
+       upstream_network_->technology() == Technology::kCellular) ||
       (!upstream_network_ && upstream_technology_ == Technology::kCellular)) {
     // If the upstream_network_ is a cellular network type or if the current
     // upstream technology is cellular and the upstream_network_ has not been
@@ -1441,7 +1443,7 @@ bool TetheringManager::IsUpstreamNetworkReady() {
       return false;
     case PortalDetector::ValidationState::kNoConnectivity:
       return false;
-    case PortalDetector::ValidationState::kPartialConnectivity:
+    case PortalDetector::ValidationState::kPortalSuspected:
       return false;
   }
 }

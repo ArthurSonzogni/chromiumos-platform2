@@ -235,13 +235,28 @@ void PortalDetector::Stop() {
 
 void PortalDetector::HttpRequestSuccessCallback(
     std::shared_ptr<brillo::http::Response> response) {
-  // TODO(matthewmwang): check for 0 length data as well
   int status_code = response->GetStatusCode();
   result_->http_probe_completed = true;
   result_->http_phase = Phase::kContent;
   result_->http_status_code = status_code;
+  result_->http_content_length = GetContentLength(response);
   if (status_code == brillo::http::status_code::NoContent) {
     result_->http_status = Status::kSuccess;
+  } else if (status_code == brillo::http::status_code::Ok) {
+    // 200 responses are treated as 204 responses if there is no content. This
+    // is consistent with AOSP and helps support networks that transparently
+    // proxy or redirect web content but do not handle 204 content completely
+    // correctly. See b/33498325 for an example. In addition, single byte
+    // answers are also considered as 204 responses (b/122999481).
+    if (result_->http_content_length == 0 ||
+        result_->http_content_length == 1) {
+      result_->http_status = Status::kSuccess;
+    } else if (result_->http_content_length.value_or(0) > 1) {
+      // Any 200 response including some content in the response body is a
+      // strong indication of an evasive portal indirectly redirecting the HTTP
+      // probe without a 302 response code.
+      result_->probe_url = http_url_;
+    }
   } else if (IsRedirectResponse(status_code)) {
     // If a redirection code is received, verify that there is a valid Location
     // redirection URL, otherwise consider the HTTP probe as failed.
@@ -275,6 +290,7 @@ void PortalDetector::HttpRequestSuccessCallback(
   result_->http_duration = base::TimeTicks::Now() - last_attempt_start_time_;
   LOG(INFO) << LoggingTag() << ": HTTP probe " << http_url_.host()
             << " response status code=" << status_code
+            << " content_length=" << result_->http_content_length.value_or(0)
             << " status=" << result_->http_status
             << " duration=" << result_->http_duration;
   if (result_->IsComplete()) {
@@ -349,6 +365,25 @@ base::TimeDelta PortalDetector::GetNextAttemptDelay() const {
   return next_delay;
 }
 
+std::optional<size_t> PortalDetector::GetContentLength(
+    std::shared_ptr<brillo::http::Response> response) const {
+  std::string content_length_string =
+      response->GetHeader(brillo::http::response_header::kContentLength);
+  if (content_length_string.empty()) {
+    LOG(WARNING) << LoggingTag() << "Missing Content-Length";
+    // If there is no Content-Length header, use the size of the actual response
+    // data.
+    return response->ExtractData().size();
+  }
+  size_t content_length = 0;
+  if (!base::StringToSizeT(content_length_string, &content_length)) {
+    LOG(WARNING) << LoggingTag()
+                 << "Invalid Content-Length: " << content_length_string;
+    return std::nullopt;
+  }
+  return content_length;
+}
+
 // static
 const std::string PortalDetector::PhaseToString(Phase phase) {
   switch (phase) {
@@ -389,8 +424,8 @@ const std::string PortalDetector::ValidationStateToString(
       return "internet-connectivity";
     case ValidationState::kNoConnectivity:
       return "no-connectivity";
-    case ValidationState::kPartialConnectivity:
-      return "partial-connectivity";
+    case ValidationState::kPortalSuspected:
+      return "portal-suspected";
     case ValidationState::kPortalRedirect:
       return "portal-redirect";
   }
@@ -452,14 +487,11 @@ PortalDetector::ValidationState PortalDetector::Result::GetValidationState()
   if (IsHTTPProbeRedirected()) {
     return ValidationState::kPortalRedirect;
   }
-  // If the HTTP probe received a redirection result but the response was
-  // incomplete, classify the result as "portal suspected".
-  if (IsRedirectResponse(http_status_code) && !redirect_url) {
-    return ValidationState::kPartialConnectivity;
+  // Check if the HTTP answer is suspected to originate from a captive portal.
+  if (IsHTTPProbeRedirectionSuspected()) {
+    return ValidationState::kPortalSuspected;
   }
   // Any other result is considered as "no connectivity".
-  // TODO(b/309175584): distinguish HTTP 200 answers with content as portal
-  // suspected case even if the HTTPS probe fails.
   return ValidationState::kNoConnectivity;
 }
 
@@ -510,6 +542,26 @@ bool PortalDetector::Result::IsHTTPSProbeSuccessful() const {
 
 bool PortalDetector::Result::IsHTTPProbeSuccessful() const {
   return http_probe_completed && http_status == Status::kSuccess;
+}
+
+bool PortalDetector::Result::IsHTTPProbeRedirectionSuspected() const {
+  if (!http_probe_completed) {
+    return false;
+  }
+  // Any 200 response including some content in the response body is a strong
+  // indication of an evasive portal indirectly redirecting the HTTP probe
+  // without a 302 response code.
+  // TODO(b/309175584): Validate that the response is a valid HTML page
+  if (http_status_code == brillo::http::status_code::Ok &&
+      http_content_length.value_or(0) > 1) {
+    return true;
+  }
+  // Any incomplete redirect 302 or 307 response without a Location header
+  // is considered as misbehaving captive portal.
+  if (IsRedirectResponse(http_status_code) && !redirect_url) {
+    return true;
+  }
+  return false;
 }
 
 bool PortalDetector::Result::IsHTTPProbeRedirected() const {
@@ -570,6 +622,7 @@ bool PortalDetector::Result::operator==(
   // Probe durations |http_duration| and |https_duration| are ignored.
   return http_phase == rhs.http_phase && http_status == rhs.http_status &&
          http_status_code == rhs.http_status_code &&
+         http_content_length == rhs.http_content_length &&
          num_attempts == rhs.num_attempts && https_error == rhs.https_error &&
          http_probe_completed == rhs.http_probe_completed &&
          https_probe_completed == rhs.https_probe_completed &&
@@ -593,8 +646,11 @@ std::ostream& operator<<(std::ostream& stream, PortalDetector::Result result) {
   stream << "{ num_attempts=" << result.num_attempts << ", HTTP probe "
          << (result.http_probe_completed ? "completed" : "in-flight")
          << " phase=" << result.http_phase << " status=" << result.http_status
-         << " code=" << result.http_status_code
-         << " duration=" << result.http_duration << ", HTTPS probe "
+         << " code=" << result.http_status_code;
+  if (result.http_content_length) {
+    stream << " content-length=" << *result.http_content_length;
+  }
+  stream << " duration=" << result.http_duration << ", HTTPS probe "
          << (result.https_probe_completed ? "completed" : "in-flight")
          << " result=" << result.https_error
          << " duration=" << result.https_duration;

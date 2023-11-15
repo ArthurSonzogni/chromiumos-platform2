@@ -716,16 +716,12 @@ class DevicePortalDetectionTest : public DeviceTest {
   void TearDown() override {}
 
  protected:
-  static const int kPortalAttempts;
-
   void OnNetworkValidationResult(const PortalDetector::Result& result) {
     device_->OnNetworkValidationResult(device_->interface_index(), result);
   }
 
   scoped_refptr<MockService> service_;
 };
-
-const int DevicePortalDetectionTest::kPortalAttempts = 2;
 
 TEST_F(DevicePortalDetectionTest, NoSelectedService) {
   device_->set_selected_service_for_testing(nullptr);
@@ -818,31 +814,38 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStartIPv6) {
       device_->UpdatePortalDetector(Network::ValidationReason::kDBusRequest));
 }
 
-TEST_F(DevicePortalDetectionTest, PortalRetryAfterDetectionFailure) {
-  const int kFailureStatusCode = 204;
-  PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kConnection,
-  result.http_status = PortalDetector::Status::kFailure;
-  result.http_status_code = kFailureStatusCode;
-  result.num_attempts = kPortalAttempts;
-  result.http_probe_completed = true;
-  result.https_probe_completed = true;
-
+TEST_F(DevicePortalDetectionTest, PortalRetryAfterHTTPProbeFailure) {
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillOnce(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
   EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
+
+  PortalDetector::Result result;
+  result.num_attempts = 1;
+  result.http_phase = PortalDetector::Phase::kConnection,
+  result.http_status = PortalDetector::Status::kFailure;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
+  ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
+            result.GetValidationState());
+
   OnNetworkValidationResult(result);
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillOnce(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline));
+
   PortalDetector::Result result;
+  result.num_attempts = 1;
   result.http_phase = PortalDetector::Phase::kContent;
   result.http_status = PortalDetector::Status::kSuccess;
-  result.num_attempts = kPortalAttempts;
+  result.http_status_code = 204;
+  result.http_content_length = 0;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
+  ASSERT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
+            result.GetValidationState());
+
   OnNetworkValidationResult(result);
 }
 
@@ -859,11 +862,15 @@ TEST_F(DevicePortalDetectionTest, NextAttemptFails) {
   // First result indicating no connectivity and triggering a new portal
   // detection attempt.
   PortalDetector::Result result;
+  result.num_attempts = 1;
   result.http_phase = PortalDetector::Phase::kDNS,
   result.http_status = PortalDetector::Status::kTimeout;
   result.https_error = HttpRequest::Error::kHTTPTimeout;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
+  ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
+            result.GetValidationState());
+
   OnNetworkValidationResult(result);
 }
 
@@ -878,11 +885,15 @@ TEST_F(DevicePortalDetectionTest, ScheduleNextDetectionAttempt) {
   // First result indicating no connectivity and triggering a new portal
   // detection attempt.
   PortalDetector::Result result;
+  result.num_attempts = 1;
   result.http_phase = PortalDetector::Phase::kDNS,
   result.http_status = PortalDetector::Status::kTimeout;
   result.https_error = HttpRequest::Error::kHTTPTimeout;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
+  ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
+            result.GetValidationState());
+
   OnNetworkValidationResult(result);
 }
 
@@ -894,15 +905,15 @@ TEST_F(DevicePortalDetectionTest, CancelledOnSelectService) {
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
-  const int kFailureStatusCode = 204;
   PortalDetector::Result result;
+  result.num_attempts = 1;
   result.http_phase = PortalDetector::Phase::kDNS,
   result.http_status = PortalDetector::Status::kFailure;
-  result.http_status_code = kFailureStatusCode;
   result.https_error = HttpRequest::Error::kDNSFailure;
-  result.num_attempts = kPortalAttempts;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
+  ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
+            result.GetValidationState());
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
@@ -913,13 +924,14 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionDNSTimeout) {
   PortalDetector::Result result;
+  result.num_attempts = 1;
   result.http_phase = PortalDetector::Phase::kDNS,
   result.http_status = PortalDetector::Status::kTimeout;
-  result.http_status_code = 0;
   result.https_error = HttpRequest::Error::kDNSTimeout;
-  result.num_attempts = kPortalAttempts;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
+  ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
+            result.GetValidationState());
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
@@ -930,14 +942,19 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSTimeout) {
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionRedirect) {
   PortalDetector::Result result;
+  result.num_attempts = 1;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kRedirect;
   result.http_status_code = 302;
+  result.http_content_length = 0;
   result.redirect_url =
       net_base::HttpUrl::CreateFromString("https://captive.portal.com/sigin");
-  result.num_attempts = kPortalAttempts;
+  result.probe_url = net_base::HttpUrl::CreateFromString(
+      "http://service.google.com/generate_204");
   result.http_probe_completed = true;
   result.https_probe_completed = true;
+  ASSERT_EQ(PortalDetector::ValidationState::kPortalRedirect,
+            result.GetValidationState());
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateRedirectFound));
@@ -948,12 +965,15 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirect) {
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoURL) {
   PortalDetector::Result result;
+  result.num_attempts = 1;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kRedirect;
   result.http_status_code = 302;
-  result.num_attempts = kPortalAttempts;
+  result.http_content_length = 0;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
+  ASSERT_EQ(PortalDetector::ValidationState::kPortalSuspected,
+            result.GetValidationState());
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStatePortalSuspected));
@@ -964,13 +984,16 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoURL) {
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionPartialFailure) {
   PortalDetector::Result result;
+  result.num_attempts = 1;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kSuccess;
   result.http_status_code = 204;
+  result.http_content_length = 0;
   result.https_error = HttpRequest::Error::kConnectionFailure;
-  result.num_attempts = kPortalAttempts;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
+  ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
+            result.GetValidationState());
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
@@ -981,16 +1004,37 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionPartialFailure) {
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionNoConnectivity) {
   PortalDetector::Result result;
+  result.num_attempts = 1;
   result.http_phase = PortalDetector::Phase::kUnknown,
   result.http_status = PortalDetector::Status::kFailure;
-  result.http_status_code = 0;
   result.https_error = HttpRequest::Error::kConnectionFailure;
-  result.num_attempts = kPortalAttempts;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
+  ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
+            result.GetValidationState());
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
+  EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
+
+  OnNetworkValidationResult(result);
+}
+
+TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
+  PortalDetector::Result result;
+  result.num_attempts = 1;
+  result.http_phase = PortalDetector::Phase::kContent,
+  result.http_status = PortalDetector::Status::kFailure;
+  result.http_status_code = 200;
+  result.http_content_length = 138;
+  result.https_error = HttpRequest::Error::kConnectionFailure;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
+  ASSERT_EQ(PortalDetector::ValidationState::kPortalSuspected,
+            result.GetValidationState());
+
+  EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_, SetState(Service::kStatePortalSuspected));
   EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
 
   OnNetworkValidationResult(result);

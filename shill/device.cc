@@ -71,7 +71,7 @@ Service::ConnectState PortalValidationStateToConnectionState(
       return Service::kStateOnline;
     case PortalDetector::ValidationState::kNoConnectivity:
       return Service::kStateNoConnectivity;
-    case PortalDetector::ValidationState::kPartialConnectivity:
+    case PortalDetector::ValidationState::kPortalSuspected:
       return Service::kStatePortalSuspected;
     case PortalDetector::ValidationState::kPortalRedirect:
       return Service::kStateRedirectFound;

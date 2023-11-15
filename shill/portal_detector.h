@@ -132,10 +132,12 @@ class PortalDetector {
     // All validation probes have succeeded with the expected
     // result.
     kInternetConnectivity,
-    // Validation probes have all failed or timed out.
+    // Some validation probes have failed or timed out and there was no
+    // direct or suspected redirection of the HTTP probe.
     kNoConnectivity,
-    // Some validation probes have failed or timed out.
-    kPartialConnectivity,
+    // The HTTP probe received an unexpected answer that could be a captive
+    // portal login page.
+    kPortalSuspected,
     // The HTTP probe has been redirected to a different location.
     kPortalRedirect,
   };
@@ -151,11 +153,15 @@ class PortalDetector {
     Status http_status = Status::kFailure;
     // The HTTP response status code from the HTTP probe.
     int http_status_code = 0;
+    // The content length of the HTTP response.
+    std::optional<size_t> http_content_length = std::nullopt;
     // HTTPS probe error if the HTTPS probe failed.
     std::optional<HttpRequest::Error> https_error = std::nullopt;
-    // Redirect URL if status is kRedirect.
+    // Redirection URL obtained from the Location header when the final
+    // ValidationState of the Result if kPortalRedirect.
     std::optional<net_base::HttpUrl> redirect_url = std::nullopt;
-    // Probe URL used to reach redirect URL if status is kRedirect.
+    // URL of the HTTP probe when the final ValidationState of the Result is
+    // either kPortalRedirect or kPortalSuspected.
     std::optional<net_base::HttpUrl> probe_url = std::nullopt;
 
     // Boolean used for tracking the completion state of both HTTP and HTTPS
@@ -174,11 +180,18 @@ class PortalDetector {
     bool IsComplete() const;
     // Returns true if the HTTPS probe was successful.
     bool IsHTTPSProbeSuccessful() const;
-    // Returns true if the HTTP probe was successful and obtained a 204 result.
+    // Returns true if the HTTP probe was successful and obtained a 204 result
+    // or a 200 result with no content.
     bool IsHTTPProbeSuccessful() const;
     // Returns true if the HTTP probe was redirected and a redirection URL was
     // received.
     bool IsHTTPProbeRedirected() const;
+    // Returns true if
+    //  - the response to the HTTP probe indicates that a captive portal is
+    //    spoofing the expected 204 result and inserting a login page instead.
+    //  - the HTTP probe received a redirection code but the Location URL was
+    //    missing or invalid.
+    bool IsHTTPProbeRedirectionSuspected() const;
 
     // Returns the ValidationState value inferred from this captive portal
     // detection result.
@@ -288,6 +301,7 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, IsInProgress);
   FRIEND_TEST(PortalDetectorTest, MultipleRestarts);
   FRIEND_TEST(PortalDetectorTest, PickProbeURLs);
+  FRIEND_TEST(PortalDetectorTest, Request200WithContent);
   FRIEND_TEST(PortalDetectorTest, RequestFail);
   FRIEND_TEST(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess);
   FRIEND_TEST(PortalDetectorTest, RequestRedirect);
@@ -330,6 +344,10 @@ class PortalDetector {
   // Internal method used to cancel the timeout timer and stop an active
   // HttpRequest.
   void CleanupTrial();
+
+  // Extract the Content-Length from |response|.
+  std::optional<size_t> GetContentLength(
+      std::shared_ptr<brillo::http::Response> response) const;
 
   EventDispatcher* dispatcher_;
   std::string logging_tag_;
