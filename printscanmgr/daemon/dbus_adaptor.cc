@@ -16,8 +16,11 @@
 namespace printscanmgr {
 
 DbusAdaptor::DbusAdaptor(mojo::PendingRemote<mojom::Executor> remote)
-    : org::chromium::printscanmgrAdaptor(this),
-      printscan_tool_(std::move(remote)) {}
+    : org::chromium::printscanmgrAdaptor(this) {
+  remote_.Bind(std::move(remote));
+  cups_tool_ = std::make_unique<CupsTool>(remote_.get());
+  printscan_tool_ = std::make_unique<PrintscanTool>(remote_.get());
+}
 
 DbusAdaptor::~DbusAdaptor() = default;
 
@@ -26,7 +29,7 @@ void DbusAdaptor::RegisterAsync(
     brillo::dbus_utils::AsyncEventSequencer::CompletionAction
         completion_action) {
   DCHECK(bus);
-  printscan_tool_.Init(
+  printscan_tool_->Init(
       std::make_unique<org::chromium::lorgnette::ManagerProxy>(bus));
   dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
       /*object_manager=*/nullptr, bus,
@@ -38,28 +41,28 @@ void DbusAdaptor::RegisterAsync(
 
 CupsAddAutoConfiguredPrinterResponse DbusAdaptor::CupsAddAutoConfiguredPrinter(
     const CupsAddAutoConfiguredPrinterRequest& request) {
-  return cups_tool_.AddAutoConfiguredPrinter(request);
+  return cups_tool_->AddAutoConfiguredPrinter(request);
 }
 
 CupsAddManuallyConfiguredPrinterResponse
 DbusAdaptor::CupsAddManuallyConfiguredPrinter(
     const CupsAddManuallyConfiguredPrinterRequest& request) {
-  return cups_tool_.AddManuallyConfiguredPrinter(request);
+  return cups_tool_->AddManuallyConfiguredPrinter(request);
 }
 
 CupsRemovePrinterResponse DbusAdaptor::CupsRemovePrinter(
     const CupsRemovePrinterRequest& request) {
-  return cups_tool_.RemovePrinter(request);
+  return cups_tool_->RemovePrinter(request);
 }
 
 CupsRetrievePpdResponse DbusAdaptor::CupsRetrievePpd(
     const CupsRetrievePpdRequest& request) {
-  return cups_tool_.RetrievePpd(request);
+  return cups_tool_->RetrievePpd(request);
 }
 
 PrintscanDebugSetCategoriesResponse DbusAdaptor::PrintscanDebugSetCategories(
     const PrintscanDebugSetCategoriesRequest& request) {
-  return printscan_tool_.DebugSetCategories(request);
+  return printscan_tool_->DebugSetCategories(request);
 }
 
 }  // namespace printscanmgr

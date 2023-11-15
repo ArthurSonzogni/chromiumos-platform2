@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <base/files/file_path.h>
-
 namespace printscanmgr {
 
 class LpTools {
@@ -33,8 +31,6 @@ class LpTools {
   // Returns true iff `uri` looks reasonable.
   virtual bool CupsUriHelper(const std::string& uri) const = 0;
 
-  virtual const base::FilePath& GetCupsPpdDir() const = 0;
-
   // Returns the exit code for the executed process.
   virtual int RunCommand(const std::string& command,
                          const std::vector<std::string>& arg_list,
@@ -54,7 +50,6 @@ class LpToolsImpl : public LpTools {
              std::string* output) override;
   int CupsTestPpd(const std::vector<uint8_t>& ppd_content) const override;
   bool CupsUriHelper(const std::string& uri) const override;
-  const base::FilePath& GetCupsPpdDir() const override;
   int RunCommand(const std::string& command,
                  const std::vector<std::string>& arg_list,
                  const std::vector<uint8_t>* std_input = nullptr,

@@ -19,9 +19,9 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <base/run_loop.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include <brillo/files/safe_fd.h>
 #include <printscanmgr/proto_bindings/printscanmgr_service.pb.h>
 
 namespace printscanmgr {
@@ -49,6 +49,20 @@ constexpr base::StringPiece kLpstatInterfaceLinePrefix("Interface: ");
 // Minimum size of a plausible PPD.  Determined by gzipping a minimal PPD
 // accepted by cupstestppd and rounding down.
 constexpr size_t kMinimumPPDSize = 200;
+
+// Saves the values of `file_contents` and `success` to `file_contents_out` and
+// `success_out`, respectively.
+void SaveArgs(base::OnceClosure quit_closure,
+              std::string* file_contents_out,
+              bool* success_out,
+              const std::string& file_contents,
+              bool success) {
+  DCHECK(file_contents_out);
+  DCHECK(success_out);
+  *file_contents_out = file_contents;
+  *success_out = success;
+  std::move(quit_closure).Run();
+}
 
 // Runs cupstestppd on |ppd_content| returns the result code.  0 is the expected
 // success code. Verify the foomatic command is valid if the PPD uses the
@@ -152,6 +166,10 @@ bool IppEverywhereURI(const std::string& uri) {
 }
 
 }  // namespace
+
+CupsTool::CupsTool(mojom::Executor* remote) : remote_(remote) {
+  DCHECK(remote_);
+}
 
 void CupsTool::SetLpToolsForTesting(std::unique_ptr<LpTools> lptools) {
   lp_tools_ = std::move(lptools);
@@ -259,35 +277,25 @@ CupsRetrievePpdResponse CupsTool::RetrievePpd(
       base::TrimWhitespaceASCII(pathToPpd, base::TRIM_ALL, &pathToPpd);
       const base::FilePath filePath(pathToPpd);
 
-      // Get just the filename from the lpstat path and build a new path with
-      // the known cups PPD directory.  Doing it this way for security reasons -
-      // making sure we use a known good directory and not trusting the output
-      // from lpstat.
-      const base::FilePath ppdPath =
-          lp_tools_->GetCupsPpdDir().Append(filePath.BaseName());
+      std::string contents;
+      bool success;
+      base::RunLoop run_loop;
+      remote_->GetPpdFile(filePath.BaseName().value(),
+                          base::BindOnce(&SaveArgs, run_loop.QuitClosure(),
+                                         &contents, &success));
+      run_loop.Run();
 
-      // Use SafeFD to read the file - more secure than just using file utils.
-      auto [ppdFd, err1] = brillo::SafeFD::Root().first.OpenExistingFile(
-          ppdPath, O_RDONLY | O_CLOEXEC);
-      if (brillo::SafeFD::IsError(err1)) {
-        LOG(ERROR) << "Unable to open " << ppdPath << ": "
-                   << static_cast<int>(err1);
+      if (!success) {
+        LOG(ERROR) << "GetPpdFile Mojo call failed";
         return response;
       }
 
-      auto [contents, err2] = ppdFd.ReadContents();
-      if (brillo::SafeFD::IsError(err2)) {
-        LOG(ERROR) << "Unable to read contents of " << ppdPath << ": "
-                   << static_cast<int>(err2);
+      if (contents == "") {
+        LOG(ERROR) << "Received empty PPD";
         return response;
       }
 
-      if (contents.size() == 0) {
-        LOG(ERROR) << "Empty PPD: " << ppdPath;
-        return response;
-      }
-
-      response.set_ppd(std::string(contents.begin(), contents.end()));
+      response.set_ppd(contents);
       return response;
     }
   }

@@ -13,6 +13,7 @@
 #include <brillo/errors/error.h>
 #include <dbus/bus.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/remote.h>
 #include <printscanmgr/proto_bindings/printscanmgr_service.pb.h>
 
 #include "printscanmgr/daemon/cups_tool.h"
@@ -50,8 +51,9 @@ class DbusAdaptor final : public org::chromium::printscanmgrAdaptor,
 
  private:
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
-  CupsTool cups_tool_;
-  PrintscanTool printscan_tool_;
+  mojo::Remote<mojom::Executor> remote_;
+  std::unique_ptr<CupsTool> cups_tool_;
+  std::unique_ptr<PrintscanTool> printscan_tool_;
 };
 
 }  // namespace printscanmgr

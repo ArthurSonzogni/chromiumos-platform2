@@ -12,11 +12,13 @@
 
 #include <printscanmgr/proto_bindings/printscanmgr_service.pb.h>
 
+#include "printscanmgr/mojom/executor.mojom.h"
+
 namespace printscanmgr {
 
 class CupsTool {
  public:
-  CupsTool() = default;
+  explicit CupsTool(mojom::Executor* remote);
   CupsTool(const CupsTool&) = delete;
   CupsTool& operator=(const CupsTool&) = delete;
 
@@ -51,6 +53,8 @@ class CupsTool {
 
  private:
   std::unique_ptr<LpTools> lp_tools_ = std::make_unique<LpToolsImpl>();
+  // Unowned.
+  mojom::Executor* remote_;
 };
 
 }  // namespace printscanmgr

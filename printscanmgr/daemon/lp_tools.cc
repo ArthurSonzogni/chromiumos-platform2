@@ -110,9 +110,4 @@ bool LpToolsImpl::CupsUriHelper(const std::string& uri) const {
   return cups_helper::UriSeemsReasonable(uri);
 }
 
-const base::FilePath& LpToolsImpl::GetCupsPpdDir() const {
-  static const base::FilePath kCupsPpdDir("/var/cache/cups/printers/ppd");
-  return kCupsPpdDir;
-}
-
 }  // namespace printscanmgr

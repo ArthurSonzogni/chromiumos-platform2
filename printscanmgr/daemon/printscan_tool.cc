@@ -44,13 +44,13 @@ void SaveArgs(base::OnceClosure quit_closure,
 
 }  // namespace
 
-PrintscanTool::PrintscanTool(mojo::PendingRemote<mojom::Executor> remote)
-    : PrintscanTool(std::move(remote), base::FilePath("/")) {}
+PrintscanTool::PrintscanTool(mojom::Executor* remote)
+    : PrintscanTool(remote, base::FilePath("/")) {}
 
-PrintscanTool::PrintscanTool(mojo::PendingRemote<mojom::Executor> remote,
+PrintscanTool::PrintscanTool(mojom::Executor* remote,
                              const base::FilePath& root_path)
-    : root_path_(root_path) {
-  remote_.Bind(std::move(remote));
+    : root_path_(root_path), remote_(remote) {
+  DCHECK(remote_);
 }
 
 void PrintscanTool::Init(
@@ -112,12 +112,12 @@ PrintscanDebugSetCategoriesResponse PrintscanTool::DebugSetCategories(
 
 // static
 std::unique_ptr<PrintscanTool> PrintscanTool::CreateAndInitForTesting(
-    mojo::PendingRemote<mojom::Executor> remote,
+    mojom::Executor* remote,
     const base::FilePath& path,
     std::unique_ptr<org::chromium::lorgnette::ManagerProxyInterface>
         lorgnette_proxy_mock) {
   std::unique_ptr<PrintscanTool> printscan_tool(
-      new PrintscanTool(std::move(remote), path));
+      new PrintscanTool(remote, path));
   printscan_tool->Init(std::move(lorgnette_proxy_mock));
   return printscan_tool;
 }

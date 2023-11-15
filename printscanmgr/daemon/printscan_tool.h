@@ -9,8 +9,6 @@
 
 #include <base/files/file_path.h>
 #include <dbus/bus.h>
-#include <mojo/public/cpp/bindings/pending_remote.h>
-#include <mojo/public/cpp/bindings/remote.h>
 #include <printscanmgr/proto_bindings/printscanmgr_service.pb.h>
 
 #include "printscanmgr/mojom/executor.mojom.h"
@@ -30,7 +28,7 @@ enum PrintscanFilePaths {
 // services that will put those services into debug modes.
 class PrintscanTool {
  public:
-  explicit PrintscanTool(mojo::PendingRemote<mojom::Executor> remote);
+  explicit PrintscanTool(mojom::Executor* remote);
   PrintscanTool(const PrintscanTool&) = delete;
   PrintscanTool& operator=(const PrintscanTool&) = delete;
   ~PrintscanTool() = default;
@@ -47,7 +45,7 @@ class PrintscanTool {
   // Creates and initializes a PrintscanTool with the given root path. Only for
   // unit testing.
   static std::unique_ptr<PrintscanTool> CreateAndInitForTesting(
-      mojo::PendingRemote<mojom::Executor> remote,
+      mojom::Executor* remote,
       const base::FilePath& path,
       std::unique_ptr<org::chromium::lorgnette::ManagerProxyInterface>
           lorgnette_proxy_mock);
@@ -71,11 +69,11 @@ class PrintscanTool {
   // Restarts cupsd.
   bool RestartServices();
 
-  PrintscanTool(mojo::PendingRemote<mojom::Executor> remote,
-                const base::FilePath& root_path);
+  PrintscanTool(mojom::Executor* remote, const base::FilePath& root_path);
 
   const base::FilePath root_path_;
-  mojo::Remote<mojom::Executor> remote_;
+  // Unowned.
+  mojom::Executor* remote_;
   std::unique_ptr<org::chromium::lorgnette::ManagerProxyInterface>
       lorgnette_proxy_;
 };

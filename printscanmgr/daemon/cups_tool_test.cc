@@ -14,10 +14,20 @@
 #include <base/files/file_util.h>
 #include <base/files/file_path.h>
 #include <base/strings/stringprintf.h>
+#include <base/test/task_environment.h>
 #include <chromeos/dbus/printscanmgr/dbus-constants.h>
+#include <mojo/public/cpp/bindings/remote.h>
 #include <printscanmgr/proto_bindings/printscanmgr_service.pb.h>
 
 #include "printscanmgr/daemon/cups_tool.h"
+#include "printscanmgr/executor/mock_executor.h"
+#include "printscanmgr/mojom/executor.mojom.h"
+
+using ::testing::_;
+using ::testing::Invoke;
+using ::testing::Return;
+using ::testing::StrictMock;
+using ::testing::WithArg;
 
 namespace printscanmgr {
 
@@ -131,10 +141,6 @@ class FakeLpTools : public LpTools {
     return runcommand_result_;
   }
 
-  const base::FilePath& GetCupsPpdDir() const override {
-    return ppd_dir_.GetPath();
-  }
-
   // The following methods allow the user to setup the fake object to return the
   // desired results.
 
@@ -189,6 +195,7 @@ class FakeLpTools : public LpTools {
 
 TEST(CupsToolTest, RetrievePpd) {
   // Test the case where everything works as expected.
+  base::test::SingleThreadTaskEnvironment task_environment;
 
   // Create a fake lp tools object and configure it so we know what results we
   // should expect from CupsTool.
@@ -196,40 +203,52 @@ TEST(CupsToolTest, RetrievePpd) {
 
   const std::string printerName("test-printer");
   lptools->CreateValidLpstatOutput(printerName);
-  const base::FilePath& ppdDir = lptools->GetCupsPpdDir();
-  const base::FilePath ppdPath = ppdDir.Append(printerName + ".ppd");
 
-  // Create our ppd file that will get read by CupsTool
-  const std::vector<uint8_t> ppdContents = {'T', 'e', 's', 't', ' ', 'd', 'a',
-                                            't', 'a', ' ', 'i', 'n', ' ', 'P',
-                                            'P', 'D', ' ', 'f', 'i', 'l', 'e'};
-  ASSERT_TRUE(base::WriteFile(ppdPath, ppdContents));
+  // Create our ppd string that will get returned by the executor.
+  const std::string ppdContents = "Test data in PPD file";
 
-  CupsTool cupsTool;
+  StrictMock<MockExecutor> mock_executor;
+  EXPECT_CALL(mock_executor, GetPpdFile(printerName + ".ppd", _))
+      .WillOnce(
+          WithArg<1>(Invoke([&](mojom::Executor::GetPpdFileCallback callback) {
+            std::move(callback).Run(/*file_contents=*/ppdContents,
+                                    /*success=*/true);
+          })));
+
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cupsTool(remote.get());
   cupsTool.SetLpToolsForTesting(std::move(lptools));
 
   CupsRetrievePpdResponse response =
       cupsTool.RetrievePpd(ConstructCupsRetrievePpdRequest(printerName));
 
-  EXPECT_EQ(std::string(ppdContents.begin(), ppdContents.end()),
-            response.ppd());
+  EXPECT_EQ(ppdContents, response.ppd());
 }
 
-TEST(CupsToolTest, EmptyFile) {
-  // Test the case where the PPD file is empty.
+TEST(CupsToolTest, EmptyStringFromExecutor) {
+  // Test the case where the executor returns an empty string.
+  base::test::SingleThreadTaskEnvironment task_environment;
 
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
 
   const std::string printerName("test-printer");
   lptools->CreateValidLpstatOutput(printerName);
-  const base::FilePath& ppdDir = lptools->GetCupsPpdDir();
-  const base::FilePath ppdPath = ppdDir.Append(printerName + ".ppd");
 
-  // Create an empty ppd file that will get read by CupsTool
+  // Create an empty ppd string that will get returned by the executor.
   const std::string ppdContents("");
-  ASSERT_TRUE(base::WriteFile(ppdPath, ppdContents));
 
-  CupsTool cupsTool;
+  StrictMock<MockExecutor> mock_executor;
+  EXPECT_CALL(mock_executor, GetPpdFile(printerName + ".ppd", _))
+      .WillOnce(
+          WithArg<1>(Invoke([&](mojom::Executor::GetPpdFileCallback callback) {
+            std::move(callback).Run(/*file_contents=*/ppdContents,
+                                    /*success=*/true);
+          })));
+
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cupsTool(remote.get());
   cupsTool.SetLpToolsForTesting(std::move(lptools));
   CupsRetrievePpdResponse response =
       cupsTool.RetrievePpd(ConstructCupsRetrievePpdRequest(printerName));
@@ -237,16 +256,27 @@ TEST(CupsToolTest, EmptyFile) {
   EXPECT_TRUE(response.ppd().empty());
 }
 
-TEST(CupsToolTest, PpdFileDoesNotExist) {
+TEST(CupsToolTest, ExecutorCallFails) {
   // Test the case where lpstat works as expected, but the PPD file does not
   // exist.
+  base::test::SingleThreadTaskEnvironment task_environment;
 
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
 
   const std::string printerName("test-printer");
   lptools->CreateValidLpstatOutput(printerName);
 
-  CupsTool cupsTool;
+  StrictMock<MockExecutor> mock_executor;
+  EXPECT_CALL(mock_executor, GetPpdFile(printerName + ".ppd", _))
+      .WillOnce(
+          WithArg<1>(Invoke([&](mojom::Executor::GetPpdFileCallback callback) {
+            std::move(callback).Run(/*file_contents=*/"",
+                                    /*success=*/false);
+          })));
+
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cupsTool(remote.get());
   cupsTool.SetLpToolsForTesting(std::move(lptools));
 
   CupsRetrievePpdResponse response =
@@ -257,13 +287,17 @@ TEST(CupsToolTest, PpdFileDoesNotExist) {
 
 TEST(CupsToolTest, LpstatError) {
   // Test the case where there is an error running lpstat
+  base::test::SingleThreadTaskEnvironment task_environment;
 
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
 
   // Since we have not specified the lpstat output, our fake object will return
   // an error from running lpstat.
 
-  CupsTool cupsTool;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cupsTool(remote.get());
   cupsTool.SetLpToolsForTesting(std::move(lptools));
 
   CupsRetrievePpdResponse response =
@@ -275,13 +309,17 @@ TEST(CupsToolTest, LpstatError) {
 TEST(CupsToolTest, LpstatNoPrinter) {
   // Test the case where lpstat runs but doesn't return the printer we are
   // looking for.
+  base::test::SingleThreadTaskEnvironment task_environment;
 
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
 
   const std::string printerName("test-printer");
   lptools->SetLpstatOutput("lpstat data not containing our printer name");
 
-  CupsTool cupsTool;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cupsTool(remote.get());
   cupsTool.SetLpToolsForTesting(std::move(lptools));
 
   CupsRetrievePpdResponse response =
@@ -291,9 +329,14 @@ TEST(CupsToolTest, LpstatNoPrinter) {
 }
 
 TEST(CupsToolTest, InvalidPPDTooSmall) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::vector<uint8_t> empty_ppd;
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   CupsAddManuallyConfiguredPrinterResponse response =
       cups.AddManuallyConfiguredPrinter(
           ConstructCupsAddManuallyConfiguredPrinterRequest("test", "ipp://",
@@ -303,13 +346,18 @@ TEST(CupsToolTest, InvalidPPDTooSmall) {
 }
 
 TEST(CupsToolTest, InvalidPPDBadGzip) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   // Make the PPD look like it's gzipped.
   std::vector<uint8_t> bad_ppd(kMinimalPPDContent.begin(),
                                kMinimalPPDContent.end());
   bad_ppd[0] = 0x1f;
   bad_ppd[1] = 0x8b;
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   CupsAddManuallyConfiguredPrinterResponse response =
       cups.AddManuallyConfiguredPrinter(
           ConstructCupsAddManuallyConfiguredPrinterRequest("test", "ipp://",
@@ -319,6 +367,8 @@ TEST(CupsToolTest, InvalidPPDBadGzip) {
 }
 
 TEST(CupsToolTest, InvalidPPDBadContents) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   // Corrupt a valid PPD so it won't validate.
   std::vector<uint8_t> bad_ppd(kMinimalPPDContent.begin(),
                                kMinimalPPDContent.end());
@@ -329,7 +379,10 @@ TEST(CupsToolTest, InvalidPPDBadContents) {
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetCupsTestPPDResult(4);  // Typical failure exit code.
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   CupsAddManuallyConfiguredPrinterResponse response =
@@ -341,13 +394,18 @@ TEST(CupsToolTest, InvalidPPDBadContents) {
 }
 
 TEST(CupsToolTest, ManualMissingURI) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::vector<uint8_t> good_ppd(kMinimalPPDContent.begin(),
                                 kMinimalPPDContent.end());
 
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetCupsTestPPDResult(0);  // Successful validation.
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   CupsAddManuallyConfiguredPrinterResponse response =
@@ -359,6 +417,8 @@ TEST(CupsToolTest, ManualMissingURI) {
 }
 
 TEST(CupsToolTest, ManualMissingName) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::vector<uint8_t> good_ppd(kMinimalPPDContent.begin(),
                                 kMinimalPPDContent.end());
 
@@ -366,7 +426,10 @@ TEST(CupsToolTest, ManualMissingName) {
   lptools->SetCupsTestPPDResult(0);       // Successful validation.
   lptools->SetCupsUriHelperResult(true);  // URI validated.
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   CupsAddManuallyConfiguredPrinterResponse response =
@@ -377,6 +440,8 @@ TEST(CupsToolTest, ManualMissingName) {
 }
 
 TEST(CupsToolTest, ManualUnknownError) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::vector<uint8_t> good_ppd(kMinimalPPDContent.begin(),
                                 kMinimalPPDContent.end());
 
@@ -385,7 +450,10 @@ TEST(CupsToolTest, ManualUnknownError) {
   lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(1);
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   CupsAddManuallyConfiguredPrinterResponse response =
@@ -397,6 +465,8 @@ TEST(CupsToolTest, ManualUnknownError) {
 }
 
 TEST(CupsToolTest, ManualInvalidPpdDuringLpadmin) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::vector<uint8_t> good_ppd(kMinimalPPDContent.begin(),
                                 kMinimalPPDContent.end());
 
@@ -405,7 +475,10 @@ TEST(CupsToolTest, ManualInvalidPpdDuringLpadmin) {
   lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(5);
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   CupsAddManuallyConfiguredPrinterResponse response =
@@ -417,6 +490,8 @@ TEST(CupsToolTest, ManualInvalidPpdDuringLpadmin) {
 }
 
 TEST(CupsToolTest, ManualNotAutoConf) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::vector<uint8_t> good_ppd(kMinimalPPDContent.begin(),
                                 kMinimalPPDContent.end());
 
@@ -425,7 +500,10 @@ TEST(CupsToolTest, ManualNotAutoConf) {
   lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(9);
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   CupsAddManuallyConfiguredPrinterResponse response =
@@ -436,6 +514,8 @@ TEST(CupsToolTest, ManualNotAutoConf) {
 }
 
 TEST(CupsToolTest, ManualUnhandledError) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::vector<uint8_t> good_ppd(kMinimalPPDContent.begin(),
                                 kMinimalPPDContent.end());
 
@@ -444,7 +524,10 @@ TEST(CupsToolTest, ManualUnhandledError) {
   lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(100);         // Error code without CUPS equivalent.
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   CupsAddManuallyConfiguredPrinterResponse response =
@@ -455,17 +538,27 @@ TEST(CupsToolTest, ManualUnhandledError) {
 }
 
 TEST(CupsToolTest, AutoMissingURI) {
-  CupsTool cups;
+  base::test::SingleThreadTaskEnvironment task_environment;
+
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
       ConstructCupsAddAutoConfiguredPrinterRequest("test", /*uri=*/""));
   EXPECT_EQ(response.result(), AddPrinterResult::ADD_PRINTER_RESULT_CUPS_FATAL);
 }
 
 TEST(CupsToolTest, AutoMissingName) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetCupsUriHelperResult(true);  // URI validated.
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
@@ -475,10 +568,15 @@ TEST(CupsToolTest, AutoMissingName) {
 }
 
 TEST(CupsToolTest, AutoUnreasonableUri) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetCupsUriHelperResult(false);  // Unreasonable URI.
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
@@ -489,10 +587,15 @@ TEST(CupsToolTest, AutoUnreasonableUri) {
 }
 
 TEST(CupsToolTest, AddAutoConfiguredPrinter) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetCupsUriHelperResult(true);  // URI validated.
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
@@ -502,11 +605,16 @@ TEST(CupsToolTest, AddAutoConfiguredPrinter) {
 }
 
 TEST(CupsToolTest, AutoUnknownError) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(1);
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
@@ -517,11 +625,16 @@ TEST(CupsToolTest, AutoUnknownError) {
 }
 
 TEST(CupsToolTest, AutoFatalError) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(2);
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
@@ -531,11 +644,16 @@ TEST(CupsToolTest, AutoFatalError) {
 }
 
 TEST(CupsToolTest, AutoIoError) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(3);
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
@@ -546,11 +664,16 @@ TEST(CupsToolTest, AutoIoError) {
 }
 
 TEST(CupsToolTest, AutoMemoryAllocError) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(4);
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
@@ -561,11 +684,16 @@ TEST(CupsToolTest, AutoMemoryAllocError) {
 }
 
 TEST(CupsToolTest, AutoInvalidPpd) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(5);
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
@@ -575,11 +703,16 @@ TEST(CupsToolTest, AutoInvalidPpd) {
 }
 
 TEST(CupsToolTest, AutoServerUnreachable) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(6);
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
@@ -589,11 +722,16 @@ TEST(CupsToolTest, AutoServerUnreachable) {
 }
 
 TEST(CupsToolTest, AutoPrinterUnreachable) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(7);
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
@@ -604,11 +742,16 @@ TEST(CupsToolTest, AutoPrinterUnreachable) {
 }
 
 TEST(CupsToolTest, AutoPrinterWrongResponse) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(8);
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
@@ -619,11 +762,16 @@ TEST(CupsToolTest, AutoPrinterWrongResponse) {
 }
 
 TEST(CupsToolTest, AutoPrinterNotAutoConf) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(9);
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
@@ -634,6 +782,8 @@ TEST(CupsToolTest, AutoPrinterNotAutoConf) {
 }
 
 TEST(CupsToolTest, FoomaticPPD) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   // Make the PPD look like it has a foomatic-rip filter.
   constexpr base::StringPiece kFoomaticLine(
       R"foo(*cupsFilter: "application/vnd.cups-pdf 0 foomatic-rip")foo");
@@ -645,7 +795,10 @@ TEST(CupsToolTest, FoomaticPPD) {
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetRunCommandResult(0);
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   CupsAddManuallyConfiguredPrinterResponse response =
@@ -656,6 +809,8 @@ TEST(CupsToolTest, FoomaticPPD) {
 }
 
 TEST(CupsToolTest, FoomaticError) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   // Make the PPD look like it has a foomatic-rip filter.
   constexpr base::StringPiece kFoomaticLine(
       R"foo(*cupsFilter: "application/vnd.cups-pdf 0 foomatic-rip")foo");
@@ -667,7 +822,10 @@ TEST(CupsToolTest, FoomaticError) {
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetRunCommandResult(-1);
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
   CupsAddManuallyConfiguredPrinterResponse response =
       cups.AddManuallyConfiguredPrinter(
@@ -678,9 +836,14 @@ TEST(CupsToolTest, FoomaticError) {
 }
 
 TEST(CupsToolTest, RemovePrinter) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
 
-  CupsTool cups;
+  MockExecutor mock_executor;
+  mojo::Remote<mojom::Executor> remote;
+  remote.Bind(mock_executor.pending_remote());
+  CupsTool cups(remote.get());
   cups.SetLpToolsForTesting(std::move(lptools));
 
   // Our FakeLpTools always returns 0 for lpadmin calls, so we expect this to

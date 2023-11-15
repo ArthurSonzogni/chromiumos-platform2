@@ -16,11 +16,13 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
+#include <mojo/public/cpp/bindings/remote.h>
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 #include <lorgnette-client-test/lorgnette/dbus-proxy-mocks.h>
 #include <printscanmgr/proto_bindings/printscanmgr_service.pb.h>
 
 #include "printscanmgr/executor/mock_executor.h"
+#include "printscanmgr/mojom/executor.mojom.h"
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -98,14 +100,15 @@ class PrintscanToolTest : public testing::Test {
             Return(true)));
 
     // Initialize PrintscanTool with a fake root for testing.
+    remote_.Bind(mock_executor_.pending_remote());
     printscan_tool_ = PrintscanTool::CreateAndInitForTesting(
-        mock_executor_.pending_remote(), temp_dir_.GetPath(),
-        std::move(lorgnette_proxy_mock));
+        remote_.get(), temp_dir_.GetPath(), std::move(lorgnette_proxy_mock));
   }
 
  private:
   base::test::SingleThreadTaskEnvironment task_environment_;
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
+  mojo::Remote<mojom::Executor> remote_;
 };
 
 TEST_F(PrintscanToolTest, SetNoCategories) {
