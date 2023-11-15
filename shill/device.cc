@@ -636,7 +636,7 @@ bool Device::UpdatePortalDetector(Network::ValidationReason reason) {
   }
 
   if (!GetPrimaryNetwork()->StartPortalDetection(reason)) {
-    SetServiceState(Service::kStateOnline);
+    SetServiceState(Service::kStateNoConnectivity);
     return false;
   }
 
@@ -708,7 +708,7 @@ void Device::OnNetworkValidationResult(int interface_index,
         PortalDetector::StatusToString(result.http_status),
         result.http_status_code);
     if (!GetPrimaryNetwork()->RestartPortalDetection()) {
-      state = Service::kStateOnline;
+      state = Service::kStateNoConnectivity;
     }
   } else {
     // TODO(b/248028325) Use PortalDetector::ValidationState directly to avoid

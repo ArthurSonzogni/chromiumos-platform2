@@ -745,13 +745,13 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionInProgress_ForceRestart) {
       device_->UpdatePortalDetector(Network::ValidationReason::kDBusRequest));
 }
 
-TEST_F(DevicePortalDetectionTest, PortalDetectionBadUrl) {
+TEST_F(DevicePortalDetectionTest, PortalDetectionFailureToStart) {
   const ManagerProperties props;
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(*service_, SetState(Service::kStateOnline));
+  EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
   EXPECT_CALL(*network_,
               StartPortalDetection(Network::ValidationReason::kDBusRequest))
       .WillOnce(Return(false));
@@ -828,14 +828,12 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
 // since portal detection did not run.
 TEST_F(DevicePortalDetectionTest, NextAttemptFails) {
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
-  // If portal detection attempts fail, default to optimistically assuming that
-  // the Service is 'online'.
-  EXPECT_CALL(*service_, SetState(Service::kStateOnline));
+  EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
   EXPECT_CALL(*service_, SetPortalDetectionFailure(
                              StrEq(kPortalDetectionPhaseDns),
                              StrEq(kPortalDetectionStatusTimeout), 0));
   // The second portal detection attempt fails immediately, forcing the Device
-  // to assume the Service state is 'online'.
+  // to assume the Service state is 'no-connectivity'.
   EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(false));
 
   // First result indicating no connectivity and triggering a new portal
