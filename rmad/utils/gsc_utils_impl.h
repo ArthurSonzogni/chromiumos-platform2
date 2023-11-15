@@ -34,6 +34,7 @@ class GscUtilsImpl : public GscUtils {
                         int* hw_compliance_version) const override;
   bool SetFactoryConfig(bool is_chassis_branded,
                         int hw_compliance_version) const override;
+  bool GetChassisOpenStatus(bool* status) override;
 
  private:
   std::unique_ptr<CmdUtils> cmd_utils_;

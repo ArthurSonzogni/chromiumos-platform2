@@ -88,6 +88,17 @@ other fields: don't care
 constexpr bool kExpectedIsChassisBranded = true;
 constexpr int kExpectedHwComplianceVersion = 2;
 
+// Constants for CHASSIS_OPEN status.
+constexpr char kGetChassisOpenStatusResponseTrue[] = R"(
+Chassis Open: true
+)";
+constexpr char kGetChassisOpenStatusResponseFalse[] = R"(
+Chassis Open: false
+)";
+constexpr char kGetChassisOpenStatusResponseInvalid[] = R"(
+Chassis Open: ITS_INVALID
+)";
+
 }  // namespace
 
 namespace rmad {
@@ -384,6 +395,52 @@ TEST_F(GscUtilsTest, SetFactoryConfig_Failed) {
   auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
 
   EXPECT_FALSE(gsc_utils->SetFactoryConfig(true, 1));
+}
+
+TEST_F(GscUtilsTest, GetChassisOpenStatus_Success_True) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kGetChassisOpenStatusResponseTrue),
+                      Return(true)));
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+
+  bool status;
+  EXPECT_TRUE(gsc_utils->GetChassisOpenStatus(&status));
+  EXPECT_EQ(status, true);
+}
+
+TEST_F(GscUtilsTest, GetChassisOpenStatus_Success_False) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kGetChassisOpenStatusResponseFalse),
+                      Return(true)));
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+
+  bool status;
+  EXPECT_TRUE(gsc_utils->GetChassisOpenStatus(&status));
+  EXPECT_EQ(status, false);
+}
+
+TEST_F(GscUtilsTest, GetChassisOpenStatus_Failed) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kGetChassisOpenStatusResponseTrue),
+                      Return(false)));
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+
+  bool status;
+  EXPECT_FALSE(gsc_utils->GetChassisOpenStatus(&status));
+}
+
+TEST_F(GscUtilsTest, GetChassisOpenStatus_Failed_Invalid) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kGetChassisOpenStatusResponseInvalid),
+                      Return(true)));
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+
+  bool status;
+  EXPECT_FALSE(gsc_utils->GetChassisOpenStatus(&status));
 }
 
 }  // namespace rmad

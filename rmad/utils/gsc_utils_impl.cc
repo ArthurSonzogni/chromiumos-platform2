@@ -54,6 +54,11 @@ const std::vector<std::string> kSetFactoryConfigArgv{kGsctoolCmd, "-a",
                                                      "--factory_config"};
 constexpr char kFactoryConfigRegexp[] = R"(raw value: ([[:xdigit:]]{16}))";
 
+// Constants for CHASSIS_OPEN.
+const std::vector<std::string> kGetChassisOpenArgv{kGsctoolCmd, "-a", "-K",
+                                                   "chassis_open"};
+constexpr char kChassisOpenRegexp[] = R"(Chassis Open: ((true)|(false)))";
+
 // Factory config encoding/decoding functions.
 // According to b/275356839, factory config is stored in GSC INFO page with 64
 // bit length. The lower 5 bits are now allocated to the feature management
@@ -246,6 +251,28 @@ bool GscUtilsImpl::SetFactoryConfig(bool is_chassis_branded,
     LOG(ERROR) << output;
     return false;
   }
+  return true;
+}
+
+bool GscUtilsImpl::GetChassisOpenStatus(bool* status) {
+  std::string output;
+  if (!cmd_utils_->GetOutput(kGetChassisOpenArgv, &output)) {
+    LOG(ERROR) << "Failed to get CHASSIS_OPEN status";
+    LOG(ERROR) << output;
+    return false;
+  }
+
+  re2::StringPiece string_piece(output);
+  re2::RE2 regexp(kChassisOpenRegexp);
+  std::string bool_string;
+  if (!RE2::PartialMatch(string_piece, regexp, &bool_string)) {
+    LOG(ERROR) << "Failed to parse CHASSIS_OPEN status";
+    LOG(ERROR) << output;
+    return false;
+  }
+
+  *status = (bool_string == "true");
+
   return true;
 }
 

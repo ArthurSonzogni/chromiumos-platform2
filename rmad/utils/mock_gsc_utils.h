@@ -36,6 +36,7 @@ class MockGscUtils : public GscUtils {
               SetFactoryConfig,
               (bool is_chassis_branded, int hw_compliance_version),
               (const, override));
+  MOCK_METHOD(bool, GetChassisOpenStatus, (bool* status), (override));
 };
 
 }  // namespace rmad

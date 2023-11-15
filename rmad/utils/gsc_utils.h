@@ -56,6 +56,9 @@ class GscUtils {
   // Set factory config.
   virtual bool SetFactoryConfig(bool is_chassis_branded,
                                 int hw_compliance_version) const = 0;
+
+  // Get CHASSIS_OPEN status.
+  virtual bool GetChassisOpenStatus(bool* status) = 0;
 };
 
 }  // namespace rmad
