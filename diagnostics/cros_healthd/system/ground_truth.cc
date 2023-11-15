@@ -87,27 +87,6 @@ bool HasCrosEC() {
   return base::PathExists(GetRootedPath(kCrosEcSysPath));
 }
 
-mojom::SupportStatusPtr GetDiskReadArgSupportStatus(
-    mojom::DiskReadRoutineArgumentPtr& arg) {
-  if (arg->disk_read_duration.InSeconds() <= 0) {
-    return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-        "Disk read duration should not be zero after rounding towards zero to "
-        "the nearest second",
-        nullptr));
-  }
-
-  if (arg->file_size_mib == 0) {
-    return mojom::SupportStatus::NewUnsupported(
-        mojom::Unsupported::New("Test file size should not be zero", nullptr));
-  }
-
-  if (arg->type == mojom::DiskReadTypeEnum::kUnmappedEnumField) {
-    return mojom::SupportStatus::NewUnsupported(
-        mojom::Unsupported::New("Unexpected disk read type", nullptr));
-  }
-  return mojom::SupportStatus::NewSupported(mojom::Supported::New());
-}
-
 void HandleFlossEnabledResponse(
     mojom::CrosHealthdRoutinesService::IsRoutineArgumentSupportedCallback
         callback,
@@ -259,15 +238,10 @@ void GroundTruth::IsRoutineArgumentSupported(
     case mojom::RoutineArgument::Tag::kFloatingPoint:
     case mojom::RoutineArgument::Tag::kUfsLifetime:
     case mojom::RoutineArgument::Tag::kFan:
+    case mojom::RoutineArgument::Tag::kDiskRead:
       status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
       std::move(callback).Run(std::move(routine_arg), std::move(status));
       return;
-    // Need to check the routine arguments.
-    case mojom::RoutineArgument::Tag::kDiskRead: {
-      auto status = GetDiskReadArgSupportStatus(routine_arg->get_disk_read());
-      std::move(callback).Run(std::move(routine_arg), std::move(status));
-      return;
-    }
     case mojom::RoutineArgument::Tag::kVolumeButton: {
       std::move(callback).Run(
           std::move(routine_arg),

@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/check.h>
@@ -52,24 +53,31 @@ void RemoveFioTestFile(mojom::Executor* executor) {
   executor->RemoveFioTestFile(base::DoNothing());
 }
 
+base::unexpected<mojom::SupportStatusPtr> MakeUnsupported(
+    const std::string& message) {
+  return base::unexpected(mojom::SupportStatus::NewUnsupported(
+      mojom::Unsupported::New(message, nullptr)));
+}
+
 }  // namespace
 
-base::expected<std::unique_ptr<DiskReadRoutine>, std::string>
+// static
+base::expected<std::unique_ptr<BaseRoutineControl>, mojom::SupportStatusPtr>
 DiskReadRoutine::Create(Context* context,
                         const mojom::DiskReadRoutineArgumentPtr& arg) {
   CHECK(!arg.is_null());
   if (arg->disk_read_duration.InSeconds() <= 0) {
-    return base::unexpected(
+    return MakeUnsupported(
         "Disk read duration should not be zero after rounding towards zero to "
         "the nearest second");
   }
 
   if (arg->file_size_mib == 0) {
-    return base::unexpected("Test file size should not be zero");
+    return MakeUnsupported("Test file size should not be zero");
   }
 
   if (arg->type == mojom::DiskReadTypeEnum::kUnmappedEnumField) {
-    return base::unexpected("Unexpected disk read type");
+    return MakeUnsupported("Unexpected disk read type");
   }
 
   return base::ok(base::WrapUnique(new DiskReadRoutine(context, arg)));

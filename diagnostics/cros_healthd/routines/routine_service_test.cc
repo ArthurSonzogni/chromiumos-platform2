@@ -240,6 +240,47 @@ TEST_F(RoutineServiceTest, DiskRead) {
                      mojom::RoutineArgument::NewDiskRead(arg.Clone()));
 }
 
+TEST_F(RoutineServiceTest, DiskReadRoutineUnknownType) {
+  auto arg = mojom::DiskReadRoutineArgument::New();
+  arg->type = mojom::DiskReadTypeEnum::kUnmappedEnumField;
+  arg->disk_read_duration = base::Seconds(1);
+  arg->file_size_mib = 1;
+
+  auto status = MakeUnsupported("Unexpected disk read type");
+
+  CheckIsRoutineArgumentSupported(
+      status, mojom::RoutineArgument::NewDiskRead(arg.Clone()));
+  CheckCreateRoutine(status, mojom::RoutineArgument::NewDiskRead(arg.Clone()));
+}
+
+TEST_F(RoutineServiceTest, DiskReadRoutineZeroDuration) {
+  auto arg = mojom::DiskReadRoutineArgument::New();
+  arg->type = mojom::DiskReadTypeEnum::kLinearRead;
+  arg->disk_read_duration = base::Seconds(0);
+  arg->file_size_mib = 1;
+
+  auto status = MakeUnsupported(
+      "Disk read duration should not be zero after rounding towards zero to "
+      "the nearest second");
+
+  CheckIsRoutineArgumentSupported(
+      status, mojom::RoutineArgument::NewDiskRead(arg.Clone()));
+  CheckCreateRoutine(status, mojom::RoutineArgument::NewDiskRead(arg.Clone()));
+}
+
+TEST_F(RoutineServiceTest, DiskReadRoutineZeroFileSize) {
+  auto arg = mojom::DiskReadRoutineArgument::New();
+  arg->type = mojom::DiskReadTypeEnum::kLinearRead;
+  arg->disk_read_duration = base::Seconds(1);
+  arg->file_size_mib = 0;
+
+  auto status = MakeUnsupported("Test file size should not be zero");
+
+  CheckIsRoutineArgumentSupported(
+      status, mojom::RoutineArgument::NewDiskRead(arg.Clone()));
+  CheckCreateRoutine(status, mojom::RoutineArgument::NewDiskRead(arg.Clone()));
+}
+
 TEST_F(RoutineServiceTest, CpuCache) {
   CheckIsRoutineArgumentSupported(MakeSupported(),
                                   mojom::RoutineArgument::NewCpuCache(

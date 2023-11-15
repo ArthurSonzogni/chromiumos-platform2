@@ -58,6 +58,11 @@ CreateRoutineResult CreateRoutineHelperSync(Context* context,
   return FanRoutine::Create(context, std::move(arg));
 }
 
+CreateRoutineResult CreateRoutineHelperSync(
+    Context* context, mojom::DiskReadRoutineArgumentPtr arg) {
+  return DiskReadRoutine::Create(context, arg);
+}
+
 // Default implementation of `CreateRoutineHelperSync` raises compile error.
 template <typename Arg>
 CreateRoutineResult CreateRoutineHelperSync(Context* context, Arg arg) {
@@ -123,15 +128,8 @@ void RoutineService::CheckAndCreateRoutine(
       return;
     }
     case mojom::RoutineArgument::Tag::kDiskRead: {
-      auto routine =
-          DiskReadRoutine::Create(context_, routine_arg->get_disk_read());
-      if (routine.has_value()) {
-        std::move(callback).Run(base::ok(std::move(routine.value())));
-      } else {
-        std::move(callback).Run(
-            base::unexpected(mojom::SupportStatus::NewUnsupported(
-                mojom::Unsupported::New(routine.error(), /*reason=*/nullptr))));
-      }
+      CreateRoutineHelper(context_, std::move(routine_arg->get_disk_read()),
+                          std::move(callback));
       return;
     }
     case mojom::RoutineArgument::Tag::kCpuCache: {

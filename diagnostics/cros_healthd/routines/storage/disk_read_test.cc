@@ -143,7 +143,7 @@ class DiskReadRoutineTest : public testing::Test {
 
   base::test::TaskEnvironment task_environment_;
   MockContext mock_context_;
-  std::unique_ptr<DiskReadRoutine> routine_;
+  std::unique_ptr<BaseRoutineControl> routine_;
   FakeProcessControl fake_process_control_prepare_;
   FakeProcessControl fake_process_control_read_;
 };

@@ -20,6 +20,7 @@
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
 #include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
@@ -28,9 +29,10 @@ namespace diagnostics {
 // file either randomly or linearly for a dedicated duration.
 class DiskReadRoutine final : public BaseRoutineControl {
  public:
-  static base::expected<std::unique_ptr<DiskReadRoutine>, std::string> Create(
-      Context* context,
-      const ash::cros_healthd::mojom::DiskReadRoutineArgumentPtr& arg);
+  static base::expected<std::unique_ptr<BaseRoutineControl>,
+                        ash::cros_healthd::mojom::SupportStatusPtr>
+  Create(Context* context,
+         const ash::cros_healthd::mojom::DiskReadRoutineArgumentPtr& arg);
   DiskReadRoutine(const DiskReadRoutine&) = delete;
   DiskReadRoutine& operator=(const DiskReadRoutine&) = delete;
   ~DiskReadRoutine() override;
