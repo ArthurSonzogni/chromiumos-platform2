@@ -12,6 +12,7 @@
 #include <sys/sysmacros.h>
 #include <sys/types.h>
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <brillo/udev/udev.h>
