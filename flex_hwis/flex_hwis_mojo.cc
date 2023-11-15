@@ -13,6 +13,7 @@
 #include <base/logging.h>
 #include <base/no_destructor.h>
 #include <base/run_loop.h>
+#include <base/time/time.h>
 #include <diagnostics/mojom/public/cros_healthd.mojom.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/service_constants.h>
@@ -43,9 +44,9 @@ GetServiceManagerProxy() {
 void RequestMojoServiceWithDisconnectHandler(
     const std::string& service_name,
     mojo::Remote<mojom::CrosHealthdProbeService>& remote) {
+  base::TimeDelta timeout = base::Minutes(1);
   GetServiceManagerProxy()->Request(
-      service_name, /*timeout=*/std::nullopt,
-      remote.BindNewPipeAndPassReceiver().PassPipe());
+      service_name, timeout, remote.BindNewPipeAndPassReceiver().PassPipe());
   remote.set_disconnect_with_reason_handler(base::BindOnce(
       [](const std::string& service_name, uint32_t error,
          const std::string& reason) {
