@@ -15,6 +15,7 @@
 #include <oobe_config/metrics/enterprise_rollback_metrics_handler.h>
 
 #include "oobe_config/filesystem/file_handler.h"
+#include "oobe_config/metrics/enterprise_rollback_metrics_tracking.h"
 
 namespace oobe_config {
 namespace {
@@ -42,6 +43,8 @@ void ZeroTpmSpaceIfExists(hwsec::FactoryImpl* hwsec_factory) {
 // If encrypted rollback data is present it means that enterprise rollback just
 // finished. Should be called only when the device is owned and before cleaning
 // up the leftovers.
+// We cannot rely on the rollback-happened flag because it may be already
+// gone before this code is reached (b/302100343).
 bool RollbackJustFinished(const FileHandler* file_handler) {
   return file_handler->HasOpensslEncryptedRollbackData() ||
          file_handler->HasTpmEncryptedRollbackData();
@@ -81,6 +84,14 @@ void CleanEnterpriseRollbackMetricsIfStale(
   }
 }
 
+base::Version DeviceVersion() {
+  auto device_version = GetDeviceVersion();
+  if (!device_version.has_value()) {
+    return base::Version("");
+  }
+  return device_version.value();
+}
+
 }  // namespace
 
 void RollbackCleanup(
@@ -90,6 +101,9 @@ void RollbackCleanup(
   if (file_handler->HasOobeCompletedFlag()) {
     // Device is owned so enterprise rollback data is not necessary anymore.
     if (RollbackJustFinished(file_handler)) {
+      metrics_handler->ReportEventNow(
+          oobe_config::EnterpriseRollbackMetricsHandler::CreateEventData(
+              EnterpriseRollbackEvent::ROLLBACK_COMPLETED, DeviceVersion()));
       CleanEnterpriseRollbackMetrics(metrics_handler);
     }
     CleanEnterpriseRollbackLeftovers(file_handler, hwsec_factory);
