@@ -260,4 +260,23 @@ CameraMojoChannelManagerImpl::CreateMojoServiceManagerObserver(
                                          std::move(on_unregister_callback)));
 }
 
+void CameraMojoChannelManagerImpl::IsServiceRegistered(
+    const std::string& service_name, base::OnceCallback<void(bool)> callback) {
+  GetServiceManagerProxy()->Query(
+      service_name,
+      base::BindOnce(&CameraMojoChannelManagerImpl::QueryCallback,
+                     base::Unretained(this), std::move(callback)));
+}
+
+void CameraMojoChannelManagerImpl::QueryCallback(
+    base::OnceCallback<void(bool)> callback,
+    chromeos::mojo_service_manager::mojom::ErrorOrServiceStatePtr result) {
+  if (result->which() == ErrorOrServiceState::Tag::kState &&
+      result->get_state()->which() == ServiceState::Tag::kRegisteredState) {
+    std::move(callback).Run(true);
+    return;
+  }
+  std::move(callback).Run(false);
+}
+
 }  // namespace cros

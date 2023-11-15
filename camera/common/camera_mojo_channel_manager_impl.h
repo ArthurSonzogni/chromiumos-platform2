@@ -62,6 +62,9 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
       base::RepeatingClosure on_register_callback,
       base::RepeatingClosure on_unregister_callback) override;
 
+  void IsServiceRegistered(const std::string& service_name,
+                           base::OnceCallback<void(bool)> callback) override;
+
  protected:
   friend class CameraMojoChannelManager;
 
@@ -72,6 +75,10 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
   class MojoServiceManagerObserverImpl;
 
   void TearDownMojoEnvOnIpcThread();
+
+  void QueryCallback(
+      base::OnceCallback<void(bool)> callback,
+      chromeos::mojo_service_manager::mojom::ErrorOrServiceStatePtr result);
 
   chromeos::mojo_service_manager::mojom::ServiceManager*
   GetServiceManagerProxy();

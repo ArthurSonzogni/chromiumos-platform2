@@ -204,6 +204,19 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Start(
     std::move(callback).Run(true);
     return;
   }
+  mojo_manager_->IsServiceRegistered(
+      chromeos::mojo_services::kCrosJpegAccelerator,
+      base::BindOnce(&IPCBridge::TryGetAndInitializeAccelerator, GetWeakPtr(),
+                     std::move(callback)));
+}
+
+void JpegEncodeAcceleratorImpl::IPCBridge::TryGetAndInitializeAccelerator(
+    base::OnceCallback<void(bool)> callback,
+    bool is_accelerator_service_registered) {
+  if (!is_accelerator_service_registered) {
+    std::move(callback).Run(false);
+    return;
+  }
   RequestAcceleratorFromServiceManager();
   mojo::PendingReceiver<mojom::JpegEncodeAccelerator> receiver =
       jea_.BindNewPipeAndPassReceiver();
@@ -211,7 +224,6 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Start(
       &JpegEncodeAcceleratorImpl::IPCBridge::OnJpegEncodeAcceleratorError,
       GetWeakPtr()));
   accelerator_provider_->GetJpegEncodeAccelerator(std::move(receiver));
-
   Initialize(std::move(callback));
 }
 

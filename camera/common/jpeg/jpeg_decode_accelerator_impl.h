@@ -111,6 +111,9 @@ class JpegDecodeAcceleratorImpl : public JpegDecodeAccelerator {
                      int32_t buffer_id,
                      cros::mojom::DecodeError error);
 
+    void TryGetAndInitializeAccelerator(base::OnceCallback<void(bool)> callback,
+                                        bool is_accelerator_service_registered);
+
     // Camera Mojo channel manager.
     // We use it to create JpegDecodeAccelerator Mojo channel.
     CameraMojoChannelManager* mojo_manager_;

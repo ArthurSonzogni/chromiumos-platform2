@@ -145,6 +145,9 @@ class JpegEncodeAcceleratorImpl : public JpegEncodeAccelerator {
                            uint32_t output_size,
                            cros::mojom::EncodeStatus status);
 
+    void TryGetAndInitializeAccelerator(base::OnceCallback<void(bool)> callback,
+                                        bool is_accelerator_service_registered);
+
     // Camera Mojo channel manager.
     // We use it to create JpegEncodeAccelerator Mojo channel.
     CameraMojoChannelManager* mojo_manager_;

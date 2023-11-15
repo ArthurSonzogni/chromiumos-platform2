@@ -75,6 +75,9 @@ class CROS_CAMERA_EXPORT CameraMojoChannelManager
       mojo::PendingRemote<
           chromeos::mojo_service_manager::mojom::ServiceProvider> remote) = 0;
 
+  virtual void IsServiceRegistered(const std::string& service_name,
+                                   base::OnceCallback<void(bool)> callback) = 0;
+
   // MojoServiceManagerObserver is used to observe the service state of the mojo
   // service which can be requested from mojo service manager.
   //
