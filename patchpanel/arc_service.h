@@ -92,7 +92,15 @@ class ArcService {
   // created for every host Network exposed to ARC.
   class ArcDevice {
    public:
+    // Technology of the underlying physical device of the virtual device.
+    enum class Technology {
+      kCellular,
+      kEthernet,
+      kWiFi,
+    };
+
     ArcDevice(ArcType type,
+              std::optional<ArcDevice::Technology> technology,
               std::optional<std::string_view> shill_device_ifname,
               std::string_view arc_device_ifname,
               const MacAddress& arc_device_mac_address,
@@ -103,6 +111,11 @@ class ArcService {
 
     // The type of this ARC device indicating it was created
     ArcType type() const { return type_; }
+
+    // Technology of the underlying physical device of the virtual device, if it
+    // exists.
+    std::optional<Technology> technology() const { return technology_; }
+
     // The interface name of the shill Device that this ARC device is bound to.
     // This value is not defined for the "arc0" device used for VPN forwarding.
     // b/273741099: this interface name reflects the kInterfaceProperty value of
@@ -154,6 +167,7 @@ class ArcService {
 
    private:
     ArcType type_;
+    std::optional<Technology> technology_;
     std::optional<std::string> shill_device_ifname_;
     std::string arc_device_ifname_;
     MacAddress arc_device_mac_address_;

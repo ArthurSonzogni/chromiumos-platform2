@@ -204,6 +204,20 @@ std::optional<Client::VirtualDevice> ConvertVirtualDevice(
       net_base::IPv4Address::CreateFromBytes(in.dns_proxy_ipv4_addr());
   out->dns_proxy_ipv6_addr =
       net_base::IPv6Address::CreateFromBytes(in.dns_proxy_ipv6_addr());
+  switch (in.technology_type()) {
+    case patchpanel::NetworkDevice::CELLULAR:
+      out->technology_type = Client::TechnologyType::kCellular;
+      break;
+    case patchpanel::NetworkDevice::ETHERNET:
+      out->technology_type = Client::TechnologyType::kEthernet;
+      break;
+    case patchpanel::NetworkDevice::WIFI:
+      out->technology_type = Client::TechnologyType::kWiFi;
+      break;
+    default:
+      out->technology_type = std::nullopt;
+      break;
+  }
 
   switch (in.guest_type()) {
     case patchpanel::NetworkDevice::ARC:

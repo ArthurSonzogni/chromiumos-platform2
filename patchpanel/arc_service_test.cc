@@ -1631,9 +1631,9 @@ TEST_F(ArcServiceTest, ConvertARCContainerWiFiDevice) {
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
   ArcService::ArcConfig arc_config(mac_addr, std::move(ipv4_subnet));
-  ArcService::ArcDevice arc_device(ArcService::ArcType::kContainer, "wlan0",
-                                   "vethwlan0", mac_addr, arc_config,
-                                   "arc_wlan0", "wlan0");
+  ArcService::ArcDevice arc_device(
+      ArcService::ArcType::kContainer, ArcService::ArcDevice::Technology::kWiFi,
+      "wlan0", "vethwlan0", mac_addr, arc_config, "arc_wlan0", "wlan0");
   NetworkDevice proto_device;
   arc_device.ConvertToProto(&proto_device);
 
@@ -1643,6 +1643,7 @@ TEST_F(ArcServiceTest, ConvertARCContainerWiFiDevice) {
   // renamed to match the name of the host upstream network interface managed by
   // shill.
   ASSERT_EQ("wlan0", proto_device.guest_ifname());
+  ASSERT_EQ(NetworkDevice::WIFI, proto_device.technology_type());
   ASSERT_EQ(expected_guest_ipv4, proto_device.ipv4_addr());
   ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
   ASSERT_EQ(expected_base_cidr.address(),
@@ -1666,8 +1667,9 @@ TEST_F(ArcServiceTest, ConvertARCContainerCellularDevice) {
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
   ArcService::ArcConfig arc_config(mac_addr, std::move(ipv4_subnet));
-  ArcService::ArcDevice arc_device(ArcService::ArcType::kContainer, "wwan0",
-                                   "vethwwan0", mac_addr, arc_config,
+  ArcService::ArcDevice arc_device(ArcService::ArcType::kContainer,
+                                   ArcService::ArcDevice::Technology::kCellular,
+                                   "wwan0", "vethwwan0", mac_addr, arc_config,
                                    "arc_wwan0", "wwan0");
   NetworkDevice proto_device;
   arc_device.ConvertToProto(&proto_device);
@@ -1678,6 +1680,7 @@ TEST_F(ArcServiceTest, ConvertARCContainerCellularDevice) {
   // renamed to match the name of the host upstream network interface managed by
   // shill.
   ASSERT_EQ("wwan0", proto_device.guest_ifname());
+  ASSERT_EQ(NetworkDevice::CELLULAR, proto_device.technology_type());
   ASSERT_EQ(expected_guest_ipv4, proto_device.ipv4_addr());
   ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
   ASSERT_EQ(expected_base_cidr.address(),
@@ -1701,8 +1704,9 @@ TEST_F(ArcServiceTest, ConvertARCVMWiFiDevice) {
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
   ArcService::ArcConfig arc_config(mac_addr, std::move(ipv4_subnet));
-  ArcService::ArcDevice arc_device(ArcService::ArcType::kVM, "wlan0", "vmtap1",
-                                   mac_addr, arc_config, "arc_wlan0", "eth3");
+  ArcService::ArcDevice arc_device(
+      ArcService::ArcType::kVM, ArcService::ArcDevice::Technology::kWiFi,
+      "wlan0", "vmtap1", mac_addr, arc_config, "arc_wlan0", "eth3");
   NetworkDevice proto_device;
   arc_device.ConvertToProto(&proto_device);
 
@@ -1711,6 +1715,7 @@ TEST_F(ArcServiceTest, ConvertARCVMWiFiDevice) {
   // For ARCVM, the name of the virtio interface is controlled by the virtio
   // driver and follows a ethernet-like pattern.
   ASSERT_EQ("eth3", proto_device.guest_ifname());
+  ASSERT_EQ(NetworkDevice::WIFI, proto_device.technology_type());
   ASSERT_EQ(expected_guest_ipv4, proto_device.ipv4_addr());
   ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
   ASSERT_EQ(expected_base_cidr.address(),
@@ -1734,8 +1739,9 @@ TEST_F(ArcServiceTest, ConvertARCVMCellularDevice) {
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
   ArcService::ArcConfig arc_config(mac_addr, std::move(ipv4_subnet));
-  ArcService::ArcDevice arc_device(ArcService::ArcType::kVM, "wwan0", "vmtap5",
-                                   mac_addr, arc_config, "arc_wwan0", "eth5");
+  ArcService::ArcDevice arc_device(
+      ArcService::ArcType::kVM, ArcService::ArcDevice::Technology::kCellular,
+      "wwan0", "vmtap5", mac_addr, arc_config, "arc_wwan0", "eth5");
   NetworkDevice proto_device;
   arc_device.ConvertToProto(&proto_device);
 
@@ -1744,6 +1750,7 @@ TEST_F(ArcServiceTest, ConvertARCVMCellularDevice) {
   // For ARCVM, the name of the virtio interface is controlled by the virtio
   // driver and follows a ethernet-like pattern.
   ASSERT_EQ("eth5", proto_device.guest_ifname());
+  ASSERT_EQ(NetworkDevice::CELLULAR, proto_device.technology_type());
   ASSERT_EQ(expected_guest_ipv4, proto_device.ipv4_addr());
   ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
   ASSERT_EQ(expected_base_cidr.address(),
@@ -1768,8 +1775,8 @@ TEST_F(ArcServiceTest, ConvertARC0ForARCContainer) {
 
   ArcService::ArcConfig arc_config(mac_addr, std::move(ipv4_subnet));
   ArcService::ArcDevice arc_device(ArcService::ArcType::kContainer,
-                                   std::nullopt, "vetharc0", mac_addr,
-                                   arc_config, "arcbr0", "arc0");
+                                   std::nullopt, std::nullopt, "vetharc0",
+                                   mac_addr, arc_config, "arcbr0", "arc0");
   NetworkDevice proto_device;
   arc_device.ConvertToProto(&proto_device);
 
@@ -1806,8 +1813,8 @@ TEST_F(ArcServiceTest, ConvertARC0ForARCVM) {
 
   ArcService::ArcConfig arc_config(mac_addr, std::move(ipv4_subnet));
   ArcService::ArcDevice arc_device(ArcService::ArcType::kVM, std::nullopt,
-                                   "vetharc0", mac_addr, arc_config, "arcbr0",
-                                   "eth0");
+                                   std::nullopt, "vetharc0", mac_addr,
+                                   arc_config, "arcbr0", "eth0");
   NetworkDevice proto_device;
   arc_device.ConvertToProto(&proto_device);
 

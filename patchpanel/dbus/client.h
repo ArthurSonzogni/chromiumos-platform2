@@ -86,6 +86,13 @@ class BRILLO_EXPORT Client {
     kParallelsVm,
   };
 
+  // See NetworkDevice.TechnologyType in patchpanel_service.proto.
+  enum class TechnologyType {
+    kCellular,
+    kEthernet,
+    kWiFi,
+  };
+
   // See NetworkDeviceChangedSignal in patchpanel_service.proto.
   enum class VirtualDeviceEvent {
     kAdded,
@@ -103,6 +110,7 @@ class BRILLO_EXPORT Client {
     GuestType guest_type;
     std::optional<net_base::IPv4Address> dns_proxy_ipv4_addr;
     std::optional<net_base::IPv6Address> dns_proxy_ipv6_addr;
+    std::optional<TechnologyType> technology_type;
   };
 
   // See ConnectNamespaceResponse in patchpanel_service.proto.
