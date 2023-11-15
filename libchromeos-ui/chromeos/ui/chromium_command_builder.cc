@@ -537,6 +537,9 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("disable_cros_video_decoder"))
     AddFeatureDisableOverride("UseChromeOSDirectVideoDecoder");
 
+  if (UseFlagIsSet("v4l2_flat_stateful_video_decoder"))
+    AddFeatureEnableOverride("V4L2FlatStatefulVideoDecoder");
+
   if (UseFlagIsSet("arc_disable_cros_video_decoder"))
     AddFeatureDisableOverride("ArcVideoDecoder");
 
