@@ -39,7 +39,6 @@
 #include <featured/feature_library.h>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <gmock/gmock.h>
-#include <google/protobuf/stubs/logging.h>
 #include <libhwsec/factory/fuzzed_factory.h>
 #include <libhwsec-foundation/fuzzers/fuzzed_proto_generator.h>
 
@@ -112,9 +111,6 @@ class Environment {
   // flows, but for this to work we'd need to inject `Platform` into Libbrillo.
   brillo::cryptohome::home::FakeSystemSaltLoader system_salt_loader_{
       kStubSystemSalt};
-  // Suppress log spam from protobuf helpers that complain about malformed
-  // inputs.
-  google::protobuf::LogSilencer log_silencer_;
 };
 
 // Performs any global state setup and teardown that need to happen for input
