@@ -219,12 +219,12 @@ TEST_F(DrawUtilsTest, GetLangConsts) {
   std::string lang_consts =
       "LANGUAGE_en_US_WIDTH=99\nLANGUAGE_fi_WIDTH=44\nLANGUAGE_mr_WIDTH="
       "incorrect\n LANGUAGE_ko_WIDTH=  77 \n  SUPPORTED_LOCALES=\"en-US fi mr "
-      "ko\"";
+      "ko\"\n";
   ASSERT_TRUE(
       base::WriteFile(screens_path_.Append("lang_constants.sh"), lang_consts));
   EXPECT_TRUE(draw_utils_.ReadLangConstants());
 
-  EXPECT_EQ(5, draw_utils_.lang_constants_.size());
+  EXPECT_EQ(2, draw_utils_.language_widths_.size());
   EXPECT_EQ(4, draw_utils_.GetSupportedLocalesSize());
   int lang_width;
   EXPECT_TRUE(draw_utils_.GetLangConstants("en-US", &lang_width));

@@ -84,6 +84,15 @@ class MockDrawInterface : public DrawInterface {
   MOCK_METHOD(int, GetFreconCanvasSize, (), (const, override));
   MOCK_METHOD(base::FilePath, GetScreensPath, (), (const, override));
   MOCK_METHOD(bool, IsLocaleRightToLeft, (), (const, override));
+  MOCK_METHOD(void,
+              ShowDropDownClosed,
+              (int offset_x,
+               int offset_y,
+               int text_x,
+               const std::string& message,
+               const std::string& icon_label,
+               bool is_selected),
+              (override));
 };
 
 }  // namespace minios

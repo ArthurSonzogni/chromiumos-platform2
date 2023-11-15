@@ -365,22 +365,11 @@ void ScreenNetwork::ShowCollapsedNetworkDropDown(bool is_selected) {
   const int frecon_canvas_size = draw_utils_->GetFreconCanvasSize();
   const int kOffsetY = -frecon_canvas_size / 4 + kBtnYStep * 2;
   const int kBgX = -frecon_canvas_size / 2 + 145;
-  const int kGlobeX = -frecon_canvas_size / 2 + 20;
-  const int kArrowX = -frecon_canvas_size / 2 + 268;
   const int kTextX = -frecon_canvas_size / 2 + 100;
 
-  base::FilePath screens_path = draw_utils_->GetScreensPath();
-  // Currently using language and globe icons as placeholders.
-  base::FilePath menu_background =
-      is_selected ? screens_path.Append("language_menu_bg_focused.png")
-                  : screens_path.Append("language_menu_bg.png");
-
-  draw_utils_->ShowImage(menu_background, kBgX, kOffsetY);
-  draw_utils_->ShowImage(screens_path.Append("ic_wifi_filled-bg.png"), kGlobeX,
-                         kOffsetY);
-  draw_utils_->ShowImage(screens_path.Append("ic_dropdown.png"), kArrowX,
-                         kOffsetY);
-  draw_utils_->ShowMessage("btn_MiniOS_display_options", kTextX, kOffsetY);
+  draw_utils_->ShowDropDownClosed(kBgX, kOffsetY, kTextX,
+                                  "btn_MiniOS_display_options",
+                                  "ic_wifi_filled-bg.png", is_selected);
 }
 
 void ScreenNetwork::ShowNetworkDropdown(int current_index) {

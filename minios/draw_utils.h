@@ -5,6 +5,7 @@
 #ifndef MINIOS_DRAW_UTILS_H_
 #define MINIOS_DRAW_UTILS_H_
 
+#include <absl/container/flat_hash_map.h>
 #include <memory>
 #include <optional>
 #include <string>
@@ -146,6 +147,14 @@ class DrawUtils : public DrawInterface {
     // Reload locale dependent dimension constants.
     ReadDimensionConstants();
   }
+  // Draw closed drop down at `offset_x  offset_y`.  Place `message` at `text_x`
+  // alongside `icon_label` which should be an image file name.
+  void ShowDropDownClosed(int offset_x,
+                          int offset_y,
+                          int text_x,
+                          const std::string& message,
+                          const std::string& icon_label,
+                          bool is_selected) override;
 
  protected:
   FRIEND_TEST(DrawUtilsTest, InstructionsWithTitle);
@@ -249,7 +258,7 @@ class DrawUtils : public DrawInterface {
   base::StringPairs image_dimensions_;
 
   // Key value pairs that store language widths.
-  base::StringPairs lang_constants_;
+  absl::flat_hash_map<std::string, int> language_widths_;
 
   // List of all supported locales.
   std::vector<std::string> supported_locales_;

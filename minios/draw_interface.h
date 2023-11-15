@@ -114,6 +114,14 @@ class DrawInterface {
 
   // Returns whether the current locale is read from right to left.
   virtual bool IsLocaleRightToLeft() const = 0;
+
+  // Show a closed drop down menu at the specified location.
+  virtual void ShowDropDownClosed(int offset_x,
+                                  int offset_y,
+                                  int text_x,
+                                  const std::string& message,
+                                  const std::string& icon_label,
+                                  bool is_selected) = 0;
 };
 
 }  // namespace minios

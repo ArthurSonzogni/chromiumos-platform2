@@ -6,10 +6,13 @@
 
 #include <algorithm>
 #include <optional>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
@@ -448,28 +451,18 @@ void DrawUtils::ShowLanguageDropdown(int current_index) {
 }
 
 void DrawUtils::ShowLanguageMenu(bool is_selected) {
-  const int kOffsetY = -frecon_canvas_size_ / 2 + 40;
-  const int kBgX = -frecon_canvas_size_ / 2 + 145;
-  const int kGlobeX = -frecon_canvas_size_ / 2 + 20;
-  const int kArrowX = -frecon_canvas_size_ / 2 + 268;
+  const int kOffsetX = -frecon_canvas_size_ / 2 + 145;
   int language_width;
   if (!GetLangConstants(locale_, &language_width)) {
     language_width = 100;
     LOG(WARNING) << "Could not get language width for " << locale_
                  << ". Defaulting to 100.";
   }
-  const int kTextX = -frecon_canvas_size_ / 2 + 40 + language_width / 2;
+  const int kTextX = kOffsetX - 105 + language_width / 2;
 
-  base::FilePath menu_background =
-      is_selected ? GetScreensPath().Append("language_menu_bg_focused.png")
-                  : GetScreensPath().Append("language_menu_bg.png");
-
-  ShowImage(menu_background, kBgX, kOffsetY);
-  ShowImage(GetScreensPath().Append("ic_language_filled-bg.png"), kGlobeX,
-            kOffsetY);
-
-  ShowImage(GetScreensPath().Append("ic_dropdown.png"), kArrowX, kOffsetY);
-  ShowMessage("language_folded", kTextX, kOffsetY);
+  ShowDropDownClosed(kOffsetX, -frecon_canvas_size_ / 2 + 40, kTextX,
+                     "language_folded", "ic_language_filled-bg.png",
+                     is_selected);
 }
 
 void DrawUtils::ShowControlButton(const std::optional<std::string>& icon,
@@ -702,35 +695,58 @@ void DrawUtils::GetFreconConstants() {
 }
 
 bool DrawUtils::ReadLangConstants() {
-  lang_constants_.clear();
+  language_widths_.clear();
   supported_locales_.clear();
   // Read language widths from lang_constants.sh into memory.
-  auto lang_constants_path = GetScreensPath().Append("lang_constants.sh");
-  if (!base::PathExists(lang_constants_path)) {
-    LOG(ERROR) << "Language constants path: " << lang_constants_path
+  auto language_widths_path = GetScreensPath().Append("lang_constants.sh");
+  if (!base::PathExists(language_widths_path)) {
+    LOG(ERROR) << "Language constants path: " << language_widths_path
                << " not found.";
     return false;
   }
 
+  constexpr auto kSupportedLocalesKey = "SUPPORTED_LOCALES";
+  constexpr auto kLanguageProperty = "LANGUAGE_";
+  constexpr auto kWidthProperty = "_WIDTH";
   std::string const_values;
-  if (!ReadFileToString(lang_constants_path, &const_values)) {
-    LOG(ERROR) << "Could not read lang constants file " << lang_constants_path;
+  if (!ReadFileToString(language_widths_path, &const_values)) {
+    LOG(ERROR) << "Could not read lang constants file " << language_widths_path;
     return false;
   }
 
+  base::StringPairs key_value_pair;
   if (!base::SplitStringIntoKeyValuePairs(const_values, '=', '\n',
-                                          &lang_constants_)) {
+                                          &key_value_pair)) {
     LOG(ERROR) << "Unable to parse language width information.";
     return false;
   }
-  for (const auto& pair : lang_constants_) {
-    if (pair.first == "SUPPORTED_LOCALES") {
-      // Parse list of supported locales and store separately.
-      std::string locale_list;
-      if (!base::RemoveChars(pair.second, "\"", &locale_list))
+  for (const auto& pair : key_value_pair) {
+    if (pair.first == kSupportedLocalesKey) {
+      auto locale_list = pair.second;
+      if (!base::RemoveChars(locale_list, "\"", &locale_list))
         LOG(WARNING) << "Unable to remove surrounding quotes from locale list.";
+
       supported_locales_ = base::SplitString(
           locale_list, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    } else if (pair.first.starts_with(kLanguageProperty)) {
+      // Only interested in `WIDTH` property, ignore all others.
+      const auto property_index = pair.first.find(kWidthProperty);
+      if (property_index == std::string::npos)
+        continue;
+      // Extract language token from key. Language tokens can have `_`.
+      auto token =
+          pair.first.substr(strlen(kLanguageProperty),
+                            property_index - strlen(kLanguageProperty));
+
+      // Match supported locales by replacing `_` with `-`.
+      base::ReplaceChars(token, "_", "-", &token);
+      int lang_width;
+      if (base::StringToInt(pair.second, &lang_width)) {
+        language_widths_[token] = lang_width;
+      } else {
+        LOG(WARNING) << "Couldn't convert token=" << token
+                     << " width=" << pair.second;
+      }
     }
   }
 
@@ -744,28 +760,12 @@ bool DrawUtils::ReadLangConstants() {
 
 bool DrawUtils::GetLangConstants(const std::string& locale,
                                  int* lang_width) const {
-  if (lang_constants_.empty()) {
-    LOG(ERROR) << "No language widths available.";
+  if (language_widths_.find(locale) == language_widths_.end()) {
     return false;
   }
+  *lang_width = language_widths_.at(locale);
 
-  // Lang_consts uses '_' while supported locale list uses '-'.
-  std::string token;
-  base::ReplaceChars(locale, "-", "_", &token);
-  token = "LANGUAGE_" + token + "_WIDTH";
-
-  // Find the width for the token.
-  for (const auto& width_token : lang_constants_) {
-    if (width_token.first == token) {
-      if (!base::StringToInt(width_token.second, lang_width)) {
-        LOG(ERROR) << "Could not convert " << width_token.second
-                   << " to a number.";
-        return false;
-      }
-      return true;
-    }
-  }
-  return false;
+  return true;
 }
 
 bool DrawUtils::IsLocaleRightToLeft() const {
@@ -807,6 +807,28 @@ void DrawUtils::ShowVersion() {
   int kVersionInfoX = IsLocaleRightToLeft() ? -(frecon_canvas_size_ / 2)
                                             : (frecon_canvas_size_ / 2);
   ShowText(minios_version_.value(), kVersionInfoX, kVersionInfoY, "grey");
+}
+
+void DrawUtils::ShowDropDownClosed(int offset_x,
+                                   int offset_y,
+                                   int text_x,
+                                   const std::string& message,
+                                   const std::string& icon_label,
+                                   bool is_selected) {
+  const int kIconX = offset_x - 125;
+  const int kArrowX = offset_x + 123;
+
+  // laguage_menu_bg is an empty rectangular box used for all drop down ui
+  // backgrounds.
+  const auto& dropdown_label_file = std::string{"language_menu_bg"} +
+                                    (is_selected ? kFocusedSuffix : "") +
+                                    kPngExtension;
+
+  ShowImage(GetScreensPath().Append(dropdown_label_file), offset_x, offset_y);
+  ShowImage(GetScreensPath().Append(icon_label), kIconX, offset_y);
+
+  ShowImage(GetScreensPath().Append("ic_dropdown.png"), kArrowX, offset_y);
+  ShowMessage(message, text_x, offset_y);
 }
 
 }  // namespace minios
