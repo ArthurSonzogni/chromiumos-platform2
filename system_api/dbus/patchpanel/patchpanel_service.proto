@@ -80,6 +80,15 @@ message NetworkDevice {
     PARALLELS_VM = 4;
   };
 
+  // Identifies the technology of the underlying physical device of the virtual
+  // device reported.
+  enum TechnologyType {
+    UNKNOWN_TECHNOLOGY = 0;
+    CELLULAR = 1;
+    ETHERNET = 2;
+    WIFI = 3;
+  };
+
   // The name of the main virtual interface created by patchpanel for carrying
   // packets out of the guest environment and onto the host routing setup. For
   // ARC this corresponds to the virtual bridge used for that virtual device.
@@ -122,6 +131,11 @@ message NetworkDevice {
   // array of size 4 and 16 respectively for IPv4 and IPv6.
   bytes dns_proxy_ipv4_addr = 8;
   bytes dns_proxy_ipv6_addr = 9;
+
+  // Technology of the underlying physical device of the virtual device.
+  // Only valid for ARC virtual devices, and otherwise empty for virtual devices
+  // tracking the default logical or physical networks.
+  TechnologyType technology_type = 10;
 }
 
 // Request to obtain the list of virtual network devices that patchpanel
