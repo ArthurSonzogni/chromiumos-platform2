@@ -297,8 +297,10 @@ class NET_BASE_EXPORT RTNLMessage {
                        base::span<const uint8_t> info_data);
 
  private:
-  static std::unique_ptr<RTNLMessage> DecodeLink(Mode mode,
-                                                 const RTNLHeader* hdr);
+  // Decodes the link message. |payload| points to the remaining data after
+  // the `struct nlmsghdr`.
+  static std::unique_ptr<RTNLMessage> DecodeLink(
+      Mode mode, base::span<const uint8_t> payload);
   static std::unique_ptr<RTNLMessage> DecodeAddress(Mode mode,
                                                     const RTNLHeader* hdr);
   static std::unique_ptr<RTNLMessage> DecodeRoute(Mode mode,

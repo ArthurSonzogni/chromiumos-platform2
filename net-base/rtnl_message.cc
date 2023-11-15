@@ -362,7 +362,8 @@ std::string GetRuleActionName(uint16_t rule_rtm_type) {
   }
 }
 
-std::unique_ptr<RTNLAttrMap> ParseAttrs(struct rtattr* data, size_t attr_len) {
+std::unique_ptr<RTNLAttrMap> ParseAttrs(const struct rtattr* data,
+                                        size_t attr_len) {
   const auto* attr_data = reinterpret_cast<const char*>(data);
   if (attr_len > INT_MAX) {
     LOG(ERROR) << "Buffer length " << attr_len << " is over INT_MAX";
@@ -527,7 +528,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::Decode(
     case RTM_DELLINK:
       attr_data = IFLA_RTA(NLMSG_DATA(header));
       attr_length = IFLA_PAYLOAD(header);
-      msg = DecodeLink(mode, reinterpret_cast<const RTNLHeader*>(header));
+      msg = DecodeLink(mode, payload);
       break;
 
     case RTM_NEWADDR:
@@ -583,19 +584,21 @@ std::unique_ptr<RTNLMessage> RTNLMessage::Decode(
   return msg;
 }
 
-std::unique_ptr<RTNLMessage> RTNLMessage::DecodeLink(Mode mode,
-                                                     const RTNLHeader* hdr) {
-  if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(sizeof(hdr->ifi))) {
+std::unique_ptr<RTNLMessage> RTNLMessage::DecodeLink(
+    Mode mode, base::span<const uint8_t> payload) {
+  // Parse ifinfomsg struct.
+  if (payload.size() < NLMSG_ALIGN(sizeof(struct ifinfomsg))) {
     return nullptr;
   }
+  const struct ifinfomsg* ifi =
+      reinterpret_cast<const struct ifinfomsg*>(payload.data());
+  payload = payload.subspan(NLMSG_ALIGN(sizeof(struct ifinfomsg)));
 
-  rtattr* attr_data = IFLA_RTA(NLMSG_DATA(&hdr->hdr));
-  const size_t attr_length = IFLA_PAYLOAD(&hdr->hdr);
-  const Type type = kTypeLink;
-  const sa_family_t family = hdr->ifi.ifi_family;
-  const int32_t interface_index = hdr->ifi.ifi_index;
-
-  std::unique_ptr<RTNLAttrMap> attrs = ParseAttrs(attr_data, attr_length);
+  // Parse the attributes.
+  // Note: |payload.data()| here is equivalent to IFLA_RTA() with the original
+  // payload.
+  std::unique_ptr<RTNLAttrMap> attrs = ParseAttrs(
+      reinterpret_cast<const rtattr*>(payload.data()), payload.size());
   if (!attrs) {
     return nullptr;
   }
@@ -616,15 +619,15 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeLink(Mode mode,
       } else {
         LOG(ERROR) << base::StringPrintf(
             "Invalid kind <%s>, interface index %d",
-            base::HexEncode(kind_bytes).c_str(), interface_index);
+            base::HexEncode(kind_bytes).c_str(), ifi->ifi_index);
       }
     }
   }
 
-  auto msg = std::make_unique<RTNLMessage>(type, mode, 0, 0, 0, interface_index,
-                                           family);
-  msg->set_link_status(LinkStatus(hdr->ifi.ifi_type, hdr->ifi.ifi_flags,
-                                  hdr->ifi.ifi_change, kind_option));
+  auto msg = std::make_unique<RTNLMessage>(kTypeLink, mode, 0, 0, 0,
+                                           ifi->ifi_index, ifi->ifi_family);
+  msg->set_link_status(
+      LinkStatus(ifi->ifi_type, ifi->ifi_flags, ifi->ifi_change, kind_option));
   return msg;
 }
 
