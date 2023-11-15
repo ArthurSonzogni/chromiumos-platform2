@@ -5,8 +5,10 @@
 #ifndef FBPREPROCESSOR_DBUS_ADAPTOR_H_
 #define FBPREPROCESSOR_DBUS_ADAPTOR_H_
 
+#include <memory>
 #include <utility>
 
+#include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/dbus_object.h>
 #include <dbus/bus.h>
 #include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
@@ -30,8 +32,9 @@ class DBusAdaptor : public org::chromium::FbPreprocessorInterface,
     dbus_object_.RegisterAsync(std::move(cb));
   }
 
-  bool GetDebugDumps(brillo::ErrorPtr* error,
-                     DebugDumps* out_DebugDumps) const override;
+  void GetDebugDumps(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<DebugDumps>>
+          response) const override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;

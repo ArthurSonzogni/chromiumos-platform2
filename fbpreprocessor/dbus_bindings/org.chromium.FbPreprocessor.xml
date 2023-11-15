@@ -4,7 +4,8 @@
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.FbPreprocessor">
     <method name="GetDebugDumps">
-      <annotation name="org.chromium.DBus.Method.Const" value="true"/>
+      <annotation name="org.chromium.DBus.Method.Const" value="true" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg name="DebugDumps" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
           value="fbpreprocessor::DebugDumps" />

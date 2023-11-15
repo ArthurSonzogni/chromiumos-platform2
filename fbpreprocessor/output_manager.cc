@@ -5,8 +5,10 @@
 #include "fbpreprocessor/output_manager.h"
 
 #include <forward_list>
+#include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -18,7 +20,10 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
+#include <brillo/dbus/dbus_method_response.h>
 #include <brillo/files/file_util.h>
+#include <dbus/dbus-protocol.h>
+#include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 
 #include "fbpreprocessor/constants.h"
 #include "fbpreprocessor/firmware_dump.h"
@@ -94,17 +99,45 @@ void OutputManager::AddFirmwareDump(const FirmwareDump& fw_dump) {
   files_lock_.Release();
 }
 
-std::forward_list<FirmwareDump> OutputManager::AvailableDumps() {
-  std::forward_list<FirmwareDump> dumps;
-  if (!manager_->FirmwareDumpsAllowed()) {
-    return dumps;
+void OutputManager::GetDebugDumps(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<DebugDumps>>
+        response) {
+  VLOG(kLocalDebugVerbosity) << __func__;
+  if (!manager_->task_runner()->PostTask(
+          FROM_HERE,
+          base::BindOnce(&OutputManager::GetAllAvailableDebugDumps,
+                         weak_factory_.GetWeakPtr(), std::move(response)))) {
+    LOG(ERROR) << "Failed to post GetDebugDumpsAsync task.";
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_FAILED,
+                             "Failed to post task for GetDebugDumps request.");
   }
+}
+
+void OutputManager::GetAllAvailableDebugDumps(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<DebugDumps>>
+        response) {
+  VLOG(kLocalDebugVerbosity) << __func__;
+  DebugDumps out_DebugDumps;
+  if (!manager_->FirmwareDumpsAllowed()) {
+    response->Return(out_DebugDumps);
+    return;
+  }
+
   files_lock_.Acquire();
   for (auto file : files_) {
-    dumps.push_front(file.fw_dump());
+    // TODO(b/308984163): Add the metadata information to
+    // fbpreprocessor::FirmwareDump instead of hardcoding it here.
+    auto dump = file.fw_dump();
+    auto debug_dump = out_DebugDumps.add_dump();
+    debug_dump->set_type(DebugDump_Type_WIFI);
+    auto wifi_dump = debug_dump->mutable_wifi_dump();
+    wifi_dump->set_dmpfile(dump.DumpFile().value());
+    wifi_dump->set_state(WiFiDump_State_RAW);
+    wifi_dump->set_vendor(WiFiDump_Vendor_IWLWIFI);
   }
   files_lock_.Release();
-  return dumps;
+  response->Return(out_DebugDumps);
 }
 
 void OutputManager::RestartExpirationTask(const base::Time& now) {

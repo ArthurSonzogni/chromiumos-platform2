@@ -5,7 +5,7 @@
 #ifndef FBPREPROCESSOR_OUTPUT_MANAGER_H_
 #define FBPREPROCESSOR_OUTPUT_MANAGER_H_
 
-#include <forward_list>
+#include <memory>
 #include <set>
 #include <string>
 
@@ -14,6 +14,8 @@
 #include <base/synchronization/lock.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
+#include <brillo/dbus/dbus_method_response.h>
+#include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
@@ -41,7 +43,11 @@ class OutputManager : public SessionStateManager::Observer,
   // automatically be deleted after |expire_after_|.
   void AddFirmwareDump(const FirmwareDump& fw_dump);
 
-  std::forward_list<FirmwareDump> AvailableDumps();
+  // A proxy for |GetAllAvailableDebugDumps| that collects all debug dumps.
+  // Used by the async D-Bus method |org.chromium.FbPreprocessor.GetDebugDumps|.
+  void GetDebugDumps(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<DebugDumps>>
+          response);
 
  private:
   class OutputFile {
@@ -62,6 +68,12 @@ class OutputManager : public SessionStateManager::Observer,
     FirmwareDump fw_dump_;
     base::Time expiration_;
   };
+
+  // Reads |files_| (with lock), generates corresponding |DebugDumps|, and
+  // outputs |DebugDumps| as async D-Bus method response.
+  void GetAllAvailableDebugDumps(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<DebugDumps>>
+          response);
 
   // Schedule a task that will delete the file with the expiration timestamp
   // closest to the current time |now|.
