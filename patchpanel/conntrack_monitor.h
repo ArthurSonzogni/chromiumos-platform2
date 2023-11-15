@@ -98,7 +98,7 @@ class ConntrackMonitor {
   // function will create a base::FileDescriptorWatcher and add it to the
   // current message loop. The types of conntrack events this monitor handles is
   // set by |events|.
-  void Start(base::span<const EventType> events);
+  virtual void Start(base::span<const EventType> events);
 
   // Stops the event-monitoring function of the conntrack monitor, only for
   // testing purpose.
@@ -115,13 +115,14 @@ class ConntrackMonitor {
 
   // Adds an conntrack event listener to the list of entities that will
   // be notified of conntrack events.
-  std::unique_ptr<Listener> AddListener(base::span<const EventType> events,
-                                        const ConntrackEventHandler& callback);
+  virtual std::unique_ptr<Listener> AddListener(
+      base::span<const EventType> events,
+      const ConntrackEventHandler& callback);
 
  protected:
   explicit ConntrackMonitor(std::unique_ptr<net_base::Socket>);
   ConntrackMonitor();
-  ~ConntrackMonitor();
+  virtual ~ConntrackMonitor();
 
  private:
   friend base::LazyInstanceTraitsBase<ConntrackMonitor>;

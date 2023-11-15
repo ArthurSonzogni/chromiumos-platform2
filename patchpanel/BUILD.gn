@@ -303,6 +303,7 @@ if (use.test) {
       "mac_address_generator_test.cc",
       "manager_test.cc",
       "minijailed_process_runner_test.cc",
+      "mock_conntrack_monitor.cc",
       "mock_datapath.cc",
       "mock_multicast_counters_service.cc",
       "mock_process_runner.cc",
