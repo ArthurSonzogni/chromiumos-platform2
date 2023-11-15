@@ -13,10 +13,10 @@
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "diagnostics/cros_healthd/routines/audio/audio_driver.h"
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_discovery_v2.h"
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_pairing_v2.h"
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_power_v2.h"
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_scanning_v2.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_discovery.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_pairing.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_power.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_scanning.h"
 #include "diagnostics/cros_healthd/routines/fan/fan.h"
 #include "diagnostics/cros_healthd/routines/hardware_button/volume_button.h"
 #include "diagnostics/cros_healthd/routines/led/led_lit_up.h"
@@ -151,13 +151,13 @@ void RoutineService::CheckAndCreateRoutine(
       return;
     }
     case mojom::RoutineArgument::Tag::kBluetoothPower: {
-      auto routine = std::make_unique<BluetoothPowerRoutineV2>(
+      auto routine = std::make_unique<floss::BluetoothPowerRoutine>(
           context_, std::move(routine_arg->get_bluetooth_power()));
       std::move(callback).Run(base::ok(std::move(routine)));
       return;
     }
     case mojom::RoutineArgument::Tag::kBluetoothDiscovery: {
-      auto routine = std::make_unique<BluetoothDiscoveryRoutineV2>(
+      auto routine = std::make_unique<floss::BluetoothDiscoveryRoutine>(
           context_, std::move(routine_arg->get_bluetooth_discovery()));
       std::move(callback).Run(base::ok(std::move(routine)));
       return;
@@ -168,7 +168,7 @@ void RoutineService::CheckAndCreateRoutine(
       return;
     }
     case mojom::RoutineArgument::Tag::kBluetoothScanning: {
-      auto routine = BluetoothScanningRoutineV2::Create(
+      auto routine = floss::BluetoothScanningRoutine::Create(
           context_, routine_arg->get_bluetooth_scanning());
       if (routine.has_value()) {
         std::move(callback).Run(base::ok(std::move(routine.value())));
@@ -180,7 +180,7 @@ void RoutineService::CheckAndCreateRoutine(
       return;
     }
     case mojom::RoutineArgument::Tag::kBluetoothPairing: {
-      auto routine = std::make_unique<BluetoothPairingRoutineV2>(
+      auto routine = std::make_unique<floss::BluetoothPairingRoutine>(
           context_, std::move(routine_arg->get_bluetooth_pairing()));
       std::move(callback).Run(base::ok(std::move(routine)));
       return;

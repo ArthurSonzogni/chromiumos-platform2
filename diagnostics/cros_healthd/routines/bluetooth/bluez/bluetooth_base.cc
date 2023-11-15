@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_base.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluez/bluetooth_base.h"
 
 #include <string>
 #include <utility>
@@ -12,8 +12,9 @@
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/system/bluez_controller.h"
+#include "diagnostics/cros_healthd/system/context.h"
 
-namespace diagnostics {
+namespace diagnostics::bluez {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
@@ -86,4 +87,4 @@ void BluetoothRoutineBase::RunPreCheck(
   std::move(on_passed).Run();
 }
 
-}  // namespace diagnostics
+}  // namespace diagnostics::bluez

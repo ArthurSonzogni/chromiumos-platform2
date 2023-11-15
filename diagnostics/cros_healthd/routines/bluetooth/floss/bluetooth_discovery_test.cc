@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_discovery.h"
+
 #include <cstdlib>
 #include <memory>
 #include <utility>
@@ -17,7 +19,6 @@
 #include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_discovery_v2.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
 #include "diagnostics/cros_healthd/system/fake_floss_event_hub.h"
@@ -27,7 +28,7 @@
 #include "diagnostics/dbus_bindings/floss/dbus-proxy-mocks.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
-namespace diagnostics {
+namespace diagnostics::floss {
 namespace {
 
 const dbus::ObjectPath kDefaultAdapterPath{
@@ -43,13 +44,12 @@ using ::testing::ReturnRef;
 using ::testing::StrictMock;
 using ::testing::WithArg;
 
-class BluetoothDiscoveryRoutineV2Test : public testing::Test {
+class BluetoothDiscoveryRoutineTest : public testing::Test {
  protected:
-  BluetoothDiscoveryRoutineV2Test() = default;
-  BluetoothDiscoveryRoutineV2Test(const BluetoothDiscoveryRoutineV2Test&) =
-      delete;
-  BluetoothDiscoveryRoutineV2Test& operator=(
-      const BluetoothDiscoveryRoutineV2Test&) = delete;
+  BluetoothDiscoveryRoutineTest() = default;
+  BluetoothDiscoveryRoutineTest(const BluetoothDiscoveryRoutineTest&) = delete;
+  BluetoothDiscoveryRoutineTest& operator=(
+      const BluetoothDiscoveryRoutineTest&) = delete;
 
   MockFlossController* mock_floss_controller() {
     return mock_context_.mock_floss_controller();
@@ -244,7 +244,7 @@ class BluetoothDiscoveryRoutineV2Test : public testing::Test {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   MockContext mock_context_;
-  BluetoothDiscoveryRoutineV2 routine_{
+  BluetoothDiscoveryRoutine routine_{
       &mock_context_, mojom::BluetoothDiscoveryRoutineArgument::New()};
   StrictMock<org::chromium::bluetooth::BluetoothProxyMock> mock_adapter_proxy_;
   StrictMock<org::chromium::bluetooth::ManagerProxyMock> mock_manager_proxy_;
@@ -255,7 +255,7 @@ class BluetoothDiscoveryRoutineV2Test : public testing::Test {
 
 // Test that the Bluetooth discovery routine can pass successfully when the
 // adapter powered is off at first.
-TEST_F(BluetoothDiscoveryRoutineV2Test, RoutineSuccessWhenPoweredOff) {
+TEST_F(BluetoothDiscoveryRoutineTest, RoutineSuccessWhenPoweredOff) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/false);
 
@@ -307,7 +307,7 @@ TEST_F(BluetoothDiscoveryRoutineV2Test, RoutineSuccessWhenPoweredOff) {
 
 // Test that the Bluetooth discovery routine can pass successfully when the
 // adapter powered is on at first.
-TEST_F(BluetoothDiscoveryRoutineV2Test, RoutineSuccessWhenPoweredOn) {
+TEST_F(BluetoothDiscoveryRoutineTest, RoutineSuccessWhenPoweredOn) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
@@ -349,7 +349,7 @@ TEST_F(BluetoothDiscoveryRoutineV2Test, RoutineSuccessWhenPoweredOn) {
 
 // Test that the Bluetooth discovery routine can handle the error when the
 // initialization is failed.
-TEST_F(BluetoothDiscoveryRoutineV2Test, RoutineErrorInitialization) {
+TEST_F(BluetoothDiscoveryRoutineTest, RoutineErrorInitialization) {
   InSequence s;
   EXPECT_CALL(*mock_floss_controller(), GetManager()).WillOnce(Return(nullptr));
   RunRoutineAndWaitForException("Failed to initialize Bluetooth routine.");
@@ -357,7 +357,7 @@ TEST_F(BluetoothDiscoveryRoutineV2Test, RoutineErrorInitialization) {
 
 // Test that the Bluetooth discovery routine can handle the error when the
 // adapter is already in discovery mode.
-TEST_F(BluetoothDiscoveryRoutineV2Test, PreCheckErrorAlreadyDiscoveryMode) {
+TEST_F(BluetoothDiscoveryRoutineTest, PreCheckErrorAlreadyDiscoveryMode) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
 
@@ -373,7 +373,7 @@ TEST_F(BluetoothDiscoveryRoutineV2Test, PreCheckErrorAlreadyDiscoveryMode) {
 
 // Test that the Bluetooth discovery routine can handle the error when it fails
 // to power on the adapter.
-TEST_F(BluetoothDiscoveryRoutineV2Test, PowerOnAdapterError) {
+TEST_F(BluetoothDiscoveryRoutineTest, PowerOnAdapterError) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/false);
 
@@ -391,7 +391,7 @@ TEST_F(BluetoothDiscoveryRoutineV2Test, PowerOnAdapterError) {
 
 // Test that the Bluetooth discovery routine can handle the error when reading
 // btmon log.
-TEST_F(BluetoothDiscoveryRoutineV2Test, ReadBtmonLogError) {
+TEST_F(BluetoothDiscoveryRoutineTest, ReadBtmonLogError) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
@@ -413,7 +413,7 @@ TEST_F(BluetoothDiscoveryRoutineV2Test, ReadBtmonLogError) {
 
 // Test that the Bluetooth discovery routine can handle unexpected discovering
 // status in HCI level.
-TEST_F(BluetoothDiscoveryRoutineV2Test, FailedVerifyDiscoveringHci) {
+TEST_F(BluetoothDiscoveryRoutineTest, FailedVerifyDiscoveringHci) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
@@ -454,7 +454,7 @@ TEST_F(BluetoothDiscoveryRoutineV2Test, FailedVerifyDiscoveringHci) {
 
 // Test that the Bluetooth discovery routine can handle unexpected discovering
 // status in D-Bus level.
-TEST_F(BluetoothDiscoveryRoutineV2Test, FailedVerifyDiscoveringDbus) {
+TEST_F(BluetoothDiscoveryRoutineTest, FailedVerifyDiscoveringDbus) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
@@ -496,7 +496,7 @@ TEST_F(BluetoothDiscoveryRoutineV2Test, FailedVerifyDiscoveringDbus) {
 
 // Test that the Bluetooth discovery routine can handle the error when adapter
 // fails to start discovery.
-TEST_F(BluetoothDiscoveryRoutineV2Test, FailedStartDiscovery) {
+TEST_F(BluetoothDiscoveryRoutineTest, FailedStartDiscovery) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
@@ -535,7 +535,7 @@ TEST_F(BluetoothDiscoveryRoutineV2Test, FailedStartDiscovery) {
 
 // Test that the Bluetooth discovery routine can handle the error when adapter
 // fails to stop discovery.
-TEST_F(BluetoothDiscoveryRoutineV2Test, FailedStopDiscovery) {
+TEST_F(BluetoothDiscoveryRoutineTest, FailedStopDiscovery) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
@@ -576,7 +576,7 @@ TEST_F(BluetoothDiscoveryRoutineV2Test, FailedStopDiscovery) {
 
 // Test that the Bluetooth discovery routine can handle the error when btmon is
 // terminated unexpectedly.
-TEST_F(BluetoothDiscoveryRoutineV2Test, BtmonTerminatedError) {
+TEST_F(BluetoothDiscoveryRoutineTest, BtmonTerminatedError) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
@@ -604,7 +604,7 @@ TEST_F(BluetoothDiscoveryRoutineV2Test, BtmonTerminatedError) {
 
 // Test that the Bluetooth discovery routine can handle the error when timeout
 // occurred.
-TEST_F(BluetoothDiscoveryRoutineV2Test, RoutineTimeoutOccurred) {
+TEST_F(BluetoothDiscoveryRoutineTest, RoutineTimeoutOccurred) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
@@ -631,4 +631,4 @@ TEST_F(BluetoothDiscoveryRoutineV2Test, RoutineTimeoutOccurred) {
 }
 
 }  // namespace
-}  // namespace diagnostics
+}  // namespace diagnostics::floss

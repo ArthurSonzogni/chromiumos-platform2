@@ -13,15 +13,15 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_base_v2.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_base.h"
 #include "diagnostics/cros_healthd/system/fake_floss_event_hub.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/cros_healthd/system/mock_floss_controller.h"
 #include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxy-mocks.h"
 #include "diagnostics/dbus_bindings/floss/dbus-proxy-mocks.h"
 
-namespace diagnostics {
+namespace diagnostics::floss {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
@@ -37,12 +37,11 @@ const dbus::ObjectPath kDefaultAdapterPath{
     "/org/chromium/bluetooth/hci0/adapter"};
 const int32_t kDefaultHciInterface = 0;
 
-class BluetoothRoutineBaseV2Test : public testing::Test {
+class BluetoothRoutineBaseTest : public testing::Test {
  protected:
-  BluetoothRoutineBaseV2Test() = default;
-  BluetoothRoutineBaseV2Test(const BluetoothRoutineBaseV2Test&) = delete;
-  BluetoothRoutineBaseV2Test& operator=(const BluetoothRoutineBaseV2Test&) =
-      delete;
+  BluetoothRoutineBaseTest() = default;
+  BluetoothRoutineBaseTest(const BluetoothRoutineBaseTest&) = delete;
+  BluetoothRoutineBaseTest& operator=(const BluetoothRoutineBaseTest&) = delete;
 
   void SetUp() override {
     ON_CALL(*mock_floss_controller(), GetManager())
@@ -135,7 +134,7 @@ class BluetoothRoutineBaseV2Test : public testing::Test {
   }
 
   MockContext mock_context_;
-  BluetoothRoutineBaseV2 routine_base_{&mock_context_};
+  BluetoothRoutineBase routine_base_{&mock_context_};
   StrictMock<org::chromium::bluetooth::BluetoothProxyMock> mock_adapter_proxy_;
   StrictMock<org::chromium::bluetooth::ManagerProxyMock> mock_manager_proxy_;
   brillo::ErrorPtr error_;
@@ -144,17 +143,17 @@ class BluetoothRoutineBaseV2Test : public testing::Test {
   base::test::TaskEnvironment task_environment_;
 };
 
-// Test that the BluetoothRoutineBaseV2 can get adapter successfully.
-TEST_F(BluetoothRoutineBaseV2Test, GetAdapterSuccess) {
+// Test that the BluetoothRoutineBase can get adapter successfully.
+TEST_F(BluetoothRoutineBaseTest, GetAdapterSuccess) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_EQ(InitializeSync(), true);
   EXPECT_EQ(routine_base_.GetDefaultAdapter(), &mock_adapter_proxy_);
 }
 
-// Test that the BluetoothRoutineBaseV2 can handle error when getting manager
+// Test that the BluetoothRoutineBase can handle error when getting manager
 // proxy.
-TEST_F(BluetoothRoutineBaseV2Test, GetManagerProxyError) {
+TEST_F(BluetoothRoutineBaseTest, GetManagerProxyError) {
   InSequence s;
   ON_CALL(*mock_floss_controller(), GetManager())
       .WillByDefault(Return(nullptr));
@@ -163,8 +162,8 @@ TEST_F(BluetoothRoutineBaseV2Test, GetManagerProxyError) {
   EXPECT_EQ(routine_base_.GetDefaultAdapter(), nullptr);
 }
 
-// Test that the BluetoothRoutineBaseV2 can handle error when floss is disabled.
-TEST_F(BluetoothRoutineBaseV2Test, FlossDisabledError) {
+// Test that the BluetoothRoutineBase can handle error when floss is disabled.
+TEST_F(BluetoothRoutineBaseTest, FlossDisabledError) {
   InSequence s;
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<0>(/*floss_enabled=*/false));
@@ -173,9 +172,9 @@ TEST_F(BluetoothRoutineBaseV2Test, FlossDisabledError) {
   EXPECT_EQ(routine_base_.GetDefaultAdapter(), nullptr);
 }
 
-// Test that the BluetoothRoutineBaseV2 can handle error when getting floss
+// Test that the BluetoothRoutineBase can handle error when getting floss
 // enabled state.
-TEST_F(BluetoothRoutineBaseV2Test, GetFlossEnabledError) {
+TEST_F(BluetoothRoutineBaseTest, GetFlossEnabledError) {
   InSequence s;
   error_ = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
@@ -185,9 +184,9 @@ TEST_F(BluetoothRoutineBaseV2Test, GetFlossEnabledError) {
   EXPECT_EQ(routine_base_.GetDefaultAdapter(), nullptr);
 }
 
-// Test that the BluetoothRoutineBaseV2 can handle error when getting default
+// Test that the BluetoothRoutineBase can handle error when getting default
 // adapter.
-TEST_F(BluetoothRoutineBaseV2Test, GetDefaultAdapterError) {
+TEST_F(BluetoothRoutineBaseTest, GetDefaultAdapterError) {
   InSequence s;
 
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
@@ -199,9 +198,9 @@ TEST_F(BluetoothRoutineBaseV2Test, GetDefaultAdapterError) {
   EXPECT_EQ(routine_base_.GetDefaultAdapter(), nullptr);
 }
 
-// Test that the BluetoothRoutineBaseV2 can handle error when getting powered
+// Test that the BluetoothRoutineBase can handle error when getting powered
 // state of default adapter.
-TEST_F(BluetoothRoutineBaseV2Test, GetAdapterEnabledError) {
+TEST_F(BluetoothRoutineBaseTest, GetAdapterEnabledError) {
   InSequence s;
 
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
@@ -215,17 +214,17 @@ TEST_F(BluetoothRoutineBaseV2Test, GetAdapterEnabledError) {
   EXPECT_EQ(routine_base_.GetDefaultAdapter(), &mock_adapter_proxy_);
 }
 
-// Test that the BluetoothRoutineBaseV2 can handle empty adapters and return
+// Test that the BluetoothRoutineBase can handle empty adapters and return
 // null.
-TEST_F(BluetoothRoutineBaseV2Test, EmptyAdapter) {
+TEST_F(BluetoothRoutineBaseTest, EmptyAdapter) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/false);
   EXPECT_EQ(InitializeSync(), true);
   EXPECT_EQ(routine_base_.GetDefaultAdapter(), nullptr);
 }
 
-// Test that the BluetoothRoutineBaseV2 can handle null adapter and return null.
-TEST_F(BluetoothRoutineBaseV2Test, NullAdapter) {
+// Test that the BluetoothRoutineBase can handle null adapter and return null.
+TEST_F(BluetoothRoutineBaseTest, NullAdapter) {
   InSequence s;
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<0>(/*floss_enabled=*/true));
@@ -240,9 +239,9 @@ TEST_F(BluetoothRoutineBaseV2Test, NullAdapter) {
   EXPECT_EQ(routine_base_.GetDefaultAdapter(), nullptr);
 }
 
-// Test that the BluetoothRoutineBaseV2 can handle Multiple adapter and return
+// Test that the BluetoothRoutineBase can handle Multiple adapter and return
 // the default one.
-TEST_F(BluetoothRoutineBaseV2Test, MultipleAdapter) {
+TEST_F(BluetoothRoutineBaseTest, MultipleAdapter) {
   InSequence s;
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<0>(/*floss_enabled=*/true));
@@ -269,9 +268,9 @@ TEST_F(BluetoothRoutineBaseV2Test, MultipleAdapter) {
   EXPECT_EQ(routine_base_.GetDefaultAdapter(), &mock_adapter_proxy_);
 }
 
-// Test that the BluetoothRoutineBaseV2 can handle the missing manager proxy
+// Test that the BluetoothRoutineBase can handle the missing manager proxy
 // when getting adapter powered during initialization.
-TEST_F(BluetoothRoutineBaseV2Test, GetPoweredFailedMissingManagerProxy) {
+TEST_F(BluetoothRoutineBaseTest, GetPoweredFailedMissingManagerProxy) {
   InSequence s;
 
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
@@ -286,9 +285,9 @@ TEST_F(BluetoothRoutineBaseV2Test, GetPoweredFailedMissingManagerProxy) {
   EXPECT_EQ(InitializeSync(), false);
 }
 
-// Test that the BluetoothRoutineBaseV2 can pass the pre-check when the powered
+// Test that the BluetoothRoutineBase can pass the pre-check when the powered
 // is off at first.
-TEST_F(BluetoothRoutineBaseV2Test, PreCheckPassedPoweredOff) {
+TEST_F(BluetoothRoutineBaseTest, PreCheckPassedPoweredOff) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/false);
   EXPECT_EQ(InitializeSync(), true);
@@ -296,9 +295,9 @@ TEST_F(BluetoothRoutineBaseV2Test, PreCheckPassedPoweredOff) {
   EXPECT_FALSE(RunPreCheckSync().has_value());
 }
 
-// Test that the BluetoothRoutineBaseV2 can pass the pre-check when the powered
+// Test that the BluetoothRoutineBase can pass the pre-check when the powered
 // is on at first.
-TEST_F(BluetoothRoutineBaseV2Test, PreCheckPassedPoweredOn) {
+TEST_F(BluetoothRoutineBaseTest, PreCheckPassedPoweredOn) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_EQ(InitializeSync(), true);
@@ -310,9 +309,9 @@ TEST_F(BluetoothRoutineBaseV2Test, PreCheckPassedPoweredOn) {
   EXPECT_FALSE(RunPreCheckSync().has_value());
 }
 
-// Test that the BluetoothRoutineBaseV2 can handle that the adapter is missing
+// Test that the BluetoothRoutineBase can handle that the adapter is missing
 // when the powered is on at first.
-TEST_F(BluetoothRoutineBaseV2Test, PreCheckFailedNoAdapter) {
+TEST_F(BluetoothRoutineBaseTest, PreCheckFailedNoAdapter) {
   InSequence s;
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<0>(/*floss_enabled=*/true));
@@ -328,9 +327,9 @@ TEST_F(BluetoothRoutineBaseV2Test, PreCheckFailedNoAdapter) {
   EXPECT_EQ(RunPreCheckSync(), "Failed to get default adapter.");
 }
 
-// Test that the BluetoothRoutineBaseV2 can handle that the adapter is already
+// Test that the BluetoothRoutineBase can handle that the adapter is already
 // in discovery mode when running pre-check.
-TEST_F(BluetoothRoutineBaseV2Test, PreCheckFailedDiscoveringOn) {
+TEST_F(BluetoothRoutineBaseTest, PreCheckFailedDiscoveringOn) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_EQ(InitializeSync(), true);
@@ -342,9 +341,9 @@ TEST_F(BluetoothRoutineBaseV2Test, PreCheckFailedDiscoveringOn) {
   EXPECT_EQ(RunPreCheckSync(), kBluetoothRoutineFailedDiscoveryMode);
 }
 
-// Test that the BluetoothRoutineBaseV2 can handle the error when getting
+// Test that the BluetoothRoutineBase can handle the error when getting
 // adapter discovering state during pre-check.
-TEST_F(BluetoothRoutineBaseV2Test, PreCheckFailedGetDiscoveringError) {
+TEST_F(BluetoothRoutineBaseTest, PreCheckFailedGetDiscoveringError) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_EQ(InitializeSync(), true);
@@ -357,9 +356,9 @@ TEST_F(BluetoothRoutineBaseV2Test, PreCheckFailedGetDiscoveringError) {
   EXPECT_EQ(RunPreCheckSync(), "Failed to get adapter discovering state.");
 }
 
-// Test that the BluetoothRoutineBaseV2 can handle the missing manager proxy
+// Test that the BluetoothRoutineBase can handle the missing manager proxy
 // when running pre-check.
-TEST_F(BluetoothRoutineBaseV2Test, PreCheckFailedMissingManagerProxy) {
+TEST_F(BluetoothRoutineBaseTest, PreCheckFailedMissingManagerProxy) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/false);
   EXPECT_EQ(InitializeSync(), true);
@@ -368,9 +367,9 @@ TEST_F(BluetoothRoutineBaseV2Test, PreCheckFailedMissingManagerProxy) {
   EXPECT_EQ(RunPreCheckSync(), "Failed to access Bluetooth manager proxy.");
 }
 
-// Test that the BluetoothRoutineBaseV2 can ensure the adapter is powered on
+// Test that the BluetoothRoutineBase can ensure the adapter is powered on
 // when the powered is already on.
-TEST_F(BluetoothRoutineBaseV2Test, EnsureAdapterPoweredAlreadyOn) {
+TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPoweredAlreadyOn) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_EQ(InitializeSync(), true);
@@ -380,9 +379,9 @@ TEST_F(BluetoothRoutineBaseV2Test, EnsureAdapterPoweredAlreadyOn) {
   EXPECT_EQ(ChangeAdapterPoweredStateSync(/*powered=*/true), base::ok(true));
 }
 
-// Test that the BluetoothRoutineBaseV2 can ensure the adapter is powered on
+// Test that the BluetoothRoutineBase can ensure the adapter is powered on
 // when the powered is off at first.
-TEST_F(BluetoothRoutineBaseV2Test, EnsureAdapterPoweredOnSuccess) {
+TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPoweredOnSuccess) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/false);
   EXPECT_EQ(InitializeSync(), true);
@@ -406,9 +405,9 @@ TEST_F(BluetoothRoutineBaseV2Test, EnsureAdapterPoweredOnSuccess) {
   EXPECT_EQ(ChangeAdapterPoweredStateSync(/*powered=*/true), base::ok(true));
 }
 
-// Test that the BluetoothRoutineBaseV2 can handle the error when powering on
+// Test that the BluetoothRoutineBase can handle the error when powering on
 // the adapter.
-TEST_F(BluetoothRoutineBaseV2Test, EnsureAdapterPoweredOnError) {
+TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPoweredOnError) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/false);
   EXPECT_EQ(InitializeSync(), true);
@@ -419,9 +418,9 @@ TEST_F(BluetoothRoutineBaseV2Test, EnsureAdapterPoweredOnError) {
   EXPECT_EQ(ChangeAdapterPoweredStateSync(/*powered=*/true), base::ok(false));
 }
 
-// Test that the BluetoothRoutineBaseV2 can ensure the adapter is powered off
+// Test that the BluetoothRoutineBase can ensure the adapter is powered off
 // when the powered is already off.
-TEST_F(BluetoothRoutineBaseV2Test, EnsureAdapterPoweredAlreadyOff) {
+TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPoweredAlreadyOff) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/false);
   EXPECT_EQ(InitializeSync(), true);
@@ -431,9 +430,9 @@ TEST_F(BluetoothRoutineBaseV2Test, EnsureAdapterPoweredAlreadyOff) {
   EXPECT_EQ(ChangeAdapterPoweredStateSync(/*powered=*/false), base::ok(true));
 }
 
-// Test that the BluetoothRoutineBaseV2 can ensure the adapter is powered off
+// Test that the BluetoothRoutineBase can ensure the adapter is powered off
 // when the powered is on at first.
-TEST_F(BluetoothRoutineBaseV2Test, EnsureAdapterPoweredOffSuccess) {
+TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPoweredOffSuccess) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_EQ(InitializeSync(), true);
@@ -446,9 +445,9 @@ TEST_F(BluetoothRoutineBaseV2Test, EnsureAdapterPoweredOffSuccess) {
   EXPECT_EQ(ChangeAdapterPoweredStateSync(/*powered=*/false), base::ok(true));
 }
 
-// Test that the BluetoothRoutineBaseV2 can handle the error when powering off
+// Test that the BluetoothRoutineBase can handle the error when powering off
 // the adapter.
-TEST_F(BluetoothRoutineBaseV2Test, EnsureAdapterPoweredOffError) {
+TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPoweredOffError) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_EQ(InitializeSync(), true);
@@ -459,9 +458,9 @@ TEST_F(BluetoothRoutineBaseV2Test, EnsureAdapterPoweredOffError) {
   EXPECT_EQ(ChangeAdapterPoweredStateSync(/*powered=*/false), base::ok(false));
 }
 
-// Test that the BluetoothRoutineBaseV2 can handle the missing manager proxy
+// Test that the BluetoothRoutineBase can handle the missing manager proxy
 // when changing adapter powered.
-TEST_F(BluetoothRoutineBaseV2Test, ChangePoweredErrorMissingManagerProxy) {
+TEST_F(BluetoothRoutineBaseTest, ChangePoweredErrorMissingManagerProxy) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_EQ(InitializeSync(), true);
@@ -471,11 +470,11 @@ TEST_F(BluetoothRoutineBaseV2Test, ChangePoweredErrorMissingManagerProxy) {
             base::unexpected("Failed to access Bluetooth manager proxy."));
 }
 
-// Test that the BluetoothRoutineBaseV2 can reset powered state to on when
+// Test that the BluetoothRoutineBase can reset powered state to on when
 // deconstructed.
-TEST_F(BluetoothRoutineBaseV2Test, ResetPoweredOnDeconstructed) {
+TEST_F(BluetoothRoutineBaseTest, ResetPoweredOnDeconstructed) {
   InSequence s;
-  auto routine_base = std::make_unique<BluetoothRoutineBaseV2>(&mock_context_);
+  auto routine_base = std::make_unique<BluetoothRoutineBase>(&mock_context_);
 
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   base::test::TestFuture<bool> future;
@@ -488,11 +487,11 @@ TEST_F(BluetoothRoutineBaseV2Test, ResetPoweredOnDeconstructed) {
   routine_base.reset();
 }
 
-// Test that the BluetoothRoutineBaseV2 can reset powered state to off when
+// Test that the BluetoothRoutineBase can reset powered state to off when
 // deconstructed.
-TEST_F(BluetoothRoutineBaseV2Test, ResetPoweredOffDeconstructed) {
+TEST_F(BluetoothRoutineBaseTest, ResetPoweredOffDeconstructed) {
   InSequence s;
-  auto routine_base = std::make_unique<BluetoothRoutineBaseV2>(&mock_context_);
+  auto routine_base = std::make_unique<BluetoothRoutineBase>(&mock_context_);
 
   SetupInitializeSuccessCall(/*initial_powered=*/false);
   base::test::TestFuture<bool> future;
@@ -505,10 +504,10 @@ TEST_F(BluetoothRoutineBaseV2Test, ResetPoweredOffDeconstructed) {
   routine_base.reset();
 }
 
-// Test that the BluetoothRoutineBaseV2 can stop discovery when deconstructed.
-TEST_F(BluetoothRoutineBaseV2Test, SetupStopDiscoveryJob) {
+// Test that the BluetoothRoutineBase can stop discovery when deconstructed.
+TEST_F(BluetoothRoutineBaseTest, SetupStopDiscoveryJob) {
   InSequence s;
-  auto routine_base = std::make_unique<BluetoothRoutineBaseV2>(&mock_context_);
+  auto routine_base = std::make_unique<BluetoothRoutineBase>(&mock_context_);
 
   // Initialize to setup default adapter.
   SetupInitializeSuccessCall(/*initial_powered=*/false);
@@ -529,4 +528,4 @@ TEST_F(BluetoothRoutineBaseV2Test, SetupStopDiscoveryJob) {
 }
 
 }  // namespace
-}  // namespace diagnostics
+}  // namespace diagnostics::floss

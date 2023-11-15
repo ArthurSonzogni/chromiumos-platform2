@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_SCANNING_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_SCANNING_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUEZ_BLUETOOTH_SCANNING_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUEZ_BLUETOOTH_SCANNING_H_
 
 #include <map>
 #include <optional>
@@ -14,13 +14,14 @@
 #include <base/memory/weak_ptr.h>
 #include <base/values.h>
 
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_base.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluez/bluetooth_base.h"
 #include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
-#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxies.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
+class Context;
+namespace bluez {
 
 struct ScannedPeripheralDevice {
   std::string peripheral_id;
@@ -88,6 +89,7 @@ class BluetoothScanningRoutine final : public DiagnosticRoutineWithStatus,
   base::WeakPtrFactory<BluetoothScanningRoutine> weak_ptr_factory_{this};
 };
 
+}  // namespace bluez
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_SCANNING_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUEZ_BLUETOOTH_SCANNING_H_

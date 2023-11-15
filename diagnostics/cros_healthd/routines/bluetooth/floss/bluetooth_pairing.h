@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_PAIRING_V2_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_PAIRING_V2_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_FLOSS_BLUETOOTH_PAIRING_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_FLOSS_BLUETOOTH_PAIRING_H_
 
 #include <optional>
 #include <string>
@@ -14,12 +14,12 @@
 #include <brillo/variant_dictionary.h>
 
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_base_v2.h"
-#include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_base.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom-forward.h"
 
 namespace diagnostics {
-
+class Context;
+namespace floss {
 enum class BtPropertyType : uint32_t;
 enum class BondState : uint32_t;
 
@@ -27,16 +27,15 @@ enum class BondState : uint32_t;
 //
 // The Bluetooth scanning routine checks that the Bluetooth adapter can scan
 // nearby Bluetooth peripherals and collect nearby peripherals' information.
-class BluetoothPairingRoutineV2 final : public BaseRoutineControl,
-                                        public BluetoothRoutineBaseV2 {
+class BluetoothPairingRoutine final : public BaseRoutineControl,
+                                      public BluetoothRoutineBase {
  public:
-  explicit BluetoothPairingRoutineV2(
+  explicit BluetoothPairingRoutine(
       Context* context,
       const ash::cros_healthd::mojom::BluetoothPairingRoutineArgumentPtr& arg);
-  BluetoothPairingRoutineV2(const BluetoothPairingRoutineV2&) = delete;
-  BluetoothPairingRoutineV2& operator=(const BluetoothPairingRoutineV2&) =
-      delete;
-  ~BluetoothPairingRoutineV2() override;
+  BluetoothPairingRoutine(const BluetoothPairingRoutine&) = delete;
+  BluetoothPairingRoutine& operator=(const BluetoothPairingRoutine&) = delete;
+  ~BluetoothPairingRoutine() override;
 
   // BaseRoutineControl overrides:
   void OnStart() override;
@@ -148,9 +147,10 @@ class BluetoothPairingRoutineV2 final : public BaseRoutineControl,
   base::ScopedClosureRunner remove_target_peripheral_;
 
   // Must be the last class member.
-  base::WeakPtrFactory<BluetoothPairingRoutineV2> weak_ptr_factory_{this};
+  base::WeakPtrFactory<BluetoothPairingRoutine> weak_ptr_factory_{this};
 };
 
+}  // namespace floss
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_PAIRING_V2_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_FLOSS_BLUETOOTH_PAIRING_H_

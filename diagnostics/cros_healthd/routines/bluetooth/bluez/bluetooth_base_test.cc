@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_base.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluez/bluetooth_base.h"
 
 #include <memory>
 #include <string>
@@ -19,7 +19,7 @@
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxy-mocks.h"
 
-namespace diagnostics {
+namespace diagnostics::bluez {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
@@ -36,11 +36,12 @@ bool EnsureAdapterPoweredStateSync(BluetoothRoutineBase* const routine_base,
   return future.Get();
 }
 
-class BluetoothRoutineBaseTest : public testing::Test {
+class BluezBluetoothRoutineBaseTest : public testing::Test {
  protected:
-  BluetoothRoutineBaseTest() = default;
-  BluetoothRoutineBaseTest(const BluetoothRoutineBaseTest&) = delete;
-  BluetoothRoutineBaseTest& operator=(const BluetoothRoutineBaseTest&) = delete;
+  BluezBluetoothRoutineBaseTest() = default;
+  BluezBluetoothRoutineBaseTest(const BluezBluetoothRoutineBaseTest&) = delete;
+  BluezBluetoothRoutineBaseTest& operator=(
+      const BluezBluetoothRoutineBaseTest&) = delete;
 
   MockBluezController* mock_bluez_controller() {
     return mock_context_.mock_bluez_controller();
@@ -60,21 +61,21 @@ class BluetoothRoutineBaseTest : public testing::Test {
 };
 
 // Test that the BluetoothRoutineBase can get adapter successfully.
-TEST_F(BluetoothRoutineBaseTest, GetAdapterSuccess) {
+TEST_F(BluezBluetoothRoutineBaseTest, GetAdapterSuccess) {
   SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   auto routine_base = std::make_unique<BluetoothRoutineBase>(&mock_context_);
   EXPECT_EQ(routine_base->GetAdapter(), &mock_adapter_proxy_);
 }
 
 // Test that the BluetoothRoutineBase can handle empty adapters and return null.
-TEST_F(BluetoothRoutineBaseTest, EmptyAdapter) {
+TEST_F(BluezBluetoothRoutineBaseTest, EmptyAdapter) {
   SetUpGetAdaptersCall(/*adapters=*/{});
   auto routine_base = std::make_unique<BluetoothRoutineBase>(&mock_context_);
   ASSERT_EQ(routine_base->GetAdapter(), nullptr);
 }
 
 // Test that the BluetoothRoutineBase can handle null adapter and return null.
-TEST_F(BluetoothRoutineBaseTest, NullAdapter) {
+TEST_F(BluezBluetoothRoutineBaseTest, NullAdapter) {
   SetUpGetAdaptersCall(/*adapters=*/{nullptr, &mock_adapter_proxy_});
   auto routine_base = std::make_unique<BluetoothRoutineBase>(&mock_context_);
   ASSERT_EQ(routine_base->GetAdapter(), nullptr);
@@ -82,7 +83,7 @@ TEST_F(BluetoothRoutineBaseTest, NullAdapter) {
 
 // Test that the BluetoothRoutineBase can ensure the adapter is powered on
 // successfully.
-TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPowerOnSuccess) {
+TEST_F(BluezBluetoothRoutineBaseTest, EnsureAdapterPowerOnSuccess) {
   InSequence s;
   SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -95,7 +96,7 @@ TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPowerOnSuccess) {
 
 // Test that the BluetoothRoutineBase can ensure the adapter is powered off
 // successfully.
-TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPowerOffSuccess) {
+TEST_F(BluezBluetoothRoutineBaseTest, EnsureAdapterPowerOffSuccess) {
   InSequence s;
   SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
@@ -108,7 +109,7 @@ TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPowerOffSuccess) {
 
 // Test that the BluetoothRoutineBase can ensure the adapter is powered on
 // successfully when the adapter is already powered on.
-TEST_F(BluetoothRoutineBaseTest, AdapterAlreadyPoweredOn) {
+TEST_F(BluezBluetoothRoutineBaseTest, AdapterAlreadyPoweredOn) {
   InSequence s;
   SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
@@ -119,7 +120,7 @@ TEST_F(BluetoothRoutineBaseTest, AdapterAlreadyPoweredOn) {
 
 // Test that the BluetoothRoutineBase can handle null adapter when powering on
 // the adapter.
-TEST_F(BluetoothRoutineBaseTest, NoAdapterPoweredOn) {
+TEST_F(BluezBluetoothRoutineBaseTest, NoAdapterPoweredOn) {
   SetUpGetAdaptersCall(/*adapters=*/{nullptr});
 
   auto routine_base = std::make_unique<BluetoothRoutineBase>(&mock_context_);
@@ -127,7 +128,7 @@ TEST_F(BluetoothRoutineBaseTest, NoAdapterPoweredOn) {
 }
 
 // Test that the BluetoothRoutineBase can pass the pre-check.
-TEST_F(BluetoothRoutineBaseTest, PreCheckPassed) {
+TEST_F(BluezBluetoothRoutineBaseTest, PreCheckPassed) {
   InSequence s;
   SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
@@ -145,7 +146,7 @@ TEST_F(BluetoothRoutineBaseTest, PreCheckPassed) {
 
 // Test that the BluetoothRoutineBase can handle null adapter when running
 // pre-check.
-TEST_F(BluetoothRoutineBaseTest, PreCheckFailedNoAdapter) {
+TEST_F(BluezBluetoothRoutineBaseTest, PreCheckFailedNoAdapter) {
   InSequence s;
   SetUpGetAdaptersCall(/*adapters=*/{nullptr});
 
@@ -161,7 +162,7 @@ TEST_F(BluetoothRoutineBaseTest, PreCheckFailedNoAdapter) {
 
 // Test that the BluetoothRoutineBase can handle that the adapter is already in
 // discovery mode when running pre-check.
-TEST_F(BluetoothRoutineBaseTest, PreCheckFailedDiscoveringOn) {
+TEST_F(BluezBluetoothRoutineBaseTest, PreCheckFailedDiscoveringOn) {
   InSequence s;
   SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
@@ -179,7 +180,7 @@ TEST_F(BluetoothRoutineBaseTest, PreCheckFailedDiscoveringOn) {
 
 // Test that the BluetoothRoutineBase can reset powered state to on when
 // deconstructed.
-TEST_F(BluetoothRoutineBaseTest, ResetPoweredOnDeconstructed) {
+TEST_F(BluezBluetoothRoutineBaseTest, ResetPoweredOnDeconstructed) {
   InSequence s;
   SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
@@ -200,7 +201,7 @@ TEST_F(BluetoothRoutineBaseTest, ResetPoweredOnDeconstructed) {
 
 // Test that the BluetoothRoutineBase can reset powered state to off when
 // deconstructed.
-TEST_F(BluetoothRoutineBaseTest, ResetPoweredOffDeconstructed) {
+TEST_F(BluezBluetoothRoutineBaseTest, ResetPoweredOffDeconstructed) {
   InSequence s;
   SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -219,4 +220,4 @@ TEST_F(BluetoothRoutineBaseTest, ResetPoweredOffDeconstructed) {
 }
 
 }  // namespace
-}  // namespace diagnostics
+}  // namespace diagnostics::bluez

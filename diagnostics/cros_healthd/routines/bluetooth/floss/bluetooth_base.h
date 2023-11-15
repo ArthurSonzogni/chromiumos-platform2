@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_BASE_V2_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_BASE_V2_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_FLOSS_BLUETOOTH_BASE_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_FLOSS_BLUETOOTH_BASE_H_
 
 #include <optional>
 #include <string>
@@ -17,19 +17,20 @@
 #include <brillo/errors/error.h>
 #include <dbus/object_path.h>
 
-#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxies.h"
 #include "diagnostics/dbus_bindings/floss/dbus-proxies.h"
 
 namespace diagnostics {
+class Context;
+namespace floss {
 
 // This class abstracts common interfaces for all Bluetooth related routines.
-class BluetoothRoutineBaseV2 {
+class BluetoothRoutineBase {
  public:
-  explicit BluetoothRoutineBaseV2(Context* context);
-  BluetoothRoutineBaseV2(const BluetoothRoutineBaseV2&) = delete;
-  BluetoothRoutineBaseV2& operator=(const BluetoothRoutineBaseV2&) = delete;
-  ~BluetoothRoutineBaseV2();
+  explicit BluetoothRoutineBase(Context* context);
+  BluetoothRoutineBase(const BluetoothRoutineBase&) = delete;
+  BluetoothRoutineBase& operator=(const BluetoothRoutineBase&) = delete;
+  ~BluetoothRoutineBase();
 
   using ResultCallback =
       base::OnceCallback<void(const base::expected<bool, std::string>&)>;
@@ -118,9 +119,10 @@ class BluetoothRoutineBaseV2 {
   std::vector<base::OnceCallback<void(bool)>> on_adapter_enabled_cbs_;
 
   // Must be the last class member.
-  base::WeakPtrFactory<BluetoothRoutineBaseV2> weak_ptr_factory_{this};
+  base::WeakPtrFactory<BluetoothRoutineBase> weak_ptr_factory_{this};
 };
 
+}  // namespace floss
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_BASE_V2_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_FLOSS_BLUETOOTH_BASE_H_

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_pairing_v2.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_pairing.h"
 
 #include <cstdlib>
 #include <string>
@@ -28,7 +28,7 @@
 #include "diagnostics/dbus_bindings/floss/dbus-proxy-mocks.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
-namespace diagnostics {
+namespace diagnostics::floss {
 namespace {
 
 const dbus::ObjectPath kDefaultAdapterPath{
@@ -55,12 +55,12 @@ using ::testing::ReturnRef;
 using ::testing::StrictMock;
 using ::testing::WithArg;
 
-class BluetoothPairingRoutineV2Test : public testing::Test {
+class BluetoothPairingRoutineTest : public testing::Test {
  protected:
-  BluetoothPairingRoutineV2Test() = default;
-  BluetoothPairingRoutineV2Test(const BluetoothPairingRoutineV2Test&) = delete;
-  BluetoothPairingRoutineV2Test& operator=(
-      const BluetoothPairingRoutineV2Test&) = delete;
+  BluetoothPairingRoutineTest() = default;
+  BluetoothPairingRoutineTest(const BluetoothPairingRoutineTest&) = delete;
+  BluetoothPairingRoutineTest& operator=(const BluetoothPairingRoutineTest&) =
+      delete;
 
   MockFlossController* mock_floss_controller() {
     return mock_context_.mock_floss_controller();
@@ -260,7 +260,7 @@ class BluetoothPairingRoutineV2Test : public testing::Test {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   MockContext mock_context_;
-  BluetoothPairingRoutineV2 routine_{
+  BluetoothPairingRoutine routine_{
       &mock_context_,
       mojom::BluetoothPairingRoutineArgument::New(
           base::NumberToString(base::FastHash((kTestTargetDeviceAddress))))};
@@ -269,7 +269,7 @@ class BluetoothPairingRoutineV2Test : public testing::Test {
 };
 
 // Test that the Bluetooth pairing routine can pass successfully.
-TEST_F(BluetoothPairingRoutineV2Test, RoutineSuccess) {
+TEST_F(BluetoothPairingRoutineTest, RoutineSuccess) {
   SetupRoutineSuccessCall(/*initial_powered=*/false);
 
   mojom::RoutineStatePtr result = RunRoutineAndWaitForExit();
@@ -299,14 +299,14 @@ TEST_F(BluetoothPairingRoutineV2Test, RoutineSuccess) {
 
 // Test that the Bluetooth pairing routine can handle the error when the
 // initialization is failed.
-TEST_F(BluetoothPairingRoutineV2Test, RoutineErrorInitialization) {
+TEST_F(BluetoothPairingRoutineTest, RoutineErrorInitialization) {
   EXPECT_CALL(*mock_floss_controller(), GetManager()).WillOnce(Return(nullptr));
   RunRoutineAndWaitForException("Failed to initialize Bluetooth routine.");
 }
 
 // Test that the Bluetooth pairing routine can handle the error when the
 // adapter is already in discovery mode.
-TEST_F(BluetoothPairingRoutineV2Test, PreCheckErrorAlreadyDiscoveryMode) {
+TEST_F(BluetoothPairingRoutineTest, PreCheckErrorAlreadyDiscoveryMode) {
   // Check the powered state and ensure powered state is on.
   SetupEnsurePoweredOnSuccessCall(/*initial_powered=*/true);
   // The adapter is in discovery mode.
@@ -320,7 +320,7 @@ TEST_F(BluetoothPairingRoutineV2Test, PreCheckErrorAlreadyDiscoveryMode) {
 
 // Test that the Bluetooth pairing routine can handle the error when it fails
 // to power on the adapter.
-TEST_F(BluetoothPairingRoutineV2Test, PowerOnAdapterError) {
+TEST_F(BluetoothPairingRoutineTest, PowerOnAdapterError) {
   SetupRoutineSuccessCall(/*initial_powered=*/false);
 
   // Power on error.
@@ -334,7 +334,7 @@ TEST_F(BluetoothPairingRoutineV2Test, PowerOnAdapterError) {
 
 // Test that the Bluetooth pairing routine can handle the error when getting
 // bonded devices.
-TEST_F(BluetoothPairingRoutineV2Test, GetBondedDevicesError) {
+TEST_F(BluetoothPairingRoutineTest, GetBondedDevicesError) {
   SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   // Check bonded devices error.
@@ -347,7 +347,7 @@ TEST_F(BluetoothPairingRoutineV2Test, GetBondedDevicesError) {
 
 // Test that the Bluetooth pairing routine can handle the error when parsing
 // bonded devices.
-TEST_F(BluetoothPairingRoutineV2Test, ParseBondedDevicesError) {
+TEST_F(BluetoothPairingRoutineTest, ParseBondedDevicesError) {
   SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   // Check bonded devices.
@@ -360,7 +360,7 @@ TEST_F(BluetoothPairingRoutineV2Test, ParseBondedDevicesError) {
 
 // Test that the Bluetooth pairing routine can handle the error when the target
 // peripheral is already bonded.
-TEST_F(BluetoothPairingRoutineV2Test, TargetPeripheralIsBondedError) {
+TEST_F(BluetoothPairingRoutineTest, TargetPeripheralIsBondedError) {
   SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   // Check bonded devices.
@@ -371,7 +371,7 @@ TEST_F(BluetoothPairingRoutineV2Test, TargetPeripheralIsBondedError) {
 
 // Test that the Bluetooth pairing routine can handle the error when adapter
 // fails to start discovery.
-TEST_F(BluetoothPairingRoutineV2Test, StartDiscoveryError) {
+TEST_F(BluetoothPairingRoutineTest, StartDiscoveryError) {
   SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   // Check bonded devices.
@@ -387,7 +387,7 @@ TEST_F(BluetoothPairingRoutineV2Test, StartDiscoveryError) {
 
 // Test that the Bluetooth pairing routine can handle the error when parsing
 // scanned devices.
-TEST_F(BluetoothPairingRoutineV2Test, ParseScannedDevicesError) {
+TEST_F(BluetoothPairingRoutineTest, ParseScannedDevicesError) {
   SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   // Check bonded devices.
@@ -402,7 +402,7 @@ TEST_F(BluetoothPairingRoutineV2Test, ParseScannedDevicesError) {
 
 // Test that the Bluetooth pairing routine can handle the error when updating
 // the device alias.
-TEST_F(BluetoothPairingRoutineV2Test, UpdateDeviceAliasError) {
+TEST_F(BluetoothPairingRoutineTest, UpdateDeviceAliasError) {
   SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   // Set the peripheral alias error.
@@ -416,7 +416,7 @@ TEST_F(BluetoothPairingRoutineV2Test, UpdateDeviceAliasError) {
 
 // Test that the Bluetooth pairing routine can handle the error when collecting
 // UUIDs.
-TEST_F(BluetoothPairingRoutineV2Test, GetDeviceUuidsError) {
+TEST_F(BluetoothPairingRoutineTest, GetDeviceUuidsError) {
   SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   // Get error when collecting UUIDs and stop the routine.
@@ -430,7 +430,7 @@ TEST_F(BluetoothPairingRoutineV2Test, GetDeviceUuidsError) {
 
 // Test that the Bluetooth pairing routine can handle the error when collecting
 // Bluetooth class.
-TEST_F(BluetoothPairingRoutineV2Test, GetDeviceClassError) {
+TEST_F(BluetoothPairingRoutineTest, GetDeviceClassError) {
   SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   // Get error when collecting Bluetooth class and stop the routine.
@@ -444,7 +444,7 @@ TEST_F(BluetoothPairingRoutineV2Test, GetDeviceClassError) {
 
 // Test that the Bluetooth pairing routine can handle the error when collecting
 // address type.
-TEST_F(BluetoothPairingRoutineV2Test, GetDeviceAddressTypeError) {
+TEST_F(BluetoothPairingRoutineTest, GetDeviceAddressTypeError) {
   SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   // Get error when collecting address type and stop the routine.
@@ -458,7 +458,7 @@ TEST_F(BluetoothPairingRoutineV2Test, GetDeviceAddressTypeError) {
 
 // Test that the Bluetooth pairing routine can handle the unexpected connection
 // state when creating the bond of target peripheral.
-TEST_F(BluetoothPairingRoutineV2Test, UnexpectedConnectionState) {
+TEST_F(BluetoothPairingRoutineTest, UnexpectedConnectionState) {
   SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   // Start the bonding process.
@@ -492,7 +492,7 @@ TEST_F(BluetoothPairingRoutineV2Test, UnexpectedConnectionState) {
 
 // Test that the Bluetooth pairing routine can handle the error when getting
 // connection state.
-TEST_F(BluetoothPairingRoutineV2Test, GetConnectionStateError) {
+TEST_F(BluetoothPairingRoutineTest, GetConnectionStateError) {
   SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
@@ -505,7 +505,7 @@ TEST_F(BluetoothPairingRoutineV2Test, GetConnectionStateError) {
 
 // Test that the Bluetooth pairing routine can handle the error when creating
 // the bond of target peripheral.
-TEST_F(BluetoothPairingRoutineV2Test, CreateBondError) {
+TEST_F(BluetoothPairingRoutineTest, CreateBondError) {
   SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   // Start the bonding process error.
@@ -532,7 +532,7 @@ TEST_F(BluetoothPairingRoutineV2Test, CreateBondError) {
 
 // Test that the Bluetooth pairing routine can handle the unsuccessful Bluetooth
 // status when creating the bond of target peripheral.
-TEST_F(BluetoothPairingRoutineV2Test, BadBluetoothStatusWhenCreatingBond) {
+TEST_F(BluetoothPairingRoutineTest, BadBluetoothStatusWhenCreatingBond) {
   SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   // Start the bonding process.
@@ -564,7 +564,7 @@ TEST_F(BluetoothPairingRoutineV2Test, BadBluetoothStatusWhenCreatingBond) {
 
 // Test that the Bluetooth pairing routine can handle error when setting pairing
 // confirmation for SSP request.
-TEST_F(BluetoothPairingRoutineV2Test, SspRequestError) {
+TEST_F(BluetoothPairingRoutineTest, SspRequestError) {
   SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   // Start the bonding process.
@@ -598,7 +598,7 @@ TEST_F(BluetoothPairingRoutineV2Test, SspRequestError) {
 
 // Test that the Bluetooth pairing routine can handle the error when removing
 // the bond of target peripheral.
-TEST_F(BluetoothPairingRoutineV2Test, RemoveBondError) {
+TEST_F(BluetoothPairingRoutineTest, RemoveBondError) {
   SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   // Remove the bond of the target peripheral.
@@ -609,7 +609,7 @@ TEST_F(BluetoothPairingRoutineV2Test, RemoveBondError) {
 
 // Test that the Bluetooth pairing routine can handle the failure when the
 // routine fails to find target peripheral.
-TEST_F(BluetoothPairingRoutineV2Test, FailedFindTargetPeripheral) {
+TEST_F(BluetoothPairingRoutineTest, FailedFindTargetPeripheral) {
   SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   // Start discovery and check if the non-target peripheral can be ignored.
@@ -632,7 +632,7 @@ TEST_F(BluetoothPairingRoutineV2Test, FailedFindTargetPeripheral) {
 
 // Test that the Bluetooth pairing routine can handle the error when timeout
 // occurred.
-TEST_F(BluetoothPairingRoutineV2Test, RoutineTimeoutOccurred) {
+TEST_F(BluetoothPairingRoutineTest, RoutineTimeoutOccurred) {
   SetupRoutineSuccessCall(/*initial_powered=*/true);
 
   // Failed to get response of |StartDiscovery| method before timeout.
@@ -644,4 +644,4 @@ TEST_F(BluetoothPairingRoutineV2Test, RoutineTimeoutOccurred) {
 }
 
 }  // namespace
-}  // namespace diagnostics
+}  // namespace diagnostics::floss

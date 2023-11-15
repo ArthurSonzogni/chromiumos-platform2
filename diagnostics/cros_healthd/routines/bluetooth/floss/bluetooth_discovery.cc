@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_discovery_v2.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_discovery.h"
 
 #include <optional>
 #include <utility>
@@ -23,7 +23,7 @@
 #include "diagnostics/cros_healthd/system/floss_event_hub.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
-namespace diagnostics {
+namespace diagnostics::floss {
 
 namespace {
 
@@ -83,17 +83,17 @@ bool CheckDiscoveringOff(const BtmonDiscoveryResult& result) {
 
 }  // namespace
 
-BluetoothDiscoveryRoutineV2::BluetoothDiscoveryRoutineV2(
+BluetoothDiscoveryRoutine::BluetoothDiscoveryRoutine(
     Context* context, const mojom::BluetoothDiscoveryRoutineArgumentPtr& arg)
-    : BluetoothRoutineBaseV2(context) {
+    : BluetoothRoutineBase(context) {
   CHECK(context_);
 
   routine_output_ = mojom::BluetoothDiscoveryRoutineDetail::New();
 }
 
-BluetoothDiscoveryRoutineV2::~BluetoothDiscoveryRoutineV2() = default;
+BluetoothDiscoveryRoutine::~BluetoothDiscoveryRoutine() = default;
 
-void BluetoothDiscoveryRoutineV2::OnStart() {
+void BluetoothDiscoveryRoutine::OnStart() {
   CHECK(step_ == TestStep::kInitialize);
   SetRunningState();
 
@@ -101,7 +101,7 @@ void BluetoothDiscoveryRoutineV2::OnStart() {
 
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&BluetoothDiscoveryRoutineV2::OnTimeoutOccurred,
+      base::BindOnce(&BluetoothDiscoveryRoutine::OnTimeoutOccurred,
                      weak_ptr_factory_.GetWeakPtr()),
       kDiscoveryRoutineTimeout);
 
@@ -109,15 +109,14 @@ void BluetoothDiscoveryRoutineV2::OnStart() {
   event_subscriptions_.push_back(
       context_->floss_event_hub()->SubscribeAdapterDiscoveringChanged(
           base::BindRepeating(
-              &BluetoothDiscoveryRoutineV2::OnAdapterDiscoveringChanged,
+              &BluetoothDiscoveryRoutine::OnAdapterDiscoveringChanged,
               weak_ptr_factory_.GetWeakPtr())));
 
-  Initialize(
-      base::BindOnce(&BluetoothDiscoveryRoutineV2::HandleInitializeResult,
-                     weak_ptr_factory_.GetWeakPtr()));
+  Initialize(base::BindOnce(&BluetoothDiscoveryRoutine::HandleInitializeResult,
+                            weak_ptr_factory_.GetWeakPtr()));
 }
 
-void BluetoothDiscoveryRoutineV2::HandleInitializeResult(bool success) {
+void BluetoothDiscoveryRoutine::HandleInitializeResult(bool success) {
   if (!success) {
     SetResultAndStop(
         base::unexpected("Failed to initialize Bluetooth routine."));
@@ -129,7 +128,7 @@ void BluetoothDiscoveryRoutineV2::HandleInitializeResult(bool success) {
   RunNextStep();
 }
 
-void BluetoothDiscoveryRoutineV2::RunNextStep() {
+void BluetoothDiscoveryRoutine::RunNextStep() {
   step_ = static_cast<TestStep>(static_cast<int>(step_) + 1);
   UpdatePercentage();
 
@@ -139,7 +138,7 @@ void BluetoothDiscoveryRoutineV2::RunNextStep() {
       break;
     case TestStep::kPreCheckDiscovery:
       RunPreCheck(
-          base::BindOnce(&BluetoothDiscoveryRoutineV2::HandlePreCheckResponse,
+          base::BindOnce(&BluetoothDiscoveryRoutine::HandlePreCheckResponse,
                          weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kEnsurePoweredOn: {
@@ -150,7 +149,7 @@ void BluetoothDiscoveryRoutineV2::RunNextStep() {
       ChangeAdapterPoweredState(
           /*powered=*/true,
           base::BindOnce(
-              &BluetoothDiscoveryRoutineV2::HandleEnsurePoweredOnResponse,
+              &BluetoothDiscoveryRoutine::HandleEnsurePoweredOnResponse,
               weak_ptr_factory_.GetWeakPtr()));
       break;
     }
@@ -160,7 +159,7 @@ void BluetoothDiscoveryRoutineV2::RunNextStep() {
           base::BindOnce(&RemoveBtmonLog, context_->executor()));
       scoped_process_control_.AddOnTerminateCallback(
           base::ScopedClosureRunner(base::BindOnce(
-              &BluetoothDiscoveryRoutineV2::SetResultAndStop,
+              &BluetoothDiscoveryRoutine::SetResultAndStop,
               weak_ptr_factory_.GetWeakPtr(),
               base::unexpected("Btmon is terminated unexpectedly."))));
       // Although btmon will print the capturted HCI traces, it buffers the
@@ -184,7 +183,7 @@ void BluetoothDiscoveryRoutineV2::RunNextStep() {
   }
 }
 
-void BluetoothDiscoveryRoutineV2::HandlePreCheckResponse(
+void BluetoothDiscoveryRoutine::HandlePreCheckResponse(
     std::optional<std::string> error) {
   if (error.has_value()) {
     SetResultAndStop(base::unexpected(error.value()));
@@ -193,7 +192,7 @@ void BluetoothDiscoveryRoutineV2::HandlePreCheckResponse(
   RunNextStep();
 }
 
-void BluetoothDiscoveryRoutineV2::HandleEnsurePoweredOnResponse(
+void BluetoothDiscoveryRoutine::HandleEnsurePoweredOnResponse(
     const base::expected<bool, std::string>& result) {
   if (!result.has_value() || !result.value()) {
     SetResultAndStop(
@@ -203,7 +202,7 @@ void BluetoothDiscoveryRoutineV2::HandleEnsurePoweredOnResponse(
   RunNextStep();
 }
 
-void BluetoothDiscoveryRoutineV2::UpdateAdapterDiscoveryMode() {
+void BluetoothDiscoveryRoutine::UpdateAdapterDiscoveryMode() {
   auto adapter = GetDefaultAdapter();
   if (!adapter) {
     SetResultAndStop(base::unexpected("Failed to get default adapter."));
@@ -215,13 +214,13 @@ void BluetoothDiscoveryRoutineV2::UpdateAdapterDiscoveryMode() {
     SetupStopDiscoveryJob();
     adapter->StartDiscoveryAsync(
         base::DoNothing(),
-        base::BindOnce(&BluetoothDiscoveryRoutineV2::HandleUpdateDiscoveryError,
+        base::BindOnce(&BluetoothDiscoveryRoutine::HandleUpdateDiscoveryError,
                        weak_ptr_factory_.GetWeakPtr()));
   } else if (step_ == TestStep::kCheckDiscoveringStatusOff) {
     adapter_stop_discovery_.ReplaceClosure(base::DoNothing());
     adapter->CancelDiscoveryAsync(
         base::DoNothing(),
-        base::BindOnce(&BluetoothDiscoveryRoutineV2::HandleUpdateDiscoveryError,
+        base::BindOnce(&BluetoothDiscoveryRoutine::HandleUpdateDiscoveryError,
                        weak_ptr_factory_.GetWeakPtr()));
   } else {
     SetResultAndStop(base::unexpected(kBluetoothRoutineUnexpectedFlow));
@@ -229,20 +228,20 @@ void BluetoothDiscoveryRoutineV2::UpdateAdapterDiscoveryMode() {
   }
 }
 
-void BluetoothDiscoveryRoutineV2::HandleUpdateDiscoveryError(
+void BluetoothDiscoveryRoutine::HandleUpdateDiscoveryError(
     brillo::Error* error) {
   SetResultAndStop(base::ok(false));
 }
 
-void BluetoothDiscoveryRoutineV2::ReadBtmonLog(int retry_count) {
+void BluetoothDiscoveryRoutine::ReadBtmonLog(int retry_count) {
   if (step_ == TestStep::kSetupBtmon) {
     context_->executor()->ReadBtmonLog(
-        base::BindOnce(&BluetoothDiscoveryRoutineV2::EnsureBtmonReady,
+        base::BindOnce(&BluetoothDiscoveryRoutine::EnsureBtmonReady,
                        weak_ptr_factory_.GetWeakPtr(), retry_count));
   } else if (step_ == TestStep::kCheckDiscoveringStatusOff ||
              step_ == TestStep::kCheckDiscoveringStatusOn) {
     context_->executor()->ReadBtmonLog(
-        base::BindOnce(&BluetoothDiscoveryRoutineV2::CheckBtmonHciTraces,
+        base::BindOnce(&BluetoothDiscoveryRoutine::CheckBtmonHciTraces,
                        weak_ptr_factory_.GetWeakPtr()));
   } else {
     SetResultAndStop(base::unexpected(kBluetoothRoutineUnexpectedFlow));
@@ -250,7 +249,7 @@ void BluetoothDiscoveryRoutineV2::ReadBtmonLog(int retry_count) {
   }
 }
 
-void BluetoothDiscoveryRoutineV2::EnsureBtmonReady(
+void BluetoothDiscoveryRoutine::EnsureBtmonReady(
     int retry_count,
     ash::cros_healthd::mojom::ExecutedProcessResultPtr result) {
   if (!HandleReadBtmonLogResponse(result)) {
@@ -274,12 +273,12 @@ void BluetoothDiscoveryRoutineV2::EnsureBtmonReady(
 
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&BluetoothDiscoveryRoutineV2::ReadBtmonLog,
+      base::BindOnce(&BluetoothDiscoveryRoutine::ReadBtmonLog,
                      weak_ptr_factory_.GetWeakPtr(), retry_count + 1),
       kBluetoothDiscoveryRoutineBtmonWritingTime);
 }
 
-void BluetoothDiscoveryRoutineV2::OnAdapterDiscoveringChanged(
+void BluetoothDiscoveryRoutine::OnAdapterDiscoveringChanged(
     const dbus::ObjectPath& adapter_path, bool discovering) {
   if ((step_ != TestStep::kCheckDiscoveringStatusOn &&
        step_ != TestStep::kCheckDiscoveringStatusOff) ||
@@ -289,12 +288,12 @@ void BluetoothDiscoveryRoutineV2::OnAdapterDiscoveringChanged(
   current_dbus_discovering_ = discovering;
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&BluetoothDiscoveryRoutineV2::ReadBtmonLog,
+      base::BindOnce(&BluetoothDiscoveryRoutine::ReadBtmonLog,
                      weak_ptr_factory_.GetWeakPtr(), /*retry_num=*/0),
       kBluetoothDiscoveryRoutineBtmonWritingTime);
 }
 
-void BluetoothDiscoveryRoutineV2::CheckBtmonHciTraces(
+void BluetoothDiscoveryRoutine::CheckBtmonHciTraces(
     mojom::ExecutedProcessResultPtr result) {
   if (!HandleReadBtmonLogResponse(result)) {
     SetResultAndStop(base::unexpected("Failed to check btmon log file."));
@@ -384,7 +383,7 @@ void BluetoothDiscoveryRoutineV2::CheckBtmonHciTraces(
   }
 }
 
-void BluetoothDiscoveryRoutineV2::ValidateAdapterDiscovering(
+void BluetoothDiscoveryRoutine::ValidateAdapterDiscovering(
     bool hci_discovering) {
   bool is_passed;
   auto discovering_state = mojom::BluetoothDiscoveringDetail::New();
@@ -412,7 +411,7 @@ void BluetoothDiscoveryRoutineV2::ValidateAdapterDiscovering(
   RunNextStep();
 }
 
-void BluetoothDiscoveryRoutineV2::UpdatePercentage() {
+void BluetoothDiscoveryRoutine::UpdatePercentage() {
   double new_percentage = static_cast<int32_t>(step_) * 100.0 /
                           static_cast<int32_t>(TestStep::kComplete);
   // Update the percentage.
@@ -420,12 +419,12 @@ void BluetoothDiscoveryRoutineV2::UpdatePercentage() {
     SetPercentage(new_percentage);
 }
 
-void BluetoothDiscoveryRoutineV2::OnTimeoutOccurred() {
+void BluetoothDiscoveryRoutine::OnTimeoutOccurred() {
   SetResultAndStop(
       base::unexpected("Bluetooth routine failed to complete before timeout."));
 }
 
-void BluetoothDiscoveryRoutineV2::SetResultAndStop(
+void BluetoothDiscoveryRoutine::SetResultAndStop(
     const base::expected<bool, std::string>& result) {
   // Cancel all pending callbacks.
   weak_ptr_factory_.InvalidateWeakPtrs();
@@ -442,4 +441,4 @@ void BluetoothDiscoveryRoutineV2::SetResultAndStop(
                                        std::move(routine_output_)));
 }
 
-}  // namespace diagnostics
+}  // namespace diagnostics::floss

@@ -19,6 +19,8 @@
 
 namespace diagnostics {
 
+namespace floss {
+
 // Supported Bluetooth property types, which is copied and modified from
 // |BtPropertyType| enum in the Android codebase:
 // packages/modules/Bluetooth/system/gd/rust/topshim/src/btif.rs
@@ -62,13 +64,15 @@ enum class BondState : uint32_t {
   kBonded = 2,
 };
 
+}  // namespace floss
+
 // Adapter events.
 using OnFlossAdapterAddedCallback = base::RepeatingCallback<void(
     org::chromium::bluetooth::BluetoothProxyInterface* adapter)>;
 using OnFlossAdapterRemovedCallback =
     base::RepeatingCallback<void(const dbus::ObjectPath& adapter_path)>;
 using OnFlossAdapterPropertyChangedCallback = base::RepeatingCallback<void(
-    const dbus::ObjectPath& adapter_path, BtPropertyType property)>;
+    const dbus::ObjectPath& adapter_path, floss::BtPropertyType property)>;
 using OnFlossAdapterPoweredChangedCallback =
     base::RepeatingCallback<void(int32_t hci_interface, bool powered)>;
 using OnFlossAdapterDiscoveringChangedCallback = base::RepeatingCallback<void(
@@ -79,11 +83,13 @@ using OnFlossDeviceAddedCallback =
 using OnFlossDeviceRemovedCallback =
     base::RepeatingCallback<void(const brillo::VariantDictionary& device)>;
 using OnFlossDevicePropertyChangedCallback = base::RepeatingCallback<void(
-    const brillo::VariantDictionary& device, BtPropertyType property)>;
+    const brillo::VariantDictionary& device, floss::BtPropertyType property)>;
 using OnFlossDeviceConnectedChangedCallback = base::RepeatingCallback<void(
     const brillo::VariantDictionary& device, bool connected)>;
-using OnFlossDeviceBondChangedCallback = base::RepeatingCallback<void(
-    uint32_t bt_status, const std::string& address, BondState bond_state)>;
+using OnFlossDeviceBondChangedCallback =
+    base::RepeatingCallback<void(uint32_t bt_status,
+                                 const std::string& address,
+                                 floss::BondState bond_state)>;
 using OnFlossDeviceSspRequestCallback =
     base::RepeatingCallback<void(const brillo::VariantDictionary& device)>;
 // Other floss events.
@@ -197,7 +203,7 @@ class FlossEventHub {
   base::RepeatingCallbackList<void(const dbus::ObjectPath& adapter_path)>
       adapter_removed_observers_;
   base::RepeatingCallbackList<void(const dbus::ObjectPath& adapter_path,
-                                   BtPropertyType property)>
+                                   floss::BtPropertyType property)>
       adapter_property_changed_observers_;
   base::RepeatingCallbackList<void(int32_t, bool)>
       adapter_powered_changed_observers_;
@@ -208,13 +214,14 @@ class FlossEventHub {
   base::RepeatingCallbackList<void(const brillo::VariantDictionary& device)>
       device_removed_observers_;
   base::RepeatingCallbackList<void(const brillo::VariantDictionary& device,
-                                   BtPropertyType property)>
+                                   floss::BtPropertyType property)>
       device_property_changed_observers_;
   base::RepeatingCallbackList<void(const brillo::VariantDictionary& device,
                                    bool connected)>
       device_connected_changed_observers_;
-  base::RepeatingCallbackList<void(
-      uint32_t bt_status, const std::string& address, BondState bond_state)>
+  base::RepeatingCallbackList<void(uint32_t bt_status,
+                                   const std::string& address,
+                                   floss::BondState bond_state)>
       device_bond_changed_observers_;
   base::RepeatingCallbackList<void(const brillo::VariantDictionary& device)>
       device_ssp_request_observers_;

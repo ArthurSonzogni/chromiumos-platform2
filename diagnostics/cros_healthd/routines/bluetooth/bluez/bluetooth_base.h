@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_BASE_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_BASE_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUEZ_BLUETOOTH_BASE_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUEZ_BLUETOOTH_BASE_H_
 
 #include <string>
 #include <vector>
@@ -11,11 +11,12 @@
 #include <base/callback_list.h>
 #include <base/time/tick_clock.h>
 
-#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxies.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom-forward.h"
 
 namespace diagnostics {
+class Context;
+namespace bluez {
 
 // This class abstracts common interfaces for all Bluetooth related routines.
 class BluetoothRoutineBase {
@@ -56,6 +57,7 @@ class BluetoothRoutineBase {
   std::vector<org::bluez::Adapter1ProxyInterface*> adapters_;
 };
 
+}  // namespace bluez
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_BASE_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUEZ_BLUETOOTH_BASE_H_

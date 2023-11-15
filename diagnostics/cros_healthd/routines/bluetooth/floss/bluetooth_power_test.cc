@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_power.h"
+
 #include <cstdlib>
 #include <memory>
 #include <utility>
@@ -15,7 +17,6 @@
 
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_power_v2.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
 #include "diagnostics/cros_healthd/system/fake_floss_event_hub.h"
@@ -25,7 +26,7 @@
 #include "diagnostics/dbus_bindings/floss/dbus-proxy-mocks.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
-namespace diagnostics {
+namespace diagnostics::floss {
 namespace {
 
 const dbus::ObjectPath kDefaultAdapterPath{
@@ -41,11 +42,11 @@ using ::testing::ReturnRef;
 using ::testing::StrictMock;
 using ::testing::WithArg;
 
-class BluetoothPowerRoutineV2Test : public testing::Test {
+class BluetoothPowerRoutineTest : public testing::Test {
  protected:
-  BluetoothPowerRoutineV2Test() = default;
-  BluetoothPowerRoutineV2Test(const BluetoothPowerRoutineV2Test&) = delete;
-  BluetoothPowerRoutineV2Test& operator=(const BluetoothPowerRoutineV2Test&) =
+  BluetoothPowerRoutineTest() = default;
+  BluetoothPowerRoutineTest(const BluetoothPowerRoutineTest&) = delete;
+  BluetoothPowerRoutineTest& operator=(const BluetoothPowerRoutineTest&) =
       delete;
 
   MockFlossController* mock_floss_controller() {
@@ -149,15 +150,15 @@ class BluetoothPowerRoutineV2Test : public testing::Test {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   MockContext mock_context_;
-  BluetoothPowerRoutineV2 routine_{&mock_context_,
-                                   mojom::BluetoothPowerRoutineArgument::New()};
+  BluetoothPowerRoutine routine_{&mock_context_,
+                                 mojom::BluetoothPowerRoutineArgument::New()};
   StrictMock<org::chromium::bluetooth::BluetoothProxyMock> mock_adapter_proxy_;
   StrictMock<org::chromium::bluetooth::ManagerProxyMock> mock_manager_proxy_;
 };
 
 // Test that the Bluetooth power routine can pass successfully when the adapter
 // powered is on at first.
-TEST_F(BluetoothPowerRoutineV2Test, RoutineSuccessWhenPoweredOn) {
+TEST_F(BluetoothPowerRoutineTest, RoutineSuccessWhenPoweredOn) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
@@ -208,7 +209,7 @@ TEST_F(BluetoothPowerRoutineV2Test, RoutineSuccessWhenPoweredOn) {
 
 // Test that the Bluetooth power routine can pass successfully when the adapter
 // powered is off at first.
-TEST_F(BluetoothPowerRoutineV2Test, RoutineSuccessWhenPoweredOff) {
+TEST_F(BluetoothPowerRoutineTest, RoutineSuccessWhenPoweredOff) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/false);
   SetupHciConfigCall(/*hci_result_powered=*/false);
@@ -248,7 +249,7 @@ TEST_F(BluetoothPowerRoutineV2Test, RoutineSuccessWhenPoweredOff) {
 
 // Test that the Bluetooth power routine can handle the error when the
 // initialization is failed.
-TEST_F(BluetoothPowerRoutineV2Test, RoutineErrorInitialization) {
+TEST_F(BluetoothPowerRoutineTest, RoutineErrorInitialization) {
   InSequence s;
   EXPECT_CALL(*mock_floss_controller(), GetManager()).WillOnce(Return(nullptr));
   RunRoutineAndWaitForException("Failed to initialize Bluetooth routine");
@@ -256,7 +257,7 @@ TEST_F(BluetoothPowerRoutineV2Test, RoutineErrorInitialization) {
 
 // Test that the Bluetooth power routine can handle the error when the adapter
 // is already in discovery mode.
-TEST_F(BluetoothPowerRoutineV2Test, PreCheckErrorAlreadyDiscoveryMode) {
+TEST_F(BluetoothPowerRoutineTest, PreCheckErrorAlreadyDiscoveryMode) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
 
@@ -272,7 +273,7 @@ TEST_F(BluetoothPowerRoutineV2Test, PreCheckErrorAlreadyDiscoveryMode) {
 
 // Test that the Bluetooth power routine can handle the error when the adapter
 // failed to get discovering state.
-TEST_F(BluetoothPowerRoutineV2Test, PreCheckErrorGetDiscoveringState) {
+TEST_F(BluetoothPowerRoutineTest, PreCheckErrorGetDiscoveringState) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
 
@@ -289,7 +290,7 @@ TEST_F(BluetoothPowerRoutineV2Test, PreCheckErrorGetDiscoveringState) {
 
 // Test that the Bluetooth power routine can handle the error when changing
 // powered state.
-TEST_F(BluetoothPowerRoutineV2Test, FailedChangePoweredState) {
+TEST_F(BluetoothPowerRoutineTest, FailedChangePoweredState) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/false);
   SetupHciConfigCall(/*hci_result_powered=*/false);
@@ -319,7 +320,7 @@ TEST_F(BluetoothPowerRoutineV2Test, FailedChangePoweredState) {
 
 // Test that the Bluetooth power routine can handle unexpected powered status in
 // HCI level.
-TEST_F(BluetoothPowerRoutineV2Test, FailedVerifyPoweredHci) {
+TEST_F(BluetoothPowerRoutineTest, FailedVerifyPoweredHci) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
@@ -355,7 +356,7 @@ TEST_F(BluetoothPowerRoutineV2Test, FailedVerifyPoweredHci) {
 
 // Test that the Bluetooth power routine can handle unexpected powered status in
 // D-Bus level.
-TEST_F(BluetoothPowerRoutineV2Test, FailedVerifyPoweredDbus) {
+TEST_F(BluetoothPowerRoutineTest, FailedVerifyPoweredDbus) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
@@ -406,7 +407,7 @@ TEST_F(BluetoothPowerRoutineV2Test, FailedVerifyPoweredDbus) {
 
 // Test that the Bluetooth power routine can handle the error when it gets
 // error by calling GetHciDeviceConfig from executor.
-TEST_F(BluetoothPowerRoutineV2Test, HciconfigError) {
+TEST_F(BluetoothPowerRoutineTest, HciconfigError) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/false);
 
@@ -426,7 +427,7 @@ TEST_F(BluetoothPowerRoutineV2Test, HciconfigError) {
 
 // Test that the Bluetooth power routine can handle the error when it failed to
 // parse the powered status from the output of calling GetHciDeviceConfig.
-TEST_F(BluetoothPowerRoutineV2Test, HciconfigUnexpectedOutput) {
+TEST_F(BluetoothPowerRoutineTest, HciconfigUnexpectedOutput) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/false);
 
@@ -446,7 +447,7 @@ TEST_F(BluetoothPowerRoutineV2Test, HciconfigUnexpectedOutput) {
 
 // Test that the Bluetooth power routine can handle the error when timeout
 // occurred.
-TEST_F(BluetoothPowerRoutineV2Test, RoutineTimeoutOccurred) {
+TEST_F(BluetoothPowerRoutineTest, RoutineTimeoutOccurred) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
@@ -466,4 +467,4 @@ TEST_F(BluetoothPowerRoutineV2Test, RoutineTimeoutOccurred) {
 }
 
 }  // namespace
-}  // namespace diagnostics
+}  // namespace diagnostics::floss

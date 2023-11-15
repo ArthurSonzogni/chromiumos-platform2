@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_scanning_v2.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_scanning.h"
 
 #include <algorithm>
 #include <memory>
@@ -27,7 +27,7 @@
 #include "diagnostics/cros_healthd/utils/floss_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
-namespace diagnostics {
+namespace diagnostics::floss {
 
 namespace {
 
@@ -54,29 +54,28 @@ bool IsNearbyPeripheral(const std::vector<int16_t>& rssi_history) {
 
 }  // namespace
 
-base::expected<std::unique_ptr<BluetoothScanningRoutineV2>, std::string>
-BluetoothScanningRoutineV2::Create(
+base::expected<std::unique_ptr<BluetoothScanningRoutine>, std::string>
+BluetoothScanningRoutine::Create(
     Context* context, const mojom::BluetoothScanningRoutineArgumentPtr& arg) {
   CHECK(!arg.is_null());
   if (arg->exec_duration && !arg->exec_duration->is_positive()) {
     return base::unexpected(
         "Execution duration should be strictly greater than zero");
   }
-  return base::ok(
-      base::WrapUnique(new BluetoothScanningRoutineV2(context, arg)));
+  return base::ok(base::WrapUnique(new BluetoothScanningRoutine(context, arg)));
 }
 
-BluetoothScanningRoutineV2::BluetoothScanningRoutineV2(
+BluetoothScanningRoutine::BluetoothScanningRoutine(
     Context* context, const mojom::BluetoothScanningRoutineArgumentPtr& arg)
-    : BluetoothRoutineBaseV2(context),
+    : BluetoothRoutineBase(context),
       exec_duration_(
           arg->exec_duration.value_or(kScanningRoutineDefaultRuntime)) {
   CHECK(context_);
 }
 
-BluetoothScanningRoutineV2::~BluetoothScanningRoutineV2() = default;
+BluetoothScanningRoutine::~BluetoothScanningRoutine() = default;
 
-void BluetoothScanningRoutineV2::OnStart() {
+void BluetoothScanningRoutine::OnStart() {
   CHECK(step_ == TestStep::kInitialize);
   SetRunningState();
 
@@ -84,25 +83,25 @@ void BluetoothScanningRoutineV2::OnStart() {
 
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&BluetoothScanningRoutineV2::OnTimeoutOccurred,
+      base::BindOnce(&BluetoothScanningRoutine::OnTimeoutOccurred,
                      weak_ptr_factory_.GetWeakPtr()),
       exec_duration_ + kScanningRoutineTimeout);
 
   event_subscriptions_.push_back(
       context_->floss_event_hub()->SubscribeDeviceAdded(
-          base::BindRepeating(&BluetoothScanningRoutineV2::OnDeviceAdded,
+          base::BindRepeating(&BluetoothScanningRoutine::OnDeviceAdded,
                               weak_ptr_factory_.GetWeakPtr())));
   event_subscriptions_.push_back(
       context_->floss_event_hub()->SubscribeDevicePropertyChanged(
           base::BindRepeating(
-              &BluetoothScanningRoutineV2::OnDevicePropertyChanged,
+              &BluetoothScanningRoutine::OnDevicePropertyChanged,
               weak_ptr_factory_.GetWeakPtr())));
 
-  Initialize(base::BindOnce(&BluetoothScanningRoutineV2::HandleInitializeResult,
+  Initialize(base::BindOnce(&BluetoothScanningRoutine::HandleInitializeResult,
                             weak_ptr_factory_.GetWeakPtr()));
 }
 
-void BluetoothScanningRoutineV2::HandleInitializeResult(bool success) {
+void BluetoothScanningRoutine::HandleInitializeResult(bool success) {
   if (!success) {
     SetResultAndStop(
         base::unexpected("Failed to initialize Bluetooth routine."));
@@ -111,7 +110,7 @@ void BluetoothScanningRoutineV2::HandleInitializeResult(bool success) {
   RunNextStep();
 }
 
-void BluetoothScanningRoutineV2::RunNextStep() {
+void BluetoothScanningRoutine::RunNextStep() {
   step_ = static_cast<TestStep>(static_cast<int32_t>(step_) + 1);
   UpdatePercentage();
 
@@ -121,7 +120,7 @@ void BluetoothScanningRoutineV2::RunNextStep() {
       break;
     case TestStep::kPreCheckDiscovery:
       RunPreCheck(
-          base::BindOnce(&BluetoothScanningRoutineV2::HandlePreCheckResponse,
+          base::BindOnce(&BluetoothScanningRoutine::HandlePreCheckResponse,
                          weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kEnsurePoweredOn:
@@ -132,7 +131,7 @@ void BluetoothScanningRoutineV2::RunNextStep() {
       ChangeAdapterPoweredState(
           /*powered=*/true,
           base::BindOnce(
-              &BluetoothScanningRoutineV2::HandleEnsurePoweredOnResponse,
+              &BluetoothScanningRoutine::HandleEnsurePoweredOnResponse,
               weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kStartDiscovery:
@@ -141,7 +140,7 @@ void BluetoothScanningRoutineV2::RunNextStep() {
     case TestStep::kScanning:
       base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
           FROM_HERE,
-          base::BindOnce(&BluetoothScanningRoutineV2::OnScanningFinished,
+          base::BindOnce(&BluetoothScanningRoutine::OnScanningFinished,
                          weak_ptr_factory_.GetWeakPtr()),
           exec_duration_);
       break;
@@ -154,7 +153,7 @@ void BluetoothScanningRoutineV2::RunNextStep() {
   }
 }
 
-void BluetoothScanningRoutineV2::HandlePreCheckResponse(
+void BluetoothScanningRoutine::HandlePreCheckResponse(
     std::optional<std::string> error) {
   if (error.has_value()) {
     SetResultAndStop(base::unexpected(error.value()));
@@ -163,7 +162,7 @@ void BluetoothScanningRoutineV2::HandlePreCheckResponse(
   RunNextStep();
 }
 
-void BluetoothScanningRoutineV2::HandleEnsurePoweredOnResponse(
+void BluetoothScanningRoutine::HandleEnsurePoweredOnResponse(
     const base::expected<bool, std::string>& result) {
   if (!result.has_value() || !result.value()) {
     SetResultAndStop(
@@ -173,7 +172,7 @@ void BluetoothScanningRoutineV2::HandleEnsurePoweredOnResponse(
   RunNextStep();
 }
 
-void BluetoothScanningRoutineV2::UpdateAdapterDiscoveryMode() {
+void BluetoothScanningRoutine::UpdateAdapterDiscoveryMode() {
   auto adapter = GetDefaultAdapter();
   if (!adapter) {
     SetResultAndStop(base::unexpected("Failed to get default adapter."));
@@ -181,7 +180,7 @@ void BluetoothScanningRoutineV2::UpdateAdapterDiscoveryMode() {
   }
 
   auto [on_success, on_error] = SplitDbusCallback(
-      base::BindOnce(&BluetoothScanningRoutineV2::HandleUpdateDiscoveryResponse,
+      base::BindOnce(&BluetoothScanningRoutine::HandleUpdateDiscoveryResponse,
                      weak_ptr_factory_.GetWeakPtr()));
   if (step_ == TestStep::kStartDiscovery) {
     SetupStopDiscoveryJob();
@@ -195,7 +194,7 @@ void BluetoothScanningRoutineV2::UpdateAdapterDiscoveryMode() {
   }
 }
 
-void BluetoothScanningRoutineV2::HandleUpdateDiscoveryResponse(
+void BluetoothScanningRoutine::HandleUpdateDiscoveryResponse(
     brillo::Error* error, bool is_success) {
   if (error || !is_success) {
     SetResultAndStop(base::unexpected("Failed to update discovery mode."));
@@ -204,7 +203,7 @@ void BluetoothScanningRoutineV2::HandleUpdateDiscoveryResponse(
   RunNextStep();
 }
 
-void BluetoothScanningRoutineV2::OnDeviceAdded(
+void BluetoothScanningRoutine::OnDeviceAdded(
     const brillo::VariantDictionary& device) {
   if (step_ != TestStep::kScanning) {
     return;
@@ -212,7 +211,7 @@ void BluetoothScanningRoutineV2::OnDeviceAdded(
   StoreScannedPeripheral(device);
 }
 
-void BluetoothScanningRoutineV2::OnDevicePropertyChanged(
+void BluetoothScanningRoutine::OnDevicePropertyChanged(
     const brillo::VariantDictionary& device, BtPropertyType property) {
   // TODO(b/300239430): Add the |property == BtPropertyType::kRemoteRssi|
   // condition after RSSI changed event is supported.
@@ -222,7 +221,7 @@ void BluetoothScanningRoutineV2::OnDevicePropertyChanged(
   StoreScannedPeripheral(device);
 }
 
-void BluetoothScanningRoutineV2::StoreScannedPeripheral(
+void BluetoothScanningRoutine::StoreScannedPeripheral(
     const brillo::VariantDictionary& device) {
   auto devie_info = floss_utils::ParseDeviceInfo(device);
   if (!devie_info.has_value()) {
@@ -237,13 +236,13 @@ void BluetoothScanningRoutineV2::StoreScannedPeripheral(
   if (!polling_rssi_callbacks_.contains(devie_info->address)) {
     // Start polling for the new found peripheral.
     polling_rssi_callbacks_[devie_info->address] =
-        base::BindRepeating(&BluetoothScanningRoutineV2::GetPeripheralRssi,
+        base::BindRepeating(&BluetoothScanningRoutine::GetPeripheralRssi,
                             weak_ptr_factory_.GetWeakPtr(), device);
     polling_rssi_callbacks_[devie_info->address].Run();
   }
 }
 
-void BluetoothScanningRoutineV2::GetPeripheralRssi(
+void BluetoothScanningRoutine::GetPeripheralRssi(
     const brillo::VariantDictionary& device) {
   auto adapter = GetDefaultAdapter();
   if (!adapter) {
@@ -254,15 +253,15 @@ void BluetoothScanningRoutineV2::GetPeripheralRssi(
   auto devie_info = floss_utils::ParseDeviceInfo(device);
   CHECK(devie_info.has_value());
   auto [on_success, on_error] = SplitDbusCallback(
-      base::BindOnce(&BluetoothScanningRoutineV2::HandleRssiResponse,
+      base::BindOnce(&BluetoothScanningRoutine::HandleRssiResponse,
                      weak_ptr_factory_.GetWeakPtr(), devie_info->address));
   adapter->GetRemoteRSSIAsync(device, std::move(on_success),
                               std::move(on_error));
 }
 
-void BluetoothScanningRoutineV2::HandleRssiResponse(const std::string& address,
-                                                    brillo::Error* error,
-                                                    int16_t rssi) {
+void BluetoothScanningRoutine::HandleRssiResponse(const std::string& address,
+                                                  brillo::Error* error,
+                                                  int16_t rssi) {
   if (error) {
     SetResultAndStop(base::unexpected("Failed to get device RSSI"));
     return;
@@ -281,7 +280,7 @@ void BluetoothScanningRoutineV2::HandleRssiResponse(const std::string& address,
   scanned_peripherals_[address].rssi_history.push_back(rssi);
 }
 
-void BluetoothScanningRoutineV2::UpdatePercentage() {
+void BluetoothScanningRoutine::UpdatePercentage() {
   double step_percent = static_cast<int32_t>(step_) * 100.0 /
                         static_cast<int32_t>(TestStep::kComplete);
   double running_time_ratio =
@@ -290,7 +289,7 @@ void BluetoothScanningRoutineV2::UpdatePercentage() {
       step_percent + (100.0 - step_percent) * std::min(1.0, running_time_ratio);
   if (new_percentage < 99) {
     percentage_update_task_.Reset(
-        base::BindOnce(&BluetoothScanningRoutineV2::UpdatePercentage,
+        base::BindOnce(&BluetoothScanningRoutine::UpdatePercentage,
                        weak_ptr_factory_.GetWeakPtr()));
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE, percentage_update_task_.callback(),
@@ -302,7 +301,7 @@ void BluetoothScanningRoutineV2::UpdatePercentage() {
     SetPercentage(new_percentage);
 }
 
-void BluetoothScanningRoutineV2::OnScanningFinished() {
+void BluetoothScanningRoutine::OnScanningFinished() {
   if (step_ != TestStep::kScanning) {
     SetResultAndStop(base::unexpected(kBluetoothRoutineUnexpectedFlow));
     return;
@@ -313,12 +312,12 @@ void BluetoothScanningRoutineV2::OnScanningFinished() {
   RunNextStep();
 }
 
-void BluetoothScanningRoutineV2::OnTimeoutOccurred() {
+void BluetoothScanningRoutine::OnTimeoutOccurred() {
   SetResultAndStop(
       base::unexpected("Bluetooth routine failed to complete before timeout."));
 }
 
-void BluetoothScanningRoutineV2::SetResultAndStop(
+void BluetoothScanningRoutine::SetResultAndStop(
     const base::expected<bool, std::string>& result) {
   // Cancel all pending callbacks.
   weak_ptr_factory_.InvalidateWeakPtrs();
@@ -345,4 +344,4 @@ void BluetoothScanningRoutineV2::SetResultAndStop(
                                        std::move(routine_output)));
 }
 
-}  // namespace diagnostics
+}  // namespace diagnostics::floss

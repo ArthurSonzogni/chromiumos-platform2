@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_base_v2.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_base.h"
 
 #include <utility>
 
@@ -13,13 +13,14 @@
 #include <dbus/object_path.h>
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/floss_controller.h"
 #include "diagnostics/cros_healthd/system/floss_event_hub.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
 #include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxies.h"
 #include "diagnostics/dbus_bindings/floss/dbus-proxies.h"
 
-namespace diagnostics {
+namespace diagnostics::floss {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
@@ -55,14 +56,14 @@ void CancelAdapterDiscovery(FlossController* floss_controller,
 
 }  // namespace
 
-BluetoothRoutineBaseV2::BluetoothRoutineBaseV2(Context* context)
+BluetoothRoutineBase::BluetoothRoutineBase(Context* context)
     : context_(context) {
   CHECK(context_);
 }
 
-BluetoothRoutineBaseV2::~BluetoothRoutineBaseV2() = default;
+BluetoothRoutineBase::~BluetoothRoutineBase() = default;
 
-void BluetoothRoutineBaseV2::Initialize(
+void BluetoothRoutineBase::Initialize(
     base::OnceCallback<void(bool)> on_finish) {
   manager_ = context_->floss_controller()->GetManager();
   if (!manager_) {
@@ -73,16 +74,16 @@ void BluetoothRoutineBaseV2::Initialize(
 
   event_subscriptions_.push_back(
       context_->floss_event_hub()->SubscribeManagerRemoved(
-          base::BindRepeating(&BluetoothRoutineBaseV2::OnManagerRemoved,
+          base::BindRepeating(&BluetoothRoutineBase::OnManagerRemoved,
                               weak_ptr_factory_.GetWeakPtr())));
 
   auto [on_success, on_error] = SplitDbusCallback(
-      base::BindOnce(&BluetoothRoutineBaseV2::CheckFlossEnabledState,
+      base::BindOnce(&BluetoothRoutineBase::CheckFlossEnabledState,
                      weak_ptr_factory_.GetWeakPtr(), std::move(on_finish)));
   manager_->GetFlossEnabledAsync(std::move(on_success), std::move(on_error));
 }
 
-void BluetoothRoutineBaseV2::CheckFlossEnabledState(
+void BluetoothRoutineBase::CheckFlossEnabledState(
     base::OnceCallback<void(bool)> on_finish,
     brillo::Error* error,
     bool floss_enabled) {
@@ -93,12 +94,12 @@ void BluetoothRoutineBaseV2::CheckFlossEnabledState(
   }
 
   auto [on_success, on_error] = SplitDbusCallback(
-      base::BindOnce(&BluetoothRoutineBaseV2::SetupDefaultAdapter,
+      base::BindOnce(&BluetoothRoutineBase::SetupDefaultAdapter,
                      weak_ptr_factory_.GetWeakPtr(), std::move(on_finish)));
   manager_->GetDefaultAdapterAsync(std::move(on_success), std::move(on_error));
 }
 
-void BluetoothRoutineBaseV2::SetupDefaultAdapter(
+void BluetoothRoutineBase::SetupDefaultAdapter(
     base::OnceCallback<void(bool)> on_finish,
     brillo::Error* error,
     int32_t hci_interface) {
@@ -118,15 +119,15 @@ void BluetoothRoutineBaseV2::SetupDefaultAdapter(
 
   event_subscriptions_.push_back(
       context_->floss_event_hub()->SubscribeAdapterAdded(
-          base::BindRepeating(&BluetoothRoutineBaseV2::OnAdapterAdded,
+          base::BindRepeating(&BluetoothRoutineBase::OnAdapterAdded,
                               weak_ptr_factory_.GetWeakPtr())));
   event_subscriptions_.push_back(
       context_->floss_event_hub()->SubscribeAdapterRemoved(
-          base::BindRepeating(&BluetoothRoutineBaseV2::OnAdapterRemoved,
+          base::BindRepeating(&BluetoothRoutineBase::OnAdapterRemoved,
                               weak_ptr_factory_.GetWeakPtr())));
   event_subscriptions_.push_back(
       context_->floss_event_hub()->SubscribeAdapterPoweredChanged(
-          base::BindRepeating(&BluetoothRoutineBaseV2::OnAdapterPoweredChanged,
+          base::BindRepeating(&BluetoothRoutineBase::OnAdapterPoweredChanged,
                               weak_ptr_factory_.GetWeakPtr())));
 
   if (!manager_) {
@@ -137,14 +138,14 @@ void BluetoothRoutineBaseV2::SetupDefaultAdapter(
 
   // Setup initial powered state.
   auto [on_success, on_error] = SplitDbusCallback(
-      base::BindOnce(&BluetoothRoutineBaseV2::CheckAdapterEnabledState,
+      base::BindOnce(&BluetoothRoutineBase::CheckAdapterEnabledState,
                      weak_ptr_factory_.GetWeakPtr(), std::move(on_finish)));
   manager_->GetAdapterEnabledAsync(
       /*in_hci_interface=*/default_adapter_hci_, std::move(on_success),
       std::move(on_error));
 }
 
-void BluetoothRoutineBaseV2::CheckAdapterEnabledState(
+void BluetoothRoutineBase::CheckAdapterEnabledState(
     base::OnceCallback<void(bool)> on_finish,
     brillo::Error* error,
     bool powered) {
@@ -164,18 +165,18 @@ void BluetoothRoutineBaseV2::CheckAdapterEnabledState(
 }
 
 org::chromium::bluetooth::BluetoothProxyInterface*
-BluetoothRoutineBaseV2::GetDefaultAdapter() const {
+BluetoothRoutineBase::GetDefaultAdapter() const {
   return default_adapter_;
 }
 
-bool BluetoothRoutineBaseV2::GetAdapterInitialPoweredState() const {
+bool BluetoothRoutineBase::GetAdapterInitialPoweredState() const {
   CHECK(initial_powered_state_.has_value())
       << "GetAdapterInitialPoweredState should be called after routine is "
          "initialized successfully";
   return initial_powered_state_.value();
 }
 
-void BluetoothRoutineBaseV2::RunPreCheck(
+void BluetoothRoutineBase::RunPreCheck(
     base::OnceCallback<void(std::optional<std::string>)> on_finish) {
   if (!manager_) {
     std::move(on_finish).Run("Failed to access Bluetooth manager proxy.");
@@ -195,13 +196,13 @@ void BluetoothRoutineBaseV2::RunPreCheck(
   }
 
   auto [on_success, on_error] = SplitDbusCallback(
-      base::BindOnce(&BluetoothRoutineBaseV2::HandleDiscoveringResponse,
+      base::BindOnce(&BluetoothRoutineBase::HandleDiscoveringResponse,
                      weak_ptr_factory_.GetWeakPtr(), std::move(on_finish)));
   default_adapter_->IsDiscoveringAsync(std::move(on_success),
                                        std::move(on_error));
 }
 
-void BluetoothRoutineBaseV2::HandleDiscoveringResponse(
+void BluetoothRoutineBase::HandleDiscoveringResponse(
     base::OnceCallback<void(std::optional<std::string>)> on_finish,
     brillo::Error* error,
     bool discovering) {
@@ -221,8 +222,8 @@ void BluetoothRoutineBaseV2::HandleDiscoveringResponse(
   std::move(on_finish).Run(std::nullopt);
 }
 
-void BluetoothRoutineBaseV2::ChangeAdapterPoweredState(
-    bool powered, ResultCallback on_finish) {
+void BluetoothRoutineBase::ChangeAdapterPoweredState(bool powered,
+                                                     ResultCallback on_finish) {
   if (!manager_) {
     std::move(on_finish).Run(
         base::unexpected("Failed to access Bluetooth manager proxy."));
@@ -230,7 +231,7 @@ void BluetoothRoutineBaseV2::ChangeAdapterPoweredState(
   }
 
   auto [on_success, on_error] = SplitDbusCallback(base::BindOnce(
-      &BluetoothRoutineBaseV2::HandleChangePoweredResponse,
+      &BluetoothRoutineBase::HandleChangePoweredResponse,
       weak_ptr_factory_.GetWeakPtr(), powered, std::move(on_finish)));
   if (powered) {
     manager_->StartAsync(default_adapter_hci_, std::move(on_success),
@@ -241,8 +242,9 @@ void BluetoothRoutineBaseV2::ChangeAdapterPoweredState(
   }
 }
 
-void BluetoothRoutineBaseV2::HandleChangePoweredResponse(
-    bool powered, ResultCallback on_finish, brillo::Error* error) {
+void BluetoothRoutineBase::HandleChangePoweredResponse(bool powered,
+                                                       ResultCallback on_finish,
+                                                       brillo::Error* error) {
   if (error) {
     // Changing powered errors are considered as failed status.
     std::move(on_finish).Run(base::ok(false));
@@ -264,7 +266,7 @@ void BluetoothRoutineBaseV2::HandleChangePoweredResponse(
   std::move(on_finish).Run(base::ok(true));
 }
 
-void BluetoothRoutineBaseV2::OnAdapterAdded(
+void BluetoothRoutineBase::OnAdapterAdded(
     org::chromium::bluetooth::BluetoothProxyInterface* adapter) {
   const auto adapter_path = GetAdapterPath(default_adapter_hci_);
   if (!adapter || adapter->GetObjectPath() != adapter_path) {
@@ -273,14 +275,14 @@ void BluetoothRoutineBaseV2::OnAdapterAdded(
   default_adapter_ = adapter;
 }
 
-void BluetoothRoutineBaseV2::OnAdapterRemoved(
+void BluetoothRoutineBase::OnAdapterRemoved(
     const dbus::ObjectPath& adapter_path) {
   if (GetAdapterPath(default_adapter_hci_) == adapter_path)
     default_adapter_ = nullptr;
 }
 
-void BluetoothRoutineBaseV2::OnAdapterPoweredChanged(int32_t hci_interface,
-                                                     bool powered) {
+void BluetoothRoutineBase::OnAdapterPoweredChanged(int32_t hci_interface,
+                                                   bool powered) {
   if (hci_interface != default_adapter_hci_ || !powered) {
     return;
   }
@@ -296,16 +298,16 @@ void BluetoothRoutineBaseV2::OnAdapterPoweredChanged(int32_t hci_interface,
   on_adapter_enabled_cbs_.clear();
 }
 
-void BluetoothRoutineBaseV2::OnManagerRemoved(
+void BluetoothRoutineBase::OnManagerRemoved(
     const dbus::ObjectPath& manager_path) {
   LOG(ERROR) << "Bluetooth manager proxy is removed unexpectedly";
   manager_ = nullptr;
 }
 
-void BluetoothRoutineBaseV2::SetupStopDiscoveryJob() {
+void BluetoothRoutineBase::SetupStopDiscoveryJob() {
   adapter_stop_discovery_ = base::ScopedClosureRunner(
       base::BindOnce(&CancelAdapterDiscovery, context_->floss_controller(),
                      default_adapter_hci_));
 }
 
-}  // namespace diagnostics
+}  // namespace diagnostics::floss

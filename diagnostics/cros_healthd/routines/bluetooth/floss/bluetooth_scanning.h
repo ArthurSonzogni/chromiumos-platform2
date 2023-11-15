@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_SCANNING_V2_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_SCANNING_V2_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_FLOSS_BLUETOOTH_SCANNING_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_FLOSS_BLUETOOTH_SCANNING_H_
 
 #include <map>
 #include <memory>
@@ -16,12 +16,12 @@
 #include <brillo/variant_dictionary.h>
 
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_base_v2.h"
-#include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_base.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom-forward.h"
 
 namespace diagnostics {
-
+class Context;
+namespace floss {
 enum class BtPropertyType : uint32_t;
 
 // Frequency to poll the peripheral's RSSI info.
@@ -32,24 +32,22 @@ constexpr base::TimeDelta kScanningRoutineRssiPollingPeriod =
 //
 // The Bluetooth scanning routine checks that the Bluetooth adapter can scan
 // nearby Bluetooth peripherals and collect nearby peripherals' information.
-class BluetoothScanningRoutineV2 final : public BaseRoutineControl,
-                                         public BluetoothRoutineBaseV2 {
+class BluetoothScanningRoutine final : public BaseRoutineControl,
+                                       public BluetoothRoutineBase {
  public:
-  static base::expected<std::unique_ptr<BluetoothScanningRoutineV2>,
-                        std::string>
+  static base::expected<std::unique_ptr<BluetoothScanningRoutine>, std::string>
   Create(
       Context* context,
       const ash::cros_healthd::mojom::BluetoothScanningRoutineArgumentPtr& arg);
-  BluetoothScanningRoutineV2(const BluetoothScanningRoutineV2&) = delete;
-  BluetoothScanningRoutineV2& operator=(const BluetoothScanningRoutineV2&) =
-      delete;
-  ~BluetoothScanningRoutineV2() override;
+  BluetoothScanningRoutine(const BluetoothScanningRoutine&) = delete;
+  BluetoothScanningRoutine& operator=(const BluetoothScanningRoutine&) = delete;
+  ~BluetoothScanningRoutine() override;
 
   // BaseRoutineControl overrides:
   void OnStart() override;
 
  protected:
-  explicit BluetoothScanningRoutineV2(
+  explicit BluetoothScanningRoutine(
       Context* context,
       const ash::cros_healthd::mojom::BluetoothScanningRoutineArgumentPtr& arg);
 
@@ -132,9 +130,10 @@ class BluetoothScanningRoutineV2 final : public BaseRoutineControl,
   base::CancelableOnceClosure percentage_update_task_;
 
   // Must be the last class member.
-  base::WeakPtrFactory<BluetoothScanningRoutineV2> weak_ptr_factory_{this};
+  base::WeakPtrFactory<BluetoothScanningRoutine> weak_ptr_factory_{this};
 };
 
+}  // namespace floss
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_SCANNING_V2_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_FLOSS_BLUETOOTH_SCANNING_H_

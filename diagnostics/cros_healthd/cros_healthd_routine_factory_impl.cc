@@ -19,10 +19,10 @@
 #include "diagnostics/cros_healthd/routines/battery_and_power/battery_charge.h"
 #include "diagnostics/cros_healthd/routines/battery_and_power/battery_discharge.h"
 #include "diagnostics/cros_healthd/routines/battery_and_power/battery_health.h"
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_discovery.h"
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_pairing.h"
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_power.h"
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_scanning.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluez/bluetooth_discovery.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluez/bluetooth_pairing.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluez/bluetooth_power.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluez/bluetooth_scanning.h"
 #include "diagnostics/cros_healthd/routines/fingerprint/fingerprint.h"
 #include "diagnostics/cros_healthd/routines/fingerprint/fingerprint_alive.h"
 #include "diagnostics/cros_healthd/routines/hardware_button/power_button.h"
@@ -258,24 +258,26 @@ CrosHealthdRoutineFactoryImpl::MakeEmmcLifetimeRoutine(
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeBluetoothPowerRoutine() {
-  return std::make_unique<BluetoothPowerRoutine>(context_);
+  return std::make_unique<bluez::BluetoothPowerRoutine>(context_);
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeBluetoothDiscoveryRoutine() {
-  return std::make_unique<BluetoothDiscoveryRoutine>(context_);
+  return std::make_unique<bluez::BluetoothDiscoveryRoutine>(context_);
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeBluetoothScanningRoutine(
     const std::optional<base::TimeDelta>& exec_duration) {
-  return std::make_unique<BluetoothScanningRoutine>(context_, exec_duration);
+  return std::make_unique<bluez::BluetoothScanningRoutine>(context_,
+                                                           exec_duration);
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeBluetoothPairingRoutine(
     const std::string& peripheral_id) {
-  return std::make_unique<BluetoothPairingRoutine>(context_, peripheral_id);
+  return std::make_unique<bluez::BluetoothPairingRoutine>(context_,
+                                                          peripheral_id);
 }
 
 std::unique_ptr<DiagnosticRoutine>

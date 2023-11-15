@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_power_v2.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_power.h"
 
 #include <utility>
 
@@ -16,7 +16,7 @@
 #include "diagnostics/cros_healthd/system/floss_event_hub.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
-namespace diagnostics {
+namespace diagnostics::floss {
 
 namespace {
 
@@ -24,17 +24,17 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 }  // namespace
 
-BluetoothPowerRoutineV2::BluetoothPowerRoutineV2(
+BluetoothPowerRoutine::BluetoothPowerRoutine(
     Context* context, const mojom::BluetoothPowerRoutineArgumentPtr& arg)
-    : BluetoothRoutineBaseV2(context) {
+    : BluetoothRoutineBase(context) {
   CHECK(context_);
 
   routine_output_ = mojom::BluetoothPowerRoutineDetail::New();
 }
 
-BluetoothPowerRoutineV2::~BluetoothPowerRoutineV2() = default;
+BluetoothPowerRoutine::~BluetoothPowerRoutine() = default;
 
-void BluetoothPowerRoutineV2::OnStart() {
+void BluetoothPowerRoutine::OnStart() {
   CHECK(step_ == TestStep::kInitialize);
   SetRunningState();
 
@@ -42,20 +42,20 @@ void BluetoothPowerRoutineV2::OnStart() {
 
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&BluetoothPowerRoutineV2::OnTimeoutOccurred,
+      base::BindOnce(&BluetoothPowerRoutine::OnTimeoutOccurred,
                      weak_ptr_factory_.GetWeakPtr()),
       kPowerRoutineTimeout);
 
   event_subscriptions_.push_back(
       context_->floss_event_hub()->SubscribeAdapterPoweredChanged(
-          base::BindRepeating(&BluetoothPowerRoutineV2::OnAdapterPoweredChanged,
+          base::BindRepeating(&BluetoothPowerRoutine::OnAdapterPoweredChanged,
                               weak_ptr_factory_.GetWeakPtr())));
 
-  Initialize(base::BindOnce(&BluetoothPowerRoutineV2::HandleInitializeResult,
+  Initialize(base::BindOnce(&BluetoothPowerRoutine::HandleInitializeResult,
                             weak_ptr_factory_.GetWeakPtr()));
 }
 
-void BluetoothPowerRoutineV2::HandleInitializeResult(bool success) {
+void BluetoothPowerRoutine::HandleInitializeResult(bool success) {
   if (!success) {
     SetResultAndStop(
         base::unexpected("Failed to initialize Bluetooth routine"));
@@ -64,7 +64,7 @@ void BluetoothPowerRoutineV2::HandleInitializeResult(bool success) {
   RunNextStep();
 }
 
-void BluetoothPowerRoutineV2::RunNextStep() {
+void BluetoothPowerRoutine::RunNextStep() {
   step_ = static_cast<TestStep>(static_cast<int>(step_) + 1);
   UpdatePercentage();
 
@@ -73,9 +73,8 @@ void BluetoothPowerRoutineV2::RunNextStep() {
       SetResultAndStop(base::unexpected(kBluetoothRoutineUnexpectedFlow));
       break;
     case TestStep::kPreCheckDiscovery:
-      RunPreCheck(
-          base::BindOnce(&BluetoothPowerRoutineV2::HandlePreCheckResponse,
-                         weak_ptr_factory_.GetWeakPtr()));
+      RunPreCheck(base::BindOnce(&BluetoothPowerRoutine::HandlePreCheckResponse,
+                                 weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kCheckPoweredStatusOff: {
       // We can't get the power off event when the power is already off.
@@ -84,7 +83,7 @@ void BluetoothPowerRoutineV2::RunNextStep() {
         // Validate the powered status in HCI level directly.
         context_->executor()->GetHciDeviceConfig(
             /*hci_interface=*/default_adapter_hci_,
-            base::BindOnce(&BluetoothPowerRoutineV2::HandleHciConfigResponse,
+            base::BindOnce(&BluetoothPowerRoutine::HandleHciConfigResponse,
                            weak_ptr_factory_.GetWeakPtr(),
                            /*dbus_powered=*/false));
         return;
@@ -93,7 +92,7 @@ void BluetoothPowerRoutineV2::RunNextStep() {
       // Wait for the property changed event in |OnAdapterPoweredChanged|.
       ChangeAdapterPoweredState(
           /*powered=*/false,
-          base::BindOnce(&BluetoothPowerRoutineV2::HandleChangePoweredResponse,
+          base::BindOnce(&BluetoothPowerRoutine::HandleChangePoweredResponse,
                          weak_ptr_factory_.GetWeakPtr()));
       break;
     }
@@ -101,7 +100,7 @@ void BluetoothPowerRoutineV2::RunNextStep() {
       // Wait for the property changed event in |OnAdapterPoweredChanged|.
       ChangeAdapterPoweredState(
           /*powered=*/true,
-          base::BindOnce(&BluetoothPowerRoutineV2::HandleChangePoweredResponse,
+          base::BindOnce(&BluetoothPowerRoutine::HandleChangePoweredResponse,
                          weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kComplete:
@@ -110,7 +109,7 @@ void BluetoothPowerRoutineV2::RunNextStep() {
   }
 }
 
-void BluetoothPowerRoutineV2::HandlePreCheckResponse(
+void BluetoothPowerRoutine::HandlePreCheckResponse(
     std::optional<std::string> error) {
   if (error.has_value()) {
     SetResultAndStop(base::unexpected(error.value()));
@@ -119,15 +118,15 @@ void BluetoothPowerRoutineV2::HandlePreCheckResponse(
   RunNextStep();
 }
 
-void BluetoothPowerRoutineV2::HandleChangePoweredResponse(
+void BluetoothPowerRoutine::HandleChangePoweredResponse(
     const base::expected<bool, std::string>& result) {
   if (!result.has_value() || !result.value()) {
     SetResultAndStop(result);
   }
 }
 
-void BluetoothPowerRoutineV2::OnAdapterPoweredChanged(int32_t hci_interface,
-                                                      bool powered) {
+void BluetoothPowerRoutine::OnAdapterPoweredChanged(int32_t hci_interface,
+                                                    bool powered) {
   if (hci_interface != default_adapter_hci_ ||
       (step_ != TestStep::kCheckPoweredStatusOff &&
        step_ != TestStep::kCheckPoweredStatusOn))
@@ -136,11 +135,11 @@ void BluetoothPowerRoutineV2::OnAdapterPoweredChanged(int32_t hci_interface,
   // Validate the powered status in HCI level.
   context_->executor()->GetHciDeviceConfig(
       /*hci_interface=*/default_adapter_hci_,
-      base::BindOnce(&BluetoothPowerRoutineV2::HandleHciConfigResponse,
+      base::BindOnce(&BluetoothPowerRoutine::HandleHciConfigResponse,
                      weak_ptr_factory_.GetWeakPtr(), /*dbus_powered=*/powered));
 }
 
-void BluetoothPowerRoutineV2::HandleHciConfigResponse(
+void BluetoothPowerRoutine::HandleHciConfigResponse(
     bool dbus_powered, mojom::ExecutedProcessResultPtr result) {
   std::string err = result->err;
   int32_t return_code = result->return_code;
@@ -166,8 +165,8 @@ void BluetoothPowerRoutineV2::HandleHciConfigResponse(
   }
 }
 
-void BluetoothPowerRoutineV2::ValidateAdapterPowered(bool dbus_powered,
-                                                     bool hci_powered) {
+void BluetoothPowerRoutine::ValidateAdapterPowered(bool dbus_powered,
+                                                   bool hci_powered) {
   bool is_passed;
   auto powered_state = mojom::BluetoothPoweredDetail::New();
   powered_state->dbus_powered = dbus_powered;
@@ -194,7 +193,7 @@ void BluetoothPowerRoutineV2::ValidateAdapterPowered(bool dbus_powered,
   RunNextStep();
 }
 
-void BluetoothPowerRoutineV2::UpdatePercentage() {
+void BluetoothPowerRoutine::UpdatePercentage() {
   double new_percentage = static_cast<int32_t>(step_) * 100.0 /
                           static_cast<int32_t>(TestStep::kComplete);
   // Update the percentage.
@@ -202,12 +201,12 @@ void BluetoothPowerRoutineV2::UpdatePercentage() {
     SetPercentage(new_percentage);
 }
 
-void BluetoothPowerRoutineV2::OnTimeoutOccurred() {
+void BluetoothPowerRoutine::OnTimeoutOccurred() {
   SetResultAndStop(
       base::unexpected("Bluetooth routine failed to complete before timeout."));
 }
 
-void BluetoothPowerRoutineV2::SetResultAndStop(
+void BluetoothPowerRoutine::SetResultAndStop(
     const base::expected<bool, std::string>& result) {
   // Cancel all pending callbacks.
   weak_ptr_factory_.InvalidateWeakPtrs();
@@ -221,4 +220,4 @@ void BluetoothPowerRoutineV2::SetResultAndStop(
                                        std::move(routine_output_)));
 }
 
-}  // namespace diagnostics
+}  // namespace diagnostics::floss

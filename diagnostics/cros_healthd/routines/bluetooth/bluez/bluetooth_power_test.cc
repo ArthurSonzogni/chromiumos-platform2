@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_power.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluez/bluetooth_power.h"
 
 #include <memory>
 #include <utility>
@@ -17,11 +17,10 @@
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
-#include "diagnostics/cros_healthd/system/mock_bluez_controller.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxy-mocks.h"
 
-namespace diagnostics {
+namespace diagnostics::bluez {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
@@ -32,12 +31,13 @@ using ::testing::Return;
 using ::testing::StrictMock;
 using ::testing::WithArg;
 
-class BluetoothPowerRoutineTest : public testing::Test {
+class BluezBluetoothPowerRoutineTest : public testing::Test {
  protected:
-  BluetoothPowerRoutineTest() = default;
-  BluetoothPowerRoutineTest(const BluetoothPowerRoutineTest&) = delete;
-  BluetoothPowerRoutineTest& operator=(const BluetoothPowerRoutineTest&) =
+  BluezBluetoothPowerRoutineTest() = default;
+  BluezBluetoothPowerRoutineTest(const BluezBluetoothPowerRoutineTest&) =
       delete;
+  BluezBluetoothPowerRoutineTest& operator=(
+      const BluezBluetoothPowerRoutineTest&) = delete;
 
   void SetUp() override {
     SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
@@ -137,7 +137,7 @@ class BluetoothPowerRoutineTest : public testing::Test {
 };
 
 // Test that the BluetoothPowerRoutine can be run successfully.
-TEST_F(BluetoothPowerRoutineTest, RoutineSuccess) {
+TEST_F(BluezBluetoothPowerRoutineTest, RoutineSuccess) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
@@ -164,7 +164,7 @@ TEST_F(BluetoothPowerRoutineTest, RoutineSuccess) {
 
 // Test that the BluetoothPowerRoutine can be run successfully when the powered
 // is off at first.
-TEST_F(BluetoothPowerRoutineTest, RoutineSuccessWhenPoweredOff) {
+TEST_F(BluezBluetoothPowerRoutineTest, RoutineSuccessWhenPoweredOff) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -189,7 +189,7 @@ TEST_F(BluetoothPowerRoutineTest, RoutineSuccessWhenPoweredOff) {
 
 // Test that the BluetoothPowerRoutine can handle unexpected powered status in
 // HCI level and return a kFailed status.
-TEST_F(BluetoothPowerRoutineTest, FailedVerifyPoweredHci) {
+TEST_F(BluezBluetoothPowerRoutineTest, FailedVerifyPoweredHci) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
@@ -211,7 +211,7 @@ TEST_F(BluetoothPowerRoutineTest, FailedVerifyPoweredHci) {
 
 // Test that the BluetoothPowerRoutine can handle unexpected powered status in
 // D-Bus level and return a kFailed status.
-TEST_F(BluetoothPowerRoutineTest, FailedVerifyPoweredDbus) {
+TEST_F(BluezBluetoothPowerRoutineTest, FailedVerifyPoweredDbus) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
@@ -238,7 +238,7 @@ TEST_F(BluetoothPowerRoutineTest, FailedVerifyPoweredDbus) {
 
 // Test that the BluetoothPowerRoutine returns a kError status when it fails to
 // change powered.
-TEST_F(BluetoothPowerRoutineTest, FailedChangePoweredOff) {
+TEST_F(BluezBluetoothPowerRoutineTest, FailedChangePoweredOff) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
@@ -258,7 +258,7 @@ TEST_F(BluetoothPowerRoutineTest, FailedChangePoweredOff) {
 
 // Test that the BluetoothPowerRoutine returns a kError status when it fails to
 // get adapter.
-TEST_F(BluetoothPowerRoutineTest, GetAdapterError) {
+TEST_F(BluezBluetoothPowerRoutineTest, GetAdapterError) {
   SetUpNullAdapter();
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
@@ -267,7 +267,7 @@ TEST_F(BluetoothPowerRoutineTest, GetAdapterError) {
 
 // Test that the BluetoothPowerRoutine returns a kFailed status when the adapter
 // is in discovery mode.
-TEST_F(BluetoothPowerRoutineTest, PreCheckFailed) {
+TEST_F(BluezBluetoothPowerRoutineTest, PreCheckFailed) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
@@ -281,7 +281,7 @@ TEST_F(BluetoothPowerRoutineTest, PreCheckFailed) {
 
 // Test that the BluetoothPowerRoutine returns a kError status when it gets
 // error by calling GetHciDeviceConfig from executor.
-TEST_F(BluetoothPowerRoutineTest, GetHciDeviceConfigError) {
+TEST_F(BluezBluetoothPowerRoutineTest, GetHciDeviceConfigError) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
@@ -307,7 +307,7 @@ TEST_F(BluetoothPowerRoutineTest, GetHciDeviceConfigError) {
 
 // Test that the BluetoothPowerRoutine returns a kError status when it failed to
 // parse the powered status from the output of calling GetHciDeviceConfig.
-TEST_F(BluetoothPowerRoutineTest, UnexpectedHciDeviceConfigError) {
+TEST_F(BluezBluetoothPowerRoutineTest, UnexpectedHciDeviceConfigError) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
@@ -332,7 +332,7 @@ TEST_F(BluetoothPowerRoutineTest, UnexpectedHciDeviceConfigError) {
 
 // Test that the BluetoothPowerRoutine returns a kError status when timeout
 // occurred.
-TEST_F(BluetoothPowerRoutineTest, RoutineTimeoutOccurred) {
+TEST_F(BluezBluetoothPowerRoutineTest, RoutineTimeoutOccurred) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
@@ -354,4 +354,4 @@ TEST_F(BluetoothPowerRoutineTest, RoutineTimeoutOccurred) {
 }
 
 }  // namespace
-}  // namespace diagnostics
+}  // namespace diagnostics::bluez

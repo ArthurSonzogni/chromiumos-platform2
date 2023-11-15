@@ -183,7 +183,7 @@ void FlossEventHub::OnAdapterGattRemoved(const dbus::ObjectPath& adapter_path) {
 void FlossEventHub::OnAdapterPropertyChanged(
     const dbus::ObjectPath& adapter_path, uint32_t property) {
   adapter_property_changed_observers_.Notify(
-      adapter_path, static_cast<BtPropertyType>(property));
+      adapter_path, static_cast<floss::BtPropertyType>(property));
 }
 
 void FlossEventHub::OnAdapterPoweredChanged(int32_t hci_interface,
@@ -209,7 +209,7 @@ void FlossEventHub::OnDevicePropertiesChanged(
     const std::vector<uint32_t>& properties) {
   for (const auto property : properties) {
     device_property_changed_observers_.Notify(
-        device, static_cast<BtPropertyType>(property));
+        device, static_cast<floss::BtPropertyType>(property));
   }
 }
 
@@ -221,8 +221,8 @@ void FlossEventHub::OnDeviceConnectedChanged(
 void FlossEventHub::OnDeviceBondChanged(uint32_t bt_status,
                                         const std::string& address,
                                         uint32_t bond_state) {
-  device_bond_changed_observers_.Notify(bt_status, address,
-                                        static_cast<BondState>(bond_state));
+  device_bond_changed_observers_.Notify(
+      bt_status, address, static_cast<floss::BondState>(bond_state));
 }
 
 void FlossEventHub::OnDeviceSspRequest(

@@ -21,8 +21,10 @@
 
 namespace diagnostics {
 
+namespace floss {
 enum class BtPropertyType : uint32_t;
 enum class BondState : uint32_t;
+}  // namespace floss
 
 // Production implementation of the BluetoothEvents interface.
 class BluetoothEventsImpl final : public BluetoothEvents {
@@ -51,18 +53,18 @@ class BluetoothEventsImpl final : public BluetoothEvents {
       org::chromium::bluetooth::BluetoothProxyInterface* adapter);
   void OnFlossAdapterRemoved(const dbus::ObjectPath& adapter_path);
   void OnFlossAdapterPropertyChanged(const dbus::ObjectPath& adapter_path,
-                                     BtPropertyType property);
+                                     floss::BtPropertyType property);
   void OnFlossAdapterDiscoveringChanged(const dbus::ObjectPath& adapter_path,
                                         bool discovering);
   void OnFlossDeviceAdded(const brillo::VariantDictionary& device);
   void OnFlossDeviceRemoved(const brillo::VariantDictionary& device);
   void OnFlossDevicePropertyChanged(const brillo::VariantDictionary& device,
-                                    BtPropertyType property);
+                                    floss::BtPropertyType property);
   void OnFlossDeviceConnectedChanged(const brillo::VariantDictionary& device,
                                      bool connected);
   void OnFlossDeviceBondChanged(uint32_t bt_status,
                                 const std::string& address,
-                                BondState bond_state);
+                                floss::BondState bond_state);
 
   // Each observer in |observers_| will be notified of any Bluetooth event in
   // the ash::cros_healthd::mojom::CrosHealthdBluetoothObserver interface.

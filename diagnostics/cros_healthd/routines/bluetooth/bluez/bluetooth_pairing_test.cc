@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_pairing.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluez/bluetooth_pairing.h"
 
 #include <memory>
 #include <utility>
@@ -23,7 +23,7 @@
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxy-mocks.h"
 
-namespace diagnostics {
+namespace diagnostics::bluez {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
@@ -36,12 +36,13 @@ using ::testing::StrictMock;
 using ::testing::WithArg;
 using ::testing::WithArgs;
 
-class BluetoothPairingRoutineTest : public testing::Test {
+class BluezBluetoothPairingRoutineTest : public testing::Test {
  protected:
-  BluetoothPairingRoutineTest() = default;
-  BluetoothPairingRoutineTest(const BluetoothPairingRoutineTest&) = delete;
-  BluetoothPairingRoutineTest& operator=(const BluetoothPairingRoutineTest&) =
+  BluezBluetoothPairingRoutineTest() = default;
+  BluezBluetoothPairingRoutineTest(const BluezBluetoothPairingRoutineTest&) =
       delete;
+  BluezBluetoothPairingRoutineTest& operator=(
+      const BluezBluetoothPairingRoutineTest&) = delete;
 
   void SetUp() override {
     SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
@@ -260,7 +261,7 @@ class BluetoothPairingRoutineTest : public testing::Test {
 };
 
 // Test that the BluetoothPairingRoutine can be run successfully.
-TEST_F(BluetoothPairingRoutineTest, RoutineSuccess) {
+TEST_F(BluezBluetoothPairingRoutineTest, RoutineSuccess) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -300,7 +301,7 @@ TEST_F(BluetoothPairingRoutineTest, RoutineSuccess) {
 
 // Test that the BluetoothPairingRoutine can be run successfully when the device
 // is paired automatically during connecting.
-TEST_F(BluetoothPairingRoutineTest, RoutineSuccessOnlyConnect) {
+TEST_F(BluezBluetoothPairingRoutineTest, RoutineSuccessOnlyConnect) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -338,7 +339,7 @@ TEST_F(BluetoothPairingRoutineTest, RoutineSuccessOnlyConnect) {
 
 // Test that the BluetoothPairingRoutine returns a kError status when it fails
 // to power on the adapter.
-TEST_F(BluetoothPairingRoutineTest, FailedPowerOnAdapter) {
+TEST_F(BluezBluetoothPairingRoutineTest, FailedPowerOnAdapter) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -356,7 +357,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedPowerOnAdapter) {
 
 // Test that the BluetoothPairingRoutine returns a kFailed status when it fails
 // to remove cached peripheral.
-TEST_F(BluetoothPairingRoutineTest, FailedRemoveCachedPeripheral) {
+TEST_F(BluezBluetoothPairingRoutineTest, FailedRemoveCachedPeripheral) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -389,7 +390,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedRemoveCachedPeripheral) {
 
 // Test that the BluetoothPairingRoutine returns a kFailed status when the
 // target peripheral is already paired.
-TEST_F(BluetoothPairingRoutineTest, FailedPeripheralAlreadyPaired) {
+TEST_F(BluezBluetoothPairingRoutineTest, FailedPeripheralAlreadyPaired) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -415,7 +416,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedPeripheralAlreadyPaired) {
 
 // Test that the BluetoothPairingRoutine returns a kError status when it fails
 // to start discovery.
-TEST_F(BluetoothPairingRoutineTest, FailedStartDiscovery) {
+TEST_F(BluezBluetoothPairingRoutineTest, FailedStartDiscovery) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -439,7 +440,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedStartDiscovery) {
 
 // Test that the BluetoothPairingRoutine returns a kFailed status when it fails
 // to find target peripheral.
-TEST_F(BluetoothPairingRoutineTest, FailedFindTargetPeripheral) {
+TEST_F(BluezBluetoothPairingRoutineTest, FailedFindTargetPeripheral) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -468,7 +469,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedFindTargetPeripheral) {
 
 // Test that the BluetoothPairingRoutine returns a kFailed status when it fails
 // to set alias of target peripheral.
-TEST_F(BluetoothPairingRoutineTest, FailedTagTargetPeripheral) {
+TEST_F(BluezBluetoothPairingRoutineTest, FailedTagTargetPeripheral) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -498,7 +499,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedTagTargetPeripheral) {
 
 // Test that the BluetoothPairingRoutine returns a kFailed status when it fails
 // to create baseband connection.
-TEST_F(BluetoothPairingRoutineTest, FailedCreateBasebandConnection) {
+TEST_F(BluezBluetoothPairingRoutineTest, FailedCreateBasebandConnection) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -539,7 +540,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedCreateBasebandConnection) {
 
 // Test that the BluetoothPairingRoutine returns a kFailed status when it fails
 // to verify connected status after connection.
-TEST_F(BluetoothPairingRoutineTest, FailedVerifyConnected) {
+TEST_F(BluezBluetoothPairingRoutineTest, FailedVerifyConnected) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -571,7 +572,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedVerifyConnected) {
 
 // Test that the BluetoothPairingRoutine returns a kFailed status when it fails
 // to pair.
-TEST_F(BluetoothPairingRoutineTest, FailedToPair) {
+TEST_F(BluezBluetoothPairingRoutineTest, FailedToPair) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -615,7 +616,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedToPair) {
 
 // Test that the BluetoothPairingRoutine returns a kFailed status when it fails
 // to verify paired status.
-TEST_F(BluetoothPairingRoutineTest, FailedVerifyPaired) {
+TEST_F(BluezBluetoothPairingRoutineTest, FailedVerifyPaired) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -647,7 +648,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedVerifyPaired) {
 
 // Test that the BluetoothPairingRoutine returns a kFailed status when it fails
 // to remove paired peripheral after pairing.
-TEST_F(BluetoothPairingRoutineTest, FailedRemovePairedPeripheral) {
+TEST_F(BluezBluetoothPairingRoutineTest, FailedRemovePairedPeripheral) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -692,7 +693,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedRemovePairedPeripheral) {
 
 // Test that the BluetoothPairingRoutine returns a kError status when it fails
 // to stop discovery.
-TEST_F(BluetoothPairingRoutineTest, FailedStopDiscovery) {
+TEST_F(BluezBluetoothPairingRoutineTest, FailedStopDiscovery) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -727,7 +728,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedStopDiscovery) {
 
 // Test that the BluetoothPairingRoutine returns a kError status when it fails
 // to get adapter.
-TEST_F(BluetoothPairingRoutineTest, GetAdapterError) {
+TEST_F(BluezBluetoothPairingRoutineTest, GetAdapterError) {
   SetUpNullAdapter();
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
@@ -736,7 +737,7 @@ TEST_F(BluetoothPairingRoutineTest, GetAdapterError) {
 
 // Test that the BluetoothPairingRoutine returns a kFailed status when the
 // adapter is in discovery mode.
-TEST_F(BluetoothPairingRoutineTest, PreCheckFailed) {
+TEST_F(BluezBluetoothPairingRoutineTest, PreCheckFailed) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
@@ -749,4 +750,4 @@ TEST_F(BluetoothPairingRoutineTest, PreCheckFailed) {
 }
 
 }  // namespace
-}  // namespace diagnostics
+}  // namespace diagnostics::bluez

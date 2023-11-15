@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_DISCOVERY_V2_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_DISCOVERY_V2_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_FLOSS_BLUETOOTH_DISCOVERY_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_FLOSS_BLUETOOTH_DISCOVERY_H_
 
 #include <optional>
 #include <string>
@@ -14,28 +14,29 @@
 
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_base_v2.h"
-#include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_base.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom-forward.h"
 
 namespace diagnostics {
+class Context;
+namespace floss {
 
 // This routine is supported when ChromeOS is using Floss instead of Bluez.
 //
 // The Bluetooth discovery routine checks that the Bluetooth adapter can start
 // and stop discovery mode correctly by checking the on and off discovering
 // status in D-Bus level and in HCI level.
-class BluetoothDiscoveryRoutineV2 final : public BaseRoutineControl,
-                                          public BluetoothRoutineBaseV2 {
+class BluetoothDiscoveryRoutine final : public BaseRoutineControl,
+                                        public BluetoothRoutineBase {
  public:
-  explicit BluetoothDiscoveryRoutineV2(
+  explicit BluetoothDiscoveryRoutine(
       Context* context,
       const ash::cros_healthd::mojom::BluetoothDiscoveryRoutineArgumentPtr&
           arg);
-  BluetoothDiscoveryRoutineV2(const BluetoothDiscoveryRoutineV2&) = delete;
-  BluetoothDiscoveryRoutineV2& operator=(const BluetoothDiscoveryRoutineV2&) =
+  BluetoothDiscoveryRoutine(const BluetoothDiscoveryRoutine&) = delete;
+  BluetoothDiscoveryRoutine& operator=(const BluetoothDiscoveryRoutine&) =
       delete;
-  ~BluetoothDiscoveryRoutineV2() override;
+  ~BluetoothDiscoveryRoutine() override;
 
   // BaseRoutineControl overrides:
   void OnStart() override;
@@ -120,9 +121,10 @@ class BluetoothDiscoveryRoutineV2 final : public BaseRoutineControl,
   base::ScopedClosureRunner remove_btmon_log_;
 
   // Must be the last class member.
-  base::WeakPtrFactory<BluetoothDiscoveryRoutineV2> weak_ptr_factory_{this};
+  base::WeakPtrFactory<BluetoothDiscoveryRoutine> weak_ptr_factory_{this};
 };
 
+}  // namespace floss
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_DISCOVERY_V2_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_FLOSS_BLUETOOTH_DISCOVERY_H_

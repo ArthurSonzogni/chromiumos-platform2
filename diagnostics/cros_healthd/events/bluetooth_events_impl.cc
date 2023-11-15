@@ -168,7 +168,7 @@ void BluetoothEventsImpl::OnFlossAdapterRemoved(
 }
 
 void BluetoothEventsImpl::OnFlossAdapterPropertyChanged(
-    const dbus::ObjectPath& adapter_path, BtPropertyType property) {
+    const dbus::ObjectPath& adapter_path, floss::BtPropertyType property) {
   SendBluetoothEvent(observers_,
                      mojom::BluetoothEventInfo::State::kAdapterPropertyChanged);
 }
@@ -192,7 +192,7 @@ void BluetoothEventsImpl::OnFlossDeviceRemoved(
 }
 
 void BluetoothEventsImpl::OnFlossDevicePropertyChanged(
-    const brillo::VariantDictionary& device, BtPropertyType property) {
+    const brillo::VariantDictionary& device, floss::BtPropertyType property) {
   SendBluetoothEvent(observers_,
                      mojom::BluetoothEventInfo::State::kDevicePropertyChanged);
 }
@@ -203,9 +203,10 @@ void BluetoothEventsImpl::OnFlossDeviceConnectedChanged(
                      mojom::BluetoothEventInfo::State::kDevicePropertyChanged);
 }
 
-void BluetoothEventsImpl::OnFlossDeviceBondChanged(uint32_t bt_status,
-                                                   const std::string& address,
-                                                   BondState bond_state) {
+void BluetoothEventsImpl::OnFlossDeviceBondChanged(
+    uint32_t bt_status,
+    const std::string& address,
+    floss::BondState bond_state) {
   SendBluetoothEvent(observers_,
                      mojom::BluetoothEventInfo::State::kDevicePropertyChanged);
 }

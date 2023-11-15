@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_scanning_v2.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_scanning.h"
 
 #include <algorithm>
 #include <utility>
@@ -27,7 +27,7 @@
 #include "diagnostics/dbus_bindings/floss/dbus-proxy-mocks.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
-namespace diagnostics {
+namespace diagnostics::floss {
 namespace {
 
 const dbus::ObjectPath kDefaultAdapterPath{
@@ -51,13 +51,12 @@ struct FakeScannedPeripheral {
   bool is_high_signal;
 };
 
-class BluetoothScanningRoutineV2Test : public testing::Test {
+class BluetoothScanningRoutineTest : public testing::Test {
  protected:
-  BluetoothScanningRoutineV2Test() = default;
-  BluetoothScanningRoutineV2Test(const BluetoothScanningRoutineV2Test&) =
+  BluetoothScanningRoutineTest() = default;
+  BluetoothScanningRoutineTest(const BluetoothScanningRoutineTest&) = delete;
+  BluetoothScanningRoutineTest& operator=(const BluetoothScanningRoutineTest&) =
       delete;
-  BluetoothScanningRoutineV2Test& operator=(
-      const BluetoothScanningRoutineV2Test&) = delete;
 
   MockFlossController* mock_floss_controller() {
     return mock_context_.mock_floss_controller();
@@ -71,7 +70,7 @@ class BluetoothScanningRoutineV2Test : public testing::Test {
     auto arg = mojom::BluetoothScanningRoutineArgument::New();
     arg->exec_duration = kScanningRoutineDefaultRuntime;
     auto routine =
-        BluetoothScanningRoutineV2::Create(&mock_context_, std::move(arg));
+        BluetoothScanningRoutine::Create(&mock_context_, std::move(arg));
     CHECK(routine.has_value());
     routine_ = std::move(routine.value());
   }
@@ -213,7 +212,7 @@ class BluetoothScanningRoutineV2Test : public testing::Test {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   MockContext mock_context_;
-  std::unique_ptr<BluetoothScanningRoutineV2> routine_;
+  std::unique_ptr<BluetoothScanningRoutine> routine_;
   StrictMock<org::chromium::bluetooth::BluetoothProxyMock> mock_adapter_proxy_;
   StrictMock<org::chromium::bluetooth::ManagerProxyMock> mock_manager_proxy_;
   std::vector<FakeScannedPeripheral> fake_peripherals_;
@@ -221,7 +220,7 @@ class BluetoothScanningRoutineV2Test : public testing::Test {
 
 // Test that the Bluetooth scanning routine can pass successfully when the
 // adapter powered is on at first.
-TEST_F(BluetoothScanningRoutineV2Test, RoutineSuccessWhenPoweredOn) {
+TEST_F(BluetoothScanningRoutineTest, RoutineSuccessWhenPoweredOn) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
@@ -265,7 +264,7 @@ TEST_F(BluetoothScanningRoutineV2Test, RoutineSuccessWhenPoweredOn) {
 
 // Test that the Bluetooth scanning routine can pass successfully when the
 // adapter powered is off at first.
-TEST_F(BluetoothScanningRoutineV2Test, RoutineSuccessWhenPoweredOff) {
+TEST_F(BluetoothScanningRoutineTest, RoutineSuccessWhenPoweredOff) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/false);
 
@@ -301,7 +300,7 @@ TEST_F(BluetoothScanningRoutineV2Test, RoutineSuccessWhenPoweredOff) {
 
 // Test that the Bluetooth scanning routine can handle the error when the
 // initialization is failed.
-TEST_F(BluetoothScanningRoutineV2Test, RoutineErrorInitialization) {
+TEST_F(BluetoothScanningRoutineTest, RoutineErrorInitialization) {
   InSequence s;
   EXPECT_CALL(*mock_floss_controller(), GetManager()).WillOnce(Return(nullptr));
   RunRoutineAndWaitForException("Failed to initialize Bluetooth routine.");
@@ -309,7 +308,7 @@ TEST_F(BluetoothScanningRoutineV2Test, RoutineErrorInitialization) {
 
 // Test that the Bluetooth scanning routine can handle the error when the
 // adapter is already in discovery mode.
-TEST_F(BluetoothScanningRoutineV2Test, PreCheckErrorAlreadyDiscoveryMode) {
+TEST_F(BluetoothScanningRoutineTest, PreCheckErrorAlreadyDiscoveryMode) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
 
@@ -325,7 +324,7 @@ TEST_F(BluetoothScanningRoutineV2Test, PreCheckErrorAlreadyDiscoveryMode) {
 
 // Test that the Bluetooth scanning routine can handle the error when it fails
 // to power on the adapter.
-TEST_F(BluetoothScanningRoutineV2Test, PowerOnAdapterError) {
+TEST_F(BluetoothScanningRoutineTest, PowerOnAdapterError) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/false);
 
@@ -343,7 +342,7 @@ TEST_F(BluetoothScanningRoutineV2Test, PowerOnAdapterError) {
 
 // Test that the Bluetooth scanning routine can handle the error when adapter
 // fails to start discovery.
-TEST_F(BluetoothScanningRoutineV2Test, StartDiscoveryError) {
+TEST_F(BluetoothScanningRoutineTest, StartDiscoveryError) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
@@ -364,7 +363,7 @@ TEST_F(BluetoothScanningRoutineV2Test, StartDiscoveryError) {
 
 // Test that the Bluetooth scanning routine can handle the error when adapter
 // fails to stop discovery.
-TEST_F(BluetoothScanningRoutineV2Test, StopDiscoveryError) {
+TEST_F(BluetoothScanningRoutineTest, StopDiscoveryError) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
@@ -389,7 +388,7 @@ TEST_F(BluetoothScanningRoutineV2Test, StopDiscoveryError) {
 
 // Test that the Bluetooth scanning routine can handle the error when parsing
 // device info.
-TEST_F(BluetoothScanningRoutineV2Test, ParseDeviceInfoError) {
+TEST_F(BluetoothScanningRoutineTest, ParseDeviceInfoError) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
@@ -414,7 +413,7 @@ TEST_F(BluetoothScanningRoutineV2Test, ParseDeviceInfoError) {
 
 // Test that the Bluetooth scanning routine can handle the error when getting
 // device RSSI.
-TEST_F(BluetoothScanningRoutineV2Test, GetDeviceRssiError) {
+TEST_F(BluetoothScanningRoutineTest, GetDeviceRssiError) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
@@ -443,7 +442,7 @@ TEST_F(BluetoothScanningRoutineV2Test, GetDeviceRssiError) {
 
 // Test that the Bluetooth scanning routine can handle the error when timeout
 // occurred.
-TEST_F(BluetoothScanningRoutineV2Test, RoutineTimeoutError) {
+TEST_F(BluetoothScanningRoutineTest, RoutineTimeoutError) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
@@ -466,13 +465,13 @@ TEST_F(BluetoothScanningRoutineV2Test, RoutineTimeoutError) {
 
 // Test that the Bluetooth scanning routine can not be created with zero
 // execution duration.
-TEST_F(BluetoothScanningRoutineV2Test, RoutineCreateErrorZeroExecDuration) {
+TEST_F(BluetoothScanningRoutineTest, RoutineCreateErrorZeroExecDuration) {
   auto arg = mojom::BluetoothScanningRoutineArgument::New();
   arg->exec_duration = base::Seconds(0);
   auto routine =
-      BluetoothScanningRoutineV2::Create(&mock_context_, std::move(arg));
+      BluetoothScanningRoutine::Create(&mock_context_, std::move(arg));
   EXPECT_FALSE(routine.has_value());
 }
 
 }  // namespace
-}  // namespace diagnostics
+}  // namespace diagnostics::floss

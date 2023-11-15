@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_discovery.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluez/bluetooth_discovery.h"
 
 #include <memory>
 #include <utility>
@@ -21,7 +21,7 @@
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxy-mocks.h"
 
-namespace diagnostics {
+namespace diagnostics::bluez {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
@@ -32,12 +32,13 @@ using ::testing::Return;
 using ::testing::StrictMock;
 using ::testing::WithArg;
 
-class BluetoothDiscoveryRoutineTest : public testing::Test {
+class BluezBluetoothDiscoveryRoutineTest : public testing::Test {
  protected:
-  BluetoothDiscoveryRoutineTest() = default;
-  BluetoothDiscoveryRoutineTest(const BluetoothDiscoveryRoutineTest&) = delete;
-  BluetoothDiscoveryRoutineTest& operator=(
-      const BluetoothDiscoveryRoutineTest&) = delete;
+  BluezBluetoothDiscoveryRoutineTest() = default;
+  BluezBluetoothDiscoveryRoutineTest(
+      const BluezBluetoothDiscoveryRoutineTest&) = delete;
+  BluezBluetoothDiscoveryRoutineTest& operator=(
+      const BluezBluetoothDiscoveryRoutineTest&) = delete;
 
   void SetUp() override {
     SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
@@ -162,7 +163,7 @@ class BluetoothDiscoveryRoutineTest : public testing::Test {
 
 // Test that the BluetoothDiscoveryRoutine can be run successfully when the
 // powered is off at first.
-TEST_F(BluetoothDiscoveryRoutineTest, RoutineSuccessWhenPoweredOff) {
+TEST_F(BluezBluetoothDiscoveryRoutineTest, RoutineSuccessWhenPoweredOff) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -187,7 +188,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, RoutineSuccessWhenPoweredOff) {
 
 // Test that the BluetoothDiscoveryRoutine can be run successfully when the
 // powered is on at first.
-TEST_F(BluetoothDiscoveryRoutineTest, RoutineSuccessWhenPoweredOn) {
+TEST_F(BluezBluetoothDiscoveryRoutineTest, RoutineSuccessWhenPoweredOn) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
@@ -213,7 +214,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, RoutineSuccessWhenPoweredOn) {
 
 // Test that the BluetoothDiscoveryRoutine returns a kError status when it
 // fails to power on the adapter.
-TEST_F(BluetoothDiscoveryRoutineTest, FailedPowerOnAdapter) {
+TEST_F(BluezBluetoothDiscoveryRoutineTest, FailedPowerOnAdapter) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -231,7 +232,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, FailedPowerOnAdapter) {
 
 // Test that the BluetoothDiscoveryRoutine can handle unexpected discovering
 // status in HCI level and return a kFailed status.
-TEST_F(BluetoothDiscoveryRoutineTest, FailedVerifyDiscoveringHci) {
+TEST_F(BluezBluetoothDiscoveryRoutineTest, FailedVerifyDiscoveringHci) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -258,7 +259,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, FailedVerifyDiscoveringHci) {
 
 // Test that the BluetoothDiscoveryRoutine can handle unexpected discovering
 // status in D-Bus level and return a kFailed status.
-TEST_F(BluetoothDiscoveryRoutineTest, FailedVerifyDiscoveringDbus) {
+TEST_F(BluezBluetoothDiscoveryRoutineTest, FailedVerifyDiscoveringDbus) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -283,7 +284,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, FailedVerifyDiscoveringDbus) {
 
 // Test that the BluetoothDiscoveryRoutine returns a kError status when it
 // fails to start discovery.
-TEST_F(BluetoothDiscoveryRoutineTest, FailedStartDiscovery) {
+TEST_F(BluezBluetoothDiscoveryRoutineTest, FailedStartDiscovery) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -305,7 +306,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, FailedStartDiscovery) {
 
 // Test that the BluetoothDiscoveryRoutine returns a kError status when it
 // fails to stop discovery.
-TEST_F(BluetoothDiscoveryRoutineTest, FailedStopDiscovery) {
+TEST_F(BluezBluetoothDiscoveryRoutineTest, FailedStopDiscovery) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -329,7 +330,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, FailedStopDiscovery) {
 
 // Test that the BluetoothDiscoveryRoutine returns a kError status when it fails
 // to get adapter.
-TEST_F(BluetoothDiscoveryRoutineTest, GetAdapterError) {
+TEST_F(BluezBluetoothDiscoveryRoutineTest, GetAdapterError) {
   SetUpNullAdapter();
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
@@ -338,7 +339,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, GetAdapterError) {
 
 // Test that the BluetoothDiscoveryRoutine returns a kFailed status when the
 // adapter is in discovery mode.
-TEST_F(BluetoothDiscoveryRoutineTest, PreCheckFailed) {
+TEST_F(BluezBluetoothDiscoveryRoutineTest, PreCheckFailed) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
@@ -352,7 +353,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, PreCheckFailed) {
 
 // Test that the BluetoothDiscoveryRoutine returns a kError status when it gets
 // error by calling GetHciDeviceConfig from executor.
-TEST_F(BluetoothDiscoveryRoutineTest, GetHciDeviceConfigError) {
+TEST_F(BluezBluetoothDiscoveryRoutineTest, GetHciDeviceConfigError) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -380,7 +381,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, GetHciDeviceConfigError) {
 
 // Test that the BluetoothPowerRoutine returns a kError status when it failed to
 // ensure powered status is on from the output of calling GetHciDeviceConfig.
-TEST_F(BluetoothDiscoveryRoutineTest, UnexpectedHciDeviceConfigError) {
+TEST_F(BluezBluetoothDiscoveryRoutineTest, UnexpectedHciDeviceConfigError) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -408,7 +409,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, UnexpectedHciDeviceConfigError) {
 
 // Test that the BluetoothDiscoveryRoutine returns a kError status when timeout
 // occurred.
-TEST_F(BluetoothDiscoveryRoutineTest, RoutineTimeoutOccurred) {
+TEST_F(BluezBluetoothDiscoveryRoutineTest, RoutineTimeoutOccurred) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -430,4 +431,4 @@ TEST_F(BluetoothDiscoveryRoutineTest, RoutineTimeoutOccurred) {
 }
 
 }  // namespace
-}  // namespace diagnostics
+}  // namespace diagnostics::bluez

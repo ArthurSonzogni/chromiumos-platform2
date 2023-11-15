@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_scanning.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluez/bluetooth_scanning.h"
 
 #include <algorithm>
 #include <numeric>
@@ -21,8 +21,9 @@
 #include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/system/bluez_event_hub.h"
+#include "diagnostics/cros_healthd/system/context.h"
 
-namespace diagnostics {
+namespace diagnostics::bluez {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
@@ -269,4 +270,4 @@ void BluetoothScanningRoutine::SetResultAndStop(
   UpdateStatus(status, status_message);
 }
 
-}  // namespace diagnostics
+}  // namespace diagnostics::bluez

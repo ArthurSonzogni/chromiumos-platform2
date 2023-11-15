@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_pairing.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluez/bluetooth_pairing.h"
 
 #include <algorithm>
 #include <string>
@@ -21,8 +21,9 @@
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/system/bluez_controller.h"
 #include "diagnostics/cros_healthd/system/bluez_event_hub.h"
+#include "diagnostics/cros_healthd/system/context.h"
 
-namespace diagnostics {
+namespace diagnostics::bluez {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
@@ -414,4 +415,4 @@ void BluetoothPairingRoutine::SetResultAndStop(
   UpdateStatus(status, status_message);
 }
 
-}  // namespace diagnostics
+}  // namespace diagnostics::bluez

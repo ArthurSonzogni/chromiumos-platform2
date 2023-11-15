@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_POWER_V2_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_POWER_V2_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_FLOSS_BLUETOOTH_POWER_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_FLOSS_BLUETOOTH_POWER_H_
 
 #include <string>
 
@@ -12,26 +12,27 @@
 
 #include "diagnostics/cros_healthd/mojom/executor.mojom-forward.h"
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_base_v2.h"
-#include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_base.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom-forward.h"
 
 namespace diagnostics {
+class Context;
+namespace floss {
 
 // This routine is supported when ChromeOS is using Floss instead of Bluez.
 //
 // The Bluetooth power routine checks that the Bluetooth adapter's power
 // functionality is working correctly by checking the off and on powered status
 // in D-Bus level and in HCI level.
-class BluetoothPowerRoutineV2 final : public BaseRoutineControl,
-                                      public BluetoothRoutineBaseV2 {
+class BluetoothPowerRoutine final : public BaseRoutineControl,
+                                    public BluetoothRoutineBase {
  public:
-  explicit BluetoothPowerRoutineV2(
+  explicit BluetoothPowerRoutine(
       Context* context,
       const ash::cros_healthd::mojom::BluetoothPowerRoutineArgumentPtr& arg);
-  BluetoothPowerRoutineV2(const BluetoothPowerRoutineV2&) = delete;
-  BluetoothPowerRoutineV2& operator=(const BluetoothPowerRoutineV2&) = delete;
-  ~BluetoothPowerRoutineV2() override;
+  BluetoothPowerRoutine(const BluetoothPowerRoutine&) = delete;
+  BluetoothPowerRoutine& operator=(const BluetoothPowerRoutine&) = delete;
+  ~BluetoothPowerRoutine() override;
 
   // BaseRoutineControl overrides:
   void OnStart() override;
@@ -84,9 +85,10 @@ class BluetoothPowerRoutineV2 final : public BaseRoutineControl,
   ash::cros_healthd::mojom::BluetoothPowerRoutineDetailPtr routine_output_;
 
   // Must be the last class member.
-  base::WeakPtrFactory<BluetoothPowerRoutineV2> weak_ptr_factory_{this};
+  base::WeakPtrFactory<BluetoothPowerRoutine> weak_ptr_factory_{this};
 };
 
+}  // namespace floss
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_POWER_V2_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_FLOSS_BLUETOOTH_POWER_H_

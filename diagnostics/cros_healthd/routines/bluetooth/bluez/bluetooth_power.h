@@ -2,21 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_POWER_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_POWER_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUEZ_BLUETOOTH_POWER_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUEZ_BLUETOOTH_POWER_H_
 
 #include <string>
 
 #include <base/memory/weak_ptr.h>
 #include <base/values.h>
 
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_base.h"
+#include "diagnostics/cros_healthd/mojom/executor.mojom-forward.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluez/bluetooth_base.h"
 #include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
-#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxies.h"
-#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom-forward.h"
 
 namespace diagnostics {
+class Context;
+namespace bluez {
 
 // The Bluetooth power routine checks that the Bluetooth adapter's power
 // functionality is working correctly by checking the off and on powered status
@@ -79,6 +81,7 @@ class BluetoothPowerRoutine final : public DiagnosticRoutineWithStatus,
   base::WeakPtrFactory<BluetoothPowerRoutine> weak_ptr_factory_{this};
 };
 
+}  // namespace bluez
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_POWER_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUEZ_BLUETOOTH_POWER_H_

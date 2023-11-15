@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_scanning.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluez/bluetooth_scanning.h"
 
 #include <memory>
 #include <optional>
@@ -24,7 +24,7 @@
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxy-mocks.h"
 
-namespace diagnostics {
+namespace diagnostics::bluez {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
@@ -36,12 +36,13 @@ using ::testing::ReturnRef;
 using ::testing::StrictMock;
 using ::testing::WithArg;
 
-class BluetoothScanningRoutineTest : public testing::Test {
+class BluezBluetoothScanningRoutineTest : public testing::Test {
  protected:
-  BluetoothScanningRoutineTest() = default;
-  BluetoothScanningRoutineTest(const BluetoothScanningRoutineTest&) = delete;
-  BluetoothScanningRoutineTest& operator=(const BluetoothScanningRoutineTest&) =
+  BluezBluetoothScanningRoutineTest() = default;
+  BluezBluetoothScanningRoutineTest(const BluezBluetoothScanningRoutineTest&) =
       delete;
+  BluezBluetoothScanningRoutineTest& operator=(
+      const BluezBluetoothScanningRoutineTest&) = delete;
 
   void SetUp() override { SetUpRoutine(std::nullopt); }
 
@@ -209,7 +210,7 @@ class BluetoothScanningRoutineTest : public testing::Test {
 };
 
 // Test that the BluetoothScanningRoutine can be run successfully.
-TEST_F(BluetoothScanningRoutineTest, RoutineSuccess) {
+TEST_F(BluezBluetoothScanningRoutineTest, RoutineSuccess) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -245,7 +246,7 @@ TEST_F(BluetoothScanningRoutineTest, RoutineSuccess) {
 
 // Test that the BluetoothScanningRoutine can be run successfully without
 // scanned devices.
-TEST_F(BluetoothScanningRoutineTest, RoutineSuccessNoDevices) {
+TEST_F(BluezBluetoothScanningRoutineTest, RoutineSuccessNoDevices) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -267,7 +268,7 @@ TEST_F(BluetoothScanningRoutineTest, RoutineSuccessNoDevices) {
 
 // Test that the BluetoothScanningRoutine returns a kError status when it
 // fails to power on the adapter.
-TEST_F(BluetoothScanningRoutineTest, FailedPowerOnAdapter) {
+TEST_F(BluezBluetoothScanningRoutineTest, FailedPowerOnAdapter) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -285,7 +286,7 @@ TEST_F(BluetoothScanningRoutineTest, FailedPowerOnAdapter) {
 
 // Test that the BluetoothScanningRoutine returns a kError status when it
 // fails to start discovery.
-TEST_F(BluetoothScanningRoutineTest, FailedStartDiscovery) {
+TEST_F(BluezBluetoothScanningRoutineTest, FailedStartDiscovery) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -305,7 +306,7 @@ TEST_F(BluetoothScanningRoutineTest, FailedStartDiscovery) {
 
 // Test that the BluetoothScanningRoutine returns a kFailed status when it
 // fails to stop discovery.
-TEST_F(BluetoothScanningRoutineTest, FailedStopDiscovery) {
+TEST_F(BluezBluetoothScanningRoutineTest, FailedStopDiscovery) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -331,7 +332,7 @@ TEST_F(BluetoothScanningRoutineTest, FailedStopDiscovery) {
 
 // Test that the BluetoothScanningRoutine returns a kError status when it fails
 // to get adapter.
-TEST_F(BluetoothScanningRoutineTest, GetAdapterError) {
+TEST_F(BluezBluetoothScanningRoutineTest, GetAdapterError) {
   SetUpNullAdapter();
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
@@ -340,7 +341,7 @@ TEST_F(BluetoothScanningRoutineTest, GetAdapterError) {
 
 // Test that the BluetoothScanningRoutine returns a kFailed status when the
 // adapter is in discovery mode.
-TEST_F(BluetoothScanningRoutineTest, PreCheckFailed) {
+TEST_F(BluezBluetoothScanningRoutineTest, PreCheckFailed) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
@@ -354,7 +355,7 @@ TEST_F(BluetoothScanningRoutineTest, PreCheckFailed) {
 
 // Test that the BluetoothPowerRoutine returns a kError status when timeout
 // occurred.
-TEST_F(BluetoothScanningRoutineTest, RoutineTimeoutOccurred) {
+TEST_F(BluezBluetoothScanningRoutineTest, RoutineTimeoutOccurred) {
   InSequence s;
   // Pre-check.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
@@ -376,7 +377,7 @@ TEST_F(BluetoothScanningRoutineTest, RoutineTimeoutOccurred) {
 
 // Test that the BluetoothScanningRoutine returns a kError status when the
 // routine execution time is zero.
-TEST_F(BluetoothScanningRoutineTest, ZeroExecutionTimeError) {
+TEST_F(BluezBluetoothScanningRoutineTest, ZeroExecutionTimeError) {
   SetUpRoutine(base::Seconds(0));
   routine_->Start();
   CheckRoutineUpdate(
@@ -385,4 +386,4 @@ TEST_F(BluetoothScanningRoutineTest, ZeroExecutionTimeError) {
 }
 
 }  // namespace
-}  // namespace diagnostics
+}  // namespace diagnostics::bluez

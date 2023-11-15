@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_pairing_v2.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_pairing.h"
 
 #include <optional>
 #include <string>
@@ -30,7 +30,7 @@
 #include "diagnostics/cros_healthd/utils/floss_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
-namespace diagnostics {
+namespace diagnostics::floss {
 
 namespace {
 
@@ -84,56 +84,55 @@ std::string GetAddressTypeString(uint32_t address_type) {
 
 }  // namespace
 
-BluetoothPairingRoutineV2::BluetoothPairingRoutineV2(
+BluetoothPairingRoutine::BluetoothPairingRoutine(
     Context* context, const mojom::BluetoothPairingRoutineArgumentPtr& arg)
-    : BluetoothRoutineBaseV2(context), peripheral_id_(arg->peripheral_id) {
+    : BluetoothRoutineBase(context), peripheral_id_(arg->peripheral_id) {
   CHECK(context_);
 
   routine_output_ = mojom::BluetoothPairingRoutineDetail::New();
 }
 
-BluetoothPairingRoutineV2::~BluetoothPairingRoutineV2() = default;
+BluetoothPairingRoutine::~BluetoothPairingRoutine() = default;
 
-void BluetoothPairingRoutineV2::OnStart() {
+void BluetoothPairingRoutine::OnStart() {
   CHECK(step_ == TestStep::kInitialize);
   SetRunningState();
 
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&BluetoothPairingRoutineV2::OnTimeoutOccurred,
+      base::BindOnce(&BluetoothPairingRoutine::OnTimeoutOccurred,
                      weak_ptr_factory_.GetWeakPtr()),
       kPairingRoutineTimeout);
 
   // Used to scan the target peripheral.
   event_subscriptions_.push_back(
       context_->floss_event_hub()->SubscribeDeviceAdded(
-          base::BindRepeating(&BluetoothPairingRoutineV2::OnDeviceAdded,
+          base::BindRepeating(&BluetoothPairingRoutine::OnDeviceAdded,
                               weak_ptr_factory_.GetWeakPtr())));
   event_subscriptions_.push_back(
       context_->floss_event_hub()->SubscribeDevicePropertyChanged(
-          base::BindRepeating(
-              &BluetoothPairingRoutineV2::OnDevicePropertyChanged,
-              weak_ptr_factory_.GetWeakPtr())));
+          base::BindRepeating(&BluetoothPairingRoutine::OnDevicePropertyChanged,
+                              weak_ptr_factory_.GetWeakPtr())));
   // Used to observe device connection and bonded status.
   event_subscriptions_.push_back(
       context_->floss_event_hub()->SubscribeDeviceConnectedChanged(
           base::BindRepeating(
-              &BluetoothPairingRoutineV2::OnDeviceConnectedChanged,
+              &BluetoothPairingRoutine::OnDeviceConnectedChanged,
               weak_ptr_factory_.GetWeakPtr())));
   event_subscriptions_.push_back(
       context_->floss_event_hub()->SubscribeDeviceBondChanged(
-          base::BindRepeating(&BluetoothPairingRoutineV2::OnDeviceBondChanged,
+          base::BindRepeating(&BluetoothPairingRoutine::OnDeviceBondChanged,
                               weak_ptr_factory_.GetWeakPtr())));
   event_subscriptions_.push_back(
       context_->floss_event_hub()->SubscribeDeviceSspRequest(
-          base::BindRepeating(&BluetoothPairingRoutineV2::OnDeviceSspRequest,
+          base::BindRepeating(&BluetoothPairingRoutine::OnDeviceSspRequest,
                               weak_ptr_factory_.GetWeakPtr())));
 
-  Initialize(base::BindOnce(&BluetoothPairingRoutineV2::HandleInitializeResult,
+  Initialize(base::BindOnce(&BluetoothPairingRoutine::HandleInitializeResult,
                             weak_ptr_factory_.GetWeakPtr()));
 }
 
-void BluetoothPairingRoutineV2::HandleInitializeResult(bool success) {
+void BluetoothPairingRoutine::HandleInitializeResult(bool success) {
   if (!success) {
     SetResultAndStop(
         base::unexpected("Failed to initialize Bluetooth routine."));
@@ -143,7 +142,7 @@ void BluetoothPairingRoutineV2::HandleInitializeResult(bool success) {
 }
 
 org::chromium::bluetooth::BluetoothProxyInterface*
-BluetoothPairingRoutineV2::GetDefaultAdapterOrStop() {
+BluetoothPairingRoutine::GetDefaultAdapterOrStop() {
   auto adapter = GetDefaultAdapter();
   if (!adapter) {
     SetResultAndStop(base::unexpected("Failed to get default adapter."));
@@ -152,7 +151,7 @@ BluetoothPairingRoutineV2::GetDefaultAdapterOrStop() {
   return adapter;
 }
 
-void BluetoothPairingRoutineV2::RunNextStep() {
+void BluetoothPairingRoutine::RunNextStep() {
   step_ = static_cast<TestStep>(static_cast<int32_t>(step_) + 1);
   UpdatePercentage();
 
@@ -162,7 +161,7 @@ void BluetoothPairingRoutineV2::RunNextStep() {
       break;
     case TestStep::kPreCheckDiscovery:
       RunPreCheck(
-          base::BindOnce(&BluetoothPairingRoutineV2::HandlePreCheckResponse,
+          base::BindOnce(&BluetoothPairingRoutine::HandlePreCheckResponse,
                          weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kEnsurePoweredOn:
@@ -173,13 +172,13 @@ void BluetoothPairingRoutineV2::RunNextStep() {
       ChangeAdapterPoweredState(
           /*powered=*/true,
           base::BindOnce(
-              &BluetoothPairingRoutineV2::HandleEnsurePoweredOnResponse,
+              &BluetoothPairingRoutine::HandleEnsurePoweredOnResponse,
               weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kCheckBondedDevices:
       if (auto adapter = GetDefaultAdapterOrStop(); adapter != nullptr) {
         auto [on_success, on_error] = SplitDbusCallback(base::BindOnce(
-            &BluetoothPairingRoutineV2::CheckTargetPeripheralBonded,
+            &BluetoothPairingRoutine::CheckTargetPeripheralBonded,
             weak_ptr_factory_.GetWeakPtr()));
         adapter->GetBondedDevicesAsync(std::move(on_success),
                                        std::move(on_error));
@@ -189,7 +188,7 @@ void BluetoothPairingRoutineV2::RunNextStep() {
       if (auto adapter = GetDefaultAdapterOrStop(); adapter != nullptr) {
         SetupStopDiscoveryJob();
         auto [on_success, on_error] = SplitDbusCallback(base::BindOnce(
-            &BluetoothPairingRoutineV2::HandleUpdateDiscoveryResponse,
+            &BluetoothPairingRoutine::HandleUpdateDiscoveryResponse,
             weak_ptr_factory_.GetWeakPtr()));
         adapter->StartDiscoveryAsync(std::move(on_success),
                                      std::move(on_error));
@@ -200,9 +199,9 @@ void BluetoothPairingRoutineV2::RunNextStep() {
       break;
     case TestStep::kTagTargetDevice:
       if (auto adapter = GetDefaultAdapterOrStop(); adapter != nullptr) {
-        auto [on_success, on_error] = SplitDbusCallback(base::BindOnce(
-            &BluetoothPairingRoutineV2::HandleUpdateAliasResponse,
-            weak_ptr_factory_.GetWeakPtr()));
+        auto [on_success, on_error] = SplitDbusCallback(
+            base::BindOnce(&BluetoothPairingRoutine::HandleUpdateAliasResponse,
+                           weak_ptr_factory_.GetWeakPtr()));
         adapter->SetRemoteAliasAsync(
             target_device_, kHealthdBluetoothDiagnosticsTag,
             std::move(on_success), std::move(on_error));
@@ -221,7 +220,7 @@ void BluetoothPairingRoutineV2::RunNextStep() {
             BluetoothPairingPeripheralInfo_ConnectError::kNoConnectedEvent;
 
         auto [on_success, on_error] = SplitDbusCallback(
-            base::BindOnce(&BluetoothPairingRoutineV2::HandleBondDeviceResponse,
+            base::BindOnce(&BluetoothPairingRoutine::HandleBondDeviceResponse,
                            weak_ptr_factory_.GetWeakPtr()));
         // `in_transport` is 0 for Auto.
         adapter->CreateBondAsync(target_device_, /*in_transport=*/0,
@@ -230,9 +229,9 @@ void BluetoothPairingRoutineV2::RunNextStep() {
       break;
     case TestStep::kResetDeviceTag:
       if (auto adapter = GetDefaultAdapterOrStop(); adapter != nullptr) {
-        auto [on_success, on_error] = SplitDbusCallback(base::BindOnce(
-            &BluetoothPairingRoutineV2::HandleUpdateAliasResponse,
-            weak_ptr_factory_.GetWeakPtr()));
+        auto [on_success, on_error] = SplitDbusCallback(
+            base::BindOnce(&BluetoothPairingRoutine::HandleUpdateAliasResponse,
+                           weak_ptr_factory_.GetWeakPtr()));
         adapter->SetRemoteAliasAsync(target_device_, /*in_alias=*/"",
                                      std::move(on_success),
                                      std::move(on_error));
@@ -242,7 +241,7 @@ void BluetoothPairingRoutineV2::RunNextStep() {
       if (auto adapter = GetDefaultAdapterOrStop(); adapter != nullptr) {
         remove_target_peripheral_.ReplaceClosure(base::DoNothing());
         auto [on_success, on_error] = SplitDbusCallback(
-            base::BindOnce(&BluetoothPairingRoutineV2::HandleRemoveBondResponse,
+            base::BindOnce(&BluetoothPairingRoutine::HandleRemoveBondResponse,
                            weak_ptr_factory_.GetWeakPtr()));
         adapter->RemoveBondAsync(target_device_, std::move(on_success),
                                  std::move(on_error));
@@ -256,7 +255,7 @@ void BluetoothPairingRoutineV2::RunNextStep() {
   }
 }
 
-void BluetoothPairingRoutineV2::HandlePreCheckResponse(
+void BluetoothPairingRoutine::HandlePreCheckResponse(
     std::optional<std::string> error) {
   if (error.has_value()) {
     SetResultAndStop(base::unexpected(error.value()));
@@ -265,7 +264,7 @@ void BluetoothPairingRoutineV2::HandlePreCheckResponse(
   RunNextStep();
 }
 
-void BluetoothPairingRoutineV2::HandleEnsurePoweredOnResponse(
+void BluetoothPairingRoutine::HandleEnsurePoweredOnResponse(
     const base::expected<bool, std::string>& result) {
   if (!result.has_value() || !result.value()) {
     SetResultAndStop(
@@ -275,7 +274,7 @@ void BluetoothPairingRoutineV2::HandleEnsurePoweredOnResponse(
   RunNextStep();
 }
 
-void BluetoothPairingRoutineV2::CheckTargetPeripheralBonded(
+void BluetoothPairingRoutine::CheckTargetPeripheralBonded(
     brillo::Error* error,
     const std::vector<brillo::VariantDictionary>& devices) {
   CHECK(step_ == TestStep::kCheckBondedDevices);
@@ -300,7 +299,7 @@ void BluetoothPairingRoutineV2::CheckTargetPeripheralBonded(
   RunNextStep();
 }
 
-void BluetoothPairingRoutineV2::HandleUpdateDiscoveryResponse(
+void BluetoothPairingRoutine::HandleUpdateDiscoveryResponse(
     brillo::Error* error, bool is_success) {
   CHECK(step_ == TestStep::kStartDiscovery);
   if (error || !is_success) {
@@ -310,7 +309,7 @@ void BluetoothPairingRoutineV2::HandleUpdateDiscoveryResponse(
   RunNextStep();
 }
 
-void BluetoothPairingRoutineV2::OnDeviceAdded(
+void BluetoothPairingRoutine::OnDeviceAdded(
     const brillo::VariantDictionary& device) {
   if (step_ != TestStep::kScanTargetDevice)
     return;
@@ -338,15 +337,14 @@ void BluetoothPairingRoutineV2::OnDeviceAdded(
   RunNextStep();
 }
 
-void BluetoothPairingRoutineV2::OnDevicePropertyChanged(
+void BluetoothPairingRoutine::OnDevicePropertyChanged(
     const brillo::VariantDictionary& device, BtPropertyType property) {
   // Check the device property changed event in case that the device is cached
   // and the device added event is missing.
   OnDeviceAdded(device);
 }
 
-void BluetoothPairingRoutineV2::HandleUpdateAliasResponse(
-    brillo::Error* error) {
+void BluetoothPairingRoutine::HandleUpdateAliasResponse(brillo::Error* error) {
   CHECK(step_ == TestStep::kTagTargetDevice ||
         step_ == TestStep::kResetDeviceTag);
   if (error) {
@@ -356,33 +354,33 @@ void BluetoothPairingRoutineV2::HandleUpdateAliasResponse(
   RunNextStep();
 }
 
-void BluetoothPairingRoutineV2::GetDeviceProperties() {
+void BluetoothPairingRoutine::GetDeviceProperties() {
   CHECK(step_ == TestStep::kCollectDeviceInfo);
   CHECK(floss_utils::ParseDeviceInfo(target_device_).has_value());
 
   if (auto adapter = GetDefaultAdapterOrStop(); adapter != nullptr) {
     CallbackBarrier barrier{
-        base::BindOnce(&BluetoothPairingRoutineV2::RunNextStep,
+        base::BindOnce(&BluetoothPairingRoutine::RunNextStep,
                        weak_ptr_factory_.GetWeakPtr()),
-        base::BindOnce(&BluetoothPairingRoutineV2::SetResultAndStop,
+        base::BindOnce(&BluetoothPairingRoutine::SetResultAndStop,
                        weak_ptr_factory_.GetWeakPtr(),
                        base::unexpected("Failed to get device properties."))};
 
     // UUIDs.
     auto uuids_cb = SplitDbusCallback(barrier.Depend(
-        base::BindOnce(&BluetoothPairingRoutineV2::StoreDeviceUuids,
+        base::BindOnce(&BluetoothPairingRoutine::StoreDeviceUuids,
                        weak_ptr_factory_.GetWeakPtr())));
     adapter->GetRemoteUuidsAsync(target_device_, std::move(uuids_cb.first),
                                  std::move(uuids_cb.second));
     // Class of Device (CoD).
     auto class_cb = SplitDbusCallback(barrier.Depend(
-        base::BindOnce(&BluetoothPairingRoutineV2::StoreDeviceClass,
+        base::BindOnce(&BluetoothPairingRoutine::StoreDeviceClass,
                        weak_ptr_factory_.GetWeakPtr())));
     adapter->GetRemoteClassAsync(target_device_, std::move(class_cb.first),
                                  std::move(class_cb.second));
     // Address Type.
     auto address_type_cb = SplitDbusCallback(barrier.Depend(
-        base::BindOnce(&BluetoothPairingRoutineV2::StoreDeviceAddressType,
+        base::BindOnce(&BluetoothPairingRoutine::StoreDeviceAddressType,
                        weak_ptr_factory_.GetWeakPtr())));
     adapter->GetRemoteAddressTypeAsync(target_device_,
                                        std::move(address_type_cb.first),
@@ -390,7 +388,7 @@ void BluetoothPairingRoutineV2::GetDeviceProperties() {
   }
 }
 
-void BluetoothPairingRoutineV2::StoreDeviceUuids(
+void BluetoothPairingRoutine::StoreDeviceUuids(
     brillo::Error* error, const std::vector<std::vector<uint8_t>>& uuids) {
   CHECK(step_ == TestStep::kCollectDeviceInfo);
   if (error) {
@@ -408,8 +406,8 @@ void BluetoothPairingRoutineV2::StoreDeviceUuids(
   }
 }
 
-void BluetoothPairingRoutineV2::StoreDeviceClass(brillo::Error* error,
-                                                 uint32_t bluetooth_class) {
+void BluetoothPairingRoutine::StoreDeviceClass(brillo::Error* error,
+                                               uint32_t bluetooth_class) {
   CHECK(step_ == TestStep::kCollectDeviceInfo);
   if (error) {
     SetResultAndStop(base::unexpected("Failed to get device class."));
@@ -418,8 +416,8 @@ void BluetoothPairingRoutineV2::StoreDeviceClass(brillo::Error* error,
   routine_output_->pairing_peripheral->bluetooth_class = bluetooth_class;
 }
 
-void BluetoothPairingRoutineV2::StoreDeviceAddressType(brillo::Error* error,
-                                                       uint32_t address_type) {
+void BluetoothPairingRoutine::StoreDeviceAddressType(brillo::Error* error,
+                                                     uint32_t address_type) {
   CHECK(step_ == TestStep::kCollectDeviceInfo);
   auto devie_info = floss_utils::ParseDeviceInfo(target_device_);
   CHECK(devie_info.has_value());
@@ -437,8 +435,8 @@ void BluetoothPairingRoutineV2::StoreDeviceAddressType(brillo::Error* error,
       failed_manufacturer_id;
 }
 
-void BluetoothPairingRoutineV2::HandleBondDeviceResponse(brillo::Error* error,
-                                                         bool is_success) {
+void BluetoothPairingRoutine::HandleBondDeviceResponse(brillo::Error* error,
+                                                       bool is_success) {
   CHECK(step_ == TestStep::kBondTargetDevice);
   if (error || !is_success) {
     routine_output_->pairing_peripheral->pair_error =
@@ -448,7 +446,7 @@ void BluetoothPairingRoutineV2::HandleBondDeviceResponse(brillo::Error* error,
   }
 }
 
-void BluetoothPairingRoutineV2::OnDeviceConnectedChanged(
+void BluetoothPairingRoutine::OnDeviceConnectedChanged(
     const brillo::VariantDictionary& device, bool connected) {
   if (step_ != TestStep::kBondTargetDevice || device != target_device_ ||
       !connected) {
@@ -462,15 +460,15 @@ void BluetoothPairingRoutineV2::OnDeviceConnectedChanged(
 
   // Check if baseband connection is established by checking connection state.
   if (auto adapter = GetDefaultAdapterOrStop(); adapter != nullptr) {
-    auto [on_success, on_error] = SplitDbusCallback(base::BindOnce(
-        &BluetoothPairingRoutineV2::HandleConnectionStateResponse,
-        weak_ptr_factory_.GetWeakPtr()));
+    auto [on_success, on_error] = SplitDbusCallback(
+        base::BindOnce(&BluetoothPairingRoutine::HandleConnectionStateResponse,
+                       weak_ptr_factory_.GetWeakPtr()));
     adapter->GetConnectionStateAsync(target_device_, std::move(on_success),
                                      std::move(on_error));
   }
 }
 
-void BluetoothPairingRoutineV2::HandleConnectionStateResponse(
+void BluetoothPairingRoutine::HandleConnectionStateResponse(
     brillo::Error* error, uint32_t state) {
   if (error) {
     SetResultAndStop(
@@ -485,14 +483,14 @@ void BluetoothPairingRoutineV2::HandleConnectionStateResponse(
       mojom::BluetoothPairingPeripheralInfo_ConnectError::kNone;
 }
 
-void BluetoothPairingRoutineV2::OnDeviceSspRequest(
+void BluetoothPairingRoutine::OnDeviceSspRequest(
     const brillo::VariantDictionary& device) {
   if (step_ != TestStep::kBondTargetDevice || device != target_device_) {
     return;
   }
   if (auto adapter = GetDefaultAdapterOrStop(); adapter != nullptr) {
     auto [on_success, on_error] = SplitDbusCallback(base::BindOnce(
-        &BluetoothPairingRoutineV2::HandlePairingConfirmationResponse,
+        &BluetoothPairingRoutine::HandlePairingConfirmationResponse,
         weak_ptr_factory_.GetWeakPtr()));
     adapter->SetPairingConfirmationAsync(target_device_, /*in_accept=*/true,
                                          std::move(on_success),
@@ -500,7 +498,7 @@ void BluetoothPairingRoutineV2::OnDeviceSspRequest(
   }
 }
 
-void BluetoothPairingRoutineV2::HandlePairingConfirmationResponse(
+void BluetoothPairingRoutine::HandlePairingConfirmationResponse(
     brillo::Error* error, bool is_success) {
   if (error || !is_success) {
     routine_output_->pairing_peripheral->pair_error =
@@ -510,9 +508,9 @@ void BluetoothPairingRoutineV2::HandlePairingConfirmationResponse(
   }
 }
 
-void BluetoothPairingRoutineV2::OnDeviceBondChanged(uint32_t bt_status,
-                                                    const std::string& address,
-                                                    BondState bond_state) {
+void BluetoothPairingRoutine::OnDeviceBondChanged(uint32_t bt_status,
+                                                  const std::string& address,
+                                                  BondState bond_state) {
   auto devie_info = floss_utils::ParseDeviceInfo(target_device_);
   CHECK(devie_info.has_value());
   if (step_ != TestStep::kBondTargetDevice || address != devie_info->address) {
@@ -533,8 +531,8 @@ void BluetoothPairingRoutineV2::OnDeviceBondChanged(uint32_t bt_status,
     RunNextStep();
 }
 
-void BluetoothPairingRoutineV2::HandleRemoveBondResponse(brillo::Error* error,
-                                                         bool is_success) {
+void BluetoothPairingRoutine::HandleRemoveBondResponse(brillo::Error* error,
+                                                       bool is_success) {
   if (error || !is_success) {
     SetResultAndStop(base::unexpected("Failed to remove target peripheral."));
     return;
@@ -542,14 +540,14 @@ void BluetoothPairingRoutineV2::HandleRemoveBondResponse(brillo::Error* error,
   RunNextStep();
 }
 
-void BluetoothPairingRoutineV2::UpdatePercentage() {
+void BluetoothPairingRoutine::UpdatePercentage() {
   double new_percentage = static_cast<int32_t>(step_) * 100.0 /
                           static_cast<int32_t>(TestStep::kComplete);
   if (new_percentage > state()->percentage && new_percentage < 100)
     SetPercentage(new_percentage);
 }
 
-void BluetoothPairingRoutineV2::OnTimeoutOccurred() {
+void BluetoothPairingRoutine::OnTimeoutOccurred() {
   if (step_ == TestStep::kScanTargetDevice) {
     SetResultAndStop(base::ok(false));
   } else if (step_ == TestStep::kBondTargetDevice) {
@@ -562,7 +560,7 @@ void BluetoothPairingRoutineV2::OnTimeoutOccurred() {
   }
 }
 
-void BluetoothPairingRoutineV2::SetResultAndStop(
+void BluetoothPairingRoutine::SetResultAndStop(
     const base::expected<bool, std::string>& result) {
   // Cancel all pending callbacks.
   weak_ptr_factory_.InvalidateWeakPtrs();
@@ -579,4 +577,4 @@ void BluetoothPairingRoutineV2::SetResultAndStop(
                                        std::move(routine_output_)));
 }
 
-}  // namespace diagnostics
+}  // namespace diagnostics::floss
