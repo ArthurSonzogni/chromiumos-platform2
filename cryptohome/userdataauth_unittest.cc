@@ -4687,19 +4687,36 @@ class UserDataAuthApiTest : public UserDataAuthTest {
         ->mutable_password_input()
         ->set_secret(kPassword1);
 
+    bool signal_sent = false;
+    user_data_auth::AuthFactorAdded proto_copy;
+    userdataauth_->SetAuthFactorAddedCallback(base::BindRepeating(
+        [](bool* called, user_data_auth::AuthFactorAdded* proto_copy,
+           const user_data_auth::AuthFactorAdded proto) {
+          proto_copy->CopyFrom(proto);
+          *called = true;
+        },
+        &signal_sent, &proto_copy));
+
     std::optional<user_data_auth::AddAuthFactorReply> add_factor_reply =
         AddAuthFactorSync(add_factor_request);
     if (!add_factor_reply.has_value()) {
       LOG(ERROR)
           << "Call to AddAuthFactor() did not complete in CreateTestUser().";
+      EXPECT_FALSE(signal_sent);
       return false;
     }
     if (add_factor_reply->error_info().primary_action() !=
         user_data_auth::PrimaryAction::PRIMARY_NO_ERROR) {
       LOG(ERROR) << "Call to AddAuthFactor() failed in CreateTestUser(): "
                  << GetProtoDebugString(add_factor_reply.value());
+      EXPECT_FALSE(signal_sent);
       return false;
     }
+
+    EXPECT_TRUE(signal_sent);
+    EXPECT_THAT(proto_copy.auth_factor().label(), kPasswordLabel);
+    EXPECT_THAT(proto_copy.auth_factor().type(),
+                user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_PASSWORD);
 
     // Invalidate the session.
     user_data_auth::InvalidateAuthSessionRequest invalidate_request;

@@ -1084,10 +1084,25 @@ TEST_F(AuthSessionInterfaceTest, RemoveAuthFactorSuccess) {
   remove_request.set_auth_session_id(serialized_token);
   remove_request.set_auth_factor_label(kPasswordLabel);
   TestFuture<user_data_auth::RemoveAuthFactorReply> remove_reply_future;
+  bool signal_sent = false;
+  user_data_auth::AuthFactorRemoved proto_copy;
+  userdataauth_.SetAuthFactorRemovedCallback(base::BindRepeating(
+      [](bool* called, user_data_auth::AuthFactorRemoved* proto_copy,
+         const user_data_auth::AuthFactorRemoved proto) {
+        *called = true;
+        proto_copy->CopyFrom(proto);
+      },
+      &signal_sent, &proto_copy));
+
   userdataauth_.RemoveAuthFactor(
       remove_request,
       remove_reply_future
           .GetCallback<const user_data_auth::RemoveAuthFactorReply&>());
+
+  EXPECT_TRUE(signal_sent);
+  EXPECT_THAT(proto_copy.auth_factor().label(), kPasswordLabel);
+  EXPECT_THAT(proto_copy.auth_factor().type(),
+              user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_PASSWORD);
 
   // Assert.
   EXPECT_EQ(remove_reply_future.Get().error(),
@@ -1108,6 +1123,16 @@ TEST_F(AuthSessionInterfaceTest, RemoveAuthFactorFailsNonExitingLabel) {
   remove_request.set_auth_session_id(serialized_token);
   remove_request.set_auth_factor_label(kPasswordLabel2);
   TestFuture<user_data_auth::RemoveAuthFactorReply> remove_reply_future;
+  bool signal_sent = false;
+  user_data_auth::AuthFactorRemoved proto_copy;
+  userdataauth_.SetAuthFactorRemovedCallback(base::BindRepeating(
+      [](bool* called, user_data_auth::AuthFactorRemoved* proto_copy,
+         const user_data_auth::AuthFactorRemoved proto) {
+        proto_copy->CopyFrom(proto);
+        *called = true;
+      },
+      &signal_sent, &proto_copy));
+
   userdataauth_.RemoveAuthFactor(
       remove_request,
       remove_reply_future
@@ -1116,6 +1141,7 @@ TEST_F(AuthSessionInterfaceTest, RemoveAuthFactorFailsNonExitingLabel) {
   // Assert.
   EXPECT_EQ(remove_reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+  EXPECT_FALSE(signal_sent);
 }
 
 // Test that RemoveAuthFactor fails to remove the only factor.
@@ -1131,6 +1157,16 @@ TEST_F(AuthSessionInterfaceTest, RemoveAuthFactorFailsLastFactor) {
   remove_request.set_auth_session_id(serialized_token);
   remove_request.set_auth_factor_label(kPasswordLabel);
   TestFuture<user_data_auth::RemoveAuthFactorReply> remove_reply_future;
+  bool signal_sent = false;
+  user_data_auth::AuthFactorRemoved proto_copy;
+  userdataauth_.SetAuthFactorRemovedCallback(base::BindRepeating(
+      [](bool* called, user_data_auth::AuthFactorRemoved* proto_copy,
+         const user_data_auth::AuthFactorRemoved proto) {
+        proto_copy->CopyFrom(proto);
+        *called = true;
+      },
+      &signal_sent, &proto_copy));
+
   userdataauth_.RemoveAuthFactor(
       remove_request,
       remove_reply_future
@@ -1139,6 +1175,7 @@ TEST_F(AuthSessionInterfaceTest, RemoveAuthFactorFailsLastFactor) {
   // Assert.
   EXPECT_EQ(remove_reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED);
+  EXPECT_FALSE(signal_sent);
 }
 
 // Test that RemoveAuthFactor fails to remove the authenticated VaultKeyset.
@@ -1154,11 +1191,28 @@ TEST_F(AuthSessionInterfaceTest, RemoveAuthFactorFailsToRemoveSameFactor) {
   remove_request.set_auth_session_id(serialized_token);
   remove_request.set_auth_factor_label(kPasswordLabel);
   TestFuture<user_data_auth::RemoveAuthFactorReply> remove_reply_future;
+  bool signal_sent = false;
+  user_data_auth::AuthFactorRemoved proto_copy;
+  userdataauth_.SetAuthFactorRemovedCallback(base::BindRepeating(
+      [](bool* called, user_data_auth::AuthFactorRemoved* proto_copy,
+         const user_data_auth::AuthFactorRemoved proto) {
+        proto_copy->CopyFrom(proto);
+        *called = true;
+      },
+      &signal_sent, &proto_copy));
   userdataauth_.RemoveAuthFactor(
       remove_request,
       remove_reply_future
           .GetCallback<const user_data_auth::RemoveAuthFactorReply&>());
+
+  EXPECT_TRUE(signal_sent);
+  EXPECT_THAT(proto_copy.auth_factor().label(), kPasswordLabel);
+  EXPECT_THAT(proto_copy.auth_factor().type(),
+              user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_PASSWORD);
+
   // Test that RemoveAuthFactor fails to remove the non-existing VK.
+  // Reset it for next request.
+  signal_sent = false;
   user_data_auth::RemoveAuthFactorRequest remove_request2;
   remove_request2.set_auth_session_id(serialized_token);
   remove_request2.set_auth_factor_label(kPasswordLabel);
@@ -1173,6 +1227,7 @@ TEST_F(AuthSessionInterfaceTest, RemoveAuthFactorFailsToRemoveSameFactor) {
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_EQ(remove_reply_future2.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+  EXPECT_FALSE(signal_sent);
 }
 
 // Test the PreparePersistentVault, when called after a successful

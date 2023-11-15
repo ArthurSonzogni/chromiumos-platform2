@@ -965,6 +965,10 @@ class UserDataAuth {
       user_data_auth::ReplaceAuthFactorRequest request,
       OnDoneCallback<user_data_auth::ReplaceAuthFactorReply> on_done,
       InUseAuthSession auth_session);
+  void RemoveAuthFactorWithSession(
+      user_data_auth::RemoveAuthFactorRequest request,
+      OnDoneCallback<user_data_auth::RemoveAuthFactorReply> on_done,
+      InUseAuthSession auth_session);
   void ModifyAuthFactorIntentsWithSession(
       user_data_auth::ModifyAuthFactorIntentsRequest request,
       OnDoneCallback<user_data_auth::ModifyAuthFactorIntentsReply> on_done,

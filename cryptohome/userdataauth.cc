@@ -3295,6 +3295,29 @@ void UserDataAuth::AddAuthFactorWithSession(
     user_data_auth::AddAuthFactorRequest request,
     OnDoneCallback<user_data_auth::AddAuthFactorReply> on_done,
     InUseAuthSession auth_session) {
+  // Wrap callback to signal AuthFactorAdded.
+  OnDoneCallback<user_data_auth::AddAuthFactorReply>
+      on_done_wrapped_with_signal_ = base::BindOnce(
+          [](base::RepeatingCallback<void(user_data_auth::AuthFactorAdded)>
+                 auth_factor_added_callback,
+             std::string broadcast_id,
+             OnDoneCallback<user_data_auth::AddAuthFactorReply> cb,
+             const user_data_auth::AddAuthFactorReply& reply) {
+            user_data_auth::AuthFactorAdded completed_proto;
+            if (!reply.has_error_info()) {
+              completed_proto.mutable_auth_factor()->CopyFrom(
+                  reply.added_auth_factor().auth_factor());
+              completed_proto.set_broadcast_id(broadcast_id);
+
+              if (!auth_factor_added_callback.is_null()) {
+                auth_factor_added_callback.Run(completed_proto);
+              }
+            }
+            std::move(cb).Run(reply);
+          },
+          auth_factor_added_callback_, auth_session->serialized_public_token(),
+          std::move(on_done));
+
   user_data_auth::AddAuthFactorReply reply;
 
   // Populate the request auth factor with accurate sysinfo.
@@ -3303,7 +3326,7 @@ void UserDataAuth::AddAuthFactorWithSession(
       LoadUserPolicyFile(auth_session->obfuscated_username());
   if (!user_policy_file_status.ok()) {
     ReplyWithError(
-        std::move(on_done), reply,
+        std::move(on_done_wrapped_with_signal_), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocCouldntLoadUserPolicyFileInAddAuthFactor),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
@@ -3313,7 +3336,7 @@ void UserDataAuth::AddAuthFactorWithSession(
   auto* session_decrypt = auth_session->GetAuthForDecrypt();
   if (!session_decrypt) {
     ReplyWithError(
-        std::move(on_done), reply,
+        std::move(on_done_wrapped_with_signal_), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthUnauthedInAddAuthFactor),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
@@ -3327,7 +3350,8 @@ void UserDataAuth::AddAuthFactorWithSession(
           &ReplyWithAuthFactorStatus<user_data_auth::AddAuthFactorReply>,
           std::move(auth_session), user_policy_file_status.value(),
           auth_factor_driver_manager_, sessions_->Find(username),
-          request.auth_factor().label(), std::move(on_done)));
+          request.auth_factor().label(),
+          std::move(on_done_wrapped_with_signal_)));
 }
 
 void UserDataAuth::AuthenticateAuthFactor(
@@ -3465,6 +3489,30 @@ void UserDataAuth::UpdateAuthFactorWithSession(
     user_data_auth::UpdateAuthFactorRequest request,
     OnDoneCallback<user_data_auth::UpdateAuthFactorReply> on_done,
     InUseAuthSession auth_session) {
+  // Wrap callback to signal AuthFactorUpdated.
+  OnDoneCallback<user_data_auth::UpdateAuthFactorReply>
+      on_done_wrapped_with_signal_ = base::BindOnce(
+          [](base::RepeatingCallback<void(user_data_auth::AuthFactorUpdated)>
+                 auth_factor_updated_callback,
+             std::string broadcast_id,
+             OnDoneCallback<user_data_auth::UpdateAuthFactorReply> cb,
+             const user_data_auth::UpdateAuthFactorReply& reply) {
+            user_data_auth::AuthFactorUpdated completed_proto;
+
+            if (reply.has_error_info() && reply.error_info().primary_action() ==
+                                              user_data_auth::PRIMARY_NONE) {
+              completed_proto.mutable_auth_factor()->CopyFrom(
+                  reply.updated_auth_factor().auth_factor());
+              completed_proto.set_broadcast_id(broadcast_id);
+
+              if (!auth_factor_updated_callback.is_null()) {
+                auth_factor_updated_callback.Run(completed_proto);
+              }
+            }
+            std::move(cb).Run(reply);
+          },
+          auth_factor_updated_callback_,
+          auth_session->serialized_public_token(), std::move(on_done));
   user_data_auth::UpdateAuthFactorReply reply;
 
   // Populate the request auth factor with accurate sysinfo.
@@ -3474,7 +3522,7 @@ void UserDataAuth::UpdateAuthFactorWithSession(
       LoadUserPolicyFile(auth_session->obfuscated_username());
   if (!user_policy_file_status.ok()) {
     ReplyWithError(
-        std::move(on_done), reply,
+        std::move(on_done_wrapped_with_signal_), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocCouldntLoadUserPolicyFileInUpdateAuthFactor),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
@@ -3484,7 +3532,7 @@ void UserDataAuth::UpdateAuthFactorWithSession(
   auto* session_decrypt = auth_session->GetAuthForDecrypt();
   if (!session_decrypt) {
     ReplyWithError(
-        std::move(on_done), reply,
+        std::move(on_done_wrapped_with_signal_), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthUnauthedInUpdateAuthFactor),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
@@ -3498,7 +3546,8 @@ void UserDataAuth::UpdateAuthFactorWithSession(
           &ReplyWithAuthFactorStatus<user_data_auth::UpdateAuthFactorReply>,
           std::move(auth_session), user_policy_file_status.value(),
           auth_factor_driver_manager_, sessions_->Find(username),
-          request.auth_factor().label(), std::move(on_done)));
+          request.auth_factor().label(),
+          std::move(on_done_wrapped_with_signal_)));
 }
 
 void UserDataAuth::UpdateAuthFactorMetadata(
@@ -3661,31 +3710,64 @@ void UserDataAuth::RemoveAuthFactor(
       CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInRemoveAuthFactor),
       CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthInRemoveAuthFactor),
       std::move(request), std::move(on_done),
-      base::BindOnce(
-          [](user_data_auth::RemoveAuthFactorRequest request,
-             OnDoneCallback<user_data_auth::RemoveAuthFactorReply> on_done,
-             InUseAuthSession auth_session) {
-            user_data_auth::RemoveAuthFactorReply reply;
-            auto* session_decrypt = auth_session->GetAuthForDecrypt();
-            if (!session_decrypt) {
-              ReplyWithError(
-                  std::move(on_done), reply,
-                  MakeStatus<CryptohomeError>(
-                      CRYPTOHOME_ERR_LOC(
-                          kLocUserDataAuthUnauthedInRemoveAuthFactor),
-                      ErrorActionSet(
-                          {PossibleAction::kDevCheckUnexpectedState}),
-                      user_data_auth::
-                          CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
-              return;
-            }
+      base::BindOnce(&UserDataAuth::RemoveAuthFactorWithSession,
+                     base::Unretained(this)));
+}
 
-            StatusCallback on_remove_auth_factor_finished = base::BindOnce(
-                &ReplyWithStatus<user_data_auth::RemoveAuthFactorReply>,
-                std::move(auth_session), std::move(on_done));
-            session_decrypt->RemoveAuthFactor(
-                request, std::move(on_remove_auth_factor_finished));
-          }));
+void UserDataAuth::RemoveAuthFactorWithSession(
+    user_data_auth::RemoveAuthFactorRequest request,
+    OnDoneCallback<user_data_auth::RemoveAuthFactorReply> on_done,
+    InUseAuthSession auth_session) {
+  user_data_auth::RemoveAuthFactorReply reply;
+  auto* session_decrypt = auth_session->GetAuthForDecrypt();
+  if (!session_decrypt) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthUnauthedInRemoveAuthFactor),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
+    return;
+  }
+
+  user_data_auth::AuthFactorRemoved auth_factor_removed_msg;
+  if (auto view =
+          auth_session->auth_factor_map().Find(request.auth_factor_label());
+      view.has_value()) {
+    const auto& af = view->auth_factor();
+    const AuthFactorDriver& factor_driver =
+        auth_factor_driver_manager_->GetDriver(af.type());
+
+    auto af_proto = factor_driver.ConvertToProto(af.label(), af.metadata());
+    if (af_proto.has_value()) {
+      auth_factor_removed_msg.mutable_auth_factor()->CopyFrom(af_proto.value());
+    }
+
+    auth_factor_removed_msg.set_broadcast_id(
+        auth_session->serialized_public_token());
+  }
+
+  // Wrap callback to signal AuthenticateAuthFactorCompleted.
+  OnDoneCallback<user_data_auth::RemoveAuthFactorReply>
+      on_done_wrapped_with_signal_cb = base::BindOnce(
+          [](base::RepeatingCallback<void(user_data_auth::AuthFactorRemoved)>
+                 auth_factor_removed_callback,
+             user_data_auth::AuthFactorRemoved auth_factor_removed_msg,
+             OnDoneCallback<user_data_auth::RemoveAuthFactorReply> cb,
+             const user_data_auth::RemoveAuthFactorReply& reply) {
+            if (!reply.has_error_info() &&
+                !auth_factor_removed_callback.is_null()) {
+              auth_factor_removed_callback.Run(auth_factor_removed_msg);
+            }
+            std::move(cb).Run(reply);
+          },
+          auth_factor_removed_callback_, std::move(auth_factor_removed_msg),
+          std::move(on_done));
+  StatusCallback on_remove_auth_factor_finished = base::BindOnce(
+      &ReplyWithStatus<user_data_auth::RemoveAuthFactorReply>,
+      std::move(auth_session), std::move(on_done_wrapped_with_signal_cb));
+  session_decrypt->RemoveAuthFactor(request,
+                                    std::move(on_remove_auth_factor_finished));
 }
 
 void UserDataAuth::ListAuthFactors(
