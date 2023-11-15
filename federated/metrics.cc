@@ -16,6 +16,10 @@ constexpr char kStorageEventHistogram[] = "FederatedService.StorageEvent";
 constexpr char kClientEventHistogram[] = "FederatedService.%s.Event";
 constexpr char kClientCpuTimeHistogram[] =
     "FederatedService.%s.CpuTimeMicrosec";
+constexpr char kTrainingConditionToStartHistogram[] =
+    "FederatedService.TrainingConditionToStart";
+constexpr char kTrainingConditionToContinueHistogram[] =
+    "FederatedService.TrainingConditionToContinue";
 
 constexpr int kCpuTimeMinMicrosec = 1;           // 1 us
 constexpr int kCpuTimeMaxMicrosec = 1800000000;  // 30 min
@@ -38,6 +42,17 @@ void Metrics::LogClientEvent(const std::string& client_name,
 
 void Metrics::LogExampleReceived(const std::string& client_name) const {
   LogClientEvent(client_name, ClientEvent::kExampleReceived);
+}
+
+void Metrics::LogTrainingConditionToStartResult(
+    TrainingConditionResult result) const {
+  metrics_library_->SendEnumToUMA(kTrainingConditionToStartHistogram, result);
+}
+
+void Metrics::LogTrainingConditionToContinueResult(
+    TrainingConditionResult result) const {
+  metrics_library_->SendEnumToUMA(kTrainingConditionToContinueHistogram,
+                                  result);
 }
 
 ScopedMetricsRecorder Metrics::CreateScopedMetricsRecorder(

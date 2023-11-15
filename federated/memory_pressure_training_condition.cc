@@ -14,6 +14,7 @@
 #include <dbus/object_proxy.h>
 
 #include "federated/memory_pressure_training_condition.h"
+#include "federated/metrics.h"
 
 namespace federated {
 namespace {
@@ -27,7 +28,8 @@ namespace {
 
 // Allow to start new jobs when Chrome memory pressure level is None.
 const uint32_t kMaxAcceptableChromeLevelToStart = 0;
-// Allow to continue existing jobs when Arc vm memory pressure level <= Cached.
+// Allow to continue existing jobs when Arc vm memory pressure level <=
+// Cached.
 const uint32_t kMaxAcceptableArcvmLevelToContinue = 1;
 // This default value is greater than any possible levels.
 const uint32_t kDefaultUnsatisfiedLevel = 100;
@@ -79,8 +81,15 @@ bool MemoryPressureTrainingCondition::IsTrainingConditionSatisfiedToStart()
   const auto iter =
       memory_levels_.find(resource_manager::kMemoryPressureChrome);
   // Non existing signal in `memory_levels_` means it's None.
-  return iter == memory_levels_.end() ||
-         iter->second <= kMaxAcceptableChromeLevelToStart;
+  bool satisfied = iter == memory_levels_.end() ||
+                   iter->second <= kMaxAcceptableChromeLevelToStart;
+
+  if (!satisfied) {
+    Metrics::GetInstance()->LogTrainingConditionToStartResult(
+        TrainingConditionResult::kMemoryPressureHigh);
+  }
+
+  return satisfied;
 }
 
 bool MemoryPressureTrainingCondition::IsTrainingConditionSatisfiedToContinue()
@@ -89,8 +98,14 @@ bool MemoryPressureTrainingCondition::IsTrainingConditionSatisfiedToContinue()
 
   const auto iter = memory_levels_.find(resource_manager::kMemoryPressureArcvm);
   // Non existing signal in `memory_levels_` means it's None.
-  return iter == memory_levels_.end() ||
-         iter->second <= kMaxAcceptableArcvmLevelToContinue;
+  bool satisfied = iter == memory_levels_.end() ||
+                   iter->second <= kMaxAcceptableArcvmLevelToContinue;
+  if (!satisfied) {
+    Metrics::GetInstance()->LogTrainingConditionToContinueResult(
+        TrainingConditionResult::kMemoryPressureHigh);
+  }
+
+  return satisfied;
 }
 
 void MemoryPressureTrainingCondition::OnMemoryPressureSignalReceived(
@@ -111,8 +126,8 @@ void MemoryPressureTrainingCondition::OnMemoryPressureSignalReceived(
   }
 
   // As per resourced src, the different memory level signals are usually
-  // emitted together, but if arc vm level is None, only chrome level signal is
-  // emitted. That means if arc vm level becomes non 0, it never becomes 0
+  // emitted together, but if arc vm level is None, only chrome level signal
+  // is emitted. That means if arc vm level becomes non 0, it never becomes 0
   // again. The following logic is required to fix the should-have "None"
   // signals.
   if (signal_name == resource_manager::kMemoryPressureChrome &&

@@ -12,6 +12,7 @@
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
+#include "federated/metrics.h"
 #include "federated/power_supply_training_condition.h"
 #include "power_manager/proto_bindings/battery_saver.pb.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
@@ -92,6 +93,17 @@ bool PowerSupplyTrainingCondition::IsTrainingConditionSatisfiedToStart() const {
   DVLOG(1)
       << "PowerSupplyTrainingCondition::IsTrainingConditionSatisfiedToStart: "
       << enough_battery_to_start_;
+
+  if (!enough_battery_to_start_) {
+    Metrics::GetInstance()->LogTrainingConditionToStartResult(
+        TrainingConditionResult::kLowBattery);
+  }
+
+  if (battery_saver_enabled_) {
+    Metrics::GetInstance()->LogTrainingConditionToStartResult(
+        TrainingConditionResult::kBatterySaverMode);
+  }
+
   return enough_battery_to_start_ && !battery_saver_enabled_;
 }
 
@@ -101,6 +113,17 @@ bool PowerSupplyTrainingCondition::IsTrainingConditionSatisfiedToContinue()
   DVLOG(1) << "PowerSupplyTrainingCondition::"
               "IsTrainingConditionSatisfiedToContinue: "
            << enough_battery_to_continue_;
+
+  if (!enough_battery_to_continue_) {
+    Metrics::GetInstance()->LogTrainingConditionToContinueResult(
+        TrainingConditionResult::kLowBattery);
+  }
+
+  if (battery_saver_enabled_) {
+    Metrics::GetInstance()->LogTrainingConditionToContinueResult(
+        TrainingConditionResult::kBatterySaverMode);
+  }
+
   return enough_battery_to_continue_ && !battery_saver_enabled_;
 }
 

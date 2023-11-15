@@ -11,6 +11,7 @@
 
 #include "federated/device_status_monitor.h"
 #include "federated/memory_pressure_training_condition.h"
+#include "federated/metrics.h"
 #include "federated/network_status_training_condition.h"
 #include "federated/power_supply_training_condition.h"
 
@@ -40,19 +41,31 @@ std::unique_ptr<DeviceStatusMonitor> DeviceStatusMonitor::CreateFromDBus(
 
 bool DeviceStatusMonitor::TrainingConditionsSatisfiedToStart() const {
   DVLOG(1) << "DeviceStatusMonitor::TrainingConditionsSatisfiedToStart()";
-  return std::all_of(training_conditions_.begin(), training_conditions_.end(),
-                     [](auto const& condition) {
-                       return condition->IsTrainingConditionSatisfiedToStart();
-                     });
+  bool satisfied = true;
+  for (const auto& condition : training_conditions_) {
+    satisfied = satisfied && condition->IsTrainingConditionSatisfiedToStart();
+  }
+
+  Metrics::GetInstance()->LogTrainingConditionToStartResult(
+      satisfied ? TrainingConditionResult::kPass
+                : TrainingConditionResult::kFailed);
+
+  return satisfied;
 }
 
 bool DeviceStatusMonitor::TrainingConditionsSatisfiedToContinue() const {
   DVLOG(1) << "DeviceStatusMonitor::TrainingConditionsSatisfiedToContinue()";
-  return std::all_of(
-      training_conditions_.begin(), training_conditions_.end(),
-      [](auto const& condition) {
-        return condition->IsTrainingConditionSatisfiedToContinue();
-      });
+  bool satisfied = true;
+  for (const auto& condition : training_conditions_) {
+    satisfied =
+        satisfied && condition->IsTrainingConditionSatisfiedToContinue();
+  }
+
+  Metrics::GetInstance()->LogTrainingConditionToContinueResult(
+      satisfied ? TrainingConditionResult::kPass
+                : TrainingConditionResult::kFailed);
+
+  return satisfied;
 }
 
 }  // namespace federated

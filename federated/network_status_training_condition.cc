@@ -10,6 +10,7 @@
 #include <memory>
 #include <utility>
 
+#include "federated/metrics.h"
 #include "federated/network_status_training_condition.h"
 
 namespace federated {
@@ -22,12 +23,24 @@ NetworkStatusTrainingCondition::NetworkStatusTrainingCondition(
 
 bool NetworkStatusTrainingCondition::IsTrainingConditionSatisfiedToStart()
     const {
-  return !IsNetworkMetered();
+  bool satisfied = !IsNetworkMetered();
+  if (!satisfied) {
+    Metrics::GetInstance()->LogTrainingConditionToStartResult(
+        TrainingConditionResult::kMeteredNetwork);
+  }
+
+  return satisfied;
 }
 
 bool NetworkStatusTrainingCondition::IsTrainingConditionSatisfiedToContinue()
     const {
-  return !IsNetworkMetered();
+  bool satisfied = !IsNetworkMetered();
+  if (!satisfied) {
+    Metrics::GetInstance()->LogTrainingConditionToContinueResult(
+        TrainingConditionResult::kMeteredNetwork);
+  }
+
+  return satisfied;
 }
 
 // Check whether the network metered or not

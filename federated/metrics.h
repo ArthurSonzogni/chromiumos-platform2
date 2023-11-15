@@ -52,6 +52,18 @@ enum class ClientEvent {
   kMaxValue = kGetNextExampleInvalidArgumentError,
 };
 
+enum class TrainingConditionResult {
+  // Overall result:
+  kPass = 0,
+  kFailed = 1,
+  // Particular failure reason:
+  kLowBattery = 2,
+  kBatterySaverMode = 3,
+  kMeteredNetwork = 4,
+  kMemoryPressureHigh = 5,
+  kMaxValue = kMemoryPressureHigh,
+};
+
 // A scoped metrics recorder for a round of task. It collects metrics when the
 // tasks starts and reports them if the task finishes successfully. Currently
 // only cpu time, more metrics can be added when required.
@@ -88,6 +100,12 @@ class Metrics {
   void LogClientEvent(const std::string& client_name, ClientEvent event) const;
   // Alias of LogClientEvent(client_name, ClientEvent::kExampleReceived);
   void LogExampleReceived(const std::string& client_name) const;
+
+  // Logs training condition check result.
+  void LogTrainingConditionToStartResult(TrainingConditionResult result) const;
+  void LogTrainingConditionToContinueResult(
+      TrainingConditionResult result) const;
+
   ScopedMetricsRecorder CreateScopedMetricsRecorder(
       const std::string& client_name);
 
