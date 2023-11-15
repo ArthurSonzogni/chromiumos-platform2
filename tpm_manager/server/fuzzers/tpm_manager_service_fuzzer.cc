@@ -231,7 +231,7 @@ class TpmManagerServiceFuzzer : public brillo::Daemon {
   FuzzedDataProvider data_provider_;
   const tpm_manager::TpmManagerServiceFuzzerData& fuzzer_data_;
   google::protobuf::RepeatedPtrField<
-      const tpm_manager::TpmManagerServiceFuzzerData::Request>::iterator
+      tpm_manager::TpmManagerServiceFuzzerData::Request>::const_iterator
       fuzzed_requests_iter_;
 
   tpm_manager::LocalDataStoreImpl local_data_store_{kTpmLocalDataFile};
