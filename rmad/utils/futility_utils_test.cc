@@ -10,6 +10,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "rmad/utils/hwid_utils_impl.h"
 #include "rmad/utils/mock_cmd_utils.h"
 
 using testing::_;
@@ -41,8 +42,8 @@ TEST_F(FutilityUtilsTest, GetApWriteProtectionStatus_Enabled) {
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(kFutilityWriteProtectEnabledOutput),
                       Return(true)));
-  auto futility_utils =
-      std::make_unique<FutilityUtilsImpl>(std::move(mock_cmd_utils));
+  auto futility_utils = std::make_unique<FutilityUtilsImpl>(
+      std::move(mock_cmd_utils), std::make_unique<HwidUtilsImpl>());
 
   bool enabled;
   EXPECT_TRUE(futility_utils->GetApWriteProtectionStatus(&enabled));
@@ -54,8 +55,8 @@ TEST_F(FutilityUtilsTest, GetApWriteProtectionStatus_Disabled) {
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(kFutilityWriteProtectDisabledOutput),
                       Return(true)));
-  auto futility_utils =
-      std::make_unique<FutilityUtilsImpl>(std::move(mock_cmd_utils));
+  auto futility_utils = std::make_unique<FutilityUtilsImpl>(
+      std::move(mock_cmd_utils), std::make_unique<HwidUtilsImpl>());
 
   bool enabled;
   EXPECT_TRUE(futility_utils->GetApWriteProtectionStatus(&enabled));
@@ -68,8 +69,8 @@ TEST_F(FutilityUtilsTest, GetApWriteProtectionStatus_Misconfigured) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFutilityWriteProtectMisconfiguredOutput),
                 Return(true)));
-  auto futility_utils =
-      std::make_unique<FutilityUtilsImpl>(std::move(mock_cmd_utils));
+  auto futility_utils = std::make_unique<FutilityUtilsImpl>(
+      std::move(mock_cmd_utils), std::make_unique<HwidUtilsImpl>());
 
   bool enabled;
   EXPECT_TRUE(futility_utils->GetApWriteProtectionStatus(&enabled));
@@ -79,8 +80,8 @@ TEST_F(FutilityUtilsTest, GetApWriteProtectionStatus_Misconfigured) {
 TEST_F(FutilityUtilsTest, GetApWriteProtectionStatus_Failed) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
-  auto futility_utils =
-      std::make_unique<FutilityUtilsImpl>(std::move(mock_cmd_utils));
+  auto futility_utils = std::make_unique<FutilityUtilsImpl>(
+      std::move(mock_cmd_utils), std::make_unique<HwidUtilsImpl>());
 
   bool enabled;
   EXPECT_FALSE(futility_utils->GetApWriteProtectionStatus(&enabled));
@@ -93,8 +94,8 @@ TEST_F(FutilityUtilsTest, EnableApSoftwareWriteProtection_Success) {
     // Futility set AP WP range.
     EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(true));
   }
-  auto futility_utils =
-      std::make_unique<FutilityUtilsImpl>(std::move(mock_cmd_utils));
+  auto futility_utils = std::make_unique<FutilityUtilsImpl>(
+      std::move(mock_cmd_utils), std::make_unique<HwidUtilsImpl>());
 
   EXPECT_TRUE(futility_utils->EnableApSoftwareWriteProtection());
 }
@@ -103,13 +104,49 @@ TEST_F(FutilityUtilsTest, EnableApSoftwareWriteProtection_EnableApWpFail) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   {
     InSequence seq;
-    // Futtility set AP WP range.
+    // Futility set AP WP range.
     EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
   }
-  auto futility_utils =
-      std::make_unique<FutilityUtilsImpl>(std::move(mock_cmd_utils));
+  auto futility_utils = std::make_unique<FutilityUtilsImpl>(
+      std::move(mock_cmd_utils), std::make_unique<HwidUtilsImpl>());
 
   EXPECT_FALSE(futility_utils->EnableApSoftwareWriteProtection());
+}
+
+TEST_F(FutilityUtilsTest, SetHwidSuccess) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _)).WillOnce(Return(true));
+  auto futility_utils = std::make_unique<FutilityUtilsImpl>(
+      std::move(mock_cmd_utils), std::make_unique<HwidUtilsImpl>());
+
+  EXPECT_TRUE(futility_utils->SetHwid("MODEL-CODE A1B-C2D-E2J"));
+}
+
+TEST_F(FutilityUtilsTest, SetHwidInvalidHwidFormatFail) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _)).Times(0);
+  auto futility_utils = std::make_unique<FutilityUtilsImpl>(
+      std::move(mock_cmd_utils), std::make_unique<HwidUtilsImpl>());
+
+  EXPECT_FALSE(futility_utils->SetHwid("MODEL-CODE A1BC2DE2J"));
+}
+
+TEST_F(FutilityUtilsTest, SetHwidIncorrectChecksumFail) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _)).Times(0);
+  auto futility_utils = std::make_unique<FutilityUtilsImpl>(
+      std::move(mock_cmd_utils), std::make_unique<HwidUtilsImpl>());
+
+  EXPECT_FALSE(futility_utils->SetHwid("MODEL-CODE A1B-C2D-E2K"));
+}
+
+TEST_F(FutilityUtilsTest, SetHwidGetOutputFail) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _)).WillOnce(Return(false));
+  auto futility_utils = std::make_unique<FutilityUtilsImpl>(
+      std::move(mock_cmd_utils), std::make_unique<HwidUtilsImpl>());
+
+  EXPECT_FALSE(futility_utils->SetHwid("MODEL-CODE A1B-C2D-E2J"));
 }
 
 }  // namespace rmad

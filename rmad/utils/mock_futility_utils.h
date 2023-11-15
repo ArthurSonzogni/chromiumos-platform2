@@ -7,6 +7,8 @@
 
 #include "rmad/utils/futility_utils.h"
 
+#include <string>
+
 #include <gmock/gmock.h>
 
 namespace rmad {
@@ -19,6 +21,7 @@ class MockFutilityUtils : public FutilityUtils {
   MOCK_METHOD(bool, GetApWriteProtectionStatus, (bool*), (override));
   MOCK_METHOD(bool, EnableApSoftwareWriteProtection, (), (override));
   MOCK_METHOD(bool, DisableApSoftwareWriteProtection, (), (override));
+  MOCK_METHOD(bool, SetHwid, (const std::string&), (override));
 };
 
 }  // namespace rmad
