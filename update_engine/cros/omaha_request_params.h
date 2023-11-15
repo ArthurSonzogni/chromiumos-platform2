@@ -193,6 +193,12 @@ class OmahaRequestParams {
 
   inline std::string fsi_version() const { return fsi_version_; }
 
+  inline void set_managed_device_in_oobe(bool managed_device_in_oobe) {
+    managed_device_in_oobe_ = managed_device_in_oobe;
+  }
+
+  inline bool managed_device_in_oobe() const { return managed_device_in_oobe_; }
+
   inline void set_wall_clock_based_wait_enabled(bool enabled) {
     wall_clock_based_wait_enabled_ = enabled;
   }
@@ -486,6 +492,9 @@ class OmahaRequestParams {
 
   // Defines the device's market segment.
   std::string market_segment_;
+
+  // Whether the device is in OOBE and was managed before being reset.
+  bool managed_device_in_oobe_ = false;
 
   // Whether to include <hw> element.
 #if USE_HW_DETAILS

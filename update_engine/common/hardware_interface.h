@@ -168,6 +168,10 @@ class HardwareInterface {
   // Returns an empty string if not set or error.
   virtual std::string GetFsiVersion() const = 0;
 
+  // The check_enrollment value as saved in VPD. This is a bool flag, e.g. "1".
+  // Returns true if the value is present and equal to "1".
+  virtual bool GetCheckEnrollment() const = 0;
+
   // Returns the MINIOS partition with the higher priority. 0 for A and 1 for B.
   virtual int GetActiveMiniOsPartition() const = 0;
 
@@ -209,6 +213,9 @@ class HardwareInterface {
 
   // Returns an absolute path to a powerwash marker file.
   virtual base::FilePath GetPowerwashMarkerFullPath() const = 0;
+
+  // Returns whether the device is managed and in OOBE.
+  virtual bool IsManagedDeviceInOobe() const = 0;
 };
 
 }  // namespace chromeos_update_engine

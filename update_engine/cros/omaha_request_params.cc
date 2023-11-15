@@ -111,9 +111,11 @@ bool OmahaRequestParams::Init(const string& app_version,
     image_props_.version = app_version;
 
   os_sp_ = image_props_.version + "_" + GetMachineType();
-  hwid_ = SystemState::Get()->hardware()->GetHardwareClass();
-  device_requisition_ = SystemState::Get()->hardware()->GetDeviceRequisition();
-  if (SystemState::Get()->hardware()->IsRunningFromMiniOs()) {
+  const auto* hardware = SystemState::Get()->hardware();
+  managed_device_in_oobe_ = hardware->IsManagedDeviceInOobe();
+  hwid_ = hardware->GetHardwareClass();
+  device_requisition_ = hardware->GetDeviceRequisition();
+  if (hardware->IsRunningFromMiniOs()) {
     delta_okay_ = false;
     image_props_.version = kNoVersion;
     LOG(INFO) << "In recovery mode, need a full payload, "
@@ -184,8 +186,7 @@ bool OmahaRequestParams::Init(const string& app_version,
   rollback_data_save_requested_ = false;
   rollback_allowed_milestones_ = 0;
 
-  const auto& fsi_version_from_vpd =
-      SystemState::Get()->hardware()->GetFsiVersion();
+  const auto& fsi_version_from_vpd = hardware->GetFsiVersion();
 
   if (IsValidFsiVersion(fsi_version_from_vpd)) {
     fsi_version_ = fsi_version_from_vpd;
@@ -194,8 +195,7 @@ bool OmahaRequestParams::Init(const string& app_version,
     LOG(ERROR) << "None or invalid fsi version in vpd, value: "
                << fsi_version_from_vpd;
     fsi_version_ = "";
-    const auto& activate_date_from_vpd =
-        SystemState::Get()->hardware()->GetActivateDate();
+    const auto& activate_date_from_vpd = hardware->GetActivateDate();
     if (IsValidActivateDate(activate_date_from_vpd)) {
       activate_date_ = activate_date_from_vpd;
     } else {

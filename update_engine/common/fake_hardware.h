@@ -179,6 +179,8 @@ class FakeHardware : public HardwareInterface {
 
   std::string GetFsiVersion() const override { return fsi_version_; }
 
+  bool GetCheckEnrollment() const override { return check_enrollment_; }
+
   int GetActiveMiniOsPartition() const override { return 0; }
 
   bool SetActiveMiniOsPartition(int active_partition) override { return true; }
@@ -263,6 +265,10 @@ class FakeHardware : public HardwareInterface {
     fsi_version_ = fsi_version;
   }
 
+  void SetCheckEnrollment(bool check_enrollment) {
+    check_enrollment_ = check_enrollment;
+  }
+
   // Getters to verify state.
   int GetMaxKernelKeyRollforward() const { return kernel_max_rollforward_; }
 
@@ -311,6 +317,13 @@ class FakeHardware : public HardwareInterface {
     return base::FilePath();
   };
 
+  bool IsManagedDeviceInOobe() const override {
+    return managed_device_in_oobe_;
+  }
+  void SetManagedDeviceInOobe(bool managed_device_in_oobe) {
+    managed_device_in_oobe_ = managed_device_in_oobe;
+  }
+
  private:
   bool is_official_build_{true};
   bool is_normal_boot_mode_{true};
@@ -337,12 +350,14 @@ class FakeHardware : public HardwareInterface {
   bool first_active_omaha_ping_sent_{false};
   std::string activate_date_{""};
   std::string fsi_version_{""};
+  bool check_enrollment_{false};
   bool warm_reset_{false};
   std::string recovery_key_version_;
   mutable std::map<std::string, std::string> partition_timestamps_;
   bool rootfs_verification_enabled_{false};
   bool reset_fw_try_next_slot_{false};
   bool fail_reset_fw_try_next_slot_{false};
+  bool managed_device_in_oobe_{false};
 };
 
 }  // namespace chromeos_update_engine

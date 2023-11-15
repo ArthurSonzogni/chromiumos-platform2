@@ -426,6 +426,9 @@ string OmahaRequestBuilderXml::GetOs() const {
     os_xml +=
         "\" market_segment=\"" + XmlEncodeWithDefault(params->market_segment());
   }
+  if (params->managed_device_in_oobe()) {
+    os_xml += "\" managed_device_in_oobe=\"true";
+  }
   os_xml += "\"></os>\n";
   return os_xml;
 }

@@ -838,4 +838,22 @@ TEST_F(OmahaRequestBuilderXmlTest,
       << request_xml;
 }
 
+TEST_F(OmahaRequestBuilderXmlTest, ManagedInOobeIsSentOnEnrolledInOobe) {
+  params_.set_managed_device_in_oobe(true);
+
+  OmahaRequestBuilderXml omaha_request{nullptr, false, false, 0, 0, 0, ""};
+  const string request_xml = omaha_request.GetRequest();
+  EXPECT_EQ(1, CountSubstringInString(request_xml, "managed_device_in_oobe=\"true\""))
+      << request_xml;
+}
+
+TEST_F(OmahaRequestBuilderXmlTest, ManagedInOobeNotSentWhenParamIsFalse) {
+  params_.set_managed_device_in_oobe(false);
+
+  OmahaRequestBuilderXml omaha_request{nullptr, false, false, 0, 0, 0, ""};
+  const string request_xml = omaha_request.GetRequest();
+  EXPECT_EQ(0, CountSubstringInString(request_xml, "managed_in_oobe"))
+      << request_xml;
+}
+
 }  // namespace chromeos_update_engine

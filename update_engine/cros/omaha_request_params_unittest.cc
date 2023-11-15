@@ -377,4 +377,16 @@ TEST_F(OmahaRequestParamsTest, ImpossibleActivateDateIsIgnored) {
   EXPECT_EQ(params_.activate_date(), "");
 }
 
+TEST_F(OmahaRequestParamsTest, ManagedInOobeIsFalseIfOobeIsCompleted) {
+  FakeSystemState::Get()->fake_hardware()->SetManagedDeviceInOobe(false);
+  EXPECT_TRUE(params_.Init("", "", {}));
+  EXPECT_EQ(params_.managed_device_in_oobe(), false);
+}
+
+TEST_F(OmahaRequestParamsTest, ManagedInOobeIsTrueIfManagedAndInOobe) {
+  FakeSystemState::Get()->fake_hardware()->SetManagedDeviceInOobe(true);
+  EXPECT_TRUE(params_.Init("", "", {}));
+  EXPECT_EQ(params_.managed_device_in_oobe(), true);
+}
+
 }  // namespace chromeos_update_engine

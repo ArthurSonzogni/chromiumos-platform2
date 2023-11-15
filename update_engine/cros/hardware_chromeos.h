@@ -76,6 +76,7 @@ class HardwareChromeOS final : public HardwareInterface {
   bool SetFirstActiveOmahaPingSent() override;
   std::string GetActivateDate() const override;
   std::string GetFsiVersion() const override;
+  bool GetCheckEnrollment() const override;
   int GetActiveMiniOsPartition() const override;
   bool SetActiveMiniOsPartition(int active_partition) override;
   void SetWarmReset(bool warm_reset) override;
@@ -94,6 +95,8 @@ class HardwareChromeOS final : public HardwareInterface {
   bool ResetFWTryNextSlot() override;
 
   base::FilePath GetPowerwashMarkerFullPath() const override;
+
+  bool IsManagedDeviceInOobe() const override;
 
  private:
   friend class HardwareChromeOSTest;

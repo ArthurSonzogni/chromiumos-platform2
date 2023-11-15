@@ -106,6 +106,9 @@ const char* kActivateDateVpdKey = "ActivateDate";
 // The FSI version the device shipped with.
 const char* kFsiVersionVpdKey = "fsi_version";
 
+// The VPD key for managed device.
+const char* kCheckEnrollmentKey = "check_enrollment";
+
 // Vboot MiniOS booting priority flag.
 const char kMiniOsPriorityFlag[] = "minios_priority";
 
@@ -520,6 +523,14 @@ std::string HardwareChromeOS::GetFsiVersion() const {
   return fsi_version;
 }
 
+bool HardwareChromeOS::GetCheckEnrollment() const {
+  std::string check_enrollment;
+  if (!utils::GetVpdValue(kCheckEnrollmentKey, &check_enrollment)) {
+    return false;
+  }
+  return check_enrollment == "1";
+}
+
 std::unique_ptr<base::Value> HardwareChromeOS::ReadLocalState() const {
   base::FilePath local_state_file = base::FilePath(kLocalStatePath);
 
@@ -691,6 +702,11 @@ bool HardwareChromeOS::SetFWTryCount(int count) {
 
 base::FilePath HardwareChromeOS::GetPowerwashMarkerFullPath() const {
   return root_.Append(kPowerwashMarkerPath);
+}
+
+bool HardwareChromeOS::IsManagedDeviceInOobe() const {
+  return IsOOBEEnabled() && !IsOOBEComplete(nullptr) &&
+         GetCheckEnrollment();
 }
 
 }  // namespace chromeos_update_engine
