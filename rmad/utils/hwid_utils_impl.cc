@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/logging.h>
 #include <base/metrics/crc32.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
@@ -48,6 +49,20 @@ std::optional<std::string> HwidUtilsImpl::CalculateChecksum(
                          kBase32Alphabet[crc32 & ((1 << kBase32BitWidth) - 1)]);
 
   return checksum;
+}
+
+bool HwidUtilsImpl::VerifyChecksum(const std::string& hwid) {
+  if (hwid.size() <= 2) {
+    LOG(ERROR) << "The given HWID string has an invalid length.";
+    return false;
+  }
+
+  std::string raw_hwid = hwid.substr(0, hwid.size() - 2);
+  std::string original_checksum = hwid.substr(hwid.size() - 2);
+
+  std::optional<std::string> checksum = this->CalculateChecksum(raw_hwid);
+
+  return (checksum == original_checksum);
 }
 
 }  // namespace rmad

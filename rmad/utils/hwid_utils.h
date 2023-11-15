@@ -16,6 +16,10 @@ class HwidUtils {
   HwidUtils() = default;
   virtual ~HwidUtils() = default;
 
+  // Verify the checksum of the given HWID string. The function will fail if the
+  // given HWID string has invalid length or the checksum is not correct.
+  virtual bool VerifyChecksum(const std::string& hwid) = 0;
+
  private:
   // Calculate checksum from the given HWID string without checksum. The
   // original checksum should be stripped before passing the HWID string to the

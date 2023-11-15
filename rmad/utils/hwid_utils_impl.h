@@ -16,6 +16,8 @@ class HwidUtilsImpl : public HwidUtils {
   HwidUtilsImpl() = default;
   ~HwidUtilsImpl() override = default;
 
+  bool VerifyChecksum(const std::string& hwid) override;
+
  private:
   std::optional<std::string> CalculateChecksum(
       const std::string& hwid) const override;
