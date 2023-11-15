@@ -5,6 +5,8 @@
 #ifndef PRINTSCANMGR_EXECUTOR_MOCK_EXECUTOR_H_
 #define PRINTSCANMGR_EXECUTOR_MOCK_EXECUTOR_H_
 
+#include <string>
+
 #include <gmock/gmock.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
@@ -27,6 +29,10 @@ class MockExecutor : public mojom::Executor {
   MOCK_METHOD(void,
               RestartUpstartJob,
               (mojom::UpstartJob, RestartUpstartJobCallback),
+              (override));
+  MOCK_METHOD(void,
+              GetPpdFile,
+              (const std::string&, GetPpdFileCallback),
               (override));
 
  private:

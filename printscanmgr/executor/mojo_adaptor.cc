@@ -8,8 +8,16 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/files/file_path.h>
+#include <brillo/files/safe_fd.h>
 
 namespace printscanmgr {
+
+namespace {
+
+constexpr char kPpdDirectory[] = "/var/cache/cups/printers/ppd";
+
+}  // namespace
 
 MojoAdaptor::MojoAdaptor(
     const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner,
@@ -31,6 +39,36 @@ void MojoAdaptor::RestartUpstartJob(mojom::UpstartJob job,
   std::string error;
   bool success = upstart_tools_->RestartJob(job, &error);
   std::move(callback).Run(success, error);
+}
+
+void MojoAdaptor::GetPpdFile(const std::string& file_name,
+                             GetPpdFileCallback callback) {
+  // Get just the filename from the input and build a new path with the known
+  // cups PPD directory.  Doing it this way for security reasons - making sure
+  // we use a known good directory and not trusting the input from printscanmgr.
+  const base::FilePath ppdPath =
+      base::FilePath(kPpdDirectory).Append(file_name);
+
+  // Use SafeFD to read the file - more secure than just using file utils.
+  auto [ppdFd, err1] = brillo::SafeFD::Root().first.OpenExistingFile(
+      ppdPath, O_RDONLY | O_CLOEXEC);
+  if (brillo::SafeFD::IsError(err1)) {
+    LOG(ERROR) << "Unable to open " << ppdPath << ": "
+               << static_cast<int>(err1);
+    std::move(callback).Run(/*file_contents=*/"", /*success=*/false);
+    return;
+  }
+
+  auto [contents, err2] = ppdFd.ReadContents();
+  if (brillo::SafeFD::IsError(err2)) {
+    LOG(ERROR) << "Unable to read contents of " << ppdPath << ": "
+               << static_cast<int>(err2);
+    std::move(callback).Run(/*file_contents=*/"", /*success=*/false);
+    return;
+  }
+
+  std::move(callback).Run(std::string(contents.begin(), contents.end()),
+                          /*success=*/true);
 }
 
 }  // namespace printscanmgr

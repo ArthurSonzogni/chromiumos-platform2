@@ -6,6 +6,7 @@
 #define PRINTSCANMGR_EXECUTOR_MOJO_ADAPTOR_H_
 
 #include <memory>
+#include <string>
 
 #include <base/functional/bind.h>
 #include <base/memory/weak_ptr.h>
@@ -33,6 +34,8 @@ class MojoAdaptor final : public mojom::Executor {
   // mojom::Executor overrides:
   void RestartUpstartJob(mojom::UpstartJob job,
                          RestartUpstartJobCallback callback) override;
+  void GetPpdFile(const std::string& file_name,
+                  GetPpdFileCallback callback) override;
 
  private:
   // Task runner for all Mojo callbacks.

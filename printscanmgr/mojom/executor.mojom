@@ -19,4 +19,8 @@ interface Executor {
   // running, this method will report success and leave `job` in its previous
   // state.
   RestartUpstartJob(UpstartJob job) => (bool success, string errorMsg);
+  // Requests that the executor read the file named `fileName` from the known
+  // PPD directory. `fileContents` is the unparsed contents of the file read,
+  // and `success` will be false if an error occurred reading the file.
+  GetPpdFile(string fileName) => (string fileContents, bool success);
 };

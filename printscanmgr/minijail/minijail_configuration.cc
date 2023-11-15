@@ -95,6 +95,15 @@ void EnterExecutorMinijail() {
                   0));  // Shared socket file for talking to the D-Bus daemon.
   CHECK_EQ(1, minijail_add_fs_restriction_rw(jail.get(), "/run/dbus"));
 
+  // Create a new tmpfs filesystem for /var and mount necessary files.
+  CHECK_EQ(
+      0, minijail_mount_with_data(jail.get(), "tmpfs", "/var", "tmpfs", 0, ""));
+  CHECK_EQ(0, minijail_bind(jail.get(), "/var/cache/cups/printers/ppd",
+                            "/var/cache/cups/printers/ppd",
+                            0));  // Directory containing PPD files.
+  CHECK_EQ(1, minijail_add_fs_restriction_rw(jail.get(),
+                                             "/var/cache/cups/printers/ppd"));
+
   minijail_enter(jail.get());
 }
 
