@@ -16,7 +16,6 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 
 #include "iioservice/daemon/iio_sensor.h"
-#include "iioservice/mojo/cros_sensor_service.mojom.h"
 
 namespace iioservice {
 

@@ -8,6 +8,7 @@ module cros.mojom;
 
 import "iioservice/mojo/sensor.mojom";
 
+// Deprecated: Use CrOS Mojo Service Manager to connect to iioservice.
 // The CrOS sensor HAL Mojo server.
 //
 // Next method ID: 1
@@ -19,6 +20,7 @@ interface SensorHalServer {
   CreateChannel@0(pending_receiver<SensorService> sensor_service_request);
 };
 
+// Deprecated: Use CrOS Mojo Service Manager to connect to iioservice.
 // The CrOS sensor HAL Mojo client.
 //
 // Next method ID: 1

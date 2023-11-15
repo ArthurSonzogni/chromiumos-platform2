@@ -16,7 +16,6 @@
 #include <mojo/public/cpp/bindings/remote_set.h>
 
 #include "iioservice/iioservice_simpleclient/sensor_client.h"
-#include "iioservice/mojo/cros_sensor_service.mojom.h"
 #include "iioservice/mojo/sensor.mojom.h"
 
 namespace iioservice {
