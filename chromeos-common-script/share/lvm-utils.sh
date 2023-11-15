@@ -12,7 +12,7 @@
 get_volume_group() {
   local physical_volume="$1"
 
-  pvs --quiet --readonly --noheadings --separator '|' \
+  pvs -qq --readonly --noheadings --separator '|' \
     -o vg_name "${physical_volume}" | tr -d '[:space:]'
 }
 
