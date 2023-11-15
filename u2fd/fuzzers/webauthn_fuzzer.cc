@@ -261,7 +261,7 @@ class WebAuthnFuzzer : public brillo::Daemon {
   FuzzedDataProvider data_provider_;
   const u2f::RepeatedPtrField<u2f::WebAuthnFuzzerData::Request>&
       fuzzed_requests_;
-  u2f::RepeatedPtrField<const u2f::WebAuthnFuzzerData::Request>::iterator
+  u2f::RepeatedPtrField<u2f::WebAuthnFuzzerData::Request>::const_iterator
       fuzzed_requests_iter_;
 };
 
