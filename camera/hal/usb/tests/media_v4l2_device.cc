@@ -263,7 +263,7 @@ bool V4L2Device::StartCapture() {
   for (size_t i = 0; i < num_skip_frames_; i++) {
     int ret;
     do {
-      ret = ReadOneFrame(&buf_index, &data_size);
+      ret = ReadOneFrame(&buf_index, &data_size, /*skip_frames=*/true);
     } while (ret == 0);
     if (ret < 0)
       return false;
@@ -305,7 +305,7 @@ bool V4L2Device::Run(uint32_t time_in_sec) {
   uint64_t start_in_nanosec = 0;
   uint32_t buffer_index, data_size;
   while (!stopped_) {
-    int32_t r = ReadOneFrame(&buffer_index, &data_size);
+    int32_t r = ReadOneFrame(&buffer_index, &data_size, /*skip_frames=*/false);
     if (r < 0)
       return false;
     if (r) {
@@ -344,7 +344,9 @@ int32_t V4L2Device::DoIoctl(int32_t request, void* arg) {
 // return 1 : successful to retrieve a frame from device
 // return 0 : EAGAIN
 // negative : error
-int32_t V4L2Device::ReadOneFrame(uint32_t* buffer_index, uint32_t* data_size) {
+int32_t V4L2Device::ReadOneFrame(uint32_t* buffer_index,
+                                 uint32_t* data_size,
+                                 bool skip_frame) {
   const int kCaptureTimeoutMs = 1000;
   pollfd device_pfd = {};
   device_pfd.fd = fd_;
@@ -384,7 +386,9 @@ int32_t V4L2Device::ReadOneFrame(uint32_t* buffer_index, uint32_t* data_size) {
       // (https://patchwork.kernel.org/patch/6874491/), we have to manually
       // enable HW timestamp via /sys/module/uvcvideo/parameters/hwtimestamps.
       ts = buf.timestamp.tv_sec * 1000000000LL + buf.timestamp.tv_usec * 1000;
-      frame_timestamps_.push_back(ts);
+      if (!skip_frame) {
+        frame_timestamps_.push_back(ts);
+      }
       CHECK(buf.index < num_buffers_);
       // TODO(henryhsu): uvcvideo driver ignores this field. This is negligible,
       // so disabling this for now until we get a fix into the upstream driver.
@@ -407,7 +411,9 @@ int32_t V4L2Device::ReadOneFrame(uint32_t* buffer_index, uint32_t* data_size) {
         }
       }
       ts = buf.timestamp.tv_sec * 1000000000LL + buf.timestamp.tv_usec * 1000;
-      frame_timestamps_.push_back(ts);
+      if (!skip_frame) {
+        frame_timestamps_.push_back(ts);
+      }
       CHECK(buf.index < num_buffers_);
       break;
     default:
@@ -876,7 +882,7 @@ bool V4L2Device::OneCapture() {
   int ret;
   uint32_t buf_index, data_size;
   do {
-    ret = ReadOneFrame(&buf_index, &data_size);
+    ret = ReadOneFrame(&buf_index, &data_size, /*skip_frames=*/false);
   } while (ret == 0);
   if (ret < 0)
     return false;

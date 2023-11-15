@@ -35,8 +35,7 @@
 #include "hal/usb/common_types.h"
 #include "hal/usb/tests/media_v4l2_device.h"
 
-namespace cros {
-namespace tests {
+namespace cros::tests {
 
 class V4L2TestEnvironment;
 
@@ -374,17 +373,6 @@ class V4L2TestEnvironment : public ::testing::Environment {
       check_1280x960_ = true;
       check_1600x1200_ = true;
       check_constant_framerate_ = true;
-      if (skip_frames_ != 0) {
-        // Some existing HALv3 boards are using this field to workaround issues
-        // that are not caught in this test, such as:
-        // * corrupted YUYV frames, and
-        // * broken JPEG image when setting power frequency to 60Hz.
-        // Although it's infeasible to test every possible parameter
-        // combinations, we might want to add tests for the failing cases above
-        // in the future and qualify the existing devices.
-        LOGF(WARNING) << "Ignore non-zero skip frames for v3 devices";
-        skip_frames_ = 0;
-      }
       ASSERT_TRUE(support_constant_framerate_)
           << "HALv3 devices should support constant framerate";
     }
@@ -920,7 +908,7 @@ class V4L2Test : public ::testing::Test {
       for (int retry_count = 0; retry_count < kMaxRetryTimes; retry_count++) {
         ASSERT_TRUE(dev_.InitDevice(V4L2Device::IO_METHOD_MMAP, width, height,
                                     test_format->fourcc, fps,
-                                    constant_framerate, 0));
+                                    constant_framerate, g_env->skip_frames_));
         ASSERT_TRUE(dev_.StartCapture());
         ASSERT_TRUE(dev_.Run(3));
         ASSERT_TRUE(dev_.StopCapture());
@@ -1002,11 +990,11 @@ TEST_P(V4L2TestWithIO, MultipleInit) {
   ASSERT_TRUE(dev2.OpenDevice()) << "Cannot open device for the second time";
 
   ASSERT_TRUE(dev1.InitDevice(io, 640, 480, V4L2_PIX_FMT_YUYV, 30,
-                              constant_framerate, 0))
+                              constant_framerate, g_env->skip_frames_))
       << "Cannot init device for the first time";
 
   ASSERT_FALSE(dev2.InitDevice(io, 640, 480, V4L2_PIX_FMT_YUYV, 30,
-                               constant_framerate, 0))
+                               constant_framerate, g_env->skip_frames_))
       << "Multiple init device should fail";
 
   dev1.UninitDevice();
@@ -1253,7 +1241,7 @@ TEST_F(V4L2Test, FirstFrameAfterStreamOn) {
     uint32_t buf_index, data_size;
     int ret;
     do {
-      ret = dev_.ReadOneFrame(&buf_index, &data_size);
+      ret = dev_.ReadOneFrame(&buf_index, &data_size, /*skip_frame=*/false);
     } while (ret == 0);
     ASSERT_GT(ret, 0);
 
@@ -1306,7 +1294,8 @@ TEST_F(V4L2Test, ReconfigureStreamLatency) {
   for (const auto& format : GetSupportedFormats()) {
     ASSERT_TRUE(dev_.InitDevice(V4L2Device::IO_METHOD_MMAP, old_format->width,
                                 old_format->height, old_format->fourcc, 30.0f,
-                                V4L2Device::DEFAULT_FRAMERATE_SETTING, 0));
+                                V4L2Device::DEFAULT_FRAMERATE_SETTING,
+                                g_env->skip_frames_));
     ASSERT_TRUE(dev_.StartCapture());
     ASSERT_TRUE(dev_.Run(3));
 
@@ -1315,7 +1304,8 @@ TEST_F(V4L2Test, ReconfigureStreamLatency) {
     ASSERT_TRUE(dev_.UninitDevice());
     ASSERT_TRUE(dev_.InitDevice(
         V4L2Device::IO_METHOD_MMAP, format.width, format.height, format.fourcc,
-        GetMaxFrameRate(format), V4L2Device::DEFAULT_FRAMERATE_SETTING, 0));
+        GetMaxFrameRate(format), V4L2Device::DEFAULT_FRAMERATE_SETTING,
+        g_env->skip_frames_));
     ASSERT_TRUE(dev_.StartCapture());
 
     ASSERT_LE(timer.Elapsed(), kAllowedLatency);
@@ -1351,7 +1341,8 @@ TEST_P(V4L2ReconfigureTest, ReconfigureAndOneCaptureLatency) {
 
   ASSERT_TRUE(dev_.InitDevice(V4L2Device::IO_METHOD_MMAP, small_format->width,
                               small_format->height, small_format->fourcc, 30.0f,
-                              V4L2Device::DEFAULT_FRAMERATE_SETTING, 0));
+                              V4L2Device::DEFAULT_FRAMERATE_SETTING,
+                              g_env->skip_frames_));
   ASSERT_TRUE(dev_.StartCapture());
   // Exercise capture with current resolution for 3s.
   ASSERT_TRUE(dev_.Run(3));
@@ -1360,10 +1351,10 @@ TEST_P(V4L2ReconfigureTest, ReconfigureAndOneCaptureLatency) {
   ASSERT_TRUE(dev_.StopCapture());
   ASSERT_TRUE(dev_.UninitDevice());
 
-  ASSERT_TRUE(dev_.InitDevice(V4L2Device::IO_METHOD_MMAP, large_format->width,
-                              large_format->height, large_format->fourcc,
-                              GetMaxFrameRate(*large_format),
-                              V4L2Device::DEFAULT_FRAMERATE_SETTING, 0));
+  ASSERT_TRUE(dev_.InitDevice(
+      V4L2Device::IO_METHOD_MMAP, large_format->width, large_format->height,
+      large_format->fourcc, GetMaxFrameRate(*large_format),
+      V4L2Device::DEFAULT_FRAMERATE_SETTING, g_env->skip_frames_));
   ASSERT_TRUE(dev_.StartCapture());
   ASSERT_TRUE(dev_.OneCapture());
   ASSERT_TRUE(dev_.StopCapture());
@@ -1386,8 +1377,7 @@ INSTANTIATE_TEST_SUITE_P(
         {Size(320, 240), Size(1280, 720), base::Milliseconds(2500)},
         {Size(320, 240), Size(1920, 1080), base::Milliseconds(3500)},
         {Size(320, 240), Size(2592, 1944), base::Milliseconds(3500)}}));
-}  // namespace tests
-}  // namespace cros
+}  // namespace cros::tests
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);

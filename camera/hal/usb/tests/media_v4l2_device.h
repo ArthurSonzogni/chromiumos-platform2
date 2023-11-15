@@ -57,7 +57,9 @@ class V4L2Device {
   virtual bool StartCapture();
   virtual bool StopCapture();
   virtual bool Run(uint32_t time_in_sec);
-  virtual int32_t ReadOneFrame(uint32_t* buffer_index, uint32_t* data_size);
+  virtual int32_t ReadOneFrame(uint32_t* buffer_index,
+                               uint32_t* data_size,
+                               bool skip_frame);
   virtual bool EnqueueBuffer(uint32_t buffer_index);
 
   // Helper methods.
