@@ -80,6 +80,9 @@ class LinuxDmabufTest : public WaylandTestBase {
 
     WaylandTestBase::Connect();
 
+    // TODO(b/234899270): remove once integration bug is fixed
+    ctx.enable_linux_dmabuf = true;
+
     // advertise global
     wl_registry* registry = wl_display_get_registry(ctx.display);
     sl_registry_handler(&ctx, registry, next_server_id++, "zwp_linux_dmabuf_v1",

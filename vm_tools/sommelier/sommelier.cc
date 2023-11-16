@@ -644,8 +644,11 @@ void sl_registry_handler(void* data,
     linux_dmabuf->version = MIN(SL_LINUX_DMABUF_MAX_VERSION, version);
 
     linux_dmabuf->host_drm_global = sl_drm_global_create(ctx, linux_dmabuf);
-    linux_dmabuf->host_linux_dmabuf_global =
-        sl_linux_dmabuf_global_create(ctx, linux_dmabuf);
+
+    if (ctx->enable_linux_dmabuf) {
+      linux_dmabuf->host_linux_dmabuf_global =
+          sl_linux_dmabuf_global_create(ctx, linux_dmabuf);
+    }
 
     if (linux_dmabuf->version >= 2) {
       linux_dmabuf->proxy_v2 = static_cast<zwp_linux_dmabuf_v1*>(
@@ -852,7 +855,8 @@ void sl_registry_remover(void* data,
       sl_global_destroy(ctx->linux_dmabuf->host_drm_global);
     if (ctx->linux_dmabuf->proxy_v2)
       zwp_linux_dmabuf_v1_destroy(ctx->linux_dmabuf->proxy_v2);
-    sl_global_destroy(ctx->linux_dmabuf->host_linux_dmabuf_global);
+    if (ctx->linux_dmabuf->host_linux_dmabuf_global)
+      sl_global_destroy(ctx->linux_dmabuf->host_linux_dmabuf_global);
     free(ctx->linux_dmabuf);
     ctx->linux_dmabuf = nullptr;
     return;
@@ -3430,6 +3434,8 @@ static void sl_print_usage() {
       "  --xwayland-path=PATH\t\tPath to Xwayland executable\n"
       "  --xwayland-gl-driver-path=PATH\tPath to GL drivers for Xwayland\n"
       "  --xwayland-cmd-prefix=PREFIX\tXwayland command line prefix\n"
+      "  --enable-linux-dmabuf\t\tEnable client-facing zwp_linux_dmabuf_v1 "
+      "extension support\n"
       "  --enable-xshape\t\tEnable X11 XShape extension support\n"
       "  --enable-x11-move-windows\t\tLet X11 apps control window position,\n"
       "\tif the host compositor supports the aura_shell protocol.\n"
@@ -3906,6 +3912,8 @@ int real_main(int argc, char** argv) {
       ctx.timing = new Timing(sl_arg_value(arg));
     } else if (strstr(arg, "--explicit-fence") == arg) {
       ctx.use_explicit_fence = true;
+    } else if (strstr(arg, "--enable-linux-dmabuf") == arg) {
+      ctx.enable_linux_dmabuf = true;
     } else if (strstr(arg, "--enable-xshape") == arg) {
       ctx.enable_xshape = true;
     } else if (strstr(arg, "--enable-x11-move-windows") == arg) {
