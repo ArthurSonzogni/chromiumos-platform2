@@ -398,10 +398,10 @@ bool ThinpoolMigrator::DuplicateHeader(uint64_t from,
   brillo::ProcessImpl dd;
   dd.AddArg("/bin/dd");
   dd.AddArg(base::StringPrintf("if=%s", block_device_.value().c_str()));
-  dd.AddArg(base::StringPrintf("skip=%lu", from / kSectorSize));
+  dd.AddArg(base::StringPrintf("skip=%" PRIu64, from / kSectorSize));
   dd.AddArg(base::StringPrintf("of=%s", block_device_.value().c_str()));
-  dd.AddArg(base::StringPrintf("seek=%lu", to / kSectorSize));
-  dd.AddArg(base::StringPrintf("count=%lu", size / kSectorSize));
+  dd.AddArg(base::StringPrintf("seek=%" PRIu64, to / kSectorSize));
+  dd.AddArg(base::StringPrintf("count=%" PRIu64, size / kSectorSize));
 
   dd.SetCloseUnusedFileDescriptors(true);
   if (dd.Run() != 0) {
