@@ -54,10 +54,9 @@ bool DirectExtentReader::Seek(uint64_t offset) {
   }
   // The first item is zero and upper_bound never returns it because it always
   // return the item which is greater than the given value.
-  auto extent_idx =
-      std::upper_bound(
-          extents_upper_bounds_.begin(), extents_upper_bounds_.end(), offset) -
-      extents_upper_bounds_.begin() - 1;
+  auto extent_idx = std::upper_bound(extents_upper_bounds_.begin(),
+                                     extents_upper_bounds_.end(), offset) -
+                    extents_upper_bounds_.begin() - 1;
   cur_extent_ = std::next(extents_.begin(), extent_idx);
   offset_ = offset;
   cur_extent_bytes_read_ = offset_ - extents_upper_bounds_[extent_idx];
@@ -78,9 +77,7 @@ bool DirectExtentReader::Read(void* buffer, size_t count) {
 
     ssize_t out_bytes_read;
     TEST_AND_RETURN_FALSE(utils::PReadAll(
-        fd_,
-        bytes + bytes_read,
-        bytes_to_read,
+        fd_, bytes + bytes_read, bytes_to_read,
         cur_extent_->start_block() * block_size_ + cur_extent_bytes_read_,
         &out_bytes_read));
     TEST_AND_RETURN_FALSE(out_bytes_read ==

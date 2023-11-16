@@ -86,10 +86,9 @@ TEST(ExtentUtilsTest, ExtendExtentsTest) {
   ExtendExtents(first_op.mutable_src_extents(), second_op.src_extents());
   vector<Extent> first_op_vec;
   ExtentsToVector(first_op.src_extents(), &first_op_vec);
-  EXPECT_EQ(
-      (vector<Extent>{
-          ExtentForRange(1, 1), ExtentForRange(3, 3), ExtentForRange(8, 2)}),
-      first_op_vec);
+  EXPECT_EQ((vector<Extent>{ExtentForRange(1, 1), ExtentForRange(3, 3),
+                            ExtentForRange(8, 2)}),
+            first_op_vec);
 }
 
 TEST(ExtentUtilsTest, NormalizeExtentsSimpleList) {
@@ -105,12 +104,9 @@ TEST(ExtentUtilsTest, NormalizeExtentsSimpleList) {
 }
 
 TEST(ExtentUtilsTest, NormalizeExtentsTest) {
-  vector<Extent> extents = {ExtentForRange(0, 3),
-                            ExtentForRange(3, 2),
-                            ExtentForRange(5, 1),
-                            ExtentForRange(8, 4),
-                            ExtentForRange(13, 1),
-                            ExtentForRange(14, 2)};
+  vector<Extent> extents = {ExtentForRange(0, 3),  ExtentForRange(3, 2),
+                            ExtentForRange(5, 1),  ExtentForRange(8, 4),
+                            ExtentForRange(13, 1), ExtentForRange(14, 2)};
   NormalizeExtents(&extents);
   EXPECT_EQ(3U, extents.size());
   EXPECT_EQ(ExtentForRange(0, 6), extents[0]);
@@ -119,8 +115,8 @@ TEST(ExtentUtilsTest, NormalizeExtentsTest) {
 }
 
 TEST(ExtentUtilsTest, ExtentsSublistTest) {
-  vector<Extent> extents = {
-      ExtentForRange(10, 10), ExtentForRange(30, 10), ExtentForRange(50, 10)};
+  vector<Extent> extents = {ExtentForRange(10, 10), ExtentForRange(30, 10),
+                            ExtentForRange(50, 10)};
 
   // Simple empty result cases.
   EXPECT_EQ(vector<Extent>(), ExtentsSublist(extents, 1000, 20));

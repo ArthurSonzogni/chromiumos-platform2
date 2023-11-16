@@ -82,10 +82,8 @@ bool LaunchProcess(const vector<string>& cmd,
 
   // Create an environment for the child process with just the required PATHs.
   std::map<string, string> env;
-  const std::vector<const char*> allowed_envs = {"LD_LIBRARY_PATH",
-                                                 "PATH",
-                                                 "ASAN_OPTIONS",
-                                                 "MSAN_OPTIONS",
+  const std::vector<const char*> allowed_envs = {"LD_LIBRARY_PATH", "PATH",
+                                                 "ASAN_OPTIONS", "MSAN_OPTIONS",
                                                  "UBSAN_OPTIONS"};
   for (const char* key : allowed_envs) {
     const char* value = getenv(key);
@@ -127,8 +125,8 @@ void Subprocess::OnStdoutReady(SubprocessRecord* record) {
   do {
     bytes_read = 0;
     bool eof;
-    bool ok = utils::ReadAll(
-        record->stdout_fd, buf, std::size(buf), &bytes_read, &eof);
+    bool ok = utils::ReadAll(record->stdout_fd, buf, std::size(buf),
+                             &bytes_read, &eof);
     record->stdout.append(buf, bytes_read);
     if (!ok || eof) {
       // There was either an error or an EOF condition, so we are done watching
@@ -191,8 +189,7 @@ pid_t Subprocess::ExecFlags(const vector<string>& cmd,
 
   pid_t pid = record->proc.pid();
   CHECK(process_reaper_.WatchForChild(
-      FROM_HERE,
-      pid,
+      FROM_HERE, pid,
       base::BindOnce(&Subprocess::ChildExitedCallback,
                      base::Unretained(this))));
 

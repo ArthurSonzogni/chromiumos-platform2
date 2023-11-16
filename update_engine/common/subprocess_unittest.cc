@@ -95,10 +95,8 @@ void ExpectedResults(int expected_return_code,
 
 void ExpectedEnvVars(int return_code, const string& output) {
   EXPECT_EQ(0, return_code);
-  const std::set<string> allowed_envs = {"LD_LIBRARY_PATH",
-                                         "PATH",
-                                         "ASAN_OPTIONS",
-                                         "MSAN_OPTIONS",
+  const std::set<string> allowed_envs = {"LD_LIBRARY_PATH", "PATH",
+                                         "ASAN_OPTIONS", "MSAN_OPTIONS",
                                          "UBSAN_OPTIONS"};
   for (const string& key_value : brillo::string_utils::Split(output, "\n")) {
     auto key_value_pair =
@@ -157,21 +155,17 @@ TEST_F(SubprocessTest, EchoTest) {
 
 TEST_F(SubprocessTest, StderrNotIncludedInOutputTest) {
   EXPECT_TRUE(subprocess_.ExecFlags(
-      {kBinPath "/sh", "-c", "echo on stdout; echo on stderr >&2"},
-      0,
-      {},
+      {kBinPath "/sh", "-c", "echo on stdout; echo on stderr >&2"}, 0, {},
       base::BindOnce(&ExpectedResults, 0, "on stdout\n")));
   loop_.Run();
 }
 
 TEST_F(SubprocessTest, PipeRedirectFdTest) {
   pid_t pid;
-  pid = subprocess_.ExecFlags(
-      {kBinPath "/sh", "-c", "echo on pipe >&3"},
-      0,
-      {3},
-      base::BindOnce(
-          &ExpectedDataOnPipe, &subprocess_, &pid, 3, "on pipe\n", 0));
+  pid =
+      subprocess_.ExecFlags({kBinPath "/sh", "-c", "echo on pipe >&3"}, 0, {3},
+                            base::BindOnce(&ExpectedDataOnPipe, &subprocess_,
+                                           &pid, 3, "on pipe\n", 0));
   EXPECT_NE(0, pid);
 
   // Wrong file descriptor values should return -1.
@@ -188,8 +182,7 @@ TEST_F(SubprocessTest, PipeClosedWhenNotRedirectedTest) {
   // test_subprocess will return with the errno of fstat, which should be EBADF
   // if the passed file descriptor is closed in the child.
   const vector<string> cmd = {
-      test_utils::GetBuildArtifactsPath("test_subprocess"),
-      "fstat",
+      test_utils::GetBuildArtifactsPath("test_subprocess"), "fstat",
       std::to_string(pipe.writer)};
   EXPECT_TRUE(subprocess_.ExecFlags(
       cmd, 0, {}, base::BindOnce(&ExpectedResults, EBADF, "")));
@@ -210,8 +203,8 @@ TEST_F(SubprocessTest, SynchronousTrueSearchsOnPath) {
 }
 
 TEST_F(SubprocessTest, SynchronousEchoTest) {
-  vector<string> cmd = {
-      kBinPath "/sh", "-c", "echo -n stdout-here; echo -n stderr-there >&2"};
+  vector<string> cmd = {kBinPath "/sh", "-c",
+                        "echo -n stdout-here; echo -n stderr-there >&2"};
   int rc = -1;
   string stdout, stderr;
   ASSERT_TRUE(Subprocess::SynchronousExec(cmd, &rc, &stdout, &stderr));
@@ -222,8 +215,8 @@ TEST_F(SubprocessTest, SynchronousEchoTest) {
 
 TEST_F(SubprocessTest, SynchronousEchoNoOutputTest) {
   int rc = -1;
-  ASSERT_TRUE(Subprocess::SynchronousExec(
-      {kBinPath "/sh", "-c", "echo test"}, &rc, nullptr, nullptr));
+  ASSERT_TRUE(Subprocess::SynchronousExec({kBinPath "/sh", "-c", "echo test"},
+                                          &rc, nullptr, nullptr));
   EXPECT_EQ(0, rc);
 }
 
@@ -245,8 +238,7 @@ TEST_F(SubprocessTest, CancelTest) {
   // the second one marks that the process waited for a timeout and was not
   // killed. We should read the first byte but not the second one.
   vector<string> cmd = {
-      kBinPath "/sh",
-      "-c",
+      kBinPath "/sh", "-c",
       base::StringPrintf(
           // The 'sleep' launched below could be left behind as an orphaned
           // process when the 'sh' process is terminated by SIGTERM. As a
@@ -260,8 +252,7 @@ TEST_F(SubprocessTest, CancelTest) {
           "wait; "
           "printf Y >\"%s\"; "
           "exit 1",
-          fifo_path.c_str(),
-          fifo_path.c_str())};
+          fifo_path.c_str(), fifo_path.c_str())};
   uint32_t tag = Subprocess::Get().Exec(cmd, base::BindOnce(&CallbackBad));
   EXPECT_NE(0U, tag);
 
@@ -272,8 +263,7 @@ TEST_F(SubprocessTest, CancelTest) {
       fifo_fd,
       base::BindRepeating(
           [](unique_ptr<base::FileDescriptorWatcher::Controller>* watcher,
-             int fifo_fd,
-             uint32_t tag) {
+             int fifo_fd, uint32_t tag) {
             char c;
             EXPECT_EQ(1, HANDLE_EINTR(read(fifo_fd, &c, 1)));
             EXPECT_EQ('X', c);
@@ -282,9 +272,7 @@ TEST_F(SubprocessTest, CancelTest) {
             *watcher = nullptr;
           },
           // watcher_ is no longer used outside the clousure.
-          base::Unretained(&watcher_),
-          fifo_fd,
-          tag));
+          base::Unretained(&watcher_), fifo_fd, tag));
 
   // This test would leak a callback that runs when the child process exits
   // unless we wait for it to run.

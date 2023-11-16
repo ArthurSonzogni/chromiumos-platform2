@@ -161,9 +161,8 @@ void OmahaResponseHandlerAction::PerformAction() {
     payload_state->UpdateResumed();
   } else {
     payload_state->UpdateRestarted();
-    LOG_IF(WARNING,
-           !DeltaPerformer::ResetUpdateProgress(SystemState::Get()->prefs(),
-                                                false))
+    LOG_IF(WARNING, !DeltaPerformer::ResetUpdateProgress(
+                        SystemState::Get()->prefs(), false))
         << "Unable to reset the update progress.";
     LOG_IF(WARNING,
            !SystemState::Get()->prefs()->SetString(
@@ -225,8 +224,8 @@ void OmahaResponseHandlerAction::PerformAction() {
             << 16 |
         static_cast<uint32_t>(response.rollback_key_version.firmware);
 
-    LOG(INFO) << "Rollback image versions:"
-              << " device_kernel_key_version=" << min_kernel_key_version
+    LOG(INFO) << "Rollback image versions:" << " device_kernel_key_version="
+              << min_kernel_key_version
               << " image_kernel_key_version=" << kernel_key_version
               << " device_firmware_key_version=" << min_firmware_key_version
               << " image_firmware_key_version=" << firmware_key_version;

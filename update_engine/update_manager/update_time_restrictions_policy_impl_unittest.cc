@@ -77,8 +77,7 @@ class UmUpdateTimeRestrictionsPolicyImplTest : public UmPolicyTestBase {
 
 // If there are no intervals, then the policy should always return |kContinue|.
 TEST_F(UmUpdateTimeRestrictionsPolicyImplTest, NoIntervalsSetTest) {
-  TestPolicy(base::Time::Now(),
-             WeeklyTimeIntervalVector(),
+  TestPolicy(base::Time::Now(), WeeklyTimeIntervalVector(),
              EvalStatus::kContinue,
              /*expected_can_download_be_canceled=*/true);
 }
@@ -89,18 +88,14 @@ TEST_F(UmUpdateTimeRestrictionsPolicyImplTest, TimeInRange) {
   Time::Exploded first_interval_time{2018, 7, 1, 9, 12, 30, 0, 0};
   Time time;
   EXPECT_TRUE(Time::FromLocalExploded(first_interval_time, &time));
-  TestPolicy(time,
-             kTestIntervals,
-             EvalStatus::kSucceeded,
+  TestPolicy(time, kTestIntervals, EvalStatus::kSucceeded,
              /*expected_can_download_be_canceled=*/true);
 
   // Check second interval.
   // Thursday, July 12th 2018 4:30 AM.
   Time::Exploded second_interval_time{2018, 7, 4, 12, 4, 30, 0, 0};
   EXPECT_TRUE(Time::FromLocalExploded(second_interval_time, &time));
-  TestPolicy(time,
-             kTestIntervals,
-             EvalStatus::kSucceeded,
+  TestPolicy(time, kTestIntervals, EvalStatus::kSucceeded,
              /*expected_can_download_be_canceled=*/true);
 }
 
@@ -111,9 +106,7 @@ TEST_F(UmUpdateTimeRestrictionsPolicyImplTest, TimeOutOfRange) {
   Time time;
   Time::Exploded out_of_range_time{2018, 7, 1, 9, 18, 30, 0, 0};
   EXPECT_TRUE(Time::FromLocalExploded(out_of_range_time, &time));
-  TestPolicy(time,
-             kTestIntervals,
-             EvalStatus::kContinue,
+  TestPolicy(time, kTestIntervals, EvalStatus::kContinue,
              /*expected_can_download_be_canceled=*/true);
 }
 
@@ -122,9 +115,7 @@ TEST_F(UmUpdateTimeRestrictionsPolicyImplTest, TimeOutOfRange) {
 TEST_F(UmUpdateTimeRestrictionsPolicyImplTest, QuickFixBuildToken) {
   fake_state_.device_policy_provider()->var_quick_fix_build_token()->reset(
       new std::string("foo-token"));
-  TestPolicy(base::Time::Now(),
-             kTestIntervals,
-             EvalStatus::kContinue,
+  TestPolicy(base::Time::Now(), kTestIntervals, EvalStatus::kContinue,
              /*expected_can_download_be_canceled=*/false);
 }
 

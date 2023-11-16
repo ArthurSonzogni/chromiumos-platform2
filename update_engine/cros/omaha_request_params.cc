@@ -52,19 +52,15 @@ namespace chromeos_update_engine {
 namespace {
 const char* kChannelsByStability[] = {
     // This list has to be sorted from least stable to most stable channel.
-    kCanaryChannel,
-    kDevChannel,
-    kBetaChannel,
-    kStableChannel,
-    kLtcChannel,
-    kLtsChannel,
+    kCanaryChannel, kDevChannel, kBetaChannel,
+    kStableChannel, kLtcChannel, kLtsChannel,
 };
 
 // Activate date should be the output of date --utc "+%Y-%W".
 bool IsValidActivateDate(const std::string& activate_date_from_vpd) {
   unsigned int week_number;
-  if (!RE2::FullMatch(
-          activate_date_from_vpd, "\\d{4}-(\\d{2})", &week_number)) {
+  if (!RE2::FullMatch(activate_date_from_vpd, "\\d{4}-(\\d{2})",
+                      &week_number)) {
     return false;
   }
   return week_number < 54;
@@ -299,8 +295,7 @@ bool OmahaRequestParams::IsValidChannel(const string& channel,
     if (error_message) {
       *error_message =
           base::StringPrintf("Invalid channel name \"%s\", valid names are: %s",
-                             channel.c_str(),
-                             valid_channels.c_str());
+                             channel.c_str(), valid_channels.c_str());
     }
     return false;
   }
@@ -374,8 +369,8 @@ void OmahaRequestParams::SetDlcNoUpdate(const string& app_id) {
 }
 
 bool OmahaRequestParams::IsMiniOSAppId(const std::string& app_id) const {
-  return base::EndsWith(
-      app_id, kMiniOsAppIdSuffix, base::CompareCase::SENSITIVE);
+  return base::EndsWith(app_id, kMiniOsAppIdSuffix,
+                        base::CompareCase::SENSITIVE);
 }
 
 void OmahaRequestParams::SetMiniOSUpdate(bool updated) {

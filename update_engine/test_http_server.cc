@@ -96,16 +96,13 @@ bool ParseRequest(int fd, HttpRequest* request) {
 
   // Break header into lines.
   vector<string> lines = base::SplitStringUsingSubstr(
-      headers.substr(0, headers.length() - strlen(EOL EOL)),
-      EOL,
-      base::TRIM_WHITESPACE,
-      base::SPLIT_WANT_ALL);
+      headers.substr(0, headers.length() - strlen(EOL EOL)), EOL,
+      base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
   // Decode URL line.
-  vector<string> terms = base::SplitString(lines[0],
-                                           base::kWhitespaceASCII,
-                                           base::KEEP_WHITESPACE,
-                                           base::SPLIT_WANT_NONEMPTY);
+  vector<string> terms =
+      base::SplitString(lines[0], base::kWhitespaceASCII, base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_NONEMPTY);
   CHECK_EQ(terms.size(), static_cast<vector<string>::size_type>(3));
   CHECK_EQ(terms[0], "GET");
   request->url = terms[1];
@@ -114,10 +111,8 @@ bool ParseRequest(int fd, HttpRequest* request) {
   // Decode remaining lines.
   size_t i;
   for (i = 1; i < lines.size(); i++) {
-    terms = base::SplitString(lines[i],
-                              base::kWhitespaceASCII,
-                              base::KEEP_WHITESPACE,
-                              base::SPLIT_WANT_NONEMPTY);
+    terms = base::SplitString(lines[i], base::kWhitespaceASCII,
+                              base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
     if (terms[0] == "Range:") {
       CHECK_EQ(terms.size(), static_cast<vector<string>::size_type>(2));
@@ -135,8 +130,8 @@ bool ParseRequest(int fd, HttpRequest* request) {
           "start=%jd end=",
           (intmax_t)request->start_offset);
       if (request->end_offset > 0)
-        base::StringAppendF(
-            &tmp_str, "%jd (non-inclusive)", (intmax_t)request->end_offset);
+        base::StringAppendF(&tmp_str, "%jd (non-inclusive)",
+                            (intmax_t)request->end_offset);
       else
         base::StringAppendF(&tmp_str, "unspecified");
       LOG(INFO) << tmp_str;
@@ -186,11 +181,10 @@ ssize_t WriteHeaders(int fd,
                      HttpResponseCode return_code) {
   ssize_t written = 0, ret;
 
-  ret = WriteString(fd,
-                    string("HTTP/1.1 ") + Itoa(return_code) + " " +
-                        GetHttpResponseDescription(return_code) +
-                        EOL "Content-Type: application/octet-stream" EOL
-                            "Connection: close" EOL);
+  ret = WriteString(fd, string("HTTP/1.1 ") + Itoa(return_code) + " " +
+                            GetHttpResponseDescription(return_code) +
+                            EOL "Content-Type: application/octet-stream" EOL
+                                "Connection: close" EOL);
   if (ret < 0)
     return -1;
   written += ret;
@@ -202,10 +196,9 @@ ssize_t WriteHeaders(int fd,
   // should contain the full range of bytes in the requested resource.
   if (start_offset || start_offset == end_offset) {
     ret = WriteString(
-        fd,
-        string("Accept-Ranges: bytes" EOL "Content-Range: bytes ") +
-            Itoa(start_offset == end_offset ? 0 : start_offset) + "-" +
-            Itoa(end_offset - 1) + "/" + Itoa(end_offset) + EOL);
+        fd, string("Accept-Ranges: bytes" EOL "Content-Range: bytes ") +
+                Itoa(start_offset == end_offset ? 0 : start_offset) + "-" +
+                Itoa(end_offset - 1) + "/" + Itoa(end_offset) + EOL);
     if (ret < 0)
       return -1;
     written += ret;
@@ -309,8 +302,8 @@ ssize_t HandleGet(int fd,
                  << ") exceeds total length (" << total_length
                  << "), generating error response ("
                  << kHttpResponseReqRangeNotSat << ")";
-    return WriteHeaders(
-        fd, total_length, total_length, kHttpResponseReqRangeNotSat);
+    return WriteHeaders(fd, total_length, total_length,
+                        kHttpResponseReqRangeNotSat);
   }
 
   // Obtain end offset, adjust to fit in total payload length and ensure it does
@@ -450,8 +443,8 @@ ssize_t HandleErrorIfOffset(int fd,
 
     const string data("This is an error page.");
 
-    if ((ret = WriteHeaders(
-             fd, 0, data.size(), kHttpResponseInternalServerError)) < 0)
+    if ((ret = WriteHeaders(fd, 0, data.size(),
+                            kHttpResponseInternalServerError)) < 0)
       return -1;
     written += ret;
 
@@ -490,9 +483,8 @@ void HandleDefault(int fd, const HttpRequest& request) {
   if ((ret = WriteHeaders(fd, start_offset, size, request.return_code)) < 0)
     return;
   WriteString(
-      fd,
-      (start_offset < static_cast<off_t>(size) ? data.substr(start_offset)
-                                               : ""));
+      fd, (start_offset < static_cast<off_t>(size) ? data.substr(start_offset)
+                                                   : ""));
 }
 
 // Break a URL into terms delimited by slashes.
@@ -504,8 +496,8 @@ class UrlTerms {
     CHECK_EQ(url[0], '/');
 
     // Split it into terms delimited by slashes, omitting the preceding slash.
-    terms = base::SplitString(
-        url.substr(1), "/", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+    terms = base::SplitString(url.substr(1), "/", base::KEEP_WHITESPACE,
+                              base::SPLIT_WANT_ALL);
 
     // Ensure expected length.
     CHECK_EQ(terms.size(), num_terms);
@@ -532,24 +524,20 @@ void HandleConnection(int fd) {
   LOG(INFO) << "pid(" << getpid() << "): handling url " << url;
   if (url == "/quitquitquit") {
     HandleQuit(fd);
-  } else if (base::StartsWith(
-                 url, "/download/", base::CompareCase::SENSITIVE)) {
+  } else if (base::StartsWith(url, "/download/",
+                              base::CompareCase::SENSITIVE)) {
     const UrlTerms terms(url, 2);
     HandleGet(fd, request, terms.GetSizeT(1));
   } else if (base::StartsWith(url, "/flaky/", base::CompareCase::SENSITIVE)) {
     const UrlTerms terms(url, 5);
-    HandleGet(fd,
-              request,
-              terms.GetSizeT(1),
-              terms.GetSizeT(2),
-              terms.GetInt(3),
-              terms.GetInt(4));
+    HandleGet(fd, request, terms.GetSizeT(1), terms.GetSizeT(2),
+              terms.GetInt(3), terms.GetInt(4));
   } else if (url.find("/redirect/") == 0) {
     HandleRedirect(fd, request);
   } else if (url == "/error") {
     HandleError(fd, request);
-  } else if (base::StartsWith(
-                 url, "/error-if-offset/", base::CompareCase::SENSITIVE)) {
+  } else if (base::StartsWith(url, "/error-if-offset/",
+                              base::CompareCase::SENSITIVE)) {
     const UrlTerms terms(url, 3);
     HandleErrorIfOffset(fd, request, terms.GetSizeT(1), terms.GetInt(2));
   } else if (url == "/echo-headers") {
@@ -573,8 +561,7 @@ void usage(const char* prog_arg) {
           "Once accepting connections, the following is written to FILE (or "
           "stdout):\n"
           "\"%sN\" (where N is an integer port number)\n",
-          basename(prog_arg),
-          kListeningMsgPrefix);
+          basename(prog_arg), kListeningMsgPrefix);
 }
 
 int main(int argc, char** argv) {
@@ -616,8 +603,7 @@ int main(int argc, char** argv) {
   }
 
   // Bind the socket and set for listening.
-  if (bind(listen_fd,
-           reinterpret_cast<struct sockaddr*>(&server_addr),
+  if (bind(listen_fd, reinterpret_cast<struct sockaddr*>(&server_addr),
            sizeof(server_addr)) < 0) {
     perror("bind");
     exit(RC_ERR_BIND);
@@ -630,8 +616,7 @@ int main(int argc, char** argv) {
   // Check the actual port.
   struct sockaddr_in bound_addr = sockaddr_in();
   socklen_t bound_addr_len = sizeof(bound_addr);
-  if (getsockname(listen_fd,
-                  reinterpret_cast<struct sockaddr*>(&bound_addr),
+  if (getsockname(listen_fd, reinterpret_cast<struct sockaddr*>(&bound_addr),
                   &bound_addr_len) < 0) {
     perror("getsockname");
     exit(RC_ERR_GETSOCKNAME);

@@ -41,11 +41,11 @@ constexpr base::TimeDelta kDurationOffset = base::Minutes(1);
 constexpr base::TimeDelta kHourDuration = base::Hours(1);
 constexpr base::TimeDelta kMinuteDuration = base::Minutes(1);
 // Initial time: Monday, May 4th 2020 8:13 AM before interval.
-constexpr base::Time::Exploded kInitialTimeBeforeInterval{
-    2020, 5, 0, 4, 10, 13, 0, 0};
+constexpr base::Time::Exploded kInitialTimeBeforeInterval{2020, 5,  0, 4,
+                                                          10,   13, 0, 0};
 // Initial time: Monday, May 4th 2020 10:20 AM within interval.
-constexpr base::Time::Exploded kInitialTimeWithinInterval{
-    2020, 5, 0, 4, 10, 20, 0, 0};
+constexpr base::Time::Exploded kInitialTimeWithinInterval{2020, 5,  0, 4,
+                                                          10,   20, 0, 0};
 const int current_restricted_interval_index = 0;
 
 const WeeklyTimeIntervalVector kTestOneDisallowedTimeIntervals{
@@ -148,8 +148,8 @@ class UmUpdateTimeRestrictionsMonitorTest : public ::testing::Test {
 };
 
 TEST_F(UmUpdateTimeRestrictionsMonitorTest, PolicyIsNotSet) {
-  BuildMonitorAndVerify(
-      nullptr, /*expect_delegate_called=*/false, /*expect_monitoring=*/false);
+  BuildMonitorAndVerify(nullptr, /*expect_delegate_called=*/false,
+                        /*expect_monitoring=*/false);
 }
 
 TEST_F(UmUpdateTimeRestrictionsMonitorTest, PolicyHasEmptyIntervalList) {
@@ -188,8 +188,8 @@ TEST_F(UmUpdateTimeRestrictionsMonitorTest,
 TEST_F(UmUpdateTimeRestrictionsMonitorTest,
        PolicyChangeFromNotSetToOutsideInterval) {
   // Build monitor with empty initial list of intervals.
-  BuildMonitorAndVerify(
-      nullptr, /*expect_delegate_called=*/false, /*expect_monitoring=*/false);
+  BuildMonitorAndVerify(nullptr, /*expect_delegate_called=*/false,
+                        /*expect_monitoring=*/false);
 
   // Monitor should not do any notification right after intervals update.
   ASSERT_TRUE(SetNow(kInitialTimeBeforeInterval));
@@ -211,8 +211,8 @@ TEST_F(UmUpdateTimeRestrictionsMonitorTest,
 TEST_F(UmUpdateTimeRestrictionsMonitorTest,
        PolicyChangeFromNotSetToWithinInterval) {
   // Build monitor with empty initial list of intervals.
-  BuildMonitorAndVerify(
-      nullptr, /*expect_delegate_called=*/false, /*expect_monitoring=*/false);
+  BuildMonitorAndVerify(nullptr, /*expect_delegate_called=*/false,
+                        /*expect_monitoring=*/false);
 
   // Advance time inside upcoming new interval and update the intervals.
   // Monitor should immediately notify about started interval.
@@ -225,8 +225,8 @@ TEST_F(UmUpdateTimeRestrictionsMonitorTest,
 
 TEST_F(UmUpdateTimeRestrictionsMonitorTest,
        PolicyChangeFromNotSetToEmptyInterval) {
-  BuildMonitorAndVerify(
-      nullptr, /*expect_delegate_called=*/false, /*expect_monitoring=*/false);
+  BuildMonitorAndVerify(nullptr, /*expect_delegate_called=*/false,
+                        /*expect_monitoring=*/false);
 
   EXPECT_CALL(mock_delegate_, OnRestrictedIntervalStarts()).Times(0);
   UpdateRestrictedIntervals(WeeklyTimeIntervalVector());

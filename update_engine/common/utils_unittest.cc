@@ -351,8 +351,7 @@ static void ExpectParseRollbackKeyVersion(const string& version,
 }
 
 static void ExpectInvalidParseRollbackKeyVersion(const string& version) {
-  ExpectParseRollbackKeyVersion(version,
-                                numeric_limits<uint16_t>::max(),
+  ExpectParseRollbackKeyVersion(version, numeric_limits<uint16_t>::max(),
                                 numeric_limits<uint16_t>::max());
 }
 
@@ -379,14 +378,14 @@ TEST(UtilsTest, RunAsRootUnmountFilesystemBusyFailureTest) {
   EXPECT_TRUE(mnt_dir.CreateUniqueTempDir());
 
   string loop_dev;
-  test_utils::ScopedLoopbackDeviceBinder loop_binder(
-      tmp_image.path(), true, &loop_dev);
+  test_utils::ScopedLoopbackDeviceBinder loop_binder(tmp_image.path(), true,
+                                                     &loop_dev);
 
   EXPECT_FALSE(utils::IsMountpoint(mnt_dir.GetPath().value()));
   // This is the actual test part. While we hold a file descriptor open for the
   // mounted filesystem, umount should still succeed.
-  EXPECT_TRUE(utils::MountFilesystem(
-      loop_dev, mnt_dir.GetPath().value(), MS_RDONLY, "ext4", ""));
+  EXPECT_TRUE(utils::MountFilesystem(loop_dev, mnt_dir.GetPath().value(),
+                                     MS_RDONLY, "ext4", ""));
   // Verify the directory is a mount point now.
   EXPECT_TRUE(utils::IsMountpoint(mnt_dir.GetPath().value()));
 

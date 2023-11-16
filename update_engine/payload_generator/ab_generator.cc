@@ -50,13 +50,9 @@ bool ABGenerator::GenerateOperations(const PayloadGenerationConfig& config,
   size_t soft_chunk_blocks = config.soft_chunk_size / config.block_size;
 
   aops->clear();
-  TEST_AND_RETURN_FALSE(diff_utils::DeltaReadPartition(aops,
-                                                       old_part,
-                                                       new_part,
-                                                       hard_chunk_blocks,
-                                                       soft_chunk_blocks,
-                                                       config.version,
-                                                       blob_file));
+  TEST_AND_RETURN_FALSE(diff_utils::DeltaReadPartition(
+      aops, old_part, new_part, hard_chunk_blocks, soft_chunk_blocks,
+      config.version, blob_file));
   LOG(INFO) << "done reading " << new_part.name;
 
   SortOperationsByDestination(aops);
@@ -98,8 +94,8 @@ bool ABGenerator::FragmentOperations(const PayloadVersion& version,
         continue;
       }
       if (IsAReplaceOperation(aop.op.type())) {
-        TEST_AND_RETURN_FALSE(SplitAReplaceOp(
-            version, aop, target_part_path, &fragmented_aops, blob_file));
+        TEST_AND_RETURN_FALSE(SplitAReplaceOp(version, aop, target_part_path,
+                                              &fragmented_aops, blob_file));
         continue;
       }
     }
@@ -232,8 +228,8 @@ bool ABGenerator::MergeOperations(vector<AnnotatedOperation>* aops,
       // merge), are contiguous, are fragmented to have one destination extent,
       // and their combined block count would be less than chunk size, merge
       // them.
-      last_aop.name = base::StringPrintf(
-          "%s,%s", last_aop.name.c_str(), curr_aop.name.c_str());
+      last_aop.name = base::StringPrintf("%s,%s", last_aop.name.c_str(),
+                                         curr_aop.name.c_str());
 
       if (is_delta_op) {
         ExtendExtents(last_aop.op.mutable_src_extents(),
@@ -273,8 +269,8 @@ bool ABGenerator::AddDataAndSetType(AnnotatedOperation* aop,
   vector<Extent> dst_extents;
   ExtentsToVector(aop->op.dst_extents(), &dst_extents);
   brillo::Blob data(utils::BlocksInExtents(dst_extents) * kBlockSize);
-  TEST_AND_RETURN_FALSE(utils::ReadExtents(
-      target_part_path, dst_extents, &data, data.size(), kBlockSize));
+  TEST_AND_RETURN_FALSE(utils::ReadExtents(target_part_path, dst_extents, &data,
+                                           data.size(), kBlockSize));
 
   brillo::Blob blob;
   InstallOperation::Type op_type;

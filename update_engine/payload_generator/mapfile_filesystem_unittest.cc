@@ -98,10 +98,9 @@ TEST_F(MapfileFilesystemTest, SeveralFileFormatTest) {
             (vector<Extent>{ExtentForRange(1, 1)}));
   EXPECT_EQ(map_files["/fileB"].extents,
             (vector<Extent>{ExtentForRange(2, 3)}));
-  EXPECT_EQ(
-      map_files["/fileC"].extents,
-      (vector<Extent>{
-          ExtentForRange(5, 2), ExtentForRange(9, 1), ExtentForRange(11, 2)}));
+  EXPECT_EQ(map_files["/fileC"].extents,
+            (vector<Extent>{ExtentForRange(5, 2), ExtentForRange(9, 1),
+                            ExtentForRange(11, 2)}));
   EXPECT_EQ(map_files["/file with spaces"].extents,
             (vector<Extent>{ExtentForRange(14, 1), ExtentForRange(19, 1)}));
   EXPECT_EQ(map_files["/1234"].extents, (vector<Extent>{ExtentForRange(7, 1)}));

@@ -72,8 +72,7 @@ void PolicyEvaluator::ScheduleEvaluation(
   brillo::MessageLoop::current()->PostTask(
       FROM_HERE,
       base::BindOnce(&PolicyEvaluator::OnPolicyReadyToEvaluate,
-                     weak_ptr_factory_.GetWeakPtr(),
-                     std::move(callback)));
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
 void PolicyEvaluator::OnPolicyReadyToEvaluate(
@@ -89,8 +88,7 @@ void PolicyEvaluator::OnPolicyReadyToEvaluate(
   // Re-schedule the policy request based on used variables.
   if (ec_->RunOnValueChangeOrTimeout(
           base::BindOnce(&PolicyEvaluator::OnPolicyReadyToEvaluate,
-                         weak_ptr_factory_.GetWeakPtr(),
-                         std::move(callback))))
+                         weak_ptr_factory_.GetWeakPtr(), std::move(callback))))
     return;  // Reevaluation scheduled successfully.
 
   // Scheduling a reevaluation can fail because policy method didn't use any

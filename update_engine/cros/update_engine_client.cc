@@ -90,9 +90,8 @@ class UpdateEngineClient : public brillo::Daemon {
     // We can't call QuitWithExitCode from OnInit(), so we delay the execution
     // of the ProcessFlags method after the Daemon initialization is done.
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE,
-        base::BindOnce(&UpdateEngineClient::ProcessFlagsAndExit,
-                       base::Unretained(this)));
+        FROM_HERE, base::BindOnce(&UpdateEngineClient::ProcessFlagsAndExit,
+                                  base::Unretained(this)));
     return EX_OK;
   }
 
@@ -252,96 +251,77 @@ void InstallWaitHandler::HandleStatusUpdate(const UpdateEngineStatus& status) {
 
 int UpdateEngineClient::ProcessFlags() {
   DEFINE_string(app_version, "", "Force the current app version.");
-  DEFINE_string(channel,
-                "",
+  DEFINE_string(channel, "",
                 "Set the target channel. The device will be powerwashed if the "
                 "target channel is more stable than the current channel unless "
                 "--nopowerwash is specified.");
   DEFINE_bool(check_for_update, false, "Initiate check for updates.");
-  DEFINE_bool(apply_deferred_update,
-              false,
+  DEFINE_bool(apply_deferred_update, false,
               "Apply the deferred update if there is one.");
-  DEFINE_string(
-      cohort_hint, "", "Set the current cohort hint to the passed value.");
+  DEFINE_string(cohort_hint, "",
+                "Set the current cohort hint to the passed value.");
   DEFINE_string(dlc, "", "The ID/name of the DLC to install.");
-  DEFINE_bool(follow,
-              false,
+  DEFINE_bool(follow, false,
               "Wait for any update operations to complete."
               "Exit status is 0 if the update succeeded, and 1 otherwise.");
   DEFINE_bool(install, false, "Set to perform an installation.");
   DEFINE_bool(scaled, false, "Set to perform a scaled installation.");
   DEFINE_bool(interactive, true, "Mark the update request as interactive.");
   DEFINE_string(omaha_url, "", "The URL of the Omaha update server.");
-  DEFINE_string(p2p_update,
-                "",
+  DEFINE_string(p2p_update, "",
                 "Enables (\"yes\") or disables (\"no\") the peer-to-peer update"
                 " sharing.");
-  DEFINE_bool(powerwash,
-              true,
+  DEFINE_bool(powerwash, true,
               "When performing rollback or channel change, "
               "do a powerwash or allow it respectively.");
   DEFINE_bool(reboot, false, "Initiate a reboot if needed.");
-  DEFINE_bool(is_reboot_needed,
-              false,
+  DEFINE_bool(is_reboot_needed, false,
               "Exit status 0 if reboot is needed, "
               "2 if reboot is not needed or 1 if an error occurred.");
-  DEFINE_bool(block_until_reboot_is_needed,
-              false,
+  DEFINE_bool(block_until_reboot_is_needed, false,
               "Blocks until reboot is "
               "needed. Returns non-zero exit status if an error occurred.");
   DEFINE_bool(reset_status, false, "Sets the status in update_engine to idle.");
-  DEFINE_bool(rollback,
-              false,
+  DEFINE_bool(rollback, false,
               "Perform a rollback to the previous partition. The device will "
               "be powerwashed unless --nopowerwash is specified.");
-  DEFINE_bool(can_rollback,
-              false,
+  DEFINE_bool(can_rollback, false,
               "Shows whether rollback partition "
               "is available.");
   DEFINE_bool(show_channel, false, "Show the current and target channels.");
   DEFINE_bool(show_cohort_hint, false, "Show the current cohort hint.");
-  DEFINE_bool(show_p2p_update,
-              false,
+  DEFINE_bool(show_p2p_update, false,
               "Show the current setting for peer-to-peer update sharing.");
-  DEFINE_bool(show_update_over_cellular,
-              false,
+  DEFINE_bool(show_update_over_cellular, false,
               "Show the current setting for updates over cellular networks.");
   DEFINE_bool(status, false, "Print the status to stdout.");
-  DEFINE_bool(update,
-              false,
+  DEFINE_bool(update, false,
               "Forces an update and waits for it to complete. "
               "Implies --follow.");
-  DEFINE_string(update_over_cellular,
-                "",
+  DEFINE_string(update_over_cellular, "",
                 "Enables (\"yes\") or disables (\"no\") the updates over "
                 "cellular networks.");
-  DEFINE_bool(watch_for_updates,
-              false,
+  DEFINE_bool(watch_for_updates, false,
               "Listen for status updates and print them to the screen.");
-  DEFINE_bool(prev_version,
-              false,
+  DEFINE_bool(prev_version, false,
               "Show the previous OS version used before the update reboot.");
   DEFINE_bool(last_attempt_error, false, "Show the last attempt error.");
   DEFINE_bool(eol_status, false, "Show the current end-of-life status.");
   DEFINE_string(
-      enable_feature,
-      "",
+      enable_feature, "",
       "Give the name of the feature to enable, ex.\"feature-repeated-updates\" "
       "to continue checking for updates while waiting for reboot.");
-  DEFINE_string(disable_feature,
-                "",
+  DEFINE_string(disable_feature, "",
                 "Give the name of the feature to disable, "
                 "ex.\"feature-repeated-updates\".");
-  DEFINE_bool(skip_applying,
-              false,
+  DEFINE_bool(skip_applying, false,
               "Skip applying updates, only check if there are updates.");
   DEFINE_string(is_feature_enabled, "", "Shows the current value of feature.");
-  DEFINE_int32(set_status,
-               -1,
+  DEFINE_int32(set_status, -1,
                "Override status of the update engine with a value in"
                "Operation of update_engine.proto. Used for testing.");
-  DEFINE_bool(
-      force_fw_update, false, "Forces a fw update with the OS update check.");
+  DEFINE_bool(force_fw_update, false,
+              "Forces a fw update with the OS update check.");
 
   // Boilerplate init commands.
   base::CommandLine::Init(argc_, argv_);

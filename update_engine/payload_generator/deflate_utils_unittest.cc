@@ -47,26 +47,16 @@ vector<BitExtent> ByteToBitExtent(const vector<ByteExtent>& byte_extents) {
 }
 
 TEST(DeflateUtilsTest, ExtentsShiftTest) {
-  vector<Extent> base_extents = {ExtentForRange(10, 10),
-                                 ExtentForRange(70, 10),
-                                 ExtentForRange(50, 10),
-                                 ExtentForRange(30, 10),
+  vector<Extent> base_extents = {ExtentForRange(10, 10), ExtentForRange(70, 10),
+                                 ExtentForRange(50, 10), ExtentForRange(30, 10),
                                  ExtentForRange(90, 10)};
-  vector<Extent> over_extents = {ExtentForRange(2, 2),
-                                 ExtentForRange(5, 2),
-                                 ExtentForRange(7, 3),
-                                 ExtentForRange(13, 10),
-                                 ExtentForRange(25, 20),
-                                 ExtentForRange(47, 3)};
-  vector<Extent> out_over_extents = {ExtentForRange(12, 2),
-                                     ExtentForRange(15, 2),
-                                     ExtentForRange(17, 3),
-                                     ExtentForRange(73, 7),
-                                     ExtentForRange(50, 3),
-                                     ExtentForRange(55, 5),
-                                     ExtentForRange(30, 10),
-                                     ExtentForRange(90, 5),
-                                     ExtentForRange(97, 3)};
+  vector<Extent> over_extents = {ExtentForRange(2, 2),   ExtentForRange(5, 2),
+                                 ExtentForRange(7, 3),   ExtentForRange(13, 10),
+                                 ExtentForRange(25, 20), ExtentForRange(47, 3)};
+  vector<Extent> out_over_extents = {
+      ExtentForRange(12, 2),  ExtentForRange(15, 2), ExtentForRange(17, 3),
+      ExtentForRange(73, 7),  ExtentForRange(50, 3), ExtentForRange(55, 5),
+      ExtentForRange(30, 10), ExtentForRange(90, 5), ExtentForRange(97, 3)};
   EXPECT_TRUE(ShiftExtentsOverExtents(base_extents, &over_extents));
   EXPECT_EQ(over_extents, out_over_extents);
 
@@ -77,10 +67,8 @@ TEST(DeflateUtilsTest, ExtentsShiftTest) {
 }
 
 TEST(DeflateUtilsTest, ShiftBitExtentsOverExtentsTest) {
-  vector<Extent> base_extents = {ExtentForRange(3, 1),
-                                 ExtentForRange(1, 1),
-                                 ExtentForRange(5, 1),
-                                 ExtentForRange(7, 1),
+  vector<Extent> base_extents = {ExtentForRange(3, 1), ExtentForRange(1, 1),
+                                 ExtentForRange(5, 1), ExtentForRange(7, 1),
                                  ExtentForRange(9, 1)};
   vector<BitExtent> over_extents =
       ByteToBitExtent({{0, 0}, {100, 2000}, {4096, 0}, {5000, 5000}});
@@ -122,8 +110,8 @@ TEST(DeflateUtilsTest, ShiftBitExtentsOverExtentsBoundaryTest) {
 }
 
 TEST(DeflateUtilsTest, FindDeflatesTest) {
-  vector<Extent> extents = {
-      ExtentForRange(1, 1), ExtentForRange(3, 1), ExtentForRange(5, 1)};
+  vector<Extent> extents = {ExtentForRange(1, 1), ExtentForRange(3, 1),
+                            ExtentForRange(5, 1)};
   vector<BitExtent> in_deflates = ByteToBitExtent({{0, 0},
                                                    {10, 400},
                                                    {4096, 0},
@@ -156,8 +144,8 @@ TEST(DeflateUtilsTest, FindDeflatesBoundaryTest) {
 }
 
 TEST(DeflateUtilsTest, CompactTest) {
-  vector<Extent> extents = {
-      ExtentForRange(1, 1), ExtentForRange(5, 1), ExtentForRange(3, 1)};
+  vector<Extent> extents = {ExtentForRange(1, 1), ExtentForRange(5, 1),
+                            ExtentForRange(3, 1)};
   vector<BitExtent> in_deflates =
       ByteToBitExtent({{4096, 0}, {12288, 4096}, {4096, 100}, {20480, 100}});
   vector<BitExtent> expected_out_deflates =

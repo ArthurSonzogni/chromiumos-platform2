@@ -99,13 +99,9 @@ TEST_F(BlockMappingTest, MapPartitionBlocks) {
   test_utils::WriteFileString(new_part_.path(), new_contents);
 
   vector<BlockMapping::BlockId> old_ids, new_ids;
-  EXPECT_TRUE(MapPartitionBlocks(old_part_.path(),
-                                 new_part_.path(),
-                                 old_contents.size(),
-                                 new_contents.size(),
-                                 block_size_,
-                                 &old_ids,
-                                 &new_ids));
+  EXPECT_TRUE(MapPartitionBlocks(old_part_.path(), new_part_.path(),
+                                 old_contents.size(), new_contents.size(),
+                                 block_size_, &old_ids, &new_ids));
 
   EXPECT_EQ((vector<BlockMapping::BlockId>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}),
             old_ids);

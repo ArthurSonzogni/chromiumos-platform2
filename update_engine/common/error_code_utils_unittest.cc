@@ -39,11 +39,8 @@ TEST(ErrorCodeUtilsTest, AlertLogTagCreationTest) {
 
   auto detail1 = "detail_1";
   auto detail2 = "detail_2";
-  EXPECT_EQ(base::StringPrintf("[UpdateEngineAlert<%s:%s:%s:%s>] ",
-                               category,
-                               sub_category,
-                               detail1,
-                               detail2),
+  EXPECT_EQ(base::StringPrintf("[UpdateEngineAlert<%s:%s:%s:%s>] ", category,
+                               sub_category, detail1, detail2),
             GenerateAlertTag(category, sub_category, detail1, detail2));
 }
 
@@ -52,10 +49,7 @@ TEST(ErrorCodeUtilsTest, LogAlertTagTest) {
   mock_log.StartCapturingLogs();
   EXPECT_CALL(
       mock_log,
-      Log(::logging::LOGGING_ERROR,
-          _,
-          _,
-          _,
+      Log(::logging::LOGGING_ERROR, _, _, _,
           HasSubstr(GenerateAlertTag(kCategoryPayload, kErrorMismatch))));
 
   ErrorCode code = ErrorCode::kPayloadHashMismatchError;
@@ -102,9 +96,8 @@ class ErrorCodeAlertDetailsTest : public testing::TestWithParam<ErrorCode> {
 
 TEST_P(ErrorCodeAlertDetailsTest, VerifyAlertDetails) {
   auto err = GetParam();
-  EXPECT_CALL(
-      mock_log_,
-      Log(::logging::LOGGING_ERROR, _, _, _, HasSubstr(expected_alerts_[err])));
+  EXPECT_CALL(mock_log_, Log(::logging::LOGGING_ERROR, _, _, _,
+                             HasSubstr(expected_alerts_[err])));
   LogAlertTag(err);
 }
 

@@ -42,8 +42,7 @@ bool PowerManagerChromeOS::RequestReboot() {
   brillo::ErrorPtr error;
   return power_manager_proxy_.RequestRestart(
       ::power_manager::REQUEST_RESTART_FOR_UPDATE,
-      "update_engine applying update",
-      &error);
+      "update_engine applying update", &error);
 }
 
 bool PowerManagerChromeOS::RequestShutdown() {
@@ -52,8 +51,7 @@ bool PowerManagerChromeOS::RequestShutdown() {
   brillo::ErrorPtr error;
   return power_manager_proxy_.RequestShutdown(
       ::power_manager::REQUEST_SHUTDOWN_FOR_USER,
-      "update_engine applying update",
-      &error);
+      "update_engine applying update", &error);
 }
 
 }  // namespace chromeos_update_engine

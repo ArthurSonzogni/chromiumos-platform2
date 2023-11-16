@@ -58,16 +58,11 @@ MetadataParseResult PayloadMetadata::ParsePayloadHeader(
   // Validate the magic string.
   if (memcmp(payload.data(), kDeltaMagic, sizeof(kDeltaMagic)) != 0) {
     LOG(ERROR) << "Bad payload format -- invalid delta magic: "
-               << base::StringPrintf("%02x%02x%02x%02x",
-                                     payload[0],
-                                     payload[1],
-                                     payload[2],
-                                     payload[3])
+               << base::StringPrintf("%02x%02x%02x%02x", payload[0], payload[1],
+                                     payload[2], payload[3])
                << " Expected: "
-               << base::StringPrintf("%02x%02x%02x%02x",
-                                     kDeltaMagic[0],
-                                     kDeltaMagic[1],
-                                     kDeltaMagic[2],
+               << base::StringPrintf("%02x%02x%02x%02x", kDeltaMagic[0],
+                                     kDeltaMagic[1], kDeltaMagic[2],
                                      kDeltaMagic[3]);
     *error = ErrorCode::kDownloadInvalidMetadataMagicString;
     return MetadataParseResult::kError;
@@ -81,8 +76,7 @@ MetadataParseResult PayloadMetadata::ParsePayloadHeader(
   // Extract the payload version from the metadata.
   static_assert(sizeof(major_payload_version_) == kDeltaVersionSize,
                 "Major payload version size mismatch");
-  memcpy(&major_payload_version_,
-         &payload[kDeltaVersionOffset],
+  memcpy(&major_payload_version_, &payload[kDeltaVersionOffset],
          kDeltaVersionSize);
   // Switch big endian to host.
   major_payload_version_ = be64toh(major_payload_version_);
@@ -98,8 +92,7 @@ MetadataParseResult PayloadMetadata::ParsePayloadHeader(
   // Next, parse the manifest size.
   static_assert(sizeof(manifest_size_) == kDeltaManifestSizeSize,
                 "manifest_size size mismatch");
-  memcpy(&manifest_size_,
-         &payload[kDeltaManifestSizeOffset],
+  memcpy(&manifest_size_, &payload[kDeltaManifestSizeOffset],
          kDeltaManifestSizeSize);
   manifest_size_ = be64toh(manifest_size_);  // switch big endian to host
 
@@ -116,8 +109,7 @@ MetadataParseResult PayloadMetadata::ParsePayloadHeader(
       sizeof(metadata_signature_size_) == kDeltaMetadataSignatureSizeSize,
       "metadata_signature_size size mismatch");
   uint64_t metadata_signature_size_offset = GetMetadataSignatureSizeOffset();
-  memcpy(&metadata_signature_size_,
-         &payload[metadata_signature_size_offset],
+  memcpy(&metadata_signature_size_, &payload[metadata_signature_size_offset],
          kDeltaMetadataSignatureSizeSize);
   metadata_signature_size_ = be32toh(metadata_signature_size_);
 
@@ -176,8 +168,8 @@ ErrorCode PayloadMetadata::ValidateMetadataSignature(
   }
 
   brillo::Blob metadata_hash;
-  if (!HashCalculator::RawHashOfBytes(
-          payload.data(), metadata_size_, &metadata_hash)) {
+  if (!HashCalculator::RawHashOfBytes(payload.data(), metadata_size_,
+                                      &metadata_hash)) {
     LOG(ERROR) << "Unable to compute actual hash of manifest";
     return ErrorCode::kDownloadMetadataSignatureVerificationError;
   }
@@ -221,11 +213,9 @@ bool PayloadMetadata::ParsePayloadFile(const string& payload_path,
   TEST_AND_RETURN_FALSE(ParsePayloadHeader(payload));
 
   if (manifest != nullptr) {
-    TEST_AND_RETURN_FALSE(
-        utils::ReadFileChunk(payload_path,
-                             kMaxPayloadHeaderSize,
-                             GetMetadataSize() - kMaxPayloadHeaderSize,
-                             &payload));
+    TEST_AND_RETURN_FALSE(utils::ReadFileChunk(
+        payload_path, kMaxPayloadHeaderSize,
+        GetMetadataSize() - kMaxPayloadHeaderSize, &payload));
     TEST_AND_RETURN_FALSE(GetManifest(payload, manifest));
   }
 

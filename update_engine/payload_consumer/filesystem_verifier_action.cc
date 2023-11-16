@@ -97,8 +97,7 @@ void FilesystemVerifierAction::StartPartitionHashing() {
                                     ", ")
                 << "]";
       if (!dynamic_control_->VerifyExtentsForUntouchedPartitions(
-              install_plan_.source_slot,
-              install_plan_.target_slot,
+              install_plan_.source_slot, install_plan_.target_slot,
               install_plan_.untouched_dynamic_partitions)) {
         Cleanup(ErrorCode::kFilesystemVerifierError);
         return;
@@ -142,11 +141,9 @@ void FilesystemVerifierAction::StartPartitionHashing() {
             << partition.name << ") on device " << part_path;
 
   brillo::ErrorPtr error;
-  src_stream_ =
-      brillo::FileStream::Open(base::FilePath(part_path),
-                               brillo::Stream::AccessMode::READ,
-                               brillo::FileStream::Disposition::OPEN_EXISTING,
-                               &error);
+  src_stream_ = brillo::FileStream::Open(
+      base::FilePath(part_path), brillo::Stream::AccessMode::READ,
+      brillo::FileStream::Disposition::OPEN_EXISTING, &error);
 
   if (!src_stream_) {
     LOG(ERROR) << "Unable to open " << part_path << " for reading";
@@ -192,8 +189,7 @@ void FilesystemVerifierAction::ScheduleRead() {
   }
 
   bool read_async_ok = src_stream_->ReadAsync(
-      buffer_.data(),
-      bytes_to_read,
+      buffer_.data(), bytes_to_read,
       base::BindOnce(&FilesystemVerifierAction::OnReadDoneCallback,
                      base::Unretained(this)),
       base::BindOnce(&FilesystemVerifierAction::OnReadErrorCallback,

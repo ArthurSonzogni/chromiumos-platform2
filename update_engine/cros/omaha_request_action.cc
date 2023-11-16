@@ -248,13 +248,10 @@ void OmahaRequestAction::PerformAction() {
     return;
   }
 
-  OmahaRequestBuilderXml omaha_request(event_.get(),
-                                       ping_only_,
+  OmahaRequestBuilderXml omaha_request(event_.get(), ping_only_,
                                        ShouldPing(),  // include_ping
-                                       ping_active_days_,
-                                       ping_roll_call_days_,
-                                       GetInstallDate(),
-                                       session_id_);
+                                       ping_active_days_, ping_roll_call_days_,
+                                       GetInstallDate(), session_id_);
   string request_post = omaha_request.GetRequest();
 
   // Set X-Goog-Update headers.
@@ -264,11 +261,11 @@ void OmahaRequestAction::PerformAction() {
   http_fetcher_->SetHeader(kXGoogleUpdateAppId, params->GetAppId());
   http_fetcher_->SetHeader(
       kXGoogleUpdateUpdater,
-      base::StringPrintf(
-          "%s-%s", constants::kOmahaUpdaterID, kOmahaUpdaterVersion));
+      base::StringPrintf("%s-%s", constants::kOmahaUpdaterID,
+                         kOmahaUpdaterVersion));
 
-  http_fetcher_->SetPostData(
-      request_post.data(), request_post.size(), kHttpContentTypeTextXml);
+  http_fetcher_->SetPostData(request_post.data(), request_post.size(),
+                             kHttpContentTypeTextXml);
   LOG(INFO) << "Posting an Omaha request to " << params->update_url();
   LOG(INFO) << "Request: " << request_post;
   http_fetcher_->BeginTransfer(params->update_url());
@@ -440,10 +437,10 @@ void OmahaRequestAction::ParseRollbackVersions(
             << " kernel_key_version=" << kernel_version;
 
   OmahaResponse::RollbackKeyVersion version;
-  utils::ParseRollbackKeyVersion(
-      firmware_version, &version.firmware_key, &version.firmware);
-  utils::ParseRollbackKeyVersion(
-      kernel_version, &version.kernel_key, &version.kernel);
+  utils::ParseRollbackKeyVersion(firmware_version, &version.firmware_key,
+                                 &version.firmware);
+  utils::ParseRollbackKeyVersion(kernel_version, &version.kernel_key,
+                                 &version.kernel);
 
   response_.past_rollback_key_version = std::move(version);
 }
@@ -480,11 +477,11 @@ bool OmahaRequestAction::ParseResponse(ScopedActionCompleter* completer) {
   // Locate the platform App since it's an important one that has specific
   // information attached to it that may not be available from other Apps.
   const auto* params = SystemState::Get()->request_params();
-  auto platform_app = std::find_if(parser_data_.apps.begin(),
-                                   parser_data_.apps.end(),
-                                   [&params](const OmahaParserData::App& app) {
-                                     return app.id == params->GetAppId();
-                                   });
+  auto platform_app =
+      std::find_if(parser_data_.apps.begin(), parser_data_.apps.end(),
+                   [&params](const OmahaParserData::App& app) {
+                     return app.id == params->GetAppId();
+                   });
   if (platform_app == parser_data_.apps.end()) {
     LOG(WARNING) << "Platform App is missing.";
   } else {
@@ -705,8 +702,7 @@ void OmahaRequestAction::TransferComplete(HttpFetcher* fetcher,
     metrics::DownloadErrorCode download_error_code =
         metrics_utils::GetDownloadErrorCode(aux_error_code);
     SystemState::Get()->metrics_reporter()->ReportUpdateCheckMetrics(
-        metrics::CheckResult::kUnset,
-        metrics::CheckReaction::kUnset,
+        metrics::CheckResult::kUnset, metrics::CheckReaction::kUnset,
         download_error_code);
   }
 
@@ -725,8 +721,7 @@ void OmahaRequestAction::TransferComplete(HttpFetcher* fetcher,
   }
 
   OmahaParserXml parser(
-      &parser_data_,
-      reinterpret_cast<const char*>(response_buffer_.data()),
+      &parser_data_, reinterpret_cast<const char*>(response_buffer_.data()),
       response_buffer_.size(),
       SystemState::Get()->request_params()->rollback_allowed_milestones());
   ErrorCode error_code;
@@ -905,9 +900,7 @@ void OmahaRequestAction::LookupPayloadViaP2P() {
     LOG(INFO) << "Checking if payload is available via p2p, file_id=" << file_id
               << " minimum_size=" << minimum_size;
     SystemState::Get()->p2p_manager()->LookupUrlForFile(
-        file_id,
-        minimum_size,
-        kMaxP2PNetworkWaitTime,
+        file_id, minimum_size, kMaxP2PNetworkWaitTime,
         base::BindOnce(&OmahaRequestAction::OnLookupPayloadViaP2PCompleted,
                        base::Unretained(this)));
   }

@@ -36,11 +36,9 @@ ProxyRequestId ChromeBrowserProxyResolver::GetProxiesForUrl(
     const std::string& url, ProxiesResolvedFn callback) {
   const ProxyRequestId id = next_request_id_++;
   brillo::http::GetChromeProxyServersAsync(
-      DBusConnection::Get()->GetDBus(),
-      url,
+      DBusConnection::Get()->GetDBus(), url,
       base::BindRepeating(&ChromeBrowserProxyResolver::OnGetChromeProxyServers,
-                          weak_ptr_factory_.GetWeakPtr(),
-                          id));
+                          weak_ptr_factory_.GetWeakPtr(), id));
   pending_callbacks_[id] = std::move(callback);
   return id;
 }

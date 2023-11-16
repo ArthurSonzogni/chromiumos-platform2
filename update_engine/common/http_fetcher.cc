@@ -54,9 +54,8 @@ void HttpFetcher::ResolveProxiesForUrl(const string& url,
   if (!proxy_resolver_) {
     LOG(INFO) << "Not resolving proxies (no proxy resolver).";
     no_resolver_idle_id_ = MessageLoop::current()->PostTask(
-        FROM_HERE,
-        base::BindOnce(&HttpFetcher::NoProxyResolverCallback,
-                       base::Unretained(this)));
+        FROM_HERE, base::BindOnce(&HttpFetcher::NoProxyResolverCallback,
+                                  base::Unretained(this)));
     return;
   }
   proxy_request_ = proxy_resolver_->GetProxiesForUrl(

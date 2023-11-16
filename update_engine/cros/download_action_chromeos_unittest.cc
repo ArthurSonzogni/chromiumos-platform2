@@ -148,8 +148,8 @@ void TestWithData(const brillo::Blob& data,
   install_plan.payloads.push_back(
       {.size = size, .type = InstallPayloadType::kDelta});
   // We pull off the first byte from data and seek past it.
-  EXPECT_TRUE(HashCalculator::RawHashOfBytes(
-      &data[1], data.size() - 1, &install_plan.payloads[0].hash));
+  EXPECT_TRUE(HashCalculator::RawHashOfBytes(&data[1], data.size() - 1,
+                                             &install_plan.payloads[0].hash));
   install_plan.source_slot = 0;
   install_plan.target_slot = 1;
   // We mark both slots as bootable. Only the target slot should be unbootable
@@ -193,9 +193,8 @@ void TestWithData(const brillo::Blob& data,
   processor.EnqueueAction(std::move(feeder_action));
   processor.EnqueueAction(std::move(download_action));
 
-  loop.PostTask(
-      FROM_HERE,
-      base::BindOnce(&StartProcessorInRunLoop, &processor, http_fetcher_ptr));
+  loop.PostTask(FROM_HERE, base::BindOnce(&StartProcessorInRunLoop, &processor,
+                                          http_fetcher_ptr));
   loop.Run();
   EXPECT_FALSE(loop.PendingTasks());
 
@@ -283,8 +282,8 @@ TEST(DownloadActionTest, MultiPayloadProgressTest) {
   feeder_action->set_obj(install_plan);
 
   auto download_action = std::make_unique<DownloadActionChromeos>(
-      std::make_unique<MockHttpFetcher>(
-          payload_datas[0].data(), payload_datas[0].size(), nullptr),
+      std::make_unique<MockHttpFetcher>(payload_datas[0].data(),
+                                        payload_datas[0].size(), nullptr),
       /*interactive=*/false);
   download_action->SetTestFileWriter(&mock_file_writer);
   BondActions(feeder_action.get(), download_action.get());
@@ -293,44 +292,38 @@ TEST(DownloadActionTest, MultiPayloadProgressTest) {
     InSequence s;
     download_action->set_delegate(&download_delegate);
     // these are hand-computed based on the payloads specified above
+    EXPECT_CALL(download_delegate, BytesReceived(kMockHttpFetcherChunkSize,
+                                                 kMockHttpFetcherChunkSize,
+                                                 total_expected_download_size));
+    EXPECT_CALL(download_delegate, BytesReceived(kMockHttpFetcherChunkSize,
+                                                 kMockHttpFetcherChunkSize * 2,
+                                                 total_expected_download_size));
+    EXPECT_CALL(download_delegate, BytesReceived(kMockHttpFetcherChunkSize,
+                                                 kMockHttpFetcherChunkSize * 3,
+                                                 total_expected_download_size));
+    EXPECT_CALL(download_delegate, BytesReceived(kMockHttpFetcherChunkSize,
+                                                 kMockHttpFetcherChunkSize * 4,
+                                                 total_expected_download_size));
     EXPECT_CALL(download_delegate,
-                BytesReceived(kMockHttpFetcherChunkSize,
-                              kMockHttpFetcherChunkSize,
-                              total_expected_download_size));
-    EXPECT_CALL(download_delegate,
-                BytesReceived(kMockHttpFetcherChunkSize,
-                              kMockHttpFetcherChunkSize * 2,
-                              total_expected_download_size));
-    EXPECT_CALL(download_delegate,
-                BytesReceived(kMockHttpFetcherChunkSize,
-                              kMockHttpFetcherChunkSize * 3,
-                              total_expected_download_size));
-    EXPECT_CALL(download_delegate,
-                BytesReceived(kMockHttpFetcherChunkSize,
-                              kMockHttpFetcherChunkSize * 4,
-                              total_expected_download_size));
-    EXPECT_CALL(download_delegate,
-                BytesReceived(256,
-                              kMockHttpFetcherChunkSize * 4 + 256,
+                BytesReceived(256, kMockHttpFetcherChunkSize * 4 + 256,
                               total_expected_download_size));
     EXPECT_CALL(download_delegate,
                 BytesReceived(kMockHttpFetcherChunkSize,
                               kMockHttpFetcherChunkSize * 5 + 256,
                               total_expected_download_size));
-    EXPECT_CALL(download_delegate,
-                BytesReceived(kMockHttpFetcherChunkSize,
-                              total_expected_download_size,
-                              total_expected_download_size));
+    EXPECT_CALL(download_delegate, BytesReceived(kMockHttpFetcherChunkSize,
+                                                 total_expected_download_size,
+                                                 total_expected_download_size));
   }
   ActionProcessor processor;
   processor.EnqueueAction(std::move(feeder_action));
   processor.EnqueueAction(std::move(download_action));
 
-  loop.PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](ActionProcessor* processor) { processor->StartProcessing(); },
-          base::Unretained(&processor)));
+  loop.PostTask(FROM_HERE, base::BindOnce(
+                               [](ActionProcessor* processor) {
+                                 processor->StartProcessing();
+                               },
+                               base::Unretained(&processor)));
   loop.Run();
   EXPECT_FALSE(loop.PendingTasks());
 }
@@ -493,11 +486,11 @@ TEST(DownloadActionTest, PassObjectOutTest) {
   processor.EnqueueAction(std::move(download_action));
   processor.EnqueueAction(std::move(test_action));
 
-  loop.PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](ActionProcessor* processor) { processor->StartProcessing(); },
-          base::Unretained(&processor)));
+  loop.PostTask(FROM_HERE, base::BindOnce(
+                               [](ActionProcessor* processor) {
+                                 processor->StartProcessing();
+                               },
+                               base::Unretained(&processor)));
   loop.Run();
   EXPECT_FALSE(loop.PendingTasks());
 
@@ -526,14 +519,13 @@ class P2PDownloadActionTest : public testing::Test {
     start_at_offset_ = starting_offset;
     // Prepare data 10 kB of data.
     data_.resize(10 * 1000);
-    std::generate(data_.begin(), data_.end(), [i = 0]() mutable {
-      return 'a' + (i++ % 26);
-    });
+    std::generate(data_.begin(), data_.end(),
+                  [i = 0]() mutable { return 'a' + (i++ % 26); });
 
     // Setup p2p.
     FakeP2PManagerConfiguration* test_conf = new FakeP2PManagerConfiguration();
-    p2p_manager_.reset(P2PManager::Construct(
-        test_conf, &fake_um_, "cros_au", 3, base::Days(5)));
+    p2p_manager_.reset(P2PManager::Construct(test_conf, &fake_um_, "cros_au", 3,
+                                             base::Days(5)));
     FakeSystemState::Get()->set_p2p_manager(p2p_manager_.get());
   }
 
@@ -560,8 +552,8 @@ class P2PDownloadActionTest : public testing::Test {
     feeder_action->set_obj(install_plan);
     MockPrefs prefs;
     auto download_action = std::make_unique<DownloadActionChromeos>(
-        std::make_unique<MockHttpFetcher>(
-            data_.c_str(), data_.length(), nullptr),
+        std::make_unique<MockHttpFetcher>(data_.c_str(), data_.length(),
+                                          nullptr),
         /*interactive=*/false);
     auto http_fetcher = download_action->http_fetcher();
     download_action->SetTestFileWriter(&writer);
@@ -580,8 +572,7 @@ class P2PDownloadActionTest : public testing::Test {
               action_test->processor_.StartProcessing();
               http_fetcher->SetOffset(action_test->start_at_offset_);
             },
-            base::Unretained(this),
-            base::Unretained(http_fetcher)));
+            base::Unretained(this), base::Unretained(http_fetcher)));
     loop_.Run();
   }
 
@@ -648,10 +639,9 @@ TEST_F(P2PDownloadActionTest, CanAppend) {
   string existing_data;
   for (unsigned int i = 0; i < 1000; i++)
     existing_data += '0' + (i % 10);
-  ASSERT_EQ(
-      WriteFile(
-          p2p_manager_->FileGetPath(file_id), existing_data.c_str(), 1000),
-      1000);
+  ASSERT_EQ(WriteFile(p2p_manager_->FileGetPath(file_id), existing_data.c_str(),
+                      1000),
+            1000);
 
   StartDownload(true);  // use_p2p_to_share
 
@@ -685,10 +675,9 @@ TEST_F(P2PDownloadActionTest, DeletePartialP2PFileIfResumingWithoutP2P) {
   string existing_data;
   for (unsigned int i = 0; i < 1000; i++)
     existing_data += '0' + (i % 10);
-  ASSERT_EQ(
-      WriteFile(
-          p2p_manager_->FileGetPath(file_id), existing_data.c_str(), 1000),
-      1000);
+  ASSERT_EQ(WriteFile(p2p_manager_->FileGetPath(file_id), existing_data.c_str(),
+                      1000),
+            1000);
 
   // Check that the file is there.
   EXPECT_EQ(1000, p2p_manager_->FileGetSize(file_id));
@@ -738,11 +727,11 @@ TEST_F(P2PDownloadActionTest, MultiplePayload) {
   processor_.EnqueueAction(std::move(feeder_action));
   processor_.EnqueueAction(std::move(download_action));
 
-  loop_.PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](ActionProcessor* processor) { processor->StartProcessing(); },
-          base::Unretained(&processor_)));
+  loop_.PostTask(FROM_HERE, base::BindOnce(
+                                [](ActionProcessor* processor) {
+                                  processor->StartProcessing();
+                                },
+                                base::Unretained(&processor_)));
   loop_.Run();
   EXPECT_FALSE(loop_.PendingTasks());
 
@@ -835,8 +824,8 @@ void RestrictedTimeIntervalDownloadActionTest::StartDownloadAction(
   install_plan.payloads.push_back(
       {.size = data.size(), .type = InstallPayloadType::kFull});
 
-  EXPECT_TRUE(HashCalculator::RawHashOfBytes(
-      &data[0], data.size(), &install_plan.payloads[0].hash));
+  EXPECT_TRUE(HashCalculator::RawHashOfBytes(&data[0], data.size(),
+                                             &install_plan.payloads[0].hash));
   auto feeder_action = std::make_unique<ObjectFeederAction<InstallPlan>>();
   feeder_action->set_obj(install_plan);
 
@@ -871,8 +860,7 @@ TEST_F(RestrictedTimeIntervalDownloadActionTest,
   const base::TimeDelta duration_till_interval =
       WeeklyTime::FromTime(test_clock_.Now())
           .GetDurationTo(restricted_time_intervals_[0].start());
-  StartDownloadAction(CreateBigData(),
-                      ErrorCode::kDownloadCancelledPerPolicy,
+  StartDownloadAction(CreateBigData(), ErrorCode::kDownloadCancelledPerPolicy,
                       duration_till_interval + kMinute);
 }
 
@@ -881,8 +869,8 @@ TEST_F(RestrictedTimeIntervalDownloadActionTest,
   const base::TimeDelta duration_till_interval =
       WeeklyTime::FromTime(test_clock_.Now())
           .GetDurationTo(restricted_time_intervals_[0].start());
-  StartDownloadAction(
-      CreateBigData(), ErrorCode::kSuccess, duration_till_interval - kMinute);
+  StartDownloadAction(CreateBigData(), ErrorCode::kSuccess,
+                      duration_till_interval - kMinute);
 }
 
 }  // namespace chromeos_update_engine

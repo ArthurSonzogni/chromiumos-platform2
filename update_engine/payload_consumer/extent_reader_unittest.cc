@@ -53,8 +53,8 @@ class ExtentReaderTest : public ::testing::Test {
     for (size_t i = 0; i < sample_.size(); i++) {
       sample_[i] = rand_r(&rand_seed) % 256;
     }
-    ASSERT_TRUE(utils::WriteFile(
-        temp_file_.path().c_str(), sample_.data(), sample_.size()));
+    ASSERT_TRUE(utils::WriteFile(temp_file_.path().c_str(), sample_.data(),
+                                 sample_.size()));
 
     fd_.reset(new EintrSafeFileDescriptor());
     ASSERT_TRUE(fd_->Open(temp_file_.path().c_str(), O_RDONLY, 0600));
@@ -65,8 +65,7 @@ class ExtentReaderTest : public ::testing::Test {
     blob->clear();
     for (const auto& extent : extents) {
       blob->insert(
-          blob->end(),
-          &sample_[extent.start_block() * kBlockSize],
+          blob->end(), &sample_[extent.start_block() * kBlockSize],
           &sample_[(extent.start_block() + extent.num_blocks()) * kBlockSize]);
     }
   }
@@ -141,10 +140,8 @@ TEST_F(ExtentReaderTest, SeekOverflow3Test) {
 }
 
 TEST_F(ExtentReaderTest, RandomReadTest) {
-  vector<Extent> extents = {ExtentForRange(0, 0),
-                            ExtentForRange(1, 1),
-                            ExtentForRange(3, 0),
-                            ExtentForRange(4, 2),
+  vector<Extent> extents = {ExtentForRange(0, 0), ExtentForRange(1, 1),
+                            ExtentForRange(3, 0), ExtentForRange(4, 2),
                             ExtentForRange(7, 1)};
   DirectExtentReader reader;
   EXPECT_TRUE(reader.Init(fd_, {extents.begin(), extents.end()}, kBlockSize));

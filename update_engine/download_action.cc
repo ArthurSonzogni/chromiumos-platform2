@@ -218,8 +218,8 @@ bool DownloadAction::LoadCachedManifest(int64_t manifest_size) {
 
   ErrorCode error;
   const bool success =
-      delta_performer_->Write(
-          cached_manifest_bytes.data(), cached_manifest_bytes.size(), &error) &&
+      delta_performer_->Write(cached_manifest_bytes.data(),
+                              cached_manifest_bytes.size(), &error) &&
       delta_performer_->IsManifestValid();
   if (success) {
     LOG(INFO) << "Successfully parsed cached manifest";
@@ -238,13 +238,9 @@ void DownloadAction::StartDownloading() {
   if (writer_ && writer_ != delta_performer_.get()) {
     LOG(INFO) << "Using writer for test.";
   } else {
-    delta_performer_.reset(new DeltaPerformer(prefs_,
-                                              boot_control_,
-                                              hardware_,
-                                              delegate_,
-                                              &install_plan_,
-                                              payload_,
-                                              interactive_));
+    delta_performer_.reset(new DeltaPerformer(prefs_, boot_control_, hardware_,
+                                              delegate_, &install_plan_,
+                                              payload_, interactive_));
     writer_ = delta_performer_.get();
   }
 
@@ -260,13 +256,9 @@ void DownloadAction::StartDownloading() {
     if (!LoadCachedManifest(manifest_metadata_size + manifest_signature_size)) {
       if (delta_performer_) {
         // Create a new DeltaPerformer to reset all its state
-        delta_performer_ = std::make_unique<DeltaPerformer>(prefs_,
-                                                            boot_control_,
-                                                            hardware_,
-                                                            delegate_,
-                                                            &install_plan_,
-                                                            payload_,
-                                                            interactive_);
+        delta_performer_ = std::make_unique<DeltaPerformer>(
+            prefs_, boot_control_, hardware_, delegate_, &install_plan_,
+            payload_, interactive_);
         writer_ = delta_performer_.get();
       }
       http_fetcher_->AddRange(base_offset_,

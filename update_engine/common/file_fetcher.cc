@@ -76,11 +76,9 @@ void FileFetcher::BeginTransfer(const string& url) {
     stream_ = brillo::FileStream::FromFileDescriptor(fd, false, nullptr);
   } else {
     file_path = url.substr(strlen("file://"));
-    stream_ =
-        brillo::FileStream::Open(base::FilePath(file_path),
-                                 brillo::Stream::AccessMode::READ,
-                                 brillo::FileStream::Disposition::OPEN_EXISTING,
-                                 nullptr);
+    stream_ = brillo::FileStream::Open(
+        base::FilePath(file_path), brillo::Stream::AccessMode::READ,
+        brillo::FileStream::Disposition::OPEN_EXISTING, nullptr);
   }
 
   if (!stream_) {
@@ -125,8 +123,7 @@ void FileFetcher::ScheduleRead() {
   }
 
   ongoing_read_ = stream_->ReadAsync(
-      buffer_.data(),
-      bytes_to_read,
+      buffer_.data(), bytes_to_read,
       base::BindOnce(&FileFetcher::OnReadDoneCallback, base::Unretained(this)),
       base::BindOnce(&FileFetcher::OnReadErrorCallback, base::Unretained(this)),
       nullptr);

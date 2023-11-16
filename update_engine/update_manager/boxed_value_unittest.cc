@@ -179,10 +179,9 @@ TEST(UmBoxedValueTest, RollbackToTargetVersionToString) {
             BoxedValue(new RollbackToTargetVersion(
                            RollbackToTargetVersion::kUnspecified))
                 .ToString());
-  EXPECT_EQ("Disabled",
-            BoxedValue(
-                new RollbackToTargetVersion(RollbackToTargetVersion::kDisabled))
-                .ToString());
+  EXPECT_EQ("Disabled", BoxedValue(new RollbackToTargetVersion(
+                                       RollbackToTargetVersion::kDisabled))
+                            .ToString());
   EXPECT_EQ("Rollback and powerwash",
             BoxedValue(new RollbackToTargetVersion(
                            RollbackToTargetVersion::kRollbackAndPowerwash))

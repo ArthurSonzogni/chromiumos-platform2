@@ -141,8 +141,8 @@ void ConnectionManagerTest::TestWithServiceType(const char* service_type,
                                                 const char* physical_technology,
                                                 ConnectionType expected_type) {
   SetManagerReply("/service/guest/network", true);
-  SetServiceReply(
-      "/service/guest/network", service_type, physical_technology, false);
+  SetServiceReply("/service/guest/network", service_type, physical_technology,
+                  false);
 
   ConnectionType type;
   bool metered = false;
@@ -155,8 +155,8 @@ void ConnectionManagerTest::TestWithServiceType(const char* service_type,
 void ConnectionManagerTest::TestWithServiceMetered(bool service_metered,
                                                    bool expected_metered) {
   SetManagerReply("/service/guest/network", true);
-  SetServiceReply(
-      "/service/guest/network", shill::kTypeWifi, nullptr, service_metered);
+  SetServiceReply("/service/guest/network", shill::kTypeWifi, nullptr,
+                  service_metered);
 
   ConnectionType type;
   bool metered = false;
@@ -186,8 +186,8 @@ TEST_F(ConnectionManagerTest, SimpleTest) {
 
 TEST_F(ConnectionManagerTest, PhysicalTechnologyTest) {
   TestWithServiceType(shill::kTypeVPN, nullptr, ConnectionType::kUnknown);
-  TestWithServiceType(
-      shill::kTypeVPN, shill::kTypeVPN, ConnectionType::kUnknown);
+  TestWithServiceType(shill::kTypeVPN, shill::kTypeVPN,
+                      ConnectionType::kUnknown);
   TestWithServiceType(shill::kTypeVPN, shill::kTypeWifi, ConnectionType::kWifi);
 }
 

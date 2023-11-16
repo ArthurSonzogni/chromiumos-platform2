@@ -83,8 +83,8 @@ TEST_F(FileDescriptorUtilsTest, CopyAndHashExtentsMismatchBlocksTest) {
   auto src_extents = CreateExtentList({{1, 4}});
   auto tgt_extents = CreateExtentList({{0, 5}});
 
-  EXPECT_FALSE(fd_utils::CopyAndHashExtents(
-      source_, src_extents, target_, tgt_extents, 4, nullptr));
+  EXPECT_FALSE(fd_utils::CopyAndHashExtents(source_, src_extents, target_,
+                                            tgt_extents, 4, nullptr));
 }
 
 // Failing to read from the source should fail the copy.
@@ -92,8 +92,8 @@ TEST_F(FileDescriptorUtilsTest, CopyAndHashExtentsReadFailureTest) {
   auto extents = CreateExtentList({{0, 5}});
   fake_source_->AddFailureRange(10, 5);
 
-  EXPECT_FALSE(fd_utils::CopyAndHashExtents(
-      source_, extents, target_, extents, 4, nullptr));
+  EXPECT_FALSE(fd_utils::CopyAndHashExtents(source_, extents, target_, extents,
+                                            4, nullptr));
 }
 
 // Failing to write to the target should fail the copy.
@@ -104,8 +104,8 @@ TEST_F(FileDescriptorUtilsTest, CopyAndHashExtentsWriteFailureTest) {
 
   // Note that we pass |source_| as the target as well, which should fail to
   // write.
-  EXPECT_FALSE(fd_utils::CopyAndHashExtents(
-      source_, src_extents, source_, tgt_extents, 4, nullptr));
+  EXPECT_FALSE(fd_utils::CopyAndHashExtents(source_, src_extents, source_,
+                                            tgt_extents, 4, nullptr));
 }
 
 // Test that we can copy extents without hashing them, allowing a nullptr
@@ -113,8 +113,8 @@ TEST_F(FileDescriptorUtilsTest, CopyAndHashExtentsWriteFailureTest) {
 TEST_F(FileDescriptorUtilsTest, CopyAndHashExtentsWithoutHashingTest) {
   auto extents = CreateExtentList({{0, 5}});
 
-  EXPECT_TRUE(fd_utils::CopyAndHashExtents(
-      source_, extents, target_, extents, 4, nullptr));
+  EXPECT_TRUE(fd_utils::CopyAndHashExtents(source_, extents, target_, extents,
+                                           4, nullptr));
   ExpectTarget("00000001000200030004");
 }
 
@@ -127,8 +127,8 @@ TEST_F(FileDescriptorUtilsTest, CopyAndHashExtentsManyToOneTest) {
   auto src_extents = CreateExtentList({{1, 1}, {4, 1}, {2, 2}, {0, 1}});
   auto tgt_extents = CreateExtentList({{0, 5}});
 
-  EXPECT_TRUE(fd_utils::CopyAndHashExtents(
-      source_, src_extents, target_, tgt_extents, 4, &hash_out));
+  EXPECT_TRUE(fd_utils::CopyAndHashExtents(source_, src_extents, target_,
+                                           tgt_extents, 4, &hash_out));
   const char kExpectedResult[] = "00010004000200030000";
   ExpectTarget(kExpectedResult);
 
@@ -143,8 +143,8 @@ TEST_F(FileDescriptorUtilsTest, CopyAndHashExtentsManyToManyTest) {
   auto src_extents = CreateExtentList({{1, 1}, {4, 1}, {2, 2}, {0, 1}});
   auto tgt_extents = CreateExtentList({{2, 3}, {0, 2}});
 
-  EXPECT_TRUE(fd_utils::CopyAndHashExtents(
-      source_, src_extents, target_, tgt_extents, 4, &hash_out));
+  EXPECT_TRUE(fd_utils::CopyAndHashExtents(source_, src_extents, target_,
+                                           tgt_extents, 4, &hash_out));
   // The reads always match the source extent list of blocks (up to the
   // internal buffer size).
   std::vector<std::pair<uint64_t, uint64_t>> kExpectedOps = {

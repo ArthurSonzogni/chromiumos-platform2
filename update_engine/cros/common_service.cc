@@ -53,11 +53,8 @@ namespace {
 void LogAndSetError(ErrorPtr* error,
                     const base::Location& location,
                     const string& reason) {
-  brillo::Error::AddTo(error,
-                       location,
-                       UpdateEngineService::kErrorDomain,
-                       UpdateEngineService::kErrorFailed,
-                       reason);
+  brillo::Error::AddTo(error, location, UpdateEngineService::kErrorDomain,
+                       UpdateEngineService::kErrorFailed, reason);
   LOG(ERROR) << "Sending Update Engine Failure: " << location.ToString() << ": "
              << reason;
 }
@@ -96,8 +93,7 @@ bool UpdateEngineService::AttemptInstall(brillo::ErrorPtr* error,
                                          const string& omaha_url,
                                          const vector<string>& dlc_ids) {
   if (!SystemState::Get()->update_attempter()->CheckForInstall(
-          dlc_ids,
-          omaha_url,
+          dlc_ids, omaha_url,
           /*scaled=*/false)) {
     // TODO(xiaochu): support more detailed error messages.
     LogAndSetError(error, FROM_HERE, "Could not schedule install.");
@@ -110,8 +106,7 @@ bool UpdateEngineService::Install(
     brillo::ErrorPtr* error,
     const update_engine::InstallParams& install_params) {
   if (!SystemState::Get()->update_attempter()->CheckForInstall(
-          {install_params.id()},
-          install_params.omaha_url(),
+          {install_params.id()}, install_params.omaha_url(),
           install_params.scaled())) {
     LogAndSetError(error, FROM_HERE, "Could not schedule scaled install.");
     return false;
@@ -201,16 +196,15 @@ bool UpdateEngineService::SetChannel(ErrorPtr* error,
   bool delegated = false;
   if (device_policy && device_policy->GetReleaseChannelDelegated(&delegated) &&
       !delegated) {
-    LogAndSetError(error,
-                   FROM_HERE,
+    LogAndSetError(error, FROM_HERE,
                    "Cannot set target channel explicitly when channel "
                    "policy/settings is not delegated");
     return false;
   }
 
   if (OmahaRequestParams::IsCommercialChannel(in_target_channel)) {
-    LogAndSetError(
-        error, FROM_HERE, "Cannot set a commercial channel explicitly");
+    LogAndSetError(error, FROM_HERE,
+                   "Cannot set a commercial channel explicitly");
     return false;
   }
 
@@ -241,8 +235,7 @@ bool UpdateEngineService::SetCohortHint(ErrorPtr* error,
   if (!SystemState::Get()->prefs()->SetString(kPrefsOmahaCohortHint,
                                               in_cohort_hint)) {
     LogAndSetError(
-        error,
-        FROM_HERE,
+        error, FROM_HERE,
         StringPrintf("Error setting the cohort hint value to \"%s\".",
                      in_cohort_hint.c_str()));
     return false;
@@ -266,8 +259,7 @@ bool UpdateEngineService::SetP2PUpdatePermission(ErrorPtr* error,
                                                  bool in_enabled) {
   if (!SystemState::Get()->prefs()->SetBoolean(kPrefsP2PEnabled, in_enabled)) {
     LogAndSetError(
-        error,
-        FROM_HERE,
+        error, FROM_HERE,
         StringPrintf("Error setting the update via p2p permission to %s.",
                      ToString(in_enabled).c_str()));
     return false;
@@ -296,8 +288,7 @@ bool UpdateEngineService::SetUpdateOverCellularPermission(ErrorPtr* error,
 
   // Check if this setting is allowed by the device policy.
   if (connection_manager->IsAllowedConnectionTypesForUpdateSet()) {
-    LogAndSetError(error,
-                   FROM_HERE,
+    LogAndSetError(error, FROM_HERE,
                    "Ignoring the update over cellular setting since there's "
                    "a device policy enforcing this setting.");
     return false;
@@ -307,8 +298,7 @@ bool UpdateEngineService::SetUpdateOverCellularPermission(ErrorPtr* error,
   // setting because the policy will be checked again during the update check.
   if (!SystemState::Get()->prefs()->SetBoolean(
           kPrefsUpdateOverCellularPermission, in_allowed)) {
-    LogAndSetError(error,
-                   FROM_HERE,
+    LogAndSetError(error, FROM_HERE,
                    string("Error setting the update over cellular to ") +
                        (in_allowed ? "true" : "false"));
     return false;
@@ -325,8 +315,7 @@ bool UpdateEngineService::SetUpdateOverCellularTarget(
 
   // Check if this setting is allowed by the device policy.
   if (connection_manager->IsAllowedConnectionTypesForUpdateSet()) {
-    LogAndSetError(error,
-                   FROM_HERE,
+    LogAndSetError(error, FROM_HERE,
                    "Ignoring the update over cellular setting since there's "
                    "a device policy enforcing this setting.");
     return false;
@@ -339,8 +328,8 @@ bool UpdateEngineService::SetUpdateOverCellularTarget(
   if (!prefs->SetString(kPrefsUpdateOverCellularTargetVersion,
                         target_version) ||
       !prefs->SetInt64(kPrefsUpdateOverCellularTargetSize, target_size)) {
-    LogAndSetError(
-        error, FROM_HERE, "Error setting the target for update over cellular.");
+    LogAndSetError(error, FROM_HERE,
+                   "Error setting the target for update over cellular.");
     return false;
   }
   return true;
@@ -365,8 +354,7 @@ bool UpdateEngineService::GetUpdateOverCellularPermission(ErrorPtr* error,
     bool is_allowed;
 
     if (!prefs->GetBoolean(kPrefsUpdateOverCellularPermission, &is_allowed)) {
-      LogAndSetError(error,
-                     FROM_HERE,
+      LogAndSetError(error, FROM_HERE,
                      "Error getting the update over cellular preference.");
       return false;
     }
@@ -380,8 +368,8 @@ bool UpdateEngineService::ToggleFeature(ErrorPtr* error,
                                         bool enable) {
   if (SystemState::Get()->update_attempter()->ToggleFeature(feature, enable))
     return true;
-  LogAndSetError(
-      error, FROM_HERE, string("Failed to toggle feature ") + feature);
+  LogAndSetError(error, FROM_HERE,
+                 string("Failed to toggle feature ") + feature);
   return false;
 }
 

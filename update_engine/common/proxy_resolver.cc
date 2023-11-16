@@ -45,10 +45,8 @@ DirectProxyResolver::~DirectProxyResolver() {
 ProxyRequestId DirectProxyResolver::GetProxiesForUrl(
     const string& url, ProxiesResolvedFn callback) {
   idle_callback_id_ = MessageLoop::current()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&DirectProxyResolver::ReturnCallback,
-                     base::Unretained(this),
-                     std::move(callback)));
+      FROM_HERE, base::BindOnce(&DirectProxyResolver::ReturnCallback,
+                                base::Unretained(this), std::move(callback)));
   return idle_callback_id_;
 }
 

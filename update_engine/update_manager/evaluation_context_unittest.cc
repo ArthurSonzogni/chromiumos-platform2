@@ -259,8 +259,7 @@ TEST_F(UmEvaluationContextTest, RunOnValueChangeOrTimeoutRunsFromTimeout) {
   // Check that the scheduled callback isn't run until the timeout occurs.
   MessageLoopRunMaxIterations(MessageLoop::current(), 10);
   EXPECT_FALSE(value);
-  MessageLoopRunUntil(MessageLoop::current(),
-                      base::Seconds(10),
+  MessageLoopRunUntil(MessageLoop::current(), base::Seconds(10),
                       base::BindRepeating(&GetBoolean, &value));
   EXPECT_TRUE(value);
 }
@@ -277,8 +276,7 @@ TEST_F(UmEvaluationContextTest, RunOnValueChangeOrTimeoutExpires) {
   // Check that the scheduled callback isn't run until the timeout occurs.
   MessageLoopRunMaxIterations(MessageLoop::current(), 10);
   EXPECT_FALSE(value);
-  MessageLoopRunUntil(MessageLoop::current(),
-                      base::Seconds(10),
+  MessageLoopRunUntil(MessageLoop::current(), base::Seconds(10),
                       base::BindRepeating(&GetBoolean, &value));
   EXPECT_TRUE(value);
 
@@ -323,8 +321,7 @@ TEST_F(UmEvaluationContextTest,
   base::RepeatingClosure closure = base::BindRepeating(
       EvaluateRepeatedly, evaluation, eval_ctx_, &num_reevaluations, &done);
   ASSERT_TRUE(eval_ctx_->RunOnValueChangeOrTimeout(closure));
-  MessageLoopRunUntil(MessageLoop::current(),
-                      base::Seconds(10),
+  MessageLoopRunUntil(MessageLoop::current(), base::Seconds(10),
                       base::BindRepeating(&GetBoolean, &done));
   EXPECT_EQ(0, num_reevaluations);
 }
@@ -355,8 +352,7 @@ TEST_F(UmEvaluationContextTest, TimeoutEventAfterDeleteTest) {
   // second). Our callback should not be called because the EvaluationContext
   // was removed before the timeout event is attended.
   eval_ctx_ = nullptr;
-  MessageLoopRunUntil(MessageLoop::current(),
-                      base::Seconds(10),
+  MessageLoopRunUntil(MessageLoop::current(), base::Seconds(10),
                       base::BindRepeating(&GetBoolean, &value));
   EXPECT_FALSE(value);
 }

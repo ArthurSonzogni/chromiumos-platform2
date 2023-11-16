@@ -74,12 +74,8 @@ void FuzzDeltaPerformer(const uint8_t* data, size_t size) {
       .already_applied = data_provider.ConsumeBool(),
   };
 
-  DeltaPerformer performer(&prefs,
-                           &boot_control,
-                           &hardware,
-                           &download_action_delegate,
-                           &install_plan,
-                           &payload,
+  DeltaPerformer performer(&prefs, &boot_control, &hardware,
+                           &download_action_delegate, &install_plan, &payload,
                            data_provider.ConsumeBool());
   do {
     auto chunk_size = data_provider.ConsumeIntegralInRange<size_t>(0, 100);

@@ -37,10 +37,8 @@ void UmPolicyTestBase::SetUp() {
   SetUpDefaultState();
 
   evaluator_ = std::make_unique<PolicyEvaluator>(
-      &fake_state_,
-      std::make_unique<EvaluationContext>(base::Seconds(5)),
-      std::move(policy_2_),
-      policy_data_);
+      &fake_state_, std::make_unique<EvaluationContext>(base::Seconds(5)),
+      std::move(policy_2_), policy_data_);
 }
 
 void UmPolicyTestBase::TearDown() {

@@ -173,12 +173,10 @@ TEST_F(Ext2FilesystemTest, ParseGeneratedImages) {
         1U, utils::BlocksInExtents(map_files["/regular-with_net_cap"].extents));
     EXPECT_TRUE(map_files["/sparse_empty-10k"].extents.empty());
     EXPECT_TRUE(map_files["/sparse_empty-2blocks"].extents.empty());
-    EXPECT_EQ(
-        1U,
-        utils::BlocksInExtents(map_files["/sparse-16k-last_block"].extents));
-    EXPECT_EQ(
-        1U,
-        utils::BlocksInExtents(map_files["/sparse-16k-first_block"].extents));
+    EXPECT_EQ(1U, utils::BlocksInExtents(
+                      map_files["/sparse-16k-last_block"].extents));
+    EXPECT_EQ(1U, utils::BlocksInExtents(
+                      map_files["/sparse-16k-first_block"].extents));
     EXPECT_EQ(2U,
               utils::BlocksInExtents(map_files["/sparse-16k-holes"].extents));
   }

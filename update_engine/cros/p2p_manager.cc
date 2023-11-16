@@ -332,10 +332,10 @@ bool P2PManagerImpl::PerformHousekeeping() {
   base::FileEnumerator dir(p2p_dir, false, base::FileEnumerator::FILES);
   // Go through all files and collect their mtime.
   for (FilePath name = dir.Next(); !name.empty(); name = dir.Next()) {
-    if (!(base::EndsWith(
-              name.value(), ext_visible, base::CompareCase::SENSITIVE) ||
-          base::EndsWith(
-              name.value(), ext_non_visible, base::CompareCase::SENSITIVE))) {
+    if (!(base::EndsWith(name.value(), ext_visible,
+                         base::CompareCase::SENSITIVE) ||
+          base::EndsWith(name.value(), ext_non_visible,
+                         base::CompareCase::SENSITIVE))) {
       continue;
     }
 
@@ -390,9 +390,7 @@ class LookupData {
 
     // We expect to run just "p2p-client" and find it in the path.
     child_pid_ = Subprocess::Get().ExecFlags(
-        cmd,
-        Subprocess::kSearchPath,
-        {},
+        cmd, Subprocess::kSearchPath, {},
         base::BindOnce(&LookupData::OnLookupDone, base::Unretained(this)));
 
     if (!child_pid_) {
@@ -412,9 +410,8 @@ class LookupData {
  private:
   void ReportErrorAndDeleteInIdle() {
     MessageLoop::current()->PostTask(
-        FROM_HERE,
-        base::BindOnce(&LookupData::OnIdleForReportErrorAndDelete,
-                       base::Unretained(this)));
+        FROM_HERE, base::BindOnce(&LookupData::OnIdleForReportErrorAndDelete,
+                                  base::Unretained(this)));
   }
 
   void OnIdleForReportErrorAndDelete() {
@@ -546,8 +543,7 @@ bool P2PManagerImpl::FileShare(const string& file_id, size_t expected_size) {
   if (expected_size != 0) {
     if (fallocate(fd,
                   FALLOC_FL_KEEP_SIZE,  // Keep file size as 0.
-                  0,
-                  expected_size) != 0) {
+                  0, expected_size) != 0) {
       if (errno == ENOSYS || errno == EOPNOTSUPP) {
         // If the filesystem doesn't support the fallocate, keep
         // going. This is helpful when running unit tests on build
@@ -566,11 +562,8 @@ bool P2PManagerImpl::FileShare(const string& file_id, size_t expected_size) {
     }
 
     string decimal_size = std::to_string(expected_size);
-    if (fsetxattr(fd,
-                  kCrosP2PFileSizeXAttrName,
-                  decimal_size.c_str(),
-                  decimal_size.size(),
-                  0) != 0) {
+    if (fsetxattr(fd, kCrosP2PFileSizeXAttrName, decimal_size.c_str(),
+                  decimal_size.size(), 0) != 0) {
       PLOG(ERROR) << "Error setting xattr " << path.value();
       return false;
     }
@@ -646,9 +639,7 @@ ssize_t P2PManagerImpl::FileGetExpectedSize(const string& file_id) {
 
   char ea_value[64] = {0};
   ssize_t ea_size;
-  ea_size = getxattr(path.value().c_str(),
-                     kCrosP2PFileSizeXAttrName,
-                     &ea_value,
+  ea_size = getxattr(path.value().c_str(), kCrosP2PFileSizeXAttrName, &ea_value,
                      sizeof(ea_value) - 1);
   if (ea_size == -1) {
     PLOG(ERROR) << "Error calling getxattr() on file " << path.value();
@@ -675,10 +666,10 @@ int P2PManagerImpl::CountSharedFiles() {
 
   base::FileEnumerator dir(p2p_dir, false, base::FileEnumerator::FILES);
   for (FilePath name = dir.Next(); !name.empty(); name = dir.Next()) {
-    if (base::EndsWith(
-            name.value(), ext_visible, base::CompareCase::SENSITIVE) ||
-        base::EndsWith(
-            name.value(), ext_non_visible, base::CompareCase::SENSITIVE)) {
+    if (base::EndsWith(name.value(), ext_visible,
+                       base::CompareCase::SENSITIVE) ||
+        base::EndsWith(name.value(), ext_non_visible,
+                       base::CompareCase::SENSITIVE)) {
       num_files += 1;
     }
   }
@@ -692,8 +683,7 @@ void P2PManagerImpl::ScheduleEnabledStatusChange() {
 
   policy_data_->set_prev_enabled(policy_data_->enabled());
   update_manager_->PolicyRequest(
-      std::make_unique<P2PEnabledChangedPolicy>(),
-      policy_data_,
+      std::make_unique<P2PEnabledChangedPolicy>(), policy_data_,
       base::BindOnce(&P2PManagerImpl::OnEnabledStatusChange,
                      base::Unretained(this)));
   waiting_for_enabled_status_change_ = true;
@@ -722,11 +712,8 @@ P2PManager* P2PManager::Construct(Configuration* configuration,
                                   const string& file_extension,
                                   const int num_files_to_keep,
                                   const TimeDelta& max_file_age) {
-  return new P2PManagerImpl(configuration,
-                            update_manager,
-                            file_extension,
-                            num_files_to_keep,
-                            max_file_age);
+  return new P2PManagerImpl(configuration, update_manager, file_extension,
+                            num_files_to_keep, max_file_age);
 }
 
 }  // namespace chromeos_update_engine

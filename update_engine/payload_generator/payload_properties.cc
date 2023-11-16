@@ -114,11 +114,11 @@ bool PayloadProperties::LoadFromPayload() {
     metadata_signatures_ = base::JoinString(base64_signatures, ":");
   }
 
-  is_delta_ = std::any_of(manifest.partitions().begin(),
-                          manifest.partitions().end(),
-                          [](const PartitionUpdate& part) {
-                            return part.has_old_partition_info();
-                          });
+  is_delta_ =
+      std::any_of(manifest.partitions().begin(), manifest.partitions().end(),
+                  [](const PartitionUpdate& part) {
+                    return part.has_old_partition_info();
+                  });
   return true;
 }
 

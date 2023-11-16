@@ -33,8 +33,7 @@ using std::string;
 
 int main(int argc, char** argv) {
   DEFINE_bool(logtofile, false, "Write logs to a file in log_dir.");
-  DEFINE_bool(logtostderr,
-              false,
+  DEFINE_bool(logtostderr, false,
               "Write logs to stderr instead of to a file in log_dir.");
   DEFINE_bool(foreground, false, "Don't daemon()ize; run in foreground.");
 

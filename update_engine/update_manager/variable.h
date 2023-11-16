@@ -130,9 +130,8 @@ class BaseVariable {
     // first the list of observers.
     if (!observer_list_.empty()) {
       brillo::MessageLoop::current()->PostTask(
-          FROM_HERE,
-          base::BindOnce(&BaseVariable::OnValueChangedNotification,
-                         base::Unretained(this)));
+          FROM_HERE, base::BindOnce(&BaseVariable::OnValueChangedNotification,
+                                    base::Unretained(this)));
     }
   }
 

@@ -126,8 +126,8 @@ int CertificateChecker::VerifySSLCallback(int preverify_ok,
                                           X509_STORE_CTX* x509_ctx,
                                           ServerToCheck server_to_check) {
   CHECK(cert_checker_singleton_ != nullptr);
-  return cert_checker_singleton_->CheckCertificateChange(
-             preverify_ok, x509_ctx, server_to_check)
+  return cert_checker_singleton_->CheckCertificateChange(preverify_ok, x509_ctx,
+                                                         server_to_check)
              ? 1
              : 0;
 }
@@ -148,8 +148,8 @@ bool CertificateChecker::CheckCertificateChange(int preverify_ok,
   unsigned int digest_length;
   uint8_t digest[EVP_MAX_MD_SIZE];
 
-  if (!openssl_wrapper_->GetCertificateDigest(
-          x509_ctx, &depth, &digest_length, digest)) {
+  if (!openssl_wrapper_->GetCertificateDigest(x509_ctx, &depth, &digest_length,
+                                              digest)) {
     LOG(WARNING) << "Failed to generate digest of X509 certificate "
                  << "from update server.";
     NotifyCertificateChecked(server_to_check, CertificateCheckResult::kValid);
@@ -160,10 +160,9 @@ bool CertificateChecker::CheckCertificateChange(int preverify_ok,
   // prefs.
   string digest_string = base::HexEncode(digest, digest_length);
 
-  string storage_key = base::StringPrintf("%s-%d-%d",
-                                          kPrefsUpdateServerCertificate,
-                                          static_cast<int>(server_to_check),
-                                          depth);
+  string storage_key =
+      base::StringPrintf("%s-%d-%d", kPrefsUpdateServerCertificate,
+                         static_cast<int>(server_to_check), depth);
   string stored_digest;
   // If there's no stored certificate, we just store the current one and return.
   if (!prefs_->GetString(storage_key, &stored_digest)) {

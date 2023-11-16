@@ -116,8 +116,7 @@ ImageProperties LoadImageProperties() {
   result.board = GetStringWithDefault(lsb_release, kLsbReleaseBoardKey, "");
   result.version = GetStringWithDefault(lsb_release, kLsbReleaseVersionKey, "");
   result.omaha_url =
-      GetStringWithDefault(lsb_release,
-                           kLsbReleaseAutoUpdateServerKey,
+      GetStringWithDefault(lsb_release, kLsbReleaseAutoUpdateServerKey,
                            constants::kOmahaDefaultProductionURL);
   result.builder_path =
       GetStringWithDefault(lsb_release, kLsbReleaseBuilderPath, "");

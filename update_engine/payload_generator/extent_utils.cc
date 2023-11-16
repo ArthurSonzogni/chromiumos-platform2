@@ -60,8 +60,7 @@ void ExtendExtents(
   vector<Extent> extents_to_add_vector;
   ExtentsToVector(*extents, &extents_vector);
   ExtentsToVector(extents_to_add, &extents_to_add_vector);
-  extents_vector.insert(extents_vector.end(),
-                        extents_to_add_vector.begin(),
+  extents_vector.insert(extents_vector.end(), extents_to_add_vector.begin(),
                         extents_to_add_vector.end());
   NormalizeExtents(&extents_vector);
   extents->Clear();

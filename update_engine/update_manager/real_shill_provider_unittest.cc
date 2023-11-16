@@ -174,8 +174,8 @@ class UmRealShillProviderTest : public ::testing::Test {
                                   ConnectionType expected_conn_type) {
     // Set up and test the connection, record the change time.
     Time conn_change_time;
-    SetupConnectionAndAttrs(
-        service_path, shill_type, nullptr, &conn_change_time);
+    SetupConnectionAndAttrs(service_path, shill_type, nullptr,
+                            &conn_change_time);
 
     // Query the connection type, ensure last change time did not change.
     UmTestUtils::ExpectVariableHasValue(expected_conn_type,
@@ -191,8 +191,8 @@ class UmRealShillProviderTest : public ::testing::Test {
                                      bool expected_metered) {
     // Set up and test the connection, record the change time.
     Time conn_change_time;
-    SetupConnectionAndAttrs(
-        service_path, shill::kTypeWifi, shill_metered, &conn_change_time);
+    SetupConnectionAndAttrs(service_path, shill::kTypeWifi, shill_metered,
+                            &conn_change_time);
 
     // Query the metered property, ensure last change time did not change.
     UmTestUtils::ExpectVariableHasValue(expected_metered,
@@ -302,39 +302,37 @@ TEST_F(UmRealShillProviderTest, InvalidServicePathType) {
 // Test that Ethernet connection is identified correctly.
 TEST_F(UmRealShillProviderTest, ReadConnTypeEthernet) {
   InitWithDefaultService("/");
-  SetupConnectionAndTestType(kFakeEthernetServicePath,
-                             shill::kTypeEthernet,
+  SetupConnectionAndTestType(kFakeEthernetServicePath, shill::kTypeEthernet,
                              ConnectionType::kEthernet);
 }
 
 // Test that Wifi connection is identified correctly.
 TEST_F(UmRealShillProviderTest, ReadConnTypeWifi) {
   InitWithDefaultService("/");
-  SetupConnectionAndTestType(
-      kFakeWifiServicePath, shill::kTypeWifi, ConnectionType::kWifi);
+  SetupConnectionAndTestType(kFakeWifiServicePath, shill::kTypeWifi,
+                             ConnectionType::kWifi);
 }
 
 // Test that Cellular connection is identified correctly.
 TEST_F(UmRealShillProviderTest, ReadConnTypeCellular) {
   InitWithDefaultService("/");
-  SetupConnectionAndTestType(kFakeCellularServicePath,
-                             shill::kTypeCellular,
+  SetupConnectionAndTestType(kFakeCellularServicePath, shill::kTypeCellular,
                              ConnectionType::kCellular);
 }
 
 // Test that an unknown connection is identified as such.
 TEST_F(UmRealShillProviderTest, ReadConnTypeUnknown) {
   InitWithDefaultService("/");
-  SetupConnectionAndTestType(
-      kFakeUnknownServicePath, "FooConnectionType", ConnectionType::kUnknown);
+  SetupConnectionAndTestType(kFakeUnknownServicePath, "FooConnectionType",
+                             ConnectionType::kUnknown);
 }
 
 // Tests that VPN connection is identified correctly.
 TEST_F(UmRealShillProviderTest, ReadConnTypeVpn) {
   InitWithDefaultService("/");
   // Mock logic for returning a default service path and its type.
-  SetServiceReply(
-      kFakeVpnServicePath, shill::kTypeVPN, shill::kTypeWifi, nullptr);
+  SetServiceReply(kFakeVpnServicePath, shill::kTypeVPN, shill::kTypeWifi,
+                  nullptr);
 
   // Send a signal about a new default service.
   Time conn_change_time;
@@ -351,8 +349,7 @@ TEST_F(UmRealShillProviderTest, ReadConnTypeVpn) {
 // subsequent variable readings.
 TEST_F(UmRealShillProviderTest, ConnTypeCacheUsed) {
   InitWithDefaultService("/");
-  SetupConnectionAndTestType(kFakeEthernetServicePath,
-                             shill::kTypeEthernet,
+  SetupConnectionAndTestType(kFakeEthernetServicePath, shill::kTypeEthernet,
                              ConnectionType::kEthernet);
 
   UmTestUtils::ExpectVariableHasValue(ConnectionType::kEthernet,
@@ -363,8 +360,7 @@ TEST_F(UmRealShillProviderTest, ConnTypeCacheUsed) {
 // connection signal occurs but the connection is not changed.
 TEST_F(UmRealShillProviderTest, ConnTypeCacheRemainsValid) {
   InitWithDefaultService("/");
-  SetupConnectionAndTestType(kFakeEthernetServicePath,
-                             shill::kTypeEthernet,
+  SetupConnectionAndTestType(kFakeEthernetServicePath, shill::kTypeEthernet,
                              ConnectionType::kEthernet);
 
   SendDefaultServiceSignal(kFakeEthernetServicePath, nullptr);
@@ -377,12 +373,11 @@ TEST_F(UmRealShillProviderTest, ConnTypeCacheRemainsValid) {
 // default connection changes.
 TEST_F(UmRealShillProviderTest, ConnTypeCacheInvalidated) {
   InitWithDefaultService("/");
-  SetupConnectionAndTestType(kFakeEthernetServicePath,
-                             shill::kTypeEthernet,
+  SetupConnectionAndTestType(kFakeEthernetServicePath, shill::kTypeEthernet,
                              ConnectionType::kEthernet);
 
-  SetupConnectionAndTestType(
-      kFakeWifiServicePath, shill::kTypeWifi, ConnectionType::kWifi);
+  SetupConnectionAndTestType(kFakeWifiServicePath, shill::kTypeWifi,
+                             ConnectionType::kWifi);
 }
 
 // Test that an unmetered connection is identified correctly.
@@ -455,10 +450,8 @@ TEST_F(UmRealShillProviderTest, ReadLastChangedTimeTwoSignals) {
   InitWithDefaultService("/");
   // Send a default service signal twice, advancing the clock in between.
   Time conn_change_time;
-  SetupConnectionAndAttrs(kFakeEthernetServicePath,
-                          shill::kTypeEthernet,
-                          nullptr,
-                          &conn_change_time);
+  SetupConnectionAndAttrs(kFakeEthernetServicePath, shill::kTypeEthernet,
+                          nullptr, &conn_change_time);
   // This will set the service path to the same value, so it should not call
   // GetProperties() again.
   SendDefaultServiceSignal(kFakeEthernetServicePath, nullptr);
@@ -491,8 +484,8 @@ TEST_F(UmRealShillProviderTest, NoInitConnStatusReadConnTypeEthernet) {
   EXPECT_TRUE(provider_->Init());
   EXPECT_TRUE(loop_.RunOnce(false));
 
-  SetupConnectionAndAttrs(
-      kFakeEthernetServicePath, shill::kTypeEthernet, nullptr, nullptr);
+  SetupConnectionAndAttrs(kFakeEthernetServicePath, shill::kTypeEthernet,
+                          nullptr, nullptr);
   UmTestUtils::ExpectVariableHasValue(true, provider_->var_is_connected());
 }
 

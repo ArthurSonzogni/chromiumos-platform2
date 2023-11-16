@@ -210,8 +210,7 @@ bool UpdateAttempter::ScheduleEnterpriseUpdateInvalidationCheck() {
 
   LOG(INFO) << "Scheduling enterprise update invalidation check.";
   SystemState::Get()->update_manager()->PolicyRequest(
-      std::make_unique<EnterpriseUpdateDisabledPolicyImpl>(),
-      nullptr,
+      std::make_unique<EnterpriseUpdateDisabledPolicyImpl>(), nullptr,
       base::BindOnce(&UpdateAttempter::OnEnterpriseUpdateInvalidationCheck,
                      weak_ptr_factory_.GetWeakPtr()));
 
@@ -288,14 +287,12 @@ bool UpdateAttempter::StartUpdater() {
   // Broadcast the update engine status on startup to ensure consistent system
   // state on crashes.
   MessageLoop::current()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&UpdateAttempter::BroadcastStatus,
-                     weak_ptr_factory_.GetWeakPtr()));
+      FROM_HERE, base::BindOnce(&UpdateAttempter::BroadcastStatus,
+                                weak_ptr_factory_.GetWeakPtr()));
 
   MessageLoop::current()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&UpdateAttempter::UpdateEngineStarted,
-                     weak_ptr_factory_.GetWeakPtr()));
+      FROM_HERE, base::BindOnce(&UpdateAttempter::UpdateEngineStarted,
+                                weak_ptr_factory_.GetWeakPtr()));
   return true;
 }
 
@@ -389,8 +386,7 @@ void UpdateAttempter::Update(const UpdateCheckParams& params) {
       LOG(INFO) << "Not updating b/c we already updated and we're waiting for "
                 << "reboot, we'll ping Omaha instead";
       SystemState::Get()->metrics_reporter()->ReportUpdateCheckMetrics(
-          metrics::CheckResult::kRebootPending,
-          metrics::CheckReaction::kUnset,
+          metrics::CheckResult::kRebootPending, metrics::CheckReaction::kUnset,
           metrics::DownloadErrorCode::kUnset);
       PingOmaha();
       return;
@@ -407,8 +403,7 @@ void UpdateAttempter::Update(const UpdateCheckParams& params) {
     LOG(INFO) << "Not updating b/c we deferred update, ping Omaha instead";
     // TODO(kimjae): Add label for metric.
     SystemState::Get()->metrics_reporter()->ReportUpdateCheckMetrics(
-        metrics::CheckResult::kDeferredUpdate,
-        metrics::CheckReaction::kUnset,
+        metrics::CheckResult::kDeferredUpdate, metrics::CheckReaction::kUnset,
         metrics::DownloadErrorCode::kUnset);
     PingOmaha();
     return;
@@ -538,8 +533,8 @@ bool UpdateAttempter::CalculateUpdateParams(const UpdateCheckParams& params) {
     }
   }
 
-  if (!omaha_request_params_->Init(
-          forced_app_version_, forced_omaha_url_, params)) {
+  if (!omaha_request_params_->Init(forced_app_version_, forced_omaha_url_,
+                                   params)) {
     LOG(ERROR) << "Unable to initialize Omaha request params.";
     return false;
   }
@@ -729,8 +724,8 @@ void UpdateAttempter::CalculateStagingParams(bool interactive) {
   StagingCase staging_case = StagingCase::kOff;
   if (device_policy && !interactive && oobe_complete) {
     staging_wait_time_ = omaha_request_params_->waiting_period();
-    staging_case = CalculateStagingCase(
-        device_policy, &staging_wait_time_, &staging_schedule_);
+    staging_case = CalculateStagingCase(device_policy, &staging_wait_time_,
+                                        &staging_schedule_);
   }
   switch (staging_case) {
     case StagingCase::kOff:
@@ -923,8 +918,7 @@ void UpdateAttempter::BuildUpdateActions(const UpdateCheckParams& params) {
       new OmahaEvent(OmahaEvent::kTypeUpdateDownloadStarted),
       std::make_unique<LibcurlHttpFetcher>(GetProxyResolver(),
                                            SystemState::Get()->hardware()),
-      false,
-      session_id_);
+      false, session_id_);
 
   auto download_fetcher = std::make_unique<LibcurlHttpFetcher>(
       GetProxyResolver(), SystemState::Get()->hardware());
@@ -940,20 +934,17 @@ void UpdateAttempter::BuildUpdateActions(const UpdateCheckParams& params) {
       new OmahaEvent(OmahaEvent::kTypeUpdateDownloadFinished),
       std::make_unique<LibcurlHttpFetcher>(GetProxyResolver(),
                                            SystemState::Get()->hardware()),
-      false,
-      session_id_);
+      false, session_id_);
   auto filesystem_verifier_action = std::make_unique<FilesystemVerifierAction>(
       SystemState::Get()->boot_control()->GetDynamicPartitionControl());
   auto update_complete_action = std::make_unique<OmahaRequestAction>(
       new OmahaEvent(OmahaEvent::kTypeUpdateComplete),
       std::make_unique<LibcurlHttpFetcher>(GetProxyResolver(),
                                            SystemState::Get()->hardware()),
-      false,
-      session_id_);
+      false, session_id_);
 
   auto postinstall_runner_action = std::make_unique<PostinstallRunnerAction>(
-      SystemState::Get()->boot_control(),
-      SystemState::Get()->hardware(),
+      SystemState::Get()->boot_control(), SystemState::Get()->hardware(),
       params.force_fw_update);
   postinstall_runner_action->set_delegate(this);
 
@@ -2113,8 +2104,7 @@ bool UpdateAttempter::ScheduleErrorEventAction() {
       error_event_.release(),  // Pass ownership.
       std::make_unique<LibcurlHttpFetcher>(GetProxyResolver(),
                                            SystemState::Get()->hardware()),
-      false,
-      session_id_);
+      false, session_id_);
   processor_->EnqueueAction(std::move(error_event_action));
   SetStatusAndNotify(UpdateStatus::REPORTING_ERROR_EVENT);
   processor_->StartProcessing();
@@ -2159,8 +2149,7 @@ void UpdateAttempter::PingOmaha() {
         nullptr,
         std::make_unique<LibcurlHttpFetcher>(GetProxyResolver(),
                                              SystemState::Get()->hardware()),
-        true,
-        "" /* session_id */);
+        true, "" /* session_id */);
     processor_->set_delegate(nullptr);
     processor_->EnqueueAction(std::move(ping_action));
     // Call StartProcessing() synchronously here to avoid any race conditions

@@ -43,8 +43,8 @@ TEST(BlobFileWriterTest, SimpleTest) {
 
   brillo::Blob stored_blob(kBlobSize);
   ssize_t bytes_read;
-  ASSERT_TRUE(utils::PReadAll(
-      blob_file.fd(), stored_blob.data(), kBlobSize, 0, &bytes_read));
+  ASSERT_TRUE(utils::PReadAll(blob_file.fd(), stored_blob.data(), kBlobSize, 0,
+                              &bytes_read));
   EXPECT_EQ(bytes_read, kBlobSize);
   EXPECT_EQ(blob, stored_blob);
 }

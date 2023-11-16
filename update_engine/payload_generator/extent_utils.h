@@ -42,8 +42,7 @@ std::vector<uint64_t> ExpandExtents(const T& extents) {
       ret.resize(ret.size() + extent.num_blocks(), kSparseHole);
     } else {
       for (uint64_t block = extent.start_block();
-           block < (extent.start_block() + extent.num_blocks());
-           block++) {
+           block < (extent.start_block() + extent.num_blocks()); block++) {
         ret.push_back(block);
       }
     }

@@ -194,9 +194,7 @@ bool PWriteAll(int fd, const void* buf, size_t count, off_t offset) {
   int num_attempts = 0;
   while (bytes_written < count) {
     num_attempts++;
-    ssize_t rc = pwrite(fd,
-                        c_buf + bytes_written,
-                        count - bytes_written,
+    ssize_t rc = pwrite(fd, c_buf + bytes_written, count - bytes_written,
                         offset + bytes_written);
     // TODO(garnold) for debugging failure in chromium-os:31077; to be removed.
     if (rc < 0) {
@@ -426,8 +424,8 @@ void HexDumpArray(const uint8_t* const arr, const size_t length) {
 bool SplitPartitionName(const string& partition_name,
                         string* out_disk_name,
                         int* out_partition_num) {
-  if (!base::StartsWith(
-          partition_name, "/dev/", base::CompareCase::SENSITIVE)) {
+  if (!base::StartsWith(partition_name, "/dev/",
+                        base::CompareCase::SENSITIVE)) {
     LOG(ERROR) << "Invalid partition device name: " << partition_name;
     return false;
   }
@@ -505,8 +503,7 @@ bool MakeTempFile(const string& base_filename_template,
       GetTempName(base_filename_template, &filename_template));
   DCHECK(filename || fd);
   vector<char> buf(filename_template.value().size() + 1);
-  memcpy(buf.data(),
-         filename_template.value().data(),
+  memcpy(buf.data(), filename_template.value().data(),
          filename_template.value().size());
   buf[filename_template.value().size()] = '\0';
 
@@ -559,10 +556,7 @@ bool MountFilesystem(const string& device,
     fstypes = {type.c_str()};
   }
   for (const char* fstype : fstypes) {
-    int rc = mount(device.c_str(),
-                   mountpoint.c_str(),
-                   fstype,
-                   mountflags,
+    int rc = mount(device.c_str(), mountpoint.c_str(), fstype, mountflags,
                    fs_mount_options.c_str());
     if (rc == 0)
       return true;
@@ -760,13 +754,9 @@ string FormatTimeDelta(TimeDelta delta) {
 string ToString(const Time utc_time) {
   Time::Exploded exp_time;
   utc_time.UTCExplode(&exp_time);
-  return base::StringPrintf("%d/%d/%d %d:%02d:%02d GMT",
-                            exp_time.month,
-                            exp_time.day_of_month,
-                            exp_time.year,
-                            exp_time.hour,
-                            exp_time.minute,
-                            exp_time.second);
+  return base::StringPrintf("%d/%d/%d %d:%02d:%02d GMT", exp_time.month,
+                            exp_time.day_of_month, exp_time.year, exp_time.hour,
+                            exp_time.minute, exp_time.second);
 }
 
 string ToString(bool b) {
@@ -852,8 +842,7 @@ string CalculateP2PFileId(const brillo::Blob& payload_hash,
                           size_t payload_size) {
   string encoded_hash = brillo::data_encoding::Base64Encode(
       brillo::data_encoding::Base64Encode(payload_hash));
-  return base::StringPrintf("cros_update_size_%" PRIuS "_hash_%s",
-                            payload_size,
+  return base::StringPrintf("cros_update_size_%" PRIuS "_hash_%s", payload_size,
                             encoded_hash.c_str());
 }
 
@@ -906,9 +895,7 @@ bool ReadExtents(const string& path,
     ssize_t bytes_read_this_iteration = 0;
     ssize_t bytes = extent.num_blocks() * block_size;
     TEST_AND_RETURN_FALSE(bytes_read + bytes <= out_data_size);
-    TEST_AND_RETURN_FALSE(utils::PReadAll(fd,
-                                          &data[bytes_read],
-                                          bytes,
+    TEST_AND_RETURN_FALSE(utils::PReadAll(fd, &data[bytes_read], bytes,
                                           extent.start_block() * block_size,
                                           &bytes_read_this_iteration));
     TEST_AND_RETURN_FALSE(bytes_read_this_iteration == bytes);
@@ -923,8 +910,8 @@ bool GetVpdValue(string key, string* result) {
   int exit_code = 0;
   string value, error;
   vector<string> cmd = {"vpd_get_value", key};
-  if (!chromeos_update_engine::Subprocess::SynchronousExec(
-          cmd, &exit_code, &value, &error) ||
+  if (!chromeos_update_engine::Subprocess::SynchronousExec(cmd, &exit_code,
+                                                           &value, &error) ||
       exit_code) {
     LOG(ERROR) << "Failed to get vpd key for " << value
                << " with exit code: " << exit_code << " and error: " << error;
@@ -949,8 +936,8 @@ int VersionPrefix(const std::string& version) {
   if (version.empty()) {
     return 0;
   }
-  vector<string> tokens = base::SplitString(
-      version, ".", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+  vector<string> tokens = base::SplitString(version, ".", base::KEEP_WHITESPACE,
+                                            base::SPLIT_WANT_ALL);
   int value;
   if (tokens.empty() || !base::StringToInt(tokens[0], &value))
     return -1;  // Target version is invalid.

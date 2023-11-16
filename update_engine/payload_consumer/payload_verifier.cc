@@ -154,8 +154,8 @@ bool PayloadVerifier::VerifyRawSignature(
     int key_type = EVP_PKEY_id(public_key.get());
     if (key_type == EVP_PKEY_RSA) {
       brillo::Blob sig_hash_data;
-      if (!GetRawHashFromSignature(
-              sig_data, public_key.get(), &sig_hash_data)) {
+      if (!GetRawHashFromSignature(sig_data, public_key.get(),
+                                   &sig_hash_data)) {
         LOG(WARNING)
             << "Failed to get the raw hash with RSA key. Trying other keys.";
         continue;
@@ -177,12 +177,9 @@ bool PayloadVerifier::VerifyRawSignature(
     if (key_type == EVP_PKEY_EC) {
       EC_KEY* ec_key = EVP_PKEY_get1_EC_KEY(public_key.get());
       TEST_AND_RETURN_FALSE(ec_key != nullptr);
-      int result = ECDSA_verify(0,
-                                sha256_hash_data.data(),
-                                sha256_hash_data.size(),
-                                sig_data.data(),
-                                sig_data.size(),
-                                ec_key);
+      int result =
+          ECDSA_verify(0, sha256_hash_data.data(), sha256_hash_data.size(),
+                       sig_data.data(), sig_data.size(), ec_key);
       EC_KEY_free(ec_key);
       if (result == 1) {
         return true;
@@ -217,8 +214,8 @@ bool PayloadVerifier::GetRawHashFromSignature(
 
   // Decrypts the signature.
   brillo::Blob hash_data(keysize);
-  int decrypt_size = RSA_public_decrypt(
-      sig_data.size(), sig_data.data(), hash_data.data(), rsa, RSA_NO_PADDING);
+  int decrypt_size = RSA_public_decrypt(sig_data.size(), sig_data.data(),
+                                        hash_data.data(), rsa, RSA_NO_PADDING);
   RSA_free(rsa);
   TEST_AND_RETURN_FALSE(decrypt_size > 0 &&
                         decrypt_size <= static_cast<int>(hash_data.size()));

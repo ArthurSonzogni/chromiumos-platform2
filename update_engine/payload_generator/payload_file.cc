@@ -173,8 +173,8 @@ bool PayloadFile::WritePayload(const string& payload_file,
   if (!private_key_path.empty()) {
     TEST_AND_RETURN_FALSE(PayloadSigner::SignatureBlobLength(
         {private_key_path}, &signature_blob_length));
-    PayloadSigner::AddSignatureToManifest(
-        next_blob_offset, signature_blob_length, &manifest_);
+    PayloadSigner::AddSignatureToManifest(next_blob_offset,
+                                          signature_blob_length, &manifest_);
   }
 
   // Serialize protobuf
@@ -249,9 +249,7 @@ bool PayloadFile::WritePayload(const string& payload_file,
     LOG(INFO) << "Signing the update...";
     string signature;
     TEST_AND_RETURN_FALSE(PayloadSigner::SignPayload(
-        payload_file,
-        {private_key_path},
-        metadata_size,
+        payload_file, {private_key_path}, metadata_size,
         metadata_signature_size,
         metadata_size + metadata_signature_size + manifest_.signatures_offset(),
         &signature));
@@ -271,8 +269,8 @@ bool PayloadFile::ReorderDataBlobs(const string& data_blobs_path,
   ScopedFdCloser in_fd_closer(&in_fd);
 
   DirectFileWriter writer;
-  int rc = writer.Open(
-      new_data_blobs_path.c_str(), O_WRONLY | O_TRUNC | O_CREAT, 0644);
+  int rc = writer.Open(new_data_blobs_path.c_str(),
+                       O_WRONLY | O_TRUNC | O_CREAT, 0644);
   if (rc != 0) {
     PLOG(ERROR) << "Error creating " << new_data_blobs_path;
     return false;
@@ -316,8 +314,8 @@ void PayloadFile::ReportPayloadUsage(uint64_t metadata_size) const {
   for (const auto& part : part_vec_) {
     string part_prefix = "<" + part.name + ">:";
     for (const AnnotatedOperation& aop : part.aops) {
-      DeltaObject delta(
-          part_prefix + aop.name, aop.op.type(), aop.op.data_length());
+      DeltaObject delta(part_prefix + aop.name, aop.op.type(),
+                        aop.op.data_length());
       object_counts[delta]++;
       total_size += aop.op.data_length();
     }
@@ -332,15 +330,12 @@ void PayloadFile::ReportPayloadUsage(uint64_t metadata_size) const {
     const DeltaObject& object = object_count.first;
     // Use printf() instead of LOG(INFO) because timestamp makes it difficult to
     // compare two reports.
-    printf(kFormatString,
-           object.size * 100.0 / total_size,
-           object.size,
+    printf(kFormatString, object.size * 100.0 / total_size, object.size,
            (object.type >= 0
                 ? InstallOperationTypeName(
                       static_cast<InstallOperation::Type>(object.type))
                 : "-"),
-           object.name.c_str(),
-           object_count.second);
+           object.name.c_str(), object_count.second);
   }
   printf(kFormatString, 100.0, total_size, "", "<total>", total_op);
   fflush(stdout);

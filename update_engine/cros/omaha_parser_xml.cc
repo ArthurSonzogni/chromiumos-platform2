@@ -35,8 +35,7 @@ bool OmahaParserXml::Parse(ErrorCode* error_code) {
 
   xml_parser_ = XML_ParserCreate(nullptr);
   XML_SetUserData(xml_parser_, this);
-  XML_SetElementHandler(xml_parser_,
-                        &OmahaParserXml::ParserHandlerStart,
+  XML_SetElementHandler(xml_parser_, &OmahaParserXml::ParserHandlerStart,
                         OmahaParserXml::ParserHandlerEnd);
   XML_SetEntityDeclHandler(xml_parser_,
                            OmahaParserXml::ParserHandlerEntityDecl);
@@ -100,8 +99,7 @@ void OmahaParserXml::ParserHandlerStart(void* user_data,
         .firmware_version = attrs[kAttrFirmwareVersion],
         .kernel_version = attrs[kAttrKernelVersion],
         .past_firmware_version =
-            attrs[base::StringPrintf("%s_%i",
-                                     kAttrFirmwareVersion,
+            attrs[base::StringPrintf("%s_%i", kAttrFirmwareVersion,
                                      parser->rollback_allowed_milestones_)],
         .past_kernel_version = attrs[base::StringPrintf(
             "%s_%i", kAttrKernelVersion, parser->rollback_allowed_milestones_)],
@@ -126,19 +124,15 @@ void OmahaParserXml::ParserHandlerStart(void* user_data,
     // We only care about the postinstall action.
     if (attrs[kAttrEvent] == kValPostInstall) {
       OmahaParserData::App::PostInstallAction action = {
-          .is_delta_payloads = base::SplitString(attrs[kAttrIsDeltaPayload],
-                                                 ":",
-                                                 base::TRIM_WHITESPACE,
-                                                 base::SPLIT_WANT_ALL),
+          .is_delta_payloads =
+              base::SplitString(attrs[kAttrIsDeltaPayload], ":",
+                                base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL),
           .metadata_signature_rsas =
-              base::SplitString(attrs[kAttrMetadataSignatureRsa],
-                                ":",
-                                base::TRIM_WHITESPACE,
-                                base::SPLIT_WANT_ALL),
-          .metadata_sizes = base::SplitString(attrs[kAttrMetadataSize],
-                                              ":",
-                                              base::TRIM_WHITESPACE,
-                                              base::SPLIT_WANT_ALL),
+              base::SplitString(attrs[kAttrMetadataSignatureRsa], ":",
+                                base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL),
+          .metadata_sizes =
+              base::SplitString(attrs[kAttrMetadataSize], ":",
+                                base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL),
           .max_days_to_scatter = attrs[kAttrMaxDaysToScatter],
           .no_update = attrs[kAttrNoUpdate],
           .more_info_url = attrs[kAttrMoreInfo],
@@ -167,8 +161,8 @@ void OmahaParserXml::ParserHandlerEnd(void* user_data,
 
   const string path_suffix = string("/") + element;
 
-  if (!base::EndsWith(
-          parser->current_path_, path_suffix, base::CompareCase::SENSITIVE)) {
+  if (!base::EndsWith(parser->current_path_, path_suffix,
+                      base::CompareCase::SENSITIVE)) {
     LOG(ERROR) << "Unexpected end element '" << element
                << "' with current_path_='" << parser->current_path_ << "'";
     parser->failed_ = true;

@@ -62,9 +62,8 @@ bool HibernateChromeOS::AbortResume(const std::string& reason) {
   }
 
   if (!hiberman_resume_proxy_->AbortResume(reason, &err)) {
-    LOG(ERROR) << "Failed to abort resume from hibernate: "
-               << "ErrorCode=" << err->GetCode()
-               << ", ErrMsg=" << err->GetMessage();
+    LOG(ERROR) << "Failed to abort resume from hibernate: " << "ErrorCode="
+               << err->GetCode() << ", ErrMsg=" << err->GetMessage();
     return false;
   }
 

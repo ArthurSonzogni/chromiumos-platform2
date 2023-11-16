@@ -817,8 +817,8 @@ TEST_F(UpdateAttempterTest, ScheduleErrorEventActionTest) {
   EXPECT_CALL(*processor_, StartProcessing());
   ErrorCode err = ErrorCode::kError;
   EXPECT_CALL(*FakeSystemState::Get()->mock_payload_state(), UpdateFailed(err));
-  attempter_.error_event_.reset(new OmahaEvent(
-      OmahaEvent::kTypeUpdateComplete, OmahaEvent::kResultError, err));
+  attempter_.error_event_.reset(new OmahaEvent(OmahaEvent::kTypeUpdateComplete,
+                                               OmahaEvent::kResultError, err));
   attempter_.ScheduleErrorEventAction();
   EXPECT_EQ(UpdateStatus::REPORTING_ERROR_EVENT, attempter_.status());
 }
@@ -955,27 +955,21 @@ TEST_F(UpdateAttempterTest, UpdateTest) {
 TEST_F(UpdateAttempterTest, RollbackTest) {
   loop_.PostTask(FROM_HERE,
                  base::BindOnce(&UpdateAttempterTest::RollbackTestStart,
-                                base::Unretained(this),
-                                false,
-                                true));
+                                base::Unretained(this), false, true));
   loop_.Run();
 }
 
 TEST_F(UpdateAttempterTest, InvalidSlotRollbackTest) {
   loop_.PostTask(FROM_HERE,
                  base::BindOnce(&UpdateAttempterTest::RollbackTestStart,
-                                base::Unretained(this),
-                                false,
-                                false));
+                                base::Unretained(this), false, false));
   loop_.Run();
 }
 
 TEST_F(UpdateAttempterTest, EnterpriseRollbackTest) {
   loop_.PostTask(FROM_HERE,
                  base::BindOnce(&UpdateAttempterTest::RollbackTestStart,
-                                base::Unretained(this),
-                                true,
-                                true));
+                                base::Unretained(this), true, true));
   loop_.Run();
 }
 
@@ -1726,8 +1720,8 @@ TEST_F(UpdateAttempterTest, CheckForInstallScaledTest) {
   EXPECT_TRUE(attempter_.CheckForInstall({"dlc_a"}, "autest", /*scaled=*/true));
   EXPECT_EQ(constants::kOmahaDefaultAUTestURL, attempter_.forced_omaha_url());
 
-  EXPECT_FALSE(attempter_.CheckForInstall(
-      {"dlc_a", "dlc_b"}, "autest", /*scaled=*/true));
+  EXPECT_FALSE(attempter_.CheckForInstall({"dlc_a", "dlc_b"}, "autest",
+                                          /*scaled=*/true));
 }
 
 TEST_F(UpdateAttempterTest, InstallSetsStatusIdle) {
@@ -1809,8 +1803,8 @@ TEST_F(UpdateAttempterTest, UpdateDeferredByPolicyTest) {
       {.size = 1234ULL, .type = InstallPayloadType::kFull});
   // Inform the UpdateAttempter that the OmahaResponseHandlerAction has
   // completed, with the deferred-update error code.
-  attempter_.ActionCompleted(
-      nullptr, &response_action, ErrorCode::kOmahaUpdateDeferredPerPolicy);
+  attempter_.ActionCompleted(nullptr, &response_action,
+                             ErrorCode::kOmahaUpdateDeferredPerPolicy);
   {
     UpdateEngineStatus status;
     attempter_.GetStatus(&status);
@@ -2397,8 +2391,7 @@ TEST_F(UpdateAttempterTest, RepeatedUpdateFeatureDisabledByDefault) {
   attempter_.GetStatus(&status);
   auto end = std::end(status.features);
   auto feature_itr =
-      std::find_if(std::begin(status.features),
-                   end,
+      std::find_if(std::begin(status.features), end,
                    [](decltype(status.features)::value_type v) {
                      return v.name == update_engine::kFeatureRepeatedUpdates;
                    });
@@ -2414,8 +2407,7 @@ TEST_F(UpdateAttempterTest, RepeatedUpdateFeatureEnabled) {
   attempter_.GetStatus(&status);
   auto end = std::end(status.features);
   auto feature_itr =
-      std::find_if(std::begin(status.features),
-                   end,
+      std::find_if(std::begin(status.features), end,
                    [](decltype(status.features)::value_type v) {
                      return v.name == update_engine::kFeatureRepeatedUpdates;
                    });
@@ -2428,8 +2420,7 @@ TEST_F(UpdateAttempterTest, ConsumerAutoUpdateFeatureEnabledByDefault) {
   attempter_.GetStatus(&status);
   auto end = std::end(status.features);
   auto feature_itr =
-      std::find_if(std::begin(status.features),
-                   end,
+      std::find_if(std::begin(status.features), end,
                    [](decltype(status.features)::value_type v) {
                      return v.name == update_engine::kFeatureConsumerAutoUpdate;
                    });
@@ -2445,8 +2436,7 @@ TEST_F(UpdateAttempterTest, ConsumerAutoUpdateFeatureDisabled) {
   attempter_.GetStatus(&status);
   auto end = std::end(status.features);
   auto feature_itr =
-      std::find_if(std::begin(status.features),
-                   end,
+      std::find_if(std::begin(status.features), end,
                    [](decltype(status.features)::value_type v) {
                      return v.name == update_engine::kFeatureConsumerAutoUpdate;
                    });
@@ -2658,8 +2648,8 @@ TEST_F(UpdateAttempterTest, InvalidateLastUpdate) {
 
   // Invalidate an update.
   MockAction action;
-  attempter_.ActionCompleted(
-      nullptr, &action, ErrorCode::kInvalidateLastUpdate);
+  attempter_.ActionCompleted(nullptr, &action,
+                             ErrorCode::kInvalidateLastUpdate);
 
   EXPECT_FALSE(attempter_.GetBootTimeAtUpdate(nullptr));
   EXPECT_FALSE(FakeSystemState::Get()->fake_hardware()->IsPowerwashScheduled());
@@ -2685,8 +2675,8 @@ TEST_F(UpdateAttempterTest, InvalidateLastPowerwashUpdate) {
 
   // Invalidate an update.
   MockAction action;
-  attempter_.ActionCompleted(
-      nullptr, &action, ErrorCode::kInvalidateLastUpdate);
+  attempter_.ActionCompleted(nullptr, &action,
+                             ErrorCode::kInvalidateLastUpdate);
 
   EXPECT_FALSE(attempter_.GetBootTimeAtUpdate(nullptr));
   EXPECT_FALSE(FakeSystemState::Get()->fake_hardware()->IsPowerwashScheduled());
@@ -2712,8 +2702,8 @@ TEST_F(UpdateAttempterTest, InvalidateLastUpdateNoPowerwashFile) {
 
   // Invalidate an update.
   MockAction action;
-  attempter_.ActionCompleted(
-      nullptr, &action, ErrorCode::kInvalidateLastUpdate);
+  attempter_.ActionCompleted(nullptr, &action,
+                             ErrorCode::kInvalidateLastUpdate);
 
   EXPECT_FALSE(attempter_.GetBootTimeAtUpdate(nullptr));
   EXPECT_TRUE(FakeSystemState::Get()->fake_hardware()->IsPowerwashScheduled());
@@ -2739,8 +2729,8 @@ TEST_F(UpdateAttempterTest, InvalidateLastUpdateExternalPowerwash) {
 
   // Invalidate an update.
   MockAction action;
-  attempter_.ActionCompleted(
-      nullptr, &action, ErrorCode::kInvalidateLastUpdate);
+  attempter_.ActionCompleted(nullptr, &action,
+                             ErrorCode::kInvalidateLastUpdate);
 
   EXPECT_FALSE(attempter_.GetBootTimeAtUpdate(nullptr));
   EXPECT_TRUE(FakeSystemState::Get()->fake_hardware()->IsPowerwashScheduled());
@@ -2788,8 +2778,8 @@ TEST_F(UpdateAttempterTest, SetDlcActiveValue) {
 
 TEST_F(UpdateAttempterTest, SetDlcInactive) {
   string dlc_id = "dlc0";
-  auto sub_keys = {
-      kPrefsPingActive, kPrefsPingLastActive, kPrefsPingLastRollcall};
+  auto sub_keys = {kPrefsPingActive, kPrefsPingLastActive,
+                   kPrefsPingLastRollcall};
   for (auto& sub_key : sub_keys) {
     auto key = PrefsInterface::CreateSubKey({kDlcPrefsSubDir, dlc_id, sub_key});
     FakeSystemState::Get()->prefs()->SetInt64(key, 1);

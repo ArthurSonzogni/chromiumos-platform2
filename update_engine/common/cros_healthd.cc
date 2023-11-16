@@ -66,8 +66,8 @@ static const std::unordered_map<TelemetryCategoryEnum, ProbeCategoryEnum>
 
 void PrintError(const ash::cros_healthd::mojom::ProbeErrorPtr& error,
                 std::string info) {
-  LOG(ERROR) << "Failed to get " << info << ","
-             << " error_type=" << error->type << " error_msg=" << error->msg;
+  LOG(ERROR) << "Failed to get " << info << "," << " error_type=" << error->type
+             << " error_msg=" << error->msg;
 }
 
 }  // namespace
@@ -105,8 +105,7 @@ void CrosHealthd::BootstrapMojo() {
       }));
 
   service_manager_->Request(
-      chromeos::mojo_services::kCrosHealthdProbe,
-      kCrosHealthdConnectingTimeout,
+      chromeos::mojo_services::kCrosHealthdProbe, kCrosHealthdConnectingTimeout,
       cros_healthd_probe_service_.BindNewPipeAndPassReceiver().PassPipe());
   cros_healthd_probe_service_.set_disconnect_with_reason_handler(
       base::BindOnce([](uint32_t error, const std::string& message) {
@@ -134,13 +133,12 @@ void CrosHealthd::ProbeTelemetryInfo(
     if (it != kTelemetryMojoMapping.end())
       categories_mojo.push_back(it->second);
   }
-  auto callback = base::BindOnce(&CrosHealthd::OnProbeTelemetryInfo,
-                                 weak_ptr_factory_.GetWeakPtr(),
-                                 std::move(once_callback));
+  auto callback =
+      base::BindOnce(&CrosHealthd::OnProbeTelemetryInfo,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(once_callback));
   cros_healthd_probe_service_->ProbeTelemetryInfo(
-      categories_mojo,
-      mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback),
-                                                  nullptr));
+      categories_mojo, mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+                           std::move(callback), nullptr));
 }
 
 void CrosHealthd::OnProbeTelemetryInfo(

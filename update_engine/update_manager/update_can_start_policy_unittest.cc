@@ -748,8 +748,7 @@ TEST_F(UmUpdateCanStartPolicyTest, AllowedWithSecondUrlHardError) {
   ucs_data_->update_state.download_urls.emplace_back(
       "http://another/fake/url/");
   ucs_data_->update_state.download_errors.emplace_back(
-      0,
-      ErrorCode::kPayloadHashMismatchError,
+      0, ErrorCode::kPayloadHashMismatchError,
       fake_clock_->GetWallclockTime() - base::Seconds(1));
 
   // Check that the UpdateCanStart returns true.
@@ -774,8 +773,7 @@ TEST_F(UmUpdateCanStartPolicyTest, AllowedUrlWrapsAround) {
   ucs_data_->update_state.download_urls.emplace_back(
       "http://another/fake/url/");
   ucs_data_->update_state.download_errors.emplace_back(
-      1,
-      ErrorCode::kPayloadHashMismatchError,
+      1, ErrorCode::kPayloadHashMismatchError,
       fake_clock_->GetWallclockTime() - base::Seconds(1));
 
   // Check that the UpdateCanStart returns true.

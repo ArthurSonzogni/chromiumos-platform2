@@ -96,8 +96,8 @@ void SignSampleData(string* out_signature, const vector<string>& private_keys) {
   EXPECT_TRUE(PayloadSigner::SignatureBlobLength(private_keys, &length));
   EXPECT_GT(length, 0U);
   brillo::Blob hash_blob;
-  EXPECT_TRUE(HashCalculator::RawHashOfBytes(
-      kDataToSign, strlen(kDataToSign), &hash_blob));
+  EXPECT_TRUE(HashCalculator::RawHashOfBytes(kDataToSign, strlen(kDataToSign),
+                                             &hash_blob));
   EXPECT_TRUE(
       PayloadSigner::SignHashWithKeys(hash_blob, private_keys, out_signature));
   EXPECT_EQ(length, out_signature->size());
@@ -134,10 +134,9 @@ TEST_F(PayloadSignerTest, VerifyAllSignatureTest) {
                   GetBuildArtifactsPath(kUnittestPrivateKeyECPath)});
 
   // Either public key should pass the verification.
-  for (const auto& path : {kUnittestPublicKeyPath,
-                           kUnittestPublicKey2Path,
-                           kUnittestPublicKeyRSA4096Path,
-                           kUnittestPublicKeyECPath}) {
+  for (const auto& path :
+       {kUnittestPublicKeyPath, kUnittestPublicKey2Path,
+        kUnittestPublicKeyRSA4096Path, kUnittestPublicKeyECPath}) {
     string public_key;
     EXPECT_TRUE(utils::ReadFile(GetBuildArtifactsPath(path), &public_key));
     auto payload_verifier = PayloadVerifier::CreateInstance(public_key);
@@ -173,19 +172,16 @@ TEST_F(PayloadSignerTest, SkipMetadataSignatureTest) {
   PayloadFile payload;
   EXPECT_TRUE(payload.Init(config));
   uint64_t metadata_size;
-  EXPECT_TRUE(payload.WritePayload(
-      payload_file.path(), "/dev/null", "", &metadata_size));
+  EXPECT_TRUE(payload.WritePayload(payload_file.path(), "/dev/null", "",
+                                   &metadata_size));
   const vector<size_t> sizes = {256};
   brillo::Blob unsigned_payload_hash, unsigned_metadata_hash;
-  EXPECT_TRUE(PayloadSigner::HashPayloadForSigning(payload_file.path(),
-                                                   sizes,
+  EXPECT_TRUE(PayloadSigner::HashPayloadForSigning(payload_file.path(), sizes,
                                                    &unsigned_payload_hash,
                                                    &unsigned_metadata_hash));
-  EXPECT_TRUE(
-      payload.WritePayload(payload_file.path(),
-                           "/dev/null",
-                           GetBuildArtifactsPath(kUnittestPrivateKeyPath),
-                           &metadata_size));
+  EXPECT_TRUE(payload.WritePayload(
+      payload_file.path(), "/dev/null",
+      GetBuildArtifactsPath(kUnittestPrivateKeyPath), &metadata_size));
   brillo::Blob signed_payload_hash, signed_metadata_hash;
   EXPECT_TRUE(PayloadSigner::HashPayloadForSigning(
       payload_file.path(), sizes, &signed_payload_hash, &signed_metadata_hash));
@@ -200,11 +196,9 @@ TEST_F(PayloadSignerTest, VerifySignedPayloadTest) {
   PayloadFile payload;
   EXPECT_TRUE(payload.Init(config));
   uint64_t metadata_size;
-  EXPECT_TRUE(
-      payload.WritePayload(payload_file.path(),
-                           "/dev/null",
-                           GetBuildArtifactsPath(kUnittestPrivateKeyPath),
-                           &metadata_size));
+  EXPECT_TRUE(payload.WritePayload(
+      payload_file.path(), "/dev/null",
+      GetBuildArtifactsPath(kUnittestPrivateKeyPath), &metadata_size));
   EXPECT_TRUE(PayloadSigner::VerifySignedPayload(
       payload_file.path(), GetBuildArtifactsPath(kUnittestPublicKeyPath)));
 }

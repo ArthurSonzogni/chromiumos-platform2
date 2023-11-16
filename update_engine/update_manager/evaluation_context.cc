@@ -124,13 +124,13 @@ void EvaluationContext::OnValueChangedOrTimeout() {
 }
 
 bool EvaluationContext::IsWallclockTimeGreaterThan(Time timestamp) {
-  return IsTimeGreaterThanHelper(
-      timestamp, evaluation_start_wallclock_, &reevaluation_time_wallclock_);
+  return IsTimeGreaterThanHelper(timestamp, evaluation_start_wallclock_,
+                                 &reevaluation_time_wallclock_);
 }
 
 bool EvaluationContext::IsMonotonicTimeGreaterThan(Time timestamp) {
-  return IsTimeGreaterThanHelper(
-      timestamp, evaluation_start_monotonic_, &reevaluation_time_monotonic_);
+  return IsTimeGreaterThanHelper(timestamp, evaluation_start_monotonic_,
+                                 &reevaluation_time_monotonic_);
 }
 
 void EvaluationContext::ResetEvaluation() {

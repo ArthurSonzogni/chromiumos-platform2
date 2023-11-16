@@ -178,10 +178,8 @@ bool RealSystemState::Initialize() {
       base::Seconds(5), base::Hours(12), um_state));
 
   // The P2P Manager depends on the Update Manager for its initialization.
-  p2p_manager_.reset(P2PManager::Construct(nullptr,
-                                           update_manager_.get(),
-                                           "cros_au",
-                                           kMaxP2PFilesToKeep,
+  p2p_manager_.reset(P2PManager::Construct(nullptr, update_manager_.get(),
+                                           "cros_au", kMaxP2PFilesToKeep,
                                            kMaxP2PFileAge));
 
   if (!payload_state_.Initialize()) {

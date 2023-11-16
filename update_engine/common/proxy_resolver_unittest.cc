@@ -45,14 +45,12 @@ TEST_F(ProxyResolverTest, DirectProxyResolverCallbackTest) {
   bool called = false;
   deque<string> callback_proxies;
   auto callback = base::BindOnce(
-      [](bool* called,
-         deque<string>* callback_proxies,
+      [](bool* called, deque<string>* callback_proxies,
          const deque<string>& proxies) {
         *called = true;
         *callback_proxies = proxies;
       },
-      &called,
-      &callback_proxies);
+      &called, &callback_proxies);
 
   EXPECT_NE(kProxyRequestIdNull,
             resolver_.GetProxiesForUrl("http://foo", std::move(callback)));

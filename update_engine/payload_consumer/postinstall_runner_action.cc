@@ -151,16 +151,14 @@ void PostinstallRunnerAction::PerformPartitionPostinstall() {
 
   string abs_path =
       base::FilePath(fs_mount_dir_).Append(postinstall_path).value();
-  if (!base::StartsWith(
-          abs_path, fs_mount_dir_, base::CompareCase::SENSITIVE)) {
+  if (!base::StartsWith(abs_path, fs_mount_dir_,
+                        base::CompareCase::SENSITIVE)) {
     LOG(ERROR) << "Invalid relative postinstall path: "
                << partition.postinstall_path;
     return CompletePostinstall(ErrorCode::kPostinstallRunnerError);
   }
 
-  if (!utils::MountFilesystem(mountable_device,
-                              fs_mount_dir_,
-                              MS_RDONLY,
+  if (!utils::MountFilesystem(mountable_device, fs_mount_dir_, MS_RDONLY,
                               partition.filesystem_type,
                               constants::kPostinstallMountOptions)) {
     return CompletePartitionPostinstall(
@@ -207,9 +205,7 @@ void PostinstallRunnerAction::PerformPartitionPostinstall() {
   }
 
   current_command_ = Subprocess::Get().ExecFlags(
-      command,
-      Subprocess::kRedirectStderrToStdout,
-      {kPostinstallStatusFd},
+      command, Subprocess::kRedirectStderrToStdout, {kPostinstallStatusFd},
       base::BindOnce(&PostinstallRunnerAction::CompletePartitionPostinstall,
                      base::Unretained(this)));
   // Subprocess::Exec should never return a negative process id.

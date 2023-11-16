@@ -94,8 +94,7 @@ class UmUpdateCheckAllowedPolicyTest : public UmPolicyTestBase {
   virtual void SetUpdateCheckAllowed(bool allow_check) {
     Time next_update_check;
     CallMethodWithContext(&NextUpdateCheckTimePolicyImpl::NextUpdateCheckTime,
-                          &next_update_check,
-                          kNextUpdateCheckPolicyConstants);
+                          &next_update_check, kNextUpdateCheckPolicyConstants);
     SetUpDefaultState();
     SetUpDefaultDevicePolicy();
     Time curr_time = next_update_check;
@@ -120,8 +119,7 @@ TEST_F(UmUpdateCheckAllowedPolicyTest, UpdateCheckAllowedWaitsForTheTimeout) {
   fake_state_.updater_provider()->var_last_checked_time()->reset(
       new Time(last_checked_time));
   CallMethodWithContext(&NextUpdateCheckTimePolicyImpl::NextUpdateCheckTime,
-                        &next_update_check,
-                        kNextUpdateCheckPolicyConstants);
+                        &next_update_check, kNextUpdateCheckPolicyConstants);
 
   // Check that the policy blocks until the next_update_check is reached.
   SetUpDefaultClock();
@@ -153,8 +151,7 @@ TEST_F(UmUpdateCheckAllowedPolicyTest, UpdateCheckAllowedWaitsForOOBE) {
   fake_state_.updater_provider()->var_last_checked_time()->reset(
       new Time(last_checked_time));
   CallMethodWithContext(&NextUpdateCheckTimePolicyImpl::NextUpdateCheckTime,
-                        &next_update_check,
-                        kNextUpdateCheckPolicyConstants);
+                        &next_update_check, kNextUpdateCheckPolicyConstants);
 
   SetUpDefaultClock();
   SetUpDefaultState();

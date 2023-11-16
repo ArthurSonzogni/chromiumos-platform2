@@ -84,8 +84,7 @@ void ExtentRanges::AddExtent(Extent extent) {
   ExtentSet::iterator end_del = extent_set_.end();
   uint64_t del_blocks = 0;
   for (ExtentSet::iterator it = extent_set_.begin(), e = extent_set_.end();
-       it != e;
-       ++it) {
+       it != e; ++it) {
     if (ExtentsOverlapOrTouch(*it, extent)) {
       end_del = it;
       ++end_del;
@@ -129,8 +128,7 @@ void ExtentRanges::SubtractExtent(const Extent& extent) {
   uint64_t del_blocks = 0;
   ExtentSet new_extents;
   for (ExtentSet::iterator it = extent_set_.begin(), e = extent_set_.end();
-       it != e;
-       ++it) {
+       it != e; ++it) {
     if (!ExtentsOverlap(*it, extent))
       continue;
 
@@ -143,8 +141,7 @@ void ExtentRanges::SubtractExtent(const Extent& extent) {
 
     ExtentSet subtraction = SubtractOverlappingExtents(*it, extent);
     for (ExtentSet::iterator jt = subtraction.begin(), je = subtraction.end();
-         jt != je;
-         ++jt) {
+         jt != je; ++jt) {
       new_extents.insert(*jt);
       del_blocks -= jt->num_blocks();
     }
@@ -157,8 +154,7 @@ void ExtentRanges::SubtractExtent(const Extent& extent) {
 void ExtentRanges::AddRanges(const ExtentRanges& ranges) {
   for (ExtentSet::const_iterator it = ranges.extent_set_.begin(),
                                  e = ranges.extent_set_.end();
-       it != e;
-       ++it) {
+       it != e; ++it) {
     AddExtent(*it);
   }
 }
@@ -166,24 +162,21 @@ void ExtentRanges::AddRanges(const ExtentRanges& ranges) {
 void ExtentRanges::SubtractRanges(const ExtentRanges& ranges) {
   for (ExtentSet::const_iterator it = ranges.extent_set_.begin(),
                                  e = ranges.extent_set_.end();
-       it != e;
-       ++it) {
+       it != e; ++it) {
     SubtractExtent(*it);
   }
 }
 
 void ExtentRanges::AddExtents(const vector<Extent>& extents) {
   for (vector<Extent>::const_iterator it = extents.begin(), e = extents.end();
-       it != e;
-       ++it) {
+       it != e; ++it) {
     AddExtent(*it);
   }
 }
 
 void ExtentRanges::SubtractExtents(const vector<Extent>& extents) {
   for (vector<Extent>::const_iterator it = extents.begin(), e = extents.end();
-       it != e;
-       ++it) {
+       it != e; ++it) {
     SubtractExtent(*it);
   }
 }
@@ -232,8 +225,7 @@ void ExtentRanges::Dump() const {
   LOG(INFO) << "ExtentRanges Dump. blocks: " << blocks_;
   for (ExtentSet::const_iterator it = extent_set_.begin(),
                                  e = extent_set_.end();
-       it != e;
-       ++it) {
+       it != e; ++it) {
     LOG(INFO) << "{" << it->start_block() << ", " << it->num_blocks() << "}";
   }
 }
@@ -261,8 +253,7 @@ vector<Extent> ExtentRanges::GetExtentsForBlockCount(uint64_t count) const {
   CHECK(count <= blocks_);
   for (ExtentSet::const_iterator it = extent_set_.begin(),
                                  e = extent_set_.end();
-       it != e;
-       ++it) {
+       it != e; ++it) {
     const uint64_t blocks_needed = count - out_blocks;
     const Extent& extent = *it;
     out.push_back(extent);

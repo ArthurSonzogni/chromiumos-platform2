@@ -71,10 +71,8 @@ State* DefaultStateFactory(
 
   return new RealState(config_provider.release(),
                        device_policy_provider.release(),
-                       random_provider.release(),
-                       shill_provider.release(),
-                       system_provider.release(),
-                       time_provider.release(),
+                       random_provider.release(), shill_provider.release(),
+                       system_provider.release(), time_provider.release(),
                        updater_provider.release());
 }
 

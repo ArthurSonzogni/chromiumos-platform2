@@ -70,13 +70,11 @@ TEST_F(MetricsReporterOmahaTest, ReportUpdateCheckMetrics) {
   metrics::DownloadErrorCode error_code =
       metrics::DownloadErrorCode::kHttpStatus200;
 
-  EXPECT_CALL(
-      *mock_metrics_lib_,
-      SendEnumToUMA(metrics::kMetricCheckResult, static_cast<int>(result), _))
+  EXPECT_CALL(*mock_metrics_lib_, SendEnumToUMA(metrics::kMetricCheckResult,
+                                                static_cast<int>(result), _))
       .Times(2);
-  EXPECT_CALL(*mock_metrics_lib_,
-              SendEnumToUMA(
-                  metrics::kMetricCheckReaction, static_cast<int>(reaction), _))
+  EXPECT_CALL(*mock_metrics_lib_, SendEnumToUMA(metrics::kMetricCheckReaction,
+                                                static_cast<int>(reaction), _))
       .Times(2);
   EXPECT_CALL(*mock_metrics_lib_,
               SendSparseToUMA(metrics::kMetricCheckDownloadErrorCode,
@@ -95,10 +93,9 @@ TEST_F(MetricsReporterOmahaTest, ReportUpdateCheckMetrics) {
       *mock_metrics_lib_,
       SendToUMA(metrics::kMetricCheckTimeSinceLastCheckMinutes, 1, _, _, _))
       .Times(1);
-  EXPECT_CALL(
-      *mock_metrics_lib_,
-      SendToUMA(
-          metrics::kMetricCheckTimeSinceLastCheckUptimeMinutes, 1, _, _, _))
+  EXPECT_CALL(*mock_metrics_lib_,
+              SendToUMA(metrics::kMetricCheckTimeSinceLastCheckUptimeMinutes, 1,
+                        _, _, _))
       .Times(1);
 
   reporter_.ReportUpdateCheckMetrics(result, reaction, error_code);
@@ -161,11 +158,11 @@ TEST_F(MetricsReporterOmahaTest, ReportUpdateCheckMetricsRollback) {
 
 TEST_F(MetricsReporterOmahaTest,
        ReportAbnormallyTerminatedUpdateAttemptMetrics) {
-  EXPECT_CALL(*mock_metrics_lib_,
-              SendEnumToUMA(metrics::kMetricAttemptResult,
-                            static_cast<int>(
-                                metrics::AttemptResult::kAbnormalTermination),
-                            _))
+  EXPECT_CALL(
+      *mock_metrics_lib_,
+      SendEnumToUMA(
+          metrics::kMetricAttemptResult,
+          static_cast<int>(metrics::AttemptResult::kAbnormalTermination), _))
       .Times(1);
 
   reporter_.ReportAbnormallyTerminatedUpdateAttemptMetrics();
@@ -191,34 +188,25 @@ TEST_F(MetricsReporterOmahaTest, ReportUpdateAttemptMetrics) {
       .Times(2);
   EXPECT_CALL(*mock_metrics_lib_,
               SendEnumToUMA(metrics::kMetricAttemptPayloadType,
-                            static_cast<int>(payload_type),
-                            _))
+                            static_cast<int>(payload_type), _))
       .Times(2);
   EXPECT_CALL(*mock_metrics_lib_,
               SendToUMA(metrics::kMetricAttemptDurationMinutes,
-                        duration.InMinutes(),
-                        _,
-                        _,
-                        _))
+                        duration.InMinutes(), _, _, _))
       .Times(2);
   EXPECT_CALL(*mock_metrics_lib_,
               SendToUMA(metrics::kMetricAttemptDurationUptimeMinutes,
-                        duration_uptime.InMinutes(),
-                        _,
-                        _,
-                        _))
+                        duration_uptime.InMinutes(), _, _, _))
       .Times(2);
 
   // Check the report of attempt result.
-  EXPECT_CALL(
-      *mock_metrics_lib_,
-      SendEnumToUMA(
-          metrics::kMetricAttemptResult, static_cast<int>(attempt_result), _))
+  EXPECT_CALL(*mock_metrics_lib_,
+              SendEnumToUMA(metrics::kMetricAttemptResult,
+                            static_cast<int>(attempt_result), _))
       .Times(2);
   EXPECT_CALL(*mock_metrics_lib_,
               SendEnumToUMA(metrics::kMetricAttemptInternalErrorCode,
-                            static_cast<int>(internal_error_code),
-                            _))
+                            static_cast<int>(internal_error_code), _))
       .Times(2);
   EXPECT_CALL(*mock_metrics_lib_,
               SendToUMA(metrics::kMetricAttemptPayloadSizeMiB, 100, _, _, _))
@@ -231,28 +219,20 @@ TEST_F(MetricsReporterOmahaTest, ReportUpdateAttemptMetrics) {
       .Times(1);
   EXPECT_CALL(
       *mock_metrics_lib_,
-      SendToUMA(
-          metrics::kMetricAttemptTimeSinceLastAttemptUptimeMinutes, 1, _, _, _))
+      SendToUMA(metrics::kMetricAttemptTimeSinceLastAttemptUptimeMinutes, 1, _,
+                _, _))
       .Times(1);
 
-  reporter_.ReportUpdateAttemptMetrics(attempt_number,
-                                       payload_type,
-                                       duration,
-                                       duration_uptime,
-                                       payload_size,
-                                       attempt_result,
-                                       internal_error_code);
+  reporter_.ReportUpdateAttemptMetrics(attempt_number, payload_type, duration,
+                                       duration_uptime, payload_size,
+                                       attempt_result, internal_error_code);
 
   // Advance the clock by 1 minute and report the same metrics again.
   fake_clock_->SetWallclockTime(base::Time::FromInternalValue(61000000));
   fake_clock_->SetMonotonicTime(base::Time::FromInternalValue(61000000));
-  reporter_.ReportUpdateAttemptMetrics(attempt_number,
-                                       payload_type,
-                                       duration,
-                                       duration_uptime,
-                                       payload_size,
-                                       attempt_result,
-                                       internal_error_code);
+  reporter_.ReportUpdateAttemptMetrics(attempt_number, payload_type, duration,
+                                       duration_uptime, payload_size,
+                                       attempt_result, internal_error_code);
 }
 
 TEST_F(MetricsReporterOmahaTest, ReportUpdateAttemptDownloadMetrics) {
@@ -273,8 +253,7 @@ TEST_F(MetricsReporterOmahaTest, ReportUpdateAttemptDownloadMetrics) {
       .Times(1);
   EXPECT_CALL(*mock_metrics_lib_,
               SendEnumToUMA(metrics::kMetricAttemptDownloadSource,
-                            static_cast<int>(download_source),
-                            _))
+                            static_cast<int>(download_source), _))
       .Times(1);
   EXPECT_CALL(*mock_metrics_lib_,
               SendSparseToUMA(metrics::kMetricAttemptDownloadErrorCode,
@@ -282,15 +261,12 @@ TEST_F(MetricsReporterOmahaTest, ReportUpdateAttemptDownloadMetrics) {
       .Times(1);
   EXPECT_CALL(*mock_metrics_lib_,
               SendEnumToUMA(metrics::kMetricAttemptConnectionType,
-                            static_cast<int>(connection_type),
-                            _))
+                            static_cast<int>(connection_type), _))
       .Times(1);
 
-  reporter_.ReportUpdateAttemptDownloadMetrics(payload_bytes_downloaded,
-                                               payload_download_speed_bps,
-                                               download_source,
-                                               payload_download_error_code,
-                                               connection_type);
+  reporter_.ReportUpdateAttemptDownloadMetrics(
+      payload_bytes_downloaded, payload_download_speed_bps, download_source,
+      payload_download_error_code, connection_type);
 }
 
 TEST_F(MetricsReporterOmahaTest, ReportSuccessfulUpdateMetrics) {
@@ -319,84 +295,60 @@ TEST_F(MetricsReporterOmahaTest, ReportSuccessfulUpdateMetrics) {
   DownloadedMiBMetric += "HttpsServer";
   EXPECT_CALL(*mock_metrics_lib_, SendToUMA(DownloadedMiBMetric, 200, _, _, _))
       .Times(1);
-  EXPECT_CALL(
-      *mock_metrics_lib_,
-      SendToUMA(
-          metrics::kMetricSuccessfulUpdateBytesDownloadedMiB, 200, _, _, _))
+  EXPECT_CALL(*mock_metrics_lib_,
+              SendToUMA(metrics::kMetricSuccessfulUpdateBytesDownloadedMiB, 200,
+                        _, _, _))
       .Times(1);
 
-  EXPECT_CALL(
-      *mock_metrics_lib_,
-      SendToUMA(
-          metrics::kMetricSuccessfulUpdateDownloadSourcesUsed, 1, _, _, _))
+  EXPECT_CALL(*mock_metrics_lib_,
+              SendToUMA(metrics::kMetricSuccessfulUpdateDownloadSourcesUsed, 1,
+                        _, _, _))
       .Times(1);
   EXPECT_CALL(
       *mock_metrics_lib_,
-      SendToUMA(metrics::kMetricSuccessfulUpdateDownloadOverheadPercentage,
-                20,
-                _,
-                _,
-                _));
+      SendToUMA(metrics::kMetricSuccessfulUpdateDownloadOverheadPercentage, 20,
+                _, _, _));
 
   EXPECT_CALL(*mock_metrics_lib_,
               SendToUMA(metrics::kMetricSuccessfulUpdateUrlSwitchCount,
-                        url_switch_count,
-                        _,
-                        _,
-                        _))
-      .Times(1);
-  EXPECT_CALL(
-      *mock_metrics_lib_,
-      SendToUMA(
-          metrics::kMetricSuccessfulUpdateTotalDurationMinutes, 30, _, _, _))
-      .Times(1);
-  EXPECT_CALL(
-      *mock_metrics_lib_,
-      SendToUMA(metrics::kMetricSuccessfulUpdateTotalDurationUptimeMinutes,
-                20,
-                _,
-                _,
-                _))
-      .Times(1);
-  EXPECT_CALL(
-      *mock_metrics_lib_,
-      SendToUMA(
-          metrics::kMetricSuccessfulUpdateRebootCount, reboot_count, _, _, _))
+                        url_switch_count, _, _, _))
       .Times(1);
   EXPECT_CALL(*mock_metrics_lib_,
-              SendEnumToUMA(
-                  metrics::kMetricSuccessfulUpdatePayloadType, payload_type, _))
+              SendToUMA(metrics::kMetricSuccessfulUpdateTotalDurationMinutes,
+                        30, _, _, _))
       .Times(1);
   EXPECT_CALL(
       *mock_metrics_lib_,
-      SendToUMA(
-          metrics::kMetricSuccessfulUpdateAttemptCount, attempt_count, _, _, _))
+      SendToUMA(metrics::kMetricSuccessfulUpdateTotalDurationUptimeMinutes, 20,
+                _, _, _))
+      .Times(1);
+  EXPECT_CALL(*mock_metrics_lib_,
+              SendToUMA(metrics::kMetricSuccessfulUpdateRebootCount,
+                        reboot_count, _, _, _))
+      .Times(1);
+  EXPECT_CALL(*mock_metrics_lib_,
+              SendEnumToUMA(metrics::kMetricSuccessfulUpdatePayloadType,
+                            payload_type, _))
+      .Times(1);
+  EXPECT_CALL(*mock_metrics_lib_,
+              SendToUMA(metrics::kMetricSuccessfulUpdateAttemptCount,
+                        attempt_count, _, _, _))
       .Times(1);
   EXPECT_CALL(*mock_metrics_lib_,
               SendToUMA(metrics::kMetricSuccessfulUpdateUpdatesAbandonedCount,
-                        updates_abandoned_count,
-                        _,
-                        _,
-                        _))
+                        updates_abandoned_count, _, _, _))
       .Times(1);
 
-  reporter_.ReportSuccessfulUpdateMetrics(attempt_count,
-                                          updates_abandoned_count,
-                                          payload_type,
-                                          payload_size,
-                                          num_bytes_downloaded,
-                                          download_overhead_percentage,
-                                          total_duration,
-                                          total_duration_uptime,
-                                          reboot_count,
-                                          url_switch_count);
+  reporter_.ReportSuccessfulUpdateMetrics(
+      attempt_count, updates_abandoned_count, payload_type, payload_size,
+      num_bytes_downloaded, download_overhead_percentage, total_duration,
+      total_duration_uptime, reboot_count, url_switch_count);
 }
 
 TEST_F(MetricsReporterOmahaTest, ReportRollbackMetrics) {
   metrics::RollbackResult result = metrics::RollbackResult::kSuccess;
-  EXPECT_CALL(*mock_metrics_lib_,
-              SendEnumToUMA(
-                  metrics::kMetricRollbackResult, static_cast<int>(result), _))
+  EXPECT_CALL(*mock_metrics_lib_, SendEnumToUMA(metrics::kMetricRollbackResult,
+                                                static_cast<int>(result), _))
       .Times(1);
 
   reporter_.ReportRollbackMetrics(result);
@@ -428,8 +380,7 @@ TEST_F(MetricsReporterOmahaTest, ReportCertificateCheckMetrics) {
   CertificateCheckResult result = CertificateCheckResult::kValid;
   EXPECT_CALL(*mock_metrics_lib_,
               SendEnumToUMA(metrics::kMetricCertificateCheckUpdateCheck,
-                            static_cast<int>(result),
-                            _))
+                            static_cast<int>(result), _))
       .Times(1);
 
   reporter_.ReportCertificateCheckMetrics(server_to_check, result);
@@ -437,9 +388,8 @@ TEST_F(MetricsReporterOmahaTest, ReportCertificateCheckMetrics) {
 
 TEST_F(MetricsReporterOmahaTest, ReportFailedUpdateCount) {
   int target_attempt = 3;
-  EXPECT_CALL(
-      *mock_metrics_lib_,
-      SendToUMA(metrics::kMetricFailedUpdateCount, target_attempt, _, _, _))
+  EXPECT_CALL(*mock_metrics_lib_, SendToUMA(metrics::kMetricFailedUpdateCount,
+                                            target_attempt, _, _, _))
       .Times(1);
 
   reporter_.ReportFailedUpdateCount(target_attempt);
@@ -447,10 +397,8 @@ TEST_F(MetricsReporterOmahaTest, ReportFailedUpdateCount) {
 
 TEST_F(MetricsReporterOmahaTest, ReportTimeToReboot) {
   int time_to_reboot_minutes = 1000;
-  EXPECT_CALL(
-      *mock_metrics_lib_,
-      SendToUMA(
-          metrics::kMetricTimeToRebootMinutes, time_to_reboot_minutes, _, _, _))
+  EXPECT_CALL(*mock_metrics_lib_, SendToUMA(metrics::kMetricTimeToRebootMinutes,
+                                            time_to_reboot_minutes, _, _, _))
       .Times(1);
 
   reporter_.ReportTimeToReboot(time_to_reboot_minutes);

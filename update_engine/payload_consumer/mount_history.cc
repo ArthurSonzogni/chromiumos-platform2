@@ -37,8 +37,8 @@ void LogMountHistory(const FileDescriptorPtr blockdevice_fd) {
   brillo::Blob block0_buffer(kBlockSize);
   ssize_t bytes_read;
 
-  if (!utils::PReadAll(
-          blockdevice_fd, block0_buffer.data(), kBlockSize, 0, &bytes_read)) {
+  if (!utils::PReadAll(blockdevice_fd, block0_buffer.data(), kBlockSize, 0,
+                       &bytes_read)) {
     LOG(WARNING) << "PReadAll failed";
     return;
   }

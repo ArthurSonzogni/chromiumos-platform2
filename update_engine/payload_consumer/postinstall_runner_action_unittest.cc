@@ -225,11 +225,11 @@ void PostinstallRunnerActionTest::RunPostinstallActionWithInstallPlan(
   processor.EnqueueAction(std::move(collector_action));
   processor.set_delegate(&processor_delegate_);
 
-  loop_.PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](ActionProcessor* processor) { processor->StartProcessing(); },
-          base::Unretained(&processor)));
+  loop_.PostTask(FROM_HERE, base::BindOnce(
+                                [](ActionProcessor* processor) {
+                                  processor->StartProcessing();
+                                },
+                                base::Unretained(&processor)));
   loop_.Run();
   ASSERT_FALSE(processor.IsRunning());
   postinstall_action_ = nullptr;
@@ -276,8 +276,8 @@ TEST_F(PostinstallRunnerActionTest, ProcessProgressLineTest) {
 TEST_F(PostinstallRunnerActionTest, RunAsRootSimpleTest) {
   ScopedLoopbackDeviceBinder loop(postinstall_image_, false, nullptr);
 
-  RunPostinstallAction(
-      loop.dev(), kPostinstallDefaultScript, false, false, false);
+  RunPostinstallAction(loop.dev(), kPostinstallDefaultScript, false, false,
+                       false);
   EXPECT_EQ(ErrorCode::kSuccess, processor_delegate_.code_);
   EXPECT_TRUE(processor_delegate_.processing_done_called_);
 
@@ -316,11 +316,8 @@ TEST_F(PostinstallRunnerActionTest, RunAsRootRunSymlinkFileTest) {
 TEST_F(PostinstallRunnerActionTest, RunAsRootPowerwashRequiredTest) {
   ScopedLoopbackDeviceBinder loop(postinstall_image_, false, nullptr);
   // Run a simple postinstall program but requiring a powerwash.
-  RunPostinstallAction(loop.dev(),
-                       "bin/postinst_example",
-                       /*powerwash_required=*/true,
-                       false,
-                       false);
+  RunPostinstallAction(loop.dev(), "bin/postinst_example",
+                       /*powerwash_required=*/true, false, false);
   EXPECT_EQ(ErrorCode::kSuccess, processor_delegate_.code_);
 
   // Check that powerwash was scheduled.
@@ -332,9 +329,7 @@ TEST_F(PostinstallRunnerActionTest, RunAsRootRollbackTestNoDataSave) {
   ScopedLoopbackDeviceBinder loop(postinstall_image_, false, nullptr);
 
   // Run a simple postinstall program, rollback happened.
-  RunPostinstallAction(loop.dev(),
-                       "bin/postinst_example",
-                       false,
+  RunPostinstallAction(loop.dev(), "bin/postinst_example", false,
                        /*is_rollback=*/true,
                        /*save_rollback_data=*/false);
   EXPECT_EQ(ErrorCode::kSuccess, processor_delegate_.code_);
@@ -348,9 +343,7 @@ TEST_F(PostinstallRunnerActionTest, RunAsRootRollbackTestWithDataSave) {
   ScopedLoopbackDeviceBinder loop(postinstall_image_, false, nullptr);
 
   // Run a simple postinstall program, rollback happened.
-  RunPostinstallAction(loop.dev(),
-                       "bin/postinst_example",
-                       false,
+  RunPostinstallAction(loop.dev(), "bin/postinst_example", false,
                        /*is_rollback=*/true,
                        /*save_rollback_data=*/true);
   EXPECT_EQ(ErrorCode::kSuccess, processor_delegate_.code_);
@@ -363,8 +356,8 @@ TEST_F(PostinstallRunnerActionTest, RunAsRootRollbackTestWithDataSave) {
 // Runs postinstall from a partition file that doesn't mount, so it should
 // fail.
 TEST_F(PostinstallRunnerActionTest, RunAsRootCantMountTest) {
-  RunPostinstallAction(
-      "/dev/null", kPostinstallDefaultScript, false, false, false);
+  RunPostinstallAction("/dev/null", kPostinstallDefaultScript, false, false,
+                       false);
   EXPECT_EQ(ErrorCode::kPostinstallRunnerError, processor_delegate_.code_);
 
   // In case of failure, Postinstall should not signal a powerwash even if it
@@ -462,8 +455,8 @@ TEST_F(PostinstallRunnerActionTest, RunAsRootProgressUpdatesTest) {
 
   ScopedLoopbackDeviceBinder loop(postinstall_image_, false, nullptr);
   setup_action_delegate_ = &mock_delegate_;
-  RunPostinstallAction(
-      loop.dev(), "bin/postinst_progress", false, false, false);
+  RunPostinstallAction(loop.dev(), "bin/postinst_progress", false, false,
+                       false);
   EXPECT_EQ(ErrorCode::kSuccess, processor_delegate_.code_);
 }
 

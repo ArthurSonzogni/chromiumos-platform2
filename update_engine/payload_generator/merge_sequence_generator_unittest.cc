@@ -155,8 +155,8 @@ TEST_F(MergeSequenceGeneratorTest, GenerateSequenceNoCycles) {
       CreateCowMergeOperation(ExtentForRange(25, 10), ExtentForRange(30, 10)),
   };
 
-  std::vector<CowMergeOperation> expected{
-      transfers[0], transfers[2], transfers[1]};
+  std::vector<CowMergeOperation> expected{transfers[0], transfers[2],
+                                          transfers[1]};
   GenerateSequence(transfers, expected);
 }
 
@@ -170,8 +170,8 @@ TEST_F(MergeSequenceGeneratorTest, GenerateSequenceWithCycles) {
 
   // file 1,2,3 form a cycle. And file3, whose dst ext has smallest offset, will
   // be converted to raw blocks
-  std::vector<CowMergeOperation> expected{
-      transfers[3], transfers[1], transfers[0]};
+  std::vector<CowMergeOperation> expected{transfers[3], transfers[1],
+                                          transfers[0]};
   GenerateSequence(transfers, expected);
 }
 
@@ -188,8 +188,8 @@ TEST_F(MergeSequenceGeneratorTest, GenerateSequenceMultipleCycles) {
   };
 
   // file 3, 6 will be converted to raw.
-  std::vector<CowMergeOperation> expected{
-      transfers[1], transfers[0], transfers[4], transfers[3]};
+  std::vector<CowMergeOperation> expected{transfers[1], transfers[0],
+                                          transfers[4], transfers[3]};
   GenerateSequence(transfers, expected);
 }
 

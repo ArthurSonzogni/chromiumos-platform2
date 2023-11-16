@@ -106,9 +106,7 @@ bool MergeSequenceGenerator::FindDependency(
     // lower bound (inclusive): dst extent's end block >= src extent's start
     // block.
     const auto lower_it = std::lower_bound(
-        operations_.begin(),
-        operations_.end(),
-        op,
+        operations_.begin(), operations_.end(), op,
         [](const CowMergeOperation& it, const CowMergeOperation& op) {
           auto dst_end_block =
               it.dst_extent().start_block() + it.dst_extent().num_blocks() - 1;
@@ -116,9 +114,7 @@ bool MergeSequenceGenerator::FindDependency(
         });
     // upper bound: dst extent's start block > src extent's end block
     const auto upper_it = std::upper_bound(
-        lower_it,
-        operations_.end(),
-        op,
+        lower_it, operations_.end(), op,
         [](const CowMergeOperation& op, const CowMergeOperation& it) {
           auto src_end_block =
               op.src_extent().start_block() + op.src_extent().num_blocks() - 1;
@@ -178,8 +174,8 @@ bool MergeSequenceGenerator::Generate(
   std::set<CowMergeOperation> convert_to_raw;
   while (!incoming_edges.empty()) {
     if (!free_operations.empty()) {
-      merge_sequence.insert(
-          merge_sequence.end(), free_operations.begin(), free_operations.end());
+      merge_sequence.insert(merge_sequence.end(), free_operations.begin(),
+                            free_operations.end());
     } else {
       auto to_convert = incoming_edges.begin()->first;
       free_operations.insert(to_convert);
@@ -222,8 +218,8 @@ bool MergeSequenceGenerator::Generate(
   }
 
   if (!free_operations.empty()) {
-    merge_sequence.insert(
-        merge_sequence.end(), free_operations.begin(), free_operations.end());
+    merge_sequence.insert(merge_sequence.end(), free_operations.begin(),
+                          free_operations.end());
   }
 
   CHECK_EQ(operations_.size(), merge_sequence.size() + convert_to_raw.size());

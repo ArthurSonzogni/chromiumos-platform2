@@ -32,8 +32,8 @@ EvalStatus InteractiveUpdateCheckAllowedPolicyImpl::Evaluate(
     std::string* error,
     PolicyDataInterface* data) const {
   bool interactive;
-  if (CheckInteractiveUpdateRequested(
-          ec, state->updater_provider(), &interactive)) {
+  if (CheckInteractiveUpdateRequested(ec, state->updater_provider(),
+                                      &interactive)) {
     UpdateCheckParams* result =
         UpdateCheckAllowedPolicyData::GetUpdateCheckParams(data);
     result->interactive = interactive;

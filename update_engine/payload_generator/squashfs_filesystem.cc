@@ -98,12 +98,9 @@ bool GetUpdateEngineConfig(const std::string& sqfs_path, string* config) {
   // Run unsquashfs to extract update_engine.conf
   // -f: To force overriding if the target directory exists.
   // -d: The directory to unsquash the files.
-  vector<string> cmd = {"unsquashfs",
-                        "-f",
-                        "-d",
-                        unsquash_dir.GetPath().value(),
-                        sqfs_path,
-                        kUpdateEngineConf};
+  vector<string> cmd = {"unsquashfs", "-f",
+                        "-d",         unsquash_dir.GetPath().value(),
+                        sqfs_path,    kUpdateEngineConf};
   string stdout, stderr;
   int exit_code;
   if (!Subprocess::SynchronousExec(cmd, &exit_code, &stdout, &stderr) ||
@@ -146,16 +143,13 @@ bool SquashfsFilesystem::Init(const string& map,
 
   // Reading files map. For the format of the file map look at the comments for
   // |CreateFromFileMap()|.
-  auto lines = base::SplitStringPiece(map,
-                                      "\n",
+  auto lines = base::SplitStringPiece(map, "\n",
                                       base::WhitespaceHandling::KEEP_WHITESPACE,
                                       base::SplitResult::SPLIT_WANT_NONEMPTY);
   for (const auto& line : lines) {
-    auto splits =
-        base::SplitStringPiece(line,
-                               " \t",
-                               base::WhitespaceHandling::TRIM_WHITESPACE,
-                               base::SplitResult::SPLIT_WANT_NONEMPTY);
+    auto splits = base::SplitStringPiece(
+        line, " \t", base::WhitespaceHandling::TRIM_WHITESPACE,
+        base::SplitResult::SPLIT_WANT_NONEMPTY);
     // Only filename is invalid.
     TEST_AND_RETURN_FALSE(splits.size() > 1);
     uint64_t start;
@@ -197,8 +191,7 @@ bool SquashfsFilesystem::Init(const string& map,
   // changes then this implementation needs to change too.
   for (auto first = files_.begin(),
             second = first + (first == files_.end() ? 0 : 1);
-       first != files_.end() && second != files_.end();
-       second = first + 1) {
+       first != files_.end() && second != files_.end(); second = first + 1) {
     auto first_begin = first->extents[0].start_block();
     auto first_end = first_begin + first->extents[0].num_blocks();
     auto second_begin = second->extents[0].start_block();
@@ -256,8 +249,7 @@ bool SquashfsFilesystem::Init(const string& map,
     }
 
     // Sort zlib blocks.
-    std::sort(zlib_blks.begin(),
-              zlib_blks.end(),
+    std::sort(zlib_blks.begin(), zlib_blks.end(),
               [](const puffin::ByteExtent& a, const puffin::ByteExtent& b) {
                 return a.offset < b.offset;
               });
@@ -272,8 +264,7 @@ bool SquashfsFilesystem::Init(const string& map,
 
     // Make sure zlib blocks are not overlapping.
     auto result = std::adjacent_find(
-        zlib_blks.begin(),
-        zlib_blks.end(),
+        zlib_blks.begin(), zlib_blks.end(),
         [](const puffin::ByteExtent& a, const puffin::ByteExtent& b) {
           return (a.offset + a.length) > b.offset;
         });
@@ -296,11 +287,9 @@ unique_ptr<SquashfsFilesystem> SquashfsFilesystem::CreateFromFile(
   if (sqfs_path.empty())
     return nullptr;
 
-  brillo::StreamPtr sqfs_file =
-      brillo::FileStream::Open(FilePath(sqfs_path),
-                               brillo::Stream::AccessMode::READ,
-                               brillo::FileStream::Disposition::OPEN_EXISTING,
-                               nullptr);
+  brillo::StreamPtr sqfs_file = brillo::FileStream::Open(
+      FilePath(sqfs_path), brillo::Stream::AccessMode::READ,
+      brillo::FileStream::Disposition::OPEN_EXISTING, nullptr);
   if (!sqfs_file) {
     LOG(ERROR) << "Unable to open " << sqfs_path << " for reading.";
     return nullptr;
@@ -325,8 +314,8 @@ unique_ptr<SquashfsFilesystem> SquashfsFilesystem::CreateFromFile(
   }
 
   unique_ptr<SquashfsFilesystem> sqfs(new SquashfsFilesystem());
-  if (!sqfs->Init(
-          filemap, sqfs_path, sqfs_file->GetSize(), header, extract_deflates)) {
+  if (!sqfs->Init(filemap, sqfs_path, sqfs_file->GetSize(), header,
+                  extract_deflates)) {
     LOG(ERROR) << "Failed to initialized the Squashfs file system";
     return nullptr;
   }

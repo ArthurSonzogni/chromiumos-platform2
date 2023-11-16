@@ -51,9 +51,8 @@ void WeeklyTime::AddTime(const TimeDelta& offset) {
 WeeklyTime WeeklyTime::FromTime(const Time& time) {
   Time::Exploded exploded;
   time.LocalExplode(&exploded);
-  return WeeklyTime(
-      exploded.day_of_week,
-      base::Hours(exploded.hour) + base::Minutes(exploded.minute));
+  return WeeklyTime(exploded.day_of_week, base::Hours(exploded.hour) +
+                                              base::Minutes(exploded.minute));
 }
 
 bool WeeklyTimeInterval::InRange(const WeeklyTime& time) const {
@@ -65,9 +64,7 @@ bool WeeklyTimeInterval::InRange(const WeeklyTime& time) const {
 string WeeklyTimeInterval::ToString() const {
   return base::StringPrintf(
       "Start: day_of_week=%d time=%d\nEnd: day_of_week=%d time=%d",
-      start_.day_of_week(),
-      start_.time().InMinutes(),
-      end_.day_of_week(),
+      start_.day_of_week(), start_.time().InMinutes(), end_.day_of_week(),
       end_.time().InMinutes());
 }
 

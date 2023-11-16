@@ -43,10 +43,8 @@ bool BzipCompress(const brillo::Blob& in, brillo::Blob* out) {
       return false;
     uint32_t data_size = buf_size;
     int rc = BZ2_bzBuffToBuffCompress(
-        reinterpret_cast<char*>(out->data()),
-        &data_size,
-        reinterpret_cast<char*>(const_cast<uint8_t*>(in.data())),
-        in.size(),
+        reinterpret_cast<char*>(out->data()), &data_size,
+        reinterpret_cast<char*>(const_cast<uint8_t*>(in.data())), in.size(),
         9,   // Best compression
         0,   // Silent verbosity
         0);  // Default work factor

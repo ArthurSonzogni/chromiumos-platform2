@@ -88,8 +88,7 @@ class SquashfsFilesystemTest : public ::testing::Test {
     }
 
     // Checking the sortness.
-    EXPECT_TRUE(std::is_sorted(files.begin(),
-                               files.end(),
+    EXPECT_TRUE(std::is_sorted(files.begin(), files.end(),
                                [](const FilesystemInterface::File& a,
                                   const FilesystemInterface::File& b) {
                                  return a.extents[0].start_block() <

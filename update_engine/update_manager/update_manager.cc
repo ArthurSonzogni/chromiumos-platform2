@@ -38,8 +38,7 @@ EvalStatus UpdateManager::PolicyRequest(
   return PolicyEvaluator(
              state_.get(),
              std::make_unique<EvaluationContext>(evaluation_timeout_),
-             std::move(policy),
-             std::move(data))
+             std::move(policy), std::move(data))
       .Evaluate();
 }
 
@@ -50,10 +49,7 @@ void UpdateManager::PolicyRequest(
   auto ec = std::make_unique<EvaluationContext>(evaluation_timeout_,
                                                 expiration_timeout_);
   evaluators_.push_back(std::make_unique<PolicyEvaluator>(
-      state_.get(),
-      std::move(ec),
-      std::move(policy),
-      std::move(data),
+      state_.get(), std::move(ec), std::move(policy), std::move(data),
       base::BindOnce(&UpdateManager::Unregister,
                      weak_ptr_factory_.GetWeakPtr())));
   evaluators_.back()->ScheduleEvaluation(std::move(callback));
@@ -62,8 +58,7 @@ void UpdateManager::PolicyRequest(
 void UpdateManager::Unregister(PolicyEvaluator* evaluator) {
   // TODO(ahassani): Once we move to C++20 use |std::erase_if()| instead.
   auto it =
-      std::find_if(evaluators_.begin(),
-                   evaluators_.end(),
+      std::find_if(evaluators_.begin(), evaluators_.end(),
                    [evaluator](const std::unique_ptr<PolicyEvaluator>& e) {
                      return e.get() == evaluator;
                    });

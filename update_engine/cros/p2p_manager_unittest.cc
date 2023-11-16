@@ -83,8 +83,8 @@ class P2PManagerSimpleTest : public testing::Test {
     mock_call_wrapper_ = FakeSystemState::Get()->mock_call_wrapper();
 
     // Construct the P2P manager under test.
-    manager_.reset(P2PManager::Construct(
-        test_conf_, fake_um_, "cros_au", 3, base::Days(5)));
+    manager_.reset(P2PManager::Construct(test_conf_, fake_um_, "cros_au", 3,
+                                         base::Days(5)));
   }
 
   base::SimpleTestClock test_clock_;
@@ -162,8 +162,8 @@ TEST_F(P2PManagerTest, HousekeepingCountLimit) {
   // we need to reallocate the test_conf_ member, whose currently aliased object
   // will be freed.
   test_conf_ = new FakeP2PManagerConfiguration();
-  manager_.reset(P2PManager::Construct(
-      test_conf_, fake_um_, "cros_au", 3, /*max_file_age=*/TimeDelta()));
+  manager_.reset(P2PManager::Construct(test_conf_, fake_um_, "cros_au", 3,
+                                       /*max_file_age=*/TimeDelta()));
   EXPECT_EQ(manager_->CountSharedFiles(), 0);
 
   base::Time start_time = base::Time::FromDoubleT(1246996800.);
@@ -193,12 +193,12 @@ TEST_F(P2PManagerTest, HousekeepingCountLimit) {
     bool expect;
 
     expect = (n >= 2);
-    file_name = base::StringPrintf(
-        "%s/file_%d.cros_au.p2p", test_conf_->GetP2PDir().value().c_str(), n);
+    file_name = base::StringPrintf("%s/file_%d.cros_au.p2p",
+                                   test_conf_->GetP2PDir().value().c_str(), n);
     EXPECT_EQ(expect, utils::FileExists(file_name.c_str()));
 
-    file_name = base::StringPrintf(
-        "%s/file_%d.OTHER.p2p", test_conf_->GetP2PDir().value().c_str(), n);
+    file_name = base::StringPrintf("%s/file_%d.OTHER.p2p",
+                                   test_conf_->GetP2PDir().value().c_str(), n);
     EXPECT_TRUE(utils::FileExists(file_name.c_str()));
   }
   // CountSharedFiles() only counts 'cros_au' files.
@@ -224,8 +224,8 @@ TEST_F(P2PManagerTest, HousekeepingAgeLimit) {
   // Note that we need to reallocate the test_conf_ member, whose currently
   // aliased object will be freed.
   test_conf_ = new FakeP2PManagerConfiguration();
-  manager_.reset(P2PManager::Construct(
-      test_conf_, fake_um_, "cros_au", /*num_files_to_keep=*/0, age_limit));
+  manager_.reset(P2PManager::Construct(test_conf_, fake_um_, "cros_au",
+                                       /*num_files_to_keep=*/0, age_limit));
   EXPECT_EQ(manager_->CountSharedFiles(), 0);
 
   // Generate files with different timestamps matching our pattern and generate
@@ -264,12 +264,12 @@ TEST_F(P2PManagerTest, HousekeepingAgeLimit) {
     bool expect;
 
     expect = (n >= 2);
-    file_name = base::StringPrintf(
-        "%s/file_%d.cros_au.p2p", test_conf_->GetP2PDir().value().c_str(), n);
+    file_name = base::StringPrintf("%s/file_%d.cros_au.p2p",
+                                   test_conf_->GetP2PDir().value().c_str(), n);
     EXPECT_EQ(expect, utils::FileExists(file_name.c_str()));
 
-    file_name = base::StringPrintf(
-        "%s/file_%d.OTHER.p2p", test_conf_->GetP2PDir().value().c_str(), n);
+    file_name = base::StringPrintf("%s/file_%d.OTHER.p2p",
+                                   test_conf_->GetP2PDir().value().c_str(), n);
     EXPECT_TRUE(utils::FileExists(file_name.c_str()));
   }
   // CountSharedFiles() only counts 'cros_au' files.
@@ -299,8 +299,8 @@ static bool CheckP2PFile(const string& p2p_dir,
   }
 
   if (expected_size_xattr == 0) {
-    ea_size = getxattr(
-        path.c_str(), "user.cros-p2p-filesize", &ea_value, sizeof ea_value - 1);
+    ea_size = getxattr(path.c_str(), "user.cros-p2p-filesize", &ea_value,
+                       sizeof ea_value - 1);
     if (ea_size == -1 && errno == ENODATA) {
       // This is valid behavior as we support files without the xattr set.
     } else {
@@ -309,8 +309,8 @@ static bool CheckP2PFile(const string& p2p_dir,
       return false;
     }
   } else {
-    ea_size = getxattr(
-        path.c_str(), "user.cros-p2p-filesize", &ea_value, sizeof ea_value - 1);
+    ea_size = getxattr(path.c_str(), "user.cros-p2p-filesize", &ea_value,
+                       sizeof ea_value - 1);
     if (ea_size < 0) {
       LOG(ERROR) << "Error getting xattr attribute";
       return false;
@@ -350,11 +350,8 @@ static bool CreateP2PFile(string p2p_dir,
 
   if (size_xattr != 0) {
     string decimal_size = std::to_string(size_xattr);
-    if (fsetxattr(fd,
-                  "user.cros-p2p-filesize",
-                  decimal_size.c_str(),
-                  decimal_size.size(),
-                  0) != 0) {
+    if (fsetxattr(fd, "user.cros-p2p-filesize", decimal_size.c_str(),
+                  decimal_size.size(), 0) != 0) {
       PLOG(ERROR) << "Error setting xattr on " << path;
       close(fd);
       return false;
@@ -375,9 +372,7 @@ TEST_F(P2PManagerTest, ShareFile) {
   EXPECT_EQ(manager_->FileGetPath("foo"),
             test_conf_->GetP2PDir().Append("foo.cros_au.p2p.tmp"));
   EXPECT_TRUE(CheckP2PFile(test_conf_->GetP2PDir().value(),
-                           "foo.cros_au.p2p.tmp",
-                           0,
-                           kP2PTestFileSize));
+                           "foo.cros_au.p2p.tmp", 0, kP2PTestFileSize));
 
   // Sharing it again - with the same expected size - should return true
   EXPECT_TRUE(manager_->FileShare("foo", kP2PTestFileSize));
@@ -397,19 +392,15 @@ TEST_F(P2PManagerTest, MakeFileVisible) {
   EXPECT_EQ(manager_->FileGetPath("foo"),
             test_conf_->GetP2PDir().Append("foo.cros_au.p2p.tmp"));
   EXPECT_TRUE(CheckP2PFile(test_conf_->GetP2PDir().value(),
-                           "foo.cros_au.p2p.tmp",
-                           0,
-                           kP2PTestFileSize));
+                           "foo.cros_au.p2p.tmp", 0, kP2PTestFileSize));
   // Make the file visible and check that it changed its name. Do it
   // twice to check that FileMakeVisible() is idempotent.
   for (int n = 0; n < 2; n++) {
     manager_->FileMakeVisible("foo");
     EXPECT_EQ(manager_->FileGetPath("foo"),
               test_conf_->GetP2PDir().Append("foo.cros_au.p2p"));
-    EXPECT_TRUE(CheckP2PFile(test_conf_->GetP2PDir().value(),
-                             "foo.cros_au.p2p",
-                             0,
-                             kP2PTestFileSize));
+    EXPECT_TRUE(CheckP2PFile(test_conf_->GetP2PDir().value(), "foo.cros_au.p2p",
+                             0, kP2PTestFileSize));
   }
 }
 
@@ -437,8 +428,8 @@ TEST_F(P2PManagerTest, ExistingFiles) {
   EXPECT_EQ(manager_->FileGetExpectedSize("foo"), -1);
   EXPECT_FALSE(manager_->FileGetVisible("foo", nullptr));
   // ... then create the file ...
-  EXPECT_TRUE(CreateP2PFile(
-      test_conf_->GetP2PDir().value(), "foo.cros_au.p2p", 42, 43));
+  EXPECT_TRUE(CreateP2PFile(test_conf_->GetP2PDir().value(), "foo.cros_au.p2p",
+                            42, 43));
   // ... and then check that the expected values are returned
   EXPECT_EQ(manager_->FileGetPath("foo"),
             test_conf_->GetP2PDir().Append("foo.cros_au.p2p"));
@@ -453,8 +444,8 @@ TEST_F(P2PManagerTest, ExistingFiles) {
   EXPECT_EQ(manager_->FileGetExpectedSize("bar"), -1);
   EXPECT_FALSE(manager_->FileGetVisible("bar", nullptr));
   // ... then create the file ...
-  EXPECT_TRUE(CreateP2PFile(
-      test_conf_->GetP2PDir().value(), "bar.cros_au.p2p.tmp", 44, 45));
+  EXPECT_TRUE(CreateP2PFile(test_conf_->GetP2PDir().value(),
+                            "bar.cros_au.p2p.tmp", 44, 45));
   // ... and then check that the expected values are returned
   EXPECT_EQ(manager_->FileGetPath("bar"),
             test_conf_->GetP2PDir().Append("bar.cros_au.p2p.tmp"));
@@ -509,40 +500,37 @@ TEST_F(P2PManagerTest, LookupURL) {
   test_conf_->SetP2PClientCommand(
       {"echo", "http://1.2.3.4/{file_id}_{minsize}"});
   manager_->LookupUrlForFile(
-      "fooX",
-      42,
-      TimeDelta(),
+      "fooX", 42, TimeDelta(),
       base::BindOnce(ExpectUrl, "http://1.2.3.4/fooX.cros_au_42"));
   loop_.Run();
 
   // Emulate p2p-client returning invalid URL.
   test_conf_->SetP2PClientCommand({"echo", "not_a_valid_url"});
-  manager_->LookupUrlForFile(
-      "foobar", 42, TimeDelta(), base::BindOnce(ExpectUrl, ""));
+  manager_->LookupUrlForFile("foobar", 42, TimeDelta(),
+                             base::BindOnce(ExpectUrl, ""));
   loop_.Run();
 
   // Emulate p2p-client conveying failure.
   test_conf_->SetP2PClientCommand({"false"});
-  manager_->LookupUrlForFile(
-      "foobar", 42, TimeDelta(), base::BindOnce(ExpectUrl, ""));
+  manager_->LookupUrlForFile("foobar", 42, TimeDelta(),
+                             base::BindOnce(ExpectUrl, ""));
   loop_.Run();
 
   // Emulate p2p-client not existing.
   test_conf_->SetP2PClientCommand({"/path/to/non/existent/helper/program"});
-  manager_->LookupUrlForFile(
-      "foobar", 42, TimeDelta(), base::BindOnce(ExpectUrl, ""));
+  manager_->LookupUrlForFile("foobar", 42, TimeDelta(),
+                             base::BindOnce(ExpectUrl, ""));
   loop_.Run();
 
   // Emulate p2p-client crashing.
   test_conf_->SetP2PClientCommand({"sh", "-c", "kill -SEGV $$"});
-  manager_->LookupUrlForFile(
-      "foobar", 42, TimeDelta(), base::BindOnce(ExpectUrl, ""));
+  manager_->LookupUrlForFile("foobar", 42, TimeDelta(),
+                             base::BindOnce(ExpectUrl, ""));
   loop_.Run();
 
   // Emulate p2p-client exceeding its timeout.
   test_conf_->SetP2PClientCommand(
-      {"sh",
-       "-c",
+      {"sh", "-c",
        // The 'sleep' launched below could be left behind as an orphaned
        // process when the 'sh' process is terminated by SIGTERM. As a
        // remedy, trap SIGTERM and kill the 'sleep' process, which requires
@@ -553,8 +541,8 @@ TEST_F(P2PManagerTest, LookupURL) {
        "sleep_pid=$!; "
        "echo http://1.2.3.4/; "
        "wait"});
-  manager_->LookupUrlForFile(
-      "foobar", 42, base::Milliseconds(500), base::BindOnce(ExpectUrl, ""));
+  manager_->LookupUrlForFile("foobar", 42, base::Milliseconds(500),
+                             base::BindOnce(ExpectUrl, ""));
   loop_.Run();
 }
 

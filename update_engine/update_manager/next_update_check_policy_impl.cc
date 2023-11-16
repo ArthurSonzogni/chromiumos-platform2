@@ -54,9 +54,8 @@ EvalStatus NextUpdateCheckTimePolicyImpl::Evaluate(
   // Ensure that periodic update checks are timed properly.
   Time next_update_check;
 
-  if (NextUpdateCheckTime(
-          ec, state, error, &next_update_check, policy_constants_) !=
-      EvalStatus::kSucceeded) {
+  if (NextUpdateCheckTime(ec, state, error, &next_update_check,
+                          policy_constants_) != EvalStatus::kSucceeded) {
     return EvalStatus::kFailed;
   }
   if (!ec->IsWallclockTimeGreaterThan(next_update_check)) {
@@ -105,8 +104,7 @@ EvalStatus NextUpdateCheckTimePolicyImpl::NextUpdateCheckTime(
       *last_checked_time < *updater_started_time) {
     TimeDelta time_diff =
         interval_timeout == nullptr
-            ? FuzzedInterval(&prng,
-                             constants.timeout_initial_interval,
+            ? FuzzedInterval(&prng, constants.timeout_initial_interval,
                              constants.timeout_regular_fuzz)
             : base::Seconds(*interval_timeout);
     *next_update_check = *updater_started_time + time_diff;

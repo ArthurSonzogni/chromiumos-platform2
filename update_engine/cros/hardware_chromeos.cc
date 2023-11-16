@@ -235,8 +235,8 @@ bool HardwareChromeOS::IsOOBEComplete(base::Time* out_time_of_oobe) const {
 static string ReadValueFromCrosSystem(const string& key) {
   char value_buffer[VB_MAX_STRING_PROPERTY];
 
-  if (VbGetSystemPropertyString(
-          key.c_str(), value_buffer, sizeof(value_buffer)) != -1) {
+  if (VbGetSystemPropertyString(key.c_str(), value_buffer,
+                                sizeof(value_buffer)) != -1) {
     string return_value(value_buffer);
     base::TrimWhitespaceASCII(return_value, base::TRIM_ALL, &return_value);
     return return_value;
@@ -333,9 +333,9 @@ bool HardwareChromeOS::SchedulePowerwash(bool save_rollback_data) {
   auto powerwash_command = GeneratePowerwashCommand(save_rollback_data);
   const std::string powerwash_marker_full_path =
       GetPowerwashMarkerFullPath().value();
-  bool result = utils::WriteFile(powerwash_marker_full_path.c_str(),
-                                 powerwash_command.data(),
-                                 powerwash_command.size());
+  bool result =
+      utils::WriteFile(powerwash_marker_full_path.c_str(),
+                       powerwash_command.data(), powerwash_command.size());
   if (result) {
     LOG(INFO) << "Created " << powerwash_marker_full_path
               << " to powerwash on next reboot ("
@@ -479,8 +479,8 @@ bool HardwareChromeOS::GetFirstActiveOmahaPingSent() const {
 bool HardwareChromeOS::SetFirstActiveOmahaPingSent() {
   int exit_code = 0;
   string output, error;
-  vector<string> vpd_set_cmd = {
-      "vpd", "-i", "RW_VPD", "-s", string(kActivePingKey) + "=1"};
+  vector<string> vpd_set_cmd = {"vpd", "-i", "RW_VPD", "-s",
+                                string(kActivePingKey) + "=1"};
   if (!Subprocess::SynchronousExec(vpd_set_cmd, &exit_code, &output, &error) ||
       exit_code) {
     LOG(ERROR) << "Failed to set vpd key for " << kActivePingKey
@@ -586,8 +586,8 @@ bool HardwareChromeOS::IsConsumerSegmentSet(
 
 int HardwareChromeOS::GetActiveMiniOsPartition() const {
   char value_buffer[VB_MAX_STRING_PROPERTY];
-  if (VbGetSystemPropertyString(
-          kMiniOsPriorityFlag, value_buffer, sizeof(value_buffer)) == -1) {
+  if (VbGetSystemPropertyString(kMiniOsPriorityFlag, value_buffer,
+                                sizeof(value_buffer)) == -1) {
     LOG(WARNING) << "Unable to get the active MiniOS partition from "
                  << kMiniOsPriorityFlag << ", defaulting to MINIOS-A.";
     return 0;

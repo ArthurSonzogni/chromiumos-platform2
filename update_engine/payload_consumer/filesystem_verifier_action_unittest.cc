@@ -108,8 +108,8 @@ bool FilesystemVerifierActionTest::DoTest(bool terminate_early,
 
   // Attach loop devices to the files
   string a_dev;
-  test_utils::ScopedLoopbackDeviceBinder a_dev_releaser(
-      a_loop_file.path(), false, &a_dev);
+  test_utils::ScopedLoopbackDeviceBinder a_dev_releaser(a_loop_file.path(),
+                                                        false, &a_dev);
   if (!(a_dev_releaser.is_bound())) {
     ADD_FAILURE();
     return false;
@@ -152,8 +152,7 @@ bool FilesystemVerifierActionTest::DoTest(bool terminate_early,
                          processor->StopProcessing();
                        }
                      },
-                     base::Unretained(&processor_),
-                     terminate_early));
+                     base::Unretained(&processor_), terminate_early));
   loop_.Run();
 
   if (!terminate_early) {
@@ -285,8 +284,8 @@ TEST_F(FilesystemVerifierActionTest, RunAsRootSkipWriteVerityTest) {
   test_utils::FillWithData(&part_data);
   ASSERT_TRUE(test_utils::WriteFileVector(part_file.path(), part_data));
   string target_path;
-  test_utils::ScopedLoopbackDeviceBinder target_device(
-      part_file.path(), true, &target_path);
+  test_utils::ScopedLoopbackDeviceBinder target_device(part_file.path(), true,
+                                                       &target_path);
 
   InstallPlan install_plan;
   install_plan.write_verity = false;
@@ -311,11 +310,11 @@ TEST_F(FilesystemVerifierActionTest, RunAsRootSkipWriteVerityTest) {
   FilesystemVerifierActionTestDelegate delegate;
   processor_.set_delegate(&delegate);
 
-  loop_.PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](ActionProcessor* processor) { processor->StartProcessing(); },
-          base::Unretained(&processor_)));
+  loop_.PostTask(FROM_HERE, base::BindOnce(
+                                [](ActionProcessor* processor) {
+                                  processor->StartProcessing();
+                                },
+                                base::Unretained(&processor_)));
   loop_.Run();
 
   EXPECT_FALSE(processor_.IsRunning());

@@ -72,8 +72,7 @@ TEST_F(FullUpdateGeneratorTest, RunTest) {
   EXPECT_TRUE(generator_.GenerateOperations(config_,
                                             new_part_conf,  // this is ignored
                                             new_part_conf,
-                                            blob_file_writer_.get(),
-                                            &aops));
+                                            blob_file_writer_.get(), &aops));
   int64_t new_part_chunks = new_part_conf.size / config_.hard_chunk_size;
   EXPECT_EQ(new_part_chunks, static_cast<int64_t>(aops.size()));
   for (off_t i = 0; i < new_part_chunks; ++i) {
@@ -103,8 +102,7 @@ TEST_F(FullUpdateGeneratorTest, ChunkSizeTooBig) {
   EXPECT_TRUE(generator_.GenerateOperations(config_,
                                             new_part_conf,  // this is ignored
                                             new_part_conf,
-                                            blob_file_writer_.get(),
-                                            &aops));
+                                            blob_file_writer_.get(), &aops));
   // new_part has one chunk and a half.
   EXPECT_EQ(2U, aops.size());
   EXPECT_EQ(config_.hard_chunk_size / config_.block_size,
@@ -124,8 +122,7 @@ TEST_F(FullUpdateGeneratorTest, ImageSizeTooSmall) {
   EXPECT_TRUE(generator_.GenerateOperations(config_,
                                             new_part_conf,  // this is ignored
                                             new_part_conf,
-                                            blob_file_writer_.get(),
-                                            &aops));
+                                            blob_file_writer_.get(), &aops));
 
   // new_part has less than one chunk.
   EXPECT_EQ(1U, aops.size());

@@ -100,9 +100,7 @@ string GetBootDeviceForMiniOs() {
   int exit_code = 0;
   string boot_device, error;
   if (!chromeos_update_engine::Subprocess::SynchronousExec(
-          {"/usr/bin/root_partition_for_recovery"},
-          &exit_code,
-          &boot_device,
+          {"/usr/bin/root_partition_for_recovery"}, &exit_code, &boot_device,
           &error)) {
     LOG(ERROR)
         << "Failed to get the root partition name. Returned with exit code: "
@@ -252,8 +250,7 @@ bool BootControlChromeOS::GetPartitionDevice(const std::string& partition_name,
                                              std::string* device,
                                              bool* is_dynamic) const {
   // Partition name prefixed with |kPartitionNamePrefixDlc| is a DLC module.
-  if (base::StartsWith(partition_name,
-                       kPartitionNamePrefixDlc,
+  if (base::StartsWith(partition_name, kPartitionNamePrefixDlc,
                        base::CompareCase::SENSITIVE)) {
     string dlc_id, dlc_package;
     if (!ParseDlcPartitionName(partition_name, &dlc_id, &dlc_package))

@@ -46,10 +46,8 @@ class MockCertificateCheckObserver : public CertificateChecker::Observer {
 class CertificateCheckerTest : public testing::Test {
  protected:
   void SetUp() override {
-    cert_key_ = base::StringPrintf("%s-%d-%d",
-                                   cert_key_prefix_.c_str(),
-                                   static_cast<int>(server_to_check_),
-                                   depth_);
+    cert_key_ = base::StringPrintf("%s-%d-%d", cert_key_prefix_.c_str(),
+                                   static_cast<int>(server_to_check_), depth_);
     cert_checker.Init();
     cert_checker.SetObserver(&observer_);
   }
@@ -75,15 +73,12 @@ class CertificateCheckerTest : public testing::Test {
 // check certificate change, new
 TEST_F(CertificateCheckerTest, NewCertificate) {
   EXPECT_CALL(openssl_wrapper_, GetCertificateDigest(nullptr, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(depth_),
-                      SetArgPointee<2>(length_),
-                      SetArrayArgument<3>(digest_, digest_ + 4),
-                      Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(depth_), SetArgPointee<2>(length_),
+                      SetArrayArgument<3>(digest_, digest_ + 4), Return(true)));
   EXPECT_CALL(prefs_, GetString(cert_key_, _)).WillOnce(Return(false));
   EXPECT_CALL(prefs_, SetString(cert_key_, digest_hex_)).WillOnce(Return(true));
-  EXPECT_CALL(
-      observer_,
-      CertificateChecked(server_to_check_, CertificateCheckResult::kValid));
+  EXPECT_CALL(observer_, CertificateChecked(server_to_check_,
+                                            CertificateCheckResult::kValid));
   ASSERT_TRUE(
       cert_checker.CheckCertificateChange(1, nullptr, server_to_check_));
 }
@@ -91,16 +86,13 @@ TEST_F(CertificateCheckerTest, NewCertificate) {
 // check certificate change, unchanged
 TEST_F(CertificateCheckerTest, SameCertificate) {
   EXPECT_CALL(openssl_wrapper_, GetCertificateDigest(nullptr, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(depth_),
-                      SetArgPointee<2>(length_),
-                      SetArrayArgument<3>(digest_, digest_ + 4),
-                      Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(depth_), SetArgPointee<2>(length_),
+                      SetArrayArgument<3>(digest_, digest_ + 4), Return(true)));
   EXPECT_CALL(prefs_, GetString(cert_key_, _))
       .WillOnce(DoAll(SetArgPointee<1>(digest_hex_), Return(true)));
   EXPECT_CALL(prefs_, SetString(_, _)).Times(0);
-  EXPECT_CALL(
-      observer_,
-      CertificateChecked(server_to_check_, CertificateCheckResult::kValid));
+  EXPECT_CALL(observer_, CertificateChecked(server_to_check_,
+                                            CertificateCheckResult::kValid));
   ASSERT_TRUE(
       cert_checker.CheckCertificateChange(1, nullptr, server_to_check_));
 }
@@ -108,10 +100,8 @@ TEST_F(CertificateCheckerTest, SameCertificate) {
 // check certificate change, changed
 TEST_F(CertificateCheckerTest, ChangedCertificate) {
   EXPECT_CALL(openssl_wrapper_, GetCertificateDigest(nullptr, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(depth_),
-                      SetArgPointee<2>(length_),
-                      SetArrayArgument<3>(digest_, digest_ + 4),
-                      Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(depth_), SetArgPointee<2>(length_),
+                      SetArrayArgument<3>(digest_, digest_ + 4), Return(true)));
   EXPECT_CALL(prefs_, GetString(cert_key_, _))
       .WillOnce(DoAll(SetArgPointee<1>(diff_digest_hex_), Return(true)));
   EXPECT_CALL(observer_,
@@ -124,9 +114,8 @@ TEST_F(CertificateCheckerTest, ChangedCertificate) {
 
 // check certificate change, failed
 TEST_F(CertificateCheckerTest, FailedCertificate) {
-  EXPECT_CALL(
-      observer_,
-      CertificateChecked(server_to_check_, CertificateCheckResult::kFailed));
+  EXPECT_CALL(observer_, CertificateChecked(server_to_check_,
+                                            CertificateCheckResult::kFailed));
   EXPECT_CALL(prefs_, GetString(_, _)).Times(0);
   EXPECT_CALL(openssl_wrapper_, GetCertificateDigest(_, _, _, _)).Times(0);
   ASSERT_FALSE(

@@ -110,8 +110,7 @@ bool RealSystemProvider::Init() {
       "is_oobe_complete",
       base::BindRepeating(
           &chromeos_update_engine::HardwareInterface::IsOOBEComplete,
-          base::Unretained(SystemState::Get()->hardware()),
-          nullptr)));
+          base::Unretained(SystemState::Get()->hardware()), nullptr)));
 
   var_num_slots_.reset(new ConstCopyVariable<unsigned int>(
       "num_slots", SystemState::Get()->boot_control()->GetNumSlots()));

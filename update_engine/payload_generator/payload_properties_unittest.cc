@@ -59,11 +59,11 @@ class PayloadPropertiesTest : public ::testing::Test {
     PayloadFile payload;
     EXPECT_TRUE(payload.Init(config));
 
-    const auto SetupPartitionConfig =
-        [](PartitionConfig* config, const string& path, size_t size) {
-          config->path = path;
-          config->size = size;
-        };
+    const auto SetupPartitionConfig = [](PartitionConfig* config,
+                                         const string& path, size_t size) {
+      config->path = path;
+      config->size = size;
+    };
     const auto WriteZerosToFile = [](const char path[], size_t size) {
       string zeros(size, '\0');
       EXPECT_TRUE(utils::WriteFile(path, zeros.c_str(), zeros.size()));
@@ -85,14 +85,14 @@ class PayloadPropertiesTest : public ::testing::Test {
     ScopedTempFile data_file("temp_data.XXXXXX", true);
     BlobFileWriter blob_file_writer(data_file.fd(), &data_file_size);
     // Generate the operations using the strategy we selected above.
-    EXPECT_TRUE(strategy->GenerateOperations(
-        config, old_part, new_part, &blob_file_writer, &aops));
+    EXPECT_TRUE(strategy->GenerateOperations(config, old_part, new_part,
+                                             &blob_file_writer, &aops));
 
     payload.AddPartition(old_part, new_part, aops, {});
 
     uint64_t metadata_size;
-    EXPECT_TRUE(payload.WritePayload(
-        payload_file_.path(), data_file.path(), "", &metadata_size));
+    EXPECT_TRUE(payload.WritePayload(payload_file_.path(), data_file.path(), "",
+                                     &metadata_size));
   }
 
   ScopedTempFile payload_file_{"payload_file.XXXXXX"};

@@ -51,8 +51,7 @@ TEST_F(UmNextUpdateCheckTimePolicyImplTest,
       new Time(fake_clock_->GetWallclockTime() - base::Minutes(10)));
 
   CallMethodWithContext(&NextUpdateCheckTimePolicyImpl::NextUpdateCheckTime,
-                        &next_update_check,
-                        policy_test_constants);
+                        &next_update_check, policy_test_constants);
 
   EXPECT_LE(fake_clock_->GetWallclockTime(), next_update_check);
   EXPECT_GE(fake_clock_->GetWallclockTime() +
@@ -67,8 +66,7 @@ TEST_F(UmNextUpdateCheckTimePolicyImplTest, RecurringCheckBaseIntervalAndFuzz) {
   Time next_update_check;
 
   CallMethodWithContext(&NextUpdateCheckTimePolicyImpl::NextUpdateCheckTime,
-                        &next_update_check,
-                        policy_test_constants);
+                        &next_update_check, policy_test_constants);
 
   EXPECT_LE(fake_clock_->GetWallclockTime() +
                 base::Seconds(policy_test_constants.timeout_periodic_interval -
@@ -91,8 +89,7 @@ TEST_F(UmNextUpdateCheckTimePolicyImplTest,
 
   ExpectStatus(EvalStatus::kSucceeded,
                NextUpdateCheckTimePolicyImpl::NextUpdateCheckTime,
-               &next_update_check,
-               policy_test_constants);
+               &next_update_check, policy_test_constants);
 
   int expected_interval = policy_test_constants.timeout_periodic_interval * 4;
   EXPECT_LE(fake_clock_->GetWallclockTime() +
@@ -117,8 +114,7 @@ TEST_F(UmNextUpdateCheckTimePolicyImplTest,
 
   ExpectStatus(EvalStatus::kSucceeded,
                &NextUpdateCheckTimePolicyImpl::NextUpdateCheckTime,
-               &next_update_check,
-               policy_test_constants);
+               &next_update_check, policy_test_constants);
 
   EXPECT_LE(fake_clock_->GetWallclockTime() +
                 base::Seconds(kInterval - kInterval / 2),
@@ -136,8 +132,7 @@ TEST_F(UmNextUpdateCheckTimePolicyImplTest, ExponentialBackoffIsCapped) {
 
   ExpectStatus(EvalStatus::kSucceeded,
                &NextUpdateCheckTimePolicyImpl::NextUpdateCheckTime,
-               &next_update_check,
-               policy_test_constants);
+               &next_update_check, policy_test_constants);
 
   EXPECT_LE(
       fake_clock_->GetWallclockTime() +

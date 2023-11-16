@@ -43,8 +43,8 @@ void SetupLogSymlink(const string& symlink_path, const string& log_path) {
   // we stop caring about the old-style logs.
   if (utils::FileExists(symlink_path.c_str()) &&
       !utils::IsSymlink(symlink_path.c_str())) {
-    base::ReplaceFile(
-        base::FilePath(symlink_path), base::FilePath(log_path), nullptr);
+    base::ReplaceFile(base::FilePath(symlink_path), base::FilePath(log_path),
+                      nullptr);
   }
   base::DeletePathRecursively(base::FilePath(symlink_path));
   if (symlink(log_path.c_str(), symlink_path.c_str()) == -1) {
@@ -57,8 +57,7 @@ string SetupLogFile(const string& kLogsRoot) {
   const string kLogSymlink = kLogsRoot + "/update_engine.log";
   const string kLogsDir = kLogsRoot + "/update_engine";
   const string kLogPath =
-      base::StringPrintf("%s/update_engine.%s",
-                         kLogsDir.c_str(),
+      base::StringPrintf("%s/update_engine.%s", kLogsDir.c_str(),
                          utils::GetTimeAsString(::time(nullptr)).c_str());
   mkdir(kLogsDir.c_str(), 0755);
   SetupLogSymlink(kLogSymlink, kLogPath);

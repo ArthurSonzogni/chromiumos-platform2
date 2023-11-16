@@ -61,8 +61,8 @@ class CachedFileDescriptorTest : public ::testing::Test {
 
   void SetUp() override {
     brillo::Blob zero_blob(kFileSize, 0);
-    EXPECT_TRUE(utils::WriteFile(
-        temp_file_.path().c_str(), zero_blob.data(), zero_blob.size()));
+    EXPECT_TRUE(utils::WriteFile(temp_file_.path().c_str(), zero_blob.data(),
+                                 zero_blob.size()));
     Open();
   }
 

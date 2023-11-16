@@ -69,8 +69,8 @@ bool CPULimiter::SetCpuShares(CpuShares shares) {
 
   std::string string_shares = base::NumberToString(static_cast<int>(shares));
   LOG(INFO) << "Setting cgroup cpu shares to  " << string_shares;
-  if (!utils::WriteFile(
-          kCGroupSharesPath, string_shares.c_str(), string_shares.size())) {
+  if (!utils::WriteFile(kCGroupSharesPath, string_shares.c_str(),
+                        string_shares.size())) {
     LOG(ERROR) << "Failed to change cgroup cpu shares to " << string_shares
                << " using " << kCGroupSharesPath;
     return false;

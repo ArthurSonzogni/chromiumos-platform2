@@ -64,11 +64,9 @@ bool IsSquashfsImage(const string& part_path,
       utils::BlocksInExtents(file.extents) >=
           kMinimumSquashfsImageSize / kBlockSize) {
     brillo::Blob super_block;
-    TEST_AND_RETURN_FALSE(
-        utils::ReadFileChunk(part_path,
-                             file.extents[0].start_block() * kBlockSize,
-                             100,
-                             &super_block));
+    TEST_AND_RETURN_FALSE(utils::ReadFileChunk(
+        part_path, file.extents[0].start_block() * kBlockSize, 100,
+        &super_block));
     return SquashfsFilesystem::IsSquashfsImage(super_block);
   }
   return false;
@@ -248,8 +246,7 @@ bool CompactDeflates(const vector<Extent>& extents,
   TEST_AND_RETURN_FALSE(in_deflates.size() == out_deflates->size());
 
   // Make sure all outgoing deflates are ordered and non-overlapping.
-  auto result = std::adjacent_find(out_deflates->begin(),
-                                   out_deflates->end(),
+  auto result = std::adjacent_find(out_deflates->begin(), out_deflates->end(),
                                    [](const BitExtent& a, const BitExtent& b) {
                                      return (a.offset + a.length) > b.offset;
                                    });
@@ -284,9 +281,9 @@ bool PreprocessPartitionFiles(const PartitionConfig& part,
       TEST_AND_RETURN_FALSE(
           CopyExtentsToFile(part.path, file.extents, path.value(), kBlockSize));
       // Test if it is actually a Squashfs file.
-      auto sqfs = SquashfsFilesystem::CreateFromFile(path.value(),
-                                                     extract_deflates,
-                                                     /*load_settings=*/false);
+      auto sqfs =
+          SquashfsFilesystem::CreateFromFile(path.value(), extract_deflates,
+                                             /*load_settings=*/false);
       if (sqfs) {
         // It is an squashfs file. Get its files to replace with itself.
         vector<FilesystemInterface::File> files;
@@ -317,11 +314,8 @@ bool PreprocessPartitionFiles(const PartitionConfig& part,
       if (is_zip || is_gzip) {
         brillo::Blob data;
         TEST_AND_RETURN_FALSE(utils::ReadExtents(
-            part.path,
-            file.extents,
-            &data,
-            kBlockSize * utils::BlocksInExtents(file.extents),
-            kBlockSize));
+            part.path, file.extents, &data,
+            kBlockSize * utils::BlocksInExtents(file.extents), kBlockSize));
         vector<puffin::BitExtent> deflates;
         if (is_zip) {
           TEST_AND_RETURN_FALSE(

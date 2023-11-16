@@ -57,8 +57,7 @@ class MemoryExtentWriter : public ExtentWriter {
   }
   bool Write(const void* bytes, size_t count) override {
     data_->reserve(data_->size() + count);
-    data_->insert(data_->end(),
-                  static_cast<const uint8_t*>(bytes),
+    data_->insert(data_->end(), static_cast<const uint8_t*>(bytes),
                   static_cast<const uint8_t*>(bytes) + count);
     return true;
   }

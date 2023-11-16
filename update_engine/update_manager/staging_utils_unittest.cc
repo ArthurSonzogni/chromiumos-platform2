@@ -61,9 +61,8 @@ class StagingUtilsScheduleTest : public testing::Test {
   }
 
   void TestStagingCase(const StagingCase& expected) {
-    EXPECT_EQ(expected,
-              CalculateStagingCase(
-                  &device_policy_, &test_wait_time_, &test_staging_schedule_));
+    EXPECT_EQ(expected, CalculateStagingCase(&device_policy_, &test_wait_time_,
+                                             &test_staging_schedule_));
   }
 
   void ExpectNoChanges() {

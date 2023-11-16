@@ -253,12 +253,9 @@ TEST(CrosHealthdTest, ParseBusResultCheckPciBus) {
   // Don't use driver after std::move.
   std::optional<std::string> driver = "some-driver";
   bus_device_ptr->bus_info = ash::cros_healthd::mojom::BusInfo::NewPciBusInfo(
-      ash::cros_healthd::mojom::PciBusInfo::New(class_id,
-                                                subclass_id,
-                                                protocol_id,
-                                                vendor_id,
-                                                device_id,
-                                                std::move(driver)));
+      ash::cros_healthd::mojom::PciBusInfo::New(class_id, subclass_id,
+                                                protocol_id, vendor_id,
+                                                device_id, std::move(driver)));
 
   CrosHealthd::ParseBusResult(&telemetry_info_ptr, &telemetry_info);
   ASSERT_EQ(telemetry_info.bus_devices.size(), 1);
@@ -307,12 +304,9 @@ TEST(CrosHealthdTest, ParseBusResultCheckUsbBus) {
   // Don't use interface after std::move.
   std::vector<ash::cros_healthd::mojom::UsbBusInterfaceInfoPtr> interfaces;
   bus_device_ptr->bus_info = ash::cros_healthd::mojom::BusInfo::NewUsbBusInfo(
-      ash::cros_healthd::mojom::UsbBusInfo::New(class_id,
-                                                subclass_id,
-                                                protocol_id,
-                                                vendor_id,
-                                                product_id,
-                                                std::move(interfaces)));
+      ash::cros_healthd::mojom::UsbBusInfo::New(
+          class_id, subclass_id, protocol_id, vendor_id, product_id,
+          std::move(interfaces)));
 
   CrosHealthd::ParseBusResult(&telemetry_info_ptr, &telemetry_info);
   ASSERT_EQ(telemetry_info.bus_devices.size(), 1);
@@ -390,12 +384,9 @@ TEST(CrosHealthdTest, ParseBusResultCheckAllBus) {
     // Don't use driver after std::move.
     std::optional<std::string> driver = "some-driver";
     bus_device_ptr->bus_info = ash::cros_healthd::mojom::BusInfo::NewPciBusInfo(
-        ash::cros_healthd::mojom::PciBusInfo::New(class_id,
-                                                  subclass_id,
-                                                  protocol_id,
-                                                  vendor_id,
-                                                  device_id,
-                                                  std::move(driver)));
+        ash::cros_healthd::mojom::PciBusInfo::New(
+            class_id, subclass_id, protocol_id, vendor_id, device_id,
+            std::move(driver)));
   }
 
   // Create USB bus info.
@@ -406,12 +397,9 @@ TEST(CrosHealthdTest, ParseBusResultCheckAllBus) {
     // Don't use interface after std::move.
     std::vector<ash::cros_healthd::mojom::UsbBusInterfaceInfoPtr> interfaces;
     bus_device_ptr->bus_info = ash::cros_healthd::mojom::BusInfo::NewUsbBusInfo(
-        ash::cros_healthd::mojom::UsbBusInfo::New(class_id,
-                                                  subclass_id,
-                                                  protocol_id,
-                                                  vendor_id,
-                                                  product_id,
-                                                  std::move(interfaces)));
+        ash::cros_healthd::mojom::UsbBusInfo::New(
+            class_id, subclass_id, protocol_id, vendor_id, product_id,
+            std::move(interfaces)));
   }
 
   // Create Thunderbolt bus info.

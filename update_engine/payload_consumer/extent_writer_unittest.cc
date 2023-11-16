@@ -77,8 +77,8 @@ TEST_F(ExtentWriterTest, SimpleTest) {
   EXPECT_TRUE(utils::ReadFile(temp_file_.path(), &result_file));
 
   brillo::Blob expected_file(kBlockSize);
-  expected_file.insert(
-      expected_file.end(), bytes.data(), bytes.data() + bytes.size());
+  expected_file.insert(expected_file.end(), bytes.data(),
+                       bytes.data() + bytes.size());
   ExpectVectorsEq(expected_file, result_file);
 }
 
@@ -104,8 +104,8 @@ TEST_F(ExtentWriterTest, LargeUnalignedWriteTest) {
 
 void ExtentWriterTest::WriteAlignedExtents(size_t chunk_size,
                                            size_t first_chunk_size) {
-  vector<Extent> extents = {
-      ExtentForRange(1, 1), ExtentForRange(0, 1), ExtentForRange(2, 1)};
+  vector<Extent> extents = {ExtentForRange(1, 1), ExtentForRange(0, 1),
+                            ExtentForRange(2, 1)};
   brillo::Blob data(kBlockSize * 3);
   test_utils::FillWithData(&data);
 
@@ -130,13 +130,12 @@ void ExtentWriterTest::WriteAlignedExtents(size_t chunk_size,
   EXPECT_TRUE(utils::ReadFile(temp_file_.path(), &result_file));
 
   brillo::Blob expected_file;
-  expected_file.insert(expected_file.end(),
-                       data.begin() + kBlockSize,
+  expected_file.insert(expected_file.end(), data.begin() + kBlockSize,
                        data.begin() + kBlockSize * 2);
-  expected_file.insert(
-      expected_file.end(), data.begin(), data.begin() + kBlockSize);
-  expected_file.insert(
-      expected_file.end(), data.begin() + kBlockSize * 2, data.end());
+  expected_file.insert(expected_file.end(), data.begin(),
+                       data.begin() + kBlockSize);
+  expected_file.insert(expected_file.end(), data.begin() + kBlockSize * 2,
+                       data.end());
   ExpectVectorsEq(expected_file, result_file);
 }
 

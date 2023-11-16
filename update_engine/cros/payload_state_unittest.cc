@@ -99,11 +99,9 @@ static void SetupPayloadStateWith2Urls(string hash,
       "%s"
       "Max Failure Count Per Url = %d\n"
       "Disable Payload Backoff = %d\n",
-      hash.c_str(),
-      response->packages[0].is_delta,
+      hash.c_str(), response->packages[0].is_delta,
       (http_enabled ? expected_urls_both : expected_url_https_only).c_str(),
-      response->max_failure_count_per_url,
-      response->disable_payload_backoff);
+      response->max_failure_count_per_url, response->disable_payload_backoff);
   EXPECT_EQ(expected_response_sign, stored_response_sign);
 }
 
@@ -288,8 +286,8 @@ TEST_F(PayloadStateTest, CanAdvanceUrlIndexCorrectly) {
 
   // This does a SetResponse which causes all the states to be set to 0 for
   // the first time.
-  SetupPayloadStateWith2Urls(
-      "Hash1235", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash1235", true, false, &payload_state,
+                             &response);
   EXPECT_EQ("http://test", payload_state.GetCurrentUrl());
 
   // Verify that on the first error, the URL index advances to 1.
@@ -316,8 +314,8 @@ TEST_F(PayloadStateTest, NewResponseResetsPayloadState) {
   EXPECT_TRUE(payload_state.Initialize());
 
   // Set the first response.
-  SetupPayloadStateWith2Urls(
-      "Hash5823", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash5823", true, false, &payload_state,
+                             &response);
   EXPECT_EQ(1, payload_state.GetNumResponsesSeen());
 
   // Advance the URL index to 1 by faking an error.
@@ -327,8 +325,8 @@ TEST_F(PayloadStateTest, NewResponseResetsPayloadState) {
   EXPECT_EQ(1U, payload_state.GetUrlSwitchCount());
 
   // Now, slightly change the response and set it again.
-  SetupPayloadStateWith2Urls(
-      "Hash8225", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash8225", true, false, &payload_state,
+                             &response);
   EXPECT_EQ(2, payload_state.GetNumResponsesSeen());
 
   // Fake an error again.
@@ -337,8 +335,8 @@ TEST_F(PayloadStateTest, NewResponseResetsPayloadState) {
   EXPECT_EQ(1U, payload_state.GetUrlSwitchCount());
 
   // Return a third different response.
-  SetupPayloadStateWith2Urls(
-      "Hash9999", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash9999", true, false, &payload_state,
+                             &response);
   EXPECT_EQ(3, payload_state.GetNumResponsesSeen());
 
   // Make sure the url index was reset to 0 because of the new response.
@@ -408,8 +406,8 @@ TEST_F(PayloadStateTest, AllCountersGetUpdatedProperlyOnErrorCodesAndEvents) {
 
   EXPECT_TRUE(payload_state.Initialize());
 
-  SetupPayloadStateWith2Urls(
-      "Hash5873", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash5873", true, false, &payload_state,
+                             &response);
   EXPECT_EQ(1, payload_state.GetNumResponsesSeen());
 
   // This should advance the URL index.
@@ -488,8 +486,8 @@ TEST_F(PayloadStateTest, AllCountersGetUpdatedProperlyOnErrorCodesAndEvents) {
   EXPECT_TRUE(payload_state.ShouldBackoffDownload());
 
   // Now, slightly change the response and set it again.
-  SetupPayloadStateWith2Urls(
-      "Hash8532", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash8532", true, false, &payload_state,
+                             &response);
   EXPECT_EQ(2, payload_state.GetNumResponsesSeen());
 
   // Make sure the url index was reset to 0 because of the new response.
@@ -527,8 +525,8 @@ TEST_F(PayloadStateTest,
 
   EXPECT_TRUE(payload_state.Initialize());
 
-  SetupPayloadStateWith2Urls(
-      "Hash8593", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash8593", true, false, &payload_state,
+                             &response);
 
   // This should just advance the payload attempt number;
   EXPECT_EQ(0, payload_state.GetPayloadAttemptNumber());
@@ -584,8 +582,8 @@ TEST_F(PayloadStateTest, SetResponseResetsInvalidUrlIndex) {
   PayloadState payload_state;
 
   EXPECT_TRUE(payload_state.Initialize());
-  SetupPayloadStateWith2Urls(
-      "Hash4427", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash4427", true, false, &payload_state,
+                             &response);
 
   // Generate enough events to advance URL index, failure count and
   // payload attempt number all to 1.
@@ -619,8 +617,8 @@ TEST_F(PayloadStateTest, SetResponseResetsInvalidUrlIndex) {
   // response was different. We want to specifically test that even if the
   // response is same, we should reset the state if we find it corrupted.
   EXPECT_TRUE(payload_state.Initialize());
-  SetupPayloadStateWith2Urls(
-      "Hash4427", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash4427", true, false, &payload_state,
+                             &response);
 
   // Make sure all counters get reset to 0 because of the corrupted URL index
   // we supplied above.
@@ -639,8 +637,8 @@ TEST_F(PayloadStateTest, NoBackoffInteractiveChecks) {
   FakeSystemState::Get()->set_request_params(&params);
 
   EXPECT_TRUE(payload_state.Initialize());
-  SetupPayloadStateWith2Urls(
-      "Hash6437", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash6437", true, false, &payload_state,
+                             &response);
 
   // Simulate two failures (enough to cause payload backoff) and check
   // again that we're ready to re-download without any backoff as this is
@@ -661,8 +659,8 @@ TEST_F(PayloadStateTest, NoBackoffForP2PUpdates) {
   FakeSystemState::Get()->set_request_params(&params);
 
   EXPECT_TRUE(payload_state.Initialize());
-  SetupPayloadStateWith2Urls(
-      "Hash6437", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash6437", true, false, &payload_state,
+                             &response);
 
   // Simulate two failures (enough to cause payload backoff) and check
   // again that we're ready to re-download without any backoff as this is
@@ -731,8 +729,8 @@ TEST_F(PayloadStateTest, BackoffPeriodsAreInCorrectRange) {
   PayloadState payload_state;
 
   EXPECT_TRUE(payload_state.Initialize());
-  SetupPayloadStateWith2Urls(
-      "Hash8939", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash8939", true, false, &payload_state,
+                             &response);
 
   CheckPayloadBackoffState(&payload_state, 1, base::Days(1));
   CheckPayloadBackoffState(&payload_state, 2, base::Days(2));
@@ -752,8 +750,8 @@ TEST_F(PayloadStateTest, BackoffLogicCanBeDisabled) {
   PayloadState payload_state;
 
   EXPECT_TRUE(payload_state.Initialize());
-  SetupPayloadStateWith2Urls(
-      "Hash8939", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash8939", true, false, &payload_state,
+                             &response);
 
   // Simulate a successful download and see that we are ready to download
   // again without any backoff.
@@ -780,8 +778,8 @@ TEST_F(PayloadStateTest, BytesDownloadedMetricsGetAddedToCorrectSources) {
   uint64_t http_total = 0;
 
   EXPECT_TRUE(payload_state.Initialize());
-  SetupPayloadStateWith2Urls(
-      "Hash3286", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash3286", true, false, &payload_state,
+                             &response);
   EXPECT_EQ(1, payload_state.GetNumResponsesSeen());
 
   // Simulate a previous attempt with in order to set an initial non-zero value
@@ -798,8 +796,8 @@ TEST_F(PayloadStateTest, BytesDownloadedMetricsGetAddedToCorrectSources) {
 
   // Change the response hash so as to simulate a new response which will
   // reset the current bytes downloaded, but not the total bytes downloaded.
-  SetupPayloadStateWith2Urls(
-      "Hash9904", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash9904", true, false, &payload_state,
+                             &response);
   EXPECT_EQ(2, payload_state.GetNumResponsesSeen());
 
   // First, simulate successful download of a few bytes over HTTP.
@@ -828,9 +826,8 @@ TEST_F(PayloadStateTest, BytesDownloadedMetricsGetAddedToCorrectSources) {
             payload_state.GetCurrentBytesDownloaded(kDownloadSourceHttpServer));
   EXPECT_EQ(http_total,
             payload_state.GetTotalBytesDownloaded(kDownloadSourceHttpServer));
-  EXPECT_EQ(
-      second_chunk,
-      payload_state.GetCurrentBytesDownloaded(kDownloadSourceHttpsServer));
+  EXPECT_EQ(second_chunk, payload_state.GetCurrentBytesDownloaded(
+                              kDownloadSourceHttpsServer));
   EXPECT_EQ(https_total,
             payload_state.GetTotalBytesDownloaded(kDownloadSourceHttpsServer));
 
@@ -846,9 +843,8 @@ TEST_F(PayloadStateTest, BytesDownloadedMetricsGetAddedToCorrectSources) {
             payload_state.GetCurrentBytesDownloaded(kDownloadSourceHttpServer));
   EXPECT_EQ(http_total,
             payload_state.GetTotalBytesDownloaded(kDownloadSourceHttpServer));
-  EXPECT_EQ(
-      second_chunk,
-      payload_state.GetCurrentBytesDownloaded(kDownloadSourceHttpsServer));
+  EXPECT_EQ(second_chunk, payload_state.GetCurrentBytesDownloaded(
+                              kDownloadSourceHttpsServer));
   EXPECT_EQ(https_total,
             payload_state.GetTotalBytesDownloaded(kDownloadSourceHttpsServer));
 
@@ -863,8 +859,8 @@ TEST_F(PayloadStateTest, BytesDownloadedMetricsGetAddedToCorrectSources) {
             payload_state.GetTotalBytesDownloaded(kDownloadSourceHttpPeer));
 
   EXPECT_CALL(*FakeSystemState::Get()->mock_metrics_reporter(),
-              ReportSuccessfulUpdateMetrics(
-                  1, _, kPayloadTypeFull, _, _, 314, _, _, _, 3));
+              ReportSuccessfulUpdateMetrics(1, _, kPayloadTypeFull, _, _, 314,
+                                            _, _, _, 3));
 
   payload_state.UpdateSucceeded();
 
@@ -885,8 +881,8 @@ TEST_F(PayloadStateTest, DownloadSourcesUsedIsCorrect) {
   PayloadState payload_state;
 
   EXPECT_TRUE(payload_state.Initialize());
-  SetupPayloadStateWith2Urls(
-      "Hash3286", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash3286", true, false, &payload_state,
+                             &response);
 
   // Simulate progress in order to mark HTTP as one of the sources used.
   uint64_t num_bytes = 42 * 1000 * 1000;
@@ -904,16 +900,8 @@ TEST_F(PayloadStateTest, DownloadSourcesUsedIsCorrect) {
 
   EXPECT_CALL(*FakeSystemState::Get()->mock_metrics_reporter(),
               ReportSuccessfulUpdateMetrics(
-                  _,
-                  _,
-                  _,
-                  _,
-                  test_utils::DownloadSourceMatcher(total_bytes),
-                  _,
-                  _,
-                  _,
-                  _,
-                  _))
+                  _, _, _, _, test_utils::DownloadSourceMatcher(total_bytes), _,
+                  _, _, _, _))
       .Times(1);
 
   payload_state.UpdateSucceeded();
@@ -926,8 +914,8 @@ TEST_F(PayloadStateTest, RestartingUpdateResetsMetrics) {
   EXPECT_TRUE(payload_state.Initialize());
 
   // Set the first response.
-  SetupPayloadStateWith2Urls(
-      "Hash5823", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash5823", true, false, &payload_state,
+                             &response);
 
   uint64_t num_bytes = 10000;
   payload_state.DownloadProgress(num_bytes);
@@ -1063,8 +1051,8 @@ TEST_F(PayloadStateTest, DurationsAreCorrect) {
   // Check that durations are correct for a successful update where
   // time has advanced 7 seconds on the wall clock and 4 seconds on
   // the monotonic clock.
-  SetupPayloadStateWith2Urls(
-      "Hash8593", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash8593", true, false, &payload_state,
+                             &response);
   fake_clock->SetWallclockTime(Time::FromInternalValue(8000000));
   fake_clock->SetMonotonicTime(Time::FromInternalValue(6000000));
   payload_state.UpdateSucceeded();
@@ -1072,8 +1060,8 @@ TEST_F(PayloadStateTest, DurationsAreCorrect) {
   EXPECT_EQ(payload_state.GetUpdateDurationUptime().InMicroseconds(), 4000000);
 
   // Check that durations are reset when a new response comes in.
-  SetupPayloadStateWith2Urls(
-      "Hash8594", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash8594", true, false, &payload_state,
+                             &response);
   EXPECT_EQ(payload_state.GetUpdateDuration().InMicroseconds(), 0);
   EXPECT_EQ(payload_state.GetUpdateDurationUptime().InMicroseconds(), 0);
 
@@ -1118,8 +1106,8 @@ TEST_F(PayloadStateTest, RebootAfterSuccessfulUpdateTest) {
   EXPECT_TRUE(payload_state.Initialize());
 
   // Make the update succeed.
-  SetupPayloadStateWith2Urls(
-      "Hash8593", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash8593", true, false, &payload_state,
+                             &response);
   payload_state.UpdateSucceeded();
 
   auto* fake_prefs = FakeSystemState::Get()->fake_prefs();
@@ -1253,12 +1241,11 @@ TEST_F(PayloadStateTest, ErrorsGenerateAlerts) {
   PayloadState payload_state;
   EXPECT_TRUE(payload_state.Initialize());
   OmahaResponse response;
-  SetupPayloadStateWith2Urls(
-      "Hash1235", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash1235", true, false, &payload_state,
+                             &response);
 
-  EXPECT_CALL(
-      mock_log,
-      Log(::logging::LOGGING_ERROR, _, _, _, HasSubstr("UpdateEngineAlert")));
+  EXPECT_CALL(mock_log, Log(::logging::LOGGING_ERROR, _, _, _,
+                            HasSubstr("UpdateEngineAlert")));
   payload_state.UpdateFailed(ErrorCode::kPayloadHashMismatchError);
 }
 
@@ -1269,9 +1256,8 @@ TEST_F(PayloadStateTest, ErrorsGenerateAlertsWithoutAnyCandidateUrls) {
 
   PayloadState payload_state;
 
-  EXPECT_CALL(
-      mock_log,
-      Log(::logging::LOGGING_ERROR, _, _, _, HasSubstr("UpdateEngineAlert")));
+  EXPECT_CALL(mock_log, Log(::logging::LOGGING_ERROR, _, _, _,
+                            HasSubstr("UpdateEngineAlert")));
   payload_state.UpdateFailed(ErrorCode::kPayloadHashMismatchError);
 }
 
@@ -1288,8 +1274,8 @@ TEST_F(PayloadStateTest, CandidateUrlsComputedCorrectly) {
       .WillRepeatedly(Return(false));
 
   // Set the first response.
-  SetupPayloadStateWith2Urls(
-      "Hash8433", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash8433", true, false, &payload_state,
+                             &response);
 
   // Check that we use the HTTP URL since there is no value set for allowing
   // http.
@@ -1300,8 +1286,8 @@ TEST_F(PayloadStateTest, CandidateUrlsComputedCorrectly) {
       .WillRepeatedly(DoAll(SetArgPointee<0>(false), Return(true)));
 
   // Reset state and set again.
-  SetupPayloadStateWith2Urls(
-      "Hash8433", false, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash8433", false, false, &payload_state,
+                             &response);
 
   // Check that we skip the HTTP URL and use only the HTTPS url.
   EXPECT_EQ("https://test", payload_state.GetCurrentUrl());
@@ -1315,8 +1301,8 @@ TEST_F(PayloadStateTest, CandidateUrlsComputedCorrectly) {
   EXPECT_EQ(0U, payload_state.GetUrlSwitchCount());
 
   // Now, slightly change the response and set it again.
-  SetupPayloadStateWith2Urls(
-      "Hash2399", false, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash2399", false, false, &payload_state,
+                             &response);
 
   // Check that we still skip the HTTP URL and use only the HTTPS url.
   EXPECT_EQ("https://test", payload_state.GetCurrentUrl());
@@ -1332,8 +1318,8 @@ TEST_F(PayloadStateTest, CandidateUrlsComputedCorrectly) {
   // so that we can test that the state is reset not because of the
   // hash but because of the policy change which results in candidate url
   // list change.
-  SetupPayloadStateWith2Urls(
-      "Hash2399", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash2399", true, false, &payload_state,
+                             &response);
 
   // Check that we use the HTTP URL now and the failure count is reset.
   EXPECT_EQ("http://test", payload_state.GetCurrentUrl());
@@ -1357,8 +1343,8 @@ TEST_F(PayloadStateTest, PayloadTypeMetricWhenTypeIsDelta) {
   // Simulate a successful download and update.
   payload_state.DownloadComplete();
   EXPECT_CALL(*FakeSystemState::Get()->mock_metrics_reporter(),
-              ReportSuccessfulUpdateMetrics(
-                  _, _, kPayloadTypeDelta, _, _, _, _, _, _, _));
+              ReportSuccessfulUpdateMetrics(_, _, kPayloadTypeDelta, _, _, _, _,
+                                            _, _, _));
   payload_state.UpdateSucceeded();
 
   // Mock the request to a request where the delta was disabled but Omaha sends
@@ -1373,8 +1359,8 @@ TEST_F(PayloadStateTest, PayloadTypeMetricWhenTypeIsDelta) {
   payload_state.DownloadComplete();
 
   EXPECT_CALL(*FakeSystemState::Get()->mock_metrics_reporter(),
-              ReportSuccessfulUpdateMetrics(
-                  _, _, kPayloadTypeDelta, _, _, _, _, _, _, _));
+              ReportSuccessfulUpdateMetrics(_, _, kPayloadTypeDelta, _, _, _, _,
+                                            _, _, _));
   payload_state.UpdateSucceeded();
 }
 
@@ -1388,15 +1374,15 @@ TEST_F(PayloadStateTest, PayloadTypeMetricWhenTypeIsForcedFull) {
   FakeSystemState::Get()->set_request_params(&params);
 
   EXPECT_TRUE(payload_state.Initialize());
-  SetupPayloadStateWith2Urls(
-      "Hash6437", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash6437", true, false, &payload_state,
+                             &response);
 
   // Simulate a successful download and update.
   payload_state.DownloadComplete();
 
   EXPECT_CALL(*FakeSystemState::Get()->mock_metrics_reporter(),
-              ReportSuccessfulUpdateMetrics(
-                  _, _, kPayloadTypeForcedFull, _, _, _, _, _, _, _));
+              ReportSuccessfulUpdateMetrics(_, _, kPayloadTypeForcedFull, _, _,
+                                            _, _, _, _, _));
   payload_state.UpdateSucceeded();
 }
 
@@ -1405,8 +1391,8 @@ TEST_F(PayloadStateTest, PayloadTypeMetricWhenTypeIsFull) {
   PayloadState payload_state;
 
   EXPECT_TRUE(payload_state.Initialize());
-  SetupPayloadStateWith2Urls(
-      "Hash6437", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash6437", true, false, &payload_state,
+                             &response);
 
   // Mock the request to a request where the delta is enabled, although the
   // result is full.
@@ -1418,8 +1404,8 @@ TEST_F(PayloadStateTest, PayloadTypeMetricWhenTypeIsFull) {
   payload_state.DownloadComplete();
 
   EXPECT_CALL(*FakeSystemState::Get()->mock_metrics_reporter(),
-              ReportSuccessfulUpdateMetrics(
-                  _, _, kPayloadTypeFull, _, _, _, _, _, _, _));
+              ReportSuccessfulUpdateMetrics(_, _, kPayloadTypeFull, _, _, _, _,
+                                            _, _, _));
   payload_state.UpdateSucceeded();
 }
 
@@ -1427,8 +1413,8 @@ TEST_F(PayloadStateTest, RebootAfterUpdateFailedMetric) {
   OmahaResponse response;
   PayloadState payload_state;
   EXPECT_TRUE(payload_state.Initialize());
-  SetupPayloadStateWith2Urls(
-      "Hash3141", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash3141", true, false, &payload_state,
+                             &response);
 
   // Simulate a successful download and update.
   payload_state.DownloadComplete();
@@ -1470,8 +1456,8 @@ TEST_F(PayloadStateTest, RebootAfterUpdateSucceed) {
   fake_boot_control->SetCurrentSlot(0);
 
   EXPECT_TRUE(payload_state.Initialize());
-  SetupPayloadStateWith2Urls(
-      "Hash3141", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash3141", true, false, &payload_state,
+                             &response);
 
   // Simulate a successful download and update.
   payload_state.DownloadComplete();
@@ -1496,8 +1482,8 @@ TEST_F(PayloadStateTest, RebootAfterCanceledUpdate) {
   OmahaResponse response;
   PayloadState payload_state;
   EXPECT_TRUE(payload_state.Initialize());
-  SetupPayloadStateWith2Urls(
-      "Hash3141", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash3141", true, false, &payload_state,
+                             &response);
 
   // Simulate a successful download and update.
   payload_state.DownloadComplete();
@@ -1531,8 +1517,8 @@ TEST_F(PayloadStateTest, DisallowP2PAfterTooManyAttempts) {
   OmahaResponse response;
   PayloadState payload_state;
   EXPECT_TRUE(payload_state.Initialize());
-  SetupPayloadStateWith2Urls(
-      "Hash8593", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash8593", true, false, &payload_state,
+                             &response);
 
   // Should allow exactly kMaxP2PAttempts...
   for (int n = 0; n < kMaxP2PAttempts; n++) {
@@ -1548,8 +1534,8 @@ TEST_F(PayloadStateTest, DisallowP2PAfterDeadline) {
   OmahaResponse response;
   PayloadState payload_state;
   EXPECT_TRUE(payload_state.Initialize());
-  SetupPayloadStateWith2Urls(
-      "Hash8593", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash8593", true, false, &payload_state,
+                             &response);
 
   // Set the clock to 1 second.
   Time epoch = Time::FromInternalValue(1000000);
@@ -1586,8 +1572,8 @@ TEST_F(PayloadStateTest, P2PStateVarsInitialValue) {
   OmahaResponse response;
   PayloadState payload_state;
   EXPECT_TRUE(payload_state.Initialize());
-  SetupPayloadStateWith2Urls(
-      "Hash8593", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash8593", true, false, &payload_state,
+                             &response);
 
   Time null_time = Time();
   EXPECT_EQ(null_time, payload_state.GetP2PFirstAttemptTimestamp());
@@ -1598,8 +1584,8 @@ TEST_F(PayloadStateTest, P2PStateVarsArePersisted) {
   OmahaResponse response;
   PayloadState payload_state;
   EXPECT_TRUE(payload_state.Initialize());
-  SetupPayloadStateWith2Urls(
-      "Hash8593", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash8593", true, false, &payload_state,
+                             &response);
 
   // Set the clock to something known.
   Time time = Time::FromInternalValue(12345);
@@ -1622,8 +1608,8 @@ TEST_F(PayloadStateTest, P2PStateVarsAreClearedOnNewResponse) {
   OmahaResponse response;
   PayloadState payload_state;
   EXPECT_TRUE(payload_state.Initialize());
-  SetupPayloadStateWith2Urls(
-      "Hash8593", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash8593", true, false, &payload_state,
+                             &response);
 
   // Set the clock to something known.
   Time time = Time::FromInternalValue(12345);
@@ -1635,8 +1621,8 @@ TEST_F(PayloadStateTest, P2PStateVarsAreClearedOnNewResponse) {
   EXPECT_EQ(time, payload_state.GetP2PFirstAttemptTimestamp());
 
   // Set a new response...
-  SetupPayloadStateWith2Urls(
-      "Hash9904", true, false, &payload_state, &response);
+  SetupPayloadStateWith2Urls("Hash9904", true, false, &payload_state,
+                             &response);
 
   // ... and check that it clears the P2P state vars.
   Time null_time = Time();

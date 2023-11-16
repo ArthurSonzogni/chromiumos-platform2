@@ -39,8 +39,7 @@ TEST(FileWriterTest, SimpleTest) {
   DirectFileWriter file_writer;
   EXPECT_EQ(0,
             file_writer.Open(file.path().c_str(),
-                             O_CREAT | O_LARGEFILE | O_TRUNC | O_WRONLY,
-                             0644));
+                             O_CREAT | O_LARGEFILE | O_TRUNC | O_WRONLY, 0644));
   EXPECT_TRUE(file_writer.Write("test", 4));
   brillo::Blob actual_data;
   EXPECT_TRUE(utils::ReadFile(file.path(), &actual_data));
@@ -52,9 +51,8 @@ TEST(FileWriterTest, SimpleTest) {
 TEST(FileWriterTest, ErrorTest) {
   DirectFileWriter file_writer;
   const string path("/tmp/ENOENT/FileWriterTest");
-  EXPECT_EQ(
-      -ENOENT,
-      file_writer.Open(path.c_str(), O_CREAT | O_LARGEFILE | O_TRUNC, 0644));
+  EXPECT_EQ(-ENOENT, file_writer.Open(path.c_str(),
+                                      O_CREAT | O_LARGEFILE | O_TRUNC, 0644));
 }
 
 TEST(FileWriterTest, WriteErrorTest) {
@@ -63,8 +61,7 @@ TEST(FileWriterTest, WriteErrorTest) {
   DirectFileWriter file_writer;
   EXPECT_EQ(0,
             file_writer.Open(file.path().c_str(),
-                             O_CREAT | O_LARGEFILE | O_TRUNC | O_RDONLY,
-                             0644));
+                             O_CREAT | O_LARGEFILE | O_TRUNC | O_RDONLY, 0644));
   EXPECT_FALSE(file_writer.Write("x", 1));
   EXPECT_EQ(0, file_writer.Close());
 }

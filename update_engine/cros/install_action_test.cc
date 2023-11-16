@@ -164,8 +164,7 @@ class InstallActionTest : public ::testing::Test {
         std::make_unique<MockHttpFetcher>(data_.data(), data_.size(), nullptr);
     mock_http_fetcher_ = mock_http_fetcher.get();
     install_action_ = std::make_unique<InstallAction>(
-        std::move(mock_http_fetcher),
-        "foobar-dlc",
+        std::move(mock_http_fetcher), "foobar-dlc",
         /*slotting=*/"",
         /*manifest_dir=*/tempdir_.GetPath().Append("dlc").value());
     FakeSystemState::Get()->set_dlc_utils(&mock_dlc_utils_);
@@ -206,11 +205,11 @@ TEST_P(InstallActionTestSuite, ManifestReadFailure) {
   EXPECT_CALL(mock_dlc_utils_, GetDlcManifest(testing::_, testing::_))
       .WillOnce(testing::Return(nullptr));
 
-  loop_.PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](ActionProcessor* processor) { processor->StartProcessing(); },
-          base::Unretained(&processor_)));
+  loop_.PostTask(FROM_HERE, base::BindOnce(
+                                [](ActionProcessor* processor) {
+                                  processor->StartProcessing();
+                                },
+                                base::Unretained(&processor_)));
   loop_.Run();
   EXPECT_FALSE(loop_.PendingTasks());
 }
@@ -229,17 +228,16 @@ TEST_P(InstallActionTestSuite, PerformSuccessfulTest) {
   ASSERT_TRUE(test_utils::WriteFileString(
       tempdir_.GetPath().Append("foobar-dlc-device").value(), ""));
   FakeSystemState::Get()->fake_boot_control()->SetPartitionDevice(
-      "dlc/foobar-dlc/package",
-      0,
+      "dlc/foobar-dlc/package", 0,
       tempdir_.GetPath().Append("foobar-dlc-device").value());
   EXPECT_CALL(mock_dlc_utils_, GetDlcManifest(testing::_, testing::_))
       .WillOnce(testing::Return(manifest_ptr));
 
-  loop_.PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](ActionProcessor* processor) { processor->StartProcessing(); },
-          base::Unretained(&processor_)));
+  loop_.PostTask(FROM_HERE, base::BindOnce(
+                                [](ActionProcessor* processor) {
+                                  processor->StartProcessing();
+                                },
+                                base::Unretained(&processor_)));
   loop_.Run();
   EXPECT_FALSE(loop_.PendingTasks());
 }
@@ -259,17 +257,16 @@ TEST_F(InstallActionTest, PerformInvalidOffsetTest) {
   ASSERT_TRUE(test_utils::WriteFileString(
       tempdir_.GetPath().Append("foobar-dlc-device").value(), ""));
   FakeSystemState::Get()->fake_boot_control()->SetPartitionDevice(
-      "dlc/foobar-dlc/package",
-      0,
+      "dlc/foobar-dlc/package", 0,
       tempdir_.GetPath().Append("foobar-dlc-device").value());
   EXPECT_CALL(mock_dlc_utils_, GetDlcManifest(testing::_, testing::_))
       .WillOnce(testing::Return(manifest_ptr));
 
-  loop_.PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](ActionProcessor* processor) { processor->StartProcessing(); },
-          base::Unretained(&processor_)));
+  loop_.PostTask(FROM_HERE, base::BindOnce(
+                                [](ActionProcessor* processor) {
+                                  processor->StartProcessing();
+                                },
+                                base::Unretained(&processor_)));
   loop_.Run();
   EXPECT_FALSE(loop_.PendingTasks());
 }
@@ -291,17 +288,16 @@ TEST_F(InstallActionTest, PerformInvalidShaTest) {
   ASSERT_TRUE(test_utils::WriteFileString(
       tempdir_.GetPath().Append("foobar-dlc-device").value(), ""));
   FakeSystemState::Get()->fake_boot_control()->SetPartitionDevice(
-      "dlc/foobar-dlc/package",
-      0,
+      "dlc/foobar-dlc/package", 0,
       tempdir_.GetPath().Append("foobar-dlc-device").value());
   EXPECT_CALL(mock_dlc_utils_, GetDlcManifest(testing::_, testing::_))
       .WillOnce(testing::Return(manifest_ptr));
 
-  loop_.PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](ActionProcessor* processor) { processor->StartProcessing(); },
-          base::Unretained(&processor_)));
+  loop_.PostTask(FROM_HERE, base::BindOnce(
+                                [](ActionProcessor* processor) {
+                                  processor->StartProcessing();
+                                },
+                                base::Unretained(&processor_)));
   loop_.Run();
   EXPECT_FALSE(loop_.PendingTasks());
 }
@@ -328,17 +324,16 @@ TEST_P(InstallActionTestSuite, TransferFailureFetchesFromBackup) {
   ASSERT_TRUE(test_utils::WriteFileString(
       tempdir_.GetPath().Append("foobar-dlc-device").value(), ""));
   FakeSystemState::Get()->fake_boot_control()->SetPartitionDevice(
-      "dlc/foobar-dlc/package",
-      0,
+      "dlc/foobar-dlc/package", 0,
       tempdir_.GetPath().Append("foobar-dlc-device").value());
   EXPECT_CALL(mock_dlc_utils_, GetDlcManifest(testing::_, testing::_))
       .WillOnce(testing::Return(manifest_ptr));
 
-  loop_.PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](ActionProcessor* processor) { processor->StartProcessing(); },
-          base::Unretained(&processor_)));
+  loop_.PostTask(FROM_HERE, base::BindOnce(
+                                [](ActionProcessor* processor) {
+                                  processor->StartProcessing();
+                                },
+                                base::Unretained(&processor_)));
   loop_.Run();
   EXPECT_FALSE(loop_.PendingTasks());
 }

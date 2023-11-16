@@ -88,9 +88,9 @@ void InstallAction::PerformAction() {
     return;
   }
 
-  f_.Initialize(base::FilePath(partition),
-                base::File::Flags::FLAG_OPEN | base::File::Flags::FLAG_READ |
-                    base::File::Flags::FLAG_WRITE);
+  f_.Initialize(base::FilePath(partition), base::File::Flags::FLAG_OPEN |
+                                               base::File::Flags::FLAG_READ |
+                                               base::File::Flags::FLAG_WRITE);
   if (!f_.IsValid()) {
     LOG(ERROR) << "Could not open device partition for " << id_ << " at "
                << partition;

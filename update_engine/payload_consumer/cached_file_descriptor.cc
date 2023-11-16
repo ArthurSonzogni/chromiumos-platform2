@@ -55,8 +55,7 @@ ssize_t CachedFileDescriptor::Write(const void* buf, size_t count) {
     auto bytes_to_cache =
         std::min(count - total_bytes_wrote, cache_.size() - bytes_cached_);
     if (bytes_to_cache > 0) {  // Which means |cache_| is still have some space.
-      memcpy(cache_.data() + bytes_cached_,
-             bytes + total_bytes_wrote,
+      memcpy(cache_.data() + bytes_cached_, bytes + total_bytes_wrote,
              bytes_to_cache);
       total_bytes_wrote += bytes_to_cache;
       bytes_cached_ += bytes_to_cache;

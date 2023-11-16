@@ -77,8 +77,7 @@ class UmRealDevicePolicyProviderTest : public ::testing::Test {
         oobe_config::EnterpriseRollbackMetricsHandlerForTesting>();
     rollback_metrics_ = rollback_metrics.get();
     provider_.reset(new RealDevicePolicyProvider(
-        base::WrapUnique(session_manager_proxy_mock),
-        &mock_policy_provider_,
+        base::WrapUnique(session_manager_proxy_mock), &mock_policy_provider_,
         std::move(rollback_metrics)));
     // By default, we have a device policy loaded. Tests can call
     // SetUpNonExistentDevicePolicy() to override this.
@@ -340,9 +339,8 @@ TEST_F(UmRealDevicePolicyProviderTest, RestartTrackingIfTargetVersionChanges) {
   ASSERT_TRUE(rollback_metrics_->IsTrackingRollback());
   ASSERT_TRUE(rollback_metrics_->IsTrackingForDeviceVersion(kDeviceVersion));
   ASSERT_TRUE(rollback_metrics_->IsTrackingForTargetVersion(kTargetVersion));
-  ASSERT_EQ(1,
-            rollback_metrics_->TimesEventHasBeenTracked(
-                EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+  ASSERT_EQ(1, rollback_metrics_->TimesEventHasBeenTracked(
+                   EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
 }
 
 TEST_F(UmRealDevicePolicyProviderTest,
@@ -373,12 +371,10 @@ TEST_F(UmRealDevicePolicyProviderTest,
   ASSERT_TRUE(rollback_metrics_->IsTrackingRollback());
   ASSERT_TRUE(rollback_metrics_->IsTrackingForDeviceVersion(kDeviceVersionOld));
   ASSERT_TRUE(rollback_metrics_->IsTrackingForTargetVersion(kTargetVersion));
-  ASSERT_EQ(1,
-            rollback_metrics_->TimesEventHasBeenTracked(
-                EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
-  ASSERT_EQ(0,
-            rollback_metrics_->TimesEventHasBeenTracked(
-                EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+  ASSERT_EQ(1, rollback_metrics_->TimesEventHasBeenTracked(
+                   EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+  ASSERT_EQ(0, rollback_metrics_->TimesEventHasBeenTracked(
+                   EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
 }
 
 TEST_F(UmRealDevicePolicyProviderTest, StopTrackingRollbackIfNoPolicies) {

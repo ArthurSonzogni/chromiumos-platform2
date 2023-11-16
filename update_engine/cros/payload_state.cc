@@ -552,12 +552,10 @@ void PayloadState::ExcludeCurrentPayload() {
   }
   auto exclusion_name = utils::GetExclusionName(GetCurrentUrl());
   if (!excluder_->Exclude(exclusion_name))
-    LOG(WARNING) << "Failed to exclude "
-                 << " Package Hash=" << package.hash
+    LOG(WARNING) << "Failed to exclude " << " Package Hash=" << package.hash
                  << " CurrentUrl=" << GetCurrentUrl();
   else
-    LOG(INFO) << "Excluded "
-              << " Package Hash=" << package.hash
+    LOG(INFO) << "Excluded " << " Package Hash=" << package.hash
               << " CurrentUrl=" << GetCurrentUrl();
 }
 
@@ -605,11 +603,10 @@ void PayloadState::UpdateCurrentDownloadSource() {
   } else if (payload_index_ < candidate_urls_.size() &&
              candidate_urls_[payload_index_].size() != 0) {
     const string& current_url = candidate_urls_[payload_index_][GetUrlIndex()];
-    if (base::StartsWith(
-            current_url, "https://", base::CompareCase::INSENSITIVE_ASCII)) {
+    if (base::StartsWith(current_url, "https://",
+                         base::CompareCase::INSENSITIVE_ASCII)) {
       current_download_source_ = kDownloadSourceHttpsServer;
-    } else if (base::StartsWith(current_url,
-                                "http://",
+    } else if (base::StartsWith(current_url, "http://",
                                 base::CompareCase::INSENSITIVE_ASCII)) {
       current_download_source_ = kDownloadSourceHttpServer;
     }
@@ -622,12 +619,10 @@ void PayloadState::UpdateCurrentDownloadSource() {
 void PayloadState::UpdateBytesDownloaded(size_t count) {
   SetCurrentBytesDownloaded(
       current_download_source_,
-      GetCurrentBytesDownloaded(current_download_source_) + count,
-      false);
+      GetCurrentBytesDownloaded(current_download_source_) + count, false);
   SetTotalBytesDownloaded(
       current_download_source_,
-      GetTotalBytesDownloaded(current_download_source_) + count,
-      false);
+      GetTotalBytesDownloaded(current_download_source_) + count, false);
 
   attempt_num_bytes_downloaded_ += count;
 }
@@ -707,20 +702,12 @@ void PayloadState::CollectAndReportAttemptMetrics(ErrorCode code) {
   }
 
   SystemState::Get()->metrics_reporter()->ReportUpdateAttemptMetrics(
-      attempt_number,
-      payload_type,
-      duration,
-      duration_uptime,
-      payload_size,
-      attempt_result,
-      internal_error_code);
+      attempt_number, payload_type, duration, duration_uptime, payload_size,
+      attempt_result, internal_error_code);
 
   SystemState::Get()->metrics_reporter()->ReportUpdateAttemptDownloadMetrics(
-      payload_bytes_downloaded,
-      payload_download_speed_bps,
-      download_source,
-      payload_download_error_code,
-      attempt_connection_type_);
+      payload_bytes_downloaded, payload_download_speed_bps, download_source,
+      payload_download_error_code, attempt_connection_type_);
 }
 
 void PayloadState::PersistAttemptMetrics() {
@@ -807,16 +794,9 @@ void PayloadState::CollectAndReportSuccessfulUpdateMetrics() {
   int updates_abandoned_count = num_responses_seen_ - 1;
 
   SystemState::Get()->metrics_reporter()->ReportSuccessfulUpdateMetrics(
-      attempt_count,
-      updates_abandoned_count,
-      payload_type,
-      payload_size,
-      total_bytes_by_source,
-      download_overhead_percentage,
-      duration,
-      duration_uptime,
-      reboot_count,
-      url_switch_count);
+      attempt_count, updates_abandoned_count, payload_type, payload_size,
+      total_bytes_by_source, download_overhead_percentage, duration,
+      duration_uptime, reboot_count, url_switch_count);
 }
 
 void PayloadState::UpdateNumReboots() {
@@ -880,24 +860,20 @@ string PayloadState::CalculateResponseSignature() {
         "  Metadata Signature = %s\n"
         "  Is Delta = %d\n"
         "  NumURLs = %zu\n",
-        i,
-        static_cast<uintmax_t>(package.size),
-        package.hash.c_str(),
+        i, static_cast<uintmax_t>(package.size), package.hash.c_str(),
         static_cast<uintmax_t>(package.metadata_size),
-        package.metadata_signature.c_str(),
-        package.is_delta,
+        package.metadata_signature.c_str(), package.is_delta,
         candidate_urls_[i].size());
 
     for (size_t j = 0; j < candidate_urls_[i].size(); j++)
-      response_sign += base::StringPrintf(
-          "  Candidate Url%zu = %s\n", j, candidate_urls_[i][j].c_str());
+      response_sign += base::StringPrintf("  Candidate Url%zu = %s\n", j,
+                                          candidate_urls_[i][j].c_str());
   }
 
   response_sign += base::StringPrintf(
       "Max Failure Count Per Url = %d\n"
       "Disable Payload Backoff = %d\n",
-      response_.max_failure_count_per_url,
-      response_.disable_payload_backoff);
+      response_.max_failure_count_per_url, response_.disable_payload_backoff);
   return response_sign;
 }
 
@@ -1267,8 +1243,8 @@ void PayloadState::ComputeCandidateUrls() {
   for (const auto& package : response_.packages) {
     candidate_urls_.emplace_back();
     for (const string& candidate_url : package.payload_urls) {
-      if (base::StartsWith(
-              candidate_url, "http://", base::CompareCase::INSENSITIVE_ASCII) &&
+      if (base::StartsWith(candidate_url, "http://",
+                           base::CompareCase::INSENSITIVE_ASCII) &&
           !http_url_ok) {
         continue;
       }
@@ -1293,8 +1269,7 @@ void PayloadState::UpdateEngineStarted() {
 
   // Report time_to_reboot if we booted into a new update.
   metrics_utils::LoadAndReportTimeToReboot(
-      SystemState::Get()->metrics_reporter(),
-      prefs_,
+      SystemState::Get()->metrics_reporter(), prefs_,
       SystemState::Get()->clock());
   prefs_->Delete(kPrefsSystemUpdatedMarker);
 

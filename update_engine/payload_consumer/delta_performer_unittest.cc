@@ -191,12 +191,9 @@ class DeltaPerformerTest : public ::testing::Test {
                                const vector<AnnotatedOperation>& aops,
                                bool sign_payload,
                                PartitionConfig* old_part = nullptr) {
-    return GeneratePayload(blob_data,
-                           aops,
-                           sign_payload,
+    return GeneratePayload(blob_data, aops, sign_payload,
                            kMaxSupportedMajorPayloadVersion,
-                           kMaxSupportedMinorPayloadVersion,
-                           old_part);
+                           kMaxSupportedMinorPayloadVersion, old_part);
   }
 
   brillo::Blob GeneratePayload(const brillo::Blob& blob_data,
@@ -242,10 +239,8 @@ class DeltaPerformerTest : public ::testing::Test {
     ScopedTempFile payload_file("Payload-XXXXXX");
     string private_key =
         sign_payload ? GetBuildArtifactsPath(kUnittestPrivateKeyPath) : "";
-    EXPECT_TRUE(payload.WritePayload(payload_file.path(),
-                                     blob_file.path(),
-                                     private_key,
-                                     &payload_.metadata_size));
+    EXPECT_TRUE(payload.WritePayload(payload_file.path(), blob_file.path(),
+                                     private_key, &payload_.metadata_size));
 
     brillo::Blob payload_data;
     EXPECT_TRUE(utils::ReadFile(payload_file.path(), &payload_data));
@@ -277,8 +272,8 @@ class DeltaPerformerTest : public ::testing::Test {
   brillo::Blob ApplyPayload(const brillo::Blob& payload_data,
                             const string& source_path,
                             bool expect_success) {
-    return ApplyPayloadToData(
-        payload_data, source_path, brillo::Blob(), expect_success);
+    return ApplyPayloadToData(payload_data, source_path, brillo::Blob(),
+                              expect_success);
   }
 
   // Apply the payload provided in |payload_data| reading from the |source_path|
@@ -352,11 +347,9 @@ class DeltaPerformerTest : public ::testing::Test {
                                bool sign_payload,
                                bool signature_checks_mandatory) {
     // Loads the payload and parses the manifest.
-    brillo::Blob payload = GeneratePayload(brillo::Blob(),
-                                           vector<AnnotatedOperation>(),
-                                           sign_payload,
-                                           kBrilloMajorPayloadVersion,
-                                           kFullPayloadMinorVersion);
+    brillo::Blob payload = GeneratePayload(
+        brillo::Blob(), vector<AnnotatedOperation>(), sign_payload,
+        kBrilloMajorPayloadVersion, kFullPayloadMinorVersion);
 
     payload_.size = payload.size();
     install_plan_.signature_checks_mandatory = signature_checks_mandatory;
@@ -369,8 +362,8 @@ class DeltaPerformerTest : public ::testing::Test {
       case kEmptyMetadataSignature:
         payload_.metadata_signature.clear();
         // We need to set the signature size in a signed payload to zero.
-        std::fill(
-            std::next(payload.begin(), 20), std::next(payload.begin(), 24), 0);
+        std::fill(std::next(payload.begin(), 20),
+                  std::next(payload.begin(), 24), 0);
         expected_result = MetadataParseResult::kError;
         expected_error = ErrorCode::kDownloadMetadataSignatureMissingError;
         break;
@@ -387,8 +380,7 @@ class DeltaPerformerTest : public ::testing::Test {
         // in the manifest so that we pass the metadata size checks. Only
         // then we can get to manifest signature checks.
         ASSERT_TRUE(PayloadSigner::GetMetadataSignature(
-            payload.data(),
-            payload_.metadata_size,
+            payload.data(), payload_.metadata_size,
             GetBuildArtifactsPath(kUnittestPrivateKeyPath),
             &payload_.metadata_signature));
         EXPECT_FALSE(payload_.metadata_signature.empty());
@@ -462,11 +454,9 @@ TEST_F(DeltaPerformerTest, FullPayloadWriteTest) {
   aop.op.set_type(InstallOperation::REPLACE);
   aops.push_back(aop);
 
-  brillo::Blob payload_data = GeneratePayload(expected_data,
-                                              aops,
-                                              false,
-                                              kBrilloMajorPayloadVersion,
-                                              kFullPayloadMinorVersion);
+  brillo::Blob payload_data =
+      GeneratePayload(expected_data, aops, false, kBrilloMajorPayloadVersion,
+                      kFullPayloadMinorVersion);
 
   EXPECT_EQ(expected_data, ApplyPayload(payload_data, "/dev/null", true));
 }
@@ -484,11 +474,9 @@ TEST_F(DeltaPerformerTest, ShouldCancelTest) {
   aop.op.set_type(InstallOperation::REPLACE);
   aops.push_back(aop);
 
-  brillo::Blob payload_data = GeneratePayload(expected_data,
-                                              aops,
-                                              false,
-                                              kBrilloMajorPayloadVersion,
-                                              kFullPayloadMinorVersion);
+  brillo::Blob payload_data =
+      GeneratePayload(expected_data, aops, false, kBrilloMajorPayloadVersion,
+                      kFullPayloadMinorVersion);
 
   testing::Mock::VerifyAndClearExpectations(&mock_delegate_);
   EXPECT_CALL(mock_delegate_, ShouldCancel(_))
@@ -560,10 +548,10 @@ TEST_F(DeltaPerformerTest, ZeroOperationTest) {
   brillo::Blob expected_data = existing_data;
   // Blocks 4, 5 and 7 should have zeros instead of 'a' after the operation is
   // applied.
-  std::fill(
-      expected_data.data() + 4096 * 4, expected_data.data() + 4096 * 6, 0);
-  std::fill(
-      expected_data.data() + 4096 * 7, expected_data.data() + 4096 * 8, 0);
+  std::fill(expected_data.data() + 4096 * 4, expected_data.data() + 4096 * 6,
+            0);
+  std::fill(expected_data.data() + 4096 * 7, expected_data.data() + 4096 * 8,
+            0);
 
   AnnotatedOperation aop;
   *(aop.op.add_dst_extents()) = ExtentForRange(4, 2);
@@ -775,10 +763,8 @@ TEST_F(DeltaPerformerTest, ValidateManifestFullGoodTest) {
   }
   manifest.set_minor_version(kFullPayloadMinorVersion);
 
-  RunManifestValidation(manifest,
-                        kBrilloMajorPayloadVersion,
-                        InstallPayloadType::kFull,
-                        ErrorCode::kSuccess);
+  RunManifestValidation(manifest, kBrilloMajorPayloadVersion,
+                        InstallPayloadType::kFull, ErrorCode::kSuccess);
 }
 
 TEST_F(DeltaPerformerTest, ValidateManifestDeltaMaxGoodTest) {
@@ -792,10 +778,8 @@ TEST_F(DeltaPerformerTest, ValidateManifestDeltaMaxGoodTest) {
   }
   manifest.set_minor_version(kMaxSupportedMinorPayloadVersion);
 
-  RunManifestValidation(manifest,
-                        kBrilloMajorPayloadVersion,
-                        InstallPayloadType::kDelta,
-                        ErrorCode::kSuccess);
+  RunManifestValidation(manifest, kBrilloMajorPayloadVersion,
+                        InstallPayloadType::kDelta, ErrorCode::kSuccess);
 }
 
 TEST_F(DeltaPerformerTest, ValidateManifestDeltaMinGoodTest) {
@@ -809,20 +793,16 @@ TEST_F(DeltaPerformerTest, ValidateManifestDeltaMinGoodTest) {
   }
   manifest.set_minor_version(kMinSupportedMinorPayloadVersion);
 
-  RunManifestValidation(manifest,
-                        kBrilloMajorPayloadVersion,
-                        InstallPayloadType::kDelta,
-                        ErrorCode::kSuccess);
+  RunManifestValidation(manifest, kBrilloMajorPayloadVersion,
+                        InstallPayloadType::kDelta, ErrorCode::kSuccess);
 }
 
 TEST_F(DeltaPerformerTest, ValidateManifestFullUnsetMinorVersion) {
   // The Manifest we are validating.
   DeltaArchiveManifest manifest;
 
-  RunManifestValidation(manifest,
-                        kMaxSupportedMajorPayloadVersion,
-                        InstallPayloadType::kFull,
-                        ErrorCode::kSuccess);
+  RunManifestValidation(manifest, kMaxSupportedMajorPayloadVersion,
+                        InstallPayloadType::kFull, ErrorCode::kSuccess);
 }
 
 TEST_F(DeltaPerformerTest, ValidateManifestDeltaUnsetMinorVersion) {
@@ -834,8 +814,7 @@ TEST_F(DeltaPerformerTest, ValidateManifestDeltaUnsetMinorVersion) {
   rootfs->set_partition_name("rootfs");
   rootfs->mutable_old_partition_info();
 
-  RunManifestValidation(manifest,
-                        kMaxSupportedMajorPayloadVersion,
+  RunManifestValidation(manifest, kMaxSupportedMajorPayloadVersion,
                         InstallPayloadType::kDelta,
                         ErrorCode::kUnsupportedMinorPayloadVersion);
 }
@@ -850,8 +829,7 @@ TEST_F(DeltaPerformerTest, ValidateManifestFullOldKernelTest) {
     part->mutable_new_partition_info();
   }
   manifest.mutable_partitions(0)->clear_old_partition_info();
-  RunManifestValidation(manifest,
-                        kBrilloMajorPayloadVersion,
+  RunManifestValidation(manifest, kBrilloMajorPayloadVersion,
                         InstallPayloadType::kFull,
                         ErrorCode::kPayloadMismatchedType);
 }
@@ -864,8 +842,7 @@ TEST_F(DeltaPerformerTest, ValidateManifestFullPartitionUpdateTest) {
   partition->mutable_new_partition_info();
   manifest.set_minor_version(kMaxSupportedMinorPayloadVersion);
 
-  RunManifestValidation(manifest,
-                        kBrilloMajorPayloadVersion,
+  RunManifestValidation(manifest, kBrilloMajorPayloadVersion,
                         InstallPayloadType::kFull,
                         ErrorCode::kPayloadMismatchedType);
 }
@@ -879,8 +856,7 @@ TEST_F(DeltaPerformerTest, ValidateManifestBadMinorVersion) {
   // Mark the manifest as a delta payload by setting |old_partition_info|.
   manifest.add_partitions()->mutable_old_partition_info();
 
-  RunManifestValidation(manifest,
-                        kMaxSupportedMajorPayloadVersion,
+  RunManifestValidation(manifest, kMaxSupportedMajorPayloadVersion,
                         InstallPayloadType::kDelta,
                         ErrorCode::kUnsupportedMinorPayloadVersion);
 }
@@ -893,8 +869,7 @@ TEST_F(DeltaPerformerTest, ValidateManifestDowngrade) {
   manifest.set_max_timestamp(1);
   fake_hardware_.SetBuildTimestamp(2);
 
-  RunManifestValidation(manifest,
-                        kMaxSupportedMajorPayloadVersion,
+  RunManifestValidation(manifest, kMaxSupportedMajorPayloadVersion,
                         InstallPayloadType::kFull,
                         ErrorCode::kPayloadTimestampError);
 }
@@ -911,10 +886,8 @@ TEST_F(DeltaPerformerTest, ValidatePerPartitionTimestampSuccess) {
   partition.set_partition_name("system");
   fake_hardware_.SetVersion("system", "5");
 
-  RunManifestValidation(manifest,
-                        kMaxSupportedMajorPayloadVersion,
-                        InstallPayloadType::kFull,
-                        ErrorCode::kSuccess);
+  RunManifestValidation(manifest, kMaxSupportedMajorPayloadVersion,
+                        InstallPayloadType::kFull, ErrorCode::kSuccess);
 }
 
 TEST_F(DeltaPerformerTest, BrilloMetadataSignatureSizeTest) {
@@ -976,10 +949,9 @@ TEST_F(DeltaPerformerTest, BrilloMetadataSizeNOKTest) {
   uint32_t metadata_signature_size_be = htobe32(kUnittestMetadataSignatureSize);
 
   ErrorCode error;
-  EXPECT_FALSE(
-      performer_.Write(&metadata_signature_size_be,
-                       PayloadMetadata::kDeltaMetadataSignatureSizeSize + 1,
-                       &error));
+  EXPECT_FALSE(performer_.Write(
+      &metadata_signature_size_be,
+      PayloadMetadata::kDeltaMetadataSignatureSizeSize + 1, &error));
 
   EXPECT_EQ(ErrorCode::kDownloadInvalidMetadataSize, error);
 }
@@ -1004,10 +976,9 @@ TEST_F(DeltaPerformerTest, BrilloMetadataSignatureSizeNOKTest) {
 
   uint32_t metadata_signature_size_be = htobe32(metadata_signature_size);
   ErrorCode error;
-  EXPECT_FALSE(
-      performer_.Write(&metadata_signature_size_be,
-                       PayloadMetadata::kDeltaMetadataSignatureSizeSize + 1,
-                       &error));
+  EXPECT_FALSE(performer_.Write(
+      &metadata_signature_size_be,
+      PayloadMetadata::kDeltaMetadataSignatureSizeSize + 1, &error));
 
   EXPECT_EQ(ErrorCode::kDownloadInvalidMetadataSize, error);
 }

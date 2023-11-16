@@ -89,8 +89,8 @@ static const char* kUnusedUrl = "unused://unused";
 
 static inline string LocalServerUrlForPath(in_port_t port, const string& path) {
   string port_str = (port ? base::StringPrintf(":%hu", port) : "");
-  return base::StringPrintf(
-      "http://127.0.0.1%s%s", port_str.c_str(), path.c_str());
+  return base::StringPrintf("http://127.0.0.1%s%s", port_str.c_str(),
+                            path.c_str());
 }
 
 //
@@ -237,8 +237,8 @@ class MockHttpFetcherTest : public AnyHttpFetcherTest {
   using AnyHttpFetcherTest::NewLargeFetcher;
   HttpFetcher* NewLargeFetcher(ProxyResolver* proxy_resolver) override {
     brillo::Blob big_data(1000000);
-    return new MockHttpFetcher(
-        big_data.data(), big_data.size(), proxy_resolver);
+    return new MockHttpFetcher(big_data.data(), big_data.size(),
+                               proxy_resolver);
   }
 
   // Necessary to unhide the definition in the base class.
@@ -498,8 +498,7 @@ TYPED_TEST(HttpFetcherTest, SimpleTest) {
   ASSERT_TRUE(server->started_);
 
   this->loop_.PostTask(FROM_HERE,
-                       base::BindOnce(StartTransfer,
-                                      fetcher.get(),
+                       base::BindOnce(StartTransfer, fetcher.get(),
                                       this->test_.SmallUrl(server->GetPort())));
   this->loop_.Run();
   EXPECT_EQ(0, delegate.times_transfer_terminated_called_);
@@ -513,10 +512,9 @@ TYPED_TEST(HttpFetcherTest, SimpleBigTest) {
   unique_ptr<HttpServer> server(this->test_.CreateServer());
   ASSERT_TRUE(server->started_);
 
-  this->loop_.PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          StartTransfer, fetcher.get(), this->test_.BigUrl(server->GetPort())));
+  this->loop_.PostTask(FROM_HERE,
+                       base::BindOnce(StartTransfer, fetcher.get(),
+                                      this->test_.BigUrl(server->GetPort())));
   this->loop_.Run();
   EXPECT_EQ(0, delegate.times_transfer_terminated_called_);
 }
@@ -538,8 +536,7 @@ TYPED_TEST(HttpFetcherTest, ErrorTest) {
   ASSERT_TRUE(server->started_);
 
   this->loop_.PostTask(FROM_HERE,
-                       base::BindOnce(StartTransfer,
-                                      fetcher.get(),
+                       base::BindOnce(StartTransfer, fetcher.get(),
                                       this->test_.ErrorUrl(server->GetPort())));
   this->loop_.Run();
 
@@ -576,10 +573,8 @@ TYPED_TEST(HttpFetcherTest, ExtraHeadersInRequestTest) {
   ASSERT_TRUE(server.started_);
 
   this->loop_.PostTask(
-      FROM_HERE,
-      base::BindOnce(StartTransfer,
-                     fetcher.get(),
-                     LocalServerUrlForPath(port, "/echo-headers")));
+      FROM_HERE, base::BindOnce(StartTransfer, fetcher.get(),
+                                LocalServerUrlForPath(port, "/echo-headers")));
   this->loop_.Run();
 
   EXPECT_NE(string::npos,
@@ -622,8 +617,7 @@ void UnpausingTimeoutCallback(PausingHttpFetcherTestDelegate* delegate,
     delegate->Unpause();
   // Update the task id with the new scheduled callback.
   *my_id = MessageLoop::current()->PostDelayedTask(
-      FROM_HERE,
-      base::BindOnce(&UnpausingTimeoutCallback, delegate, my_id),
+      FROM_HERE, base::BindOnce(&UnpausingTimeoutCallback, delegate, my_id),
       base::Milliseconds(200));
 }
 }  // namespace
@@ -804,15 +798,13 @@ TYPED_TEST(HttpFetcherTest, FlakyTest) {
 
     this->loop_.PostTask(
         FROM_HERE,
-        base::BindOnce(&StartTransfer,
-                       fetcher.get(),
-                       LocalServerUrlForPath(
-                           server->GetPort(),
-                           base::StringPrintf("/flaky/%d/%d/%d/%d",
-                                              kBigLength,
-                                              kFlakyTruncateLength,
-                                              kFlakySleepEveryMilliseconds,
-                                              kFlakySleepMilliseconds))));
+        base::BindOnce(
+            &StartTransfer, fetcher.get(),
+            LocalServerUrlForPath(
+                server->GetPort(),
+                base::StringPrintf(
+                    "/flaky/%d/%d/%d/%d", kBigLength, kFlakyTruncateLength,
+                    kFlakySleepEveryMilliseconds, kFlakySleepMilliseconds))));
     this->loop_.Run();
 
     // verify the data we get back
@@ -876,10 +868,9 @@ TYPED_TEST(HttpFetcherTest, FailureTest) {
   unique_ptr<HttpFetcher> fetcher(this->test_.NewSmallFetcher());
   fetcher->set_delegate(&delegate);
 
-  this->loop_.PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          StartTransfer, fetcher.get(), "http://host_doesnt_exist99999999"));
+  this->loop_.PostTask(FROM_HERE,
+                       base::BindOnce(StartTransfer, fetcher.get(),
+                                      "http://host_doesnt_exist99999999"));
   this->loop_.Run();
   EXPECT_EQ(1, delegate.times_transfer_complete_called_);
   EXPECT_EQ(0, delegate.times_transfer_terminated_called_);
@@ -907,10 +898,9 @@ TYPED_TEST(HttpFetcherTest, NoResponseTest) {
   // expired.
   fetcher->set_low_speed_limit(kDownloadLowSpeedLimitBps, 1);
 
-  this->loop_.PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          StartTransfer, fetcher.get(), LocalServerUrlForPath(port, "/hang")));
+  this->loop_.PostTask(FROM_HERE,
+                       base::BindOnce(StartTransfer, fetcher.get(),
+                                      LocalServerUrlForPath(port, "/hang")));
   this->loop_.Run();
   EXPECT_EQ(1, delegate.times_transfer_complete_called_);
   EXPECT_EQ(0, delegate.times_transfer_terminated_called_);
@@ -942,16 +932,13 @@ TYPED_TEST(HttpFetcherTest, ServerDiesTest) {
   fetcher->set_max_retry_count(3);
 
   this->loop_.PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          StartTransfer,
-          fetcher.get(),
-          LocalServerUrlForPath(port,
-                                base::StringPrintf("/flaky/%d/%d/%d/%d",
-                                                   kBigLength,
-                                                   kFlakyTruncateLength,
-                                                   kFlakySleepEveryMilliseconds,
-                                                   kFlakySleepMilliseconds))));
+      FROM_HERE, base::BindOnce(StartTransfer, fetcher.get(),
+                                LocalServerUrlForPath(
+                                    port, base::StringPrintf(
+                                              "/flaky/%d/%d/%d/%d", kBigLength,
+                                              kFlakyTruncateLength,
+                                              kFlakySleepEveryMilliseconds,
+                                              kFlakySleepMilliseconds))));
   this->loop_.Run();
   EXPECT_EQ(1, delegate.times_transfer_complete_called_);
   EXPECT_EQ(0, delegate.times_transfer_terminated_called_);
@@ -975,16 +962,13 @@ TYPED_TEST(HttpFetcherTest, TerminateTransferWhenServerDiedTest) {
   fetcher->set_delegate(&delegate);
 
   this->loop_.PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          StartTransfer,
-          fetcher.get(),
-          LocalServerUrlForPath(port,
-                                base::StringPrintf("/flaky/%d/%d/%d/%d",
-                                                   kBigLength,
-                                                   kFlakyTruncateLength,
-                                                   kFlakySleepEveryMilliseconds,
-                                                   kFlakySleepMilliseconds))));
+      FROM_HERE, base::BindOnce(StartTransfer, fetcher.get(),
+                                LocalServerUrlForPath(
+                                    port, base::StringPrintf(
+                                              "/flaky/%d/%d/%d/%d", kBigLength,
+                                              kFlakyTruncateLength,
+                                              kFlakySleepEveryMilliseconds,
+                                              kFlakySleepMilliseconds))));
   // Terminating the transfer after 3 seconds gives it a chance to contact the
   // server and enter the retry loop.
   this->loop_.PostDelayedTask(FROM_HERE,
@@ -1008,10 +992,9 @@ TYPED_TEST(HttpFetcherTest, TerminateTransferWhenServerDiedTest) {
 }
 
 namespace {
-const HttpResponseCode kRedirectCodes[] = {kHttpResponseMovedPermanently,
-                                           kHttpResponseFound,
-                                           kHttpResponseSeeOther,
-                                           kHttpResponseTempRedirect};
+const HttpResponseCode kRedirectCodes[] = {
+    kHttpResponseMovedPermanently, kHttpResponseFound, kHttpResponseSeeOther,
+    kHttpResponseTempRedirect};
 
 class RedirectHttpFetcherTestDelegate : public HttpFetcherDelegate {
  public:
@@ -1048,10 +1031,8 @@ void RedirectTest(const HttpServer* server,
   fetcher->set_delegate(&delegate);
 
   MessageLoop::current()->PostTask(
-      FROM_HERE,
-      base::BindOnce(StartTransfer,
-                     fetcher.get(),
-                     LocalServerUrlForPath(server->GetPort(), url)));
+      FROM_HERE, base::BindOnce(StartTransfer, fetcher.get(),
+                                LocalServerUrlForPath(server->GetPort(), url)));
   MessageLoop::current()->Run();
   if (expected_successful) {
     // verify the data we get back
@@ -1157,8 +1138,7 @@ void MultiTest(HttpFetcher* fetcher_in,
   multi_fetcher->ClearRanges();
   for (vector<pair<off_t, off_t>>::const_iterator it = ranges.begin(),
                                                   e = ranges.end();
-       it != e;
-       ++it) {
+       it != e; ++it) {
     string tmp_str = base::StringPrintf("%jd+", it->first);
     if (it->second > 0) {
       base::StringAppendF(&tmp_str, "%jd", it->second);
@@ -1192,12 +1172,9 @@ TYPED_TEST(HttpFetcherTest, MultiHttpFetcherSimpleTest) {
   vector<pair<off_t, off_t>> ranges;
   ranges.push_back(make_pair(0, 25));
   ranges.push_back(make_pair(99, 17));
-  MultiTest(this->test_.NewLargeFetcher(),
-            this->test_.fake_hardware(),
-            this->test_.BigUrl(server->GetPort()),
-            ranges,
-            "abcdefghijabcdefghijabcdejabcdefghijabcdef",
-            25 + 17,
+  MultiTest(this->test_.NewLargeFetcher(), this->test_.fake_hardware(),
+            this->test_.BigUrl(server->GetPort()), ranges,
+            "abcdefghijabcdefghijabcdejabcdefghijabcdef", 25 + 17,
             this->test_.IsFileFetcher() ? kHttpResponseOk
                                         : kHttpResponsePartialContent);
 }
@@ -1212,13 +1189,10 @@ TYPED_TEST(HttpFetcherTest, MultiHttpFetcherUnspecifiedEndTest) {
   vector<pair<off_t, off_t>> ranges;
   ranges.push_back(make_pair(0, 25));
   ranges.push_back(make_pair(99, 0));
-  MultiTest(this->test_.NewLargeFetcher(),
-            this->test_.fake_hardware(),
-            this->test_.BigUrl(server->GetPort()),
-            ranges,
+  MultiTest(this->test_.NewLargeFetcher(), this->test_.fake_hardware(),
+            this->test_.BigUrl(server->GetPort()), ranges,
             "abcdefghijabcdefghijabcdejabcdefghijabcdef",
-            kBigLength - (99 - 25),
-            kHttpResponsePartialContent);
+            kBigLength - (99 - 25), kHttpResponsePartialContent);
 }
 
 TYPED_TEST(HttpFetcherTest, MultiHttpFetcherLengthLimitTest) {
@@ -1230,12 +1204,9 @@ TYPED_TEST(HttpFetcherTest, MultiHttpFetcherLengthLimitTest) {
 
   vector<pair<off_t, off_t>> ranges;
   ranges.push_back(make_pair(0, 24));
-  MultiTest(this->test_.NewLargeFetcher(),
-            this->test_.fake_hardware(),
-            this->test_.BigUrl(server->GetPort()),
-            ranges,
-            "abcdefghijabcdefghijabcd",
-            24,
+  MultiTest(this->test_.NewLargeFetcher(), this->test_.fake_hardware(),
+            this->test_.BigUrl(server->GetPort()), ranges,
+            "abcdefghijabcdefghijabcd", 24,
             this->test_.IsFileFetcher() ? kHttpResponseOk
                                         : kHttpResponsePartialContent);
 }
@@ -1250,12 +1221,8 @@ TYPED_TEST(HttpFetcherTest, MultiHttpFetcherMultiEndTest) {
   vector<pair<off_t, off_t>> ranges;
   ranges.push_back(make_pair(kBigLength - 2, 0));
   ranges.push_back(make_pair(kBigLength - 3, 0));
-  MultiTest(this->test_.NewLargeFetcher(),
-            this->test_.fake_hardware(),
-            this->test_.BigUrl(server->GetPort()),
-            ranges,
-            "ijhij",
-            5,
+  MultiTest(this->test_.NewLargeFetcher(), this->test_.fake_hardware(),
+            this->test_.BigUrl(server->GetPort()), ranges, "ijhij", 5,
             kHttpResponsePartialContent);
 }
 
@@ -1270,12 +1237,8 @@ TYPED_TEST(HttpFetcherTest, MultiHttpFetcherInsufficientTest) {
   ranges.push_back(make_pair(kBigLength - 2, 4));
   for (int i = 0; i < 2; ++i) {
     LOG(INFO) << "i = " << i;
-    MultiTest(this->test_.NewLargeFetcher(),
-              this->test_.fake_hardware(),
-              this->test_.BigUrl(server->GetPort()),
-              ranges,
-              "ij",
-              2,
+    MultiTest(this->test_.NewLargeFetcher(), this->test_.fake_hardware(),
+              this->test_.BigUrl(server->GetPort()), ranges, "ij", 2,
               kHttpResponseUndefined);
     ranges.push_back(make_pair(0, 5));
   }
@@ -1296,15 +1259,12 @@ TYPED_TEST(HttpFetcherTest, MultiHttpFetcherErrorIfOffsetRecoverableTest) {
   vector<pair<off_t, off_t>> ranges;
   ranges.push_back(make_pair(0, 25));
   ranges.push_back(make_pair(99, 0));
-  MultiTest(this->test_.NewLargeFetcher(3),
-            this->test_.fake_hardware(),
+  MultiTest(this->test_.NewLargeFetcher(3), this->test_.fake_hardware(),
             LocalServerUrlForPath(
                 server->GetPort(),
                 base::StringPrintf("/error-if-offset/%d/2", kBigLength)),
-            ranges,
-            "abcdefghijabcdefghijabcdejabcdefghijabcdef",
-            kBigLength - (99 - 25),
-            kHttpResponsePartialContent);
+            ranges, "abcdefghijabcdefghijabcdejabcdefghijabcdef",
+            kBigLength - (99 - 25), kHttpResponsePartialContent);
 }
 
 // (2) unsuccessful recovery: The offset fetch will fail repeatedly.  The
@@ -1319,15 +1279,13 @@ TYPED_TEST(HttpFetcherTest, MultiHttpFetcherErrorIfOffsetUnrecoverableTest) {
   vector<pair<off_t, off_t>> ranges;
   ranges.push_back(make_pair(0, 25));
   ranges.push_back(make_pair(99, 0));
-  MultiTest(this->test_.NewLargeFetcher(2),
-            this->test_.fake_hardware(),
+  MultiTest(this->test_.NewLargeFetcher(2), this->test_.fake_hardware(),
             LocalServerUrlForPath(
                 server->GetPort(),
                 base::StringPrintf("/error-if-offset/%d/3", kBigLength)),
             ranges,
             "abcdefghijabcdefghijabcde",  // only received the first chunk
-            25,
-            kHttpResponseUndefined);
+            25, kHttpResponseUndefined);
 }
 
 namespace {
@@ -1346,9 +1304,8 @@ class MultiHttpFetcherTerminateTestDelegate : public HttpFetcherDelegate {
     if (bytes_downloaded_ < terminate_trigger_bytes_ &&
         bytes_downloaded_ + length >= terminate_trigger_bytes_) {
       MessageLoop::current()->PostTask(
-          FROM_HERE,
-          base::BindOnce(&HttpFetcher::TerminateTransfer,
-                         base::Unretained(fetcher_.get())));
+          FROM_HERE, base::BindOnce(&HttpFetcher::TerminateTransfer,
+                                    base::Unretained(fetcher_.get())));
       should_terminate = true;
     }
     bytes_downloaded_ += length;
@@ -1437,8 +1394,7 @@ void BlockedTransferTestHelper(AnyHttpFetcherTest* fetcher_test,
   MessageLoop::current()->PostTask(
       FROM_HERE,
       base::BindOnce(
-          StartTransfer,
-          fetcher.get(),
+          StartTransfer, fetcher.get(),
           LocalServerUrlForPath(server->GetPort(),
                                 fetcher_test->SmallUrl(server->GetPort()))));
   MessageLoop::current()->Run();

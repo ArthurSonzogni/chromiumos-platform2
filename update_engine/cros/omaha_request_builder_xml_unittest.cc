@@ -175,8 +175,8 @@ TEST_F(OmahaRequestBuilderXmlTest, GetRequestXmlRequestIdTest) {
 TEST_F(OmahaRequestBuilderXmlTest, GetRequestXmlSessionIdTest) {
   const string gen_session_id =
       base::Uuid::GenerateRandomV4().AsLowercaseString();
-  OmahaRequestBuilderXml omaha_request{
-      nullptr, false, false, 0, 0, 0, gen_session_id};
+  OmahaRequestBuilderXml omaha_request{nullptr, false, false,         0,
+                                       0,       0,     gen_session_id};
   const string request_xml = omaha_request.GetRequest();
   const string key = "sessionid";
   const string session_id =
@@ -312,9 +312,8 @@ TEST_F(OmahaRequestBuilderXmlTest, GetRequestXmlDlcPingRollCallAndActive) {
          .send_ping = true}}});
   OmahaRequestBuilderXml omaha_request{nullptr, false, false, 0, 0, 0, ""};
   const string request_xml = omaha_request.GetRequest();
-  EXPECT_EQ(1,
-            CountSubstringInString(request_xml,
-                                   "<ping active=\"1\" ad=\"25\" rd=\"36\""))
+  EXPECT_EQ(1, CountSubstringInString(request_xml,
+                                      "<ping active=\"1\" ad=\"25\" rd=\"36\""))
       << request_xml;
 }
 
@@ -346,9 +345,8 @@ TEST_F(OmahaRequestBuilderXmlTest, GetRequestXmlUpdateCompleteEvent) {
   const string request_xml = omaha_request.GetRequest();
   LOG(INFO) << request_xml;
   EXPECT_EQ(
-      1,
-      CountSubstringInString(
-          request_xml, "<event eventtype=\"3\" eventresult=\"1\"></event>"))
+      1, CountSubstringInString(
+             request_xml, "<event eventtype=\"3\" eventresult=\"1\"></event>"))
       << request_xml;
 }
 
@@ -362,9 +360,8 @@ TEST_F(OmahaRequestBuilderXmlTest,
   OmahaRequestBuilderXml omaha_request{&event, false, false, 0, 0, 0, ""};
   const string request_xml = omaha_request.GetRequest();
   EXPECT_EQ(
-      2,
-      CountSubstringInString(
-          request_xml, "<event eventtype=\"3\" eventresult=\"1\"></event>"))
+      2, CountSubstringInString(
+             request_xml, "<event eventtype=\"3\" eventresult=\"1\"></event>"))
       << request_xml;
   EXPECT_EQ(
       1,
@@ -384,9 +381,8 @@ TEST_F(OmahaRequestBuilderXmlTest,
   OmahaRequestBuilderXml omaha_request{&event, false, false, 0, 0, 0, ""};
   const string request_xml = omaha_request.GetRequest();
   EXPECT_EQ(
-      1,
-      CountSubstringInString(
-          request_xml, "<event eventtype=\"3\" eventresult=\"1\"></event>"))
+      1, CountSubstringInString(
+             request_xml, "<event eventtype=\"3\" eventresult=\"1\"></event>"))
       << request_xml;
   EXPECT_EQ(
       2,
@@ -406,9 +402,8 @@ TEST_F(OmahaRequestBuilderXmlTest,
   OmahaRequestBuilderXml omaha_request{&event, false, false, 0, 0, 0, ""};
   const string request_xml = omaha_request.GetRequest();
   EXPECT_EQ(
-      1,
-      CountSubstringInString(
-          request_xml, "<event eventtype=\"3\" eventresult=\"1\"></event>"))
+      1, CountSubstringInString(
+             request_xml, "<event eventtype=\"3\" eventresult=\"1\"></event>"))
       << request_xml;
   // MiniOS package is not updated due to exclusions. Send corresponding event.
   EXPECT_EQ(
@@ -457,14 +452,12 @@ TEST_F(OmahaRequestBuilderXmlTest, GetRequestXmlDlcCohortCheck) {
   EXPECT_TRUE(fake_prefs->SetString(dlc_cohort_hint_key, kDlcCohortHintVal));
   const string request_xml = omaha_request.GetRequest();
 
-  EXPECT_EQ(1,
-            CountSubstringInString(
-                request_xml,
-                base::StringPrintf(
-                    "cohort=\"%s\" cohortname=\"%s\" cohorthint=\"%s\"",
-                    kDlcCohortVal.c_str(),
-                    kDlcCohortNameVal.c_str(),
-                    kDlcCohortHintVal.c_str())))
+  EXPECT_EQ(1, CountSubstringInString(
+                   request_xml,
+                   base::StringPrintf(
+                       "cohort=\"%s\" cohortname=\"%s\" cohorthint=\"%s\"",
+                       kDlcCohortVal.c_str(), kDlcCohortNameVal.c_str(),
+                       kDlcCohortHintVal.c_str())))
       << request_xml;
 }
 
@@ -589,35 +582,29 @@ TEST_F(OmahaRequestBuilderXmlTest, GetRequestXmlHwCheck) {
 
   OmahaRequestBuilderXml omaha_request{nullptr, false, false, 0, 0, 0, ""};
   const string request_xml = omaha_request.GetRequest();
-  EXPECT_EQ(1,
-            CountSubstringInString(
-                request_xml,
-                base::StringPrintf("    <hw"
-                                   " vendor_name=\"%s\""
-                                   " product_name=\"%s\""
-                                   " product_version=\"%s\""
-                                   " bios_version=\"%s\""
-                                   " uefi=\"%" PRId32 "\""
-                                   " system_memory_bytes=\"%" PRIu32 "\""
-                                   " root_disk_drive=\"%" PRIu64 "\""
-                                   " cpu_name=\"%s\""
-                                   " wireless_drivers=\"%s\""
-                                   " wireless_ids=\"%s\""
-                                   " gpu_drivers=\"%s\""
-                                   " gpu_ids=\"%s\""
-                                   " />\n",
-                                   sys_vendor.c_str(),
-                                   product_name.c_str(),
-                                   product_version.c_str(),
-                                   bios_version.c_str(),
-                                   static_cast<int32_t>(boot_mode),
-                                   total_memory_kib,
-                                   size,
-                                   model_name.c_str(),
-                                   "fake-driver-1",
-                                   "0001:0002 0003:0004",
-                                   "fake-driver-2",
-                                   "0005:0006 00AA:1111")))
+  EXPECT_EQ(
+      1,
+      CountSubstringInString(
+          request_xml,
+          base::StringPrintf(
+              "    <hw"
+              " vendor_name=\"%s\""
+              " product_name=\"%s\""
+              " product_version=\"%s\""
+              " bios_version=\"%s\""
+              " uefi=\"%" PRId32 "\""
+              " system_memory_bytes=\"%" PRIu32 "\""
+              " root_disk_drive=\"%" PRIu64 "\""
+              " cpu_name=\"%s\""
+              " wireless_drivers=\"%s\""
+              " wireless_ids=\"%s\""
+              " gpu_drivers=\"%s\""
+              " gpu_ids=\"%s\""
+              " />\n",
+              sys_vendor.c_str(), product_name.c_str(), product_version.c_str(),
+              bios_version.c_str(), static_cast<int32_t>(boot_mode),
+              total_memory_kib, size, model_name.c_str(), "fake-driver-1",
+              "0001:0002 0003:0004", "fake-driver-2", "0005:0006 00AA:1111")))
       << request_xml;
 }
 
@@ -732,35 +719,29 @@ TEST_F(OmahaRequestBuilderXmlTest, GetRequestXmlHwCheckMultipleGpuDrivers) {
 
   OmahaRequestBuilderXml omaha_request{nullptr, false, false, 0, 0, 0, ""};
   const string request_xml = omaha_request.GetRequest();
-  EXPECT_EQ(1,
-            CountSubstringInString(
-                request_xml,
-                base::StringPrintf("    <hw"
-                                   " vendor_name=\"%s\""
-                                   " product_name=\"%s\""
-                                   " product_version=\"%s\""
-                                   " bios_version=\"%s\""
-                                   " uefi=\"%" PRId32 "\""
-                                   " system_memory_bytes=\"%" PRIu32 "\""
-                                   " root_disk_drive=\"%" PRIu64 "\""
-                                   " cpu_name=\"%s\""
-                                   " wireless_drivers=\"%s\""
-                                   " wireless_ids=\"%s\""
-                                   " gpu_drivers=\"%s\""
-                                   " gpu_ids=\"%s\""
-                                   " />\n",
-                                   sys_vendor.c_str(),
-                                   product_name.c_str(),
-                                   product_version.c_str(),
-                                   bios_version.c_str(),
-                                   static_cast<int32_t>(boot_mode),
-                                   total_memory_kib,
-                                   size,
-                                   model_name.c_str(),
-                                   "fake-driver-1",
-                                   "0001:0002 0003:0004",
-                                   "fake-driver-2 fake-driver-3",
-                                   "0005:0006 DEAD:BEEF 00AA:1111")))
+  EXPECT_EQ(1, CountSubstringInString(
+                   request_xml,
+                   base::StringPrintf(
+                       "    <hw"
+                       " vendor_name=\"%s\""
+                       " product_name=\"%s\""
+                       " product_version=\"%s\""
+                       " bios_version=\"%s\""
+                       " uefi=\"%" PRId32 "\""
+                       " system_memory_bytes=\"%" PRIu32 "\""
+                       " root_disk_drive=\"%" PRIu64 "\""
+                       " cpu_name=\"%s\""
+                       " wireless_drivers=\"%s\""
+                       " wireless_ids=\"%s\""
+                       " gpu_drivers=\"%s\""
+                       " gpu_ids=\"%s\""
+                       " />\n",
+                       sys_vendor.c_str(), product_name.c_str(),
+                       product_version.c_str(), bios_version.c_str(),
+                       static_cast<int32_t>(boot_mode), total_memory_kib, size,
+                       model_name.c_str(), "fake-driver-1",
+                       "0001:0002 0003:0004", "fake-driver-2 fake-driver-3",
+                       "0005:0006 DEAD:BEEF 00AA:1111")))
       << request_xml;
 }
 
@@ -769,22 +750,21 @@ TEST_F(OmahaRequestBuilderXmlTest, GetRequestXmlHwCheckMissingCrosHealthd) {
 
   OmahaRequestBuilderXml omaha_request{nullptr, false, false, 0, 0, 0, ""};
   const string request_xml = omaha_request.GetRequest();
-  EXPECT_EQ(1,
-            CountSubstringInString(request_xml,
-                                   "    <hw"
-                                   " vendor_name=\"\""
-                                   " product_name=\"\""
-                                   " product_version=\"\""
-                                   " bios_version=\"\""
-                                   " uefi=\"0\""
-                                   " system_memory_bytes=\"0\""
-                                   " root_disk_drive=\"0\""
-                                   " cpu_name=\"\""
-                                   " wireless_drivers=\"\""
-                                   " wireless_ids=\"\""
-                                   " gpu_drivers=\"\""
-                                   " gpu_ids=\"\""
-                                   " />\n"))
+  EXPECT_EQ(1, CountSubstringInString(request_xml,
+                                      "    <hw"
+                                      " vendor_name=\"\""
+                                      " product_name=\"\""
+                                      " product_version=\"\""
+                                      " bios_version=\"\""
+                                      " uefi=\"0\""
+                                      " system_memory_bytes=\"0\""
+                                      " root_disk_drive=\"0\""
+                                      " cpu_name=\"\""
+                                      " wireless_drivers=\"\""
+                                      " wireless_ids=\"\""
+                                      " gpu_drivers=\"\""
+                                      " gpu_ids=\"\""
+                                      " />\n"))
       << request_xml;
 }
 
@@ -814,9 +794,8 @@ TEST_F(OmahaRequestBuilderXmlTest,
   const string request_xml = omaha_request.GetRequest();
   EXPECT_EQ(1, CountSubstringInString(request_xml, "rollback_allowed=\"true\""))
       << request_xml;
-  EXPECT_EQ(
-      1,
-      CountSubstringInString(request_xml, "targetversionprefix=\"12345.1.\""))
+  EXPECT_EQ(1, CountSubstringInString(request_xml,
+                                      "targetversionprefix=\"12345.1.\""))
       << request_xml;
 }
 

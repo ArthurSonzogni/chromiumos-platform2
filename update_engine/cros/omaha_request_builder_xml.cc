@@ -47,9 +47,8 @@ const int kPingActiveValue = 1;
 const int kPingInactiveValue = 0;
 
 bool XmlEncode(const string& input, string* output) {
-  if (std::find_if(input.begin(), input.end(), [](const char c) {
-        return c & 0x80;
-      }) != input.end()) {
+  if (std::find_if(input.begin(), input.end(),
+                   [](const char c) { return c & 0x80; }) != input.end()) {
     LOG(WARNING) << "Invalid ASCII-7 string passed to the XML encoder:";
     utils::HexDumpString(input);
     return false;
@@ -103,8 +102,7 @@ string OmahaRequestBuilderXml::GetPing() const {
   string ping_roll_call = GetPingAttribute("r", ping_roll_call_days_);
   if (!ping_active.empty() || !ping_roll_call.empty()) {
     return base::StringPrintf("        <ping active=\"1\"%s%s></ping>\n",
-                              ping_active.c_str(),
-                              ping_roll_call.c_str());
+                              ping_active.c_str(), ping_roll_call.c_str());
   }
   return "";
 }
@@ -126,8 +124,7 @@ string OmahaRequestBuilderXml::GetPingDateBased(
                                       app_params.ping_date_last_rollcall);
 
   return base::StringPrintf("        <ping%s%s%s></ping>\n",
-                            ping_active.c_str(),
-                            ping_ad.c_str(),
+                            ping_active.c_str(), ping_ad.c_str(),
                             ping_rd.c_str());
 }
 
@@ -210,8 +207,7 @@ string OmahaRequestBuilderXml::GetAppBody(const OmahaAppData& app_data) const {
         app_body += base::StringPrintf(
             "        <event eventtype=\"%d\" eventresult=\"%d\" "
             "previousversion=\"%s\"></event>\n",
-            OmahaEvent::kTypeRebootedAfterUpdate,
-            OmahaEvent::kResultSuccess,
+            OmahaEvent::kTypeRebootedAfterUpdate, OmahaEvent::kResultSuccess,
             XmlEncodeWithDefault(prev_version, kNoVersion).c_str());
         LOG_IF(WARNING, !prefs->SetString(kPrefsPreviousVersion, ""))
             << "Unable to reset the previous version.";
@@ -237,9 +233,7 @@ string OmahaRequestBuilderXml::GetAppBody(const OmahaAppData& app_data) const {
     }
     app_body = base::StringPrintf(
         "        <event eventtype=\"%d\" eventresult=\"%d\"%s></event>\n",
-        event_->type,
-        event_result,
-        error_code.c_str());
+        event_->type, event_result, error_code.c_str());
   }
 
   return app_body;
@@ -279,8 +273,8 @@ string OmahaRequestBuilderXml::GetCohortArg(
     return "";
   }
 
-  return base::StringPrintf(
-      "%s=\"%s\" ", arg_name.c_str(), escaped_xml_value.c_str());
+  return base::StringPrintf("%s=\"%s\" ", arg_name.c_str(),
+                            escaped_xml_value.c_str());
 }
 
 bool IsValidComponentID(const string& id) {
@@ -350,8 +344,8 @@ string OmahaRequestBuilderXml::GetApp(const OmahaAppData& app_data) const {
   app_cohort_args += GetCohortArg("cohort", cohort_key);
   app_cohort_args += GetCohortArg("cohortname", cohortname_key);
   // Policy provided value overrides pref.
-  app_cohort_args += GetCohortArg(
-      "cohorthint", cohorthint_key, params->quick_fix_build_token());
+  app_cohort_args += GetCohortArg("cohorthint", cohorthint_key,
+                                  params->quick_fix_build_token());
 
   string fingerprint_arg;
   if (!params->os_build_fingerprint().empty()) {
@@ -382,8 +376,7 @@ string OmahaRequestBuilderXml::GetApp(const OmahaAppData& app_data) const {
           continue;
         }
         product_components_args +=
-            base::StringPrintf("_%s.version=\"%s\" ",
-                               key.c_str(),
+            base::StringPrintf("_%s.version=\"%s\" ", key.c_str(),
                                XmlEncodeWithDefault(version).c_str());
       }
     } else {
@@ -459,15 +452,11 @@ string OmahaRequestBuilderXml::GetRequest() const {
       base::Uuid::GenerateRandomV4()
           .AsLowercaseString()
           .c_str() /* requestid */,
-      session_id_.c_str(),
-      constants::kOmahaUpdaterID,
-      kOmahaUpdaterVersion,
+      session_id_.c_str(), constants::kOmahaUpdaterID, kOmahaUpdaterVersion,
       params->interactive() ? "ondemandupdate" : "scheduler",
       recovery_key_version.c_str(),
       (system_state->hardware()->IsRunningFromMiniOs() ? "isminios=\"1\"" : ""),
-      os_xml.c_str(),
-      app_xml.c_str(),
-      hw_xml.c_str());
+      os_xml.c_str(), app_xml.c_str(), hw_xml.c_str());
 
   return request_xml;
 }
@@ -566,8 +555,7 @@ string OmahaRequestBuilderXml::GetHw() const {
       telemetry_info->memory_info.total_memory_kib,
       // Note: Summing the entire non-removable disk sizes.
       std::accumulate(std::begin(telemetry_info->block_device_info),
-                      std::end(telemetry_info->block_device_info),
-                      uint64_t(0),
+                      std::end(telemetry_info->block_device_info), uint64_t(0),
                       [](uint64_t sum,
                          const TelemetryInfo::NonRemovableBlockDeviceInfo& o) {
                         return sum + o.size;

@@ -275,10 +275,10 @@ TEST(ExtentRangesTest, FilterExtentRangesEmptyRanges) {
             FilterExtentRanges(vector<Extent>{ExtentForRange(50, 10)}, ranges));
   // Check that the empty Extents are ignored.
   EXPECT_EQ((vector<Extent>{ExtentForRange(10, 10), ExtentForRange(20, 10)}),
-            FilterExtentRanges(vector<Extent>{ExtentForRange(10, 10),
-                                              ExtentForRange(3, 0),
-                                              ExtentForRange(20, 10)},
-                               ranges));
+            FilterExtentRanges(
+                vector<Extent>{ExtentForRange(10, 10), ExtentForRange(3, 0),
+                               ExtentForRange(20, 10)},
+                ranges));
 }
 
 TEST(ExtentRangesTest, FilterExtentRangesMultipleRanges) {
@@ -292,15 +292,11 @@ TEST(ExtentRangesTest, FilterExtentRangesMultipleRanges) {
   // This overlaps the end of the second extent.
   ranges.AddExtent(ExtentForRange(108, 6));
   EXPECT_EQ((vector<Extent>{// For the first extent:
-                            ExtentForRange(10, 18),
-                            ExtentForRange(31, 19),
-                            ExtentForRange(60, 10),
-                            ExtentForRange(80, 28),
+                            ExtentForRange(10, 18), ExtentForRange(31, 19),
+                            ExtentForRange(60, 10), ExtentForRange(80, 28),
                             // For the second extent:
-                            ExtentForRange(31, 19),
-                            ExtentForRange(60, 10),
-                            ExtentForRange(80, 28),
-                            ExtentForRange(114, 16)}),
+                            ExtentForRange(31, 19), ExtentForRange(60, 10),
+                            ExtentForRange(80, 28), ExtentForRange(114, 16)}),
             FilterExtentRanges(extents, ranges));
 }
 

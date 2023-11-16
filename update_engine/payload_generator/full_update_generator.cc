@@ -166,19 +166,16 @@ bool FullUpdateGenerator::GenerateOperations(
     // Preset all the static information about the operations. The
     // ChunkProcessor will set the rest.
     AnnotatedOperation* aop = aops->data() + i;
-    aop->name = base::StringPrintf(
-        "<%s-operation-%" PRIuS ">", new_part.name.c_str(), i);
+    aop->name = base::StringPrintf("<%s-operation-%" PRIuS ">",
+                                   new_part.name.c_str(), i);
     Extent* dst_extent = aop->op.add_dst_extents();
     dst_extent->set_start_block(start_block);
     dst_extent->set_num_blocks(num_blocks);
 
     chunk_processors.emplace_back(
-        config.version,
-        in_fd,
+        config.version, in_fd,
         static_cast<off_t>(start_block) * config.block_size,
-        num_blocks * config.block_size,
-        blob_file,
-        aop);
+        num_blocks * config.block_size, blob_file, aop);
   }
 
   // Thread pool used for worker threads.

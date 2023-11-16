@@ -251,14 +251,12 @@ bool DBusUpdateEngineClient::SetTargetChannel(const string& in_target_channel,
 
 bool DBusUpdateEngineClient::GetTargetChannel(string* out_channel) const {
   return proxy_->GetChannel(false,  // Get the target channel.
-                            out_channel,
-                            nullptr);
+                            out_channel, nullptr);
 }
 
 bool DBusUpdateEngineClient::GetChannel(string* out_channel) const {
   return proxy_->GetChannel(true,  // Get the current channel.
-                            out_channel,
-                            nullptr);
+                            out_channel, nullptr);
 }
 
 bool DBusUpdateEngineClient::GetLastAttemptError(

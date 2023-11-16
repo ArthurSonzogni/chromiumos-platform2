@@ -36,12 +36,8 @@ bool XzCompress(const brillo::Blob& in, brillo::Blob* out) {
   size_t out_pos = 0;
   int rc = lzma_easy_buffer_encode(kLzmaPreset,
                                    LZMA_CHECK_NONE,  // We do not need CRC.
-                                   nullptr,
-                                   in.data(),
-                                   in.size(),
-                                   out->data(),
-                                   &out_pos,
-                                   out->size());
+                                   nullptr, in.data(), in.size(), out->data(),
+                                   &out_pos, out->size());
   if (rc != LZMA_OK) {
     LOG(ERROR) << "Failed to compress data to LZMA stream with return code: "
                << rc;

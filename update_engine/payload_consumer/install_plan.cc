@@ -45,9 +45,7 @@ string PayloadUrlsToString(
 string VectorToString(const vector<std::pair<string, string>>& input,
                       const string& separator) {
   vector<string> vec;
-  std::transform(input.begin(),
-                 input.end(),
-                 std::back_inserter(vec),
+  std::transform(input.begin(), input.end(), std::back_inserter(vec),
                  [](const auto& pair) {
                    return base::JoinString({pair.first, pair.second}, ": ");
                  });
@@ -85,8 +83,8 @@ void InstallPlan::Dump() const {
 
 string InstallPlan::ToString() const {
   string url_str = download_url;
-  if (base::StartsWith(
-          url_str, "fd://", base::CompareCase::INSENSITIVE_ASCII)) {
+  if (base::StartsWith(url_str, "fd://",
+                       base::CompareCase::INSENSITIVE_ASCII)) {
     int fd = std::stoi(url_str.substr(strlen("fd://")));
     url_str = utils::GetFilePath(fd);
   }
@@ -125,14 +123,12 @@ string InstallPlan::ToString() const {
             {"Partition", partition.name},
             {"source_size", base::NumberToString(partition.source_size)},
             {"source_path", partition.source_path},
-            {"source_hash",
-             base::HexEncode(partition.source_hash.data(),
-                             partition.source_hash.size())},
+            {"source_hash", base::HexEncode(partition.source_hash.data(),
+                                            partition.source_hash.size())},
             {"target_size", base::NumberToString(partition.target_size)},
             {"target_path", partition.target_path},
-            {"target_hash",
-             base::HexEncode(partition.target_hash.data(),
-                             partition.target_hash.size())},
+            {"target_hash", base::HexEncode(partition.target_hash.data(),
+                                            partition.target_hash.size())},
             {"run_postinstall", utils::ToString(partition.run_postinstall)},
             {"postinstall_path", partition.postinstall_path},
             {"filesystem_type", partition.filesystem_type},
@@ -175,8 +171,8 @@ bool InstallPlan::LoadPartitionsFromSlots(BootControlInterface* boot_control) {
     if (current_source_slot != BootControlInterface::kInvalidSlot &&
         partition.source_size > 0) {
       result =
-          boot_control->GetPartitionDevice(
-              partition.name, current_source_slot, &partition.source_path) &&
+          boot_control->GetPartitionDevice(partition.name, current_source_slot,
+                                           &partition.source_path) &&
           result;
     } else {
       partition.source_path.clear();
@@ -185,8 +181,8 @@ bool InstallPlan::LoadPartitionsFromSlots(BootControlInterface* boot_control) {
     if (current_target_slot != BootControlInterface::kInvalidSlot &&
         partition.target_size > 0) {
       result =
-          boot_control->GetPartitionDevice(
-              partition.name, current_target_slot, &partition.target_path) &&
+          boot_control->GetPartitionDevice(partition.name, current_target_slot,
+                                           &partition.target_path) &&
           result;
 
     } else {

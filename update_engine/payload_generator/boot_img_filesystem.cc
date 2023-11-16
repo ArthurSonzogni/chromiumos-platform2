@@ -49,9 +49,7 @@ unique_ptr<BootImgFilesystem> BootImgFilesystem::CreateFromFile(
   constexpr size_t header_version_offset =
       BOOT_MAGIC_SIZE + 8 * sizeof(uint32_t);
   brillo::Blob header_version_blob;
-  if (!utils::ReadFileChunk(filename,
-                            header_version_offset,
-                            sizeof(uint32_t),
+  if (!utils::ReadFileChunk(filename, header_version_offset, sizeof(uint32_t),
                             &header_version_blob)) {
     return nullptr;
   }

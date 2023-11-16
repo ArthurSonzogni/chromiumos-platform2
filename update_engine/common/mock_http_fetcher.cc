@@ -76,8 +76,8 @@ void MockHttpFetcher::SendData(bool skip_delivery) {
     sent_offset_ += chunk_size;
     bytes_sent_ += chunk_size;
     CHECK(delegate_);
-    delegate_->ReceivedBytes(
-        this, &data_[sent_offset_ - chunk_size], chunk_size);
+    delegate_->ReceivedBytes(this, &data_[sent_offset_ - chunk_size],
+                             chunk_size);
   }
   // We may get terminated and deleted right after |ReceivedBytes| call, so we
   // should not access any class member variable after this call.

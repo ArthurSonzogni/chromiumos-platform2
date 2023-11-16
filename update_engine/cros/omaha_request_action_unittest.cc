@@ -542,10 +542,9 @@ class OmahaRequestActionDlcPingTest : public OmahaRequestActionTest {
 };
 
 bool OmahaRequestActionTest::TestUpdateCheck() {
-  auto fetcher =
-      std::make_unique<MockHttpFetcher>(tuc_params_.http_response.data(),
-                                        tuc_params_.http_response.size(),
-                                        nullptr);
+  auto fetcher = std::make_unique<MockHttpFetcher>(
+      tuc_params_.http_response.data(), tuc_params_.http_response.size(),
+      nullptr);
   if (tuc_params_.fail_http_response_code >= 0) {
     fetcher->FailTransfer(tuc_params_.fail_http_response_code);
   }
@@ -553,11 +552,9 @@ bool OmahaRequestActionTest::TestUpdateCheck() {
   // are not using the default |request_params_|.
   EXPECT_EQ(&request_params_, FakeSystemState::Get()->request_params());
 
-  auto omaha_request_action =
-      std::make_unique<OmahaRequestAction>(nullptr,
-                                           std::move(fetcher),
-                                           tuc_params_.ping_only,
-                                           tuc_params_.session_id);
+  auto omaha_request_action = std::make_unique<OmahaRequestAction>(
+      nullptr, std::move(fetcher), tuc_params_.ping_only,
+      tuc_params_.session_id);
 
   const policy::MockDevicePolicy device_policy;
   const bool get_allowed_milestone_succeeds =
@@ -608,10 +605,9 @@ void OmahaRequestActionTest::TestEvent(OmahaEvent* event,
                                        const string& http_response) {
   auto action = std::make_unique<OmahaRequestAction>(
       event,
-      std::make_unique<MockHttpFetcher>(
-          http_response.data(), http_response.size(), nullptr),
-      false,
-      "");
+      std::make_unique<MockHttpFetcher>(http_response.data(),
+                                        http_response.size(), nullptr),
+      false, "");
   ActionProcessor processor;
   processor.set_delegate(&delegate_);
   processor.EnqueueAction(std::move(action));
@@ -866,8 +862,7 @@ TEST_F(OmahaRequestActionTest, ValidUpdateBlockedByConnection) {
 
   EXPECT_CALL(mock_cm, GetConnectionProperties(_, _))
       .WillRepeatedly(DoAll(SetArgPointee<0>(ConnectionType::kEthernet),
-                            SetArgPointee<1>(true),
-                            Return(true)));
+                            SetArgPointee<1>(true), Return(true)));
   EXPECT_CALL(mock_cm, IsUpdateAllowedOverMetered())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_cm, IsAllowedConnectionTypesForUpdateSet())
@@ -890,8 +885,7 @@ TEST_F(OmahaRequestActionTest, ValidUpdateOverCellularAllowedByDevicePolicy) {
 
   EXPECT_CALL(mock_cm, GetConnectionProperties(_, _))
       .WillRepeatedly(DoAll(SetArgPointee<0>(ConnectionType::kCellular),
-                            SetArgPointee<1>(true),
-                            Return(true)));
+                            SetArgPointee<1>(true), Return(true)));
   EXPECT_CALL(mock_cm, IsAllowedConnectionTypesForUpdateSet())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(mock_cm, IsUpdateAllowedOverMetered())
@@ -912,8 +906,7 @@ TEST_F(OmahaRequestActionTest, ValidUpdateOverCellularBlockedByDevicePolicy) {
 
   EXPECT_CALL(mock_cm, GetConnectionProperties(_, _))
       .WillRepeatedly(DoAll(SetArgPointee<0>(ConnectionType::kCellular),
-                            SetArgPointee<1>(true),
-                            Return(true)));
+                            SetArgPointee<1>(true), Return(true)));
   EXPECT_CALL(mock_cm, IsAllowedConnectionTypesForUpdateSet())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(mock_cm, IsUpdateAllowedOverMetered())
@@ -938,8 +931,7 @@ TEST_F(OmahaRequestActionTest,
 
   EXPECT_CALL(mock_cm, GetConnectionProperties(_, _))
       .WillRepeatedly(DoAll(SetArgPointee<0>(ConnectionType::kCellular),
-                            SetArgPointee<1>(true),
-                            Return(true)));
+                            SetArgPointee<1>(true), Return(true)));
   EXPECT_CALL(mock_cm, IsAllowedConnectionTypesForUpdateSet())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_cm, IsUpdateAllowedOverMetered())
@@ -970,8 +962,7 @@ TEST_F(OmahaRequestActionTest,
 
   EXPECT_CALL(mock_cm, GetConnectionProperties(_, _))
       .WillRepeatedly(DoAll(SetArgPointee<0>(ConnectionType::kCellular),
-                            SetArgPointee<1>(true),
-                            Return(true)));
+                            SetArgPointee<1>(true), Return(true)));
   EXPECT_CALL(mock_cm, IsAllowedConnectionTypesForUpdateSet())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_cm, IsUpdateAllowedOverMetered())
@@ -1014,8 +1005,7 @@ TEST_F(OmahaRequestActionTest,
 
   EXPECT_CALL(mock_cm, GetConnectionProperties(_, _))
       .WillRepeatedly(DoAll(SetArgPointee<0>(ConnectionType::kCellular),
-                            SetArgPointee<1>(true),
-                            Return(true)));
+                            SetArgPointee<1>(true), Return(true)));
   EXPECT_CALL(mock_cm, IsAllowedConnectionTypesForUpdateSet())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_cm, IsUpdateAllowedOverMetered())
@@ -1034,8 +1024,7 @@ TEST_F(OmahaRequestActionTest, ValidUpdateOverMeteredBlocked) {
 
   EXPECT_CALL(mock_cm, GetConnectionProperties(_, _))
       .WillRepeatedly(DoAll(SetArgPointee<0>(ConnectionType::kWifi),
-                            SetArgPointee<1>(true),
-                            Return(true)));
+                            SetArgPointee<1>(true), Return(true)));
   EXPECT_CALL(mock_cm, IsAllowedConnectionTypesForUpdateSet())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_cm, IsUpdateAllowedOverMetered())
@@ -1170,8 +1159,7 @@ TEST_F(OmahaRequestActionTest, SkipNonCriticalUpdatesInOOBEOverCellular) {
 
   EXPECT_CALL(mock_cm, GetConnectionProperties(_, _))
       .WillRepeatedly(DoAll(SetArgPointee<0>(ConnectionType::kCellular),
-                            SetArgPointee<1>(true),
-                            Return(true)));
+                            SetArgPointee<1>(true), Return(true)));
   EXPECT_CALL(mock_cm, IsAllowedConnectionTypesForUpdateSet())
       .WillRepeatedly(Return(false));
 
@@ -1622,10 +1610,9 @@ TEST_F(OmahaRequestActionTest, NoOutputPipeTest) {
   const string http_response(fake_update_response_.GetNoUpdateResponse());
   auto action = std::make_unique<OmahaRequestAction>(
       nullptr,
-      std::make_unique<MockHttpFetcher>(
-          http_response.data(), http_response.size(), nullptr),
-      false,
-      "");
+      std::make_unique<MockHttpFetcher>(http_response.data(),
+                                        http_response.size(), nullptr),
+      false, "");
   ActionProcessor processor;
   processor.set_delegate(&delegate_);
   processor.EnqueueAction(std::move(action));
@@ -1754,10 +1741,9 @@ TEST_F(OmahaRequestActionTest, TerminateTransferTest) {
   string http_response("doesn't matter");
   auto action = std::make_unique<OmahaRequestAction>(
       nullptr,
-      std::make_unique<MockHttpFetcher>(
-          http_response.data(), http_response.size(), nullptr),
-      false,
-      "");
+      std::make_unique<MockHttpFetcher>(http_response.data(),
+                                        http_response.size(), nullptr),
+      false, "");
   TerminateEarlyTestProcessorDelegate delegate;
   ActionProcessor processor;
   processor.set_delegate(&delegate);
@@ -1860,8 +1846,7 @@ TEST_F(OmahaRequestActionTest, FormatSuccessEventOutputTest) {
 
   string expected_event = base::StringPrintf(
       "        <event eventtype=\"%d\" eventresult=\"%d\"></event>\n",
-      OmahaEvent::kTypeUpdateDownloadStarted,
-      OmahaEvent::kResultSuccess);
+      OmahaEvent::kTypeUpdateDownloadStarted, OmahaEvent::kResultSuccess);
   EXPECT_NE(post_str_.find(expected_event), string::npos);
   EXPECT_EQ(post_str_.find("ping"), string::npos);
   EXPECT_EQ(post_str_.find("updatecheck"), string::npos);
@@ -1869,15 +1854,13 @@ TEST_F(OmahaRequestActionTest, FormatSuccessEventOutputTest) {
 
 TEST_F(OmahaRequestActionTest, FormatErrorEventOutputTest) {
   TestEvent(new OmahaEvent(OmahaEvent::kTypeDownloadComplete,
-                           OmahaEvent::kResultError,
-                           ErrorCode::kError),
+                           OmahaEvent::kResultError, ErrorCode::kError),
             "invalid xml>");
 
   string expected_event = base::StringPrintf(
       "        <event eventtype=\"%d\" eventresult=\"%d\" "
       "errorcode=\"%d\"></event>\n",
-      OmahaEvent::kTypeDownloadComplete,
-      OmahaEvent::kResultError,
+      OmahaEvent::kTypeDownloadComplete, OmahaEvent::kResultError,
       static_cast<int>(ErrorCode::kError));
   EXPECT_NE(post_str_.find(expected_event), string::npos);
   EXPECT_EQ(post_str_.find("updatecheck"), string::npos);
@@ -1887,18 +1870,16 @@ TEST_F(OmahaRequestActionTest, IsEventTest) {
   string http_response("doesn't matter");
   OmahaRequestAction update_check_action(
       nullptr,
-      std::make_unique<MockHttpFetcher>(
-          http_response.data(), http_response.size(), nullptr),
-      false,
-      "");
+      std::make_unique<MockHttpFetcher>(http_response.data(),
+                                        http_response.size(), nullptr),
+      false, "");
   EXPECT_FALSE(update_check_action.IsEvent());
 
   OmahaRequestAction event_action(
       new OmahaEvent(OmahaEvent::kTypeUpdateComplete),
-      std::make_unique<MockHttpFetcher>(
-          http_response.data(), http_response.size(), nullptr),
-      false,
-      "");
+      std::make_unique<MockHttpFetcher>(http_response.data(),
+                                        http_response.size(), nullptr),
+      false, "");
   EXPECT_TRUE(event_action.IsEvent());
 }
 
@@ -1999,8 +1980,7 @@ TEST_F(OmahaRequestActionTest, OmahaEventTest) {
   EXPECT_EQ(ErrorCode::kSuccess, success_event.error_code);
 
   OmahaEvent error_event(OmahaEvent::kTypeUpdateDownloadFinished,
-                         OmahaEvent::kResultError,
-                         ErrorCode::kError);
+                         OmahaEvent::kResultError, ErrorCode::kError);
   EXPECT_EQ(OmahaEvent::kTypeUpdateDownloadFinished, error_event.type);
   EXPECT_EQ(OmahaEvent::kResultError, error_event.result);
   EXPECT_EQ(ErrorCode::kError, error_event.error_code);
@@ -2313,13 +2293,11 @@ TEST_F(OmahaRequestActionTest, LastPingDayUpdateTest) {
   FakeSystemState::Get()->set_prefs(&prefs);
   EXPECT_CALL(prefs, GetInt64(_, _)).Times(AnyNumber());
   EXPECT_CALL(prefs, SetInt64(_, _)).Times(AnyNumber());
-  EXPECT_CALL(prefs,
-              SetInt64(kPrefsLastActivePingDay,
-                       AllOf(Ge(midnight), Le(midnight_slack))))
+  EXPECT_CALL(prefs, SetInt64(kPrefsLastActivePingDay,
+                              AllOf(Ge(midnight), Le(midnight_slack))))
       .WillOnce(Return(true));
-  EXPECT_CALL(prefs,
-              SetInt64(kPrefsLastRollCallPingDay,
-                       AllOf(Ge(midnight), Le(midnight_slack))))
+  EXPECT_CALL(prefs, SetInt64(kPrefsLastRollCallPingDay,
+                              AllOf(Ge(midnight), Le(midnight_slack))))
       .WillOnce(Return(true));
 
   tuc_params_.http_response =
@@ -2575,10 +2553,9 @@ TEST_F(OmahaRequestActionTest, RebootAfterUpdateEvent) {
   ASSERT_TRUE(TestUpdateCheck());
 
   // An event 54 is included and has the right version.
-  EXPECT_NE(
-      string::npos,
-      post_str_.find(base::StringPrintf("<event eventtype=\"%d\"",
-                                        OmahaEvent::kTypeRebootedAfterUpdate)));
+  EXPECT_NE(string::npos, post_str_.find(base::StringPrintf(
+                              "<event eventtype=\"%d\"",
+                              OmahaEvent::kTypeRebootedAfterUpdate)));
   EXPECT_NE(string::npos,
             post_str_.find("previousversion=\"1.2.3.4\"></event>"));
 

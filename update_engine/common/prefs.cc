@@ -35,8 +35,8 @@ namespace chromeos_update_engine {
 namespace {
 
 void DeleteEmptyDirectories(const base::FilePath& path) {
-  base::FileEnumerator path_enum(
-      path, false /* recursive */, base::FileEnumerator::DIRECTORIES);
+  base::FileEnumerator path_enum(path, false /* recursive */,
+                                 base::FileEnumerator::DIRECTORIES);
   for (base::FilePath dir_path = path_enum.Next(); !dir_path.empty();
        dir_path = path_enum.Next()) {
     DeleteEmptyDirectories(dir_path);
@@ -178,8 +178,8 @@ bool Prefs::FileStorage::GetSubKeys(const string& ns,
                                     vector<string>* keys) const {
   base::FilePath filename;
   TEST_AND_RETURN_FALSE(GetFileNameForKey(ns, &filename));
-  base::FileEnumerator namespace_enum(
-      prefs_dir_, true, base::FileEnumerator::FILES);
+  base::FileEnumerator namespace_enum(prefs_dir_, true,
+                                      base::FileEnumerator::FILES);
   for (base::FilePath f = namespace_enum.Next(); !f.empty();
        f = namespace_enum.Next()) {
     auto filename_str = filename.value();

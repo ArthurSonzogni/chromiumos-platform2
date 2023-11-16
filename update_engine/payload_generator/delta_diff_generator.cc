@@ -76,8 +76,8 @@ class PartitionProcessor : public base::DelegateSimpleThread::Delegate {
   void Run() override {
     LOG(INFO) << "Started an async task to process partition "
               << old_part_.name;
-    bool success = strategy_->GenerateOperations(
-        config_, old_part_, new_part_, file_writer_, aops_);
+    bool success = strategy_->GenerateOperations(config_, old_part_, new_part_,
+                                                 file_writer_, aops_);
     if (!success) {
       // ABORT the entire process, so that developer can look
       // at recent logs and diagnose what happened
@@ -159,13 +159,9 @@ bool GenerateUpdatePayloadFile(const PayloadGenerationConfig& config,
       }
 
       // Generate the operations using the strategy we selected above.
-      partition_tasks.push_back(PartitionProcessor(config,
-                                                   old_part,
-                                                   new_part,
-                                                   &blob_file,
-                                                   &all_aops[i],
-                                                   &all_merge_sequences[i],
-                                                   std::move(strategy)));
+      partition_tasks.push_back(PartitionProcessor(
+          config, old_part, new_part, &blob_file, &all_aops[i],
+          &all_merge_sequences[i], std::move(strategy)));
     }
     thread_pool.Start();
     for (auto& processor : partition_tasks) {
@@ -178,9 +174,7 @@ bool GenerateUpdatePayloadFile(const PayloadGenerationConfig& config,
           config.is_delta ? config.source.partitions[i] : empty_part;
       const PartitionConfig& new_part = config.target.partitions[i];
       TEST_AND_RETURN_FALSE(
-          payload.AddPartition(old_part,
-                               new_part,
-                               std::move(all_aops[i]),
+          payload.AddPartition(old_part, new_part, std::move(all_aops[i]),
                                std::move(all_merge_sequences[i])));
     }
   }
@@ -188,8 +182,8 @@ bool GenerateUpdatePayloadFile(const PayloadGenerationConfig& config,
 
   LOG(INFO) << "Writing payload file...";
   // Write payload file to disk.
-  TEST_AND_RETURN_FALSE(payload.WritePayload(
-      output_path, data_file.path(), private_key_path, metadata_size));
+  TEST_AND_RETURN_FALSE(payload.WritePayload(output_path, data_file.path(),
+                                             private_key_path, metadata_size));
 
   LOG(INFO) << "All done. Successfully created delta file with "
             << "metadata size = " << *metadata_size;

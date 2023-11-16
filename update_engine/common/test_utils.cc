@@ -146,8 +146,7 @@ bool BindToUnusedLoopDeviceLegacy(int data_fd,
       HANDLE_EINTR(open(out_lo_dev_name->c_str(), O_RDWR | O_LARGEFILE));
   if (loop_device_fd == -1 && errno == ENOENT) {
     // Workaround the case when the loop device doesn't exist.
-    TEST_AND_RETURN_FALSE_ERRNO(mknod(out_lo_dev_name->c_str(),
-                                      S_IFBLK | 0660,
+    TEST_AND_RETURN_FALSE_ERRNO(mknod(out_lo_dev_name->c_str(), S_IFBLK | 0660,
                                       makedev(LOOP_MAJOR, loop_number)) == 0);
     loop_device_fd =
         HANDLE_EINTR(open(out_lo_dev_name->c_str(), O_RDWR | O_LARGEFILE));
@@ -177,8 +176,8 @@ bool BindToUnusedLoopDevice(const string& filename,
   TEST_AND_RETURN_FALSE_ERRNO(data_fd >= 0);
   ScopedFdCloser data_fd_closer(&data_fd);
 
-  return BindToUnusedLoopDeviceLegacy(
-      data_fd, filename, writable, out_lo_dev_name);
+  return BindToUnusedLoopDeviceLegacy(data_fd, filename, writable,
+                                      out_lo_dev_name);
 }
 
 bool UnbindLoopDevice(const string& lo_dev_name) {

@@ -182,8 +182,8 @@ bool DBusUpdateEngineService::SetUpdateOverCellularTarget(
     brillo::ErrorPtr* error,
     const std::string& target_version,
     int64_t target_size) {
-  return common_->SetUpdateOverCellularTarget(
-      error, target_version, target_size);
+  return common_->SetUpdateOverCellularTarget(error, target_version,
+                                              target_size);
 }
 
 bool DBusUpdateEngineService::GetUpdateOverCellularPermission(

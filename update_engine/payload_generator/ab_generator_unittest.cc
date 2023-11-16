@@ -86,11 +86,9 @@ void TestSplitReplaceOrReplaceXzOperation(InstallOperation::Type orig_type,
       ExtentForRange(op_ex2_start_block, op_ex2_num_blocks);
 
   brillo::Blob op_data;
-  op_data.insert(op_data.end(),
-                 part_data.begin() + op_ex1_offset,
+  op_data.insert(op_data.end(), part_data.begin() + op_ex1_offset,
                  part_data.begin() + op_ex1_offset + op_ex1_size);
-  op_data.insert(op_data.end(),
-                 part_data.begin() + op_ex2_offset,
+  op_data.insert(op_data.end(), part_data.begin() + op_ex2_offset,
                  part_data.begin() + op_ex2_offset + op_ex2_size);
   brillo::Blob op_blob;
   if (orig_type == InstallOperation::REPLACE) {
@@ -118,8 +116,8 @@ void TestSplitReplaceOrReplaceXzOperation(InstallOperation::Type orig_type,
   vector<AnnotatedOperation> result_ops;
   PayloadVersion version(kBrilloMajorPayloadVersion,
                          kSourceMinorPayloadVersion);
-  ASSERT_TRUE(ABGenerator::SplitAReplaceOp(
-      version, aop, part_file.path(), &result_ops, &blob_file));
+  ASSERT_TRUE(ABGenerator::SplitAReplaceOp(version, aop, part_file.path(),
+                                           &result_ops, &blob_file));
 
   // Check the result.
   InstallOperation::Type expected_type =
@@ -133,8 +131,8 @@ void TestSplitReplaceOrReplaceXzOperation(InstallOperation::Type orig_type,
   EXPECT_FALSE(first_op.has_src_length());
   EXPECT_FALSE(first_op.has_dst_length());
   EXPECT_EQ(1, first_op.dst_extents().size());
-  EXPECT_TRUE(ExtentEquals(
-      first_op.dst_extents(0), op_ex1_start_block, op_ex1_num_blocks));
+  EXPECT_TRUE(ExtentEquals(first_op.dst_extents(0), op_ex1_start_block,
+                           op_ex1_num_blocks));
   // Obtain the expected blob.
   brillo::Blob first_expected_data(
       part_data.begin() + op_ex1_offset,
@@ -149,10 +147,8 @@ void TestSplitReplaceOrReplaceXzOperation(InstallOperation::Type orig_type,
   // Check that the actual blob matches what's expected.
   brillo::Blob first_data_blob(first_op.data_length());
   ssize_t bytes_read;
-  ASSERT_TRUE(utils::PReadAll(data_fd,
-                              first_data_blob.data(),
-                              first_op.data_length(),
-                              first_op.data_offset(),
+  ASSERT_TRUE(utils::PReadAll(data_fd, first_data_blob.data(),
+                              first_op.data_length(), first_op.data_offset(),
                               &bytes_read));
   ASSERT_EQ(bytes_read, static_cast<ssize_t>(first_op.data_length()));
   EXPECT_EQ(first_expected_blob, first_data_blob);
@@ -163,8 +159,8 @@ void TestSplitReplaceOrReplaceXzOperation(InstallOperation::Type orig_type,
   EXPECT_FALSE(second_op.has_src_length());
   EXPECT_FALSE(second_op.has_dst_length());
   EXPECT_EQ(1, second_op.dst_extents().size());
-  EXPECT_TRUE(ExtentEquals(
-      second_op.dst_extents(0), op_ex2_start_block, op_ex2_num_blocks));
+  EXPECT_TRUE(ExtentEquals(second_op.dst_extents(0), op_ex2_start_block,
+                           op_ex2_num_blocks));
   // Obtain the expected blob.
   brillo::Blob second_expected_data(
       part_data.begin() + op_ex2_offset,
@@ -178,10 +174,8 @@ void TestSplitReplaceOrReplaceXzOperation(InstallOperation::Type orig_type,
   EXPECT_EQ(second_expected_blob.size(), second_op.data_length());
   // Check that the actual blob matches what's expected.
   brillo::Blob second_data_blob(second_op.data_length());
-  ASSERT_TRUE(utils::PReadAll(data_fd,
-                              second_data_blob.data(),
-                              second_op.data_length(),
-                              second_op.data_offset(),
+  ASSERT_TRUE(utils::PReadAll(data_fd, second_data_blob.data(),
+                              second_op.data_length(), second_op.data_offset(),
                               &bytes_read));
   ASSERT_EQ(bytes_read, static_cast<ssize_t>(second_op.data_length()));
   EXPECT_EQ(second_expected_blob, second_data_blob);
@@ -260,8 +254,8 @@ void TestMergeReplaceOrReplaceXzOperations(InstallOperation::Type orig_type,
   }
   second_op.set_data_offset(first_op_blob.size());
   second_op.set_data_length(second_op_blob.size());
-  blob_data.insert(
-      blob_data.end(), second_op_blob.begin(), second_op_blob.end());
+  blob_data.insert(blob_data.end(), second_op_blob.begin(),
+                   second_op_blob.end());
   AnnotatedOperation second_aop;
   second_aop.op = second_op;
   second_aop.name = "second";
@@ -279,8 +273,8 @@ void TestMergeReplaceOrReplaceXzOperations(InstallOperation::Type orig_type,
   // Merge the operations.
   PayloadVersion version(kBrilloMajorPayloadVersion,
                          kSourceMinorPayloadVersion);
-  EXPECT_TRUE(ABGenerator::MergeOperations(
-      &aops, version, 5, part_file.path(), &blob_file));
+  EXPECT_TRUE(ABGenerator::MergeOperations(&aops, version, 5, part_file.path(),
+                                           &blob_file));
 
   // Check the result.
   InstallOperation::Type expected_op_type =
@@ -308,11 +302,8 @@ void TestMergeReplaceOrReplaceXzOperations(InstallOperation::Type orig_type,
             static_cast<size_t>(data_file_size));
   brillo::Blob new_op_blob(new_op.data_length());
   ssize_t bytes_read;
-  ASSERT_TRUE(utils::PReadAll(data_fd,
-                              new_op_blob.data(),
-                              new_op.data_length(),
-                              new_op.data_offset(),
-                              &bytes_read));
+  ASSERT_TRUE(utils::PReadAll(data_fd, new_op_blob.data(), new_op.data_length(),
+                              new_op.data_offset(), &bytes_read));
   ASSERT_EQ(static_cast<ssize_t>(new_op.data_length()), bytes_read);
   EXPECT_EQ(expected_blob, new_op_blob);
 }

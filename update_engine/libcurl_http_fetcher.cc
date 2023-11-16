@@ -105,22 +105,22 @@ LibcurlHttpFetcher::~LibcurlHttpFetcher() {
 
 bool LibcurlHttpFetcher::GetProxyType(const string& proxy,
                                       curl_proxytype* out_type) {
-  if (base::StartsWith(
-          proxy, "socks5://", base::CompareCase::INSENSITIVE_ASCII) ||
-      base::StartsWith(
-          proxy, "socks://", base::CompareCase::INSENSITIVE_ASCII)) {
+  if (base::StartsWith(proxy, "socks5://",
+                       base::CompareCase::INSENSITIVE_ASCII) ||
+      base::StartsWith(proxy, "socks://",
+                       base::CompareCase::INSENSITIVE_ASCII)) {
     *out_type = CURLPROXY_SOCKS5_HOSTNAME;
     return true;
   }
-  if (base::StartsWith(
-          proxy, "socks4://", base::CompareCase::INSENSITIVE_ASCII)) {
+  if (base::StartsWith(proxy, "socks4://",
+                       base::CompareCase::INSENSITIVE_ASCII)) {
     *out_type = CURLPROXY_SOCKS4A;
     return true;
   }
-  if (base::StartsWith(
-          proxy, "http://", base::CompareCase::INSENSITIVE_ASCII) ||
-      base::StartsWith(
-          proxy, "https://", base::CompareCase::INSENSITIVE_ASCII)) {
+  if (base::StartsWith(proxy, "http://",
+                       base::CompareCase::INSENSITIVE_ASCII) ||
+      base::StartsWith(proxy, "https://",
+                       base::CompareCase::INSENSITIVE_ASCII)) {
     *out_type = CURLPROXY_HTTP;
     return true;
   }
@@ -144,10 +144,10 @@ void LibcurlHttpFetcher::ResumeTransfer(const string& url) {
   ignore_failure_ = false;
 
   // Tag and untag the socket for network usage stats.
-  curl_easy_setopt(
-      curl_handle_, CURLOPT_SOCKOPTFUNCTION, LibcurlSockoptCallback);
-  curl_easy_setopt(
-      curl_handle_, CURLOPT_CLOSESOCKETFUNCTION, LibcurlCloseSocketCallback);
+  curl_easy_setopt(curl_handle_, CURLOPT_SOCKOPTFUNCTION,
+                   LibcurlSockoptCallback);
+  curl_easy_setopt(curl_handle_, CURLOPT_CLOSESOCKETFUNCTION,
+                   LibcurlCloseSocketCallback);
   curl_easy_setopt(curl_handle_, CURLOPT_CLOSESOCKETDATA, this);
 
   CHECK(HasProxy());
@@ -156,8 +156,8 @@ void LibcurlHttpFetcher::ResumeTransfer(const string& url) {
   if (is_direct) {
     CHECK_EQ(curl_easy_setopt(curl_handle_, CURLOPT_PROXY, ""), CURLE_OK);
   } else {
-    CHECK_EQ(curl_easy_setopt(
-                 curl_handle_, CURLOPT_PROXY, GetCurrentProxy().c_str()),
+    CHECK_EQ(curl_easy_setopt(curl_handle_, CURLOPT_PROXY,
+                              GetCurrentProxy().c_str()),
              CURLE_OK);
     // Curl seems to require us to set the protocol
     curl_proxytype type;
@@ -172,8 +172,8 @@ void LibcurlHttpFetcher::ResumeTransfer(const string& url) {
     CHECK_EQ(
         curl_easy_setopt(curl_handle_, CURLOPT_POSTFIELDS, post_data_.data()),
         CURLE_OK);
-    CHECK_EQ(curl_easy_setopt(
-                 curl_handle_, CURLOPT_POSTFIELDSIZE, post_data_.size()),
+    CHECK_EQ(curl_easy_setopt(curl_handle_, CURLOPT_POSTFIELDSIZE,
+                              post_data_.size()),
              CURLE_OK);
   }
 
@@ -233,14 +233,14 @@ void LibcurlHttpFetcher::ResumeTransfer(const string& url) {
   // If the connection drops under |low_speed_limit_bps_| (10
   // bytes/sec by default) for |low_speed_time_seconds_| (90 seconds,
   // 180 on non-official builds), reconnect.
-  CHECK_EQ(curl_easy_setopt(
-               curl_handle_, CURLOPT_LOW_SPEED_LIMIT, low_speed_limit_bps_),
+  CHECK_EQ(curl_easy_setopt(curl_handle_, CURLOPT_LOW_SPEED_LIMIT,
+                            low_speed_limit_bps_),
            CURLE_OK);
-  CHECK_EQ(curl_easy_setopt(
-               curl_handle_, CURLOPT_LOW_SPEED_TIME, low_speed_time_seconds_),
+  CHECK_EQ(curl_easy_setopt(curl_handle_, CURLOPT_LOW_SPEED_TIME,
+                            low_speed_time_seconds_),
            CURLE_OK);
-  CHECK_EQ(curl_easy_setopt(
-               curl_handle_, CURLOPT_CONNECTTIMEOUT, connect_timeout_seconds_),
+  CHECK_EQ(curl_easy_setopt(curl_handle_, CURLOPT_CONNECTTIMEOUT,
+                            connect_timeout_seconds_),
            CURLE_OK);
 
   // By default, libcurl doesn't follow redirections. Allow up to
@@ -253,11 +253,11 @@ void LibcurlHttpFetcher::ResumeTransfer(const string& url) {
   // Lock down the appropriate curl options for HTTP or HTTPS depending on
   // the url.
   if (hardware_->IsOfficialBuild()) {
-    if (base::StartsWith(
-            url_, "http://", base::CompareCase::INSENSITIVE_ASCII)) {
+    if (base::StartsWith(url_, "http://",
+                         base::CompareCase::INSENSITIVE_ASCII)) {
       SetCurlOptionsForHttp();
-    } else if (base::StartsWith(
-                   url_, "https://", base::CompareCase::INSENSITIVE_ASCII)) {
+    } else if (base::StartsWith(url_, "https://",
+                                base::CompareCase::INSENSITIVE_ASCII)) {
       SetCurlOptionsForHttps();
     } else {
       LOG(ERROR) << "Received invalid URI: " << url_;
@@ -291,8 +291,8 @@ void LibcurlHttpFetcher::SetCurlOptionsForHttps() {
   CHECK_EQ(curl_easy_setopt(curl_handle_, CURLOPT_SSL_VERIFYPEER, 1), CURLE_OK);
   CHECK_EQ(curl_easy_setopt(curl_handle_, CURLOPT_SSL_VERIFYHOST, 2), CURLE_OK);
   CHECK_EQ(curl_easy_setopt(curl_handle_, CURLOPT_CAINFO, nullptr), CURLE_OK);
-  CHECK_EQ(curl_easy_setopt(
-               curl_handle_, CURLOPT_CAPATH, constants::kCACertificatesPath),
+  CHECK_EQ(curl_easy_setopt(curl_handle_, CURLOPT_CAPATH,
+                            constants::kCACertificatesPath),
            CURLE_OK);
   CHECK_EQ(curl_easy_setopt(curl_handle_, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS),
            CURLE_OK);
@@ -305,8 +305,7 @@ void LibcurlHttpFetcher::SetCurlOptionsForHttps() {
     CHECK_EQ(
         curl_easy_setopt(curl_handle_, CURLOPT_SSL_CTX_DATA, &server_to_check_),
         CURLE_OK);
-    CHECK_EQ(curl_easy_setopt(curl_handle_,
-                              CURLOPT_SSL_CTX_FUNCTION,
+    CHECK_EQ(curl_easy_setopt(curl_handle_, CURLOPT_SSL_CTX_FUNCTION,
                               CertificateChecker::ProcessSSLContext),
              CURLE_OK);
   }
@@ -536,9 +535,8 @@ void LibcurlHttpFetcher::CurlPerformOnce() {
       // We have another proxy. Retry immediately.
       LOG(INFO) << "Retrying with next proxy setting";
       retry_task_id_ = MessageLoop::current()->PostTask(
-          FROM_HERE,
-          base::BindOnce(&LibcurlHttpFetcher::RetryTimeoutCallback,
-                         base::Unretained(this)));
+          FROM_HERE, base::BindOnce(&LibcurlHttpFetcher::RetryTimeoutCallback,
+                                    base::Unretained(this)));
     } else {
       // Out of proxies. Give up.
       LOG(INFO) << "No further proxies, indicating transfer complete";
@@ -563,8 +561,8 @@ void LibcurlHttpFetcher::CurlPerformOnce() {
     } else {
       LOG(INFO) << "Transfer interrupted after downloading "
                 << bytes_downloaded_ << " of " << transfer_size_ << " bytes. "
-                << bytes_left << " bytes remaining "
-                << "after " << retry_count_ << " attempt(s)";
+                << bytes_left << " bytes remaining " << "after " << retry_count_
+                << " attempt(s)";
     }
 
     if (retry_count_ > max_retry_count_) {
@@ -610,8 +608,7 @@ size_t LibcurlHttpFetcher::LibcurlWrite(void* ptr, size_t size, size_t nmemb) {
   sent_byte_ = true;
   {
     double transfer_size_double;
-    CHECK_EQ(curl_easy_getinfo(curl_handle_,
-                               CURLINFO_CONTENT_LENGTH_DOWNLOAD,
+    CHECK_EQ(curl_easy_getinfo(curl_handle_, CURLINFO_CONTENT_LENGTH_DOWNLOAD,
                                &transfer_size_double),
              CURLE_OK);
     off_t new_transfer_size = static_cast<off_t>(transfer_size_double);
@@ -689,8 +686,8 @@ void LibcurlHttpFetcher::SetupMessageLoopSources() {
 
   // Ask libcurl for the set of file descriptors we should track on its
   // behalf.
-  CHECK_EQ(curl_multi_fdset(
-               curl_multi_handle_, &fd_read, &fd_write, &fd_exc, &fd_max),
+  CHECK_EQ(curl_multi_fdset(curl_multi_handle_, &fd_read, &fd_write, &fd_exc,
+                            &fd_max),
            CURLM_OK);
 
   // We should iterate through all file descriptors up to libcurl's fd_max or
@@ -834,8 +831,7 @@ void LibcurlHttpFetcher::GetHttpResponseCode() {
   if (base::StartsWith(url_, "file://", base::CompareCase::INSENSITIVE_ASCII)) {
     // Fake out a valid response code for file:// URLs.
     http_response_code_ = 299;
-  } else if (curl_easy_getinfo(curl_handle_,
-                               CURLINFO_RESPONSE_CODE,
+  } else if (curl_easy_getinfo(curl_handle_, CURLINFO_RESPONSE_CODE,
                                &http_response_code) == CURLE_OK) {
     http_response_code_ = static_cast<int>(http_response_code);
   } else {

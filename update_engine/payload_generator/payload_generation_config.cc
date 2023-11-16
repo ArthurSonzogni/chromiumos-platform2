@@ -100,8 +100,8 @@ bool PartitionConfig::OpenFilesystem() {
 
   // Fall back to a RAW filesystem.
   TEST_AND_RETURN_FALSE(size % kBlockSize == 0);
-  fs_interface = RawFilesystem::Create(
-      "<" + name + "-partition>", kBlockSize, size / kBlockSize);
+  fs_interface = RawFilesystem::Create("<" + name + "-partition>", kBlockSize,
+                                       size / kBlockSize);
   return true;
 }
 
@@ -193,8 +193,7 @@ bool ImageConfig::ValidateDynamicPartitionMetadata() const {
   for (const auto& group : dynamic_partition_metadata->groups()) {
     uint64_t sum_size = 0;
     for (const auto& partition_name : group.partition_names()) {
-      auto partition_config = std::find_if(partitions.begin(),
-                                           partitions.end(),
+      auto partition_config = std::find_if(partitions.begin(), partitions.end(),
                                            [&partition_name](const auto& e) {
                                              return e.name == partition_name;
                                            });

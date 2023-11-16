@@ -29,8 +29,8 @@
 namespace chromeos_update_engine {
 namespace dbus_test_utils {
 
-#define MOCK_SIGNAL_HANDLER_EXPECT_SIGNAL_HANDLER(                             \
-    mock_signal_handler, mock_proxy, signal)                                   \
+#define MOCK_SIGNAL_HANDLER_EXPECT_SIGNAL_HANDLER(mock_signal_handler,         \
+                                                  mock_proxy, signal)          \
   do {                                                                         \
     EXPECT_CALL((mock_proxy),                                                  \
                 DoRegister##signal##SignalHandler(::testing::_, ::testing::_)) \
@@ -62,9 +62,8 @@ class MockSignalHandler {
         std::move(*on_connected_callback)));
     // Notify from the main loop that the callback was connected.
     callback_connected_task_ = brillo::MessageLoop::current()->PostTask(
-        FROM_HERE,
-        base::BindOnce(&MockSignalHandler<T>::OnCallbackConnected,
-                       base::Unretained(this)));
+        FROM_HERE, base::BindOnce(&MockSignalHandler<T>::OnCallbackConnected,
+                                  base::Unretained(this)));
   }
 
  private:

@@ -260,13 +260,9 @@ void DownloadActionChromeos::StartDownloading() {
     LOG(INFO) << "Using writer for test.";
   } else {
     delta_performer_.reset(
-        new DeltaPerformer(prefs,
-                           SystemState::Get()->boot_control(),
-                           SystemState::Get()->hardware(),
-                           delegate_,
-                           &install_plan_,
-                           payload_,
-                           interactive_));
+        new DeltaPerformer(prefs, SystemState::Get()->boot_control(),
+                           SystemState::Get()->hardware(), delegate_,
+                           &install_plan_, payload_, interactive_));
     writer_ = delta_performer_.get();
   }
 

@@ -63,8 +63,8 @@ class MockOmahaRequestParams : public OmahaRequestParams {
   bool FakeSetTargetChannel(const std::string& channel,
                             bool is_powerwash_allowed,
                             std::string* error) {
-    return OmahaRequestParams::SetTargetChannel(
-        channel, is_powerwash_allowed, error);
+    return OmahaRequestParams::SetTargetChannel(channel, is_powerwash_allowed,
+                                                error);
   }
 
   void FakeUpdateDownloadChannel() {
