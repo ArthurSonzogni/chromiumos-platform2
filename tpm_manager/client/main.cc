@@ -62,7 +62,7 @@ constexpr char kLockWrite[] = "lock_write";
 constexpr char kUsage[] = R"(
 Usage: tpm_manager_client <command> [<arguments>]
 Commands:
-  status
+  status [--nonsensitive]
       Prints TPM status information.
   get_version_info
       Prints TPM version information.
