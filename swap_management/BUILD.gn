@@ -14,7 +14,7 @@ group("all") {
     ":swap_management",
   ]
   if (use.test) {
-    deps += [ ":swap_tool_test" ]
+    deps += [ ":test" ]
   }
 }
 
@@ -100,8 +100,12 @@ if (use.test) {
       "libchrome-test",
     ]
   }
-  executable("swap_tool_test") {
-    sources = [ "swap_tool_test.cc" ]
+  executable("test") {
+    sources = [
+      "swap_tool_test.cc",
+      "zram_stats_test.cc",
+      "zram_writeback_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":test_helper_config",

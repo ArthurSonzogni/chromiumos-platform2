@@ -61,6 +61,8 @@ class DmDev {
 
 class ZramWriteback {
  public:
+  friend class MockZramWriteback;
+
   // There are only one zram writeback instance in current setup.
   static ZramWriteback* Get();
 

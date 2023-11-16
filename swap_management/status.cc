@@ -145,7 +145,7 @@ absl::Status ErrnoToStatus(int error_number, absl::string_view message) {
       return absl::CancelledError(message);
     default:
       return absl::UnknownError(
-          absl::StrCat("Error: ", base::safe_strerror(errno), message));
+          absl::StrCat("Error: ", base::safe_strerror(errno), " ", message));
   }
 }
 

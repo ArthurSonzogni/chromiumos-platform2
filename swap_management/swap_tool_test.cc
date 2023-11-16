@@ -2,16 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "swap_management/mock_utils.h"
 #include "swap_management/swap_tool.h"
-#include "swap_management/utils.h"
 
 #include <memory>
 #include <utility>
-#include <vector>
 
 #include <absl/strings/str_cat.h>
 #include <chromeos/dbus/swap_management/dbus-constants.h>
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 using testing::_;
@@ -30,77 +28,6 @@ const char kSwapsNoZram[] =
 const char kZramDisksize8G[] = "16679780352";
 const int kZramMemTotal8G = 8144424;
 }  // namespace
-
-class MockUtils : public swap_management::Utils {
- public:
-  MockUtils() = default;
-  MockUtils& operator=(const MockUtils&) = delete;
-  MockUtils(const MockUtils&) = delete;
-
-  MOCK_METHOD(absl::Status,
-              RunProcessHelper,
-              (const std::vector<std::string>& commands),
-              (override));
-  MOCK_METHOD(absl::Status,
-              RunProcessHelper,
-              (const std::vector<std::string>& commands, std::string* output),
-              (override));
-  MOCK_METHOD(absl::Status,
-              WriteFile,
-              (const base::FilePath& path, const std::string& data),
-              (override));
-  MOCK_METHOD(absl::Status,
-              ReadFileToStringWithMaxSize,
-              (const base::FilePath& path,
-               std::string* contents,
-               size_t max_size),
-              (override));
-  MOCK_METHOD(absl::Status,
-              ReadFileToString,
-              (const base::FilePath& path, std::string* contents),
-              (override));
-  MOCK_METHOD(absl::Status,
-              DeleteFile,
-              (const base::FilePath& path),
-              (override));
-  MOCK_METHOD(absl::Status,
-              PathExists,
-              (const base::FilePath& path),
-              (override));
-  MOCK_METHOD(absl::Status,
-              Fallocate,
-              (const base::FilePath& path, size_t size),
-              (override));
-  MOCK_METHOD(absl::Status,
-              CreateDirectory,
-              (const base::FilePath& path),
-              (override));
-  MOCK_METHOD(absl::Status,
-              SetPosixFilePermissions,
-              (const base::FilePath& path, int mode),
-              (override));
-  MOCK_METHOD(absl::Status,
-              Mount,
-              (const std::string& source,
-               const std::string& target,
-               const std::string& fs_type,
-               uint64_t mount_flags,
-               const std::string& data),
-              (override));
-  MOCK_METHOD(absl::Status, Umount, (const std::string& target), (override));
-  MOCK_METHOD(absl::StatusOr<struct statfs>,
-              GetStatfs,
-              (const std::string& path),
-              (override));
-  MOCK_METHOD(absl::StatusOr<std::string>,
-              GenerateRandHex,
-              (size_t size),
-              (override));
-  MOCK_METHOD(absl::StatusOr<base::SystemMemoryInfoKB>,
-              GetSystemMemoryInfo,
-              (),
-              (override));
-};
 
 class SwapToolTest : public ::testing::Test {
  public:
@@ -247,142 +174,6 @@ TEST_F(SwapToolTest, SwapSetSize) {
                                     absl::StrCat(1024)))
       .WillOnce(Return(absl::OkStatus()));
   EXPECT_THAT(swap_tool_->SwapSetSize(1024), absl::OkStatus());
-}
-
-TEST_F(SwapToolTest, SwapZramEnableWriteback) {
-  // ZramWritebackPrerequisiteCheck
-  EXPECT_CALL(
-      mock_util_,
-      ReadFileToString(base::FilePath("/sys/block/zram0/backing_dev"), _))
-      .WillOnce(DoAll(SetArgPointee<1>("none\n"), Return(absl::OkStatus())));
-  EXPECT_CALL(mock_util_, DeleteFile(base::FilePath("/run/zram-integrity")))
-      .WillOnce(Return(absl::OkStatus()));
-
-  // GetZramWritebackInfo
-  struct statfs sf = {
-      .f_bsize = 4096,
-      .f_blocks = 2038647,
-      .f_bfree = 1159962,
-  };
-  EXPECT_CALL(
-      mock_util_,
-      GetStatfs("/mnt/stateful_partition/unencrypted/userspace_swap.tmp"))
-      .WillOnce(Return(std::move(sf)));
-
-  // CreateDmDevicesAndEnableWriteback
-  EXPECT_CALL(
-      mock_util_,
-      WriteFile(base::FilePath("/mnt/stateful_partition/unencrypted/"
-                               "userspace_swap.tmp/zram_writeback.swap"),
-                std::string()))
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(
-      mock_util_,
-      Fallocate(base::FilePath("/mnt/stateful_partition/unencrypted/"
-                               "userspace_swap.tmp/zram_writeback.swap"),
-                134217728))
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(
-      mock_util_,
-      RunProcessHelper(ElementsAre("/sbin/losetup", "--show", "--direct-io=on",
-                                   "--sector-size=4096", "-f",
-                                   "/mnt/stateful_partition/unencrypted/"
-                                   "userspace_swap.tmp/zram_writeback.swap"),
-                       _))
-      .WillOnce(
-          DoAll(SetArgPointee<1>("/dev/loop10\n"), Return(absl::OkStatus())));
-  EXPECT_CALL(mock_util_,
-              CreateDirectory(base::FilePath("/run/zram-integrity")))
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(mock_util_, SetPosixFilePermissions(
-                              base::FilePath("/run/zram-integrity"), 0700))
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(mock_util_, Mount("none", "/run/zram-integrity", "ramfs", 0,
-                                "noexec,nosuid,noatime,mode=0700"))
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(
-      mock_util_,
-      WriteFile(base::FilePath("/run/zram-integrity/zram_integrity.swap"),
-                std::string(1048576, 0)))
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(
-      mock_util_,
-      RunProcessHelper(ElementsAre("/sbin/losetup", "--show", "-f",
-                                   "/run/zram-integrity/zram_integrity.swap"),
-                       _))
-      .WillOnce(
-          DoAll(SetArgPointee<1>("/dev/loop11\n"), Return(absl::OkStatus())));
-
-  EXPECT_CALL(
-      mock_util_,
-      RunProcessHelper(ElementsAre(
-          "/sbin/dmsetup", "create", "zram-integrity", "--table",
-          "0 262144 integrity /dev/loop10 0 24 D 4 block_size:4096 "
-          "meta_device:/dev/loop11 journal_sectors:1 buffer_sectors:128")))
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(mock_util_,
-              PathExists(base::FilePath("/dev/mapper/zram-integrity")))
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(mock_util_, GenerateRandHex(32))
-      .WillOnce(Return(std::move(
-          "31EDB364E004FA99CFDBA21D726284A810421F7466F892ED2306DB7FB917084E")));
-  EXPECT_CALL(mock_util_,
-              RunProcessHelper(ElementsAre(
-                  "/sbin/dmsetup", "create", "zram-writeback", "--table",
-                  "0 262144 crypt capi:gcm(aes)-random "
-                  "31EDB364E004FA99CFDBA21D726284A810421F7466F892ED2306DB7FB917"
-                  "084E 0 /dev/mapper/zram-integrity 0 4 allow_discards "
-                  "submit_from_crypt_cpus sector_size:4096 integrity:24:aead")))
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(mock_util_,
-              PathExists(base::FilePath("/dev/mapper/zram-writeback")))
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(mock_util_,
-              WriteFile(base::FilePath("/sys/block/zram0/backing_dev"),
-                        "/dev/mapper/zram-writeback"))
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(mock_util_, DeleteFile(base::FilePath(
-                              "/mnt/stateful_partition/unencrypted/"
-                              "userspace_swap.tmp/zram_writeback.swap")))
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(
-      mock_util_,
-      DeleteFile(base::FilePath("/run/zram-integrity/zram_integrity.swap")))
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(mock_util_, RunProcessHelper(ElementsAre("/sbin/losetup", "-d",
-                                                       "/dev/loop10")))
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(mock_util_, RunProcessHelper(ElementsAre("/sbin/losetup", "-d",
-                                                       "/dev/loop11")))
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(mock_util_,
-              RunProcessHelper(ElementsAre("/sbin/dmsetup", "remove",
-                                           "--deferred", "zram-writeback")))
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(mock_util_,
-              RunProcessHelper(ElementsAre("/sbin/dmsetup", "remove",
-                                           "--deferred", "zram-integrity")))
-      .WillOnce(Return(absl::OkStatus()));
-
-  EXPECT_THAT(swap_tool_->SwapZramEnableWriteback(128), absl::OkStatus());
-}
-
-TEST_F(SwapToolTest, SwapZramRecompression) {
-  // SwapZramSetRecompAlgorithms
-  EXPECT_CALL(mock_util_,
-              WriteFile(base::FilePath("/var/lib/swap/swap_recomp_algorithm"),
-                        "deflate lre"))
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_THAT(swap_tool_->SwapZramSetRecompAlgorithms({"deflate", "lre"}),
-              absl::OkStatus());
-  // InitiateSwapZramRecompression
-  EXPECT_CALL(mock_util_,
-              WriteFile(base::FilePath("/sys/block/zram0/recompress"),
-                        "type=idle threshold=1000 algo=deflate"))
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_THAT(swap_tool_->InitiateSwapZramRecompression(RECOMPRESSION_IDLE,
-                                                        1000, "deflate"),
-              absl::OkStatus());
 }
 
 }  // namespace swap_management
