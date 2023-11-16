@@ -34,8 +34,10 @@ constexpr char kTpmSha256Pcr0File[] = "/sys/class/tpm/tpm0/pcr-sha256/0";
 constexpr uint32_t kVendorIdSimulator = 0x53494d55;
 // STMicroelectronics Vendor ID ("STM ").
 constexpr uint32_t kVendorIdStm = 0x53544D20;
-// Nuvoton Vendor ID ("NTC ").
+// Nuvoton Vendor ID ("NTC").
 constexpr uint32_t kVendorIdNtc = 0x4e544300;
+// Winbond Vendor ID ("WEC").
+constexpr uint32_t kVendorIdWinbond = 0x57454300;
 
 // The location of TPM DID & VID information.
 constexpr char kTpmDidVidPath[] = "/sys/class/tpm/tpm0/did_vid";
@@ -71,12 +73,6 @@ constexpr TpmVidDid kTpm1DidVidAllowlist[] = {
     TpmVidDid{kTpmVidIfx, 0x1B},
 };
 
-struct DeviceModel {
-  const char* sys_vendor;
-  const char* product_name;
-  TpmVidDid vid_did;
-};
-
 struct DeviceFamily {
   const char* sys_vendor;
   const char* product_family;
@@ -89,10 +85,6 @@ struct DeviceName {
   uint32_t tpm_vendor_id;
 };
 
-constexpr DeviceModel kTpm2ModelsAllowlist[] = {
-    DeviceModel{"Dell Inc.", "Latitude 7490", TpmVidDid{kTpmVidWinbond, 0xFC}},
-};
-
 constexpr DeviceFamily kTpm2FamiliesAllowlist[] = {
     DeviceFamily{"LENOVO", "ThinkPad X1 Carbon Gen 8", kVendorIdStm},
     DeviceFamily{"LENOVO", "ThinkPad X1 Carbon Gen 9", kVendorIdStm},
@@ -103,6 +95,7 @@ constexpr DeviceName kTpm2DeviceNameAllowlist[] = {
                kVendorIdNtc},
     DeviceName{"HP", "HP EliteBook 640 14 inch G10 Notebook PC", kVendorIdNtc},
     DeviceName{"HP", "HP EliteBook 645 14 inch G10 Notebook PC", kVendorIdNtc},
+    DeviceName{"Dell Inc.", "Latitude 7490", kVendorIdWinbond},
 };
 
 std::optional<bool> IsTpmFileEnabled() {
@@ -336,31 +329,11 @@ bool TpmAllowlistImpl::IsAllowed() {
       }
     }
 
-    uint16_t device_id;
-    uint16_t vendor_id;
-
-    if (!GetDidVid(&device_id, &vendor_id)) {
-      LOG(ERROR) << __func__ << ": Failed to get the TPM DID & VID.";
-      return false;
-    }
-
-    for (const DeviceModel& match : kTpm2ModelsAllowlist) {
-      if (sys_vendor == match.sys_vendor &&
-          product_name == match.product_name) {
-        if (vendor_id == match.vid_did.vendor_id &&
-            device_id == match.vid_did.device_id) {
-          return true;
-        }
-      }
-    }
-
     LOG(INFO) << "Not allowed TPM2.0:";
     LOG(INFO) << "  System Vendor: " << sys_vendor;
     LOG(INFO) << "  Product Name: " << product_name;
     LOG(INFO) << "  Product Family: " << product_family;
     LOG(INFO) << "  TPM Manufacturer: " << std::hex << manufacturer;
-    LOG(INFO) << "  TPM Vendor ID: " << std::hex << vendor_id;
-    LOG(INFO) << "  TPM Device ID: " << std::hex << device_id;
 
     return false;
   });
