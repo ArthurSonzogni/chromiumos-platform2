@@ -15,6 +15,7 @@
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/synchronization/lock.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <brillo/files/file_util.h>
@@ -129,13 +130,9 @@ void OutputManager::OnExpiredFile() {
     if (it->expiration() <= now) {
       // Run the file deletion task asynchronously to avoid blocking on I/O
       // while we're holding the lock.
-      if (base::SequencedTaskRunner::HasCurrentDefault()) {
-        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-            FROM_HERE, base::BindOnce(&DeleteFirmwareDump, it->fw_dump(),
-                                      "scheduled task"));
-      } else {
-        DeleteFirmwareDump(it->fw_dump(), __func__);
-      }
+      manager_->task_runner()->PostTask(
+          FROM_HERE,
+          base::BindOnce(&DeleteFirmwareDump, it->fw_dump(), "scheduled task"));
       it = files_.erase(it);
     } else {
       ++it;

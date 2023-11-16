@@ -66,32 +66,25 @@ void PseudonymizationManager::StartPseudonymization(
   }
   FirmwareDump output(
       user_root_dir_.Append(kProcessedDirectory).Append(fw_dump.BaseName()));
-  if (base::SequencedTaskRunner::HasCurrentDefault()) {
-    if (base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-            FROM_HERE,
-            base::BindOnce(&PseudonymizationManager::DoNoOpPseudonymization,
-                           weak_factory_.GetWeakPtr(), fw_dump, output))) {
-      // We successfully posted the pseudonymization task, keep track of the
-      // start timestamp for future rate limit checks.
-      base::Time now = base::Time::Now();
-      recently_processed_lock_.Acquire();
-      // Since we checked the rate limit earlier but only add the operation now,
-      // there is a small time window where another request would be allowed
-      // even if we already hit the rate limit. That is acceptable since in
-      // practice firmware dumps are not generated that frequenly by the rest
-      // of the stack (every few seconds at most). The feedback report creation
-      // tool will also limit how many firmware dumps are added, so potentially
-      // creating 1 extra firmware dump is tolerable.
-      recently_processed_.insert(now);
-      recently_processed_lock_.Release();
-    } else {
-      LOG(ERROR) << "Failed to post pseudonymization task.";
-      if (!fw_dump.Delete()) {
-        LOG(ERROR) << "Failed to delete input firmware dump.";
-      }
-    }
+  if (manager_->task_runner()->PostTask(
+          FROM_HERE,
+          base::BindOnce(&PseudonymizationManager::DoNoOpPseudonymization,
+                         weak_factory_.GetWeakPtr(), fw_dump, output))) {
+    // We successfully posted the pseudonymization task, keep track of the
+    // start timestamp for future rate limit checks.
+    base::Time now = base::Time::Now();
+    recently_processed_lock_.Acquire();
+    // Since we checked the rate limit earlier but only add the operation now,
+    // there is a small time window where another request would be allowed
+    // even if we already hit the rate limit. That is acceptable since in
+    // practice firmware dumps are not generated that frequenly by the rest
+    // of the stack (every few seconds at most). The feedback report creation
+    // tool will also limit how many firmware dumps are added, so potentially
+    // creating 1 extra firmware dump is tolerable.
+    recently_processed_.insert(now);
+    recently_processed_lock_.Release();
   } else {
-    LOG(ERROR) << "No task runner.";
+    LOG(ERROR) << "Failed to post pseudonymization task.";
     if (!fw_dump.Delete()) {
       LOG(ERROR) << "Failed to delete input firmware dump.";
     }

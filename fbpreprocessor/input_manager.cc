@@ -12,7 +12,6 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
-#include <base/task/sequenced_task_runner.h>
 #include <brillo/files/file_util.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>

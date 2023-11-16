@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include <base/task/sequenced_task_runner.h>
 #include <dbus/bus.h>
 
 #include "fbpreprocessor/configuration.h"
@@ -21,6 +22,10 @@ Manager::Manager(const Configuration& config)
     : default_file_expiration_in_secs_(config.default_expiration_secs()) {}
 
 void Manager::Start(dbus::Bus* bus) {
+  CHECK(base::SequencedTaskRunner::HasCurrentDefault())
+      << "No default task runner.";
+  task_runner_ = base::SequencedTaskRunner::GetCurrentDefault();
+
   // SessionStateManager must be instantiated first since the other modules will
   // register as observers with the SessionStateManager::Observer interface.
   // Same thing for PlatformFeaturesClient, other modules will also register as

@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include <base/task/sequenced_task_runner.h>
 #include <dbus/bus.h>
 
 #include "fbpreprocessor/configuration.h"
@@ -46,6 +47,10 @@ class Manager {
     return platform_features_.get();
   }
 
+  scoped_refptr<base::SequencedTaskRunner> task_runner() const {
+    return task_runner_;
+  }
+
   int default_file_expiration_in_secs() const {
     return default_file_expiration_in_secs_;
   }
@@ -67,6 +72,7 @@ class Manager {
   std::unique_ptr<InputManager> input_manager_;
   std::unique_ptr<SessionStateManager> session_state_manager_;
   std::unique_ptr<PlatformFeaturesClient> platform_features_;
+  scoped_refptr<base::SequencedTaskRunner> task_runner_;
 };
 
 }  // namespace fbpreprocessor
