@@ -32,6 +32,12 @@ lazy_static! {
         let path = Path::new("/var/lib/hiberman");
         path.join("hibernating_user")
     };
+
+    /// Define the path of the file with the size of the hibernate image.
+    pub static ref HIBERIMAGE_SIZE_FILE: PathBuf = {
+        let path = Path::new(HIBERMETA_DIR);
+        path.join("hiberimage_size")
+    };
 }
 
 /// Add the resuming file token that other services can check to quickly see if

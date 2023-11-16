@@ -4,15 +4,20 @@
 
 //! Implements hibernate resume functionality.
 
+use std::cmp;
 use std::fs;
 use std::fs::File;
 use std::io::Read;
 use std::io::Write;
 use std::mem;
+use std::os::unix::io::AsRawFd;
+use std::ptr;
+use std::thread;
 use std::time::Duration;
 use std::time::Instant;
 use std::time::UNIX_EPOCH;
 
+use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
 use libchromeos::secure_blob::SecureBlob;
@@ -34,8 +39,10 @@ use crate::hiberlog::redirect_log;
 use crate::hiberlog::redirect_log_to_file;
 use crate::hiberlog::replay_logs;
 use crate::hiberlog::HiberlogOut;
+use crate::hiberutil::get_ram_size;
 use crate::hiberutil::lock_process_memory;
 use crate::hiberutil::path_to_stateful_block;
+use crate::hiberutil::read_hiberimage_size;
 use crate::hiberutil::sanitize_username;
 use crate::hiberutil::HibernateError;
 use crate::hiberutil::HibernateStage;
@@ -70,6 +77,7 @@ pub struct ResumeConductor {
     current_user: Option<String>,
     tried_to_resume: bool,
     timestamp_start: Duration,
+    preload_thread: Option<thread::JoinHandle<Result<()>>>,
 }
 
 impl ResumeConductor {
@@ -81,6 +89,7 @@ impl ResumeConductor {
             current_user: None,
             tried_to_resume: false,
             timestamp_start: Duration::ZERO,
+            preload_thread: None,
         })
     }
 
@@ -151,6 +160,10 @@ impl ResumeConductor {
     fn resume_inner(&mut self) -> Result<()> {
         let mut dbus_server = DBusServer::new();
 
+        if self.is_resume_pending()? {
+            self.preload_hiberimage_data()?;
+        }
+
         // Wait for the user to authenticate or a message that hibernate is
         // not supported.
         let user_key = match dbus_server.wait_for_event()? {
@@ -170,6 +183,13 @@ impl ResumeConductor {
 
         if let Err(e) = self.decide_to_resume() {
             // No resume from hibernate
+
+            if let Some(preload_thread) = self.preload_thread.take() {
+                // Wait for the image data preload thread to finish.
+                if let Err(e) = preload_thread.join() {
+                    error!("preloading image data failed: {e:?}");
+                }
+            }
 
             let volume_manager = VOLUME_MANAGER.read().unwrap();
 
@@ -408,6 +428,29 @@ impl ResumeConductor {
         result
     }
 
+    /// Launches a thread that loads the encrypted data of the hibernate
+    /// image into the page cache.
+    fn preload_hiberimage_data(&mut self) -> Result<()> {
+        let volume_manager = VOLUME_MANAGER.read().unwrap();
+
+        volume_manager
+            .setup_hiberimage_buffer_device()
+            .context("Failed to set up buffer device for hiberimage")?;
+
+        // briefly mount hibermeta to read the size of the hiberimage.
+        let mut hibermeta_mount = volume_manager.setup_hibermeta_lv(true)?;
+        let image_size = read_hiberimage_size()?;
+        hibermeta_mount.unmount()?;
+
+        let ram_size = get_ram_size();
+        // Don't fill up more than 13% of the RAM.
+        let preload_bytes = cmp::min(image_size, (ram_size * 13) / 100);
+
+        self.preload_thread = Some(thread::spawn(move || preload_image_data(preload_bytes)));
+
+        Ok(())
+    }
+
     // Record the account id of the user that is hibernating.
     fn record_hibernating_user(&self) -> Result<()> {
         let mut f = File::create(HIBERNATING_USER_FILE.as_path()).context(format!(
@@ -424,10 +467,69 @@ impl ResumeConductor {
         Ok(())
     }
 
+    /// Check whether a resume from hibernate is pending.
+    fn is_resume_pending(&self) -> Result<bool> {
+        let cookie = get_hibernate_cookie(Some(&self.stateful_block_path))
+            .context("Failed to get hibernate cookie")?;
+
+        Ok(cookie == HibernateCookieValue::ResumeInProgress)
+    }
+
     fn get_hibernating_user() -> Result<String> {
         fs::read_to_string(HIBERNATING_USER_FILE.as_path()).context(format!(
             "failed to read {}",
             HIBERNATING_USER_FILE.display()
         ))
     }
+}
+
+/// Preloads encrypted hiberimage data from disk. The goal is to
+/// populate the page cache with this data before the user logs in,
+/// to accelerate reading of the decrypted image after the user
+/// logged in.
+///
+/// This function must run a dedicated thread.
+fn preload_image_data(num_bytes: u64) -> Result<()> {
+    let block_dev = {
+        let volume_manager = VOLUME_MANAGER.read().unwrap();
+
+        match volume_manager.get_hiberimage_buffer_device()? {
+            Some(block_dev) => block_dev,
+            None => {
+                return Err(anyhow!(
+                    "Could not determine hiberimage buffer device for preloading"
+                ))
+            }
+        }
+    };
+
+    let f = File::open(&block_dev).context(format!(
+        "Failed to open hiberimage buffer device {}",
+        block_dev.display()
+    ))?;
+
+    debug!(
+        "preloading {}MB of encrypted image data",
+        num_bytes / (1024 * 1024)
+    );
+
+    let mapping = unsafe {
+        libc::mmap(
+            ptr::null_mut(),
+            num_bytes.try_into().unwrap(),
+            libc::PROT_READ,
+            libc::MAP_PRIVATE | libc::MAP_FILE | libc::MAP_POPULATE,
+            f.as_raw_fd(),
+            0,
+        )
+    };
+
+    if mapping == libc::MAP_FAILED {
+        error!("failed to mmap buffer device");
+        return Err(nix::Error::last().into());
+    }
+
+    let _ = unsafe { libc::munmap(mapping, num_bytes.try_into().unwrap()) };
+
+    Ok(())
 }

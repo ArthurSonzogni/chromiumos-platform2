@@ -44,6 +44,7 @@ use crate::hiberutil::get_ram_size;
 use crate::hiberutil::has_user_logged_out;
 use crate::hiberutil::path_to_stateful_block;
 use crate::hiberutil::prealloc_mem;
+use crate::hiberutil::write_hiberimage_size;
 use crate::hiberutil::HibernateError;
 use crate::hiberutil::HibernateOptions;
 use crate::hiberutil::HibernateStage;
@@ -271,6 +272,7 @@ impl SuspendConductor<'_> {
             // Suspend path. Everything after this point is invisible to the
             // hibernated kernel.
 
+            let image_size = snap_dev.get_image_size()?;
             let pages_with_zeroes = get_number_of_dropped_pages_with_zeroes()?;
             // Briefly remount 'hibermeta' to write logs and metrics.
             let mut hibermeta_mount = self.volume_manager.mount_hibermeta()?;
@@ -290,7 +292,6 @@ impl SuspendConductor<'_> {
             log_metric_event(HibernateEvent::SuspendSuccess);
 
             {
-                let image_size = snap_dev.get_image_size()?;
                 let page_size = get_page_size() as u64;
                 let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
 
@@ -312,6 +313,8 @@ impl SuspendConductor<'_> {
                 // sent on resume.
                 metrics_logger.flush()?;
             }
+
+            write_hiberimage_size(image_size)?;
 
             // Set the hibernate cookie so the next boot knows to start in RO mode.
             info!("Setting hibernate cookie at {}", block_path);

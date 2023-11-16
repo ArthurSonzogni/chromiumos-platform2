@@ -13,6 +13,7 @@ use log::debug;
 use log::error;
 use log::info;
 use log::warn;
+use regex::Regex;
 
 use std::ffi::OsStr;
 use std::fs::create_dir;
@@ -278,6 +279,10 @@ impl VolumeManager {
             }
         }
 
+        if let Some(loop_dev) = self.get_hiberimage_buffer_device()? {
+            delete_loop_device(&loop_dev).context("Failed to delete hiberimage loop device")?;
+        }
+
         for lv in [Self::HIBERIMAGE, Self::HIBERINTEGRITY] {
             if lv_exists(&self.vg_name, lv)? {
                 lv_remove(&self.vg_name, lv)?;
@@ -321,6 +326,15 @@ impl VolumeManager {
             }
         }
 
+        Ok(())
+    }
+
+    /// Set up a buffer device that allows to preload the encrypted
+    /// hiberimage into the page cache.
+    pub fn setup_hiberimage_buffer_device(&self) -> Result<()> {
+        self.create_or_activate_lv(HibernateVolume::Image)?;
+        let hiberimage_lv = lv_path(&self.vg_name, Self::HIBERIMAGE);
+        let _ = Self::setup_loop_device(hiberimage_lv, SIZE_4K.try_into()?)?;
         Ok(())
     }
 
@@ -437,11 +451,36 @@ impl VolumeManager {
         Ok(())
     }
 
+    /// Determines the buffer device for 'hiberimage'.
+    ///
+    /// Returns the path of the buffer device if it exists, otherwise None.
+    pub fn get_hiberimage_buffer_device(&self) -> Result<Option<PathBuf>> {
+        let hiberimage_lv = lv_path(&self.vg_name, Self::HIBERIMAGE);
+
+        let output = checked_command_output(
+            Command::new(LOSETUP_PATH).args(["-j", &hiberimage_lv.to_string_lossy()]),
+        )
+        .context("Failed to determine hiberimage buffer device")?;
+
+        if output.stdout.is_empty() {
+            return Ok(None);
+        }
+
+        let re = Regex::new(r"^(/dev/loop\d+):.*").unwrap();
+        let output_str = String::from_utf8_lossy(&output.stdout);
+
+        let Some(caps) = re.captures(&output_str) else {
+            return Ok(None)
+        };
+
+        Ok(Some(PathBuf::from(caps[1].to_string())))
+    }
+
     /// Set up a dm-snapshot for a single named LV.
     fn setup_snapshot(&self, name: &str) -> Result<()> {
         info!("Setting up snapshot for LV: {}", name);
         let path = snapshot_file_path(name);
-        let loop_path = Self::setup_loop_device(path)?;
+        let loop_path = Self::setup_loop_device(path, 512)?;
         let activated_lv = ActivatedLogicalVolume::new(&self.vg_name, name)
             .context(format!("Failed to activate LV: {}", name))?;
         let origin_lv = read_link(lv_path(&self.vg_name, name))?;
@@ -457,9 +496,11 @@ impl VolumeManager {
     }
 
     /// Set up a loop device for the given file and return the path to it.
-    fn setup_loop_device<P: AsRef<OsStr>>(file_path: P) -> Result<PathBuf> {
+    fn setup_loop_device<P: AsRef<OsStr>>(file_path: P, block_size: u32) -> Result<PathBuf> {
         let output = checked_command_output(Command::new(LOSETUP_PATH).args([
             "--show",
+            "-b",
+            &block_size.to_string(),
             "-f",
             &file_path.as_ref().to_string_lossy(),
         ]))
@@ -769,7 +810,11 @@ impl VolumeManager {
     /// Create the dm-integrity device 'hiberimage_hiberintegrity' (on top of
     /// the logical volume 'hiberimage').
     fn create_hiberimage_integrity_dm_dev(&self, format_device: bool) -> Result<()> {
-        let backing_dev = lv_path(&self.vg_name, Self::HIBERIMAGE);
+        let backing_dev = match self.get_hiberimage_buffer_device()? {
+            Some(loop_dev) => loop_dev.clone(),
+            None => lv_path(&self.vg_name, Self::HIBERIMAGE),
+        };
+
         let backing_dev_nr_sectors = get_blockdev_size(&backing_dev)? / SECTOR_SIZE;
         let meta_data_dev = DeviceMapper::device_path(Self::HIBERINTEGRITY)?;
 
@@ -1134,7 +1179,10 @@ fn get_snapshot_data_sectors(name: &str) -> Result<u64> {
     let allocated_element =
         get_nth_element(&status, 3).context("Failed to get dm status allocated element")?;
 
-    let allocated = allocated_element.split('/').next().context("Failed to extract dm allocation field")?;
+    let allocated = allocated_element
+        .split('/')
+        .next()
+        .context("Failed to extract dm allocation field")?;
     let metadata =
         get_nth_element(&status, 4).context("Failed to get dm status metadata element")?;
 
@@ -1194,9 +1242,10 @@ fn get_dm_status(target: &str) -> Result<String> {
 }
 
 /// Delete a loop device.
-fn delete_loop_device(dev: &str) -> Result<()> {
-    checked_command(Command::new(LOSETUP_PATH).args(["-d", dev]))
-        .context(format!("Failed to delete loop device: {}", dev))
+fn delete_loop_device(dev: &PathBuf) -> Result<()> {
+    let dev_str = dev.to_string_lossy();
+    checked_command(Command::new(LOSETUP_PATH).args(["-d", dev_str.as_ref()]))
+        .context(format!("Failed to delete loop device: {}", dev.display()))
 }
 
 /// Run a dmsetup command and return the output as a trimmed String.
@@ -1209,7 +1258,7 @@ fn dmsetup_checked_output(command: &mut Command) -> Result<String> {
 
 /// Get a loop device path like /dev/loop4 out of a major:minor string like
 /// 7:4.
-fn majmin_to_loop_path(majmin: &str) -> Option<String> {
+fn majmin_to_loop_path(majmin: &str) -> Option<PathBuf> {
     if !majmin.starts_with("7:") {
         return None;
     }
@@ -1217,7 +1266,7 @@ fn majmin_to_loop_path(majmin: &str) -> Option<String> {
     let mut split = majmin.split(':');
     split.next();
     let loop_num: i32 = split.next().unwrap().parse().unwrap();
-    Some(format!("/dev/loop{}", loop_num))
+    Some(PathBuf::from(format!("/dev/loop{}", loop_num)))
 }
 
 /// Return the file path backing the loop device backing a dm-snapshot

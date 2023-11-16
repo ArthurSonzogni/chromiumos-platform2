@@ -39,6 +39,7 @@ use thiserror::Error as ThisError;
 
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
+use crate::files::HIBERIMAGE_SIZE_FILE;
 use crate::files::HIBERMETA_DIR;
 use crate::files::TMPFS_DIR;
 use crate::hiberlog::redirect_log;
@@ -677,6 +678,40 @@ pub fn keyctl_remove_key(description: &str) -> Result<()> {
     checked_command(Command::new(KEYCTL_PATH).args(["purge", "-s", "logon", description])).context(
         format!("Failed to remove key '{description}' from the kernel key ring"),
     )
+}
+
+/// Read the size of the hibernate image from 'hibermeta'.
+///
+/// The 'hibermeta' volume needs to be mounted when this function is called.
+pub fn read_hiberimage_size() -> Result<u64> {
+    let mut f = File::open(HIBERIMAGE_SIZE_FILE.as_path())?;
+
+    let mut bytes = [0; 8];
+
+    f.read_exact(&mut bytes).context(format!(
+        "Failed to read hiberimage size from {}",
+        HIBERIMAGE_SIZE_FILE.display()
+    ))?;
+
+    Ok(u64::from_ne_bytes(bytes))
+}
+
+/// Write the size of the hibernate image to 'hibermeta'.
+///
+/// The 'hibermeta' volume needs to be mounted when this function is called.
+pub fn write_hiberimage_size(size: u64) -> Result<()> {
+    let mut f = File::options()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(HIBERIMAGE_SIZE_FILE.as_path())?;
+
+    let bytes = size.to_ne_bytes();
+
+    f.write_all(&bytes).context(format!(
+        "Failed to write hiberimage size to {}",
+        HIBERIMAGE_SIZE_FILE.display()
+    ))
 }
 
 /// Provides an API for recording and reading timestamps from disk.
