@@ -38,6 +38,7 @@ constexpr char kResetDictionaryAttackLockCommand[] = "reset_da_lock";
 constexpr char kTakeOwnershipCommand[] = "take_ownership";
 constexpr char kRemoveOwnerDependencyCommand[] = "remove_dependency";
 constexpr char kClearStoredOwnerPasswordCommand[] = "clear_owner_password";
+constexpr char kClearTpmCommand[] = "clear_tpm";
 constexpr char kDefineSpaceCommand[] = "define_space";
 constexpr char kDestroySpaceCommand[] = "destroy_space";
 constexpr char kWriteSpaceCommand[] = "write_space";
@@ -80,6 +81,8 @@ Commands:
       Removes the named Tpm owner dependency. E.g. \"Nvram\" or \"Attestation\".
   clear_owner_password
       Clears stored owner password if all dependencies have been removed.
+  clear_tpm
+      Clears the TPM.
   define_space --index=<index> --size=<size> [--attributes=<attribute_list>]
                [--password=<password>] [--bind_to_pcr0]
       Defines an NV space. The attribute format is a '|' separated list of:
@@ -257,6 +260,9 @@ class ClientLoop : public ClientLoopBase {
       task = base::BindOnce(
           &ClientLoop::HandleRemoveOwnerDependency, weak_factory_.GetWeakPtr(),
           command_line->GetSwitchValueASCII(kDependencySwitch));
+    } else if (command == kClearTpmCommand) {
+      task = base::BindOnce(&ClientLoop::HandleClearTpm,
+                            weak_factory_.GetWeakPtr());
     } else if (command == kClearStoredOwnerPasswordCommand) {
       task = base::BindOnce(&ClientLoop::HandleClearStoredOwnerPassword,
                             weak_factory_.GetWeakPtr());
@@ -458,6 +464,17 @@ class ClientLoop : public ClientLoopBase {
         base::BindOnce(
             &ClientLoop::PrintReplyAndQuit<ClearStoredOwnerPasswordReply>,
             weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
+        kDefaultTimeout.InMilliseconds());
+  }
+
+  void HandleClearTpm() {
+    ClearTpmRequest request;
+    tpm_ownership_->ClearTpmAsync(
+        request,
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<ClearTpmReply>,
+                       weak_factory_.GetWeakPtr()),
         base::BindOnce(&ClientLoop::PrintErrorAndQuit,
                        weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
