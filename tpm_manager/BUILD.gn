@@ -81,6 +81,7 @@ static_library("server_library") {
     "server/tpm_manager_metrics.cc",
     "server/tpm_manager_service.cc",
   ]
+
   configs += [ ":target_defaults" ]
 
   pkg_deps = [ "system_api" ]

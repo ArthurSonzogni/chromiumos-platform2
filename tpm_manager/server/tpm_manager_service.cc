@@ -29,6 +29,7 @@
 #include <brillo/secure_blob.h>
 #include <crypto/sha2.h>
 #include <inttypes.h>
+#include <libhwsec-foundation/tpm/tpm_clear.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 
 #include "tpm_manager/server/openssl_crypto_util_impl.h"
@@ -694,6 +695,10 @@ TpmManagerService::GetSupportedFeaturesTask(
   reply->set_support_pinweaver(tpm_status_->SupportPinweaver());
   reply->set_support_runtime_selection(USE_TPM_DYNAMIC);
   reply->set_is_allowed(tpm_allowed_);
+  reply->set_support_clear_request(
+      hwsec_foundation::tpm::SupportClearRequest());
+  reply->set_support_clear_without_prompt(
+      hwsec_foundation::tpm::SupportClearWithoutPrompt());
   reply->set_status(STATUS_SUCCESS);
 
   {
@@ -980,10 +985,11 @@ void TpmManagerService::ClearTpm(const ClearTpmRequest& request,
 std::unique_ptr<ClearTpmReply> TpmManagerService::ClearTpmTask(
     const ClearTpmRequest& request) {
   VLOG(1) << __func__;
-
   auto reply = std::make_unique<ClearTpmReply>();
-  reply->set_status(STATUS_NOT_AVAILABLE);
-
+  reply->set_status(STATUS_SUCCESS);
+  if (!hwsec_foundation::tpm::SetClearTpmRequestAllowPrompt(true)) {
+    reply->set_status(STATUS_DEVICE_ERROR);
+  }
   return reply;
 }
 

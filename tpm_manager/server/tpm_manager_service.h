@@ -336,6 +336,12 @@ class TpmManagerService : public TpmNvramInterface,
   // Check if TPM is cleared after power wash and report the status to UMA
   void CheckPowerWashResult(const TpmStatus::TpmOwnershipStatus status);
 
+  // Check the device support TPM clear request or not.
+  bool SupportClearRequest();
+
+  // Check the device support TPM clear request without user prompt or not.
+  bool SupportClearWithoutPrompt();
+
   LocalDataStore* local_data_store_;
   OpensslCryptoUtilImpl openssl_util_;
 
