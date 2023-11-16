@@ -13,6 +13,7 @@ clock_gettime: 1
 clock_gettime64: 1
 clock_nanosleep: 1
 clock_nanosleep_time64: 1
+# tokio spawns threads
 clone: 1
 close: 1
 connect: 1
@@ -49,6 +50,7 @@ munmap: 1
 openat: 1
 pidfd_open: 1
 poll: 1
+# tokio use prctl on creating threads
 prctl: arg0 == PR_SET_NAME
 read: 1
 recv: 1
@@ -65,6 +67,7 @@ send: 1
 sendmsg: 1
 set_robust_list: 1
 sigaltstack: 1
+# socket is required to establish DBus connection
 socket: arg0 == AF_UNIX
 statx: 1
 ugetrlimit: 1
