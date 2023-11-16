@@ -28,6 +28,7 @@ inline constexpr char kResetDictionaryAttackLock[] =
 inline constexpr char kTakeOwnership[] = "TakeOwnership";
 inline constexpr char kRemoveOwnerDependency[] = "RemoveOwnerDependency";
 inline constexpr char kClearStoredOwnerPassword[] = "ClearStoredOwnerPassword";
+inline constexpr char kClearTpm[] = "ClearTpm";
 
 // Signal registered by tpm_manager ownership D-Bus interface.
 inline constexpr char kOwnershipTakenSignal[] = "SignalOwnershipTaken";

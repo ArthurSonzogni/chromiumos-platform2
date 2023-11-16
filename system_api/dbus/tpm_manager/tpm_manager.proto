@@ -367,6 +367,12 @@ message GetSupportedFeaturesReply {
 
   // Whether the TPM is allowed to use or not.
   optional bool is_allowed = 5;
+
+  // Whether the TPM request can be triggered in the userland or not.
+  optional bool support_clear_request = 6;
+
+  // Whether the TPM is allowed to clear without user prompts or not.
+  optional bool support_clear_without_prompt = 7;
 }
 
 message GetDictionaryAttackInfoRequest {}
@@ -426,5 +432,11 @@ message RemoveOwnerDependencyReply {
 message ClearStoredOwnerPasswordRequest {}
 
 message ClearStoredOwnerPasswordReply {
+  optional TpmManagerStatus status = 1;
+}
+
+message ClearTpmRequest {}
+
+message ClearTpmReply {
   optional TpmManagerStatus status = 1;
 }
