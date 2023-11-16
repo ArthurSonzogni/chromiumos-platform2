@@ -61,10 +61,6 @@ using testing::InSequence;
 using testing::Return;
 using testing::SetArgPointee;
 
-class DownloadActionChromeosTest : public ::testing::Test {
-  void SetUp() { FakeSystemState::CreateInstance(); }
-};
-
 namespace {
 constexpr base::TimeDelta kHour = base::Hours(1);
 constexpr base::TimeDelta kMinute = base::Minutes(1);
@@ -257,13 +253,15 @@ TEST(DownloadActionTest, NoDownloadDelegateTest) {
 }
 
 TEST(DownloadActionTest, MultiPayloadProgressTest) {
+  brillo::FakeMessageLoop loop{nullptr};
+  loop.SetAsCurrent();
+  FakeSystemState::CreateInstance();
+
   std::vector<brillo::Blob> payload_datas;
   // the first payload must be the largest, as it's the actual payload used by
   // the MockHttpFetcher for all downloaded data.
   payload_datas.emplace_back(4 * kMockHttpFetcherChunkSize + 256);
   payload_datas.emplace_back(2 * kMockHttpFetcherChunkSize);
-  brillo::FakeMessageLoop loop(nullptr);
-  loop.SetAsCurrent();
   EXPECT_CALL(*FakeSystemState::Get()->mock_payload_state(), NextPayload())
       .WillOnce(Return(true));
 

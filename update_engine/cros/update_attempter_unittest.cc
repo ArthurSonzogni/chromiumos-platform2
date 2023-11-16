@@ -32,7 +32,7 @@
 #include <base/logging.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/version.h>
-#include <brillo/message_loops/base_message_loop.h>
+#include <brillo/message_loops/fake_message_loop.h>
 #include <brillo/message_loops/message_loop.h>
 #include <brillo/message_loops/message_loop_utils.h>
 #include <gmock/gmock.h>
@@ -244,9 +244,9 @@ class UpdateAttempterTest : public ::testing::Test {
     // Override system state members.
     FakeSystemState::CreateInstance();
     FakeSystemState::Get()->set_connection_manager(&mock_connection_manager);
-    FakeSystemState::Get()->set_update_attempter(&attempter_);
-    FakeSystemState::Get()->set_dlcservice(&mock_dlcservice_);
     FakeSystemState::Get()->set_dlc_utils(&mock_dlc_utils_);
+    FakeSystemState::Get()->set_dlcservice(&mock_dlcservice_);
+    FakeSystemState::Get()->set_update_attempter(&attempter_);
 
     prefs_ = FakeSystemState::Get()->fake_prefs();
     certificate_checker_.reset(
@@ -299,6 +299,14 @@ class UpdateAttempterTest : public ::testing::Test {
   void TearDown() override {
     prefs_->Delete(kPrefsAllowRepeatedUpdates);
     prefs_->Delete(kPrefsConsecutiveUpdateCount);
+    // Dry out the message loop.
+    // Each individual test should account for posted tasks so there are no
+    // tasks that leak, but leverage this path to dry out the message loop.
+    if (loop_.PendingTasks())
+      loop_.Run();
+    // Don't leak the recorder singleton.
+    ::metrics::structured::RecorderSingleton::GetInstance()
+        ->DestroyRecorderForTest();
   }
 
  public:
@@ -349,8 +357,7 @@ class UpdateAttempterTest : public ::testing::Test {
   void EnableRollbackMetricsReporting();
   void ExpectRollbackUpdateFailureMetricRecord(int times);
 
-  base::SingleThreadTaskExecutor base_loop_{base::MessagePumpType::IO};
-  brillo::BaseMessageLoop loop_{base_loop_.task_runner()};
+  brillo::FakeMessageLoop loop_{nullptr};
 
   UpdateAttempterUnderTest attempter_;
   OpenSSLWrapper openssl_wrapper_;
@@ -459,7 +466,7 @@ void UpdateAttempterTest::ExpectRollbackUpdateFailureMetricRecord(int times) {
 void UpdateAttempterTest::ScheduleQuitMainLoop() {
   loop_.PostTask(
       FROM_HERE,
-      base::BindOnce([](brillo::BaseMessageLoop* loop) { loop->BreakLoop(); },
+      base::BindOnce([](brillo::MessageLoop* loop) { loop->BreakLoop(); },
                      base::Unretained(&loop_)));
 }
 
