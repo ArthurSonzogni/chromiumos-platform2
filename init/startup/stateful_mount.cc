@@ -351,8 +351,6 @@ void StatefulMount::ClobberStateful(
 }
 
 bool StatefulMount::AttemptStatefulMigration() {
-  platform_->BootAlert("stateful_thinpool_migration");
-
   brillo::ProcessImpl thinpool_migrator;
   thinpool_migrator.AddArg("/usr/sbin/thinpool_migrator");
   thinpool_migrator.AddArg(

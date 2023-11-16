@@ -121,6 +121,9 @@ bool ThinpoolMigrator::Migrate(bool dry_run) {
                        base::Unretained(this)));
   }
 
+  // Switch to the migration UI.
+  BootAlert();
+
   switch (status_.state()) {
     case MigrationStatus::NOT_STARTED:
       // Attempt to shrink the filesystem.
@@ -473,6 +476,18 @@ bool ThinpoolMigrator::ReplayExt4Journal() {
     return false;
   }
 
+  return true;
+}
+
+bool ThinpoolMigrator::BootAlert() {
+  brillo::ProcessImpl boot_alert;
+  boot_alert.AddArg("/sbin/chromeos-boot-alert");
+  boot_alert.AddArg("stateful_thinpool_migration");
+  int ret = boot_alert.Run();
+  if (ret != 0) {
+    PLOG(WARNING) << "chromeos-boot-alert failed with code " << ret;
+    return false;
+  }
   return true;
 }
 

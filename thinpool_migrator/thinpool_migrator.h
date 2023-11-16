@@ -121,6 +121,9 @@ class BRILLO_EXPORT ThinpoolMigrator {
   // filesystem is in a pristine state before calling resize2fs.
   virtual bool ReplayExt4Journal();
 
+  // Use chromeos-boot-alert to switch to the UI for migration.
+  virtual bool BootAlert();
+
  private:
   // Generates the payload to be written to at the beginning of the stateful
   // partition.
