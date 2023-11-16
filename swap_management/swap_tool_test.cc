@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "dbus/swap_management/dbus-constants.h"
 #include "swap_management/swap_tool.h"
 #include "swap_management/utils.h"
 
@@ -11,6 +10,7 @@
 #include <vector>
 
 #include <absl/strings/str_cat.h>
+#include <chromeos/dbus/swap_management/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

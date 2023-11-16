@@ -16,6 +16,10 @@
 #include <sys/statfs.h>
 
 namespace swap_management {
+constexpr char kZramDeviceFile[] = "/dev/zram0";
+constexpr char kZramSysfsDir[] = "/sys/block/zram0";
+constexpr uint32_t kMiB = 1048576;
+constexpr uint32_t kPageSize = 4096;
 
 class Utils {
  public:
@@ -51,6 +55,17 @@ class Utils {
   virtual absl::StatusOr<struct statfs> GetStatfs(const std::string& path);
   virtual absl::StatusOr<std::string> GenerateRandHex(size_t size);
   virtual absl::StatusOr<base::SystemMemoryInfoKB> GetSystemMemoryInfo();
+
+  uint64_t RoundupMultiple(uint64_t number, uint64_t alignment);
+  template <typename int_type>
+  absl::StatusOr<int_type> SimpleAtoi(const std::string& str) {
+    int_type output;
+    if (!absl::SimpleAtoi<int_type>(str, &output))
+      return absl::OutOfRangeError("Failed to convert " + str +
+                                   " to an integer value.");
+
+    return output;
+  }
 
  private:
   Utils() = default;

@@ -9,6 +9,7 @@
 #include <limits>
 #include <utility>
 
+#include <absl/strings/numbers.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
@@ -184,6 +185,12 @@ absl::StatusOr<base::SystemMemoryInfoKB> Utils::GetSystemMemoryInfo() {
     return absl::NotFoundError("Could not get MemTotal in /proc/meminfo");
 
   return std::move(meminfo);
+}
+
+// Round up multiple will round the first argument |number| up to the next
+// multiple of the second argument |alignment|.
+uint64_t Utils::RoundupMultiple(uint64_t number, uint64_t alignment) {
+  return ((number + (alignment - 1)) / alignment) * alignment;
 }
 
 const base::FilePath ScopedFilePathTraits::InvalidValue() {

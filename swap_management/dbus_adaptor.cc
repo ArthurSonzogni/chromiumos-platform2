@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "dbus/swap_management/dbus-constants.h"
 #include "featured/feature_library.h"
 #include "swap_management/dbus_adaptor.h"
 #include "swap_management/metrics.h"
@@ -14,6 +13,7 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/dbus/swap_management/dbus-constants.h>
 #include <dbus/object_path.h>
 
 namespace {
