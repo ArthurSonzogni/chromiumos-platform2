@@ -13,6 +13,7 @@
 #include <brillo/blkdev_utils/device_mapper.h>
 #include <brillo/brillo_export.h>
 #include <thinpool_migrator/migration_status.pb.h>
+#include <thinpool_migrator/migration_metrics.h>
 #include <thinpool_migrator/stateful_metadata.h>
 
 namespace thinpool_migrator {
@@ -90,6 +91,9 @@ class BRILLO_EXPORT ThinpoolMigrator {
     status_.set_state(state);
   }
 
+  // Allows migration to be called.
+  static bool EnableMigration();
+
  protected:
   // ResizeStatefulFilesyste is used for making space for the thinpool's
   // metadata or for expanding the stateful filesystem iff the migration
@@ -116,6 +120,9 @@ class BRILLO_EXPORT ThinpoolMigrator {
   // if the key does not exist and ~0.4 if the key exists. To speed up
   // migration, set up the vpd key asynchronously ahead of time.
   virtual bool PersistMigrationStatus();
+
+  // Helper to enable the migration.
+  static bool PersistStatus(MigrationStatus status);
 
   // Replays the ext4 journal before the migration to ensure that the
   // filesystem is in a pristine state before calling resize2fs.

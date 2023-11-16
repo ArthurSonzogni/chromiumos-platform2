@@ -39,6 +39,7 @@ constexpr char kLogFile[] = "/run/thinpool_migrator/migrator.log";
 int main(int argc, char** argv) {
   DEFINE_string(device, "", "Path of the device to run the migration tool on");
   DEFINE_bool(dry_run, false, "Perform dry-run for migration");
+  DEFINE_bool(enable, false, "Enable migration");
 
   brillo::FlagHelper::Init(argc, argv, "Chromium OS Thinpool Migrator");
 
@@ -58,10 +59,14 @@ int main(int argc, char** argv) {
 
   thinpool_migrator::InitializeMetrics();
 
+  if (FLAGS_enable) {
+    return thinpool_migrator::ThinpoolMigrator::EnableMigration();
+  }
+
   std::optional<uint64_t> size = GetBlkSize(base::FilePath(FLAGS_device));
   if (!size) {
     LOG(ERROR) << "Failed to get device size for " << FLAGS_device;
-    return 1;
+    return EXIT_FAILURE;
   }
 
   thinpool_migrator::ThinpoolMigrator migrator(

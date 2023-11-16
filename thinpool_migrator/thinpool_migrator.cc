@@ -413,12 +413,29 @@ bool ThinpoolMigrator::DuplicateHeader(uint64_t from,
   return true;
 }
 
-bool ThinpoolMigrator::PersistMigrationStatus() {
+// static
+bool ThinpoolMigrator::EnableMigration() {
   if (!IsVpdSupported()) {
     return true;
   }
 
-  std::string serialized = status_.SerializeAsString();
+  MigrationStatus status;
+  status.set_state(MigrationStatus::NOT_STARTED);
+  status.set_tries(5);
+  return PersistStatus(status);
+}
+
+bool ThinpoolMigrator::PersistMigrationStatus() {
+  return PersistStatus(status_);
+}
+
+// static
+bool ThinpoolMigrator::PersistStatus(MigrationStatus status) {
+  if (!IsVpdSupported()) {
+    return true;
+  }
+
+  std::string serialized = status.SerializeAsString();
   std::string base64_encoded;
   base::Base64Encode(serialized, &base64_encoded);
 
