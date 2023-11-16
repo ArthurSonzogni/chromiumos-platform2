@@ -30,6 +30,14 @@ class RoutingDecisionResult : public Result {
   // Outputs the result (a list of pairs of matched policy and route).
   void Output(std::ostream& std_output) const override;
 
+  // Appends a matched |policy| to the result. |route| is the matched route in
+  // the routing table pointed by |policy|, which can be nullptr if there is no
+  // route matched.
+  void AddResult(const RoutingPolicyEntry*, const Route* route);
+
+  // Getter methods for the internal data.
+  const std::vector<Entry>& result() const { return result_; }
+
  private:
   // A list of pairs of matched policy and matched route.
   // RoutingPolicyEntry* never be nullptr, while Route* can be since there are

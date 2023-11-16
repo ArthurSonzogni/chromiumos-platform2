@@ -7,12 +7,14 @@
 #include <string>
 #include <string_view>
 
+#include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/ip_address.h>
 
 #include "routing-simulator/mock_process_executor.h"
+#include "routing-simulator/routing_decision_result.h"
 #include "routing-simulator/routing_policy_entry.h"
 #include "routing-simulator/routing_table.h"
 
@@ -141,6 +143,33 @@ std::map<std::string, RoutingTable> CreateRoutingTable(
   return routing_tables_expected;
 }
 
+// Verifies if the result is expected and returns true if it is.
+bool VerifyMatchingResult(
+    const RoutingDecisionResult& actual,
+    const std::vector<std::string_view>& expected_policies,
+    const std::vector<std::string_view>& expected_routes) {
+  const auto result = actual.result();
+  CHECK(expected_policies.size() == expected_routes.size() &&
+        expected_policies.size() == result.size());
+  for (size_t i = 0; i < result.size(); i++) {
+    const auto policy = result[i].first;
+    const auto route = result[i].second;
+    if (policy == nullptr) {
+      return false;
+    }
+    if (expected_policies[i] != policy->policy_str()) {
+      return false;
+    }
+    const auto expected_route_str = expected_routes[i];
+    const std::string actual_route_str =
+        route == nullptr ? "" : route->route_str();
+    if (actual_route_str != expected_route_str) {
+      return false;
+    }
+  }
+  return true;
+}
+
 TEST(RouteManagerTest, BuildTablesTest) {
   MockProcessExecutor process_executor;
   // Execute 'ip -4 rule show'.
@@ -251,11 +280,15 @@ TEST_F(ProcessPacketTest, IPv4MatchedBySourceIP) {
                                      destination_ip, source_ip, 0, 0, "eth1");
 
   ASSERT_TRUE(packet);
-  const auto matched_route = route_manager_.ProcessPacketWithMutation(*packet);
-  ASSERT_TRUE(matched_route);
-  EXPECT_EQ(matched_route->route_str(),
-            "default via 100.86.211.254 dev wlan0 table 1003 metric 65536");
-  EXPECT_EQ(packet->output_interface(), "wlan0");
+  const auto result = route_manager_.ProcessPacketWithMutation(*packet);
+  std::vector<std::string_view> expected_policy_results = {
+      "0: from all lookup local", "1020: from 100.86.210.153/22 lookup 1003"};
+  std::vector<std::string_view> expected_route_results = {
+      "", "default via 100.86.211.254 dev wlan0 table 1003 metric 65536"};
+  ASSERT_EQ(result.result().size(), expected_policy_results.size());
+  const auto result_match = VerifyMatchingResult(
+      result, expected_policy_results, expected_route_results);
+  EXPECT_TRUE(result_match);
 }
 
 // Test the case when a packet matches with a policy only input interface of
@@ -272,11 +305,15 @@ TEST_F(ProcessPacketTest, IPv4MatchedByInputInterface) {
       ip_family, Packet::Protocol::kTcp, destination_ip, source_ip, 100, 200,
       "wlan0");
   ASSERT_TRUE(packet);
-  const auto matched_route = route_manager_.ProcessPacketWithMutation(*packet);
-  ASSERT_TRUE(matched_route);
-  EXPECT_EQ(matched_route->route_str(),
-            "default via 100.86.211.254 dev wlan0 table 1003 metric 65536");
-  EXPECT_EQ(packet->output_interface(), "wlan0");
+  const auto result = route_manager_.ProcessPacketWithMutation(*packet);
+  std::vector<std::string_view> expected_policy_results = {
+      "0: from all lookup local", "1020: from all iif wlan0 lookup 1003"};
+  std::vector<std::string_view> expected_route_results = {
+      "", "default via 100.86.211.254 dev wlan0 table 1003 metric 65536"};
+  ASSERT_EQ(result.result().size(), expected_policy_results.size());
+  const auto result_match = VerifyMatchingResult(
+      result, expected_policy_results, expected_route_results);
+  EXPECT_TRUE(result_match);
 }
 
 // Test the case when a packet matches with a policy which source prefix is
@@ -290,14 +327,19 @@ TEST_F(ProcessPacketTest, IPv4MatchedByDefault) {
   auto packet = Packet::CreatePacketForTesting(
       ip_family, Packet::Protocol::kUdp, destination_ip, source_ip, 100, 200,
       "eth1");
-
   ASSERT_TRUE(packet);
-  const auto matched_route = route_manager_.ProcessPacketWithMutation(*packet);
-  ASSERT_TRUE(matched_route);
-  EXPECT_EQ(matched_route->route_str(),
-            "100.115.92.132/30 dev arc_ns1 proto kernel scope link src "
-            "100.115.92.133");
-  EXPECT_EQ(packet->output_interface(), "arc_ns1");
+  const auto result = route_manager_.ProcessPacketWithMutation(*packet);
+  std::vector<std::string_view> expected_policy_results = {
+      "0: from all lookup local", "32765: from all lookup 1002",
+      "32766: from all lookup main"};
+  std::vector<std::string_view> expected_route_results = {
+      "", "",
+      "100.115.92.132/30 dev arc_ns1 proto kernel scope link src "
+      "100.115.92.133"};
+  ASSERT_EQ(result.result().size(), expected_policy_results.size());
+  const auto result_match = VerifyMatchingResult(
+      result, expected_policy_results, expected_route_results);
+  EXPECT_TRUE(result_match);
 }
 
 // Test the case when no matched route is found.
@@ -311,9 +353,15 @@ TEST_F(ProcessPacketTest, IPv4NoMatchedRoute) {
       Packet::CreatePacketForTesting(ip_family, Packet::Protocol::kIcmp,
                                      destination_ip, source_ip, 0, 0, "eth1");
   ASSERT_TRUE(packet);
-  const auto no_matched_route =
-      route_manager_.ProcessPacketWithMutation(*packet);
-  EXPECT_EQ(no_matched_route, nullptr);
+  const auto result = route_manager_.ProcessPacketWithMutation(*packet);
+  std::vector<std::string_view> expected_policy_results = {
+      "0: from all lookup local", "32765: from all lookup 1002",
+      "32766: from all lookup main", "32767: from all lookup default"};
+  std::vector<std::string_view> expected_route_results = {"", "", "", ""};
+  ASSERT_EQ(result.result().size(), expected_policy_results.size());
+  const auto result_match = VerifyMatchingResult(
+      result, expected_policy_results, expected_route_results);
+  EXPECT_TRUE(result_match);
 }
 
 // Test the case when a packet matches with a policy only source prefix of
@@ -329,12 +377,18 @@ TEST_F(ProcessPacketTest, IPv6MatchedBySourceIP) {
       Packet::CreatePacketForTesting(ip_family, Packet::Protocol::kIcmp,
                                      destination_ip, source_ip, 0, 0, "eth1");
   ASSERT_TRUE(packet);
-  const auto matched_route = route_manager_.ProcessPacketWithMutation(*packet);
-  ASSERT_TRUE(matched_route);
-  EXPECT_EQ(matched_route->route_str(),
-            "default via fe80::2a00:79e1:abc:f604 dev wlan0 table 1003 proto "
-            "ra metric 1024 expires 3335sec hoplimit 64 pref medium");
-  EXPECT_EQ(packet->output_interface(), "wlan0");
+  const auto result = route_manager_.ProcessPacketWithMutation(*packet);
+  std::vector<std::string_view> expected_policy_results = {
+      "0: from all lookup local", "1000: from all lookup main",
+      "1020: from 2a00:79e1:abc:f604:faac:65ff:fe56:100d/64 lookup 1003"};
+  std::vector<std::string_view> expected_route_results = {
+      "", "",
+      "default via fe80::2a00:79e1:abc:f604 dev wlan0 table 1003 proto "
+      "ra metric 1024 expires 3335sec hoplimit 64 pref medium"};
+  ASSERT_EQ(result.result().size(), expected_policy_results.size());
+  const auto result_match = VerifyMatchingResult(
+      result, expected_policy_results, expected_route_results);
+  EXPECT_TRUE(result_match);
 }
 
 // Test the case when a packet matches with a policy only input interface of
@@ -349,12 +403,19 @@ TEST_F(ProcessPacketTest, IPv6MatchedByInputInterface) {
       ip_family, Packet::Protocol::kTcp, destination_ip, source_ip, 100, 200,
       "wlan0");
   ASSERT_TRUE(packet);
-  const auto matched_route = route_manager_.ProcessPacketWithMutation(*packet);
-  ASSERT_TRUE(matched_route);
-  EXPECT_EQ(matched_route->route_str(),
-            "2a00:79e1:abc:f604::/64 dev wlan0 table 1003 proto kernel metric "
-            "256 expires 2591735sec pref medium");
-  EXPECT_EQ(packet->output_interface(), "wlan0");
+  const auto result = route_manager_.ProcessPacketWithMutation(*packet);
+  std::vector<std::string_view> expected_policy_results = {
+      "0: from all lookup local", "1000: from all lookup main",
+      "1010: from 2401:fa00:480:ee08:20e:c6ff:fe63:5c3f/64 lookup 1002",
+      "1020: from all iif wlan0 lookup 1003"};
+  std::vector<std::string_view> expected_route_results = {
+      "", "", "",
+      "2a00:79e1:abc:f604::/64 dev wlan0 table 1003 proto kernel metric "
+      "256 expires 2591735sec pref medium"};
+  ASSERT_EQ(result.result().size(), expected_policy_results.size());
+  const auto result_match = VerifyMatchingResult(
+      result, expected_policy_results, expected_route_results);
+  EXPECT_TRUE(result_match);
 }
 
 // Test the case when a packet matches with a policy which source prefix is
@@ -369,13 +430,17 @@ TEST_F(ProcessPacketTest, IPv6MatchedByDefault) {
       ip_family, Packet::Protocol::kUdp, destination_ip, source_ip, 100, 200,
       "eth1");
   ASSERT_TRUE(packet);
-  const auto matched_route_by_default_ipv6 =
-      route_manager_.ProcessPacketWithMutation(*packet);
-  ASSERT_TRUE(matched_route_by_default_ipv6);
-  EXPECT_EQ(matched_route_by_default_ipv6->route_str(),
-            "fdb9:72a:70c5:959d::/64 dev arc_ns1 proto kernel metric 256 pref "
-            "medium");
-  EXPECT_EQ(packet->output_interface(), "arc_ns1");
+  const auto result = route_manager_.ProcessPacketWithMutation(*packet);
+  std::vector<std::string_view> expected_policy_results = {
+      "0: from all lookup local", "1000: from all lookup main"};
+  std::vector<std::string_view> expected_route_results = {
+      "",
+      "fdb9:72a:70c5:959d::/64 dev arc_ns1 proto kernel metric 256 pref "
+      "medium"};
+  ASSERT_EQ(result.result().size(), expected_policy_results.size());
+  const auto result_match = VerifyMatchingResult(
+      result, expected_policy_results, expected_route_results);
+  EXPECT_TRUE(result_match);
 }
 
 // Test the case when no matched route is found.
@@ -389,9 +454,16 @@ TEST_F(ProcessPacketTest, IPv6NoMatchedRoute) {
       Packet::CreatePacketForTesting(ip_family, Packet::Protocol::kIcmp,
                                      destination_ip, source_ip, 0, 0, "eth1");
   ASSERT_TRUE(packet);
-  const auto no_matched_route_ipv6 =
-      route_manager_.ProcessPacketWithMutation(*packet);
-  EXPECT_EQ(no_matched_route_ipv6, nullptr);
+  const auto result = route_manager_.ProcessPacketWithMutation(*packet);
+  std::vector<std::string_view> expected_policy_results = {
+      "0: from all lookup local", "1000: from all lookup main",
+      "1010: from 2401:fa00:480:ee08:20e:c6ff:fe63:5c3f/64 lookup 1002",
+      "32765: from all lookup 1002", "32766: from all lookup main"};
+  std::vector<std::string_view> expected_route_results = {"", "", "", "", ""};
+  ASSERT_EQ(result.result().size(), expected_policy_results.size());
+  const auto result_match = VerifyMatchingResult(
+      result, expected_policy_results, expected_route_results);
+  EXPECT_TRUE(result_match);
 }
 
 }  // namespace

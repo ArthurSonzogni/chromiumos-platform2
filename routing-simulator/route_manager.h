@@ -13,6 +13,7 @@
 
 #include "routing-simulator/packet.h"
 #include "routing-simulator/process_executor.h"
+#include "routing-simulator/routing_decision_result.h"
 #include "routing-simulator/routing_policy_entry.h"
 #include "routing-simulator/routing_table.h"
 
@@ -39,9 +40,9 @@ class RouteManager {
   // TODO(b/307460180): Support source ip selection by setting source ip
   // according to the matched route.
   // Finds a route which matches a packet input and modify the packet according
-  // to the matched route. Returns the matched route, which can be nullptr if no
-  // matched route is found.
-  const Route* ProcessPacketWithMutation(Packet& packet) const;
+  // to the matched route (output interface only for now). Returns the result of
+  // packet routing in a routing policy table and routing tables.
+  RoutingDecisionResult ProcessPacketWithMutation(Packet& packet) const;
 
   // Getter methods for the internal data only for a test file.
   std::vector<RoutingPolicyEntry> routing_policy_table_ipv4() const {
@@ -72,10 +73,10 @@ class RouteManager {
   // Executes 'ip route show table all' according to the ip family.
   std::string ExecuteIPRoute(net_base::IPFamily ip_family);
 
-  // Looks up a route which matches a packet input referring to the routing
-  // policy table and routing tables and returns the matched route. Returns
-  // std::nullopt if no matched route is found.
-  const Route* LookUpRoute(const Packet& packet) const;
+  // Looks up policy and route which matches a packet input referring to the
+  // routing policy table and routing tables and returns the result of packet
+  // routing.
+  RoutingDecisionResult LookUpRoute(const Packet& packet) const;
 };
 
 }  // namespace routing_simulator
