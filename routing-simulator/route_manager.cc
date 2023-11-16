@@ -152,7 +152,7 @@ void RouteManager::BuildTables() {
 
 // TODO(b/307460180): Change the return value to contains both matched
 // route and the related policy entry.
-const Route* RouteManager::ProcessPacketWithMutation(Packet& packet) {
+const Route* RouteManager::ProcessPacketWithMutation(Packet& packet) const {
   const auto matched_route_ptr = LookUpRoute(packet);
   if (matched_route_ptr) {
     packet.set_output_interface(matched_route_ptr->output_interface());

@@ -35,12 +35,13 @@ class RouteManager {
   // both IPv4 and IPv6.
   void BuildTables();
 
+  // TODO(307460180): Implement throw semantics.
   // TODO(b/307460180): Support source ip selection by setting source ip
   // according to the matched route.
   // Finds a route which matches a packet input and modify the packet according
   // to the matched route. Returns the matched route, which can be nullptr if no
   // matched route is found.
-  const Route* ProcessPacketWithMutation(Packet& packet);
+  const Route* ProcessPacketWithMutation(Packet& packet) const;
 
   // Getter methods for the internal data only for a test file.
   std::vector<RoutingPolicyEntry> routing_policy_table_ipv4() const {

@@ -22,7 +22,6 @@ namespace {
 using ::testing::Return;
 
 constexpr std::string_view kMockIpRuleOutputIpv4 = R"(0: from all lookup local
-1000:           from all lookup main
 1010: from all fwmark 0x3ea0000/0xffff0000 lookup 1002
 1010: from 100.87.84.132/24 lookup 1002
 1010: from all iif eth0 lookup 1002
@@ -50,8 +49,7 @@ constexpr std::string_view kMockIpRuleOutputIpv6 = R"(0: from all lookup local
 32766: from all lookup main)";
 
 constexpr std::string_view kMockIpRouteOutputIpv4 =
-    R"(default via 100.87.84.254 dev eth0 table 1002 metric 65536
-default via 100.86.211.254 dev wlan0 table 1003 metric 65536
+    R"(default via 100.86.211.254 dev wlan0 table 1003 metric 65536
 unreachable default table 250
 100.86.208.0/22 dev wlan0 proto kernel scope link src 100.86.210.153
 100.115.92.132/30 dev arc_ns1 proto kernel scope link src 100.115.92.133
@@ -70,8 +68,6 @@ multicast ff00::/8 dev wlan0 table local proto kernel metric 256 pref medium)";
 
 const std::map<std::string, std::vector<std::string_view>>
     kExpectedTableToRoutesIpv4 = {
-        {"1002",
-         {"default via 100.87.84.254 dev eth0 table 1002 metric 65536"}},
         {"1003",
          {"default via 100.86.211.254 dev wlan0 table 1003 metric 65536"}},
         {"250", {"unreachable default table 250"}},
@@ -206,8 +202,197 @@ TEST(RouteManagerTest, BuildTablesTest) {
   }
 }
 
-// TODO(b/307460180): Add implementations
-TEST(RouteManagerTest, ProcessPacketTest) {}
+class ProcessPacketTest : public ::testing::Test {
+ protected:
+  ProcessPacketTest() : route_manager_(RouteManager(&process_executor_)) {
+    // Execute 'ip -4 rule show'.
+    EXPECT_CALL(process_executor_,
+                RunAndGetStdout(base::FilePath("/bin/ip"),
+                                std::vector<std::string>{"-4", "rule", "show"}))
+        .WillOnce(Return(std::string(kMockIpRuleOutputIpv4)));
+
+    // Execute 'ip -6 rule show'.
+    EXPECT_CALL(process_executor_,
+                RunAndGetStdout(base::FilePath("/bin/ip"),
+                                std::vector<std::string>{"-6", "rule", "show"}))
+        .WillOnce(Return(std::string(kMockIpRuleOutputIpv6)));
+
+    // Execute 'ip -4 route show table all'.
+    EXPECT_CALL(process_executor_,
+                RunAndGetStdout(base::FilePath("/bin/ip"),
+                                std::vector<std::string>{"-4", "route", "show",
+                                                         "table", "all"}))
+        .WillOnce(Return(std::string(kMockIpRouteOutputIpv4)));
+
+    // Execute 'ip -6 route show table all'.
+    EXPECT_CALL(process_executor_,
+                RunAndGetStdout(base::FilePath("/bin/ip"),
+                                std::vector<std::string>{"-6", "route", "show",
+                                                         "table", "all"}))
+        .WillOnce(Return(std::string(kMockIpRouteOutputIpv6)));
+    route_manager_.BuildTables();
+  }
+
+  MockProcessExecutor process_executor_;
+  RouteManager route_manager_;
+};
+
+// Test the case when a packet matches with a policy only source prefix of
+// which is specified. Also, It can match multiple routes and the matched policy
+// of the matched route is in the middle of the matched policies.
+TEST_F(ProcessPacketTest, IPv4MatchedBySourceIP) {
+  const auto ip_family = net_base::IPFamily::kIPv4;
+  const auto destination_ip =
+      net_base::IPAddress::CreateFromString("100.115.92.131").value();
+  const auto source_ip =
+      net_base::IPAddress::CreateFromString("100.86.208.70").value();
+  auto packet =
+      Packet::CreatePacketForTesting(ip_family, Packet::Protocol::kIcmp,
+                                     destination_ip, source_ip, 0, 0, "eth1");
+
+  ASSERT_TRUE(packet);
+  const auto matched_route = route_manager_.ProcessPacketWithMutation(*packet);
+  ASSERT_TRUE(matched_route);
+  EXPECT_EQ(matched_route->route_str(),
+            "default via 100.86.211.254 dev wlan0 table 1003 metric 65536");
+  EXPECT_EQ(packet->output_interface(), "wlan0");
+}
+
+// Test the case when a packet matches with a policy only input interface of
+// which is specified.
+TEST_F(ProcessPacketTest, IPv4MatchedByInputInterface) {
+  // Matches a policy by input interface.
+  // protocol: TCP
+  const auto ip_family = net_base::IPFamily::kIPv4;
+  const auto destination_ip =
+      net_base::IPAddress::CreateFromString("198.86.208.70").value();
+  const auto source_ip =
+      net_base::IPAddress::CreateFromString("168.25.25.0").value();
+  auto packet = Packet::CreatePacketForTesting(
+      ip_family, Packet::Protocol::kTcp, destination_ip, source_ip, 100, 200,
+      "wlan0");
+  ASSERT_TRUE(packet);
+  const auto matched_route = route_manager_.ProcessPacketWithMutation(*packet);
+  ASSERT_TRUE(matched_route);
+  EXPECT_EQ(matched_route->route_str(),
+            "default via 100.86.211.254 dev wlan0 table 1003 metric 65536");
+  EXPECT_EQ(packet->output_interface(), "wlan0");
+}
+
+// Test the case when a packet matches with a policy which source prefix is
+// default and not specified.
+TEST_F(ProcessPacketTest, IPv4MatchedByDefault) {
+  const auto ip_family = net_base::IPFamily::kIPv4;
+  const auto destination_ip =
+      net_base::IPAddress::CreateFromString("100.115.92.133").value();
+  const auto source_ip =
+      net_base::IPAddress::CreateFromString("168.25.25.4").value();
+  auto packet = Packet::CreatePacketForTesting(
+      ip_family, Packet::Protocol::kUdp, destination_ip, source_ip, 100, 200,
+      "eth1");
+
+  ASSERT_TRUE(packet);
+  const auto matched_route = route_manager_.ProcessPacketWithMutation(*packet);
+  ASSERT_TRUE(matched_route);
+  EXPECT_EQ(matched_route->route_str(),
+            "100.115.92.132/30 dev arc_ns1 proto kernel scope link src "
+            "100.115.92.133");
+  EXPECT_EQ(packet->output_interface(), "arc_ns1");
+}
+
+// Test the case when no matched route is found.
+TEST_F(ProcessPacketTest, IPv4NoMatchedRoute) {
+  const auto ip_family = net_base::IPFamily::kIPv4;
+  const auto destination_ip =
+      net_base::IPAddress::CreateFromString("160.25.25.0").value();
+  const auto source_ip =
+      net_base::IPAddress::CreateFromString("168.25.25.90").value();
+  auto packet =
+      Packet::CreatePacketForTesting(ip_family, Packet::Protocol::kIcmp,
+                                     destination_ip, source_ip, 0, 0, "eth1");
+  ASSERT_TRUE(packet);
+  const auto no_matched_route =
+      route_manager_.ProcessPacketWithMutation(*packet);
+  EXPECT_EQ(no_matched_route, nullptr);
+}
+
+// Test the case when a packet matches with a policy only source prefix of
+// which is specified. Also, It can match multiple routes and the matched policy
+// of the matched route is in the middle of the matched policies.
+TEST_F(ProcessPacketTest, IPv6MatchedBySourceIP) {
+  const auto ip_family = net_base::IPFamily::kIPv6;
+  const auto destination_ip =
+      net_base::IPAddress::CreateFromString("2401:fa00:480:ee08:300::").value();
+  const auto source_ip =
+      net_base::IPAddress::CreateFromString("2a00:79e1:abc:f604:200::").value();
+  auto packet =
+      Packet::CreatePacketForTesting(ip_family, Packet::Protocol::kIcmp,
+                                     destination_ip, source_ip, 0, 0, "eth1");
+  ASSERT_TRUE(packet);
+  const auto matched_route = route_manager_.ProcessPacketWithMutation(*packet);
+  ASSERT_TRUE(matched_route);
+  EXPECT_EQ(matched_route->route_str(),
+            "default via fe80::2a00:79e1:abc:f604 dev wlan0 table 1003 proto "
+            "ra metric 1024 expires 3335sec hoplimit 64 pref medium");
+  EXPECT_EQ(packet->output_interface(), "wlan0");
+}
+
+// Test the case when a packet matches with a policy only input interface of
+// which is specified.
+TEST_F(ProcessPacketTest, IPv6MatchedByInputInterface) {
+  const auto ip_family = net_base::IPFamily::kIPv6;
+  const auto destination_ip =
+      net_base::IPAddress::CreateFromString("2a00:79e1:abc:f604:200::").value();
+  const auto source_ip =
+      net_base::IPAddress::CreateFromString("2401:fa00:480:ee08:100::").value();
+  auto packet = Packet::CreatePacketForTesting(
+      ip_family, Packet::Protocol::kTcp, destination_ip, source_ip, 100, 200,
+      "wlan0");
+  ASSERT_TRUE(packet);
+  const auto matched_route = route_manager_.ProcessPacketWithMutation(*packet);
+  ASSERT_TRUE(matched_route);
+  EXPECT_EQ(matched_route->route_str(),
+            "2a00:79e1:abc:f604::/64 dev wlan0 table 1003 proto kernel metric "
+            "256 expires 2591735sec pref medium");
+  EXPECT_EQ(packet->output_interface(), "wlan0");
+}
+
+// Test the case when a packet matches with a policy which source prefix is
+// default and not specified.
+TEST_F(ProcessPacketTest, IPv6MatchedByDefault) {
+  const auto ip_family = net_base::IPFamily::kIPv6;
+  const auto destination_ip =
+      net_base::IPAddress::CreateFromString("fdb9:72a:70c5:959d:100::").value();
+  const auto source_ip =
+      net_base::IPAddress::CreateFromString("2a00:79e1:abc:f604:10::").value();
+  auto packet = Packet::CreatePacketForTesting(
+      ip_family, Packet::Protocol::kUdp, destination_ip, source_ip, 100, 200,
+      "eth1");
+  ASSERT_TRUE(packet);
+  const auto matched_route_by_default_ipv6 =
+      route_manager_.ProcessPacketWithMutation(*packet);
+  ASSERT_TRUE(matched_route_by_default_ipv6);
+  EXPECT_EQ(matched_route_by_default_ipv6->route_str(),
+            "fdb9:72a:70c5:959d::/64 dev arc_ns1 proto kernel metric 256 pref "
+            "medium");
+  EXPECT_EQ(packet->output_interface(), "arc_ns1");
+}
+
+// Test the case when no matched route is found.
+TEST_F(ProcessPacketTest, IPv6NoMatchedRoute) {
+  const auto ip_family = net_base::IPFamily::kIPv6;
+  const auto destination_ip =
+      net_base::IPAddress::CreateFromString("2a00:79e1:abc:f604:110::").value();
+  const auto source_ip =
+      net_base::IPAddress::CreateFromString("2401:fa00:480:ee08:190::").value();
+  auto packet =
+      Packet::CreatePacketForTesting(ip_family, Packet::Protocol::kIcmp,
+                                     destination_ip, source_ip, 0, 0, "eth1");
+  ASSERT_TRUE(packet);
+  const auto no_matched_route_ipv6 =
+      route_manager_.ProcessPacketWithMutation(*packet);
+  EXPECT_EQ(no_matched_route_ipv6, nullptr);
+}
 
 }  // namespace
 }  // namespace routing_simulator
