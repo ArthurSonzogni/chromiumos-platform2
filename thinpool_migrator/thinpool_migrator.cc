@@ -204,7 +204,6 @@ bool ThinpoolMigrator::ShrinkStatefulFilesystem() {
     return false;
 
   if (!ResizeStatefulFilesystem(resized_filesystem_size_)) {
-    LOG(ERROR) << "Failed to resize filesystem";
     return false;
   }
   return true;
@@ -212,7 +211,6 @@ bool ThinpoolMigrator::ShrinkStatefulFilesystem() {
 
 bool ThinpoolMigrator::ExpandStatefulFilesystem() {
   if (!ResizeStatefulFilesystem(0)) {
-    LOG(ERROR) << "Failed to expand stateful filesystem";
     return false;
   }
   return true;
@@ -389,12 +387,15 @@ bool ThinpoolMigrator::RevertMigration() {
 bool ThinpoolMigrator::ResizeStatefulFilesystem(uint64_t size) {
   brillo::ProcessImpl resize2fs;
   resize2fs.AddArg("/sbin/resize2fs");
+  resize2fs.AddArg("-f");
   resize2fs.AddArg(block_device_.value());
   if (size != 0)
     resize2fs.AddArg(base::NumberToString(size / 4096));
 
+  resize2fs.RedirectOutputToMemory(true);
   resize2fs.SetCloseUnusedFileDescriptors(true);
   if (resize2fs.Run() != 0) {
+    LOG(INFO) << resize2fs.GetOutputString(STDOUT_FILENO);
     LOG(ERROR) << "Failed to resize the filesystem to " << size;
     return false;
   }
