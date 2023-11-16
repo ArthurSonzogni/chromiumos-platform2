@@ -423,6 +423,11 @@ class Datapath {
       IpFamily family,
       const std::vector<net_base::IPAddress>& doh_provider_ips);
 
+  // Add (or remove) a QoS detection rule for egress packets from the Borealis
+  // VM which enter host via tap interface |ifname|.
+  virtual void AddBorealisQoSRule(std::string_view ifname);
+  virtual void RemoveBorealisQoSRule(std::string_view ifname);
+
   // Returns true if the chain |name| exists in |table|.
   virtual bool CheckChain(IpFamily family,
                           Iptables::Table table,

@@ -131,6 +131,9 @@ constexpr char kQoSDetectStaticChain[] = "qos_detect_static";
 // mangle chain for holding the dynamic matching rules for DoH. Referenced in
 // the qos_detect chain.
 constexpr char kQoSDetectDoHChain[] = "qos_detect_doh";
+// mangle chain for holding the dynamic matching rules for Borealis. Referenced
+// in the qos_detect chain.
+constexpr char kQoSDetectBorealisChain[] = "qos_detect_borealis";
 // mangle POSTROUTING chain for applying DSCP fields based on fwmarks for egress
 // traffic.
 constexpr char kQoSApplyDSCPChain[] = "qos_apply_dscp";
@@ -249,6 +252,7 @@ void Datapath::Start() {
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectStaticChain},
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectChain},
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectDoHChain},
+      {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectBorealisChain},
       // Set up a mangle chain used in POSTROUTING for applying DSCP values for
       // QoS. QoSService controls when to add the jump rules to this chain.
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSApplyDSCPChain},
@@ -635,6 +639,8 @@ void Datapath::ResetIptables() {
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectStaticChain, true},
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectChain, true},
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectDoHChain, true},
+      {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectBorealisChain,
+       true},
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSApplyDSCPChain, true},
       {IpFamily::kIPv4, Iptables::Table::kFilter, kDropGuestIpv4PrefixChain,
        true},
@@ -2501,8 +2507,11 @@ void Datapath::SetupQoSDetectChain() {
   install_rule(IpFamily::kDual, {"-j", "CONNMARK", "--restore-mark", "--nfmask",
                                  qos_mask, "--ctmask", qos_mask, "-w"});
 
-  // If the value restored from the conntrack mark is not 0, skip the following
-  // detection.
+  // Add a jump rule to the Borealis detection chain. Rules in this chain will
+  // be installed dynamically in {Add,Remove}BorealisQoSRule.
+  install_rule(IpFamily::kDual, {"-j", kQoSDetectBorealisChain, "-w"});
+
+  // If the mark is not 0, skip the following detection.
   install_rule(IpFamily::kDual, {"-m", "mark", "!", "--mark", default_mark,
                                  "-j", "RETURN", "-w"});
 
@@ -2598,6 +2607,20 @@ void Datapath::ModifyQoSApplyDSCPJumpRule(Iptables::Command command,
   ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, command,
                  "POSTROUTING",
                  {"-o", std::string(ifname), "-j", kQoSApplyDSCPChain, "-w"});
+}
+
+void Datapath::AddBorealisQoSRule(std::string_view ifname) {
+  ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
+                 Iptables::Command::kA, kQoSDetectBorealisChain,
+                 {"-i", std::string(ifname), "-j", "MARK", "--set-xmark",
+                  QoSFwmarkWithMask(QoSCategory::kRealTimeInteractive), "-w"});
+}
+
+void Datapath::RemoveBorealisQoSRule(std::string_view ifname) {
+  ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
+                 Iptables::Command::kD, kQoSDetectBorealisChain,
+                 {"-i", std::string(ifname), "-j", "MARK", "--set-xmark",
+                  QoSFwmarkWithMask(QoSCategory::kRealTimeInteractive), "-w"});
 }
 
 void Datapath::UpdateDoHProvidersForQoS(

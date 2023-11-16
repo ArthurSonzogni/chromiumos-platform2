@@ -155,6 +155,8 @@ class MockDatapath : public Datapath {
               UpdateDoHProvidersForQoS,
               (IpFamily, const std::vector<net_base::IPAddress>&),
               (override));
+  MOCK_METHOD(void, AddBorealisQoSRule, (std::string_view), (override));
+  MOCK_METHOD(void, RemoveBorealisQoSRule, (std::string_view), (override));
   MOCK_METHOD(bool,
               AddAdbPortAccessRule,
               (const std::string& ifname),

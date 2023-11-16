@@ -234,6 +234,9 @@ TEST(DatapathTest, Start) {
       {IpFamily::kDual, "mangle -L qos_detect -w"},
       {IpFamily::kDual, "mangle -F qos_detect -w"},
       {IpFamily::kDual, "mangle -X qos_detect -w"},
+      {IpFamily::kDual, "mangle -L qos_detect_borealis -w"},
+      {IpFamily::kDual, "mangle -F qos_detect_borealis -w"},
+      {IpFamily::kDual, "mangle -X qos_detect_borealis -w"},
       {IpFamily::kDual, "mangle -L qos_detect_doh -w"},
       {IpFamily::kDual, "mangle -F qos_detect_doh -w"},
       {IpFamily::kDual, "mangle -X qos_detect_doh -w"},
@@ -459,6 +462,8 @@ TEST(DatapathTest, Start) {
       {IpFamily::kDual,
        "mangle -A qos_detect -j CONNMARK --restore-mark --nfmask 0x000000e0 "
        "--ctmask 0x000000e0 -w"},
+      {IpFamily::kDual, "mangle -N qos_detect_borealis -w"},
+      {IpFamily::kDual, "mangle -A qos_detect -j qos_detect_borealis -w"},
       {IpFamily::kDual,
        "mangle -A qos_detect -m mark ! --mark 0x00000000/0x000000e0 -j RETURN "
        "-w",
@@ -551,6 +556,9 @@ TEST(DatapathTest, Stop) {
       {IpFamily::kDual, "mangle -L qos_detect -w"},
       {IpFamily::kDual, "mangle -F qos_detect -w"},
       {IpFamily::kDual, "mangle -X qos_detect -w"},
+      {IpFamily::kDual, "mangle -L qos_detect_borealis -w"},
+      {IpFamily::kDual, "mangle -F qos_detect_borealis -w"},
+      {IpFamily::kDual, "mangle -X qos_detect_borealis -w"},
       {IpFamily::kDual, "mangle -L qos_detect_doh -w"},
       {IpFamily::kDual, "mangle -F qos_detect_doh -w"},
       {IpFamily::kDual, "mangle -X qos_detect_doh -w"},
@@ -2444,6 +2452,32 @@ TEST(DatapathTest, ModifyClatAcceptRules) {
   Verify_iptables(*runner, IpFamily::kIPv6,
                   "filter -A FORWARD -o tun_nat64 -j ACCEPT -w");
   datapath.ModifyClatAcceptRules(Iptables::Command::kA, "tun_nat64");
+}
+
+TEST(DatapathTest, AddBorealisQosRule) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+
+  Datapath datapath(runner, firewall, &system);
+
+  Verify_iptables(*runner, IpFamily::kDual,
+                  "mangle -A qos_detect_borealis "
+                  "-i vmtap6 -j MARK --set-xmark 0x00000020/0x000000e0 -w");
+  datapath.AddBorealisQoSRule("vmtap6");
+}
+
+TEST(DatapathTest, RemoveBorealisQosRule) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+
+  Datapath datapath(runner, firewall, &system);
+
+  Verify_iptables(*runner, IpFamily::kDual,
+                  "mangle -D qos_detect_borealis "
+                  "-i vmtap6 -j MARK --set-xmark 0x00000020/0x000000e0 -w");
+  datapath.RemoveBorealisQoSRule("vmtap6");
 }
 
 }  // namespace patchpanel

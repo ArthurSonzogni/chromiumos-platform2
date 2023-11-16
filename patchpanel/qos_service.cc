@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -320,6 +321,16 @@ void QoSService::UpdateDoHProviders(
   //   it.
   doh_updater_.reset(
       new DoHUpdater(datapath_, dns_client_factory_.get(), doh_providers));
+}
+
+void QoSService::OnBorealisVMStarted(const std::string_view ifname) {
+  // We don't need to check if QoS is enabled here since the iptables rules for
+  // Borealis won't have any effect when the service is not enabled.
+  datapath_->AddBorealisQoSRule(ifname);
+}
+
+void QoSService::OnBorealisVMStopped(const std::string_view ifname) {
+  datapath_->RemoveBorealisQoSRule(ifname);
 }
 
 }  // namespace patchpanel

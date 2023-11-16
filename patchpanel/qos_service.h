@@ -7,11 +7,13 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/containers/flat_set.h>
 #include <net-base/dns_client.h>
 
+#include "patchpanel/crostini_service.h"
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/shill_client.h"
 
@@ -73,6 +75,10 @@ class QoSService {
 
   // Update iptables rules (done by Datapath) for DoH.
   void UpdateDoHProviders(const ShillClient::DoHProviders& doh_providers);
+
+  // Listening to Borealis VM start and stop event for application of QoS marks.
+  void OnBorealisVMStarted(const std::string_view ifname);
+  void OnBorealisVMStopped(const std::string_view ifname);
 
  private:
   // Dependencies.

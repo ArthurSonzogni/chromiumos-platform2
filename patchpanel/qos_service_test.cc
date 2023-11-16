@@ -4,6 +4,7 @@
 
 #include "patchpanel/qos_service.h"
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -370,6 +371,44 @@ TEST(QoSServiceTest, UpdateDoHProvidersInvalidateOngoingQueries) {
   for (const auto ptr : client_ptrs) {
     EXPECT_TRUE(ptr.WasInvalidated());
   }
+}
+
+TEST(QoSServiceTest, OnBorealisVMStarted) {
+  MockDatapath mock_datapath;
+  FakeDNSClientFactory* dns_factory = new FakeDNSClientFactory();
+  QoSService svc(&mock_datapath, base::WrapUnique(dns_factory),
+                 /*minijailed_process_runner=*/nullptr);
+
+  const auto borealis_ipv4_subnet =
+      net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29").value();
+  auto ipv4_subnet =
+      std::make_unique<Subnet>(borealis_ipv4_subnet, base::DoNothing());
+  CrostiniService::CrostiniDevice borealis_device(
+      CrostiniService::VMType::kBorealis, "vmtap1", {}, std::move(ipv4_subnet),
+      nullptr);
+
+  EXPECT_CALL(mock_datapath, AddBorealisQoSRule("vmtap1"));
+
+  svc.OnBorealisVMStarted("vmtap1");
+}
+
+TEST(QoSServiceTest, OnBorealisVMStopped) {
+  MockDatapath mock_datapath;
+  FakeDNSClientFactory* dns_factory = new FakeDNSClientFactory();
+  QoSService svc(&mock_datapath, base::WrapUnique(dns_factory),
+                 /*minijailed_process_runner=*/nullptr);
+
+  const auto borealis_ipv4_subnet =
+      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29");
+  auto ipv4_subnet =
+      std::make_unique<Subnet>(borealis_ipv4_subnet, base::DoNothing());
+  CrostiniService::CrostiniDevice borealis_device(
+      CrostiniService::VMType::kBorealis, "vmtap1", {}, std::move(ipv4_subnet),
+      nullptr);
+
+  EXPECT_CALL(mock_datapath, RemoveBorealisQoSRule("vmtap1"));
+
+  svc.OnBorealisVMStopped("vmtap1");
 }
 
 }  // namespace
