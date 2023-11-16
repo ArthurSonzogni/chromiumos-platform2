@@ -169,6 +169,12 @@ class TpmManagerServiceFuzzer : public brillo::Daemon {
           base::BindOnce(&TpmManagerServiceFuzzer::GeneralCommandCallback<
                              tpm_manager::ClearStoredOwnerPasswordReply>,
                          base::Unretained(this)));
+    } else if (request.has_clear_tpm_request()) {
+      tpm_manager_->ClearTpm(
+          request.clear_tpm_request(),
+          base::BindOnce(&TpmManagerServiceFuzzer::GeneralCommandCallback<
+                             tpm_manager::ClearTpmReply>,
+                         base::Unretained(this)));
     } else if (request.has_define_space_request()) {
       tpm_manager_->DefineSpace(
           request.define_space_request(),

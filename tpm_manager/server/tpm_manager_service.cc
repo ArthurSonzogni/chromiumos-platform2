@@ -971,6 +971,22 @@ TpmManagerService::ClearStoredOwnerPasswordTask(
   return reply;
 }
 
+void TpmManagerService::ClearTpm(const ClearTpmRequest& request,
+                                 ClearTpmCallback callback) {
+  PostTaskToWorkerThread<ClearTpmReply>(request, std::move(callback),
+                                        &TpmManagerService::ClearTpmTask);
+}
+
+std::unique_ptr<ClearTpmReply> TpmManagerService::ClearTpmTask(
+    const ClearTpmRequest& request) {
+  VLOG(1) << __func__;
+
+  auto reply = std::make_unique<ClearTpmReply>();
+  reply->set_status(STATUS_NOT_AVAILABLE);
+
+  return reply;
+}
+
 void TpmManagerService::DefineSpace(const DefineSpaceRequest& request,
                                     DefineSpaceCallback callback) {
   PostTaskToWorkerThread<DefineSpaceReply>(request, std::move(callback),

@@ -28,6 +28,7 @@ message TpmManagerServiceFuzzerData {
       LockSpaceRequest lock_space_request = 14;
       ListSpacesRequest list_spaces_request = 15;
       GetSpaceInfoRequest get_space_info_request = 16;
+      ClearTpmRequest clear_tpm_request = 17;
     }
   }
 

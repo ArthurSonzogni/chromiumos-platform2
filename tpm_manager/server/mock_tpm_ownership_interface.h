@@ -63,6 +63,10 @@ class MockTpmOwnershipInterface : public TpmOwnershipInterface {
               (const ClearStoredOwnerPasswordRequest&,
                ClearStoredOwnerPasswordCallback),
               (override));
+  MOCK_METHOD(void,
+              ClearTpm,
+              (const ClearTpmRequest&, ClearTpmCallback),
+              (override));
 };
 
 }  // namespace tpm_manager

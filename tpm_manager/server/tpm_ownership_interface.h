@@ -94,6 +94,11 @@ class TPM_MANAGER_EXPORT TpmOwnershipInterface {
   virtual void ClearStoredOwnerPassword(
       const ClearStoredOwnerPasswordRequest& request,
       ClearStoredOwnerPasswordCallback callback) = 0;
+
+  // Processes a ClearTpmRequest and responds with a ClearTpmReply.
+  using ClearTpmCallback = base::OnceCallback<void(const ClearTpmReply&)>;
+  virtual void ClearTpm(const ClearTpmRequest& request,
+                        ClearTpmCallback callback) = 0;
 };
 
 }  // namespace tpm_manager

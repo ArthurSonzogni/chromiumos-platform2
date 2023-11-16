@@ -127,6 +127,11 @@ void DBusService::RegisterDBusObjectsAsync(
           ClearStoredOwnerPasswordRequest, ClearStoredOwnerPasswordReply,
           &TpmOwnershipInterface::ClearStoredOwnerPassword>);
 
+  ownership_dbus_interface->AddMethodHandler(
+      kClearTpm, base::Unretained(this),
+      &DBusService::HandleOwnershipDBusMethod<
+          ClearTpmRequest, ClearTpmReply, &TpmOwnershipInterface::ClearTpm>);
+
   ownership_taken_signal_ =
       ownership_dbus_interface->RegisterSignal<OwnershipTakenSignal>(
           kOwnershipTakenSignal);

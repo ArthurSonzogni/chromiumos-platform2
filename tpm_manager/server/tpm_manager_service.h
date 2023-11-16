@@ -132,6 +132,8 @@ class TpmManagerService : public TpmNvramInterface,
   void ClearStoredOwnerPassword(
       const ClearStoredOwnerPasswordRequest& request,
       ClearStoredOwnerPasswordCallback callback) override;
+  void ClearTpm(const ClearTpmRequest& request,
+                ClearTpmCallback callback) override;
 
   // TpmNvramInterface methods.
   void DefineSpace(const DefineSpaceRequest& request,
@@ -261,6 +263,10 @@ class TpmManagerService : public TpmNvramInterface,
   // on the background worker thread.
   std::unique_ptr<ClearStoredOwnerPasswordReply> ClearStoredOwnerPasswordTask(
       const ClearStoredOwnerPasswordRequest& request);
+
+  // Blocking implementation of ClearTpm that can be executed
+  // on the background worker thread.
+  std::unique_ptr<ClearTpmReply> ClearTpmTask(const ClearTpmRequest& request);
 
   // Blocking implementation of DefineSpace that can be executed on the
   // background worker thread.
