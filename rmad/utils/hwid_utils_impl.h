@@ -18,6 +18,7 @@ class HwidUtilsImpl : public HwidUtils {
 
   bool VerifyChecksum(const std::string& hwid) override;
   bool VerifyHwidFormat(const std::string& hwid, bool has_checksum) override;
+  std::optional<HwidElements> DecomposeHwid(const std::string& hwid) override;
 
  private:
   std::optional<std::string> CalculateChecksum(

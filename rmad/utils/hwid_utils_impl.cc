@@ -76,6 +76,16 @@ bool HwidUtilsImpl::VerifyHwidFormat(const std::string& hwid,
     return false;
   }
 
+  std::vector<std::string> product = base::SplitString(
+      parts[0], "-", base::WhitespaceHandling::TRIM_WHITESPACE,
+      base::SplitResult::SPLIT_WANT_NONEMPTY);
+
+  if (product.size() != 1 && product.size() != 2) {
+    LOG(ERROR) << "The first part of HWID is not in a format of "
+                  "<MODEL>[-<BRAND_CODE>].";
+    return false;
+  }
+
   size_t expected_remainder = (has_checksum) ? 3 : 1;
 
   if (parts[1].size() % 4 != expected_remainder) {
@@ -84,6 +94,39 @@ bool HwidUtilsImpl::VerifyHwidFormat(const std::string& hwid,
   }
 
   return true;
+}
+
+std::optional<HwidElements> HwidUtilsImpl::DecomposeHwid(
+    const std::string& hwid) {
+  if (!VerifyHwidFormat(hwid, true)) {
+    LOG(ERROR) << "Failed to decompose HWID due to invalid format.";
+    return std::nullopt;
+  }
+
+  HwidElements elements;
+
+  std::vector<std::string> parts =
+      base::SplitString(hwid, " ", base::WhitespaceHandling::TRIM_WHITESPACE,
+                        base::SplitResult::SPLIT_WANT_NONEMPTY);
+
+  std::vector<std::string> product = base::SplitString(
+      parts[0], "-", base::WhitespaceHandling::TRIM_WHITESPACE,
+      base::SplitResult::SPLIT_WANT_NONEMPTY);
+
+  // Parse <MODEL>-<BRAND_CODE>.
+  if (product.size() == 1) {
+    // Model name only.
+    elements.model_name = product[0];
+  } else if (product.size() == 2) {
+    // Model name + brand code.
+    elements.model_name = product[0];
+    elements.brand_code = product[1];
+  }
+
+  elements.encoded_components = parts[1].substr(0, parts[1].size() - 2);
+  elements.checksum = parts[1].substr(parts[1].size() - 2);
+
+  return elements;
 }
 
 }  // namespace rmad

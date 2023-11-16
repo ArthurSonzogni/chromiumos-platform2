@@ -4,6 +4,8 @@
 
 #include <rmad/utils/hwid_utils_impl.h>
 
+#include <optional>
+
 #include <gtest/gtest.h>
 
 namespace rmad {
@@ -76,6 +78,59 @@ TEST_F(HwidUtilsTest, VerifyHwidFormatTestHwidFail) {
 
   EXPECT_FALSE(hwid_utils->VerifyHwidFormat("MODEL-CODE TEST 1126",
                                             /*has_checksum=*/true));
+}
+
+TEST_F(HwidUtilsTest, VerifyHwidFormatInvalidFirstPartFail) {
+  auto hwid_utils = std::make_unique<HwidUtilsImpl>();
+
+  std::string output;
+
+  EXPECT_FALSE(hwid_utils->VerifyHwidFormat("MODEL-CODE-INVALID A1B-C2D-E2J",
+                                            /*has_checksum=*/true));
+}
+
+TEST_F(HwidUtilsTest, DecomposeHwidSuccess) {
+  auto hwid_utils = std::make_unique<HwidUtilsImpl>();
+
+  HwidElements expected = {.model_name = "MODEL",
+                           .brand_code = "CODE",
+                           .encoded_components = "A1B-C2D-E",
+                           .checksum = "2J"};
+
+  const auto result = hwid_utils->DecomposeHwid("MODEL-CODE A1B-C2D-E2J");
+
+  EXPECT_TRUE(result.has_value());
+  EXPECT_EQ(result.value(), expected);
+}
+
+TEST_F(HwidUtilsTest, DecomposeHwidModelOnlySuccess) {
+  auto hwid_utils = std::make_unique<HwidUtilsImpl>();
+
+  HwidElements expected = {.model_name = "MODEL",
+                           .brand_code = std::nullopt,
+                           .encoded_components = "A1B-C2D-E",
+                           .checksum = "2J"};
+
+  const auto result = hwid_utils->DecomposeHwid("MODEL A1B-C2D-E2J");
+
+  EXPECT_TRUE(result.has_value());
+  EXPECT_EQ(result.value(), expected);
+}
+
+TEST_F(HwidUtilsTest, DecomposeTestHwidFail) {
+  auto hwid_utils = std::make_unique<HwidUtilsImpl>();
+
+  const auto result = hwid_utils->DecomposeHwid("MODEL TEST 1126");
+
+  EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(HwidUtilsTest, DecomposeHwidInvalidLengthFail) {
+  auto hwid_utils = std::make_unique<HwidUtilsImpl>();
+
+  const auto result = hwid_utils->DecomposeHwid("MODEL-CODE A1B-C2D-E");
+
+  EXPECT_FALSE(result.has_value());
 }
 
 }  // namespace rmad
