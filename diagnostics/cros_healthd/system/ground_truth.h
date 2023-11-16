@@ -70,6 +70,11 @@ class GroundTruth final {
   ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineVolumeButton() const;
 
   ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineLedLitUp() const;
+
+  using PrepareRoutineBluetoothFlossCallback =
+      base::OnceCallback<void(ash::cros_healthd::mojom::SupportStatusPtr)>;
+  void PrepareRoutineBluetoothFloss(
+      PrepareRoutineBluetoothFlossCallback callback) const;
   // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 
  private:

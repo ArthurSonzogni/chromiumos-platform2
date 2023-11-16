@@ -129,6 +129,13 @@ class RoutineServiceTest : public BaseFileTest {
     return context_.mock_floss_controller();
   }
 
+  void SetFloss(bool enable) {
+    EXPECT_CALL(*mock_floss_controller(), GetManager())
+        .WillRepeatedly(Return(&mock_manager_proxy_));
+    EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+        .WillRepeatedly(base::test::RunOnceCallback<0>(enable));
+  }
+
   base::test::TaskEnvironment task_environment_;
   MockContext context_;
   RoutineService routine_service_{&context_};
@@ -339,10 +346,7 @@ TEST_F(RoutineServiceTest, LedLitUpNoEc) {
 }
 
 TEST_F(RoutineServiceTest, BluetoothPower) {
-  EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
-  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(true));
+  SetFloss(true);
 
   CheckIsRoutineArgumentSupported(
       MakeSupported(), mojom::RoutineArgument::NewBluetoothPower(
@@ -353,31 +357,35 @@ TEST_F(RoutineServiceTest, BluetoothPower) {
 }
 
 TEST_F(RoutineServiceTest, BluetoothPowerFlossDisable) {
-  EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
-  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(false));
+  SetFloss(false);
 
+  auto status = MakeUnsupported("Floss is not enabled");
   CheckIsRoutineArgumentSupported(
-      MakeUnsupported("Floss is not enabled"),
-      mojom::RoutineArgument::NewBluetoothPower(
-          mojom::BluetoothPowerRoutineArgument::New()));
-  // TODO(b/309080271): Fix the diverge.
-  CheckCreateRoutine(MakeSupported(),
-                     mojom::RoutineArgument::NewBluetoothPower(
-                         mojom::BluetoothPowerRoutineArgument::New()));
+      status, mojom::RoutineArgument::NewBluetoothPower(
+                  mojom::BluetoothPowerRoutineArgument::New()));
+  CheckCreateRoutine(status, mojom::RoutineArgument::NewBluetoothPower(
+                                 mojom::BluetoothPowerRoutineArgument::New()));
 }
 
 TEST_F(RoutineServiceTest, BluetoothDiscovery) {
-  EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
-  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(true));
+  SetFloss(true);
 
   CheckIsRoutineArgumentSupported(
       MakeSupported(), mojom::RoutineArgument::NewBluetoothDiscovery(
                            mojom::BluetoothDiscoveryRoutineArgument::New()));
   CheckCreateRoutine(MakeSupported(),
+                     mojom::RoutineArgument::NewBluetoothDiscovery(
+                         mojom::BluetoothDiscoveryRoutineArgument::New()));
+}
+
+TEST_F(RoutineServiceTest, BluetoothDiscoveryFlossDisable) {
+  SetFloss(false);
+
+  auto status = MakeUnsupported("Floss is not enabled");
+  CheckIsRoutineArgumentSupported(
+      status, mojom::RoutineArgument::NewBluetoothDiscovery(
+                  mojom::BluetoothDiscoveryRoutineArgument::New()));
+  CheckCreateRoutine(status,
                      mojom::RoutineArgument::NewBluetoothDiscovery(
                          mojom::BluetoothDiscoveryRoutineArgument::New()));
 }
@@ -415,10 +423,7 @@ TEST_F(RoutineServiceTest, FanNoFan) {
 }
 
 TEST_F(RoutineServiceTest, BluetoothScanning) {
-  EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
-  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(true));
+  SetFloss(true);
 
   CheckIsRoutineArgumentSupported(
       MakeSupported(), mojom::RoutineArgument::NewBluetoothScanning(
@@ -428,16 +433,72 @@ TEST_F(RoutineServiceTest, BluetoothScanning) {
                          mojom::BluetoothScanningRoutineArgument::New()));
 }
 
+TEST_F(RoutineServiceTest, BluetoothScanningFlossDisable) {
+  SetFloss(false);
+
+  auto status = MakeUnsupported("Floss is not enabled");
+  CheckIsRoutineArgumentSupported(
+      status, mojom::RoutineArgument::NewBluetoothScanning(
+                  mojom::BluetoothScanningRoutineArgument::New()));
+  CheckCreateRoutine(status,
+                     mojom::RoutineArgument::NewBluetoothScanning(
+                         mojom::BluetoothScanningRoutineArgument::New()));
+}
+
+TEST_F(RoutineServiceTest, BluetoothScanningPositiveDuration) {
+  SetFloss(true);
+
+  auto arg = mojom::BluetoothScanningRoutineArgument::New();
+  arg->exec_duration = base::Seconds(5);
+  CheckIsRoutineArgumentSupported(
+      MakeSupported(),
+      mojom::RoutineArgument::NewBluetoothScanning(arg.Clone()));
+  CheckCreateRoutine(MakeSupported(),
+                     mojom::RoutineArgument::NewBluetoothScanning(arg.Clone()));
+}
+
+TEST_F(RoutineServiceTest, BluetoothScanningZeroDuration) {
+  auto arg = mojom::BluetoothScanningRoutineArgument::New();
+  arg->exec_duration = base::Seconds(0);
+
+  auto status = MakeUnsupported(
+      "Execution duration should be strictly greater than zero");
+  CheckIsRoutineArgumentSupported(
+      status, mojom::RoutineArgument::NewBluetoothScanning(arg.Clone()));
+  CheckCreateRoutine(status,
+                     mojom::RoutineArgument::NewBluetoothScanning(arg.Clone()));
+}
+
+TEST_F(RoutineServiceTest, BluetoothScanningNullDuration) {
+  SetFloss(true);
+
+  auto arg = mojom::BluetoothScanningRoutineArgument::New();
+  CheckIsRoutineArgumentSupported(
+      MakeSupported(),
+      mojom::RoutineArgument::NewBluetoothScanning(arg.Clone()));
+  CheckCreateRoutine(MakeSupported(),
+                     mojom::RoutineArgument::NewBluetoothScanning(arg.Clone()));
+}
+
 TEST_F(RoutineServiceTest, BluetoothPairing) {
-  EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
-  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(true));
+  SetFloss(true);
 
   CheckIsRoutineArgumentSupported(
       MakeSupported(), mojom::RoutineArgument::NewBluetoothPairing(
                            mojom::BluetoothPairingRoutineArgument::New()));
   CheckCreateRoutine(MakeSupported(),
+                     mojom::RoutineArgument::NewBluetoothPairing(
+                         mojom::BluetoothPairingRoutineArgument::New()));
+}
+
+TEST_F(RoutineServiceTest, BluetoothPairingFlossDisable) {
+  SetFloss(false);
+
+  auto status = MakeUnsupported("Floss is not enabled");
+  CheckIsRoutineArgumentSupported(
+      status, mojom::RoutineArgument::NewBluetoothPairing(
+                  mojom::BluetoothPairingRoutineArgument::New()));
+  CheckCreateRoutine(status,
                      mojom::RoutineArgument::NewBluetoothPairing(
                          mojom::BluetoothPairingRoutineArgument::New()));
 }

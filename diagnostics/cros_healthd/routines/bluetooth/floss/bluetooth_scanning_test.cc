@@ -25,6 +25,7 @@
 #include "diagnostics/cros_healthd/system/mock_floss_controller.h"
 #include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxy-mocks.h"
 #include "diagnostics/dbus_bindings/floss/dbus-proxy-mocks.h"
+#include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics::floss {
@@ -67,12 +68,17 @@ class BluetoothScanningRoutineTest : public testing::Test {
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
   void SetUp() override {
+    EXPECT_CALL(*mock_floss_controller(), GetManager())
+        .WillOnce(Return(&mock_manager_proxy_));
+    EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+        .WillOnce(base::test::RunOnceCallback<0>(true));
+
     auto arg = mojom::BluetoothScanningRoutineArgument::New();
     arg->exec_duration = kScanningRoutineDefaultRuntime;
-    auto routine =
-        BluetoothScanningRoutine::Create(&mock_context_, std::move(arg));
-    CHECK(routine.has_value());
-    routine_ = std::move(routine.value());
+    base::test::TestFuture<BluetoothScanningRoutine::CreateResult> future;
+    BluetoothScanningRoutine::Create(&mock_context_, std::move(arg),
+                                     future.GetCallback());
+    routine_ = future.Take().value();
   }
 
   // Get the adapter with HCI interface 0.
@@ -212,7 +218,7 @@ class BluetoothScanningRoutineTest : public testing::Test {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   MockContext mock_context_;
-  std::unique_ptr<BluetoothScanningRoutine> routine_;
+  std::unique_ptr<BaseRoutineControl> routine_;
   StrictMock<org::chromium::bluetooth::BluetoothProxyMock> mock_adapter_proxy_;
   StrictMock<org::chromium::bluetooth::ManagerProxyMock> mock_manager_proxy_;
   std::vector<FakeScannedPeripheral> fake_peripherals_;
@@ -461,16 +467,6 @@ TEST_F(BluetoothScanningRoutineTest, RoutineTimeoutError) {
                                   kScanningRoutineTimeout);
   RunRoutineAndWaitForException(
       "Bluetooth routine failed to complete before timeout.");
-}
-
-// Test that the Bluetooth scanning routine can not be created with zero
-// execution duration.
-TEST_F(BluetoothScanningRoutineTest, RoutineCreateErrorZeroExecDuration) {
-  auto arg = mojom::BluetoothScanningRoutineArgument::New();
-  arg->exec_duration = base::Seconds(0);
-  auto routine =
-      BluetoothScanningRoutine::Create(&mock_context_, std::move(arg));
-  EXPECT_FALSE(routine.has_value());
 }
 
 }  // namespace

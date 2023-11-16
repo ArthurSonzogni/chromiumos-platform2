@@ -979,10 +979,10 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
 TEST_F(CrosHealthdDiagnosticsServiceTest,
        RunBluetoothPowerRoutineGetFlossEnabledError) {
   EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
+      .WillRepeatedly(Return(&mock_manager_proxy_));
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
+      .WillRepeatedly(base::test::RunOnceCallback<1>(error.get()));
 
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
@@ -1002,9 +1002,9 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
 TEST_F(CrosHealthdDiagnosticsServiceTest,
        RunBluetoothPowerRoutineFlossEnabled) {
   EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
+      .WillRepeatedly(Return(&mock_manager_proxy_));
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*enabled=*/true));
+      .WillRepeatedly(base::test::RunOnceCallback<0>(/*enabled=*/true));
 
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
@@ -1067,10 +1067,10 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
 TEST_F(CrosHealthdDiagnosticsServiceTest,
        RunBluetoothDiscoveryRoutineGetFlossEnabledError) {
   EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
+      .WillRepeatedly(Return(&mock_manager_proxy_));
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
+      .WillRepeatedly(base::test::RunOnceCallback<1>(error.get()));
 
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
@@ -1090,9 +1090,9 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
 TEST_F(CrosHealthdDiagnosticsServiceTest,
        RunBluetoothDiscoveryRoutineFlossEnabled) {
   EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
+      .WillRepeatedly(Return(&mock_manager_proxy_));
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*enabled=*/true));
+      .WillRepeatedly(base::test::RunOnceCallback<0>(/*enabled=*/true));
 
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
@@ -1112,9 +1112,9 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
 TEST_F(CrosHealthdDiagnosticsServiceTest,
        RunBluetoothScanningRoutineFlossDisabled) {
   EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
+      .WillRepeatedly(Return(&mock_manager_proxy_));
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*enabled=*/false));
+      .WillRepeatedly(base::test::RunOnceCallback<0>(/*enabled=*/false));
 
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
@@ -1157,10 +1157,10 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
 TEST_F(CrosHealthdDiagnosticsServiceTest,
        RunBluetoothScanningRoutineGetFlossEnabledError) {
   EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
+      .WillRepeatedly(Return(&mock_manager_proxy_));
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
+      .WillRepeatedly(base::test::RunOnceCallback<1>(error.get()));
 
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
@@ -1181,9 +1181,9 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
 TEST_F(CrosHealthdDiagnosticsServiceTest,
        RunBluetoothScanningRoutineFlossEnabled) {
   EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
+      .WillRepeatedly(Return(&mock_manager_proxy_));
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*enabled=*/true));
+      .WillRepeatedly(base::test::RunOnceCallback<0>(/*enabled=*/true));
 
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
@@ -1249,10 +1249,10 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
 TEST_F(CrosHealthdDiagnosticsServiceTest,
        RunBluetoothPairingRoutineGetFlossEnabledError) {
   EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
+      .WillRepeatedly(Return(&mock_manager_proxy_));
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
+      .WillRepeatedly(base::test::RunOnceCallback<1>(error.get()));
 
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
@@ -1273,9 +1273,9 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
 TEST_F(CrosHealthdDiagnosticsServiceTest,
        RunBluetoothPairingRoutineFlossEnabled) {
   EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
+      .WillRepeatedly(Return(&mock_manager_proxy_));
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*enabled=*/true));
+      .WillRepeatedly(base::test::RunOnceCallback<0>(/*enabled=*/true));
 
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;

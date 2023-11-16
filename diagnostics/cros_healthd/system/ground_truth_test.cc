@@ -113,6 +113,20 @@ class GroundTruthTest : public BaseFileTest {
   MockContext mock_context_;
 };
 
+mojom::SupportStatusPtr MakeSupported() {
+  return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+}
+
+mojom::SupportStatusPtr MakeUnsupported(const std::string& debug_message) {
+  return mojom::SupportStatus::NewUnsupported(
+      mojom::Unsupported::New(debug_message, /*reason=*/nullptr));
+}
+
+mojom::SupportStatusPtr MakeUnexpected(const std::string& debug_message) {
+  return mojom::SupportStatus::NewException(mojom::Exception::New(
+      mojom::Exception::Reason::kUnexpected, debug_message));
+}
+
 TEST_F(GroundTruthTest, AlwaysSupportedEvents) {
   ExpectEventSupported(mojom::EventCategoryEnum::kUsb);
   ExpectEventSupported(mojom::EventCategoryEnum::kThunderbolt);
@@ -348,78 +362,6 @@ TEST_F(GroundTruthTest, SdCardEvent) {
   }
 }
 
-TEST_F(GroundTruthTest, BluetoothPowerRoutineFlossEnabled) {
-  EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
-  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(true));
-
-  auto arg = mojom::BluetoothPowerRoutineArgument::New();
-  ExpectRoutineSupported(
-      mojom::RoutineArgument::NewBluetoothPower(std::move(arg)));
-}
-
-TEST_F(GroundTruthTest, BluetoothPowerRoutineFlossDisabled) {
-  EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
-  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(false));
-
-  auto arg = mojom::BluetoothPowerRoutineArgument::New();
-  ExpectRoutineUnsupported(
-      mojom::RoutineArgument::NewBluetoothPower(std::move(arg)));
-}
-
-TEST_F(GroundTruthTest, BluetoothRoutineNoBluetoothManager) {
-  EXPECT_CALL(*mock_floss_controller(), GetManager()).WillOnce(Return(nullptr));
-
-  auto arg = mojom::BluetoothPowerRoutineArgument::New();
-  ExpectRoutineUnsupported(
-      mojom::RoutineArgument::NewBluetoothPower(std::move(arg)));
-}
-
-TEST_F(GroundTruthTest, BluetoothRoutineGetFlossEnabledError) {
-  EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
-  auto error = brillo::Error::Create(FROM_HERE, "", "", "");
-  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
-
-  auto arg = mojom::BluetoothPowerRoutineArgument::New();
-  ExpectRoutineException(
-      mojom::RoutineArgument::NewBluetoothPower(std::move(arg)));
-}
-
-TEST_F(GroundTruthTest, BluetoothScanningRoutinePositiveDuration) {
-  EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
-  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(true));
-
-  auto arg = mojom::BluetoothScanningRoutineArgument::New();
-  arg->exec_duration = base::Seconds(5);
-  ExpectRoutineSupported(
-      mojom::RoutineArgument::NewBluetoothScanning(std::move(arg)));
-}
-
-TEST_F(GroundTruthTest, BluetoothScanningRoutineZeroDuration) {
-  auto arg = mojom::BluetoothScanningRoutineArgument::New();
-  arg->exec_duration = base::Seconds(0);
-  ExpectRoutineUnsupported(
-      mojom::RoutineArgument::NewBluetoothScanning(std::move(arg)));
-}
-
-TEST_F(GroundTruthTest, BluetoothScanningRoutineNullDuration) {
-  EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
-  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(true));
-
-  auto arg = mojom::BluetoothScanningRoutineArgument::New();
-  ExpectRoutineSupported(
-      mojom::RoutineArgument::NewBluetoothScanning(std::move(arg)));
-}
-
 TEST_F(GroundTruthTest, PrepareRoutineBatteryCapacity) {
   SetFakeCrosConfig(cros_config_property::kBatteryCapacityLowMah, "123");
   SetFakeCrosConfig(cros_config_property::kBatteryCapacityHighMah, "456");
@@ -510,6 +452,50 @@ TEST_F(GroundTruthTest, PrepareRoutineFingerprint) {
   EXPECT_EQ(param.detect_zones[0].y1, 2);
   EXPECT_EQ(param.detect_zones[0].x2, 3);
   EXPECT_EQ(param.detect_zones[0].y2, 4);
+}
+
+TEST_F(GroundTruthTest, BluetoothRoutineFlossEnabled) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillRepeatedly(Return(&mock_manager_proxy_));
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillRepeatedly(base::test::RunOnceCallback<0>(true));
+
+  base::test::TestFuture<mojom::SupportStatusPtr> future;
+  ground_truth()->PrepareRoutineBluetoothFloss(future.GetCallback());
+  EXPECT_EQ(future.Get(), MakeSupported());
+}
+
+TEST_F(GroundTruthTest, BluetoothRoutineFlossDisabled) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillRepeatedly(Return(&mock_manager_proxy_));
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillRepeatedly(base::test::RunOnceCallback<0>(false));
+
+  base::test::TestFuture<mojom::SupportStatusPtr> future;
+  ground_truth()->PrepareRoutineBluetoothFloss(future.GetCallback());
+  EXPECT_EQ(future.Get(), MakeUnsupported("Floss is not enabled"));
+}
+
+TEST_F(GroundTruthTest, BluetoothRoutineNoFlossManager) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillRepeatedly(Return(nullptr));
+
+  base::test::TestFuture<mojom::SupportStatusPtr> future;
+  ground_truth()->PrepareRoutineBluetoothFloss(future.GetCallback());
+  EXPECT_EQ(future.Get(), MakeUnsupported("Floss is not enabled"));
+}
+
+TEST_F(GroundTruthTest, BluetoothRoutineGetFlossEnabledError) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillRepeatedly(Return(&mock_manager_proxy_));
+  auto error = brillo::Error::Create(FROM_HERE, "", "", "");
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillRepeatedly(base::test::RunOnceCallback<1>(error.get()));
+
+  base::test::TestFuture<mojom::SupportStatusPtr> future;
+  ground_truth()->PrepareRoutineBluetoothFloss(future.GetCallback());
+  EXPECT_EQ(future.Get(),
+            MakeUnexpected("Got error when checking floss enabled state"));
 }
 
 }  // namespace

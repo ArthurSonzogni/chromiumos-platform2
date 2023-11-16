@@ -50,6 +50,15 @@ CreateRoutineResult MakeRoutineIfSupported(mojom::SupportStatusPtr status,
   return base::unexpected(std::move(status));
 }
 
+CreateRoutineResult ReturnIfSupported(
+    std::unique_ptr<BaseRoutineControl> routine,
+    mojom::SupportStatusPtr status) {
+  if (status->is_supported()) {
+    return base::ok(std::move(routine));
+  }
+  return base::unexpected(std::move(status));
+}
+
 // Overload a `CreateRoutineHelperSync` if creation is synchronous. Otherwise,
 // overload a `CreateRoutineHelper`.
 
@@ -80,6 +89,42 @@ CreateRoutineResult CreateRoutineHelperSync(
   return MakeRoutineIfSupported<LedLitUpV2Routine>(
       context->ground_truth()->PrepareRoutineLedLitUp(), context,
       std::move(arg));
+}
+
+void CreateRoutineHelper(Context* context,
+                         mojom::BluetoothPowerRoutineArgumentPtr arg,
+                         CreateRoutineCallback callback) {
+  context->ground_truth()->PrepareRoutineBluetoothFloss(
+      base::BindOnce(&ReturnIfSupported,
+                     std::make_unique<floss::BluetoothPowerRoutine>(
+                         context, std::move(arg)))
+          .Then(std::move(callback)));
+}
+
+void CreateRoutineHelper(Context* context,
+                         mojom::BluetoothDiscoveryRoutineArgumentPtr arg,
+                         CreateRoutineCallback callback) {
+  context->ground_truth()->PrepareRoutineBluetoothFloss(
+      base::BindOnce(&ReturnIfSupported,
+                     std::make_unique<floss::BluetoothDiscoveryRoutine>(
+                         context, std::move(arg)))
+          .Then(std::move(callback)));
+}
+
+void CreateRoutineHelper(Context* context,
+                         mojom::BluetoothPairingRoutineArgumentPtr arg,
+                         CreateRoutineCallback callback) {
+  context->ground_truth()->PrepareRoutineBluetoothFloss(
+      base::BindOnce(&ReturnIfSupported,
+                     std::make_unique<floss::BluetoothPairingRoutine>(
+                         context, std::move(arg)))
+          .Then(std::move(callback)));
+}
+
+void CreateRoutineHelper(Context* context,
+                         mojom::BluetoothScanningRoutineArgumentPtr arg,
+                         CreateRoutineCallback callback) {
+  floss::BluetoothScanningRoutine::Create(context, arg, std::move(callback));
 }
 
 // Default implementation of `CreateRoutineHelperSync` raises compile error.
@@ -168,15 +213,15 @@ void RoutineService::CheckAndCreateRoutine(
       return;
     }
     case mojom::RoutineArgument::Tag::kBluetoothPower: {
-      auto routine = std::make_unique<floss::BluetoothPowerRoutine>(
-          context_, std::move(routine_arg->get_bluetooth_power()));
-      std::move(callback).Run(base::ok(std::move(routine)));
+      CreateRoutineHelper(context_,
+                          std::move(routine_arg->get_bluetooth_power()),
+                          std::move(callback));
       return;
     }
     case mojom::RoutineArgument::Tag::kBluetoothDiscovery: {
-      auto routine = std::make_unique<floss::BluetoothDiscoveryRoutine>(
-          context_, std::move(routine_arg->get_bluetooth_discovery()));
-      std::move(callback).Run(base::ok(std::move(routine)));
+      CreateRoutineHelper(context_,
+                          std::move(routine_arg->get_bluetooth_discovery()),
+                          std::move(callback));
       return;
     }
     case mojom::RoutineArgument::Tag::kFan: {
@@ -185,21 +230,15 @@ void RoutineService::CheckAndCreateRoutine(
       return;
     }
     case mojom::RoutineArgument::Tag::kBluetoothScanning: {
-      auto routine = floss::BluetoothScanningRoutine::Create(
-          context_, routine_arg->get_bluetooth_scanning());
-      if (routine.has_value()) {
-        std::move(callback).Run(base::ok(std::move(routine.value())));
-      } else {
-        std::move(callback).Run(
-            base::unexpected(mojom::SupportStatus::NewUnsupported(
-                mojom::Unsupported::New(routine.error(), /*reason=*/nullptr))));
-      }
+      CreateRoutineHelper(context_,
+                          std::move(routine_arg->get_bluetooth_scanning()),
+                          std::move(callback));
       return;
     }
     case mojom::RoutineArgument::Tag::kBluetoothPairing: {
-      auto routine = std::make_unique<floss::BluetoothPairingRoutine>(
-          context_, std::move(routine_arg->get_bluetooth_pairing()));
-      std::move(callback).Run(base::ok(std::move(routine)));
+      CreateRoutineHelper(context_,
+                          std::move(routine_arg->get_bluetooth_pairing()),
+                          std::move(callback));
       return;
     }
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument: {

@@ -23,8 +23,10 @@
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/floss_event_hub.h"
+#include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
 #include "diagnostics/cros_healthd/utils/floss_utils.h"
+#include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics::floss {
@@ -52,17 +54,35 @@ bool IsNearbyPeripheral(const std::vector<int16_t>& rssi_history) {
   return average_rssi >= kNearbyPeripheralMinimumAverageRssi;
 }
 
+BluetoothScanningRoutine::CreateResult ReturnIfSupported(
+    std::unique_ptr<BaseRoutineControl> routine,
+    mojom::SupportStatusPtr status) {
+  if (status->is_supported()) {
+    return base::ok(std::move(routine));
+  }
+  return base::unexpected(std::move(status));
+}
+
 }  // namespace
 
-base::expected<std::unique_ptr<BluetoothScanningRoutine>, std::string>
-BluetoothScanningRoutine::Create(
-    Context* context, const mojom::BluetoothScanningRoutineArgumentPtr& arg) {
+// static
+void BluetoothScanningRoutine::Create(
+    Context* context,
+    const ash::cros_healthd::mojom::BluetoothScanningRoutineArgumentPtr& arg,
+    CreateCallback callback) {
   CHECK(!arg.is_null());
   if (arg->exec_duration && !arg->exec_duration->is_positive()) {
-    return base::unexpected(
-        "Execution duration should be strictly greater than zero");
+    std::move(callback).Run(base::unexpected(
+        mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
+            "Execution duration should be strictly greater than zero",
+            nullptr))));
+    return;
   }
-  return base::ok(base::WrapUnique(new BluetoothScanningRoutine(context, arg)));
+  context->ground_truth()->PrepareRoutineBluetoothFloss(
+      base::BindOnce(
+          &ReturnIfSupported,
+          base::WrapUnique(new BluetoothScanningRoutine(context, arg)))
+          .Then(std::move(callback)));
 }
 
 BluetoothScanningRoutine::BluetoothScanningRoutine(

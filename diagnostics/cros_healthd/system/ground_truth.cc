@@ -46,6 +46,11 @@ mojom::SupportStatusPtr MakeUnsupported(const std::string& debug_message) {
       mojom::Unsupported::New(debug_message, /*reason=*/nullptr));
 }
 
+mojom::SupportStatusPtr MakeException(const std::string& debug_message) {
+  return mojom::SupportStatus::NewException(mojom::Exception::New(
+      mojom::Exception::Reason::kUnexpected, debug_message));
+}
+
 mojom::SupportStatusPtr MakeSupportStatus(
     const base::expected<void, std::string>& expected) {
   return expected.has_value() ? MakeSupported()
@@ -94,43 +99,14 @@ base::expected<void, std::string> CheckCrosEc() {
   return base::unexpected("Not supported on a non-CrosEC device");
 }
 
-void HandleFlossEnabledResponse(
-    mojom::CrosHealthdRoutinesService::IsRoutineArgumentSupportedCallback
-        callback,
-    brillo::Error* error,
-    bool enabled) {
+mojom::SupportStatusPtr HandleFlossEnabledResponse(brillo::Error* error,
+                                                   bool enabled) {
   if (error) {
     LOG(ERROR) << "Failed to get floss enabled state, err: "
                << error->GetMessage();
-    std::move(callback).Run(mojom::SupportStatus::NewException(
-        mojom::Exception::New(mojom::Exception::Reason::kUnexpected,
-                              "Got error when checking floss enabled state")));
-    return;
+    return MakeException("Got error when checking floss enabled state");
   }
-  if (!enabled) {
-    std::move(callback).Run(mojom::SupportStatus::NewUnsupported(
-        mojom::Unsupported::New("Floss is not enabled", nullptr)));
-    return;
-  }
-  std::move(callback).Run(
-      mojom::SupportStatus::NewSupported(mojom::Supported::New()));
-}
-
-void GetFlossSupportStatus(
-    FlossController* floss_controller,
-    mojom::CrosHealthdRoutinesService::IsRoutineArgumentSupportedCallback
-        callback) {
-  CHECK(floss_controller);
-  auto manager = floss_controller->GetManager();
-  if (!manager) {
-    std::move(callback).Run(mojom::SupportStatus::NewUnsupported(
-        mojom::Unsupported::New("Floss is not enabled", nullptr)));
-    return;
-  }
-
-  auto [on_success, on_error] = SplitDbusCallback(
-      base::BindOnce(&HandleFlossEnabledResponse, std::move(callback)));
-  manager->GetFlossEnabledAsync(std::move(on_success), std::move(on_error));
+  return enabled ? MakeSupported() : MakeUnsupported("Floss is not enabled");
 }
 
 }  // namespace
@@ -248,31 +224,13 @@ void GroundTruth::IsRoutineArgumentSupported(
     case mojom::RoutineArgument::Tag::kDiskRead:
     case mojom::RoutineArgument::Tag::kVolumeButton:
     case mojom::RoutineArgument::Tag::kLedLitUp:
+    case mojom::RoutineArgument::Tag::kBluetoothPower:
+    case mojom::RoutineArgument::Tag::kBluetoothDiscovery:
+    case mojom::RoutineArgument::Tag::kBluetoothPairing:
+    case mojom::RoutineArgument::Tag::kBluetoothScanning:
       status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
       std::move(callback).Run(std::move(routine_arg), std::move(status));
       return;
-    case mojom::RoutineArgument::Tag::kBluetoothPower:
-    case mojom::RoutineArgument::Tag::kBluetoothDiscovery:
-    case mojom::RoutineArgument::Tag::kBluetoothPairing: {
-      GetFlossSupportStatus(
-          context_->floss_controller(),
-          base::BindOnce(std::move(callback), std::move(routine_arg)));
-      return;
-    }
-    case mojom::RoutineArgument::Tag::kBluetoothScanning: {
-      auto& arg = routine_arg->get_bluetooth_scanning();
-      if (arg->exec_duration && !arg->exec_duration->is_positive()) {
-        status = mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-            "Execution duration should be strictly greater than zero",
-            nullptr));
-        std::move(callback).Run(std::move(routine_arg), std::move(status));
-        return;
-      }
-      GetFlossSupportStatus(
-          context_->floss_controller(),
-          base::BindOnce(std::move(callback), std::move(routine_arg)));
-      return;
-    }
   }
   // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 }
@@ -419,6 +377,19 @@ mojom::SupportStatusPtr GroundTruth::PrepareRoutineVolumeButton() const {
 
 mojom::SupportStatusPtr GroundTruth::PrepareRoutineLedLitUp() const {
   return MakeSupportStatus(CheckCrosEc());
+}
+
+void GroundTruth::PrepareRoutineBluetoothFloss(
+    PrepareRoutineBluetoothFlossCallback callback) const {
+  auto manager = context_->floss_controller()->GetManager();
+  if (!manager) {
+    std::move(callback).Run(MakeUnsupported("Floss is not enabled"));
+    return;
+  }
+
+  auto [on_success, on_error] = SplitDbusCallback(
+      base::BindOnce(&HandleFlossEnabledResponse).Then(std::move(callback)));
+  manager->GetFlossEnabledAsync(std::move(on_success), std::move(on_error));
 }
 // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 

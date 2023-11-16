@@ -17,10 +17,12 @@
 
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_base.h"
+#include "diagnostics/mojom/public/cros_healthd_exception.mojom-forward.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom-forward.h"
 
 namespace diagnostics {
 class Context;
+
 namespace floss {
 enum class BtPropertyType : uint32_t;
 
@@ -35,10 +37,16 @@ constexpr base::TimeDelta kScanningRoutineRssiPollingPeriod =
 class BluetoothScanningRoutine final : public BaseRoutineControl,
                                        public BluetoothRoutineBase {
  public:
-  static base::expected<std::unique_ptr<BluetoothScanningRoutine>, std::string>
-  Create(
+  using CreateResult =
+      base::expected<std::unique_ptr<BaseRoutineControl>,
+                     ash::cros_healthd::mojom::SupportStatusPtr>;
+  using CreateCallback = base::OnceCallback<void(CreateResult)>;
+
+  static void Create(
       Context* context,
-      const ash::cros_healthd::mojom::BluetoothScanningRoutineArgumentPtr& arg);
+      const ash::cros_healthd::mojom::BluetoothScanningRoutineArgumentPtr& arg,
+      CreateCallback callback);
+
   BluetoothScanningRoutine(const BluetoothScanningRoutine&) = delete;
   BluetoothScanningRoutine& operator=(const BluetoothScanningRoutine&) = delete;
   ~BluetoothScanningRoutine() override;
