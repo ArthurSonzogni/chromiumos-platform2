@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <variant>
 
@@ -21,6 +22,7 @@
 #include "secagentd/common.h"
 #include "secagentd/device_user.h"
 #include "secagentd/message_sender.h"
+#include "secagentd/metrics_sender.h"
 #include "secagentd/policies_features_broker.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 #include "user_data_auth/dbus-proxies.h"
@@ -48,6 +50,26 @@ bool UpdateNumFailedAttempts(const int64_t latest_success,
     return true;
   }
   return false;
+}
+
+std::optional<std::pair<metrics::EnumMetric<metrics::AuthFactor>, int>>
+GetEventEnumTypeAndAuthFactor(const pb::UserEventAtomicVariant& atomic_event) {
+  int auth_factor = 0;
+  if (atomic_event.has_logon()) {
+    if (atomic_event.logon().has_authentication() &&
+        atomic_event.logon().authentication().auth_factor_size() >= 1) {
+      auth_factor = atomic_event.logon().authentication().auth_factor()[0];
+    }
+    return std::make_pair(metrics::kLogin, auth_factor);
+  } else if (atomic_event.has_unlock()) {
+    if (atomic_event.unlock().has_authentication() &&
+        atomic_event.unlock().authentication().auth_factor_size() >= 1) {
+      auth_factor = atomic_event.unlock().authentication().auth_factor()[0];
+    }
+    return std::make_pair(metrics::kUnlock, auth_factor);
+  }
+
+  return std::nullopt;
 }
 }  // namespace
 
@@ -272,6 +294,9 @@ void AuthenticationPlugin::HandleAuthenticateAuthFactorCompleted(
   }
 
   if (completed.has_error_info()) {
+    // Record auth factor for failure event.
+    MetricsSender::GetInstance().SendEnumMetricToUMA(
+        metrics::kFailure, static_cast<metrics::AuthFactor>(auth_factor_type_));
     if (!batch_sender_->Visit(pb::UserEventAtomicVariant::kFailure,
                               std::monostate(),
                               base::BindOnce(&UpdateNumFailedAttempts,
@@ -319,6 +344,14 @@ void AuthenticationPlugin::OnDeviceUserRetrieved(
     std::unique_ptr<pb::UserEventAtomicVariant> atomic_event,
     const std::string& device_user) {
   atomic_event->mutable_common()->set_device_user(device_user);
+
+  // Send metric for which auth factor is used.
+  auto pair = GetEventEnumTypeAndAuthFactor(*atomic_event.get());
+  if (pair.has_value()) {
+    MetricsSender::GetInstance().SendEnumMetricToUMA(
+        pair.value().first,
+        static_cast<metrics::AuthFactor>(pair.value().second));
+  }
   batch_sender_->Enqueue(std::move(atomic_event));
 }
 

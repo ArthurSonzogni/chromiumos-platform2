@@ -149,6 +149,22 @@ static constexpr EnumMetric<ProcessEvent> kTerminateEvent = {
 constexpr char kRedaction[] = "Redaction";
 static constexpr int kRedactionBucketCount = 6;
 
+enum class AuthFactor {
+  kUnknown,
+  kPassword,
+  kPin,
+  kOnlineRecovery,
+  kKiosk,
+  kSmartCard,
+  kFingerprint,
+  kMaxValue = kFingerprint
+};
+
+static constexpr EnumMetric<AuthFactor> kLogin = {.name = "AuthFactor.Login"};
+static constexpr EnumMetric<AuthFactor> kUnlock = {.name = "AuthFactor.Unlock"};
+static constexpr EnumMetric<AuthFactor> kFailure = {.name =
+                                                        "AuthFactor.Failure"};
+
 }  // namespace metrics
 
 // Class for sending UMA metrics. Expected to be accessed as a Singleton via
