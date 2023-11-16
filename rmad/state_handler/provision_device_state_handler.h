@@ -24,7 +24,10 @@
 #include "rmad/utils/cbi_utils.h"
 #include "rmad/utils/cmd_utils.h"
 #include "rmad/utils/cros_config_utils.h"
+#include "rmad/utils/crossystem_utils.h"
+#include "rmad/utils/futility_utils.h"
 #include "rmad/utils/gsc_utils.h"
+#include "rmad/utils/hwid_utils.h"
 #include "rmad/utils/iio_sensor_probe_utils.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/vpd_utils.h"
@@ -46,7 +49,8 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   // Used to inject |working_dir_path_|, mock |ssfc_prober_|,
   // |power_manager_client_|, |cbi_utils_|, |cmd_utils_|, |gsc_utils_|,
   // |cros_config_utils_|, |write_protect_utils_|, |iio_sensor_probe_utils_|,
-  // and |vpd_utils_| for testing.
+  // |vpd_utils_|, |hwid_utils_|, |crossystem_utils_|, and |futility_utils_| for
+  // testing.
   explicit ProvisionDeviceStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
@@ -59,7 +63,10 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
       std::unique_ptr<CrosConfigUtils> cros_config_utils,
       std::unique_ptr<WriteProtectUtils> write_protect_utils,
       std::unique_ptr<IioSensorProbeUtils> iio_sensor_probe_utils,
-      std::unique_ptr<VpdUtils> vpd_utils);
+      std::unique_ptr<VpdUtils> vpd_utils,
+      std::unique_ptr<HwidUtils> hwid_utils,
+      std::unique_ptr<CrosSystemUtils> crossystem_utils,
+      std::unique_ptr<FutilityUtils> futility_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kProvisionDevice);
   SET_REPEATABLE;
@@ -97,6 +104,7 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   void Reboot();
   bool IsHwwpDisabled() const;
   ProvisionStatus::Error UpdateFirmwareConfig();
+  ProvisionStatus::Error UpdateHwidBrandCode();
 
   base::FilePath working_dir_path_;
   ProvisionStatus status_;
@@ -110,6 +118,9 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   std::unique_ptr<WriteProtectUtils> write_protect_utils_;
   std::unique_ptr<IioSensorProbeUtils> iio_sensor_probe_utils_;
   std::unique_ptr<VpdUtils> vpd_utils_;
+  std::unique_ptr<HwidUtils> hwid_utils_;
+  std::unique_ptr<CrosSystemUtils> crossystem_utils_;
+  std::unique_ptr<FutilityUtils> futility_utils_;
 
   RmadConfig rmad_config_;
 

@@ -16,6 +16,23 @@ class HwidUtilsTest : public testing::Test {
   ~HwidUtilsTest() override = default;
 };
 
+TEST_F(HwidUtilsTest, CalculateChecksumSuccess) {
+  auto hwid_utils = std::make_unique<HwidUtilsImpl>();
+
+  auto checksum = hwid_utils->CalculateChecksum("MODEL-CODE A1B-C2D-E");
+
+  EXPECT_TRUE(checksum.has_value());
+  EXPECT_EQ("2J", checksum.value());
+}
+
+TEST_F(HwidUtilsTest, CalculateChecksumFail) {
+  auto hwid_utils = std::make_unique<HwidUtilsImpl>();
+
+  auto checksum = hwid_utils->CalculateChecksum("MODEL TEST A1B-C2D-E");
+
+  EXPECT_FALSE(checksum.has_value());
+}
+
 TEST_F(HwidUtilsTest, VerifyChecksumSuccess) {
   auto hwid_utils = std::make_unique<HwidUtilsImpl>();
 

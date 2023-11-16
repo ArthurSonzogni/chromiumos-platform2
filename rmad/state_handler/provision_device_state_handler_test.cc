@@ -5,6 +5,7 @@
 #include "rmad/state_handler/provision_device_state_handler.h"
 
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -21,11 +22,15 @@
 #include "rmad/ssfc/mock_ssfc_prober.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/system/mock_power_manager_client.h"
+#include "rmad/utils/hwid_utils.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/mock_cbi_utils.h"
 #include "rmad/utils/mock_cmd_utils.h"
 #include "rmad/utils/mock_cros_config_utils.h"
+#include "rmad/utils/mock_crossystem_utils.h"
+#include "rmad/utils/mock_futility_utils.h"
 #include "rmad/utils/mock_gsc_utils.h"
+#include "rmad/utils/mock_hwid_utils.h"
 #include "rmad/utils/mock_iio_sensor_probe_utils.h"
 #include "rmad/utils/mock_vpd_utils.h"
 #include "rmad/utils/mock_write_protect_utils.h"
@@ -53,6 +58,11 @@ constexpr char kValidBoardIdType[] = "12345678";
 constexpr char kInvalidBoardIdType[] = "5a5a4352";  // ZZCR.
 constexpr char kPvtBoardIdFlags[] = "00007f80";
 constexpr char kCustomLabelPvtBoardIdFlags[] = "00003f80";
+constexpr char kValidHwid[] = "MODEL-CODE A1B-C2D-E2J";
+const rmad::HwidElements kHwidElements = {.model_name = "MODEL",
+                                          .brand_code = "CODE",
+                                          .encoded_components = "A1B-C2D-E",
+                                          .checksum = "2J"};
 
 constexpr rmad::RmadComponent kComponentNeedCalibration =
     rmad::RMAD_COMPONENT_BASE_ACCELEROMETER;
@@ -94,8 +104,15 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     bool get_cros_fw_config_success = true;
     bool get_cbi_fw_config_success = true;
     bool set_cbi_fw_config_success = true;
+    bool get_hwid_success = true;
+    bool set_hwid_success = true;
+    bool get_brand_code_success = true;
     std::string board_id_type = kValidBoardIdType;
     std::string board_id_flags = kPvtBoardIdFlags;
+    std::string hwid = kValidHwid;
+    std::string brand_code = kHwidElements.brand_code.value();
+    std::optional<HwidElements> hwid_elements = kHwidElements;
+    std::optional<std::string> checksum = kHwidElements.checksum.value();
     std::set<rmad::RmadComponent> probed_components = {};
   };
 
@@ -181,6 +198,9 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     ON_CALL(*mock_cros_config_utils, GetFirmwareConfig(_))
         .WillByDefault(DoAll(SetArgPointee<0>(kCrosFwConfig),
                              Return(args.get_cros_fw_config_success)));
+    ON_CALL(*mock_cros_config_utils, GetBrandCode(_))
+        .WillByDefault(DoAll(SetArgPointee<0>(args.brand_code),
+                             Return(args.get_brand_code_success)));
 
     // Mock |WriteProtectUtils|.
     auto mock_write_protect_utils =
@@ -202,6 +222,26 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     ON_CALL(*mock_vpd_utils, FlushOutRoVpdCache())
         .WillByDefault(Return(args.flush_vpd));
 
+    // Mock |HwidUtils|.
+    auto mock_hwid_utils = std::make_unique<NiceMock<MockHwidUtils>>();
+    ON_CALL(*mock_hwid_utils, DecomposeHwid(_))
+        .WillByDefault(Return(args.hwid_elements));
+    ON_CALL(*mock_hwid_utils, CalculateChecksum(_))
+        .WillByDefault(Return(args.checksum));
+
+    // Mock |CrosSystemUtils|.
+    auto mock_crossystem_utils =
+        std::make_unique<NiceMock<MockCrosSystemUtils>>();
+    ON_CALL(*mock_crossystem_utils,
+            GetString(Eq(CrosSystemUtils::kHwidProperty), _))
+        .WillByDefault(
+            DoAll(SetArgPointee<1>(args.hwid), Return(args.get_hwid_success)));
+
+    // Mock |FutilityUtils|.
+    auto mock_futility_utils = std::make_unique<NiceMock<MockFutilityUtils>>();
+    ON_CALL(*mock_futility_utils, SetHwid(_))
+        .WillByDefault(Return(args.set_hwid_success));
+
     // Register signal callback.
     daemon_callback_->SetProvisionSignalCallback(
         base::BindRepeating(&SignalSender::SendProvisionProgressSignal,
@@ -213,7 +253,9 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
         std::move(mock_cbi_utils), std::move(mock_cmd_utils),
         std::move(mock_gsc_utils), std::move(mock_cros_config_utils),
         std::move(mock_write_protect_utils),
-        std::move(mock_iio_sensor_probe_utils), std::move(mock_vpd_utils));
+        std::move(mock_iio_sensor_probe_utils), std::move(mock_vpd_utils),
+        std::move(mock_hwid_utils), std::move(mock_crossystem_utils),
+        std::move(mock_futility_utils));
     EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
     return handler;
   }
@@ -777,7 +819,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   handler->RunState();
   task_environment_.RunUntilIdle();
 
-  // Provision failed signal is sent.
+  // Provision complete signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE,
                ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
 }
@@ -806,6 +848,104 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   json_store_->SetValue(kWipeDevice, true);
   // Failed to get SSFC.
   StateHandlerArgs args = {.set_cbi_fw_config_success = false};
+
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_UpdateHwidBrandCodeGetHwidFailedBlocking) {
+  // Set up normal environment.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  StateHandlerArgs args = {.get_hwid_success = false};
+
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_UpdateHwidBrandCodeDecomposeFailedBlocking) {
+  // Set up normal environment.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  StateHandlerArgs args = {.hwid_elements = std::nullopt};
+
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_INTERNAL);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_UpdateHwidBrandCodeNoBrandCodeSuccess) {
+  // Set up normal environment.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  HwidElements hwid_elements = kHwidElements;
+  hwid_elements.brand_code = std::nullopt;
+
+  // Set |get_brand_code_success| as false to make sure it early exit
+  // |UpdateHwidBrandCode| due to the empty brand code.
+  StateHandlerArgs args = {
+      .get_brand_code_success = false,
+      .hwid_elements = hwid_elements,
+  };
+
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+
+  // Successfully transition to Finalize state.
+  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kFinalize, args);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_UpdateHwidBrandCodeCalculateChecksumFailedBlocking) {
+  // Set up normal environment.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  StateHandlerArgs args = {.checksum = std::nullopt};
+
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_INTERNAL);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_UpdateHwidBrandCodeSetHwidFailedBlocking) {
+  // Set up normal environment.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  StateHandlerArgs args = {.set_hwid_success = false};
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();

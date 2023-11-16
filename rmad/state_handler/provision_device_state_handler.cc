@@ -21,6 +21,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <base/synchronization/lock.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
@@ -33,8 +34,11 @@
 #include "rmad/utils/cbi_utils_impl.h"
 #include "rmad/utils/cmd_utils_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
+#include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
+#include "rmad/utils/futility_utils_impl.h"
 #include "rmad/utils/gsc_utils_impl.h"
+#include "rmad/utils/hwid_utils_impl.h"
 #include "rmad/utils/iio_sensor_probe_utils_impl.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/vpd_utils_impl.h"
@@ -54,9 +58,10 @@ constexpr double kProgressGetModelName = 0.2;
 constexpr double kProgressWriteSsfc = 0.3;
 constexpr double kProgressReadFwConfig = 0.4;
 constexpr double kProgressWriteFwConfig = 0.5;
-constexpr double kProgressUpdateStableDeviceSecret = 0.6;
-constexpr double kProgressFlushOutVpdCache = 0.7;
-constexpr double kProgressResetGbbFlags = 0.8;
+constexpr double kProgressUpdateHwidBrandCode = 0.6;
+constexpr double kProgressUpdateStableDeviceSecret = 0.7;
+constexpr double kProgressFlushOutVpdCache = 0.8;
+constexpr double kProgressResetGbbFlags = 0.9;
 constexpr double kProgressSetBoardId = kProgressComplete;
 
 constexpr char kEmptyBoardIdType[] = "ffffffff";
@@ -87,6 +92,9 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
   iio_sensor_probe_utils_ = std::make_unique<IioSensorProbeUtilsImpl>();
   vpd_utils_ = std::make_unique<VpdUtilsImpl>();
+  hwid_utils_ = std::make_unique<HwidUtilsImpl>();
+  crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
+  futility_utils_ = std::make_unique<FutilityUtilsImpl>();
   status_.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN);
   status_.set_progress(kProgressInit);
   status_.set_error(ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
@@ -104,7 +112,10 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     std::unique_ptr<CrosConfigUtils> cros_config_utils,
     std::unique_ptr<WriteProtectUtils> write_protect_utils,
     std::unique_ptr<IioSensorProbeUtils> iio_sensor_probe_utils,
-    std::unique_ptr<VpdUtils> vpd_utils)
+    std::unique_ptr<VpdUtils> vpd_utils,
+    std::unique_ptr<HwidUtils> hwid_utils,
+    std::unique_ptr<CrosSystemUtils> crossystem_utils,
+    std::unique_ptr<FutilityUtils> futility_utils)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
       ssfc_prober_(std::move(ssfc_prober)),
@@ -116,6 +127,9 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
       write_protect_utils_(std::move(write_protect_utils)),
       iio_sensor_probe_utils_(std::move(iio_sensor_probe_utils)),
       vpd_utils_(std::move(vpd_utils)),
+      hwid_utils_(std::move(hwid_utils)),
+      crossystem_utils_(std::move(crossystem_utils)),
+      futility_utils_(std::move(futility_utils)),
       should_calibrate_(false),
       sensor_integrity_(false) {
   status_.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN);
@@ -448,6 +462,16 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
                  kProgressWriteFwConfig);
   }
 
+  // Update the HWID brand code according to cros_config.
+  if (ProvisionStatus::Error error = UpdateHwidBrandCode();
+      error != ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN) {
+    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                 kProgressFailedBlocking, error);
+    return;
+  }
+  UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
+               kProgressUpdateHwidBrandCode);
+
   if (!same_owner) {
     std::string stable_device_secret;
     if (!GenerateStableDeviceSecret(&stable_device_secret)) {
@@ -614,6 +638,57 @@ ProvisionStatus::Error ProvisionDeviceStateHandler::UpdateFirmwareConfig() {
     LOG(ERROR) << "Failed to set firmware config to cbi.";
     return ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE;
   }
+
+  return ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN;
+}
+
+ProvisionStatus::Error ProvisionDeviceStateHandler::UpdateHwidBrandCode() {
+  std::string hwid;
+  if (!crossystem_utils_->GetHwid(&hwid)) {
+    LOG(ERROR) << "Failed to get HWID string";
+    return ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ;
+  }
+
+  auto hwid_elements = hwid_utils_->DecomposeHwid(hwid);
+
+  if (!hwid_elements.has_value()) {
+    LOG(ERROR) << "Failed to decompose HWID string.";
+    return ProvisionStatus::RMAD_PROVISION_ERROR_INTERNAL;
+  }
+
+  if (!hwid_elements.value().brand_code.has_value()) {
+    // Some older models have no brand code in their HWID, so we just leave it
+    // blank here.
+    return ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN;
+  }
+
+  // Compare the brand code in HWID and cros_config.
+  std::string brand_code;
+  if (!cros_config_utils_->GetBrandCode(&brand_code)) {
+    LOG(ERROR) << "Failed to get brand code from cros_config.";
+    return ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ;
+  }
+
+  std::string raw_hwid = base::StringPrintf(
+      "%s-%s %s", hwid_elements.value().model_name.value().c_str(),
+      brand_code.c_str(),
+      hwid_elements.value().encoded_components.value().c_str());
+
+  auto checksum = hwid_utils_->CalculateChecksum(raw_hwid);
+
+  if (!checksum.has_value()) {
+    LOG(ERROR) << "Failed to calculate HWID checksum.";
+    return ProvisionStatus::RMAD_PROVISION_ERROR_INTERNAL;
+  }
+
+  std::string new_hwid =
+      base::StringPrintf("%s%s", raw_hwid.c_str(), checksum.value().c_str());
+
+  if (!futility_utils_->SetHwid(new_hwid)) {
+    LOG(ERROR) << "Failed to set HWID.";
+    return ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE;
+  }
+  DLOG(INFO) << "Set HWID as " << new_hwid << ".";
 
   return ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN;
 }

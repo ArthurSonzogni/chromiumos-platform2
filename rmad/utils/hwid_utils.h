@@ -45,7 +45,6 @@ class HwidUtils {
   virtual std::optional<HwidElements> DecomposeHwid(
       const std::string& hwid) = 0;
 
- private:
   // Calculate checksum from the given HWID string without checksum. The
   // original checksum should be stripped before passing the HWID string to the
   // function.
