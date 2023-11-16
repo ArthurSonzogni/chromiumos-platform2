@@ -103,6 +103,12 @@ std::optional<base::Value> GetDeviceBusDataFromSysfsDeviceNode(
     }
     VLOG(2) << "Found a parent device at " << perent_dev_path;
     return parent_dev;
+  } else if (bus_type == "wwan") {
+    // Some wwan devices in /sys/class/net point to wwan subsystem, not the
+    // real device. Find the real device by checking the `device` link.
+    const auto real_dev_path =
+        base::MakeAbsoluteFilePath(dev_path.Append("device"));
+    return GetDeviceBusDataFromSysfsDeviceNode(node_path, real_dev_path);
   } else {
     LOG(ERROR) << "Unknown bus_type " << bus_type;
     return std::nullopt;

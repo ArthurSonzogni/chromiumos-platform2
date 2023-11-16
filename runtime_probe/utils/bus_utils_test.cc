@@ -200,5 +200,36 @@ TEST_F(BusUtilsTest, ProbePciPlatform) {
   EXPECT_EQ(result, ans);
 }
 
+TEST_F(BusUtilsTest, ProbeWwan) {
+  const std::string dev_name = "dev_name";
+  const std::string bus_dev = SetFakePciDevice(dev_name);
+  SetFile({bus_dev, "device"}, "0x1111");
+  SetFile({bus_dev, "vendor"}, "0x2222");
+  SetFile({bus_dev, "revision"}, "0x01");
+  SetFile({bus_dev, "class"}, "0x010203");
+
+  // Set fake wwan subsystem
+  SetSymbolicLink({"class", "wwan"}, {bus_dev, "wwan", "wwan0", "subsystem"});
+  // Device link to real pci device.
+  SetSymbolicLink({"..", ".."}, {bus_dev, "wwan", "wwan0", "device"});
+
+  // Unset link set by SetFakePciDevice and set to wwan subsystem device.
+  UnsetPath({kFakeSysClassDir, dev_name, "device"});
+  SetSymbolicLink({bus_dev, "wwan", "wwan0"},
+                  {kFakeSysClassDir, dev_name, "device"});
+
+  auto ans = MakeValue({
+      {"bus_type", "pci"},
+      {"pci_device_id", "0x1111"},
+      {"pci_vendor_id", "0x2222"},
+      {"pci_revision", "0x01"},
+      {"pci_class", "0x010203"},
+      {"path", GetPathUnderRoot({kFakeSysClassDir, dev_name}).value()},
+  });
+  auto result = GetDeviceBusDataFromSysfsNode(
+      GetPathUnderRoot({kFakeSysClassDir, dev_name}));
+  EXPECT_EQ(result, ans);
+}
+
 }  // namespace
 }  // namespace runtime_probe
