@@ -62,12 +62,6 @@ class RoutineService
       ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg,
       CheckAndCreateRoutineCallback callback);
 
-  void HandleGroundTruthRoutineSupportedResponse(
-      ash::cros_healthd::mojom::CrosHealthdRoutinesService::
-          IsRoutineArgumentSupportedCallback callback,
-      ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg,
-      ash::cros_healthd::mojom::SupportStatusPtr support_status);
-
   void HandleCheckAndCreateRoutineResponseForCreateRoutine(
       mojo::PendingReceiver<ash::cros_healthd::mojom::RoutineControl>
           routine_receiver,

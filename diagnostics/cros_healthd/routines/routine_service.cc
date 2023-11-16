@@ -245,45 +245,24 @@ void RoutineService::CheckAndCreateRoutine(
       LOG(ERROR) << "Got RoutineArgument::UnrecognizedArgument";
       std::move(callback).Run(base::unexpected(
           mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-              "Routine Argument not recognized/supported",
+              "Routine argument is not recognized/supported",
               /*reason=*/nullptr))));
       return;
     }
   }
 }
 
-void RoutineService::HandleGroundTruthRoutineSupportedResponse(
-    mojom::CrosHealthdRoutinesService::IsRoutineArgumentSupportedCallback
-        callback,
-    mojom::RoutineArgumentPtr routine_arg,
-    mojom::SupportStatusPtr support_status) {
-  if (support_status->which() != mojom::SupportStatus::Tag::kSupported) {
-    std::move(callback).Run(std::move(support_status));
-    return;
-  }
-  auto wrapped_callback =
-      base::BindOnce([](base::expected<std::unique_ptr<BaseRoutineControl>,
-                                       mojom::SupportStatusPtr> result) {
-        if (result.has_value()) {
-          return mojom::SupportStatus::NewSupported(mojom::Supported::New());
-        }
-        return std::move(result.error());
-      }).Then(std::move(callback));
-  CheckAndCreateRoutine(std::move(routine_arg), std::move(wrapped_callback));
-}
-
 void RoutineService::IsRoutineArgumentSupported(
     mojom::RoutineArgumentPtr routine_arg,
     mojom::CrosHealthdRoutinesService::IsRoutineArgumentSupportedCallback
         callback) {
-  // Call `GroundTruth::IsRoutineArgumentSupported` first, if it is supported
-  // then call `CheckAndCreateRoutine` and see if it is still supported.
-  // TODO(b/309080271): Remove `GroundTruth::IsRoutineArgumentSupported` and
-  // call `CheckAndCreateRoutine` directly.
-  context_->ground_truth()->IsRoutineArgumentSupported(
-      std::move(routine_arg),
-      base::BindOnce(&RoutineService::HandleGroundTruthRoutineSupportedResponse,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+  auto wrapped_callback =
+      base::BindOnce([](CheckAndCreateRoutineResult result) {
+        return result.has_value()
+                   ? mojom::SupportStatus::NewSupported(mojom::Supported::New())
+                   : std::move(result.error());
+      }).Then(std::move(callback));
+  CheckAndCreateRoutine(std::move(routine_arg), std::move(wrapped_callback));
 }
 
 void RoutineService::AddRoutine(

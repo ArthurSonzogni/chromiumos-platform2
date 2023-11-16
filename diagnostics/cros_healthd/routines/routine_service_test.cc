@@ -151,18 +151,12 @@ mojom::SupportStatusPtr MakeUnsupported(const std::string& debug_message) {
       mojom::Unsupported::New(debug_message, /*reason=*/nullptr));
 }
 
-mojom::SupportStatusPtr MakeUnexpected(const std::string& debug_message) {
-  return mojom::SupportStatus::NewException(mojom::Exception::New(
-      mojom::Exception::Reason::kUnexpected, debug_message));
-}
-
 TEST_F(RoutineServiceTest, UnrecognizedArgument) {
+  auto status = MakeUnsupported("Routine argument is not recognized/supported");
   CheckIsRoutineArgumentSupported(
-      MakeUnexpected("Got kUnrecognizedArgument"),
-      mojom::RoutineArgument::NewUnrecognizedArgument(false));
-  CheckCreateRoutine(
-      MakeUnsupported("Routine Argument not recognized/supported"),
-      mojom::RoutineArgument::NewUnrecognizedArgument(false));
+      status, mojom::RoutineArgument::NewUnrecognizedArgument(false));
+  CheckCreateRoutine(status,
+                     mojom::RoutineArgument::NewUnrecognizedArgument(false));
 }
 
 TEST_F(RoutineServiceTest, PrimeSearch) {

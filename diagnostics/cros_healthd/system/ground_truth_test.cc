@@ -59,19 +59,6 @@ class GroundTruthTest : public BaseFileTest {
     ExpectEventStatus(category, mojom::SupportStatus::Tag::kException);
   }
 
-  void ExpectRoutineSupported(mojom::RoutineArgumentPtr arg) {
-    ExpectRoutineStatus(std::move(arg), mojom::SupportStatus::Tag::kSupported);
-  }
-
-  void ExpectRoutineUnsupported(mojom::RoutineArgumentPtr arg) {
-    ExpectRoutineStatus(std::move(arg),
-                        mojom::SupportStatus::Tag::kUnsupported);
-  }
-
-  void ExpectRoutineException(mojom::RoutineArgumentPtr arg) {
-    ExpectRoutineStatus(std::move(arg), mojom::SupportStatus::Tag::kException);
-  }
-
   GroundTruth* ground_truth() { return mock_context_.ground_truth(); }
 
   StrictMock<org::chromium::bluetooth::ManagerProxyMock> mock_manager_proxy_;
@@ -100,16 +87,6 @@ class GroundTruthTest : public BaseFileTest {
     EXPECT_EQ(TagToString(status->which()), TagToString(expect_status));
   }
 
-  void ExpectRoutineStatus(mojom::RoutineArgumentPtr arg,
-                           mojom::SupportStatus::Tag expect_status) {
-    base::test::TestFuture<mojom::RoutineArgumentPtr, mojom::SupportStatusPtr>
-        future;
-    mock_context_.ground_truth()->IsRoutineArgumentSupported(
-        std::move(arg), future.GetCallback());
-    auto [unused_arg, status] = future.Take();
-    EXPECT_EQ(TagToString(status->which()), TagToString(expect_status));
-  }
-
   MockContext mock_context_;
 };
 
@@ -133,17 +110,6 @@ TEST_F(GroundTruthTest, AlwaysSupportedEvents) {
   ExpectEventSupported(mojom::EventCategoryEnum::kBluetooth);
   ExpectEventSupported(mojom::EventCategoryEnum::kPower);
   ExpectEventSupported(mojom::EventCategoryEnum::kAudio);
-}
-
-TEST_F(GroundTruthTest, AlwaysSupportedRoutines) {
-  ExpectRoutineSupported(
-      mojom::RoutineArgument::NewMemory(mojom::MemoryRoutineArgument::New()));
-  ExpectRoutineSupported(mojom::RoutineArgument::NewAudioDriver(
-      mojom::AudioDriverRoutineArgument::New()));
-  ExpectRoutineSupported(mojom::RoutineArgument::NewCpuStress(
-      mojom::CpuStressRoutineArgument::New()));
-  ExpectRoutineSupported(mojom::RoutineArgument::NewCpuCache(
-      mojom::CpuCacheRoutineArgument::New()));
 }
 
 TEST_F(GroundTruthTest, CurrentUnsupported) {

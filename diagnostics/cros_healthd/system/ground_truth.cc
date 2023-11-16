@@ -191,50 +191,6 @@ void GroundTruth::IsEventSupported(
   std::move(callback).Run(std::move(status));
 }
 
-void GroundTruth::IsRoutineArgumentSupported(
-    mojom::RoutineArgumentPtr routine_arg,
-    base::OnceCallback<void(mojom::RoutineArgumentPtr, mojom::SupportStatusPtr)>
-        callback) {
-  // TODO(b/309080271): Migrate this function to
-  // RoutineService::CheckAndCreateRoutine and just return supported here. After
-  // migrate all routine, remove this function.
-
-  // Please update docs/routine_supportability.md.
-  // Add "NO_IFTTT=<reason>" in the commit message if it's not applicable.
-  // LINT.IfChange
-  mojom::SupportStatusPtr status;
-  switch (routine_arg->which()) {
-    // UnrecognizedArgument.
-    case mojom::RoutineArgument::Tag::kUnrecognizedArgument:
-      std::move(callback).Run(
-          std::move(routine_arg),
-          mojom::SupportStatus::NewException(
-              mojom::Exception::New(mojom::Exception::Reason::kUnexpected,
-                                    "Got kUnrecognizedArgument")));
-      return;
-    // Always supported. There is no rule on the routine arguments.
-    case mojom::RoutineArgument::Tag::kMemory:
-    case mojom::RoutineArgument::Tag::kAudioDriver:
-    case mojom::RoutineArgument::Tag::kCpuStress:
-    case mojom::RoutineArgument::Tag::kCpuCache:
-    case mojom::RoutineArgument::Tag::kPrimeSearch:
-    case mojom::RoutineArgument::Tag::kFloatingPoint:
-    case mojom::RoutineArgument::Tag::kUfsLifetime:
-    case mojom::RoutineArgument::Tag::kFan:
-    case mojom::RoutineArgument::Tag::kDiskRead:
-    case mojom::RoutineArgument::Tag::kVolumeButton:
-    case mojom::RoutineArgument::Tag::kLedLitUp:
-    case mojom::RoutineArgument::Tag::kBluetoothPower:
-    case mojom::RoutineArgument::Tag::kBluetoothDiscovery:
-    case mojom::RoutineArgument::Tag::kBluetoothPairing:
-    case mojom::RoutineArgument::Tag::kBluetoothScanning:
-      status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
-      std::move(callback).Run(std::move(routine_arg), std::move(status));
-      return;
-  }
-  // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
-}
-
 // Please update docs/routine_supportability.md.
 // Add "NO_IFTTT=<reason>" in the commit message if it's not applicable.
 // LINT.IfChange
