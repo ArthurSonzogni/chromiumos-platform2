@@ -13,6 +13,18 @@
 
 namespace thinpool_migrator {
 
+enum MigrationResult {
+  SUCCESS = 0,
+  FSCK_NEEDED = 1,
+  INSUFFICIENT_FREE_SPACE = 2,
+  RESIZE_FAILURE = 3,
+  PARTITION_HEADER_COPY_FAILURE = 4,
+  THINPOOL_METADATA_PERSISTENCE_FAILURE = 5,
+  LVM_METADATA_PERSISTENCE_FAILURE = 6,
+
+  MIGRATION_RESULT_FAILURE_MAX
+};
+
 // Tracks the success/failure rate of the migration.
 inline constexpr char kResultHistogram[] = "Platform.ThinpoolMigration.Result";
 // Tracks whether the migration completed after interruption/transient failures.

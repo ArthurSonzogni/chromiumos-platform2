@@ -137,6 +137,7 @@ class BRILLO_EXPORT ThinpoolMigrator {
   std::string GeneratePhysicalVolumePayload();
 
   MigrationStatus status_;
+  MigrationResult result_;
 
   const base::FilePath block_device_;
 

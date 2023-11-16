@@ -130,6 +130,7 @@ bool ThinpoolMigrator::Migrate(bool dry_run) {
       LOG(INFO) << "Shrinking filesystem to " << resized_filesystem_size_;
       if (!dry_run && !ShrinkStatefulFilesystem()) {
         ForkAndCrash("Failed to shrink filesystem");
+        result_ = MigrationResult::RESIZE_FAILURE;
         return false;
       }
       SetState(MigrationStatus::FILESYSTEM_RESIZED);
@@ -142,6 +143,7 @@ bool ThinpoolMigrator::Migrate(bool dry_run) {
                 << relocated_header_offset_;
       if (!dry_run && !DuplicatePartitionHeader()) {
         ForkAndCrash("Failed to copy filesystem header");
+        result_ = MigrationResult::PARTITION_HEADER_COPY_FAILURE;
         return false;
       }
       SetState(MigrationStatus::PARTITION_HEADER_COPIED);
@@ -154,6 +156,7 @@ bool ThinpoolMigrator::Migrate(bool dry_run) {
                 << thinpool_metadata_offset_;
       if (!dry_run && !PersistThinpoolMetadata()) {
         ForkAndCrash("Failed to persist thinpool metadata");
+        result_ = MigrationResult::THINPOOL_METADATA_PERSISTENCE_FAILURE;
         return false;
       }
       SetState(MigrationStatus::THINPOOL_METADATA_PERSISTED);
@@ -165,6 +168,7 @@ bool ThinpoolMigrator::Migrate(bool dry_run) {
       LOG(INFO) << "Persisting LVM2 metadata at beginning of partition";
       if (!dry_run && !PersistLvmMetadata()) {
         ForkAndCrash("Failed to persist LVM metadata");
+        result_ = MigrationResult::LVM_METADATA_PERSISTENCE_FAILURE;
         return false;
       }
 
@@ -176,9 +180,8 @@ bool ThinpoolMigrator::Migrate(bool dry_run) {
       LOG(INFO) << "Migration complete";
       // Report the number of tries taken for the migration to succeed.
       ReportIntMetric(kTriesHistogram, status_.tries(), kMaxTries);
-      ReportIntMetric(kResultHistogram,
-                      static_cast<int>(MigrationStatus::COMPLETED),
-                      static_cast<int>(MigrationStatus::COMPLETED) + 1);
+      ReportIntMetric(kResultHistogram, MigrationResult::SUCCESS,
+                      MigrationResult::MIGRATION_RESULT_FAILURE_MAX);
       return true;
 
     default:
@@ -339,8 +342,8 @@ bool ThinpoolMigrator::PersistLvmMetadata() {
 
 // 'Tis a sad day, but it must be done.
 bool ThinpoolMigrator::RevertMigration() {
-  ReportIntMetric(kResultHistogram, status_.state(),
-                  static_cast<int>(MigrationStatus::COMPLETED) + 1);
+  ReportIntMetric(kResultHistogram, result_,
+                  MigrationResult::MIGRATION_RESULT_FAILURE_MAX);
 
   ScopedTimerReporter timer(kRevertTimeHistogram);
   switch (status_.state()) {
