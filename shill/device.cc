@@ -853,7 +853,8 @@ void Device::SetEnabledChecked(bool enable,
   if (enabled_pending_ == enable) {
     Error err;
     Error::PopulateAndLog(FROM_HERE, &err, Error::kInProgress,
-                          "Enable operation already in progress");
+                          enable ? "Enable operation already in progress"
+                                 : "Disable operation already in progress");
     std::move(callback).Run(err);
     return;
   }
