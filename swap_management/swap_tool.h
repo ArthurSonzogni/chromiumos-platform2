@@ -61,6 +61,7 @@ class SwapTool {
   absl::Status EnableZramSwapping();
   std::optional<std::string> GetFeatureParam(const VariationsFeature& vf,
                                              const std::string& key);
+  absl::Status EnableZramWriteback();
 
   feature::PlatformFeatures* platform_features_ = nullptr;
 };

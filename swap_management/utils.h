@@ -57,12 +57,13 @@ class Utils {
   virtual absl::StatusOr<base::SystemMemoryInfoKB> GetSystemMemoryInfo();
 
   uint64_t RoundupMultiple(uint64_t number, uint64_t alignment);
+  absl::StatusOr<bool> SimpleAtob(const std::string& str);
   template <typename int_type>
   absl::StatusOr<int_type> SimpleAtoi(const std::string& str) {
     int_type output;
     if (!absl::SimpleAtoi<int_type>(str, &output))
-      return absl::OutOfRangeError("Failed to convert " + str +
-                                   " to an integer value.");
+      return absl::InvalidArgumentError("Failed to convert " + str +
+                                        " to an integer value.");
 
     return output;
   }

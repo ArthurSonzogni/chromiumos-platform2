@@ -193,6 +193,14 @@ uint64_t Utils::RoundupMultiple(uint64_t number, uint64_t alignment) {
   return ((number + (alignment - 1)) / alignment) * alignment;
 }
 
+absl::StatusOr<bool> Utils::SimpleAtob(const std::string& str) {
+  bool output;
+  if (!absl::SimpleAtob(str, &output))
+    return absl::InvalidArgumentError("Failed to convert " + str +
+                                      " to boolean.");
+  return output;
+}
+
 const base::FilePath ScopedFilePathTraits::InvalidValue() {
   return base::FilePath();
 }

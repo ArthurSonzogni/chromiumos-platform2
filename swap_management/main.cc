@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
     swap_management::Metrics::Get()->ReportSwapStopStatus(status);
 
     if (!status.ok()) {
-      LOG(ERROR) << status.ToString();
+      LOG(ERROR) << "Failed to stop swap: " << status;
       return EX_SOFTWARE;
     }
 

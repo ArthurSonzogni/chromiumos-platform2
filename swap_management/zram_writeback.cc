@@ -3,16 +3,20 @@
 // found in the LICENSE file.
 
 #include "swap_management/utils.h"
+#include "swap_management/zram_stats.h"
 #include "swap_management/zram_writeback.h"
 
+#include <algorithm>
 #include <utility>
 #include <vector>
 
+#include <absl/cleanup/cleanup.h>
 #include <absl/status/status.h>
 #include <absl/strings/numbers.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/timer/timer.h>
 #include <brillo/errors/error.h>
 
 namespace swap_management {
@@ -29,6 +33,19 @@ constexpr uint32_t kSectorSize = 512;
 constexpr base::TimeDelta kMaxIdleAge = base::Days(30);
 
 ZramWriteback* inst_ = nullptr;
+
+base::RepeatingTimer writeback_timer_;
+
+absl::StatusOr<std::string> WritebackModeToName(ZramWritebackMode mode) {
+  if (mode == WRITEBACK_IDLE)
+    return "idle";
+  else if (mode == WRITEBACK_HUGE)
+    return "huge";
+  else if (mode == WRITEBACK_HUGE_IDLE)
+    return "huge_idle";
+  else
+    return absl::InvalidArgumentError("Invalid mode");
+}
 
 }  // namespace
 
@@ -61,7 +78,7 @@ LoopDev::~LoopDev() {
 
   if (!path_.empty()) {
     status = Utils::Get()->RunProcessHelper({"/sbin/losetup", "-d", path_});
-    LOG_IF(ERROR, !status.ok()) << status;
+    LOG_IF(ERROR, !status.ok()) << "Can not detach loop device: " << status;
     path_.clear();
   }
 }
@@ -94,7 +111,7 @@ DmDev::~DmDev() {
   if (!name_.empty()) {
     status = Utils::Get()->RunProcessHelper(
         {"/sbin/dmsetup", "remove", "--deferred", name_});
-    LOG_IF(ERROR, !status.ok()) << status;
+    LOG_IF(ERROR, !status.ok()) << "Can not remove dm device: " << status;
     name_.clear();
   }
 }
@@ -146,11 +163,13 @@ void ZramWriteback::Cleanup() {
   absl::Status status = absl::OkStatus();
 
   status = Utils::Get()->Umount(kZramWritebackIntegrityMount);
-  LOG_IF(ERROR, !status.ok()) << status;
+  LOG_IF(ERROR, !status.ok())
+      << "Can not umount " << kZramWritebackIntegrityMount << ": " << status;
 
   status =
       Utils::Get()->DeleteFile(base::FilePath(kZramWritebackIntegrityMount));
-  LOG_IF(ERROR, !status.ok()) << status;
+  LOG_IF(ERROR, !status.ok())
+      << "Can not remove " << kZramWritebackIntegrityMount << ": " << status;
 }
 
 // Check if zram writeback can be used on the system.
@@ -398,22 +417,304 @@ absl::Status ZramWriteback::MarkIdle(uint32_t age_seconds) {
 
 absl::Status ZramWriteback::InitiateWriteback(ZramWritebackMode mode) {
   base::FilePath filepath = base::FilePath(kZramSysfsDir).Append("writeback");
-  std::string mode_str;
-  if (mode == WRITEBACK_IDLE) {
-    mode_str = "idle";
-  } else if (mode == WRITEBACK_HUGE) {
-    mode_str = "huge";
-  } else if (mode == WRITEBACK_HUGE_IDLE) {
-    mode_str = "huge_idle";
-  } else {
-    return absl::InvalidArgumentError("Invalid mode");
-  }
+  absl::StatusOr<std::string> mode_str = WritebackModeToName(mode);
+  if (!mode_str.ok())
+    return mode_str.status();
 
-  return Utils::Get()->WriteFile(filepath, mode_str);
+  return Utils::Get()->WriteFile(filepath, *mode_str);
 }
 
 ZramWriteback::~ZramWriteback() {
+  writeback_timer_.Stop();
   Cleanup();
+}
+
+absl::Status ZramWriteback::SetZramWritebackConfigIfOverriden(
+    const std::string& key, const std::string& value) {
+  if (key == "backing_dev_size_mib") {
+    auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
+    if (!buf.ok())
+      return buf.status();
+    params_.backing_dev_size_mib = *buf;
+  } else if (key == "periodic_time_sec") {
+    auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
+    if (!buf.ok())
+      return buf.status();
+    params_.periodic_time = base::Seconds(*buf);
+  } else if (key == "backoff_time_sec") {
+    auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
+    if (!buf.ok())
+      return buf.status();
+    params_.backoff_time = base::Seconds(*buf);
+  } else if (key == "min_pages") {
+    auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
+    if (!buf.ok())
+      return buf.status();
+    params_.min_pages = *buf;
+  } else if (key == "max_pages") {
+    auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
+    if (!buf.ok())
+      return buf.status();
+    params_.max_pages = *buf;
+  } else if (key == "writeback_huge") {
+    auto buf = Utils::Get()->SimpleAtob(value);
+    if (!buf.ok())
+      return buf.status();
+    params_.writeback_huge = *buf;
+  } else if (key == "writeback_huge_idle") {
+    auto buf = Utils::Get()->SimpleAtob(value);
+    if (!buf.ok())
+      return buf.status();
+    params_.writeback_huge_idle = *buf;
+  } else if (key == "writeback_idle") {
+    auto buf = Utils::Get()->SimpleAtob(value);
+    if (!buf.ok())
+      return buf.status();
+    params_.writeback_idle = *buf;
+  } else if (key == "idle_min_time_sec") {
+    auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
+    if (!buf.ok())
+      return buf.status();
+    params_.idle_min_time = base::Seconds(*buf);
+  } else if (key == "idle_max_time_sec") {
+    auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
+    if (!buf.ok())
+      return buf.status();
+    params_.idle_max_time = base::Seconds(*buf);
+  } else {
+    return absl::InvalidArgumentError("Unknown key " + key);
+  }
+
+  return absl::OkStatus();
+}
+
+absl::StatusOr<uint64_t> ZramWriteback::GetAllowedWritebackLimit() {
+  // We need to decide how many pages we will want to write back total, this
+  // includes huge and idle if they are both enabled. The calculation is based
+  // on zram utilization, writeback utilization, and memory pressure.
+  uint64_t num_pages = 0;
+
+  absl::StatusOr<ZramMmStat> zram_mm_stat = GetZramMmStat();
+  if (!zram_mm_stat.ok())
+    return zram_mm_stat.status();
+  absl::StatusOr<ZramBdStat> zram_bd_stat = GetZramBdStat();
+  if (!zram_bd_stat.ok())
+    return zram_bd_stat.status();
+
+  // All calculations are performed in basis points, 100 bps = 1.00%. The
+  // number of pages allowed to be written back follows a simple linear
+  // relationship. The allowable range is [min_pages, max_pages], and the
+  // writeback limit will be the (zram utilization) * the range, that is, the
+  // more zram we're using the more we're going to allow to be written back.
+  constexpr uint32_t kBps = 100 * 100;
+  uint64_t pages_currently_written_back = (*zram_bd_stat).bd_count;
+  uint64_t zram_utilization_bps =
+      (((*zram_mm_stat).orig_data_size / kPageSize) * kBps) / zram_nr_pages_;
+  num_pages = zram_utilization_bps * params_.max_pages / kBps;
+
+  // And try to limit it to the approximate number of free backing device
+  // pages (if it's less).
+  uint64_t free_bd_pages =
+      (wb_size_bytes_ / kPageSize) - pages_currently_written_back;
+  num_pages = std::min(num_pages, free_bd_pages);
+
+  // Finally enforce the limits, we won't even attempt writeback if we
+  // cannot writeback at least the min, and we will cap to the max if it's
+  // greater.
+  num_pages = std::min(num_pages, params_.max_pages);
+  if (num_pages < params_.min_pages)
+    // Configured to not writeback fewer than configured min_pages.
+    return 0;
+
+  return num_pages;
+}
+
+std::optional<base::TimeDelta> ZramWriteback::GetCurrentWritebackIdleTime() {
+  if (!params_.writeback_idle)
+    return std::nullopt;
+
+  absl::StatusOr<base::SystemMemoryInfoKB> meminfo =
+      Utils::Get()->GetSystemMemoryInfo();
+  if (!meminfo.ok()) {
+    LOG(ERROR) << "Can not read meminfo: " << meminfo.status();
+    return std::nullopt;
+  }
+
+  // Stay between idle_(min|max)_time.
+  uint64_t min_sec = params_.idle_min_time.InSeconds();
+  uint64_t max_sec = params_.idle_max_time.InSeconds();
+  double mem_utilization =
+      (1.0 - (static_cast<double>((*meminfo).available) / (*meminfo).total));
+
+  // Exponentially decay the writeback age vs. memory utilization. The reason
+  // we choose exponential decay is because we want to do as little work as
+  // possible when the system is under very low memory pressure. As pressure
+  // increases we want to start aggressively shrinking our idle age to force
+  // newer pages to be written back.
+  constexpr double kLambda = 5;
+  uint64_t age_sec =
+      (max_sec - min_sec) * pow(M_E, -kLambda * mem_utilization) + min_sec;
+
+  return base::Seconds(age_sec);
+}
+
+// Read the actual programmed writeback_limit.
+absl::StatusOr<uint64_t> ZramWriteback::GetWritebackLimit() {
+  std::string buf;
+  absl::Status status = Utils::Get()->ReadFileToString(
+      base::FilePath(kZramSysfsDir).Append("writeback_limit"), &buf);
+  if (!status.ok())
+    return status;
+
+  return Utils::Get()->SimpleAtoi<uint64_t>(buf);
+}
+
+void ZramWriteback::PeriodicWriteback() {
+  // Is writeback ongoing?
+  if (is_currently_writing_back_)
+    return;
+  absl::Cleanup cleanup = [&] { is_currently_writing_back_ = false; };
+
+  // Did we writeback too recently?
+  if (last_writeback_ != base::Time::Min()) {
+    const auto time_since_writeback = base::Time::Now() - last_writeback_;
+    if (time_since_writeback < params_.backoff_time)
+      return;
+  }
+
+  absl::StatusOr<uint64_t> num_pages = GetAllowedWritebackLimit();
+  if (!num_pages.ok() || *num_pages == 0) {
+    LOG_IF(ERROR, !num_pages.ok())
+        << "Can not get allowed writeback_limit: " << num_pages.status();
+    return;
+  }
+  absl::Status status = SetWritebackLimit(*num_pages);
+  if (!status.ok()) {
+    LOG(ERROR) << "Can not set zram writeback_limit: " << status;
+    return;
+  }
+
+  // If no writeback quota available then do not writeback.
+  absl::StatusOr<uint64_t> writeback_limit = GetWritebackLimit();
+  if (!writeback_limit.ok() || *writeback_limit == 0) {
+    LOG_IF(ERROR, !writeback_limit.ok())
+        << "Can not read zram writeback_limit: " << writeback_limit.status();
+    return;
+  }
+
+  // We started on huge idle page writeback, then idle, then huge pages, if
+  // enabled accordingly.
+  ZramWritebackMode current_writeback_mode = WRITEBACK_HUGE_IDLE;
+  while (current_writeback_mode != WRITEBACK_NONE) {
+    // Do enable writeback at current mode?
+    if ((current_writeback_mode == WRITEBACK_HUGE_IDLE &&
+         params_.writeback_huge_idle) ||
+        (current_writeback_mode == WRITEBACK_IDLE && params_.writeback_idle) ||
+        (current_writeback_mode == WRITEBACK_HUGE && params_.writeback_huge)) {
+      // If we currently working on huge_idle or idle mode, mark idle for pages.
+      if (current_writeback_mode == WRITEBACK_HUGE_IDLE ||
+          current_writeback_mode == WRITEBACK_IDLE) {
+        std::optional<base::TimeDelta> idle_age = GetCurrentWritebackIdleTime();
+        if (!idle_age.has_value()) {
+          // Failed to calculate idle age, directly move to huge page.
+          current_writeback_mode = WRITEBACK_HUGE;
+          continue;
+        }
+        status = MarkIdle((*idle_age).InSeconds());
+        if (!status.ok()) {
+          LOG(ERROR) << "Can not mark zram idle:" << status;
+          return;
+        }
+      }
+
+      // Then we initiate writeback.
+      status = InitiateWriteback(current_writeback_mode);
+      // It could fail because of depleted writeback limit quota.
+      absl::StatusOr<uint64_t> writeback_limit_after = GetWritebackLimit();
+      if (!writeback_limit_after.ok()) {
+        LOG(ERROR) << "Can not read zram writeback_limit: "
+                   << writeback_limit_after.status();
+        return;
+      }
+      if (!status.ok() && *writeback_limit_after != 0) {
+        LOG(ERROR) << "Can not initiate zram writeback: " << status;
+        return;
+      }
+      last_writeback_ = base::Time::Now();
+
+      // Log the number of writeback pages.
+      int64_t num_wb_pages = *writeback_limit - *writeback_limit_after;
+      if (num_wb_pages > 0) {
+        absl::StatusOr<std::string> mode =
+            WritebackModeToName(current_writeback_mode);
+        if (mode.ok())
+          LOG(INFO) << "zram writeback " << num_wb_pages << " " << *mode
+                    << " pages.";
+      }
+
+      // Update writeback_limit for next mode, or exit if no more quota.
+      if (*writeback_limit_after == 0)
+        return;
+      writeback_limit = writeback_limit_after;
+    }
+
+    // Move to the next stage.
+    if (current_writeback_mode == WRITEBACK_HUGE_IDLE)
+      current_writeback_mode = WRITEBACK_IDLE;
+    else if (current_writeback_mode == WRITEBACK_IDLE)
+      current_writeback_mode = WRITEBACK_HUGE;
+    else
+      current_writeback_mode = WRITEBACK_NONE;
+  }
+}
+
+absl::Status ZramWriteback::Start() {
+  LOG(INFO) << "Zram writeback params: " << params_;
+
+  // Basic sanity check on our configuration.
+  if (!params_.writeback_huge && !params_.writeback_idle &&
+      !params_.writeback_huge_idle)
+    return absl::InvalidArgumentError("No setup for writeback page type.");
+
+  // We don't start again if writeback is enabled.
+  std::string buf;
+  absl::Status status =
+      Utils::Get()->ReadFileToString(base::FilePath(kZramBackingDevice), &buf);
+  if (!status.ok())
+    return status;
+  base::TrimWhitespaceASCII(buf, base::TRIM_ALL, &buf);
+  if (buf.empty())
+    return absl::InvalidArgumentError(std::string(kZramBackingDevice) +
+                                      " is empty.");
+  if (buf != "none") {
+    LOG(WARNING) << "Zram writeback is already enabled.";
+    return absl::OkStatus();
+  }
+
+  status = EnableWriteback(params_.backing_dev_size_mib);
+  if (!status.ok())
+    return status;
+
+  status = Utils::Get()->ReadFileToString(
+      base::FilePath(kZramSysfsDir).Append("disksize"), &buf);
+  if (!status.ok())
+    return status;
+  absl::StatusOr<uint64_t> zram_disksize_byte =
+      Utils::Get()->SimpleAtoi<uint64_t>(buf);
+  if (!zram_disksize_byte.ok())
+    return zram_disksize_byte.status();
+  zram_nr_pages_ = *zram_disksize_byte / kPageSize;
+
+  // Start periodic writeback.
+  writeback_timer_.Start(FROM_HERE, params_.periodic_time,
+                         base::BindRepeating(&ZramWriteback::PeriodicWriteback,
+                                             weak_factory_.GetWeakPtr()));
+
+  return absl::OkStatus();
+}
+
+void ZramWriteback::Stop() {
+  writeback_timer_.Stop();
 }
 
 }  // namespace swap_management

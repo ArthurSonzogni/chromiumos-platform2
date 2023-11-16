@@ -38,6 +38,7 @@ static_library("libswapmanagement") {
     "status.cc",
     "swap_tool.cc",
     "utils.cc",
+    "zram_stats.cc",
     "zram_writeback.cc",
   ]
 

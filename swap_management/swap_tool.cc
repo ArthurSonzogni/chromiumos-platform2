@@ -36,6 +36,10 @@ constexpr VariationsFeature kSwapZramCompAlgorithmFeature{
 constexpr char kSwapZramDisksizeFeatureName[] = "CrOSLateBootSwapZramDisksize";
 constexpr VariationsFeature kSwapZramDisksizeFeature{
     kSwapZramDisksizeFeatureName, FEATURE_DISABLED_BY_DEFAULT};
+constexpr char kSwapZramWritebackFeatureName[] =
+    "CrOSLateBootSwapZramWriteback";
+constexpr VariationsFeature kSwapZramWritebackFeature{
+    kSwapZramWritebackFeatureName, FEATURE_DISABLED_BY_DEFAULT};
 }  // namespace
 
 SwapTool::SwapTool(feature::PlatformFeatures* platform_features)
@@ -103,7 +107,8 @@ void SwapTool::SetCompAlgorithmIfOverriden() {
     absl::Status status = Utils::Get()->WriteFile(
         base::FilePath(kZramSysfsDir).Append("comp_algorithm"),
         *comp_algorithm);
-    LOG_IF(WARNING, !status.ok()) << status;
+    LOG_IF(WARNING, !status.ok())
+        << "Failed to set zram comp_algorithm: " << status;
   }
 }
 // Get zram size in byte.
@@ -125,7 +130,8 @@ absl::StatusOr<uint64_t> SwapTool::GetZramSizeBytes() {
     return size_byte;
   // Let's provide log for errors other than NotFoundError which is valid, and
   // continue.
-  LOG_IF(WARNING, !absl::IsNotFound(size_byte.status())) << size_byte.status();
+  LOG_IF(WARNING, !absl::IsNotFound(size_byte.status()))
+      << "Failed to get user config zram size: " << size_byte.status();
 
   // 2. Feature
   // First, read /proc/meminfo for MemTotal in kiB.
@@ -165,7 +171,8 @@ void SwapTool::SetRecompAlgorithms() {
     absl::Status status = Utils::Get()->WriteFile(
         base::FilePath(kZramSysfsDir).Append("recomp_algorithm"),
         "algo=" + algos[i] + " priority=" + std::to_string(i + 1));
-    LOG_IF(WARNING, !status.ok()) << status;
+    LOG_IF(WARNING, !status.ok())
+        << "Failed to set zram recomp_algorithm: " << status;
   }
 }
 
@@ -254,7 +261,15 @@ absl::Status SwapTool::SwapStart() {
     return status;
 
   // Enable zram swap.
-  return EnableZramSwapping();
+  status = EnableZramSwapping();
+  if (!status.ok())
+    return status;
+
+  // Enable zram writeback if feature is available.
+  status = EnableZramWriteback();
+  LOG_IF(ERROR, !status.ok()) << "Failed to enable zram writeback: " << status;
+
+  return status;
 }
 
 absl::Status SwapTool::SwapStop() {
@@ -266,6 +281,9 @@ absl::Status SwapTool::SwapStop() {
     LOG(WARNING) << "Swap is already off.";
     return absl::OkStatus();
   }
+
+  // Stop zram writeback.
+  ZramWriteback::Get()->Stop();
 
   // It is possible that the Filename of swap file zram0 in /proc/swaps shows
   // wrong path "/zram0", since devtmpfs in minijail mount namespace is lazily
@@ -417,6 +435,33 @@ absl::Status SwapTool::SwapZramSetRecompAlgorithms(
   const std::string joined = base::JoinString(algos, " ");
   return Utils::Get()->WriteFile(base::FilePath(kSwapRecompAlgorithmFile),
                                  joined);
+}
+
+absl::Status SwapTool::EnableZramWriteback() {
+  // Check if feature (kSwapZramWritebackFeature) is enabled.
+  if (!platform_features_) {
+    LOG(WARNING) << "PlatformFeatures is not initialized.";
+    return absl::OkStatus();
+  }
+  feature::PlatformFeaturesInterface::ParamsResult result =
+      platform_features_->GetParamsAndEnabledBlocking(
+          {&kSwapZramWritebackFeature});
+  if (result.find(kSwapZramWritebackFeatureName) == result.end() ||
+      !result[kSwapZramWritebackFeatureName].enabled) {
+    LOG(INFO) << "CrOSLateBootSwapZramWriteback feature is not enabled.";
+    return absl::OkStatus();
+  }
+
+  // Read config from feature and override the default.
+  for (const auto& [key, value] :
+       result[kSwapZramWritebackFeatureName].params) {
+    absl::Status status =
+        ZramWriteback::Get()->SetZramWritebackConfigIfOverriden(key, value);
+    LOG_IF(WARNING, !status.ok()) << "Failed to set zram writeback config ["
+                                  << key << ": " << value << "]: " << status;
+  }
+
+  return ZramWriteback::Get()->Start();
 }
 
 }  // namespace swap_management
