@@ -27,6 +27,9 @@ constexpr char kNoPreinitFlagFile[] = "/run/tpm_manager/no_preinit";
 // The path to check the TPM is enabled or not.
 constexpr char kTpmEnabledFile[] = "/sys/class/tpm/tpm0/enabled";
 
+// The path to check the TPM support sha256 PCR or not.
+constexpr char kTpmSha256Pcr0File[] = "/sys/class/tpm/tpm0/pcr-sha256/0";
+
 // Simulator Vendor ID ("SIMU").
 constexpr uint32_t kVendorIdSimulator = 0x53494d55;
 // STMicroelectronics Vendor ID ("STM ").
@@ -124,6 +127,20 @@ std::optional<bool> IsTpmFileEnabled() {
     return {};
   }
   return static_cast<bool>(enabled);
+}
+
+bool IsTpmSha256PcrSupported() {
+  base::FilePath file_path(kTpmSha256Pcr0File);
+  std::string file_content;
+
+  if (!base::ReadFileToString(file_path, &file_content)) {
+    return false;
+  }
+
+  std::string pcr_str;
+  base::TrimWhitespaceASCII(file_content, base::TRIM_ALL, &pcr_str);
+
+  return !pcr_str.empty();
 }
 
 bool GetDidVid(uint16_t* did, uint16_t* vid) {
@@ -268,6 +285,11 @@ bool TpmAllowlistImpl::IsAllowed() {
   TPM_SELECT_BEGIN;
 
   TPM2_SECTION({
+    if (!IsTpmSha256PcrSupported()) {
+      LOG(INFO) << "This TPM doesn't support SHA256 PCR.";
+      return false;
+    }
+
     uint32_t family;
     uint64_t spec_level;
     uint32_t manufacturer;
