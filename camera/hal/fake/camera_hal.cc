@@ -302,6 +302,11 @@ void CameraHal::ApplySpec(const HalSpec& old_spec, const HalSpec& new_spec) {
           // unplug / plug the camera.
           VLOGF(1) << "Camera " << id << " frames spec changed";
           NotifyCameraConnected(id, false);
+
+          // TODO(b:261682032): Sleep here to make sure the disconnect /
+          // teardown event is properly propagated.
+          base::PlatformThread::Sleep(base::Microseconds(300));
+
           NotifyCameraConnected(id, true);
         }
       }
