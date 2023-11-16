@@ -427,7 +427,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
         );
         let conn_clone = conn.clone();
         b.method_with_cr_async(
-            "ChangeProcessState",
+            "SetProcessState",
             ("ProcessId", "ProcessState"),
             (),
             move |mut sender_context, cr, (process_id, process_state): (u32, u8)| {
@@ -461,7 +461,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
         );
         let conn_clone = conn.clone();
         b.method_with_cr_async(
-            "ChangeThreadState",
+            "SetThreadState",
             ("ProcessId", "ThreadId", "ThreadState"),
             (),
             move |mut sender_context, cr, (process_id, thread_id, thread_state): (u32, u32, u8)| {
