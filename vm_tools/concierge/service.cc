@@ -1341,12 +1341,6 @@ bool Service::Init() {
     return false;
   }
 
-  exported_object_ =
-      bus_->GetExportedObject(dbus::ObjectPath(kVmConciergeServicePath));
-  if (!exported_object_) {
-    LOG(ERROR) << "Failed to export " << kVmConciergeServicePath << " object";
-    return false;
-  }
   dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
       nullptr, bus_, dbus::ObjectPath(kVmConciergeServicePath));
   concierge_adaptor_.RegisterWithDBusObject(dbus_object_.get());
@@ -1360,22 +1354,20 @@ bool Service::Init() {
   // TODO(b/269214379): Wait for completion for RegisterAsync on
   // chromeos-dbus-bindings after we complete migration and remove
   // ExportMethodAndBlock.
-  if (!AsyncNoReject(
-           bus_->GetDBusTaskRunner(),
-           base::BindOnce(
-               [](Service* service, dbus::ExportedObject* exported_object_,
-                  scoped_refptr<dbus::Bus> bus) {
-                 if (!bus->RequestOwnershipAndBlock(
-                         kVmConciergeServiceName, dbus::Bus::REQUIRE_PRIMARY)) {
-                   LOG(ERROR) << "Failed to take ownership of "
-                              << kVmConciergeServiceName;
-                   return false;
-                 }
+  if (!AsyncNoReject(bus_->GetDBusTaskRunner(),
+                     base::BindOnce(
+                         [](Service* service, scoped_refptr<dbus::Bus> bus) {
+                           if (!bus->RequestOwnershipAndBlock(
+                                   kVmConciergeServiceName,
+                                   dbus::Bus::REQUIRE_PRIMARY)) {
+                             LOG(ERROR) << "Failed to take ownership of "
+                                        << kVmConciergeServiceName;
+                             return false;
+                           }
 
-                 return true;
-               },
-               base::Unretained(this), base::Unretained(exported_object_),
-               bus_))
+                           return true;
+                         },
+                         base::Unretained(this), bus_))
            .Get()
            .val) {
     return false;
@@ -1407,11 +1399,6 @@ bool Service::Init() {
   cicerone_service_proxy_ = bus_->GetObjectProxy(
       vm_tools::cicerone::kVmCiceroneServiceName,
       dbus::ObjectPath(vm_tools::cicerone::kVmCiceroneServicePath));
-  if (!cicerone_service_proxy_) {
-    LOG(ERROR) << "Unable to get dbus proxy for "
-               << vm_tools::cicerone::kVmCiceroneServiceName;
-    return false;
-  }
   cicerone_service_proxy_->ConnectToSignal(
       vm_tools::cicerone::kVmCiceroneServiceName,
       vm_tools::cicerone::kTremplinStartedSignal,
@@ -1424,25 +1411,12 @@ bool Service::Init() {
   seneschal_service_proxy_ = bus_->GetObjectProxy(
       vm_tools::seneschal::kSeneschalServiceName,
       dbus::ObjectPath(vm_tools::seneschal::kSeneschalServicePath));
-  if (!seneschal_service_proxy_) {
-    LOG(ERROR) << "Unable to get dbus proxy for "
-               << vm_tools::seneschal::kSeneschalServiceName;
-    return false;
-  }
 
   // Get the D-Bus proxy for communicating with Plugin VM dispatcher.
   vm_permission_service_proxy_ = vm_permission::GetServiceProxy(bus_);
-  if (!vm_permission_service_proxy_) {
-    LOG(ERROR) << "Unable to get dbus proxy for VM permission service";
-    return false;
-  }
 
   // Get the D-Bus proxy for communicating with Plugin VM dispatcher.
   vmplugin_service_proxy_ = pvm::dispatcher::GetServiceProxy(bus_);
-  if (!vmplugin_service_proxy_) {
-    LOG(ERROR) << "Unable to get dbus proxy for Plugin VM dispatcher service";
-    return false;
-  }
   pvm::dispatcher::RegisterVmToolsChangedCallbacks(
       vmplugin_service_proxy_,
       base::BindRepeating(&Service::OnVmToolsStateChangedSignal,
@@ -1454,30 +1428,15 @@ bool Service::Init() {
   resource_manager_service_proxy_ = bus_->GetObjectProxy(
       resource_manager::kResourceManagerServiceName,
       dbus::ObjectPath(resource_manager::kResourceManagerServicePath));
-  if (!resource_manager_service_proxy_) {
-    LOG(ERROR) << "Unable to get dbus proxy for "
-               << resource_manager::kResourceManagerServiceName;
-    return false;
-  }
 
   // Get the D-Bus proxy for communicating with Chrome Features Service.
   chrome_features_service_proxy_ = bus_->GetObjectProxy(
       chromeos::kChromeFeaturesServiceName,
       dbus::ObjectPath(chromeos::kChromeFeaturesServicePath));
-  if (!chrome_features_service_proxy_) {
-    LOG(ERROR) << "Unable to get dbus proxy for "
-               << chromeos::kChromeFeaturesServiceName;
-    return false;
-  }
 
   shadercached_proxy_ = bus_->GetObjectProxy(
       shadercached::kShaderCacheServiceName,
       dbus::ObjectPath(shadercached::kShaderCacheServicePath));
-  if (!shadercached_proxy_) {
-    LOG(ERROR) << "Unable to get dbus proxy for "
-               << shadercached::kShaderCacheServiceName;
-    return false;
-  }
 
   CHECK(feature::PlatformFeatures::Initialize(bus_));
   VMT_TRACE_END(kCategory);

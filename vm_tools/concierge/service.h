@@ -494,7 +494,6 @@ class Service final : public org::chromium::VmConciergeInterface,
 
   // Connection to the system bus.
   scoped_refptr<dbus::Bus> bus_;
-  dbus::ExportedObject* exported_object_;              // Owned by |bus_|.
   dbus::ObjectProxy* cicerone_service_proxy_;          // Owned by |bus_|.
   dbus::ObjectProxy* seneschal_service_proxy_;         // Owned by |bus_|.
   dbus::ObjectProxy* vm_permission_service_proxy_;     // Owned by |bus_|.
