@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 #include "chaps/chaps.h"
+#include "chaps/object.h"
+#include "chaps/proto_conversion.h"
 #include "chaps/session_impl.h"
 
 #include <iterator>
@@ -14,6 +16,7 @@
 #include <base/check_op.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <chaps/proto_bindings/ck_structs.pb.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <dbus/chaps/dbus-constants.h>
@@ -925,7 +928,7 @@ TEST_F(TestSession, MechanismMismatch) {
 }
 
 // Test that mechanism / key type mismatches are handled correctly.
-TEST_F(TestSession, KeyTypeMismatch) {
+TEST_F(TestSession, key_typeMismatch) {
   EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
       .WillRepeatedly(ReturnOk<TPMError>());
   const Object* aes = nullptr;
@@ -1940,6 +1943,140 @@ TEST_F(TestSessionWithRealObject, ImportECCWithForceSoftware) {
   // Check that kKeyInSoftwareAttribute attribute is correctly set.
   EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftwareAttribute));
   EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftwareAttribute, false));
+}
+
+TEST_F(TestSessionWithRealObject, DeriveKeySp800108) {
+  const Object* base_key;
+  GenerateSecretKey(CKM_AES_KEY_GEN, 32, &base_key);
+  const_cast<Object*>(base_key)->SetAttributeBool(CKA_DERIVE, true);
+  ASSERT_TRUE(base_key->GetAttributeBool(CKA_NEVER_EXTRACTABLE, true));
+  ASSERT_TRUE(base_key->GetAttributeBool(CKA_ALWAYS_SENSITIVE, true));
+
+  CK_BYTE label[] = {0xde, 0xad, 0xbe, 0xef};
+  CK_BYTE context[] = {0xfe, 0xed, 0xbe, 0xef};
+  CK_PRF_DATA_PARAM data_params[]{
+      {CK_SP800_108_BYTE_ARRAY, label, sizeof(label)},
+      {CK_SP800_108_BYTE_ARRAY, context, sizeof(context)},
+  };
+  CK_SP800_108_KDF_PARAMS kdf_params = {CKK_SHA256_HMAC, std::size(data_params),
+                                        data_params, 0, nullptr};
+  Sp800108KdfParams kdf_params_proto = Sp800108KdfParamsToProto(&kdf_params);
+  CK_OBJECT_CLASS key_class = CKO_SECRET_KEY;
+  CK_KEY_TYPE key_type = CKK_AES;
+  CK_BBOOL yes = CK_TRUE;
+  CK_ULONG size = 32;
+  CK_ATTRIBUTE derived_key_attr[] = {
+      {CKA_CLASS, &key_class, sizeof(key_class)},
+      {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
+      {CKA_ENCRYPT, &yes, sizeof(yes)},
+      {CKA_VALUE_LEN, &size, sizeof(size)}};
+  int handle = 0;
+  EXPECT_EQ(CKR_OK, session_->DeriveKey(CKM_SP800_108_COUNTER_KDF,
+                                        kdf_params_proto.SerializeAsString(),
+                                        base_key, derived_key_attr,
+                                        std::size(derived_key_attr), &handle));
+  const Object* derived_key;
+  ASSERT_TRUE(session_->GetObject(handle, &derived_key));
+  EXPECT_TRUE(derived_key->GetAttributeInt(CKA_KEY_GEN_MECHANISM, 0) ==
+              CK_UNAVAILABLE_INFORMATION);
+  EXPECT_TRUE(derived_key->GetAttributeBool(CKA_NEVER_EXTRACTABLE, true));
+  EXPECT_TRUE(derived_key->GetAttributeBool(CKA_ALWAYS_SENSITIVE, true));
+}
+
+TEST_F(TestSessionWithRealObject, DeriveKeySp800108InvalidKdfParams) {
+  const Object* base_key;
+  GenerateSecretKey(CKM_AES_KEY_GEN, 32, &base_key);
+  const_cast<Object*>(base_key)->SetAttributeBool(CKA_DERIVE, true);
+
+  CK_BBOOL yes = CK_TRUE;
+  CK_ULONG size = 32;
+  CK_OBJECT_CLASS key_class = CKO_SECRET_KEY;
+  CK_KEY_TYPE key_type = CKK_AES;
+  CK_ATTRIBUTE derived_key_attr[] = {
+      {CKA_CLASS, &key_class, sizeof(key_class)},
+      {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
+      {CKA_ENCRYPT, &yes, sizeof(yes)},
+      {CKA_VALUE_LEN, &size, sizeof(size)}};
+
+  // The mechanism_parameter isn't serialized from a Sp800108KdfParams proto.
+  int handle = 0;
+  EXPECT_EQ(CKR_MECHANISM_PARAM_INVALID,
+            session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "test", base_key,
+                                derived_key_attr, std::size(derived_key_attr),
+                                &handle));
+
+  // An empty mechanism_parameter can be deserialized into a Sp800108KdfParams
+  // proto, but it'll fail later when parsing label and context from
+  // CK_PRF_DATA_PARAM.
+  EXPECT_EQ(CKR_MECHANISM_PARAM_INVALID,
+            session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "", base_key,
+                                derived_key_attr, std::size(derived_key_attr),
+                                &handle));
+
+  // The CK_PRF_DATA_PARAM obeys our implementation assumption (having only two
+  // entries, representing the label, and context in order).
+  CK_SP800_108_COUNTER_FORMAT counter_format = {0, 16};
+  CK_SP800_108_DKM_LENGTH_FORMAT dkm_format = {
+      CK_SP800_108_DKM_LENGTH_SUM_OF_KEYS, 0, 16};
+  CK_PRF_DATA_PARAM data_params[] = {
+      {CK_SP800_108_ITERATION_VARIABLE, &counter_format,
+       sizeof(counter_format)},
+      {CK_SP800_108_DKM_LENGTH, &dkm_format, sizeof(dkm_format)}};
+  CK_SP800_108_KDF_PARAMS kdf_params = {CKK_SHA256_HMAC, std::size(data_params),
+                                        data_params, 0, nullptr};
+  Sp800108KdfParams kdf_params_proto = Sp800108KdfParamsToProto(&kdf_params);
+  EXPECT_EQ(CKR_MECHANISM_PARAM_INVALID,
+            session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "test", base_key,
+                                derived_key_attr, std::size(derived_key_attr),
+                                &handle));
+}
+
+TEST_F(TestSessionWithRealObject, DeriveKeySp800108InvalidAttributes) {
+  CK_BBOOL yes = CK_TRUE;
+  CK_ULONG size = 32;
+  int handle = 0;
+  const Object* base_key;
+
+  // Generate the base_key for encrypt/decrypt.
+  GenerateSecretKey(CKM_AES_KEY_GEN, 32, &base_key);
+  CK_OBJECT_CLASS key_class = CKO_SECRET_KEY;
+  CK_KEY_TYPE key_type = CKK_AES;
+  CK_ATTRIBUTE derived_key_attr[] = {
+      {CKA_CLASS, &key_class, sizeof(key_class)},
+      {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
+      {CKA_ENCRYPT, &yes, sizeof(yes)},
+      {CKA_VALUE_LEN, &size, sizeof(size)}};
+
+  // The base_key doesn't have CKA_DERIVE attribute set to CK_TRUE.
+  EXPECT_EQ(CKR_KEY_FUNCTION_NOT_PERMITTED,
+            session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "test", base_key,
+                                derived_key_attr, std::size(derived_key_attr),
+                                &handle));
+
+  // Set the base_key for derive.
+  const_cast<Object*>(base_key)->SetAttributeBool(CKA_DERIVE, true);
+
+  key_type = CKK_DES;
+  CK_ATTRIBUTE derived_key_attr2[] = {
+      {CKA_CLASS, &key_class, sizeof(key_class)},
+      {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
+      {CKA_ENCRYPT, &yes, sizeof(yes)},
+      {CKA_VALUE_LEN, &size, sizeof(size)}};
+  // Currently we don't support deriving DES keys using SP800-108.
+  EXPECT_EQ(CKR_FUNCTION_NOT_SUPPORTED,
+            session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "test", base_key,
+                                derived_key_attr2, std::size(derived_key_attr2),
+                                &handle));
+
+  key_class = CKO_PRIVATE_KEY;
+  CK_ATTRIBUTE rsapriv_key_attr[] = {{CKA_CLASS, &key_class, sizeof(key_class)},
+                                     {CKA_ENCRYPT, &yes, sizeof(yes)},
+                                     {CKA_VALUE_LEN, &size, sizeof(size)}};
+  // We cannot only derive symmetric keys using SP800-108.
+  EXPECT_EQ(CKR_TEMPLATE_INCONSISTENT,
+            session_->DeriveKey(CKM_SP800_108_COUNTER_KDF, "test", base_key,
+                                rsapriv_key_attr, std::size(rsapriv_key_attr),
+                                &handle));
 }
 
 TEST_F(TestSession, CreateObjectsNoPrivate) {

@@ -378,6 +378,19 @@ EXPORT_SPEC bool ParseRSAPSSParams(
     const EVP_MD** mgf1_hash_out,
     DigestAlgorithm* digest_algorithm_out);
 
+// This function derives a new cryptographic key based on an existing key and
+// additional data (optional), following the NIST SP800-108 recommendations.
+// It's based on OpenSSL's EVP_KDF-KB algorithm with SHA-256 HMAC in counter
+// mode. The function employs the default 32-bit counter and zero separator (see
+// SP800-108). On success, it returns true and populates output_key_material
+// with the derived key. Otherwise, it returns false to indicate an error.
+EXPORT_SPEC bool DeriveKeyHmacSha256CounterMode(
+    size_t num_bytes,
+    std::string& base_key,
+    std::optional<std::string> label,
+    std::optional<std::string> context,
+    std::string* output_key_material);
+
 }  // namespace chaps
 
 #endif  // CHAPS_CHAPS_UTILITY_H_

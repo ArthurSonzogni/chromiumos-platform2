@@ -21,6 +21,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <brillo/secure_blob.h>
+#include <chaps/proto_bindings/ck_structs.pb.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <dbus/chaps/dbus-constants.h>
@@ -33,6 +34,7 @@
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
+#include <openssl/params.h>
 #include <openssl/ec.h>
 
 #include "chaps/chaps.h"
@@ -88,6 +90,67 @@ brillo::SecureBlob GenerateRandomSecureBlobSoftware(int num_bytes) {
   brillo::SecureBlob random(num_bytes);
   RAND_bytes(random.data(), num_bytes);
   return random;
+}
+
+bool ParsePrfDataParamByteArray(const PrfDataParam& prf_param,
+                                const string* value) {
+  if (prf_param.type() != CK_SP800_108_BYTE_ARRAY) {
+    return false;
+  }
+  value = &prf_param.value();
+  return true;
+}
+
+CK_RV DeriveKeySP800108Software(const Object* base_key,
+                                Object* derived_key,
+                                const string& mechanism_parameter,
+                                string* key_material) {
+  CHECK(key_material);
+  // For simplicity, our implementation only support generating AES or general
+  // secret keys.
+  const int key_type =
+      derived_key->GetAttributeInt(CKA_KEY_TYPE, CK_UNAVAILABLE_INFORMATION);
+  if (key_type != CKK_AES && key_type != CKK_GENERIC_SECRET) {
+    return CKR_FUNCTION_NOT_SUPPORTED;
+  }
+  // For AES and general secret keys we read the key length from the supplied
+  // template.
+  if (!derived_key->IsAttributePresent(CKA_VALUE_LEN))
+    return CKR_TEMPLATE_INCOMPLETE;
+  CK_ULONG key_length = derived_key->GetAttributeInt(CKA_VALUE_LEN, 0);
+  if (key_length < 1)
+    return CKR_KEY_SIZE_RANGE;
+
+  // Parse CK_PRF_DATA_PARAM assuming that it has only two entries, representing
+  // the label, and context in order.
+  string label, context;
+  Sp800108KdfParams kdf_params;
+  LOG_CK_RV_AND_RETURN_IF(!kdf_params.ParseFromString(mechanism_parameter),
+                          CKR_MECHANISM_PARAM_INVALID);
+  LOG_CK_RV_AND_RETURN_IF(kdf_params.data_params().size() != 2,
+                          CKR_MECHANISM_PARAM_INVALID);
+  LOG_CK_RV_AND_RETURN_IF(
+      !ParsePrfDataParamByteArray(kdf_params.data_params().at(0), &label),
+      CKR_MECHANISM_PARAM_INVALID);
+  LOG_CK_RV_AND_RETURN_IF(
+      !ParsePrfDataParamByteArray(kdf_params.data_params().at(1), &context),
+      CKR_MECHANISM_PARAM_INVALID);
+
+  string base_key_str = base_key->GetAttributeString(CKA_VALUE);
+  switch (kdf_params.prf_type()) {
+    case CKK_SHA256_HMAC: {
+      LOG_CK_RV_AND_RETURN_IF(
+          !DeriveKeyHmacSha256CounterMode(key_length, base_key_str, label,
+                                          context, key_material),
+          CKR_FUNCTION_FAILED);
+      break;
+    }
+    default: {
+      LOG(ERROR) << "We only support DeriveKey with CKK_SHA256_HMAC";
+      return CKR_FUNCTION_NOT_SUPPORTED;
+    }
+  }
+  return CKR_OK;
 }
 
 CK_RV ResultToRV(chaps::ObjectPool::Result result, CK_RV fail_rv) {
@@ -1448,6 +1511,61 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
   }
   *new_public_key_handle = public_object.release()->handle();
   *new_private_key_handle = private_object.release()->handle();
+  return CKR_OK;
+}
+
+CK_RV SessionImpl::DeriveKey(CK_MECHANISM_TYPE mechanism,
+                             const std::string& mechanism_parameter,
+                             const Object* base_key,
+                             const CK_ATTRIBUTE_PTR attributes,
+                             int num_attributes,
+                             int* new_key_handle) {
+  CHECK(new_key_handle);
+
+  if (!base_key->GetAttributeBool(CKA_DERIVE, false)) {
+    LOG(ERROR) << __func__ << ": Base key not permitted to derive anoher key.";
+    return CKR_KEY_FUNCTION_NOT_PERMITTED;
+  }
+  std::unique_ptr<Object> object(factory_->CreateObject());
+  CHECK(object.get());
+  LOG_CK_RV_AND_RETURN_IF_ERR(
+      object->SetAttributes(attributes, num_attributes));
+  if (object->GetObjectClass() == CK_UNAVAILABLE_INFORMATION) {
+    return CKR_TEMPLATE_INCOMPLETE;
+  }
+  string key_material;
+  switch (mechanism) {
+    case CKM_SP800_108_COUNTER_KDF: {
+      LOG_CK_RV_AND_RETURN_IF(base_key->GetObjectClass() != CKO_SECRET_KEY,
+                              CKR_KEY_TYPE_INCONSISTENT);
+      LOG_CK_RV_AND_RETURN_IF(object->GetObjectClass() != CKO_SECRET_KEY,
+                              CKR_TEMPLATE_INCONSISTENT);
+      LOG_CK_RV_AND_RETURN_IF_ERR(DeriveKeySP800108Software(
+          base_key, object.get(), mechanism_parameter, &key_material));
+      if (base_key->GetAttributeBool(CKA_ALWAYS_SENSITIVE, false))
+        object->SetAttributeBool(
+            CKA_ALWAYS_SENSITIVE,
+            base_key->GetAttributeBool(CKA_SENSITIVE, false));
+      if (base_key->GetAttributeBool(CKA_NEVER_EXTRACTABLE, false))
+        object->SetAttributeBool(
+            CKA_NEVER_EXTRACTABLE,
+            !base_key->GetAttributeBool(CKA_EXTRACTABLE, false));
+      break;
+    }
+    default: {
+      LOG(ERROR) << "DeriveKey: Mechanism not supported: " << hex << mechanism;
+      return CKR_MECHANISM_INVALID;
+    }
+  }
+  object->SetAttributeString(CKA_VALUE, key_material);
+  object->SetAttributeBool(CKA_LOCAL, false);
+  LOG_CK_RV_AND_RETURN_IF_ERR(object->FinalizeNewObject());
+  ObjectPool* pool =
+      object->IsTokenObject() ? token_object_pool_ : session_object_pool_.get();
+  auto pool_res = pool->Insert(object.get());
+  if (!IsSuccess(pool_res))
+    return ResultToRV(pool_res, CKR_FUNCTION_FAILED);
+  *new_key_handle = object.release()->handle();
   return CKR_OK;
 }
 

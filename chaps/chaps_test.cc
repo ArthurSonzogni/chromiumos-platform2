@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include "chaps/attributes.h"
+#include "chaps/proto_conversion.h"
 #include "pkcs11/cryptoki.h"
 
 using std::string;
@@ -2214,8 +2215,6 @@ TEST_F(TestGenKey, WrapKeyOK) {
                       Return(CKR_OK)));
   EXPECT_CALL(proxy, UnwrapKey(_, 1, 2, parameter_, 3, wrapped, attributes_, _))
       .WillOnce(DoAll(SetArgPointee<7>(10), Return(CKR_OK)));
-  EXPECT_CALL(proxy, DeriveKey(_, 1, 2, parameter_, 3, attributes_, _))
-      .WillOnce(DoAll(SetArgPointee<6>(11), Return(CKR_OK)));
   CK_BYTE buffer[10];
   CK_ULONG length = 10;
   EXPECT_EQ(CKR_OK, C_WrapKey(1, &mechanism_, 3, 4, buffer, &length));
@@ -2225,8 +2224,33 @@ TEST_F(TestGenKey, WrapKeyOK) {
   EXPECT_EQ(CKR_OK, C_UnwrapKey(1, &mechanism_, 3, wrapped.data(),
                                 wrapped.size(), attribute_template_, 2, &key));
   EXPECT_EQ(key, 10);
-  EXPECT_EQ(CKR_OK,
+
+  // C_DeriveKey will early return CKR_FUNCTION_NOT_SUPPORTED (before calling
+  // the proxy) unless the mechanism is CKM_SP800_108_COUNTER_KDF.
+  EXPECT_EQ(CKR_FUNCTION_NOT_SUPPORTED,
             C_DeriveKey(1, &mechanism_, 3, attribute_template_, 2, &key));
+
+  // When the mechanism is indeed CKM_SP800_108_COUNTER_KDF, the mechanism
+  // parameter (which in theory should be of type CK_SP800_108_KDF_PARAMS) will
+  // first be converted into the Sp800108KdfParams protobuf.
+  CK_BYTE label[] = {0xde, 0xad, 0xbe, 0xef};
+  CK_BYTE context[] = {0xfe, 0xed, 0xbe, 0xef};
+  CK_PRF_DATA_PARAM data_params[]{
+      {CK_SP800_108_BYTE_ARRAY, label, sizeof(label)},
+      {CK_SP800_108_BYTE_ARRAY, context, sizeof(context)},
+  };
+  CK_SP800_108_KDF_PARAMS kdf_params = {CKK_SHA256_HMAC, std::size(data_params),
+                                        data_params, 0, nullptr};
+
+  CK_MECHANISM mechanism = {CKM_SP800_108_COUNTER_KDF, &kdf_params,
+                            sizeof(kdf_params)};
+  vector<uint8_t> parameter = brillo::BlobFromString(
+      chaps::Sp800108KdfParamsToProto(&kdf_params).SerializeAsString());
+  EXPECT_CALL(proxy, DeriveKey(_, 1, CKM_SP800_108_COUNTER_KDF, parameter, 3,
+                               attributes_, _))
+      .WillOnce(DoAll(SetArgPointee<6>(11), Return(CKR_OK)));
+  EXPECT_EQ(CKR_OK,
+            C_DeriveKey(1, &mechanism, 3, attribute_template_, 2, &key));
   EXPECT_EQ(key, 11);
 }
 
@@ -2237,8 +2261,6 @@ TEST_F(TestGenKey, WrapKeyFail) {
       .WillOnce(Return(CKR_SESSION_CLOSED));
   EXPECT_CALL(proxy, UnwrapKey(_, 1, 2, parameter_, 3, wrapped, attributes_, _))
       .WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, DeriveKey(_, 1, 2, parameter_, 3, attributes_, _))
-      .WillOnce(Return(CKR_SESSION_CLOSED));
   CK_BYTE buffer[10];
   CK_ULONG length = 10;
   EXPECT_EQ(CKR_SESSION_CLOSED,
@@ -2247,8 +2269,18 @@ TEST_F(TestGenKey, WrapKeyFail) {
   EXPECT_EQ(CKR_SESSION_CLOSED,
             C_UnwrapKey(1, &mechanism_, 3, wrapped.data(), wrapped.size(),
                         attribute_template_, 2, &key));
-  EXPECT_EQ(CKR_SESSION_CLOSED,
+
+  // C_DeriveKey will early return CKR_FUNCTION_NOT_SUPPORTED (before calling
+  // the proxy) unless the mechanism is CKM_SP800_108_COUNTER_KDF.
+  EXPECT_EQ(CKR_FUNCTION_NOT_SUPPORTED,
             C_DeriveKey(1, &mechanism_, 3, attribute_template_, 2, &key));
+
+  CK_MECHANISM mechanism = {CKM_SP800_108_COUNTER_KDF, nullptr, 0};
+  EXPECT_CALL(proxy, DeriveKey(_, 1, CKM_SP800_108_COUNTER_KDF,
+                               vector<uint8_t>(), 3, attributes_, _))
+      .WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_EQ(CKR_SESSION_CLOSED,
+            C_DeriveKey(1, &mechanism, 3, attribute_template_, 2, &key));
 }
 
 TEST_F(TestGenKey, WrapKeyLengthOnly) {

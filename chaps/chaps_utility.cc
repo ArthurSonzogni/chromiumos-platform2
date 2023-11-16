@@ -18,9 +18,11 @@
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec-foundation/crypto/openssl.h>
 #include <openssl/bio.h>
+#include <openssl/core_names.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/kdf.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 #include <dbus/chaps/dbus-constants.h>
@@ -1035,6 +1037,45 @@ bool ParseRSAPSSParams(const std::string& mechanism_parameter,
   }
 
   *pss_params_out = pss_params;
+  return true;
+}
+
+bool DeriveKeyHmacSha256CounterMode(size_t num_bytes,
+                                    string& base_key,
+                                    std::optional<string> label,
+                                    std::optional<string> context,
+                                    string* output_key_material) {
+  crypto::ScopedOpenSSL<EVP_KDF, EVP_KDF_free> kdf(
+      EVP_KDF_fetch(nullptr, OSSL_KDF_NAME_KBKDF, nullptr));
+  crypto::ScopedOpenSSL<EVP_KDF_CTX, EVP_KDF_CTX_free> kctx(
+      EVP_KDF_CTX_new(kdf.get()));
+  std::vector<OSSL_PARAM> params;
+
+  char sha256_name[] = OSSL_DIGEST_NAME_SHA2_256;
+  char hmac_name[] = OSSL_MAC_NAME_HMAC;
+  params.push_back(OSSL_PARAM_construct_utf8_string(
+      OSSL_KDF_PARAM_DIGEST, sha256_name, sizeof(sha256_name)));
+  params.push_back(OSSL_PARAM_construct_utf8_string(
+      OSSL_KDF_PARAM_MAC, hmac_name, sizeof(hmac_name)));
+  params.push_back(OSSL_PARAM_construct_octet_string(
+      OSSL_KDF_PARAM_KEY, base_key.data(), base_key.size()));
+  if (label.has_value()) {
+    params.push_back(OSSL_PARAM_construct_octet_string(
+        OSSL_KDF_PARAM_SALT, label.value().data(), label.value().size()));
+  }
+  if (context.has_value()) {
+    params.push_back(OSSL_PARAM_construct_octet_string(
+        OSSL_KDF_PARAM_INFO, context.value().data(), context.value().size()));
+  }
+  params.push_back(OSSL_PARAM_construct_end());
+
+  SecureBlob buffer(num_bytes, 0);
+  // result > 0 means success
+  if (EVP_KDF_derive(kctx.get(), buffer.data(), num_bytes, params.data()) <=
+      0) {
+    return false;
+  }
+  *output_key_material = buffer.to_string();
   return true;
 }
 

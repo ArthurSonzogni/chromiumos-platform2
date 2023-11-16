@@ -50,7 +50,7 @@ class SessionImpl : public Session {
     std::string data_;  // This can be used to queue input or output.
     const Object* key_;
     CK_MECHANISM_TYPE mechanism_;
-    std::string parameter_;  // The mechanism parameter (if any).
+    std::string parameter_;              // The mechanism parameter (if any).
     base::ScopedClosureRunner cleanup_;  // The extra closure for cleanup.
 
     OperationContext();
@@ -133,6 +133,12 @@ class SessionImpl : public Session {
                         int num_private_attributes,
                         int* new_public_key_handle,
                         int* new_private_key_handle) override;
+  CK_RV DeriveKey(CK_MECHANISM_TYPE mechanism,
+                  const std::string& mechanism_parameter,
+                  const Object* base_key,
+                  const CK_ATTRIBUTE_PTR attributes,
+                  int num_attributes,
+                  int* new_key_handle) override;
 
   // Random number generation.
   CK_RV SeedRandom(const std::string& seed) override;

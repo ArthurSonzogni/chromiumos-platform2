@@ -983,7 +983,21 @@ uint32_t ChapsServiceImpl::DeriveKey(const SecureBlob& isolate_credential,
                                      uint64_t base_key_handle,
                                      const vector<uint8_t>& attributes,
                                      uint64_t* key_handle) {
-  LOG_CK_RV_AND_RETURN(CKR_FUNCTION_NOT_SUPPORTED);
+  LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(
+      !slot_manager_->GetSession(isolate_credential, session_id, &session),
+      CKR_SESSION_HANDLE_INVALID);
+  const Object* base_key = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!session->GetObject(base_key_handle, &base_key),
+                          CKR_OBJECT_HANDLE_INVALID);
+  CHECK(base_key);
+  Attributes tmp;
+  LOG_CK_RV_AND_RETURN_IF(!tmp.Parse(attributes), CKR_TEMPLATE_INCONSISTENT);
+  return session->DeriveKey(mechanism_type,
+                            ConvertByteVectorToString(mechanism_parameter),
+                            base_key, tmp.attributes(), tmp.num_attributes(),
+                            PreservedValue<uint64_t, int>(key_handle));
 }
 
 uint32_t ChapsServiceImpl::SeedRandom(const SecureBlob& isolate_credential,

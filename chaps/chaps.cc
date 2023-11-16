@@ -22,6 +22,7 @@
 #include <base/no_destructor.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
+#include <chaps/proto_bindings/ck_structs.pb.h>
 #include <dbus/chaps/dbus-constants.h>
 #include <libhwsec-foundation/utility/synchronized.h>
 
@@ -1680,6 +1681,21 @@ EXPORT_SPEC CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!g->is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!pMechanism || !phKey)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+
+  string mechanism_parameter;
+  if (pMechanism->mechanism == CKM_SP800_108_COUNTER_KDF) {
+    if (pMechanism->ulParameterLen > 0) {
+      chaps::Sp800108KdfParams kdf_params_proto =
+          chaps::Sp800108KdfParamsToProto(
+              static_cast<CK_SP800_108_KDF_PARAMS*>(pMechanism->pParameter));
+      mechanism_parameter = kdf_params_proto.SerializeAsString();
+    }
+  } else {
+    LOG(WARNING) << "Not supporting C_DeriveKey with mechanism: " << std::hex
+                 << pMechanism->mechanism;
+    return CKR_FUNCTION_NOT_SUPPORTED;
+  }
+
   chaps::Attributes attributes(pTemplate, ulAttributeCount);
   vector<uint8_t> serialized;
   if (!attributes.Serialize(&serialized))
@@ -1687,9 +1703,8 @@ EXPORT_SPEC CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,
   CK_RV result = PerformNonBlocking([&] {
     return g->proxy->DeriveKey(
         *g->user_isolate, hSession, pMechanism->mechanism,
-        chaps::ConvertByteBufferToVector(
-            reinterpret_cast<CK_BYTE_PTR>(pMechanism->pParameter),
-            pMechanism->ulParameterLen),
+        std::vector<uint8_t>(mechanism_parameter.begin(),
+                             mechanism_parameter.end()),
         hBaseKey, serialized, chaps::PreservedCK_ULONG(phKey));
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
