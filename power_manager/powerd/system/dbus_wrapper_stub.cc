@@ -216,12 +216,19 @@ void DBusWrapperStub::RegisterForSignal(
 
 void DBusWrapperStub::ExportMethod(
     const std::string& method_name,
+    const std::string& interface_name,
     dbus::ExportedObject::MethodCallCallback callback) {
   CHECK(!service_published_) << "Method " << method_name
                              << " exported after service already published";
   CHECK(!exported_methods_.count(method_name))
       << "Method " << method_name << " exported twice";
   exported_methods_[method_name] = callback;
+}
+
+void DBusWrapperStub::ExportMethod(
+    const std::string& method_name,
+    dbus::ExportedObject::MethodCallCallback callback) {
+  ExportMethod(method_name, "", callback);
 }
 
 bool DBusWrapperStub::PublishService() {

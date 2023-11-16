@@ -104,6 +104,9 @@ class DBusWrapperStub : public DBusWrapperInterface {
                          const std::string& signal_name,
                          dbus::ObjectProxy::SignalCallback callback) override;
   void ExportMethod(const std::string& method_name,
+                    const std::string& interface_name,
+                    dbus::ExportedObject::MethodCallCallback callback) override;
+  void ExportMethod(const std::string& method_name,
                     dbus::ExportedObject::MethodCallCallback callback) override;
   bool PublishService() override;
   void EmitSignal(dbus::Signal* signal) override;

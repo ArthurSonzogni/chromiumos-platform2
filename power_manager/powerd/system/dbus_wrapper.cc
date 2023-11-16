@@ -106,6 +106,7 @@ void DBusWrapper::RegisterForSignal(
 
 void DBusWrapper::ExportMethod(
     const std::string& method_name,
+    const std::string& interface_name,
     dbus::ExportedObject::MethodCallCallback callback) {
   // Annotate the method handler with a trace event.
   callback = base::BindRepeating(
@@ -117,8 +118,14 @@ void DBusWrapper::ExportMethod(
         callback.Run(method_call, std::move(sender));
       },
       method_name, std::move(callback));
-  CHECK(exported_object_->ExportMethodAndBlock(kPowerManagerInterface,
-                                               method_name, callback));
+  CHECK(exported_object_->ExportMethodAndBlock(interface_name, method_name,
+                                               callback));
+}
+
+void DBusWrapper::ExportMethod(
+    const std::string& method_name,
+    dbus::ExportedObject::MethodCallCallback callback) {
+  ExportMethod(method_name, kPowerManagerInterface, callback);
 }
 
 bool DBusWrapper::PublishService() {

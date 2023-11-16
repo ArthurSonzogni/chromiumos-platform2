@@ -78,6 +78,12 @@ class DBusWrapperInterface {
       const std::string& signal_name,
       dbus::ObjectProxy::SignalCallback callback) = 0;
 
+  // Exports a method named |method_name| for interface |interface_name|.
+  virtual void ExportMethod(
+      const std::string& method_name,
+      const std::string& interface_name,
+      dbus::ExportedObject::MethodCallCallback callback) = 0;
+
   // Exports a method named |method_name|.
   virtual void ExportMethod(
       const std::string& method_name,
@@ -141,6 +147,9 @@ class DBusWrapper : public DBusWrapperInterface {
                          const std::string& interface_name,
                          const std::string& signal_name,
                          dbus::ObjectProxy::SignalCallback callback) override;
+  void ExportMethod(const std::string& method_name,
+                    const std::string& interface_name,
+                    dbus::ExportedObject::MethodCallCallback callback) override;
   void ExportMethod(const std::string& method_name,
                     dbus::ExportedObject::MethodCallCallback callback) override;
   bool PublishService() override;
