@@ -24,6 +24,7 @@ static_library("librouting-simulator") {
     "process_executor.cc",
     "route.cc",
     "route_manager.cc",
+    "routing_decision_result.cc",
     "routing_policy_entry.cc",
     "routing_table.cc",
   ]

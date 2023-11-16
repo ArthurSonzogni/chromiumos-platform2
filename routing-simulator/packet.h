@@ -51,7 +51,7 @@ class Packet {
       int source_port,
       std::string_view input_interface);
 
-  // Packet is only copyable.
+  // Packet is copyable.
   Packet(const Packet& other);
   Packet& operator=(const Packet& other);
 

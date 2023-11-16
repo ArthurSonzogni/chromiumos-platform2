@@ -17,7 +17,7 @@ class RoutingTable {
  public:
   RoutingTable();
 
-  // RoutingTable is only copyable.
+  // RoutingTable is copyable.
   RoutingTable(const RoutingTable& other);
   RoutingTable& operator=(const RoutingTable& other);
 

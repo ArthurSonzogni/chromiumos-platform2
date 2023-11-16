@@ -41,7 +41,7 @@ class Route {
   static std::optional<Route> CreateFromRouteString(
       std::string_view route_string, net_base::IPFamily ip_family);
 
-  // Route is only copyable.
+  // Route is copyable.
   Route(const Route& other);
   Route& operator=(const Route& other);
 
@@ -55,7 +55,6 @@ class Route {
   }
   Type type() const { return type_; }
   const std::string& table_id() const { return table_id_; }
-  // The original string in ip route show to construct this object.
   const std::string& route_str() const { return route_str_; }
 
   bool operator==(const Route& rhs) const;
@@ -68,6 +67,7 @@ class Route {
   std::optional<net_base::IPAddress> next_hop_;
   Type type_;
   std::string table_id_;
+  // The original string in ip route show to construct this object.
   std::string route_str_;
 };
 

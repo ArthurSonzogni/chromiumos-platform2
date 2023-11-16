@@ -34,7 +34,7 @@ class RoutingPolicyEntry {
   static std::optional<RoutingPolicyEntry> CreateFromPolicyString(
       std::string_view policy_string, net_base::IPFamily ip_family);
 
-  // RoutingPolicyEntry is only copyable.
+  // RoutingPolicyEntry is copyable.
   RoutingPolicyEntry(const RoutingPolicyEntry& other);
   RoutingPolicyEntry& operator=(const RoutingPolicyEntry& other);
 
