@@ -26,6 +26,21 @@ constexpr char kWaylandSocket[] = "/run/chrome/wayland-0";
 
 constexpr char kVirglRenderServerPath[] = "/usr/libexec/virgl_render_server";
 
+// Path to scudo allocator for GWP-ASan enablement in venus render server
+#if defined(__x86_64__)
+constexpr char kScudoPath[] =
+    "/usr/lib64/libclang_rt.scudo_standalone-x86_64.so";
+#elif defined(__aarch64__)
+constexpr char kScudoPath[] =
+    "/usr/lib64/libclang_rt.scudo_standalone-aarch64.so";
+#elif defined(__arm__)
+constexpr char kScudoPath[] = "/usr/lib/libclang_rt.scudo_standalone-armhf.so";
+#else
+static_assert(
+    !USE_CROSVM_VENUS_GWP_ASAN,
+    "scudo library *MUST* be available if concierge is built expecting it");
+#endif
+
 // Custom parameter key to override the o_direct= disk parameter for specific
 // Nth entry.
 constexpr char kKeyToOverrideODirectN[] = "O_DIRECT_N";
@@ -520,6 +535,9 @@ base::StringPairs VmBuilder::BuildRunParams() const {
       if (!precompiled_cache_path_.empty()) {
         render_server_arg +=
             ",precompiled-cache-path=" + precompiled_cache_path_.value();
+      }
+      if constexpr (USE_CROSVM_VENUS_GWP_ASAN) {
+        render_server_arg += ",ld-preload-path=" + std::string(kScudoPath);
       }
       args.emplace_back("--gpu-render-server", render_server_arg);
     }

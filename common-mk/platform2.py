@@ -195,6 +195,7 @@ _IUSE = [
     "user_session_isolation",
     "v4l2_codec",
     "vaapi",
+    "venus_gwp_asan",
     "video_cards_msm",
     "virtgpu_native_context",
     "vm_borealis",
