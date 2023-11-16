@@ -14,6 +14,7 @@
 #include <chromeos/ec/ec_commands.h>
 #include <iioservice/mojo/sensor.mojom.h>
 
+#include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 

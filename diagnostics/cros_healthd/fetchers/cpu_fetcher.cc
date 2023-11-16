@@ -27,6 +27,7 @@
 #include <re2/re2.h>
 
 #include "diagnostics/base/file_utils.h"
+#include "diagnostics/cros_healthd/system/system_utilities.h"
 #include "diagnostics/cros_healthd/system/system_utilities_constants.h"
 #include "diagnostics/cros_healthd/utils/procfs_utils.h"
 

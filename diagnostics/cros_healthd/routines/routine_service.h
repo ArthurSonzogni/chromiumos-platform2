@@ -8,15 +8,16 @@
 #include <memory>
 #include <string>
 
-#include <mojo/public/cpp/bindings/unique_receiver_set.h>
+#include <base/types/expected.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/unique_receiver_set.h>
 
-#include "diagnostics/cros_healthd/routines/base_routine_control.h"
-#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
+class BaseRoutineControl;
+class Context;
 
 class RoutineService
     : public ash::cros_healthd::mojom::CrosHealthdRoutinesService {

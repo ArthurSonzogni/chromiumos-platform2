@@ -18,6 +18,8 @@
 #include <re2/re2.h>
 
 #include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/system/powerd_adapter.h"
+#include "diagnostics/cros_healthd/system/system_config_interface.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"

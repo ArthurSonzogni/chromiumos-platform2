@@ -9,6 +9,7 @@
 #include <chromeos/mojo/service_constants.h>
 
 #include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/system/mojo_service.h"
 
 namespace diagnostics {
 namespace {

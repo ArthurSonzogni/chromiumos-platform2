@@ -10,6 +10,8 @@
 #include <vector>
 
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
+#include "diagnostics/cros_healthd/network/network_health_adapter.h"
+#include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/mojom/external/cros_healthd_internal.mojom.h"

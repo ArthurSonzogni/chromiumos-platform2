@@ -9,6 +9,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
 
+#include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/mojom/external/cros_healthd_internal.mojom.h"
 
 namespace diagnostics {

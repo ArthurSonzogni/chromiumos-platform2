@@ -14,6 +14,7 @@
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
 
 #include "diagnostics/cros_healthd/routines/simple_routine.h"
+#include "diagnostics/cros_healthd/system/powerd_adapter.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {

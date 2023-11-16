@@ -22,6 +22,7 @@
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/memory_info.h"
 #include "diagnostics/cros_healthd/utils/mojo_utils.h"
+#include "diagnostics/cros_healthd/utils/resource_queue.h"
 
 namespace diagnostics {
 

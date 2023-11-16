@@ -13,6 +13,7 @@
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "diagnostics/cros_healthd/routines/audio/audio_driver.h"
+#include "diagnostics/cros_healthd/routines/base_routine_control.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_discovery.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_pairing.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_power.h"
@@ -27,6 +28,7 @@
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_search.h"
 #include "diagnostics/cros_healthd/routines/storage/disk_read.h"
 #include "diagnostics/cros_healthd/routines/storage/ufs_lifetime.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"

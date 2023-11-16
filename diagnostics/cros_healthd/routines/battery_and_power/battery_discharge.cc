@@ -17,6 +17,7 @@
 
 #include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/cros_healthd/routines/battery_and_power/battery_discharge_constants.h"
+#include "diagnostics/cros_healthd/system/powerd_adapter.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {

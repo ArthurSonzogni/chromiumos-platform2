@@ -12,6 +12,7 @@
 #include <base/task/single_thread_task_runner.h>
 
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
+#include "diagnostics/cros_healthd/utils/resource_queue.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {

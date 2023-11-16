@@ -8,7 +8,6 @@
 #include <memory>
 
 #include <base/files/file_path.h>
-#include <base/memory/scoped_refptr.h>
 #include <base/time/tick_clock.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/udev/udev_monitor.h>
@@ -18,14 +17,6 @@
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
-#include "diagnostics/cros_healthd/network/network_health_adapter.h"
-#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
-#include "diagnostics/cros_healthd/system/mojo_service.h"
-#include "diagnostics/cros_healthd/system/pci_util.h"
-#include "diagnostics/cros_healthd/system/powerd_adapter.h"
-#include "diagnostics/cros_healthd/system/system_config_interface.h"
-#include "diagnostics/cros_healthd/system/system_utilities.h"
-#include "diagnostics/cros_healthd/utils/resource_queue.h"
 
 namespace brillo {
 class Udev;
@@ -67,6 +58,14 @@ class CrosConfig;
 class FlossController;
 class FlossEventHub;
 class GroundTruth;
+class MojoService;
+class NetworkDiagnosticsAdapter;
+class NetworkHealthAdapter;
+class PciUtil;
+class PowerdAdapter;
+class ResourceQueue;
+class SystemConfigInterface;
+class SystemUtilities;
 struct ServiceConfig;
 
 // A context class for holding the helper objects used in cros_healthd, which

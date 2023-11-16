@@ -21,6 +21,7 @@
 
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher_constants.h"
+#include "diagnostics/cros_healthd/system/system_config_interface.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 

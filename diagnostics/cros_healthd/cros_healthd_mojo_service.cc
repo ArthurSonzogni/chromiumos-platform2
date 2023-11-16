@@ -12,6 +12,9 @@
 #include <chromeos/mojo/service_constants.h>
 
 #include "diagnostics/cros_healthd/fetchers/process_fetcher.h"
+#include "diagnostics/cros_healthd/network/network_health_adapter.h"
+#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
+#include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {

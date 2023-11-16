@@ -13,6 +13,7 @@
 
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
 #include "diagnostics/cros_healthd/system/ground_truth.h"
+#include "diagnostics/cros_healthd/utils/resource_queue.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {

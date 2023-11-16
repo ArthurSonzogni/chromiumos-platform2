@@ -12,6 +12,7 @@
 
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
 #include "diagnostics/cros_healthd/utils/memory_info.h"
+#include "diagnostics/cros_healthd/utils/resource_queue.h"
 #include "mojo/public/cpp/bindings/callback_helpers.h"
 
 namespace diagnostics {
