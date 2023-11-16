@@ -542,7 +542,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::Decode(
     case RTM_DELROUTE:
       attr_data = RTM_RTA(NLMSG_DATA(header));
       attr_length = RTM_PAYLOAD(header);
-      msg = DecodeRoute(mode, reinterpret_cast<const RTNLHeader*>(header));
+      msg = DecodeRoute(mode, payload);
       break;
 
     case RTM_NEWRULE:
@@ -647,19 +647,19 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeAddress(
 }
 
 // static
-std::unique_ptr<RTNLMessage> RTNLMessage::DecodeRoute(Mode mode,
-                                                      const RTNLHeader* hdr) {
-  if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(sizeof(hdr->rtm))) {
+std::unique_ptr<RTNLMessage> RTNLMessage::DecodeRoute(
+    Mode mode, base::span<const uint8_t> payload) {
+  if (payload.size() < sizeof(struct rtmsg)) {
     return nullptr;
   }
+  const struct rtmsg* rtm =
+      reinterpret_cast<const struct rtmsg*>(payload.data());
 
-  const Type type = kTypeRoute;
-  const sa_family_t family = hdr->rtm.rtm_family;
-  auto msg = std::make_unique<RTNLMessage>(type, mode, 0, 0, 0, 0, family);
-  msg->set_route_status(RouteStatus(hdr->rtm.rtm_dst_len, hdr->rtm.rtm_src_len,
-                                    hdr->rtm.rtm_table, hdr->rtm.rtm_protocol,
-                                    hdr->rtm.rtm_scope, hdr->rtm.rtm_type,
-                                    hdr->rtm.rtm_flags));
+  auto msg = std::make_unique<RTNLMessage>(kTypeRoute, mode, 0, 0, 0, 0,
+                                           rtm->rtm_family);
+  msg->set_route_status(RouteStatus(
+      rtm->rtm_dst_len, rtm->rtm_src_len, rtm->rtm_table, rtm->rtm_protocol,
+      rtm->rtm_scope, rtm->rtm_type, rtm->rtm_flags));
   return msg;
 }
 
