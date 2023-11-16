@@ -309,8 +309,10 @@ class NET_BASE_EXPORT RTNLMessage {
   // the `struct nlmsghdr`.
   static std::unique_ptr<RTNLMessage> DecodeRoute(
       Mode mode, base::span<const uint8_t> payload);
-  static std::unique_ptr<RTNLMessage> DecodeRule(Mode mode,
-                                                 const RTNLHeader* hdr);
+  // Decodes the rule message. |payload| points to the remaining data after
+  // the `struct nlmsghdr`.
+  static std::unique_ptr<RTNLMessage> DecodeRule(
+      Mode mode, base::span<const uint8_t> payload);
   // Decodes the ND user option message. |payload| points to the remaining data
   // after the `struct nlmsghdr`.
   static std::unique_ptr<RTNLMessage> DecodeNdUserOption(
