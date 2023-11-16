@@ -703,22 +703,17 @@ void P2PManagerImpl::OnEnabledStatusChange(EvalStatus status) {
   waiting_for_enabled_status_change_ = false;
 
   if (status == EvalStatus::kSucceeded) {
-    if (policy_data_->prev_enabled() == policy_data_->enabled()) {
-      LOG(WARNING) << "P2P enabled status did not change, which means that it "
-                      "is permanent; not scheduling further checks.";
-      waiting_for_enabled_status_change_ = true;
-      return;
-    }
-
     // If P2P is running but shouldn't be, make sure it isn't.
     if (may_be_running_ && !policy_data_->enabled() && !EnsureP2PNotRunning()) {
       LOG(WARNING) << "Failed to stop P2P service.";
     }
-  } else {
-    LOG(WARNING)
-        << "P2P enabled tracking failed (possibly timed out); retrying.";
+    // Stict stop in scheduling of status change after a successful response.
+    // When P2P needs to be enabled/disabled, there will be periodic checks as
+    // well as other policy syncs to trigger a re-evaluation of P2P policies.
+    return;
   }
 
+  LOG(WARNING) << "P2P enabled tracking failed (possibly timed out); retrying.";
   ScheduleEnabledStatusChange();
 }
 

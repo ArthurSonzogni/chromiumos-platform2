@@ -116,10 +116,17 @@ TEST_F(P2PManagerSimpleTest, P2PEnabledInitAndNotChangedAndChanged) {
   fake_um_->state()->updater_provider()->var_p2p_enabled()->reset(
       new bool(true));
   brillo::MessageLoopRunMaxIterations(MessageLoop::current(), 1);
+  fake_um_->state()->updater_provider()->var_p2p_enabled()->reset(
+      new bool(true));
   EXPECT_TRUE(manager_->IsP2PEnabled());
   // This is not a duplicate test. We need to make sure the value is not changed
   // between consecutive calls.
+  fake_um_->state()->updater_provider()->var_p2p_enabled()->reset(
+      new bool(true));
+  brillo::MessageLoopRunMaxIterations(MessageLoop::current(), 1);
   EXPECT_TRUE(manager_->IsP2PEnabled());
+  fake_loop_.Run();
+  EXPECT_FALSE(fake_loop_.PendingTasks());
 }
 
 // Test fixture that sets up a testing configuration (with e.g. a
