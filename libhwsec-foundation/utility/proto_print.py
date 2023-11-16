@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import argparse
 import collections
-from datetime import date
+import datetime
 import os
 import re
 import subprocess
@@ -36,7 +36,7 @@ import sys
 Field = collections.namedtuple("Field", "repeated type_ name proto3")
 
 
-class Message(object):
+class Message:
     """Holds information about a protobuf message.
 
     Attributes:
@@ -72,7 +72,7 @@ class Message(object):
         )
 
 
-class Enum(object):
+class Enum:
     """Holds information about a protobuf enum.
 
     Attributes:
@@ -98,7 +98,7 @@ class Enum(object):
         self.values.append(value_name)
 
 
-class Oneof(object):
+class Oneof:
     """Holds information about a protobuf Oneof.
 
     Attributes:
@@ -144,7 +144,7 @@ def ParseProto(input_file):
     oneof_re = re.compile(r"oneof\s+(\w+)\s*{")
     for line in input_file:
         line = line.strip()
-        if not line or line.startswith("//"):
+        if not line or line.startswith("//") or line.startswith("reserved"):
             continue
         msg_match = message_re.search(line)
         enum_match = enum_re.search(line)
@@ -308,7 +308,7 @@ def GenerateFileHeaders(
 
 namespace %(namespace)s {
 """ % {
-        "year": date.today().year,
+        "year": datetime.date.today().year,
         "guard_name": guard_name,
         "namespace": namespace,
         "proto": proto_name,
@@ -337,7 +337,7 @@ namespace %(namespace)s {
 
 namespace %(namespace)s {
 """ % {
-        "year": date.today().year,
+        "year": datetime.date.today().year,
         "namespace": namespace,
         "package_with_subdir": package_with_subdir,
         "header_file_name": header_file_name,
