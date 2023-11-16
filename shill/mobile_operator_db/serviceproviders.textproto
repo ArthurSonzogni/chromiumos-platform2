@@ -3965,8 +3965,6 @@ mno {
     }
     mccmnc: "21405"
     mccmnc: "21407"
-    # TODO(b/291318221): disable before feature release
-    tethering_allowed: true
     mobile_apn {
       apn: "telefonica.es"
       localized_name {
@@ -4496,8 +4494,6 @@ mno {
       name: "Free Mobile"
     }
     mccmnc: "20815"
-    # TODO(b/291318221): disable before feature release
-    tethering_allowed: true
     mobile_apn {
       apn: "free"
       localized_name {
@@ -10552,8 +10548,6 @@ mno {
       name: "Orange"
     }
     mccmnc: "26003"
-    # TODO(b/291318221): disable before feature release
-    tethering_allowed: true
     mobile_apn {
       apn: "internet"
       localized_name {
@@ -14068,7 +14062,8 @@ mno {
     mccmnc: "310995"
     mccmnc: "311270"
     mccmnc: "311480"
-    tethering_allowed: true
+    # TODO(b/311268236): disable before feature release
+    # tethering_allowed: false
     mobile_apn {
       apn: "vzwinternet"
       localized_name {
