@@ -485,7 +485,8 @@ std::unique_ptr<RTNLMessage> RTNLMessage::Decode(
   if (data.size() < sizeof(struct nlmsghdr)) {
     return nullptr;
   }
-  const nlmsghdr* header = reinterpret_cast<const nlmsghdr*>(data.data());
+  const struct nlmsghdr* header =
+      reinterpret_cast<const struct nlmsghdr*>(data.data());
   if (data.size() < header->nlmsg_len) {
     return nullptr;
   }
@@ -560,7 +561,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::Decode(
     case RTM_DELNEIGH:
       attr_data = RTM_RTA(NLMSG_DATA(header));
       attr_length = RTM_PAYLOAD(header);
-      msg = DecodeNeighbor(mode, reinterpret_cast<const RTNLHeader*>(header));
+      msg = DecodeNeighbor(mode, payload);
       break;
 
     default:
@@ -637,7 +638,8 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeAddress(
   if (payload.size() < sizeof(struct ifaddrmsg)) {
     return nullptr;
   }
-  const ifaddrmsg* ifa = reinterpret_cast<const ifaddrmsg*>(payload.data());
+  const struct ifaddrmsg* ifa =
+      reinterpret_cast<const struct ifaddrmsg*>(payload.data());
 
   auto msg = std::make_unique<RTNLMessage>(kTypeAddress, mode, 0, 0, 0,
                                            ifa->ifa_index, ifa->ifa_family);
@@ -868,18 +870,17 @@ bool RTNLMessage::ParseCaptivePortalOption(base::span<const uint8_t> data) {
 }
 
 std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNeighbor(
-    Mode mode, const RTNLHeader* hdr) {
-  if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(sizeof(hdr->ndm))) {
+    Mode mode, base::span<const uint8_t> payload) {
+  if (payload.size() < sizeof(struct ndmsg)) {
     return nullptr;
   }
+  const struct ndmsg* ndm =
+      reinterpret_cast<const struct ndmsg*>(payload.data());
 
-  const int interface_index = hdr->ndm.ndm_ifindex;
-  const sa_family_t family = hdr->ndm.ndm_family;
-  const Type type = kTypeNeighbor;
-  auto msg = std::make_unique<RTNLMessage>(type, mode, 0, 0, 0, interface_index,
-                                           family);
-  msg->set_neighbor_status(NeighborStatus(
-      hdr->ndm.ndm_state, hdr->ndm.ndm_flags, hdr->ndm.ndm_type));
+  auto msg = std::make_unique<RTNLMessage>(kTypeNeighbor, mode, 0, 0, 0,
+                                           ndm->ndm_ifindex, ndm->ndm_family);
+  msg->set_neighbor_status(
+      NeighborStatus(ndm->ndm_state, ndm->ndm_flags, ndm->ndm_type));
   return msg;
 }
 

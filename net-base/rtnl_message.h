@@ -297,28 +297,20 @@ class NET_BASE_EXPORT RTNLMessage {
                        base::span<const uint8_t> info_data);
 
  private:
-  // Decodes the link message. |payload| points to the remaining data after
-  // the `struct nlmsghdr`.
+  // Decodes different kind of NL messages. |payload| points to the remaining
+  // data after the `struct nlmsghdr`.
   static std::unique_ptr<RTNLMessage> DecodeLink(
       Mode mode, base::span<const uint8_t> payload);
-  // Decodes the address message. |payload| points to the remaining data after
-  // the `struct nlmsghdr`.
   static std::unique_ptr<RTNLMessage> DecodeAddress(
       Mode mode, base::span<const uint8_t> payload);
-  // Decodes the route message. |payload| points to the remaining data after
-  // the `struct nlmsghdr`.
   static std::unique_ptr<RTNLMessage> DecodeRoute(
       Mode mode, base::span<const uint8_t> payload);
-  // Decodes the rule message. |payload| points to the remaining data after
-  // the `struct nlmsghdr`.
   static std::unique_ptr<RTNLMessage> DecodeRule(
       Mode mode, base::span<const uint8_t> payload);
-  // Decodes the ND user option message. |payload| points to the remaining data
-  // after the `struct nlmsghdr`.
   static std::unique_ptr<RTNLMessage> DecodeNdUserOption(
       Mode mode, base::span<const uint8_t> payload);
-  static std::unique_ptr<RTNLMessage> DecodeNeighbor(Mode mode,
-                                                     const RTNLHeader* hdr);
+  static std::unique_ptr<RTNLMessage> DecodeNeighbor(
+      Mode mode, base::span<const uint8_t> payload);
 
   void SetNdUserOptionBytes(base::span<const uint8_t> data);
   bool ParseDnsslOption(base::span<const uint8_t> data);
