@@ -6,12 +6,9 @@ use std::fs::read_to_string;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::vec::Vec;
 
-use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
-use glob::glob;
 use log::error;
 use log::info;
 
@@ -30,7 +27,15 @@ use crate::config::PowerPreferences;
 use crate::config::PowerPreferencesType;
 use crate::config::PowerSourceType;
 use crate::cpu_utils::hotplug_cpus;
+use crate::cpu_utils::write_to_cpu_policy_patterns;
 use crate::cpu_utils::HotplugCpuAction;
+
+//globals
+#[cfg(target_arch = "x86_64")]
+use crate::globals::set_rtc_fs_signal_state;
+#[cfg(target_arch = "x86_64")]
+use crate::globals::read_dynamic_epp_feature;
+
 
 const POWER_SUPPLY_PATH: &str = "sys/class/power_supply";
 const POWER_SUPPLY_ONLINE: &str = "online";
@@ -178,52 +183,6 @@ pub trait PowerPreferencesManager {
     fn get_root(&self) -> &Path;
 }
 
-fn write_to_cpu_policy_patterns(pattern: &str, new_value: &str) -> Result<()> {
-    let mut applied: bool = false;
-    let entries: Vec<_> = glob(pattern)?.collect();
-
-    if entries.is_empty() {
-        applied = true;
-    }
-
-    for entry in entries {
-        let policy_path = entry?;
-        let mut affected_cpus_path = policy_path.to_path_buf();
-        affected_cpus_path.set_file_name("affected_cpus");
-        // Skip the policy update if there are no CPUs can be affected by policy.
-        // Otherwise, write to the scaling governor may cause error.
-        if affected_cpus_path.exists() {
-            if let Ok(affected_cpus) = read_to_string(affected_cpus_path) {
-                if affected_cpus.trim_end_matches('\n').is_empty() {
-                    applied = true;
-                    continue;
-                }
-            }
-        }
-
-        // Allow read fail due to CPU may be offlined.
-        if let Ok(current_value) = read_to_string(&policy_path) {
-            if current_value.trim_end_matches('\n') != new_value {
-                std::fs::write(&policy_path, new_value).with_context(|| {
-                    format!(
-                        "Failed to set attribute to {}, new value: {}",
-                        policy_path.display(),
-                        new_value
-                    )
-                })?;
-            }
-            applied = true;
-        }
-    }
-
-    // Fail if there are entries in the pattern but nothing is applied
-    if !applied {
-        bail!("Failed to read any of the pattern {}", pattern);
-    }
-
-    Ok(())
-}
-
 #[derive(Clone, Debug)]
 /// Applies [power preferences](PowerPreferences) to the system by writing to
 /// the system's sysfs nodes.
@@ -352,7 +311,18 @@ impl<P: PowerSourceProvider> DirectoryPowerPreferencesManager<P> {
 
     fn apply_power_preferences(&self, preferences: PowerPreferences) -> Result<()> {
         if let Some(epp) = preferences.epp {
-            self.set_epp(epp)?
+            #[cfg(not(target_arch = "x86_64"))]
+            {
+                self.set_epp(epp)?;
+            }
+
+            #[cfg(target_arch = "x86_64")]
+            {
+                let dynamic_epp = read_dynamic_epp_feature();
+                if !dynamic_epp {
+                    self.set_epp(epp)?;
+                }
+            }
         }
         if let Some(governor) = preferences.governor {
             self.apply_governor_preferences(governor)?
@@ -419,6 +389,9 @@ impl<P: PowerSourceProvider> PowerPreferencesManager for DirectoryPowerPreferenc
         vmboot: VmBootMode,
         batterysaver: BatterySaverMode,
     ) -> Result<()> {
+        #[cfg(target_arch = "x86_64")]
+        let dynamic_epp = read_dynamic_epp_feature();
+
         let mut preferences: Option<PowerPreferences> = None;
 
         let power_source = self.power_source_provider.get_power_source()?;
@@ -469,17 +442,32 @@ impl<P: PowerSourceProvider> PowerPreferencesManager for DirectoryPowerPreferenc
             self.apply_cpufreq_boost(preferences)?;
         }
 
-        if power_source == PowerSourceType::DC
-            && (rtc == RTCAudioActive::Active || fullscreen == FullscreenVideo::Active)
-        {
-            if let Err(err) = self.set_epp(EnergyPerformancePreference::BalancePower) {
-                error!("Failed to set energy performance preference: {:#}", err);
+        let fullscreen_video_efficiency_mode = power_source == PowerSourceType::DC
+            && (rtc == RTCAudioActive::Active || fullscreen == FullscreenVideo::Active);
+            #[cfg(not(target_arch = "x86_64"))]
+            {
+                if fullscreen_video_efficiency_mode {
+                    if let Err(err) = self.set_epp(EnergyPerformancePreference::BalancePower) {
+                        error!("Failed to set energy performance preference: {:#}", err);
+                    }
+                } else {
+                    self.set_epp(EnergyPerformancePreference::BalancePerformance)?;
+                    // Default EPP
+                }
             }
-        } else {
-            self.set_epp(EnergyPerformancePreference::BalancePerformance)?;
-            // Default EPP
-        }
-
+            #[cfg(target_arch = "x86_64")]
+            {
+                if dynamic_epp {
+                    set_rtc_fs_signal_state(fullscreen_video_efficiency_mode);
+                } else if fullscreen_video_efficiency_mode {
+                    if let Err(err) = self.set_epp(EnergyPerformancePreference::BalancePower) {
+                        error!("Failed to set energy performance preference: {:#}", err);
+                    }
+                } else {
+                    // Default EPP
+                    self.set_epp(EnergyPerformancePreference::BalancePerformance)?;
+                }
+            }
         Ok(())
     }
 

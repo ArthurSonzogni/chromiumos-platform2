@@ -37,6 +37,11 @@ use crate::power;
 use crate::power::DirectoryPowerSourceProvider;
 use crate::power::PowerSourceProvider;
 
+#[cfg(target_arch = "x86_64")]
+use crate::globals::set_media_cgroup_state;
+#[cfg(target_arch = "x86_64")]
+use crate::globals::read_dynamic_epp_feature;
+
 // Paths for RPS up/down threshold relative to rootdir.
 const DEVICE_RPS_PATH_UP: &str = "sys/class/drm/card0/gt/gt0/rps_up_threshold_pct";
 const DEVICE_RPS_PATH_DOWN: &str = "sys/class/drm/card0/gt/gt0/rps_down_threshold_pct";
@@ -369,6 +374,14 @@ pub fn set_fullscreen_video(
     }
 
     update_power_preferences(power_preference_manager)?;
+
+    #[cfg(target_arch = "x86_64")]
+    let dynamic_epp = read_dynamic_epp_feature();
+    // Send signal to Auto EPP when MediaDynamicCgroup is enabled
+    #[cfg(target_arch = "x86_64")]
+    if dynamic_epp {
+        set_media_cgroup_state(mode == FullscreenVideo::Active);
+    }
 
     #[cfg(target_arch = "x86_64")]
     match mode {

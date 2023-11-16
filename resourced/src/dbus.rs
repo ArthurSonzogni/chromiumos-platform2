@@ -48,6 +48,12 @@ use crate::qos::set_process_state;
 use crate::qos::set_thread_state;
 use crate::qos::SchedQosContext;
 use crate::vm_memory_management_client::VmMemoryManagementClient;
+#[cfg(target_arch = "x86_64")]
+use crate::auto_epp;
+#[cfg(target_arch = "x86_64")]
+use crate::globals::read_dynamic_epp_feature;
+#[cfg(target_arch = "x86_64")]
+use crate::globals::set_bsm_signal_state;
 
 const SERVICE_NAME: &str = "org.chromium.ResourceManager";
 const PATH_NAME: &str = "/org/chromium/ResourceManager";
@@ -635,12 +641,20 @@ fn set_vm_boot_mode(context: DbusContext, mode: common::VmBootMode) -> Result<()
 
 fn on_battery_saver_mode_change(context: DbusContext, raw_bytes: Vec<u8>) -> Result<()> {
     let bsm_state: BatterySaverModeState = protobuf::Message::parse_from_bytes(&raw_bytes)?;
+    #[cfg(target_arch = "x86_64")]
+    let dynamic_epp = read_dynamic_epp_feature();
 
     let mode = if bsm_state.enabled() {
         common::BatterySaverMode::Active
     } else {
         common::BatterySaverMode::Inactive
     };
+
+    // Send signal to Auto EPP when BSM is enabled
+    #[cfg(target_arch = "x86_64")]
+    if dynamic_epp {
+        set_bsm_signal_state(mode == common::BatterySaverMode::Active);
+    }
 
     common::on_battery_saver_mode_change(context.power_preferences_manager.as_ref(), mode)
         .map_err(|e| {
@@ -765,6 +779,10 @@ pub async fn service_main() -> Result<()> {
 
     #[cfg(target_arch = "x86_64")]
     cgroup_x86_64::register_feature();
+
+     // Dynamic EPP
+     #[cfg(target_arch = "x86_64")]
+     auto_epp::init();
 
     feature::init(conn.as_ref())
         .await

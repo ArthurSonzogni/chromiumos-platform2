@@ -18,6 +18,15 @@ mod qos;
 mod vm_concierge_client;
 mod vm_memory_management_client;
 
+#[cfg(target_arch = "x86_64")]
+mod auto_epp;
+
+#[cfg(target_arch = "x86_64")]
+mod globals;
+
+#[cfg(target_arch = "x86_64")]
+mod auto_epp_config;
+
 #[cfg(test)]
 mod test_utils;
 

@@ -206,6 +206,52 @@ fn is_big_little_supported(root: &Path) -> Result<bool> {
     Ok(false)
 }
 
+pub fn write_to_cpu_policy_patterns(pattern: &str, new_value: &str) -> Result<()> {
+    let mut applied: bool = false;
+    let entries: Vec<_> = glob(pattern)?.collect();
+
+    if entries.is_empty() {
+        applied = true;
+    }
+
+    for entry in entries {
+        let policy_path = entry?;
+        let mut affected_cpus_path = policy_path.to_path_buf();
+        affected_cpus_path.set_file_name("affected_cpus");
+        // Skip the policy update if there are no CPUs can be affected by policy.
+        // Otherwise, write to the scaling governor may cause error.
+        if affected_cpus_path.exists() {
+            if let Ok(affected_cpus) = read_to_string(affected_cpus_path) {
+                if affected_cpus.trim_end_matches('\n').is_empty() {
+                    applied = true;
+                    continue;
+                }
+            }
+        }
+
+        // Allow read fail due to CPU may be offlined.
+        if let Ok(current_value) = read_to_string(&policy_path) {
+            if current_value.trim_end_matches('\n') != new_value {
+                std::fs::write(&policy_path, new_value).with_context(|| {
+                    format!(
+                        "Failed to set attribute to {}, new value: {}",
+                        policy_path.display(),
+                        new_value
+                    )
+                })?;
+            }
+            applied = true;
+        }
+    }
+
+    // Fail if there are entries in the pattern but nothing is applied
+    if !applied {
+        bail!("Failed to read any of the pattern {}", pattern);
+    }
+
+    Ok(())
+}
+
 // Change a group of CPU online status through sysfs.
 // * `cpus_fmt` -  The format string of the target CPUs in either of the format:
 //   1. a list separated by comma (,). e.g. 0,1,2,3 to set CPU 0,1,2,3
