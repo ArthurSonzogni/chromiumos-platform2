@@ -71,11 +71,6 @@ constexpr TpmVidDid kTpm1DidVidAllowlist[] = {
     TpmVidDid{kTpmVidIfx, 0x1B},
 };
 
-constexpr TpmVidDid kTpm2DidVidAllowlist[] = {
-    // Emulated TPM provided by the swtpm program, used with QEMU.
-    TpmVidDid{kTpmVidIbm, 0x1},
-};
-
 struct DeviceModel {
   const char* sys_vendor;
   const char* product_name;
@@ -356,12 +351,6 @@ bool TpmAllowlistImpl::IsAllowed() {
             device_id == match.vid_did.device_id) {
           return true;
         }
-      }
-    }
-
-    for (const TpmVidDid& match : kTpm2DidVidAllowlist) {
-      if (device_id == match.device_id && vendor_id == match.vendor_id) {
-        return true;
       }
     }
 
