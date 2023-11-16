@@ -56,6 +56,8 @@ const char kErrorSimPin[] = MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".SimPin";
 
 const char kErrorSimPuk[] = MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".SimPuk";
 
+const char kErrorThrottled[] = MM_CORE_ERROR_DBUS_PREFIX ".Throttled";
+
 const char kErrorWrongState[] = MM_CORE_ERROR_DBUS_PREFIX ".WrongState";
 
 const char kErrorMobileEquipmentUnknown[] =
@@ -91,7 +93,7 @@ void CellularError::FromMM1ChromeosDBusError(brillo::Error* dbus_error,
            name == kErrorServiceOptionNotSubscribed ||
            name == kErrorUserAuthenticationFailed ||
            name == kErrorIpv4OnlyAllowed || name == kErrorIpv6OnlyAllowed ||
-           name == kErrorIpv4v6OnlyAllowed)
+           name == kErrorIpv4v6OnlyAllowed || name == kErrorThrottled)
     type = Error::kInvalidApn;
   else if (name == kErrorNoCellsInArea || name == kErrorPlmnNotAllowed ||
            name == kErrorServiceOptionNotAuthorizedInPlmn ||
