@@ -150,7 +150,7 @@ class BRILLO_EXPORT Transport : public http::Transport {
 // A base class for ServerRequest and ServerResponse. It provides common
 // functionality to work with request/response HTTP headers and data.
 ///////////////////////////////////////////////////////////////////////////////
-class ServerRequestResponseBase {
+class BRILLO_EXPORT ServerRequestResponseBase {
  public:
   ServerRequestResponseBase() = default;
   ServerRequestResponseBase(const ServerRequestResponseBase&) = delete;
@@ -183,7 +183,7 @@ class ServerRequestResponseBase {
 ///////////////////////////////////////////////////////////////////////////////
 // A container class that encapsulates all the HTTP server request information.
 ///////////////////////////////////////////////////////////////////////////////
-class ServerRequest : public ServerRequestResponseBase {
+class BRILLO_EXPORT ServerRequest : public ServerRequestResponseBase {
  public:
   ServerRequest(const std::string& url, const std::string& method);
   ServerRequest(const ServerRequest&) = delete;
@@ -221,7 +221,7 @@ class ServerRequest : public ServerRequestResponseBase {
 //    Content-Length
 //    Content-Type
 ///////////////////////////////////////////////////////////////////////////////
-class ServerResponse : public ServerRequestResponseBase {
+class BRILLO_EXPORT ServerResponse : public ServerRequestResponseBase {
  public:
   ServerResponse() = default;
   ServerResponse(const ServerResponse&) = delete;

@@ -13,6 +13,7 @@
 #include <brillo/blkdev_utils/device_mapper.h>
 #include <brillo/blkdev_utils/device_mapper_fake.h>
 #include <brillo/blkdev_utils/device_mapper_task.h>
+#include <brillo/brillo_export.h>
 #include <brillo/secure_blob.h>
 
 namespace brillo {
@@ -40,9 +41,9 @@ struct DmTask {
 
 // Fake task factory: creates fake tasks that
 // stub task info into a map.
-std::unique_ptr<DevmapperTask> CreateDevmapperTask(int type);
+BRILLO_EXPORT std::unique_ptr<DevmapperTask> CreateDevmapperTask(int type);
 
-class FakeDevmapperTask : public brillo::DevmapperTask {
+class BRILLO_EXPORT FakeDevmapperTask : public brillo::DevmapperTask {
  public:
   explicit FakeDevmapperTask(int type);
   ~FakeDevmapperTask() override = default;

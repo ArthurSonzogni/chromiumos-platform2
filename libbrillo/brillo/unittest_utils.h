@@ -8,6 +8,7 @@
 #define LIBBRILLO_BRILLO_UNITTEST_UTILS_H_
 
 #include <base/files/file_path.h>
+#include <brillo/brillo_export.h>
 
 namespace brillo {
 
@@ -16,7 +17,7 @@ base::FilePath GetFdPath(int fd);
 
 // Helper class to create and close a unidirectional pipe. The file descriptors
 // will be closed on destruction, unless set to -1.
-class ScopedPipe {
+class BRILLO_EXPORT ScopedPipe {
  public:
   // The internal pipe size.
   static const int kPipeSize;
@@ -31,7 +32,7 @@ class ScopedPipe {
 
 // Helper class to create and close a bi-directional pair of sockets. The
 // sockets will be closed on destruction, unless set to -1.
-class ScopedSocketPair {
+class BRILLO_EXPORT ScopedSocketPair {
  public:
   ScopedSocketPair();
   ~ScopedSocketPair();

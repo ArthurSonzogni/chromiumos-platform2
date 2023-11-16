@@ -11,6 +11,7 @@
 #include <base/functional/callback_forward.h>
 #include <base/time/clock.h>
 #include <base/time/time.h>
+#include <brillo/brillo_export.h>
 #include <brillo/secure_blob.h>
 #include <brillo/streams/stream.h>
 
@@ -31,7 +32,7 @@ namespace brillo {
 //
 // For more complex read/write stream test scenarios using a real MemoryStream
 // or temporary FileStream is probably a better choice.
-class FakeStream : public Stream {
+class BRILLO_EXPORT FakeStream : public Stream {
  public:
   // Construct a new instance of the fake stream.
   //   mode        - expected read/write mode supported by the stream.
