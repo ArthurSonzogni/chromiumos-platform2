@@ -48,7 +48,7 @@ class BRILLO_EXPORT FakeMessageLoop : public MessageLoop {
 
   // FakeMessageLoop methods:
 
-  // Return whether there are peding tasks. Useful to check that no
+  // Returns whether there are pending tasks. Useful to check that no
   // callbacks were leaked.
   bool PendingTasks();
 
