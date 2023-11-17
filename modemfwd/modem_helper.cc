@@ -173,9 +173,14 @@ class ModemHelperImpl : public ModemHelper {
     base::StringPairs parsed_versions;
     bool result = base::SplitStringIntoKeyValuePairs(helper_output, ':', '\n',
                                                      &parsed_versions);
-    if (!result || parsed_versions.size() == 0) {
+    if (parsed_versions.size() == 0) {
       LOG(WARNING) << "Modem helper returned malformed firmware version info";
       return false;
+    }
+
+    if (!result) {
+      LOG(WARNING) << "Modem helper returned malformed firmware version info,"
+                   << " part of version info failed to parse.";
     }
 
     for (const auto& pair : parsed_versions) {
@@ -187,6 +192,8 @@ class ModemHelperImpl : public ModemHelper {
         out_info->carrier_uuid = pair.second;
       else if (pair.first == kFwOem)
         out_info->oem_version = pair.second;
+      else if (pair.first == "")
+        continue;
       else
         out_info->assoc_versions.insert(pair);
     }

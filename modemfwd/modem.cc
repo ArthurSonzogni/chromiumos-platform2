@@ -135,20 +135,18 @@ class ModemImpl : public Modem {
   ModemImpl(const std::string& device_id,
             const std::string& equipment_id,
             const std::string& carrier_id,
-            const std::string& firmware_revision,
             const std::string& primary_port,
             std::unique_ptr<Inhibitor> inhibitor,
-            ModemHelper* helper)
+            ModemHelper* helper,
+            FirmwareInfo installed_firmware)
       : device_id_(device_id),
         equipment_id_(equipment_id),
         carrier_id_(carrier_id),
         primary_port_(primary_port),
         inhibitor_(std::move(inhibitor)),
-        helper_(helper) {
-    if (!helper->GetFirmwareInfo(&installed_firmware_, firmware_revision)) {
-      LOG(WARNING) << "Could not fetch installed firmware information";
-    }
-  }
+        installed_firmware_(installed_firmware),
+        helper_(helper) {}
+
   ModemImpl(const ModemImpl&) = delete;
   ModemImpl& operator=(const ModemImpl&) = delete;
 
@@ -286,12 +284,18 @@ std::unique_ptr<Modem> CreateModem(
     return nullptr;
   }
 
+  FirmwareInfo installed_firmware;
+  if (!helper->GetFirmwareInfo(&installed_firmware, firmware_revision)) {
+    LOG(WARNING) << "Could not fetch installed firmware information";
+    return nullptr;
+  }
+
   std::string primary_port =
       GetModemPrimaryPort(bus, dbus::ObjectPath(mm_object_path));
 
   return std::make_unique<ModemImpl>(device_id, equipment_id, carrier_id,
-                                     firmware_revision, primary_port,
-                                     std::move(inhibitor), helper);
+                                     primary_port, std::move(inhibitor), helper,
+                                     installed_firmware);
 }
 
 // StubModem acts like a modem with a particular device ID but does not
