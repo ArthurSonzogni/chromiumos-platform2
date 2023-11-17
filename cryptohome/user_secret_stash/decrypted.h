@@ -173,7 +173,7 @@ class DecryptedUss {
     return file_system_keyset_;
   }
 
-  const brillo::SecureBlob key_derivation_seed() const {
+  const brillo::SecureBlob& key_derivation_seed() const {
     return key_derivation_seed_;
   }
 
