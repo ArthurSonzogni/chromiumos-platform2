@@ -36,7 +36,7 @@ constexpr base::TimeDelta kPortalCheckInterval = base::Seconds(3);
 // Min time delay between two portal detection attempts.
 constexpr base::TimeDelta kMinPortalCheckDelay = base::Seconds(0);
 // Max time interval between two portal detection attempts.
-constexpr base::TimeDelta kMaxPortalCheckInterval = base::Minutes(5);
+constexpr base::TimeDelta kMaxPortalCheckInterval = base::Minutes(1);
 
 bool IsRedirectResponse(int status_code) {
   return status_code == brillo::http::status_code::Redirect ||
