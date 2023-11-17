@@ -22,8 +22,6 @@ namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kResolver;
 }  // namespace Logging
 
-const char Resolver::kDefaultIgnoredSearchList[] = "gateway.2wire.net";
-
 Resolver::Resolver() = default;
 
 Resolver::~Resolver() = default;
@@ -69,9 +67,6 @@ bool Resolver::Emit() {
 
   std::vector<std::string> filtered_domain_search_list;
   for (const auto& domain : domain_search_list_) {
-    if (base::Contains(ignored_search_list_, domain)) {
-      continue;
-    }
     if (IsValidDNSDomain(domain)) {
       filtered_domain_search_list.push_back(domain);
     } else {

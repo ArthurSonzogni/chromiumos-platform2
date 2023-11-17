@@ -24,7 +24,6 @@ const char kNameServerSubtlyEvil[] = "3.14.159.265";
 const char kNameServerProxy[] = "100.115.94.1";
 const char kSearchDomain0[] = "chromium.org";
 const char kSearchDomain1[] = "google.com";
-const char kSearchDomain2[] = "crbug.com";
 const char kSearchDomainEvil[] = "google.com\nnameserver 6.6.6.6";
 const char kSearchDomainSubtlyEvil[] = "crate&barrel.com";
 const char kExpectedOutput[] =
@@ -32,12 +31,6 @@ const char kExpectedOutput[] =
     "nameserver 8.8.9.9\n"
     "nameserver 2001:4860:4860::8888\n"
     "search chromium.org google.com\n"
-    "options single-request timeout:1 attempts:5\n";
-const char kExpectedIgnoredSearchOutput[] =
-    "nameserver 8.8.8.8\n"
-    "nameserver 8.8.9.9\n"
-    "nameserver 2001:4860:4860::8888\n"
-    "search google.com\n"
     "options single-request timeout:1 attempts:5\n";
 const char kExpectedProxyOutput[] =
     "nameserver 100.115.94.1\n"
@@ -64,7 +57,6 @@ class ResolverTest : public Test {
     EXPECT_TRUE(resolver_->ClearDNS());
     resolver_->set_path(base::FilePath(""));  // Don't try to save the store.
     ASSERT_TRUE(temp_dir_.Delete());
-    resolver_->set_ignored_search_list({});
   }
 
  protected:
@@ -109,17 +101,6 @@ TEST_F(ResolverTest, Empty) {
   std::vector<std::string> domain_search;
 
   EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
-}
-
-TEST_F(ResolverTest, IgnoredSearchList) {
-  std::vector<std::string> dns_servers = {kNameServer0, kNameServer1,
-                                          kNameServer2};
-  std::vector<std::string> domain_search = {kSearchDomain0, kSearchDomain1};
-  std::vector<std::string> ignored_search = {kSearchDomain0, kSearchDomain2};
-  resolver_->set_ignored_search_list(ignored_search);
-  EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
-  EXPECT_TRUE(base::PathExists(path_));
-  EXPECT_EQ(kExpectedIgnoredSearchOutput, ReadFile());
 }
 
 TEST_F(ResolverTest, Proxy) {

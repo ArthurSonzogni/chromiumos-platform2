@@ -330,10 +330,6 @@ class ManagerTest : public PropertyStoreTest {
     return manager()->SetPortalFallbackHttpsUrls(urls, error);
   }
 
-  const std::string& GetIgnoredDNSSearchPaths() {
-    return manager()->props_.ignored_dns_search_paths;
-  }
-
   const std::vector<std::string>& GetPortalFallbackHttpUrls() {
     return manager()->props_.portal_fallback_http_urls;
   }
@@ -3178,28 +3174,6 @@ TEST_F(ManagerTest, SetEnabledStatePropagatesError) {
                                           disable_technology_callback);
 }
 
-TEST_F(ManagerTest, IgnoredSearchList) {
-  std::vector<std::string> ignored_paths;
-
-  const std::string kIgnored0 = "chromium.org";
-  ignored_paths.push_back(kIgnored0);
-  EXPECT_CALL(resolver_, set_ignored_search_list(ignored_paths));
-  SetIgnoredDNSSearchPaths(kIgnored0, nullptr);
-  EXPECT_EQ(kIgnored0, GetIgnoredDNSSearchPaths());
-
-  const std::string kIgnored1 = "google.com";
-  const std::string kIgnoredSum = kIgnored0 + "," + kIgnored1;
-  ignored_paths.push_back(kIgnored1);
-  EXPECT_CALL(resolver_, set_ignored_search_list(ignored_paths));
-  SetIgnoredDNSSearchPaths(kIgnoredSum, nullptr);
-  EXPECT_EQ(kIgnoredSum, GetIgnoredDNSSearchPaths());
-
-  ignored_paths.clear();
-  EXPECT_CALL(resolver_, set_ignored_search_list(ignored_paths));
-  SetIgnoredDNSSearchPaths("", nullptr);
-  EXPECT_EQ("", GetIgnoredDNSSearchPaths());
-}
-
 TEST_F(ManagerTest, PortalFallbackHttpUrls) {
   const std::string kFallback0 = "http://fallback";
   const std::vector<std::string> kFallbackVec0 = {kFallback0};
@@ -3766,8 +3740,6 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
   manager->InitializeProfiles();
   EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
             manager->props_.check_portal_list);
-  EXPECT_EQ(Resolver::kDefaultIgnoredSearchList,
-            manager->props_.ignored_dns_search_paths);
   EXPECT_EQ(PortalDetector::kDefaultHttpUrl, manager->props_.portal_http_url);
   EXPECT_EQ(PortalDetector::kDefaultHttpsUrl, manager->props_.portal_https_url);
   EXPECT_EQ(
@@ -3853,22 +3825,6 @@ TEST_F(ManagerTest, CustomSetterNoopChange) {
     // Set to same value.
     EXPECT_FALSE(SetCheckPortalList(kCheckPortalList, &error));
     EXPECT_TRUE(error.IsSuccess());
-  }
-
-  // SetIgnoredDNSSearchPaths
-  {
-    static const std::string kIgnoredPaths = "example.com,example.org";
-    Error error;
-    // Set to known value.
-    EXPECT_CALL(resolver_, set_ignored_search_list(_));
-    EXPECT_TRUE(SetIgnoredDNSSearchPaths(kIgnoredPaths, &error));
-    EXPECT_TRUE(error.IsSuccess());
-    Mock::VerifyAndClearExpectations(&resolver_);
-    // Set to same value.
-    EXPECT_CALL(resolver_, set_ignored_search_list(_)).Times(0);
-    EXPECT_FALSE(SetIgnoredDNSSearchPaths(kIgnoredPaths, &error));
-    EXPECT_TRUE(error.IsSuccess());
-    Mock::VerifyAndClearExpectations(&resolver_);
   }
 }
 

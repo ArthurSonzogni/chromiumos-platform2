@@ -32,10 +32,6 @@ class MockResolver : public Resolver {
               (const std::vector<std::string>&),
               (override));
   MOCK_METHOD(bool, ClearDNS, (), (override));
-  MOCK_METHOD(void,
-              set_ignored_search_list,
-              (const std::vector<std::string>&),
-              (override));
   MOCK_METHOD(void, set_path, (const base::FilePath&), (override));
 };
 

@@ -111,8 +111,6 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
   EXPECT_TRUE(manager_props.arp_gateway);
   EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
             manager_props.check_portal_list);
-  EXPECT_EQ(Resolver::kDefaultIgnoredSearchList,
-            manager_props.ignored_dns_search_paths);
   EXPECT_EQ("", manager_props.no_auto_connect_technologies);
   EXPECT_EQ(PortalDetector::kDefaultHttpUrl, manager_props.portal_http_url);
   EXPECT_EQ(PortalDetector::kDefaultHttpsUrl, manager_props.portal_https_url);
@@ -133,10 +131,6 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   const std::string portal_list("technology1,technology2");
   storage->SetString(DefaultProfile::kStorageId,
                      DefaultProfile::kStorageCheckPortalList, portal_list);
-  const std::string ignored_paths("chromium.org,google.com");
-  storage->SetString(DefaultProfile::kStorageId,
-                     DefaultProfile::kStorageIgnoredDNSSearchPaths,
-                     ignored_paths);
   const std::string no_auto_connect_technologies("wifi,cellular");
   storage->SetString(DefaultProfile::kStorageId,
                      DefaultProfile::kStorageNoAutoConnectTechnologies,
@@ -156,7 +150,6 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   profile_->LoadManagerProperties(&manager_props);
   EXPECT_FALSE(manager_props.arp_gateway);
   EXPECT_EQ(portal_list, manager_props.check_portal_list);
-  EXPECT_EQ(ignored_paths, manager_props.ignored_dns_search_paths);
   EXPECT_EQ(no_auto_connect_technologies,
             manager_props.no_auto_connect_technologies);
   EXPECT_EQ(prohibited_technologies, manager_props.prohibited_technologies);

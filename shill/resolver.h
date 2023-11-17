@@ -53,14 +53,6 @@ class Resolver {
   // Remove any created domain name service file.
   virtual bool ClearDNS();
 
-  // Sets the list of ignored DNS search suffixes.  This list will be used
-  // to filter the domain_search_list parameter of later SetDNSFromLists()
-  // calls.
-  virtual void set_ignored_search_list(
-      const std::vector<std::string>& ignored_list) {
-    ignored_search_list_ = ignored_list;
-  }
-
  protected:
   Resolver();
   Resolver(const Resolver&) = delete;
@@ -76,7 +68,6 @@ class Resolver {
   base::FilePath path_;
   std::vector<std::string> name_servers_;
   std::vector<std::string> domain_search_list_;
-  std::vector<std::string> ignored_search_list_;
   std::vector<std::string> dns_proxy_addrs_;
 };
 

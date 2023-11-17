@@ -681,11 +681,7 @@ Properties	object ActiveProfile [readonly]
 
 		string IgnoredDNSSearchPaths [readwrite]
 
-			A comma-separated list of DNS domain suffixes which should be
-			ignored when creating a DNS search list from DHCP-provided
-			parameters. This list will be consulted every time DHCP information
-			is updated (while connecting to a network, or when a DHCP lease is
-			renewed).
+			This property is deprecated and does not have any effect.
 
 		dict LOHSConfig [readwrite]
 

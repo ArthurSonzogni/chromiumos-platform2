@@ -93,8 +93,6 @@ struct ManagerProperties {
   std::string no_auto_connect_technologies;
   // Comma-separated list of technologies that should never be enabled.
   std::string prohibited_technologies;
-  // Comma-separated list of DNS search paths to be ignored.
-  std::string ignored_dns_search_paths;
   // Name of Android VPN package that should be enforced for user traffic.
   // Empty string if the lockdown feature is not enabled.
   std::string always_on_vpn_package;

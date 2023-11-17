@@ -61,7 +61,6 @@ class DefaultProfile : public Profile {
   static const char kStorageArpGateway[];
   static const char kStorageCheckPortalList[];
   static const char kStorageHostName[];
-  static const char kStorageIgnoredDNSSearchPaths[];
   static const char kStorageName[];
   static const char kStorageNoAutoConnectTechnologies[];
   static const char kStorageProhibitedTechnologies[];

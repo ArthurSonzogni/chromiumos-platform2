@@ -1470,7 +1470,6 @@ void Manager::PersistService(const ServiceRefPtr& to_update) {
 void Manager::LoadProperties(const scoped_refptr<DefaultProfile>& profile) {
   SLOG(2) << __func__;
   profile->LoadManagerProperties(&props_);
-  SetIgnoredDNSSearchPaths(props_.ignored_dns_search_paths, nullptr);
 }
 
 void Manager::AddTerminationAction(const std::string& name,
@@ -2282,23 +2281,14 @@ bool Manager::SetCheckPortalList(const std::string& portal_list, Error* error) {
   return true;
 }
 
+// IgnoredDNSSearchPaths is deprecated.
 std::string Manager::GetIgnoredDNSSearchPaths(Error* /*error*/) {
-  return props_.ignored_dns_search_paths;
+  return "";
 }
 
 bool Manager::SetIgnoredDNSSearchPaths(const std::string& ignored_paths,
                                        Error* /*error*/) {
-  if (props_.ignored_dns_search_paths == ignored_paths) {
-    return false;
-  }
-  std::vector<std::string> ignored_path_list;
-  if (!ignored_paths.empty()) {
-    ignored_path_list = base::SplitString(
-        ignored_paths, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-  }
-  props_.ignored_dns_search_paths = ignored_paths;
-  resolver_->set_ignored_search_list(ignored_path_list);
-  return true;
+  return false;
 }
 
 std::string Manager::GetPortalFallbackHttpUrls(Error* /*error*/) {

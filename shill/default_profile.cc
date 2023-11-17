@@ -25,6 +25,9 @@ namespace {
 // UseSwanctlDriver was removed in crrev.com/c/3857326.
 // This was left here to remove UseSwanctlDriver entries from profiles.
 constexpr char kStorageUseSwanctlDriver[] = "UseSwanctlDriver";
+
+// Removed in crrev/c/5040178. Left to remove entries from profile.
+constexpr char kStorageIgnoredDNSSearchPaths[] = "IgnoredDNSSearchPaths";
 }  // namespace
 
 // static
@@ -33,9 +36,6 @@ const char DefaultProfile::kDefaultId[] = "default";
 const char DefaultProfile::kStorageArpGateway[] = "ArpGateway";
 // static
 const char DefaultProfile::kStorageCheckPortalList[] = "CheckPortalList";
-// static
-const char DefaultProfile::kStorageIgnoredDNSSearchPaths[] =
-    "IgnoredDNSSearchPaths";
 // static
 const char DefaultProfile::kStorageName[] = "Name";
 // static
@@ -63,8 +63,6 @@ DefaultProfile::DefaultProfile(Manager* manager,
   store->RegisterConstBool(kArpGatewayProperty, &manager_props.arp_gateway);
   store->RegisterConstString(kCheckPortalListProperty,
                              &manager_props.check_portal_list);
-  store->RegisterConstString(kIgnoredDNSSearchPathsProperty,
-                             &manager_props.ignored_dns_search_paths);
   store->RegisterConstString(kNoAutoConnectTechnologiesProperty,
                              &manager_props.no_auto_connect_technologies);
   store->RegisterConstString(kProhibitedTechnologiesProperty,
@@ -96,11 +94,6 @@ void DefaultProfile::LoadManagerProperties(ManagerProperties* manager_props) {
   if (!storage()->GetString(kStorageId, kStorageCheckPortalList,
                             &manager_props->check_portal_list)) {
     manager_props->check_portal_list = PortalDetector::kDefaultCheckPortalList;
-  }
-  if (!storage()->GetString(kStorageId, kStorageIgnoredDNSSearchPaths,
-                            &manager_props->ignored_dns_search_paths)) {
-    manager_props->ignored_dns_search_paths =
-        Resolver::kDefaultIgnoredSearchList;
   }
   if (!storage()->GetString(kStorageId, kStorageNoAutoConnectTechnologies,
                             &manager_props->no_auto_connect_technologies)) {
@@ -154,14 +147,14 @@ bool DefaultProfile::ConfigureService(const ServiceRefPtr& service) {
 bool DefaultProfile::Save() {
   // UseSwanctlDriver was removed in crrev.com/c/3857326.
   storage()->DeleteKey(kStorageId, kStorageUseSwanctlDriver);
+  // IgnoredDNSSearchPaths was removed in crrev/c/5040178Í.
+  storage()->DeleteKey(kStorageId, kStorageIgnoredDNSSearchPaths);
 
   storage()->SetBool(kStorageId, kStorageArpGateway, props_.arp_gateway);
   storage()->SetBool(kStorageId, kStorageEnableRFC8925, props_.enable_rfc_8925);
   storage()->SetString(kStorageId, kStorageName, GetFriendlyName());
   storage()->SetString(kStorageId, kStorageCheckPortalList,
                        props_.check_portal_list);
-  storage()->SetString(kStorageId, kStorageIgnoredDNSSearchPaths,
-                       props_.ignored_dns_search_paths);
   storage()->SetString(kStorageId, kStorageNoAutoConnectTechnologies,
                        props_.no_auto_connect_technologies);
   storage()->SetString(kStorageId, kStorageProhibitedTechnologies,
