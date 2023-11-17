@@ -260,14 +260,20 @@ impl ThreadStateConfig {
     }
 }
 
-/// Wrap u32 PID with [ProcessId] internally.
+/// Wrap u32 PID with [ProcessId].
 ///
 /// Using u32 for both process id and thread id is confusing in this library.
 /// This is to prevent unexpected typo by the explicit typing.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct ProcessId(u32);
 
-/// Wrap u32 TID with [ThreadId] internally.
+impl From<u32> for ProcessId {
+    fn from(pid: u32) -> Self {
+        ProcessId(pid)
+    }
+}
+
+/// Wrap u32 TID with [ThreadId].
 ///
 /// See [ProcessId] for the reason.
 ///
@@ -275,6 +281,12 @@ pub struct ProcessId(u32);
 /// the running process and not expected for threads of other processes.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct ThreadId(u32);
+
+impl From<u32> for ThreadId {
+    fn from(tid: u32) -> Self {
+        ThreadId(tid)
+    }
+}
 
 pub struct ProcessKey {
     process_id: ProcessId,
@@ -325,11 +337,9 @@ impl<PM: ProcessMap> SchedQosContext<PM> {
 
     pub fn set_process_state(
         &mut self,
-        process_id: u32,
+        process_id: ProcessId,
         process_state: ProcessState,
     ) -> Result<Option<ProcessKey>> {
-        let process_id = ProcessId(process_id);
-
         let process_config = &self.config.process_configs[process_state as usize];
 
         let timestamp = match load_process_timestamp(process_id) {
@@ -425,13 +435,10 @@ impl<PM: ProcessMap> SchedQosContext<PM> {
 
     pub fn set_thread_state(
         &mut self,
-        process_id: u32,
-        thread_id: u32,
+        process_id: ProcessId,
+        thread_id: ThreadId,
         thread_state: ThreadState,
     ) -> Result<()> {
-        let process_id = ProcessId(process_id);
-        let thread_id = ThreadId(thread_id);
-
         let Some(mut process) = self.process_map.get_process(process_id) else {
             return Err(Error::ProcessNotRegistered);
         };
@@ -545,16 +552,19 @@ mod tests {
         })
         .unwrap();
 
-        let process_id = std::process::id();
+        let process_id = ProcessId(std::process::id());
         ctx.set_process_state(process_id, ProcessState::Normal)
             .unwrap();
-        assert_eq!(read_number(&mut cgroup_files.cpu_normal), Some(process_id));
+        assert_eq!(
+            read_number(&mut cgroup_files.cpu_normal),
+            Some(process_id.0)
+        );
 
         ctx.set_process_state(process_id, ProcessState::Background)
             .unwrap();
         assert_eq!(
             read_number(&mut cgroup_files.cpu_background),
-            Some(process_id)
+            Some(process_id.0)
         );
     }
 
@@ -604,7 +614,7 @@ mod tests {
         })
         .unwrap();
 
-        let process_id = std::process::id();
+        let process_id = ProcessId(std::process::id());
         ctx.set_process_state(process_id, ProcessState::Normal)
             .unwrap();
         let (thread_id1, _thread1) = spawn_thread_for_test();
@@ -616,15 +626,15 @@ mod tests {
         let (thread_id_unmanaged, _thread_unmanaged) = spawn_thread_for_test();
         let sched_attr_unmanaged = SchedAttrChecker::new(thread_id_unmanaged);
 
-        ctx.set_thread_state(process_id, thread_id1.0, thread_state_rt_all)
+        ctx.set_thread_state(process_id, thread_id1, thread_state_rt_all)
             .unwrap();
-        ctx.set_thread_state(process_id, thread_id2.0, thread_state_rt_all)
+        ctx.set_thread_state(process_id, thread_id2, thread_state_rt_all)
             .unwrap();
-        ctx.set_thread_state(process_id, thread_id3.0, thread_state_all)
+        ctx.set_thread_state(process_id, thread_id3, thread_state_all)
             .unwrap();
-        ctx.set_thread_state(process_id, thread_id4.0, thread_state_all)
+        ctx.set_thread_state(process_id, thread_id4, thread_state_all)
             .unwrap();
-        ctx.set_thread_state(process_id, thread_id5.0, thread_state_efficient)
+        ctx.set_thread_state(process_id, thread_id5, thread_state_efficient)
             .unwrap();
         drain_file(&mut cgroup_files.cpu_normal);
         drain_file(&mut cgroup_files.cpu_background);
@@ -636,7 +646,7 @@ mod tests {
         assert_eq!(read_number(&mut cgroup_files.cpu_normal), None);
         assert_eq!(
             read_number(&mut cgroup_files.cpu_background),
-            Some(process_id)
+            Some(process_id.0)
         );
         assert_eq!(read_number(&mut cgroup_files.cpuset_all), None);
         assert_eq!(
@@ -654,7 +664,10 @@ mod tests {
 
         ctx.set_process_state(process_id, ProcessState::Normal)
             .unwrap();
-        assert_eq!(read_number(&mut cgroup_files.cpu_normal), Some(process_id));
+        assert_eq!(
+            read_number(&mut cgroup_files.cpu_normal),
+            Some(process_id.0)
+        );
         assert_eq!(read_number(&mut cgroup_files.cpu_background), None);
         assert_eq!(
             read_numbers(&mut cgroup_files.cpuset_all).collect::<HashSet<_>>(),
@@ -684,7 +697,7 @@ mod tests {
         let (process_id, _, process) = fork_process_for_test();
         drop(process);
         assert!(matches!(
-            ctx.set_process_state(process_id.0, ProcessState::Normal)
+            ctx.set_process_state(process_id, ProcessState::Normal)
                 .err()
                 .unwrap(),
             Error::ProcessNotFound
@@ -701,7 +714,7 @@ mod tests {
         })
         .unwrap();
 
-        let process_id = std::process::id();
+        let process_id = ProcessId(std::process::id());
 
         // First set_process_state() creates a new process context.
         let process_key = ctx
@@ -709,7 +722,7 @@ mod tests {
             .unwrap();
         assert!(process_key.is_some());
         let process_key = process_key.unwrap();
-        assert_eq!(process_key.process_id, ProcessId(process_id));
+        assert_eq!(process_key.process_id, process_id);
         assert_eq!(ctx.process_map.len(), 1);
 
         let process_key = ctx
@@ -723,7 +736,7 @@ mod tests {
 
         let (process_id, _, _process) = fork_process_for_test();
         let process_key = ctx
-            .set_process_state(process_id.0, ProcessState::Normal)
+            .set_process_state(process_id, ProcessState::Normal)
             .unwrap();
         assert!(process_key.is_some());
         let process_key = process_key.unwrap();
@@ -747,13 +760,13 @@ mod tests {
         .unwrap();
 
         let process_id = ProcessId(std::process::id());
-        ctx.set_process_state(process_id.0, ProcessState::Normal)
+        ctx.set_process_state(process_id, ProcessState::Normal)
             .unwrap();
         let (thread_id1, dead_thread1) = spawn_thread_for_test();
-        ctx.set_thread_state(process_id.0, thread_id1.0, ThreadState::Urgent)
+        ctx.set_thread_state(process_id, thread_id1, ThreadState::Urgent)
             .unwrap();
         let (thread_id2, _thread2) = spawn_thread_for_test();
-        ctx.set_thread_state(process_id.0, thread_id2.0, ThreadState::Utility)
+        ctx.set_thread_state(process_id, thread_id2, ThreadState::Utility)
             .unwrap();
 
         let mut process_ctx = ctx.process_map.get_process(process_id).unwrap();
@@ -763,7 +776,7 @@ mod tests {
         drop(dead_thread1);
         wait_for_thread_removed(process_id, thread_id1);
 
-        ctx.set_process_state(process_id.0, ProcessState::Background)
+        ctx.set_process_state(process_id, ProcessState::Background)
             .unwrap();
         let mut process_ctx = ctx.process_map.get_process(process_id).unwrap();
         assert_eq!(process_ctx.thread_map().len(), 1);
@@ -784,13 +797,13 @@ mod tests {
         for _ in 0..3 {
             let (process_id, _, process) = fork_process_for_test();
             processes.push(process);
-            ctx.set_process_state(process_id.0, ProcessState::Normal)
+            ctx.set_process_state(process_id, ProcessState::Normal)
                 .unwrap();
         }
 
         let (process_id, _, process) = fork_process_for_test();
         let process_key = ctx
-            .set_process_state(process_id.0, ProcessState::Normal)
+            .set_process_state(process_id, ProcessState::Normal)
             .unwrap()
             .unwrap();
         assert_eq!(ctx.process_map.len(), 4);
@@ -828,10 +841,10 @@ mod tests {
 
         let (process_id, thread_id, process) = fork_process_for_test();
         let process_key = ctx
-            .set_process_state(process_id.0, ProcessState::Normal)
+            .set_process_state(process_id, ProcessState::Normal)
             .unwrap()
             .unwrap();
-        ctx.set_thread_state(process_id.0, thread_id.0, ThreadState::Balanced)
+        ctx.set_thread_state(process_id, thread_id, ThreadState::Balanced)
             .unwrap();
 
         assert_eq!(ctx.process_map.n_cells(), 2);
@@ -843,7 +856,7 @@ mod tests {
 
     #[test]
     fn test_set_thread_state() {
-        let process_id = std::process::id();
+        let process_id = ProcessId(std::process::id());
         let (cgroup_context, mut cgroup_files) = create_fake_cgroup_context_pair();
         let thread_configs = [
             // ThreadState::UrgentBursty
@@ -922,8 +935,7 @@ mod tests {
         ] {
             let (thread_id, _thread) = spawn_thread_for_test();
 
-            ctx.set_thread_state(process_id, thread_id.0, state)
-                .unwrap();
+            ctx.set_thread_state(process_id, thread_id, state).unwrap();
             let thread_config = &thread_configs[state as usize];
             match thread_config.cpuset_cgroup {
                 CpusetCgroup::All => {
@@ -954,8 +966,7 @@ mod tests {
         ] {
             let (thread_id, _thread) = spawn_thread_for_test();
 
-            ctx.set_thread_state(process_id, thread_id.0, state)
-                .unwrap();
+            ctx.set_thread_state(process_id, thread_id, state).unwrap();
             assert_eq!(
                 read_number(&mut cgroup_files.cpuset_efficient),
                 Some(thread_id.0)
@@ -967,7 +978,7 @@ mod tests {
 
     #[test]
     fn test_set_thread_state_without_process() {
-        let process_id = std::process::id();
+        let process_id = ProcessId(std::process::id());
         let (cgroup_context, _files) = create_fake_cgroup_context_pair();
         let mut ctx = SchedQosContext::new_simple(Config {
             cgroup_context,
@@ -979,7 +990,7 @@ mod tests {
         let (thread_id, _thread) = spawn_thread_for_test();
 
         assert!(matches!(
-            ctx.set_thread_state(process_id, thread_id.0, ThreadState::Balanced)
+            ctx.set_thread_state(process_id, thread_id, ThreadState::Balanced)
                 .err()
                 .unwrap(),
             Error::ProcessNotRegistered
@@ -999,18 +1010,14 @@ mod tests {
         let (_, child_process_thread_id, _process) = fork_process_for_test();
         let (thread_id, thread) = spawn_thread_for_test();
 
-        ctx.set_process_state(process_id.0, ProcessState::Normal)
+        ctx.set_process_state(process_id, ProcessState::Normal)
             .unwrap();
 
         // The thread does not in the process.
         assert!(matches!(
-            ctx.set_thread_state(
-                process_id.0,
-                child_process_thread_id.0,
-                ThreadState::Balanced
-            )
-            .err()
-            .unwrap(),
+            ctx.set_thread_state(process_id, child_process_thread_id, ThreadState::Balanced)
+                .err()
+                .unwrap(),
             Error::ThreadNotFound
         ));
 
@@ -1018,20 +1025,20 @@ mod tests {
         drop(thread);
         assert!(wait_for_thread_removed(process_id, thread_id));
         assert!(matches!(
-            ctx.set_thread_state(process_id.0, thread_id.0, ThreadState::Balanced)
+            ctx.set_thread_state(process_id, thread_id, ThreadState::Balanced)
                 .err()
                 .unwrap(),
             Error::ThreadNotFound
         ));
 
         let (thread_id, thread) = spawn_thread_for_test();
-        ctx.set_thread_state(process_id.0, thread_id.0, ThreadState::Balanced)
+        ctx.set_thread_state(process_id, thread_id, ThreadState::Balanced)
             .unwrap();
         // The thread is dead after registered.
         drop(thread);
         assert!(wait_for_thread_removed(process_id, thread_id));
         assert!(matches!(
-            ctx.set_thread_state(process_id.0, thread_id.0, ThreadState::Balanced)
+            ctx.set_thread_state(process_id, thread_id, ThreadState::Balanced)
                 .err()
                 .unwrap(),
             Error::ThreadNotFound
@@ -1049,31 +1056,31 @@ mod tests {
         })
         .unwrap();
 
-        ctx.set_process_state(process_id.0, ProcessState::Normal)
+        ctx.set_process_state(process_id, ProcessState::Normal)
             .unwrap();
 
         let (thread_id, _thread1) = spawn_thread_for_test();
-        ctx.set_thread_state(process_id.0, thread_id.0, ThreadState::Balanced)
+        ctx.set_thread_state(process_id, thread_id, ThreadState::Balanced)
             .unwrap();
         let mut process_ctx = ctx.process_map.get_process(process_id).unwrap();
         assert_eq!(process_ctx.thread_map().len(), 1);
 
         for _ in 0..10 {
             let (thread_id, thread) = spawn_thread_for_test();
-            ctx.set_thread_state(process_id.0, thread_id.0, ThreadState::Balanced)
+            ctx.set_thread_state(process_id, thread_id, ThreadState::Balanced)
                 .unwrap();
             drop(thread);
             wait_for_thread_removed(process_id, thread_id);
         }
 
         let (thread_id, _thread2) = spawn_thread_for_test();
-        ctx.set_thread_state(process_id.0, thread_id.0, ThreadState::Balanced)
+        ctx.set_thread_state(process_id, thread_id, ThreadState::Balanced)
             .unwrap();
         let mut process_ctx = ctx.process_map.get_process(process_id).unwrap();
         assert_eq!(process_ctx.thread_map().len(), 2);
 
         let (thread_id, _thread3) = spawn_thread_for_test();
-        ctx.set_thread_state(process_id.0, thread_id.0, ThreadState::Balanced)
+        ctx.set_thread_state(process_id, thread_id, ThreadState::Balanced)
             .unwrap();
         let mut process_ctx = ctx.process_map.get_process(process_id).unwrap();
         assert_eq!(process_ctx.thread_map().len(), 3);
@@ -1095,13 +1102,13 @@ mod tests {
         .unwrap();
 
         let process_id = ProcessId(std::process::id());
-        ctx.set_process_state(process_id.0, ProcessState::Normal)
+        ctx.set_process_state(process_id, ProcessState::Normal)
             .unwrap();
         let (thread_id1, dead_thread1) = spawn_thread_for_test();
-        ctx.set_thread_state(process_id.0, thread_id1.0, ThreadState::Urgent)
+        ctx.set_thread_state(process_id, thread_id1, ThreadState::Urgent)
             .unwrap();
         let (thread_id2, _thread2) = spawn_thread_for_test();
-        ctx.set_thread_state(process_id.0, thread_id2.0, ThreadState::Utility)
+        ctx.set_thread_state(process_id, thread_id2, ThreadState::Utility)
             .unwrap();
 
         let mut process_ctx = ctx.process_map.get_process(process_id).unwrap();
@@ -1112,7 +1119,7 @@ mod tests {
         wait_for_thread_removed(process_id, thread_id1);
 
         let (thread_id3, _thread3) = spawn_thread_for_test();
-        ctx.set_thread_state(process_id.0, thread_id3.0, ThreadState::Background)
+        ctx.set_thread_state(process_id, thread_id3, ThreadState::Background)
             .unwrap();
         let mut process_ctx = ctx.process_map.get_process(process_id).unwrap();
         assert_eq!(process_ctx.thread_map().len(), 2);
@@ -1135,17 +1142,17 @@ mod tests {
         .unwrap();
 
         let process_id = ProcessId(std::process::id());
-        ctx.set_process_state(process_id.0, ProcessState::Normal)
+        ctx.set_process_state(process_id, ProcessState::Normal)
             .unwrap();
         let (thread_id1, _thread1) = spawn_thread_for_test();
-        ctx.set_thread_state(process_id.0, thread_id1.0, ThreadState::UrgentBursty)
+        ctx.set_thread_state(process_id, thread_id1, ThreadState::UrgentBursty)
             .unwrap();
 
         let (process_id2, thread_id2, _process) = fork_process_for_test();
-        ctx.set_process_state(process_id2.0, ProcessState::Background)
+        ctx.set_process_state(process_id2, ProcessState::Background)
             .unwrap()
             .unwrap();
-        ctx.set_thread_state(process_id2.0, thread_id2.0, ThreadState::Background)
+        ctx.set_thread_state(process_id2, thread_id2, ThreadState::Background)
             .unwrap();
 
         let (cgroup_context, mut files) = create_fake_cgroup_context_pair();
@@ -1159,7 +1166,7 @@ mod tests {
         )
         .unwrap();
 
-        ctx.set_process_state(process_id.0, ProcessState::Background)
+        ctx.set_process_state(process_id, ProcessState::Background)
             .unwrap();
         assert_eq!(
             read_number(&mut files.cpuset_efficient).unwrap(),
@@ -1167,7 +1174,7 @@ mod tests {
         );
         assert!(read_number(&mut files.cpuset_efficient).is_none());
 
-        ctx.set_thread_state(process_id2.0, thread_id2.0, ThreadState::UrgentBursty)
+        ctx.set_thread_state(process_id2, thread_id2, ThreadState::UrgentBursty)
             .unwrap();
         assert_eq!(
             read_number(&mut files.cpuset_efficient).unwrap(),

@@ -163,7 +163,7 @@ pub fn set_thread_state(
 
     let mut ctx = sched_ctx.lock().expect("lock schedqos context");
 
-    ctx.set_thread_state(process_id, thread_id, state)?;
+    ctx.set_thread_state(process_id.into(), thread_id.into(), state)?;
 
     Ok(())
 }
@@ -181,7 +181,7 @@ pub fn set_process_state(
 
     let mut ctx = sched_ctx.lock().expect("lock schedqos context");
 
-    if let Some(process_key) = ctx.set_process_state(process_id, state)? {
+    if let Some(process_key) = ctx.set_process_state(process_id.into(), state)? {
         match create_async_pidfd(process_id) {
             Ok(pidfd) => Ok(Some(monitor_process(sched_ctx.clone(), pidfd, process_key))),
             Err(e) => {

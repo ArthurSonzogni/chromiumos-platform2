@@ -14,8 +14,8 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 
 use crate::proc::ThreadChecker;
-pub(crate) use crate::sched_attr::assert_sched_attr;
-pub(crate) use crate::sched_attr::SchedAttrChecker;
+pub use crate::sched_attr::assert_sched_attr;
+pub use crate::sched_attr::SchedAttrChecker;
 use crate::CgroupContext;
 use crate::ProcessId;
 use crate::ThreadId;
@@ -97,7 +97,7 @@ pub fn drain_file(file: &mut File) {
     while read_number(file).is_some() {}
 }
 
-pub(crate) fn get_current_thread_id() -> ThreadId {
+pub fn get_current_thread_id() -> ThreadId {
     ThreadId(unsafe { libc::gettid() } as u32)
 }
 
@@ -113,7 +113,7 @@ impl Drop for ThreadForTest {
     }
 }
 
-pub(crate) fn spawn_thread_for_test() -> (ThreadId, ThreadForTest) {
+pub fn spawn_thread_for_test() -> (ThreadId, ThreadForTest) {
     let (sender, receiver) = channel();
     let barrier = Arc::new(Barrier::new(2));
     let barrier_on_thread = barrier.clone();
@@ -136,7 +136,7 @@ pub(crate) fn spawn_thread_for_test() -> (ThreadId, ThreadForTest) {
 ///
 /// Poll the procfs file until the files for the thread is removed. If the files
 /// are not removed, this returns [false].
-pub(crate) fn wait_for_thread_removed(process_id: ProcessId, thread_id: ThreadId) -> bool {
+pub fn wait_for_thread_removed(process_id: ProcessId, thread_id: ThreadId) -> bool {
     let mut checker = ThreadChecker::new(process_id);
     for _ in 0..100 {
         if !checker.thread_exists(thread_id) {
@@ -161,7 +161,7 @@ impl Drop for ProcessForTest {
     }
 }
 
-pub(crate) fn fork_process_for_test() -> (ProcessId, ThreadId, ProcessForTest) {
+pub fn fork_process_for_test() -> (ProcessId, ThreadId, ProcessForTest) {
     let child_process_id = unsafe { libc::fork() };
     if child_process_id == 0 {
         loop {

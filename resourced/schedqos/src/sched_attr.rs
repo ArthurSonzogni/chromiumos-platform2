@@ -28,7 +28,7 @@ impl SchedAttrContext {
         })
     }
 
-    pub(crate) fn set_thread_sched_attr(
+    pub fn set_thread_sched_attr(
         &self,
         thread_id: ThreadId,
         thread_config: &ThreadStateConfig,
@@ -176,7 +176,7 @@ fn check_uclamp_support() -> io::Result<bool> {
 }
 
 #[cfg(test)]
-pub(crate) fn assert_sched_attr(
+pub fn assert_sched_attr(
     ctx: &SchedAttrContext,
     thread_id: ThreadId,
     thread_config: &ThreadStateConfig,
@@ -200,14 +200,14 @@ pub(crate) fn assert_sched_attr(
 }
 
 #[cfg(test)]
-pub(crate) struct SchedAttrChecker {
+pub struct SchedAttrChecker {
     attr: sched_attr,
     thread_id: ThreadId,
 }
 
 #[cfg(test)]
 impl SchedAttrChecker {
-    pub(crate) fn new(thread_id: ThreadId) -> Self {
+    pub fn new(thread_id: ThreadId) -> Self {
         let mut attr = sched_attr::default();
         sched_getattr(thread_id, &mut attr).unwrap();
         Self { attr, thread_id }

@@ -51,11 +51,11 @@ impl From<io::Error> for Error {
     }
 }
 
-pub(crate) fn load_process_timestamp(process_id: ProcessId) -> Result<u64> {
+pub fn load_process_timestamp(process_id: ProcessId) -> Result<u64> {
     load_starttime(Path::new(&format!("/proc/{}/stat", process_id.0)))
 }
 
-pub(crate) fn load_thread_timestamp(process_id: ProcessId, thread_id: ThreadId) -> Result<u64> {
+pub fn load_thread_timestamp(process_id: ProcessId, thread_id: ThreadId) -> Result<u64> {
     load_starttime(Path::new(&format!(
         "/proc/{}/task/{}/stat",
         process_id.0, thread_id.0
@@ -132,7 +132,7 @@ pub struct ThreadChecker {
 }
 
 impl ThreadChecker {
-    pub(crate) fn new(process_id: ProcessId) -> Self {
+    pub fn new(process_id: ProcessId) -> Self {
         // "/proc/" (6 bytes) + pid (at most 10 bytes) "/task/" (6 bytes) + tid (at most 10 bytes).
         let mut prefix = String::with_capacity(32);
         prefix.push_str("/proc/");
@@ -141,7 +141,7 @@ impl ThreadChecker {
         Self { prefix }
     }
 
-    pub(crate) fn thread_exists(&mut self, thread_id: ThreadId) -> bool {
+    pub fn thread_exists(&mut self, thread_id: ThreadId) -> bool {
         let original_len = self.prefix.len();
         self.prefix.push_str(&thread_id.0.to_string());
         let result = Path::new(&self.prefix).exists();
