@@ -23,55 +23,67 @@ class MockDrawInterface : public DrawInterface {
   MockDrawInterface(const MockDrawInterface&) = delete;
   MockDrawInterface& operator=(const MockDrawInterface&) = delete;
 
-  MOCK_METHOD(bool, Init, ());
+  MOCK_METHOD(bool, Init, (), (override));
   MOCK_METHOD(bool,
               ShowBox,
               (int offset_x,
                int offset_y,
                int size_x,
                int size_y,
-               const std::string& color));
+               const std::string& color),
+              (override));
   MOCK_METHOD(bool,
               ShowImage,
-              (const base::FilePath& image_name, int offset_x, int offset_y));
+              (const base::FilePath& image_name, int offset_x, int offset_y),
+              (override));
   MOCK_METHOD(bool,
               ShowMessage,
-              (const std::string& message_token, int offset_x, int offset_y));
+              (const std::string& message_token, int offset_x, int offset_y),
+              (override));
   MOCK_METHOD(bool,
               ShowText,
               (const std::string& text,
                int glyph_offset_h,
                int glyph_offset_v,
-               const std::string& color));
-  MOCK_METHOD(void, ShowInstructions, (const std::string& message_token));
+               const std::string& color),
+              (override));
+  MOCK_METHOD(void,
+              ShowInstructions,
+              (const std::string& message_token),
+              (override));
   MOCK_METHOD(void,
               ShowInstructionsWithTitle,
-              (const std::string& message_token));
-  MOCK_METHOD(bool, IsDetachable, ());
+              (const std::string& message_token),
+              (override));
+  MOCK_METHOD(bool, IsDetachable, (), (const, override));
   MOCK_METHOD(void,
               ShowButton,
               (const std::string& message_token,
                int offset_y,
                bool is_selected,
                int inner_width,
-               bool is_text));
-  MOCK_METHOD(void, ShowStepper, (const std::vector<std::string>& steps));
-  MOCK_METHOD(void, ShowAdvancedOptionsButton, (bool focused));
-  MOCK_METHOD(void, ShowPowerButton, (bool focused));
-  MOCK_METHOD(void, MessageBaseScreen, ());
-  MOCK_METHOD(void, ShowLanguageDropdown, (int current_index));
-  MOCK_METHOD(int, FindLocaleIndex, (int current_index));
-  MOCK_METHOD(void, ShowLanguageMenu, (bool is_selected));
-  MOCK_METHOD(void, LocaleChange, (int selected_locale));
-  MOCK_METHOD(void, ShowProgressBar, ());
-  MOCK_METHOD(void, ShowProgressPercentage, (double progress));
-  MOCK_METHOD(void, ShowIndeterminateProgressBar, ());
-  MOCK_METHOD(void, HideIndeterminateProgressBar, ());
-  MOCK_METHOD(int, GetSupportedLocalesSize, ());
-  MOCK_METHOD(int, GetDefaultButtonWidth, ());
-  MOCK_METHOD(int, GetFreconCanvasSize, ());
-  MOCK_METHOD(base::FilePath, GetScreensPath, ());
-  MOCK_METHOD(bool, IsLocaleRightToLeft, ());
+               bool is_text),
+              (override));
+  MOCK_METHOD(void,
+              ShowStepper,
+              (const std::vector<std::string>& steps),
+              (override));
+  MOCK_METHOD(void, ShowAdvancedOptionsButton, (bool focused), (override));
+  MOCK_METHOD(void, ShowPowerButton, (bool focused), (override));
+  MOCK_METHOD(void, MessageBaseScreen, (), (override));
+  MOCK_METHOD(void, ShowLanguageDropdown, (int current_index), (override));
+  MOCK_METHOD(int, FindLocaleIndex, (), (const, override));
+  MOCK_METHOD(void, ShowLanguageMenu, (bool is_selected), (override));
+  MOCK_METHOD(void, LocaleChange, (int selected_locale), (override));
+  MOCK_METHOD(void, ShowProgressBar, (), (override));
+  MOCK_METHOD(void, ShowProgressPercentage, (double progress), (override));
+  MOCK_METHOD(void, ShowIndeterminateProgressBar, (), (override));
+  MOCK_METHOD(void, HideIndeterminateProgressBar, (), (override));
+  MOCK_METHOD(int, GetSupportedLocalesSize, (), (const, override));
+  MOCK_METHOD(int, GetDefaultButtonWidth, (), (const, override));
+  MOCK_METHOD(int, GetFreconCanvasSize, (), (const, override));
+  MOCK_METHOD(base::FilePath, GetScreensPath, (), (const, override));
+  MOCK_METHOD(bool, IsLocaleRightToLeft, (), (const, override));
 };
 
 }  // namespace minios

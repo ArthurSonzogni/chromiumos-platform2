@@ -23,22 +23,27 @@ class MockDrawUtils : public DrawUtils {
                int offset_y,
                int size_x,
                int size_y,
-               const std::string& color));
+               const std::string& color),
+              (override));
   MOCK_METHOD(bool,
               ShowImage,
-              (const base::FilePath& image_name, int offset_x, int offset_y));
+              (const base::FilePath& image_name, int offset_x, int offset_y),
+              (override));
   MOCK_METHOD(bool,
               ShowMessage,
-              (const std::string& message_token, int offset_x, int offset_y));
+              (const std::string& message_token, int offset_x, int offset_y),
+              (override));
   MOCK_METHOD(bool,
               ShowText,
               (const std::string& text,
                int glyph_offset_h,
                int glyph_offset_v,
-               const std::string& color));
+               const std::string& color),
+              (override));
   MOCK_METHOD(void,
               ShowInstructionsWithTitle,
-              (const std::string& message_token));
+              (const std::string& message_token),
+              (override));
 };
 
 }  // namespace minios

@@ -258,15 +258,6 @@ TEST_F(DrawUtilsTest, GetLangConstsError) {
   EXPECT_FALSE(draw_utils_.ReadLangConstants());
 }
 
-TEST_F(DrawUtilsTest, CheckDetachable) {
-  EXPECT_FALSE(draw_utils_.IsDetachable());
-
-  brillo::TouchFile(
-      base::FilePath(test_root_).Append("etc/cros-initramfs/is_detachable"));
-
-  EXPECT_TRUE(draw_utils_.IsDetachable());
-}
-
 TEST_F(DrawUtilsTest, GetHwidFromCommand) {
   std::string output = "Nightfury TEST ID";
   EXPECT_CALL(*mock_process_manager_, RunCommandWithOutput(_, _, _, _))

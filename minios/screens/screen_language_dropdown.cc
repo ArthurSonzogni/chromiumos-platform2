@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "minios/key_reader.h"
 #include "minios/screens/screen_language_dropdown.h"
+
+#include <linux/input-event-codes.h>
 
 namespace minios {
 
@@ -19,7 +20,7 @@ ScreenLanguageDropdown::ScreenLanguageDropdown(
 void ScreenLanguageDropdown::Show() {
   draw_utils_->ShowLanguageMenu(false);
   // Find index of current locale to show in the dropdown.
-  index_ = draw_utils_->FindLocaleIndex(index_);
+  index_ = draw_utils_->FindLocaleIndex();
   draw_utils_->ShowLanguageDropdown(index_);
 }
 

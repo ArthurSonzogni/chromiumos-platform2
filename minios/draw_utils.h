@@ -47,6 +47,8 @@ extern const int kFreconScalingFactor;
 extern const int kCanvasSize;
 extern const int kFreconNoOffset;
 
+extern const char kDetachablePath[];
+
 // `DrawUtils` contains all the different components needed to show MiniOS
 // Screens.
 class DrawUtils : public DrawInterface {
@@ -87,9 +89,9 @@ class DrawUtils : public DrawInterface {
 
   void ShowInstructionsWithTitle(const std::string& message_token) override;
 
-  bool IsDetachable() override;
+  bool IsDetachable() const override;
 
-  bool IsLocaleRightToLeft() override;
+  bool IsLocaleRightToLeft() const override;
 
   void ShowButton(const std::string& message_token,
                   int offset_y,
@@ -103,7 +105,7 @@ class DrawUtils : public DrawInterface {
 
   void ShowLanguageDropdown(int current_index) override;
 
-  int FindLocaleIndex(int current_index) override;
+  int FindLocaleIndex() const override;
 
   void ShowLanguageMenu(bool is_selected) override;
 
@@ -121,18 +123,21 @@ class DrawUtils : public DrawInterface {
 
   void HideIndeterminateProgressBar() override;
 
-  int GetSupportedLocalesSize() override { return supported_locales_.size(); }
+  int GetSupportedLocalesSize() const override {
+    return supported_locales_.size();
+  }
 
-  int GetDefaultButtonWidth() override { return default_button_width_; }
+  int GetDefaultButtonWidth() const override { return default_button_width_; }
 
-  int GetFreconCanvasSize() override { return frecon_canvas_size_; }
+  int GetFreconCanvasSize() const override { return frecon_canvas_size_; }
 
-  base::FilePath GetScreensPath() override { return screens_path_; }
+  base::FilePath GetScreensPath() const override { return screens_path_; }
 
   // Override the root directory for testing. Default is '/'.
   void SetRootForTest(const std::string& test_root) {
     root_ = base::FilePath(test_root);
     screens_path_ = base::FilePath(root_).Append(kScreens);
+    is_detachable_ = base::PathExists(root_.Append(kDetachablePath));
   }
 
   // Override the current locale without using the language menu.
@@ -189,7 +194,7 @@ class DrawUtils : public DrawInterface {
 
   // Sets the height or width of an image given the token. Returns false on
   // error.
-  bool GetDimension(const std::string& token, int* token_dimension);
+  bool GetDimension(const std::string& token, int* token_dimension) const;
 
   // Read the language constants into memory. Does not change
   // based on the current locale. Returns false on failure.
@@ -197,7 +202,7 @@ class DrawUtils : public DrawInterface {
 
   // Sets the width of language token for a given locale. Returns false on
   // error.
-  bool GetLangConstants(const std::string& locale, int* lang_width);
+  bool GetLangConstants(const std::string& locale, int* lang_width) const;
 
   // Gets frecon constants defined at initialization by Upstart job.
   void GetFreconConstants();

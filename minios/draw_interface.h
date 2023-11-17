@@ -49,8 +49,8 @@ class DrawInterface {
   // `constants` to place.
   virtual void ShowInstructionsWithTitle(const std::string& message_token) = 0;
 
-  // Returns whether device has a detachable keyboard and sets `is_detachable`.
-  virtual bool IsDetachable() = 0;
+  // Returns whether device has a detachable keyboard.
+  virtual bool IsDetachable() const = 0;
 
   // Show button, focus changes the button color to indicate selection. Returns
   // false on error.
@@ -77,9 +77,8 @@ class DrawInterface {
   // Shows the language dropdown button.
   virtual void ShowLanguageDropdown(int current_index) = 0;
 
-  // Finds and updates the index of `locale_` in `supported_locales` or falls
-  // back to a default.
-  virtual int FindLocaleIndex(int current_index) = 0;
+  // Find the index of currently selected locale.
+  virtual int FindLocaleIndex() const = 0;
 
   // Shows language menu drop down button on base screen. Button is highlighted
   // if it is currently selected.
@@ -102,19 +101,19 @@ class DrawInterface {
   virtual void HideIndeterminateProgressBar() = 0;
 
   // Returns number of locales.
-  virtual int GetSupportedLocalesSize() = 0;
+  virtual int GetSupportedLocalesSize() const = 0;
 
   // Returns the default button width, read from constants.
-  virtual int GetDefaultButtonWidth() = 0;
+  virtual int GetDefaultButtonWidth() const = 0;
 
   // Returns the frecon canvas size.
-  virtual int GetFreconCanvasSize() = 0;
+  virtual int GetFreconCanvasSize() const = 0;
 
   // Returns the screen assets path.
-  virtual base::FilePath GetScreensPath() = 0;
+  virtual base::FilePath GetScreensPath() const = 0;
 
   // Returns whether the current locale is read from right to left.
-  virtual bool IsLocaleRightToLeft() = 0;
+  virtual bool IsLocaleRightToLeft() const = 0;
 };
 
 }  // namespace minios

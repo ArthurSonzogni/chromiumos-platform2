@@ -69,8 +69,11 @@ int nearbyeven(const float value) {
 }
 }  // namespace
 
+const char kDetachablePath[] = "etc/cros-initramfs/is_detachable";
+
 bool DrawUtils::Init() {
   ReadHardwareId();
+  is_detachable_ = base::PathExists(root_.Append(kDetachablePath));
   // TODO(vyshu): Change constants.sh and lang_constants.sh to simple text file.
   ReadDimensionConstants();
   if (!ReadLangConstants()) {
@@ -204,7 +207,7 @@ void DrawUtils::ShowInstructionsWithTitle(const std::string& message_token) {
     LOG(WARNING) << "Unable to show description " << message_token;
 }
 
-int DrawUtils::FindLocaleIndex(int current_index) {
+int DrawUtils::FindLocaleIndex() const {
   auto locale =
       std::find(supported_locales_.begin(), supported_locales_.end(), locale_);
   if (locale == supported_locales_.end()) {
@@ -640,7 +643,8 @@ void DrawUtils::ReadDimensionConstants() {
   }
 }
 
-bool DrawUtils::GetDimension(const std::string& token, int* token_dimension) {
+bool DrawUtils::GetDimension(const std::string& token,
+                             int* token_dimension) const {
   if (image_dimensions_.empty()) {
     LOG(ERROR) << "No dimensions available.";
     return false;
@@ -738,7 +742,8 @@ bool DrawUtils::ReadLangConstants() {
   return true;
 }
 
-bool DrawUtils::GetLangConstants(const std::string& locale, int* lang_width) {
+bool DrawUtils::GetLangConstants(const std::string& locale,
+                                 int* lang_width) const {
   if (lang_constants_.empty()) {
     LOG(ERROR) << "No language widths available.";
     return false;
@@ -763,13 +768,11 @@ bool DrawUtils::GetLangConstants(const std::string& locale, int* lang_width) {
   return false;
 }
 
-bool DrawUtils::IsLocaleRightToLeft() {
+bool DrawUtils::IsLocaleRightToLeft() const {
   return (locale_ == "ar" || locale_ == "fa" || locale_ == "he");  // nocheck
 }
 
-bool DrawUtils::IsDetachable() {
-  is_detachable_ =
-      base::PathExists(root_.Append("etc/cros-initramfs/is_detachable"));
+bool DrawUtils::IsDetachable() const {
   return is_detachable_;
 }
 
