@@ -1,4 +1,4 @@
-include /metrics/OWNERS
-
+# alphabetical
+dpad@google.com
 xiangdongkong@google.com
-zentaro@google.com
+zentaro@chromium.org
