@@ -78,6 +78,7 @@ copies.
 | [goldfishd](./goldfishd/) | Android Emulator Daemon |
 | [hammerd](./hammerd/) | Firmware updater utility for hammer hardware |
 | [hardware_verifier](./hardware_verifier/) | Hardware verifier tool |
+| [heartd](./heartd/) | Health ensure and accident resolve treatment daemon |
 | [hermes](./hermes/) | ChromeOS LPA implementation for eSIM hardware support |
 | [hiberman](./hiberman/) | ChromeOS Hibernation Manager |
 | [hps](./hps/) | ChromeOS HPS daemon and utilities |
