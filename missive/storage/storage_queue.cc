@@ -54,7 +54,6 @@
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_managed_buffer.h"
 #include "missive/resources/resource_manager.h"
-#include "missive/storage/storage.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/storage/storage_util.h"
@@ -365,6 +364,20 @@ StatusOr<base::TimeDelta> StorageQueue::MaybeBackoffAndReInit(
   // Later on we may add filter out certain cases and assign delay based on
   // `retry_count`.
   return kBackOff;
+}
+
+void StorageQueue::AsynchronouslyDeleteAllFilesAndDirectoryWarnIfFailed() {
+  sequenced_task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(
+                     [](const base::FilePath& directory) {
+                       const bool deleted_queue_files_successfully =
+                           DeleteFilesWarnIfFailed(base::FileEnumerator(
+                               directory, false, base::FileEnumerator::FILES));
+                       if (deleted_queue_files_successfully) {
+                         DeleteFileWarnIfFailed(directory);
+                       }
+                     },
+                     options_.directory()));
 }
 
 std::optional<std::string> StorageQueue::GetLastRecordDigest() const {
@@ -942,23 +955,13 @@ void StorageQueue::MaybeSelfDestructInactiveQueue(Status status) {
     // Queue still has data, bail out until the next check.
     return;
   }
-  // Asynchronously delete the queue from `QueueContainer`.
+  // Asynchronously remove the queue from `QueueContainer`, and then delete all
+  // its files.
   disconnect_queue_cb_.Run(
       generation_guid_,
-      base::BindPostTaskToCurrentDefault(base::BindOnce(
-          [](base::FilePath directory) {
-            const bool deleted_queue_files_successfully =
-                DeleteFilesWarnIfFailed(base::FileEnumerator(
-                    directory, false, base::FileEnumerator::FILES));
-            LOG_IF(ERROR, !deleted_queue_files_successfully)
-                << "Cannot delete queue directory " << directory.MaybeAsASCII()
-                << ". Failed to delete files within directory.";
-            const bool deleted_queue_dir_successfully = DeleteFile(directory);
-            LOG_IF(ERROR, !deleted_queue_dir_successfully)
-                << "Cannot delete queue directory " << directory.MaybeAsASCII()
-                << ".";
-          },
-          options_.directory())));
+      base::BindOnce(
+          &StorageQueue::AsynchronouslyDeleteAllFilesAndDirectoryWarnIfFailed,
+          base::WrapRefCounted(this)));
 }
 
 void StorageQueue::InactivityCheck() {

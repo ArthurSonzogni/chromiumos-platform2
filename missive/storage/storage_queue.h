@@ -236,6 +236,11 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   static StatusOr<base::TimeDelta> MaybeBackoffAndReInit(Status init_status,
                                                          size_t retry_count);
 
+  // Deletes all files in the queue's directory and the directory itself on the
+  // queue thread. Should be only called when all file operations are guaranteed
+  // to be finished.
+  void AsynchronouslyDeleteAllFilesAndDirectoryWarnIfFailed();
+
   // Accessors.
   const QueueOptions& options() const { return options_; }
   GenerationGuid generation_guid() const { return generation_guid_; }

@@ -42,6 +42,7 @@
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_queue.h"
 #include "missive/storage/storage_util.h"
+#include "missive/util/file.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 #include "missive/util/task_runner_context.h"
@@ -144,17 +145,32 @@ class CreateQueueContext : public TaskRunnerContext<Status> {
       Response(storage_queue_result.status());
       return;
     }
-    // Add queue to storage
-    auto added_status = storage_->queues_container_->AddQueue(
-        priority, storage_queue_result.ValueOrDie());
+    // Add queue to the container.
+    auto queue = storage_queue_result.ValueOrDie();
+    const auto added_status =
+        storage_->queues_container_->AddQueue(priority, queue);
     if (!added_status.ok()) {
-      Response(added_status);
-      return;
+      // The queue failed to add. It could happen because the same priority and
+      // guid were being added in parallel (could only happen when new
+      // multi-generation queues are needed for `Write` operation).
+      // We will check whether this is the case, and return that queue instead.
+      const auto query_result =
+          storage_->queues_container_->GetQueue(priority, generation_guid_);
+      if (!query_result.ok()) {
+        // No pre-recorded queue either.
+        Response(added_status);
+        return;
+      }
+      // Asynchronously delete newly created queue files and directory.
+      // Do not wait for the completion.
+      queue->AsynchronouslyDeleteAllFilesAndDirectoryWarnIfFailed();
+      // Substitute and use prior queue from now on.
+      queue = query_result.ValueOrDie();
     }
 
     // Report success.
     std::move(queue_created_cb_)
-        .Run(storage_queue_result.ValueOrDie(),
+        .Run(std::move(queue),
              base::BindPostTaskToCurrentDefault(base::BindOnce(
                  &CreateQueueContext::Response, base::Unretained(this))));
   }
@@ -420,7 +436,10 @@ void Storage::Write(Priority priority,
             }
             // We don't have a queue for this priority + generation guid, so
             // create one, and then let the context execute the write
-            // via `call_async_get_queue`.
+            // via `write_queue_action`. Note that we can end up in a race
+            // with another `Write` of the same `priority` and
+            // `generation_guid`, and in that case only one queue will survive
+            // and be used.
             Start<CreateQueueContext>(
                 priority, self->options_.ProduceQueueOptions(priority), self,
                 generation_guid, std::move(write_queue_action),

@@ -37,6 +37,7 @@ bool DeleteFilesWarnIfFailed(
     base::FileEnumerator& dir_enum,
     base::RepeatingCallback<bool(const base::FilePath&)> pred =
         base::BindRepeating([](const base::FilePath&) { return true; }));
+
 // A convenient wrapper to the function above so that creating a named
 // FileEnumerator object would be unneeded.
 bool DeleteFilesWarnIfFailed(
