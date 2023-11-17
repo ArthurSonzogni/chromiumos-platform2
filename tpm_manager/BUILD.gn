@@ -84,14 +84,7 @@ static_library("server_library") {
   ]
   configs += [ ":target_defaults" ]
 
-  # NOSORT
-  pkg_deps = [
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "protobuf",
-  ]
+  pkg_deps = [ "system_api" ]
 
   libs = [ "hwsec-foundation" ]
 
@@ -136,14 +129,7 @@ executable("tpm_managerd") {
   libs = [ "hwsec-profiling" ]
   deps = [ ":server_library" ]
 
-  # NOSORT
-  pkg_deps = [
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "protobuf",
-  ]
+  pkg_deps = [ "system_api" ]
 }
 
 # Local data migrator.
@@ -173,14 +159,7 @@ static_library("tpm_manager_test") {
   ]
   configs -= [ "//common-mk:use_thin_archive" ]
 
-  # NOSORT
-  pkg_deps = [
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "protobuf",
-  ]
+  pkg_deps = [ "system_api" ]
 }
 
 if (use.test) {
@@ -220,14 +199,7 @@ if (use.test) {
       ":tpm_manager_test",
     ]
 
-    # NOSORT
-    pkg_deps = [
-      # system_api depends on protobuf (or protobuf-lite). It must appear
-      # before protobuf here or the linker flags won't be in the right
-      # order.
-      "system_api",
-      "protobuf",
-    ]
+    pkg_deps = [ "system_api" ]
 
     if (use.tpm2) {
       sources += [
