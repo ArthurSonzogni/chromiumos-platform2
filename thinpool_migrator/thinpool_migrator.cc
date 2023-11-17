@@ -4,6 +4,8 @@
 
 #include "thinpool_migrator/thinpool_migrator.h"
 
+#include <ext2fs/ext2fs.h>
+
 #include <string>
 #include <utility>
 
@@ -108,6 +110,11 @@ bool ThinpoolMigrator::Migrate(bool dry_run) {
   status_.set_tries(status_.tries() - 1);
   if (!dry_run && !PersistMigrationStatus()) {
     LOG(ERROR) << "Failed to set tries";
+    return false;
+  }
+
+  if (!CheckFilesystemState()) {
+    LOG(ERROR) << "Invalid filesystem state";
     return false;
   }
 
@@ -508,6 +515,46 @@ bool ThinpoolMigrator::BootAlert() {
     PLOG(WARNING) << "chromeos-boot-alert failed with code " << ret;
     return false;
   }
+  return true;
+}
+
+bool ThinpoolMigrator::CheckFilesystemState() {
+  ext2_filsys fs;
+
+  if (ext2fs_open(block_device_.value().c_str(), 0, 0, 0, unix_io_manager,
+                  &fs)) {
+    LOG(ERROR) << "Failed to open ext4 filesystem";
+    return false;
+  }
+
+  base::ScopedClosureRunner close_sb(
+      base::BindOnce(base::IgnoreResult(&ext2fs_close), fs));
+
+  // Check that the filesystem does not have any errors.
+  ext2_super_block* sb = fs->super;
+
+  // Make sure that there are no errors on the filesystem.
+  if (sb->s_error_count > 0 || sb->s_state & EXT2_ERROR_FS) {
+    LOG(ERROR) << "Errors detected in the filesystem";
+    ReportIntMetric(kResultHistogram, MigrationResult::FSCK_NEEDED,
+                    static_cast<int>(MigrationResult::SUCCESS) + 1);
+    return false;
+  }
+
+  // Make sure that there is enough space to do the migration.
+  uint64_t free_blocks = sb->s_free_blocks_hi;
+  free_blocks = (free_blocks << 32) | sb->s_free_blocks_count;
+  uint64_t total_blocks = sb->s_blocks_count_hi;
+  total_blocks = (total_blocks << 32) | sb->s_blocks_count;
+
+  if (free_blocks < total_blocks / 10) {
+    LOG(ERROR) << "Insufficient free space for migration";
+    ReportIntMetric(kResultHistogram, MigrationResult::INSUFFICIENT_FREE_SPACE,
+                    static_cast<int>(MigrationResult::SUCCESS) + 1);
+
+    return false;
+  }
+
   return true;
 }
 

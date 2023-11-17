@@ -25,6 +25,7 @@ class MockThinpoolMigrator : public ThinpoolMigrator {
             std::make_unique<brillo::DeviceMapper>(
                 base::BindRepeating(&brillo::fake::CreateDevmapperTask))) {}
 
+  MOCK_METHOD(bool, CheckFilesystemState, (), (override));
   MOCK_METHOD(bool, ReplayExt4Journal, (), (override));
   MOCK_METHOD(bool, ResizeStatefulFilesystem, (uint64_t), (override));
 
@@ -53,6 +54,7 @@ TEST(ThinpoolMigratorTest, BasicSanity) {
 
   EXPECT_EQ(m.GetState(), MigrationStatus::NOT_STARTED);
 
+  EXPECT_CALL(m, CheckFilesystemState()).WillOnce(Return(true));
   EXPECT_CALL(m, ReplayExt4Journal()).WillOnce(Return(true));
   EXPECT_CALL(m, ResizeStatefulFilesystem(_)).WillOnce(Return(true));
   EXPECT_CALL(m, DuplicateHeader(0, _, _)).WillOnce(Return(true));
@@ -68,6 +70,7 @@ TEST(ThinpoolMigratorTest, BasicSanity) {
 TEST(ThinpoolMigratorTest, FailedResize) {
   MockThinpoolMigrator m;
 
+  EXPECT_CALL(m, CheckFilesystemState()).WillOnce(Return(true));
   EXPECT_CALL(m, ReplayExt4Journal()).WillOnce(Return(true));
   EXPECT_CALL(m, ResizeStatefulFilesystem(_)).WillOnce(Return(false));
 
@@ -79,6 +82,7 @@ TEST(ThinpoolMigratorTest, FailedResize) {
 TEST(ThinpoolMigratorTest, FailedHeaderCopy) {
   MockThinpoolMigrator m;
 
+  EXPECT_CALL(m, CheckFilesystemState()).WillOnce(Return(true));
   EXPECT_CALL(m, ReplayExt4Journal()).WillOnce(Return(true));
   EXPECT_CALL(m, ResizeStatefulFilesystem(_)).WillOnce(Return(true));
   EXPECT_CALL(m, DuplicateHeader(0, _, _)).WillOnce(Return(false));
@@ -94,6 +98,7 @@ TEST(ThinpoolMigratorTest, FailedHeaderCopy) {
 TEST(ThinpoolMigratorTest, FailedThinpoolMetadataPersist) {
   MockThinpoolMigrator m;
 
+  EXPECT_CALL(m, CheckFilesystemState()).WillOnce(Return(true));
   EXPECT_CALL(m, ReplayExt4Journal()).WillOnce(Return(true));
   EXPECT_CALL(m, ResizeStatefulFilesystem(_)).WillOnce(Return(true));
   EXPECT_CALL(m, DuplicateHeader(0, _, _)).WillOnce(Return(true));
@@ -110,6 +115,7 @@ TEST(ThinpoolMigratorTest, FailedThinpoolMetadataPersist) {
 TEST(ThinpoolMigratorTest, FailedPhysicalVolumeInitialization) {
   MockThinpoolMigrator m;
 
+  EXPECT_CALL(m, CheckFilesystemState()).WillOnce(Return(true));
   EXPECT_CALL(m, ReplayExt4Journal()).WillOnce(Return(true));
   EXPECT_CALL(m, ResizeStatefulFilesystem(_)).WillOnce(Return(true));
   EXPECT_CALL(m, DuplicateHeader(0, _, _)).WillOnce(Return(true));
@@ -127,6 +133,7 @@ TEST(ThinpoolMigratorTest, FailedPhysicalVolumeInitialization) {
 TEST(ThinpoolMigratorTest, FailedVolumeGroupInitialization) {
   MockThinpoolMigrator m;
 
+  EXPECT_CALL(m, CheckFilesystemState()).WillOnce(Return(true));
   EXPECT_CALL(m, ReplayExt4Journal()).WillOnce(Return(true));
   EXPECT_CALL(m, ResizeStatefulFilesystem(_)).WillOnce(Return(true));
   EXPECT_CALL(m, DuplicateHeader(0, _, _)).WillOnce(Return(true));
@@ -169,6 +176,8 @@ TEST(ThinpoolMigratorTest, LastTry_RevertMigration) {
   MockThinpoolMigrator m;
   m.set_tries_for_testing(1);
   m.set_state_for_testing(MigrationStatus::THINPOOL_METADATA_PERSISTED);
+
+  EXPECT_CALL(m, CheckFilesystemState()).WillOnce(Return(true));
 
   // Revert path
   EXPECT_CALL(m, DuplicateHeader(_, 0, _)).WillOnce(Return(true));

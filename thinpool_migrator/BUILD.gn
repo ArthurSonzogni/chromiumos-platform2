@@ -46,6 +46,7 @@ shared_library("libthinpool_migrator") {
   ]
   configs += [ ":target_defaults" ]
   deps = [ ":migration_status_proto" ]
+  all_dependent_pkg_deps = [ "ext2fs" ]
   install_path = "lib"
 }
 

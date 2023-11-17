@@ -131,6 +131,10 @@ class BRILLO_EXPORT ThinpoolMigrator {
   // Use chromeos-boot-alert to switch to the UI for migration.
   virtual bool BootAlert();
 
+  // Check whether the filesystem is in a clean state and has enough space for
+  // migration.
+  virtual bool CheckFilesystemState();
+
  private:
   // Generates the payload to be written to at the beginning of the stateful
   // partition.
