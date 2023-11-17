@@ -121,7 +121,7 @@ mod tests {
     }
 
     #[test]
-    fn test_cr50_update_cr50_image_not_exist() {
+    fn test_gsc_update_image_not_exist() {
         let mut mock_ctx = MockContext::new();
         mock_ctx
             .cmd_runner()

@@ -186,22 +186,21 @@ void SendNonChromebookBiosSuccess(MetricsInterface& metrics,
   metrics.SendBooleanMetric(uma_name, success);
 }
 
-// Run the cr50 script with the given args. Returns zero on success, exit code
+// Run the GSC binary with the given args. Returns zero on success, exit code
 // on failure.
 //
-// script_name the script in /usr/share/cros to run
-// script_arg the args to run the script with
+// binary_name the binary in /usr/sbin to run
+// binary_arg the args to run the binary with
 //
-int RunCr50Script(const base::FilePath& install_dir,
-                  const string& script_name,
-                  const string& script_arg) {
-  base::FilePath script =
-      install_dir.Append("usr/share/cros").Append(script_name);
-  if (!base::PathExists(script)) {
-    // The script is not there, means no cr50 present either, nothing to do.
+int RunGscBinary(const base::FilePath& install_dir,
+                 const string& binary_name,
+                 const string& binary_arg) {
+  base::FilePath binary = install_dir.Append("usr/sbin").Append(binary_name);
+  if (!base::PathExists(binary)) {
+    // The binary is not there, means no gsc present either, nothing to do.
     return 0;
   }
-  return RunCommand({script.value(), script_arg});
+  return RunCommand({binary.value(), binary_arg});
 }
 
 // Updates firmware. We must activate new firmware only after new kernel is
@@ -753,29 +752,29 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
     }
   }
 
-  // Don't modify Cr50 in factory.
+  // Don't modify GSC in factory.
   if (!is_factory_install) {
     int result = 0;
 
     // Check the device state to determine if the board id should be set.
-    if (RunCr50Script(install_config.root.mount(), "cr50-set-board-id.sh",
-                      "check_device")) {
+    if (RunGscBinary(install_config.root.mount(), "gsc_set_board_id",
+                     "check_device")) {
       LOG(INFO) << "Skip setting board id";
     } else {
       // Set the board id with unknown phase.
-      result = RunCr50Script(install_config.root.mount(),
-                             "cr50-set-board-id.sh", "unknown");
-      // cr50 set board id failure is not a reason to interrupt installation.
+      result = RunGscBinary(install_config.root.mount(), "gsc_set_board_id",
+                            "unknown");
+      // GSC set board id failure is not a reason to interrupt installation.
       if (result)
-        LOG(ERROR) << "ignored: cr50-set-board-id failure: " << result;
+        LOG(ERROR) << "ignored: gsc_set_board_id failure: " << result;
     }
 
-    result = RunCr50Script(install_config.root.mount(), "cr50-update.sh",
-                           install_config.root.mount().value());
-    // cr50 update failure is not a reason for interrupting installation.
+    result = RunGscBinary(install_config.root.mount(), "gsc_update",
+                          install_config.root.mount().value());
+    // GSC update failure is not a reason for interrupting installation.
     if (result)
-      LOG(WARNING) << "ignored: cr50-update failure: " << result;
-    LOG(INFO) << "cr50 setup complete.";
+      LOG(WARNING) << "ignored: gsc_update failure: " << result;
+    LOG(INFO) << "GSC setup complete.";
   }
 
   if (cgpt_manager.Finalize() != CgptErrorCode::kSuccess) {

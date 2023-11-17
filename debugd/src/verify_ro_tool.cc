@@ -18,7 +18,7 @@
 
 namespace {
 
-constexpr char kCr50VerifyRoScript[] = "/usr/share/cros/cr50-verify-ro.sh";
+constexpr char kGscVerifyRoBinary[] = "/usr/sbin/gsc_verify_ro";
 
 // Parent dir of where Cr50 image and RO db files are stored.
 constexpr char kCr50ResourcePath[] = "/opt/google/cr50/";
@@ -65,7 +65,7 @@ bool VerifyRoTool::UpdateAndVerifyFWOnUsb(brillo::ErrorPtr* error,
     return false;
   }
 
-  p->AddArg(kCr50VerifyRoScript);
+  p->AddArg(kGscVerifyRoBinary);
   p->AddArg(image_absolute_path.value());
   p->AddArg(ro_db_absolute_path.value());
 

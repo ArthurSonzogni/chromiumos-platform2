@@ -23,11 +23,11 @@ use system_api::client::OrgChromiumDebugd;
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
 use crate::util::{clear_signal_handlers, set_signal_handlers, DEFAULT_DBUS_TIMEOUT};
 
-const SCRIPT: &str = "/usr/share/cros/cr50-verify-ro.sh";
+const BINARY: &str = "/usr/sbin/gsc_verify_ro";
 
 pub fn register(dispatcher: &mut Dispatcher) {
-    // Only register the verify_ro command if the script is present.
-    if !Path::new(SCRIPT).exists() {
+    // Only register the verify_ro command if the binary is present.
+    if !Path::new(BINARY).exists() {
         return;
     }
     dispatcher.register_command(
