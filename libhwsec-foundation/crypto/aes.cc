@@ -94,11 +94,21 @@ bool AesGcmDecrypt(const brillo::Blob& ciphertext,
                  << ", expected " << kAesGcmTagSize << ".";
     return false;
   }
-  if (key.size() != kAesGcm256KeySize) {
-    NOTREACHED() << "Wrong key size passed to AesGcmDecrypt: " << key.size()
-                 << ", expected " << kAesGcm256KeySize << ".";
-    return false;
+
+  const EVP_CIPHER* md = nullptr;
+  switch (key.size()) {
+    case kAesGcm256KeySize:
+      md = EVP_aes_256_gcm();
+      break;
+    case kAesGcm128KeySize:
+      md = EVP_aes_128_gcm();
+      break;
+    default:
+      LOG(ERROR) << "Wrong key size passed to AesGcmDecrypt: " << key.size()
+                 << ".";
+      return false;
   }
+
   if (iv.size() != kAesGcmIVSize) {
     NOTREACHED() << "Wrong iv size passed to AesGcmDecrypt: " << iv.size()
                  << ", expected " << kAesGcmIVSize << ".";
@@ -111,8 +121,7 @@ bool AesGcmDecrypt(const brillo::Blob& ciphertext,
     return false;
   }
 
-  if (EVP_DecryptInit_ex(ctx.get(), EVP_aes_256_gcm(), nullptr, nullptr,
-                         nullptr) != 1) {
+  if (EVP_DecryptInit_ex(ctx.get(), md, nullptr, nullptr, nullptr) != 1) {
     LOG(ERROR) << "Failed to init decrypt.";
     return false;
   }
@@ -185,10 +194,19 @@ bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
     NOTREACHED() << "Empty plaintext passed to AesGcmEncrypt.";
     return false;
   }
-  if (key.size() != kAesGcm256KeySize) {
-    NOTREACHED() << "Wrong key size passed to AesGcmEncrypt: " << key.size()
-                 << ", expected " << kAesGcm256KeySize << ".";
-    return false;
+
+  const EVP_CIPHER* md = nullptr;
+  switch (key.size()) {
+    case kAesGcm256KeySize:
+      md = EVP_aes_256_gcm();
+      break;
+    case kAesGcm128KeySize:
+      md = EVP_aes_128_gcm();
+      break;
+    default:
+      LOG(ERROR) << "Wrong key size passed to AesGcmEncrypt: " << key.size()
+                 << ".";
+      return false;
   }
 
   iv->resize(kAesGcmIVSize);
@@ -200,8 +218,7 @@ bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
     return false;
   }
 
-  if (EVP_EncryptInit_ex(ctx.get(), EVP_aes_256_gcm(), nullptr, nullptr,
-                         nullptr) != 1) {
+  if (EVP_EncryptInit_ex(ctx.get(), md, nullptr, nullptr, nullptr) != 1) {
     LOG(ERROR) << "Failed to init aes-gcm-256.";
     return false;
   }

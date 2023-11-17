@@ -47,6 +47,32 @@ TEST(AesTest, AesGcmTestSimple) {
   EXPECT_EQ(plaintext, decrypted_plaintext);
 }
 
+TEST(AesTest, AesGcm128TestSimple) {
+  brillo::SecureBlob key(kAesGcm128KeySize);
+  brillo::Blob iv(kAesGcmIVSize);
+  brillo::Blob tag(kAesGcmTagSize);
+
+  brillo::Blob ciphertext(4096, '\0');
+
+  std::string message = "I am encrypting this message.";
+  brillo::SecureBlob plaintext(message.begin(), message.end());
+
+  GetSecureRandom(key.data(), key.size());
+
+  EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/std::nullopt, key, &iv, &tag,
+                            &ciphertext));
+
+  // Validity check that the encryption actually did something.
+  EXPECT_NE(ciphertext, brillo::Blob(plaintext.begin(), plaintext.end()));
+  EXPECT_EQ(ciphertext.size(), plaintext.size());
+
+  brillo::SecureBlob decrypted_plaintext(4096);
+  EXPECT_TRUE(AesGcmDecrypt(ciphertext, /*ad=*/std::nullopt, tag, key, iv,
+                            &decrypted_plaintext));
+
+  EXPECT_EQ(plaintext, decrypted_plaintext);
+}
+
 TEST(AesTest, AesGcmTestWithAd) {
   brillo::SecureBlob key(kAesGcm256KeySize);
   brillo::Blob iv(kAesGcmIVSize);

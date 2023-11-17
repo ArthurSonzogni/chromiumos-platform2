@@ -23,6 +23,10 @@ inline constexpr unsigned int kAesGcmIVSize = 96 / (sizeof(uint8_t) * CHAR_BIT);
 inline constexpr unsigned int kAesGcm256KeySize =
     256 / (sizeof(uint8_t) * CHAR_BIT);
 
+// The size of an AES-GCM key in hwsec_foundation code (128-bits).
+inline constexpr unsigned int kAesGcm128KeySize =
+    128 / (sizeof(uint8_t) * CHAR_BIT);
+
 // The size of the AES-GCM tag.
 inline constexpr unsigned int kAesGcmTagSize = 16;
 
@@ -96,7 +100,7 @@ AesDecryptDeprecated(const brillo::Blob& ciphertext,
                      brillo::SecureBlob* plaintext);
 
 // AES-GCM decrypts the |ciphertext| using the |key| and |iv|. |key| must be
-// 256-bits and |iv| must be 96-bits.
+// 128/256-bits and |iv| must be 96-bits.
 //
 // Parameters:
 //   ciphertext - The encrypted data.
@@ -115,7 +119,7 @@ AesGcmDecrypt(const brillo::Blob& ciphertext,
 
 // AES-GCM encrypts the |plaintext| using the |key|. A random initialization
 // vector is created and retuned in |iv|. The encrypted data can be decrypted
-// with AesGcmDecrypt. |key| must be 256-bits.
+// with AesGcmDecrypt. |key| must be 128/256-bits.
 //
 // Parameters:
 //   plaintext - The plain text data to encrypt.
