@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 
 namespace cryptohome {
