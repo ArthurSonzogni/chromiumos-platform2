@@ -387,6 +387,12 @@ Various memory usage statistics.  See the `/proc/meminfo` section of the
 
 ## mm-status
 
+## mmc_err_stats
+
+Error counters of MMC controllers. Each counter represents the number
+of fatal error events that occurred since boot. Error types include
+CRC mismatches and transfer timeouts.
+
 ## modetest
 
 ## mount-encrypted

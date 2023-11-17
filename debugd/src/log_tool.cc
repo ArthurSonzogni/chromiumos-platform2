@@ -323,6 +323,8 @@ const std::array kCommandLogs {
   Log{kFile, "mali_memory", "/sys/kernel/debug/mali0/gpu_memory",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   Log{kFile, "meminfo", "/proc/meminfo"},
+  Log{kGlob, "mmc_err_stats", "/sys/kernel/debug/mmc[0-9]/err_stats",
+    kRoot, kRoot},
   Log{kCommand, "modetest",
     "(modetest; modetest -M evdi; modetest -M udl) | "
     "/usr/libexec/debugd/helpers/modetest_helper",
