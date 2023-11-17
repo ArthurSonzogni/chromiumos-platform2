@@ -85,6 +85,7 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
   // kernel.
   bool created = false;
   if (!backing_device_->Exists()) {
+    LOG(INFO) << "Creating backing device for " << dmcrypt_device_name_;
     if (!backing_device_->Create()) {
       LOG(ERROR) << "Failed to create backing device";
       return false;
@@ -103,6 +104,7 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
     }
   };
 
+  LOG(INFO) << "Setting up backing device";
   if (!backing_device_->Setup()) {
     LOG(ERROR) << "Failed to setup backing device";
     return false;
@@ -166,19 +168,23 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
 
   // Wait for the dmcrypt device path to show up before continuing to setting
   // up the filesystem.
+  LOG(INFO) << "Waiting for dm-crypt device to appear";
   if (!platform_->UdevAdmSettle(dmcrypt_device_path, true)) {
     LOG(ERROR) << "udevadm settle failed.";
     return false;
   }
 
   // Create filesystem, unless we only should provide a raw device.
-  if (created && !is_raw_device_ &&
-      !platform_->FormatExt4(dmcrypt_device_path, mkfs_opts_, 0)) {
-    PLOG(ERROR) << "Failed to format ext4 filesystem";
-    return false;
+  if (created && !is_raw_device_) {
+    LOG(INFO) << "Running mke2fs on dm-crypt device";
+    if (!platform_->FormatExt4(dmcrypt_device_path, mkfs_opts_, 0)) {
+      LOG(ERROR) << "Failed to format ext4 filesystem";
+      return false;
+    }
   }
 
   // Modify features depending on whether we already have the following enabled.
+  LOG(INFO) << "Tuning filesystem features";
   if (!is_raw_device_ && !tune2fs_opts_.empty() &&
       !platform_->Tune2Fs(dmcrypt_device_path, tune2fs_opts_)) {
     PLOG(ERROR) << "Failed to tune ext4 filesystem";
