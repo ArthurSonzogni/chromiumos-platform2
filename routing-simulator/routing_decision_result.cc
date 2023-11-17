@@ -18,26 +18,36 @@ RoutingDecisionResult& RoutingDecisionResult::operator=(
     const RoutingDecisionResult& other) = default;
 
 void RoutingDecisionResult::Output(std::ostream& std_output) const {
+  std_output << "/////////////////////START/////////////////////" << std::endl;
+  std_output << "////////////Routing Decision Result/////////////" << std::endl;
   if (result_.empty()) {
     std_output << "[FAIL] There is no policy matched found" << std::endl;
+    std_output << "//////////////////////END//////////////////////"
+               << std::endl;
     return;
   }
   for (const auto& [policy, route] : result_) {
     if (policy == nullptr) {
       LOG(FATAL) << "Invalid empty policy";
     }
+    std_output << "-------Pair of matched policy and route--------"
+               << std::endl;
     std_output << "policy: " << policy->policy_str() << std::endl;
     const auto route_str = route ? route->route_str() : "no route matched";
     std_output << "route: " << route_str << std::endl;
   }
+  std_output << "-----------------------------------------------" << std::endl;
   const auto matched_route = result_.back().second;
   if (matched_route == nullptr) {
     std_output << "[FAIL] No matched route found for this packet" << std::endl;
+    std_output << "//////////////////////END//////////////////////"
+               << std::endl;
     return;
   }
   std_output << "[SUCCESS] Routing of this packet is successful" << std::endl;
   std_output << "[destination prefix] "
              << matched_route->destination_prefix().ToString() << std::endl;
+  std_output << "//////////////////////END//////////////////////" << std::endl;
 }
 
 void RoutingDecisionResult::AddResult(const RoutingPolicyEntry* policy,
