@@ -5,6 +5,7 @@
 #ifndef VM_TOOLS_CONCIERGE_UNTRUSTED_VM_UTILS_H_
 #define VM_TOOLS_CONCIERGE_UNTRUSTED_VM_UTILS_H_
 
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -18,10 +19,19 @@ namespace vm_tools::concierge {
 // untrusted VMs.
 class UntrustedVMUtils {
  public:
-  // |l1tf_status_path| - Path to read L1TF vulnerability status from.
-  // |mds_status_path| - Path to read MDS vulnerability status from.
-  UntrustedVMUtils(const base::FilePath& l1tf_status_path,
-                   const base::FilePath& mds_status_path);
+  // Used to represent kernel version.
+  using KernelVersionAndMajorRevision = std::pair<int, int>;
+
+  // The minimum kernel version of the host which supports untrusted VMs or a
+  // trusted VM with nested VM support.
+  static constexpr KernelVersionAndMajorRevision
+      kMinKernelVersionForUntrustedAndNestedVM = std::make_pair(4, 19);
+
+  // Returns the current kernel version. If there is a failure to retrieve the
+  // version it returns <INT_MIN, INT_MIN>.
+  static KernelVersionAndMajorRevision GetKernelVersion();
+
+  UntrustedVMUtils();
   UntrustedVMUtils(const UntrustedVMUtils&) = delete;
   UntrustedVMUtils& operator=(const UntrustedVMUtils&) = delete;
   virtual ~UntrustedVMUtils() = default;
@@ -47,14 +57,22 @@ class UntrustedVMUtils {
   // virtual for testing.
   virtual MitigationStatus CheckUntrustedVMMitigationStatus() const;
 
+  // Returns whether the VM is trusted or untrusted based on the source image,
+  // whether we're passing custom kernel args, the host kernel version and a
+  // flag passed down by the user.
+  bool IsUntrustedVM(bool run_as_untrusted,
+                     bool is_trusted_image,
+                     bool has_custom_kernel_params);
+
   // Returns whether an untrusted VM is allowed on the host depending on the
   // kernel version and whether security patches are applied.
-  bool IsUntrustedVMAllowed(KernelVersionAndMajorRevision host_kernel_version,
-                            std::string* reason) const;
+  bool IsUntrustedVMAllowed(std::string* reason) const;
 
  protected:
-  // Default constructor for testing.
-  UntrustedVMUtils();
+  // Protected constructor for testing.
+  UntrustedVMUtils(base::FilePath l1tf_status_path,
+                   base::FilePath mds_status_path,
+                   KernelVersionAndMajorRevision host_kernel);
 
  private:
   // Path to read L1TF vulnerability status from.
@@ -62,15 +80,10 @@ class UntrustedVMUtils {
 
   // Path to read MDS vulnerability status from.
   base::FilePath mds_status_path_;
-};
 
-// Returns whether the VM is trusted or untrusted based on the source image,
-// whether we're passing custom kernel args, the host kernel version and a
-// flag passed down by the user.
-bool IsUntrustedVM(bool run_as_untrusted,
-                   bool is_trusted_image,
-                   bool has_custom_kernel_params,
-                   KernelVersionAndMajorRevision host_kernel_version);
+  // The kernel version of the host.
+  const KernelVersionAndMajorRevision host_kernel_version_;
+};
 
 }  // namespace vm_tools::concierge
 

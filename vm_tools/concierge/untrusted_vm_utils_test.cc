@@ -17,6 +17,8 @@
 namespace vm_tools {
 namespace concierge {
 
+namespace {
+
 // Test fixture for actually testing the VirtualMachine functionality.
 class UntrustedVMUtilsTest : public ::testing::Test {
  public:
@@ -28,186 +30,183 @@ class UntrustedVMUtilsTest : public ::testing::Test {
     l1tf_status_path_ = temp_dir_.GetPath().Append("l1tf");
     mds_status_path_ = temp_dir_.GetPath().Append("mds");
 
-    // Set a kernel version that supports untrusted VMs by default. Individual
-    // test cases can override this if testing for related error scenarios.
-    untrusted_vm_utils_ =
-        std::make_unique<UntrustedVMUtils>(l1tf_status_path_, mds_status_path_);
+    // By default make MDS and l1tf passing, individual tests can set them to
+    // fail.
+    SetMDSStatus("Mitigation: Clear CPU buffers; SMT disabled");
+    SetL1TFStatus(
+        "Mitigation: PTE Inversion; VMX: cache flushes, SMT "
+        "disabled");
   }
 
  protected:
   // Checks if |l1tf_status| yields |expected_status| when
   // |CheckUntrustedVMMitigationStatus| is called.
-  void CheckL1TFStatus(const std::string& l1tf_status,
-                       UntrustedVMUtils::MitigationStatus expected_status) {
+  void SetL1TFStatus(const std::string& l1tf_status) {
     ASSERT_EQ(base::WriteFile(l1tf_status_path_, l1tf_status.c_str(),
                               l1tf_status.size()),
               l1tf_status.size());
-    EXPECT_EQ(untrusted_vm_utils_->CheckUntrustedVMMitigationStatus(),
-              expected_status);
   }
 
   // Checks if |mds_status| yields |expected_status| when
   // |CheckUntrustedVMMitigationStatus| is called.
-  void CheckMDSStatus(const std::string& mds_status,
-                      UntrustedVMUtils::MitigationStatus expected_status) {
+  void SetMDSStatus(const std::string& mds_status) {
     ASSERT_EQ(base::WriteFile(mds_status_path_, mds_status.c_str(),
                               mds_status.size()),
               mds_status.size());
-    EXPECT_EQ(untrusted_vm_utils_->CheckUntrustedVMMitigationStatus(),
-              expected_status);
   }
+
+  class FakeUntrustedVMUtils : public UntrustedVMUtils {
+   public:
+    FakeUntrustedVMUtils(base::FilePath l1tf_status_path,
+                         base::FilePath mds_status_path,
+                         KernelVersionAndMajorRevision host_kernel)
+        : UntrustedVMUtils(std::move(l1tf_status_path),
+                           std::move(mds_status_path),
+                           std::move(host_kernel)) {}
+    ~FakeUntrustedVMUtils() override = default;
+  };
 
   // Directory and file path used for reading test vulnerability statuses.
   base::ScopedTempDir temp_dir_;
   base::FilePath l1tf_status_path_;
   base::FilePath mds_status_path_;
-
-  std::unique_ptr<UntrustedVMUtils> untrusted_vm_utils_;
 };
+
+}  // anonymous namespace
 
 // Checks mitigation status for all L1TF statuses.
 TEST_F(UntrustedVMUtilsTest, CheckL1TFStatus) {
-  // Set MDS status to be not vulnerable in order to check L1TF statuses below.
-  std::string mds_status = "Mitigation: Clear CPU buffers; SMT disabled";
-  ASSERT_EQ(
-      base::WriteFile(mds_status_path_, mds_status.c_str(), mds_status.size()),
-      mds_status.size());
+  LOG(ERROR) << l1tf_status_path_;
+  FakeUntrustedVMUtils utils(l1tf_status_path_, mds_status_path_, {5, 15});
 
-  CheckL1TFStatus("Not affected",
-                  UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE);
+  SetL1TFStatus("Not affected");
+  EXPECT_EQ(utils.CheckUntrustedVMMitigationStatus(),
+            UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE);
 
-  CheckL1TFStatus("Mitigation: PTE Inversion",
-                  UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE);
+  SetL1TFStatus("Mitigation: PTE Inversion");
+  EXPECT_EQ(utils.CheckUntrustedVMMitigationStatus(),
+            UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE);
 
-  CheckL1TFStatus("Some gibberish; some more gibberish",
-                  UntrustedVMUtils::MitigationStatus::VULNERABLE);
+  SetL1TFStatus("Some gibberish; some more gibberish");
+  EXPECT_EQ(utils.CheckUntrustedVMMitigationStatus(),
+            UntrustedVMUtils::MitigationStatus::VULNERABLE);
 
-  CheckL1TFStatus(
+  SetL1TFStatus(
       "Mitigation: PTE Inversion; VMX: conditional cache flushes, SMT "
-      "vulnerable",
-      UntrustedVMUtils::MitigationStatus::VULNERABLE);
+      "vulnerable");
+  EXPECT_EQ(utils.CheckUntrustedVMMitigationStatus(),
+            UntrustedVMUtils::MitigationStatus::VULNERABLE);
 
-  CheckL1TFStatus(
-      "Mitigation: PTE Inversion; VMX: cache flushes, SMT vulnerable",
-      UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED);
+  SetL1TFStatus(
+      "Mitigation: PTE Inversion; VMX: cache flushes, SMT vulnerable");
+  EXPECT_EQ(utils.CheckUntrustedVMMitigationStatus(),
+            UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED);
 
-  CheckL1TFStatus("Mitigation: PTE Inversion; VMX: cache flushes, SMT disabled",
-                  UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE);
+  SetL1TFStatus("Mitigation: PTE Inversion; VMX: cache flushes, SMT disabled");
+  EXPECT_EQ(utils.CheckUntrustedVMMitigationStatus(),
+            UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE);
 
-  CheckL1TFStatus(
-      "Mitigation: PTE Inversion; VMX: flush not necessary, SMT disabled",
-      UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE);
+  SetL1TFStatus(
+      "Mitigation: PTE Inversion; VMX: flush not necessary, SMT disabled");
+  EXPECT_EQ(utils.CheckUntrustedVMMitigationStatus(),
+            UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE);
 }
 
 // Checks mitigation status for all MDS statuses.
 TEST_F(UntrustedVMUtilsTest, CheckMDSStatus) {
-  // Set L1TF status to be not vulnerable in order to check MDS statuses below.
-  std::string l1tf_status =
-      "Mitigation: PTE Inversion; VMX: cache flushes, SMT "
-      "disabled";
-  ASSERT_EQ(base::WriteFile(l1tf_status_path_, l1tf_status.c_str(),
-                            l1tf_status.size()),
-            l1tf_status.size());
+  FakeUntrustedVMUtils utils(l1tf_status_path_, mds_status_path_, {5, 15});
 
-  CheckMDSStatus("Not affected",
-                 UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE);
+  SetMDSStatus("Not affected");
+  EXPECT_EQ(utils.CheckUntrustedVMMitigationStatus(),
+            UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE);
 
-  CheckMDSStatus("Some gibberish; some more gibberish",
-                 UntrustedVMUtils::MitigationStatus::VULNERABLE);
+  SetMDSStatus("Some gibberish; some more gibberish");
+  EXPECT_EQ(utils.CheckUntrustedVMMitigationStatus(),
+            UntrustedVMUtils::MitigationStatus::VULNERABLE);
 
-  CheckMDSStatus("Vulnerable: Clear CPU buffers attempted, no microcode",
-                 UntrustedVMUtils::MitigationStatus::VULNERABLE);
+  SetMDSStatus("Vulnerable: Clear CPU buffers attempted, no microcode");
+  EXPECT_EQ(utils.CheckUntrustedVMMitigationStatus(),
+            UntrustedVMUtils::MitigationStatus::VULNERABLE);
 
-  CheckMDSStatus(
-      "Vulnerable: Clear CPU buffers attempted, no microcode; SMT enabled",
-      UntrustedVMUtils::MitigationStatus::VULNERABLE);
+  SetMDSStatus(
+      "Vulnerable: Clear CPU buffers attempted, no microcode; SMT enabled");
+  EXPECT_EQ(utils.CheckUntrustedVMMitigationStatus(),
+            UntrustedVMUtils::MitigationStatus::VULNERABLE);
 
-  CheckMDSStatus("Vulnerable; SMT disabled",
-                 UntrustedVMUtils::MitigationStatus::VULNERABLE);
+  SetMDSStatus("Vulnerable; SMT disabled");
+  EXPECT_EQ(utils.CheckUntrustedVMMitigationStatus(),
+            UntrustedVMUtils::MitigationStatus::VULNERABLE);
 
-  CheckMDSStatus("Mitigation: Clear CPU buffers; SMT disabled",
-                 UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE);
+  SetMDSStatus("Mitigation: Clear CPU buffers; SMT disabled");
+  EXPECT_EQ(utils.CheckUntrustedVMMitigationStatus(),
+            UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE);
 
-  CheckMDSStatus(
-      "Mitigation: Clear CPU buffers; SMT mitigated",
-      UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED);
+  SetMDSStatus("Mitigation: Clear CPU buffers; SMT mitigated");
+  EXPECT_EQ(utils.CheckUntrustedVMMitigationStatus(),
+            UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED);
 
-  CheckMDSStatus(
-      "Mitigation: Clear CPU buffers; SMT vulnerable",
-      UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED);
+  SetMDSStatus("Mitigation: Clear CPU buffers; SMT vulnerable");
+  EXPECT_EQ(utils.CheckUntrustedVMMitigationStatus(),
+            UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED);
 
-  CheckMDSStatus(
-      "Mitigation: Clear CPU buffers; SMT Host state unknown",
-      UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED);
+  SetMDSStatus("Mitigation: Clear CPU buffers; SMT Host state unknown");
+  EXPECT_EQ(utils.CheckUntrustedVMMitigationStatus(),
+            UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED);
 }
 
-UntrustedVMUtils::UntrustedVMUtils() {}
-
-namespace {
-
-class FakeUntrustedVMUtils : public UntrustedVMUtils {
- public:
-  explicit FakeUntrustedVMUtils(
-      UntrustedVMUtils::MitigationStatus mitigation_status)
-      : mitigation_status_(mitigation_status) {}
-  virtual ~FakeUntrustedVMUtils() {}
-
-  virtual MitigationStatus CheckUntrustedVMMitigationStatus() const {
-    return mitigation_status_;
-  }
-
- private:
-  UntrustedVMUtils::MitigationStatus mitigation_status_;
-};
-}  // anonymous namespace
-
-TEST(ServiceTest, IsUntrustedVMAllowed) {
-  auto failing_untrusted_vm_utils = std::make_unique<FakeUntrustedVMUtils>(
-      UntrustedVMUtils::MitigationStatus::VULNERABLE);
-  auto succeeding_untrusted_vm_utils = std::make_unique<FakeUntrustedVMUtils>(
-      UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE);
-
-  KernelVersionAndMajorRevision old_kernel_version{4, 4};
-  KernelVersionAndMajorRevision new_kernel_version{5, 15};
+TEST_F(UntrustedVMUtilsTest, IsUntrustedVMAllowed) {
   std::string reason;
 
-  EXPECT_FALSE(succeeding_untrusted_vm_utils->IsUntrustedVMAllowed(
-      old_kernel_version, &reason))
+  FakeUntrustedVMUtils old_kernel_utils(l1tf_status_path_, mds_status_path_,
+                                        {4, 4});
+  EXPECT_FALSE(old_kernel_utils.IsUntrustedVMAllowed(&reason))
       << "Old kernel version not trusted.";
-  EXPECT_FALSE(failing_untrusted_vm_utils->IsUntrustedVMAllowed(
-      new_kernel_version, &reason))
-      << "New enough kernel version trusted but CPU is not";
-  EXPECT_TRUE(succeeding_untrusted_vm_utils->IsUntrustedVMAllowed(
-      new_kernel_version, &reason))
+
+  FakeUntrustedVMUtils new_kernel_utils(l1tf_status_path_, mds_status_path_,
+                                        {5, 15});
+  EXPECT_TRUE(new_kernel_utils.IsUntrustedVMAllowed(&reason))
       << "New enough kernel version trusted and CPU is great";
+
+  // Set the status to unmitigated.
+  SetMDSStatus("foo");
+  SetL1TFStatus("bar");
+
+  EXPECT_FALSE(new_kernel_utils.IsUntrustedVMAllowed(&reason))
+      << "New enough kernel version trusted but CPU is not";
 }
 
-TEST(ServiceTest, IsUntrustedVM) {
-  KernelVersionAndMajorRevision old_kernel_version{4, 4};
-  EXPECT_TRUE(IsUntrustedVM(/*run_as_untrusted*/ true,
-                            /*is_trusted_image*/ true,
-                            /*has_custom_kernel_params*/ false,
-                            old_kernel_version))
+TEST_F(UntrustedVMUtilsTest, IsUntrustedVM) {
+  UntrustedVMUtils::KernelVersionAndMajorRevision old_kernel_version{4, 4};
+  EXPECT_TRUE(FakeUntrustedVMUtils(l1tf_status_path_, mds_status_path_,
+                                   old_kernel_version)
+                  .IsUntrustedVM(/*run_as_untrusted*/ true,
+                                 /*is_trusted_image*/ true,
+                                 /*has_custom_kernel_params*/ false))
       << "VM runs as untrusted VM is untrusted";
-  EXPECT_TRUE(IsUntrustedVM(/*run_as_untrusted*/ false,
-                            /*is_trusted_image*/ false,
-                            /*has_custom_kernel_params*/ false,
-                            old_kernel_version))
+  EXPECT_TRUE(FakeUntrustedVMUtils(l1tf_status_path_, mds_status_path_,
+                                   old_kernel_version)
+                  .IsUntrustedVM(/*run_as_untrusted*/ false,
+                                 /*is_trusted_image*/ false,
+                                 /*has_custom_kernel_params*/ false))
       << "VM using untrusted image can not be trusted";
-  EXPECT_TRUE(IsUntrustedVM(/*run_as_untrusted*/ false,
-                            /*is_trusted_image*/ true,
-                            /*has_custom_kernel_params*/ true,
-                            old_kernel_version))
+  EXPECT_TRUE(FakeUntrustedVMUtils(l1tf_status_path_, mds_status_path_,
+                                   old_kernel_version)
+                  .IsUntrustedVM(/*run_as_untrusted*/ false,
+                                 /*is_trusted_image*/ true,
+                                 /*has_custom_kernel_params*/ true))
       << "VM started with custom parameters can not be trusted";
-  EXPECT_TRUE(IsUntrustedVM(/*run_as_untrusted*/ false,
-                            /*is_trusted_image*/ true,
-                            /*has_custom_kernel_params*/ true,
-                            kMinKernelVersionForUntrustedAndNestedVM))
+  EXPECT_TRUE(FakeUntrustedVMUtils(
+                  l1tf_status_path_, mds_status_path_,
+                  UntrustedVMUtils::kMinKernelVersionForUntrustedAndNestedVM)
+                  .IsUntrustedVM(/*run_as_untrusted*/ false,
+                                 /*is_trusted_image*/ true,
+                                 /*has_custom_kernel_params*/ true))
       << "Host kernel version >= v4.19 enables nested VM which is untrusted";
-  EXPECT_FALSE(IsUntrustedVM(/*run_as_untrusted*/ false,
-                             /*is_trusted_image*/ true,
-                             /*has_custom_kernel_params*/ false,
-                             old_kernel_version))
+  EXPECT_FALSE(FakeUntrustedVMUtils(l1tf_status_path_, mds_status_path_,
+                                    old_kernel_version)
+                   .IsUntrustedVM(/*run_as_untrusted*/ false,
+                                  /*is_trusted_image*/ true,
+                                  /*has_custom_kernel_params*/ false))
       << "A VM using a trusted image runs as trusted without custom kernel "
          "parameters, and host kernel versions below 4.19 are trusted";
 }

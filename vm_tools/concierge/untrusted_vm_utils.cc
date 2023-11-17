@@ -7,6 +7,8 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <string_view>
+#include <sys/utsname.h>
 #include <utility>
 #include <vector>
 
@@ -19,11 +21,20 @@
 #include <chromeos/dbus/service_constants.h>
 #include <vboot/crossystem.h>
 
+#include "base/files/file_path.h"
 #include "vm_tools/concierge/vm_util.h"
 
 namespace vm_tools::concierge {
 
 namespace {
+
+// File path that reports the L1TF vulnerability status.
+constexpr const char kL1TFFilePath[] =
+    "/sys/devices/system/cpu/vulnerabilities/l1tf";
+
+// File path that reports the MDS vulnerability status.
+constexpr const char kMDSFilePath[] =
+    "/sys/devices/system/cpu/vulnerabilities/mds";
 
 // Returns the L1TF mitigation status of the host it's run on.
 UntrustedVMUtils::MitigationStatus GetL1TFMitigationStatus(
@@ -121,11 +132,43 @@ bool IsDevModeEnabled() {
 
 }  // namespace
 
-UntrustedVMUtils::UntrustedVMUtils(const base::FilePath& l1tf_status_path,
-                                   const base::FilePath& mds_status_path)
-    : l1tf_status_path_(l1tf_status_path), mds_status_path_(mds_status_path) {
-  DCHECK(!l1tf_status_path.empty());
-  DCHECK(!mds_status_path.empty());
+// static
+UntrustedVMUtils::KernelVersionAndMajorRevision
+UntrustedVMUtils::GetKernelVersion() {
+  struct utsname buf;
+  if (uname(&buf))
+    return std::make_pair(INT_MIN, INT_MIN);
+
+  // Parse uname result in the form of x.yy.zzz. The parsed data should be in
+  // the expected format.
+  std::vector<std::string_view> versions = base::SplitStringPiece(
+      buf.release, ".", base::WhitespaceHandling::TRIM_WHITESPACE,
+      base::SplitResult::SPLIT_WANT_ALL);
+  DCHECK_EQ(versions.size(), 3);
+  DCHECK(!versions[0].empty());
+  DCHECK(!versions[1].empty());
+  int version;
+  bool result = base::StringToInt(versions[0], &version);
+  DCHECK(result);
+  int major_revision;
+  result = base::StringToInt(versions[1], &major_revision);
+  DCHECK(result);
+  return std::make_pair(version, major_revision);
+}
+
+UntrustedVMUtils::UntrustedVMUtils()
+    : UntrustedVMUtils(base::FilePath(kL1TFFilePath),
+                       base::FilePath(kMDSFilePath),
+                       GetKernelVersion()) {}
+
+UntrustedVMUtils::UntrustedVMUtils(base::FilePath l1tf_status_path,
+                                   base::FilePath mds_status_path,
+                                   KernelVersionAndMajorRevision host_kernel)
+    : l1tf_status_path_(std::move(l1tf_status_path)),
+      mds_status_path_(std::move(mds_status_path)),
+      host_kernel_version_(std::move(host_kernel)) {
+  DCHECK(!l1tf_status_path_.empty());
+  DCHECK(!mds_status_path_.empty());
 }
 
 UntrustedVMUtils::MitigationStatus
@@ -137,9 +180,7 @@ UntrustedVMUtils::CheckUntrustedVMMitigationStatus() const {
   return GetMDSMitigationStatus(mds_status_path_);
 }
 
-bool UntrustedVMUtils::IsUntrustedVMAllowed(
-    KernelVersionAndMajorRevision host_kernel_version,
-    std::string* reason) const {
+bool UntrustedVMUtils::IsUntrustedVMAllowed(std::string* reason) const {
   DCHECK(reason);
 
   // For host >= |kMinKernelVersionForUntrustedAndNestedVM| untrusted VMs are
@@ -147,7 +188,7 @@ bool UntrustedVMUtils::IsUntrustedVMAllowed(
   // even in developer mode. This is done because it'd be a huge error to not
   // have required security patches on these kernels regardless of dev or
   // production mode.
-  if (host_kernel_version >= kMinKernelVersionForUntrustedAndNestedVM) {
+  if (host_kernel_version_ >= kMinKernelVersionForUntrustedAndNestedVM) {
     // Check if l1tf and mds mitigations are present on the host.
     switch (CheckUntrustedVMMitigationStatus()) {
       // If the host kernel version isn't supported or the host doesn't have
@@ -174,8 +215,8 @@ bool UntrustedVMUtils::IsUntrustedVMAllowed(
   // Lower kernel version are deemed insecure to handle untrusted VMs.
   std::stringstream ss;
   ss << "Untrusted VMs are not allowed: "
-     << "the host kernel version (" << host_kernel_version.first << "."
-     << host_kernel_version.second << ") must be newer than or equal to "
+     << "the host kernel version (" << host_kernel_version_.first << "."
+     << host_kernel_version_.second << ") must be newer than or equal to "
      << kMinKernelVersionForUntrustedAndNestedVM.first << "."
      << kMinKernelVersionForUntrustedAndNestedVM.second
      << ", or the device must be in the developer mode";
@@ -183,14 +224,13 @@ bool UntrustedVMUtils::IsUntrustedVMAllowed(
   return false;
 }
 
-bool IsUntrustedVM(bool run_as_untrusted,
-                   bool is_trusted_image,
-                   bool has_custom_kernel_params,
-                   KernelVersionAndMajorRevision host_kernel_version) {
+bool UntrustedVMUtils::IsUntrustedVM(bool run_as_untrusted,
+                                     bool is_trusted_image,
+                                     bool has_custom_kernel_params) {
   // Nested virtualization is enabled for all kernels >=
   // |kMinKernelVersionForUntrustedAndNestedVM|. This means that even with a
   // trusted image the VM started will essentially be untrusted.
-  if (host_kernel_version >= kMinKernelVersionForUntrustedAndNestedVM)
+  if (host_kernel_version_ >= kMinKernelVersionForUntrustedAndNestedVM)
     return true;
 
   // Any untrusted image definitely results in an untrusted VM.

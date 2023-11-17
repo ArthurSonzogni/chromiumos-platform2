@@ -17,7 +17,6 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/utsname.h>
 #include <sys/wait.h>
 #include <sys/xattr.h>
 #include <unistd.h>
@@ -111,6 +110,7 @@
 #include "vm_tools/concierge/ssh_keys.h"
 #include "vm_tools/concierge/termina_vm.h"
 #include "vm_tools/concierge/tracing.h"
+#include "vm_tools/concierge/untrusted_vm_utils.h"
 #include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_permission_interface.h"
@@ -205,14 +205,6 @@ constexpr uint64_t kDefaultIoLimit = MiB(1);
 
 // How often we should broadcast state of a disk operation (import or export).
 constexpr base::TimeDelta kDiskOpReportInterval = base::Seconds(15);
-
-// File path that reports the L1TF vulnerability status.
-constexpr const char kL1TFFilePath[] =
-    "/sys/devices/system/cpu/vulnerabilities/l1tf";
-
-// File path that reports the MDS vulnerability status.
-constexpr const char kMDSFilePath[] =
-    "/sys/devices/system/cpu/vulnerabilities/mds";
 
 // Path of system timezone file.
 constexpr char kLocaltimePath[] = "/etc/localtime";
@@ -719,30 +711,6 @@ uint64_t GetFileUsage(const base::FilePath& path) {
     return st.st_blocks * 512;
   }
   return 0;
-}
-
-// Returns the current kernel version. If there is a failure to retrieve the
-// version it returns <INT_MIN, INT_MIN>.
-KernelVersionAndMajorRevision GetKernelVersion() {
-  struct utsname buf;
-  if (uname(&buf))
-    return std::make_pair(INT_MIN, INT_MIN);
-
-  // Parse uname result in the form of x.yy.zzz. The parsed data should be in
-  // the expected format.
-  std::vector<base::StringPiece> versions = base::SplitStringPiece(
-      buf.release, ".", base::WhitespaceHandling::TRIM_WHITESPACE,
-      base::SplitResult::SPLIT_WANT_ALL);
-  DCHECK_EQ(versions.size(), 3);
-  DCHECK(!versions[0].empty());
-  DCHECK(!versions[1].empty());
-  int version;
-  bool result = base::StringToInt(versions[0], &version);
-  DCHECK(result);
-  int major_revision;
-  result = base::StringToInt(versions[1], &major_revision);
-  DCHECK(result);
-  return std::make_pair(version, major_revision);
 }
 
 // vm_id.name should always be less than kMaxVmNameLength characters long.
@@ -1290,7 +1258,6 @@ void Service::CreateAndHost(
 Service::Service(int signal_fd)
     : signal_fd_(signal_fd),
       next_seneschal_server_port_(kFirstSeneschalServerPort),
-      host_kernel_version_(GetKernelVersion()),
       weak_ptr_factory_(this) {}
 
 Service::~Service() {
@@ -1346,9 +1313,6 @@ bool Service::Init() {
       nullptr, bus_, dbus::ObjectPath(kVmConciergeServicePath));
   concierge_adaptor_.RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(base::DoNothing());
-
-  untrusted_vm_utils_ = std::make_unique<UntrustedVMUtils>(
-      base::FilePath(kL1TFFilePath), base::FilePath(kMDSFilePath));
 
   dlcservice_client_ = std::make_unique<DlcHelper>(bus_);
 
@@ -1479,7 +1443,7 @@ bool Service::InitVmMemoryManagementService() {
 
   // The VM Memory Management Service has a dependency on VSOCK Loopback and
   // cannot be enabled on kernels older than 5.4
-  auto kernel_version = GetKernelVersion();
+  auto kernel_version = UntrustedVMUtils::GetKernelVersion();
   if (kernel_version.first < 5 ||
       (kernel_version.first == 5 && kernel_version.second < 4)) {
     LOG(INFO) << "VmMemoryManagementService not supported by kernel";
@@ -1700,13 +1664,12 @@ StartVmResponse Service::StartVmInternal(
   // user.
   base::FilePath pflash = pflash_result.value();
 
-  const bool is_untrusted_vm =
-      IsUntrustedVM(request.run_as_untrusted(), image_spec.is_trusted_image,
-                    !request.kernel_params().empty(), host_kernel_version_);
+  const bool is_untrusted_vm = untrusted_vm_utils_.IsUntrustedVM(
+      request.run_as_untrusted(), image_spec.is_trusted_image,
+      !request.kernel_params().empty());
   if (is_untrusted_vm) {
     std::string reason;
-    if (!untrusted_vm_utils_->IsUntrustedVMAllowed(host_kernel_version_,
-                                                   &reason)) {
+    if (!untrusted_vm_utils_.IsUntrustedVMAllowed(&reason)) {
       LOG(ERROR) << reason;
       response.set_failure_reason(reason);
       return response;
@@ -4622,12 +4585,11 @@ GetVmLaunchAllowedResponse Service::GetVmLaunchAllowed(
 
   bool allowed = true;
   std::string reason;
-  bool is_untrusted =
-      IsUntrustedVM(request.run_as_untrusted(), request.is_trusted_image(),
-                    request.has_custom_kernel_params(), host_kernel_version_);
+  bool is_untrusted = untrusted_vm_utils_.IsUntrustedVM(
+      request.run_as_untrusted(), request.is_trusted_image(),
+      request.has_custom_kernel_params());
   if (is_untrusted) {
-    allowed = untrusted_vm_utils_->IsUntrustedVMAllowed(host_kernel_version_,
-                                                        &reason);
+    allowed = untrusted_vm_utils_.IsUntrustedVMAllowed(&reason);
   }
 
   response.set_allowed(allowed);
