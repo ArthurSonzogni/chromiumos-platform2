@@ -9,6 +9,7 @@
 #include <memory>
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/cancelable_callback.h>
@@ -65,23 +66,27 @@ class EventDispatcher;
 class PortalDetector {
  public:
   // Default URL used for the first HTTP probe sent by PortalDetector on a new
-  // network connection.
-  static constexpr char kDefaultHttpUrl[] =
-      "http://www.gstatic.com/generate_204";
+  // network connection. AOSP uses the same URL by default (defined in
+  // packages/modules/NetworkStack/res/values/config.xml).
+  static constexpr std::string_view kDefaultHttpUrl =
+      "http://connectivitycheck.gstatic.com/generate_204";
   // Default URL used for the first HTTPS probe sent by PortalDetector on a new
   // network connection.
-  static constexpr char kDefaultHttpsUrl[] =
+  static constexpr std::string_view kDefaultHttpsUrl =
       "https://www.google.com/generate_204";
   // Set of fallback URLs used for retrying the HTTP probe when portal detection
-  // is not conclusive.
-  static constexpr std::array<const char*, 3> kDefaultFallbackHttpUrls = {
+  // is not conclusive. AOSP uses the same first two URLS as fallback HTTP URLs
+  // (defined in packages/modules/NetworkStack/res/values/config.xml).
+  static constexpr std::array<std::string_view, 5> kDefaultFallbackHttpUrls = {
+      "http://www.google.com/gen_204",
+      "http://www.play.googleapis.com/generate_204",
+      "http://www.gstatic.com/generate_204",
       "http://safebrowsing.google.com/generate_204",
       "http://www.googleapis.com/generate_204",
-      "http://connectivitycheck.gstatic.com/generate_204",
   };
   // Set of fallback URLs used for retrying the HTTPS probe when portal
   // detection is not conclusive.
-  static constexpr std::array<const char*, 3> kDefaultFallbackHttpsUrls = {
+  static constexpr std::array<std::string_view, 3> kDefaultFallbackHttpsUrls = {
       "https://www.gstatic.com/generate_204",
       "https://accounts.google.com/generate_204",
       "https://www.googleapis.com/generate_204",
