@@ -58,6 +58,14 @@ class NetworkApplier {
       net_base::RTNLHandler* rtnl_handler,
       std::unique_ptr<ProcFsStub> proc_fs);
 
+  // Notify NetworkApplier before a network interface can be configured by it so
+  // it can do proper initialization.
+  void Register(int interface_index, const std::string& interface_name);
+
+  // Notify NetworkApplier that a network interface no longer needs to be
+  // concerned.
+  void Release(int interface_index, const std::string& interface_name);
+
   // Clear all configurations applied to a certain interface.
   void Clear(int interface_index);
 

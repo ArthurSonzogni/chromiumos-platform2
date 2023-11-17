@@ -36,7 +36,6 @@ class EventDispatcher;
 class Manager;
 class NetlinkManager;
 class Nl80211Message;
-class RoutingTable;
 
 class DeviceInfo {
  public:

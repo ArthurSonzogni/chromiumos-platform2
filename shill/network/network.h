@@ -39,7 +39,6 @@
 namespace shill {
 
 class EventDispatcher;
-class RoutingTable;
 class Service;
 
 // An object of Network class represents a network interface in the kernel, and
@@ -416,9 +415,6 @@ class Network {
   void set_dhcp_provider_for_testing(DHCPProvider* provider) {
     dhcp_provider_ = provider;
   }
-  void set_routing_table_for_testing(RoutingTable* routing_table) {
-    routing_table_ = routing_table;
-  }
   void set_state_for_testing(State state) { state_ = state; }
   void set_primary_family_for_testing(
       std::optional<net_base::IPFamily> family) {
@@ -602,7 +598,6 @@ class Network {
 
   // Cache singleton pointers for performance and test purposes.
   DHCPProvider* dhcp_provider_;
-  RoutingTable* routing_table_;
   net_base::RTNLHandler* rtnl_handler_;
   NetworkApplier* network_applier_;
 

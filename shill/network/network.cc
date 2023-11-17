@@ -33,7 +33,6 @@
 #include "shill/network/network_applier.h"
 #include "shill/network/network_priority.h"
 #include "shill/network/proc_fs_stub.h"
-#include "shill/network/routing_table.h"
 #include "shill/network/slaac_controller.h"
 #include "shill/service.h"
 
@@ -91,7 +90,6 @@ Network::Network(int interface_index,
       dispatcher_(dispatcher),
       metrics_(metrics),
       dhcp_provider_(DHCPProvider::GetInstance()),
-      routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(net_base::RTNLHandler::GetInstance()),
       network_applier_(network_applier) {}
 
@@ -133,7 +131,7 @@ void Network::Start(const Network::StartOptions& opts) {
     StopInternal(/*is_failure=*/false, /*trigger_callback=*/false);
   }
 
-  routing_table_->RegisterDevice(interface_index_, interface_name_);
+  network_applier_->Register(interface_index_, interface_name_);
   EnableARPFiltering();
 
   // If the execution of this function fails, StopInternal() will be called and
@@ -300,9 +298,8 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
       current_ipconfig_change_handler_.Run();
     }
   }
-  routing_table_->DeregisterDevice(interface_index_, interface_name_);
   state_ = State::kIdle;
-  network_applier_->Clear(interface_index_);
+  network_applier_->Release(interface_index_, interface_name_);
   priority_ = NetworkPriority{};
   if (should_trigger_callback) {
     for (auto* ev : event_handlers_) {
