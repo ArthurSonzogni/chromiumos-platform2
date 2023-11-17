@@ -12,9 +12,9 @@
 
 #include <base/no_destructor.h>
 #include <net-base/ip_address.h>
+#include <net-base/network_config.h>
 #include <net-base/rtnl_handler.h>
 
-#include "shill/ipconfig.h"
 #include "shill/mockable.h"
 #include "shill/network/address_service.h"
 #include "shill/network/network_priority.h"
@@ -64,7 +64,7 @@ class NetworkApplier {
   void ApplyNetworkConfig(int interface_index,
                           const std::string& interface_name,
                           Area area,
-                          const NetworkConfig& network_config,
+                          const net_base::NetworkConfig& network_config,
                           NetworkPriority priority,
                           Technology technology);
 

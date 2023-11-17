@@ -22,6 +22,7 @@
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/network_config.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/ipconfig.h"
@@ -30,7 +31,6 @@
 #include "shill/network/compound_network_config.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/network_applier.h"
-#include "shill/network/network_config.h"
 #include "shill/network/network_priority.h"
 #include "shill/network/proc_fs_stub.h"
 #include "shill/network/routing_table.h"
@@ -345,7 +345,7 @@ void Network::OnIPv4ConfigUpdated() {
   }
 }
 
-void Network::OnStaticIPConfigChanged(const NetworkConfig& config) {
+void Network::OnStaticIPConfigChanged(const net_base::NetworkConfig& config) {
   config_.SetFromStatic(config);
   if (state_ == State::kIdle) {
     // This can happen after service is selected but before the Network starts.
@@ -381,13 +381,14 @@ IPConfig* Network::GetCurrentIPConfig() const {
   return nullptr;
 }
 
-const NetworkConfig* Network::GetSavedIPConfig() const {
+const net_base::NetworkConfig* Network::GetSavedIPConfig() const {
   return config_.GetLegacySavedIPConfig();
 }
 
-void Network::OnIPConfigUpdatedFromDHCP(const NetworkConfig& network_config,
-                                        const DHCPv4Config::Data& dhcp_data,
-                                        bool new_lease_acquired) {
+void Network::OnIPConfigUpdatedFromDHCP(
+    const net_base::NetworkConfig& network_config,
+    const DHCPv4Config::Data& dhcp_data,
+    bool new_lease_acquired) {
   // |dhcp_controller_| cannot be empty when the callback is invoked.
   DCHECK(dhcp_controller_);
   LOG(INFO) << *this << ": DHCP lease "
@@ -398,7 +399,8 @@ void Network::OnIPConfigUpdatedFromDHCP(const NetworkConfig& network_config,
     }
   }
   dhcp_data_ = dhcp_data;
-  if (config_.SetFromDHCP(std::make_unique<NetworkConfig>(network_config))) {
+  if (config_.SetFromDHCP(
+          std::make_unique<net_base::NetworkConfig>(network_config))) {
     UpdateIPConfigDBusObject();
   }
 
@@ -514,7 +516,7 @@ void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
 
   auto old_network_config = config_.Get();
   if (config_.SetFromSLAAC(
-          std::make_unique<NetworkConfig>(slaac_network_config))) {
+          std::make_unique<net_base::NetworkConfig>(slaac_network_config))) {
     UpdateIPConfigDBusObject();
   }
   auto new_network_config = config_.Get();
@@ -645,7 +647,7 @@ NetworkPriority Network::GetPriority() {
   return priority_;
 }
 
-const NetworkConfig& Network::GetNetworkConfig() const {
+const net_base::NetworkConfig& Network::GetNetworkConfig() const {
   return config_.Get();
 }
 
@@ -708,13 +710,13 @@ void Network::OnNeighborReachabilityEvent(
 
   if (event.role == Role::kGateway ||
       event.role == Role::kGatewayAndDnsServer) {
-    const NetworkConfig& network_config = GetNetworkConfig();
+    const net_base::NetworkConfig& network_config = GetNetworkConfig();
     switch (ip_address->GetFamily()) {
       case net_base::IPFamily::kIPv4:
         // It is impossible to observe a reachability event for the current
-        // gateway before Network knows the NetworkConfig for the current
-        // connection: patchpanel would not emit reachability event for the
-        // correct connection yet.
+        // gateway before Network knows the net_base::NetworkConfig for the
+        // current connection: patchpanel would not emit reachability event for
+        // the correct connection yet.
         if (!network_config.ipv4_address) {
           LOG(INFO) << *this << ": " << __func__ << ": "
                     << ip_address->GetFamily()
@@ -969,7 +971,7 @@ void Network::StartConnectionDiagnostics() {
 
   std::optional<net_base::IPAddress> local_address = std::nullopt;
   std::optional<net_base::IPAddress> gateway_address = std::nullopt;
-  const NetworkConfig& config = GetNetworkConfig();
+  const net_base::NetworkConfig& config = GetNetworkConfig();
   if (config.ipv4_address) {
     local_address = net_base::IPAddress(config.ipv4_address->address());
     gateway_address =

@@ -465,8 +465,7 @@ void Service::Disconnect(Error* error, const char* reason) {
   CHECK(reason);
   if (!IsDisconnectable(error)) {
     LOG(WARNING) << "Disconnect attempted but " << log_name()
-                 << " is not Disconnectable"
-                 << ": " << reason;
+                 << " is not Disconnectable" << ": " << reason;
     return;
   }
 
@@ -1264,7 +1263,7 @@ KeyValueStore Service::GetSavedIPConfig(Error* /*error*/) {
   }
   const auto* saved_network_config = attached_network_->GetSavedIPConfig();
   return StaticIPParameters::NetworkConfigToKeyValues(
-      saved_network_config ? *saved_network_config : NetworkConfig{});
+      saved_network_config ? *saved_network_config : net_base::NetworkConfig{});
 }
 
 VirtualDeviceRefPtr Service::GetVirtualDevice() const {

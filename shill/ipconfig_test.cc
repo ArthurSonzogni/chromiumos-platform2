@@ -11,6 +11,7 @@
 #include <gtest/gtest.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
+#include <net-base/network_config.h>
 
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
@@ -187,18 +188,18 @@ TEST(IPPropertiesTest, ToNetworkConfigMTU) {
   network_config = IPConfig::Properties::ToNetworkConfig(&properties, nullptr);
   EXPECT_EQ(1480, network_config.mtu);
 
-  properties.mtu = 400;  // less than NetworkConfig::kMinIPv4MTU
+  properties.mtu = 400;  // less than net_base::NetworkConfig::kMinIPv4MTU
   network_config = IPConfig::Properties::ToNetworkConfig(&properties, nullptr);
-  EXPECT_EQ(NetworkConfig::kMinIPv4MTU, network_config.mtu);
+  EXPECT_EQ(net_base::NetworkConfig::kMinIPv4MTU, network_config.mtu);
 
   // IPv6
   properties.mtu = 1480;
   network_config = IPConfig::Properties::ToNetworkConfig(nullptr, &properties);
   EXPECT_EQ(1480, network_config.mtu);
 
-  properties.mtu = 800;  // less than NetworkConfig::kMinIPv6MTU
+  properties.mtu = 800;  // less than net_base::NetworkConfig::kMinIPv6MTU
   network_config = IPConfig::Properties::ToNetworkConfig(nullptr, &properties);
-  EXPECT_EQ(NetworkConfig::kMinIPv6MTU, network_config.mtu);
+  EXPECT_EQ(net_base::NetworkConfig::kMinIPv6MTU, network_config.mtu);
 
   // Dual Stack
   IPConfig::Properties properties2;
@@ -208,10 +209,10 @@ TEST(IPPropertiesTest, ToNetworkConfigMTU) {
       IPConfig::Properties::ToNetworkConfig(&properties, &properties2);
   EXPECT_EQ(1400, network_config.mtu);  // the smaller of two
 
-  properties.mtu = 800;  // less than NetworkConfig::kMinIPv6MTU
+  properties.mtu = 800;  // less than net_base::NetworkConfig::kMinIPv6MTU
   network_config =
       IPConfig::Properties::ToNetworkConfig(&properties, &properties2);
-  EXPECT_EQ(NetworkConfig::kMinIPv6MTU, network_config.mtu);
+  EXPECT_EQ(net_base::NetworkConfig::kMinIPv6MTU, network_config.mtu);
 }
 
 TEST(IPPropertiesTest, ToNetworkGateway) {

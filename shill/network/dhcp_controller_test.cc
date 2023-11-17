@@ -103,7 +103,7 @@ class DHCPControllerTest : public ::testing::Test {
 
   void StopInstance() { controller_->Stop("In test"); }
 
-  void InvokeOnIPConfigUpdated(const NetworkConfig& network_config,
+  void InvokeOnIPConfigUpdated(const net_base::NetworkConfig& network_config,
                                const DHCPv4Config::Data& dhcp_data,
                                bool new_lease_acquired) {
     controller_->OnIPConfigUpdated(network_config, dhcp_data,
@@ -284,7 +284,7 @@ TEST_F(DHCPControllerTest, StartWithDSCPOnEthernet) {
 }
 
 TEST_F(DHCPControllerTest, TimeToLeaseExpiry_Success) {
-  NetworkConfig network_config;
+  net_base::NetworkConfig network_config;
   DHCPv4Config::Data dhcp_data;
   dhcp_data.lease_duration = base::Seconds(kLeaseDuration);
   SetCurrentTimeToSecond(kTimeNow);
@@ -308,7 +308,7 @@ TEST_F(DHCPControllerTest, TimeToLeaseExpiry_NoDHCPLease) {
 
 TEST_F(DHCPControllerTest, TimeToLeaseExpiry_CurrentLeaseExpired) {
   SetDHCPVerboseLog();
-  NetworkConfig network_config;
+  net_base::NetworkConfig network_config;
   DHCPv4Config::Data dhcp_data;
   dhcp_data.lease_duration = base::Seconds(kLeaseDuration);
   SetCurrentTimeToSecond(kTimeNow);
@@ -326,7 +326,7 @@ TEST_F(DHCPControllerTest, TimeToLeaseExpiry_CurrentLeaseExpired) {
 TEST_F(DHCPControllerTest, ExpiryMetrics) {
   // Get a lease with duration of 1 second, the expiry callback should be
   // triggered right after 1 second.
-  NetworkConfig network_config;
+  net_base::NetworkConfig network_config;
   DHCPv4Config::Data dhcp_data;
   dhcp_data.lease_duration = base::Seconds(1);
   SetCurrentTimeToSecond(kTimeNow);
@@ -354,7 +354,9 @@ class DHCPControllerCallbackTest : public DHCPControllerTest {
 
   MOCK_METHOD(void,
               UpdateCallback,
-              (const NetworkConfig&, const DHCPv4Config::Data&, bool));
+              (const net_base::NetworkConfig&,
+               const DHCPv4Config::Data&,
+               bool));
   MOCK_METHOD(void, DropCallback, (bool is_voluntary));
 
   void ExpectUpdateCallback(bool new_lease_acquired) {
@@ -371,7 +373,7 @@ class DHCPControllerCallbackTest : public DHCPControllerTest {
   }
 
  protected:
-  NetworkConfig updated_network_config_;
+  net_base::NetworkConfig updated_network_config_;
 };
 
 }  // namespace

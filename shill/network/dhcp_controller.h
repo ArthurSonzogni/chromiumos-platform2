@@ -16,6 +16,7 @@
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/timer.h>
+#include <net-base/network_config.h>
 
 #include "shill/ipconfig.h"
 #include "shill/metrics.h"
@@ -49,10 +50,10 @@ class DHCPController {
   // configuration. |dhcp_data| contains the other parameters that needs to be
   // exposed to user.|new_lease_acquired| indicates whether or not a DHCP lease
   // was acquired from the server.
-  using UpdateCallback =
-      base::RepeatingCallback<void(const NetworkConfig& network_config,
-                                   const DHCPv4Config::Data& dhcp_data,
-                                   bool new_lease_acquired)>;
+  using UpdateCallback = base::RepeatingCallback<void(
+      const net_base::NetworkConfig& network_config,
+      const DHCPv4Config::Data& dhcp_data,
+      bool new_lease_acquired)>;
   // Called when DHCP process ended without getting a lease. |is_voluntary|
   // indicates whether that was a voluntary stop per option 108, or because of a
   // failure.
@@ -153,7 +154,7 @@ class DHCPController {
  protected:
   // On we get a new network config via DHCP. |new_lease_acquired| indicates
   // whether this is an authoritative confirmation.
-  void OnIPConfigUpdated(const NetworkConfig& network_config,
+  void OnIPConfigUpdated(const net_base::NetworkConfig& network_config,
                          const DHCPv4Config::Data& dhcp_data,
                          bool new_lease_acquired);
 
@@ -256,7 +257,7 @@ class DHCPController {
   // PostTask(), so it can be guaranteed that callbacks will not be invoked when
   // this object has been destroyed, and the listener can safely destroy this
   // object in the callback.
-  void InvokeUpdateCallback(const NetworkConfig& network_config,
+  void InvokeUpdateCallback(const net_base::NetworkConfig& network_config,
                             const DHCPv4Config::Data& dhcp_data,
                             bool new_lease_acquired);
   void InvokeDropCallback(bool is_failure);

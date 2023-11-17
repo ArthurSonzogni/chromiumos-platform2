@@ -38,10 +38,10 @@
 #include <net-base/mac_address.h>
 #include <net-base/mock_rtnl_handler.h>
 #include <net-base/mock_socket.h>
+#include <net-base/network_config.h>
 #include <net-base/rtnl_message.h>
 
 #include "shill/cellular/mock_modem_info.h"
-#include "shill/ipconfig.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
@@ -811,13 +811,13 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
       Network::State::kConnected);
   device0->GetPrimaryNetwork()->RegisterEventHandler(&event_handler0);
 
-  NetworkConfig config0;
+  auto config0 = std::make_unique<net_base::NetworkConfig>();
   // Placeholder addresses to let Network believe this is a valid configuration.
-  config0.ipv4_address = net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+  config0->ipv4_address = net_base::IPv4CIDR::CreateFromAddressAndPrefix(
       *kTestIPAddress0.ToIPv4Address(), 32);
-  config0.ipv4_gateway = kTestIPAddress0.ToIPv4Address();
+  config0->ipv4_gateway = kTestIPAddress0.ToIPv4Address();
   device0->GetPrimaryNetwork()->set_link_protocol_network_config(
-      std::make_unique<NetworkConfig>(config0));
+      std::move(config0));
 
   scoped_refptr<MockDevice> device1(
       new MockDevice(&manager_, "null1", "addr1", kTestDeviceIndex + 1));
@@ -834,12 +834,12 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
       Network::State::kConnected);
   device1->GetPrimaryNetwork()->RegisterEventHandler(&event_handler1);
 
-  NetworkConfig config1;
-  config1.ipv6_addresses = {*net_base::IPv6CIDR::CreateFromAddressAndPrefix(
+  auto config1 = std::make_unique<net_base::NetworkConfig>();
+  config1->ipv6_addresses = {*net_base::IPv6CIDR::CreateFromAddressAndPrefix(
       *kTestIPAddress2.ToIPv6Address(), 120)};
-  config1.ipv6_gateway = kTestIPAddress2.ToIPv6Address();
+  config1->ipv6_gateway = kTestIPAddress2.ToIPv6Address();
   device1->GetPrimaryNetwork()->set_link_protocol_network_config(
-      std::make_unique<NetworkConfig>(config1));
+      std::move(config1));
 
   using Role = patchpanel::Client::NeighborRole;
   using Status = patchpanel::Client::NeighborStatus;

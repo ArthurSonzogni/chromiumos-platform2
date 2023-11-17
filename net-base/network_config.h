@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NETWORK_NETWORK_CONFIG_H_
-#define SHILL_NETWORK_NETWORK_CONFIG_H_
+#ifndef NET_BASE_NETWORK_CONFIG_H_
+#define NET_BASE_NETWORK_CONFIG_H_
 
 #include <optional>
 #include <ostream>
@@ -11,16 +11,16 @@
 #include <utility>
 #include <vector>
 
-#include <net-base/http_url.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
+#include "net-base/http_url.h"
+#include "net-base/ip_address.h"
+#include "net-base/ipv4_address.h"
+#include "net-base/ipv6_address.h"
 
-namespace shill {
+namespace net_base {
 
 // Properties related to the IP layer used to represent a configuration.
 // TODO(b/269401899): Add more fields and replace IPConfig::Properties.
-struct NetworkConfig {
+struct NET_BASE_EXPORT NetworkConfig {
   // Define a default and the minimum viable MTU values.
   static constexpr int kDefaultMTU = 1500;
   static constexpr int kMinIPv4MTU = 576;
@@ -67,8 +67,9 @@ struct NetworkConfig {
   std::optional<net_base::HttpUrl> captive_portal_uri;
 };
 
-std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config);
+NET_BASE_EXPORT std::ostream& operator<<(std::ostream& stream,
+                                         const NetworkConfig& config);
 
-}  // namespace shill
+}  // namespace net_base
 
-#endif  // SHILL_NETWORK_NETWORK_CONFIG_H_
+#endif  // NET_BASE_NETWORK_CONFIG_H_

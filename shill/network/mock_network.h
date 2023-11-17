@@ -42,12 +42,12 @@ class MockNetwork : public Network {
 
   MOCK_METHOD(void,
               set_link_protocol_network_config,
-              (std::unique_ptr<NetworkConfig>),
+              (std::unique_ptr<net_base::NetworkConfig>),
               (override));
 
   MOCK_METHOD(void,
               OnStaticIPConfigChanged,
-              (const NetworkConfig&),
+              (const net_base::NetworkConfig&),
               (override));
   MOCK_METHOD(void,
               RegisterCurrentIPConfigChangeHandler,

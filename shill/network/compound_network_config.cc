@@ -16,16 +16,17 @@ namespace shill {
 
 CompoundNetworkConfig::CompoundNetworkConfig(std::string_view logging_tag)
     : logging_tag_(logging_tag) {
-  combined_network_config_ = std::make_unique<NetworkConfig>();
+  combined_network_config_ = std::make_unique<net_base::NetworkConfig>();
 }
 
 CompoundNetworkConfig::~CompoundNetworkConfig() = default;
 
-const NetworkConfig& CompoundNetworkConfig::Get() const {
+const net_base::NetworkConfig& CompoundNetworkConfig::Get() const {
   return *combined_network_config_;
 }
 
-const NetworkConfig* CompoundNetworkConfig::GetLegacySavedIPConfig() const {
+const net_base::NetworkConfig* CompoundNetworkConfig::GetLegacySavedIPConfig()
+    const {
   if (dhcp_network_config_) {
     return &*dhcp_network_config_;
   }
@@ -47,36 +48,38 @@ void CompoundNetworkConfig::Clear() {
   Recalculate();
 }
 
-bool CompoundNetworkConfig::SetFromStatic(const NetworkConfig& config) {
+bool CompoundNetworkConfig::SetFromStatic(
+    const net_base::NetworkConfig& config) {
   static_network_config_ = config;
   return Recalculate();
 }
 
 bool CompoundNetworkConfig::SetFromSLAAC(
-    std::unique_ptr<NetworkConfig> config) {
+    std::unique_ptr<net_base::NetworkConfig> config) {
   slaac_network_config_ = std::move(config);
   return Recalculate();
 }
 
-bool CompoundNetworkConfig::SetFromDHCP(std::unique_ptr<NetworkConfig> config) {
+bool CompoundNetworkConfig::SetFromDHCP(
+    std::unique_ptr<net_base::NetworkConfig> config) {
   dhcp_network_config_ = std::move(config);
   return Recalculate();
 }
 
 bool CompoundNetworkConfig::SetFromLinkProtocol(
-    std::unique_ptr<NetworkConfig> config) {
+    std::unique_ptr<net_base::NetworkConfig> config) {
   link_protocol_network_config_ = std::move(config);
   return Recalculate();
 }
 
 bool CompoundNetworkConfig::Recalculate() {
   auto old_network_config = std::move(combined_network_config_);
-  combined_network_config_ = std::make_unique<NetworkConfig>();
+  combined_network_config_ = std::make_unique<net_base::NetworkConfig>();
 
-  // We need to calculate the combined NetworkConfig item-by-item to support
-  // existing usages such as IPv4 address from static + DNS from DHCP, or IPv4
-  // address from DHCP + DNS from static, or IP/DNS from VPN + split routing
-  // from static.
+  // We need to calculate the combined net_base::NetworkConfig item-by-item to
+  // support existing usages such as IPv4 address from static + DNS from DHCP,
+  // or IPv4 address from DHCP + DNS from static, or IP/DNS from VPN + split
+  // routing from static.
 
   // |ipv4_address|, |ipv4_broadcast|, and |ipv4_gateway| are always picked
   // from a same source. Preference order: static > DHCP > link. (DHCP and link
@@ -92,8 +95,9 @@ bool CompoundNetworkConfig::Recalculate() {
       dhcp_network_config_ && dhcp_network_config_->ipv4_address;
   bool has_link_ipv4_addr = link_protocol_network_config_ &&
                             link_protocol_network_config_->ipv4_address;
-  NetworkConfig empty_network_config;
-  const NetworkConfig* preferred_ipv4_addr_src = &empty_network_config;
+  net_base::NetworkConfig empty_network_config;
+  const net_base::NetworkConfig* preferred_ipv4_addr_src =
+      &empty_network_config;
   if (has_static_ipv4_addr) {
     preferred_ipv4_addr_src = &static_network_config_;
   } else if (has_dhcp_ipv4_addr) {
@@ -111,7 +115,8 @@ bool CompoundNetworkConfig::Recalculate() {
   // |ipv6_addresses|, and |ipv6_gateway| preference order: SLAAC > link.
   // SLAAC and link can co-exist on some cellular modems where SLAAC is turned
   // on for address but link is also needed for DNS.
-  const NetworkConfig* preferred_ipv6_addr_src = &empty_network_config;
+  const net_base::NetworkConfig* preferred_ipv6_addr_src =
+      &empty_network_config;
   if (slaac_network_config_) {
     preferred_ipv6_addr_src = &*slaac_network_config_;
   } else if (link_protocol_network_config_) {
@@ -220,13 +225,14 @@ bool CompoundNetworkConfig::Recalculate() {
   if (static_network_config_.mtu && static_network_config_.mtu > 0) {
     combined_network_config_->mtu = static_network_config_.mtu;
   } else {
-    auto update_mtu = [this](const std::unique_ptr<NetworkConfig>& config) {
-      if (config && config->mtu && config->mtu > 0 &&
-          (!combined_network_config_->mtu ||
-           combined_network_config_->mtu > config->mtu)) {
-        combined_network_config_->mtu = config->mtu;
-      }
-    };
+    auto update_mtu =
+        [this](const std::unique_ptr<net_base::NetworkConfig>& config) {
+          if (config && config->mtu && config->mtu > 0 &&
+              (!combined_network_config_->mtu ||
+               combined_network_config_->mtu > config->mtu)) {
+            combined_network_config_->mtu = config->mtu;
+          }
+        };
     update_mtu(dhcp_network_config_);
     update_mtu(slaac_network_config_);
     update_mtu(link_protocol_network_config_);

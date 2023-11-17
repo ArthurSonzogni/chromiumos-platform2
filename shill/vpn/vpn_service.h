@@ -10,6 +10,7 @@
 #include <string_view>
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/network_config.h>
 
 #include "shill/callbacks.h"
 #include "shill/default_service_observer.h"
@@ -71,7 +72,7 @@ class VPNService : public Service,
                        std::string_view error_details) override;
   void OnDriverReconnecting(base::TimeDelta timeout) override;
 
-  const NetworkConfig& static_network_config_for_testing() {
+  const net_base::NetworkConfig& static_network_config_for_testing() {
     return mutable_static_ip_parameters()->config();
   }
 

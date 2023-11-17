@@ -19,6 +19,7 @@
 #include <base/strings/string_split.h>
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/ipv4_address.h>
+#include <net-base/network_config.h>
 
 #include "base/containers/span.h"
 #include "shill/control_interface.h"
@@ -356,7 +357,7 @@ void ThirdPartyVpnDriver::SetParameters(
   ProcessInt32(parameters, kSubnetPrefixParameterThirdPartyVpn,
                &ipv4_properties_->subnet_prefix, 0, 32, true, error_message);
   ProcessInt32(parameters, kMtuParameterThirdPartyVpn, &ipv4_properties_->mtu,
-               NetworkConfig::kMinIPv4MTU, kConstantMaxMtu, false,
+               net_base::NetworkConfig::kMinIPv4MTU, kConstantMaxMtu, false,
                error_message);
 
   ProcessSearchDomainArray(parameters, kDomainSearchParameterThirdPartyVpn,

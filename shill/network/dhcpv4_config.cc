@@ -29,7 +29,8 @@ static auto kModuleLogScope = ScopeLogger::kDHCP;
 
 // static
 bool DHCPv4Config::ParseClasslessStaticRoutes(
-    const std::string& classless_routes, NetworkConfig* network_config) {
+    const std::string& classless_routes,
+    net_base::NetworkConfig* network_config) {
   if (classless_routes.empty()) {
     // It is not an error for this string to be empty.
     return true;
@@ -91,7 +92,7 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
 
 // static
 bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
-                                      NetworkConfig* network_config,
+                                      net_base::NetworkConfig* network_config,
                                       DHCPv4Config::Data* dhcp_data) {
   SLOG(2) << __func__;
   std::string classless_static_routes;
@@ -152,7 +153,7 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
           value.Get<std::vector<std::string>>();
     } else if (key == kConfigurationKeyMTU) {
       int mtu = value.Get<uint16_t>();
-      if (mtu > NetworkConfig::kMinIPv4MTU) {
+      if (mtu > net_base::NetworkConfig::kMinIPv4MTU) {
         network_config->mtu = mtu;
       }
     } else if (key == kConfigurationKeyCaptivePortalUri) {

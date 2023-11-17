@@ -13,13 +13,13 @@
 #include <base/time/time.h>
 #include <metrics/timer.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/network_config.h>
 #include <net-base/rtnl_handler.h>
 #include <net-base/rtnl_listener.h>
 #include <net-base/rtnl_message.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/mockable.h"
-#include "shill/network/network_config.h"
 #include "shill/network/proc_fs_stub.h"
 
 namespace shill {
@@ -53,10 +53,10 @@ class SLAACController {
   // SLAAC process itself in the kernel is not stopped.
   mockable void Stop();
 
-  // Return a NetworkConfig containing all information received from SLAAC. The
-  // order of its |ipv6_addresses| is guaranteed to match kernel preference so
-  // that the first element is always the preferred address.
-  mockable NetworkConfig GetNetworkConfig() const;
+  // Return a net_base::NetworkConfig containing all information received from
+  // SLAAC. The order of its |ipv6_addresses| is guaranteed to match kernel
+  // preference so that the first element is always the preferred address.
+  mockable net_base::NetworkConfig GetNetworkConfig() const;
 
   // Returns the duration from Start() and the first time that this class gets
   // the SLAAC address information from the kernel, and then resets the value
@@ -106,7 +106,7 @@ class SLAACController {
 
   // Cache of kernel SLAAC data collected through RTNL.
   std::vector<AddressData> slaac_addresses_;
-  NetworkConfig network_config_;
+  net_base::NetworkConfig network_config_;
 
   // Internal timer for RDNSS and DNSSL expiration.
   base::CancelableOnceClosure rdnss_expired_callback_;

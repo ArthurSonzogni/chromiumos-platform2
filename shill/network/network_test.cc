@@ -107,13 +107,13 @@ MATCHER_P(ContainsAddressAndRoute, family, "") {
   return false;
 }
 
-NetworkConfig CreateIPv4NetworkConfig(
+net_base::NetworkConfig CreateIPv4NetworkConfig(
     const std::string& addr,
     int prefix_len,
     const std::string& gateway,
     const std::vector<std::string>& dns_servers,
     std::optional<int> mtu) {
-  NetworkConfig config;
+  net_base::NetworkConfig config;
   config.ipv4_address =
       *net_base::IPv4CIDR::CreateFromStringAndPrefix(addr, prefix_len);
   config.ipv4_gateway = *net_base::IPv4Address::CreateFromString(gateway);
@@ -129,7 +129,8 @@ NetworkConfig CreateIPv4NetworkConfig(
 
 // TODO(b/232177767): This function is IPv4-only currently. Implement the IPv6
 // part when necessary.
-IPConfig::Properties NetworkConfigToIPProperties(const NetworkConfig& config) {
+IPConfig::Properties NetworkConfigToIPProperties(
+    const net_base::NetworkConfig& config) {
   IPConfig::Properties props = {};
   props.address_family = net_base::IPFamily::kIPv4;
   props.UpdateFromNetworkConfig(config);
@@ -260,7 +261,7 @@ class NetworkTest : public ::testing::Test {
   // Sets a fake DHCPv4 config to allow network validation to start.
   void SetNetworkStateForPortalDetection() {
     SetNetworkStateToConnected();
-    NetworkConfig config;
+    net_base::NetworkConfig config;
     config.ipv4_address =
         *net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.1/24");
     config.ipv4_gateway =
@@ -276,7 +277,7 @@ class NetworkTest : public ::testing::Test {
   void SetNetworkStateForConnectionDiagnostic() {
     SetNetworkStateToConnected();
     const std::string ipv4_addr_str = "192.168.1.1";
-    auto config = std::make_unique<NetworkConfig>();
+    auto config = std::make_unique<net_base::NetworkConfig>();
     config->ipv4_address =
         net_base::IPv4CIDR::CreateFromStringAndPrefix(ipv4_addr_str, 32);
     config->ipv4_gateway =
@@ -460,8 +461,9 @@ TEST_F(NetworkTest, EnableIPv6FlagsLinkProtocol) {
   auto link_protocol_properties = std::make_unique<IPConfig::Properties>();
   link_protocol_properties->address = "2001:db8:abcd::1234";
   network_->set_link_protocol_network_config(
-      std::make_unique<NetworkConfig>(IPConfig::Properties::ToNetworkConfig(
-          nullptr, link_protocol_properties.get())));
+      std::make_unique<net_base::NetworkConfig>(
+          IPConfig::Properties::ToNetworkConfig(
+              nullptr, link_protocol_properties.get())));
   network_->Start(Network::StartOptions{});
 }
 
@@ -496,7 +498,7 @@ TEST_F(NetworkTest, DHCPOptions) {
   EXPECT_CALL(dhcp_provider_,
               CreateController(
                   _, Field(&DHCPProvider::Options::use_arp_gateway, false), _));
-  NetworkConfig static_config;
+  net_base::NetworkConfig static_config;
   static_config.ipv4_address =
       net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.1/24");
   network_->OnStaticIPConfigChanged(static_config);
@@ -524,7 +526,7 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
   const auto ipv6_addr = *net_base::IPAddress::CreateFromString(ipv6_addr_str);
   SetNetworkStateToConnected();
 
-  auto network_config = std::make_unique<NetworkConfig>();
+  auto network_config = std::make_unique<net_base::NetworkConfig>();
   network_config->ipv4_gateway =
       *net_base::IPv4Address::CreateFromString(ipv4_addr_str);
   network_config->ipv6_gateway =
@@ -630,7 +632,7 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
                                    network_->interface_index(), ipv4_addr,
                                    Role::kGateway, Status::kReachable))
       .Times(1);
-  network_config = std::make_unique<NetworkConfig>();
+  network_config = std::make_unique<net_base::NetworkConfig>();
   network_config->ipv4_address =
       *net_base::IPv4CIDR::CreateFromStringAndPrefix(ipv4_addr_str, 32);
   network_config->ipv4_gateway =
@@ -662,7 +664,7 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
   network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{},
                                         .accept_ra = true});
 
-  network_config = std::make_unique<NetworkConfig>();
+  network_config = std::make_unique<net_base::NetworkConfig>();
   network_config->ipv6_addresses = {
       *net_base::IPv6CIDR::CreateFromStringAndPrefix(ipv6_addr_str, 120)};
   network_config->ipv6_gateway =
@@ -691,7 +693,7 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
   network_->set_ip6config(
       std::make_unique<IPConfig>(&control_interface_, kTestIfname));
 
-  network_config = std::make_unique<NetworkConfig>();
+  network_config = std::make_unique<net_base::NetworkConfig>();
   network_config->ipv4_address =
       *net_base::IPv4CIDR::CreateFromStringAndPrefix(ipv4_addr_str, 32);
   network_config->ipv4_gateway =
@@ -852,7 +854,7 @@ TEST_F(NetworkTest, PortalDetectionNotConnected) {
 
 TEST_F(NetworkTest, PortalDetectionNoDNS) {
   SetNetworkStateToConnected();
-  NetworkConfig config;
+  net_base::NetworkConfig config;
   config.ipv4_address =
       *net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.1/24");
   config.dns_servers = {};
@@ -1379,7 +1381,7 @@ class NetworkStartTest : public NetworkTest {
           test_opts.link_protocol_ipv4 ? &ipv4_link_protocol_props_ : nullptr;
       auto network_config = IPConfig::Properties::ToNetworkConfig(ipv4, ipv6);
       network_->set_link_protocol_network_config(
-          std::make_unique<NetworkConfig>(std::move(network_config)));
+          std::make_unique<net_base::NetworkConfig>(std::move(network_config)));
     }
     Network::StartOptions start_opts{
         .dhcp = test_opts.dhcp ? std::make_optional(DHCPProvider::Options{})
@@ -1526,11 +1528,11 @@ class NetworkStartTest : public NetworkTest {
     return IPConfig::Properties(*ptr);
   }
 
-  NetworkConfig ipv4_dhcp_config_;
-  NetworkConfig ipv4_static_config_;
-  NetworkConfig ipv4_link_protocol_config_;
+  net_base::NetworkConfig ipv4_dhcp_config_;
+  net_base::NetworkConfig ipv4_static_config_;
+  net_base::NetworkConfig ipv4_link_protocol_config_;
 
-  NetworkConfig slaac_config_;
+  net_base::NetworkConfig slaac_config_;
 
   // IPConfig::Properties version of the above.
   IPConfig::Properties ipv4_dhcp_props_;
@@ -1673,7 +1675,7 @@ TEST_F(NetworkStartTest, IPv4OnlyApplyStaticIPWhenDHCPConfiguring) {
   EXPECT_EQ(network_->state(), Network::State::kConfiguring);
 
   // Nothing should happen if IP address is not set.
-  NetworkConfig partial_config;
+  net_base::NetworkConfig partial_config;
   partial_config.dns_servers = {
       *net_base::IPAddress::CreateFromString(kIPv4StaticNameServer)};
   network_->OnStaticIPConfigChanged(partial_config);

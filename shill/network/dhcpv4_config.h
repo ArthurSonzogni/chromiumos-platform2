@@ -9,8 +9,8 @@
 #include <vector>
 
 #include <base/time/time.h>
+#include <net-base/network_config.h>
 
-#include "shill/network/network_config.h"
 #include "shill/store/key_value_store.h"
 
 namespace shill {
@@ -57,15 +57,16 @@ class DHCPv4Config {
   // configuration are parsed into |network_config|, and the others into
   // |dhcp_data|. Returns true on success, and false otherwise.
   static bool ParseConfiguration(const KeyValueStore& configuration,
-                                 NetworkConfig* network_config,
+                                 net_base::NetworkConfig* network_config,
                                  DHCPv4Config::Data* dhcp_data);
 
   // Parses |classless_routes| into |network_config|.  Sets the default gateway
   // if one is supplied and |network_config| does not already contain one. It
   // also sets |network_config.rfc3442_routes| for all routes not converted into
   // the default gateway.  Returns true on success, and false otherwise.
-  static bool ParseClasslessStaticRoutes(const std::string& classless_routes,
-                                         NetworkConfig* network_config);
+  static bool ParseClasslessStaticRoutes(
+      const std::string& classless_routes,
+      net_base::NetworkConfig* network_config);
 };
 
 }  // namespace shill

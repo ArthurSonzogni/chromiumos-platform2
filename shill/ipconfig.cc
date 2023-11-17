@@ -19,11 +19,11 @@
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/network_config.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
 #include "shill/logging.h"
-#include "shill/network/network_config.h"
 #include "shill/store/property_accessor.h"
 
 namespace shill {
@@ -49,10 +49,10 @@ bool IPConfig::Properties::HasIPAddressAndDNS() const {
 }
 
 // static
-NetworkConfig IPConfig::Properties::ToNetworkConfig(
+net_base::NetworkConfig IPConfig::Properties::ToNetworkConfig(
     const IPConfig::Properties* ipv4_prop,
     const IPConfig::Properties* ipv6_prop) {
-  NetworkConfig ret;
+  net_base::NetworkConfig ret;
   if (ipv4_prop && ipv4_prop->address_family != net_base::IPFamily::kIPv4) {
     LOG(ERROR) << "Expecting IPv4 config, seeing "
                << (ipv4_prop->address_family
@@ -210,8 +210,8 @@ NetworkConfig IPConfig::Properties::ToNetworkConfig(
   if (ipv6_prop && ipv6_prop->mtu > 0) {
     mtu = std::min(mtu, ipv6_prop->mtu);
   }
-  int min_mtu =
-      ipv6_prop ? NetworkConfig::kMinIPv6MTU : NetworkConfig::kMinIPv4MTU;
+  int min_mtu = ipv6_prop ? net_base::NetworkConfig::kMinIPv6MTU
+                          : net_base::NetworkConfig::kMinIPv4MTU;
   if (mtu < min_mtu) {
     LOG(INFO) << __func__ << " MTU " << mtu << " is too small; adjusting up to "
               << min_mtu;
@@ -225,7 +225,7 @@ NetworkConfig IPConfig::Properties::ToNetworkConfig(
 }
 
 void IPConfig::Properties::UpdateFromNetworkConfig(
-    const NetworkConfig& network_config, net_base::IPFamily family) {
+    const net_base::NetworkConfig& network_config, net_base::IPFamily family) {
   if (!address_family) {
     // In situations where no address is supplied (bad or missing DHCP config)
     // supply an address family ourselves.
@@ -368,7 +368,7 @@ uint32_t IPConfig::GetLeaseDurationSeconds(Error* /*error*/) {
 }
 
 void IPConfig::ApplyNetworkConfig(
-    const NetworkConfig& config,
+    const net_base::NetworkConfig& config,
     net_base::IPFamily family,
     const std::optional<DHCPv4Config::Data>& dhcp_data) {
   properties_.UpdateFromNetworkConfig(config, family);

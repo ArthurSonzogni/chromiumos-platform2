@@ -19,6 +19,7 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <libpasswordprovider/password_provider.h>
+#include <net-base/network_config.h>
 
 #include "shill/ppp_daemon.h"
 #include "shill/vpn/vpn_util.h"
@@ -163,7 +164,7 @@ void L2TPConnection::Notify(const std::string& reason,
   // support IPv6, it is a reasonable value to start with, since the minimum
   // IPv6 packet size will plausibly be a size any gateway would support, and
   // is also larger than the IPv4 minimum size.
-  ipv4_properties->mtu = NetworkConfig::kMinIPv6MTU;
+  ipv4_properties->mtu = net_base::NetworkConfig::kMinIPv6MTU;
 
   ipv4_properties->method = kTypeVPN;
 

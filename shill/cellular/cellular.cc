@@ -31,6 +31,7 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/network_config.h>
 #include <net-base/rtnl_handler.h>
 #include <ModemManager/ModemManager.h>
 
@@ -59,7 +60,6 @@
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/net/process_manager.h"
-#include "shill/network/network_config.h"
 #include "shill/ppp_daemon.h"
 #include "shill/profile.h"
 #include "shill/service.h"
@@ -962,8 +962,8 @@ void Cellular::GetLocationCallback(const std::string& gpp_lac_ci_string,
   std::vector<std::string> location_vec = SplitString(
       gpp_lac_ci_string, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if (location_vec.size() < 4) {
-    LOG(ERROR) << LoggingTag() << ": "
-               << "Unable to parse location string " << gpp_lac_ci_string;
+    LOG(ERROR) << LoggingTag() << ": " << "Unable to parse location string "
+               << gpp_lac_ci_string;
     return;
   }
   location_info_.mcc = location_vec[0];
@@ -4210,14 +4210,14 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
 }
 
 void Cellular::NetworkInfo::Start() {
-  // TODO(b/269401899): Use NetworkConfig in NetworkInfo instead of ipv6_props_
-  // and ipv4_props_.
+  // TODO(b/269401899): Use net_base::NetworkConfig in NetworkInfo instead of
+  // ipv6_props_ and ipv4_props_.
   if (ipv6_props_ || ipv4_props_) {
     IPConfig::Properties* ipv6 = ipv6_props_ ? &*ipv6_props_ : nullptr;
     IPConfig::Properties* ipv4 = ipv4_props_ ? &*ipv4_props_ : nullptr;
     auto network_config = IPConfig::Properties::ToNetworkConfig(ipv4, ipv6);
     network_->set_link_protocol_network_config(
-        std::make_unique<NetworkConfig>(std::move(network_config)));
+        std::make_unique<net_base::NetworkConfig>(std::move(network_config)));
   }
   network_->Start(start_opts_);
 }

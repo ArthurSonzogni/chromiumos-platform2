@@ -17,11 +17,11 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/ipv4_address.h>
+#include <net-base/network_config.h>
 
 #include "shill/dbus/dbus_control.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/network/network_config.h"
 #include "shill/profile.h"
 #include "shill/static_ip_parameters.h"
 #include "shill/store/key_value_store.h"
@@ -52,7 +52,7 @@ namespace {
 // - Reset IPv4 address (with prefix length) in |static_config|.
 //
 // Returns whether |static_config| is updated.
-bool UpdateWireGuardDriverIPv4Address(NetworkConfig* static_config,
+bool UpdateWireGuardDriverIPv4Address(net_base::NetworkConfig* static_config,
                                       VPNDriver* driver) {
   if (driver->vpn_type() != VPNType::kWireGuard) {
     return false;

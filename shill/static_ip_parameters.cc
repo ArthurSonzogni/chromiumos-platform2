@@ -18,9 +18,9 @@
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
+#include <net-base/network_config.h>
 
 #include "shill/error.h"
-#include "shill/network/network_config.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/property_store.h"
 #include "shill/store/store_interface.h"
@@ -58,8 +58,8 @@ constexpr Property kProperties[] = {
 
 // Converts the StaticIPParameters from KeyValueStore to NetworkConfig.
 // Errors are ignored if any value is not valid.
-NetworkConfig KeyValuesToNetworkConfig(const KeyValueStore& kvs) {
-  NetworkConfig ret;
+net_base::NetworkConfig KeyValuesToNetworkConfig(const KeyValueStore& kvs) {
+  net_base::NetworkConfig ret;
   if (kvs.Contains<std::string>(kAddressProperty)) {
     const int prefix = kvs.Lookup<int32_t>(kPrefixlenProperty, 0);
     const std::string addr_str = kvs.Get<std::string>(kAddressProperty);
@@ -131,7 +131,7 @@ void SetStringsValueByObjectVector(KeyValueStore& kvs,
 }  // namespace
 
 KeyValueStore StaticIPParameters::NetworkConfigToKeyValues(
-    const NetworkConfig& props) {
+    const net_base::NetworkConfig& props) {
   KeyValueStore kvs;
   if (props.ipv4_address.has_value()) {
     kvs.Set<std::string>(kAddressProperty,
@@ -264,7 +264,7 @@ bool StaticIPParameters::SetStaticIP(const KeyValueStore& value,
 }
 
 void StaticIPParameters::Reset() {
-  config_ = NetworkConfig();
+  config_ = net_base::NetworkConfig{};
 }
 
 }  // namespace shill

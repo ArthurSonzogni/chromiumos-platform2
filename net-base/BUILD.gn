@@ -46,6 +46,7 @@ shared_library("libnet-base") {
     "mac_address.cc",
     "netlink_sock_diag.cc",
     "netlink_socket.cc",
+    "network_config.cc",
     "rtnl_handler.cc",
     "rtnl_listener.cc",
     "rtnl_message.cc",

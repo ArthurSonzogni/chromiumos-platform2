@@ -22,6 +22,7 @@
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/ip_address.h>
+#include <net-base/network_config.h>
 
 #include "shill/certificate_file.h"
 #include "shill/device_info.h"
@@ -531,8 +532,8 @@ OpenVPNDriver::IPProperties OpenVPNDriver::ParseIPConfiguration(
   const bool has_ipv4 = !ipv4_local.empty();
   const bool has_ipv6 = !ipv6_local.empty();
   if (mtu != 0) {
-    const int min_mtu =
-        has_ipv6 ? NetworkConfig::kMinIPv6MTU : NetworkConfig::kMinIPv4MTU;
+    const int min_mtu = has_ipv6 ? net_base::NetworkConfig::kMinIPv6MTU
+                                 : net_base::NetworkConfig::kMinIPv4MTU;
     if (mtu < min_mtu) {
       LOG(ERROR) << "MTU value " << mtu << " ignored";
       mtu = 0;

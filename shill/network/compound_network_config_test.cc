@@ -11,8 +11,7 @@
 #include <gtest/gtest.h>
 #include <net-base/http_url.h>
 #include <net-base/ipv4_address.h>
-
-#include "shill/network/network_config.h"
+#include <net-base/network_config.h>
 
 namespace shill {
 
@@ -56,22 +55,24 @@ class NetworkConfigMergeTest : public ::testing::Test {
   }
 
  protected:
-  NetworkConfig dhcp_config_;
-  NetworkConfig slaac_config_;
+  net_base::NetworkConfig dhcp_config_;
+  net_base::NetworkConfig slaac_config_;
 };
 
 TEST_F(NetworkConfigMergeTest, DHCPOnly) {
   CompoundNetworkConfig cnc("test_if");
-  EXPECT_TRUE(cnc.SetFromDHCP(std::make_unique<NetworkConfig>(dhcp_config_)));
+  EXPECT_TRUE(
+      cnc.SetFromDHCP(std::make_unique<net_base::NetworkConfig>(dhcp_config_)));
   EXPECT_EQ(dhcp_config_, cnc.Get());
 }
 
 TEST_F(NetworkConfigMergeTest, DHCPWithStatic) {
   CompoundNetworkConfig cnc("test_if");
-  EXPECT_TRUE(cnc.SetFromDHCP(std::make_unique<NetworkConfig>(dhcp_config_)));
+  EXPECT_TRUE(
+      cnc.SetFromDHCP(std::make_unique<net_base::NetworkConfig>(dhcp_config_)));
   EXPECT_EQ(dhcp_config_, cnc.Get());
 
-  NetworkConfig static_config;
+  net_base::NetworkConfig static_config;
   EXPECT_FALSE(cnc.SetFromStatic(static_config));
   EXPECT_EQ(dhcp_config_, cnc.Get());
 
@@ -105,18 +106,20 @@ TEST_F(NetworkConfigMergeTest, DHCPWithStatic) {
 
 TEST_F(NetworkConfigMergeTest, SLAACOnly) {
   CompoundNetworkConfig cnc("test_if");
-  EXPECT_TRUE(cnc.SetFromSLAAC(std::make_unique<NetworkConfig>(slaac_config_)));
+  EXPECT_TRUE(cnc.SetFromSLAAC(
+      std::make_unique<net_base::NetworkConfig>(slaac_config_)));
   EXPECT_EQ(slaac_config_, cnc.Get());
 }
 
 TEST_F(NetworkConfigMergeTest, SLAACWithStatic) {
   CompoundNetworkConfig cnc("test_if");
-  EXPECT_TRUE(cnc.SetFromSLAAC(std::make_unique<NetworkConfig>(slaac_config_)));
+  EXPECT_TRUE(cnc.SetFromSLAAC(
+      std::make_unique<net_base::NetworkConfig>(slaac_config_)));
   EXPECT_EQ(slaac_config_, cnc.Get());
 
   // Static-configured DNS and DNSSL can get applied onto SLAAC IPv6-only
   // networks.
-  NetworkConfig static_config;
+  net_base::NetworkConfig static_config;
   static_config.dns_servers = {
       *net_base::IPAddress::CreateFromString("2001:db8:0:2::1"),
       *net_base::IPAddress::CreateFromString("2001:db8:0:2::2")};
@@ -132,8 +135,10 @@ TEST_F(NetworkConfigMergeTest, SLAACWithStatic) {
 
 TEST_F(NetworkConfigMergeTest, DHCPAndSLAAC) {
   CompoundNetworkConfig cnc("test_if");
-  EXPECT_TRUE(cnc.SetFromSLAAC(std::make_unique<NetworkConfig>(slaac_config_)));
-  EXPECT_TRUE(cnc.SetFromDHCP(std::make_unique<NetworkConfig>(dhcp_config_)));
+  EXPECT_TRUE(cnc.SetFromSLAAC(
+      std::make_unique<net_base::NetworkConfig>(slaac_config_)));
+  EXPECT_TRUE(
+      cnc.SetFromDHCP(std::make_unique<net_base::NetworkConfig>(dhcp_config_)));
 
   EXPECT_EQ(dhcp_config_.ipv4_address, cnc.Get().ipv4_address);
   EXPECT_EQ(dhcp_config_.ipv4_broadcast, cnc.Get().ipv4_broadcast);
@@ -161,7 +166,7 @@ TEST_F(NetworkConfigMergeTest, DHCPAndSLAAC) {
 }
 
 TEST_F(NetworkConfigMergeTest, IPv4VPNWithStatic) {
-  NetworkConfig vpn_config;
+  net_base::NetworkConfig vpn_config;
   vpn_config.ipv4_address =
       net_base::IPv4CIDR::CreateFromCIDRString("10.200.1.100/24");
   vpn_config.dns_servers = {
@@ -176,11 +181,11 @@ TEST_F(NetworkConfigMergeTest, IPv4VPNWithStatic) {
   vpn_config.mtu = 1403;
 
   CompoundNetworkConfig cnc("test_if");
-  EXPECT_TRUE(
-      cnc.SetFromLinkProtocol(std::make_unique<NetworkConfig>(vpn_config)));
+  EXPECT_TRUE(cnc.SetFromLinkProtocol(
+      std::make_unique<net_base::NetworkConfig>(vpn_config)));
   EXPECT_EQ(vpn_config, cnc.Get());
 
-  NetworkConfig static_config;
+  net_base::NetworkConfig static_config;
   static_config.dns_servers = {
       *net_base::IPAddress::CreateFromString("192.168.1.88"),
       *net_base::IPAddress::CreateFromString("192.168.1.87")};
@@ -205,7 +210,7 @@ TEST_F(NetworkConfigMergeTest, IPv4VPNWithStatic) {
 }
 
 TEST_F(NetworkConfigMergeTest, CellWithStaticIPv6) {
-  NetworkConfig cell_config;
+  net_base::NetworkConfig cell_config;
   cell_config.ipv4_address =
       net_base::IPv4CIDR::CreateFromCIDRString("10.200.1.100/24");
   cell_config.ipv4_gateway =
@@ -223,13 +228,13 @@ TEST_F(NetworkConfigMergeTest, CellWithStaticIPv6) {
   cell_config.mtu = 1403;
 
   CompoundNetworkConfig cnc("test_if");
-  EXPECT_TRUE(
-      cnc.SetFromLinkProtocol(std::make_unique<NetworkConfig>(cell_config)));
+  EXPECT_TRUE(cnc.SetFromLinkProtocol(
+      std::make_unique<net_base::NetworkConfig>(cell_config)));
   EXPECT_EQ(cell_config, cnc.Get());
 }
 
 TEST_F(NetworkConfigMergeTest, CellWithDynamicIPv6) {
-  NetworkConfig cell_config;
+  net_base::NetworkConfig cell_config;
   cell_config.ipv4_address =
       net_base::IPv4CIDR::CreateFromCIDRString("10.200.1.100/24");
   cell_config.ipv4_gateway =
@@ -240,9 +245,10 @@ TEST_F(NetworkConfigMergeTest, CellWithDynamicIPv6) {
   cell_config.mtu = 1403;
 
   CompoundNetworkConfig cnc("test_if");
-  EXPECT_TRUE(
-      cnc.SetFromLinkProtocol(std::make_unique<NetworkConfig>(cell_config)));
-  EXPECT_TRUE(cnc.SetFromSLAAC(std::make_unique<NetworkConfig>(slaac_config_)));
+  EXPECT_TRUE(cnc.SetFromLinkProtocol(
+      std::make_unique<net_base::NetworkConfig>(cell_config)));
+  EXPECT_TRUE(cnc.SetFromSLAAC(
+      std::make_unique<net_base::NetworkConfig>(slaac_config_)));
 
   EXPECT_EQ(cell_config.ipv4_address, cnc.Get().ipv4_address);
   EXPECT_EQ(cell_config.ipv4_broadcast, cnc.Get().ipv4_broadcast);

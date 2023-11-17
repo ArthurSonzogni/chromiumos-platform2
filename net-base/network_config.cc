@@ -2,16 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/network/network_config.h"
+#include "net-base/network_config.h"
 
 #include <algorithm>
 #include <compare>
 
 #include <base/strings/string_util.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
 
-namespace shill {
+#include "net-base/ipv4_address.h"
+#include "net-base/ipv6_address.h"
+
+namespace net_base {
 
 NetworkConfig::NetworkConfig() = default;
 NetworkConfig::~NetworkConfig() = default;
@@ -97,4 +98,4 @@ std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config) {
   return stream << "}";
 }
 
-}  // namespace shill
+}  // namespace net_base

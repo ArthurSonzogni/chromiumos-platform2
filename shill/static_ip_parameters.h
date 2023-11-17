@@ -7,7 +7,8 @@
 
 #include <string>
 
-#include "shill/network/network_config.h"
+#include <net-base/network_config.h>
+
 #include "shill/store/key_value_store.h"
 #include "shill/store/property_store.h"
 
@@ -20,8 +21,10 @@ class StoreInterface;
 // class.
 class StaticIPParameters {
  public:
-  // Converts the StaticIPParameters from NetworkConfig to KeyValueStore.
-  static KeyValueStore NetworkConfigToKeyValues(const NetworkConfig& props);
+  // Converts the StaticIPParameters from net_base::NetworkConfig to
+  // KeyValueStore.
+  static KeyValueStore NetworkConfigToKeyValues(
+      const net_base::NetworkConfig& props);
 
   StaticIPParameters();
   StaticIPParameters(const StaticIPParameters&) = delete;
@@ -42,14 +45,14 @@ class StaticIPParameters {
   // Reset all states to defaults (e.g. when a service is unloaded).
   void Reset();
 
-  const NetworkConfig& config() const { return config_; }
-  NetworkConfig* mutable_config() { return &config_; }
+  const net_base::NetworkConfig& config() const { return config_; }
+  net_base::NetworkConfig* mutable_config() { return &config_; }
 
  private:
   KeyValueStore GetStaticIPConfig(Error* error);
   bool SetStaticIP(const KeyValueStore& value, Error* error);
 
-  NetworkConfig config_;
+  net_base::NetworkConfig config_;
 };
 
 }  // namespace shill

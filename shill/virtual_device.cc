@@ -11,6 +11,8 @@
 #include <string>
 #include <utility>
 
+#include <net-base/network_config.h>
+
 #include "shill/manager.h"
 
 namespace shill {
@@ -57,12 +59,12 @@ void VirtualDevice::Stop(EnabledStateChangedCallback callback) {
 void VirtualDevice::UpdateIPConfig(
     std::unique_ptr<IPConfig::Properties> ipv4_properties,
     std::unique_ptr<IPConfig::Properties> ipv6_properties) {
-  // TODO(b/269401899): VPNDriver to use NetworkConfig instead of
+  // TODO(b/269401899): VPNDriver to use net_base::NetworkConfig instead of
   // IPConfig::Properties internally.
   auto network_config = IPConfig::Properties::ToNetworkConfig(
       ipv4_properties.get(), ipv6_properties.get());
   GetPrimaryNetwork()->set_link_protocol_network_config(
-      std::make_unique<NetworkConfig>(std::move(network_config)));
+      std::make_unique<net_base::NetworkConfig>(std::move(network_config)));
   GetPrimaryNetwork()->Start(Network::StartOptions{
       .dhcp = std::nullopt,
       .accept_ra = false,

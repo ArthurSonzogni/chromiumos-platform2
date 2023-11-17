@@ -22,7 +22,7 @@ class MockSLAACController : public SLAACController {
   MOCK_METHOD(void, Start, (std::optional<net_base::IPv6Address>), (override));
   MOCK_METHOD(void, Stop, (), (override));
 
-  MOCK_METHOD(NetworkConfig, GetNetworkConfig, (), (const override));
+  MOCK_METHOD(net_base::NetworkConfig, GetNetworkConfig, (), (const override));
 
   void RegisterCallback(UpdateCallback update_callback) override {
     update_callback_ = update_callback;

@@ -13,10 +13,10 @@
 #include <vector>
 
 #include <net-base/ip_address.h>
+#include <net-base/network_config.h>
 
 #include "shill/mockable.h"
 #include "shill/network/dhcpv4_config.h"
-#include "shill/network/network_config.h"
 #include "shill/store/property_store.h"
 
 namespace shill {
@@ -45,16 +45,16 @@ class IPConfig {
     // to be used for network connection.
     bool HasIPAddressAndDNS() const;
 
-    // Generate a NetworkConfig from an IPConfig::Properties for IPv4 and
-    // another one from IPv6. Non-family-specific fields are merged.
-    static NetworkConfig ToNetworkConfig(const Properties* ipv4_prop,
-                                         const Properties* ipv6_prop);
+    // Generate a net_base::NetworkConfig from an IPConfig::Properties for IPv4
+    // and another one from IPv6. Non-family-specific fields are merged.
+    static net_base::NetworkConfig ToNetworkConfig(const Properties* ipv4_prop,
+                                                   const Properties* ipv6_prop);
 
     // Applies all non-empty properties in |network_config| of |family| to this
     // object. The |address_family| on |this| must be either empty or the same
     // as |family|".
     void UpdateFromNetworkConfig(
-        const NetworkConfig& network_config,
+        const net_base::NetworkConfig& network_config,
         net_base::IPFamily family = net_base::IPFamily::kIPv4);
 
     void UpdateFromDHCPData(const DHCPv4Config::Data& dhcp_data);
@@ -131,7 +131,7 @@ class IPConfig {
   // Applies the |family| part of |config| and |dhcp_data| to this object and
   // inform D-Bus listeners of the change.
   void ApplyNetworkConfig(
-      const NetworkConfig& config,
+      const net_base::NetworkConfig& config,
       net_base::IPFamily family = net_base::IPFamily::kIPv4,
       const std::optional<DHCPv4Config::Data>& dhcp_data = std::nullopt);
 

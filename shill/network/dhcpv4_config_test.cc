@@ -10,8 +10,7 @@
 #include <gtest/gtest.h>
 #include <net-base/http_url.h>
 #include <net-base/ipv4_address.h>
-
-#include "shill/network/network_config.h"
+#include <net-base/network_config.h>
 
 namespace shill {
 
@@ -24,7 +23,7 @@ TEST(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   // Last gateway missing, leaving an odd number of parameters.
   const std::string kBrokenClasslessRoutes0 =
       kDefaultDestination + " " + kRouter0 + " " + kDestination1;
-  NetworkConfig network_config;
+  net_base::NetworkConfig network_config;
   EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(kBrokenClasslessRoutes0,
                                                         &network_config));
   EXPECT_TRUE(network_config.rfc3442_routes.empty());
@@ -93,7 +92,7 @@ TEST(DHCPv4ConfigTest, ParseConfiguration) {
   conf.Set<std::vector<uint8_t>>(DHCPv4Config::kConfigurationKeyiSNSOptionData,
                                  isns_data);
 
-  NetworkConfig network_config;
+  net_base::NetworkConfig network_config;
   DHCPv4Config::Data dhcp_data;
   ASSERT_TRUE(
       DHCPv4Config::ParseConfiguration(conf, &network_config, &dhcp_data));
@@ -119,15 +118,15 @@ TEST(DHCPv4ConfigTest, ParseConfiguration) {
 
 TEST(DHCPv4ConfigTest, ParseConfigurationRespectingMinimumMTU) {
   // Values smaller than or equal to 576 should be ignored.
-  for (int mtu = NetworkConfig::kMinIPv4MTU - 3;
-       mtu < NetworkConfig::kMinIPv4MTU + 3; mtu++) {
+  for (int mtu = net_base::NetworkConfig::kMinIPv4MTU - 3;
+       mtu < net_base::NetworkConfig::kMinIPv4MTU + 3; mtu++) {
     KeyValueStore conf;
     conf.Set<uint16_t>(DHCPv4Config::kConfigurationKeyMTU, mtu);
-    NetworkConfig network_config;
+    net_base::NetworkConfig network_config;
     DHCPv4Config::Data dhcp_data;
     ASSERT_TRUE(
         DHCPv4Config::ParseConfiguration(conf, &network_config, &dhcp_data));
-    if (mtu <= NetworkConfig::kMinIPv4MTU) {
+    if (mtu <= net_base::NetworkConfig::kMinIPv4MTU) {
       EXPECT_FALSE(network_config.mtu.has_value());
     } else {
       EXPECT_EQ(mtu, network_config.mtu);
@@ -141,7 +140,7 @@ TEST(DHCPv4ConfigTest, ParseConfigurationCaptivePortalUri) {
   conf.Set<std::string>(DHCPv4Config::kConfigurationKeyCaptivePortalUri,
                         kCaptivePortalUri);
 
-  NetworkConfig network_config;
+  net_base::NetworkConfig network_config;
   DHCPv4Config::Data dhcp_data;
   EXPECT_TRUE(
       DHCPv4Config::ParseConfiguration(conf, &network_config, &dhcp_data));
@@ -155,7 +154,7 @@ TEST(DHCPv4ConfigTest, ParseConfigurationCaptivePortalUriFailed) {
   conf.Set<std::string>(DHCPv4Config::kConfigurationKeyCaptivePortalUri,
                         kCaptivePortalUri);
 
-  NetworkConfig network_config;
+  net_base::NetworkConfig network_config;
   DHCPv4Config::Data dhcp_data;
   EXPECT_FALSE(
       DHCPv4Config::ParseConfiguration(conf, &network_config, &dhcp_data));

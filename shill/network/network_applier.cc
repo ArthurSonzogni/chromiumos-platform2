@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
@@ -418,12 +419,13 @@ void NetworkApplier::ApplyAddress(
   address_service_->AddAddress(interface_index, local, broadcast);
 }
 
-void NetworkApplier::ApplyNetworkConfig(int interface_index,
-                                        const std::string& interface_name,
-                                        Area area,
-                                        const NetworkConfig& network_config,
-                                        NetworkPriority priority,
-                                        Technology technology) {
+void NetworkApplier::ApplyNetworkConfig(
+    int interface_index,
+    const std::string& interface_name,
+    Area area,
+    const net_base::NetworkConfig& network_config,
+    NetworkPriority priority,
+    Technology technology) {
   if (area & Area::kIPv4Address) {
     if (network_config.ipv4_address) {
       ApplyAddress(interface_index,
@@ -517,7 +519,7 @@ void NetworkApplier::ApplyNetworkConfig(int interface_index,
   }
   if (area & Area::kMTU) {
     ApplyMTU(interface_index,
-             network_config.mtu.value_or(NetworkConfig::kDefaultMTU));
+             network_config.mtu.value_or(net_base::NetworkConfig::kDefaultMTU));
   }
 }
 

@@ -29,6 +29,7 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/ip_address.h>
+#include <net-base/network_config.h>
 #include <re2/re2.h>
 
 #include "shill/metrics.h"
@@ -1225,7 +1226,7 @@ void IPsecConnection::OnXFRMInterfaceReady(const std::string& ifname,
     // This is a point-to-point link, gateway does not make sense here. Set it
     // default to skip RTA_GATEWAY when installing routes.
     ipv4_props->gateway = "0.0.0.0";
-    ipv4_props->mtu = NetworkConfig::kMinIPv6MTU;
+    ipv4_props->mtu = net_base::NetworkConfig::kMinIPv6MTU;
     ipv4_props->method = kTypeVPN;
   }
   if (local_virtual_ipv6_ != "") {
@@ -1238,7 +1239,7 @@ void IPsecConnection::OnXFRMInterfaceReady(const std::string& ifname,
     // This is a point-to-point link, gateway does not make sense here. Set it
     // default to skip RTA_GATEWAY when installing routes.
     ipv6_props->gateway = "::";
-    ipv6_props->mtu = NetworkConfig::kMinIPv6MTU;
+    ipv6_props->mtu = net_base::NetworkConfig::kMinIPv6MTU;
     ipv6_props->method = kTypeVPN;
   }
   // In dual stack case, IPv6 traffic is allowed.

@@ -27,7 +27,8 @@ void MockDHCPController::RegisterCallbacks(UpdateCallback update_callback,
 }
 
 void MockDHCPController::TriggerUpdateCallback(
-    const NetworkConfig& network_config, const DHCPv4Config::Data& dhcp_data) {
+    const net_base::NetworkConfig& network_config,
+    const DHCPv4Config::Data& dhcp_data) {
   update_callback_.Run(network_config, dhcp_data, /*new_lease_acquired=*/true);
 }
 

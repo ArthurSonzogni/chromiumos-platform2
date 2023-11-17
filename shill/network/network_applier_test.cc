@@ -144,7 +144,7 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfig) {
   const int kInterfaceIndex = 3;
   const std::string kInterfaceName = "placeholder";
   NetworkPriority priority;
-  NetworkConfig config;
+  net_base::NetworkConfig config;
   config.ipv4_address =
       *net_base::IPv4CIDR::CreateFromCIDRString("192.0.2.100/24");
   config.ipv6_addresses = {
@@ -231,7 +231,7 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfigRouteParameters) {
   const int kInterfaceIndex = 3;
   const std::string kInterfaceName = "placeholder";
   NetworkPriority priority;
-  NetworkConfig config;
+  net_base::NetworkConfig config;
   config.ipv4_address =
       *net_base::IPv4CIDR::CreateFromCIDRString("192.0.2.100/24");
   config.ipv4_gateway = *net_base::IPv4Address::CreateFromString("192.0.2.1");
@@ -292,7 +292,7 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfigRoutingPolicyParameters) {
   const int kInterfaceIndex = 3;
   const std::string kInterfaceName = "placeholder";
   NetworkPriority priority;
-  NetworkConfig config;
+  net_base::NetworkConfig config;
   config.ipv4_address =
       *net_base::IPv4CIDR::CreateFromCIDRString("192.0.2.100/24");
   config.ipv6_addresses = {

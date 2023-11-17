@@ -363,7 +363,7 @@ void SLAACController::DNSSLExpired() {
   }
 }
 
-NetworkConfig SLAACController::GetNetworkConfig() const {
+net_base::NetworkConfig SLAACController::GetNetworkConfig() const {
   return network_config_;
 }
 

@@ -18,6 +18,7 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/network_config.h>
 #include <net-base/rtnl_handler.h>
 
 #include "shill/connection_diagnostics.h"
@@ -29,7 +30,6 @@
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/network_applier.h"
-#include "shill/network/network_config.h"
 #include "shill/network/network_priority.h"
 #include "shill/network/proc_fs_stub.h"
 #include "shill/network/slaac_controller.h"
@@ -241,7 +241,7 @@ class Network {
   // Sets network config specific to technology. Currently this is used by
   // cellular and VPN.
   mockable void set_link_protocol_network_config(
-      std::unique_ptr<NetworkConfig> config) {
+      std::unique_ptr<net_base::NetworkConfig> config) {
     config_.SetFromLinkProtocol(std::move(config));
   }
 
@@ -252,7 +252,7 @@ class Network {
   // Interfaces between Service and Network.
   // Callback invoked when the static IP properties configured on the selected
   // service changed.
-  mockable void OnStaticIPConfigChanged(const NetworkConfig& config);
+  mockable void OnStaticIPConfigChanged(const net_base::NetworkConfig& config);
   // Register a callback that gets called when the |current_ipconfig_| changed.
   // This should only be used by Service.
   mockable void RegisterCurrentIPConfigChangeHandler(
@@ -262,10 +262,11 @@ class Network {
   // Service to expose its IPConfig dbus API. Other user who would like to get
   // the configuration of the Network should use GetNetworkConfig() instead.
   mockable IPConfig* GetCurrentIPConfig() const;
-  // The NetworkConfig before applying the static one. Only needed by Service to
-  // be exposed as a SavedNetworkConfig Service property via D-Bus.
+  // The net_base::NetworkConfig before applying the static one. Only needed by
+  // Service to be exposed as a Savednet_base::NetworkConfig Service property
+  // via D-Bus.
   // TODO(b/227715787): This D-Bus API should be deprecated.
-  const NetworkConfig* GetSavedIPConfig() const;
+  const net_base::NetworkConfig* GetSavedIPConfig() const;
 
   // Functions for DHCP.
   // Initiates renewal of existing DHCP lease. Return false if the renewal
@@ -307,7 +308,7 @@ class Network {
   // Returns the current active configuration of the Network. That could be from
   // DHCPv4, static IPv4 configuration, SLAAC, data-link layer control
   // protocols, or merged from multiple of these sources.
-  const NetworkConfig& GetNetworkConfig() const;
+  const net_base::NetworkConfig& GetNetworkConfig() const;
 
   // Returns all known (global) addresses of the Network. That includes IPv4
   // address from link protocol, or from DHCPv4, or from static IPv4
@@ -424,8 +425,9 @@ class Network {
     primary_family_ = family;
   }
   void set_dhcp_network_config_for_testing(
-      const NetworkConfig& network_config) {
-    config_.SetFromDHCP(std::make_unique<NetworkConfig>(network_config));
+      const net_base::NetworkConfig& network_config) {
+    config_.SetFromDHCP(
+        std::make_unique<net_base::NetworkConfig>(network_config));
   }
   void set_dhcp_data_for_testing(const DHCPv4Config::Data data) {
     dhcp_data_ = data;
@@ -502,7 +504,7 @@ class Network {
   void OnIPv4ConfigUpdated();
   // Callback registered with DHCPController. Also see the comment for
   // DHCPController::UpdateCallback.
-  void OnIPConfigUpdatedFromDHCP(const NetworkConfig& network_config,
+  void OnIPConfigUpdatedFromDHCP(const net_base::NetworkConfig& network_config,
                                  const DHCPv4Config::Data& dhcp_data,
                                  bool new_lease_acquired);
   // Callback invoked on DHCP failures and RFC 8925 voluntary stops.

@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <net-base/ip_address.h>
+#include <net-base/network_config.h>
 
 #include "shill/ipconfig.h"
 #include "shill/mock_control.h"
@@ -19,7 +20,6 @@
 #include "shill/mock_metrics.h"
 #include "shill/network/mock_network_applier.h"
 #include "shill/network/network.h"
-#include "shill/network/network_config.h"
 #include "shill/service_under_test.h"
 #include "shill/store/fake_store.h"
 #include "shill/store/property_store.h"
@@ -99,7 +99,7 @@ class StaticIPParametersTest : public Test {
 
   void ExpectEmptyIPConfig() {
     const auto& network_config = network_->GetNetworkConfig();
-    EXPECT_EQ(NetworkConfig{}, network_config);
+    EXPECT_EQ(net_base::NetworkConfig{}, network_config);
   }
   // Modify an IP address string in some predictable way.  There's no need
   // for the output string to be valid from a networking perspective.
@@ -192,10 +192,10 @@ class StaticIPParametersTest : public Test {
     ipconfig_props.exclusion_list = {kExcludedRoute0, kExcludedRoute1};
     ipconfig_props.inclusion_list = {kIncludedRoute0, kIncludedRoute1};
     ipconfig_props.default_route = false;
-    NetworkConfig network_config =
+    net_base::NetworkConfig network_config =
         IPConfig::Properties::ToNetworkConfig(&ipconfig_props, nullptr);
     network_->set_link_protocol_network_config(
-        std::make_unique<NetworkConfig>(network_config));
+        std::make_unique<net_base::NetworkConfig>(network_config));
   }
   void SetStaticProperties() { SetStaticPropertiesWithVersion(0); }
   void SetStaticPropertiesWithVersion(int version) {
@@ -277,7 +277,7 @@ TEST_F(StaticIPParametersTest, ApplyEmptyParameters) {
 }
 
 TEST_F(StaticIPParametersTest, DefaultRoute) {
-  network_->set_dhcp_network_config_for_testing(NetworkConfig{});
+  network_->set_dhcp_network_config_for_testing(net_base::NetworkConfig{});
   SetStaticPropertiesWithoutRoute(service_->mutable_store());
   AttachNetwork();
   EXPECT_TRUE(network_->GetNetworkConfig().ipv4_default_route);

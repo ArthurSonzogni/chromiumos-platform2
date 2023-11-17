@@ -19,6 +19,7 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/timer.h>
+#include <net-base/network_config.h>
 
 #include "shill/control_interface.h"
 #include "shill/event_dispatcher.h"
@@ -29,7 +30,6 @@
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/dhcp_proxy_interface.h"
 #include "shill/network/dhcpv4_config.h"
-#include "shill/network/network_config.h"
 #include "shill/technology.h"
 #include "shill/time.h"
 
@@ -176,7 +176,7 @@ void DHCPController::ProcessEventSignal(ClientEventReason reason,
     return;
   }
 
-  NetworkConfig network_config;
+  net_base::NetworkConfig network_config;
   DHCPv4Config::Data dhcp_data;
   if (!DHCPv4Config::ParseConfiguration(configuration, &network_config,
                                         &dhcp_data)) {
@@ -242,9 +242,10 @@ std::optional<base::TimeDelta> DHCPController::TimeToLeaseExpiry() {
   return base::Seconds(current_lease_expiration_time_->tv_sec - now.tv_sec);
 }
 
-void DHCPController::OnIPConfigUpdated(const NetworkConfig& network_config,
-                                       const DHCPv4Config::Data& dhcp_data,
-                                       bool new_lease_acquired) {
+void DHCPController::OnIPConfigUpdated(
+    const net_base::NetworkConfig& network_config,
+    const DHCPv4Config::Data& dhcp_data,
+    bool new_lease_acquired) {
   if (new_lease_acquired) {
     StopAcquisitionTimeout();
     if (dhcp_data.lease_duration.is_positive()) {
@@ -485,9 +486,10 @@ void DHCPController::ResetLeaseExpirationTime() {
   current_lease_expiration_time_ = std::nullopt;
 }
 
-void DHCPController::InvokeUpdateCallback(const NetworkConfig& network_config,
-                                          const DHCPv4Config::Data& dhcp_data,
-                                          bool new_lease_acquired) {
+void DHCPController::InvokeUpdateCallback(
+    const net_base::NetworkConfig& network_config,
+    const DHCPv4Config::Data& dhcp_data,
+    bool new_lease_acquired) {
   if (!update_callback_.is_null()) {
     update_callback_.Run(network_config, dhcp_data, new_lease_acquired);
   }
