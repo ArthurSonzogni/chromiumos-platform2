@@ -593,7 +593,7 @@ class ClientLoop : public ClientLoopBase {
     if (!WriteStringToFile(reply.data(), output_file)) {
       LOG(ERROR) << "Failed to write output file.";
     }
-    LOG(INFO) << "Message Reply: " << GetProtoDebugString(reply);
+    printf("Message Reply: %s\n", GetProtoDebugString(reply).c_str());
     Quit();
   }
 
