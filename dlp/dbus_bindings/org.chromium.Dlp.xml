@@ -79,5 +79,15 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="async" />
     </method>
 
+    <method name="GetDatabaseEntries">
+      <tp:docstring>
+        Returns the content of the database.
+      </tp:docstring>
+      <arg name="response" type="ay" direction="out">
+        Serialized GetDatabaseEntriesResponse message.
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+    </method>
+
   </interface>
 </node>

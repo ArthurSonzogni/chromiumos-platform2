@@ -81,6 +81,10 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           std::vector<uint8_t>>> response,
       const std::vector<uint8_t>& request_blob) override;
+  void GetDatabaseEntries(
+      std::unique_ptr<
+          brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>>
+          response) override;
 
   void SetFanotifyWatcherStartedForTesting(bool is_started);
   void CloseDatabaseForTesting();
@@ -241,6 +245,12 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
                           base::OnceClosure init_callback,
                           const base::FilePath& database_path,
                           bool success);
+
+  // Callback on GetDatabaseEntries after getting data from database.
+  void ProcessGetDatabaseEntriesWithData(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          std::vector<uint8_t>>> response,
+      std::map<FileId, FileEntry> files_entries);
 
   // If true, DlpAdaptor won't try to initialise `fanotify_watcher_`.
   bool is_fanotify_watcher_started_for_testing_ = false;

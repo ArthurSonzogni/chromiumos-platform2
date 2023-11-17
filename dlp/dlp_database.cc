@@ -141,6 +141,7 @@ class DlpDatabase::Core {
   bool UpsertFileEntries(const std::vector<FileEntry>& file_entries);
   std::map<FileId, FileEntry> GetFileEntriesByIds(
       std::vector<FileId> ids) const;
+  std::map<FileId, FileEntry> GetAllEntries() const;
   bool DeleteFileEntryByInode(ino64_t inode);
   bool DeleteFileEntriesWithIdsNotInSet(std::set<FileId> ids_to_keep);
   bool MigrateDatabase(const std::vector<FileId>& existing_files);
@@ -388,6 +389,27 @@ std::map<FileId, FileEntry> DlpDatabase::Core::GetFileEntriesByIds(
   return file_entries;
 }
 
+std::map<FileId, FileEntry> DlpDatabase::Core::GetAllEntries() const {
+  std::map<FileId, FileEntry> file_entries;
+  if (!IsOpen())
+    return file_entries;
+
+  std::string sql;
+  sql += "SELECT inode,crtime,source_url,referrer_url FROM file_entries_crtime";
+
+  ExecResult result = ExecSQL(sql, GetFileEntriesCallback, &file_entries);
+
+  if (result.code != SQLITE_OK) {
+    LOG(ERROR) << "Failed to query: (" << result.code << ") "
+               << result.error_msg;
+    ForwardUMAErrorToParentThread(DatabaseError::kQueryError);
+    file_entries.clear();
+    return file_entries;
+  }
+
+  return file_entries;
+}
+
 bool DlpDatabase::Core::DeleteFileEntryByInode(ino64_t inode) {
   if (!IsOpen())
     return false;
@@ -598,6 +620,16 @@ void DlpDatabase::GetFileEntriesByIds(
       FROM_HERE,
       base::BindOnce(&DlpDatabase::Core::GetFileEntriesByIds,
                      base::Unretained(core_.get()), std::move(ids)),
+      std::move(callback));
+}
+
+void DlpDatabase::GetDatabaseEntries(
+    base::OnceCallback<void(std::map<FileId, FileEntry>)> callback) const {
+  CHECK(!task_runner_->RunsTasksInCurrentSequence());
+  task_runner_->PostTaskAndReplyWithResult(
+      FROM_HERE,
+      base::BindOnce(&DlpDatabase::Core::GetAllEntries,
+                     base::Unretained(core_.get())),
       std::move(callback));
 }
 

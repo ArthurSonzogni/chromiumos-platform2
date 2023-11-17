@@ -507,6 +507,22 @@ void DlpAdaptor::CheckFilesTransfer(
                           std::move(request)));
 }
 
+void DlpAdaptor::GetDatabaseEntries(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>>
+        response) {
+  if (!db_) {
+    GetDatabaseEntriesResponse response_proto;
+    dlp_metrics_->SendAdaptorError(AdaptorError::kDatabaseNotReadyError);
+    response_proto.set_error_message("Database is not ready");
+    response->Return(SerializeProto(response_proto));
+    return;
+  }
+  db_->GetDatabaseEntries(
+      base::BindOnce(&DlpAdaptor::ProcessGetDatabaseEntriesWithData,
+                     weak_factory_.GetWeakPtr(), std::move(response)));
+}
+
 void DlpAdaptor::SetFanotifyWatcherStartedForTesting(bool is_started) {
   is_fanotify_watcher_started_for_testing_ = is_started;
 }
@@ -1133,6 +1149,22 @@ void DlpAdaptor::OnDatabaseMigrated(std::unique_ptr<DlpDatabase> db,
   }
   OnDatabaseInitialized(std::move(init_callback), std::move(db), database_path,
                         {SQLITE_OK, false});
+}
+
+void DlpAdaptor::ProcessGetDatabaseEntriesWithData(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
+    std::map<FileId, FileEntry> files_entries) {
+  GetDatabaseEntriesResponse response_proto;
+  for (const auto& [file_id, file_entry] : files_entries) {
+    FileMetadata* file_metadata = response_proto.add_files_entries();
+    file_metadata->set_inode(file_id.first);
+    file_metadata->set_crtime(file_id.second);
+    file_metadata->set_source_url(file_entry.source_url);
+    file_metadata->set_referrer_url(file_entry.referrer_url);
+  }
+
+  response->Return(SerializeProto(response_proto));
 }
 
 }  // namespace dlp

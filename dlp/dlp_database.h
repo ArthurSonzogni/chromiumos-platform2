@@ -90,6 +90,10 @@ class DlpDatabase : public DlpDatabaseDelegate {
       std::vector<FileId> ids,
       base::OnceCallback<void(std::map<FileId, FileEntry>)> callback) const;
 
+  // Returns all database entries.
+  void GetDatabaseEntries(
+      base::OnceCallback<void(std::map<FileId, FileEntry>)> callback) const;
+
   // Deletes file entry with |inode| from database. Returns true to the
   // |callback| if no error occurred.
   void DeleteFileEntryByInode(ino64_t inode,

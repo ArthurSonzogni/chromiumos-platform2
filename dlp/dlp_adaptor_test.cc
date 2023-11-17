@@ -324,6 +324,27 @@ class DlpAdaptorTest : public ::testing::Test {
     return result;
   }
 
+  GetDatabaseEntriesResponse GetDatabaseEntries() {
+    GetDatabaseEntriesResponse result;
+    std::unique_ptr<
+        brillo::dbus_utils::MockDBusMethodResponse<std::vector<uint8_t>>>
+        response = std::make_unique<
+            brillo::dbus_utils::MockDBusMethodResponse<std::vector<uint8_t>>>(
+            nullptr);
+    base::RunLoop run_loop;
+    response->set_return_callback(base::BindOnce(
+        [](GetDatabaseEntriesResponse* result, base::RunLoop* run_loop,
+           const std::vector<uint8_t>& proto_blob) {
+          *result = ParseResponse<GetDatabaseEntriesResponse>(proto_blob);
+          run_loop->Quit();
+        },
+        &result, &run_loop));
+
+    GetDlpAdaptor()->GetDatabaseEntries(std::move(response));
+    run_loop.Run();
+    return result;
+  }
+
   void InitDatabase() {
     database_directory_ = std::make_unique<base::ScopedTempDir>();
     ASSERT_TRUE(database_directory_->CreateUniqueTempDir());
@@ -1919,6 +1940,44 @@ TEST_F(DlpAdaptorTest,
   EXPECT_THAT(
       helper_.GetMetrics(kDlpAdaptorErrorHistogram),
       ElementsAre(static_cast<int>(AdaptorError::kRestrictionDetectionError)));
+}
+
+TEST_F(DlpAdaptorTest, GetDatabaseEntries) {
+  InitDatabase();
+
+  // Create files.
+  base::FilePath file_path1;
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
+  const FileId id1 = GetFileId(file_path1.value());
+  base::FilePath file_path2;
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2));
+  const FileId id2 = GetFileId(file_path2.value());
+
+  const std::string source1 = "source1";
+  const std::string source2 = "source2";
+  const std::string referrer1 = "referrer1";
+  const std::string referrer2 = "referrer2";
+
+  // Add two of the files to the database.
+  AddFilesAndCheck({CreateAddFileRequest(file_path1, source1, referrer1),
+                    CreateAddFileRequest(file_path2, source2, referrer2)},
+                   /*expected_result=*/true);
+
+  GetDatabaseEntriesResponse response = GetDatabaseEntries();
+
+  ASSERT_EQ(response.files_entries_size(), 2u);
+
+  FileMetadata file_entry1 = response.files_entries()[0];
+  EXPECT_EQ(file_entry1.inode(), id1.first);
+  EXPECT_EQ(file_entry1.crtime(), id1.second);
+  EXPECT_EQ(file_entry1.source_url(), source1);
+  EXPECT_EQ(file_entry1.referrer_url(), referrer1);
+
+  FileMetadata file_entry2 = response.files_entries()[1];
+  EXPECT_EQ(file_entry2.inode(), id2.first);
+  EXPECT_EQ(file_entry2.crtime(), id2.second);
+  EXPECT_EQ(file_entry2.source_url(), source2);
+  EXPECT_EQ(file_entry2.referrer_url(), referrer2);
 }
 
 class DlpAdaptorCheckFilesTransferTest
