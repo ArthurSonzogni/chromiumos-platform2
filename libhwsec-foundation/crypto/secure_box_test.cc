@@ -30,4 +30,58 @@ TEST(SecureBoxTest, DeriveKeyPairFromSeed) {
             "B29C4D323062BD23330CBF58631116C5373FF5A90D791DBB197E56A6FF49B3");
 }
 
+TEST(SecureBoxTest, Encrypt) {
+  const brillo::SecureBlob kSharedSecret("abcd1234");
+  const brillo::Blob kHeader = brillo::BlobFromString("header");
+  const brillo::SecureBlob kPlaintext("secret_message");
+  brillo::SecureBlob seed;
+  EXPECT_TRUE(brillo::SecureBlob::HexStringToSecureBlob("DEADBEEF", &seed));
+  std::optional<secure_box::KeyPair> key_pair =
+      secure_box::DeriveKeyPairFromSeed(seed);
+  ASSERT_TRUE(key_pair.has_value());
+  std::optional<brillo::Blob> encrypted = secure_box::Encrypt(
+      key_pair->public_key, kSharedSecret, kHeader, kPlaintext);
+  ASSERT_TRUE(encrypted.has_value());
+  // Version (2 bytes) + public key + nonce (16 bytes) + ciphertext + IV (12
+  // bytes)
+  EXPECT_EQ(encrypted->size(), 2 + 65 + 16 + kPlaintext.size() + 12);
+}
+
+TEST(SecureBoxTest, EncryptAsymmetricOnly) {
+  const brillo::Blob kHeader = brillo::BlobFromString("header");
+  const brillo::SecureBlob kPlaintext("secret_message");
+  brillo::SecureBlob seed;
+  EXPECT_TRUE(brillo::SecureBlob::HexStringToSecureBlob("DEADBEEF", &seed));
+  std::optional<secure_box::KeyPair> key_pair =
+      secure_box::DeriveKeyPairFromSeed(seed);
+  ASSERT_TRUE(key_pair.has_value());
+  std::optional<brillo::Blob> encrypted = secure_box::Encrypt(
+      key_pair->public_key, brillo::SecureBlob(), kHeader, kPlaintext);
+  ASSERT_TRUE(encrypted.has_value());
+  // Version (2 bytes) + public key + nonce (16 bytes) + ciphertext + IV (12
+  // bytes)
+  EXPECT_EQ(encrypted->size(), 2 + 65 + 16 + kPlaintext.size() + 12);
+}
+
+TEST(SecureBoxTest, EncryptSymmetricOnly) {
+  const brillo::SecureBlob kSharedSecret("abcd1234");
+  const brillo::Blob kHeader = brillo::BlobFromString("header");
+  const brillo::SecureBlob kPlaintext("secret_message");
+  std::optional<brillo::Blob> encrypted =
+      secure_box::Encrypt(brillo::Blob(), kSharedSecret, kHeader, kPlaintext);
+  ASSERT_TRUE(encrypted.has_value());
+  // Version (2 bytes) + public key + nonce (16 bytes) + ciphertext + IV (12
+  // bytes)
+  EXPECT_EQ(encrypted->size(), 2 + 16 + kPlaintext.size() + 12);
+}
+
+// Pubic key and shared secret can not both be empty.
+TEST(SecureBoxTest, EncryptInvalidParams) {
+  const brillo::Blob kHeader = brillo::BlobFromString("header");
+  const brillo::SecureBlob kPlaintext("secret_message");
+  std::optional<brillo::Blob> encrypted = secure_box::Encrypt(
+      brillo::Blob(), brillo::SecureBlob(), kHeader, kPlaintext);
+  EXPECT_FALSE(encrypted.has_value());
+}
+
 }  // namespace hwsec_foundation
