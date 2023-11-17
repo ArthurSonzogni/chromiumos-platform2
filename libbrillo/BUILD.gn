@@ -317,6 +317,7 @@ foreach(attr, libbrillo_sublibs) {
       configs += attr.configs
     }
     configs += [ ":target_defaults" ]
+    install_path = "lib"
   }
 }
 
@@ -340,6 +341,7 @@ generate_pkg_config("libbrillo_pc") {
   }
   defines = [ "USE_RTTI_FOR_TYPE_TAGS=1" ]
   libs = [ "-lbrillo" ]
+  install = true
 }
 
 action("libbrillo") {
@@ -444,6 +446,7 @@ shared_library("libinstallattributes") {
   } else {
     all_dependent_pkg_deps = [ "protobuf-lite" ]
   }
+  install_path = "lib"
 }
 
 shared_library("libpolicy") {
@@ -466,6 +469,7 @@ shared_library("libpolicy") {
     "openssl",
     "protobuf-lite",
   ]
+  install_path = "lib"
 }
 
 if (use.test) {
