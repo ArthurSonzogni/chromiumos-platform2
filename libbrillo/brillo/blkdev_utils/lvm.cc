@@ -42,7 +42,6 @@ bool LogicalVolumeManager::ValidatePhysicalVolume(
   if (!lvm_->RunProcess(
           {"/sbin/pvs", "--reportformat", "json", device_path.value()},
           &output)) {
-    LOG(ERROR) << "Failed to get output from pvs";
     return false;
   }
 
@@ -103,7 +102,6 @@ bool LogicalVolumeManager::ValidateLogicalVolume(const VolumeGroup& vg,
   if (!lvm_->RunProcess({"/sbin/lvs", "-S", pool_lv_check, "--reportformat",
                          "json", vg_name + "/" + lv_name},
                         &output)) {
-    LOG(ERROR) << "Failed to get output from lvs";
     return false;
   }
 
@@ -152,7 +150,6 @@ std::vector<LogicalVolume> LogicalVolumeManager::ListLogicalVolumes(
   if (!lvm_->RunProcess({"/sbin/lvs", "-S", "pool_lv!=\"\"", "--reportformat",
                          "json", vg_name},
                         &output)) {
-    LOG(ERROR) << "Failed to get output from lvs";
     return lv_vector;
   }
 

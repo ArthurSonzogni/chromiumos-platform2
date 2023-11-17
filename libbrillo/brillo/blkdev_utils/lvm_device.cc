@@ -356,7 +356,6 @@ bool LvmCommandRunner::RunProcess(const std::vector<std::string>& cmd,
   }
 
   if (lvm_process.Run() != 0) {
-    PLOG(ERROR) << "Failed to run command";
     return false;
   }
 
