@@ -167,11 +167,13 @@ if (use.test) {
 
   executable("c_feature_check_example") {
     sources = [ "c_feature_check_example.c" ]
+    configs += [ "//common-mk:test" ]
     deps = [ ":libfeatures_c" ]
   }
 
   executable("c_fake_feature_check_example") {
     sources = [ "c_fake_feature_check_example.c" ]
+    configs += [ "//common-mk:test" ]
     deps = [
       ":libc_fake_feature_library",
       ":libfeatures_c",
@@ -180,7 +182,10 @@ if (use.test) {
 
   executable("cpp_feature_check_example") {
     sources = [ "cpp_feature_check_example.cc" ]
-    configs += [ ":test_helper_config" ]
+    configs += [
+      "//common-mk:test",
+      ":test_helper_config",
+    ]
     deps = [ ":libfeatures" ]
   }
 }
