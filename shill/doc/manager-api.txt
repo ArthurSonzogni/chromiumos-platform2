@@ -1040,10 +1040,12 @@ Properties	object ActiveProfile [readonly]
 		dict TetheringConfig [readwrite]
 
 			Dictionary that contains the following Tethering related properties.
-			Writing this property while a tethering session is active will restart
+			Changing this property while a tethering session is active will restart
 			the tethering session with new configs. If upstream_technology is not
 			changed and is cellular, the upstream network will remain unchanged
-			during the tethering restart process.
+			during the tethering restart process. If only auto_disable is changed,
+			inactivity timer will be armed/disarmed on the fly. The tethering
+			session will not be restarted.
 
 			boolean auto_disable
 				automatically disable tethering if no devices have been

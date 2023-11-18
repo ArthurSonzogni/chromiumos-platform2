@@ -254,109 +254,126 @@ bool TetheringManager::ToProperties(KeyValueStore* properties) const {
   return true;
 }
 
-bool TetheringManager::FromProperties(const KeyValueStore& properties) {
+std::optional<bool> TetheringManager::FromProperties(
+    const KeyValueStore& properties) {
   // sanity check.
-  std::string ssid;
-  if (properties.Contains<std::string>(kTetheringConfSSIDProperty)) {
-    ssid = properties.Get<std::string>(kTetheringConfSSIDProperty);
-    if (ssid.empty() || ssid.length() > kMaxWiFiHexSSIDLength ||
-        !std::all_of(ssid.begin(), ssid.end(), ::isxdigit)) {
-      LOG(ERROR) << "Invalid SSID provided in tethering config: " << ssid;
-      return false;
-    }
+  auto ssid = properties.GetOptionalValue<std::string>(
+      kTetheringConfSSIDProperty);
+  if (ssid.has_value() &&
+         (ssid->empty() || ssid->length() > kMaxWiFiHexSSIDLength ||
+          !std::all_of(ssid->begin(), ssid->end(), ::isxdigit))) {
+    LOG(ERROR) << "Invalid SSID provided in tethering config: " << *ssid;
+    return std::nullopt;
   }
 
-  std::string passphrase;
-  if (properties.Contains<std::string>(kTetheringConfPassphraseProperty)) {
-    passphrase = properties.Get<std::string>(kTetheringConfPassphraseProperty);
-    if (passphrase.length() < kMinWiFiPassphraseLength ||
-        passphrase.length() > kMaxWiFiPassphraseLength) {
-      LOG(ERROR)
-          << "Passphrase provided in tethering config has invalid length: "
-          << passphrase;
-      return false;
-    }
+  auto passphrase = properties.GetOptionalValue<std::string>(
+      kTetheringConfPassphraseProperty);
+  if (passphrase.has_value() &&
+         (passphrase->length() < kMinWiFiPassphraseLength ||
+          passphrase->length() > kMaxWiFiPassphraseLength)) {
+    LOG(ERROR)
+        << "Passphrase provided in tethering config has invalid length: "
+        << *passphrase;
+    return std::nullopt;
   }
 
-  auto sec = WiFiSecurity(WiFiSecurity::kNone);
+  std::optional<WiFiSecurity> sec = std::nullopt;
   if (properties.Contains<std::string>(kTetheringConfSecurityProperty)) {
     sec = WiFiSecurity(
         properties.Get<std::string>(kTetheringConfSecurityProperty));
-    if (!sec.IsValid() || !(sec == WiFiSecurity(WiFiSecurity::kWpa2) ||
-                            sec == WiFiSecurity(WiFiSecurity::kWpa3) ||
-                            sec == WiFiSecurity(WiFiSecurity::kWpa2Wpa3))) {
+    if (!sec->IsValid() || !(*sec == WiFiSecurity(WiFiSecurity::kWpa2) ||
+                             *sec == WiFiSecurity(WiFiSecurity::kWpa3) ||
+                             *sec == WiFiSecurity(WiFiSecurity::kWpa2Wpa3))) {
       LOG(ERROR) << "Invalid security mode provided in tethering config: "
-                 << sec;
-      return false;
+                 << *sec;
+      return std::nullopt;
     }
   }
 
-  auto band = WiFiBand::kUnknownBand;
+  std::optional<WiFiBand> band = std::nullopt;
   if (properties.Contains<std::string>(kTetheringConfBandProperty)) {
     band = WiFiBandFromName(
         properties.Get<std::string>(kTetheringConfBandProperty));
-    if (band == WiFiBand::kUnknownBand) {
-      LOG(ERROR) << "Invalid WiFi band: " << band;
-      return false;
+    if (*band == WiFiBand::kUnknownBand) {
+      LOG(ERROR) << "Invalid WiFi band: " << *band;
+      return std::nullopt;
     }
   }
 
-  auto tech = Technology::kUnknown;
+  std::optional<Technology> tech = std::nullopt;
   if (properties.Contains<std::string>(kTetheringConfUpstreamTechProperty)) {
     tech = TechnologyFromName(
         properties.Get<std::string>(kTetheringConfUpstreamTechProperty));
     // TODO(b/235762746) Add support for WiFi as an upstream technology.
-    if (tech != Technology::kEthernet && tech != Technology::kCellular) {
+    if (*tech != Technology::kEthernet && *tech != Technology::kCellular) {
       LOG(ERROR) << "Invalid upstream technology provided in tethering config: "
-                 << tech;
-      return false;
+                 << *tech;
+      return std::nullopt;
     }
   }
 
+  bool restart = false;
   // update tethering config in this.
   if (properties.Contains<bool>(kTetheringConfAutoDisableProperty) &&
       auto_disable_ !=
           properties.Get<bool>(kTetheringConfAutoDisableProperty)) {
+    // If auto disable config changed, reset inactive timer on the fly which
+    // does not require session restart.
     auto_disable_ = properties.Get<bool>(kTetheringConfAutoDisableProperty);
-    auto_disable_ ? StartInactiveTimer() : StopInactiveTimer();
+    (auto_disable_ && GetClientCount() == 0) ?
+        StartInactiveTimer() : StopInactiveTimer();
   }
 
-  if (properties.Contains<bool>(kTetheringConfMARProperty)) {
+  if (properties.Contains<bool>(kTetheringConfMARProperty) &&
+      mar_ != properties.Get<bool>(kTetheringConfMARProperty)) {
     mar_ = properties.Get<bool>(kTetheringConfMARProperty);
+    restart = true;
   }
 
-  if (properties.Contains<std::string>(kTetheringConfSSIDProperty)) {
-    hex_ssid_ = ssid;
+  if (ssid.has_value() && hex_ssid_ != *ssid) {
+    hex_ssid_ = *ssid;
+    restart = true;
   }
 
-  if (properties.Contains<std::string>(kTetheringConfPassphraseProperty)) {
-    passphrase_ = passphrase;
+  if (passphrase.has_value() && passphrase_ != *passphrase) {
+    passphrase_ = *passphrase;
+    restart = true;
   }
 
-  if (properties.Contains<std::string>(kTetheringConfSecurityProperty)) {
-    security_ = sec;
+  if (sec.has_value() && security_ != *sec) {
+    security_ = *sec;
+    restart = true;
   }
 
-  if (properties.Contains<std::string>(kTetheringConfBandProperty)) {
-    band_ = band;
+  if (band.has_value() && band_ != *band) {
+    band_ = *band;
+    restart = true;
   }
 
-  if (properties.Contains<std::string>(kTetheringConfUpstreamTechProperty)) {
-    upstream_technology_ = tech;
+  if (tech.has_value() && upstream_technology_ != *tech) {
+    upstream_technology_ = *tech;
+    restart = true;
   }
 
   if (properties.Contains<std::string>(
+          kTetheringConfDownstreamDeviceForTestProperty) &&
+      downstream_device_for_test_ != properties.Get<std::string>(
           kTetheringConfDownstreamDeviceForTestProperty)) {
     downstream_device_for_test_ = properties.Get<std::string>(
         kTetheringConfDownstreamDeviceForTestProperty);
+    restart = true;
   }
+
   if (properties.Contains<uint32_t>(
+          kTetheringConfDownstreamPhyIndexForTestProperty) &&
+      downstream_phy_index_for_test_ != properties.Get<uint32_t>(
           kTetheringConfDownstreamPhyIndexForTestProperty)) {
     downstream_phy_index_for_test_ = properties.Get<uint32_t>(
         kTetheringConfDownstreamPhyIndexForTestProperty);
+    restart = true;
   }
 
-  return true;
+  return restart;
 }
 
 KeyValueStore TetheringManager::GetConfig(Error* error) {
@@ -386,7 +403,8 @@ bool TetheringManager::SetAndPersistConfig(const KeyValueStore& config,
 
   auto old_ssid = hex_ssid_;
   auto old_upstream_technology = upstream_technology_;
-  if (!FromProperties(config)) {
+  auto restart_needed = FromProperties(config);
+  if (!restart_needed.has_value()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Invalid tethering configuration");
     return false;
@@ -402,8 +420,8 @@ bool TetheringManager::SetAndPersistConfig(const KeyValueStore& config,
     return false;
   }
 
-  if (state_ == TetheringState::kTetheringActive ||
-      state_ == TetheringState::kTetheringStarting) {
+  if (restart_needed.value() && (state_ == TetheringState::kTetheringActive ||
+      state_ == TetheringState::kTetheringStarting)) {
     bool bypass_upstream = false;
     if (upstream_technology_ == old_upstream_technology &&
         upstream_technology_ == Technology::kCellular) {
@@ -1297,7 +1315,7 @@ bool TetheringManager::Load(const StoreInterface* storage) {
                                        kTetheringConfBandProperty);
   valid = valid && StoreToConfigString(storage, kStorageId, &config,
                                        kTetheringConfUpstreamTechProperty);
-  if (valid && !FromProperties(config)) {
+  if (valid && !FromProperties(config).has_value()) {
     valid = false;
   }
   return valid && stable_mac_addr_.Load(storage, kStorageId);

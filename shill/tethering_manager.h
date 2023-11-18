@@ -6,6 +6,7 @@
 #define SHILL_TETHERING_MANAGER_H_
 
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <string_view>
@@ -209,7 +210,9 @@ class TetheringManager : public Network::EventHandler {
   // parameters contained in |this| and return true if successful.
   bool ToProperties(KeyValueStore* properties) const;
   // Populate tethering config from a dictionary.
-  bool FromProperties(const KeyValueStore& properties);
+  // Return nullopt if properties are invalid. If a restart is needed to make
+  // the new config take effect, return true. Otherwise, return false.
+  std::optional<bool> FromProperties(const KeyValueStore& properties);
   // Reset tethering config with default value and a random WiFi SSID and
   // a random passphrase.
   void ResetConfiguration();

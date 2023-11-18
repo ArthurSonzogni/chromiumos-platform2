@@ -325,7 +325,7 @@ class TetheringManagerTest : public testing::Test {
 
   bool FromProperties(TetheringManager* tethering_manager,
                       const KeyValueStore& config) {
-    return tethering_manager->FromProperties(config);
+    return tethering_manager->FromProperties(config).has_value();
   }
 
   KeyValueStore VerifyDefaultTetheringConfig(
@@ -1739,6 +1739,72 @@ TEST_F(TetheringManagerTest, ChangeUpstreamTechWhileActive) {
   DispatchPendingEvents();
   EXPECT_EQ(TetheringState(tethering_manager_),
             TetheringManager::TetheringState::kTetheringRestarting);
+}
+
+TEST_F(TetheringManagerTest, ChangeAutoDisableWhileActive) {
+  TetheringPrerequisite(tethering_manager_);
+  SetEnabledVerifyResult(tethering_manager_, true,
+                         TetheringManager::SetEnabledResult::kSuccess);
+
+  // Change auto disable from true to false and set to TetheringConfig.
+  KeyValueStore config = GetConfig(tethering_manager_);
+  SetConfigAutoDisable(config, false);
+  EXPECT_TRUE(SetAndPersistConfig(tethering_manager_, config));
+  // Set auto disable to false will terminate the inactive timer.
+  EXPECT_TRUE(GetInactiveTimer(tethering_manager_).IsCancelled());
+  // No session restart is triggered.
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringActive);
+
+  // Change auto disable from false to true and set to TetheringConfig.
+  SetConfigAutoDisable(config, true);
+  EXPECT_TRUE(SetAndPersistConfig(tethering_manager_, config));
+  // Set auto disable to true will restart the inactive timer.
+  EXPECT_FALSE(GetInactiveTimer(tethering_manager_).IsCancelled());
+  // No session restart is triggered.
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringActive);
+
+  // Connect client to the hotspot.
+  std::vector<std::vector<uint8_t>> clients;
+  clients.push_back({00, 11, 22, 33, 44, 55});
+  ON_CALL(*hotspot_device_.get(), GetStations()).WillByDefault(Return(clients));
+  DownStreamDeviceEvent(tethering_manager_,
+                        LocalDevice::DeviceEvent::kPeerConnected,
+                        hotspot_device_.get());
+  DispatchPendingEvents();
+
+  // Change auto disable from true to false and set to TetheringConfig.
+  SetConfigAutoDisable(config, false);
+  EXPECT_TRUE(SetAndPersistConfig(tethering_manager_, config));
+  // Set auto disable to false will terminate the inactive timer.
+  EXPECT_TRUE(GetInactiveTimer(tethering_manager_).IsCancelled());
+  // No session restart is triggered.
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringActive);
+
+  // Change auto disable from false to true and set to TetheringConfig.
+  SetConfigAutoDisable(config, true);
+  EXPECT_TRUE(SetAndPersistConfig(tethering_manager_, config));
+  // Set auto disable to true will not restart the inactive timer if there is
+  // client connected to the hotspot.
+  EXPECT_TRUE(GetInactiveTimer(tethering_manager_).IsCancelled());
+  // No session restart is triggered.
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringActive);
+}
+
+TEST_F(TetheringManagerTest, SetConfigWithNoChangeWhileActive) {
+  TetheringPrerequisite(tethering_manager_);
+  SetEnabledVerifyResult(tethering_manager_, true,
+                         TetheringManager::SetEnabledResult::kSuccess);
+
+  // Change nothing and set to TetheringConfig.
+  KeyValueStore config = GetConfig(tethering_manager_);
+  EXPECT_TRUE(SetAndPersistConfig(tethering_manager_, config));
+  // No session restart is triggered.
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringActive);
 }
 
 }  // namespace shill
