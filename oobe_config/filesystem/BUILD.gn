@@ -29,6 +29,7 @@ if (use.test) {
   pkg_config("test_helper_config") {
     pkg_deps = [
       "libbrillo-test",
+      "libchrome",
       "libchrome-test",
     ]
   }
