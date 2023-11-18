@@ -50,6 +50,7 @@ executable("cryptohome-tpm-live-test") {
     "libbrillo",
     "libbrillo-test",
     "libchrome",
+    "libchrome-test",
     "libmetrics",
   ]
 }
