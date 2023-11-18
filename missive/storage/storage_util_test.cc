@@ -18,9 +18,9 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/test/task_environment.h>
 #include <base/uuid.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "gmock/gmock.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_queue.h"
 #include "missive/storage/storage_util.h"

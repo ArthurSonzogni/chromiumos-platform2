@@ -20,6 +20,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/bind.h>
+#include <base/functional/callback_forward.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
@@ -34,7 +35,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "base/functional/callback_forward.h"
 #include "missive/analytics/metrics.h"
 #include "missive/analytics/metrics_test_util.h"
 #include "missive/compression/compression_module.h"
