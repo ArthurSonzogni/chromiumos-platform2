@@ -33,6 +33,7 @@ getresgid: 1
 connect: 1
 getsockname: 1
 rt_sigaction: 1
+clock_getres: 1
 clone: 1
 close: 1
 memfd_create: 1

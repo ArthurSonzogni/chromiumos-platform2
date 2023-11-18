@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 brk: 1
+clock_gettime: 1
 clone: 1
 close: 1
 connect: 1
@@ -23,6 +24,7 @@ getresgid: 1
 getresuid: 1
 getsockname: 1
 gettid: 1
+gettimeofday: 1
 getuid: 1
 madvise: 1
 memfd_create: 1
