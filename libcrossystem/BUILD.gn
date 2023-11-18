@@ -19,9 +19,7 @@ group("all") {
     ]
   }
   if (use.test) {
-    deps += [
-      ":libcrossystem_tests",
-    ]
+    deps += [ ":libcrossystem_tests" ]
   }
 }
 
@@ -34,20 +32,21 @@ pkg_config("target_defaults_pkg_deps") {
   pkg_deps = default_pkg_deps
 }
 
-libcrossystem_sources = [
-  "crossystem.cc",
-  "crossystem_impl.cc",
-]
+source_set("libcrossystem_sources") {
+  sources = [
+    "crossystem.cc",
+    "crossystem_impl.cc",
+  ]
+  configs += [ ":target_defaults_pkg_deps" ]
+}
 
 static_library("libcrossystem_static") {
-  sources = libcrossystem_sources
-  configs += [ ":target_defaults_pkg_deps" ]
+  deps = [ ":libcrossystem_sources" ]
   install_path = "lib"
 }
 
 shared_library("libcrossystem") {
-  sources = libcrossystem_sources
-  configs += [ ":target_defaults_pkg_deps" ]
+  deps = [ ":libcrossystem_sources" ]
   install_path = "lib"
 }
 
