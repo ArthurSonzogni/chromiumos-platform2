@@ -440,20 +440,27 @@ PortalDetector::Status PortalDetector::GetPortalStatusFromRequestError(
 
 PortalDetector::ValidationState PortalDetector::Result::GetValidationState()
     const {
-  if (http_phase != PortalDetector::Phase::kContent) {
-    return ValidationState::kNoConnectivity;
-  }
+  // If both probes succeed as expected, classify the result as "Internet
+  // connectivity".
+  // TODO(b/309175584): consider HTTP 200 answers with no content as success for
+  // the HTTP probe.
   if (IsHTTPSProbeSuccessful() && IsHTTPProbeSuccessful()) {
     return ValidationState::kInternetConnectivity;
   }
+  // If the HTTP probe is cleanly redirected, classify the result as "portal
+  // redirect".
   if (IsHTTPProbeRedirected()) {
     return ValidationState::kPortalRedirect;
   }
-  if (http_status == PortalDetector::Status::kTimeout &&
-      !IsHTTPSProbeSuccessful()) {
-    return ValidationState::kNoConnectivity;
+  // If the HTTP probe received a redirection result but the response was
+  // incomplete, classify the result as "portal suspected".
+  if (IsRedirectResponse(http_status_code) && !redirect_url) {
+    return ValidationState::kPartialConnectivity;
   }
-  return ValidationState::kPartialConnectivity;
+  // Any other result is considered as "no connectivity".
+  // TODO(b/309175584): distinguish HTTP 200 answers with content as portal
+  // suspected case even if the HTTPS probe fails.
+  return ValidationState::kNoConnectivity;
 }
 
 std::optional<int> PortalDetector::Result::GetHTTPResponseCodeMetricResult()

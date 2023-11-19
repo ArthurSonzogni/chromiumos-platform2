@@ -1083,7 +1083,7 @@ TEST_F(NetworkTest, PortalDetectionResult_AfterDisconnection) {
   result.https_error = HttpRequest::Error::kHTTPTimeout;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
-  EXPECT_EQ(PortalDetector::ValidationState::kPartialConnectivity,
+  EXPECT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             result.GetValidationState());
   EXPECT_CALL(event_handler_, OnNetworkValidationResult).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkValidationResult).Times(0);
@@ -1103,7 +1103,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
   result.http_status_code = 204;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
-  EXPECT_EQ(PortalDetector::ValidationState::kPartialConnectivity,
+  EXPECT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             result.GetValidationState());
   MockConnectionDiagnostics* conn_diag = new MockConnectionDiagnostics();
   MockPortalDetector* portal_detector = new MockPortalDetector();
@@ -1130,7 +1130,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
   EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);
   network_->OnPortalDetectorResult(result);
-  EXPECT_EQ(PortalDetector::ValidationState::kPartialConnectivity,
+  EXPECT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             network_->network_validation_result()->GetValidationState());
   EXPECT_TRUE(network_->IsPortalDetectionInProgress());
 }
@@ -2229,6 +2229,7 @@ TEST(ValidationLogTest, ValidationLogRecordMetrics) {
   // |p| -> kPartialConnectivity
   p.http_phase = PortalDetector::Phase::kContent;
   p.http_status = PortalDetector::Status::kSuccess;
+  p.http_status_code = 302;
   p.https_error = HttpRequest::Error::kConnectionFailure;
   p.http_probe_completed = true;
   p.https_probe_completed = true;

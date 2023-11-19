@@ -946,7 +946,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirect) {
   OnNetworkValidationResult(result);
 }
 
-TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoUrl) {
+TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoURL) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kRedirect;
@@ -962,7 +962,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoUrl) {
   OnNetworkValidationResult(result);
 }
 
-TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
+TEST_F(DevicePortalDetectionTest, PortalDetectionPartialFailure) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kSuccess;
@@ -973,7 +973,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
   result.https_probe_completed = true;
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*service_, SetState(Service::kStatePortalSuspected));
+  EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
   EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
 
   OnNetworkValidationResult(result);

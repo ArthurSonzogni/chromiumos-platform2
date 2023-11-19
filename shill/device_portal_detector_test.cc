@@ -373,7 +373,7 @@ TEST_F(DevicePortalDetectorTest, RedirectFound) {
   EXPECT_FALSE(test_network->IsPortalDetectionRunning());
 }
 
-TEST_F(DevicePortalDetectorTest, RedirectFoundNoUrl) {
+TEST_F(DevicePortalDetectorTest, RedirectFoundNoURL) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
@@ -424,7 +424,7 @@ TEST_F(DevicePortalDetectorTest, RedirectFoundThenOnline) {
   EXPECT_FALSE(test_network->IsPortalDetectionRunning());
 }
 
-TEST_F(DevicePortalDetectorTest, PortalSuspected) {
+TEST_F(DevicePortalDetectorTest, PartialConnectivity) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
@@ -432,9 +432,9 @@ TEST_F(DevicePortalDetectorTest, PortalSuspected) {
 
   test_network->SetHTTPSFailureResult();
   test_network->CompletePortalDetection();
-  EXPECT_EQ(service_->state(), Service::kStatePortalSuspected);
+  EXPECT_EQ(service_->state(), Service::kStateNoConnectivity);
 
-  // NOTE: Since we only report on the HTTP phase, a portal-suspected result
+  // NOTE: Since we only report on the HTTP phase, a partial-connectivity result
   // reports 'success'. This will be addressed when the metrics are updated.
   EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorInitialResult),
               ElementsAre(Metrics::kPortalDetectorResultHTTPSFailure));
@@ -450,17 +450,17 @@ TEST_F(DevicePortalDetectorTest, PortalSuspected) {
   EXPECT_FALSE(test_network->IsPortalDetectionRunning());
 }
 
-TEST_F(DevicePortalDetectorTest, PortalSuspectedThenRedirectFound) {
+TEST_F(DevicePortalDetectorTest, PartialConnectivityThenRedirectFound) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
   EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
-  // Multiple portal-suspected results.
+  // Multiple partial-connectivity results.
   test_network->SetHTTPSFailureResult();
   test_network->CompletePortalDetection();
   test_network->CompletePortalDetection();
-  EXPECT_EQ(service_->state(), Service::kStatePortalSuspected);
+  EXPECT_EQ(service_->state(), Service::kStateNoConnectivity);
   EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorInitialResult),
               ElementsAre(Metrics::kPortalDetectorResultHTTPSFailure));
   EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorRetryResult),
@@ -497,7 +497,7 @@ TEST_F(DevicePortalDetectorTest, PortalSuspectedThenRedirectFound) {
   EXPECT_EQ(test_network->portal_detection_num_attempts(), 4);
 }
 
-TEST_F(DevicePortalDetectorTest, PortalSuspectedThenOnline) {
+TEST_F(DevicePortalDetectorTest, PartialConnectivityThenOnline) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
@@ -505,7 +505,7 @@ TEST_F(DevicePortalDetectorTest, PortalSuspectedThenOnline) {
 
   test_network->SetHTTPSFailureResult();
   test_network->CompletePortalDetection();
-  EXPECT_EQ(service_->state(), Service::kStatePortalSuspected);
+  EXPECT_EQ(service_->state(), Service::kStateNoConnectivity);
 
   // Portal detection should be started again.
   test_network->ContinuePortalDetection();
@@ -532,17 +532,17 @@ TEST_F(DevicePortalDetectorTest, PortalSuspectedThenOnline) {
   EXPECT_FALSE(test_network->IsPortalDetectionRunning());
 }
 
-TEST_F(DevicePortalDetectorTest, PortalSuspectedThenDisconnect) {
+TEST_F(DevicePortalDetectorTest, ParialConnectivityThenDisconnect) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
   EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
-  // Multiple portal-suspected results
+  // Multiple partial-connectivity results
   test_network->SetHTTPSFailureResult();
   test_network->CompletePortalDetection();
   test_network->CompletePortalDetection();
-  EXPECT_EQ(service_->state(), Service::kStatePortalSuspected);
+  EXPECT_EQ(service_->state(), Service::kStateNoConnectivity);
 
   // Portal detection should be started again.
   test_network->ContinuePortalDetection();
@@ -600,7 +600,7 @@ TEST_F(DevicePortalDetectorTest, RestartPortalDetection) {
   test_network->CompletePortalDetection();
   test_network->CompletePortalDetection();
   test_network->CompletePortalDetection();
-  EXPECT_EQ(service_->state(), Service::kStatePortalSuspected);
+  EXPECT_EQ(service_->state(), Service::kStateNoConnectivity);
 
   // Portal detection should be started again.
   test_network->ContinuePortalDetection();
@@ -617,7 +617,7 @@ TEST_F(DevicePortalDetectorTest, RestartPortalDetection) {
   test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStateOnline);
 
-  // NOTE: Since we only report on the HTTP phase, a portal-suspected result
+  // NOTE: Since we only report on the HTTP phase, a partial-connectivity result
   // reports 'success'. This will be addressed when the metrics are updated.
   // New initial result metric gets called once with an HTTPS failure.
   EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorInitialResult),
