@@ -1115,11 +1115,18 @@ void WiFiProvider::RemovePasspointCredentialsObserver(
 }
 
 void WiFiProvider::PhyDumpComplete(uint32_t phy_index) {
+  if (phy_index == kAllPhys) {
+    for (auto& it : wifi_phys_) {
+      it.second->PhyDumpComplete();
+    }
+    return;
+  }
+
   if (!base::Contains(wifi_phys_, phy_index)) {
     LOG(ERROR) << "Invalid PHY index: " << phy_index;
     return;
   }
-  return wifi_phys_[phy_index]->PhyDumpComplete();
+  wifi_phys_[phy_index]->PhyDumpComplete();
 }
 
 void WiFiProvider::GetPhyInfo(uint32_t phy_index) {
@@ -1136,7 +1143,8 @@ void WiFiProvider::GetPhyInfo(uint32_t phy_index) {
                           weak_ptr_factory_while_started_.GetWeakPtr()),
       base::BindRepeating(&NetlinkManager::OnAckDoNothing),
       base::BindRepeating(&WiFiProvider::OnGetPhyInfoAuxMessage,
-                          weak_ptr_factory_while_started_.GetWeakPtr()));
+                          weak_ptr_factory_while_started_.GetWeakPtr(),
+                          phy_index));
 }
 
 void WiFiProvider::OnNewWiphy(const Nl80211Message& nl80211_message) {
@@ -1491,16 +1499,15 @@ void WiFiProvider::RegionChanged(const std::string& country) {
 }
 
 void WiFiProvider::OnGetPhyInfoAuxMessage(
-    NetlinkManager::AuxiliaryMessageType type,
+    uint32_t phy_index, NetlinkManager::AuxiliaryMessageType type,
     const NetlinkMessage* raw_message) {
   if (type != NetlinkManager::kDone) {
     NetlinkManager::OnNetlinkMessageError(type, raw_message);
     return;
   }
   // Signal the end of dump.
-  for (auto& it : wifi_phys_) {
-    it.second->PhyDumpComplete();
-  }
+  PhyDumpComplete(phy_index);
+
   if (!phy_update_timeout_cb_.IsCancelled()) {
     phy_update_timeout_cb_.Cancel();
   }

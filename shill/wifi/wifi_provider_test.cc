@@ -375,6 +375,7 @@ const char kUS_Alpha2[] = "US";
 const char kWorld_Alpha2[] = "00";
 
 constexpr base::TimeDelta kPhyUpdateTimeout = base::Milliseconds(500);
+constexpr uint32_t kAllPhys = UINT32_MAX;
 }  // namespace
 
 class WiFiProviderTest : public testing::Test {
@@ -699,9 +700,10 @@ class WiFiProviderTest : public testing::Test {
 
   void SetCountry(std::string alpha2) { provider_->country_ = alpha2; }
 
-  void OnGetPhyInfoAuxMessage(NetlinkManager::AuxiliaryMessageType type,
+  void OnGetPhyInfoAuxMessage(uint32_t phy_index,
+                              NetlinkManager::AuxiliaryMessageType type,
                               const NetlinkMessage* raw_message) {
-    provider_->OnGetPhyInfoAuxMessage(type, raw_message);
+    provider_->OnGetPhyInfoAuxMessage(phy_index, type, raw_message);
   }
 
   void DispatchPendingEvents() { dispatcher_.DispatchPendingEvents(); }
@@ -2660,6 +2662,7 @@ TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_Timeout) {
 }
 
 TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_Success) {
+  MockWiFiPhy* phy = AddMockPhy(kNewWiphyNlMsg_WiphyIndex);
   // With different region domains we expect to request domain and phy update.
   SetCountry(kWorld_Alpha2);
   EXPECT_CALL(manager_, GetCellularOperatorCountryCode())
@@ -2680,13 +2683,14 @@ TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_Success) {
       SendNl80211Message(
           IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
   provider_->RegionChanged("US");
-  OnGetPhyInfoAuxMessage(NetlinkManager::kDone, nullptr);
+  OnGetPhyInfoAuxMessage(phy->GetPhyIndex(), NetlinkManager::kDone, nullptr);
   DispatchPendingEvents();
   EXPECT_EQ(times_called, 1);
   EXPECT_TRUE(IsPhyUpdateTimeoutCbCancelled());
 }
 
 TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_NoCellularNoCountry) {
+  MockWiFiPhy* phy = AddMockPhy(kNewWiphyNlMsg_WiphyIndex);
   // If celluar cannot provide region code and WiFiProvider does not have coutry
   // info yet, should request to do a sync.
   EXPECT_CALL(manager_, GetCellularOperatorCountryCode())
@@ -2702,7 +2706,7 @@ TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_NoCellularNoCountry) {
 
   // Now simulate reception of region change, expect phy dump and simulate
   // reception of "Done" message (signaling the end of "split messages" dump).
-  OnGetPhyInfoAuxMessage(NetlinkManager::kDone, nullptr);
+  OnGetPhyInfoAuxMessage(phy->GetPhyIndex(), NetlinkManager::kDone, nullptr);
   DispatchPendingEvents();
   EXPECT_EQ(times_called, 1);
   EXPECT_TRUE(IsPhyUpdateTimeoutCbCancelled());
@@ -2725,6 +2729,7 @@ TEST_F(WiFiProviderTest, UpdatePhyInfo_Timeout) {
 
 TEST_F(WiFiProviderTest, UpdatePhyInfo_Success) {
   int times_called = 0;
+  MockWiFiPhy* phy = AddMockPhy(kNewWiphyNlMsg_WiphyIndex);
   EXPECT_CALL(
       netlink_manager_,
       SendNl80211Message(
@@ -2735,10 +2740,25 @@ TEST_F(WiFiProviderTest, UpdatePhyInfo_Success) {
 
   // Now simulate reception of expect phy dump and simulate reception of "Done"
   // message (signaling the end of "split messages" dump).
-  OnGetPhyInfoAuxMessage(NetlinkManager::kDone, nullptr);
+  OnGetPhyInfoAuxMessage(phy->GetPhyIndex(), NetlinkManager::kDone, nullptr);
   DispatchPendingEvents();
   EXPECT_EQ(times_called, 1);
   EXPECT_TRUE(IsPhyUpdateTimeoutCbCancelled());
+}
+
+TEST_F(WiFiProviderTest, PhyDumpComplete) {
+  MockWiFiPhy* phy0 = AddMockPhy(0);
+  MockWiFiPhy* phy1 = AddMockPhy(1);
+
+  // Only call PhyDumpComplete on the phy which receives the done signal.
+  EXPECT_CALL(*phy0, PhyDumpComplete()).Times(1);
+  EXPECT_CALL(*phy1, PhyDumpComplete()).Times(0);
+  OnGetPhyInfoAuxMessage(phy0->GetPhyIndex(), NetlinkManager::kDone, nullptr);
+
+  // Call PhyDumpComplete on all phys.
+  EXPECT_CALL(*phy0, PhyDumpComplete()).Times(1);
+  EXPECT_CALL(*phy1, PhyDumpComplete()).Times(1);
+  OnGetPhyInfoAuxMessage(kAllPhys, NetlinkManager::kDone, nullptr);
 }
 
 }  // namespace shill

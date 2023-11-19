@@ -366,7 +366,8 @@ class WiFiProvider : public ProviderInterface {
   void PhyUpdateTimeout();
   // Utility function used to detect the end of PHY info dump and responsible
   // for calling the callback passed in UpdateRegAndPhy().
-  void OnGetPhyInfoAuxMessage(NetlinkManager::AuxiliaryMessageType type,
+  void OnGetPhyInfoAuxMessage(uint32_t phy_index,
+                              NetlinkManager::AuxiliaryMessageType type,
                               const NetlinkMessage* raw_message);
 
   Metrics* metrics() const;

@@ -65,7 +65,7 @@ class WiFiPhy {
   // Signals the end of the sequence of the PHY dump messages - all the
   // frequencies cached during parsing of NewWiphy messages are accepted as
   // a new value.
-  void PhyDumpComplete();
+  mockable void PhyDumpComplete();
 
   // Parse an NL80211_CMD_NEW_WIPHY netlink message.
   // TODO(b/248103586): Move NL80211_CMD_NEW_WIPHY parsing out of WiFiPhy and
