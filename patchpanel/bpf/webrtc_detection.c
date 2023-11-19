@@ -25,6 +25,15 @@
 #define IPPROTO_UDP 17
 
 #ifndef UNIT_TEST
+
+// This is a HACK on 4.14 kernel: bpf_skb_load_bytes_relative() does not exist
+// before 4.18 kernels. We define the constant used by it here just to make the
+// compilation working, and this program won't be loaded on that kernel.
+// TODO(b/311751709#comment4): Remove this after M122.
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 18, 0)
+#define BPF_HDR_START_NET (1)
+#endif
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)
 // A partial copy of the definition in kernel/v4.19/include/uapi/linux/bpf.h.
 // This is a HACK on 4.19 kernel: the vmlinux.h above doesn't contain the
