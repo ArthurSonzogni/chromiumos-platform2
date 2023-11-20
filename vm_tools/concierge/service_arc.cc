@@ -264,6 +264,8 @@ void Service::StartArcVm(
   LOG(INFO) << "Received StartArcVm request";
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
+  InitVmMemoryManagementService();
+
   StartVmResponse response;
   // We change to a success status later if necessary.
   response.set_status(VM_STATUS_FAILURE);

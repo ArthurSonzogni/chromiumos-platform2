@@ -1437,15 +1437,23 @@ bool Service::Init() {
   // is safe to continue using regardless of the result.
   vmm_swap_tbw_policy_->Init();
 
-  if (!InitVmMemoryManagementService()) {
-    LOG(ERROR) << "Failed to start VM memory management service";
-    return false;
-  }
-
   return true;
 }
 
-bool Service::InitVmMemoryManagementService() {
+void Service::InitVmMemoryManagementService() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  if (!vmmms_init_done_) {
+    DoInitVmMemoryManagementService();
+    vmmms_init_done_ = true;
+
+    if (get_vmmms_kills_connection_response_sender_) {
+      SendGetVmmmsKillConnectionResponse();
+    }
+  }
+}
+
+void Service::DoInitVmMemoryManagementService() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   // The VM Memory Management Service has a dependency on VSOCK Loopback and
@@ -1454,7 +1462,7 @@ bool Service::InitVmMemoryManagementService() {
   if (kernel_version.first < 5 ||
       (kernel_version.first == 5 && kernel_version.second < 4)) {
     LOG(INFO) << "VmMemoryManagementService not supported by kernel";
-    return true;
+    return;
   }
 
   const feature::PlatformFeatures::ParamsResult& result =
@@ -1464,13 +1472,13 @@ bool Service::InitVmMemoryManagementService() {
   const auto result_iter = result.find(kVmMemoryManagementServiceFeatureName);
   if (result_iter == result.end()) {
     LOG(INFO) << "VmMemoryManagementService feature flag not found";
-    return true;
+    return;
   }
 
   const auto& entry = result_iter->second;
   if (!entry.enabled) {
     LOG(INFO) << "VmMemoryManagementService feature flag not enabled";
-    return true;
+    return;
   }
 
   vm_memory_management_service_ = std::make_unique<mm::MmService>(
@@ -1479,7 +1487,7 @@ bool Service::InitVmMemoryManagementService() {
   if (!vm_memory_management_service_->Start()) {
     vm_memory_management_service_.reset();
     LOG(ERROR) << "Failed to initialize VmMemoryManagementService.";
-    return false;
+    return;
   }
 
   auto arc_timeout_ms =
@@ -1495,7 +1503,6 @@ bool Service::InitVmMemoryManagementService() {
   host_kill_decision_timeout_ = base::Milliseconds(host_timeout_ms);
 
   LOG(INFO) << "Enabling VmMemoryManagementService";
-  return true;
 }
 
 void Service::ChildExited() {
@@ -4047,39 +4054,56 @@ void Service::AggressiveBalloon(AggressiveBalloonResponder response_sender,
 }
 
 void Service::GetVmMemoryManagementKillsConnection(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        GetVmMemoryManagementKillsConnectionResponse,
-        std::vector<base::ScopedFD>>> response_cb,
+    GetVmmmsKillsConnectionResponseSender response_sender,
     const GetVmMemoryManagementKillsConnectionRequest& in_request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  GetVmMemoryManagementKillsConnectionResponse response;
+  if (get_vmmms_kills_connection_response_sender_) {
+    GetVmMemoryManagementKillsConnectionResponse response;
+    std::vector<base::ScopedFD> fds;
 
-  if (!vm_memory_management_service_) {
+    static constexpr char error[] =
+        "Overlapping requests, cancelling earlier request";
+    LOG(ERROR) << error;
+    response.set_failure_reason(error);
+
+    std::move(get_vmmms_kills_connection_response_sender_)
+        ->Return(response, fds);
+  }
+
+  get_vmmms_kills_connection_response_sender_ = std::move(response_sender);
+  if (vmmms_init_done_) {
+    SendGetVmmmsKillConnectionResponse();
+  }
+}
+
+void Service::SendGetVmmmsKillConnectionResponse() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  GetVmMemoryManagementKillsConnectionResponse response;
+  std::vector<base::ScopedFD> fds;
+
+  if (vm_memory_management_service_) {
+    auto fd = vm_memory_management_service_->GetKillsServerConnection();
+    if (fd.is_valid()) {
+      fds.push_back(std::move(fd));
+    } else {
+      static constexpr char error[] = "Failed to connect.";
+      LOG(ERROR) << error;
+      response.set_failure_reason(error);
+    }
+  } else {
     static constexpr char error[] = "Service is not enabled.";
     LOG(ERROR) << error;
     response.set_failure_reason(error);
-    response_cb->Return(response, {});
-    return;
   }
 
-  auto fd = vm_memory_management_service_->GetKillsServerConnection();
-
-  if (!fd.is_valid()) {
-    static constexpr char error[] = "Failed to connect.";
-    LOG(ERROR) << error;
-    response.set_failure_reason(error);
-    response_cb->Return(response, {});
-    return;
-  }
-
-  response.set_success(true);
+  response.set_success(!fds.empty());
   response.set_host_kill_request_timeout_ms(
       host_kill_decision_timeout_.InMilliseconds());
-  std::vector<base::ScopedFD> response_fds;
-  response_fds.push_back(std::move(fd));
-  response_cb->Return(response, response_fds);
+
+  std::move(get_vmmms_kills_connection_response_sender_)->Return(response, fds);
 }
 
 void Service::OnResolvConfigChanged(std::vector<string> nameservers,

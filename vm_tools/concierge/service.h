@@ -102,10 +102,13 @@ class Service final : public org::chromium::VmConciergeInterface,
   // TODO(b/296025701): Move code out of this method and into async helpers.
   bool Init();
 
-  // Initialize VmMemoryManagementService. Returns true if the feature is
-  // disabled or enabled successfully. Returns false on failure to enable the
-  // service.
-  bool InitVmMemoryManagementService();
+  // Initialize VmMemoryManagementService and handle any pending kills
+  // connection requests.
+  void InitVmMemoryManagementService();
+
+  // Helper for VmMemoryManagementService that does the feature check and
+  // actual initialization.
+  void DoInitVmMemoryManagementService();
 
   // Helper function that is used by StartVm, StartPluginVm and StartArcVm
   //
@@ -355,12 +358,19 @@ class Service final : public org::chromium::VmConciergeInterface,
                              AggressiveBalloonResponse>> response_cb,
                          const AggressiveBalloonRequest& request) override;
 
-  // Returns an opened FD to the VM memory management kills server.
-  void GetVmMemoryManagementKillsConnection(
+  using GetVmmmsKillsConnectionResponseSender =
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           GetVmMemoryManagementKillsConnectionResponse,
-          std::vector<base::ScopedFD>>> response_cb,
-      const GetVmMemoryManagementKillsConnectionRequest& in_request) override;
+          std::vector<base::ScopedFD>>>;
+
+  // Returns an opened FD to the VM memory management kills server.
+  void GetVmMemoryManagementKillsConnection(
+      GetVmmmsKillsConnectionResponseSender response_sender,
+      const vm_tools::concierge::GetVmMemoryManagementKillsConnectionRequest&
+          in_request) override;
+
+  // Helper for sending the GetVmMemoryManagementKillsConnection response.
+  void SendGetVmmmsKillConnectionResponse();
 
   // Creates DnsSettings from current configuration.
   DnsSettings ComposeDnsResponse();
@@ -616,6 +626,16 @@ class Service final : public org::chromium::VmConciergeInterface,
   // The VM Memory Management service
   std::unique_ptr<mm::MmService> vm_memory_management_service_
       GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Flag indicating that VM Memory Management service initialization has
+  // already been done. This can be true even if vm_memory_management_service_
+  // is null - for example when the feature is disabled.
+  bool vmmms_init_done_ GUARDED_BY_CONTEXT(sequence_checker_) = false;
+
+  // Pending response for GetVmmmsKillsConnectionResponse.
+  GetVmmmsKillsConnectionResponseSender
+      get_vmmms_kills_connection_response_sender_
+          GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Proxy for interacting with spaced.
   std::unique_ptr<spaced::DiskUsageProxy> disk_usage_proxy_;
