@@ -10,25 +10,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 
-namespace ash::cros_healthd::mojom {
-
-bool operator<(const BusInfo& a, const BusInfo& b) {
-  if (a.which() != b.which())
-    return a.which() < b.which();
-  switch (a.which()) {
-    case BusInfo::Tag::kPciBusInfo:
-      return a.get_pci_bus_info() < b.get_pci_bus_info();
-    case BusInfo::Tag::kUsbBusInfo:
-      return a.get_usb_bus_info() < b.get_usb_bus_info();
-    case BusInfo::Tag::kThunderboltBusInfo:
-      return a.get_thunderbolt_bus_info() < b.get_thunderbolt_bus_info();
-    case BusInfo::Tag::kUnmappedField:
-      return a.get_unmapped_field() < b.get_unmapped_field();
-  }
-}
-
-}  // namespace ash::cros_healthd::mojom
-
 namespace diagnostics {
 namespace internal {
 // For each line, adds a 2-space-indent at the beginning.

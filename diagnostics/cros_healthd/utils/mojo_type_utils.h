@@ -5,7 +5,6 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_UTILS_MOJO_TYPE_UTILS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_UTILS_MOJO_TYPE_UTILS_H_
 
-#include <algorithm>
 #include <optional>
 #include <string>
 #include <type_traits>
@@ -15,12 +14,6 @@
 #include <mojo/public/cpp/bindings/struct_ptr.h>
 
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
-
-namespace ash::cros_healthd::mojom {
-// Union types don't have default operator<. Define them so we can use std::sort
-// to sort them.
-bool operator<(const BusInfo& a, const BusInfo& b);
-}  // namespace ash::cros_healthd::mojom
 
 namespace diagnostics {
 namespace internal {
@@ -176,17 +169,6 @@ template <>
 std::string GetDiffString<::ash::cros_healthd::mojom::UsbBusInterfaceInfo>(
     const ::ash::cros_healthd::mojom::UsbBusInterfaceInfo& a,
     const ::ash::cros_healthd::mojom::UsbBusInterfaceInfo& b);
-
-// Clones and sorts the vector.
-template <typename T, typename = std::enable_if_t<IsStructPtr<T>::value>>
-std::vector<T> Sorted(const std::vector<T>& in) {
-  std::vector<T> out;
-  for (const auto& ele : in) {
-    out.push_back(ele.Clone());
-  }
-  sort(out.begin(), out.end());
-  return out;
-}
 
 }  // namespace diagnostics
 

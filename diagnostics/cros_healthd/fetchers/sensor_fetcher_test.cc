@@ -2,7 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/fetchers/sensor_fetcher.h"
+
+#include <algorithm>
 #include <memory>
+#include <utility>
 
 #include <base/files/file_util.h>
 #include <base/test/gmock_callback_support.h>
@@ -12,11 +16,8 @@
 #include <chromeos/ec/ec_commands.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/fetchers/sensor_fetcher.h"
-#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
-#include "diagnostics/cros_healthd/utils/mojo_type_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
@@ -162,7 +163,8 @@ TEST_F(SensorFetcherTest, FetchMultipleSensorAttribue) {
   ASSERT_TRUE(sensor_info->sensors.has_value());
 
   // Sort the sensors by name.
-  const auto& sensors = Sorted(sensor_info->sensors.value());
+  auto sensors = std::move(sensor_info->sensors.value());
+  std::sort(sensors.begin(), sensors.end());
   ASSERT_EQ(sensors.size(), 4);
 
   ASSERT_TRUE(sensors[0]->name.has_value());
