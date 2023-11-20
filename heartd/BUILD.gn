@@ -14,6 +14,8 @@ group("all") {
 executable("heartd") {
   sources = [ "main.cc" ]
   install_path = "bin"
+  pkg_deps = [ "libbrillo" ]
+  deps = [ "//heartd/daemon:libheartd" ]
 }
 
 install_config("install_init_config") {
