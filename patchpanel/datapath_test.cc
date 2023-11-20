@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/strings/string_split.h>
@@ -44,9 +45,9 @@ using testing::ElementsAreArray;
 using testing::Mock;
 using testing::Return;
 using testing::SaveArg;
-using testing::Sequence;
 using testing::SetArgPointee;
 using testing::StrEq;
+using testing::UnorderedElementsAreArray;
 
 namespace patchpanel {
 namespace {
@@ -58,6 +59,130 @@ std::vector<std::string> SplitArgs(const std::string& args) {
   return base::SplitString(args, " ", base::WhitespaceHandling::TRIM_WHITESPACE,
                            base::SplitResult::SPLIT_WANT_NONEMPTY);
 }
+
+// This class fakes the implementation for iptables() and ip6tables() based on a
+// MockProcessRunner. For these two functions:
+// - This class will record the calls to these two functions;
+// - The test can call `AddIptablesExpectation()` to add an expectation (similar
+//   to EXPECT_CALL).
+// - The test can call `VerifyAndClearIptablesExpectations()` to verify the
+//   expectations. It will also be called automatically in the destructor so we
+//   won't miss any iptables calls.
+//
+// The main reason we need to do this instead of using EXPECT_CALL() is that
+// when there are a large number of calls to the mocked function, the error
+// message is hard to read when there is an error, while the error messages from
+// `ElementsAreArray()` are much better.
+class MockProcessRunnerForIptablesTest : public MockProcessRunner {
+ public:
+  MockProcessRunnerForIptablesTest() = default;
+
+  ~MockProcessRunnerForIptablesTest() { VerifyAndClearIptablesExpectations(); }
+
+  int iptables(Iptables::Table table,
+               Iptables::Command command,
+               std::string_view chain,
+               const std::vector<std::string>& argv,
+               bool log_failures = true,
+               std::optional<base::TimeDelta> timeout = std::nullopt,
+               std::string* output = nullptr) override {
+    RecordIptablesCall(table, command, chain, argv,
+                       &actual_iptables_calls_ipv4_);
+    return 0;
+  }
+
+  int ip6tables(Iptables::Table table,
+                Iptables::Command command,
+                std::string_view chain,
+                const std::vector<std::string>& argv,
+                bool log_failures = true,
+                std::optional<base::TimeDelta> timeout = std::nullopt,
+                std::string* output = nullptr) override {
+    RecordIptablesCall(table, command, chain, argv,
+                       &actual_iptables_calls_ipv6_);
+    return 0;
+  }
+
+  static void RecordIptablesCall(Iptables::Table table,
+                                 Iptables::Command command,
+                                 std::string_view chain,
+                                 const std::vector<std::string>& argv,
+                                 std::vector<std::string>* recorded_calls) {
+    std::string call = base::JoinString(
+        {Iptables::TableName(table), Iptables::CommandName(command), chain,
+         base::JoinString(argv, " ")},
+        " ");
+    recorded_calls->push_back(call);
+  }
+
+  void AddIptablesExpectation(IpFamily family,
+                              std::string_view args,
+                              int call_count = 1,
+                              bool in_sequence = false) {
+    if (family == IpFamily::kIPv4 || family == IpFamily::kDual) {
+      expected_iptables_calls_ipv4_.insert(expected_iptables_calls_ipv4_.end(),
+                                           static_cast<size_t>(call_count),
+                                           std::string(args));
+      if (in_sequence) {
+        expected_iptables_calls_ipv4_sequenced_.insert(
+            expected_iptables_calls_ipv4_sequenced_.end(),
+            static_cast<size_t>(call_count), std::string(args));
+      }
+    }
+    if (family == IpFamily::kIPv6 || family == IpFamily::kDual) {
+      expected_iptables_calls_ipv6_.insert(expected_iptables_calls_ipv6_.end(),
+                                           static_cast<size_t>(call_count),
+                                           std::string(args));
+      if (in_sequence) {
+        expected_iptables_calls_ipv6_sequenced_.insert(
+            expected_iptables_calls_ipv6_sequenced_.end(),
+            static_cast<size_t>(call_count), std::string(args));
+      }
+    }
+  }
+
+  void VerifyAndClearIptablesExpectations() {
+    EXPECT_THAT(actual_iptables_calls_ipv4_,
+                UnorderedElementsAreArray(expected_iptables_calls_ipv4_));
+    EXPECT_THAT(actual_iptables_calls_ipv6_,
+                UnorderedElementsAreArray(expected_iptables_calls_ipv6_));
+
+    using Calls = std::vector<std::string>;
+    const auto check_sequence = [](const Calls& actual, const Calls& expected) {
+      Calls actual_sequence;
+
+      // This is not optimal in terms of time efficiency but is good enough in
+      // our case since `expected.size()` should be small in our tests.
+      for (const auto& c : actual) {
+        if (base::Contains(expected, c)) {
+          actual_sequence.push_back(c);
+        }
+      }
+      EXPECT_THAT(actual_sequence, ElementsAreArray(expected));
+    };
+
+    check_sequence(actual_iptables_calls_ipv4_,
+                   expected_iptables_calls_ipv4_sequenced_);
+    check_sequence(actual_iptables_calls_ipv6_,
+                   expected_iptables_calls_ipv6_sequenced_);
+
+    expected_iptables_calls_ipv4_.clear();
+    expected_iptables_calls_ipv6_.clear();
+    expected_iptables_calls_ipv4_sequenced_.clear();
+    expected_iptables_calls_ipv6_sequenced_.clear();
+    actual_iptables_calls_ipv4_.clear();
+    actual_iptables_calls_ipv6_.clear();
+  }
+
+ private:
+  std::vector<std::string> expected_iptables_calls_ipv4_;
+  std::vector<std::string> expected_iptables_calls_ipv6_;
+  std::vector<std::string> expected_iptables_calls_ipv4_sequenced_;
+  std::vector<std::string> expected_iptables_calls_ipv6_sequenced_;
+
+  std::vector<std::string> actual_iptables_calls_ipv4_;
+  std::vector<std::string> actual_iptables_calls_ipv6_;
+};
 
 class MockFirewall : public Firewall {
  public:
@@ -112,62 +237,18 @@ void Verify_ip6(MockProcessRunner& runner, const std::string& args) {
               ip6(StrEq(object), StrEq(action), ElementsAreArray(argv), _, _));
 }
 
-void Verify_iptables(MockProcessRunner& runner,
+void Verify_iptables(MockProcessRunnerForIptablesTest& runner,
                      IpFamily family,
                      const std::string& args,
                      int call_count = 1) {
-  auto argv = SplitArgs(args);
-  const auto table = Iptables::TableFromName(argv[0]);
-  const auto command = Iptables::CommandFromName(argv[1]);
-  const auto chain = argv[2];
-  argv.erase(argv.begin());
-  argv.erase(argv.begin());
-  argv.erase(argv.begin());
-  ASSERT_TRUE(table.has_value())
-      << "incorrect table name in expected args: " << args;
-  ASSERT_TRUE(command.has_value())
-      << "incorrect command name in expected args: " << args;
-  if (family == IpFamily::kIPv4 || family == IpFamily::kDual) {
-    EXPECT_CALL(runner, iptables(*table, *command, StrEq(chain),
-                                 ElementsAreArray(argv), _, _, nullptr))
-        .Times(call_count)
-        .WillRepeatedly(Return(0));
-  }
-  if (family == IpFamily::kIPv6 || family == IpFamily::kDual) {
-    EXPECT_CALL(runner, ip6tables(*table, *command, StrEq(chain),
-                                  ElementsAreArray(argv), _, _, nullptr))
-        .Times(call_count)
-        .WillRepeatedly(Return(0));
-  }
+  runner.AddIptablesExpectation(family, args, call_count);
 }
 
-void Verify_iptables_in_sequence(MockProcessRunner& runner,
+void Verify_iptables_in_sequence(MockProcessRunnerForIptablesTest& runner,
                                  IpFamily family,
-                                 const std::string& args,
-                                 const Sequence& sequence) {
-  auto argv = SplitArgs(args);
-  const auto table = Iptables::TableFromName(argv[0]);
-  const auto command = Iptables::CommandFromName(argv[1]);
-  const auto chain = argv[2];
-  argv.erase(argv.begin());
-  argv.erase(argv.begin());
-  argv.erase(argv.begin());
-  ASSERT_TRUE(table.has_value())
-      << "incorrect table name in expected args: " << args;
-  ASSERT_TRUE(command.has_value())
-      << "incorrect command name in expected args: " << args;
-  if (family == IpFamily::kIPv4 || family == IpFamily::kDual) {
-    EXPECT_CALL(runner, iptables(*table, *command, StrEq(chain),
-                                 ElementsAreArray(argv), _, _, nullptr))
-        .InSequence(sequence)
-        .WillOnce(Return(0));
-  }
-  if (family == IpFamily::kIPv6 || family == IpFamily::kDual) {
-    EXPECT_CALL(runner, ip6tables(*table, *command, StrEq(chain),
-                                  ElementsAreArray(argv), _, _, nullptr))
-        .InSequence(sequence)
-        .WillOnce(Return(0));
-  }
+                                 const std::string& args) {
+  runner.AddIptablesExpectation(family, args, /*call_count=*/1,
+                                /*in_sequence=*/true);
 }
 
 void Verify_ip_netns_add(MockProcessRunner& runner,
@@ -191,14 +272,14 @@ void Verify_ip_netns_delete(MockProcessRunner& runner,
 class DatapathTest : public testing::Test {
  protected:
   DatapathTest()
-      : runner_(new MockProcessRunner()),
+      : runner_(new MockProcessRunnerForIptablesTest()),
         firewall_(new MockFirewall()),
         datapath_(runner_, firewall_, &system_) {}
 
   ~DatapathTest() = default;
 
   FakeSystem system_;
-  MockProcessRunner* runner_;
+  MockProcessRunnerForIptablesTest* runner_;
   MockFirewall* firewall_;
 
   Datapath datapath_;
@@ -1243,7 +1324,7 @@ TEST_F(DatapathTest, StartStopConnectionPinning) {
                   "mangle -A PREROUTING -i eth0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
   datapath_.StartConnectionPinning(eth_device);
-  Mock::VerifyAndClearExpectations(runner_);
+  runner_->VerifyAndClearIptablesExpectations();
 
   // Teardown
   Verify_iptables(*runner_, IpFamily::kDual, "mangle -F POSTROUTING_eth0 -w");
@@ -1290,7 +1371,7 @@ TEST_F(DatapathTest, StartStopVpnRouting_ArcVpn) {
                   "filter -A vpn_accept -m mark "
                   "--mark 0x03ed0000/0xffff0000 -j ACCEPT -w");
   datapath_.StartVpnRouting(vpn_device);
-  Mock::VerifyAndClearExpectations(runner_);
+  runner_->VerifyAndClearIptablesExpectations();
 
   // Teardown
   Verify_iptables(*runner_, IpFamily::kDual, "mangle -F POSTROUTING_arcbr0 -w");
@@ -1362,7 +1443,7 @@ TEST_F(DatapathTest, StartStopVpnRouting_HostVpn) {
                   "mangle -A PREROUTING_arcbr0 -j MARK --set-mark "
                   "0x03ed0000/0xffff0000 -w");
   datapath_.StartVpnRouting(vpn_device);
-  Mock::VerifyAndClearExpectations(runner_);
+  runner_->VerifyAndClearIptablesExpectations();
 
   // Teardown
   Verify_iptables(*runner_, IpFamily::kDual, "mangle -F POSTROUTING_tun0 -w");
@@ -1604,22 +1685,27 @@ TEST_F(DatapathTest, RedirectDnsRules) {
   datapath_.RemoveRedirectDnsRule(wlan_device);
 }
 
+// This test needs a mock process runner so it doesn't use Datapath object in
+// the fixture class.
 TEST_F(DatapathTest, DumpIptables) {
-  EXPECT_CALL(*runner_,
+  auto runner = new MockProcessRunner();
+
+  EXPECT_CALL(*runner,
               iptables(Iptables::Table::kMangle, Iptables::Command::kL,
                        StrEq(""), ElementsAre("-x", "-v", "-n", "-w"), _, _, _))
       .WillOnce(DoAll(SetArgPointee<6>("<iptables output>"), Return(0)));
-  EXPECT_CALL(*runner_, ip6tables(Iptables::Table::kMangle,
-                                  Iptables::Command::kL, StrEq(""),
-                                  ElementsAre("-x", "-v", "-n", "-w"), _, _, _))
+  EXPECT_CALL(*runner, ip6tables(Iptables::Table::kMangle,
+                                 Iptables::Command::kL, StrEq(""),
+                                 ElementsAre("-x", "-v", "-n", "-w"), _, _, _))
       .WillOnce(DoAll(SetArgPointee<6>("<ip6tables output>"), Return(0)));
 
+  Datapath datapath(runner, /*firewall=*/nullptr, /*system=*/nullptr);
   EXPECT_EQ("<iptables output>",
-            datapath_.DumpIptables(IpFamily::kIPv4, Iptables::Table::kMangle));
+            datapath.DumpIptables(IpFamily::kIPv4, Iptables::Table::kMangle));
   EXPECT_EQ("<ip6tables output>",
-            datapath_.DumpIptables(IpFamily::kIPv6, Iptables::Table::kMangle));
+            datapath.DumpIptables(IpFamily::kIPv6, Iptables::Table::kMangle));
   EXPECT_EQ("",
-            datapath_.DumpIptables(IpFamily::kDual, Iptables::Table::kMangle));
+            datapath.DumpIptables(IpFamily::kDual, Iptables::Table::kMangle));
 }
 
 TEST_F(DatapathTest, SetVpnLockdown) {
@@ -1670,44 +1756,36 @@ TEST_F(DatapathTest, StartDnsRedirection_Default) {
 }
 
 TEST_F(DatapathTest, StartDnsRedirection_User) {
-  Sequence sequence;
-
   Verify_iptables_in_sequence(
       *runner_, IpFamily::kIPv4,
       "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
-      "0 -j DNAT --to-destination 8.8.8.8 -w",
-      sequence);
+      "0 -j DNAT --to-destination 8.8.8.8 -w");
   Verify_iptables_in_sequence(
       *runner_, IpFamily::kIPv4,
       "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
-      "0 -j DNAT --to-destination 8.4.8.4 -w",
-      sequence);
+      "0 -j DNAT --to-destination 8.4.8.4 -w");
   Verify_iptables_in_sequence(
       *runner_, IpFamily::kIPv4,
       "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
-      "0 -j DNAT --to-destination 1.1.1.1 -w",
-      sequence);
+      "0 -j DNAT --to-destination 1.1.1.1 -w");
   Verify_iptables_in_sequence(
       *runner_, IpFamily::kIPv4,
       "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
-      "0 -j DNAT --to-destination 8.8.8.8 -w",
-      sequence);
+      "0 -j DNAT --to-destination 8.8.8.8 -w");
   Verify_iptables_in_sequence(
       *runner_, IpFamily::kIPv4,
       "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
-      "0 -j DNAT --to-destination 8.4.8.4 -w",
-      sequence);
+      "0 -j DNAT --to-destination 8.4.8.4 -w");
   Verify_iptables_in_sequence(
       *runner_, IpFamily::kIPv4,
       "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
-      "0 -j DNAT --to-destination 1.1.1.1 -w",
-      sequence);
+      "0 -j DNAT --to-destination 1.1.1.1 -w");
   Verify_iptables(*runner_, IpFamily::kIPv4,
                   "nat -A redirect_user_dns -p udp --dport 53 -j DNAT "
                   "--to-destination 100.115.92.130 -w");
@@ -1719,26 +1797,22 @@ TEST_F(DatapathTest, StartDnsRedirection_User) {
       *runner_, IpFamily::kIPv6,
       "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
-      "0 -j DNAT --to-destination 2001:4860:4860::8888 -w",
-      sequence);
+      "0 -j DNAT --to-destination 2001:4860:4860::8888 -w");
   Verify_iptables_in_sequence(
       *runner_, IpFamily::kIPv6,
       "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
-      "0 -j DNAT --to-destination 2001:4860:4860::8844 -w",
-      sequence);
+      "0 -j DNAT --to-destination 2001:4860:4860::8844 -w");
   Verify_iptables_in_sequence(
       *runner_, IpFamily::kIPv6,
       "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
-      "0 -j DNAT --to-destination 2001:4860:4860::8888 -w",
-      sequence);
+      "0 -j DNAT --to-destination 2001:4860:4860::8888 -w");
   Verify_iptables_in_sequence(
       *runner_, IpFamily::kIPv6,
       "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
       "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
-      "0 -j DNAT --to-destination 2001:4860:4860::8844 -w",
-      sequence);
+      "0 -j DNAT --to-destination 2001:4860:4860::8844 -w");
   Verify_iptables(*runner_, IpFamily::kIPv6,
                   "nat -A snat_user_dns -p udp --dport 53 -j "
                   "MASQUERADE -w");
