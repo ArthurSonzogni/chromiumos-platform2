@@ -381,6 +381,7 @@ static void sl_linux_dmabuf_feedback_resource_destroy(
     int ret =
         munmap(host_feedback->mapped_format_table, host_feedback->map_size);
     assert(!ret);
+    UNUSED(ret);
   }
 
   zwp_linux_dmabuf_feedback_v1_destroy(host_feedback->proxy);

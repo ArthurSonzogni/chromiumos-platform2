@@ -1385,6 +1385,9 @@ void sl_handle_map_request(struct sl_context* ctx,
                       break;
                   }
                 });
+#ifndef PERFETTO_TRACING
+    UNUSED(value_int);
+#endif
 
     free(reply);
   }
