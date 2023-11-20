@@ -26,6 +26,9 @@ EXPORT_SPEC bool ProtoToTokenInfo(const TokenInfo& proto,
                                   CK_TOKEN_INFO* out_info);
 EXPORT_SPEC TokenInfo TokenInfoToProto(const CK_TOKEN_INFO* info);
 
+EXPORT_SPEC Sp800108KdfParams
+Sp800108KdfParamsToProto(const CK_SP800_108_KDF_PARAMS* kdf_params);
+
 }  // namespace chaps
 
 #endif  // CHAPS_PROTO_CONVERSION_H_

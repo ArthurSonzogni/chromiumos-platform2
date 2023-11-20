@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include <algorithm>
+#include <cstdlib>
 #include <string>
 
 #include <base/check.h>
@@ -40,6 +41,14 @@ void ZeroAndCopy(CK_BYTE* dest, const std::string& src, size_t buf_size) {
 
 std::string CopyToString(const CK_BYTE* src, size_t buf_size) {
   return std::string(reinterpret_cast<const char*>(src), buf_size);
+}
+
+void PrfDataParamToProto(const CK_PRF_DATA_PARAM* param,
+                         chaps::PrfDataParam* proto) {
+  DCHECK(param);
+  DCHECK(proto);
+  proto->set_type(param->type);
+  proto->set_value(param->pValue, param->ulValueLen);
 }
 
 }  // namespace
@@ -185,6 +194,26 @@ TokenInfo TokenInfoToProto(const CK_TOKEN_INFO* info) {
       static_cast<uint64_t>(info->ulFreePrivateMemory));
   VersionToProto(&info->hardwareVersion, proto.mutable_hardware_version());
   VersionToProto(&info->firmwareVersion, proto.mutable_firmware_version());
+  return proto;
+}
+
+Sp800108KdfParams Sp800108KdfParamsToProto(
+    const CK_SP800_108_KDF_PARAMS* kdf_params) {
+  DCHECK(kdf_params);
+  Sp800108KdfParams proto;
+  proto.set_prf_type(static_cast<uint64_t>(kdf_params->prfType));
+  for (const CK_PRF_DATA_PARAM* prf_data_param_ptr = kdf_params->pDataParams;
+       prf_data_param_ptr <
+       kdf_params->pDataParams + kdf_params->ulNumberOfDataParams;
+       prf_data_param_ptr++) {
+    PrfDataParamToProto(prf_data_param_ptr, proto.add_data_params());
+  }
+  DCHECK(proto.data_params_size() == kdf_params->ulNumberOfDataParams);
+  if (kdf_params->ulAdditionalDerivedKeys != 0 ||
+      kdf_params->pAdditionalDerivedKeys != nullptr) {
+    LOG(WARNING) << "Deriving additional keys isn't supported in our current "
+                    "implementation.";
+  }
   return proto;
 }
 
