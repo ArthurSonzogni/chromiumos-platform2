@@ -11,7 +11,7 @@
 #include <utility>
 #include <vector>
 
-#include "base/strings/string_split.h"
+#include <base/strings/string_split.h>
 #include <brillo/brillo_export.h>
 
 namespace brillo {
