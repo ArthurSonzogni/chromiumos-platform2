@@ -1260,18 +1260,52 @@ bool Service::ListVmDisksInLocation(const string& cryptohome_id,
 void Service::CreateAndHost(
     int signal_fd,
     base::OnceCallback<void(std::unique_ptr<Service>)> on_hosted) {
-  auto service = base::WrapUnique(new Service(signal_fd));
-  DCHECK_CALLED_ON_VALID_SEQUENCE(service->sequence_checker_);
+  dbus::Bus::Options opts;
+  opts.bus_type = dbus::Bus::SYSTEM;
+  opts.dbus_task_runner =
+      base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()});
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(std::move(opts));
+
+  dbus::Bus* bus_ptr = bus.get();
+  bus->GetDBusTaskRunner()->PostTaskAndReplyWithResult(
+      FROM_HERE, base::BindOnce(&dbus::Bus::Connect, base::Unretained(bus_ptr)),
+      base::BindOnce(
+          [](scoped_refptr<dbus::Bus> bus, int signal_fd,
+             base::OnceCallback<void(std::unique_ptr<Service>)> on_hosted,
+             bool connected) {
+            if (!connected) {
+              LOG(ERROR) << "Failed to connect to system bus";
+              std::move(on_hosted).Run(nullptr);
+              return;
+            }
+            CreateAndHost(std::move(bus), signal_fd, std::move(on_hosted));
+          },
+          std::move(bus), signal_fd, std::move(on_hosted)));
+}
+
+// static
+void Service::CreateAndHost(
+    scoped_refptr<dbus::Bus> bus,
+    int signal_fd,
+    base::OnceCallback<void(std::unique_ptr<Service>)> on_hosted) {
+  // Bus should be connected when using this API.
+  CHECK(bus->IsConnected());
+  auto service = base::WrapUnique(new Service(signal_fd, std::move(bus)));
   if (!service->Init()) {
     service.reset();
   }
   std::move(on_hosted).Run(std::move(service));
 }
 
-Service::Service(int signal_fd)
+Service::Service(int signal_fd, scoped_refptr<dbus::Bus> bus)
     : signal_fd_(signal_fd),
+      bus_(std::move(bus)),
       next_seneschal_server_port_(kFirstSeneschalServerPort),
-      weak_ptr_factory_(this) {}
+      weak_ptr_factory_(this) {
+  // The service should run on the thread that *created* the bus, not the
+  // thread that de/serializes dbus messages.
+  bus_->AssertOnOriginThread();
+}
 
 Service::~Service() {
   if (grpc_server_vm_) {
@@ -1299,26 +1333,6 @@ bool Service::Init() {
   vmm_swap_tbw_policy_ = std::make_unique<VmmSwapTbwPolicy>(
       raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()),
       base::FilePath(kVmmSwapTbwHistoryFilePath));
-
-  dbus::Bus::Options opts;
-  opts.bus_type = dbus::Bus::SYSTEM;
-  opts.dbus_task_runner =
-      base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()});
-  bus_ = new dbus::Bus(std::move(opts));
-
-  if (!PostTaskAndWaitForResult(
-          bus_->GetDBusTaskRunner(),
-          base::BindOnce(
-              [](scoped_refptr<dbus::Bus> bus) {
-                if (!bus->Connect()) {
-                  LOG(ERROR) << "Failed to connect to system bus";
-                  return false;
-                }
-                return true;
-              },
-              bus_))) {
-    return false;
-  }
 
   dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
       nullptr, bus_, dbus::ObjectPath(kVmConciergeServicePath));

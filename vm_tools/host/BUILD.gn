@@ -406,6 +406,7 @@ if (use.test) {
       "../concierge/power_manager_client_test.cc",
       "../concierge/service_common_test.cc",
       "../concierge/service_start_vm_helper_test.cc",
+      "../concierge/service_test.cc",
       "../concierge/shadercached_helper_test.cc",
       "../concierge/termina_vm_test.cc",
       "../concierge/thread_utils_test.cc",

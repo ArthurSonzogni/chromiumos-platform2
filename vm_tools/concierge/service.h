@@ -76,6 +76,13 @@ class Service final : public org::chromium::VmConciergeInterface,
       int signal_fd,
       base::OnceCallback<void(std::unique_ptr<Service>)> on_hosted);
 
+  // As above, but used in tests to provide a mock bus. Ensure your |bus|
+  // IsConnected() before calling.
+  static void CreateAndHost(
+      scoped_refptr<dbus::Bus> bus,
+      int signal_fd,
+      base::OnceCallback<void(std::unique_ptr<Service>)> on_hosted);
+
   // Services should not be moved or copied.
   Service(const Service&) = delete;
   Service& operator=(const Service&) = delete;
@@ -90,7 +97,7 @@ class Service final : public org::chromium::VmConciergeInterface,
   void Stop(base::OnceClosure on_stopped);
 
  private:
-  explicit Service(int signal_fd);
+  Service(int signal_fd, scoped_refptr<dbus::Bus> bus);
 
   // Describes GPU shader cache paths.
   struct VMGpuCacheSpec {
