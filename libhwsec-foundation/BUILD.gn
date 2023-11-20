@@ -38,11 +38,13 @@ pkg_config("target_defaults") {
     "CHROMEOS_ENVIRONMENT=1",
     "USE_TPM1=${use.tpm}",
     "USE_TPM2=${use.tpm2}",
+    "USE_TPM2_SIMULATOR=${use.tpm2_simulator}",
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
   ]
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libcrossystem",
     "openssl",
     "re2",
   ]
@@ -74,6 +76,7 @@ shared_library("libhwsec-foundation") {
     "da_reset/da_resetter.cc",
     "syscaller/syscaller_impl.cc",
     "tlcl_wrapper/tlcl_wrapper.cc",
+    "tpm/tpm_clear.cc",
     "tpm/tpm_version.cc",
     "tpm_error/auth_failure_analysis.cc",
     "tpm_error/command_and_response_data.cc",
