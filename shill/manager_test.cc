@@ -314,10 +314,6 @@ class ManagerTest : public PropertyStoreTest {
     return manager()->GetDefaultServiceRpcIdentifier(nullptr);
   }
 
-  bool SetIgnoredDNSSearchPaths(const std::string& search_paths, Error* error) {
-    return manager()->SetIgnoredDNSSearchPaths(search_paths, error);
-  }
-
   bool SetCheckPortalList(const std::string& check_portal_list, Error* error) {
     return manager()->SetCheckPortalList(check_portal_list, error);
   }

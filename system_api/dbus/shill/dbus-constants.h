@@ -138,7 +138,6 @@ constexpr char kWifiRequestScanTypeProperty[] = "WiFi.RequestScanType";
 // DefaultProfile).
 constexpr char kArpGatewayProperty[] = "ArpGateway";
 constexpr char kCheckPortalListProperty[] = "CheckPortalList";
-constexpr char kIgnoredDNSSearchPathsProperty[] = "IgnoredDNSSearchPaths";
 constexpr char kNoAutoConnectTechnologiesProperty[] =
     "NoAutoConnectTechnologies";
 constexpr char kProhibitedTechnologiesProperty[] = "ProhibitedTechnologies";

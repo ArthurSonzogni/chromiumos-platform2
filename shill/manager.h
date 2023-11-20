@@ -640,7 +640,6 @@ class Manager {
   RpcIdentifiers EnumerateWatchedServices(Error* error);
   RpcIdentifier GetActiveProfileRpcIdentifier(Error* error);
   std::string GetCheckPortalList(Error* error);
-  std::string GetIgnoredDNSSearchPaths(Error* error);
   std::string GetPortalFallbackHttpUrls(Error* error);
   std::string GetPortalFallbackHttpsUrls(Error* error);
   ServiceRefPtr GetServiceInner(const KeyValueStore& args, Error* error);
@@ -648,7 +647,6 @@ class Manager {
   // from Chrome to shill.
   bool SetAlwaysOnVpnPackage(const std::string& package_name, Error* error);
   bool SetCheckPortalList(const std::string& portal_list, Error* error);
-  bool SetIgnoredDNSSearchPaths(const std::string& ignored_paths, Error* error);
   bool SetPortalFallbackHttpUrls(const std::string& urls, Error* error);
   bool SetPortalFallbackHttpsUrls(const std::string& urls, Error* error);
   // Emit a kDefaultServiceProperty property-changed D-Bus signal if the default

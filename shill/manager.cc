@@ -240,9 +240,6 @@ Manager::Manager(ControlInterface* control_interface,
                             &Manager::SetWiFiRequestScanType);
   HelpRegisterConstDerivedStrings(kEnabledTechnologiesProperty,
                                   &Manager::EnabledTechnologies);
-  HelpRegisterDerivedString(kIgnoredDNSSearchPathsProperty,
-                            &Manager::GetIgnoredDNSSearchPaths,
-                            &Manager::SetIgnoredDNSSearchPaths);
   store_.RegisterString(kNoAutoConnectTechnologiesProperty,
                         &props_.no_auto_connect_technologies);
   store_.RegisterString(kPortalHttpUrlProperty, &props_.portal_http_url);
@@ -2279,16 +2276,6 @@ bool Manager::SetCheckPortalList(const std::string& portal_list, Error* error) {
     }
   }
   return true;
-}
-
-// IgnoredDNSSearchPaths is deprecated.
-std::string Manager::GetIgnoredDNSSearchPaths(Error* /*error*/) {
-  return "";
-}
-
-bool Manager::SetIgnoredDNSSearchPaths(const std::string& ignored_paths,
-                                       Error* /*error*/) {
-  return false;
 }
 
 std::string Manager::GetPortalFallbackHttpUrls(Error* /*error*/) {

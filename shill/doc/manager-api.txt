@@ -679,10 +679,6 @@ Properties	object ActiveProfile [readonly]
 			108, which will in result volunteer to drop IPv4 and prefer operating as
 			IPv6-only, if the network itself is also IPv6-only capable.
 
-		string IgnoredDNSSearchPaths [readwrite]
-
-			This property is deprecated and does not have any effect.
-
 		dict LOHSConfig [readwrite]
 
 			Dictionary that contains the following Local Only HotSpot (LOHS) related
