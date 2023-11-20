@@ -80,6 +80,7 @@ connect: 1
 getsockname: 1
 sendto: 1
 clone: 1
+clock_gettime: 1
 wait4: 1
 set_tid_address: 1
 rseq: 1
