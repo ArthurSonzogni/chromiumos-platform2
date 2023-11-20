@@ -198,6 +198,29 @@ rm -rf /var/log/metrics/shutdown.*
 # Measure shutdown time up to this point.
 bootstat_archive "/var/log/metrics/shutdown.$(date --utc '+%Y%m%d%H%M%S')"
 
+# Preserves the rollback-prefixed content of pstore across one warm reboot.
+preserve_rollback_key() {
+  local pmsg="/dev/pmsg0"
+  local key f
+  for f in /sys/fs/pstore/pmsg-ramoops-*; do
+    # The glob may not match any file.
+    [ -e "${f}" ] || continue
+
+    # Ignore failures.
+    key="$(grep "^rollback " "${f}")" || continue
+    echo "${key}" >>"${pmsg}" || true
+
+    # We've found a key. We're done.
+    break
+  done
+}
+
+# Preserve rollback key across firmware update reboot.
+# shellcheck disable=SC2154
+if [ "${SHUTDOWN_REASON}" = "firmware-update" ]; then
+  preserve_rollback_key
+fi
+
 # To be safe, flush buffers to disk again before unmounting. (From
 # https://crbug.com/760007 it seems that a failed umount can get the filesystem
 # into a state that renders a subsequent sync ineffective.)
