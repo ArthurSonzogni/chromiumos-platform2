@@ -421,6 +421,32 @@ CameraClient::BuildStreamOnParameters(
   android::CameraMetadata session_params_metadata(
       clone_camera_metadata(stream_config->session_parameters));
 
+  // Find the largest resolution of BLOB stream
+  Size largest_blob_resolution(0, 0);
+  for (size_t i = 0; i < stream_config->num_streams; i++) {
+    if (stream_config->streams[i]->format == HAL_PIXEL_FORMAT_BLOB) {
+      if (stream_config->streams[i]->width > largest_blob_resolution.width &&
+          stream_config->streams[i]->height > largest_blob_resolution.height) {
+        largest_blob_resolution.width = stream_config->streams[i]->width;
+        largest_blob_resolution.height = stream_config->streams[i]->height;
+      }
+    }
+  }
+  auto isPreviewStream = [](const camera3_stream_t* stream) {
+    if (stream && (CAMERA3_STREAM_OUTPUT == stream->stream_type) &&
+        (GRALLOC_USAGE_HW_COMPOSER ==
+         (GRALLOC_USAGE_HW_COMPOSER & stream->usage))) {
+      return true;
+    }
+    return false;
+  };
+  auto isVideoStream = [](const camera3_stream_t* stream) {
+    if (stream && (0 != (GRALLOC_USAGE_HW_VIDEO_ENCODER & stream->usage))) {
+      return true;
+    }
+    return false;
+  };
+  int skipped_stream_count = 0;
   for (size_t i = 0; i < stream_config->num_streams; i++) {
     VLOGFID(1, id_) << "Stream[" << i
                     << "] type=" << stream_config->streams[i]->stream_type
@@ -471,11 +497,22 @@ CameraClient::BuildStreamOnParameters(
         stream_config->streams[i]->width <= jda_resolution_cap_.width &&
         stream_config->streams[i]->height <= jda_resolution_cap_.height;
     if (!(try_blob && is_jda_capable) &&
-        stream_config->streams[i]->format == HAL_PIXEL_FORMAT_BLOB &&
-        stream_config->num_streams > 1) {
-      continue;
+        skipped_stream_count + 1 < stream_config->num_streams) {
+      if (stream_config->streams[i]->format == HAL_PIXEL_FORMAT_BLOB) {
+        skipped_stream_count += 1;
+        continue;
+      }
+      // Also skip the yuv stream with the same resolution as the BLOB stream,
+      // but don't skip preview stream or video stream
+      if (stream_config->streams[i]->format == HAL_PIXEL_FORMAT_YCbCr_420_888 &&
+          stream_config->streams[i]->width == largest_blob_resolution.width &&
+          stream_config->streams[i]->height == largest_blob_resolution.height &&
+          !isPreviewStream(stream_config->streams[i]) &&
+          !isVideoStream(stream_config->streams[i])) {
+        skipped_stream_count += 1;
+        continue;
+      }
     }
-
     const Size resolution(stream_config->streams[i]->width,
                           stream_config->streams[i]->height);
     int frame_rate = 0;
