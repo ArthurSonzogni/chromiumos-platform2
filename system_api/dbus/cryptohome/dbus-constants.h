@@ -110,6 +110,10 @@ inline constexpr char kPrepareAuthFactorProgressSignal[] =
 inline constexpr char kAuthenticateAuthFactorCompletedSignal[] =
     "AuthenticateAuthFactorCompleted";
 inline constexpr char kEvictedKeyRestoredSignal[] = "EvictedKeyRestored";
+inline constexpr char kAuthFactorAddedl[] = "AuthFactorAdded";
+inline constexpr char kAuthFactorRemoved[] = "AuthFactorRemoved";
+inline constexpr char kAuthFactorUpdted[] = "AuthFactorUpdated";
+inline constexpr char kAuthSessionExpiring[] = "AuthSessionExpiring";
 
 }  // namespace user_data_auth
 
