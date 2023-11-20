@@ -1,0 +1,22 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":heartd",
+    ":install_init_config",
+  ]
+}
+
+executable("heartd") {
+  sources = [ "main.cc" ]
+  install_path = "bin"
+}
+
+install_config("install_init_config") {
+  sources = [ "init/heartd.conf" ]
+  install_path = "upstart"
+}
