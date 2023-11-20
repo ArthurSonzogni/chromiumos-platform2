@@ -220,7 +220,12 @@ constexpr char kLocaltimePath[] = "/etc/localtime";
 constexpr char kZoneInfoPath[] = "/usr/share/zoneinfo";
 
 // Feature name of per-boot-vm-shader-cache
-constexpr char kPerBootVmShaderCacheFeature[] = "VmPerBootShaderCache";
+constexpr char kPerBootVmShaderCacheFeatureName[] =
+    "CrOSLateBootVmPerBootShaderCache";
+
+// Needs to be const as libfeatures does pointers checking.
+const VariationsFeature kPerBootVmShaderCacheFeature{
+    kPerBootVmShaderCacheFeatureName, FEATURE_DISABLED_BY_DEFAULT};
 
 // Feature name of borealis-provision.
 constexpr char kBorealisProvisionFeature[] = "BorealisProvision";
@@ -868,19 +873,14 @@ base::FilePath Service::GetVmGpuCachePathInternal(const VmId& vm_id) {
 
   std::string cache_id;
   std::string error;
-  std::optional<bool> per_boot_cache =
-      IsFeatureEnabled(kPerBootVmShaderCacheFeature, &error);
-  if (!per_boot_cache.has_value()) {
-    LOG(WARNING) << "Failed to check per-boot cache feature: " << error
-                 << ", failing back to per-boot cache";
-  }
+  bool per_boot_cache = feature::PlatformFeatures::Get()->IsEnabledBlocking(
+      kPerBootVmShaderCacheFeature);
 
   // if per-boot cache feature is enabled or we failed to read BUILD_ID from
   // /etc/os-release, set |cache_id| as boot-id.
   brillo::OsReleaseReader reader;
   reader.Load();
-  if (per_boot_cache.value_or(true) ||
-      !reader.GetString("BUILD_ID", &cache_id)) {
+  if (per_boot_cache || !reader.GetString("BUILD_ID", &cache_id)) {
     CHECK(base::ReadFileToString(base::FilePath(kBootIdFile), &cache_id));
   }
 
