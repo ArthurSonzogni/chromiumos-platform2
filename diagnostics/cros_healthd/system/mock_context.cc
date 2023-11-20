@@ -8,6 +8,8 @@
 
 #include <attestation/proto_bindings/interface.pb.h>
 #include <attestation-client-test/attestation/dbus-proxy-mocks.h>
+#include <brillo/udev/mock_udev.h>
+#include <brillo/udev/mock_udev_monitor.h>
 #include <cras/dbus-proxy-mocks.h>
 #include <debugd/dbus-proxy-mocks.h>
 #include <fwupd/dbus-proxy-mocks.h>
@@ -19,10 +21,19 @@
 #include <spaced/dbus-proxy-mocks.h>
 #include <gmock/gmock.h>
 
+#include "diagnostics/cros_healthd/network/fake_network_health_adapter.h"
+#include "diagnostics/cros_healthd/network_diagnostics/mock_network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/service_config.h"
 #include "diagnostics/cros_healthd/system/cros_config.h"
+#include "diagnostics/cros_healthd/system/fake_bluez_event_hub.h"
+#include "diagnostics/cros_healthd/system/fake_floss_event_hub.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
+#include "diagnostics/cros_healthd/system/fake_powerd_adapter.h"
+#include "diagnostics/cros_healthd/system/fake_system_config.h"
+#include "diagnostics/cros_healthd/system/fake_system_utilities.h"
 #include "diagnostics/cros_healthd/system/ground_truth.h"
+#include "diagnostics/cros_healthd/system/mock_bluez_controller.h"
+#include "diagnostics/cros_healthd/system/mock_floss_controller.h"
 #include "diagnostics/cros_healthd/utils/resource_queue.h"
 
 namespace diagnostics {

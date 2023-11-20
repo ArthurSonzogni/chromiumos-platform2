@@ -10,6 +10,8 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/events/event_observer_test_future.h"
+#include "diagnostics/cros_healthd/system/fake_bluez_event_hub.h"
+#include "diagnostics/cros_healthd/system/fake_floss_event_hub.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 

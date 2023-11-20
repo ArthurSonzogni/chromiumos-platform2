@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/system/ground_truth.h"
+
 #include <string>
 #include <utility>
 #include <vector>
@@ -16,9 +18,9 @@
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/base/paths.h"
 #include "diagnostics/cros_healthd/routines/fingerprint/fingerprint.h"
-#include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/system/ground_truth_constants.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
+#include "diagnostics/cros_healthd/system/mock_floss_controller.h"
 #include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxy-mocks.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"

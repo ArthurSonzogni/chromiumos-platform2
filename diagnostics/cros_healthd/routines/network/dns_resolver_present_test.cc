@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/routines/network/dns_resolver_present.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -12,8 +14,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/cros_healthd/network_diagnostics/mock_network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_utils.h"
-#include "diagnostics/cros_healthd/routines/network/dns_resolver_present.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/external/network_diagnostics.mojom.h"

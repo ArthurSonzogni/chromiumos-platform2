@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
+
 #include <memory>
 #include <optional>
 #include <set>
@@ -13,16 +15,16 @@
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
+#include <brillo/udev/mock_udev.h>
+#include <brillo/udev/mock_udev_device.h>
 #include <brillo/variant_dictionary.h>
 #include <fwupd/dbus-proxy-mocks.h>
 #include <libfwupd/fwupd-enums.h>
 
 #include "diagnostics/base/file_test_utils.h"
-#include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher_constants.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/cros_healthd/utils/fwupd_utils.h"
-#include "diagnostics/cros_healthd/utils/mojo_type_utils.h"
 #include "diagnostics/cros_healthd/utils/usb_utils_constants.h"
 
 namespace diagnostics {

@@ -8,32 +8,24 @@
 #include <memory>
 
 #include <base/files/scoped_temp_dir.h>
-#include <base/memory/scoped_refptr.h>
 #include <base/test/simple_test_tick_clock.h>
-#include <brillo/udev/mock_udev.h>
-#include <brillo/udev/mock_udev_device.h>
-#include <brillo/udev/mock_udev_monitor.h>
 
 #include "diagnostics/cros_healthd/executor/mock_executor.h"
-#include "diagnostics/cros_healthd/network/fake_network_health_adapter.h"
-#include "diagnostics/cros_healthd/network_diagnostics/mock_network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/system/context.h"
-#include "diagnostics/cros_healthd/system/fake_bluez_event_hub.h"
-#include "diagnostics/cros_healthd/system/fake_floss_event_hub.h"
 #include "diagnostics/cros_healthd/system/fake_pci_util.h"
-#include "diagnostics/cros_healthd/system/fake_powerd_adapter.h"
-#include "diagnostics/cros_healthd/system/fake_system_config.h"
-#include "diagnostics/cros_healthd/system/fake_system_utilities.h"
-#include "diagnostics/cros_healthd/system/mock_bluez_controller.h"
-#include "diagnostics/cros_healthd/system/mock_floss_controller.h"
+
+namespace brillo {
+class MockUdev;
+class MockUdevMonitor;
+}  // namespace brillo
 
 namespace org {
 namespace chromium {
 class AttestationProxyMock;
 class debugdProxyMock;
 class PowerManagerProxyMock;
-class TpmManagerProxyMock;
 class SpacedProxyMock;
+class TpmManagerProxyMock;
 
 namespace cras {
 class ControlProxyMock;
@@ -46,8 +38,17 @@ class fwupdProxyMock;
 }  // namespace org
 
 namespace diagnostics {
-
+class FakeBluezEventHub;
+class FakeFlossEventHub;
 class FakeMojoService;
+class FakeNetworkHealthAdapter;
+class FakePowerdAdapter;
+class FakeSystemConfig;
+class FakeSystemUtilities;
+class MockBluezController;
+class MockExecutor;
+class MockFlossController;
+class MockNetworkDiagnosticsAdapter;
 
 // A mock context class for testing.
 class MockContext final : public Context {

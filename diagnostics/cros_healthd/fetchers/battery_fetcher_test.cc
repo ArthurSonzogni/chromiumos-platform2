@@ -14,6 +14,8 @@
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
 
 #include "diagnostics/cros_healthd/executor/mock_executor.h"
+#include "diagnostics/cros_healthd/system/fake_powerd_adapter.h"
+#include "diagnostics/cros_healthd/system/fake_system_config.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 
 namespace diagnostics {

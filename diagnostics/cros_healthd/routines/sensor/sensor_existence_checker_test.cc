@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/routines/sensor/sensor_existence_checker.h"
+
 #include <algorithm>
 #include <memory>
 #include <string>
@@ -13,8 +15,8 @@
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/routines/sensor/sensor_existence_checker.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
+#include "diagnostics/cros_healthd/system/fake_system_config.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 
 namespace diagnostics {
