@@ -6,6 +6,7 @@ mod common;
 mod config;
 mod cpu_utils;
 mod dbus;
+mod dbus_ownership_listener;
 mod feature;
 mod memory;
 mod power;

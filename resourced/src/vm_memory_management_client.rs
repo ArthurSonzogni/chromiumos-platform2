@@ -11,10 +11,8 @@ use std::time::Duration;
 use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
+use async_trait::async_trait;
 use dbus::arg::OwnedFd;
-use dbus::channel::MatchingReceiver;
-use dbus::message::MatchRule;
-use dbus::message::Message;
 use dbus::nonblock::SyncConnection;
 use log::error;
 use log::info;
@@ -30,7 +28,11 @@ use tokio::net::UnixStream;
 use tokio::time::sleep;
 
 use crate::dbus::DEFAULT_DBUS_TIMEOUT;
+use crate::dbus_ownership_listener::monitor_dbus_service;
+use crate::dbus_ownership_listener::DbusOwnershipChangeCallback;
 use crate::vm_concierge_client::VmConciergeClient;
+
+const VM_CONCIERGE_SERVICE_NAME: &str = "org.chromium.VmConcierge";
 
 /// A client to communicate with the VmMemoryManagement service (VMMS). The
 /// connection established via the VmConcierge dbus API [1], and the connection
@@ -108,71 +110,49 @@ impl VmMMConnectionState {
     }
 }
 
-async fn handle_name_owner_change(
+struct VmConciergeMonitor {
     state: Arc<Mutex<VmMMConnectionState>>,
     concierge: VmConciergeClient,
-    msg: Message,
-) -> Result<()> {
-    let (_, old, new): (String, String, String) = msg.read3().context("malformed signal")?;
-    if !old.is_empty() {
-        *state.lock().expect("failed to lock") = VmMMConnectionState::Disconnected;
-    }
+}
 
-    if !new.is_empty() {
-        match concierge.get_vm_memory_management_connection().await {
-            Ok((fd, reclaim_request_timeout)) => {
-                info!("Enabling VmMemoryManagementClient");
-                let mut conn = VmMMConnection::new(fd, reclaim_request_timeout)
-                    .context("create VmMMConnection")?;
-                conn.connect().await.context("initialize VmMMConnection")?;
-                *state.lock().expect("poisoned lock") = VmMMConnectionState::Connected(conn)
-            }
-            Err(e) => {
-                info!("VmMemoryManagementClient not activating: {}", e);
+#[async_trait]
+impl DbusOwnershipChangeCallback for VmConciergeMonitor {
+    async fn on_ownership_change(&self, old: String, new: String) -> Result<()> {
+        if !old.is_empty() {
+            *self.state.lock().expect("failed to lock") = VmMMConnectionState::Disconnected;
+        }
+
+        if !new.is_empty() {
+            match self.concierge.get_vm_memory_management_connection().await {
+                Ok((fd, reclaim_request_timeout)) => {
+                    info!("Enabling VmMemoryManagementClient");
+                    let mut conn = VmMMConnection::new(fd, reclaim_request_timeout)
+                        .context("create VmMMConnection")?;
+                    conn.connect().await.context("initialize VmMMConnection")?;
+                    *self.state.lock().expect("poisoned lock") =
+                        VmMMConnectionState::Connected(conn)
+                }
+                Err(e) => {
+                    info!("VmMemoryManagementClient not activating: {}", e);
+                }
             }
         }
-    }
 
-    Ok(())
+        Ok(())
+    }
 }
 
 impl VmMemoryManagementClient {
     /// Create a new VmMemoryManagementClient
     pub async fn new(conn: Arc<SyncConnection>) -> Result<Self> {
         let state = Arc::new(Mutex::new(VmMMConnectionState::Disconnected));
-
-        // MatchRule doesn't support matching by arguments, so manually construct a
-        // match rule string that only listens for VmConcierge related changes to
-        // avoid unnecessary IPC. The MatchRule used with the callback is less specific,
-        // so it will still match all updates we receive.
-        let name_owner_match_string = vec![
-            "interface=org.freedesktop.DBus",
-            "member=NameOwnerChanged",
-            "arg0=org.chromium.VmConcierge",
-        ]
-        .join(",");
-        let name_owner_change_signal =
-            MatchRule::new_signal("org.freedesktop.DBus", "NameOwnerChanged");
-        conn.add_match_no_cb(&name_owner_match_string)
+        let cb = VmConciergeMonitor {
+            concierge: VmConciergeClient::new(conn.clone(), DEFAULT_DBUS_TIMEOUT),
+            state: state.clone(),
+        };
+        monitor_dbus_service(&conn, VM_CONCIERGE_SERVICE_NAME, cb)
             .await
-            .context("failed to add match")?;
-
-        let shared_state = state.clone();
-        let concierge = VmConciergeClient::new(conn.clone(), DEFAULT_DBUS_TIMEOUT);
-        conn.start_receive(
-            name_owner_change_signal,
-            Box::new(move |msg, _| {
-                let state = shared_state.clone();
-                let concierge = concierge.clone();
-                tokio::spawn(async move {
-                    if let Err(e) = handle_name_owner_change(state, concierge, msg).await {
-                        info!("error handling name owner change: {:?}", e);
-                    }
-                });
-                true
-            }),
-        );
-
+            .context("failed to monitor concierge")?;
         Ok(VmMemoryManagementClient { state })
     }
 
