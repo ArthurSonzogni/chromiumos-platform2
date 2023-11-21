@@ -100,9 +100,6 @@ class BaseFileTest : public ::testing::Test {
   // Turns the path into the path under the test rootfs. This should work for
   // both absolute and relative path.
   base::FilePath GetPathUnderRoot(const PathType& path) const;
-  // Returns the path of the rootfs for testing.
-  // DEPRECATED: Use `GetRootDir()`.
-  const base::FilePath& root_dir() const;
 
   // Creates a file in the test rootfs. The parent directories will be created
   // if they don't exist. |ContentType| can be |std::string| or

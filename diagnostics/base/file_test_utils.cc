@@ -124,10 +124,6 @@ base::FilePath BaseFileTest::GetPathUnderRoot(const PathType& path) const {
   return GetRootedPath(path.file_path());
 }
 
-const base::FilePath& BaseFileTest::root_dir() const {
-  return RootDir();
-}
-
 void BaseFileTest::SetFakeCrosConfig(const PathType& path,
                                      const std::optional<std::string>& data) {
   base::FilePath full_path =

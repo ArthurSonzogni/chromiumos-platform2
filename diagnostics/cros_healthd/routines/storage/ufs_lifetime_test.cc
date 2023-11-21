@@ -43,7 +43,6 @@ class UfsLifetimeRoutineTest : public BaseFileTest {
   UfsLifetimeRoutineTest& operator=(const UfsLifetimeRoutineTest&) = delete;
 
   void SetUp() {
-    SetTestRoot(mock_context_.root_dir());
     routine_ = std::make_unique<UfsLifetimeRoutine>(
         &mock_context_, mojom::UfsLifetimeRoutineArgument::New());
   }
@@ -63,7 +62,7 @@ class UfsLifetimeRoutineTest : public BaseFileTest {
                          const std::string& name,
                          const std::string& content) {
     const base::FilePath& path =
-        root_dir().AppendASCII(health_desc_path).AppendASCII(name);
+        GetRootDir().AppendASCII(health_desc_path).AppendASCII(name);
     ASSERT_TRUE(WriteFileAndCreateParentDirs(path, content));
   }
 

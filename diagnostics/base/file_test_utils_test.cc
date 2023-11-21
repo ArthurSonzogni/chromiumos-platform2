@@ -54,7 +54,7 @@ TEST_F(FileTest, BaseTest) {
             std::string(reinterpret_cast<const char*>(kTestBinaryData),
                         kTestBinaryDataLen));
 
-  const auto expected_path = root_dir().Append("a/b/c");
+  const auto expected_path = GetRootDir().Append("a/b/c");
   EXPECT_EQ(GetPathUnderRoot("a/b/c"), expected_path);
   EXPECT_EQ(GetPathUnderRoot("/a/b/c"), expected_path);
   EXPECT_EQ(GetPathUnderRoot(base::FilePath("/a/b/c")), expected_path);

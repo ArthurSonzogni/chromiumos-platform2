@@ -32,15 +32,15 @@ class FileUtilsTest : public BaseFileTest {
 
 TEST_F(FileUtilsTest, ReadAndTrimString) {
   std::string str;
-  ASSERT_TRUE(ReadAndTrimString(root_dir(), kFileNameTest, &str));
+  ASSERT_TRUE(ReadAndTrimString(GetRootDir(), kFileNameTest, &str));
   EXPECT_EQ(str, kExpectedStr);
   ASSERT_TRUE(ReadAndTrimString(GetPathUnderRoot(kFileNameTest), &str));
   EXPECT_EQ(str, kExpectedStr);
 
-  ASSERT_FALSE(ReadAndTrimString(root_dir(), kFileNameNotExist, &str));
+  ASSERT_FALSE(ReadAndTrimString(GetRootDir(), kFileNameNotExist, &str));
 
   std::optional<std::string> opt_str;
-  ASSERT_TRUE(ReadAndTrimString(root_dir(), kFileNameTest, &opt_str));
+  ASSERT_TRUE(ReadAndTrimString(GetRootDir(), kFileNameTest, &opt_str));
   ASSERT_TRUE(opt_str.has_value());
   EXPECT_EQ(opt_str.value(), kExpectedStr);
 }
@@ -48,16 +48,16 @@ TEST_F(FileUtilsTest, ReadAndTrimString) {
 TEST_F(FileUtilsTest, ReadInteger) {
   int num;
   ASSERT_TRUE(
-      ReadInteger(root_dir(), kFileNameTestInt, &base::StringToInt, &num));
+      ReadInteger(GetRootDir(), kFileNameTestInt, &base::StringToInt, &num));
   EXPECT_EQ(num, kExpectedNumber);
   ASSERT_TRUE(ReadInteger(GetPathUnderRoot(kFileNameTestInt),
                           &base::StringToInt, &num));
   EXPECT_EQ(num, kExpectedNumber);
 
   ASSERT_FALSE(
-      ReadInteger(root_dir(), kFileNameTest, &base::StringToInt, &num));
+      ReadInteger(GetRootDir(), kFileNameTest, &base::StringToInt, &num));
   ASSERT_FALSE(
-      ReadInteger(root_dir(), kFileNameNotExist, &base::StringToInt, &num));
+      ReadInteger(GetRootDir(), kFileNameNotExist, &base::StringToInt, &num));
 }
 
 TEST(FileUtilsDirectTest, RootDirWithoutOverridden) {

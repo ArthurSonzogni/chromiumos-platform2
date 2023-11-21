@@ -32,8 +32,7 @@ inline constexpr char kBsgNodeToHealthDesc[] = "../../health_descriptor/";
 const std::optional<base::FilePath> GetBsgNodePath(Context* context) {
   std::optional<base::FilePath> path;
   glob_t glob_result;
-  const base::FilePath& pattern(
-      context->root_dir().AppendASCII(kBsgNodePathPattern));
+  const base::FilePath& pattern(GetRootDir().AppendASCII(kBsgNodePathPattern));
   int return_code = glob(pattern.value().c_str(), GLOB_ONLYDIR,
                          /*errfunc=*/nullptr, &glob_result);
   if (return_code == EXIT_SUCCESS && glob_result.gl_pathc == 1) {
