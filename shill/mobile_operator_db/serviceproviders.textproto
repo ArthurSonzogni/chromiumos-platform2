@@ -7502,7 +7502,6 @@ mno {
     mccmnc: "44088"
     mccmnc: "44089"
     mccmnc: "44170"
-    tethering_allowed: true
     mobile_apn {
       apn: "au.au-net.ne.jp"
       apn_filter {
@@ -7587,7 +7586,6 @@ mno {
       name: "楽天(rakuten.jp)"
     }
     mccmnc: "44011"
-    tethering_allowed: true
     mobile_apn {
       apn: "rakuten.jp"
       localized_name {
@@ -13118,7 +13116,6 @@ mno {
     mccmnc: "313130"
     mccmnc: "313140"
     mccmnc: "313790"
-    tethering_allowed: true
     mhs_entitlement_url: "http://entitlement.mobile.att.net/mhs1"
     mhs_entitlement_method: GET
     mobile_apn {
@@ -13153,7 +13150,6 @@ mno {
       mccmnc: "310280"
       mccmnc: "311180"
       mccmnc: "310950"
-      tethering_allowed: true
       mhs_entitlement_url: "http://entitlement.mobile.att.net/mhs1"
       mhs_entitlement_method: GET
       mobile_apn {
@@ -13198,7 +13194,6 @@ mno {
       mccmnc: "310280"
       mccmnc: "311180"
       mccmnc: "310950"
-      tethering_allowed: true
       mhs_entitlement_url: "http://entitlement.mobile.att.net/mhs1"
       mhs_entitlement_method: GET
       mobile_apn {
@@ -14603,7 +14598,6 @@ mvno {
     localized_name {
       name: "楽天(rakuten.jp)"
     }
-    tethering_allowed: true
     mobile_apn {
       apn: "rakuten.jp"
       localized_name {
