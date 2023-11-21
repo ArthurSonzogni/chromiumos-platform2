@@ -19,7 +19,6 @@
 namespace net_base {
 
 // Properties related to the IP layer used to represent a configuration.
-// TODO(b/269401899): Add more fields and replace IPConfig::Properties.
 struct NET_BASE_EXPORT NetworkConfig {
   // Define a default and the minimum viable MTU values.
   static constexpr int kDefaultMTU = 1500;
