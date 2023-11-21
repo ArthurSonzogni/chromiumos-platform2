@@ -57,6 +57,7 @@ lazy_static! {
             (u16::from_str_radix("46a6", 16).unwrap(), DLC_VARIANT_AXE),  // brya
             (u16::from_str_radix("46d0", 16).unwrap(), DLC_VARIANT_AXE),  // nissa
             (u16::from_str_radix("9b41", 16).unwrap(), DLC_VARIANT_AXE),  // hatch
+            (u16::from_str_radix("7d45", 16).unwrap(), DLC_VARIANT_AXE),  // rex
 
             // batrider variant
             (u16::from_str_radix("9a40", 16).unwrap(), DLC_VARIANT_BATRIDER),  // volteer
