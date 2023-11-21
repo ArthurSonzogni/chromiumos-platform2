@@ -14,6 +14,7 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/metrics.h"
+#include "shill/network/network_applier.h"
 
 namespace shill {
 
@@ -86,8 +87,7 @@ class DaemonTask {
   std::unique_ptr<ControlInterface> control_;
   std::unique_ptr<Metrics> metrics_;
   net_base::RTNLHandler* rtnl_handler_;
-  RoutingTable* routing_table_;
-  RoutingPolicyService* rule_table_;
+  NetworkApplier* network_applier_;
   DHCPProvider* dhcp_provider_;
   NetlinkManager* netlink_manager_;
   ProcessManager* process_manager_;

@@ -58,6 +58,9 @@ class NetworkApplier {
       net_base::RTNLHandler* rtnl_handler,
       std::unique_ptr<ProcFsStub> proc_fs);
 
+  // Start the RTNL listeners in subcomponents.
+  mockable void Start();
+
   // Notify NetworkApplier before a network interface can be configured by it so
   // it can do proper initialization.
   void Register(int interface_index, const std::string& interface_name);

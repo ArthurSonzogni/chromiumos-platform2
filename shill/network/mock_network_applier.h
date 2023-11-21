@@ -22,6 +22,7 @@ class MockNetworkApplier : public NetworkApplier {
   MockNetworkApplier& operator=(const MockNetworkApplier&) = delete;
   ~MockNetworkApplier() override;
 
+  MOCK_METHOD(void, Start, (), (override));
   MOCK_METHOD(void, ApplyMTU, (int, int), (override));
   MOCK_METHOD(void,
               ApplyAddress,

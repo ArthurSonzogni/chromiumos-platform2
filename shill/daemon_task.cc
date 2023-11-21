@@ -24,8 +24,7 @@
 #include "shill/net/nl80211_message.h"
 #include "shill/net/process_manager.h"
 #include "shill/network/dhcp_provider.h"
-#include "shill/network/routing_policy_service.h"
-#include "shill/network/routing_table.h"
+#include "shill/network/network_applier.h"
 #include "shill/shill_config.h"
 
 namespace shill {
@@ -42,8 +41,7 @@ DaemonTask::DaemonTask(const Settings& settings, Config* config)
     : settings_(settings),
       config_(config),
       rtnl_handler_(nullptr),
-      routing_table_(nullptr),
-      rule_table_(nullptr),
+      network_applier_(nullptr),
       dhcp_provider_(nullptr),
       netlink_manager_(nullptr),
       process_manager_(nullptr) {}
@@ -75,8 +73,7 @@ void DaemonTask::Init() {
   control_.reset(new DBusControl(dispatcher_.get()));
   metrics_.reset(new Metrics());
   rtnl_handler_ = net_base::RTNLHandler::GetInstance();
-  routing_table_ = RoutingTable::GetInstance();
-  rule_table_ = RoutingPolicyService::GetInstance();
+  network_applier_ = NetworkApplier::GetInstance();
   dhcp_provider_ = DHCPProvider::GetInstance();
   process_manager_ = ProcessManager::GetInstance();
   netlink_manager_ = NetlinkManager::GetInstance();
@@ -130,8 +127,7 @@ void DaemonTask::Start() {
   rtnl_handler_->Start(RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
                        RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE |
                        RTMGRP_ND_USEROPT);
-  routing_table_->Start();
-  rule_table_->Start();
+  network_applier_->Start();
   dhcp_provider_->Init(control_.get(), dispatcher_.get(), metrics_.get());
   process_manager_->Init();
   // Note that NetlinkManager initialization is not necessarily

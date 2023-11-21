@@ -115,6 +115,11 @@ std::unique_ptr<NetworkApplier> NetworkApplier::CreateForTesting(
   return ptr;
 }
 
+void NetworkApplier::Start() {
+  routing_table_->Start();
+  rule_table_->Start();
+}
+
 void NetworkApplier::Register(int interface_index,
                               const std::string& interface_name) {
   routing_table_->RegisterDevice(interface_index, interface_name);
