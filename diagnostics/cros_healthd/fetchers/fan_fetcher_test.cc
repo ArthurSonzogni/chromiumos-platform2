@@ -19,8 +19,8 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_test_utils.h"
+#include "diagnostics/base/paths.h"
 #include "diagnostics/cros_healthd/executor/mock_executor.h"
-#include "diagnostics/cros_healthd/system/ground_truth_constants.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
@@ -39,7 +39,7 @@ class FanUtilsTest : public BaseFileTest {
  protected:
   FanUtilsTest() = default;
 
-  void SetUp() override { SetFile(kCrosEcSysPath, ""); }
+  void SetUp() override { SetFile(paths::sysfs::kCrosEc, ""); }
 
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
@@ -104,7 +104,7 @@ TEST_F(FanUtilsTest, CollectFanSpeedFailure) {
 
 // Test that no fan info is fetched for a device that does not have a Google EC.
 TEST_F(FanUtilsTest, NoGoogleEc) {
-  UnsetPath(kCrosEcSysPath);
+  UnsetPath(paths::sysfs::kCrosEc);
 
   auto fan_result = FetchFanInfoSync();
 

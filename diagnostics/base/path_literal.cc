@@ -9,6 +9,8 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 
+#include "diagnostics/base/file_utils.h"
+
 namespace diagnostics {
 
 PathLiteral::PathLiteral(const char** tokens, std::size_t size) {
@@ -29,6 +31,10 @@ base::FilePath PathLiteral::ToPath() const {
 
 std::string PathLiteral::ToStr() const {
   return ToPath().value();
+}
+
+base::FilePath PathLiteral::ToFull() const {
+  return GetRootDir().Append(ToPath());
 }
 
 }  // namespace diagnostics

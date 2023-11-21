@@ -5,10 +5,12 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_SENSOR_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_SENSOR_FETCHER_H_
 
-#include "diagnostics/cros_healthd/system/context.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include <base/functional/callback_forward.h>
+
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace diagnostics {
+class Context;
 
 // Fetch sensor info and pass the result to the callback.
 using FetchSensorInfoCallback =

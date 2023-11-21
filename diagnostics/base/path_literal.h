@@ -41,6 +41,8 @@ class BRILLO_EXPORT PathLiteral {
   base::FilePath ToPath() const;
   // Same as above but return std::string.
   std::string ToStr() const;
+  // Returns full paths from root directory.
+  base::FilePath ToFull() const;
 
  private:
   std::vector<const char*> tokens_;
@@ -65,6 +67,8 @@ class StaticPathLiteral {
   base::FilePath ToPath() const { return PathLiteral(*this).ToPath(); }
 
   std::string ToStr() const { return PathLiteral(*this).ToStr(); }
+
+  base::FilePath ToFull() const { return PathLiteral(*this).ToFull(); }
 
  private:
   std::array<const char*, Size> tokens_;

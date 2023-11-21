@@ -15,6 +15,13 @@ namespace diagnostics::paths {
 
 // TODO(b/308731445): Use this file to define paths.
 
+namespace sysfs {
+
+// Used to determine whether a device has a Google EC.
+VAR_(PATH_("sys", "class", "chromeos", "cros_ec"), kCrosEc);
+
+}  // namespace sysfs
+
 namespace cros_config {
 
 VAR_(PATH_("run", "chromeos-config", "v1"), kRoot);

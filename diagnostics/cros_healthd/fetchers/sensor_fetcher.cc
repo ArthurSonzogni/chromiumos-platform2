@@ -14,18 +14,18 @@
 #include <chromeos/ec/ec_commands.h>
 #include <iioservice/mojo/sensor.mojom.h>
 
+#include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
-
-// Relative filepath used to determine whether a device has a Google EC.
-constexpr char kRelativeCrosEcPath[] = "sys/class/chromeos/cros_ec";
 
 // The target sensor attributes to fetch.
 const std::vector<std::string> kTargetSensorAttributes_ = {
@@ -199,7 +199,7 @@ void FetchSensorInfo(Context* context, FetchSensorInfoCallback callback) {
                                     barrier.CreateDependencyClosure())));
 
   // Devices without a Google EC, and therefore ectool, cannot obtain lid angle.
-  if (base::PathExists(context->root_dir().Append(kRelativeCrosEcPath))) {
+  if (context->ground_truth()->HasCrosEC()) {
     context->executor()->GetLidAngle(barrier.Depend(base::BindOnce(
         &State::HandleLidAngleResponse, base::Unretained(state_ptr))));
   }

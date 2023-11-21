@@ -22,7 +22,6 @@
 #include "diagnostics/base/paths.h"
 #include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
 #include "diagnostics/cros_healthd/system/cros_config_constants.h"
-#include "diagnostics/cros_healthd/system/ground_truth_constants.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/cros_healthd/system/mock_floss_controller.h"
 #include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxy-mocks.h"
@@ -319,7 +318,7 @@ TEST_F(RoutineServiceTest, VolumeButtonNoButton) {
 }
 
 TEST_F(RoutineServiceTest, LedLitUp) {
-  SetFile(kCrosEcSysPath, "");
+  SetFile(paths::sysfs::kCrosEc, "");
 
   CheckIsRoutineArgumentSupported(MakeSupported(),
                                   mojom::RoutineArgument::NewLedLitUp(
@@ -330,7 +329,7 @@ TEST_F(RoutineServiceTest, LedLitUp) {
 }
 
 TEST_F(RoutineServiceTest, LedLitUpNoEc) {
-  UnsetPath(kCrosEcSysPath);
+  UnsetPath(paths::sysfs::kCrosEc);
 
   auto status = MakeUnsupported("Not supported on a non-CrosEC device");
   CheckIsRoutineArgumentSupported(status,

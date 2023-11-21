@@ -87,17 +87,6 @@ void AssignWithDefaultAndDropError(const base::expected<T, std::string>& got,
   out = got.value_or(default_value);
 }
 
-bool HasCrosEC() {
-  return base::PathExists(GetRootedPath(kCrosEcSysPath));
-}
-
-base::expected<void, std::string> CheckCrosEc() {
-  if (HasCrosEC()) {
-    return base::ok();
-  }
-  return base::unexpected("Not supported on a non-CrosEC device");
-}
-
 mojom::SupportStatusPtr HandleFlossEnabledResponse(brillo::Error* error,
                                                    bool enabled) {
   if (error) {
@@ -331,7 +320,10 @@ mojom::SupportStatusPtr GroundTruth::PrepareRoutineVolumeButton() const {
 }
 
 mojom::SupportStatusPtr GroundTruth::PrepareRoutineLedLitUp() const {
-  return MakeSupportStatus(CheckCrosEc());
+  if (HasCrosEC()) {
+    return MakeSupported();
+  }
+  return MakeUnsupported("Not supported on a non-CrosEC device");
 }
 
 void GroundTruth::PrepareRoutineBluetoothFloss(
@@ -347,6 +339,10 @@ void GroundTruth::PrepareRoutineBluetoothFloss(
   manager->GetFlossEnabledAsync(std::move(on_success), std::move(on_error));
 }
 // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
+
+bool GroundTruth::HasCrosEC() const {
+  return base::PathExists(paths::sysfs::kCrosEc.ToFull());
+}
 
 CrosConfig* GroundTruth::cros_config() const {
   return context_->cros_config();

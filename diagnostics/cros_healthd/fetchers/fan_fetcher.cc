@@ -21,9 +21,8 @@
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
 
-#include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/system/context.h"
-#include "diagnostics/cros_healthd/system/ground_truth_constants.h"
+#include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
@@ -58,7 +57,7 @@ void HandleFanSpeedResponse(FetchFanInfoCallback callback,
 
 void FetchFanInfo(Context* context, FetchFanInfoCallback callback) {
   // Devices without a Google EC, and therefore ectool, cannot obtain fan info.
-  if (!base::PathExists(GetRootedPath(kCrosEcSysPath))) {
+  if (!context->ground_truth()->HasCrosEC()) {
     LOG(INFO) << "Device does not have a Google EC.";
     std::move(callback).Run(mojom::FanResult::NewFanInfo({}));
     return;

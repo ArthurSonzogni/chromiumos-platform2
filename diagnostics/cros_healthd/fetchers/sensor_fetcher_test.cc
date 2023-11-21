@@ -16,6 +16,8 @@
 #include <chromeos/ec/ec_commands.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/base/file_test_utils.h"
+#include "diagnostics/base/paths.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -27,17 +29,12 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
 
-// Relative filepath used to determine whether a device has a Google EC.
-constexpr char kRelativeCrosEcPath[] = "sys/class/chromeos/cros_ec";
-
-class SensorFetcherTest : public ::testing::Test {
+class SensorFetcherTest : public BaseFileTest {
  protected:
   void SetUp() override {
-    ASSERT_TRUE(base::CreateDirectory(root_dir().Append(kRelativeCrosEcPath)));
+    SetFile(paths::sysfs::kCrosEc, "");
     mock_context_.fake_mojo_service()->InitializeFakeMojoService();
   }
-
-  const base::FilePath& root_dir() { return mock_context_.root_dir(); }
 
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
@@ -108,8 +105,7 @@ TEST_F(SensorFetcherTest, LidAngleNull) {
 
 // Test that without Google EC can be handled and gets null lid_angle.
 TEST_F(SensorFetcherTest, LidAngleWithoutEC) {
-  ASSERT_TRUE(
-      brillo::DeletePathRecursively(root_dir().Append(kRelativeCrosEcPath)));
+  UnsetPath(paths::sysfs::kCrosEc);
 
   auto sensor_result = FetchSensorInfoSync();
   ASSERT_TRUE(sensor_result->is_sensor_info());

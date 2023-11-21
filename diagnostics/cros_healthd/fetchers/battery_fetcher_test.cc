@@ -13,6 +13,8 @@
 #include <gtest/gtest.h>
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
 
+#include "diagnostics/base/file_test_utils.h"
+#include "diagnostics/base/paths.h"
 #include "diagnostics/cros_healthd/executor/mock_executor.h"
 #include "diagnostics/cros_healthd/system/fake_powerd_adapter.h"
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
@@ -51,10 +53,7 @@ constexpr char kBatteryStatus[] = "Discharging";
 constexpr char kModelName[] = "drobit";
 constexpr uint8_t kI2CPort = 5;
 
-// Relative filepath used to determine whether a device has a Google EC.
-constexpr char kRelativeCrosEcPath[] = "sys/class/chromeos/cros_ec";
-
-class BatteryFetcherTest : public ::testing::Test {
+class BatteryFetcherTest : public BaseFileTest {
  protected:
   BatteryFetcherTest() = default;
 
@@ -62,8 +61,7 @@ class BatteryFetcherTest : public ::testing::Test {
     mock_context_.fake_system_config()->SetHasBattery(true);
     mock_context_.fake_system_config()->SetHasSmartBattery(true);
     mock_context_.fake_system_config()->SetCodeName(kModelName);
-    ASSERT_TRUE(base::CreateDirectory(
-        mock_context_.root_dir().Append(kRelativeCrosEcPath)));
+    SetFile(paths::sysfs::kCrosEc, "");
   }
 
   mojom::BatteryResultPtr FetchBatteryInfoSync() {
@@ -186,8 +184,7 @@ TEST_F(BatteryFetcherTest, EcNotFoundSmartBatteryDevice) {
   power_supply_proto.set_battery_state(kBatteryStateFull);
   fake_powerd_adapter()->SetPowerSupplyProperties(power_supply_proto);
 
-  ASSERT_TRUE(brillo::DeletePathRecursively(
-      mock_context_.root_dir().Append(kRelativeCrosEcPath)));
+  UnsetPath(paths::sysfs::kCrosEc);
   // Set the wrong config.
   mock_context_.fake_system_config()->SetHasSmartBattery(true);
 

@@ -18,6 +18,7 @@
 #include <re2/re2.h>
 
 #include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/system/powerd_adapter.h"
 #include "diagnostics/cros_healthd/system/system_config_interface.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
@@ -29,9 +30,6 @@ namespace diagnostics {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
-
-// Relative filepath used to determine whether a device has a Google EC.
-constexpr char kRelativeCrosEcPath[] = "sys/class/chromeos/cros_ec";
 
 // Mapping from device model to i2c port number.
 constexpr auto kModelToPort =
@@ -175,7 +173,7 @@ void FetchBatteryInfo(Context* context, FetchBatteryInfoCallback callback) {
   }
 
   // Device with smart battery should have a Google EC.
-  if (!base::PathExists(context->root_dir().Append(kRelativeCrosEcPath))) {
+  if (!context->ground_truth()->HasCrosEC()) {
     std::move(callback).Run(mojom::BatteryResult::NewError(
         CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
                                "Failed to find EC for smart battery info.")));

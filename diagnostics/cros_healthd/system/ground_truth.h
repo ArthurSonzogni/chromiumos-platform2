@@ -72,6 +72,9 @@ class GroundTruth final {
       PrepareRoutineBluetoothFlossCallback callback) const;
   // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 
+  // Check if the device has CrOS EC.
+  bool HasCrosEC() const;
+
  private:
   ash::cros_healthd::mojom::SupportStatusPtr GetEventSupportStatus(
       ash::cros_healthd::mojom::EventCategoryEnum category);
