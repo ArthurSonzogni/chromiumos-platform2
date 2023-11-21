@@ -145,11 +145,9 @@ std::string GetMountOpts() {
   return "discard,commit=" + std::to_string(commit_interval);
 }
 
-std::vector<std::string> BuildExt4FormatOpts(uint64_t block_bytes,
-                                             uint64_t blocks_min,
-                                             uint64_t blocks_max) {
+static std::vector<std::string> BuildExt4FormatOpts() {
   return {"-T", "default",
-          "-b", std::to_string(block_bytes),
+          "-b", std::to_string(kExt4BlockSize),
           "-m", "0",
           "-O", "^huge_file,^flex_bg",
           "-E", kExt4ExtendedOptions};
@@ -291,9 +289,7 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
        .dmcrypt_config = {.backing_device_config = backing_device_config,
                           .dmcrypt_device_name = dmcrypt_name,
                           .dmcrypt_cipher = std::string(kDmCryptDefaultCipher),
-                          .mkfs_opts = BuildExt4FormatOpts(
-                              kExt4BlockSize, kExt4MinBytes / kExt4BlockSize,
-                              fs_bytes_max / kExt4BlockSize),
+                          .mkfs_opts = BuildExt4FormatOpts(),
                           .tune2fs_opts = {}}});
 
   cryptohome::FileSystemKeyReference key_reference;
