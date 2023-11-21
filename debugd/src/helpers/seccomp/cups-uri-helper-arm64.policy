@@ -23,3 +23,4 @@ restart_syscall: 1
 exit: 1
 rt_sigreturn: 1
 newfstatat: 1
+gettid: 1
