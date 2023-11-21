@@ -4,13 +4,13 @@
 
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_cache.h"
 
-#include <algorithm>
 #include <cstdint>
 #include <utility>
 
 #include <base/task/single_thread_task_runner.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>
 
+#include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
 #include "diagnostics/cros_healthd/utils/memory_info.h"
 #include "diagnostics/cros_healthd/utils/resource_queue.h"
@@ -47,7 +47,7 @@ void CpuCacheRoutine::OnStart() {
 
 void CpuCacheRoutine::Run(
     base::ScopedClosureRunner notify_resource_queue_finished) {
-  auto memory_info = MemoryInfo::ParseFrom(context_->root_dir());
+  auto memory_info = MemoryInfo::ParseFrom(GetRootDir());
   if (!memory_info.has_value()) {
     RaiseException("Memory info not found");
     return;

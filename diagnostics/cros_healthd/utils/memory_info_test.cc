@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gtest/gtest.h>
+#include "diagnostics/cros_healthd/utils/memory_info.h"
 
 #include <string>
 
+#include <gtest/gtest.h>
+
 #include "diagnostics/base/file_test_utils.h"
-#include "diagnostics/cros_healthd/utils/memory_info.h"
 
 namespace diagnostics {
 namespace {
@@ -17,6 +18,8 @@ class MemoryInfoTest : public BaseFileTest {
   MemoryInfoTest() = default;
   MemoryInfoTest(const MemoryInfoTest&) = delete;
   MemoryInfoTest& operator=(const MemoryInfoTest&) = delete;
+
+  void SetUp() override { SetTestRoot(GetRootDir()); }
 
   void SetMockMemoryInfo(const std::string& info) {
     SetFile({"proc", "meminfo"}, info);
@@ -29,7 +32,7 @@ TEST_F(MemoryInfoTest, MeminfoSuccess) {
       "MemFree:         873180 kB\n"
       "MemAvailable:    87980 kB\n");
 
-  auto memory_info = MemoryInfo::ParseFrom(root_dir());
+  auto memory_info = MemoryInfo::ParseFrom(GetRootDir());
   EXPECT_TRUE(memory_info.has_value());
   EXPECT_EQ(memory_info.value().total_memory_kib, 3906320);
   EXPECT_EQ(memory_info.value().free_memory_kib, 873180);
@@ -37,14 +40,14 @@ TEST_F(MemoryInfoTest, MeminfoSuccess) {
 }
 
 TEST_F(MemoryInfoTest, MeminfoNoFile) {
-  auto memory_info = MemoryInfo::ParseFrom(root_dir());
+  auto memory_info = MemoryInfo::ParseFrom(GetRootDir());
   EXPECT_FALSE(memory_info.has_value());
 }
 
 TEST_F(MemoryInfoTest, MeminfoFormattedIncorrectly) {
   SetMockMemoryInfo("Incorrectly formatted meminfo contents.\n");
 
-  auto memory_info = MemoryInfo::ParseFrom(root_dir());
+  auto memory_info = MemoryInfo::ParseFrom(GetRootDir());
   EXPECT_FALSE(memory_info.has_value());
 }
 
@@ -53,7 +56,7 @@ TEST_F(MemoryInfoTest, MeminfoNoMemTotal) {
       "MemFree:         873180 kB\n"
       "MemAvailable:    87980 kB\n");
 
-  auto memory_info = MemoryInfo::ParseFrom(root_dir());
+  auto memory_info = MemoryInfo::ParseFrom(GetRootDir());
   EXPECT_FALSE(memory_info.has_value());
 }
 
@@ -62,7 +65,7 @@ TEST_F(MemoryInfoTest, MeminfoNoMemFree) {
       "MemTotal:        3906320 kB\n"
       "MemAvailable:    87980 kB\n");
 
-  auto memory_info = MemoryInfo::ParseFrom(root_dir());
+  auto memory_info = MemoryInfo::ParseFrom(GetRootDir());
   EXPECT_FALSE(memory_info.has_value());
 }
 
@@ -71,7 +74,7 @@ TEST_F(MemoryInfoTest, MeminfoNoMemAvailable) {
       "MemTotal:        3906320 kB\n"
       "MemFree:         873180 kB\n");
 
-  auto memory_info = MemoryInfo::ParseFrom(root_dir());
+  auto memory_info = MemoryInfo::ParseFrom(GetRootDir());
   EXPECT_FALSE(memory_info.has_value());
 }
 
@@ -82,7 +85,7 @@ TEST_F(MemoryInfoTest, MeminfoIncorrectlyFormattedMemTotal) {
       "MemFree:         873180 kB\n"
       "MemAvailable:    87980 kB\n");
 
-  auto memory_info = MemoryInfo::ParseFrom(root_dir());
+  auto memory_info = MemoryInfo::ParseFrom(GetRootDir());
   EXPECT_FALSE(memory_info.has_value());
 }
 
@@ -92,7 +95,7 @@ TEST_F(MemoryInfoTest, MeminfoIncorrectlyFormattedMemFree) {
       "MemFree:         873180 WrongUnit\n"
       "MemAvailable:    87980 kB\n");
 
-  auto memory_info = MemoryInfo::ParseFrom(root_dir());
+  auto memory_info = MemoryInfo::ParseFrom(GetRootDir());
   EXPECT_FALSE(memory_info.has_value());
 }
 
@@ -102,7 +105,7 @@ TEST_F(MemoryInfoTest, MeminfoIncorrectlyFormattedMemAvailable) {
       "MemFree:         873180 kB\n"
       "MemAvailable:    NotAnInteger kB\n");
 
-  auto memory_info = MemoryInfo::ParseFrom(root_dir());
+  auto memory_info = MemoryInfo::ParseFrom(GetRootDir());
   EXPECT_FALSE(memory_info.has_value());
 }
 

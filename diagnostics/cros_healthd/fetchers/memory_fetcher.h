@@ -5,14 +5,11 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_MEMORY_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_MEMORY_FETCHER_H_
 
-#include <optional>
 #include <string>
 #include <vector>
 
-#include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
-#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace diagnostics {
 
@@ -27,8 +24,6 @@ class MemoryFetcher final : public BaseFetcher {
   void FetchMemoryInfo(FetchMemoryInfoCallback callback);
 
  private:
-  using OptionalProbeErrorPtr =
-      std::optional<ash::cros_healthd::mojom::ProbeErrorPtr>;
   void FetchMemoryEncryptionInfo();
   void FetchMktmeInfo();
   void FetchTmeInfo();

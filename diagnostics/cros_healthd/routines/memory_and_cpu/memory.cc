@@ -17,6 +17,7 @@
 #include <base/time/time.h>
 #include <re2/re2.h>
 
+#include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
@@ -228,7 +229,7 @@ void MemoryRoutine::OnStart() {
 
 void MemoryRoutine::Run(
     base::ScopedClosureRunner notify_resource_queue_finished) {
-  auto memory_info = MemoryInfo::ParseFrom(context_->root_dir());
+  auto memory_info = MemoryInfo::ParseFrom(GetRootDir());
   if (!memory_info.has_value()) {
     RaiseException("Memory info not found");
     return;

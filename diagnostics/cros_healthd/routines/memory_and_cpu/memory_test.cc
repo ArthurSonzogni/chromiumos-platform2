@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/memory.h"
+
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
@@ -34,7 +36,6 @@
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routine_adapter.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/memory.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/routines/routine_service.h"
 #include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
@@ -67,7 +68,7 @@ class MemoryRoutineTestBase : public BaseFileTest {
   MemoryRoutineTestBase& operator=(const MemoryRoutineTestBase&) = delete;
 
   void SetUp() override {
-    SetTestRoot(mock_context_.root_dir());
+    SetTestRoot(GetRootDir());
     SetMockMemoryInfo(
         "MemTotal:        3906320 kB\n"
         "MemFree:         2873180 kB\n"

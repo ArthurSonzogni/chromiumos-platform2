@@ -2,17 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
+
+#include <utility>
+
 #include <base/files/file_path.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <brillo/files/file_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <utility>
 
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/cros_healthd/executor/constants.h"
-#include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -88,41 +90,45 @@ void VerifyMemoryEncryptionInfo(
   EXPECT_EQ(actual_data->key_length, expected_key_length);
 }
 
-class MemoryFetcherTest : public ::testing::Test {
+class MemoryFetcherTest : public BaseFileTest {
  protected:
   MemoryFetcherTest() = default;
+  MemoryFetcherTest(const MemoryFetcherTest&) = delete;
+  MemoryFetcherTest& operator=(const MemoryFetcherTest&) = delete;
+
   void SetUp() override {
+    SetTestRoot(GetRootDir());
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        root_dir().Append(kRelativeProcCpuInfoPath), kFakeCpuInfoNoTmeContent));
+        GetRootDir().Append(kRelativeProcCpuInfoPath),
+        kFakeCpuInfoNoTmeContent));
   }
 
   void CreateMkmteEnviroment() {
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        root_dir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
+        GetRootDir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        root_dir().Append(kRelativeVmStatPath), kFakeVmStatContents));
+        GetRootDir().Append(kRelativeVmStatPath), kFakeVmStatContents));
     // Create /sys/kernel/mm/mktme/ directory
-    ASSERT_TRUE(
-        base::CreateDirectory(root_dir().Append(kRelativeMtkmeDirectoryPath)));
+    ASSERT_TRUE(base::CreateDirectory(
+        GetRootDir().Append(kRelativeMtkmeDirectoryPath)));
     // Write /sys/kernel/mm/mktme/active file.
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        root_dir().Append(kRelativeMtkmeActivePath),
+        GetRootDir().Append(kRelativeMtkmeActivePath),
         kFakeMktmeActiveFileContent));
     // Write /sys/kernel/mm/mktme/active_algo file.
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        root_dir().Append(kRelativeMtkmeActiveAlgorithmPath),
+        GetRootDir().Append(kRelativeMtkmeActiveAlgorithmPath),
         kFakeMktmeActiveAlgorithmFileContent));
     // Write /sys/kernel/mm/mktme/keycnt file.
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        root_dir().Append(kRelativeMtkmeKeyCountPath),
+        GetRootDir().Append(kRelativeMtkmeKeyCountPath),
         kFakeMktmeKeyCountFileContent));
     // Write /sys/kernel/mm/mktme/keylen file.
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        root_dir().Append(kRelativeMtkmeKeyLengthPath),
+        GetRootDir().Append(kRelativeMtkmeKeyLengthPath),
         kFakeMktmeKeyLengthFileContent));
   }
 
-  const base::FilePath& root_dir() { return mock_context_.root_dir(); }
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
   mojom::MemoryResultPtr FetchMemoryInfo() {
@@ -141,9 +147,9 @@ class MemoryFetcherTest : public ::testing::Test {
 // Test that memory info can be read when it exists.
 TEST_F(MemoryFetcherTest, TestFetchMemoryInfoWithoutMemoryEncryption) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
+      GetRootDir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeVmStatPath), kFakeVmStatContents));
+      GetRootDir().Append(kRelativeVmStatPath), kFakeVmStatContents));
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_memory_info());
@@ -158,7 +164,7 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoWithoutMemoryEncryption) {
 // formatted incorrectly.
 TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcMeminfoFormattedIncorrectly) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeMeminfoPath),
+      GetRootDir().Append(kRelativeMeminfoPath),
       kFakeMeminfoContentsIncorrectlyFormattedFile));
 
   auto result = FetchMemoryInfo();
@@ -171,7 +177,7 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcMeminfoFormattedIncorrectly) {
 // exist.
 TEST_F(MemoryFetcherTest, TestFetchMemoryInfoNoProcVmStat) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
+      GetRootDir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
@@ -182,9 +188,9 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoNoProcVmStat) {
 // formatted incorrectly.
 TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcVmStatFormattedIncorrectly) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
+      GetRootDir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeVmStatPath),
+      GetRootDir().Append(kRelativeVmStatPath),
       kFakeVmStatContentsIncorrectlyFormattedFile));
 
   auto result = FetchMemoryInfo();
@@ -196,9 +202,9 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcVmStatFormattedIncorrectly) {
 // contain the pgfault key.
 TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcVmStatNoPgfault) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
+      GetRootDir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
   ASSERT_TRUE(
-      WriteFileAndCreateParentDirs(root_dir().Append(kRelativeVmStatPath),
+      WriteFileAndCreateParentDirs(GetRootDir().Append(kRelativeVmStatPath),
                                    kFakeVmStatContentsMissingPgfault));
 
   auto result = FetchMemoryInfo();
@@ -211,9 +217,9 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcVmStatNoPgfault) {
 TEST_F(MemoryFetcherTest,
        TestFetchMemoryInfoProcVmStatIncorrectlyFormattedPgfault) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
+      GetRootDir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeVmStatPath),
+      GetRootDir().Append(kRelativeVmStatPath),
       kFakeVmStatContentsIncorrectlyFormattedPgfault));
 
   auto result = FetchMemoryInfo();
@@ -224,9 +230,9 @@ TEST_F(MemoryFetcherTest,
 // Test to handle missing /sys/kernel/mm/mktme directory.
 TEST_F(MemoryFetcherTest, MissingMktmeDirectory) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
+      GetRootDir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeVmStatPath), kFakeVmStatContents));
+      GetRootDir().Append(kRelativeVmStatPath), kFakeVmStatContents));
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_memory_info());
@@ -250,7 +256,8 @@ TEST_F(MemoryFetcherTest, TestFetchMktmeInfo) {
 // Test to handle missing /sys/kernel/mm/mktme/active file.
 TEST_F(MemoryFetcherTest, MissingMktmeActiveFile) {
   CreateMkmteEnviroment();
-  ASSERT_TRUE(brillo::DeleteFile(root_dir().Append(kRelativeMtkmeActivePath)));
+  ASSERT_TRUE(
+      brillo::DeleteFile(GetRootDir().Append(kRelativeMtkmeActivePath)));
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
@@ -260,8 +267,8 @@ TEST_F(MemoryFetcherTest, MissingMktmeActiveFile) {
 // Test to handle missing /sys/kernel/mm/mktme/active_algo file.
 TEST_F(MemoryFetcherTest, MissingMktmeActiveAlgorithmFile) {
   CreateMkmteEnviroment();
-  ASSERT_TRUE(
-      brillo::DeleteFile(root_dir().Append(kRelativeMtkmeActiveAlgorithmPath)));
+  ASSERT_TRUE(brillo::DeleteFile(
+      GetRootDir().Append(kRelativeMtkmeActiveAlgorithmPath)));
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
@@ -272,7 +279,7 @@ TEST_F(MemoryFetcherTest, MissingMktmeActiveAlgorithmFile) {
 TEST_F(MemoryFetcherTest, MissingMktmeKeyCountFile) {
   CreateMkmteEnviroment();
   ASSERT_TRUE(
-      brillo::DeleteFile(root_dir().Append(kRelativeMtkmeKeyCountPath)));
+      brillo::DeleteFile(GetRootDir().Append(kRelativeMtkmeKeyCountPath)));
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
@@ -283,7 +290,7 @@ TEST_F(MemoryFetcherTest, MissingMktmeKeyCountFile) {
 TEST_F(MemoryFetcherTest, MissingMktmeKeyLengthFile) {
   CreateMkmteEnviroment();
   ASSERT_TRUE(
-      brillo::DeleteFile(root_dir().Append(kRelativeMtkmeKeyLengthPath)));
+      brillo::DeleteFile(GetRootDir().Append(kRelativeMtkmeKeyLengthPath)));
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
@@ -293,12 +300,12 @@ TEST_F(MemoryFetcherTest, MissingMktmeKeyLengthFile) {
 // Test to verify TME info.
 TEST_F(MemoryFetcherTest, TestFetchTmeInfo) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
+      GetRootDir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeVmStatPath), kFakeVmStatContents));
-  ASSERT_TRUE(DeleteFile(root_dir().Append(kRelativeProcCpuInfoPath)));
+      GetRootDir().Append(kRelativeVmStatPath), kFakeVmStatContents));
+  ASSERT_TRUE(DeleteFile(GetRootDir().Append(kRelativeProcCpuInfoPath)));
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      root_dir().Append(kRelativeProcCpuInfoPath), kFakeCpuInfoTmeContent));
+      GetRootDir().Append(kRelativeProcCpuInfoPath), kFakeCpuInfoTmeContent));
 
   // Set the mock executor response for ReadMsr calls.
   EXPECT_CALL(*mock_executor(), ReadMsr(_, _, _))

@@ -14,8 +14,10 @@
 #include <base/strings/string_split.h>
 
 #include "diagnostics/base/file_utils.h"
+#include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/cros_healthd/utils/memory_info.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
@@ -23,11 +25,9 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-using OptionalProbeErrorPtr = std::optional<mojom::ProbeErrorPtr>;
-
 // Path to procfs, relative to the root directory.
 constexpr char kRelativeProcCpuInfoPath[] = "proc/cpuinfo";
-constexpr char kRelativeProcPath[] = "proc";
+constexpr char kRelativeVmstatProcPath[] = "proc/vmstat";
 constexpr char kRelativeMktmePath[] = "sys/kernel/mm/mktme";
 constexpr char kMktmeActiveFile[] = "active";
 constexpr char kMktmeActiveAlgorithmFile[] = "active_algo";
@@ -38,7 +38,7 @@ constexpr uint64_t kTmeAllowAesXts128 = 1;
 constexpr uint64_t kTmeAllowAesXts256 = (uint64_t)1 << 2;
 constexpr uint64_t kTmeEnableBit = (uint64_t)1 << 1;
 constexpr uint64_t kTmeBypassBit = (uint64_t)1 << 31;
-// tme agorithm mask bits[7:4].
+// tme algorithm mask bits[7:4].
 constexpr uint64_t kTmeAlgorithmMask = ((uint64_t)1 << 8) - ((uint64_t)1 << 4);
 // AES_XTS_128: bits[7:4] == 0
 constexpr uint64_t kTmeAlgorithmAesXts128 = 0;
@@ -52,7 +52,7 @@ constexpr uint64_t kTmeAlgorithmAesXts256 = (uint64_t)2 << 4;
 // encountered probing the memory information. |info| is valid iff no error
 // occurred.
 void MemoryFetcher::ParseProcMemInfo(mojom::MemoryInfo* info) {
-  auto memory_info = MemoryInfo::ParseFrom(context_->root_dir());
+  auto memory_info = MemoryInfo::ParseFrom(GetRootDir());
   if (!memory_info.has_value()) {
     CreateErrorAndSendBack(mojom::ErrorType::kParseError,
                            "Error parsing /proc/meminfo");
@@ -68,8 +68,8 @@ void MemoryFetcher::ParseProcMemInfo(mojom::MemoryInfo* info) {
 // |info| is valid iff no error occurred.
 void MemoryFetcher::ParseProcVmStat(mojom::MemoryInfo* info) {
   std::string file_contents;
-  if (!ReadAndTrimString(context_->root_dir().Append(kRelativeProcPath),
-                         "vmstat", &file_contents)) {
+  if (!ReadAndTrimString(GetRootDir().Append(kRelativeVmstatProcPath),
+                         &file_contents)) {
     CreateErrorAndSendBack(mojom::ErrorType::kFileReadError,
                            "Unable to read /proc/vmstat");
     return;
@@ -130,7 +130,7 @@ void MemoryFetcher::SendBackResult(mojom::MemoryResultPtr result) {
 
 // Parse mktme information.
 void MemoryFetcher::FetchMktmeInfo() {
-  auto mktme_path = context_->root_dir().Append(kRelativeMktmePath);
+  auto mktme_path = GetRootDir().Append(kRelativeMktmePath);
   // Directory /sys/kernel/mktme existence indicates mktme support.
   if (!base::PathExists(mktme_path)) {
     CreateResultAndSendBack();
@@ -268,12 +268,10 @@ void MemoryFetcher::HandleReadTmeCapabilityMsr(mojom::NullableUint64Ptr val) {
 void MemoryFetcher::FetchTmeInfo() {
   std::string file_content;
   // First check tme flag in /proc/cpuinfo to see tme support by the CPU or not.
-  if (!ReadAndTrimString(context_->root_dir().Append(kRelativeProcCpuInfoPath),
+  if (!ReadAndTrimString(GetRootDir().Append(kRelativeProcCpuInfoPath),
                          &file_content)) {
-    CreateErrorAndSendBack(
-        mojom::ErrorType::kFileReadError,
-        "Unable to read " +
-            context_->root_dir().Append(kRelativeProcCpuInfoPath).value());
+    CreateErrorAndSendBack(mojom::ErrorType::kFileReadError,
+                           "Unable to read /proc/cpuinfo");
     return;
   }
 
@@ -307,7 +305,7 @@ void MemoryFetcher::FetchTmeInfo() {
 }
 
 void MemoryFetcher::FetchMemoryEncryptionInfo() {
-  auto mktme_path = context_->root_dir().Append(kRelativeMktmePath);
+  auto mktme_path = GetRootDir().Append(kRelativeMktmePath);
   // If mktme support on the platform, fetch mktme telemetry. Otherwise, fetch
   // tme telemery.
   if (base::PathExists(mktme_path)) {

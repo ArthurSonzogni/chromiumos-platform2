@@ -39,7 +39,7 @@ class CpuCacheRoutineTestBase : public BaseFileTest {
   CpuCacheRoutineTestBase& operator=(const CpuCacheRoutineTestBase&) = delete;
 
   void SetUp() override {
-    SetTestRoot(mock_context_.root_dir());
+    SetTestRoot(GetRootDir());
     SetMockMemoryInfo(
         "MemTotal:        3906320 kB\n"
         "MemFree:         2873180 kB\n"
