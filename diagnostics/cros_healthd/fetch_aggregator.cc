@@ -28,6 +28,7 @@
 #include "diagnostics/cros_healthd/fetchers/stateful_partition_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/thermal_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/timezone_fetcher.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/metrics_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -72,7 +73,6 @@ FetchAggregator::FetchAggregator(Context* context)
       fan_fetcher_(context),
       input_fetcher_(context),
       memory_fetcher_(context),
-      timezone_fetcher_(context),
       tpm_fetcher_(context),
       context_(context) {}
 
@@ -116,7 +116,7 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kTimezone: {
-        info->timezone_result = timezone_fetcher_.FetchTimezoneInfo();
+        info->timezone_result = FetchTimezoneInfo();
         break;
       }
       case mojom::ProbeCategoryEnum::kMemory: {

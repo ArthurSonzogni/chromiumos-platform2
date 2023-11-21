@@ -9,7 +9,9 @@
 #include <base/files/file_util.h>
 #include <brillo/timezone/tzif_parser.h>
 
+#include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
@@ -22,10 +24,9 @@ constexpr char kZoneInfoPath[] = "usr/share/zoneinfo";
 
 }  // namespace
 
-mojom::TimezoneResultPtr TimezoneFetcher::FetchTimezoneInfo() {
+mojom::TimezoneResultPtr FetchTimezoneInfo() {
   base::FilePath timezone_path;
-  base::FilePath localtime_path =
-      context_->root_dir().AppendASCII(kLocaltimeFile);
+  base::FilePath localtime_path = GetRootDir().AppendASCII(kLocaltimeFile);
   if (!base::NormalizeFilePath(localtime_path, &timezone_path)) {
     return mojom::TimezoneResult::NewError(CreateAndLogProbeError(
         mojom::ErrorType::kFileReadError,
@@ -33,8 +34,7 @@ mojom::TimezoneResultPtr TimezoneFetcher::FetchTimezoneInfo() {
   }
 
   base::FilePath timezone_region_path;
-  base::FilePath zone_info_path =
-      context_->root_dir().AppendASCII(kZoneInfoPath);
+  base::FilePath zone_info_path = GetRootDir().AppendASCII(kZoneInfoPath);
   if (!zone_info_path.AppendRelativePath(timezone_path,
                                          &timezone_region_path)) {
     return mojom::TimezoneResult::NewError(CreateAndLogProbeError(

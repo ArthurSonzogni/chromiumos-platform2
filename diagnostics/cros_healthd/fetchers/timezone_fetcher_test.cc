@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/fetchers/timezone_fetcher.h"
+
 #include <stdlib.h>
 
 #include <base/files/file_path.h>
@@ -10,8 +12,6 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_test_utils.h"
-#include "diagnostics/cros_healthd/fetchers/timezone_fetcher.h"
-#include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
@@ -26,29 +26,19 @@ constexpr char kPosixTimezoneFile[] = "MST.tzif";
 constexpr char kPosixTimezoneOutput[] = "MST7MDT,M3.2.0,M11.1.0";
 constexpr char kSrcPath[] = "cros_healthd/fetchers";
 
-class TimezoneFetcherTest : public ::testing::Test {
+class TimezoneFetcherTest : public BaseFileTest {
  protected:
   TimezoneFetcherTest() = default;
   TimezoneFetcherTest(const TimezoneFetcherTest&) = delete;
   TimezoneFetcherTest& operator=(const TimezoneFetcherTest&) = delete;
-
-  const base::FilePath& root_dir() { return mock_context_.root_dir(); }
-
-  mojom::TimezoneResultPtr FetchTimezoneInfo() {
-    return timezone_fetcher_.FetchTimezoneInfo();
-  }
-
- private:
-  MockContext mock_context_;
-  TimezoneFetcher timezone_fetcher_{&mock_context_};
 };
 
 // Test the logic to get and parse the timezone information.
 TEST_F(TimezoneFetcherTest, TestGetTimezone) {
   // Create files and symlinks expected to be present for the localtime file.
   base::FilePath timezone_file_path =
-      root_dir().AppendASCII(kZoneInfoPath).AppendASCII(kTimezoneRegion);
-  base::FilePath localtime_path = root_dir().AppendASCII(kLocaltimeFile);
+      GetRootDir().AppendASCII(kZoneInfoPath).AppendASCII(kTimezoneRegion);
+  base::FilePath localtime_path = GetRootDir().AppendASCII(kLocaltimeFile);
 
   ASSERT_TRUE(
       WriteFileAndCreateSymbolicLink(timezone_file_path, "", localtime_path));
