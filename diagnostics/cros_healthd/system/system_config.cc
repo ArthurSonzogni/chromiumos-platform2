@@ -151,10 +151,6 @@ bool SystemConfig::HasPrivacyScreen() {
   return has_privacy_screen && has_privacy_screen == "true";
 }
 
-bool SystemConfig::HasChromiumEC() {
-  return base::PathExists(GetRootedPath(kChromiumECPath));
-}
-
 bool SystemConfig::NvmeSupported() {
   return base::PathExists(GetRootedPath(kNvmeToolPath)) &&
          !base::FileEnumerator(GetRootedPath(kDevicePath), false,

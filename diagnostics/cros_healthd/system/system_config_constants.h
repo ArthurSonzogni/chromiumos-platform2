@@ -18,8 +18,6 @@ inline constexpr char kDevicePath[] = "/dev";
 inline constexpr char kSmartctlToolPath[] = "/usr/sbin/smartctl";
 // Mmc utility program path.
 inline constexpr char kMmcToolPath[] = "/usr/bin/mmc";
-// Chromium EC path.
-inline constexpr char kChromiumECPath[] = "/sys/class/chromeos/cros_ec";
 
 // Returns a list of wilco board names.
 inline const std::list<std::string> GetWilcoBoardNames() {

@@ -148,15 +148,6 @@ TEST_F(SystemConfigTest, TestPrivacyScreenUnset) {
   EXPECT_FALSE(system_config()->HasPrivacyScreen());
 }
 
-TEST_F(SystemConfigTest, TestChromiumECTrue) {
-  SetFile(kChromiumECPath, "");
-  EXPECT_TRUE(system_config()->HasChromiumEC());
-}
-
-TEST_F(SystemConfigTest, TestChromiumECFalse) {
-  EXPECT_FALSE(system_config()->HasChromiumEC());
-}
-
 TEST_F(SystemConfigTest, NvmeSupportedTrue) {
   SetFile(kNvmeToolPath, "");
   SetFile({kDevicePath, "nvme01p1"}, "");

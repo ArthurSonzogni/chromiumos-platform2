@@ -26,7 +26,6 @@ class FakeSystemConfig final : public SystemConfigInterface {
   bool HasSmartBattery() override;
   bool HasSkuNumber() override;
   bool HasPrivacyScreen() override;
-  bool HasChromiumEC() override;
   bool NvmeSupported() override;
   void NvmeSelfTestSupported(NvmeSelfTestSupportedCallback callback) override;
   bool SmartCtlSupported() override;
@@ -44,7 +43,6 @@ class FakeSystemConfig final : public SystemConfigInterface {
   void SetHasSmartBattery(bool value);
   void SetHasSkuNumber(bool value);
   void SetHasPrivacyScreen(bool value);
-  void SetHasChromiumEC(bool value);
   void SetNvmeSupported(bool value);
   void SetNvmeSelfTestSupported(bool value);
   void SetSmartCtrlSupported(bool value);
@@ -62,7 +60,6 @@ class FakeSystemConfig final : public SystemConfigInterface {
   bool has_smart_battery_ = true;
   bool has_sku_number_property_ = true;
   bool has_privacy_screen_ = true;
-  bool has_chromium_ec_ = true;
   bool nvme_supported_ = true;
   bool nvme_self_test_supported_ = true;
   bool smart_ctrl_supported_ = true;

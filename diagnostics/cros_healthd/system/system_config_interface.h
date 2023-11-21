@@ -44,9 +44,6 @@ class SystemConfigInterface {
   // Returns if this board/SKU is marked to have a built-in privacy screen.
   virtual bool HasPrivacyScreen() = 0;
 
-  // Returns if the device has a Chromium EC.
-  virtual bool HasChromiumEC() = 0;
-
   // Returns if the device has an Nvme drive and the associated utilities.
   virtual bool NvmeSupported() = 0;
 
