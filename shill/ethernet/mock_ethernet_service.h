@@ -10,6 +10,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/ethernet/ethernet_service.h"
+#include "shill/network/network.h"
 #include "shill/service.h"
 
 namespace shill {
@@ -50,6 +51,10 @@ class MockEthernetService : public EthernetService {
               (override));
   MOCK_METHOD(ConnectState, state, (), (const, override));
   MOCK_METHOD(bool, IsPortalDetectionDisabled, (), (const, override));
+  MOCK_METHOD(bool,
+              UpdateNetworkValidation,
+              (Network::ValidationReason),
+              (override));
 };
 
 }  // namespace shill
