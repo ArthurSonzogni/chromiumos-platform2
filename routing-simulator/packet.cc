@@ -79,8 +79,9 @@ std::string ParseInputInterface(std::istream& std_input,
                  << std::endl;
       return input_interface;
     }
-    const auto result_tokens = base::SplitStringPiece(
-        input_interface, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    const auto result_tokens =
+        base::SplitStringPiece(input_interface, " \t", base::TRIM_WHITESPACE,
+                               base::SPLIT_WANT_NONEMPTY);
     if (result_tokens.size() > 1) {
       std_output << "Invalid input interface: it contains whitespaces "
                  << input_interface << std::endl;

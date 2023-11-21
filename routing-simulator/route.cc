@@ -138,7 +138,7 @@ std::optional<Route::Type> ParseRouteType(std::string_view type) {
 std::optional<Route> Route::CreateFromRouteString(
     std::string_view route_string, net_base::IPFamily ip_family) {
   const auto route_tokens = base::SplitStringPiece(
-      route_string, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+      route_string, " \t", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   auto type = Type::kUnicast;
 
   // Check if the first component of the route_tokens is the route type or

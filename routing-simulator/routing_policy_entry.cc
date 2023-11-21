@@ -46,7 +46,7 @@ std::optional<RoutingPolicyEntry> RoutingPolicyEntry::CreateFromPolicyString(
     std::string_view policy_string, net_base::IPFamily ip_family) {
   RoutingPolicyEntry policy(ip_family);
   const auto policy_tokens = base::SplitStringPiece(
-      policy_string, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+      policy_string, " \t", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   base::span<const std::string_view> policy_tokens_span = policy_tokens;
   // Check if the first component of |policy_tokens| is a priority.
   if (policy_tokens.empty()) {

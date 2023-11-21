@@ -44,12 +44,12 @@ std::vector<RoutingPolicyEntry> BuildRoutingPolicyTable(
     net_base::IPFamily ip_family, std::string_view output) {
   std::vector<RoutingPolicyEntry> routing_policy_table;
   const auto output_lines = base::SplitStringPiece(
-      output, "\n\t", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+      output, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   for (const auto& line : output_lines) {
     const auto policy =
         RoutingPolicyEntry::CreateFromPolicyString(line, ip_family);
     if (!policy) {
-      LOG(FATAL) << "Output of 'ip rule' is not valid";
+      LOG(FATAL) << "Output of 'ip rule' is not valid: " << output;
     }
     routing_policy_table.push_back(*policy);
   }
@@ -68,7 +68,7 @@ std::map<std::string, RoutingTable> BuildRoutingTable(
   for (const auto& line : output_lines) {
     const auto route = Route::CreateFromRouteString(line, ip_family);
     if (!route) {
-      LOG(FATAL) << "Output of 'ip route' is not valid";
+      LOG(FATAL) << "Output of 'ip route' is not valid: " << output;
     }
     const auto table_id = route->table_id();
     routing_tables[table_id].AddRoute(*route);

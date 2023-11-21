@@ -57,7 +57,6 @@ class RouteManager {
   std::map<std::string, RoutingTable> routing_tables_ipv6() const {
     return routing_tables_ipv6_;
   }
-  ProcessExecutor* process_executor() const { return process_executor_; }
 
  private:
   std::vector<RoutingPolicyEntry> routing_policy_table_ipv4_;
