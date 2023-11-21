@@ -17,6 +17,7 @@
 
 #include "diagnostics/cros_healthd/fetchers/audio_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/audio_hardware_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/backlight_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/battery_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bluetooth_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
@@ -69,8 +70,7 @@ void OnFinish(
 }  // namespace
 
 FetchAggregator::FetchAggregator(Context* context)
-    : backlight_fetcher_(context),
-      disk_fetcher_(context),
+    : disk_fetcher_(context),
       input_fetcher_(context),
       memory_fetcher_(context),
       tpm_fetcher_(context),
@@ -125,7 +125,7 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kBacklight: {
-        info->backlight_result = backlight_fetcher_.FetchBacklightInfo();
+        info->backlight_result = FetchBacklightInfo(context_);
         break;
       }
       case mojom::ProbeCategoryEnum::kFan: {

@@ -7,7 +7,6 @@
 
 #include <vector>
 
-#include "diagnostics/cros_healthd/fetchers/backlight_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/disk_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/input_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
@@ -36,7 +35,6 @@ class FetchAggregator final {
                ProbeTelemetryInfoCallback callback);
 
  private:
-  BacklightFetcher backlight_fetcher_;
   DiskFetcher disk_fetcher_;
   InputFetcher input_fetcher_;
   MemoryFetcher memory_fetcher_;

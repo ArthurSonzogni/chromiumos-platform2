@@ -5,19 +5,15 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_BACKLIGHT_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_BACKLIGHT_FETCHER_H_
 
-#include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace diagnostics {
+class Context;
 
-class BacklightFetcher final : public BaseFetcher {
- public:
-  using BaseFetcher::BaseFetcher;
-
-  // Returns a structure with either the device's backlight info or the error
-  // that occurred fetching the information.
-  ash::cros_healthd::mojom::BacklightResultPtr FetchBacklightInfo();
-};
+// Returns a structure with either the device's backlight info or the error that
+// occurred fetching the information.
+ash::cros_healthd::mojom::BacklightResultPtr FetchBacklightInfo(
+    Context* context);
 
 }  // namespace diagnostics
 

@@ -4,7 +4,6 @@
 
 #include "diagnostics/cros_healthd/fetchers/backlight_fetcher.h"
 
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -14,10 +13,13 @@
 #include <base/files/file_enumerator.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/types/expected.h>
 
 #include "diagnostics/base/file_utils.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/system_config_interface.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
@@ -28,43 +30,41 @@ namespace mojom = ::ash::cros_healthd::mojom;
 constexpr char kRelativeBacklightDirectoryPath[] = "sys/class/backlight";
 
 // Fetches backlight information for a specific sysfs path. On success,
-// populates |output_info| with the fetched information and returns a
-// std::nullopt. When an error occurs, a ProbeError is returned and
-// |output_info| does not contain valid information.
-std::optional<mojom::ProbeErrorPtr> FetchBacklightInfoForPath(
-    const base::FilePath& path, mojom::BacklightInfoPtr* output_info) {
-  DCHECK(output_info);
-
-  mojom::BacklightInfo info;
-  info.path = path.value();
+// returns fetched information. When an error occurs,returns a unexpected
+// ProbeError.
+base::expected<mojom::BacklightInfoPtr, mojom::ProbeErrorPtr>
+FetchBacklightInfoForPath(const base::FilePath& path) {
+  auto info = mojom::BacklightInfo::New();
+  info->path = path.value();
 
   if (!ReadInteger(path, "max_brightness", &base::StringToUint,
-                   &info.max_brightness)) {
-    return CreateAndLogProbeError(
+                   &info->max_brightness)) {
+    return base::unexpected(CreateAndLogProbeError(
         mojom::ErrorType::kFileReadError,
-        "Failed to read max_brightness for " + path.value());
+        "Failed to read max_brightness for " + path.value()));
   }
 
-  if (!ReadInteger(path, "brightness", &base::StringToUint, &info.brightness)) {
-    return CreateAndLogProbeError(
+  if (!ReadInteger(path, "brightness", &base::StringToUint,
+                   &info->brightness)) {
+    return base::unexpected(CreateAndLogProbeError(
         mojom::ErrorType::kFileReadError,
-        "Failed to read brightness for " + path.value());
+        "Failed to read brightness for " + path.value()));
   }
 
-  *output_info = info.Clone();
-  return std::nullopt;
+  return base::ok(std::move(info));
 }
 
 }  // namespace
 
-mojom::BacklightResultPtr BacklightFetcher::FetchBacklightInfo() {
+mojom::BacklightResultPtr FetchBacklightInfo(Context* context) {
   std::vector<mojom::BacklightInfoPtr> backlights;
 
-  if (!context_->system_config()->HasBacklight())
+  if (!context->system_config()->HasBacklight()) {
     return mojom::BacklightResult::NewBacklightInfo(std::move(backlights));
+  }
 
   base::FileEnumerator backlight_dirs(
-      context_->root_dir().AppendASCII(kRelativeBacklightDirectoryPath),
+      GetRootDir().AppendASCII(kRelativeBacklightDirectoryPath),
       false /* is_recursive */,
       base::FileEnumerator::SHOW_SYM_LINKS | base::FileEnumerator::FILES |
           base::FileEnumerator::DIRECTORIES);
@@ -72,23 +72,20 @@ mojom::BacklightResultPtr BacklightFetcher::FetchBacklightInfo() {
   for (base::FilePath path = backlight_dirs.Next(); !path.empty();
        path = backlight_dirs.Next()) {
     VLOG(1) << "Processing the node " << path.value();
-    mojom::BacklightInfoPtr backlight;
-    auto error = FetchBacklightInfoForPath(path, &backlight);
-    if (error.has_value()) {
-      return mojom::BacklightResult::NewError(std::move(error.value()));
+    auto result = FetchBacklightInfoForPath(path);
+    if (!result.has_value()) {
+      return mojom::BacklightResult::NewError(std::move(result.error()));
     }
-    DCHECK_NE(backlight->path, "");
-    DCHECK_LE(backlight->brightness, backlight->max_brightness);
-    backlights.push_back(std::move(backlight));
+    DCHECK_NE(result.value()->path, "");
+    DCHECK_LE(result.value()->brightness, result.value()->max_brightness);
+    backlights.push_back(std::move(result.value()));
   }
 
   if (backlights.empty()) {
-    return mojom::BacklightResult::NewError(CreateAndLogProbeError(
-        mojom::ErrorType::kFileReadError,
-        "Device supports backlight, but no backlight information found in " +
-            context_->root_dir()
-                .AppendASCII(kRelativeBacklightDirectoryPath)
-                .value()));
+    return mojom::BacklightResult::NewError(
+        CreateAndLogProbeError(mojom::ErrorType::kFileReadError,
+                               "Device supports backlight, but no backlight "
+                               "information found in /sys/class/backlight"));
   }
 
   return mojom::BacklightResult::NewBacklightInfo(std::move(backlights));
