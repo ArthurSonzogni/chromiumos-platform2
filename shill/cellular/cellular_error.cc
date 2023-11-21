@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/containers/fixed_flat_map.h>
 #include <ModemManager/ModemManager.h>
 #include <libmbim-glib/libmbim-glib.h>
 
@@ -14,59 +15,6 @@
 // (See crbug.com/246425)
 
 namespace shill {
-
-namespace {
-
-// TODO(b/217612447): How can we prevent a change in MM from messing up
-// the hardcoded strings?
-const char kErrorMissingOrUnknownApn[] =
-    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".MissingOrUnknownApn";
-
-const char kErrorServiceOptionNotSubscribed[] =
-    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".ServiceOptionNotSubscribed";
-
-const char kErrorUserAuthenticationFailed[] =
-    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".UserAuthenticationFailed";
-
-const char kErrorIncorrectPassword[] =
-    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".IncorrectPassword";
-
-const char kErrorIpv4OnlyAllowed[] =
-    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".Ipv4OnlyAllowed";
-
-const char kErrorIpv6OnlyAllowed[] =
-    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".Ipv6OnlyAllowed";
-
-const char kErrorIpv4v6OnlyAllowed[] =
-    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".Ipv4v6OnlyAllowed";
-
-const char kErrorNoCellsInArea[] =
-    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".NoCellsInArea";
-
-const char kErrorPlmnNotAllowed[] =
-    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".PlmnNotAllowed";
-
-const char kErrorServiceOptionNotAuthorizedInPlmn[] =
-    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".ServiceOptionNotAuthorizedInPlmn";
-
-const char kErrorServingNetworkNotAuthorized[] =
-    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".ServingNetworkNotAuthorized";
-
-const char kErrorSimPin[] = MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".SimPin";
-
-const char kErrorSimPuk[] = MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".SimPuk";
-
-const char kErrorThrottled[] = MM_CORE_ERROR_DBUS_PREFIX ".Throttled";
-
-const char kErrorWrongState[] = MM_CORE_ERROR_DBUS_PREFIX ".WrongState";
-
-const char kErrorMobileEquipmentUnknown[] =
-    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".Unknown";
-
-const char kErrorOperationNotAllowed[] =
-    MBIM_STATUS_ERROR_DBUS_PREFIX ".OperationNotAllowed";
-
-}  // namespace
 
 // static
 void CellularError::FromMM1ChromeosDBusError(brillo::Error* dbus_error,
@@ -83,28 +31,46 @@ void CellularError::FromMM1ChromeosDBusError(brillo::Error* dbus_error,
   const std::string msg = dbus_error->GetMessage();
   Error::Type type;
 
-  if (name == kErrorIncorrectPassword)
-    type = Error::kIncorrectPin;
-  else if (name == kErrorSimPin)
-    type = Error::kPinRequired;
-  else if (name == kErrorSimPuk)
-    type = Error::kPinBlocked;
-  else if (name == kErrorMissingOrUnknownApn ||
-           name == kErrorServiceOptionNotSubscribed ||
-           name == kErrorUserAuthenticationFailed ||
-           name == kErrorIpv4OnlyAllowed || name == kErrorIpv6OnlyAllowed ||
-           name == kErrorIpv4v6OnlyAllowed || name == kErrorThrottled)
-    type = Error::kInvalidApn;
-  else if (name == kErrorNoCellsInArea || name == kErrorPlmnNotAllowed ||
-           name == kErrorServiceOptionNotAuthorizedInPlmn ||
-           name == kErrorServingNetworkNotAuthorized)
-    type = Error::kNoCarrier;
-  else if (name == kErrorMobileEquipmentUnknown)
-    type = Error::kInternalError;
-  else if (name == kErrorWrongState)
-    type = Error::kWrongState;
-  else if (name == kErrorOperationNotAllowed)
-    type = Error::kOperationNotAllowed;
+  // TODO(b/217612447): How can we prevent a change in MM from messing up
+  // the hardcoded strings?
+  static constexpr auto errorMapping =
+      base::MakeFixedFlatMap<std::string_view, Error::Type>({
+          {MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".IncorrectPassword",
+           Error::kIncorrectPin},
+          {MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".Unknown",
+           Error::kInternalError},
+          {MM_CORE_ERROR_DBUS_PREFIX ".Throttled", Error::kInvalidApn},
+          {MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".Ipv4OnlyAllowed",
+           Error::kInvalidApn},
+          {MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".Ipv6OnlyAllowed",
+           Error::kInvalidApn},
+          {MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".Ipv4v6OnlyAllowed",
+           Error::kInvalidApn},
+          {MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".MissingOrUnknownApn",
+           Error::kInvalidApn},
+          {MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".ServiceOptionNotSubscribed",
+           Error::kInvalidApn},
+          {MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".UserAuthenticationFailed",
+           Error::kInvalidApn},
+          {MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".NoCellsInArea",
+           Error::kNoCarrier},
+          {MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".PlmnNotAllowed",
+           Error::kNoCarrier},
+          {MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX
+           ".ServiceOptionNotAuthorizedInPlmn",
+           Error::kNoCarrier},
+          {MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".ServingNetworkNotAuthorized",
+           Error::kNoCarrier},
+          {MBIM_STATUS_ERROR_DBUS_PREFIX ".OperationNotAllowed",
+           Error::kOperationNotAllowed},
+          {MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".SimPuk", Error::kPinBlocked},
+          {MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".SimPin",
+           Error::kPinRequired},
+          {MM_CORE_ERROR_DBUS_PREFIX ".WrongState", Error::kWrongState},
+      });
+  const auto it = errorMapping.find(name);
+  if (it != errorMapping.end())
+    type = it->second;
   else
     type = Error::kOperationFailed;
 
