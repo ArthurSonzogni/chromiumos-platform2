@@ -1,2 +1,4 @@
 include /p2p/OWNERS
-vapier@chromium.org
+
+# Familiarity with the project, but the p2p folks should take point.
+vapier@chromium.org #{LAST_RESORT_SUGGESTION}
