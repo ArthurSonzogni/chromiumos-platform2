@@ -68,7 +68,6 @@ class MemoryRoutineTestBase : public BaseFileTest {
   MemoryRoutineTestBase& operator=(const MemoryRoutineTestBase&) = delete;
 
   void SetUp() override {
-    SetTestRoot(GetRootDir());
     SetMockMemoryInfo(
         "MemTotal:        3906320 kB\n"
         "MemFree:         2873180 kB\n"

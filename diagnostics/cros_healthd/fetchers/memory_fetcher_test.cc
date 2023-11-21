@@ -97,7 +97,6 @@ class MemoryFetcherTest : public BaseFileTest {
   MemoryFetcherTest& operator=(const MemoryFetcherTest&) = delete;
 
   void SetUp() override {
-    SetTestRoot(GetRootDir());
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         GetRootDir().Append(kRelativeProcCpuInfoPath),
         kFakeCpuInfoNoTmeContent));
