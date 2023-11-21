@@ -822,6 +822,8 @@ constexpr char kErrorResultPinRequired[] =
     "org.chromium.flimflam.Error.PinRequired";
 constexpr char kErrorResultTechnologyNotAvailable[] =
     "org.chromium.flimflam.Error.TechnologyNotAvailable";
+constexpr char kErrorResultThrottled[] =
+    "org.chromium.flimflam.Error.Throttled";
 constexpr char kErrorResultWepNotSupported[] =
     "org.chromium.flimflam.Error.WepNotSupported";
 constexpr char kErrorResultWrongState[] =

@@ -51,6 +51,7 @@ class Error {
     kWepNotSupported,
     kWrongState,
     kOperationNotAllowed,
+    kThrottled,
     kNumErrors,
   };
 

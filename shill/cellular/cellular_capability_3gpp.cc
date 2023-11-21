@@ -1927,6 +1927,7 @@ void CellularCapability3gpp::UpdateLinkSpeed(const KeyValueStore& properties) {
 bool CellularCapability3gpp::RetriableConnectError(const Error& error) const {
   return error.type() == Error::kInvalidApn ||
          error.type() == Error::kInternalError ||
+         error.type() == Error::kThrottled ||
          // This is a workaround on the shill side for b/289540816, where modem
          // starts returning OperationNotAllowed error after trying to connect
          // using wrong APNs a few times. The workaround is to continue

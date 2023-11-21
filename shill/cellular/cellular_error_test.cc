@@ -62,6 +62,9 @@ const char kErrorServingNetworkNotAuthorized[] =
 const char kErrorUnknownMM1[] =
     "org.freedesktop.ModemManager1.Error.MobileEquipment."
     "Unknown";
+const char kErrorMultipleAccessToPdnConnectionNotAllowedMM1[] =
+    "org.freedesktop.ModemManager1.Error.MobileEquipment."
+    "MultipleAccessToPdnConnectionNotAllowed";
 const char kErrorThrottledMM1[] =
     "org.freedesktop.ModemManager1.Error.Core.Throttled";
 const char kErrorWrongStateMM1[] =
@@ -121,6 +124,8 @@ INSTANTIATE_TEST_SUITE_P(
         TestParam(kErrorUnknownMM1, Error::kInternalError),
         TestParam(kErrorWrongStateMM1, Error::kWrongState),
         TestParam(kErrorOperationNotAllowedMM1, Error::kOperationNotAllowed),
+        TestParam(kErrorMultipleAccessToPdnConnectionNotAllowedMM1,
+                  Error::kThrottled),
         TestParam("Some random error name.", Error::kOperationFailed)));
 
 }  // namespace

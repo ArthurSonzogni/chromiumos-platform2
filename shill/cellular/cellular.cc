@@ -1603,7 +1603,11 @@ void Cellular::OnConnectReply(ApnList::ApnType apn_type,
   if (!error.IsSuccess()) {
     LOG(WARNING) << LoggingTag() << ": " << __func__ << ": Failed: " << error;
     if (service_ && service_->iccid() == iccid) {
+      // The error value is a combined value from the connect round robin,
+      // so it will not always be the error from the last connection attempt.
       switch (error.type()) {
+        // We should not see Error::kThrottled here because kThrottled is
+        // mapped to InvalidApn since it's a |RetriableConnectError|.
         case Error::kInvalidApn:
           service_->SetFailure(Service::kFailureInvalidAPN);
           break;
