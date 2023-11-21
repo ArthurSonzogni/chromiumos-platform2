@@ -26,7 +26,6 @@ class Cgroup {
     CPUSET,
     DEVICES,
     FREEZER,
-    SCHEDTUNE,
     MEMORY,
     NUM_TYPES,
   };

@@ -138,14 +138,6 @@ if [ ! -d "${CHROME_CPU_CGROUP_DIR}" ]; then
       echo "${v}" > "${knob}"
     fi
   done
-
-  # Apply boosting values for platforms using schedtune
-  # Will be removed soon (b/271420003)
-  SCHEDTUNE_BOOST_DIR=/sys/fs/cgroup/schedtune/chrome/urgent
-  if [ -d "${SCHEDTUNE_BOOST_DIR}" ]; then
-    echo "${v}" > "${SCHEDTUNE_BOOST_DIR}/schedtune.boost"
-    echo "1" > "${SCHEDTUNE_BOOST_DIR}/schedtune.prefer_idle"
-  fi
 fi
 
 # Apply Input boosting

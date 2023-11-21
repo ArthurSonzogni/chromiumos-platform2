@@ -59,7 +59,7 @@ TEST(CgroupTest, CgroupNewWithParent) {
   base::FilePath cgroup_root = temp_dir.GetPath();
 
   for (const char* subsystem :
-       {"cpu", "cpuacct", "cpuset", "devices", "freezer", "schedtune"}) {
+       {"cpu", "cpuacct", "cpuset", "devices", "freezer"}) {
     base::FilePath path = cgroup_root.Append(subsystem);
     EXPECT_EQ(0, mkdir(path.value().c_str(), S_IRWXU | S_IRWXG));
     path = path.Append(kCgroupParentName);
@@ -92,9 +92,6 @@ TEST(CgroupTest, CgroupNewWithParent) {
   EXPECT_TRUE(base::DirectoryExists(cgroup_root.Append("freezer")
                                         .Append(kCgroupParentName)
                                         .Append(kCgroupName)));
-  EXPECT_TRUE(base::DirectoryExists(cgroup_root.Append("schedtune")
-                                        .Append(kCgroupParentName)
-                                        .Append(kCgroupName)));
 
   EXPECT_TRUE(temp_dir.Delete());
 }
@@ -112,7 +109,7 @@ class BasicCgroupManipulationTest : public ::testing::Test {
                                               &cgroup_root));
 
     for (const char* subsystem :
-         {"cpu", "cpuacct", "cpuset", "devices", "freezer", "schedtune"}) {
+         {"cpu", "cpuacct", "cpuset", "devices", "freezer"}) {
       base::FilePath path = cgroup_root.Append(subsystem);
       ASSERT_EQ(0, mkdir(path.value().c_str(), S_IRWXU | S_IRWXG));
     }
@@ -129,14 +126,12 @@ class BasicCgroupManipulationTest : public ::testing::Test {
     cpuset_cg_ = cgroup_root.Append("cpuset").Append(kCgroupName);
     devices_cg_ = cgroup_root.Append("devices").Append(kCgroupName);
     freezer_cg_ = cgroup_root.Append("freezer").Append(kCgroupName);
-    schedtune_cg_ = cgroup_root.Append("schedtune").Append(kCgroupName);
 
     ASSERT_TRUE(base::DirectoryExists(cpu_cg_));
     ASSERT_TRUE(base::DirectoryExists(cpuacct_cg_));
     ASSERT_TRUE(base::DirectoryExists(cpuset_cg_));
     ASSERT_TRUE(base::DirectoryExists(devices_cg_));
     ASSERT_TRUE(base::DirectoryExists(freezer_cg_));
-    ASSERT_TRUE(base::DirectoryExists(schedtune_cg_));
 
     ASSERT_TRUE(CreateFile(cpu_cg_.Append("tasks")));
     ASSERT_TRUE(CreateFile(cpu_cg_.Append("cpu.shares")));
@@ -151,7 +146,6 @@ class BasicCgroupManipulationTest : public ::testing::Test {
     ASSERT_TRUE(CreateFile(devices_cg_.Append("devices.deny")));
     ASSERT_TRUE(CreateFile(freezer_cg_.Append("tasks")));
     ASSERT_TRUE(CreateFile(freezer_cg_.Append("freezer.state")));
-    ASSERT_TRUE(CreateFile(schedtune_cg_.Append("tasks")));
   }
 
   void TearDown() override {
@@ -167,7 +161,6 @@ class BasicCgroupManipulationTest : public ::testing::Test {
   base::FilePath cpuset_cg_;
   base::FilePath devices_cg_;
   base::FilePath freezer_cg_;
-  base::FilePath schedtune_cg_;
 
   base::ScopedTempDir temp_dir_;
 };
