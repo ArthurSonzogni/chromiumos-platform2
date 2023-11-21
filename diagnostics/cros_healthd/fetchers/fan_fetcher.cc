@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/files/file_util.h>
@@ -19,8 +20,10 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
-#include <re2/re2.h>
 
+#include "diagnostics/base/file_utils.h"
+#include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/system/ground_truth_constants.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
@@ -30,25 +33,9 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-}  // namespace
-
-void FanFetcher::FetchFanInfo(FetchFanInfoCallback callback) {
-  // Devices without a Google EC, and therefore ectool, cannot obtain fan info.
-  if (!base::PathExists(context_->root_dir().Append(kRelativeCrosEcPath))) {
-    LOG(INFO) << "Device does not have a Google EC.";
-    std::move(callback).Run(mojom::FanResult::NewFanInfo({}));
-    return;
-  }
-
-  context_->executor()->GetAllFanSpeed(
-      base::BindOnce(&FanFetcher::HandleFanSpeedResponse,
-                     weak_factory_.GetWeakPtr(), std::move(callback)));
-}
-
-void FanFetcher::HandleFanSpeedResponse(
-    FetchFanInfoCallback callback,
-    const std::vector<uint16_t>& fan_rpms,
-    const std::optional<std::string>& error) {
+void HandleFanSpeedResponse(FetchFanInfoCallback callback,
+                            const std::vector<uint16_t>& fan_rpms,
+                            const std::optional<std::string>& error) {
   if (error.has_value()) {
     std::move(callback).Run(mojom::FanResult::NewError(CreateAndLogProbeError(
         mojom::ErrorType::kSystemUtilityError,
@@ -65,6 +52,20 @@ void FanFetcher::HandleFanSpeedResponse(
   }
 
   std::move(callback).Run(mojom::FanResult::NewFanInfo(std::move(fan_info)));
+}
+
+}  // namespace
+
+void FetchFanInfo(Context* context, FetchFanInfoCallback callback) {
+  // Devices without a Google EC, and therefore ectool, cannot obtain fan info.
+  if (!base::PathExists(GetRootedPath(kCrosEcSysPath))) {
+    LOG(INFO) << "Device does not have a Google EC.";
+    std::move(callback).Run(mojom::FanResult::NewFanInfo({}));
+    return;
+  }
+
+  context->executor()->GetAllFanSpeed(
+      base::BindOnce(&HandleFanSpeedResponse, std::move(callback)));
 }
 
 }  // namespace diagnostics

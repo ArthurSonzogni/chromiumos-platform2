@@ -21,6 +21,7 @@
 #include "diagnostics/cros_healthd/fetchers/bluetooth_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/cpu_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/fan_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/graphics_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/network_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/network_interface_fetcher.h"
@@ -70,7 +71,6 @@ void OnFinish(
 FetchAggregator::FetchAggregator(Context* context)
     : backlight_fetcher_(context),
       disk_fetcher_(context),
-      fan_fetcher_(context),
       input_fetcher_(context),
       memory_fetcher_(context),
       tpm_fetcher_(context),
@@ -129,8 +129,8 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kFan: {
-        fan_fetcher_.FetchFanInfo(
-            CreateFetchCallback(&barrier, &info->fan_result));
+        FetchFanInfo(context_,
+                     CreateFetchCallback(&barrier, &info->fan_result));
         break;
       }
       case mojom::ProbeCategoryEnum::kStatefulPartition: {
