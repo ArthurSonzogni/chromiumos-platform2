@@ -22,7 +22,6 @@
 // - Floating point routine
 // - Bluetooth power routine
 // - Bluetooth discovery routine
-// - Fan routine
 // - Bluetooth scanning routine
 // - Bluetooth pairing routine
 
@@ -98,6 +97,8 @@ union RoutineArgument {
   [MinVersion=1] MemoryRoutineArgument memory;
   // Arguments to create a volume button routine.
   [MinVersion=2] VolumeButtonRoutineArgument volume_button;
+  // Arguments to create a fan routine.
+  [MinVersion=3] FanRoutineArgument fan;
   // Arguments to create an audio driver malfunction test routine.
   AudioDriverRoutineArgument audio_driver;
   // Arguments to create a CPU stress routine.
@@ -118,8 +119,6 @@ union RoutineArgument {
   BluetoothPowerRoutineArgument bluetooth_power;
   // Arguments to create a Bluetooth discovery routine.
   BluetoothDiscoveryRoutineArgument bluetooth_discovery;
-  // Arguments to create a fan routine.
-  FanRoutineArgument fan;
   // Arguments to create a Bluetooth scanning routine.
   BluetoothScanningRoutineArgument bluetooth_scanning;
   // Arguments to create a Bluetooth pairing routine.
@@ -416,8 +415,12 @@ union RoutineDetail {
   // Default field is required by extensible unions for backward compatibility.
   // Any unrecognized Mojo field will deserialize to this field. Don't use this.
   [Default] bool unrecognizedArgument;
-  MemoryRoutineDetail memory;
-  VolumeButtonRoutineDetail volume_button;
+  // Details of a completed memory routine.
+  [MinVersion=1] MemoryRoutineDetail memory;
+  // Details of a completed volume button routine.
+  [MinVersion=2] VolumeButtonRoutineDetail volume_button;
+  // Details of a completed fan routine.
+  [MinVersion=3] FanRoutineDetail fan;
   AudioDriverRoutineDetail audio_driver;
   CpuStressRoutineDetail cpu_stress;
   UfsLifetimeRoutineDetail ufs_lifetime;
@@ -428,7 +431,6 @@ union RoutineDetail {
   FloatingPointRoutineDetail floating_point;
   BluetoothPowerRoutineDetail bluetooth_power;
   BluetoothDiscoveryRoutineDetail bluetooth_discovery;
-  FanRoutineDetail fan;
   BluetoothScanningRoutineDetail bluetooth_scanning;
   BluetoothPairingRoutineDetail bluetooth_pairing;
 };
