@@ -80,11 +80,6 @@ class CrosFpDeviceInterface {
       int index, const brillo::Blob& pk_in_x, const brillo::Blob& pk_in_y) = 0;
   virtual std::unique_ptr<VendorTemplate> GetTemplate(int index) = 0;
   virtual bool UploadTemplate(const VendorTemplate& tmpl) = 0;
-  // Preload a template into the idx-th preloaded template slot in FPMCU.
-  virtual bool PreloadTemplate(size_t idx, const VendorTemplate& tmpl) = 0;
-  // Load the first |num| templates from the preloaded template slots into
-  // actual template slots.
-  virtual bool ReloadTemplates(size_t num) = 0;
   virtual bool UnlockTemplates(size_t num) = 0;
   virtual bool SetContext(std::string user_id) = 0;
   // Set the nonce context by providing nonce and user_id of the context.

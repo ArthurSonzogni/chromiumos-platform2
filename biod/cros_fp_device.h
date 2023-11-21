@@ -64,8 +64,6 @@ class CrosFpDevice : public ec::CrosFpDeviceInterface {
       const brillo::Blob& pk_in_y) override;
   std::unique_ptr<VendorTemplate> GetTemplate(int index) override;
   bool UploadTemplate(const VendorTemplate& tmpl) override;
-  bool PreloadTemplate(size_t idx, const VendorTemplate& tmpl) override;
-  bool ReloadTemplates(size_t num) override;
   bool UnlockTemplates(size_t num) override;
   bool SetContext(std::string user_id) override;
   bool SetNonceContext(const brillo::Blob& nonce,

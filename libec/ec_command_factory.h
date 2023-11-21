@@ -21,7 +21,6 @@
 #include "libec/fingerprint/fp_pairing_key_keygen_command.h"
 #include "libec/fingerprint/fp_pairing_key_load_command.h"
 #include "libec/fingerprint/fp_pairing_key_wrap_command.h"
-#include "libec/fingerprint/fp_preload_template_command.h"
 #include "libec/fingerprint/fp_read_match_secret_with_pubkey_command.h"
 #include "libec/fingerprint/fp_seed_command.h"
 #include "libec/fingerprint/fp_set_nonce_context_command.h"
@@ -64,15 +63,6 @@ class EcCommandFactoryInterface {
   static_assert(std::is_base_of<EcCommandInterface, ec::FpFrameCommand>::value,
                 "All commands created by this class should derive from "
                 "EcCommandInterface");
-
-  virtual std::unique_ptr<ec::FpPreloadTemplateCommand>
-  FpPreloadTemplateCommand(uint16_t fgr,
-                           std::vector<uint8_t> tmpl,
-                           uint16_t max_write_size) = 0;
-  static_assert(
-      std::is_base_of<EcCommandInterface, ec::FpPreloadTemplateCommand>::value,
-      "All commands created by this class should derive from "
-      "EcCommandInterface");
 
   virtual std::unique_ptr<ec::FpTemplateCommand> FpTemplateCommand(
       std::vector<uint8_t> tmpl, uint16_t max_write_size) = 0;
@@ -205,11 +195,6 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
 
   std::unique_ptr<ec::FpFrameCommand> FpFrameCommand(
       int index, uint32_t frame_size, uint16_t max_read_size) override;
-
-  std::unique_ptr<ec::FpPreloadTemplateCommand> FpPreloadTemplateCommand(
-      uint16_t fgr,
-      std::vector<uint8_t> tmpl,
-      uint16_t max_write_size) override;
 
   std::unique_ptr<ec::FpTemplateCommand> FpTemplateCommand(
       std::vector<uint8_t> tmpl, uint16_t max_write_size) override;
