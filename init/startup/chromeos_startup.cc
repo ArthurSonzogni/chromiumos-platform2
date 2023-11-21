@@ -19,6 +19,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
+#include <base/strings/strcat.h>
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/files/file_util.h>
 #include <brillo/flag_helper.h>
@@ -74,6 +75,9 @@ constexpr char kKernelTracing[] = "kernel/tracing";
 constexpr char kTpmSimulator[] = "etc/init/tpm2-simulator.conf";
 
 constexpr char kSELinuxEnforce[] = "fs/selinux/enforce";
+
+constexpr char kBpf[] = "fs/bpf";
+constexpr char kBpfAccessGrp[] = "bpf-access";
 
 // This file is created by clobber-state after the transition to dev mode.
 constexpr char kDevModeFile[] = ".developer_mode";
@@ -340,6 +344,21 @@ void ChromeosStartup::EarlySetup() {
                           "")) {
       // TODO(b/232901639): Improve failure reporting.
       PLOG(WARNING) << "Unable to mount " << configfs.value();
+    }
+  }
+
+  // Mount bpffs for loading and pinning ebpf objects.
+  gid_t bpffs_grp;
+  if (!brillo::userdb::GetGroupInfo(kBpfAccessGrp, &bpffs_grp)) {
+    PLOG(WARNING) << "Can't get gid for " << kBpfAccessGrp;
+  } else {
+    const std::string data =
+        base::StrCat({"mode=0770,gid=", std::to_string(bpffs_grp)});
+    const base::FilePath bpffs = sysfs.Append(kBpf);
+    if (!platform_->Mount("bpffs", bpffs, "bpf", kCommonMountFlags,
+                          data.c_str())) {
+      // TODO(b/232901639): Improve failure reporting.
+      PLOG(WARNING) << "Unable to mount " << bpffs.value();
     }
   }
 

@@ -105,6 +105,7 @@ class EarlySetupTest : public ::testing::Test {
     security_hardening_ = base_dir_.Append(
         "usr/share/cros/startup/disable_stateful_security_hardening");
     kernel_security_ = base_dir_.Append("sys/kernel/security");
+    fs_bpf_ = base_dir_.Append("fs/bpf");
     namespaces_ = base_dir_.Append("run/namespaces");
     platform_ = new startup::FakePlatform();
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
@@ -133,6 +134,7 @@ class EarlySetupTest : public ::testing::Test {
   base::FilePath kernel_config_;
   base::FilePath security_hardening_;
   base::FilePath kernel_security_;
+  base::FilePath fs_bpf_;
   base::FilePath namespaces_;
 };
 
@@ -141,6 +143,7 @@ TEST_F(EarlySetupTest, EarlySetup) {
   platform_->SetMountResultForPath(kernel_tracing_, "tracefs");
   platform_->SetMountResultForPath(kernel_config_, "configfs");
   platform_->SetMountResultForPath(kernel_security_, "securityfs");
+  platform_->SetMountResultForPath(fs_bpf_, "bpffs");
   platform_->SetMountResultForPath(namespaces_, "");
 
   startup_->EarlySetup();
