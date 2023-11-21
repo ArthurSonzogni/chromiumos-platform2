@@ -72,3 +72,4 @@ eventfd2: 1
 mremap: 1
 gettimeofday: 1
 clock_gettime: 1
+madvise: 1
