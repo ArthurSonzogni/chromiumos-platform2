@@ -26,6 +26,7 @@ faccessat: 1
 faccessat2: 1
 fcntl: 1
 fstat: 1
+fstatfs: 1
 futex: 1
 getdents64: 1
 geteuid: 1
