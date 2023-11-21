@@ -5,10 +5,12 @@
 #include <brillo/syslog_logging.h>
 
 #include "heartd/daemon/heartd.h"
+#include "heartd/minijail/minijail_configuration.h"
 
 int main(int argc, char* argv[]) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
+  heartd::EnterHeartdMinijail();
   auto heartd = heartd::HeartdDaemon();
   return heartd.Run();
 }

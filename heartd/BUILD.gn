@@ -9,6 +9,7 @@ group("all") {
     ":heartd",
     ":install_init_config",
     ":install_mojo_service_manager_policy_config",
+    ":install_seccomp_policy",
   ]
 }
 
@@ -16,7 +17,10 @@ executable("heartd") {
   sources = [ "main.cc" ]
   install_path = "bin"
   pkg_deps = [ "libbrillo" ]
-  deps = [ "//heartd/daemon:libheartd" ]
+  deps = [
+    "//heartd/daemon:libheartd",
+    "//heartd/minijail:libminijail",
+  ]
 }
 
 install_config("install_init_config") {
@@ -27,4 +31,12 @@ install_config("install_init_config") {
 install_config("install_mojo_service_manager_policy_config") {
   sources = [ "init/mojo/heartd.jsonc" ]
   install_path = "/etc/mojo/service_manager/policy"
+}
+
+install_config("install_seccomp_policy") {
+  _arch = getenv("ARCH")
+
+  install_path = "seccomp_policy"
+  sources = [ "seccomp/heartd-seccomp-${_arch}.policy" ]
+  outputs = [ "heartd-seccomp.policy" ]
 }
