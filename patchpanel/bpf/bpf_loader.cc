@@ -6,7 +6,6 @@
 #include <string_view>
 
 #include <bpf/libbpf.h>
-#include <sys/mount.h>
 #include <sys/utsname.h>
 
 #include <base/check_op.h>
@@ -36,8 +35,7 @@ struct BPFProgramInfo {
   const char* btf_path;
   // The name of the program to load in the BPF object.
   const char* prog_name;
-  // The program will be pinned to this path. The parent folder must be mounted
-  // as BPF file system.
+  // The program will be pinned to this path. The path should be on bpffs.
   const char* pin_path;
 };
 
@@ -64,28 +62,6 @@ base::Version GetKernelVersion() {
   std::string_view version = base::SplitStringPiece(
       buf.release, "-", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)[0];
   return base::Version(version);
-}
-
-// This function equivalently performs the following actions:
-// - `mkdir $path`;
-// - `mount bpffs $path -t bpf -o nosuid,nodev,noexec`.
-// Note that we use the existence of the mount path to check if this program has
-// already been executed, so that path is created in this function instead of in
-// tmpfiles.d.
-bool MountPathForBPF(const base::FilePath& path) {
-  if (!base::CreateDirectory(path)) {
-    PLOG(ERROR) << "Failed to create " << path;
-    return false;
-  }
-
-  int ret = mount("bpffs", path.value().c_str(), "bpf",
-                  MS_NOSUID | MS_NODEV | MS_NOEXEC,
-                  /*data=*/nullptr);
-  if (ret != 0) {
-    PLOG(ERROR) << "Failed to mount bpffs to " << kBPFMountPath;
-    return false;
-  }
-  return true;
 }
 
 // This function equivalently performs the following action:
@@ -140,14 +116,11 @@ bool LoadBPF() {
     return true;
   }
 
-  const base::FilePath mount_path(kBPFMountPath);
-  if (base::PathExists(mount_path)) {
-    LOG(INFO) << "Skip since eBPF mount path already created";
+  const base::FilePath bpffs_path(kBPFPath);
+  if (base::PathExists(bpffs_path)) {
+    LOG(INFO) << "Skip since path for pinning eBPF objects of patchpanel "
+                 "already created";
     return true;
-  }
-
-  if (!MountPathForBPF(mount_path)) {
-    return false;
   }
 
   return LoadAndPinBPFProgram(kBPFWebRTCDetection);
@@ -158,8 +131,8 @@ bool LoadBPF() {
 
 // Load the ebpf program for WebRTC detection. This program is supposed to:
 // - Only run once after system booted. This is implemented by checking if the
-//   bpf path (`kBPFMountPath`) has been created. In development, the developer
-//   can umount and remove that folder explicitly to force a reload.
+//   bpffs path for patchpanel (`kBPFPath`) has been created. In development,
+//   the developer can remove that folder explicitly to force a reload.
 // - Only run on supported kernel versions.
 int main() {
   brillo::InitLog(brillo::kLogToSyslog);

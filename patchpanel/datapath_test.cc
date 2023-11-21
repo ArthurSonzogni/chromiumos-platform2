@@ -589,7 +589,7 @@ TEST_F(DatapathTest, Start) {
        "0x00000060/0x000000e0 -w"},
       {IpFamily::kDual,
        "mangle -A qos_detect -m bpf --object-pinned "
-       "/run/patchpanel/bpf/match_dtls_srtp -j MARK --set-xmark "
+       "/sys/fs/bpf/patchpanel/match_dtls_srtp -j MARK --set-xmark "
        "0x00000040/0x000000e0 -w"},
       {IpFamily::kDual,
        "mangle -A qos_detect -j CONNMARK --save-mark --nfmask 0x000000e0 "

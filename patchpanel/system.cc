@@ -217,7 +217,7 @@ bool System::WriteConfigFile(base::FilePath path, std::string_view contents) {
 }
 
 bool System::IsEbpfEnabled() const {
-  return base::PathExists(base::FilePath(kBPFMountPath));
+  return base::PathExists(base::FilePath(kBPFPath));
 }
 
 }  // namespace patchpanel

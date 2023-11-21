@@ -9,13 +9,15 @@
 // the bpf_loader.
 namespace patchpanel {
 
-// The mount path for eBPF objects. This path will be created and mounted by
+// The bpffs path for holding eBPF objects of patchpanel. The parent path is
+// mounted by chromeos-init and this path itself will be created by
 // patchpanel_bpf_loader only on supported kernels.
-constexpr char kBPFMountPath[] = "/run/patchpanel/bpf";
+constexpr char kBPFPath[] = "/sys/fs/bpf/patchpanel";
 
 // The pinned eBPF program for WebRTC detection which is supposed to be used by
 // iptables.
-constexpr char kWebRTCMatcherPinPath[] = "/run/patchpanel/bpf/match_dtls_srtp";
+constexpr char kWebRTCMatcherPinPath[] =
+    "/sys/fs/bpf/patchpanel/match_dtls_srtp";
 
 }  // namespace patchpanel
 
