@@ -11,7 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
-#include <base/strings/string_piece_forward.h>
+#include <base/strings/string_piece.h>
 #include <base/time/time.h>
 
 #include "login_manager/liveness_checker.h"
