@@ -22,7 +22,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/sequence_checker.h>
-#include <base/strings/string_piece_forward.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/task/bind_post_task.h>
 #include <base/task/thread_pool.h>
