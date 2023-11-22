@@ -36,6 +36,9 @@ static constexpr char kSuspendModeShallow[] = "shallow";
 // deep sleep(S3) suspend mode
 static constexpr char kSuspendModeDeep[] = "deep";
 
+// Pref value to use the kernel's default mode for suspend.
+constexpr std::string_view kSuspendModeKernelDefaultPref = "kernel_default";
+
 // Last resume result as reported by ChromeOS EC.
 static constexpr char kECLastResumeResultPath[] =
     "/sys/kernel/debug/cros_ec/last_resume_result";
@@ -237,6 +240,16 @@ void SuspendConfigurator::ReadSuspendMode() {
   if (prefs_->GetBool(kSuspendToIdlePref, &pref_val) && pref_val) {
     suspend_mode_ = kSuspendModeFreeze;
   } else if (prefs_->GetString(kSuspendModePref, &suspend_mode_)) {
+    if (suspend_mode_ == kSuspendModeKernelDefaultPref) {
+      if (kernel_default_sleep_mode_.has_value()) {
+        suspend_mode_ = kernel_default_sleep_mode_.value();
+        LOG(INFO) << "Using kernel default suspend mode " << suspend_mode_;
+      } else {
+        suspend_mode_ = kSuspendModeDeep;
+        LOG(WARNING) << "Unknown kernel default suspend mode, defaulting to "
+                     << suspend_mode_;
+      }
+    }
     if (!IsValidSuspendMode(suspend_mode_)) {
       LOG(WARNING) << "Invalid suspend mode pref : " << suspend_mode_;
       suspend_mode_ = kSuspendModeDeep;

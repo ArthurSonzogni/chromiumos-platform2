@@ -42,6 +42,9 @@ static constexpr char kSuspendModeShallow[] = "shallow";
 // deep sleep(S3) suspend mode
 static constexpr char kSuspendModeDeep[] = "deep";
 
+// Pref value to use the kernel's default mode for suspend.
+constexpr std::string_view kSuspendModeKernelDefaultPref = "kernel_default";
+
 static constexpr char kECLastResumeResultPath[] =
     "/sys/kernel/debug/cros_ec/last_resume_result";
 
@@ -366,12 +369,19 @@ TEST_F(SuspendConfiguratorTest, TestInitialSaveMode) {
   // Set the selected mode in sysfs to s2idle.
   base::WriteFile(suspend_mode_path, "[s2idle] deep");
 
+  prefs_.SetInt64(kSuspendToIdlePref, 0);
+  prefs_.SetString(kSuspendModePref,
+                   std::string(kSuspendModeKernelDefaultPref));
+
   suspend_configurator_.Init(platform_features_.get(), &prefs_, run_dir_);
 
   // Confirm that the initial file has the expected contents.
   EXPECT_EQ(kSuspendModeFreeze, ReadFile(initial_mode));
   EXPECT_EQ(std::optional<std::string>(kSuspendModeFreeze),
             suspend_configurator_.get_initial_sleep_mode_for_testing());
+
+  suspend_configurator_.PrepareForSuspend(base::TimeDelta());
+  EXPECT_EQ(kSuspendModeFreeze, ReadFile(suspend_mode_path));
 }
 
 // Test that the stored initial mode file is not re-written if it exists
@@ -388,6 +398,10 @@ TEST_F(SuspendConfiguratorTest, TestInitialReadMode) {
   // Simulate an existing mode that is different than the stored mode.
   base::WriteFile(suspend_mode_path, "s2idle [deep]");
 
+  prefs_.SetInt64(kSuspendToIdlePref, 0);
+  prefs_.SetString(kSuspendModePref,
+                   std::string(kSuspendModeKernelDefaultPref));
+
   suspend_configurator_.Init(platform_features_.get(), &prefs_, run_dir_);
 
   // Initial mode file should not have changed.
@@ -396,6 +410,11 @@ TEST_F(SuspendConfiguratorTest, TestInitialReadMode) {
   // initial mode file and not what was in sysfs.
   EXPECT_EQ(std::optional<std::string>(kSuspendModeFreeze),
             suspend_configurator_.get_initial_sleep_mode_for_testing());
+
+  // Confirm the actual suspend mode was changed to the previously
+  // stored initial_mode.
+  suspend_configurator_.PrepareForSuspend(base::TimeDelta());
+  EXPECT_EQ(kSuspendModeFreeze, ReadFile(suspend_mode_path));
 }
 
 // Verify that |kernel_default_sleep_mode_| is empty when the sleep mode
@@ -407,6 +426,10 @@ TEST_F(SuspendConfiguratorTest, TestInitialFailMode) {
 
   // Write a bad mode to the sysfs path to force an initial read failure.
   base::WriteFile(suspend_mode_path, "s2idle deep");
+
+  prefs_.SetInt64(kSuspendToIdlePref, 0);
+  prefs_.SetString(kSuspendModePref,
+                   std::string(kSuspendModeKernelDefaultPref));
 
   suspend_configurator_.Init(platform_features_.get(), &prefs_, run_dir_);
 
@@ -458,6 +481,7 @@ TEST_F(SuspendConfiguratorTest, TestInitialSysfsReadFailMode) {
 // Verify that |kernel_default_sleep_mode_| is empty when the read of the
 // stored initial file fails.
 TEST_F(SuspendConfiguratorTest, TestInitialStoredReadFailMode) {
+  base::FilePath suspend_mode_path = GetPath(base::FilePath(kSuspendModePath));
   base::FilePath initial_mode =
       GetRunPath(SuspendConfigurator::kInitialSuspendModeFileName);
 
@@ -470,6 +494,10 @@ TEST_F(SuspendConfiguratorTest, TestInitialStoredReadFailMode) {
   // Confirm the loaded initial mode is not set.
   EXPECT_EQ(std::nullopt,
             suspend_configurator_.get_initial_sleep_mode_for_testing());
+
+  // Default to deep when the file does not have a valid entry.
+  suspend_configurator_.PrepareForSuspend(base::TimeDelta());
+  EXPECT_EQ(kSuspendModeDeep, ReadFile(suspend_mode_path));
 }
 
 // Test that suspend mode is set to |kSuspendModeShallow| if |kSuspendModePref|

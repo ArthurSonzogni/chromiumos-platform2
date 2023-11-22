@@ -138,8 +138,10 @@ debugging S0iX, perform the following steps
 Please look at [power states] documentation for info on suspend modes. If
 `suspend_to_idle` preference is set then suspend mode is defaulted to 's2idle'.
 Otherwise suspend mode can be configured using `suspend_mode` preference.
-Currently valid suspend modes are `s2idle`, `shallow` and `deep`. To configure
-suspend mode temporarily for debugging, perform the following steps
+Currently valid suspend modes are `s2idle`, `shallow`, `deep` and
+`kernel_default`. With `kernel_default` powerd will use the suspend mode that
+was selected by the kernel on system boot. To configure suspend mode
+temporarily for debugging, perform the following steps
 
 ```sh
 # echo mode > /var/lib/power_manager/suspend_mode
