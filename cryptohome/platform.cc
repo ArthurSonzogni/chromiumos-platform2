@@ -1385,7 +1385,7 @@ bool Platform::ResizeFilesystem(const base::FilePath& file, uint64_t blocks) {
   if (rc != 0)
     return false;
 
-  LOG(INFO) << "Resizing process started.";
+  LOG(INFO) << "Resizing process completed.";
   return true;
 }
 
