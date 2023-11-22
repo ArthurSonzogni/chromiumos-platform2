@@ -294,8 +294,7 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
                           .mkfs_opts = BuildExt4FormatOpts(
                               kExt4BlockSize, kExt4MinBytes / kExt4BlockSize,
                               fs_bytes_max / kExt4BlockSize),
-                          .tune2fs_opts = {"-O", "quota,project", "-Q",
-                                           "usrquota,grpquota,prjquota"}}});
+                          .tune2fs_opts = {}}});
 
   cryptohome::FileSystemKeyReference key_reference;
   key_reference.fek_sig = brillo::SecureBlob("encstateful");
