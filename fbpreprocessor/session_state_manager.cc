@@ -32,6 +32,8 @@ constexpr char kSessionStateStarted[] = "started";
 constexpr char kSessionStateStopped[] = "stopped";
 constexpr int kNumberActiveSessionsUnknown = -1;
 
+constexpr mode_t kMode = 03770;
+
 // Allowlist of accounts that can add firmware dumps to feedback reports.
 constexpr int kAllowlistSize = 2;
 constexpr std::array<std::string_view, kAllowlistSize> kUserAllowlist{
@@ -278,6 +280,11 @@ bool SessionStateManager::CreateUserDirectories() const {
                                         &error)) {
     LOG(ERROR) << "Failed to create input directory: "
                << base::File::ErrorToString(error);
+    success = false;
+  }
+
+  if (chmod(root_dir.Append(kInputDirectory).value().c_str(), kMode)) {
+    LOG(ERROR) << "chmod of raw_dumps failed";
     success = false;
   }
   if (!base::CreateDirectoryAndGetError(root_dir.Append(kProcessedDirectory),
