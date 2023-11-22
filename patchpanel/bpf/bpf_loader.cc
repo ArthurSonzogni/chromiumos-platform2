@@ -163,5 +163,14 @@ bool LoadBPF() {
 // - Only run on supported kernel versions.
 int main() {
   brillo::InitLog(brillo::kLogToSyslog);
-  return patchpanel::LoadBPF() ? 0 : 1;
+
+  // Note that we run this program in pre-start of patchpanel, and a non-zero
+  // exiting value will make upstart thinking that the job has failed. Currently
+  // this program is not critical (i.e., it doesn't affect the main
+  // functionalities of patchpanel), so we always return 0 to avoid blocking
+  // patchpanel.
+  if (!patchpanel::LoadBPF()) {
+    LOG(ERROR) << "Failed to load and pin BPF objects";
+  }
+  return 0;
 }
