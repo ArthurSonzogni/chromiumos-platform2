@@ -51,9 +51,10 @@ class RoutingTable {
   // IPv4-only primary network.
   static constexpr uint32_t kUnreachableTableId = 250;
 
+  RoutingTable();
+  RoutingTable(const RoutingTable&) = delete;
+  RoutingTable& operator=(const RoutingTable&) = delete;
   virtual ~RoutingTable();
-
-  static RoutingTable* GetInstance();
 
   virtual void Start();
   virtual void Stop();
@@ -111,11 +112,6 @@ class RoutingTable {
   virtual void ResetTable(int interface_index);
 
   static uint32_t GetInterfaceTableId(int interface_index);
-
- protected:
-  RoutingTable();
-  RoutingTable(const RoutingTable&) = delete;
-  RoutingTable& operator=(const RoutingTable&) = delete;
 
  private:
   friend base::LazyInstanceTraitsBase<RoutingTable>;

@@ -87,11 +87,6 @@ RoutingPolicyService::RoutingPolicyService()
 
 RoutingPolicyService::~RoutingPolicyService() = default;
 
-RoutingPolicyService* RoutingPolicyService::GetInstance() {
-  static base::NoDestructor<RoutingPolicyService> instance;
-  return instance.get();
-}
-
 void RoutingPolicyService::Start() {
   SLOG(2) << __func__;
 

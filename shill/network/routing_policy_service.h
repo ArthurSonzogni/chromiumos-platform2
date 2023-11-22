@@ -70,9 +70,10 @@ class RoutingPolicyService {
   // Priority of the rule sending all traffic to the main routing table.
   static constexpr uint32_t kRulePriorityMain = 32766;
 
+  RoutingPolicyService();
+  RoutingPolicyService(const RoutingPolicyService&) = delete;
+  RoutingPolicyService& operator=(const RoutingPolicyService&) = delete;
   virtual ~RoutingPolicyService();
-
-  static RoutingPolicyService* GetInstance();
 
   virtual void Start();
   virtual void Stop();
@@ -89,11 +90,6 @@ class RoutingPolicyService {
 
   // Returns the uid for Chrome traffic.
   virtual fib_rule_uid_range GetChromeUid();
-
- protected:
-  RoutingPolicyService();
-  RoutingPolicyService(const RoutingPolicyService&) = delete;
-  RoutingPolicyService& operator=(const RoutingPolicyService&) = delete;
 
  private:
   friend class base::NoDestructor<RoutingPolicyService>;

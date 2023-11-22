@@ -18,12 +18,6 @@ AddressService::AddressService()
 AddressService::~AddressService() = default;
 
 // static
-AddressService* AddressService::GetInstance() {
-  static base::NoDestructor<AddressService> instance;
-  return instance.get();
-}
-
-// static
 std::unique_ptr<AddressService> AddressService::CreateForTesting(
     net_base::RTNLHandler* rtnl_handler) {
   // Using `new` to access a non-public constructor.

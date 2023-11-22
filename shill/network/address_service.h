@@ -25,7 +25,9 @@ class AddressService {
  public:
   virtual ~AddressService();
 
-  static AddressService* GetInstance();
+  AddressService();
+  AddressService(const AddressService&) = delete;
+  AddressService& operator=(const AddressService&) = delete;
 
   // Helper factory function for test code with dependency injection.
   static std::unique_ptr<AddressService> CreateForTesting(
@@ -49,11 +51,6 @@ class AddressService {
       int interface_index,
       const net_base::IPCIDR& local,
       const std::optional<net_base::IPv4Address>& broadcast = std::nullopt);
-
- protected:
-  AddressService();
-  AddressService(const AddressService&) = delete;
-  AddressService& operator=(const AddressService&) = delete;
 
  private:
   friend class base::NoDestructor<AddressService>;

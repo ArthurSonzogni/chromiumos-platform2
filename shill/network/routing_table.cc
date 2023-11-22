@@ -47,9 +47,6 @@ static auto kModuleLogScope = ScopeLogger::kRoute;
 
 namespace {
 
-base::LazyInstance<RoutingTable>::DestructorAtExit g_routing_table =
-    LAZY_INSTANCE_INITIALIZER;
-
 const char kIpv6ProcPath[] = "/proc/sys/net/ipv6/conf";
 // Amount added to an interface index to come up with the routing table ID for
 // that interface.
@@ -139,10 +136,6 @@ RoutingTable::RoutingTable()
 }
 
 RoutingTable::~RoutingTable() = default;
-
-RoutingTable* RoutingTable::GetInstance() {
-  return g_routing_table.Pointer();
-}
 
 void RoutingTable::Start() {
   SLOG(2) << __func__;
@@ -301,9 +294,8 @@ bool RoutingTable::GetDefaultRouteInternal(int interface_index,
     SLOG(2) << __func__ << " no route";
     return false;
   } else {
-    SLOG(2) << __func__ << ": found"
-            << " gateway " << (*entry)->gateway.ToString() << " metric "
-            << (*entry)->metric;
+    SLOG(2) << __func__ << ": found" << " gateway "
+            << (*entry)->gateway.ToString() << " metric " << (*entry)->metric;
     return true;
   }
 }
@@ -379,8 +371,7 @@ void RoutingTable::ResetTable(int interface_index) {
 
 bool RoutingTable::AddRouteToKernelTable(int interface_index,
                                          const RoutingTableEntry& entry) {
-  SLOG(2) << __func__ << ": "
-          << " index " << interface_index << " " << entry;
+  SLOG(2) << __func__ << ": " << " index " << interface_index << " " << entry;
 
   return ApplyRoute(interface_index, entry, net_base::RTNLMessage::kModeAdd,
                     NLM_F_CREATE | NLM_F_EXCL);
@@ -388,8 +379,7 @@ bool RoutingTable::AddRouteToKernelTable(int interface_index,
 
 bool RoutingTable::RemoveRouteFromKernelTable(int interface_index,
                                               const RoutingTableEntry& entry) {
-  SLOG(2) << __func__ << ": "
-          << " index " << interface_index << " " << entry;
+  SLOG(2) << __func__ << ": " << " index " << interface_index << " " << entry;
 
   return ApplyRoute(interface_index, entry, net_base::RTNLMessage::kModeDelete,
                     0);
