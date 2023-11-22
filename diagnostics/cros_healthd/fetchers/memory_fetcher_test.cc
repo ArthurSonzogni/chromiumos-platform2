@@ -130,9 +130,9 @@ class MemoryFetcherTest : public BaseFileTest {
 
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
-  mojom::MemoryResultPtr FetchMemoryInfo() {
+  mojom::MemoryResultPtr FetchMemoryInfoSync() {
     base::test::TestFuture<mojom::MemoryResultPtr> future;
-    memory_fetcher_.FetchMemoryInfo(future.GetCallback());
+    FetchMemoryInfo(&mock_context_, future.GetCallback());
     return future.Take();
   }
 
@@ -140,7 +140,6 @@ class MemoryFetcherTest : public BaseFileTest {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
   MockContext mock_context_;
-  MemoryFetcher memory_fetcher_{&mock_context_};
 };
 
 // Test that memory info can be read when it exists.
@@ -150,7 +149,7 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoWithoutMemoryEncryption) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       GetRootDir().Append(kRelativeVmStatPath), kFakeVmStatContents));
 
-  auto result = FetchMemoryInfo();
+  auto result = FetchMemoryInfoSync();
   ASSERT_TRUE(result->is_memory_info());
   const auto& info = result->get_memory_info();
   EXPECT_EQ(info->total_memory_kib, 3906320);
@@ -166,7 +165,7 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcMeminfoFormattedIncorrectly) {
       GetRootDir().Append(kRelativeMeminfoPath),
       kFakeMeminfoContentsIncorrectlyFormattedFile));
 
-  auto result = FetchMemoryInfo();
+  auto result = FetchMemoryInfoSync();
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
   EXPECT_EQ(result->get_error()->msg, "Error parsing /proc/meminfo");
@@ -178,7 +177,7 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoNoProcVmStat) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       GetRootDir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
 
-  auto result = FetchMemoryInfo();
+  auto result = FetchMemoryInfoSync();
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
@@ -192,7 +191,7 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcVmStatFormattedIncorrectly) {
       GetRootDir().Append(kRelativeVmStatPath),
       kFakeVmStatContentsIncorrectlyFormattedFile));
 
-  auto result = FetchMemoryInfo();
+  auto result = FetchMemoryInfoSync();
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
 }
@@ -206,7 +205,7 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcVmStatNoPgfault) {
       WriteFileAndCreateParentDirs(GetRootDir().Append(kRelativeVmStatPath),
                                    kFakeVmStatContentsMissingPgfault));
 
-  auto result = FetchMemoryInfo();
+  auto result = FetchMemoryInfoSync();
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
 }
@@ -221,7 +220,7 @@ TEST_F(MemoryFetcherTest,
       GetRootDir().Append(kRelativeVmStatPath),
       kFakeVmStatContentsIncorrectlyFormattedPgfault));
 
-  auto result = FetchMemoryInfo();
+  auto result = FetchMemoryInfoSync();
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
 }
@@ -233,7 +232,7 @@ TEST_F(MemoryFetcherTest, MissingMktmeDirectory) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       GetRootDir().Append(kRelativeVmStatPath), kFakeVmStatContents));
 
-  auto result = FetchMemoryInfo();
+  auto result = FetchMemoryInfoSync();
   ASSERT_TRUE(result->is_memory_info());
   const auto& memory_info = result->get_memory_info();
   ASSERT_FALSE(memory_info->memory_encryption_info);
@@ -243,7 +242,7 @@ TEST_F(MemoryFetcherTest, MissingMktmeDirectory) {
 TEST_F(MemoryFetcherTest, TestFetchMktmeInfo) {
   CreateMkmteEnviroment();
 
-  auto result = FetchMemoryInfo();
+  auto result = FetchMemoryInfoSync();
   ASSERT_TRUE(result->is_memory_info());
   const auto& memory_info = result->get_memory_info();
   VerifyMemoryEncryptionInfo(memory_info->memory_encryption_info,
@@ -258,7 +257,7 @@ TEST_F(MemoryFetcherTest, MissingMktmeActiveFile) {
   ASSERT_TRUE(
       brillo::DeleteFile(GetRootDir().Append(kRelativeMtkmeActivePath)));
 
-  auto result = FetchMemoryInfo();
+  auto result = FetchMemoryInfoSync();
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
@@ -269,7 +268,7 @@ TEST_F(MemoryFetcherTest, MissingMktmeActiveAlgorithmFile) {
   ASSERT_TRUE(brillo::DeleteFile(
       GetRootDir().Append(kRelativeMtkmeActiveAlgorithmPath)));
 
-  auto result = FetchMemoryInfo();
+  auto result = FetchMemoryInfoSync();
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
@@ -280,7 +279,7 @@ TEST_F(MemoryFetcherTest, MissingMktmeKeyCountFile) {
   ASSERT_TRUE(
       brillo::DeleteFile(GetRootDir().Append(kRelativeMtkmeKeyCountPath)));
 
-  auto result = FetchMemoryInfo();
+  auto result = FetchMemoryInfoSync();
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
@@ -291,7 +290,7 @@ TEST_F(MemoryFetcherTest, MissingMktmeKeyLengthFile) {
   ASSERT_TRUE(
       brillo::DeleteFile(GetRootDir().Append(kRelativeMtkmeKeyLengthPath)));
 
-  auto result = FetchMemoryInfo();
+  auto result = FetchMemoryInfoSync();
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
@@ -325,7 +324,7 @@ TEST_F(MemoryFetcherTest, TestFetchTmeInfo) {
         }
       });
 
-  auto result = FetchMemoryInfo();
+  auto result = FetchMemoryInfoSync();
   ASSERT_TRUE(result->is_memory_info());
   const auto& memory_info = result->get_memory_info();
   VerifyMemoryEncryptionInfo(memory_info->memory_encryption_info,

@@ -25,6 +25,7 @@
 #include "diagnostics/cros_healthd/fetchers/fan_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/graphics_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/input_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/network_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/network_interface_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/sensor_fetcher.h"
@@ -71,10 +72,7 @@ void OnFinish(
 }  // namespace
 
 FetchAggregator::FetchAggregator(Context* context)
-    : disk_fetcher_(context),
-      memory_fetcher_(context),
-      tpm_fetcher_(context),
-      context_(context) {}
+    : disk_fetcher_(context), tpm_fetcher_(context), context_(context) {}
 
 FetchAggregator::~FetchAggregator() = default;
 
@@ -120,8 +118,8 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kMemory: {
-        memory_fetcher_.FetchMemoryInfo(
-            CreateFetchCallback(&barrier, &info->memory_result));
+        FetchMemoryInfo(context_,
+                        CreateFetchCallback(&barrier, &info->memory_result));
         break;
       }
       case mojom::ProbeCategoryEnum::kBacklight: {

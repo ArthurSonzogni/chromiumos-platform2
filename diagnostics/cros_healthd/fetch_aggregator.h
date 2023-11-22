@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "diagnostics/cros_healthd/fetchers/disk_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/tpm_fetcher.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
@@ -35,7 +34,6 @@ class FetchAggregator final {
 
  private:
   DiskFetcher disk_fetcher_;
-  MemoryFetcher memory_fetcher_;
   TpmFetcher tpm_fetcher_;
 
   // The pointer to the Context object for accessing system utilities.
