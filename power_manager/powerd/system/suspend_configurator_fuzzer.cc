@@ -64,7 +64,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   std::unique_ptr<feature::FakePlatformFeatures> platform_features =
       std::make_unique<feature::FakePlatformFeatures>(dbus_wrapper->GetBus());
 
-  suspend_configurator.Init(platform_features.get(), &prefs);
+  suspend_configurator.Init(platform_features.get(), &prefs,
+                            temp_root_dir_path);
   suspend_configurator.PrepareForSuspend(base::TimeDelta());
 
   return 0;

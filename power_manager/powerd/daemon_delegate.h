@@ -216,7 +216,8 @@ class DaemonDelegate {
   virtual std::unique_ptr<system::SuspendConfiguratorInterface>
   CreateSuspendConfigurator(
       feature::PlatformFeaturesInterface* platform_features,
-      PrefsInterface* prefs) = 0;
+      PrefsInterface* prefs,
+      const base::FilePath& run_dir) = 0;
 
   virtual std::unique_ptr<system::SuspendFreezerInterface> CreateSuspendFreezer(
       PrefsInterface* prefs) = 0;

@@ -5,6 +5,7 @@
 #include "power_manager/powerd/system/suspend_configurator.h"
 
 #include <cstring>
+#include <optional>
 #include <stdint.h>
 #include <string>
 
@@ -16,6 +17,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <brillo/cpuinfo.h>
+#include <brillo/files/file_util.h>
 #include <featured/fake_platform_features.h>
 #include <gtest/gtest.h>
 
@@ -255,6 +257,9 @@ class SuspendConfiguratorTest : public TestEnvironment {
     CreateFileInTempRootDir(temp_root_dir_path, kSuspendModePath);
     CreateFileInTempRootDir(temp_root_dir_path,
                             brillo::CpuInfo::DefaultPath().value());
+    // Powerd runtime stateful dir. This can just be the root
+    // root for the suspend config testing.
+    run_dir_ = temp_root_dir_.GetPath();
   }
 
   ~SuspendConfiguratorTest() override = default;
@@ -263,6 +268,12 @@ class SuspendConfiguratorTest : public TestEnvironment {
   // Returns |orig| rooted within the temporary root dir created for testing.
   base::FilePath GetPath(const base::FilePath& orig) const {
     return temp_root_dir_.GetPath().Append(orig.value().substr(1));
+  }
+
+  // Return a path with |filename| rooted within the powerd runtime stateful
+  // directory for the test.
+  base::FilePath GetRunPath(std::string_view filename) const {
+    return run_dir_.Append(filename);
   }
 
   std::string ReadFile(const base::FilePath& file) {
@@ -279,6 +290,7 @@ class SuspendConfiguratorTest : public TestEnvironment {
   }
 
   base::ScopedTempDir temp_root_dir_;
+  base::FilePath run_dir_;
   system::DBusWrapperStub dbus_wrapper_;
   std::unique_ptr<feature::FakePlatformFeatures> platform_features_;
   FakePrefs prefs_;
@@ -290,7 +302,7 @@ TEST_F(SuspendConfiguratorTest, TestDefaultConsoleSuspendForS3) {
   base::FilePath console_suspend_path =
       GetPath(SuspendConfigurator::kConsoleSuspendPath);
   prefs_.SetInt64(kSuspendToIdlePref, 0);
-  suspend_configurator_.Init(platform_features_.get(), &prefs_);
+  suspend_configurator_.Init(platform_features_.get(), &prefs_, run_dir_);
   // Make sure console is enabled if system suspends to S3.
   EXPECT_EQ("N", ReadFile(console_suspend_path));
 }
@@ -301,7 +313,7 @@ TEST_F(SuspendConfiguratorTest, TestDefaultConsoleSuspendForIntelS0ix) {
       GetPath(SuspendConfigurator::kConsoleSuspendPath);
   prefs_.SetInt64(kSuspendToIdlePref, 1);
   WriteCpuInfoFile(intel_cpuinfo_data);
-  suspend_configurator_.Init(platform_features_.get(), &prefs_);
+  suspend_configurator_.Init(platform_features_.get(), &prefs_, run_dir_);
   // Make sure console is disabled if S0ix is enabled.
   EXPECT_EQ("Y", ReadFile(console_suspend_path));
 }
@@ -312,7 +324,7 @@ TEST_F(SuspendConfiguratorTest, TestDefaultConsoleSuspendForAmdS0ix) {
       GetPath(SuspendConfigurator::kConsoleSuspendPath);
   prefs_.SetInt64(kSuspendToIdlePref, 1);
   WriteCpuInfoFile(amd_cpuinfo_data);
-  suspend_configurator_.Init(platform_features_.get(), &prefs_);
+  suspend_configurator_.Init(platform_features_.get(), &prefs_, run_dir_);
   // Make sure console is enabled if S0ix is enabled.
   EXPECT_EQ("N", ReadFile(console_suspend_path));
 }
@@ -324,7 +336,7 @@ TEST_F(SuspendConfiguratorTest, TestDefaultConsoleSuspendOverwritten) {
       GetPath(SuspendConfigurator::kConsoleSuspendPath);
   prefs_.SetInt64(kSuspendToIdlePref, 1);
   prefs_.SetInt64(kEnableConsoleDuringSuspendPref, 1);
-  suspend_configurator_.Init(platform_features_.get(), &prefs_);
+  suspend_configurator_.Init(platform_features_.get(), &prefs_, run_dir_);
   // Make sure console is not disabled though the default is to disable it.
   EXPECT_EQ("N", ReadFile(console_suspend_path));
 }
@@ -337,10 +349,127 @@ TEST_F(SuspendConfiguratorTest, TestSuspendModeIdle) {
   // |kSuspendModePref| is configured to something else.
   prefs_.SetInt64(kSuspendToIdlePref, 1);
   prefs_.SetString(kSuspendModePref, kSuspendModeShallow);
-  suspend_configurator_.Init(platform_features_.get(), &prefs_);
+  suspend_configurator_.Init(platform_features_.get(), &prefs_, run_dir_);
 
   suspend_configurator_.PrepareForSuspend(base::TimeDelta());
   EXPECT_EQ(kSuspendModeFreeze, ReadFile(suspend_mode_path));
+}
+
+// Test that the stored initial kernel mode comes from the mode in sysfs.
+TEST_F(SuspendConfiguratorTest, TestInitialSaveMode) {
+  base::FilePath suspend_mode_path = GetPath(base::FilePath(kSuspendModePath));
+  base::FilePath initial_mode =
+      GetRunPath(SuspendConfigurator::kInitialSuspendModeFileName);
+
+  // Simulate the first time when the file does not exist.
+  brillo::DeleteFile(initial_mode);
+  // Set the selected mode in sysfs to s2idle.
+  base::WriteFile(suspend_mode_path, "[s2idle] deep");
+
+  suspend_configurator_.Init(platform_features_.get(), &prefs_, run_dir_);
+
+  // Confirm that the initial file has the expected contents.
+  EXPECT_EQ(kSuspendModeFreeze, ReadFile(initial_mode));
+  EXPECT_EQ(std::optional<std::string>(kSuspendModeFreeze),
+            suspend_configurator_.get_initial_sleep_mode_for_testing());
+}
+
+// Test that the stored initial mode file is not re-written if it exists
+// prior to SuspendConfigurator::Init.
+// The stored initial mode file should only be created when powerd starts
+// the first time after a reboot.
+TEST_F(SuspendConfiguratorTest, TestInitialReadMode) {
+  base::FilePath suspend_mode_path = GetPath(base::FilePath(kSuspendModePath));
+  base::FilePath initial_mode =
+      GetRunPath(SuspendConfigurator::kInitialSuspendModeFileName);
+
+  // Simulate a previously stored s2idle mode.
+  base::WriteFile(initial_mode, kSuspendModeFreeze);
+  // Simulate an existing mode that is different than the stored mode.
+  base::WriteFile(suspend_mode_path, "s2idle [deep]");
+
+  suspend_configurator_.Init(platform_features_.get(), &prefs_, run_dir_);
+
+  // Initial mode file should not have changed.
+  EXPECT_EQ(kSuspendModeFreeze, ReadFile(initial_mode));
+  // Confirm the loaded sleep mode matches what is in the stored
+  // initial mode file and not what was in sysfs.
+  EXPECT_EQ(std::optional<std::string>(kSuspendModeFreeze),
+            suspend_configurator_.get_initial_sleep_mode_for_testing());
+}
+
+// Verify that |kernel_default_sleep_mode_| is empty when the sleep mode
+// can't be parsed from sysfs.
+TEST_F(SuspendConfiguratorTest, TestInitialFailMode) {
+  base::FilePath suspend_mode_path = GetPath(base::FilePath(kSuspendModePath));
+  base::FilePath initial_mode =
+      GetRunPath(SuspendConfigurator::kInitialSuspendModeFileName);
+
+  // Write a bad mode to the sysfs path to force an initial read failure.
+  base::WriteFile(suspend_mode_path, "s2idle deep");
+
+  suspend_configurator_.Init(platform_features_.get(), &prefs_, run_dir_);
+
+  // Empty initial file is the invalid state. It was unable
+  // to read mem_sleep.
+  EXPECT_EQ("", ReadFile(initial_mode));
+  EXPECT_EQ(std::nullopt,
+            suspend_configurator_.get_initial_sleep_mode_for_testing());
+}
+
+// Verify that |kernel_default_sleep_mode_| is empty when the stored initial
+// sleep mode is not a valid option.
+TEST_F(SuspendConfiguratorTest, TestInitialBadMode) {
+  base::FilePath suspend_mode_path = GetPath(base::FilePath(kSuspendModePath));
+  base::FilePath initial_mode =
+      GetRunPath(SuspendConfigurator::kInitialSuspendModeFileName);
+
+  base::WriteFile(initial_mode, "bogus");
+
+  suspend_configurator_.Init(platform_features_.get(), &prefs_, run_dir_);
+
+  // Confirm the loaded initial mode is empty indicating it was not a valid
+  // mode.
+  EXPECT_EQ(std::nullopt,
+            suspend_configurator_.get_initial_sleep_mode_for_testing());
+  // Stored initial does not change even when it is invalid.
+  EXPECT_EQ("bogus", ReadFile(initial_mode));
+}
+
+// Verify that |kernel_default_sleep_mode_| is empty on read failure of the
+// sysfs sleep mode file.
+TEST_F(SuspendConfiguratorTest, TestInitialSysfsReadFailMode) {
+  base::FilePath suspend_mode_path = GetPath(base::FilePath(kSuspendModePath));
+  base::FilePath initial_mode =
+      GetRunPath(SuspendConfigurator::kInitialSuspendModeFileName);
+
+  // Delete the sysfs mem_sleep path to force the code down the
+  // read failure branch.
+  brillo::DeleteFile(suspend_mode_path);
+
+  suspend_configurator_.Init(platform_features_.get(), &prefs_, run_dir_);
+
+  // Confirm the empty initial file for the invalid state.
+  EXPECT_EQ("", ReadFile(initial_mode));
+  EXPECT_EQ(std::nullopt,
+            suspend_configurator_.get_initial_sleep_mode_for_testing());
+}
+
+// Verify that |kernel_default_sleep_mode_| is empty when the read of the
+// stored initial file fails.
+TEST_F(SuspendConfiguratorTest, TestInitialStoredReadFailMode) {
+  base::FilePath initial_mode =
+      GetRunPath(SuspendConfigurator::kInitialSuspendModeFileName);
+
+  // Make the stored initial mode path a directory which in turn
+  // forces the read failure branch.
+  ASSERT_TRUE(base::CreateDirectory(initial_mode));
+
+  suspend_configurator_.Init(platform_features_.get(), &prefs_, run_dir_);
+
+  // Confirm the loaded initial mode is not set.
+  EXPECT_EQ(std::nullopt,
+            suspend_configurator_.get_initial_sleep_mode_for_testing());
 }
 
 // Test that suspend mode is set to |kSuspendModeShallow| if |kSuspendModePref|
@@ -349,7 +478,8 @@ TEST_F(SuspendConfiguratorTest, TestSuspendModeShallow) {
   base::FilePath suspend_mode_path = GetPath(base::FilePath(kSuspendModePath));
   prefs_.SetInt64(kSuspendToIdlePref, 0);
   prefs_.SetString(kSuspendModePref, kSuspendModeShallow);
-  suspend_configurator_.Init(platform_features_.get(), &prefs_);
+  suspend_configurator_.Init(platform_features_.get(), &prefs_,
+                             temp_root_dir_.GetPath());
 
   suspend_configurator_.PrepareForSuspend(base::TimeDelta());
   EXPECT_EQ(kSuspendModeShallow, ReadFile(suspend_mode_path));
@@ -361,7 +491,8 @@ TEST_F(SuspendConfiguratorTest, TestSuspendModeDeep) {
   base::FilePath suspend_mode_path = GetPath(base::FilePath(kSuspendModePath));
   prefs_.SetInt64(kSuspendToIdlePref, 0);
   prefs_.SetString(kSuspendModePref, "Junk");
-  suspend_configurator_.Init(platform_features_.get(), &prefs_);
+  suspend_configurator_.Init(platform_features_.get(), &prefs_,
+                             temp_root_dir_.GetPath());
 
   suspend_configurator_.PrepareForSuspend(base::TimeDelta());
   EXPECT_EQ(kSuspendModeDeep, ReadFile(suspend_mode_path));

@@ -358,9 +358,10 @@ class DaemonDelegateImpl : public DaemonDelegate {
   std::unique_ptr<system::SuspendConfiguratorInterface>
   CreateSuspendConfigurator(
       feature::PlatformFeaturesInterface* platform_features,
-      PrefsInterface* prefs) override {
+      PrefsInterface* prefs,
+      const base::FilePath& run_dir) override {
     auto suspend_configurator = std::make_unique<system::SuspendConfigurator>();
-    suspend_configurator->Init(platform_features, prefs);
+    suspend_configurator->Init(platform_features, prefs, run_dir);
     return suspend_configurator;
   }
 

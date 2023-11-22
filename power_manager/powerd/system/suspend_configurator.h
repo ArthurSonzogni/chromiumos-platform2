@@ -6,6 +6,7 @@
 #define POWER_MANAGER_POWERD_SYSTEM_SUSPEND_CONFIGURATOR_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "power_manager/powerd/system/dbus_wrapper.h"
@@ -47,6 +48,12 @@ class SuspendConfigurator : public SuspendConfiguratorInterface {
   // Path to write to enable/disable console during suspend.
   static const base::FilePath kConsoleSuspendPath;
 
+  // Filename appended to the runtime state directory (see |run_dir| in Init())
+  // to create the |initial_suspend_mode_path_| for storing the initial
+  // system suspend mode.
+  static constexpr std::string_view kInitialSuspendModeFileName =
+      "initial_suspend_mode";
+
   SuspendConfigurator() = default;
   SuspendConfigurator(const SuspendConfigurator&) = delete;
   SuspendConfigurator& operator=(const SuspendConfigurator&) = delete;
@@ -54,7 +61,8 @@ class SuspendConfigurator : public SuspendConfiguratorInterface {
   ~SuspendConfigurator() override = default;
 
   void Init(feature::PlatformFeaturesInterface* platform_features,
-            PrefsInterface* prefs);
+            PrefsInterface* prefs,
+            const base::FilePath& run_dir);
 
   // SuspendConfiguratorInterface implementation.
   uint64_t PrepareForSuspend(const base::TimeDelta& suspend_duration) override;
@@ -64,6 +72,10 @@ class SuspendConfigurator : public SuspendConfiguratorInterface {
   // Setting to an empty path removes the prefix.
   void set_prefix_path_for_testing(const base::FilePath& file) {
     prefix_path_for_testing_ = file;
+  }
+
+  std::optional<std::string> get_initial_sleep_mode_for_testing() {
+    return kernel_default_sleep_mode_;
   }
 
  private:
@@ -91,13 +103,35 @@ class SuspendConfigurator : public SuspendConfiguratorInterface {
   feature::PlatformFeaturesInterface* platform_features_ = nullptr;  // unowned
   PrefsInterface* prefs_ = nullptr;                                  // unowned
 
-  // Prefixing all paths for testing with a temp directory. Empty (no
+  // Prefixing root paths for testing with a temp directory. Empty (no
   // prefix) by default.
   base::FilePath prefix_path_for_testing_;
 
   // Mode for suspend. One of Suspend-to-idle, Power-on-suspend, or
   // Suspend-to-RAM.
   std::string suspend_mode_;
+
+  // System initial default sleep mode.
+  std::optional<std::string> kernel_default_sleep_mode_;
+
+  // Path to write the initial default suspend mode.
+  base::FilePath initial_suspend_mode_path_;
+
+  // Reads the currently selected value from /sys/power/mem_sleep.
+  // Returns nullopt on failure reading the value.
+  std::optional<std::string> ReadPowerMemSleepValue();
+
+  // Creates the file to store the initial system suspend mode.
+  // Returns false if the file is unable to be written.
+  bool SaveInitialSuspendMode(const std::optional<std::string>& state);
+
+  // Reads the stored kernel's initial default suspend mode into
+  // |kernel_default_sleep_mode_|.
+  // |kernel_default_sleep_mode_| will be empty if the stored
+  // mode can't be read.
+  void ReadInitialSuspendMode();
+
+  bool IsValidSuspendMode(std::string_view mem_sleep);
 };
 
 }  // namespace system

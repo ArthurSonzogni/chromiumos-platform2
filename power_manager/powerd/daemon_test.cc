@@ -482,7 +482,8 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   std::unique_ptr<system::SuspendConfiguratorInterface>
   CreateSuspendConfigurator(
       feature::PlatformFeaturesInterface* platform_features,
-      PrefsInterface* prefs) override {
+      PrefsInterface* prefs,
+      const base::FilePath& run_dir) override {
     EXPECT_EQ(platform_features_, platform_features);
     EXPECT_EQ(prefs_, prefs);
     return std::move(passed_suspend_configurator_);

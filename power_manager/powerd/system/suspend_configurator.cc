@@ -14,6 +14,8 @@
 #include <base/strings/string_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/cpuinfo.h>
+#include <brillo/file_utils.h>
+#include <re2/re2.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -54,12 +56,82 @@ const base::FilePath SuspendConfigurator::kConsoleSuspendPath(
 
 void SuspendConfigurator::Init(
     feature::PlatformFeaturesInterface* platform_features,
-    PrefsInterface* prefs) {
+    PrefsInterface* prefs,
+    const base::FilePath& run_dir) {
   DCHECK(prefs);
   platform_features_ = platform_features;
   prefs_ = prefs;
+  initial_suspend_mode_path_ = run_dir.Append(kInitialSuspendModeFileName);
   ConfigureConsoleForSuspend();
   ReadSuspendMode();
+}
+
+bool SuspendConfigurator::IsValidSuspendMode(std::string_view mem_sleep) {
+  if (mem_sleep != kSuspendModeDeep && mem_sleep != kSuspendModeFreeze &&
+      mem_sleep != kSuspendModeShallow) {
+    return false;
+  }
+  return true;
+}
+
+std::optional<std::string> SuspendConfigurator::ReadPowerMemSleepValue() {
+  base::FilePath suspend_mode_path =
+      GetPrefixedFilePath(base::FilePath(kSuspendModePath));
+  std::string contents;
+  std::string mem_sleep;
+
+  if (!base::ReadFileToString(suspend_mode_path, &contents)) {
+    LOG(WARNING) << "Unable to read " << kSuspendModePath;
+    return std::nullopt;
+  }
+  // The contents is a space separated list of mem_sleep methods
+  // with the selected value enclosed in [].
+  // For example, the contents might be:
+  // `[s2idle] deep shallow`
+  // See [mem_sleep](https://www.kernel.org/doc/Documentation/power/states.txt)
+
+  // Select the word surrounded by []:
+  if (!RE2::PartialMatch(contents, R"(\[(\w+)\])", &mem_sleep)) {
+    LOG(WARNING) << "Unable to parse " << kSuspendModePath
+                 << " contents: " << contents;
+    return std::nullopt;
+  }
+  return mem_sleep;
+}
+
+bool SuspendConfigurator::SaveInitialSuspendMode(
+    const std::optional<std::string>& state) {
+  // Write an empty file when the mode was not able to be read.
+  if (!brillo::WriteStringToFile(initial_suspend_mode_path_,
+                                 state.value_or(""))) {
+    PLOG(ERROR) << "Failed to create " << initial_suspend_mode_path_;
+    return false;
+  }
+  return true;
+}
+
+void SuspendConfigurator::ReadInitialSuspendMode() {
+  std::string mem_sleep;
+
+  kernel_default_sleep_mode_ = {};
+
+  // Save the initial suspend mode if it doesn't exist.
+  if (!base::PathExists(initial_suspend_mode_path_)) {
+    std::optional<std::string> state = ReadPowerMemSleepValue();
+    if (!SaveInitialSuspendMode(state) || state == std::nullopt)
+      return;
+    mem_sleep = state.value();
+  } else if (!base::ReadFileToString(initial_suspend_mode_path_, &mem_sleep)) {
+    LOG(WARNING) << "Unable to read initial system suspend mode";
+    return;
+  }
+  base::TrimWhitespaceASCII(mem_sleep, base::TRIM_ALL, &mem_sleep);
+  if (!IsValidSuspendMode(mem_sleep)) {
+    LOG(WARNING) << "Invalid initial system suspend mode: " << mem_sleep;
+    return;
+  }
+  LOG(INFO) << "Initial system mem_sleep mode: " << mem_sleep;
+  kernel_default_sleep_mode_ = mem_sleep;
 }
 
 // TODO(crbug.com/941298) Move powerd_suspend script here eventually.
@@ -158,15 +230,14 @@ void SuspendConfigurator::ConfigureConsoleForSuspend() {
 
 void SuspendConfigurator::ReadSuspendMode() {
   bool pref_val = true;
+  ReadInitialSuspendMode();
 
   // If s2idle is enabled, we write "freeze" to "/sys/power/state". Let us also
   // write "s2idle" to "/sys/power/mem_sleep" just to be safe.
   if (prefs_->GetBool(kSuspendToIdlePref, &pref_val) && pref_val) {
     suspend_mode_ = kSuspendModeFreeze;
   } else if (prefs_->GetString(kSuspendModePref, &suspend_mode_)) {
-    if (suspend_mode_ != kSuspendModeDeep &&
-        suspend_mode_ != kSuspendModeShallow &&
-        suspend_mode_ != kSuspendModeFreeze) {
+    if (!IsValidSuspendMode(suspend_mode_)) {
       LOG(WARNING) << "Invalid suspend mode pref : " << suspend_mode_;
       suspend_mode_ = kSuspendModeDeep;
     }
