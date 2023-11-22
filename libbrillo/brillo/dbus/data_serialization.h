@@ -104,16 +104,13 @@ namespace details {
 // into the Variant and updates the |*reader_ref| with the transient
 // |variant_reader| MessageReader instance passed in.
 // Returns false if it fails to descend into the Variant.
-inline bool DescendIntoVariantIfPresent(::dbus::MessageReader** reader_ref,
-                                        ::dbus::MessageReader* variant_reader) {
-  if ((*reader_ref)->GetDataType() != ::dbus::Message::VARIANT)
-    return true;
-  if (!(*reader_ref)->PopVariant(variant_reader))
-    return false;
-  *reader_ref = variant_reader;
-  return true;
-}
-
+// TODO(b/289932268): To catch actual errors, unwrapping should be done
+// explicitly. Thus, this should be removed. Handling D-Bus variant should be
+// done in other place explicitly.
+BRILLO_EXPORT bool DescendIntoVariantIfPresent(
+    ::dbus::MessageReader** reader_ref,
+    ::dbus::MessageReader* variant_reader,
+    bool for_any = false);
 }  // namespace details
 
 //=============================================================================

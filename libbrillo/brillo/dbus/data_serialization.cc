@@ -2,15 +2,60 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/check.h>
 #include <brillo/dbus/data_serialization.h>
 
+#include <sys/wait.h>
+#include <unistd.h>
+
+#include <base/check.h>
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 #include <brillo/any.h>
 #include <brillo/variant_dictionary.h>
 
 namespace brillo {
 namespace dbus_utils {
+
+namespace details {
+
+bool DescendIntoVariantIfPresent(::dbus::MessageReader** reader_ref,
+                                 ::dbus::MessageReader* variant_reader,
+                                 bool for_any) {
+  if ((*reader_ref)->GetDataType() != ::dbus::Message::VARIANT)
+    return true;
+
+  // TODO(b/289932268): Callers message readers should know the schema, so
+  // unwrapping VARIANT should be done explicitly, i.e., this part should not
+  // be executed conceptually. Though, unfortunately, this function is (also)
+  // used in generated code, and so currently there are many callsites, and
+  // fixing each caller one-by-one is not so easy.
+  // To be safer, record crash log here to see whether there are no unexpected
+  // uses.
+  // base::DumpWithoutCrash won't work with platform packages, so we fork then
+  // let the child process crash to make a crash report.
+  if (!for_any) {
+    pid_t pid = fork();
+    if (pid == 0) {
+      // Let the child process just crash.
+      RAW_LOG(FATAL, "Variant unwrapping is done unexpectedly");
+    }
+    // Collect the crashed child process.
+    // This is unexpected so we do it as blocking operation, since we do not
+    // worry about the performance about it.
+    // Ignoring errors.
+    auto ret = HANDLE_EINTR(waitpid(pid, nullptr, 0));
+    if (ret != 0) {
+      PLOG(ERROR) << "failed on waitpid: " << pid;
+    }
+  }
+
+  if (!(*reader_ref)->PopVariant(variant_reader))
+    return false;
+  *reader_ref = variant_reader;
+  return true;
+}
+
+}  // namespace details
 
 void AppendValueToWriter(dbus::MessageWriter* writer, bool value) {
   writer->AppendBool(value);
@@ -275,7 +320,8 @@ bool PopStructValueFromReader(dbus::MessageReader* reader, brillo::Any* value) {
 
 bool PopValueFromReader(dbus::MessageReader* reader, brillo::Any* value) {
   dbus::MessageReader variant_reader(nullptr);
-  if (!details::DescendIntoVariantIfPresent(&reader, &variant_reader))
+  if (!details::DescendIntoVariantIfPresent(&reader, &variant_reader,
+                                            /*for_any=*/true))
     return false;
 
   switch (reader->GetDataType()) {
