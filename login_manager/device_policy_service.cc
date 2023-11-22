@@ -58,8 +58,8 @@ namespace {
 // Note: The keys in the map must be in the sorted order for the code to
 // compile!
 constexpr auto attrs_to_ownership =
-    base::MakeFixedFlatMapSorted<base::StringPiece,
-                                 LoginMetrics::OwnershipState>(
+    base::MakeFixedFlatMap<std::string_view, LoginMetrics::OwnershipState>(
+        base::sorted_unique,
         {{"", LoginMetrics::OwnershipState::kConsumer},
          {InstallAttributesReader::kDeviceModeConsumerKiosk,
           LoginMetrics::OwnershipState::kConsumerKiosk},
