@@ -104,16 +104,13 @@ namespace details {
 // into the Variant and updates the |*reader_ref| with the transient
 // |variant_reader| MessageReader instance passed in.
 // Returns false if it fails to descend into the Variant.
-inline bool DescendIntoVariantIfPresent(::dbus::MessageReader** reader_ref,
-                                        ::dbus::MessageReader* variant_reader) {
-  if ((*reader_ref)->GetDataType() != ::dbus::Message::VARIANT)
-    return true;
-  if (!(*reader_ref)->PopVariant(variant_reader))
-    return false;
-  *reader_ref = variant_reader;
-  return true;
-}
-
+// TODO(b/289932268): To catch actual errors, unwrapping should be done
+// explicitly. Thus, this should be removed. Handling D-Bus variant should be
+// done in other place explicitly.
+BRILLO_EXPORT bool DescendIntoVariantIfPresent(
+    ::dbus::MessageReader** reader_ref,
+    ::dbus::MessageReader* variant_reader,
+    bool for_any = false);
 }  // namespace details
 
 //=============================================================================
@@ -763,6 +760,24 @@ template <typename... Args>
 void WriteDBusArgs(dbus::MessageWriter* writer, const Args&... args) {
   (DBusType<std::decay_t<Args>>::Write(writer, args), ...);
 }
+
+// Currently, D-Bus arg reading function automatically unwraps variant,
+// so even if the type is different from the spec, that may be read
+// unexpectedly. That will be removed, and this is the flag for its
+// safer migration. See also b/289932268.
+enum class AutoVariantUnwrapState {
+  // Enabled the automatic variant unwrapping, i.e., the original state.
+  kEnabled,
+
+  // Still automatically unwrapped, but crash dump (without actual crash) will
+  // be reported when it happens. So, we can identify the cases in the world.
+  kDumpWithoutCrash,
+
+  // Disabled the automatic variant, which is the eventual state.
+  kDisabled,
+};
+BRILLO_EXPORT void SetAutoVariantUnwrapState(AutoVariantUnwrapState state);
+BRILLO_EXPORT AutoVariantUnwrapState GetAutoVariantUnwrapState();
 
 }  // namespace dbus_utils
 }  // namespace brillo

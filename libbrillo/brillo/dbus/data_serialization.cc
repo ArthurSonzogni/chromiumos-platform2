@@ -2,15 +2,84 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/check.h>
 #include <brillo/dbus/data_serialization.h>
 
+#include <sys/wait.h>
+#include <unistd.h>
+
+#include <base/check.h>
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 #include <brillo/any.h>
 #include <brillo/variant_dictionary.h>
 
-namespace brillo {
-namespace dbus_utils {
+namespace brillo::dbus_utils {
+
+namespace details {
+namespace {
+AutoVariantUnwrapState g_auto_variant_unwrap_state =
+    AutoVariantUnwrapState::kEnabled;
+}  // namespace
+
+bool DescendIntoVariantIfPresent(::dbus::MessageReader** reader_ref,
+                                 ::dbus::MessageReader* variant_reader,
+                                 bool for_any) {
+  if ((*reader_ref)->GetDataType() != ::dbus::Message::VARIANT)
+    return true;
+
+  if (!for_any) {
+    switch (g_auto_variant_unwrap_state) {
+      case AutoVariantUnwrapState::kEnabled:
+        // Do nothing.
+        break;
+      case AutoVariantUnwrapState::kDumpWithoutCrash: {
+        // TODO(b/289932268): Callers of this function, which is often
+        // message readers, should know the schema of the argument,
+        // so unwrapping VARIANT should be done explicitly, i.e., this part
+        // should not be executed conceptually. Though, unfortunately, this
+        // function is (also) used in generated code, and so currently there
+        // are many callsites, and fixing each caller one-by-one is not so
+        // easy.
+        // To be safer, record crash log here to see whether there are no
+        // unexpected uses.
+        // base::DumpWithoutCrash won't work with platform packages, so we
+        // fork then let the child process crash to make a crash report.
+        //
+        // If the process has a seccomp policy active and doesn't allow fork,
+        // then we'll crash immediately instead of in the background,
+        // but it's not feasible to detect, and this situation in general
+        // should be uncommon enough.
+        pid_t pid = fork();
+        if (pid == 0) {
+          // Let the child process just crash.
+          RAW_LOG(FATAL, "Variant unwrapping is done unexpectedly");
+        }
+        // Collect the crashed child process.
+        // Do it as a blocking operation, since this is unexpected so we do not
+        // worry about its performance.
+        auto ret = HANDLE_EINTR(waitpid(pid, nullptr, 0));
+        if (ret != 0) {
+          PLOG(ERROR) << "failed on waitpid(" << pid << ")";
+        }
+        break;
+      }
+      case AutoVariantUnwrapState::kDisabled:
+        // Unexpected variant, but return as "succeeded" without do anything,
+        // So this function will look "no-op" from callers.
+        // Often, following message reading calls will fail due to type
+        // mismatch.
+        LOG(ERROR) << "Unexpceted variant unwrap";
+        return true;
+    }
+  }
+
+  if (!(*reader_ref)->PopVariant(variant_reader))
+    return false;
+  *reader_ref = variant_reader;
+  return true;
+}
+
+}  // namespace details
 
 void AppendValueToWriter(dbus::MessageWriter* writer, bool value) {
   writer->AppendBool(value);
@@ -275,7 +344,8 @@ bool PopStructValueFromReader(dbus::MessageReader* reader, brillo::Any* value) {
 
 bool PopValueFromReader(dbus::MessageReader* reader, brillo::Any* value) {
   dbus::MessageReader variant_reader(nullptr);
-  if (!details::DescendIntoVariantIfPresent(&reader, &variant_reader))
+  if (!details::DescendIntoVariantIfPresent(&reader, &variant_reader,
+                                            /*for_any=*/true))
     return false;
 
   switch (reader->GetDataType()) {
@@ -323,5 +393,12 @@ bool PopValueFromReader(dbus::MessageReader* reader, brillo::Any* value) {
   }
 }
 
-}  // namespace dbus_utils
-}  // namespace brillo
+void SetAutoVariantUnwrapState(AutoVariantUnwrapState state) {
+  details::g_auto_variant_unwrap_state = state;
+}
+
+AutoVariantUnwrapState GetAutoVariantUnwrapState() {
+  return details::g_auto_variant_unwrap_state;
+}
+
+}  // namespace brillo::dbus_utils

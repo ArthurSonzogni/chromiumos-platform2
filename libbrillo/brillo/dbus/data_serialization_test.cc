@@ -24,6 +24,21 @@ using dbus::Response;
 
 namespace brillo {
 namespace dbus_utils {
+namespace {
+class ScopedAutoVariantUnwrapState {
+ public:
+  explicit ScopedAutoVariantUnwrapState(AutoVariantUnwrapState state)
+      : original_state_(GetAutoVariantUnwrapState()) {
+    SetAutoVariantUnwrapState(state);
+  }
+  ~ScopedAutoVariantUnwrapState() {
+    SetAutoVariantUnwrapState(original_state_);
+  }
+
+ private:
+  AutoVariantUnwrapState original_state_;
+};
+}  // namespace
 
 TEST(DBusUtils, Supported_BasicTypes) {
   EXPECT_TRUE(IsTypeSupported<bool>::value);
@@ -643,6 +658,55 @@ TEST(DBusUtils, IncompatibleVariant) {
   MessageWriter writer(message.get());
   EXPECT_DEATH(AppendValueToWriter(&writer, Any{2.2f}),
                "Type 'float' is not supported by D-Bus");
+}
+
+TEST(DBusUtils, AutoVariantUnwrapping) {
+  {
+    ScopedAutoVariantUnwrapState scoped_state(AutoVariantUnwrapState::kEnabled);
+    std::unique_ptr<Response> message = Response::CreateEmpty();
+    MessageWriter writer(message.get());
+    AppendValueToWriterAsVariant(&writer, 123);
+
+    int result = 0;
+    MessageReader reader(message.get());
+    ASSERT_TRUE(PopValueFromReader(&reader, &result));
+    EXPECT_EQ(result, 123);
+  }
+
+  {
+    // Child process dies, but otherwise behave as same as kEnabled.
+    ScopedAutoVariantUnwrapState scoped_state(
+        AutoVariantUnwrapState::kDumpWithoutCrash);
+    std::unique_ptr<Response> message = Response::CreateEmpty();
+    MessageWriter writer(message.get());
+    AppendValueToWriterAsVariant(&writer, 123);
+
+    int result = 0;
+    MessageReader reader(message.get());
+    ASSERT_TRUE(PopValueFromReader(&reader, &result));
+    EXPECT_EQ(result, 123);
+  }
+
+  {
+    // Now we cannot directly read the variant wrapped value.
+    // It is needed to read it as variant, then unwrap explicitly.
+    ScopedAutoVariantUnwrapState scoped_state(
+        AutoVariantUnwrapState::kDisabled);
+    std::unique_ptr<Response> message = Response::CreateEmpty();
+    MessageWriter writer(message.get());
+    AppendValueToWriterAsVariant(&writer, 123);
+
+    {
+      int result = 0;
+      MessageReader reader(message.get());
+      EXPECT_FALSE(PopValueFromReader(&reader, &result));
+    }
+    {
+      brillo::Any result;
+      MessageReader reader(message.get());
+      EXPECT_TRUE(PopValueFromReader(&reader, &result));
+    }
+  }
 }
 
 TEST(DBusUtils, Protobuf) {
