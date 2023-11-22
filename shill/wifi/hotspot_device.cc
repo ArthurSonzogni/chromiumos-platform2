@@ -84,7 +84,8 @@ bool HotspotDevice::Start() {
     // For non-self-managed solution, update the region domain and refresh Phy
     // info.
     manager()->wifi_provider()->UpdateRegAndPhyInfo(
-        base::BindOnce(&HotspotDevice::OnPhyInfoReady, base::Unretained(this)));
+        base::BindOnce(&HotspotDevice::OnPhyInfoReady,
+                       weak_ptr_factory_.GetWeakPtr()));
   } else {
     // For self-managed solution, region information is lost when the STA
     // interface is tore down. Schedule a scan to fetch the region domain and
@@ -347,7 +348,8 @@ void HotspotDevice::ScanDone(const bool& success) {
     // No matter success or not, require a PHY info update to be in sync with
     // the PHY.
     manager()->wifi_provider()->UpdatePhyInfo(
-        base::BindOnce(&HotspotDevice::OnPhyInfoReady, base::Unretained(this)));
+        base::BindOnce(&HotspotDevice::OnPhyInfoReady,
+                       weak_ptr_factory_.GetWeakPtr()));
   }
 }
 

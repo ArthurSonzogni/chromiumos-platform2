@@ -1489,7 +1489,9 @@ void WiFiProvider::UpdatePhyInfo(base::OnceClosure phy_ready_callback) {
 void WiFiProvider::PhyUpdateTimeout() {
   LOG(WARNING) << "Timed out waiting for RegChange/PhyDump - proceeding with "
                   "current info.";
-  std::move(phy_info_ready_cb_).Run();
+  if (phy_info_ready_cb_) {
+    std::move(phy_info_ready_cb_).Run();
+  }
 }
 
 void WiFiProvider::RegionChanged(const std::string& country) {
