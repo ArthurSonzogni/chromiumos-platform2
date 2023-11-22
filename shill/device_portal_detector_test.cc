@@ -109,20 +109,30 @@ class TestNetwork : public Network {
   // Network::RestartPortalDetection().
   bool IsPortalDetectionRunning() const { return portal_detection_running_; }
 
-  void SetDNSFailure(PortalDetector::Status status) {
+  void SetDNSFailure() {
     portal_detection_result_ = PortalDetector::Result();
-    portal_detection_result_.http_phase = PortalDetector::Phase::kDNS;
-    portal_detection_result_.http_status = status;
+    portal_detection_result_.http_result =
+        PortalDetector::HTTPProbeResult::kDNSFailure;
     portal_detection_result_.https_error = HttpRequest::Error::kDNSFailure;
+    portal_detection_result_.http_probe_completed = true;
+    portal_detection_result_.https_probe_completed = true;
+  }
+
+  void SetDNSTimeout() {
+    portal_detection_result_ = PortalDetector::Result();
+    portal_detection_result_.http_result =
+        PortalDetector::HTTPProbeResult::kDNSTimeout;
+    portal_detection_result_.https_error = HttpRequest::Error::kDNSTimeout;
     portal_detection_result_.http_probe_completed = true;
     portal_detection_result_.https_probe_completed = true;
   }
 
   void SetRedirectResult(const std::string& redirect_url) {
     portal_detection_result_ = PortalDetector::Result();
-    portal_detection_result_.http_phase = PortalDetector::Phase::kContent;
-    portal_detection_result_.http_status = PortalDetector::Status::kRedirect;
+    portal_detection_result_.http_result =
+        PortalDetector::HTTPProbeResult::kPortalRedirect;
     portal_detection_result_.http_status_code = 302;
+    portal_detection_result_.http_content_length = 0;
     portal_detection_result_.http_probe_completed = true;
     portal_detection_result_.redirect_url =
         net_base::HttpUrl::CreateFromString(redirect_url);
@@ -131,11 +141,22 @@ class TestNetwork : public Network {
     portal_detection_result_.https_probe_completed = true;
   }
 
+  void SetInvalidRedirectResult() {
+    portal_detection_result_ = PortalDetector::Result();
+    portal_detection_result_.http_result =
+        PortalDetector::HTTPProbeResult::kPortalInvalidRedirect;
+    portal_detection_result_.http_status_code = 302;
+    portal_detection_result_.http_content_length = 0;
+    portal_detection_result_.http_probe_completed = true;
+    portal_detection_result_.https_probe_completed = true;
+  }
+
   void SetHTTPSFailureResult() {
     portal_detection_result_ = PortalDetector::Result();
-    portal_detection_result_.http_phase = PortalDetector::Phase::kContent;
-    portal_detection_result_.http_status = PortalDetector::Status::kSuccess;
+    portal_detection_result_.http_result =
+        PortalDetector::HTTPProbeResult::kSuccess;
     portal_detection_result_.http_status_code = 204;
+    portal_detection_result_.http_content_length = 0;
     portal_detection_result_.https_error =
         HttpRequest::Error::kConnectionFailure;
     portal_detection_result_.http_probe_completed = true;
@@ -144,9 +165,10 @@ class TestNetwork : public Network {
 
   void SetOnlineResult() {
     portal_detection_result_ = PortalDetector::Result();
-    portal_detection_result_.http_phase = PortalDetector::Phase::kContent;
-    portal_detection_result_.http_status = PortalDetector::Status::kSuccess;
+    portal_detection_result_.http_result =
+        PortalDetector::HTTPProbeResult::kSuccess;
     portal_detection_result_.http_status_code = 204;
+    portal_detection_result_.http_content_length = 0;
     portal_detection_result_.http_probe_completed = true;
     portal_detection_result_.https_probe_completed = true;
   }
@@ -303,7 +325,7 @@ TEST_F(DevicePortalDetectorTest, DNSFailure) {
   UpdatePortalDetector();
   EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
-  test_network->SetDNSFailure(PortalDetector::Status::kFailure);
+  test_network->SetDNSFailure();
   test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStateNoConnectivity);
 
@@ -329,7 +351,7 @@ TEST_F(DevicePortalDetectorTest, DNSTimeout) {
   UpdatePortalDetector();
   EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
-  test_network->SetDNSFailure(PortalDetector::Status::kTimeout);
+  test_network->SetDNSTimeout();
   test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStateNoConnectivity);
 
@@ -380,7 +402,7 @@ TEST_F(DevicePortalDetectorTest, RedirectFoundNoURL) {
   EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   // Redirect result with an empty redirect URL -> PortalSuspected state.
-  test_network->SetRedirectResult("");
+  test_network->SetInvalidRedirectResult();
   test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStatePortalSuspected);
 

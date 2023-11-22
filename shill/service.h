@@ -319,9 +319,7 @@ class Service : public base::RefCounted<Service> {
 
   // Set portal detection failure phase, status (reason), and http status code.
   // This function is called when portal detection failed for the Service.
-  mockable void SetPortalDetectionFailure(const std::string& phase,
-                                          const std::string& status,
-                                          int status_code);
+  mockable void SetPortalDetectionFailure(const PortalDetector::Result& result);
 
   // Whether or not the most recent failure should be ignored. This will return
   // true if the failure was the result of a user-initiated disconnect, a
@@ -970,7 +968,6 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, Load);
   FRIEND_TEST(ServiceTest, LoadTrafficCounters);
   FRIEND_TEST(ServiceTest, MeteredOverride);
-  FRIEND_TEST(ServiceTest, PortalDetectionFailure);
   FRIEND_TEST(ServiceTest, Save);
   FRIEND_TEST(ServiceTest, SaveAndLoadConnectionTimestamps);
   FRIEND_TEST(ServiceTest, SaveMeteredOverride);

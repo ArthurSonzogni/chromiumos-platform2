@@ -869,8 +869,14 @@ TEST_F(ServiceTest, State) {
   service_->set_profile(nullptr);  // Break reference cycle.
 }
 
-TEST_F(ServiceTest, PortalDetectionFailure) {
+TEST_F(ServiceTest, ServicePortalDetectionFailureProperties) {
   const int kStatusCode = 204;
+  PortalDetector::Result result;
+  result.http_result = PortalDetector::HTTPProbeResult::kDNSTimeout;
+  result.http_status_code = 204;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
+
   EXPECT_CALL(*GetAdaptor(),
               EmitStringChanged(kPortalDetectionFailedPhaseProperty,
                                 kPortalDetectionPhaseDns))
@@ -883,13 +889,13 @@ TEST_F(ServiceTest, PortalDetectionFailure) {
       *GetAdaptor(),
       EmitIntChanged(kPortalDetectionFailedStatusCodeProperty, kStatusCode))
       .Times(1);
-  service_->SetPortalDetectionFailure(
-      kPortalDetectionPhaseDns, kPortalDetectionStatusTimeout, kStatusCode);
+
+  service_->SetPortalDetectionFailure(result);
   EXPECT_EQ(kPortalDetectionPhaseDns,
-            service_->portal_detection_failure_phase_);
+            service_->portal_detection_failure_phase());
   EXPECT_EQ(kPortalDetectionStatusTimeout,
-            service_->portal_detection_failure_status_);
-  EXPECT_EQ(kStatusCode, service_->portal_detection_failure_status_code_);
+            service_->portal_detection_failure_status());
+  EXPECT_EQ(kStatusCode, service_->portal_detection_failure_status_code());
 }
 
 TEST_F(ServiceTest, StateResetAfterFailure) {
@@ -2851,8 +2857,7 @@ TEST_F(ServiceTest, PortalDetectionResult_AfterDisconnection) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kContent,
-  result.http_status = PortalDetector::Status::kSuccess;
+  result.http_result = PortalDetector::HTTPProbeResult::kSuccess;
   result.http_status_code = 204;
   result.num_attempts = 1;
   result.http_probe_completed = true;
@@ -2880,8 +2885,7 @@ TEST_F(ServiceTest, PortalDetectionResult_Online) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kContent,
-  result.http_status = PortalDetector::Status::kSuccess;
+  result.http_result = PortalDetector::HTTPProbeResult::kSuccess;
   result.http_status_code = 204;
   result.num_attempts = 1;
   result.http_probe_completed = true;
@@ -2906,8 +2910,7 @@ TEST_F(ServiceTest, PortalDetectionResult_OnlineSecondTry) {
   service_->increment_portal_detection_count_for_testing();
 
   PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kContent,
-  result.http_status = PortalDetector::Status::kSuccess;
+  result.http_result = PortalDetector::HTTPProbeResult::kSuccess;
   result.http_status_code = 204;
   result.num_attempts = 1;
   result.http_probe_completed = true;
@@ -2933,8 +2936,7 @@ TEST_F(ServiceTest, PortalDetectionResult_ProbeConnectionFailure) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kConnection,
-  result.http_status = PortalDetector::Status::kFailure;
+  result.http_result = PortalDetector::HTTPProbeResult::kConnectionFailure;
   result.http_status_code = 0;
   result.num_attempts = 1;
   result.http_probe_completed = true;
@@ -2961,8 +2963,7 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSFailure) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kDNS,
-  result.http_status = PortalDetector::Status::kFailure;
+  result.http_result = PortalDetector::HTTPProbeResult::kDNSFailure;
   result.http_status_code = 0;
   result.https_error = HttpRequest::Error::kDNSFailure;
   result.num_attempts = 1;
@@ -2990,8 +2991,7 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSTimeout) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kDNS,
-  result.http_status = PortalDetector::Status::kTimeout;
+  result.http_result = PortalDetector::HTTPProbeResult::kDNSTimeout;
   result.http_status_code = 0;
   result.https_error = HttpRequest::Error::kDNSTimeout;
   result.num_attempts = 1;
@@ -3019,8 +3019,7 @@ TEST_F(ServiceTest, PortalDetectionResult_Redirect) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kContent,
-  result.http_status = PortalDetector::Status::kRedirect;
+  result.http_result = PortalDetector::HTTPProbeResult::kPortalRedirect;
   result.http_status_code = 302;
   result.redirect_url =
       net_base::HttpUrl::CreateFromString("https://captive.portal.com/sigin");
@@ -3051,8 +3050,7 @@ TEST_F(ServiceTest, PortalDetectionResult_RedirectNoUrl) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kContent,
-  result.http_status = PortalDetector::Status::kRedirect;
+  result.http_result = PortalDetector::HTTPProbeResult::kPortalInvalidRedirect;
   result.http_status_code = 302;
   result.num_attempts = 1;
   result.http_probe_completed = true;
@@ -3079,9 +3077,9 @@ TEST_F(ServiceTest, PortalDetectionResult_PortalSuspected) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kContent,
-  result.http_status = PortalDetector::Status::kSuccess;
-  result.http_status_code = 204;
+  result.http_result = PortalDetector::HTTPProbeResult::kPortalSuspected;
+  result.http_status_code = 200;
+  result.http_content_length = 123;
   result.https_error = HttpRequest::Error::kConnectionFailure;
   result.num_attempts = 1;
   result.http_probe_completed = true;
@@ -3099,7 +3097,7 @@ TEST_F(ServiceTest, PortalDetectionResult_PortalSuspected) {
             service_->portal_detection_failure_phase());
   EXPECT_EQ(kPortalDetectionStatusSuccess,
             service_->portal_detection_failure_status());
-  EXPECT_EQ(204, service_->portal_detection_failure_status_code());
+  EXPECT_EQ(200, service_->portal_detection_failure_status_code());
 }
 
 TEST_F(ServiceTest, PortalDetectionResult_NoConnectivity) {
@@ -3108,9 +3106,7 @@ TEST_F(ServiceTest, PortalDetectionResult_NoConnectivity) {
   service_->AttachNetwork(network->AsWeakPtr());
 
   PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kUnknown,
-  result.http_status = PortalDetector::Status::kFailure;
-  result.http_status_code = 0;
+  result.http_result = PortalDetector::HTTPProbeResult::kNoResult;
   result.https_error = HttpRequest::Error::kConnectionFailure;
   result.num_attempts = 1;
   result.http_probe_completed = true;

@@ -40,10 +40,6 @@ class MockService : public Service {
   MOCK_METHOD(ConnectState, state, (), (const, override));
   MOCK_METHOD(void, SetState, (ConnectState), (override));
   MOCK_METHOD(void, SetProbeUrl, (const std::string&), (override));
-  MOCK_METHOD(void,
-              SetPortalDetectionFailure,
-              (const std::string&, const std::string&, int),
-              (override));
   MOCK_METHOD(bool, IsConnected, (Error*), (const, override));
   MOCK_METHOD(bool, IsConnecting, (), (const, override));
   MOCK_METHOD(bool, IsDisconnecting, (), (const, override));

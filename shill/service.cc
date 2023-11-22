@@ -676,21 +676,74 @@ void Service::SetState(ConnectState state) {
   adaptor_->EmitStringChanged(kStateProperty, GetStateString());
 }
 
-void Service::SetPortalDetectionFailure(const std::string& phase,
-                                        const std::string& status,
-                                        int status_code) {
+void Service::SetPortalDetectionFailure(const PortalDetector::Result& result) {
+  // TODO(b/305129516): Eliminate the following three Service properties
+  //  - kPortalDetectionFailedPhaseProperty,
+  //  - kPortalDetectionFailedStatusProperty,
+  //  - kPortalDetectionFailedStatusCodeProperty
+  // and make sure that Chrome does not assume that detection was achieved with
+  // HTTP probes. For CAPPORT and Passpoint R3 based detection, these properties
+  // are not applicable. The first two properties are already unused inside
+  // Chrome.
+  std::string_view phase;
+  std::string_view status;
+  switch (result.http_result) {
+    case PortalDetector::HTTPProbeResult::kNoResult:
+      phase = kPortalDetectionPhaseUnknown;
+      status = kPortalDetectionStatusFailure;
+      break;
+    case PortalDetector::HTTPProbeResult::kDNSFailure:
+      phase = kPortalDetectionPhaseDns;
+      status = kPortalDetectionStatusFailure;
+      break;
+    case PortalDetector::HTTPProbeResult::kDNSTimeout:
+      phase = kPortalDetectionPhaseDns;
+      status = kPortalDetectionStatusTimeout;
+      break;
+    case PortalDetector::HTTPProbeResult::kConnectionFailure:
+      phase = kPortalDetectionPhaseConnection;
+      status = kPortalDetectionStatusFailure;
+      break;
+    case PortalDetector::HTTPProbeResult::kHTTPTimeout:
+      phase = kPortalDetectionPhaseConnection;
+      status = kPortalDetectionStatusTimeout;
+      break;
+    case PortalDetector::HTTPProbeResult::kSuccess:
+      phase = kPortalDetectionPhaseContent;
+      status = kPortalDetectionStatusSuccess;
+      break;
+    case PortalDetector::HTTPProbeResult::kPortalSuspected:
+      phase = kPortalDetectionPhaseContent;
+      status = kPortalDetectionStatusSuccess;
+      break;
+    case PortalDetector::HTTPProbeResult::kPortalRedirect:
+      phase = kPortalDetectionPhaseContent;
+      status = kPortalDetectionStatusRedirect;
+      break;
+    case PortalDetector::HTTPProbeResult::kPortalInvalidRedirect:
+      phase = kPortalDetectionPhaseContent;
+      status = kPortalDetectionStatusRedirect;
+      break;
+    case PortalDetector::HTTPProbeResult::kFailure:
+      phase = kPortalDetectionPhaseContent;
+      status = kPortalDetectionStatusFailure;
+      break;
+  }
+
   if (portal_detection_failure_phase_ != phase) {
     portal_detection_failure_phase_ = phase;
-    adaptor_->EmitStringChanged(kPortalDetectionFailedPhaseProperty, phase);
+    adaptor_->EmitStringChanged(kPortalDetectionFailedPhaseProperty,
+                                portal_detection_failure_phase_);
   }
   if (portal_detection_failure_status_ != status) {
     portal_detection_failure_status_ = status;
-    adaptor_->EmitStringChanged(kPortalDetectionFailedStatusProperty, status);
+    adaptor_->EmitStringChanged(kPortalDetectionFailedStatusProperty,
+                                portal_detection_failure_status_);
   }
-  if (portal_detection_failure_status_code_ != status_code) {
-    portal_detection_failure_status_code_ = status_code;
+  if (portal_detection_failure_status_code_ != result.http_status_code) {
+    portal_detection_failure_status_code_ = result.http_status_code;
     adaptor_->EmitIntChanged(kPortalDetectionFailedStatusCodeProperty,
-                             status_code);
+                             portal_detection_failure_status_code_);
   }
 }
 
@@ -2730,10 +2783,7 @@ void Service::NetworkEventHandler::OnNetworkValidationResult(
 
   if (result.GetValidationState() !=
       PortalDetector::ValidationState::kInternetConnectivity) {
-    service_->SetPortalDetectionFailure(
-        PortalDetector::PhaseToString(result.http_phase),
-        PortalDetector::StatusToString(result.http_status),
-        result.http_status_code);
+    service_->SetPortalDetectionFailure(result);
   }
 }
 }  // namespace shill

@@ -116,16 +116,29 @@ class PortalDetector {
   // PortalDetector.
   static ProbingConfiguration DefaultProbingConfiguration();
 
-  // The Phase enum indicates the phase at which the probe fails.
-  enum class Phase {
-    kUnknown,
-    kConnection,  // Failure to establish connection with server
-    kDNS,         // Failure to resolve hostname or DNS server failure
-    kHTTP,        // Failure to read or write to server
-    kContent      // Content mismatch in response
+  enum class HTTPProbeResult {
+    kNoResult,
+    kDNSFailure,
+    kDNSTimeout,
+    kConnectionFailure,
+    kHTTPTimeout,
+    kSuccess,
+    kPortalSuspected,
+    kPortalRedirect,
+    kPortalInvalidRedirect,
+    kFailure,
   };
 
-  enum class Status { kFailure, kSuccess, kTimeout, kRedirect };
+  // Static method used to map a portal detection phase to a string. This
+  // includes the phases for connection, DNS, HTTP, returned content and
+  // unknown.
+  static std::string_view HTTPProbeResultName(HTTPProbeResult result);
+
+  // Static method mapping from HttpRequest errors to PortalDetection
+  // Status. For example, if the HttpRequest error is kResultDNSFailure,
+  // this method returns Status::kFailure.
+  static HTTPProbeResult GetHTTPProbeStatusFromRequestError(
+      HttpRequest::Error error);
 
   // Represents the possible outcomes of a portal detection attempt.
   enum class ValidationState {
@@ -142,15 +155,17 @@ class PortalDetector {
     kPortalRedirect,
   };
 
+  // Static method to map from the validation state of a portal detection Result
+  // to a string.
+  static std::string_view ValidationStateToString(ValidationState state);
+
   // Represents the detailed result of a complete portal detection attempt (DNS
   // resolution, HTTP probe, HTTPS probe).
   struct Result {
     // The total number of trial attempts so far.
     int num_attempts = 0;
-    // Final Phase of the HTTP probe when the trial finished.
-    Phase http_phase = Phase::kUnknown;
-    // Final Status of the HTTP probe when the trial finished.
-    Status http_status = Status::kFailure;
+
+    HTTPProbeResult http_result = HTTPProbeResult::kNoResult;
     // The HTTP response status code from the HTTP probe.
     int http_status_code = 0;
     // The content length of the HTTP response.
@@ -215,29 +230,6 @@ class PortalDetector {
   PortalDetector& operator=(const PortalDetector&) = delete;
 
   virtual ~PortalDetector();
-
-  // Static method used to map a portal detection phase to a string.  This
-  // includes the phases for connection, DNS, HTTP, returned content and
-  // unknown.
-  static const std::string PhaseToString(Phase phase);
-
-  // Static method to map from the result of a portal detection phase to a
-  // status string. This method supports success, timeout and failure.
-  static const std::string StatusToString(Status status);
-
-  // Static method to map from the validation state of a portal detection Result
-  // to a string.
-  static const std::string ValidationStateToString(ValidationState state);
-
-  // Static method mapping from HttpRequest errors to PortalDetection
-  // Phases. For example, if the HttpRequest error is kResultDNSFailure,
-  // this method returns Phase::kDNS.
-  static Phase GetPortalPhaseFromRequestError(HttpRequest::Error error);
-
-  // Static method mapping from HttpRequest errors to PortalDetection
-  // Status. For example, if the HttpRequest error is kResultDNSFailure,
-  // this method returns Status::kFailure.
-  static Status GetPortalStatusFromRequestError(HttpRequest::Error error);
 
   // Starts and schedules a new portal detection attempt according to the value
   // of GetNextAttemptDelay. If an attempt is already scheduled to run but has
@@ -379,8 +371,8 @@ class PortalDetector {
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_{this};
 };
 
-std::ostream& operator<<(std::ostream& stream, PortalDetector::Phase phase);
-std::ostream& operator<<(std::ostream& stream, PortalDetector::Status status);
+std::ostream& operator<<(std::ostream& stream,
+                         PortalDetector::HTTPProbeResult result);
 std::ostream& operator<<(std::ostream& stream,
                          PortalDetector::ValidationState state);
 std::ostream& operator<<(std::ostream& stream, PortalDetector::Result result);

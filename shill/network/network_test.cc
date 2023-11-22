@@ -1080,8 +1080,7 @@ TEST_F(NetworkTest, PortalDetectionRestartSuccess) {
 TEST_F(NetworkTest, PortalDetectionResult_AfterDisconnection) {
   EXPECT_FALSE(network_->IsConnected());
   PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kContent,
-  result.http_status = PortalDetector::Status::kSuccess;
+  result.http_result = PortalDetector::HTTPProbeResult::kSuccess;
   result.http_status_code = 204;
   result.http_content_length = 0;
   result.https_error = HttpRequest::Error::kHTTPTimeout;
@@ -1099,8 +1098,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
   SetNetworkStateForPortalDetection();
   SetNetworkStateForConnectionDiagnostic();
   PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kContent,
-  result.http_status = PortalDetector::Status::kSuccess;
+  result.http_result = PortalDetector::HTTPProbeResult::kSuccess;
   result.http_status_code = 204;
   result.http_content_length = 0;
   result.https_error = HttpRequest::Error::kConnectionFailure;
@@ -1149,8 +1147,7 @@ TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
   SetNetworkStateForPortalDetection();
   SetNetworkStateForConnectionDiagnostic();
   PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kConnection,
-  result.http_status = PortalDetector::Status::kFailure;
+  result.http_result = PortalDetector::HTTPProbeResult::kConnectionFailure;
   result.https_error = HttpRequest::Error::kConnectionFailure;
   result.http_duration = base::Milliseconds(0);
   result.https_duration = base::Milliseconds(200);
@@ -1187,8 +1184,7 @@ TEST_F(NetworkTest, PortalDetectionResult_InternetConnectivity) {
   EXPECT_FALSE(network_->network_validation_result().has_value());
   SetNetworkStateForPortalDetection();
   PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kContent,
-  result.http_status = PortalDetector::Status::kSuccess;
+  result.http_result = PortalDetector::HTTPProbeResult::kSuccess;
   result.http_duration = base::Milliseconds(100);
   result.https_duration = base::Milliseconds(200);
   result.http_status_code = 204;
@@ -1234,8 +1230,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
   EXPECT_FALSE(network_->network_validation_result().has_value());
   SetNetworkStateForPortalDetection();
   PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kContent,
-  result.http_status = PortalDetector::Status::kRedirect;
+  result.http_result = PortalDetector::HTTPProbeResult::kPortalRedirect;
   result.http_status_code = 302;
   result.http_content_length = 0;
   result.redirect_url =
@@ -1284,8 +1279,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalInvalidRedirect) {
   SetNetworkStateForPortalDetection();
   SetNetworkStateForConnectionDiagnostic();
   PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kContent,
-  result.http_status = PortalDetector::Status::kRedirect;
+  result.http_result = PortalDetector::HTTPProbeResult::kPortalInvalidRedirect;
   result.http_status_code = 302;
   result.http_content_length = 0;
   result.https_error = HttpRequest::Error::kConnectionFailure;
@@ -1324,8 +1318,7 @@ TEST_F(NetworkTest, PortalDetectionResult_Empty200) {
   SetNetworkStateForPortalDetection();
   SetNetworkStateForConnectionDiagnostic();
   PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kContent,
-  result.http_status = PortalDetector::Status::kSuccess;
+  result.http_result = PortalDetector::HTTPProbeResult::kSuccess;
   result.http_status_code = 200;
   result.http_content_length = 0;
   result.http_duration = base::Milliseconds(100);
@@ -1362,8 +1355,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalSuspected200) {
   SetNetworkStateForPortalDetection();
   SetNetworkStateForConnectionDiagnostic();
   PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kContent,
-  result.http_status = PortalDetector::Status::kFailure;
+  result.http_result = PortalDetector::HTTPProbeResult::kPortalSuspected;
   result.http_status_code = 200;
   result.http_content_length = 1023;
   result.http_duration = base::Milliseconds(100);
@@ -1401,8 +1393,7 @@ TEST_F(NetworkTest, PortalDetectionResult_ClearAfterStop) {
   EXPECT_FALSE(network_->network_validation_result().has_value());
   SetNetworkStateForPortalDetection();
   PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kContent,
-  result.http_status = PortalDetector::Status::kSuccess;
+  result.http_result = PortalDetector::HTTPProbeResult::kSuccess;
   result.http_status_code = 204;
   result.http_content_length = 0;
   result.http_duration = base::Milliseconds(100);
@@ -2317,8 +2308,7 @@ TEST(ValidationLogTest, ValidationLogRecordMetrics) {
   PortalDetector::Result i, r, p, n;
 
   // |i| -> kInternetConnectivity
-  i.http_phase = PortalDetector::Phase::kContent;
-  i.http_status = PortalDetector::Status::kSuccess;
+  i.http_result = PortalDetector::HTTPProbeResult::kSuccess;
   i.http_status_code = 204;
   i.http_content_length = 0;
   i.http_probe_completed = true;
@@ -2327,8 +2317,7 @@ TEST(ValidationLogTest, ValidationLogRecordMetrics) {
             i.GetValidationState());
 
   // |r| -> kPortalRedirect
-  r.http_phase = PortalDetector::Phase::kContent;
-  r.http_status = PortalDetector::Status::kRedirect;
+  r.http_result = PortalDetector::HTTPProbeResult::kPortalRedirect;
   r.http_status_code = 302;
   r.http_content_length = 0;
   r.https_error = HttpRequest::Error::kConnectionFailure;
@@ -2342,8 +2331,7 @@ TEST(ValidationLogTest, ValidationLogRecordMetrics) {
             r.GetValidationState());
 
   // |p| -> kPortalSuspected
-  p.http_phase = PortalDetector::Phase::kContent;
-  p.http_status = PortalDetector::Status::kSuccess;
+  p.http_result = PortalDetector::HTTPProbeResult::kPortalSuspected;
   p.http_status_code = 200;
   p.http_content_length = 678;
   p.https_error = HttpRequest::Error::kConnectionFailure;
@@ -2355,8 +2343,7 @@ TEST(ValidationLogTest, ValidationLogRecordMetrics) {
             p.GetValidationState());
 
   // |n| -> kNoConnectivity
-  n.http_phase = PortalDetector::Phase::kConnection;
-  n.http_status = PortalDetector::Status::kFailure;
+  n.http_result = PortalDetector::HTTPProbeResult::kConnectionFailure;
   n.https_error = HttpRequest::Error::kConnectionFailure;
   n.http_probe_completed = true;
   n.https_probe_completed = true;
@@ -2463,8 +2450,8 @@ TEST(ValidationLogTest, ValidationLogRecordMetricsWithoutRecord) {
 
 TEST(ValidationLogTest, ValidationLogRecordMetricsCapportSupported) {
   PortalDetector::Result redirect_result;
-  redirect_result.http_phase = PortalDetector::Phase::kContent;
-  redirect_result.http_status = PortalDetector::Status::kRedirect;
+  redirect_result.http_result =
+      PortalDetector::HTTPProbeResult::kPortalRedirect;
   redirect_result.http_status_code = 302;
   redirect_result.http_content_length = 0;
   redirect_result.https_error = HttpRequest::Error::kConnectionFailure;
