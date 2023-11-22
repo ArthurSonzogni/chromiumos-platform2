@@ -4,11 +4,13 @@
 
 #include "dlp/dlp_adaptor.h"
 
+#include <map>
 #include <memory>
 #include <poll.h>
 #include <string>
 #include <utility>
 
+#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
@@ -1967,17 +1969,19 @@ TEST_F(DlpAdaptorTest, GetDatabaseEntries) {
 
   ASSERT_EQ(response.files_entries_size(), 2u);
 
-  FileMetadata file_entry1 = response.files_entries()[0];
-  EXPECT_EQ(file_entry1.inode(), id1.first);
-  EXPECT_EQ(file_entry1.crtime(), id1.second);
-  EXPECT_EQ(file_entry1.source_url(), source1);
-  EXPECT_EQ(file_entry1.referrer_url(), referrer1);
+  std::map<FileId, FileMetadata> files_entries_map;
+  for (const auto& file_entry : response.files_entries()) {
+    files_entries_map[FileId(file_entry.inode(), file_entry.crtime())] =
+        file_entry;
+  }
 
-  FileMetadata file_entry2 = response.files_entries()[1];
-  EXPECT_EQ(file_entry2.inode(), id2.first);
-  EXPECT_EQ(file_entry2.crtime(), id2.second);
-  EXPECT_EQ(file_entry2.source_url(), source2);
-  EXPECT_EQ(file_entry2.referrer_url(), referrer2);
+  ASSERT_TRUE(base::Contains(files_entries_map, id1));
+  EXPECT_EQ(files_entries_map.at(id1).source_url(), source1);
+  EXPECT_EQ(files_entries_map.at(id1).referrer_url(), referrer1);
+
+  ASSERT_TRUE(base::Contains(files_entries_map, id2));
+  EXPECT_EQ(files_entries_map.at(id2).source_url(), source2);
+  EXPECT_EQ(files_entries_map.at(id2).referrer_url(), referrer2);
 }
 
 class DlpAdaptorCheckFilesTransferTest
