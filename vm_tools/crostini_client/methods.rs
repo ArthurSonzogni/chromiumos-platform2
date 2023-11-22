@@ -598,13 +598,16 @@ impl Methods {
     }
 
     fn init_dlc_install(&mut self, name: &str) -> Result<(), Box<dyn Error>> {
+        let mut install_request = dlcservice::InstallRequest::new();
+        install_request.id = name.to_owned();
+
         let method = Message::new_method_call(
             DLC_SERVICE_SERVICE_NAME,
             DLC_SERVICE_SERVICE_PATH,
             DLC_SERVICE_INTERFACE,
             INSTALL_METHOD,
         )?
-        .append1(name);
+        .append1(install_request.write_to_bytes()?);
 
         self.connection
             .send_with_reply_and_block(method, DEFAULT_TIMEOUT)
