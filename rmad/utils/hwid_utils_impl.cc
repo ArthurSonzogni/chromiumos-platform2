@@ -65,4 +65,25 @@ bool HwidUtilsImpl::VerifyChecksum(const std::string& hwid) {
   return (checksum == original_checksum);
 }
 
+bool HwidUtilsImpl::VerifyHwidFormat(const std::string& hwid,
+                                     bool has_checksum) {
+  std::vector<std::string> parts =
+      base::SplitString(hwid, " ", base::WhitespaceHandling::TRIM_WHITESPACE,
+                        base::SplitResult::SPLIT_WANT_NONEMPTY);
+
+  if (parts.size() != 2) {
+    LOG(ERROR) << "HWID string should be split into exactly 2 parts.";
+    return false;
+  }
+
+  size_t expected_remainder = (has_checksum) ? 3 : 1;
+
+  if (parts[1].size() % 4 != expected_remainder) {
+    LOG(ERROR) << "The given HWID has unexpected length.";
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace rmad

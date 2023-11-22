@@ -20,6 +20,15 @@ class HwidUtils {
   // given HWID string has invalid length or the checksum is not correct.
   virtual bool VerifyChecksum(const std::string& hwid) = 0;
 
+  // Validate the format of the HWID string provided. A valid HWID string should
+  // be in the a format like:
+  // <MODEL_NAME>-<RLZ_CODE> <(4N+1)CHARS_ENCODED_COMPONENT><(2)CHARS_CHECKSUM>
+  // , which:
+  // (1) Can be split into exactly 2 parts by whitespace.
+  // (2) The encoded component part has a valid length (4N+1).
+  // (3) The length of the checksum is 2.
+  virtual bool VerifyHwidFormat(const std::string& hwid, bool has_checksum) = 0;
+
  private:
   // Calculate checksum from the given HWID string without checksum. The
   // original checksum should be stripped before passing the HWID string to the
