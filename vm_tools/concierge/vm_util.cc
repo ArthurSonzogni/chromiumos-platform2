@@ -980,6 +980,22 @@ ArcVmCPUTopology::ArcVmCPUTopology(uint32_t num_cpus, uint32_t num_rt_cpus) {
   num_rt_cpus_ = num_rt_cpus;
 }
 
+uint32_t GetBorealisCpuCountOverride(uint32_t num_cpus) {
+  // 8 or more logical processors, return 2 less to allow
+  // breathing room for the virtio threads.
+
+  uint32_t num_vcpus;
+  if (num_cpus >= 8) {
+    num_vcpus = num_cpus - 2;
+  } else {
+    num_vcpus = num_cpus - 1;
+  }
+
+  LOG(INFO) << num_vcpus << "/" << (num_cpus)
+            << " logical processors will be used.";
+  return num_vcpus;
+}
+
 std::ostream& operator<<(std::ostream& os, const VmStartChecker::Status& e) {
   switch (e) {
     case VmStartChecker::Status::READY:

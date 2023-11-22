@@ -219,6 +219,10 @@ constexpr char kPerBootVmShaderCacheFeatureName[] =
 const VariationsFeature kPerBootVmShaderCacheFeature{
     kPerBootVmShaderCacheFeatureName, FEATURE_DISABLED_BY_DEFAULT};
 
+// Feature name of borealis-vcpu-tweaks
+constexpr char kBorealisVcpuTweaksFeatureName[] =
+    "CrOSLateBootBorealisVcpuTweaks";
+
 // Feature name of borealis-provision.
 constexpr char kBorealisProvisionFeature[] = "BorealisProvision";
 
@@ -232,6 +236,9 @@ constexpr char kArcVmInitialThrottleFeatureQuotaParam[] = "quota";
 // Needs to be const as libfeatures does pointers checking.
 const VariationsFeature kArcVmInitialThrottleFeature{
     kArcVmInitialThrottleFeatureName, FEATURE_DISABLED_BY_DEFAULT};
+
+const VariationsFeature kBorealisVcpuTweaksFeature{
+    kBorealisVcpuTweaksFeatureName, FEATURE_DISABLED_BY_DEFAULT};
 
 // Rational for setting bytes-per-inode to 32KiB (rather than the default 16
 // KiB) in go/borealis-inode.
@@ -1977,6 +1984,16 @@ StartVmResponse Service::StartVmInternal(
   // Group the CPUs by their physical package ID to determine CPU cluster
   // layout.
   SetVmCpuArgs(cpus, vm_builder);
+
+  if (classification == apps::BOREALIS) {
+    bool vcpu_tweaks = feature::PlatformFeatures::Get()->IsEnabledBlocking(
+        kBorealisVcpuTweaksFeature);
+
+    if (vcpu_tweaks) {
+      // Enable the vCPU tweaks here
+      vm_builder.SetCpus(GetBorealisCpuCountOverride(cpus));
+    }
+  }
 
   // TODO(b/288361720): This is temporary while we test the 'provision'
   // mount option. Once we're satisfied things are stable, we'll make this

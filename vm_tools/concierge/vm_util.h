@@ -197,6 +197,9 @@ bool UpdateCpuLatencySensitive(const base::FilePath& cpu_cgroup, bool enable);
 // Updates |cpu_cgroup|'s cpu.uclamp.min based on |percent|.
 bool UpdateCpuUclampMin(const base::FilePath& cpu_cgroup, double percent);
 
+// Returns the new vCPU count to use in a Borealis VM
+uint32_t GetBorealisCpuCountOverride(uint32_t num_cpus);
+
 // Convert file path into fd path
 // This will open the file and append SafeFD into provided container
 std::string ConvertToFdBasedPath(brillo::SafeFD& parent_fd,
