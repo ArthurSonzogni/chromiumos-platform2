@@ -11,7 +11,8 @@
 #include <base/functional/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "metrics/fake_metrics_library.h"
+#include <metrics/fake_metrics_library.h>
+#include <net-base/http_url.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/metrics.h"
@@ -111,8 +112,10 @@ class TestNetwork : public Network {
     portal_detection_result_ = PortalDetector::Result();
     portal_detection_result_.http_phase = PortalDetector::Phase::kDNS;
     portal_detection_result_.http_status = status;
+    portal_detection_result_.http_probe_completed = true;
     portal_detection_result_.https_phase = PortalDetector::Phase::kDNS;
     portal_detection_result_.https_status = status;
+    portal_detection_result_.https_probe_completed = true;
   }
 
   void SetRedirectResult(const std::string& redirect_url) {
@@ -120,9 +123,14 @@ class TestNetwork : public Network {
     portal_detection_result_.http_phase = PortalDetector::Phase::kContent;
     portal_detection_result_.http_status = PortalDetector::Status::kRedirect;
     portal_detection_result_.http_status_code = 302;
-    portal_detection_result_.redirect_url_string = redirect_url;
+    portal_detection_result_.http_probe_completed = true;
+    portal_detection_result_.redirect_url =
+        net_base::HttpUrl::CreateFromString(redirect_url);
+    portal_detection_result_.probe_url =
+        net_base::HttpUrl::CreateFromString(redirect_url);
     portal_detection_result_.https_phase = PortalDetector::Phase::kContent;
     portal_detection_result_.https_status = PortalDetector::Status::kSuccess;
+    portal_detection_result_.https_probe_completed = true;
   }
 
   void SetHTTPSFailureResult() {
@@ -130,8 +138,10 @@ class TestNetwork : public Network {
     portal_detection_result_.http_phase = PortalDetector::Phase::kContent;
     portal_detection_result_.http_status = PortalDetector::Status::kSuccess;
     portal_detection_result_.http_status_code = 204;
+    portal_detection_result_.http_probe_completed = true;
     portal_detection_result_.https_phase = PortalDetector::Phase::kContent;
     portal_detection_result_.https_status = PortalDetector::Status::kFailure;
+    portal_detection_result_.https_probe_completed = true;
   }
 
   void SetOnlineResult() {
@@ -139,8 +149,10 @@ class TestNetwork : public Network {
     portal_detection_result_.http_phase = PortalDetector::Phase::kContent;
     portal_detection_result_.http_status = PortalDetector::Status::kSuccess;
     portal_detection_result_.http_status_code = 204;
+    portal_detection_result_.http_probe_completed = true;
     portal_detection_result_.https_phase = PortalDetector::Phase::kContent;
     portal_detection_result_.https_status = PortalDetector::Status::kSuccess;
+    portal_detection_result_.https_probe_completed = true;
   }
 
   void ContinuePortalDetection() {
@@ -346,8 +358,9 @@ TEST_F(DevicePortalDetectorTest, RedirectFound) {
   test_network->SetRedirectResult(kRedirectUrl);
   test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStateRedirectFound);
+  ASSERT_TRUE(test_network->portal_detection_result().probe_url);
   EXPECT_EQ(GetServiceProbeUrlString(),
-            test_network->portal_detection_result().probe_url_string);
+            test_network->portal_detection_result().probe_url->ToString());
 
   EXPECT_THAT(MetricsEnumCalls(Metrics::kPortalDetectorInitialResult),
               ElementsAre(Metrics::kPortalDetectorResultRedirectFound));

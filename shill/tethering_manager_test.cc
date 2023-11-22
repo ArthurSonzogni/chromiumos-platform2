@@ -23,6 +23,7 @@
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/http_url.h>
 
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/mock_cellular.h"
@@ -1273,7 +1274,8 @@ TEST_F(TetheringManagerTest, StartTetheringSessionUpstreamNetworkHasPortal) {
   portal_detector_result.http_status = PortalDetector::Status::kRedirect;
   portal_detector_result.https_phase = PortalDetector::Phase::kContent;
   portal_detector_result.https_status = PortalDetector::Status::kSuccess;
-  portal_detector_result.redirect_url_string = "https://portal.com/login";
+  portal_detector_result.redirect_url =
+      net_base::HttpUrl::CreateFromString("https://portal.com/login");
   network_->set_portal_detector_result_for_testing(portal_detector_result);
   OnUpstreamNetworkAcquired(tethering_manager_,
                             TetheringManager::SetEnabledResult::kSuccess);

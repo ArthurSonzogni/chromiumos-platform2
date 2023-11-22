@@ -15,16 +15,17 @@
 #include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/test/bind.h>
 #include <base/task/single_thread_task_runner.h>
+#include <base/test/bind.h>
 #include <base/test/test_future.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
+#include <net-base/http_url.h>
 
-#include "base/time/time.h"
 #include "shill/dbus/dbus_control.h"
 #include "shill/error.h"
 #include "shill/ethernet/ethernet_service.h"
@@ -2855,6 +2856,8 @@ TEST_F(ServiceTest, PortalDetectionResult_AfterDisconnection) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = 1;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
 
   EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
                                         Technology(Technology::kWiFi), _))
@@ -2884,6 +2887,8 @@ TEST_F(ServiceTest, PortalDetectionResult_Online) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = 1;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
 
   EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
                                         Technology(Technology::kWiFi),
@@ -2910,6 +2915,8 @@ TEST_F(ServiceTest, PortalDetectionResult_OnlineSecondTry) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = 1;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
 
   EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kPortalDetectorRetryResult,
                                         Technology(Technology::kWiFi),
@@ -2937,6 +2944,8 @@ TEST_F(ServiceTest, PortalDetectionResult_ProbeConnectionFailure) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = 1;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
 
   EXPECT_CALL(*metrics(),
               SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
@@ -2965,6 +2974,8 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSFailure) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kFailure;
   result.num_attempts = 1;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
 
   EXPECT_CALL(*metrics(),
               SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
@@ -2993,6 +3004,8 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSTimeout) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kFailure;
   result.num_attempts = 1;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
 
   EXPECT_CALL(*metrics(),
               SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
@@ -3020,9 +3033,13 @@ TEST_F(ServiceTest, PortalDetectionResult_Redirect) {
   result.http_status_code = 302;
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kSuccess;
-  result.redirect_url_string = "https://captive.portal.com/sigin";
-  result.probe_url_string = PortalDetector::kDefaultHttpUrl;
+  result.redirect_url =
+      net_base::HttpUrl::CreateFromString("https://captive.portal.com/sigin");
+  result.probe_url =
+      net_base::HttpUrl::CreateFromString(PortalDetector::kDefaultHttpUrl);
   result.num_attempts = 1;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
 
   EXPECT_CALL(*metrics(),
               SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
@@ -3051,6 +3068,8 @@ TEST_F(ServiceTest, PortalDetectionResult_RedirectNoUrl) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = 1;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
 
   EXPECT_CALL(*metrics(),
               SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
@@ -3079,6 +3098,8 @@ TEST_F(ServiceTest, PortalDetectionResult_PortalSuspected) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kFailure;
   result.num_attempts = 1;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
 
   EXPECT_CALL(*metrics(),
               SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
@@ -3107,6 +3128,8 @@ TEST_F(ServiceTest, PortalDetectionResult_NoConnectivity) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kFailure;
   result.num_attempts = 1;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
 
   EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kPortalDetectorInitialResult,
                                         Technology(Technology::kWiFi),

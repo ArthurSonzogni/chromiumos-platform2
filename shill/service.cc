@@ -2699,8 +2699,13 @@ void Service::NetworkEventHandler::OnNetworkValidationResult(
                                      service_->technology(),
                                      result.GetResultMetric());
 
-  // Set the probe URL. It should be empty if there is no redirect.
-  service_->SetProbeUrl(result.probe_url_string);
+  // Set the probe URL Service property if the network validation result was
+  // kPortalRedirect, otherwise clear it.
+  if (result.probe_url) {
+    service_->SetProbeUrl(result.probe_url->ToString());
+  } else {
+    service_->SetProbeUrl("");
+  }
 
   switch (result.GetValidationState()) {
     case PortalDetector::ValidationState::kInternetConnectivity:

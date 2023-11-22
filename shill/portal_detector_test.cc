@@ -85,8 +85,8 @@ MATCHER_P(IsResult, result, "") {
           result.http_status == arg.http_status &&
           result.https_phase == arg.https_phase &&
           result.https_status == arg.https_status &&
-          result.redirect_url_string == arg.redirect_url_string &&
-          result.probe_url_string == arg.probe_url_string);
+          result.redirect_url == arg.redirect_url &&
+          result.probe_url == arg.probe_url);
 }
 
 class PortalDetectorTest : public Test {
@@ -613,8 +613,8 @@ TEST_F(PortalDetectorTest, RequestRedirect) {
   result.http_status = PortalDetector::Status::kRedirect;
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kFailure;
-  result.redirect_url_string = kHttpUrl;
-  result.probe_url_string = kHttpUrl;
+  result.redirect_url = net_base::HttpUrl::CreateFromString(kHttpUrl);
+  result.probe_url = net_base::HttpUrl::CreateFromString(kHttpUrl);
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result))).Times(0);
   EXPECT_TRUE(portal_detector_->IsInProgress());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
@@ -636,8 +636,8 @@ TEST_F(PortalDetectorTest, RequestTempRedirect) {
   result.http_status = PortalDetector::Status::kRedirect;
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kFailure;
-  result.redirect_url_string = kHttpUrl;
-  result.probe_url_string = kHttpUrl;
+  result.redirect_url = net_base::HttpUrl::CreateFromString(kHttpUrl);
+  result.probe_url = net_base::HttpUrl::CreateFromString(kHttpUrl);
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result))).Times(0);
   EXPECT_TRUE(portal_detector_->IsInProgress());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
@@ -660,8 +660,8 @@ TEST_F(PortalDetectorTest, RequestRedirectWithHTTPSProbeTimeout) {
   result.http_status = PortalDetector::Status::kRedirect;
   result.https_phase = PortalDetector::Phase::kUnknown;
   result.https_status = PortalDetector::Status::kFailure;
-  result.redirect_url_string = kHttpUrl;
-  result.probe_url_string = kHttpUrl;
+  result.redirect_url = net_base::HttpUrl::CreateFromString(kHttpUrl);
+  result.probe_url = net_base::HttpUrl::CreateFromString(kHttpUrl);
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
   EXPECT_CALL(*http_connection(), GetResponseHeader("Location"))
       .WillOnce(Return(kHttpUrl));

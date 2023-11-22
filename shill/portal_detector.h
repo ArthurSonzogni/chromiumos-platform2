@@ -150,18 +150,18 @@ class PortalDetector {
     Phase https_phase = Phase::kUnknown;
     // Final Status of the HTTPS probe when the trial finished.
     Status https_status = Status::kFailure;
-    // The HTTP response status code from the http probe.
+    // The HTTP response status code from the HTTP probe.
     int http_status_code = 0;
-    // The HTTP response status code from the http probe.
+    // The HTTP response status code from the HTTPS probe.
     int https_status_code = 0;
     // The total number of trial attempts so far.
     int num_attempts;
-    // Non-empty redirect URL if status is kRedirect.
-    std::string redirect_url_string;
+    // Redirect URL if status is kRedirect.
+    std::optional<net_base::HttpUrl> redirect_url;
     // Probe URL used to reach redirect URL if status is kRedirect.
-    std::string probe_url_string;
+    std::optional<net_base::HttpUrl> probe_url;
 
-    // Boolean used for tracking the completion state of both http and https
+    // Boolean used for tracking the completion state of both HTTP and HTTPS
     // probes.
     bool http_probe_completed = false;
     bool https_probe_completed = false;
@@ -172,9 +172,16 @@ class PortalDetector {
     base::TimeDelta http_duration = base::TimeDelta();
     base::TimeDelta https_duration = base::TimeDelta();
 
-    // Returns true if both http and https probes have completed, successfully
+    // Returns true if both HTTP and HTTPS probes have completed, successfully
     // or not.
     bool IsComplete() const;
+    // Returns true if the HTTPS probe was successful.
+    bool IsHTTPSProbeSuccessful() const;
+    // Returns true if the HTTP probe was successful and obtained a 204 result.
+    bool IsHTTPProbeSuccessful() const;
+    // Returns true if the HTTP probe was redirected and a redirection URL was
+    // received.
+    bool IsHTTPProbeRedirected() const;
 
     // Returns the ValidationState value inferred from this captive portal
     // detection result.

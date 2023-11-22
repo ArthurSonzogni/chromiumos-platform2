@@ -20,6 +20,7 @@
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/http_url.h>
 #include <net-base/mock_rtnl_handler.h>
 
 #include "shill/event_dispatcher.h"
@@ -825,6 +826,8 @@ TEST_F(DevicePortalDetectionTest, PortalRetryAfterDetectionFailure) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = kPortalAttempts;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillOnce(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
@@ -841,6 +844,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = kPortalAttempts;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
   OnNetworkValidationResult(result);
 }
 
@@ -898,6 +903,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kFailure;
   result.num_attempts = kPortalAttempts;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
@@ -914,6 +921,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSTimeout) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kFailure;
   result.num_attempts = kPortalAttempts;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
@@ -929,8 +938,11 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirect) {
   result.http_status_code = 302;
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kSuccess;
-  result.redirect_url_string = PortalDetector::kDefaultHttpUrl;
+  result.redirect_url =
+      net_base::HttpUrl::CreateFromString("https://captive.portal.com/sigin");
   result.num_attempts = kPortalAttempts;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateRedirectFound));
@@ -947,6 +959,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoUrl) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = kPortalAttempts;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStatePortalSuspected));
@@ -963,6 +977,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kFailure;
   result.num_attempts = kPortalAttempts;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStatePortalSuspected));
@@ -979,6 +995,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionNoConnectivity) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kFailure;
   result.num_attempts = kPortalAttempts;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
