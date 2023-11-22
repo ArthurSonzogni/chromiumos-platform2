@@ -24,6 +24,7 @@
 #include "diagnostics/cros_healthd/fetchers/cpu_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/fan_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/graphics_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/input_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/network_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/network_interface_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/sensor_fetcher.h"
@@ -71,7 +72,6 @@ void OnFinish(
 
 FetchAggregator::FetchAggregator(Context* context)
     : disk_fetcher_(context),
-      input_fetcher_(context),
       memory_fetcher_(context),
       tpm_fetcher_(context),
       context_(context) {}
@@ -190,8 +190,8 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kInput: {
-        input_fetcher_.Fetch(
-            CreateFetchCallback(&barrier, &info->input_result));
+        FetchInputInfo(context_,
+                       CreateFetchCallback(&barrier, &info->input_result));
         break;
       }
       case mojom::ProbeCategoryEnum::kAudioHardware: {

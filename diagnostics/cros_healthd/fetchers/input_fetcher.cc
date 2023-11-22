@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
-#include "diagnostics/cros_healthd/network/network_health_adapter.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
@@ -55,7 +55,7 @@ class State {
   void HandleTouchpadDevices(std::vector<mojom::TouchpadDevicePtr> devices,
                              const std::optional<std::string>&);
 
-  void HandleResult(InputFetcher::ResultCallback callback, bool success);
+  void HandleResult(FetchInputInfoCallback callback, bool success);
 
  private:
   // The info to be returned.
@@ -99,7 +99,7 @@ void State::HandleTouchpadDevices(std::vector<mojom::TouchpadDevicePtr> devices,
   info_->touchpad_devices = std::move(devices);
 }
 
-void State::HandleResult(InputFetcher::ResultCallback callback, bool success) {
+void State::HandleResult(FetchInputInfoCallback callback, bool success) {
   if (success) {
     std::move(callback).Run(mojom::InputResult::NewInputInfo(std::move(info_)));
     return;
@@ -111,18 +111,18 @@ void State::HandleResult(InputFetcher::ResultCallback callback, bool success) {
 
 }  // namespace
 
-void InputFetcher::Fetch(ResultCallback callback) {
+void FetchInputInfo(Context* context, FetchInputInfoCallback callback) {
   auto state = std::make_unique<State>();
   State* state_ptr = state.get();
   CallbackBarrier barrier{base::BindOnce(&State::HandleResult, std::move(state),
                                          std::move(callback))};
 
-  auto* collector = context_->mojo_service()->GetChromiumDataCollector();
+  auto* collector = context->mojo_service()->GetChromiumDataCollector();
   collector->GetTouchscreenDevices(barrier.Depend(base::BindOnce(
       &State::HandleTouchscreenDevice, base::Unretained(state_ptr))));
   collector->GetTouchpadLibraryName(barrier.Depend(base::BindOnce(
       &State::HandleTouchpadLibraryName, base::Unretained(state_ptr))));
-  context_->executor()->GetTouchpadDevices(barrier.Depend(base::BindOnce(
+  context->executor()->GetTouchpadDevices(barrier.Depend(base::BindOnce(
       &State::HandleTouchpadDevices, base::Unretained(state_ptr))));
 }
 

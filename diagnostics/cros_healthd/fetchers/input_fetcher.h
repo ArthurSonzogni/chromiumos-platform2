@@ -7,20 +7,15 @@
 
 #include <base/functional/callback_forward.h>
 
-#include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace diagnostics {
+class Context;
 
-// Fetches the input related information.
-class InputFetcher final : public BaseFetcher {
- public:
-  using BaseFetcher::BaseFetcher;
-
-  using ResultCallback =
-      base::OnceCallback<void(ash::cros_healthd::mojom::InputResultPtr)>;
-  void Fetch(ResultCallback callback);
-};
+// Fetches the input related information and pass the result to the callback.
+using FetchInputInfoCallback =
+    base::OnceCallback<void(ash::cros_healthd::mojom::InputResultPtr)>;
+void FetchInputInfo(Context* context, FetchInputInfoCallback callback);
 
 }  // namespace diagnostics
 

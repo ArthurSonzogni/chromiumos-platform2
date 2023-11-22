@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/fetchers/input_fetcher.h"
+
 #include <optional>
 #include <utility>
 #include <vector>
@@ -11,7 +13,6 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/executor/mock_executor.h"
-#include "diagnostics/cros_healthd/fetchers/input_fetcher.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -39,9 +40,9 @@ class InputFetcherTest : public ::testing::Test {
             });
   }
 
-  mojom::InputResultPtr FetchInput() {
+  mojom::InputResultPtr FetchInputInfoSync() {
     base::test::TestFuture<mojom::InputResultPtr> future;
-    input_fetcher_.Fetch(future.GetCallback());
+    FetchInputInfo(&mock_context_, future.GetCallback());
     return future.Take();
   }
 
@@ -53,7 +54,6 @@ class InputFetcherTest : public ::testing::Test {
 
   MojoTaskEnvironment env_;
   MockContext mock_context_;
-  InputFetcher input_fetcher_{&mock_context_};
 };
 
 TEST_F(InputFetcherTest, FetchTouchscreenDevices) {
@@ -82,7 +82,7 @@ TEST_F(InputFetcherTest, FetchTouchscreenDevices) {
   expected_device->has_stylus = true;
   expected_device->has_stylus_garage_switch = true;
 
-  auto result = FetchInput();
+  auto result = FetchInputInfoSync();
   ASSERT_TRUE(result->is_input_info());
   ASSERT_EQ(result->get_input_info()->touchscreen_devices.size(), 1);
   EXPECT_EQ(result->get_input_info()->touchscreen_devices[0], expected_device);
@@ -92,7 +92,7 @@ TEST_F(InputFetcherTest, FetchTouchpadLibraryName) {
   fake_chromium_data_collector().touchpad_library_name() =
       "FakeTouchpadLibraryName";
 
-  auto result = FetchInput();
+  auto result = FetchInputInfoSync();
   ASSERT_TRUE(result->is_input_info());
   EXPECT_EQ(result->get_input_info()->touchpad_library_name,
             "FakeTouchpadLibraryName");
@@ -127,7 +127,7 @@ TEST_F(InputFetcherTest, FetchTouchpadDevices) {
         std::move(callback).Run(std::move(result), std::nullopt);
       }));
 
-  auto result = FetchInput();
+  auto result = FetchInputInfoSync();
   ASSERT_TRUE(result->is_input_info());
   const auto& touchpad_devices = result->get_input_info()->touchpad_devices;
   ASSERT_TRUE(touchpad_devices.has_value());
@@ -141,7 +141,7 @@ TEST_F(InputFetcherTest, FetchTouchpadDevicesHasError) {
         std::move(callback).Run({}, "An error has occurred");
       }));
 
-  auto result = FetchInput();
+  auto result = FetchInputInfoSync();
   ASSERT_TRUE(result->is_input_info());
   const auto& touchpad_devices = result->get_input_info()->touchpad_devices;
   ASSERT_FALSE(touchpad_devices.has_value());
@@ -151,7 +151,7 @@ TEST_F(InputFetcherTest, FetchFailed) {
   // Reset the receiver to emulate the service disconnected.
   fake_chromium_data_collector().receiver().reset();
 
-  auto result = FetchInput();
+  auto result = FetchInputInfoSync();
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kServiceUnavailable);
 }
