@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -65,6 +66,58 @@ const char* const kPCFuncNameRegex[] = {
 
 static_assert(std::size(kPCFuncNameRegex) == kernel_util::kArchCount,
               "Missing Arch PC func_name RegExp");
+
+// Filter for boring functions. This should be a conservative list of functions
+// that are never interesting since the magic signature code is more liberal
+// when it comes to boring functions and there can be benefits of having both.
+bool IsBoringFunction(const std::string& function) {
+  static const std::vector<std::string>* kBoringFunctions =
+      new std::vector<std::string>({
+          "__flush_work",
+          "__mutex_lock",
+          "__mutex_lock_common",
+          "__mutex_lock_slowpath",
+          "__switch_to",
+          "__schedule",
+          "__wait_on_bit",
+          "__wait_on_buffer",
+          "bit_wait_io",
+          "down_read",
+          "down_write",
+          "down_write_killable",
+          "dump_backtrace",
+          "dump_cpu_task",
+          "dump_stack",
+          "dump_stack_lvl",
+          "flush_work",
+          "io_schedule",
+          "kthread_flush_work",
+          "mutex_lock",
+          "out_of_line_wait_on_bit",
+          "panic",
+          "rcu_dump_cpu_stacks",
+          "rwsem_down_read_slowpath",
+          "rwsem_down_write_slowpath",
+          "sched_show_task",
+          "schedule",
+          "schedule_hrtimeout_range",
+          "schedule_hrtimeout_range_clock",
+          "schedule_preempt_disabled",
+          "schedule_timeout",
+          "schedule_timeout_uninterruptible",
+          "show_stack",
+          "usleep_range_state",
+          "wait_for_completion",
+      });
+
+  for (const auto& to_match : *kBoringFunctions) {
+    if (to_match == function) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 // Find the most relevant stack trace in the log and sets `hash`,
 // `stack_fn`, and `crash_tag` appropriately.
@@ -167,7 +220,12 @@ bool ProcessStackTrace(re2::StringPiece kernel_dump,
     // After we've skipped warnings, always capture the function from any
     // CPU registers that we see. This is often going to be the same function
     // name we capture below (AKA stack_fn).
-    RE2::PartialMatch(line, cpureg_fn_re, &cpureg_timestamp, &cpureg_fn);
+    if (RE2::PartialMatch(line, cpureg_fn_re, &cpureg_timestamp, &cpureg_fn)) {
+      if (IsBoringFunction(cpureg_fn)) {
+        cpureg_fn.clear();
+        cpureg_timestamp = 0;
+      }
+    }
 
     if (RE2::PartialMatch(line, hard_lockup_re)) {
       want_next_stack = true;
@@ -204,9 +262,9 @@ bool ProcessStackTrace(re2::StringPiece kernel_dump,
         hashable.append("|");
       hashable.append(function_name);
 
-      // Store the first function since that's a good candidate for the
-      // "human readable" part of the signature.
-      if (stack_fn->empty()) {
+      // Store the first non-ignored function since that's a good candidate
+      // for the "human readable" part of the signature.
+      if (stack_fn->empty() && !IsBoringFunction(function_name)) {
         *stack_fn = function_name;
       }
     }

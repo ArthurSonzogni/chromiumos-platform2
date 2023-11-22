@@ -199,7 +199,7 @@ TEST(KernelUtilTest, ComputeKernelStackSignatureARM64) {
       test_util::GetTestDataPath("TEST_ARM64_PROVOKE_KERNEL_HUNG_TASK",
                                  /*use_testdata=*/true),
       &test_contents));
-  EXPECT_EQ("kernel-(HANG)-__switch_to-DFE15A1E",
+  EXPECT_EQ("kernel-(HANG)-lkdtm_HUNG_TASK-DFE15A1E",
             kernel_util::ComputeKernelStackSignature(test_contents, arch));
 
   // A hard lockup without NMI backtrace, since many ARM boards don't have
@@ -438,7 +438,7 @@ TEST(KernelUtilTest, ComputeKernelStackSignatureX86) {
       "<5>[  720.460693]  [<81043af3>] kthread+0x67/0x6c\n"
       "<5>[  720.460862]  [<81043a8c>] ? __init_kthread_worker+0x2d/0x2d\n"
       "<5>[  720.461106]  [<8137eb9e>] kernel_thread_helper+0x6/0x10\n";
-  EXPECT_EQ("kernel-(HANG)-schedule-600B37EA",
+  EXPECT_EQ("kernel-(HANG)-write_breakme-600B37EA",
             kernel_util::ComputeKernelStackSignature(kHungTaskBreakMe, arch));
 
   // Panic with all question marks in the last stack trace.
