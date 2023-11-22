@@ -147,20 +147,21 @@ void PortalDetector::StartTrialTask() {
   LOG(INFO) << LoggingTag()
             << ": Starting trial. HTTP probe: " << http_url_.host()
             << ". HTTPS probe: " << https_url_.host();
-  HttpRequest::Result http_result = http_request_->Start(
+  auto http_error = http_request_->Start(
       LoggingTag() + " HTTP probe", http_url_, kHeaders,
       base::BindOnce(&PortalDetector::HttpRequestSuccessCallback,
                      weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(&PortalDetector::HttpRequestErrorCallback,
                      weak_ptr_factory_.GetWeakPtr()));
-  if (http_result != HttpRequest::kResultInProgress) {
+  if (http_error) {
     // If the http probe fails to start, complete the trial with a failure
     // Result for https.
     LOG(ERROR) << LoggingTag()
-               << ": HTTP probe failed to start. Aborting trial.";
+               << ": HTTP probe failed to start: " << *http_error
+               << ". Aborting trial.";
     PortalDetector::Result result;
-    result.http_phase = GetPortalPhaseForRequestResult(http_result);
-    result.http_status = GetPortalStatusForRequestResult(http_result);
+    result.http_phase = GetPortalPhaseFromRequestError(*http_error);
+    result.http_status = GetPortalStatusFromRequestError(*http_error);
     result.https_phase = PortalDetector::Phase::kContent;
     result.https_status = PortalDetector::Status::kFailure;
     CompleteTrial(result);
@@ -169,16 +170,17 @@ void PortalDetector::StartTrialTask() {
 
   result_ = std::make_unique<Result>();
 
-  HttpRequest::Result https_result = https_request_->Start(
+  auto https_error = https_request_->Start(
       LoggingTag() + " HTTPS probe", https_url_, kHeaders,
       base::BindOnce(&PortalDetector::HttpsRequestSuccessCallback,
                      weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(&PortalDetector::HttpsRequestErrorCallback,
                      weak_ptr_factory_.GetWeakPtr()));
-  if (https_result != HttpRequest::kResultInProgress) {
-    result_->https_phase = GetPortalPhaseForRequestResult(https_result);
-    result_->https_status = GetPortalStatusForRequestResult(https_result);
-    LOG(ERROR) << LoggingTag() << ": HTTPS probe failed to start";
+  if (https_error) {
+    result_->https_phase = GetPortalPhaseFromRequestError(*https_error);
+    result_->https_status = GetPortalStatusFromRequestError(*https_error);
+    LOG(ERROR) << LoggingTag()
+               << ": HTTPS probe failed to start: " << *https_error;
     // To find the portal sign-in url, wait for the HTTP probe to complete
     // before completing the trial and calling |portal_result_callback_|.
   }
@@ -280,31 +282,30 @@ void PortalDetector::HttpsRequestSuccessCallback(
     CompleteTrial(*result_);
 }
 
-void PortalDetector::HttpRequestErrorCallback(HttpRequest::Result http_result) {
+void PortalDetector::HttpRequestErrorCallback(HttpRequest::Error http_error) {
   result_->http_probe_completed = true;
-  result_->http_phase = GetPortalPhaseForRequestResult(http_result);
-  result_->http_status = GetPortalStatusForRequestResult(http_result);
+  result_->http_phase = GetPortalPhaseFromRequestError(http_error);
+  result_->http_status = GetPortalStatusFromRequestError(http_error);
   result_->http_duration = base::TimeTicks::Now() - last_attempt_start_time_;
   LOG(INFO) << LoggingTag() << ": HTTP probe " << http_url_.host()
-            << " failed with phase=" << result_->http_phase
-            << " status=" << result_->http_status
-            << " duration=" << result_->http_duration;
-  if (result_->IsComplete())
+            << " failed: " << http_error
+            << ", duration=" << result_->http_duration;
+  if (result_->IsComplete()) {
     CompleteTrial(*result_);
+  }
 }
 
-void PortalDetector::HttpsRequestErrorCallback(
-    HttpRequest::Result https_result) {
+void PortalDetector::HttpsRequestErrorCallback(HttpRequest::Error https_error) {
   result_->https_probe_completed = true;
-  result_->https_phase = GetPortalPhaseForRequestResult(https_result);
-  result_->https_status = GetPortalStatusForRequestResult(https_result);
+  result_->https_phase = GetPortalPhaseFromRequestError(https_error);
+  result_->https_status = GetPortalStatusFromRequestError(https_error);
   result_->https_duration = base::TimeTicks::Now() - last_attempt_start_time_;
   LOG(INFO) << LoggingTag() << ": HTTPS probe " << https_url_.host()
-            << " failed with phase=" << result_->https_phase
-            << " status=" << result_->https_status
-            << " duration=" << result_->https_duration;
-  if (result_->IsComplete())
+            << " failed: " << https_error
+            << ", duration=" << result_->https_duration;
+  if (result_->IsComplete()) {
     CompleteTrial(*result_);
+  }
 }
 
 bool PortalDetector::IsInProgress() const {
@@ -385,49 +386,40 @@ const std::string PortalDetector::ValidationStateToString(
 }
 
 // static
-PortalDetector::Phase PortalDetector::GetPortalPhaseForRequestResult(
-    HttpRequest::Result result) {
-  switch (result) {
-    case HttpRequest::kResultSuccess:
-      return Phase::kContent;
-    case HttpRequest::kResultDNSFailure:
-      return Phase::kDNS;
-    case HttpRequest::kResultDNSTimeout:
-      return Phase::kDNS;
-    case HttpRequest::kResultConnectionFailure:
-      return Phase::kConnection;
-    case HttpRequest::kResultHTTPFailure:
-      return Phase::kHTTP;
-    case HttpRequest::kResultHTTPTimeout:
-      return Phase::kHTTP;
-    case HttpRequest::kResultInvalidInput:
-    case HttpRequest::kResultUnknown:
-    default:
+PortalDetector::Phase PortalDetector::GetPortalPhaseFromRequestError(
+    HttpRequest::Error error) {
+  switch (error) {
+    case HttpRequest::Error::kInternalError:
       return Phase::kUnknown;
+    case HttpRequest::Error::kDNSFailure:
+      return Phase::kDNS;
+    case HttpRequest::Error::kDNSTimeout:
+      return Phase::kDNS;
+    case HttpRequest::Error::kConnectionFailure:
+      return Phase::kConnection;
+    case HttpRequest::Error::kIOError:
+      return Phase::kHTTP;
+    case HttpRequest::Error::kHTTPTimeout:
+      return Phase::kHTTP;
   }
 }
 
 // static
-PortalDetector::Status PortalDetector::GetPortalStatusForRequestResult(
-    HttpRequest::Result result) {
-  switch (result) {
-    case HttpRequest::kResultSuccess:
-      // The request completed without receiving the expected payload.
+PortalDetector::Status PortalDetector::GetPortalStatusFromRequestError(
+    HttpRequest::Error error) {
+  switch (error) {
+    case HttpRequest::Error::kInternalError:
       return Status::kFailure;
-    case HttpRequest::kResultDNSFailure:
+    case HttpRequest::Error::kDNSFailure:
       return Status::kFailure;
-    case HttpRequest::kResultDNSTimeout:
+    case HttpRequest::Error::kDNSTimeout:
       return Status::kTimeout;
-    case HttpRequest::kResultConnectionFailure:
+    case HttpRequest::Error::kConnectionFailure:
       return Status::kFailure;
-    case HttpRequest::kResultHTTPFailure:
+    case HttpRequest::Error::kIOError:
       return Status::kFailure;
-    case HttpRequest::kResultHTTPTimeout:
+    case HttpRequest::Error::kHTTPTimeout:
       return Status::kTimeout;
-    case HttpRequest::kResultInvalidInput:
-    case HttpRequest::kResultUnknown:
-    default:
-      return Status::kFailure;
   }
 }
 

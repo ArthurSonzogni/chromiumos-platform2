@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -79,7 +80,7 @@ class HttpRequestTest : public Test {
     MOCK_METHOD(void,
                 RequestSuccessCallTarget,
                 (std::shared_ptr<brillo::http::Response>));
-    MOCK_METHOD(void, RequestErrorCallTarget, (HttpRequest::Result));
+    MOCK_METHOD(void, RequestErrorCallTarget, (HttpRequest::Error));
 
     base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
     request_success_callback() {
@@ -87,7 +88,7 @@ class HttpRequestTest : public Test {
                             base::Unretained(this));
     }
 
-    base::OnceCallback<void(HttpRequest::Result)> request_error_callback() {
+    base::OnceCallback<void(HttpRequest::Error)> request_error_callback() {
       return base::BindOnce(&CallbackTarget::RequestErrorCallTarget,
                             base::Unretained(this));
     }
@@ -129,8 +130,8 @@ class HttpRequestTest : public Test {
     EXPECT_CALL(*dns_client_, Start(_, StrEq(host), _))
         .WillOnce(Return(return_value));
   }
-  void ExpectRequestErrorCallback(HttpRequest::Result result) {
-    EXPECT_CALL(target_, RequestErrorCallTarget(result));
+  void ExpectRequestErrorCallback(HttpRequest::Error error) {
+    EXPECT_CALL(target_, RequestErrorCallTarget(error));
   }
   void InvokeResultVerify(std::shared_ptr<brillo::http::Response> response) {
     EXPECT_CALL(*brillo_connection_, GetResponseStatusCode())
@@ -160,7 +161,8 @@ class HttpRequestTest : public Test {
   void GetDNSResultSuccess(const net_base::IPAddress& address) {
     request_->GetDNSResult(address);
   }
-  HttpRequest::Result StartRequest(const std::string& url_string) {
+  std::optional<HttpRequest::Error> StartRequest(
+      const std::string& url_string) {
     auto url = net_base::HttpUrl::CreateFromString(url_string);
     return request_->Start(kLoggingTag, *url, {},
                            target_.request_success_callback(),
@@ -247,18 +249,18 @@ TEST_F(HttpRequestTest, NumericRequestSuccess) {
   ExpectFinishRequestAsyncSuccess(resp);
 
   ExpectStop();
-  EXPECT_EQ(HttpRequest::kResultInProgress, StartRequest(kNumericURL));
+  EXPECT_EQ(std::nullopt, StartRequest(kNumericURL));
   ExpectReset();
 }
 
 TEST_F(HttpRequestTest, RequestFail) {
-  ExpectRequestErrorCallback(HttpRequest::kResultConnectionFailure);
+  ExpectRequestErrorCallback(HttpRequest::Error::kConnectionFailure);
 
   ExpectCreateConnection(kNumericURL);
   ExpectFinishRequestAsyncFail();
 
   ExpectStop();
-  EXPECT_EQ(HttpRequest::kResultInProgress, StartRequest(kNumericURL));
+  EXPECT_EQ(std::nullopt, StartRequest(kNumericURL));
   ExpectReset();
 }
 
@@ -274,7 +276,7 @@ TEST_F(HttpRequestTest, TextRequestSuccess) {
   ExpectFinishRequestAsyncSuccess(resp);
 
   ExpectStop();
-  EXPECT_EQ(HttpRequest::kResultInProgress, StartRequest(kTextURL));
+  EXPECT_EQ(std::nullopt, StartRequest(kTextURL));
   const auto addr = *net_base::IPAddress::CreateFromString(kServerAddress);
   GetDNSResultSuccess(addr);
   ExpectReset();
@@ -283,14 +285,14 @@ TEST_F(HttpRequestTest, TextRequestSuccess) {
 TEST_F(HttpRequestTest, FailDNSStart) {
   ExpectDNSRequest(kTextSiteName, false);
   ExpectStop();
-  EXPECT_EQ(HttpRequest::kResultDNSFailure, StartRequest(kTextURL));
+  EXPECT_EQ(HttpRequest::Error::kDNSFailure, StartRequest(kTextURL));
   ExpectReset();
 }
 
 TEST_F(HttpRequestTest, FailDNSFailure) {
   ExpectDNSRequest(kTextSiteName, true);
-  EXPECT_EQ(HttpRequest::kResultInProgress, StartRequest(kTextURL));
-  ExpectRequestErrorCallback(HttpRequest::kResultDNSFailure);
+  EXPECT_EQ(std::nullopt, StartRequest(kTextURL));
+  ExpectRequestErrorCallback(HttpRequest::Error::kDNSFailure);
   ExpectStop();
   GetDNSResultFailure(DnsClient::kErrorNoData);
   ExpectReset();
@@ -298,8 +300,8 @@ TEST_F(HttpRequestTest, FailDNSFailure) {
 
 TEST_F(HttpRequestTest, FailDNSTimeout) {
   ExpectDNSRequest(kTextSiteName, true);
-  EXPECT_EQ(HttpRequest::kResultInProgress, StartRequest(kTextURL));
-  ExpectRequestErrorCallback(HttpRequest::kResultDNSTimeout);
+  EXPECT_EQ(std::nullopt, StartRequest(kTextURL));
+  ExpectRequestErrorCallback(HttpRequest::Error::kDNSTimeout);
   ExpectStop();
   const std::string error(DnsClient::kErrorTimedOut);
   GetDNSResultFailure(error);

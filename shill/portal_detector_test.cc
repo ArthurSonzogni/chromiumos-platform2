@@ -5,6 +5,7 @@
 #include "shill/portal_detector.h"
 
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -59,13 +60,13 @@ class MockHttpRequest : public HttpRequest {
   ~MockHttpRequest() = default;
 
   MOCK_METHOD(
-      HttpRequest::Result,
+      std::optional<HttpRequest::Error>,
       Start,
       (const std::string&,
        const net_base::HttpUrl&,
        const brillo::http::HeaderList&,
        base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>,
-       base::OnceCallback<void(Result)>),
+       base::OnceCallback<void(HttpRequest::Error)>),
       (override));
 };
 
@@ -157,10 +158,8 @@ class PortalDetectorTest : public Test {
   }
 
   void StartTrialTask() {
-    EXPECT_CALL(*http_request(), Start)
-        .WillOnce(Return(HttpRequest::kResultInProgress));
-    EXPECT_CALL(*https_request(), Start)
-        .WillOnce(Return(HttpRequest::kResultInProgress));
+    EXPECT_CALL(*http_request(), Start).WillOnce(Return(std::nullopt));
+    EXPECT_CALL(*https_request(), Start).WillOnce(Return(std::nullopt));
     portal_detector()->StartTrialTask();
   }
 
@@ -260,7 +259,7 @@ TEST_F(PortalDetectorTest, HttpStartAttemptFailed) {
 
   // Expect that the HTTP request will be started -- return failure.
   EXPECT_CALL(*http_request(), Start)
-      .WillOnce(Return(HttpRequest::kResultDNSFailure));
+      .WillOnce(Return(HttpRequest::Error::kDNSFailure));
   EXPECT_CALL(*https_request(), Start).Times(0);
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay())).Times(0);
 
@@ -283,10 +282,9 @@ TEST_F(PortalDetectorTest, HttpsStartAttemptFailed) {
 
   // Expect that the HTTP request will be started successfully and the
   // HTTPS request will fail to start.
-  EXPECT_CALL(*http_request(), Start)
-      .WillOnce(Return(HttpRequest::kResultInProgress));
+  EXPECT_CALL(*http_request(), Start).WillOnce(Return(std::nullopt));
   EXPECT_CALL(*https_request(), Start)
-      .WillOnce(Return(HttpRequest::kResultDNSFailure));
+      .WillOnce(Return(HttpRequest::Error::kDNSFailure));
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay())).Times(0);
 
   // Expect PortalDetector will wait for HTTP probe completion.
@@ -315,7 +313,7 @@ TEST_F(PortalDetectorTest, FailureToStartDoesNotCauseImmeidateRestart) {
   StartPortalRequest();
 
   EXPECT_CALL(*http_request(), Start)
-      .WillOnce(Return(HttpRequest::kResultDNSFailure));
+      .WillOnce(Return(HttpRequest::Error::kDNSFailure));
   EXPECT_CALL(*https_request(), Start).Times(0);
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kDNS,

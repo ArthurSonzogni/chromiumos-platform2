@@ -208,15 +208,15 @@ class PortalDetector {
   // to a string.
   static const std::string ValidationStateToString(ValidationState state);
 
-  // Static method mapping from HttpRequest responses to PortalDetection
-  // Phases. For example, if the HttpRequest result is kResultDNSFailure,
+  // Static method mapping from HttpRequest errors to PortalDetection
+  // Phases. For example, if the HttpRequest error is kResultDNSFailure,
   // this method returns Phase::kDNS.
-  static Phase GetPortalPhaseForRequestResult(HttpRequest::Result result);
+  static Phase GetPortalPhaseFromRequestError(HttpRequest::Error error);
 
-  // Static method mapping from HttpRequest responses to PortalDetection
-  // Status. For example, if the HttpRequest result is kResultDNSFailure,
+  // Static method mapping from HttpRequest errors to PortalDetection
+  // Status. For example, if the HttpRequest error is kResultDNSFailure,
   // this method returns Status::kFailure.
-  static Status GetPortalStatusForRequestResult(HttpRequest::Result result);
+  static Status GetPortalStatusFromRequestError(HttpRequest::Error error);
 
   // Starts and schedules a new portal detection attempt according to the value
   // of GetNextAttemptDelay. If an attempt is already scheduled to run but has
@@ -302,10 +302,10 @@ class PortalDetector {
       std::shared_ptr<brillo::http::Response> response);
 
   // Callback used to return the error from the HTTP HttpRequest.
-  void HttpRequestErrorCallback(HttpRequest::Result result);
+  void HttpRequestErrorCallback(HttpRequest::Error http_error);
 
   // Callback used to return the error from the HTTPS HttpRequest.
-  void HttpsRequestErrorCallback(HttpRequest::Result result);
+  void HttpsRequestErrorCallback(HttpRequest::Error https_error);
 
   // Called after each trial to return |result| after attempting to determine
   // connectivity status.

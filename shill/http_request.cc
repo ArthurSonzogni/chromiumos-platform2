@@ -6,6 +6,7 @@
 
 #include <curl/curl.h>
 
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -71,13 +72,13 @@ HttpRequest::~HttpRequest() {
   Stop();
 }
 
-HttpRequest::Result HttpRequest::Start(
+std::optional<HttpRequest::Error> HttpRequest::Start(
     const std::string& logging_tag,
     const net_base::HttpUrl& url,
     const brillo::http::HeaderList& headers,
     base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
         request_success_callback,
-    base::OnceCallback<void(Result)> request_error_callback) {
+    base::OnceCallback<void(Error)> request_error_callback) {
   SLOG(this, 3) << "In " << __func__;
 
   DCHECK(!is_running_);
@@ -96,14 +97,14 @@ HttpRequest::Result HttpRequest::Start(
     LOG(ERROR) << logging_tag_ << ": Server hostname " << url_.host()
                << " doesn't match the IP family " << ip_family_;
     Stop();
-    return kResultDNSFailure;
+    return Error::kDNSFailure;
   }
 
   if (server_addr) {
     StartRequest();
   } else {
     SLOG(this, 2) << "Looking up host: " << url_.host();
-    Error error;
+    shill::Error error;
     std::vector<std::string> dns_addresses;
     // TODO(b/307880493): Migrate to net_base::DNSClient and avoid
     // converting the net_base::IPAddress values to std::string.
@@ -116,11 +117,11 @@ HttpRequest::Result HttpRequest::Start(
       LOG(ERROR) << logging_tag_
                  << ": Failed to start DNS client: " << error.message();
       Stop();
-      return kResultDNSFailure;
+      return Error::kDNSFailure;
     }
   }
 
-  return kResultInProgress;
+  return std::nullopt;
 }
 
 void HttpRequest::StartRequest() {
@@ -140,7 +141,7 @@ void HttpRequest::SuccessCallback(
   if (request_id != request_id_) {
     LOG(ERROR) << logging_tag_ << ": Expected request ID " << request_id_
                << " but got " << request_id;
-    SendStatus(kResultUnknown);
+    SendError(Error::kInternalError);
     return;
   }
 
@@ -159,19 +160,19 @@ void HttpRequest::ErrorCallback(brillo::http::RequestID request_id,
   if (error->GetDomain() != kCurlEasyError) {
     LOG(ERROR) << logging_tag_ << ": Expected error domain " << kCurlEasyError
                << " but got " << error->GetDomain();
-    SendStatus(kResultUnknown);
+    SendError(Error::kInternalError);
     return;
   }
   if (request_id != request_id_) {
     LOG(ERROR) << logging_tag_ << ": Expected request ID " << request_id_
                << " but got " << request_id;
-    SendStatus(kResultUnknown);
+    SendError(Error::kInternalError);
     return;
   }
   if (!base::StringToInt(error->GetCode(), &error_code)) {
     LOG(ERROR) << logging_tag_ << ": Unable to convert error code "
                << error->GetCode() << " to Int";
-    SendStatus(kResultUnknown);
+    SendError(Error::kInternalError);
     return;
   }
 
@@ -179,17 +180,18 @@ void HttpRequest::ErrorCallback(brillo::http::RequestID request_id,
   // to provide an implementation agnostic error code.
   switch (error_code) {
     case CURLE_COULDNT_CONNECT:
-      SendStatus(kResultConnectionFailure);
+      SendError(Error::kConnectionFailure);
       break;
     case CURLE_WRITE_ERROR:
     case CURLE_READ_ERROR:
-      SendStatus(kResultHTTPFailure);
+      SendError(Error::kIOError);
       break;
     case CURLE_OPERATION_TIMEDOUT:
-      SendStatus(kResultHTTPTimeout);
+      SendError(Error::kHTTPTimeout);
       break;
     default:
-      SendStatus(kResultUnknown);
+      LOG(ERROR) << logging_tag_ << ": Unknown curl error code " << error_code;
+      SendError(Error::kInternalError);
   }
 }
 
@@ -211,15 +213,15 @@ void HttpRequest::Stop() {
 
 // DnsClient callback that fires when the DNS request completes.
 void HttpRequest::GetDNSResult(
-    const base::expected<net_base::IPAddress, Error>& address) {
+    const base::expected<net_base::IPAddress, shill::Error>& address) {
   SLOG(this, 3) << "In " << __func__;
   if (!address.has_value()) {
     LOG(ERROR) << logging_tag_ << ": Could not resolve " << url_.host() << ": "
                << address.error().message();
     if (address.error().message() == DnsClient::kErrorTimedOut) {
-      SendStatus(kResultDNSTimeout);
+      SendError(Error::kDNSTimeout);
     } else {
-      SendStatus(kResultDNSFailure);
+      SendError(Error::kDNSFailure);
     }
     return;
   }
@@ -233,16 +235,32 @@ void HttpRequest::GetDNSResult(
   StartRequest();
 }
 
-void HttpRequest::SendStatus(Result result) {
+void HttpRequest::SendError(Error error) {
   // Save copies on the stack, since Stop() will remove them.
-  base::OnceCallback<void(Result)> request_error_callback =
-      std::move(request_error_callback_);
+  auto request_error_callback = std::move(request_error_callback_);
   Stop();
 
   // Call the callback last, since it may delete us and |this| may no longer
   // be valid.
   if (!request_error_callback.is_null()) {
-    std::move(request_error_callback).Run(result);
+    std::move(request_error_callback).Run(error);
+  }
+}
+
+std::ostream& operator<<(std::ostream& stream, HttpRequest::Error error) {
+  switch (error) {
+    case HttpRequest::Error::kInternalError:
+      return stream << "Internal error";
+    case HttpRequest::Error::kDNSFailure:
+      return stream << "DNS failure";
+    case HttpRequest::Error::kDNSTimeout:
+      return stream << "DNS timeout";
+    case HttpRequest::Error::kConnectionFailure:
+      return stream << "Connection failure";
+    case HttpRequest::Error::kIOError:
+      return stream << "IO error";
+    case HttpRequest::Error::kHTTPTimeout:
+      return stream << "Request timeout";
   }
 }
 
