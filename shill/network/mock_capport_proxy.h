@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_CAPPORT_PROXY_H_
-#define SHILL_MOCK_CAPPORT_PROXY_H_
+#ifndef SHILL_NETWORK_MOCK_CAPPORT_PROXY_H_
+#define SHILL_NETWORK_MOCK_CAPPORT_PROXY_H_
 
-#include "shill/capport_proxy.h"
+#include "shill/network/capport_proxy.h"
 
 #include <gmock/gmock.h>
 
@@ -21,4 +21,4 @@ class MockCapportProxy : public CapportProxy {
 };
 
 }  // namespace shill
-#endif  // SHILL_MOCK_CAPPORT_PROXY_H_
+#endif  // SHILL_NETWORK_MOCK_CAPPORT_PROXY_H_

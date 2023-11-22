@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/capport_proxy.h"
+#include "shill/network/capport_proxy.h"
 
 #include <memory>
 #include <string>

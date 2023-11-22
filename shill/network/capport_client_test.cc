@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/capport_client.h"
+#include "shill/network/capport_client.h"
 
 #include <memory>
 #include <utility>
@@ -13,7 +13,7 @@
 #include <gtest/gtest.h>
 #include <net-base/http_url.h>
 
-#include "shill/mock_capport_proxy.h"
+#include "shill/network/mock_capport_proxy.h"
 
 namespace shill {
 namespace {

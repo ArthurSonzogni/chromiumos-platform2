@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CAPPORT_PROXY_H_
-#define SHILL_CAPPORT_PROXY_H_
+#ifndef SHILL_NETWORK_CAPPORT_PROXY_H_
+#define SHILL_NETWORK_CAPPORT_PROXY_H_
 
 #include <compare>
 #include <memory>
@@ -97,4 +97,4 @@ class CapportProxy {
 };
 
 }  // namespace shill
-#endif  // SHILL_CAPPORT_PROXY_H_
+#endif  // SHILL_NETWORK_CAPPORT_PROXY_H_

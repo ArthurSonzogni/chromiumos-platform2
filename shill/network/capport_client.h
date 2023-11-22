@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CAPPORT_CLIENT_H_
-#define SHILL_CAPPORT_CLIENT_H_
+#ifndef SHILL_NETWORK_CAPPORT_CLIENT_H_
+#define SHILL_NETWORK_CAPPORT_CLIENT_H_
 
 #include <memory>
 #include <optional>
@@ -11,7 +11,7 @@
 
 #include <base/functional/callback.h>
 
-#include "shill/capport_proxy.h"
+#include "shill/network/capport_proxy.h"
 
 namespace shill {
 
@@ -68,4 +68,4 @@ class CapportClient {
 };
 
 }  // namespace shill
-#endif  // SHILL_CAPPORT_CLIENT_H_
+#endif  // SHILL_NETWORK_CAPPORT_CLIENT_H_
