@@ -6,6 +6,7 @@
 #define CRYPTOHOME_RECOVERABLE_KEY_STORE_TYPE_H_
 
 #include <brillo/secure_blob.h>
+#include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 #include <libhwsec-foundation/crypto/secure_box.h>
 
 namespace cryptohome {
@@ -19,6 +20,28 @@ namespace cryptohome {
 struct SecurityDomainKeys {
   hwsec_foundation::secure_box::KeyPair key_pair;
   brillo::SecureBlob wrapping_key;
+};
+
+// The lock screen knowledge factor, along with all associated data necessary
+// for generating the recoverable key store.
+struct LockScreenKnowledgeFactor {
+  // Type of the lock screen knowledge factor.
+  LockScreenKnowledgeFactorType lskf_type;
+  // The lock screen knowledge factor hash algorithm.
+  LockScreenKnowledgeFactorHashAlgorithm algorithm;
+  // The salt used for hashing the lock screen knowledge factor.
+  brillo::Blob salt;
+  // The hash result of the lock screen knowledge factor using |salt| as salt.
+  brillo::SecureBlob hash;
+};
+
+// An object that includes a backend certificate and its associated data.
+struct RecoverableKeyStoreBackendCert {
+  uint64_t version;
+  // In SecureBox-encoded format.
+  brillo::Blob public_key;
+  // TODO(b/312628857): Add |path| in RecoverableKeyStoreBackendCert as
+  // well because it needs to be set in the RecoverableKeyStore proto.
 };
 
 }  // namespace cryptohome

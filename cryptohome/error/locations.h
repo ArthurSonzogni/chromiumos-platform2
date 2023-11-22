@@ -1999,6 +1999,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthFactorFpPrepareAuthStartBioAuthFailed = 3424,
   /* ./userdataauth.cc */
   kLocUserDataAuthUserNonexistentInGetRecoverableKeyStores = 3425,
+  /* ./recoverable_key_store/generate.cc */
+  kLocGenKeyStoreNotImplemented = 3426,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.
