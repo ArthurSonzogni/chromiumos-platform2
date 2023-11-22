@@ -40,7 +40,7 @@ namespace {
 constexpr char kBluetoothDumpFlagPath[] = "/run/bluetooth/coredump_disabled";
 
 constexpr char kFbpreprocessordBaseDirectory[] =
-    "/run/daemon-store/fbpreprocessord/user_hash";
+    "/run/daemon-store/fbpreprocessord/user_hash/raw_dumps";
 
 // Dummy log config file name.
 const char kLogConfigFileName[] = "log_config_file";

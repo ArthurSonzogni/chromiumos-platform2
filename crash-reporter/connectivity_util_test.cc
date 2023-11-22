@@ -258,7 +258,8 @@ TEST_F(ConnectivityUtilTest, GetCorrectCrashDirectory) {
 
   std::optional<base::FilePath> got_dir =
       GetDaemonStoreFbPreprocessordDirectory(test_session);
-  const char kExpectedDir[] = "/run/daemon-store/fbpreprocessord/user_hash";
+  const char kExpectedDir[] =
+      "/run/daemon-store/fbpreprocessord/user_hash/raw_dumps";
   EXPECT_TRUE(got_dir.has_value());
   EXPECT_EQ(kExpectedDir, got_dir->value());
 }

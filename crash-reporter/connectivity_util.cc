@@ -21,6 +21,7 @@
 #include <bindings/cloud_policy.pb.h>
 #include <bindings/device_management_backend.pb.h>
 #include <brillo/userdb_utils.h>
+#include <fbpreprocessor-client/fbpreprocessor/dbus-constants.h>
 #include <login_manager/proto_bindings/policy_descriptor.pb.h>
 #include <policy/device_policy.h>
 
@@ -209,6 +210,7 @@ std::optional<base::FilePath> GetDaemonStoreFbPreprocessordDirectory(
     return std::nullopt;
   }
   return paths::GetAt(paths::kCryptohomeFbPreprocessorBaseDirectory,
-                      primary_session.userhash);
+                      primary_session.userhash)
+      .Append(fbpreprocessor::kInputDirectory);
 }
 }  // namespace connectivity_util
