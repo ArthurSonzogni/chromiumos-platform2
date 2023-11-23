@@ -5,7 +5,6 @@
 #ifndef DIAGNOSTICS_BASE_FILE_UTILS_H_
 #define DIAGNOSTICS_BASE_FILE_UTILS_H_
 
-#include <optional>
 #include <string>
 #include <string_view>
 
@@ -17,11 +16,11 @@
 namespace diagnostics {
 
 // Returns the root dir. This can be the overridden during unit tests.
-base::FilePath GetRootDir();
+BRILLO_EXPORT base::FilePath GetRootDir();
 // Returns the paths under the root dir. This does nothing in real
 // implementations. The root directory can be overridden in unit tests. Note
 // that the path must be absolute.
-base::FilePath GetRootedPath(base::FilePath path);
+BRILLO_EXPORT base::FilePath GetRootedPath(base::FilePath path);
 // Just like the above but turns a std::string_view into base::FilePath.
 inline base::FilePath GetRootedPath(std::string_view path) {
   return GetRootedPath(base::FilePath{path});
@@ -38,6 +37,20 @@ inline base::FilePath GetRootDir() {
 inline base::FilePath GetRootedPath(base::FilePath path) {
   return path;
 }
+#else
+// Overrides the root dir for unit tests. Doesn't support nested overriding.
+// If no |root_dir| is provided, a unique temporary directory will be used.
+class BRILLO_EXPORT ScopedRootDirOverrides {
+ public:
+  ScopedRootDirOverrides();
+  explicit ScopedRootDirOverrides(base::FilePath root_dir);
+  ScopedRootDirOverrides(const ScopedRootDirOverrides&) = delete;
+  ScopedRootDirOverrides& operator=(const ScopedRootDirOverrides&) = delete;
+  ~ScopedRootDirOverrides();
+
+ private:
+  base::ScopedTempDir temp_dir_;
+};
 #endif
 
 // Reads the contents of |file_path| into |out|, trims leading and trailing

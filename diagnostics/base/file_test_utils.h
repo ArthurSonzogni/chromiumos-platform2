@@ -31,20 +31,6 @@ bool WriteFileAndCreateSymbolicLink(const base::FilePath& file_path,
                                     const std::string& file_contents,
                                     const base::FilePath& symlink_path);
 
-// Overrides the root dir for unit tests. Doesn't support nested overriding.
-// If no |root_dir| is provided, a unique temporary directory will be used.
-class ScopedRootDirOverrides {
- public:
-  ScopedRootDirOverrides();
-  explicit ScopedRootDirOverrides(base::FilePath root_dir);
-  ScopedRootDirOverrides(const ScopedRootDirOverrides&) = delete;
-  ScopedRootDirOverrides& operator=(const ScopedRootDirOverrides&) = delete;
-  ~ScopedRootDirOverrides();
-
- private:
-  base::ScopedTempDir temp_dir_;
-};
-
 // A helper class for creating file related unittest.
 class BaseFileTest : public ::testing::Test {
  protected:
