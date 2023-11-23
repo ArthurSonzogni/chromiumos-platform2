@@ -740,7 +740,7 @@ TEST_F(PortalDetectorTest, StatusToString) {
   }
 }
 
-TEST_F(PortalDetectorTest, PickProbeUrlTest) {
+TEST_F(PortalDetectorTest, PickProbeURLs) {
   const auto url1 = *net_base::HttpUrl::CreateFromString("http://www.url1.com");
   const auto url2 = *net_base::HttpUrl::CreateFromString("http://www.url2.com");
   const auto url3 = *net_base::HttpUrl::CreateFromString("http://www.url3.com");
@@ -757,12 +757,18 @@ TEST_F(PortalDetectorTest, PickProbeUrlTest) {
     portal_detector_->attempt_count_ = i;
     EXPECT_EQ(portal_detector_->PickProbeUrl(url1, {}), url1);
 
-    const auto found =
+    const auto& found =
         portal_detector_->PickProbeUrl(url1, {url2, url3}).ToString();
-    all_found_urls.insert(found);
+    if (i == 1) {
+      EXPECT_EQ(url2.ToString(), found);
+    } else if (i == 2) {
+      EXPECT_EQ(url3.ToString(), found);
+    } else {
+      all_found_urls.insert(found);
+    }
     EXPECT_NE(all_urls.find(found), all_urls.end());
   }
-  // Probability this assert fails = 3 * 1/3 ^ 99 + 3 * 2/3 ^ 99
+  // Probability this assert fails = 3 * 1/3 ^ 97 + 3 * 2/3 ^ 97
   EXPECT_EQ(all_urls, all_found_urls);
 }
 

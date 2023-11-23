@@ -280,7 +280,7 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, HttpsStartAttemptFailed);
   FRIEND_TEST(PortalDetectorTest, IsInProgress);
   FRIEND_TEST(PortalDetectorTest, MultipleRestarts);
-  FRIEND_TEST(PortalDetectorTest, PickProbeUrlTest);
+  FRIEND_TEST(PortalDetectorTest, PickProbeURLs);
   FRIEND_TEST(PortalDetectorTest, RequestFail);
   FRIEND_TEST(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess);
   FRIEND_TEST(PortalDetectorTest, RequestRedirect);
@@ -291,9 +291,9 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, Restart);
   FRIEND_TEST(PortalDetectorTest, RestartAfterRedirect);
 
-  // Picks the next probe URL based on |attempt_count_|. Returns |default_url|
-  // if this is the first attempt. Otherwise, randomly returns with equal
-  // probability |default_url| or an element of |fallback_urls|.
+  // Picks the next probe URL based on |attempt_count_|. Rotates first through
+  // |default_url| and |fallback_urls| to pick each URL in order at least once,
+  // then return randomely any URL with equal probability.
   const net_base::HttpUrl& PickProbeUrl(
       const net_base::HttpUrl& default_url,
       const std::vector<net_base::HttpUrl>& fallback_urls) const;

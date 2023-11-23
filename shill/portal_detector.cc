@@ -87,9 +87,19 @@ PortalDetector::~PortalDetector() {
 const net_base::HttpUrl& PortalDetector::PickProbeUrl(
     const net_base::HttpUrl& default_url,
     const std::vector<net_base::HttpUrl>& fallback_urls) const {
+  // Always start with the default URL.
   if (attempt_count_ == 0 || fallback_urls.empty()) {
     return default_url;
   }
+  // Once the default URL has been used, always visit all fallback URLs in
+  // order. |attempt_count_| is guaranteed superior or equal to 1.
+  if (static_cast<uint32_t>(attempt_count_ - 1) < fallback_urls.size()) {
+    return fallback_urls[attempt_count_ - 1];
+  }
+  // Otherwise, pick a URL at random with equal probability. Picking URLs at
+  // random makes it harder for evasive portals to count probes.
+  // TODO(b/309175584): Reavaluate if this behavior is really needed after m121
+  // with the Network.Shill.PortalDetector.AttemptsToRedirectFound metric.
   uint32_t index = base::RandInt(0, fallback_urls.size());
   return index < fallback_urls.size() ? fallback_urls[index] : default_url;
 }
