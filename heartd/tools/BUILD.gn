@@ -1,0 +1,19 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+# This target is the root target of heartd-tool package.
+group("all") {
+  deps = [ ":heartd-tool" ]
+}
+
+executable("heartd-tool") {
+  sources = [ "heartd_tool.cc" ]
+  install_path = "bin"
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+}
