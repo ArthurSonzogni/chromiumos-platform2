@@ -892,4 +892,26 @@ void DelegateImpl::GetSmartBatteryTemperature(
   std::move(callback).Run(cmd->Data());
 }
 
+void DelegateImpl::RunUrandom(base::TimeDelta exec_duration,
+                              RunUrandomCallback callback) {
+  base::File urandom_file(base::FilePath(path::kUrandomPath),
+                          base::File::FLAG_OPEN | base::File::FLAG_READ);
+  if (!urandom_file.IsValid()) {
+    std::move(callback).Run(false);
+    return;
+  }
+
+  constexpr int kNumBytesRead = 1024 * 1024;
+  char urandom_data[kNumBytesRead];
+  base::TimeTicks end_time = base::TimeTicks::Now() + exec_duration;
+  while (base::TimeTicks::Now() < end_time) {
+    if (kNumBytesRead != urandom_file.Read(0, urandom_data, kNumBytesRead)) {
+      std::move(callback).Run(false);
+      return;
+    }
+  }
+
+  std::move(callback).Run(true);
+}
+
 }  // namespace diagnostics

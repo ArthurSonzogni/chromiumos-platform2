@@ -22,6 +22,9 @@ inline constexpr char kBootstatDir[] = "/run/bootstat";
 // The path to the fingerprint device node.
 inline constexpr char kCrosFpDevice[] = "/dev/cros_fp";
 
+// The path to urandom.
+inline constexpr char kUrandomPath[] = "/dev/urandom";
+
 }  // namespace path
 
 namespace bootstat_event {

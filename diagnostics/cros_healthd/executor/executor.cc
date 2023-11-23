@@ -114,6 +114,8 @@ constexpr char kThermal[] = "ec_thermal-seccomp.policy";
 constexpr char kTouchpadFetcher[] = "touchpad_fetcher-seccomp.policy";
 // SECCOMP policy for reading I2C bus from EC.
 constexpr char kI2CRead[] = "ec_i2cread-seccomp.policy";
+// SECCOMP policy for urandom.
+constexpr char kUrandom[] = "urandom-seccomp.policy";
 
 }  // namespace seccomp_file
 
@@ -1110,6 +1112,25 @@ std::unique_ptr<DelegateProcess> Executor::CreateDelegateProcess(
   auto override_options = options;
   override_options.skip_sandbox = skip_sandbox_;
   return std::make_unique<DelegateProcess>(seccomp_filename, override_options);
+}
+
+void Executor::RunUrandom(
+    base::TimeDelta exec_duration,
+    mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver,
+    RunUrandomCallback callback) {
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kUrandom, SandboxedProcess::Options{});
+  delegate->remote()->RunUrandom(
+      exec_duration,
+      mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback), false));
+  auto controller =
+      std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
+
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&Executor::RunLongRunningDelegate,
+                     weak_factory_.GetWeakPtr(), std::move(controller),
+                     std::move(process_control_receiver)));
 }
 
 }  // namespace diagnostics

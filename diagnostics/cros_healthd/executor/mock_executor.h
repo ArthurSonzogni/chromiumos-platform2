@@ -208,6 +208,13 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
               (uint8_t i2c_port,
                GetSmartBatteryManufactureDateCallback callback),
               (override));
+  MOCK_METHOD(void,
+              RunUrandom,
+              (base::TimeDelta exec_duration,
+               mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+                   process_control_receiver,
+               RunUrandomCallback callback),
+              (override));
 };
 
 }  // namespace diagnostics

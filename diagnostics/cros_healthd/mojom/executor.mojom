@@ -524,4 +524,18 @@ interface Executor {
   // * |temperature| - temperature in tenth degree Kelvin increments. Return
   //                   null if error occurs.
   GetSmartBatteryTemperature(uint8 i2c_port) => (uint32? temperature);
+
+  // Run a urandom routine.
+  //
+  // The request:
+  // * |exec_duration| - The time duration this routine should run.
+  // * |process_control| - Used to run and collect status about the running
+  //                       process.
+  //
+  // The response:
+  // * |passed| - Whether the routine has passed.
+  RunUrandom(
+      ash.cros_healthd.external.mojo_base.mojom.TimeDelta exec_duration,
+      pending_receiver<ProcessControl> process_control)
+      => (bool passed);
 };

@@ -80,6 +80,8 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
       GetSmartBatteryManufactureDateCallback callback) override;
   void GetSmartBatteryTemperature(
       uint8_t i2c_port, GetSmartBatteryTemperatureCallback callback) override;
+  void RunUrandom(base::TimeDelta exec_duration,
+                  RunUrandomCallback callback) override;
 
  private:
   void GetConnectedHdmiConnectorsHelper(

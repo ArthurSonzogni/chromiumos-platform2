@@ -160,6 +160,11 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
       GetSmartBatteryManufactureDateCallback callback) override;
   void GetSmartBatteryTemperature(
       uint8_t i2c_port, GetSmartBatteryTemperatureCallback callback) override;
+  void RunUrandom(
+      base::TimeDelta exec_duration,
+      mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+          process_control_receiver,
+      RunUrandomCallback callback) override;
 
  private:
   // Runs the given process and wait for it to die. Does not track the process

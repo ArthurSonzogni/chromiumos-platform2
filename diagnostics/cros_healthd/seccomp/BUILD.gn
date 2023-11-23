@@ -66,6 +66,7 @@ install_and_check_seccomp_policy("diagnostics_seccomp_delegate") {
     "${_arch}/psr-seccomp.policy",
     "${_arch}/readonly-fetchers-seccomp.policy",
     "${_arch}/touchpad_fetcher-seccomp.policy",
+    "${_arch}/urandom-seccomp.policy",
   ]
   install_path = "seccomp_policy"
 
