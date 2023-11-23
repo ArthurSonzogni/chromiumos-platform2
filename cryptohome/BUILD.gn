@@ -458,6 +458,7 @@ if (use.test) {
       "namespace_mounter/mounter.cc",
       "namespace_mounter/mounter_unittest.cc",
       "platform_unittest.cc",
+      "recoverable_key_store/generate_test.cc",
       "signature_sealing/structures_proto_test.cc",
       "storage/cryptohome_vault_test.cc",
       "storage/dircrypto_migration_helper_delegate_test.cc",
