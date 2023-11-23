@@ -7,6 +7,7 @@
 #include <string>
 #include <string_view>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <gmock/gmock.h>
@@ -143,31 +144,24 @@ std::map<std::string, RoutingTable> CreateRoutingTable(
   return routing_tables_expected;
 }
 
-// Verifies if the result is expected and returns true if it is.
-bool VerifyMatchingResult(
+void VerifyMatchingResult(
     const RoutingDecisionResult& actual,
     const std::vector<std::string_view>& expected_policies,
     const std::vector<std::string_view>& expected_routes) {
   const auto result = actual.result();
   CHECK(expected_policies.size() == expected_routes.size() &&
         expected_policies.size() == result.size());
-  for (size_t i = 0; i < result.size(); i++) {
-    const auto policy = result[i].first;
-    const auto route = result[i].second;
-    if (policy == nullptr) {
-      return false;
-    }
-    if (expected_policies[i] != policy->policy_str()) {
-      return false;
-    }
-    const auto expected_route_str = expected_routes[i];
-    const std::string actual_route_str =
-        route == nullptr ? "" : route->route_str();
-    if (actual_route_str != expected_route_str) {
-      return false;
+  std::vector<std::string_view> actual_policies, actual_routes;
+  for (const auto& [policy, route] : result) {
+    actual_policies.push_back(policy->policy_str());
+    if (route == nullptr) {
+      actual_routes.push_back("");
+    } else {
+      actual_routes.push_back(route->route_str());
     }
   }
-  return true;
+  EXPECT_EQ(actual_policies, expected_policies);
+  EXPECT_EQ(actual_routes, expected_routes);
 }
 
 TEST(RouteManagerTest, BuildTablesTest) {
@@ -286,9 +280,7 @@ TEST_F(ProcessPacketTest, IPv4MatchedBySourceIP) {
   std::vector<std::string_view> expected_route_results = {
       "", "default via 100.86.211.254 dev wlan0 table 1003 metric 65536"};
   ASSERT_EQ(result.result().size(), expected_policy_results.size());
-  const auto result_match = VerifyMatchingResult(
-      result, expected_policy_results, expected_route_results);
-  EXPECT_TRUE(result_match);
+  VerifyMatchingResult(result, expected_policy_results, expected_route_results);
 }
 
 // Test the case when a packet matches with a policy only input interface of
@@ -311,9 +303,7 @@ TEST_F(ProcessPacketTest, IPv4MatchedByInputInterface) {
   std::vector<std::string_view> expected_route_results = {
       "", "default via 100.86.211.254 dev wlan0 table 1003 metric 65536"};
   ASSERT_EQ(result.result().size(), expected_policy_results.size());
-  const auto result_match = VerifyMatchingResult(
-      result, expected_policy_results, expected_route_results);
-  EXPECT_TRUE(result_match);
+  VerifyMatchingResult(result, expected_policy_results, expected_route_results);
 }
 
 // Test the case when a packet matches with a policy which source prefix is
@@ -337,9 +327,7 @@ TEST_F(ProcessPacketTest, IPv4MatchedByDefault) {
       "100.115.92.132/30 dev arc_ns1 proto kernel scope link src "
       "100.115.92.133"};
   ASSERT_EQ(result.result().size(), expected_policy_results.size());
-  const auto result_match = VerifyMatchingResult(
-      result, expected_policy_results, expected_route_results);
-  EXPECT_TRUE(result_match);
+  VerifyMatchingResult(result, expected_policy_results, expected_route_results);
 }
 
 // Test the case when no matched route is found.
@@ -359,9 +347,7 @@ TEST_F(ProcessPacketTest, IPv4NoMatchedRoute) {
       "32766: from all lookup main", "32767: from all lookup default"};
   std::vector<std::string_view> expected_route_results = {"", "", "", ""};
   ASSERT_EQ(result.result().size(), expected_policy_results.size());
-  const auto result_match = VerifyMatchingResult(
-      result, expected_policy_results, expected_route_results);
-  EXPECT_TRUE(result_match);
+  VerifyMatchingResult(result, expected_policy_results, expected_route_results);
 }
 
 // Test the case when a packet matches with a policy only source prefix of
@@ -386,9 +372,7 @@ TEST_F(ProcessPacketTest, IPv6MatchedBySourceIP) {
       "default via fe80::2a00:79e1:abc:f604 dev wlan0 table 1003 proto "
       "ra metric 1024 expires 3335sec hoplimit 64 pref medium"};
   ASSERT_EQ(result.result().size(), expected_policy_results.size());
-  const auto result_match = VerifyMatchingResult(
-      result, expected_policy_results, expected_route_results);
-  EXPECT_TRUE(result_match);
+  VerifyMatchingResult(result, expected_policy_results, expected_route_results);
 }
 
 // Test the case when a packet matches with a policy only input interface of
@@ -413,9 +397,7 @@ TEST_F(ProcessPacketTest, IPv6MatchedByInputInterface) {
       "2a00:79e1:abc:f604::/64 dev wlan0 table 1003 proto kernel metric "
       "256 expires 2591735sec pref medium"};
   ASSERT_EQ(result.result().size(), expected_policy_results.size());
-  const auto result_match = VerifyMatchingResult(
-      result, expected_policy_results, expected_route_results);
-  EXPECT_TRUE(result_match);
+  VerifyMatchingResult(result, expected_policy_results, expected_route_results);
 }
 
 // Test the case when a packet matches with a policy which source prefix is
@@ -438,9 +420,7 @@ TEST_F(ProcessPacketTest, IPv6MatchedByDefault) {
       "fdb9:72a:70c5:959d::/64 dev arc_ns1 proto kernel metric 256 pref "
       "medium"};
   ASSERT_EQ(result.result().size(), expected_policy_results.size());
-  const auto result_match = VerifyMatchingResult(
-      result, expected_policy_results, expected_route_results);
-  EXPECT_TRUE(result_match);
+  VerifyMatchingResult(result, expected_policy_results, expected_route_results);
 }
 
 // Test the case when no matched route is found.
@@ -461,9 +441,7 @@ TEST_F(ProcessPacketTest, IPv6NoMatchedRoute) {
       "32765: from all lookup 1002", "32766: from all lookup main"};
   std::vector<std::string_view> expected_route_results = {"", "", "", "", ""};
   ASSERT_EQ(result.result().size(), expected_policy_results.size());
-  const auto result_match = VerifyMatchingResult(
-      result, expected_policy_results, expected_route_results);
-  EXPECT_TRUE(result_match);
+  VerifyMatchingResult(result, expected_policy_results, expected_route_results);
 }
 
 }  // namespace
