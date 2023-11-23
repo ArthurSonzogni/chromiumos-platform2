@@ -125,6 +125,8 @@ union RoutineArgument {
   BluetoothPairingRoutineArgument bluetooth_pairing;
   // Arguments to create a camera availability routine.
   CameraAvailabilityRoutineArgument camera_availability;
+  // Arguments to create a floating point routine.
+  UrandomRoutineArgument urandom;
 };
 
 // This routine checks whether there is any memory problem by
@@ -321,6 +323,18 @@ struct CameraAvailabilityRoutineArgument {
   bool run_camera_diagnostic_service_available_check@1;
 };
 
+// This routine checks whether there is any CPU problem by repeatedly
+// reading from urandom.
+//
+// NextMinVersion: 1, NextIndex: 1
+struct UrandomRoutineArgument {
+  // `exec_duration` determines how long the prime search test will run. If
+  // the provided value is null, default to running for 1 minute. If the value
+  // is less than 1 second, run for 1 second.
+  ash.cros_healthd.external.mojo_base.mojom.TimeDelta? exec_duration@0;
+};
+
+
 // Interface exposed to clients for controlling a routine.
 //
 // Error Handling:
@@ -446,6 +460,7 @@ union RoutineDetail {
   BluetoothScanningRoutineDetail bluetooth_scanning;
   BluetoothPairingRoutineDetail bluetooth_pairing;
   CameraAvailabilityRoutineDetail camera_availability;
+  UrandomRoutineDetail urandom;
 };
 
 // Details regarding memory routine.
@@ -817,4 +832,10 @@ struct FanRoutineDetail {
   array<uint8> failed_fan_ids@1;
   // Whether the number of fan probed is matched.
   HardwarePresenceStatus fan_count_status@2;
+};
+
+// Details regarding urandom routine.
+//
+// NextMinVersion: 1, NextIndex: 0
+struct UrandomRoutineDetail {
 };

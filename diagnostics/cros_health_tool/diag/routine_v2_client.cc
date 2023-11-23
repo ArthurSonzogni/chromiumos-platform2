@@ -91,6 +91,7 @@ void RoutineV2Client::OnRoutineStateChange(
         case mojom::RoutineDetail::Tag::kVolumeButton:
         case mojom::RoutineDetail::Tag::kLedLitUp:
         case mojom::RoutineDetail::Tag::kFloatingPoint:
+        case mojom::RoutineDetail::Tag::kUrandom:
           break;
         case mojom::RoutineDetail::Tag::kMemory:
           PrintOutput(ParseMemoryDetail(detail->get_memory()));

@@ -115,6 +115,7 @@ base::Value::Dict ConvertRoutineDetailToOutputDict(
     case mojom::RoutineDetail::Tag::kVolumeButton:
     case mojom::RoutineDetail::Tag::kLedLitUp:
     case mojom::RoutineDetail::Tag::kFloatingPoint:
+    case mojom::RoutineDetail::Tag::kUrandom:
       return base::Value::Dict();
     case mojom::RoutineDetail::Tag::kMemory:
       return ConvertMemoryV2ResultToOutputDict(detail->get_memory());
