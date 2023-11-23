@@ -579,7 +579,7 @@ class AttestationService : public AttestationInterface {
   // Checks if PCR0 indicates that the system booted in verified mode.
   // Always reads PCR0 contents from TPM, so works even when not prepared
   // for enrollment.
-  bool IsVerifiedMode() const;
+  bool IsVerifiedMode();
 
   // Validates incoming enterprise challenge data.
   bool ValidateEnterpriseChallenge(VAType va_type,
@@ -789,6 +789,7 @@ class AttestationService : public AttestationInterface {
       kEndorsementKeyTypeForEnrollmentID;
   KeyType default_endorsement_key_type_ = kDefaultEndorsementKeyType;
   const KeyType default_identity_key_type_ = kDefaultIdentityKeyType;
+  std::optional<bool> is_verified_mode_;
 
   // If `false`, disable VTPM EK support by force. Note that not all TPM2 but
   // only GSC devices are supported while we use `USE_TPM2` in productiono for

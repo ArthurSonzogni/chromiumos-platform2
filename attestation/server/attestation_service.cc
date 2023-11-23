@@ -2126,15 +2126,19 @@ void AttestationService::GetStatus(const GetStatusRequest& request,
                                                   std::move(reply));
 }
 
-bool AttestationService::IsVerifiedMode() const {
+bool AttestationService::IsVerifiedMode() {
   using Mode = hwsec::DeviceConfigSettings::BootModeSetting::Mode;
+  if (is_verified_mode_.has_value()) {
+    return *is_verified_mode_;
+  }
   hwsec::StatusOr<Mode> mode = hwsec_->GetCurrentBootMode();
   if (!mode.ok()) {
     LOG(ERROR) << __func__ << "Invalid boot mode: " << mode.status();
     return false;
   }
-  return !mode->developer_mode && !mode->recovery_mode &&
-         mode->verified_firmware;
+  is_verified_mode_ =
+      !mode->developer_mode && !mode->recovery_mode && mode->verified_firmware;
+  return *is_verified_mode_;
 }
 
 void AttestationService::GetStatusTask(
