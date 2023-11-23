@@ -13,6 +13,7 @@
 #include <base/command_line.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/message_loop/message_pump_libevent.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/syslog_logging.h>
 
@@ -32,6 +33,8 @@ static void SetLogItems() {
 int main(int argc, char* argv[]) {
   // Init CommandLine for InitLogging.
   base::CommandLine::Init(argc, argv);
+  // Enable epoll message pump.
+  base::MessagePumpLibevent::InitializeFeatures();
   int kCameraProcessPriority = 0;
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
