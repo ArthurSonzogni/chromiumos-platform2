@@ -8,6 +8,7 @@ group("all") {
   deps = [
     ":heartd",
     ":install_init_config",
+    ":install_mojo_service_manager_policy_config",
   ]
 }
 
@@ -21,4 +22,9 @@ executable("heartd") {
 install_config("install_init_config") {
   sources = [ "init/heartd.conf" ]
   install_path = "upstart"
+}
+
+install_config("install_mojo_service_manager_policy_config") {
+  sources = [ "init/mojo/heartd.jsonc" ]
+  install_path = "/etc/mojo/service_manager/policy"
 }
