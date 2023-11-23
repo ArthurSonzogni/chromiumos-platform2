@@ -1,4 +1,4 @@
 per-file *.mojom=set noparent
-per-file *.mojom=file://diagnostics/IPC_OWNERS
+per-file *.mojom=file://IPC_OWNERS
 per-file *_mojom_traits*.*=set noparent
-per-file *_mojom_traits*.*=file://diagnostics/IPC_OWNERS
+per-file *_mojom_traits*.*=file://IPC_OWNERS

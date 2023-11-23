@@ -1,0 +1,11 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/mojom_bindings_generator.gni")
+import("//common-mk/pkg_config.gni")
+
+generate_mojom_bindings("libheartd_mojo_bindings") {
+  mojo_root = "${platform2_root}"
+  sources = [ "heartd.mojom" ]
+}
