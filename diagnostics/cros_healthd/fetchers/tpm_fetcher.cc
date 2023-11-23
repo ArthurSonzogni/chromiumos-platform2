@@ -235,14 +235,13 @@ void TpmFetcher::FetchTpmInfo(TpmFetcher::FetchTpmInfoCallback&& callback) {
     return;
 
   info_ = mojom::TpmInfo::New();
+  ReadAndTrimString(GetRootDir().Append(kFileTpmDidVid), &info_->did_vid);
+
   FetchVersion();
   FetchStatus();
   FetchDictionaryAttack();
   FetchAttestation();
   FetchSupportedFeatures();
-
-  ReadAndTrimString(context_->root_dir().Append(kFileTpmDidVid),
-                    &info_->did_vid);
 }
 
 }  // namespace diagnostics

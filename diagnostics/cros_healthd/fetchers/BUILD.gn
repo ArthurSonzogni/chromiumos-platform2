@@ -13,10 +13,12 @@ pkg_config("libcros_healthd_fetchers_pkg_deps") {
     "egl",
     "glesv2",
     "iioservice_ipc",
+    "libattestation-client",
     "libbrillo",
     "libchrome",
     "libmojo",
     "libspaced",
+    "libtpm_manager-client",
     "libudev",
     "protobuf",
     "re2",
@@ -66,11 +68,15 @@ if (use.test) {
       "fwupd",
       "glesv2",
       "iioservice_ipc",
+      "libattestation-client",
+      "libattestation-client-test",
       "libbrillo",
       "libchrome",
       "libchrome-test",
       "libspaced",
       "libspaced-test",
+      "libtpm_manager-client",
+      "libtpm_manager-client-test",
       "mojo_service_manager",
       "system_api",
     ]
@@ -98,6 +104,7 @@ if (use.test) {
       "system_fetcher_test.cc",
       "thermal_fetcher_test.cc",
       "timezone_fetcher_test.cc",
+      "tpm_fetcher_test.cc",
     ]
     configs += [ ":libcros_healthd_fetchers_test_pkg_deps" ]
     deps = [
