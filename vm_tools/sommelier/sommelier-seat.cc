@@ -429,13 +429,12 @@ static void sl_keyboard_key(void* data,
       uint32_t num_symbols;
       xkb_keysym_t symbol = XKB_KEY_NoSymbol;
       uint32_t code = key + 8;
-      struct sl_accelerator* accelerator;
 
       num_symbols = xkb_state_key_get_syms(host->state, code, &symbols);
       if (num_symbols == 1)
         symbol = symbols[0];
 
-      wl_list_for_each(accelerator, &host->seat->ctx->accelerators, link) {
+      for (auto accelerator : host->seat->ctx->accelerators) {
         if (host->modifiers == accelerator->modifiers &&
             xkb_keysym_to_lower(symbol) == accelerator->symbol) {
           handled = false;
@@ -445,8 +444,7 @@ static void sl_keyboard_key(void* data,
       if (host->seat->ctx->host_focus_window &&
           !(host->seat->ctx->host_focus_window->fullscreen ||
             host->seat->ctx->host_focus_window->compositor_fullscreen)) {
-        wl_list_for_each(accelerator, &host->seat->ctx->windowed_accelerators,
-                         link) {
+        for (auto accelerator : host->seat->ctx->accelerators) {
           if (host->modifiers == accelerator->modifiers &&
               xkb_keysym_to_lower(symbol) == accelerator->symbol) {
             handled = false;

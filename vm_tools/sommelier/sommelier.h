@@ -330,7 +330,6 @@ struct sl_host_seat {
 MAP_STRUCTS(wl_seat, sl_host_seat);
 
 struct sl_accelerator {
-  struct wl_list link;
   uint32_t modifiers;
   xkb_keysym_t symbol;
 };

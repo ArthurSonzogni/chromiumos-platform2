@@ -36,6 +36,7 @@
 #include <sys/un.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <vector>
 #include <wayland-client.h>
 #include <xcb/composite.h>
 #include <xcb/shape.h>
@@ -3479,8 +3480,9 @@ static const char* sl_arg_value(const char* arg) {
 // XKB key symbol name (E.g Delete).
 // Sommelier will exit with EXIT_FAILURE if this returns false.
 // TODO(b/237946069) Confirm accelerator handling works with i18n.
-static bool sl_parse_accelerators(struct wl_list* accelerator_list,
-                                  const char* accelerators) {
+static bool sl_parse_accelerators(
+    std::vector<struct sl_accelerator*>& accelerator_list,
+    const char* accelerators) {
   if (accelerators) {
     uint32_t modifiers = 0;
 
@@ -3515,7 +3517,7 @@ static bool sl_parse_accelerators(struct wl_list* accelerator_list,
           return false;
         }
 
-        wl_list_insert(accelerator_list, &accelerator->link);
+        accelerator_list.push_back(accelerator);
 
         modifiers = 0;
         accelerators = end;
@@ -4126,9 +4128,9 @@ int real_main(int argc, char** argv) {
       return EXIT_FAILURE;
     }
 
-    if (!sl_parse_accelerators(&ctx.accelerators, accelerators))
+    if (!sl_parse_accelerators(ctx.accelerators, accelerators))
       return EXIT_FAILURE;
-    if (!sl_parse_accelerators(&ctx.windowed_accelerators,
+    if (!sl_parse_accelerators(ctx.windowed_accelerators,
                                windowed_accelerators))
       return EXIT_FAILURE;
 

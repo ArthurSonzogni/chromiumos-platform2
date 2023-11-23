@@ -127,8 +127,8 @@ struct sl_context {
   pid_t child_pid;
   pid_t peer_pid;
   struct xkb_context* xkb_context;
-  struct wl_list accelerators;
-  struct wl_list windowed_accelerators;
+  std::vector<struct sl_accelerator*> accelerators;
+  std::vector<struct sl_accelerator*> windowed_accelerators;
   struct wl_list registries;
   struct wl_list globals;
   std::vector<struct sl_host_output*> host_outputs;
