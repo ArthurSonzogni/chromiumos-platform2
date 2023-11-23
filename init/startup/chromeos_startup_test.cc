@@ -367,7 +367,7 @@ TEST_F(TPMTest, NeedsClobberNeedFinalization) {
   EXPECT_EQ(startup_->IsTPMOwned(), false);
   struct stat st;
   base::FilePath need_finalization_file =
-      base_dir.Append("encrypted.need-finalization");
+      base_dir.Append("encrypted.needs-finalization");
   ASSERT_TRUE(CreateDirAndWriteFile(need_finalization_file, "0"));
   st.st_uid = getuid();
   platform_->SetStatResultForPath(need_finalization_file, st);

@@ -84,7 +84,7 @@ constexpr char kPreservationRequestFile[] = "preservation_request";
 constexpr char kCryptohomeKeyFile[] = "home/.shadow/cryptohome.key";
 // This file should not exist on the newer system after the TPM is cleared.
 constexpr char kEncStatefulNeedFinalizationFile[] =
-    "encrypted.need-finalization";
+    "encrypted.needs-finalization";
 // File used to trigger a stateful reset. Contains arguments for the
 // clobber-state" call. This file may exist at boot time, as some use cases
 // operate by creating this file with the necessary arguments and then
