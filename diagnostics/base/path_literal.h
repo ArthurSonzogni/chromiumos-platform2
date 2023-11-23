@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_BASE_PATH_UTILS_H_
-#define DIAGNOSTICS_BASE_PATH_UTILS_H_
+#ifndef DIAGNOSTICS_BASE_PATH_LITERAL_H_
+#define DIAGNOSTICS_BASE_PATH_LITERAL_H_
 
 #include <algorithm>
 #include <array>
@@ -13,8 +13,6 @@
 
 #include <base/files/file_path.h>
 #include <brillo/brillo_export.h>
-
-#include "diagnostics/base/file_utils.h"
 
 namespace diagnostics {
 
@@ -117,4 +115,4 @@ constexpr auto MakePathLiteral(const char* token, Types... rest) {
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_BASE_PATH_UTILS_H_
+#endif  // DIAGNOSTICS_BASE_PATH_LITERAL_H_

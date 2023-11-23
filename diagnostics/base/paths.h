@@ -5,9 +5,7 @@
 #ifndef DIAGNOSTICS_BASE_PATHS_H_
 #define DIAGNOSTICS_BASE_PATHS_H_
 
-#include <array>
-
-#include "diagnostics/base/path_utils.h"
+#include "diagnostics/base/path_literal.h"
 
 // VAR_ put the paths before the variable names so it is easier to read.
 #define VAR_(path, var) inline constexpr auto var = path

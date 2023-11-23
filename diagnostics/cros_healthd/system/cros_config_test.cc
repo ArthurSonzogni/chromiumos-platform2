@@ -7,7 +7,7 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_test_utils.h"
-#include "diagnostics/base/path_utils.h"
+#include "diagnostics/base/path_literal.h"
 #include "diagnostics/base/paths.h"
 #include "diagnostics/cros_healthd/service_config.h"
 #include "diagnostics/cros_healthd/system/cros_config.h"

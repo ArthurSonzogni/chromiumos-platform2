@@ -15,7 +15,7 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_utils.h"
-#include "diagnostics/base/path_utils.h"
+#include "diagnostics/base/path_literal.h"
 
 namespace diagnostics {
 

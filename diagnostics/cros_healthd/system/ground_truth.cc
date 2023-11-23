@@ -15,7 +15,6 @@
 #include <brillo/errors/error.h>
 
 #include "diagnostics/base/file_utils.h"
-#include "diagnostics/base/path_utils.h"
 #include "diagnostics/base/paths.h"
 #include "diagnostics/cros_healthd/routines/fingerprint/fingerprint.h"
 #include "diagnostics/cros_healthd/system/context.h"
