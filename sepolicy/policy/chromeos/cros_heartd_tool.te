@@ -1,0 +1,8 @@
+type cros_heartd_tool, domain, chromeos_domain;
+
+permissive cros_heartd_tool;
+
+# Access cros_heartd_tool over ssh terminal.
+domain_auto_trans(cros_ssh_session, cros_heartd_tool_exec, cros_heartd_tool)
+# Access cros_heartd_tool over tty terminal.
+domain_auto_trans(cros_agetty, cros_heartd_tool_exec, cros_heartd_tool)

@@ -104,6 +104,8 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/gdbus                  u:object_r:cros_gdbus_exec:s0
 /usr/bin/getopt                 u:object_r:cros_getopt_exec:s0
 /usr/bin/gfind                  u:object_r:cros_find_exec:s0
+/usr/bin/heartd                 u:object_r:cros_heartd_exec:s0
+/usr/bin/heartd-tool            u:object_r:cros_heartd_tool_exec:s0
 /usr/bin/hermes                 u:object_r:cros_hermes_exec:s0
 /usr/bin/hotlined               u:object_r:cros_hotlined_exec:s0
 /usr/bin/hotlog                 u:object_r:cros_hotlog_exec:s0

@@ -1,0 +1,5 @@
+type cros_heartd, domain, chromeos_domain;
+
+permissive cros_heartd;
+
+domain_auto_trans(cros_init, cros_heartd_exec, cros_heartd)
