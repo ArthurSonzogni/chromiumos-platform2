@@ -238,7 +238,11 @@ void Network::SetupConnection(net_base::IPFamily family, bool is_slaac) {
         base::Seconds(30));
   }
   state_ = State::kConnected;
-  for (auto* ev : event_handlers_) {
+
+  // Iterate a copy of the event handlers vector, so that we avoid the original
+  // one being modifying during the iteration.
+  auto event_handlers = event_handlers_;
+  for (auto* ev : event_handlers) {
     ev->OnConnectionUpdated(interface_index_);
   }
 
