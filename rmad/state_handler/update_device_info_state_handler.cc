@@ -201,20 +201,18 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
                   "initialize the handler.";
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
-  // Remove design configs that don't have SKU ID or the SKU ID is 0x7fffffff
-  // (unprovisioned SKU ID), and then sort the list by SKU.
+  // Remove design configs that the SKU ID is 0x7fffffff (unprovisioned SKU ID),
+  // and then sort the list by SKU.
   design_config_list.erase(
       std::remove_if(design_config_list.begin(), design_config_list.end(),
                      [](const DesignConfig& config) {
-                       return !config.sku_id.has_value() ||
+                       return config.sku_id.has_value() &&
                               config.sku_id.value() == 0x7fffffff;
                      }),
       design_config_list.end());
   std::sort(design_config_list.begin(), design_config_list.end(),
             [](const DesignConfig& a, const DesignConfig& b) {
-              CHECK(a.sku_id.has_value());
-              CHECK(b.sku_id.has_value());
-              return a.sku_id.value() < b.sku_id.value();
+              return a.sku_id < b.sku_id;
             });
   // Construct |sku_id_list|, |sku_descripsion_list| and |custom_label_tag_list|
   // from |design_config_list|.
@@ -322,17 +320,16 @@ void UpdateDeviceInfoStateHandler::GenerateSkuListsFromDesignConfigList(
   sku_description_list->clear();
   // Cache all the descriptions of all SKUs.
   std::vector<std::vector<std::string>> sku_property_descriptions;
-  // |design_config_list| should be sorted by SKU ID, and doesn't contain null
-  // SKU IDs.
+  // |design_config_list| should be sorted by SKU ID.
   for (const DesignConfig& design_config : design_config_list) {
-    CHECK(design_config.sku_id.has_value());
-    // Skip duplicate SKU IDs. This should only happen on custom label devices,
-    // and theoretically, configs with the same SKU ID should have the same
-    // hardware properties.
+    // Skip empty and duplicate SKU IDs. Duplicate SKU IDs should only happen on
+    // custom label devices, and theoretically, configs with the same SKU ID
+    // should have the same hardware properties.
     // TODO(chenghan): Show (SKU ID, custom label tag) in pairs instead of
     //                 separate dropdown lists in the UX.
-    if (!sku_id_list->empty() &&
-        sku_id_list->back() == design_config.sku_id.value()) {
+    if (!design_config.sku_id.has_value() ||
+        (!sku_id_list->empty() &&
+         sku_id_list->back() == design_config.sku_id.value())) {
       continue;
     }
     sku_id_list->push_back(design_config.sku_id.value());

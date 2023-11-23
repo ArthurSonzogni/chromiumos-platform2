@@ -493,6 +493,24 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NoRegionList_Failed) {
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
 
+TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NullSku_Success) {
+  std::vector<rmad::DesignConfig> design_configs = {
+      {.model_name = "Model",
+       .custom_label_tag = "",
+       .hardware_properties = {"Property1: Yes", "Property2: Yes"}},
+      {.model_name = "Model",
+       .sku_id = kSkuId1,
+       .custom_label_tag = kCustomLabelTag,
+       .hardware_properties = {"Property1: Yes", "Property2: Yes"}}};
+
+  auto handler = CreateStateHandler({.design_config_list = design_configs});
+  json_store_->SetValue(kMlbRepair, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = handler->GetState();
+  EXPECT_EQ(state.update_device_info().custom_label_list_size(), 2);
+}
+
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        InitializeState_NoDesignConfigList_Failed) {
   auto handler = CreateStateHandler({.design_config_list = std::nullopt});
