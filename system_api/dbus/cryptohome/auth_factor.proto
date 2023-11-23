@@ -14,6 +14,8 @@ option optimize_for = LITE_RUNTIME;
 package user_data_auth;
 option go_package = "chromiumos/system_api/user_data_auth_proto";
 
+import "recoverable_key_store.proto";
+
 // Enum to define all the available types of AuthFactor. This would be used for
 // identification of a given AuthFactor.
 enum AuthFactorType {
@@ -73,9 +75,13 @@ message PasswordAuthInput {
 }
 
 // Pin AuthFactor requires a secret to be passed for derivation and
-// creation of key.
+// creation of key. If secret is a hash of the user-provided raw input, the
+// hash_algorithm and hash_salt parameters can be specified, which will allow
+// the auth factor to generate a recoverable key store.
 message PinAuthInput {
   bytes secret = 1;
+  cryptohome.LockScreenKnowledgeFactorHashAlgorithm hash_algorithm = 2;
+  bytes hash_salt = 3;
 }
 
 message CryptohomeRecoveryAuthInput {

@@ -2870,6 +2870,8 @@ AuthBlockType AuthSession::ResaveVaultKeysetIfNeeded(
                           .reset_secret = std::nullopt,
                           .reset_seed = std::nullopt,
                           .rate_limiter_label = std::nullopt,
+                          .user_input_hash_algorithm = std::nullopt,
+                          .user_input_hash_salt = std::nullopt,
                           .cryptohome_recovery_auth_input = std::nullopt,
                           .challenge_credential_auth_input = std::nullopt,
                           .fingerprint_auth_input = std::nullopt};

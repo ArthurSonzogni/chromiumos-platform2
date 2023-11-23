@@ -11,6 +11,7 @@
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
+#include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/crypto.h"
@@ -34,9 +35,13 @@ AuthInput FromPasswordAuthInput(
 }
 
 AuthInput FromPinAuthInput(const user_data_auth::PinAuthInput& proto) {
-  return AuthInput{
-      .user_input = SecureBlob(proto.secret()),
-  };
+  AuthInput input = {.user_input = SecureBlob(proto.secret())};
+  if (proto.hash_algorithm() !=
+      LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_UNSPECIFIED) {
+    input.user_input_hash_algorithm = proto.hash_algorithm();
+    input.user_input_hash_salt = brillo::BlobFromString(proto.hash_salt());
+  }
+  return input;
 }
 
 AuthInput FromCryptohomeRecoveryAuthInput(

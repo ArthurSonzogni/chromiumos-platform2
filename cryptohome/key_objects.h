@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <brillo/secure_blob.h>
+#include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 
 #include "cryptohome/cryptorecovery/cryptorecovery.pb.h"
 #include "cryptohome/flatbuffer_schemas/structures.h"
@@ -89,6 +90,13 @@ struct AuthInput {
   std::optional<brillo::Blob> reset_salt;
   // The PinWeaver leaf label of the rate-limiter.
   std::optional<uint64_t> rate_limiter_label;
+  // If the user input is a hash of the actual user knowledge factor, the
+  // algorithm used for hashing.
+  std::optional<LockScreenKnowledgeFactorHashAlgorithm>
+      user_input_hash_algorithm;
+  // If the user input is a hash of the actual user knowledge factor, the salt
+  // used for hashing.
+  std::optional<brillo::Blob> user_input_hash_salt;
   // Data required for Cryptohome Recovery flow.
   std::optional<CryptohomeRecoveryAuthInput> cryptohome_recovery_auth_input;
   // Data required for Challenge Credential flow.
