@@ -107,8 +107,15 @@ void PortalDetector::Start(const std::string& ifname,
 
   SLOG(this, 3) << "In " << __func__;
 
-  http_url_ = PickProbeUrl(probing_configuration_.portal_http_url,
-                           probing_configuration_.portal_fallback_http_urls);
+  // If this is not the first attempt and if the previous attempt found a
+  // captive portal, reuse the same HTTP URL probe to ensure the same
+  // kPortalRedirect result is returned.
+  if (previous_result_ && previous_result_->IsHTTPProbeRedirected()) {
+    http_url_ = *previous_result_->probe_url;
+  } else {
+    http_url_ = PickProbeUrl(probing_configuration_.portal_http_url,
+                             probing_configuration_.portal_fallback_http_urls);
+  }
   https_url_ = PickProbeUrl(probing_configuration_.portal_https_url,
                             probing_configuration_.portal_fallback_https_urls);
 
@@ -200,6 +207,7 @@ void PortalDetector::CompleteTrial(Result result) {
             << ", duration=" << result.https_duration;
   result.num_attempts = attempt_count_;
   CleanupTrial();
+  previous_result_ = result;
   portal_result_callback_.Run(result);
 }
 
@@ -215,6 +223,7 @@ void PortalDetector::Stop() {
   SLOG(this, 3) << "In " << __func__;
   attempt_count_ = 0;
   delay_backoff_exponent_ = 0;
+  previous_result_ = std::nullopt;
   CleanupTrial();
 }
 

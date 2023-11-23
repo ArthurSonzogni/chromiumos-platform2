@@ -7,6 +7,7 @@
 
 #include <array>
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <string>
 #include <string_view>
@@ -273,7 +274,7 @@ class PortalDetector {
   friend class PortalDetectorTest;
   FRIEND_TEST(PortalDetectorTest, AttemptCount);
   FRIEND_TEST(PortalDetectorTest, AttemptCount);
-  FRIEND_TEST(PortalDetectorTest, FailureToStartDoesNotCauseImmeidateRestart);
+  FRIEND_TEST(PortalDetectorTest, FailureToStartDoesNotCauseImmediateRestart);
   FRIEND_TEST(PortalDetectorTest, GetNextAttemptDelayUnchangedUntilTrialStarts);
   FRIEND_TEST(PortalDetectorTest, HttpStartAttemptFailed);
   FRIEND_TEST(PortalDetectorTest, HttpsStartAttemptFailed);
@@ -288,6 +289,7 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, ResetAttemptDelays);
   FRIEND_TEST(PortalDetectorTest, ResetAttemptDelaysAndRestart);
   FRIEND_TEST(PortalDetectorTest, Restart);
+  FRIEND_TEST(PortalDetectorTest, RestartAfterRedirect);
 
   // Picks the next probe URL based on |attempt_count_|. Returns |default_url|
   // if this is the first attempt. Otherwise, randomly returns with equal
@@ -338,7 +340,13 @@ class PortalDetector {
   base::RepeatingCallback<void(const Result&)> portal_result_callback_;
   std::unique_ptr<HttpRequest> http_request_;
   std::unique_ptr<HttpRequest> https_request_;
+  // PortalDetector::Result for the current on-going attempt. Undefined if there
+  // is no portal detection attempt currently running.
   std::unique_ptr<Result> result_;
+  // PortalDetector::Result of the prior attempt. Undefined for the first
+  // attempt. Used to ensure that the same HTTP probe URL is used with a closed
+  // captive portal.
+  std::optional<Result> previous_result_ = std::nullopt;
   net_base::HttpUrl http_url_;
   net_base::HttpUrl https_url_;
   ProbingConfiguration probing_configuration_;

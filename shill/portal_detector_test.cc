@@ -306,7 +306,7 @@ TEST_F(PortalDetectorTest, HttpsStartAttemptFailed) {
   ExpectCleanupTrial();
 }
 
-TEST_F(PortalDetectorTest, FailureToStartDoesNotCauseImmeidateRestart) {
+TEST_F(PortalDetectorTest, FailureToStartDoesNotCauseImmediateRestart) {
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay()));
   EXPECT_TRUE(portal_detector()->GetNextAttemptDelay().is_zero());
   EXPECT_EQ(0, portal_detector()->attempt_count());
@@ -385,6 +385,43 @@ TEST_F(PortalDetectorTest, Restart) {
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, PositiveDelay()));
   StartPortalRequest();
   StartTrialTask();
+  EXPECT_EQ(2, portal_detector()->attempt_count());
+  Mock::VerifyAndClearExpectations(&dispatcher_);
+
+  portal_detector()->Stop();
+  ExpectReset();
+}
+
+TEST_F(PortalDetectorTest, RestartAfterRedirect) {
+  auto probe_url =
+      *net_base::HttpUrl::CreateFromString("http://service.google.com");
+
+  EXPECT_FALSE(portal_detector()->IsInProgress());
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay()));
+  EXPECT_TRUE(portal_detector()->GetNextAttemptDelay().is_zero());
+  EXPECT_EQ(0, portal_detector()->attempt_count());
+  StartPortalRequest();
+  StartTrialTask();
+  EXPECT_EQ(1, portal_detector()->attempt_count());
+  Mock::VerifyAndClearExpectations(&dispatcher_);
+
+  PortalDetector::Result result;
+  result.http_phase = PortalDetector::Phase::kContent,
+  result.http_status = PortalDetector::Status::kRedirect;
+  result.https_phase = PortalDetector::Phase::kContent;
+  result.https_status = PortalDetector::Status::kFailure;
+  result.redirect_url =
+      net_base::HttpUrl::CreateFromString("https://www.portal.com/login");
+  result.probe_url = probe_url;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
+  portal_detector()->CompleteTrial(result);
+  ExpectCleanupTrial();
+
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, PositiveDelay()));
+  StartPortalRequest();
+  StartTrialTask();
+  EXPECT_EQ(portal_detector()->http_url_, probe_url);
   EXPECT_EQ(2, portal_detector()->attempt_count());
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
