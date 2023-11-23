@@ -27,6 +27,12 @@ namespace {
 constexpr const char kDefaultFakeHalSpecFile[] = "/etc/camera/fake_hal.json";
 constexpr const char kOverrideFakeHalSpecFile[] = "/run/camera/fake_hal.json";
 
+// This is the sleep time (0.3s) between reporting disconnect and connect event
+// to upper layer, to avoid race condition in Chrome.
+// TODO(b:261682032): Check if the time can be lower, and/or fix the issue in
+// Chrome so this is not needed.
+constexpr const base::TimeDelta kReconnectDelay = base::Milliseconds(300);
+
 int camera_device_open_ext(const hw_module_t* module,
                            const char* name,
                            hw_device_t** device,
@@ -285,7 +291,7 @@ void CameraHal::ApplySpec(const HalSpec& old_spec, const HalSpec& new_spec) {
 
           // TODO(b:261682032): Sleep here to make sure the disconnect /
           // teardown event is properly propagated.
-          base::PlatformThread::Sleep(base::Microseconds(300));
+          base::PlatformThread::Sleep(kReconnectDelay);
 
           // Supported format changes change static metadata, so we need to
           // regenerate static metadata here.
@@ -305,7 +311,7 @@ void CameraHal::ApplySpec(const HalSpec& old_spec, const HalSpec& new_spec) {
 
           // TODO(b:261682032): Sleep here to make sure the disconnect /
           // teardown event is properly propagated.
-          base::PlatformThread::Sleep(base::Microseconds(300));
+          base::PlatformThread::Sleep(kReconnectDelay);
 
           NotifyCameraConnected(id, true);
         }
