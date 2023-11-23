@@ -4,8 +4,7 @@
 
 use std::path::Path;
 
-use anyhow::{bail, Context, Result};
-use clap::Parser;
+use anyhow::{Context, Result};
 use gpt_disk_types::BlockSize;
 use libchromeos::panic_handler;
 use log::info;
@@ -13,7 +12,9 @@ use nix::sys::reboot::reboot;
 
 mod cgpt;
 mod chromeos_install;
+mod disk;
 mod gpt;
+mod lsblk;
 mod mount;
 mod util;
 
@@ -21,15 +22,6 @@ const FLEXOR_TAG: &str = "flexor";
 const FLEX_IMAGE_FILENAME: &str = "flex_image.tar.xz";
 const DATA_PART_NUM: u32 = 4;
 const FLEX_DEPLOY_PART_NUM: u32 = 13;
-
-/// Runs the Flexor: A ChromeOS Flex installer.
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    /// Path of the disk we want to install ChromeOS Flex on.
-    #[arg(short, long)]
-    device: String,
-}
 
 /// Copies the ChromeOS Flex image to rootfs (residing in RAM). This is done
 /// since we are about to repartition the disk and can't loose the image. Since
@@ -105,24 +97,19 @@ fn main() -> Result<()> {
     }
 
     info!("Hello from Flexor!");
-    let args = Args::parse();
-
-    let device_path = Path::new(&args.device);
-    if !matches!(device_path.try_exists(), Ok(true)) {
-        bail!("Unable to locate device {}", device_path.display());
-    }
+    let device_path = disk::get_target_device()?;
 
     // Assuming a block size of 512, like all of ChromeOS.
     let block_size = BlockSize::BS_512;
 
     info!("Start Flex-ing");
-    copy_image_to_rootfs(device_path)?;
+    copy_image_to_rootfs(&device_path)?;
 
     info!("Setting up the disk");
-    setup_disk(device_path, block_size)?;
+    setup_disk(&device_path, block_size)?;
 
     info!("Setting up the new partition and installing ChromeOS Flex");
-    setup_flex_deploy_partition_and_install(device_path)?;
+    setup_flex_deploy_partition_and_install(&device_path)?;
 
     info!("Rebooting into ChromeOS Flex, keep fingers crossed");
     reboot(nix::sys::reboot::RebootMode::RB_AUTOBOOT)?;

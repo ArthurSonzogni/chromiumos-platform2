@@ -1,0 +1,29 @@
+{
+   "blockdevices": [
+      {"name":"/dev/loop0", "type":"loop"},
+      {"name":"/dev/loop1", "type":"loop",
+         "children": [
+            {"name":"/dev/mapper/encstateful", "type":"dm"}
+         ]
+      },
+      {"name":"/dev/loop2", "type":"loop"},
+      {"name":"/dev/loop3", "type":"loop"},
+      {"name":"/dev/loop4", "type":"loop"},
+      {"name":"/dev/sda", "type":"disk",
+         "children": [
+            {"name":"/dev/sda1", "type":"part"},
+            {"name":"/dev/sda2", "type":"part"},
+            {"name":"/dev/sda3", "type":"part"},
+            {"name":"/dev/sda4", "type":"part"},
+            {"name":"/dev/sda5", "type":"part"},
+            {"name":"/dev/sda6", "type":"part"},
+            {"name":"/dev/sda7", "type":"part"},
+            {"name":"/dev/sda8", "type":"part"},
+            {"name":"/dev/sda9", "type":"part"},
+            {"name":"/dev/sda10", "type":"part"},
+            {"name":"/dev/sda11", "type":"part"},
+            {"name":"/dev/sda12", "type":"part"}
+         ]
+      }
+   ]
+}

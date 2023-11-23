@@ -7,17 +7,33 @@ use crate::gpt::Gpt;
 
 use anyhow::{anyhow, bail, Context, Result};
 use gpt_disk_types::{BlockSize, GptPartitionEntry, Lba, LbaRangeInclusive};
-use log::{error, info};
+use log::{error, info, debug};
 use std::{
     fs::File,
     io::BufReader,
-    os::unix::ffi::OsStrExt,
     path::{Path, PathBuf},
     process::Command,
     str::from_utf8,
 };
 use tar::Archive;
 use xz2::bufread::XzDecoder;
+
+/// Run a command and get its stdout as raw bytes. An error is
+/// returned if the process fails to launch, or if it exits non-zero.
+pub fn get_command_output(mut command: Command) -> Result<Vec<u8>> {
+    debug!("running command: {:?}", command);
+    let output = match command.output() {
+        Ok(output) => output,
+        Err(err) => {
+            bail!("Failed to execute command: {err}");
+        }
+    };
+
+    if !output.status.success() {
+        bail!("Failed to execute command");
+    }
+    Ok(output.stdout)
+}
 
 // Executes a command and logs its result. There are three outcomes when
 // executing a command:
