@@ -150,8 +150,7 @@ if [ -f "${INPUT_BOOST}" ]; then
   if [ -f "${CPUFREQ_CONF}" ]; then
     # shellcheck source=/dev/null
     . "${CPUFREQ_CONF}"
-    if [ "${CPUFREQ_GOVERNOR:-}" = "schedutil" ] || \
-       [ "${CPUFREQ_GOVERNOR}" = "sched" ]; then
+    if [ "${CPUFREQ_GOVERNOR:-}" = "schedutil" ]; then
       INPUT_BOOST_DEFAULT=75
     fi
   fi
