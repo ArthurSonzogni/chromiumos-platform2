@@ -62,7 +62,6 @@ const int kNumTemporalValues = 5;
 
 const char kKnownBootModes[8][3] = {{0, 0, 0}, {0, 0, 1}, {0, 1, 0}, {0, 1, 1},
                                     {1, 0, 0}, {1, 0, 1}, {1, 1, 0}, {1, 1, 1}};
-const char kVerifiedBootMode[3] = {0, 0, 1};
 
 // Default identity features for newly created identities.
 constexpr int kDefaultIdentityFeatures =
@@ -2128,16 +2127,14 @@ void AttestationService::GetStatus(const GetStatusRequest& request,
 }
 
 bool AttestationService::IsVerifiedMode() const {
-  if (!tpm_utility_->IsTpmReady()) {
-    VLOG(2) << __func__ << ": Tpm is not ready.";
+  using Mode = hwsec::DeviceConfigSettings::BootModeSetting::Mode;
+  hwsec::StatusOr<Mode> mode = hwsec_->GetCurrentBootMode();
+  if (!mode.ok()) {
+    LOG(ERROR) << __func__ << "Invalid boot mode: " << mode.status();
     return false;
   }
-  std::string pcr_value;
-  if (!tpm_utility_->ReadPCR(0, &pcr_value)) {
-    LOG(WARNING) << __func__ << ": Failed to read PCR0.";
-    return false;
-  }
-  return (pcr_value == GetPCRValueForMode(kVerifiedBootMode));
+  return !mode->developer_mode && !mode->recovery_mode &&
+         mode->verified_firmware;
 }
 
 void AttestationService::GetStatusTask(
