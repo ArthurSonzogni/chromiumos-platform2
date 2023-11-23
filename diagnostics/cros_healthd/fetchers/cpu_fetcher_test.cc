@@ -29,7 +29,6 @@
 #include "diagnostics/cros_healthd/system/system_utilities_constants.h"
 #include "diagnostics/cros_healthd/utils/procfs_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
-#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
 namespace {
@@ -400,7 +399,7 @@ class CpuFetcherTest : public testing::Test {
         .WillRepeatedly(
             [expected_val](uint32_t msr_reg, uint32_t cpu_index,
                            mojom::Executor::ReadMsrCallback callback) {
-              std::move(callback).Run(mojom::NullableUint64::New(expected_val));
+              std::move(callback).Run(expected_val);
             });
   }
 

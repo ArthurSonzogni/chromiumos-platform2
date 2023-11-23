@@ -411,7 +411,7 @@ void Executor::ReadMsr(const uint32_t msr_reg,
   if (std::find(std::begin(kMsrAccessAllowList), std::end(kMsrAccessAllowList),
                 msr_reg) == std::end(kMsrAccessAllowList)) {
     LOG(ERROR) << "MSR access not allowed";
-    std::move(callback).Run(nullptr);
+    std::move(callback).Run(std::nullopt);
     return;
   }
   base::FilePath msr_path = base::FilePath("/dev/cpu")
@@ -420,7 +420,7 @@ void Executor::ReadMsr(const uint32_t msr_reg,
   base::File msr_fd(msr_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!msr_fd.IsValid()) {
     LOG(ERROR) << "Could not open " << msr_path.value();
-    std::move(callback).Run(nullptr);
+    std::move(callback).Run(std::nullopt);
     return;
   }
   uint64_t val = 0;
@@ -430,10 +430,10 @@ void Executor::ReadMsr(const uint32_t msr_reg,
   if (sizeof(val) !=
       msr_fd.Read(msr_reg, reinterpret_cast<char*>(&val), sizeof(val))) {
     LOG(ERROR) << "Could not read MSR register from " << msr_path.value();
-    std::move(callback).Run(nullptr);
+    std::move(callback).Run(std::nullopt);
     return;
   }
-  std::move(callback).Run(mojom::NullableUint64::New(val));
+  std::move(callback).Run(val);
 }
 
 void Executor::GetLidAngle(GetLidAngleCallback callback) {

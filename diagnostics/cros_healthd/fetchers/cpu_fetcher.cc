@@ -427,10 +427,10 @@ class State {
                               bool is_all_callback_called);
 
   // Callback function to handle ReadMsr() call reading vmx registers.
-  void HandleVmxReadMsr(uint32_t index, mojom::NullableUint64Ptr val);
+  void HandleVmxReadMsr(uint32_t index, std::optional<uint64_t> val);
 
   // Callback function to handle ReadMsr() call reading svm registers.
-  void HandleSvmReadMsr(uint32_t index, mojom::NullableUint64Ptr val);
+  void HandleSvmReadMsr(uint32_t index, std::optional<uint64_t> val);
 
   // Calls ReadMsr based on the virtualization capability of each physical cpu.
   void FetchPhysicalCpusVirtualizationInfo(CallbackBarrier& barrier);
@@ -867,30 +867,30 @@ void State::FetchPhysicalCpusVirtualizationInfo(CallbackBarrier& barrier) {
 }
 
 void State::HandleSvmReadMsr(uint32_t physical_id,
-                             mojom::NullableUint64Ptr val) {
-  if (val.is_null()) {
+                             std::optional<uint64_t> val) {
+  if (!val.has_value()) {
     LogAndSetError(mojom::ErrorType::kFileReadError,
                    "Error while reading svm msr register");
     return;
   }
   cpu_info_->physical_cpus[physical_id]->virtualization->is_enabled =
-      !(val->value & kVmCrSvmeDisabledBit);
+      !(val.value() & kVmCrSvmeDisabledBit);
   cpu_info_->physical_cpus[physical_id]->virtualization->is_locked =
-      val->value & kVmCrLockedBit;
+      val.value() & kVmCrLockedBit;
 }
 
 void State::HandleVmxReadMsr(uint32_t physical_id,
-                             mojom::NullableUint64Ptr val) {
-  if (val.is_null()) {
+                             std::optional<uint64_t> val) {
+  if (!val.has_value()) {
     LogAndSetError(mojom::ErrorType::kFileReadError,
                    "Error while reading vmx msr register");
     return;
   }
   cpu_info_->physical_cpus[physical_id]->virtualization->is_enabled =
-      (val->value & kIA32FeatureEnableVmxInsideSmx) ||
-      (val->value & kIA32FeatureEnableVmxOutsideSmx);
+      (val.value() & kIA32FeatureEnableVmxInsideSmx) ||
+      (val.value() & kIA32FeatureEnableVmxOutsideSmx);
   cpu_info_->physical_cpus[physical_id]->virtualization->is_locked =
-      val->value & kIA32FeatureLocked;
+      val.value() & kIA32FeatureLocked;
 }
 
 void State::HandleCallbackComplete(FetchCpuInfoCallback callback,

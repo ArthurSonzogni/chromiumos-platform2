@@ -13,7 +13,6 @@ import "diagnostics/mojom/public/cros_healthd_diagnostics.mojom";
 import "diagnostics/mojom/public/cros_healthd_events.mojom";
 import "diagnostics/mojom/public/cros_healthd_probe.mojom";
 import "diagnostics/mojom/public/cros_healthd_routines.mojom";
-import "diagnostics/mojom/public/nullable_primitives.mojom";
 
 // Provides the result of running a process.
 struct ExecutedProcessResult {
@@ -239,7 +238,7 @@ interface Executor {
   //
   // The response:
   // * |contents| - contains the value of 64-bit MSR register value.
-  ReadMsr(uint32 msr_reg, uint32 cpu_index) => (NullableUint64? value);
+  ReadMsr(uint32 msr_reg, uint32 cpu_index) => (uint64? value);
 
   // Obtains lid angle from EC. Returns null if error is happened.
   GetLidAngle() => (uint16? lid_angle);

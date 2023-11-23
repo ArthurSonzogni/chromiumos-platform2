@@ -192,23 +192,23 @@ mojom::MemoryEncryptionInfoPtr ExtractTmeInfoFromMsr(uint64_t tme_capability,
 void HandleReadTmeActivateMsr(FetchMemoryInfoCallback callback,
                               mojom::MemoryInfoPtr info,
                               uint64_t tme_capability,
-                              mojom::NullableUint64Ptr tme_activate) {
-  if (tme_activate.is_null()) {
+                              std::optional<uint64_t> tme_activate) {
+  if (!tme_activate.has_value()) {
     std::move(callback).Run(mojom::MemoryResult::NewError(
         CreateAndLogProbeError(mojom::ErrorType::kFileReadError,
                                "Error while reading tme activate msr")));
     return;
   }
   info->memory_encryption_info =
-      ExtractTmeInfoFromMsr(tme_capability, tme_activate->value);
+      ExtractTmeInfoFromMsr(tme_capability, tme_activate.value());
   std::move(callback).Run(mojom::MemoryResult::NewMemoryInfo(std::move(info)));
 }
 
 void HandleReadTmeCapabilityMsr(Context* context,
                                 FetchMemoryInfoCallback callback,
                                 mojom::MemoryInfoPtr info,
-                                mojom::NullableUint64Ptr tme_capability) {
-  if (tme_capability.is_null()) {
+                                std::optional<uint64_t> tme_capability) {
+  if (!tme_capability.has_value()) {
     std::move(callback).Run(mojom::MemoryResult::NewError(
         CreateAndLogProbeError(mojom::ErrorType::kFileReadError,
                                "Error while reading tme capability msr")));
@@ -220,7 +220,7 @@ void HandleReadTmeCapabilityMsr(Context* context,
   context->executor()->ReadMsr(
       /*msr_reg=*/cpu_msr::kIA32TmeActivate, /*cpu_index=*/0,
       base::BindOnce(&HandleReadTmeActivateMsr, std::move(callback),
-                     std::move(info), tme_capability->value));
+                     std::move(info), tme_capability.value()));
 }
 
 // Check tme flag in /proc/cpuinfo to see if tme is supported by the CPU or not

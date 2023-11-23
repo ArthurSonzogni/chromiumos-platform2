@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -18,7 +19,6 @@
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
-#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
 namespace {
@@ -312,15 +312,13 @@ TEST_F(MemoryFetcherTest, TestFetchTmeInfo) {
                          mojom::Executor::ReadMsrCallback callback) {
         switch (msr_reg) {
           case cpu_msr::kIA32TmeCapability:
-            std::move(callback).Run(
-                mojom::NullableUint64::New(kTmeCapabilityMsrValue));
+            std::move(callback).Run(kTmeCapabilityMsrValue);
             return;
           case cpu_msr::kIA32TmeActivate:
-            std::move(callback).Run(
-                mojom::NullableUint64::New(kTmeActivateMsrValue));
+            std::move(callback).Run(kTmeActivateMsrValue);
             return;
           default:
-            std::move(callback).Run(nullptr);
+            std::move(callback).Run(std::nullopt);
         }
       });
 
