@@ -41,7 +41,7 @@ DEFINE_string  record_dmesg_dir "" "dir to record dmesgs for failed iterations"
 DEFINE_string  pre_suspend_command "" "Command to run before each suspend"
 DEFINE_string  post_resume_command "" "Command to run after each resume"
 DEFINE_boolean ignore_s0ix_substates "${FLAGS_FALSE}" \
-               "Ignore Intel s0ix substates and only check generic s0ix counter"
+               "Ignore Intel s0ix substates and only check toplevel s0ix counter"
 
 dmesg_last_cycle() {
   lines=0
@@ -135,6 +135,8 @@ dump_stats_and_exit() {
   fi
   if [ "${check_s0ix_errors}" = 1 ]; then
     echo "s0ix errors: ${s0ix_errors}"
+    echo "s0ix substate errors: ${s0ix_substate_errors}"
+    echo "s0ix pc10 errors: ${s0ix_pc10_errors}"
   elif
     [ "${check_s2idle_errors}" = 1 ]; then
     echo "s2idle errors: ${s2idle_errors}"
@@ -153,14 +155,9 @@ has_s2idle() {
 
 # Returns the S0ix residency counter as returned by the kernel.
 # The driver that provides these counters depends on the platform.
-get_s0ix_count() {
-  if [ "${FLAGS_ignore_s0ix_substates}" -eq "${FLAGS_FALSE}" ]; then
-    # From Tigerlake with kernel >= 5.4
-    # Larger number means deeper state,
-    # so we sort all substates and check last one.
-    grep 'S0i' /sys/kernel/debug/pmc_core/substate_residencies | sort | \
-      awk '{print $2}' | tail -n 1
-  elif [ -e /sys/kernel/debug/pmc_core/slp_s0_residency_usec ]; then
+
+get_toplevel_s0ix_count() {
+  if [ -e /sys/kernel/debug/pmc_core/slp_s0_residency_usec ]; then
     # Kabylake / Skylake systems.
     cat /sys/kernel/debug/pmc_core/slp_s0_residency_usec
   elif [ -e /sys/kernel/debug/telemetry/s0ix_residency_usec ]; then
@@ -172,6 +169,25 @@ get_s0ix_count() {
   else
     echo 0
   fi
+}
+
+get_verify_s0ix_count() {
+  if [ "${FLAGS_ignore_s0ix_substates}" -eq "${FLAGS_FALSE}" ]; then
+    # From Tigerlake with kernel >= 5.4
+    # Larger number means deeper state,
+    # so we sort all substates and check last one.
+    grep 'S0i' /sys/kernel/debug/pmc_core/substate_residencies | sort | \
+      awk '{print $2}' | tail -n 1
+  else
+    get_toplevel_s0ix_count
+  fi
+}
+
+# Returns the Package Cstate residency counter as returned by the kernel.
+# The driver that provides these counters depends on the platform.
+get_pc10_count() {
+  grep 'C10' /sys/kernel/debug/pmc_core/package_cstate_show | \
+    awk '{print $4}'
 }
 
 # Returns the sum of s2idle residency counters as returned by the kernel.
@@ -322,6 +338,8 @@ wakealarm_errors=0
 ec_suspend_errors=0
 firmware_errors=0
 s0ix_errors=0
+s0ix_substate_errors=0
+s0ix_pc10_errors=0
 s2idle_errors=0
 hwrng_errors=0
 last_successes=${initial_successes}
@@ -332,6 +350,43 @@ premature_wake_count=0
 late_wake_count=0
 last_firmware_errors=$(get_firmware_error_counts)
 s0ix_counter_support=$(has_ectool_s0ix_counter)
+
+# Record necessary info before each suspend run
+# Will identify S0ix fail into various categories when suspend fail
+log_s0ix_before() {
+  last_pc10_count=$(get_pc10_count)
+  last_toplevel_s0ix_count=$(get_toplevel_s0ix_count)
+
+  if [ "${FLAGS_ignore_s0ix_substates}" -eq "${FLAGS_FALSE}" ]; then
+    s0ix_substate_before="$(grep 'S0i' /sys/kernel/debug/pmc_core/substate_residencies)"
+  fi
+}
+
+# Check if enter PC10
+# If yes, check enter the deepest S0ix substate or not if needed
+# If no specific category, report original normal S0ix fail
+# Enter sequence: PC10 -> TopLevel S0ix -> Deepest level S0ix
+log_s0ix_failure() {
+  cur_pc10_count=$(get_pc10_count)
+  cur_toplevel_s0ix_count=$(get_toplevel_s0ix_count)
+
+  if [ -e /sys/kernel/debug/pmc_core/package_cstate_show ] && \
+    [ "${cur_pc10_count}" = "${last_pc10_count}" ]; then
+    echo "Suspend failed, pc10 count did not increment from ${last_pc10_count}"
+    : $(( s0ix_pc10_errors += 1 ))
+  elif [ "${cur_toplevel_s0ix_count}" = "${last_toplevel_s0ix_count}" ]; then
+    echo "Suspend failed, s0ix count did not increment from ${last_toplevel_s0ix_count}"
+  elif [ "${FLAGS_ignore_s0ix_substates}" -eq "${FLAGS_FALSE}" ]; then
+    echo "Suspend failed, substate count did not increment from ${last_s0ix_count}"
+    echo "S0ix substate before :"
+    echo "${s0ix_substate_before}"
+    echo "S0ix substate now :"
+    grep 'S0i' /sys/kernel/debug/pmc_core/substate_residencies
+    : $(( s0ix_substate_errors += 1 ))
+  else
+    echo "Suspend failed, no way to verify this case"
+  fi
+}
 
 while true; do
   : $(( cur += 1 ))
@@ -344,10 +399,8 @@ while true; do
 
   sus_time=$(( ( $(random) % suspend_interval ) + FLAGS_suspend_min ))
   printf "sleep for %2d seconds..." "${sus_time}"
-  last_s0ix_count=$(get_s0ix_count)
-  if [ "${FLAGS_ignore_s0ix_substates}" -eq "${FLAGS_FALSE}" ]; then
-    s0ix_substate_before="$(grep 'S0i' /sys/kernel/debug/pmc_core/substate_residencies)"
-  fi
+  log_s0ix_before
+  last_s0ix_count=$(get_verify_s0ix_count)
   last_s2idle_count=$(get_s2idle_count)
   last_ignore_count=$(get_wakeup_source_event_count \
                       "${FLAGS_ignore_wakeup_source}")
@@ -449,7 +502,7 @@ while true; do
   last_firmware_errors=${cur_firmware_errors}
   # Make sure suspend succeeded
   cur_successes=$(get_success_count)
-  cur_s0ix_count=$(get_s0ix_count)
+  cur_s0ix_count=$(get_verify_s0ix_count)
   cur_s2idle_count=$(get_s2idle_count)
   if [ "${cur_successes}" -eq "${last_successes}" ] && \
      [ "${ignore_failure}" -eq "0" ]; then
@@ -464,13 +517,7 @@ while true; do
     fi
   elif [ "${check_s0ix_errors}" = 1 ] && \
        [ "${cur_s0ix_count}" = "${last_s0ix_count}" ]; then
-    echo "Suspend failed, s0ix count did not increment from ${last_s0ix_count}"
-    if [ "${FLAGS_ignore_s0ix_substates}" -eq "${FLAGS_FALSE}" ]; then
-      echo "S0ix substate before :"
-      echo "${s0ix_substate_before}"
-      echo "S0ix substate now :"
-      grep 'S0i' /sys/kernel/debug/pmc_core/substate_residencies
-    fi
+    log_s0ix_failure
     : $(( s0ix_errors += 1 ))
     if [ "${FLAGS_errors_fatal}" -eq "${FLAGS_TRUE}" ]; then
       exit_loop=1
