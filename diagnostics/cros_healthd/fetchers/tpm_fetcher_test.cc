@@ -56,7 +56,7 @@ class TpmFetcherTest : public BaseFileTest {
 
   mojom::TpmResultPtr FetchTpmInfoSync() {
     base::test::TestFuture<mojom::TpmResultPtr> future;
-    tpm_fetcher_.FetchTpmInfo(future.GetCallback());
+    FetchTpmInfo(&mock_context_, future.GetCallback());
     return future.Take();
   }
 
@@ -71,7 +71,6 @@ class TpmFetcherTest : public BaseFileTest {
  private:
   base::test::TaskEnvironment task_environment_;
   MockContext mock_context_;
-  TpmFetcher tpm_fetcher_{&mock_context_};
 };
 
 TEST_F(TpmFetcherTest, Success) {

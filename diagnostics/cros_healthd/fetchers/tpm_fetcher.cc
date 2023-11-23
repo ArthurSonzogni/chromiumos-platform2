@@ -4,22 +4,27 @@
 
 #include "diagnostics/cros_healthd/fetchers/tpm_fetcher.h"
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
 
+#include <attestation/proto_bindings/interface.pb.h>
 #include <attestation-client/attestation/dbus-proxies.h>
 #include <base/check.h>
 #include <base/functional/callback.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
-#include <dbus/object_proxy.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "diagnostics/base/file_utils.h"
+#include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
@@ -28,7 +33,7 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 // Tpm manager and attestation require a long timeout.
-const int64_t DBUS_TIMEOUT_MS = base::Minutes(2).InMilliseconds();
+constexpr int64_t kDBusTimeoutMs = base::Minutes(2).InMilliseconds();
 
 mojom::TpmGSCVersion GetGscVersion(
     const tpm_manager::GetVersionInfoReply& reply) {
@@ -42,27 +47,62 @@ mojom::TpmGSCVersion GetGscVersion(
   }
 }
 
-}  // namespace
+class State {
+ public:
+  State();
+  State(const State&) = delete;
+  State& operator=(const State&) = delete;
+  ~State() = default;
 
-void TpmFetcher::FetchVersion() {
-  tpm_manager::GetVersionInfoRequest request;
-  auto [on_success, on_error] = SplitDbusCallback(
-      base::BindOnce(&TpmFetcher::HandleVersion, weak_factory_.GetWeakPtr()));
-  context_->tpm_manager_proxy()->GetVersionInfoAsync(
-      request, std::move(on_success), std::move(on_error), DBUS_TIMEOUT_MS);
+  // Handle the response of version from tpm manager.
+  void HandleVersion(brillo::Error* err,
+                     const tpm_manager::GetVersionInfoReply& reply);
+
+  // Handle the response of status from tpm manager.
+  void HandleStatus(brillo::Error* err,
+                    const tpm_manager::GetTpmNonsensitiveStatusReply& reply);
+
+  // Handle the response of dictionary attack from tpm manager.
+  void HandleDictionaryAttack(
+      brillo::Error* err,
+      const tpm_manager::GetDictionaryAttackInfoReply& reply);
+
+  // Handle the response of status from attestation.
+  void HandleAttestation(brillo::Error* err,
+                         const attestation::GetStatusReply& reply);
+
+  // Handle the response of supported features from tpm manager.
+  void HandleSupportedFeatures(
+      brillo::Error* err, const tpm_manager::GetSupportedFeaturesReply& reply);
+
+  // Set up the |error_|.
+  void SetError(const std::string& message);
+
+  // Send back the TpmResult via |callback|. The result is ProbeError if
+  // |error_| is not null or |is_finished| is false, otherwise |info_|.
+  void HandleResult(FetchTpmInfoCallback callback, bool is_finished);
+
+ private:
+  // The info to be returned.
+  mojom::TpmInfoPtr info_;
+  // The error to be returned.
+  mojom::ProbeErrorPtr error_;
+};
+
+State::State() : info_(mojom::TpmInfo::New()) {
+  ReadAndTrimString(GetRootDir().Append(kFileTpmDidVid), &info_->did_vid);
 }
 
-void TpmFetcher::HandleVersion(brillo::Error* err,
-                               const tpm_manager::GetVersionInfoReply& reply) {
-  DCHECK(info_);
+void State::HandleVersion(brillo::Error* err,
+                          const tpm_manager::GetVersionInfoReply& reply) {
   if (err) {
-    SendError("Failed to call TpmManager::GetVersionInfo(): " +
-              err->GetMessage());
+    SetError("Failed to call TpmManager::GetVersionInfo(): " +
+             err->GetMessage());
     return;
   }
   if (reply.status() != tpm_manager::STATUS_SUCCESS) {
-    SendError("TpmManager::GetVersionInfo() returned error status: " +
-              base::NumberToString(reply.status()));
+    SetError("TpmManager::GetVersionInfo() returned error status: " +
+             base::NumberToString(reply.status()));
     return;
   }
   auto version = mojom::TpmVersion::New();
@@ -76,29 +116,19 @@ void TpmFetcher::HandleVersion(brillo::Error* err,
                                  ? std::nullopt
                                  : std::make_optional(reply.vendor_specific());
   info_->version = std::move(version);
-  CheckAndSendInfo();
 }
 
-void TpmFetcher::FetchStatus() {
-  tpm_manager::GetTpmNonsensitiveStatusRequest request;
-  auto [on_success, on_error] = SplitDbusCallback(
-      base::BindOnce(&TpmFetcher::HandleStatus, weak_factory_.GetWeakPtr()));
-  context_->tpm_manager_proxy()->GetTpmNonsensitiveStatusAsync(
-      request, std::move(on_success), std::move(on_error), DBUS_TIMEOUT_MS);
-}
-
-void TpmFetcher::HandleStatus(
+void State::HandleStatus(
     brillo::Error* err,
     const tpm_manager::GetTpmNonsensitiveStatusReply& reply) {
-  DCHECK(info_);
   if (err) {
-    SendError("Failed to call TpmManager::GetTpmNonsensitiveStatus(): " +
-              err->GetMessage());
+    SetError("Failed to call TpmManager::GetTpmNonsensitiveStatus(): " +
+             err->GetMessage());
     return;
   }
   if (reply.status() != tpm_manager::STATUS_SUCCESS) {
-    SendError("TpmManager::GetTpmNonsensitiveStatus() returned error status: " +
-              base::NumberToString(reply.status()));
+    SetError("TpmManager::GetTpmNonsensitiveStatus() returned error status: " +
+             base::NumberToString(reply.status()));
     return;
   }
   auto status = mojom::TpmStatus::New();
@@ -106,29 +136,19 @@ void TpmFetcher::HandleStatus(
   status->owned = reply.is_owned();
   status->owner_password_is_present = reply.is_owner_password_present();
   info_->status = std::move(status);
-  CheckAndSendInfo();
 }
 
-void TpmFetcher::FetchDictionaryAttack() {
-  tpm_manager::GetDictionaryAttackInfoRequest request;
-  auto [on_success, on_error] = SplitDbusCallback(base::BindOnce(
-      &TpmFetcher::HandleDictionaryAttack, weak_factory_.GetWeakPtr()));
-  context_->tpm_manager_proxy()->GetDictionaryAttackInfoAsync(
-      request, std::move(on_success), std::move(on_error), DBUS_TIMEOUT_MS);
-}
-
-void TpmFetcher::HandleDictionaryAttack(
+void State::HandleDictionaryAttack(
     brillo::Error* err,
     const tpm_manager::GetDictionaryAttackInfoReply& reply) {
-  DCHECK(info_);
   if (err) {
-    SendError("Failed to call TpmManager::GetDictionaryAttackInfo(): " +
-              err->GetMessage());
+    SetError("Failed to call TpmManager::GetDictionaryAttackInfo(): " +
+             err->GetMessage());
     return;
   }
   if (reply.status() != tpm_manager::STATUS_SUCCESS) {
-    SendError("TpmManager::GetDictionaryAttackInfo() returned error status: " +
-              base::NumberToString(reply.status()));
+    SetError("TpmManager::GetDictionaryAttackInfo() returned error status: " +
+             base::NumberToString(reply.status()));
     return;
   }
 
@@ -139,27 +159,17 @@ void TpmFetcher::HandleDictionaryAttack(
   da->lockout_seconds_remaining =
       reply.dictionary_attack_lockout_seconds_remaining();
   info_->dictionary_attack = std::move(da);
-  CheckAndSendInfo();
 }
 
-void TpmFetcher::FetchAttestation() {
-  attestation::GetStatusRequest request;
-  auto [on_success, on_error] = SplitDbusCallback(base::BindOnce(
-      &TpmFetcher::HandleAttestation, weak_factory_.GetWeakPtr()));
-  context_->attestation_proxy()->GetStatusAsync(
-      request, std::move(on_success), std::move(on_error), DBUS_TIMEOUT_MS);
-}
-
-void TpmFetcher::HandleAttestation(brillo::Error* err,
-                                   const attestation::GetStatusReply& reply) {
-  DCHECK(info_);
+void State::HandleAttestation(brillo::Error* err,
+                              const attestation::GetStatusReply& reply) {
   if (err) {
-    SendError("Failed to call Attestation::GetStatus(): " + err->GetMessage());
+    SetError("Failed to call Attestation::GetStatus(): " + err->GetMessage());
     return;
   }
   if (reply.status() != attestation::STATUS_SUCCESS) {
-    SendError("TpmManager::GetDictionaryAttackInfo() returned error status: " +
-              base::NumberToString(reply.status()));
+    SetError("Attestation::GetStatus() returned error status: " +
+             base::NumberToString(reply.status()));
     return;
   }
 
@@ -167,28 +177,18 @@ void TpmFetcher::HandleAttestation(brillo::Error* err,
   data->prepared_for_enrollment = reply.prepared_for_enrollment();
   data->enrolled = reply.enrolled();
   info_->attestation = std::move(data);
-  CheckAndSendInfo();
 }
 
-void TpmFetcher::FetchSupportedFeatures() {
-  tpm_manager::GetSupportedFeaturesRequest request;
-  auto [on_success, on_error] = SplitDbusCallback(base::BindOnce(
-      &TpmFetcher::HandleSupportedFeatures, weak_factory_.GetWeakPtr()));
-  context_->tpm_manager_proxy()->GetSupportedFeaturesAsync(
-      request, std::move(on_success), std::move(on_error), DBUS_TIMEOUT_MS);
-}
-
-void TpmFetcher::HandleSupportedFeatures(
+void State::HandleSupportedFeatures(
     brillo::Error* err, const tpm_manager::GetSupportedFeaturesReply& reply) {
-  DCHECK(info_);
   if (err) {
-    SendError("Failed to call TpmManager::GetSupportedFeatures(): " +
-              err->GetMessage());
+    SetError("Failed to call TpmManager::GetSupportedFeatures(): " +
+             err->GetMessage());
     return;
   }
   if (reply.status() != tpm_manager::STATUS_SUCCESS) {
-    SendError("TpmManager::GetSupportedFeatures() returned error status: " +
-              base::NumberToString(reply.status()));
+    SetError("TpmManager::GetSupportedFeatures() returned error status: " +
+             base::NumberToString(reply.status()));
     return;
   }
 
@@ -198,50 +198,85 @@ void TpmFetcher::HandleSupportedFeatures(
   data->support_runtime_selection = reply.support_runtime_selection();
   data->is_allowed = reply.is_allowed();
   info_->supported_features = std::move(data);
-  CheckAndSendInfo();
 }
 
-void TpmFetcher::CheckAndSendInfo() {
-  DCHECK(info_);
-  if (!info_->version || !info_->status || !info_->dictionary_attack ||
-      !info_->attestation || !info_->supported_features) {
+void State::SetError(const std::string& message) {
+  error_ =
+      CreateAndLogProbeError(mojom::ErrorType::kServiceUnavailable, message);
+}
+
+void State::HandleResult(FetchTpmInfoCallback callback, bool is_finished) {
+  if (!is_finished) {
+    error_ = CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
+                                    "Failed to finish all callbacks.");
+  }
+  if (!error_.is_null()) {
+    std::move(callback).Run(mojom::TpmResult::NewError(std::move(error_)));
     return;
   }
-  SendResult(mojom::TpmResult::NewTpmInfo(std::move(info_)));
+  std::move(callback).Run(mojom::TpmResult::NewTpmInfo(std::move(info_)));
 }
 
-void TpmFetcher::SendError(const std::string& message) {
-  SendResult(mojom::TpmResult::NewError(
-      CreateAndLogProbeError(mojom::ErrorType::kServiceUnavailable, message)));
+void FetchVersion(Context* context,
+                  CallbackBarrier& barrier,
+                  State* state_ptr) {
+  tpm_manager::GetVersionInfoRequest request;
+  auto [on_success, on_error] = SplitDbusCallback(barrier.Depend(
+      base::BindOnce(&State::HandleVersion, base::Unretained(state_ptr))));
+  context->tpm_manager_proxy()->GetVersionInfoAsync(
+      request, std::move(on_success), std::move(on_error), kDBusTimeoutMs);
 }
 
-void TpmFetcher::SendResult(mojom::TpmResultPtr result) {
-  // Invalid all weak ptrs to prevent other callbacks to be run.
-  weak_factory_.InvalidateWeakPtrs();
-  if (pending_callbacks_.empty())
-    return;
-  for (size_t i = 1; i < pending_callbacks_.size(); ++i) {
-    std::move(pending_callbacks_[i]).Run(result.Clone());
-  }
-  std::move(pending_callbacks_[0]).Run(std::move(result));
-  pending_callbacks_.clear();
+void FetchStatus(Context* context, CallbackBarrier& barrier, State* state_ptr) {
+  tpm_manager::GetTpmNonsensitiveStatusRequest request;
+  auto [on_success, on_error] = SplitDbusCallback(barrier.Depend(
+      base::BindOnce(&State::HandleStatus, base::Unretained(state_ptr))));
+  context->tpm_manager_proxy()->GetTpmNonsensitiveStatusAsync(
+      request, std::move(on_success), std::move(on_error), kDBusTimeoutMs);
 }
 
-void TpmFetcher::FetchTpmInfo(TpmFetcher::FetchTpmInfoCallback&& callback) {
-  pending_callbacks_.push_back(std::move(callback));
-  // Returns if there is already a pending callback. The second callback will be
-  // fulfilled when the first one is fulfilled.
-  if (pending_callbacks_.size() > 1)
-    return;
+void FetchDictionaryAttack(Context* context,
+                           CallbackBarrier& barrier,
+                           State* state_ptr) {
+  tpm_manager::GetDictionaryAttackInfoRequest request;
+  auto [on_success, on_error] = SplitDbusCallback(barrier.Depend(base::BindOnce(
+      &State::HandleDictionaryAttack, base::Unretained(state_ptr))));
+  context->tpm_manager_proxy()->GetDictionaryAttackInfoAsync(
+      request, std::move(on_success), std::move(on_error), kDBusTimeoutMs);
+}
 
-  info_ = mojom::TpmInfo::New();
-  ReadAndTrimString(GetRootDir().Append(kFileTpmDidVid), &info_->did_vid);
+void FetchAttestation(Context* context,
+                      CallbackBarrier& barrier,
+                      State* state_ptr) {
+  attestation::GetStatusRequest request;
+  auto [on_success, on_error] = SplitDbusCallback(barrier.Depend(
+      base::BindOnce(&State::HandleAttestation, base::Unretained(state_ptr))));
+  context->attestation_proxy()->GetStatusAsync(
+      request, std::move(on_success), std::move(on_error), kDBusTimeoutMs);
+}
 
-  FetchVersion();
-  FetchStatus();
-  FetchDictionaryAttack();
-  FetchAttestation();
-  FetchSupportedFeatures();
+void FetchSupportedFeatures(Context* context,
+                            CallbackBarrier& barrier,
+                            State* state_ptr) {
+  tpm_manager::GetSupportedFeaturesRequest request;
+  auto [on_success, on_error] = SplitDbusCallback(barrier.Depend(base::BindOnce(
+      &State::HandleSupportedFeatures, base::Unretained(state_ptr))));
+  context->tpm_manager_proxy()->GetSupportedFeaturesAsync(
+      request, std::move(on_success), std::move(on_error), kDBusTimeoutMs);
+}
+
+}  // namespace
+
+void FetchTpmInfo(Context* context, FetchTpmInfoCallback callback) {
+  auto state = std::make_unique<State>();
+  State* state_ptr = state.get();
+  CallbackBarrier barrier{base::BindOnce(&State::HandleResult, std::move(state),
+                                         std::move(callback))};
+  FetchVersion(context, barrier, state_ptr);
+  FetchStatus(context, barrier, state_ptr);
+  FetchDictionaryAttack(context, barrier, state_ptr);
+  FetchAttestation(context, barrier, state_ptr);
+  FetchSupportedFeatures(context, barrier, state_ptr);
 }
 
 }  // namespace diagnostics

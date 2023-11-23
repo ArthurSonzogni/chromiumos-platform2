@@ -33,6 +33,7 @@
 #include "diagnostics/cros_healthd/fetchers/system_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/thermal_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/timezone_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/tpm_fetcher.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/metrics_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -72,7 +73,7 @@ void OnFinish(
 }  // namespace
 
 FetchAggregator::FetchAggregator(Context* context)
-    : disk_fetcher_(context), tpm_fetcher_(context), context_(context) {}
+    : disk_fetcher_(context), context_(context) {}
 
 FetchAggregator::~FetchAggregator() = default;
 
@@ -168,8 +169,8 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kTpm: {
-        tpm_fetcher_.FetchTpmInfo(
-            CreateFetchCallback(&barrier, &info->tpm_result));
+        FetchTpmInfo(context_,
+                     CreateFetchCallback(&barrier, &info->tpm_result));
         break;
       }
       case mojom::ProbeCategoryEnum::kNetworkInterface: {
