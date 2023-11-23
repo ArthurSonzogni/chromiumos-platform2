@@ -41,6 +41,7 @@
 #include <chaps/token_manager_client.h>
 #include <chromeos/constants/cryptohome.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
+#include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <dbus_adaptors/org.chromium.UserDataAuth.h>
@@ -2313,9 +2314,41 @@ void UserDataAuth::GetRecoverableKeyStores(
                 CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
+  // Ephemeral users don't have AuthBlockStates, so they'll never have
+  // recoverable key stores generated.
+  if (!is_persistent_user) {
+    ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
+  }
 
-  // TODO(b/300578783): Read the user's recoverable key stores and populate them
-  // into the reply.
+  // Load the USS so that we can use it to check the validity of any auth
+  // factors being loaded.
+  std::set<std::string_view> uss_labels;
+  UserUssStorage user_uss_storage(*uss_storage_, obfuscated_username);
+  auto encrypted_uss = EncryptedUss::FromStorage(user_uss_storage);
+  if (encrypted_uss.ok()) {
+    uss_labels = encrypted_uss->WrappedMainKeyIds();
+  }
+
+  // Load the AuthFactorMap.
+  AuthFactorVaultKeysetConverter converter(keyset_management_);
+  AuthFactorMap auth_factor_map = auth_factor_manager_->LoadAllAuthFactors(
+      obfuscated_username, uss_labels, converter);
+
+  // Populate the response from the items in the AuthFactorMap.
+  for (AuthFactorMap::ValueView item : auth_factor_map) {
+    const AuthBlockState& state = item.auth_factor().auth_block_state();
+    if (!state.recoverable_key_store_state.has_value()) {
+      continue;
+    }
+    RecoverableKeyStore key_store;
+    if (!key_store.ParseFromString(brillo::BlobToString(
+            state.recoverable_key_store_state->key_store_proto))) {
+      LOG(WARNING) << "Failed to parse recoverable key store proto from auth "
+                      "block state.";
+      continue;
+    }
+    *reply.add_key_stores() = std::move(key_store);
+  }
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 

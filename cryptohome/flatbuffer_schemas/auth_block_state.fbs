@@ -156,9 +156,15 @@ table RevocationState {
   le_label:ulong = null (id: 0, optional);
 }
 
+table RecoverableKeyStoreState {
+  // The serialized RecoverableKeyStore proto.
+  key_store_proto:[ubyte] (id: 0);
+}
+
 table AuthBlockState (serializable) {
   state:AuthBlockStateUnion (id:1);
   revocation_state:RevocationState (id: 2, optional);
+  recoverable_key_store_state:RecoverableKeyStoreState (id:3, optional);
 }
 
 root_type AuthBlockState;
