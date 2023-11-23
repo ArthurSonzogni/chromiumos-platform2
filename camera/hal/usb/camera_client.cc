@@ -164,6 +164,10 @@ int CameraClient::OpenDevice() {
 
   int ret = device_->Connect(device_info_.device_path);
   if (ret) {
+    /*
+     * LOG used by FRA. Please make sure it is always in sync with:
+     * google3/chromeos/feedback/analyzer/signals
+     */
     LOGF(ERROR) << V4L2CameraDevice::GetModelName(device_info_.device_path)
                 << " id: " << id_
                 << ": Connect failed: " << base::safe_strerror(-ret);
@@ -254,6 +258,10 @@ int CameraClient::ConfigureStreams(
 
   auto ret = StreamOn(streamon_params.value());
   if (!ret.has_value()) {
+    /*
+     * LOG used by FRA. Please make sure it is always in sync with:
+     * google3/chromeos/feedback/analyzer/signals
+     */
     LOGF(ERROR) << V4L2CameraDevice::GetModelName(device_info_.device_path)
                 << " id: " << id_ << ": StreamOn failed";
     StreamOff();
@@ -1043,6 +1051,10 @@ int CameraClient::RequestHandler::StreamOnImpl(
                           static_cast<float>(streamon_params.frame_rate), &fds,
                           &buffer_sizes);
   if (ret) {
+    /*
+     * LOG used by FRA. Please make sure it is always in sync with:
+     * google3/chromeos/feedback/analyzer/signals
+     */
     LOGFID(ERROR, device_id_)
         << "StreamOn failed: " << base::safe_strerror(-ret);
     return ret;
@@ -1351,6 +1363,10 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode,
     ret = device_->GetNextFrameBuffer(&buffer_id, &data_size, &v4l2_ts,
                                       &user_ts, frame_number);
     if (ret) {
+      /*
+       * LOG used by FRA. Please make sure it is always in sync with:
+       * google3/chromeos/feedback/analyzer/signals
+       */
       LOGF_THROTTLED(ERROR, 60)
           << V4L2CameraDevice::GetModelName(device_info_.device_path)
           << " id: " << device_id_

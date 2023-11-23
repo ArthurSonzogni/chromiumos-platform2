@@ -653,6 +653,10 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
   if (is_vivid) {
     LOGF(INFO) << "New vivid camera device at " << path;
   } else {
+    /*
+     * LOG used by FRA. Please make sure it is always in sync with:
+     * google3/chromeos/feedback/analyzer/signals
+     */
     LOGF(INFO) << "New "
                << (is_external
                        ? "external"
