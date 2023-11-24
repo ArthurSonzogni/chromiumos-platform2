@@ -5,6 +5,7 @@
 // The folder_size_dump helper dumps the size of various system folders.
 
 #include <algorithm>
+#include <bit>
 #include <functional>
 #include <iostream>
 #include <iterator>
@@ -196,7 +197,7 @@ uint64_t ObfuscateSize(uint64_t size) {
   uint64_t result = size;
 
   // Count the number of bits set.
-  auto ct = 64 - base::bits::CountLeadingZeroBits(size);
+  auto ct = 64 - std::countl_zero(size);
 
   // Only keep the 2 most significant bits.
   if (ct > 2) {
