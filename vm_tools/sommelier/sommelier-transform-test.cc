@@ -264,8 +264,8 @@ TEST_F(TransformTest, HostToGuestFixed_ScaledWithoutDirectScale) {
 
   sl_transform_host_to_guest_fixed(&ctx, &fake_surface, &x, &y);
 
-  EXPECT_EQ(wl_fixed_to_double(x), 15.0);
-  EXPECT_EQ(wl_fixed_to_double(y), 15.0);
+  EXPECT_EQ(x, wl_fixed_from_double(16 * 0.9));
+  EXPECT_EQ(y, wl_fixed_from_double(16 * 0.9));
 }
 
 TEST_F(TransformTest, HostToGuestFixed_UnscaledWithDirectScale) {
@@ -294,8 +294,8 @@ TEST_F(TransformTest, HostToGuestFixed_ScaledWithDirectScale) {
 
   sl_transform_host_to_guest_fixed(&ctx, &fake_surface, &x, &y);
 
-  EXPECT_EQ(wl_fixed_to_double(x), 15.0);
-  EXPECT_EQ(wl_fixed_to_double(y), 26.0);
+  EXPECT_EQ(x, wl_fixed_from_double(0.9 * 16));
+  EXPECT_EQ(y, wl_fixed_from_double(1.6 * 16));
 }
 
 TEST_F(TransformTest, HostToGuestFixedCoord_UnscaledWithoutDirectScale) {
@@ -313,7 +313,7 @@ TEST_F(TransformTest, HostToGuestFixedCoord_ScaledWithoutDirectScale) {
 
   sl_transform_host_to_guest_fixed(&ctx, &fake_surface, &coord, 0u);
 
-  EXPECT_EQ(wl_fixed_to_double(coord), 15.0);
+  EXPECT_EQ(coord, wl_fixed_from_double(16 * 0.9));
 }
 
 TEST_F(TransformTest, HostToGuestFixedCoord_UnscaledWithDirectScale) {
@@ -337,7 +337,7 @@ TEST_F(TransformTest, HostToGuestFixedCoord_ScaledWithDirectScale) {
 
   sl_transform_host_to_guest_fixed(&ctx, &fake_surface, &coord, 0u);
 
-  EXPECT_EQ(wl_fixed_to_double(coord), 26);
+  EXPECT_EQ(coord, wl_fixed_from_double(1.6 * 16));
 }
 
 TEST_F(TransformTest, GuestToHost_UnscaledWithoutDirectScale) {
@@ -412,8 +412,8 @@ TEST_F(TransformTest, GuestToHostFixed_ScaledWithoutDirectScale) {
 
   sl_transform_guest_to_host_fixed(&ctx, &fake_surface, &x, &y);
 
-  EXPECT_EQ(wl_fixed_to_double(x), 16.0);
-  EXPECT_EQ(wl_fixed_to_double(y), 16.0);
+  EXPECT_EQ(x, wl_fixed_from_double(15 / 0.9));
+  EXPECT_EQ(y, wl_fixed_from_double(15 / 0.9));
 }
 
 TEST_F(TransformTest, GuestToHostFixed_UnscaledWithDirectScale) {
@@ -442,8 +442,8 @@ TEST_F(TransformTest, GuestToHostFixed_ScaledWithDirectScale) {
 
   sl_transform_guest_to_host_fixed(&ctx, &fake_surface, &x, &y);
 
-  EXPECT_EQ(wl_fixed_to_double(x), 16.0);
-  EXPECT_EQ(wl_fixed_to_double(y), 16.0);
+  EXPECT_EQ(x, wl_fixed_from_double(15 / 0.9));
+  EXPECT_EQ(y, wl_fixed_from_double(26 / 1.6));
 }
 
 TEST_F(TransformTest, GuestToHostFixedCoord_UnscaledWithoutDirectScale) {
@@ -463,7 +463,7 @@ TEST_F(TransformTest, GuestToHostFixedCoord_ScaledWithoutDirectScale) {
 
   sl_transform_guest_to_host_fixed(&ctx, &fake_surface, &coord, 0u);
 
-  EXPECT_EQ(wl_fixed_to_double(coord), 16.0);
+  EXPECT_EQ(coord, wl_fixed_from_double(15 / 0.9));
 }
 
 TEST_F(TransformTest, GuestToHostFixedCoord_UnscaledWithDirectScale) {
@@ -487,7 +487,7 @@ TEST_F(TransformTest, GuestToHostFixedCoord_ScaledWithDirectScale) {
 
   sl_transform_guest_to_host_fixed(&ctx, &fake_surface, &coord, 0u);
 
-  EXPECT_EQ(wl_fixed_to_double(coord), 16.0);
+  EXPECT_EQ(coord, wl_fixed_from_double(26 / 1.6));
 }
 }  // namespace sommelier
 }  // namespace vm_tools
