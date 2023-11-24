@@ -38,6 +38,10 @@ base::Value::Dict ParseUfsLifetimeDetail(
 base::Value::Dict ParseFanDetail(
     const ash::cros_healthd::mojom::FanRoutineDetailPtr& fan_detail);
 
+base::Value::Dict ParseCameraAvailabilityDetail(
+    const ash::cros_healthd::mojom::CameraAvailabilityRoutineDetailPtr&
+        camera_availability_detail);
+
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_MOJOM_ROUTINE_OUTPUT_UTILS_H_

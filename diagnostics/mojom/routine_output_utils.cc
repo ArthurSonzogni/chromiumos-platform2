@@ -77,6 +77,17 @@ std::string EnumToString(
   }
 }
 
+std::string EnumToString(mojom::CameraSubtestResult subtest_result) {
+  switch (subtest_result) {
+    case mojom::CameraSubtestResult::kNotRun:
+      return "Not Run";
+    case mojom::CameraSubtestResult::kPassed:
+      return "Passed";
+    case mojom::CameraSubtestResult::kFailed:
+      return "Failed";
+  }
+}
+
 }  // namespace
 
 base::Value::Dict ParseAudioDriverDetail(
@@ -233,6 +244,21 @@ base::Value::Dict ParseFanDetail(const mojom::FanRoutineDetailPtr& fan_detail) {
   output.Set("passed_fan_ids", std::move(passed_fan_ids));
   output.Set("failed_fan_ids", std::move(failed_fan_ids));
   output.Set("fan_count_status", EnumToString(fan_detail->fan_count_status));
+
+  return output;
+}
+
+base::Value::Dict ParseCameraAvailabilityDetail(
+    const ash::cros_healthd::mojom::CameraAvailabilityRoutineDetailPtr&
+        camera_availability_detail) {
+  base::Value::Dict output;
+
+  output.Set(
+      "camera_service_available_check",
+      EnumToString(camera_availability_detail->camera_service_available_check));
+  output.Set("camera_diagnostic_service_available_check",
+             EnumToString(camera_availability_detail
+                              ->camera_diagnostic_service_available_check));
 
   return output;
 }

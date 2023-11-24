@@ -119,6 +119,10 @@ void RoutineV2Client::OnRoutineStateChange(
           PrintOutput(
               ParseBluetoothPairingDetail(detail->get_bluetooth_pairing()));
           break;
+        case mojom::RoutineDetail::Tag::kCameraAvailability:
+          PrintOutput(
+              ParseCameraAvailabilityDetail(detail->get_camera_availability()));
+          break;
       }
       run_loop_.Quit();
       return;

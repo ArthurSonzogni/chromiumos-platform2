@@ -343,6 +343,23 @@ int BluetoothPairingV2Main(int argc, char** argv) {
   COMMON_V2_ROUTINE_MAIN(BluetoothPairing);
 }
 
+int CameraAvailabilityMain(int argc, char** argv) {
+  DEFINE_bool(run_camera_service_available_check, true,
+              "Whether to check the availability of the camera service.");
+  DEFINE_bool(
+      run_camera_diagnostic_service_available_check, true,
+      "Whether to check the availability of the camera diagnostic service.");
+  COMMON_V2_ROUTINE_FLAGS("Camera availability routine");
+
+  auto argument = mojom::CameraAvailabilityRoutineArgument::New();
+  argument->run_camera_service_available_check =
+      FLAGS_run_camera_service_available_check;
+  argument->run_camera_diagnostic_service_available_check =
+      FLAGS_run_camera_diagnostic_service_available_check;
+
+  COMMON_V2_ROUTINE_MAIN(CameraAvailability);
+}
+
 #define COMMON_LEGACY_ROUTINE_FLAGS                                            \
   DEFINE_uint32(force_cancel_at_percent, std::numeric_limits<uint32_t>::max(), \
                 "If specified, will attempt to cancel the routine when its "   \
@@ -829,6 +846,7 @@ const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     {"fan", FanMain},
     {"bluetooth_scanning_v2", BluetoothScanningV2Main},
     {"bluetooth_pairing_v2", BluetoothPairingV2Main},
+    {"camera_availability", CameraAvailabilityMain},
     // V1 routines.
     {"battery_capacity", BatteryCapacityMain},
     {"battery_health", BatteryHealthMain},

@@ -49,6 +49,7 @@ VAR_(PATH_("hardware-properties", "has-side-volume-button"),
      kHasSideVolumeButton);
 VAR_(PATH_("hardware-properties", "storage-type"), kStorageType);
 VAR_(PATH_("hardware-properties", "fan-count"), kFanCount);
+VAR_(PATH_("camera", "count"), kCameraCount);
 VAR_(PATH_("cros-healthd", "cached-vpd", "has-sku-number"), kHasSkuNumber);
 VAR_(PATH_("cros-healthd", "battery", "has-smart-battery-info"),
      kHasSmartBatteryInfo);

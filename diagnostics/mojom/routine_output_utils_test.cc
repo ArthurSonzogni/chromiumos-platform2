@@ -174,5 +174,17 @@ TEST(RoutineOutputUtilsTest, ParseFanDetail) {
   EXPECT_EQ(ParseFanDetail(detail), expected_result);
 }
 
+TEST(RoutineOutputUtilsTest, ParseCameraAvailabilityDetail) {
+  auto detail = mojom::CameraAvailabilityRoutineDetail::New();
+  detail->camera_service_available_check = mojom::CameraSubtestResult::kPassed;
+  detail->camera_diagnostic_service_available_check =
+      mojom::CameraSubtestResult::kFailed;
+
+  base::Value::Dict expected_result;
+  expected_result.Set("camera_service_available_check", "Passed");
+  expected_result.Set("camera_diagnostic_service_available_check", "Failed");
+  EXPECT_EQ(ParseCameraAvailabilityDetail(detail), expected_result);
+}
+
 }  // namespace
 }  // namespace diagnostics

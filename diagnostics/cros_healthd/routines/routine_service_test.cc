@@ -497,5 +497,42 @@ TEST_F(RoutineServiceTest, BluetoothPairingFlossDisable) {
                          mojom::BluetoothPairingRoutineArgument::New()));
 }
 
+TEST_F(RoutineServiceTest, CameraAvailability) {
+  SetFakeCrosConfig(paths::cros_config::kCameraCount, "1");
+
+  CheckIsRoutineArgumentSupported(
+      MakeSupported(), mojom::RoutineArgument::NewCameraAvailability(
+                           mojom::CameraAvailabilityRoutineArgument::New()));
+  CheckCreateRoutine(MakeSupported(),
+                     mojom::RoutineArgument::NewCameraAvailability(
+                         mojom::CameraAvailabilityRoutineArgument::New()));
+}
+
+TEST_F(RoutineServiceTest, CameraAvailabilityNoCrosConfig) {
+  SetFakeCrosConfig(paths::cros_config::kCameraCount, std::nullopt);
+
+  auto status = MakeUnsupported(
+      "Expected cros_config property [camera/count] to be "
+      "[uint32], but got []");
+  CheckIsRoutineArgumentSupported(
+      status, mojom::RoutineArgument::NewCameraAvailability(
+                  mojom::CameraAvailabilityRoutineArgument::New()));
+  CheckCreateRoutine(status,
+                     mojom::RoutineArgument::NewCameraAvailability(
+                         mojom::CameraAvailabilityRoutineArgument::New()));
+}
+
+TEST_F(RoutineServiceTest, CameraAvailabilityNoCamera) {
+  SetFakeCrosConfig(paths::cros_config::kCameraCount, "0");
+
+  auto status = MakeUnsupported("Doesn't support device with no camera.");
+  CheckIsRoutineArgumentSupported(
+      status, mojom::RoutineArgument::NewCameraAvailability(
+                  mojom::CameraAvailabilityRoutineArgument::New()));
+  CheckCreateRoutine(status,
+                     mojom::RoutineArgument::NewCameraAvailability(
+                         mojom::CameraAvailabilityRoutineArgument::New()));
+}
+
 }  // namespace
 }  // namespace diagnostics

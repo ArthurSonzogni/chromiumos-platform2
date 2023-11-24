@@ -23,7 +23,9 @@ pkg_config("libdiag_routine_pkg_deps") {
     "iioservice_ipc",
     "libmojo",
     "libspaced",
+    "mojo_service_manager",
     "re2",
+    "system_api",
   ]
 }
 
@@ -59,6 +61,7 @@ source_set("libdiag_routine") {
     "bluetooth/floss/bluetooth_pairing.cc",
     "bluetooth/floss/bluetooth_power.cc",
     "bluetooth/floss/bluetooth_scanning.cc",
+    "camera/camera_availability.cc",
     "diag_process_adapter_impl.cc",
     "diag_routine_with_status.cc",
     "fan/fan.cc",
@@ -109,6 +112,7 @@ if (use.test) {
       "libspaced",
       "libspaced-test",
       "mojo_service_manager",
+      "system_api",
     ]
   }
 
@@ -148,6 +152,7 @@ if (use.test) {
       "bluetooth/floss/bluetooth_pairing_test.cc",
       "bluetooth/floss/bluetooth_power_test.cc",
       "bluetooth/floss/bluetooth_scanning_test.cc",
+      "camera/camera_availability_test.cc",
       "diag_routine_with_status_test.cc",
       "fan/fan_test.cc",
       "fingerprint/fingerprint_alive_test.cc",

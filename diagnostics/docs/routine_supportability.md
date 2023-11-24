@@ -175,6 +175,19 @@ You can run the following commands on your DUT:
 To configure `fan-count` in Boxster, you can use the `create_fan` function
 defined in [hw_topology.star] to set it up.
 
+### Camera availability
+
+Supported only when `/camera count` is set and is a non-zero value.
+
+You can run the following commands on your DUT:
+1. `cros_config /camera count` This is helpful to understand what the value of
+   `count` is.
+2. `cros-health-tool diag camera_availability --check_supported` Use this to see
+   if healthd reports the correct support status.
+
+To configure `count` in Boxster, you can use `create_camera` function defined in
+[hw_topology.star] to set it up.
+
 [team-contact]: mailto:cros-tdm-tpe-eng@google.com
 [cros_healthd_routines.mojom]: /diagnostics/mojom/public/cros_healthd_routines.mojom
 [hw_topology.star]: https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star

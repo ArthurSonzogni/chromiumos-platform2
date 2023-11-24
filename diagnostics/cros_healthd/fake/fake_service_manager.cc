@@ -4,6 +4,10 @@
 
 #include "diagnostics/cros_healthd/fake/fake_service_manager.h"
 
+#include <optional>
+#include <string>
+#include <utility>
+
 #include <base/notreached.h>
 
 namespace diagnostics {
@@ -27,13 +31,25 @@ void FakeServiceManager::Request(const std::string& service_name,
 
 void FakeServiceManager::Query(const std::string& service_name,
                                QueryCallback callback) {
-  NOTIMPLEMENTED();
+  const auto& it = query_result_.find(service_name);
+  if (it == query_result_.end()) {
+    NOTIMPLEMENTED();
+  } else {
+    std::move(callback).Run(it->second->Clone());
+  }
 }
 
 void FakeServiceManager::AddServiceObserver(
     mojo::PendingRemote<chromeos::mojo_service_manager::mojom::ServiceObserver>
         observer) {
   NOTIMPLEMENTED();
+}
+
+void FakeServiceManager::SetQuery(
+    const std::string& service_name,
+    chromeos::mojo_service_manager::mojom::ErrorOrServiceStatePtr
+        error_or_service_state) {
+  query_result_[service_name] = std::move(error_or_service_state);
 }
 
 }  // namespace diagnostics

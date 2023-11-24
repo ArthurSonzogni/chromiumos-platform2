@@ -1713,3 +1713,50 @@ Errors:
 - `Failed to read fan speed`
 - `Failed to get number of fans`
 - `Failed to set fan speed`
+
+## Camera Routines
+
+### Camera availability
+
+Check the availability of services related to cameras. It includes
+-   the camera service and
+-   the camera diagnostic service.
+
+Note: the availability of camera diagnostic service is only informational, it
+will not affect the passed or failed state of the main routine. However, its
+result can still be read from the routine detail.
+
+Parameters:
+-   `--run_camera_service_available_check` - Whether to check the availability
+    of the camera service.
+    Type: `bool`. Default: `true`.
+-   `--run_camera_diagnostic_service_available_check` - Whether to check the
+    availability of the camera diagnostic service.
+    Type: `bool`. Default: `true`.
+
+To run the camera availability routine that checks the availability of both
+the camera service and the camera diagnostic service.
+
+From crosh:
+```bash
+crosh> diag camera_availability
+```
+
+From cros-health-tool:
+```bash
+$ cros-health-tool diag camera_availability
+```
+
+Sample output:
+```bash
+Running Progress: 100
+Status: Passed
+Output:
+{
+   "camera_diagnostic_service_available_check": "Passed",
+   "camera_service_available_check": "Passed"
+}
+```
+
+Errors:
+- `Failed to access mojo service manager.`

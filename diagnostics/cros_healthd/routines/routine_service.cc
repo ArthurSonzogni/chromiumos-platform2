@@ -18,6 +18,7 @@
 #include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_pairing.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_power.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_scanning.h"
+#include "diagnostics/cros_healthd/routines/camera/camera_availability.h"
 #include "diagnostics/cros_healthd/routines/fan/fan.h"
 #include "diagnostics/cros_healthd/routines/hardware_button/volume_button.h"
 #include "diagnostics/cros_healthd/routines/led/led_lit_up.h"
@@ -88,6 +89,13 @@ CreateRoutineResult CreateRoutineHelperSync(
     Context* context, mojom::LedLitUpRoutineArgumentPtr arg) {
   return MakeRoutineIfSupported<LedLitUpV2Routine>(
       context->ground_truth()->PrepareRoutineLedLitUp(), context,
+      std::move(arg));
+}
+
+CreateRoutineResult CreateRoutineHelperSync(
+    Context* context, mojom::CameraAvailabilityRoutineArgumentPtr arg) {
+  return MakeRoutineIfSupported<CameraAvailabilityRoutine>(
+      context->ground_truth()->PrepareRoutineCameraAvailability(), context,
       std::move(arg));
 }
 
@@ -238,6 +246,12 @@ void RoutineService::CheckAndCreateRoutine(
     case mojom::RoutineArgument::Tag::kBluetoothPairing: {
       CreateRoutineHelper(context_,
                           std::move(routine_arg->get_bluetooth_pairing()),
+                          std::move(callback));
+      return;
+    }
+    case mojom::RoutineArgument::Tag::kCameraAvailability: {
+      CreateRoutineHelper(context_,
+                          std::move(routine_arg->get_camera_availability()),
                           std::move(callback));
       return;
     }

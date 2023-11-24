@@ -132,6 +132,8 @@ base::Value::Dict ConvertRoutineDetailToOutputDict(
       return ParseBluetoothScanningDetail(detail->get_bluetooth_scanning());
     case mojom::RoutineDetail::Tag::kBluetoothPairing:
       return ParseBluetoothPairingDetail(detail->get_bluetooth_pairing());
+    case mojom::RoutineDetail::Tag::kCameraAvailability:
+      return ParseCameraAvailabilityDetail(detail->get_camera_availability());
   }
 }
 

@@ -66,6 +66,9 @@ class GroundTruth final {
 
   ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineLedLitUp() const;
 
+  ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineCameraAvailability()
+      const;
+
   using PrepareRoutineBluetoothFlossCallback =
       base::OnceCallback<void(ash::cros_healthd::mojom::SupportStatusPtr)>;
   void PrepareRoutineBluetoothFloss(
