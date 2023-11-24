@@ -84,6 +84,10 @@ bool SetClearTpmRequest(bool value) {
   return brillo::DeleteFile(base::FilePath(kNVChipPath));
 }
 
+bool SetClearTpmRequestAllowPrompt(bool value) {
+  return SetClearTpmRequest(value);
+}
+
 std::optional<bool> GetClearTpmRequest() {
   return !base::PathExists(base::FilePath(kNVChipPath));
 }
@@ -107,6 +111,10 @@ bool SetClearTpmRequest(bool value) {
     return false;
   }
 
+  return SetClearTpmRequestAllowPrompt(value);
+}
+
+bool SetClearTpmRequestAllowPrompt(bool value) {
   std::string ppi_id =
       value ? std::to_string(kTpmPpiClearId) : std::to_string(kTpmPpiNothingId);
 
@@ -154,6 +162,10 @@ bool SetClearTpmRequest(bool value) {
   auto crossystem = std::make_unique<crossystem::Crossystem>();
   return crossystem->VbSetSystemPropertyInt(
       crossystem::Crossystem::kClearTpmOwnerRequest, static_cast<int>(value));
+}
+
+bool SetClearTpmRequestAllowPrompt(bool value) {
+  return SetClearTpmRequest(value);
 }
 
 std::optional<bool> GetClearTpmRequest() {

@@ -22,6 +22,9 @@ HWSEC_FOUNDATION_EXPORT bool SupportClearWithoutPrompt();
 // Sets the value of "Clear TPM Request" to |value|.
 HWSEC_FOUNDATION_EXPORT bool SetClearTpmRequest(bool value);
 
+// Sets the value of "Clear TPM Request" to |value| and allow user prompt.
+HWSEC_FOUNDATION_EXPORT bool SetClearTpmRequestAllowPrompt(bool value);
+
 // Gets the current value of "Clear TPM Request".
 HWSEC_FOUNDATION_EXPORT std::optional<bool> GetClearTpmRequest();
 
