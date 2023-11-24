@@ -272,15 +272,6 @@ class AttestationService : public AttestationInterface {
   // Initialization to be run on the worker thread.
   void InitializeTask(InitializeCompleteCallback callback);
 
-  // Checks if |database_| needs to be migrated to the latest data model and
-  // do so if needed. Returns true if migration was needed and successful.
-  bool MigrateAttestationDatabase();
-
-  // Migrates identity date in |database_| if needed. Returns true if the
-  // migration was needed and successful.
-  // Note that this function is not multithread safe.
-  bool MigrateIdentityData();
-
   // Shutdown to be run on the worker thread.
   void ShutdownTask();
 
@@ -754,11 +745,6 @@ class AttestationService : public AttestationInterface {
 
   base::WeakPtr<AttestationService> GetWeakPtr();
 
-  FRIEND_TEST(AttestationServiceBaseTest, MigrateAttestationDatabase);
-  FRIEND_TEST(AttestationServiceBaseTest,
-              MigrateAttestationDatabaseWithCorruptedFields);
-  FRIEND_TEST(AttestationServiceBaseTest,
-              MigrateAttestationDatabaseAllEndorsementCredentials);
   FRIEND_TEST(AttestationServiceBaseTest,
               VerifyCertificateWithSubjectPublicKeyInfo);
   FRIEND_TEST_ALL_PREFIXES(AttestationServiceEnterpriseTest,

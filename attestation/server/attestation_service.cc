@@ -499,19 +499,10 @@ void AttestationService::InitializeTask(InitializeCompleteCallback callback) {
     default_crypto_utility_.reset(new CryptoUtilityImpl(tpm_utility_, hwsec_));
     crypto_utility_ = default_crypto_utility_.get();
   }
-
-  bool existing_database;
-  if (database_) {
-    existing_database = true;
-  } else {
+  if (!database_) {
     default_database_.reset(new DatabaseImpl(crypto_utility_, hwsec_));
-    existing_database = default_database_->Initialize();
+    default_database_->Initialize();
     database_ = default_database_.get();
-  }
-  if (existing_database && MigrateAttestationDatabase()) {
-    if (!database_->SaveChanges()) {
-      LOG(WARNING) << "Attestation: Failed to persist database changes.";
-    }
   }
   if (!key_store_) {
     pkcs11_token_manager_.reset(new chaps::TokenManagerClient());
@@ -530,143 +521,6 @@ void AttestationService::InitializeTask(InitializeCompleteCallback callback) {
     tpm_utility_->RemoveOwnerDependency();
     std::move(callback).Run(true);
   }
-}
-
-bool AttestationService::MigrateAttestationDatabase() {
-  bool migrated = false;
-
-  auto* database_pb = database_->GetMutableProtobuf();
-  if (database_pb->has_credentials()) {
-    if (!database_pb->credentials().encrypted_endorsement_credentials().count(
-            DEFAULT_ACA) &&
-        database_pb->credentials()
-            .has_default_encrypted_endorsement_credential()) {
-      LOG(INFO) << "Attestation: Migrating endorsement credential for "
-                << GetACAName(DEFAULT_ACA) << ".";
-      (*database_pb->mutable_credentials()
-            ->mutable_encrypted_endorsement_credentials())[DEFAULT_ACA] =
-          database_pb->credentials().default_encrypted_endorsement_credential();
-      migrated = true;
-    }
-    if (!database_pb->credentials().encrypted_endorsement_credentials().count(
-            TEST_ACA) &&
-        database_pb->credentials()
-            .has_test_encrypted_endorsement_credential()) {
-      LOG(INFO) << "Attestation: Migrating endorsement credential for "
-                << GetACAName(TEST_ACA) << ".";
-      (*database_pb->mutable_credentials()
-            ->mutable_encrypted_endorsement_credentials())[TEST_ACA] =
-          database_pb->credentials().test_encrypted_endorsement_credential();
-      migrated = true;
-    }
-  }
-
-  // Migrate identity data if needed.
-  migrated |= MigrateIdentityData();
-
-  if (migrated) {
-    EncryptAllEndorsementCredentials();
-    LOG(INFO) << "Attestation: Migrated attestation database.";
-  }
-
-  // Migrate Rsa PublicKey Format to SubjectPublicKeyInfo
-  if (database_pb->credentials().has_legacy_endorsement_public_key()) {
-    std::string public_key_info;
-    if (GetSubjectPublicKeyInfo(
-            database_pb->credentials().endorsement_key_type(),
-            database_pb->credentials().legacy_endorsement_public_key(),
-            &public_key_info)) {
-      database_pb->mutable_credentials()->set_endorsement_public_key(
-          public_key_info);
-    } else {
-      // If the format conversion fails, that means the EK public key is broken
-      // somehow, which should not happen. If it does, that means EK data
-      // becomes invalid. Clean up all EK metadata to resolve this problem.
-      LOG(ERROR) << __func__ << ": Migrate public format fail.";
-      database_pb->mutable_credentials()->clear_endorsement_key_type();
-      database_pb->mutable_credentials()->clear_endorsement_credential();
-    }
-    database_pb->mutable_credentials()->clear_legacy_endorsement_public_key();
-    migrated |= true;
-  }
-
-  return migrated;
-}
-
-bool AttestationService::MigrateIdentityData() {
-  auto* database_pb = database_->GetMutableProtobuf();
-  if (database_pb->identities().size() > 0) {
-    // We already migrated identity data.
-    return false;
-  }
-
-  bool error = false;
-
-  // The identity we're creating will have the next index in identities.
-  LOG(INFO) << "Attestation: Migrating existing identity into identity "
-            << database_pb->identities().size() << ".";
-  CHECK(database_pb->identities().size() == kFirstIdentity);
-  AttestationDatabase::Identity* identity_data =
-      database_pb->mutable_identities()->Add();
-  identity_data->set_features(IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID);
-  if (database_pb->has_identity_binding()) {
-    identity_data->mutable_identity_binding()->CopyFrom(
-        database_pb->identity_binding());
-  }
-  if (database_pb->has_identity_key()) {
-    identity_data->mutable_identity_key()->CopyFrom(
-        database_pb->identity_key());
-    identity_data->mutable_identity_key()->clear_identity_credential();
-    if (database_pb->identity_key().has_identity_credential()) {
-      // Create an identity certificate for this identity and the default ACA.
-      AttestationDatabase::IdentityCertificate identity_certificate;
-      identity_certificate.set_identity(kFirstIdentity);
-      identity_certificate.set_aca(DEFAULT_ACA);
-      identity_certificate.set_identity_credential(
-          database_pb->identity_key().identity_credential());
-      auto* map = database_pb->mutable_identity_certificates();
-      auto in = map->insert(IdentityCertificateMap::value_type(
-          DEFAULT_ACA, identity_certificate));
-      if (!in.second) {
-        LOG(ERROR) << "Attestation: Could not migrate existing identity.";
-        error = true;
-      }
-    }
-    if (database_pb->identity_key().has_enrollment_id()) {
-      database_->GetMutableProtobuf()->set_enrollment_id(
-          database_pb->identity_key().enrollment_id());
-    }
-  }
-
-  if (database_pb->has_pcr0_quote()) {
-    auto in = identity_data->mutable_pcr_quotes()->insert(
-        QuoteMap::value_type(0, database_pb->pcr0_quote()));
-    if (!in.second) {
-      LOG(ERROR) << "Attestation: Could not migrate existing identity.";
-      error = true;
-    }
-  } else {
-    LOG(ERROR) << "Attestation: Missing PCR0 quote in existing database.";
-    error = true;
-  }
-  if (database_pb->has_pcr1_quote()) {
-    auto in = identity_data->mutable_pcr_quotes()->insert(
-        QuoteMap::value_type(1, database_pb->pcr1_quote()));
-    if (!in.second) {
-      LOG(ERROR) << "Attestation: Could not migrate existing identity.";
-      error = true;
-    }
-  } else {
-    LOG(ERROR) << "Attestation: Missing PCR1 quote in existing database.";
-    error = true;
-  }
-
-  if (error) {
-    database_pb->mutable_identities()->RemoveLast();
-    database_pb->mutable_identity_certificates()->erase(DEFAULT_ACA);
-  }
-
-  return !error;
 }
 
 void AttestationService::ShutdownTask() {
@@ -1841,11 +1695,6 @@ bool AttestationService::CreateIdentity(int identity_features) {
       identity_result.identity_key);
   new_identity_pb.mutable_identity_binding()->CopyFrom(
       identity_result.identity_binding);
-
-  if (identity_features & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) {
-    auto* identity_key = new_identity_pb.mutable_identity_key();
-    identity_key->set_enrollment_id(database_pb->enrollment_id());
-  }
 
   std::string identity_key_blob_for_quote =
       new_identity_pb.identity_key().identity_key_blob();

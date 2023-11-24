@@ -483,187 +483,6 @@ TEST_F(AttestationServiceBaseTest, GetFeatures) {
   Run();
 }
 
-TEST_F(AttestationServiceBaseTest, MigrateAttestationDatabase) {
-  // Simulate an older database.
-  auto* db = mock_database_.GetMutableProtobuf();
-  db->mutable_credentials()->clear_encrypted_endorsement_credentials();
-  db->mutable_credentials()->set_endorsement_credential("endorsement_cred");
-  EncryptedData default_encrypted_endorsement_credential;
-  default_encrypted_endorsement_credential.set_wrapped_key("default_key");
-  db->mutable_credentials()
-      ->mutable_default_encrypted_endorsement_credential()
-      ->CopyFrom(default_encrypted_endorsement_credential);
-  db->clear_identities();
-  db->clear_identity_certificates();
-  db->mutable_identity_binding()->set_identity_binding("identity_binding");
-  db->mutable_identity_binding()->set_identity_public_key_tpm_format(
-      "identity_public_key");
-  db->mutable_identity_key()->set_identity_credential("identity_cred");
-  db->mutable_pcr0_quote()->set_quote("pcr0_quote");
-  db->mutable_pcr1_quote()->set_quote("pcr1_quote");
-  // Persist that older database.
-  mock_database_.SaveChanges();
-
-  // Simulate login.
-  CHECK(CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
-                                   base::Unretained(service_.get()))));
-  service_->PrepareForEnrollment(base::DoNothing());
-
-  const auto& const_db = mock_database_.GetProtobuf();
-  // The default encrypted endorsement credential has been migrated.
-  // The deprecated field has not been cleared so that older code can still
-  // use the database.
-  EXPECT_EQ(default_encrypted_endorsement_credential.wrapped_key(),
-            const_db.credentials()
-                .encrypted_endorsement_credentials()
-                .at(DEFAULT_ACA)
-                .wrapped_key());
-  EXPECT_EQ(default_encrypted_endorsement_credential.wrapped_key(),
-            const_db.credentials()
-                .default_encrypted_endorsement_credential()
-                .wrapped_key());
-
-  // The default identity has data copied from the deprecated database fields.
-  // The deprecated fields have not been cleared so that older code can still
-  // use the database.
-  const AttestationDatabase::Identity& default_identity_data =
-      const_db.identities().Get(DEFAULT_ACA);
-  EXPECT_EQ(IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID,
-            default_identity_data.features());
-  EXPECT_EQ("identity_binding",
-            default_identity_data.identity_binding().identity_binding());
-  EXPECT_EQ("identity_public_key", default_identity_data.identity_binding()
-                                       .identity_public_key_tpm_format());
-  EXPECT_EQ("identity_binding", const_db.identity_binding().identity_binding());
-  EXPECT_EQ("identity_public_key",
-            const_db.identity_binding().identity_public_key_tpm_format());
-  EXPECT_EQ("pcr0_quote", default_identity_data.pcr_quotes().at(0).quote());
-  EXPECT_EQ("pcr0_quote", const_db.pcr0_quote().quote());
-  EXPECT_EQ("pcr1_quote", default_identity_data.pcr_quotes().at(1).quote());
-  EXPECT_EQ("pcr1_quote", const_db.pcr1_quote().quote());
-
-  // No other identity has been created.
-  EXPECT_EQ(1, const_db.identities().size());
-
-  // The identity credential was migrated into an identity certificate.
-  // As a result, identity data does not use the identity credential. The
-  // deprecated field has not been cleared so that older code can still
-  // use the database.
-  EXPECT_FALSE(default_identity_data.identity_key().has_identity_credential());
-  EXPECT_EQ("identity_cred", const_db.identity_key().identity_credential());
-  VerifyACAData(const_db, "identity_cred");
-}
-
-TEST_F(AttestationServiceBaseTest,
-       MigrateAttestationDatabaseWithCorruptedFields) {
-  // Simulate an older database.
-  auto* db = mock_database_.GetMutableProtobuf();
-  db->mutable_credentials()->clear_encrypted_endorsement_credentials();
-  db->mutable_credentials()->set_endorsement_credential("endorsement_cred");
-  EncryptedData default_encrypted_endorsement_credential;
-  default_encrypted_endorsement_credential.set_wrapped_key("default_key");
-  db->mutable_credentials()
-      ->mutable_default_encrypted_endorsement_credential()
-      ->CopyFrom(default_encrypted_endorsement_credential);
-  db->clear_identities();
-  db->clear_identity_certificates();
-  db->mutable_identity_binding()->set_identity_binding("identity_binding");
-  db->mutable_identity_binding()->set_identity_public_key_tpm_format(
-      "identity_public_key");
-  db->mutable_identity_key()->set_identity_credential("identity_cred");
-  // Note that we are missing a PCR0 quote.
-  db->mutable_pcr1_quote()->set_quote("pcr1_quote");
-  // Persist that older database.
-  mock_database_.SaveChanges();
-
-  // Simulate login.
-  CHECK(CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
-                                   base::Unretained(service_.get()))));
-  service_->PrepareForEnrollment(base::DoNothing());
-
-  const auto& const_db = mock_database_.GetProtobuf();
-  // The default encrypted endorsement credential has been migrated.
-  // The deprecated field has not been cleared so that older code can still
-  // use the database.
-  EXPECT_EQ(default_encrypted_endorsement_credential.wrapped_key(),
-            const_db.credentials()
-                .encrypted_endorsement_credentials()
-                .at(DEFAULT_ACA)
-                .wrapped_key());
-  EXPECT_EQ(default_encrypted_endorsement_credential.wrapped_key(),
-            const_db.credentials()
-                .default_encrypted_endorsement_credential()
-                .wrapped_key());
-
-  // The default identity could not be copied from the deprecated database.
-  // The deprecated fields have not been cleared so that older code can still
-  // use the database.
-  ASSERT_TRUE(const_db.identities().empty());
-  ASSERT_EQ("identity_binding", const_db.identity_binding().identity_binding());
-  ASSERT_EQ("identity_public_key",
-            const_db.identity_binding().identity_public_key_tpm_format());
-  EXPECT_EQ("pcr1_quote", const_db.pcr1_quote().quote());
-
-  // There is no identity certificate since there is no identity.
-  ASSERT_TRUE(const_db.identity_certificates().empty());
-}
-
-TEST_F(AttestationServiceBaseTest,
-       MigrateAttestationDatabaseAllEndorsementCredentials) {
-  // Simulate an older database.
-  auto* db = mock_database_.GetMutableProtobuf();
-  db->mutable_credentials()->clear_encrypted_endorsement_credentials();
-  db->mutable_credentials()->set_endorsement_credential("endorsement_cred");
-  EncryptedData default_encrypted_endorsement_credential;
-  default_encrypted_endorsement_credential.set_wrapped_key("default_key");
-  db->mutable_credentials()
-      ->mutable_default_encrypted_endorsement_credential()
-      ->CopyFrom(default_encrypted_endorsement_credential);
-  EncryptedData test_encrypted_endorsement_credential;
-  test_encrypted_endorsement_credential.set_wrapped_key("test_key");
-  db->mutable_credentials()
-      ->mutable_test_encrypted_endorsement_credential()
-      ->CopyFrom(test_encrypted_endorsement_credential);
-  db->clear_identities();
-  db->clear_identity_certificates();
-  db->mutable_identity_binding()->set_identity_binding("identity_binding");
-  db->mutable_identity_binding()->set_identity_public_key_tpm_format(
-      "identity_public_key");
-  db->mutable_identity_key()->set_identity_credential("identity_cred");
-  db->mutable_pcr0_quote()->set_quote("pcr0_quote");
-  db->mutable_pcr1_quote()->set_quote("pcr1_quote");
-  // Persist that older database.
-  mock_database_.SaveChanges();
-
-  // Simulate second login.
-  CHECK(CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
-                                   base::Unretained(service_.get()))));
-  service_->PrepareForEnrollment(base::DoNothing());
-
-  const auto& const_db = mock_database_.GetProtobuf();
-  // The encrypted endorsement credentials have both been migrated.
-  // The deprecated fields have not been cleared so that older code can still
-  // use the database.
-  EXPECT_EQ(default_encrypted_endorsement_credential.wrapped_key(),
-            const_db.credentials()
-                .encrypted_endorsement_credentials()
-                .at(DEFAULT_ACA)
-                .wrapped_key());
-  EXPECT_EQ(default_encrypted_endorsement_credential.wrapped_key(),
-            const_db.credentials()
-                .default_encrypted_endorsement_credential()
-                .wrapped_key());
-  EXPECT_EQ(test_encrypted_endorsement_credential.wrapped_key(),
-            const_db.credentials()
-                .encrypted_endorsement_credentials()
-                .at(TEST_ACA)
-                .wrapped_key());
-  EXPECT_EQ(test_encrypted_endorsement_credential.wrapped_key(),
-            const_db.credentials()
-                .test_encrypted_endorsement_credential()
-                .wrapped_key());
-}
-
 TEST_F(AttestationServiceBaseTest, GetEndorsementInfoNoInfo) {
   EXPECT_CALL(mock_tpm_utility_, GetEndorsementPublicKey(_, _))
       .WillRepeatedly(Return(false));
@@ -2351,19 +2170,9 @@ TEST_P(AttestationServiceTest, PrepareForEnrollmentQuoteRsa) {
   EXPECT_EQ(1, identity_data.nvram_quotes().count(SN_BITS));
   EXPECT_EQ(1, identity_data.nvram_quotes().count(RSA_PUB_EK_CERT));
 
-  // Deprecated identity-related values have not been set.
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr0_quote());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr1_quote());
-
   // Verify Privacy CA-related data.
   VerifyACAData(mock_database_.GetProtobuf());
-  // These deprecated fields have not been set either.
   EXPECT_TRUE(mock_database_.GetProtobuf().has_credentials());
-  EXPECT_FALSE(mock_database_.GetProtobuf()
-                   .credentials()
-                   .has_default_encrypted_endorsement_credential());
 }
 
 TEST_P(AttestationServiceTest, PrepareForEnrollmentQuoteRsaFail) {
@@ -2411,19 +2220,9 @@ TEST_P(AttestationServiceTest, PrepareForEnrollmentNoQuoteRsaEccEk) {
   EXPECT_EQ(1, identity_data.nvram_quotes().count(SN_BITS));
   EXPECT_EQ(0, identity_data.nvram_quotes().count(RSA_PUB_EK_CERT));
 
-  // Deprecated identity-related values have not been set.
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr0_quote());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr1_quote());
-
   // Verify Privacy CA-related data.
   VerifyACAData(mock_database_.GetProtobuf());
-  // These deprecated fields have not been set either.
   EXPECT_TRUE(mock_database_.GetProtobuf().has_credentials());
-  EXPECT_FALSE(mock_database_.GetProtobuf()
-                   .credentials()
-                   .has_default_encrypted_endorsement_credential());
 }
 
 TEST_P(AttestationServiceTest, PrepareForEnrollmentNoQuoteRsaRsaEk) {
@@ -2453,19 +2252,9 @@ TEST_P(AttestationServiceTest, PrepareForEnrollmentNoQuoteRsaRsaEk) {
   EXPECT_EQ(1, identity_data.nvram_quotes().count(SN_BITS));
   EXPECT_EQ(0, identity_data.nvram_quotes().count(RSA_PUB_EK_CERT));
 
-  // Deprecated identity-related values have not been set.
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr0_quote());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr1_quote());
-
   // Verify Privacy CA-related data.
   VerifyACAData(mock_database_.GetProtobuf());
-  // These deprecated fields have not been set either.
   EXPECT_TRUE(mock_database_.GetProtobuf().has_credentials());
-  EXPECT_FALSE(mock_database_.GetProtobuf()
-                   .credentials()
-                   .has_default_encrypted_endorsement_credential());
 }
 
 TEST_P(AttestationServiceTest,
@@ -2497,19 +2286,9 @@ TEST_P(AttestationServiceTest,
             identity_data.features());
   EXPECT_TRUE(identity_data.nvram_quotes().empty());
 
-  // Deprecated identity-related values have not been set.
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr0_quote());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr1_quote());
-
   // Verify Privacy CA-related data.
   VerifyACAData(mock_database_.GetProtobuf());
-  // These deprecated fields have not been set either.
   EXPECT_TRUE(mock_database_.GetProtobuf().has_credentials());
-  EXPECT_FALSE(mock_database_.GetProtobuf()
-                   .credentials()
-                   .has_default_encrypted_endorsement_credential());
 }
 
 TEST_P(AttestationServiceTest, PrepareForEnrollmentNoPublicKey) {
@@ -2521,10 +2300,6 @@ TEST_P(AttestationServiceTest, PrepareForEnrollmentNoPublicKey) {
   CHECK(CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
                                    base::Unretained(service_.get()))));
   EXPECT_FALSE(mock_database_.GetProtobuf().has_credentials());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr0_quote());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr1_quote());
 }
 
 TEST_P(AttestationServiceTest, PrepareForEnrollmentNoCert) {
@@ -2536,10 +2311,6 @@ TEST_P(AttestationServiceTest, PrepareForEnrollmentNoCert) {
   CHECK(CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
                                    base::Unretained(service_.get()))));
   EXPECT_FALSE(mock_database_.GetProtobuf().has_credentials());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr0_quote());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr1_quote());
 }
 
 TEST_P(AttestationServiceTest, PrepareForEnrollmentFailAIK) {
@@ -2567,10 +2338,6 @@ TEST_P(AttestationServiceTest, PrepareForEnrollmentFailQuote) {
   CHECK(CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
                                    base::Unretained(service_.get()))));
   EXPECT_FALSE(mock_database_.GetProtobuf().has_credentials());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr0_quote());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr1_quote());
 }
 
 TEST_P(AttestationServiceTest, ComputeEnterpriseEnrollmentId) {
