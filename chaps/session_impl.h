@@ -133,6 +133,19 @@ class SessionImpl : public Session {
                         int num_private_attributes,
                         int* new_public_key_handle,
                         int* new_private_key_handle) override;
+  CK_RV WrapKey(CK_MECHANISM_TYPE mechanism,
+                const std::string& mechanism_parameter,
+                const Object* wrapping_key,
+                const Object* key,
+                int* required_out_length,
+                std::string* wrapped_key) override;
+  CK_RV UnwrapKey(CK_MECHANISM_TYPE mechanism,
+                  const std::string& mechanism_parameter,
+                  const Object* unwrapping_key,
+                  const std::string& wrapped_key,
+                  const CK_ATTRIBUTE_PTR attributes,
+                  int num_attributes,
+                  int* new_key_handle) override;
   CK_RV DeriveKey(CK_MECHANISM_TYPE mechanism,
                   const std::string& mechanism_parameter,
                   const Object* base_key,
@@ -255,6 +268,12 @@ class SessionImpl : public Session {
   CK_RV WrapRSAPrivateKey(Object* object);
   CK_RV WrapECCPrivateKey(Object* object);
 
+  CK_RV WrapKeyRSAOAEP(const Object* wrapping_key,
+                       const Object* key,
+                       std::string* wrapped_key);
+  CK_RV UnwrapKeyRSAOAEP(const Object* unwrapping_key,
+                         Object* object,
+                         const std::string& wrapped_key);
   ChapsFactory* factory_;
   std::vector<int> find_results_;
   size_t find_results_offset_;

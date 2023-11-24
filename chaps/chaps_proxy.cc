@@ -934,7 +934,7 @@ uint32_t ChapsProxyImpl::UnwrapKey(const SecureBlob& isolate_credential,
                                    uint64_t session_id,
                                    uint64_t mechanism_type,
                                    const vector<uint8_t>& mechanism_parameter,
-                                   uint64_t wrapping_key_handle,
+                                   uint64_t unwrapping_key_handle,
                                    const vector<uint8_t>& wrapped_key,
                                    const vector<uint8_t>& attributes,
                                    uint64_t* key_handle) {
@@ -942,7 +942,7 @@ uint32_t ChapsProxyImpl::UnwrapKey(const SecureBlob& isolate_credential,
   uint32_t result = CKR_GENERAL_ERROR;
   SendRequestAndWait(&org::chromium::ChapsProxyInterface::UnwrapKey,
                      ToBlob(isolate_credential), session_id, mechanism_type,
-                     mechanism_parameter, wrapping_key_handle, wrapped_key,
+                     mechanism_parameter, unwrapping_key_handle, wrapped_key,
                      attributes, key_handle, &result);
   return result;
 }

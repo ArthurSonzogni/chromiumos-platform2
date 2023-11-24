@@ -962,18 +962,52 @@ uint32_t ChapsServiceImpl::WrapKey(const SecureBlob& isolate_credential,
                                    uint64_t max_out_length,
                                    uint64_t* actual_out_length,
                                    vector<uint8_t>* wrapped_key) {
-  LOG_CK_RV_AND_RETURN(CKR_FUNCTION_NOT_SUPPORTED);
+  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !wrapped_key,
+                          CKR_ARGUMENTS_BAD);
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(
+      !slot_manager_->GetSession(isolate_credential, session_id, &session),
+      CKR_SESSION_HANDLE_INVALID);
+  const Object* wrapping_key = NULL;
+  LOG_CK_RV_AND_RETURN_IF(
+      !session->GetObject(wrapping_key_handle, &wrapping_key),
+      CKR_WRAPPING_KEY_HANDLE_INVALID);
+  CHECK(wrapping_key);
+  const Object* key = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!session->GetObject(key_handle, &key),
+                          CKR_KEY_HANDLE_INVALID);
+  CHECK(key);
+  *actual_out_length = max_out_length;
+  return session->WrapKey(
+      mechanism_type, ConvertByteVectorToString(mechanism_parameter),
+      wrapping_key, key, PreservedValue<uint64_t, int>(actual_out_length),
+      PreservedByteVector(wrapped_key));
 }
 
 uint32_t ChapsServiceImpl::UnwrapKey(const SecureBlob& isolate_credential,
                                      uint64_t session_id,
                                      uint64_t mechanism_type,
                                      const vector<uint8_t>& mechanism_parameter,
-                                     uint64_t wrapping_key_handle,
+                                     uint64_t unwrapping_key_handle,
                                      const vector<uint8_t>& wrapped_key,
                                      const vector<uint8_t>& attributes,
                                      uint64_t* key_handle) {
-  LOG_CK_RV_AND_RETURN(CKR_FUNCTION_NOT_SUPPORTED);
+  LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(
+      !slot_manager_->GetSession(isolate_credential, session_id, &session),
+      CKR_SESSION_HANDLE_INVALID);
+  const Object* unwrapping_key = NULL;
+  LOG_CK_RV_AND_RETURN_IF(
+      !session->GetObject(unwrapping_key_handle, &unwrapping_key),
+      CKR_WRAPPING_KEY_HANDLE_INVALID);
+  CHECK(unwrapping_key);
+  Attributes tmp;
+  LOG_CK_RV_AND_RETURN_IF(!tmp.Parse(attributes), CKR_TEMPLATE_INCONSISTENT);
+  return session->UnwrapKey(
+      mechanism_type, ConvertByteVectorToString(mechanism_parameter),
+      unwrapping_key, ConvertByteVectorToString(wrapped_key), tmp.attributes(),
+      tmp.num_attributes(), PreservedValue<uint64_t, int>(key_handle));
 }
 
 uint32_t ChapsServiceImpl::DeriveKey(const SecureBlob& isolate_credential,

@@ -326,7 +326,7 @@ class EXPORT_SPEC ChapsProxyImpl : public ChapsInterface {
                      uint64_t session_id,
                      uint64_t mechanism_type,
                      const std::vector<uint8_t>& mechanism_parameter,
-                     uint64_t wrapping_key_handle,
+                     uint64_t unwrapping_key_handle,
                      const std::vector<uint8_t>& wrapped_key,
                      const std::vector<uint8_t>& attributes,
                      uint64_t* key_handle) override;

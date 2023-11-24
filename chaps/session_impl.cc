@@ -816,6 +816,15 @@ hwsec::SigningOptions ToHwsecSigningOptions(
   };
 }
 
+AllowDecrypt IsHwsecObjectAllowDecrypt(const Object& object) {
+  // For a hwsec key unwrapping is same as decrypting.
+  if (object.GetAttributeBool(CKA_DECRYPT, false) ||
+      object.GetAttributeBool(CKA_UNWRAP, false))
+    return AllowDecrypt::kAllow;
+  else
+    return AllowDecrypt::kNotAllow;
+}
+
 }  // namespace
 
 SessionImpl::SessionImpl(int slot_id,
@@ -1514,6 +1523,187 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
   return CKR_OK;
 }
 
+CK_RV SessionImpl::WrapKey(CK_MECHANISM_TYPE mechanism,
+                           const std::string& mechanism_parameter,
+                           const Object* wrapping_key,
+                           const Object* key,
+                           int* required_out_length,
+                           std::string* wrapped_key) {
+  CHECK(wrapping_key);
+  CHECK(key);
+  CHECK(required_out_length);
+  CHECK(wrapped_key);
+
+  LOG_CK_RV_AND_RETURN_IF(!key->GetAttributeBool(CKA_EXTRACTABLE, false),
+                          CKR_KEY_UNEXTRACTABLE);
+  LOG_CK_RV_AND_RETURN_IF(!wrapping_key->GetAttributeBool(CKA_WRAP, false),
+                          CKR_KEY_FUNCTION_NOT_PERMITTED);
+  LOG_CK_RV_AND_RETURN_IF(
+      key->GetAttributeBool(CKA_WRAP_WITH_TRUSTED, false) &&
+          !wrapping_key->GetAttributeBool(CKA_TRUSTED, false),
+      CKR_KEY_NOT_WRAPPABLE);
+
+  string data;
+  switch (mechanism) {
+    case CKM_RSA_PKCS_OAEP: {
+      LOG_CK_RV_AND_RETURN_IF(key->GetObjectClass() != CKO_SECRET_KEY,
+                              CKR_KEY_NOT_WRAPPABLE);
+      LOG_CK_RV_AND_RETURN_IF_ERR(WrapKeyRSAOAEP(wrapping_key, key, &data));
+      break;
+    }
+    default: {
+      LOG(ERROR) << "WrapKey: mechanism not supported: " << hex << mechanism;
+      return CKR_MECHANISM_INVALID;
+    }
+  }
+
+  int out_length = data.size();
+  int max_length = *required_out_length;
+  *required_out_length = out_length;
+  if (max_length < out_length) {
+    return CKR_BUFFER_TOO_SMALL;
+  }
+  *wrapped_key = data;
+  return CKR_OK;
+}
+
+CK_RV SessionImpl::WrapKeyRSAOAEP(const Object* wrapping_key,
+                                  const Object* key,
+                                  std::string* wrapped_key) {
+  if (wrapping_key->GetObjectClass() != CKO_PUBLIC_KEY ||
+      wrapping_key->GetAttributeInt(CKA_KEY_TYPE, CK_UNAVAILABLE_INFORMATION) !=
+          CKK_RSA) {
+    LOG(ERROR) << __func__ << "The wrapping key should be a RSA public key.";
+    return CKR_WRAPPING_KEY_TYPE_INCONSISTENT;
+  }
+  crypto::ScopedRSA rsa = CreateRSAKeyFromObject(wrapping_key);
+  if (!rsa) {
+    LOG(ERROR) << "Failed to create RSA key for encryption.";
+    return CKR_FUNCTION_FAILED;
+  }
+  if (RSA_size(rsa.get()) > kMaxRSAOutputBytes) {
+    LOG(ERROR) << __func__ << ": RSA Key size is too large for RSA OAEP.";
+    return CKR_WRAPPING_KEY_SIZE_RANGE;
+  }
+  uint8_t buffer[kMaxRSAOutputBytes];
+  int length = RSA_public_encrypt(
+      key->GetAttributeInt(CKA_VALUE_LEN, 0),
+      chaps::ConvertStringToByteBuffer(
+          key->GetAttributeString(CKA_VALUE).data()),
+      buffer, rsa.get(),
+      RSA_PKCS1_OAEP_PADDING);  // using EME-OAEP for padding.
+  if (length == -1) {
+    LOG(ERROR) << __func__
+               << "RSA_public_encrypt failed: " << GetOpenSSLError();
+    return CKR_FUNCTION_FAILED;
+  }
+  CHECK(length <= std::size(buffer));
+  *wrapped_key = chaps::ConvertByteBufferToString(buffer, length);
+  return CKR_OK;
+}
+
+CK_RV SessionImpl::UnwrapKey(CK_MECHANISM_TYPE mechanism,
+                             const std::string& mechanism_parameter,
+                             const Object* unwrapping_key,
+                             const std::string& wrapped_key,
+                             const CK_ATTRIBUTE_PTR attributes,
+                             int num_attributes,
+                             int* new_key_handle) {
+  CHECK(unwrapping_key);
+  CHECK(new_key_handle);
+
+  LOG_CK_RV_AND_RETURN_IF(!unwrapping_key->GetAttributeBool(CKA_UNWRAP, false),
+                          CKR_KEY_FUNCTION_NOT_PERMITTED);
+
+  std::unique_ptr<Object> object(factory_->CreateObject());
+  CHECK(object.get());
+
+  LOG_CK_RV_AND_RETURN_IF_ERR(
+      object->SetAttributes(attributes, num_attributes));
+
+  switch (mechanism) {
+    case CKM_RSA_PKCS_OAEP: {
+      LOG_CK_RV_AND_RETURN_IF_ERR(
+          UnwrapKeyRSAOAEP(unwrapping_key, object.get(), wrapped_key));
+      break;
+    }
+    default: {
+      LOG(ERROR) << "UnwrapKey: mechanism not supported: " << hex << mechanism;
+      return CKR_MECHANISM_INVALID;
+    }
+  }
+
+  object->SetAttributeBool(CKA_LOCAL, false);
+  object->SetAttributeBool(CKA_ALWAYS_SENSITIVE, false);
+  object->SetAttributeBool(CKA_NEVER_EXTRACTABLE, false);
+  if (!object->IsAttributePresent(CKA_EXTRACTABLE))
+    object->SetAttributeBool(CKA_EXTRACTABLE, true);
+
+  LOG_CK_RV_AND_RETURN_IF_ERR(object->FinalizeNewObject());
+  ObjectPool* pool =
+      object->IsTokenObject() ? token_object_pool_ : session_object_pool_.get();
+  auto pool_res = pool->Insert(object.get());
+  if (!IsSuccess(pool_res))
+    return ResultToRV(pool_res, CKR_FUNCTION_FAILED);
+  *new_key_handle = object.release()->handle();
+  return CKR_OK;
+}
+
+CK_RV SessionImpl::UnwrapKeyRSAOAEP(const Object* unwrapping_key,
+                                    Object* object,
+                                    const std::string& wrapped_key) {
+  brillo::SecureBlob data;
+  if (unwrapping_key->GetObjectClass() != CKO_PRIVATE_KEY ||
+      unwrapping_key->GetAttributeInt(CKA_KEY_TYPE,
+                                      CK_UNAVAILABLE_INFORMATION) != CKK_RSA) {
+    LOG(ERROR) << __func__ << "The unwrapping key should be a RSA private key.";
+    return CKR_UNWRAPPING_KEY_TYPE_INCONSISTENT;
+  }
+  if (unwrapping_key->IsTokenObject() &&
+      unwrapping_key->IsAttributePresent(kKeyBlobAttribute)) {
+    if (!hwsec_) {
+      LOG(ERROR) << __func__ << "No HWSec frontend available.";
+      return CKR_FUNCTION_FAILED;
+    }
+
+    ASSIGN_OR_RETURN(hwsec::Key key, GetHwsecKey(unwrapping_key),
+                     _.LogError().As(CKR_FUNCTION_FAILED));
+
+    ASSIGN_OR_RETURN(
+        data, hwsec_->Decrypt(key, brillo::BlobFromString(wrapped_key)),
+        _.WithStatus<TPMError>(
+             "Failed to decrypt the wrapped key in UnwrapKeyRSAOAEP")
+            .LogError()
+            .As(CKR_FUNCTION_FAILED));
+  } else {
+    crypto::ScopedRSA rsa = CreateRSAKeyFromObject(unwrapping_key);
+    if (!rsa) {
+      LOG(ERROR) << __func__ << "Failed to create RSA key for decryption.";
+      return CKR_FUNCTION_FAILED;
+    }
+    if (RSA_size(rsa.get()) > kMaxRSAOutputBytes) {
+      LOG(ERROR) << __func__ << ": RSA Key size is too large for RSA OAEP.";
+      return CKR_UNWRAPPING_KEY_SIZE_RANGE;
+    }
+    uint8_t buffer[kMaxRSAOutputBytes];
+    int length = RSA_private_decrypt(
+        wrapped_key.size(), ConvertStringToByteBuffer(wrapped_key.data()),
+        buffer, rsa.get(),
+        RSA_PKCS1_OAEP_PADDING);  // using EME-OAEP for padding.
+    if (length == -1) {
+      LOG(ERROR) << __func__
+                 << "RSA_private_decrypt failed: " << GetOpenSSLError();
+      return CKR_FUNCTION_FAILED;
+    }
+    CHECK(length <= std::size(buffer));
+    data = SecureBlob(ConvertByteBufferToString(buffer, length));
+  }
+  object->SetAttributeInt(CKA_CLASS, CKO_SECRET_KEY);
+  object->SetAttributeString(CKA_VALUE, data.to_string());
+  object->SetAttributeInt(CKA_VALUE_LEN, data.size());
+  return CKR_OK;
+}
+
 CK_RV SessionImpl::DeriveKey(CK_MECHANISM_TYPE mechanism,
                              const std::string& mechanism_parameter,
                              const Object* base_key,
@@ -1839,10 +2029,7 @@ bool SessionImpl::GenerateRSAKeyPairHwsec(int modulus_bits,
           ? AllowSoftwareGen::kAllow
           : AllowSoftwareGen::kNotAllow;
 
-  AllowDecrypt allow_decrypt =
-      private_object->GetAttributeBool(CKA_DECRYPT, false)
-          ? AllowDecrypt::kAllow
-          : AllowDecrypt::kNotAllow;
+  AllowDecrypt allow_decrypt = IsHwsecObjectAllowDecrypt(*private_object);
 
   AllowSign allow_sign = private_object->GetAttributeBool(CKA_SIGN, false)
                              ? AllowSign::kAllow
@@ -1934,10 +2121,7 @@ bool SessionImpl::GenerateECCKeyPairHwsec(const crypto::ScopedEC_KEY& key,
   brillo::SecureBlob auth_data =
       GenerateRandomSecureBlobSoftware(kDefaultAuthDataBytes);
 
-  AllowDecrypt allow_decrypt =
-      private_object->GetAttributeBool(CKA_DECRYPT, false)
-          ? AllowDecrypt::kAllow
-          : AllowDecrypt::kNotAllow;
+  AllowDecrypt allow_decrypt = IsHwsecObjectAllowDecrypt(*private_object);
 
   AllowSign allow_sign = private_object->GetAttributeBool(CKA_SIGN, false)
                              ? AllowSign::kAllow
@@ -2391,9 +2575,7 @@ CK_RV SessionImpl::WrapRSAPrivateKey(Object* object) {
   brillo::SecureBlob auth_data =
       GenerateRandomSecureBlobSoftware(kDefaultAuthDataBytes);
 
-  AllowDecrypt allow_decrypt = object->GetAttributeBool(CKA_DECRYPT, false)
-                                   ? AllowDecrypt::kAllow
-                                   : AllowDecrypt::kNotAllow;
+  AllowDecrypt allow_decrypt = IsHwsecObjectAllowDecrypt(*object);
 
   AllowSign allow_sign = object->GetAttributeBool(CKA_SIGN, false)
                              ? AllowSign::kAllow
@@ -2461,9 +2643,7 @@ CK_RV SessionImpl::WrapECCPrivateKey(Object* object) {
   brillo::SecureBlob auth_data =
       GenerateRandomSecureBlobSoftware(kDefaultAuthDataBytes);
 
-  AllowDecrypt allow_decrypt = object->GetAttributeBool(CKA_DECRYPT, false)
-                                   ? AllowDecrypt::kAllow
-                                   : AllowDecrypt::kNotAllow;
+  AllowDecrypt allow_decrypt = IsHwsecObjectAllowDecrypt(*object);
 
   AllowSign allow_sign = object->GetAttributeBool(CKA_SIGN, false)
                              ? AllowSign::kAllow

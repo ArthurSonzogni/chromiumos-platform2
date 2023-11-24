@@ -65,6 +65,21 @@ class SessionMock : public Session {
                      int,
                      int*,
                      int*));
+  MOCK_METHOD6(WrapKey,
+               CK_RV(CK_MECHANISM_TYPE,
+                     const std::string&,
+                     const Object*,
+                     const Object*,
+                     int*,
+                     std::string*));
+  MOCK_METHOD7(UnwrapKey,
+               CK_RV(CK_MECHANISM_TYPE,
+                     const std::string&,
+                     const Object*,
+                     const std::string&,
+                     const CK_ATTRIBUTE_PTR,
+                     int,
+                     int*));
   MOCK_METHOD6(DeriveKey,
                CK_RV(CK_MECHANISM_TYPE,
                      const std::string&,

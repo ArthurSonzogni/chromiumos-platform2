@@ -117,6 +117,19 @@ class Session {
                                 int num_private_attributes,
                                 int* new_public_key_handle,
                                 int* new_private_key_handle) = 0;
+  virtual CK_RV WrapKey(CK_MECHANISM_TYPE mechanism,
+                        const std::string& mechanism_parameter,
+                        const Object* wrapping_key,
+                        const Object* key,
+                        int* required_out_length,
+                        std::string* wrapped_key) = 0;
+  virtual CK_RV UnwrapKey(CK_MECHANISM_TYPE mechanism,
+                          const std::string& mechanism_parameter,
+                          const Object* unwrapping_key,
+                          const std::string& wrapped_key,
+                          const CK_ATTRIBUTE_PTR attributes,
+                          int num_attributes,
+                          int* new_key_handle) = 0;
   virtual CK_RV DeriveKey(CK_MECHANISM_TYPE mechanism,
                           const std::string& mechanism_parameter,
                           const Object* base_key,

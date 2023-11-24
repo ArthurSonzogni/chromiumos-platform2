@@ -1303,7 +1303,7 @@ void ChapsAdaptor::UnwrapKey(const brillo::SecureVector& isolate_credential,
                              uint64_t session_id,
                              uint64_t mechanism_type,
                              const vector<uint8_t>& mechanism_parameter,
-                             uint64_t wrapping_key_handle,
+                             uint64_t unwrapping_key_handle,
                              const vector<uint8_t>& wrapped_key,
                              const vector<uint8_t>& attributes,
                              uint64_t* key_handle,
@@ -1313,14 +1313,14 @@ void ChapsAdaptor::UnwrapKey(const brillo::SecureVector& isolate_credential,
   VLOG(2) << "IN: " << "mechanism_type=" << mechanism_type;
   VLOG(2) << "IN: " << "mechanism_parameter="
           << PrintIntVector(mechanism_parameter);
-  VLOG(2) << "IN: " << "wrapping_key_handle=" << wrapping_key_handle;
+  VLOG(2) << "IN: " << "unwrapping_key_handle=" << unwrapping_key_handle;
   VLOG(2) << "IN: " << "attributes=" << PrintAttributes(attributes, true);
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
 
   *result = service_->UnwrapKey(
       isolate_credential_blob, session_id, mechanism_type, mechanism_parameter,
-      wrapping_key_handle, wrapped_key, attributes, key_handle);
+      unwrapping_key_handle, wrapped_key, attributes, key_handle);
   VLOG_IF(2, *result == CKR_OK) << "OUT: " << "key_handle=" << *key_handle;
 }
 
