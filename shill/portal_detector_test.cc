@@ -83,8 +83,9 @@ MATCHER(ZeroDelay, "") {
 MATCHER_P(IsResult, result, "") {
   return (result.http_phase == arg.http_phase &&
           result.http_status == arg.http_status &&
-          result.https_phase == arg.https_phase &&
-          result.https_status == arg.https_status &&
+          result.https_error == arg.https_error &&
+          result.http_probe_completed == arg.http_probe_completed &&
+          result.https_probe_completed == arg.https_probe_completed &&
           result.redirect_url == arg.redirect_url &&
           result.probe_url == arg.probe_url);
 }
@@ -203,12 +204,14 @@ class PortalDetectorTest : public Test {
     portal_detector_->HttpRequestSuccessCallback(response);
   }
 
-  void ExpectHttpsRequestSuccessWithStatus(int status_code) {
-    EXPECT_CALL(*https_probe_connection_, GetResponseStatusCode())
-        .WillOnce(Return(status_code));
+  void HTTPSRequestSuccess() {
     auto response =
         std::make_shared<brillo::http::Response>(https_probe_connection_);
     portal_detector_->HttpsRequestSuccessCallback(response);
+  }
+
+  void HTTPSRequestFailure(HttpRequest::Error error) {
+    portal_detector_->HttpsRequestErrorCallback(error);
   }
 
  protected:
@@ -247,8 +250,8 @@ TEST_F(PortalDetectorTest, IsInProgress) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kFailure;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kSuccess;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
   portal_detector()->CompleteTrial(result);
   ExpectCleanupTrial();
 }
@@ -267,9 +270,9 @@ TEST_F(PortalDetectorTest, HttpStartAttemptFailed) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kDNS,
   result.http_status = PortalDetector::Status::kFailure;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kFailure;
   result.num_attempts = kNumAttempts;
+  result.http_probe_completed = false;
+  result.https_probe_completed = false;
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
 
   portal_detector()->StartTrialTask();
@@ -300,8 +303,9 @@ TEST_F(PortalDetectorTest, HttpsStartAttemptFailed) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent;
   result.http_status = PortalDetector::Status::kSuccess;
-  result.https_phase = PortalDetector::Phase::kContent,
-  result.https_status = PortalDetector::Status::kFailure;
+  result.https_error = HttpRequest::Error::kDNSFailure;
+  result.http_probe_completed = true;
+  result.https_probe_completed = false;
   portal_detector()->CompleteTrial(result);
   ExpectCleanupTrial();
 }
@@ -318,8 +322,8 @@ TEST_F(PortalDetectorTest, FailureToStartDoesNotCauseImmediateRestart) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kDNS,
   result.http_status = PortalDetector::Status::kFailure;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kFailure;
+  result.http_probe_completed = false;
+  result.https_probe_completed = false;
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
   portal_detector()->StartTrialTask();
   Mock::VerifyAndClearExpectations(&dispatcher_);
@@ -408,8 +412,7 @@ TEST_F(PortalDetectorTest, RestartAfterRedirect) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kRedirect;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kFailure;
+  result.https_error = HttpRequest::Error::kConnectionFailure;
   result.redirect_url =
       net_base::HttpUrl::CreateFromString("https://www.portal.com/login");
   result.probe_url = probe_url;
@@ -538,9 +541,10 @@ TEST_F(PortalDetectorTest, AttemptCount) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kDNS,
   result.http_status = PortalDetector::Status::kFailure;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kFailure;
+  result.https_error = HttpRequest::Error::kConnectionFailure;
   result.num_attempts = kNumAttempts;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result))).Times(3);
 
   std::set<std::string> expected_retry_http_urls(kFallbackHttpUrls.begin(),
@@ -586,17 +590,17 @@ TEST_F(PortalDetectorTest, RequestSuccess) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kSuccess;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = kNumAttempts;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result))).Times(0);
   EXPECT_TRUE(portal_detector_->IsInProgress());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
   EXPECT_NE(nullptr, portal_detector_->https_request_);
-  ExpectHttpsRequestSuccessWithStatus(204);
 
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
   ExpectHttpRequestSuccessWithStatus(204);
+  HTTPSRequestSuccess();
   ExpectCleanupTrial();
 }
 
@@ -607,9 +611,9 @@ TEST_F(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kFailure;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = kNumAttempts;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result))).Times(0);
   EXPECT_TRUE(portal_detector_->IsInProgress());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
@@ -617,7 +621,7 @@ TEST_F(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess) {
   ExpectHttpRequestSuccessWithStatus(123);
 
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
-  ExpectHttpsRequestSuccessWithStatus(204);
+  HTTPSRequestSuccess();
   ExpectCleanupTrial();
 }
 
@@ -628,35 +632,39 @@ TEST_F(PortalDetectorTest, RequestFail) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kFailure;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kFailure;
+  result.https_error = HttpRequest::Error::kConnectionFailure;
   result.num_attempts = kNumAttempts;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result))).Times(0);
   EXPECT_TRUE(portal_detector_->IsInProgress());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
   EXPECT_NE(nullptr, portal_detector_->https_request_);
-  ExpectHttpsRequestSuccessWithStatus(123);
 
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
   ExpectHttpRequestSuccessWithStatus(123);
+  HTTPSRequestFailure(HttpRequest::Error::kConnectionFailure);
   ExpectCleanupTrial();
 }
 
 TEST_F(PortalDetectorTest, RequestRedirect) {
   StartAttempt();
 
-  PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kContent,
-  result.http_status = PortalDetector::Status::kRedirect;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kFailure;
-  result.redirect_url = net_base::HttpUrl::CreateFromString(kHttpUrl);
-  result.probe_url = net_base::HttpUrl::CreateFromString(kHttpUrl);
-  EXPECT_CALL(callback_target(), ResultCallback(IsResult(result))).Times(0);
+  EXPECT_CALL(callback_target(), ResultCallback).Times(0);
   EXPECT_TRUE(portal_detector_->IsInProgress());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
   EXPECT_NE(nullptr, portal_detector_->https_request_);
-  ExpectHttpsRequestSuccessWithStatus(123);
+  HTTPSRequestFailure(HttpRequest::Error::kConnectionFailure);
+  Mock::VerifyAndClearExpectations(&callback_target_);
+
+  PortalDetector::Result result;
+  result.http_phase = PortalDetector::Phase::kContent,
+  result.http_status = PortalDetector::Status::kRedirect;
+  result.https_error = HttpRequest::Error::kConnectionFailure;
+  result.redirect_url = net_base::HttpUrl::CreateFromString(kHttpUrl);
+  result.probe_url = net_base::HttpUrl::CreateFromString(kHttpUrl);
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
 
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
   EXPECT_CALL(*http_connection(), GetResponseHeader("Location"))
@@ -668,18 +676,21 @@ TEST_F(PortalDetectorTest, RequestRedirect) {
 TEST_F(PortalDetectorTest, RequestTempRedirect) {
   StartAttempt();
 
-  PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kContent,
-  result.http_status = PortalDetector::Status::kRedirect;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kFailure;
-  result.redirect_url = net_base::HttpUrl::CreateFromString(kHttpUrl);
-  result.probe_url = net_base::HttpUrl::CreateFromString(kHttpUrl);
-  EXPECT_CALL(callback_target(), ResultCallback(IsResult(result))).Times(0);
+  EXPECT_CALL(callback_target(), ResultCallback).Times(0);
   EXPECT_TRUE(portal_detector_->IsInProgress());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
   EXPECT_NE(nullptr, portal_detector_->https_request_);
-  ExpectHttpsRequestSuccessWithStatus(123);
+  HTTPSRequestFailure(HttpRequest::Error::kConnectionFailure);
+  Mock::VerifyAndClearExpectations(&callback_target_);
+
+  PortalDetector::Result result;
+  result.http_phase = PortalDetector::Phase::kContent,
+  result.http_status = PortalDetector::Status::kRedirect;
+  result.https_error = HttpRequest::Error::kConnectionFailure;
+  result.redirect_url = net_base::HttpUrl::CreateFromString(kHttpUrl);
+  result.probe_url = net_base::HttpUrl::CreateFromString(kHttpUrl);
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
 
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
   EXPECT_CALL(*http_connection(), GetResponseHeader("Location"))
@@ -695,10 +706,11 @@ TEST_F(PortalDetectorTest, RequestRedirectWithHTTPSProbeTimeout) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kRedirect;
-  result.https_phase = PortalDetector::Phase::kUnknown;
-  result.https_status = PortalDetector::Status::kFailure;
   result.redirect_url = net_base::HttpUrl::CreateFromString(kHttpUrl);
   result.probe_url = net_base::HttpUrl::CreateFromString(kHttpUrl);
+  result.http_probe_completed = true;
+  result.https_probe_completed = false;
+
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
   EXPECT_CALL(*http_connection(), GetResponseHeader("Location"))
       .WillOnce(Return(kHttpUrl));

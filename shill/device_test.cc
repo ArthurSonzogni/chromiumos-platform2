@@ -24,6 +24,7 @@
 #include <net-base/mock_rtnl_handler.h>
 
 #include "shill/event_dispatcher.h"
+#include "shill/http_request.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
@@ -823,8 +824,6 @@ TEST_F(DevicePortalDetectionTest, PortalRetryAfterDetectionFailure) {
   result.http_phase = PortalDetector::Phase::kConnection,
   result.http_status = PortalDetector::Status::kFailure;
   result.http_status_code = kFailureStatusCode;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = kPortalAttempts;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
@@ -841,8 +840,6 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent;
   result.http_status = PortalDetector::Status::kSuccess;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = kPortalAttempts;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
@@ -864,8 +861,9 @@ TEST_F(DevicePortalDetectionTest, NextAttemptFails) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kDNS,
   result.http_status = PortalDetector::Status::kTimeout;
-  result.https_phase = PortalDetector::Phase::kDNS;
-  result.https_status = PortalDetector::Status::kTimeout;
+  result.https_error = HttpRequest::Error::kHTTPTimeout;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
   OnNetworkValidationResult(result);
 }
 
@@ -882,8 +880,9 @@ TEST_F(DevicePortalDetectionTest, ScheduleNextDetectionAttempt) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kDNS,
   result.http_status = PortalDetector::Status::kTimeout;
-  result.https_phase = PortalDetector::Phase::kDNS;
-  result.https_status = PortalDetector::Status::kTimeout;
+  result.https_error = HttpRequest::Error::kHTTPTimeout;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
   OnNetworkValidationResult(result);
 }
 
@@ -900,8 +899,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   result.http_phase = PortalDetector::Phase::kDNS,
   result.http_status = PortalDetector::Status::kFailure;
   result.http_status_code = kFailureStatusCode;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kFailure;
+  result.https_error = HttpRequest::Error::kDNSFailure;
   result.num_attempts = kPortalAttempts;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
@@ -918,8 +916,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSTimeout) {
   result.http_phase = PortalDetector::Phase::kDNS,
   result.http_status = PortalDetector::Status::kTimeout;
   result.http_status_code = 0;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kFailure;
+  result.https_error = HttpRequest::Error::kDNSTimeout;
   result.num_attempts = kPortalAttempts;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
@@ -936,8 +933,6 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirect) {
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kRedirect;
   result.http_status_code = 302;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kSuccess;
   result.redirect_url =
       net_base::HttpUrl::CreateFromString("https://captive.portal.com/sigin");
   result.num_attempts = kPortalAttempts;
@@ -956,8 +951,6 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoUrl) {
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kRedirect;
   result.http_status_code = 302;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = kPortalAttempts;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
@@ -974,8 +967,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kSuccess;
   result.http_status_code = 204;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kFailure;
+  result.https_error = HttpRequest::Error::kConnectionFailure;
   result.num_attempts = kPortalAttempts;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
@@ -992,8 +984,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionNoConnectivity) {
   result.http_phase = PortalDetector::Phase::kUnknown,
   result.http_status = PortalDetector::Status::kFailure;
   result.http_status_code = 0;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kFailure;
+  result.https_error = HttpRequest::Error::kConnectionFailure;
   result.num_attempts = kPortalAttempts;
   result.http_probe_completed = true;
   result.https_probe_completed = true;

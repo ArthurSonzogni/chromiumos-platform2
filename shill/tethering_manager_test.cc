@@ -32,6 +32,7 @@
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/error.h"
 #include "shill/ethernet/mock_ethernet_provider.h"
+#include "shill/http_request.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
@@ -1040,8 +1041,8 @@ TEST_F(TetheringManagerTest, StartTetheringSessionSuccessWithCellularUpstream) {
   PortalDetector::Result portal_detector_result;
   portal_detector_result.http_phase = PortalDetector::Phase::kContent,
   portal_detector_result.http_status = PortalDetector::Status::kSuccess;
-  portal_detector_result.https_phase = PortalDetector::Phase::kContent;
-  portal_detector_result.https_status = PortalDetector::Status::kSuccess;
+  portal_detector_result.http_probe_completed = true;
+  portal_detector_result.https_probe_completed = true;
   network_->set_portal_detector_result_for_testing(portal_detector_result);
   OnUpstreamNetworkAcquired(tethering_manager_,
                             TetheringManager::SetEnabledResult::kSuccess);
@@ -1095,8 +1096,8 @@ TEST_F(TetheringManagerTest, StartTetheringSessionSuccessWithEthernetUpstream) {
   PortalDetector::Result portal_detector_result;
   portal_detector_result.http_phase = PortalDetector::Phase::kContent,
   portal_detector_result.http_status = PortalDetector::Status::kSuccess;
-  portal_detector_result.https_phase = PortalDetector::Phase::kContent;
-  portal_detector_result.https_status = PortalDetector::Status::kSuccess;
+  portal_detector_result.http_probe_completed = true;
+  portal_detector_result.https_probe_completed = true;
   eth_network.set_portal_detector_result_for_testing(portal_detector_result);
   OnDownstreamNetworkReady(tethering_manager_, MakeFd());
 
@@ -1272,8 +1273,8 @@ TEST_F(TetheringManagerTest, StartTetheringSessionUpstreamNetworkHasPortal) {
   PortalDetector::Result portal_detector_result;
   portal_detector_result.http_phase = PortalDetector::Phase::kContent,
   portal_detector_result.http_status = PortalDetector::Status::kRedirect;
-  portal_detector_result.https_phase = PortalDetector::Phase::kContent;
-  portal_detector_result.https_status = PortalDetector::Status::kSuccess;
+  portal_detector_result.http_probe_completed = true;
+  portal_detector_result.https_probe_completed = true;
   portal_detector_result.redirect_url =
       net_base::HttpUrl::CreateFromString("https://portal.com/login");
   network_->set_portal_detector_result_for_testing(portal_detector_result);
@@ -1435,8 +1436,9 @@ TEST_F(TetheringManagerTest, DISABLED_UpstreamNetworkValidationFailed) {
   PortalDetector::Result portal_detector_result;
   portal_detector_result.http_phase = PortalDetector::Phase::kConnection,
   portal_detector_result.http_status = PortalDetector::Status::kFailure;
-  portal_detector_result.https_phase = PortalDetector::Phase::kConnection;
-  portal_detector_result.https_status = PortalDetector::Status::kFailure;
+  portal_detector_result.https_error = HttpRequest::Error::kConnectionFailure;
+  portal_detector_result.http_probe_completed = true;
+  portal_detector_result.https_probe_completed = true;
   OnUpstreamNetworkAcquired(tethering_manager_,
                             TetheringManager::SetEnabledResult::kSuccess);
   EXPECT_EQ(TetheringState(tethering_manager_),

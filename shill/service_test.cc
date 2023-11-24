@@ -30,6 +30,7 @@
 #include "shill/error.h"
 #include "shill/ethernet/ethernet_service.h"
 #include "shill/event_dispatcher.h"
+#include "shill/http_request.h"
 #include "shill/ipconfig.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
@@ -2853,8 +2854,6 @@ TEST_F(ServiceTest, PortalDetectionResult_AfterDisconnection) {
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kSuccess;
   result.http_status_code = 204;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = 1;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
@@ -2884,8 +2883,6 @@ TEST_F(ServiceTest, PortalDetectionResult_Online) {
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kSuccess;
   result.http_status_code = 204;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = 1;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
@@ -2912,8 +2909,6 @@ TEST_F(ServiceTest, PortalDetectionResult_OnlineSecondTry) {
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kSuccess;
   result.http_status_code = 204;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = 1;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
@@ -2941,8 +2936,6 @@ TEST_F(ServiceTest, PortalDetectionResult_ProbeConnectionFailure) {
   result.http_phase = PortalDetector::Phase::kConnection,
   result.http_status = PortalDetector::Status::kFailure;
   result.http_status_code = 0;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = 1;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
@@ -2971,8 +2964,7 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSFailure) {
   result.http_phase = PortalDetector::Phase::kDNS,
   result.http_status = PortalDetector::Status::kFailure;
   result.http_status_code = 0;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kFailure;
+  result.https_error = HttpRequest::Error::kDNSFailure;
   result.num_attempts = 1;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
@@ -3001,8 +2993,7 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSTimeout) {
   result.http_phase = PortalDetector::Phase::kDNS,
   result.http_status = PortalDetector::Status::kTimeout;
   result.http_status_code = 0;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kFailure;
+  result.https_error = HttpRequest::Error::kDNSTimeout;
   result.num_attempts = 1;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
@@ -3031,8 +3022,6 @@ TEST_F(ServiceTest, PortalDetectionResult_Redirect) {
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kRedirect;
   result.http_status_code = 302;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kSuccess;
   result.redirect_url =
       net_base::HttpUrl::CreateFromString("https://captive.portal.com/sigin");
   result.probe_url =
@@ -3065,8 +3054,6 @@ TEST_F(ServiceTest, PortalDetectionResult_RedirectNoUrl) {
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kRedirect;
   result.http_status_code = 302;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = 1;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
@@ -3095,8 +3082,7 @@ TEST_F(ServiceTest, PortalDetectionResult_PortalSuspected) {
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kSuccess;
   result.http_status_code = 204;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kFailure;
+  result.https_error = HttpRequest::Error::kConnectionFailure;
   result.num_attempts = 1;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
@@ -3125,8 +3111,7 @@ TEST_F(ServiceTest, PortalDetectionResult_NoConnectivity) {
   result.http_phase = PortalDetector::Phase::kUnknown,
   result.http_status = PortalDetector::Status::kFailure;
   result.http_status_code = 0;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kFailure;
+  result.https_error = HttpRequest::Error::kConnectionFailure;
   result.num_attempts = 1;
   result.http_probe_completed = true;
   result.https_probe_completed = true;

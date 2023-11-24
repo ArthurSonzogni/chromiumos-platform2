@@ -15,6 +15,7 @@
 #include <net-base/http_url.h>
 
 #include "shill/event_dispatcher.h"
+#include "shill/http_request.h"
 #include "shill/metrics.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
@@ -108,13 +109,12 @@ class TestNetwork : public Network {
   // Network::RestartPortalDetection().
   bool IsPortalDetectionRunning() const { return portal_detection_running_; }
 
-  void SetDNSResult(PortalDetector::Status status) {
+  void SetDNSFailure(PortalDetector::Status status) {
     portal_detection_result_ = PortalDetector::Result();
     portal_detection_result_.http_phase = PortalDetector::Phase::kDNS;
     portal_detection_result_.http_status = status;
+    portal_detection_result_.https_error = HttpRequest::Error::kDNSFailure;
     portal_detection_result_.http_probe_completed = true;
-    portal_detection_result_.https_phase = PortalDetector::Phase::kDNS;
-    portal_detection_result_.https_status = status;
     portal_detection_result_.https_probe_completed = true;
   }
 
@@ -128,8 +128,6 @@ class TestNetwork : public Network {
         net_base::HttpUrl::CreateFromString(redirect_url);
     portal_detection_result_.probe_url =
         net_base::HttpUrl::CreateFromString(redirect_url);
-    portal_detection_result_.https_phase = PortalDetector::Phase::kContent;
-    portal_detection_result_.https_status = PortalDetector::Status::kSuccess;
     portal_detection_result_.https_probe_completed = true;
   }
 
@@ -138,9 +136,9 @@ class TestNetwork : public Network {
     portal_detection_result_.http_phase = PortalDetector::Phase::kContent;
     portal_detection_result_.http_status = PortalDetector::Status::kSuccess;
     portal_detection_result_.http_status_code = 204;
+    portal_detection_result_.https_error =
+        HttpRequest::Error::kConnectionFailure;
     portal_detection_result_.http_probe_completed = true;
-    portal_detection_result_.https_phase = PortalDetector::Phase::kContent;
-    portal_detection_result_.https_status = PortalDetector::Status::kFailure;
     portal_detection_result_.https_probe_completed = true;
   }
 
@@ -150,8 +148,6 @@ class TestNetwork : public Network {
     portal_detection_result_.http_status = PortalDetector::Status::kSuccess;
     portal_detection_result_.http_status_code = 204;
     portal_detection_result_.http_probe_completed = true;
-    portal_detection_result_.https_phase = PortalDetector::Phase::kContent;
-    portal_detection_result_.https_status = PortalDetector::Status::kSuccess;
     portal_detection_result_.https_probe_completed = true;
   }
 
@@ -307,7 +303,7 @@ TEST_F(DevicePortalDetectorTest, DNSFailure) {
   UpdatePortalDetector();
   EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
-  test_network->SetDNSResult(PortalDetector::Status::kFailure);
+  test_network->SetDNSFailure(PortalDetector::Status::kFailure);
   test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStateNoConnectivity);
 
@@ -333,7 +329,7 @@ TEST_F(DevicePortalDetectorTest, DNSTimeout) {
   UpdatePortalDetector();
   EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
-  test_network->SetDNSResult(PortalDetector::Status::kTimeout);
+  test_network->SetDNSFailure(PortalDetector::Status::kTimeout);
   test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStateNoConnectivity);
 

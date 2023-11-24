@@ -53,6 +53,8 @@ class HttpRequest {
     kHTTPTimeout,
   };
 
+  static std::string_view ErrorName(Error error);
+
   // |allow_non_google_https| determines whether or not secure (HTTPS)
   // communication with a non-Google server is allowed. Note that this
   // will not change any behavior for HTTP communication.
@@ -118,6 +120,8 @@ class HttpRequest {
 };
 
 std::ostream& operator<<(std::ostream& stream, HttpRequest::Error error);
+std::ostream& operator<<(std::ostream& stream,
+                         std::optional<HttpRequest::Error> error);
 
 }  // namespace shill
 

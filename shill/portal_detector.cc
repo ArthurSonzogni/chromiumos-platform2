@@ -179,8 +179,6 @@ void PortalDetector::StartTrialTask() {
     PortalDetector::Result result;
     result.http_phase = GetPortalPhaseFromRequestError(*http_error);
     result.http_status = GetPortalStatusFromRequestError(*http_error);
-    result.https_phase = PortalDetector::Phase::kContent;
-    result.https_status = PortalDetector::Status::kFailure;
     CompleteTrial(result);
     return;
   }
@@ -194,8 +192,7 @@ void PortalDetector::StartTrialTask() {
       base::BindOnce(&PortalDetector::HttpsRequestErrorCallback,
                      weak_ptr_factory_.GetWeakPtr()));
   if (https_error) {
-    result_->https_phase = GetPortalPhaseFromRequestError(*https_error);
-    result_->https_status = GetPortalStatusFromRequestError(*https_error);
+    result_->https_error = https_error;
     LOG(ERROR) << LoggingTag()
                << ": HTTPS probe failed to start: " << *https_error;
     // To find the portal sign-in url, wait for the HTTP probe to complete
@@ -212,8 +209,7 @@ void PortalDetector::CompleteTrial(Result result) {
             << ", status=" << result.http_status
             << ", duration=" << result.http_duration
             << ". HTTPS probe: dest=" << https_url_.host()
-            << ", phase=" << result.https_phase
-            << ", status=" << result.https_status
+            << ", result=" << result.https_error
             << ", duration=" << result.https_duration;
   result.num_attempts = attempt_count_;
   CleanupTrial();
@@ -288,19 +284,12 @@ void PortalDetector::HttpRequestSuccessCallback(
 
 void PortalDetector::HttpsRequestSuccessCallback(
     std::shared_ptr<brillo::http::Response> response) {
-  int status_code = response->GetStatusCode();
-  // The HTTPS probe is successful and indicates no portal was present only if
-  // it gets the expected 204 status code. Any other result is a failure.
+  // Assume that HTTPS prevent any tempering with the content of the response
+  // and always consider the HTTPS probe as successful if the request completed.
   result_->https_probe_completed = true;
-  result_->https_phase = Phase::kContent;
-  result_->https_status = (status_code == brillo::http::status_code::NoContent)
-                              ? Status::kSuccess
-                              : Status::kFailure;
   result_->https_duration = base::TimeTicks::Now() - last_attempt_start_time_;
   LOG(INFO) << LoggingTag() << ": HTTPS probe " << https_url_.host()
-            << " response status code=" << status_code
-            << " status=" << result_->https_status
-            << " duration=" << result_->https_duration;
+            << " succeessful, duration=" << result_->https_duration;
   if (result_->IsComplete())
     CompleteTrial(*result_);
 }
@@ -319,9 +308,8 @@ void PortalDetector::HttpRequestErrorCallback(HttpRequest::Error http_error) {
 }
 
 void PortalDetector::HttpsRequestErrorCallback(HttpRequest::Error https_error) {
+  result_->https_error = https_error;
   result_->https_probe_completed = true;
-  result_->https_phase = GetPortalPhaseFromRequestError(https_error);
-  result_->https_status = GetPortalStatusFromRequestError(https_error);
   result_->https_duration = base::TimeTicks::Now() - last_attempt_start_time_;
   LOG(INFO) << LoggingTag() << ": HTTPS probe " << https_url_.host()
             << " failed: " << https_error
@@ -501,7 +489,7 @@ bool PortalDetector::Result::IsComplete() const {
 }
 
 bool PortalDetector::Result::IsHTTPSProbeSuccessful() const {
-  return https_probe_completed && https_status == Status::kSuccess;
+  return https_probe_completed && !https_error;
 }
 
 bool PortalDetector::Result::IsHTTPProbeSuccessful() const {

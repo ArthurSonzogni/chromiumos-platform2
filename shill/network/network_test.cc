@@ -23,6 +23,7 @@
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 
+#include "shill/http_request.h"
 #include "shill/ipconfig.h"
 #include "shill/metrics.h"
 #include "shill/mock_control.h"
@@ -1062,8 +1063,7 @@ TEST_F(NetworkTest, PortalDetectionResult_AfterDisconnection) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kSuccess;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kFailure;
+  result.https_error = HttpRequest::Error::kHTTPTimeout;
   result.http_probe_completed = true;
   result.https_probe_completed = true;
   EXPECT_EQ(PortalDetector::ValidationState::kPartialConnectivity,
@@ -1080,8 +1080,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kSuccess;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kFailure;
+  result.https_error = HttpRequest::Error::kConnectionFailure;
   result.http_duration = base::Milliseconds(100);
   result.https_duration = base::Milliseconds(200);
   result.http_status_code = 204;
@@ -1126,8 +1125,7 @@ TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kConnection,
   result.http_status = PortalDetector::Status::kFailure;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kFailure;
+  result.https_error = HttpRequest::Error::kConnectionFailure;
   result.http_duration = base::Milliseconds(0);
   result.https_duration = base::Milliseconds(200);
   result.http_probe_completed = true;
@@ -1165,8 +1163,6 @@ TEST_F(NetworkTest, PortalDetectionResult_InternetConnectivity) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kSuccess;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kSuccess;
   result.http_duration = base::Milliseconds(100);
   result.https_duration = base::Milliseconds(200);
   result.http_status_code = 204;
@@ -1209,8 +1205,6 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kRedirect;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kSuccess;
   result.redirect_url =
       net_base::HttpUrl::CreateFromString("https://portal.com/login");
   result.http_duration = base::Milliseconds(100);
@@ -1254,8 +1248,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalInvalidRedirect) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kRedirect;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kFailure;
+  result.https_error = HttpRequest::Error::kConnectionFailure;
   result.redirect_url = std::nullopt;
   result.http_duration = base::Milliseconds(100);
   result.https_duration = base::Milliseconds(200);
@@ -1295,8 +1288,6 @@ TEST_F(NetworkTest, PortalDetectionResult_ClearAfterStop) {
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kSuccess;
-  result.https_phase = PortalDetector::Phase::kContent;
-  result.https_status = PortalDetector::Status::kSuccess;
   result.http_duration = base::Milliseconds(100);
   result.https_duration = base::Milliseconds(200);
   result.http_status_code = 204;
@@ -2205,16 +2196,13 @@ TEST(ValidationLogTest, ValidationLogRecordMetrics) {
   // |i| -> kInternetConnectivity
   i.http_phase = PortalDetector::Phase::kContent;
   i.http_status = PortalDetector::Status::kSuccess;
-  i.https_phase = PortalDetector::Phase::kContent;
-  i.https_status = PortalDetector::Status::kSuccess;
   i.http_probe_completed = true;
   i.https_probe_completed = true;
 
   // |r| -> kPortalRedirect
   r.http_phase = PortalDetector::Phase::kContent;
   r.http_status = PortalDetector::Status::kRedirect;
-  r.https_phase = PortalDetector::Phase::kContent;
-  r.https_status = PortalDetector::Status::kFailure;
+  r.https_error = HttpRequest::Error::kConnectionFailure;
   r.redirect_url =
       net_base::HttpUrl::CreateFromString("https://portal.com/login");
   r.http_probe_completed = true;
@@ -2223,16 +2211,14 @@ TEST(ValidationLogTest, ValidationLogRecordMetrics) {
   // |p| -> kPartialConnectivity
   p.http_phase = PortalDetector::Phase::kContent;
   p.http_status = PortalDetector::Status::kSuccess;
-  p.https_phase = PortalDetector::Phase::kConnection;
-  p.https_status = PortalDetector::Status::kFailure;
+  p.https_error = HttpRequest::Error::kConnectionFailure;
   p.http_probe_completed = true;
   p.https_probe_completed = true;
 
   // |n| -> kNoConnectivity
   n.http_phase = PortalDetector::Phase::kConnection;
   n.http_status = PortalDetector::Status::kFailure;
-  n.https_phase = PortalDetector::Phase::kConnection;
-  n.https_status = PortalDetector::Status::kFailure;
+  n.https_error = HttpRequest::Error::kConnectionFailure;
   n.http_probe_completed = true;
   n.https_probe_completed = true;
 
@@ -2334,8 +2320,7 @@ TEST(ValidationLogTest, ValidationLogRecordMetricsCapportSupported) {
   PortalDetector::Result redirect_result;
   redirect_result.http_phase = PortalDetector::Phase::kContent;
   redirect_result.http_status = PortalDetector::Status::kRedirect;
-  redirect_result.https_phase = PortalDetector::Phase::kContent;
-  redirect_result.https_status = PortalDetector::Status::kFailure;
+  redirect_result.https_error = HttpRequest::Error::kConnectionFailure;
   redirect_result.redirect_url =
       net_base::HttpUrl::CreateFromString("https://portal.com/login");
   redirect_result.http_probe_completed = true;

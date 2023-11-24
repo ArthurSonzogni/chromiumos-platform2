@@ -147,16 +147,12 @@ class PortalDetector {
     Phase http_phase = Phase::kUnknown;
     // Final Status of the HTTP probe when the trial finished.
     Status http_status = Status::kFailure;
-    // Final Phase of the HTTPS probe when the trial finished.
-    Phase https_phase = Phase::kUnknown;
-    // Final Status of the HTTPS probe when the trial finished.
-    Status https_status = Status::kFailure;
     // The HTTP response status code from the HTTP probe.
     int http_status_code = 0;
-    // The HTTP response status code from the HTTPS probe.
-    int https_status_code = 0;
     // The total number of trial attempts so far.
     int num_attempts;
+    // HTTPS probe error if the HTTPS probe failed.
+    std::optional<HttpRequest::Error> https_error;
     // Redirect URL if status is kRedirect.
     std::optional<net_base::HttpUrl> redirect_url;
     // Probe URL used to reach redirect URL if status is kRedirect.

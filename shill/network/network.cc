@@ -1050,8 +1050,9 @@ void Network::ConnectivityTestCallback(const std::string& device_logging_tag,
   LOG(INFO) << device_logging_tag
             << ": Completed connectivity test. HTTP probe phase="
             << result.http_phase << ", status=" << result.http_status
-            << ". HTTPS probe phase=" << result.https_phase
-            << ", status=" << result.https_status;
+            << ", duration=" << result.http_duration
+            << ". HTTPS probe result=" << result.https_error
+            << ", duration=" << result.https_duration;
   connectivity_test_portal_detector_.reset();
 }
 

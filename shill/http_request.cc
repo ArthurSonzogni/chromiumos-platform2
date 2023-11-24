@@ -250,23 +250,33 @@ void HttpRequest::SendError(Error error) {
   }
 }
 
-std::ostream& operator<<(std::ostream& stream, HttpRequest::Error error) {
+// static
+std::string_view ErrorName(HttpRequest::Error error) {
   switch (error) {
     case HttpRequest::Error::kInternalError:
-      return stream << "Internal error";
+      return "Internal error";
     case HttpRequest::Error::kDNSFailure:
-      return stream << "DNS failure";
+      return "DNS failure";
     case HttpRequest::Error::kDNSTimeout:
-      return stream << "DNS timeout";
+      return "DNS timeout";
     case HttpRequest::Error::kConnectionFailure:
-      return stream << "Connection failure";
+      return "Connection failure";
     case HttpRequest::Error::kTLSFailure:
-      return stream << "TLS failure";
+      return "TLS failure";
     case HttpRequest::Error::kIOError:
-      return stream << "IO error";
+      return "IO error";
     case HttpRequest::Error::kHTTPTimeout:
-      return stream << "Request timeout";
+      return "Request timeout";
   }
+}
+
+std::ostream& operator<<(std::ostream& stream, HttpRequest::Error error) {
+  return stream << ErrorName(error);
+}
+
+std::ostream& operator<<(std::ostream& stream,
+                         std::optional<HttpRequest::Error> error) {
+  return stream << (error ? ErrorName(*error) : "Success");
 }
 
 }  // namespace shill
