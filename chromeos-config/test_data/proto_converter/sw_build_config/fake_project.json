@@ -6798,10 +6798,10 @@
           "stylus-category": "unknown"
         },
         "identity": {
+          "custom-label-tag": "loema",
           "frid": "Google_Fake",
           "platform-name": "fake",
-          "sku-id": 64,
-          "whitelabel-tag": "loema"
+          "sku-id": 64
         },
         "modem": {
           "firmware-variant": "project_wl",
@@ -7089,10 +7089,10 @@
           "stylus-category": "unknown"
         },
         "identity": {
+          "custom-label-tag": "loemb",
           "frid": "Google_Fake",
           "platform-name": "fake",
-          "sku-id": 64,
-          "whitelabel-tag": "loemb"
+          "sku-id": 64
         },
         "modem": {
           "firmware-variant": "project_wl",
@@ -7380,10 +7380,10 @@
           "stylus-category": "unknown"
         },
         "identity": {
+          "custom-label-tag": "loemc",
           "frid": "Google_Fake",
           "platform-name": "fake",
-          "sku-id": 64,
-          "whitelabel-tag": "loemc"
+          "sku-id": 64
         },
         "modem": {
           "firmware-variant": "project_wl",

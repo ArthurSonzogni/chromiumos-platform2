@@ -2003,8 +2003,11 @@ def _calculate_image_name_suffix(hw_design_config):
 
 def _calculate_firmware_image_name_suffix(scan_config, for_signature_id=False):
     result = []
-    if scan_config.whitelabel_tag and for_signature_id:
-        result.append(scan_config.whitelabel_tag)
+    custom_label_tag = (
+        scan_config.whitelabel_tag or scan_config.custom_label_tag
+    )
+    if custom_label_tag and for_signature_id:
+        result.append(custom_label_tag)
     if (
         scan_config.feature_device_type
         == device_brand_id_pb2.DeviceBrandId.ScanConfig.FeatureDeviceType.ON
@@ -2108,7 +2111,7 @@ def _build_firmware(config):
     return result
 
 
-def _build_fw_signing(config, whitelabel):
+def _build_fw_signing(config, custom_label):
     if config.sw_config.firmware and config.device_signer_config:
         ap_fw_suffix = _calculate_image_name_suffix(config.hw_design_config)
         hw_design = config.hw_design.name.lower()
@@ -2123,7 +2126,7 @@ def _build_fw_signing(config, whitelabel):
             "key-id": config.device_signer_config.key_id,
             "signature-id": signature_id,
         }
-        if whitelabel:
+        if custom_label:
             result["sig-id-in-customization-id"] = True
         return result
     return {}
@@ -2613,6 +2616,7 @@ def _build_identity(config):
     else:
         _upsert(program.name, identity, "platform-name")
     _upsert(brand_scan_config.whitelabel_tag, identity, "whitelabel-tag")
+    _upsert(brand_scan_config.custom_label_tag, identity, "custom-label-tag")
     if brand_scan_config.feature_device_type:
         _upsert(
             device_brand_id_pb2.DeviceBrandId.ScanConfig.FeatureDeviceType.Name(
@@ -2788,9 +2792,10 @@ def _sw_config(sw_configs, design_config_id):
     raise ValueError("Software config is required for: %s" % design_config_id)
 
 
-def _is_whitelabel(device_brands):
+def _is_custom_label(device_brands):
     return any(
         brand_config.scan_config.whitelabel_tag
+        or brand_config.scan_config.custom_label_tag
         for _, brand_config in device_brands
     )
 
@@ -2831,7 +2836,7 @@ def _transform_build_configs(
                 (device_brand_pb2.DeviceBrand(), brand_config_pb2.BrandConfig())
             ]
 
-        whitelabel = _is_whitelabel(device_brands)
+        custom_label = _is_custom_label(device_brands)
 
         # TODO(b/285989091): Currently, crosid does not distinguish between
         # identities differing only in feature_device_type, so ensure the least
@@ -2888,7 +2893,7 @@ def _transform_build_configs(
                         brand_config=brand_config,
                     ),
                     config_files,
-                    whitelabel,
+                    custom_label,
                 )
 
                 config_json = json.dumps(
@@ -2904,13 +2909,13 @@ def _transform_build_configs(
     return list(results.values())
 
 
-def _transform_build_config(config, config_files, whitelabel):
+def _transform_build_config(config, config_files, custom_label):
     """Transforms Config instance into target platform JSON schema.
 
     Args:
         config: Config namedtuple
         config_files: Map to look up the generated config files.
-        whitelabel: Whether the config is for a whitelabel design
+        custom_label: Whether the config is for a custom label design
 
     Returns:
         Unique config payload based on the platform JSON schema.
@@ -2938,7 +2943,7 @@ def _transform_build_config(config, config_files, whitelabel):
     _upsert(config.device_brand.brand_code, result, "brand-code")
     _upsert(_build_camera(hw_features), result, "camera")
     _upsert(_build_firmware(config), result, "firmware")
-    _upsert(_build_fw_signing(config, whitelabel), result, "firmware-signing")
+    _upsert(_build_fw_signing(config, custom_label), result, "firmware-signing")
     _upsert(_build_fingerprint(hw_features), result, "fingerprint")
     _upsert(_build_ui(config), result, "ui")
     _upsert(_build_usb(config), result, "typecd")
