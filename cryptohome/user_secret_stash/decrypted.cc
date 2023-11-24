@@ -22,6 +22,8 @@
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
+#include "cryptohome/key_objects.h"
+#include "cryptohome/recoverable_key_store/type.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_secret_stash/encrypted.h"
 #include "cryptohome/user_secret_stash/storage.h"
@@ -542,8 +544,7 @@ std::optional<brillo::SecureBlob> DecryptedUss::GetRateLimiterResetSecret(
   return iter->second;
 }
 
-const DecryptedUss::SecurityDomainKeys* DecryptedUss::GetSecurityDomainKeys()
-    const {
+const SecurityDomainKeys* DecryptedUss::GetSecurityDomainKeys() const {
   // If we have already calculated the keys before, return them directly.
   if (security_domain_keys_.has_value()) {
     return &*security_domain_keys_;
