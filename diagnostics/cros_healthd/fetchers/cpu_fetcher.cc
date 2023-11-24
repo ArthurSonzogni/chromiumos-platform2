@@ -27,9 +27,13 @@
 #include <re2/re2.h>
 
 #include "diagnostics/base/file_utils.h"
+#include "diagnostics/cros_healthd/executor/constants.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/system_utilities.h"
 #include "diagnostics/cros_healthd/system/system_utilities_constants.h"
+#include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/procfs_utils.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
@@ -394,12 +398,12 @@ class State {
  private:
   // Read and parse physical cpus and store into |physical_cpus|. Returns true
   // on success and false otherwise.
-  bool FetchPhysicalCpus();
+  bool FetchPhysicalCpus(const base::FilePath& root_dir);
 
   // Reads and parses the total number of threads available on the device and
   // store into |num_total_threads|. Returns true on success and false
   // otherwise.
-  bool FetchNumTotalThreads();
+  bool FetchNumTotalThreads(const base::FilePath& root_dir);
 
   // Record the cpu architecture into |architecture|. Returns true on success
   // and false otherwise.
@@ -407,19 +411,19 @@ class State {
 
   // Record the keylocker information into |architecture|. Returns true on
   // success and false otherwise.
-  bool FetchKeylockerInfo();
+  bool FetchKeylockerInfo(const base::FilePath& root_dir);
 
   // Fetch cpu temperature channels and store into |temperature_channels|.
   // Returns true on success and false otherwise.
-  bool FetchCpuTemperatures();
+  bool FetchCpuTemperatures(const base::FilePath& root_dir);
 
   // Read and parse general virtualization info and store into |virtualization|.
   // Returns true on success and false otherwise.
-  bool FetchVirtualization();
+  bool FetchVirtualization(const base::FilePath& root_dir);
 
   // Read and parse cpu vulnerabilities and store into |vulnerabilities|.
   // Returns true on success and false otherwise.
-  bool FetchVulnerabilities();
+  bool FetchVulnerabilities(const base::FilePath& root_dir);
 
   // Calls |callback_| and passes the result. If |all_callback_called| or
   // |error_| is set, the result is a ProbeError, otherwise it is |cpu_info_|.
@@ -459,9 +463,7 @@ State::State(Context* context)
 
 State::~State() = default;
 
-bool State::FetchNumTotalThreads() {
-  const base::FilePath& root_dir = context_->root_dir();
-
+bool State::FetchNumTotalThreads(const base::FilePath& root_dir) {
   std::string cpu_present;
   const auto& cpu_dir = root_dir.Append(kRelativeCpuDir);
   if (!ReadAndTrimString(cpu_dir, kPresentFileName, &cpu_present)) {
@@ -538,9 +540,7 @@ bool State::FetchArchitecture() {
 }
 
 // Fetch Keylocker information.
-bool State::FetchKeylockerInfo() {
-  const base::FilePath& root_dir = context_->root_dir();
-
+bool State::FetchKeylockerInfo(const base::FilePath& root_dir) {
   std::string file_contents;
   // Crypto file is common for all CPU architects. However, crypto algorithms
   // populated in crypto file could be hardware dependent.
@@ -565,9 +565,7 @@ bool State::FetchKeylockerInfo() {
 }
 
 // Fetches and returns information about the device's CPU temperature channels.
-bool State::FetchCpuTemperatures() {
-  const base::FilePath& root_dir = context_->root_dir();
-
+bool State::FetchCpuTemperatures(const base::FilePath& root_dir) {
   std::vector<mojom::CpuTemperatureChannelPtr> temps;
   // Get directories |/sys/class/hwmon/hwmon*|
   base::FileEnumerator hwmon_enumerator(root_dir.AppendASCII(kHwmonDir), false,
@@ -590,9 +588,7 @@ bool State::FetchCpuTemperatures() {
   return true;
 }
 
-bool State::FetchPhysicalCpus() {
-  const base::FilePath& root_dir = context_->root_dir();
-
+bool State::FetchPhysicalCpus(const base::FilePath& root_dir) {
   const std::optional<std::map<int, ParsedStatContents>>& parsed_stat_contents =
       GetParsedStatContents(root_dir);
   if (parsed_stat_contents == std::nullopt) {
@@ -738,9 +734,7 @@ bool State::FetchPhysicalCpus() {
   return true;
 }
 
-bool State::FetchVirtualization() {
-  const base::FilePath& root_dir = context_->root_dir();
-
+bool State::FetchVirtualization(const base::FilePath& root_dir) {
   cpu_info_->virtualization = mojom::VirtualizationInfo::New();
   cpu_info_->virtualization->has_kvm_device =
       base::PathExists(root_dir.Append(kRelativeKvmFilePath));
@@ -801,8 +795,7 @@ bool State::FetchVirtualization() {
   return true;
 }
 
-bool State::FetchVulnerabilities() {
-  const base::FilePath& root_dir = context_->root_dir();
+bool State::FetchVulnerabilities(const base::FilePath& root_dir) {
   const base::FilePath& vulnerability_dir =
       root_dir.Append(kRelativeCpuDir).Append(kVulnerabilityDirName);
   // If vulnerabilities directory does not exist, this means the linux kernel
@@ -918,10 +911,14 @@ void State::Fetch(Context* context, FetchCpuInfoCallback callback) {
   CallbackBarrier barrier{base::BindOnce(
       &State::HandleCallbackComplete, std::move(state), std::move(callback))};
 
-  if (!state_ptr->FetchNumTotalThreads() || !state_ptr->FetchArchitecture() ||
-      !state_ptr->FetchKeylockerInfo() || !state_ptr->FetchCpuTemperatures() ||
-      !state_ptr->FetchVirtualization() || !state_ptr->FetchVulnerabilities() ||
-      !state_ptr->FetchPhysicalCpus()) {
+  const auto root_dir = GetRootDir();
+  if (!state_ptr->FetchNumTotalThreads(root_dir) ||
+      !state_ptr->FetchArchitecture() ||
+      !state_ptr->FetchKeylockerInfo(root_dir) ||
+      !state_ptr->FetchCpuTemperatures(root_dir) ||
+      !state_ptr->FetchVirtualization(root_dir) ||
+      !state_ptr->FetchVulnerabilities(root_dir) ||
+      !state_ptr->FetchPhysicalCpus(root_dir)) {
     DCHECK(!state_ptr->error_.is_null());
     return;
   }

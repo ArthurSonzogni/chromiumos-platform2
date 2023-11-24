@@ -8,15 +8,12 @@
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/memory/weak_ptr.h>
+#include <base/functional/callback_forward.h>
 
-#include "diagnostics/cros_healthd/executor/constants.h"
-#include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
-#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
-#include "diagnostics/cros_healthd/utils/callback_barrier.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace diagnostics {
+class Context;
 
 // Directory containing SoC ID info.
 inline constexpr char kRelativeSoCDevicesDir[] = "sys/bus/soc/devices/";
@@ -83,7 +80,7 @@ base::FilePath GetCoreIdPath(const base::FilePath& root_dir, int logical_id);
 
 // Returns the parsed vulnerability status from reading the vulnerability
 // message. This function is exported for testing.
-ash::cros_healthd::mojom::VulnerabilityInfo::Status
+ash::cros_healthd::mojom::VulnerabilityInfo_Status
 GetVulnerabilityStatusFromMessage(const std::string& message);
 
 using FetchCpuInfoCallback =
