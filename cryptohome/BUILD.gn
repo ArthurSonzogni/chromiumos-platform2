@@ -393,6 +393,7 @@ if (use.test) {
       "auth_blocks/fp_service_unittest.cc",
       "auth_blocks/mock_auth_block_utility.cc",
       "auth_blocks/pin_weaver_auth_block_unittest.cc",
+      "auth_blocks/recoverable_key_store_test.cc",
       "auth_blocks/revocation_unittest.cc",
       "auth_blocks/scrypt_auth_block_test.cc",
       "auth_blocks/tpm_bound_to_pcr_auth_block_test.cc",

@@ -29,6 +29,13 @@ inline constexpr struct VariationsFeature kCrOSLateBootMigrateToModernPin = {
     .default_state = FEATURE_DISABLED_BY_DEFAULT,
 };
 
+// Control switch value for generating recoverable key stores.
+inline constexpr struct VariationsFeature
+    kCrOSLateBootGenerateRecoverableKeyStore = {
+        .name = "CrOSLateBootGenerateRecoverableKeyStore",
+        .default_state = FEATURE_DISABLED_BY_DEFAULT,
+};
+
 // Features is a class which is a wrapper around PlatformFeatureInterface, which
 // can also be configured for testing.
 class Features {
@@ -38,6 +45,7 @@ class Features {
   enum ActiveFeature {
     kModernPin,
     kMigratePin,
+    kGenerateRecoverableKeyStore,
   };
 
   // Platform feature library can only initialized with a bus instance.

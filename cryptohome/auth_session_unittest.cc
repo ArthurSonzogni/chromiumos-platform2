@@ -1086,6 +1086,17 @@ class AuthSessionWithUssTest : public AuthSessionTest {
                 CreateKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver, _, _))
         .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
                      AuthBlock::CreateCallback create_callback) {
+          // PIN is a lock screen knowledge factor, so security domain keys
+          // should be populated in auth input.
+          if (!auth_input.security_domain_keys.has_value()) {
+            std::move(create_callback)
+                .Run(MakeStatus<error::CryptohomeError>(
+                         kErrorLocationForTestingAuthSession,
+                         error::ErrorActionSet(
+                             {error::PossibleAction::kDevCheckUnexpectedState}),
+                         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
+                     nullptr, nullptr);
+          }
           // Make an arbitrary auth block state type can be used in this test.
           auto key_blobs = std::make_unique<KeyBlobs>();
           key_blobs->vkk_key =

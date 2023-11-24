@@ -540,6 +540,7 @@ static_library("libcrostpm") {
     "../auth_blocks/fingerprint_auth_block.cc",
     "../auth_blocks/fp_service.cc",
     "../auth_blocks/pin_weaver_auth_block.cc",
+    "../auth_blocks/recoverable_key_store.cc",
     "../auth_blocks/revocation.cc",
     "../auth_blocks/scrypt_auth_block.cc",
     "../auth_blocks/tpm_auth_block_utils.cc",

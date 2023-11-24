@@ -2009,6 +2009,16 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocGenKeyStoreGenKeyStoreParamsFailed = 3429,
   /* ./recoverable_key_store/generate.cc */
   kLocGenKeyStoreGenWrappedRecoveryKeyFailed = 3430,
+  /* ./auth_blocks/recoverable_key_store.cc */
+  kLocRecoverableKeyStoreCreateInvalidParams = 3431,
+  /* ./auth_blocks/recoverable_key_store.cc */
+  kLocRecoverableKeyStoreCreateGetCertFailed = 3432,
+  /* ./auth_blocks/recoverable_key_store.cc */
+  kLocRecoverableKeyStoreCreateGenerateFailed = 3433,
+  /* ./auth_blocks/recoverable_key_store.cc */
+  kLocRecoverableKeyStoreCreateSerializeFailed = 3434,
+  /* ./auth_session.cc */
+  kLocRateLimiterNoSecurityDomainKeysInAuthInputForAdd = 3436,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.

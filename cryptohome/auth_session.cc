@@ -30,6 +30,7 @@
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
+#include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
@@ -69,6 +70,7 @@
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/recoverable_key_store/type.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_policy_file.h"
@@ -2980,6 +2982,21 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
     const AuthFactorMetadata& auth_factor_metadata) {
   const AuthFactorDriver& factor_driver =
       auth_factor_driver_manager_->GetDriver(auth_factor_type);
+
+  std::optional<LockScreenKnowledgeFactorType> lskf_type =
+      factor_driver.GetLockScreenKnowledgeFactorType();
+  if (lskf_type.has_value() && decrypted_uss_) {
+    const SecurityDomainKeys* security_domain_keys =
+        decrypted_uss_->GetSecurityDomainKeys();
+    if (!security_domain_keys) {
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocRateLimiterNoSecurityDomainKeysInAuthInputForAdd),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+    }
+    auth_input.security_domain_keys = *security_domain_keys;
+  }
 
   // Types which need rate-limiters are exclusive with those which need
   // per-label reset secrets.

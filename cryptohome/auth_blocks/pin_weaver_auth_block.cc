@@ -19,6 +19,7 @@
 #include <base/logging.h>
 #include <base/no_destructor.h>
 #include <brillo/secure_blob.h>
+#include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/aes.h>
@@ -27,6 +28,7 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 
+#include "cryptohome/auth_blocks/recoverable_key_store.h"
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -308,6 +310,23 @@ void PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   pin_auth_state.le_label = result.value();
   pin_auth_state.salt = std::move(salt);
   auth_block_state->state = std::move(pin_auth_state);
+
+  // Generate recoverable key state for PIN. If it fails, just keep the field
+  // empty instead of failing the whole Create operation.
+  if (features_->IsFeatureEnabled(Features::kGenerateRecoverableKeyStore)) {
+    CryptohomeStatusOr<RecoverableKeyStoreState> key_store_state =
+        CreateRecoverableKeyStoreState(
+            LockScreenKnowledgeFactorType::
+                LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_PIN,
+            auth_input, *key_store_cert_provider_);
+    if (!key_store_state.ok()) {
+      LOG(WARNING) << "Failed to generate recoverable key store state: "
+                   << key_store_state.status();
+    } else {
+      auth_block_state->recoverable_key_store_state = *key_store_state;
+    }
+  }
+
   std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
                           std::move(key_blobs), std::move(auth_block_state));
 }

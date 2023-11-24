@@ -14,6 +14,7 @@
 
 #include "cryptohome/cryptorecovery/cryptorecovery.pb.h"
 #include "cryptohome/flatbuffer_schemas/structures.h"
+#include "cryptohome/recoverable_key_store/type.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
@@ -97,6 +98,8 @@ struct AuthInput {
   // If the user input is a hash of the actual user knowledge factor, the salt
   // used for hashing.
   std::optional<brillo::Blob> user_input_hash_salt;
+  // security_domain_keys used to generate recoverable key stores.
+  std::optional<SecurityDomainKeys> security_domain_keys;
   // Data required for Cryptohome Recovery flow.
   std::optional<CryptohomeRecoveryAuthInput> cryptohome_recovery_auth_input;
   // Data required for Challenge Credential flow.

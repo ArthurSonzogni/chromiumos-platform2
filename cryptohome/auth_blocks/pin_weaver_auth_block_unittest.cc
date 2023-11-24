@@ -24,6 +24,7 @@
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/rsa.h>
+#include <libhwsec-foundation/crypto/secure_box.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
@@ -36,6 +37,7 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
+#include "cryptohome/recoverable_key_store/type.h"
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
@@ -73,6 +75,34 @@ using CreateTestFuture = TestFuture<CryptohomeStatus,
 using DeriveTestFuture = TestFuture<CryptohomeStatus,
                                     std::unique_ptr<KeyBlobs>,
                                     std::optional<AuthBlock::SuggestedAction>>;
+
+constexpr size_t kSecurityDomainWrappingKeySize = 32;
+constexpr size_t kPinInputSaltSize = 32;
+
+std::optional<SecurityDomainKeys> GetValidSecurityDomainKeys() {
+  const brillo::SecureBlob kSeed("seed_abc");
+  const brillo::SecureBlob kWrappingKey(kSecurityDomainWrappingKeySize, 0xAA);
+  std::optional<hwsec_foundation::secure_box::KeyPair> key_pair =
+      hwsec_foundation::secure_box::DeriveKeyPairFromSeed(kSeed);
+  if (!key_pair.has_value()) {
+    return std::nullopt;
+  }
+  return SecurityDomainKeys{.key_pair = *key_pair,
+                            .wrapping_key = kWrappingKey};
+}
+
+std::optional<RecoverableKeyStoreBackendCert> GetValidBackendCert() {
+  const brillo::SecureBlob kSeed("seed_123");
+  std::optional<hwsec_foundation::secure_box::KeyPair> key_pair =
+      hwsec_foundation::secure_box::DeriveKeyPairFromSeed(kSeed);
+  if (!key_pair.has_value()) {
+    return std::nullopt;
+  }
+  return RecoverableKeyStoreBackendCert{
+      .version = 1000,
+      .public_key = key_pair->public_key,
+  };
+}
 
 }  // namespace
 
@@ -276,6 +306,101 @@ TEST_F(PinWeaverAuthBlockTest, DeriveFailureMissingLeLabel) {
 
   ASSERT_THAT(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
               status->local_legacy_error());
+}
+
+TEST_F(PinWeaverAuthBlockTest, CreateTestWithRecoverableKeyStore) {
+  // Set up inputs to the test.
+  brillo::SecureBlob vault_key(20, 'C');
+  brillo::SecureBlob reset_secret(32, 'S');
+
+  // Set up the mock expectations.
+  brillo::SecureBlob le_secret;
+  DelaySchedule delay_sched;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  EXPECT_CALL(hwsec_pw_manager_, InsertCredential(_, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<1>(&le_secret), SaveArg<4>(&delay_sched),
+                      ReturnValue(/* ret_label */ 0)));
+
+  std::optional<RecoverableKeyStoreBackendCert> backend_cert =
+      GetValidBackendCert();
+  ASSERT_TRUE(backend_cert.has_value());
+  EXPECT_CALL(cert_provider_, GetBackendCert).WillOnce(Return(*backend_cert));
+
+  std::optional<SecurityDomainKeys> security_domain_keys =
+      GetValidSecurityDomainKeys();
+  ASSERT_TRUE(security_domain_keys.has_value());
+
+  // Call the Create() method.
+  AuthInput user_input = {
+      .user_input = vault_key,
+      .locked_to_single_user = std::nullopt,
+      .obfuscated_username = ObfuscatedUsername(kObfuscatedUsername),
+      .reset_secret = reset_secret,
+      .user_input_hash_algorithm =
+          LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234,
+      .user_input_hash_salt = brillo::Blob(kPinInputSaltSize, 0xBB),
+      .security_domain_keys = *security_domain_keys,
+  };
+  KeyBlobs vkk_data;
+
+  features_.SetDefaultForFeature(Features::kModernPin, true);
+  features_.SetDefaultForFeature(Features::kGenerateRecoverableKeyStore, true);
+
+  CreateTestFuture result;
+  auth_block_->Create(user_input, result.GetCallback());
+  ASSERT_TRUE(result.IsReady());
+  auto [status, key_blobs, auth_state] = result.Take();
+  ASSERT_THAT(status, IsOk());
+  EXPECT_TRUE(
+      std::holds_alternative<PinWeaverAuthBlockState>(auth_state->state));
+  EXPECT_TRUE(auth_state->recoverable_key_store_state.has_value());
+}
+
+TEST_F(PinWeaverAuthBlockTest, CreateTestWithRecoverableKeyStoreDisabled) {
+  // Set up inputs to the test.
+  brillo::SecureBlob vault_key(20, 'C');
+  brillo::SecureBlob reset_secret(32, 'S');
+
+  // Set up the mock expectations.
+  brillo::SecureBlob le_secret;
+  DelaySchedule delay_sched;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  EXPECT_CALL(hwsec_pw_manager_, InsertCredential(_, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<1>(&le_secret), SaveArg<4>(&delay_sched),
+                      ReturnValue(/* ret_label */ 0)));
+
+  EXPECT_CALL(cert_provider_, GetBackendCert).Times(0);
+
+  std::optional<SecurityDomainKeys> security_domain_keys =
+      GetValidSecurityDomainKeys();
+  ASSERT_TRUE(security_domain_keys.has_value());
+
+  // Call the Create() method.
+  AuthInput user_input = {
+      .user_input = vault_key,
+      .locked_to_single_user = std::nullopt,
+      .obfuscated_username = ObfuscatedUsername(kObfuscatedUsername),
+      .reset_secret = reset_secret,
+      .user_input_hash_algorithm =
+          LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234,
+      .user_input_hash_salt = brillo::Blob(kPinInputSaltSize, 0xBB),
+      .security_domain_keys = *security_domain_keys,
+  };
+  KeyBlobs vkk_data;
+
+  features_.SetDefaultForFeature(Features::kModernPin, true);
+  // If the feature is disabled, no recoverable key store state should be
+  // generated.
+  features_.SetDefaultForFeature(Features::kGenerateRecoverableKeyStore, false);
+
+  CreateTestFuture result;
+  auth_block_->Create(user_input, result.GetCallback());
+  ASSERT_TRUE(result.IsReady());
+  auto [status, key_blobs, auth_state] = result.Take();
+  ASSERT_THAT(status, IsOk());
+  EXPECT_TRUE(
+      std::holds_alternative<PinWeaverAuthBlockState>(auth_state->state));
+  EXPECT_FALSE(auth_state->recoverable_key_store_state.has_value());
 }
 
 // Check required field |salt| in PinWeaverAuthBlockState.
