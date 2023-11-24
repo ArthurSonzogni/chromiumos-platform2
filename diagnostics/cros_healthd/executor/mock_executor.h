@@ -136,9 +136,9 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
   MOCK_METHOD(void, RemoveFioTestFile, (RemoveFioTestFileCallback), (override));
   MOCK_METHOD(
       void,
-      GetConnectedHdmiConnectors,
+      GetConnectedExternalDisplayConnectors,
       (const std::optional<std::vector<uint32_t>>& last_known_connectors,
-       GetConnectedHdmiConnectorsCallback),
+       GetConnectedExternalDisplayConnectorsCallback),
       (override));
   MOCK_METHOD(void,
               GetPrivacyScreenInfo,

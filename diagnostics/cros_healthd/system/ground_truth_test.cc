@@ -114,6 +114,7 @@ TEST_F(GroundTruthTest, AlwaysSupportedEvents) {
   ExpectEventSupported(mojom::EventCategoryEnum::kBluetooth);
   ExpectEventSupported(mojom::EventCategoryEnum::kPower);
   ExpectEventSupported(mojom::EventCategoryEnum::kAudio);
+  ExpectEventSupported(mojom::EventCategoryEnum::kExternalDisplay);
 }
 
 TEST_F(GroundTruthTest, CurrentUnsupported) {
@@ -265,27 +266,6 @@ TEST_F(GroundTruthTest, KeyboardDiagnosticEvent) {
       ExpectEventSupported(mojom::EventCategoryEnum::kKeyboardDiagnostic);
     } else {
       ExpectEventUnsupported(mojom::EventCategoryEnum::kKeyboardDiagnostic);
-    }
-  }
-}
-
-TEST_F(GroundTruthTest, HdmiEvent) {
-  std::vector<std::pair</*has-hdmi=*/std::string, /*supported=*/bool>>
-      test_combinations = {
-          {"true", true},
-          {"false", false},
-          {"Others", false},
-      };
-
-  // Test not set the cros_config first to simulate file not found.
-  ExpectEventUnsupported(mojom::EventCategoryEnum::kExternalDisplay);
-
-  for (const auto& [has_hdmi, supported] : test_combinations) {
-    SetFakeCrosConfig(cros_config_property::kHasHdmi, has_hdmi);
-    if (supported) {
-      ExpectEventSupported(mojom::EventCategoryEnum::kExternalDisplay);
-    } else {
-      ExpectEventUnsupported(mojom::EventCategoryEnum::kExternalDisplay);
     }
   }
 }

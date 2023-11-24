@@ -955,16 +955,16 @@ void Executor::RunLongRunningDelegate(
   process_control_set_.Add(std::move(process_control), std::move(receiver));
 }
 
-void Executor::GetConnectedHdmiConnectors(
+void Executor::GetConnectedExternalDisplayConnectors(
     const std::optional<std::vector<uint32_t>>& last_known_connectors,
-    GetConnectedHdmiConnectorsCallback callback) {
+    GetConnectedExternalDisplayConnectorsCallback callback) {
   auto delegate = CreateDelegateProcess(
       seccomp_file::kDrm,
       SandboxedProcess::Options{
           .readonly_mount_points = {base::FilePath{path::kDrmDevice}},
       });
   auto* delegate_ptr = delegate.get();
-  delegate_ptr->remote()->GetConnectedHdmiConnectors(
+  delegate_ptr->remote()->GetConnectedExternalDisplayConnectors(
       last_known_connectors,
       CreateOnceDelegateCallback(
           std::move(delegate), std::move(callback),

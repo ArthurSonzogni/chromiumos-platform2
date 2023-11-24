@@ -269,12 +269,13 @@ class ExternalDisplayEventsImplTest : public testing::Test {
         std::move(external_display_observer));
   }
 
-  void SetExecutorGetHdmi(
+  void SetExecutorGetExternalDisplay(
       base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors) {
     connectors_ = std::move(connectors);
-    EXPECT_CALL(*mock_executor(), GetConnectedHdmiConnectors(_, _))
+    EXPECT_CALL(*mock_executor(), GetConnectedExternalDisplayConnectors(_, _))
         .WillOnce(WithArg<1>(
-            [&](MockExecutor::GetConnectedHdmiConnectorsCallback callback) {
+            [&](MockExecutor::GetConnectedExternalDisplayConnectorsCallback
+                    callback) {
               std::move(callback).Run(std::move(connectors_), std::nullopt);
             }));
   }
@@ -410,9 +411,10 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayAddEvent) {
     // the starting state through triggering a external_display event before
     // initializing observer.
     base::RunLoop run_loop;
-    EXPECT_CALL(*mock_executor(), GetConnectedHdmiConnectors(_, _))
+    EXPECT_CALL(*mock_executor(), GetConnectedExternalDisplayConnectors(_, _))
         .WillOnce(WithArg<1>(
-            [&](MockExecutor::GetConnectedHdmiConnectorsCallback callback) {
+            [&](MockExecutor::GetConnectedExternalDisplayConnectorsCallback
+                    callback) {
               std::move(callback).Run({}, std::nullopt);
               run_loop.Quit();
             }));
@@ -425,7 +427,7 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayAddEvent) {
     mojom::EventInfoPtr recv_info;
     base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors;
     connectors[1] = GenerateExternalDisplayInfo("display1");
-    SetExecutorGetHdmi(std::move(connectors));
+    SetExecutorGetExternalDisplay(std::move(connectors));
     EXPECT_CALL(*mock_event_observer(), OnEvent(_))
         .WillOnce([&](mojom::EventInfoPtr info) {
           recv_info = std::move(info);
@@ -450,9 +452,10 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayRemoveEvent) {
     base::RunLoop run_loop;
     base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors;
     connectors[1] = GenerateExternalDisplayInfo("display1");
-    EXPECT_CALL(*mock_executor(), GetConnectedHdmiConnectors(_, _))
+    EXPECT_CALL(*mock_executor(), GetConnectedExternalDisplayConnectors(_, _))
         .WillOnce(WithArg<1>(
-            [&](MockExecutor::GetConnectedHdmiConnectorsCallback callback) {
+            [&](MockExecutor::GetConnectedExternalDisplayConnectorsCallback
+                    callback) {
               std::move(callback).Run(std::move(connectors), std::nullopt);
               run_loop.Quit();
             }));
@@ -463,7 +466,7 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayRemoveEvent) {
   {
     base::RunLoop run_loop;
     mojom::EventInfoPtr recv_info;
-    SetExecutorGetHdmi({});
+    SetExecutorGetExternalDisplay({});
     EXPECT_CALL(*mock_event_observer(), OnEvent(_))
         .WillOnce([&](mojom::EventInfoPtr info) {
           recv_info = std::move(info);
@@ -487,9 +490,10 @@ TEST_F(ExternalDisplayEventsImplTest, TestDuplicateExternalDisplayConnectorId) {
     // the starting state through triggering a external_display event before
     // initializing observer.
     base::RunLoop run_loop;
-    EXPECT_CALL(*mock_executor(), GetConnectedHdmiConnectors(_, _))
+    EXPECT_CALL(*mock_executor(), GetConnectedExternalDisplayConnectors(_, _))
         .WillOnce(WithArg<1>(
-            [&](MockExecutor::GetConnectedHdmiConnectorsCallback callback) {
+            [&](MockExecutor::GetConnectedExternalDisplayConnectorsCallback
+                    callback) {
               std::move(callback).Run({}, std::nullopt);
               run_loop.Quit();
             }));
@@ -501,7 +505,7 @@ TEST_F(ExternalDisplayEventsImplTest, TestDuplicateExternalDisplayConnectorId) {
     base::RunLoop run_loop;
     base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors;
     connectors[1] = GenerateExternalDisplayInfo("display1");
-    SetExecutorGetHdmi(std::move(connectors));
+    SetExecutorGetExternalDisplay(std::move(connectors));
     EXPECT_CALL(*mock_event_observer(), OnEvent(_))
         .WillOnce([&](mojom::EventInfoPtr info) { run_loop.Quit(); });
     TriggerExternalDisplayEvent();
@@ -510,7 +514,7 @@ TEST_F(ExternalDisplayEventsImplTest, TestDuplicateExternalDisplayConnectorId) {
   {
     base::RunLoop run_loop;
     base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors;
-    SetExecutorGetHdmi(std::move(connectors));
+    SetExecutorGetExternalDisplay(std::move(connectors));
     EXPECT_CALL(*mock_event_observer(), OnEvent(_))
         .WillOnce([&](mojom::EventInfoPtr info) { run_loop.Quit(); });
     TriggerExternalDisplayEvent();
@@ -521,7 +525,7 @@ TEST_F(ExternalDisplayEventsImplTest, TestDuplicateExternalDisplayConnectorId) {
     mojom::EventInfoPtr recv_info;
     base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors;
     connectors[1] = GenerateExternalDisplayInfo("display2");
-    SetExecutorGetHdmi(std::move(connectors));
+    SetExecutorGetExternalDisplay(std::move(connectors));
     EXPECT_CALL(*mock_event_observer(), OnEvent(_))
         .WillOnce([&](mojom::EventInfoPtr info) {
           recv_info = std::move(info);
@@ -544,9 +548,10 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayAddMultipleDisplay) {
     // the starting state through triggering a external_display event before
     // initializing observer.
     base::RunLoop run_loop;
-    EXPECT_CALL(*mock_executor(), GetConnectedHdmiConnectors(_, _))
+    EXPECT_CALL(*mock_executor(), GetConnectedExternalDisplayConnectors(_, _))
         .WillOnce(WithArg<1>(
-            [&](MockExecutor::GetConnectedHdmiConnectorsCallback callback) {
+            [&](MockExecutor::GetConnectedExternalDisplayConnectorsCallback
+                    callback) {
               std::move(callback).Run({}, std::nullopt);
               run_loop.Quit();
             }));
@@ -561,7 +566,7 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayAddMultipleDisplay) {
     base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors;
     connectors[1] = GenerateExternalDisplayInfo("display1");
     connectors[2] = GenerateExternalDisplayInfo("display2");
-    SetExecutorGetHdmi(std::move(connectors));
+    SetExecutorGetExternalDisplay(std::move(connectors));
     EXPECT_CALL(*mock_event_observer(), OnEvent(_))
         .WillOnce(
             [&](mojom::EventInfoPtr info) { recv_info_1 = std::move(info); })
@@ -594,9 +599,10 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayMultipleObservers) {
     // the starting state through triggering a external_display event before
     // initializing observer.
     base::RunLoop run_loop;
-    EXPECT_CALL(*mock_executor(), GetConnectedHdmiConnectors(_, _))
+    EXPECT_CALL(*mock_executor(), GetConnectedExternalDisplayConnectors(_, _))
         .WillOnce(WithArg<1>(
-            [&](MockExecutor::GetConnectedHdmiConnectorsCallback callback) {
+            [&](MockExecutor::GetConnectedExternalDisplayConnectorsCallback
+                    callback) {
               std::move(callback).Run({}, std::nullopt);
               run_loop.Quit();
             }));
@@ -626,7 +632,7 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayMultipleObservers) {
     mojom::EventInfoPtr recv_info_2;
     base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors;
     connectors[1] = GenerateExternalDisplayInfo("display1");
-    SetExecutorGetHdmi(std::move(connectors));
+    SetExecutorGetExternalDisplay(std::move(connectors));
     EXPECT_CALL(*event_observer_1.get(), OnEvent(_))
         .WillOnce([&](mojom::EventInfoPtr info) {
           recv_info_1 = std::move(info);

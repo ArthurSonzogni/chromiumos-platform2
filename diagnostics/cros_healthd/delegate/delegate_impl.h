@@ -53,9 +53,9 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
       override;
   void GetLidAngle(GetLidAngleCallback callback) override;
   void GetPsr(GetPsrCallback callback) override;
-  void GetConnectedHdmiConnectors(
+  void GetConnectedExternalDisplayConnectors(
       const std::optional<std::vector<uint32_t>>& last_known_connectors,
-      GetConnectedHdmiConnectorsCallback callback) override;
+      GetConnectedExternalDisplayConnectorsCallback callback) override;
   void GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) override;
   void FetchDisplayInfo(FetchDisplayInfoCallback callback) override;
   void MonitorPowerButton(
@@ -84,9 +84,9 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
                   RunUrandomCallback callback) override;
 
  private:
-  void GetConnectedHdmiConnectorsHelper(
+  void GetConnectedExternalDisplayConnectorsHelper(
       std::optional<std::vector<uint32_t>> last_known_connectors,
-      GetConnectedHdmiConnectorsCallback callback,
+      GetConnectedExternalDisplayConnectorsCallback callback,
       int times);
 
   ec::EcCommandFactoryInterface* const ec_command_factory_;

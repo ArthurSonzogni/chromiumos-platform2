@@ -531,11 +531,12 @@ void DelegateImpl::GetPsr(GetPsrCallback callback) {
   std::move(callback).Run(std::move(result), std::nullopt);
 }
 
-void DelegateImpl::GetConnectedHdmiConnectors(
+void DelegateImpl::GetConnectedExternalDisplayConnectors(
     const std::optional<std::vector<uint32_t>>& last_known_connectors_const,
-    GetConnectedHdmiConnectorsCallback callback) {
+    GetConnectedExternalDisplayConnectorsCallback callback) {
   if (!last_known_connectors_const.has_value()) {
-    GetConnectedHdmiConnectorsHelper(std::nullopt, std::move(callback), 0);
+    GetConnectedExternalDisplayConnectorsHelper(std::nullopt,
+                                                std::move(callback), 0);
     return;
   }
 
@@ -544,13 +545,13 @@ void DelegateImpl::GetConnectedHdmiConnectors(
     last_known_connectors.push_back(element);
   }
   std::sort(last_known_connectors.begin(), last_known_connectors.end());
-  GetConnectedHdmiConnectorsHelper(last_known_connectors, std::move(callback),
-                                   0);
+  GetConnectedExternalDisplayConnectorsHelper(last_known_connectors,
+                                              std::move(callback), 0);
 }
 
-void DelegateImpl::GetConnectedHdmiConnectorsHelper(
+void DelegateImpl::GetConnectedExternalDisplayConnectorsHelper(
     std::optional<std::vector<uint32_t>> last_known_connectors,
-    GetConnectedHdmiConnectorsCallback callback,
+    GetConnectedExternalDisplayConnectorsCallback callback,
     int times) {
   DisplayUtil display_util;
 
@@ -561,9 +562,11 @@ void DelegateImpl::GetConnectedHdmiConnectorsHelper(
     return;
   }
 
-  base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> hdmi_connectors;
+  base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr>
+      external_display_connectors;
 
-  std::vector<uint32_t> connector_ids = display_util.GetHdmiConnectorIDs();
+  std::vector<uint32_t> connector_ids =
+      display_util.GetExternalDisplayConnectorIDs();
 
   if (last_known_connectors.has_value()) {
     std::sort(connector_ids.begin(), connector_ids.end());
@@ -574,33 +577,35 @@ void DelegateImpl::GetConnectedHdmiConnectorsHelper(
         times < kMaximumGetExternalDisplayInfoRetry) {
       base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
           FROM_HERE,
-          base::BindOnce(&DelegateImpl::GetConnectedHdmiConnectorsHelper,
-                         weak_ptr_factory_.GetWeakPtr(), last_known_connectors,
-                         std::move(callback), times + 1),
+          base::BindOnce(
+              &DelegateImpl::GetConnectedExternalDisplayConnectorsHelper,
+              weak_ptr_factory_.GetWeakPtr(), last_known_connectors,
+              std::move(callback), times + 1),
           kGetExternalDisplayInfoRetryPeriod);
       return;
     }
   }
 
   for (const auto& connector_id : connector_ids) {
-    hdmi_connectors[connector_id] =
+    external_display_connectors[connector_id] =
         display_util.GetExternalDisplayInfo(connector_id);
     // If the connector info has missing fields, it is possible that DRM have
     // not fully detected all information yet. Retry to ensure that all DRM
     // changes are detected.
     if (times < kMaximumGetExternalDisplayInfoRetry &&
-        HasMissingDrmField(hdmi_connectors[connector_id])) {
+        HasMissingDrmField(external_display_connectors[connector_id])) {
       base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
           FROM_HERE,
-          base::BindOnce(&DelegateImpl::GetConnectedHdmiConnectorsHelper,
-                         weak_ptr_factory_.GetWeakPtr(), last_known_connectors,
-                         std::move(callback), times + 1),
+          base::BindOnce(
+              &DelegateImpl::GetConnectedExternalDisplayConnectorsHelper,
+              weak_ptr_factory_.GetWeakPtr(), last_known_connectors,
+              std::move(callback), times + 1),
           kGetExternalDisplayInfoRetryPeriod);
       return;
     }
   }
 
-  std::move(callback).Run(std::move(hdmi_connectors), std::nullopt);
+  std::move(callback).Run(std::move(external_display_connectors), std::nullopt);
 }
 
 void DelegateImpl::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {

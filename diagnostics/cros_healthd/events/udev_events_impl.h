@@ -66,7 +66,7 @@ class UdevEventsImpl final : public UdevEvents {
 
   void OnExternalDisplayChange();
 
-  void HandleGetConnectedHdmiConnectors(
+  void HandleGetConnectedExternalDisplayConnectors(
       base::flat_map<uint32_t, ash::cros_healthd::mojom::ExternalDisplayInfoPtr>
           connected_displays,
       const std::optional<std::string>& error);

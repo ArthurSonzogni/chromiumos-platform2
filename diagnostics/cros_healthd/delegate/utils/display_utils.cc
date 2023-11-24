@@ -413,31 +413,4 @@ mojom::ExternalDisplayInfoPtr DisplayUtil::GetExternalDisplayInfo(
   return info;
 }
 
-std::vector<uint32_t> DisplayUtil::GetHdmiConnectorIDs() {
-  std::vector<uint32_t> hdmi_connector_ids;
-  ScopedDrmModeResPtr resource;
-  resource.reset(drmModeGetResources(device_file_.GetPlatformFile()));
-
-  if (!resource) {
-    LOG(ERROR) << "Error in initializing drm util resources";
-    return hdmi_connector_ids;
-  }
-
-  // Find connected HDMI connectors.
-  for (int i = 0; i < resource->count_connectors; ++i) {
-    uint32_t connector_id = resource->connectors[i];
-    ScopedDrmModeConnectorPtr connector(
-        drmModeGetConnector(device_file_.GetPlatformFile(), connector_id));
-
-    if (!connector || connector->connection != DRM_MODE_CONNECTED)
-      continue;
-
-    if (connector->connector_type == DRM_MODE_CONNECTOR_HDMIA ||
-        connector->connector_type == DRM_MODE_CONNECTOR_HDMIB) {
-      hdmi_connector_ids.push_back(connector_id);
-    }
-  }
-  return hdmi_connector_ids;
-}
-
 }  // namespace diagnostics

@@ -103,10 +103,11 @@ bool UdevEventsImpl::Initialize() {
   }
 
   drm_is_locked_ = true;
-  context_->executor()->GetConnectedHdmiConnectors(
+  context_->executor()->GetConnectedExternalDisplayConnectors(
       std::nullopt,
-      base::BindOnce(&UdevEventsImpl::HandleGetConnectedHdmiConnectors,
-                     weak_factory_.GetWeakPtr())
+      base::BindOnce(
+          &UdevEventsImpl::HandleGetConnectedExternalDisplayConnectors,
+          weak_factory_.GetWeakPtr())
           .Then(base::BindOnce(
               &UdevEventsImpl::InitializeConnectedExternalDisplayConnectors,
               weak_factory_.GetWeakPtr())));
@@ -120,7 +121,7 @@ void UdevEventsImpl::InitializeConnectedExternalDisplayConnectors() {
   current_external_display_connectors_ = {};
 }
 
-void UdevEventsImpl::HandleGetConnectedHdmiConnectors(
+void UdevEventsImpl::HandleGetConnectedExternalDisplayConnectors(
     base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connected_displays,
     const std::optional<std::string>& error) {
   drm_is_locked_ = false;
@@ -290,11 +291,12 @@ void UdevEventsImpl::AddExternalDisplayObserver(
 
 void UdevEventsImpl::OnExternalDisplayChange() {
   drm_is_locked_ = true;
-  context_->executor()->GetConnectedHdmiConnectors(
+  context_->executor()->GetConnectedExternalDisplayConnectors(
       std::vector<uint32_t>(last_known_external_display_connectors_.begin(),
                             last_known_external_display_connectors_.end()),
-      base::BindOnce(&UdevEventsImpl::HandleGetConnectedHdmiConnectors,
-                     weak_factory_.GetWeakPtr())
+      base::BindOnce(
+          &UdevEventsImpl::HandleGetConnectedExternalDisplayConnectors,
+          weak_factory_.GetWeakPtr())
           .Then(base::BindOnce(&UdevEventsImpl::UpdateExternalDisplayObservers,
                                weak_factory_.GetWeakPtr())));
 }
