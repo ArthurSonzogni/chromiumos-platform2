@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include "supplicant/dbus-proxies.h"
+
 namespace shill {
 
 // SupplicantGroupProxyInterface declares only the subset of
