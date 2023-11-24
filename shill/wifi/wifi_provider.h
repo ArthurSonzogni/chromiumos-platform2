@@ -202,6 +202,9 @@ class WiFiProvider : public ProviderInterface {
   virtual void RemovePasspointCredentialsObserver(
       PasspointCredentialsObserver* observer);
 
+  // Return primary link name of the WiFi device.
+  mockable std::string GetPrimaryLinkName() const;
+
   // Return the WiFiPhy object at phy_index. Returns a nulltr if there is no
   // WiFiPhy at phy_index.
   mockable const WiFiPhy* GetPhyAtIndex(uint32_t phy_index);

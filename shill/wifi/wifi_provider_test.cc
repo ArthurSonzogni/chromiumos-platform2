@@ -2374,6 +2374,22 @@ TEST_F(WiFiProviderTest, AbandonService) {
   EXPECT_FALSE(user_profile_->GetStorage()->ContainsGroup(id));
 }
 
+TEST_F(WiFiProviderTest, GetPrimaryLinkName) {
+  EXPECT_CALL(manager_, device_info()).Times(1);
+  WiFiRefPtr wifi_device = new MockWiFi(
+      &manager_, /*link_name=*/"wlan0", /*address=*/"4c77cb549cdc",
+      /*interface_index=*/3, /*phy_index=*/0, new MockWakeOnWiFi());
+  EXPECT_CALL(manager_, FilterByTechnology(Technology::kWiFi))
+      .WillOnce(Return(std::vector<DeviceRefPtr>{wifi_device}));
+  EXPECT_EQ(provider_->GetPrimaryLinkName(), "wlan0");
+}
+
+TEST_F(WiFiProviderTest, GetPrimaryLinkName_NoWiFiDevice) {
+  EXPECT_CALL(manager_, FilterByTechnology(Technology::kWiFi))
+      .WillOnce(Return(std::vector<DeviceRefPtr>{}));
+  EXPECT_EQ(provider_->GetPrimaryLinkName(), "");
+}
+
 TEST_F(WiFiProviderTest, RegisterAndDeregisterWiFiDevice) {
   const uint32_t phy_index = 0;
 

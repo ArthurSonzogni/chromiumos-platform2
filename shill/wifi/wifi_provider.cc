@@ -1211,6 +1211,17 @@ void WiFiProvider::HandleNetlinkBroadcast(const NetlinkMessage& message) {
   }
 }
 
+std::string WiFiProvider::GetPrimaryLinkName() const {
+  // TODO(b/269163735) Use WiFi device registered in WiFiPhy to get the primary
+  // interface.
+  const auto wifi_devices = manager_->FilterByTechnology(Technology::kWiFi);
+  if (wifi_devices.empty()) {
+    LOG(ERROR) << "No WiFi device available.";
+    return "";
+  }
+  return wifi_devices.front().get()->link_name();
+}
+
 const WiFiPhy* WiFiProvider::GetPhyAtIndex(uint32_t phy_index) {
   if (!base::Contains(wifi_phys_, phy_index)) {
     return nullptr;
@@ -1317,19 +1328,15 @@ HotspotDeviceRefPtr WiFiProvider::CreateHotspotDevice(
     return nullptr;
   }
 
-  const auto wifi_devices = manager_->FilterByTechnology(Technology::kWiFi);
-  if (wifi_devices.empty()) {
-    LOG(ERROR) << "No WiFi device available.";
-    return nullptr;
-  }
-
   // TODO(b/257340615) Select capable WiFiPhy according to band and security
   // requirement.
   const uint32_t phy_index = wifi_phys_.begin()->second->GetPhyIndex();
 
-  // TODO(b/269163735) Use WiFi device registered in WiFiPhy to get the
-  // primary interface.
-  const std::string primary_link_name = wifi_devices.front()->link_name();
+  const std::string primary_link_name = GetPrimaryLinkName();
+  if (primary_link_name.empty()) {
+    LOG(ERROR) << "Failed to get primary link name.";
+    return nullptr;
+  }
 
   const std::string link_name = GetUniqueLocalDeviceName(kHotspotIfacePrefix);
 
@@ -1384,16 +1391,13 @@ P2PDeviceRefPtr WiFiProvider::CreateP2PDevice(
   // TODO(b/257340615) Select capable WiFiPhy according to capabilities.
   uint32_t phy_index = wifi_phys_.begin()->second->GetPhyIndex();
 
-  // TODO(b/269163735) Use WiFi device registered in WiFiPhy to get the primary
-  // interface.
-  const auto wifi_devices = manager_->FilterByTechnology(Technology::kWiFi);
-  if (wifi_devices.empty()) {
-    LOG(ERROR) << "No WiFi device available.";
+  const std::string primary_link_name = GetPrimaryLinkName();
+  if (primary_link_name.empty()) {
+    LOG(ERROR) << "Failed to get primary link name.";
     return nullptr;
   }
 
-  P2PDeviceRefPtr dev = new P2PDevice(manager_, iface_type,
-                                      wifi_devices.front().get()->link_name(),
+  P2PDeviceRefPtr dev = new P2PDevice(manager_, iface_type, primary_link_name,
                                       phy_index, shill_id, callback);
   return dev;
 }
