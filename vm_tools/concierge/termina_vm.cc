@@ -42,7 +42,6 @@
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
 #include "vm_tools/common/vm_id.h"
-#include "vm_tools/concierge/future.h"
 #include "vm_tools/concierge/network/guest_os_network.h"
 #include "vm_tools/concierge/tap_device_builder.h"
 #include "vm_tools/concierge/tracing.h"

@@ -15,28 +15,9 @@
 #include "vm_tools/concierge/mm/reclaim_broker.h"
 #include "vm_tools/concierge/mm/reclaim_server.h"
 #include "vm_tools/concierge/mm/vm_socket.h"
+#include "vm_tools/concierge/thread_utils.h"
 
 namespace vm_tools::concierge::mm {
-namespace {
-template <typename T>
-T PostTaskAndWaitForResult(scoped_refptr<base::TaskRunner> task_runner,
-                           base::OnceCallback<T()> func) {
-  base::WaitableEvent event{};
-  T result;
-
-  task_runner->PostTask(
-      FROM_HERE, base::BindOnce(
-                     [](base::OnceCallback<T()> callback,
-                        raw_ref<base::WaitableEvent> event, raw_ref<T> result) {
-                       *result = std::move(callback).Run();
-                       event->Signal();
-                     },
-                     std::move(func), raw_ref(event), raw_ref(result)));
-
-  event.Wait();
-  return result;
-}
-}  // namespace
 
 MmService::MmService(const raw_ref<MetricsLibraryInterface> metrics)
     : metrics_(metrics), weak_ptr_factory_(this) {

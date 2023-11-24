@@ -95,7 +95,6 @@
 #include "vm_tools/concierge/arc_vm.h"
 #include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/dlc_helper.h"
-#include "vm_tools/concierge/future.h"
 #include "vm_tools/concierge/if_method_exists.h"
 #include "vm_tools/concierge/metrics/duration_recorder.h"
 #include "vm_tools/concierge/network/bruschetta_network.h"
@@ -109,6 +108,7 @@
 #include "vm_tools/concierge/shadercached_helper.h"
 #include "vm_tools/concierge/ssh_keys.h"
 #include "vm_tools/concierge/termina_vm.h"
+#include "vm_tools/concierge/thread_utils.h"
 #include "vm_tools/concierge/tracing.h"
 #include "vm_tools/concierge/untrusted_vm_utils.h"
 #include "vm_tools/concierge/vm_base_impl.h"
@@ -1272,14 +1272,13 @@ Service::~Service() {
     grpc_server_vm_->Shutdown();
   }
   if (dbus_object_ && bus_) {
-    AsyncNoReject(
+    PostTaskAndWait(
         bus_->GetDBusTaskRunner(),
         base::BindOnce(
             [](std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object) {
               dbus_object.reset();
             },
-            std::move(dbus_object_)))
-        .Get();
+            std::move(dbus_object_)));
   }
 }
 
@@ -1301,18 +1300,17 @@ bool Service::Init() {
       base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()});
   bus_ = new dbus::Bus(std::move(opts));
 
-  if (!AsyncNoReject(bus_->GetDBusTaskRunner(),
-                     base::BindOnce(
-                         [](scoped_refptr<dbus::Bus> bus) {
-                           if (!bus->Connect()) {
-                             LOG(ERROR) << "Failed to connect to system bus";
-                             return false;
-                           }
-                           return true;
-                         },
-                         bus_))
-           .Get()
-           .val) {
+  if (!PostTaskAndWaitForResult(
+          bus_->GetDBusTaskRunner(),
+          base::BindOnce(
+              [](scoped_refptr<dbus::Bus> bus) {
+                if (!bus->Connect()) {
+                  LOG(ERROR) << "Failed to connect to system bus";
+                  return false;
+                }
+                return true;
+              },
+              bus_))) {
     return false;
   }
 
@@ -1326,22 +1324,20 @@ bool Service::Init() {
   // TODO(b/269214379): Wait for completion for RegisterAsync on
   // chromeos-dbus-bindings after we complete migration and remove
   // ExportMethodAndBlock.
-  if (!AsyncNoReject(bus_->GetDBusTaskRunner(),
-                     base::BindOnce(
-                         [](Service* service, scoped_refptr<dbus::Bus> bus) {
-                           if (!bus->RequestOwnershipAndBlock(
-                                   kVmConciergeServiceName,
-                                   dbus::Bus::REQUIRE_PRIMARY)) {
-                             LOG(ERROR) << "Failed to take ownership of "
-                                        << kVmConciergeServiceName;
-                             return false;
-                           }
+  if (!PostTaskAndWaitForResult(
+          bus_->GetDBusTaskRunner(),
+          base::BindOnce(
+              [](scoped_refptr<dbus::Bus> bus) {
+                if (!bus->RequestOwnershipAndBlock(
+                        kVmConciergeServiceName, dbus::Bus::REQUIRE_PRIMARY)) {
+                  LOG(ERROR) << "Failed to take ownership of "
+                             << kVmConciergeServiceName;
+                  return false;
+                }
 
-                           return true;
-                         },
-                         base::Unretained(this), bus_))
-           .Get()
-           .val) {
+                return true;
+              },
+              bus_))) {
     return false;
   }
 
@@ -4451,17 +4447,14 @@ base::FilePath Service::GetVmImagePath(const std::string& dlc_id,
                                        std::string* failure_reason) {
   DCHECK(failure_reason);
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  std::optional<std::string> dlc_root =
-      AsyncNoReject(bus_->GetDBusTaskRunner(),
-                    base::BindOnce(
-                        [](DlcHelper* dlc_helper, const std::string& dlc_id,
-                           std::string* out_failure_reason) {
-                          return dlc_helper->GetRootPath(dlc_id,
-                                                         out_failure_reason);
-                        },
-                        dlcservice_client_.get(), dlc_id, failure_reason))
-          .Get()
-          .val;
+  std::optional<std::string> dlc_root = PostTaskAndWaitForResult(
+      bus_->GetDBusTaskRunner(),
+      base::BindOnce(
+          [](DlcHelper* dlc_helper, const std::string& dlc_id,
+             std::string* out_failure_reason) {
+            return dlc_helper->GetRootPath(dlc_id, out_failure_reason);
+          },
+          dlcservice_client_.get(), dlc_id, failure_reason));
   if (!dlc_root.has_value()) {
     // On an error, failure_reason will be set by GetRootPath().
     return {};

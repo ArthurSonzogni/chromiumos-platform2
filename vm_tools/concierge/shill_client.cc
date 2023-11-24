@@ -15,7 +15,7 @@
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "vm_tools/concierge/future.h"
+#include "vm_tools/concierge/thread_utils.h"
 
 using org::chromium::flimflam::IPConfigProxy;
 using org::chromium::flimflam::ServiceProxy;
@@ -71,16 +71,13 @@ std::optional<brillo::VariantDictionary> GetPropertiesHelper(dbus::Bus* bus,
   bus->AssertOnOriginThread();
   brillo::VariantDictionary properties;
   if (bus->HasDBusThread()) {
-    bool success =
-        AsyncNoReject(
-            bus->GetDBusTaskRunner(),
-            base::BindOnce(
-                [](Proxy* proxy, brillo::VariantDictionary* properties) {
-                  return proxy->GetProperties(properties, nullptr);
-                },
-                proxy, &properties))
-            .Get()
-            .val;
+    bool success = PostTaskAndWaitForResult(
+        bus->GetDBusTaskRunner(),
+        base::BindOnce(
+            [](Proxy* proxy, brillo::VariantDictionary* properties) {
+              return proxy->GetProperties(properties, nullptr);
+            },
+            proxy, &properties));
     if (success) {
       return properties;
     }
