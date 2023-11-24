@@ -26,7 +26,7 @@ namespace mojom = ::ash::cros_healthd::mojom;
 FloatingPointRoutineV2::FloatingPointRoutineV2(
     Context* context, const mojom::FloatingPointRoutineArgumentPtr& arg)
     : context_(context) {
-  exec_duration_ = arg->exec_duration.value_or(kDefaultCpuStressRuntime);
+  exec_duration_ = arg->exec_duration.value_or(kDefaultCpuRoutineRuntime);
 
   if (exec_duration_.InSeconds() < 1) {
     LOG(ERROR)

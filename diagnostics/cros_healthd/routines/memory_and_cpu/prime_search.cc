@@ -34,7 +34,7 @@ PrimeSearchRoutine::PrimeSearchRoutine(
 
   // TODO(chungsheng): Consider just make routine raise unsupported error.
 
-  exec_duration_ = arg->exec_duration.value_or(kDefaultCpuStressRuntime);
+  exec_duration_ = arg->exec_duration.value_or(kDefaultCpuRoutineRuntime);
   // Routine run time must be larger than 0.
   if (exec_duration_.InSeconds() < 1) {
     LOG(ERROR)

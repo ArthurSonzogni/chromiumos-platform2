@@ -36,8 +36,8 @@ constexpr int kCpuMemoryRoutineReservedSizeKiB = 500 * 1024;  // 500 MiB.
 // choose an arbitrary value that is large enough to not crash the app.
 const int kStressAppTestRoutineMinimumRequiredKiB = 128 * 1024;  // 128 MiB.
 
-// Default runtime for routines which stress the CPU.
-const base::TimeDelta kDefaultCpuStressRuntime = base::Minutes(1);
+// Default runtime for routines which tests the CPU.
+const base::TimeDelta kDefaultCpuRoutineRuntime = base::Minutes(1);
 
 // Status messages the memory routine can report.
 inline constexpr char kMemoryRoutineSucceededMessage[] =

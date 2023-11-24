@@ -26,12 +26,12 @@ namespace mojom = ::ash::cros_healthd::mojom;
 CpuCacheRoutine::CpuCacheRoutine(Context* context,
                                  const mojom::CpuCacheRoutineArgumentPtr& arg)
     : context_(context) {
-  exec_duration_ = arg->exec_duration.value_or(kDefaultCpuStressRuntime);
+  exec_duration_ = arg->exec_duration.value_or(kDefaultCpuRoutineRuntime);
 
   if (exec_duration_.InSeconds() < 1) {
     LOG(ERROR) << "Routine run time must be larger than 0. Running default "
                   "exec duration instead.";
-    exec_duration_ = kDefaultCpuStressRuntime;
+    exec_duration_ = kDefaultCpuRoutineRuntime;
   }
   CHECK(context_);
 }
