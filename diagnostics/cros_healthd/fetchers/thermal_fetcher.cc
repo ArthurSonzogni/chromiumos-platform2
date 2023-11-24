@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/fetchers/thermal_fetcher.h"
 
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -41,10 +42,10 @@ std::optional<mojom::ThermalSensorInfoPtr> ParseThermalSensorInfo(
 }
 
 std::vector<mojom::ThermalSensorInfoPtr> GetSysfsThermalSensors(
-    Context* context) {
+    const base::FilePath& root_dir) {
   std::vector<mojom::ThermalSensorInfoPtr> sysfs_sensors;
   base::FileEnumerator thermal_enumerator(
-      context->root_dir().AppendASCII(kRelativeThermalDir),
+      root_dir.AppendASCII(kRelativeThermalDir),
       /*recursive=*/false, base::FileEnumerator::DIRECTORIES,
       kThermalZonePattern);
   for (auto thermal_path = thermal_enumerator.Next(); !thermal_path.empty();
@@ -75,7 +76,7 @@ void HandleGetEcThermalSensors(
 
 void FetchThermalInfo(Context* context, FetchThermalInfoCallback callback) {
   std::vector<mojom::ThermalSensorInfoPtr> result =
-      GetSysfsThermalSensors(context);
+      GetSysfsThermalSensors(GetRootDir());
   context->executor()->GetEcThermalSensors(base::BindOnce(
       &HandleGetEcThermalSensors, std::move(result), std::move(callback)));
 }

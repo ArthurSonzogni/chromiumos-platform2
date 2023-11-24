@@ -5,14 +5,12 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_THERMAL_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_THERMAL_FETCHER_H_
 
-#include <string>
-
 #include <base/functional/callback_forward.h>
 
-#include "diagnostics/cros_healthd/system/context.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace diagnostics {
+class Context;
 
 // Fetches thermal info and pass the result to the callback. Returns either a
 // structure with the thermal information or the error that occurred fetching

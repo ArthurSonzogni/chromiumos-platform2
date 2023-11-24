@@ -62,7 +62,6 @@ class BusFetcherTest : public BaseFileTest {
   BusFetcherTest& operator=(const BusFetcherTest&) = delete;
 
   void SetUp() override {
-    SetTestRoot(mock_context_.root_dir());
     MockUdevDevice("", "");
     MockFwupdProxy({});
   }

@@ -17,7 +17,9 @@
 
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
@@ -145,7 +147,7 @@ mojom::AudioHardwareResultPtr FetchAudioHardwareInfoInner(
   auto hardware_info = mojom::AudioHardwareInfo::New();
   mojom::ProbeErrorPtr error;
   std::tie(hardware_info->audio_cards, error) =
-      FetchAudioCards(context->root_dir(), std::move(bus_device_map));
+      FetchAudioCards(GetRootDir(), std::move(bus_device_map));
   if (!error.is_null()) {
     LOG(ERROR) << error->msg;
     return mojom::AudioHardwareResult::NewError(std::move(error));

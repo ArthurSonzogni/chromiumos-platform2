@@ -911,7 +911,7 @@ void State::Fetch(Context* context, FetchCpuInfoCallback callback) {
   CallbackBarrier barrier{base::BindOnce(
       &State::HandleCallbackComplete, std::move(state), std::move(callback))};
 
-  const auto root_dir = GetRootDir();
+  const auto& root_dir = GetRootDir();
   if (!state_ptr->FetchNumTotalThreads(root_dir) ||
       !state_ptr->FetchArchitecture() ||
       !state_ptr->FetchKeylockerInfo(root_dir) ||

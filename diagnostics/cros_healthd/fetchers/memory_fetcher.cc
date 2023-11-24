@@ -299,7 +299,7 @@ void FetchMemoryEncryptionInfo(Context* context,
 }  // namespace
 
 void FetchMemoryInfo(Context* context, FetchMemoryInfoCallback callback) {
-  auto root_dir = GetRootDir();
+  const auto& root_dir = GetRootDir();
   auto info = mojom::MemoryInfo::New();
 
   auto meminfo_result = ParseProcMemInfo(root_dir);

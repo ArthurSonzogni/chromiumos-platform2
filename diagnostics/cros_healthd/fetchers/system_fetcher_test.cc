@@ -55,8 +55,6 @@ class SystemUtilsTest : public BaseFileTest {
   SystemUtilsTest() = default;
 
   void SetUp() override {
-    SetTestRoot(mock_context_.root_dir());
-
     expected_system_info_ = mojom::SystemInfo::New();
     auto& vpd_info = expected_system_info_->vpd_info;
     vpd_info = mojom::VpdInfo::New();

@@ -12,6 +12,7 @@
 #include <base/types/expected.h>
 #include <brillo/udev/udev.h>
 
+#include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/fetchers/storage/device_lister.h"
 #include "diagnostics/cros_healthd/fetchers/storage/device_manager.h"
 
@@ -43,7 +44,7 @@ DiskFetcher::FetchNonRemovableBlockDevicesInfo() {
     }
   }
 
-  if (auto devices_result = manager_->FetchDevicesInfo(context_->root_dir());
+  if (auto devices_result = manager_->FetchDevicesInfo(GetRootDir());
       devices_result.has_value()) {
     return mojom::NonRemovableBlockDeviceResult::NewBlockDeviceInfo(
         std::move(devices_result.value()));

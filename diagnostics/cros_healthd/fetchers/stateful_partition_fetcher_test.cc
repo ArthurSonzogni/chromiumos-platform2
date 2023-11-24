@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/fetchers/stateful_partition_fetcher.h"
+
 #include <string>
 #include <utility>
 
@@ -16,7 +18,6 @@
 #include <spaced/dbus-proxy-mocks.h>
 
 #include "diagnostics/base/file_test_utils.h"
-#include "diagnostics/cros_healthd/fetchers/stateful_partition_fetcher.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
@@ -31,7 +32,7 @@ const char kFakeMountSource[] = "/dev/mmcblk0p1";
 const char kFakeFilesystem[] = "ext4";
 const char kFakeMtabOpt[] = "rw 0 0";
 
-class StatefulePartitionFetcherTest : public ::testing::Test {
+class StatefulePartitionFetcherTest : public BaseFileTest {
  public:
   StatefulePartitionFetcherTest(const StatefulePartitionFetcherTest&) = delete;
   StatefulePartitionFetcherTest& operator=(
@@ -42,13 +43,11 @@ class StatefulePartitionFetcherTest : public ::testing::Test {
 
   void SetUp() override {
     // Populate fake mtab contents.
-    const auto stateful_partition_dir =
-        root_dir().Append(kStatefulPartitionPath);
-    const auto mtab_path = root_dir().Append(kMtabPath);
-    const auto fake_content = std::string(kFakeMountSource) + " " +
-                              stateful_partition_dir.value() + " " +
-                              kFakeFilesystem + " " + kFakeMtabOpt;
-    ASSERT_TRUE(WriteFileAndCreateParentDirs(mtab_path, fake_content));
+    const auto fake_content =
+        std::string(kFakeMountSource) + " " +
+        GetRootDir().Append(kStatefulPartitionPath).value() + " " +
+        kFakeFilesystem + " " + kFakeMtabOpt;
+    SetFile(kMtabPath, fake_content);
   }
 
   mojom::StatefulPartitionResultPtr FetchStatefulPartitionInfoSync() {
@@ -90,8 +89,6 @@ class StatefulePartitionFetcherTest : public ::testing::Test {
               }));
     }
   }
-
-  const base::FilePath& root_dir() { return mock_context_.root_dir(); }
 
   org::chromium::SpacedProxyMock* mock_spaced_proxy() {
     return mock_context_.mock_spaced_proxy();
@@ -147,7 +144,7 @@ TEST_F(StatefulePartitionFetcherTest, SpacedError) {
 TEST_F(StatefulePartitionFetcherTest, NoMtabFileError) {
   SetAvailableSpaceResponse(15658385408);
   SetTotalSpaceResponse(20222021632);
-  ASSERT_TRUE(brillo::DeleteFile(root_dir().Append(kMtabPath)));
+  UnsetPath(kMtabPath);
 
   const auto result = FetchStatefulPartitionInfoSync();
   ASSERT_TRUE(result->is_error());

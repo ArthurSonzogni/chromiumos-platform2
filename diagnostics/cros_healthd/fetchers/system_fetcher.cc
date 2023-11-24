@@ -21,6 +21,7 @@
 
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher_constants.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/system_config_interface.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -41,18 +42,19 @@ class State {
   static void Fetch(Context* context, FetchSystemInfoCallback callback);
 
  private:
-  bool FetchCachedVpdInfo();
+  bool FetchCachedVpdInfo(const base::FilePath& root_dir);
 
-  bool FetchDmiInfo();
+  bool FetchDmiInfo(const base::FilePath& root_dir);
 
   template <typename StringType>
   bool GetLsbReleaseValue(const std::string& field, StringType& out_str);
 
   bool FetchOsVersion(mojom::OsVersionPtr& os_version);
 
-  void FetchBootMode(mojom::BootMode& boot_mode);
+  void FetchBootMode(const base::FilePath& root_dir,
+                     mojom::BootMode& boot_mode);
 
-  bool FetchOsInfo();
+  bool FetchOsInfo(const base::FilePath& root_dir);
 
   void HandleSecureBootResponse(const std::optional<std::string>& content);
 
@@ -83,8 +85,8 @@ State::~State() = default;
 // result, a missing DMI file does not indicate a ProbeError. A ProbeError is
 // reported when the "chassis_type" field cannot be successfully parsed into an
 // unsigned integer.
-bool State::FetchDmiInfo() {
-  const auto& dmi_path = context_->root_dir().Append(kRelativePathDmiInfo);
+bool State::FetchDmiInfo(const base::FilePath& root_dir) {
+  const auto& dmi_path = root_dir.Append(kRelativePathDmiInfo);
   // If dmi path doesn't exist, the device doesn't support dmi at
   // all. It is considered as successful.
   if (!base::DirectoryExists(dmi_path)) {
@@ -124,10 +126,10 @@ bool State::FetchDmiInfo() {
   return true;
 }
 
-bool State::FetchCachedVpdInfo() {
+bool State::FetchCachedVpdInfo(const base::FilePath& root_dir) {
   auto vpd_info = mojom::VpdInfo::New();
 
-  const auto ro_path = context_->root_dir().Append(kRelativePathVpdRo);
+  const auto ro_path = root_dir.Append(kRelativePathVpdRo);
   ReadAndTrimString(ro_path, kFileNameMfgDate, &vpd_info->mfg_date);
   ReadAndTrimString(ro_path, kFileNameModelName, &vpd_info->model_name);
   ReadAndTrimString(ro_path, kFileNameRegion, &vpd_info->region);
@@ -141,7 +143,7 @@ bool State::FetchCachedVpdInfo() {
     return false;
   }
 
-  const auto rw_path = context_->root_dir().Append(kRelativePathVpdRw);
+  const auto rw_path = root_dir.Append(kRelativePathVpdRw);
   ReadAndTrimString(rw_path, kFileNameActivateDate, &vpd_info->activate_date);
 
   if (!base::DirectoryExists(ro_path) && !base::DirectoryExists(rw_path)) {
@@ -194,12 +196,13 @@ bool State::FetchOsVersion(mojom::OsVersionPtr& os_version) {
   return true;
 }
 
-void State::FetchBootMode(mojom::BootMode& boot_mode) {
+void State::FetchBootMode(const base::FilePath& root_dir,
+                          mojom::BootMode& boot_mode) {
   // Default to unknown if there's no match.
   boot_mode = mojom::BootMode::kUnknown;
 
   std::string cmdline;
-  const auto path = context_->root_dir().Append(kFilePathProcCmdline);
+  const auto path = root_dir.Append(kFilePathProcCmdline);
   if (!ReadAndTrimString(path, &cmdline))
     return;
 
@@ -221,7 +224,7 @@ void State::FetchBootMode(mojom::BootMode& boot_mode) {
   }
 }
 
-bool State::FetchOsInfo() {
+bool State::FetchOsInfo(const base::FilePath& root_dir) {
   auto os_info = mojom::OsInfo::New();
   if (!FetchOsVersion(os_info->os_version))
     return false;
@@ -232,7 +235,7 @@ bool State::FetchOsInfo() {
   // may be further modified. See `State::Fetch()`.
   os_info->oem_name = context_->system_config()->GetOemName();
   os_info->efi_platform_size = mojom::OsInfo::EfiPlatformSize::kUnknown;
-  FetchBootMode(os_info->boot_mode);
+  FetchBootMode(root_dir, os_info->boot_mode);
 
   info_->os_info = std::move(os_info);
   return true;
@@ -316,8 +319,9 @@ void State::Fetch(Context* context, FetchSystemInfoCallback callback) {
   CallbackBarrier barrier{base::BindOnce(&State::HandleResult, std::move(state),
                                          std::move(callback))};
 
-  if (!state_ptr->FetchCachedVpdInfo() || !state_ptr->FetchDmiInfo() ||
-      !state_ptr->FetchOsInfo())
+  const auto& root_dir = GetRootDir();
+  if (!state_ptr->FetchCachedVpdInfo(root_dir) ||
+      !state_ptr->FetchDmiInfo(root_dir) || !state_ptr->FetchOsInfo(root_dir))
     return;
 
   // `base::Unretained` is safe because `state` is hold by CallbackBarrier.

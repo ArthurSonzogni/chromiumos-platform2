@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -46,7 +47,7 @@ MATCHER_P(MatchesThermalSensorInfo, ptr, "") {
          arg->source == ptr.get()->source;
 }
 
-class ThermalFetcherTest : public ::testing::Test {
+class ThermalFetcherTest : public BaseFileTest {
  public:
   ThermalFetcherTest(const ThermalFetcherTest&) = delete;
   ThermalFetcherTest& operator=(const ThermalFetcherTest&) = delete;
@@ -56,28 +57,16 @@ class ThermalFetcherTest : public ::testing::Test {
 
   void SetUp() override {
     // Set up first thermal zone.
-    ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        root_dir()
-            .AppendASCII(kFirstThermalZoneDirectory)
-            .AppendASCII(kThermalZoneTypeFileName),
-        kFirstThermalZoneType));
-    ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        root_dir()
-            .AppendASCII(kFirstThermalZoneDirectory)
-            .AppendASCII(kThermalZoneTempFileName),
-        kFirstThermalZoneTemp));
+    SetFile({kFirstThermalZoneDirectory, kThermalZoneTypeFileName},
+            kFirstThermalZoneType);
+    SetFile({kFirstThermalZoneDirectory, kThermalZoneTempFileName},
+            kFirstThermalZoneTemp);
 
     // Set up second thermal zone.
-    ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        root_dir()
-            .AppendASCII(kSecondThermalZoneDirectory)
-            .AppendASCII(kThermalZoneTypeFileName),
-        kSecondThermalZoneType));
-    ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        root_dir()
-            .AppendASCII(kSecondThermalZoneDirectory)
-            .AppendASCII(kThermalZoneTempFileName),
-        kSecondThermalZoneTemp));
+    SetFile({kSecondThermalZoneDirectory, kThermalZoneTypeFileName},
+            kSecondThermalZoneType);
+    SetFile({kSecondThermalZoneDirectory, kThermalZoneTempFileName},
+            kSecondThermalZoneTemp);
   }
 
   void SetUpEcExecutorCall() {
@@ -98,7 +87,6 @@ class ThermalFetcherTest : public ::testing::Test {
     return temperature_millicelsius / 1000;
   }
 
-  const base::FilePath& root_dir() { return mock_context_.root_dir(); }
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
   mojom::ThermalResultPtr FetchThermalInfoSync() {
@@ -142,10 +130,8 @@ TEST_F(ThermalFetcherTest, TestFetchSuccess) {
 TEST_F(ThermalFetcherTest, TestNoSysfsFetchSuccess) {
   SetUpEcExecutorCall();
 
-  ASSERT_TRUE(brillo::DeletePathRecursively(
-      root_dir().AppendASCII(kFirstThermalZoneDirectory)));
-  ASSERT_TRUE(brillo::DeletePathRecursively(
-      root_dir().AppendASCII(kSecondThermalZoneDirectory)));
+  UnsetPath(kFirstThermalZoneDirectory);
+  UnsetPath(kSecondThermalZoneDirectory);
 
   auto result = FetchThermalInfoSync();
   ASSERT_TRUE(result->is_thermal_info());
@@ -165,11 +151,8 @@ TEST_F(ThermalFetcherTest, TestNoSysfsFetchSuccess) {
 TEST_F(ThermalFetcherTest, TestInvalidSysfsFetchSuccess) {
   SetUpEcExecutorCall();
 
-  ASSERT_TRUE(
-      WriteFileAndCreateParentDirs(root_dir()
-                                       .AppendASCII(kFirstThermalZoneDirectory)
-                                       .AppendASCII(kThermalZoneTempFileName),
-                                   "invalid_temperature"));
+  SetFile({kFirstThermalZoneDirectory, kThermalZoneTempFileName},
+          "invalid_temperature");
 
   auto result = FetchThermalInfoSync();
   ASSERT_TRUE(result->is_thermal_info());

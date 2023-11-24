@@ -16,9 +16,12 @@
 // NOLINTNEXTLINE(build/include_alpha) dbus-proxies.h needs spaced.pb.h
 #include <spaced/dbus-proxies.h>
 
+#include "diagnostics/base/file_utils.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
@@ -120,14 +123,13 @@ void State::GetMtabInfo(FetchStatefulPartitionInfoCallback callback,
 
 void FetchStatefulPartitionInfo(Context* context,
                                 FetchStatefulPartitionInfoCallback callback) {
+  const auto& root_dir = GetRootDir();
   auto state = std::make_unique<State>();
   State* state_ptr = state.get();
   CallbackBarrier barrier{base::BindOnce(&State::GetMtabInfo, std::move(state),
-                                         std::move(callback),
-                                         context->root_dir())};
+                                         std::move(callback), root_dir)};
 
-  const auto stateful_partition_path =
-      context->root_dir().Append(kStatefulPartitionPath);
+  const auto stateful_partition_path = root_dir.Append(kStatefulPartitionPath);
 
   auto [free_space_success_cb, free_space_error_cb] =
       SplitDbusCallback(barrier.Depend(base::BindOnce(

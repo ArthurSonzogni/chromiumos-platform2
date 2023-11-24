@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/fetchers/network_interface_fetcher.h"
+
 #include <cstdint>
 #include <cstdlib>
 #include <optional>
@@ -18,7 +20,6 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/executor/executor.h"
-#include "diagnostics/cros_healthd/fetchers/network_interface_fetcher.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -87,8 +88,6 @@ class NetworkInterfaceFetcherTest : public ::testing::Test {
     MockIw(IwCommand::kScanDump, kExpectedInterfaceName, EXIT_SUCCESS,
            kFakeGetScanDumpOutput);
   }
-
-  const base::FilePath& root_dir() { return mock_context_.root_dir(); }
 
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 

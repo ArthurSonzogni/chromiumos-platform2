@@ -7,11 +7,12 @@
 
 #include <base/containers/flat_map.h>
 #include <base/files/file_path.h>
+#include <base/functional/callback_forward.h>
 
-#include "diagnostics/cros_healthd/system/context.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace diagnostics {
+class Context;
 
 // Returns a structure with a list of data fields for each of the bus device
 // or the error that occurred fetching the information.'

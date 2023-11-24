@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/fetchers/audio_hardware_fetcher.h"
+
 #include <utility>
 #include <vector>
 
@@ -11,7 +13,6 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_test_utils.h"
-#include "diagnostics/cros_healthd/fetchers/audio_hardware_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher_constants.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 
@@ -30,7 +31,6 @@ constexpr char kFakePciDeviceDirName[] = "0000:12:34.5";
 class AudioHardwareFetcherTest : public BaseFileTest {
  protected:
   void SetUp() override {
-    SetTestRoot(mock_context_.root_dir());
     ON_CALL(*mock_context_.mock_fwupd_proxy(), GetDevicesAsync)
         .WillByDefault(WithArg<0>(
             [](base::OnceCallback<void(

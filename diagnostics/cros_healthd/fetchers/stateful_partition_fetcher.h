@@ -5,10 +5,12 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_STATEFUL_PARTITION_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_STATEFUL_PARTITION_FETCHER_H_
 
-#include "diagnostics/cros_healthd/system/context.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include <base/functional/callback_forward.h>
+
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace diagnostics {
+class Context;
 
 constexpr auto kStatefulPartitionPath = "mnt/stateful_partition";
 constexpr auto kMtabPath = "etc/mtab";

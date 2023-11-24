@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
+
 #include <algorithm>
 #include <memory>
 #include <optional>
@@ -21,13 +23,15 @@
 #include <fwupd/dbus-proxies.h>
 
 #include "diagnostics/base/file_utils.h"
-#include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
+
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher_constants.h"
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/pci_util.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
 #include "diagnostics/cros_healthd/utils/fwupd_utils.h"
 #include "diagnostics/cros_healthd/utils/usb_utils.h"
 #include "diagnostics/cros_healthd/utils/usb_utils_constants.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
@@ -371,7 +375,7 @@ void FetchBusDevicesWithFwupdInfo(
     Context* context,
     FetchSysfsPathsBusDeviceMapCallback callback,
     const fwupd_utils::DeviceList& fwupd_devices) {
-  const auto& root = context->root_dir();
+  const auto& root = GetRootDir();
   std::vector<std::pair<base::FilePath, mojom::BusDevicePtr>> res;
 
   auto pci_util = context->CreatePciUtil();
