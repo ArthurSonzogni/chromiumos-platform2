@@ -9,7 +9,6 @@
 #include "sommelier-transform.h"    // NOLINT(build/include_directory)
 #include "sommelier-window.h"       // NOLINT(build/include_directory)
 #include "sommelier-xshape.h"       // NOLINT(build/include_directory)
-
 #ifdef GAMEPAD_SUPPORT
 #include "libevdev/libevdev-shim.h"
 #endif
@@ -3927,6 +3926,8 @@ int real_main(int argc, char** argv) {
       ctx.use_virtgpu_channel = true;
     } else if (strstr(arg, "--noop-driver") == arg) {
       noop_driver = true;
+    } else if (strstr(arg, "--stable-scaling") == arg) {
+      ctx.stable_scaling = true;
 #ifdef PERFETTO_TRACING
     } else if (strstr(arg, "--trace-filename") == arg) {
       ctx.trace_filename = sl_arg_value(arg);

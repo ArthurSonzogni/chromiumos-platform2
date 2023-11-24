@@ -220,6 +220,7 @@ struct sl_context {
   bool enable_x11_move_windows;  // TODO(b/247452928): Clean this up.
   bool enable_xshape;            // TODO(b/281929016): Clean this up.
   bool enable_linux_dmabuf;      // TODO(b/234899270): enable by default
+  bool stable_scaling;           // TODO(b/275623126): Clean this up.
 
   // Never freed after allocation due the fact sommelier doesn't have a
   // shutdown function yet.
