@@ -300,6 +300,20 @@ int FloatingPointV2Main(int argc, char** argv) {
   COMMON_V2_ROUTINE_MAIN(FloatingPoint);
 }
 
+int UrandomV2Main(int argc, char** argv) {
+  DEFINE_uint32(length_seconds, 60,
+                "Number of seconds to run the routine for.");
+  COMMON_V2_ROUTINE_FLAGS("Urandom V2 routine")
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  auto argument = mojom::UrandomRoutineArgument::New();
+  if (command_line->HasSwitch("length_seconds")) {
+    argument->exec_duration = base::Seconds(FLAGS_length_seconds);
+  }
+
+  COMMON_V2_ROUTINE_MAIN(Urandom);
+}
+
 int BluetoothPowerV2Main(int argc, char** argv) {
   COMMON_V2_ROUTINE_FLAGS("Bluetooth power routine");
 
@@ -847,6 +861,7 @@ const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     {"bluetooth_scanning_v2", BluetoothScanningV2Main},
     {"bluetooth_pairing_v2", BluetoothPairingV2Main},
     {"camera_availability", CameraAvailabilityMain},
+    {"urandom_v2", UrandomV2Main},
     // V1 routines.
     {"battery_capacity", BatteryCapacityMain},
     {"battery_health", BatteryHealthMain},
