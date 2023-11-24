@@ -182,6 +182,9 @@ void HttpRequest::ErrorCallback(brillo::http::RequestID request_id,
     case CURLE_COULDNT_CONNECT:
       SendError(Error::kConnectionFailure);
       break;
+    case CURLE_PEER_FAILED_VERIFICATION:
+      SendError(Error::kTLSFailure);
+      break;
     case CURLE_WRITE_ERROR:
     case CURLE_READ_ERROR:
       SendError(Error::kIOError);
@@ -257,6 +260,8 @@ std::ostream& operator<<(std::ostream& stream, HttpRequest::Error error) {
       return stream << "DNS timeout";
     case HttpRequest::Error::kConnectionFailure:
       return stream << "Connection failure";
+    case HttpRequest::Error::kTLSFailure:
+      return stream << "TLS failure";
     case HttpRequest::Error::kIOError:
       return stream << "IO error";
     case HttpRequest::Error::kHTTPTimeout:

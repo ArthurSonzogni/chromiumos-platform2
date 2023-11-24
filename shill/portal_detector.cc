@@ -397,6 +397,8 @@ PortalDetector::Phase PortalDetector::GetPortalPhaseFromRequestError(
       return Phase::kDNS;
     case HttpRequest::Error::kConnectionFailure:
       return Phase::kConnection;
+    case HttpRequest::Error::kTLSFailure:
+      return Phase::kConnection;
     case HttpRequest::Error::kIOError:
       return Phase::kHTTP;
     case HttpRequest::Error::kHTTPTimeout:
@@ -415,6 +417,8 @@ PortalDetector::Status PortalDetector::GetPortalStatusFromRequestError(
     case HttpRequest::Error::kDNSTimeout:
       return Status::kTimeout;
     case HttpRequest::Error::kConnectionFailure:
+      return Status::kFailure;
+    case HttpRequest::Error::kTLSFailure:
       return Status::kFailure;
     case HttpRequest::Error::kIOError:
       return Status::kFailure;

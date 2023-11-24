@@ -45,6 +45,8 @@ class HttpRequest {
     kDNSTimeout,
     // The HTTP connection failed.
     kConnectionFailure,
+    // The TLS connection failed.
+    kTLSFailure,
     // The HTTP network IO failed.
     kIOError,
     // The HTTP request timed out.
