@@ -89,6 +89,8 @@
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11/real_pkcs11_token_factory.h"
+#include "cryptohome/recoverable_key_store/backend_cert_provider.h"
+#include "cryptohome/recoverable_key_store/backend_cert_provider_impl.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/real_user_session_factory.h"
@@ -793,11 +795,18 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
             return uda->biometrics_service_;
           },
           base::Unretained(this)));
+  AsyncInitPtr<RecoverableKeyStoreBackendCertProvider>
+      async_key_store_cert_provider(base::BindRepeating(
+          [](UserDataAuth* uda) {
+            uda->AssertOnMountThread();
+            return uda->key_store_cert_provider_;
+          },
+          base::Unretained(this)));
   if (!auth_block_utility_) {
     default_auth_block_utility_ = std::make_unique<AuthBlockUtilityImpl>(
         keyset_management_, crypto_, platform_, &async_init_features_,
         async_cc_helper, key_challenge_service_factory_,
-        async_biometrics_service);
+        async_biometrics_service, async_key_store_cert_provider);
     auth_block_utility_ = default_auth_block_utility_.get();
   }
 
@@ -978,6 +987,12 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
                                        base::Unretained(this)));
 
   PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &UserDataAuth::CreateRecoverableKeyStoreBackendCertProvider,
+          base::Unretained(this)));
+
+  PostTaskToMountThread(
       FROM_HERE, base::BindOnce(&UserDataAuth::InitForChallengeResponseAuth,
                                 base::Unretained(this)));
 
@@ -1137,6 +1152,17 @@ void UserDataAuth::OnFingerprintAuthProgress(
   progress.set_purpose(user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
   *progress.mutable_auth_progress() = auth_progress;
   prepare_auth_factor_progress_callback_.Run(progress);
+}
+
+void UserDataAuth::CreateRecoverableKeyStoreBackendCertProvider() {
+  AssertOnMountThread();
+  if (!key_store_cert_provider_) {
+    if (!default_key_store_cert_provider_) {
+      default_key_store_cert_provider_ =
+          std::make_unique<RecoverableKeyStoreBackendCertProviderImpl>();
+    }
+    key_store_cert_provider_ = default_key_store_cert_provider_.get();
+  }
 }
 
 bool UserDataAuth::PostTaskToOriginThread(const base::Location& from_here,

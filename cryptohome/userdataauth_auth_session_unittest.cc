@@ -47,6 +47,7 @@
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
+#include "cryptohome/recoverable_key_store/backend_cert_provider.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/storage/mock_mount.h"
@@ -138,7 +139,8 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
     auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
         &keyset_management_, &crypto_, &platform_, &features_.async,
         AsyncInitPtr<ChallengeCredentialsHelper>(nullptr), nullptr,
-        AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
+        AsyncInitPtr<BiometricsAuthBlockService>(nullptr),
+        AsyncInitPtr<RecoverableKeyStoreBackendCertProvider>(nullptr));
 
     userdataauth_.set_platform(&platform_);
     userdataauth_.set_homedirs(&homedirs_);

@@ -68,14 +68,17 @@ AuthBlockUtilityImpl::AuthBlockUtilityImpl(
     AsyncInitFeatures* features,
     AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
     KeyChallengeServiceFactory* key_challenge_service_factory,
-    AsyncInitPtr<BiometricsAuthBlockService> bio_service)
+    AsyncInitPtr<BiometricsAuthBlockService> bio_service,
+    AsyncInitPtr<RecoverableKeyStoreBackendCertProvider>
+        key_store_cert_provider)
     : keyset_management_(keyset_management),
       crypto_(crypto),
       platform_(platform),
       features_(features),
       challenge_credentials_helper_(challenge_credentials_helper),
       key_challenge_service_factory_(key_challenge_service_factory),
-      bio_service_(bio_service) {
+      bio_service_(bio_service),
+      key_store_cert_provider_(key_store_cert_provider) {
   CHECK(keyset_management_);
   CHECK(crypto_);
   CHECK(platform_);
@@ -218,7 +221,8 @@ CryptoStatus AuthBlockUtilityImpl::IsAuthBlockSupported(
     AuthBlockType auth_block_type) const {
   GenericAuthBlockFunctions generic(
       platform_, features_, challenge_credentials_helper_,
-      key_challenge_service_factory_, bio_service_, crypto_);
+      key_challenge_service_factory_, bio_service_, key_store_cert_provider_,
+      crypto_);
   return generic.IsSupported(auth_block_type);
 }
 
@@ -233,7 +237,8 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(AuthBlockType auth_block_type,
   }
   GenericAuthBlockFunctions generic(
       platform_, features_, challenge_credentials_helper_,
-      key_challenge_service_factory_, bio_service_, crypto_);
+      key_challenge_service_factory_, bio_service_, key_store_cert_provider_,
+      crypto_);
   auto auth_block = generic.GetAuthBlockWithType(auth_block_type, auth_input);
   if (!auth_block) {
     return MakeStatus<CryptohomeCryptoError>(
@@ -250,7 +255,8 @@ std::optional<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeFromState(
     const AuthBlockState& auth_block_state) const {
   GenericAuthBlockFunctions generic(
       platform_, features_, challenge_credentials_helper_,
-      key_challenge_service_factory_, bio_service_, crypto_);
+      key_challenge_service_factory_, bio_service_, key_store_cert_provider_,
+      crypto_);
   return generic.GetAuthBlockTypeFromState(auth_block_state);
 }
 

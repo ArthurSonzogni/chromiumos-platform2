@@ -38,6 +38,8 @@
 #include "cryptohome/error/locations.h"
 #include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
+#include "cryptohome/recoverable_key_store/backend_cert_provider.h"
+#include "cryptohome/util/async_init.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset.pb.h"
 
@@ -141,17 +143,26 @@ CryptoStatus PinWeaverAuthBlock::IsSupported(Crypto& crypto) {
 
 std::unique_ptr<AuthBlock> PinWeaverAuthBlock::New(
     AsyncInitFeatures& features,
+    AsyncInitPtr<RecoverableKeyStoreBackendCertProvider>
+        key_store_cert_provider,
     const hwsec::PinWeaverManagerFrontend& hwsec_pw_manager) {
-  return std::make_unique<PinWeaverAuthBlock>(features, &hwsec_pw_manager);
+  if (!key_store_cert_provider) {
+    return nullptr;
+  }
+  return std::make_unique<PinWeaverAuthBlock>(
+      features, key_store_cert_provider.get(), &hwsec_pw_manager);
 }
 
 PinWeaverAuthBlock::PinWeaverAuthBlock(
     AsyncInitFeatures& features,
+    RecoverableKeyStoreBackendCertProvider* key_store_cert_provider,
     const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager)
     : AuthBlock(kLowEntropyCredential),
       features_(&features),
+      key_store_cert_provider_(key_store_cert_provider),
       hwsec_pw_manager_(hwsec_pw_manager) {
   CHECK(features_);
+  CHECK(key_store_cert_provider_);
   CHECK(hwsec_pw_manager_);
 }
 

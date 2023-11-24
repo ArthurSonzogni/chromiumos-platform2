@@ -16,6 +16,8 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
+#include "cryptohome/recoverable_key_store/backend_cert_provider.h"
+#include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
 
@@ -38,10 +40,14 @@ class PinWeaverAuthBlock : public AuthBlock {
   static CryptoStatus IsSupported(Crypto& crypto);
   static std::unique_ptr<AuthBlock> New(
       AsyncInitFeatures& features,
+      AsyncInitPtr<RecoverableKeyStoreBackendCertProvider>
+          key_store_cert_provider,
       const hwsec::PinWeaverManagerFrontend& hwsec_pw_manager);
 
-  PinWeaverAuthBlock(AsyncInitFeatures& features,
-                     const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager);
+  PinWeaverAuthBlock(
+      AsyncInitFeatures& features,
+      RecoverableKeyStoreBackendCertProvider* key_store_cert_provider,
+      const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager);
 
   PinWeaverAuthBlock(const PinWeaverAuthBlock&) = delete;
   PinWeaverAuthBlock& operator=(const PinWeaverAuthBlock&) = delete;
@@ -63,6 +69,7 @@ class PinWeaverAuthBlock : public AuthBlock {
  private:
   // Feature lookup interface.
   AsyncInitFeatures* features_;
+  RecoverableKeyStoreBackendCertProvider* key_store_cert_provider_;
   const hwsec::PinWeaverManagerFrontend* const hwsec_pw_manager_;
 };
 

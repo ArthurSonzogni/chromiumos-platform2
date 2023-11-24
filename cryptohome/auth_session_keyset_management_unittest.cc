@@ -56,6 +56,8 @@
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_vault_keyset_factory.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
+#include "cryptohome/recoverable_key_store/backend_cert_provider.h"
+#include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
 #include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/user_secret_stash/decrypted.h"
 #include "cryptohome/user_secret_stash/storage.h"
@@ -576,6 +578,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   NiceMock<MockKeyChallengeServiceFactory> key_challenge_service_factory_;
   std::unique_ptr<FingerprintAuthBlockService> fp_service_{
       FingerprintAuthBlockService::MakeNullService()};
+  NiceMock<MockRecoverableKeyStoreBackendCertProvider> cert_provider_;
   AuthBlockUtilityImpl auth_block_utility_{
       &keyset_management_,
       &crypto_,
@@ -583,7 +586,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
       &features_.async,
       AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
       &key_challenge_service_factory_,
-      AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+      AsyncInitPtr<BiometricsAuthBlockService>(nullptr),
+      AsyncInitPtr<RecoverableKeyStoreBackendCertProvider>(&cert_provider_)};
   NiceMock<MockAuthBlockUtility> mock_auth_block_utility_;
   AuthFactorDriverManager auth_factor_driver_manager_{
       &platform_,

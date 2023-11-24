@@ -66,6 +66,8 @@
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_vault_keyset.h"
+#include "cryptohome/recoverable_key_store/backend_cert_provider.h"
+#include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
 #include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -141,7 +143,8 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
             &challenge_credentials_helper_),
         &key_challenge_service_factory_,
         AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(
-            &AuthBlockUtilityImplTest::GetBioService, base::Unretained(this))));
+            &AuthBlockUtilityImplTest::GetBioService, base::Unretained(this))),
+        AsyncInitPtr<RecoverableKeyStoreBackendCertProvider>(&cert_provider_));
   }
 
  protected:
@@ -191,6 +194,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   FingerprintAuthBlockService fp_service_;
   std::unique_ptr<BiometricsAuthBlockService> bio_service_;
   NiceMock<MockBiometricsCommandProcessor>* bio_processor_;
+  NiceMock<MockRecoverableKeyStoreBackendCertProvider> cert_provider_;
 
   AuthFactorDriverManager auth_factor_driver_manager_{
       &platform_,

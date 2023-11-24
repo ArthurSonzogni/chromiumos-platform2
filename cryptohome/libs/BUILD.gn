@@ -652,6 +652,7 @@ static_library("libcryptohome") {
     "../keyset_management.cc",
     "../lockbox-cache.cc",
     "../pkcs11/real_pkcs11_token.cc",
+    "../recoverable_key_store/backend_cert_provider_impl.cc",
     "../recoverable_key_store/generate.cc",
     "../service_userdataauth.cc",
     "../storage/cryptohome_vault.cc",

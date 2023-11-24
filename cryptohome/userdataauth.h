@@ -54,6 +54,7 @@
 #include "cryptohome/pkcs11/pkcs11_token_factory.h"
 #include "cryptohome/pkcs11_init.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/recoverable_key_store/backend_cert_provider.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_factory.h"
@@ -592,6 +593,12 @@ class UserDataAuth {
     biometrics_service_ = biometrics_service;
   }
 
+  // Override |key_store_cert_provider_| for testing purpose
+  void set_key_store_cert_provider(
+      RecoverableKeyStoreBackendCertProvider* key_store_cert_provider) {
+    key_store_cert_provider_ = key_store_cert_provider;
+  }
+
   // Override |mount_factory_| for testing purpose
   void set_mount_factory_for_testing(MountFactory* mount_factory) {
     mount_factory_ = mount_factory;
@@ -852,6 +859,13 @@ class UserDataAuth {
   // Called on Mount thread. This creates a biometrics service that connects
   // to the biometrics daemon and connect to signals.
   void CreateBiometricsService();
+
+  // ============= WebAuthn / Passkey Related Public Methods ==============
+
+  // Called on Mount thread. This creates a key store cert provider that
+  // connects to the remote cert fetcher and maintains the on-disk backend
+  // certs.
+  void CreateRecoverableKeyStoreBackendCertProvider();
 
   // =============== PKCS#11 Related Utilities ===============
 
@@ -1137,6 +1151,15 @@ class UserDataAuth {
   // The actual Biometrics Service object that is used by this class, but
   // can be overridden for testing.
   BiometricsAuthBlockService* biometrics_service_;
+
+  // The default Recoverable Key Store Backend Cert Provider object for
+  // recoverable key store generation.
+  std::unique_ptr<RecoverableKeyStoreBackendCertProvider>
+      default_key_store_cert_provider_;
+
+  // The actual Recoverable Key Store Backend Cert Provider object that is used
+  // by this class, but can be overridden for testing.
+  RecoverableKeyStoreBackendCertProvider* key_store_cert_provider_;
 
   // The object that handles construction and saving of VaultKeysets to disk,
   // used for testing purposes.

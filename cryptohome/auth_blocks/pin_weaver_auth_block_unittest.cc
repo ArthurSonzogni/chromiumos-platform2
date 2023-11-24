@@ -35,6 +35,7 @@
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
+#include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
@@ -78,8 +79,8 @@ using DeriveTestFuture = TestFuture<CryptohomeStatus,
 class PinWeaverAuthBlockTest : public ::testing::Test {
  public:
   void SetUp() override {
-    auth_block_ = std::make_unique<PinWeaverAuthBlock>(features_.async,
-                                                       &hwsec_pw_manager_);
+    auth_block_ = std::make_unique<PinWeaverAuthBlock>(
+        features_.async, &cert_provider_, &hwsec_pw_manager_);
   }
 
  protected:
@@ -87,6 +88,7 @@ class PinWeaverAuthBlockTest : public ::testing::Test {
 
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   FakeFeaturesForTesting features_;
+  NiceMock<MockRecoverableKeyStoreBackendCertProvider> cert_provider_;
   std::unique_ptr<PinWeaverAuthBlock> auth_block_;
 };
 

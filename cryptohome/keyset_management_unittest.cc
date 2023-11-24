@@ -44,6 +44,7 @@
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/mock_vault_keyset_factory.h"
+#include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/timestamp.pb.h"
 #include "cryptohome/vault_keyset.h"
@@ -599,8 +600,9 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
 
   // Setup pin credentials.
   FakeFeaturesForTesting features;
+  MockRecoverableKeyStoreBackendCertProvider cert_provider;
   auto auth_block = std::make_unique<PinWeaverAuthBlock>(
-      features.async, crypto_.GetPinWeaverManager());
+      features.async, &cert_provider, crypto_.GetPinWeaverManager());
 
   AuthInput auth_input = {brillo::SecureBlob(kNewPasskey),
                           false,

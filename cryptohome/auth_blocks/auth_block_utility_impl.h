@@ -30,6 +30,7 @@
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/recoverable_key_store/backend_cert_provider.h"
 #include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
@@ -49,7 +50,9 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       AsyncInitFeatures* features,
       AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
       KeyChallengeServiceFactory* key_challenge_service_factory,
-      AsyncInitPtr<BiometricsAuthBlockService> bio_service);
+      AsyncInitPtr<BiometricsAuthBlockService> bio_service,
+      AsyncInitPtr<RecoverableKeyStoreBackendCertProvider>
+          key_store_cert_provider);
 
   AuthBlockUtilityImpl(const AuthBlockUtilityImpl&) = delete;
   AuthBlockUtilityImpl& operator=(const AuthBlockUtilityImpl&) = delete;
@@ -130,6 +133,10 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   // TODO(b/276453357): Replace with BiometricsAuthBlockService* once that
   // object is guaranteed to always be available.
   AsyncInitPtr<BiometricsAuthBlockService> bio_service_;
+
+  // Recoverable key store backend cert provider, used by auth factors to
+  // generate recoverable key stores.
+  AsyncInitPtr<RecoverableKeyStoreBackendCertProvider> key_store_cert_provider_;
 };
 
 }  // namespace cryptohome
