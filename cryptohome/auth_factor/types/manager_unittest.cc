@@ -5,6 +5,7 @@
 #include "cryptohome/auth_factor/types/manager.h"
 
 #include <base/functional/callback.h>
+#include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
@@ -28,6 +29,7 @@ using ResetCapability = AuthFactorDriver::ResetCapability;
 using ::testing::Eq;
 using ::testing::IsFalse;
 using ::testing::IsTrue;
+using ::testing::Optional;
 using ::testing::Ref;
 using ::testing::Return;
 
@@ -465,6 +467,30 @@ TEST_F(AuthFactorDriverManagerTest, GetAuthFactorLabelArity) {
 
   EXPECT_THAT(get_arity(AuthFactorType::kUnspecified),
               Eq(AuthFactorLabelArity::kNone));
+  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
+                "All types of AuthFactorType are not all included here");
+}
+
+// Test AuthFactorDriver::GetLockScreenKnowledgeFactorType. We do this here
+// instead of in a per-driver test because the check is trivial enough that one
+// test is simpler to validate than N separate tests.
+TEST_F(AuthFactorDriverManagerTest, GetLockScreenKnowledgeFactorType) {
+  auto lskf_type = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).GetLockScreenKnowledgeFactorType();
+  };
+
+  EXPECT_FALSE(lskf_type(AuthFactorType::kPassword).has_value());
+  EXPECT_THAT(lskf_type(AuthFactorType::kPin),
+              Optional(LockScreenKnowledgeFactorType::
+                           LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_PIN));
+  EXPECT_FALSE(lskf_type(AuthFactorType::kCryptohomeRecovery).has_value());
+  EXPECT_FALSE(lskf_type(AuthFactorType::kKiosk).has_value());
+  EXPECT_FALSE(lskf_type(AuthFactorType::kSmartCard).has_value());
+  EXPECT_FALSE(lskf_type(AuthFactorType::kLegacyFingerprint).has_value());
+  EXPECT_FALSE(lskf_type(AuthFactorType::kFingerprint).has_value());
+
+  EXPECT_FALSE(lskf_type(AuthFactorType::kUnspecified).has_value());
+
   static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
                 "All types of AuthFactorType are not all included here");
 }

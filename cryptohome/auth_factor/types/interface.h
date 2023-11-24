@@ -14,6 +14,7 @@
 #include <base/containers/span.h>
 #include <base/time/time.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
+#include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/prepare_token.h"
@@ -180,6 +181,13 @@ class AuthFactorDriver {
   // metadata and label. Returns null if the conversion fails.
   virtual std::optional<user_data_auth::AuthFactor> ConvertToProto(
       const std::string& label, const AuthFactorMetadata& metadata) const = 0;
+
+  // If the auth factor is qualified as a lock screen knowledge factor (meaning
+  // it can generate recoverable keys that allow other devices to recover using
+  // the same knowledge factor input), get the factor type. Otherwise, returns
+  // nullopt.
+  virtual std::optional<LockScreenKnowledgeFactorType>
+  GetLockScreenKnowledgeFactorType() const = 0;
 };
 
 }  // namespace cryptohome

@@ -32,6 +32,7 @@
 #include <base/containers/span.h>
 #include <base/time/time.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
+#include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
@@ -261,6 +262,29 @@ class AfDriverNoRateLimiter : public virtual AuthFactorDriver {
   CryptohomeStatus TryCreateRateLimiter(const ObfuscatedUsername& username,
                                         DecryptedUss& decrypted_uss) final;
 };
+
+// Common implementation of GetLockScreenKnowledgeFactorType(). Takes the
+// LockScreenKnowledgeFactorType as template parameter, with the special case
+// that UNSPECIFIED is translated to nullopt. This is because returning an
+// optional that either contains a valid LSKF type or nullopt is easier to
+// handle than returning an enum that contains UNSPECIFIED.
+template <LockScreenKnowledgeFactorType kType>
+class AfDriverWithLockScreenKnowledgeFactorType
+    : public virtual AuthFactorDriver {
+ private:
+  std::optional<LockScreenKnowledgeFactorType>
+  GetLockScreenKnowledgeFactorType() const final {
+    if (kType == LockScreenKnowledgeFactorType::
+                     LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_UNSPECIFIED) {
+      return std::nullopt;
+    }
+    return kType;
+  }
+};
+using AfDriverNoLockScreenKnowledgeFactor =
+    AfDriverWithLockScreenKnowledgeFactorType<
+        LockScreenKnowledgeFactorType::
+            LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_UNSPECIFIED>;
 
 }  // namespace cryptohome
 

@@ -41,7 +41,8 @@ class CryptohomeRecoveryAuthFactorDriver final
       public AfDriverNoCredentialVerifier,
       public AfDriverNoDelay,
       public AfDriverNoExpiration,
-      public AfDriverNoRateLimiter {
+      public AfDriverNoRateLimiter,
+      public AfDriverNoLockScreenKnowledgeFactor {
  public:
   explicit CryptohomeRecoveryAuthFactorDriver(Crypto* crypto)
       : crypto_(crypto) {}

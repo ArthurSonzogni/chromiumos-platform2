@@ -37,7 +37,8 @@ class NullAuthFactorDriver final
       public AfDriverNoCredentialVerifier,
       public AfDriverNoDelay,
       public AfDriverNoExpiration,
-      public AfDriverNoRateLimiter {
+      public AfDriverNoRateLimiter,
+      public AfDriverNoLockScreenKnowledgeFactor {
  public:
   NullAuthFactorDriver() = default;
 

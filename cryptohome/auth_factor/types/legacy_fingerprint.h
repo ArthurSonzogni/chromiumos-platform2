@@ -36,7 +36,8 @@ class LegacyFingerprintAuthFactorDriver final
                                              AuthIntentSequence<>>,
       public AfDriverNoDelay,
       public AfDriverNoExpiration,
-      public AfDriverNoRateLimiter {
+      public AfDriverNoRateLimiter,
+      public AfDriverNoLockScreenKnowledgeFactor {
  public:
   explicit LegacyFingerprintAuthFactorDriver(
       FingerprintAuthBlockService* fp_service)
