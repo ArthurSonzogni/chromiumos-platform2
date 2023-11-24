@@ -42,7 +42,6 @@ pkg_config("target_default_deps") {
 config("target_defaults") {
   configs = [ ":target_default_deps" ]
   defines = [
-    "USE_DOUBLE_EXTEND_PCR_ISSUE=${use.double_extend_pcr_issue}",
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
     "USE_TPM1=${use.tpm}",
     "USE_TPM2=${use.tpm2}",

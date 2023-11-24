@@ -85,7 +85,6 @@ _IUSE = [
     "dhcpv6",
     "direncryption",
     "dlc",
-    "double_extend_pcr_issue",
     "enable_slow_boot_notify",
     "encrypted_reboot_vault",
     "encrypted_stateful",

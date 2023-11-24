@@ -35,56 +35,6 @@ constexpr int kDelegateSecretSize = 20;
 constexpr uint8_t kDefaultDelegateLabel = 2;
 constexpr uint8_t kDefaultDelegateFamilyLabel = 1;
 
-// Checks the |delegate| has the reset lock permission or not, return true
-// when we should resave the delegate to storage.
-bool CheckResetLockPermissions(tpm_manager::AuthDelegate* delegate) {
-  if (!delegate->has_reset_lock_permissions()) {
-    // No need to resave the delegate.
-    return false;
-  }
-
-  if (!USE_DOUBLE_EXTEND_PCR_ISSUE) {
-    // No need to resave the delegate.
-    return false;
-  }
-
-  brillo::Blob blob = brillo::BlobFromString(delegate->blob());
-
-  uint64_t offset = 0;
-  TPM_DELEGATE_OWNER_BLOB owner_blob;
-
-  TSS_RESULT result = Trspi_UnloadBlob_TPM_DELEGATE_OWNER_BLOB_s(
-      &offset, blob.data(), blob.size(), &owner_blob);
-  if (result != TPM_SUCCESS) {
-    // Save the reset_lock_permissions to false.
-    delegate->set_has_reset_lock_permissions(false);
-    return true;
-  }
-
-  base::ScopedClosureRunner cleanup_owner_blob(base::BindOnce(
-      [](TPM_DELEGATE_OWNER_BLOB& owner_blob) {
-        free(owner_blob.pub.pcrInfo.pcrSelection.pcrSelect);
-        free(owner_blob.additionalArea);
-        free(owner_blob.sensitiveArea);
-      },
-      std::ref(owner_blob)));
-
-  // If the delegate is pound to any PCR, we may not be able to reset the lock.
-  if (owner_blob.pub.pcrInfo.pcrSelection.sizeOfSelect > 0 &&
-      owner_blob.pub.pcrInfo.pcrSelection.pcrSelect != nullptr) {
-    for (int i = 0; i < owner_blob.pub.pcrInfo.pcrSelection.sizeOfSelect; i++) {
-      if (owner_blob.pub.pcrInfo.pcrSelection.pcrSelect[i] != 0) {
-        // Save the reset_lock_permissions to false.
-        delegate->set_has_reset_lock_permissions(false);
-        return true;
-      }
-    }
-  }
-
-  // No need to resave the delegate.
-  return false;
-}
-
 }  // namespace
 
 namespace tpm_manager {
@@ -503,14 +453,6 @@ bool TpmInitializerImpl::EnsurePersistentOwnerDelegate() {
   }
   auto owner_delegate = local_data.mutable_owner_delegate();
   if (!owner_delegate->blob().empty() && !owner_delegate->secret().empty()) {
-    if (CheckResetLockPermissions(owner_delegate)) {
-      // Resave the local data.
-      if (!local_data_store_->Write(local_data)) {
-        LOG(ERROR) << __func__ << ": Failed to write local data change.";
-        return false;
-      }
-    }
-
     return true;
   }
   LOG(WARNING) << __func__ << ": Owner delegate is missing; re-creating.";
