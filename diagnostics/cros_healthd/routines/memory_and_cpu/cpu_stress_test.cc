@@ -33,10 +33,12 @@ using ::testing::_;
 using ::testing::WithArgs;
 
 class CpuStressRoutineTestBase : public BaseFileTest {
- protected:
-  CpuStressRoutineTestBase() = default;
+ public:
   CpuStressRoutineTestBase(const CpuStressRoutineTestBase&) = delete;
   CpuStressRoutineTestBase& operator=(const CpuStressRoutineTestBase&) = delete;
+
+ protected:
+  CpuStressRoutineTestBase() = default;
 
   void SetUp() override {
     SetMockMemoryInfo(
@@ -77,10 +79,12 @@ class CpuStressRoutineTestBase : public BaseFileTest {
 };
 
 class CpuStressRoutineTest : public CpuStressRoutineTestBase {
- protected:
-  CpuStressRoutineTest() = default;
+ public:
   CpuStressRoutineTest(const CpuStressRoutineTest&) = delete;
   CpuStressRoutineTest& operator=(const CpuStressRoutineTest&) = delete;
+
+ protected:
+  CpuStressRoutineTest() = default;
 
   void SetUp() {
     CpuStressRoutineTestBase::SetUp();
@@ -111,11 +115,13 @@ class CpuStressRoutineTest : public CpuStressRoutineTestBase {
 };
 
 class CpuStressRoutineAdapterTest : public CpuStressRoutineTestBase {
- protected:
-  CpuStressRoutineAdapterTest() = default;
+ public:
   CpuStressRoutineAdapterTest(const CpuStressRoutineAdapterTest&) = delete;
   CpuStressRoutineAdapterTest& operator=(const CpuStressRoutineAdapterTest&) =
       delete;
+
+ protected:
+  CpuStressRoutineAdapterTest() = default;
 
   void SetUp() {
     CpuStressRoutineTestBase::SetUp();

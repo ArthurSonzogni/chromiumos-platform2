@@ -56,10 +56,12 @@ MATCHER_P(MatchesBacklightInfoPtr, ptr, "") {
 }
 
 class BacklightUtilsTest : public BaseFileTest {
- protected:
-  BacklightUtilsTest() = default;
+ public:
   BacklightUtilsTest(const BacklightUtilsTest&) = delete;
   BacklightUtilsTest& operator=(const BacklightUtilsTest&) = delete;
+
+ protected:
+  BacklightUtilsTest() = default;
 
   void SetUp() override { SetHasBacklight(true); }
 

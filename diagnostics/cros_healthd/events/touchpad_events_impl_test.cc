@@ -28,10 +28,12 @@ using ::testing::StrictMock;
 
 // Tests for the TouchpadEventsImpl class.
 class TouchpadEventsImplTest : public testing::Test {
- protected:
-  TouchpadEventsImplTest() = default;
+ public:
   TouchpadEventsImplTest(const TouchpadEventsImplTest&) = delete;
   TouchpadEventsImplTest& operator=(const TouchpadEventsImplTest&) = delete;
+
+ protected:
+  TouchpadEventsImplTest() = default;
 
   void SetUp() override {
     touchpad_events_impl_ =

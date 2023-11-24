@@ -37,10 +37,12 @@ struct CaptivePortalProblemTestParams {
 };
 
 class CaptivePortalRoutineTest : public testing::Test {
- protected:
-  CaptivePortalRoutineTest() = default;
+ public:
   CaptivePortalRoutineTest(const CaptivePortalRoutineTest&) = delete;
   CaptivePortalRoutineTest& operator=(const CaptivePortalRoutineTest&) = delete;
+
+ protected:
+  CaptivePortalRoutineTest() = default;
 
   void SetUp() override {
     routine_ = CreateCaptivePortalRoutine(network_diagnostics_adapter());

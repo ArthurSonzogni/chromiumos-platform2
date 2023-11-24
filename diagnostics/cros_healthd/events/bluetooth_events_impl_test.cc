@@ -22,10 +22,12 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 // Tests for the BluetoothEventsImpl class.
 class BluetoothEventsImplTest : public testing::Test {
- protected:
-  BluetoothEventsImplTest() = default;
+ public:
   BluetoothEventsImplTest(const BluetoothEventsImplTest&) = delete;
   BluetoothEventsImplTest& operator=(const BluetoothEventsImplTest&) = delete;
+
+ protected:
+  BluetoothEventsImplTest() = default;
 
   void SetUp() override {
     bluetooth_events_impl_.AddObserver(observer_.BindNewPendingRemote());

@@ -248,11 +248,13 @@ class UsbEventTest : public UdevEventsImplTest {
 
 // Tests for the External Display event.
 class ExternalDisplayEventsImplTest : public testing::Test {
- protected:
-  ExternalDisplayEventsImplTest() = default;
+ public:
   ExternalDisplayEventsImplTest(const ExternalDisplayEventsImplTest&) = delete;
   ExternalDisplayEventsImplTest& operator=(
       const ExternalDisplayEventsImplTest&) = delete;
+
+ protected:
+  ExternalDisplayEventsImplTest() = default;
 
   void SetUp() override {
     udev_events_impl_ = std::make_unique<UdevEventsImpl>(&mock_context_);

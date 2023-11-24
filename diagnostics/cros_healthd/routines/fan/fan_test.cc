@@ -28,10 +28,12 @@ namespace mojom = ash::cros_healthd::mojom;
 using ::testing::_;
 
 class FanRoutineTest : public BaseFileTest {
- protected:
-  FanRoutineTest() = default;
+ public:
   FanRoutineTest(const FanRoutineTest&) = delete;
   FanRoutineTest& operator=(const FanRoutineTest&) = delete;
+
+ protected:
+  FanRoutineTest() = default;
 
   void SetUp() {
     // Expect all tests to run reset fan control.

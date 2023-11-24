@@ -62,10 +62,12 @@ void VerifyOutput(mojo::ScopedHandle handle,
 }
 
 class EmmcLifetimeRoutineTest : public testing::Test {
- protected:
-  EmmcLifetimeRoutineTest() = default;
+ public:
   EmmcLifetimeRoutineTest(const EmmcLifetimeRoutineTest&) = delete;
   EmmcLifetimeRoutineTest& operator=(const EmmcLifetimeRoutineTest&) = delete;
+
+ protected:
+  EmmcLifetimeRoutineTest() = default;
 
   DiagnosticRoutine* routine() { return routine_.get(); }
 

@@ -53,10 +53,12 @@ class MockCrosHealthdPowerObserver : public mojom::CrosHealthdPowerObserver {
 
 // Tests for the PowerEventsImpl class.
 class PowerEventsImplTest : public testing::Test {
- protected:
-  PowerEventsImplTest() = default;
+ public:
   PowerEventsImplTest(const PowerEventsImplTest&) = delete;
   PowerEventsImplTest& operator=(const PowerEventsImplTest&) = delete;
+
+ protected:
+  PowerEventsImplTest() = default;
 
   void SetUp() override {
     EXPECT_CALL(*mock_power_manager_proxy(),

@@ -37,10 +37,12 @@ struct ArcPingProblemTestParams {
 };
 
 class ArcPingRoutineTest : public testing::Test {
- protected:
-  ArcPingRoutineTest() = default;
+ public:
   ArcPingRoutineTest(const ArcPingRoutineTest&) = delete;
   ArcPingRoutineTest& operator=(const ArcPingRoutineTest&) = delete;
+
+ protected:
+  ArcPingRoutineTest() = default;
 
   void SetUp() override {
     routine_ = CreateArcPingRoutine(network_diagnostics_adapter());

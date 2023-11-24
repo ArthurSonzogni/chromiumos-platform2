@@ -100,10 +100,12 @@ std::string ConvertDeviceType(mojom::BluetoothDeviceType type) {
 }
 
 class BluetoothFetcherTest : public ::testing::Test {
- protected:
-  BluetoothFetcherTest() = default;
+ public:
   BluetoothFetcherTest(const BluetoothFetcherTest&) = delete;
   BluetoothFetcherTest& operator=(const BluetoothFetcherTest&) = delete;
+
+ protected:
+  BluetoothFetcherTest() = default;
   ~BluetoothFetcherTest() = default;
 
   void SetUp() override {

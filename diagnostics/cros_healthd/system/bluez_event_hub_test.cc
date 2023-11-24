@@ -22,10 +22,12 @@ using ::testing::StrictMock;
 
 // Tests for the BluezEventHub class.
 class BluezEventHubTest : public testing::Test {
- protected:
-  BluezEventHubTest() = default;
+ public:
   BluezEventHubTest(const BluezEventHubTest&) = delete;
   BluezEventHubTest& operator=(const BluezEventHubTest&) = delete;
+
+ protected:
+  BluezEventHubTest() = default;
 
   FakeBluezEventHub* fake_bluez_event_hub() const {
     return fake_bluez_event_hub_.get();

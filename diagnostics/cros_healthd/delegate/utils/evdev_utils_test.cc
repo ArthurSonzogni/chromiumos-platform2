@@ -98,10 +98,12 @@ class MockLibevdevWrapper : public LibevdevWrapper {
 };
 
 class EvdevUtilsTest : public ::testing::Test {
- protected:
-  EvdevUtilsTest() = default;
+ public:
   EvdevUtilsTest(const EvdevUtilsTest&) = delete;
   EvdevUtilsTest& operator=(const EvdevUtilsTest&) = delete;
+
+ protected:
+  EvdevUtilsTest() = default;
 
   void SetUp() override {
     ASSERT_TRUE(base::CreateDirectory(GetRootedPath(kDevInputPath)));

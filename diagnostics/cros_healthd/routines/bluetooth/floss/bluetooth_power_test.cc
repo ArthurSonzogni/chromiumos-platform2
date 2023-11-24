@@ -43,11 +43,13 @@ using ::testing::StrictMock;
 using ::testing::WithArg;
 
 class BluetoothPowerRoutineTest : public testing::Test {
- protected:
-  BluetoothPowerRoutineTest() = default;
+ public:
   BluetoothPowerRoutineTest(const BluetoothPowerRoutineTest&) = delete;
   BluetoothPowerRoutineTest& operator=(const BluetoothPowerRoutineTest&) =
       delete;
+
+ protected:
+  BluetoothPowerRoutineTest() = default;
 
   MockFlossController* mock_floss_controller() {
     return mock_context_.mock_floss_controller();

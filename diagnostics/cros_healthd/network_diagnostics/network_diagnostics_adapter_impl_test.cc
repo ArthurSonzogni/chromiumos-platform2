@@ -136,12 +136,14 @@ class MockNetworkDiagnosticsRoutines final
 };
 
 class NetworkDiagnosticsAdapterImplTest : public testing::Test {
- protected:
-  NetworkDiagnosticsAdapterImplTest() = default;
+ public:
   NetworkDiagnosticsAdapterImplTest(const NetworkDiagnosticsAdapterImplTest&) =
       delete;
   NetworkDiagnosticsAdapterImplTest& operator=(
       const NetworkDiagnosticsAdapterImplTest&) = delete;
+
+ protected:
+  NetworkDiagnosticsAdapterImplTest() = default;
 
   NetworkDiagnosticsAdapterImpl* network_diagnostics_adapter() {
     return &network_diagnostics_adapter_;

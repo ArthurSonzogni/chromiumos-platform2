@@ -27,10 +27,12 @@ constexpr char kPosixTimezoneOutput[] = "MST7MDT,M3.2.0,M11.1.0";
 constexpr char kSrcPath[] = "cros_healthd/fetchers";
 
 class TimezoneFetcherTest : public BaseFileTest {
- protected:
-  TimezoneFetcherTest() = default;
+ public:
   TimezoneFetcherTest(const TimezoneFetcherTest&) = delete;
   TimezoneFetcherTest& operator=(const TimezoneFetcherTest&) = delete;
+
+ protected:
+  TimezoneFetcherTest() = default;
 };
 
 // Test the logic to get and parse the timezone information.

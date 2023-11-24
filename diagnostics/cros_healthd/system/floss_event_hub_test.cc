@@ -23,10 +23,12 @@ using ::testing::StrictMock;
 
 // Tests for the FlossEventHub class.
 class FlossEventHubTest : public testing::Test {
- protected:
-  FlossEventHubTest() = default;
+ public:
   FlossEventHubTest(const FlossEventHubTest&) = delete;
   FlossEventHubTest& operator=(const FlossEventHubTest&) = delete;
+
+ protected:
+  FlossEventHubTest() = default;
 
   FakeFlossEventHub* fake_floss_event_hub() const {
     return fake_floss_event_hub_.get();

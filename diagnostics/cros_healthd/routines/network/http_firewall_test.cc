@@ -37,10 +37,12 @@ struct HttpFirewallProblemTestParams {
 };
 
 class HttpFirewallRoutineTest : public testing::Test {
- protected:
-  HttpFirewallRoutineTest() = default;
+ public:
   HttpFirewallRoutineTest(const HttpFirewallRoutineTest&) = delete;
   HttpFirewallRoutineTest& operator=(const HttpFirewallRoutineTest&) = delete;
+
+ protected:
+  HttpFirewallRoutineTest() = default;
 
   void SetUp() override {
     routine_ = CreateHttpFirewallRoutine(network_diagnostics_adapter());

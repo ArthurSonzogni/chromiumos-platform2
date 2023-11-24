@@ -357,10 +357,12 @@ TEST(UploadsLogParserTest, ParseTwoTrailingValidLinesWithBlank) {
 
 // Tests for the CrashEvents class.
 class CrashEventsTest : public testing::Test {
- protected:
-  CrashEventsTest() = default;
+ public:
   CrashEventsTest(const CrashEventsTest&) = delete;
   CrashEventsTest& operator=(const CrashEventsTest&) = delete;
+
+ protected:
+  CrashEventsTest() = default;
 
   void SetUp() override {
     mojo::PendingReceiver<mojom::EventObserver> observer_receiver(

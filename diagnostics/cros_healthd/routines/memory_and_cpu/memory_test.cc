@@ -62,10 +62,12 @@ constexpr int kBitFlipPercentage = 42;
 #endif
 
 class MemoryRoutineTestBase : public BaseFileTest {
- protected:
-  MemoryRoutineTestBase() = default;
+ public:
   MemoryRoutineTestBase(const MemoryRoutineTestBase&) = delete;
   MemoryRoutineTestBase& operator=(const MemoryRoutineTestBase&) = delete;
+
+ protected:
+  MemoryRoutineTestBase() = default;
 
   void SetUp() override {
     SetMockMemoryInfo(
@@ -131,10 +133,12 @@ class MemoryRoutineTestBase : public BaseFileTest {
 };
 
 class MemoryRoutineAdapterTest : public MemoryRoutineTestBase {
- protected:
-  MemoryRoutineAdapterTest() = default;
+ public:
   MemoryRoutineAdapterTest(const MemoryRoutineAdapterTest&) = delete;
   MemoryRoutineAdapterTest& operator=(const MemoryRoutineAdapterTest&) = delete;
+
+ protected:
+  MemoryRoutineAdapterTest() = default;
 
   void SetUp() {
     MemoryRoutineTestBase::SetUp();
@@ -247,10 +251,12 @@ class MemoryRoutineAdapterTest : public MemoryRoutineTestBase {
 };
 
 class MemoryRoutineTest : public MemoryRoutineTestBase {
- protected:
-  MemoryRoutineTest() = default;
+ public:
   MemoryRoutineTest(const MemoryRoutineTest&) = delete;
   MemoryRoutineTest& operator=(const MemoryRoutineTest&) = delete;
+
+ protected:
+  MemoryRoutineTest() = default;
 
   void SetUp() {
     MemoryRoutineTestBase::SetUp();

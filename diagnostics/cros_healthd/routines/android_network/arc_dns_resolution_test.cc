@@ -37,11 +37,13 @@ struct ArcDnsResolutionProblemTestParams {
 };
 
 class ArcDnsResolutionRoutineTest : public testing::Test {
- protected:
-  ArcDnsResolutionRoutineTest() = default;
+ public:
   ArcDnsResolutionRoutineTest(const ArcDnsResolutionRoutineTest&) = delete;
   ArcDnsResolutionRoutineTest& operator=(const ArcDnsResolutionRoutineTest&) =
       delete;
+
+ protected:
+  ArcDnsResolutionRoutineTest() = default;
 
   void SetUp() override {
     routine_ = CreateArcDnsResolutionRoutine(network_diagnostics_adapter());

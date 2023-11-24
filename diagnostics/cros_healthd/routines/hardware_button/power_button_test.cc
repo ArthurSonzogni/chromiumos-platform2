@@ -21,10 +21,12 @@ namespace mojom = ::ash::cros_healthd::mojom;
 using ::testing::WithArg;
 
 class PowerButtonRoutineTest : public testing::Test {
- protected:
-  PowerButtonRoutineTest() = default;
+ public:
   PowerButtonRoutineTest(const PowerButtonRoutineTest&) = delete;
   PowerButtonRoutineTest& operator=(const PowerButtonRoutineTest&) = delete;
+
+ protected:
+  PowerButtonRoutineTest() = default;
 
   void ExpectBindEventObserver() {
     EXPECT_CALL(*mock_executor(), MonitorPowerButton)

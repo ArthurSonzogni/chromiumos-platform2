@@ -125,11 +125,13 @@ class MockNetworkEventsObserver
 };
 
 class NetworkHealthAdapterImplTest : public testing::Test {
- protected:
-  NetworkHealthAdapterImplTest() = default;
+ public:
   NetworkHealthAdapterImplTest(const NetworkHealthAdapterImplTest&) = delete;
   NetworkHealthAdapterImplTest& operator=(const NetworkHealthAdapterImplTest&) =
       delete;
+
+ protected:
+  NetworkHealthAdapterImplTest() = default;
 
   void SetUp() override {
     // Create a new |network_health_adapter_| for each test to ensure the

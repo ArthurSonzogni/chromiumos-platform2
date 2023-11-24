@@ -37,11 +37,13 @@ struct GatewayCanBePingedProblemTestParams {
 };
 
 class GatewayCanBePingedRoutineTest : public testing::Test {
- protected:
-  GatewayCanBePingedRoutineTest() = default;
+ public:
   GatewayCanBePingedRoutineTest(const GatewayCanBePingedRoutineTest&) = delete;
   GatewayCanBePingedRoutineTest& operator=(
       const GatewayCanBePingedRoutineTest&) = delete;
+
+ protected:
+  GatewayCanBePingedRoutineTest() = default;
 
   void SetUp() override {
     routine_ = CreateGatewayCanBePingedRoutine(network_diagnostics_adapter());

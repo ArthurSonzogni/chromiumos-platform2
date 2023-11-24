@@ -34,11 +34,13 @@ namespace mojom = ash::cros_healthd::mojom;
 using ::testing::_;
 
 class PrimeSearchRoutineTestBase : public BaseFileTest {
- protected:
-  PrimeSearchRoutineTestBase() = default;
+ public:
   PrimeSearchRoutineTestBase(const PrimeSearchRoutineTestBase&) = delete;
   PrimeSearchRoutineTestBase& operator=(const PrimeSearchRoutineTestBase&) =
       delete;
+
+ protected:
+  PrimeSearchRoutineTestBase() = default;
 
   void SetUp() override {
     EXPECT_CALL(*mock_context_.mock_executor(), RunPrimeSearch(_, _, _, _))
@@ -71,10 +73,12 @@ class PrimeSearchRoutineTestBase : public BaseFileTest {
 };
 
 class PrimeSearchRoutineTest : public PrimeSearchRoutineTestBase {
- protected:
-  PrimeSearchRoutineTest() = default;
+ public:
   PrimeSearchRoutineTest(const PrimeSearchRoutineTest&) = delete;
   PrimeSearchRoutineTest& operator=(const PrimeSearchRoutineTest&) = delete;
+
+ protected:
+  PrimeSearchRoutineTest() = default;
 
   void SetUp() {
     PrimeSearchRoutineTestBase::SetUp();
@@ -107,11 +111,13 @@ class PrimeSearchRoutineTest : public PrimeSearchRoutineTestBase {
 };
 
 class PrimeSearchRoutineAdapterTest : public PrimeSearchRoutineTestBase {
- protected:
-  PrimeSearchRoutineAdapterTest() = default;
+ public:
   PrimeSearchRoutineAdapterTest(const PrimeSearchRoutineAdapterTest&) = delete;
   PrimeSearchRoutineAdapterTest& operator=(
       const PrimeSearchRoutineAdapterTest&) = delete;
+
+ protected:
+  PrimeSearchRoutineAdapterTest() = default;
 
   void SetUp() {
     PrimeSearchRoutineTestBase::SetUp();

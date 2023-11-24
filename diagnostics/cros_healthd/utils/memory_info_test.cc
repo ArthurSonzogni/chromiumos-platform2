@@ -14,10 +14,12 @@ namespace diagnostics {
 namespace {
 
 class MemoryInfoTest : public BaseFileTest {
- protected:
-  MemoryInfoTest() = default;
+ public:
   MemoryInfoTest(const MemoryInfoTest&) = delete;
   MemoryInfoTest& operator=(const MemoryInfoTest&) = delete;
+
+ protected:
+  MemoryInfoTest() = default;
 
   void SetMockMemoryInfo(const std::string& info) {
     SetFile({"proc", "meminfo"}, info);

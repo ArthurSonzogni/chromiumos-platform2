@@ -37,10 +37,12 @@ constexpr char kLongStartSuccess[] = "Extended Device self-test started";
 constexpr char kNvmeError[] = "NVMe Status:Unknown";
 
 class NvmeSelfTestRoutineTest : public testing::Test {
- protected:
-  NvmeSelfTestRoutineTest() = default;
+ public:
   NvmeSelfTestRoutineTest(const NvmeSelfTestRoutineTest&) = delete;
   NvmeSelfTestRoutineTest& operator=(const NvmeSelfTestRoutineTest&) = delete;
+
+ protected:
+  NvmeSelfTestRoutineTest() = default;
 
   DiagnosticRoutine* routine() { return routine_.get(); }
 

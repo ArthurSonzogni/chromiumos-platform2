@@ -47,10 +47,12 @@ MATCHER_P(MatchesThermalSensorInfo, ptr, "") {
 }
 
 class ThermalFetcherTest : public ::testing::Test {
- protected:
-  ThermalFetcherTest() = default;
+ public:
   ThermalFetcherTest(const ThermalFetcherTest&) = delete;
   ThermalFetcherTest& operator=(const ThermalFetcherTest&) = delete;
+
+ protected:
+  ThermalFetcherTest() = default;
 
   void SetUp() override {
     // Set up first thermal zone.

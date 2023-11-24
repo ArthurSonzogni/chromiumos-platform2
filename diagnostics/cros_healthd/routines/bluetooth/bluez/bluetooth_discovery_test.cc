@@ -34,12 +34,14 @@ using ::testing::StrictMock;
 using ::testing::WithArg;
 
 class BluezBluetoothDiscoveryRoutineTest : public testing::Test {
- protected:
-  BluezBluetoothDiscoveryRoutineTest() = default;
+ public:
   BluezBluetoothDiscoveryRoutineTest(
       const BluezBluetoothDiscoveryRoutineTest&) = delete;
   BluezBluetoothDiscoveryRoutineTest& operator=(
       const BluezBluetoothDiscoveryRoutineTest&) = delete;
+
+ protected:
+  BluezBluetoothDiscoveryRoutineTest() = default;
 
   void SetUp() override {
     SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});

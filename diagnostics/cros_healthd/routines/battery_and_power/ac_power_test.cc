@@ -26,10 +26,12 @@ constexpr char kPowerSupplyDirectoryPath[] =
     "sys/class/power_supply/foo_power_supply";
 
 class AcPowerRoutineTest : public testing::Test {
- protected:
-  AcPowerRoutineTest() = default;
+ public:
   AcPowerRoutineTest(const AcPowerRoutineTest&) = delete;
   AcPowerRoutineTest& operator=(const AcPowerRoutineTest&) = delete;
+
+ protected:
+  AcPowerRoutineTest() = default;
 
   void SetUp() override { ASSERT_TRUE(temp_dir_.CreateUniqueTempDir()); }
 

@@ -136,10 +136,12 @@ class BaseRoutineControlTest : public testing::Test {
 };
 
 class RoutineAdapterTest : public testing::Test {
- protected:
-  RoutineAdapterTest() = default;
+ public:
   RoutineAdapterTest(const RoutineAdapterTest&) = delete;
   RoutineAdapterTest& operator=(const RoutineAdapterTest&) = delete;
+
+ protected:
+  RoutineAdapterTest() = default;
 
   void SetUp() override {
     routine_control_ = std::make_unique<RoutineControlImplPeer>(base::BindOnce(

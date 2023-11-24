@@ -45,10 +45,12 @@ const brillo::VariantDictionary kFailureDevice = {
      /*failure*/ static_cast<uint32_t>(2)}};
 
 class AudioDriverRoutineTest : public testing::Test {
- protected:
-  AudioDriverRoutineTest() = default;
+ public:
   AudioDriverRoutineTest(const AudioDriverRoutineTest&) = delete;
   AudioDriverRoutineTest& operator=(const AudioDriverRoutineTest&) = delete;
+
+ protected:
+  AudioDriverRoutineTest() = default;
 
   void SetUp() {
     routine_ = std::make_unique<AudioDriverRoutine>(

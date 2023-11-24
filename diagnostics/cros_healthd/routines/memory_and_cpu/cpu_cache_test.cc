@@ -33,10 +33,12 @@ using ::testing::_;
 using ::testing::WithArgs;
 
 class CpuCacheRoutineTestBase : public BaseFileTest {
- protected:
-  CpuCacheRoutineTestBase() = default;
+ public:
   CpuCacheRoutineTestBase(const CpuCacheRoutineTestBase&) = delete;
   CpuCacheRoutineTestBase& operator=(const CpuCacheRoutineTestBase&) = delete;
+
+ protected:
+  CpuCacheRoutineTestBase() = default;
 
   void SetUp() override {
     SetMockMemoryInfo(
@@ -77,10 +79,12 @@ class CpuCacheRoutineTestBase : public BaseFileTest {
 };
 
 class CpuCacheRoutineTest : public CpuCacheRoutineTestBase {
- protected:
-  CpuCacheRoutineTest() = default;
+ public:
   CpuCacheRoutineTest(const CpuCacheRoutineTest&) = delete;
   CpuCacheRoutineTest& operator=(const CpuCacheRoutineTest&) = delete;
+
+ protected:
+  CpuCacheRoutineTest() = default;
 
   void SetUp() {
     CpuCacheRoutineTestBase::SetUp();
@@ -111,11 +115,13 @@ class CpuCacheRoutineTest : public CpuCacheRoutineTestBase {
 };
 
 class CpuCacheRoutineAdapterTest : public CpuCacheRoutineTestBase {
- protected:
-  CpuCacheRoutineAdapterTest() = default;
+ public:
   CpuCacheRoutineAdapterTest(const CpuCacheRoutineAdapterTest&) = delete;
   CpuCacheRoutineAdapterTest& operator=(const CpuCacheRoutineAdapterTest&) =
       delete;
+
+ protected:
+  CpuCacheRoutineAdapterTest() = default;
 
   void SetUp() {
     CpuCacheRoutineTestBase::SetUp();

@@ -24,11 +24,13 @@ using ::testing::_;
 
 // Tests for the TouchscreenEventsImpl class.
 class TouchscreenEventsImplTest : public testing::Test {
- protected:
-  TouchscreenEventsImplTest() = default;
+ public:
   TouchscreenEventsImplTest(const TouchscreenEventsImplTest&) = delete;
   TouchscreenEventsImplTest& operator=(const TouchscreenEventsImplTest&) =
       delete;
+
+ protected:
+  TouchscreenEventsImplTest() = default;
 
   void SetUp() override {
     EXPECT_CALL(*mock_executor(), MonitorTouchscreen(_, _))

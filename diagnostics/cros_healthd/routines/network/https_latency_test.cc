@@ -37,10 +37,12 @@ struct HttpsLatencyProblemTestParams {
 };
 
 class HttpsLatencyRoutineTest : public testing::Test {
- protected:
-  HttpsLatencyRoutineTest() = default;
+ public:
   HttpsLatencyRoutineTest(const HttpsLatencyRoutineTest&) = delete;
   HttpsLatencyRoutineTest& operator=(const HttpsLatencyRoutineTest&) = delete;
+
+ protected:
+  HttpsLatencyRoutineTest() = default;
 
   void SetUp() override {
     routine_ = CreateHttpsLatencyRoutine(network_diagnostics_adapter());

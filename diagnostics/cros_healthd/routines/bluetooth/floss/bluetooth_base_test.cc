@@ -38,10 +38,12 @@ const dbus::ObjectPath kDefaultAdapterPath{
 const int32_t kDefaultHciInterface = 0;
 
 class BluetoothRoutineBaseTest : public testing::Test {
- protected:
-  BluetoothRoutineBaseTest() = default;
+ public:
   BluetoothRoutineBaseTest(const BluetoothRoutineBaseTest&) = delete;
   BluetoothRoutineBaseTest& operator=(const BluetoothRoutineBaseTest&) = delete;
+
+ protected:
+  BluetoothRoutineBaseTest() = default;
 
   void SetUp() override {
     ON_CALL(*mock_floss_controller(), GetManager())

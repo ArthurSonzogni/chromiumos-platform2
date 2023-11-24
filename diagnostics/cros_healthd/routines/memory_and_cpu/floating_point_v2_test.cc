@@ -34,12 +34,14 @@ namespace mojom = ash::cros_healthd::mojom;
 using ::testing::_;
 
 class FloatingPointRoutineV2TestBase : public testing::Test {
- protected:
-  FloatingPointRoutineV2TestBase() = default;
+ public:
   FloatingPointRoutineV2TestBase(const FloatingPointRoutineV2TestBase&) =
       delete;
   FloatingPointRoutineV2TestBase& operator=(
       const FloatingPointRoutineV2TestBase&) = delete;
+
+ protected:
+  FloatingPointRoutineV2TestBase() = default;
 
   void SetUp() override {
     EXPECT_CALL(*mock_context_.mock_executor(), RunFloatingPoint(_, _, _))
@@ -70,11 +72,13 @@ class FloatingPointRoutineV2TestBase : public testing::Test {
 };
 
 class FloatingPointRoutineV2Test : public FloatingPointRoutineV2TestBase {
- protected:
-  FloatingPointRoutineV2Test() = default;
+ public:
   FloatingPointRoutineV2Test(const FloatingPointRoutineV2Test&) = delete;
   FloatingPointRoutineV2Test& operator=(const FloatingPointRoutineV2Test&) =
       delete;
+
+ protected:
+  FloatingPointRoutineV2Test() = default;
 
   void SetUp() {
     FloatingPointRoutineV2TestBase::SetUp();
@@ -108,12 +112,14 @@ class FloatingPointRoutineV2Test : public FloatingPointRoutineV2TestBase {
 
 class FloatingPointRoutineV2AdapterTest
     : public FloatingPointRoutineV2TestBase {
- protected:
-  FloatingPointRoutineV2AdapterTest() = default;
+ public:
   FloatingPointRoutineV2AdapterTest(const FloatingPointRoutineV2AdapterTest&) =
       delete;
   FloatingPointRoutineV2AdapterTest& operator=(
       const FloatingPointRoutineV2AdapterTest&) = delete;
+
+ protected:
+  FloatingPointRoutineV2AdapterTest() = default;
 
   void SetUp() {
     FloatingPointRoutineV2TestBase::SetUp();

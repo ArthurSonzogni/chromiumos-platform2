@@ -37,11 +37,13 @@ struct SignalStrengthProblemTestParams {
 };
 
 class SignalStrengthRoutineTest : public testing::Test {
- protected:
-  SignalStrengthRoutineTest() = default;
+ public:
   SignalStrengthRoutineTest(const SignalStrengthRoutineTest&) = delete;
   SignalStrengthRoutineTest& operator=(const SignalStrengthRoutineTest&) =
       delete;
+
+ protected:
+  SignalStrengthRoutineTest() = default;
 
   void SetUp() override {
     routine_ = CreateSignalStrengthRoutine(network_diagnostics_adapter());

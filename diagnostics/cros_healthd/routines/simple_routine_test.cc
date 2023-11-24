@@ -64,10 +64,12 @@ void FakeRoutineTask(mojom::DiagnosticRoutineStatusEnum status_in,
 }
 
 class SimpleRoutineTest : public testing::Test {
- protected:
-  SimpleRoutineTest() = default;
+ public:
   SimpleRoutineTest(const SimpleRoutineTest&) = delete;
   SimpleRoutineTest& operator=(const SimpleRoutineTest&) = delete;
+
+ protected:
+  SimpleRoutineTest() = default;
 
   DiagnosticRoutine* routine() { return routine_.get(); }
 

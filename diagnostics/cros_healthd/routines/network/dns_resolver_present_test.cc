@@ -37,11 +37,13 @@ struct DnsResolverPresentProblemTestParams {
 };
 
 class DnsResolverPresentRoutineTest : public testing::Test {
- protected:
-  DnsResolverPresentRoutineTest() = default;
+ public:
   DnsResolverPresentRoutineTest(const DnsResolverPresentRoutineTest&) = delete;
   DnsResolverPresentRoutineTest& operator=(
       const DnsResolverPresentRoutineTest&) = delete;
+
+ protected:
+  DnsResolverPresentRoutineTest() = default;
 
   void SetUp() override {
     routine_ = CreateDnsResolverPresentRoutine(network_diagnostics_adapter());

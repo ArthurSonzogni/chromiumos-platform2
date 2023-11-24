@@ -92,11 +92,13 @@ base::Time FakeTimeNow() {
 }
 
 class BootPerformanceFetcherTest : public ::testing::Test {
- protected:
-  BootPerformanceFetcherTest() = default;
+ public:
   BootPerformanceFetcherTest(const BootPerformanceFetcherTest&) = delete;
   BootPerformanceFetcherTest& operator=(const BootPerformanceFetcherTest&) =
       delete;
+
+ protected:
+  BootPerformanceFetcherTest() = default;
 
   void SetUp() override {
     PopulateBiosTimesFile();

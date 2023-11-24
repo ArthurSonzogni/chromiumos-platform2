@@ -41,10 +41,12 @@ constexpr char kTestWritableFileMountFlag[] =
     "/some/writable/file,/some/writable/file,1";
 
 class SandboxedProcessTest : public testing::Test {
- protected:
-  SandboxedProcessTest() = default;
+ public:
   SandboxedProcessTest(const SandboxedProcessTest&) = delete;
   SandboxedProcessTest& operator=(const SandboxedProcessTest&) = delete;
+
+ protected:
+  SandboxedProcessTest() = default;
 
   // Sets up the expect calls needed to correctly get minijail arguments and
   // commands.

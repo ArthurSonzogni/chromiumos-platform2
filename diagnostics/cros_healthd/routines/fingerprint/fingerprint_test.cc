@@ -22,10 +22,12 @@ using ::testing::_;
 using ::testing::WithArg;
 
 class FingerprintRoutineTest : public testing::Test {
- protected:
-  FingerprintRoutineTest() = default;
+ public:
   FingerprintRoutineTest(const FingerprintRoutineTest&) = delete;
   FingerprintRoutineTest& operator=(const FingerprintRoutineTest&) = delete;
+
+ protected:
+  FingerprintRoutineTest() = default;
 
   FingerprintParameter CreateDefaultFingerprintParameter() {
     FingerprintParameter params;

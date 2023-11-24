@@ -30,10 +30,12 @@ using ::testing::WithArgs;
 using ::testing::WithoutArgs;
 
 class DlcManagerTest : public testing::Test {
- protected:
-  DlcManagerTest() = default;
+ public:
   DlcManagerTest(const DlcManagerTest&) = delete;
   DlcManagerTest& operator=(const DlcManagerTest&) = delete;
+
+ protected:
+  DlcManagerTest() = default;
 
   void SetUp() override {
     dlc_service_object_proxy_ =

@@ -28,11 +28,13 @@ namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 using ::testing::_;
 
 class LanConnectivityRoutineTest : public testing::Test {
- protected:
-  LanConnectivityRoutineTest() = default;
+ public:
   LanConnectivityRoutineTest(const LanConnectivityRoutineTest&) = delete;
   LanConnectivityRoutineTest& operator=(const LanConnectivityRoutineTest&) =
       delete;
+
+ protected:
+  LanConnectivityRoutineTest() = default;
 
   void SetUp() override {
     routine_ = CreateLanConnectivityRoutine(network_diagnostics_adapter());

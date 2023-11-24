@@ -47,10 +47,12 @@ class MockPsrCmd : public PsrCmd {
 };
 
 class PsrCmdTest : public testing::Test {
- protected:
-  PsrCmdTest() = default;
+ public:
   PsrCmdTest(const PsrCmdTest&) = delete;
   PsrCmdTest& operator=(const PsrCmdTest&) = delete;
+
+ protected:
+  PsrCmdTest() = default;
   virtual ~PsrCmdTest() = default;
 };
 

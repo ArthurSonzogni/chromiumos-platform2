@@ -56,11 +56,13 @@ using ::testing::StrictMock;
 using ::testing::WithArg;
 
 class BluetoothPairingRoutineTest : public testing::Test {
- protected:
-  BluetoothPairingRoutineTest() = default;
+ public:
   BluetoothPairingRoutineTest(const BluetoothPairingRoutineTest&) = delete;
   BluetoothPairingRoutineTest& operator=(const BluetoothPairingRoutineTest&) =
       delete;
+
+ protected:
+  BluetoothPairingRoutineTest() = default;
 
   MockFlossController* mock_floss_controller() {
     return mock_context_.mock_floss_controller();

@@ -26,11 +26,13 @@ constexpr double kGoodBatteryChargeFullDesign = 8.948;
 constexpr double kBadBatteryChargeFullDesign = 0.812;
 
 class BatteryCapacityRoutineTest : public testing::Test {
- protected:
-  BatteryCapacityRoutineTest() = default;
+ public:
   BatteryCapacityRoutineTest(const BatteryCapacityRoutineTest&) = delete;
   BatteryCapacityRoutineTest& operator=(const BatteryCapacityRoutineTest&) =
       delete;
+
+ protected:
+  BatteryCapacityRoutineTest() = default;
 
   mojom::RoutineUpdate* update() { return &update_; }
 

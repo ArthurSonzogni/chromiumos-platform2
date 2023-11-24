@@ -84,10 +84,12 @@ class BaseFileTest : public ::testing::Test {
     base::FilePath file_path_;
   };
 
- protected:
-  BaseFileTest() = default;
+ public:
   BaseFileTest(const BaseFileTest&) = delete;
   BaseFileTest& operator=(const BaseFileTest&) = delete;
+
+ protected:
+  BaseFileTest() = default;
 
   // Sets the test root. It is the caller's responsibility to clean the test
   // root after the test. This is for manually control the test root.

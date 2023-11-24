@@ -53,11 +53,13 @@ struct FakeScannedPeripheral {
 };
 
 class BluetoothScanningRoutineTest : public testing::Test {
- protected:
-  BluetoothScanningRoutineTest() = default;
+ public:
   BluetoothScanningRoutineTest(const BluetoothScanningRoutineTest&) = delete;
   BluetoothScanningRoutineTest& operator=(const BluetoothScanningRoutineTest&) =
       delete;
+
+ protected:
+  BluetoothScanningRoutineTest() = default;
 
   MockFlossController* mock_floss_controller() {
     return mock_context_.mock_floss_controller();

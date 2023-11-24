@@ -37,10 +37,12 @@ inline constexpr char kFakeUfsHealthDescPath[] =
     "sys/devices/pci0000:00/0000:00:12.7/health_descriptor";
 
 class UfsLifetimeRoutineTest : public BaseFileTest {
- protected:
-  UfsLifetimeRoutineTest() = default;
+ public:
   UfsLifetimeRoutineTest(const UfsLifetimeRoutineTest&) = delete;
   UfsLifetimeRoutineTest& operator=(const UfsLifetimeRoutineTest&) = delete;
+
+ protected:
+  UfsLifetimeRoutineTest() = default;
 
   void SetUp() {
     routine_ = std::make_unique<UfsLifetimeRoutine>(

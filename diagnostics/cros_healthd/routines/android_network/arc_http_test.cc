@@ -37,10 +37,12 @@ struct ArcHttpProblemTestParams {
 };
 
 class ArcHttpRoutineTest : public testing::Test {
- protected:
-  ArcHttpRoutineTest() = default;
+ public:
   ArcHttpRoutineTest(const ArcHttpRoutineTest&) = delete;
   ArcHttpRoutineTest& operator=(const ArcHttpRoutineTest&) = delete;
+
+ protected:
+  ArcHttpRoutineTest() = default;
 
   void SetUp() override {
     routine_ = CreateArcHttpRoutine(network_diagnostics_adapter());

@@ -30,11 +30,13 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 class SensitiveSensorRoutineTest : public testing::Test {
- protected:
-  SensitiveSensorRoutineTest() = default;
+ public:
   SensitiveSensorRoutineTest(const SensitiveSensorRoutineTest&) = delete;
   SensitiveSensorRoutineTest& operator=(const SensitiveSensorRoutineTest&) =
       delete;
+
+ protected:
+  SensitiveSensorRoutineTest() = default;
 
   void SetUp() override {
     mock_context_.fake_mojo_service()->InitializeFakeMojoService();

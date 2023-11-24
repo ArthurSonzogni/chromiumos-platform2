@@ -40,10 +40,12 @@ using ::testing::InSequence;
 using ::testing::WithArg;
 
 class DiskReadRoutineTest : public testing::Test {
- protected:
-  DiskReadRoutineTest() = default;
+ public:
   DiskReadRoutineTest(const DiskReadRoutineTest&) = delete;
   DiskReadRoutineTest& operator=(const DiskReadRoutineTest&) = delete;
+
+ protected:
+  DiskReadRoutineTest() = default;
 
   void SetUp() override {
     // Set sufficient free space.

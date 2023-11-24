@@ -32,10 +32,12 @@ class MockLedControlAutoCommand : public ec::LedControlAutoCommand {
 };
 
 class DelegateImplTest : public ::testing::Test {
- protected:
-  DelegateImplTest() = default;
+ public:
   DelegateImplTest(const DelegateImplTest&) = delete;
   DelegateImplTest& operator=(const DelegateImplTest&) = delete;
+
+ protected:
+  DelegateImplTest() = default;
 
   void CreateEcFile() {
     const auto path = GetRootedPath(ec::kCrosEcPath);

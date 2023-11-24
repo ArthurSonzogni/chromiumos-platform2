@@ -49,10 +49,12 @@ power_manager::PowerSupplyProperties GetPowerSupplyProperties() {
 }
 
 class BatteryChargeRoutineTest : public testing::Test {
- protected:
-  BatteryChargeRoutineTest() = default;
+ public:
   BatteryChargeRoutineTest(const BatteryChargeRoutineTest&) = delete;
   BatteryChargeRoutineTest& operator=(const BatteryChargeRoutineTest&) = delete;
+
+ protected:
+  BatteryChargeRoutineTest() = default;
 
   DiagnosticRoutine* routine() { return routine_.get(); }
 

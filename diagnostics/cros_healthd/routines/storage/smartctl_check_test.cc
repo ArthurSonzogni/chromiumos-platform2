@@ -69,10 +69,12 @@ void VerifyOutput(mojo::ScopedHandle handle,
 }
 
 class SmartctlCheckRoutineTest : public testing::Test {
- protected:
-  SmartctlCheckRoutineTest() = default;
+ public:
   SmartctlCheckRoutineTest(const SmartctlCheckRoutineTest&) = delete;
   SmartctlCheckRoutineTest& operator=(const SmartctlCheckRoutineTest&) = delete;
+
+ protected:
+  SmartctlCheckRoutineTest() = default;
 
   DiagnosticRoutine* routine() { return routine_.get(); }
 

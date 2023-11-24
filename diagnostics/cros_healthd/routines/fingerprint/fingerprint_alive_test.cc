@@ -22,11 +22,13 @@ using ::testing::_;
 using ::testing::WithArg;
 
 class FingerprintAliveRoutineTest : public testing::Test {
- protected:
-  FingerprintAliveRoutineTest() = default;
+ public:
   FingerprintAliveRoutineTest(const FingerprintAliveRoutineTest&) = delete;
   FingerprintAliveRoutineTest& operator=(const FingerprintAliveRoutineTest&) =
       delete;
+
+ protected:
+  FingerprintAliveRoutineTest() = default;
 
   void CreateRoutine() {
     routine_ = std::make_unique<FingerprintAliveRoutine>(mock_context());

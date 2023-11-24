@@ -24,11 +24,13 @@ using ::testing::_;
 
 // Tests for the StylusGarageEventsImpl class.
 class StylusGarageEventsImplTest : public testing::Test {
- protected:
-  StylusGarageEventsImplTest() = default;
+ public:
   StylusGarageEventsImplTest(const StylusGarageEventsImplTest&) = delete;
   StylusGarageEventsImplTest& operator=(const StylusGarageEventsImplTest&) =
       delete;
+
+ protected:
+  StylusGarageEventsImplTest() = default;
 
   void SetUp() override {
     EXPECT_CALL(*mock_executor(), MonitorStylusGarage(_, _))

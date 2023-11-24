@@ -22,10 +22,12 @@ using ::testing::_;
 using ::testing::Return;
 
 class ScopedProcessControlTest : public testing::Test {
- protected:
-  ScopedProcessControlTest() = default;
+ public:
   ScopedProcessControlTest(const ScopedProcessControlTest&) = delete;
   ScopedProcessControlTest& operator=(const ScopedProcessControlTest&) = delete;
+
+ protected:
+  ScopedProcessControlTest() = default;
 
   FakeProcessControl fake_process_control_;
 

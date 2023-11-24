@@ -37,10 +37,12 @@ struct DnsLatencyProblemTestParams {
 };
 
 class DnsLatencyRoutineTest : public testing::Test {
- protected:
-  DnsLatencyRoutineTest() = default;
+ public:
   DnsLatencyRoutineTest(const DnsLatencyRoutineTest&) = delete;
   DnsLatencyRoutineTest& operator=(const DnsLatencyRoutineTest&) = delete;
+
+ protected:
+  DnsLatencyRoutineTest() = default;
 
   void SetUp() override {
     routine_ = CreateDnsLatencyRoutine(network_diagnostics_adapter());

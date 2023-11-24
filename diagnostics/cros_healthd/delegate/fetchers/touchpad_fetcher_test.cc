@@ -41,10 +41,12 @@ constexpr char kFakeDriverTarget[] = "/bus/drivers/fakedriver";
 constexpr char kFakePsmouseDriverTarget[] = "/bus/serio/drivers/psmouse";
 
 class TouchpadFetcherTest : public BaseFileTest {
- protected:
-  TouchpadFetcherTest() = default;
+ public:
   TouchpadFetcherTest(const TouchpadFetcherTest&) = delete;
   TouchpadFetcherTest& operator=(const TouchpadFetcherTest&) = delete;
+
+ protected:
+  TouchpadFetcherTest() = default;
   ~TouchpadFetcherTest() = default;
 
   std::string GetBasePath() {

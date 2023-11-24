@@ -91,10 +91,12 @@ void VerifyMemoryEncryptionInfo(
 }
 
 class MemoryFetcherTest : public BaseFileTest {
- protected:
-  MemoryFetcherTest() = default;
+ public:
   MemoryFetcherTest(const MemoryFetcherTest&) = delete;
   MemoryFetcherTest& operator=(const MemoryFetcherTest&) = delete;
+
+ protected:
+  MemoryFetcherTest() = default;
 
   void SetUp() override {
     ASSERT_TRUE(WriteFileAndCreateParentDirs(

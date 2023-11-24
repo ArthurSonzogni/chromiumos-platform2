@@ -23,11 +23,13 @@ namespace diagnostics {
 namespace {
 
 class SensorExistenceCheckerTest : public testing::Test {
- protected:
-  SensorExistenceCheckerTest() = default;
+ public:
   SensorExistenceCheckerTest(const SensorExistenceCheckerTest&) = delete;
   SensorExistenceCheckerTest& operator=(const SensorExistenceCheckerTest&) =
       delete;
+
+ protected:
+  SensorExistenceCheckerTest() = default;
 
   void SetUp() override {
     mock_context_.fake_mojo_service()->InitializeFakeMojoService();

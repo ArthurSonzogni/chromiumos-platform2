@@ -42,10 +42,12 @@ constexpr uint8_t kEightByteWearLevel4[] = {0, 0, 0, 0, 0, 4, 0, 0};
 constexpr char kInvaildWearLevel[] = "AAAAAAAAAAAAAAAAAAA";
 
 class NvmeWearLevelRoutineTest : public testing::Test {
- protected:
-  NvmeWearLevelRoutineTest() = default;
+ public:
   NvmeWearLevelRoutineTest(const NvmeWearLevelRoutineTest&) = delete;
   NvmeWearLevelRoutineTest& operator=(const NvmeWearLevelRoutineTest&) = delete;
+
+ protected:
+  NvmeWearLevelRoutineTest() = default;
 
   DiagnosticRoutine* routine() { return routine_.get(); }
 

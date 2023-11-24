@@ -47,10 +47,12 @@ std::optional<std::string> GetMockValue(const mojom::NullableUint64Ptr& ptr) {
 }
 
 class SystemUtilsTest : public BaseFileTest {
- protected:
-  SystemUtilsTest() = default;
+ public:
   SystemUtilsTest(const SystemUtilsTest&) = delete;
   SystemUtilsTest& operator=(const SystemUtilsTest&) = delete;
+
+ protected:
+  SystemUtilsTest() = default;
 
   void SetUp() override {
     SetTestRoot(mock_context_.root_dir());

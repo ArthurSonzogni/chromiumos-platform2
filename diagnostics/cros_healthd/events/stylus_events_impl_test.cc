@@ -24,10 +24,12 @@ using ::testing::_;
 
 // Tests for the StylusEventsImpl class.
 class StylusEventsImplTest : public testing::Test {
- protected:
-  StylusEventsImplTest() = default;
+ public:
   StylusEventsImplTest(const StylusEventsImplTest&) = delete;
   StylusEventsImplTest& operator=(const StylusEventsImplTest&) = delete;
+
+ protected:
+  StylusEventsImplTest() = default;
 
   void SetUp() override {
     EXPECT_CALL(*mock_executor(), MonitorStylus(_, _))

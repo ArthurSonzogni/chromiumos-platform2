@@ -37,11 +37,13 @@ bool EnsureAdapterPoweredStateSync(BluetoothRoutineBase* const routine_base,
 }
 
 class BluezBluetoothRoutineBaseTest : public testing::Test {
- protected:
-  BluezBluetoothRoutineBaseTest() = default;
+ public:
   BluezBluetoothRoutineBaseTest(const BluezBluetoothRoutineBaseTest&) = delete;
   BluezBluetoothRoutineBaseTest& operator=(
       const BluezBluetoothRoutineBaseTest&) = delete;
+
+ protected:
+  BluezBluetoothRoutineBaseTest() = default;
 
   MockBluezController* mock_bluez_controller() {
     return mock_context_.mock_bluez_controller();

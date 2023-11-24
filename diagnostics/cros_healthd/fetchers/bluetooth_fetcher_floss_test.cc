@@ -82,11 +82,13 @@ struct FetchDeviceInfoDetails {
 };
 
 class BluetoothFetcherFlossTest : public ::testing::Test {
- protected:
-  BluetoothFetcherFlossTest() = default;
+ public:
   BluetoothFetcherFlossTest(const BluetoothFetcherFlossTest&) = delete;
   BluetoothFetcherFlossTest& operator=(const BluetoothFetcherFlossTest&) =
       delete;
+
+ protected:
+  BluetoothFetcherFlossTest() = default;
   ~BluetoothFetcherFlossTest() = default;
 
   void SetUp() override {

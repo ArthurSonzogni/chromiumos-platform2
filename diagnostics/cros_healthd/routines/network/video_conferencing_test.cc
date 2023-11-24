@@ -41,11 +41,13 @@ struct VideoConferencingProblemTestParams {
 };
 
 class VideoConferencingRoutineTest : public testing::Test {
- protected:
-  VideoConferencingRoutineTest() = default;
+ public:
   VideoConferencingRoutineTest(const VideoConferencingRoutineTest&) = delete;
   VideoConferencingRoutineTest& operator=(const VideoConferencingRoutineTest&) =
       delete;
+
+ protected:
+  VideoConferencingRoutineTest() = default;
 
   void SetUp() override {
     routine_ = CreateVideoConferencingRoutine(std::nullopt,

@@ -73,10 +73,12 @@ power_manager::PowerSupplyProperties GetDefaultPowerSupplyProperties() {
 }
 
 class BatteryHealthRoutineTest : public testing::Test {
- protected:
-  BatteryHealthRoutineTest() = default;
+ public:
   BatteryHealthRoutineTest(const BatteryHealthRoutineTest&) = delete;
   BatteryHealthRoutineTest& operator=(const BatteryHealthRoutineTest&) = delete;
+
+ protected:
+  BatteryHealthRoutineTest() = default;
 
   mojom::RoutineUpdate* update() { return &update_; }
 

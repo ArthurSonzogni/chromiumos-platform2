@@ -37,10 +37,12 @@ struct DnsResolutionProblemTestParams {
 };
 
 class DnsResolutionRoutineTest : public testing::Test {
- protected:
-  DnsResolutionRoutineTest() = default;
+ public:
   DnsResolutionRoutineTest(const DnsResolutionRoutineTest&) = delete;
   DnsResolutionRoutineTest& operator=(const DnsResolutionRoutineTest&) = delete;
+
+ protected:
+  DnsResolutionRoutineTest() = default;
 
   void SetUp() override {
     routine_ = CreateDnsResolutionRoutine(network_diagnostics_adapter());

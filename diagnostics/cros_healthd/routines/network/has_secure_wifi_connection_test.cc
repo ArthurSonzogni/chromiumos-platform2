@@ -37,12 +37,14 @@ struct HasSecureWiFiConnectionProblemTestParams {
 };
 
 class HasSecureWiFiConnectionRoutineTest : public testing::Test {
- protected:
-  HasSecureWiFiConnectionRoutineTest() = default;
+ public:
   HasSecureWiFiConnectionRoutineTest(
       const HasSecureWiFiConnectionRoutineTest&) = delete;
   HasSecureWiFiConnectionRoutineTest& operator=(
       const HasSecureWiFiConnectionRoutineTest&) = delete;
+
+ protected:
+  HasSecureWiFiConnectionRoutineTest() = default;
 
   void SetUp() override {
     routine_ =

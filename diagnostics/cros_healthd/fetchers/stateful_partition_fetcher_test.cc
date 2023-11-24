@@ -32,11 +32,13 @@ const char kFakeFilesystem[] = "ext4";
 const char kFakeMtabOpt[] = "rw 0 0";
 
 class StatefulePartitionFetcherTest : public ::testing::Test {
- protected:
-  StatefulePartitionFetcherTest() = default;
+ public:
   StatefulePartitionFetcherTest(const StatefulePartitionFetcherTest&) = delete;
   StatefulePartitionFetcherTest& operator=(
       const StatefulePartitionFetcherTest&) = delete;
+
+ protected:
+  StatefulePartitionFetcherTest() = default;
 
   void SetUp() override {
     // Populate fake mtab contents.

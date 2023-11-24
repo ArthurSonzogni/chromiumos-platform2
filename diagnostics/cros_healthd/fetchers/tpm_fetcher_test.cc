@@ -28,10 +28,12 @@ using ::testing::_;
 using ::testing::WithArg;
 
 class TpmFetcherTest : public BaseFileTest {
- protected:
-  TpmFetcherTest() = default;
+ public:
   TpmFetcherTest(const TpmFetcherTest&) = delete;
   TpmFetcherTest& operator=(const TpmFetcherTest&) = delete;
+
+ protected:
+  TpmFetcherTest() = default;
 
   void SetUp() override {
     auto version = tpm_manager::GetVersionInfoReply();

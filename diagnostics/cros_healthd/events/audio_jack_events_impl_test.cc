@@ -24,10 +24,12 @@ using ::testing::_;
 
 // Tests for the AudioJackEventsImpl class.
 class AudioJackEventsImplTest : public testing::Test {
- protected:
-  AudioJackEventsImplTest() = default;
+ public:
   AudioJackEventsImplTest(const AudioJackEventsImplTest&) = delete;
   AudioJackEventsImplTest& operator=(const AudioJackEventsImplTest&) = delete;
+
+ protected:
+  AudioJackEventsImplTest() = default;
 
   void SetUp() override {
     SetExecutorMonitorAudioJack();

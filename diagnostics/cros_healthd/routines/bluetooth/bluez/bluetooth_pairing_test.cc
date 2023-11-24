@@ -38,12 +38,14 @@ using ::testing::WithArg;
 using ::testing::WithArgs;
 
 class BluezBluetoothPairingRoutineTest : public testing::Test {
- protected:
-  BluezBluetoothPairingRoutineTest() = default;
+ public:
   BluezBluetoothPairingRoutineTest(const BluezBluetoothPairingRoutineTest&) =
       delete;
   BluezBluetoothPairingRoutineTest& operator=(
       const BluezBluetoothPairingRoutineTest&) = delete;
+
+ protected:
+  BluezBluetoothPairingRoutineTest() = default;
 
   void SetUp() override {
     SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});

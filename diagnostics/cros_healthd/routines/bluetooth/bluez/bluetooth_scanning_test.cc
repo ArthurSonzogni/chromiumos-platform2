@@ -38,12 +38,14 @@ using ::testing::StrictMock;
 using ::testing::WithArg;
 
 class BluezBluetoothScanningRoutineTest : public testing::Test {
- protected:
-  BluezBluetoothScanningRoutineTest() = default;
+ public:
   BluezBluetoothScanningRoutineTest(const BluezBluetoothScanningRoutineTest&) =
       delete;
   BluezBluetoothScanningRoutineTest& operator=(
       const BluezBluetoothScanningRoutineTest&) = delete;
+
+ protected:
+  BluezBluetoothScanningRoutineTest() = default;
 
   void SetUp() override { SetUpRoutine(std::nullopt); }
 

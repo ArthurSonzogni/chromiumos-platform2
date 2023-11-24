@@ -48,10 +48,12 @@ class MockAudioObserver : public mojom::CrosHealthdAudioObserver {
 
 // Tests for the AudioEventsImpl class.
 class AudioEventsImplTest : public testing::Test {
- protected:
-  AudioEventsImplTest() = default;
+ public:
   AudioEventsImplTest(const AudioEventsImplTest&) = delete;
   AudioEventsImplTest& operator=(const AudioEventsImplTest&) = delete;
+
+ protected:
+  AudioEventsImplTest() = default;
 
   void SetUp() override {
     EXPECT_CALL(*mock_context_.mock_cras_proxy(),

@@ -40,10 +40,12 @@ using ::testing::StrictMock;
 using ::testing::WithArg;
 
 class GroundTruthTest : public BaseFileTest {
- protected:
-  GroundTruthTest() = default;
+ public:
   GroundTruthTest(const GroundTruthTest&) = delete;
   GroundTruthTest& operator=(const GroundTruthTest&) = delete;
+
+ protected:
+  GroundTruthTest() = default;
 
   MockFlossController* mock_floss_controller() {
     return mock_context_.mock_floss_controller();

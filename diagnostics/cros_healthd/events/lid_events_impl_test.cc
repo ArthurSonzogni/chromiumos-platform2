@@ -24,10 +24,12 @@ using ::testing::SaveArg;
 
 // Tests for the LidEventsImpl class.
 class LidEventsImplTest : public testing::Test {
- protected:
-  LidEventsImplTest() = default;
+ public:
   LidEventsImplTest(const LidEventsImplTest&) = delete;
   LidEventsImplTest& operator=(const LidEventsImplTest&) = delete;
+
+ protected:
+  LidEventsImplTest() = default;
 
   void SetUp() override {
     EXPECT_CALL(*mock_power_manager_proxy(),
