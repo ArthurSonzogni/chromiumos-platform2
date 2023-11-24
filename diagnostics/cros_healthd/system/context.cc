@@ -74,7 +74,6 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
                  const ServiceConfig& service_config,
                  base::OnceClosure shutdown_callback) {
   // Initialize static member
-  root_dir_ = base::FilePath("/");
   udev_monitor_ = std::move(udev_monitor);
 
   // Initialize the D-Bus connection.

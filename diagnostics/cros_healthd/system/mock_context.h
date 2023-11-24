@@ -7,7 +7,6 @@
 
 #include <memory>
 
-#include <base/files/scoped_temp_dir.h>
 #include <base/test/simple_test_tick_clock.h>
 
 #include "diagnostics/cros_healthd/executor/mock_executor.h"
@@ -88,8 +87,6 @@ class MockContext final : public Context {
   MOCK_METHOD(const base::Time, time, (), (const, override));
 
  private:
-  // Used to create a temporary root directory.
-  base::ScopedTempDir temp_dir_;
   // Used to create a fake pci util.
   FakePciUtil fake_pci_util_;
   // Mock executor.

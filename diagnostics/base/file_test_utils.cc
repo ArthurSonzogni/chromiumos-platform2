@@ -44,12 +44,6 @@ BaseFileTest::PathType::PathType(std::initializer_list<std::string> paths) {
   }
 }
 
-void BaseFileTest::SetTestRoot(const base::FilePath& path) {
-  // Reset old before create the new instance.
-  scoped_root_dir_.reset();
-  scoped_root_dir_ = std::make_unique<ScopedRootDirOverrides>(path);
-}
-
 void BaseFileTest::UnsetPath(const PathType& path) const {
   ASSERT_FALSE(GetRootDir().empty());
   ASSERT_TRUE(brillo::DeletePathRecursively(GetPathUnderRoot(path)));

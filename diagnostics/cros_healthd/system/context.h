@@ -7,7 +7,6 @@
 
 #include <memory>
 
-#include <base/files/file_path.h>
 #include <base/time/tick_clock.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/udev/udev_monitor.h>
@@ -136,11 +135,6 @@ class Context {
   // Use the object returned by powerd_adapter() to subscribe to notifications
   // from powerd.
   PowerdAdapter* powerd_adapter() const { return powerd_adapter_.get(); }
-  // Use the object returned by root_dir() to determine the root directory of
-  // the system.
-  // DEPRECATED: TODO(b/265116237): Use GetRootDir() and GetRootedPath()
-  // instead.
-  const base::FilePath& root_dir() const { return root_dir_; }
   // Use the object returned by udev_monitor() to receive udev events.
   const std::unique_ptr<brillo::UdevMonitor>& udev_monitor() const {
     return udev_monitor_;
@@ -235,8 +229,6 @@ class Context {
 
   // The resource queue for jobs using either cpu or memory resources.
   std::unique_ptr<ResourceQueue> memory_cpu_resource_queue_;
-
-  base::FilePath root_dir_;
 };
 
 }  // namespace diagnostics

@@ -77,9 +77,6 @@ class BaseFileTest : public ::testing::Test {
  protected:
   BaseFileTest() = default;
 
-  // Sets the test root. It is the caller's responsibility to clean the test
-  // root after the test. This is for manually control the test root.
-  void SetTestRoot(const base::FilePath& path);
   // Unsets a file or a directory in the test rootfs.
   void UnsetPath(const PathType& path) const;
   // Creates a symbolic link at |path| which points to |target|. The parent

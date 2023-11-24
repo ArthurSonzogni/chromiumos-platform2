@@ -38,12 +38,11 @@ inline base::FilePath GetRootedPath(base::FilePath path) {
   return path;
 }
 #else
-// Overrides the root dir for unit tests. Doesn't support nested overriding.
-// If no |root_dir| is provided, a unique temporary directory will be used.
+// Overrides the root dir by using a unique temporary directory for unit tests.
+// Doesn't support nested overriding.
 class BRILLO_EXPORT ScopedRootDirOverrides {
  public:
   ScopedRootDirOverrides();
-  explicit ScopedRootDirOverrides(base::FilePath root_dir);
   ScopedRootDirOverrides(const ScopedRootDirOverrides&) = delete;
   ScopedRootDirOverrides& operator=(const ScopedRootDirOverrides&) = delete;
   ~ScopedRootDirOverrides();

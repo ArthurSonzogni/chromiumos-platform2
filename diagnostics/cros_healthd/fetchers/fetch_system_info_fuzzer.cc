@@ -98,7 +98,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   MockContext mock_context;
 
-  SetUpSystemFiles(mock_context.root_dir(), &provider);
+  // Overrides the root dir.
+  ScopedRootDirOverrides scoped_root_dir;
+
+  SetUpSystemFiles(GetRootDir(), &provider);
   mock_context.fake_system_config()->SetHasSkuNumber(true);
   mock_context.fake_system_config()->SetMarketingName("fake_marketing_name");
   mock_context.fake_system_config()->SetOemName("fake_oem_name");

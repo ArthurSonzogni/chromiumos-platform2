@@ -69,9 +69,6 @@ MockContext::MockContext() {
   udev_monitor_ = std::make_unique<brillo::MockUdevMonitor>();
   spaced_proxy_ = std::make_unique<org::chromium::SpacedProxyMock>();
 
-  CHECK(temp_dir_.CreateUniqueTempDir());
-  root_dir_ = temp_dir_.GetPath();
-
   memory_cpu_resource_queue_ = std::make_unique<ResourceQueue>();
 }
 

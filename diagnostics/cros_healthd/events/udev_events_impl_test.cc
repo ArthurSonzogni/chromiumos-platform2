@@ -131,7 +131,6 @@ class ThunderboltEventTest : public UdevEventsImplTest {
         std::make_unique<StrictMock<MockCrosHealthdThunderboltObserver>>(
             std::move(observer_receiver));
     udev_events_impl_.AddThunderboltObserver(std::move(observer));
-    SetTestRoot(mock_context_.root_dir());
   }
 
   MockCrosHealthdThunderboltObserver* mock_observer() {
@@ -150,8 +149,7 @@ class ThunderboltEventTest : public UdevEventsImplTest {
   }
 
   void TriggerUdevEvent(const char* action, const char* authorized) {
-    const auto& root = mock_context_.root_dir();
-    auto path = root.Append(kFakeThunderboltFullPath);
+    auto path = GetRootDir().Append(kFakeThunderboltFullPath);
     auto monitor = mock_context_.mock_udev_monitor();
     auto device = std::make_unique<brillo::MockUdevDevice>();
     EXPECT_CALL(*device, GetAction()).WillOnce(Return(action));
@@ -187,7 +185,6 @@ class UsbEventTest : public UdevEventsImplTest {
     observer_ = std::make_unique<StrictMock<MockCrosHealthdUsbObserver>>(
         std::move(observer_receiver));
     udev_events_impl_.AddUsbObserver(std::move(observer));
-    SetTestRoot(mock_context_.root_dir());
   }
 
   MockCrosHealthdUsbObserver* mock_observer() { return observer_.get(); }
@@ -216,8 +213,7 @@ class UsbEventTest : public UdevEventsImplTest {
   }
 
   void TriggerUdevEvent(const char* action) {
-    const auto& root = mock_context_.root_dir();
-    auto path = root.Append(kFakeUsbSysPath);
+    auto path = GetRootDir().Append(kFakeUsbSysPath);
     auto monitor = mock_context_.mock_udev_monitor();
     auto device = std::make_unique<brillo::MockUdevDevice>();
     EXPECT_CALL(*device, GetAction()).WillOnce(Return(action));

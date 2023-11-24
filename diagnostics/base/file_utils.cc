@@ -54,13 +54,6 @@ ScopedRootDirOverrides::ScopedRootDirOverrides() {
   RootDir() = temp_dir_.GetPath();
 }
 
-ScopedRootDirOverrides::ScopedRootDirOverrides(base::FilePath root_dir) {
-  CHECK(!root_dir.empty());
-  CHECK(root_dir.IsAbsolute());
-  CHECK(RootDir().empty()) << "Cannot set twice.";
-  RootDir() = root_dir;
-}
-
 ScopedRootDirOverrides::~ScopedRootDirOverrides() {
   RootDir() = base::FilePath{};
 }
