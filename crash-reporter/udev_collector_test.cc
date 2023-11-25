@@ -81,6 +81,9 @@ constexpr const char* kCollectedDriverNames[] = {"adreno", "qcom-venus", "amdgpu
 const char kCrashReporterInterface[] = "org.chromium.CrashReporterInterface";
 const char kDebugDumpCreatedSignalName[] = "DebugDumpCreated";
 
+const char kWiFiMetaFilePattern[] = "devcoredump_iwlwifi.*.meta";
+const char kWiFiCrashLogFilePattern[] = "devcoredump_iwlwifi.*.log";
+
 // Returns the number of files found in the given path that matches the
 // specified file name pattern.
 int GetNumFiles(const FilePath& path, const std::string& file_pattern) {
@@ -448,6 +451,50 @@ TEST_F(UdevCollectorTest,
   FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
   HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
   EXPECT_EQ(1, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
+}
+
+// For connectivity firmware dump we do not want .meta and .log file. This
+// test ensures that .meta and .log files are not generated.
+TEST_F(UdevCollectorTest, RunAsRoot_TestEnsureOnlyDevcoredumpFileIsGenerated) {
+  GenerateDevCoredump("devcd0", kConnectivityWiFiDriverName);
+
+  auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
+  collector_.SetSessionManagerProxy(mock);
+  CreateFbpreprocessordDirectoryForTest(&collector_);
+  auto obj_path = dbus::ObjectPath(crash_reporter::kCrashReporterServicePath);
+  auto exported_object =
+      base::MakeRefCounted<dbus::MockExportedObject>(mock_bus_.get(), obj_path);
+
+  SetDebugDumpCreatedSignalExpectation(&collector_, exported_object, obj_path);
+
+  EXPECT_CALL(*mock, RetrievePrimarySession)
+      .WillOnce(WithArgs<0, 1>(
+          Invoke([](std::string* username, std::string* sanitized) {
+            *username = kDeviceUserInAllowlist;
+            *sanitized = "user_hash";
+            return true;
+          })));
+
+  EXPECT_CALL(
+      *mock,
+      RetrievePolicyEx(CreateExpectedDescriptorBlob(
+                           login_manager::PolicyAccountType::ACCOUNT_TYPE_USER,
+                           kDeviceUserInAllowlist),
+                       _, _, _))
+      .WillRepeatedly(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob(
+            login_manager::PolicyAccountType::ACCOUNT_TYPE_USER, kAffiliationID,
+            "wifi");
+        return true;
+      })));
+
+  FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
+  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(1, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
+
+  // Ensure .meta and .log file are not generated.
+  EXPECT_EQ(0, GetNumFiles(user_hash_path, kWiFiMetaFilePattern));
+  EXPECT_EQ(0, GetNumFiles(user_hash_path, kWiFiCrashLogFilePattern));
 }
 
 // Ensure fwdump is generated if policy is set and user is allowed.

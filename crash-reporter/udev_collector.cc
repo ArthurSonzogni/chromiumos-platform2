@@ -443,22 +443,25 @@ bool UdevCollector::AppendDevCoredump(const FilePath& crash_directory,
     return false;
   }
 
-  // Collect additional logs if one is specified in the config file.
-  std::string udev_log_name = std::string(kCollectUdevSignature) + '-' +
-                              kUdevSubsystemDevCoredump + '-' + driver_name;
-  bool result = GetLogContents(log_config_path_, udev_log_name, log_path);
-  if (result) {
-    AddCrashMetaUploadFile("logs", log_path.BaseName().value());
-  }
-
-  AddCrashMetaData(kUdevSignatureKey, udev_log_name);
-
-  FinishCrash(meta_path, coredump_prefix, core_path.BaseName().value());
-
-  // Generate debug dump created signal for connectivity firmware dumps for
-  // fbpreprocessord to process.
+  // Do not write meta and log file if it is connectivity firmware dumps.
+  // Connectivity firmware dumps use dbus signal to process firmware dumps
+  // unlike meta file based synchronization.
   if (is_connectivity_fwdump) {
+    // Generate debug dump created signal for connectivity firmware dumps
+    // for fbpreprocessord to process.
     EmitConnectivityDebugDumpCreatedSignal(core_path.value());
+  } else {
+    // Collect additional logs if one is specified in the config file.
+    std::string udev_log_name = std::string(kCollectUdevSignature) + '-' +
+                                kUdevSubsystemDevCoredump + '-' + driver_name;
+    bool result = GetLogContents(log_config_path_, udev_log_name, log_path);
+    if (result) {
+      AddCrashMetaUploadFile("logs", log_path.BaseName().value());
+    }
+
+    AddCrashMetaData(kUdevSignatureKey, udev_log_name);
+
+    FinishCrash(meta_path, coredump_prefix, core_path.BaseName().value());
   }
 
   return true;
