@@ -160,47 +160,24 @@ void PortalDetector::StartTrialTask() {
   // Ensure that every trial increases the delay backoff exponent to prevent a
   // systematic failure from creating a hot loop.
   delay_backoff_exponent_++;
-
+  result_ = std::make_unique<Result>();
+  is_active_ = true;
   last_attempt_start_time_ = base::TimeTicks::Now();
   LOG(INFO) << LoggingTag()
             << ": Starting trial. HTTP probe: " << http_url_.host()
             << ". HTTPS probe: " << https_url_.host();
-  auto http_error = http_request_->Start(
+  http_request_->Start(
       LoggingTag() + " HTTP probe", http_url_, kHeaders,
       base::BindOnce(&PortalDetector::HttpRequestSuccessCallback,
                      weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(&PortalDetector::HttpRequestErrorCallback,
                      weak_ptr_factory_.GetWeakPtr()));
-  if (http_error) {
-    // If the http probe fails to start, complete the trial with a failure
-    // Result for https.
-    LOG(ERROR) << LoggingTag()
-               << ": HTTP probe failed to start: " << *http_error
-               << ". Aborting trial.";
-    PortalDetector::Result result;
-    result.http_phase = GetPortalPhaseFromRequestError(*http_error);
-    result.http_status = GetPortalStatusFromRequestError(*http_error);
-    CompleteTrial(result);
-    return;
-  }
-
-  result_ = std::make_unique<Result>();
-
-  auto https_error = https_request_->Start(
+  https_request_->Start(
       LoggingTag() + " HTTPS probe", https_url_, kHeaders,
       base::BindOnce(&PortalDetector::HttpsRequestSuccessCallback,
                      weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(&PortalDetector::HttpsRequestErrorCallback,
                      weak_ptr_factory_.GetWeakPtr()));
-  if (https_error) {
-    result_->https_error = https_error;
-    LOG(ERROR) << LoggingTag()
-               << ": HTTPS probe failed to start: " << *https_error;
-    // To find the portal sign-in url, wait for the HTTP probe to complete
-    // before completing the trial and calling |portal_result_callback_|.
-  }
-
-  is_active_ = true;
 }
 
 void PortalDetector::CompleteTrial(Result result) {

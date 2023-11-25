@@ -45,7 +45,8 @@ HttpRequest::HttpRequest(EventDispatcher* dispatcher,
                          const std::vector<net_base::IPAddress>& dns_list,
                          bool allow_non_google_https,
                          std::shared_ptr<brillo::http::Transport> transport)
-    : ip_family_(ip_family),
+    : dispatcher_(dispatcher),
+      ip_family_(ip_family),
       dns_list_(dns_list),
       weak_ptr_factory_(this),
       dns_client_callback_(base::BindRepeating(&HttpRequest::GetDNSResult,
@@ -73,56 +74,49 @@ HttpRequest::~HttpRequest() {
   Stop();
 }
 
-std::optional<HttpRequest::Error> HttpRequest::Start(
+void HttpRequest::Start(
     const std::string& logging_tag,
     const net_base::HttpUrl& url,
     const brillo::http::HeaderList& headers,
     base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
         request_success_callback,
     base::OnceCallback<void(Error)> request_error_callback) {
-  SLOG(this, 3) << "In " << __func__;
-
   DCHECK(!is_running_);
-
   logging_tag_ = logging_tag;
   url_ = url;
   headers_ = headers;
   is_running_ = true;
   transport_->SetDefaultTimeout(kRequestTimeout);
-
   request_success_callback_ = std::move(request_success_callback);
   request_error_callback_ = std::move(request_error_callback);
 
-  const auto server_addr = net_base::IPAddress::CreateFromString(url_.host());
-  if (server_addr && server_addr->GetFamily() != ip_family_) {
-    LOG(ERROR) << logging_tag_ << ": Server hostname " << url_.host()
-               << " doesn't match the IP family " << ip_family_;
-    Stop();
-    return Error::kDNSFailure;
+  // Name resolution is not needed if the hostname is an IP address literal.
+  if (const auto server_addr =
+          net_base::IPAddress::CreateFromString(url_.host())) {
+    if (server_addr->GetFamily() == ip_family_) {
+      StartRequest();
+    } else {
+      LOG(ERROR) << logging_tag_ << ": Server hostname " << url_.host()
+                 << " doesn't match the IP family " << ip_family_;
+      SendErrorAsync(Error::kDNSFailure);
+    }
+    return;
   }
 
-  if (server_addr) {
-    StartRequest();
-  } else {
-    SLOG(this, 2) << "Looking up host: " << url_.host();
-    shill::Error error;
-    std::vector<std::string> dns_addresses;
-    // TODO(b/307880493): Migrate to net_base::DNSClient and avoid
-    // converting the net_base::IPAddress values to std::string.
-    for (const auto& dns : dns_list_) {
-      if (dns.GetFamily() == ip_family_) {
-        dns_addresses.push_back(dns.ToString());
-      }
-    }
-    if (!dns_client_->Start(dns_addresses, url_.host(), &error)) {
-      LOG(ERROR) << logging_tag_
-                 << ": Failed to start DNS client: " << error.message();
-      Stop();
-      return Error::kDNSFailure;
+  shill::Error error;
+  std::vector<std::string> dns_addresses;
+  // TODO(b/307880493): Migrate to net_base::DNSClient and avoid
+  // converting the net_base::IPAddress values to std::string.
+  for (const auto& dns : dns_list_) {
+    if (dns.GetFamily() == ip_family_) {
+      dns_addresses.push_back(dns.ToString());
     }
   }
-
-  return std::nullopt;
+  if (!dns_client_->Start(dns_addresses, url_.host(), &error)) {
+    LOG(ERROR) << logging_tag_
+               << ": Failed to start DNS client: " << error.message();
+    SendErrorAsync(Error::kDNSFailure);
+  }
 }
 
 void HttpRequest::StartRequest() {
@@ -249,6 +243,12 @@ void HttpRequest::SendError(Error error) {
   if (!request_error_callback.is_null()) {
     std::move(request_error_callback).Run(error);
   }
+}
+
+void HttpRequest::SendErrorAsync(Error error) {
+  dispatcher_->PostTask(FROM_HERE,
+                        base::BindOnce(&HttpRequest::SendError,
+                                       weak_ptr_factory_.GetWeakPtr(), error));
 }
 
 // static

@@ -71,11 +71,10 @@ class HttpRequest {
   virtual ~HttpRequest();
 
   // Start an http GET request to the URL |url|. If the request succeeds,
-  // std::nullopt is returned and |request_success_callback| is called
-  // asynchronously with the response data. Otherwise, if the request fails to
-  // start an error is returned immediately or |request_error_callback| is
-  // called with the error reason.
-  virtual std::optional<Error> Start(
+  // |request_success_callback| is called asynchronously with the response data.
+  // Otherwise, if the request fails |request_error_callback| is called with the
+  // error reason.
+  virtual void Start(
       const std::string& logging_tag,
       const net_base::HttpUrl& url,
       const brillo::http::HeaderList& headers,
@@ -102,8 +101,13 @@ class HttpRequest {
                        std::unique_ptr<brillo::http::Response> response);
   void ErrorCallback(brillo::http::RequestID request_id,
                      const brillo::Error* error);
+  // Calls synchronously |request_error_callback_| with |error| and terminates
+  // this request.
   void SendError(Error error);
+  // Same as SendError, but asynchrously using |dispatcher_|.
+  void SendErrorAsync(Error error);
 
+  EventDispatcher* dispatcher_;
   std::string logging_tag_;
   net_base::IPFamily ip_family_;
   std::vector<net_base::IPAddress> dns_list_;

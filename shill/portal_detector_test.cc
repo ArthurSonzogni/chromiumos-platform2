@@ -61,7 +61,7 @@ class MockHttpRequest : public HttpRequest {
   ~MockHttpRequest() = default;
 
   MOCK_METHOD(
-      std::optional<HttpRequest::Error>,
+      void,
       Start,
       (const std::string&,
        const net_base::HttpUrl&,
@@ -165,8 +165,8 @@ class PortalDetectorTest : public Test {
   }
 
   void StartTrialTask() {
-    EXPECT_CALL(*http_request(), Start).WillOnce(Return(std::nullopt));
-    EXPECT_CALL(*https_request(), Start).WillOnce(Return(std::nullopt));
+    EXPECT_CALL(*http_request(), Start);
+    EXPECT_CALL(*https_request(), Start);
     portal_detector()->StartTrialTask();
   }
 
@@ -310,77 +310,25 @@ TEST_F(PortalDetectorTest, IsInProgress) {
   ExpectCleanupTrial();
 }
 
-TEST_F(PortalDetectorTest, HttpStartAttemptFailed) {
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay()));
-  StartPortalRequest();
-
-  // Expect that the HTTP request will be started -- return failure.
-  EXPECT_CALL(*http_request(), Start)
-      .WillOnce(Return(HttpRequest::Error::kDNSFailure));
-  EXPECT_CALL(*https_request(), Start).Times(0);
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay())).Times(0);
-
-  // Expect a non-final failure to be relayed to the caller.
-  PortalDetector::Result result;
-  result.num_attempts = 1;
-  result.http_phase = PortalDetector::Phase::kDNS,
-  result.http_status = PortalDetector::Status::kFailure;
-  result.http_probe_completed = false;
-  result.https_probe_completed = false;
-  EXPECT_CALL(callback_target(), ResultCallback(Eq(result)));
-
-  portal_detector()->StartTrialTask();
-  ExpectCleanupTrial();
-}
-
-TEST_F(PortalDetectorTest, HttpsStartAttemptFailed) {
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay()));
-  StartPortalRequest();
-
-  // Expect that the HTTP request will be started successfully and the
-  // HTTPS request will fail to start.
-  EXPECT_CALL(*http_request(), Start).WillOnce(Return(std::nullopt));
-  EXPECT_CALL(*https_request(), Start)
-      .WillOnce(Return(HttpRequest::Error::kDNSFailure));
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay())).Times(0);
-
-  // Expect PortalDetector will wait for HTTP probe completion.
-  EXPECT_CALL(callback_target(), ResultCallback).Times(0);
-
-  portal_detector()->StartTrialTask();
-  EXPECT_TRUE(portal_detector()->IsInProgress());
-  EXPECT_NE(nullptr, portal_detector_->http_request_);
-  EXPECT_NE(nullptr, portal_detector_->https_request_);
-  Mock::VerifyAndClearExpectations(&callback_target());
-
-  // Finish the trial, IsInProgress should return false.
-  PortalDetector::Result result;
-  result.http_phase = PortalDetector::Phase::kContent;
-  result.http_status = PortalDetector::Status::kSuccess;
-  result.https_error = HttpRequest::Error::kDNSFailure;
-  result.http_probe_completed = true;
-  result.https_probe_completed = false;
-  portal_detector()->CompleteTrial(result);
-  ExpectCleanupTrial();
-}
-
 TEST_F(PortalDetectorTest, FailureToStartDoesNotCauseImmediateRestart) {
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay()));
   EXPECT_TRUE(portal_detector()->GetNextAttemptDelay().is_zero());
   EXPECT_EQ(0, portal_detector()->attempt_count());
   StartPortalRequest();
 
-  EXPECT_CALL(*http_request(), Start)
-      .WillOnce(Return(HttpRequest::Error::kDNSFailure));
-  EXPECT_CALL(*https_request(), Start).Times(0);
   PortalDetector::Result result;
   result.num_attempts = 1;
   result.http_phase = PortalDetector::Phase::kDNS,
   result.http_status = PortalDetector::Status::kFailure;
-  result.http_probe_completed = false;
-  result.https_probe_completed = false;
+  result.https_error = HttpRequest::Error::kDNSFailure;
+  result.http_probe_completed = true;
+  result.https_probe_completed = true;
   EXPECT_CALL(callback_target(), ResultCallback(Eq(result)));
+  EXPECT_CALL(*http_request(), Start);
+  EXPECT_CALL(*https_request(), Start);
   portal_detector()->StartTrialTask();
+  portal_detector_->HttpRequestErrorCallback(HttpRequest::Error::kDNSFailure);
+  portal_detector_->HttpsRequestErrorCallback(HttpRequest::Error::kDNSFailure);
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
   EXPECT_TRUE(portal_detector()->GetNextAttemptDelay().is_positive());
