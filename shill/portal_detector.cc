@@ -160,7 +160,7 @@ void PortalDetector::StartTrialTask() {
   // Ensure that every trial increases the delay backoff exponent to prevent a
   // systematic failure from creating a hot loop.
   delay_backoff_exponent_++;
-  result_ = std::make_unique<Result>();
+  result_ = Result();
   is_active_ = true;
   last_attempt_start_time_ = base::TimeTicks::Now();
   LOG(INFO) << LoggingTag()
@@ -197,7 +197,7 @@ void PortalDetector::CompleteTrial(Result result) {
 
 void PortalDetector::CleanupTrial() {
   trial_.Cancel();
-  result_.reset();
+  result_ = std::nullopt;
   http_request_.reset();
   https_request_.reset();
   is_active_ = false;

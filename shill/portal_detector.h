@@ -367,7 +367,7 @@ class PortalDetector {
   std::unique_ptr<HttpRequest> https_request_;
   // PortalDetector::Result for the current on-going attempt. Undefined if there
   // is no portal detection attempt currently running.
-  std::unique_ptr<Result> result_;
+  std::optional<Result> result_;
   // PortalDetector::Result of the prior attempt. Undefined for the first
   // attempt. Used to ensure that the same HTTP probe URL is used with a closed
   // captive portal.
