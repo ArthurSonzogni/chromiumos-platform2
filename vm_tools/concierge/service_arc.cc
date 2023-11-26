@@ -259,10 +259,9 @@ bool BoostArcVmCgroups(double boost_value) {
 
 void Service::StartArcVm(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        vm_tools::concierge::StartVmResponse>> response_sender,
+        vm_tools::concierge::StartVmResponse>> response_cb,
     const vm_tools::concierge::StartArcVmRequest& request) {
-  LOG(INFO) << "Received StartArcVm request";
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   InitVmMemoryManagementService();
 
@@ -271,12 +270,12 @@ void Service::StartArcVm(
   response.set_status(VM_STATUS_FAILURE);
 
   if (!CheckStartVmPreconditions(request, &response)) {
-    response_sender->Return(response);
+    response_cb->Return(response);
     return;
   }
 
   StartArcVmInternal(request, response);
-  response_sender->Return(response);
+  response_cb->Return(response);
 }
 
 StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
@@ -679,8 +678,7 @@ void Service::ArcVmCompleteBoot(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         ArcVmCompleteBootResponse>> response_cb,
     const ArcVmCompleteBootRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   ArcVmCompleteBootResponse response;
 

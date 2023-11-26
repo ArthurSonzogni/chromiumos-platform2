@@ -534,6 +534,13 @@ class Service final : public org::chromium::VmConciergeInterface,
   // not lost.
   void TrimUserFilesystem();
 
+  // Helpers to handle (reject) requests which come in during shutdown.
+  void RejectRequestDuringShutdown(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponseBase> response);
+  void RejectRequestDuringShutdown(
+      dbus::ExportedObject::ResponseSender response_sender,
+      dbus::MethodCall* method_call);
+
   // Destructor will need to run last after all metrics logging to allow
   // flushing of all metrics in AsynchronousMetricsWriter destructor.
   std::unique_ptr<MetricsLibraryInterface> metrics_
@@ -596,6 +603,10 @@ class Service final : public org::chromium::VmConciergeInterface,
 
   // Signal must be connected before we can call SetTremplinStarted in a VM.
   bool is_tremplin_started_signal_connected_ = false;
+
+  // It is problematic for concierge to be acting on RPCs when it's meant to be
+  // shutting down, this flag prevents that.
+  bool is_shutting_down_ GUARDED_BY_CONTEXT(sequence_checker_) = false;
 
   // List of currently executing operations to import/export disk images.
   struct DiskOpInfo {

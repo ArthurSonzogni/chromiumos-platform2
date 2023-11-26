@@ -19,10 +19,31 @@
 
 #include "vm_tools/concierge/if_method_exists.h"
 #include "vm_tools/concierge/service.h"
+#include "vm_tools/concierge/tracing.h"
 #include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_util.h"
 
 namespace vm_tools::concierge {
+
+// Helper macro that contains the boilerplate associated with each concierge
+// dbus method.
+#define SERVICE_METHOD(responder, ...)                                \
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);                 \
+  static const char* function_name = __func__;                        \
+  VMT_TRACE(kCategory, function_name);                                \
+  if (is_shutting_down_) {                                            \
+    RejectRequestDuringShutdown(std::move(responder), ##__VA_ARGS__); \
+    return;                                                           \
+  }                                                                   \
+  LOG(INFO) << "Received request: " << __func__
+
+// Automatically generates boilerplate for dbus service methods with a "raw"
+// handler. Also forces you to name your variables consistently.
+#define RAW_SERVICE_METHOD() SERVICE_METHOD(response_sender, method_call)
+
+// Automatically generates boilerplate for dbus service methods with an "async"
+// handler. Also forces you to name your variables consistently.
+#define ASYNC_SERVICE_METHOD() SERVICE_METHOD(response_cb)
 
 // Maximum number of extra disks to be mounted inside the VM.
 constexpr int kMaxExtraDisks = 10;

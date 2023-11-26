@@ -1587,7 +1587,7 @@ void Service::Stop(base::OnceClosure on_stopped) {
 
 void Service::StartVm(dbus::MethodCall* method_call,
                       dbus::ExportedObject::ResponseSender response_sender) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  RAW_SERVICE_METHOD();
 
   auto reader = std::make_unique<dbus::MessageReader>(method_call);
 
@@ -1615,8 +1615,6 @@ void Service::StartVm(dbus::MethodCall* method_call,
 
 StartVmResponse Service::StartVmInternal(
     StartVmRequest request, std::unique_ptr<dbus::MessageReader> reader) {
-  VMT_TRACE(kCategory, "Service::StartVmInternal", "name", request.name());
-  LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   StartVmResponse response;
@@ -2206,8 +2204,7 @@ void Service::StopVm(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StopVmResponse>>
         response_cb,
     const StopVmRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   StopVmResponse response;
 
@@ -2231,8 +2228,7 @@ void Service::StopVmWithoutOwnerId(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StopVmResponse>>
         response_cb,
     const StopVmRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   StopVmResponse response;
 
@@ -2313,13 +2309,15 @@ class VMDelegate : public base::PlatformThread::Delegate {
 
 void Service::StopAllVms(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response_cb) {
+  ASYNC_SERVICE_METHOD();
   StopAllVmsImpl(STOP_ALL_VMS_REQUESTED);
   response_cb->Return();
 }
 
 void Service::StopAllVmsImpl(VmStopReason reason) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  LOG(INFO) << "Received StopAllVms request";
+
+  is_shutting_down_ = true;
 
   struct ThreadContext {
     base::PlatformThreadHandle handle;
@@ -2371,9 +2369,7 @@ void Service::SuspendVm(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<SuspendVmResponse>>
         response_cb,
     const SuspendVmRequest& request) {
-  VMT_TRACE(kCategory, "Service::SuspendVm");
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   SuspendVmResponse response;
 
@@ -2414,9 +2410,7 @@ void Service::ResumeVm(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<ResumeVmResponse>>
         response_cb,
     const ResumeVmRequest& request) {
-  VMT_TRACE(kCategory, "Service::ResumeVm");
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   ResumeVmResponse response;
 
@@ -2467,8 +2461,7 @@ void Service::GetVmInfo(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<GetVmInfoResponse>>
         response_cb,
     const GetVmInfoRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   GetVmInfoResponse response;
 
@@ -2506,8 +2499,7 @@ void Service::GetVmEnterpriseReportingInfo(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         GetVmEnterpriseReportingInfoResponse>> response_cb,
     const GetVmEnterpriseReportingInfoRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   GetVmEnterpriseReportingInfoResponse response;
 
@@ -2537,8 +2529,7 @@ void Service::SetBalloonTimer(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         SetBalloonTimerResponse>> response_cb,
     const SetBalloonTimerRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   SetBalloonTimerResponse response;
 
@@ -2566,8 +2557,7 @@ void Service::AdjustVm(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<AdjustVmResponse>>
         response_cb,
     const AdjustVmRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   AdjustVmResponse response;
 
@@ -2636,8 +2626,7 @@ void Service::AdjustVm(
 void Service::SyncVmTimes(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         vm_tools::concierge::SyncVmTimesResponse>> response_cb) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   SyncVmTimesResponse response;
   int failures = 0;
@@ -2796,10 +2785,10 @@ bool CreateFilesystem(const base::FilePath& disk_location,
   return true;
 }
 
-void Service::CreateDiskImage(dbus::MethodCall* method_call,
-                              dbus::ExportedObject::ResponseSender sender) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+void Service::CreateDiskImage(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  RAW_SERVICE_METHOD();
 
   dbus::MessageReader reader(method_call);
 
@@ -2811,7 +2800,7 @@ void Service::CreateDiskImage(dbus::MethodCall* method_call,
     response.set_status(DISK_STATUS_FAILED);
     response.set_failure_reason("Unable to parse CreateImageDiskRequest");
 
-    SendDbusResponse(std::move(sender), method_call, response);
+    SendDbusResponse(std::move(response_sender), method_call, response);
     return;
   }
 
@@ -2821,13 +2810,13 @@ void Service::CreateDiskImage(dbus::MethodCall* method_call,
       LOG(ERROR) << "CreateDiskImage: no fd found";
       response.set_failure_reason("no source fd found");
 
-      SendDbusResponse(std::move(sender), method_call, response);
+      SendDbusResponse(std::move(response_sender), method_call, response);
       return;
     }
   }
 
   SendDbusResponse(
-      std::move(sender), method_call,
+      std::move(response_sender), method_call,
       CreateDiskImageInternal(std::move(request), std::move(in_fd)));
   return;
 }
@@ -3057,8 +3046,7 @@ void Service::DestroyDiskImage(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         DestroyDiskImageResponse>> response_cb,
     const DestroyDiskImageRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   DestroyDiskImageResponse response;
 
@@ -3179,8 +3167,7 @@ void Service::ResizeDiskImage(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         ResizeDiskImageResponse>> response_cb,
     const ResizeDiskImageRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   ResizeDiskImageResponse response;
 
@@ -3306,10 +3293,10 @@ void Service::FinishResize(const VmId& vm_id,
   }
 }
 
-void Service::ExportDiskImage(dbus::MethodCall* method_call,
-                              dbus::ExportedObject::ResponseSender sender) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+void Service::ExportDiskImage(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  RAW_SERVICE_METHOD();
 
   dbus::MessageReader reader(method_call);
 
@@ -3320,7 +3307,7 @@ void Service::ExportDiskImage(dbus::MethodCall* method_call,
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << "Unable to parse ExportDiskImageRequest from message";
     response.set_failure_reason("Unable to parse ExportDiskRequest");
-    SendDbusResponse(std::move(sender), method_call, response);
+    SendDbusResponse(std::move(response_sender), method_call, response);
     return;
   }
 
@@ -3329,7 +3316,7 @@ void Service::ExportDiskImage(dbus::MethodCall* method_call,
   if (!reader.PopFileDescriptor(&storage_fd)) {
     LOG(ERROR) << "export: no fd found";
     response.set_failure_reason("export: no fd found");
-    SendDbusResponse(std::move(sender), method_call, response);
+    SendDbusResponse(std::move(response_sender), method_call, response);
     return;
   }
 
@@ -3338,12 +3325,12 @@ void Service::ExportDiskImage(dbus::MethodCall* method_call,
       !reader.PopFileDescriptor(&digest_fd)) {
     LOG(ERROR) << "export: no digest fd found";
     response.set_failure_reason("export: no digest fd found");
-    SendDbusResponse(std::move(sender), method_call, response);
+    SendDbusResponse(std::move(response_sender), method_call, response);
     return;
   }
 
   SendDbusResponse(
-      std::move(sender), method_call,
+      std::move(response_sender), method_call,
       ExportDiskImageInternal(std::move(request), std::move(storage_fd),
                               std::move(digest_fd)));
   return;
@@ -3434,8 +3421,7 @@ void Service::ImportDiskImage(
         ImportDiskImageResponse>> response_cb,
     const ImportDiskImageRequest& request,
     const base::ScopedFD& in_fd) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   ImportDiskImageResponse response;
   response.set_status(DISK_STATUS_FAILED);
@@ -3536,8 +3522,7 @@ void Service::DiskImageStatus(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         DiskImageStatusResponse>> response_cb,
     const DiskImageStatusRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   DiskImageStatusResponse response;
   response.set_status(DISK_STATUS_FAILED);
@@ -3571,8 +3556,7 @@ void Service::CancelDiskImageOperation(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         CancelDiskImageResponse>> response_cb,
     const CancelDiskImageRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   CancelDiskImageResponse response;
 
@@ -3609,8 +3593,7 @@ void Service::ListVmDisks(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<ListVmDisksResponse>>
         response_cb,
     const ListVmDisksRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   ListVmDisksResponse response;
 
@@ -3640,8 +3623,7 @@ void Service::AttachNetDevice(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         AttachNetDeviceResponse>> response_cb,
     const AttachNetDeviceRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   AttachNetDeviceResponse response;
 
@@ -3679,8 +3661,7 @@ void Service::DetachNetDevice(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         DetachNetDeviceResponse>> response_cb,
     const DetachNetDeviceRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   DetachNetDeviceResponse response;
 
@@ -3726,8 +3707,7 @@ void Service::AttachUsbDevice(
         AttachUsbDeviceResponse>> response_cb,
     const AttachUsbDeviceRequest& request,
     const base::ScopedFD& fd) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   AttachUsbDeviceResponse response;
 
@@ -3791,8 +3771,7 @@ void Service::DetachUsbDevice(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         DetachUsbDeviceResponse>> response_cb,
     const DetachUsbDeviceRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   DetachUsbDeviceResponse response;
 
@@ -3831,8 +3810,7 @@ void Service::ListUsbDevices(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         ListUsbDeviceResponse>> response_cb,
     const ListUsbDeviceRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   ListUsbDeviceResponse response;
 
@@ -3880,8 +3858,7 @@ DnsSettings Service::ComposeDnsResponse() {
 void Service::GetDnsSettings(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<DnsSettings>>
         response_cb) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   response_cb->Return(ComposeDnsResponse());
 }
@@ -3890,13 +3867,11 @@ void Service::SetVmCpuRestriction(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         SetVmCpuRestrictionResponse>> response_cb,
     const SetVmCpuRestrictionRequest& request) {
+  ASYNC_SERVICE_METHOD();
+
   // TODO(yusukes,hashimoto): Instead of allowing Chrome to decide when to
   // restrict each VM's CPU usage, let Concierge itself do that for potentially
   // better security. See crrev.com/c/3564880 for more context.
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  VLOG(3) << "Received SetVmCpuRestriction request";
-
   SetVmCpuRestrictionResponse response;
 
   bool success = false;
@@ -3924,8 +3899,7 @@ void Service::ListVms(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<ListVmsResponse>>
         response_cb,
     const ListVmsRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   ListVmsResponse response;
 
@@ -3977,16 +3951,15 @@ void Service::ListVms(
 
 void Service::ReclaimVmMemory(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        ReclaimVmMemoryResponse>> response_sender,
+        ReclaimVmMemoryResponse>> response_cb,
     const ReclaimVmMemoryRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   ReclaimVmMemoryResponse response;
 
   VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
-    response_sender->Return(response);
+    response_cb->Return(response);
     return;
   }
 
@@ -3994,7 +3967,7 @@ void Service::ReclaimVmMemory(
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
     response.set_failure_reason("Requested VM does not exist");
-    response_sender->Return(response);
+    response_cb->Return(response);
     return;
   }
 
@@ -4008,22 +3981,21 @@ void Service::ReclaimVmMemory(
              ReclaimVmMemoryResponse response) {
             std::move(response_sender)->Return(response);
           },
-          std::move(response_sender)));
+          std::move(response_cb)));
 }
 
 using AggressiveBalloonResponder = std::unique_ptr<
     brillo::dbus_utils::DBusMethodResponse<AggressiveBalloonResponse>>;
 
-void Service::AggressiveBalloon(AggressiveBalloonResponder response_sender,
+void Service::AggressiveBalloon(AggressiveBalloonResponder response_cb,
                                 const AggressiveBalloonRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   AggressiveBalloonResponse response;
 
   VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
-    response_sender->Return(response);
+    response_cb->Return(response);
     return;
   }
 
@@ -4031,7 +4003,7 @@ void Service::AggressiveBalloon(AggressiveBalloonResponder response_sender,
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
     response.set_failure_reason("Requested VM does not exist");
-    response_sender->Return(response);
+    response_cb->Return(response);
     return;
   }
 
@@ -4050,13 +4022,13 @@ void Service::AggressiveBalloon(AggressiveBalloonResponder response_sender,
             }
             std::move(response_sender)->Return(response);
           },
-          std::move(response_sender));
+          std::move(response_cb));
       vm_memory_management_service_->ReclaimUntilBlocked(
           cid, ResizePriority::RESIZE_PRIORITY_CACHED_TAB, std::move(cb));
     } else {
       vm_memory_management_service_->StopReclaimUntilBlocked(cid);
       response.set_success(true);
-      response_sender->Return(response);
+      response_cb->Return(response);
     }
   } else {
     if (request.enable()) {
@@ -4065,19 +4037,18 @@ void Service::AggressiveBalloon(AggressiveBalloonResponder response_sender,
              AggressiveBalloonResponse response) {
             std::move(response_sender)->Return(response);
           },
-          std::move(response_sender)));
+          std::move(response_cb)));
     } else {
       iter->second->StopAggressiveBalloon(response);
-      response_sender->Return(response);
+      response_cb->Return(response);
     }
   }
 }
 
 void Service::GetVmMemoryManagementKillsConnection(
-    GetVmmmsKillsConnectionResponseSender response_sender,
+    GetVmmmsKillsConnectionResponseSender response_cb,
     const GetVmMemoryManagementKillsConnectionRequest& in_request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   if (get_vmmms_kills_connection_response_sender_) {
     GetVmMemoryManagementKillsConnectionResponse response;
@@ -4092,7 +4063,7 @@ void Service::GetVmMemoryManagementKillsConnection(
         ->Return(response, fds);
   }
 
-  get_vmmms_kills_connection_response_sender_ = std::move(response_sender);
+  get_vmmms_kills_connection_response_sender_ = std::move(response_cb);
   if (vmmms_init_done_) {
     SendGetVmmmsKillConnectionResponse();
   }
@@ -4747,8 +4718,7 @@ void AddGroupPermissionChildren(const base::FilePath& path) {
 void Service::AddGroupPermissionMesa(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response_cb,
     const AddGroupPermissionMesaRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request,
@@ -4769,8 +4739,7 @@ void Service::GetVmLaunchAllowed(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         GetVmLaunchAllowedResponse>> response_cb,
     const GetVmLaunchAllowedRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   bool allowed = true;
   std::string reason;
@@ -4791,8 +4760,7 @@ void Service::GetVmLogs(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<GetVmLogsResponse>>
         response_cb,
     const GetVmLogsRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   GetVmLogsResponse response;
 
@@ -4859,16 +4827,15 @@ void Service::GetVmLogs(
 
 void Service::SwapVm(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<SwapVmResponse>>
-        response_sender,
+        response_cb,
     const SwapVmRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  ASYNC_SERVICE_METHOD();
 
   SwapVmResponse response;
 
   VmId vm_id(request.owner_id(), request.name());
   if (!CheckVmNameAndOwner(request, response)) {
-    response_sender->Return(response);
+    response_cb->Return(response);
     return;
   }
 
@@ -4876,7 +4843,7 @@ void Service::SwapVm(
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
     response.set_failure_reason("Requested VM does not exist");
-    response_sender->Return(response);
+    response_cb->Return(response);
     return;
   }
 
@@ -4887,7 +4854,7 @@ void Service::SwapVm(
                       SwapVmResponse response) {
                      std::move(response_sender)->Return(response);
                    },
-                   std::move(response_sender)));
+                   std::move(response_cb)));
 }
 
 void Service::NotifyVmSwapping(const VmId& vm_id,
@@ -4907,6 +4874,8 @@ void Service::InstallPflash(
         InstallPflashResponse>> response_cb,
     const InstallPflashRequest& request,
     const base::ScopedFD& pflash_src_fd) {
+  ASYNC_SERVICE_METHOD();
+
   InstallPflashResponse response;
 
   VmId vm_id(request.owner_id(), request.vm_name());
@@ -4952,7 +4921,7 @@ void Service::GetVmGpuCachePath(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         GetVmGpuCachePathResponse>> response_cb,
     const GetVmGpuCachePathRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
+  ASYNC_SERVICE_METHOD();
 
   GetVmGpuCachePathResponse response;
 
@@ -5072,6 +5041,20 @@ void Service::TrimUserFilesystem() {
           LOG(ERROR) << "trim_filesystem failed: " << message;
         }
       }));
+}
+
+void Service::RejectRequestDuringShutdown(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponseBase> response) {
+  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                           DBUS_ERROR_FAILED, "Shutdown in progress");
+}
+
+void Service::RejectRequestDuringShutdown(
+    dbus::ExportedObject::ResponseSender response_sender,
+    dbus::MethodCall* method_call) {
+  RejectRequestDuringShutdown(
+      std::make_unique<brillo::dbus_utils::DBusMethodResponseBase>(
+          method_call, std::move(response_sender)));
 }
 
 }  // namespace vm_tools::concierge
