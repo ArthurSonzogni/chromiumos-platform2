@@ -33,8 +33,8 @@ void ShaderCacheMountStatusChanged(
   } else if (!mount_status.error().empty()) {
     *error_out = mount_status.error();
   } else if (mount_status.mounted() == expected_mount) {
-    LOG(INFO) << "Shader cache for steam app " << mount_status.steam_app_id()
-              << " successfully " << (expected_mount ? "mounted" : "unmounted");
+    LOG(INFO) << "Shader cache successfully "
+              << (expected_mount ? "mounted" : "unmounted");
     *error_out = "";
   } else {
     // |mounted| does not equate to |expected_mount| despite having no error
@@ -95,8 +95,7 @@ void ShadercachedHelper::InstallShaderCache(
     callback_added = AddCallback(condition, /*expected_mount=*/true, error_out,
                                  request->wait() ? event : nullptr);
     if (!callback_added) {
-      LOG(WARNING) << "Failed to add callback for install of steam id "
-                   << request->steam_app_id();
+      LOG(WARNING) << "Failed to add callback for install";
     }
   }
 
