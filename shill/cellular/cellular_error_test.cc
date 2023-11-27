@@ -67,6 +67,9 @@ const char kErrorThrottledMM1[] =
 const char kErrorWrongStateMM1[] =
     "org.freedesktop.ModemManager1.Error.Core.WrongState";
 
+const char kErrorOperationNotAllowedMM1[] =
+    "org.freedesktop.libmbim.Error.Status.OperationNotAllowed";
+
 const char kErrorMessage[] = "Some error message.";
 
 struct TestParam {
@@ -117,6 +120,7 @@ INSTANTIATE_TEST_SUITE_P(
         TestParam(kErrorServingNetworkNotAuthorized, Error::kNoCarrier),
         TestParam(kErrorUnknownMM1, Error::kInternalError),
         TestParam(kErrorWrongStateMM1, Error::kWrongState),
+        TestParam(kErrorOperationNotAllowedMM1, Error::kOperationNotAllowed),
         TestParam("Some random error name.", Error::kOperationFailed)));
 
 }  // namespace
