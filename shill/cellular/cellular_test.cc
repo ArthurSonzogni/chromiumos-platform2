@@ -3724,6 +3724,80 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunMultiplexed) {
   Mock::VerifyAndClearExpectations(default_pdn_);
 }
 
+TEST_F(CellularTest,
+       AcquireTetheringNetwork_DunMultiplexed_AbortOnDisconnected) {
+  MockCellularService* service = SetMockService();
+  device_->SetPrimaryMultiplexedInterface(kTestMultiplexedInterfaceName);
+  device_->SetServiceState(Service::kStateConnected);
+  device_->set_state_for_testing(Cellular::State::kLinked);
+  device_->set_modem_state_for_testing(
+      Cellular::ModemState::kModemStateConnected);
+  device_->set_selected_service_for_testing(service);
+  ASSERT_NE(device_->service(), nullptr);
+
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
+  auto network = std::make_unique<MockNetwork>(kTestMultiplexedInterfaceIndex,
+                                               kTestMultiplexedInterfaceName,
+                                               Technology::kCellular);
+  default_pdn_ = network.get();
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUp);
+
+  // Setup bearer with the connected DEFAULT APN.
+  auto bearer = std::make_unique<CellularBearer>(&control_interface_,
+                                                 kTestBearerDBusPath, "");
+  bearer->set_apn_type_for_testing(ApnList::ApnType::kDefault);
+  bearer->set_data_interface_for_testing(kTestMultiplexedInterfaceName);
+  bearer->set_ipv4_config_method_for_testing(
+      CellularBearer::IPConfigMethod::kDHCP);
+  SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
+
+  // Separate DEFAULT and DUN APNs.
+  Stringmaps apn_list;
+  Stringmap apn1, apn2;
+  apn1[kApnProperty] = "apn-default";
+  apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
+  apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecFalse;
+  apn2[kApnProperty] = "apn-dun";
+  apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
+  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
+  apn_list.push_back(apn1);
+  apn_list.push_back(apn2);
+  device_->SetApnList(apn_list);
+
+  // Will request a new connection with the DUN APN, but the request will be
+  // aborted via the disconnect call, so we mimic that with an error.
+  EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _))
+      .WillOnce(Invoke([this](const KeyValueStore& props,
+                              RpcIdentifierCallback callback, int timeout) {
+        EXPECT_EQ(props.Get<uint32_t>(CellularBearer::kMMApnTypeProperty),
+                  MM_BEARER_APN_TYPE_TETHERING);
+        EXPECT_EQ(props.Get<std::string>(CellularBearer::kMMApnProperty),
+                  "apn-dun");
+        // We suddenly are reported a disconnection
+        device_->OnModemStateChanged(Cellular::kModemStateRegistered);
+        // Fail to simulate the abort.
+        std::move(callback).Run(RpcIdentifier(""),
+                                Error(Error::kOperationFailed));
+      }));
+
+  // Must request disconnection of all bearers via capability when the abort
+  // is being processed
+  EXPECT_CALL(*mm1_simple_proxy_, Disconnect(_, _, _));
+
+  SetCapability3gppModemSimpleProxy();
+
+  base::test::TestFuture<Network*, const Error&> future;
+  device_->ConnectMultiplexedTetheringPdn(future.GetCallback());
+
+  // Operation should have finished already.
+  EXPECT_TRUE(future.IsReady());
+  EXPECT_EQ(future.Get<Network*>(), nullptr);
+  EXPECT_TRUE(future.Get<Error>().IsFailure());
+}
+
 TEST_F(CellularTest, AcquireTetheringNetwork_OperationType_DunMultiplexed) {
   CellularService* service = SetRegisteredWithService();
   device_->SetPrimaryMultiplexedInterface(kTestInterfaceName);

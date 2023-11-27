@@ -1661,6 +1661,19 @@ void Cellular::OnDisconnected() {
     return;
   }
 
+  // Abort multiplexed tethering operation if the default network gets
+  // disconnected for any reason. The only way to abort this operation
+  // is by asking MM to disconnect all bearers, as we don't know yet which is
+  // the DUN specific bearer (because we're using the Simple.Connect() API).
+  // This should be fine because OnDisconnected() happens when the default PDN
+  // is disconnected, so we would only have the multiplexed tethering PDN
+  // attempt ongoing by the time we want to DisconnectAll().
+  if (IsTetheringOperationDunMultiplexedOngoing()) {
+    if (capability_) {
+      capability_->DisconnectAll(base::DoNothing());
+    }
+  }
+
   if (!DisconnectCleanup()) {
     LOG(WARNING) << LoggingTag() << ": Disconnect occurred while in state "
                  << GetStateString(state_);
