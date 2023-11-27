@@ -3120,7 +3120,7 @@ TEST_F(CellularTest, AcquireTetheringNetwork_ReuseDefault) {
   EXPECT_TRUE(future.Get<Error>().IsSuccess());
 }
 
-TEST_F(CellularTest, AcquireTetheringNetwork_ReuseDefaultNoDun) {
+TEST_F(CellularTest, AcquireTetheringNetwork_OperationType_Reuse_DefaultNoDun) {
   CellularService* service = SetRegisteredWithService();
   device_->set_state_for_testing(Cellular::State::kLinked);
   ASSERT_NE(device_->service(), nullptr);
@@ -3148,7 +3148,8 @@ TEST_F(CellularTest, AcquireTetheringNetwork_ReuseDefaultNoDun) {
             Cellular::TetheringOperationType::kReuseDefaultPdn);
 }
 
-TEST_F(CellularTest, AcquireTetheringNetwork_ReuseDefaultIsAlsoDun) {
+TEST_F(CellularTest,
+       AcquireTetheringNetwork_OperationType_Reuse_DefaultIsAlsoDun) {
   CellularService* service = SetRegisteredWithService();
   device_->set_state_for_testing(Cellular::State::kLinked);
   ASSERT_NE(device_->service(), nullptr);
@@ -3176,7 +3177,8 @@ TEST_F(CellularTest, AcquireTetheringNetwork_ReuseDefaultIsAlsoDun) {
             Cellular::TetheringOperationType::kReuseDefaultPdn);
 }
 
-TEST_F(CellularTest, AcquireTetheringNetwork_ReuseDefaultIsAlsoDunRequired) {
+TEST_F(CellularTest,
+       AcquireTetheringNetwork_OperationType_Reuse_DefaultIsAlsoDunRequired) {
   CellularService* service = SetRegisteredWithService();
   device_->set_state_for_testing(Cellular::State::kLinked);
   ASSERT_NE(device_->service(), nullptr);
@@ -3205,7 +3207,8 @@ TEST_F(CellularTest, AcquireTetheringNetwork_ReuseDefaultIsAlsoDunRequired) {
             Cellular::TetheringOperationType::kReuseDefaultPdn);
 }
 
-TEST_F(CellularTest, AcquireTetheringNetwork_NoReuseDefaultIsAlsoDun) {
+TEST_F(CellularTest,
+       AcquireTetheringNetwork_OperationType_NoReuse_DefaultIsAlsoDun) {
   CellularService* service = SetRegisteredWithService();
   device_->set_state_for_testing(Cellular::State::kLinked);
   ASSERT_NE(device_->service(), nullptr);
@@ -3478,7 +3481,8 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefaultFailedBearerConnect) {
   Mock::VerifyAndClearExpectations(service);
 }
 
-TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefaultOperatorRequired) {
+TEST_F(CellularTest,
+       AcquireTetheringNetwork_OperationType_DunAsDefault_OperatorRequired) {
   CellularService* service = SetRegisteredWithService();
   device_->SetPrimaryMultiplexedInterface(kTestInterfaceName);
   device_->SetServiceState(Service::kStateConnected);
@@ -3522,7 +3526,8 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefaultOperatorRequired) {
             Cellular::TetheringOperationType::kConnectDunAsDefaultPdn);
 }
 
-TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefaultNoMultiplex) {
+TEST_F(CellularTest,
+       AcquireTetheringNetwork_OperationType_DunAsDefault_NoMultiplex) {
   CellularService* service = SetRegisteredWithService();
   device_->SetPrimaryMultiplexedInterface(kTestInterfaceName);
   device_->SetServiceState(Service::kStateConnected);
@@ -3566,7 +3571,7 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefaultNoMultiplex) {
             Cellular::TetheringOperationType::kConnectDunAsDefaultPdn);
 }
 
-TEST_F(CellularTest, AcquireTetheringNetwork_DunMultiplexed) {
+TEST_F(CellularTest, AcquireTetheringNetwork_OperationType_DunMultiplexed) {
   CellularService* service = SetRegisteredWithService();
   device_->SetPrimaryMultiplexedInterface(kTestInterfaceName);
   device_->SetServiceState(Service::kStateConnected);
