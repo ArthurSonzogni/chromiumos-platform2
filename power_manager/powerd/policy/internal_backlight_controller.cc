@@ -599,7 +599,8 @@ double InternalBacklightController::SnapBrightnessPercentToNearestStep(
 double InternalBacklightController::GetExplicitBrightnessPercent() const {
   if (power_source_ == PowerSource::BATTERY) {
     if (battery_saver_) {
-      return battery_saver_explicit_brightness_percent_;
+      return std::min(battery_explicit_brightness_percent_,
+                      battery_saver_explicit_brightness_percent_);
     } else {
       return battery_explicit_brightness_percent_;
     }
