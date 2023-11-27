@@ -56,7 +56,7 @@ class MobileOperatorMapper {
     std::string language;
 
    private:
-    auto tuple() const { return std::make_tuple(name, language); }
+    auto tuple() const { return std::tie(name, language); }
 
    public:
     bool operator==(const LocalizedName& rhs) const {
@@ -102,9 +102,9 @@ class MobileOperatorMapper {
 
    private:
     auto tuple() const {
-      return std::make_tuple(apn, operator_name_list, username, password,
-                             authentication, apn_types, ip_type,
-                             is_required_by_carrier_spec);
+      return std::tie(apn, operator_name_list, username, password,
+                      authentication, apn_types, ip_type,
+                      is_required_by_carrier_spec);
     }
 
    public:
