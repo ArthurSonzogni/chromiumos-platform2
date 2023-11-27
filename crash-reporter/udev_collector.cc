@@ -40,7 +40,7 @@ namespace {
 const char kCollectUdevSignature[] = "crash_reporter-udev-collection";
 const char kDefaultDevCoredumpDirectory[] = "/sys/class/devcoredump";
 const char kDevCoredumpFilePrefixFormat[] = "devcoredump_%s";
-const char kDevCoredumpMsmExecName[] = "devcoredump_msm";
+const char kDevCoredumpMsmExecName[] = "devcoredump_adreno";
 const char kUdevDrmExecName[] = "udev-drm";
 const char kUdevExecName[] = "udev";
 const char kUdevSignatureKey[] = "sig";
@@ -88,7 +88,7 @@ bool UdevCollector::IsSafeDevCoredump(
   }
 
   // Check for safe drivers:
-  return driver_name == "msm" || driver_name == "qcom-venus";
+  return driver_name == "adreno" || driver_name == "qcom-venus";
 }
 
 CrashCollector::ComputedCrashSeverity UdevCollector::ComputeSeverity(

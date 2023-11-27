@@ -73,7 +73,7 @@ constexpr char kDeviceGmailUser[] = "alice@gmail.com";
 constexpr char kAffiliationID[] = "affiliation_id";
 
 // Driver name for a coredump that should be collected:
-const char kCollectedDriverName[] = "msm";
+const char kCollectedDriverName[] = "adreno";
 
 // Returns the number of files found in the given path that matches the
 // specified file name pattern.
@@ -667,7 +667,7 @@ INSTANTIATE_TEST_SUITE_P(
     UdevCollectorCrashSeverityTest,
     testing::ValuesIn<test_util::ComputeCrashSeverityTestParams>({
         {"udev-usb", CrashCollector::CrashSeverity::kError},
-        {"devcoredump_msm", CrashCollector::CrashSeverity::kWarning},
+        {"devcoredump_adreno", CrashCollector::CrashSeverity::kWarning},
         {"udev-i2c-atmel_mxt_ts", CrashCollector::CrashSeverity::kWarning},
         {"udev-drm", CrashCollector::CrashSeverity::kWarning},
         {"another executable", CrashCollector::CrashSeverity::kUnspecified},
