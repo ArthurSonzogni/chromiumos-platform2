@@ -764,6 +764,8 @@ class Cellular : public Device,
     bool apn_connected;
   };
   void CompleteTetheringOperation(const Error& error);
+  void NotifyCellularConnectionResultInTetheringOperation(
+      TetheringOperationType type, const Error& error);
   bool InitializeTetheringOperation(TetheringOperationType type,
                                     ResultCallback callback);
   void AbortTetheringOperation(const Error& error, ResultCallback callback);

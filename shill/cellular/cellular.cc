@@ -1753,23 +1753,48 @@ void Cellular::CompleteTetheringOperation(const Error& error) {
   std::move(callback).Run(Error(Error::kSuccess));
 }
 
+void Cellular::NotifyCellularConnectionResultInTetheringOperation(
+    TetheringOperationType type, const Error& error) {
+  // Do nothing if there is no service. We need the service to know the current
+  // ICCID to include in the metrics report.
+  if (!service()) {
+    return;
+  }
+
+  // Connect errors will be reported in metrics exclusively on tethering
+  // connection operations, which are the ones triggered for the DUN APN type.
+  if (type != TetheringOperationType::kConnectDunAsDefaultPdn &&
+      type != TetheringOperationType::kConnectDunMultiplexed) {
+    return;
+  }
+
+  // Also worth noting, because the DUN as DEFAULT logic re-uses the generic
+  // connection setup callbacks, as soon as the connection operation is launched
+  // it is not expected to notify the result to metrics via this method.
+
+  NotifyCellularConnectionResult(error, service()->iccid(),
+                                 service()->is_in_user_connect(),
+                                 ApnList::ApnType::kDun);
+}
+
 bool Cellular::InitializeTetheringOperation(TetheringOperationType type,
                                             ResultCallback callback) {
   // If an attempt is already ongoing, for whatever reason, fail right away.
   if (tethering_operation_) {
-    dispatcher()->PostTask(
-        FROM_HERE,
-        base::BindOnce(std::move(callback),
-                       Error(Error::kOperationFailed, "Already ongoing.")));
+    Error error(Error::kWrongState, "Already ongoing.");
+    NotifyCellularConnectionResultInTetheringOperation(type, error);
+    dispatcher()->PostTask(FROM_HERE,
+                           base::BindOnce(std::move(callback), error));
     return false;
   }
 
   // A capability must always exist at this point both for connections and
   // disconnections.
   if (!capability_) {
-    dispatcher()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback),
-                                  Error(Error::kWrongState, "No capability.")));
+    Error error(Error::kWrongState, "No capability.");
+    NotifyCellularConnectionResultInTetheringOperation(type, error);
+    dispatcher()->PostTask(FROM_HERE,
+                           base::BindOnce(std::move(callback), error));
     return false;
   }
 
@@ -1777,10 +1802,10 @@ bool Cellular::InitializeTetheringOperation(TetheringOperationType type,
   // specific Network already exists, fail right away.
   if (type == TetheringOperationType::kConnectDunMultiplexed &&
       multiplexed_tethering_pdn_) {
-    dispatcher()->PostTask(
-        FROM_HERE,
-        base::BindOnce(std::move(callback),
-                       Error(Error::kWrongState, "Already available.")));
+    Error error(Error::kWrongState, "Multiplexed network already available.");
+    NotifyCellularConnectionResultInTetheringOperation(type, error);
+    dispatcher()->PostTask(FROM_HERE,
+                           base::BindOnce(std::move(callback), error));
     return false;
   }
 
@@ -1820,6 +1845,10 @@ void Cellular::ConnectMultiplexedTetheringPdn(
 void Cellular::OnCapabilityConnectMultiplexedTetheringReply(
     const Error& error) {
   bool bearer_connected = error.IsSuccess();
+
+  // Report multiplexed DUN connection result metrics.
+  NotifyCellularConnectionResultInTetheringOperation(
+      TetheringOperationType::kConnectDunMultiplexed, error);
 
   // If attempt was aborted, bail out.
   if (!tethering_operation_) {
