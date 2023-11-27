@@ -17,6 +17,8 @@ class FlossBatteryProviderManagerInterface {
   // DBus methods.
   static constexpr char kFlossBatteryProviderManagerRegisterBatteryProvider[] =
       "RegisterBatteryProvider";
+  static constexpr char kFlossBatteryProviderManagerUpdateDeviceBattery[] =
+      "SetBatteryInfo";
 
   // DBus callback methods.
   static constexpr char kFlossBatteryProviderManagerRefreshBatteryInfo[] =

@@ -42,6 +42,9 @@ class FlossBatteryProvider : public BluetoothBatteryProvider,
   // Whether or not this battery provider is registered with all services.
   bool IsRegistered();
 
+  // Handle async response to updating device battery information.
+  void OnUpdateDeviceBatteryResponse(dbus::Response* response);
+
   // BluetoothManagerInterface overrides.
   void RegisterBluetoothManagerCallback(bool available) override;
   void OnRegisteredBluetoothManagerCallback(dbus::Response* respose) override;

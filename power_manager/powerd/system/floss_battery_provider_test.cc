@@ -46,6 +46,8 @@ class FlossBatteryProviderTest : public TestEnvironment {
 
     // Initialize battery provider.
     floss_battery_provider_.Init(dbus_wrapper_stub_.get());
+    EXPECT_TRUE(dbus_wrapper_stub_->IsMethodExported(
+        FlossBatteryProvider::kFlossBatteryProviderManagerRefreshBatteryInfo));
     EXPECT_FALSE(floss_battery_provider_.IsRegistered());
 
     // Notify the provider that the Bluetooth manager daemon is up.
@@ -104,6 +106,48 @@ class FlossBatteryProviderTest : public TestEnvironment {
         EXPECT_EQ(object_path.value(), kPowerManagerServicePath);
       }
     }
+    if (service_path ==
+        battery_manager::kFlossBatteryProviderManagerServicePath) {
+      // When the provider sends battery data, ensure the sent data is in a
+      // valid format.
+      if (method_name == FlossBatteryProvider::
+                             kFlossBatteryProviderManagerUpdateDeviceBattery) {
+        dbus::MessageReader reader(call);
+        uint32_t battery_provider_id;
+        EXPECT_TRUE(reader.PopUint32(&battery_provider_id));
+        EXPECT_EQ(battery_provider_id, battery_provider_id_);
+
+        // Unroll the BatterySet object.
+        dbus::MessageReader battery_set(nullptr);
+        EXPECT_TRUE(reader.PopArray(&battery_set));
+        EXPECT_DICT_ENTRY(battery_set, "address", address_);
+        EXPECT_DICT_ENTRY(battery_set, "source_uuid", source_uuid_);
+        EXPECT_DICT_ENTRY(battery_set, "source_info", source_info_);
+
+        // Unroll the Battery object.
+        std::string result;
+        dbus::MessageReader dict_reader(nullptr);
+        dbus::MessageReader variant_reader(nullptr);
+        dbus::MessageReader array_reader(nullptr);
+        dbus::MessageReader battery(nullptr);
+
+        EXPECT_TRUE(battery_set.PopDictEntry(&dict_reader));
+        EXPECT_TRUE(dict_reader.PopString(&result));
+        EXPECT_EQ(result, "batteries");
+        EXPECT_TRUE(dict_reader.PopVariant(&variant_reader));
+        EXPECT_TRUE(variant_reader.PopArray(&array_reader));
+        EXPECT_TRUE(array_reader.PopArray(&battery));
+        EXPECT_DICT_ENTRY(battery, "percentage", level_);
+        EXPECT_DICT_ENTRY(battery, "variant", "");
+
+        // Ensure the entire object has been processed.
+        EXPECT_FALSE(battery.HasMoreData());
+        EXPECT_FALSE(array_reader.HasMoreData());
+        EXPECT_FALSE(variant_reader.HasMoreData());
+        EXPECT_FALSE(dict_reader.HasMoreData());
+        EXPECT_FALSE(reader.HasMoreData());
+      }
+    }
 
     return response;
   }
@@ -113,6 +157,38 @@ class FlossBatteryProviderTest : public TestEnvironment {
     std::string calls = base::JoinString(dbus_calls_, ", ");
     dbus_calls_.clear();
     return calls;
+  }
+
+  // Overloaded function to unroll a DBus dict entry object and ensure its
+  // contents are correct.
+  void EXPECT_DICT_ENTRY(dbus::MessageReader& reader,
+                         std::string key,
+                         std::string value) {
+    std::string k;
+    std::string v;
+    dbus::MessageReader dict_reader(nullptr);
+    reader.PopDictEntry(&dict_reader);
+    EXPECT_TRUE(dict_reader.PopString(&k));
+    EXPECT_TRUE(dict_reader.PopVariantOfString(&v));
+    EXPECT_EQ(k, key);
+    EXPECT_EQ(v, value);
+    EXPECT_FALSE(dict_reader.HasMoreData());
+  }
+
+  // Overloaded function to unroll a DBus dict entry object and ensure its
+  // contents are correct.
+  void EXPECT_DICT_ENTRY(dbus::MessageReader& reader,
+                         std::string key,
+                         uint32_t value) {
+    std::string k;
+    uint32_t v;
+    dbus::MessageReader dict_reader(nullptr);
+    reader.PopDictEntry(&dict_reader);
+    EXPECT_TRUE(dict_reader.PopString(&k));
+    EXPECT_TRUE(dict_reader.PopVariantOfUint32(&v));
+    EXPECT_EQ(k, key);
+    EXPECT_EQ(v, value);
+    EXPECT_FALSE(dict_reader.HasMoreData());
   }
 
   // Return whether or not the battery provider is registered and ready to send
@@ -141,6 +217,12 @@ class FlossBatteryProviderTest : public TestEnvironment {
                                                 base::BindOnce(&DoNothing));
   }
 
+  // Trigger the provider to register the provider to send a battery status
+  // update.
+  void UpdateDeviceBattery(const std::string& address, int level) {
+    floss_battery_provider_.UpdateDeviceBattery(address, level);
+  }
+
   // Trigger the provider to register the provider as a battery provider.
   void RegisterAsBatteryProvider() {
     std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
@@ -151,6 +233,10 @@ class FlossBatteryProviderTest : public TestEnvironment {
 
   // Constants.
   uint32_t battery_provider_id_ = 42;
+  std::string address_ = "01-23-45-67-89-AB";
+  std::string source_uuid_ = "6cb01dc5-326f-4e31-b06f-126fce10b3ff";
+  std::string source_info_ = "HID";
+  int level_ = 97;
   int32_t hci_interface_ = 0;
 
   // DBus communication.
@@ -187,14 +273,48 @@ TEST_F(FlossBatteryProviderTest, BluetoothAdapterEnabled) {
   EXPECT_TRUE(IsRegistered());
 }
 
+// Ensure the provider can successfully send a battery update.
+TEST_F(FlossBatteryProviderTest, BatteryUpdate) {
+  TestInit(true, true);
+
+  // Notify the provider about a battery status update.
+  // Note: Battery data validation is done in `HandleDBusMethodCall`
+  UpdateDeviceBattery(address_, level_);
+
+  // Ensure the update was sent to the Bluetooth daemon.
+  EXPECT_EQ(
+      GetDBusMethodCalls(),
+      FlossBatteryProvider::kFlossBatteryProviderManagerUpdateDeviceBattery);
+}
+
+// Ensure the provider is not sending battery data or crashing if the manager is
+// not present.
+TEST_F(FlossBatteryProviderTest, ManagerNotPresent) {
+  TestInit(/*register_with_manager=*/false, true);
+
+  // Shouldn't be able to send any battery updates.
+  EXPECT_FALSE(IsRegistered());
+  UpdateDeviceBattery(address_, level_);
+  EXPECT_EQ(GetDBusMethodCalls(), "");
+
+  // Resetting shouldn't make a difference.
+  Reset(/*interface_is_available=*/false);
+  UpdateDeviceBattery(address_, level_);
+  EXPECT_EQ(GetDBusMethodCalls(), "");
+  EXPECT_FALSE(IsRegistered());
+}
+
 // Ensure the provider is not sending battery data or crashing if the adapter is
 // not present.
 TEST_F(FlossBatteryProviderTest, AdapterNotPresent) {
   TestInit(true, /*register_with_adapter=*/false);
-  EXPECT_FALSE(IsRegistered());
 
   // Resetting shouldn't cause a crash.
   Reset(/*interface_is_available=*/false);
+  EXPECT_EQ(GetDBusMethodCalls(), "");
+
+  // Shouldn't be able to send any battery updates.
+  UpdateDeviceBattery(address_, level_);
   EXPECT_EQ(GetDBusMethodCalls(), "");
   EXPECT_FALSE(IsRegistered());
 }
