@@ -3289,6 +3289,8 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefault) {
   EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _))
       .WillOnce(Invoke([](const KeyValueStore& props,
                           RpcIdentifierCallback callback, int timeout) {
+        EXPECT_EQ(props.Get<uint32_t>(CellularBearer::kMMApnTypeProperty),
+                  MM_BEARER_APN_TYPE_TETHERING);
         EXPECT_EQ(props.Get<std::string>(CellularBearer::kMMApnProperty),
                   "apn-dun");
         std::move(callback).Run(kTestBearerDBusPath, Error());
@@ -3679,6 +3681,8 @@ TEST_F(CellularTest, ReleaseTetheringNetwork_DunAsDefault) {
   EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _))
       .WillOnce(Invoke([](const KeyValueStore& props,
                           RpcIdentifierCallback callback, int timeout) {
+        EXPECT_EQ(props.Get<uint32_t>(CellularBearer::kMMApnTypeProperty),
+                  MM_BEARER_APN_TYPE_DEFAULT);
         EXPECT_EQ(props.Get<std::string>(CellularBearer::kMMApnProperty),
                   "apn-default");
         // When reconnecting back DEFAULT service should still be connected.
