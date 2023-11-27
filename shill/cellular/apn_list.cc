@@ -19,6 +19,7 @@
 #include "shill/cellular/cellular_consts.h"
 #include "shill/cellular/cellular_helpers.h"
 #include "shill/logging.h"
+
 namespace shill {
 
 namespace Logging {

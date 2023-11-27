@@ -8,7 +8,7 @@
 
 #include <base/containers/contains.h>
 #include <chromeos/dbus/service_constants.h>
-#include "dbus/shill/dbus-constants.h"
+#include <chromeos/dbus/shill/dbus-constants.h>
 
 using testing::Test;
 
