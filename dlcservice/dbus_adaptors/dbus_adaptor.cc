@@ -57,6 +57,8 @@ bool DBusService::GetExistingDlcs(brillo::ErrorPtr* err,
   DlcIdList ids = dlc_service_->GetExistingDlcs();
   for (const auto& id : ids) {
     const auto* dlc = dlc_service_->GetDlc(id, err);
+    if (dlc == nullptr)
+      continue;
     auto* dlc_info = dlc_list_out->add_dlc_infos();
     dlc_info->set_id(id);
     dlc_info->set_name(dlc->GetName());

@@ -24,6 +24,7 @@
 #include "dlcservice/dlc_base_creator.h"
 #include "dlcservice/dlc_service.h"
 #if USE_LVM_STATEFUL_PARTITION
+#include "dlcservice/lvm/dlc_lvm.h"
 #include "dlcservice/lvm/dlc_lvm_creator.h"
 #endif  // USE_LVM_STATEFUL_PARTITION
 #include "dlcservice/mock_dlc.h"
@@ -456,9 +457,9 @@ TEST_F(DlcServiceTest, GetExistingDlcs) {
   SetUpDlcWithSlots(kSecondDlc);
 
   DlcMap supported;
-  supported.emplace(kFirstDlc, nullptr);
-  supported.emplace(kSecondDlc, nullptr);
-  supported.emplace(kThirdDlc, nullptr);
+  supported.emplace(kFirstDlc, new DlcBase(kFirstDlc));
+  supported.emplace(kSecondDlc, new DlcBase(kSecondDlc));
+  supported.emplace(kThirdDlc, new DlcBase(kThirdDlc));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
 #if USE_LVM_STATEFUL_PARTITION
@@ -476,7 +477,7 @@ TEST_F(DlcServiceTest, GetExistingDlcsNoSupportOverlap) {
   SetUpDlcWithSlots(kSecondDlc);
 
   DlcMap supported;
-  supported.emplace("foo", nullptr);
+  supported.emplace("foo", new DlcBase("foo"));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
 #if USE_LVM_STATEFUL_PARTITION
@@ -495,9 +496,10 @@ TEST_F(DlcServiceTest, GetExistingDlcsWithLogicalVolumesWithFileSupported) {
   SetUpDlcWithSlots(kSecondDlc);
 
   DlcMap supported;
-  supported.emplace("lv-ok-dlc", nullptr);
-  supported.emplace(kFirstDlc, nullptr);
-  supported.emplace(kSecondDlc, nullptr);
+  constexpr char kLvDlcId[] = "lv-ok-dlc";
+  supported.emplace(kLvDlcId, new DlcLvm(kLvDlcId));
+  supported.emplace(kFirstDlc, new DlcBase(kFirstDlc));
+  supported.emplace(kSecondDlc, new DlcBase(kSecondDlc));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
   lvmd::LogicalVolumeList lvs;
@@ -519,7 +521,8 @@ TEST_F(DlcServiceTest, GetExistingDlcsWithLogicalVolumes) {
   SetUpDlcWithSlots(kSecondDlc);
 
   DlcMap supported;
-  supported.emplace("lv-ok-dlc", nullptr);
+  constexpr char kLvDlcId[] = "lv-ok-dlc";
+  supported.emplace(kLvDlcId, new DlcLvm(kLvDlcId));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
   lvmd::LogicalVolumeList lvs;
@@ -868,29 +871,6 @@ TEST_F(DlcServiceTestLegacy, GetInstalledTest) {
   EXPECT_THAT(dlcs, ElementsAre(kFirstDlc));
   EXPECT_FALSE(
       dlc_service_->GetDlc(kFirstDlc, &err_)->GetRoot().value().empty());
-}
-
-TEST_F(DlcServiceTestLegacy, GetExistingDlcs) {
-  Install(kFirstDlc);
-  SetUpDlcWithSlots(kSecondDlc);
-
-#if USE_LVM_STATEFUL_PARTITION
-  lvmd::LogicalVolumeList lvs;
-  auto* lv = lvs.add_logical_volume();
-  lv->set_name("dlc_foo_a");
-  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, ListLogicalVolumes(_))
-      .WillOnce(DoAll(SetArgPointee<0>(lvs), Return(true)));
-  EXPECT_CALL(*mock_utils_, LogicalVolumeNameToId("dlc_foo_a"))
-      .WillOnce(Return(std::string("foo")));
-#endif  // USE_LVM_STATEFUL_PARTITION
-
-  auto dlcs = dlc_service_->GetExistingDlcs();
-  std::sort(std::begin(dlcs), std::end(dlcs));
-#if USE_LVM_STATEFUL_PARTITION
-  EXPECT_THAT(dlcs, ElementsAre(kFirstDlc, "foo", kSecondDlc));
-#else
-  EXPECT_THAT(dlcs, ElementsAre(kFirstDlc, kSecondDlc));
-#endif  // USE_LVM_STATEFUL_PARTITION
 }
 
 TEST_F(DlcServiceTestLegacy, GetDlcsToUpdateTest) {

@@ -403,7 +403,8 @@ DlcIdList DlcService::GetExistingDlcs() {
 
   // This scans the files based DLC(s).
   for (const auto& id : ScanDirectory(SystemState::Get()->content_dir())) {
-    if (supported_.find(id) != std::end(supported_)) {
+    brillo::ErrorPtr tmp_err;
+    if (GetDlc(id, &tmp_err) != nullptr) {
       unique_existing_dlcs.insert(id);
     }
   }
@@ -419,7 +420,10 @@ DlcIdList DlcService::GetExistingDlcs() {
       if (id.empty()) {
         continue;
       }
-      unique_existing_dlcs.insert(id);
+      brillo::ErrorPtr tmp_err;
+      if (GetDlc(id, &tmp_err) != nullptr) {
+        unique_existing_dlcs.insert(id);
+      }
     }
   }
 #endif  // USE_LVM_STATEFUL_PARTITION
