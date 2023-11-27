@@ -12,7 +12,6 @@
 #include <vector>
 
 #include <base/sequence_checker.h>
-#include <iioservice/mojo/cros_sensor_service.mojom.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
