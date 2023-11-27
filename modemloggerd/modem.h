@@ -27,7 +27,7 @@ class Modem : public LoggerInterface {
         HelperEntry logging_helper);
   Modem(const Modem&) = delete;
   Modem& operator=(const Modem&) = delete;
-
+  brillo::ErrorPtr SetEnabled(bool enable) override;
   brillo::ErrorPtr Start() override;
   brillo::ErrorPtr Stop() override;
   brillo::ErrorPtr SetOutputDir(const std::string& output_dir) override;
@@ -35,10 +35,12 @@ class Modem : public LoggerInterface {
   dbus::ObjectPath GetDBusPath() override;
 
  private:
-  bool RunHelperProcessWithLogs();
+  bool StartLoggingHelper();
+  int RunEnableHelper(bool enable);
+  std::string GetLogPath(const std::string& filename);
 
   std::string output_dir_;
-  brillo::ProcessImpl process_;
+  brillo::ProcessImpl logger_process_;
 
   std::unique_ptr<ModemAdaptorInterface> dbus_adaptor_;
   HelperEntry logging_helper_;

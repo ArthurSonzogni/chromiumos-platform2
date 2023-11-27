@@ -27,6 +27,8 @@ class ModemDBusAdaptor : public ModemAdaptorInterface,
 
   // org::chromium::Modemloggerd::ModemInterface overrides.
 
+  void SetEnabled(std::unique_ptr<DBusResponse<>> response,
+                  const bool in_enable) override;
   void Start(std::unique_ptr<DBusResponse<>> response) override;
   void Stop(std::unique_ptr<DBusResponse<>> response) override;
   void SetOutputDir(std::unique_ptr<DBusResponse<>> response,

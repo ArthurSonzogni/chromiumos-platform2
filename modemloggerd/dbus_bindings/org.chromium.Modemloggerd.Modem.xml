@@ -6,6 +6,19 @@
 -->
 <node>
   <interface name="org.chromium.Modemloggerd.Modem">
+    <method name="SetEnabled">
+      <tp:docstring>
+        Enables/Disables logging functionality in the modem. Does not dump any
+        logs to disk.
+      </tp:docstring>
+      <arg name="enable" type="b" direction="in">
+        <tp:docstring>
+          Set to True to enable/setup logging, False to disable/tear down
+          logging.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+    </method>
     <method name="Start">
       <tp:docstring>
         Start logging

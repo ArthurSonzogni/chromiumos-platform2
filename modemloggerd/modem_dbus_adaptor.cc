@@ -31,6 +31,16 @@ ModemDBusAdaptor::ModemDBusAdaptor(Modem* modem, dbus::Bus* bus)
   dbus_object_.RegisterAndBlock();
 }
 
+void ModemDBusAdaptor::SetEnabled(std::unique_ptr<DBusResponse<>> response,
+                                  const bool in_enable) {
+  auto error = modem_->SetEnabled(in_enable);
+  if (error) {
+    response->ReplyWithError(error.get());
+    return;
+  }
+  response->Return();
+}
+
 void ModemDBusAdaptor::Start(std::unique_ptr<DBusResponse<>> response) {
   auto error = modem_->Start();
   if (error) {

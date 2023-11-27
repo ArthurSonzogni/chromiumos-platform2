@@ -13,6 +13,7 @@ namespace modemloggerd {
 
 class LoggerInterface {
  public:
+  virtual brillo::ErrorPtr SetEnabled(bool enable) = 0;
   virtual brillo::ErrorPtr Start() = 0;
   virtual brillo::ErrorPtr Stop() = 0;
   virtual brillo::ErrorPtr SetOutputDir(const std::string& output_dir) = 0;

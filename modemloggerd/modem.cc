@@ -23,13 +23,28 @@ Modem::Modem(dbus::Bus* bus,
     : output_dir_(kVarLog),
       dbus_adaptor_(adaptor_factory->CreateModemAdaptor(this, bus)),
       logging_helper_(logging_helper) {
-  LOG(INFO) << __func__ << logging_helper_.filename();
+  LOG(INFO) << __func__ << ": " << logging_helper_.exe().filename();
+}
+
+brillo::ErrorPtr Modem::SetEnabled(bool enable) {
+  LOG(INFO) << __func__ << ": " << enable;
+  if ((enable && !logging_helper_.has_enable_exe()) ||
+      (!enable && !logging_helper_.has_disable_exe())) {
+    return nullptr;
+  }
+  const int exit_code = RunEnableHelper(enable);
+  if (exit_code == 0) {
+    return nullptr;
+  }
+  return brillo::Error::Create(
+      FROM_HERE, brillo::errors::dbus::kDomain, kErrorOperationFailed,
+      base::StringPrintf("Failed to run helper (exit_code=%d)", exit_code));
 }
 
 brillo::ErrorPtr Modem::Start() {
   // TODO(pholla): Sandbox if daemon moves into release images
   LOG(INFO) << __func__;
-  if (RunHelperProcessWithLogs()) {
+  if (StartLoggingHelper()) {
     return nullptr;
   }
   return brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
@@ -39,32 +54,48 @@ brillo::ErrorPtr Modem::Start() {
 brillo::ErrorPtr Modem::Stop() {
   LOG(INFO) << __func__;
   const int kStopTimeoutSeconds = 2;
-  if (process_.Kill(SIGKILL, kStopTimeoutSeconds)) {
+  if (logger_process_.Kill(SIGKILL, kStopTimeoutSeconds)) {
     return nullptr;
   }
   return brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
                                kErrorOperationFailed, "Failed to stop logger");
 }
 
-bool Modem::RunHelperProcessWithLogs() {
-  process_.AddArg(logging_helper_.filename());
-  for (const std::string& extra_argument : logging_helper_.extra_argument())
-    process_.AddArg(extra_argument);
-
-  if (logging_helper_.has_output_dir_argument()) {
-    process_.AddArg(logging_helper_.output_dir_argument());
-    process_.AddArg(output_dir_);
+bool Modem::StartLoggingHelper() {
+  logger_process_.AddArg(logging_helper_.exe().filename());
+  for (const std::string& extra_argument :
+       logging_helper_.exe().extra_argument()) {
+    logger_process_.AddArg(extra_argument);
   }
+  if (logging_helper_.exe().has_output_dir_argument()) {
+    logger_process_.AddArg(logging_helper_.exe().output_dir_argument());
+    logger_process_.AddArg(output_dir_);
+  }
+  logger_process_.RedirectOutput(GetLogPath(logging_helper_.exe().filename()));
+  return logger_process_.Start();
+}
 
+int Modem::RunEnableHelper(bool enable) {
+  auto exe =
+      enable ? logging_helper_.enable_exe() : logging_helper_.disable_exe();
+  brillo::ProcessImpl process;
+  process.AddArg(exe.filename());
+  for (const std::string& extra_argument : exe.extra_argument()) {
+    process.AddArg(extra_argument);
+  }
+  process.RedirectOutput(GetLogPath(exe.filename()));
+  return process.Run();
+}
+
+std::string Modem::GetLogPath(const std::string& filename) {
+  const std::string log_prefix =
+      base::FilePath(filename).BaseName().MaybeAsASCII();
   base::Time::Exploded time;
   base::Time::Now().LocalExplode(&time);
-  const std::string output_log_file = base::StringPrintf(
-      "%s/helper_log.%4u%02u%02u-%02u%02u%02u%03u", output_dir_.c_str(),
-      time.year, time.month, time.day_of_month, time.hour, time.minute,
-      time.second, time.millisecond);
-  process_.RedirectOutput(output_log_file);
-
-  return process_.Start();
+  return base::StringPrintf("%s/%s_log.%4u%02u%02u-%02u%02u%02u%03u",
+                            output_dir_.c_str(), log_prefix.c_str(), time.year,
+                            time.month, time.day_of_month, time.hour,
+                            time.minute, time.second, time.millisecond);
 }
 
 dbus::ObjectPath Modem::GetDBusPath() {
