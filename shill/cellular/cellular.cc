@@ -1881,6 +1881,12 @@ void Cellular::OnCapabilityConnectMultiplexedTetheringReply(
   // Launch multiplexed tethering Network creation
   LOG(INFO) << LoggingTag() << ": Tethering connection attempt successful.";
   tethering_operation_->apn_connected = true;
+
+  // Not establishing the Network link if we're testing.
+  if (skip_establish_link_for_testing_) {
+    return;
+  }
+
   EstablishMultiplexedTetheringLink();
   if (!multiplexed_tethering_pdn_) {
     AbortTetheringOperation(
@@ -2367,10 +2373,6 @@ void Cellular::EstablishLink() {
 }
 
 void Cellular::EstablishMultiplexedTetheringLink() {
-  if (skip_establish_link_for_testing_) {
-    return;
-  }
-
   CHECK_EQ(State::kLinked, state_);
   CHECK(capability_);
 
