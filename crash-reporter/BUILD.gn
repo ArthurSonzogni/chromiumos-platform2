@@ -21,6 +21,7 @@ group("all") {
   deps = [
     ":anomaly_detector",
     ":bluetooth_devcd_parser",
+    ":crash_fd_logger",
     ":crash_reporter",
     ":crash_sender",
     ":crash_serializer_main",
@@ -36,6 +37,7 @@ group("all") {
       ":anomaly_detector_log_reader_test",
       ":anomaly_detector_test",
       ":anomaly_detector_text_file_reader_test",
+      ":crash_fd_logger_test",
       ":crash_reporter_test",
     ]
   }
@@ -323,6 +325,28 @@ executable("anomaly_detector") {
   deps = [ ":libcrash" ]
 }
 
+pkg_config("crash_fd_logger_config") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+}
+
+static_library("crash_fd_logger_lib") {
+  sources = [ "fd-logger/crash_fd_logger.cc" ]
+  configs += [ ":crash_fd_logger_config" ]
+}
+
+executable("crash_fd_logger") {
+  sources = [
+    "fd-logger/crash_fd_logger.cc",
+    "fd-logger/crash_fd_logger_main.cc",
+  ]
+  install_path = "bin"
+  configs += [ ":crash_fd_logger_config" ]
+  deps = [ ":crash_fd_logger_lib" ]
+}
+
 if (use.arcpp) {
   pkg_config("core_collector_config") {
     pkg_deps = [ "breakpad-client" ]
@@ -413,6 +437,19 @@ if (use.test) {
     configs += [
       "//common-mk:test",
       ":test_helper_config",
+    ]
+  }
+
+  executable("crash_fd_logger_test") {
+    sources = [ "fd-logger/crash_fd_logger_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":crash_reporter_test_config",
+      ":crash_fd_logger_config",
+    ]
+    deps = [
+      ":crash_fd_logger_lib",
+      "//common-mk/testrunner:testrunner",
     ]
   }
 
