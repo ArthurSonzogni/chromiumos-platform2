@@ -17,7 +17,6 @@
 #include <dbus/bus.h>
 #include <dbus/error.h>
 #include <dbus/message.h>
-#include <dbus/object_proxy.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <vm_wl/wl.pb.h>
@@ -61,15 +60,21 @@ ScopedWlSocket::~ScopedWlSocket() {
     return;
   }
 
-  GetVmWlProxy(bus_.get())
-      ->CallMethodWithErrorCallback(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-          base::DoNothing(), base::BindOnce([](dbus::ErrorResponse* err) {
-            // Failing to close the server is not critical, so just log an
-            // error. This probably can only happen during shutdown anyway.
-            LOG(ERROR) << "Failed to clean up socket: " << err->GetErrorName()
-                       << " - " << err->GetMember();
-          }));
+  dbus::Error dbus_error;
+  std::unique_ptr<dbus::Response> dbus_response =
+      brillo::dbus_utils::CallDBusMethodWithErrorResponse(
+          bus_, vm_wl_proxy_, &method_call,
+          dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error);
+  if (!dbus_response) {
+    // Failing to close the server is not critical, so just log an
+    // error. This probably can only happen during shutdown anyway.
+    if (dbus_error.IsValid()) {
+      LOG(ERROR) << "Failed to clean up socket: " << dbus_error.name()
+                 << " (" + dbus_error.message() + ")";
+    } else {
+      LOG(ERROR) << "Failed to send CloseSocket method";
+    }
+  }
 }
 
 base::FilePath ScopedWlSocket::GetPath() const {
@@ -83,6 +88,7 @@ ScopedWlSocket::ScopedWlSocket(base::ScopedTempDir socket_dir,
     : socket_dir_(std::move(socket_dir)),
       socket_fd_(std::move(socket_fd)),
       bus_(bus),
+      vm_wl_proxy_(GetVmWlProxy(bus.get())),
       description_(std::move(description)) {}
 
 // static

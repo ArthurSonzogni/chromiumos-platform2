@@ -83,18 +83,13 @@ TEST_F(VmWlInterfaceTest, SuccessfulCreateAndDestroy) {
       mock_bus_.get(), id, apps::VmType::UNKNOWN);
   EXPECT_TRUE(socket.has_value());
 
-  EXPECT_CALL(*mock_proxy_.get(), DoCallMethodWithErrorCallback(
-                                      A<dbus::MethodCall*>(), A<int>(),
-                                      A<dbus::ObjectProxy::ResponseCallback*>(),
-                                      A<dbus::ObjectProxy::ErrorCallback*>()))
-      .WillOnce(testing::Invoke(
-          [](dbus::MethodCall* method_call, int timeout_ms,
-             base::OnceCallback<void(dbus::Response*)>* success_callback,
-             base::OnceCallback<void(dbus::ErrorResponse*)>* err_callback) {
-            EXPECT_EQ(method_call->GetMember(),
-                      wl::kVmWlServiceCloseSocketMethod);
-            std::move(*success_callback).Run(nullptr);
-          }));
+  EXPECT_CALL(*mock_proxy_.get(),
+              CallMethodAndBlock(A<dbus::MethodCall*>(), A<int>()))
+      .WillOnce(testing::Invoke([](dbus::MethodCall* method_call,
+                                   int timeout_ms) {
+        EXPECT_EQ(method_call->GetMember(), wl::kVmWlServiceCloseSocketMethod);
+        return base::ok(dbus::Response::CreateEmpty());
+      }));
   socket.value().reset();
 }
 

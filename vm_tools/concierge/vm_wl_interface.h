@@ -15,6 +15,7 @@
 #include "base/files/scoped_temp_dir.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/types/expected.h"
+#include "dbus/object_proxy.h"
 #include "vm_tools/common/vm_id.h"
 
 namespace dbus {
@@ -55,6 +56,9 @@ class ScopedWlSocket {
 
   // Keep the dbus ref alive just in case
   scoped_refptr<dbus::Bus> bus_;
+
+  // Object proxy for the VmWlService. Not owned.
+  dbus::ObjectProxy* vm_wl_proxy_;
 
   // Description of the VM that uses this socket
   wl::VmDescription description_;
