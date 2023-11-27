@@ -393,14 +393,14 @@ InUseAuthSession::~InUseAuthSession() {
 }
 
 CryptohomeStatus InUseAuthSession::AuthSessionStatus() const {
-  if (!session_) {
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionManagerAuthSessionNotFound),
-        ErrorActionSet({PossibleAction::kReboot}),
-        user_data_auth::CryptohomeErrorCode::
-            CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+  if (session_ && manager_) {
+    return OkStatus<CryptohomeError>();
   }
-  return OkStatus<CryptohomeError>();
+  return MakeStatus<CryptohomeError>(
+      CRYPTOHOME_ERR_LOC(kLocAuthSessionManagerAuthSessionNotFound),
+      ErrorActionSet({PossibleAction::kReboot}),
+      user_data_auth::CryptohomeErrorCode::
+          CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
 }
 
 base::TimeDelta InUseAuthSession::GetRemainingTime() const {
@@ -451,6 +451,53 @@ CryptohomeStatus InUseAuthSession::ExtendTimeout(base::TimeDelta extension) {
   manager_->expiration_map_.emplace(new_time, session_->token());
   manager_->ResetExpirationTimer();
   return OkStatus<CryptohomeError>();
+}
+
+std::unique_ptr<BoundAuthSession> InUseAuthSession::BindForCallback() && {
+  return std::make_unique<BoundAuthSession>(std::move(*this));
+}
+
+BoundAuthSession::BoundAuthSession(InUseAuthSession auth_session)
+    : session_(std::move(auth_session)) {
+  // Setup the initial timeout, unless the session this is bound to is already
+  // invalid and so releasing it would be redundant.
+  if (session_.AuthSessionStatus().ok()) {
+    ScheduleReleaseCheck(kTimeout);
+  }
+}
+
+InUseAuthSession BoundAuthSession::Take() && {
+  timeout_timer_.Stop();
+  return std::move(session_);
+}
+
+void BoundAuthSession::ReleaseSessionIfBlocking() {
+  // If the session is already gone, nothing to do.
+  if (!session_.AuthSessionStatus().ok()) {
+    return;
+  }
+  // If the session is blocking any pending work, release it.
+  const auto& session_map = session_.manager_->user_auth_sessions_;
+  auto sessions_iter = session_map.find(session_->obfuscated_username());
+  if (sessions_iter != session_map.end() &&
+      !sessions_iter->second.work_queue.empty()) {
+    LOG(WARNING)
+        << "Timeout on bound auth session, releasing back to session manager";
+    session_ = InUseAuthSession();
+    return;
+  }
+  // If we get here the session is still live but isn't blocking anything so
+  // reset the timer to check again.
+  ScheduleReleaseCheck(kShortTimeout);
+}
+
+void BoundAuthSession::ScheduleReleaseCheck(base::TimeDelta delay) {
+  // It's safe to use Unretained here because if |this| is destroyed then the
+  // timer will be destroyed and the callback cancelled.
+  timeout_timer_.Start(
+      FROM_HERE, session_.manager_->clock_->Now() + delay,
+      base::BindOnce(&BoundAuthSession::ReleaseSessionIfBlocking,
+                     base::Unretained(this)));
 }
 
 }  // namespace cryptohome

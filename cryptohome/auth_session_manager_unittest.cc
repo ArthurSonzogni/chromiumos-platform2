@@ -710,5 +710,86 @@ TEST_F(AuthSessionManagerTest, AddFindUnMount) {
   ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
 }
 
+// The timing on the bound session tests assumes that the short timeout evenly
+// divides into the long timeout. The test will need to be adjusted if the
+// constants are changed to violate that.
+static_assert(
+    (BoundAuthSession::kTimeout % BoundAuthSession::kShortTimeout).is_zero(),
+    "The bound timeout is not an integer multiple of the short timeout");
+
+TEST_F(AuthSessionManagerTest, BoundSessionExpiresIfBlocking) {
+  // Create a session and bind it.
+  base::UnguessableToken token = auth_session_manager_.CreateAuthSession(
+      kUsername, 0, AuthIntent::kDecrypt);
+  BoundAuthSession bound_session(TakeAuthSession(token));
+
+  // Schedule several tasks against the session, they should be blocked.
+  std::vector<size_t> work_done;
+  for (size_t i = 0; i < 4; ++i) {
+    auth_session_manager_.RunWhenAvailable(
+        token, base::BindLambdaForTesting(
+                   [&work_done, i](InUseAuthSession in_use_session) {
+                     work_done.push_back(i);
+                   }));
+  }
+  EXPECT_THAT(work_done, IsEmpty());
+
+  // Advance the clock halfway to timeout. Everything should still be blocked.
+  task_environment_.FastForwardBy(BoundAuthSession::kTimeout / 2);
+  EXPECT_THAT(work_done, IsEmpty());
+
+  // Now advance it past the timeout. The bound session should time out.
+  task_environment_.FastForwardBy(BoundAuthSession::kTimeout / 2 +
+                                  BoundAuthSession::kShortTimeout / 2);
+  EXPECT_THAT(work_done, ElementsAre(0, 1, 2, 3));
+  EXPECT_THAT(std::move(bound_session).Take().AuthSessionStatus(), NotOk());
+}
+
+TEST_F(AuthSessionManagerTest, BoundSessionDoesNotExpireIfNotBlocking) {
+  // Create a session and bind it.
+  base::UnguessableToken token = auth_session_manager_.CreateAuthSession(
+      kUsername, 0, AuthIntent::kDecrypt);
+  BoundAuthSession bound_session(TakeAuthSession(token));
+
+  // Advance the clock by many times the timeout interval. The session should
+  // still be bound because nothing is blocking it.
+  task_environment_.FastForwardBy(BoundAuthSession::kTimeout * 100);
+  EXPECT_THAT(std::move(bound_session).Take().AuthSessionStatus(), IsOk());
+}
+
+TEST_F(AuthSessionManagerTest, BoundSessionExpiresOnceWorkIsScheduled) {
+  // Create a session and bind it.
+  base::UnguessableToken token = auth_session_manager_.CreateAuthSession(
+      kUsername, 0, AuthIntent::kDecrypt);
+  BoundAuthSession bound_session(TakeAuthSession(token));
+
+  // Advance the clock by many times the timeout interval. The session should
+  // still be bound because nothing is blocking it.
+  task_environment_.FastForwardBy(BoundAuthSession::kTimeout * 100 +
+                                  BoundAuthSession::kShortTimeout / 2);
+
+  // Schedule several tasks against the session, they should be blocked.
+  std::vector<size_t> work_done;
+  for (size_t i = 0; i < 4; ++i) {
+    auth_session_manager_.RunWhenAvailable(
+        token, base::BindLambdaForTesting(
+                   [&work_done, i](InUseAuthSession in_use_session) {
+                     work_done.push_back(i);
+                   }));
+  }
+  EXPECT_THAT(work_done, IsEmpty());
+
+  // Advance the clock by a bit of the short timeout interval. Everything should
+  // still be blocked.
+  task_environment_.FastForwardBy(BoundAuthSession::kShortTimeout / 10);
+  EXPECT_THAT(work_done, IsEmpty());
+
+  // Advance the clock by the rest of the short timeout. The bound session
+  // should time out.
+  task_environment_.FastForwardBy(BoundAuthSession::kShortTimeout);
+  EXPECT_THAT(work_done, ElementsAre(0, 1, 2, 3));
+  EXPECT_THAT(std::move(bound_session).Take().AuthSessionStatus(), NotOk());
+}
+
 }  // namespace
 }  // namespace cryptohome

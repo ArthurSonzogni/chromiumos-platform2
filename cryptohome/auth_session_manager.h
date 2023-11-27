@@ -9,6 +9,7 @@
 #include <memory>
 #include <queue>
 #include <string>
+#include <utility>
 
 #include <base/memory/weak_ptr.h>
 #include <base/time/clock.h>
@@ -27,6 +28,7 @@
 namespace cryptohome {
 
 class InUseAuthSession;
+class BoundAuthSession;
 
 class AuthSessionManager {
  public:
@@ -39,8 +41,6 @@ class AuthSessionManager {
 
   AuthSessionManager(AuthSessionManager&) = delete;
   AuthSessionManager& operator=(AuthSessionManager&) = delete;
-
-  ~AuthSessionManager() = default;
 
   // Creates new auth session for account_id with the specified flags and
   // intent. Returns the token for the newly created session.
@@ -80,6 +80,7 @@ class AuthSessionManager {
 
  private:
   friend class InUseAuthSession;
+  friend class BoundAuthSession;
 
   // Represents an instance of pending work scheduled for an auth session. If
   // the work object is destroyed before it has been executed then the work
@@ -226,8 +227,15 @@ class InUseAuthSession {
   // can fail, in which case a not-OK status will returned.
   CryptohomeStatus ExtendTimeout(base::TimeDelta extension);
 
+  // Convert the in-use object into a bound one for use in a callback. Note that
+  // it is only safe to use this if the functions being used with a callback
+  // check AuthSessionStatus again once they execute, as a formerly valid in-use
+  // object may have been timed out.
+  std::unique_ptr<BoundAuthSession> BindForCallback() &&;
+
  private:
   friend class AuthSessionManager;
+  friend class BoundAuthSession;
 
   InUseAuthSession(AuthSessionManager& manager,
                    std::unique_ptr<AuthSession> session);
@@ -236,6 +244,82 @@ class InUseAuthSession {
   std::unique_ptr<AuthSession> session_;
 };
 
+// Wrapper class that can be used to more safely bind an in-use AuthSession to a
+// callback. Note that in general functions should not accept this object
+// directly as a parameter; it will get automatically constructed by
+// BindForCallback and will automatically be unwrapped back into an
+// InUseAuthSession when the callback is called.
+//
+// Motivations for this class:
+//
+// While in theory you could just bind an InUseAuthSession object directly to a
+// callback as it is a moveable object, this can be dangerous because an in-use
+// object blocks all subsequent session operations for a user and so if the
+// callback is never called then that user will be blocked "forever".
+//
+// This problem could happen with any InUseAuthSession object but is much less
+// likely when it is only being used as a local variable. Local variables will
+// be destroyed when the scope is exited and in practice "this function never
+// returns" bugs are less common than "this async event never happens".
+//
+// This object provides some safety by setting a timeout which will release the
+// session if it is blocking any other operations. This ensures that a session
+// bound to a callback will not block a user indefinitely.
+class BoundAuthSession {
+ public:
+  // The timeouts used by the session.
+  static constexpr base::TimeDelta kTimeout = base::Minutes(1);
+  static constexpr base::TimeDelta kShortTimeout = base::Seconds(10);
+
+  explicit BoundAuthSession(InUseAuthSession auth_session);
+
+  // Bound sessions are explicitly not movable because they need to register
+  // a callback against themselves for timeout and moving them around would
+  // break that. To actually bind a bound session into a callback you need to
+  // also wrap it in a unique_ptr.
+  BoundAuthSession(BoundAuthSession&) = delete;
+  BoundAuthSession& operator=(BoundAuthSession&) = delete;
+
+  // Return the in use session. The callers must check the returned object for
+  // validity before using the session.
+  InUseAuthSession Take() &&;
+
+ private:
+  // If the session being in use is blocking any work, release it back to the
+  // manager. Otherwise reset the timeout timer to check again later.
+  void ReleaseSessionIfBlocking();
+
+  // Schedule a release-if-blocking check in the given time delta. The caller
+  // must ensure that the session is OK before calling this.
+  void ScheduleReleaseCheck(base::TimeDelta delay);
+
+  InUseAuthSession session_;
+  base::WallClockTimer timeout_timer_;
+};
+
 }  // namespace cryptohome
+
+namespace base {
+// Add a always-fails unwrap template for InUseAuthSession. Normally these are
+// supposed used to unwrap wrapping/ptr types, but here we use this as a trick
+// to fail compilation if anyone tries to bind an in-use object to a callback.
+template <>
+struct BindUnwrapTraits<cryptohome::InUseAuthSession> {
+  template <typename T>
+  static T Unwrap(T o) {
+    static_assert(false, "InUseAuthSession is not safe to bind to callbacks");
+    return o;
+  }
+};
+// When a callback bound to a BoundAuthSession is called, convert the bound
+// value into an InUseAuthSession for the receiver.
+template <>
+struct BindUnwrapTraits<std::unique_ptr<cryptohome::BoundAuthSession>> {
+  static cryptohome::InUseAuthSession Unwrap(
+      std::unique_ptr<cryptohome::BoundAuthSession> o) {
+    return std::move(*o).Take();
+  }
+};
+}  // namespace base
 
 #endif  // CRYPTOHOME_AUTH_SESSION_MANAGER_H_

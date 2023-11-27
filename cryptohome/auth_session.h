@@ -98,8 +98,6 @@ class AuthSession final {
   };
 
  public:
-  using StatusCallback = base::OnceCallback<void(CryptohomeStatus)>;
-
   // Parameter struct used to specify all the base parameters of AuthSession.
   // These parameters do not include the underlying interfaces that AuthSession
   // depends on, which are defined below in a separate parameter struct.
