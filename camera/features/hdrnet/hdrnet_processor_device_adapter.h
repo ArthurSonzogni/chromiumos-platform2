@@ -23,15 +23,36 @@
 
 namespace cros {
 
-// Device specilization for the pre-processing and post-processing of the HDRnet
-// pipeline.
+// Device specialization for the pre-processing and post-processing of the
+// HDRnet pipeline.
 //
 // The default HdrNetProcessorDeviceAdapter implementation does nothing.
 class HdrNetProcessorDeviceAdapter {
  public:
+  struct OptionsOverrideData {
+#if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
+    // Initially, set an invalid sensor mode.
+    int32_t sensor_mode = -1;
+#endif
+  };
+
   static std::unique_ptr<HdrNetProcessorDeviceAdapter> CreateInstance(
       const camera_metadata_t* static_info,
       scoped_refptr<base::SingleThreadTaskRunner> task_runner);
+
+  // Returns the overridden HDRnet options if the options need update based on
+  // |result|. Otherwise, returns std::nullopt. This also updates |data| that
+  // can be used to specify which override key to use in GetOverriddenOptions().
+  static std::optional<base::Value::Dict> MaybeOverrideOptions(
+      const base::Value::Dict& json_values,
+      const Camera3CaptureDescriptor& result,
+      OptionsOverrideData& data);
+
+  // Returns default or overridden HDRnet options based on the internal state
+  // set by MaybeOverrideOptions(). "override" key may be left over in the
+  // returned options. If so, its value should be ignored.
+  static base::Value::Dict GetOverriddenOptions(
+      const base::Value::Dict& json_values, const OptionsOverrideData& data);
 
   virtual ~HdrNetProcessorDeviceAdapter() = default;
   virtual bool Initialize(GpuResources* gpu_resources,

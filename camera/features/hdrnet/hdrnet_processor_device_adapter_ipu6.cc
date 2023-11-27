@@ -42,7 +42,50 @@ constexpr const char kModelDir[] = "/usr/share/cros-camera/ml_models/hdrnet";
 constexpr int kCoeffInputWidth = 256;
 constexpr int kCoeffInputHeight = 192;
 
+constexpr char kOverrideKey[] = "override";
+constexpr char kIpu6SensorModeBinningKey[] = "ipu6::sensor_mode_binning";
+
 }  // namespace
+
+// static
+std::optional<base::Value::Dict>
+HdrNetProcessorDeviceAdapter::MaybeOverrideOptions(
+    const base::Value::Dict& json_values,
+    const Camera3CaptureDescriptor& result,
+    HdrNetProcessorDeviceAdapter::OptionsOverrideData& data) {
+  base::span<const int32_t> sensor_mode =
+      result.GetMetadata<int32_t>(INTEL_VENDOR_CAMERA_SENSOR_MODE);
+  if (sensor_mode.empty() || sensor_mode[0] == data.sensor_mode) {
+    return std::nullopt;
+  }
+  data.sensor_mode = sensor_mode[0];
+  return GetOverriddenOptions(json_values, data);
+}
+
+// static
+base::Value::Dict HdrNetProcessorDeviceAdapter::GetOverriddenOptions(
+    const base::Value::Dict& json_values,
+    const HdrNetProcessorDeviceAdapter::OptionsOverrideData& data) {
+  // The default config is for the non-binning mode, i.e. the full mode.
+  if (data.sensor_mode != INTEL_VENDOR_CAMERA_SENSOR_MODE_BINNING) {
+    return json_values.Clone();
+  }
+
+  const base::Value::Dict* overrides = json_values.FindDict(kOverrideKey);
+  if (!overrides) {
+    return json_values.Clone();
+  }
+
+  const base::Value::Dict* binning_override =
+      overrides->FindDict(kIpu6SensorModeBinningKey);
+  if (!binning_override) {
+    return json_values.Clone();
+  }
+
+  base::Value::Dict overridden_json_values = json_values.Clone();
+  overridden_json_values.Merge(binning_override->Clone());
+  return overridden_json_values;
+}
 
 HdrNetProcessorDeviceAdapterIpu6::HdrNetProcessorDeviceAdapterIpu6(
     const camera_metadata_t* static_info,

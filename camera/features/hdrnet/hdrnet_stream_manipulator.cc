@@ -29,6 +29,7 @@
 #include "cros-camera/texture_2d_descriptor.h"
 #include "cros-camera/tracing.h"
 #include "features/hdrnet/hdrnet_config.h"
+#include "features/hdrnet/hdrnet_processor_device_adapter.h"
 #include "features/hdrnet/hdrnet_processor_impl.h"
 #include "features/hdrnet/tracing.h"
 #include "gpu/egl/egl_fence.h"
@@ -782,6 +783,12 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
         context->processor->ProcessResultMetadata(&result);
       }
     }
+    std::optional<base::Value::Dict> overridden_json_values =
+        HdrNetProcessorDeviceAdapter::MaybeOverrideOptions(json_values_, result,
+                                                           override_data_);
+    if (overridden_json_values.has_value()) {
+      SetOptions(*overridden_json_values);
+    }
   }
 
   if (result.num_output_buffers() == 0) {
@@ -928,9 +935,9 @@ bool HdrNetStreamManipulator::NotifyOnGpuThread(camera3_notify_msg_t* msg) {
 
   if (msg->type == CAMERA3_MSG_ERROR) {
     camera3_error_msg_t& error = msg->message.error;
-    VLOGFID(1, error.frame_number) << "Got error notify:"
-                                   << " stream=" << error.error_stream
-                                   << " errorcode=" << error.error_code;
+    VLOGFID(1, error.frame_number)
+        << "Got error notify:" << " stream=" << error.error_stream
+        << " errorcode=" << error.error_code;
     HdrNetStreamContext* stream_context =
         GetHdrNetContextFromHdrNetStream(error.error_stream);
     switch (error.error_code) {
@@ -1353,6 +1360,12 @@ HdrNetStreamManipulator::GetHdrNetContextFromHdrNetStream(
 
 void HdrNetStreamManipulator::OnOptionsUpdated(
     const base::Value::Dict& json_values) {
+  json_values_ = json_values.Clone();
+  SetOptions(HdrNetProcessorDeviceAdapter::GetOverriddenOptions(
+      json_values, override_data_));
+}
+
+void HdrNetStreamManipulator::SetOptions(const base::Value::Dict& json_values) {
   ParseHdrnetJsonOptions(json_values, options_);
 
   bool denoiser_enable;
@@ -1383,8 +1396,7 @@ void HdrNetStreamManipulator::OnOptionsUpdated(
     options_.log_frame_metadata = log_frame_metadata;
   }
 
-  DVLOGF(1) << "HDRnet config:"
-            << " hdrnet_enable=" << options_.hdrnet_enable
+  DVLOGF(1) << "HDRnet config:" << " hdrnet_enable=" << options_.hdrnet_enable
             << " dump_buffer=" << options_.dump_buffer
             << " log_frame_metadata=" << options_.log_frame_metadata
             << " hdr_ratio=" << options_.hdr_ratio

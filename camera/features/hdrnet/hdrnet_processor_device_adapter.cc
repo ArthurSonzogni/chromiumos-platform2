@@ -25,6 +25,26 @@ HdrNetProcessorDeviceAdapter::CreateInstance(
 #endif
 }
 
+#if !(USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL)
+
+// static
+std::optional<base::Value::Dict>
+HdrNetProcessorDeviceAdapter::MaybeOverrideOptions(
+    const base::Value::Dict& json_values,
+    const Camera3CaptureDescriptor& result,
+    HdrNetProcessorDeviceAdapter::OptionsOverrideData& data) {
+  return std::nullopt;
+}
+
+// static
+base::Value::Dict HdrNetProcessorDeviceAdapter::GetOverriddenOptions(
+    const base::Value::Dict& json_values,
+    const HdrNetProcessorDeviceAdapter::OptionsOverrideData& data) {
+  return json_values.Clone();
+}
+
+#endif
+
 bool HdrNetProcessorDeviceAdapter::Initialize(
     GpuResources* gpu_resources,
     Size input_size,

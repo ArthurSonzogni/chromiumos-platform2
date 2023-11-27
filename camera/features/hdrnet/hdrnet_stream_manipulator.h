@@ -28,6 +28,7 @@
 #include "features/hdrnet/hdrnet_config.h"
 #include "features/hdrnet/hdrnet_metrics.h"
 #include "features/hdrnet/hdrnet_processor.h"
+#include "features/hdrnet/hdrnet_processor_device_adapter.h"
 #include "gpu/shared_image.h"
 
 namespace cros {
@@ -210,6 +211,7 @@ class HdrNetStreamManipulator : public StreamManipulator {
       const camera3_stream_t* hdrnet);
 
   void OnOptionsUpdated(const base::Value::Dict& json_values);
+  void SetOptions(const base::Value::Dict& json_values);
   void UploadMetrics();
 
   RuntimeOptions* runtime_options_ = nullptr;
@@ -237,6 +239,13 @@ class HdrNetStreamManipulator : public StreamManipulator {
 
   // Metadata logger for tests and debugging.
   MetadataLogger metadata_logger_;
+
+  // Stores the full content of the HDRnet config file including override values
+  // if specified.
+  base::Value::Dict json_values_;
+
+  // Stores data to determine which override key to use.
+  HdrNetProcessorDeviceAdapter::OptionsOverrideData override_data_;
 };
 
 }  // namespace cros
