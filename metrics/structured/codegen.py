@@ -25,7 +25,7 @@ class Util:
     @staticmethod
     def hash_name(name):
         # This must match the hash function in chromium's
-        # //base/metrics/metric_hashes.cc. >Q means 8 bytes, big endian.
+        # //metrics/uploader/metric_hashes.cc. >Q means 8 bytes, big endian.
         name = name.encode("utf-8")
         md5 = hashlib.md5(name)
         return struct.unpack(">Q", md5.digest()[:8])[0]
@@ -43,7 +43,7 @@ class Util:
          - the name of the event's project, to avoid collisions with events of
            the same name in other projects
          - an identifier that this comes from chromeos, to avoid collisions with
-           events and projects of the same name defined in chromium's
+           events and projects of the same name defined in chromiumos's
            structured.xml
 
         This must use sanitized names for the project and event.

@@ -6,7 +6,7 @@ import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
 _event_output_dir = "${root_gen_dir}/include/metrics/structured"
-_xml_file = "structured.xml"
+_xml_file = "sync/structured.xml"
 
 proto_library("storage") {
   proto_in_dir = "./proto"
