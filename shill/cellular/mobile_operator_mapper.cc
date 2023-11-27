@@ -241,8 +241,8 @@ MobileOperatorMapper::entitlement_config() {
   return entitlement_config_;
 }
 
-const std::vector<MobileOperatorMapper::LocalizedName>&
-MobileOperatorMapper::operator_name_list() const {
+const std::vector<LocalizedName>& MobileOperatorMapper::operator_name_list()
+    const {
   if (SLOG_IS_ON(Cellular, 3)) {
     std::stringstream pp_result;
     for (const auto& operator_name : operator_name_list_) {
@@ -254,8 +254,7 @@ MobileOperatorMapper::operator_name_list() const {
   return operator_name_list_;
 }
 
-const std::vector<MobileOperatorMapper::MobileAPN>&
-MobileOperatorMapper::apn_list() const {
+const std::vector<MobileAPN>& MobileOperatorMapper::apn_list() const {
   return apn_list_;
 }
 
@@ -412,8 +411,8 @@ void MobileOperatorMapper::UpdateOperatorName(
     DCHECK(!candidates_by_name_.empty());
   } else {
     LOG(INFO) << GetLogPrefix(__func__) << "Operator name [" << operator_name
-              << "] "
-              << "(Normalized: [" << NormalizeOperatorName(operator_name)
+              << "] " << "(Normalized: ["
+              << NormalizeOperatorName(operator_name)
               << "]) does not match any MNO.";
   }
   if (raw_apn_filters_types_.count(
@@ -632,8 +631,7 @@ bool MobileOperatorMapper::UpdateMNO() {
     if (operator_code_type_ == OperatorCodeType::kMCCMNC &&
         !user_mccmnc_.empty()) {
       SLOG(1) << GetLogPrefix(__func__) << "A non-matching "
-              << OperatorCodeString() << " "
-              << "was reported by the user."
+              << OperatorCodeString() << " " << "was reported by the user."
               << "We fail the MNO match in this case.";
     } else if (candidates_by_name_.size() == 1) {
       candidate = candidates_by_name_[0];
@@ -774,8 +772,8 @@ bool MobileOperatorMapper::FilterMatches(
     re2::RE2 filter_regex = {filter.regex()};
     if (!RE2::FullMatch(to_match, filter_regex)) {
       SLOG(2) << GetLogPrefix(__func__) << "Skipping because string '"
-              << to_match << "' is not a "
-              << "match of regexp '" << filter.regex();
+              << to_match << "' is not a " << "match of regexp '"
+              << filter.regex();
       return false;
     }
 
@@ -787,8 +785,8 @@ bool MobileOperatorMapper::FilterMatches(
     re2::RE2 filter_regex = {filter.exclude_regex()};
     if (RE2::FullMatch(to_match, filter_regex)) {
       SLOG(2) << GetLogPrefix(__func__) << "Skipping because string '"
-              << to_match << "' is a "
-              << "match of exclude_regex '" << filter.exclude_regex();
+              << to_match << "' is a " << "match of exclude_regex '"
+              << filter.exclude_regex();
       return false;
     }
 
@@ -967,8 +965,8 @@ void MobileOperatorMapper::HandleMCCMNCUpdate() {
 
 void MobileOperatorMapper::HandleOperatorNameUpdate() {
   if (!user_operator_name_.empty()) {
-    std::vector<MobileOperatorMapper::LocalizedName> localized_names;
-    MobileOperatorMapper::LocalizedName localized_name{user_operator_name_, ""};
+    std::vector<LocalizedName> localized_names;
+    LocalizedName localized_name{user_operator_name_, ""};
     localized_names.emplace_back(localized_name);
     for (auto it = operator_name_list_.begin();
          it != operator_name_list_.end();) {
@@ -1046,7 +1044,7 @@ void MobileOperatorMapper::HandleAPNListUpdate() {
     if (!passed_all_filters)
       continue;
 
-    MobileOperatorMapper::MobileAPN apn;
+    MobileAPN apn;
     apn.apn = apn_data.apn();
     apn.username = apn_data.username();
     apn.password = apn_data.password();

@@ -29,22 +29,19 @@ static auto kModuleLogScope = ScopeLogger::kCellular;
 ApnList::ApnList(bool merge_similar_apns)
     : merge_similar_apns_(merge_similar_apns) {}
 
-void ApnList::AddApns(const std::vector<MobileOperatorMapper::MobileAPN>& apns,
-                      ApnSource source) {
+void ApnList::AddApns(const std::vector<MobileAPN>& apns, ApnSource source) {
   for (const auto& mobile_apn : apns)
     AddApn(mobile_apn, source);
 }
 
-ApnList::ApnIndexKey ApnList::GetKey(
-    const MobileOperatorMapper::MobileAPN& mobile_apn) {
+ApnList::ApnIndexKey ApnList::GetKey(const MobileAPN& mobile_apn) {
   return std::make_tuple(mobile_apn.apn, mobile_apn.username,
                          mobile_apn.password, mobile_apn.authentication,
                          mobile_apn.ip_type,
                          mobile_apn.is_required_by_carrier_spec);
 }
 
-void ApnList::AddApn(const MobileOperatorMapper::MobileAPN& mobile_apn,
-                     ApnSource source) {
+void ApnList::AddApn(const MobileAPN& mobile_apn, ApnSource source) {
   // TODO(b/251512775): Remove the ApnIndexKey when the revamp UI APN
   // logic becomes default. The key will no longer be needed at that
   // point since the modem and modb APNs will be treated as different

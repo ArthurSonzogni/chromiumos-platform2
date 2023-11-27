@@ -166,8 +166,7 @@ const std::string& MobileOperatorInfo::serving_mcc_alpha2() const {
   return serving_->mcc_alpha2();
 }
 
-const std::vector<MobileOperatorMapper::MobileAPN>&
-MobileOperatorInfo::apn_list() const {
+const std::vector<MobileAPN>& MobileOperatorInfo::apn_list() const {
   return home_->apn_list();
 }
 

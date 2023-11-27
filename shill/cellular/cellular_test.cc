@@ -2370,17 +2370,14 @@ TEST_F(CellularTest, UpdateGeolocationObjects) {
 class FakeMobileOperatorInfo : public NiceMock<MockMobileOperatorInfo> {
  public:
   FakeMobileOperatorInfo(EventDispatcher* dispatcher,
-                         std::vector<MobileOperatorMapper::MobileAPN> apn_list)
+                         std::vector<MobileAPN> apn_list)
       : NiceMock<MockMobileOperatorInfo>(dispatcher, "Fake"),
         apn_list_(std::move(apn_list)) {}
 
-  const std::vector<MobileOperatorMapper::MobileAPN>& apn_list()
-      const override {
-    return apn_list_;
-  }
+  const std::vector<MobileAPN>& apn_list() const override { return apn_list_; }
 
  private:
-  std::vector<MobileOperatorMapper::MobileAPN> apn_list_;
+  std::vector<MobileAPN> apn_list_;
 };
 
 TEST_F(CellularTest, SimpleApnList) {
@@ -2388,8 +2385,8 @@ TEST_F(CellularTest, SimpleApnList) {
   constexpr char kUsername[] = "foo";
   constexpr char kPassword[] = "bar";
 
-  std::vector<MobileOperatorMapper::MobileAPN> apn_list;
-  MobileOperatorMapper::MobileAPN mobile_apn;
+  std::vector<MobileAPN> apn_list;
+  MobileAPN mobile_apn;
   mobile_apn.apn = kApn;
   mobile_apn.username = kUsername;
   mobile_apn.password = kPassword;
@@ -2415,8 +2412,8 @@ TEST_F(CellularTest, ProfilesApnList) {
   Capability3gppCallOnProfilesChanged({profile});
 
   constexpr char kApn2[] = "normal.apn";
-  std::vector<MobileOperatorMapper::MobileAPN> apn_list;
-  MobileOperatorMapper::MobileAPN mobile_apn;
+  std::vector<MobileAPN> apn_list;
+  MobileAPN mobile_apn;
   mobile_apn.apn = kApn2;
   apn_list.emplace_back(std::move(mobile_apn));
   FakeMobileOperatorInfo* info =
@@ -2440,8 +2437,8 @@ TEST_F(CellularTest, MergeProfileAndOperatorApn) {
   profile[CellularBearer::kMMApnProperty] = std::string(kApn);
   Capability3gppCallOnProfilesChanged({profile});
 
-  std::vector<MobileOperatorMapper::MobileAPN> apn_list;
-  MobileOperatorMapper::MobileAPN mobile_apn;
+  std::vector<MobileAPN> apn_list;
+  MobileAPN mobile_apn;
   mobile_apn.apn = kApn;
   mobile_apn.operator_name_list.push_back({kApnName, ""});
   apn_list.emplace_back(std::move(mobile_apn));
@@ -2466,8 +2463,8 @@ TEST_F(CellularTest, DontMergeProfileAndOperatorApn) {
   Capability3gppCallOnProfilesChanged({profile});
 
   constexpr char kUsernameFromOperator[] = "user2";
-  std::vector<MobileOperatorMapper::MobileAPN> apn_list;
-  MobileOperatorMapper::MobileAPN mobile_apn;
+  std::vector<MobileAPN> apn_list;
+  MobileAPN mobile_apn;
   mobile_apn.apn = kApn;
   mobile_apn.username = kUsernameFromOperator;
   apn_list.emplace_back(std::move(mobile_apn));
@@ -2994,8 +2991,8 @@ TEST_F(CellularTest, CompareApnsFromStorage) {
 }
 
 TEST_F(CellularTest, CompareApnsFromApnList) {
-  std::vector<MobileOperatorMapper::MobileAPN> apn_list;
-  MobileOperatorMapper::MobileAPN mobile_apn;
+  std::vector<MobileAPN> apn_list;
+  MobileAPN mobile_apn;
   mobile_apn.apn = "apn";
   mobile_apn.username = "username";
   mobile_apn.password = "password";

@@ -1085,7 +1085,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
     EXPECT_EQ(olp_list_, operator_info_->olp_list());
   }
 
-  std::string ApnsToString(std::vector<MobileOperatorMapper::MobileAPN> apns) {
+  std::string ApnsToString(std::vector<MobileAPN> apns) {
     std::vector<std::string> apn_strings;
     for (const auto& apn : apns) {
       apn_strings.push_back(ApnToString(apn));
@@ -1093,7 +1093,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
     return base::JoinString(apn_strings, ",");
   }
 
-  std::string ApnToString(MobileOperatorMapper::MobileAPN apn) {
+  std::string ApnToString(MobileAPN apn) {
     return base::StringPrintf(
         "{apn: %s, username: %s, password: %s, authentication: %s, ip_type: %s "
         ", apn_types: %s , operator_name_list.size(): %s, "
@@ -1139,12 +1139,10 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
   }
 
   void VerifyNameListsMatch(
-      const std::vector<MobileOperatorMapper::LocalizedName>&
-          operator_name_list_lhs,
-      const std::vector<MobileOperatorMapper::LocalizedName>&
-          operator_name_list_rhs) {
+      const std::vector<LocalizedName>& operator_name_list_lhs,
+      const std::vector<LocalizedName>& operator_name_list_rhs) {
     // This comparison breaks if two localized names have the same |name|.
-    std::map<std::string, MobileOperatorMapper::LocalizedName> localized_names;
+    std::map<std::string, LocalizedName> localized_names;
     for (const auto& localized_name : operator_name_list_rhs) {
       localized_names[localized_name.name] = localized_name;
     }
@@ -1169,7 +1167,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
     apn_types_ = {"DEFAULT"};
 
     apn_list_.clear();
-    MobileOperatorMapper::MobileAPN apn;
+    MobileAPN apn;
     apn.apn = "test@test.com";
     apn.username = "testuser";
     apn.password = "is_public_boohoohoo";
@@ -1194,7 +1192,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
     apn_types_ = {"DEFAULT"};
 
     apn_list_.clear();
-    MobileOperatorMapper::MobileAPN apn;
+    MobileAPN apn;
     apn.apn = "test2@test.com";
     apn.username = "testuser2";
     apn.password = "is_public_boohoohoo_too";
@@ -1213,8 +1211,8 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
   int32_t mtu_;
   std::set<std::string> apn_types_;
   std::vector<std::string> mccmnc_list_;
-  std::vector<MobileOperatorMapper::LocalizedName> operator_name_list_;
-  std::vector<MobileOperatorMapper::MobileAPN> apn_list_;
+  std::vector<LocalizedName> operator_name_list_;
+  std::vector<MobileAPN> apn_list_;
   std::vector<MobileOperatorMapper::OnlinePortal> olp_list_;
 };
 

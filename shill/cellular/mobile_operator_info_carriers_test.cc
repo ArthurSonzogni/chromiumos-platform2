@@ -44,7 +44,7 @@ class ApnBuilder {
   }
   explicit ApnBuilder(std::string apn_name) : ApnBuilder() { Name(apn_name); }
 
-  const MobileOperatorMapper::MobileAPN& apn() { return apn_; }
+  const MobileAPN& apn() { return apn_; }
   ApnBuilder& Name(const string value) {
     apn_.apn = value;
     return *this;
@@ -73,14 +73,13 @@ class ApnBuilder {
     apn_.is_required_by_carrier_spec = value;
     return *this;
   }
-  ApnBuilder& OperatorNameList(
-      const std::vector<MobileOperatorMapper::LocalizedName> value) {
+  ApnBuilder& OperatorNameList(const std::vector<LocalizedName> value) {
     apn_.operator_name_list = value;
     return *this;
   }
 
  private:
-  MobileOperatorMapper::MobileAPN apn_;
+  MobileAPN apn_;
 };
 
 class MobileOperatorInfoCarriersTest : public Test {
@@ -118,8 +117,7 @@ class MobileOperatorInfoCarriersTest : public Test {
   }
 
  protected:
-  MobileOperatorMapper::MobileAPN PrepareModbApnForComparison(
-      MobileOperatorMapper::MobileAPN apn) {
+  MobileAPN PrepareModbApnForComparison(MobileAPN apn) {
     // Ignore operator name list
     apn.operator_name_list.clear();
     return apn;
@@ -131,7 +129,7 @@ class MobileOperatorInfoCarriersTest : public Test {
     }
     FAIL() << "APN: " << apn_builder.apn().apn << " not found";
   }
-  string ApnToString(MobileOperatorMapper::MobileAPN apn) {
+  string ApnToString(MobileAPN apn) {
     return base::StringPrintf(
         "{apn: %s, username: %s, password: %s, authentication: %s, ip_type: %s "
         ", apn_types: %s , operator_name_list.size(): %s, "

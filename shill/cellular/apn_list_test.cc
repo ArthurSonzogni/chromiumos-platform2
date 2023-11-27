@@ -15,8 +15,8 @@ using testing::Test;
 namespace shill {
 
 TEST(ApnListTest, AddApnWithMerge) {
-  std::vector<MobileOperatorMapper::MobileAPN> mobile_apns;
-  MobileOperatorMapper::MobileAPN mobile_apn1;
+  std::vector<MobileAPN> mobile_apns;
+  MobileAPN mobile_apn1;
   mobile_apn1.apn = "apn1";
   mobile_apn1.ip_type = "IPV4";
   mobile_apn1.apn_types = {"DEFAULT", "IA"};
@@ -25,7 +25,7 @@ TEST(ApnListTest, AddApnWithMerge) {
   mobile_apn1.authentication = "PAP";
   mobile_apn1.operator_name_list = {{"OPERATOR", ""}, {"OPERADORA", "ES"}};
 
-  MobileOperatorMapper::MobileAPN mobile_apn2;
+  MobileAPN mobile_apn2;
   mobile_apn2.apn = "apn2";
   mobile_apn2.ip_type = "IPV4V6";
   mobile_apn2.apn_types = {"DEFAULT", "DUN"};
@@ -70,7 +70,7 @@ TEST(ApnListTest, AddApnWithMerge) {
   EXPECT_FALSE(base::Contains(*apn, kApnNameProperty));
   EXPECT_FALSE(base::Contains(*apn, kApnLocalizedNameProperty));
 
-  std::vector<MobileOperatorMapper::MobileAPN> mobile_apns2;
+  std::vector<MobileAPN> mobile_apns2;
   mobile_apn1.operator_name_list = {{"OPERATOR3", ""}};
   mobile_apns2.push_back(mobile_apn1);
 
@@ -93,8 +93,8 @@ TEST(ApnListTest, AddApnWithMerge) {
 }
 
 TEST(ApnListTest, AddApnWithoutMerge) {
-  std::vector<MobileOperatorMapper::MobileAPN> mobile_apns;
-  MobileOperatorMapper::MobileAPN mobile_apn1;
+  std::vector<MobileAPN> mobile_apns;
+  MobileAPN mobile_apn1;
   mobile_apn1.apn = "apn1";
   mobile_apn1.ip_type = "IPV4";
   mobile_apn1.apn_types = {"DEFAULT", "IA"};
@@ -103,7 +103,7 @@ TEST(ApnListTest, AddApnWithoutMerge) {
   mobile_apn1.authentication = "PAP";
   mobile_apn1.operator_name_list = {{"OPERATOR", ""}, {"OPERADORA", "ES"}};
 
-  MobileOperatorMapper::MobileAPN mobile_apn2;
+  MobileAPN mobile_apn2;
   mobile_apn2.apn = "apn2";
   mobile_apn2.ip_type = "IPV4V6";
   mobile_apn2.apn_types = {"DEFAULT"};

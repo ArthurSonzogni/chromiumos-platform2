@@ -15,6 +15,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list_types.h>
 
+#include "shill/cellular/mobile_apn.h"
 #include "shill/cellular/mobile_operator_mapper.h"
 
 namespace shill {
@@ -128,7 +129,7 @@ class MobileOperatorInfo {
   // operators.
   virtual std::string friendly_operator_name(bool is_roaming) const;
   // All access point names associated with this carrier entry.
-  virtual const std::vector<MobileOperatorMapper::MobileAPN>& apn_list() const;
+  virtual const std::vector<MobileAPN>& apn_list() const;
   // All Online Payment Portal URLs associated with this carrier entry. There
   // are usually multiple OLPs based on access technology and it is up to the
   // application to use the appropriate one.

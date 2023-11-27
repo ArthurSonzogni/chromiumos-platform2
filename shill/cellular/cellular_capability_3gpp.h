@@ -32,6 +32,7 @@
 #include "shill/cellular/mm1_modem_signal_proxy_interface.h"
 #include "shill/cellular/mm1_modem_simple_proxy_interface.h"
 #include "shill/cellular/mm1_sim_proxy_interface.h"
+#include "shill/cellular/mobile_apn.h"
 #include "shill/cellular/subscription_state.h"
 #include "shill/data_types.h"
 #include "shill/metrics.h"
@@ -211,8 +212,7 @@ class CellularCapability3gpp {
   // capability object.
   CellularBearer* GetActiveBearer(ApnList::ApnType apn_type) const;
 
-  const std::optional<std::vector<MobileOperatorMapper::MobileAPN>>&
-  GetProfiles() const;
+  const std::optional<std::vector<MobileAPN>>& GetProfiles() const;
 
   // ------------------------------------------------------------------------
   // Modem Type
@@ -588,7 +588,7 @@ class CellularCapability3gpp {
   std::map<ApnList::ApnType, std::unique_ptr<CellularBearer>> active_bearers_;
   RpcIdentifiers bearer_paths_;
   bool reset_done_ = false;
-  std::optional<std::vector<MobileOperatorMapper::MobileAPN>> profiles_;
+  std::optional<std::vector<MobileAPN>> profiles_;
   bool set_modem_to_low_power_mode_on_stop_ = true;
 
   // SIM properties

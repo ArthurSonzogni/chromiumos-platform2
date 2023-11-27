@@ -1709,7 +1709,7 @@ CellularBearer* CellularCapability3gpp::GetActiveBearer(
              : nullptr;
 }
 
-const std::optional<std::vector<MobileOperatorMapper::MobileAPN>>&
+const std::optional<std::vector<MobileAPN>>&
 CellularCapability3gpp::GetProfiles() const {
   return profiles_;
 }
@@ -2218,11 +2218,10 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   auto old_profiles = std::move(profiles_);
 
   // Initialized to empty list. From now on |profiles_| will never be unset.
-  profiles_ =
-      std::make_optional<std::vector<MobileOperatorMapper::MobileAPN>>({});
+  profiles_ = std::make_optional<std::vector<MobileAPN>>({});
 
   for (const auto& profile : profiles) {
-    MobileOperatorMapper::MobileAPN apn_info;
+    MobileAPN apn_info;
     apn_info.apn = brillo::GetVariantValueOrDefault<std::string>(
         profile, CellularBearer::kMMApnProperty);
     apn_info.username = brillo::GetVariantValueOrDefault<std::string>(

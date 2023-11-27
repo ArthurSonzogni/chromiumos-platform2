@@ -1506,7 +1506,7 @@ TEST_F(CellularCapability3gppTest, UpdateActiveBearers) {
 }
 
 TEST_F(CellularCapability3gppTest, ProfilesChanged) {
-  std::vector<MobileOperatorMapper::MobileAPN> profile_list;
+  std::vector<MobileAPN> profile_list;
 
   // Start with an empty list of profiles. The first time we process
   // the list of profiles we must not ignore it.

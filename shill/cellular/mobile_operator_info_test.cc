@@ -304,11 +304,11 @@ TEST_F(MobileOperatorInfoMainTest, FriendlyOperatorNameUnknownOperatorName) {
 }
 
 TEST_F(MobileOperatorInfoMainTest, apn_list) {
-  MobileOperatorMapper::MobileAPN apn1;
+  MobileAPN apn1;
   apn1.apn = "apn1";
-  MobileOperatorMapper::MobileAPN apn2;
+  MobileAPN apn2;
   apn2.apn = "apn1";
-  std::vector<MobileOperatorMapper::MobileAPN> apns = {apn1, apn2};
+  std::vector<MobileAPN> apns = {apn1, apn2};
   EXPECT_CALL(*home_, apn_list()).WillOnce(ReturnRef(apns));
   EXPECT_EQ(operator_info_->apn_list(), apns);
 }
