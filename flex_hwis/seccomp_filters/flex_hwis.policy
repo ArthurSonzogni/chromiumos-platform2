@@ -8,6 +8,8 @@ brk: 1
 chdir: 1
 chown: 1
 chroot: 1
+clock_getres: 1
+clock_gettime: 1
 close: 1
 connect: 1
 epoll_create1: 1
@@ -32,6 +34,7 @@ getrandom: arg2 in ~GRND_RANDOM
 getsockname: 1
 getsockopt: 1
 gettid: 1
+gettimeofday: 1
 getuid: 1
 lseek: 1
 memfd_create: 1
