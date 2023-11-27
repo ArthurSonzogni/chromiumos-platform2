@@ -767,6 +767,18 @@ TEST_F(DlcServiceTest,
                                                       false);
 }
 
+// Tests related to `OnUpdateEngineInstallAsyncError`.
+
+TEST_F(DlcServiceTest, OnUpdateEngineInstallAsyncErrorNoInstallation) {
+  auto assert_cb = [](brillo::ErrorPtr) {
+    ASSERT_TRUE(false) << "Should not be called.";
+  };
+  auto err_ptr = brillo::Error::CreateNoLog(FROM_HERE, "(domain)", "(code)",
+                                            "(msg)", nullptr);
+  dlc_service_->OnUpdateEngineInstallAsyncError(base::BindOnce(assert_cb),
+                                                err_ptr.get());
+}
+
 // NOTE: Do not add new code below this line.
 //
 // Everything below is legacy method of testing.

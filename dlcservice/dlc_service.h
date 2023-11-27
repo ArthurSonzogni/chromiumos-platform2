@@ -188,6 +188,8 @@ class DlcService : public DlcServiceInterface {
       base::OnceCallback<void(brillo::ErrorPtr)> response_func,
       brillo::Error* err);
 
+  FRIEND_TEST(DlcServiceTest, OnUpdateEngineInstallAsyncErrorNoInstallation);
+
   // Called on receiving update_engine's |StatusUpdate| signal.
   void OnStatusUpdateAdvancedSignal(
       const update_engine::StatusResult& status_result);

@@ -342,6 +342,9 @@ void DlcService::OnUpdateEngineInstallAsyncSuccess(
 void DlcService::OnUpdateEngineInstallAsyncError(
     base::OnceCallback<void(brillo::ErrorPtr)> response_func,
     brillo::Error* err) {
+  // Handled during other signal/response.
+  if (!installing_dlc_id_)
+    return;
   // Keep this double logging until tagging is removed/updated.
   LOG(ERROR) << "Update Engine failed to install requested DLCs: "
              << (err ? Error::ToString(err->Clone())
