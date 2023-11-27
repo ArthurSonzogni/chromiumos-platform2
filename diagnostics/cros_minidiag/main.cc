@@ -11,6 +11,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
+#include <brillo/lockdown/kernel_lockdown_utils.h>
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>
 
@@ -60,6 +61,19 @@ int main(int argc, char* argv[]) {
     LOG(ERROR) << "cros-minidiag-tool cannot be run without updating or "
                   "reporting metrics; exiting";
     return EXIT_FAILURE;
+  }
+
+  // Exit if kernel lockdown is enabled.
+  std::optional<brillo::KernelLockdownMode> lockdown_mode =
+      brillo::GetLockdownMode();
+  if (lockdown_mode == std::nullopt) {
+    LOG(ERROR) << "Cannot determine kernel lockdown mode; exiting";
+    return EXIT_FAILURE;
+  }
+  if (*lockdown_mode != brillo::KernelLockdownMode::kDisabled) {
+    LOG(INFO)
+        << "cros-minidiag-tool cannot run while kernel lockdown is enabled";
+    return EXIT_SUCCESS;
   }
 
   // Dump the full elogtool list result.
