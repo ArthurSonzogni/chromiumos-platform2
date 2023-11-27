@@ -143,20 +143,20 @@ class PortalDetector {
   // Represents the detailed result of a complete portal detection attempt (DNS
   // resolution, HTTP probe, HTTPS probe).
   struct Result {
+    // The total number of trial attempts so far.
+    int num_attempts = 0;
     // Final Phase of the HTTP probe when the trial finished.
     Phase http_phase = Phase::kUnknown;
     // Final Status of the HTTP probe when the trial finished.
     Status http_status = Status::kFailure;
     // The HTTP response status code from the HTTP probe.
     int http_status_code = 0;
-    // The total number of trial attempts so far.
-    int num_attempts;
     // HTTPS probe error if the HTTPS probe failed.
-    std::optional<HttpRequest::Error> https_error;
+    std::optional<HttpRequest::Error> https_error = std::nullopt;
     // Redirect URL if status is kRedirect.
-    std::optional<net_base::HttpUrl> redirect_url;
+    std::optional<net_base::HttpUrl> redirect_url = std::nullopt;
     // Probe URL used to reach redirect URL if status is kRedirect.
-    std::optional<net_base::HttpUrl> probe_url;
+    std::optional<net_base::HttpUrl> probe_url = std::nullopt;
 
     // Boolean used for tracking the completion state of both HTTP and HTTPS
     // probes.
@@ -189,6 +189,10 @@ class PortalDetector {
     std::optional<int> GetHTTPResponseCodeMetricResult() const;
 
     Metrics::PortalDetectorResult GetResultMetric() const;
+
+    // Compares with |rhs| for equality. Probe duration results |http_duration|
+    // and |https_duration| values are ignored in the comparison.
+    bool operator==(const Result& rhs) const;
   };
 
   PortalDetector(EventDispatcher* dispatcher,
@@ -354,6 +358,7 @@ std::ostream& operator<<(std::ostream& stream, PortalDetector::Phase phase);
 std::ostream& operator<<(std::ostream& stream, PortalDetector::Status status);
 std::ostream& operator<<(std::ostream& stream,
                          PortalDetector::ValidationState state);
+std::ostream& operator<<(std::ostream& stream, PortalDetector::Result result);
 
 }  // namespace shill
 

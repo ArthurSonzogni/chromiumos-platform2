@@ -549,6 +549,17 @@ Metrics::PortalDetectorResult PortalDetector::Result::GetResultMetric() const {
   }
 }
 
+bool PortalDetector::Result::operator==(
+    const PortalDetector::Result& rhs) const {
+  // Probe durations |http_duration| and |https_duration| are ignored.
+  return http_phase == rhs.http_phase && http_status == rhs.http_status &&
+         http_status_code == rhs.http_status_code &&
+         num_attempts == rhs.num_attempts && https_error == rhs.https_error &&
+         http_probe_completed == rhs.http_probe_completed &&
+         https_probe_completed == rhs.https_probe_completed &&
+         redirect_url == rhs.redirect_url && probe_url == rhs.probe_url;
+}
+
 std::ostream& operator<<(std::ostream& stream, PortalDetector::Phase phase) {
   return stream << PortalDetector::PhaseToString(phase);
 }
@@ -560,6 +571,24 @@ std::ostream& operator<<(std::ostream& stream, PortalDetector::Status status) {
 std::ostream& operator<<(std::ostream& stream,
                          PortalDetector::ValidationState state) {
   return stream << PortalDetector::ValidationStateToString(state);
+}
+
+std::ostream& operator<<(std::ostream& stream, PortalDetector::Result result) {
+  stream << "{ num_attempts=" << result.num_attempts << ", HTTP probe "
+         << (result.http_probe_completed ? "completed" : "in-flight")
+         << " phase=" << result.http_phase << " status=" << result.http_status
+         << " code=" << result.http_status_code
+         << " duration=" << result.http_duration << ", HTTPS probe "
+         << (result.https_probe_completed ? "completed" : "in-flight")
+         << " result=" << result.https_error
+         << " duration=" << result.https_duration;
+  if (result.redirect_url) {
+    stream << ", redirect_url=" << result.redirect_url->ToString();
+  }
+  if (result.probe_url) {
+    stream << ", probe_url=" << result.probe_url->ToString();
+  }
+  return stream << "}";
 }
 
 }  // namespace shill
