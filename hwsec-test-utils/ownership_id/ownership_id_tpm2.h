@@ -9,7 +9,9 @@
 #include <optional>
 #include <string>
 
-#include <tpm_manager/client/tpm_manager_utility.h>
+#include <brillo/dbus/dbus_connection.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "hwsec-test-utils/ownership_id/ownership_id.h"
 
@@ -23,9 +25,10 @@ class OwnershipIdTpm2 : public OwnershipId {
   std::optional<std::string> Get() override;
 
  private:
-  bool InitializeTpmManagerUtility();
+  bool InitializeTpmManager();
 
-  std::unique_ptr<tpm_manager::TpmManagerUtility> tpm_manager_utility_;
+  brillo::DBusConnection connection_;
+  std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_;
 };
 
 }  // namespace hwsec_test_utils
