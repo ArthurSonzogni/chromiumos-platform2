@@ -251,10 +251,15 @@ const std::vector<std::string> kExtMkfsOpts = {
     "-Elazy_itable_init=0,lazy_journal_init=0,discard", "-Ocasefold",
     "-i" + std::to_string(kExt4BytesPerInode)};
 
-// TODO(b/280391260): Use dynamic target based on device's disk size.
 // A TBW limit that is unlikely to impact disk health over the lifetime of a
-// given device
-constexpr uint64_t kTbwTargetForVmmSwapPerDay = MiB(550);
+// given 32GB device.
+constexpr int64_t kTbwTargetForVmmSwapPerDay = 550ull * 1000 * 1000;
+// The reference disk size used to determine the base TBW target.
+constexpr int64_t kTbwTargetForVmmSwapReferenceDiskSize =
+    32ull * 1000 * 1000 * 1000;
+// Maximum daily TBW budget for vmm-swap - if we're writing more than this,
+// then the user is using ARCVM enough that we don't want to activate vmm-swap.
+constexpr int64_t kTbwMaxForVmmSwapPerDay = 2ull * 1000 * 1000 * 1000;
 // The path to the history file for VmmSwapTbwPolicy.
 constexpr char kVmmSwapTbwHistoryFilePath[] =
     "/var/lib/vm_concierge/vmm_swap_policy/tbw_history2";
@@ -1427,7 +1432,24 @@ bool Service::Init() {
     LOG(WARNING) << "Failed to initialize file watcher for timezone change";
   }
 
-  vmm_swap_tbw_policy_->SetTargetTbwPerDay(kTbwTargetForVmmSwapPerDay);
+  int64_t root_device_size = PostTaskAndWaitForResult(
+      bus_->GetDBusTaskRunner(), base::BindOnce(
+                                     [](spaced::DiskUsageProxy* proxy) {
+                                       return proxy->GetRootDeviceSize();
+                                     },
+                                     disk_usage_proxy_.get()));
+  if (root_device_size < 0) {
+    LOG(WARNING) << "Failed to determine disk size, defaulting to minimum 16GB";
+    root_device_size = 16ull * 1000 * 1000 * 1000;
+  }
+
+  double device_size_multiplier = static_cast<double>(root_device_size) /
+                                  kTbwTargetForVmmSwapReferenceDiskSize;
+  int64_t tbw_target = std::min(
+      static_cast<int64_t>(device_size_multiplier * kTbwTargetForVmmSwapPerDay),
+      kTbwMaxForVmmSwapPerDay);
+
+  vmm_swap_tbw_policy_->SetTargetTbwPerDay(tbw_target);
   base::FilePath tbw_history_file_path(kVmmSwapTbwHistoryFilePath);
   // VmmSwapTbwPolicy repopulate pessimistic history if it fails to init. This
   // is safe to continue using regardless of the result.
