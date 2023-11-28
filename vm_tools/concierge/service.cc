@@ -4463,6 +4463,12 @@ void Service::GetVmLaunchAllowed(
   std::string reason;
   bool allowed = untrusted_vm_utils_.SafeToRunVirtualMachines(&reason);
 
+  if (allowed) {
+    LOG(INFO) << "VM launch allowed";
+  } else {
+    LOG(INFO) << "VM launch not allowed: " << reason;
+  }
+
   GetVmLaunchAllowedResponse response;
   response.set_allowed(allowed);
   response.set_reason(reason);
