@@ -1714,16 +1714,6 @@ class Metrics {
           .num_buckets = 30,
   };
 
-  enum WiFiRestartReason { kRestartReasonCannotAssoc = 0, kRestartReasonMax };
-  // Metric to track when the WiFi device is has been requested to restart.
-  // This metric is made to specifically track the hitrate of b/270746800.
-  // TODO(b/278765529) This metric in addition to the shill driver restart
-  // mechanism should be removed once the hitrate is deemed low enough.
-  static constexpr EnumMetric<FixedName> kMetricNetworkWiFiRestartReason = {
-      .n = FixedName{"Network.Shill.WiFi.RestartReason"},
-      .max = kRestartReasonMax,
-  };
-
   // Version number of the format of WiFi structured metrics. Changed when the
   // formatting of the metrics changes, so that the server-side code knows
   // which fields to expect.

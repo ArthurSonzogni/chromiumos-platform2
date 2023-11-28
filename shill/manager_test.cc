@@ -1524,10 +1524,6 @@ TEST_F(ManagerTest, RequestWiFiRestart) {
   EXPECT_CALL(*mock_devices_[2], technology())
       .WillRepeatedly(Return(Technology::kCellular));
   EXPECT_CALL(*wifi_device, Restart()).Times(1);
-  EXPECT_CALL(*metrics(),
-              SendEnumToUMA(Metrics::kMetricNetworkWiFiRestartReason,
-                            Metrics::kRestartReasonCannotAssoc))
-      .Times(1);
   manager()->RegisterDevice(wifi_device);
   wifi_device->set_enabled_for_testing(true);
   manager()->RegisterDevice(mock_devices_[1]);
