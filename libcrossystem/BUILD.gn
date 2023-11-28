@@ -11,37 +11,26 @@ group("all") {
     ":libcrossystem",
     ":libcrossystem-test",
     ":libcrossystem_pc",
-    ":libcrossystem_static",
   ]
   if (use.test) {
     deps += [ ":libcrossystem_tests" ]
   }
 }
 
-default_pkg_deps = [
-  "libbrillo",
-  "libchrome",
-  "vboot_host",
-]
 pkg_config("target_defaults_pkg_deps") {
-  pkg_deps = default_pkg_deps
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "vboot_host",
+  ]
 }
 
-source_set("libcrossystem_sources") {
+shared_library("libcrossystem") {
   sources = [
     "crossystem.cc",
     "crossystem_impl.cc",
   ]
   configs += [ ":target_defaults_pkg_deps" ]
-}
-
-static_library("libcrossystem_static") {
-  deps = [ ":libcrossystem_sources" ]
-  install_path = "lib"
-}
-
-shared_library("libcrossystem") {
-  deps = [ ":libcrossystem_sources" ]
   install_path = "lib"
 }
 
@@ -60,8 +49,6 @@ generate_pkg_config("libcrossystem-test_pc") {
   description = "libcrossystem test library"
   version = "0.1"
 
-  requires = []
-  requires_private = [ "libcrossystem" ] + default_pkg_deps
   libs = [ "-lcrossystem-test" ]
   install = true
 }
@@ -83,8 +70,6 @@ generate_pkg_config("libcrossystem_pc") {
   description = "Library to get Chromium OS system properties"
   version = "0.1"
 
-  requires = []
-  requires_private = default_pkg_deps
   libs = [ "-lcrossystem" ]
   install = true
 }
@@ -98,8 +83,8 @@ if (use.test) {
     ]
     run_test = true
     deps = [
+      ":libcrossystem",
       ":libcrossystem-test",
-      ":libcrossystem_static",
       "//common-mk/testrunner",
     ]
   }
