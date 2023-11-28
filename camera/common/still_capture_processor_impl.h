@@ -48,6 +48,7 @@ class StillCaptureProcessorImpl : public StillCaptureProcessor {
                             buffer_handle_t yuv_buffer,
                             base::ScopedFD release_fence) override;
   bool IsPendingOutputBufferQueued(int frame_number) override;
+  void CancelPendingRequest(int frame_number) override;
 
  private:
   struct RequestContext {
@@ -75,6 +76,7 @@ class StillCaptureProcessorImpl : public StillCaptureProcessor {
                                     buffer_handle_t yuv_buffer,
                                     base::ScopedFD release_fence);
   void MaybeProduceCaptureResultOnThread(int frame_number);
+  void CancelPendingRequestOnThread(int frame_number);
 
   base::Thread thread_;
   std::unique_ptr<JpegCompressor> jpeg_compressor_;

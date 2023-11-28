@@ -36,6 +36,7 @@ class FakeStillCaptureProcessor : public StillCaptureProcessor {
                             buffer_handle_t yuv_buffer,
                             base::ScopedFD release_fence) override;
   bool IsPendingOutputBufferQueued(int frame_number) override;
+  void CancelPendingRequest(int frame_number) override;
 
  private:
   void MaybeProduceCaptureResult(int frame_number);

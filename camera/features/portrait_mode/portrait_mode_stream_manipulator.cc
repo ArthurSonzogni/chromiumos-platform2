@@ -434,6 +434,7 @@ bool PortraitModeStreamManipulator::ProcessCaptureResultOnThread(
     if (still_yuv_buffer->status() != CAMERA3_BUFFER_STATUS_OK) {
       VLOGF(1) << "Received still YUV buffer with error in result "
                << result.frame_number();
+      still_capture_processor_->CancelPendingRequest(result.frame_number());
       return false;
     }
     metrics_.last_process_time_start = base::TimeTicks::Now();
@@ -443,6 +444,7 @@ bool PortraitModeStreamManipulator::ProcessCaptureResultOnThread(
                                        ctx->orientation, &seg_result,
                                        *ctx->still_yuv_buffer->handle()) != 0) {
       LOGF(ERROR) << "Failed to apply Portrait Mode effect";
+      still_capture_processor_->CancelPendingRequest(result.frame_number());
       ++metrics_.errors[PortraitModeError::kProcessResultError];
       return false;
     }
@@ -551,9 +553,8 @@ void PortraitModeStreamManipulator::UploadMetricsOnThread() {
     return;
   }
 
-  VLOGF(2) << "Metrics:"
-           << " num_still_shot_taken=" << metrics_.num_still_shot_taken
-           << " num_portrait_shot_success="
+  VLOGF(2) << "Metrics:" << " num_still_shot_taken="
+           << metrics_.num_still_shot_taken << " num_portrait_shot_success="
            << metrics_.num_portrait_shot_success
            << " accumulated_process_latency="
            << metrics_.accumulated_process_latency;

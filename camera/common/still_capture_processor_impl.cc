@@ -411,6 +411,15 @@ bool StillCaptureProcessorImpl::IsPendingOutputBufferQueued(int frame_number) {
          iter->second.client_requested_buffer.has_value();
 }
 
+void StillCaptureProcessorImpl::CancelPendingRequest(int frame_number) {
+  VLOGFID(1, frame_number) << "Cancelled";
+  TRACE_COMMON("frame_number", frame_number);
+  thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&StillCaptureProcessorImpl::CancelPendingRequestOnThread,
+                     base::Unretained(this), frame_number));
+}
+
 bool StillCaptureProcessorImpl::CanProduceCaptureResult(
     const RequestContext& context) {
   return context.has_apps_segments && context.has_jpeg &&
@@ -622,6 +631,33 @@ void StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread(
 
   base::AutoLock lock(request_contexts_lock_);
   request_contexts_.erase(frame_number);
+}
+
+void StillCaptureProcessorImpl::CancelPendingRequestOnThread(int frame_number) {
+  DCHECK(thread_.task_runner()->BelongsToCurrentThread());
+  TRACE_COMMON("frame_number", frame_number);
+
+  RequestContext context;
+  {
+    base::AutoLock lock(request_contexts_lock_);
+    auto iter = request_contexts_.find(frame_number);
+    if (iter == request_contexts_.end()) {
+      return;
+    }
+    context = std::move(iter->second);
+    request_contexts_.erase(iter);
+  }
+
+  VLOGFID(1, frame_number) << "Return failed BLOB buffer to client";
+  CHECK(context.client_requested_buffer.has_value());
+  context.client_requested_buffer->status = CAMERA3_BUFFER_STATUS_ERROR;
+  Camera3CaptureDescriptor blob_result(camera3_capture_result_t{
+      .frame_number = static_cast<uint32_t>(frame_number),
+      .num_output_buffers = 1,
+      .output_buffers = &*context.client_requested_buffer,
+      .partial_result = 0,
+  });
+  result_callback_.Run(std::move(blob_result));
 }
 
 bool ParseAppSectionsForTesting(

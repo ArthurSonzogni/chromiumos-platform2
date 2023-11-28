@@ -814,9 +814,12 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
     }
   }
   if (still_yuv_buffer) {
-    // TODO(kamesan): Fail the capture result if processing fails.
-    CHECK(ProcessStillYuvOnThread(ctx, std::move(*still_yuv_buffer),
-                                  result->frame_number()));
+    if (!ProcessStillYuvOnThread(ctx, std::move(*still_yuv_buffer),
+                                 result->frame_number())) {
+      LOGF(ERROR) << "Failed to produce YUV image for still capture "
+                  << result->frame_number();
+      still_capture_processor_->CancelPendingRequest(result->frame_number());
+    }
   }
   if (blob_buffer) {
     if (!still_capture_processor_->IsPendingOutputBufferQueued(
@@ -1213,8 +1216,7 @@ void AutoFramingStreamManipulator::UploadMetricsOnThread() {
   if (metrics_.num_captures == 0) {
     return;
   }
-  VLOGF(1) << "Metrics:"
-           << " num_captures=" << metrics_.num_captures
+  VLOGF(1) << "Metrics:" << " num_captures=" << metrics_.num_captures
            << " enabled_count=" << metrics_.enabled_count
            << " accumulated_on_time=" << metrics_.accumulated_on_time
            << " accumulated_off_time=" << metrics_.accumulated_off_time
@@ -1296,8 +1298,7 @@ void AutoFramingStreamManipulator::UpdateOptionsOnThread(
   options_.enable = json_values.FindBool(kEnableKey);
   LoadIfExist(json_values, kDebugKey, &options_.debug);
 
-  VLOGF(1) << "AutoFramingStreamManipulator options:"
-           << " max_video_width="
+  VLOGF(1) << "AutoFramingStreamManipulator options:" << " max_video_width="
            << (options_.max_video_width.has_value()
                    ? base::NumberToString(*options_.max_video_width)
                    : "(not set)")

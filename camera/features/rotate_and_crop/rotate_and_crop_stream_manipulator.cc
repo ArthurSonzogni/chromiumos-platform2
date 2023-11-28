@@ -518,10 +518,15 @@ bool RotateAndCropStreamManipulator::ProcessCaptureResultOnThread(
       }
       if (b.stream() == yuv_stream_for_blob_) {
         if (ctx.has_pending_blob) {
-          // TODO(kamesan): Fail the still capture properly if YUV image fails.
-          CHECK_EQ(b.status(), CAMERA3_BUFFER_STATUS_OK);
-          still_capture_processor_->QueuePendingYuvImage(
-              result.frame_number(), *b.buffer(), base::ScopedFD());
+          if (b.status() == CAMERA3_BUFFER_STATUS_OK) {
+            still_capture_processor_->QueuePendingYuvImage(
+                result.frame_number(), *b.buffer(), base::ScopedFD());
+          } else {
+            LOGF(ERROR) << "Failed to produce YUV image for still capture "
+                        << result.frame_number();
+            still_capture_processor_->CancelPendingRequest(
+                result.frame_number());
+          }
         }
         if (ctx.yuv_stream_appended) {
           continue;

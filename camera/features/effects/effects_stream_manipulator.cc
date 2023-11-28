@@ -1046,8 +1046,8 @@ void EffectsStreamManipulatorImpl::RenderEffect(
                              process_context->result_buffer, nullptr)) {
       LOGF(ERROR) << "Failed to process YUV for still capture on frame "
                   << process_context->frame_number;
-      // TODO(b/306422556): Fail the blob capture queued to the still capture
-      // processor.
+      still_capture_processor_->CancelPendingRequest(
+          process_context->frame_number);
     }
     return;
   }
@@ -1243,8 +1243,8 @@ void EffectsStreamManipulatorImpl::PostProcess(int64_t timestamp,
                            &process_context->yuv_image)) {
     LOGF(ERROR) << "Failed to process YUV for still capture on frame "
                 << process_context->frame_number;
-    // TODO(b/306422556): Fail the blob capture queued to the still capture
-    // processor.
+    still_capture_processor_->CancelPendingRequest(
+        process_context->frame_number);
   }
 
   if (StreamContext* stream_context = GetStreamContext(result_buffer.stream)) {

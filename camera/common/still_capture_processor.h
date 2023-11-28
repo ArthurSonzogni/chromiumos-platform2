@@ -79,6 +79,11 @@ class StillCaptureProcessor {
   // Returns true if the pending output buffer for result |frame_number| has
   // been queued. Otherwise, returns false.
   virtual bool IsPendingOutputBufferQueued(int frame_number) = 0;
+
+  // Cancels the pending still capture request |frame_number| and returns it to
+  // the client with error buffer status.  This needs to be called after
+  // QueuePendingRequest() and QueuePendingOutputBuffer().
+  virtual void CancelPendingRequest(int frame_number) = 0;
 };
 
 }  // namespace cros
