@@ -11,6 +11,7 @@ group("all") {
     ":install_dbus_config",
     ":install_init_config",
     ":install_seccomp_policy",
+    ":install_setuid_restriction",
     ":libpatchpanel",
     ":libpatchpanel-util",
     ":patchpaneld",
@@ -52,6 +53,12 @@ install_config("install_seccomp_policy") {
   sources = [ "seccomp/iptables-seccomp-" + getenv("ARCH") + ".policy" ]
   install_path = "seccomp_policy"
   outputs = [ "iptables-seccomp.policy" ]
+}
+
+# Install the setuid restriction config.
+install_config("install_setuid_restriction") {
+  sources = [ "setuid_restrictions/patchpaneld_uid_allowlist.txt" ]
+  install_path = "/usr/share/cros/startup/process_management_policies"
 }
 
 pkg_config("target_defaults") {

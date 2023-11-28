@@ -1,0 +1,8 @@
+# The SafeSetID LSM uses this list to record which UID’s/GID’s to restrict, look here for more information:
+# https://www.kernel.org/doc/html/latest/admin-guide/LSM/SafeSetID.html
+
+# Only allow 'patchpaneld' to transition to allowed users.
+284:284
+
+# 'patchpaneld' to 'nobody'.
+284:65534
