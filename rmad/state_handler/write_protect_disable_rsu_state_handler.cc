@@ -23,7 +23,6 @@
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/gsc_utils_impl.h"
-#include "rmad/utils/write_protect_utils_impl.h"
 
 namespace {
 
@@ -44,7 +43,6 @@ WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
       reboot_scheduled_(false) {
   gsc_utils_ = std::make_unique<GscUtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
-  write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
 }
 
 WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
@@ -52,13 +50,11 @@ WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback,
     const base::FilePath& working_dir_path,
     std::unique_ptr<GscUtils> gsc_utils,
-    std::unique_ptr<CrosSystemUtils> crossystem_utils,
-    std::unique_ptr<WriteProtectUtils> write_protect_utils)
+    std::unique_ptr<CrosSystemUtils> crossystem_utils)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
       gsc_utils_(std::move(gsc_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
-      write_protect_utils_(std::move(write_protect_utils)),
       reboot_scheduled_(false) {}
 
 RmadErrorCode WriteProtectDisableRsuStateHandler::InitializeState() {
@@ -161,15 +157,9 @@ WriteProtectDisableRsuStateHandler::TryGetNextStateCaseAtBoot() {
 
 bool WriteProtectDisableRsuStateHandler::IsFactoryModeEnabled() const {
   bool factory_mode_enabled = gsc_utils_->IsFactoryModeEnabled();
-  bool hwwp_enabled = true;
-  write_protect_utils_->GetHardwareWriteProtectionStatus(&hwwp_enabled);
   VLOG(3) << "WriteProtectDisableRsuState: GSC factory mode: "
           << (factory_mode_enabled ? "enabled" : "disabled");
-  VLOG(3) << "WriteProtectDisableRsuState: Hardware write protect: "
-          << (hwwp_enabled ? "enabled" : "disabled");
-  // Factory mode enabled should imply that HWWP is off. Check both just to be
-  // extra sure.
-  return factory_mode_enabled && !hwwp_enabled;
+  return factory_mode_enabled;
 }
 
 void WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndRebootEc() {

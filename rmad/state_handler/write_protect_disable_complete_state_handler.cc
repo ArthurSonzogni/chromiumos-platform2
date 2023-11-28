@@ -102,6 +102,8 @@ WriteProtectDisableCompleteStateHandler::GetNextStateCase(
 BaseStateHandler::GetNextStateCaseReply
 WriteProtectDisableCompleteStateHandler::TryGetNextStateCaseAtBoot() {
   // If GSC has rebooted, disable software WP and transition to the next state.
+  // Due to GSC issues like b/312396594, some devices only disable HWWP after
+  // GSC reboots.
   if (IsGscRebooted()) {
     // TODO(chenghan): Check if RO_AT_BOOT is 0.
     if (!write_protect_utils_->DisableSoftwareWriteProtection()) {
