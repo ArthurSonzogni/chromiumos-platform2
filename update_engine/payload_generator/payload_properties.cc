@@ -58,10 +58,9 @@ bool PayloadProperties::GetPropertiesAsJson(string* json_str) {
   auto properties =
       base::Value::Dict()
           .Set(kPayloadPropertyJsonVersion, version_)
-          .Set(kPayloadPropertyJsonMetadataSize,
-               static_cast<int>(metadata_size_))
+          .Set(kPayloadPropertyJsonMetadataSize, std::to_string(metadata_size_))
           .Set(kPayloadPropertyJsonMetadataSignature, metadata_signatures_)
-          .Set(kPayloadPropertyJsonPayloadSize, static_cast<int>(payload_size_))
+          .Set(kPayloadPropertyJsonPayloadSize, std::to_string(payload_size_))
           .Set(kPayloadPropertyJsonPayloadHash, payload_hash_)
           .Set(kPayloadPropertyJsonIsDelta, is_delta_);
 

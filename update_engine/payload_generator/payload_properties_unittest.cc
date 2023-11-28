@@ -104,9 +104,9 @@ TEST_F(PayloadPropertiesTest, GetPropertiesAsJsonTestHash) {
       "{"
       R"("is_delta":true,)"
       R"("metadata_signature":"",)"
-      R"("metadata_size":165,)"
+      R"("metadata_size":"165",)"
       R"("sha256_hex":"cV7kfZBH3K0B6QJHxxykDh6b6x0WgVOmc63whPLOy7U=",)"
-      R"("size":211,)"
+      R"("size":"211",)"
       R"("version":2)"
       "}";
   string json;
