@@ -245,6 +245,11 @@ class BRILLO_EXPORT DBusInterface final {
                dbus::Message* message, Args... args) {
               ErrorPtr error;
               if (!handler.Run(&error, message, args...)) {
+                if (!error) {
+                  // We should not get here but it happens. See (b/279097307).
+                  LOG(FATAL) << "D-Bus method failed and didn't set error: "
+                             << message->GetDestination();
+                }
                 response->ReplyWithError(error.get());
                 return;
               }
