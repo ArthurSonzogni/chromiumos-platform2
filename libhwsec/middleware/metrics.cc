@@ -103,8 +103,7 @@ bool Metrics::SendPinWeaverReplayOperationResultToUMA(
     ReplayEntryType replay_type,
     LogEntryType entry_type,
     const Status& status) {
-  std::string hist_str = std::string(kHwsecMetricsPrefix) +
-                         "PinWeaverManager." +
+  std::string hist_str = std::string("PinWeaverManager.") +
                          GetPinWeaverLogEntryTypeName(entry_type) + "." +
                          GetPinWeaverReplayEntryTypeName(replay_type);
   return SendFuncResultToUMA(hist_str, status);
