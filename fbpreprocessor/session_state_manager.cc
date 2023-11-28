@@ -42,10 +42,17 @@ constexpr mode_t kInputDirMode = 03770;
 // is allowed to write.
 constexpr mode_t kOutputDirMode = 0750;
 
-// Allowlist of accounts that can add firmware dumps to feedback reports.
-constexpr int kAllowlistSize = 2;
-constexpr std::array<std::string_view, kAllowlistSize> kUserAllowlist{
-    "testuser@managedchrome.com", "testuser@gmail.com"};
+// Allowlist of domains whose users can add firmware dumps to feedback reports.
+constexpr int kDomainAllowlistSize = 2;
+constexpr std::array<std::string_view, kDomainAllowlistSize> kDomainAllowlist{
+    "@google.com", "@managedchrome.com"};
+
+// Allowlist of accounts that can add firmware dumps to feedback reports. This
+// allowlist is used for "special" accounts, typically test accounts, that do
+// not belong to an allowlisted domain.
+constexpr int kUserAllowlistSize = 1;
+constexpr std::array<std::string_view, kUserAllowlistSize> kUserAllowlist{
+    "testuser@gmail.com"};
 
 // Settings of the UserFeedbackWithLowLevelDebugDataAllowed policy that allow
 // the addition of WiFi firmware dumps to feedback reports.
@@ -81,6 +88,15 @@ bool IsFirmwareDumpPolicyAllowed(
     }
   }
   LOG(INFO) << "Firmware dumps not allowed.";
+  return false;
+}
+
+bool IsUserInAllowedDomain(std::string_view username) {
+  for (std::string_view domain : kDomainAllowlist) {
+    if (username.ends_with(domain)) {
+      return true;
+    }
+  }
   return false;
 }
 }  // namespace
@@ -140,7 +156,7 @@ void SessionStateManager::RemoveObserver(Observer* observer) {
 }
 
 bool SessionStateManager::PrimaryUserInAllowlist() const {
-  return primary_user_.ends_with("@google.com") ||
+  return IsUserInAllowedDomain(primary_user_) ||
          base::Contains(kUserAllowlist, primary_user_);
 }
 
