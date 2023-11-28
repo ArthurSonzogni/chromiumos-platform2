@@ -80,9 +80,10 @@ class BluetoothPairingRoutineTest : public testing::Test {
             std::vector<org::chromium::bluetooth::BluetoothProxyInterface*>{
                 &mock_adapter_proxy_}));
     EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-        .WillRepeatedly(base::test::RunOnceCallback<0>(/*floss_enabled=*/true));
+        .WillRepeatedly(
+            base::test::RunOnceCallbackRepeatedly<0>(/*floss_enabled=*/true));
     EXPECT_CALL(mock_manager_proxy_, GetDefaultAdapterAsync(_, _, _))
-        .WillRepeatedly(base::test::RunOnceCallback<0>(
+        .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<0>(
             /*hci_interface=*/kDefaultHciInterface));
     EXPECT_CALL(mock_adapter_proxy_, GetObjectPath)
         .WillRepeatedly(ReturnRef(kDefaultAdapterPath));
@@ -92,7 +93,8 @@ class BluetoothPairingRoutineTest : public testing::Test {
   void SetupGetBondedDevicesCall(
       const std::vector<brillo::VariantDictionary>& bonded_devices) {
     EXPECT_CALL(mock_adapter_proxy_, GetBondedDevicesAsync(_, _, _))
-        .WillRepeatedly(base::test::RunOnceCallback<0>(bonded_devices));
+        .WillRepeatedly(
+            base::test::RunOnceCallbackRepeatedly<0>(bonded_devices));
   }
 
   // The adapter starts discovery and send device added events for each device
@@ -113,15 +115,16 @@ class BluetoothPairingRoutineTest : public testing::Test {
   void SetupGetDevicePropertiesCall() {
     EXPECT_CALL(mock_adapter_proxy_,
                 GetRemoteUuidsAsync(kTestTargetDevice, _, _, _))
-        .WillRepeatedly(base::test::RunOnceCallback<1>(
+        .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<1>(
             std::vector<std::vector<uint8_t>>{kTestUuidBytes}));
     EXPECT_CALL(mock_adapter_proxy_,
                 GetRemoteClassAsync(kTestTargetDevice, _, _, _))
-        .WillRepeatedly(base::test::RunOnceCallback<1>(kTargetBluetoothClass));
+        .WillRepeatedly(
+            base::test::RunOnceCallbackRepeatedly<1>(kTargetBluetoothClass));
     EXPECT_CALL(mock_adapter_proxy_,
                 GetRemoteAddressTypeAsync(kTestTargetDevice, _, _, _))
         .WillRepeatedly(
-            base::test::RunOnceCallback<1>(kTargetAddressTypeValue));
+            base::test::RunOnceCallbackRepeatedly<1>(kTargetAddressTypeValue));
   }
 
   // Complete the bonding process with the target peripheral.
@@ -141,7 +144,7 @@ class BluetoothPairingRoutineTest : public testing::Test {
     // |state| is 1 for |ConnectedOnly|.
     EXPECT_CALL(mock_adapter_proxy_,
                 GetConnectionStateAsync(kTestTargetDevice, _, _, _))
-        .WillRepeatedly(base::test::RunOnceCallback<1>(/*state=*/1));
+        .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<1>(/*state=*/1));
     EXPECT_CALL(mock_adapter_proxy_,
                 SetPairingConfirmationAsync(kTestTargetDevice, true, _, _, _))
         .WillRepeatedly(WithArg<2>(
@@ -157,7 +160,7 @@ class BluetoothPairingRoutineTest : public testing::Test {
   void SetupRemoveBondCall(bool is_success = true) {
     EXPECT_CALL(mock_adapter_proxy_,
                 RemoveBondAsync(kTestTargetDevice, _, _, _))
-        .WillRepeatedly(base::test::RunOnceCallback<1>(is_success));
+        .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<1>(is_success));
   }
 
   // Setup the call to reset the powered state.
@@ -175,8 +178,8 @@ class BluetoothPairingRoutineTest : public testing::Test {
   void SetupEnsurePoweredOnSuccessCall(bool initial_powered) {
     EXPECT_CALL(mock_manager_proxy_,
                 GetAdapterEnabledAsync(kDefaultHciInterface, _, _, _))
-        .WillRepeatedly(
-            base::test::RunOnceCallback<1>(/*enabled=*/initial_powered));
+        .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<1>(
+            /*enabled=*/initial_powered));
 
     if (!initial_powered) {
       EXPECT_CALL(*mock_floss_controller(), GetAdapters())
@@ -222,7 +225,7 @@ class BluetoothPairingRoutineTest : public testing::Test {
     // Update the peripheral alias.
     EXPECT_CALL(mock_adapter_proxy_,
                 SetRemoteAliasAsync(kTestTargetDevice, _, _, _, _))
-        .WillRepeatedly(base::test::RunOnceCallback<2>());
+        .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<2>());
 
     // Get the peripheral's properties.
     SetupGetDevicePropertiesCall();
@@ -235,7 +238,8 @@ class BluetoothPairingRoutineTest : public testing::Test {
 
     // Stop discovery.
     EXPECT_CALL(mock_adapter_proxy_, CancelDiscoveryAsync(_, _, _))
-        .WillRepeatedly(base::test::RunOnceCallback<0>(/*is_success=*/true));
+        .WillRepeatedly(
+            base::test::RunOnceCallbackRepeatedly<0>(/*is_success=*/true));
 
     // Reset powered.
     SetupResetPoweredCall(initial_powered);

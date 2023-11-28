@@ -982,7 +982,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       .WillRepeatedly(Return(&mock_manager_proxy_));
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillRepeatedly(base::test::RunOnceCallback<1>(error.get()));
+      .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<1>(error.get()));
 
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
@@ -1004,7 +1004,8 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
   EXPECT_CALL(*mock_floss_controller(), GetManager())
       .WillRepeatedly(Return(&mock_manager_proxy_));
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillRepeatedly(base::test::RunOnceCallback<0>(/*enabled=*/true));
+      .WillRepeatedly(
+          base::test::RunOnceCallbackRepeatedly<0>(/*enabled=*/true));
 
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
@@ -1070,7 +1071,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       .WillRepeatedly(Return(&mock_manager_proxy_));
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillRepeatedly(base::test::RunOnceCallback<1>(error.get()));
+      .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<1>(error.get()));
 
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
@@ -1092,7 +1093,8 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
   EXPECT_CALL(*mock_floss_controller(), GetManager())
       .WillRepeatedly(Return(&mock_manager_proxy_));
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillRepeatedly(base::test::RunOnceCallback<0>(/*enabled=*/true));
+      .WillRepeatedly(
+          base::test::RunOnceCallbackRepeatedly<0>(/*enabled=*/true));
 
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
@@ -1114,7 +1116,8 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
   EXPECT_CALL(*mock_floss_controller(), GetManager())
       .WillRepeatedly(Return(&mock_manager_proxy_));
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillRepeatedly(base::test::RunOnceCallback<0>(/*enabled=*/false));
+      .WillRepeatedly(
+          base::test::RunOnceCallbackRepeatedly<0>(/*enabled=*/false));
 
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
@@ -1160,7 +1163,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       .WillRepeatedly(Return(&mock_manager_proxy_));
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillRepeatedly(base::test::RunOnceCallback<1>(error.get()));
+      .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<1>(error.get()));
 
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
@@ -1183,7 +1186,8 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
   EXPECT_CALL(*mock_floss_controller(), GetManager())
       .WillRepeatedly(Return(&mock_manager_proxy_));
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillRepeatedly(base::test::RunOnceCallback<0>(/*enabled=*/true));
+      .WillRepeatedly(
+          base::test::RunOnceCallbackRepeatedly<0>(/*enabled=*/true));
 
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
@@ -1252,7 +1256,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       .WillRepeatedly(Return(&mock_manager_proxy_));
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillRepeatedly(base::test::RunOnceCallback<1>(error.get()));
+      .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<1>(error.get()));
 
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
@@ -1275,7 +1279,8 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
   EXPECT_CALL(*mock_floss_controller(), GetManager())
       .WillRepeatedly(Return(&mock_manager_proxy_));
   EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-      .WillRepeatedly(base::test::RunOnceCallback<0>(/*enabled=*/true));
+      .WillRepeatedly(
+          base::test::RunOnceCallbackRepeatedly<0>(/*enabled=*/true));
 
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;

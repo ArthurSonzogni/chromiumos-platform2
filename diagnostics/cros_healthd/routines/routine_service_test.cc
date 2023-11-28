@@ -133,7 +133,7 @@ class RoutineServiceTest : public BaseFileTest {
     EXPECT_CALL(*mock_floss_controller(), GetManager())
         .WillRepeatedly(Return(&mock_manager_proxy_));
     EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
-        .WillRepeatedly(base::test::RunOnceCallback<0>(enable));
+        .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<0>(enable));
   }
 
   base::test::TaskEnvironment task_environment_;
