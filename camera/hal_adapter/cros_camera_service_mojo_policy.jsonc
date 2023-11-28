@@ -22,5 +22,13 @@
       "request": [
         "CrosCameraService"
       ]
+    },
+    {
+      // u:r:cros_healthd:s0 doesn't actually request the service. It only
+      // queries about the service state.
+      "identity": "u:r:cros_healthd:s0",
+      "request": [
+        "CrosCameraService"
+      ]
     }
 ]
