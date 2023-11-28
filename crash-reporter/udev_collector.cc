@@ -41,6 +41,7 @@ const char kCollectUdevSignature[] = "crash_reporter-udev-collection";
 const char kDefaultDevCoredumpDirectory[] = "/sys/class/devcoredump";
 const char kDevCoredumpFilePrefixFormat[] = "devcoredump_%s";
 const char kDevCoredumpMsmExecName[] = "devcoredump_adreno";
+const char kDevCoredumpAmdgpuExecName[] = "devcoredump_amdgpu";
 const char kUdevDrmExecName[] = "udev-drm";
 const char kUdevExecName[] = "udev";
 const char kUdevSignatureKey[] = "sig";
@@ -88,7 +89,8 @@ bool UdevCollector::IsSafeDevCoredump(
   }
 
   // Check for safe drivers:
-  return driver_name == "adreno" || driver_name == "qcom-venus";
+  return driver_name == "adreno" || driver_name == "qcom-venus" ||
+         driver_name == "amdgpu";
 }
 
 CrashCollector::ComputedCrashSeverity UdevCollector::ComputeSeverity(
@@ -101,6 +103,7 @@ CrashCollector::ComputedCrashSeverity UdevCollector::ComputeSeverity(
   if (exec_name == kUdevUsbExecName) {
     computed_severity.crash_severity = CrashSeverity::kError;
   } else if ((exec_name == kDevCoredumpMsmExecName) ||
+             (exec_name == kDevCoredumpAmdgpuExecName) ||
              (exec_name == kUdevTouchscreenTrackpadExecName) ||
              (exec_name == kUdevDrmExecName)) {
     computed_severity.crash_severity = CrashSeverity::kWarning;

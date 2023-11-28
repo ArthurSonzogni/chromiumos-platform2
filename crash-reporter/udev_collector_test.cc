@@ -72,8 +72,8 @@ constexpr char kDeviceUserInAllowlist[] = "testuser@managedchrome.com";
 constexpr char kDeviceGmailUser[] = "alice@gmail.com";
 constexpr char kAffiliationID[] = "affiliation_id";
 
-// Driver name for a coredump that should be collected:
-const char kCollectedDriverName[] = "adreno";
+// Driver names for a coredump that should be collected:
+constexpr const char* kCollectedDriverNames[] = {"adreno", "qcom-venus", "amdgpu"};
 
 // Returns the number of files found in the given path that matches the
 // specified file name pattern.
@@ -563,25 +563,46 @@ TEST_F(UdevCollectorTest, TestConnectivityWiFiDevCoredumpUserNotAllowed) {
 TEST_F(UdevCollectorTest, TestCollectedDevCoredump) {
   // One more test, this time for the case of a devcoredump that should be
   // collected in all builds:
-  GenerateDevCoredump("devcd2", kCollectedDriverName);
-  UdevCollectorMock third_collector;
-  SetUpCollector(&third_collector);
-  third_collector.HandleCrash(
-      "ACTION=add:KERNEL_NUMBER=2:SUBSYSTEM=devcoredump");
-  EXPECT_EQ(
-      1, GetNumFiles(temp_dir_generator_.GetPath(), kDevCoredumpFilePattern));
-  // Check for the expected crash signature:
-  base::FilePath meta_path;
-  std::string meta_pattern = "devcoredump_";
-  meta_pattern += kCollectedDriverName;
-  meta_pattern += ".*.meta";
-  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      temp_dir_generator_.GetPath(), meta_pattern, &meta_path));
-  std::string meta_contents;
-  EXPECT_TRUE(base::ReadFileToString(meta_path, &meta_contents));
-  std::string expected_sig = "sig=crash_reporter-udev-collection-devcoredump-";
-  expected_sig += kCollectedDriverName;
-  EXPECT_THAT(meta_contents, testing::HasSubstr(expected_sig));
+  const int driver_count =
+      sizeof(kCollectedDriverNames) / sizeof(kCollectedDriverNames[0]);
+  for (int i = 0; i < driver_count; i++) {
+    const char* driver_name = kCollectedDriverNames[i];
+    const std::string kernel_number = std::to_string(i + 2);
+    const std::string device_name = std::string("devcd") + kernel_number;
+    GenerateDevCoredump(device_name, driver_name);
+
+    UdevCollectorMock third_collector;
+    SetUpCollector(&third_collector);
+    const std::string udev_event =
+        std::string("ACTION=add:SUBSYSTEM=devcoredump:KERNEL_NUMBER=") +
+        kernel_number;
+    third_collector.HandleCrash(udev_event);
+  }
+
+  EXPECT_EQ(driver_count, GetNumFiles(temp_dir_generator_.GetPath(),
+                                      kDevCoredumpFilePattern));
+
+  for (int i = 0; i < driver_count; i++) {
+    const char* driver_name = kCollectedDriverNames[i];
+    // Check for the expected crash signature:
+    std::string sanitized_name = driver_name;
+    for (size_t i = 0; i < sanitized_name.size(); ++i) {
+      if (!isalnum(sanitized_name[i]) && sanitized_name[i] != '_')
+        sanitized_name[i] = '_';
+    }
+    base::FilePath meta_path;
+    std::string meta_pattern = "devcoredump_";
+    meta_pattern += sanitized_name;
+    meta_pattern += ".*.meta";
+    EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+        temp_dir_generator_.GetPath(), meta_pattern, &meta_path));
+    std::string meta_contents;
+    EXPECT_TRUE(base::ReadFileToString(meta_path, &meta_contents));
+    std::string expected_sig =
+        "sig=crash_reporter-udev-collection-devcoredump-";
+    expected_sig += driver_name;
+    EXPECT_THAT(meta_contents, testing::HasSubstr(expected_sig));
+  }
 }
 
 TEST_F(UdevCollectorTest, RunAsRoot_TestValidBluetoothDevCoredump) {
