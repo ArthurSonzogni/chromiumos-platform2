@@ -2699,16 +2699,6 @@ void Manager::RequestScan(const std::string& technology, Error* error) {
   }
 }
 
-void Manager::RequestWiFiRestart(Error* error) {
-  DeviceRefPtr wifi = GetEnabledDeviceWithTechnology(Technology::kWiFi);
-  if (wifi) {
-    LOG(ERROR) << "RequestWiFiRestart: restarting WiFi device";
-    static_cast<WiFi*>(wifi.get())->Restart();
-  } else {
-    LOG(ERROR) << "RequestWiFiRestart: no WiFi device available";
-  }
-}
-
 std::string Manager::GetTechnologyOrder() {
   std::vector<std::string> technology_names;
   for (const auto& technology : technology_order_) {

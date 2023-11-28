@@ -208,14 +208,6 @@ bool ManagerDBusAdaptor::RequestScan(brillo::ErrorPtr* error,
   return !e.ToChromeosError(error);
 }
 
-bool ManagerDBusAdaptor::RequestWiFiRestart(
-    brillo::ErrorPtr* error) {  // NOLINT
-  SLOG(this, 2) << __func__;
-  Error e;
-  manager_->RequestWiFiRestart(&e);
-  return !e.ToChromeosError(error);
-}
-
 void ManagerDBusAdaptor::SetNetworkThrottlingStatus(
     DBusMethodResponsePtr<> response,
     bool enabled,

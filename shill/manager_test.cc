@@ -1515,22 +1515,6 @@ TEST_F(ManagerTest, RequestScan) {
   }
 }
 
-TEST_F(ManagerTest, RequestWiFiRestart) {
-  Error error;
-  auto* wifi_device =
-      new NiceMock<MockWiFi>(manager(), "wifi", "", 0, 0, new MockWakeOnWiFi());
-  EXPECT_CALL(*mock_devices_[1], technology())
-      .WillRepeatedly(Return(Technology::kEthernet));
-  EXPECT_CALL(*mock_devices_[2], technology())
-      .WillRepeatedly(Return(Technology::kCellular));
-  EXPECT_CALL(*wifi_device, Restart()).Times(1);
-  manager()->RegisterDevice(wifi_device);
-  wifi_device->set_enabled_for_testing(true);
-  manager()->RegisterDevice(mock_devices_[1]);
-  manager()->RegisterDevice(mock_devices_[2]);
-  manager()->RequestWiFiRestart(&error);
-}
-
 TEST_F(ManagerTest, GetServiceNoType) {
   KeyValueStore args;
   Error e;

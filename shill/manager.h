@@ -242,11 +242,6 @@ class Manager {
   // Service.
   void RecheckPortal(Error* error);
 
-  // Request WiFi device to be restarted. This is to be solely used to track
-  // b/270746800 and should not be invoked otherwise. TODO(b/278765529) Once the
-  // issue is is no longer reproducing, this will be removed.
-  virtual void RequestWiFiRestart(Error* error);
-
   virtual void RequestScan(const std::string& technology, Error* error);
   std::string GetTechnologyOrder();
   virtual void SetTechnologyOrder(const std::string& order, Error* error);
@@ -596,7 +591,6 @@ class Manager {
   FRIEND_TEST(ManagerTest, RegisterKnownService);
   FRIEND_TEST(ManagerTest, RegisterUnknownService);
   FRIEND_TEST(ManagerTest, ReleaseBlockedDevice);
-  FRIEND_TEST(ManagerTest, RequestWiFiRestart);
   FRIEND_TEST(ManagerTest, RunTerminationActions);
   FRIEND_TEST(ManagerTest, ServiceMetricTimeOnlineTimeToDrop);
   FRIEND_TEST(ManagerTest, ServiceRegistration);

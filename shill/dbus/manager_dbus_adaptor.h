@@ -85,7 +85,6 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
   bool RecheckPortal(brillo::ErrorPtr* error) override;
   bool RequestScan(brillo::ErrorPtr* error,
                    const std::string& technology) override;
-  bool RequestWiFiRestart(brillo::ErrorPtr* error) override;
   void EnableTechnology(DBusMethodResponsePtr<> response,
                         const std::string& technology_namer) override;
   void DisableTechnology(DBusMethodResponsePtr<> response,

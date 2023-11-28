@@ -35,7 +35,6 @@
 		<method name="PopAnyProfile"/>
 		<method name="PopAllUserProfiles"/>
 		<method name="RecheckPortal"/>
-		<method name="RequestWiFiRestart" />
 		<method name="RequestScan">
 			<arg type="s" direction="in"/>
 		</method>

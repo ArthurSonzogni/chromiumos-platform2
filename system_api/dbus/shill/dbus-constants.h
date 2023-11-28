@@ -41,7 +41,6 @@ constexpr char kGetWiFiNetworksForGeolocation[] =
 constexpr char kGetServiceFunction[] = "GetService";
 constexpr char kSetLOHSEnabledFunction[] = "SetLOHSEnabled";
 constexpr char kRequestScanFunction[] = "RequestScan";
-constexpr char kRequestWiFiRestartFunction[] = "RequestWiFiRestart";
 constexpr char kSetNetworkThrottlingFunction[] = "SetNetworkThrottlingStatus";
 constexpr char kSetDNSProxyDOHProvidersFunction[] = "SetDNSProxyDOHProviders";
 constexpr char kAddPasspointCredentialsFunction[] = "AddPasspointCredentials";

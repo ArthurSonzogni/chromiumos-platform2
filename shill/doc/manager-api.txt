@@ -139,19 +139,6 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
-		void RequestWiFiRestart()
-
-			Request the WiFi device to be restarted, if the
-			WiFi device exists.
-
-			This command is used to mitigate b/270746800 and
-			should only be invoked by the udev rule,
-			89-reset_wifi_on_driver.rules.
-
-			This command should not be called otherwise. This
-			command will be removed once the root cause for
-			b/270746800 is no longer being triggered.
-
 		void EnableTechnology(string type)
 
 			Enable all technologies of the specified type.

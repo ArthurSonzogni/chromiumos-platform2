@@ -287,8 +287,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
                                  const PortalDetector::Result& result) override;
   void OnNetworkDestroyed(int interface_index) override;
 
-  void set_enabled_for_testing(bool enabled) { enabled_ = enabled; }
-
   void set_selected_service_for_testing(ServiceRefPtr service) {
     selected_service_ = service;
   }
