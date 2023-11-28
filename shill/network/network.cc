@@ -15,6 +15,7 @@
 #include <base/containers/fixed_flat_map.h>
 #include <base/files/file_util.h>
 #include <base/notreached.h>
+#include <base/observer_list.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -94,24 +95,20 @@ Network::Network(int interface_index,
       network_applier_(network_applier) {}
 
 Network::~Network() {
-  for (auto* ev : event_handlers_) {
-    ev->OnNetworkDestroyed(interface_index_);
+  for (auto& ev : event_handlers_) {
+    ev.OnNetworkDestroyed(interface_index_);
   }
 }
 
 void Network::RegisterEventHandler(EventHandler* handler) {
-  if (std::find(event_handlers_.begin(), event_handlers_.end(), handler) !=
-      event_handlers_.end()) {
+  if (event_handlers_.HasObserver(handler)) {
     return;
   }
-  event_handlers_.push_back(handler);
+  event_handlers_.AddObserver(handler);
 }
 
 void Network::UnregisterEventHandler(EventHandler* handler) {
-  auto it = std::find(event_handlers_.begin(), event_handlers_.end(), handler);
-  if (it != event_handlers_.end()) {
-    event_handlers_.erase(it);
-  }
+  event_handlers_.RemoveObserver(handler);
 }
 
 void Network::Start(const Network::StartOptions& opts) {
@@ -239,11 +236,8 @@ void Network::SetupConnection(net_base::IPFamily family, bool is_slaac) {
   }
   state_ = State::kConnected;
 
-  // Iterate a copy of the event handlers vector, so that we avoid the original
-  // one being modifying during the iteration.
-  auto event_handlers = event_handlers_;
-  for (auto* ev : event_handlers) {
-    ev->OnConnectionUpdated(interface_index_);
+  for (auto& ev : event_handlers_) {
+    ev.OnConnectionUpdated(interface_index_);
   }
 
   bool current_ipconfig_changed = primary_family_ != family;
@@ -292,8 +286,8 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   dhcp_data_ = std::nullopt;
   // Emit updated IP configs if there are any changes.
   if (ipconfig_changed) {
-    for (auto* ev : event_handlers_) {
-      ev->OnIPConfigsPropertyUpdated(interface_index_);
+    for (auto& ev : event_handlers_) {
+      ev.OnIPConfigsPropertyUpdated(interface_index_);
     }
   }
   if (primary_family_) {
@@ -306,8 +300,8 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   network_applier_->Release(interface_index_, interface_name_);
   priority_ = NetworkPriority{};
   if (should_trigger_callback) {
-    for (auto* ev : event_handlers_) {
-      ev->OnNetworkStopped(interface_index_, is_failure);
+    for (auto& ev : event_handlers_) {
+      ev.OnNetworkStopped(interface_index_, is_failure);
     }
   }
 }
@@ -326,8 +320,8 @@ void Network::InvalidateIPv6Config() {
   }
 
   UpdateIPConfigDBusObject();
-  for (auto* ev : event_handlers_) {
-    ev->OnIPConfigsPropertyUpdated(interface_index_);
+  for (auto& ev : event_handlers_) {
+    ev.OnIPConfigsPropertyUpdated(interface_index_);
   }
 }
 
@@ -395,8 +389,8 @@ void Network::OnIPConfigUpdatedFromDHCP(
   LOG(INFO) << *this << ": DHCP lease "
             << (new_lease_acquired ? "acquired " : "update ") << network_config;
   if (new_lease_acquired) {
-    for (auto* ev : event_handlers_) {
-      ev->OnGetDHCPLease(interface_index_);
+    for (auto& ev : event_handlers_) {
+      ev.OnGetDHCPLease(interface_index_);
     }
   }
   dhcp_data_ = dhcp_data;
@@ -411,8 +405,8 @@ void Network::OnIPConfigUpdatedFromDHCP(
   // result of the new lease. The current call pattern reproduces the same
   // conditions as before crrev/c/3840983.
   if (new_lease_acquired) {
-    for (auto* ev : event_handlers_) {
-      ev->OnIPv4ConfiguredWithDHCPLease(interface_index_);
+    for (auto& ev : event_handlers_) {
+      ev.OnIPv4ConfiguredWithDHCPLease(interface_index_);
     }
   }
 
@@ -433,8 +427,8 @@ void Network::OnIPConfigUpdatedFromDHCP(
 void Network::OnDHCPDrop(bool is_voluntary) {
   LOG(INFO) << *this << ": " << __func__ << ": is_voluntary = " << is_voluntary;
   if (!is_voluntary) {
-    for (auto* ev : event_handlers_) {
-      ev->OnGetDHCPFailure(interface_index_);
+    for (auto& ev : event_handlers_) {
+      ev.OnGetDHCPFailure(interface_index_);
     }
   }
 
@@ -523,8 +517,8 @@ void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
   auto new_network_config = config_.Get();
 
   if (update_type == SLAACController::UpdateType::kAddress) {
-    for (auto* ev : event_handlers_) {
-      ev->OnGetSLAACAddress(interface_index_);
+    for (auto& ev : event_handlers_) {
+      ev.OnGetSLAACAddress(interface_index_);
     }
     // No matter whether the primary address changes, any address change will
     // need to trigger address-based routing rule to be updated.
@@ -565,8 +559,8 @@ void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
     // happened as a result of the new address (ignoring IPv4 and assuming
     // Network is fully dual-stack). The current call pattern reproduces the
     // same conditions as before crrev/c/3840983.
-    for (auto* ev : event_handlers_) {
-      ev->OnIPv6ConfiguredWithSLAACAddress(interface_index_);
+    for (auto& ev : event_handlers_) {
+      ev.OnIPv6ConfiguredWithSLAACAddress(interface_index_);
     }
     std::optional<base::TimeDelta> slaac_duration =
         slaac_controller_->GetAndResetLastProvisionDuration();
@@ -618,8 +612,8 @@ void Network::UpdateIPConfigDBusObject() {
     ip6config()->ApplyNetworkConfig(combined_network_config,
                                     net_base::IPFamily::kIPv6);
   }
-  for (auto* ev : event_handlers_) {
-    ev->OnIPConfigsPropertyUpdated(interface_index_);
+  for (auto& ev : event_handlers_) {
+    ev.OnIPConfigsPropertyUpdated(interface_index_);
   }
 }
 
@@ -756,9 +750,9 @@ void Network::OnNeighborReachabilityEvent(
     }
   }
 
-  for (auto* ev : event_handlers_) {
-    ev->OnNeighborReachabilityEvent(interface_index_, *ip_address, event.role,
-                                    event.status);
+  for (auto& ev : event_handlers_) {
+    ev.OnNeighborReachabilityEvent(interface_index_, *ip_address, event.role,
+                                   event.status);
   }
 }
 
@@ -793,8 +787,8 @@ bool Network::StartPortalDetection(ValidationReason reason) {
     portal_detector_->Start(interface_name_, *family, dns_list, logging_tag_);
     LOG(INFO) << *this << " " << __func__ << "(" << reason
               << "): Portal detection started.";
-    for (auto* ev : event_handlers_) {
-      ev->OnNetworkValidationStart(interface_index_);
+    for (auto& ev : event_handlers_) {
+      ev.OnNetworkValidationStart(interface_index_);
     }
     return true;
   }
@@ -839,8 +833,8 @@ bool Network::RestartPortalDetection() {
   // TODO(b/216351118): this ignores the portal detection retry delay. The
   // callback should be triggered when the next attempt starts, not when it
   // is scheduled.
-  for (auto* ev : event_handlers_) {
-    ev->OnNetworkValidationStart(interface_index_);
+  for (auto& ev : event_handlers_) {
+    ev.OnNetworkValidationStart(interface_index_);
   }
   return true;
 }
@@ -848,8 +842,8 @@ bool Network::RestartPortalDetection() {
 void Network::StopPortalDetection() {
   if (IsPortalDetectionInProgress()) {
     LOG(INFO) << *this << ": Portal detection stopped.";
-    for (auto* ev : event_handlers_) {
-      ev->OnNetworkValidationStop(interface_index_);
+    for (auto& ev : event_handlers_) {
+      ev.OnNetworkValidationStop(interface_index_);
     }
   }
   portal_detector_.reset();
@@ -908,8 +902,8 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
   auto total_duration = std::max(result.http_duration.InMilliseconds(),
                                  result.https_duration.InMilliseconds());
 
-  for (auto* ev : event_handlers_) {
-    ev->OnNetworkValidationResult(interface_index_, result);
+  for (auto& ev : event_handlers_) {
+    ev.OnNetworkValidationResult(interface_index_, result);
   }
 
   if (network_validation_log_) {

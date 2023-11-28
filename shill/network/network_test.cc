@@ -383,6 +383,17 @@ TEST_F(NetworkTest, EventHandlerRegistration) {
   }
 }
 
+// Verifies that a handler can unregister itself in the callback.
+TEST_F(NetworkTest, UnregisterHandlerInCallback) {
+  EXPECT_CALL(event_handler_, OnNetworkStopped)
+      .WillOnce(InvokeWithoutArgs(
+          [this] { network_->UnregisterEventHandler(&this->event_handler_); }));
+  EXPECT_CALL(event_handler2_, OnNetworkStopped);
+
+  network_->Start(Network::StartOptions{.accept_ra = true});
+  network_->Stop();
+}
+
 TEST_F(NetworkTest, OnNetworkStoppedCalledOnStopAfterStart) {
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
