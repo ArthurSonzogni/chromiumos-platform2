@@ -44,6 +44,7 @@ UntrustedVMUtils::MitigationStatus GetL1TFMitigationStatus(
     return UntrustedVMUtils::MitigationStatus::VULNERABLE;
   }
 
+  base::TrimString(l1tf_status, "\n", &l1tf_status);
   LOG(INFO) << "l1tf status: " << l1tf_status;
 
   std::vector<std::string_view> l1tf_statuses = base::SplitStringPiece(
@@ -90,6 +91,7 @@ UntrustedVMUtils::MitigationStatus GetMDSMitigationStatus(
     return UntrustedVMUtils::MitigationStatus::VULNERABLE;
   }
 
+  base::TrimString(mds_status, "\n", &mds_status);
   LOG(INFO) << "mds status: " << mds_status;
 
   std::vector<std::string_view> mds_statuses = base::SplitStringPiece(
