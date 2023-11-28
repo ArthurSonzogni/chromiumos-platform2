@@ -138,6 +138,11 @@ constexpr base::TimeDelta kVmmSwapOutCoolingDownPeriod = base::Hours(24);
 // the guest move back to the guest memory.
 constexpr base::TimeDelta kVmmSwapTrimWaitPeriod = base::Minutes(10);
 
+// After shrinking via the aggressive balloon, ARCVM's size should be less
+// than 1GiB. Since only the core Android services should be running at this
+// point, this value is independent of the size of guest memory.
+constexpr int64_t kExpectedMaxShrunkArcVmSize = GiB(1);
+
 // The default initialization parameters for ARCVM's LimitCacheBalloonPolicy
 static constexpr LimitCacheBalloonPolicy::Params kArcVmLimitCachePolicyParams =
     {
@@ -1152,11 +1157,12 @@ base::TimeDelta ArcVm::CalculateVmmSwapDurationTarget() const {
   if (tbw_target_per_day <= 0) {
     return base::Days(28);
   }
-  double factor = static_cast<double>(guest_memory_size_) / tbw_target_per_day;
-  if (factor < 0) {
-    LOG(ERROR) << "VmmSwapDurationTarget is negative: factor:" << factor;
-    return base::TimeDelta::FiniteMax();
-  } else if (factor > 28) {
+  // Swapping ARCVM will require writing less than this much data in the vast
+  // majority of cases. In the rare case that we end up writing too much data,
+  // the TBW policy will end up preventing swap for the next few days until the
+  // running TBW cost falls below the weekly and monthly thresholds.
+  double factor = kExpectedMaxShrunkArcVmSize / tbw_target_per_day;
+  if (factor > 28) {
     return base::Days(28);
   }
   double target_seconds = factor * base::Hours(24).InSecondsF();
