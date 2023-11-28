@@ -348,11 +348,13 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
         datapath_->RemoveIPv6HostRoute(
             *net_base::IPv6CIDR::CreateFromAddressAndPrefix(neighbor_ip, 128));
       }
-      downstream_neighbors_[ifname_downlink].clear();
       // Stop RA servers
       if (forward_record_[ifname].method == ForwardMethod::kMethodRAServer) {
         StopRAServer(ifname_downlink);
       }
+      // b/304887221: Note that we do not clear downstream_neighbors_ cache here
+      // in order to more gracefully handle the case that ChromeOS host loses
+      // uplink IP and comes back soon within the same network.
     }
     return;
   }
@@ -390,21 +392,33 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
 
       // Update downlink /128 routes source IP. Note AddIPv6HostRoute uses `ip
       // route replace` so we don't need to remove the old one first.
-      for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
-        LOG(INFO) << __func__ << ": " << pair << ", update /128 route to "
-                  << ifname_downlink << " for existing neighbor IP {"
-                  << neighbor_ip << "} because of new uplink IP {"
-                  << new_uplink_ip << "} on " << ifname;
+      auto& neighbor_ips = downstream_neighbors_[ifname_downlink];
+      for (auto iter = neighbor_ips.begin(); iter != neighbor_ips.end();) {
+        // Skip and remove downstream neighbor IP cache if it is not in the same
+        // prefix with the new uplink IP.
+        if (!upstream_shill_device.ipconfig.ipv6_cidr->InSameSubnetWith(
+                *iter)) {
+          LOG(INFO) << __func__ << ": " << pair
+                    << ", removing cached downstream neighbor IP {" << *iter
+                    << "} because it's not in the subnet of new uplink IP {"
+                    << new_uplink_ip << "}";
+          iter = neighbor_ips.erase(iter);
+          continue;
+        }
+        LOG(INFO) << __func__ << ": " << pair
+                  << ", update /128 downlink route for existing neighbor IP {"
+                  << *iter << "} because of new uplink IP {" << new_uplink_ip
+                  << "}";
         if (!datapath_->AddIPv6HostRoute(
                 ifname_downlink,
-                *net_base::IPv6CIDR::CreateFromAddressAndPrefix(neighbor_ip,
-                                                                128),
+                *net_base::IPv6CIDR::CreateFromAddressAndPrefix(*iter, 128),
                 new_uplink_ip)) {
           LOG(WARNING) << __func__ << ": " << pair
-                       << ": Failed to setup the IPv6 route {" << neighbor_ip
+                       << ": Failed to setup the IPv6 route {" << *iter
                        << "} dev " << ifname << " src {" << new_uplink_ip
                        << "}";
         }
+        ++iter;
       }
 
       if (forward_record_[ifname].method == ForwardMethod::kMethodRAServer) {
