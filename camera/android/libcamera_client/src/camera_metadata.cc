@@ -31,7 +31,12 @@
     ( (cond) \
     ? ((void)fprintf(stderr, LOG_TAG __VA_ARGS__)) \
     : (void)0 )
-#define IF_ALOGV()
+
+#ifdef NDEBUG
+#define IF_ALOGV() if (false)
+#else
+#define IF_ALOGV() if (true)
+#endif
 
 #include <errno.h>
 #include <stdio.h>
