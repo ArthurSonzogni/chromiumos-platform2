@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_UTILS_USB_UTILS_CONSTANTS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_UTILS_USB_UTILS_CONSTANTS_H_
 
+#include <cstdint>
+
 namespace diagnostics {
 
 inline constexpr char kPropertieVendorFromDB[] = "ID_VENDOR_FROM_DATABASE";

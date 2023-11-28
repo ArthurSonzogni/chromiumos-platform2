@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/routines/subproc_routine.h"
 
 #include <algorithm>
+#include <string>
 #include <utility>
 #include <vector>
 

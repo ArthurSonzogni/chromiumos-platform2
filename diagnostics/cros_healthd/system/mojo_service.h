@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_MOJO_SERVICE_H_
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_MOJO_SERVICE_H_
 
+#include <cstdint>
+
 namespace ash::cros_healthd::internal::mojom {
 class ChromiumDataCollector;
 }

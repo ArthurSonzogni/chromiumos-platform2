@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_CONSTANTS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_CONSTANTS_H_
 
+#include <cstdint>
+
 namespace diagnostics {
 
 namespace cpu_msr {

@@ -11,7 +11,6 @@
 #include <mojo/public/cpp/bindings/callback_helpers.h>
 
 #include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
-#include "diagnostics/cros_healthd/executor/utils/process_control.h"
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 
