@@ -4,6 +4,8 @@
 
 #include "fbpreprocessor/session_state_manager.h"
 
+#include <sys/types.h>
+
 #include <array>
 #include <map>
 #include <memory>
@@ -32,7 +34,13 @@ constexpr char kSessionStateStarted[] = "started";
 constexpr char kSessionStateStopped[] = "stopped";
 constexpr int kNumberActiveSessionsUnknown = -1;
 
-constexpr mode_t kMode = 03770;
+// crash-reporter will write the firmware dumps to the input directory, allow
+// members of the group to write to that directory.
+constexpr mode_t kInputDirMode = 03770;
+// debugd will read the processed firmware dumps from the output directory,
+// allow members of the group to read from that directory. Only fbpreprocessor
+// is allowed to write.
+constexpr mode_t kOutputDirMode = 0750;
 
 // Allowlist of accounts that can add firmware dumps to feedback reports.
 constexpr int kAllowlistSize = 2;
@@ -282,15 +290,20 @@ bool SessionStateManager::CreateUserDirectories() const {
                << base::File::ErrorToString(error);
     success = false;
   }
-
-  if (chmod(root_dir.Append(kInputDirectory).value().c_str(), kMode)) {
-    LOG(ERROR) << "chmod of raw_dumps failed";
+  if (chmod(root_dir.Append(kInputDirectory).value().c_str(), kInputDirMode)) {
+    LOG(ERROR) << "chmod of input directory failed.";
     success = false;
   }
+
   if (!base::CreateDirectoryAndGetError(root_dir.Append(kProcessedDirectory),
                                         &error)) {
     LOG(ERROR) << "Failed to create output directory: "
                << base::File::ErrorToString(error);
+    success = false;
+  }
+  if (chmod(root_dir.Append(kProcessedDirectory).value().c_str(),
+            kOutputDirMode)) {
+    LOG(ERROR) << "chmod of output directory failed.";
     success = false;
   }
 
