@@ -33,6 +33,7 @@ const char CellularBearer::kMMAllowRoamingProperty[] = "allow-roaming";
 const char CellularBearer::kMMIpTypeProperty[] = "ip-type";
 const char CellularBearer::kMMMultiplexProperty[] = "multiplex";
 const char CellularBearer::kMMForceProperty[] = "force";
+const char CellularBearer::kMMProfileIdProperty[] = "profile-id";
 
 namespace {
 

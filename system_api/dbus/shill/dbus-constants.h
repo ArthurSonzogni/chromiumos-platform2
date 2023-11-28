@@ -582,6 +582,9 @@ constexpr char kApnIpTypeProperty[] = "ip_type";
 constexpr char kApnTypesProperty[] = "apn_types";
 constexpr char kApnIdProperty[] = "id";
 constexpr char kApnSourceProperty[] = "apn_source";
+// The Profile ID property will be ignored if sent by Chrome or
+// otherwise set in a custom APN.
+constexpr char kApnProfileIdProperty[] = "profile_id";
 
 // APN authentication property values (as expected by ModemManager).
 constexpr char kApnAuthenticationPap[] = "pap";

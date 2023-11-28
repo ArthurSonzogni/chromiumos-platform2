@@ -6,6 +6,7 @@
 #define SHILL_CELLULAR_MOBILE_APN_H_
 
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <tuple>
@@ -70,6 +71,11 @@ struct MobileAPN {
   std::string ip_type;
   // If the APN overrides all other APNs of the same type.
   bool is_required_by_carrier_spec = false;
+
+  // If this APN was provided by the modem, then it may have a profile ID
+  // associated with it. The profile ID is arbitrary and provided by the
+  // modem, so it should not be stored persistently.
+  std::optional<int32_t> profile_id;
 
  private:
   auto tuple() const {

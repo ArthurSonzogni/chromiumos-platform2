@@ -129,6 +129,16 @@ MATCHER_P(HasIpType, expected_ip_type, "") {
              arg.template Get<uint32_t>(CellularBearer::kMMIpTypeProperty);
 }
 
+MATCHER(HasNoProfileId, "") {
+  return !arg.template Contains<int32_t>(CellularBearer::kMMProfileIdProperty);
+}
+
+MATCHER_P(HasProfileId, expected_profile_id, "") {
+  return arg.template Contains<int32_t>(CellularBearer::kMMProfileIdProperty) &&
+         expected_profile_id ==
+             arg.template Get<int32_t>(CellularBearer::kMMProfileIdProperty);
+}
+
 class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
  public:
   CellularCapability3gppTest()
@@ -1717,6 +1727,28 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
   EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
                                           ResultCallback()));
   properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
+  EXPECT_THAT(properties, HasApn(kTestApn));
+  EXPECT_THAT(properties, HasUser(kTestUser));
+  EXPECT_THAT(properties, HasPassword(kTestPassword));
+  EXPECT_THAT(properties, HasNoAllowedAuth());
+  EXPECT_THAT(properties, HasIpType(MM_BEARER_IP_FAMILY_IPV4));
+  ConnectionAttemptComplete(ApnList::ApnType::kDefault, Error(Error::kSuccess));
+
+  // If a profile ID is specified, that should be sent.
+  apn[kApnProfileIdProperty] = "7";
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          ResultCallback()));
+  properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
+  EXPECT_THAT(properties, HasProfileId(7));
+  ConnectionAttemptComplete(ApnList::ApnType::kDefault, Error(Error::kSuccess));
+
+  // If an invalid profile ID is specified, we should not send anything and
+  // should fall back to the profile details if available.
+  apn[kApnProfileIdProperty] = "seven";
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          ResultCallback()));
+  properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
+  EXPECT_THAT(properties, HasNoProfileId());
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasPassword(kTestPassword));

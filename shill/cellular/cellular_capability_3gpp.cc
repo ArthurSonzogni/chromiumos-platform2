@@ -957,6 +957,21 @@ bool CellularCapability3gpp::IsDualStackSupported() {
 
 void CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
                                               KeyValueStore* properties) {
+  if (base::Contains(apn_info, kApnProfileIdProperty)) {
+    int32_t profile_id;
+    if (base::StringToInt(apn_info.at(kApnProfileIdProperty), &profile_id)) {
+      properties->Set<int32_t>(CellularBearer::kMMProfileIdProperty,
+                               profile_id);
+      // Setting the profile ID means we'll ignore the rest of the properties
+      // as we'll fetch them from the modem, so we can stop here.
+      // APN type and multiplex request are set elsewhere.
+      return;
+    }
+    LOG(WARNING) << "Malformed profile ID \""
+                 << apn_info.at(kApnProfileIdProperty)
+                 << "\" in APN details, ignoring";
+  }
+
   DCHECK(base::Contains(apn_info, kApnProperty));
   properties->Set<std::string>(CellularBearer::kMMApnProperty,
                                apn_info.at(kApnProperty));
@@ -977,9 +992,10 @@ void CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
     // Always fallback to CHAP if there is no authentication set.
     allowed_auth = MM_BEARER_ALLOWED_AUTH_CHAP;
   }
-  if (allowed_auth != MM_BEARER_ALLOWED_AUTH_UNKNOWN)
+  if (allowed_auth != MM_BEARER_ALLOWED_AUTH_UNKNOWN) {
     properties->Set<uint32_t>(CellularBearer::kMMAllowedAuthProperty,
                               allowed_auth);
+  }
 
   if (IsDualStackSupported() && base::Contains(apn_info, kApnIpTypeProperty)) {
     properties->Set<uint32_t>(
@@ -2212,6 +2228,10 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
           MMBearerApnTypeToApnTypes(static_cast<MMBearerApnType>(
               brillo::GetVariantValueOrDefault<uint32_t>(
                   profile, CellularBearer::kMMApnTypeProperty)));
+    }
+    if (base::Contains(profile, CellularBearer::kMMProfileIdProperty)) {
+      apn_info.profile_id = brillo::GetVariantValueOrDefault<int32_t>(
+          profile, CellularBearer::kMMProfileIdProperty);
     }
     // If the APN doesn't have an APN type, assume it's a DEFAULT APN.
     if (apn_info.apn_types.empty())
