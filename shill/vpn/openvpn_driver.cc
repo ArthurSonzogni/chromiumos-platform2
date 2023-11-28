@@ -290,7 +290,9 @@ bool OpenVPNDriver::SpawnOpenVPN() {
   ProcessManager::MinijailOptions minijail_options;
   minijail_options.user = "vpn";
   minijail_options.group = "vpn";
-  minijail_options.capmask = 0;
+  // openvpn needs CAP_NET_ADMIN for several operations, e.g, set SO_MARK on the
+  // socket and set tx queue length.
+  minijail_options.capmask = CAP_TO_MASK(CAP_NET_ADMIN);
   minijail_options.inherit_supplementary_groups = true;
   openvpn_pid = process_manager()->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kOpenVPNPath), args, kEnv, minijail_options,
