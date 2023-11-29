@@ -654,6 +654,7 @@ static_library("libcryptohome") {
     "../lockbox-cache.cc",
     "../pkcs11/real_pkcs11_token.cc",
     "../recoverable_key_store/backend_cert_provider_impl.cc",
+    "../recoverable_key_store/backend_cert_verify.cc",
     "../recoverable_key_store/generate.cc",
     "../service_userdataauth.cc",
     "../storage/cryptohome_vault.cc",
@@ -701,6 +702,7 @@ static_library("libcryptohome") {
   pkg_deps = [
     "dbus-1",
     "libfeatures",
+    "libxml-2.0",
   ]
 }
 
