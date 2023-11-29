@@ -611,7 +611,7 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
       auth_factor_status_update_timer_->Start(
           FROM_HERE, base::Time::Now() + next_signal_delay,
           base::BindOnce(&AuthSession::SendAuthFactorStatusUpdateSignal,
-                         weak_factory_.GetWeakPtr()));
+                         weak_factory_for_timed_tasks_.GetWeakPtr()));
     }
   }
 }
@@ -656,6 +656,10 @@ CryptohomeStatus AuthSession::OnUserCreated() {
 void AuthSession::RegisterVaultKeysetAuthFactor(AuthFactor auth_factor) {
   auth_factor_map_.Add(std::move(auth_factor),
                        AuthFactorStorageType::kVaultKeyset);
+}
+
+void AuthSession::CancelAllOutstandingAsyncCallbacks() {
+  weak_factory_.InvalidateWeakPtrs();
 }
 
 void AuthSession::MigrateToUssDuringUpdateVaultKeyset(

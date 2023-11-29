@@ -448,6 +448,11 @@ class AuthSession final {
   // through UserDataAuth::CreateVaultKeyset() for testing purposes.
   void RegisterVaultKeysetAuthFactor(AuthFactor auth_factor);
 
+  // Cancels the execution of any outstanding callbacks bound to this session.
+  // The can be used to "time out" an outstanding async operation that the
+  // session is executing.
+  void CancelAllOutstandingAsyncCallbacks();
+
  private:
   // Emits a debug log message with this Auth Session's initial state.
   void RecordAuthSessionStart() const;
@@ -878,7 +883,10 @@ class AuthSession final {
   std::map<AuthFactorType, std::unique_ptr<PreparedAuthFactorToken>>
       active_auth_factor_tokens_;
 
-  // The last member, to invalidate weak references first on destruction.
+  // Weak factory for creating weak pointers to |this| for timed tasks.
+  base::WeakPtrFactory<AuthSession> weak_factory_for_timed_tasks_{this};
+  // Weak factory for creating "normal" weak pointers to |this|. Tasks bound to
+  // these pointers will be cancelled by CancelAllOutstandingAsyncCallbacks.
   base::WeakPtrFactory<AuthSession> weak_factory_{this};
 };
 

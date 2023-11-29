@@ -483,6 +483,7 @@ void BoundAuthSession::ReleaseSessionIfBlocking() {
       !sessions_iter->second.work_queue.empty()) {
     LOG(WARNING)
         << "Timeout on bound auth session, releasing back to session manager";
+    session_->CancelAllOutstandingAsyncCallbacks();
     session_ = InUseAuthSession();
     return;
   }
