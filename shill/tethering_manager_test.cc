@@ -1745,6 +1745,19 @@ TEST_F(TetheringManagerTest, ChangeUpstreamTechWhileActive) {
             TetheringManager::TetheringState::kTetheringRestarting);
 }
 
+TEST_F(TetheringManagerTest, ChangeAutoDisableWhileIdle) {
+  TetheringPrerequisite(tethering_manager_);
+  KeyValueStore config = GetConfig(tethering_manager_);
+  SetConfigAutoDisable(config, false);
+  EXPECT_TRUE(SetAndPersistConfig(tethering_manager_, config));
+  EXPECT_TRUE(GetInactiveTimer(tethering_manager_).IsCancelled());
+  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonInitialState);
+  SetConfigAutoDisable(config, true);
+  EXPECT_TRUE(SetAndPersistConfig(tethering_manager_, config));
+  EXPECT_TRUE(GetInactiveTimer(tethering_manager_).IsCancelled());
+  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonInitialState);
+}
+
 TEST_F(TetheringManagerTest, ChangeAutoDisableWhileActive) {
   TetheringPrerequisite(tethering_manager_);
   SetEnabledVerifyResult(tethering_manager_, true,

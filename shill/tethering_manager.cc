@@ -320,8 +320,10 @@ std::optional<bool> TetheringManager::FromProperties(
     // If auto disable config changed, reset inactive timer on the fly which
     // does not require session restart.
     auto_disable_ = properties.Get<bool>(kTetheringConfAutoDisableProperty);
-    (auto_disable_ && GetClientCount() == 0) ?
-        StartInactiveTimer() : StopInactiveTimer();
+    if (state_ == TetheringState::kTetheringActive) {
+      (auto_disable_ && GetClientCount() == 0) ?
+          StartInactiveTimer() : StopInactiveTimer();
+    }
   }
 
   if (properties.Contains<bool>(kTetheringConfMARProperty) &&
@@ -507,7 +509,7 @@ KeyValueStore TetheringManager::GetStatus() {
 }
 
 size_t TetheringManager::GetClientCount() {
-  return hotspot_dev_->GetStations().size();
+  return (hotspot_dev_ == nullptr) ? 0 : hotspot_dev_->GetStations().size();
 }
 
 void TetheringManager::SetState(TetheringState state) {
