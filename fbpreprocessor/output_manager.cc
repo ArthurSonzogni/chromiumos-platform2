@@ -4,7 +4,6 @@
 
 #include "fbpreprocessor/output_manager.h"
 
-#include <forward_list>
 #include <memory>
 #include <string>
 #include <string_view>
