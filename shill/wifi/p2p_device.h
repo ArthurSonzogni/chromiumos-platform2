@@ -10,6 +10,9 @@
 #include <optional>
 #include <string>
 
+#include <base/cancelable_callback.h>
+#include <base/memory/weak_ptr.h>
+
 #include "shill/store/key_value_store.h"
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
 #include "shill/supplicant/supplicant_group_event_delegate_interface.h"
@@ -182,6 +185,14 @@ class P2PDevice : public LocalDevice,
   FRIEND_TEST(P2PDeviceTest, GroupFinished_WhileClientConfiguring);
   FRIEND_TEST(P2PDeviceTest, GroupFinished_WhileClientConnected);
   FRIEND_TEST(P2PDeviceTest, GroupFinished_WhileNotExpected);
+  FRIEND_TEST(P2PDeviceTest, StartingTimerExpired_WhileGOStarting);
+  FRIEND_TEST(P2PDeviceTest, StartingTimerExpired_WhileGOConfiguring);
+  FRIEND_TEST(P2PDeviceTest, StartingTimerExpired_WhileGOActive);
+  FRIEND_TEST(P2PDeviceTest, StoppingTimerExpired_WhileGOStopping);
+  FRIEND_TEST(P2PDeviceTest, StartingTimerExpired_WhileClientAssociating);
+  FRIEND_TEST(P2PDeviceTest, StartingTimerExpired_WhileClientConfiguring);
+  FRIEND_TEST(P2PDeviceTest, StartingTimerExpired_WhileClientConnected);
+  FRIEND_TEST(P2PDeviceTest, StoppingTimerExpired_WhileClientDisconnecting);
 
   // This helper method converts GO peer properties to D-Bus properties.
   Stringmaps GroupInfoClients() const;
@@ -258,6 +269,14 @@ class P2PDevice : public LocalDevice,
   // TODO(b/308081318) move to P2PPeer class
   KeyValueStore PeerProperties(const dbus::ObjectPath& peer);
 
+  // These methods handle p2p group start/stop timers.
+  void StartingTimerExpired();
+  void StoppingTimerExpired();
+  void ResetTimersOnStateChange(P2PDeviceState new_state);
+
+  // The weak pointer to P2PDevice object
+  base::WeakPtrFactory<P2PDevice> weak_ptr_factory_{this};
+
   // Primary interface link name.
   std::string primary_link_name_;
 
@@ -305,6 +324,14 @@ class P2PDevice : public LocalDevice,
 
   // TODO(b/308081318) move to P2PPeer class
   std::map<dbus::ObjectPath, KeyValueStore> group_peers_;
+
+  // Executes when the p2p group start timer expires. Calls
+  // StartingTimerExpired.
+  base::CancelableOnceClosure start_timer_callback_;
+
+  // Executes when the p2p group stop timer expires. Calls
+  // StoppingTimerExpired.
+  base::CancelableOnceClosure stop_timer_callback_;
 };
 
 }  // namespace shill

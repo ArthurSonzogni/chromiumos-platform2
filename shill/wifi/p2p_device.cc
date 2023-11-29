@@ -24,6 +24,12 @@
 namespace shill {
 
 namespace {
+// Stop p2p device and return error if group cannot be fully configured within
+// |kStartTimeout| time.
+static constexpr base::TimeDelta kStartTimeout = base::Seconds(10);
+// Return error if p2p group cannot be fully stopped within |kStopTimeout| time.
+static constexpr base::TimeDelta kStopTimeout = base::Seconds(5);
+
 // TODO(b/308081318): move to P2PPeer class
 String PeerMacAddress(const KeyValueStore& properties) {
   std::string mac_address;
@@ -415,6 +421,7 @@ void P2PDevice::DeleteService() {
 void P2PDevice::SetState(P2PDeviceState state) {
   if (state_ == state)
     return;
+  ResetTimersOnStateChange(state);
   LOG(INFO) << log_name() << ": State changed: " << P2PDeviceStateName(state_)
             << " -> " << P2PDeviceStateName(state);
   state_ = state;
@@ -884,6 +891,144 @@ void P2PDevice::PeerDisconnected(const dbus::ObjectPath& peer) {
     case P2PDeviceState::kGOStopping:
       LOG(WARNING) << log_name() << ": Ignored " << __func__
                    << " while in state " << P2PDeviceStateName(state_);
+      break;
+  }
+}
+
+void P2PDevice::StartingTimerExpired() {
+  switch (state_) {
+    // P2P client failure states for StartingTimerExpired event
+    case P2PDeviceState::kClientAssociating:
+      LOG(ERROR) << log_name()
+                 << ": Failed to connect Client, timer expired while in state "
+                 << P2PDeviceStateName(state_);
+      FinishSupplicantGroup();
+      SetState(P2PDeviceState::kClientDisconnecting);
+      PostDeviceEvent(DeviceEvent::kLinkFailure);
+      break;
+    case P2PDeviceState::kClientConfiguring:
+      LOG(ERROR) << log_name()
+                 << ": Failed to connect Client, timer expired while in state "
+                 << P2PDeviceStateName(state_);
+      FinishSupplicantGroup();
+      SetState(P2PDeviceState::kClientDisconnecting);
+      PostDeviceEvent(DeviceEvent::kNetworkFailure);
+      break;
+    // P2P GO failure states for StartingTimerExpired event
+    case P2PDeviceState::kGOStarting:
+      LOG(ERROR) << log_name()
+                 << ": Failed to start GO, timer expired while in state "
+                 << P2PDeviceStateName(state_);
+      FinishSupplicantGroup();
+      SetState(P2PDeviceState::kGOStopping);
+      PostDeviceEvent(DeviceEvent::kLinkFailure);
+      break;
+    case P2PDeviceState::kGOConfiguring:
+      LOG(ERROR) << log_name()
+                 << ": Failed to start GO, timer expired while in state "
+                 << P2PDeviceStateName(state_);
+      FinishSupplicantGroup();
+      SetState(P2PDeviceState::kGOStopping);
+      PostDeviceEvent(DeviceEvent::kNetworkFailure);
+      break;
+    // Common states for all roles.
+    case P2PDeviceState::kUninitialized:
+    case P2PDeviceState::kReady:
+    // P2P client states.
+    case P2PDeviceState::kClientConnected:
+    case P2PDeviceState::kClientDisconnecting:
+    // P2P GO states.
+    case P2PDeviceState::kGOActive:
+    case P2PDeviceState::kGOStopping:
+      LOG(WARNING) << log_name() << ": Ignored " << __func__
+                   << " while in state " << P2PDeviceStateName(state_);
+      break;
+  }
+}
+
+void P2PDevice::StoppingTimerExpired() {
+  switch (state_) {
+    // P2P client failure states for StoppingTimerExpired event
+    case P2PDeviceState::kClientDisconnecting:
+      LOG(WARNING)
+          << log_name()
+          << ": Forcing Client to disconnect, timer expired while in state "
+          << P2PDeviceStateName(state_);
+      TeardownGroup();
+      SetState(P2PDeviceState::kReady);
+      PostDeviceEvent(DeviceEvent::kLinkDown);
+      break;
+    // P2P GO failure states for StoppingTimerExpired event
+    case P2PDeviceState::kGOStopping:
+      LOG(WARNING) << log_name()
+                   << ": Forcing GO to stop, timer expired while in state "
+                   << P2PDeviceStateName(state_);
+      TeardownGroup();
+      SetState(P2PDeviceState::kReady);
+      PostDeviceEvent(DeviceEvent::kLinkDown);
+      break;
+    // Common states for all roles.
+    case P2PDeviceState::kUninitialized:
+    case P2PDeviceState::kReady:
+    // P2P client states.
+    case P2PDeviceState::kClientAssociating:
+    case P2PDeviceState::kClientConfiguring:
+    case P2PDeviceState::kClientConnected:
+    // P2P GO states.
+    case P2PDeviceState::kGOStarting:
+    case P2PDeviceState::kGOConfiguring:
+    case P2PDeviceState::kGOActive:
+      LOG(WARNING) << log_name() << ": Ignored " << __func__
+                   << " while in state " << P2PDeviceStateName(state_);
+      break;
+  }
+}
+
+void P2PDevice::ResetTimersOnStateChange(P2PDeviceState new_state) {
+  switch (new_state) {
+    case P2PDeviceState::kClientAssociating:
+    case P2PDeviceState::kGOStarting:
+      start_timer_callback_.Reset(base::BindOnce(
+          &P2PDevice::StartingTimerExpired, weak_ptr_factory_.GetWeakPtr()));
+      manager()->dispatcher()->PostDelayedTask(
+          FROM_HERE, start_timer_callback_.callback(), kStartTimeout);
+      LOG(INFO) << log_name()
+                << ": Starting timer armed, timeout: " << kStartTimeout;
+      break;
+    case P2PDeviceState::kClientConnected:
+    case P2PDeviceState::kGOActive:
+      if (!start_timer_callback_.IsCancelled()) {
+        start_timer_callback_.Cancel();
+        LOG(INFO) << log_name() << ": Starting timer cancelled";
+      }
+      break;
+    case P2PDeviceState::kClientDisconnecting:
+    case P2PDeviceState::kGOStopping:
+      if (!start_timer_callback_.IsCancelled()) {
+        start_timer_callback_.Cancel();
+        LOG(INFO) << log_name() << ": Starting timer cancelled";
+      }
+      stop_timer_callback_.Reset(base::BindOnce(
+          &P2PDevice::StoppingTimerExpired, weak_ptr_factory_.GetWeakPtr()));
+      manager()->dispatcher()->PostDelayedTask(
+          FROM_HERE, stop_timer_callback_.callback(), kStopTimeout);
+      LOG(INFO) << log_name()
+                << ": Stopping timer armed, timeout: " << kStopTimeout;
+      break;
+    case P2PDeviceState::kReady:
+      if (!start_timer_callback_.IsCancelled()) {
+        start_timer_callback_.Cancel();
+        LOG(INFO) << log_name() << ": Starting timer cancelled";
+      }
+      if (!stop_timer_callback_.IsCancelled()) {
+        stop_timer_callback_.Cancel();
+        LOG(INFO) << log_name() << ": Stopping timer cancelled";
+      }
+      break;
+    // Common states for all roles.
+    case P2PDeviceState::kUninitialized:
+    case P2PDeviceState::kClientConfiguring:
+    case P2PDeviceState::kGOConfiguring:
       break;
   }
 }
