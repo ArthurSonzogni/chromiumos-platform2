@@ -166,7 +166,7 @@ TEST_F(P2PManagerTest, HousekeepingCountLimit) {
                                        /*max_file_age=*/TimeDelta()));
   EXPECT_EQ(manager_->CountSharedFiles(), 0);
 
-  base::Time start_time = base::Time::FromDoubleT(1246996800.);
+  base::Time start_time = base::Time::FromSecondsSinceUnixEpoch(1246996800.);
   // Generate files with different timestamps matching our pattern and generate
   // other files not matching the pattern.
   for (int n = 0; n < 5; n++) {

@@ -126,13 +126,13 @@ class UmRealUpdaterProviderTest : public ::testing::Test {
 
 TEST_F(UmRealUpdaterProviderTest, UpdaterStartedTimeIsWallclockTime) {
   FakeSystemState::Get()->fake_clock()->SetWallclockTime(
-      Time::FromDoubleT(123.456));
+      Time::FromSecondsSinceUnixEpoch(123.456));
   FakeSystemState::Get()->fake_clock()->SetMonotonicTime(
-      Time::FromDoubleT(456.123));
+      Time::FromSecondsSinceUnixEpoch(456.123));
   // Re-initialize to re-setup the provider under test to use these values.
   provider_.reset(new RealUpdaterProvider());
   ASSERT_TRUE(provider_->Init());
-  UmTestUtils::ExpectVariableHasValue(Time::FromDoubleT(123.456),
+  UmTestUtils::ExpectVariableHasValue(Time::FromSecondsSinceUnixEpoch(123.456),
                                       provider_->var_updater_started_time());
 }
 
