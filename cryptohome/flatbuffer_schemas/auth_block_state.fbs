@@ -10,7 +10,6 @@ namespace cryptohome._serialized_;
 
 // Defined the attributes that may be used in this schema file.
 attribute "optional";
-attribute "secure";
 attribute "serializable";
 
 // Fields in AuthBlockState are all marked optional because they can be read

@@ -80,7 +80,7 @@ union TypeSpecificMetadata {
 }
 
 // Container that stores information about auth factor to be persisted on disk.
-table SerializedAuthFactor (serializable, secure) {
+table SerializedAuthFactor (serializable) {
   auth_block_state:AuthBlockState (id: 0);
   metadata:TypeSpecificMetadata (id: 2);
   common_metadata:CommonMetadata (id: 3);
