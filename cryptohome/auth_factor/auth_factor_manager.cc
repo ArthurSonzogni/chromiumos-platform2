@@ -121,10 +121,8 @@ CryptohomeStatus AuthFactorManager::SaveAuthFactorFile(
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
-  brillo::Blob auth_factor_to_save(flatbuffer.value().begin(),
-                                   flatbuffer.value().end());
   // Write the file.
-  if (!platform_->WriteFileAtomicDurable(file_path.value(), auth_factor_to_save,
+  if (!platform_->WriteFileAtomicDurable(*file_path, *flatbuffer,
                                          kAuthFactorFilePermissions)) {
     LOG(ERROR) << "Failed to persist auth factor " << auth_factor.label()
                << " of type " << AuthFactorTypeToString(auth_factor.type())
