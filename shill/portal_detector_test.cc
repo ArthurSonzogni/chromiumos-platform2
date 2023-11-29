@@ -81,6 +81,25 @@ MATCHER(ZeroDelay, "") {
   return arg.is_zero();
 }
 
+class TestablePortalDetector : public PortalDetector {
+ public:
+  TestablePortalDetector(EventDispatcher* dispatcher,
+                         const ProbingConfiguration& probing_configuration,
+                         base::RepeatingCallback<void(const Result&)> callback)
+      : PortalDetector(dispatcher, probing_configuration, callback) {}
+  TestablePortalDetector(const TestablePortalDetector&) = delete;
+  TestablePortalDetector& operator=(const TestablePortalDetector&) = delete;
+  virtual ~TestablePortalDetector() = default;
+
+  MOCK_METHOD(std::unique_ptr<HttpRequest>,
+              CreateHTTPRequest,
+              (const std::string& ifname,
+               net_base::IPFamily ip_family,
+               const std::vector<net_base::IPAddress>& dns_list,
+               bool allow_non_google_https),
+              (override, const));
+};
+
 class PortalDetectorTest : public Test {
  public:
   PortalDetectorTest()
@@ -95,9 +114,9 @@ class PortalDetectorTest : public Test {
         interface_name_(kInterfaceName),
         dns_servers_({kDNSServer0, kDNSServer1}),
         portal_detector_(
-            new PortalDetector(&dispatcher_,
-                               MakeProbingConfiguration(),
-                               callback_target_.result_callback())) {}
+            new TestablePortalDetector(&dispatcher_,
+                                       MakeProbingConfiguration(),
+                                       callback_target_.result_callback())) {}
 
  protected:
   class CallbackTarget {
@@ -118,14 +137,6 @@ class PortalDetectorTest : public Test {
         result_callback_;
   };
 
-  void AssignHttpRequest() {
-    http_request_ = new StrictMock<MockHttpRequest>();
-    https_request_ = new StrictMock<MockHttpRequest>();
-    // Passes ownership.
-    portal_detector_->http_request_.reset(http_request_);
-    portal_detector_->https_request_.reset(https_request_);
-  }
-
   static PortalDetector::ProbingConfiguration MakeProbingConfiguration() {
     PortalDetector::ProbingConfiguration config;
     config.portal_http_url = *net_base::HttpUrl::CreateFromString(kHttpUrl);
@@ -142,9 +153,15 @@ class PortalDetectorTest : public Test {
   }
 
   void StartPortalRequest() {
+    http_request_ = new StrictMock<MockHttpRequest>();
+    https_request_ = new StrictMock<MockHttpRequest>();
+    // Expect that PortalDetector will create the request of the HTTP probe
+    // first.
+    EXPECT_CALL(*portal_detector_, CreateHTTPRequest)
+        .WillOnce(Return(std::unique_ptr<HttpRequest>(http_request_)))
+        .WillOnce(Return(std::unique_ptr<HttpRequest>(https_request_)));
     portal_detector_->Start(kInterfaceName, net_base::IPFamily::kIPv4,
                             {kDNSServer0, kDNSServer1}, "tag");
-    AssignHttpRequest();
   }
 
   void StartTrialTask() {
@@ -214,8 +231,56 @@ class PortalDetectorTest : public Test {
   CallbackTarget callback_target_;
   const std::string interface_name_;
   std::vector<net_base::IPAddress> dns_servers_;
-  std::unique_ptr<PortalDetector> portal_detector_;
+  std::unique_ptr<TestablePortalDetector> portal_detector_;
 };
+
+TEST_F(PortalDetectorTest, NoCustomCertificates) {
+  std::vector<net_base::IPAddress> dns_list = {kDNSServer0, kDNSServer1};
+  auto config = MakeProbingConfiguration();
+  config.portal_https_url =
+      *net_base::HttpUrl::CreateFromString(PortalDetector::kDefaultHttpsUrl);
+  auto portal_detector = std::make_unique<TestablePortalDetector>(
+      &dispatcher_, config, callback_target_.result_callback());
+
+  // First request for the HTTP probe: always set |allow_non_google_https| to
+  // false. Second request for the HTTPS probe with the default URL: set
+  // |allow_non_google_https| to false.
+  EXPECT_CALL(*portal_detector,
+              CreateHTTPRequest("wlan0", net_base::IPFamily::kIPv4, dns_list,
+                                /*allow_non_google_https=*/false))
+      .WillOnce(Return(std::make_unique<MockHttpRequest>()))
+      .WillOnce(Return(std::make_unique<MockHttpRequest>()));
+  EXPECT_CALL(dispatcher(), PostDelayedTask);
+
+  portal_detector->Start("wlan0", net_base::IPFamily::kIPv4, dns_list, "tag");
+  portal_detector->Stop();
+}
+
+TEST_F(PortalDetectorTest, UseCustomCertificates) {
+  std::vector<net_base::IPAddress> dns_list = {kDNSServer0, kDNSServer1};
+  auto config = MakeProbingConfiguration();
+  ASSERT_NE(config.portal_https_url, *net_base::HttpUrl::CreateFromString(
+                                         PortalDetector::kDefaultHttpsUrl));
+  auto portal_detector = std::make_unique<TestablePortalDetector>(
+      &dispatcher_, config, callback_target_.result_callback());
+
+  // First request for the HTTP probe: always set |allow_non_google_https| to
+  // false.
+  EXPECT_CALL(*portal_detector,
+              CreateHTTPRequest("wlan0", net_base::IPFamily::kIPv4, dns_list,
+                                /*allow_non_google_https=*/false))
+      .WillOnce(Return(std::make_unique<MockHttpRequest>()));
+  // Second request for the HTTPS probe with a non-default URL: set
+  // |allow_non_google_https| to true.
+  EXPECT_CALL(*portal_detector,
+              CreateHTTPRequest("wlan0", net_base::IPFamily::kIPv4, dns_list,
+                                /*allow_non_google_https=*/true))
+      .WillOnce(Return(std::make_unique<MockHttpRequest>()));
+  EXPECT_CALL(dispatcher(), PostDelayedTask);
+
+  portal_detector->Start("wlan0", net_base::IPFamily::kIPv4, dns_list, "tag");
+  portal_detector->Stop();
+}
 
 TEST_F(PortalDetectorTest, Constructor) {
   ExpectReset();
@@ -506,13 +571,17 @@ TEST_F(PortalDetectorTest, RestartWhileAlreadyInProgress) {
   EXPECT_TRUE(portal_detector()->IsInProgress());
   EXPECT_FALSE(portal_detector()->IsTrialScheduled());
   Mock::VerifyAndClearExpectations(&dispatcher_);
+  Mock::VerifyAndClearExpectations(portal_detector_.get());
 
   EXPECT_CALL(dispatcher(), PostDelayedTask).Times(0);
-  StartPortalRequest();
+  EXPECT_CALL(*portal_detector_, CreateHTTPRequest).Times(0);
+  portal_detector_->Start(kInterfaceName, net_base::IPFamily::kIPv4,
+                          {kDNSServer0, kDNSServer1}, "tag");
   EXPECT_EQ(1, portal_detector()->attempt_count());
   EXPECT_TRUE(portal_detector()->IsInProgress());
   EXPECT_FALSE(portal_detector()->IsTrialScheduled());
   Mock::VerifyAndClearExpectations(&dispatcher_);
+  Mock::VerifyAndClearExpectations(portal_detector_.get());
 
   portal_detector()->Stop();
   ExpectReset();

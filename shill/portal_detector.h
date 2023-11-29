@@ -270,6 +270,13 @@ class PortalDetector {
     return portal_result_callback_;
   }
 
+  // Can be overwritten in tests;
+  virtual std::unique_ptr<HttpRequest> CreateHTTPRequest(
+      const std::string& ifname,
+      net_base::IPFamily ip_family,
+      const std::vector<net_base::IPAddress>& dns_list,
+      bool allow_non_google_https) const;
+
  private:
   friend class PortalDetectorTest;
   FRIEND_TEST(PortalDetectorTest, AttemptCount);

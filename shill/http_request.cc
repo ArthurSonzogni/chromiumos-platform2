@@ -43,7 +43,8 @@ HttpRequest::HttpRequest(EventDispatcher* dispatcher,
                          const std::string& interface_name,
                          net_base::IPFamily ip_family,
                          const std::vector<net_base::IPAddress>& dns_list,
-                         bool allow_non_google_https)
+                         bool allow_non_google_https,
+                         std::shared_ptr<brillo::http::Transport> transport)
     : ip_family_(ip_family),
       dns_list_(dns_list),
       weak_ptr_factory_(this),
@@ -54,7 +55,7 @@ HttpRequest::HttpRequest(EventDispatcher* dispatcher,
                                 DnsClient::kDnsTimeout,
                                 dispatcher,
                                 dns_client_callback_)),
-      transport_(brillo::http::Transport::CreateDefault()),
+      transport_(transport),
       request_id_(-1),
       is_running_(false) {
   // b/180521518, Force the transport to bind to |interface_name|. Otherwise,

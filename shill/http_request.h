@@ -62,7 +62,9 @@ class HttpRequest {
               const std::string& interface_name,
               net_base::IPFamily ip_family,
               const std::vector<net_base::IPAddress>& dns_list,
-              bool allow_non_google_https = false);
+              bool allow_non_google_https = false,
+              std::shared_ptr<brillo::http::Transport> transport =
+                  brillo::http::Transport::CreateDefault());
   HttpRequest(const HttpRequest&) = delete;
   HttpRequest& operator=(const HttpRequest&) = delete;
 

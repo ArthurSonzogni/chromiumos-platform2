@@ -95,12 +95,11 @@ class HttpRequestTest : public Test {
   };
 
   void SetUp() override {
-    request_.reset(new HttpRequest(&dispatcher_, interface_name_,
-                                   net_base::IPFamily::kIPv4,
-                                   {kDNSServer0, kDNSServer1}, true));
+    request_.reset(new HttpRequest(
+        &dispatcher_, interface_name_, net_base::IPFamily::kIPv4,
+        {kDNSServer0, kDNSServer1}, true, transport_));
     // Passes ownership.
     request_->dns_client_.reset(dns_client_);
-    request_->transport_ = transport_;
   }
   void TearDown() override {
     if (request_->is_running_) {
@@ -222,7 +221,7 @@ class HttpRequestTest : public Test {
         }));
   }
 
- private:
+ protected:
   const std::string interface_name_;
   // Owned by the HttpRequest, but tracked here for EXPECT().
   StrictMock<MockDnsClient>* dns_client_;
@@ -239,6 +238,17 @@ class HttpRequestTest : public Test {
 
 TEST_F(HttpRequestTest, Constructor) {
   ExpectReset();
+}
+
+TEST_F(HttpRequestTest, UseCustomCertificate) {
+  auto transport = std::make_shared<brillo::http::MockTransport>();
+  EXPECT_CALL(*transport,
+              UseCustomCertificate(brillo::http::Transport::Certificate::kNss));
+
+  std::vector<net_base::IPAddress> dns_list = {kDNSServer0, kDNSServer1};
+  auto request = std::make_unique<HttpRequest>(
+      &dispatcher_, "wlan0", net_base::IPFamily::kIPv4, dns_list,
+      /*allow_non_google_https=*/true, transport);
 }
 
 TEST_F(HttpRequestTest, NumericRequestSuccess) {

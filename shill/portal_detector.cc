@@ -142,13 +142,13 @@ void PortalDetector::Start(const std::string& ifname,
   // TODO(hugobenichi) Network properties like src address and DNS should be
   // obtained exactly at the time that the trial starts if |GetNextAttemptDelay|
   // > 0.
-  http_request_ =
-      std::make_unique<HttpRequest>(dispatcher_, ifname, ip_family, dns_list);
+  http_request_ = CreateHTTPRequest(ifname, ip_family, dns_list,
+                                    /*allow_non_google_https=*/false);
   // For non-default URLs, allow for secure communication with both Google and
   // non-Google servers.
-  bool allow_non_google_https = https_url_.ToString() == kDefaultHttpsUrl;
-  https_request_ = std::make_unique<HttpRequest>(
-      dispatcher_, ifname, ip_family, dns_list, allow_non_google_https);
+  bool allow_non_google_https = https_url_.ToString() != kDefaultHttpsUrl;
+  https_request_ =
+      CreateHTTPRequest(ifname, ip_family, dns_list, allow_non_google_https);
   trial_.Reset(base::BindOnce(&PortalDetector::StartTrialTask,
                               weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, trial_.callback(), delay);
@@ -476,6 +476,15 @@ std::optional<int> PortalDetector::Result::GetHTTPResponseCodeMetricResult()
 
 std::string PortalDetector::LoggingTag() const {
   return logging_tag_ + " attempt=" + std::to_string(attempt_count_);
+}
+
+std::unique_ptr<HttpRequest> PortalDetector::CreateHTTPRequest(
+    const std::string& ifname,
+    net_base::IPFamily ip_family,
+    const std::vector<net_base::IPAddress>& dns_list,
+    bool allow_non_google_https) const {
+  return std::make_unique<HttpRequest>(dispatcher_, ifname, ip_family, dns_list,
+                                       allow_non_google_https);
 }
 
 bool PortalDetector::Result::IsComplete() const {
