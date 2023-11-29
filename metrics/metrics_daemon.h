@@ -17,7 +17,9 @@
 #include <brillo/daemons/dbus_daemon.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "metrics/debugd_reader.h"
 #include "metrics/metrics_library.h"
+#include "metrics/mmc_error_parser.h"
 #include "metrics/persistent_integer.h"
 #include "metrics/process_meter.h"
 #include "metrics/vmlog_writer.h"
@@ -190,6 +192,10 @@ class MetricsDaemon : public brillo::DBusDaemon {
                                          DBusMessage* message,
                                          void* user_data);
 
+  // Helper for initlizing log collection from MMC. Expects dbus to be
+  // initialized.
+  void InitMmc();
+
   // Updates the active use time and logs time between user-space
   // process crashes.
   void ProcessUserCrash();
@@ -230,6 +236,9 @@ class MetricsDaemon : public brillo::DBusDaemon {
   // Returns the total (system-wide) CPU usage between the time of the most
   // recent call to this function and now.
   base::TimeDelta GetIncrementalCpuUse();
+
+  // Sends MMC error counter samples and clears current state.
+  void SendMmcSamples();
 
   // Sends a sample representing the number of seconds of active use
   // for a 24-hour period and reset |use|.
@@ -415,6 +424,7 @@ class MetricsDaemon : public brillo::DBusDaemon {
   uint64_t detachable_base_suspended_time_;
 
   // Persistent values and accumulators for crash statistics.
+  std::unique_ptr<PersistentInteger> hourly_cycle_;
   std::unique_ptr<PersistentInteger> daily_cycle_;
   std::unique_ptr<PersistentInteger> weekly_cycle_;
   std::unique_ptr<PersistentInteger> version_cycle_;
@@ -441,6 +451,13 @@ class MetricsDaemon : public brillo::DBusDaemon {
   std::unique_ptr<PersistentInteger> kernel_crashes_version_count_;
   std::unique_ptr<PersistentInteger> unclean_shutdowns_daily_count_;
   std::unique_ptr<PersistentInteger> unclean_shutdowns_weekly_count_;
+
+  // MMC error counters. Sent every hour.
+  // We can have between 0 and 2 controllers. A controller usually drives
+  // an embedded eMMC card, or an external SD card.
+  // Data collection is limited only to the controller that drives the rootfs
+  // storage.
+  std::unique_ptr<MmcErrorParser> mmc_parser_;
 
   struct VmstatRecord vmstats_daily_start;
   bool vmstats_daily_success;

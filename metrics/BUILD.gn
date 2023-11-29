@@ -29,6 +29,7 @@ group("all") {
       ":cumulative_metrics_test",
       ":debugd_reader_test",
       ":metrics_library_test",
+      ":mmc_error_parser_test",
       ":persistent_integer_test",
       ":process_meter_test",
       ":timer_test",
@@ -106,6 +107,7 @@ static_library("libmetrics_daemon") {
     "debugd_reader.cc",
     "metrics_daemon.cc",
     "metrics_daemon_main.cc",
+    "mmc_error_parser.cc",
     "process_meter.cc",
     "vmlog_writer.cc",
   ]
@@ -238,6 +240,19 @@ if (use.test) {
       ":metrics_test_support",
       "//common-mk/testrunner:testrunner",
     ]
+  }
+  executable("mmc_error_parser_test") {
+    sources = [
+      "debugd_reader.cc",
+      "mmc_error_parser.cc",
+      "mmc_error_parser_test.cc",
+      "persistent_integer.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [ "//common-mk/testrunner:testrunner" ]
   }
   executable("process_meter_test") {
     sources = [

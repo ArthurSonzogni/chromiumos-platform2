@@ -11,6 +11,7 @@
 #include <string.h>
 #include <sysexits.h>
 #include <time.h>
+#include <utility>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -30,7 +31,9 @@
 #include <dbus/error.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
+#include <rootdev/rootdev.h>
 
+#include "metrics/debugd_reader.h"
 #include "metrics/process_meter.h"
 #include "uploader/upload_service.h"
 
@@ -86,6 +89,8 @@ const uint32_t kMaxAcceptableUnaggregatedUsageTime =
 // Maximum amount of system memory that will be reported without overflow.
 const int kMaximumMemorySizeInKB = 128 * 1024 * 1024;
 
+const char kRuntimeStatePath[] = "/run/metrics/";
+
 const char kKernelCrashDetectedFile[] =
     "/run/metrics/external/crash-reporter/kernel-crash-detected";
 const char kUncleanShutdownDetectedFile[] =
@@ -132,6 +137,7 @@ constexpr char kKernelCrashesSinceUpdateName[] =
 constexpr char kUncleanShutdownsDailyName[] = "Platform.UncleanShutdownsDaily";
 constexpr char kUncleanShutdownsWeeklyName[] =
     "Platform.UncleanShutdownsWeekly";
+constexpr char kMmcStatsName[] = "Platform.Storage.Mmc.Internal.";
 
 // Max process allocation size in megabytes, used as an upper bound for UMA
 // histograms (these are all consumer devices, and 64 GB should be good for a
@@ -375,6 +381,8 @@ void MetricsDaemon::Init(bool testing,
   unclean_shutdowns_weekly_count_.reset(
       new PersistentInteger(backing_dir_.Append(kUncleanShutdownsWeeklyName)));
 
+  hourly_cycle_.reset(
+      new PersistentInteger(backing_dir_.Append("hourly.cycle")));
   daily_cycle_.reset(new PersistentInteger(backing_dir_.Append("daily.cycle")));
   weekly_cycle_.reset(
       new PersistentInteger(backing_dir_.Append("weekly.cycle")));
@@ -405,6 +413,55 @@ void MetricsDaemon::Init(bool testing,
   // If testing, initialize Stats Reporter without connecting DBus
   if (testing_)
     StatsReporterInit();
+}
+
+void MetricsDaemon::InitMmc() {
+  const std::string kMmcDevPrefix = "/dev/mmcblk";
+  std::string dev_path;
+
+  dev_path.resize(PATH_MAX, 0);
+  int ret = rootdev(&dev_path[0], dev_path.size(), true, true);
+  if (ret != 0) {
+    LOG(WARNING) << "Failed to find root device: " << ret;
+    return;
+  }
+  dev_path.resize(strlen(dev_path.c_str()));
+
+  // Check which device is used to back rootfs.
+  // If it's an MMC controller use it to collect the metrics.
+  if (!dev_path.starts_with(kMmcDevPrefix)) {
+    return;
+  }
+
+  int rootdev_idx;
+  dev_path = dev_path.substr(kMmcDevPrefix.length());
+  if (!base::StringToInt(dev_path, &rootdev_idx)) {
+    LOG(WARNING) << "Failed to parse root device idx from:" << dev_path;
+    return;
+  }
+
+  auto mmc_reader = std::make_unique<DebugdReader>(bus_.get(), "mmc_err_stats");
+  std::optional<std::string> log = mmc_reader->Read();
+  // DBUS call failed, or debugd returned no data.
+  // The latter is expected if no MMC controller is present, or the kernel is
+  // too old, so just bail here.
+  if (!log) {
+    return;
+  }
+
+  // Debugd output contains header line with the controller name.
+  // Find the one we're interested in, and crate an mmc parser for it.
+  std::string name = "mmc" + std::to_string(rootdev_idx);
+  if (log->find(name) == std::string::npos) {
+    return;
+  }
+  mmc_parser_ =
+      MmcErrorParser::Create(backing_dir_, base::FilePath(kRuntimeStatePath),
+                             std::move(mmc_reader), name);
+  if (!mmc_parser_) {
+    LOG(WARNING) << "Failed to create MmcErrorParser for " << name;
+    return;
+  }
 }
 
 int MetricsDaemon::OnInit() {
@@ -459,6 +516,8 @@ int MetricsDaemon::OnInit() {
     LOG(ERROR) << "DBus isn't connected.";
     return EX_UNAVAILABLE;
   }
+
+  InitMmc();
 
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
@@ -1393,6 +1452,18 @@ void MetricsDaemon::SendKernelCrashesCumulativeCountStats() {
   }
 }
 
+void MetricsDaemon::SendMmcSamples() {
+  CHECK(mmc_parser_);
+
+  MmcErrorRecord record = mmc_parser_->GetAndClear();
+  std::string name(kMmcStatsName);
+
+  SendSample(name + kCmdTimeoutName, record.cmd_timeouts, 1, 100, 50);
+  SendSample(name + kDataTimeoutName, record.data_timeouts, 1, 100, 50);
+  SendSample(name + kCmdCRCName, record.cmd_crcs, 1, 100, 50);
+  SendSample(name + kDataCRCName, record.data_crcs, 1, 100, 50);
+}
+
 void MetricsDaemon::SendAndResetDailyUseSample() {
   // Since metrics_daemon only updates statistics every kUpdateStatsIntervalMs,
   // we will often report devices that are active for exactly 24 hours as being
@@ -1484,6 +1555,7 @@ void MetricsDaemon::UpdateStats(TimeTicks now_ticks, Time now_wall_time) {
   version_cumulative_cpu_use_->Add(GetIncrementalCpuUse().InMilliseconds());
 
   const TimeDelta since_epoch = now_wall_time - Time::UnixEpoch();
+  const int hour = since_epoch.InHours();
   const int day = since_epoch.InDays();
   const int week = day / 7;
 
@@ -1507,6 +1579,15 @@ void MetricsDaemon::UpdateStats(TimeTicks now_ticks, Time now_wall_time) {
   }
 
   last_update_stats_time_ = now_ticks;
+
+  // mmc_parser_ can be null if rootfs is not backed by an MMC controller
+  if (mmc_parser_) {
+    mmc_parser_->Update();
+    if (hourly_cycle_->Get() != hour) {
+      hourly_cycle_->Set(hour);
+      SendMmcSamples();
+    }
+  }
 
   if (daily_cycle_->Get() != day) {
     daily_cycle_->Set(day);
