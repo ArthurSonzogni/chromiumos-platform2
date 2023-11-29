@@ -757,6 +757,9 @@ class Service : public base::RefCounted<Service> {
     return network_event_handler_.get();
   }
 
+  uint64_t GetLastConnectedProperty(Error* error) const;
+  uint64_t GetLastOnlineProperty(Error* error) const;
+
   // Read only access to previous error number.  This can f.e. be used to check
   // if SetFailure*() has been called for a service without any additional flags
   // - just check if it has been changed.
@@ -1037,8 +1040,6 @@ class Service : public base::RefCounted<Service> {
   uint64_t GetTrafficCounterResetTimeProperty(Error* error) const;
 
   uint64_t GetLastManualConnectAttemptProperty(Error* error) const;
-  uint64_t GetLastConnectedProperty(Error* error) const;
-  uint64_t GetLastOnlineProperty(Error* error) const;
 
   void SetLastManualConnectAttemptProperty(const base::Time& value);
   void SetLastConnectedProperty(const base::Time& value);

@@ -715,6 +715,16 @@
         DUN = 3
       </summary>
     </metric>
+    <metric name="last_connected" type="int">
+      <summary>
+        Indicates the time in milliseconds, device last connected successfully to the cellular network.
+      </summary>
+    </metric>
+    <metric name="last_online" type="int">
+      <summary>
+        Indicates the time in milliseconds, device last connected successfully to the internet.
+      </summary>
+    </metric>
   </event>
   <event name="ModemFwdFwInstallResult">
     <summary>

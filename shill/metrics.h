@@ -1950,6 +1950,8 @@ class Metrics {
     uint32_t use_apn_revamp_ui;
     ConnectionAttemptType connection_attempt_type;
     uint32_t subscription_error_seen;
+    uint64_t last_connected;
+    uint64_t last_online;
   };
 
   struct CellularNetworkValidationResult {

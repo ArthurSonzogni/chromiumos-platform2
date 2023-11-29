@@ -1401,6 +1401,8 @@ void Cellular::NotifyDetailedCellularConnectionResult(
   result.subscription_error_seen = subscription_error_seen_[iccid];
   result.modem_state = modem_state_;
   result.interface_index = interface_index();
+  result.last_connected = service_->GetLastConnectedProperty(nullptr);
+  result.last_online = service_->GetLastOnlineProperty(nullptr);
   result.connection_apn_types = ConnectionApnTypesToMetrics(apn_type);
   metrics()->NotifyDetailedCellularConnectionResult(result);
 
