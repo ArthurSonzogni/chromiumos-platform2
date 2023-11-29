@@ -109,18 +109,18 @@ TEST_F(BatteryFetcherTest, FetchBatteryInfo) {
   ASSERT_TRUE(battery_result->is_battery_info());
 
   const auto& battery = battery_result->get_battery_info();
-  EXPECT_EQ(kBatteryCycleCount, battery->cycle_count);
-  EXPECT_EQ(kBatteryVendor, battery->vendor);
-  EXPECT_EQ(kBatteryVoltage, battery->voltage_now);
-  EXPECT_EQ(kBatteryChargeFull, battery->charge_full);
-  EXPECT_EQ(kBatteryChargeFullDesign, battery->charge_full_design);
-  EXPECT_EQ(kBatterySerialNumber, battery->serial_number);
-  EXPECT_EQ(kBatteryVoltageMinDesign, battery->voltage_min_design);
-  EXPECT_EQ(kBatteryModelName, battery->model_name);
-  EXPECT_EQ(kBatteryChargeNow, battery->charge_now);
-  EXPECT_EQ(kBatteryCurrentNow, battery->current_now);
-  EXPECT_EQ(kBatteryTechnology, battery->technology);
-  EXPECT_EQ(kBatteryStatus, battery->status);
+  EXPECT_EQ(battery->cycle_count, kBatteryCycleCount);
+  EXPECT_EQ(battery->vendor, kBatteryVendor);
+  EXPECT_EQ(battery->voltage_now, kBatteryVoltage);
+  EXPECT_EQ(battery->charge_full, kBatteryChargeFull);
+  EXPECT_EQ(battery->charge_full_design, kBatteryChargeFullDesign);
+  EXPECT_EQ(battery->serial_number, kBatterySerialNumber);
+  EXPECT_EQ(battery->voltage_min_design, kBatteryVoltageMinDesign);
+  EXPECT_EQ(battery->model_name, kBatteryModelName);
+  EXPECT_EQ(battery->charge_now, kBatteryChargeNow);
+  EXPECT_EQ(battery->current_now, kBatteryCurrentNow);
+  EXPECT_EQ(battery->technology, kBatteryTechnology);
+  EXPECT_EQ(battery->status, kBatteryStatus);
 
   // Test that optional smart battery metrics are populated.
   ASSERT_TRUE(battery->manufacture_date.has_value());
