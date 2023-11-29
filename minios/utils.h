@@ -32,9 +32,12 @@ extern const char kCategoryUpdate[];
 extern const char kLogFilePath[];
 
 extern const base::FilePath kDefaultArchivePath;
-extern const char kStatefulPath[];
 extern const int kLogStoreKeySizeBytes;
 extern const brillo::SecureBlob kZeroKey;
+
+extern const base::FilePath kStatefulPath;
+extern const base::FilePath kUnencryptedMiniosPath;
+extern const char kLogArchiveFile[];
 
 // Reads the content of `file_path` from `start_offset` to `end_offset` with
 // maximum characters per line being `max_columns` at max. If the file ends
@@ -152,13 +155,13 @@ bool WriteSecureBlobToFile(const base::FilePath& log_archive_path,
 
 // Encrypt data with the given key. Returns encrypted contents, iv and
 // tag on success, nullopt otherwise.
-std::optional<EncryptedLogFile> EncryptLogArchiveData(
+std::optional<EncryptedLogFile> EncryptLogArchive(
     const brillo::SecureBlob& plain_data, const brillo::SecureBlob& key);
 
 // Decrypt encrypted contents (along with iv and tag) with given key. Returns
 // plain text data on success, nullopt otherwise.
-std::optional<brillo::SecureBlob> DecryptLogArchiveData(
-    const EncryptedLogFile& encrypted_contents, const brillo::SecureBlob& key);
+std::optional<brillo::SecureBlob> DecryptLogArchive(
+    const EncryptedLogFile& encrypted_archive, const brillo::SecureBlob& key);
 
 // Get the size of a partition in bytes. Returns size on success, or nullopt on
 // failure.
@@ -167,6 +170,17 @@ std::optional<uint64_t> GetPartitionSize(
 
 std::optional<uint64_t> GetMiniOsPriorityPartition(
     std::shared_ptr<crossystem::Crossystem> cros_system);
+
+// Check whether currently running in MiniOS. Returns nullopt if environment
+// cannot be determined. Otherwise true if running in MiniOS, false if not.
+std::optional<bool> IsRunningFromMiniOs();
+
+// Uncompress the specified log archive to `dest_path`. Specify any additional
+// `tar` options in args. Returns true on success, false otherwise.
+bool ExtractArchive(std::shared_ptr<ProcessManagerInterface> process_manager,
+                    const base::FilePath& archive_path,
+                    const base::FilePath& dest_path,
+                    const std::vector<std::string>& args);
 
 }  // namespace minios
 

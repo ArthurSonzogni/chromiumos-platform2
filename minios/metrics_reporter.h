@@ -43,8 +43,8 @@ class MetricsReporter : public MetricsReporterInterface {
  public:
   explicit MetricsReporter(
       std::unique_ptr<MetricsLibraryInterface> metrics_lib = nullptr,
-      const base::FilePath& stateful_path = base::FilePath{kStatefulPath});
-  ~MetricsReporter() override = default;
+      const base::FilePath& stateful_path = kStatefulPath);
+  virtual ~MetricsReporter() = default;
 
   MetricsReporter(const MetricsReporter&) = delete;
   MetricsReporter& operator=(const MetricsReporter&) = delete;

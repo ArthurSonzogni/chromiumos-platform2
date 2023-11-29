@@ -235,10 +235,12 @@ TEST(UtilsTest, UnmountPathTest) {
 TEST(UtilsTest, CompressLogsTest) {
   auto mock_process_manager = std::make_shared<MockProcessManager>();
   const auto archive_path = "/path/to/store/archive";
-  std::vector<std::string> expected_cmd = {
-      "/usr/bin/tar",         "-czhf",
-      archive_path,           "/var/log/update_engine.log",
-      "/var/log/upstart.log", "/var/log/minios.log"};
+  std::vector<std::string> expected_cmd = {"/bin/tar",
+                                           "-czhf",
+                                           archive_path,
+                                           "/var/log/update_engine.log",
+                                           "/var/log/upstart.log",
+                                           "/var/log/minios.log"};
   EXPECT_CALL(*mock_process_manager, RunCommand(expected_cmd, _));
 
   CompressLogs(mock_process_manager, base::FilePath{archive_path});
@@ -353,7 +355,7 @@ TEST(UtilsTest, GetLogStoreKeyTest) {
       std::make_shared<StrictMock<MockProcessManager>>();
 
   const std::vector<std::string>& kExpectedArgs = {
-      "/usr/bin/vpd", "-i", "RW_VPD", "-g", "minios_log_store_key"};
+      "/usr/sbin/vpd", "-i", "RW_VPD", "-g", "minios_log_store_key"};
 
   EXPECT_CALL(*mock_process_manager_,
               RunCommandWithOutput(kExpectedArgs, _, _, _))
@@ -373,7 +375,7 @@ TEST(UtilsTest, GetLogStoreKeyFailureTest) {
   const std::string& kKey = "short_key";
 
   const std::vector<std::string> kExpectedArgs = {
-      "/usr/bin/vpd", "-i", "RW_VPD", "-g", "minios_log_store_key"};
+      "/usr/sbin/vpd", "-i", "RW_VPD", "-g", "minios_log_store_key"};
 
   EXPECT_CALL(*mock_process_manager_,
               RunCommandWithOutput(kExpectedArgs, _, _, _))
@@ -435,7 +437,7 @@ TEST(UtilsTest, SaveLogKeyTest) {
       std::make_shared<StrictMock<MockProcessManager>>();
 
   const std::vector<std::string> expected_args = {
-      "/usr/bin/vpd", "-i", "RW_VPD", "-s",
+      "/usr/sbin/vpd", "-i", "RW_VPD", "-s",
       "minios_log_store_key=" +
           brillo::SecureBlobToSecureHex(kValidKey).to_string()};
 
@@ -449,7 +451,7 @@ TEST(UtilsTest, ClearLogStoreKeyTest) {
       std::make_shared<StrictMock<MockProcessManager>>();
 
   const std::vector<std::string> expected_args = {
-      "/usr/bin/vpd", "-i", "RW_VPD", "-s",
+      "/usr/sbin/vpd", "-i", "RW_VPD", "-s",
       "minios_log_store_key=" +
           brillo::SecureBlobToSecureHex(kZeroKey).to_string()};
 
@@ -459,13 +461,15 @@ TEST(UtilsTest, ClearLogStoreKeyTest) {
 }
 
 TEST(UtilsTest, EncryptDecryptTest) {
-  const auto& encrypted_contents = EncryptLogArchiveData(kTestData, kValidKey);
-  EXPECT_TRUE(encrypted_contents.has_value());
-  const auto& decrypted_contents =
-      DecryptLogArchiveData(encrypted_contents.value(), kValidKey);
+  const auto& encrypted_archive = EncryptLogArchive(kTestData, kValidKey);
+  EXPECT_TRUE(encrypted_archive.has_value());
+  const auto& archive = DecryptLogArchive(encrypted_archive.value(), kValidKey);
+  const auto& empty_decrypt_contents =
+      DecryptLogArchive(EncryptedLogFile{}, kValidKey);
 
-  EXPECT_TRUE(decrypted_contents.has_value());
-  EXPECT_EQ(kTestData, decrypted_contents);
+  EXPECT_TRUE(archive.has_value());
+  EXPECT_EQ(kTestData, archive);
+  EXPECT_EQ(empty_decrypt_contents, std::nullopt);
 }
 
 TEST(UtilsTest, ReadFileToSecureBlobTest) {
@@ -516,6 +520,44 @@ TEST(UtilsTest, GetMiniOsPriorityPartitionTest) {
   stub_crossystem->VbSetSystemPropertyString(
       crossystem::Crossystem::kMiniosPriorityProperty, "C");
   EXPECT_EQ(GetMiniOsPriorityPartition(stub_crossystem), std::nullopt);
+}
+
+TEST(UtilsTest, ExtractArchiveTest) {
+  auto mock_process_manager = std::make_shared<MockProcessManager>();
+  base::FilePath archive_path;
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  ASSERT_TRUE(
+      base::CreateTemporaryFileInDir(temp_dir.GetPath(), &archive_path));
+  std::vector<std::string> expected_cmd = {"/bin/tar", "-xzf",
+                                           archive_path.value(), "-C",
+                                           archive_path.DirName().value()};
+
+  EXPECT_CALL(*mock_process_manager, RunCommand(expected_cmd, _))
+      .WillOnce(Return(0));
+  EXPECT_TRUE(ExtractArchive(mock_process_manager, archive_path,
+                             base::FilePath{archive_path}.DirName(), {}));
+}
+
+TEST(UtilsTest, ExtractArchiveStripTest) {
+  auto mock_process_manager = std::make_shared<MockProcessManager>();
+  base::FilePath archive_path;
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  ASSERT_TRUE(
+      base::CreateTemporaryFileInDir(temp_dir.GetPath(), &archive_path));
+
+  std::vector<std::string> expected_cmd = {"/bin/tar",
+                                           "-xzf",
+                                           archive_path.value(),
+                                           "-C",
+                                           temp_dir.GetPath().value(),
+                                           "--strip-components=2"};
+
+  EXPECT_CALL(*mock_process_manager, RunCommand(expected_cmd, _))
+      .WillOnce(Return(0));
+  EXPECT_TRUE(ExtractArchive(mock_process_manager, archive_path,
+                             temp_dir.GetPath(), {"--strip-components=2"}));
 }
 
 }  // namespace minios

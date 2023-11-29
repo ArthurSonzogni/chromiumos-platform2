@@ -6,6 +6,7 @@
 #define MINIOS_MOCK_LOG_STORE_MANAGER_H_
 
 #include <memory>
+#include <optional>
 
 #include <gmock/gmock.h>
 
@@ -32,11 +33,12 @@ class MockLogStoreManager : public LogStoreManagerInterface {
               (LogDirection direction,
                const std::optional<base::FilePath>& path),
               (override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(std::optional<bool>,
               FetchLogs,
               (LogDirection direction,
-               const base::FilePath& unencrypted_log_path,
-               const std::optional<base::FilePath>& src_path),
+               const base::FilePath& dest_directory,
+               const brillo::SecureBlob& key,
+               const std::optional<base::FilePath>& encrypted_archive_path),
               (const, override));
   MOCK_METHOD(bool, ClearLogs, (), (const, override));
 };

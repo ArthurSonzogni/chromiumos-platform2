@@ -33,9 +33,8 @@ namespace minios {
 const uint64_t kLogStoreOffset = 22 * kBlockSize;
 // Max allowable size of a log when saving to disk.
 const uint64_t kMaxLogSize = 20 * kBlockSize;
-
-const base::FilePath kStatefulArchivePath{std::string{kStatefulPath} +
-                                          "logs.tar"};
+// Strip `/var/log` folder paths when extracting.
+const char kTarStripComponentFlag[] = "--strip-components=2";
 
 bool LogStoreManager::Init(std::shared_ptr<DiskUtil> disk_util,
                            std::shared_ptr<crossystem::Crossystem> cros_system,
@@ -48,19 +47,21 @@ bool LogStoreManager::Init(std::shared_ptr<DiskUtil> disk_util,
     return false;
   }
 
-  const auto partition_number = GetMiniOsPriorityPartition(cros_system);
-  if (!partition_number) {
+  if (!partition_number_)
+    partition_number_ = GetMiniOsPriorityPartition(cros_system);
+
+  if (!partition_number_) {
     LOG(ERROR) << "Failed to find priority MiniOS partition.";
     return false;
   }
-  disk_path_ = brillo::AppendPartition(fixed_drive, partition_number.value());
+  disk_path_ = brillo::AppendPartition(fixed_drive, partition_number_.value());
 
   const auto cgpt_util = std::make_shared<CgptUtil>(fixed_drive, cgpt_wrapper);
-  partition_size_ = GetPartitionSize(partition_number.value(), cgpt_util);
+  partition_size_ = GetPartitionSize(partition_number_.value(), cgpt_util);
 
   if (!partition_size_) {
     LOG(ERROR) << "Couldn't determine size of partition="
-               << partition_number.value();
+               << partition_number_.value();
     return false;
   }
 
@@ -113,10 +114,10 @@ bool LogStoreManager::SaveLogs(LogDirection direction,
     return false;
   }
 
-  std::optional<EncryptedLogFile> encrypted_contents;
+  std::optional<EncryptedLogFile> encrypted_archive;
   if (direction == LogDirection::Disk || direction == LogDirection::Stateful) {
-    encrypted_contents = EncryptLogs(archive_path);
-    if (!encrypted_contents || !encrypt_key_) {
+    encrypted_archive = EncryptLogs(archive_path);
+    if (!encrypted_archive || !encrypt_key_) {
       LOG(ERROR) << "Couldn't encrypt logs";
       return false;
     }
@@ -128,13 +129,13 @@ bool LogStoreManager::SaveLogs(LogDirection direction,
 
   switch (direction) {
     case LogDirection::Disk:
-      if (!SaveLogsToDisk(encrypted_contents.value())) {
+      if (!SaveLogsToDisk(encrypted_archive.value())) {
         LOG(ERROR) << "Failed to save logs to disk.";
         return false;
       }
       return true;
     case LogDirection::Stateful:
-      if (!SaveLogsToPath(path.value(), encrypted_contents.value())) {
+      if (!SaveLogsToPath(path.value(), encrypted_archive.value())) {
         LOG(ERROR) << "Failed to save logs to stateful path=" << path->value();
         return false;
       }
@@ -151,28 +152,31 @@ bool LogStoreManager::SaveLogs(LogDirection direction,
   }
 }
 
-bool LogStoreManager::FetchLogs(
+std::optional<bool> LogStoreManager::FetchLogs(
     LogDirection direction,
-    const base::FilePath& unencrypted_archive_path,
+    const base::FilePath& dest_directory,
+    const brillo::SecureBlob& key,
     const std::optional<base::FilePath>& encrypted_archive_path) const {
-  switch (direction) {
-    case LogDirection::Disk:
-      return FetchDiskLogs(unencrypted_archive_path);
-    case LogDirection::Stateful:
-      if (!encrypted_archive_path ||
-          !base::PathExists(encrypted_archive_path.value())) {
-        LOG(ERROR) << "Invalid encrypted archive path.";
-        return false;
-      }
-
-      return FetchStatefulLogs(unencrypted_archive_path,
-                               encrypted_archive_path.value());
-    case LogDirection::RemovableDevice:
-      LOG(ERROR) << "Fetching logs from removable device not supported.";
-      return false;
-    default:
-      return false;
+  EncryptedLogFile encrypted_archive;
+  // If read resulted in errors, or no logs were found, return immediately.
+  if (const auto read_result =
+          ReadLogs(direction, encrypted_archive_path, encrypted_archive);
+      !read_result || !read_result.value()) {
+    return read_result;
   }
+
+  // If the key is zero'd out then the log store is presumed to be cleared,
+  // return without decrypting.
+  if (key == brillo::SecureBlob{kZeroKey}) {
+    LOG(INFO) << "No key found.";
+    return false;
+  }
+  const auto& archive = DecryptLogArchive(encrypted_archive, key);
+  // If logs can't be decrypted, report that no logs were fetched.
+  if (!archive) {
+    return false;
+  }
+  return ExtractLogs(archive.value(), dest_directory);
 }
 
 std::optional<EncryptedLogFile> LogStoreManager::EncryptLogs(
@@ -180,30 +184,30 @@ std::optional<EncryptedLogFile> LogStoreManager::EncryptLogs(
   encrypt_key_ =
       hwsec_foundation::CreateSecureRandomBlob(kLogStoreKeySizeBytes);
 
-  const auto& archive_data = ReadFileToSecureBlob(archive_path);
-  if (!archive_data) {
+  const auto& archive = ReadFileToSecureBlob(archive_path);
+  if (!archive) {
     LOG(ERROR) << "Failed to read log archive.";
     return std::nullopt;
   }
-  const auto& encrypted_contents =
-      EncryptLogArchiveData(archive_data.value(), encrypt_key_.value());
-  if (!encrypted_contents) {
-    LOG(ERROR) << "Failed to encrypt data.";
+  const auto& encrypted_archive =
+      EncryptLogArchive(archive.value(), encrypt_key_.value());
+  if (!encrypted_archive) {
+    LOG(ERROR) << "Failed to encrypt logs.";
     return std::nullopt;
   }
-  return encrypted_contents;
+  return encrypted_archive;
 }
 
 bool LogStoreManager::SaveLogsToDisk(
-    const EncryptedLogFile& encrypted_contents) {
-  if (encrypted_contents.ByteSizeLong() > kMaxLogSize) {
+    const EncryptedLogFile& encrypted_archive) {
+  if (encrypted_archive.ByteSizeLong() > kMaxLogSize) {
     LOG(WARNING) << "Encrypted compressed logs exceed reserved disk space.";
     return false;
   }
 
   LogManifest::Entry entry;
   entry.set_offset(partition_size_.value() - kLogStoreOffset);
-  entry.set_count(encrypted_contents.ByteSizeLong());
+  entry.set_count(encrypted_archive.ByteSizeLong());
 
   if (!log_store_manifest_) {
     LOG(ERROR) << "No log store manifest, unable to store logs to disk.";
@@ -218,8 +222,8 @@ bool LogStoreManager::SaveLogsToDisk(
   }
   if (!file.WriteAndCheck(partition_size_.value() - kLogStoreOffset,
                           {reinterpret_cast<const uint8_t*>(
-                               encrypted_contents.SerializeAsString().c_str()),
-                           encrypted_contents.SerializeAsString().size()})) {
+                               encrypted_archive.SerializeAsString().c_str()),
+                           encrypted_archive.SerializeAsString().size()})) {
     PLOG(ERROR) << "Failed to write to file=" << disk_path_;
     return false;
   }
@@ -232,9 +236,8 @@ bool LogStoreManager::SaveLogsToDisk(
 }
 
 bool LogStoreManager::SaveLogsToPath(
-    const base::FilePath& path, const EncryptedLogFile& encrypted_contents) {
-  if (!brillo::WriteStringToFile(path,
-                                 encrypted_contents.SerializeAsString())) {
+    const base::FilePath& path, const EncryptedLogFile& encrypted_archive) {
+  if (!brillo::WriteStringToFile(path, encrypted_archive.SerializeAsString())) {
     PLOG(ERROR) << "Failed to write to file=" << path;
     return false;
   }
@@ -242,93 +245,102 @@ bool LogStoreManager::SaveLogsToPath(
   return true;
 }
 
-bool LogStoreManager::FetchDiskLogs(
-    const base::FilePath& unencrypted_archive_path) const {
-  if (!log_store_manifest_) {
-    LOG(ERROR) << "No log store manifest, unable to fetch logs.";
-    return false;
+std::optional<EncryptedLogFile> LogStoreManager::GetEncryptedArchive(
+    const base::FilePath& path, uint64_t offset) const {
+  base::ScopedFD fd(HANDLE_EINTR(open(path.value().c_str(), O_RDONLY)));
+  if (!fd.is_valid()) {
+    LOG(ERROR) << "Failed to open archive at: " << path;
+    return std::nullopt;
   }
-  // If no manifest is present, then no logs are assumed to be stored on this
-  // partition.
-  const auto manifest = log_store_manifest_->Retrieve();
-  if (!manifest) {
-    LOG(INFO) << "No manifest found, no logs retrieved.";
-    return false;
+  if (offset > 0 && lseek(fd.get(), offset, SEEK_SET) != offset) {
+    PLOG(ERROR) << "Failed to seek=" << path;
+    return std::nullopt;
   }
 
-  if (manifest->entry().offset() <= kernel_size_.value()) {
-    LOG(ERROR) << "Log store within kernel, log store offset="
-               << manifest->entry().offset()
-               << " kernel size=" << kernel_size_.value();
-    return false;
-  }
-
-  const auto retrieved_key = GetLogStoreKey(process_manager_);
-  // If the key is zero'd out then the log store is presumed to be cleared,
-  // return without fetching.
-  if (!retrieved_key || retrieved_key.value() == brillo::SecureBlob{kZeroKey}) {
-    LOG(INFO) << "No key found.";
-    return false;
-  }
-
-  // Read disk at the manifest specified offset into proto and then decrypt
-  // contents.
-  base::ScopedFD disk_fd(
-      HANDLE_EINTR(open(disk_path_.value().c_str(), O_RDONLY)));
-  if (!disk_fd.is_valid()) {
-    LOG(ERROR) << "Failed to open disk=" << disk_path_;
-    return false;
-  }
-
-  if (HANDLE_EINTR(lseek(disk_fd.get(), manifest->entry().offset(),
-                         SEEK_SET)) != manifest->entry().offset()) {
-    PLOG(ERROR) << "Failed to seek=" << disk_path_;
-    return false;
-  }
-  EncryptedLogFile encrypted_contents;
-  encrypted_contents.ParseFromFileDescriptor(disk_fd.get());
-
-  const auto decrypted_contents =
-      DecryptLogArchiveData(encrypted_contents, retrieved_key.value());
-  if (!decrypted_contents) {
-    LOG(ERROR) << "Failed to decrypt logs.";
-    return false;
-  }
-
-  return WriteSecureBlobToFile(unencrypted_archive_path,
-                               decrypted_contents.value());
+  EncryptedLogFile encrypted_archive;
+  encrypted_archive.ParseFromFileDescriptor(fd.get());
+  return encrypted_archive;
 }
 
-bool LogStoreManager::FetchStatefulLogs(
-    const base::FilePath& unencrypted_archive_path,
-    const base::FilePath& encrypted_archive_path) const {
-  const auto retrieved_key = GetLogStoreKey(process_manager_);
-  // If the key is zero'd out then the log store is presumed to be cleared,
-  // return without fetching.
-  if (!retrieved_key || retrieved_key.value() == brillo::SecureBlob{kZeroKey}) {
-    LOG(INFO) << "No key found.";
+bool LogStoreManager::ExtractLogs(const brillo::SecureBlob& archive,
+                                  const base::FilePath& dest_directory) const {
+  base::ScopedTempDir archive_folder;
+  base::FilePath archive_path;
+  if (!archive_folder.CreateUniqueTempDir() || !archive_folder.IsValid()) {
+    LOG(ERROR) << "Failed to create temp dir.";
     return false;
   }
-
-  base::ScopedFD encrypted_archive_fd(
-      HANDLE_EINTR(open(encrypted_archive_path.value().c_str(), O_RDONLY)));
-  if (!encrypted_archive_fd.is_valid()) {
-    LOG(ERROR) << "Failed to open archive at: " << encrypted_archive_path;
+  if (!base::CreateTemporaryFileInDir(archive_folder.GetPath(),
+                                      &archive_path)) {
+    LOG(ERROR) << "Failed to create temporary file in folder="
+               << archive_folder.GetPath();
     return false;
   }
-
-  EncryptedLogFile encrypted_contents;
-  encrypted_contents.ParseFromFileDescriptor(encrypted_archive_fd.get());
-
-  const auto decrypted_contents =
-      DecryptLogArchiveData(encrypted_contents, retrieved_key.value());
-  if (!decrypted_contents) {
-    LOG(ERROR) << "Failed to decrypt logs.";
+  if (!WriteSecureBlobToFile(archive_path, archive)) {
+    LOG(ERROR) << "Failed to write blob to=" << archive_path;
     return false;
   }
+  if (!ExtractArchive(process_manager_, archive_path, dest_directory,
+                      {kTarStripComponentFlag})) {
+    LOG(ERROR) << "Extracting logs failed.";
+    return false;
+  }
+  return true;
+}
 
-  return WriteSecureBlobToFile(unencrypted_archive_path,
-                               decrypted_contents.value());
+std::optional<bool> LogStoreManager::ReadLogs(
+    LogDirection direction,
+    const std::optional<base::FilePath>& encrypted_archive_path,
+    EncryptedLogFile& encrypted_archive) const {
+  std::optional<EncryptedLogFile> read_archive;
+  switch (direction) {
+    case LogDirection::Disk: {
+      if (!log_store_manifest_) {
+        LOG(ERROR) << "No log store manifest, unable to fetch logs.";
+        return std::nullopt;
+      }
+      // If no manifest is present, then no logs are assumed to be stored on
+      // this partition.
+      const auto& manifest = log_store_manifest_->Retrieve();
+      if (!manifest) {
+        LOG(INFO) << "No manifest found, no logs retrieved.";
+        return false;
+      }
+
+      if (manifest->entry().offset() <= kernel_size_.value()) {
+        LOG(ERROR) << "Log store within kernel offset, log store offset="
+                   << manifest->entry().offset()
+                   << " kernel size=" << kernel_size_.value();
+        return std::nullopt;
+      }
+      read_archive =
+          GetEncryptedArchive(disk_path_, manifest->entry().offset());
+      break;
+    }
+    case LogDirection::Stateful:
+      if (!encrypted_archive_path) {
+        LOG(ERROR) << "Path must be specified for fetching stateful logs.";
+        return std::nullopt;
+      }
+      // If no logs are present at specified path, assume they were already
+      // cleared.
+      if (!base::PathExists(encrypted_archive_path.value())) {
+        LOG(INFO) << "No logs present at=" << encrypted_archive_path.value();
+        return false;
+      }
+
+      read_archive = GetEncryptedArchive(encrypted_archive_path.value());
+      break;
+    case LogDirection::RemovableDevice:
+      LOG(ERROR) << "Fetching logs from removable device not supported.";
+      return std::nullopt;
+  }
+  if (!read_archive) {
+    LOG(ERROR) << "Failed to fetch encrypted archive.";
+    return std::nullopt;
+  }
+  encrypted_archive = read_archive.value();
+  return true;
 }
 
 bool LogStoreManager::ClearLogs() const {
@@ -340,6 +352,14 @@ bool LogStoreManager::ClearLogs() const {
   if (!manifest) {
     LOG(INFO) << "No manifest found on disk, nothing to clear.";
     return true;
+  }
+
+  if (manifest->entry().offset() <= kernel_size_.value()) {
+    LOG(ERROR)
+        << "Skipping clear. Log store within kernel offset, log store offset="
+        << manifest->entry().offset()
+        << " kernel size=" << kernel_size_.value();
+    return false;
   }
 
   const std::string clear_data(

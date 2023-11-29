@@ -36,12 +36,14 @@ const char kMountFlag[] = "--mount";
 
 const std::vector<std::string> kUnmountCommand{"/bin/busybox", "umount"};
 
-const char kTarCommand[] = "/usr/bin/tar";
+const char kTarCommand[] = "/bin/tar";
 // Compress and archive. Also resolve symlinks.
 // Using `gzip` as it's the only installed compress utility on MiniOS.
 const char kTarCompressFlags[] = "-czhf";
+const char kTarExtractFlags[] = "-xzf";
+const char kTarChangeDirFlag[] = "-C";
 
-const char kVpdCommand[] = "/usr/bin/vpd";
+const char kVpdCommand[] = "/usr/sbin/vpd";
 const char kVpdPartitionSelectFlag[] = "-i";
 const char kVpdRWPartitionValue[] = "RW_VPD";
 const char kVpdAddValueFlag[] = "-s";
@@ -66,6 +68,7 @@ const char kFilesystem[] = "filesystem";
 // Hex representations of keys would be twice the size.
 constexpr int kLogStoreHexKeySizeBytes = 64;
 
+constexpr char kMiniOsFlag[] = "cros_minios";
 }  // namespace
 
 namespace minios {
@@ -77,9 +80,12 @@ const char kCategoryUpdate[] = "update";
 const char kLogFilePath[] = "/var/log/minios.log";
 
 const base::FilePath kDefaultArchivePath{"/tmp/logs.tar"};
-const char kStatefulPath[] = "/stateful";
 const int kLogStoreKeySizeBytes = 32;
 const brillo::SecureBlob kZeroKey{std::string(kLogStoreKeySizeBytes, '0')};
+
+const base::FilePath kStatefulPath{"/stateful"};
+const base::FilePath kUnencryptedMiniosPath{"unencrypted/minios/"};
+const char kLogArchiveFile[] = "logs.tar";
 
 std::tuple<bool, std::string> ReadFileContentWithinRange(
     const base::FilePath& file_path,
@@ -272,7 +278,7 @@ bool UnmountPath(std::shared_ptr<ProcessManagerInterface> process_manager,
 
 bool UnmountStatefulPartition(
     std::shared_ptr<ProcessManagerInterface> process_manager) {
-  return UnmountPath(process_manager, base::FilePath{kStatefulPath});
+  return UnmountPath(process_manager, kStatefulPath);
 }
 
 int CompressLogs(std::shared_ptr<ProcessManagerInterface> process_manager,
@@ -513,7 +519,7 @@ bool WriteSecureBlobToFile(const base::FilePath& file_path,
   return true;
 }
 
-std::optional<EncryptedLogFile> EncryptLogArchiveData(
+std::optional<EncryptedLogFile> EncryptLogArchive(
     const brillo::SecureBlob& plain_data, const brillo::SecureBlob& key) {
   brillo::Blob iv, tag, ciphertext;
   if (!hwsec_foundation::AesGcmEncrypt(plain_data, std::nullopt, key, &iv, &tag,
@@ -521,25 +527,27 @@ std::optional<EncryptedLogFile> EncryptLogArchiveData(
     LOG(ERROR) << "Failed to encrypt file contents";
     return std::nullopt;
   }
-  EncryptedLogFile encrypted_contents;
-  encrypted_contents.set_iv(brillo::BlobToString(iv));
-  encrypted_contents.set_tag(brillo::BlobToString(tag));
-  encrypted_contents.set_ciphertext(brillo::BlobToString(ciphertext));
-  return encrypted_contents;
+  EncryptedLogFile encrypted_archive;
+  encrypted_archive.set_iv(brillo::BlobToString(iv));
+  encrypted_archive.set_tag(brillo::BlobToString(tag));
+  encrypted_archive.set_ciphertext(brillo::BlobToString(ciphertext));
+  return encrypted_archive;
 }
 
-std::optional<brillo::SecureBlob> DecryptLogArchiveData(
-    const EncryptedLogFile& encrypted_contents, const brillo::SecureBlob& key) {
+std::optional<brillo::SecureBlob> DecryptLogArchive(
+    const EncryptedLogFile& encrypted_archive, const brillo::SecureBlob& key) {
+  if (encrypted_archive.ByteSizeLong() == 0)
+    return std::nullopt;
   brillo::SecureBlob plain_data;
   if (!hwsec_foundation::AesGcmDecrypt(
-          brillo::Blob(encrypted_contents.ciphertext().begin(),
-                       encrypted_contents.ciphertext().end()),
+          brillo::Blob(encrypted_archive.ciphertext().begin(),
+                       encrypted_archive.ciphertext().end()),
           std::nullopt,
-          brillo::Blob(encrypted_contents.tag().begin(),
-                       encrypted_contents.tag().end()),
+          brillo::Blob(encrypted_archive.tag().begin(),
+                       encrypted_archive.tag().end()),
           key,
-          brillo::Blob(encrypted_contents.iv().begin(),
-                       encrypted_contents.iv().end()),
+          brillo::Blob(encrypted_archive.iv().begin(),
+                       encrypted_archive.iv().end()),
           &plain_data)) {
     LOG(ERROR) << "Failed to decrypt data";
     return std::nullopt;
@@ -572,6 +580,41 @@ std::optional<uint64_t> GetMiniOsPriorityPartition(
     return 10;
   LOG(ERROR) << "Invalid MiniOS priority.";
   return std::nullopt;
+}
+
+std::optional<bool> IsRunningFromMiniOs() {
+  const auto cmd_line = brillo::GetCurrentKernelConfig();
+  if (!cmd_line) {
+    LOG(ERROR) << "Couldn't extract kernel config.";
+    return std::nullopt;
+  }
+  return brillo::FlagExists(cmd_line.value(), kMiniOsFlag);
+}
+
+bool ExtractArchive(std::shared_ptr<ProcessManagerInterface> process_manager,
+                    const base::FilePath& archive_path,
+                    const base::FilePath& dest_path,
+                    const std::vector<std::string>& args) {
+  if (!base::PathExists(archive_path)) {
+    LOG(ERROR) << "Archive path doesn't exist=" << archive_path;
+    return false;
+  }
+
+  if (!base::CreateDirectory(dest_path)) {
+    LOG(ERROR) << "Invalid destination=" << dest_path;
+    return false;
+  }
+  std::vector<std::string> extract_command = {
+      kTarCommand, kTarExtractFlags, archive_path.value(), kTarChangeDirFlag,
+      dest_path.value()};
+  extract_command.insert(extract_command.end(), args.begin(), args.end());
+
+  base::FilePath console = GetLogConsole();
+  return process_manager->RunCommand(extract_command,
+                                     ProcessManager::IORedirection{
+                                         .input = console,
+                                         .output = console,
+                                     }) == 0;
 }
 
 }  // namespace minios

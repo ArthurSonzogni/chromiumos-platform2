@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <minios/proto_bindings/minios.pb.h>
 
@@ -17,11 +18,6 @@
 #include "minios/utils.h"
 
 namespace minios {
-
-namespace {
-const base::FilePath kMountedLogFilePath{
-    "/stateful/unencrypted/encrypted_logs.tar"};
-}
 
 ScreenDownload::ScreenDownload(
     std::unique_ptr<RecoveryInstallerInterface> recovery_installer,
@@ -71,9 +67,13 @@ void ScreenDownload::Completed() {
   if (MountStatefulPartition(process_manager_)) {
     metrics_reporter_->ReportNBRComplete();
     if (log_store_manager_) {
-      if (!log_store_manager_->SaveLogs(LogStoreManager::LogDirection::Stateful,
-                                        kMountedLogFilePath)) {
-        LOG(ERROR) << "Failed to save logs to=" << kMountedLogFilePath;
+      if (!base::CreateDirectory(log_store_path_)) {
+        LOG(ERROR) << "Failed to setup log directory=" << log_store_path_;
+      } else if (const auto dest_path =
+                     log_store_path_.Append(std::string{kLogArchiveFile});
+                 !log_store_manager_->SaveLogs(
+                     LogStoreManager::LogDirection::Stateful, dest_path)) {
+        LOG(ERROR) << "Failed to save logs to=" << dest_path;
       }
     }
     if (!UnmountStatefulPartition(process_manager_)) {

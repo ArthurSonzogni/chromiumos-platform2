@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <minios/proto_bindings/minios.pb.h>
@@ -90,6 +91,9 @@ TEST_F(ScreenDownloadTest, UpdateEngineProgressComplete) {
   screen_download_.SetDisplayUpdateEngineStateForTest(true);
   update_engine::StatusResult status;
   status.set_current_operation(update_engine::Operation::UPDATED_NEED_REBOOT);
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  screen_download_.log_store_path_ = temp_dir.GetPath();
 
   EXPECT_CALL(*process_manager_, RunCommand(_, _)).WillRepeatedly(Return(0));
   EXPECT_CALL(*mock_metrics_reporter_ptr_, ReportNBRComplete);

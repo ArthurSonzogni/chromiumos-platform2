@@ -26,7 +26,6 @@ namespace minios {
 
 extern const uint64_t kLogStoreOffset;
 extern const uint64_t kMaxLogSize;
-extern const base::FilePath kStatefulArchivePath;
 
 // Interface for a log store manager class.
 class LogStoreManagerInterface {
@@ -52,12 +51,16 @@ class LogStoreManagerInterface {
       LogDirection direction,
       const std::optional<base::FilePath>& path = std::nullopt) = 0;
 
-  // Fetch logs from a specified direction and put them at
-  // `unencrypted_archive_path`. True on success, false on failure.
-  virtual bool FetchLogs(LogDirection direction,
-                         const base::FilePath& unencrypted_archive_path,
-                         const std::optional<base::FilePath>&
-                             encrypted_archive_path = std::nullopt) const = 0;
+  // Attempt to read, decrypt and extract logs from a specified direction. If
+  // logs are found and successfully unpacked (with the provided key), they will
+  // be placed at `dest_directory`. Returns nullopt on error, or true/false to
+  // indicate whether logs were fetched.
+  virtual std::optional<bool> FetchLogs(
+      LogDirection direction,
+      const base::FilePath& dest_directory,
+      const brillo::SecureBlob& key,
+      const std::optional<base::FilePath>& encrypted_archive_path =
+          std::nullopt) const = 0;
 
   // Clear logs on disk.
   virtual bool ClearLogs() const = 0;
@@ -65,7 +68,10 @@ class LogStoreManagerInterface {
 
 class LogStoreManager : public LogStoreManagerInterface {
  public:
-  LogStoreManager() : process_manager_(std::make_shared<ProcessManager>()) {}
+  LogStoreManager() : LogStoreManager(std::nullopt) {}
+  explicit LogStoreManager(std::optional<uint64_t> partition_number)
+      : process_manager_(std::make_shared<ProcessManager>()),
+        partition_number_(partition_number) {}
 
   LogStoreManager(std::unique_ptr<LogStoreManifestInterface> log_store_manifest,
                   std::shared_ptr<ProcessManagerInterface> process_manager,
@@ -93,10 +99,12 @@ class LogStoreManager : public LogStoreManagerInterface {
       LogDirection direction,
       const std::optional<base::FilePath>& path = std::nullopt) override;
 
-  bool FetchLogs(LogDirection direction,
-                 const base::FilePath& unencrypted_archive_path,
-                 const std::optional<base::FilePath>& encrypted_archive_path =
-                     std::nullopt) const override;
+  std::optional<bool> FetchLogs(
+      LogDirection direction,
+      const base::FilePath& dest_directory,
+      const brillo::SecureBlob& key,
+      const std::optional<base::FilePath>& encrypted_archive_path =
+          std::nullopt) const override;
 
   bool ClearLogs() const override;
 
@@ -106,15 +114,23 @@ class LogStoreManager : public LogStoreManagerInterface {
   FRIEND_TEST(LogStoreManagerTest, SaveLogsToDiskTest);
   FRIEND_TEST(LogStoreManagerInitTest, InitTest);
   FRIEND_TEST(LogStoreManagerInitTest, InitKernelLogStoreOverlapTest);
+  FRIEND_TEST(LogStoreManagerInitTest, InitSpecifiedPartitionTest);
 
+  // Helper functions for `SaveLogs`.
   std::optional<EncryptedLogFile> EncryptLogs(
       const base::FilePath& archive_path);
-  bool SaveLogsToDisk(const EncryptedLogFile& encrypted_contents);
+  bool SaveLogsToDisk(const EncryptedLogFile& encrypted_archive);
   bool SaveLogsToPath(const base::FilePath& path,
-                      const EncryptedLogFile& encrypted_contents);
-  bool FetchDiskLogs(const base::FilePath& unencrypted_archive_path) const;
-  bool FetchStatefulLogs(const base::FilePath& unencrypted_archive_path,
-                         const base::FilePath& encrypted_archive_path) const;
+                      const EncryptedLogFile& encrypted_archive);
+  // Helper functions for `FetchLogs`.
+  std::optional<bool> ReadLogs(
+      LogDirection direction,
+      const std::optional<base::FilePath>& encrypted_archive_path,
+      EncryptedLogFile& encrypted_archive) const;
+  std::optional<EncryptedLogFile> GetEncryptedArchive(
+      const base::FilePath& path, uint64_t offset = 0) const;
+  bool ExtractLogs(const brillo::SecureBlob& archive,
+                   const base::FilePath& dest_directory) const;
 
   std::unique_ptr<LogStoreManifestInterface> log_store_manifest_;
   std::shared_ptr<ProcessManagerInterface> process_manager_;
@@ -122,6 +138,8 @@ class LogStoreManager : public LogStoreManagerInterface {
   base::FilePath disk_path_;
   std::optional<uint64_t> kernel_size_;
   std::optional<uint64_t> partition_size_;
+  // Partition target for saving and fetching logs.
+  std::optional<uint64_t> partition_number_;
 
   std::optional<brillo::SecureBlob> encrypt_key_;
 };

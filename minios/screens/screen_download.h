@@ -8,6 +8,8 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
+
 #include "minios/log_store_manager.h"
 #include "minios/metrics_reporter.h"
 #include "minios/process_manager.h"
@@ -88,6 +90,7 @@ class ScreenDownload : public UpdateEngineProxy::UpdaterDelegate,
 
   std::shared_ptr<LogStoreManagerInterface> log_store_manager_;
   std::shared_ptr<ProcessManagerInterface> process_manager_;
+  base::FilePath log_store_path_ = kStatefulPath.Append(kUnencryptedMiniosPath);
 };
 
 }  // namespace minios
