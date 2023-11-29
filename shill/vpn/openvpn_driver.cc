@@ -870,6 +870,12 @@ void OpenVPNDriver::InitOptions(std::vector<std::vector<std::string>>* options,
   // Disable openvpn handling since we do route+ifconfig work.
   AppendOption("route-noexec", options);
   AppendOption("ifconfig-noexec", options);
+
+  // The default tx queue length set by openvpn (100) MAY be too small. We used
+  // to use the default value set by Linux (500) before, so explicitly set it
+  // here to avoid potential performance regression (also see
+  // b/313521559#comment2).
+  AppendOption("txqueuelen", "500", options);
 }
 
 bool OpenVPNDriver::InitCAOptions(
