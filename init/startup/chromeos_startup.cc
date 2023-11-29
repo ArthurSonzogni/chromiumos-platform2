@@ -21,6 +21,7 @@
 #include <base/strings/string_split.h>
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/files/file_util.h>
+#include <brillo/flag_helper.h>
 #include <brillo/process/process.h>
 #include <brillo/secure_blob.h>
 #include <brillo/strings/string_utils.h>
@@ -132,7 +133,7 @@ const std::array<const char*, 4> kPreserveDirs = {
 
 namespace startup {
 
-// Process the arguments from included USE flags.
+// Process the arguments from included USE flags only.
 void ChromeosStartup::ParseFlags(Flags* flags) {
   flags->direncryption = USE_DIRENCRYPTION;
   flags->fsverity = USE_FSVERITY;
@@ -141,6 +142,19 @@ void ChromeosStartup::ParseFlags(Flags* flags) {
   if (flags->encstateful) {
     flags->sys_key_util = USE_TPM2;
   }
+  flags->verbosity = 0;
+}
+
+// Process the arguments from included USE flags and command line arguments.
+void ChromeosStartup::ParseFlags(Flags* flags, int argc, char* argv[]) {
+  ParseFlags(flags);
+
+  DEFINE_bool(v, false, "increase logging verbosity");
+  DEFINE_bool(vv, false, "increase logging verbosity by two levels");
+  brillo::FlagHelper::Init(argc, argv, "Tool run early during ChromeOS boot.");
+
+  // It is ok that -v and -vv can be combined.
+  flags->verbosity = (FLAGS_v ? 1 : 0) + (FLAGS_vv ? 2 : 0);
 }
 
 // We manage this base timestamp by hand. It isolates us from bad clocks on

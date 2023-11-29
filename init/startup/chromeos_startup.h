@@ -32,6 +32,8 @@ class ChromeosStartup {
  public:
   // Process the included USE flags.
   static void ParseFlags(Flags* flags);
+  // Process the included USE flags and command line arguments.
+  static void ParseFlags(Flags* flags, int argc, char* argv[]);
 
   // Constructor for the class
   ChromeosStartup(std::unique_ptr<crossystem::Crossystem> cros_system,

@@ -24,6 +24,9 @@ struct Flags {
   // USE=encrypted_stateful. Used to determine if we will try to create
   // a system key.
   bool sys_key_util;
+  // Increases the level of log verbosity from the default (warning) to info
+  // or verbose.
+  int verbosity;
 };
 
 }  // namespace startup
