@@ -164,6 +164,9 @@ const unsigned int kCpuSharesBackground = 64;
 constexpr auto
     kStartArcMiniInstanceRequest_DalvikMemoryProfile_MEM_PROFILE_DEFAULT = arc::
         StartArcMiniInstanceRequest_DalvikMemoryProfile_MEMORY_PROFILE_DEFAULT;
+
+constexpr auto kStartArcMiniInstanceRequest_HostUreadaheadMode_MODE_DEFAULT =
+    arc::StartArcMiniInstanceRequest_HostUreadaheadMode_MODE_DEFAULT;
 #endif
 
 // The interval used to periodically check if time sync was done by tlsdated.
@@ -1473,6 +1476,20 @@ bool SessionManagerImpl::StartArcMiniContainer(
     default:
       NOTREACHED() << "Unhandled dalvik_memory_profle: "
                    << request.dalvik_memory_profile() << ".";
+  }
+
+  switch (request.host_ureadahead_mode()) {
+    case kStartArcMiniInstanceRequest_HostUreadaheadMode_MODE_DEFAULT:
+      break;
+    case arc::StartArcMiniInstanceRequest_HostUreadaheadMode_MODE_GENERATE:
+      env_vars.emplace_back("HOST_UREADAHEAD_MODE=GENERATE");
+      break;
+    case arc::StartArcMiniInstanceRequest_HostUreadaheadMode_MODE_DISABLED:
+      env_vars.emplace_back("HOST_UREADAHEAD_MODE=DISABLED");
+      break;
+    default:
+      NOTREACHED() << "Unhandled host_ureadahead_mode: "
+                   << request.host_ureadahead_mode() << ".";
   }
 
   if (!StartArcContainer(env_vars, error)) {
