@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
+
 #include <base/run_loop.h>
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
-#include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
 
 namespace diagnostics {
 namespace {

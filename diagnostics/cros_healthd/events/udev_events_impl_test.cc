@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/events/udev_events_impl.h"
+
 #include <string>
 #include <utility>
 
@@ -23,7 +25,6 @@
 
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/cros_healthd/events/mock_event_observer.h"
-#include "diagnostics/cros_healthd/events/udev_events_impl.h"
 #include "diagnostics/cros_healthd/executor/mock_executor.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/cros_healthd/utils/usb_utils_constants.h"

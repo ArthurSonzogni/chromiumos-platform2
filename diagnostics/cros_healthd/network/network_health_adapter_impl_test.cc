@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/network/network_health_adapter_impl.h"
+
 #include <memory>
 #include <utility>
 
@@ -15,7 +17,6 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "diagnostics/cros_healthd/network/network_health_adapter_impl.h"
 #include "diagnostics/mojom/external/network_health.mojom.h"
 #include "diagnostics/mojom/external/network_health_types.mojom.h"
 

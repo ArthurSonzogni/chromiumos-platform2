@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/events/touchpad_events_impl.h"
+
 #include <memory>
 #include <utility>
 
@@ -13,7 +15,6 @@
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "diagnostics/cros_healthd/events/mock_event_observer.h"
-#include "diagnostics/cros_healthd/events/touchpad_events_impl.h"
 #include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"

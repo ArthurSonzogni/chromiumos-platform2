@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_base.h"
+
 #include <memory>
 #include <utility>
 #include <vector>
@@ -14,7 +16,6 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
-#include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_base.h"
 #include "diagnostics/cros_healthd/system/fake_floss_event_hub.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/cros_healthd/system/mock_floss_controller.h"

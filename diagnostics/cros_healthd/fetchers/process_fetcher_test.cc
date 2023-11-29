@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/fetchers/process_fetcher.h"
+
 #include <sys/types.h>
 
 #include <cstdint>
@@ -20,7 +22,6 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_test_utils.h"
-#include "diagnostics/cros_healthd/fetchers/process_fetcher.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/cros_healthd/utils/procfs_utils.h"

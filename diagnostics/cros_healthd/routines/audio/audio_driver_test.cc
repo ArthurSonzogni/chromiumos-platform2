@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/routines/audio/audio_driver.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -17,7 +19,6 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 
 #include "cras/dbus-proxy-mocks.h"
-#include "diagnostics/cros_healthd/routines/audio/audio_driver.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"

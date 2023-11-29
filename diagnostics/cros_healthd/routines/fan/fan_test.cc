@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/routines/fan/fan.h"
+
 #include <memory>
 #include <utility>
 
@@ -15,7 +17,6 @@
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/base/paths.h"
 #include "diagnostics/cros_healthd/executor/executor.h"
-#include "diagnostics/cros_healthd/routines/fan/fan.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"

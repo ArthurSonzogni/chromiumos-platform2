@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/routines/fingerprint/fingerprint.h"
+
 #include <memory>
 #include <utility>
 
@@ -9,7 +11,6 @@
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/routines/fingerprint/fingerprint.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 

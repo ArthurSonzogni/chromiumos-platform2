@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/events/audio_jack_events_impl.h"
+
 #include <utility>
 
 #include <base/test/task_environment.h>
@@ -9,7 +11,6 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
-#include "diagnostics/cros_healthd/events/audio_jack_events_impl.h"
 #include "diagnostics/cros_healthd/events/event_observer_test_future.h"
 #include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"

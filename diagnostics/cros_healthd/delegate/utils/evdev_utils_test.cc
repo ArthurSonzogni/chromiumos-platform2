@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/delegate/utils/evdev_utils.h"
+
 #include <fcntl.h>
 #include <libevdev/libevdev.h>
 #include <memory>
@@ -17,7 +19,6 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_test_utils.h"
-#include "diagnostics/cros_healthd/delegate/utils/evdev_utils.h"
 
 namespace diagnostics {
 namespace {

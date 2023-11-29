@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/base/file_utils.h"
+
 #include <optional>
 #include <string>
 
 #include <base/strings/string_number_conversions.h>
 
 #include "diagnostics/base/file_test_utils.h"
-#include "diagnostics/base/file_utils.h"
 
 namespace diagnostics {
 namespace {

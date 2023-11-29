@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/base/mojo_utils.h"
+
 #include <memory>
 #include <string_view>
 #include <utility>
 
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/system/handle.h>
-
-#include "diagnostics/base/mojo_utils.h"
 
 namespace diagnostics {
 namespace {

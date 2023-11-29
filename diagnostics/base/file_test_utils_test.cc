@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/base/file_test_utils.h"
+
 #include <string>
 
 #include <base/containers/span.h>
@@ -9,7 +11,6 @@
 #include <base/files/file_util.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/base/path_literal.h"
 
 namespace diagnostics {

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
+
 #include <base/functional/callback_helpers.h>
 #include <base/run_loop.h>
 #include <base/test/bind.h>
@@ -11,7 +13,6 @@
 #include <mojo/public/cpp/bindings/callback_helpers.h>
 
 #include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
-#include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 
 namespace diagnostics {

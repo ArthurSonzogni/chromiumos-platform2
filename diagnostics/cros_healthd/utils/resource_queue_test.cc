@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/utils/resource_queue.h"
+
 #include <utility>
 
 #include <base/functional/bind.h>
@@ -12,8 +14,6 @@
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>
-
-#include "diagnostics/cros_healthd/utils/resource_queue.h"
 
 namespace diagnostics {
 namespace {

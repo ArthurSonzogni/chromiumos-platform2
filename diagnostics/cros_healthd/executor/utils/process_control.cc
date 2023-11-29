@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/executor/utils/process_control.h"
+
 #include <bits/types/siginfo_t.h>
 
 #include <memory>
@@ -9,8 +11,6 @@
 
 #include <base/posix/eintr_wrapper.h>
 #include <mojo/public/cpp/system/platform_handle.h>
-
-#include "diagnostics/cros_healthd/executor/utils/process_control.h"
 
 namespace diagnostics {
 

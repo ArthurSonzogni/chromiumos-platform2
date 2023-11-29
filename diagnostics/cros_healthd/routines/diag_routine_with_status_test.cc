@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
+
 #include <optional>
 #include <string>
 #include <utility>
 
 #include <base/test/bind.h>
 #include <gtest/gtest.h>
-
-#include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 
 namespace diagnostics {
 namespace {

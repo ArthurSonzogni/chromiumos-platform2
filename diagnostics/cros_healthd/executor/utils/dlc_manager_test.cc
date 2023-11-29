@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/executor/utils/dlc_manager.h"
+
 #include <memory>
 #include <optional>
 #include <string>
@@ -17,8 +19,6 @@
 #include <dlcservice/dbus-proxy-mocks.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "diagnostics/cros_healthd/executor/utils/dlc_manager.h"
 
 namespace diagnostics {
 namespace {

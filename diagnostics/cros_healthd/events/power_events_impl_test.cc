@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/events/power_events_impl.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -18,7 +20,6 @@
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
 
 #include "diagnostics/cros_healthd/events/mock_event_observer.h"
-#include "diagnostics/cros_healthd/events/power_events_impl.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 

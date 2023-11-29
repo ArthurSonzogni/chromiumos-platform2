@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/fetchers/audio_fetcher.h"
+
 #include <string>
 #include <vector>
 
@@ -13,7 +15,6 @@
 #include <gtest/gtest.h>
 
 #include "cras/dbus-proxy-mocks.h"
-#include "diagnostics/cros_healthd/fetchers/audio_fetcher.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 
 namespace diagnostics {

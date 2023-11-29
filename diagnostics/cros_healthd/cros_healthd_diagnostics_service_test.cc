@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/cros_healthd_diagnostics_service.h"
+
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -18,7 +20,6 @@
 
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/base/paths.h"
-#include "diagnostics/cros_healthd/cros_healthd_diagnostics_service.h"
 #include "diagnostics/cros_healthd/fake_cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/routines/routine_service.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"

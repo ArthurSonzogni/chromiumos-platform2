@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/system/floss_event_hub.h"
+
 #include <memory>
 
 #include <base/test/gmock_callback_support.h>

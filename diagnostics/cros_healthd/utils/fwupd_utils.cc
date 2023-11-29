@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/utils/fwupd_utils.h"
+
 #include <algorithm>
 #include <optional>
 #include <set>
@@ -18,7 +20,6 @@
 #include <libfwupd/fwupd-common.h>
 #include <libfwupd/fwupd-enums.h>
 
-#include "diagnostics/cros_healthd/utils/fwupd_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {

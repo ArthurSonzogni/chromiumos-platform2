@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/fetchers/storage/device_lister.h"
+
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -9,7 +11,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/fetchers/storage/device_lister.h"
 #include "diagnostics/cros_healthd/fetchers/storage/mock/mock_platform.h"
 
 using ::testing::Return;

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/events/lid_events_impl.h"
+
 #include <memory>
 
 #include <base/test/task_environment.h>
@@ -10,7 +12,6 @@
 #include <power_manager/dbus-proxy-mocks.h>
 
 #include "diagnostics/cros_healthd/events/event_observer_test_future.h"
-#include "diagnostics/cros_healthd/events/lid_events_impl.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 

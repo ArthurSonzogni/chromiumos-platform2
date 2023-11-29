@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/delegate/utils/psr_cmd.h"
+
 #include <optional>
 #include <vector>
 
 #include <base/strings/string_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "diagnostics/cros_healthd/delegate/utils/psr_cmd.h"
 
 namespace diagnostics {
 namespace psr {

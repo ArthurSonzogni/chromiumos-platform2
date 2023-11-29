@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/system/system_config.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -22,7 +24,6 @@
 #include "diagnostics/cros_healthd/service_config.h"
 #include "diagnostics/cros_healthd/system/cros_config.h"
 #include "diagnostics/cros_healthd/system/debugd_constants.h"
-#include "diagnostics/cros_healthd/system/system_config.h"
 #include "diagnostics/cros_healthd/system/system_config_constants.h"
 
 using ::testing::_;

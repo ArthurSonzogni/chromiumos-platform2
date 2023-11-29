@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/routines/hardware_button/volume_button.h"
+
 #include <memory>
 #include <tuple>
 #include <utility>
@@ -12,7 +14,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/routines/hardware_button/volume_button.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"

@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/event_aggregator.h"
+
 #include <memory>
 #include <utility>
 
 #include <metrics/metrics_library.h>
 
-#include "diagnostics/cros_healthd/event_aggregator.h"
 #include "diagnostics/cros_healthd/events/audio_events_impl.h"
 #include "diagnostics/cros_healthd/events/audio_jack_events_impl.h"
 #include "diagnostics/cros_healthd/events/bluetooth_events_impl.h"

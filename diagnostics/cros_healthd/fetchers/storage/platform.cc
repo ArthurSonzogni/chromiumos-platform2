@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/fetchers/storage/platform.h"
+
 #include <linux/fs.h>
 #include <linux/limits.h>
 #include <sys/file.h>
@@ -18,7 +20,6 @@
 #include <base/posix/eintr_wrapper.h>
 #include <rootdev/rootdev.h>
 
-#include "diagnostics/cros_healthd/fetchers/storage/platform.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 

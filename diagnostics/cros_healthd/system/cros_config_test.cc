@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/system/cros_config.h"
+
 #include <base/files/file_path.h>
 #include <base/types/expected.h>
 #include <gtest/gtest.h>
@@ -10,7 +12,6 @@
 #include "diagnostics/base/path_literal.h"
 #include "diagnostics/base/paths.h"
 #include "diagnostics/cros_healthd/service_config.h"
-#include "diagnostics/cros_healthd/system/cros_config.h"
 #include "diagnostics/cros_healthd/system/cros_config_constants.h"
 
 namespace diagnostics {

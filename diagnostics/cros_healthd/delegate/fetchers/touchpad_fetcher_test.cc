@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/delegate/fetchers/touchpad_fetcher.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -20,7 +22,6 @@
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/constants.h"
-#include "diagnostics/cros_healthd/delegate/fetchers/touchpad_fetcher.h"
 
 namespace diagnostics {
 namespace {
