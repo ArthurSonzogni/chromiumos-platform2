@@ -36,10 +36,10 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-using testing::_;
-using testing::ByMove;
-using testing::Return;
-using testing::StrictMock;
+using ::testing::_;
+using ::testing::ByMove;
+using ::testing::Return;
+using ::testing::StrictMock;
 using ::testing::WithArg;
 
 constexpr const char kUdevActionAdd[] = "add";

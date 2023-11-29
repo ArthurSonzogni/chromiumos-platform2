@@ -21,8 +21,8 @@ namespace diagnostics {
 namespace {
 
 using base::test::TestFuture;
-using testing::_;
-using testing::WithArg;
+using ::testing::_;
+using ::testing::WithArg;
 
 namespace network_diagnostics_ipc = chromeos::network_diagnostics::mojom;
 

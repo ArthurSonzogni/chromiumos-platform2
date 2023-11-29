@@ -22,15 +22,15 @@
 namespace diagnostics {
 namespace {
 
-using testing::_;
-using testing::DoAll;
-using testing::InvokeWithoutArgs;
-using testing::Pointer;
-using testing::Return;
-using testing::SaveArg;
-using testing::SetArgPointee;
-using testing::StrictMock;
-using testing::WithArg;
+using ::testing::_;
+using ::testing::DoAll;
+using ::testing::InvokeWithoutArgs;
+using ::testing::Pointer;
+using ::testing::Return;
+using ::testing::SaveArg;
+using ::testing::SetArgPointee;
+using ::testing::StrictMock;
+using ::testing::WithArg;
 
 const base::FilePath kDevInputPath = base::FilePath("/dev/input");
 

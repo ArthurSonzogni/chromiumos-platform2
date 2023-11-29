@@ -12,8 +12,8 @@
 #include "diagnostics/cros_healthd/fetchers/storage/device_lister.h"
 #include "diagnostics/cros_healthd/fetchers/storage/mock/mock_platform.h"
 
-using testing::Return;
-using testing::UnorderedElementsAre;
+using ::testing::Return;
+using ::testing::UnorderedElementsAre;
 
 namespace diagnostics {
 namespace {
