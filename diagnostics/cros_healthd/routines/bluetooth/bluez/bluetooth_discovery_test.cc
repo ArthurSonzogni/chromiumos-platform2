@@ -243,7 +243,7 @@ TEST_F(BluezBluetoothDiscoveryRoutineTest, FailedVerifyDiscoveringHci) {
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
   // Start discovery, but get unexpected discovering status in HCI level.
   SetStartDiscoveryCall(/*dbus_result_discovering=*/true);
-  for (int i = 0; i < kHciDiscoveringValidationMaxRetries + 1; i++) {
+  for (int i = 0; i < kHciDiscoveringValidationMaxRetries + 1; ++i) {
     SetGetHciDeviceConfigCall(/*hci_result_discovering=*/false);
   }
   // Stop discovery.

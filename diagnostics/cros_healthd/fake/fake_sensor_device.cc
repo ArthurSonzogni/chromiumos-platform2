@@ -26,7 +26,7 @@ void FakeSensorDevice::GetAttributes(const std::vector<std::string>& attr_names,
   CHECK(!attr_names.empty());
 
   std::vector<std::optional<std::string>> values(attr_names.size());
-  for (int i = 0; i < attr_names.size(); i++) {
+  for (int i = 0; i < attr_names.size(); ++i) {
     if (attr_names[i] == cros::mojom::kDeviceName) {
       values[i] = sensor_name_;
     } else if (attr_names[i] == cros::mojom::kLocation) {

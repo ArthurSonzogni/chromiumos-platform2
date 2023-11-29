@@ -113,7 +113,7 @@ TEST(StorageDeviceManagerTest, NoRecreation) {
 
   // Do multiple cycles. If the device info preservation is not working,
   // the WillOnce of udev mock will fail.
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 5; ++i) {
     auto devices_result = manager.FetchDevicesInfo(kFakeRoot);
     ASSERT_TRUE(devices_result.has_value()) << devices_result.error()->msg;
     auto& devices = devices_result.value();

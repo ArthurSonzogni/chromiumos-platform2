@@ -76,7 +76,7 @@ TEST_F(DiagnosticRoutineWithStatusTest, RegisterStatusChangedCallback) {
 TEST_F(DiagnosticRoutineWithStatusTest, CallbackNotInvokedIfStatusNotChanged) {
   int invocation_count = 0;
   routine_.RegisterStatusChangedCallback(base::BindLambdaForTesting(
-      [&](mojom::DiagnosticRoutineStatusEnum status) { invocation_count++; }));
+      [&](mojom::DiagnosticRoutineStatusEnum status) { ++invocation_count; }));
 
   auto status_for_testing = mojom::DiagnosticRoutineStatusEnum::kPassed;
   routine_.UpdateStatusForTesting(status_for_testing, "");

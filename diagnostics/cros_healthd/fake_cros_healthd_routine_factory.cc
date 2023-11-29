@@ -97,15 +97,15 @@ FakeDiagnosticRoutine::~FakeDiagnosticRoutine() {
 }
 
 void FakeDiagnosticRoutine::Start() {
-  num_actual_start_calls_++;
+  ++num_actual_start_calls_;
 }
 
 void FakeDiagnosticRoutine::Resume() {
-  num_actual_resume_calls_++;
+  ++num_actual_resume_calls_;
 }
 
 void FakeDiagnosticRoutine::Cancel() {
-  num_actual_cancel_calls_++;
+  ++num_actual_cancel_calls_;
 }
 
 void FakeDiagnosticRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,

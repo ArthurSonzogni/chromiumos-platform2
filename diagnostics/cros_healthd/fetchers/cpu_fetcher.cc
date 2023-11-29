@@ -491,7 +491,7 @@ bool State::FetchNumTotalThreads(const base::FilePath& root_dir) {
     uint32_t high_thread_int;
     // Check if is in the form of "%d".
     if (base::StringToUint(thread, &low_thread_int)) {
-      total_thread_count++;
+      ++total_thread_count;
       continue;
     }
     // Check if is in the form of "%d-%d".

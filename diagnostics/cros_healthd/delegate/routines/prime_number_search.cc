@@ -17,7 +17,7 @@ PrimeNumberSearchDelegate::PrimeNumberSearchDelegate(uint64_t max_num)
   // https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes
   for (uint64_t i = 2;
        i <= static_cast<uint64_t>(std::sqrt(static_cast<double>(max_num_)));
-       i++) {
+       ++i) {
     if (prime_sieve_[i]) {
       for (uint64_t j = (i * i); j <= max_num_; j += i)
         prime_sieve_[j] = 0;
@@ -26,7 +26,7 @@ PrimeNumberSearchDelegate::PrimeNumberSearchDelegate(uint64_t max_num)
 }
 
 bool PrimeNumberSearchDelegate::Run() {
-  for (uint64_t num = 2; num <= max_num_; num++) {
+  for (uint64_t num = 2; num <= max_num_; ++num) {
     bool sieve_prime = prime_sieve_[num];
     bool func_prime = IsPrime(num);
 
@@ -46,7 +46,7 @@ bool PrimeNumberSearchDelegate::IsPrime(uint64_t num) const {
 
   uint64_t sqrt_root =
       static_cast<uint64_t>(std::sqrt(static_cast<double>(num)));
-  for (uint64_t divisor = 2; divisor <= sqrt_root; divisor++)
+  for (uint64_t divisor = 2; divisor <= sqrt_root; ++divisor)
     if (num % divisor == 0)
       return false;
 

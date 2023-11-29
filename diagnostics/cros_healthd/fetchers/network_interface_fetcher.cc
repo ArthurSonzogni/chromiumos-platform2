@@ -127,7 +127,7 @@ void State::HandleScanDump(mojom::ExecutedProcessResultPtr result) {
   std::string bss_str =
       "BSS " + wireless_info_->wireless_link_info->access_point_address_str +
       "(on " + wireless_info_->interface_name + ") -- associated";
-  for (uint32_t index = 0; index < lines.size(); index++) {
+  for (uint32_t index = 0; index < lines.size(); ++index) {
     if (lines[index] == bss_str) {
       // Only look at Privacy bit of AP that the WiFi adapter connected to.
       if (((index + kEncryptionLineOffset) < lines.size()) &&

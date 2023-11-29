@@ -95,7 +95,7 @@ class BluezBluetoothScanningRoutineTest : public testing::Test {
             auto mock_device = mock_device_proxies_[device_path].get();
             fake_bluez_event_hub()->SendDeviceAdded(mock_device);
             // Send out the rest RSSIs.
-            for (int i = 1; i < device.rssi_history.size(); i++) {
+            for (int i = 1; i < device.rssi_history.size(); ++i) {
               fake_bluez_event_hub()->SendDevicePropertyChanged(
                   mock_device, mock_device->RSSIName());
             }
@@ -103,7 +103,7 @@ class BluezBluetoothScanningRoutineTest : public testing::Test {
         }));
     for (const auto& [device_path, device] : fake_devices_) {
       SetDeviceAddedCall(device_path, device);
-      for (int i = 1; i < device.rssi_history.size(); i++) {
+      for (int i = 1; i < device.rssi_history.size(); ++i) {
         SetDeviceRssiChangedCall(device_path, /*rssi=*/device.rssi_history[i]);
       }
     }
