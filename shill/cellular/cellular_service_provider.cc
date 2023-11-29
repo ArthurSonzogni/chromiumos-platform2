@@ -381,7 +381,7 @@ bool CellularServiceProvider::HardwareSupportsTethering(
        "coachz", "quackingstick"});
 
   if (blocklist.contains(variant_.value())) {
-    LOG(INFO) << "Cellular hardware does not support tethering";
+    SLOG(1) << "Cellular hardware does not support tethering";
     return false;
   }
   return true;
