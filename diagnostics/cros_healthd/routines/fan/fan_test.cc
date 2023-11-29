@@ -27,6 +27,9 @@ namespace {
 namespace mojom = ash::cros_healthd::mojom;
 
 using ::testing::_;
+using ::testing::Pair;
+using ::testing::UnorderedElementsAre;
+using ::testing::UnorderedElementsAreArray;
 
 class FanRoutineTest : public BaseFileTest {
  public:
@@ -93,7 +96,7 @@ TEST_F(FanRoutineTest, RoutineSuccessByFirstGetSpeedIncrease) {
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
                     Executor::SetFanSpeedCallback callback) {
         // Set fan to be increasing
-        EXPECT_THAT(fan_rpms, testing::UnorderedElementsAre(testing::Pair(
+        EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed + FanRoutine::kFanRpmChange)));
         std::move(callback).Run(std::nullopt);
       });
@@ -113,8 +116,7 @@ TEST_F(FanRoutineTest, RoutineSuccessByFirstGetSpeedIncrease) {
   EXPECT_TRUE(result->state_union->get_finished()->has_passed);
   const auto& fan_detail =
       result->state_union->get_finished()->detail->get_fan();
-  EXPECT_THAT(fan_detail->passed_fan_ids,
-              testing::UnorderedElementsAreArray({0}));
+  EXPECT_THAT(fan_detail->passed_fan_ids, UnorderedElementsAreArray({0}));
   EXPECT_EQ(fan_detail->failed_fan_ids.size(), 0);
   EXPECT_EQ(fan_detail->fan_count_status,
             mojom::HardwarePresenceStatus::kMatched);
@@ -146,7 +148,7 @@ TEST_F(FanRoutineTest, RoutineSuccessByMultipleGetSpeedIncrease) {
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
                     Executor::SetFanSpeedCallback callback) {
         // Set fan to be increasing
-        EXPECT_THAT(fan_rpms, testing::UnorderedElementsAre(testing::Pair(
+        EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed + FanRoutine::kFanRpmChange)));
         std::move(callback).Run(std::nullopt);
       });
@@ -167,8 +169,7 @@ TEST_F(FanRoutineTest, RoutineSuccessByMultipleGetSpeedIncrease) {
   EXPECT_TRUE(result->state_union->get_finished()->has_passed);
   const auto& fan_detail =
       result->state_union->get_finished()->detail->get_fan();
-  EXPECT_THAT(fan_detail->passed_fan_ids,
-              testing::UnorderedElementsAreArray({0}));
+  EXPECT_THAT(fan_detail->passed_fan_ids, UnorderedElementsAreArray({0}));
   EXPECT_EQ(fan_detail->failed_fan_ids.size(), 0);
   EXPECT_EQ(fan_detail->fan_count_status,
             mojom::HardwarePresenceStatus::kMatched);
@@ -204,14 +205,14 @@ TEST_F(FanRoutineTest, RoutineSuccessByFirstGetSpeedDecrease) {
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
                     Executor::SetFanSpeedCallback callback) {
         // Set fan to have an increased fan speed.
-        EXPECT_THAT(fan_rpms, testing::UnorderedElementsAre(testing::Pair(
+        EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed + FanRoutine::kFanRpmChange)));
         std::move(callback).Run(std::nullopt);
       })
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
                     Executor::SetFanSpeedCallback callback) {
         // Set fan to have a decreased fan speed.
-        EXPECT_THAT(fan_rpms, testing::UnorderedElementsAre(testing::Pair(
+        EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed - FanRoutine::kFanRpmChange)));
         std::move(callback).Run(std::nullopt);
       });
@@ -235,8 +236,7 @@ TEST_F(FanRoutineTest, RoutineSuccessByFirstGetSpeedDecrease) {
   EXPECT_TRUE(result->state_union->get_finished()->has_passed);
   const auto& fan_detail =
       result->state_union->get_finished()->detail->get_fan();
-  EXPECT_THAT(fan_detail->passed_fan_ids,
-              testing::UnorderedElementsAreArray({0}));
+  EXPECT_THAT(fan_detail->passed_fan_ids, UnorderedElementsAreArray({0}));
   EXPECT_EQ(fan_detail->failed_fan_ids.size(), 0);
   EXPECT_EQ(fan_detail->fan_count_status,
             mojom::HardwarePresenceStatus::kMatched);
@@ -280,14 +280,14 @@ TEST_F(FanRoutineTest, RoutineSuccessByMultipleGetSpeedDecrease) {
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
                     Executor::SetFanSpeedCallback callback) {
         // Set fan to have an increased fan speed.
-        EXPECT_THAT(fan_rpms, testing::UnorderedElementsAre(testing::Pair(
+        EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed + FanRoutine::kFanRpmChange)));
         std::move(callback).Run(std::nullopt);
       })
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
                     Executor::SetFanSpeedCallback callback) {
         // Set fan to have a decreased fan speed.
-        EXPECT_THAT(fan_rpms, testing::UnorderedElementsAre(testing::Pair(
+        EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed - FanRoutine::kFanRpmChange)));
         std::move(callback).Run(std::nullopt);
       });
@@ -311,8 +311,7 @@ TEST_F(FanRoutineTest, RoutineSuccessByMultipleGetSpeedDecrease) {
   EXPECT_TRUE(result->state_union->get_finished()->has_passed);
   const auto& fan_detail =
       result->state_union->get_finished()->detail->get_fan();
-  EXPECT_THAT(fan_detail->passed_fan_ids,
-              testing::UnorderedElementsAreArray({0}));
+  EXPECT_THAT(fan_detail->passed_fan_ids, UnorderedElementsAreArray({0}));
   EXPECT_EQ(fan_detail->failed_fan_ids.size(), 0);
   EXPECT_EQ(fan_detail->fan_count_status,
             mojom::HardwarePresenceStatus::kMatched);
@@ -354,14 +353,14 @@ TEST_F(FanRoutineTest, RoutineFailureByNoFanSpeedChange) {
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
                     Executor::SetFanSpeedCallback callback) {
         // Set fan to have an increased fan speed.
-        EXPECT_THAT(fan_rpms, testing::UnorderedElementsAre(testing::Pair(
+        EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed + FanRoutine::kFanRpmChange)));
         std::move(callback).Run(std::nullopt);
       })
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
                     Executor::SetFanSpeedCallback callback) {
         // Set fan to have a decreased fan speed.
-        EXPECT_THAT(fan_rpms, testing::UnorderedElementsAre(testing::Pair(
+        EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed - FanRoutine::kFanRpmChange)));
         std::move(callback).Run(std::nullopt);
       });
@@ -386,8 +385,7 @@ TEST_F(FanRoutineTest, RoutineFailureByNoFanSpeedChange) {
   const auto& fan_detail =
       result->state_union->get_finished()->detail->get_fan();
   EXPECT_EQ(fan_detail->passed_fan_ids.size(), 0);
-  EXPECT_THAT(fan_detail->failed_fan_ids,
-              testing::UnorderedElementsAreArray({0}));
+  EXPECT_THAT(fan_detail->failed_fan_ids, UnorderedElementsAreArray({0}));
   EXPECT_EQ(fan_detail->fan_count_status,
             mojom::HardwarePresenceStatus::kMatched);
 }
@@ -435,14 +433,14 @@ TEST_F(FanRoutineTest, RoutineFailureByChangeBelowDelta) {
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
                     Executor::SetFanSpeedCallback callback) {
         // Set fan to have an increased fan speed.
-        EXPECT_THAT(fan_rpms, testing::UnorderedElementsAre(testing::Pair(
+        EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed + FanRoutine::kFanRpmChange)));
         std::move(callback).Run(std::nullopt);
       })
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
                     Executor::SetFanSpeedCallback callback) {
         // Set fan to have a decreased fan speed.
-        EXPECT_THAT(fan_rpms, testing::UnorderedElementsAre(testing::Pair(
+        EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed - FanRoutine::kFanRpmChange)));
         std::move(callback).Run(std::nullopt);
       });
@@ -467,8 +465,7 @@ TEST_F(FanRoutineTest, RoutineFailureByChangeBelowDelta) {
   const auto& fan_detail =
       result->state_union->get_finished()->detail->get_fan();
   EXPECT_EQ(fan_detail->passed_fan_ids.size(), 0);
-  EXPECT_THAT(fan_detail->failed_fan_ids,
-              testing::UnorderedElementsAreArray({0}));
+  EXPECT_THAT(fan_detail->failed_fan_ids, UnorderedElementsAreArray({0}));
 }
 
 // Test that the routine will raise error if it encounters error from calling
@@ -528,11 +525,10 @@ TEST_F(FanRoutineTest, MultipleFanRoutineSuccess) {
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
                     Executor::SetFanSpeedCallback callback) {
         // Set fan to be increasing
-        EXPECT_THAT(
-            fan_rpms,
-            testing::UnorderedElementsAre(
-                testing::Pair(0, kFanSpeed1 + FanRoutine::kFanRpmChange),
-                testing::Pair(1, kFanSpeed2 + FanRoutine::kFanRpmChange)));
+        EXPECT_THAT(fan_rpms,
+                    UnorderedElementsAre(
+                        Pair(0, kFanSpeed1 + FanRoutine::kFanRpmChange),
+                        Pair(1, kFanSpeed2 + FanRoutine::kFanRpmChange)));
         std::move(callback).Run(std::nullopt);
       });
 
@@ -551,8 +547,7 @@ TEST_F(FanRoutineTest, MultipleFanRoutineSuccess) {
   EXPECT_TRUE(result->state_union->get_finished()->has_passed);
   const auto& fan_detail =
       result->state_union->get_finished()->detail->get_fan();
-  EXPECT_THAT(fan_detail->passed_fan_ids,
-              testing::UnorderedElementsAreArray({0, 1}));
+  EXPECT_THAT(fan_detail->passed_fan_ids, UnorderedElementsAreArray({0, 1}));
   EXPECT_EQ(fan_detail->failed_fan_ids.size(), 0);
   EXPECT_EQ(fan_detail->fan_count_status,
             mojom::HardwarePresenceStatus::kMatched);
@@ -602,18 +597,16 @@ TEST_F(FanRoutineTest, MultipleFanRoutinePartialFailure) {
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
                     Executor::SetFanSpeedCallback callback) {
         // Set fan to be increasing
-        EXPECT_THAT(
-            fan_rpms,
-            testing::UnorderedElementsAre(
-                testing::Pair(0, kFanSpeed1 + FanRoutine::kFanRpmChange),
-                testing::Pair(1, kFanSpeed2 + FanRoutine::kFanRpmChange)));
+        EXPECT_THAT(fan_rpms,
+                    UnorderedElementsAre(
+                        Pair(0, kFanSpeed1 + FanRoutine::kFanRpmChange),
+                        Pair(1, kFanSpeed2 + FanRoutine::kFanRpmChange)));
         std::move(callback).Run(std::nullopt);
       })
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
                     Executor::SetFanSpeedCallback callback) {
         // Set fan to be increasing
-        EXPECT_THAT(fan_rpms,
-                    testing::UnorderedElementsAre(testing::Pair(1, 0)));
+        EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(1, 0)));
         std::move(callback).Run(std::nullopt);
       });
 
@@ -632,10 +625,8 @@ TEST_F(FanRoutineTest, MultipleFanRoutinePartialFailure) {
   EXPECT_FALSE(result->state_union->get_finished()->has_passed);
   const auto& fan_detail =
       result->state_union->get_finished()->detail->get_fan();
-  EXPECT_THAT(fan_detail->passed_fan_ids,
-              testing::UnorderedElementsAreArray({0}));
-  EXPECT_THAT(fan_detail->failed_fan_ids,
-              testing::UnorderedElementsAreArray({1}));
+  EXPECT_THAT(fan_detail->passed_fan_ids, UnorderedElementsAreArray({0}));
+  EXPECT_THAT(fan_detail->failed_fan_ids, UnorderedElementsAreArray({1}));
   EXPECT_EQ(fan_detail->fan_count_status,
             mojom::HardwarePresenceStatus::kMatched);
 }
@@ -685,7 +676,7 @@ TEST_F(FanRoutineTest, RoutineFailureByTooManyFan) {
       .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
                     Executor::SetFanSpeedCallback callback) {
         // Set fan to be increasing
-        EXPECT_THAT(fan_rpms, testing::UnorderedElementsAre(testing::Pair(
+        EXPECT_THAT(fan_rpms, UnorderedElementsAre(Pair(
                                   0, kFanSpeed + FanRoutine::kFanRpmChange)));
         std::move(callback).Run(std::nullopt);
       });

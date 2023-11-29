@@ -105,6 +105,7 @@ namespace {
 using ::testing::_;
 using ::testing::AtLeast;
 using ::testing::StrictMock;
+using ::testing::WithArg;
 
 class MockObserver : public mojom::RoutineObserver {
  public:
@@ -378,24 +379,24 @@ TEST_F(BaseRoutineControlTest, NotifyObserver) {
   rc.SetObserver(std::move(observer_remote));
   EXPECT_CALL(*observer.get(), OnRoutineStateChange(_))
       .Times(AtLeast(1))
-      .WillOnce(testing::WithArg<0>(
-          [=](ash::cros_healthd::mojom::RoutineStatePtr state) {
+      .WillOnce(
+          WithArg<0>([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
             EXPECT_TRUE(state->state_union->is_initialized());
           }))
-      .WillOnce(testing::WithArg<0>(
-          [=](ash::cros_healthd::mojom::RoutineStatePtr state) {
+      .WillOnce(
+          WithArg<0>([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
             EXPECT_TRUE(state->state_union->is_running());
           }))
-      .WillOnce(testing::WithArg<0>(
-          [=](ash::cros_healthd::mojom::RoutineStatePtr state) {
+      .WillOnce(
+          WithArg<0>([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
             EXPECT_TRUE(state->state_union->is_waiting());
           }))
-      .WillOnce(testing::WithArg<0>(
-          [=](ash::cros_healthd::mojom::RoutineStatePtr state) {
+      .WillOnce(
+          WithArg<0>([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
             EXPECT_TRUE(state->state_union->is_running());
           }))
-      .WillOnce(testing::WithArg<0>(
-          [=](ash::cros_healthd::mojom::RoutineStatePtr state) {
+      .WillOnce(
+          WithArg<0>([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
             EXPECT_TRUE(state->state_union->is_finished());
           }));
   rc.Start();
@@ -413,8 +414,8 @@ TEST_F(BaseRoutineControlTest, SetObserverSendsUpdateImmediately) {
       observer_remote.InitWithNewPipeAndPassReceiver());
 
   EXPECT_CALL(*observer.get(), OnRoutineStateChange(_))
-      .WillOnce(testing::WithArg<0>(
-          [=](ash::cros_healthd::mojom::RoutineStatePtr state) {
+      .WillOnce(
+          WithArg<0>([=](ash::cros_healthd::mojom::RoutineStatePtr state) {
             EXPECT_TRUE(state->state_union->is_initialized());
           }));
 

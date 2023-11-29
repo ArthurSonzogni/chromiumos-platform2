@@ -26,6 +26,10 @@
 namespace diagnostics {
 namespace {
 
+using ::testing::Return;
+using ::testing::ReturnNull;
+using ::testing::StrEq;
+
 constexpr char kUsbPropertyValue[] = "usb";
 constexpr char kSysnamePropertyValue[] = "event6";
 constexpr char kDevnamePropertyValue[] = "/dev/input/event16";
@@ -78,12 +82,11 @@ TEST_F(TouchpadFetcherTest, NoUdevReturnsError) {
 }
 
 TEST_F(TouchpadFetcherTest, FailedAddMatchSubsystemReturnsError) {
-  EXPECT_CALL(*udev_enumerate_,
-              AddMatchSubsystem(testing::StrEq(kSubsystemInput)))
-      .WillOnce(testing::Return(false));
+  EXPECT_CALL(*udev_enumerate_, AddMatchSubsystem(StrEq(kSubsystemInput)))
+      .WillOnce(Return(false));
 
   EXPECT_CALL(*udev_, CreateEnumerate())
-      .WillOnce(testing::Return(std::move(udev_enumerate_)));
+      .WillOnce(Return(std::move(udev_enumerate_)));
 
   auto result = PopulateTouchpadDevices(std::move(udev_), GetBasePath());
   EXPECT_FALSE(result.has_value());
@@ -91,14 +94,13 @@ TEST_F(TouchpadFetcherTest, FailedAddMatchSubsystemReturnsError) {
 }
 
 TEST_F(TouchpadFetcherTest, FailedScanDevicesReturnsError) {
-  EXPECT_CALL(*udev_enumerate_,
-              AddMatchSubsystem(testing::StrEq(kSubsystemInput)))
-      .WillOnce(testing::Return(true));
+  EXPECT_CALL(*udev_enumerate_, AddMatchSubsystem(StrEq(kSubsystemInput)))
+      .WillOnce(Return(true));
 
-  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(testing::Return(false));
+  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(Return(false));
 
   EXPECT_CALL(*udev_, CreateEnumerate())
-      .WillOnce(testing::Return(std::move(udev_enumerate_)));
+      .WillOnce(Return(std::move(udev_enumerate_)));
 
   auto result = PopulateTouchpadDevices(std::move(udev_), GetBasePath());
   EXPECT_FALSE(result.has_value());
@@ -107,23 +109,21 @@ TEST_F(TouchpadFetcherTest, FailedScanDevicesReturnsError) {
 
 TEST_F(TouchpadFetcherTest, NoDeviceInSyspathReturnsEmptyDeviceVector) {
   const char* fake_sys_path = "/path/to/device";
-  EXPECT_CALL(*udev_list_entry_, GetName())
-      .WillOnce(testing::Return(fake_sys_path));
+  EXPECT_CALL(*udev_list_entry_, GetName()).WillOnce(Return(fake_sys_path));
 
   EXPECT_CALL(*udev_enumerate_, GetListEntry())
-      .WillOnce(testing::Return(std::move(udev_list_entry_)));
+      .WillOnce(Return(std::move(udev_list_entry_)));
 
-  EXPECT_CALL(*udev_enumerate_,
-              AddMatchSubsystem(testing::StrEq(kSubsystemInput)))
-      .WillOnce(testing::Return(true));
+  EXPECT_CALL(*udev_enumerate_, AddMatchSubsystem(StrEq(kSubsystemInput)))
+      .WillOnce(Return(true));
 
-  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(testing::Return(true));
+  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(Return(true));
 
   EXPECT_CALL(*udev_, CreateEnumerate())
-      .WillOnce(testing::Return(std::move(udev_enumerate_)));
+      .WillOnce(Return(std::move(udev_enumerate_)));
 
-  EXPECT_CALL(*udev_, CreateDeviceFromSysPath(testing::StrEq(fake_sys_path)))
-      .WillOnce(testing::ReturnNull());
+  EXPECT_CALL(*udev_, CreateDeviceFromSysPath(StrEq(fake_sys_path)))
+      .WillOnce(ReturnNull());
 
   auto result = PopulateTouchpadDevices(std::move(udev_), GetBasePath());
   EXPECT_TRUE(result.has_value());
@@ -132,30 +132,27 @@ TEST_F(TouchpadFetcherTest, NoDeviceInSyspathReturnsEmptyDeviceVector) {
 
 TEST_F(TouchpadFetcherTest, UsbDeviceReturnsEmptyDeviceVector) {
   const char* fake_sys_path = "/path/to/device";
-  EXPECT_CALL(*udev_list_entry_, GetName())
-      .WillOnce(testing::Return(fake_sys_path));
+  EXPECT_CALL(*udev_list_entry_, GetName()).WillOnce(Return(fake_sys_path));
 
   EXPECT_CALL(*udev_enumerate_, GetListEntry())
-      .WillOnce(testing::Return(std::move(udev_list_entry_)));
+      .WillOnce(Return(std::move(udev_list_entry_)));
 
-  EXPECT_CALL(*udev_enumerate_,
-              AddMatchSubsystem(testing::StrEq(kSubsystemInput)))
-      .WillOnce(testing::Return(true));
+  EXPECT_CALL(*udev_enumerate_, AddMatchSubsystem(StrEq(kSubsystemInput)))
+      .WillOnce(Return(true));
 
-  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(testing::Return(true));
+  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(Return(true));
 
   EXPECT_CALL(*udev_, CreateEnumerate())
-      .WillOnce(testing::Return(std::move(udev_enumerate_)));
+      .WillOnce(Return(std::move(udev_enumerate_)));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdInputTouchpad))
-      .WillOnce(testing::Return("1"));
+      .WillOnce(Return("1"));
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
-      .WillOnce(testing::Return(kUsbPropertyValue));
-  EXPECT_CALL(*dev_, GetSysName())
-      .WillOnce(testing::Return(kSysnamePropertyValue));
+      .WillOnce(Return(kUsbPropertyValue));
+  EXPECT_CALL(*dev_, GetSysName()).WillOnce(Return(kSysnamePropertyValue));
 
-  EXPECT_CALL(*udev_, CreateDeviceFromSysPath(testing::StrEq(fake_sys_path)))
-      .WillOnce(testing::Return(std::move(dev_)));
+  EXPECT_CALL(*udev_, CreateDeviceFromSysPath(StrEq(fake_sys_path)))
+      .WillOnce(Return(std::move(dev_)));
 
   auto result = PopulateTouchpadDevices(std::move(udev_), GetBasePath());
   EXPECT_TRUE(result.has_value());
@@ -165,29 +162,27 @@ TEST_F(TouchpadFetcherTest, UsbDeviceReturnsEmptyDeviceVector) {
 TEST_F(TouchpadFetcherTest,
        InternalDeviceNonDeviceHandlerReturnsEmptyDeviceVector) {
   const char* fake_sys_path = "/path/to/device";
-  EXPECT_CALL(*udev_list_entry_, GetName())
-      .WillOnce(testing::Return(fake_sys_path));
+  EXPECT_CALL(*udev_list_entry_, GetName()).WillOnce(Return(fake_sys_path));
 
   EXPECT_CALL(*udev_enumerate_, GetListEntry())
-      .WillOnce(testing::Return(std::move(udev_list_entry_)));
+      .WillOnce(Return(std::move(udev_list_entry_)));
 
-  EXPECT_CALL(*udev_enumerate_,
-              AddMatchSubsystem(testing::StrEq(kSubsystemInput)))
-      .WillOnce(testing::Return(true));
+  EXPECT_CALL(*udev_enumerate_, AddMatchSubsystem(StrEq(kSubsystemInput)))
+      .WillOnce(Return(true));
 
-  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(testing::Return(true));
+  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(Return(true));
 
   EXPECT_CALL(*udev_, CreateEnumerate())
-      .WillOnce(testing::Return(std::move(udev_enumerate_)));
+      .WillOnce(Return(std::move(udev_enumerate_)));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdInputTouchpad))
-      .WillOnce(testing::Return("1"));
+      .WillOnce(Return("1"));
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
-      .WillOnce(testing::Return(kUsbPropertyValue));
-  EXPECT_CALL(*dev_, GetSysName()).WillOnce(testing::Return("input7"));
+      .WillOnce(Return(kUsbPropertyValue));
+  EXPECT_CALL(*dev_, GetSysName()).WillOnce(Return("input7"));
 
-  EXPECT_CALL(*udev_, CreateDeviceFromSysPath(testing::StrEq(fake_sys_path)))
-      .WillOnce(testing::Return(std::move(dev_)));
+  EXPECT_CALL(*udev_, CreateDeviceFromSysPath(StrEq(fake_sys_path)))
+      .WillOnce(Return(std::move(dev_)));
 
   auto result = PopulateTouchpadDevices(std::move(udev_), GetBasePath());
   EXPECT_TRUE(result.has_value());
@@ -196,35 +191,32 @@ TEST_F(TouchpadFetcherTest,
 
 TEST_F(TouchpadFetcherTest, NoMajorMinorNumbersReturnsError) {
   const char* fake_sys_path = "/path/to/device";
-  EXPECT_CALL(*udev_list_entry_, GetName())
-      .WillOnce(testing::Return(fake_sys_path));
+  EXPECT_CALL(*udev_list_entry_, GetName()).WillOnce(Return(fake_sys_path));
 
   EXPECT_CALL(*udev_enumerate_, GetListEntry())
-      .WillOnce(testing::Return(std::move(udev_list_entry_)));
+      .WillOnce(Return(std::move(udev_list_entry_)));
 
-  EXPECT_CALL(*udev_enumerate_,
-              AddMatchSubsystem(testing::StrEq(kSubsystemInput)))
-      .WillOnce(testing::Return(true));
+  EXPECT_CALL(*udev_enumerate_, AddMatchSubsystem(StrEq(kSubsystemInput)))
+      .WillOnce(Return(true));
 
-  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(testing::Return(true));
+  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(Return(true));
 
   EXPECT_CALL(*udev_, CreateEnumerate())
-      .WillOnce(testing::Return(std::move(udev_enumerate_)));
+      .WillOnce(Return(std::move(udev_enumerate_)));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdInputTouchpad))
-      .WillOnce(testing::Return("1"));
+      .WillOnce(Return("1"));
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
-      .WillOnce(testing::Return(""));
-  EXPECT_CALL(*dev_, GetSysName())
-      .WillOnce(testing::Return(kSysnamePropertyValue));
+      .WillOnce(Return(""));
+  EXPECT_CALL(*dev_, GetSysName()).WillOnce(Return(kSysnamePropertyValue));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyMajor))
-      .WillOnce(testing::Return(""));
+      .WillOnce(Return(""));
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyMinor))
-      .WillOnce(testing::Return(""));
+      .WillOnce(Return(""));
 
-  EXPECT_CALL(*udev_, CreateDeviceFromSysPath(testing::StrEq(fake_sys_path)))
-      .WillOnce(testing::Return(std::move(dev_)));
+  EXPECT_CALL(*udev_, CreateDeviceFromSysPath(StrEq(fake_sys_path)))
+      .WillOnce(Return(std::move(dev_)));
 
   auto result = PopulateTouchpadDevices(std::move(udev_), GetBasePath());
   EXPECT_FALSE(result.has_value());
@@ -233,35 +225,32 @@ TEST_F(TouchpadFetcherTest, NoMajorMinorNumbersReturnsError) {
 
 TEST_F(TouchpadFetcherTest, NoDriverSymlinkReturnsError) {
   const char* fake_sys_path = "/path/to/device";
-  EXPECT_CALL(*udev_list_entry_, GetName())
-      .WillOnce(testing::Return(fake_sys_path));
+  EXPECT_CALL(*udev_list_entry_, GetName()).WillOnce(Return(fake_sys_path));
 
   EXPECT_CALL(*udev_enumerate_, GetListEntry())
-      .WillOnce(testing::Return(std::move(udev_list_entry_)));
+      .WillOnce(Return(std::move(udev_list_entry_)));
 
-  EXPECT_CALL(*udev_enumerate_,
-              AddMatchSubsystem(testing::StrEq(kSubsystemInput)))
-      .WillOnce(testing::Return(true));
+  EXPECT_CALL(*udev_enumerate_, AddMatchSubsystem(StrEq(kSubsystemInput)))
+      .WillOnce(Return(true));
 
-  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(testing::Return(true));
+  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(Return(true));
 
   EXPECT_CALL(*udev_, CreateEnumerate())
-      .WillOnce(testing::Return(std::move(udev_enumerate_)));
+      .WillOnce(Return(std::move(udev_enumerate_)));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdInputTouchpad))
-      .WillOnce(testing::Return("1"));
+      .WillOnce(Return("1"));
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
-      .WillOnce(testing::Return(""));
-  EXPECT_CALL(*dev_, GetSysName())
-      .WillOnce(testing::Return(kSysnamePropertyValue));
+      .WillOnce(Return(""));
+  EXPECT_CALL(*dev_, GetSysName()).WillOnce(Return(kSysnamePropertyValue));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyMajor))
-      .WillOnce(testing::Return(kFakeMajorValue));
+      .WillOnce(Return(kFakeMajorValue));
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyMinor))
-      .WillOnce(testing::Return(kFakeMinorValue));
+      .WillOnce(Return(kFakeMinorValue));
 
-  EXPECT_CALL(*udev_, CreateDeviceFromSysPath(testing::StrEq(fake_sys_path)))
-      .WillOnce(testing::Return(std::move(dev_)));
+  EXPECT_CALL(*udev_, CreateDeviceFromSysPath(StrEq(fake_sys_path)))
+      .WillOnce(Return(std::move(dev_)));
 
   auto result = PopulateTouchpadDevices(std::move(udev_), GetBasePath());
   EXPECT_FALSE(result.has_value());
@@ -273,38 +262,35 @@ TEST_F(TouchpadFetcherTest, NonPsmouseDriverReturnsDevice) {
 
   CreateDriverSymlink(base::FilePath{kFakeDriverTarget});
 
-  EXPECT_CALL(*udev_list_entry_, GetName())
-      .WillOnce(testing::Return(fake_sys_path));
+  EXPECT_CALL(*udev_list_entry_, GetName()).WillOnce(Return(fake_sys_path));
 
   EXPECT_CALL(*udev_enumerate_, GetListEntry())
-      .WillOnce(testing::Return(std::move(udev_list_entry_)));
+      .WillOnce(Return(std::move(udev_list_entry_)));
 
-  EXPECT_CALL(*udev_enumerate_,
-              AddMatchSubsystem(testing::StrEq(kSubsystemInput)))
-      .WillOnce(testing::Return(true));
+  EXPECT_CALL(*udev_enumerate_, AddMatchSubsystem(StrEq(kSubsystemInput)))
+      .WillOnce(Return(true));
 
-  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(testing::Return(true));
+  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(Return(true));
 
   EXPECT_CALL(*udev_, CreateEnumerate())
-      .WillOnce(testing::Return(std::move(udev_enumerate_)));
+      .WillOnce(Return(std::move(udev_enumerate_)));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdInputTouchpad))
-      .WillOnce(testing::Return("1"));
+      .WillOnce(Return("1"));
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
-      .WillOnce(testing::Return(""));
-  EXPECT_CALL(*dev_, GetSysName())
-      .WillOnce(testing::Return(kSysnamePropertyValue));
+      .WillOnce(Return(""));
+  EXPECT_CALL(*dev_, GetSysName()).WillOnce(Return(kSysnamePropertyValue));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyMajor))
-      .WillOnce(testing::Return(kFakeMajorValue));
+      .WillOnce(Return(kFakeMajorValue));
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyMinor))
-      .WillOnce(testing::Return(kFakeMinorValue));
+      .WillOnce(Return(kFakeMinorValue));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyDevname))
-      .WillOnce(testing::Return(kDevnamePropertyValue));
+      .WillOnce(Return(kDevnamePropertyValue));
 
-  EXPECT_CALL(*udev_, CreateDeviceFromSysPath(testing::StrEq(fake_sys_path)))
-      .WillOnce(testing::Return(std::move(dev_)));
+  EXPECT_CALL(*udev_, CreateDeviceFromSysPath(StrEq(fake_sys_path)))
+      .WillOnce(Return(std::move(dev_)));
 
   auto result = PopulateTouchpadDevices(std::move(udev_), GetBasePath());
 
@@ -323,41 +309,38 @@ TEST_F(TouchpadFetcherTest, PsmouseDriverNoProtocolReturnsDevice) {
 
   CreateDriverSymlink(base::FilePath{kFakePsmouseDriverTarget});
 
-  EXPECT_CALL(*udev_list_entry_, GetName())
-      .WillOnce(testing::Return(fake_sys_path));
+  EXPECT_CALL(*udev_list_entry_, GetName()).WillOnce(Return(fake_sys_path));
 
   EXPECT_CALL(*udev_enumerate_, GetListEntry())
-      .WillOnce(testing::Return(std::move(udev_list_entry_)));
+      .WillOnce(Return(std::move(udev_list_entry_)));
 
-  EXPECT_CALL(*udev_enumerate_,
-              AddMatchSubsystem(testing::StrEq(kSubsystemInput)))
-      .WillOnce(testing::Return(true));
+  EXPECT_CALL(*udev_enumerate_, AddMatchSubsystem(StrEq(kSubsystemInput)))
+      .WillOnce(Return(true));
 
-  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(testing::Return(true));
+  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(Return(true));
 
   EXPECT_CALL(*udev_, CreateEnumerate())
-      .WillOnce(testing::Return(std::move(udev_enumerate_)));
+      .WillOnce(Return(std::move(udev_enumerate_)));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdInputTouchpad))
-      .WillOnce(testing::Return("1"));
+      .WillOnce(Return("1"));
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
-      .WillOnce(testing::Return(""));
-  EXPECT_CALL(*dev_, GetSysName())
-      .WillOnce(testing::Return(kSysnamePropertyValue));
+      .WillOnce(Return(""));
+  EXPECT_CALL(*dev_, GetSysName()).WillOnce(Return(kSysnamePropertyValue));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyMajor))
-      .WillOnce(testing::Return(kFakeMajorValue));
+      .WillOnce(Return(kFakeMajorValue));
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyMinor))
-      .WillOnce(testing::Return(kFakeMinorValue));
+      .WillOnce(Return(kFakeMinorValue));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyDevname))
-      .WillOnce(testing::Return(kDevnamePropertyValue));
+      .WillOnce(Return(kDevnamePropertyValue));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyDevpath))
-      .WillOnce(testing::Return(kDevpathPropertyValue));
+      .WillOnce(Return(kDevpathPropertyValue));
 
-  EXPECT_CALL(*udev_, CreateDeviceFromSysPath(testing::StrEq(fake_sys_path)))
-      .WillOnce(testing::Return(std::move(dev_)));
+  EXPECT_CALL(*udev_, CreateDeviceFromSysPath(StrEq(fake_sys_path)))
+      .WillOnce(Return(std::move(dev_)));
 
   auto result = PopulateTouchpadDevices(std::move(udev_), GetBasePath());
 
@@ -377,41 +360,38 @@ TEST_F(TouchpadFetcherTest, PsmouseDriverWithProtocolReturnsDevice) {
 
   CreateDriverSymlink(base::FilePath{kFakePsmouseDriverTarget});
 
-  EXPECT_CALL(*udev_list_entry_, GetName())
-      .WillOnce(testing::Return(fake_sys_path));
+  EXPECT_CALL(*udev_list_entry_, GetName()).WillOnce(Return(fake_sys_path));
 
   EXPECT_CALL(*udev_enumerate_, GetListEntry())
-      .WillOnce(testing::Return(std::move(udev_list_entry_)));
+      .WillOnce(Return(std::move(udev_list_entry_)));
 
-  EXPECT_CALL(*udev_enumerate_,
-              AddMatchSubsystem(testing::StrEq(kSubsystemInput)))
-      .WillOnce(testing::Return(true));
+  EXPECT_CALL(*udev_enumerate_, AddMatchSubsystem(StrEq(kSubsystemInput)))
+      .WillOnce(Return(true));
 
-  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(testing::Return(true));
+  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(Return(true));
 
   EXPECT_CALL(*udev_, CreateEnumerate())
-      .WillOnce(testing::Return(std::move(udev_enumerate_)));
+      .WillOnce(Return(std::move(udev_enumerate_)));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdInputTouchpad))
-      .WillOnce(testing::Return("1"));
+      .WillOnce(Return("1"));
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
-      .WillOnce(testing::Return(""));
-  EXPECT_CALL(*dev_, GetSysName())
-      .WillOnce(testing::Return(kSysnamePropertyValue));
+      .WillOnce(Return(""));
+  EXPECT_CALL(*dev_, GetSysName()).WillOnce(Return(kSysnamePropertyValue));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyMajor))
-      .WillOnce(testing::Return(kFakeMajorValue));
+      .WillOnce(Return(kFakeMajorValue));
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyMinor))
-      .WillOnce(testing::Return(kFakeMinorValue));
+      .WillOnce(Return(kFakeMinorValue));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyDevname))
-      .WillOnce(testing::Return(kDevnamePropertyValue));
+      .WillOnce(Return(kDevnamePropertyValue));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyDevpath))
-      .WillOnce(testing::Return(kDevpathPropertyValue));
+      .WillOnce(Return(kDevpathPropertyValue));
 
-  EXPECT_CALL(*udev_, CreateDeviceFromSysPath(testing::StrEq(fake_sys_path)))
-      .WillOnce(testing::Return(std::move(dev_)));
+  EXPECT_CALL(*udev_, CreateDeviceFromSysPath(StrEq(fake_sys_path)))
+      .WillOnce(Return(std::move(dev_)));
 
   auto result = PopulateTouchpadDevices(std::move(udev_), GetBasePath());
 
@@ -427,20 +407,18 @@ TEST_F(TouchpadFetcherTest, PsmouseDriverWithProtocolReturnsDevice) {
 
 TEST_F(TouchpadFetcherTest, EmptyEntryNameReturnsEmptyDeviceVector) {
   const char* get_name_return = "";
-  EXPECT_CALL(*udev_list_entry_, GetName())
-      .WillOnce(testing::Return(get_name_return));
+  EXPECT_CALL(*udev_list_entry_, GetName()).WillOnce(Return(get_name_return));
 
   EXPECT_CALL(*udev_enumerate_, GetListEntry())
-      .WillOnce(testing::Return(std::move(udev_list_entry_)));
+      .WillOnce(Return(std::move(udev_list_entry_)));
 
-  EXPECT_CALL(*udev_enumerate_,
-              AddMatchSubsystem(testing::StrEq(kSubsystemInput)))
-      .WillOnce(testing::Return(true));
+  EXPECT_CALL(*udev_enumerate_, AddMatchSubsystem(StrEq(kSubsystemInput)))
+      .WillOnce(Return(true));
 
-  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(testing::Return(true));
+  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(Return(true));
 
   EXPECT_CALL(*udev_, CreateEnumerate())
-      .WillOnce(testing::Return(std::move(udev_enumerate_)));
+      .WillOnce(Return(std::move(udev_enumerate_)));
 
   auto result = PopulateTouchpadDevices(std::move(udev_), GetBasePath());
   EXPECT_TRUE(result.has_value());

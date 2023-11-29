@@ -213,7 +213,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunGatewayCanBePingedRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  EXPECT_CALL(network_diagnostics_routines, RunGatewayCanBePinged(testing::_))
+  EXPECT_CALL(network_diagnostics_routines, RunGatewayCanBePinged(_))
       .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                         RunGatewayCanBePingedCallback callback) {
         auto result =
@@ -239,8 +239,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHasSecureWiFiConnectionRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  EXPECT_CALL(network_diagnostics_routines,
-              RunHasSecureWiFiConnection(testing::_))
+  EXPECT_CALL(network_diagnostics_routines, RunHasSecureWiFiConnection(_))
       .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                         RunHasSecureWiFiConnectionCallback callback) {
         auto result =
@@ -267,7 +266,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsResolverPresentRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  EXPECT_CALL(network_diagnostics_routines, RunDnsResolverPresent(testing::_))
+  EXPECT_CALL(network_diagnostics_routines, RunDnsResolverPresent(_))
       .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                         RunDnsResolverPresentCallback callback) {
         auto result =
@@ -293,7 +292,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsLatencyRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  EXPECT_CALL(network_diagnostics_routines, RunDnsLatency(testing::_))
+  EXPECT_CALL(network_diagnostics_routines, RunDnsLatency(_))
       .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                         RunDnsLatencyCallback callback) {
         auto result = CreateResult(
@@ -318,7 +317,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsResolutionRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  EXPECT_CALL(network_diagnostics_routines, RunDnsResolution(testing::_))
+  EXPECT_CALL(network_diagnostics_routines, RunDnsResolution(_))
       .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                         RunDnsResolutionCallback callback) {
         auto result = CreateResult(
@@ -343,7 +342,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunCaptivePortalRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  EXPECT_CALL(network_diagnostics_routines, RunCaptivePortal(testing::_))
+  EXPECT_CALL(network_diagnostics_routines, RunCaptivePortal(_))
       .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                         RunCaptivePortalCallback callback) {
         auto result = CreateResult(
@@ -368,7 +367,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpFirewallRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  EXPECT_CALL(network_diagnostics_routines, RunHttpFirewall(testing::_))
+  EXPECT_CALL(network_diagnostics_routines, RunHttpFirewall(_))
       .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                         RunHttpFirewallCallback callback) {
         auto result = CreateResult(
@@ -393,7 +392,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpsFirewallRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  EXPECT_CALL(network_diagnostics_routines, RunHttpsFirewall(testing::_))
+  EXPECT_CALL(network_diagnostics_routines, RunHttpsFirewall(_))
       .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                         RunHttpsFirewallCallback callback) {
         auto result = CreateResult(
@@ -418,7 +417,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpsLatencyRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  EXPECT_CALL(network_diagnostics_routines, RunHttpsLatency(testing::_))
+  EXPECT_CALL(network_diagnostics_routines, RunHttpsLatency(_))
       .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                         RunHttpsLatencyCallback callback) {
         auto result = CreateResult(
@@ -471,7 +470,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcHttpRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  EXPECT_CALL(network_diagnostics_routines, RunArcHttp(testing::_))
+  EXPECT_CALL(network_diagnostics_routines, RunArcHttp(_))
       .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                         RunArcHttpCallback callback) {
         auto result = CreateResult(
@@ -495,7 +494,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcPingRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  EXPECT_CALL(network_diagnostics_routines, RunArcPing(testing::_))
+  EXPECT_CALL(network_diagnostics_routines, RunArcPing(_))
       .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                         RunArcPingCallback callback) {
         auto result = CreateResult(
@@ -519,7 +518,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcDnsResolutionRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  EXPECT_CALL(network_diagnostics_routines, RunArcDnsResolution(testing::_))
+  EXPECT_CALL(network_diagnostics_routines, RunArcDnsResolution(_))
       .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                         RunArcDnsResolutionCallback callback) {
         auto result =

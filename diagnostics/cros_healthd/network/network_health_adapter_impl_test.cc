@@ -23,6 +23,8 @@
 namespace diagnostics {
 namespace {
 
+using ::testing::_;
+
 namespace network_health_ipc = chromeos::network_health::mojom;
 
 const char kFakeGuid[] = "fake_guid";
@@ -158,7 +160,7 @@ TEST_F(NetworkHealthAdapterImplTest, AddNetworkEventsObserver) {
   network_health_adapter()->SetServiceRemote(service.pending_remote());
 
   base::RunLoop run_loop;
-  EXPECT_CALL(service, AddObserver(testing::_))
+  EXPECT_CALL(service, AddObserver(_))
       .WillOnce(
           [&](mojo::PendingRemote<network_health_ipc::NetworkEventsObserver>
                   pending_remote) { run_loop.Quit(); });
@@ -204,7 +206,7 @@ TEST_F(NetworkHealthAdapterImplTest, ReceiveSignalStrengthChangeEvent) {
   base::RunLoop run_loop;
   MockNetworkEventsObserver observer;
   uint32_t network_signal_strength = 50;
-  EXPECT_CALL(observer, OnSignalStrengthChanged(kFakeGuid, testing::_))
+  EXPECT_CALL(observer, OnSignalStrengthChanged(kFakeGuid, _))
       .WillOnce([&](const std::string& guid,
                     network_health_ipc::UInt32ValuePtr signal_strength) {
         EXPECT_EQ(signal_strength->value, network_signal_strength);
