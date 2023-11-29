@@ -632,6 +632,11 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     builder->AddFeatureEnableOverride("WebUITabStripTabDragIntegration");
   }
 
+  // Command line switch fro key eviction.
+  if (builder->UseFlagIsSet("key_eviction")) {
+    builder->AddArg("--restore-key-on-lock-screen");
+  }
+
   // TODO(b/180138001): Remove the following flag when a proper fix for
   // the freeze issue is found.
   if (builder->UseFlagIsSet("set_hw_overlay_strategy_none"))
