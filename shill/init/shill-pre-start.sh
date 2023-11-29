@@ -41,3 +41,7 @@ echo 8192 > /proc/sys/net/ipv4/neigh/default/gc_thresh3
 echo 1024 > /proc/sys/net/ipv6/neigh/default/gc_thresh1
 echo 4096 > /proc/sys/net/ipv6/neigh/default/gc_thresh2
 echo 8192 > /proc/sys/net/ipv6/neigh/default/gc_thresh3
+
+# Increase the maximum size that processes can request with setsockopt
+# SOL_SOCKET SO_RCVBUF for controlling the size of socket receive buffers.
+echo 524288 > /proc/sys/net/core/rmem_max
