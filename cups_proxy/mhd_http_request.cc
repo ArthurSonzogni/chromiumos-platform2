@@ -14,15 +14,15 @@ namespace cups_proxy {
 
 MHDHttpRequest::MHDHttpRequest() : chunked_(false) {}
 
-void MHDHttpRequest::SetStatusLine(base::StringPiece method,
-                                   base::StringPiece url,
-                                   base::StringPiece version) {
+void MHDHttpRequest::SetStatusLine(std::string_view method,
+                                   std::string_view url,
+                                   std::string_view version) {
   method_ = std::string(method);
   url_ = std::string(url);
   version_ = std::string(version);
 }
 
-void MHDHttpRequest::AddHeader(base::StringPiece key, base::StringPiece value) {
+void MHDHttpRequest::AddHeader(std::string_view key, std::string_view value) {
   // strip 100-continue message from ipp request
   if (key == "Expect" && value == "100-continue") {
     return;
@@ -43,7 +43,7 @@ void MHDHttpRequest::Finalize() {
   }
 }
 
-void MHDHttpRequest::PushToBody(base::StringPiece data) {
+void MHDHttpRequest::PushToBody(std::string_view data) {
   body_.insert(body_.end(), data.begin(), data.end());
 }
 

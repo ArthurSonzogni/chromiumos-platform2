@@ -15,7 +15,7 @@ namespace vm_tools {
 namespace garcon {
 
 // Extracts name from "[Name]" formatted string, empty string returned if error.
-base::StringPiece ParseGroupName(base::StringPiece group_line);
+std::string_view ParseGroupName(std::string_view group_line);
 
 // Converts a boolean string value to primitive.
 bool ParseBool(const std::string& s);
@@ -29,7 +29,7 @@ std::string ExtractKeyLocale(const std::string& key);
 // around the '=' is removed. If there is no delimiter, then the second item in
 // the pair will be empty.
 std::pair<std::string, std::string> ExtractKeyValuePair(
-    base::StringPiece entry_line);
+    std::string_view entry_line);
 
 // Converts all escaped chars in this string to their proper equivalent.
 std::string UnescapeString(const std::string& s);

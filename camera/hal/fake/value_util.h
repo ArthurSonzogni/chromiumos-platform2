@@ -72,14 +72,14 @@ using is_supported_type = is_one_of<T,
 template <typename T,
           typename = typename std::enable_if_t<is_supported_type<T>::value>>
 std::optional<T> GetRequiredValue(const DictWithPath& dict,
-                                  base::StringPiece key);
+                                  std::string_view key);
 
 // Gets a value corresponds to a key from a dict. Return nullopt if the key
 // doesn't exist or it's not of correct type, but only print error if the key
 // exists but is not of the correct type.
 template <typename T,
           typename = typename std::enable_if_t<is_supported_type<T>::value>>
-std::optional<T> GetValue(const DictWithPath& dict, base::StringPiece key);
+std::optional<T> GetValue(const DictWithPath& dict, std::string_view key);
 
 }  // namespace cros
 

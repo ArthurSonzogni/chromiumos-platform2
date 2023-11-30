@@ -62,7 +62,7 @@ bool LoopCheck(int fd, const std::vector<char>& src) {
   auto sz = src.size();
   if (fd < 0 || !sz)
     return false;
-  if (!base::WriteFileDescriptor(fd, base::StringPiece(src.data(), sz)))
+  if (!base::WriteFileDescriptor(fd, std::string_view(src.data(), sz)))
     return false;
   std::vector<char> output(sz);
   if (!base::ReadFromFD(fd, output.data(), sz))

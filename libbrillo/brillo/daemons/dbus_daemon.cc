@@ -42,7 +42,7 @@ DBusServiceDaemon::DBusServiceDaemon(
     : service_name_(service_name), object_manager_path_(object_manager_path) {}
 
 DBusServiceDaemon::DBusServiceDaemon(const std::string& service_name,
-                                     base::StringPiece object_manager_path)
+                                     std::string_view object_manager_path)
     : DBusServiceDaemon(service_name,
                         dbus::ObjectPath(std::string(object_manager_path))) {}
 

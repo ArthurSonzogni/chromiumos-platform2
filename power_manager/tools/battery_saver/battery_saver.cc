@@ -41,7 +41,7 @@ using org::chromium::PowerManagerProxy;
 using org::chromium::PowerManagerProxyInterface;
 
 // CLI documentation.
-constexpr base::StringPiece kUsage = R"(Usage: battery_saver <command>
+constexpr std::string_view kUsage = R"(Usage: battery_saver <command>
 
 A tool for inspecting and updating the state of ChromeOS Battery Saver
 Mode (BSM).

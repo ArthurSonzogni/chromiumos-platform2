@@ -15,7 +15,7 @@ namespace cros_disks {
 
 namespace {
 bool FindLastElementStartingWith(const std::vector<std::string>& container,
-                                 base::StringPiece prefix,
+                                 std::string_view prefix,
                                  std::string* result) {
   for (const auto& element : base::Reversed(container)) {
     if (base::StartsWith(element, prefix, base::CompareCase::SENSITIVE)) {
@@ -38,7 +38,7 @@ bool IsReadOnlyMount(const std::vector<std::string>& options) {
 }
 
 bool GetParamValue(const std::vector<std::string>& params,
-                   base::StringPiece name,
+                   std::string_view name,
                    std::string* value) {
   if (!FindLastElementStartingWith(params, base::StrCat({name, "="}), value)) {
     return false;
@@ -48,23 +48,23 @@ bool GetParamValue(const std::vector<std::string>& params,
 }
 
 void SetParamValue(std::vector<std::string>* params,
-                   base::StringPiece name,
-                   base::StringPiece value) {
+                   std::string_view name,
+                   std::string_view value) {
   params->emplace_back(base::StrCat({name, "=", value}));
 }
 
 bool HasExactParam(const std::vector<std::string>& params,
-                   base::StringPiece param) {
+                   std::string_view param) {
   return base::Contains(params, param);
 }
 
 size_t RemoveParamsEqualTo(std::vector<std::string>* params,
-                           base::StringPiece param) {
+                           std::string_view param) {
   return std::erase(*params, param);
 }
 
 size_t RemoveParamsWithSameName(std::vector<std::string>* params,
-                                base::StringPiece name) {
+                                std::string_view name) {
   std::string prefix = base::StrCat({name, "="});
   return std::erase_if(*params, [prefix](const std::string& value) {
     return base::StartsWith(value, prefix, base::CompareCase::SENSITIVE);

@@ -77,9 +77,9 @@ std::vector<std::string> RouteTool::GetRoutes(
   // Multiple routing policy rules can reference the same table.
   base::flat_set<int> table_ids;
   for (const auto& line : full_result) {
-    base::StringPiece trimmed_line =
+    std::string_view trimmed_line =
         base::TrimWhitespaceASCII(line, base::TRIM_ALL);
-    base::StringPiece prefix = "lookup ";
+    std::string_view prefix = "lookup ";
     size_t offset = trimmed_line.rfind(prefix);
     if (offset != std::string::npos) {
       int table_id;

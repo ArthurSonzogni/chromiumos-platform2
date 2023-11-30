@@ -52,7 +52,7 @@ void RemoveFile(const base::FilePath& file_path) {
 // Basic helper function to test whether the contents of the
 // specified file exactly match the given contents string.
 void ValidateEventFileContents(const base::FilePath& file_path,
-                               const base::StringPiece expected_content) {
+                               const std::string_view expected_content) {
   EXPECT_TRUE(base::PathIsWritable(file_path))
       << "ValidateEventFileContents access(): " << file_path
       << " is not writable: " << strerror(errno) << ".";

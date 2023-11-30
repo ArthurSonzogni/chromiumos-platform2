@@ -3151,7 +3151,7 @@ std::unique_ptr<dbus::Response> Service::GetDebugInformation(
       LOG(ERROR) << "Failed to get tremplin debug information: "
                  << vm_debug_information;
     } else {
-      std::vector<base::StringPiece> vm_info_lines = base::SplitStringPiece(
+      std::vector<std::string_view> vm_info_lines = base::SplitStringPiece(
           vm_debug_information, "\n", base::KEEP_WHITESPACE,
           base::SPLIT_WANT_NONEMPTY);
       for (const auto& line : vm_info_lines) {
@@ -3175,7 +3175,7 @@ std::unique_ptr<dbus::Response> Service::GetDebugInformation(
         LOG(ERROR) << "Failed to get container debug information: "
                    << container_debug_information;
       } else {
-        std::vector<base::StringPiece> container_info_lines =
+        std::vector<std::string_view> container_info_lines =
             base::SplitStringPiece(container_debug_information, "\n",
                                    base::KEEP_WHITESPACE,
                                    base::SPLIT_WANT_NONEMPTY);

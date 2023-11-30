@@ -45,7 +45,7 @@ Config::Config(const base::FilePath& config_json,
 
 Config::~Config() = default;
 
-bool Config::GetString(base::StringPiece name, std::string* out) const {
+bool Config::GetString(std::string_view name, std::string* out) const {
   base::Value* config = FindConfig(name);
   if (config) {
     if (const std::string* val = config->GetIfString()) {
@@ -57,7 +57,7 @@ bool Config::GetString(base::StringPiece name, std::string* out) const {
   return env_->GetVar(name, out);
 }
 
-bool Config::GetInt(base::StringPiece name, int* out) const {
+bool Config::GetInt(std::string_view name, int* out) const {
   base::Value* config = FindConfig(name);
   if (config) {
     if (std::optional<int> val = config->GetIfInt()) {
@@ -70,7 +70,7 @@ bool Config::GetInt(base::StringPiece name, int* out) const {
   return env_->GetVar(name, &env_str) && base::StringToInt(env_str, out);
 }
 
-bool Config::GetBool(base::StringPiece name, bool* out) const {
+bool Config::GetBool(std::string_view name, bool* out) const {
   base::Value* config = FindConfig(name);
   if (config) {
     if (std::optional<bool> val = config->GetIfBool()) {
@@ -83,19 +83,19 @@ bool Config::GetBool(base::StringPiece name, bool* out) const {
   return env_->GetVar(name, &env_str) && StringToBool(env_str, out);
 }
 
-std::string Config::GetStringOrDie(base::StringPiece name) const {
+std::string Config::GetStringOrDie(std::string_view name) const {
   std::string ret;
   CHECK(GetString(name, &ret)) << name;
   return ret;
 }
 
-int Config::GetIntOrDie(base::StringPiece name) const {
+int Config::GetIntOrDie(std::string_view name) const {
   int ret;
   CHECK(GetInt(name, &ret)) << name;
   return ret;
 }
 
-bool Config::GetBoolOrDie(base::StringPiece name) const {
+bool Config::GetBoolOrDie(std::string_view name) const {
   bool ret;
   CHECK(GetBool(name, &ret)) << name;
   return ret;
@@ -133,7 +133,7 @@ bool Config::ParseJsonFile(const base::FilePath& config_json) {
   return true;
 }
 
-base::Value* Config::FindConfig(base::StringPiece name) const {
+base::Value* Config::FindConfig(std::string_view name) const {
   auto it = json_.find(name);
   if (it == json_.end())
     return nullptr;

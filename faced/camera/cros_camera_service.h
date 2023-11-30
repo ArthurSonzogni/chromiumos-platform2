@@ -19,7 +19,7 @@ class CrosCameraService final : public CameraService {
  public:
   // Creates an instance of CrosCameraService using a given permission token.
   static std::unique_ptr<CrosCameraService> Create(
-      base::StringPiece token_path_string = kDefaultCameraToken);
+      std::string_view token_path_string = kDefaultCameraToken);
 
   // Initializes the connection to camera HAL dispatcher and registers the
   // camera HAL client. Must be called before any other functions.
@@ -46,11 +46,11 @@ class CrosCameraService final : public CameraService {
   //
   // TODO(b/253130377): Stop using the test-only token, and organise
   // for `faced` to have a legitimate token.
-  static constexpr base::StringPiece kDefaultCameraToken =
+  static constexpr std::string_view kDefaultCameraToken =
       "/run/camera_tokens/testing/token";
 
  private:
-  explicit CrosCameraService(base::StringPiece token_path_string)
+  explicit CrosCameraService(std::string_view token_path_string)
       : token_path_string_(token_path_string) {}
 
   const std::string token_path_string_;

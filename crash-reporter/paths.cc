@@ -24,7 +24,7 @@ void SetPrefixForTesting(const base::FilePath& prefix) {
     g_test_prefix = new base::FilePath(prefix);
 }
 
-base::FilePath Get(base::StringPiece file_path) {
+base::FilePath Get(std::string_view file_path) {
   if (g_test_prefix) {
     if (base::StartsWith(file_path, "/"))
       file_path.remove_prefix(1);
@@ -33,7 +33,7 @@ base::FilePath Get(base::StringPiece file_path) {
   return base::FilePath(file_path);
 }
 
-base::FilePath GetAt(base::StringPiece directory, base::StringPiece base_name) {
+base::FilePath GetAt(std::string_view directory, std::string_view base_name) {
   return Get(directory).Append(base_name);
 }
 }  // namespace paths

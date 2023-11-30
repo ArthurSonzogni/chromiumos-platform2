@@ -29,10 +29,10 @@ namespace {
 constexpr char kSeccompFilterPath[] =
     "/usr/share/policy/capture-packets.policy";
 
-int perform_capture(base::StringPiece device,
-                    base::StringPiece output_file,
-                    base::StringPiece max_size,
-                    base::StringPiece status_pipe) {
+int perform_capture(std::string_view device,
+                    std::string_view output_file,
+                    std::string_view max_size,
+                    std::string_view status_pipe) {
   // Limit the capabilities of the process to required ones.
   const cap_value_t requiredCaps[] = {CAP_SYS_ADMIN, CAP_SETUID, CAP_SETGID,
                                       CAP_NET_RAW};
@@ -125,7 +125,7 @@ int perform_capture(base::StringPiece device,
 
   // Write "1" on the status pipe for signaling the parent process about the
   // success right before we start capturing the packets.
-  base::StringPiece message = "1";
+  std::string_view message = "1";
   if (!base::WriteFileDescriptor(status_scoped_fd.get(), message)) {
     fprintf(
         stderr,

@@ -26,7 +26,7 @@ namespace faced {
 namespace {
 
 // CLI documentation.
-constexpr base::StringPiece kUsage = R"(Usage: faced_cli <command> [options]
+constexpr std::string_view kUsage = R"(Usage: faced_cli <command> [options]
 
 Commands:
   connect             Set up a Mojo connection to Faced by bootstrapping over
@@ -49,7 +49,7 @@ Full details of options can be shown using "--help".
 )";
 
 // Parse a command string into the enum type `Command`.
-std::optional<Command> ParseCommand(base::StringPiece command) {
+std::optional<Command> ParseCommand(std::string_view command) {
   if (command == "connect") {
     return Command::kConnectToFaced;
   }

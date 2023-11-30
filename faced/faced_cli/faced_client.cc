@@ -92,7 +92,7 @@ absl::Status ConnectAndDisconnectFromFaced() {
   return absl::OkStatus();
 }
 
-absl::Status Enroll(base::StringPiece user) {
+absl::Status Enroll(std::string_view user) {
   FACE_ASSIGN_OR_RETURN(FacedConnection connection, ConnectToFaced());
 
   BlockingFuture<absl::Status> final_status;
@@ -103,7 +103,7 @@ absl::Status Enroll(base::StringPiece user) {
   return final_status.value();
 }
 
-absl::Status IsEnrolled(base::StringPiece user) {
+absl::Status IsEnrolled(std::string_view user) {
   FACE_ASSIGN_OR_RETURN(FacedConnection connection, ConnectToFaced());
 
   BlockingFuture<bool> is_enrolled;
@@ -120,7 +120,7 @@ absl::Status IsEnrolled(base::StringPiece user) {
   return absl::OkStatus();
 }
 
-absl::Status RemoveEnrollment(base::StringPiece user) {
+absl::Status RemoveEnrollment(std::string_view user) {
   FACE_ASSIGN_OR_RETURN(FacedConnection connection, ConnectToFaced());
 
   BlockingFuture<Result> remove_enrollment_result;
@@ -184,7 +184,7 @@ Enroller::Enroller(mojo::Remote<FaceAuthenticationService>& service,
       delegate_));
 }
 
-void Enroller::Run(base::StringPiece user) {
+void Enroller::Run(std::string_view user) {
   service_->CreateEnrollmentSession(
       EnrollmentSessionConfig::New(
           *SanitizeUserName(

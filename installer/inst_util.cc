@@ -65,7 +65,7 @@ base::FilePath MakeNandPartitionDevForMounting(PartitionNum partition) {
 
 // This is an array of device names that are allowed in end in a digit, and
 // which use the 'p' notation to denote partitions.
-constexpr std::array<base::StringPiece, 3> kNumberedDevices = {
+constexpr std::array<std::string_view, 3> kNumberedDevices = {
     "/dev/loop", "/dev/mmcblk", "/dev/nvme"};
 
 }  // namespace
@@ -212,7 +212,7 @@ base::FilePath GetBlockDevFromPartitionDev(
   while (i > 0 && isdigit(partition_dev[i - 1]))
     i--;
 
-  for (const base::StringPiece nd : kNumberedDevices) {
+  for (const std::string_view nd : kNumberedDevices) {
     // kNumberedDevices are of the form "/dev/mmcblk12p34"
     if (base::StartsWith(partition_dev, nd)) {
       if ((i == nd.size()) || (partition_dev[i - 1] != 'p')) {
@@ -231,7 +231,7 @@ base::FilePath GetBlockDevFromPartitionDev(
 
 PartitionNum GetPartitionFromPartitionDev(
     const base::FilePath& partition_dev_path) {
-  base::StringPiece partition_dev = partition_dev_path.value();
+  std::string_view partition_dev = partition_dev_path.value();
   if (base::EndsWith(partition_dev, "_0", base::CompareCase::SENSITIVE)) {
     partition_dev = partition_dev.substr(0, partition_dev.size() - 2);
   }
@@ -240,7 +240,7 @@ PartitionNum GetPartitionFromPartitionDev(
   while (i > 0 && isdigit(partition_dev[i - 1]))
     i--;
 
-  for (const base::StringPiece nd : kNumberedDevices) {
+  for (const std::string_view nd : kNumberedDevices) {
     // kNumberedDevices are of the form "/dev/mmcblk12p34"
     // If there is no ending p, there is no partition at the end (/dev/mmcblk12)
     if (base::StartsWith(partition_dev, nd) &&
@@ -249,7 +249,7 @@ PartitionNum GetPartitionFromPartitionDev(
     }
   }
 
-  base::StringPiece partition_str = partition_dev.substr(i, i + 1);
+  std::string_view partition_str = partition_dev.substr(i, i + 1);
 
   int result = 0;
   if (!base::StringToInt(partition_str, &result)) {
@@ -270,7 +270,7 @@ base::FilePath MakePartitionDev(const base::FilePath& block_dev_path,
     return MakeNandPartitionDevForMounting(partition);
   }
 
-  for (const base::StringPiece nd : kNumberedDevices) {
+  for (const std::string_view nd : kNumberedDevices) {
     if (base::StartsWith(block_dev, nd))
       return base::FilePath(block_dev + "p" + partition.ToString());
   }

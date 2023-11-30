@@ -22,7 +22,7 @@ using VariantDictionary = std::map<std::string, brillo::Any, std::less<>>;
 // conversion fails, the default value of type T is returned.
 template <typename T>
 T GetVariantValueOrDefault(const VariantDictionary& dictionary,
-                           base::StringPiece key) {
+                           std::string_view key) {
   VariantDictionary::const_iterator it = dictionary.find(key);
   if (it == dictionary.end()) {
     return T();

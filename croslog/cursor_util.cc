@@ -26,7 +26,7 @@ bool ParseCursor(const std::string& cursor_str, base::Time* output) {
 
   int64_t time_value;
   if (!base::HexStringToInt64(
-          base::StringPiece(cursor_str).substr(5, sizeof(int64_t) * 2),
+          std::string_view(cursor_str).substr(5, sizeof(int64_t) * 2),
           &time_value))
     return false;
 

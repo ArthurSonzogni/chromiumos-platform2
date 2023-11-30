@@ -225,7 +225,7 @@ TEST_F(SocketStreamTest, Read) {
 
   auto read_result = stream_->Read();
   EXPECT_EQ(0, read_result.error_code);
-  EXPECT_EQ(base::StringPiece(kData, sizeof(kData)), read_result.blob);
+  EXPECT_EQ(std::string_view(kData, sizeof(kData)), read_result.blob);
   EXPECT_EQ(1, read_result.fds.size());
 }
 
@@ -412,13 +412,13 @@ class PipeStreamTest : public testing::Test {
 TEST_F(PipeStreamTest, Read) {
   constexpr char kData[] = "abcdefghijklmnopqrstuvwxyz";
   ASSERT_TRUE(base::WriteFileDescriptor(
-      write_fd_.get(), base::StringPiece(kData, sizeof(kData))));
+      write_fd_.get(), std::string_view(kData, sizeof(kData))));
 
   auto read_result = LocalFile(std::move(read_fd_), false,
                                base::BindOnce([]() { ADD_FAILURE(); }), nullptr)
                          .Read();
   EXPECT_EQ(0, read_result.error_code);
-  EXPECT_EQ(base::StringPiece(kData, sizeof(kData)), read_result.blob);
+  EXPECT_EQ(std::string_view(kData, sizeof(kData)), read_result.blob);
   EXPECT_TRUE(read_result.fds.empty());
 }
 

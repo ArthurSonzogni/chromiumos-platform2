@@ -56,7 +56,7 @@ bool IsMatch(const std::string& file_name, const std::string& pattern) {
 
 // Parses contents of the attributes JSON file and verifies that last access
 // time of the package was at most 30 days ago.
-bool IsAccessTimeValid(const base::StringPiece& json_message) {
+bool IsAccessTimeValid(std::string_view json_message) {
   auto root = base::JSONReader::ReadAndReturnValueWithError(
       json_message, base::JSON_PARSE_RFC);
   if (!root.has_value()) {

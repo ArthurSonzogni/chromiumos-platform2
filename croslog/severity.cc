@@ -12,8 +12,7 @@
 namespace croslog {
 
 namespace {
-bool StartsWithCaseInsensitive(const base::StringPiece& s,
-                               const base::StringPiece& prefix) {
+bool StartsWithCaseInsensitive(std::string_view s, std::string_view prefix) {
   return (s.length() >= prefix.length()) &&
          (base::CompareCaseInsensitiveASCII(s.substr(0, prefix.length()),
                                             prefix) == 0);

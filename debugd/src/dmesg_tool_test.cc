@@ -15,7 +15,7 @@ namespace debugd {
 namespace {
 // A simple function to replace newlines with the actual two character sequence
 // \ and n. Makes error messages easier to read.
-std::string EscapeNewlines(base::StringPiece str) {
+std::string EscapeNewlines(std::string_view str) {
   std::string result;
   base::ReplaceChars(str, "\n", "\\n", &result);
   return result;

@@ -26,7 +26,7 @@ constexpr char kLsbReleaseVersionKey[] = "CHROMEOS_RELEASE_VERSION";
 // target version as "<major>.0.0".
 std::optional<base::Version> ConvertPolicyToMajorVersion(
     std::string target_version_policy) {
-  std::vector<base::StringPiece> version_numbers = base::SplitStringPiece(
+  std::vector<std::string_view> version_numbers = base::SplitStringPiece(
       target_version_policy, ".", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   if (version_numbers.empty()) {
     return std::nullopt;

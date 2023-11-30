@@ -70,8 +70,8 @@ bool RarMounter::Increment(const std::string::iterator begin,
   }
 }
 
-RarMounter::IndexRange RarMounter::ParseDigits(base::StringPiece path) {
-  const base::StringPiece extension = kExtension;
+RarMounter::IndexRange RarMounter::ParseDigits(std::string_view path) {
+  const std::string_view extension = kExtension;
 
   if (!base::EndsWith(path, extension, base::CompareCase::INSENSITIVE_ASCII))
     return {};
@@ -87,7 +87,7 @@ RarMounter::IndexRange RarMounter::ParseDigits(base::StringPiece path) {
 
 void RarMounter::AddPathsWithOldNamingScheme(
     std::vector<std::string>* const bind_paths,
-    const base::StringPiece original_path) const {
+    const std::string_view original_path) const {
   DCHECK(bind_paths);
 
   // Is the extension right?
@@ -119,7 +119,7 @@ void RarMounter::AddPathsWithOldNamingScheme(
 
 void RarMounter::AddPathsWithNewNamingScheme(
     std::vector<std::string>* const bind_paths,
-    const base::StringPiece original_path,
+    const std::string_view original_path,
     const IndexRange& digits) const {
   DCHECK(bind_paths);
   DCHECK_LT(digits.begin, digits.end);
@@ -143,7 +143,7 @@ void RarMounter::AddPathsWithNewNamingScheme(
 }
 
 std::vector<std::string> RarMounter::GetBindPaths(
-    const base::StringPiece original_path) const {
+    const std::string_view original_path) const {
   std::vector<std::string> bind_paths = {std::string(original_path)};
 
   // Delimit the digit range assuming original_path uses the new naming scheme.

@@ -21,7 +21,7 @@ namespace {
 int FileIndexFromName(const base::FilePath& file_path) {
   int index = 0;
   std::string s = file_path.FinalExtension();
-  base::StringPiece final_extension(s);
+  std::string_view final_extension(s);
   if (base::StartsWith(final_extension, ".")) {
     final_extension.remove_prefix(1);
     if (!base::StringToInt(final_extension, &index)) {

@@ -28,7 +28,7 @@ const std::string_view kRealm = "realm=";
 
 namespace system_proxy {
 
-bool IsEndingWithHttpEmptyLine(const base::StringPiece& http_header_line) {
+bool IsEndingWithHttpEmptyLine(std::string_view http_header_line) {
   for (const auto& header_end : kValidHttpHeaderEnd) {
     if (http_header_line.size() > header_end.size() &&
         std::memcmp(header_end.data(),
@@ -57,11 +57,10 @@ bool ExtractHTTPRequest(const std::vector<char>& input,
   return false;
 }
 
-std::string GetUriAuthorityFromHttpHeader(
-    const base::StringPiece& http_request) {
+std::string GetUriAuthorityFromHttpHeader(std::string_view http_request) {
   // Request-Line ends with CRLF (RFC2616, section 5.1).
   size_t i = http_request.find("\r\n");
-  if (i == base::StringPiece::npos)
+  if (i == std::string_view::npos)
     return std::string();
   // Elements are delimited by non-breaking space (SP).
   auto pieces =
@@ -76,7 +75,7 @@ std::string GetUriAuthorityFromHttpHeader(
   return pieces[1];
 }
 
-SchemeRealmPairList ParseAuthChallenge(const base::StringPiece& http_request) {
+SchemeRealmPairList ParseAuthChallenge(std::string_view http_request) {
   SchemeRealmPairList scheme_realm_pairs;
   std::string scheme;
   std::string realm;

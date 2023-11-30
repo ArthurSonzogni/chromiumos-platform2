@@ -726,7 +726,7 @@ struct CopyStdinToCoreFileTestParams {
 
 // Creates a string with the indicated number of characters. Does not have a
 // repeating pattern so that missed pieces can be detected.
-std::string StringOfSize(int size, base::StringPiece flavor_text) {
+std::string StringOfSize(int size, std::string_view flavor_text) {
   std::string result;
   // Reserve enough room that the last loop doesn't need a reallocation. The
   // worst case is that the previous loop got us to size - 1, so we append

@@ -28,7 +28,7 @@ constexpr char kDlcBasePath[] = "/run/imageloader";
 // Returns true if value could be extracted, false otherwise.
 bool GetValueFromProcStatusValueStr(const std::string& value_str,
                                     size_t* value) {
-  const std::vector<base::StringPiece> split_value_str = base::SplitStringPiece(
+  const std::vector<std::string_view> split_value_str = base::SplitStringPiece(
       value_str, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
   if (split_value_str.size() != 2 || split_value_str[1] != "kB")

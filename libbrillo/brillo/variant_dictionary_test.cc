@@ -31,6 +31,6 @@ TEST(VariantDictionary, LookupWithStringPiece) {
   dictionary.emplace("a", 1);
   dictionary.emplace("b", "string");
 
-  EXPECT_NE(dictionary.find(base::StringPiece("a")), dictionary.end());
-  EXPECT_NE(dictionary.find(base::StringPiece("b")), dictionary.end());
+  EXPECT_NE(dictionary.find(std::string_view("a")), dictionary.end());
+  EXPECT_NE(dictionary.find(std::string_view("b")), dictionary.end());
 }

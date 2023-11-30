@@ -94,7 +94,7 @@ bool SecurityAnomalyCollector::Collect(int32_t weight) {
       GetCrashPath(crash_directory, dump_basename, "meta");
   base::FilePath log_path = GetCrashPath(crash_directory, dump_basename, "log");
 
-  base::StringPiece file_content(content);
+  std::string_view file_content(content);
   if (WriteNewFile(log_path, file_content) !=
       static_cast<int>(file_content.length())) {
     PLOG(WARNING) << "Failed to write security anomaly to " << log_path.value();

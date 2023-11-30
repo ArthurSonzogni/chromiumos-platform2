@@ -122,7 +122,7 @@ bool DebugdDBusAdaptor::CroshStart(brillo::ErrorPtr* error,
                                    const base::ScopedFD& infd,
                                    const base::ScopedFD& outfd,
                                    std::string* handle) {
-    return crosh_tool_->Run(infd, outfd, handle, error);
+  return crosh_tool_->Run(infd, outfd, handle, error);
 }
 
 bool DebugdDBusAdaptor::PingStart(brillo::ErrorPtr* error,
@@ -548,7 +548,7 @@ void DebugdDBusAdaptor::StartVmPluginDispatcher(
 
   // Perform basic validation of the language string. We expect it to be
   // <language>[-<territory>].
-  std::vector<base::StringPiece> chunks = base::SplitStringPiece(
+  std::vector<std::string_view> chunks = base::SplitStringPiece(
       in_lang, "-", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if (chunks.size() < 1 || chunks.size() > 2 || chunks[0].empty()) {
     LOG(ERROR) << "malformed language argument (" << in_lang << ")";

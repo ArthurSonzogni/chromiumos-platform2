@@ -52,7 +52,7 @@ constexpr char kFoomaticCommand[] = "/usr/bin/foomatic-rip";
 constexpr char kLpadminUser[] = "lpadmin";
 constexpr char kLpadminGroup[] = "lpadmin";
 
-constexpr base::StringPiece kLpstatInterfaceLinePrefix("Interface: ");
+constexpr std::string_view kLpstatInterfaceLinePrefix("Interface: ");
 
 // Minimum size of a plausible PPD.  Determined by gzipping a minimal PPD
 // accepted by cupstestppd and rounding down.

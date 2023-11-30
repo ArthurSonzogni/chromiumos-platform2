@@ -20,7 +20,7 @@ namespace debugd {
 
 namespace {
 
-constexpr base::StringPiece kMinimalPPDContent(R"PPD(*PPD-Adobe: "4.3"
+constexpr std::string_view kMinimalPPDContent(R"PPD(*PPD-Adobe: "4.3"
 *FormatVersion: "4.3"
 *FileVersion: "1.0"
 *LanguageVersion: English
@@ -552,7 +552,7 @@ TEST(CupsToolTest, AutoPrinterNotAutoConf) {
 
 TEST(CupsToolTest, FoomaticPPD) {
   // Make the PPD look like it has a foomatic-rip filter.
-  constexpr base::StringPiece kFoomaticLine(
+  constexpr std::string_view kFoomaticLine(
       R"foo(*cupsFilter: "application/vnd.cups-pdf 0 foomatic-rip")foo");
   std::vector<uint8_t> foomatic_ppd(kMinimalPPDContent.begin(),
                                     kMinimalPPDContent.end());
@@ -572,7 +572,7 @@ TEST(CupsToolTest, FoomaticPPD) {
 
 TEST(CupsToolTest, FoomaticError) {
   // Make the PPD look like it has a foomatic-rip filter.
-  constexpr base::StringPiece kFoomaticLine(
+  constexpr std::string_view kFoomaticLine(
       R"foo(*cupsFilter: "application/vnd.cups-pdf 0 foomatic-rip")foo");
   std::vector<uint8_t> foomatic_ppd(kMinimalPPDContent.begin(),
                                     kMinimalPPDContent.end());

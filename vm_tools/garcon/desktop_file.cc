@@ -161,7 +161,7 @@ bool DesktopFile::LoadFromFile(const base::FilePath& file_path) {
   }
   file_path_ = file_path;
 
-  std::vector<base::StringPiece> desktop_lines = base::SplitStringPiece(
+  std::vector<std::string_view> desktop_lines = base::SplitStringPiece(
       desktop_contents, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   // Go through the file line by line, we are looking for the section marked:
@@ -179,7 +179,7 @@ bool DesktopFile::LoadFromFile(const base::FilePath& file_path) {
         break;
       }
       // Group name.
-      base::StringPiece group_name = ParseGroupName(curr_line);
+      std::string_view group_name = ParseGroupName(curr_line);
       if (group_name.empty()) {
         continue;
       }
@@ -480,7 +480,7 @@ bool DesktopFile::ShouldPassToHost() const {
         return false;
       }
       bool found_match = false;
-      for (const base::StringPiece& cur_path : base::SplitStringPiece(
+      for (std::string_view cur_path : base::SplitStringPiece(
                path, ":", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
         base::FilePath file(cur_path);
         int permissions;

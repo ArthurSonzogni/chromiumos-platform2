@@ -30,11 +30,10 @@ class EnrollmentStorage {
       : root_path_(root_path) {}
 
   // Writes an enrollment for a specified user.
-  absl::Status WriteEnrollment(base::StringPiece user_id,
-                               base::StringPiece data);
+  absl::Status WriteEnrollment(std::string_view user_id, std::string_view data);
 
   // Reads an enrollment for a specified user.
-  absl::StatusOr<std::string> ReadEnrollment(base::StringPiece user_id);
+  absl::StatusOr<std::string> ReadEnrollment(std::string_view user_id);
 
   // Returns a list of the EnrollmentMetadatas associated with the enrollments
   // that have currently been saved, sorted by username.
@@ -47,7 +46,7 @@ class EnrollmentStorage {
   // Delete the enrollment of a given user.
   //
   // If an enrollment doesn't exist, returns failure.
-  absl::Status RemoveEnrollment(base::StringPiece user_id);
+  absl::Status RemoveEnrollment(std::string_view user_id);
 
   // Delete all enrollments.
   //
@@ -57,11 +56,11 @@ class EnrollmentStorage {
   absl::Status ClearEnrollments();
 
   // Return true if the given user has been enrolled.
-  bool IsUserEnrolled(base::StringPiece user_id);
+  bool IsUserEnrolled(std::string_view user_id);
 
  private:
   // Returns the filepath to load and save an enrollment given a user_id.
-  base::FilePath GetEnrollmentFilePath(base::StringPiece user_id);
+  base::FilePath GetEnrollmentFilePath(std::string_view user_id);
 
   // Returns the filepath where faced user enrollments are saved.
   base::FilePath GetFacedFilePath();

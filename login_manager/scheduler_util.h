@@ -23,7 +23,7 @@ namespace login_manager {
 // Returns non-empty cpu id list on success. Returns an empty list on any error
 // or non-hybrid cpu arch.
 std::vector<std::string> GetSmallCoreCpuIdsFromAttr(
-    const base::FilePath& cpu_bus_dir, base::StringPiece attribute);
+    const base::FilePath& cpu_bus_dir, std::string_view attribute);
 
 // Detects whether or not the system is running on a hybrid cpu architecture by
 // reading various cpu attributes in sysfs. If any of the attributes differ

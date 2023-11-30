@@ -35,7 +35,7 @@ class MissedCrashCollectorMock : public MissedCrashCollector {
   MOCK_METHOD(void, SetUpDBus, (), (override));
 };
 
-void RunTestWithLogContents(base::StringPiece log_contents) {
+void RunTestWithLogContents(std::string_view log_contents) {
   base::ScopedTempDir tmp_dir;
   ASSERT_TRUE(tmp_dir.CreateUniqueTempDir());
 

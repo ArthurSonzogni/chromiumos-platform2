@@ -34,7 +34,7 @@ namespace {
 // Creates a pipe holding the given string and returns a file descriptor to the
 // read end of this pipe. If the given string is too big to fit into the pipe's
 // buffer, it is truncated.
-base::ScopedFD WrapStdIn(const base::StringPiece in) {
+base::ScopedFD WrapStdIn(const std::string_view in) {
   SubprocessPipe p(SubprocessPipe::kParentToChild);
 
   const int fd = p.parent_fd.get();
@@ -136,8 +136,8 @@ void Process::BuildArgumentsArray() {
   arguments_array_.push_back(nullptr);
 }
 
-void Process::AddEnvironmentVariable(const base::StringPiece name,
-                                     const base::StringPiece value) {
+void Process::AddEnvironmentVariable(const std::string_view name,
+                                     const std::string_view value) {
   DCHECK(environment_array_.empty());
   DCHECK(!name.empty());
   std::string s;
@@ -263,7 +263,7 @@ bool Process::IsFinished() {
   return true;
 }
 
-void Process::StoreOutputLine(const base::StringPiece line) {
+void Process::StoreOutputLine(const std::string_view line) {
   DCHECK(!line.empty());
   LOG(INFO) << program_name_ << ": " << line;
   captured_output_.emplace_back(line);
@@ -271,9 +271,9 @@ void Process::StoreOutputLine(const base::StringPiece line) {
     output_callback_.Run(line);
 }
 
-void Process::SplitOutputIntoLines(base::StringPiece data) {
+void Process::SplitOutputIntoLines(std::string_view data) {
   size_t i;
-  while ((i = data.find_first_of('\n')) != base::StringPiece::npos) {
+  while ((i = data.find_first_of('\n')) != std::string_view::npos) {
     remaining_.append(data.data(), i);
     data.remove_prefix(i + 1);
     StoreOutputLine(remaining_);
@@ -318,7 +318,7 @@ bool Process::CaptureOutput() {
     VLOG(2) << "Got " << n << " bytes from file descriptor " << fd;
     DCHECK_GT(n, 0);
     DCHECK_LE(n, PIPE_BUF);
-    SplitOutputIntoLines(base::StringPiece(buffer, n));
+    SplitOutputIntoLines(std::string_view(buffer, n));
   }
 }
 

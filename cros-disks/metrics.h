@@ -28,29 +28,29 @@ class Metrics {
   void RecordArchiveType(const base::FilePath& path);
 
   // Records the type of filesystem that cros-disks is trying to mount.
-  void RecordFilesystemType(base::StringPiece fs_type);
+  void RecordFilesystemType(std::string_view fs_type);
 
   // Records the error returned by the mount() system call when trying to mount
   // a file system.
-  void RecordMountError(base::StringPiece fs_type, error_t error);
+  void RecordMountError(std::string_view fs_type, error_t error);
 
   // Records the error returned by the umount() system call when trying to
   // unmount a file system.
-  void RecordUnmountError(base::StringPiece fs_type, error_t error);
+  void RecordUnmountError(std::string_view fs_type, error_t error);
 
   // Records the error returned by a FUSE daemon when it unexpectedly
   // terminates.
-  void RecordDaemonError(base::StringPiece program_name, int error);
+  void RecordDaemonError(std::string_view program_name, int error);
 
   // Records a filesystem type that cros-disks had to mount in read-only mode
   // because of an error when trying to mount it in read-write mode.
-  void RecordReadOnlyFileSystem(base::StringPiece fs_type);
+  void RecordReadOnlyFileSystem(std::string_view fs_type);
 
   // Records the type of device media that cros-disks is trying to mount.
   void RecordDeviceMediaType(DeviceType device_media_type);
 
   // Records the error code returned by a FUSE mounter program.
-  void RecordFuseMounterErrorCode(base::StringPiece mounter_name,
+  void RecordFuseMounterErrorCode(std::string_view mounter_name,
                                   int error_code);
 
  private:
@@ -99,11 +99,11 @@ class Metrics {
   };
 
   // Returns the ArchiveType for the specified path.
-  static ArchiveType GetArchiveType(base::StringPiece path);
+  static ArchiveType GetArchiveType(std::string_view path);
 
   // Returns the MetricsFilesystemType enum value for the specified filesystem
   // type string.
-  static FilesystemType GetFilesystemType(base::StringPiece fs_type);
+  static FilesystemType GetFilesystemType(std::string_view fs_type);
 
   MetricsLibrary metrics_library_;
 

@@ -283,7 +283,7 @@ void ViewerPlaintext::WriteLogInJsonFormat(const LogEntry& entry) {
   WriteOutput("}\n");
 }
 
-void ViewerPlaintext::WriteOutput(base::StringPiece str) {
+void ViewerPlaintext::WriteOutput(std::string_view str) {
   bool write_stdout_result = base::WriteFileDescriptor(STDOUT_FILENO, str);
   CHECK(write_stdout_result);
 }

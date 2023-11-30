@@ -400,7 +400,7 @@ class BiodProxy {
   }
 
   base::WeakPtr<BiometricsManagerProxy> GetBiometricsManager(
-      base::StringPiece path) {
+      std::string_view path) {
     bool short_path =
         !base::StartsWith(path, "/", base::CompareCase::SENSITIVE);
 

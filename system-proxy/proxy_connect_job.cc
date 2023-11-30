@@ -85,9 +85,9 @@ static size_t WriteHeadersCallback(char* contents,
 
   // Check if we are receiving a new HTTP message (after the last one was
   // terminated with an empty line).
-  if (IsEndingWithHttpEmptyLine(base::StringPiece(vec->data(), vec->size()))) {
+  if (IsEndingWithHttpEmptyLine(std::string_view(vec->data(), vec->size()))) {
     VLOG(1) << "Removing the http reply headers from the server "
-            << base::StringPiece(vec->data(), vec->size());
+            << std::string_view(vec->data(), vec->size());
     vec->clear();
   }
   vec->insert(vec->end(), contents, contents + (nmemb * size));
@@ -192,11 +192,10 @@ void ProxyConnectJob::OnClientReadReady() {
   }
   connect_data_ = payload_data;
   HandleClientHTTPRequest(
-      base::StringPiece(connect_request.data(), connect_request.size()));
+      std::string_view(connect_request.data(), connect_request.size()));
 }
 
-void ProxyConnectJob::HandleClientHTTPRequest(
-    const base::StringPiece& http_request) {
+void ProxyConnectJob::HandleClientHTTPRequest(std::string_view http_request) {
   if (!read_watcher_) {
     // The connection has timed out while waiting for the client's HTTP CONNECT
     // request. See |OnClientConnectTimeout|.
@@ -232,7 +231,7 @@ void ProxyConnectJob::OnProxyResolution(
 void ProxyConnectJob::AuthenticationRequired(
     const std::vector<char>& http_response_headers) {
   DCHECK(!proxy_servers_.empty());
-  SchemeRealmPairList scheme_realm_pairs = ParseAuthChallenge(base::StringPiece(
+  SchemeRealmPairList scheme_realm_pairs = ParseAuthChallenge(std::string_view(
       http_response_headers.data(), http_response_headers.size()));
   if (scheme_realm_pairs.empty()) {
     LOG(ERROR) << "Failed to parse authentication challenge";

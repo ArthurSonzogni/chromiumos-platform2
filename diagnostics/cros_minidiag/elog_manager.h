@@ -20,7 +20,7 @@ namespace cros_minidiag {
 // Where [idx], [data], [type] are required field and [data*] are optional.
 class ElogEvent {
  public:
-  explicit ElogEvent(const base::StringPiece& event_string);
+  explicit ElogEvent(std::string_view event_string);
   ~ElogEvent();
   // Retrieves the [type] of the event. The [type] is a mandatory field and
   // always the 3rd column in the event string.

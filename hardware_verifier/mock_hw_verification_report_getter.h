@@ -18,8 +18,8 @@ class MockHwVerificationReportGetter : public HwVerificationReportGetter {
  public:
   MOCK_METHOD(std::optional<HwVerificationReport>,
               Get,
-              (const base::StringPiece& probe_result_file,
-               const base::StringPiece& hw_verification_spec_file,
+              (std::string_view probe_result_file,
+               std::string_view hw_verification_spec_file,
                ErrorCode* error_code),
               (const, override));
 };

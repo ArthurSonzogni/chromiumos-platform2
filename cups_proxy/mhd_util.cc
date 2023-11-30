@@ -65,7 +65,7 @@ extern "C" MHD_RESULT AccessHandler(void* cls,
   }
 
   if (*upload_data_size != 0) {
-    request->PushToBody(base::StringPiece(upload_data, *upload_data_size));
+    request->PushToBody(std::string_view(upload_data, *upload_data_size));
     *upload_data_size = 0;
     return MHD_YES;
   }

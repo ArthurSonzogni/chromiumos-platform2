@@ -418,15 +418,15 @@ std::string ComputeNoCErrorSignature(const std::string& dump) {
 // of the last log line instead (minus the timestamp ended by ']').
 std::string WatchdogSignature(const std::string& console_ramoops,
                               const std::string& watchdogRebootReason) {
-  base::StringPiece line(console_ramoops);
+  std::string_view line(console_ramoops);
   constexpr char kTimestampEnd[] = "] ";
   size_t timestamp_end_pos = line.rfind(kTimestampEnd);
-  if (timestamp_end_pos != base::StringPiece::npos) {
+  if (timestamp_end_pos != std::string_view::npos) {
     line = line.substr(timestamp_end_pos + strlen(kTimestampEnd));
   }
   size_t newline_pos = line.find("\n");
-  size_t end = (newline_pos == base::StringPiece::npos
-                    ? base::StringPiece::npos
+  size_t end = (newline_pos == std::string_view::npos
+                    ? std::string_view::npos
                     : std::min(newline_pos, kMaxHumanStringLength));
   return StringPrintf(
       "%s%s-%s-%08X", kKernelExecName, watchdogRebootReason.c_str(),

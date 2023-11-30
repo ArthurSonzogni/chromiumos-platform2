@@ -158,7 +158,7 @@ void AppendOption(const std::string& fs_features,
 // Get the partition number for the given key,
 // e.g. "PARTITION_NUM_STATE". Fails with a `CHECK()` if any error occurs.
 int GetPartitionNumFromImageVars(const base::Value& image_vars,
-                                 base::StringPiece key) {
+                                 std::string_view key) {
   const base::Value::Dict& dict = image_vars.GetDict();
   const std::string* value = dict.FindString(key);
   CHECK_NE(value, nullptr);

@@ -19,7 +19,7 @@ std::pair<int, int> GetKernelVersion() {
 
   // Parse uname result in the form of x.yy.zzz. The parsed data should be in
   // the expected format.
-  std::vector<base::StringPiece> versions = base::SplitStringPiece(
+  std::vector<std::string_view> versions = base::SplitStringPiece(
       buf.release, ".", base::WhitespaceHandling::TRIM_WHITESPACE,
       base::SplitResult::SPLIT_WANT_ALL);
   DCHECK_EQ(versions.size(), 3);

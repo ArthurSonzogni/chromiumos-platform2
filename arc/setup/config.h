@@ -35,28 +35,28 @@ class Config {
   // Finds a string config with |name| first in JSON and stores it in |out| if
   // found. If the |name| is not in JSON, does the same search against the
   // environment variables. Returns true if found.
-  bool GetString(base::StringPiece name, std::string* out) const;
+  bool GetString(std::string_view name, std::string* out) const;
 
   // Finds an integer config with |name| in JSON and stores it in |out| if
   // found. If the |name| is not in JSON, does the same search against the
   // environment variables. Returns true if an integer entry in JSON or
   // an integer-compatible string in env (e.g. "123", "-123") is found.
-  bool GetInt(base::StringPiece name, int* out) const;
+  bool GetInt(std::string_view name, int* out) const;
 
   // Finds a boolean config with |name| in JSON and stores it in |out| if
   // found. If the |name| is not in JSON, does the same search against the
   // environment variables. Returns true if a boolean entry in JSON or
   // a boolean-compatible string in env (e.g. "1", "0", "false") is found.
-  bool GetBool(base::StringPiece name, bool* out) const;
+  bool GetBool(std::string_view name, bool* out) const;
 
   // These functions do the same as above, but aborts when |name| is not found.
-  std::string GetStringOrDie(base::StringPiece name) const;
-  int GetIntOrDie(base::StringPiece name) const;
-  bool GetBoolOrDie(base::StringPiece name) const;
+  std::string GetStringOrDie(std::string_view name) const;
+  int GetIntOrDie(std::string_view name) const;
+  bool GetBoolOrDie(std::string_view name) const;
 
  private:
   bool ParseJsonFile(const base::FilePath& config_json);
-  base::Value* FindConfig(base::StringPiece name) const;
+  base::Value* FindConfig(std::string_view name) const;
 
   std::map<std::string, std::unique_ptr<base::Value>, std::less<>> json_;
   std::unique_ptr<base::Environment> env_;

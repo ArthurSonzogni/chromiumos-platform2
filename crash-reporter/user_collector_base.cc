@@ -43,7 +43,7 @@ const char kUserCrashSignal[] = "org.chromium.CrashReporter.UserCrash";
 // parsing since long is 32-bit for ARM while long is 64-bit for x86_64 and
 // aarch64.
 // NOLINTNEXTLINE(runtime/int)
-bool StringToSyscallNumber(base::StringPiece input, long* output) {
+bool StringToSyscallNumber(std::string_view input, long* output) {
   static_assert(sizeof(long) <= sizeof(int64_t));  // NOLINT(runtime/int)
   int64_t parsed;
   if (!base::StringToInt64(input, &parsed)) {

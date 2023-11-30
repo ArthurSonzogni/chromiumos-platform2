@@ -20,7 +20,7 @@ class Uri {
   Uri() = default;
 
   // Creates a Uri with the given scheme and path.
-  Uri(base::StringPiece scheme, base::StringPiece path);
+  Uri(std::string_view scheme, std::string_view path);
 
   bool operator==(const Uri& other) const { return value() == other.value(); }
 
@@ -36,11 +36,11 @@ class Uri {
 
   // Returns true if the given string is URI, i.e. <scheme>://[something].
   // It checks only the scheme part and doesn't verify validity of the path.
-  static bool IsUri(base::StringPiece s) { return Parse(s).valid(); }
+  static bool IsUri(std::string_view s) { return Parse(s).valid(); }
 
   // Parses the given string s as a URI. If s doesn't have a valid scheme, then
   // a Uri with an empty scheme, ie an invalid Uri, is returned.
-  static Uri Parse(base::StringPiece s);
+  static Uri Parse(std::string_view s);
 
  private:
   std::string scheme_;

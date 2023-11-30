@@ -107,7 +107,7 @@ bool GenerateCameraProfile(int num_cameras) {
     LOG(ERROR) << "ReadFileToString fails";
     return false;
   }
-  const std::vector<base::StringPiece> lines = base::SplitStringPiece(
+  const std::vector<std::string_view> lines = base::SplitStringPiece(
       content, "\n", base::WhitespaceHandling::KEEP_WHITESPACE,
       base::SplitResult::SPLIT_WANT_NONEMPTY);
 
@@ -125,7 +125,7 @@ bool GenerateCameraProfile(int num_cameras) {
   for (i = 0; i < lines.size(); i++) {
     file.WriteAtCurrentPos(lines[i].data(), lines[i].length());
     file.WriteAtCurrentPos("\n", 1);
-    if (lines[i].find("</CamcorderProfiles>") != base::StringPiece::npos) {
+    if (lines[i].find("</CamcorderProfiles>") != std::string_view::npos) {
       break;
     }
   }

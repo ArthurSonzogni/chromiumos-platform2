@@ -129,7 +129,7 @@ void MountPoint::OnLauncherExit(const int exit_code) {
     std::move(launcher_exit_callback_).Run(data_.error);
 }
 
-bool MountPoint::ParseProgressMessage(base::StringPiece message,
+bool MountPoint::ParseProgressMessage(std::string_view message,
                                       int* const percent) {
   if (message.empty() || message.back() != '%')
     return false;
@@ -138,7 +138,7 @@ bool MountPoint::ParseProgressMessage(base::StringPiece message,
   message.remove_suffix(1);
 
   // Extract the number before the percent sign.
-  base::StringPiece::size_type i = message.size();
+  std::string_view::size_type i = message.size();
   while (i > 0 && base::IsAsciiDigit(message[i - 1]))
     i--;
   message.remove_prefix(i);
@@ -148,7 +148,7 @@ bool MountPoint::ParseProgressMessage(base::StringPiece message,
          *percent <= 100;
 }
 
-void MountPoint::OnProgress(const base::StringPiece message) {
+void MountPoint::OnProgress(const std::string_view message) {
   int percent;
   if (!ParseProgressMessage(message, &percent))
     return;

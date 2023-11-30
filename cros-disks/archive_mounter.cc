@@ -16,7 +16,7 @@
 
 namespace cros_disks {
 
-bool ArchiveMounter::IsValidEncoding(const base::StringPiece encoding) {
+bool ArchiveMounter::IsValidEncoding(const std::string_view encoding) {
   return !encoding.empty() &&
          std::all_of(encoding.cbegin(), encoding.cend(), [](const char c) {
            return base::IsAsciiAlphaNumeric(c) || c == '_' || c == '-' ||

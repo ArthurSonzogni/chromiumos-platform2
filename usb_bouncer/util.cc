@@ -77,8 +77,8 @@ enum class Subsystem {
 // Returns base64 encoded strings since proto strings must be valid UTF-8.
 std::string EncodeDigest(const std::vector<uint8_t>& digest) {
   std::string result;
-  base::StringPiece digest_view(reinterpret_cast<const char*>(digest.data()),
-                                digest.size());
+  std::string_view digest_view(reinterpret_cast<const char*>(digest.data()),
+                               digest.size());
   base::Base64Encode(digest_view, &result);
   return result;
 }

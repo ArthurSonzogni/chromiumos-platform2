@@ -86,7 +86,7 @@ std::vector<std::string> SplitFlagValues(const std::string& full) {
 bool IsTestBuild(const std::string& lsb_data) {
   for (const auto& field : base::SplitStringPiece(
            lsb_data, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
-    std::vector<base::StringPiece> tokens = base::SplitStringPiece(
+    std::vector<std::string_view> tokens = base::SplitStringPiece(
         field, "=", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
     if (tokens.size() == 2 && tokens[0] == kChromeosReleaseTrack)
       return base::StartsWith(tokens[1], kTestPrefix);

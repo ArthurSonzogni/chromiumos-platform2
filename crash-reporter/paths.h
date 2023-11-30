@@ -185,11 +185,11 @@ inline constexpr char kSegmentationStatusPath[] = "segmentation_status";
 
 // Gets a FilePath from the given path. A prefix will be added if the prefix is
 // set with SetPrefixForTesting().
-base::FilePath Get(base::StringPiece file_path);
+base::FilePath Get(std::string_view file_path);
 
 // Gets a FilePath from the given directory and the base name. A prefix will be
 // added if the prefix is set with SetPrefixForTesting().
-base::FilePath GetAt(base::StringPiece directory, base::StringPiece base_name);
+base::FilePath GetAt(std::string_view directory, std::string_view base_name);
 
 // Sets a prefix that'll be added when Get() is called, for unit testing.
 // For example, if "/tmp" is set as the prefix, Get("/run/foo") will return

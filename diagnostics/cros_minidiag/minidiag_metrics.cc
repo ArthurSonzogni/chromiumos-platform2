@@ -38,7 +38,7 @@ inline constexpr char kResultAborted[] = "aborted";
 // IMPORTANT: To obsolete a metric enum value, just remove it from the map
 // initialization and comment it out on the Enum.
 constexpr auto kTypeNames =
-    base::MakeFixedFlatMap<base::StringPiece, base::StringPiece>({
+    base::MakeFixedFlatMap<std::string_view, std::string_view>({
         {kTypeNameMemoryCheckFull, metrics::kMemoryCheckFull},
         {kTypeNameMemoryCheckQuick, metrics::kMemoryCheckQuick},
         {kTypeNameStorageHealthInfo, metrics::kStorageHealthInfo},
@@ -47,7 +47,7 @@ constexpr auto kTypeNames =
     });
 
 constexpr auto kResultNames =
-    base::MakeFixedFlatMap<base::StringPiece, metrics::MiniDiagResultType>({
+    base::MakeFixedFlatMap<std::string_view, metrics::MiniDiagResultType>({
         {kResultPassed, metrics::MiniDiagResultType::kPassed},
         {kResultError, metrics::MiniDiagResultType::kError},
         {kResultFailed, metrics::MiniDiagResultType::kFailed},
@@ -77,9 +77,9 @@ void MiniDiagMetrics::RecordLaunch(int count) const {
 void MiniDiagMetrics::RecordTestReport(const std::string& type,
                                        const std::string& result,
                                        const base::TimeDelta& time) const {
-  auto it_type = kTypeNames.find(base::StringPiece(base::ToLowerASCII(type)));
+  auto it_type = kTypeNames.find(std::string_view(base::ToLowerASCII(type)));
   auto it_result =
-      kResultNames.find(base::StringPiece(base::ToLowerASCII(result)));
+      kResultNames.find(std::string_view(base::ToLowerASCII(result)));
   if (it_type == kTypeNames.end()) {
     LOG(ERROR) << "Type name not exist: " << type;
     return;

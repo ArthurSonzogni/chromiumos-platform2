@@ -434,7 +434,7 @@ static bool ParseOneSocinfo(const base::FilePath& soc_dir_path,
   } else if (family == "jep106:0426\n") {
     manufacturer = "Mediatek";
     machine = soc_id;
-    constexpr base::StringPiece mtk_prefix("jep106:0426:");
+    constexpr std::string_view mtk_prefix("jep106:0426:");
     machine.replace(0, mtk_prefix.length(), "MT");
   } else {
     return false;
@@ -502,7 +502,7 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
   }
 
   std::string model;
-  base::StringPiece manufacturer;
+  std::string_view manufacturer;
   if (re2::RE2::PartialMatch(
           model_field.value(),
           R"(Intel\(R\) (?:Celeron\(R\)|Core\(TM\)) ([^ ]+) CPU)", &model) ||

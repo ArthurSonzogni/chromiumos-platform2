@@ -745,8 +745,8 @@ std::string GetMd5HashForFilename(const std::string& str) {
   std::string result;
   base::MD5Digest digest;
   base::MD5Sum(str.data(), str.size(), &digest);
-  base::StringPiece hash_piece(reinterpret_cast<char*>(&digest.a[0]),
-                               sizeof(digest.a));
+  std::string_view hash_piece(reinterpret_cast<char*>(&digest.a[0]),
+                              sizeof(digest.a));
   // Note, we can not have '=' symbols in this path or it will break crosvm's
   // commandline argument parsing, so we use OMIT_PADDING.
   base::Base64UrlEncode(hash_piece, base::Base64UrlEncodePolicy::OMIT_PADDING,

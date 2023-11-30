@@ -352,7 +352,7 @@ class CrashSenderUtilTest : public testing::Test {
   // Creates a file at |file_path| with contents |content| and sets its access
   // and modification time to |timestamp|.
   bool CreateFile(const base::FilePath& file_path,
-                  base::StringPiece content,
+                  std::string_view content,
                   base::Time timestamp) {
     if (!test_util::CreateFile(file_path, content))
       return false;

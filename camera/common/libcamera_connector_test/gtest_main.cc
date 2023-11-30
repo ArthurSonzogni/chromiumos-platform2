@@ -80,7 +80,7 @@ bool IsVividLoaded() {
     return false;
   }
 
-  std::vector<base::StringPiece> lines = base::SplitStringPieceUsingSubstr(
+  std::vector<std::string_view> lines = base::SplitStringPieceUsingSubstr(
       output, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   return std::any_of(lines.begin(), lines.end(), [](const auto& line) {

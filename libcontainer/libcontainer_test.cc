@@ -101,7 +101,7 @@ class MockCgroup : public libcontainer::Cgroup {
   ~MockCgroup() = default;
 
   static std::unique_ptr<libcontainer::Cgroup> Create(
-      base::StringPiece name,
+      std::string_view name,
       const base::FilePath& cgroup_root,
       const base::FilePath& cgroup_parent,
       uid_t cgroup_owner,

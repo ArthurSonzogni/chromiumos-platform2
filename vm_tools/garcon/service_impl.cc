@@ -347,10 +347,10 @@ grpc::Status ServiceImpl::GetDebugInformation(
   *debug_information += "Installed Crostini Packages:\n";
   std::string dpkg_out;
   base::GetAppOutput({"dpkg", "-l", "cros-*"}, &dpkg_out);
-  std::vector<base::StringPiece> dpkg_lines = base::SplitStringPiece(
+  std::vector<std::string_view> dpkg_lines = base::SplitStringPiece(
       dpkg_out, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   for (const auto& pkg_line : dpkg_lines) {
-    std::vector<base::StringPiece> pkg_info = base::SplitStringPiece(
+    std::vector<std::string_view> pkg_info = base::SplitStringPiece(
         pkg_line, base::kWhitespaceASCII, base::TRIM_WHITESPACE,
         base::SPLIT_WANT_NONEMPTY);
     // Filter out unrelated lines.
@@ -360,8 +360,8 @@ grpc::Status ServiceImpl::GetDebugInformation(
     if (pkg_info[0] != "ii")
       continue;
 
-    base::StringPiece pkg_name = pkg_info[1];
-    base::StringPiece pkg_version = pkg_info[2];
+    std::string_view pkg_name = pkg_info[1];
+    std::string_view pkg_version = pkg_info[2];
 
     *debug_information += "\t";
     debug_information->append(pkg_name.data(), pkg_name.size());
@@ -373,7 +373,7 @@ grpc::Status ServiceImpl::GetDebugInformation(
   *debug_information += "systemctl status:\n";
   std::string systemctl_out;
   base::GetAppOutput({"systemctl", "--no-legend"}, &systemctl_out);
-  std::vector<base::StringPiece> systemctl_out_lines = base::SplitStringPiece(
+  std::vector<std::string_view> systemctl_out_lines = base::SplitStringPiece(
       systemctl_out, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   for (const auto& line : systemctl_out_lines) {
     *debug_information += "\t";
@@ -385,7 +385,7 @@ grpc::Status ServiceImpl::GetDebugInformation(
   std::string systemctl_user_out;
   base::GetAppOutput({"systemctl", "--user", "--no-legend"},
                      &systemctl_user_out);
-  std::vector<base::StringPiece> systemctl_user_out_lines =
+  std::vector<std::string_view> systemctl_user_out_lines =
       base::SplitStringPiece(systemctl_user_out, "\n", base::TRIM_WHITESPACE,
                              base::SPLIT_WANT_NONEMPTY);
   for (const auto& line : systemctl_user_out_lines) {
@@ -403,7 +403,7 @@ grpc::Status ServiceImpl::GetDebugInformation(
     base::GetAppOutput(
         {"journalctl", "--user-unit", service, "--since", "1 day ago"},
         &journalctl_user_out);
-    std::vector<base::StringPiece> systemctl_user_out_lines =
+    std::vector<std::string_view> systemctl_user_out_lines =
         base::SplitStringPiece(journalctl_user_out, "\n", base::TRIM_WHITESPACE,
                                base::SPLIT_WANT_NONEMPTY);
     for (const auto& line : systemctl_user_out_lines) {

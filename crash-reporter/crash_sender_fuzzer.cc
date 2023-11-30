@@ -40,7 +40,7 @@ void IgnoreSleep(base::TimeDelta duration) {}
 
 // Creates a file with a random name and random contents. File will always be
 // located in or below |test_dir|.
-void CreateRandomFile(base::StringPiece suffix,
+void CreateRandomFile(std::string_view suffix,
                       const base::FilePath& test_dir,
                       FuzzedDataProvider* provider) {
   const int kArbitraryMaxFileNameLength = 50;

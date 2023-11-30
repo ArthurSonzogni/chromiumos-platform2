@@ -75,8 +75,7 @@ class LivenessCheckerImpl : public LivenessChecker {
   // Returns a SafeFD if successful, nothing on error. If there is an error,
   // the error has already been logged and the caller does not need to log
   // another error.
-  std::optional<brillo::SafeFD> OpenBrowserProcFile(
-      base::StringPiece file_name);
+  std::optional<brillo::SafeFD> OpenBrowserProcFile(std::string_view file_name);
 
   // Reads /proc/browser_pid/status and returns the state of the browser at
   // the current moment.

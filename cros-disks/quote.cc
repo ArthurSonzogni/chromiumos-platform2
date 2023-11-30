@@ -34,7 +34,7 @@ std::ostream& operator<<(std::ostream& out, Quoter<std::string> quoter) {
   if (s.front() == '/')
     return out << redact(base::FilePath(s), quoter.redacted);
 
-  for (const base::StringPiece prefix :
+  for (const std::string_view prefix :
        {"sftp://", "fusebox://", "smbfs://", "drivefs://"}) {
     if (base::StartsWith(s, prefix))
       return out << '\'' << prefix << kRedacted << '\'';
@@ -50,7 +50,7 @@ std::ostream& operator<<(std::ostream& out, Quoter<base::FilePath> quoter) {
   if (s.empty() || !quoter.redacted)
     return out << std::quoted(s, '\'');
 
-  for (const base::StringPiece prefix :
+  for (const std::string_view prefix :
        {"/media/archive/", "/media/removable/", "/media/fuse/crostini_",
         "/media/fuse/smbfs-", "/media/fuse/drivefs-", "/media/fuse/fusebox/",
         "/home/chronos/", "/run/arc/sdcard/"}) {

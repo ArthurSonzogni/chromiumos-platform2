@@ -25,7 +25,7 @@ constexpr char kRemovable[] = "removable";
 
 bool TouchNoPreinitFlagFile() {
   return base::WriteFile(base::FilePath(kNoPreinitFlagFile),
-                         (base::StringPiece){});
+                         (std::string_view){});
 }
 
 std::string GetBootDeviceName() {

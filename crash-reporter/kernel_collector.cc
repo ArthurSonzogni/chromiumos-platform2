@@ -384,13 +384,13 @@ bool KernelCollector::LastRebootWasWatchdog(
     return false;
   }
 
-  base::StringPiece piece = base::StringPiece(eventlog);
+  std::string_view piece = std::string_view(eventlog);
   size_t last_boot = piece.rfind(kEventNameBoot);
-  if (last_boot == base::StringPiece::npos)
+  if (last_boot == std::string_view::npos)
     return false;
 
   watchdog_reboot_reason = "-(WATCHDOG)";
-  return piece.find(kEventNameWatchdog, last_boot) != base::StringPiece::npos;
+  return piece.find(kEventNameWatchdog, last_boot) != std::string_view::npos;
 }
 
 bool KernelCollector::LoadConsoleRamoops(std::string* contents) {

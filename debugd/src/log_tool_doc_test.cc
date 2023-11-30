@@ -19,7 +19,7 @@ namespace debugd {
 
 namespace {
 // NB: No new entries may be added here.  Fix the docs instead!
-const std::set<base::StringPiece> kEmptyEntries{
+const std::set<std::string_view> kEmptyEntries{
     "CLIENT_ID",
     "DEVICETYPE",
     "LOGDATE",
@@ -142,9 +142,9 @@ const std::set<base::StringPiece> kEmptyEntries{
 TEST(LogToolDocTest, EntriesDocumented) {
   // Check if there are matching entries of the markdown document.
   auto categories = GetAllDebugTitlesForTest();
-  std::set<base::StringPiece> documented_entries;
-  std::set<base::StringPiece> empty_entries;
-  std::vector<base::StringPiece> unsorted_documented_entries;
+  std::set<std::string_view> documented_entries;
+  std::set<std::string_view> empty_entries;
+  std::vector<std::string_view> unsorted_documented_entries;
   constexpr char kLogEntriesMd[] = "docs/log_entries.md";
 
   base::FilePath markdown_filepath(
@@ -152,7 +152,7 @@ TEST(LogToolDocTest, EntriesDocumented) {
   std::string mdfile;
   CHECK(base::ReadFileToString(markdown_filepath, &mdfile));
 
-  std::vector<base::StringPiece> lines = base::SplitStringPiece(
+  std::vector<std::string_view> lines = base::SplitStringPiece(
       mdfile, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   for (auto it = lines.begin(); it != lines.end(); ++it) {
     const auto& line = *it;

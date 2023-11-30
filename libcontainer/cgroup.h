@@ -30,7 +30,7 @@ class Cgroup {
     NUM_TYPES,
   };
 
-  static std::unique_ptr<Cgroup> Create(base::StringPiece name,
+  static std::unique_ptr<Cgroup> Create(std::string_view name,
                                         const base::FilePath& cgroup_root,
                                         const base::FilePath& cgroup_parent,
                                         uid_t cgroup_owner,

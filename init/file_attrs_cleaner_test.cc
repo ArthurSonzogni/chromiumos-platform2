@@ -28,7 +28,7 @@ using file_attrs_cleaner::ScanDir;
 namespace {
 
 // Helper to create a test file.
-bool CreateFile(const base::FilePath& file_path, base::StringPiece content) {
+bool CreateFile(const base::FilePath& file_path, std::string_view content) {
   if (!base::CreateDirectory(file_path.DirName()))
     return false;
   return base::WriteFile(file_path, content.data(), content.size()) ==

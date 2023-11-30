@@ -156,7 +156,7 @@ void MountManager::MountNewSource(const std::string& source,
 
   // Extract the mount label string from the passed options.
   std::string label;
-  if (const base::StringPiece key = "mountlabel";
+  if (const std::string_view key = "mountlabel";
       GetParamValue(options, key, &label))
     RemoveParamsWithSameName(&options, key);
 

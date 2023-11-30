@@ -87,7 +87,7 @@ Location GetLocation(libmems::IioDevice* device) {
   auto location_opt = device->GetLocation();
   if (location_opt.has_value()) {
     std::string location_str = std::string(
-        base::TrimString(location_opt.value(), base::StringPiece("\0\n", 2),
+        base::TrimString(location_opt.value(), std::string_view("\0\n", 2),
                          base::TRIM_TRAILING));
 
     if (location_str.compare(cros::mojom::kLocationBase) == 0)

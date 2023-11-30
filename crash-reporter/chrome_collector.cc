@@ -347,8 +347,8 @@ bool ChromeCollector::ParseCrashLog(const std::string& data,
           return false;
         }
         *payload = GetCrashPath(dir, basename, constants::kMinidumpExtension);
-        if (WriteNewFile(*payload,
-                         base::StringPiece(data.c_str() + at, size)) != size) {
+        if (WriteNewFile(*payload, std::string_view(data.c_str() + at, size)) !=
+            size) {
           // Can't send a crash report without a payload, so just fail.
           LOG(ERROR) << "Failed to write minidump to " << payload->value();
           return false;
@@ -367,8 +367,8 @@ bool ChromeCollector::ParseCrashLog(const std::string& data,
         }
         *payload =
             GetCrashPath(dir, basename, constants::kJavaScriptStackExtension);
-        if (WriteNewFile(*payload,
-                         base::StringPiece(data.c_str() + at, size)) != size) {
+        if (WriteNewFile(*payload, std::string_view(data.c_str() + at, size)) !=
+            size) {
           // Can't send a crash report without a payload, so just fail.
           LOG(ERROR) << "Failed to write js stack to " << payload->value();
           return false;
@@ -377,7 +377,7 @@ bool ChromeCollector::ParseCrashLog(const std::string& data,
         // Some other file.
         FilePath path =
             GetCrashPath(dir, basename + "-" + Sanitize(filename), "other");
-        if (WriteNewFile(path, base::StringPiece(data.c_str() + at, size)) >=
+        if (WriteNewFile(path, std::string_view(data.c_str() + at, size)) >=
             0) {
           AddCrashMetaUploadFile(desc, path.BaseName().value());
         }

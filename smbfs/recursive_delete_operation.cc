@@ -220,13 +220,13 @@ bool RecursiveDeleteOperation::GetDirectoryListing(
       break;
     }
 
-    base::StringPiece filename(dirent_info->name);
+    std::string_view filename(dirent_info->name);
     if (filename == "." || filename == "..") {
       // Ignore . and .. since FUSE already takes care of these.
       continue;
     }
     CHECK(!filename.empty());
-    CHECK_EQ(filename.find("/"), base::StringPiece::npos);
+    CHECK_EQ(filename.find("/"), std::string_view::npos);
 
     Entry entry;
     entry.is_directory = S_ISDIR(inode_stat.st_mode);

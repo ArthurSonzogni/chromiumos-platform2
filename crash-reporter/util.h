@@ -200,7 +200,7 @@ void JoinSessionKeyring();
 
 // Hash a string to a number.  We define our own hash function to not
 // be dependent on a C++ library that might change.
-unsigned HashString(base::StringPiece input);
+unsigned HashString(std::string_view input);
 
 // Get the absolute path to this binary given its command-line arguments,
 // and allowing override with the LD_ARGV0 environment variable.

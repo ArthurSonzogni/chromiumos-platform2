@@ -15,7 +15,7 @@ namespace libcontainer {
 
 class BRILLO_EXPORT Container {
  public:
-  Container(base::StringPiece name, const base::FilePath& rundir);
+  Container(std::string_view name, const base::FilePath& rundir);
   Container(const Container&) = delete;
   Container& operator=(const Container&) = delete;
 

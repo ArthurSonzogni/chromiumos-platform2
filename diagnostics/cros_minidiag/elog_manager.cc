@@ -38,7 +38,7 @@ constexpr const char kReMatchLogs[] =
     "type=([^,]+),\\s*result=([^,]+),\\s*time=(\\d+)m(\\d+)s";
 }  // namespace
 
-ElogEvent::ElogEvent(const base::StringPiece& event_string)
+ElogEvent::ElogEvent(std::string_view event_string)
     : data_(base::SplitString(event_string,
                               "|",
                               base::TRIM_WHITESPACE,
@@ -72,7 +72,7 @@ ElogManager::ElogManager(const std::string& elog_string,
                          const std::string& previous_last_line,
                          MiniDiagMetrics* minidiag_metrics)
     : metrics_(minidiag_metrics) {
-  base::StringPiece last_line_piece;
+  std::string_view last_line_piece;
 
   // We only want to store the new events which appear after
   // `previous_last_line`. If `previous_last_line` is empty or the elog_string

@@ -9,23 +9,23 @@ namespace login_manager {
 namespace {
 
 // Landlock allowlisted paths.
-constexpr base::StringPiece kAllowedPaths[] = {"/dev",
-                                               "/home/chronos",
-                                               "/home/user",
-                                               "/media",
-                                               "/mnt",
-                                               "/opt",
-                                               "/proc",
-                                               "/run",
-                                               "/sys/fs/cgroup/",
-                                               "/tmp",
-                                               "/usr/local",
-                                               "/var/cache",
-                                               "/var/lib",
-                                               "/var/lock",
-                                               "/var/log",
-                                               "/var/spool/support",
-                                               "/var/tmp"};
+constexpr std::string_view kAllowedPaths[] = {"/dev",
+                                              "/home/chronos",
+                                              "/home/user",
+                                              "/media",
+                                              "/mnt",
+                                              "/opt",
+                                              "/proc",
+                                              "/run",
+                                              "/sys/fs/cgroup/",
+                                              "/tmp",
+                                              "/usr/local",
+                                              "/var/cache",
+                                              "/var/lib",
+                                              "/var/lock",
+                                              "/var/log",
+                                              "/var/spool/support",
+                                              "/var/tmp"};
 
 constexpr char kRootPath[] = "/";
 
@@ -35,7 +35,7 @@ LandlockPolicy::LandlockPolicy() = default;
 
 LandlockPolicy::~LandlockPolicy() = default;
 
-base::span<const base::StringPiece>
+base::span<const std::string_view>
 LandlockPolicy::GetPolicySnapshotForTesting() {
   return base::make_span(kAllowedPaths);
 }

@@ -47,7 +47,7 @@ class Process {
   // Adds a variable to the environment that will be passed to the process.
   // Precondition: Start() has not been called yet.
   // Precondition: `name` is not empty and doesn't contain '='.
-  void AddEnvironmentVariable(base::StringPiece name, base::StringPiece value);
+  void AddEnvironmentVariable(std::string_view name, std::string_view value);
 
   // Sets the string to pass to the process stdin.
   // Might be silently truncated if it doesn't fit in a pipe's buffer.
@@ -57,7 +57,7 @@ class Process {
   // Callback called when a line of message is captured from the process stdout
   // or stderr. The final linefeed character '\n' is stripped from the passed
   // string.
-  using OutputCallback = base::RepeatingCallback<void(base::StringPiece)>;
+  using OutputCallback = base::RepeatingCallback<void(std::string_view)>;
 
   // Sets the output callback to call when the process writes messages to its
   // stdout or stderr.
@@ -162,11 +162,11 @@ class Process {
   // Called when one line of the subprocess output has been received. Stores
   // this line in |captured_output_|, and calls |output_callback_| with it if
   // necessary.
-  void StoreOutputLine(base::StringPiece line);
+  void StoreOutputLine(std::string_view line);
 
   // Splits |data| into lines and calls |StoreOutputLine| as many times as
   // necessary.
-  void SplitOutputIntoLines(base::StringPiece data);
+  void SplitOutputIntoLines(std::string_view data);
 
   // Reads data from |out_fd_|, and calls |SplitOutputIntoLines| with it.
   //

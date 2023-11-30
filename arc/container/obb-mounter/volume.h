@@ -49,7 +49,7 @@ class Volume {
   };
 
   using ReadDirectoryCallback = base::RepeatingCallback<bool(
-      const base::StringPiece16& name, const DirectoryEntry& entry)>;
+      std::u16string_view name, const DirectoryEntry& entry)>;
 
   // Object to read the contents of a file.
   class FileReader {

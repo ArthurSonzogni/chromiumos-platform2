@@ -27,7 +27,7 @@ std::string AppendPath(const std::string& base_path,
     // Remove the beginning "/" since FilePath#Append() cannot append an
     // 'absolute' path.
     relative = base::FilePath(
-        base::StringPiece(relative_path.c_str() + 1, relative_path.size() - 1));
+        std::string_view(relative_path.c_str() + 1, relative_path.size() - 1));
   }
   return path.Append(relative).value();
 }

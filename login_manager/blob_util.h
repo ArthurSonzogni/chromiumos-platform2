@@ -30,7 +30,7 @@ std::vector<uint8_t> SerializeAsBlob(
     const google::protobuf::MessageLite& message);
 
 // Returns blob containing the same value of the given |str|.
-std::vector<uint8_t> StringToBlob(base::StringPiece str);
+std::vector<uint8_t> StringToBlob(std::string_view str);
 
 // Returns string containing the same value of the given |blob|.
 std::string BlobToString(const std::vector<uint8_t>& blob);

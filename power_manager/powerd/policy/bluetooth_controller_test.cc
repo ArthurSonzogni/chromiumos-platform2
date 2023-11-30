@@ -89,9 +89,9 @@ class BluetoothControllerTest : public TestEnvironment {
     base::FilePath invalid_deep_dir =
         file_prefix_.Append(kInvalidDirPrefix).Append(kBtDeepDir);
 
-    base::StringPiece autosuspend_enabled(
+    std::string_view autosuspend_enabled(
         BluetoothController::kAutosuspendEnabled);
-    base::StringPiece default_autosuspend_delay(
+    std::string_view default_autosuspend_delay(
         BluetoothController::kDefaultAutosuspendTimeout);
 
     // Add all directories including the "power/control" file in the valid path.
@@ -178,7 +178,7 @@ class BluetoothControllerTest : public TestEnvironment {
     return out;
   }
 
-  bool WriteToControlPath(bool valid, const base::StringPiece& contents) {
+  bool WriteToControlPath(bool valid, std::string_view contents) {
     base::FilePath filepath =
         file_prefix_.Append(valid ? kValidDirPrefix : kInvalidDirPrefix)
             .Append(kBtWakeDir)
@@ -232,7 +232,7 @@ TEST_F(BluetoothControllerTest, AutosuspendQuirkApplied) {
 TEST_F(BluetoothControllerTest, RestoresCorrectValue) {
   Init();
 
-  base::StringPiece autosuspend_restore_to(
+  std::string_view autosuspend_restore_to(
       BluetoothControllerTest::kRestoreTestContents);
   // Valid path should start with autosuspend enabled. Change it afterwards.
   SendUdevEvent(system::UdevEvent::Action::ADD, true);

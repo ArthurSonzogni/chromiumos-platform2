@@ -183,7 +183,7 @@ std::unique_ptr<CameraMetadataInspector> CameraMetadataInspector::Create(
     return nullptr;
   }
 
-  auto GetRE2FromSwitch = [&](base::StringPiece name) -> std::unique_ptr<RE2> {
+  auto GetRE2FromSwitch = [&](std::string_view name) -> std::unique_ptr<RE2> {
     std::string value = cl->GetSwitchValueASCII(name);
     if (value.empty()) {
       return nullptr;
@@ -246,7 +246,7 @@ CameraMetadataInspector::CameraMetadataInspector(
       inspect_positions_(std::move(inspect_positions)),
       thread_(std::move(thread)) {}
 
-void CameraMetadataInspector::Write(base::StringPiece msg) {
+void CameraMetadataInspector::Write(std::string_view msg) {
   output_file_.WriteAtCurrentPos(msg.data(), msg.size());
   output_file_.Flush();
 }

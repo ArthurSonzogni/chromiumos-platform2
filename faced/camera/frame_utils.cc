@@ -32,10 +32,10 @@ std::string GetTightlyPackedPayload(int height,
   if (IsStrideUnused(plane_y.stride, width) &&
       IsStrideUnused(plane_uv.stride, width)) {
     return base::StrCat({
-        base::StringPiece(reinterpret_cast<const char*>(plane_y.data),
-                          plane_y.size),
-        base::StringPiece(reinterpret_cast<const char*>(plane_uv.data),
-                          plane_uv.size),
+        std::string_view(reinterpret_cast<const char*>(plane_y.data),
+                         plane_y.size),
+        std::string_view(reinterpret_cast<const char*>(plane_uv.data),
+                         plane_uv.size),
     });
   }
 

@@ -368,7 +368,7 @@ void SamplesHandler::AddActiveClientOnThread(ClientData* client_data) {
       auto channel = client_data->device_data->iio_device->GetChannel(index);
 
       // Read the current time for the timestamp channel.
-      if (base::StringPiece(cros::mojom::kTimestampChannel) ==
+      if (std::string_view(cros::mojom::kTimestampChannel) ==
           channel->GetId()) {
         struct timespec ts = {};
         if (clock_gettime(CLOCK_BOOTTIME, &ts) < 0) {

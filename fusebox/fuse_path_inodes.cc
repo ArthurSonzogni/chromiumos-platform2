@@ -29,12 +29,12 @@ Node* CreateNode(ino_t parent, const std::string& child, ino_t ino) {
 }
 
 std::string GetChildNodeName(const char* name) {
-  base::StringPiece entry(name ? name : "");
+  std::string_view entry(name ? name : "");
 
   // Verify entry name is POSIX conformant: return "" if not.
   if (entry == "." || entry == "..")
     return {};  // path traversals not allowed
-  if (entry.find('/') != base::StringPiece::npos)
+  if (entry.find('/') != std::string_view::npos)
     return {};  // path components not allowed
   if (entry.empty())
     return {};  // trivial cases "" or nullptr
@@ -257,8 +257,8 @@ Node* InodeTable::RemoveNode(Node* node) {
 Device InodeTable::MakeFromName(const std::string& name) const {
   Device device;
 
-  std::vector<std::string> parts = base::SplitString(
-      name, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  std::vector<std::string> parts =
+      base::SplitString(name, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
   if (parts.size() >= 1)
     device.name = parts.at(0);

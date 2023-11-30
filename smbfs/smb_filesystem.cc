@@ -152,7 +152,7 @@ void SmbFilesystem::SetResolvedAddress(const std::vector<uint8_t>& ip_address) {
   std::string address_str = IpAddressToString(ip_address);
   DCHECK(!address_str.empty());
 
-  const base::StringPiece prefix(kUrlPrefix);
+  const std::string_view prefix(kUrlPrefix);
   DCHECK(base::StartsWith(share_path_, prefix, base::CompareCase::SENSITIVE));
   std::string::size_type host_end = share_path_.find('/', prefix.size());
   DCHECK_NE(host_end, std::string::npos);
@@ -1085,13 +1085,13 @@ void SmbFilesystem::ReadDirInternal(std::unique_ptr<DirentryRequest> request,
       return;
     }
 
-    base::StringPiece filename(dirent_info->name);
+    std::string_view filename(dirent_info->name);
     if (filename == "." || filename == "..") {
       // Ignore . and .. since FUSE already takes care of these.
       continue;
     }
     CHECK(!filename.empty());
-    CHECK_EQ(filename.find("/"), base::StringPiece::npos);
+    CHECK_EQ(filename.find("/"), std::string_view::npos);
 
     // Ensure mode bits are appropriately cleaned and propagated.
     inode_stat.st_mode = MakeStatModeBits(inode_stat.st_mode);

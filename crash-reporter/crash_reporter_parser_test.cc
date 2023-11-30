@@ -86,8 +86,8 @@ class CrashReporterParserTest : public ::testing::Test {
   // Creates a file in our fake "Chrome system logs" directory with the given
   // name and contents, and then sets its last modified time to the given
   // value.
-  void CreateAndTouchChromeLog(const base::StringPiece file_name,
-                               const base::StringPiece contents,
+  void CreateAndTouchChromeLog(const std::string_view file_name,
+                               const std::string_view contents,
                                const base::Time::Exploded& last_modified_time) {
     const base::FilePath chrome_log_path =
         paths::Get(paths::kSystemChromeLogDirectory).Append(file_name);
@@ -166,8 +166,8 @@ class CrashReporterParserTest : public ::testing::Test {
   // Add two Chrome log files that will be more recent than the Chrome log files
   // added by MakeParser. The contents will be |current_chrome_log| for the
   // newest file and |previous_chrome_log| for the next-newest file.
-  void AddMoreRecentChromeLogFiles(base::StringPiece current_chrome_log,
-                                   base::StringPiece previous_chrome_log) {
+  void AddMoreRecentChromeLogFiles(std::string_view current_chrome_log,
+                                   std::string_view previous_chrome_log) {
     const base::Time::Exploded previous_time = {
         .year = 2019,
         .month = 7,
@@ -684,7 +684,7 @@ TEST_F(CrashReporterParserTest, EmbeddedNuls) {
   std::string message_log;
   for (int i = 0; i < 25; i++) {
     base::StrAppend(&message_log,
-                    {base::NumberToString(i), base::StringPiece("\0\n", 2)});
+                    {base::NumberToString(i), std::string_view("\0\n", 2)});
   }
   EXPECT_EQ(std::count(message_log.begin(), message_log.end(), '\0'), 25);
   EXPECT_EQ(base::WriteFile(paths::Get(paths::kMessageLogPath),
@@ -696,13 +696,13 @@ TEST_F(CrashReporterParserTest, EmbeddedNuls) {
   for (int i = 0; i < 500; i++) {
     base::StrAppend(&long_previous_chrome_log,
                     {"Chrome previous line ", base::NumberToString(i),
-                     base::StringPiece("\0\n", 2)});
+                     std::string_view("\0\n", 2)});
   }
   std::string expected_previous_chrome_log_tail;
   for (int i = 450; i < 500; i++) {
     base::StrAppend(&expected_previous_chrome_log_tail,
                     {"Chrome previous line ", base::NumberToString(i),
-                     base::StringPiece("\0\n", 2)});
+                     std::string_view("\0\n", 2)});
   }
   EXPECT_EQ(std::count(expected_previous_chrome_log_tail.begin(),
                        expected_previous_chrome_log_tail.end(), '\0'),
@@ -716,10 +716,10 @@ TEST_F(CrashReporterParserTest, EmbeddedNuls) {
   for (int i = 0; i < CrashReporterParser::kNumLogLinesCaptured; i++) {
     base::StrAppend(&long_current_chrome_log,
                     {"Chrome current line ", base::NumberToString(i),
-                     base::StringPiece("\0\n", 2)});
+                     std::string_view("\0\n", 2)});
     base::StrAppend(&expected_current_chrome_log_tail,
                     {"Chrome current line ", base::NumberToString(i),
-                     base::StringPiece("\0\n", 2)});
+                     std::string_view("\0\n", 2)});
   }
   EXPECT_EQ(std::count(expected_current_chrome_log_tail.begin(),
                        expected_current_chrome_log_tail.end(), '\0'),

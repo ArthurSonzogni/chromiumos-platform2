@@ -22,7 +22,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
   FuzzedDataProvider provider(data, size);
   std::string input_string = provider.ConsumeRandomLengthString(2000);
-  base::StringPiece string_piece_input(input_string);
+  std::string_view string_piece_input(input_string);
   system_proxy::IsEndingWithHttpEmptyLine(string_piece_input);
   system_proxy::GetUriAuthorityFromHttpHeader(string_piece_input);
   system_proxy::ParseAuthChallenge(string_piece_input);

@@ -34,7 +34,7 @@ constexpr const char* kCgroupNames[Cgroup::Type::NUM_TYPES] = {
     "cpu", "cpuacct", "cpuset", "devices", "freezer", "memory"};
 
 base::ScopedFD OpenCgroupFile(const base::FilePath& cgroup_path,
-                              base::StringPiece name,
+                              std::string_view name,
                               bool write) {
   base::FilePath path = cgroup_path.Append(name);
   int flags = write ? O_WRONLY | O_CREAT | O_TRUNC : O_RDONLY;
@@ -68,8 +68,8 @@ base::ScopedFD OpenCgroupFile(const base::FilePath& cgroup_path,
 }
 
 bool WriteCgroupFile(const base::FilePath& cgroup_path,
-                     base::StringPiece name,
-                     base::StringPiece str) {
+                     std::string_view name,
+                     std::string_view str) {
   base::ScopedFD fd = OpenCgroupFile(cgroup_path, name, true);
   if (!fd.is_valid())
     return false;
@@ -79,13 +79,13 @@ bool WriteCgroupFile(const base::FilePath& cgroup_path,
 }
 
 bool WriteCgroupFileInt(const base::FilePath& cgroup_path,
-                        base::StringPiece name,
+                        std::string_view name,
                         const int value) {
   return WriteCgroupFile(cgroup_path, name, base::NumberToString(value));
 }
 
 bool CopyCgroupParent(const base::FilePath& cgroup_path,
-                      base::StringPiece name) {
+                      std::string_view name) {
   base::ScopedFD dest = OpenCgroupFile(cgroup_path, name, true);
   if (!dest.is_valid())
     return false;
@@ -170,7 +170,7 @@ bool CopyCpusetParent(const base::FilePath& cgroup_path) {
 }
 
 bool CheckCgroupAvailable(const base::FilePath& cgroup_root,
-                          base::StringPiece cgroup_name) {
+                          std::string_view cgroup_name) {
   base::FilePath path = cgroup_root.Append(cgroup_name);
 
   return access(path.value().c_str(), F_OK) == 0;
@@ -250,7 +250,7 @@ void Cgroup::SetCgroupFactoryForTesting(CgroupFactory factory) {
 }
 
 // static
-std::unique_ptr<Cgroup> Cgroup::Create(base::StringPiece name,
+std::unique_ptr<Cgroup> Cgroup::Create(std::string_view name,
                                        const base::FilePath& cgroup_root,
                                        const base::FilePath& cgroup_parent,
                                        uid_t cgroup_owner,

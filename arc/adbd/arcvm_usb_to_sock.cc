@@ -66,7 +66,7 @@ void ArcVmUsbToSock::Run() {
       break;
     }
     if (ret &&
-        !base::WriteFileDescriptor(sock_fd_, base::StringPiece(data, ret))) {
+        !base::WriteFileDescriptor(sock_fd_, std::string_view(data, ret))) {
       PLOG(ERROR) << "failed to write to socket";
       break;
     }

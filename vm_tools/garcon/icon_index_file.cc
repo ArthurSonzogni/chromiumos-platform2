@@ -225,7 +225,7 @@ bool IconIndexFile::LoadFromFile(const base::FilePath& file_path) {
     return false;
   }
 
-  std::vector<base::StringPiece> icon_index_lines =
+  std::vector<std::string_view> icon_index_lines =
       base::SplitStringPiece(icon_index_contents, "\n", base::TRIM_WHITESPACE,
                              base::SPLIT_WANT_NONEMPTY);
 
@@ -237,7 +237,7 @@ bool IconIndexFile::LoadFromFile(const base::FilePath& file_path) {
     }
     if (curr_line.front() == '[') {
       // Section name.
-      base::StringPiece section_name = ParseGroupName(curr_line);
+      std::string_view section_name = ParseGroupName(curr_line);
       if (section_name.empty()) {
         continue;
       }

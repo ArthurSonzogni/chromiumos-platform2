@@ -45,7 +45,7 @@ class ArchiveMounter : public FUSEMounter {
   // Checks if the given string might represent a realistic encoding. Allowed
   // characters are uppercase and lowercase letters, numbers, '-', '_', '.' and
   // ':'.
-  static bool IsValidEncoding(base::StringPiece encoding);
+  static bool IsValidEncoding(std::string_view encoding);
 
  protected:
   // FUSEMounter overrides:
@@ -56,7 +56,7 @@ class ArchiveMounter : public FUSEMounter {
       MountError* error) const final;
 
   virtual std::vector<std::string> GetBindPaths(
-      base::StringPiece original_path) const {
+      std::string_view original_path) const {
     return {std::string(original_path)};
   }
 

@@ -43,7 +43,7 @@ void DmesgTool::Tail(uint32_t lines, std::string& output) {
     return;
   }
 
-  std::vector<base::StringPiece> split = base::SplitStringPiece(
+  std::vector<std::string_view> split = base::SplitStringPiece(
       output, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
 
   // When the last character is \n, we get an extra blank line at the end which
@@ -59,7 +59,7 @@ void DmesgTool::Tail(uint32_t lines, std::string& output) {
     return;
   }
 
-  base::span<base::StringPiece> desired_lines(
+  base::span<std::string_view> desired_lines(
       split.begin() + (split.size() - lines), lines);
 
   output = base::StrCat({base::JoinString(desired_lines, "\n"),

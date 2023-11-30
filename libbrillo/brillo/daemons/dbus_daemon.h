@@ -62,7 +62,7 @@ class BRILLO_EXPORT DBusServiceDaemon : public DBusDaemon {
   DBusServiceDaemon(const std::string& service_name,
                     const ::dbus::ObjectPath& object_manager_path);
   DBusServiceDaemon(const std::string& service_name,
-                    base::StringPiece object_manager_path);
+                    std::string_view object_manager_path);
   DBusServiceDaemon(const DBusServiceDaemon&) = delete;
   DBusServiceDaemon& operator=(const DBusServiceDaemon&) = delete;
 

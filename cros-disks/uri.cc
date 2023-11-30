@@ -9,11 +9,11 @@
 namespace cros_disks {
 namespace {
 
-const base::StringPiece kUriDelimiter = "://";
+const std::string_view kUriDelimiter = "://";
 
 }  // namespace
 
-Uri::Uri(const base::StringPiece scheme, const base::StringPiece path)
+Uri::Uri(const std::string_view scheme, const std::string_view path)
     : scheme_(scheme), path_(path) {}
 
 std::string Uri::value() const {
@@ -29,14 +29,14 @@ std::string Uri::value() const {
   return s;
 }
 
-Uri Uri::Parse(const base::StringPiece s) {
+Uri Uri::Parse(const std::string_view s) {
   // Look for URI scheme delimiter.
   const size_t pos = s.find(kUriDelimiter);
-  if (pos == base::StringPiece::npos || pos == 0)
+  if (pos == std::string_view::npos || pos == 0)
     return {};
 
   // Extract scheme part.
-  const base::StringPiece scheme = s.substr(0, pos);
+  const std::string_view scheme = s.substr(0, pos);
 
   // Check scheme validity (see RFC 3986, section 3.1).
   if (!isalpha(scheme[0]))

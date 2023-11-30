@@ -61,7 +61,7 @@ base::Time GetDefaultTime();
 // Creates a file at |file_path| with |content|, with parent directories.
 // Returns true on success. If you want the test function to stop when the file
 // creation failed, wrap this function with ASSERT_TRUE().
-bool CreateFile(const base::FilePath& file_path, base::StringPiece content);
+bool CreateFile(const base::FilePath& file_path, std::string_view content);
 
 // Configures |mock| so that RetrieveActiveSessions() returns |sessions|.
 void SetActiveSessions(org::chromium::SessionManagerInterfaceProxyMock* mock,

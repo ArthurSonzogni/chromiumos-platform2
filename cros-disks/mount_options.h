@@ -22,27 +22,27 @@ bool IsReadOnlyMount(const std::vector<std::string>& options);
 // Finds the last value assigned to a parameter named |name|. Returns true if
 // found.
 [[nodiscard]] bool GetParamValue(const std::vector<std::string>& params,
-                                 base::StringPiece name,
+                                 std::string_view name,
                                  std::string* value);
 
 // Adds a '|name|=|value|' parameter to the container.
 void SetParamValue(std::vector<std::string>* params,
-                   base::StringPiece name,
-                   base::StringPiece value);
+                   std::string_view name,
+                   std::string_view value);
 
 // Returns whether params contain the exact param value.
 bool HasExactParam(const std::vector<std::string>& params,
-                   base::StringPiece param);
+                   std::string_view param);
 
 // Removes all elements equal to the provided and returns the count of
 // removed elements.
 size_t RemoveParamsEqualTo(std::vector<std::string>* params,
-                           base::StringPiece param);
+                           std::string_view param);
 
 // Removes all elements like '|name|=|value|' with the name equal to the
 // provided and returns the count of removed elements.
 size_t RemoveParamsWithSameName(std::vector<std::string>* params,
-                                base::StringPiece name);
+                                std::string_view name);
 
 // Joins params into a comma separated string. Returns false if comma is
 // encountered in an element.

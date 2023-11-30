@@ -779,8 +779,8 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
         // Tast failures that are not actionable.
         {"model name: Genuine Intel(R) 0000\n",
          "ro.soc.manufacturer=Intel\nro.soc.model=0000-FixMe\n"}}) {
-    base::StringPiece cpuinfo = std::get<0>(testcase);
-    base::StringPiece expected = std::get<1>(testcase);
+    std::string_view cpuinfo = std::get<0>(testcase);
+    std::string_view expected = std::get<1>(testcase);
     auto cpuinfo_path =
         GetTempDir().Append(base::StringPrintf("cpuinfo%d", case_no++));
 

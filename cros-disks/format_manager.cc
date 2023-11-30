@@ -294,7 +294,7 @@ void FormatManager::OnFormatProcessTerminated(const std::string& device_path,
   if (error != FormatError::kSuccess && !LOG_IS_ON(INFO)) {
     // The mkfs program finished with an error, and its capture messages have
     // not been logged yet. Log them now as errors.
-    for (const base::StringPiece line : process.GetCapturedOutput()) {
+    for (const std::string_view line : process.GetCapturedOutput()) {
       LOG(ERROR) << process.GetProgramName() << ": " << line;
     }
   }

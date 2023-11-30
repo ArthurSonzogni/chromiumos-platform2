@@ -20,7 +20,7 @@ using SchemeRealmPairList = std::vector<std::pair<std::string, std::string>>;
 
 // Verifies if the http headers are ending with an http empty line, meaning a
 // line that contains only CRLF or LF preceded by a line ending with CRLF.
-bool IsEndingWithHttpEmptyLine(const base::StringPiece& http_header_line);
+bool IsEndingWithHttpEmptyLine(std::string_view http_header_line);
 
 // Analyses |input| and attempts to find a complete HTTP request (request line,
 // headers and end of message). Returns false if it is not found or only a
@@ -39,12 +39,11 @@ bool ExtractHTTPRequest(const std::vector<char>& input,
 // If the first line in |raw_request| (the Request-Line) is a correctly formed
 // CONNECT request, it will return the destination URI as host:port, otherwise
 // it will return an empty string.
-std::string GetUriAuthorityFromHttpHeader(
-    const base::StringPiece& http_request);
+std::string GetUriAuthorityFromHttpHeader(std::string_view http_request);
 
 // Parses the HTTP server reply and extracts the supported authentication scheme
 // and realm.
-SchemeRealmPairList ParseAuthChallenge(const base::StringPiece& http_request);
+SchemeRealmPairList ParseAuthChallenge(std::string_view http_request);
 }  // namespace system_proxy
 
 #endif  // SYSTEM_PROXY_HTTP_UTIL_H_

@@ -106,7 +106,7 @@ class DirentryRequest : public internal::BaseRequest {
   // |inode| is the inode number for the entry. |mode| is the file type and must
   // be either S_IFREG or S_IFDIR. |next_offset| is the offset for the _next_
   // directory entry (not this one).
-  bool AddEntry(base::StringPiece name,
+  bool AddEntry(std::string_view name,
                 fuse_ino_t inode,
                 mode_t mode,
                 off_t next_offset);

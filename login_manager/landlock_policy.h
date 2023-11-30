@@ -23,7 +23,7 @@ class LandlockPolicy {
 
   // Gets a snapshot of the current policy.
   // Only exposed for testing.
-  base::span<const base::StringPiece> GetPolicySnapshotForTesting();
+  base::span<const std::string_view> GetPolicySnapshotForTesting();
 
   // Adds a policy to the supplied Minijail.
   void SetupPolicy(minijail* j);

@@ -35,7 +35,7 @@ namespace {
 
 // Does the CLI contain the dry run flag?
 bool IsDryRun(int argc, const char* argv[]) {
-  static constexpr base::StringPiece kDryRunFlag("--dry_run");
+  static constexpr std::string_view kDryRunFlag("--dry_run");
 
   for (int i = 1; i < argc; ++i) {
     if (kDryRunFlag == argv[i]) {

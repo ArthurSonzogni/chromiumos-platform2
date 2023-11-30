@@ -56,8 +56,8 @@ class HwVerificationReportGetter {
   //
   // @return A |HwVerificationReport| message if it succeeds.
   virtual std::optional<HwVerificationReport> Get(
-      const base::StringPiece& probe_result_file,
-      const base::StringPiece& hw_verification_spec_file,
+      std::string_view probe_result_file,
+      std::string_view hw_verification_spec_file,
       ErrorCode* out_error_code) const = 0;
 };
 

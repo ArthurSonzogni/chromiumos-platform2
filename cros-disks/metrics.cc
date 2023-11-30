@@ -13,9 +13,9 @@
 
 namespace cros_disks {
 
-Metrics::ArchiveType Metrics::GetArchiveType(base::StringPiece path) {
+Metrics::ArchiveType Metrics::GetArchiveType(std::string_view path) {
   struct Entry {
-    base::StringPiece ext;
+    std::string_view ext;
     ArchiveType type;
   };
 
@@ -64,8 +64,8 @@ Metrics::ArchiveType Metrics::GetArchiveType(base::StringPiece path) {
 }
 
 // Strips the prefix "fuse." or "fuseblk." from a filesystem type.
-static base::StringPiece StripPrefix(base::StringPiece fs_type) {
-  for (const base::StringPiece prefix : {"fuse.", "fuseblk."}) {
+static std::string_view StripPrefix(std::string_view fs_type) {
+  for (const std::string_view prefix : {"fuse.", "fuseblk."}) {
     if (base::StartsWith(fs_type, prefix)) {
       fs_type.remove_prefix(prefix.size());
       break;
@@ -76,9 +76,9 @@ static base::StringPiece StripPrefix(base::StringPiece fs_type) {
 }
 
 Metrics::FilesystemType Metrics::GetFilesystemType(
-    const base::StringPiece fs_type) {
+    const std::string_view fs_type) {
   static const auto map =
-      base::MakeFixedFlatMap<base::StringPiece, FilesystemType>({
+      base::MakeFixedFlatMap<std::string_view, FilesystemType>({
           {"", kFilesystemUnknown},         //
           {"exfat", kFilesystemExFAT},      //
           {"ext2", kFilesystemExt2},        //
@@ -101,16 +101,16 @@ void Metrics::RecordArchiveType(const base::FilePath& path) {
     LOG(ERROR) << "Cannot send archive type to UMA";
 }
 
-void Metrics::RecordFilesystemType(const base::StringPiece fs_type) {
+void Metrics::RecordFilesystemType(const std::string_view fs_type) {
   if (!metrics_library_.SendEnumToUMA("CrosDisks.FilesystemType",
                                       GetFilesystemType(fs_type),
                                       kFilesystemMaxValue))
     LOG(ERROR) << "Cannot send filesystem type to UMA";
 }
 
-void Metrics::RecordMountError(base::StringPiece fs_type, const error_t error) {
+void Metrics::RecordMountError(std::string_view fs_type, const error_t error) {
   // Group all the FUSE-related filesystems under the name "fuse".
-  const base::StringPiece prefix = "fuse";
+  const std::string_view prefix = "fuse";
   if (base::StartsWith(fs_type, prefix))
     fs_type = prefix;
 
@@ -119,7 +119,7 @@ void Metrics::RecordMountError(base::StringPiece fs_type, const error_t error) {
     LOG(ERROR) << "Cannot send mount error to UMA";
 }
 
-void Metrics::RecordUnmountError(const base::StringPiece fs_type,
+void Metrics::RecordUnmountError(const std::string_view fs_type,
                                  const error_t error) {
   if (!metrics_library_.SendSparseToUMA(
           base::StrCat({"CrosDisks.UnmountError.", StripPrefix(fs_type)}),
@@ -127,7 +127,7 @@ void Metrics::RecordUnmountError(const base::StringPiece fs_type,
     LOG(ERROR) << "Cannot send unmount error to UMA";
 }
 
-void Metrics::RecordDaemonError(const base::StringPiece program_name,
+void Metrics::RecordDaemonError(const std::string_view program_name,
                                 const int error) {
   std::string name(program_name);
   std::replace(name.begin(), name.end(), '.', '-');
@@ -136,7 +136,7 @@ void Metrics::RecordDaemonError(const base::StringPiece program_name,
     LOG(ERROR) << "Cannot send FUSE daemon error to UMA";
 }
 
-void Metrics::RecordReadOnlyFileSystem(const base::StringPiece fs_type) {
+void Metrics::RecordReadOnlyFileSystem(const std::string_view fs_type) {
   if (!metrics_library_.SendEnumToUMA("CrosDisks.ReadOnlyFileSystemAfterError",
                                       GetFilesystemType(fs_type),
                                       kFilesystemMaxValue))
@@ -149,7 +149,7 @@ void Metrics::RecordDeviceMediaType(DeviceType device_media_type) {
     LOG(ERROR) << "Cannot send device media type to UMA";
 }
 
-void Metrics::RecordFuseMounterErrorCode(const base::StringPiece mounter_name,
+void Metrics::RecordFuseMounterErrorCode(const std::string_view mounter_name,
                                          const int error_code) {
   if (!metrics_library_.SendSparseToUMA(
           base::StrCat({"CrosDisks.Fuse.", mounter_name}), error_code))

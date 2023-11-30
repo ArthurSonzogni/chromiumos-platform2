@@ -41,7 +41,7 @@ bool ValidateDictKeys(const base::Value::Dict& value) {
 }
 
 bool ParseOptionalStringListByKey(const base::Value::Dict& value,
-                                  base::StringPiece key,
+                                  std::string_view key,
                                   std::vector<std::string>* out) {
   const auto* list = value.Find(key);
   // Returns true if not found because this is an optional field.

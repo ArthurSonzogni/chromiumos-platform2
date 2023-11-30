@@ -47,7 +47,7 @@ UntrustedVMUtils::MitigationStatus GetL1TFMitigationStatus(
 
   LOG(INFO) << "l1tf status: " << l1tf_status;
 
-  std::vector<base::StringPiece> l1tf_statuses = base::SplitStringPiece(
+  std::vector<std::string_view> l1tf_statuses = base::SplitStringPiece(
       l1tf_status, ",;", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   const size_t num_statuses = l1tf_statuses.size();
   // The sysfs file should always return up to 3 statuses and no more.
@@ -56,14 +56,14 @@ UntrustedVMUtils::MitigationStatus GetL1TFMitigationStatus(
     return UntrustedVMUtils::MitigationStatus::VULNERABLE;
   }
 
-  const base::StringPiece& processor_mitigation_status = l1tf_statuses[0];
+  std::string_view processor_mitigation_status = l1tf_statuses[0];
   if (processor_mitigation_status == "Not affected")
     return UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE;
   if (processor_mitigation_status != "Mitigation: PTE Inversion")
     return UntrustedVMUtils::MitigationStatus::VULNERABLE;
 
   if (num_statuses >= 2) {
-    const base::StringPiece& vmx_mitigation_status = l1tf_statuses[1];
+    std::string_view vmx_mitigation_status = l1tf_statuses[1];
     if ((vmx_mitigation_status != "VMX: cache flushes") &&
         (vmx_mitigation_status != "VMX: flush not necessary")) {
       return UntrustedVMUtils::MitigationStatus::VULNERABLE;
@@ -72,7 +72,7 @@ UntrustedVMUtils::MitigationStatus GetL1TFMitigationStatus(
 
   // Only a maximum of 3 statuses are expected.
   if (num_statuses == 3) {
-    const base::StringPiece& smt_mitigation_status = l1tf_statuses[2];
+    std::string_view smt_mitigation_status = l1tf_statuses[2];
     if (smt_mitigation_status == "SMT vulnerable")
       return UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED;
     if (smt_mitigation_status != "SMT disabled")
@@ -93,7 +93,7 @@ UntrustedVMUtils::MitigationStatus GetMDSMitigationStatus(
 
   LOG(INFO) << "mds status: " << mds_status;
 
-  std::vector<base::StringPiece> mds_statuses = base::SplitStringPiece(
+  std::vector<std::string_view> mds_statuses = base::SplitStringPiece(
       mds_status, ";", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   const size_t num_statuses = mds_statuses.size();
   // The sysfs file should always return up to 2 statuses and no more.
@@ -102,17 +102,17 @@ UntrustedVMUtils::MitigationStatus GetMDSMitigationStatus(
     return UntrustedVMUtils::MitigationStatus::VULNERABLE;
   }
 
-  const base::StringPiece& processor_mitigation_status = mds_statuses[0];
+  std::string_view processor_mitigation_status = mds_statuses[0];
   if (processor_mitigation_status == "Not affected")
     return UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE;
-  if (processor_mitigation_status.find("Vulnerable") != base::StringPiece::npos)
+  if (processor_mitigation_status.find("Vulnerable") != std::string_view::npos)
     return UntrustedVMUtils::MitigationStatus::VULNERABLE;
   if (processor_mitigation_status != "Mitigation: Clear CPU buffers")
     return UntrustedVMUtils::MitigationStatus::VULNERABLE;
 
   // Only a maximum of 2 statuses are expected.
   if (num_statuses == 2) {
-    const base::StringPiece& smt_mitigation_status = mds_statuses[1];
+    std::string_view smt_mitigation_status = mds_statuses[1];
     if (smt_mitigation_status == "SMT vulnerable")
       return UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED;
     if (smt_mitigation_status == "SMT mitigated")
@@ -214,9 +214,9 @@ bool UntrustedVMUtils::IsUntrustedVMAllowed(std::string* reason) const {
 
   // Lower kernel version are deemed insecure to handle untrusted VMs.
   std::stringstream ss;
-  ss << "Untrusted VMs are not allowed: "
-     << "the host kernel version (" << host_kernel_version_.first << "."
-     << host_kernel_version_.second << ") must be newer than or equal to "
+  ss << "Untrusted VMs are not allowed: " << "the host kernel version ("
+     << host_kernel_version_.first << "." << host_kernel_version_.second
+     << ") must be newer than or equal to "
      << kMinKernelVersionForUntrustedAndNestedVM.first << "."
      << kMinKernelVersionForUntrustedAndNestedVM.second
      << ", or the device must be in the developer mode";

@@ -18,11 +18,11 @@ class MHDHttpRequest {
  public:
   MHDHttpRequest();
 
-  void SetStatusLine(base::StringPiece method,
-                     base::StringPiece url,
-                     base::StringPiece version);
-  void AddHeader(base::StringPiece key, base::StringPiece value);
-  void PushToBody(base::StringPiece data);
+  void SetStatusLine(std::string_view method,
+                     std::string_view url,
+                     std::string_view version);
+  void AddHeader(std::string_view key, std::string_view value);
+  void PushToBody(std::string_view data);
   void Finalize();
 
   const std::string& method() const { return method_; }

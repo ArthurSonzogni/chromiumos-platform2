@@ -37,13 +37,13 @@ absl::StatusOr<FacedConnection> ConnectToFaced();
 absl::Status ConnectAndDisconnectFromFaced();
 
 // Run an enrollment via Faced for a given user
-absl::Status Enroll(base::StringPiece user);
+absl::Status Enroll(std::string_view user);
 
 // Checks whether a user is enrolled.
-absl::Status IsEnrolled(base::StringPiece user);
+absl::Status IsEnrolled(std::string_view user);
 
 // Removes a user's enrollment.
-absl::Status RemoveEnrollment(base::StringPiece user);
+absl::Status RemoveEnrollment(std::string_view user);
 
 // Lists saved enrollments.
 absl::Status ListEnrollments();
@@ -72,7 +72,7 @@ class Enroller {
 
   // Performs an enrollment for the specified user and disconnects upon
   // completion or on error.
-  void Run(base::StringPiece user);
+  void Run(std::string_view user);
 
  private:
   mojo::Remote<chromeos::faceauth::mojom::FaceAuthenticationService>&

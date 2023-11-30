@@ -432,10 +432,10 @@ std::string UdevDevice::StorageDevicePath() const {
   EnumerateParentDevices(base::BindRepeating(
       [](std::string* path, const brillo::UdevDevice& device) {
         const char* const subsystem = device.GetSubsystem();
-        const base::StringPiece allowed_subsystems[] = {
+        const std::string_view allowed_subsystems[] = {
             kSubsystemMmc, kSubsystemNvme, kSubsystemScsi};
         if (!subsystem ||
-            !base::Contains(allowed_subsystems, base::StringPiece(subsystem)))
+            !base::Contains(allowed_subsystems, std::string_view(subsystem)))
           return false;
 
         if (const char* const sys_path = device.GetSysPath()) {

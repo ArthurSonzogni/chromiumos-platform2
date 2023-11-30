@@ -711,7 +711,7 @@ base::ScopedFD CrashCollector::GetNewFileHandle(
 }
 
 int CrashCollector::WriteNewFile(const FilePath& filename,
-                                 base::StringPiece data) {
+                                 std::string_view data) {
   base::ScopedFD fd = GetNewFileHandle(filename);
   if (!fd.is_valid()) {
     PLOG(ERROR) << "WriteNewFile: Cannot open " << filename.value();
@@ -2198,11 +2198,11 @@ bool CrashCollector::InitializeSegmentationStatus() {
 }
 
 // static
-bool CrashCollector::ParseProcessTicksFromStat(base::StringPiece stat,
+bool CrashCollector::ParseProcessTicksFromStat(std::string_view stat,
                                                uint64_t* ticks) {
   // Skip "pid" and "comm" fields. See format in proc(5).
   const auto pos = stat.find_last_of(')');
-  if (pos == base::StringPiece::npos)
+  if (pos == std::string_view::npos)
     return false;
 
   stat.remove_prefix(pos + 1);
@@ -2214,9 +2214,9 @@ bool CrashCollector::ParseProcessTicksFromStat(base::StringPiece stat,
          base::StringToUint64(fields[kStartTimePos], ticks);
 }
 
-bool CrashCollector::AddVariations(base::StringPiece file,
-                                   base::StringPiece variation_key,
-                                   base::StringPiece num_experiment_key) {
+bool CrashCollector::AddVariations(std::string_view file,
+                                   std::string_view variation_key,
+                                   std::string_view num_experiment_key) {
   std::vector<FilePath> directories;
   if (extra_metadata_.find(variation_key) != std::string::npos) {
     // Don't add variations a second time if something (e.g. chrome) already

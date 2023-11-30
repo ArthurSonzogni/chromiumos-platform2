@@ -29,7 +29,7 @@ constexpr char kImageExtension[] = ".png";
 
 // Gets a FilePath from the given path. A prefix will be added if the prefix is
 // set with SetPrefixForTesting().
-base::FilePath Get(base::StringPiece file_path);
+base::FilePath Get(std::string_view file_path);
 
 // Sets a prefix that'll be added when Get() is called, for unit testing.
 // For example, if "/tmp" is set as the prefix, Get("/run/foo") will return

@@ -68,7 +68,7 @@ void ConvertDirectoryEntryToStat(const DirectoryEntry& entry,
 }
 
 // Gets a DirectoryEntry with the given path.
-bool GetDirectoryEntry(const base::StringPiece16& path, DirectoryEntry* out) {
+bool GetDirectoryEntry(std::u16string_view path, DirectoryEntry* out) {
   if (path.empty() || path[0] != '/') {
     return false;
   }
@@ -76,16 +76,16 @@ bool GetDirectoryEntry(const base::StringPiece16& path, DirectoryEntry* out) {
   size_t pos = 1;
   while (true) {
     size_t next_slash = path.find('/', pos);
-    if (next_slash == base::StringPiece16::npos) {
+    if (next_slash == std::u16string_view::npos) {
       next_slash = path.size();
     }
-    base::StringPiece16 name(path.data() + pos, next_slash - pos);
+    std::u16string_view name(path.data() + pos, next_slash - pos);
     std::optional<DirectoryEntry> entry;
     if (!g_volume->ReadDirectory(current_directory_start_sector,
                                  base::BindRepeating(
-                                     [](const base::StringPiece16& name,
+                                     [](std::u16string_view name,
                                         std::optional<DirectoryEntry>* entry,
-                                        const base::StringPiece16& name_in,
+                                        std::u16string_view name_in,
                                         const DirectoryEntry& entry_in) {
                                        // TODO(hashimoto): Consider using
                                        // base::i18n::ToLower to be
@@ -190,8 +190,8 @@ int fat_readdir(const char* path,
   if (!g_volume->ReadDirectory(
           start_sector,
           base::BindRepeating(
-              [](fuse_fill_dir_t filler, void* buf,
-                 const base::StringPiece16& name, const DirectoryEntry& entry) {
+              [](fuse_fill_dir_t filler, void* buf, std::u16string_view name,
+                 const DirectoryEntry& entry) {
                 filler(buf, base::UTF16ToUTF8(name).c_str(), nullptr, 0);
                 return true;
               },

@@ -117,7 +117,7 @@ class ProxyConnectJob {
   // Called when the client socket is ready for reading.
   void OnClientReadReady();
 
-  void HandleClientHTTPRequest(const base::StringPiece& http_request);
+  void HandleClientHTTPRequest(std::string_view http_request);
 
   // Called from |OnProxyResolution|, after the proxy for |target_url_| is
   // resolved.

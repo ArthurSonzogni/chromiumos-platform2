@@ -109,7 +109,7 @@ bool LockCorePattern() {
 // Given an exec name like "chrome", return the string we'd get in |exec| if
 // we're getting the exec name from the kernel. Matches the string manipulation
 // in UserCollectorBase::HandleCrash.
-std::string ExecNameToSuppliedName(base::StringPiece name) {
+std::string ExecNameToSuppliedName(std::string_view name) {
   // When checking a kernel-supplied name, it should be truncated to 15 chars.
   return "supplied_" + std::string(name.data(), 0, kKernelProcessNameLength);
 }
@@ -151,8 +151,8 @@ bool IsACrashpadChildOf(const base::FilePath& status_file,
     } else if (key_value.first == "Name") {
       // Names in status are truncated to 15 characters. (TASK_COMM_LEN is 16
       // and one byte is used for the terminating nul internally.)
-      constexpr base::StringPiece kCrashpadName(
-          base::StringPiece("chrome_crashpad_handler")
+      constexpr std::string_view kCrashpadName(
+          std::string_view("chrome_crashpad_handler")
               .substr(0, kKernelProcessNameLength));
       std::string value;
       base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL, &value);
@@ -605,11 +605,11 @@ bool UserCollector::ShouldCaptureEarlyChromeCrash(const std::string& exec,
   // instead of the expected \0s. Check both ways.
   for (char separator :
        {kNormalCmdlineSeparator, kChromeSubprocessCmdlineSeparator}) {
-    std::vector<base::StringPiece> argv = base::SplitStringPiece(
+    std::vector<std::string_view> argv = base::SplitStringPiece(
         cmdline, std::string(1, separator), base::TRIM_WHITESPACE,
         base::SPLIT_WANT_NONEMPTY);
 
-    for (base::StringPiece arg : argv) {
+    for (std::string_view arg : argv) {
       if (base::StartsWith(arg, "--type=")) {
         return false;  // Not the browser process. Doesn't meet rule #1.
       }

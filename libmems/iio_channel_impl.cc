@@ -84,7 +84,7 @@ std::optional<std::string> IioChannelImpl::ReadStringAttribute(
     return std::nullopt;
   }
   return std::string(base::TrimString(std::string(data, len),
-                                      base::StringPiece("\0\n", 2),
+                                      std::string_view("\0\n", 2),
                                       base::TRIM_TRAILING));
 }
 

@@ -161,7 +161,7 @@ bool MetadataPreviewerFrameAnnotator::Plot(SkCanvas* canvas) {
   SkPaint paint;
 
   using ColorPair = std::pair<SkColor, SkColor>;
-  auto draw_text_box = [&](base::StringPiece text, ColorPair color,
+  auto draw_text_box = [&](std::string_view text, ColorPair color,
                            SkScalar left, SkScalar top,
                            std::optional<SkScalar> height = {}) {
     paint.setColor(color.second);
@@ -177,9 +177,9 @@ bool MetadataPreviewerFrameAnnotator::Plot(SkCanvas* canvas) {
     return bg_box;
   };
   auto draw_metadata =
-      [&](SkScalar left, SkScalar top, base::StringPiece title,
+      [&](SkScalar left, SkScalar top, std::string_view title,
           ColorPair title_color,
-          std::vector<std::pair<base::StringPiece, ColorPair>> info) {
+          std::vector<std::pair<std::string_view, ColorPair>> info) {
         font.setTypeface(bold_typeface);
         const auto title_box = draw_text_box(title, title_color, left, top);
         font.setTypeface(normal_typeface);

@@ -22,10 +22,10 @@
 
 namespace faced {
 
-constexpr base::StringPiece kTestUserDataPayload =
+constexpr std::string_view kTestUserDataPayload =
     "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod "
     "tempor incididunt ut labore et dolore magna aliqua";
-constexpr base::StringPiece kTestUserDataPayload2 = "test user data";
+constexpr std::string_view kTestUserDataPayload2 = "test user data";
 
 // Return a FaceStatusCode with an "OK" code.
 faceauth::eora::FaceStatusCode FaceStatusOk();

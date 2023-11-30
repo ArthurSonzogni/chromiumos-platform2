@@ -104,7 +104,7 @@ std::string Read(const int fd) {
   return std::string(buffer, bytes_read);
 }
 
-void Write(const int fd, base::StringPiece s) {
+void Write(const int fd, std::string_view s) {
   while (!s.empty()) {
     const ssize_t bytes_written = HANDLE_EINTR(write(fd, s.data(), s.size()));
     PLOG_IF(FATAL, bytes_written < 0) << "Cannot write to fd " << fd;
@@ -122,7 +122,7 @@ class ProcessUnderTest : public Process {
 };
 
 struct ProcessFactory {
-  base::StringPiece name;
+  std::string_view name;
   std::unique_ptr<SandboxedProcess> (*make_process)();
 };
 

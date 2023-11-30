@@ -52,7 +52,7 @@ static constexpr int kBootstatMaxEventLength = 64;
 //   "12.76543 0.89"
 //   "10.3333"
 static std::optional<std::vector<base::TimeDelta>> ParseDecimalColumns(
-    const base::StringPiece& line) {
+    std::string_view line) {
   auto numbers = base::SplitStringPiece(line, " ", base::TRIM_WHITESPACE,
                                         base::SPLIT_WANT_NONEMPTY);
   if (numbers.empty()) {

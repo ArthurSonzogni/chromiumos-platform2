@@ -379,7 +379,7 @@ class CrashCollector {
   // Writes |data| to |filename|, which must be a new file.
   // If the file already exists or writing fails, return a negative value.
   // Otherwise returns the number of bytes written.
-  int WriteNewFile(const base::FilePath& filename, base::StringPiece data);
+  int WriteNewFile(const base::FilePath& filename, std::string_view data);
 
   // Copies |source_fd| to |target_path|, which must be a new file.
   // If the file already exists or writing fails, return false.
@@ -670,13 +670,12 @@ class CrashCollector {
   void LogCrash(const std::string& message, const std::string& reason) const;
 
  private:
-  static bool ParseProcessTicksFromStat(base::StringPiece stat,
-                                        uint64_t* ticks);
+  static bool ParseProcessTicksFromStat(std::string_view stat, uint64_t* ticks);
 
   // Adds variations (experiment IDs) to crash reports. Returns true on success.
-  bool AddVariations(base::StringPiece file,
-                     base::StringPiece variation_key,
-                     base::StringPiece num_experiment_key);
+  bool AddVariations(std::string_view file,
+                     std::string_view variation_key,
+                     std::string_view num_experiment_key);
 
   bool GetUserCrashDirectoriesOld(std::vector<base::FilePath>* directories,
                                   bool use_daemon_store);

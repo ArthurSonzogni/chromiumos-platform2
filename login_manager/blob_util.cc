@@ -21,7 +21,7 @@ std::vector<uint8_t> SerializeAsBlob(
   return result;
 }
 
-std::vector<uint8_t> StringToBlob(base::StringPiece str) {
+std::vector<uint8_t> StringToBlob(std::string_view str) {
   return std::vector<uint8_t>(str.begin(), str.end());
 }
 

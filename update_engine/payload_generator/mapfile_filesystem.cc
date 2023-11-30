@@ -87,9 +87,9 @@ bool MapfileFilesystem::GetFiles(vector<File>* files) const {
 
   // Iterate over all the lines in the file and generate one File entry per
   // line.
-  vector<base::StringPiece> lines = base::SplitStringPiece(
+  vector<std::string_view> lines = base::SplitStringPiece(
       file_data, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
-  for (const base::StringPiece& line : lines) {
+  for (std::string_view line : lines) {
     File mapped_file;
 
     mapped_file.extents = {};

@@ -91,7 +91,7 @@ class GoldfishDaemon : public brillo::Daemon {
     }
 
     if (!base::WriteFileDescriptor(
-            fd_.get(), base::StringPiece(kCrosPipe, sizeof(kCrosPipe)))) {
+            fd_.get(), std::string_view(kCrosPipe, sizeof(kCrosPipe)))) {
       LOG(WARNING) << "Fail to open cros pipe, old version Android Emulator?";
       return EX_UNAVAILABLE;
     }

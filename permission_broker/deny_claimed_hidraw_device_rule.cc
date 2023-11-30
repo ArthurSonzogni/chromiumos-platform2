@@ -31,7 +31,7 @@ const std::vector<std::string> kGenericSubsystems = {
 const char kLogitechUnifyingReceiverDriver[] = "logitech-djreceiver";
 const char kThingmDriver[] = "thingm";
 
-const base::StringPiece kJoydevPrefix = "/dev/input/js";
+const std::string_view kJoydevPrefix = "/dev/input/js";
 
 const size_t kAllowedAbsCapabilities[] = {
     ABS_X,     ABS_Y,        ABS_Z,      ABS_RX,    ABS_RY,
@@ -105,7 +105,7 @@ void UnsetCapabilityBit(std::vector<uint64_t>* bitfield, size_t bit) {
 // Joydev devices expose a devnode string with the format:
 //     /dev/input/js#
 // Where # is the numeric index of the joydev device.
-bool IsJoydevDeviceNode(base::StringPiece devnode) {
+bool IsJoydevDeviceNode(std::string_view devnode) {
   // Match the devnode prefix.
   if (!base::StartsWith(devnode, kJoydevPrefix, base::CompareCase::SENSITIVE))
     return false;

@@ -200,9 +200,9 @@ Service::ServerInfo::~ServerInfo() {
   }
 
   std::vector<string> mounts;
-  for (base::StringPiece line : base::SplitStringPiece(
+  for (std::string_view line : base::SplitStringPiece(
            contents, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
-    std::vector<base::StringPiece> mount_data = base::SplitStringPiece(
+    std::vector<std::string_view> mount_data = base::SplitStringPiece(
         line, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
     if (mount_data.size() < 6) {
       LOG(ERROR) << "Invalid mount data: " << line;

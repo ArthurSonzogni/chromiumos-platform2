@@ -28,7 +28,7 @@ constexpr size_t kMaxFuseDataSize = 256 * 1024;
 
 // Writes the |data| into |fd| with one write(2) (unless EINTR),
 // and returns whether or not it succeeded. |name| is used for logging message.
-bool WriteData(int fd, const std::vector<char>& data, base::StringPiece name) {
+bool WriteData(int fd, const std::vector<char>& data, std::string_view name) {
   int result = HANDLE_EINTR(write(fd, data.data(), data.size()));
   if (result != data.size()) {
     if (result < 0) {

@@ -25,7 +25,7 @@ std::vector<base::FilePath> GetDataDirectories() {
     xdg_data_dirs = kDefaultDataDirsPaths;
   }
   // Now break it up into the paths that we should search.
-  std::vector<base::StringPiece> search_dirs = base::SplitStringPiece(
+  std::vector<std::string_view> search_dirs = base::SplitStringPiece(
       xdg_data_dirs, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   std::vector<base::FilePath> retval;
   for (const auto& curr_dir : search_dirs) {

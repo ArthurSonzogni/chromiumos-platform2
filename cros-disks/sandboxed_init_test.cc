@@ -28,7 +28,7 @@ namespace cros_disks {
 namespace {
 
 // Writes a string to a file descriptor.
-void Write(int fd, base::StringPiece s) {
+void Write(int fd, std::string_view s) {
   if (!base::WriteFileDescriptor(fd, s))
     PLOG(FATAL) << "Cannot write '" << s << "' to file descriptor " << fd;
 }

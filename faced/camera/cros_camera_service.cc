@@ -19,7 +19,7 @@ namespace faced {
 constexpr int kApiVersion = 1;
 
 std::unique_ptr<CrosCameraService> CrosCameraService::Create(
-    base::StringPiece token_path_string) {
+    std::string_view token_path_string) {
   return base::WrapUnique(new CrosCameraService(token_path_string));
 }
 

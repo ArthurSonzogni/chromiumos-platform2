@@ -120,7 +120,7 @@ class HardwareChromeOS final : public HardwareInterface {
   // |target_slot|.
   // Expects only `kFWSlotA` or `kFWSlotB` as |target_slot|.
   // Returns false on failure.
-  bool SetFWTryNextSlot(base::StringPiece target_slot);
+  bool SetFWTryNextSlot(std::string_view target_slot);
   // Marks current RW firmware boot result as success.
   // Returns false on failure.
   bool SetFWResultSuccessful();

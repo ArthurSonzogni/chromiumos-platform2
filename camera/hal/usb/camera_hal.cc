@@ -254,7 +254,7 @@ const char* GetPreferredPath(udev_device* dev) {
     // 2. Without USB revision (e.g. {PATH}-usb-0:{PORT})
     // Always prefer the former one if it presents.
     if (found_entry_name == nullptr ||
-        base::StringPiece(name).find("-usbv") != base::StringPiece::npos) {
+        std::string_view(name).find("-usbv") != std::string_view::npos) {
       found_entry_name = name;
     }
   }

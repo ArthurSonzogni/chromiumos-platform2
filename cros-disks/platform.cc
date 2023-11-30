@@ -429,7 +429,7 @@ bool Platform::CleanUpStaleMountPoints(const std::string& dir) const {
     if (!entry)
       break;
 
-    const base::StringPiece name = entry->d_name;
+    const std::string_view name = entry->d_name;
     if (name == "." || name == "..")
       continue;
 

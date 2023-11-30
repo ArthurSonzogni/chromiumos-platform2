@@ -110,12 +110,12 @@ DirentryRequest::DirentryRequest(fuse_req_t req, size_t size)
   DCHECK(size_);
 }
 
-bool DirentryRequest::AddEntry(base::StringPiece name,
+bool DirentryRequest::AddEntry(std::string_view name,
                                fuse_ino_t inode,
                                mode_t mode,
                                off_t next_offset) {
   CHECK(mode & S_IFREG || mode & S_IFDIR);
-  CHECK_EQ(name.find('/'), base::StringPiece::npos);
+  CHECK_EQ(name.find('/'), std::string_view::npos);
   DCHECK_NE(name, ".");
   DCHECK_NE(name, "..");
 

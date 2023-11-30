@@ -239,7 +239,7 @@ bool Thinpool::GetTotalSpace(int64_t* size) {
     return false;
   }
 
-  const std::vector<base::StringPiece> dmstatus_strs = base::SplitStringPiece(
+  const std::vector<std::string_view> dmstatus_strs = base::SplitStringPiece(
       output, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
   if (dmstatus_strs.size() < kLbaCountValIdx + 1) {
@@ -272,7 +272,7 @@ bool Thinpool::GetFreeSpace(int64_t* size) {
     return false;
   }
 
-  const std::vector<base::StringPiece> dmstatus_strs = base::SplitStringPiece(
+  const std::vector<std::string_view> dmstatus_strs = base::SplitStringPiece(
       output, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
   if (dmstatus_strs.size() < kDataAllocStatIdx + 1) {
@@ -280,7 +280,7 @@ bool Thinpool::GetFreeSpace(int64_t* size) {
     return false;
   }
 
-  const std::vector<base::StringPiece> data_alloc_strs =
+  const std::vector<std::string_view> data_alloc_strs =
       base::SplitStringPiece(dmstatus_strs[kDataAllocStatIdx], "/",
                              base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 

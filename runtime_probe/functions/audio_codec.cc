@@ -36,7 +36,7 @@ AudioCodecFunction::DataType ProbeCodecFromFile(
   }
 
   AudioCodecFunction::DataType result{};
-  for (base::StringPiece codec :
+  for (std::string_view codec :
        base::SplitStringPiece(asoc_content, "\n", base::TRIM_WHITESPACE,
                               base::SPLIT_WANT_NONEMPTY)) {
     if (base::Contains(kKnownInvalidCodecNames, codec))

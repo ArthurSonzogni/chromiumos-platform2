@@ -493,7 +493,7 @@ TEST_F(PlatformTest, RunAsRootUnmountForce) {
   EXPECT_FALSE(base::PathExists(file_path));
 
   // Can we still use the open file handle?
-  const base::StringPiece s = "Some data...";
+  const std::string_view s = "Some data...";
   EXPECT_TRUE(file.WriteAtCurrentPos(s.data(), s.size()));
   EXPECT_EQ(file.GetLength(), s.size());
 }

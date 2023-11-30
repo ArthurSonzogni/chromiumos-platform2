@@ -290,11 +290,11 @@ bool GetUsernsOutsideId(const std::string& map, int id, int* id_out) {
   }
 
   std::string map_copy = map;
-  base::StringPiece map_piece(map_copy);
+  std::string_view map_piece(map_copy);
 
   for (const auto& mapping : base::SplitStringPiece(
            map_piece, ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL)) {
-    std::vector<base::StringPiece> tokens = base::SplitStringPiece(
+    std::vector<std::string_view> tokens = base::SplitStringPiece(
         mapping, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
     if (tokens.size() != 3) {

@@ -10,10 +10,10 @@
 namespace vm_tools {
 namespace garcon {
 
-base::StringPiece ParseGroupName(base::StringPiece group_line) {
+std::string_view ParseGroupName(std::string_view group_line) {
   if (group_line.empty() || group_line.front() != '[' ||
       group_line.back() != ']') {
-    return base::StringPiece();
+    return std::string_view();
   }
   return group_line.substr(1, group_line.size() - 2);
 }
@@ -34,14 +34,14 @@ std::string ExtractKeyLocale(const std::string& key) {
 }
 
 std::pair<std::string, std::string> ExtractKeyValuePair(
-    base::StringPiece entry_line) {
+    std::string_view entry_line) {
   size_t equal_pos = entry_line.find_first_of('=');
   if (equal_pos == std::string::npos) {
     return std::make_pair(std::string(entry_line), "");
   }
-  base::StringPiece key = base::TrimWhitespaceASCII(
+  std::string_view key = base::TrimWhitespaceASCII(
       entry_line.substr(0, equal_pos), base::TRIM_TRAILING);
-  base::StringPiece value = base::TrimWhitespaceASCII(
+  std::string_view value = base::TrimWhitespaceASCII(
       entry_line.substr(equal_pos + 1), base::TRIM_LEADING);
   return std::make_pair(std::string(key), std::string(value));
 }

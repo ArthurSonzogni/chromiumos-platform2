@@ -28,15 +28,15 @@ constexpr char kAttributeFingerprint[] = " fingerprint=\"";
 
 // Helper function for extracting an attribute value from an XML line.
 // Expects |key| to be suffixed with '=\"' (e.g. ' sdkVersion=\"').
-base::StringPiece GetAttributeValue(const base::StringPiece& line,
-                                    const base::StringPiece& key) {
-  base::StringPiece::size_type key_begin_pos = line.find(key);
-  if (key_begin_pos == base::StringPiece::npos)
-    return base::StringPiece();
-  base::StringPiece::size_type value_begin_pos = key_begin_pos + key.length();
-  base::StringPiece::size_type value_end_pos = line.find('"', value_begin_pos);
-  if (value_end_pos == base::StringPiece::npos)
-    return base::StringPiece();
+std::string_view GetAttributeValue(std::string_view line,
+                                   std::string_view key) {
+  std::string_view::size_type key_begin_pos = line.find(key);
+  if (key_begin_pos == std::string_view::npos)
+    return std::string_view();
+  std::string_view::size_type value_begin_pos = key_begin_pos + key.length();
+  std::string_view::size_type value_end_pos = line.find('"', value_begin_pos);
+  if (value_end_pos == std::string_view::npos)
+    return std::string_view();
   return line.substr(value_begin_pos, value_end_pos - value_begin_pos);
 }
 
@@ -157,20 +157,20 @@ bool FindFingerprintAndSdkVersion(std::string* out_fingerprint,
   // writeLPr(), and the write function always uses Android's FastXmlSerializer.
   // The serializer does not try to pretty-print the XML, and inserts '\n' only
   // to certain places like endTag.
-  base::StringPiece trimmed = base::TrimWhitespaceASCII(line, base::TRIM_ALL);
+  std::string_view trimmed = base::TrimWhitespaceASCII(line, base::TRIM_ALL);
   if (!base::StartsWith(trimmed, kElementVersion, base::CompareCase::SENSITIVE))
     return false;  // Not a <version> element. Ignoring.
 
   if (trimmed.find(kAttributeVolumeUuid) != std::string::npos)
     return false;  // This is for an external storage. Ignoring.
 
-  base::StringPiece fingerprint =
+  std::string_view fingerprint =
       GetAttributeValue(trimmed, kAttributeFingerprint);
   if (fingerprint.empty()) {
     LOG(WARNING) << "<version> doesn't have a valid fingerprint: " << trimmed;
     return false;
   }
-  base::StringPiece sdk_version =
+  std::string_view sdk_version =
       GetAttributeValue(trimmed, kAttributeSdkVersion);
   if (sdk_version.empty()) {
     LOG(WARNING) << "<version> doesn't have a valid sdkVersion: " << trimmed;

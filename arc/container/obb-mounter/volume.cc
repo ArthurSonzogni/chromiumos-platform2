@@ -276,7 +276,7 @@ bool Volume::ReadDirectory(int64_t start_sector,
       DirectoryEntry entry;
       MsdosDirEntryToDirectoryEntry(fat_type_, dir_entry, &entry);
       if (!callback.Run(
-              base::StringPiece16(long_name_buf.data(), long_name_buf.size()),
+              std::u16string_view(long_name_buf.data(), long_name_buf.size()),
               entry)) {
         return true;
       }

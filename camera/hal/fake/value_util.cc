@@ -77,7 +77,7 @@ std::optional<ListWithPath> GetIfList(const ValueWithPath& v) {
 
 template <>
 std::optional<ValueWithPath> GetValue<ValueWithPath>(const DictWithPath& dict,
-                                                     base::StringPiece key) {
+                                                     std::string_view key) {
   auto child = dict->Find(key);
   if (child == nullptr) {
     return std::nullopt;
@@ -87,7 +87,7 @@ std::optional<ValueWithPath> GetValue<ValueWithPath>(const DictWithPath& dict,
 
 template <>
 std::optional<ValueWithPath> GetRequiredValue<ValueWithPath>(
-    const DictWithPath& dict, base::StringPiece key) {
+    const DictWithPath& dict, std::string_view key) {
   auto val = GetValue<ValueWithPath>(dict, key);
   if (!val.has_value()) {
     WARN_MISSING(dict.path << "." << key);
@@ -98,7 +98,7 @@ std::optional<ValueWithPath> GetRequiredValue<ValueWithPath>(
 #define GENERATE_TYPED_GETTER(c_type, value_type, type_name, return_wrapper) \
   template <>                                                                \
   std::optional<c_type> GetRequiredValue<c_type>(const DictWithPath& dict,   \
-                                                 base::StringPiece key) {    \
+                                                 std::string_view key) {     \
     auto child = dict->Find(key);                                            \
     if (child == nullptr) {                                                  \
       WARN_MISSING_WITH_TYPE(dict.path << "." << key, #type_name);           \
@@ -114,7 +114,7 @@ std::optional<ValueWithPath> GetRequiredValue<ValueWithPath>(
                                                                              \
   template <>                                                                \
   std::optional<c_type> GetValue<c_type>(const DictWithPath& dict,           \
-                                         base::StringPiece key) {            \
+                                         std::string_view key) {             \
     auto child = dict->Find(key);                                            \
     if (child == nullptr) {                                                  \
       return std::nullopt;                                                   \
@@ -129,9 +129,13 @@ std::optional<ValueWithPath> GetRequiredValue<ValueWithPath>(
 
 #define DEREF_RET(x, y) *x
 #define DICT_WITH_PATH_WRAPPER(x, y) \
-  DictWithPath { x, y }
+  DictWithPath {                     \
+    x, y                             \
+  }
 #define LIST_WITH_PATH_WRAPPER(x, y) \
-  ListWithPath { x, y }
+  ListWithPath {                     \
+    x, y                             \
+  }
 
 GENERATE_TYPED_GETTER(int, Int, integer, DEREF_RET);
 GENERATE_TYPED_GETTER(bool, Bool, boolean, DEREF_RET);

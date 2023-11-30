@@ -140,7 +140,7 @@ void LivenessCheckerImpl::SetProcForTests(base::FilePath&& proc_directory) {
 }
 
 std::optional<brillo::SafeFD> LivenessCheckerImpl::OpenBrowserProcFile(
-    base::StringPiece file_name) {
+    std::string_view file_name) {
   std::optional<pid_t> browser_pid = manager_->GetBrowserPid();
   if (!browser_pid.has_value()) {
     return std::nullopt;
@@ -241,8 +241,7 @@ void LivenessCheckerImpl::RecordWchanState(LoginMetrics::BrowserState state) {
   // up most frequently.
 
   // Strings log better than vector<char>.
-  base::StringPiece contents(read_result.first.data(),
-                             read_result.first.size());
+  std::string_view contents(read_result.first.data(), read_result.first.size());
   LOG(WARNING) << "browser wchan for state " << static_cast<int>(state) << ": "
                << contents;
 }

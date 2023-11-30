@@ -136,7 +136,7 @@ std::optional<std::string> FeatureManagementUtil::DecodeHWID(
   // To remove the end, look for the last bit set to 1 in the whole string,
   // excluding the checksum.
   std::string decoded_bit_string;
-  std::vector<base::StringPiece> payload = base::SplitStringPiece(
+  std::vector<std::string_view> payload = base::SplitStringPiece(
       hwid, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   if (payload.size() != 2)
     return std::nullopt;

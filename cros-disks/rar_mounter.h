@@ -55,15 +55,15 @@ class RarMounter : public ArchiveMounter {
   // naming pattern for multipart archives. Returns the range of characters
   // forming the numeric part NNNN if path matches the pattern, or an empty
   // range otherwise.
-  static IndexRange ParseDigits(base::StringPiece path);
+  static IndexRange ParseDigits(std::string_view path);
 
   // Adds bind paths using old naming scheme.
   void AddPathsWithOldNamingScheme(std::vector<std::string>* bind_paths,
-                                   base::StringPiece original_path) const;
+                                   std::string_view original_path) const;
 
   // Adds bind paths using new naming scheme.
   void AddPathsWithNewNamingScheme(std::vector<std::string>* bind_paths,
-                                   base::StringPiece original_path,
+                                   std::string_view original_path,
                                    const IndexRange& digits) const;
 
   // Prepares the bind paths for the given RAR file path.
@@ -107,7 +107,7 @@ class RarMounter : public ArchiveMounter {
   // basename999.rar
   // etc.
   std::vector<std::string> GetBindPaths(
-      base::StringPiece original_path) const override;
+      std::string_view original_path) const override;
 
   FRIEND_TEST(RarMounterTest, Increment);
   FRIEND_TEST(RarMounterTest, ParseDigits);

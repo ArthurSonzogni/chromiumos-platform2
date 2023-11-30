@@ -20,7 +20,7 @@ constexpr char kDefaultSeverityStdout[] = "info";
 constexpr char kDefaultSeverityStderr[] = "warn";
 constexpr char kSyslogSocketPath[] = "/run/rsyslogd/stdout";
 
-int SeverityFromString(const base::StringPiece& severity) {
+int SeverityFromString(std::string_view severity) {
   std::string severity_lower = base::ToLowerASCII(severity);
   if (severity_lower == "0" || severity_lower == "emerg") {
     return 0;

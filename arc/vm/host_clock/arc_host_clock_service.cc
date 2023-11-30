@@ -92,8 +92,8 @@ int main(int argc, char* argv[]) {
 
       if (!base::WriteFileDescriptor(
               fd.get(),
-              base::StringPiece(reinterpret_cast<const char*>(&response),
-                                num_requests * sizeof(response[0])))) {
+              std::string_view(reinterpret_cast<const char*>(&response),
+                               num_requests * sizeof(response[0])))) {
         PLOG(ERROR) << "WriteFileDescriptor failed.";
         break;
       }

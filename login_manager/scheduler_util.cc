@@ -30,7 +30,7 @@ constexpr char kCpusetNonUrgentDir[] =
 namespace login_manager {
 
 std::vector<std::string> GetSmallCoreCpuIdsFromAttr(
-    const base::FilePath& cpu_bus_dir, base::StringPiece attribute) {
+    const base::FilePath& cpu_bus_dir, std::string_view attribute) {
   base::FilePath cpu0_attr_file = cpu_bus_dir.Append("cpu0").Append(attribute);
   if (!base::PathExists(cpu0_attr_file))
     return {};

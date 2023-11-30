@@ -183,7 +183,7 @@ int main(int argc, char** argv) {
   std::string kernel_parameters;
   if (base::ReadFileToString(base::FilePath(kKernelCmdFile),
                              &kernel_parameters)) {
-    std::vector<base::StringPiece> params = base::SplitStringPiece(
+    std::vector<std::string_view> params = base::SplitStringPiece(
         kernel_parameters, " ", base::WhitespaceHandling::TRIM_WHITESPACE,
         base::SplitResult::SPLIT_WANT_NONEMPTY);
 

@@ -68,7 +68,7 @@ class ComponentTest : public testing::Test {
     const char data[] = "c";
     // Append to |file| including the trailing '\0' character to fail
     // Component::IsValidFingerprintFile
-    if (!base::AppendToFile(file, base::StringPiece(data, sizeof(data))))
+    if (!base::AppendToFile(file, std::string_view(data, sizeof(data))))
       return false;
 
     base::FilePath bad_component_dest =

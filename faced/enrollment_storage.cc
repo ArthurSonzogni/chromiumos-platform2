@@ -33,8 +33,8 @@ using ::chromeos::faceauth::mojom::EnrollmentMetadataPtr;
 
 }  // namespace
 
-absl::Status EnrollmentStorage::WriteEnrollment(base::StringPiece user_id,
-                                                base::StringPiece data) {
+absl::Status EnrollmentStorage::WriteEnrollment(std::string_view user_id,
+                                                std::string_view data) {
   base::FilePath save_path = GetEnrollmentFilePath(user_id);
 
   base::File::Error error;
@@ -53,7 +53,7 @@ absl::Status EnrollmentStorage::WriteEnrollment(base::StringPiece user_id,
 }
 
 absl::StatusOr<std::string> EnrollmentStorage::ReadEnrollment(
-    base::StringPiece user_id) {
+    std::string_view user_id) {
   base::FilePath enrollment_path = GetEnrollmentFilePath(user_id);
 
   std::string data;
@@ -92,7 +92,7 @@ std::vector<EnrollmentMetadataPtr> EnrollmentStorage::ListEnrollments() {
   return ret;
 }
 
-absl::Status EnrollmentStorage::RemoveEnrollment(base::StringPiece user_id) {
+absl::Status EnrollmentStorage::RemoveEnrollment(std::string_view user_id) {
   base::FilePath enrollment_path = GetEnrollmentFilePath(user_id);
 
   if (!base::PathExists(enrollment_path)) {
@@ -118,12 +118,12 @@ absl::Status EnrollmentStorage::ClearEnrollments() {
   return ret;
 }
 
-bool EnrollmentStorage::IsUserEnrolled(base::StringPiece user_id) {
+bool EnrollmentStorage::IsUserEnrolled(std::string_view user_id) {
   return base::PathExists(GetEnrollmentFilePath((user_id)));
 }
 
 base::FilePath EnrollmentStorage::GetEnrollmentFilePath(
-    base::StringPiece user_id) {
+    std::string_view user_id) {
   return GetFacedFilePath().Append(user_id).Append(kEnrollmentFileName);
 }
 

@@ -39,7 +39,7 @@ constexpr char kAtimeXattrName[] = "trusted.ArcVmDataMigrationAtime";
 constexpr char kVirtiofsSecurityXattrPrefix[] = "user.virtiofs.security.";
 constexpr char kVirtiofsXattrPrefix[] = "user.virtiofs.";
 
-static_assert(base::StringPiece(kVirtiofsSecurityXattrPrefix)
+static_assert(std::string_view(kVirtiofsSecurityXattrPrefix)
                   .find(kVirtiofsXattrPrefix) == 0);
 
 // This must be a file path on the stateful partition, since both of the
@@ -79,7 +79,7 @@ constexpr std::array<IdMap<gid_t>, 5> kAndroidGidMap{{
 template <typename T, size_t N>
 std::optional<T> MapToGuestId(T host_id,
                               const std::array<IdMap<T>, N>& id_maps,
-                              base::StringPiece id_name) {
+                              std::string_view id_name) {
   for (const auto& id_map : id_maps) {
     if (id_map.host <= host_id && host_id < id_map.host + id_map.size) {
       return host_id - id_map.host + id_map.guest;

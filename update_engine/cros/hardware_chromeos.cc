@@ -647,7 +647,7 @@ bool HardwareChromeOS::ResetFWTryNextSlot() {
          SetFWTryCount(fw_try_count);
 }
 
-bool HardwareChromeOS::SetFWTryNextSlot(base::StringPiece target_slot) {
+bool HardwareChromeOS::SetFWTryNextSlot(std::string_view target_slot) {
   DCHECK(crossystem_);
 
   if (target_slot != kFWSlotA && target_slot != kFWSlotB) {

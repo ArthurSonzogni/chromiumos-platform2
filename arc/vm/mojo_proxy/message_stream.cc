@@ -51,7 +51,7 @@ bool SendMsg(int fd,
   }
 
   if (written < size) {
-    auto sp = base::StringPiece(buf + written, size - written);
+    auto sp = std::string_view(buf + written, size - written);
     if (!base::WriteFileDescriptor(fd, std::move(sp))) {
       PLOG(ERROR) << "Failed to write proto";
       return false;

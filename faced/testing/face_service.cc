@@ -19,7 +19,7 @@
 
 namespace faced {
 
-constexpr base::StringPiece kServerSocket = "face_service.socket";
+constexpr std::string_view kServerSocket = "face_service.socket";
 
 using ::testing::StrictMock;
 

@@ -98,7 +98,7 @@ void SensorMetrics::SetConfigForDevice(
   auto& config = device_configs_[iio_device_id];
   config.types = types;
   config.location = FilterLocationString(std::string(base::TrimString(
-      location, base::StringPiece("\0\n", 2), base::TRIM_TRAILING)));
+      location, std::string_view("\0\n", 2), base::TRIM_TRAILING)));
 }
 
 void SensorMetrics::SendSensorUsage(int iio_device_id, double frequency) {

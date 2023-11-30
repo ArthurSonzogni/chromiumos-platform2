@@ -79,7 +79,7 @@ class CROS_CAMERA_EXPORT CameraMetadataInspector {
                           std::unique_ptr<base::Thread> thread);
 
   // Writes and flushes |msg| to |output_file_|.
-  void Write(base::StringPiece msg);
+  void Write(std::string_view msg);
 
   // Returns true if |key| should be ignored according to |allowlist_| and
   // |denylist_|.

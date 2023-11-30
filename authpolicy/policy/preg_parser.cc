@@ -241,7 +241,7 @@ void HandleRecord(const std::u16string& key_name,
   // Locate/create the dictionary to place the value in.
   std::vector<std::u16string> path;
 
-  std::vector<base::StringPiece16> key_name_components =
+  std::vector<std::u16string_view> key_name_components =
       base::SplitStringPiece(key_name, kRegistryPathSeparator,
                              base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   if (key_name_components.size() > kMaxKeyNameComponents) {
@@ -249,7 +249,7 @@ void HandleRecord(const std::u16string& key_name,
                << kMaxKeyNameComponents << " components.";
     return;
   }
-  for (const base::StringPiece16& key_name_component : key_name_components) {
+  for (std::u16string_view key_name_component : key_name_components) {
     if (key_name_component.empty())
       continue;
 

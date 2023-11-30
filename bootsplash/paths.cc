@@ -29,7 +29,7 @@ void SetPrefixForTesting(const base::FilePath& prefix) {
     g_test_prefix = new base::FilePath(prefix);
 }
 
-base::FilePath Get(base::StringPiece file_path) {
+base::FilePath Get(std::string_view file_path) {
   if (g_test_prefix) {
     if (base::StartsWith(file_path, "/"))
       file_path.remove_prefix(1);

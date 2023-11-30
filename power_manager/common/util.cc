@@ -26,7 +26,7 @@ namespace {
 // to |value_out|. Logs an error and returns false on failure.
 template <typename T>
 bool ReadTypeFile(const base::FilePath& path,
-                  bool (*StringToType)(base::StringPiece, T*),
+                  bool (*StringToType)(std::string_view, T*),
                   T* value_out) {
   DCHECK(value_out);
 

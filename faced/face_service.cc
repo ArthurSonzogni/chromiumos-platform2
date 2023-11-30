@@ -30,7 +30,7 @@ namespace {
 inline constexpr int kChildSocket = 3;
 
 // Path of the FaceService application
-constexpr base::StringPiece kFaceServiceApplicationPath =
+constexpr std::string_view kFaceServiceApplicationPath =
     "/opt/google/faceauth/face_service";
 
 }  // namespace

@@ -546,7 +546,7 @@ std::string ConvertToFdBasedPath(brillo::SafeFD& parent_fd,
 }
 
 CustomParametersForDev::CustomParametersForDev(const std::string& data) {
-  std::vector<base::StringPiece> lines = base::SplitStringPiece(
+  std::vector<std::string_view> lines = base::SplitStringPiece(
       data, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   for (auto& line : lines) {
@@ -557,9 +557,9 @@ CustomParametersForDev::CustomParametersForDev(const std::string& data) {
     // use = to split. value will be an empty string in case of '--key'.
     std::pair<std::string_view, std::string_view> param_pair =
         absl::StrSplit(std::string_view(line), absl::MaxSplits('=', 1));
-    base::StringPiece key =
+    std::string_view key =
         base::TrimWhitespaceASCII(param_pair.first, base::TRIM_ALL);
-    base::StringPiece value =
+    std::string_view value =
         base::TrimWhitespaceASCII(param_pair.second, base::TRIM_ALL);
 
     // Handle prerun: flags for flags before `run`.

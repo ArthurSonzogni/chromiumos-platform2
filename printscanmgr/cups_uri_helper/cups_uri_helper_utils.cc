@@ -87,22 +87,22 @@ bool UriIsGoodAscii(const std::string& uri) {
 // Gets the starting index of the authority from |uri_view| - that is,
 // returns the index following "://". If none is found, returns npos.
 // Caller must ensure |uri_view| is already properly percent-encoded.
-size_t UriAuthorityStartIndex(base::StringPiece uri_view) {
+size_t UriAuthorityStartIndex(std::string_view uri_view) {
   size_t scheme_ender = uri_view.find("://");
-  return scheme_ender == base::StringPiece::npos ? scheme_ender
-                                                 : scheme_ender + 3;
+  return scheme_ender == std::string_view::npos ? scheme_ender
+                                                : scheme_ender + 3;
 }
 
 // Evaluates true when |scheme_view| (including the trailing colon and 2
 // slashes) equals a known printing URI scheme. Caller must ensure
 // |scheme_view| is already properly percent-encoded.
-bool SchemeIsForPrinting(base::StringPiece scheme_view) {
+bool SchemeIsForPrinting(std::string_view scheme_view) {
   // Enumerate known printing URIs. Values are lifted from Chrome browser's
   // Printer::GetProtocol().
-  const std::vector<base::StringPiece> known_schemes = {
+  const std::vector<std::string_view> known_schemes = {
       "usb://",   "ipp://",    "ipps://", "http://",
       "https://", "socket://", "lpd://",  "ippusb://"};
-  for (const base::StringPiece scheme : known_schemes) {
+  for (const std::string_view scheme : known_schemes) {
     if (base::EqualsCaseInsensitiveASCII(scheme_view, scheme)) {
       return true;
     }
@@ -113,7 +113,7 @@ bool SchemeIsForPrinting(base::StringPiece scheme_view) {
 // Evaluates true when the authority portion of a printing URI appears
 // reasonable. Caller must ensure |authority_view| is already properly
 // percent-encoded and does not contain the slash that begins the path.
-bool AuthoritySeemsReasonable(base::StringPiece authority_view) {
+bool AuthoritySeemsReasonable(std::string_view authority_view) {
   if (authority_view.empty()) {
     return false;
   }
@@ -123,7 +123,7 @@ bool AuthoritySeemsReasonable(base::StringPiece authority_view) {
   // the variety of possible hosts and focus on the port number.
   // TODO(kdlee): figure out why nobody else in platform2 uses libcurl.
   size_t last_colon = authority_view.rfind(':');
-  if (last_colon == base::StringPiece::npos) {
+  if (last_colon == std::string_view::npos) {
     // We don't see a port number - punt.
     return true;
   } else if (last_colon == authority_view.length() - 1) {
@@ -137,8 +137,8 @@ bool AuthoritySeemsReasonable(base::StringPiece authority_view) {
   //    address and no port is attached to this authority).
   // 3. It could be near the end of the authority with actual numeric
   //    values following it.
-  base::StringPiece port_view = authority_view.substr(last_colon + 1);
-  if (port_view.find('@') != base::StringPiece::npos) {
+  std::string_view port_view = authority_view.substr(last_colon + 1);
+  if (port_view.find('@') != std::string_view::npos) {
     // This colon is inside user info - punt.
     return true;
   } else if (base::StartsWith(authority_view, "[") &&
@@ -166,21 +166,21 @@ bool UriSeemsReasonable(const std::string& uri) {
     return false;
   }
 
-  base::StringPiece uri_view = uri;
+  std::string_view uri_view = uri;
   size_t authority_starter = UriAuthorityStartIndex(uri_view);
-  if (authority_starter == base::StringPiece::npos ||
+  if (authority_starter == std::string_view::npos ||
       authority_starter == uri_view.length()) {
     return false;
   }
 
-  base::StringPiece scheme = uri_view.substr(0, authority_starter);
-  base::StringPiece after_scheme = uri_view.substr(authority_starter);
+  std::string_view scheme = uri_view.substr(0, authority_starter);
+  std::string_view after_scheme = uri_view.substr(authority_starter);
 
   if (!SchemeIsForPrinting(scheme)) {
     return false;
   }
 
-  base::StringPiece authority = after_scheme.substr(0, after_scheme.find('/'));
+  std::string_view authority = after_scheme.substr(0, after_scheme.find('/'));
   if (!AuthoritySeemsReasonable(authority)) {
     return false;
   }

@@ -9,7 +9,7 @@
 
 namespace libcontainer {
 
-Container::Container(base::StringPiece name, const base::FilePath& rundir)
+Container::Container(std::string_view name, const base::FilePath& rundir)
     : container_(container_new(name.data(), rundir.value().c_str())) {
   // container_new() allocates using std::nothrow, so we need to explicitly
   // call abort(2) when allocation fails.

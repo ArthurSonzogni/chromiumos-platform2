@@ -180,7 +180,7 @@ SafeFD::Error SeekToBeginning(int fd) {
 
 SafeFD::Error WriteImpl(int fd, const char* data, size_t size) {
   errno = 0;
-  if (!base::WriteFileDescriptor(fd, base::StringPiece(data, size))) {
+  if (!base::WriteFileDescriptor(fd, std::string_view(data, size))) {
     PLOG(ERROR) << "Failed to write to file";
     return SafeFD::Error::kIOError;
   }

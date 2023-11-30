@@ -130,7 +130,7 @@ class MountPoint final {
 
   // Called every time the 'launcher' process prints a (potential) progress
   // message.
-  void OnProgress(base::StringPiece message);
+  void OnProgress(std::string_view message);
 
   // Parses a (potential) progress message. Returns true if the message was
   // correctly parsed. Stores the progress percentage into |*percent|.
@@ -139,7 +139,7 @@ class MountPoint final {
   // 2. The percent sign is preceded by at least one digit.
   // 3. The sequence of digits before the percent sign form a number between 0
   //    and 100 (included).
-  static bool ParseProgressMessage(base::StringPiece message, int* percent);
+  static bool ParseProgressMessage(std::string_view message, int* percent);
 
   // Mount point data.
   MountPointData data_;
