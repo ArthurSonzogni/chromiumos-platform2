@@ -73,7 +73,8 @@ bool FileHasher::Initialize() {
       LOG(ERROR) << "The source file size must be divisible by the block size, "
                  << "Size: " << source_size;
       LOG(INFO) << "Suggested size: "
-                << base::bits::AlignUp(source_size, int64_t{PAGE_SIZE});
+                << base::bits::AlignUp(static_cast<uint64_t>(source_size),
+                                       uint64_t{PAGE_SIZE});
       return false;
     }
   }
