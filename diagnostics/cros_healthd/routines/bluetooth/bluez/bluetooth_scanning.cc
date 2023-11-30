@@ -232,7 +232,7 @@ void BluetoothScanningRoutine::OnDevicePropertyChanged(
 
   const auto& path = device->GetObjectPath();
   // The device is cached before routine starts.
-  if (scanned_devices_.find(path) == scanned_devices_.end()) {
+  if (!scanned_devices_.contains(path)) {
     OnDeviceAdded(device);
     return;
   }

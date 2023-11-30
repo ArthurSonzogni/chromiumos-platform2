@@ -671,7 +671,7 @@ void CrosHealthdDiagnosticsService::RunRoutine(
 
   routine->Start();
   int32_t id = next_id_;
-  CHECK(active_routines_.find(id) == active_routines_.end());
+  CHECK(!active_routines_.contains(id));
   active_routines_[id] = std::move(routine);
   ++next_id_;
 

@@ -334,7 +334,7 @@ void ParseSocID(const base::FilePath& root_dir, std::string* model_name) {
     //
     // https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-devices-soc
     const std::string& kSoCIDPrefix = "jep106:";
-    if (content.find(kSoCIDPrefix) != 0) {
+    if (!content.starts_with(kSoCIDPrefix)) {
       continue;
     }
     content.erase(0, kSoCIDPrefix.length());

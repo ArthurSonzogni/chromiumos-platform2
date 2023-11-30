@@ -45,7 +45,7 @@ std::string Platform::GetRootDeviceName() const {
 
   std::string dev_path = dev_path_cstr;
 
-  if (dev_path.find(kDevPrefix) != 0) {
+  if (!dev_path.starts_with(kDevPrefix)) {
     PLOG(ERROR) << "Unexpected root device format " << dev_path;
     return "";
   }

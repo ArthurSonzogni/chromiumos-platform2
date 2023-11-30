@@ -62,8 +62,8 @@ void PopulateNodeInfo(Context* context, mojom::AudioResultPtr& res) {
   std::vector<mojom::AudioNodeInfoPtr> input_nodes;
   for (const auto& node : nodes) {
     // Important fields are missing.
-    if (node.find(cras::kIsInputProperty) == node.end() ||
-        node.find(cras::kActiveProperty) == node.end()) {
+    if (!node.contains(cras::kIsInputProperty) ||
+        !node.contains(cras::kActiveProperty)) {
       continue;
     }
 
@@ -86,11 +86,11 @@ void PopulateNodeInfo(Context* context, mojom::AudioResultPtr& res) {
         // Active output node.
         info->output_device_name = node_info->name;
         info->output_volume = node_info->node_volume;
-        if (node.find(cras::kNumberOfUnderrunsProperty) != node.end()) {
+        if (node.contains(cras::kNumberOfUnderrunsProperty)) {
           info->underruns = brillo::GetVariantValueOrDefault<uint32_t>(
               node, cras::kNumberOfUnderrunsProperty);
         }
-        if (node.find(cras::kNumberOfSevereUnderrunsProperty) != node.end()) {
+        if (node.contains(cras::kNumberOfSevereUnderrunsProperty)) {
           info->severe_underruns = brillo::GetVariantValueOrDefault<uint32_t>(
               node, cras::kNumberOfSevereUnderrunsProperty);
         }

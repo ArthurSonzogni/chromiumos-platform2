@@ -110,9 +110,9 @@ mojom::BusDeviceClass GetDeviceClassBySysfs(const base::FilePath& path) {
   if (base::PathExists(net)) {
     for (const auto& nic_path : ListDirectory(net)) {
       const auto name = nic_path.BaseName().value();
-      if (name.find("eth") == 0)
+      if (name.starts_with("eth"))
         return mojom::BusDeviceClass::kEthernetController;
-      if (name.find("wlan") == 0)
+      if (name.starts_with("wlan"))
         return mojom::BusDeviceClass::kWirelessController;
     }
   }
@@ -317,7 +317,7 @@ mojom::ThunderboltBusInfoPtr FetchThunderboltBusInfo(
   auto domain_dir = components.back();
   std::string domain_id;
 
-  if (domain_dir.find("domain") == 0)
+  if (domain_dir.starts_with("domain"))
     domain_id = domain_dir.substr(strlen("domain"));
   else
     return nullptr;
