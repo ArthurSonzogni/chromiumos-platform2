@@ -45,6 +45,7 @@ class MockCellular : public Cellular {
               EntitlementCheck,
               (EntitlementCheckResultCallback, bool),
               (override));
+  MOCK_METHOD(bool, FirmwareSupportsTethering, (), (override));
 };
 
 }  // namespace shill

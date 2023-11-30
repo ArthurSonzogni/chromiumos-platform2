@@ -4140,6 +4140,33 @@ void Cellular::OnEntitlementCheckUpdated(CarrierEntitlement::Result result) {
   }
 }
 
+bool Cellular::FirmwareSupportsTethering() {
+  // This list should only include FW versions in which hotspot was fully
+  // validated on.
+  static const std::map<Cellular::ModemType, std::vector<std::string_view>>
+      blocklist = {
+          {Cellular::ModemType::kL850GL,
+           {"18500.5001.00.02", "18500.5001.00.03", "18500.5001.00.04"}},
+          // 81600.0000.00.29.21* doesn't support multiple PDNs either, but we
+          // don't disable it because this FW is only used by Japanese carriers,
+          // which only use single PDNs.
+          {Cellular::ModemType::kFM350, {"81600.0000.00.29.19"}},
+      };
+
+  const auto it = blocklist.find(modem_type_);
+  if (it != blocklist.end()) {
+    for (const auto& prefix : it->second) {
+      if (firmware_revision_.starts_with(prefix)) {
+        SLOG(2) << LoggingTag() << ": " << __func__
+                << " : Firmware doesn't support tethering: "
+                << firmware_revision_;
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 void Cellular::SetDefaultPdnForTesting(const RpcIdentifier& dbus_path,
                                        std::unique_ptr<Network> network,
                                        LinkState link_state) {

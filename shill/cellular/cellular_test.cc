@@ -4137,4 +4137,64 @@ TEST_F(CellularTest, IsModemFM350) {
   EXPECT_FALSE(device_->IsModemFM101());
   EXPECT_FALSE(device_->IsModemL850GL());
 }
+
+TEST_F(CellularTest, FirmwareSupportsTetheringUnknownModem) {
+  device_->SetFirmwareRevision("1.2.3.4.5");
+  EXPECT_TRUE(device_->FirmwareSupportsTethering());
+}
+
+TEST_F(CellularTest, FirmwareSupportsTetheringFM350) {
+  auto device_id = std::make_unique<DeviceId>(
+      cellular::kFM350BusType, cellular::kFM350Vid, cellular::kFM350Pid);
+  device_->SetDeviceId(std::move(device_id));
+  const std::string unsupportedMR1 = "81600.0000.00.29.19.16";
+  const std::string supportedMR2_21 = "81600.0000.00.29.21.21";
+  const std::string supportedMR2_24 = "81600.0000.00.29.21.24";
+  const std::string supportedMR4 = "81600.0000.00.29.23.06";
+
+  device_->SetFirmwareRevision(unsupportedMR1);
+  EXPECT_FALSE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(supportedMR2_21);
+  EXPECT_TRUE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(supportedMR2_24);
+  EXPECT_TRUE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(supportedMR4);
+  EXPECT_TRUE(device_->FirmwareSupportsTethering());
+}
+
+TEST_F(CellularTest, FirmwareSupportsTetheringL850GL) {
+  auto device_id = std::make_unique<DeviceId>(
+      cellular::kL850GLBusType, cellular::kL850GLVid, cellular::kL850GLPid);
+  device_->SetDeviceId(std::move(device_id));
+  const std::string unsupportedMR2 = "18500.5001.00.02.24.09";
+  const std::string unsupportedMR3 = "18500.5001.00.03.25.18";
+  const std::string unsupportedMR4_01 = "18500.5001.00.04.26.01";
+  const std::string unsupportedMR4_06 = "18500.5001.00.04.26.06";
+
+  const std::string supportedMR5_12 = "18500.5001.00.05.27.12";
+  const std::string supportedMR5_16 = "18500.5001.00.05.27.16";
+  const std::string supportedMR5_17 = "18500.5001.00.05.27.17";
+  const std::string supportedMR6 = "18500.5001.00.06.28.01";
+  const std::string supportedMR8 = "18500.5001.00.07.29.08";
+
+  device_->SetFirmwareRevision(unsupportedMR2);
+  EXPECT_FALSE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(unsupportedMR3);
+  EXPECT_FALSE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(unsupportedMR4_01);
+  EXPECT_FALSE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(unsupportedMR4_06);
+  EXPECT_FALSE(device_->FirmwareSupportsTethering());
+
+  device_->SetFirmwareRevision(supportedMR5_12);
+  EXPECT_TRUE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(supportedMR5_16);
+  EXPECT_TRUE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(supportedMR5_17);
+  EXPECT_TRUE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(supportedMR6);
+  EXPECT_TRUE(device_->FirmwareSupportsTethering());
+  device_->SetFirmwareRevision(supportedMR8);
+  EXPECT_TRUE(device_->FirmwareSupportsTethering());
+}
 }  // namespace shill

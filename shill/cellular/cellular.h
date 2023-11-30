@@ -282,6 +282,10 @@ class Cellular : public Device,
   mockable void EntitlementCheck(EntitlementCheckResultCallback callback,
                                  bool experimental_tethering);
 
+  // Returns true if the FW version supports tethering. Only FWs that were
+  // fully validated will return true.
+  mockable bool FirmwareSupportsTethering();
+
   // Asynchronously acquires the Network to be used in tethering, which may be
   // the same one as used for default connection or a new one.
   using AcquireTetheringNetworkResultCallback =

@@ -518,9 +518,8 @@ TEST_F(CellularServiceProviderTest, AcquireTetheringNetwork) {
 
   SetVariantThatSupportsTethering();
   // No Device registered.
-  EXPECT_CALL(
-      cb, Run(TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable,
-              nullptr, ServiceRefPtr()));
+  EXPECT_CALL(cb, Run(TetheringManager::SetEnabledResult::kNotAllowed, nullptr,
+                      ServiceRefPtr()));
   EXPECT_CALL(update_timeout_cb, Run(_)).Times(0);
   provider()->AcquireTetheringNetwork(update_timeout_cb.Get(), cb.Get(),
                                       upstream_event_cb.Get(),
@@ -535,6 +534,8 @@ TEST_F(CellularServiceProviderTest, AcquireTetheringNetwork) {
   CellularServiceRefPtr service =
       provider()->LoadServicesForDevice(device.get());
   service->SetState(Service::kStateConnected);
+  ON_CALL(*(device.get()), FirmwareSupportsTethering())
+      .WillByDefault(Return(true));
 
   // The tethering network acquisition in the device fails
   EXPECT_CALL(*(device.get()), AcquireTetheringNetwork(_, _, _, _))
@@ -614,18 +615,59 @@ TEST_F(CellularServiceProviderTest,
 
 TEST_F(CellularServiceProviderTest, HardwareSupportsTetheringReturnsTrue) {
   SetVariantThatSupportsTethering();
+  // Set up a Cellular Service with a Device.
+  scoped_refptr<MockCellular> device =
+      new MockCellular(&manager_, kTestDeviceName, kTestDeviceAddress,
+                       kTestInterfaceIndex, kDBusService, kDBusPath);
+  CellularServiceRefPtr service =
+      provider()->LoadServicesForDevice(device.get());
+  service->SetState(Service::kStateConnected);
+  ON_CALL(*(device.get()), FirmwareSupportsTethering())
+      .WillByDefault(Return(true));
+
   EXPECT_TRUE(
       provider()->HardwareSupportsTethering(/*experimental_tethering=*/false));
 }
 
-TEST_F(CellularServiceProviderTest, HardwareSupportsTetheringReturnsFalse) {
+TEST_F(CellularServiceProviderTest,
+       HardwareSupportsTetheringVariantNotSupported) {
   SetVariantThatDoesNotSupportTethering();
+  // Set up a Cellular Service with a Device
+  scoped_refptr<MockCellular> device =
+      new MockCellular(&manager_, kTestDeviceName, kTestDeviceAddress,
+                       kTestInterfaceIndex, kDBusService, kDBusPath);
+  CellularServiceRefPtr service =
+      provider()->LoadServicesForDevice(device.get());
+  service->SetState(Service::kStateConnected);
+  ON_CALL(*(device.get()), FirmwareSupportsTethering())
+      .WillByDefault(Return(true));
+
+  EXPECT_FALSE(
+      provider()->HardwareSupportsTethering(/*experimental_tethering=*/false));
+}
+
+TEST_F(CellularServiceProviderTest, HardwareSupportsTetheringFwNotSupported) {
+  SetVariantThatSupportsTethering();
+  // Set up a Cellular Service with a Device
+  scoped_refptr<MockCellular> device =
+      new MockCellular(&manager_, kTestDeviceName, kTestDeviceAddress,
+                       kTestInterfaceIndex, kDBusService, kDBusPath);
+  CellularServiceRefPtr service =
+      provider()->LoadServicesForDevice(device.get());
+  service->SetState(Service::kStateConnected);
+  EXPECT_CALL(*(device.get()), FirmwareSupportsTethering())
+      .WillOnce(Return(false));
+  EXPECT_FALSE(
+      provider()->HardwareSupportsTethering(/*experimental_tethering=*/false));
+}
+
+TEST_F(CellularServiceProviderTest, HardwareSupportsTetheringNoCellularDevice) {
+  SetVariantThatSupportsTethering();
   EXPECT_FALSE(
       provider()->HardwareSupportsTethering(/*experimental_tethering=*/false));
 }
 
 TEST_F(CellularServiceProviderTest, HardwareSupportsTethering_Override) {
-  // If the firmware-variant value doesn't exist, tethering is not allowed.
   EXPECT_TRUE(
       provider()->HardwareSupportsTethering(/*experimental_tethering=*/true));
 }
@@ -642,6 +684,8 @@ TEST_F(CellularServiceProviderTest, TetheringEntitlementCheck_Ok) {
   CellularServiceRefPtr service =
       provider()->LoadServicesForDevice(device.get());
   service->SetState(Service::kStateConnected);
+  ON_CALL(*(device.get()), FirmwareSupportsTethering())
+      .WillByDefault(Return(true));
 
   EXPECT_CALL(*(device.get()), EntitlementCheck(_, _))
       .WillOnce(WithArgs<0>(
@@ -681,6 +725,8 @@ TEST_F(CellularServiceProviderTest,
   CellularServiceRefPtr service =
       provider()->LoadServicesForDevice(device.get());
   service->SetState(Service::kStateConnected);
+  ON_CALL(*(device.get()), FirmwareSupportsTethering())
+      .WillByDefault(Return(true));
 
   EXPECT_CALL(*(device.get()), EntitlementCheck(_, _))
       .WillOnce(WithArgs<0>(

@@ -130,6 +130,8 @@ class CellularServiceProvider : public ProviderInterface {
       const Error& error);
   void OnReleaseTetheringNetworkReady(
       base::OnceCallback<void(bool is_success)> callback, const Error& error);
+  bool ModemFirmwareSupportsTethering();
+  bool VariantSupportsTethering();
 
   Manager* manager_;
   // Use a single profile for Cellular services. Set to the first (device)
