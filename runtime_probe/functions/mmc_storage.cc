@@ -55,11 +55,8 @@ inline std::string VersionFormattedString(const std::string& v,
 
 // Extracts the eMMC 5.0 firmware version of storage device specified
 // by |node_path| from EXT_CSD[254:262] via D-Bus call to debugd MMC method.
-std::string GetStorageFwVersion(const base::FilePath& node_path) {
-  if (node_path.empty())
-    return "";
-  VLOG(2) << "Checking eMMC firmware version of "
-          << node_path.BaseName().value();
+std::string GetStorageFwVersion() {
+  VLOG(2) << "Checking eMMC firmware version...";
 
   std::string ext_csd_res;
   brillo::ErrorPtr err;
@@ -74,9 +71,6 @@ std::string GetStorageFwVersion(const base::FilePath& node_path) {
     LOG(ERROR) << "Failed to get mmc extcsd results by D-Bus call to debugd. "
                   "Error message: "
                << err_message;
-
-    LOG(WARNING) << "Fail to retrieve information from mmc extcsd for \"/dev/"
-                 << node_path.BaseName().value() << "\"";
     return "";
   }
 
@@ -163,25 +157,27 @@ std::string GetStorageFwVersion(const base::FilePath& node_path) {
   }
 }
 
-bool CheckStorageTypeMatch(const base::FilePath& node_path) {
-  VLOG(2) << "Checking if storage \"" << node_path.value() << "\" is eMMC.";
-  if (node_path.empty())
-    return false;
-  const auto type_path = node_path.Append("device").Append("type");
-  std::string type_in_sysfs;
-  if (!base::ReadFileToString(type_path, &type_in_sysfs)) {
-    VLOG(2) << "Failed to read storage type from \"" << node_path.value()
-            << "\".";
+bool CheckStorageTypeMatch(const base::FilePath& mmc_path) {
+  VLOG(2) << "Checking if storage \"" << mmc_path << "\" is eMMC.";
+
+  if (!base::PathExists(mmc_path)) {
+    LOG(ERROR) << "The link " << mmc_path
+               << " to the mmc subsystem doesn't exist.";
     return false;
   }
-  base::TrimWhitespaceASCII(type_in_sysfs, base::TrimPositions::TRIM_ALL,
-                            &type_in_sysfs);
-  if (type_in_sysfs != kMmcType) {
-    VLOG(2) << "Type exposed in sysfs is \"" << type_in_sysfs << "\".";
-    VLOG(2) << "\"" << node_path.value() << "\" is not eMMC.";
+
+  std::string type;
+  if (!ReadAndTrimFileToString(mmc_path.Append("type"), type)) {
+    VLOG(2) << "Failed to read mmc type from \"" << mmc_path.Append("type");
     return false;
   }
-  VLOG(2) << "\"" << node_path.value() << "\" is eMMC.";
+  if (type != "MMC") {
+    VLOG(2) << "Mmc type of " << mmc_path << " is \"" << type
+            << "\", not \"MMC\" (which means eMMC).";
+    return false;
+  }
+
+  VLOG(2) << "\"" << mmc_path << "\" is an eMMC.";
   return true;
 }
 
@@ -189,24 +185,19 @@ bool CheckStorageTypeMatch(const base::FilePath& node_path) {
 
 std::optional<base::Value> MmcStorageFunction::ProbeFromSysfs(
     const base::FilePath& node_path) const {
-  VLOG(2) << "Processnig the node \"" << node_path.value() << "\"";
-
-  if (!CheckStorageTypeMatch(node_path))
-    return std::nullopt;
+  CHECK(!node_path.empty());
+  VLOG(2) << "Processing the node \"" << node_path << "\"";
 
   const auto mmc_path = node_path.Append("device");
-
-  if (!base::PathExists(mmc_path)) {
-    VLOG(1) << "eMMC-specific path does not exist on storage device \""
-            << node_path.value() << "\"";
+  if (!CheckStorageTypeMatch(mmc_path)) {
     return std::nullopt;
   }
 
   auto mmc_res = MapFilesToDict(mmc_path, kMmcFields, kMmcOptionalFields);
 
   if (!mmc_res) {
-    VLOG(1) << "eMMC-specific fields do not exist on storage \""
-            << node_path.value() << "\"";
+    VLOG(1) << "eMMC-specific fields do not exist on storage \"" << node_path
+            << "\"";
     return std::nullopt;
   }
   PrependToDVKey(&*mmc_res, kMmcPrefix);
@@ -217,7 +208,7 @@ std::optional<base::Value> MmcStorageFunction::ProbeFromSysfs(
 std::optional<base::Value> MmcStorageFunction::ProbeFromStorageTool(
     const base::FilePath& node_path) const {
   base::Value result(base::Value::Type::DICT);
-  auto storage_fw_version = GetStorageFwVersion(node_path);
+  auto storage_fw_version = GetStorageFwVersion();
   if (!storage_fw_version.empty())
     result.GetDict().Set("storage_fw_version", storage_fw_version);
   return result;

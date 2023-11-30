@@ -113,15 +113,6 @@ TEST_F(MmcStorageFunctionTest, ProbeFromSysfsNoRequiredFields) {
   EXPECT_EQ(result, std::nullopt);
 }
 
-TEST_F(MmcStorageFunctionTest, ProbeFromSysfsEmptyPath) {
-  auto probe_function = CreateProbeFunction<MockMmcStorageFunction>();
-
-  base::FilePath empty_path;
-  auto result = probe_function->ProbeFromSysfs(empty_path);
-  // The result should be std::nullopt for empty paths.
-  EXPECT_EQ(result, std::nullopt);
-}
-
 TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolWithAsciiStringFwVersion) {
   auto probe_function = CreateProbeFunction<MockMmcStorageFunction>();
 
