@@ -33,16 +33,11 @@ class ExplicitInit final {
   ExplicitInit() = delete;
 
   // Define conversion constructors that can construct the underlying type T
-  // from any other type T can be constructed from. We need a bit of SFINAE
-  // complexity here to ensure that implicit conversions remain implicit and
-  // explicit remain explicit.
-  template <typename U,
-            std::enable_if_t<std::is_convertible_v<U, T>, bool> = true>
-  constexpr ExplicitInit(U&& u)  // NOLINT(runtime/explicit)
-      : value_(std::forward<U>(u)) {}
-  template <typename U,
-            std::enable_if_t<!std::is_convertible_v<U, T>, bool> = true>
-  constexpr explicit ExplicitInit(U&& u) : value_(std::forward<U>(u)) {}
+  // from any other type T can be constructed from. We use a conditional
+  // explicit so that U -> ExplicitInit<T> has the same explicit-ness as U -> T.
+  template <typename U>
+  constexpr explicit(!std::is_convertible_v<U, T>) ExplicitInit(U&& u)
+      : value_(std::forward<U>(u)) {}  // NOLINT(runtime/explicit)
 
   // Define a generic forwarding constructor that works with any multi-argument
   // T constructors. This uses perfect forwarding like the other single-arg
