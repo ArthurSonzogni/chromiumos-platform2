@@ -8,7 +8,6 @@
 
 #include <base/containers/adapters.h>
 #include <base/containers/contains.h>
-#include <base/containers/cxx20_erase.h>
 #include <base/strings/string_util.h>
 #include <base/strings/strcat.h>
 
@@ -61,13 +60,13 @@ bool HasExactParam(const std::vector<std::string>& params,
 
 size_t RemoveParamsEqualTo(std::vector<std::string>* params,
                            base::StringPiece param) {
-  return base::Erase(*params, param);
+  return std::erase(*params, param);
 }
 
 size_t RemoveParamsWithSameName(std::vector<std::string>* params,
                                 base::StringPiece name) {
   std::string prefix = base::StrCat({name, "="});
-  return base::EraseIf(*params, [prefix](const std::string& value) {
+  return std::erase_if(*params, [prefix](const std::string& value) {
     return base::StartsWith(value, prefix, base::CompareCase::SENSITIVE);
   });
 }

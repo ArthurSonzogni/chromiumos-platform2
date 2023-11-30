@@ -17,7 +17,6 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/containers/cxx20_erase.h>
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
 #include <base/json/json_string_value_serializer.h>
@@ -199,7 +198,7 @@ class Group {
 
     KeyValuePair* pair = it->second;
     index_.erase(it);
-    base::Erase(entries_, *pair);
+    std::erase(entries_, *pair);
     return true;
   }
 
@@ -351,7 +350,7 @@ class KeyFileStore::KeyFile {
 
     Group* grp = it->second;
     index_.erase(it);
-    base::EraseIf(groups_, [grp](const Group& g) { return &g == grp; });
+    std::erase_if(groups_, [grp](const Group& g) { return &g == grp; });
     return true;
   }
 
@@ -561,8 +560,7 @@ bool KeyFileStore::GetBool(std::string_view group,
   } else if (data.value() == "false") {
     b = false;
   } else {
-    SLOG(10) << "Failed to parse (" << group << ":" << key << ") as"
-             << " bool";
+    SLOG(10) << "Failed to parse (" << group << ":" << key << ") as bool";
     return false;
   }
 
@@ -592,8 +590,7 @@ bool KeyFileStore::GetInt(std::string_view group,
 
   int i;
   if (!base::StringToInt(data.value(), &i)) {
-    SLOG(10) << "Failed to parse (" << group << ":" << key << ") as"
-             << " int";
+    SLOG(10) << "Failed to parse (" << group << ":" << key << ") as int";
     return false;
   }
 
@@ -623,8 +620,7 @@ bool KeyFileStore::GetUint64(std::string_view group,
 
   uint64_t i;
   if (!base::StringToUint64(data.value(), &i)) {
-    SLOG(10) << "Failed to parse (" << group << ":" << key << "): "
-             << " as uint64";
+    SLOG(10) << "Failed to parse (" << group << ":" << key << "):  as uint64";
     return false;
   }
 
@@ -654,8 +650,7 @@ bool KeyFileStore::GetInt64(std::string_view group,
 
   int64_t i;
   if (!base::StringToInt64(data.value(), &i)) {
-    SLOG(10) << "Failed to parse (" << group << ":" << key << "): "
-             << " as int64";
+    SLOG(10) << "Failed to parse (" << group << ":" << key << "):  as int64";
     return false;
   }
 
@@ -684,8 +679,8 @@ bool KeyFileStore::GetStringList(std::string_view group,
 
   std::vector<std::string> list;
   if (!Unescape(data.value(), kListSeparator, &list)) {
-    SLOG(10) << "Failed to parse (" << group << ":" << key << "): "
-             << " as string list";
+    SLOG(10) << "Failed to parse (" << group << ":" << key
+             << "):  as string list";
     return false;
   }
 
@@ -818,8 +813,8 @@ bool KeyFileStore::GetUint64List(std::string_view group,
 
   std::vector<std::string> strings;
   if (!Unescape(data.value(), kListSeparator, &strings)) {
-    SLOG(10) << "Failed to parse (" << group << ":" << key << "): "
-             << " as uint64 list";
+    SLOG(10) << "Failed to parse (" << group << ":" << key
+             << "):  as uint64 list";
     return false;
   }
 
@@ -827,8 +822,8 @@ bool KeyFileStore::GetUint64List(std::string_view group,
   for (const auto& a : strings) {
     uint64_t i;
     if (!base::StringToUint64(a, &i)) {
-      SLOG(10) << "Failed to parse (" << group << ":" << key << "): "
-               << " as uint64 list";
+      SLOG(10) << "Failed to parse (" << group << ":" << key
+               << "):  as uint64 list";
       return false;
     }
     list.push_back(i);

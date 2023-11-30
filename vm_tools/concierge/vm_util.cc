@@ -24,7 +24,6 @@
 
 #include <absl/strings/str_split.h>
 #include <base/base64.h>
-#include <base/containers/cxx20_erase.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -602,7 +601,7 @@ void CustomParametersForDev::Apply(base::StringPairs& args) {
   if (!initialized_)
     return;
   for (const auto& prefix : run_prefix_to_remove_) {
-    base::EraseIf(args, [&prefix](const auto& pair) {
+    std::erase_if(args, [&prefix](const auto& pair) {
       return base::StartsWith(pair.first, prefix);
     });
   }

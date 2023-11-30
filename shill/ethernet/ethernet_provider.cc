@@ -13,7 +13,6 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/containers/contains.h>
-#include <base/containers/cxx20_erase.h>
 #include <base/logging.h>
 
 namespace shill {
@@ -101,7 +100,7 @@ void EthernetProvider::DeregisterService(EthernetServiceRefPtr service) {
     service->ResetEthernet();
     return;
   }
-  base::Erase(services_, service);
+  std::erase(services_, service);
   manager_->DeregisterService(service);
 }
 

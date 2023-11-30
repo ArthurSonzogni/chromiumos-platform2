@@ -10,7 +10,6 @@
 
 #include <base/check_op.h>
 #include <base/command_line.h>
-#include <base/containers/cxx20_erase.h>
 #include <base/files/file_util.h>
 #include <base/process/launch.h>
 #include <base/posix/safe_strerror.h>
@@ -321,13 +320,10 @@ class CameraClient {
     EXPECT_FALSE(camera_info_frozen_) << "unexpected hotplug events";
     if (is_removed) {
       LOGF(INFO) << "Camera " << info->id << " removed";
-      // TODO(lnishan): Check return value of base::EraseIf after libchrome in
-      // Chrome OS includes crrev.com/c/2072038.
-      size_t old_size = camera_infos_.size();
-      base::EraseIf(camera_infos_, [&](const auto& my_info) {
-        return my_info.id == info->id;
-      });
-      CHECK_EQ(camera_infos_.size(), old_size - 1);
+      CHECK_EQ(std::erase_if(
+                   camera_infos_,
+                   [&](const auto& my_info) { return my_info.id == info->id; }),
+               1);
     } else {
       LOGF(INFO) << "Got camera info for camera " << info->id;
       EXPECT_GT(info->format_count, 0) << "no available formats";

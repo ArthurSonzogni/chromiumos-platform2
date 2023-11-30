@@ -9,7 +9,6 @@
 #include "dlp/dlp_metrics.h"
 
 #include <base/containers/contains.h>
-#include <base/containers/cxx20_erase_set.h>
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/logging.h>
@@ -434,7 +433,7 @@ bool DlpDatabase::Core::DeleteFileEntriesWithIdsNotInSet(
     return false;
   }
 
-  base::EraseIf(ids, [&ids_to_keep](FileId id) {
+  std::erase_if(ids, [&ids_to_keep](FileId id) {
     return base::Contains(ids_to_keep, id);
   });
   if (ids.size() == 0) {

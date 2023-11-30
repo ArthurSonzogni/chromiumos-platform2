@@ -17,7 +17,6 @@
 #include <optional>
 
 #include <base/base64.h>
-#include <base/containers/cxx20_erase.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>

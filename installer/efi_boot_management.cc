@@ -28,7 +28,6 @@
 #include <vector>
 
 #include <base/containers/contains.h>
-#include <base/containers/cxx20_erase.h>
 #include <base/environment.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -296,7 +295,7 @@ class BootOrder {
   // the entry was actually present.
   void Remove(const EfiBootNumber& entry) {
     // Only need to write back out if we successfully erase anything.
-    if (base::Erase(boot_order_, entry.Number()) > 0) {
+    if (std::erase(boot_order_, entry.Number()) > 0) {
       needs_write_ = true;
     }
   }

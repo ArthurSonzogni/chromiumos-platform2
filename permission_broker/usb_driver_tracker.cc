@@ -16,7 +16,6 @@
 #include <utility>
 
 #include <base/containers/contains.h>
-#include <base/containers/cxx20_erase_vector.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -244,7 +243,7 @@ void UsbDriverTracker::ClearDetachedInterfaceRecord(
     return;
   }
 
-  auto num_erased = base::Erase(client_it->second.interfaces, iface_num);
+  auto num_erased = std::erase(client_it->second.interfaces, iface_num);
   if (num_erased != 1) {
     LOG(DFATAL) << "Unexpected number of erased records " << num_erased
                 << " for interface " << static_cast<int>(iface_num)
