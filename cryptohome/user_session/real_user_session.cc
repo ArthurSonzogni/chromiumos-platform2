@@ -7,7 +7,6 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
@@ -22,7 +21,6 @@
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11/pkcs11_token.h"
 #include "cryptohome/pkcs11/pkcs11_token_factory.h"
 #include "cryptohome/storage/cryptohome_vault.h"
@@ -31,19 +29,20 @@
 #include "cryptohome/storage/mount.h"
 #include "cryptohome/username.h"
 
-using brillo::cryptohome::home::GetGuestUsername;
-using brillo::cryptohome::home::SanitizeUserName;
-using cryptohome::error::CryptohomeMountError;
-using cryptohome::error::ErrorActionSet;
-using cryptohome::error::PossibleAction;
-using cryptohome::error::PrimaryAction;
-using hwsec_foundation::HmacSha256;
-using hwsec_foundation::Sha256;
-using hwsec_foundation::status::MakeStatus;
-using hwsec_foundation::status::OkStatus;
-using hwsec_foundation::status::StatusChain;
-
 namespace cryptohome {
+namespace {
+
+using ::brillo::cryptohome::home::GetGuestUsername;
+using ::brillo::cryptohome::home::SanitizeUserName;
+using ::cryptohome::error::CryptohomeMountError;
+using ::cryptohome::error::ErrorActionSet;
+using ::cryptohome::error::PossibleAction;
+using ::cryptohome::error::PrimaryAction;
+using ::hwsec_foundation::HmacSha256;
+using ::hwsec_foundation::Sha256;
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::OkStatus;
+using ::hwsec_foundation::status::StatusChain;
 
 // Message to use when generating a secret for WebAuthn.
 constexpr char kWebAuthnSecretHmacMessage[] = "AuthTimeWebAuthnSecret";
@@ -51,17 +50,17 @@ constexpr char kWebAuthnSecretHmacMessage[] = "AuthTimeWebAuthnSecret";
 // Message to use when generating a secret for hibernate.
 constexpr char kHibernateSecretHmacMessage[] = "AuthTimeHibernateSecret";
 
+}  // namespace
+
 RealUserSession::RealUserSession(
     const Username& username,
     HomeDirs* homedirs,
-    KeysetManagement* keyset_management,
     UserOldestActivityTimestampManager* user_activity_timestamp_manager,
     Pkcs11TokenFactory* pkcs11_token_factory,
     const scoped_refptr<Mount> mount)
     : username_(username),
       obfuscated_username_(SanitizeUserName(username_)),
       homedirs_(homedirs),
-      keyset_management_(keyset_management),
       user_activity_timestamp_manager_(user_activity_timestamp_manager),
       pkcs11_token_factory_(pkcs11_token_factory),
       mount_(mount) {}
@@ -192,7 +191,7 @@ void RealUserSession::PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
   clear_webauthn_secret_timer_.Start(
       FROM_HERE, base::Seconds(10),
       base::BindOnce(&RealUserSession::ClearWebAuthnSecret,
-                     base::Unretained(this)));
+                     weak_factory_.GetWeakPtr()));
 }
 
 void RealUserSession::PrepareWebAuthnSecretHash(
@@ -242,7 +241,7 @@ void RealUserSession::PrepareHibernateSecret(const brillo::SecureBlob& fek,
   clear_hibernate_secret_timer_.Start(
       FROM_HERE, base::Seconds(600),
       base::BindOnce(&RealUserSession::ClearHibernateSecret,
-                     base::Unretained(this)));
+                     weak_factory_.GetWeakPtr()));
 }
 
 void RealUserSession::ClearHibernateSecret() {

@@ -268,9 +268,8 @@ class AuthSessionTest : public ::testing::Test {
     }
     user_session_map_.Add(
         username, std::make_unique<RealUserSession>(
-                      username, &homedirs_, &keyset_management_,
-                      &user_activity_timestamp_manager_, &pkcs11_token_factory_,
-                      new NiceMock<MockMount>()));
+                      username, &homedirs_, &user_activity_timestamp_manager_,
+                      &pkcs11_token_factory_, new NiceMock<MockMount>()));
     return user_session_map_.Find(username);
   }
 

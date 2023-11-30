@@ -24,13 +24,11 @@ class RealUserSessionFactory : public UserSessionFactory {
       MountFactory* mount_factory,
       Platform* platform,
       HomeDirs* homedirs,
-      KeysetManagement* keyset_management,
       UserOldestActivityTimestampManager* user_activity_timestamp_manager,
       Pkcs11TokenFactory* pkcs11_token_factory)
       : mount_factory_(mount_factory),
         platform_(platform),
         homedirs_(homedirs),
-        keyset_management_(keyset_management),
         user_activity_timestamp_manager_(user_activity_timestamp_manager),
         pkcs11_token_factory_(pkcs11_token_factory) {}
 
@@ -40,8 +38,8 @@ class RealUserSessionFactory : public UserSessionFactory {
                                    bool legacy_mount,
                                    bool bind_mount_downloads) override {
     return std::make_unique<RealUserSession>(
-        username, homedirs_, keyset_management_,
-        user_activity_timestamp_manager_, pkcs11_token_factory_,
+        username, homedirs_, user_activity_timestamp_manager_,
+        pkcs11_token_factory_,
         mount_factory_->New(platform_, homedirs_, legacy_mount,
                             bind_mount_downloads));
   }
@@ -50,7 +48,6 @@ class RealUserSessionFactory : public UserSessionFactory {
   MountFactory* const mount_factory_;
   Platform* const platform_;
   HomeDirs* const homedirs_;
-  KeysetManagement* const keyset_management_;
   UserOldestActivityTimestampManager* const user_activity_timestamp_manager_;
   Pkcs11TokenFactory* const pkcs11_token_factory_;
 };

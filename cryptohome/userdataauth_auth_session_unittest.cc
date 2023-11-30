@@ -1252,8 +1252,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareVaultAfterFactorAuth) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   auto user_session = std::make_unique<RealUserSession>(
-      kUsername, &homedirs_, &keyset_management_,
-      &user_activity_timestamp_manager_, &pkcs11_token_factory_, mount);
+      kUsername, &homedirs_, &user_activity_timestamp_manager_,
+      &pkcs11_token_factory_, mount);
   EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
       .WillOnce(Return(ByMove(std::move(user_session))));
 
@@ -1293,8 +1293,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareVaultAfterFactorAuthMountPointBusy) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   auto user_session = std::make_unique<RealUserSession>(
-      kUsername, &homedirs_, &keyset_management_,
-      &user_activity_timestamp_manager_, &pkcs11_token_factory_, mount);
+      kUsername, &homedirs_, &user_activity_timestamp_manager_,
+      &pkcs11_token_factory_, mount);
   EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
       .WillOnce(Return(ByMove(std::move(user_session))));
 
@@ -1336,8 +1336,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndEphemeral) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   auto user_session = std::make_unique<RealUserSession>(
-      kUsername, &homedirs_, &keyset_management_,
-      &user_activity_timestamp_manager_, &pkcs11_token_factory_, mount);
+      kUsername, &homedirs_, &user_activity_timestamp_manager_,
+      &pkcs11_token_factory_, mount);
   EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
       .WillOnce(Return(ByMove(std::move(user_session))));
 
@@ -1429,8 +1429,8 @@ class AuthSessionInterfaceMockAuthTest : public AuthSessionInterfaceTestBase {
         .WillOnce(Return(false))
         .WillRepeatedly(Return(true));
     auto user_session = std::make_unique<RealUserSession>(
-        username, &homedirs_, &keyset_management_,
-        &user_activity_timestamp_manager_, &pkcs11_token_factory_, mount);
+        username, &homedirs_, &user_activity_timestamp_manager_,
+        &pkcs11_token_factory_, mount);
     EXPECT_CALL(user_session_factory_, New(username, _, _))
         .WillOnce(Return(ByMove(std::move(user_session))));
     EXPECT_THAT(PreparePersistentVaultImpl(serialized_token).has_error_info(),
@@ -1462,8 +1462,8 @@ class AuthSessionInterfaceMockAuthTest : public AuthSessionInterfaceTestBase {
         .WillOnce(ReturnOk<StorageError>());
     EXPECT_CALL(*mount, IsEphemeral()).WillRepeatedly(Return(true));
     auto user_session = std::make_unique<RealUserSession>(
-        kUsername, &homedirs_, &keyset_management_,
-        &user_activity_timestamp_manager_, &pkcs11_token_factory_, mount);
+        kUsername, &homedirs_, &user_activity_timestamp_manager_,
+        &pkcs11_token_factory_, mount);
     EXPECT_CALL(user_session_factory_, New(kUsername, _, _))
         .WillOnce(Return(ByMove(std::move(user_session))));
 

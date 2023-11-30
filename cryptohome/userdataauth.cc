@@ -905,8 +905,8 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
 
   if (!user_session_factory_) {
     default_user_session_factory_ = std::make_unique<RealUserSessionFactory>(
-        mount_factory_, platform_, homedirs_, keyset_management_,
-        user_activity_timestamp_manager_, pkcs11_token_factory_);
+        mount_factory_, platform_, homedirs_, user_activity_timestamp_manager_,
+        pkcs11_token_factory_);
     user_session_factory_ = default_user_session_factory_.get();
   }
 

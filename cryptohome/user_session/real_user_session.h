@@ -5,19 +5,15 @@
 #ifndef CRYPTOHOME_USER_SESSION_REAL_USER_SESSION_H_
 #define CRYPTOHOME_USER_SESSION_REAL_USER_SESSION_H_
 
-#include <map>
 #include <memory>
 #include <string>
-#include <utility>
-#include <vector>
 
+#include <base/memory/weak_ptr.h>
 #include <base/timer/timer.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
-#include "cryptohome/credential_verifier.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
-#include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11/pkcs11_token.h"
 #include "cryptohome/pkcs11/pkcs11_token_factory.h"
 #include "cryptohome/storage/cryptohome_vault.h"
@@ -30,19 +26,17 @@ namespace cryptohome {
 
 class RealUserSession : public UserSession {
  public:
-  RealUserSession() = default;
   RealUserSession(
       const Username& username,
       HomeDirs* homedirs,
-      KeysetManagement* keyset_management,
       UserOldestActivityTimestampManager* user_activity_timestamp_manager,
       Pkcs11TokenFactory* pkcs11_token_factory,
       const scoped_refptr<Mount> mount);
 
   RealUserSession(const RealUserSession&) = delete;
-  RealUserSession(const RealUserSession&&) = delete;
-  void operator=(const RealUserSession&) = delete;
-  void operator=(const RealUserSession&&) = delete;
+  RealUserSession& operator=(const RealUserSession&) = delete;
+  RealUserSession(RealUserSession&&) = delete;
+  RealUserSession& operator=(RealUserSession&&) = delete;
 
   bool IsActive() const override { return mount_->IsMounted(); }
 
@@ -111,7 +105,6 @@ class RealUserSession : public UserSession {
   const ObfuscatedUsername obfuscated_username_;
 
   HomeDirs* homedirs_;
-  KeysetManagement* keyset_management_;
   UserOldestActivityTimestampManager* user_activity_timestamp_manager_;
   Pkcs11TokenFactory* pkcs11_token_factory_;
 
@@ -130,7 +123,8 @@ class RealUserSession : public UserSession {
   scoped_refptr<Mount> mount_;
   std::unique_ptr<Pkcs11Token> pkcs11_token_;
 
-  friend class UserDataAuthTestTasked;
+  // The last member, to invalidate weak references first on destruction.
+  base::WeakPtrFactory<RealUserSession> weak_factory_{this};
 };
 
 }  // namespace cryptohome

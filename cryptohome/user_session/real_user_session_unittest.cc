@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/memory/ref_counted.h>
@@ -24,11 +25,8 @@
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
 
-#include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/keyset_management.h"
 #include "cryptohome/mock_credential_verifier.h"
-#include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_device_management_client_proxy.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/pkcs11/fake_pkcs11_token.h"
@@ -41,17 +39,12 @@ namespace cryptohome {
 
 namespace {
 
-using brillo::SecureBlob;
-using brillo::cryptohome::home::SanitizeUserName;
-using hwsec_foundation::HmacSha256;
-using hwsec_foundation::error::testing::ReturnError;
-using hwsec_foundation::error::testing::ReturnOk;
-
+using ::brillo::cryptohome::home::SanitizeUserName;
+using ::hwsec_foundation::HmacSha256;
+using ::hwsec_foundation::error::testing::ReturnOk;
 using ::testing::_;
-using ::testing::ByRef;
 using ::testing::DoAll;
 using ::testing::Eq;
-using ::testing::Invoke;
 using ::testing::IsEmpty;
 using ::testing::IsFalse;
 using ::testing::IsNull;
@@ -85,19 +78,7 @@ MakeTestVerifier(std::string label) {
 
 class RealUserSessionTest : public ::testing::Test {
  public:
-  RealUserSessionTest()
-      : crypto_(
-            &hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_, nullptr) {}
-
-  // Not copyable or movable
-  RealUserSessionTest(const RealUserSessionTest&) = delete;
-  RealUserSessionTest& operator=(const RealUserSessionTest&) = delete;
-  RealUserSessionTest(RealUserSessionTest&&) = delete;
-  RealUserSessionTest& operator=(RealUserSessionTest&&) = delete;
-
   void SetUp() override {
-    keyset_management_ = std::make_unique<KeysetManagement>(
-        &platform_, &crypto_, std::make_unique<VaultKeysetFactory>());
     user_activity_timestamp_manager_ =
         std::make_unique<UserOldestActivityTimestampManager>(&platform_);
     HomeDirs::RemoveCallback remove_callback;
@@ -120,14 +101,14 @@ class RealUserSessionTest : public ::testing::Test {
     mount_ = new NiceMock<MockMount>();
 
     ON_CALL(pkcs11_token_factory_, New(_, _, _))
-        .WillByDefault(
-            Invoke([](const Username& username, const base::FilePath& token_dir,
-                      const brillo::SecureBlob& auth_data) {
-              return std::make_unique<FakePkcs11Token>();
-            }));
+        .WillByDefault([](const Username& username,
+                          const base::FilePath& token_dir,
+                          const brillo::SecureBlob& auth_data) {
+          return std::make_unique<FakePkcs11Token>();
+        });
 
     session_ = std::make_unique<RealUserSession>(
-        Username(kUser0), homedirs_.get(), keyset_management_.get(),
+        Username(kUser0), homedirs_.get(),
         user_activity_timestamp_manager_.get(), &pkcs11_token_factory_, mount_);
   }
 
@@ -143,14 +124,9 @@ class RealUserSessionTest : public ::testing::Test {
 
   // Information about users' homedirs. The order of users is equal to kUsers.
   std::vector<UserInfo> users_;
-  NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
-  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   NiceMock<MockPlatform> platform_;
-  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
   NiceMock<MockDeviceManagementClientProxy> device_management_client_;
-  Crypto crypto_;
-  std::unique_ptr<KeysetManagement> keyset_management_;
   policy::MockDevicePolicy* mock_device_policy_;  // owned by homedirs_
   std::unique_ptr<UserOldestActivityTimestampManager>
       user_activity_timestamp_manager_;
@@ -359,9 +335,9 @@ TEST_F(RealUserSessionTest, EphemeralMountPolicyTest) {
   };
 
   for (const auto& test_case : test_cases) {
-    RealUserSession local_session(
-        test_case.user, homedirs_.get(), keyset_management_.get(),
-        user_activity_timestamp_manager_.get(), &pkcs11_token_factory_, mount_);
+    RealUserSession local_session(test_case.user, homedirs_.get(),
+                                  user_activity_timestamp_manager_.get(),
+                                  &pkcs11_token_factory_, mount_);
     if (test_case.ok) {
       // If the mount succeeds in the test, a PKCS11 token should be created.
       EXPECT_CALL(pkcs11_token_factory_, New(test_case.user, _, _))
@@ -470,8 +446,7 @@ class RealUserSessionReAuthTest : public ::testing::Test {
 };
 
 TEST_F(RealUserSessionReAuthTest, VerifyUser) {
-  RealUserSession session(kFakeUsername, nullptr, nullptr, nullptr, nullptr,
-                          nullptr);
+  RealUserSession session(kFakeUsername, nullptr, nullptr, nullptr, nullptr);
 
   EXPECT_TRUE(session.VerifyUser(
       brillo::cryptohome::home::SanitizeUserName(kFakeUsername)));
@@ -483,8 +458,7 @@ TEST_F(RealUserSessionReAuthTest, AddAndRemoveCredentialVerifiers) {
   auto [verifier2, ptr2] = MakeTestVerifier("b2");
   auto [verifier3, ptr3] = MakeTestVerifier("c3");
 
-  RealUserSession session(kFakeUsername, nullptr, nullptr, nullptr, nullptr,
-                          nullptr);
+  RealUserSession session(kFakeUsername, nullptr, nullptr, nullptr, nullptr);
 
   // The session should start without verifiers.
   EXPECT_THAT(session.GetCredentialVerifiers(), IsEmpty());
@@ -521,8 +495,7 @@ TEST_F(RealUserSessionReAuthTest, AddAndRemoveLabellessCredentialVerifiers) {
   auto [verifier2, ptr2] = MakeTestVerifier("b2");
   auto [verifier3, ptr3] = MakeTestVerifier("");  // label-less
 
-  RealUserSession session(kFakeUsername, nullptr, nullptr, nullptr, nullptr,
-                          nullptr);
+  RealUserSession session(kFakeUsername, nullptr, nullptr, nullptr, nullptr);
 
   // The session should start without verifiers.
   EXPECT_THAT(session.GetCredentialVerifiers(), IsEmpty());
