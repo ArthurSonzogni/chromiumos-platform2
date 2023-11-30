@@ -842,6 +842,20 @@ void UserDataAuthAdaptor::StartMigrateToDircrypto(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::StartMigrateToDircryptoReply>> response,
     const user_data_auth::StartMigrateToDircryptoRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(&UserDataAuthAdaptor::DoStartMigrateToDircrypto,
+                     base::Unretained(this),
+                     ThreadSafeDBusMethodResponse<
+                         user_data_auth::StartMigrateToDircryptoReply>::
+                         MakeThreadSafe(std::move(response)),
+                     in_request));
+}
+
+void UserDataAuthAdaptor::DoStartMigrateToDircrypto(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::StartMigrateToDircryptoReply>> response,
+    const user_data_auth::StartMigrateToDircryptoRequest& in_request) {
   // This will be called whenever there's a status update from the migration.
   auto status_callback = base::BindRepeating(
       [](UserDataAuthAdaptor* adaptor,
@@ -851,20 +865,16 @@ void UserDataAuthAdaptor::StartMigrateToDircrypto(
       base::Unretained(this));
 
   // Kick start the migration process.
-  service_->PostTaskToMountThread(
-      FROM_HERE,
+  service_->StartMigrateToDircrypto(
+      in_request,
       base::BindOnce(
-          &UserDataAuth::StartMigrateToDircrypto, base::Unretained(service_),
-          in_request,
-          base::BindOnce(
-              [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                     user_data_auth::StartMigrateToDircryptoReply>>
-                     local_response,
-                 const user_data_auth::StartMigrateToDircryptoReply& reply) {
-                local_response->Return(reply);
-              },
-              std::move(response)),
-          status_callback));
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 user_data_auth::StartMigrateToDircryptoReply>> local_response,
+             const user_data_auth::StartMigrateToDircryptoReply& reply) {
+            local_response->Return(reply);
+          },
+          std::move(response)),
+      status_callback);
 }
 
 void UserDataAuthAdaptor::NeedsDircryptoMigration(
