@@ -3,10 +3,12 @@
 // found in the LICENSE file.
 
 #include "swap_management/utils.h"
+#include "swap_management/zram_idle.h"
 #include "swap_management/zram_stats.h"
 #include "swap_management/zram_writeback.h"
 
 #include <algorithm>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -30,7 +32,6 @@ constexpr char kZramBackingDevice[] = "/sys/block/zram0/backing_dev";
 constexpr char kStatefulPartitionDir[] =
     "/mnt/stateful_partition/unencrypted/userspace_swap.tmp";
 constexpr uint32_t kSectorSize = 512;
-constexpr base::TimeDelta kMaxIdleAge = base::Days(30);
 
 ZramWriteback* inst_ = nullptr;
 
@@ -404,17 +405,6 @@ absl::Status ZramWriteback::SetWritebackLimit(uint32_t num_pages) {
   return Utils::Get()->WriteFile(filepath, std::to_string(num_pages));
 }
 
-absl::Status ZramWriteback::MarkIdle(uint32_t age_seconds) {
-  const auto age = base::Seconds(age_seconds);
-
-  // Only allow marking pages as idle between 0 sec and 30 days.
-  if (age > kMaxIdleAge)
-    return absl::OutOfRangeError("Invalid age " + std::to_string(age_seconds));
-
-  base::FilePath filepath = base::FilePath(kZramSysfsDir).Append("idle");
-  return Utils::Get()->WriteFile(filepath, std::to_string(age.InSeconds()));
-}
-
 absl::Status ZramWriteback::InitiateWriteback(ZramWritebackMode mode) {
   base::FilePath filepath = base::FilePath(kZramSysfsDir).Append("writeback");
   absl::StatusOr<std::string> mode_str = WritebackModeToName(mode);
@@ -529,35 +519,6 @@ absl::StatusOr<uint64_t> ZramWriteback::GetAllowedWritebackLimit() {
   return num_pages;
 }
 
-std::optional<base::TimeDelta> ZramWriteback::GetCurrentWritebackIdleTime() {
-  if (!params_.writeback_idle)
-    return std::nullopt;
-
-  absl::StatusOr<base::SystemMemoryInfoKB> meminfo =
-      Utils::Get()->GetSystemMemoryInfo();
-  if (!meminfo.ok()) {
-    LOG(ERROR) << "Can not read meminfo: " << meminfo.status();
-    return std::nullopt;
-  }
-
-  // Stay between idle_(min|max)_time.
-  uint64_t min_sec = params_.idle_min_time.InSeconds();
-  uint64_t max_sec = params_.idle_max_time.InSeconds();
-  double mem_utilization =
-      (1.0 - (static_cast<double>((*meminfo).available) / (*meminfo).total));
-
-  // Exponentially decay the writeback age vs. memory utilization. The reason
-  // we choose exponential decay is because we want to do as little work as
-  // possible when the system is under very low memory pressure. As pressure
-  // increases we want to start aggressively shrinking our idle age to force
-  // newer pages to be written back.
-  constexpr double kLambda = 5;
-  uint64_t age_sec =
-      (max_sec - min_sec) * pow(M_E, -kLambda * mem_utilization) + min_sec;
-
-  return base::Seconds(age_sec);
-}
-
 // Read the actual programmed writeback_limit.
 absl::StatusOr<uint64_t> ZramWriteback::GetWritebackLimit() {
   std::string buf;
@@ -614,13 +575,15 @@ void ZramWriteback::PeriodicWriteback() {
       // If we currently working on huge_idle or idle mode, mark idle for pages.
       if (current_writeback_mode == WRITEBACK_HUGE_IDLE ||
           current_writeback_mode == WRITEBACK_IDLE) {
-        std::optional<base::TimeDelta> idle_age = GetCurrentWritebackIdleTime();
-        if (!idle_age.has_value()) {
+        std::optional<uint64_t> idle_age_sec =
+            GetCurrentIdleTimeSec(params_.idle_min_time.InSeconds(),
+                                  params_.idle_max_time.InSeconds());
+        if (!idle_age_sec.has_value()) {
           // Failed to calculate idle age, directly move to huge page.
           current_writeback_mode = WRITEBACK_HUGE;
           continue;
         }
-        status = MarkIdle((*idle_age).InSeconds());
+        status = MarkIdle(*idle_age_sec);
         if (!status.ok()) {
           LOG(ERROR) << "Can not mark zram idle:" << status;
           return;

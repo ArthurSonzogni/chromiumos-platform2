@@ -75,7 +75,6 @@ class ZramWriteback {
   // cl/459290244
   absl::Status EnableWriteback(uint32_t size_mb);
   absl::Status SetWritebackLimit(uint32_t num_pages);
-  absl::Status MarkIdle(uint32_t age_seconds);
   absl::Status InitiateWriteback(ZramWritebackMode mode);
 
  private:
@@ -129,7 +128,6 @@ class ZramWriteback {
   absl::Status GetWritebackInfo(uint32_t size);
   absl::Status CreateDmDevicesAndEnableWriteback();
 
-  std::optional<base::TimeDelta> GetCurrentWritebackIdleTime();
   absl::StatusOr<uint64_t> GetAllowedWritebackLimit();
   absl::StatusOr<uint64_t> GetWritebackLimit();
   void PeriodicWriteback();

@@ -5,6 +5,7 @@
 #include "featured/c_feature_library.h"
 #include "swap_management/swap_tool.h"
 #include "swap_management/utils.h"
+#include "swap_management/zram_idle.h"
 #include "swap_management/zram_writeback.h"
 
 #include <absl/status/status.h>
@@ -381,7 +382,7 @@ absl::Status SwapTool::SwapZramSetWritebackLimit(uint32_t num_pages) {
   return ZramWriteback::Get()->SetWritebackLimit(num_pages);
 }
 absl::Status SwapTool::SwapZramMarkIdle(uint32_t age_seconds) {
-  return ZramWriteback::Get()->MarkIdle(age_seconds);
+  return MarkIdle(age_seconds);
 }
 absl::Status SwapTool::InitiateSwapZramWriteback(ZramWritebackMode mode) {
   return ZramWriteback::Get()->InitiateWriteback(mode);

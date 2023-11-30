@@ -197,7 +197,7 @@ TEST_F(ZramWritebackTest, PeriodicWriteback) {
       ReadFileToString(base::FilePath("/sys/block/zram0/writeback_limit"), _))
       .WillOnce(DoAll(SetArgPointee<1>("9351\n"), Return(absl::OkStatus())));
   // huge_idle
-  // GetCurrentWritebackIdleTime
+  // GetCurrentIdleTimeSec
   base::SystemMemoryInfoKB mock_meminfo;
   mock_meminfo.available = 346452;
   mock_meminfo.total = 8144296;
@@ -217,7 +217,7 @@ TEST_F(ZramWritebackTest, PeriodicWriteback) {
       ReadFileToString(base::FilePath("/sys/block/zram0/writeback_limit"), _))
       .WillOnce(DoAll(SetArgPointee<1>("8845\n"), Return(absl::OkStatus())));
   // idle
-  // GetCurrentWritebackIdleTime
+  // GetCurrentIdleTimeSec
   mock_meminfo.available = 348332;
   EXPECT_CALL(mock_util_, GetSystemMemoryInfo()).WillOnce(Return(mock_meminfo));
   // MarkIdle
