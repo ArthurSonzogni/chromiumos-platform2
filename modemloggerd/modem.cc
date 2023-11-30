@@ -10,6 +10,7 @@
 #include <base/strings/stringprintf.h>
 
 #include "modemloggerd/dbus-constants.h"
+#include "modemloggerd/logging_prefs.h"
 
 namespace {
 const char kVarLog[] = "/var/log/modemloggerd";
@@ -24,6 +25,13 @@ Modem::Modem(dbus::Bus* bus,
       dbus_adaptor_(adaptor_factory->CreateModemAdaptor(this, bus)),
       logging_helper_(logging_helper) {
   LOG(INFO) << __func__ << ": " << logging_helper_.exe().filename();
+  if (!LoggingPrefs::Get()->GetAutoStart(logging_helper_.modem_name())) {
+    return;
+  }
+  auto start_result = Start();
+  if (start_result != nullptr) {
+    LOG(ERROR) << "Failed to auto start logger: " << start_result->GetMessage();
+  }
 }
 
 brillo::ErrorPtr Modem::SetEnabled(bool enable) {
@@ -39,6 +47,17 @@ brillo::ErrorPtr Modem::SetEnabled(bool enable) {
   return brillo::Error::Create(
       FROM_HERE, brillo::errors::dbus::kDomain, kErrorOperationFailed,
       base::StringPrintf("Failed to run helper (exit_code=%d)", exit_code));
+}
+
+brillo::ErrorPtr Modem::SetAutoStart(bool autostart) {
+  LOG(INFO) << __func__ << ": " << autostart;
+  if (!LoggingPrefs::Get()->SetAutoStart(logging_helper_.modem_name(),
+                                         autostart)) {
+    return brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
+                                 kErrorOperationFailed,
+                                 "Failed to set auto start");
+  }
+  return nullptr;
 }
 
 brillo::ErrorPtr Modem::Start() {

@@ -42,5 +42,16 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="SetAutoStart">
+      <tp:docstring>
+        Set whether logging should start automatically after boot.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg name="auto_start" type="b" direction="in">
+        <tp:docstring>
+          True if logging should start automatically at boot.
+        </tp:docstring>
+      </arg>
+    </method>
   </interface>
 </node>

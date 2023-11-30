@@ -17,6 +17,7 @@
 #include "modemloggerd/adaptor_interfaces.h"
 #include "modemloggerd/helper_manifest.pb.h"
 #include "modemloggerd/logger_interface.h"
+#include "modemloggerd/logging_prefs.h"
 
 namespace modemloggerd {
 
@@ -31,6 +32,7 @@ class Modem : public LoggerInterface {
   brillo::ErrorPtr Start() override;
   brillo::ErrorPtr Stop() override;
   brillo::ErrorPtr SetOutputDir(const std::string& output_dir) override;
+  brillo::ErrorPtr SetAutoStart(bool auto_start) override;
 
   dbus::ObjectPath GetDBusPath() override;
 

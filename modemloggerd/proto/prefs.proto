@@ -1,0 +1,16 @@
+// Copyright 2023 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+
+package modemloggerd;
+
+message ModemLogPref {
+  string modem_name = 1;
+  bool auto_start = 2;
+}
+
+message Prefs {
+  repeated ModemLogPref modem_log_pref = 1;
+}

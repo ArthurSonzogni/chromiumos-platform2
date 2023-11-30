@@ -17,6 +17,7 @@ class LoggerInterface {
   virtual brillo::ErrorPtr Start() = 0;
   virtual brillo::ErrorPtr Stop() = 0;
   virtual brillo::ErrorPtr SetOutputDir(const std::string& output_dir) = 0;
+  virtual brillo::ErrorPtr SetAutoStart(bool auto_start) = 0;
 
   virtual dbus::ObjectPath GetDBusPath() = 0;
 

@@ -33,6 +33,9 @@ class ModemDBusAdaptor : public ModemAdaptorInterface,
   void Stop(std::unique_ptr<DBusResponse<>> response) override;
   void SetOutputDir(std::unique_ptr<DBusResponse<>> response,
                     const std::string& in_output_dir) override;
+  void SetAutoStart(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+      bool in_auto_start) override;
   // ModemAdaptorInterface override.
   dbus::ObjectPath object_path() const override { return object_path_; }
 

@@ -38,13 +38,17 @@ generate_dbus_adaptors("modemloggerd_adaptors") {
 proto_library("modemloggerd-protos") {
   proto_in_dir = "./proto/"
   proto_out_dir = "include/modemloggerd/"
-  sources = [ "${proto_in_dir}/helper_manifest.proto" ]
+  sources = [
+    "${proto_in_dir}/helper_manifest.proto",
+    "${proto_in_dir}/prefs.proto",
+  ]
 }
 
 static_library("libmodemloggerd") {
   sources = [
     "adaptor_factory.cc",
     "daemon.cc",
+    "logging_prefs.cc",
     "manager.cc",
     "manager_dbus_adaptor.cc",
     "modem.cc",

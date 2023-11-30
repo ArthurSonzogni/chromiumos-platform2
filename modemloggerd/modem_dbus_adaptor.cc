@@ -69,4 +69,15 @@ void ModemDBusAdaptor::SetOutputDir(std::unique_ptr<DBusResponse<>> response,
   response->Return();
 }
 
+void ModemDBusAdaptor::SetAutoStart(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+    bool in_auto_start) {
+  auto error = modem_->SetAutoStart(in_auto_start);
+  if (error) {
+    response->ReplyWithError(error.get());
+    return;
+  }
+  response->Return();
+}
+
 }  // namespace modemloggerd
