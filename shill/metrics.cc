@@ -1369,4 +1369,76 @@ void Metrics::SetLibraryForTesting(MetricsLibraryInterface* library) {
   library_ = library;
 }
 
+std::ostream& operator<<(
+    std::ostream& stream,
+    const Metrics::EnumMetric<Metrics::FixedName>& metric) {
+  return stream << "EnumMetric<FixedName>{.n.name=" << metric.n.name
+                << ", .max=" << metric.max << "}";
+}
+
+std::ostream& operator<<(
+    std::ostream& stream,
+    const Metrics::EnumMetric<Metrics::NameByApnType>& metric) {
+  return stream << "EnumMetric<NameByApnType>{.n.name=" << metric.n.name
+                << ", .max=" << metric.max << "}";
+}
+
+std::ostream& operator<<(
+    std::ostream& stream,
+    const Metrics::EnumMetric<Metrics::NameByTechnology>& metric) {
+  return stream << "EnumMetric<NameByTechnology>{.n.name=" << metric.n.name
+                << ", .max=" << metric.max << "}";
+}
+
+std::ostream& operator<<(
+    std::ostream& stream,
+    const Metrics::EnumMetric<Metrics::NameByVPNType>& metric) {
+  return stream << "EnumMetric<NameByVPNType>{.n.name=" << metric.n.name
+                << ", .max=" << metric.max << "}";
+}
+
+std::ostream& operator<<(
+    std::ostream& stream,
+    const Metrics::EnumMetric<Metrics::PrefixName>& metric) {
+  return stream << "EnumMetric<PrefixName>{.n.prefix=" << metric.n.prefix
+                << ", .max=" << metric.max << "}";
+}
+
+std::ostream& operator<<(
+    std::ostream& stream,
+    const Metrics::HistogramMetric<Metrics::FixedName>& metric) {
+  return stream << "HistogramMetric<FixedName>{.n.name=" << metric.n.name
+                << ", .min=" << metric.min << ", .max=" << metric.max
+                << ", num_buckets=" << metric.num_buckets << "}";
+}
+
+std::ostream& operator<<(
+    std::ostream& stream,
+    const Metrics::HistogramMetric<Metrics::NameByTechnology>& metric) {
+  return stream << "HistogramMetric<NameByTechnology>{.n.name=" << metric.n.name
+                << ", .min=" << metric.min << ", .max=" << metric.max
+                << ", num_buckets=" << metric.num_buckets << "}";
+}
+
+std::ostream& operator<<(
+    std::ostream& stream,
+    const Metrics::HistogramMetric<Metrics::PrefixName>& metric) {
+  return stream << "HistogramMetric<PrefixName>{.n.prefix=" << metric.n.prefix
+                << ", .min=" << metric.min << ", .max=" << metric.max
+                << ", num_buckets=" << metric.num_buckets << "}";
+}
+
+std::ostream& operator<<(
+    std::ostream& stream,
+    const Metrics::SparseMetric<Metrics::FixedName>& metric) {
+  return stream << "SparseMetric<FixedName>{.n.name=" << metric.n.name << "}";
+}
+
+std::ostream& operator<<(
+    std::ostream& stream,
+    const Metrics::SparseMetric<Metrics::NameByTechnology>& metric) {
+  return stream << "SparseMetric<NameByTechnology>{.n.name=" << metric.n.name
+                << "}";
+}
+
 }  // namespace shill

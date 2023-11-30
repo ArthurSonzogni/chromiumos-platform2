@@ -19,6 +19,7 @@
 #include <base/observer_list.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/http/http_request.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/ip_address.h>
@@ -954,6 +955,11 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
     metrics_->SendSparseToUMA(Metrics::kPortalDetectorHTTPResponseCode,
                               technology_, *http_response_code);
   }
+  if (result.http_status_code == brillo::http::status_code::Ok &&
+      result.http_content_length) {
+    metrics_->SendToUMA(Metrics::kPortalDetectorHTTPResponseContentLength,
+                        technology_, *result.http_content_length);
+  }
 }
 
 void Network::StopNetworkValidationLog() {
@@ -1227,16 +1233,23 @@ void Network::ValidationLog::RecordMetrics() const {
                         time_to_internet_after_redirect.InMilliseconds());
   }
 
+  std::optional<Metrics::CapportSupported> capport_support = std::nullopt;
+  if (capport_dhcp_supported_ && capport_ra_supported_) {
+    capport_support = Metrics::kCapportSupportedByDHCPv4AndRA;
+  } else if (capport_dhcp_supported_) {
+    capport_support = Metrics::kCapportSupportedByDHCPv4;
+  } else if (capport_ra_supported_) {
+    capport_support = Metrics::kCapportSupportedByRA;
+  }
+
+  if (capport_support) {
+    metrics_->SendEnumToUMA(Metrics::kMetricCapportAdvertised,
+                            *capport_support);
+  }
   if (has_redirect) {
-    Metrics::CapportSupported capport_metric = Metrics::kCapportNotSupported;
-    if (capport_dhcp_supported_ && capport_ra_supported_) {
-      capport_metric = Metrics::kCapportSupportedByDHCPv4AndRA;
-    } else if (capport_dhcp_supported_) {
-      capport_metric = Metrics::kCapportSupportedByDHCPv4;
-    } else if (capport_ra_supported_) {
-      capport_metric = Metrics::kCapportSupportedByRA;
-    }
-    metrics_->SendEnumToUMA(Metrics::kMetricCapportSupported, capport_metric);
+    metrics_->SendEnumToUMA(
+        Metrics::kMetricCapportSupported,
+        capport_support.value_or(Metrics::kCapportNotSupported));
   }
 }
 

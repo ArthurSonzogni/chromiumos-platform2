@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <ostream>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -388,6 +389,20 @@ class Metrics {
   // Value used with |kPortalDetectorHTTPResponseCode| to indicate a 302 or 307
   // response code when the Location header was missing or invalid.
   static constexpr int kPortalDetectorHTTPResponseCodeIncompleteRedirect = 1;
+  // Value used with |kPortalDetectorHTTPResponseCode| to indicate a 200
+  // response code when the Content-Length header is invalid.
+  static constexpr int kPortalDetectorHTTPResponseCodeNoContentLength200 = 2;
+
+  // Histogram of HTTP Content-Length values for network validation HTTP probes
+  // which have received a HTTP 200 response status code.
+  static constexpr HistogramMetric<NameByTechnology>
+      kPortalDetectorHTTPResponseContentLength = {
+          .n = NameByTechnology{"PortalDetector.HTTPReponseContentLength",
+                                TechnologyLocation::kAfterName},
+          .min = 1,
+          .max = 10000,
+          .num_buckets = 30,
+  };
 
   // patchpanel::NeighborLinkMonitor statistics.
   enum NeighborLinkMonitorFailure {
@@ -1160,9 +1175,7 @@ class Metrics {
       .max = kPasspointRemovalMax,
   };
 
-  // Metric counting whether the upstream network supports CAPPORT protocol.
-  // This metric is only recorded at most once by network connection when a
-  // portal is found with an HTTP redirect.
+  // Enum specifying how CAPPORT is advertised with RFC8910.
   enum CapportSupported {
     // The upstream network doesn't support CAPPORT protocol.
     kCapportNotSupported = 0,
@@ -1175,8 +1188,21 @@ class Metrics {
 
     kCapportSupportedMax,
   };
+
+  // Metric counting whether the upstream network supports CAPPORT protocol.
+  // This metric is only recorded at most once by network connection when a
+  // portal is found with an HTTP redirect.
   static constexpr EnumMetric<FixedName> kMetricCapportSupported = {
       .n = FixedName{"Network.Shill.PortalDector.CAPPORTSupported"},
+      .max = kCapportSupportedMax,
+  };
+
+  // Metric counting whether the upstream network supports CAPPORT protocol.
+  // This metric is only recorded once for every network connection where
+  // CAPPORT was advertised, regardless of whether a HTTP redirect was found or
+  // not with legacy HTTP probes.
+  static constexpr EnumMetric<FixedName> kMetricCapportAdvertised = {
+      .n = FixedName{"Network.Shill.PortalDector.CAPPORTAdvertised"},
       .max = kCapportSupportedMax,
   };
 
@@ -2487,6 +2513,36 @@ class Metrics {
       time_between_rekey_and_connection_failure_timer_;
   DeviceMetricsLookupMap devices_metrics_;
 };
+
+std::ostream& operator<<(std::ostream& stream,
+                         const Metrics::EnumMetric<Metrics::FixedName>& metric);
+std::ostream& operator<<(
+    std::ostream& stream,
+    const Metrics::EnumMetric<Metrics::NameByApnType>& metric);
+std::ostream& operator<<(
+    std::ostream& stream,
+    const Metrics::EnumMetric<Metrics::NameByTechnology>& metric);
+std::ostream& operator<<(
+    std::ostream& stream,
+    const Metrics::EnumMetric<Metrics::NameByVPNType>& metric);
+std::ostream& operator<<(
+    std::ostream& stream,
+    const Metrics::EnumMetric<Metrics::PrefixName>& metric);
+std::ostream& operator<<(
+    std::ostream& stream,
+    const Metrics::HistogramMetric<Metrics::FixedName>& metric);
+std::ostream& operator<<(
+    std::ostream& stream,
+    const Metrics::HistogramMetric<Metrics::NameByTechnology>& metric);
+std::ostream& operator<<(
+    std::ostream& stream,
+    const Metrics::HistogramMetric<Metrics::PrefixName>& metric);
+std::ostream& operator<<(
+    std::ostream& stream,
+    const Metrics::SparseMetric<Metrics::FixedName>& metric);
+std::ostream& operator<<(
+    std::ostream& stream,
+    const Metrics::SparseMetric<Metrics::NameByTechnology>& metric);
 
 }  // namespace shill
 

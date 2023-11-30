@@ -15,6 +15,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/http/http_request.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/dns_client.h"
@@ -508,6 +509,11 @@ std::optional<int> PortalDetector::Result::GetHTTPResponseCodeMetricResult()
   // For redirect responses, verify there was a valid redirect URL.
   if (IsRedirectResponse(http_status_code) && !IsHTTPProbeRedirected()) {
     return Metrics::kPortalDetectorHTTPResponseCodeIncompleteRedirect;
+  }
+  // Count 200 responses with an invalid Content-Length separately.
+  if (http_status_code == brillo::http::status_code::Ok &&
+      !http_content_length) {
+    return Metrics::kPortalDetectorHTTPResponseCodeNoContentLength200;
   }
   // Otherwise, return the response code directly.
   return http_status_code;
