@@ -187,14 +187,12 @@ bool WriteTestImageToBuffer(const TestImage& image,
               image.data() + crop->left + crop->top * image.width(),
               image.width(),
               image.data() + image.width() * image.height() +
-                  base::bits::AlignDown(static_cast<int>(crop->left), 2) +
-                  (crop->top / 2) *
-                      base::bits::AlignUp(static_cast<int>(image.width()), 2),
-              base::bits::AlignUp(static_cast<int>(image.width()), 2),
-              crop->width, crop->height, mapping.plane(0).addr,
-              mapping.plane(0).stride, mapping.plane(1).addr,
-              mapping.plane(1).stride, mapping.width(), mapping.height(),
-              libyuv::kFilterBilinear);
+                  base::bits::AlignDown(crop->left, 2u) +
+                  (crop->top / 2) * base::bits::AlignUp(image.width(), 2u),
+              base::bits::AlignUp(image.width(), 2u), crop->width, crop->height,
+              mapping.plane(0).addr, mapping.plane(0).stride,
+              mapping.plane(1).addr, mapping.plane(1).stride, mapping.width(),
+              mapping.height(), libyuv::kFilterBilinear);
           if (ret != 0) {
             LOGF(ERROR) << "libyuv::NV12Scale failed: " << ret;
             return false;
