@@ -21,7 +21,6 @@
 #include "crash-reporter/util.h"
 
 using base::FilePath;
-using base::StringPiece;
 using base::StringPrintf;
 
 using brillo::ProcessImpl;
@@ -146,7 +145,7 @@ bool ECCollector::Collect(bool use_saved_lsb) {
 
   std::string signature = StringPrintf(
       "%s-%08X", kECExecName,
-      util::HashString(StringPiece(panicinfo_data, panicinfo_len)));
+      util::HashString(base::StringPiece(panicinfo_data, panicinfo_len)));
 
   AddCrashMetaData("sig", signature);
   // Add EC info and AP version into log file.

@@ -78,10 +78,11 @@ bool AcpiWakeupHelper::GetWakeupEnabled(const std::string& device_name,
     // Find enabled/disabled in later parts.
     while (parts.GetNext()) {
       base::StringPiece part = parts.token_piece();
-      if (part == base::StringPiece("enabled")) {
+      if (part == "enabled") {
         *enabled_out = true;
         return true;
-      } else if (part == base::StringPiece("disabled")) {
+      }
+      if (part == "disabled") {
         *enabled_out = false;
         return true;
       }

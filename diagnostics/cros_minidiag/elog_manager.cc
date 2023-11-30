@@ -87,7 +87,7 @@ ElogManager::ElogManager(const std::string& elog_string,
        base::SplitStringPiece(elog_string, "\n", base::TRIM_WHITESPACE,
                               base::SPLIT_WANT_NONEMPTY)) {
     if (is_new_event) {
-      elog_events_.emplace_back(std::forward<const base::StringPiece&>(line));
+      elog_events_.emplace_back(line);
     } else if (line.compare(previous_last_line) == 0) {
       is_new_event = true;
     }

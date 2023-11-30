@@ -26,7 +26,6 @@
 #include "crash-reporter/paths.h"
 
 using base::FilePath;
-using base::StringPiece;
 using base::StringPrintf;
 
 namespace {
@@ -385,13 +384,13 @@ bool KernelCollector::LastRebootWasWatchdog(
     return false;
   }
 
-  StringPiece piece = StringPiece(eventlog);
+  base::StringPiece piece = base::StringPiece(eventlog);
   size_t last_boot = piece.rfind(kEventNameBoot);
-  if (last_boot == StringPiece::npos)
+  if (last_boot == base::StringPiece::npos)
     return false;
 
   watchdog_reboot_reason = "-(WATCHDOG)";
-  return piece.find(kEventNameWatchdog, last_boot) != StringPiece::npos;
+  return piece.find(kEventNameWatchdog, last_boot) != base::StringPiece::npos;
 }
 
 bool KernelCollector::LoadConsoleRamoops(std::string* contents) {
@@ -604,8 +603,8 @@ bool KernelCollector::HandleCrash(const std::string& kernel_dump,
                                   const std::string& signature) {
   FilePath root_crash_directory;
 
-  LOG(INFO) << "Received prior crash notification from "
-            << "kernel (signature " << signature << ") (handling)";
+  LOG(INFO) << "Received prior crash notification from kernel (signature "
+            << signature << ") (handling)";
 
   if (!GetCreatedCrashDirectoryByEuid(constants::kRootUid,
                                       &root_crash_directory, nullptr)) {

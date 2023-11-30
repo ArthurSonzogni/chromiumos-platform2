@@ -409,8 +409,8 @@ bool GetUserHomeDirectories(
   session_manager_proxy->RetrieveActiveSessions(&sessions, &error);
 
   if (error) {
-    LOG(ERROR) << "Error calling D-Bus proxy call to interface "
-               << "'" << session_manager_proxy->GetObjectPath().value()
+    LOG(ERROR) << "Error calling D-Bus proxy call to interface '"
+               << session_manager_proxy->GetObjectPath().value()
                << "': " << error->GetMessage();
     return false;
   }
@@ -451,8 +451,8 @@ bool GetDaemonStoreCrashDirectories(
   session_manager_proxy->RetrieveActiveSessions(&sessions, &error);
 
   if (error) {
-    LOG(ERROR) << "Error calling D-Bus proxy call to interface "
-               << "'" << session_manager_proxy->GetObjectPath().value()
+    LOG(ERROR) << "Error calling D-Bus proxy call to interface '"
+               << session_manager_proxy->GetObjectPath().value()
                << "': " << error->GetMessage();
     return false;
   }

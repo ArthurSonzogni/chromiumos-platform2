@@ -76,7 +76,7 @@ bool GetDirectoryEntry(const base::StringPiece16& path, DirectoryEntry* out) {
   size_t pos = 1;
   while (true) {
     size_t next_slash = path.find('/', pos);
-    if (next_slash == base::StringPiece::npos) {
+    if (next_slash == base::StringPiece16::npos) {
       next_slash = path.size();
     }
     base::StringPiece16 name(path.data() + pos, next_slash - pos);

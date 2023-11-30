@@ -17,10 +17,6 @@
 
 namespace {
 
-base::StringPiece ToStringPiece(std::string_view sv) {
-  return base::StringPiece(sv.data(), sv.length());
-}
-
 base::Value SaveAsJson(const ipp::Collection& coll);
 
 // Converts `value` from the attribute `attr` to base::Value.
@@ -118,11 +114,11 @@ base::Value SaveAsJson(const ipp::Collection& coll) {
     auto tag = a.Tag();
     if (!ipp::IsOutOfBand(tag)) {
       base::Value::Dict obj2;
-      obj2.Set("type", ToStringPiece(ipp::ToStrView(tag)));
+      obj2.Set("type", ipp::ToStrView(tag));
       obj2.Set("value", SaveValuesAsJson(a));
-      obj.Set(ToStringPiece(a.Name()), std::move(obj2));
+      obj.Set(a.Name(), std::move(obj2));
     } else {
-      obj.Set(ToStringPiece(a.Name()), ToStringPiece(ipp::ToStrView(tag)));
+      obj.Set(a.Name(), ipp::ToStrView(tag));
     }
   }
 

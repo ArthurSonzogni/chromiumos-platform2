@@ -15,7 +15,6 @@
 
 #include "crash-reporter/util.h"
 
-using base::StringPiece;
 using base::StringPrintf;
 
 namespace {
@@ -140,7 +139,7 @@ void ProcessStackTrace(re2::StringPiece kernel_dump,
     hashable = previous_hashable;
   }
 
-  *hash = util::HashString(StringPiece(hashable));
+  *hash = util::HashString(hashable);
   *is_watchdog_crash = is_watchdog;
 }
 
@@ -292,7 +291,7 @@ std::string ComputeNoCErrorSignature(const std::string& dump) {
     }
   }
 
-  unsigned hash = util::HashString(StringPiece(hashable));
+  unsigned hash = util::HashString(hashable);
 
   return StringPrintf("%s-(NOC-Error)-%s-%08X", kKernelExecName,
                       first_noc.c_str(), hash);
@@ -302,15 +301,15 @@ std::string ComputeNoCErrorSignature(const std::string& dump) {
 // of the last log line instead (minus the timestamp ended by ']').
 std::string WatchdogSignature(const std::string& console_ramoops,
                               const std::string& watchdogRebootReason) {
-  StringPiece line(console_ramoops);
+  base::StringPiece line(console_ramoops);
   constexpr char kTimestampEnd[] = "] ";
   size_t timestamp_end_pos = line.rfind(kTimestampEnd);
-  if (timestamp_end_pos != StringPiece::npos) {
+  if (timestamp_end_pos != base::StringPiece::npos) {
     line = line.substr(timestamp_end_pos + strlen(kTimestampEnd));
   }
   size_t newline_pos = line.find("\n");
-  size_t end = (newline_pos == StringPiece::npos
-                    ? StringPiece::npos
+  size_t end = (newline_pos == base::StringPiece::npos
+                    ? base::StringPiece::npos
                     : std::min(newline_pos, kMaxHumanStringLength));
   return StringPrintf(
       "%s%s-%s-%08X", kKernelExecName, watchdogRebootReason.c_str(),
