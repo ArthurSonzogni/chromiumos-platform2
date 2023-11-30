@@ -18,6 +18,7 @@
 #include <debugd/dbus-proxies.h>
 
 #include "runtime_probe/system/context.h"
+#include "runtime_probe/utils/bus_utils.h"
 #include "runtime_probe/utils/file_utils.h"
 #include "runtime_probe/utils/value_utils.h"
 
@@ -34,9 +35,6 @@ const std::vector<std::string> kMmcFields{"name", "oemid", "manfid"};
 // prv: SD and MMCv4 only
 // hwrev: SD and MMCv1 only
 const std::vector<std::string> kMmcOptionalFields{"hwrev", "prv", "serial"};
-
-constexpr auto kMmcType = "MMC";
-constexpr auto kMmcPrefix = "mmc_";
 
 // Check if the string represented by |input_string| is printable.
 bool IsPrintable(const std::string& input_string) {
@@ -194,14 +192,30 @@ std::optional<base::Value> MmcStorageFunction::ProbeFromSysfs(
   }
 
   auto mmc_res = MapFilesToDict(mmc_path, kMmcFields, kMmcOptionalFields);
-
   if (!mmc_res) {
     VLOG(1) << "eMMC-specific fields do not exist on storage \"" << node_path
             << "\"";
     return std::nullopt;
   }
-  PrependToDVKey(&*mmc_res, kMmcPrefix);
-  mmc_res->GetDict().Set("type", kMmcType);
+  PrependToDVKey(&*mmc_res, "mmc_");
+
+  // We assume that all mmc subsystem is under a mmc_host subsystem. Find the
+  // mmc_host by checking the parent dir of the realpath of mmc.
+  base::FilePath mmc_host_path =
+      base::MakeAbsoluteFilePath(mmc_path.Append(".."));
+  auto mmc_host_res = GetDeviceBusDataFromSysfsNode(mmc_host_path);
+  if (mmc_host_res) {
+    PrependToDVKey(&*mmc_host_res, "mmc_host_");
+    mmc_res->GetDict().Merge(std::move(mmc_host_res->GetDict()));
+  } else {
+    // Setting a bus type field help us prevent this components from matching
+    // the one with mmc_host in the future.
+    mmc_res->GetDict().Set("mmc_host_bus_type", "uninterested");
+  }
+
+  // The type used to be "MMC". Don't set it to "MMC" again to prevent old mmc
+  // components without the host fields matching the new components.
+  mmc_res->GetDict().Set("type", "MMC_ASSEMBLY");
   return mmc_res;
 }
 

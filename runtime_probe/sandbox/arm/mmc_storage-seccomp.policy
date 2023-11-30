@@ -30,6 +30,7 @@ mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 openat: 1
 read: 1
+readlink: 1
 restart_syscall: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
@@ -41,9 +42,6 @@ statx: 1
 ugetrlimit: 1
 uname: 1
 write: 1
-
-# For brillo::kLogToStderrIfTty. isatty(0) calls ioctl(0, TCGETS, *).
-ioctl: arg0 == 0 && arg1 == TCGETS
 getpid: 1
 futex: 1
 futex_time64: 1
