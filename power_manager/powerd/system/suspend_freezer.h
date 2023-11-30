@@ -18,7 +18,6 @@
 
 #include <base/files/file_path.h>
 #include <base/time/time.h>
-#include <gtest/gtest_prod.h>
 
 namespace power_manager::system {
 
@@ -45,11 +44,7 @@ class SuspendFreezerInterface {
   virtual FreezeResult FreezeUserspace(uint64_t wakeup_count,
                                        bool wakeup_count_valid) = 0;
   // Thaw a subset of userspace processes.
-  virtual bool ThawProcesses() = 0;
-
-  // Thaw a subset of userspace processes prior to evicting key. This will be
-  // the login CGroup.
-  virtual bool ThawEssentialProcesses() = 0;
+  virtual bool ThawUserspace() = 0;
 };
 
 class SuspendFreezer : public SuspendFreezerInterface {
@@ -93,11 +88,7 @@ class SuspendFreezer : public SuspendFreezerInterface {
   // /sys/fs/group/freezer
   FreezeResult FreezeUserspace(uint64_t wakeup_count,
                                bool wakeup_count_valid) override;
-  bool ThawProcesses() override;
-
-  // Thaw a subset of userspace processes prior to evicting key. This will be
-  // the login CGroup.
-  bool ThawEssentialProcesses() override;
+  bool ThawUserspace() override;
 
  private:
   struct CgroupNode {
@@ -141,17 +132,11 @@ class SuspendFreezer : public SuspendFreezerInterface {
       bool wakeup_count_valid,
       std::unordered_map<base::FilePath, struct CgroupNode>* graph);
 
-  // ThawCgroups will attempt to thaw all the processes supplied in
-  // cgroups_to_thaw. Returns true if all the process thawing is successful.
-  bool ThawCgroups(std::vector<base::FilePath>& croups_to_thaw);
-
   std::unique_ptr<SystemUtilsInterface> sys_utils_;
 
   std::unique_ptr<Clock> clock_;
 
   PrefsInterface* prefs_;  // non-owned
-
-  FRIEND_TEST(SuspendFreezerTest, TestThawProcesses);
 };
 
 }  // namespace power_manager::system
