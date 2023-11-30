@@ -5,7 +5,7 @@
 #ifndef SHILL_CELLULAR_CELLULAR_CONSTS_H_
 #define SHILL_CELLULAR_CELLULAR_CONSTS_H_
 
-namespace shill {
+#include "shill/device_id.h"
 
 namespace cellular {
 
@@ -20,8 +20,19 @@ const char kApnSourceMoDb[] = "modb";
 const char kApnSourceModem[] = "modem";
 const char kApnSourceFallback[] = "fallback";
 
-}  // namespace cellular
+// Modem identifiers
+const int kL850GLVid = 0x2cb7;
+const int kL850GLPid = 0x0007;
+const shill::DeviceId::BusType kL850GLBusType = shill::DeviceId::BusType::kUsb;
 
-}  // namespace shill
+const int kFM101Vid = 0x2cb7;
+const int kFM101Pid = 0x01a2;
+const shill::DeviceId::BusType kFM101BusType = shill::DeviceId::BusType::kUsb;
+
+const int kFM350Vid = 0x14c3;
+const int kFM350Pid = 0x4d75;
+const shill::DeviceId::BusType kFM350BusType = shill::DeviceId::BusType::kPci;
+
+}  // namespace cellular
 
 #endif  // SHILL_CELLULAR_CELLULAR_CONSTS_H_

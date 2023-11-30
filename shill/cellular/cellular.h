@@ -391,6 +391,18 @@ class Cellular : public Device,
   bool StateIsRegistered();
   bool StateIsStarted();
 
+  enum class ModemType {
+    kUnknown,
+    kL850GL,
+    kFM101,
+    kFM350,
+    kOther,
+  };
+  bool IsModemFM101();
+  bool IsModemFM350();
+  bool IsModemL850GL();
+  ModemType modem_type() { return modem_type_; }
+
   // DBus property getters
   const std::string& dbus_service() const { return dbus_service_; }
   const RpcIdentifier& dbus_path() const { return dbus_path_; }
@@ -553,6 +565,7 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, PPPConnectionFailedAfterConnect);
   FRIEND_TEST(CellularTest, RequiredApnExists);
   FRIEND_TEST(CellularTest, SetPolicyAllowRoaming);
+  FRIEND_TEST(CellularTest, ShouldBringNetworkInterfaceDownAfterDisabled);
   FRIEND_TEST(CellularTest, StopPPPOnDisconnect);
   FRIEND_TEST(CellularTest, StorageIdentifier);
   FRIEND_TEST(CellularTest, StartPPP);
@@ -890,6 +903,7 @@ class Cellular : public Device,
   std::string firmware_revision_;
   std::string hardware_revision_;
   std::unique_ptr<DeviceId> device_id_;
+  ModemType modem_type_ = ModemType::kUnknown;
   std::string imei_;
   std::string manufacturer_;
   std::string mdn_;

@@ -1886,8 +1886,8 @@ TEST_F(CellularTest, DefaultLinkUpDHCP) {
 }
 
 TEST_F(CellularTest, DefaultLinkUpDHCPL850) {
-  auto l850DeviceId =
-      std::make_unique<DeviceId>(DeviceId::BusType::kUsb, 0x2cb7, 0x0007);
+  auto l850DeviceId = std::make_unique<DeviceId>(
+      cellular::kL850GLBusType, cellular::kL850GLVid, cellular::kL850GLPid);
   device_->SetDeviceId(std::move(l850DeviceId));
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
                                                  kTestBearerDBusPath, "");
@@ -4084,4 +4084,57 @@ TEST_F(CellularTest, ReleaseTetheringNetwork_DunMultiplexed) {
   Mock::VerifyAndClearExpectations(default_pdn_);
 }
 
+TEST_F(CellularTest, ShouldBringNetworkInterfaceDownAfterDisabled) {
+  auto device_id = std::make_unique<DeviceId>(
+      cellular::kFM101BusType, cellular::kFM101Vid, cellular::kFM101Pid);
+  device_->SetDeviceId(std::move(device_id));
+  EXPECT_FALSE(device_->ShouldBringNetworkInterfaceDownAfterDisabled());
+
+  device_id = std::make_unique<DeviceId>(
+      cellular::kL850GLBusType, cellular::kL850GLVid, cellular::kL850GLPid);
+  device_->SetDeviceId(std::move(device_id));
+  EXPECT_TRUE(device_->ShouldBringNetworkInterfaceDownAfterDisabled());
+}
+
+TEST_F(CellularTest, IsModemUnknown) {
+  EXPECT_FALSE(device_->IsModemL850GL());
+  EXPECT_FALSE(device_->IsModemFM101());
+  EXPECT_FALSE(device_->IsModemFM350());
+}
+
+TEST_F(CellularTest, IsModemOther) {
+  auto device_id =
+      std::make_unique<DeviceId>(DeviceId::BusType::kUsb, 0x0001, 0x0002);
+  device_->SetDeviceId(std::move(device_id));
+  EXPECT_FALSE(device_->IsModemL850GL());
+  EXPECT_FALSE(device_->IsModemFM101());
+  EXPECT_FALSE(device_->IsModemFM350());
+}
+
+TEST_F(CellularTest, IsModemL850GL) {
+  auto device_id = std::make_unique<DeviceId>(
+      cellular::kL850GLBusType, cellular::kL850GLVid, cellular::kL850GLPid);
+  device_->SetDeviceId(std::move(device_id));
+  EXPECT_TRUE(device_->IsModemL850GL());
+  EXPECT_FALSE(device_->IsModemFM101());
+  EXPECT_FALSE(device_->IsModemFM350());
+}
+
+TEST_F(CellularTest, IsModemFM101) {
+  auto device_id = std::make_unique<DeviceId>(
+      cellular::kFM101BusType, cellular::kFM101Vid, cellular::kFM101Pid);
+  device_->SetDeviceId(std::move(device_id));
+  EXPECT_TRUE(device_->IsModemFM101());
+  EXPECT_FALSE(device_->IsModemL850GL());
+  EXPECT_FALSE(device_->IsModemFM350());
+}
+
+TEST_F(CellularTest, IsModemFM350) {
+  auto device_id = std::make_unique<DeviceId>(
+      cellular::kFM350BusType, cellular::kFM350Vid, cellular::kFM350Pid);
+  device_->SetDeviceId(std::move(device_id));
+  EXPECT_TRUE(device_->IsModemFM350());
+  EXPECT_FALSE(device_->IsModemFM101());
+  EXPECT_FALSE(device_->IsModemL850GL());
+}
 }  // namespace shill

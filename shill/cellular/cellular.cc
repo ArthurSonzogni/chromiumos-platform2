@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/in.h
 
+#include <ios>
 #include <memory>
 #include <optional>
 #include <set>
@@ -438,11 +439,9 @@ bool Cellular::ShouldBringNetworkInterfaceDownAfterDisabled() const {
   // TODO(benchan): Investigate if we need to apply the workaround for other
   // MBIM modems or revert this change once the issue is addressed by the modem
   // firmware on Fibocom L850-GL.
-  static constexpr DeviceId kAffectedDeviceIds[] = {
-      {DeviceId::BusType::kUsb, 0x2cb7, 0x0007},  // Fibocom L850-GL
-  };
-  for (const auto& affected_device_id : kAffectedDeviceIds) {
-    if (device_id_->Match(affected_device_id))
+  static constexpr ModemType kAffectedModemTypes[] = {ModemType::kL850GL};
+  for (const auto& affected_modem_type : kAffectedModemTypes) {
+    if (modem_type_ == affected_modem_type)
       return true;
   }
 
@@ -3628,6 +3627,26 @@ void Cellular::SetHardwareRevision(const std::string& hardware_revision) {
 
 void Cellular::SetDeviceId(std::unique_ptr<DeviceId> device_id) {
   device_id_ = std::move(device_id);
+  if (!device_id_) {
+    SLOG(2) << "device_id: {}";
+    modem_type_ = ModemType::kUnknown;
+    return;
+  }
+  SLOG(2) << "device_id: " << device_id_->AsString();
+  if (device_id_->Match(DeviceId(cellular::kL850GLBusType, cellular::kL850GLVid,
+                                 cellular::kL850GLPid))) {
+    modem_type_ = ModemType::kL850GL;
+  } else if (device_id_->Match(DeviceId(cellular::kFM101BusType,
+                                        cellular::kFM101Vid,
+                                        cellular::kFM101Pid))) {
+    modem_type_ = ModemType::kFM101;
+  } else if (device_id_->Match(DeviceId(cellular::kFM350BusType,
+                                        cellular::kFM350Vid,
+                                        cellular::kFM350Pid))) {
+    modem_type_ = ModemType::kFM350;
+  } else {
+    modem_type_ = ModemType::kOther;
+  }
 }
 
 void Cellular::SetImei(const std::string& imei) {
@@ -3747,6 +3766,24 @@ void Cellular::SetMMPlugin(const std::string& mm_plugin) {
 void Cellular::SetMaxActiveMultiplexedBearers(
     uint32_t max_multiplexed_bearers) {
   max_multiplexed_bearers_ = max_multiplexed_bearers;
+}
+
+bool Cellular::IsModemFM350() {
+  SLOG(2) << LoggingTag() << ": " << __func__ << " : " << std::boolalpha
+          << (modem_type_ == ModemType::kFM350);
+  return modem_type_ == ModemType::kFM350;
+}
+
+bool Cellular::IsModemFM101() {
+  SLOG(2) << LoggingTag() << ": " << __func__ << " : " << std::boolalpha
+          << (modem_type_ == ModemType::kFM101);
+  return modem_type_ == ModemType::kFM101;
+}
+
+bool Cellular::IsModemL850GL() {
+  SLOG(2) << LoggingTag() << ": " << __func__ << " : " << std::boolalpha
+          << (modem_type_ == ModemType::kL850GL);
+  return modem_type_ == ModemType::kL850GL;
 }
 
 void Cellular::StartLocationPolling() {
@@ -4205,7 +4242,7 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
     ipv4_configured = true;
   } else if (bearer->ipv4_config_method() ==
              CellularBearer::IPConfigMethod::kDHCP) {
-    if (cellular_->capability_->IsModemL850()) {
+    if (cellular_->IsModemL850GL()) {
       LOG(WARNING) << LoggingTag()
                    << ": DHCP configuration not supported on L850"
                       " (Ignoring kDHCP).";

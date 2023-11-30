@@ -451,7 +451,8 @@ void CellularCapability3gpp::EnableModemCompleted(ResultCallback callback,
 
     // TODO(b/256525852): Revert this once we land the proper fix in modem fw.
     modem_proxy_->SetPowerState(
-        IsModemFM101() ? MM_MODEM_POWER_STATE_ON : MM_MODEM_POWER_STATE_LOW,
+        cellular()->IsModemFM101() ? MM_MODEM_POWER_STATE_ON
+                                   : MM_MODEM_POWER_STATE_LOW,
         std::move(cb), kTimeoutSetPowerState.InMilliseconds());
     return;
   }
@@ -464,7 +465,7 @@ void CellularCapability3gpp::EnableModemCompleted(ResultCallback callback,
   }
 
   // TODO(b/274882743): Revert after the proper fix lands in FM101 modem.
-  if (IsModemFM101()) {
+  if (cellular()->IsModemFM101()) {
     ResultCallback setup_signal_callback =
         base::BindOnce(&CellularCapability3gpp::OnSetupSignalReply,
                        weak_ptr_factory_.GetWeakPtr());
@@ -934,15 +935,14 @@ bool CellularCapability3gpp::IsDualStackSupported() {
                 << " MCCMNC: " << cellular()->mobile_operator_info()->mccmnc();
   // Disable dual-stack on L850 + Verizon
   const struct {
-    DeviceId device_id;
+    Cellular::ModemType modem_type;
     std::vector<std::string> operator_code;
   } kAffectedDevices[] = {
-      {{DeviceId::BusType::kUsb, 0x2cb7, 0x0007},
-       {"310995", "311270", "311480"}},
+      {Cellular::ModemType::kL850GL, {"310995", "311270", "311480"}},
   };
 
   for (const auto& affected_device : kAffectedDevices) {
-    if (cellular()->device_id()->Match(affected_device.device_id)) {
+    if (cellular()->modem_type() == affected_device.modem_type) {
       if (affected_device.operator_code.size() == 0 ||
           std::find(affected_device.operator_code.begin(),
                     affected_device.operator_code.end(),
@@ -953,36 +953,6 @@ bool CellularCapability3gpp::IsDualStackSupported() {
   }
 
   return true;
-}
-
-bool CellularCapability3gpp::IsModemFM350() {
-  SLOG(this, 2) << __func__;
-  if (!cellular()->device_id())
-    return false;
-
-  SLOG(this, 2) << "device_id: " << cellular()->device_id()->AsString();
-  DeviceId fm350_device_id = {DeviceId::BusType::kPci, 0x14c3, 0x4d75};
-  return cellular()->device_id()->Match(fm350_device_id);
-}
-
-bool CellularCapability3gpp::IsModemFM101() {
-  SLOG(this, 2) << __func__;
-  if (!cellular()->device_id())
-    return false;
-
-  SLOG(this, 2) << "device_id: " << cellular()->device_id()->AsString();
-  DeviceId fm101_device_id = {DeviceId::BusType::kUsb, 0x2cb7, 0x01a2};
-  return cellular()->device_id()->Match(fm101_device_id);
-}
-
-bool CellularCapability3gpp::IsModemL850() {
-  SLOG(this, 2) << __func__;
-  if (!cellular()->device_id())
-    return false;
-
-  SLOG(this, 2) << "device_id: " << cellular()->device_id()->AsString();
-  DeviceId l850_device_id = {DeviceId::BusType::kUsb, 0x2cb7, 0x0007};
-  return cellular()->device_id()->Match(l850_device_id);
 }
 
 void CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
@@ -1191,7 +1161,8 @@ void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(
   }
   /* Force initial EPS bearer settings is currently only required for FM101
    * MR2 firmware. Hence setting it only for FM101 to limit the impact */
-  if (cellular()->GetForceInitEpsBearerSettings() && IsModemFM101()) {
+  if (cellular()->GetForceInitEpsBearerSettings() &&
+      cellular()->IsModemFM101()) {
     properties->Set<bool>(CellularBearer::kMMForceProperty, true);
   }
 }
@@ -2575,7 +2546,8 @@ void CellularCapability3gpp::OnModemSignalPropertiesChanged(
       } else if (tech_props.Contains<double>(kRssiProperty) &&
                  (signal_property == MM_MODEM_SIGNAL_PROPERTY_UMTS ||
                   signal_property == MM_MODEM_SIGNAL_PROPERTY_GSM ||
-                  IsModemFM101())) {  // TODO(b/274882743): Revert for FM101 MR2
+                  cellular()->IsModemFM101())) {  // TODO(b/274882743): Revert
+                                                  // for FM101 MR2
         signal_measurement = kRssiProperty;
         signal_quality = tech_props.Get<double>(kRssiProperty);
         scaled_quality = kRssiBounds.GetAsPercentage(signal_quality);
