@@ -33,15 +33,16 @@ class NetworkApplier {
  public:
   enum class Area : uint32_t {
     kNone = 0,
-    kIPv4Address = 0x1,
-    kIPv4Route = 0x2,
-    kIPv4DefaultRoute = 0x4,
-    kIPv6Address = 0x100,
-    kIPv6Route = 0x200,
-    kIPv6DefaultRoute = 0x400,
-    kRoutingPolicy = 0x10000,
-    kDNS = 0x20000,
-    kMTU = 0x40000,
+    kIPv4Address = 1u << 0,
+    kIPv4Route = 1u << 1,
+    kIPv4DefaultRoute = 1u << 2,
+    kIPv6Address = 1u << 8,
+    kIPv6Route = 1u << 9,
+    kIPv6DefaultRoute = 1u << 10,
+    kRoutingPolicy = 1u << 16,
+    kDNS = 1u << 17,
+    kMTU = 1u << 18,
+    kClear = 1u << 31,  // Clear all old configurations regardless of area
   };
 
   virtual ~NetworkApplier();

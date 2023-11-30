@@ -223,6 +223,12 @@ void Network::SetupConnection(net_base::IPFamily family, bool is_slaac) {
       to_apply |= NetworkApplier::Area::kIPv6DefaultRoute;
     }
   }
+  if (family == net_base::IPFamily::kIPv6 &&
+      primary_family_ == net_base::IPFamily::kIPv4) {
+    // This means network loses IPv4 so we need to clear the old configuration
+    // from kernel first.
+    to_apply |= NetworkApplier::Area::kClear;
+  }
   ApplyNetworkConfig(to_apply);
 
   if (state_ != State::kConnected && technology_ != Technology::kVPN) {
@@ -455,12 +461,6 @@ void Network::OnDHCPDrop(bool is_voluntary) {
     LOG(INFO) << *this << ": operating in IPv6-only because of "
               << (is_voluntary ? "receiving DHCP option 108" : "DHCP failure");
     if (primary_family_ == net_base::IPFamily::kIPv4) {
-      // Clear the state in kernel at first. It is possible that this function
-      // is called when we have a valid DHCP lease now (e.g., triggered by a
-      // renew failure). We need to withdraw the effect of the previous IPv4
-      // lease at first. Static IP is handled above so it's guaranteed that
-      // there is no valid IPv4 lease. Also see b/261681299.
-      network_applier_->Clear(interface_index_);
       SetupConnection(net_base::IPFamily::kIPv6, config_.HasSLAAC());
     }
     return;

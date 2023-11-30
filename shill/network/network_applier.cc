@@ -442,6 +442,9 @@ void NetworkApplier::ApplyNetworkConfig(
     const net_base::NetworkConfig& network_config,
     NetworkPriority priority,
     Technology technology) {
+  if (area & Area::kClear) {
+    Clear(interface_index);
+  }
   if (area & Area::kIPv4Address) {
     if (network_config.ipv4_address) {
       ApplyAddress(interface_index,
