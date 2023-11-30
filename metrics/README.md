@@ -100,6 +100,24 @@ is not set, this falls back to enabling stats if the device is enterprise
 enrolled; if that isn't the case, the existence of the "/home/chronos/Consent To
 Send Stats" file is used.)
 
+### Required paths and permissions for sandboxing
+
+Various functions in MetricsLibrary need to be able to access certain paths in
+order to work. Programs that are sandboxed (e.g. by minijail) may not allow
+access to these paths. In some cases, this will cause MetricsLibrary to silently
+misbehave. As such, we are documenting the needed paths:
+
+*   `IsGuestMode` needs read access to `/run/state` and permission to make dbus
+    calls to SessionManager.
+*   `AreMetricsEnabled` needs access to everything `IsGuestMode` needs, plus
+    read access to everything under `/run/daemon-store/uma-consent`,
+    `/var/lib/devicesettings`, and `/etc/ssl/openssl.cnf`.
+*   `IsAppSyncEnabled` needs read access to everything under
+    `/run/daemon-store/appsync-optin`.
+*   `EnableMetrics` needs everything `AreMetricsEnabled` needs access to, plus
+    write access to `/home/chronos/`.
+*   `DisableMetrics` needs write access to `/home/chronos/`.
+
 ## The Metrics Client: metrics_client
 
 `metrics_client` is a command-line utility for sending histogram samples and
