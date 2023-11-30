@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINE_ADAPTER_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINE_ADAPTER_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_ROUTINE_ADAPTER_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_ROUTINE_ADAPTER_H_
 
 #include <string>
 #include <tuple>
@@ -90,4 +90,4 @@ class RoutineAdapter : public DiagnosticRoutine,
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINE_ADAPTER_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_ROUTINE_ADAPTER_H_

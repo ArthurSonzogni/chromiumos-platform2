@@ -90,6 +90,7 @@ source_set("libdiag_routine") {
     "network/signal_strength.cc",
     "network/video_conferencing.cc",
     "privacy_screen/privacy_screen.cc",
+    "routine_adapter.cc",
     "routine_service.cc",
     "sensor/sensitive_sensor.cc",
     "sensor/sensor_existence_checker.cc",

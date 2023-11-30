@@ -41,7 +41,6 @@ source_set("libcros_healthd") {
     "cros_healthd_routine_factory_impl.cc",
     "event_aggregator.cc",
     "fetch_aggregator.cc",
-    "routine_adapter.cc",
   ]
 }
 

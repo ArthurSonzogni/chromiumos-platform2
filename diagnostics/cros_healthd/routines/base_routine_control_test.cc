@@ -18,8 +18,8 @@
 #include <mojo/public/cpp/bindings/callback_helpers.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
-#include "diagnostics/cros_healthd/routine_adapter.h"
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
+#include "diagnostics/cros_healthd/routines/routine_adapter.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
