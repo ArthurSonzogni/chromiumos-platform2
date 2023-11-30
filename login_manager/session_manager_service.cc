@@ -440,16 +440,13 @@ bool SessionManagerService::HandleExit(const siginfo_t& status) {
   // Clears up the whole job's process group.
   browser_->KillEverything(SIGKILL, "Ensuring browser processes are gone.");
   DLOG(INFO) << "Waiting up to " << GetKillTimeout().InSeconds()
-             << " seconds for "
-             << "browser process group to exit";
+             << " seconds for browser process group to exit";
   if (!browser_->WaitForExit(GetKillTimeout())) {
     LOG(ERROR) << "Browser process still around after SIGKILL and "
                << GetKillTimeout().InSeconds() << " seconds.";
   }
   browser_->ClearPid();
 
-  // TODO(b/286485820): Stop ARC in parallel with the shutdown of other crosvm
-  // instances.
   // Ensure ARC containers are gone.
   android_container_->RequestJobExit(ArcContainerStopReason::BROWSER_SHUTDOWN);
   android_container_->EnsureJobExit(SessionManagerImpl::kContainerTimeout);
