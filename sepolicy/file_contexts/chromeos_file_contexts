@@ -335,6 +335,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/misc                   u:object_r:cros_var_lib_misc:s0
 /var/lib/ml_core(/.*)?          u:object_r:cros_var_lib_ml_core:s0
 /var/lib/modemfwd(/.*)?         u:object_r:cros_modemfwd_file:s0
+/var/lib/modemloggerd(/.*)?     u:object_r:cros_var_lib_modemloggerd:s0
 /var/lib/node_exporter(/.*)?    u:object_r:cros_var_lib_node_exporter:s0
 /var/lib/oemcrypto(/.*)?        u:object_r:cros_var_lib_oemcrypto:s0
 /var/lib/oobe_config_restore(/.*)? u:object_r:cros_var_lib_oobe_config_restore:s0
@@ -387,6 +388,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/log/messages               u:object_r:cros_syslog:s0
 /var/log/metrics(/.*)?          u:object_r:cros_var_log_metrics:s0
 /var/log/modemfwd(/.*)?         u:object_r:cros_var_log_modemfwd:s0
+/var/log/modemloggerd(/.*)?     u:object_r:cros_var_log_modemloggerd:s0
 /var/log/mount_options.log      u:object_r:chromeos_startup_mount_options_log_file:s0
 /var/log/net.log                u:object_r:cros_net_log:s0
 /var/log/node_exporter.log      u:object_r:cros_var_log_node_exporter:s0

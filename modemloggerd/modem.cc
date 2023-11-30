@@ -12,7 +12,7 @@
 #include "modemloggerd/dbus-constants.h"
 
 namespace {
-const char kVarLog[] = "/var/log";
+const char kVarLog[] = "/var/log/modemloggerd";
 }
 
 namespace modemloggerd {
