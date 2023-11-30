@@ -25,9 +25,11 @@ getresuid: 1
 getsockname: 1
 gettid: 1
 getuid: 1
+# TCGETS is for brillo::kLogToStderrIfTty
 ioctl: arg1 == TCGETS
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mremap: 1
 munmap: 1
 openat: 1
 pipe2: 1
@@ -42,5 +44,6 @@ rt_sigreturn: 1
 sendmsg: 1
 sendto: 1
 signalfd4: 1
+# For DBus connection
 socket: arg0 == AF_UNIX
 write: 1
