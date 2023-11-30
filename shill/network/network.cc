@@ -14,6 +14,7 @@
 
 #include <base/containers/fixed_flat_map.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/notreached.h>
 #include <base/observer_list.h>
 #include <base/strings/string_util.h>
@@ -229,8 +230,19 @@ void Network::SetupConnection(net_base::IPFamily family, bool is_slaac) {
     // from kernel first.
     to_apply |= NetworkApplier::Area::kClear;
   }
-  ApplyNetworkConfig(to_apply);
 
+  bool current_ipconfig_changed = primary_family_ != family;
+  primary_family_ = family;
+  if (current_ipconfig_changed && !current_ipconfig_change_handler_.is_null()) {
+    current_ipconfig_change_handler_.Run();
+  }
+  ApplyNetworkConfig(to_apply,
+                     base::BindOnce(&Network::OnSetupConnectionFinished,
+                                    weak_factory_for_connection_.GetWeakPtr()));
+}
+
+void Network::OnSetupConnectionFinished() {
+  LOG(INFO) << *this << ": " << __func__;
   if (state_ != State::kConnected && technology_ != Technology::kVPN) {
     // The Network becomes connected, wait for 30 seconds to report its IP type.
     // Skip VPN since it's already reported separately in VPNService.
@@ -244,12 +256,6 @@ void Network::SetupConnection(net_base::IPFamily family, bool is_slaac) {
 
   for (auto& ev : event_handlers_) {
     ev.OnConnectionUpdated(interface_index_);
-  }
-
-  bool current_ipconfig_changed = primary_family_ != family;
-  primary_family_ = family;
-  if (current_ipconfig_changed && !current_ipconfig_change_handler_.is_null()) {
-    current_ipconfig_change_handler_.Run();
   }
 }
 
@@ -1083,12 +1089,14 @@ void Network::ReportIPType() {
   metrics_->SendEnumToUMA(Metrics::kMetricIPType, technology_, ip_type);
 }
 
-void Network::ApplyNetworkConfig(NetworkApplier::Area area) {
+void Network::ApplyNetworkConfig(NetworkApplier::Area area,
+                                 base::OnceClosure callback) {
   network_applier_->ApplyNetworkConfig(interface_index_, interface_name_, area,
                                        GetNetworkConfig(), priority_,
                                        technology_);
   // TODO(b/293997937): Notify patchpanel about the network change and register
   // callback for patchpanel response.
+  dispatcher_->PostTask(FROM_HERE, std::move(callback));
 }
 
 void Network::ReportNeighborLinkMonitorFailure(

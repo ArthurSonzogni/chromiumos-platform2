@@ -194,7 +194,13 @@ class NetworkInTest : public Network {
                 control_interface,
                 dispatcher,
                 metrics,
-                network_applier) {}
+                network_applier) {
+    ON_CALL(*this, ApplyNetworkConfig)
+        .WillByDefault(
+            [](NetworkApplier::Area area, base::OnceClosure callback) {
+              std::move(callback).Run();
+            });
+  }
 
   MOCK_METHOD(std::unique_ptr<SLAACController>,
               CreateSLAACController,
@@ -212,7 +218,7 @@ class NetworkInTest : public Network {
               (override));
   MOCK_METHOD(void,
               ApplyNetworkConfig,
-              (NetworkApplier::Area area),
+              (NetworkApplier::Area area, base::OnceClosure callback),
               (override));
 };
 
@@ -1497,7 +1503,8 @@ class NetworkStartTest : public NetworkTest {
   void ExpectConnectionUpdateFromIPConfig(IPConfigType ipconfig_type) {
     const auto expected_props = GetIPPropertiesFromType(ipconfig_type);
     const auto family = expected_props.address_family;
-    EXPECT_CALL(*network_, ApplyNetworkConfig(ContainsAddressAndRoute(family)));
+    EXPECT_CALL(*network_,
+                ApplyNetworkConfig(ContainsAddressAndRoute(family), _));
   }
 
   // Verifies the IPConfigs object exposed by Network is expected.
@@ -1595,7 +1602,7 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPRequestIPFailure) {
                                                /*is_failure=*/true));
   EXPECT_CALL(event_handler2_, OnNetworkStopped(network_->interface_index(),
                                                 /*is_failure=*/true));
-  EXPECT_CALL(*network_, ApplyNetworkConfig(_)).Times(0);
+  EXPECT_CALL(*network_, ApplyNetworkConfig).Times(0);
 
   ExpectCreateDHCPController(/*request_ip_result=*/false);
   InvokeStart(test_opts);
@@ -1617,7 +1624,7 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPRequestIPFailureWithStaticIP) {
 
 TEST_F(NetworkStartTest, IPv4OnlyDHCPFailure) {
   const TestOptions test_opts = {.dhcp = true};
-  EXPECT_CALL(*network_, ApplyNetworkConfig(_)).Times(0);
+  EXPECT_CALL(*network_, ApplyNetworkConfig).Times(0);
 
   ExpectCreateDHCPController(/*request_ip_result=*/true);
   InvokeStart(test_opts);
@@ -1822,11 +1829,11 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
   // Changing the address should trigger the connection update.
   const auto new_addr =
       *net_base::IPv6Address::CreateFromString("fe80::1aa9:5ff:abcd:1234");
-  EXPECT_CALL(
-      *network_,
-      ApplyNetworkConfig(ContainsAddressAndRoute(net_base::IPFamily::kIPv6)));
   EXPECT_CALL(*network_,
-              ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy));
+              ApplyNetworkConfig(
+                  ContainsAddressAndRoute(net_base::IPFamily::kIPv6), _));
+  EXPECT_CALL(*network_,
+              ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy, _));
   EXPECT_CALL(event_handler_, OnConnectionUpdated(network_->interface_index()));
   EXPECT_CALL(event_handler_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
@@ -1841,18 +1848,18 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
 
   // If the IPv6 address does not change, no signal is emitted.
   EXPECT_CALL(*network_,
-              ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy));
+              ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy, _));
   slaac_controller_->TriggerCallback(SLAACController::UpdateType::kAddress);
   dispatcher_.task_environment().RunUntilIdle();
   Mock::VerifyAndClearExpectations(&event_handler_);
   Mock::VerifyAndClearExpectations(&event_handler2_);
 
   // If the IPv6 prefix changes, a signal is emitted.
-  EXPECT_CALL(
-      *network_,
-      ApplyNetworkConfig(ContainsAddressAndRoute(net_base::IPFamily::kIPv6)));
   EXPECT_CALL(*network_,
-              ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy));
+              ApplyNetworkConfig(
+                  ContainsAddressAndRoute(net_base::IPFamily::kIPv6), _));
+  EXPECT_CALL(*network_,
+              ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy, _));
   EXPECT_CALL(event_handler_, OnConnectionUpdated(network_->interface_index()));
   EXPECT_CALL(event_handler_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
@@ -2082,8 +2089,8 @@ TEST_F(NetworkStartTest, DualStackDHCPFirst) {
   // Only routing policy and DNS will be updated when IPv6 config comes after
   // IPv4.
   EXPECT_CALL(*network_,
-              ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy));
-  EXPECT_CALL(*network_, ApplyNetworkConfig(NetworkApplier::Area::kDNS));
+              ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy, _));
+  EXPECT_CALL(*network_, ApplyNetworkConfig(NetworkApplier::Area::kDNS, _));
   TriggerSLAACUpdate();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
 

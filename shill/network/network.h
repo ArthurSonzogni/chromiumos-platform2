@@ -14,6 +14,8 @@
 #include <vector>
 
 #include <base/functional/callback.h>
+#include <base/functional/callback_forward.h>
+#include <base/functional/callback_helpers.h>
 #include <base/observer_list.h>
 #include <base/time/time.h>
 #include <chromeos/patchpanel/dbus/client.h>
@@ -410,8 +412,11 @@ class Network {
   void OnPortalDetectorResult(const PortalDetector::Result& result);
 
   // Helper functions to prepare data and call corresponding NetworkApplier
-  // function. Protected for manual-triggering in test.
-  mockable void ApplyNetworkConfig(NetworkApplier::Area area);
+  // function. Protected for manual-triggering in test. Calls |callback| when
+  // finished.
+  mockable void ApplyNetworkConfig(
+      NetworkApplier::Area area,
+      base::OnceClosure callback = base::DoNothing());
 
   void set_fixed_ip_params_for_testing(bool val) { fixed_ip_params_ = val; }
   void set_dhcp_provider_for_testing(DHCPProvider* provider) {
@@ -456,9 +461,13 @@ class Network {
   // dependency
   friend class StaticIPParametersTest;
 
-  // Configures (or reconfigures) the Network for |family|. If |is_slaac, the
+  // Configures (or reconfigures) the Network for |family|. If |is_slaac|, the
   // address and default route configuration is skipped.
   void SetupConnection(net_base::IPFamily family, bool is_slaac);
+
+  // The second part of SetupConnection, called after network configuration
+  // actually get applied to the netdev.
+  void OnSetupConnectionFinished();
 
   // Creates a SLAACController object. Isolated for unit test mock injection.
   mockable std::unique_ptr<SLAACController> CreateSLAACController();
