@@ -19,4 +19,6 @@ env OLD_INSTALL_ATTRS_FILE=/home/.shadow/install_attributes.pb
 env COPY_INSTALL_ATTRS_FILE=/var/lib/device_management/install_attributes.pb.copy
 env NEW_INSTALL_ATTRS_FILE=/var/lib/device_management/install_attributes.pb
 
-pre-start exec /usr/share/cros/init/lockbox-cache.sh
+pre-start script
+  /usr/share/cros/init/lockbox-cache.sh 2>&1 | logger -t lockbox-cache
+end script
