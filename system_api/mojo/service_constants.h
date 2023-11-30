@@ -26,6 +26,8 @@ constexpr char kCrosHealthdSystem[] = "CrosHealthdSystem";
 constexpr char kCrosJpegAccelerator[] = "CrosJpegAccelerator";
 constexpr char kCrosPasspointService[] = "CrosPasspointService";
 constexpr char kHeartdHeartbeatService[] = "HeartdHeartbeatService";
+constexpr char kHeartdHeartbeatServiceControl[] =
+    "HeartdHeartbeatServiceControl";
 constexpr char kIioSensor[] = "IioSensor";
 
 }  // namespace chromeos::mojo_services
