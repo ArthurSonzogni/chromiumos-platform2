@@ -26,6 +26,7 @@
 #include <base/task/thread_pool.h>
 
 #include "rmad/constants.h"
+#include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/ssfc/ssfc_prober.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/calibration_utils.h"
@@ -436,8 +437,15 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
                kProgressWriteSsfc);
 
   // Set firmware config to CBI according to cros_config.
-  if (rmad_config_.has_cbi && !UpdateFirmwareConfig()) {
-    return;
+  if (rmad_config_.has_cbi) {
+    if (ProvisionStatus::Error error = UpdateFirmwareConfig();
+        error != ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN) {
+      UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                   kProgressFailedBlocking, error);
+      return;
+    }
+    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
+                 kProgressWriteFwConfig);
   }
 
   if (!same_owner) {
@@ -580,7 +588,7 @@ bool ProvisionDeviceStateHandler::IsHwwpDisabled() const {
       !hwwp_enabled);
 }
 
-bool ProvisionDeviceStateHandler::UpdateFirmwareConfig() {
+ProvisionStatus::Error ProvisionDeviceStateHandler::UpdateFirmwareConfig() {
   uint32_t cros_config_fw_config;
   if (!cros_config_utils_->GetFirmwareConfig(&cros_config_fw_config)) {
     // TODO(jeffulin): Some platforms have no firmware config even with CBI, so
@@ -588,7 +596,7 @@ bool ProvisionDeviceStateHandler::UpdateFirmwareConfig() {
     //                 now if we fail to get firmware config in cros_config, we
     //                 skip setting it to CBI.
     LOG(WARNING) << "Failed to get firmware config in cros_config.";
-    return true;
+    return ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN;
   }
 
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
@@ -597,25 +605,17 @@ bool ProvisionDeviceStateHandler::UpdateFirmwareConfig() {
   uint32_t cbi_fw_config;
   if (!cbi_utils_->GetFirmwareConfig(&cbi_fw_config)) {
     LOG(ERROR) << "Failed to get firmware config in cbi.";
-    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
-                 kProgressFailedBlocking,
-                 ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
-    return false;
+    return ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ;
   }
 
   if (cros_config_fw_config != cbi_fw_config &&
       !cbi_utils_->SetFirmwareConfig(cros_config_fw_config)) {
     // TODO(jeffulin): Add an error code of setting firmware config.
     LOG(ERROR) << "Failed to set firmware config to cbi.";
-    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
-                 kProgressFailedBlocking,
-                 ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
-    return false;
+    return ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE;
   }
 
-  UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
-               kProgressWriteFwConfig);
-  return true;
+  return ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN;
 }
 
 }  // namespace rmad

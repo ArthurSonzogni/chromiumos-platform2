@@ -96,7 +96,7 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   bool GenerateStableDeviceSecret(std::string* stable_device_secret);
   void Reboot();
   bool IsHwwpDisabled() const;
-  bool UpdateFirmwareConfig();
+  ProvisionStatus::Error UpdateFirmwareConfig();
 
   base::FilePath working_dir_path_;
   ProvisionStatus status_;
