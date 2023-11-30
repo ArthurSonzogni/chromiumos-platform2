@@ -140,6 +140,8 @@ void NetworkApplier::Clear(int interface_index) {
                                      net_base::IPFamily::kIPv6);
   address_service_->FlushAddress(interface_index);
   proc_fs_->FlushRoutingCache();
+  rtnl_handler_->SetInterfaceMTU(interface_index,
+                                 net_base::NetworkConfig::kDefaultMTU);
 }
 
 void NetworkApplier::ApplyDNS(

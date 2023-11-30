@@ -148,6 +148,12 @@ void RTNLHandler::SetInterfaceFlags(int interface_index,
 }
 
 void RTNLHandler::SetInterfaceMTU(int interface_index, unsigned int mtu) {
+  if (rtnl_socket_ == nullptr) {
+    LOG(ERROR) << __func__
+               << " called while not started.  "
+                  "Assuming we are in unit tests.";
+    return;
+  }
   auto msg = std::make_unique<RTNLMessage>(
       RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, NLM_F_REQUEST,
       0,  // sequence to be filled in by RTNLHandler::SendMessage().
