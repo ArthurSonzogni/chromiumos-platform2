@@ -190,6 +190,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/chromeos-postinst     u:object_r:cros_chromeos_postinst_exec:s0
 /usr/sbin/chromeos-trim         u:object_r:cros_chromeos_trim_exec:s0
 /usr/sbin/conntrackd            u:object_r:cros_conntrackd_exec:s0
+/usr/sbin/cr50_disable_sleep    u:object_r:cros_cr50_disable_sleep_exec:s0
 /usr/sbin/crosdns               u:object_r:cros_crosdns_exec:s0
 /usr/sbin/cryptohomed           u:object_r:cros_cryptohomed_exec:s0
 /usr/sbin/cryptohome-namespace-mounter u:object_r:cros_cryptohome_namespace_mounter_exec:s0
@@ -276,7 +277,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/share/chromeos-ssh-config/sshd-pre u:object_r:cros_init_sshd_pre_shell_script:s0
 /usr/share/cros(/.*)?           u:object_r:cros_usr_dirs:s0
 /usr/share/cros/init(/.*)?      u:object_r:cros_init_shell_scripts:s0
-/usr/share/cros/hwsec-utils/cr50_disable_sleep u:object_r:cros_cr50_disable_sleep_exec:s0
 /usr/share/cros/init/activate_date.sh u:object_r:cros_init_activate_date_script:s0
 /usr/share/cros/init/crx-import.sh u:object_r:cros_init_crx_import_script:s0
 /usr/share/cros/init/lockbox-cache.sh u:object_r:cros_init_lockbox_cache_script:s0
