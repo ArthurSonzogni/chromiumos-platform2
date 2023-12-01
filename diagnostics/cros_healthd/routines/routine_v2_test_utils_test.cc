@@ -13,7 +13,7 @@
 namespace diagnostics {
 namespace {
 
-// A routine that raises an excpetion when started.
+// A routine that raises an exception when started.
 class FakeExceptionRoutine final : public BaseRoutineControl {
  public:
   FakeExceptionRoutine() = default;
