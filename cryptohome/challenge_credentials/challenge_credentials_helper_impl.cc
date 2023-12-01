@@ -5,6 +5,7 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
 
 #include <optional>
+#include <string>
 #include <utility>
 
 #include <base/check.h>
@@ -24,22 +25,17 @@
 #include "cryptohome/error/utilities.h"
 #include "cryptohome/key_challenge_service.h"
 
-using brillo::Blob;
-using cryptohome::error::CryptohomeCryptoError;
-using cryptohome::error::CryptohomeTPMError;
-using cryptohome::error::ErrorActionSet;
-using cryptohome::error::PossibleAction;
-using cryptohome::error::PrimaryAction;
-using hwsec::TPMRetryAction;
-using hwsec_foundation::error::CreateError;
-using hwsec_foundation::error::WrapError;
-using hwsec_foundation::status::MakeStatus;
-using hwsec_foundation::status::OkStatus;
-using hwsec_foundation::status::StatusChain;
-
 namespace cryptohome {
-
 namespace {
+
+using ::cryptohome::error::CryptohomeCryptoError;
+using ::cryptohome::error::CryptohomeTPMError;
+using ::cryptohome::error::ErrorActionSet;
+using ::cryptohome::error::PossibleAction;
+using ::cryptohome::error::PrimaryAction;
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::OkStatus;
+using ::hwsec_foundation::status::StatusChain;
 
 bool IsOperationFailureTransient(
     const StatusChain<CryptohomeCryptoError>& status
@@ -248,7 +244,7 @@ void ChallengeCredentialsHelperImpl::VerifyKey(
   operation_ = std::make_unique<ChallengeCredentialsVerifyKeyOperation>(
       key_challenge_service_.get(), hwsec_, account_id, public_key_info,
       base::BindOnce(&ChallengeCredentialsHelperImpl::OnVerifyKeyCompleted,
-                     base::Unretained(this), std::move(callback)));
+                     weak_factory_.GetWeakPtr(), std::move(callback)));
   operation_->Start();
 }
 
@@ -263,7 +259,7 @@ void ChallengeCredentialsHelperImpl::StartDecryptOperation(
       key_challenge_service_.get(), hwsec_, account_id, public_key_info,
       keyset_challenge_info,
       base::BindOnce(&ChallengeCredentialsHelperImpl::OnDecryptCompleted,
-                     base::Unretained(this), account_id, public_key_info,
+                     weak_factory_.GetWeakPtr(), account_id, public_key_info,
                      keyset_challenge_info, attempt_number,
                      std::move(callback)));
   operation_->Start();

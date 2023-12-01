@@ -5,11 +5,7 @@
 #ifndef CRYPTOHOME_CHALLENGE_CREDENTIALS_CHALLENGE_CREDENTIALS_HELPER_IMPL_H_
 #define CRYPTOHOME_CHALLENGE_CREDENTIALS_CHALLENGE_CREDENTIALS_HELPER_IMPL_H_
 
-#include <cstdint>
-#include <map>
 #include <memory>
-#include <string>
-#include <vector>
 
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
@@ -20,7 +16,6 @@
 
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
-#include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/key_challenge_service.h"
 
 namespace cryptohome {
@@ -123,6 +118,9 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
   std::unique_ptr<ChallengeCredentialsOperation> operation_;
 
   base::ThreadChecker thread_checker_;
+
+  // The last member, to invalidate weak references first on destruction.
+  base::WeakPtrFactory<ChallengeCredentialsHelperImpl> weak_factory_{this};
 };
 
 }  // namespace cryptohome
