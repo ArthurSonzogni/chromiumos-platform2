@@ -115,10 +115,9 @@ TEST(FwupdUtilsTest, MatchUsbBySerials) {
       .version_format = FwupdVersionFormat::kPlain,
       .joined_vendor_id = "USB:0x1234",
   };
-  if (auto guid = InstanceIdToGuid("USB\\VID_1234&PID_5678");
-      guid.has_value()) {
-    device1.guids.push_back(guid.value());
-  }
+  const auto& guid = InstanceIdToGuid("USB\\VID_1234&PID_5678");
+  ASSERT_TRUE(guid.has_value());
+  device1.guids.push_back(guid.value());
 
   DeviceInfo device2 = device1;
   device2.serial = "serial2";
@@ -168,10 +167,9 @@ TEST(FwupdUtilsTest, MultipleUsbMatchedWithACommonVersion) {
       .version_format = FwupdVersionFormat::kPlain,
       .joined_vendor_id = "USB:0x1234",
   };
-  if (auto guid = InstanceIdToGuid("USB\\VID_1234&PID_5678");
-      guid.has_value()) {
-    device.guids.push_back(guid.value());
-  }
+  const auto& guid = InstanceIdToGuid("USB\\VID_1234&PID_5678");
+  ASSERT_TRUE(guid.has_value());
+  device.guids.push_back(guid.value());
 
   std::vector<DeviceInfo> device_infos{device, device};
 
@@ -194,10 +192,9 @@ TEST(FwupdUtilsTest, MultipleUsbMatchedButDifferentVersions) {
       .version_format = FwupdVersionFormat::kPlain,
       .joined_vendor_id = "USB:0x1234",
   };
-  if (auto guid = InstanceIdToGuid("USB\\VID_1234&PID_5678");
-      guid.has_value()) {
-    device1.guids.push_back(guid.value());
-  }
+  const auto& guid = InstanceIdToGuid("USB\\VID_1234&PID_5678");
+  ASSERT_TRUE(guid.has_value());
+  device1.guids.push_back(guid.value());
 
   DeviceInfo device2 = device1;
   device2.version = "version2";
