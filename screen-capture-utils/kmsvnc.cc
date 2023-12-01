@@ -28,6 +28,7 @@ constexpr const char kInternalSwitch[] = "internal";
 constexpr const char kExternalSwitch[] = "external";
 constexpr const char kCrtcIdSwitch[] = "crtc-id";
 constexpr const char kRotateSwitch[] = "rotate";
+constexpr const char kPasswordSwitch[] = "password";
 
 constexpr const int kFindCrtcMaxRetries = 5;
 const timespec kFindCrtcRetryInterval{0, 100000000};  // 100ms
@@ -186,6 +187,18 @@ int VncMain() {
       rfbGetScreen(0 /*argc*/, nullptr /*argv*/, vnc_width, vnc_height,
                    8 /*bitsPerSample*/, 3 /*samplesPerPixel*/, kBytesPerPixel);
   CHECK(server);
+
+  // To enable password authentication, `server->authPasswdData` should contain
+  // a null-terminated C-style string list, and the pointers in the list must
+  // outlive the server.
+  std::string password;
+  const char* password_list[2] = {};
+  if (cmdline->HasSwitch(kPasswordSwitch)) {
+    password = cmdline->GetSwitchValueASCII(kPasswordSwitch);
+    password_list[0] = password.c_str();
+    server->authPasswdData = password_list;
+    server->passwordCheck = rfbCheckPasswordByList;
+  }
 
   // Without setting this flag, rfbProcessEvents() consumes only one event per
   // call.
