@@ -13,6 +13,7 @@
 #include <base/logging.h>
 
 #include "shill/net/netlink_attribute.h"
+#include "shill/net/nl80211_attribute.h"
 
 namespace shill {
 
@@ -38,8 +39,7 @@ bool AttributeList::CreateControlAttribute(int id) {
 bool AttributeList::CreateNl80211Attribute(
     int id, NetlinkMessage::MessageContext context) {
   return CreateAttribute(
-      id, base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
-                              context));
+      id, base::BindRepeating(&NewNl80211AttributeFromId, context));
 }
 
 bool AttributeList::CreateAndInitAttribute(
@@ -92,8 +92,7 @@ bool AttributeList::IterateAttributes(
       LOG(ERROR) << "Malformed nla attribute indicates length "
                  << attribute->nla_len << ".  "
                  << (remaining.size() - NLA_HDRLEN)
-                 << " bytes remain in buffer.  "
-                 << "Error occurred at offset "
+                 << " bytes remain in buffer. Error occurred at offset "
                  << (remaining.data() - payload.data()) << ".";
       return false;
     }

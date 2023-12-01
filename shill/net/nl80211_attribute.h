@@ -5,14 +5,20 @@
 #ifndef SHILL_NET_NL80211_ATTRIBUTE_H_
 #define SHILL_NET_NL80211_ATTRIBUTE_H_
 
+#include <memory>
 #include <string>
 
 #include <base/containers/span.h>
 
 #include "shill/net/netlink_attribute.h"
 #include "shill/net/netlink_message.h"
+#include "shill/net/shill_export.h"
 
 namespace shill {
+
+// Generates the appropriate attribute object from the raw nlattr data.
+SHILL_EXPORT std::unique_ptr<NetlinkAttribute> NewNl80211AttributeFromId(
+    NetlinkMessage::MessageContext context, int id);
 
 // U8.
 
