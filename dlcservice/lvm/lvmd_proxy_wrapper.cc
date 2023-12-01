@@ -183,7 +183,6 @@ bool LvmdProxyWrapper::CreateLogicalVolumes(
       return false;
     }
   }
-  // TODO(b/254373821): Unsparse the logical volumes.
   return true;
 }
 
