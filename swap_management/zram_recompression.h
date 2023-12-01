@@ -33,6 +33,8 @@ class ZramRecompression {
 
   ~ZramRecompression();
 
+  friend class MockZramRecompression;
+
   // There are only one zram recompression instance in current setup.
   friend ZramRecompression** GetSingleton<ZramRecompression>();
 
