@@ -16,6 +16,7 @@
 #include <base/synchronization/waitable_event.h>
 #include <dbus/u2f/dbus-constants.h>
 #include <libhwsec/factory/factory_impl.h>
+#include <libhwsec/structures/u2f.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
@@ -28,6 +29,8 @@
 namespace u2f {
 
 namespace {
+
+using hwsec::u2f::FipsStatus;
 
 constexpr int kWinkSignalMinIntervalMs = 1000;
 constexpr base::TimeDelta kRequestPresenceDelay = base::Milliseconds(500);
@@ -49,6 +52,8 @@ constexpr uint32_t kMaxCr50U2fCounterValue = (2048 * 4097) + 4096;
 // returned, and therefore guarantee that we provide a monotonically
 // increasing counter value for migrated key handles.
 constexpr uint32_t kLegacyKhCounterMin = kMaxCr50U2fCounterValue + 1;
+
+constexpr char kU2fFipsStatusMetric[] = "Platform.U2F.FipsStatus";
 
 bool U2fPolicyReady() {
   policy::PolicyProvider policy_provider;
@@ -92,6 +97,39 @@ void OnPolicySignalConnected(const std::string& interface,
     LOG(FATAL) << "Could not connect to signal " << signal << " on interface "
                << interface;
   }
+}
+
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class U2fFipsStatus {
+  // Failed to determine FIPS status on this device.
+  kError = 0,
+  kNotActive = 1,
+  kActive = 2,
+  kMaxValue = kActive,
+};
+
+void SendU2fFipsStatusMetrics(MetricsLibraryInterface& metrics,
+                              U2fMode u2f_mode,
+                              U2fFipsStatus status) {
+  std::string aggregated_metrics_name = kU2fFipsStatusMetric;
+  std::string suffix_name = ".";
+  switch (u2f_mode) {
+    case U2fMode::kUnset:
+      suffix_name += "Unset";
+      break;
+    case U2fMode::kDisabled:
+      suffix_name += "Disabled";
+      break;
+    case U2fMode::kU2f:
+      suffix_name += "U2f";
+      break;
+    case U2fMode::kU2fExtended:
+      suffix_name += "U2fExtended";
+      break;
+  }
+  metrics.SendEnumToUMA(aggregated_metrics_name, status);
+  metrics.SendEnumToUMA(aggregated_metrics_name + suffix_name, status);
 }
 
 }  // namespace
@@ -169,12 +207,39 @@ void U2fDaemon::TryStartService(
   }
 }
 
+void U2fDaemon::ReportFipsStatus(U2fMode u2f_mode) {
+  auto u2f_vendor_frontend = hwsec_factory_.GetU2fVendorFrontend();
+  // Only need to report FIPS status on devices supporting U2F vendor command.
+  if (!u2f_vendor_frontend->IsEnabled().value_or(false)) {
+    return;
+  }
+  hwsec::StatusOr<FipsStatus> fips_status =
+      u2f_vendor_frontend->GetFipsStatus();
+  if (!fips_status.ok()) {
+    LOG(ERROR) << "GetFipsStatus failed: " << fips_status.status();
+    SendU2fFipsStatusMetrics(metrics_library_, u2f_mode, U2fFipsStatus::kError);
+    return;
+  }
+  U2fFipsStatus status;
+  switch (*fips_status) {
+    case FipsStatus::kNotActive:
+      status = U2fFipsStatus::kNotActive;
+      break;
+    case FipsStatus::kActive:
+      status = U2fFipsStatus::kActive;
+      break;
+  }
+  SendU2fFipsStatusMetrics(metrics_library_, u2f_mode, status);
+}
+
 int U2fDaemon::StartService() {
+  U2fMode u2f_mode = GetU2fMode(force_u2f_, force_g2f_);
+  ReportFipsStatus(u2f_mode);
+
   // Start U2fHid service before WebAuthn because WebAuthn initialization can
   // be slow.
   int status = StartU2fHidService();
 
-  U2fMode u2f_mode = GetU2fMode(force_u2f_, force_g2f_);
   VLOG(1) << "Initializing WebAuthn handler.";
   // If initialize WebAuthn handler failed, it means that the whole u2fd service
   // is unavailable (it can't happen on devices we enable U2fHid service), and
