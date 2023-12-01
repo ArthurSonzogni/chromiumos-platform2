@@ -5,7 +5,9 @@
 #include <rmad/utils/futility_utils_impl.h>
 
 #include <array>
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -26,6 +28,10 @@ constexpr char kFutilityCmd[] = "/usr/bin/futility";
 constexpr char kFutilityWriteProtectDisabledStr[] = "WP status: disabled";
 constexpr std::array<std::string_view, 5> kSetHwidArgv = {
     kFutilityCmd, "gbb", "--set", "--flash", "--hwid"};
+
+// The format specifier of futility flash size is `%#010x`.
+constexpr char kFutilityFlashSizeRegexp[] =
+    R"(Flash size: 0x([[:xdigit:]]{8}))";
 
 }  // namespace
 
@@ -99,6 +105,33 @@ bool FutilityUtilsImpl::SetHwid(const std::string& hwid) {
   }
 
   return true;
+}
+
+std::optional<uint64_t> FutilityUtilsImpl::GetFlashSize() {
+  std::string output;
+  if (!cmd_utils_->GetOutputAndError({kFutilityCmd, "flash", "--flash-size"},
+                                     &output)) {
+    LOG(ERROR) << "Failed to get flash size: " << output;
+    return std::nullopt;
+  }
+
+  std::string size_string;
+  re2::StringPiece string_piece(output);
+  re2::RE2 regexp(kFutilityFlashSizeRegexp);
+  if (!RE2::PartialMatch(string_piece, regexp, &size_string)) {
+    LOG(ERROR) << "Failed to parse flash size output.";
+    LOG(ERROR) << "Flash size output: " << output;
+    return std::nullopt;
+  }
+
+  uint64_t size;
+  if (!base::HexStringToUInt64(size_string, &size)) {
+    LOG(ERROR) << "Failed to convert hexadecimal string to integer.";
+    LOG(ERROR) << "Hex string: " << output;
+    return std::nullopt;
+  }
+
+  return size;
 }
 
 }  // namespace rmad

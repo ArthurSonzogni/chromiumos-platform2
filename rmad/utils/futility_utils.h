@@ -19,6 +19,7 @@ class FutilityUtils {
   virtual bool EnableApSoftwareWriteProtection() = 0;
   virtual bool DisableApSoftwareWriteProtection() = 0;
   virtual bool SetHwid(const std::string& hwid) = 0;
+  virtual std::optional<uint64_t> GetFlashSize() = 0;
 };
 
 }  // namespace rmad

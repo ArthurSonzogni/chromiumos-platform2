@@ -28,6 +28,7 @@ class FutilityUtilsImpl : public FutilityUtils {
   bool EnableApSoftwareWriteProtection() override;
   bool DisableApSoftwareWriteProtection() override;
   bool SetHwid(const std::string& hwid) override;
+  std::optional<uint64_t> GetFlashSize() override;
 
  private:
   std::unique_ptr<CmdUtils> cmd_utils_;

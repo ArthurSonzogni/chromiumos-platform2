@@ -4,6 +4,7 @@
 
 #include "rmad/utils/futility_utils_impl.h"
 
+#include <cstdint>
 #include <memory>
 #include <utility>
 
@@ -147,6 +148,42 @@ TEST_F(FutilityUtilsTest, SetHwidGetOutputFail) {
       std::move(mock_cmd_utils), std::make_unique<HwidUtilsImpl>());
 
   EXPECT_FALSE(futility_utils->SetHwid("MODEL-CODE A1B-C2D-E2J"));
+}
+
+TEST_F(FutilityUtilsTest, GetFlashSizeSuccess) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>("Flash size: 0x00800000"), Return(true)));
+  auto futility_utils = std::make_unique<FutilityUtilsImpl>(
+      std::move(mock_cmd_utils), std::make_unique<HwidUtilsImpl>());
+
+  auto size = futility_utils->GetFlashSize();
+  const uint64_t expected = 0x800000;
+  EXPECT_TRUE(size.has_value());
+  EXPECT_EQ(expected, size.value());
+}
+
+TEST_F(FutilityUtilsTest, GetFlashSizeGetOutputAndErrorFail) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _)).WillOnce(Return(false));
+  auto futility_utils = std::make_unique<FutilityUtilsImpl>(
+      std::move(mock_cmd_utils), std::make_unique<HwidUtilsImpl>());
+
+  auto size = futility_utils->GetFlashSize();
+  EXPECT_FALSE(size.has_value());
+}
+
+TEST_F(FutilityUtilsTest, GetFlashSizeFailToParseFail) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>("Flash size: 0xGGGGGGGG"), Return(true)));
+  auto futility_utils = std::make_unique<FutilityUtilsImpl>(
+      std::move(mock_cmd_utils), std::make_unique<HwidUtilsImpl>());
+
+  auto size = futility_utils->GetFlashSize();
+  EXPECT_FALSE(size.has_value());
 }
 
 }  // namespace rmad
