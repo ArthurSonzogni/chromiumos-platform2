@@ -4,6 +4,8 @@
 
 #include "diagnostics/cros_healthd/fetchers/battery_fetcher.h"
 
+#include <optional>
+
 #include <base/files/file_util.h>
 #include <base/test/gmock_callback_support.h>
 #include <base/test/test_future.h>
@@ -134,6 +136,15 @@ TEST_F(BatteryFetcherTest, FetchBatteryInfo) {
 TEST_F(BatteryFetcherTest, EmptyProtoPowerManagerDbusResponse) {
   power_manager::PowerSupplyProperties power_supply_proto;
   fake_powerd_adapter()->SetPowerSupplyProperties(power_supply_proto);
+  auto battery_result = FetchBatteryInfoSync();
+  ASSERT_TRUE(battery_result->is_error());
+  EXPECT_EQ(battery_result->get_error()->type,
+            mojom::ErrorType::kSystemUtilityError);
+}
+
+// Test that failure in the power_manager D-Bus response returns an error.
+TEST_F(BatteryFetcherTest, FailedPowerManagerDbusResponse) {
+  fake_powerd_adapter()->SetPowerSupplyProperties(std::nullopt);
   auto battery_result = FetchBatteryInfoSync();
   ASSERT_TRUE(battery_result->is_error());
   EXPECT_EQ(battery_result->get_error()->type,
