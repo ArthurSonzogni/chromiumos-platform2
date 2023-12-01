@@ -45,9 +45,6 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
   // Helper function for creating control attribute.
   bool CreateControlAttribute(int id);
 
-  // Helper function for creating nl80211 attribute.
-  bool CreateNl80211Attribute(int id, NetlinkMessage::MessageContext context);
-
   // Instantiates an NetlinkAttribute of the appropriate type from |id|
   // using |factory|, initializes it from |value|, and adds it to |attributes_|.
   bool CreateAndInitAttribute(const NewFromIdMethod& factory,

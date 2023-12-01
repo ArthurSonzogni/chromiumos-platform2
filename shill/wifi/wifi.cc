@@ -49,6 +49,7 @@
 #include "shill/net/ieee80211.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/netlink_message.h"
+#include "shill/net/nl80211_attribute.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/scope_logger.h"
@@ -776,8 +777,8 @@ void WiFi::DisconnectFrom(WiFiService* service) {
   if (service != current_service_ && service != pending_service_) {
     // TODO(quiche): Once we have asynchronous reply support, we should
     // generate a D-Bus error here. (crbug.com/206812)
-    LOG(WARNING) << "In " << __func__ << "(): "
-                 << " ignoring request to disconnect from: "
+    LOG(WARNING) << "In " << __func__
+                 << "(): ignoring request to disconnect from: "
                  << service->log_name()
                  << " which is neither current nor pending";
     return;
@@ -786,8 +787,8 @@ void WiFi::DisconnectFrom(WiFiService* service) {
   if (pending_service_ && service != pending_service_) {
     // TODO(quiche): Once we have asynchronous reply support, we should
     // generate a D-Bus error here. (crbug.com/206812)
-    LOG(WARNING) << "In " << __func__ << "(): "
-                 << " ignoring request to disconnect from: "
+    LOG(WARNING) << "In " << __func__
+                 << "(): ignoring request to disconnect from: "
                  << service->log_name() << " which is not the pending service.";
     return;
   }
@@ -795,8 +796,8 @@ void WiFi::DisconnectFrom(WiFiService* service) {
   if (!pending_service_ && service != current_service_) {
     // TODO(quiche): Once we have asynchronous reply support, we should
     // generate a D-Bus error here. (crbug.com/206812)
-    LOG(WARNING) << "In " << __func__ << "(): "
-                 << " ignoring request to disconnect from: "
+    LOG(WARNING) << "In " << __func__
+                 << "(): ignoring request to disconnect from: "
                  << service->log_name() << " which is not the current service.";
     return;
   }
@@ -820,8 +821,8 @@ void WiFi::DisconnectFrom(WiFiService* service) {
   StopRequestingStationInfo();
 
   if (!supplicant_present_) {
-    LOG(ERROR) << "In " << __func__ << "(): "
-               << "wpa_supplicant is not present; silently resetting "
+    LOG(ERROR) << "In " << __func__
+               << "(): wpa_supplicant is not present; silently resetting "
                << "current_service_.";
     if (current_service_ == selected_service()) {
       DropConnection();
@@ -1827,8 +1828,7 @@ void WiFi::ParseCipherSuites(const Nl80211Message& nl80211_message) {
 void WiFi::HandleNetlinkBroadcast(const NetlinkMessage& netlink_message) {
   // We only handle nl80211 commands.
   if (netlink_message.message_type() != Nl80211Message::GetMessageType()) {
-    SLOG(this, 7) << __func__ << ": "
-                  << "Not a NL80211 Message";
+    SLOG(this, 7) << __func__ << ": " << "Not a NL80211 Message";
     return;
   }
   const Nl80211Message& nl80211_msg =
@@ -1993,8 +1993,7 @@ void WiFi::BSSAddedTask(const RpcIdentifier& path,
   // lose.
   WiFiEndpointRefPtr endpoint(
       new WiFiEndpoint(control_interface(), this, path, properties, metrics()));
-  SLOG(this, 5) << "Found endpoint. "
-                << "RPC path: " << path.value() << ", "
+  SLOG(this, 5) << "Found endpoint. RPC path: " << path.value() << ", "
                 << LogSSID(endpoint->ssid_string()) << ", "
                 << "bssid: " << endpoint->bssid_string() << ", "
                 << "signal: " << endpoint->signal_strength() << ", "
@@ -3021,17 +3020,16 @@ void WiFi::TriggerPassiveScan(const FreqSet& freqs) {
   trigger_scan.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
                                                   interface_index());
   if (!freqs.empty()) {
-    SLOG(this, 2) << __func__ << ": "
-                  << "Scanning on specific channels";
-    trigger_scan.attributes()->CreateNl80211Attribute(
-        NL80211_ATTR_SCAN_FREQUENCIES, NetlinkMessage::MessageContext());
+    SLOG(this, 2) << __func__ << ": Scanning on specific channels";
+    CreateNl80211Attribute(trigger_scan.attributes().get(),
+                           NL80211_ATTR_SCAN_FREQUENCIES,
+                           NetlinkMessage::MessageContext());
 
     AttributeListRefPtr frequency_list;
     if (!trigger_scan.attributes()->GetNestedAttributeList(
             NL80211_ATTR_SCAN_FREQUENCIES, &frequency_list) ||
         !frequency_list) {
-      LOG(ERROR) << __func__ << ": "
-                 << "Couldn't get NL80211_ATTR_SCAN_FREQUENCIES";
+      LOG(ERROR) << __func__ << ": Couldn't get NL80211_ATTR_SCAN_FREQUENCIES";
     }
     trigger_scan.attributes()->SetNestedAttributeHasAValue(
         NL80211_ATTR_SCAN_FREQUENCIES);
@@ -3039,8 +3037,7 @@ void WiFi::TriggerPassiveScan(const FreqSet& freqs) {
     std::string attribute_name;
     int i = 0;
     for (uint32_t freq : freqs) {
-      SLOG(this, 7) << __func__ << ": "
-                    << "Frequency-" << i << ": " << freq;
+      SLOG(this, 7) << __func__ << ": Frequency-" << i << ": " << freq;
       attribute_name = base::StringPrintf("Frequency-%d", i);
       frequency_list->CreateU32Attribute(i, attribute_name.c_str());
       frequency_list->SetU32AttributeValue(i, freq);
@@ -4071,8 +4068,7 @@ void WiFi::OnIPv4ConfiguredWithDHCPLease(int net_interface_index) {
   if (!wake_on_wifi_) {
     return;
   }
-  SLOG(this, 2) << __func__ << ": "
-                << "IPv4 DHCP lease obtained";
+  SLOG(this, 2) << __func__ << ": IPv4 DHCP lease obtained";
   wake_on_wifi_->OnConnectedAndReachable(
       GetPrimaryNetwork()->TimeToNextDHCPLeaseRenewal());
 }
@@ -4085,8 +4081,7 @@ void WiFi::OnIPv6ConfiguredWithSLAACAddress(int net_interface_index) {
   if (!wake_on_wifi_) {
     return;
   }
-  SLOG(this, 2) << __func__ << ": "
-                << "IPv6 configuration obtained through SLAAC";
+  SLOG(this, 2) << __func__ << ": IPv6 configuration obtained through SLAAC";
   wake_on_wifi_->OnConnectedAndReachable(std::nullopt);
 }
 

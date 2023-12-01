@@ -10,6 +10,7 @@
 
 #include <base/containers/span.h>
 
+#include "shill/net/attribute_list.h"
 #include "shill/net/netlink_attribute.h"
 #include "shill/net/netlink_message.h"
 #include "shill/net/shill_export.h"
@@ -19,6 +20,12 @@ namespace shill {
 // Generates the appropriate attribute object from the raw nlattr data.
 SHILL_EXPORT std::unique_ptr<NetlinkAttribute> NewNl80211AttributeFromId(
     NetlinkMessage::MessageContext context, int id);
+
+// Helper function for creating nl80211 attribute inside AttributeList.
+SHILL_EXPORT bool CreateNl80211Attribute(
+    AttributeList* attribute_list,
+    int id,
+    NetlinkMessage::MessageContext context);
 
 // U8.
 

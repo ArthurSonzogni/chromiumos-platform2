@@ -15,6 +15,7 @@
 #include <net-base/byte_utils.h>
 
 #include "shill/net/netlink_packet.h"
+#include "shill/net/nl80211_attribute.h"
 
 using testing::_;
 using testing::Test;
@@ -640,32 +641,38 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_CONNECT) {
 TEST_F(Nl80211MessageTest, Build_NL80211_CMD_CONNECT) {
   // Build the message that is found in kNL80211_CMD_CONNECT.
   ConnectMessage message;
-  EXPECT_TRUE(message.attributes()->CreateNl80211Attribute(
-      NL80211_ATTR_WIPHY, NetlinkMessage::MessageContext()));
+  EXPECT_TRUE(CreateNl80211Attribute(message.attributes().get(),
+                                     NL80211_ATTR_WIPHY,
+                                     NetlinkMessage::MessageContext()));
   EXPECT_TRUE(
       message.attributes()->SetU32AttributeValue(NL80211_ATTR_WIPHY, kWiPhy));
 
-  EXPECT_TRUE(message.attributes()->CreateNl80211Attribute(
-      NL80211_ATTR_IFINDEX, NetlinkMessage::MessageContext()));
+  EXPECT_TRUE(CreateNl80211Attribute(message.attributes().get(),
+                                     NL80211_ATTR_IFINDEX,
+                                     NetlinkMessage::MessageContext()));
   EXPECT_TRUE(message.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
                                                          kExpectedIfIndex));
 
-  EXPECT_TRUE(message.attributes()->CreateNl80211Attribute(
-      NL80211_ATTR_MAC, NetlinkMessage::MessageContext()));
+  EXPECT_TRUE(CreateNl80211Attribute(message.attributes().get(),
+                                     NL80211_ATTR_MAC,
+                                     NetlinkMessage::MessageContext()));
   EXPECT_TRUE(message.attributes()->SetRawAttributeValue(NL80211_ATTR_MAC,
                                                          kMacAddressBytes));
 
   // In the middle, let's try adding an attribute without populating it.
-  EXPECT_TRUE(message.attributes()->CreateNl80211Attribute(
-      NL80211_ATTR_REG_TYPE, NetlinkMessage::MessageContext()));
+  EXPECT_TRUE(CreateNl80211Attribute(message.attributes().get(),
+                                     NL80211_ATTR_REG_TYPE,
+                                     NetlinkMessage::MessageContext()));
 
-  EXPECT_TRUE(message.attributes()->CreateNl80211Attribute(
-      NL80211_ATTR_STATUS_CODE, NetlinkMessage::MessageContext()));
+  EXPECT_TRUE(CreateNl80211Attribute(message.attributes().get(),
+                                     NL80211_ATTR_STATUS_CODE,
+                                     NetlinkMessage::MessageContext()));
   EXPECT_TRUE(message.attributes()->SetU16AttributeValue(
       NL80211_ATTR_STATUS_CODE, kExpectedConnectStatus));
 
-  EXPECT_TRUE(message.attributes()->CreateNl80211Attribute(
-      NL80211_ATTR_RESP_IE, NetlinkMessage::MessageContext()));
+  EXPECT_TRUE(CreateNl80211Attribute(message.attributes().get(),
+                                     NL80211_ATTR_RESP_IE,
+                                     NetlinkMessage::MessageContext()));
   EXPECT_TRUE(message.attributes()->SetRawAttributeValue(NL80211_ATTR_RESP_IE,
                                                          kRespIeBytes));
 

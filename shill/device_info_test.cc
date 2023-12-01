@@ -49,6 +49,7 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/net/mock_netlink_manager.h"
+#include "shill/net/nl80211_attribute.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/mock_network_applier.h"
@@ -1564,8 +1565,8 @@ TEST_F(DeviceInfoDelayedCreationTest, WiFiDevice) {
   TriggerOnWiFiInterfaceInfoReceived(message);
   Mock::VerifyAndClearExpectations(&log);
 
-  message.attributes()->CreateNl80211Attribute(
-      NL80211_ATTR_IFINDEX, NetlinkMessage::MessageContext());
+  CreateNl80211Attribute(message.attributes().get(), NL80211_ATTR_IFINDEX,
+                         NetlinkMessage::MessageContext());
   message.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
                                              kTestDeviceIndex);
   EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _,
@@ -1573,8 +1574,8 @@ TEST_F(DeviceInfoDelayedCreationTest, WiFiDevice) {
   TriggerOnWiFiInterfaceInfoReceived(message);
   Mock::VerifyAndClearExpectations(&log);
 
-  message.attributes()->CreateNl80211Attribute(
-      NL80211_ATTR_IFTYPE, NetlinkMessage::MessageContext());
+  CreateNl80211Attribute(message.attributes().get(), NL80211_ATTR_IFTYPE,
+                         NetlinkMessage::MessageContext());
   message.attributes()->SetU32AttributeValue(NL80211_ATTR_IFTYPE,
                                              NL80211_IFTYPE_AP);
   EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _,
@@ -1582,8 +1583,8 @@ TEST_F(DeviceInfoDelayedCreationTest, WiFiDevice) {
   TriggerOnWiFiInterfaceInfoReceived(message);
   Mock::VerifyAndClearExpectations(&log);
 
-  message.attributes()->CreateNl80211Attribute(
-      NL80211_ATTR_WIPHY, NetlinkMessage::MessageContext());
+  CreateNl80211Attribute(message.attributes().get(), NL80211_ATTR_WIPHY,
+                         NetlinkMessage::MessageContext());
   message.attributes()->SetU32AttributeValue(NL80211_ATTR_WIPHY, 0);
   EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _,
                        HasSubstr("Could not find device info for interface")));

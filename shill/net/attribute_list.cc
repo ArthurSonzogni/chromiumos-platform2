@@ -13,7 +13,6 @@
 #include <base/logging.h>
 
 #include "shill/net/netlink_attribute.h"
-#include "shill/net/nl80211_attribute.h"
 
 namespace shill {
 
@@ -34,12 +33,6 @@ bool AttributeList::CreateAttribute(int id,
 bool AttributeList::CreateControlAttribute(int id) {
   return CreateAttribute(
       id, base::BindRepeating(&NetlinkAttribute::NewControlAttributeFromId));
-}
-
-bool AttributeList::CreateNl80211Attribute(
-    int id, NetlinkMessage::MessageContext context) {
-  return CreateAttribute(
-      id, base::BindRepeating(&NewNl80211AttributeFromId, context));
 }
 
 bool AttributeList::CreateAndInitAttribute(
