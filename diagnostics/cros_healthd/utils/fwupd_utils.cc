@@ -157,8 +157,6 @@ DeviceInfo ParseDbusFwupdDeviceInfo(
     const brillo::VariantDictionary& dictionary) {
   DeviceInfo device_info;
 
-  device_info.name =
-      GetVariantOptionalValue<std::string>(dictionary, kFwupdResultKeyName);
   device_info.guids =
       brillo::GetVariantValueOrDefault<std::vector<std::string>>(
           dictionary, kFwupdReusltKeyGuid);

@@ -19,7 +19,6 @@ namespace fwupd_utils {
 
 inline constexpr char kFwupdReusltKeyGuid[] = "Guid";
 inline constexpr char kFwupdResultKeyInstanceIds[] = "InstanceIds";
-inline constexpr char kFwupdResultKeyName[] = "Name";
 inline constexpr char kFwupdResultKeySerial[] = "Serial";
 inline constexpr char kFwupdResultKeyVendorId[] = "VendorId";
 inline constexpr char kFwupdResultKeyVersion[] = "Version";
@@ -27,9 +26,6 @@ inline constexpr char kFwupdResultKeyVersionFormat[] = "VersionFormat";
 
 // DeviceInfo stores the data of a fwupd device.
 struct DeviceInfo {
-  // The device name, e.g. "Type-C Video Adapter".
-  std::optional<std::string> name;
-
   // The list of globally unique identifiers, e.g.
   // ["2082b5e0-7a64-478a-b1b2-e3404fab6dad"].
   std::vector<std::string> guids;

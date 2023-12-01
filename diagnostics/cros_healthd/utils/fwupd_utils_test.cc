@@ -57,13 +57,11 @@ TEST(FwupdUtilsTest, InstanceIdToGuidConversionFails) {
 TEST(FwupdUtilsTest, ParseDbusFwupdDeviceInfo) {
   std::vector<std::string> guids{"GUID_1", "GUID_2"};
   std::vector<std::string> instance_ids{"INSTNACE_ID1", "INSTNACE_ID2"};
-  std::string product_name("product_name");
   std::string serial("serial");
   std::string version("version");
   std::string joined_vendor_id("USB:0x1234|PCI:0x5678");
 
   brillo::VariantDictionary dbus_response_entry;
-  dbus_response_entry.emplace(kFwupdResultKeyName, product_name);
   dbus_response_entry.emplace(kFwupdReusltKeyGuid, guids);
   dbus_response_entry.emplace(kFwupdResultKeyInstanceIds, instance_ids);
   dbus_response_entry.emplace(kFwupdResultKeySerial, serial);
@@ -75,7 +73,6 @@ TEST(FwupdUtilsTest, ParseDbusFwupdDeviceInfo) {
 
   DeviceInfo device_info = ParseDbusFwupdDeviceInfo(dbus_response_entry);
 
-  EXPECT_EQ(device_info.name, product_name);
   EXPECT_EQ(device_info.guids, guids);
   EXPECT_EQ(device_info.instance_ids, instance_ids);
   EXPECT_EQ(device_info.serial, serial);
@@ -88,15 +85,12 @@ TEST(FwupdUtilsTest, ParseDbusFwupdDeviceInfoMissingKeys) {
   // For std::vector<std::string>, fill guids but not instance_ids.
   // For std::optional<std::string>, fill product_name but not serial.
   std::vector<std::string> guids{"GUID_1", "GUID_2"};
-  std::string product_name("product_name");
 
   brillo::VariantDictionary dbus_response_entry;
-  dbus_response_entry.emplace(kFwupdResultKeyName, product_name);
   dbus_response_entry.emplace(kFwupdReusltKeyGuid, guids);
 
   DeviceInfo device_info = ParseDbusFwupdDeviceInfo(dbus_response_entry);
 
-  EXPECT_EQ(device_info.name, product_name);
   EXPECT_EQ(device_info.guids, guids);
   EXPECT_EQ(device_info.instance_ids.size(), 0);
   EXPECT_EQ(device_info.serial, std::nullopt);
@@ -108,7 +102,6 @@ TEST(FwupdUtilsTest, ParseDbusFwupdDeviceInfoMissingKeys) {
 TEST(FwupdUtilsTest, MatchUsbBySerials) {
   // Tell apart different instances by their serial numbers.
   DeviceInfo device1{
-      .name = "product_name",
       .instance_ids = std::vector<std::string>{"USB\\VID_1234&PID_5678"},
       .serial = "serial1",
       .version = "version1",
@@ -140,7 +133,6 @@ TEST(FwupdUtilsTest, UsbProductNotMatched) {
   // Only the vendor id and the product name are matched but no product id and
   // no serial. This kind of matchingness is too weak.
   DeviceInfo device{
-      .name = "product_name",
       .version = "version",
       .version_format = FwupdVersionFormat::kPlain,
       .joined_vendor_id = "USB:0x1234",
@@ -161,7 +153,6 @@ TEST(FwupdUtilsTest, MultipleUsbMatchedWithACommonVersion) {
   // Multiple devices matches the VID:PID and the target serial number is
   // absent.
   DeviceInfo device{
-      .name = "device name",
       .instance_ids = std::vector<std::string>{"USB\\VID_1234&PID_5678"},
       .version = "version",
       .version_format = FwupdVersionFormat::kPlain,
@@ -186,7 +177,6 @@ TEST(FwupdUtilsTest, MultipleUsbMatchedWithACommonVersion) {
 TEST(FwupdUtilsTest, MultipleUsbMatchedButDifferentVersions) {
   // Multiple matches but they have different versions.
   DeviceInfo device1{
-      .name = "device name",
       .instance_ids = std::vector<std::string>{"USB\\VID_1234&PID_5678"},
       .version = "version",
       .version_format = FwupdVersionFormat::kPlain,
