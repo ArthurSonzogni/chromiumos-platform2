@@ -55,6 +55,12 @@ class ProcessCacheInterface
   // in the unit test uses underscores for subdirectories rather than creating
   // real ones.
   virtual void InitializeFilter(bool underscorify = false) = 0;
+
+  virtual void FillProcessFromBpf(
+      const bpf::cros_process_task_info& task_info,
+      const bpf::cros_image_info& image_info,
+      cros_xdr::reporting::Process* process_proto,
+      const std::list<std::string>& redacted_usernames) = 0;
 };
 
 class ProcessCache : public ProcessCacheInterface {
@@ -113,6 +119,12 @@ class ProcessCache : public ProcessCacheInterface {
       cros_xdr::reporting::Process* process_proto,
       const std::list<std::string>& redacted_usernames);
 
+  void FillProcessFromBpf(
+      const bpf::cros_process_task_info& task_info,
+      const bpf::cros_image_info& image_info,
+      cros_xdr::reporting::Process* process_proto,
+      const std::list<std::string>& redacted_usernames) override;
+
   // Appends an absolute path to the given base path. base::FilePath has a
   // DCHECK that avoids appending such absolute paths. We absolutely do need
   // to though because /proc/pid/exe is an absolute symlink that needs to be
@@ -130,6 +142,7 @@ class ProcessCache : public ProcessCacheInterface {
   bool IsEventFiltered(const cros_xdr::reporting::Process* parent_process,
                        const cros_xdr::reporting::Process* process) override;
   void InitializeFilter(bool underscorify = false) override;
+
   // Allow calling the private test-only constructor without befriending
   // scoped_refptr.
   template <typename... Args>

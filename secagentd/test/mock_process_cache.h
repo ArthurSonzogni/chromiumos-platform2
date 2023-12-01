@@ -6,7 +6,9 @@
 #define SECAGENTD_TEST_MOCK_PROCESS_CACHE_H_
 
 #include <cstdint>
+#include <list>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "gmock/gmock.h"
@@ -35,6 +37,14 @@ class MockProcessCache : public ProcessCacheInterface {
               (override));
 
   MOCK_METHOD(void, InitializeFilter, (bool underscorify), (override));
+
+  MOCK_METHOD(void,
+              FillProcessFromBpf,
+              (const bpf::cros_process_task_info& task_info,
+               const bpf::cros_image_info& image_info,
+               cros_xdr::reporting::Process* process_proto,
+               const std::list<std::string>& redacted_usernames),
+              (override));
 };
 
 }  // namespace secagentd::testing

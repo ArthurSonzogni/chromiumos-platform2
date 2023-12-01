@@ -39,6 +39,7 @@ using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::StrictMock;
 using ::testing::WithArg;
+using ::testing::WithArgs;
 
 constexpr char kDeviceUser[] = "deviceUser@email.com";
 
@@ -481,7 +482,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExitEventCacheMiss) {
   parent_hierarchy[0]->set_canonical_pid(kPids[1]);
   parent_hierarchy[0]->mutable_image()->set_pathname(kParentImage);
 
-  const bpf::cros_event a = {
+  bpf::cros_event a = {
       .data.process_event = {.type = bpf::kProcessExitEvent,
                              .data.process_exit =
                                  {
@@ -493,12 +494,28 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExitEventCacheMiss) {
                                              .parent_start_time =
                                                  kStartTimes[1],
                                          },
+                                     .has_full_info = true,
                                      .is_leaf = false,
                                  }},
       .type = bpf::kProcessEvent,
   };
+  auto& p_exit = a.data.process_event.data.process_exit;
+  snprintf(p_exit.image_info.pathname, CROS_MAX_PATH_SIZE, "some/pathname");
+
   EXPECT_CALL(*process_cache_, GetProcessHierarchy(kPids[0], kStartTimes[0], 2))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
+
+  EXPECT_CALL(*process_cache_, FillProcessFromBpf(_, _, _, _))
+      .WillRepeatedly(WithArgs<0, 1, 2>(
+          Invoke([](const bpf::cros_process_task_info& task_info,
+                    const bpf::cros_image_info& image_info,
+                    cros_xdr::reporting::Process* process) {
+            process->set_canonical_pid(task_info.pid);
+            process->set_rel_start_time_s(task_info.start_time);
+            process->mutable_image()->set_pathname(image_info.pathname);
+            process->set_process_uuid("some_text");
+          })));
+
   EXPECT_CALL(*process_cache_, GetProcessHierarchy(kPids[1], kStartTimes[1], 1))
       .WillOnce(Return(ByMove(std::move(parent_hierarchy))));
   EXPECT_CALL(*process_cache_, IsEventFiltered(_, _)).WillOnce(Return(false));

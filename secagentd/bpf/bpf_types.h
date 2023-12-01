@@ -115,7 +115,9 @@ struct cros_process_start {
 // This is the process information collected when a process exits.
 struct cros_process_exit {
   struct cros_process_task_info task_info;
-  bool is_leaf;  // True if process has no children.
+  struct cros_image_info image_info;
+  bool has_full_info;  // includes information saved off from process exec.
+  bool is_leaf;        // True if process has no children.
 } __attribute__((aligned(8)));
 
 struct cros_process_change_namespace {

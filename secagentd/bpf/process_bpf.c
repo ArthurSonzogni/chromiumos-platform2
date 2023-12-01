@@ -14,6 +14,25 @@
 #include "secagentd/bpf/bpf_utils.h"
 
 const char LICENSE[] SEC("license") = "Dual BSD/GPL";
+struct {
+  __uint(type, BPF_MAP_TYPE_HASH);
+  __uint(max_entries, 65536);  // up to 2^16 task info for processes can be
+  // stored.
+  __type(key, uint32_t);
+  __type(value, struct cros_process_start);
+  __uint(map_flags, BPF_F_NO_PREALLOC);
+} shared_process_info SEC(".maps");
+
+/* BPF Verifier only allows a stack of 512 bytes max.
+ * Use this one simple trick that BPF verifiers hate
+ * to get around this limitation.
+ */
+struct {
+  __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+  __uint(key_size, sizeof(uint32_t));
+  __uint(value_size, sizeof(struct cros_process_start));
+  __uint(max_entries, 1);
+} heap_shared_process_info SEC(".maps");
 
 struct {
   __uint(type, BPF_MAP_TYPE_RINGBUF);
@@ -111,13 +130,7 @@ static inline __attribute__((always_inline)) void fill_image_info(
 // interfaces like bprm_committed_creds) of running in the context of the newly
 // created Task. This makes it much easier for us to grab information about this
 // new Task.
-#if defined(USE_MIN_CORE_BTF) && USE_MIN_CORE_BTF == 1
-// tp_btf will make libbpf silently fall back to looking for a full vmlinux BTF.
-// So use a raw tracepoint instead.
-SEC("raw_tracepoint/sched_process_exec")
-#else
 SEC("tp_btf/sched_process_exec")
-#endif  // USE_MIN_CORE_BTF
 int BPF_PROG(handle_sched_process_exec,
              struct task_struct* current,
              pid_t old_pid,
@@ -139,21 +152,29 @@ int BPF_PROG(handle_sched_process_exec,
   cros_fill_task_info(&p->task_info, current);
   fill_ns_info(&p->spawn_namespace, current);
   fill_image_info(&p->image_info, bprm, current);
+  uint32_t pid = p->task_info.pid;
 
+  struct cros_process_start* process_start_copy;
+  const uint32_t zero = 0;
+  process_start_copy = bpf_map_lookup_elem(&heap_shared_process_info, &zero);
+  if (process_start_copy != NULL) {
+    cros_fill_task_info(&process_start_copy->task_info, current);
+    fill_ns_info(&process_start_copy->spawn_namespace, current);
+    fill_image_info(&process_start_copy->image_info, bprm, current);
+    bpf_map_update_elem(&shared_process_info, &pid, process_start_copy,
+                        BPF_NOEXIST);
+  }
   // Submit the event to the ring buffer for userspace processing.
   bpf_ringbuf_submit(event, 0);
   return 0;
 }
 
-#if defined(USE_MIN_CORE_BTF) && USE_MIN_CORE_BTF == 1
-SEC("raw_tracepoint/sched_process_exit")
-#else
 SEC("tp_btf/sched_process_exit")
-#endif  // USE_MIN_CORE_BTF
 int BPF_PROG(handle_sched_process_exit, struct task_struct* current) {
   if (is_kthread(current)) {
     return 0;
   }
+
   if ((BPF_CORE_READ(current, pid) != BPF_CORE_READ(current, tgid)) ||
       (current != cros_normalize_to_last_exec(current))) {
     // We didn't report an exec event for this task since it's either not a
@@ -169,8 +190,23 @@ int BPF_PROG(handle_sched_process_exit, struct task_struct* current) {
   event->type = kProcessEvent;
   event->data.process_event.type = kProcessExitEvent;
   struct cros_process_exit* p = &(event->data.process_event.data.process_exit);
+  int pid = BPF_CORE_READ(current, tgid);
+  struct cros_process_start* saved_process_start =
+      bpf_map_lookup_elem(&shared_process_info, &pid);
+  if (saved_process_start != NULL) {
+    __builtin_memcpy(&p->task_info, &saved_process_start->task_info,
+                     sizeof(p->task_info));
+    __builtin_memcpy(&p->image_info, &saved_process_start->image_info,
+                     sizeof(p->image_info));
+    p->has_full_info = true;
+    bpf_map_delete_elem(&shared_process_info, &pid);
+  } else {
+    // only happens when a process started before this BPF is attached
+    // terminates.
+    p->has_full_info = false;
+    cros_fill_task_info(&p->task_info, current);
+  }
 
-  cros_fill_task_info(&p->task_info, current);
   // Similar to list_empty(&current->children). Though unsure how to get a
   // reliable pointer to current->children. So instead of:
   // (&current->children == current->children.next)

@@ -252,9 +252,19 @@ std::unique_ptr<pb::ProcessTerminateEvent> ProcessPlugin::MakeTerminateEvent(
 
   // If that fails, fill in the task info that we got from BPF.
   if (hierarchy.empty()) {
-    ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
-        process_exit.task_info, process_terminate_event->mutable_process(),
+    process_cache_->FillProcessFromBpf(
+        process_exit.task_info, process_exit.image_info,
+        process_terminate_event->mutable_process(),
         device_user_->GetUsernamesForRedaction());
+    if (!process_exit.has_full_info) {
+      LOG(WARNING) << absl::StrFormat(
+          "process_exit for pid=%d reltime=%d uuid=%s filled with partial "
+          "process info.",
+          process_terminate_event->process().canonical_pid(),
+          process_terminate_event->process().rel_start_time_s(),
+          process_terminate_event->process().process_uuid());
+    }
+
     // Maybe the parent is still alive and in procfs.
     auto parent = process_cache_->GetProcessHierarchy(
         process_exit.task_info.ppid, process_exit.task_info.parent_start_time,

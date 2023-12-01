@@ -89,26 +89,6 @@ std::string SafeTransformArgvEnvp(const char* buf,
   return str;
 }
 
-// Fills a FileImage proto with contents from bpf image_info.
-void FillImageFromBpf(const bpf::cros_image_info& image_info,
-                      pb::FileImage* file_image_proto) {
-  file_image_proto->set_pathname(std::string(image_info.pathname));
-  file_image_proto->set_mnt_ns(image_info.mnt_ns);
-  file_image_proto->set_inode_device_id(image_info.inode_device_id);
-  file_image_proto->set_inode(image_info.inode);
-  file_image_proto->set_canonical_uid(image_info.uid);
-  file_image_proto->set_canonical_gid(image_info.gid);
-  file_image_proto->set_mode(image_info.mode);
-}
-
-void FillProcessFromBpf(const bpf::cros_process_start& process_start,
-                        pb::Process* process_proto,
-                        const std::list<std::string>& redacted_usernames) {
-  ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
-      process_start.task_info, process_proto, redacted_usernames);
-  FillImageFromBpf(process_start.image_info, process_proto->mutable_image());
-}
-
 absl::Status GetNsFromPath(const base::FilePath& ns_symlink_path,
                            uint64_t* ns) {
   // mnt_ns_symlink is not actually pathlike. E.g: "mnt:[4026531840]".
@@ -273,6 +253,17 @@ void RedactCommandline(std::string* commandline,
   }
 }
 
+// Fills a FileImage proto with contents from bpf image_info.
+void FillImageFromBpf(const bpf::cros_image_info& image_info,
+                      pb::FileImage* file_image_proto) {
+  file_image_proto->set_pathname(std::string(image_info.pathname));
+  file_image_proto->set_mnt_ns(image_info.mnt_ns);
+  file_image_proto->set_inode_device_id(image_info.inode_device_id);
+  file_image_proto->set_inode(image_info.inode);
+  file_image_proto->set_canonical_uid(image_info.uid);
+  file_image_proto->set_canonical_gid(image_info.gid);
+  file_image_proto->set_mode(image_info.mode);
+}
 }  // namespace
 
 namespace secagentd {
@@ -350,6 +341,29 @@ ProcessCache::ProcessCache(const base::FilePath& root_path,
 ProcessCache::ProcessCache(scoped_refptr<DeviceUserInterface> device_user)
     : ProcessCache(base::FilePath("/"), device_user) {}
 
+void ProcessCache::FillProcessFromBpf(
+    const bpf::cros_process_task_info& task_info,
+    const bpf::cros_image_info& image_info,
+    pb::Process* process_proto,
+    const std::list<std::string>& redacted_usernames) {
+  ProcessCache::PartiallyFillProcessFromBpfTaskInfo(task_info, process_proto,
+                                                    redacted_usernames);
+  FillImageFromBpf(image_info, process_proto->mutable_image());
+
+  process_proto->set_meta_first_appearance(process_proto->rel_start_time_s() <=
+                                           earliest_seen_exec_rel_s_);
+  InternalImageKeyType image_key{image_info.inode_device_id, image_info.inode,
+                                 image_info.mtime, image_info.ctime};
+  {
+    base::AutoLock cache_lock(image_cache_lock_);
+    auto it = InclusiveGetImage(image_key, image_info.pid_for_setns,
+                                base::FilePath(image_info.pathname));
+    if (it != image_cache_->end()) {
+      process_proto->mutable_image()->set_sha256(it->second.sha256);
+    }
+  }
+}
+
 void ProcessCache::PutFromBpfExec(
     const bpf::cros_process_start& process_start) {
   // Starts reporting of the cache fullness metric.
@@ -365,23 +379,12 @@ void ProcessCache::PutFromBpfExec(
       LossyNsecToClockT(process_start.task_info.start_time),
       process_start.task_info.pid};
   auto process_proto = std::make_unique<pb::Process>();
-  FillProcessFromBpf(process_start, process_proto.get(),
+  FillProcessFromBpf(process_start.task_info, process_start.image_info,
+                     process_proto.get(),
                      device_user_->GetUsernamesForRedaction());
   InternalProcessKeyType parent_key{
       LossyNsecToClockT(process_start.task_info.parent_start_time),
       process_start.task_info.ppid};
-  InternalImageKeyType image_key{
-      process_start.image_info.inode_device_id, process_start.image_info.inode,
-      process_start.image_info.mtime, process_start.image_info.ctime};
-  {
-    base::AutoLock cache_lock(image_cache_lock_);
-    auto it =
-        InclusiveGetImage(image_key, process_start.image_info.pid_for_setns,
-                          base::FilePath(process_start.image_info.pathname));
-    if (it != image_cache_->end()) {
-      process_proto->mutable_image()->set_sha256(it->second.sha256);
-    }
-  }
   // Execs from eBPF are always new processes.
   process_proto->set_meta_first_appearance(true);
   if (earliest_seen_exec_rel_s_ > process_proto->rel_start_time_s()) {
