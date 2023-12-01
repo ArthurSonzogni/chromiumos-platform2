@@ -43,11 +43,21 @@ class ServiceTest : public testing::Test {
     EXPECT_CALL(*mock_bus_, HasDBusThread()).WillRepeatedly(Return(true));
     EXPECT_CALL(*mock_bus_, GetDBusTaskRunner())
         .WillRepeatedly(Return(task_runner_.get()));
-
     EXPECT_CALL(*mock_bus_, GetExportedObject(Eq(concierge_path_)))
         .WillRepeatedly(Return(mock_concierge_obj_.get()));
     EXPECT_CALL(*mock_bus_, GetObjectProxy(_, _))
         .WillRepeatedly(Return(mock_proxy_.get()));
+
+    EXPECT_CALL(*mock_concierge_obj_, ExportMethod(_, _, _, _))
+        .WillRepeatedly(Invoke(
+            [](const std::string& interface_name,
+               const std::string& method_name,
+               const dbus::ExportedObject::MethodCallCallback&
+                   method_call_callback,
+               dbus::ExportedObject::OnExportedCallback on_exported_callback) {
+              std::move(on_exported_callback)
+                  .Run(interface_name, method_name, /*success=*/true);
+            }));
 
     // Force an error response here because the default-constructed one is
     // expected(nullptr), which is not handled well (see b/314684498).
@@ -85,9 +95,14 @@ class ServiceTest : public testing::Test {
 }  // namespace
 
 TEST_F(ServiceTest, InitializationSuccess) {
-  EXPECT_CALL(*mock_bus_,
-              RequestOwnershipAndBlock(Eq(kVmConciergeInterface), _))
-      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_bus_, RequestOwnership(Eq(kVmConciergeInterface), _, _))
+      .WillOnce(
+          Invoke([](const std::string& service_name,
+                    dbus::Bus::ServiceOwnershipOptions options,
+                    dbus::Bus::OnOwnershipCallback on_ownership_callback) {
+            std::move(on_ownership_callback)
+                .Run(service_name, /*success=*/true);
+          }));
 
   base::RunLoop loop;
   Service::CreateAndHost(
@@ -100,9 +115,14 @@ TEST_F(ServiceTest, InitializationSuccess) {
 }
 
 TEST_F(ServiceTest, InitializationFailureToOwnInterface) {
-  EXPECT_CALL(*mock_bus_,
-              RequestOwnershipAndBlock(Eq(kVmConciergeInterface), _))
-      .WillOnce(Return(false));
+  EXPECT_CALL(*mock_bus_, RequestOwnership(Eq(kVmConciergeInterface), _, _))
+      .WillOnce(
+          Invoke([](const std::string& service_name,
+                    dbus::Bus::ServiceOwnershipOptions options,
+                    dbus::Bus::OnOwnershipCallback on_ownership_callback) {
+            std::move(on_ownership_callback)
+                .Run(service_name, /*success=*/false);
+          }));
 
   base::RunLoop loop;
   Service::CreateAndHost(

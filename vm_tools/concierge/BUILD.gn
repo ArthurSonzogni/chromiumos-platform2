@@ -23,6 +23,7 @@ static_library("libconcierge") {
     "balloon_policy.cc",
     "concierge_daemon.cc",
     "crosvm_control.cc",
+    "dbus_adaptor.cc",
     "disk_image.cc",
     "dlc_helper.cc",
     "metrics/duration_recorder.cc",

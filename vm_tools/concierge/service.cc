@@ -94,6 +94,7 @@
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/arc_vm.h"
 #include "vm_tools/concierge/byte_unit.h"
+#include "vm_tools/concierge/dbus_adaptor.h"
 #include "vm_tools/concierge/dlc_helper.h"
 #include "vm_tools/concierge/if_method_exists.h"
 #include "vm_tools/concierge/metrics/duration_recorder.h"
@@ -1292,9 +1293,24 @@ void Service::CreateAndHost(
   CHECK(bus->IsConnected());
   auto service = base::WrapUnique(new Service(signal_fd, std::move(bus)));
   if (!service->Init()) {
-    service.reset();
+    std::move(on_hosted).Run(nullptr);
+    return;
   }
-  std::move(on_hosted).Run(std::move(service));
+  Service* service_ptr = service.get();
+  DbusAdaptor::Create(
+      service_ptr->bus_, service_ptr,
+      base::BindOnce(
+          [](std::unique_ptr<Service> owned_service,
+             base::OnceCallback<void(std::unique_ptr<Service>)> on_hosted,
+             std::unique_ptr<DbusAdaptor> adaptor) {
+            if (!adaptor) {
+              std::move(on_hosted).Run(nullptr);
+              return;
+            }
+            owned_service->concierge_adaptor_ = std::move(adaptor);
+            std::move(on_hosted).Run(std::move(owned_service));
+          },
+          std::move(service), std::move(on_hosted)));
 }
 
 Service::Service(int signal_fd, scoped_refptr<dbus::Bus> bus)
@@ -1311,15 +1327,6 @@ Service::~Service() {
   if (grpc_server_vm_) {
     grpc_server_vm_->Shutdown();
   }
-  if (dbus_object_ && bus_) {
-    PostTaskAndWait(
-        bus_->GetDBusTaskRunner(),
-        base::BindOnce(
-            [](std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object) {
-              dbus_object.reset();
-            },
-            std::move(dbus_object_)));
-  }
 }
 
 bool Service::Init() {
@@ -1334,32 +1341,7 @@ bool Service::Init() {
       raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()),
       base::FilePath(kVmmSwapTbwHistoryFilePath));
 
-  dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
-      nullptr, bus_, dbus::ObjectPath(kVmConciergeServicePath));
-  concierge_adaptor_.RegisterWithDBusObject(dbus_object_.get());
-  dbus_object_->RegisterAsync(base::DoNothing());
-
   dlcservice_client_ = std::make_unique<DlcHelper>(bus_);
-
-  // TODO(b/269214379): Wait for completion for RegisterAsync on
-  // chromeos-dbus-bindings after we complete migration and remove
-  // ExportMethodAndBlock.
-  if (!PostTaskAndWaitForResult(
-          bus_->GetDBusTaskRunner(),
-          base::BindOnce(
-              [](scoped_refptr<dbus::Bus> bus) {
-                if (!bus->RequestOwnershipAndBlock(
-                        kVmConciergeServiceName, dbus::Bus::REQUIRE_PRIMARY)) {
-                  LOG(ERROR) << "Failed to take ownership of "
-                             << kVmConciergeServiceName;
-                  return false;
-                }
-
-                return true;
-              },
-              bus_))) {
-    return false;
-  }
 
   // Set up the D-Bus client for shill.
   shill_client_ = std::make_unique<ShillClient>(bus_);
@@ -3510,7 +3492,7 @@ void Service::RunDiskImageOperation(std::string uuid) {
     // Send the D-Bus signal out updating progress of the operation.
     DiskImageStatusResponse status;
     FormatDiskImageStatus(op, &status);
-    concierge_adaptor_.SendDiskImageProgressSignal(status);
+    concierge_adaptor_->SendDiskImageProgressSignal(status);
 
     // Note the time we sent out the notification.
     iter->last_report_time = base::TimeTicks::Now();
@@ -4126,7 +4108,7 @@ void Service::OnResolvConfigChanged(std::vector<string> nameservers,
 
   // Broadcast DnsSettingsChanged signal so Plugin VM dispatcher is aware as
   // well.
-  concierge_adaptor_.SendDnsSettingsChangedSignal(ComposeDnsResponse());
+  concierge_adaptor_->SendDnsSettingsChangedSignal(ComposeDnsResponse());
 }
 
 void Service::OnDefaultNetworkServiceChanged() {
@@ -4192,7 +4174,7 @@ void Service::SendVmStartedSignal(const VmId& vm_id,
   proto.set_name(vm_id.name());
   proto.mutable_vm_info()->CopyFrom(vm_info);
   proto.set_status(status);
-  concierge_adaptor_.SendVmStartedSignalSignal(proto);
+  concierge_adaptor_->SendVmStartedSignalSignal(proto);
 }
 
 void Service::SendVmStartingUpSignal(
@@ -4201,7 +4183,7 @@ void Service::SendVmStartingUpSignal(
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
   proto.mutable_vm_info()->CopyFrom(vm_info);
-  concierge_adaptor_.SendVmStartingUpSignalSignal(proto);
+  concierge_adaptor_->SendVmStartingUpSignalSignal(proto);
 }
 
 void Service::SendVmGuestUserlandReadySignal(
@@ -4210,7 +4192,7 @@ void Service::SendVmGuestUserlandReadySignal(
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
   proto.set_ready(ready);
-  concierge_adaptor_.SendVmGuestUserlandReadySignalSignal(proto);
+  concierge_adaptor_->SendVmGuestUserlandReadySignalSignal(proto);
 }
 
 void Service::NotifyVmStopping(const VmId& vm_id, int64_t cid) {
@@ -4239,7 +4221,7 @@ void Service::NotifyVmStopping(const VmId& vm_id, int64_t cid) {
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
   proto.set_cid(cid);
-  concierge_adaptor_.SendVmStoppingSignalSignal(proto);
+  concierge_adaptor_->SendVmStoppingSignalSignal(proto);
 }
 
 void Service::NotifyVmStopped(const VmId& vm_id,
@@ -4275,7 +4257,7 @@ void Service::NotifyVmStopped(const VmId& vm_id,
   proto.set_name(vm_id.name());
   proto.set_cid(cid);
   proto.set_reason(reason);
-  concierge_adaptor_.SendVmStoppedSignalSignal(proto);
+  concierge_adaptor_->SendVmStoppedSignalSignal(proto);
 }
 
 std::string Service::GetContainerToken(const VmId& vm_id,
@@ -4873,7 +4855,7 @@ void Service::NotifyVmSwapping(const VmId& vm_id,
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
   proto.set_state(swapping_state);
-  concierge_adaptor_.SendVmSwappingSignalSignal(proto);
+  concierge_adaptor_->SendVmSwappingSignalSignal(proto);
 }
 
 void Service::InstallPflash(

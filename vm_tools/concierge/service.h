@@ -59,6 +59,7 @@
 
 namespace vm_tools::concierge {
 
+class DbusAdaptor;
 class DlcHelper;
 
 // VM Launcher Service responsible for responding to DBus method calls for
@@ -578,8 +579,8 @@ class Service final : public org::chromium::VmConciergeInterface,
   dbus::ObjectProxy* chrome_features_service_proxy_;   // Owned by |bus_|.
   dbus::ObjectProxy* shadercached_proxy_;              // Owned by |bus_|.
 
-  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
-  org::chromium::VmConciergeAdaptor concierge_adaptor_{this};
+  // Handle to concierge's D-Bus API.
+  std::unique_ptr<DbusAdaptor> concierge_adaptor_;
 
   // The port number to assign to the next shared directory server.
   uint32_t next_seneschal_server_port_;
