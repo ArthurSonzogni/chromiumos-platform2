@@ -134,7 +134,6 @@ if (use.test) {
       "attribute_list_test.cc",
       "netlink_attribute_test.cc",
       "netlink_manager_test.cc",
-      "netlink_message_test.cc",
       "netlink_packet_test.cc",
       "nl80211_attribute_test.cc",
       "nl80211_message_test.cc",
