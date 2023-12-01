@@ -78,19 +78,18 @@ std::string EnumToString(mojom::MemtesterTestItemEnum subtest_enum) {
 }
 
 // Convert memory v2 routine detail to v1 format output.
-base::Value::Dict ConvertMemoryV2ResultToOutputDict(
-    const mojom::MemoryRoutineDetailPtr& memory_detail) {
+base::Value::Dict ConvertToValueInV1Format(
+    const mojom::MemoryRoutineDetailPtr& detail) {
   base::Value::Dict output_dict;
   // Holds the results of all subtests.
   base::Value::Dict subtest_dict;
   // Holds all the parsed output from memtester.
   base::Value::Dict result_dict;
 
-  result_dict.Set("bytesTested",
-                  base::NumberToString(memory_detail->bytes_tested));
-  for (const auto& subtest_name : memory_detail->result->passed_items)
+  result_dict.Set("bytesTested", base::NumberToString(detail->bytes_tested));
+  for (const auto& subtest_name : detail->result->passed_items)
     subtest_dict.Set(EnumToString(subtest_name), "ok");
-  for (const auto& subtest_name : memory_detail->result->failed_items)
+  for (const auto& subtest_name : detail->result->failed_items)
     subtest_dict.Set(EnumToString(subtest_name), "failed");
 
   if (!subtest_dict.empty())
@@ -118,23 +117,23 @@ base::Value::Dict ConvertRoutineDetailToOutputDict(
     case mojom::RoutineDetail::Tag::kUrandom:
       return base::Value::Dict();
     case mojom::RoutineDetail::Tag::kMemory:
-      return ConvertMemoryV2ResultToOutputDict(detail->get_memory());
+      return ConvertToValueInV1Format(detail->get_memory());
     case mojom::RoutineDetail::Tag::kAudioDriver:
-      return ParseAudioDriverDetail(detail->get_audio_driver());
+      return ConvertToValue(detail->get_audio_driver());
     case mojom::RoutineDetail::Tag::kUfsLifetime:
-      return ParseUfsLifetimeDetail(detail->get_ufs_lifetime());
+      return ConvertToValue(detail->get_ufs_lifetime());
     case mojom::RoutineDetail::Tag::kBluetoothPower:
-      return ParseBluetoothPowerDetail(detail->get_bluetooth_power());
+      return ConvertToValue(detail->get_bluetooth_power());
     case mojom::RoutineDetail::Tag::kBluetoothDiscovery:
-      return ParseBluetoothDiscoveryDetail(detail->get_bluetooth_discovery());
+      return ConvertToValue(detail->get_bluetooth_discovery());
     case mojom::RoutineDetail::Tag::kFan:
-      return ParseFanDetail(detail->get_fan());
+      return ConvertToValue(detail->get_fan());
     case mojom::RoutineDetail::Tag::kBluetoothScanning:
-      return ParseBluetoothScanningDetail(detail->get_bluetooth_scanning());
+      return ConvertToValue(detail->get_bluetooth_scanning());
     case mojom::RoutineDetail::Tag::kBluetoothPairing:
-      return ParseBluetoothPairingDetail(detail->get_bluetooth_pairing());
+      return ConvertToValue(detail->get_bluetooth_pairing());
     case mojom::RoutineDetail::Tag::kCameraAvailability:
-      return ParseCameraAvailabilityDetail(detail->get_camera_availability());
+      return ConvertToValue(detail->get_camera_availability());
   }
 }
 

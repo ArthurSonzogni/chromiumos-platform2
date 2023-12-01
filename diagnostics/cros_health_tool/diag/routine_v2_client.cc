@@ -22,20 +22,19 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-base::Value::Dict ParseMemoryDetail(
-    const mojom::MemoryRoutineDetailPtr& memory_detail) {
+base::Value::Dict ConvertToValue(const mojom::MemoryRoutineDetailPtr& detail) {
   base::Value::Dict output;
   base::Value::List passed_items;
   base::Value::List failed_items;
 
-  for (auto passed_item : memory_detail->result->passed_items) {
+  for (auto passed_item : detail->result->passed_items) {
     passed_items.Append(EnumToString(passed_item));
   }
-  for (auto failed_item : memory_detail->result->failed_items) {
+  for (auto failed_item : detail->result->failed_items) {
     failed_items.Append(EnumToString(failed_item));
   }
 
-  SET_DICT(bytes_tested, memory_detail, &output);
+  SET_DICT(bytes_tested, detail, &output);
   output.Set("passed_items", std::move(passed_items));
   output.Set("failed_items", std::move(failed_items));
   return output;
@@ -94,35 +93,31 @@ void RoutineV2Client::OnRoutineStateChange(
         case mojom::RoutineDetail::Tag::kUrandom:
           break;
         case mojom::RoutineDetail::Tag::kMemory:
-          PrintOutput(ParseMemoryDetail(detail->get_memory()));
+          PrintOutput(ConvertToValue(detail->get_memory()));
           break;
         case mojom::RoutineDetail::Tag::kAudioDriver:
-          PrintOutput(ParseAudioDriverDetail(detail->get_audio_driver()));
+          PrintOutput(ConvertToValue(detail->get_audio_driver()));
           break;
         case mojom::RoutineDetail::Tag::kUfsLifetime:
-          PrintOutput(ParseUfsLifetimeDetail(detail->get_ufs_lifetime()));
+          PrintOutput(ConvertToValue(detail->get_ufs_lifetime()));
           break;
         case mojom::RoutineDetail::Tag::kBluetoothPower:
-          PrintOutput(ParseBluetoothPowerDetail(detail->get_bluetooth_power()));
+          PrintOutput(ConvertToValue(detail->get_bluetooth_power()));
           break;
         case mojom::RoutineDetail::Tag::kBluetoothDiscovery:
-          PrintOutput(
-              ParseBluetoothDiscoveryDetail(detail->get_bluetooth_discovery()));
+          PrintOutput(ConvertToValue(detail->get_bluetooth_discovery()));
           break;
         case mojom::RoutineDetail::Tag::kFan:
-          PrintOutput(ParseFanDetail(detail->get_fan()));
+          PrintOutput(ConvertToValue(detail->get_fan()));
           break;
         case mojom::RoutineDetail::Tag::kBluetoothScanning:
-          PrintOutput(
-              ParseBluetoothScanningDetail(detail->get_bluetooth_scanning()));
+          PrintOutput(ConvertToValue(detail->get_bluetooth_scanning()));
           break;
         case mojom::RoutineDetail::Tag::kBluetoothPairing:
-          PrintOutput(
-              ParseBluetoothPairingDetail(detail->get_bluetooth_pairing()));
+          PrintOutput(ConvertToValue(detail->get_bluetooth_pairing()));
           break;
         case mojom::RoutineDetail::Tag::kCameraAvailability:
-          PrintOutput(
-              ParseCameraAvailabilityDetail(detail->get_camera_availability()));
+          PrintOutput(ConvertToValue(detail->get_camera_availability()));
           break;
       }
       run_loop_.Quit();

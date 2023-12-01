@@ -17,7 +17,7 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-TEST(RoutineOutputUtilsTest, ParseAudioDriverDetail) {
+TEST(RoutineOutputUtilsTest, ConvertAudioDriverDetail) {
   auto detail = mojom::AudioDriverRoutineDetail::New();
   detail->internal_card_detected = false;
   detail->audio_devices_succeed_to_open = true;
@@ -25,10 +25,10 @@ TEST(RoutineOutputUtilsTest, ParseAudioDriverDetail) {
   base::Value::Dict expected_result;
   expected_result.Set("internal_card_detected", false);
   expected_result.Set("audio_devices_succeed_to_open", true);
-  EXPECT_EQ(ParseAudioDriverDetail(detail), expected_result);
+  EXPECT_EQ(ConvertToValue(detail), expected_result);
 }
 
-TEST(RoutineOutputUtilsTest, ParseBluetoothDiscoveryDetail) {
+TEST(RoutineOutputUtilsTest, ConvertBluetoothDiscoveryDetail) {
   auto detail = mojom::BluetoothDiscoveryRoutineDetail::New();
   detail->start_discovery_result = mojom::BluetoothDiscoveringDetail::New();
   detail->start_discovery_result->dbus_discovering = true;
@@ -49,10 +49,10 @@ TEST(RoutineOutputUtilsTest, ParseBluetoothDiscoveryDetail) {
                       std::move(start_discovery_result));
   expected_result.Set("stop_discovery_result",
                       std::move(stop_discovery_result));
-  EXPECT_EQ(ParseBluetoothDiscoveryDetail(detail), expected_result);
+  EXPECT_EQ(ConvertToValue(detail), expected_result);
 }
 
-TEST(RoutineOutputUtilsTest, ParseBluetoothPairingDetail) {
+TEST(RoutineOutputUtilsTest, ConvertBluetoothPairingDetail) {
   auto peripheral = mojom::BluetoothPairingPeripheralInfo::New();
   peripheral->pair_error =
       mojom::BluetoothPairingPeripheralInfo_PairError::kBadStatus;
@@ -84,10 +84,10 @@ TEST(RoutineOutputUtilsTest, ParseBluetoothPairingDetail) {
 
   base::Value::Dict expected_result;
   expected_result.Set("pairing_peripheral", std::move(expected_peripheral));
-  EXPECT_EQ(ParseBluetoothPairingDetail(detail), expected_result);
+  EXPECT_EQ(ConvertToValue(detail), expected_result);
 }
 
-TEST(RoutineOutputUtilsTest, ParseBluetoothPowerDetail) {
+TEST(RoutineOutputUtilsTest, ConvertBluetoothPowerDetail) {
   auto detail = mojom::BluetoothPowerRoutineDetail::New();
   detail->power_off_result = mojom::BluetoothPoweredDetail::New();
   detail->power_off_result->dbus_powered = false;
@@ -106,10 +106,10 @@ TEST(RoutineOutputUtilsTest, ParseBluetoothPowerDetail) {
   base::Value::Dict expected_result;
   expected_result.Set("power_off_result", std::move(power_off_result));
   expected_result.Set("power_on_result", std::move(power_on_result));
-  EXPECT_EQ(ParseBluetoothPowerDetail(detail), expected_result);
+  EXPECT_EQ(ConvertToValue(detail), expected_result);
 }
 
-TEST(RoutineOutputUtilsTest, ParseBluetoothScanningDetail) {
+TEST(RoutineOutputUtilsTest, ConvertBluetoothScanningDetail) {
   auto detail = mojom::BluetoothScanningRoutineDetail::New();
   auto peripheral1 = mojom::BluetoothScannedPeripheralInfo::New();
   peripheral1->rssi_history = std::vector<int16_t>{-40, -50, -60};
@@ -143,10 +143,10 @@ TEST(RoutineOutputUtilsTest, ParseBluetoothScanningDetail) {
 
   base::Value::Dict expected_result;
   expected_result.Set("peripherals", std::move(expected_peripherals));
-  EXPECT_EQ(ParseBluetoothScanningDetail(detail), expected_result);
+  EXPECT_EQ(ConvertToValue(detail), expected_result);
 }
 
-TEST(RoutineOutputUtilsTest, ParseUfsLifetimeDetail) {
+TEST(RoutineOutputUtilsTest, ConvertUfsLifetimeDetail) {
   auto detail = mojom::UfsLifetimeRoutineDetail::New();
   detail->pre_eol_info = 1;
   detail->device_life_time_est_a = 2;
@@ -156,10 +156,10 @@ TEST(RoutineOutputUtilsTest, ParseUfsLifetimeDetail) {
   expected_result.Set("pre_eol_info", 1);
   expected_result.Set("device_life_time_est_a", 2);
   expected_result.Set("device_life_time_est_b", 3);
-  EXPECT_EQ(ParseUfsLifetimeDetail(detail), expected_result);
+  EXPECT_EQ(ConvertToValue(detail), expected_result);
 }
 
-TEST(RoutineOutputUtilsTest, ParseFanDetail) {
+TEST(RoutineOutputUtilsTest, ConvertFanDetail) {
   auto detail = mojom::FanRoutineDetail::New();
   detail->passed_fan_ids = {0, 2};
   detail->failed_fan_ids = {1, 3};
@@ -171,10 +171,10 @@ TEST(RoutineOutputUtilsTest, ParseFanDetail) {
   expected_result.Set("failed_fan_ids",
                       base::Value::List().Append(1).Append(3));
   expected_result.Set("fan_count_status", "Matched");
-  EXPECT_EQ(ParseFanDetail(detail), expected_result);
+  EXPECT_EQ(ConvertToValue(detail), expected_result);
 }
 
-TEST(RoutineOutputUtilsTest, ParseCameraAvailabilityDetail) {
+TEST(RoutineOutputUtilsTest, ConvertCameraAvailabilityDetail) {
   auto detail = mojom::CameraAvailabilityRoutineDetail::New();
   detail->camera_service_available_check = mojom::CameraSubtestResult::kPassed;
   detail->camera_diagnostic_service_available_check =
@@ -183,7 +183,7 @@ TEST(RoutineOutputUtilsTest, ParseCameraAvailabilityDetail) {
   base::Value::Dict expected_result;
   expected_result.Set("camera_service_available_check", "Passed");
   expected_result.Set("camera_diagnostic_service_available_check", "Failed");
-  EXPECT_EQ(ParseCameraAvailabilityDetail(detail), expected_result);
+  EXPECT_EQ(ConvertToValue(detail), expected_result);
 }
 
 }  // namespace
