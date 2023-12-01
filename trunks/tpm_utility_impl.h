@@ -379,6 +379,8 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                    const brillo::Blob& data,
                    brillo::Blob* sig_r,
                    brillo::Blob* sig_s) override;
+  TPM_RC FipsGetStatus(uint32_t* status) override;
+  TPM_RC FipsActivate() override;
   TPM_RC GetRsuDeviceId(std::string* device_id) override;
   TPM_RC GetRoVerificationStatus(ap_ro_status* status) override;
 

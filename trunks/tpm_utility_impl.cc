@@ -10,6 +10,7 @@
 #include <memory>
 #include <optional>
 
+#include <base/big_endian.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/hash/sha1.h>
@@ -75,6 +76,7 @@ const uint16_t kGscSubcmdPinWeaver = 37;
 const uint16_t kGscSubcmdU2fGenerate = 44;
 const uint16_t kGscSubcmdU2fSign = 45;
 const uint16_t kGscSubcmdU2fAttest = 46;
+const uint16_t kGscSubcmdFipsCmd = 55;
 const uint16_t kGscSubcmdGetRoStatus = 57;
 const uint16_t kTi50GetMetrics = 65;
 const uint16_t kTi50GetConsoleLogs = 67;
@@ -86,6 +88,9 @@ const char kRsuSalt[] = "Wu8oGt0uu0H8uSGxfo75uSDrGcRk2BXh";
 constexpr uint8_t kPwLeafTypeNormal = 0;
 constexpr uint8_t kPwLeafTypeBiometrics = 1;
 constexpr uint8_t kPwSecretSize = 32;
+
+constexpr uint8_t kGscFipsCmdGetStatusCode = 0;
+constexpr uint8_t kGscFipsCmdOnCode = 1;
 
 // Returns a serialized representation of the unmodified handle. This is useful
 // for predefined handle values, like TPM_RH_OWNER. For details on what types of
@@ -3287,6 +3292,41 @@ TPM_RC TpmUtilityImpl::U2fAttest(const brillo::SecureBlob& user_secret,
       [sig_r, sig_s](const std::string& out) -> TPM_RC {
         return Parse_u2f_sign_t(out, sig_r, sig_s);
       });
+}
+
+TPM_RC TpmUtilityImpl::FipsGetStatus(uint32_t* status) {
+  if (!IsGsc()) {
+    return TPM_RC_FAILURE;
+  }
+  std::string command({kGscFipsCmdGetStatusCode});
+  std::string response;
+  TPM_RC rc = GscVendorCommand(kGscSubcmdFipsCmd, command, &response);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
+  if (response.size() != sizeof(*status)) {
+    return SAPI_RC_BAD_SIZE;
+  }
+  // The response FIPS status code is in big-endian representation.
+  base::ReadBigEndian(reinterpret_cast<const uint8_t*>(response.data()),
+                      status);
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::FipsActivate() {
+  if (!IsGsc()) {
+    return TPM_RC_FAILURE;
+  }
+  std::string command({kGscFipsCmdOnCode});
+  std::string response;
+  TPM_RC rc = GscVendorCommand(kGscSubcmdFipsCmd, command, &response);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
+  if (response.size() != 0) {
+    return SAPI_RC_BAD_SIZE;
+  }
+  return TPM_RC_SUCCESS;
 }
 
 void TpmUtilityImpl::CacheVendorId() {

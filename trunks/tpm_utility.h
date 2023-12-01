@@ -1054,6 +1054,16 @@ class TRUNKS_EXPORT TpmUtility {
                            brillo::Blob* sig_r,
                            brillo::Blob* sig_s) = 0;
 
+  // Gets the FIPS status of the GSC, i.e., whether the FIPS mode is active.
+  // FIPS mode affects the code path taken by U2F, and only when FIPS mode is
+  // active, the code path taken is using FIPS certified crypto algorithms.
+  virtual TPM_RC FipsGetStatus(uint32_t* status) = 0;
+
+  // Forces GSC to take the FIPS mode path for U2F. Is the FIPS mode is already
+  // active, this is a no-op. Note that this breaks all existing U2F key handles
+  // if FIPS mode is switched from non-active to active.
+  virtual TPM_RC FipsActivate() = 0;
+
   // Retrieves cached RSU device id.
   virtual TPM_RC GetRsuDeviceId(std::string* device_id) = 0;
 
