@@ -72,6 +72,7 @@ _runtime_wrapper = "${platform2_root}/common-mk/runtime_wrapper.py"
 # Should be kept in sync with the templates (module*.tmpl) listed here:
 # src/platform/libchrome/mojo/public/tools/bindings/generators/cpp_templates/
 _mojom_bindings_headers_suffixes = [
+  "-features.h",
   "-forward.h",
   "-import-headers.h",
   "-params-data.h",
