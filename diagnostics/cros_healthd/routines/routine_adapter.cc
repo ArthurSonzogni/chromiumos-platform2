@@ -106,6 +106,9 @@ base::Value::Dict ConvertRoutineDetailToOutputDict(
     case mojom::RoutineDetail::Tag::kUnrecognizedArgument: {
       NOTREACHED_NORETURN() << "Got unrecognized RoutineDetail";
     }
+    // Not exposed in the v1 interface.
+    case mojom::RoutineDetail::Tag::kCameraAvailability:
+      NOTREACHED_NORETURN() << "Not exposed in the v1 interface";
     // These routines do not produce printable output. Return empty output.
     case mojom::RoutineDetail::Tag::kCpuStress:
     case mojom::RoutineDetail::Tag::kDiskRead:
@@ -132,8 +135,6 @@ base::Value::Dict ConvertRoutineDetailToOutputDict(
       return ConvertToValue(detail->get_bluetooth_scanning());
     case mojom::RoutineDetail::Tag::kBluetoothPairing:
       return ConvertToValue(detail->get_bluetooth_pairing());
-    case mojom::RoutineDetail::Tag::kCameraAvailability:
-      return ConvertToValue(detail->get_camera_availability());
   }
 }
 
