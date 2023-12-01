@@ -14,6 +14,7 @@
 #include <gtest/gtest.h>
 
 #include "minios/mock_draw_interface.h"
+#include "minios/mock_log_store_manager.h"
 #include "minios/mock_network_manager.h"
 #include "minios/mock_process_manager.h"
 #include "minios/mock_screen_interface.h"
@@ -75,9 +76,11 @@ class ScreenControllerTest : public ::testing::Test {
       std::make_shared<NiceMock<MockNetworkManager>>();
   std::shared_ptr<MockProcessManager> process_manager_ =
       std::make_shared<NiceMock<MockProcessManager>>();
-  ScreenController screen_controller_{draw_interface_,
-                                      mock_update_engine_proxy_,
-                                      mock_network_manager_, process_manager_};
+  std::shared_ptr<MockLogStoreManager> mock_log_store_manager_ =
+      std::make_shared<MockLogStoreManager>();
+  ScreenController screen_controller_{
+      draw_interface_, mock_update_engine_proxy_, mock_network_manager_,
+      mock_log_store_manager_, process_manager_};
 
   base::SimpleTestClock clock_;
   brillo::FakeMessageLoop loop_{&clock_};
@@ -362,9 +365,12 @@ class GoToScreenTest
       std::make_shared<NiceMock<MockProcessManager>>();
   std::shared_ptr<NiceMock<MockUpdateEngineProxy>> update_engine_proxy_ =
       std::make_shared<NiceMock<MockUpdateEngineProxy>>();
+  std::shared_ptr<MockLogStoreManager> mock_log_store_manager_ =
+      std::make_shared<MockLogStoreManager>();
   ScreenController screen_controller_{
       std::make_shared<NiceMock<MockDrawInterface>>(), update_engine_proxy_,
-      std::make_shared<NiceMock<MockNetworkManager>>(), process_manager_};
+      std::make_shared<NiceMock<MockNetworkManager>>(), mock_log_store_manager_,
+      process_manager_};
   const ScreenType starting_screen_ = std::get<0>(GetParam()),
                    next_screen_ = std::get<1>(GetParam());
 };

@@ -2,12 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <utility>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <minios/proto_bindings/minios.pb.h>
 
 #include "minios/mock_draw_interface.h"
+#include "minios/mock_log_store_manager.h"
 #include "minios/mock_metrics_reporter.h"
 #include "minios/mock_process_manager.h"
 #include "minios/mock_recovery_installer.h"
@@ -16,7 +19,9 @@
 #include "minios/screens/screen_download.h"
 #include "minios/test_utils.h"
 
+using ::testing::_;
 using ::testing::NiceMock;
+using ::testing::Return;
 using ::testing::StrictMock;
 
 namespace minios {
@@ -46,14 +51,16 @@ class ScreenDownloadTest : public ::testing::Test {
   std::shared_ptr<MockProcessManager> process_manager_ =
       std::make_shared<NiceMock<MockProcessManager>>();
 
-  ScreenDownload screen_download_{
-      std::move(mock_recovery_installer_),
-      std::move(mock_update_engine_proxy_),
-      mock_draw_interface_,
-      std::move(mock_metrics_reporter_),
-      process_manager_,
-      &mock_screen_controller_,
-  };
+  std::shared_ptr<MockLogStoreManager> mock_log_store_manager =
+      std::make_shared<MockLogStoreManager>();
+
+  ScreenDownload screen_download_{std::move(mock_recovery_installer_),
+                                  std::move(mock_update_engine_proxy_),
+                                  mock_draw_interface_,
+                                  std::move(mock_metrics_reporter_),
+                                  mock_log_store_manager,
+                                  process_manager_,
+                                  &mock_screen_controller_};
 };
 
 TEST_F(ScreenDownloadTest, RepartitionDiskFailed) {
@@ -72,6 +79,9 @@ TEST_F(ScreenDownloadTest, UpdateEngineError) {
   status.set_current_operation(update_engine::Operation::ERROR);
   // Show download error.
   EXPECT_CALL(mock_screen_controller_, OnError(ScreenType::kDownloadError));
+  EXPECT_CALL(*mock_log_store_manager,
+              SaveLogs(LogStoreManager::LogDirection::Disk, _))
+      .WillOnce(testing::Return(true));
   screen_download_.OnProgressChanged(status);
 }
 
@@ -80,7 +90,10 @@ TEST_F(ScreenDownloadTest, UpdateEngineProgressComplete) {
   update_engine::StatusResult status;
   status.set_current_operation(update_engine::Operation::UPDATED_NEED_REBOOT);
 
+  EXPECT_CALL(*process_manager_, RunCommand(_, _)).WillRepeatedly(Return(0));
   EXPECT_CALL(*mock_metrics_reporter_ptr_, ReportNBRComplete);
+  EXPECT_CALL(*mock_log_store_manager,
+              SaveLogs(LogStoreManager::LogDirection::Stateful, _));
   EXPECT_CALL(mock_screen_controller_,
               OnStateChanged(CheckState(State::COMPLETED)));
   EXPECT_CALL(*mock_update_engine_ptr_, TriggerReboot());

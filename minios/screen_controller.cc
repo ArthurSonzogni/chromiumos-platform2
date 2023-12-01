@@ -43,13 +43,15 @@ ScreenController::ScreenController(
     std::shared_ptr<DrawInterface> draw_utils,
     std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
     std::shared_ptr<NetworkManagerInterface> network_manager,
+    std::shared_ptr<LogStoreManagerInterface> log_store_manager,
     std::shared_ptr<ProcessManagerInterface> process_manager)
     : draw_utils_(draw_utils),
       update_engine_proxy_(update_engine_proxy),
       network_manager_(network_manager),
       process_manager_(process_manager),
-      key_reader_(KeyReader{/*include_usb=*/true,
-                            GetKeyboardLayout(process_manager_)}) {}
+      key_reader_(
+          KeyReader{/*include_usb=*/true, GetKeyboardLayout(process_manager_)}),
+      log_store_manager_(log_store_manager) {}
 
 bool ScreenController::Init() {
   if (!draw_utils_ || !draw_utils_->Init()) {
@@ -78,6 +80,11 @@ bool ScreenController::Init() {
       base::BindRepeating(&::minios::ScreenController::OnDisplayChange,
                           base::Unretained(this)));
 
+  if (log_store_manager_ && !log_store_manager_->Init()) {
+    LOG(WARNING) << "Failed to initialize log store manager.";
+    log_store_manager_ = nullptr;
+  }
+
   return true;
 }
 
@@ -102,7 +109,8 @@ std::unique_ptr<ScreenInterface> ScreenController::CreateScreen(
       return std::make_unique<ScreenDownload>(
           std::make_unique<RecoveryInstaller>(process_manager_),
           update_engine_proxy_, draw_utils_,
-          std::make_unique<MetricsReporter>(), process_manager_, this);
+          std::make_unique<MetricsReporter>(), log_store_manager_,
+          process_manager_, this);
     case ScreenType::kDownloadError:
     case ScreenType::kNetworkError:
     case ScreenType::kPasswordError:
@@ -110,7 +118,8 @@ std::unique_ptr<ScreenInterface> ScreenController::CreateScreen(
     case ScreenType::kGeneralError:
       return std::make_unique<ScreenError>(screen_type, draw_utils_, this);
     case ScreenType::kDebugOptionsScreen:
-      return std::make_unique<ScreenDebugOptions>(draw_utils_, this);
+      return std::make_unique<ScreenDebugOptions>(
+          draw_utils_, log_store_manager_, process_manager_, this);
     case ScreenType::kLogScreen:
       return std::make_unique<ScreenLog>(draw_utils_, this);
     default:

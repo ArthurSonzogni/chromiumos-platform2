@@ -8,8 +8,11 @@
 
 #include <base/logging.h>
 #include <minios/proto_bindings/minios.pb.h>
+#include <memory>
 
 #include "minios/draw_utils.h"
+#include "minios/log_store_manager_interface.h"
+#include "minios/process_manager_interface.h"
 #include "minios/screen_types.h"
 #include "minios/utils.h"
 
@@ -17,13 +20,17 @@ namespace minios {
 // TODO(b/191139789): minios: clean up, combine generic screens into one.
 ScreenDebugOptions::ScreenDebugOptions(
     std::shared_ptr<DrawInterface> draw_utils,
+    std::shared_ptr<LogStoreManagerInterface> log_store_manager,
+    std::shared_ptr<ProcessManagerInterface> process_manager,
     ScreenControllerInterface* screen_controller)
     : ScreenBase(
-          /*button_count=*/4,
+          /*button_count=*/5,
           /*index_=*/1,
           State::DEBUG_OPTIONS,
           draw_utils,
-          screen_controller) {}
+          screen_controller),
+      log_store_manager_(log_store_manager),
+      process_manager_(process_manager) {}
 
 void ScreenDebugOptions::Show() {
   draw_utils_->MessageBaseScreen();
@@ -40,12 +47,14 @@ void ScreenDebugOptions::ShowButtons() {
   int default_width = draw_utils_->GetDefaultButtonWidth();
   const int kYOffset = -100;
   const int kYStep = kButtonHeight + kButtonMargin;
-  draw_utils_->ShowButton("btn_message_log", kYOffset, index_ == 1,
+  draw_utils_->ShowButton("btn_erase_logs", kYOffset, index_ == 1,
                           default_width, false);
-  draw_utils_->ShowButton("btn_back", kYOffset + kYStep, index_ == 2,
+  draw_utils_->ShowButton("btn_message_log", kYOffset + kYStep, index_ == 2,
+                          default_width, false);
+  draw_utils_->ShowButton("btn_back", kYOffset + (2 * kYStep), index_ == 3,
                           default_width, false);
 
-  draw_utils_->ShowPowerButton(index_ == 3);
+  draw_utils_->ShowPowerButton(index_ == 4);
 }
 
 void ScreenDebugOptions::OnKeyPress(int key_changed) {
@@ -57,12 +66,20 @@ void ScreenDebugOptions::OnKeyPress(int key_changed) {
         screen_controller_->SwitchLocale(this);
         break;
       case 1:
-        screen_controller_->OnForward(this);
+        if (!ClearLogStoreKey(process_manager_)) {
+          LOG(WARNING) << "Failed to clear log store key from VPD.";
+        }
+        if (log_store_manager_) {
+          log_store_manager_->ClearLogs();
+        }
         break;
       case 2:
-        screen_controller_->OnBackward(this);
+        screen_controller_->OnForward(this);
         break;
       case 3:
+        screen_controller_->OnBackward(this);
+        break;
+      case 4:
         TriggerShutdown();
         break;
       default:
@@ -86,13 +103,13 @@ std::string ScreenDebugOptions::GetName() {
 }
 
 bool ScreenDebugOptions::MoveForward(brillo::ErrorPtr* error) {
-  index_ = 1;
+  index_ = 2;
   OnKeyPress(KEY_ENTER);
   return true;
 }
 
 bool ScreenDebugOptions::MoveBackward(brillo::ErrorPtr* error) {
-  index_ = 2;
+  index_ = 3;
   OnKeyPress(KEY_ENTER);
   return true;
 }

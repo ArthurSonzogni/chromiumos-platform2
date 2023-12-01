@@ -11,6 +11,7 @@
 #include <brillo/message_loops/message_loop.h>
 
 #include "minios/draw_utils.h"
+#include "minios/log_store_manager.h"
 #include "minios/process_manager.h"
 #include "minios/state_reporter_interface.h"
 #include "minios/utils.h"
@@ -26,6 +27,7 @@ MiniOs::MiniOs(std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
       screens_controller_(ScreenController(draw_utils_,
                                            update_engine_proxy_,
                                            network_manager_,
+                                           std::make_shared<LogStoreManager>(),
                                            process_manager_)) {}
 
 int MiniOs::Run() {

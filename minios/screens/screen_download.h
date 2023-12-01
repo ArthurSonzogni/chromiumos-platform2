@@ -8,7 +8,9 @@
 #include <memory>
 #include <string>
 
+#include "minios/log_store_manager.h"
 #include "minios/metrics_reporter.h"
+#include "minios/process_manager_interface.h"
 #include "minios/recovery_installer.h"
 #include "minios/screens/screen_base.h"
 #include "minios/update_engine_proxy.h"
@@ -22,6 +24,7 @@ class ScreenDownload : public UpdateEngineProxy::UpdaterDelegate,
                  std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
                  std::shared_ptr<DrawInterface> draw_utils,
                  std::unique_ptr<MetricsReporterInterface> metrics_reporter,
+                 std::shared_ptr<LogStoreManagerInterface> log_store_manager,
                  std::shared_ptr<ProcessManagerInterface> process_manager,
                  ScreenControllerInterface* screen_controller);
 
@@ -83,7 +86,7 @@ class ScreenDownload : public UpdateEngineProxy::UpdaterDelegate,
   // Used to report network-based recovery metrics.
   std::unique_ptr<MetricsReporterInterface> metrics_reporter_;
 
-  // Used for mounting operations.
+  std::shared_ptr<LogStoreManagerInterface> log_store_manager_;
   std::shared_ptr<ProcessManagerInterface> process_manager_;
 };
 

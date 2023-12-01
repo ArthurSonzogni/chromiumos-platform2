@@ -4,22 +4,31 @@
 
 #include "minios/screens/screen_download.h"
 
+#include <memory>
+#include <optional>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <minios/proto_bindings/minios.pb.h>
 
-#include "minios/draw_utils.h"
+#include "minios/log_store_manager_interface.h"
 #include "minios/process_manager_interface.h"
 #include "minios/utils.h"
 
 namespace minios {
+
+namespace {
+const base::FilePath kMountedLogFilePath{
+    "/stateful/unencrypted/encrypted_logs.tar"};
+}
 
 ScreenDownload::ScreenDownload(
     std::unique_ptr<RecoveryInstallerInterface> recovery_installer,
     std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
     std::shared_ptr<DrawInterface> draw_utils,
     std::unique_ptr<MetricsReporterInterface> metrics_reporter,
+    std::shared_ptr<LogStoreManagerInterface> log_store_manager,
     std::shared_ptr<ProcessManagerInterface> process_manager,
     ScreenControllerInterface* screen_controller)
     : ScreenBase(
@@ -32,6 +41,7 @@ ScreenDownload::ScreenDownload(
       update_engine_proxy_(update_engine_proxy),
       display_update_engine_state_(false),
       metrics_reporter_(std::move(metrics_reporter)),
+      log_store_manager_(log_store_manager),
       process_manager_(process_manager) {
   update_engine_proxy_->SetDelegate(this);
 }
@@ -60,6 +70,12 @@ void ScreenDownload::Completed() {
   draw_utils_->ShowStepper({"done", "done", "done"});
   if (MountStatefulPartition(process_manager_)) {
     metrics_reporter_->ReportNBRComplete();
+    if (log_store_manager_) {
+      if (!log_store_manager_->SaveLogs(LogStoreManager::LogDirection::Stateful,
+                                        kMountedLogFilePath)) {
+        LOG(ERROR) << "Failed to save logs to=" << kMountedLogFilePath;
+      }
+    }
     if (!UnmountStatefulPartition(process_manager_)) {
       LOG(WARNING) << "Failed to unmount stateful partition";
     }
@@ -107,6 +123,9 @@ void ScreenDownload::OnProgressChanged(
                  << status.current_operation();
       screen_controller_->OnError(ScreenType::kDownloadError);
       display_update_engine_state_ = false;
+      if (log_store_manager_) {
+        log_store_manager_->SaveLogs(LogStoreManager::LogDirection::Disk);
+      }
       break;
     default:
       // Only `IDLE` can go back to `IDLE` without an error.

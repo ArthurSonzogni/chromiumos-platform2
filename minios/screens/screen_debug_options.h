@@ -8,14 +8,19 @@
 #include <memory>
 #include <string>
 
+#include "minios/log_store_manager_interface.h"
+#include "minios/process_manager_interface.h"
 #include "minios/screens/screen_base.h"
 
 namespace minios {
 
 class ScreenDebugOptions : public ScreenBase {
  public:
-  ScreenDebugOptions(std::shared_ptr<DrawInterface> draw_utils,
-                     ScreenControllerInterface* screen_controller);
+  ScreenDebugOptions(
+      std::shared_ptr<DrawInterface> draw_utils,
+      std::shared_ptr<LogStoreManagerInterface> log_store_manager,
+      std::shared_ptr<ProcessManagerInterface> process_manager,
+      ScreenControllerInterface* screen_controller);
 
   ~ScreenDebugOptions() = default;
 
@@ -31,8 +36,13 @@ class ScreenDebugOptions : public ScreenBase {
   bool MoveBackward(brillo::ErrorPtr* error) override;
 
  private:
+  FRIEND_TEST(ScreenDebugOptionsTest, ClearLogs);
+
   // Updates buttons with current selection.
   void ShowButtons();
+
+  std::shared_ptr<LogStoreManagerInterface> log_store_manager_;
+  std::shared_ptr<ProcessManagerInterface> process_manager_;
 };
 
 }  // namespace minios

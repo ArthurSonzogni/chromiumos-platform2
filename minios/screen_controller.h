@@ -16,6 +16,7 @@
 
 #include "minios/draw_interface.h"
 #include "minios/key_reader.h"
+#include "minios/log_store_manager_interface.h"
 #include "minios/network_manager_interface.h"
 #include "minios/process_manager_interface.h"
 #include "minios/screen_controller_interface.h"
@@ -34,6 +35,7 @@ class ScreenController : public ScreenControllerInterface,
   ScreenController(std::shared_ptr<DrawInterface> draw_utils,
                    std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
                    std::shared_ptr<NetworkManagerInterface> network_manager,
+                   std::shared_ptr<LogStoreManagerInterface> log_store_manager,
                    std::shared_ptr<ProcessManagerInterface> process_manager);
 
   virtual ~ScreenController() = default;
@@ -148,6 +150,8 @@ class ScreenController : public ScreenControllerInterface,
   std::unique_ptr<ScreenInterface> previous_screen_;
 
   std::unique_ptr<base::FilePathWatcher> frecon_screen_watcher_;
+
+  std::shared_ptr<LogStoreManagerInterface> log_store_manager_;
 };
 
 }  // namespace minios
