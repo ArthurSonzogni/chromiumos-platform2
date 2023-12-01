@@ -30,12 +30,12 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_time.h"
 #include "shill/net/mock_netlink_manager.h"
-#include "shill/net/netlink_message_matchers.h"
 #include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 #include "shill/time.h"
+#include "shill/wifi/nl80211_message_matchers.h"
 
 using testing::_;
 using ::testing::AnyNumber;

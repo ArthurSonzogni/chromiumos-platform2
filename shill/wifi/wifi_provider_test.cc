@@ -26,7 +26,6 @@
 #include "shill/mock_profile.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/mock_netlink_manager.h"
-#include "shill/net/netlink_message_matchers.h"
 #include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/store/fake_store.h"
@@ -41,6 +40,7 @@
 #include "shill/wifi/mock_wifi.h"
 #include "shill/wifi/mock_wifi_phy.h"
 #include "shill/wifi/mock_wifi_service.h"
+#include "shill/wifi/nl80211_message_matchers.h"
 #include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wifi_endpoint.h"
 

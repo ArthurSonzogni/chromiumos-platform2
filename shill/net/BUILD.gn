@@ -32,7 +32,6 @@ install_config("install_headers") {
     "netlink_attribute.h",
     "netlink_manager.h",
     "netlink_message.h",
-    "netlink_message_matchers.h",
     "netlink_packet.h",
     "nl80211_attribute.h",
     "nl80211_message.h",

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NET_NETLINK_MESSAGE_MATCHERS_H_
-#define SHILL_NET_NETLINK_MESSAGE_MATCHERS_H_
+#ifndef SHILL_WIFI_NL80211_MESSAGE_MATCHERS_H_
+#define SHILL_WIFI_NL80211_MESSAGE_MATCHERS_H_
 
 #include <vector>
 
@@ -123,4 +123,4 @@ MATCHER_P(HasNoHiddenSSID, nl80211_message_type, "") {
 
 }  // namespace shill
 
-#endif  // SHILL_NET_NETLINK_MESSAGE_MATCHERS_H_
+#endif  // SHILL_WIFI_NL80211_MESSAGE_MATCHERS_H_
