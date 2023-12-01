@@ -5,6 +5,11 @@ for typical ML use cases within ChromeOS. Where applicable, baseline figures
 are provided to indicate the minimum performance requirements for these models
 to meet the user experience goals of those use cases.
 
+Please note that the baseline figures and benchmarks provided here are for
+rough analysis only, the actual requirements for ChromeOS hardware performance
+may vary both in the specific benchmarks utilized as well as the target.
+ChromeOS partners should work with their Google contact on specific requirements.
+
 These models can be easily deployed to `/usr/local/share/ml-test-assets` on a
 DUT via the `chromeos-base/ml-test-assets` package:
 
