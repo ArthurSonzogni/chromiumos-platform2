@@ -39,6 +39,7 @@ static_library("libswapmanagement") {
     "swap_tool.cc",
     "utils.cc",
     "zram_idle.cc",
+    "zram_recompression.cc",
     "zram_stats.cc",
     "zram_writeback.cc",
   ]

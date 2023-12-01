@@ -6,7 +6,6 @@
 #include "swap_management/swap_tool.h"
 
 #include <memory>
-#include <utility>
 
 #include <absl/strings/str_cat.h>
 #include <chromeos/dbus/swap_management/dbus-constants.h>
@@ -83,20 +82,6 @@ TEST_F(SwapToolTest, SwapStart) {
   EXPECT_CALL(mock_util_, GetSystemMemoryInfo()).WillOnce(Return(mock_meminfo));
   EXPECT_CALL(mock_util_,
               RunProcessHelper(ElementsAre("/sbin/modprobe", "zram")))
-      .WillOnce(Return(absl::OkStatus()));
-  // SetRecompAlgorithms
-  EXPECT_CALL(mock_util_,
-              ReadFileToString(
-                  base::FilePath("/var/lib/swap/swap_recomp_algorithm"), _))
-      .WillOnce(
-          DoAll(SetArgPointee<1>("deflate lre"), Return(absl::OkStatus())));
-  EXPECT_CALL(mock_util_,
-              WriteFile(base::FilePath("/sys/block/zram0/recomp_algorithm"),
-                        "algo=deflate priority=1"))
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(mock_util_,
-              WriteFile(base::FilePath("/sys/block/zram0/recomp_algorithm"),
-                        "algo=lre priority=2"))
       .WillOnce(Return(absl::OkStatus()));
   EXPECT_CALL(mock_util_, WriteFile(base::FilePath("/sys/block/zram0/disksize"),
                                     kZramDisksize8G))

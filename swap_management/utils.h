@@ -21,10 +21,14 @@ constexpr char kZramSysfsDir[] = "/sys/block/zram0";
 constexpr uint32_t kMiB = 1048576;
 constexpr uint32_t kPageSize = 4096;
 
+template <typename T>
+T** GetSingleton() {
+  static T* inst = new T;
+  return &inst;
+}
+
 class Utils {
  public:
-  friend class MockUtils;
-
   static Utils* Get();
   static void OverrideForTesting(Utils* util);
 
@@ -74,6 +78,9 @@ class Utils {
   Utils(const Utils&) = delete;
 
   virtual ~Utils() = default;
+
+  friend class MockUtils;
+  friend Utils** GetSingleton<Utils>();
 };
 
 struct ScopedFilePathTraits {

@@ -20,22 +20,17 @@
 
 namespace swap_management {
 
-namespace {
-Utils* util_ = nullptr;
-}  // namespace
-
 Utils* Utils::Get() {
-  [[maybe_unused]] static bool created = []() -> bool {
-    if (!util_)
-      util_ = new Utils;
-    return true;
-  }();
-
-  return util_;
+  return *GetSingleton<Utils>();
 }
 
 void Utils::OverrideForTesting(Utils* util) {
-  util_ = util;
+  [[maybe_unused]] static bool is_overridden = []() -> bool {
+    if (*GetSingleton<Utils>())
+      delete *GetSingleton<Utils>();
+    return true;
+  }();
+  *GetSingleton<Utils>() = util;
 }
 
 // Helper function to run binary.

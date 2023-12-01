@@ -6,6 +6,7 @@
 #define SWAP_MANAGEMENT_METRICS_H_
 
 #include "metrics/metrics_library.h"
+#include "swap_management/utils.h"
 
 #include <absl/status/status.h>
 
@@ -24,6 +25,8 @@ class Metrics {
   Metrics(const Metrics&) = delete;
 
   ~Metrics() = default;
+
+  friend Metrics** GetSingleton<Metrics>();
 
   MetricsLibrary metrics_;
 };

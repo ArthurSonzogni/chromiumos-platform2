@@ -61,9 +61,6 @@ class DmDev {
 
 class ZramWriteback {
  public:
-  friend class MockZramWriteback;
-
-  // There are only one zram writeback instance in current setup.
   static ZramWriteback* Get();
 
   absl::Status SetZramWritebackConfigIfOverriden(const std::string& key,
@@ -83,6 +80,20 @@ class ZramWriteback {
   ZramWriteback(const ZramWriteback&) = delete;
 
   ~ZramWriteback();
+
+  friend class MockZramWriteback;
+
+  // There are only one zram writeback instance in current setup.
+  friend ZramWriteback** GetSingleton<ZramWriteback>();
+
+  void Cleanup();
+  absl::Status PrerequisiteCheck(uint32_t size);
+  absl::Status GetWritebackInfo(uint32_t size);
+  absl::Status CreateDmDevicesAndEnableWriteback();
+
+  absl::StatusOr<uint64_t> GetAllowedWritebackLimit();
+  absl::StatusOr<uint64_t> GetWritebackLimit();
+  void PeriodicWriteback();
 
   struct ZramWritebackParams {
     uint32_t backing_dev_size_mib = 1024;
@@ -122,15 +133,6 @@ class ZramWriteback {
   uint64_t zram_nr_pages_ = 0;
   bool is_currently_writing_back_ = false;
   base::Time last_writeback_ = base::Time::Min();
-
-  void Cleanup();
-  absl::Status PrerequisiteCheck(uint32_t size);
-  absl::Status GetWritebackInfo(uint32_t size);
-  absl::Status CreateDmDevicesAndEnableWriteback();
-
-  absl::StatusOr<uint64_t> GetAllowedWritebackLimit();
-  absl::StatusOr<uint64_t> GetWritebackLimit();
-  void PeriodicWriteback();
 
   base::WeakPtrFactory<ZramWriteback> weak_factory_{this};
 };

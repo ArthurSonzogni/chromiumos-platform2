@@ -132,28 +132,6 @@
         </tp:docstring>
       </tp:enumvalue>
     </tp:enum>
-    <method name="InitiateSwapZramRecompression">
-      <tp:docstring>
-        Initiate a zram recompression using the provided |mode|.
-      </tp:docstring>
-      <arg name="mode" type="u" direction="in">
-        <tp:docstring>
-          The type of decompression to issue the legal values are provided by the
-          enumeration ZramRecompressionMode.
-        </tp:docstring>
-      </arg>
-      <arg name="threshold" type="u" direction="in">
-        <tp:docstring>
-          Zram will recompress only pages of equal or greater |threshold| size.
-        </tp:docstring>
-      </arg>
-      <arg name="algo" type="s" direction="in">
-        <tp:docstring>
-          If |algo| is not empty, recompression will be limited to the one particular algorithm.
-        </tp:docstring>
-      </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
-    </method>
     <tp:enum name="ZramRecompressionMode" type="u">
       <tp:docstring>
         The valid modes available to use for zram writeback.
@@ -174,18 +152,5 @@
         </tp:docstring>
       </tp:enumvalue>
     </tp:enum>
-    <method name="SwapZramSetRecompAlgorithms">
-      <tp:docstring>
-        Set zram recompression algorithm in swap file. Change can be applied
-        after SwapRestart or reboot, and persistently across reboot.
-      </tp:docstring>
-      <arg name="algorithm" type="as" direction="in">
-        <tp:docstring>
-          Array of algorithms to be written in priority order. Empty array
-          means disabling zram recompression.
-        </tp:docstring>
-      </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
-    </method>
   </interface>
 </node>

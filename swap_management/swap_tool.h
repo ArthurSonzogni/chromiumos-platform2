@@ -8,8 +8,8 @@
 #include "featured/feature_library.h"
 
 #include <cstdint>
+#include <map>
 #include <string>
-#include <vector>
 
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
@@ -44,26 +44,22 @@ class SwapTool {
   // MGLRU configuration.
   absl::Status MGLRUSetEnable(uint8_t value);
 
-  // Zram Recompression
-  absl::Status SwapZramSetRecompAlgorithms(
-      const std::vector<std::string>& algos);
-  absl::Status InitiateSwapZramRecompression(ZramRecompressionMode mode,
-                                             uint32_t threshold,
-                                             const std::string& algo);
-
  private:
   absl::StatusOr<bool> IsZramSwapOn();
   absl::StatusOr<uint64_t> GetMemTotalKiB();
   absl::StatusOr<uint64_t> GetUserConfigZramSizeBytes();
   absl::StatusOr<uint64_t> GetZramSizeBytes();
-  void SetRecompAlgorithms();
-  void SetCompAlgorithmIfOverriden();
+  void SetCompAlgorithmIfOverridden();
   absl::Status EnableZramSwapping();
-  std::optional<std::string> GetFeatureParam(const VariationsFeature& vf,
-                                             const std::string& key);
+  std::optional<std::map<std::string, std::string>> GetFeatureParams(
+      const VariationsFeature& vf);
+  std::optional<std::string> GetFeatureParamValue(const VariationsFeature& vf,
+                                                  const std::string& key);
+  absl::Status EnableZramRecompression();
   absl::Status EnableZramWriteback();
 
   feature::PlatformFeatures* platform_features_ = nullptr;
+  bool zram_recompression_configured_ = false;
 };
 
 }  // namespace swap_management

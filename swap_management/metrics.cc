@@ -7,7 +7,6 @@
 namespace swap_management {
 
 namespace {
-Metrics* g_metrics_ = nullptr;
 
 // Metrics file needs to be in stateful partition since it could be replayed in
 // next boot time.
@@ -18,15 +17,9 @@ constexpr uint32_t kNumAbslStatus = 21;
 }  // namespace
 
 Metrics* Metrics::Get() {
-  [[maybe_unused]] static bool created = []() -> bool {
-    if (!g_metrics_) {
-      g_metrics_ = new Metrics;
-      g_metrics_->metrics_.SetOutputFile(kSwapMetricsFile);
-    }
-    return true;
-  }();
-
-  return g_metrics_;
+  Metrics* m = *GetSingleton<Metrics>();
+  m->metrics_.SetOutputFile(kSwapMetricsFile);
+  return m;
 }
 
 void Metrics::ReportSwapStartStatus(absl::Status status) {

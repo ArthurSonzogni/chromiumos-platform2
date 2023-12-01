@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "swap_management/utils.h"
 #include "swap_management/zram_idle.h"
 #include "swap_management/zram_stats.h"
 #include "swap_management/zram_writeback.h"
@@ -32,8 +31,6 @@ constexpr char kZramBackingDevice[] = "/sys/block/zram0/backing_dev";
 constexpr char kStatefulPartitionDir[] =
     "/mnt/stateful_partition/unencrypted/userspace_swap.tmp";
 constexpr uint32_t kSectorSize = 512;
-
-ZramWriteback* inst_ = nullptr;
 
 base::RepeatingTimer writeback_timer_;
 
@@ -147,13 +144,7 @@ std::string DmDev::GetPath() {
 }
 
 ZramWriteback* ZramWriteback::Get() {
-  [[maybe_unused]] static bool created = []() -> bool {
-    if (!inst_)
-      inst_ = new ZramWriteback;
-    return true;
-  }();
-
-  return inst_;
+  return *GetSingleton<ZramWriteback>();
 }
 
 // If we're unable to setup writeback just make sure we clean up any
@@ -537,11 +528,9 @@ void ZramWriteback::PeriodicWriteback() {
   absl::Cleanup cleanup = [&] { is_currently_writing_back_ = false; };
 
   // Did we writeback too recently?
-  if (last_writeback_ != base::Time::Min()) {
-    const auto time_since_writeback = base::Time::Now() - last_writeback_;
-    if (time_since_writeback < params_.backoff_time)
-      return;
-  }
+  const auto time_since_writeback = base::Time::Now() - last_writeback_;
+  if (time_since_writeback < params_.backoff_time)
+    return;
 
   absl::StatusOr<uint64_t> num_pages = GetAllowedWritebackLimit();
   if (!num_pages.ok() || *num_pages == 0) {
@@ -567,12 +556,12 @@ void ZramWriteback::PeriodicWriteback() {
   // enabled accordingly.
   ZramWritebackMode current_writeback_mode = WRITEBACK_HUGE_IDLE;
   while (current_writeback_mode != WRITEBACK_NONE) {
-    // Do enable writeback at current mode?
+    // Is writeback enabled at current mode?
     if ((current_writeback_mode == WRITEBACK_HUGE_IDLE &&
          params_.writeback_huge_idle) ||
         (current_writeback_mode == WRITEBACK_IDLE && params_.writeback_idle) ||
         (current_writeback_mode == WRITEBACK_HUGE && params_.writeback_huge)) {
-      // If we currently working on huge_idle or idle mode, mark idle for pages.
+      // If currently working on huge_idle or idle mode, mark idle for pages.
       if (current_writeback_mode == WRITEBACK_HUGE_IDLE ||
           current_writeback_mode == WRITEBACK_IDLE) {
         std::optional<uint64_t> idle_age_sec =

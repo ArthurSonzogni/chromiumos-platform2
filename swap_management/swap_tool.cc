@@ -6,7 +6,11 @@
 #include "swap_management/swap_tool.h"
 #include "swap_management/utils.h"
 #include "swap_management/zram_idle.h"
+#include "swap_management/zram_recompression.h"
 #include "swap_management/zram_writeback.h"
+
+#include <optional>
+#include <vector>
 
 #include <absl/status/status.h>
 #include <base/files/dir_reader_posix.h>
@@ -25,22 +29,17 @@ namespace swap_management {
 namespace {
 
 constexpr char kSwapSizeFile[] = "/var/lib/swap/swap_size";
-constexpr char kSwapRecompAlgorithmFile[] =
-    "/var/lib/swap/swap_recomp_algorithm";
 // The default size of zram is twice the device's memory size.
 constexpr float kDefaultZramSizeToMemTotalMultiplier = 2.0;
 
-constexpr char kSwapZramCompAlgorithmFeatureName[] =
-    "CrOSLateBootSwapZramCompAlgorithm";
 constexpr VariationsFeature kSwapZramCompAlgorithmFeature{
-    kSwapZramCompAlgorithmFeatureName, FEATURE_DISABLED_BY_DEFAULT};
-constexpr char kSwapZramDisksizeFeatureName[] = "CrOSLateBootSwapZramDisksize";
+    "CrOSLateBootSwapZramCompAlgorithm", FEATURE_DISABLED_BY_DEFAULT};
 constexpr VariationsFeature kSwapZramDisksizeFeature{
-    kSwapZramDisksizeFeatureName, FEATURE_DISABLED_BY_DEFAULT};
-constexpr char kSwapZramWritebackFeatureName[] =
-    "CrOSLateBootSwapZramWriteback";
+    "CrOSLateBootSwapZramDisksize", FEATURE_DISABLED_BY_DEFAULT};
 constexpr VariationsFeature kSwapZramWritebackFeature{
-    kSwapZramWritebackFeatureName, FEATURE_DISABLED_BY_DEFAULT};
+    "CrOSLateBootSwapZramWriteback", FEATURE_DISABLED_BY_DEFAULT};
+constexpr VariationsFeature kSwapZramRecompressionFeature{
+    "CrOSLateBootSwapZramRecompression", FEATURE_DISABLED_BY_DEFAULT};
 }  // namespace
 
 SwapTool::SwapTool(feature::PlatformFeatures* platform_features)
@@ -100,9 +99,9 @@ absl::StatusOr<uint64_t> SwapTool::GetUserConfigZramSizeBytes() {
 }
 
 // Set comp_algorithm if kSwapZramCompAlgorithmFeature is enabled.
-void SwapTool::SetCompAlgorithmIfOverriden() {
+void SwapTool::SetCompAlgorithmIfOverridden() {
   std::optional<std::string> comp_algorithm =
-      GetFeatureParam(kSwapZramCompAlgorithmFeature, "comp_algorithm");
+      GetFeatureParamValue(kSwapZramCompAlgorithmFeature, "comp_algorithm");
   if (comp_algorithm.has_value()) {
     LOG(INFO) << "Setting zram comp_algorithm to " << *comp_algorithm;
     absl::Status status = Utils::Get()->WriteFile(
@@ -144,7 +143,7 @@ absl::StatusOr<uint64_t> SwapTool::GetZramSizeBytes() {
   // Then check if feature kSwapZramDisksizeFeature is available.
   float multiplier = kDefaultZramSizeToMemTotalMultiplier;
   std::optional<std::string> feature_multiplier =
-      GetFeatureParam(kSwapZramDisksizeFeature, "multiplier");
+      GetFeatureParamValue(kSwapZramDisksizeFeature, "multiplier");
   if (feature_multiplier.has_value()) {
     if (!absl::SimpleAtof(*feature_multiplier, &multiplier)) {
       LOG(WARNING) << absl::OutOfRangeError(
@@ -159,41 +158,54 @@ absl::StatusOr<uint64_t> SwapTool::GetZramSizeBytes() {
       static_cast<uint64_t>((*meminfo).total) * 1024 * multiplier, kPageSize);
 }
 
-// Program /sys/block/zram0/recomp_algorithm.
-// For the format of |kSwapRecompAlgorithmFile|, please refer to the
-// description in SwapZramSetRecompAlgorithms.
-void SwapTool::SetRecompAlgorithms() {
-  std::string buf;
-  absl::Status status = Utils::Get()->ReadFileToString(
-      base::FilePath(kSwapRecompAlgorithmFile), &buf);
-  std::vector<std::string> algos = base::SplitString(
-      buf, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  for (uint8_t i = 0; i < algos.size(); i++) {
-    absl::Status status = Utils::Get()->WriteFile(
-        base::FilePath(kZramSysfsDir).Append("recomp_algorithm"),
-        "algo=" + algos[i] + " priority=" + std::to_string(i + 1));
-    LOG_IF(WARNING, !status.ok())
-        << "Failed to set zram recomp_algorithm: " << status;
+// Enable zram recompression if kSwapZramRecompressionFeature is enabled.
+absl::Status SwapTool::EnableZramRecompression() {
+  // Check if feature is enabled, and get the params.
+  auto params = GetFeatureParams(kSwapZramRecompressionFeature);
+  if (!params.has_value())
+    return absl::OkStatus();
+
+  // Read config from feature and override the default.
+  for (const auto& [key, value] : *params) {
+    absl::Status status =
+        ZramRecompression::Get()->SetZramRecompressionConfigIfOverriden(key,
+                                                                        value);
+    LOG_IF(WARNING, !status.ok()) << "Failed to set zram recompression config ["
+                                  << key << ": " << value << "]: " << status;
   }
+
+  absl::Status status = ZramRecompression::Get()->EnableRecompression();
+  if (status.ok())
+    zram_recompression_configured_ = true;
+
+  return status;
+}
+
+// Return params map for the feature.
+std::optional<std::map<std::string, std::string>> SwapTool::GetFeatureParams(
+    const VariationsFeature& vf) {
+  if (!platform_features_) {
+    LOG(ERROR) << "PlatformFeature is not available.";
+    return std::nullopt;
+  }
+
+  feature::PlatformFeaturesInterface::ParamsResult result =
+      platform_features_->GetParamsAndEnabledBlocking({&vf});
+  if (result.find(vf.name) != result.end() && result[vf.name].enabled)
+    return result[vf.name].params;
+
+  LOG(INFO) << vf.name << " is not enabled in PlatformFeature.";
+  return std::nullopt;
 }
 
 // Return value for params in feature if feature is enabled.
-std::optional<std::string> SwapTool::GetFeatureParam(
+std::optional<std::string> SwapTool::GetFeatureParamValue(
     const VariationsFeature& vf, const std::string& key) {
-  if (platform_features_) {
-    feature::PlatformFeaturesInterface::ParamsResult result =
-        platform_features_->GetParamsAndEnabledBlocking({&vf});
-    if (result.find(vf.name) != result.end()) {
-      // If not enabled.
-      if (!result[vf.name].enabled)
-        return std::nullopt;
+  auto params = GetFeatureParams(vf);
+  if (params.has_value() && (*params).find(key) != (*params).end())
+    return (*params)[key];
 
-      auto params = result[vf.name].params;
-      if (params.find(key) != params.end())
-        return params[key];
-    }
-  }
-
+  LOG(ERROR) << key << " is not configured in PlatformFeature " << vf.name;
   return std::nullopt;
 }
 
@@ -242,11 +254,13 @@ absl::Status SwapTool::SwapStart() {
   if (!Utils::Get()->RunProcessHelper({"/sbin/modprobe", "zram"}).ok())
     LOG(WARNING) << "modprobe zram failed (compiled?)";
 
-  // Set zram recompress algorithm if user has config.
-  SetRecompAlgorithms();
+  // Enable zram recompression if feature is available.
+  status = EnableZramRecompression();
+  LOG_IF(WARNING, !status.ok())
+      << "Failed to enable zram recompression: " << status;
 
   // Set zram compress algorithm if feature is available.
-  SetCompAlgorithmIfOverriden();
+  SetCompAlgorithmIfOverridden();
 
   // Set zram size.
   LOG(INFO) << "Setting zram disksize to " << *size_byte << " bytes";
@@ -269,6 +283,10 @@ absl::Status SwapTool::SwapStart() {
   // Enable zram writeback if feature is available.
   status = EnableZramWriteback();
   LOG_IF(ERROR, !status.ok()) << "Failed to enable zram writeback: " << status;
+
+  // Start zram recompression.
+  if (zram_recompression_configured_)
+    ZramRecompression::Get()->Start();
 
   return status;
 }
@@ -393,69 +411,14 @@ absl::Status SwapTool::MGLRUSetEnable(uint8_t value) {
       base::FilePath("/sys/kernel/mm/lru_gen/enabled"), std::to_string(value));
 }
 
-absl::Status SwapTool::InitiateSwapZramRecompression(ZramRecompressionMode mode,
-                                                     uint32_t threshold,
-                                                     const std::string& algo) {
-  base::FilePath filepath = base::FilePath(kZramSysfsDir).Append("recompress");
-  std::stringstream ss;
-  if (mode == RECOMPRESSION_IDLE) {
-    ss << "type=idle";
-  } else if (mode == RECOMPRESSION_HUGE) {
-    ss << "type=huge";
-  } else if (mode == RECOMPRESSION_HUGE_IDLE) {
-    ss << "type=huge_idle";
-  } else if (mode != 0) {
-    // |mode| can be optional.
-    return absl::InvalidArgumentError("Invalid mode");
-  }
-
-  if (threshold != 0)
-    ss << " threshold=" << std::to_string(threshold);
-
-  // This specified algorithm has to be registered through
-  // SwapZramSetRecompAlgorithms first.
-  if (!algo.empty())
-    ss << " algo=" << algo;
-
-  return Utils::Get()->WriteFile(filepath, ss.str());
-}
-
-absl::Status SwapTool::SwapZramSetRecompAlgorithms(
-    const std::vector<std::string>& algos) {
-  // We store |algos| in |kSwapRecompAlgorithmFile| in priority order, using
-  // space as delimiter: algo1 algo2 ... The next time SwapStart is executed,
-  // /sys/block/zram0/recomp_algorithm will be programmed with algo1 with
-  // priority 1, and algo2 with priority 2, etc.
-  absl::Status status = absl::OkStatus();
-
-  // With empty |algos|, we disable zram recompression by removing
-  // |kSwapRecompAlgorithmFile|
-  if (algos.empty())
-    return Utils::Get()->DeleteFile(base::FilePath(kSwapRecompAlgorithmFile));
-
-  const std::string joined = base::JoinString(algos, " ");
-  return Utils::Get()->WriteFile(base::FilePath(kSwapRecompAlgorithmFile),
-                                 joined);
-}
-
 absl::Status SwapTool::EnableZramWriteback() {
-  // Check if feature (kSwapZramWritebackFeature) is enabled.
-  if (!platform_features_) {
-    LOG(WARNING) << "PlatformFeatures is not initialized.";
+  // Check if feature is enabled, and get the params.
+  auto params = GetFeatureParams(kSwapZramWritebackFeature);
+  if (!params.has_value())
     return absl::OkStatus();
-  }
-  feature::PlatformFeaturesInterface::ParamsResult result =
-      platform_features_->GetParamsAndEnabledBlocking(
-          {&kSwapZramWritebackFeature});
-  if (result.find(kSwapZramWritebackFeatureName) == result.end() ||
-      !result[kSwapZramWritebackFeatureName].enabled) {
-    LOG(INFO) << "CrOSLateBootSwapZramWriteback feature is not enabled.";
-    return absl::OkStatus();
-  }
 
   // Read config from feature and override the default.
-  for (const auto& [key, value] :
-       result[kSwapZramWritebackFeatureName].params) {
+  for (const auto& [key, value] : *params) {
     absl::Status status =
         ZramWriteback::Get()->SetZramWritebackConfigIfOverriden(key, value);
     LOG_IF(WARNING, !status.ok()) << "Failed to set zram writeback config ["
