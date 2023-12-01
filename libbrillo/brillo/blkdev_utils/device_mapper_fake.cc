@@ -17,59 +17,6 @@ namespace fake {
 
 namespace {
 
-// Parses the parameters of a DmTarget, clears the key field and returns the
-// updated parameters as a SecureBlob.
-SecureBlob ClearKeysParameter(const DmTarget& dmt) {
-  std::string cipher;
-  base::FilePath device;
-  int iv_offset, device_offset;
-  uint64_t allow_discard;
-  // Parse dmt parameters, copy existing values and only remove key reference
-  SecureBlobTokenizer tokenizer(dmt.parameters.begin(), dmt.parameters.end(),
-                                " ");
-
-  // First field is the cipher.
-  if (!tokenizer.GetNext())
-    return SecureBlob();
-  cipher = std::string(tokenizer.token_begin(), tokenizer.token_end());
-
-  // The key is stored in the second field, skip this
-  if (!tokenizer.GetNext())
-    return SecureBlob();
-
-  // The next field is iv_offset
-  if (!tokenizer.GetNext() ||
-      !base::StringToInt(
-          std::string(tokenizer.token_begin(), tokenizer.token_end()),
-          &iv_offset))
-    return SecureBlob();
-
-  // The next field is const base::FilePath& device
-  if (!tokenizer.GetNext())
-    return SecureBlob();
-  device = base::FilePath(
-      std::string(tokenizer.token_begin(), tokenizer.token_end()));
-
-  // The next field is int device_offset
-  if (!tokenizer.GetNext() ||
-      !base::StringToInt(
-          std::string(tokenizer.token_begin(), tokenizer.token_end()),
-          &device_offset))
-    return SecureBlob();
-
-  // The next field is bool allow_discard
-  if (!tokenizer.GetNext() ||
-      !base::StringToUint64(
-          std::string(tokenizer.token_begin(), tokenizer.token_end()),
-          &allow_discard))
-    return SecureBlob();
-
-  // Construct one SecureBlob from the parameters and return it.
-  return DevmapperTable::CryptCreateParameters(
-      cipher, /*encryption_key=*/SecureBlob(), iv_offset, device, device_offset,
-      allow_discard);
-}
-
 // Parses the parameters of a DmTarget, sets the key field and returns the
 // updated parameters as a SecureBlob.
 SecureBlob SetKeysParameter(const DmTarget& dmt,
@@ -88,7 +35,11 @@ SecureBlob SetKeysParameter(const DmTarget& dmt,
     return SecureBlob();
   cipher = std::string(tokenizer.token_begin(), tokenizer.token_end());
 
-  // The key should be cleared, the next field should be iv_offset.
+  // The key is stored in the second field, skip this
+  if (!tokenizer.GetNext())
+    return SecureBlob();
+
+  // The next field should be iv_offset.
   if (!tokenizer.GetNext() ||
       !base::StringToInt(
           std::string(tokenizer.token_begin(), tokenizer.token_end()),
@@ -169,7 +120,8 @@ bool StubDmRunTask(DmTask* task, bool udev_sync) {
         // Fetch the DmTarget from the dm_target_map and wipe the key from
         // that target.
         DmTarget dmt = dm_target_map_.find(dev_name)->second.front();
-        dmt.parameters = ClearKeysParameter(dmt);
+        // Set the keys to a blank SecureBlob, essentially wiping them.
+        dmt.parameters = SetKeysParameter(dmt, "0");
         // Update the DmTargets within |task| as well.
         task->targets = std::vector<DmTarget>{dmt};
         // Clear and refresh dm_target_map_ to reflect changes.

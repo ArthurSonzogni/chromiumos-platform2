@@ -206,13 +206,35 @@ TEST_F(DmcryptContainerTest, RestoreKeyCheck) {
 
   EXPECT_TRUE(container_->Setup(key_));
   EXPECT_TRUE(container_->EvictKey());
-  // Check that the key in memory has been zeroed from the table
+  // Check that the key in memory has been zeroed from the table.
   EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
             brillo::SecureBlob("0"));
 
   EXPECT_TRUE(container_->RestoreKey(key_));
 
-  // Check that the key in memory has been restored from the table
+  // Check that the key in memory has been restored from the table.
+  EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
+            key_descriptor_);
+}
+
+// Tests that RestoreKey works with a device that hasn't been evicted.
+TEST_F(DmcryptContainerTest, RestoreKeyCheckOnValidTable) {
+  EXPECT_CALL(platform_, GetBlkSize(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
+  EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, Tune2Fs(_, _)).WillOnce(Return(true));
+
+  backing_device_->Create();
+  GenerateContainer();
+
+  EXPECT_TRUE(container_->Setup(key_));
+  // Check that the key in memory is valid.
+  EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
+            key_descriptor_);
+
+  EXPECT_TRUE(container_->RestoreKey(key_));
+
+  // Check that the key in memory is still valid.
   EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
             key_descriptor_);
 }
