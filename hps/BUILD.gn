@@ -40,6 +40,7 @@ config("target_defaults") {
     "-Wno-deprecated",
     "-Wno-expansion-to-defined",
     "-Wno-float-equal",
+    "-Wno-gcc-compat",
     "-Wno-gnu-zero-variadic-macro-arguments",
     "-Wno-old-style-cast",
     "-Wno-padded",
