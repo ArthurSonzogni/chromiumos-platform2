@@ -206,7 +206,10 @@ if (use.test) {
       "utils_test.cc",
     ]
     if (use.lvm_stateful_partition) {
-      sources += [ "lvm/dlc_lvm_test.cc" ]
+      sources += [
+        "lvm/dlc_lvm_test.cc",
+        "lvm/lvmd_proxy_wrapper_test.cc",
+      ]
     }
     configs += [
       "//common-mk:test",

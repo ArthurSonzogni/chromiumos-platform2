@@ -53,6 +53,14 @@ class MockUtils : public UtilsInterface {
               GetSupportedDlcIds,
               (const base::FilePath& metadata_path),
               (override));
+  MOCK_METHOD(base::FilePath,
+              MakeAbsoluteFilePath,
+              (const base::FilePath& path),
+              (override));
+  MOCK_METHOD(bool,
+              WaitForGid,
+              (const base::FilePath& target_path, int target_gid),
+              (override));
 };
 
 }  // namespace dlcservice

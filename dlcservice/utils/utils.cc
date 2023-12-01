@@ -207,4 +207,28 @@ bool Utils::InitializeDlcMetadata(const base::FilePath& path) {
   return true;
 }
 
+base::FilePath Utils::MakeAbsoluteFilePath(const base::FilePath& path) {
+  return base::MakeAbsoluteFilePath(path);
+}
+
+bool Utils::WaitForGid(const base::FilePath& target_path, int target_gid) {
+  base::stat_wrapper_t st = {0};
+  for (int loop_cnt = 0; st.st_gid != target_gid; ++loop_cnt) {
+    // 5s (50ms * 100) limit.
+    if (loop_cnt >= 100) {
+      LOG(ERROR) << "Failed check within threshold for path=" << target_path;
+      return false;
+    }
+
+    if (base::File::Stat(target_path.value().c_str(), &st) < 0) {
+      PLOG(ERROR) << "Failed to stat path=" << target_path;
+      return false;
+    }
+
+    // 10ms delay.
+    usleep(10 * 1000);
+  }
+  return true;
+}
+
 }  // namespace dlcservice

@@ -9,8 +9,11 @@
 #include <string>
 #include <vector>
 
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <lvmd/proto_bindings/lvmd.pb.h>
 #include <lvmd/dbus-proxies.h>
+
+#include "dlcservice/utils/utils.h"
 
 namespace dlcservice {
 
@@ -47,6 +50,9 @@ class LvmdProxyWrapper : public LvmdProxyWrapperInterface {
  public:
   using LvmdProxyInterface = org::chromium::LvmdProxyInterface;
   explicit LvmdProxyWrapper(std::unique_ptr<LvmdProxyInterface> lvmd_proxy);
+  LvmdProxyWrapper(std::unique_ptr<LvmdProxyInterface> lvmd_proxy,
+                   std::unique_ptr<UtilsInterface> utils);
+
   ~LvmdProxyWrapper() = default;
 
   LvmdProxyWrapper(const LvmdProxyWrapper&) = delete;
@@ -63,6 +69,9 @@ class LvmdProxyWrapper : public LvmdProxyWrapperInterface {
                          lvmd::PhysicalVolume* pv) override;
 
  private:
+  friend class LvmdProxyWrapperTest;
+  FRIEND_TEST(LvmdProxyWrapperTest, CreateLogicalVolumeGidCheck);
+
   bool GetVolumeGroup(const lvmd::PhysicalVolume& pv, lvmd::VolumeGroup* vg);
   bool GetThinpool(const lvmd::VolumeGroup& vg, lvmd::Thinpool* thinpool);
   bool GetLogicalVolume(const lvmd::VolumeGroup& vg,
@@ -77,6 +86,7 @@ class LvmdProxyWrapper : public LvmdProxyWrapperInterface {
                                      bool activate);
 
   std::unique_ptr<LvmdProxyInterface> lvmd_proxy_;
+  std::unique_ptr<UtilsInterface> utils_;
 };
 
 }  // namespace dlcservice

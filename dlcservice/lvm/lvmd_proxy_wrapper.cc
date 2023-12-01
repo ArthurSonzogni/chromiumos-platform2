@@ -5,8 +5,11 @@
 #include "dlcservice/lvm/lvmd_proxy_wrapper.h"
 
 #include <memory>
+#include <tuple>
 #include <utility>
 #include <vector>
+
+#include <base/files/file_path.h>
 
 #include "dlcservice/system_state.h"
 
@@ -17,11 +20,19 @@ namespace {
 // CrOS currently only uses "thinpool" as thinpool name.
 constexpr char kThinpoolName[] = "thinpool";
 
+// The numeric group value for `disk-dlc`.
+constexpr int kDiskDlcGid = 20777;
+
 }  // namespace
 
 LvmdProxyWrapper::LvmdProxyWrapper(
     std::unique_ptr<org::chromium::LvmdProxyInterface> lvmd_proxy)
-    : lvmd_proxy_(std::move(lvmd_proxy)) {}
+    : LvmdProxyWrapper(std::move(lvmd_proxy), std::make_unique<Utils>()) {}
+
+LvmdProxyWrapper::LvmdProxyWrapper(
+    std::unique_ptr<org::chromium::LvmdProxyInterface> lvmd_proxy,
+    std::unique_ptr<UtilsInterface> utils)
+    : lvmd_proxy_(std::move(lvmd_proxy)), utils_(std::move(utils)) {}
 
 bool LvmdProxyWrapper::GetPhysicalVolume(const std::string& device_path,
                                          lvmd::PhysicalVolume* pv) {
@@ -106,6 +117,16 @@ bool LvmdProxyWrapper::CreateLogicalVolume(
   if (!lvmd_proxy_->CreateLogicalVolume(thinpool, lv_config, lv, &err)) {
     LOG(WARNING) << "Failed to CreateLogicalVolume in lvmd: "
                  << Error::ToString(err);
+    return false;
+  }
+  // Check for permission changes, this is to handle race condition with
+  // current DLC udev rules.
+  const auto& lv_mapper_path =
+      utils_->MakeAbsoluteFilePath(base::FilePath{lv->path()});
+  if (!utils_->WaitForGid(lv_mapper_path, kDiskDlcGid)) {
+    LOG(ERROR)
+        << "Failed to CreateLogicalVolume as udev rules did not run for path="
+        << lv_mapper_path;
     return false;
   }
   return true;

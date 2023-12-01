@@ -56,6 +56,13 @@ class BRILLO_EXPORT UtilsInterface {
       const std::string& id, const base::FilePath& dlc_manifest_path) = 0;
 
   virtual DlcIdList GetSupportedDlcIds(const base::FilePath& metadata_path) = 0;
+
+  // Wrapper around `base::MakeAbsoluteFilePath`.
+  virtual base::FilePath MakeAbsoluteFilePath(const base::FilePath& path) = 0;
+
+  // Checks for the target GID at the target path.
+  virtual bool WaitForGid(const base::FilePath& target_path,
+                          int target_gid) = 0;
 };
 
 }  // namespace dlcservice

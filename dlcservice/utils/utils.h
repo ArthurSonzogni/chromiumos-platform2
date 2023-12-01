@@ -60,6 +60,10 @@ class BRILLO_EXPORT Utils : public UtilsInterface {
 
   DlcIdList GetSupportedDlcIds(const base::FilePath& metadata_path) override;
 
+  base::FilePath MakeAbsoluteFilePath(const base::FilePath& path) override;
+
+  bool WaitForGid(const base::FilePath& target_path, int target_gid) override;
+
  private:
   bool InitializeDlcMetadata(const base::FilePath& path);
 
