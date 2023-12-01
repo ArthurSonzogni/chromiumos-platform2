@@ -4,6 +4,7 @@
 
 #include "crash-reporter/kernel_util.h"
 
+#include <base/files/file_util.h>
 #include <gtest/gtest.h>
 
 #include "crash-reporter/test_util.h"
@@ -14,11 +15,19 @@ namespace {
 void ComputeKernelStackSignatureCommon(kernel_util::ArchKind arch) {
   const char kStackButNoPC[] =
       "<4>[ 6066.829029]  [<790340af>] __do_softirq+0xa6/0x143\n";
-  EXPECT_EQ("kernel--83615F0A",
+  EXPECT_EQ("kernel-__do_softirq-83615F0A",
             kernel_util::ComputeKernelStackSignature(kStackButNoPC, arch));
 
-  const char kMissingEverything[] =
+  // If all frames are uncertain we use uncertain names for the hash but
+  // not for the human readable name, which is just blank.
+  const char kJustUncertainStackButNoPC[] =
       "<4>[ 6066.829029]  [<790340af>] ? __do_softirq+0xa6/0x143\n";
+  EXPECT_EQ("kernel--83615F0A", kernel_util::ComputeKernelStackSignature(
+                                    kJustUncertainStackButNoPC, arch));
+
+  // If we found nothing we have a fallback case.
+  const char kMissingEverything[] =
+      "<4>[ 6066.829029] Nothing to see here; move along.\n";
   EXPECT_EQ("kernel-UnspecifiedStackSignature",
             kernel_util::ComputeKernelStackSignature(kMissingEverything, arch));
 
@@ -166,6 +175,66 @@ TEST(KernelUtilTest, ComputeKernelStackSignatureARM64SoftwarePAN) {
 }
 
 TEST(KernelUtilTest, ComputeKernelStackSignatureARM64) {
+  const kernel_util::ArchKind arch = kernel_util::kArchArm;
+  std::string test_contents;
+
+  // echo HARDLOCKUP > /sys/kernel/debug/provoke-crash/DIRECT
+  EXPECT_TRUE(base::ReadFileToString(
+      test_util::GetTestDataPath("TEST_ARM64_PROVOKE_KERNEL_HARDLOCKUP",
+                                 /*use_testdata=*/true),
+      &test_contents));
+  EXPECT_EQ("kernel-(HARDLOCKUP)-lkdtm_HARDLOCKUP-E613FB3C",
+            kernel_util::ComputeKernelStackSignature(test_contents, arch));
+
+  // echo SOFTLOCKUP > /sys/kernel/debug/provoke-crash/DIRECT
+  EXPECT_TRUE(base::ReadFileToString(
+      test_util::GetTestDataPath("TEST_ARM64_PROVOKE_KERNEL_SOFTLOCKUP",
+                                 /*use_testdata=*/true),
+      &test_contents));
+  EXPECT_EQ("kernel-(SOFTLOCKUP)-lkdtm_SOFTLOCKUP-3A263E5B",
+            kernel_util::ComputeKernelStackSignature(test_contents, arch));
+
+  // echo HUNG_TASK > /sys/kernel/debug/provoke-crash/DIRECT
+  EXPECT_TRUE(base::ReadFileToString(
+      test_util::GetTestDataPath("TEST_ARM64_PROVOKE_KERNEL_HUNG_TASK",
+                                 /*use_testdata=*/true),
+      &test_contents));
+  EXPECT_EQ("kernel-(HANG)-__switch_to-DFE15A1E",
+            kernel_util::ComputeKernelStackSignature(test_contents, arch));
+
+  // A hard lockup without NMI backtrace, since many ARM boards don't have
+  // that yet. In this case the most important trace (the hung CPU) isn't
+  // present. We'll pickup the stack of whatever CPU happened to trace back
+  // first. This isn't a great signature, but we have no good choices.
+  EXPECT_TRUE(base::ReadFileToString(
+      test_util::GetTestDataPath("TEST_ARM64_PROVOKE_KERNEL_HARDLOCKUP_NO_NMI",
+                                 /*use_testdata=*/true),
+      &test_contents));
+  EXPECT_EQ("kernel-(HARDLOCKUP)-cpuidle_enter_state-38D24442",
+            kernel_util::ComputeKernelStackSignature(test_contents, arch));
+
+  // Generated with these two commands in quick succession. Shows that the
+  // warning doesn't confuse detection of the name from the panic even when
+  // they're close together in time.
+  //   echo WARNING > /sys/kernel/debug/provoke-crash/DIRECT;
+  //   echo PANIC > /sys/kernel/debug/provoke-crash/DIRECT
+  EXPECT_TRUE(base::ReadFileToString(
+      test_util::GetTestDataPath("TEST_ARM64_WARN_PLUS_PANIC",
+                                 /*use_testdata=*/true),
+      &test_contents));
+  EXPECT_EQ("kernel-dumptest-54F8FF35",
+            kernel_util::ComputeKernelStackSignature(test_contents, arch));
+
+  // Asynchronous SError Interrupt. We want the human-readable name to be
+  // based on the CPU registers so we avoid all the extra cruft in the stack
+  // trace from the panic (and we also don't want the generic panic message).
+  EXPECT_TRUE(
+      base::ReadFileToString(test_util::GetTestDataPath("TEST_ARM64_SERROR",
+                                                        /*use_testdata=*/true),
+                             &test_contents));
+  EXPECT_EQ("kernel-__gsi_channel_start-ABCFEBDE",
+            kernel_util::ComputeKernelStackSignature(test_contents, arch));
+
   const char kBugToPanic[] =
       "<4>[  263.786327] Modules linked in:\n"
       "<4>[  263.841132] CPU: 2 PID: 1303 Comm: bash Not tainted 5.4.57 #355\n"
@@ -339,7 +408,8 @@ TEST(KernelUtilTest, ComputeKernelStackSignatureX86) {
 
   // Panic from hung task.
   const char kHungTaskBreakMe[] =
-      "<3>[  720.459157] INFO: task bash:2287 blocked blah blah\n"
+      "<3>[  720.459157] INFO: task bash:2287 blocked for more than 122 "
+      "seconds.\n"
       "<5>[  720.459282] Call Trace:\n"
       "<5>[  720.459307]  [<810a457b>] ? __dentry_open+0x186/0x23e\n"
       "<5>[  720.459323]  [<810b9c71>] ? mntput_no_expire+0x29/0xe2\n"
@@ -368,7 +438,7 @@ TEST(KernelUtilTest, ComputeKernelStackSignatureX86) {
       "<5>[  720.460693]  [<81043af3>] kthread+0x67/0x6c\n"
       "<5>[  720.460862]  [<81043a8c>] ? __init_kthread_worker+0x2d/0x2d\n"
       "<5>[  720.461106]  [<8137eb9e>] kernel_thread_helper+0x6/0x10\n";
-  EXPECT_EQ("kernel-(HANG)-hung_task: blocked tasks-600B37EA",
+  EXPECT_EQ("kernel-(HANG)-schedule-600B37EA",
             kernel_util::ComputeKernelStackSignature(kHungTaskBreakMe, arch));
 
   // Panic with all question marks in the last stack trace.
@@ -478,11 +548,10 @@ TEST(KernelUtilTest, ComputeKernelStackSignatureX86) {
       "<5>[56279.703703]  [<810ee99d>] ? sysfs_write_file+0x0/0xec\n"
       "<5>[56279.703709]  [<810af556>] ? sys_write+0x40/0x65\n"
       "<5>[56279.703716]  [<81002d57>] ? sysenter_do_call+0x12/0x26\n";
-  // The first trace contains only uncertain entries and its hash is 00000000,
-  // so, if we used that, the signature would be kernel-add_timer-00000000.
-  // Instead we use the second-to-last trace for the hash.
+  // The first trace contains only uncertain entries. In this case the
+  // algorithms allow uncertain entries for the signature generation.
   EXPECT_EQ(
-      "kernel-add_timer-B5178878",
+      "kernel-add_timer-3CA23B61",
       kernel_util::ComputeKernelStackSignature(kUncertainStackTrace, arch));
 }
 

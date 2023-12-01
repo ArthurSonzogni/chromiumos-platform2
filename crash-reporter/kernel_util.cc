@@ -26,11 +26,13 @@ constexpr char kDefaultKernelStackSignature[] =
 constexpr size_t kMaxHumanStringLength = 40;
 // Time in seconds from the final kernel log message for a call stack
 // to count towards the signature of the kcrash.
-constexpr int kSignatureTimestampWindow = 2;
+constexpr float kSignatureTimestampWindow = .200;
 // Kernel log timestamp regular expression.
 // Specify the multiline option so that ^ matches the start of lines, not just
-// the start of the text.
+// the start of the text. We have two variants, one that captures the timestamp
+// and one that doesn't.
 constexpr char kTimestampRegex[] = "(?m)^<.*>\\[\\s*(\\d+\\.\\d+)\\]";
+constexpr char kTimestampNoCaptureRegex[] = "(?m)^<.*>\\[\\s*\\d+\\.\\d+\\]";
 
 //
 // These regular expressions enable to us capture the function name of
@@ -64,16 +66,40 @@ const char* const kPCFuncNameRegex[] = {
 static_assert(std::size(kPCFuncNameRegex) == kernel_util::kArchCount,
               "Missing Arch PC func_name RegExp");
 
-void ProcessStackTrace(re2::StringPiece kernel_dump,
+// Find the most relevant stack trace in the log and sets `hash`,
+// `stack_fn`, and `crash_tag` appropriately.
+//
+// Outputs:
+// `hash`: The hash of the names of all the functions in the stack.
+// `stack_fn`: The name of the most relevant function on that stack.
+// `crash_tag`: An optional tag that indicates if this is a
+//              special kind of stack (like a hang). Set to the empty
+//              string if this is not a special kind of crash.
+//
+// This function will return true if it's confident in the human readable
+// string. If it's not confident, it will still set the return values to
+// something reasonable, but it means we should look elsewhere (like for a
+// panic message) for a human readable string if we can find it.
+bool ProcessStackTrace(re2::StringPiece kernel_dump,
+                       kernel_util::ArchKind arch,
                        unsigned* hash,
-                       float* last_stack_timestamp,
-                       bool* is_watchdog_crash) {
+                       std::string* stack_fn,
+                       std::string* crash_tag) {
   RE2 line_re("(.+)");
 
   RE2::Options opt;
   opt.set_case_sensitive(false);
+  RE2 warning_start_re(std::string(kTimestampNoCaptureRegex) + " WARNING: ");
+  RE2 warning_end_re(std::string(kTimestampNoCaptureRegex) +
+                     " ---\\[ end trace [[:xdigit:]]+ \\]---");
+  RE2 hard_lockup_re(std::string(kTimestampNoCaptureRegex) +
+                     " Watchdog detected hard LOCKUP");
+  RE2 soft_lockup_re(std::string(kTimestampNoCaptureRegex) +
+                     " watchdog: BUG: soft lockup");
+  RE2 hung_task_re(std::string(kTimestampNoCaptureRegex) +
+                   " INFO: task .*:\\d+ blocked for more than");
   RE2 stack_trace_start_re(
-      std::string(kTimestampRegex) + " (Call Trace|Backtrace):$", opt);
+      std::string(kTimestampNoCaptureRegex) + " (Call Trace|Backtrace):$", opt);
 
   // Match lines such as the following and grab out "function_name".
   // The ? may or may not be present.
@@ -97,79 +123,120 @@ void ProcessStackTrace(re2::StringPiece kernel_dump,
       R"(([^\+ )]+))");                 // Matches until delimiter reached
   std::string line;
   std::string hashable;
-  std::string previous_hashable;
-  bool is_watchdog = false;
-
-  *hash = 0;
-  *last_stack_timestamp = 0;
-
-  // Find the last and second-to-last stack traces.  The latter is used when
-  // the panic is from a watchdog timeout.
-  while (RE2::FindAndConsume(&kernel_dump, line_re, &line)) {
-    std::string certainty;
-    std::string function_name;
-    if (RE2::PartialMatch(line, stack_trace_start_re, last_stack_timestamp)) {
-      previous_hashable = hashable;
-      hashable.clear();
-      is_watchdog = false;
-    } else if (RE2::PartialMatch(line, stack_entry_re, last_stack_timestamp,
-                                 &certainty, &function_name)) {
-      bool is_certain = certainty.find('?') == std::string::npos;
-      // Do not include any uncertain (prefixed by '?') frames in our hash.
-      if (!is_certain)
-        continue;
-      if (!hashable.empty())
-        hashable.append("|");
-      if (function_name == "watchdog_timer_fn" || function_name == "watchdog") {
-        is_watchdog = true;
-      }
-      hashable.append(function_name);
-    }
-  }
-
-  // If the last stack trace contains a watchdog function we assume the panic
-  // is from the watchdog timer, and we hash the previous stack trace rather
-  // than the last one, assuming that the previous stack is that of the hung
-  // thread.
-  //
-  // In addition, if the hashable is empty (meaning all frames are uncertain,
-  // for whatever reason) also use the previous frame, as it cannot be any
-  // worse.
-  if (is_watchdog || hashable.empty()) {
-    hashable = previous_hashable;
-  }
-
-  *hash = util::HashString(hashable);
-  *is_watchdog_crash = is_watchdog;
-}
-
-bool FindCrashingFunction(re2::StringPiece kernel_dump,
-                          float stack_trace_timestamp,
-                          kernel_util::ArchKind arch,
-                          std::string* crashing_function) {
-  float timestamp = 0;
+  std::string uncertain_hashable;
+  float stack_timestamp = 0;
+  bool found_the_stack = false;
+  bool want_next_stack = false;
+  bool in_warning = false;
 
   // Use the correct regex for this architecture.
   if (kPCFuncNameRegex[arch] == nullptr) {
     LOG(WARNING) << "PC func_name RegExp is not defined for this architecture";
     return false;
   }
-  RE2 func_re(std::string(kTimestampRegex) + kPCFuncNameRegex[arch]);
+  RE2 cpureg_fn_re(std::string(kTimestampRegex) + kPCFuncNameRegex[arch]);
+  std::string cpureg_fn;
+  float cpureg_timestamp = 0;
 
-  while (RE2::FindAndConsume(&kernel_dump, func_re, &timestamp,
-                             crashing_function)) {
+  stack_fn->clear();
+  crash_tag->clear();
+  *hash = 0;
+
+  // Find the last stack trace, unless we see an indication that there was a
+  // hang of some sort. In those cases we pick the first stack trace after
+  // we see the hang message since the kernel always tries to trace the
+  // hung task first.
+  while (RE2::FindAndConsume(&kernel_dump, line_re, &line)) {
+    std::string certainty;
+    std::string function_name;
+
+    // While we're in a warning we eat lines until we get out of the warning.
+    // Warnings are collected by the warning collector--we never want them
+    // here in the kernel collector.
+    if (in_warning) {
+      if (RE2::PartialMatch(line, warning_end_re)) {
+        in_warning = false;
+      }
+    } else {
+      in_warning = RE2::PartialMatch(line, warning_start_re);
+    }
+    if (in_warning) {
+      continue;
+    }
+
+    // After we've skipped warnings, always capture the function from any
+    // CPU registers that we see. This is often going to be the same function
+    // name we capture below (AKA stack_fn).
+    RE2::PartialMatch(line, cpureg_fn_re, &cpureg_timestamp, &cpureg_fn);
+
+    if (RE2::PartialMatch(line, hard_lockup_re)) {
+      want_next_stack = true;
+      *crash_tag = "(HARDLOCKUP)-";
+    } else if (RE2::PartialMatch(line, soft_lockup_re)) {
+      want_next_stack = true;
+      *crash_tag = "(SOFTLOCKUP)-";
+    } else if (RE2::PartialMatch(line, hung_task_re)) {
+      want_next_stack = true;
+      *crash_tag = "(HANG)-";
+    } else if (RE2::PartialMatch(line, stack_trace_start_re)) {
+      // We set `found_the_stack` true once we've started parsing the 1st stack
+      // after a watchdog message. Break as soon as we see yet another stack.
+      if (found_the_stack) {
+        break;
+      }
+      hashable.clear();
+      uncertain_hashable.clear();
+      stack_fn->clear();
+      found_the_stack = want_next_stack;
+    } else if (RE2::PartialMatch(line, stack_entry_re, &stack_timestamp,
+                                 &certainty, &function_name)) {
+      bool is_certain = certainty.find('?') == std::string::npos;
+
+      // Keep track of two hashables, one that doesn't include include any
+      // uncertain (prefixed by '?') frames and ones that includes all frames.
+      // We only use the uncertain hashable if there are no certain frames.
+      if (!uncertain_hashable.empty())
+        uncertain_hashable.append("|");
+      uncertain_hashable.append(function_name);
+      if (!is_certain)
+        continue;
+      if (!hashable.empty())
+        hashable.append("|");
+      hashable.append(function_name);
+
+      // Store the first function since that's a good candidate for the
+      // "human readable" part of the signature.
+      if (stack_fn->empty()) {
+        *stack_fn = function_name;
+      }
+    }
   }
-  if (timestamp == 0) {
-    LOG(WARNING) << "Found no crashing function";
-    return false;
+
+  // If the hashable is empty (meaning all frames are uncertain, for whatever
+  // reason) use the uncertain hashable, as it cannot be any worse.
+  if (hashable.empty()) {
+    hashable = uncertain_hashable;
   }
-  if (stack_trace_timestamp != 0 &&
-      abs(static_cast<int>(stack_trace_timestamp - timestamp)) >
-          kSignatureTimestampWindow) {
-    LOG(WARNING) << "Found crashing function but not within window";
-    return false;
+
+  *hash = util::HashString(hashable);
+
+  // We'll claim that we have a good result if either:
+  // - We have a tag, which means we recognized a hang.
+  // - We got a PC from CPU Registers that's has a timestamp that was recent.
+  //   This covers the pattern of:
+  //     __show_regs(regs);
+  //     panic("message");
+  //   Where the "regs" has the actual failing PC (and thus is extremely
+  //   relevant). Note that panic() never prints CPU registers.
+  if (!crash_tag->empty()) {
+    return true;
+  } else if (!cpureg_fn.empty() &&
+             stack_timestamp - cpureg_timestamp < kSignatureTimestampWindow) {
+    *stack_fn = cpureg_fn;
+    return true;
   }
-  return true;
+
+  return false;
 }
 
 bool FindPanicMessage(re2::StringPiece kernel_dump,
@@ -183,7 +250,7 @@ bool FindPanicMessage(re2::StringPiece kernel_dump,
                              panic_message)) {
   }
   if (timestamp == 0) {
-    LOG(WARNING) << "Found no panic message";
+    LOG(INFO) << "Found no panic message";
     return false;
   }
   return true;
@@ -218,19 +285,12 @@ ArchKind GetCompilerArch() {
 std::string ComputeKernelStackSignature(const std::string& kernel_dump,
                                         ArchKind arch) {
   unsigned stack_hash = 0;
-  float last_stack_timestamp = 0;
+  std::string crash_tag;
   std::string human_string;
-  bool is_watchdog_crash;
 
-  ProcessStackTrace(kernel_dump, &stack_hash, &last_stack_timestamp,
-                    &is_watchdog_crash);
-
-  if (!FindCrashingFunction(kernel_dump, last_stack_timestamp, arch,
-                            &human_string)) {
-    if (!FindPanicMessage(kernel_dump, &human_string)) {
-      LOG(WARNING) << "Found no human readable string, using empty string";
-      human_string.clear();
-    }
+  if (!ProcessStackTrace(kernel_dump, arch, &stack_hash, &human_string,
+                         &crash_tag)) {
+    FindPanicMessage(kernel_dump, &human_string);
   }
 
   if (human_string.empty() && stack_hash == 0) {
@@ -239,8 +299,7 @@ std::string ComputeKernelStackSignature(const std::string& kernel_dump,
   }
 
   human_string = human_string.substr(0, kMaxHumanStringLength);
-  return StringPrintf("%s-%s%s-%08X", kKernelExecName,
-                      (is_watchdog_crash ? "(HANG)-" : ""),
+  return StringPrintf("%s-%s%s-%08X", kKernelExecName, crash_tag.c_str(),
                       human_string.c_str(), stack_hash);
 }
 

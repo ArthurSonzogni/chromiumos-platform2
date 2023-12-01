@@ -1,0 +1,61 @@
+<7>[  112.656558] gpio gpiochip1: registered chardev handle for 1 lines
+<12>[  444.931092] init: ml-service (mojo_service) post-start process (6898) terminated with status 2
+<6>[ 1306.314345] lkdtm: Performing direct entry WARNING
+<4>[ 1306.319547] ------------[ cut here ]------------
+<4>[ 1306.324301] WARNING: CPU: 0 PID: 6838 at drivers/misc/lkdtm/bugs.c:83 lkdtm_WARNING+0x28/0x30
+<4>[ 1306.333071] Modules linked in: veth xt_cgroup xt_MASQUERADE 8021q ip6table_nat lzo_rle lzo_compress zram uinput rfcomm algif_hash algif_skcipher af_alg venus_enc venus_dec uvcvideo qcom_spmi_temp_alarm snd_soc_rt5682_i2c snd_soc_rt5682 qcom_spmi_adc5 snd_soc_rl6231 qcom_vadc_common cros_ec_typec roles snd_soc_sc7180 snd_soc_qcom_common qcom_stats sx9310 sx_common hci_uart btqca venus_core snd_soc_lpass_sc7180 snd_soc_lpass_hdmi coresight_etm4x snd_soc_lpass_cpu snd_soc_lpass_platform coresight_tmc coresight_replicator coresight_funnel coresight snd_soc_max98357a fuse iio_trig_sysfs ath10k_snoc ath10k_core ath bluetooth mac80211 r8153_ecm cros_ec_lid_angle cros_ec_sensors cros_ec_sensors_core cdc_ether ecdh_generic industrialio_triggered_buffer usbnet ecc kfifo_buf cfg80211 r8152 cros_ec_sensorhub mii joydev
+<4>[ 1306.406486] CPU: 0 PID: 6838 Comm: bash Not tainted 5.15.138 #1 (HASH:4221 4)
+<4>[ 1306.416224] Hardware name: Google Lazor (rev3 - 8) with LTE (DT)
+<4>[ 1306.422392] pstate: 00400009 (nzcv daif +PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+<4>[ 1306.429545] pc : lkdtm_WARNING+0x28/0x30
+<4>[ 1306.433583] lr : lkdtm_do_action+0x24/0x58
+<4>[ 1306.437803] sp : ffffffc008393ca0
+<4>[ 1306.441213] pmr_save: 000000e0
+<4>[ 1306.444350] x29: ffffffc008393ca0 x28: ffffff80eef2a340 x27: 0000000000000000
+<4>[ 1306.451685] x26: 0000000000000000 x25: 0000000000000000 x24: ffffffd096121da8
+<4>[ 1306.459009] x23: 0000000000000020 x22: ffffffd0963768f5 x21: ffffffd096121dc8
+<4>[ 1306.466343] x20: ffffffc008393de0 x19: 0000000000000008 x18: 0000000000000000
+<4>[ 1306.473676] x17: 0000000000000000 x16: 000000000000003c x15: ffffffd0954920a8
+<4>[ 1306.481009] x14: 0000000000000003 x13: 0000000000000004 x12: 0000000000000001
+<4>[ 1306.488336] x11: c0000000ffffdfff x10: 0000000000000000 x9 : 0000000000000001
+<4>[ 1306.495670] x8 : ffffffd0968b8000 x7 : 0000000000000000 x6 : 332e36303331205b
+<4>[ 1306.503003] x5 : ffffffd096850b64 x4 : 0000000000000000 x3 : ffffffc008393918
+<4>[ 1306.510326] x2 : ffffff81feec47c8 x1 : 0000000000000000 x0 : ffffffd096121dc8
+<4>[ 1306.517660] Call trace:
+<4>[ 1306.520183]  lkdtm_WARNING+0x28/0x30
+<4>[ 1306.523862]  direct_entry+0x1e8/0x25c
+<4>[ 1306.527628]  full_proxy_write+0x74/0xa4
+<4>[ 1306.531579]  vfs_write+0xe8/0x3dc
+<4>[ 1306.534992]  __arm64_sys_write+0x84/0x108
+<4>[ 1306.539116]  invoke_syscall+0x4c/0xe8
+<4>[ 1306.542884]  do_el0_svc+0xac/0x1dc
+<4>[ 1306.546381]  el0_svc+0x20/0x50
+<4>[ 1306.549524]  el0t_64_sync_handler+0x20/0x110
+<4>[ 1306.553919]  el0t_64_sync+0x1a4/0x1a8
+<4>[ 1306.557682] ---[ end trace d5d8ff1c5c86cb05 ]---
+<6>[ 1306.563198] lkdtm: Performing direct entry PANIC
+<0>[ 1306.567955] Kernel panic - not syncing: dumptest
+<4>[ 1306.572698] CPU: 7 PID: 6838 Comm: bash Tainted: G        W         5.15.138 #1 (HASH:4221 4)
+<4>[ 1306.583843] Hardware name: Google Lazor (rev3 - 8) with LTE (DT)
+<4>[ 1306.590005] Call trace:
+<4>[ 1306.592519]  dump_backtrace+0x0/0x1ec
+<4>[ 1306.596291]  show_stack+0x20/0x2c
+<4>[ 1306.599698]  dump_stack_lvl+0x6c/0x90
+<4>[ 1306.603466]  dump_stack+0x18/0x38
+<4>[ 1306.606875]  panic+0x158/0x3a8
+<4>[ 1306.610010]  lkdtm_BUG+0x0/0x10
+<4>[ 1306.613235]  lkdtm_do_action+0x24/0x58
+<4>[ 1306.617083]  direct_entry+0x1e8/0x25c
+<4>[ 1306.620848]  full_proxy_write+0x74/0xa4
+<4>[ 1306.624795]  vfs_write+0xe8/0x3dc
+<4>[ 1306.628198]  __arm64_sys_write+0x84/0x108
+<4>[ 1306.632312]  invoke_syscall+0x4c/0xe8
+<4>[ 1306.636079]  do_el0_svc+0xac/0x1dc
+<4>[ 1306.639575]  el0_svc+0x20/0x50
+<4>[ 1306.642711]  el0t_64_sync_handler+0x20/0x110
+<4>[ 1306.647092]  el0t_64_sync+0x1a4/0x1a8
+<2>[ 1306.650853] SMP: stopping secondary CPUs
+<0>[ 1306.855031] Kernel Offset: 0x108d400000 from 0xffffffc008000000
+<0>[ 1306.861102] PHYS_OFFSET: 0x80000000
+<0>[ 1306.864686] CPU features: 0x4,00018541,a3380e42
+<0>[ 1306.869334] Memory Limit: none

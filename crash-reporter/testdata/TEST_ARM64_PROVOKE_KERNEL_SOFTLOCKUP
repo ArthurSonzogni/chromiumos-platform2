@@ -1,0 +1,198 @@
+<12>[  427.730637] init: ml-service (mojo_service) post-start process (6940) terminated with status 2
+<6>[  675.676881] lkdtm: Performing direct entry SOFTLOCKUP
+<0>[  687.713198] watchdog: BUG: soft lockup - CPU#5 stuck for 13s! [bash:5910]
+<4>[  687.720205] Modules linked in: veth xt_cgroup xt_MASQUERADE ip6table_nat 8021q lzo_rle lzo_compress zram uinput venus_enc venus_dec rfcomm algif_hash algif_skcipher af_alg cros_ec_typec uvcvideo qcom_spmi_adc5 qcom_spmi_temp_alarm qcom_vadc_common roles snd_soc_rt5682_i2c snd_soc_sc7180 snd_soc_qcom_common snd_soc_rt5682 snd_soc_rl6231 qcom_stats hci_uart venus_core btqca sx9310 sx_common snd_soc_lpass_sc7180 coresight_funnel coresight_replicator coresight_etm4x coresight_tmc snd_soc_lpass_hdmi snd_soc_lpass_cpu snd_soc_lpass_platform coresight snd_soc_max98357a fuse ath10k_snoc ath10k_core ath iio_trig_sysfs mac80211 cros_ec_lid_angle cros_ec_sensors cros_ec_sensors_core bluetooth industrialio_triggered_buffer cfg80211 kfifo_buf ecdh_generic r8153_ecm ecc cdc_ether usbnet cros_ec_sensorhub r8152 mii joydev
+<4>[  687.793618] CPU: 5 PID: 5910 Comm: bash Not tainted 5.15.137 #3 (HASH:c6ba 4)
+<4>[  687.803354] Hardware name: Google Lazor (rev3 - 8) with LTE (DT)
+<4>[  687.809527] pstate: 60400009 (nZCv daif +PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+<4>[  687.816681] pc : lkdtm_SOFTLOCKUP+0x1c/0x24
+<4>[  687.821000] lr : lkdtm_do_action+0x24/0x58
+<4>[  687.825215] sp : ffffffc00f8bbca0
+<4>[  687.828619] pmr_save: 000000e0
+<4>[  687.831764] x29: ffffffc00f8bbca0 x28: ffffff80a0c26940 x27: 0000000000000000
+<4>[  687.839094] x26: 0000000000000000 x25: 0000000000000000 x24: ffffffdded121a78
+<4>[  687.846420] x23: 00000000000001c0 x22: ffffffdded35499a x21: ffffffdded121c38
+<4>[  687.853750] x20: ffffffc00f8bbde0 x19: 000000000000000b x18: 0000000000000000
+<4>[  687.861080] x17: 0000000000000000 x16: 000000000000003c x15: ffffffddec4920bc
+<4>[  687.868412] x14: 0000000000000003 x13: 0000000000000004 x12: 0000000000000001
+<4>[  687.875743] x11: c0000000ffffdfff x10: 0000000000000000 x9 : 0000000000000001
+<4>[  687.883073] x8 : ffffff80a0c26940 x7 : 0000000000000000 x6 : 362e35373620205b
+<4>[  687.890409] x5 : ffffffdded850b64 x4 : 0000000000000000 x3 : ffffffc00f8bb918
+<4>[  687.897744] x2 : ffffff81fef557c8 x1 : 0000000000000000 x0 : ffffffdded121c38
+<4>[  687.905072] Call trace:
+<4>[  687.907598]  lkdtm_SOFTLOCKUP+0x1c/0x24
+<4>[  687.911549]  direct_entry+0x1e8/0x25c
+<4>[  687.915314]  full_proxy_write+0x74/0xa4
+<4>[  687.919268]  vfs_write+0xe8/0x3dc
+<4>[  687.922684]  __arm64_sys_write+0x84/0x108
+<4>[  687.926808]  invoke_syscall+0x4c/0xe8
+<4>[  687.930573]  do_el0_svc+0xac/0x1dc
+<4>[  687.934073]  el0_svc+0x20/0x50
+<4>[  687.937220]  el0t_64_sync_handler+0x20/0x110
+<4>[  687.941607]  el0t_64_sync+0x1a4/0x1a8
+<6>[  687.945378] Sending NMI from CPU 5 to CPUs 0-4,6-7:
+<4>[  687.950401] NMI backtrace for cpu 0
+<4>[  687.950409] CPU: 0 PID: 0 Comm: swapper/0 Not tainted 5.15.137 #3 (HASH:c6ba 4)
+<4>[  687.950415] Hardware name: Google Lazor (rev3 - 8) with LTE (DT)
+<4>[  687.950418] pstate: 20400009 (nzCv daif +PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+<4>[  687.950423] pc : set_next_entity+0xe8/0x264
+<4>[  687.950432] lr : set_next_entity+0xc0/0x264
+<4>[  687.950436] sp : ffffffdded5d3c60
+<4>[  687.950438] pmr_save: 00000060
+<4>[  687.950440] x29: ffffffdded5d3c60 x28: ffffffdded5d9dd0 x27: ffffffdded5e5f30
+<4>[  687.950447] x26: ffffffdded7d1000 x25: ffffffdded383eb8 x24: ffffffdded5e5800
+<4>[  687.950454] x23: ffffffdded7d1000 x22: ffffff808083b590 x21: ffffff81feed4000
+<4>[  687.950460] x20: ffffff81feed4100 x19: ffffff808083b580 x18: 0000000000000ab6
+<4>[  687.950466] x17: 000000040044ffff x16: 005000f2b5593519 x15: 00000000000000f9
+<4>[  687.950471] x14: 00000000000002c0 x13: 00000000000000fc x12: 0000000000000400
+<4>[  687.950477] x11: 0000009b0173f000 x10: 0000000000000400 x9 : 0000000000000000
+<4>[  687.950483] x8 : 0000009b0260a4fa x7 : 000000f2b5593519 x6 : 00000000003033ff
+<4>[  687.950489] x5 : 0000000000000000 x4 : 0000000000000000 x3 : 000000000000000a
+<4>[  687.950494] x2 : ffffff808083b580 x1 : ffffff81feed4100 x0 : 0000000000000000
+<4>[  687.950500] Call trace:
+<4>[  687.950503]  set_next_entity+0xe8/0x264
+<4>[  687.950507]  pick_next_task_fair+0x300/0x46c
+<4>[  687.950513]  __schedule+0x1dc/0xb74
+<4>[  687.950519]  schedule_idle+0x2c/0x4c
+<4>[  687.950524]  do_idle+0x180/0x288
+<4>[  687.950529]  cpu_startup_entry+0x2c/0x30
+<4>[  687.950533]  rest_init+0xe8/0xf8
+<4>[  687.950538]  arch_call_rest_init+0x18/0x24
+<4>[  687.950544]  start_kernel+0x330/0x42c
+<4>[  687.950549]  __primary_switched+0xbc/0xc4
+<4>[  687.950556] NMI backtrace for cpu 4
+<4>[  687.950560] CPU: 4 PID: 0 Comm: swapper/4 Not tainted 5.15.137 #3 (HASH:c6ba 4)
+<4>[  687.950566] Hardware name: Google Lazor (rev3 - 8) with LTE (DT)
+<4>[  687.950568] pstate: 80400009 (Nzcv daif +PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+<4>[  687.950572] pc : gic_cpu_sys_reg_init+0x1c0/0x2fc
+<4>[  687.950580] lr : gic_cpu_sys_reg_init+0x200/0x2fc
+<4>[  687.950584] sp : ffffffc008223c80
+<4>[  687.950585] pmr_save: 00000060
+<4>[  687.950587] x29: ffffffc008223c80 x28: 0000000000000000 x27: ffffffdded5d9000
+<4>[  687.950593] x26: ffffffdded5b724c x25: ffffffdded5daa58 x24: 0000000000000000
+<4>[  687.950599] x23: 0000000000000007 x22: ffffffdded306ca4 x21: ffffffdded5d9dd0
+<4>[  687.950605] x20: 0000000000000004 x19: 0000000000000400 x18: 000000000000033b
+<4>[  687.950611] x17: 000000040044ffff x16: 005000f2b5593519 x15: 0000000000000000
+<4>[  687.950618] x14: 0000000001c8d000 x13: ffffffdd6b800000 x12: 0000000000000000
+<4>[  687.950624] x11: 0000000000000060 x10: ffffffffffffffff x9 : 00000000000000ff
+<4>[  687.950630] x8 : 0000000000000000 x7 : 000000f2b5593519 x6 : 00000000003033ff
+<4>[  687.950635] x5 : 0000000000000000 x4 : 0000000000000000 x3 : 0000000081c91000
+<4>[  687.950641] x2 : 0000000000000000 x1 : ffffffdded5d9dd0 x0 : 0000000000000007
+<4>[  687.950647] Call trace:
+<4>[  687.950649]  gic_cpu_sys_reg_init+0x1c0/0x2fc
+<4>[  687.950654]  gic_cpu_pm_notifier+0x3c/0x74
+<4>[  687.950657]  raw_notifier_call_chain+0x64/0x78
+<4>[  687.950664]  cpu_pm_notify+0x38/0x68
+<4>[  687.950668]  cpu_pm_exit+0x1c/0x28
+<4>[  687.950671]  psci_enter_idle_state+0x54/0x80
+<4>[  687.950676]  cpuidle_enter_state+0x80/0x314
+<4>[  687.950684]  cpuidle_enter+0x40/0x58
+<4>[  687.950689]  do_idle+0x134/0x288
+<4>[  687.950693]  cpu_startup_entry+0x2c/0x30
+<4>[  687.950697]  secondary_start_kernel+0x14c/0x1b4
+<4>[  687.950705]  __secondary_switched+0x90/0x94
+<4>[  687.950710] NMI backtrace for cpu 7 skipped: idling at cpu_do_idle+0x74/0x78
+<4>[  687.950716] NMI backtrace for cpu 6
+<4>[  687.950718] CPU: 6 PID: 2156 Comm: DedicatedWorker Not tainted 5.15.137 #3 (HASH:c6ba 4)
+<4>[  687.950722] Hardware name: Google Lazor (rev3 - 8) with LTE (DT)
+<4>[  687.950723] pstate: 00001000 (nzcv daif -PAN -UAO -TCO -DIT +SSBS BTYPE=--)
+<4>[  687.950726] pc : 00000060215d2864
+<4>[  687.950727] lr : 00000060215d2a40
+<4>[  687.950728] sp : 00000079311463b0
+<4>[  687.950729] pmr_save: 000000e0
+<4>[  687.950729] x29: 0000007931146400 x28: 0000004402878fe0 x27: 0000000000004000
+<4>[  687.950733] x26: 00000079311466a8 x25: 0000004403793c28 x24: 0000000000000001
+<4>[  687.950735] x23: 0000007931146458 x22: 0000007931146470 x21: 0000007931146840
+<4>[  687.950738] x20: 00000079311464d8 x19: 0000004402878fe0 x18: 0000006021b5aef0
+<4>[  687.950740] x17: 000000797bec3e80 x16: 0000006022d203a8 x15: 00000000432939c0
+<4>[  687.950742] x14: 0000000044495814 x13: 00000060149de080 x12: 00000000000000ff
+<4>[  687.950745] x11: 00000000000000ff x10: 0000004403ecc438 x9 : 000000007f800000
+<4>[  687.950747] x8 : 000000003d84dc5d x7 : 0000000000000030 x6 : 0000000000000001
+<4>[  687.950750] x5 : 0000004402878fe0 x4 : 00000079311464d8 x3 : 0000007931146470
+<4>[  687.950752] x2 : 0000007931146458 x1 : 0000007931146448 x0 : 0000007931146840
+<4>[  687.950756] NMI backtrace for cpu 1
+<4>[  687.950761] CPU: 1 PID: 0 Comm: swapper/1 Not tainted 5.15.137 #3 (HASH:c6ba 4)
+<4>[  687.950767] Hardware name: Google Lazor (rev3 - 8) with LTE (DT)
+<4>[  687.950769] pstate: 80400009 (Nzcv daif +PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+<4>[  687.950774] pc : cpu_logical_map+0x18/0x20
+<4>[  687.950780] lr : gic_cpu_sys_reg_init+0x1e4/0x2fc
+<4>[  687.950784] sp : ffffffc00820bc80
+<4>[  687.950786] pmr_save: 00000060
+<4>[  687.950789] x29: ffffffc00820bc80 x28: 0000000000000000 x27: ffffffdded5d9000
+<4>[  687.950796] x26: ffffffdded5b724c x25: ffffffdded5daa58 x24: 0000000000000000
+<4>[  687.950802] x23: 0000000000000007 x22: ffffffdded306ca4 x21: ffffffdded5d9dd0
+<4>[  687.950808] x20: 0000000000000001 x19: 0000000000000100 x18: ffffff80853350d0
+<4>[  687.950815] x17: 000000040044ffff x16: 005000f2b5593519 x15: 0000000000000000
+<4>[  687.950821] x14: 0000000001c8d000 x13: ffffffdd6b800000 x12: 0000000000000000
+<4>[  687.950827] x11: 0000000000000060 x10: ffffffffffffffff x9 : ffffffddec6349c4
+<4>[  687.950833] x8 : ffffffdded5e6c08 x7 : 000000f2b5593519 x6 : 00000000003033ff
+<4>[  687.950840] x5 : 0000000000000000 x4 : 0000000000000000 x3 : 0000000081c91000
+<4>[  687.950846] x2 : 0000000000000000 x1 : ffffffdded5d9dd0 x0 : 0000000000000700
+<4>[  687.950852] Call trace:
+<4>[  687.950854]  cpu_logical_map+0x18/0x20
+<4>[  687.950859]  gic_cpu_pm_notifier+0x3c/0x74
+<4>[  687.950863]  raw_notifier_call_chain+0x64/0x78
+<4>[  687.950868]  cpu_pm_notify+0x38/0x68
+<4>[  687.950871]  cpu_pm_exit+0x1c/0x28
+<4>[  687.950875]  psci_enter_idle_state+0x54/0x80
+<4>[  687.950879]  cpuidle_enter_state+0x80/0x314
+<4>[  687.950885]  cpuidle_enter+0x40/0x58
+<4>[  687.950890]  do_idle+0x134/0x288
+<4>[  687.950894]  cpu_startup_entry+0x2c/0x30
+<4>[  687.950898]  secondary_start_kernel+0x14c/0x1b4
+<4>[  687.950903]  __secondary_switched+0x90/0x94
+<4>[  687.950910] NMI backtrace for cpu 3 skipped: idling at cpu_do_idle+0x74/0x78
+<4>[  687.950918] NMI backtrace for cpu 2
+<4>[  687.950922] CPU: 2 PID: 1939 Comm: chrome Not tainted 5.15.137 #3 (HASH:c6ba 4)
+<4>[  687.950927] Hardware name: Google Lazor (rev3 - 8) with LTE (DT)
+<4>[  687.950930] pstate: 80001000 (Nzcv daif -PAN -UAO -TCO -DIT +SSBS BTYPE=--)
+<4>[  687.950934] pc : 0000007008ab73c0
+<4>[  687.950936] lr : 0000007008ac47c0
+<4>[  687.950937] sp : 0000007fe6d96470
+<4>[  687.950939] pmr_save: 000000e0
+<4>[  687.950940] x29: 0000007fe6d96480 x28: 0000000000000000 x27: 0000007008c616e0
+<4>[  687.950947] x26: 0000007fe6d968b0 x25: 0000000000000001 x24: 0000000000000001
+<4>[  687.950952] x23: 0000000070268000 x22: 0000003c0003a400 x21: 0000007008c616e0
+<4>[  687.950958] x20: 0000003c00153d00 x19: 0000003c033806a8 x18: 0000003c013018d0
+<4>[  687.950964] x17: 000000700ddf3e80 x16: 0000007008c15d78 x15: 0000003c00e9f700
+<4>[  687.950970] x14: 0000003c002a6874 x13: 0000000000000001 x12: 0000007004298064
+<4>[  687.950976] x11: 0000000000108000 x10: 000000700429818c x9 : 0000007004298184
+<4>[  687.950982] x8 : 00000070042a0000 x7 : 0000000000000203 x6 : 000000000000036b
+<4>[  687.950987] x5 : 0000000000000000 x4 : 0000000000000035 x3 : 000000000036d5a7
+<4>[  687.950993] x2 : 0000003c033806a8 x1 : 0000000000000000 x0 : 0000003c00153d10
+<0>[  687.951401] Kernel panic - not syncing: softlockup: hung tasks
+<4>[  688.689183] CPU: 5 PID: 5910 Comm: bash Tainted: G             L    5.15.137 #3 (HASH:c6ba 4)
+<4>[  688.700336] Hardware name: Google Lazor (rev3 - 8) with LTE (DT)
+<4>[  688.706505] Call trace:
+<4>[  688.709031]  dump_backtrace+0x0/0x1ec
+<4>[  688.712809]  show_stack+0x20/0x2c
+<4>[  688.716223]  dump_stack_lvl+0x6c/0x90
+<4>[  688.719994]  dump_stack+0x18/0x38
+<4>[  688.723405]  panic+0x158/0x3a8
+<4>[  688.726556]  watchdog_timer_fn+0x230/0x25c
+<4>[  688.730779]  __hrtimer_run_queues+0x104/0x3bc
+<4>[  688.735259]  hrtimer_interrupt+0xdc/0x328
+<4>[  688.739383]  arch_timer_handler_phys+0x38/0x50
+<4>[  688.743953]  handle_percpu_devid_irq+0x84/0x238
+<4>[  688.748613]  handle_domain_irq+0x60/0x90
+<4>[  688.752647]  gic_handle_irq+0x15c/0x2a8
+<4>[  688.756596]  call_on_irq_stack+0x20/0x48
+<4>[  688.760635]  do_interrupt_handler+0x44/0x58
+<4>[  688.764943]  el1_interrupt+0x30/0x5c
+<4>[  688.768631]  el1h_64_irq_handler+0x18/0x24
+<4>[  688.772843]  el1h_64_irq+0x7c/0x80
+<4>[  688.776345]  lkdtm_SOFTLOCKUP+0x1c/0x24
+<4>[  688.780299]  direct_entry+0x1e8/0x25c
+<4>[  688.784066]  full_proxy_write+0x74/0xa4
+<4>[  688.788015]  vfs_write+0xe8/0x3dc
+<4>[  688.791429]  __arm64_sys_write+0x84/0x108
+<4>[  688.795547]  invoke_syscall+0x4c/0xe8
+<4>[  688.799313]  do_el0_svc+0xac/0x1dc
+<4>[  688.802811]  el0_svc+0x20/0x50
+<4>[  688.805954]  el0t_64_sync_handler+0x20/0x110
+<4>[  688.810346]  el0t_64_sync+0x1a4/0x1a8
+<2>[  688.814113] SMP: stopping secondary CPUs
+<0>[  689.018367] Kernel Offset: 0x1de4400000 from 0xffffffc008000000
+<0>[  689.024458] PHYS_OFFSET: 0x80000000
+<0>[  689.028051] CPU features: 0x4,00018541,a3380e42
+<0>[  689.032721] Memory Limit: none
