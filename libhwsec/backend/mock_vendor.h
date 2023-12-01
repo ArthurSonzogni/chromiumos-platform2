@@ -37,6 +37,8 @@ class MockVendor : public Vendor {
         .WillByDefault(Invoke(default_, &Vendor::GetVendorSpecific));
     ON_CALL(*this, GetFingerprint)
         .WillByDefault(Invoke(default_, &Vendor::GetFingerprint));
+    ON_CALL(*this, GetGscType)
+        .WillByDefault(Invoke(default_, &Vendor::GetGscType));
     ON_CALL(*this, IsSrkRocaVulnerable)
         .WillByDefault(Invoke(default_, &Vendor::IsSrkRocaVulnerable));
     ON_CALL(*this, GetRsuDeviceId)
@@ -58,6 +60,7 @@ class MockVendor : public Vendor {
   MOCK_METHOD(StatusOr<uint64_t>, GetFirmwareVersion, (), (override));
   MOCK_METHOD(StatusOr<brillo::Blob>, GetVendorSpecific, (), (override));
   MOCK_METHOD(StatusOr<int32_t>, GetFingerprint, (), (override));
+  MOCK_METHOD(StatusOr<GscType>, GetGscType, (), (override));
   MOCK_METHOD(StatusOr<bool>, IsSrkRocaVulnerable, (), (override));
   MOCK_METHOD(StatusOr<brillo::Blob>, GetRsuDeviceId, (), (override));
   MOCK_METHOD(StatusOr<IFXFieldUpgradeInfo>,

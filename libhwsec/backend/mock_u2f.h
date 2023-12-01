@@ -114,6 +114,8 @@ class MockU2f : public U2f {
                const brillo::Blob&),
               (override));
   MOCK_METHOD(StatusOr<u2f::Config>, GetConfig, (), (override));
+  MOCK_METHOD(StatusOr<u2f::FipsStatus>, GetFipsStatus, (), (override));
+  MOCK_METHOD(Status, ActivateFips, (), (override));
 
  private:
   U2f* default_;

@@ -69,6 +69,9 @@ TEST_F(BackendVendorTpm2Test, GetVersionInfo) {
 
   EXPECT_THAT(backend_->GetVendorTpm2().GetFingerprint(),
               IsOkAndHolds(0x2A0797FD));
+
+  EXPECT_THAT(backend_->GetVendorTpm2().GetGscType(),
+              IsOkAndHolds(Vendor::GscType::kCr50));
   hwsec::StatusOr<VendorTpm2::RwVersion> version =
       backend_->GetVendorTpm2().GetRwVersion();
   ASSERT_OK(version);

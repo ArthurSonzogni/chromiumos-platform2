@@ -50,6 +50,11 @@ struct Config {
   size_t kh_size;
 };
 
+enum class FipsStatus : bool {
+  kNotActive = false,
+  kActive = true,
+};
+
 }  // namespace u2f
 }  // namespace hwsec
 

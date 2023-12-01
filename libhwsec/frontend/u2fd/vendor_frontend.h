@@ -210,6 +210,10 @@ class U2fVendorFrontend : public Frontend {
   virtual StatusOr<RwVersion> GetRwVersion() const = 0;
 
   virtual StatusOr<u2f::Config> GetConfig() const = 0;
+
+  virtual StatusOr<u2f::FipsStatus> GetFipsStatus() const = 0;
+
+  virtual Status ActivateFipsIfNotActive() const = 0;
 };
 
 }  // namespace hwsec

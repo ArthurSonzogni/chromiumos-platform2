@@ -16,6 +16,7 @@
 #include <trunks/cr50_headers/u2f.h>
 #include <trunks/tpm_utility.h>
 
+#include "libhwsec/backend/vendor.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
 
@@ -24,6 +25,7 @@ using hwsec_foundation::status::MakeStatus;
 namespace hwsec {
 
 using u2f::ConsumeMode;
+using u2f::FipsStatus;
 using u2f::GenerateResult;
 using u2f::Signature;
 using u2f::UserPresenceMode;
@@ -37,6 +39,11 @@ constexpr u2f::Config kConfigTpm2{
 
 constexpr uint32_t kCr50StatusNotAllowed = 0x507;
 constexpr uint32_t kCr50StatusPasswordRequired = 0x50a;
+
+// FIPS status constants directly copied from cr50/board/cr50/dcrypto/fips.h.
+// That header has many other dependencies so will be difficult to copy to
+// trunks, and we only need 1 constant.
+constexpr uint32_t kCr50FipsModeActiveBit = 1 << 31;
 
 // This two functions are needed for backward compatibility. Key handles
 // that were already generated have inserted hash, so we continue to
@@ -95,6 +102,13 @@ class PublicKeyTpm2 : public u2f::PublicKey {
 
   brillo::Blob data_;
 };
+
+FipsStatus ParseFipsStatusCode(uint32_t fips_status) {
+  if (fips_status & kCr50FipsModeActiveBit) {
+    return FipsStatus::kActive;
+  }
+  return FipsStatus::kNotActive;
+}
 
 }  // namespace
 
@@ -375,6 +389,37 @@ StatusOr<Signature> U2fTpm2::CorpAttest(const brillo::Blob& app_id,
 
 StatusOr<u2f::Config> U2fTpm2::GetConfig() {
   return kConfigTpm2;
+}
+
+StatusOr<FipsStatus> U2fTpm2::GetFipsStatus() {
+  // Ti50's U2F implementation is always in FIPS mode.
+  ASSIGN_OR_RETURN(Vendor::GscType gsc_type, vendor_.GetGscType(),
+                   _.WithStatus<TPMError>("Failed to get GSC type"));
+  if (gsc_type == Vendor::GscType::kTi50) {
+    return FipsStatus::kActive;
+  }
+  if (fips_status_.has_value()) {
+    return *fips_status_;
+  }
+  uint32_t fips_status;
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(
+                      context_.GetTpmUtility().FipsGetStatus(&fips_status)))
+      .WithStatus<TPMError>("Failed to get FIPS status");
+  fips_status_ = ParseFipsStatusCode(fips_status);
+  return *fips_status_;
+}
+
+Status U2fTpm2::ActivateFips() {
+  // Ti50's U2F implementation is always in FIPS mode.
+  ASSIGN_OR_RETURN(Vendor::GscType gsc_type, vendor_.GetGscType(),
+                   _.WithStatus<TPMError>("Failed to get GSC type"));
+  if (gsc_type == Vendor::GscType::kTi50) {
+    return OkStatus();
+  }
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().FipsActivate()))
+      .WithStatus<TPMError>("Failed to activate FIPS");
+  return OkStatus();
 }
 
 }  // namespace hwsec

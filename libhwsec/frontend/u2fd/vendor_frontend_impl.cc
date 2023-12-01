@@ -128,4 +128,19 @@ StatusOr<u2f::Config> U2fVendorFrontendImpl::GetConfig() const {
   return middleware_.CallSync<&Backend::U2f::GetConfig>();
 }
 
+StatusOr<u2f::FipsStatus> U2fVendorFrontendImpl::GetFipsStatus() const {
+  return middleware_.CallSync<&Backend::U2f::GetFipsStatus>();
+}
+Status U2fVendorFrontendImpl::ActivateFipsIfNotActive() const {
+  ASSIGN_OR_RETURN(u2f::FipsStatus fips_status,
+                   middleware_.CallSync<&Backend::U2f::GetFipsStatus>(),
+                   _.WithStatus<TPMError>("Failed to get FIPS status"));
+  switch (fips_status) {
+    case u2f::FipsStatus::kNotActive:
+      return middleware_.CallSync<&Backend::U2f::ActivateFips>();
+    case u2f::FipsStatus::kActive:
+      return OkStatus();
+  }
+}
+
 }  // namespace hwsec

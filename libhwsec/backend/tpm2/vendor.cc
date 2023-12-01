@@ -141,6 +141,19 @@ StatusOr<int32_t> VendorTpm2::GetFingerprint() {
   return result & 0x7fffffff;
 }
 
+StatusOr<VendorTpm2::GscType> VendorTpm2::GetGscType() {
+  RETURN_IF_ERROR(EnsureVersionInfo());
+
+  switch (version_info_->gsc_version()) {
+    case tpm_manager::GscVersion::GSC_VERSION_CR50:
+      return GscType::kCr50;
+    case tpm_manager::GscVersion::GSC_VERSION_TI50:
+      return GscType::kTi50;
+    default:
+      return GscType::kNotGsc;
+  }
+}
+
 StatusOr<bool> VendorTpm2::IsSrkRocaVulnerable() {
   return false;
 }

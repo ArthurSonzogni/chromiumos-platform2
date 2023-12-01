@@ -7,6 +7,8 @@
 
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 #include <trunks/cr50_headers/u2f.h>
 #include <trunks/mock_tpm_utility.h>
 
@@ -32,6 +34,7 @@ namespace {
 
 constexpr uint32_t kCr50StatusNotAllowed = 0x507;
 constexpr uint32_t kCr50StatusPasswordRequired = 0x50a;
+constexpr uint32_t kCr50FipsModeActive = 1 << 31;
 
 brillo::Blob GetStubBlob() {
   return brillo::Blob(10, 10);
@@ -453,6 +456,90 @@ TEST_F(BackendU2fTpm2Test, CorpAttestFailed) {
           GetValidAppId(), GetValidUserSecret(), GetValidCorpChallenge(),
           GetValidKeyHandle(), GetValidPublicKey(), GetValidSalt()),
       NotOk());
+}
+
+TEST_F(BackendU2fTpm2Test, GetFipsStatusTi50) {
+  tpm_manager::GetVersionInfoReply version_info;
+  version_info.set_gsc_version(tpm_manager::GSC_VERSION_TI50);
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(version_info), Return(true)));
+
+  EXPECT_THAT(backend_->GetU2fTpm2().GetFipsStatus(),
+              IsOkAndHolds(u2f::FipsStatus::kActive));
+}
+
+TEST_F(BackendU2fTpm2Test, GetFipsStatusActive) {
+  tpm_manager::GetVersionInfoReply version_info;
+  version_info.set_gsc_version(tpm_manager::GSC_VERSION_CR50);
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(version_info), Return(true)));
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), FipsGetStatus(_))
+      .WillOnce(DoAll(SetArgPointee<0>(kCr50FipsModeActive),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_THAT(backend_->GetU2fTpm2().GetFipsStatus(),
+              IsOkAndHolds(u2f::FipsStatus::kActive));
+}
+
+TEST_F(BackendU2fTpm2Test, GetFipsStatusInactive) {
+  tpm_manager::GetVersionInfoReply version_info;
+  version_info.set_gsc_version(tpm_manager::GSC_VERSION_CR50);
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(version_info), Return(true)));
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), FipsGetStatus(_))
+      .WillOnce(DoAll(SetArgPointee<0>(0), Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_THAT(backend_->GetU2fTpm2().GetFipsStatus(),
+              IsOkAndHolds(u2f::FipsStatus::kNotActive));
+}
+
+TEST_F(BackendU2fTpm2Test, GetFipsStatusError) {
+  tpm_manager::GetVersionInfoReply version_info;
+  version_info.set_gsc_version(tpm_manager::GSC_VERSION_CR50);
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(version_info), Return(true)));
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), FipsGetStatus(_))
+      .WillOnce(Return(trunks::TPM_RC_FAILURE));
+
+  EXPECT_THAT(backend_->GetU2fTpm2().GetFipsStatus(),
+              NotOkAnd(RetryAction(Eq(TPMRetryAction::kNoRetry))));
+}
+
+TEST_F(BackendU2fTpm2Test, ActivateFipsTi50) {
+  tpm_manager::GetVersionInfoReply version_info;
+  version_info.set_gsc_version(tpm_manager::GSC_VERSION_TI50);
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(version_info), Return(true)));
+
+  EXPECT_THAT(backend_->GetU2fTpm2().ActivateFips(), IsOk());
+}
+
+TEST_F(BackendU2fTpm2Test, ActivateFipsSuccess) {
+  tpm_manager::GetVersionInfoReply version_info;
+  version_info.set_gsc_version(tpm_manager::GSC_VERSION_CR50);
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(version_info), Return(true)));
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), FipsActivate())
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+
+  EXPECT_THAT(backend_->GetU2fTpm2().ActivateFips(), IsOk());
+}
+
+TEST_F(BackendU2fTpm2Test, ActivateFipsError) {
+  tpm_manager::GetVersionInfoReply version_info;
+  version_info.set_gsc_version(tpm_manager::GSC_VERSION_CR50);
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(version_info), Return(true)));
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), FipsActivate())
+      .WillOnce(Return(trunks::TPM_RC_FAILURE));
+
+  EXPECT_THAT(backend_->GetU2fTpm2().ActivateFips(),
+              NotOkAnd(RetryAction(Eq(TPMRetryAction::kNoRetry))));
 }
 
 }  // namespace hwsec

@@ -11,6 +11,7 @@
 #include <brillo/secure_blob.h>
 
 #include "libhwsec/backend/tpm2/trunks_context.h"
+#include "libhwsec/backend/tpm2/vendor.h"
 #include "libhwsec/backend/u2f.h"
 #include "libhwsec/status.h"
 
@@ -19,7 +20,8 @@ namespace hwsec {
 // U2f provide the functions related to U2F vendor commands.
 class U2fTpm2 : public U2f {
  public:
-  explicit U2fTpm2(TrunksContext& context) : context_(context) {}
+  U2fTpm2(TrunksContext& context, VendorTpm2& vendor)
+      : context_(context), vendor_(vendor) {}
 
   StatusOr<bool> IsEnabled() override;
   StatusOr<u2f::GenerateResult> GenerateUserPresenceOnly(
@@ -71,11 +73,15 @@ class U2fTpm2 : public U2f {
                                       const brillo::Blob& public_key,
                                       const brillo::Blob& salt) override;
   StatusOr<u2f::Config> GetConfig() override;
+  StatusOr<u2f::FipsStatus> GetFipsStatus() override;
+  Status ActivateFips() override;
 
  private:
   TrunksContext& context_;
+  VendorTpm2& vendor_;
 
   std::optional<bool> enabled_;
+  std::optional<u2f::FipsStatus> fips_status_;
 };
 
 }  // namespace hwsec

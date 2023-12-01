@@ -204,6 +204,16 @@ class U2f {
 
   virtual StatusOr<u2f::Config> GetConfig() = 0;
 
+  // Gets the FIPS status of the GSC, i.e., whether the FIPS mode is active.
+  // FIPS mode affects the code path taken by U2F, and only when FIPS mode is
+  // active, the code path taken is using FIPS certified crypto algorithms.
+  virtual StatusOr<u2f::FipsStatus> GetFipsStatus() = 0;
+
+  // Forces GSC to take the FIPS mode path for U2F. Is the FIPS mode is already
+  // active, this is a no-op. Note that this breaks all existing U2F key handles
+  // if FIPS mode is switched from non-active to active.
+  virtual Status ActivateFips() = 0;
+
  protected:
   U2f() = default;
   ~U2f() = default;

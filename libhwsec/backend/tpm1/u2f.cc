@@ -103,4 +103,12 @@ StatusOr<u2f::Config> U2fTpm1::GetConfig() {
   return MakeStatus<TPMError>("Unsupported", TPMRetryAction::kNoRetry);
 }
 
+StatusOr<u2f::FipsStatus> U2fTpm1::GetFipsStatus() {
+  return MakeStatus<TPMError>("Unsupported", TPMRetryAction::kNoRetry);
+}
+
+Status U2fTpm1::ActivateFips() {
+  return MakeStatus<TPMError>("Unsupported", TPMRetryAction::kNoRetry);
+}
+
 }  // namespace hwsec

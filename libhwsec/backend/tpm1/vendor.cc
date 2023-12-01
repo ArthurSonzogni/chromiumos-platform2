@@ -133,6 +133,10 @@ StatusOr<int32_t> VendorTpm1::GetFingerprint() {
   return result & 0x7fffffff;
 }
 
+StatusOr<VendorTpm1::GscType> VendorTpm1::GetGscType() {
+  return GscType::kNotGsc;
+}
+
 StatusOr<bool> VendorTpm1::IsSrkRocaVulnerable() {
   ASSIGN_OR_RETURN(ScopedKey srk,
                    key_management_.GetPersistentKey(
