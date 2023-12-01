@@ -39,8 +39,7 @@ const std::vector<std::string> kDisableFactoryModeArgv{kGsctoolCmd, "-a", "-F",
                                                        "disable"};
 // Constants for board ID.
 const std::vector<std::string> kGetBoardIdArgv{kGsctoolCmd, "-a", "-i", "-M"};
-constexpr char kSetBoardIdCmd[] =
-    "/usr/share/cros/hwsec-utils/gsc_set_board_id";
+constexpr char kSetBoardIdCmd[] = "/usr/sbin/gsc_set_board_id";
 constexpr char kBoardIdTypeRegexp[] = R"(BID_TYPE=([[:xdigit:]]{8}))";
 constexpr char kBoardIdFlagsRegexp[] = R"(BID_FLAGS=([[:xdigit:]]{8}))";
 
