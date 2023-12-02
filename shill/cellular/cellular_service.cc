@@ -840,9 +840,13 @@ Stringmap CellularService::ValidateCustomApn(const Stringmap& value,
     new_apn_info[kApnProperty] = new_apn;
 
     // Fetch details from the APN database first.
-    FetchDetailsFromApnList(cellular_->apn_list(), &new_apn_info);
-
-    // If this is a user-entered APN, the one or more of the following
+    if (!using_apn_revamp_ui) {
+      // For the revamp APN UI, it was decided that the user would have full
+      // control over the APN, so we should not try to "fix" their APN by
+      // populating values from the modb.
+      FetchDetailsFromApnList(cellular_->apn_list(), &new_apn_info);
+    }
+    // If this is a user-entered APN, then one or more of the following
     // details should exist, even if they are empty.
     std::string str;
     if (GetNonEmptyField(value, kApnUsernameProperty, &str))
