@@ -25,7 +25,7 @@
 #include "debugd/src/battery_tool.h"
 #include "debugd/src/container_tool.h"
 #include "debugd/src/crash_sender_tool.h"
-#include "debugd/src/crosh_tool.h"
+#include "debugd/src/crosh_shell_tool.h"
 #include "debugd/src/cups_tool.h"
 #include "debugd/src/debug_logs_tool.h"
 #include "debugd/src/debug_mode_tool.h"
@@ -77,10 +77,11 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
 
   // org::chromium::debugdInterface overrides; D-Bus methods.
   std::string BatteryFirmware(const std::string& option) override;
-  bool CroshStart(brillo::ErrorPtr* error,
-                  const base::ScopedFD& infd,
-                  const base::ScopedFD& outfd,
-                  std::string* handle) override;
+  bool CroshShellStart(brillo::ErrorPtr* error,
+                       const base::ScopedFD& lifeline_fd,
+                       const base::ScopedFD& infd,
+                       const base::ScopedFD& outfd,
+                       std::string* handle) override;
   bool PingStart(brillo::ErrorPtr* error,
                  const base::ScopedFD& outfd,
                  const std::string& dest,
@@ -277,7 +278,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<BatteryTool> battery_tool_;
   std::unique_ptr<ContainerTool> container_tool_;
   std::unique_ptr<CrashSenderTool> crash_sender_tool_;
-  std::unique_ptr<CroshTool> crosh_tool_;
+  std::unique_ptr<CroshShellTool> crosh_shell_tool_;
   std::unique_ptr<CupsTool> cups_tool_;
   std::unique_ptr<DebugLogsTool> debug_logs_tool_;
   std::unique_ptr<DebugModeTool> debug_mode_tool_;

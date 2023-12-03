@@ -1,13 +1,13 @@
-// Copyright 2023 The ChromiumOS Authors. All rights reserved.
+// Copyright 2023 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include <gtest/gtest.h>
 
-#include "debugd/src/crosh_tool.h"
+#include "debugd/src/crosh_shell_tool.h"
 
-TEST(CroshTool, Run) {
-  debugd::CroshTool crosh_tool;
+TEST(CroshShellTool, Run) {
+  debugd::CroshShellTool crosh_tool;
 
   const base::ScopedFD infd;
   const base::ScopedFD outfd;

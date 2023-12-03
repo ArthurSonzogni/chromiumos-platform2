@@ -1,11 +1,11 @@
-// Copyright 2023 The ChromiumOS Authors. All rights reserved.
+// Copyright 2023 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
-// Tool to run crosh.
+// Tool to run crosh's shell cmd.
 
-#ifndef DEBUGD_SRC_CROSH_TOOL_H_
-#define DEBUGD_SRC_CROSH_TOOL_H_
+#ifndef DEBUGD_SRC_CROSH_SHELL_TOOL_H_
+#define DEBUGD_SRC_CROSH_SHELL_TOOL_H_
 
 #include <string>
 
@@ -16,13 +16,13 @@
 
 namespace debugd {
 
-class CroshTool : public SubprocessTool {
+class CroshShellTool : public SubprocessTool {
  public:
-  CroshTool() = default;
-  CroshTool(const CroshTool&) = delete;
-  CroshTool& operator=(const CroshTool&) = delete;
+  CroshShellTool() = default;
+  CroshShellTool(const CroshShellTool&) = delete;
+  CroshShellTool& operator=(const CroshShellTool&) = delete;
 
-  ~CroshTool() override = default;
+  ~CroshShellTool() override = default;
 
   bool Run(const base::ScopedFD& infd,
            const base::ScopedFD& outfd,
@@ -32,4 +32,4 @@ class CroshTool : public SubprocessTool {
 
 }  // namespace debugd
 
-#endif  // DEBUGD_SRC_CROSH_TOOL_H_
+#endif  // DEBUGD_SRC_CROSH_SHELL_TOOL_H_

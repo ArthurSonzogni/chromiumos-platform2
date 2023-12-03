@@ -50,7 +50,7 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus,
   battery_tool_ = std::make_unique<BatteryTool>();
   container_tool_ = std::make_unique<ContainerTool>();
   crash_sender_tool_ = std::make_unique<CrashSenderTool>();
-  crosh_tool_ = std::make_unique<CroshTool>();
+  crosh_shell_tool_ = std::make_unique<CroshShellTool>();
   cups_tool_ = std::make_unique<CupsTool>();
   debug_logs_tool_ = std::make_unique<DebugLogsTool>(bus);
   debug_mode_tool_ = std::make_unique<DebugModeTool>(bus);
@@ -118,11 +118,19 @@ std::string DebugdDBusAdaptor::SetOomScoreAdj(
   return oom_adj_tool_->Set(scores);
 }
 
-bool DebugdDBusAdaptor::CroshStart(brillo::ErrorPtr* error,
-                                   const base::ScopedFD& infd,
-                                   const base::ScopedFD& outfd,
-                                   std::string* handle) {
-  return crosh_tool_->Run(infd, outfd, handle, error);
+bool DebugdDBusAdaptor::CroshShellStart(brillo::ErrorPtr* error,
+                                        const base::ScopedFD& lifeline_fd,
+                                        const base::ScopedFD& infd,
+                                        const base::ScopedFD& outfd,
+                                        std::string* handle) {
+  // TODO(b/315342353): utilize lifeline_fd.
+  if (!dev_features_tool_wrapper_->restriction().InDevMode()) {
+    DEBUGD_ADD_ERROR(error, kSetCrashSenderTestModeErrorString,
+                     "Dev mode is required to use shell.");
+    return false;
+  }
+
+  return crosh_shell_tool_->Run(infd, outfd, handle, error);
 }
 
 bool DebugdDBusAdaptor::PingStart(brillo::ErrorPtr* error,

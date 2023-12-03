@@ -3,10 +3,15 @@
 <node name="/org/chromium/debugd"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.debugd">
-    <method name="CroshStart">
+    <method name="CroshShellStart">
       <tp:docstring>
         Starts a crosh shell instance.
       </tp:docstring>
+      <arg name="lifeline_fd" type="h" direction="in">
+        <tp:docstring>
+          Lifeline file descriptor for managing process lifetime.
+        </tp:docstring>
+      </arg>
       <arg name="infd" type="h" direction="in">
         <tp:docstring>
           File descriptor for input.
@@ -19,7 +24,7 @@
       </arg>
       <arg name="handle" type="s" direction="out">
         <tp:docstring>
-          Opaque handle for this crosh instance.
+          Opaque handle for this crosh shell instance.
         </tp:docstring>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
