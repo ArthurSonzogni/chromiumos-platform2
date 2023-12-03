@@ -76,8 +76,6 @@ class TetheringManager : public Network::EventHandler {
     kWrongState,
     // Upstream network was not created or was not connected.
     kUpstreamNetworkNotAvailable,
-    // Upstream network had no Internet connectivity.
-    kUpstreamNetworkWithoutInternet,
     // Upstream network operation failure
     kUpstreamFailure,
     // Downstream WiFi operation failure
@@ -153,6 +151,7 @@ class TetheringManager : public Network::EventHandler {
     kUserExit,            // User logs out or shuts down device.
     kSuspend,             // Device suspend.
     kUpstreamDisconnect,  // Upstream network disconnects.
+    kUpstreamNoInternet,  // Upstream network has no Internet connectivity.
     kInactive,            // Inactive timer fires.
     kError,               // Internal error.
     kConfigChange,        // Config is changed.
@@ -271,6 +270,15 @@ class TetheringManager : public Network::EventHandler {
   // Cancel the tethering inactive timer due to station associates or
   // auto_disable_ is changed to false.
   void StopInactiveTimer();
+  // Start the tethering upstream Network validation timer when TetheringState
+  // is kTetheringActive, unless the timer is already counting down. If the
+  // timer is not cancelled, the tethering session is town down when the
+  // timer fires.
+  void StartUpstreamNetworkValidationTimer();
+  // Cancel the tethering upstream Network validation timer after verifying
+  // the connectivity state of the upstream Network.
+  void StopUpstreamNetworkValidationTimer();
+
   // Get the number of active clients.
   size_t GetClientCount();
   // Deregister upstream network listener and free the network.
@@ -295,6 +303,9 @@ class TetheringManager : public Network::EventHandler {
   base::CancelableOnceClosure stop_timer_callback_;
   // Executes when the inactive timer expires. Calls StopTetheringSession.
   base::CancelableOnceClosure inactive_timer_callback_;
+  // Executes when the upstream network validation timer expires. Calls
+  // StopTetheringSession.
+  base::CancelableOnceClosure upstream_network_validation_timer_callback_;
 
   // Automatically disable tethering if no devices have been associated for
   // |kAutoDisableMinute| minutes.

@@ -64,6 +64,11 @@ static constexpr base::TimeDelta kStopTimeout = base::Seconds(5);
 // Auto disable tethering if no clients for |kAutoDisableDelay|.
 static constexpr base::TimeDelta kAutoDisableDelay = base::Minutes(5);
 
+// Maximum time to wait for the upstream Network to successfully complete
+// network validation before disabling the tethering session.
+static constexpr base::TimeDelta kUpstreamNetworkValidationTimeout =
+    base::Minutes(1);
+
 bool StoreToConfigBool(const StoreInterface* storage,
                        const std::string& storage_id,
                        KeyValueStore* config,
@@ -615,13 +620,10 @@ void TetheringManager::CheckAndPostTetheringStartResult() {
     return;
   }
 
-  if (!IsUpstreamNetworkReady()) {
-    LOG(WARNING) << __func__ << ": Upstream Network " << *upstream_network_
-                 << " not ready yet.";
-    // TODO(b/273975270): Re-enable checking Internet connectivity on the
-    // upstream network once the Network class can manage portal detection
-    // retries by itself, and returning early if there is no Internet
-    // connectivity.
+  if (!upstream_network_ || !upstream_network_->IsConnected()) {
+    PostSetEnabledResult(SetEnabledResult::kUpstreamNetworkNotAvailable);
+    StopTetheringSession(StopReason::kError);
+    return;
   }
 
   SetState(TetheringState::kTetheringActive);
@@ -630,6 +632,11 @@ void TetheringManager::CheckAndPostTetheringStartResult() {
     // Kick off inactive timer when tethering session becomes active and no
     // clients are connected.
     StartInactiveTimer();
+  }
+  // If Internet connectivity has not yet been evaluated, start the network
+  // validation timer.
+  if (!IsUpstreamNetworkReady()) {
+    StartUpstreamNetworkValidationTimer();
   }
   PostSetEnabledResult(SetEnabledResult::kSuccess);
 }
@@ -663,8 +670,6 @@ void TetheringManager::OnStartingTetheringTimeout() {
     result = SetEnabledResult::kUpstreamNetworkNotAvailable;
   } else if (!upstream_network_->IsConnected()) {
     result = SetEnabledResult::kUpstreamFailure;
-  } else if (!IsUpstreamNetworkReady()) {
-    result = SetEnabledResult::kUpstreamNetworkWithoutInternet;
   }
   PostSetEnabledResult(result);
   StopTetheringSession(StopReason::kError);
@@ -934,6 +939,31 @@ void TetheringManager::StopInactiveTimer() {
   inactive_timer_callback_.Cancel();
 }
 
+void TetheringManager::StartUpstreamNetworkValidationTimer() {
+  if (!upstream_network_validation_timer_callback_.IsCancelled() ||
+      state_ != TetheringState::kTetheringActive) {
+    return;
+  }
+
+  LOG(INFO) << __func__ << ": timer fires in "
+            << kUpstreamNetworkValidationTimeout;
+
+  upstream_network_validation_timer_callback_.Reset(base::BindOnce(
+      &TetheringManager::StopTetheringSession, base::Unretained(this),
+      StopReason::kUpstreamNoInternet, false));
+  manager_->dispatcher()->PostDelayedTask(
+      FROM_HERE, upstream_network_validation_timer_callback_.callback(),
+      kUpstreamNetworkValidationTimeout);
+}
+
+void TetheringManager::StopUpstreamNetworkValidationTimer() {
+  if (upstream_network_validation_timer_callback_.IsCancelled()) {
+    return;
+  }
+
+  upstream_network_validation_timer_callback_.Cancel();
+}
+
 void TetheringManager::OnPeerAssoc() {
   if (state_ != TetheringState::kTetheringActive) {
     return;
@@ -1133,8 +1163,6 @@ const std::string TetheringManager::SetEnabledResultName(
       return kTetheringEnableResultWrongState;
     case SetEnabledResult::kUpstreamNetworkNotAvailable:
       return kTetheringEnableResultUpstreamNotAvailable;
-    case SetEnabledResult::kUpstreamNetworkWithoutInternet:
-      return kTetheringEnableResultUpstreamWithoutInternet;
     case SetEnabledResult::kUpstreamFailure:
       return kTetheringEnableResultUpstreamFailure;
     case SetEnabledResult::kDownstreamWiFiFailure:
@@ -1340,6 +1368,11 @@ const char* TetheringManager::StopReasonToString(StopReason reason) {
       return kTetheringIdleReasonSuspend;
     case StopReason::kUpstreamDisconnect:
       return kTetheringIdleReasonUpstreamDisconnect;
+    case StopReason::kUpstreamNoInternet:
+      // TODO(b/271322391) Update Chrome to handle
+      // kTetheringIdleReasonUpstreamNoInternet.
+      // return kTetheringIdleReasonUpstreamNoInternet;
+      return kTetheringIdleReasonInactive;
     case StopReason::kInactive:
       return kTetheringIdleReasonInactive;
     case StopReason::kError:
@@ -1384,23 +1417,11 @@ bool TetheringManager::SetExperimentalTetheringFunctionality(const bool& value,
 void TetheringManager::OnNetworkValidationResult(
     int interface_index, const NetworkMonitor::Result& result) {
   DCHECK(upstream_network_);
-  if (state_ == TetheringState::kTetheringStarting) {
-    if (!IsUpstreamNetworkReady()) {
-      LOG(WARNING) << __func__ << ": Upstream Network " << *upstream_network_
-                   << " has failed validating Internet access";
-      // TODO(b/273975270): Re-enable stopping the tethering session if an
-      // Internet connectivity check fails for more than X seconds or N attempts
-      // one the Network class can manage portal detection retries by itself.
-      // Upstream network validation failed, post result.
-      // PostSetEnabledResult(
-      //        SetEnabledResult::kUpstreamNetworkWithoutInternet);
-      // StopTetheringSession(StopReason::kUpstreamDisconnect);
-    } else {
-      CheckAndPostTetheringStartResult();
-    }
+  if (IsUpstreamNetworkReady()) {
+    StopUpstreamNetworkValidationTimer();
+  } else {
+    StartUpstreamNetworkValidationTimer();
   }
-  // TODO(b/271322391): handle the case when tethering is active and lose
-  // Internet connection on the upstream.
 }
 
 void TetheringManager::OnNetworkStopped(int interface_index, bool is_failure) {

@@ -462,6 +462,11 @@ class TetheringManagerTest : public testing::Test {
     return tethering_manager->inactive_timer_callback_;
   }
 
+  const base::CancelableOnceClosure& GetUpstreamNetworkValidationTimer(
+      TetheringManager* tethering_manager) {
+    return tethering_manager->upstream_network_validation_timer_callback_;
+  }
+
   void AddServiceToCellularProvider(CellularServiceRefPtr service) {
     cellular_service_provider_->AddService(service);
   }
@@ -1420,44 +1425,110 @@ TEST_F(TetheringManagerTest, InterfaceDisabledWhenTetheringIsStarting) {
   CheckTetheringStopping(tethering_manager_, kTetheringIdleReasonError);
 }
 
-// TODO(b/273975270) Re-enable this test once Internet connectivity check on the
-// upstream network has been re-enabled in TetheringManager.
-TEST_F(TetheringManagerTest, DISABLED_UpstreamNetworkValidationFailed) {
+TEST_F(TetheringManagerTest, UpstreamNetworkValidationFails) {
   TetheringPrerequisite(tethering_manager_);
 
   EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
-  SetEnabled(tethering_manager_, true);
-  EXPECT_EQ(TetheringState(tethering_manager_),
-            TetheringManager::TetheringState::kTetheringStarting);
+  EXPECT_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "wwan0", _, _, _, _))
+      .WillOnce(Return(true));
 
-  // Downstream device event service up.
-  EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
+  SetEnabled(tethering_manager_, true);
   DownStreamDeviceEvent(tethering_manager_, LocalDevice::DeviceEvent::kLinkUp,
                         hotspot_device_.get());
+  OnUpstreamNetworkAcquired(tethering_manager_,
+                            TetheringManager::SetEnabledResult::kSuccess);
+  EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
+  OnDownstreamNetworkReady(tethering_manager_, MakeFd());
 
-  // Upstream network fetched. Network not ready.
+  // Downstream network is fully configured. Upstream network is acquired but
+  // not yet ready. The tethering session is now started, with the upstream
+  // network validation timer active.
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringActive);
+  EXPECT_FALSE(
+      GetUpstreamNetworkValidationTimer(tethering_manager_).IsCancelled());
+  VerifyResult(TetheringManager::SetEnabledResult::kSuccess);
+
+  // Feed negative network validation result event. TetheringManager is still
+  // leaving a chance for the upstream network validation to succeed.
   NetworkMonitor::Result network_monitor_result;
   network_monitor_result.http_result =
       PortalDetector::ProbeResult::kConnectionFailure;
   network_monitor_result.https_result =
       PortalDetector::ProbeResult::kConnectionFailure;
+  network_->set_network_monitor_result_for_testing(network_monitor_result);
+  OnUpstreamNetworkValidationResult(tethering_manager_, network_monitor_result);
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringActive);
+  EXPECT_FALSE(
+      GetUpstreamNetworkValidationTimer(tethering_manager_).IsCancelled());
+  Mock::VerifyAndClearExpectations(&manager_);
+
+  // Force the network validation timer to expires
+  EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
+  GetUpstreamNetworkValidationTimer(tethering_manager_).callback().Run();
+  EXPECT_TRUE(
+      GetUpstreamNetworkValidationTimer(tethering_manager_).IsCancelled());
+
+  // The Tethering session has stopped.
+  // TODO(b/271322391) Update Chrome to handle
+  // kTetheringIdleReasonUpstreamNoInternet.
+  CheckTetheringStopping(tethering_manager_, kTetheringIdleReasonInactive);
+}
+
+TEST_F(TetheringManagerTest, UpstreamNetworkLosesInternetAccess) {
+  TetheringPrerequisite(tethering_manager_);
+
+  EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
+  EXPECT_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "wwan0", _, _, _, _))
+      .WillOnce(Return(true));
+  NetworkMonitor::Result network_monitor_result;  // becomes active.
+  network_monitor_result.http_result = PortalDetector::ProbeResult::kSuccess;
+  network_monitor_result.https_result = PortalDetector::ProbeResult::kSuccess;
+  network_->set_network_monitor_result_for_testing(network_monitor_result);
+
+  SetEnabled(tethering_manager_, true);
+  DownStreamDeviceEvent(tethering_manager_, LocalDevice::DeviceEvent::kLinkUp,
+                        hotspot_device_.get());
   OnUpstreamNetworkAcquired(tethering_manager_,
                             TetheringManager::SetEnabledResult::kSuccess);
-  EXPECT_EQ(TetheringState(tethering_manager_),
-            TetheringManager::TetheringState::kTetheringStarting);
-
-  // Downstream network is fully configured. Upstream network is not yet ready.
+  EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
   OnDownstreamNetworkReady(tethering_manager_, MakeFd());
+
+  // Downstream network is fully configured. Upstream network is acquired
+  // readyand . The tethering session is now started, without the upstream
+  // network validation timer.
   EXPECT_EQ(TetheringState(tethering_manager_),
-            TetheringManager::TetheringState::kTetheringStarting);
+            TetheringManager::TetheringState::kTetheringActive);
+  EXPECT_TRUE(
+      GetUpstreamNetworkValidationTimer(tethering_manager_).IsCancelled());
+  VerifyResult(TetheringManager::SetEnabledResult::kSuccess);
+  Mock::VerifyAndClearExpectations(&manager_);
 
-  // Feed network validation result event.
+  // The upstream network loses Internet access. The upstream network validation
+  // timer becomes active.
+  network_monitor_result.http_result =
+      PortalDetector::ProbeResult::kConnectionFailure;
+  network_monitor_result.https_result =
+      PortalDetector::ProbeResult::kConnectionFailure;
+  network_->set_network_monitor_result_for_testing(network_monitor_result);
   OnUpstreamNetworkValidationResult(tethering_manager_, network_monitor_result);
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringActive);
+  EXPECT_FALSE(
+      GetUpstreamNetworkValidationTimer(tethering_manager_).IsCancelled());
 
-  VerifyResult(
-      TetheringManager::SetEnabledResult::kUpstreamNetworkWithoutInternet);
-  CheckTetheringStopping(tethering_manager_,
-                         kTetheringIdleReasonUpstreamDisconnect);
+  // Force the upstream network validation timer to expires
+  EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
+  GetUpstreamNetworkValidationTimer(tethering_manager_).callback().Run();
+  EXPECT_TRUE(
+      GetUpstreamNetworkValidationTimer(tethering_manager_).IsCancelled());
+
+  // The Tethering session has stopped.
+  // TODO(b/271322391) Update Chrome to handle
+  // kTetheringIdleReasonUpstreamNoInternet.
+  CheckTetheringStopping(tethering_manager_, kTetheringIdleReasonInactive);
+  Mock::VerifyAndClearExpectations(&manager_);
 }
 
 TEST_F(TetheringManagerTest, DeviceEventPeerConnectedDisconnected) {

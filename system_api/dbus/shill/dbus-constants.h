@@ -1024,6 +1024,8 @@ constexpr char kTetheringIdleReasonInactive[] = "inactive";
 constexpr char kTetheringIdleReasonInitialState[] = "initial_state";
 constexpr char kTetheringIdleReasonSuspend[] = "suspend";
 constexpr char kTetheringIdleReasonUpstreamDisconnect[] = "upstream_disconnect";
+constexpr char kTetheringIdleReasonUpstreamNoInternet[] =
+    "upstream_no_internet";
 constexpr char kTetheringIdleReasonUserExit[] = "user_exit";
 
 // kTetheringStatusStateProperty values
@@ -1045,9 +1047,10 @@ constexpr char kTetheringEnableResultSuccess[] = "success";
 constexpr char kTetheringEnableResultUpstreamFailure[] = "upstream_failure";
 constexpr char kTetheringEnableResultUpstreamNotAvailable[] =
     "upstream_not_available";
+constexpr char kTetheringEnableResultWrongState[] = "wrong_state";
+// Deprecated in crrev/c/5082857
 constexpr char kTetheringEnableResultUpstreamWithoutInternet[] =
     "upstream_network_without_Internet";
-constexpr char kTetheringEnableResultWrongState[] = "wrong_state";
 
 // kCheckTetheringReadinessFunction return status
 constexpr char kTetheringReadinessNotAllowed[] = "not_allowed";

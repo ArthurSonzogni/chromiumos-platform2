@@ -1100,25 +1100,26 @@ Properties	object ActiveProfile [readonly]
 			Dictionary that contains the status of the active tethering connection,
 
 			string downstream_technology
-				one of "wifi", "ethernet"
+				one of "wifi", "ethernet".
 			string upstream_technology
-				one of "wifi", "cellular", "ethernet"
+				one of "wifi", "cellular", "ethernet".
 			string state
 				state of the tethering instance. The state could be any one of
-				"idle", "starting", "active", "stopping" or "restarting"
+				"idle", "starting", "active", "stopping" or "restarting".
 			string idle_reason
 				the reason why tethering is in idle state. Could be any one of
 				"initial_state", "client_stop", "user_exit", "inactive", "error"
-				"upstream_disconnect", "suspend" or "config_change"
+				"upstream_disconnect", "upstream_no_internet", "suspend", or
+				"config_change".
 			array{dict} active_clients
 				string IPv4
 					IPv4 address of the associated client expressed in the
-					dotted-decimal format
+					dotted-decimal format.
 				array{string} IPv6
 					IPv6 addresses of the associated client in allowed format
-					as specified in RFC 2373
+					as specified in RFC 2373.
 				string MAC
-					EUI-64 or EUI-48 hardware address of the associated client
+					EUI-64 or EUI-48 hardware address of the associated client.
 				string hostname
 					hostname of the associated client. This value is present
 					only if the client advertises it in its DHCP request.
