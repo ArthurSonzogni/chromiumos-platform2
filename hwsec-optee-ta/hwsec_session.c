@@ -125,7 +125,7 @@ static TEE_Result GenerateSalt(uint8_t salt[SHA256_DIGEST_SIZE],
   int32_t tpm_auth_pub_len;
   uint8_t tpm_auth_pub[TPM_AUTH_PUB_MAX_LEN];
   uint8_t* tpm_auth_pub_ptr;
-  TPM2B_PUBLIC pub;
+  TPMT_PUBLIC pub;
   TPMS_ECC_POINT ephemeral_point;
 
   uint32_t temp_len;
@@ -141,26 +141,25 @@ static TEE_Result GenerateSalt(uint8_t salt[SHA256_DIGEST_SIZE],
   }
 
   tpm_auth_pub_ptr = tpm_auth_pub;
-  tpm_rc = TPM2B_PUBLIC_Unmarshal(&pub, &tpm_auth_pub_ptr, &tpm_auth_pub_len);
+  tpm_rc = TPMT_PUBLIC_Unmarshal(&pub, &tpm_auth_pub_ptr, &tpm_auth_pub_len);
   if (tpm_rc != TPM_RC_SUCCESS) {
     EMSG("TPM2B_PUBLIC_Unmarshal failed with code 0x%x", tpm_rc);
     return TEE_ERROR_BAD_FORMAT;
   }
 
-  if (pub.t.publicArea.type != TPM_ALG_ECC) {
+  if (pub.type != TPM_ALG_ECC) {
     EMSG("Invalid salting key type.");
     return TEE_ERROR_NOT_SUPPORTED;
   }
 
-  if (pub.t.publicArea.nameAlg != TPM_ALG_SHA256 ||
-      pub.t.publicArea.unique.ecc.x.t.size != SHA256_DIGEST_SIZE ||
-      pub.t.publicArea.unique.ecc.y.t.size != SHA256_DIGEST_SIZE) {
+  if (pub.nameAlg != TPM_ALG_SHA256 ||
+      pub.unique.ecc.x.t.size != SHA256_DIGEST_SIZE ||
+      pub.unique.ecc.y.t.size != SHA256_DIGEST_SIZE) {
     EMSG("Invalid ECC salting key attributes.");
     return TEE_ERROR_NOT_SUPPORTED;
   }
 
-  memcpy(party_v_info, pub.t.publicArea.unique.ecc.x.t.buffer,
-         SHA256_DIGEST_SIZE);
+  memcpy(party_v_info, pub.unique.ecc.x.t.buffer, SHA256_DIGEST_SIZE);
 
   TEE_Attribute curv_attr;
   TEE_InitValueAttribute(&curv_attr, TEE_ATTR_ECC_CURVE,
@@ -265,12 +264,10 @@ static TEE_Result GenerateSalt(uint8_t salt[SHA256_DIGEST_SIZE],
   TEE_Attribute pubkey_attr[2];
 
   TEE_InitRefAttribute(&pubkey_attr[0], TEE_ATTR_ECC_PUBLIC_VALUE_X,
-                       pub.t.publicArea.unique.ecc.x.t.buffer,
-                       pub.t.publicArea.unique.ecc.x.t.size);
+                       pub.unique.ecc.x.t.buffer, pub.unique.ecc.x.t.size);
 
   TEE_InitRefAttribute(&pubkey_attr[1], TEE_ATTR_ECC_PUBLIC_VALUE_Y,
-                       pub.t.publicArea.unique.ecc.y.t.buffer,
-                       pub.t.publicArea.unique.ecc.y.t.size);
+                       pub.unique.ecc.y.t.buffer, pub.unique.ecc.y.t.size);
 
   res =
       TEE_AllocateTransientObject(TEE_TYPE_GENERIC_SECRET, KEY_MAX_BITS, &key);
