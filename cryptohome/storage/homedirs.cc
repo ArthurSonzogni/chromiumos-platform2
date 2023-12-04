@@ -19,8 +19,8 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/cryptohome.h>
 #include <brillo/blkdev_utils/lvm.h>
+#include <brillo/cryptohome.h>
 #include <brillo/scoped_umask.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>

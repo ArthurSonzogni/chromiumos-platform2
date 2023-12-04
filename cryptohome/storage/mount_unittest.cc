@@ -23,8 +23,8 @@
 #include <brillo/process/process_mock.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <policy/libpolicy.h>

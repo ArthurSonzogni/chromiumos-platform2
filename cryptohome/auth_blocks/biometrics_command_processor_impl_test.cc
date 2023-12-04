@@ -10,9 +10,9 @@
 
 #include <base/functional/callback.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/test/bind.h>
 #include <base/test/repeating_test_future.h>
-#include <base/task/sequenced_task_runner.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <biod/biod_proxy/mock_auth_stack_manager_proxy_base.h>

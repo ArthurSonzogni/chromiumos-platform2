@@ -12,9 +12,9 @@
 #include <base/files/file_util.h>
 #include <brillo/cryptohome.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
-#include <user_data_auth-client-test/user_data_auth/dbus-proxy-mocks.h>
 #include <policy/mock_device_policy.h>
 #include <policy/mock_libpolicy.h>
+#include <user_data_auth-client-test/user_data_auth/dbus-proxy-mocks.h>
 
 #include "cryptohome/mock_platform.h"
 

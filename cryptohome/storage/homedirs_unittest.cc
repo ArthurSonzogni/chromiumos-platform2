@@ -12,8 +12,8 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/time/time.h>
-#include <brillo/cryptohome.h>
 #include <brillo/blkdev_utils/mock_lvm.h>
+#include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

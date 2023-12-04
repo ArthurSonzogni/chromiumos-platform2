@@ -7,8 +7,8 @@
 #include <string>
 #include <vector>
 
-#include <base/logging.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <brillo/files/file_util.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 

@@ -45,8 +45,8 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <dbus_adaptors/org.chromium.UserDataAuth.h>
-#include <device_management-client/device_management/dbus-proxies.h>
 #include <device_management/proto_bindings/device_management_interface.pb.h>
+#include <device_management-client/device_management/dbus-proxies.h>
 #include <featured/feature_library.h>
 #include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/status.h>

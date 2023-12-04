@@ -10,8 +10,8 @@
 
 #include <base/logging.h>
 #include <base/strings/strcat.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 

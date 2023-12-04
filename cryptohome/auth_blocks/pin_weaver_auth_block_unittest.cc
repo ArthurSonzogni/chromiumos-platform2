@@ -15,17 +15,17 @@
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <gtest/gtest.h>
-#include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 #include <libhwsec/backend/pinweaver_manager/pinweaver_manager.h>
 #include <libhwsec/error/pinweaver_error.h>
 #include <libhwsec/error/tpm_error.h>
 #include <libhwsec/error/tpm_retry_action.h>
+#include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/rsa.h>
-#include <libhwsec-foundation/crypto/secure_box.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
+#include <libhwsec-foundation/crypto/secure_box.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block_utils.h"

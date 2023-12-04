@@ -8,8 +8,8 @@
 
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gtest/gtest.h>
-#include <libhwsec/error/tpm_error.h>
 #include <libhwsec/error/tpm2_error.h>
+#include <libhwsec/error/tpm_error.h>
 #include <libhwsec-foundation/status/status_chain.h>
 #include <metrics/metrics_library_mock.h>
 

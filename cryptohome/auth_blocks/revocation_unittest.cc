@@ -8,12 +8,12 @@
 
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
-#include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec/backend/pinweaver_manager/pinweaver_manager.h>
 #include <libhwsec/error/pinweaver_error.h>
 #include <libhwsec/error/tpm_error.h>
 #include <libhwsec/error/tpm_retry_action.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::ErrorActionSet;

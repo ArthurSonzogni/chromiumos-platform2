@@ -24,8 +24,8 @@
 #include <base/test/test_future.h>
 #include <base/test/test_timeouts.h>
 #include <base/time/time.h>
-#include <brillo/dbus/dbus_object_test_helpers.h>
 #include <brillo/dbus/dbus_object.h>
+#include <brillo/dbus/dbus_object_test_helpers.h>
 #include <brillo/fake_cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>

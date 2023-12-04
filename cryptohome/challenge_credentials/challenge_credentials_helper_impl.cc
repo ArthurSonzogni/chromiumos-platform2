@@ -14,8 +14,8 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/system/sys_info.h>
-#include <libhwsec/status.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
+#include <libhwsec/status.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_decrypt_operation.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_generate_new_operation.h"

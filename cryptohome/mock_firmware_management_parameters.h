@@ -10,8 +10,8 @@
 #include <device_management/proto_bindings/device_management_interface.pb.h>
 #include <device_management-client/device_management/dbus-proxies.h>
 
-#include <memory>
 #include <gmock/gmock.h>
+#include <memory>
 
 namespace cryptohome {
 class MockFirmwareManagementParameters : public FirmwareManagementParameters {

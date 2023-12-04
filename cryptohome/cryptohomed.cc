@@ -14,8 +14,8 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
-#include <chaps/pkcs11/cryptoki.h>
 #include <brillo/syslog_logging.h>
+#include <chaps/pkcs11/cryptoki.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/profiling/profiling.h>
 #include <libhwsec-foundation/tpm_error/tpm_error_uma_reporter.h>

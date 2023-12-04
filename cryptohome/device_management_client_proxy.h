@@ -15,8 +15,8 @@
 
 #include <memory>
 
-#include <base/time/time.h>
 #include <base/memory/ref_counted.h>
+#include <base/time/time.h>
 #include <dbus/bus.h>
 
 namespace cryptohome {

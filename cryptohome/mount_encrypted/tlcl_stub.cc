@@ -8,14 +8,11 @@
 
 #include <base/check.h>
 #include <base/logging.h>
-
+#include <brillo/secure_blob.h>
+#include <libhwsec-foundation/crypto/sha.h>
 #include <openssl/sha.h>
-
 #include <vboot/tlcl.h>
 
-#include <brillo/secure_blob.h>
-
-#include <libhwsec-foundation/crypto/sha.h>
 #include "cryptohome/mount_encrypted/tpm.h"
 
 namespace mount_encrypted {

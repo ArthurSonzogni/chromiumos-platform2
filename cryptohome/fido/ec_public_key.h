@@ -12,8 +12,8 @@
 #include <string>
 #include <vector>
 
-#include <crypto/scoped_openssl_types.h>
 #include <brillo/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
 
 #include <base/containers/span.h>
 

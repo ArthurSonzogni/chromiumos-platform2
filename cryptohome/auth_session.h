@@ -23,8 +23,8 @@
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
-#include <libhwsec-foundation/status/status_chain_or.h>
 #include <libhwsec/structures/explicit_init.h>
+#include <libhwsec-foundation/status/status_chain_or.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/prepare_token.h"

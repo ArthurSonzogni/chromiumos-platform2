@@ -9,9 +9,9 @@
 #include <utility>
 #include <variant>
 
-#include <sys/types.h>
 #include <crypto/sha2.h>
 #include <openssl/sha.h>
+#include <sys/types.h>
 
 #include <base/check.h>
 #include <base/check_op.h>

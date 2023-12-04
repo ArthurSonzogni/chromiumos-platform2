@@ -11,11 +11,11 @@
 
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
-#include <openssl/bn.h>
-#include <openssl/ec.h>
 #include <libhwsec-foundation/crypto/ecdh_hkdf.h>
 #include <libhwsec-foundation/crypto/elliptic_curve.h>
 #include <libhwsec-foundation/utility/no_default_init.h>
+#include <openssl/bn.h>
+#include <openssl/ec.h>
 
 #include "cryptohome/cryptorecovery/cryptorecovery.pb.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"

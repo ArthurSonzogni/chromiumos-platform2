@@ -12,8 +12,8 @@
 #include <utility>
 #include <vector>
 
-#include <brillo/blkdev_utils/loop_device.h>
 #include <brillo/blkdev_utils/device_mapper.h>
+#include <brillo/blkdev_utils/loop_device.h>
 
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"

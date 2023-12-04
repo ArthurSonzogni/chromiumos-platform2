@@ -7,8 +7,8 @@
 
 #include "cryptohome/auth_blocks/biometrics_command_processor.h"
 
-#include <string>
 #include <optional>
+#include <string>
 
 #include <gmock/gmock.h>
 

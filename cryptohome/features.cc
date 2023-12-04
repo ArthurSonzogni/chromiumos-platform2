@@ -6,9 +6,9 @@
 
 #include <memory>
 #include <utility>
-#include "base/functional/bind.h"
 
 #include <base/check.h>
+#include <base/functional/bind.h>
 #include <base/no_destructor.h>
 #include <featured/fake_platform_features.h>
 #include <featured/feature_library.h>

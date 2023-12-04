@@ -11,8 +11,8 @@
 #include <gtest/gtest.h>
 
 #include <base/files/file_util.h>
-#include <brillo/blkdev_utils/mock_lvm.h>
 #include <brillo/blkdev_utils/lvm_device.h>
+#include <brillo/blkdev_utils/mock_lvm.h>
 
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 

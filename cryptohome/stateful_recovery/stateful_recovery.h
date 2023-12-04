@@ -9,8 +9,8 @@
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <brillo/dbus/dbus_method_response.h>
-#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <policy/libpolicy.h>
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 

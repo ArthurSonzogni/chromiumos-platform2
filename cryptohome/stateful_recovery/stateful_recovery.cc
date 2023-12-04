@@ -16,8 +16,8 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
-#include <brillo/syslog_logging.h>
 #include <brillo/cryptohome.h>
+#include <brillo/syslog_logging.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>

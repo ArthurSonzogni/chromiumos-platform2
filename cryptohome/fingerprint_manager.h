@@ -7,9 +7,10 @@
 
 #include <memory>
 #include <string>
-#include "cryptohome/username.h"
 
 #include <biod/biod_proxy/biometrics_manager_proxy_base.h>
+
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
