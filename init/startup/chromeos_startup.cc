@@ -942,12 +942,14 @@ int ChromeosStartup::Run() {
   DevMountPackages(dev_image_);
   RestorePreservedPaths();
 
-  // Unmount securityfs so that further modifications to inode security
-  // policies are not possible
+  // Remount securityfs as readonly so that further modifications to inode
+  // security policies are not possible but reading the kernel lockdown file is
+  // still possible.
   const base::FilePath kernel_sec =
       root_.Append(kSysfs).Append(kKernelSecurity);
-  if (!startup_dep_->Umount(kernel_sec)) {
-    PLOG(WARNING) << "Failed to umount: " << kernel_sec;
+  if (!startup_dep_->Mount("securityfs", kernel_sec, "securityfs",
+                           MS_REMOUNT | MS_RDONLY | kCommonMountFlags, "")) {
+    PLOG(WARNING) << "Failed to remount " << kernel_sec << " as readonly.";
   }
 
   bootstat_.LogEvent("post-startup");

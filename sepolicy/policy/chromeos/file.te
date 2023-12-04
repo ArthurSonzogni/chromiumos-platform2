@@ -1,5 +1,6 @@
 # Filesystem types
 type efivarfs, fs_type;
+type securityfs, fs_type;
 
 # File types
 # TODO(fqj): go over files of cros_system_file, and to label exec only and rename with _exec suffix.
