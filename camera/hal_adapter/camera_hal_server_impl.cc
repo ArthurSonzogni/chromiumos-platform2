@@ -49,7 +49,7 @@ namespace cros {
 CameraHalServerImpl::CameraHalServerImpl()
     : mojo_manager_(CameraMojoChannelManager::FromToken(
           CameraMojoChannelManagerToken::CreateInstance())),
-      ipc_bridge_(new IPCBridge(this, mojo_manager_.get())) {
+      ipc_bridge_(new IPCBridge(mojo_manager_.get())) {
   InitializeCameraTrace();
 }
 
@@ -90,10 +90,8 @@ void CameraHalServerImpl::Start() {
 }
 
 CameraHalServerImpl::IPCBridge::IPCBridge(
-    CameraHalServerImpl* camera_hal_server,
     CameraMojoChannelManager* mojo_manager)
-    : camera_hal_server_(camera_hal_server),
-      mojo_manager_(mojo_manager),
+    : mojo_manager_(mojo_manager),
       ipc_task_runner_(mojo_manager_->GetIpcTaskRunner()),
       main_task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()) {}
 
@@ -219,13 +217,7 @@ CameraHalServerImpl::IPCBridge::GetWeakPtr() {
 void CameraHalServerImpl::IPCBridge::OnServiceMojoChannelError() {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
-  LOGF(INFO)
-      << "Mojo connection to Chrome is disconnected. Chrome may have crashed.";
-  camera_service_receiver_set_.Clear();
-  main_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(&CameraHalServerImpl::ExitOnMainThread,
-                     base::Unretained(camera_hal_server_), -ECONNRESET));
+  LOG(INFO) << "A client disconnected from camera service.";
 }
 
 void CameraHalServerImpl::IPCBridge::OnPrivacySwitchStatusChanged(

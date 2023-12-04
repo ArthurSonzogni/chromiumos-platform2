@@ -65,8 +65,7 @@ class CameraHalServerImpl {
       : public mojom::CrosCameraService,
         public chromeos::mojo_service_manager::mojom::ServiceProvider {
    public:
-    IPCBridge(CameraHalServerImpl* camera_hal_server,
-              CameraMojoChannelManager* mojo_manager);
+    explicit IPCBridge(CameraMojoChannelManager* mojo_manager);
 
     ~IPCBridge() override;
 
@@ -120,8 +119,6 @@ class CameraHalServerImpl {
         mojo::ScopedMessagePipeHandle receiver) override;
 
     void OnObserverDisconnected(mojo::RemoteSetElementId id);
-
-    CameraHalServerImpl* camera_hal_server_;
 
     CameraMojoChannelManager* mojo_manager_;
 
