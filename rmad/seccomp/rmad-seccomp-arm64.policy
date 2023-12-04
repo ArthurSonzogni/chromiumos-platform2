@@ -56,6 +56,7 @@ getdents64: 1
 rt_sigprocmask: 1
 ppoll: 1
 pread64: 1
+process_vm_readv: 1
 sendto: 1
 dup3: 1
 prlimit64: 1
