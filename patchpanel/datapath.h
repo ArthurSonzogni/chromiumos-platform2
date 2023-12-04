@@ -109,11 +109,6 @@ struct DnsRedirectionRule {
   std::string host_ifname;
 };
 
-std::ostream& operator<<(std::ostream& stream,
-                         const ConnectedNamespace& nsinfo);
-
-std::ostream& operator<<(std::ostream& stream, const DnsRedirectionRule& rule);
-
 // Simple enum for specifying a set of IP family values.
 enum class IpFamily {
   kIPv4,
@@ -615,6 +610,11 @@ class Datapath {
   // DNS queries of system services when a VPN is connected.
   std::map<std::string, std::string> physical_dns_addresses_;
 };
+
+std::ostream& operator<<(std::ostream& stream,
+                         const ConnectedNamespace& nsinfo);
+std::ostream& operator<<(std::ostream& stream, const DnsRedirectionRule& rule);
+std::ostream& operator<<(std::ostream& stream, IpFamily family);
 
 }  // namespace patchpanel
 

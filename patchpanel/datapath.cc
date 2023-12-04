@@ -387,11 +387,8 @@ void Datapath::Start() {
   };
   for (const auto& c : jumpCommands) {
     auto op = c.op.value_or(Iptables::Command::kA);
-    if (!ModifyJumpRule(c.family, c.table, op, c.jump_from, c.jump_to,
-                        /*iif=*/"", /*oif=*/"")) {
-      LOG(ERROR) << "Failed to create jump rule from " << c.jump_from << " to "
-                 << c.jump_to << " in " << c.table << " table";
-    }
+    ModifyJumpRule(c.family, c.table, op, c.jump_from, c.jump_to,
+                   /*iif=*/"", /*oif=*/"");
   }
 
   // Create a FORWARD ACCEPT rule for ICMP6.
@@ -1296,18 +1293,14 @@ void Datapath::AddDownstreamInterfaceRules(const std::string& int_ifname,
                                            TrafficSource source,
                                            bool static_ipv6) {
   if (source != TrafficSource::kBruschettaVM) {
-    if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                        Iptables::Command::kA, "FORWARD", "ACCEPT", /*iif=*/"",
-                        int_ifname)) {
-      LOG(ERROR) << "Failed to enable IP forwarding from " << int_ifname;
-    }
+    ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
+                   Iptables::Command::kA, "FORWARD", "ACCEPT", /*iif=*/"",
+                   int_ifname);
   }
 
-  if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                      Iptables::Command::kA, "FORWARD", "ACCEPT", int_ifname,
-                      /*oif=*/"")) {
-    LOG(ERROR) << "Failed to enable IP forwarding to " << int_ifname;
-  }
+  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
+                 Iptables::Command::kA, "FORWARD", "ACCEPT", int_ifname,
+                 /*oif=*/"");
 
   if (source == TrafficSource::kBruschettaVM) {
     if (!ModifyIsolatedGuestDropRule(Iptables::Command::kA, int_ifname)) {
@@ -1326,12 +1319,9 @@ void Datapath::AddDownstreamInterfaceRules(const std::string& int_ifname,
   if (!FlushChain(IpFamily::kDual, Iptables::Table::kMangle, subchain)) {
     LOG(ERROR) << "Could not flush " << subchain;
   }
-  if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kMangle,
-                      Iptables::Command::kA, "PREROUTING", subchain, int_ifname,
-                      /*oif=*/"")) {
-    LOG(ERROR) << "Could not add jump rule from mangle PREROUTING to "
-               << subchain;
-  }
+  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kMangle,
+                 Iptables::Command::kA, "PREROUTING", subchain, int_ifname,
+                 /*oif=*/"");
   // IPv4 traffic from all downstream interfaces should be tagged to go through
   // SNAT.
   if (!ModifyFwmark(IpFamily::kIPv4, subchain, Iptables::Command::kA, "", "", 0,
@@ -1434,12 +1424,10 @@ void Datapath::StartRoutingDeviceAsUser(
   // The jump rule below should not be applied for traffic from a
   // ConnectNamespace traffic that needs DNS to go to the VPN
   // (ConnectNamespace of the DNS default instance).
-  if (!peer_ipv4_addr &&
-      !ModifyJumpRule(IpFamily::kDual, Iptables::Table::kMangle,
-                      Iptables::Command::kA, subchain, kSkipApplyVpnMarkChain,
-                      /*iif=*/"", /*oif=*/"")) {
-    LOG(ERROR) << "Failed to add jump rule to DNS proxy VPN chain for "
-               << int_ifname;
+  if (!peer_ipv4_addr) {
+    ModifyJumpRule(IpFamily::kDual, Iptables::Table::kMangle,
+                   Iptables::Command::kA, subchain, kSkipApplyVpnMarkChain,
+                   /*iif=*/"", /*oif=*/"");
   }
 
   // Forwarded traffic from downstream interfaces routed to the logical
@@ -1710,12 +1698,9 @@ void Datapath::StartConnectionPinning(const ShillClient::Device& shill_device) {
   if (!FlushChain(IpFamily::kDual, Iptables::Table::kMangle, subchain)) {
     LOG(ERROR) << "Could not flush " << subchain;
   }
-  if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kMangle,
-                      Iptables::Command::kA, "POSTROUTING", subchain,
-                      /*iif=*/"", ext_ifname)) {
-    LOG(ERROR) << "Could not add jump rule from mangle POSTROUTING to "
-               << subchain;
-  }
+  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kMangle,
+                 Iptables::Command::kA, "POSTROUTING", subchain,
+                 /*iif=*/"", ext_ifname);
 
   auto routing_mark = Fwmark::FromIfIndex(ifindex);
   if (!routing_mark.has_value()) {
@@ -1782,11 +1767,9 @@ void Datapath::StartVpnRouting(const ShillClient::Device& vpn_device) {
   }
   LOG(INFO) << "Start VPN routing on " << vpn_ifname
             << " fwmark=" << routing_mark.value().ToString();
-  if (!ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kNat,
-                      Iptables::Command::kA, "POSTROUTING", "MASQUERADE",
-                      /*iif=*/"", vpn_ifname)) {
-    LOG(ERROR) << "Could not set up SNAT for traffic outgoing " << vpn_ifname;
-  }
+  ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kNat, Iptables::Command::kA,
+                 "POSTROUTING", "MASQUERADE",
+                 /*iif=*/"", vpn_ifname);
   StartConnectionPinning(vpn_device);
 
   // Any traffic that already has a routing tag applied is accepted.
@@ -1843,11 +1826,9 @@ void Datapath::StopVpnRouting(const ShillClient::Device& vpn_device) {
     LOG(ERROR) << "Could not flush " << kApplyVpnMarkChain;
   }
   StopConnectionPinning(vpn_device);
-  if (!ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kNat,
-                      Iptables::Command::kD, "POSTROUTING", "MASQUERADE",
-                      /*iif=*/"", vpn_ifname)) {
-    LOG(ERROR) << "Could not stop SNAT for traffic outgoing " << vpn_ifname;
-  }
+  ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kNat, Iptables::Command::kD,
+                 "POSTROUTING", "MASQUERADE",
+                 /*iif=*/"", vpn_ifname);
   if (!ModifyRedirectDnsJumpRule(
           IpFamily::kIPv4, Iptables::Command::kD, "OUTPUT",
           /*ifname=*/"", kRedirectDnsChain, kFwmarkRouteOnVpn, kFwmarkVpnMask,
@@ -1885,8 +1866,6 @@ void Datapath::StartSourceIPv6PrefixEnforcement(
   if (!ModifyJumpRule(IpFamily::kIPv6, Iptables::Table::kFilter,
                       Iptables::Command::kI, "OUTPUT", subchain,
                       /*iif=*/"", /*oif=*/shill_device.ifname)) {
-    LOG(ERROR) << __func__ << ": Failed to add jump rule from OUTPUT to "
-               << subchain;
     return;
   }
   // By default, immediately start jumping to "enforce_ipv6_src_prefix" to drop
@@ -1904,8 +1883,6 @@ void Datapath::StopSourceIPv6PrefixEnforcement(
   if (!ModifyJumpRule(IpFamily::kIPv6, Iptables::Table::kFilter,
                       Iptables::Command::kD, "OUTPUT", subchain,
                       /*iif=*/"", /*oif=*/shill_device.ifname)) {
-    LOG(ERROR) << __func__ << ": Failed to remove jump rule from OUTPUT to "
-               << subchain;
     return;
   }
   if (!RemoveChain(IpFamily::kIPv6, Iptables::Table::kFilter, subchain)) {
@@ -1931,13 +1908,9 @@ void Datapath::UpdateSourceEnforcementIPv6Prefix(
                  << subchain;
     }
   }
-  if (!ModifyJumpRule(IpFamily::kIPv6, Iptables::Table::kFilter,
-                      Iptables::Command::kA, subchain,
-                      kEnforceSourcePrefixChain,
-                      /*iif=*/"", /*oif=*/"")) {
-    LOG(ERROR) << __func__ << ": Failed to add jump rule from " << subchain
-               << " to " << kEnforceSourcePrefixChain;
-  }
+  ModifyJumpRule(IpFamily::kIPv6, Iptables::Table::kFilter,
+                 Iptables::Command::kA, subchain, kEnforceSourcePrefixChain,
+                 /*iif=*/"", /*oif=*/"");
 }
 
 bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
@@ -1987,10 +1960,6 @@ bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
                       Iptables::Command::kI, "INPUT",
                       kAcceptDownstreamNetworkChain,
                       /*iif=*/info.downstream_ifname, /*oif=*/"")) {
-    LOG(ERROR) << __func__ << " " << info
-               << ": Failed to create jump rule from INPUT to "
-               << kAcceptDownstreamNetworkChain << " for ingress traffic on "
-               << info.downstream_ifname;
     return false;
   }
 
@@ -2141,7 +2110,15 @@ bool Datapath::ModifyJumpRule(IpFamily family,
     args.insert(args.end(), {"-o", oif});
   }
   args.insert(args.end(), {"-j", target, "-w"});
-  return ModifyIptables(family, table, op, chain, args, log_failures);
+  if (!ModifyIptables(family, table, op, chain, args, log_failures)) {
+    if (log_failures) {
+      LOG(ERROR) << __func__ << " failure: " << family << " -t " << table << " "
+                 << op << " " << chain << (iif.empty() ? "" : (" -i " + iif))
+                 << (oif.empty() ? "" : (" -o " + oif)) << " -j " << target;
+    }
+    return false;
+  }
+  return true;
 }
 
 bool Datapath::ModifyFwmarkVpnJumpRule(const std::string& chain,
@@ -2708,6 +2685,17 @@ std::ostream& operator<<(std::ostream& stream, const DnsRedirectionRule& rule) {
   }
   stream << " }";
   return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, IpFamily family) {
+  switch (family) {
+    case IpFamily::kIPv4:
+      return stream << "IPv4";
+    case IpFamily::kIPv6:
+      return stream << "IPv6";
+    case IpFamily::kDual:
+      return stream << "IPv4v6";
+  }
 }
 
 }  // namespace patchpanel
