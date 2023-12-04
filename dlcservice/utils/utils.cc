@@ -214,8 +214,8 @@ base::FilePath Utils::MakeAbsoluteFilePath(const base::FilePath& path) {
 bool Utils::WaitForGid(const base::FilePath& target_path, int target_gid) {
   base::stat_wrapper_t st = {0};
   for (int loop_cnt = 0; st.st_gid != target_gid; ++loop_cnt) {
-    // 5s (50ms * 100) limit.
-    if (loop_cnt >= 100) {
+    // 3s (10ms * 300) limit.
+    if (loop_cnt >= 300) {
       LOG(ERROR) << "Failed check within threshold for path=" << target_path;
       return false;
     }
