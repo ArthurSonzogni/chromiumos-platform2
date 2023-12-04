@@ -34,17 +34,17 @@ using chromiumos::feature_management::api::software::Feature;
 
 namespace segmentation {
 
-// Sysfs file corresponding to VPD state. This will be used to persist device
-// info state and read cache device info state.
-constexpr const char kVpdSysfsFilePath[] =
-    "/sys/firmware/vpd/rw/feature_device_info";
+// kernel directory to access VPD entries.
+constexpr const char kVpdSysfsDirPath[] = "/sys/firmware/vpd/rw";
+
+// Temporary file containing the device information and read first.
 constexpr const char kTempDeviceInfoPath[] =
     "/run/libsegmentation/feature_device_info";
 
 #if USE_FEATURE_MANAGEMENT
 // Sysfs file corresponding to VPD state. This will be used to persist device
 // info state and read cache device info state.
-const char* kDeviceInfoFilePath = kVpdSysfsFilePath;
+const char* kDeviceInfoFilePath = "/sys/firmware/vpd/rw/feature_device_info";
 #else
 constexpr char kDeviceInfoFilePath[] = "";
 
@@ -66,6 +66,7 @@ FeatureManagementImpl::GetMaxFeatureLevel() {
 
 FeatureManagementImpl::FeatureManagementImpl()
     : FeatureManagementImpl(nullptr,
+                            base::FilePath(kVpdSysfsDirPath),
                             base::FilePath(kDeviceInfoFilePath),
                             protobuf_features,
                             protobuf_devices,
@@ -73,14 +74,15 @@ FeatureManagementImpl::FeatureManagementImpl()
 
 FeatureManagementImpl::FeatureManagementImpl(
     crossystem::Crossystem* crossystem,
+    const base::FilePath& vpd_directory_path,
     const base::FilePath& device_info_file_path,
     const std::string& feature_db,
     const std::string& selection_db,
     const std::string& os_version)
-    : device_info_file_path_(device_info_file_path),
+    : vpd_directory_path_(vpd_directory_path),
+      device_info_file_path_(device_info_file_path),
       temp_device_info_file_path_(kTempDeviceInfoPath) {
-  persist_via_vpd_ =
-      device_info_file_path_ == base::FilePath(kVpdSysfsFilePath);
+  persist_via_vpd_ = vpd_directory_path.IsParent(device_info_file_path_);
   std::string decoded_pb;
   brillo::data_encoding::Base64Decode(feature_db, &decoded_pb);
   feature_bundle_.ParseFromString(decoded_pb);

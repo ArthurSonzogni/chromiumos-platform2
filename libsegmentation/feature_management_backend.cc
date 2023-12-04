@@ -196,6 +196,13 @@ bool FeatureManagementImpl::CacheDeviceInfo() {
     if (device_info_result)
       device_info_result->set_cached_version_hash(current_version_hash_);
   } else {
+    if (persist_via_vpd_ &&
+        !base::DirectoryExists(device_info_file_path_.DirName())) {
+      // We want to use the VPD, but it does not exist.
+      // It can happen if we are using a very old kernel or a virtual machine.
+      // Only setting with a temporary file is supported.
+      return false;
+    }
     device_info_result =
         FeatureManagementUtil::ReadDeviceInfoFromFile(device_info_file_path_);
   }
@@ -231,7 +238,8 @@ bool FeatureManagementImpl::CacheDeviceInfo() {
     } else {
       if (!FeatureManagementUtil::WriteDeviceInfoToFile(
               device_info_result.value(), device_info_file_path_)) {
-        LOG(ERROR) << "Failed to persist device info";
+        LOG(ERROR) << "Failed to persist device info to "
+                   << device_info_file_path_;
         return false;
       }
     }

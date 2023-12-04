@@ -35,6 +35,7 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
   FeatureManagementImpl();
 
   FeatureManagementImpl(crossystem::Crossystem* crossystem,
+                        const base::FilePath& vpd_directory_path,
                         const base::FilePath& device_info_file_path,
                         const std::string& feature_db,
                         const std::string& selection_db,
@@ -53,6 +54,15 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
   std::optional<DeviceSelection> GetDeviceInfoFromHwid(bool check_prefix_only);
 
  private:
+  // Directory where the VPD information reside.
+  // By default it is set to kernel sysfs directory ("/sys/firmware/vpd/rw").
+  // It can be overwritten for test.
+  // If it is a parent of device_info_file_path_, we assume when need VPD tool
+  // to write to it.
+  // If the directory is not present on the machine, CBX determination is
+  // disabled, only temporary override is allowed.
+  base::FilePath vpd_directory_path_;
+
   // Represents the file that houses the device info. This will be read to
   // populate |cached_device_info|.
   //
