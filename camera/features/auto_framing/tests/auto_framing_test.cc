@@ -59,7 +59,7 @@ struct TestSizes {
 void TestAutoFramingPipeline(
     const TestSizes& sizes,
     const std::vector<TestStreamConfig>& test_stream_configs,
-    const AutoFramingStreamManipulator::Options& options,
+    const FramingStreamManipulator::Options& options,
     std::vector<TimeInterval> enabled_intervals,
     std::optional<base::TimeDelta> still_shot_period,
     std::vector<TimeInterval> expected_face_detected_intervals,
@@ -180,7 +180,7 @@ TEST_P(AutoFramingTest, Disabled) {
           .face_rect = Rect<float>(0.4f, 0.4f, 0.12f, 0.2f),
       },
   };
-  const AutoFramingStreamManipulator::Options options = {
+  const FramingStreamManipulator::Options options = {
       .detection_rate = g_frame_rate,
       .enable_delay = base::Seconds(0),
   };
@@ -208,7 +208,7 @@ TEST_P(AutoFramingTest, OneShotFraming) {
           .face_rect = Rect<float>(0.4f, 0.4f, 0.12f, 0.2f),
       },
   };
-  const AutoFramingStreamManipulator::Options options = {
+  const FramingStreamManipulator::Options options = {
       .detection_rate = 0.0f,
       .enable_delay = base::Seconds(0.1),
       .disable_delay = base::Seconds(0.1),
@@ -257,7 +257,7 @@ TEST_P(AutoFramingTest, OneShotReframing) {
           .face_rect = Rect<float>(0.7f, 0.7f, 0.144f, 0.24f),
       },
   };
-  const AutoFramingStreamManipulator::Options options = {
+  const FramingStreamManipulator::Options options = {
       .detection_rate = 0.0f,
       .enable_delay = base::Seconds(0.1),
       .disable_delay = base::Seconds(0.1),
@@ -301,7 +301,7 @@ TEST_P(AutoFramingTest, ContinuousFramingInStillScene) {
           .face_rect = Rect<float>(0.3f, 0.45f, 0.06f, 0.1f),
       },
   };
-  const AutoFramingStreamManipulator::Options options = {
+  const FramingStreamManipulator::Options options = {
       .detection_rate = g_frame_rate,
       .enable_delay = base::Seconds(0),
   };
@@ -343,7 +343,7 @@ TEST_P(AutoFramingTest, ContinuousFramingInMovingScene) {
           .face_rect = Rect<float>(0.4f, 0.6f, 0.07f, 0.12f),
       },
   };
-  const AutoFramingStreamManipulator::Options options = {
+  const FramingStreamManipulator::Options options = {
       .detection_rate = g_frame_rate,
       .enable_delay = base::Seconds(0),
   };
@@ -373,7 +373,7 @@ TEST_P(AutoFramingTest, StillCapture) {
           .face_rect = Rect<float>(0.3f, 0.45f, 0.06f, 0.1f),
       },
   };
-  const AutoFramingStreamManipulator::Options options = {
+  const FramingStreamManipulator::Options options = {
       .detection_rate = g_frame_rate,
       .enable_delay = base::Seconds(0),
   };
@@ -403,7 +403,7 @@ TEST_F(AutoFramingTest, OutOfOrderTimestamps) {
       .duration = g_duration,
       .face_rect = Rect<float>(0.4f, 0.4f, 0.12f, 0.2f),
   };
-  const AutoFramingStreamManipulator::Options options = {
+  const FramingStreamManipulator::Options options = {
       .detection_rate = g_frame_rate,
   };
 

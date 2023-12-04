@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "features/auto_framing/auto_framing_stream_manipulator.h"
+#include "common/framing_stream_manipulator.h"
 
 #include <sync/sync.h>
 
@@ -245,10 +245,10 @@ bool IsFullCrop(const Rect<float>& rect) {
 }  // namespace
 
 //
-// AutoFramingStreamManipulator implementations.
+// FramingStreamManipulator implementations.
 //
 
-struct AutoFramingStreamManipulator::CaptureContext {
+struct FramingStreamManipulator::CaptureContext {
   std::pair<State, State> state_transition;
   uint32_t num_pending_buffers = 0;
   bool metadata_received = false;
@@ -261,7 +261,7 @@ struct AutoFramingStreamManipulator::CaptureContext {
   std::optional<Rect<float>> crop_region;
 };
 
-AutoFramingStreamManipulator::AutoFramingStreamManipulator(
+FramingStreamManipulator::FramingStreamManipulator(
     RuntimeOptions* runtime_options,
     GpuResources* gpu_resources,
     base::FilePath config_file_path,
@@ -286,99 +286,96 @@ AutoFramingStreamManipulator::AutoFramingStreamManipulator(
       LOGF(ERROR) << "Cannot load valid config; turn off feature by default";
       options_.enable = false;
     }
-    config_.SetCallback(
-        base::BindRepeating(&AutoFramingStreamManipulator::OnOptionsUpdated,
-                            base::Unretained(this)));
+    config_.SetCallback(base::BindRepeating(
+        &FramingStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
   }
 }
 
-AutoFramingStreamManipulator::~AutoFramingStreamManipulator() {
+FramingStreamManipulator::~FramingStreamManipulator() {
   TRACE_AUTO_FRAMING();
 
   gpu_resources_->PostGpuTaskSync(
-      FROM_HERE, base::BindOnce(&AutoFramingStreamManipulator::ResetOnThread,
+      FROM_HERE, base::BindOnce(&FramingStreamManipulator::ResetOnThread,
                                 base::Unretained(this)));
 }
 
-bool AutoFramingStreamManipulator::Initialize(
+bool FramingStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     StreamManipulator::Callbacks callbacks) {
   bool ret;
   gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
-      base::BindOnce(&AutoFramingStreamManipulator::InitializeOnThread,
+      base::BindOnce(&FramingStreamManipulator::InitializeOnThread,
                      base::Unretained(this), static_info, std::move(callbacks)),
       &ret);
   return ret;
 }
 
-bool AutoFramingStreamManipulator::ConfigureStreams(
+bool FramingStreamManipulator::ConfigureStreams(
     Camera3StreamConfiguration* stream_config,
     const StreamEffectMap* stream_effects_map) {
   bool ret;
   gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
-      base::BindOnce(&AutoFramingStreamManipulator::ConfigureStreamsOnThread,
+      base::BindOnce(&FramingStreamManipulator::ConfigureStreamsOnThread,
                      base::Unretained(this), stream_config),
       &ret);
   return ret;
 }
 
-bool AutoFramingStreamManipulator::OnConfiguredStreams(
+bool FramingStreamManipulator::OnConfiguredStreams(
     Camera3StreamConfiguration* stream_config) {
   bool ret;
   gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
-      base::BindOnce(&AutoFramingStreamManipulator::OnConfiguredStreamsOnThread,
+      base::BindOnce(&FramingStreamManipulator::OnConfiguredStreamsOnThread,
                      base::Unretained(this), stream_config),
       &ret);
   return ret;
 }
 
-bool AutoFramingStreamManipulator::ConstructDefaultRequestSettings(
+bool FramingStreamManipulator::ConstructDefaultRequestSettings(
     android::CameraMetadata* default_request_settings, int type) {
   // TODO(jcliang): Fill in the PTZ vendor tags.
   return true;
 }
 
-bool AutoFramingStreamManipulator::ProcessCaptureRequest(
+bool FramingStreamManipulator::ProcessCaptureRequest(
     Camera3CaptureDescriptor* request) {
   bool ret;
   gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
-      base::BindOnce(
-          &AutoFramingStreamManipulator::ProcessCaptureRequestOnThread,
-          base::Unretained(this), request),
+      base::BindOnce(&FramingStreamManipulator::ProcessCaptureRequestOnThread,
+                     base::Unretained(this), request),
       &ret);
   return ret;
 }
 
-bool AutoFramingStreamManipulator::ProcessCaptureResult(
+bool FramingStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
   bool ret;
   gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
-      base::BindOnce(
-          &AutoFramingStreamManipulator::ProcessCaptureResultOnThread,
-          base::Unretained(this), &result),
+      base::BindOnce(&FramingStreamManipulator::ProcessCaptureResultOnThread,
+                     base::Unretained(this), &result),
       &ret);
   callbacks_.result_callback.Run(std::move(result));
   return ret;
 }
 
-void AutoFramingStreamManipulator::Notify(camera3_notify_msg_t msg) {
+void FramingStreamManipulator::Notify(camera3_notify_msg_t msg) {
   TRACE_AUTO_FRAMING();
 
   callbacks_.notify_callback.Run(std::move(msg));
 }
 
-bool AutoFramingStreamManipulator::Flush() {
+bool FramingStreamManipulator::Flush() {
   TRACE_AUTO_FRAMING();
 
   return true;
 }
 
-bool AutoFramingStreamManipulator::InitializeOnThread(
+bool FramingStreamManipulator::InitializeOnThread(
     const camera_metadata_t* static_info,
     StreamManipulator::Callbacks callbacks) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
@@ -427,7 +424,7 @@ bool AutoFramingStreamManipulator::InitializeOnThread(
   return true;
 }
 
-bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
+bool FramingStreamManipulator::ConfigureStreamsOnThread(
     Camera3StreamConfiguration* stream_config) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_AUTO_FRAMING([&](perfetto::EventContext ctx) {
@@ -457,11 +454,12 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
     if (s->format == HAL_PIXEL_FORMAT_BLOB) {
       // Process the BLOB stream inplace.
       still_capture_processor_->Initialize(
-          s, base::BindPostTask(
-                 gpu_resources_->gpu_task_runner(),
-                 base::BindRepeating(&AutoFramingStreamManipulator::
-                                         ReturnStillCaptureResultOnThread,
-                                     base::Unretained(this))));
+          s,
+          base::BindPostTask(
+              gpu_resources_->gpu_task_runner(),
+              base::BindRepeating(
+                  &FramingStreamManipulator::ReturnStillCaptureResultOnThread,
+                  base::Unretained(this))));
       blob_stream_ = s;
       // Maybe create a still YUV stream for generating higher quality BLOB.
       if (still_size_.width > full_frame_size_.width ||
@@ -536,7 +534,7 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
   return true;
 }
 
-bool AutoFramingStreamManipulator::OnConfiguredStreamsOnThread(
+bool FramingStreamManipulator::OnConfiguredStreamsOnThread(
     Camera3StreamConfiguration* stream_config) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_AUTO_FRAMING([&](perfetto::EventContext ctx) {
@@ -619,7 +617,7 @@ bool AutoFramingStreamManipulator::OnConfiguredStreamsOnThread(
   return true;
 }
 
-bool AutoFramingStreamManipulator::GetEnabled() {
+bool FramingStreamManipulator::GetAutoFramingEnabled() {
   // Use option in config file first.
   // TODO(pihsun): Handle multi people mode.
   // TODO(pihsun): ReloadableConfigFile merges new config to old config, so
@@ -630,7 +628,7 @@ bool AutoFramingStreamManipulator::GetEnabled() {
                                       mojom::CameraAutoFramingState::OFF);
 }
 
-bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
+bool FramingStreamManipulator::ProcessCaptureRequestOnThread(
     Camera3CaptureDescriptor* request) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_AUTO_FRAMING("frame_number", request->frame_number());
@@ -733,7 +731,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
   return true;
 }
 
-bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
+bool FramingStreamManipulator::ProcessCaptureResultOnThread(
     Camera3CaptureDescriptor* result) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_AUTO_FRAMING("frame_number", result->frame_number());
@@ -762,7 +760,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
   if (ctx->num_pending_buffers == 0 && ctx->metadata_received &&
       !ctx->has_pending_blob) {
     ctx_deleter.ReplaceClosure(
-        base::BindOnce(&AutoFramingStreamManipulator::RemoveCaptureContext,
+        base::BindOnce(&FramingStreamManipulator::RemoveCaptureContext,
                        base::Unretained(this), result->frame_number()));
   }
 
@@ -842,7 +840,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
   return true;
 }
 
-bool AutoFramingStreamManipulator::ProcessFullFrameOnThread(
+bool FramingStreamManipulator::ProcessFullFrameOnThread(
     CaptureContext* ctx,
     Camera3StreamBuffer full_frame_buffer,
     uint32_t frame_number) {
@@ -872,19 +870,19 @@ bool AutoFramingStreamManipulator::ProcessFullFrameOnThread(
     return false;
   }
 
-  if (ctx->state_transition.first != State::kOff &&
-      ctx->state_transition.second == State::kOff) {
+  if (ctx->state_transition.first != State::kAutoFramingOff &&
+      ctx->state_transition.second == State::kAutoFramingOff) {
     if (!auto_framing_client_.ResetCropWindow(*ctx->timestamp)) {
       LOGF(ERROR) << "Failed to reset crop window at result " << frame_number;
       return false;
     }
   }
-  if (ctx->state_transition.first != State::kOn &&
-      ctx->state_transition.second == State::kOn) {
+  if (ctx->state_transition.first != State::kAutoFramingOn &&
+      ctx->state_transition.second == State::kAutoFramingOn) {
     auto_framing_client_.ResetDetectionTimer();
   }
   if (!auto_framing_client_.ProcessFrame(
-          *ctx->timestamp, ctx->state_transition.second == State::kOn
+          *ctx->timestamp, ctx->state_transition.second == State::kAutoFramingOn
                                ? *full_frame_buffer.buffer()
                                : nullptr)) {
     LOGF(ERROR) << "Failed to process frame " << frame_number;
@@ -959,7 +957,7 @@ bool AutoFramingStreamManipulator::ProcessFullFrameOnThread(
   return true;
 }
 
-bool AutoFramingStreamManipulator::ProcessStillYuvOnThread(
+bool FramingStreamManipulator::ProcessStillYuvOnThread(
     CaptureContext* ctx,
     Camera3StreamBuffer still_yuv_buffer,
     uint32_t frame_number) {
@@ -1010,7 +1008,7 @@ bool AutoFramingStreamManipulator::ProcessStillYuvOnThread(
   return true;
 }
 
-void AutoFramingStreamManipulator::ReturnStillCaptureResultOnThread(
+void FramingStreamManipulator::ReturnStillCaptureResultOnThread(
     Camera3CaptureDescriptor result) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
 
@@ -1033,7 +1031,7 @@ void AutoFramingStreamManipulator::ReturnStillCaptureResultOnThread(
   callbacks_.result_callback.Run(std::move(result));
 }
 
-bool AutoFramingStreamManipulator::SetUpPipelineOnThread(
+bool FramingStreamManipulator::SetUpPipelineOnThread(
     uint32_t target_aspect_ratio_x, uint32_t target_aspect_ratio_y) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_AUTO_FRAMING();
@@ -1047,7 +1045,7 @@ bool AutoFramingStreamManipulator::SetUpPipelineOnThread(
   });
 }
 
-void AutoFramingStreamManipulator::UpdateFaceRectangleMetadataOnThread(
+void FramingStreamManipulator::UpdateFaceRectangleMetadataOnThread(
     Camera3CaptureDescriptor* result) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_AUTO_FRAMING();
@@ -1178,7 +1176,7 @@ void AutoFramingStreamManipulator::UpdateFaceRectangleMetadataOnThread(
   }
 }
 
-void AutoFramingStreamManipulator::ResetOnThread() {
+void FramingStreamManipulator::ResetOnThread() {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_AUTO_FRAMING();
 
@@ -1207,7 +1205,7 @@ void AutoFramingStreamManipulator::ResetOnThread() {
   metrics_ = Metrics{};
 }
 
-void AutoFramingStreamManipulator::UploadMetricsOnThread() {
+void FramingStreamManipulator::UploadMetricsOnThread() {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
 
   const AutoFramingClient::Metrics pipeline_metrics =
@@ -1271,7 +1269,7 @@ void AutoFramingStreamManipulator::UploadMetricsOnThread() {
   }
 }
 
-void AutoFramingStreamManipulator::UpdateOptionsOnThread(
+void FramingStreamManipulator::UpdateOptionsOnThread(
     const base::Value::Dict& json_values) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
 
@@ -1316,17 +1314,16 @@ void AutoFramingStreamManipulator::UpdateOptionsOnThread(
            << " debug=" << options_.debug;
 }
 
-void AutoFramingStreamManipulator::OnOptionsUpdated(
+void FramingStreamManipulator::OnOptionsUpdated(
     const base::Value::Dict& json_values) {
   gpu_resources_->PostGpuTask(
       FROM_HERE,
-      base::BindOnce(&AutoFramingStreamManipulator::UpdateOptionsOnThread,
+      base::BindOnce(&FramingStreamManipulator::UpdateOptionsOnThread,
                      base::Unretained(this), json_values.Clone()));
 }
 
-std::pair<AutoFramingStreamManipulator::State,
-          AutoFramingStreamManipulator::State>
-AutoFramingStreamManipulator::StateTransitionOnThread() {
+std::pair<FramingStreamManipulator::State, FramingStreamManipulator::State>
+FramingStreamManipulator::StateTransitionOnThread() {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_AUTO_FRAMING();
 
@@ -1351,33 +1348,36 @@ AutoFramingStreamManipulator::StateTransitionOnThread() {
   // in the future capture result.
 
   const State prev_state = state_;
-  if (GetEnabled()) {
-    if (state_ == State::kDisabled || state_ == State::kOff ||
-        state_ == State::kTransitionToOff) {
-      state_ = State::kTransitionToOn;
-    } else if (state_ == State::kTransitionToOn &&
+  if (GetAutoFramingEnabled()) {
+    if (state_ == State::kDisabled || state_ == State::kAutoFramingOff ||
+        state_ == State::kTransitionToAutoFramingOff) {
+      state_ = State::kTransitionToAutoFramingOn;
+    } else if (state_ == State::kTransitionToAutoFramingOn &&
                state_transition_timer_.Elapsed() >= options_.enable_delay) {
-      state_ = State::kOn;
+      state_ = State::kAutoFramingOn;
     }
   } else {
-    if (state_ == State::kOn || state_ == State::kTransitionToOn) {
-      state_ = State::kTransitionToOff;
-    } else if (state_ == State::kTransitionToOff &&
+    if (state_ == State::kAutoFramingOn ||
+        state_ == State::kTransitionToAutoFramingOn) {
+      state_ = State::kTransitionToAutoFramingOff;
+    } else if (state_ == State::kTransitionToAutoFramingOff &&
                state_transition_timer_.Elapsed() >= options_.disable_delay) {
-      state_ = State::kOff;
-    } else if (state_ == State::kOff && IsFullCrop(active_crop_region_)) {
+      state_ = State::kAutoFramingOff;
+    } else if (state_ == State::kAutoFramingOff &&
+               IsFullCrop(active_crop_region_)) {
       state_ = State::kDisabled;
     }
   }
   if (prev_state != state_) {
     LOGF(INFO) << "State: " << static_cast<int>(prev_state) << " -> "
                << static_cast<int>(state_);
-    if (prev_state == State::kOn) {
+    if (prev_state == State::kAutoFramingOn) {
       metrics_.accumulated_on_time += state_transition_timer_.Elapsed();
-    } else if (prev_state == State::kDisabled || prev_state == State::kOff) {
+    } else if (prev_state == State::kDisabled ||
+               prev_state == State::kAutoFramingOff) {
       metrics_.accumulated_off_time += state_transition_timer_.Elapsed();
     }
-    if (state_ == State::kOn) {
+    if (state_ == State::kAutoFramingOn) {
       ++metrics_.enabled_count;
     }
     state_transition_timer_ = base::ElapsedTimer();
@@ -1385,8 +1385,8 @@ AutoFramingStreamManipulator::StateTransitionOnThread() {
   return std::make_pair(prev_state, state_);
 }
 
-AutoFramingStreamManipulator::CaptureContext*
-AutoFramingStreamManipulator::CreateCaptureContext(uint32_t frame_number) {
+FramingStreamManipulator::CaptureContext*
+FramingStreamManipulator::CreateCaptureContext(uint32_t frame_number) {
   CHECK(!base::Contains(capture_contexts_, frame_number));
   auto [it, is_inserted] = capture_contexts_.insert(
       std::make_pair(frame_number, std::make_unique<CaptureContext>()));
@@ -1397,17 +1397,17 @@ AutoFramingStreamManipulator::CreateCaptureContext(uint32_t frame_number) {
   return it->second.get();
 }
 
-AutoFramingStreamManipulator::CaptureContext*
-AutoFramingStreamManipulator::GetCaptureContext(uint32_t frame_number) const {
+FramingStreamManipulator::CaptureContext*
+FramingStreamManipulator::GetCaptureContext(uint32_t frame_number) const {
   auto it = capture_contexts_.find(frame_number);
   return it != capture_contexts_.end() ? it->second.get() : nullptr;
 }
 
-void AutoFramingStreamManipulator::RemoveCaptureContext(uint32_t frame_number) {
+void FramingStreamManipulator::RemoveCaptureContext(uint32_t frame_number) {
   capture_contexts_.erase(frame_number);
 }
 
-std::optional<base::ScopedFD> AutoFramingStreamManipulator::CropBufferOnThread(
+std::optional<base::ScopedFD> FramingStreamManipulator::CropBufferOnThread(
     buffer_handle_t input_yuv,
     base::ScopedFD input_release_fence,
     buffer_handle_t output_yuv,

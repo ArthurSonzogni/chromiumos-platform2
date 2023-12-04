@@ -11,7 +11,7 @@
 #include <utility>
 
 #include "common/camera_hal3_helpers.h"
-#include "features/auto_framing/auto_framing_stream_manipulator.h"
+#include "common/framing_stream_manipulator.h"
 
 namespace cros::tests {
 
@@ -200,7 +200,7 @@ bool AutoFramingTestFixture::SetUp(
     const Size& client_blob_size,
     float frame_rate,
     std::vector<TestStreamConfig> test_stream_configs,
-    const AutoFramingStreamManipulator::Options& options,
+    const FramingStreamManipulator::Options& options,
     std::unique_ptr<StillCaptureProcessor> still_capture_processor) {
   if (full_yuv_size.width > full_blob_size.width ||
       full_yuv_size.height > full_blob_size.height ||
@@ -226,10 +226,9 @@ bool AutoFramingTestFixture::SetUp(
     return false;
   }
 
-  auto_framing_stream_manipulator_ =
-      std::make_unique<AutoFramingStreamManipulator>(
-          &runtime_options_, &gpu_resources_, base::FilePath(),
-          std::move(still_capture_processor), options);
+  framing_stream_manipulator_ = std::make_unique<FramingStreamManipulator>(
+      &runtime_options_, &gpu_resources_, base::FilePath(),
+      std::move(still_capture_processor), options);
 
   const camera_metadata_t* locked_static_info = static_info_.getAndLock();
   if (!locked_static_info) {
@@ -250,11 +249,11 @@ bool AutoFramingTestFixture::SetUp(
         }
       },
       &still_capture_result_received_);
-  if (!auto_framing_stream_manipulator_->Initialize(
+  if (!framing_stream_manipulator_->Initialize(
           locked_static_info, StreamManipulator::Callbacks{
                                   .result_callback = std::move(result_callback),
                                   .notify_callback = base::DoNothing()})) {
-    LOGF(ERROR) << "Failed to initialize AutoFramingStreamManipulator";
+    LOGF(ERROR) << "Failed to initialize FramingStreamManipulator";
     return false;
   }
   if (static_info_.unlock(locked_static_info) != 0) {
@@ -289,8 +288,8 @@ bool AutoFramingTestFixture::SetUp(
     LOGF(INFO) << "  " << GetDebugString(s);
   }
 
-  if (!auto_framing_stream_manipulator_->ConfigureStreams(
-          &stream_config, &stream_effects_map)) {
+  if (!framing_stream_manipulator_->ConfigureStreams(&stream_config,
+                                                     &stream_effects_map)) {
     LOGF(ERROR) << "Failed to pre-configure streams";
     return false;
   }
@@ -303,7 +302,7 @@ bool AutoFramingTestFixture::SetUp(
     LOGF(INFO) << "  " << GetDebugString(s);
   }
 
-  if (!auto_framing_stream_manipulator_->OnConfiguredStreams(&stream_config)) {
+  if (!framing_stream_manipulator_->OnConfiguredStreams(&stream_config)) {
     LOGF(ERROR) << "Failed to post-configure streams";
     return false;
   }
@@ -449,7 +448,7 @@ bool AutoFramingTestFixture::ProcessCaptureRequest(
       .num_output_buffers = static_cast<uint32_t>(buffers.size()),
       .output_buffers = buffers.data(),
   });
-  if (!auto_framing_stream_manipulator_->ProcessCaptureRequest(&request)) {
+  if (!framing_stream_manipulator_->ProcessCaptureRequest(&request)) {
     LOGF(ERROR) << "Failed to process capture request";
     return false;
   }
@@ -497,8 +496,7 @@ bool AutoFramingTestFixture::ProcessCaptureResult(
       .output_buffers = buffers.data(),
       .partial_result = 1,
   });
-  if (!auto_framing_stream_manipulator_->ProcessCaptureResult(
-          std::move(result))) {
+  if (!framing_stream_manipulator_->ProcessCaptureResult(std::move(result))) {
     LOGF(ERROR) << "Failed to process capture result";
     return false;
   }
@@ -515,33 +513,32 @@ bool AutoFramingTestFixture::ProcessCaptureResult(
     }
   }
 
-  if (!IsAspectRatioMatched(
-          auto_framing_stream_manipulator_->active_crop_region(),
-          active_array_size_.width, active_array_size_.height,
-          client_blob_stream_.width, client_blob_stream_.height)) {
-    LOGF(ERROR)
-        << "Crop window aspect ratio doesn't match the output: "
-        << auto_framing_stream_manipulator_->active_crop_region().ToString();
+  if (!IsAspectRatioMatched(framing_stream_manipulator_->active_crop_region(),
+                            active_array_size_.width, active_array_size_.height,
+                            client_blob_stream_.width,
+                            client_blob_stream_.height)) {
+    LOGF(ERROR) << "Crop window aspect ratio doesn't match the output: "
+                << framing_stream_manipulator_->active_crop_region().ToString();
     return false;
   }
   if (framing_result != nullptr) {
     *framing_result = FramingResult{
         .is_face_detected =
-            AreSameRects(auto_framing_stream_manipulator_->region_of_interest(),
+            AreSameRects(framing_stream_manipulator_->region_of_interest(),
                          test_stream_configs_[frame_index].face_rect,
                          /*threshold=*/0.05f),
         .is_crop_window_moving =
             last_crop_window_.has_value()
                 ? !AreSameRects(
                       *last_crop_window_,
-                      auto_framing_stream_manipulator_->active_crop_region(),
+                      framing_stream_manipulator_->active_crop_region(),
                       /*threshold=*/1e-5f)
                 : false,
         .is_crop_window_full =
-            IsFullCrop(auto_framing_stream_manipulator_->active_crop_region()),
+            IsFullCrop(framing_stream_manipulator_->active_crop_region()),
     };
   }
-  last_crop_window_ = auto_framing_stream_manipulator_->active_crop_region();
+  last_crop_window_ = framing_stream_manipulator_->active_crop_region();
 
   return true;
 }

@@ -40,7 +40,7 @@
 #endif
 
 #if USE_CAMERA_FEATURE_AUTO_FRAMING
-#include "features/auto_framing/auto_framing_stream_manipulator.h"
+#include "common/framing_stream_manipulator.h"
 #endif
 
 #if USE_CAMERA_FEATURE_EFFECTS
@@ -142,12 +142,12 @@ void MaybeEnableAutoFramingStreamManipulator(
     std::unique_ptr<StillCaptureProcessor> still_capture_processor =
         std::make_unique<StillCaptureProcessorImpl>(std::move(jpeg_compressor));
     out_stream_manipulators->emplace_back(
-        std::make_unique<AutoFramingStreamManipulator>(
+        std::make_unique<FramingStreamManipulator>(
             runtime_options, gpu_resources,
             feature_profile.GetConfigFilePath(
                 FeatureProfile::FeatureType::kAutoFraming),
             std::move(still_capture_processor)));
-    LOGF(INFO) << "AutoFramingStreamManipulator enabled";
+    LOGF(INFO) << "FramingStreamManipulator enabled";
   }
 #endif
 }
@@ -179,8 +179,8 @@ StreamManipulatorManager::StreamManipulatorManager(
             .sensor_id = std::string(sensor_id.data(), sensor_id.size()),
         }},
     };
-    LOGF(INFO) << "Loading feature profile with:"
-               << " module_id: " << dev_mdata->camera_info[0].module_id
+    LOGF(INFO) << "Loading feature profile with:" << " module_id: "
+               << dev_mdata->camera_info[0].module_id
                << " sensor_id: " << dev_mdata->camera_info[0].sensor_id;
   }
 #endif
@@ -214,6 +214,8 @@ StreamManipulatorManager::StreamManipulatorManager(
                   CameraMojoChannelManager::GetInstance()))));
   LOGF(INFO) << "RotateAndCropStreamManipulator enabled";
 
+  // TODO(kamchonlathorn): Enable FramingStreamManipulator by default when the
+  // build flag is refactored.
   MaybeEnableAutoFramingStreamManipulator(feature_profile, runtime_options,
                                           gpu_resources, &stream_manipulators_);
 

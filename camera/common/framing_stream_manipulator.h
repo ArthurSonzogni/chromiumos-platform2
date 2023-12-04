@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_FEATURES_AUTO_FRAMING_AUTO_FRAMING_STREAM_MANIPULATOR_H_
-#define CAMERA_FEATURES_AUTO_FRAMING_AUTO_FRAMING_STREAM_MANIPULATOR_H_
+#ifndef CAMERA_COMMON_FRAMING_STREAM_MANIPULATOR_H_
+#define CAMERA_COMMON_FRAMING_STREAM_MANIPULATOR_H_
 
 #include "common/stream_manipulator.h"
 
@@ -28,7 +28,7 @@
 
 namespace cros {
 
-class AutoFramingStreamManipulator : public StreamManipulator {
+class FramingStreamManipulator : public StreamManipulator {
  public:
   // The auto framing config file that overrides the default one for debugging.
   // The file should contain a JSON map for the Options defined below.
@@ -64,13 +64,13 @@ class AutoFramingStreamManipulator : public StreamManipulator {
     bool debug = false;
   };
 
-  AutoFramingStreamManipulator(
+  FramingStreamManipulator(
       RuntimeOptions* runtime_options,
       GpuResources* gpu_resources,
       base::FilePath config_file_path,
       std::unique_ptr<StillCaptureProcessor> still_capture_processor,
       std::optional<Options> options_override_for_testing = std::nullopt);
-  ~AutoFramingStreamManipulator() override;
+  ~FramingStreamManipulator() override;
 
   // Implementations of StreamManipulator.
   bool Initialize(const camera_metadata_t* static_info,
@@ -96,14 +96,14 @@ class AutoFramingStreamManipulator : public StreamManipulator {
     // Auto-framing is disabled completely. In this state this SM is no-op.
     kDisabled,
     // Auto-framing is turned off. Settles the crop window to the full image.
-    kOff,
+    kAutoFramingOff,
     // The intermediate state before transitioning to |kOn| state.
-    kTransitionToOn,
+    kTransitionToAutoFramingOn,
     // The state when auto-framing is turned on. Moves the crop window
     // continuously based on the detection rate.
-    kOn,
+    kAutoFramingOn,
     // The intermediate state before transitioning to |kOff| state.
-    kTransitionToOff,
+    kTransitionToAutoFramingOff,
   };
 
   struct Metrics {
@@ -151,7 +151,7 @@ class AutoFramingStreamManipulator : public StreamManipulator {
       base::ScopedFD output_fence,
       const Rect<float>& crop_region);
 
-  bool GetEnabled();
+  bool GetAutoFramingEnabled();
 
   ReloadableConfigFile config_;
 
@@ -201,4 +201,4 @@ class AutoFramingStreamManipulator : public StreamManipulator {
 
 }  // namespace cros
 
-#endif  // CAMERA_FEATURES_AUTO_FRAMING_AUTO_FRAMING_STREAM_MANIPULATOR_H_
+#endif  // CAMERA_COMMON_FRAMING_STREAM_MANIPULATOR_H_

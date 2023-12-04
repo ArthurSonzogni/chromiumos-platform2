@@ -13,9 +13,9 @@
 
 #include <base/test/task_environment.h>
 
+#include "common/framing_stream_manipulator.h"
 #include "common/still_capture_processor.h"
 #include "common/stream_manipulator.h"
-#include "features/auto_framing/auto_framing_stream_manipulator.h"
 #include "features/auto_framing/tests/test_image.h"
 
 namespace cros::tests {
@@ -40,14 +40,14 @@ class AutoFramingTestFixture {
   // Sets up auto-framing pipeline that crops |full_{yuv,blob}_size| into
   // |client_{yuv,blob}_size|.  |test_stream_configs| describes the test video
   // content piecewisely.  |options|, |still_capture_processor| are used to
-  // initialize AutoFramingStreamManipulator.
+  // initialize FramingStreamManipulator.
   bool SetUp(const Size& full_yuv_size,
              const Size& full_blob_size,
              const Size& client_yuv_size,
              const Size& client_blob_size,
              float frame_rate,
              std::vector<TestStreamConfig> test_stream_configs,
-             const AutoFramingStreamManipulator::Options& options,
+             const FramingStreamManipulator::Options& options,
              std::unique_ptr<StillCaptureProcessor> still_capture_processor);
 
   // Runs one test frame on the pipeline.
@@ -91,8 +91,7 @@ class AutoFramingTestFixture {
   android::CameraMetadata result_metadata_;
   uint32_t frame_number_ = 0;
   std::optional<Rect<float>> last_crop_window_;
-  std::unique_ptr<AutoFramingStreamManipulator>
-      auto_framing_stream_manipulator_;
+  std::unique_ptr<FramingStreamManipulator> framing_stream_manipulator_;
   base::WaitableEvent still_capture_result_received_;
 };
 

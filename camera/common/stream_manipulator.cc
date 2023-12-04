@@ -26,7 +26,7 @@
 #endif
 
 #if USE_CAMERA_FEATURE_AUTO_FRAMING
-#include "features/auto_framing/auto_framing_stream_manipulator.h"
+#include "common/framing_stream_manipulator.h"
 #endif
 
 #if USE_CAMERA_FEATURE_EFFECTS

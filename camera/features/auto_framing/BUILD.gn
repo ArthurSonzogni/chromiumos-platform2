@@ -15,10 +15,7 @@ pkg_config("target_defaults") {
 }
 
 source_set("auto_framing") {
-  sources = [
-    "//camera/features/auto_framing/auto_framing_client.cc",
-    "//camera/features/auto_framing/auto_framing_stream_manipulator.cc",
-  ]
+  sources = [ "//camera/features/auto_framing/auto_framing_client.cc" ]
   libs = [ "autoframing_cros" ]
   public_configs = [ ":target_defaults" ]
 
