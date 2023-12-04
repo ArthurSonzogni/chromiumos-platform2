@@ -642,7 +642,9 @@ message ImportContainerRequest {
   string import_path = 2;
 
   // The amount of bytes that this operation can use. Zero means unlimited.
-  uint64 available_disk_space = 3;
+  // Deprecated - available space is checked by tremplin against the VM's
+  // stateful disk, not the host.
+  uint64 available_disk_space = 3 [deprecated = true];
 }
 
 message ImportContainerResponse {
