@@ -443,8 +443,8 @@ impl ResumeConductor {
         hibermeta_mount.unmount()?;
 
         let ram_size = get_ram_size();
-        // Don't fill up more than 13% of the RAM.
-        let preload_bytes = cmp::min(image_size, (ram_size * 13) / 100);
+        // Don't fill up more than 33% of the RAM.
+        let preload_bytes = cmp::min(image_size, (ram_size * 33) / 100);
 
         self.preload_thread = Some(thread::spawn(move || preload_image_data(preload_bytes)));
 
