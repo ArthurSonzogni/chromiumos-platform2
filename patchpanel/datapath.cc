@@ -97,6 +97,15 @@ constexpr char kVpnEgressFiltersChain[] = "vpn_egress_filters";
 constexpr char kVpnAcceptChain[] = "vpn_accept";
 constexpr char kVpnLockdownChain[] = "vpn_lockdown";
 
+// FORWARD filter chain to:
+//  - accept any tethering traffic forwarded between the upstream and downstream
+//  network interfaces.
+//  - and drop any forwarded traffic between the downstream network interface
+//  and some other network interface unrelated to tethering.
+// Note that the upstream network interface may be used for other forwarded
+// traffic legitimately.
+constexpr char kAcceptTetheringChain[] = "accept_tethering";
+
 // OUTPUT filter chain to drop host-initiated connection to Bruschetta and
 // FORWARD filter chain to drop external- and other-vm-initiated connection.
 constexpr char kDropOutputToBruschettaChain[] = "drop_output_to_bruschetta";
@@ -185,6 +194,32 @@ std::string PreroutingSubChainName(const std::string& int_ifname) {
 
 std::string EgressSubChainName(const std::string& ext_ifname) {
   return "egress_" + ext_ifname;
+}
+
+// Helper enum for controlling what type of FORWARD firewall rules are
+// configured for a given network interface.
+enum class ForwardFirewallRuleType {
+  // Rules for the downstream interface used for tethering. It is assumed that:
+  //  - The downstream interface is not used for anything other traffic.
+  //  - There is at most a single unique tethering setup on the device.
+  kTethering,
+  // Rules for a virtual interface used for an isolated guest VM like Bruschetta
+  // with strict ingress firewall rules. Only traffic originated from the VM is
+  // allowed.
+  kIsolatedGuest,
+  // Rules for any other virtual interface or downstream network interface.
+  kOpen,
+};
+
+ForwardFirewallRuleType GetForwardFirewallRuleType(TrafficSource source) {
+  switch (source) {
+    case TrafficSource::kTetherDownstream:
+      return ForwardFirewallRuleType::kTethering;
+    case TrafficSource::kBruschettaVM:
+      return ForwardFirewallRuleType::kIsolatedGuest;
+    default:
+      return ForwardFirewallRuleType::kOpen;
+  }
 }
 
 }  // namespace
@@ -294,7 +329,10 @@ void Datapath::Start() {
        kAcceptDownstreamNetworkChain},
       // Create OUTPUT filter chain to enforce source IP on egress IPv6 packets.
       {IpFamily::kIPv6, Iptables::Table::kFilter, kEnforceSourcePrefixChain},
-      // Create OUTPUT filter chain to drop host-to-bruschetta traffic.
+      // Create FORWARD filter chain for tethering forwarded traffic.
+      {IpFamily::kDual, Iptables::Table::kFilter, kAcceptTetheringChain},
+      // Create OUTPUT and FORWARD filter chains to drop host-to-bruschetta
+      // traffic.
       {IpFamily::kDual, Iptables::Table::kFilter, kDropOutputToBruschettaChain},
       {IpFamily::kDual, Iptables::Table::kFilter,
        kDropForwardToBruschettaChain},
@@ -344,6 +382,11 @@ void Datapath::Start() {
        kApplyAutoDNATToCrostiniChain},
       {IpFamily::kIPv4, Iptables::Table::kNat, "PREROUTING",
        kApplyAutoDNATToParallelsChain},
+      // Jump to the chain accepting tethering traffic between the upstream and
+      // downstream network interfaces and reject any other forwarded traffic
+      // between the downstream and another network interface
+      {IpFamily::kDual, Iptables::Table::kFilter, "FORWARD",
+       kAcceptTetheringChain},
       // Jump to chains to drop packets into Bruschetta. OUTPUT one needs to be
       // after --state NEW,RELATED,ESTABLISHED rule, and FORWARD one needs to be
       // before --state RELATED,ESTABLISHED rule.
@@ -650,6 +693,7 @@ void Datapath::ResetIptables() {
        true},
       {IpFamily::kIPv6, Iptables::Table::kFilter, kEnforceSourcePrefixChain,
        true},
+      {IpFamily::kDual, Iptables::Table::kFilter, kAcceptTetheringChain, true},
       {IpFamily::kDual, Iptables::Table::kFilter, kDropOutputToBruschettaChain,
        true},
       {IpFamily::kDual, Iptables::Table::kFilter, kDropForwardToBruschettaChain,
@@ -1293,24 +1337,49 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
   }
 }
 
-void Datapath::AddDownstreamInterfaceRules(const std::string& int_ifname,
-                                           TrafficSource source,
-                                           bool static_ipv6) {
-  if (source != TrafficSource::kBruschettaVM) {
+void Datapath::AddDownstreamInterfaceRules(
+    std::optional<ShillClient::Device> upstream_device,
+    const std::string& int_ifname,
+    TrafficSource source,
+    bool static_ipv6) {
+  auto forward_firewall_rule_type = GetForwardFirewallRuleType(source);
+  if (forward_firewall_rule_type == ForwardFirewallRuleType::kTethering) {
+    // Explicitly accept any traffic forwarded between the upstream and
+    // downstream network interfaces.
+    ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
+                   Iptables::Command::kA, kAcceptTetheringChain, "ACCEPT",
+                   upstream_device->ifname, int_ifname);
+    ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
+                   Iptables::Command::kA, kAcceptTetheringChain, "ACCEPT",
+                   int_ifname, upstream_device->ifname);
+    // Then, reject any other forwarded traffic between the downstream network
+    // interface and any other interface.
+    ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
+                   Iptables::Command::kA, kAcceptTetheringChain, "DROP",
+                   /*iif=*/"", int_ifname);
+    ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
+                   Iptables::Command::kA, kAcceptTetheringChain, "DROP",
+                   int_ifname, /*oif=*/"");
+    // If the upstream network is shared with the device (e.g. non-cellular
+    // upstream, DEFAULT PDN used as upstream, DUN PDN upstream also used as
+    // DEFAULT), it is not possible to drop any other forwarded traffic in or
+    // out of the upstream network interface.
+    // TODO(b/273749806): Make patchpanel aware of whether the upstream network
+    // is exclusively used for tethering or not, and add the additional DROP
+    // rules if that is the case.
+  }
+  if (forward_firewall_rule_type == ForwardFirewallRuleType::kOpen) {
     ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                    Iptables::Command::kA, "FORWARD", "ACCEPT", /*iif=*/"",
                    int_ifname);
   }
-
-  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                 Iptables::Command::kA, "FORWARD", "ACCEPT", int_ifname,
-                 /*oif=*/"");
-
-  if (source == TrafficSource::kBruschettaVM) {
-    if (!ModifyIsolatedGuestDropRule(Iptables::Command::kA, int_ifname)) {
-      LOG(ERROR) << "Fail to setup Bruschetta traffic block rule on "
-                 << int_ifname;
-    }
+  if (forward_firewall_rule_type != ForwardFirewallRuleType::kTethering) {
+    ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
+                   Iptables::Command::kA, "FORWARD", "ACCEPT", int_ifname,
+                   /*oif=*/"");
+  }
+  if (forward_firewall_rule_type == ForwardFirewallRuleType::kIsolatedGuest) {
+    ModifyIsolatedGuestDropRule(Iptables::Command::kA, int_ifname);
   }
 
   std::string subchain = PreroutingSubChainName(int_ifname);
@@ -1351,7 +1420,7 @@ void Datapath::StartRoutingDevice(const ShillClient::Device& shill_device,
                                   TrafficSource source,
                                   bool static_ipv6) {
   const std::string& ext_ifname = shill_device.ifname;
-  AddDownstreamInterfaceRules(int_ifname, source, static_ipv6);
+  AddDownstreamInterfaceRules(shill_device, int_ifname, source, static_ipv6);
   // If |ext_ifname| is not null, mark egress traffic with the
   // fwmark routing tag corresponding to |ext_ifname|.
   int ifindex = system_->IfNametoindex(ext_ifname);
@@ -1376,7 +1445,7 @@ void Datapath::StartRoutingDevice(const ShillClient::Device& shill_device,
 void Datapath::StartRoutingDeviceAsSystem(const std::string& int_ifname,
                                           TrafficSource source,
                                           bool static_ipv6) {
-  AddDownstreamInterfaceRules(int_ifname, source, static_ipv6);
+  AddDownstreamInterfaceRules(std::nullopt, int_ifname, source, static_ipv6);
 
   // Set up a CONNMARK restore rule in PREROUTING to apply any fwmark routing
   // tag saved for the current connection, and rely on implicit routing to the
@@ -1395,7 +1464,8 @@ void Datapath::StartRoutingDeviceAsUser(
     std::optional<net_base::IPv4Address> peer_ipv4_addr,
     std::optional<IPv6Address> int_ipv6_addr,
     std::optional<net_base::IPv6Address> peer_ipv6_addr) {
-  AddDownstreamInterfaceRules(int_ifname, source, peer_ipv6_addr.has_value());
+  AddDownstreamInterfaceRules(std::nullopt, int_ifname, source,
+                              peer_ipv6_addr.has_value());
 
   // Set up a CONNMARK restore rule in PREROUTING to apply any fwmark routing
   // tag saved for the current connection, and rely on implicit routing to the
@@ -1442,18 +1512,27 @@ void Datapath::StartRoutingDeviceAsUser(
 
 void Datapath::StopRoutingDevice(const std::string& int_ifname,
                                  TrafficSource source) {
-  if (source != TrafficSource::kBruschettaVM) {
+  auto forward_firewall_rule_type = GetForwardFirewallRuleType(source);
+  if (forward_firewall_rule_type == ForwardFirewallRuleType::kTethering) {
+    // Assume there is a single and unique tethering setup across the device.
+    // Therefore, the tethering accept and drop rules can be removed by flushing
+    // the relevant chain.
+    FlushChain(IpFamily::kDual, Iptables::Table::kFilter,
+               kAcceptTetheringChain);
+  }
+  if (forward_firewall_rule_type == ForwardFirewallRuleType::kOpen) {
     ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                    Iptables::Command::kD, "FORWARD", "ACCEPT", /*iif=*/"",
                    int_ifname);
   }
-  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                 Iptables::Command::kD, "FORWARD", "ACCEPT", int_ifname,
-                 /*oif=*/"");
-  if (source == TrafficSource::kBruschettaVM) {
+  if (forward_firewall_rule_type != ForwardFirewallRuleType::kTethering) {
+    ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
+                   Iptables::Command::kD, "FORWARD", "ACCEPT", int_ifname,
+                   /*oif=*/"");
+  }
+  if (forward_firewall_rule_type == ForwardFirewallRuleType::kIsolatedGuest) {
     ModifyIsolatedGuestDropRule(Iptables::Command::kD, int_ifname);
   }
-
   std::string subchain = PreroutingSubChainName(int_ifname);
   ModifyJumpRule(IpFamily::kDual, Iptables::Table::kMangle,
                  Iptables::Command::kD, "PREROUTING", subchain, int_ifname,

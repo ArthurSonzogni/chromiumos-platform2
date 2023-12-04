@@ -357,6 +357,9 @@ TEST_F(DatapathTest, Start) {
       {IpFamily::kIPv6, "filter -L enforce_ipv6_src_prefix -w"},
       {IpFamily::kIPv6, "filter -F enforce_ipv6_src_prefix -w"},
       {IpFamily::kIPv6, "filter -X enforce_ipv6_src_prefix -w"},
+      {IpFamily::kDual, "filter -L accept_tethering -w"},
+      {IpFamily::kDual, "filter -F accept_tethering -w"},
+      {IpFamily::kDual, "filter -X accept_tethering -w"},
       {IpFamily::kDual, "filter -L drop_output_to_bruschetta -w"},
       {IpFamily::kDual, "filter -F drop_output_to_bruschetta -w"},
       {IpFamily::kDual, "filter -X drop_output_to_bruschetta -w"},
@@ -510,6 +513,8 @@ TEST_F(DatapathTest, Start) {
       {IpFamily::kDual, "filter -A vpn_egress_filters -j vpn_accept -w"},
       // Asserts for cellular prefix enforcement chain creation
       {IpFamily::kIPv6, "filter -N enforce_ipv6_src_prefix -w"},
+      {IpFamily::kDual, "filter -N accept_tethering -w"},
+      {IpFamily::kDual, "filter -A FORWARD -j accept_tethering -w"},
       {IpFamily::kDual, "filter -N drop_forward_to_bruschetta -w"},
       {IpFamily::kDual, "filter -N drop_output_to_bruschetta -w"},
       {IpFamily::kDual, "filter -A FORWARD -j drop_forward_to_bruschetta -w"},
@@ -683,6 +688,9 @@ TEST_F(DatapathTest, Stop) {
       {IpFamily::kIPv6, "filter -L enforce_ipv6_src_prefix -w"},
       {IpFamily::kIPv6, "filter -F enforce_ipv6_src_prefix -w"},
       {IpFamily::kIPv6, "filter -X enforce_ipv6_src_prefix -w"},
+      {IpFamily::kDual, "filter -L accept_tethering -w"},
+      {IpFamily::kDual, "filter -F accept_tethering -w"},
+      {IpFamily::kDual, "filter -X accept_tethering -w"},
       {IpFamily::kDual, "filter -L drop_output_to_bruschetta -w"},
       {IpFamily::kDual, "filter -F drop_output_to_bruschetta -w"},
       {IpFamily::kDual, "filter -X drop_output_to_bruschetta -w"},
@@ -1119,10 +1127,16 @@ TEST_F(DatapathTest, StartDownstreamTetheredNetwork) {
   Verify_iptables(*runner_, IpFamily::kIPv4,
                   "filter -I accept_downstream_network -p udp --dport 67 "
                   "--sport 68 -j ACCEPT -w");
+
   Verify_iptables(*runner_, IpFamily::kDual,
-                  "filter -A FORWARD -o ap0 -j ACCEPT -w");
+                  "filter -A accept_tethering -i wwan0 -o ap0 -j ACCEPT -w");
   Verify_iptables(*runner_, IpFamily::kDual,
-                  "filter -A FORWARD -i ap0 -j ACCEPT -w");
+                  "filter -A accept_tethering -i ap0 -o wwan0 -j ACCEPT -w");
+  Verify_iptables(*runner_, IpFamily::kDual,
+                  "filter -A accept_tethering -i ap0 -j DROP -w");
+  Verify_iptables(*runner_, IpFamily::kDual,
+                  "filter -A accept_tethering -o ap0 -j DROP -w");
+
   Verify_iptables(*runner_, IpFamily::kDual, "mangle -N PREROUTING_ap0 -w");
   Verify_iptables(*runner_, IpFamily::kDual, "mangle -F PREROUTING_ap0 -w");
   Verify_iptables(*runner_, IpFamily::kDual,
@@ -1171,10 +1185,7 @@ TEST_F(DatapathTest, StopDownstreamTetheredNetwork) {
                   "filter -F accept_downstream_network -w");
   Verify_iptables(*runner_, IpFamily::kDual,
                   "filter -D INPUT -i ap0 -j accept_downstream_network -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
-                  "filter -D FORWARD -o ap0 -j ACCEPT -w");
-  Verify_iptables(*runner_, IpFamily::kDual,
-                  "filter -D FORWARD -i ap0 -j ACCEPT -w");
+  Verify_iptables(*runner_, IpFamily::kDual, "filter -F accept_tethering -w");
   Verify_iptables(*runner_, IpFamily::kDual,
                   "mangle -D PREROUTING -i ap0 -j PREROUTING_ap0 -w");
   Verify_iptables(*runner_, IpFamily::kDual, "mangle -F PREROUTING_ap0 -w");

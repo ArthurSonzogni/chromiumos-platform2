@@ -491,11 +491,16 @@ class Datapath {
   bool ToggleInterface(const std::string& ifname, bool up);
 
   // Creates the base FORWARD filter rules and PREROUTING mangle rules for
-  // any downstream network interface (ARC, Crostini, ConnectNamespace,
-  // Tethering, LocalOnlyNetwork).
-  void AddDownstreamInterfaceRules(const std::string& int_ifname,
-                                   TrafficSource source,
-                                   bool static_ipv6 = false);
+  // any downstream network interface (ARC, Crostini, Borealis, Parallels,
+  // Bruschetta, ConnectNamespace, Tethering, LocalOnlyNetwork).
+  // TODO(b/273749806): Create abstraction to represent the different types of
+  // isolation in the FORWARD chain and in the OUTPUT chain instead of relying
+  // on inspecting |source|, |int_ifname|, and |upstream_ifname|.
+  void AddDownstreamInterfaceRules(
+      std::optional<ShillClient::Device> upstream_device,
+      const std::string& int_ifname,
+      TrafficSource source,
+      bool static_ipv6 = false);
 
   bool ModifyChromeDnsRedirect(IpFamily family,
                                const DnsRedirectionRule& rule,
