@@ -27,6 +27,7 @@ geteuid: 1
 brk: 1
 epoll_ctl: 1
 readlinkat: 1
+process_vm_readv: 1
 getsockname: 1
 rt_sigaction: 1
 getuid: 1
