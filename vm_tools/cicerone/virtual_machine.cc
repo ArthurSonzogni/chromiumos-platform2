@@ -700,7 +700,6 @@ VirtualMachine::CancelExportLxdContainer(
 VirtualMachine::ImportLxdContainerStatus VirtualMachine::ImportLxdContainer(
     const std::string& container_name,
     const std::string& import_path,
-    uint64_t available_disk_space,
     std::string* out_error) {
   DCHECK(out_error);
   if (!tremplin_stub_) {
@@ -713,7 +712,6 @@ VirtualMachine::ImportLxdContainerStatus VirtualMachine::ImportLxdContainer(
 
   request.set_container_name(container_name);
   request.set_import_path(import_path);
-  request.set_available_disk_space(available_disk_space);
 
   grpc::ClientContext ctx;
   ctx.set_deadline(ToGprDeadline(kDefaultTimeoutSeconds));

@@ -332,10 +332,9 @@ class VirtualMachine {
   CancelExportLxdContainerStatus CancelExportLxdContainer(
       const std::string& in_progress_container_name, std::string* out_error);
 
-  // Imports an LXD container. |available_disk_space| of zero means unlimited
+  // Imports an LXD container.
   ImportLxdContainerStatus ImportLxdContainer(const std::string& container_name,
                                               const std::string& import_path,
-                                              uint64_t available_disk_space,
                                               std::string* out_error);
 
   CancelImportLxdContainerStatus CancelImportLxdContainer(
