@@ -2,9 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/pkg_config.gni")
-import("//common-mk/proto_library.gni")
 
 group("host") {
   deps = [
@@ -13,10 +11,10 @@ group("host") {
     ":seneschal",
     ":seneschal_client",
     ":vm_cicerone",
-    ":vm_concierge",
     ":vmlog_forwarder",
     ":vsh",
     "//vm_tools:vshd",
+    "//vm_tools/concierge",
   ]
   if (use.arcvm) {
     deps += [ ":vm_pstore_dump" ]
@@ -24,9 +22,9 @@ group("host") {
   if (use.test) {
     deps += [
       ":cicerone_test",
-      ":concierge_test",
       ":syslog_forwarder_test",
       ":vsh_test",
+      "//vm_tools/concierge:concierge_test",
     ]
     if (use.arcvm) {
       deps += [ ":vm_pstore_dump_test" ]
@@ -132,123 +130,6 @@ executable("vsh") {
     "vm_protos",
   ]
   deps = [ ":libvsh-client" ]
-}
-
-generate_dbus_adaptors("vm_concierge-adaptors") {
-  dbus_service_config = "../dbus_bindings/dbus-service-config.json"
-  dbus_adaptors_out_dir = "include/vm_tools/concierge/dbus_adaptors"
-  sources = [ "../dbus_bindings/org.chromium.VmConcierge.xml" ]
-}
-
-proto_library("vm_concierge-protos") {
-  proto_in_dir = "../concierge"
-  proto_out_dir = "include/vm_concierge"
-  sources = [ "${proto_in_dir}/vmm_swap_policy.proto" ]
-}
-
-static_library("libconcierge") {
-  sources = [
-    "../concierge/arc_vm.cc",
-    "../concierge/balloon_policy.cc",
-    "../concierge/concierge_daemon.cc",
-    "../concierge/crosvm_control.cc",
-    "../concierge/disk_image.cc",
-    "../concierge/dlc_helper.cc",
-    "../concierge/metrics/duration_recorder.cc",
-    "../concierge/mm/balloon.cc",
-    "../concierge/mm/balloon_blocker.cc",
-    "../concierge/mm/balloon_broker.cc",
-    "../concierge/mm/balloon_metrics.cc",
-    "../concierge/mm/kills_server.cc",
-    "../concierge/mm/mglru.cc",
-    "../concierge/mm/mm_service.cc",
-    "../concierge/mm/reclaim_broker.cc",
-    "../concierge/mm/reclaim_server.cc",
-    "../concierge/mm/server.cc",
-    "../concierge/mm/vm_socket.cc",
-    "../concierge/network/arc_network.cc",
-    "../concierge/network/borealis_network.cc",
-    "../concierge/network/bruschetta_network.cc",
-    "../concierge/network/guest_os_network.cc",
-    "../concierge/network/plugin_vm_network.cc",
-    "../concierge/network/scoped_network.cc",
-    "../concierge/network/termina_network.cc",
-    "../concierge/pci_utils.cc",
-    "../concierge/plugin_vm.cc",
-    "../concierge/plugin_vm_helper.cc",
-    "../concierge/power_manager_client.cc",
-    "../concierge/seneschal_server_proxy.cc",
-    "../concierge/service.cc",
-    "../concierge/service_arc.cc",
-    "../concierge/service_common.cc",
-    "../concierge/service_plugin.cc",
-    "../concierge/service_start_vm_helper.cc",
-    "../concierge/shadercached_helper.cc",
-    "../concierge/shill_client.cc",
-    "../concierge/ssh_keys.cc",
-    "../concierge/startup_listener_impl.cc",
-    "../concierge/sysfs_notify_watcher.cc",
-    "../concierge/tap_device_builder.cc",
-    "../concierge/termina_vm.cc",
-    "../concierge/thread_utils.cc",
-    "../concierge/tracing.cc",
-    "../concierge/untrusted_vm_utils.cc",
-    "../concierge/virtio_blk_metrics.cc",
-    "../concierge/vm_base_impl.cc",
-    "../concierge/vm_builder.cc",
-    "../concierge/vm_permission_interface.cc",
-    "../concierge/vm_util.cc",
-    "../concierge/vm_wl_interface.cc",
-    "../concierge/vmm_swap_history_file_manager.cc",
-    "../concierge/vmm_swap_low_disk_policy.cc",
-    "../concierge/vmm_swap_metrics.cc",
-    "../concierge/vmm_swap_tbw_policy.cc",
-    "../concierge/vmm_swap_usage_policy.cc",
-    "../concierge/vmplugin_dispatcher_interface.cc",
-    "../concierge/vsock_cid_pool.cc",
-  ]
-  configs += [ ":host_target_defaults" ]
-  libs = [
-    "grpc",
-    "crosvm_control",
-  ]
-  all_dependent_pkg_deps = [
-    "blkid",
-    "grpc++",
-    "libarchive",
-    "libcrossystem",
-    "libdlcservice-client",
-    "libmetrics",
-    "libminijail",
-    "libshill-client",
-    "libspaced",
-    "perfetto",
-    "protobuf",
-    "re2",
-    "system_api",
-    "vboot_host",
-    "vm_protos",
-  ]
-  defines = [ "USE_ARCVM_GKI=${use.arcvm_gki}" ]
-
-  cflags_cc = [
-    "-Werror=deprecated-declarations",
-    "-Wthread-safety",
-  ]
-  deps = [
-    ":vm_concierge-adaptors",
-    ":vm_concierge-protos",
-    "//featured:libfeatures",
-  ]
-}
-
-executable("vm_concierge") {
-  sources = [ "../concierge/main.cc" ]
-  configs += [ ":host_target_defaults" ]
-  deps = [
-    ":libconcierge",
-    "//vm_tools:libvm_tools_common",
-  ]
 }
 
 static_library("libcicerone") {
@@ -383,60 +264,6 @@ if (use.test) {
     ]
   }
 
-  executable("concierge_test") {
-    sources = [
-      "../concierge/arc_vm_test.cc",
-      "../concierge/balloon_policy_test.cc",
-      "../concierge/dlc_helper_test.cc",
-      "../concierge/fake_crosvm_control.cc",
-      "../concierge/if_method_exists_test.cc",
-      "../concierge/metrics/duration_recorder_test.cc",
-      "../concierge/mm/balloon_blocker_test.cc",
-      "../concierge/mm/balloon_broker_test.cc",
-      "../concierge/mm/balloon_metrics_test.cc",
-      "../concierge/mm/balloon_test.cc",
-      "../concierge/mm/fake_balloon.cc",
-      "../concierge/mm/fake_balloon_blocker.cc",
-      "../concierge/mm/fake_kills_server.cc",
-      "../concierge/mm/fake_reclaim_server.cc",
-      "../concierge/mm/fake_vm_socket.cc",
-      "../concierge/mm/mglru_test.cc",
-      "../concierge/mm/mglru_test_util.cc",
-      "../concierge/mm/reclaim_broker_test.cc",
-      "../concierge/mm/server_test.cc",
-      "../concierge/power_manager_client_test.cc",
-      "../concierge/service_common_test.cc",
-      "../concierge/service_start_vm_helper_test.cc",
-      "../concierge/service_test.cc",
-      "../concierge/shadercached_helper_test.cc",
-      "../concierge/termina_vm_test.cc",
-      "../concierge/thread_utils_test.cc",
-      "../concierge/untrusted_vm_utils_test.cc",
-      "../concierge/virtio_blk_metrics_test.cc",
-      "../concierge/vm_builder_test.cc",
-      "../concierge/vm_util_test.cc",
-      "../concierge/vm_wl_interface_test.cc",
-      "../concierge/vmm_swap_low_disk_policy_test.cc",
-      "../concierge/vmm_swap_metrics_test.cc",
-      "../concierge/vmm_swap_tbw_policy_test.cc",
-      "../concierge/vmm_swap_usage_policy_test.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":host_target_defaults",
-    ]
-    pkg_deps = [
-      "libchrome-test",
-      "libcrossystem-test",
-      "libdlcservice-client-test",
-      "libspaced-test",
-    ]
-    deps = [
-      ":libconcierge",
-      "//common-mk/testrunner:testrunner",
-      "//vm_tools:libvm_tools_common",
-    ]
-  }
   executable("vsh_test") {
     sources = [ "../vsh/utils_test.cc" ]
     configs += [

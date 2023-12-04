@@ -1,0 +1,181 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/proto_library.gni")
+
+generate_dbus_adaptors("dbus-adaptors") {
+  dbus_service_config = "../dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/vm_tools/concierge/dbus_adaptors"
+  sources = [ "../dbus_bindings/org.chromium.VmConcierge.xml" ]
+}
+
+proto_library("protos") {
+  proto_in_dir = "./"
+  proto_out_dir = "include/vm_concierge"
+  sources = [ "${proto_in_dir}/vmm_swap_policy.proto" ]
+}
+
+static_library("libconcierge") {
+  sources = [
+    "arc_vm.cc",
+    "balloon_policy.cc",
+    "concierge_daemon.cc",
+    "crosvm_control.cc",
+    "disk_image.cc",
+    "dlc_helper.cc",
+    "metrics/duration_recorder.cc",
+    "mm/balloon.cc",
+    "mm/balloon_blocker.cc",
+    "mm/balloon_broker.cc",
+    "mm/balloon_metrics.cc",
+    "mm/kills_server.cc",
+    "mm/mglru.cc",
+    "mm/mm_service.cc",
+    "mm/reclaim_broker.cc",
+    "mm/reclaim_server.cc",
+    "mm/server.cc",
+    "mm/vm_socket.cc",
+    "network/arc_network.cc",
+    "network/borealis_network.cc",
+    "network/bruschetta_network.cc",
+    "network/guest_os_network.cc",
+    "network/plugin_vm_network.cc",
+    "network/scoped_network.cc",
+    "network/termina_network.cc",
+    "pci_utils.cc",
+    "plugin_vm.cc",
+    "plugin_vm_helper.cc",
+    "power_manager_client.cc",
+    "seneschal_server_proxy.cc",
+    "service.cc",
+    "service_arc.cc",
+    "service_common.cc",
+    "service_plugin.cc",
+    "service_start_vm_helper.cc",
+    "shadercached_helper.cc",
+    "shill_client.cc",
+    "ssh_keys.cc",
+    "startup_listener_impl.cc",
+    "sysfs_notify_watcher.cc",
+    "tap_device_builder.cc",
+    "termina_vm.cc",
+    "thread_utils.cc",
+    "tracing.cc",
+    "untrusted_vm_utils.cc",
+    "virtio_blk_metrics.cc",
+    "vm_base_impl.cc",
+    "vm_builder.cc",
+    "vm_permission_interface.cc",
+    "vm_util.cc",
+    "vm_wl_interface.cc",
+    "vmm_swap_history_file_manager.cc",
+    "vmm_swap_low_disk_policy.cc",
+    "vmm_swap_metrics.cc",
+    "vmm_swap_tbw_policy.cc",
+    "vmm_swap_usage_policy.cc",
+    "vmplugin_dispatcher_interface.cc",
+    "vsock_cid_pool.cc",
+  ]
+  configs += [ "//vm_tools/host:host_target_defaults" ]
+  libs = [
+    "grpc",
+    "crosvm_control",
+  ]
+  all_dependent_pkg_deps = [
+    "blkid",
+    "grpc++",
+    "libarchive",
+    "libcrossystem",
+    "libdlcservice-client",
+    "libmetrics",
+    "libminijail",
+    "libshill-client",
+    "libspaced",
+    "perfetto",
+    "protobuf",
+    "re2",
+    "system_api",
+    "vboot_host",
+    "vm_protos",
+  ]
+  defines = [ "USE_ARCVM_GKI=${use.arcvm_gki}" ]
+
+  cflags_cc = [
+    "-Werror=deprecated-declarations",
+    "-Wthread-safety",
+  ]
+  deps = [
+    ":dbus-adaptors",
+    ":protos",
+    "//featured:libfeatures",
+  ]
+}
+
+executable("concierge") {
+  output_name = "vm_concierge"
+  sources = [ "main.cc" ]
+  configs += [ "//vm_tools/host:host_target_defaults" ]
+  deps = [
+    ":libconcierge",
+    "//vm_tools:libvm_tools_common",
+  ]
+}
+
+if (use.test) {
+  executable("concierge_test") {
+    sources = [
+      "arc_vm_test.cc",
+      "balloon_policy_test.cc",
+      "dlc_helper_test.cc",
+      "fake_crosvm_control.cc",
+      "if_method_exists_test.cc",
+      "metrics/duration_recorder_test.cc",
+      "mm/balloon_blocker_test.cc",
+      "mm/balloon_broker_test.cc",
+      "mm/balloon_metrics_test.cc",
+      "mm/balloon_test.cc",
+      "mm/fake_balloon.cc",
+      "mm/fake_balloon_blocker.cc",
+      "mm/fake_kills_server.cc",
+      "mm/fake_reclaim_server.cc",
+      "mm/fake_vm_socket.cc",
+      "mm/mglru_test.cc",
+      "mm/mglru_test_util.cc",
+      "mm/reclaim_broker_test.cc",
+      "mm/server_test.cc",
+      "power_manager_client_test.cc",
+      "service_common_test.cc",
+      "service_start_vm_helper_test.cc",
+      "service_test.cc",
+      "shadercached_helper_test.cc",
+      "termina_vm_test.cc",
+      "thread_utils_test.cc",
+      "untrusted_vm_utils_test.cc",
+      "virtio_blk_metrics_test.cc",
+      "vm_builder_test.cc",
+      "vm_util_test.cc",
+      "vm_wl_interface_test.cc",
+      "vmm_swap_low_disk_policy_test.cc",
+      "vmm_swap_metrics_test.cc",
+      "vmm_swap_tbw_policy_test.cc",
+      "vmm_swap_usage_policy_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      "//vm_tools/host:host_target_defaults",
+    ]
+    pkg_deps = [
+      "libchrome-test",
+      "libcrossystem-test",
+      "libdlcservice-client-test",
+      "libspaced-test",
+    ]
+    deps = [
+      ":libconcierge",
+      "//common-mk/testrunner:testrunner",
+      "//vm_tools:libvm_tools_common",
+    ]
+  }
+}
