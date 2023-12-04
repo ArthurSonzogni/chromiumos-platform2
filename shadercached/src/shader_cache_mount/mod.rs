@@ -89,10 +89,11 @@ impl ShaderCacheMount {
         Ok(())
     }
 
-    pub async fn setup_mount_destination(
+    pub async fn setup_mount_destination<D: DbusConnectionTrait>(
         &self,
         vm_id: &VmId,
         steam_app_id: SteamAppId,
+        dbus_conn: Arc<D>,
     ) -> Result<()> {
         debug!(
             "Setting up mount destination for {:?}, game {}",
@@ -102,8 +103,21 @@ impl ShaderCacheMount {
         let dst_path = Path::new(&dst_path_str);
         if !dst_path.exists() {
             // Attempt to only create the final directory, the parent directory
-            // should already exist with the correct permissions.
-            fs::create_dir(dst_path)?;
+            // should already exist.
+            if let Err(e) = fs::create_dir(dst_path) {
+                debug!(
+                    "Failed create mount directory: {:?}, retrying after getting permissions",
+                    e
+                );
+                // Retry directory creation once with permissions fix.
+                // TODO(endlesspring): consider calling service outside
+                // ShaderCacheMount. This detaches this module's dependency
+                // on service module. This may involve splitting path creation
+                // and setting up permissions.
+                service::add_shader_cache_group_permission(vm_id, dbus_conn).await?;
+                fs::create_dir(dst_path)?;
+                debug!("Successfully created mount directory on retry");
+            }
             let perm = fs::Permissions::from_mode(0o750);
             if let Err(e) = fs::set_permissions(dst_path, perm) {
                 error!("Failed to set permissions for {}: {}", dst_path_str, e);
