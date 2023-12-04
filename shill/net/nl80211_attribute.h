@@ -22,10 +22,7 @@ SHILL_EXPORT std::unique_ptr<NetlinkAttribute> NewNl80211AttributeFromId(
     NetlinkMessage::MessageContext context, int id);
 
 // Helper function for creating nl80211 attribute inside AttributeList.
-SHILL_EXPORT bool CreateNl80211Attribute(
-    AttributeList* attribute_list,
-    int id,
-    NetlinkMessage::MessageContext context);
+SHILL_EXPORT bool CreateNl80211Attribute(AttributeList* attribute_list, int id);
 
 // U8.
 

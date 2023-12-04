@@ -1565,8 +1565,7 @@ TEST_F(DeviceInfoDelayedCreationTest, WiFiDevice) {
   TriggerOnWiFiInterfaceInfoReceived(message);
   Mock::VerifyAndClearExpectations(&log);
 
-  CreateNl80211Attribute(message.attributes().get(), NL80211_ATTR_IFINDEX,
-                         NetlinkMessage::MessageContext());
+  CreateNl80211Attribute(message.attributes().get(), NL80211_ATTR_IFINDEX);
   message.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
                                              kTestDeviceIndex);
   EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _,
@@ -1574,8 +1573,7 @@ TEST_F(DeviceInfoDelayedCreationTest, WiFiDevice) {
   TriggerOnWiFiInterfaceInfoReceived(message);
   Mock::VerifyAndClearExpectations(&log);
 
-  CreateNl80211Attribute(message.attributes().get(), NL80211_ATTR_IFTYPE,
-                         NetlinkMessage::MessageContext());
+  CreateNl80211Attribute(message.attributes().get(), NL80211_ATTR_IFTYPE);
   message.attributes()->SetU32AttributeValue(NL80211_ATTR_IFTYPE,
                                              NL80211_IFTYPE_AP);
   EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _,
@@ -1583,8 +1581,7 @@ TEST_F(DeviceInfoDelayedCreationTest, WiFiDevice) {
   TriggerOnWiFiInterfaceInfoReceived(message);
   Mock::VerifyAndClearExpectations(&log);
 
-  CreateNl80211Attribute(message.attributes().get(), NL80211_ATTR_WIPHY,
-                         NetlinkMessage::MessageContext());
+  CreateNl80211Attribute(message.attributes().get(), NL80211_ATTR_WIPHY);
   message.attributes()->SetU32AttributeValue(NL80211_ATTR_WIPHY, 0);
   EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _,
                        HasSubstr("Could not find device info for interface")));

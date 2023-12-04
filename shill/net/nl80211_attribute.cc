@@ -162,11 +162,10 @@ std::unique_ptr<NetlinkAttribute> NewNl80211AttributeFromId(
   }
 }
 
-bool CreateNl80211Attribute(AttributeList* attribute_list,
-                            int id,
-                            NetlinkMessage::MessageContext context) {
+bool CreateNl80211Attribute(AttributeList* attribute_list, int id) {
   return attribute_list->CreateAttribute(
-      id, base::BindRepeating(&NewNl80211AttributeFromId, context));
+      id, base::BindRepeating(&NewNl80211AttributeFromId,
+                              NetlinkMessage::MessageContext()));
 }
 
 const int Nl80211AttributeCookie::kName = NL80211_ATTR_COOKIE;

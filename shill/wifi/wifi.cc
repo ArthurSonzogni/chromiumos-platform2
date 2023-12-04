@@ -3022,8 +3022,7 @@ void WiFi::TriggerPassiveScan(const FreqSet& freqs) {
   if (!freqs.empty()) {
     SLOG(this, 2) << __func__ << ": Scanning on specific channels";
     CreateNl80211Attribute(trigger_scan.attributes().get(),
-                           NL80211_ATTR_SCAN_FREQUENCIES,
-                           NetlinkMessage::MessageContext());
+                           NL80211_ATTR_SCAN_FREQUENCIES);
 
     AttributeListRefPtr frequency_list;
     if (!trigger_scan.attributes()->GetNestedAttributeList(
