@@ -188,9 +188,19 @@ if [ -d "${CONTAINER_CGROUP_DIR}" ]; then
   fi
 fi
 
-# Enable madvise(MADV_HUGEPAGE) for VMs guest mappings
-if [ -f "/sys/kernel/mm/transparent_hugepage/shmem_enabled" ]; then
-  echo "advise" > "/sys/kernel/mm/transparent_hugepage/shmem_enabled"
+# Enable transparent huge pages on devices with 8GB+ RAM.
+# TODO (b/315138994): move this to chromeos_startup, to enable THP
+# as early as possible.
+MEM_TOTAL=$(awk '/^MemTotal:/ { print $2 }' /proc/meminfo)
+if [ "${MEM_TOTAL}" -ge $((7 * 1024 * 1024)) ]; then
+  # Only use THP when explicitly requested via madvise(MADV_HUGEPAGE).
+  if [ -f "/sys/kernel/mm/transparent_hugepage/enabled" ]; then
+    echo "madvise" > "/sys/kernel/mm/transparent_hugepage/enabled"
+  fi
+  # Enable madvise(MADV_HUGEPAGE) on shared memory for VMs guest mappings.
+  if [ -f "/sys/kernel/mm/transparent_hugepage/shmem_enabled" ]; then
+    echo "advise" > "/sys/kernel/mm/transparent_hugepage/shmem_enabled"
+  fi
 fi
 
 # Tweak KVM HLT polling only for x86
