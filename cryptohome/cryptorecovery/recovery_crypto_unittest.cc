@@ -6,6 +6,7 @@
 #include <optional>
 #include <utility>
 
+#include <base/strings/string_number_conversions.h>
 #include <gtest/gtest.h>
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
@@ -50,6 +51,12 @@ const char kFakeGaiaAccessToken[] = "fake access token";
 const char kFakeGaiaId[] = "fake gaia id";
 const char kFakeRapt[] = "fake rapt";
 const char kFakeUserId[] = "fake user id";
+const char kHsmPublicKey[] =
+    "3059301306072a8648ce3d020106082a8648ce3d03010703420004b193a3aa275ddccc18b9"
+    "6e3c194b0611a3f51f43e36f67ca8babb70f73dd4eeb9aa3a88534b6dddd24cd6a267d3b91"
+    "7bf8a28d89e30df7f2ac0d608c3cacd143";
+const char kHsmPublicKeyHash[] =
+    "e06c9b12b3fbe7be22188ea506b3ebd9a25eb1c419a832e582b7f3622fad290e";
 
 Blob GeneratePublicKey() {
   ScopedBN_CTX context = CreateBigNumContext();
@@ -99,6 +106,15 @@ SecureBlob GenerateScalar() {
     return SecureBlob();
   }
   return result;
+}
+
+bool HexStringToBlob(const std::string& hex, brillo::Blob* blob) {
+  std::string str;
+  if (!base::HexStringToString(hex, &str)) {
+    return false;
+  }
+  *blob = brillo::BlobFromString(str);
+  return true;
 }
 
 }  // namespace
@@ -640,10 +656,15 @@ TEST_F(RecoveryCryptoTest, GenerateOnboardingMetadataSuccess) {
   account_id.set_account_id(kFakeUserId);
   EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
   std::string recovery_id = recovery_->LoadStoredRecoveryId(account_id);
-  recovery_->GenerateOnboardingMetadata(kFakeGaiaId, kFakeDeviceId, recovery_id,
-                                        &onboarding_metadata);
+  brillo::Blob pub_key;
+  ASSERT_TRUE(HexStringToBlob(kHsmPublicKey, &pub_key));
+  EXPECT_TRUE(recovery_->GenerateOnboardingMetadata(
+      kFakeGaiaId, kFakeDeviceId, recovery_id, pub_key, &onboarding_metadata));
+  brillo::Blob hash;
+  ASSERT_TRUE(HexStringToBlob(kHsmPublicKeyHash, &hash));
   EXPECT_EQ(onboarding_metadata.cryptohome_user, kFakeGaiaId);
   EXPECT_EQ(onboarding_metadata.device_user_id, kFakeDeviceId);
+  EXPECT_EQ(onboarding_metadata.hsm_pub_key_hash, hash);
   EXPECT_EQ(onboarding_metadata.recovery_id, recovery_id);
 }
 
@@ -660,8 +681,9 @@ TEST_F(RecoveryCryptoTest, GenerateOnboardingMetadataFileCorrupted) {
   EXPECT_THAT(recovery_->LoadStoredRecoveryId(account_id), testing::IsEmpty());
   EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
   std::string new_recovery_id = recovery_->LoadStoredRecoveryId(account_id);
-  recovery_->GenerateOnboardingMetadata(kFakeGaiaId, kFakeDeviceId,
-                                        new_recovery_id, &onboarding_metadata);
+  EXPECT_TRUE(recovery_->GenerateOnboardingMetadata(
+      kFakeGaiaId, kFakeDeviceId, new_recovery_id, mediator_pub_key_,
+      &onboarding_metadata));
   EXPECT_NE(onboarding_metadata.recovery_id, recovery_id);
 }
 

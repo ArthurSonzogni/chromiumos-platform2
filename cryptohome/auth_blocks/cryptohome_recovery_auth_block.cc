@@ -149,8 +149,6 @@ void CryptohomeRecoveryAuthBlock::Create(const AuthInput& auth_input,
     return;
   }
 
-  const brillo::Blob& mediator_pub_key =
-      cryptohome_recovery_auth_input.mediator_pub_key.value();
   std::unique_ptr<RecoveryCryptoImpl> recovery =
       RecoveryCryptoImpl::Create(recovery_hwsec_, platform_);
   if (!recovery) {
@@ -193,12 +191,24 @@ void CryptohomeRecoveryAuthBlock::Create(const AuthInput& auth_input,
         nullptr, nullptr);
     return;
   }
-  recovery->GenerateOnboardingMetadata(
-      cryptohome_recovery_auth_input.user_gaia_id,
-      cryptohome_recovery_auth_input.device_user_id, recovery_id,
-      &onboarding_metadata);
+
+  if (!recovery->GenerateOnboardingMetadata(
+          cryptohome_recovery_auth_input.user_gaia_id,
+          cryptohome_recovery_auth_input.device_user_id, recovery_id,
+          cryptohome_recovery_auth_input.mediator_pub_key.value(),
+          &onboarding_metadata)) {
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocRecoveryAuthBlockGenerateOnboardingMetadataFailedInCreate),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, nullptr);
+    return;
+  }
   cryptorecovery::GenerateHsmPayloadRequest generate_hsm_payload_request{
-      .mediator_pub_key = mediator_pub_key,
+      .mediator_pub_key =
+          cryptohome_recovery_auth_input.mediator_pub_key.value(),
       .onboarding_metadata = onboarding_metadata,
       .obfuscated_username = auth_input.obfuscated_username.value()};
   cryptorecovery::GenerateHsmPayloadResponse generate_hsm_payload_response;

@@ -79,6 +79,7 @@ constexpr char kLedgerInfoPubKeyKey[] = "public_key";
 
 bool GenerateOnboardingMetadata(const FilePath& file_path,
                                 RecoveryCryptoImpl* recovery_crypto,
+                                const brillo::Blob& mediator_pub_key,
                                 OnboardingMetadata* onboarding_metadata) {
   if (!recovery_crypto) {
     return false;
@@ -88,9 +89,9 @@ bool GenerateOnboardingMetadata(const FilePath& file_path,
   if (recovery_id.empty()) {
     return false;
   }
-  recovery_crypto->GenerateOnboardingMetadata(kFakeGaiaId, kFakeUserDeviceId,
-                                              recovery_id, onboarding_metadata);
-  return true;
+  return recovery_crypto->GenerateOnboardingMetadata(
+      kFakeGaiaId, kFakeUserDeviceId, recovery_id, mediator_pub_key,
+      onboarding_metadata);
 }
 
 bool HexStringToBlob(const std::string& hex, brillo::Blob* blob) {
@@ -232,7 +233,7 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
   // Generates HSM payload that would be persisted on a chromebook.
   OnboardingMetadata onboarding_metadata;
   if (!GenerateOnboardingMetadata(recovery_id_file_path, recovery_crypto.get(),
-                                  &onboarding_metadata)) {
+                                  mediator_pub_key, &onboarding_metadata)) {
     LOG(ERROR) << "Unable to generate OnboardingMetadata.";
     return false;
   }

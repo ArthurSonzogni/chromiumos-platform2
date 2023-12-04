@@ -46,10 +46,11 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
       const DecryptResponsePayloadRequest& request,
       HsmResponsePlainText* response_plain_text) const override;
 
-  void GenerateOnboardingMetadata(
+  [[nodiscard]] bool GenerateOnboardingMetadata(
       const std::string& gaia_id,
       const std::string& user_device_id,
       const std::string& recovery_id,
+      const brillo::Blob& mediator_pub_key,
       OnboardingMetadata* onboarding_metadata) const;
   // Gets the current serialized value of the Recovery Id from cryptohome or
   // returns an empty string if it does not exist. It should be called by the
@@ -78,6 +79,8 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   RecoveryCryptoImpl(hwsec_foundation::EllipticCurve ec,
                      const hwsec::RecoveryCryptoFrontend* hwsec_backend,
                      Platform* platform);
+  [[nodiscard]] bool GetMediatorPubKeyHash(
+      const brillo::Blob& mediator_pub_key_spki_der, brillo::Blob* hash) const;
   [[nodiscard]] bool GenerateRecoveryKey(
       const crypto::ScopedEC_POINT& recovery_pub_point,
       const crypto::ScopedEC_KEY& dealer_key_pair,

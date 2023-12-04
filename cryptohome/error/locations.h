@@ -1387,6 +1387,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocRecoveryAuthBlockFailedReadPayloadInDerive = 1917,
   /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
   kLocRecoveryAuthBlockFailedReadADInDerive = 1918,
+  /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
+  kLocRecoveryAuthBlockGenerateOnboardingMetadataFailedInCreate = 1919,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2100
   //// See location_db.py for more info.

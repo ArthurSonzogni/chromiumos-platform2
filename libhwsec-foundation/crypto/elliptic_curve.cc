@@ -391,6 +391,28 @@ crypto::ScopedEC_POINT EllipticCurve::DecodeFromSpkiDer(
       context);
 }
 
+bool EllipticCurve::EncodePointToUncompressedBlob(const EC_POINT& point,
+                                                  brillo::Blob* result,
+                                                  BN_CTX* context) const {
+  if (!IsPointValidAndFinite(point, context)) {
+    LOG(ERROR) << "EncodePointToUncompressedBlob failed: input point is "
+                  "invalid or infinite";
+    return false;
+  }
+
+  unsigned char* buf = nullptr;
+  size_t buf_len = EC_POINT_point2buf(
+      group_.get(), &point, POINT_CONVERSION_UNCOMPRESSED, &buf, context);
+  if (buf_len == 0) {
+    LOG(ERROR) << "EncodePointToUncompressedBlob failed: "
+               << GetOpenSSLErrors();
+    return false;
+  }
+  crypto::ScopedOpenSSLBytes scoped_buf(buf);
+  *result = brillo::Blob(buf, buf + buf_len);
+  return true;
+}
+
 crypto::ScopedEC_Key EllipticCurve::GenerateKey(BN_CTX* context) const {
   crypto::ScopedEC_Key key(EC_KEY_new());
   if (!key) {

@@ -133,6 +133,13 @@ class HWSEC_FOUNDATION_EXPORT EllipticCurve final {
   crypto::ScopedEC_POINT DecodeFromSpkiDer(
       const brillo::SecureBlob& public_key_spki_der, BN_CTX* context) const;
 
+  // The output blob is a point converted to OpenSSL uncompressed
+  // octet form (a binary encoding of the EC_POINT structure as defined in
+  // RFC5480).
+  bool EncodePointToUncompressedBlob(const EC_POINT& point,
+                                     brillo::Blob* result,
+                                     BN_CTX* context) const;
+
   // Generates EC_KEY. This method should be preferred over generating private
   // and public key separately, that is, private key using `RandomNonZeroScalar`
   // and public key by multiplying private key with generator, but the result

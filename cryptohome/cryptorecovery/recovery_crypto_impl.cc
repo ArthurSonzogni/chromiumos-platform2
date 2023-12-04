@@ -258,6 +258,31 @@ RecoveryCryptoImpl::RecoveryCryptoImpl(
 
 RecoveryCryptoImpl::~RecoveryCryptoImpl() = default;
 
+bool RecoveryCryptoImpl::GetMediatorPubKeyHash(
+    const brillo::Blob& mediator_pub_key_spki_der, brillo::Blob* hash) const {
+  ScopedBN_CTX context = CreateBigNumContext();
+  if (!context.get()) {
+    LOG(ERROR) << "Failed to allocate BN_CTX structure";
+    return false;
+  }
+
+  crypto::ScopedEC_POINT mediator_pub_point =
+      ec_.DecodeFromSpkiDer(mediator_pub_key_spki_der, context.get());
+  if (!mediator_pub_point) {
+    LOG(ERROR) << "Failed to convert mediator_pub_key_spki_der to EC_POINT";
+    return false;
+  }
+
+  brillo::Blob point_blob;
+  if (!ec_.EncodePointToUncompressedBlob(*mediator_pub_point, &point_blob,
+                                         context.get())) {
+    return false;
+  }
+
+  *hash = hwsec_foundation::Sha256(point_blob);
+  return true;
+}
+
 bool RecoveryCryptoImpl::GenerateRecoveryKey(
     const crypto::ScopedEC_POINT& recovery_pub_point,
     const crypto::ScopedEC_KEY& dealer_key_pair,
@@ -1016,11 +1041,16 @@ bool RecoveryCryptoImpl::GenerateHsmAssociatedData(
   return true;
 }
 
-void RecoveryCryptoImpl::GenerateOnboardingMetadata(
+bool RecoveryCryptoImpl::GenerateOnboardingMetadata(
     const std::string& gaia_id,
     const std::string& device_user_id,
     const std::string& recovery_id,
+    const brillo::Blob& mediator_pub_key,
     OnboardingMetadata* onboarding_metadata) const {
+  if (!GetMediatorPubKeyHash(mediator_pub_key,
+                             &onboarding_metadata->hsm_pub_key_hash)) {
+    return false;
+  }
   onboarding_metadata->cryptohome_user_type = UserType::kGaiaId;
   // The user is uniquely identified by the obfuscated GAIA ID.
   onboarding_metadata->cryptohome_user = gaia_id;
@@ -1039,6 +1069,7 @@ void RecoveryCryptoImpl::GenerateOnboardingMetadata(
   }
   onboarding_metadata->rlz_code = GetRlzCode();
   onboarding_metadata->recovery_id = recovery_id;
+  return true;
 }
 
 std::string RecoveryCryptoImpl::LoadStoredRecoveryIdFromFile(

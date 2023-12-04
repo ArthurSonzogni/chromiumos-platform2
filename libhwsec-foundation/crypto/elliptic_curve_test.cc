@@ -536,4 +536,14 @@ TEST_F(EllipticCurveTest, ScalarRangeCheck) {
   EXPECT_FALSE(ec_->IsScalarValid(*ec_->GetOrderForTesting()));
 }
 
+TEST_F(EllipticCurveTest, EncodePointToUncompressedBlob) {
+  crypto::ScopedBIGNUM scalar = BigNumFromValue(123u);
+  crypto::ScopedEC_POINT point =
+      ec_->MultiplyWithGenerator(*scalar, context_.get());
+  brillo::Blob point_blob;
+  EXPECT_TRUE(
+      ec_->EncodePointToUncompressedBlob(*point, &point_blob, context_.get()));
+  EXPECT_FALSE(point_blob.empty());
+}
+
 }  // namespace hwsec_foundation
