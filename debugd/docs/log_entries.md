@@ -137,6 +137,15 @@ Summarization of borealis frame timings. 2 KiB.
 
 Contains the most recent Proton crash dump containing debug info. ~11 KiB.
 
+## borealis_quirks
+
+Contains both system-provided and user-specified configs which control the
+behaviour of Borealis system components (initially just Sommelier) on a
+per-game basis. For example, a setting might permit a specific game to control
+the position of its windows on-screen.
+
+~93 bytes per setting. We print the first 10 KiB, enough for 110 settings.
+
 ## borealis_rootfs_reports
 
 Contains MD5 digests for paths in the Borealis read-only rootfs.

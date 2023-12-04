@@ -495,6 +495,10 @@ const std::array kFeedbackLogs {
   Log{kCommand, "borealis_proton_crash_reports", "timeout -s KILL 5s "
     "/usr/bin/borealis-sh -- /usr/bin/get_proton_crash_reports.sh",
     kRoot, kRoot},
+  Log{kCommand, "borealis_quirks", "timeout -s KILL 5s "
+    "/usr/bin/borealis-sh -- /usr/bin/print_quirks_configs.sh"
+    " | head --bytes=10240",
+    kRoot, kRoot},
   Log{kCommand, "borealis_rootfs_reports", "timeout -s KILL 5s "
     "/usr/bin/borealis-sh -- /usr/bin/get_rootfs_report.sh", kRoot, kRoot},
   Log{kCommand, "borealis_steam_compat_logs", "timeout -s KILL 5s "
