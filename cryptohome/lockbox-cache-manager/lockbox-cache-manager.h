@@ -21,8 +21,6 @@ inline constexpr const char* kLocOldInstallAttrs =
     "home/.shadow/install_attributes.pb";
 inline constexpr const char* kLocNewInstallAttrs =
     "var/lib/device_management/install_attributes.pb";
-inline constexpr const char* kLocCopyInstallAttrs =
-    "var/lib/device_management/install_attributes.pb.copy";
 inline constexpr const char* kLocLockboxCache =
     "run/lockbox/install_attributes.pb";
 inline constexpr const char* kLocLockboxNvram = "tmp/lockbox.nvram";
@@ -49,7 +47,6 @@ class LockboxCacheManager {
   // Getters
   base::FilePath GetInstallAttrsOldPath() { return install_attrs_old_path_; }
   base::FilePath GetInstallAttrsNewPath() { return install_attrs_new_path_; }
-  base::FilePath GetInstallAttrsCopyPath() { return install_attrs_copy_path_; }
   base::FilePath GetLockboxCachePath() { return lockbox_cache_path_; }
   base::FilePath GetLockboxNvramFilePath() { return lockbox_nvram_file_path_; }
 
@@ -60,7 +57,6 @@ class LockboxCacheManager {
   const base::FilePath root_;  // root dir for fs.
   base::FilePath install_attrs_old_path_;
   base::FilePath install_attrs_new_path_;
-  base::FilePath install_attrs_copy_path_;
   base::FilePath lockbox_cache_path_;
   base::FilePath lockbox_nvram_file_path_;
 };

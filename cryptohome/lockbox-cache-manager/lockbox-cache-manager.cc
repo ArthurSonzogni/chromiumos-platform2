@@ -9,10 +9,40 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <brillo/file_utils.h>
 #include <brillo/files/file_util.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 
 namespace cryptohome {
+
+namespace {
+MigrationStatus CopyFileAtomic(const base::FilePath& from_path,
+                               const base::FilePath& to_path,
+                               mode_t mode) {
+  // Read the file contents to a string.
+  std::string contents;
+  if (!base::ReadFileToString(from_path, &contents)) {
+    LOG(ERROR) << "Failed to read from " << from_path.value();
+    return MigrationStatus::kReadFail;
+  }
+  // Write the contents to the destination path atomically.
+  if (!brillo::WriteToFileAtomic(to_path, contents.data(), contents.size(),
+                                 mode)) {
+    LOG(ERROR) << "Failed to write the contents from " << from_path.value()
+               << " to " << to_path.value();
+    return MigrationStatus::kCopyFail;
+  }
+  // Just being extra careful, we sync the destination dir.
+  if (!brillo::SyncFileOrDirectory(to_path.DirName(),
+                                   /*is_directory=*/true,
+                                   /*data_sync*/ false)) {
+    LOG(ERROR) << "Failed to sync dir: " << to_path.DirName().value();
+    return MigrationStatus::kSyncFail;
+  }
+  LOG(INFO) << "Install-time attributes content migration successful";
+  return MigrationStatus::kSuccess;
+}
+}  // namespace
 
 LockboxCacheManager::LockboxCacheManager(const base::FilePath& root)
     : metrics_(std::make_unique<Metrics>()),
@@ -20,7 +50,6 @@ LockboxCacheManager::LockboxCacheManager(const base::FilePath& root)
       root_(root) {
   install_attrs_old_path_ = root_.Append(filepaths::kLocOldInstallAttrs);
   install_attrs_new_path_ = root_.Append(filepaths::kLocNewInstallAttrs);
-  install_attrs_copy_path_ = root_.Append(filepaths::kLocCopyInstallAttrs);
   lockbox_cache_path_ = root_.Append(filepaths::kLocLockboxCache);
   lockbox_nvram_file_path_ = root_.Append(filepaths::kLocLockboxNvram);
 }
@@ -74,31 +103,7 @@ MigrationStatus LockboxCacheManager::MigrateInstallAttributesIfNeeded() {
     return MigrationStatus::kNotNeeded;
   }
   LOG(INFO) << "Legacy install-attributes found. Attempting migration...";
-  if (!base::PathExists(install_attrs_new_path_)) {
-    // Make a copy of it to the new location first. The previous
-    // install_attributes.pb will still remain at the next reboot if the
-    // copy/rename process is interrupted in any way (i.e. unexpected reboot).
-    // Thus, it will ultimately get back to this phase and carry on from here.
-    if (!base::CreateDirectory(install_attrs_new_path_.DirName())) {
-      LOG(ERROR) << "Failed to create "
-                 << install_attrs_new_path_.DirName().value();
-      return MigrationStatus::kMkdirFail;
-    }
-    if (!base::CopyFile(install_attrs_old_path_, install_attrs_copy_path_)) {
-      LOG(ERROR) << "Failed to create the inter. copy of install-attributes!";
-      return MigrationStatus::kCopyFail;
-    }
-    if (!base::Move(install_attrs_copy_path_, install_attrs_new_path_)) {
-      LOG(ERROR) << "Failed to move the install-attributes file!";
-      return MigrationStatus::kMoveFail;
-    }
-  }
-  if (!brillo::DeleteFile(install_attrs_old_path_)) {
-    LOG(ERROR) << "Failed to remove the old copy of install-attributes";
-    return MigrationStatus::kDeleteFail;
-  }
-  LOG(INFO) << "Install-time attributes content migration successful";
-  return MigrationStatus::kSuccess;
+  return CopyFileAtomic(install_attrs_old_path_, install_attrs_new_path_, 0644);
 }
 
 #if USE_TPM_DYNAMIC
