@@ -11,7 +11,7 @@
 
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/recoverable_key_store/type.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_secret_stash/encrypted.h"

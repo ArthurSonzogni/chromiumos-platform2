@@ -17,9 +17,9 @@
 
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
-#include "cryptohome/auth_factor/auth_factor_manager.h"
-#include "cryptohome/auth_factor/auth_factor_metadata.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/manager.h"
+#include "cryptohome/auth_factor/metadata.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state_test_utils.h"

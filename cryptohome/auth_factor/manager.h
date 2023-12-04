@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_MANAGER_H_
-#define CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_MANAGER_H_
+#ifndef CRYPTOHOME_AUTH_FACTOR_MANAGER_H_
+#define CRYPTOHOME_AUTH_FACTOR_MANAGER_H_
 
 #include <map>
 #include <memory>
@@ -16,8 +16,8 @@
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
-#include "cryptohome/auth_factor/auth_factor_map.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/map.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/platform.h"
@@ -120,4 +120,4 @@ class AuthFactorManager final {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_MANAGER_H_
+#endif  // CRYPTOHOME_AUTH_FACTOR_MANAGER_H_

@@ -32,9 +32,9 @@
 
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_blocks/fp_service.h"
-#include "cryptohome/auth_factor/auth_factor_manager.h"
-#include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/flatbuffer.h"
+#include "cryptohome/auth_factor/manager.h"
+#include "cryptohome/auth_factor/storage_type.h"
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_input_utils.h"
 #include "cryptohome/auth_intent.h"

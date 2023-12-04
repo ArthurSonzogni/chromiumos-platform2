@@ -10,8 +10,8 @@
 
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_blocks/prepare_token.h"
-#include "cryptohome/auth_factor/auth_factor_label_arity.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/label_arity.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/location_utils.h"

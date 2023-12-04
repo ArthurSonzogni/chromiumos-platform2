@@ -45,8 +45,8 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <dbus_adaptors/org.chromium.UserDataAuth.h>
-#include <device_management/proto_bindings/device_management_interface.pb.h>
 #include <device_management-client/device_management/dbus-proxies.h>
+#include <device_management/proto_bindings/device_management_interface.pb.h>
 #include <featured/feature_library.h>
 #include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/status.h>
@@ -59,11 +59,11 @@
 #include "cryptohome/auth_blocks/biometrics_command_processor_impl.h"
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_factor/auth_factor.h"
-#include "cryptohome/auth_factor/auth_factor_manager.h"
-#include "cryptohome/auth_factor/auth_factor_storage_type.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/flatbuffer.h"
+#include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/auth_factor/protobuf.h"
+#include "cryptohome/auth_factor/storage_type.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_factor/with_driver.h"
 #include "cryptohome/auth_input_utils.h"

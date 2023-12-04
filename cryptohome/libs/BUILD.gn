@@ -447,8 +447,8 @@ pkg_config("libcrosplatform_dependent_config") {
 # TODO(b/260536618): Merge this into libcryptohome.
 static_library("libcrosplatform") {
   sources = [
-    "../auth_factor/auth_factor_label.cc",
-    "../auth_factor/auth_factor_manager.cc",
+    "../auth_factor/label.cc",
+    "../auth_factor/manager.cc",
     "../cryptohome_metrics.cc",
     "../filesystem_layout.cc",
     "../flatbuffer_file.cc",
@@ -599,11 +599,11 @@ pkg_config("libcryptohome_dependent_config") {
 
 static_library("libcryptohome") {
   sources = [
-    "../auth_factor/auth_factor_map.cc",
-    "../auth_factor/auth_factor_storage_type.cc",
-    "../auth_factor/auth_factor_type.cc",
     "../auth_factor/flatbuffer.cc",
+    "../auth_factor/map.cc",
     "../auth_factor/protobuf.cc",
+    "../auth_factor/storage_type.cc",
+    "../auth_factor/type.cc",
     "../auth_factor/types/common.cc",
     "../auth_factor/types/cryptohome_recovery.cc",
     "../auth_factor/types/fingerprint.cc",

@@ -11,8 +11,8 @@
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 
-#include "cryptohome/auth_factor/auth_factor_metadata.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/metadata.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/username.h"

@@ -13,8 +13,8 @@
 #include <utility>
 
 #include <base/files/file_path.h>
-#include <base/test/test_future.h>
 #include <base/functional/callback.h>
+#include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/aes.h>
@@ -22,9 +22,9 @@
 
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
 #include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
-#include "cryptohome/auth_factor/auth_factor_metadata.h"
-#include "cryptohome/auth_factor/auth_factor_storage_type.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/metadata.h"
+#include "cryptohome/auth_factor/storage_type.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/types/test_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"

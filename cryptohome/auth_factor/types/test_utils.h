@@ -15,7 +15,7 @@
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 
-#include "cryptohome/auth_factor/auth_factor_metadata.h"
+#include "cryptohome/auth_factor/metadata.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/username.h"

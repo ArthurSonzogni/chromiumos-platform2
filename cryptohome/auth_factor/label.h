@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_LABEL_H_
-#define CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_LABEL_H_
+#ifndef CRYPTOHOME_AUTH_FACTOR_LABEL_H_
+#define CRYPTOHOME_AUTH_FACTOR_LABEL_H_
 
 #include <string>
 
@@ -19,4 +19,4 @@ bool IsValidAuthFactorLabel(const std::string& label);
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_LABEL_H_
+#endif  // CRYPTOHOME_AUTH_FACTOR_LABEL_H_

@@ -15,8 +15,8 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/auth_factor/auth_factor.h"
-#include "cryptohome/auth_factor/auth_factor_metadata.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/metadata.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/username.h"
 

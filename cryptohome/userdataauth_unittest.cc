@@ -40,9 +40,9 @@
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libhwsec/status.h>
+#include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/libscrypt_compat.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
-#include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
@@ -51,7 +51,7 @@
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
-#include "cryptohome/auth_factor/auth_factor_metadata.h"
+#include "cryptohome/auth_factor/metadata.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/cleanup/mock_disk_cleanup.h"

@@ -14,26 +14,26 @@
 #include <vector>
 
 #include <base/containers/flat_set.h>
-#include <base/functional/callback_forward.h>
 #include <base/functional/callback.h>
+#include <base/functional/callback_forward.h>
 #include <base/memory/weak_ptr.h>
 #include <base/timer/wall_clock_timer.h>
 #include <base/unguessable_token.h>
 #include <brillo/secure_blob.h>
+#include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
-#include <cryptohome/proto_bindings/auth_factor.pb.h>
-#include <libhwsec/structures/explicit_init.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
+#include <libhwsec/structures/explicit_init.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/prepare_token.h"
 #include "cryptohome/auth_factor/auth_factor.h"
-#include "cryptohome/auth_factor/auth_factor_manager.h"
-#include "cryptohome/auth_factor/auth_factor_map.h"
-#include "cryptohome/auth_factor/auth_factor_metadata.h"
-#include "cryptohome/auth_factor/auth_factor_storage_type.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/manager.h"
+#include "cryptohome/auth_factor/map.h"
+#include "cryptohome/auth_factor/metadata.h"
+#include "cryptohome/auth_factor/storage_type.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/auth_intent.h"

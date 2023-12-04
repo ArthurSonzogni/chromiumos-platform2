@@ -6,8 +6,8 @@
 
 #include <base/memory/ptr_util.h>
 
-#include "cryptohome/auth_factor/auth_factor_metadata.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/metadata.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/auth_factor/auth_factor_storage_type.h"
+#include "cryptohome/auth_factor/storage_type.h"
 
 namespace cryptohome {
 

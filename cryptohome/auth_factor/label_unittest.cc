@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include "cryptohome/auth_factor/auth_factor_label.h"
+#include "cryptohome/auth_factor/label.h"
 
 namespace cryptohome {
 

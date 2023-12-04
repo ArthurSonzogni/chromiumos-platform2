@@ -13,9 +13,9 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec-foundation/status/status_chain.h>
 
-#include "cryptohome/auth_factor/auth_factor_metadata.h"
-#include "cryptohome/auth_factor/auth_factor_storage_type.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/metadata.h"
+#include "cryptohome/auth_factor/storage_type.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/types/test_utils.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"

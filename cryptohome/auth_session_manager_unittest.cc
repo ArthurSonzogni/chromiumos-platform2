@@ -21,7 +21,7 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
-#include "cryptohome/auth_factor/auth_factor_manager.h"
+#include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/fake_features.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_keyset_management.h"

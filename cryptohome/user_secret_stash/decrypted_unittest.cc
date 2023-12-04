@@ -16,7 +16,7 @@
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"

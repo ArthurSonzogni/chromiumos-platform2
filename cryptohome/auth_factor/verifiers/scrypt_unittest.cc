@@ -10,7 +10,7 @@
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/type.h"
 
 namespace cryptohome {
 namespace {

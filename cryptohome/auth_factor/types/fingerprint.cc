@@ -11,18 +11,18 @@
 #include <vector>
 
 #include <base/time/time.h>
-#include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/status/status_chain.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
 
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
 #include "cryptohome/auth_blocks/fingerprint_auth_block.h"
 #include "cryptohome/auth_blocks/prepare_token.h"
-#include "cryptohome/auth_factor/auth_factor_label_arity.h"
-#include "cryptohome/auth_factor/auth_factor_metadata.h"
-#include "cryptohome/auth_factor/auth_factor_storage_type.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/label_arity.h"
+#include "cryptohome/auth_factor/metadata.h"
+#include "cryptohome/auth_factor/storage_type.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/cryptohome_tpm_error.h"

@@ -12,8 +12,8 @@
 #include <base/memory/weak_ptr.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/auth_factor/auth_factor_metadata.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/metadata.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/error/cryptohome_error.h"

@@ -19,15 +19,15 @@
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 #include <libhwsec/factory/factory_impl.h>
+#include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec-foundation/status/status_chain.h>
-#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
@@ -35,9 +35,9 @@
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
-#include "cryptohome/auth_factor/auth_factor_manager.h"
-#include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/flatbuffer.h"
+#include "cryptohome/auth_factor/manager.h"
+#include "cryptohome/auth_factor/storage_type.h"
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_input_utils.h"
 #include "cryptohome/auth_session_manager.h"

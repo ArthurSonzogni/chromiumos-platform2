@@ -13,9 +13,9 @@
 
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 #include "cryptohome/auth_factor/auth_factor.h"
-#include "cryptohome/auth_factor/auth_factor_label_arity.h"
-#include "cryptohome/auth_factor/auth_factor_metadata.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/label_arity.h"
+#include "cryptohome/auth_factor/metadata.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/cryptohome_tpm_error.h"

@@ -14,8 +14,8 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "base/time/time.h"
-#include "cryptohome/auth_factor/auth_factor_metadata.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/metadata.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/types/test_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"

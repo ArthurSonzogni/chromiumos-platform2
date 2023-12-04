@@ -11,8 +11,8 @@
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 
-#include "cryptohome/auth_factor/auth_factor_label_arity.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/label_arity.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/crypto.h"

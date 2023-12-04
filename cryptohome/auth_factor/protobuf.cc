@@ -12,9 +12,9 @@
 #include <base/system/sys_info.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 
-#include "cryptohome/auth_factor/auth_factor_label.h"
-#include "cryptohome/auth_factor/auth_factor_metadata.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/label.h"
+#include "cryptohome/auth_factor/metadata.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 

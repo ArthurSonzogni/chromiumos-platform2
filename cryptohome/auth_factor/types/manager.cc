@@ -9,7 +9,7 @@
 
 #include <base/check_op.h>
 
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/cryptohome_recovery.h"
 #include "cryptohome/auth_factor/types/fingerprint.h"
 #include "cryptohome/auth_factor/types/kiosk.h"

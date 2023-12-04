@@ -10,7 +10,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/fake_features.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/util/proto_enum.h"

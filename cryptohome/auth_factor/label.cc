@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/auth_factor/auth_factor_label.h"
+#include "cryptohome/auth_factor/label.h"
 
 #include <algorithm>
 #include <locale>

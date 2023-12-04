@@ -11,7 +11,7 @@
 #include <base/functional/callback.h>
 #include <libhwsec-foundation/status/status_chain.h>
 
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/error/cryptohome_error.h"
 
 namespace cryptohome {

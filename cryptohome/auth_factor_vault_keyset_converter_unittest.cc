@@ -15,10 +15,10 @@
 
 #include <base/check.h>
 #include <brillo/cryptohome.h>
-#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/key.pb.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
@@ -27,8 +27,8 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_factor/auth_factor.h"
-#include "cryptohome/auth_factor/auth_factor_metadata.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/metadata.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"

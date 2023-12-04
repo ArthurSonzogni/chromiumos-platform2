@@ -10,7 +10,7 @@
 
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
 #include "cryptohome/auth_blocks/fp_service.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/crypto.h"

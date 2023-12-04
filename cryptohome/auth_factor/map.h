@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_MAP_H_
-#define CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_MAP_H_
+#ifndef CRYPTOHOME_AUTH_FACTOR_MAP_H_
+#define CRYPTOHOME_AUTH_FACTOR_MAP_H_
 
 #include <map>
 #include <memory>
@@ -12,7 +12,7 @@
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
-#include "cryptohome/auth_factor/auth_factor_storage_type.h"
+#include "cryptohome/auth_factor/storage_type.h"
 
 namespace cryptohome {
 
@@ -130,4 +130,4 @@ class AuthFactorMap final {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_MAP_H_
+#endif  // CRYPTOHOME_AUTH_FACTOR_MAP_H_

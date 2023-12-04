@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/auth_factor/auth_factor_manager.h"
+#include "cryptohome/auth_factor/manager.h"
 
 #include <sys/stat.h>
 
@@ -14,9 +14,9 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
-#include <base/check.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <flatbuffers/flatbuffers.h>
@@ -25,9 +25,9 @@
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
-#include "cryptohome/auth_factor/auth_factor_label.h"
-#include "cryptohome/auth_factor/auth_factor_metadata.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/label.h"
+#include "cryptohome/auth_factor/metadata.h"
+#include "cryptohome/auth_factor/type.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"

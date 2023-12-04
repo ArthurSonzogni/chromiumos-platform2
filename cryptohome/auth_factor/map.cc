@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/auth_factor/auth_factor_map.h"
+#include "cryptohome/auth_factor/map.h"
 
 #include <optional>
 #include <string>
 #include <utility>
 
 #include "cryptohome/auth_factor/auth_factor.h"
-#include "cryptohome/auth_factor/auth_factor_storage_type.h"
+#include "cryptohome/auth_factor/storage_type.h"
 #include "cryptohome/cryptohome_metrics.h"
 
 namespace cryptohome {

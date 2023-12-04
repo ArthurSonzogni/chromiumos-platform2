@@ -7,15 +7,15 @@
 #include <utility>
 
 #include <base/functional/callback.h>
-#include <base/test/repeating_test_future.h>
 #include <base/task/sequenced_task_runner.h>
+#include <base/test/repeating_test_future.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/type.h"
 
 namespace cryptohome {
 namespace {
