@@ -22,12 +22,12 @@ constexpr std::array<const char* [3], 3> kClientMetadata = {{
     {
         "timezone_code_phh",
         "",
-        "dev",
+        "prod",
     },
     {
         "launcher_query_analytics_v1",
         "",
-        "dev",
+        "prod",
     },
 }};
 
