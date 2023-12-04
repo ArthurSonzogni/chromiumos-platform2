@@ -54,6 +54,7 @@ extern const char kDeviceUserId[];
 extern const char kBoardName[];
 extern const char kFormFactor[];
 extern const char kRlzCode[];
+extern const char kHsmPubKeyHash[];
 extern const char kRecoveryId[];
 extern const char kAuthClaim[];
 extern const char kRequestorUser[];

@@ -213,6 +213,12 @@ bool ConvertCborMapToOnboardingMetadata(
         << "Failed to get rlz code from the onboarding metadata CBOR map.";
     return false;
   }
+  brillo::Blob hsm_pub_key_hash;
+  if (!FindBytestringValueInCborMap(metadata_map, kHsmPubKeyHash,
+                                    &hsm_pub_key_hash)) {
+    LOG(INFO) << "No hsm_pub_key_hash found, assuming old schema.";
+    // Note: onboarding metadata before M121 doesn't have this field.
+  }
   std::string recovery_id;
   if (!FindStringValueInCborMap(metadata_map, kRecoveryId, &recovery_id)) {
     LOG(ERROR)
@@ -226,6 +232,7 @@ bool ConvertCborMapToOnboardingMetadata(
   metadata->board_name = board_name;
   metadata->form_factor = form_factor;
   metadata->rlz_code = rlz_code;
+  metadata->hsm_pub_key_hash = hsm_pub_key_hash;
   metadata->recovery_id = recovery_id;
   return true;
 }
@@ -559,6 +566,7 @@ const char kDeviceUserId[] = "device_user_id";
 const char kBoardName[] = "board_name";
 const char kFormFactor[] = "form_factor";
 const char kRlzCode[] = "rlz_code";
+const char kHsmPubKeyHash[] = "hsm_pub_key_hash";
 const char kRecoveryId[] = "recovery_id";
 const char kAuthClaim[] = "auth_claim";
 const char kRequestorUser[] = "requestor_user";
@@ -615,6 +623,12 @@ cbor::Value::MapValue ConvertOnboardingMetadataToCborMap(
   map.emplace(kBoardName, args.board_name);
   map.emplace(kFormFactor, args.form_factor);
   map.emplace(kRlzCode, args.rlz_code);
+  if (!args.hsm_pub_key_hash.empty()) {
+    map.emplace(kHsmPubKeyHash, args.hsm_pub_key_hash);
+  } else {
+    LOG(INFO) << "No hsm_pub_key_hash found, using old schema.";
+    // Note: onboarding metadata before M121 doesn't have this field.
+  }
   map.emplace(kRecoveryId, args.recovery_id);
 
   return map;

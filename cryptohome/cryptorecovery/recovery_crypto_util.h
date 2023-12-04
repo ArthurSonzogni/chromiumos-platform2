@@ -70,6 +70,10 @@ struct OnboardingMetadata {
   // Generated anew after each successful recovery, hex-encoded sha-256 hash
   // string.
   std::string recovery_id;
+  // HSMPubKeyHash is the SHA-256 of the uncompressed encoding of the EC curve
+  // point (SEC 1, 2.3.3) of the public key `h` that was used to encrypt
+  // `HSMPlainText`.
+  brillo::Blob hsm_pub_key_hash;
 
   friend bool operator==(const OnboardingMetadata& lhs,
                          const OnboardingMetadata& rhs) = default;
