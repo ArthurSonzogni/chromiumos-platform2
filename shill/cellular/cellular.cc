@@ -1169,6 +1169,39 @@ void Cellular::OnNetworkValidationResult(int interface_index,
 
   Device::OnNetworkValidationResult(interface_index, result);
 
+  // TODO(b/314693271): Remove this special case once the portal detection state
+  // machine is entirely controlled from Network and once Device is not involved
+  // anymore.
+  if (multiplexed_tethering_pdn_ &&
+      multiplexed_tethering_pdn_->network()->interface_index() ==
+          interface_index) {
+    switch (result.GetValidationState()) {
+      case PortalDetector::ValidationState::kInternetConnectivity:
+        // Nothing to do: the Network already stops the network validation loop
+        // when the Network reaches the kInternetConnectivity state.
+        break;
+      case PortalDetector::ValidationState::kPortalRedirect:
+      case PortalDetector::ValidationState::kPortalSuspected:
+        // b/301648519: Some Cellular carriers use portal redirection flows for
+        // asking the user to enable or buy a tethering data plan. This flow is
+        // not handled natively in ChromeOS, but the network is nonetheless
+        // considered ready.
+        // the network validation loop must be stopped explicitly.
+        multiplexed_tethering_pdn_->network()->StopPortalDetection();
+        break;
+      case PortalDetector::ValidationState::kNoConnectivity:
+        // Retry network validation. If the retry fails, let the tethering
+        // session stops itself when its upstream network validation timer
+        // fires.
+        if (!multiplexed_tethering_pdn_->network()->StartPortalDetection(
+                NetworkMonitor::ValidationReason::kRetryValidation)) {
+          LOG(WARNING) << multiplexed_tethering_pdn_->network()
+                       << ": Failed to restart network validation";
+        }
+        break;
+    }
+  }
+
   // TODO(b/309512268) add support for tethering PDN.
   if (!IsEventOnPrimaryNetwork(interface_index)) {
     return;
@@ -1770,7 +1803,7 @@ void Cellular::CompleteTetheringOperation(const Error& error) {
   // If the tethering specific multiplexed Network was just connected, start
   // portal detection. Not needed when connecting DUN as DEFAULT because
   // Device::OnConnectionUpdated() already does it.
-  // TODO(b/291845893): Remove this special case once the portal detection state
+  // TODO(b/314693271): Remove this special case once the portal detection state
   // machine is entirely controlled from Network and once Device is not involved
   // anymore.
   if (operation->type == TetheringOperationType::kConnectDunMultiplexed &&
