@@ -141,7 +141,7 @@ ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
        arg1 == 0xc0206442 || arg1 == 0xc0386444 || arg1 == 0xc018647c || \
        arg1 == 0xc010646d || arg1 == 0xc01064ac || arg1 == 0xc0106462 || \
        arg1 == 0x40086478 || arg1 == 0xc0286442 || arg1 == 0x4008646f || \
-       arg1 == 0x40046443 || arg1 == 0xc0206447
+       arg1 == 0x40046443 || arg1 == 0xc0206447 || arg1 == 0xc0506447
 kcmp: 1
 kill: arg1 == SIGKILL || arg1 == SIGTERM
 lseek: 1
