@@ -15,7 +15,7 @@
 namespace shill {
 
 std::unique_ptr<NetlinkAttribute> NewNl80211AttributeFromId(
-    NetlinkMessage::MessageContext context, int id) {
+    const Nl80211Message::Context& context, int id) {
   switch (id) {
     case NL80211_ATTR_BSS:
       return std::make_unique<Nl80211AttributeBss>();
@@ -165,7 +165,7 @@ std::unique_ptr<NetlinkAttribute> NewNl80211AttributeFromId(
 bool CreateNl80211Attribute(AttributeList* attribute_list, int id) {
   return attribute_list->CreateAttribute(
       id, base::BindRepeating(&NewNl80211AttributeFromId,
-                              NetlinkMessage::MessageContext()));
+                              Nl80211Message::Context()));
 }
 
 const int Nl80211AttributeCookie::kName = NL80211_ATTR_COOKIE;
@@ -509,7 +509,7 @@ const char Nl80211AttributeWowlanTriggers::kNameString[] =
     "NL80211_ATTR_WOWLAN_TRIGGERS";
 
 Nl80211AttributeWowlanTriggers::Nl80211AttributeWowlanTriggers(
-    NetlinkMessage::MessageContext context)
+    const Nl80211Message::Context& context)
     : NetlinkNestedAttribute(kName, kNameString) {
   // Pattern matching trigger attribute.
   if (context.nl80211_cmd == NL80211_CMD_SET_WOWLAN && context.is_broadcast) {

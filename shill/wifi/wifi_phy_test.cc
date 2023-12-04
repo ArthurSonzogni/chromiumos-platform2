@@ -689,7 +689,7 @@ TEST_F(WiFiPhyTest, DeleteDeviceTwice) {
 TEST_F(WiFiPhyTest, OnNewWiphy_CheckFreqs) {
   NewWiphyMessage msg;
   NetlinkPacket packet(kNewWiphyNlMsg);
-  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
+  msg.InitFromPacketWithContext(&packet, Nl80211Message::Context());
   OnNewWiphy(msg);
   PhyDumpComplete();
   EXPECT_EQ(kNewWiphyNlMsg_AllFrequencies, frequencies());
@@ -698,7 +698,7 @@ TEST_F(WiFiPhyTest, OnNewWiphy_CheckFreqs) {
 TEST_F(WiFiPhyTest, OnNewWiphy_KeepLastFreqs) {
   NewWiphyMessage msg1;
   NetlinkPacket packet1(kNewWiphyNlMsg);
-  msg1.InitFromPacket(&packet1, NetlinkMessage::MessageContext());
+  msg1.InitFromPacketWithContext(&packet1, Nl80211Message::Context());
 
   // Modify flags and attributes for the frequencies reported in the message.
   AttributeListRefPtr bands_list;
@@ -744,7 +744,7 @@ TEST_F(WiFiPhyTest, OnNewWiphy_KeepLastFreqs) {
   // frequencies get "public" visibility.
   NewWiphyMessage msg2;
   NetlinkPacket packet2(kNewWiphyNlMsg);
-  msg2.InitFromPacket(&packet2, NetlinkMessage::MessageContext());
+  msg2.InitFromPacketWithContext(&packet2, Nl80211Message::Context());
   OnNewWiphy(msg2);
   PhyDumpComplete();
   EXPECT_EQ(kNewWiphyNlMsg_AllFrequencies, frequencies());
@@ -759,7 +759,7 @@ TEST_F(WiFiPhyTest, SupportsIftype) {
 TEST_F(WiFiPhyTest, ParseInterfaceTypes) {
   NewWiphyMessage msg;
   NetlinkPacket packet(kNewWiphyNlMsg_IfTypes);
-  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
+  msg.InitFromPacketWithContext(&packet, Nl80211Message::Context());
   ParseInterfaceTypes(msg);
   EXPECT_TRUE(SupportsIftype(NL80211_IFTYPE_ADHOC));
   EXPECT_TRUE(SupportsIftype(NL80211_IFTYPE_STATION));
@@ -778,7 +778,7 @@ TEST_F(WiFiPhyTest, ParseInterfaceTypes) {
 TEST_F(WiFiPhyTest, ParseNoAPSTAConcurrencySingleChannel) {
   NewWiphyMessage msg;
   NetlinkPacket packet(kNewSingleChannelNoAPSTAConcurrencyNlMsg);
-  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
+  msg.InitFromPacketWithContext(&packet, Nl80211Message::Context());
   ParseConcurrency(msg);
 
   // These values align with those from
@@ -806,7 +806,7 @@ TEST_F(WiFiPhyTest, ParseNoAPSTAConcurrencySingleChannel) {
 TEST_F(WiFiPhyTest, ParseConcurrencySingleChannel) {
   NewWiphyMessage msg;
   NetlinkPacket packet(kNewSingleChannelConcurrencyNlMsg);
-  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
+  msg.InitFromPacketWithContext(&packet, Nl80211Message::Context());
   ParseConcurrency(msg);
 
   // These values align with those from kNewSingleChannelConcurrencyNlMsg. They
@@ -832,7 +832,7 @@ TEST_F(WiFiPhyTest, ParseConcurrencySingleChannel) {
 TEST_F(WiFiPhyTest, ParseConcurrencyMultiChannel) {
   NewWiphyMessage msg;
   NetlinkPacket packet(kNewMultiChannelConcurrencyNlMsg);
-  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
+  msg.InitFromPacketWithContext(&packet, Nl80211Message::Context());
   ParseConcurrency(msg);
 
   // These values align with those from kNewMultiChannelConcurrencyNlMsg. They

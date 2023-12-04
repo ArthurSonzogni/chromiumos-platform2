@@ -366,8 +366,7 @@ class Nl80211MessageTest : public Test {
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_TRIGGER_SCAN) {
   NetlinkPacket trigger_scan_packet(kNL80211_CMD_TRIGGER_SCAN);
   std::unique_ptr<NetlinkMessage> netlink_message(
-      message_factory_.CreateMessage(&trigger_scan_packet,
-                                     NetlinkMessage::MessageContext()));
+      message_factory_.CreateMessage(&trigger_scan_packet, false));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
@@ -419,8 +418,7 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_TRIGGER_SCAN) {
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS) {
   NetlinkPacket new_scan_results_packet(kNL80211_CMD_NEW_SCAN_RESULTS);
   std::unique_ptr<NetlinkMessage> netlink_message(
-      message_factory_.CreateMessage(&new_scan_results_packet,
-                                     NetlinkMessage::MessageContext()));
+      message_factory_.CreateMessage(&new_scan_results_packet, false));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
@@ -472,8 +470,7 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS) {
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_NEW_STATION) {
   NetlinkPacket netlink_packet(kNL80211_CMD_NEW_STATION);
   std::unique_ptr<NetlinkMessage> netlink_message(
-      message_factory_.CreateMessage(&netlink_packet,
-                                     NetlinkMessage::MessageContext()));
+      message_factory_.CreateMessage(&netlink_packet, false));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
@@ -513,8 +510,7 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_NEW_STATION) {
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_AUTHENTICATE) {
   NetlinkPacket netlink_packet(kNL80211_CMD_AUTHENTICATE);
   std::unique_ptr<NetlinkMessage> netlink_message(
-      message_factory_.CreateMessage(&netlink_packet,
-                                     NetlinkMessage::MessageContext()));
+      message_factory_.CreateMessage(&netlink_packet, false));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
@@ -552,8 +548,7 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_AUTHENTICATE) {
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_ASSOCIATE) {
   NetlinkPacket netlink_packet(kNL80211_CMD_ASSOCIATE);
   std::unique_ptr<NetlinkMessage> netlink_message(
-      message_factory_.CreateMessage(&netlink_packet,
-                                     NetlinkMessage::MessageContext()));
+      message_factory_.CreateMessage(&netlink_packet, false));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
@@ -591,8 +586,7 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_ASSOCIATE) {
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_CONNECT) {
   NetlinkPacket netlink_packet(kNL80211_CMD_CONNECT);
   std::unique_ptr<NetlinkMessage> netlink_message(
-      message_factory_.CreateMessage(&netlink_packet,
-                                     NetlinkMessage::MessageContext()));
+      message_factory_.CreateMessage(&netlink_packet, false));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
@@ -687,8 +681,7 @@ TEST_F(Nl80211MessageTest, Build_NL80211_CMD_CONNECT) {
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_DEAUTHENTICATE) {
   NetlinkPacket netlink_packet(kNL80211_CMD_DEAUTHENTICATE);
   std::unique_ptr<NetlinkMessage> netlink_message(
-      message_factory_.CreateMessage(&netlink_packet,
-                                     NetlinkMessage::MessageContext()));
+      message_factory_.CreateMessage(&netlink_packet, false));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
@@ -726,8 +719,7 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_DEAUTHENTICATE) {
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_DISCONNECT) {
   NetlinkPacket netlink_packet(kNL80211_CMD_DISCONNECT);
   std::unique_ptr<NetlinkMessage> netlink_message(
-      message_factory_.CreateMessage(&netlink_packet,
-                                     NetlinkMessage::MessageContext()));
+      message_factory_.CreateMessage(&netlink_packet, false));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
@@ -764,8 +756,7 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_DISCONNECT) {
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_NOTIFY_CQM) {
   NetlinkPacket netlink_packet(kNL80211_CMD_NOTIFY_CQM);
   std::unique_ptr<NetlinkMessage> netlink_message(
-      message_factory_.CreateMessage(&netlink_packet,
-                                     NetlinkMessage::MessageContext()));
+      message_factory_.CreateMessage(&netlink_packet, false));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
@@ -824,8 +815,7 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_NOTIFY_CQM) {
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_DISASSOCIATE) {
   NetlinkPacket netlink_packet(kNL80211_CMD_DISASSOCIATE);
   std::unique_ptr<NetlinkMessage> netlink_message(
-      message_factory_.CreateMessage(&netlink_packet,
-                                     NetlinkMessage::MessageContext()));
+      message_factory_.CreateMessage(&netlink_packet, false));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
@@ -865,8 +855,7 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_DISASSOCIATE) {
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_UNKNOWN) {
   NetlinkPacket netlink_packet(kNL80211_CMD_UNKNOWN);
   std::unique_ptr<NetlinkMessage> netlink_message(
-      message_factory_.CreateMessage(&netlink_packet,
-                                     NetlinkMessage::MessageContext()));
+      message_factory_.CreateMessage(&netlink_packet, false));
   ASSERT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.

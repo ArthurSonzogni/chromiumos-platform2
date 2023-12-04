@@ -12,14 +12,14 @@
 
 #include "shill/net/attribute_list.h"
 #include "shill/net/netlink_attribute.h"
-#include "shill/net/netlink_message.h"
+#include "shill/net/nl80211_message.h"
 #include "shill/net/shill_export.h"
 
 namespace shill {
 
 // Generates the appropriate attribute object from the raw nlattr data.
 SHILL_EXPORT std::unique_ptr<NetlinkAttribute> NewNl80211AttributeFromId(
-    NetlinkMessage::MessageContext context, int id);
+    const Nl80211Message::Context& context, int id);
 
 // Helper function for creating nl80211 attribute inside AttributeList.
 SHILL_EXPORT bool CreateNl80211Attribute(AttributeList* attribute_list, int id);
@@ -693,7 +693,7 @@ class Nl80211AttributeWowlanTriggers : public NetlinkNestedAttribute {
   static const int kName;
   static const char kNameString[];
   explicit Nl80211AttributeWowlanTriggers(
-      NetlinkMessage::MessageContext context);
+      const Nl80211Message::Context& context);
   Nl80211AttributeWowlanTriggers(const Nl80211AttributeWowlanTriggers&) =
       delete;
   Nl80211AttributeWowlanTriggers& operator=(

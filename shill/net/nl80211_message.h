@@ -25,6 +25,12 @@ class SHILL_EXPORT Nl80211Message : public GenericNetlinkMessage {
  public:
   static const char kMessageTypeString[];
 
+  // Describes the context of the netlink 80211 message for parsing purposes.
+  struct Context {
+    size_t nl80211_cmd = 0;
+    bool is_broadcast = false;
+  };
+
   Nl80211Message(uint8_t command, const char* command_string)
       : GenericNetlinkMessage(nl80211_message_type_, command, command_string) {}
   Nl80211Message(const Nl80211Message&) = delete;
@@ -38,7 +44,8 @@ class SHILL_EXPORT Nl80211Message : public GenericNetlinkMessage {
   // Sets the family_id / message_type for all Nl80211 messages.
   static void SetMessageType(uint16_t message_type);
 
-  bool InitFromPacket(NetlinkPacket* packet, MessageContext context) override;
+  bool InitFromPacket(NetlinkPacket* packet, bool is_broadcast) override;
+  bool InitFromPacketWithContext(NetlinkPacket* packet, const Context& context);
 
   uint8_t command() const { return command_; }
   const char* command_string() const { return command_string_; }

@@ -383,11 +383,8 @@ class SHILL_EXPORT NetlinkManager {
   // serial number to |message| before it is sent.
   bool SendMessageInternal(const NetlinkPendingMessage& pending_message);
 
-  // Given a netlink packet |packet|, infers the context of this netlink
-  // message (for message parsing purposes) and returns a MessageContext
-  // describing this context.
-  NetlinkMessage::MessageContext InferMessageContext(
-      const NetlinkPacket& packet);
+  // Returns whether the packet is broadcast (for message parsing purposes).
+  bool IsBroadcastPacket(const NetlinkPacket& packet) const;
 
   // Called when we time out waiting for a response to a netlink dump message.
   // Invokes the error handler with kTimeoutWaitingForResponse, deletes the

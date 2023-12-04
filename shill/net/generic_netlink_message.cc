@@ -99,8 +99,8 @@ void GenericNetlinkMessage::Print(int header_log_level,
 
 const uint16_t ControlNetlinkMessage::kMessageType = GENL_ID_CTRL;
 
-bool ControlNetlinkMessage::InitFromPacket(
-    NetlinkPacket* packet, NetlinkMessage::MessageContext context) {
+bool ControlNetlinkMessage::InitFromPacket(NetlinkPacket* packet,
+                                           bool is_broadcast) {
   if (!packet) {
     LOG(ERROR) << "Null |packet| parameter";
     return false;

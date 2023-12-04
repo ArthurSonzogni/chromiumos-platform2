@@ -67,14 +67,6 @@ class NetlinkPacket;
 
 class SHILL_EXPORT NetlinkMessage {
  public:
-  // Describes the context of the netlink message for parsing purposes.
-  struct MessageContext {
-    MessageContext() : nl80211_cmd(0), is_broadcast(false) {}
-
-    size_t nl80211_cmd;
-    bool is_broadcast;
-  };
-
   static const uint32_t kBroadcastSequenceNumber;
   static const uint16_t kIllegalMessageType;
 
@@ -94,7 +86,7 @@ class SHILL_EXPORT NetlinkMessage {
 
   // Initializes the |NetlinkMessage| from a complete and legal message
   // (potentially received from the kernel via a netlink socket).
-  virtual bool InitFromPacket(NetlinkPacket* packet, MessageContext context);
+  virtual bool InitFromPacket(NetlinkPacket* packet, bool is_broadcast);
 
   uint16_t message_type() const { return message_type_; }
   void AddFlag(uint16_t new_flag) { flags_ |= new_flag; }
@@ -154,7 +146,7 @@ class SHILL_EXPORT ErrorAckMessage : public NetlinkMessage {
   ErrorAckMessage& operator=(const ErrorAckMessage&) = delete;
 
   static uint16_t GetMessageType() { return kMessageType; }
-  bool InitFromPacket(NetlinkPacket* packet, MessageContext context) override;
+  bool InitFromPacket(NetlinkPacket* packet, bool is_broadcast) override;
   std::vector<uint8_t> Encode(uint32_t sequence_number) override;
   std::string ToString() const override;
   uint32_t error() const { return -error_; }
@@ -235,8 +227,8 @@ class SHILL_EXPORT NetlinkMessageFactory {
   // at initialization.
   bool AddFactoryMethod(uint16_t message_type, FactoryMethod factory);
 
-  std::unique_ptr<NetlinkMessage> CreateMessage(
-      NetlinkPacket* packet, NetlinkMessage::MessageContext context) const;
+  std::unique_ptr<NetlinkMessage> CreateMessage(NetlinkPacket* packet,
+                                                bool is_broadcast) const;
 
  private:
   std::map<uint16_t, FactoryMethod> factories_;

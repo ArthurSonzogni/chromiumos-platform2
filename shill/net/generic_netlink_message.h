@@ -104,7 +104,7 @@ class SHILL_EXPORT ControlNetlinkMessage : public GenericNetlinkMessage {
 
   static uint16_t GetMessageType() { return kMessageType; }
 
-  bool InitFromPacket(NetlinkPacket* packet, MessageContext context);
+  bool InitFromPacket(NetlinkPacket* packet, bool is_broadcast) override;
 
   // Message factory for all types of Control netlink message.
   static std::unique_ptr<NetlinkMessage> CreateMessage(

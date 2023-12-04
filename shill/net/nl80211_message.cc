@@ -56,8 +56,25 @@ void Nl80211Message::SetMessageType(uint16_t message_type) {
   nl80211_message_type_ = message_type;
 }
 
-bool Nl80211Message::InitFromPacket(NetlinkPacket* packet,
-                                    NetlinkMessage::MessageContext context) {
+bool Nl80211Message::InitFromPacket(NetlinkPacket* packet, bool is_broadcast) {
+  if (!packet) {
+    LOG(ERROR) << "Null |packet| parameter";
+    return false;
+  }
+
+  Context context;
+  context.is_broadcast = is_broadcast;
+  genlmsghdr genl_header;
+  if (packet->GetMessageType() == Nl80211Message::GetMessageType() &&
+      packet->GetGenlMsgHdr(&genl_header)) {
+    context.nl80211_cmd = genl_header.cmd;
+  }
+
+  return InitFromPacketWithContext(packet, context);
+}
+
+bool Nl80211Message::InitFromPacketWithContext(NetlinkPacket* packet,
+                                               const Context& context) {
   if (!packet) {
     LOG(ERROR) << "Null |packet| parameter";
     return false;

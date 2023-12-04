@@ -535,23 +535,10 @@ bool NetlinkManager::SendMessageInternal(
   return true;
 }
 
-NetlinkMessage::MessageContext NetlinkManager::InferMessageContext(
-    const NetlinkPacket& packet) {
-  NetlinkMessage::MessageContext context;
-
+bool NetlinkManager::IsBroadcastPacket(const NetlinkPacket& packet) const {
   const uint32_t sequence_number = packet.GetMessageSequence();
-  if (!base::Contains(message_handlers_, sequence_number) &&
-      packet.GetMessageType() != ErrorAckMessage::kMessageType) {
-    context.is_broadcast = true;
-  }
-
-  genlmsghdr genl_header;
-  if (packet.GetMessageType() == Nl80211Message::GetMessageType() &&
-      packet.GetGenlMsgHdr(&genl_header)) {
-    context.nl80211_cmd = genl_header.cmd;
-  }
-
-  return context;
+  return !base::Contains(message_handlers_, sequence_number) &&
+         packet.GetMessageType() != ErrorAckMessage::kMessageType;
 }
 
 void NetlinkManager::OnPendingDumpTimeout() {
@@ -645,7 +632,7 @@ void NetlinkManager::OnNlMessageReceived(NetlinkPacket* packet) {
   const uint32_t sequence_number = packet->GetMessageSequence();
 
   std::unique_ptr<NetlinkMessage> message(
-      message_factory_.CreateMessage(packet, InferMessageContext(*packet)));
+      message_factory_.CreateMessage(packet, IsBroadcastPacket(*packet)));
   if (message == nullptr) {
     VLOG(2) << "NL Message " << sequence_number << " <===";
     VLOG(2) << __func__ << "(msg:NULL)";

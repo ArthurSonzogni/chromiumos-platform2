@@ -58,8 +58,7 @@ bool NetlinkMessage::InitAndStripHeader(NetlinkPacket* packet) {
   return true;
 }
 
-bool NetlinkMessage::InitFromPacket(NetlinkPacket* packet,
-                                    NetlinkMessage::MessageContext context) {
+bool NetlinkMessage::InitFromPacket(NetlinkPacket* packet, bool is_broadcast) {
   if (!packet) {
     LOG(ERROR) << "Null |packet| parameter";
     return false;
@@ -154,8 +153,7 @@ void NetlinkMessage::PrintPayload(int log_level,
 
 const uint16_t ErrorAckMessage::kMessageType = NLMSG_ERROR;
 
-bool ErrorAckMessage::InitFromPacket(NetlinkPacket* packet,
-                                     NetlinkMessage::MessageContext context) {
+bool ErrorAckMessage::InitFromPacket(NetlinkPacket* packet, bool is_broadcast) {
   if (!packet) {
     LOG(ERROR) << "Null |const_msg| parameter";
     return false;
@@ -261,7 +259,7 @@ bool NetlinkMessageFactory::AddFactoryMethod(uint16_t message_type,
 }
 
 std::unique_ptr<NetlinkMessage> NetlinkMessageFactory::CreateMessage(
-    NetlinkPacket* packet, NetlinkMessage::MessageContext context) const {
+    NetlinkPacket* packet, bool is_broadcast) const {
   std::unique_ptr<NetlinkMessage> message;
 
   auto message_type = packet->GetMessageType();
@@ -287,7 +285,7 @@ std::unique_ptr<NetlinkMessage> NetlinkMessageFactory::CreateMessage(
         std::make_unique<UnknownMessage>(message_type, packet->GetPayload());
   }
 
-  if (!message->InitFromPacket(packet, context)) {
+  if (!message->InitFromPacket(packet, is_broadcast)) {
     LOG(ERROR) << "Message did not initialize properly";
     return nullptr;
   }
