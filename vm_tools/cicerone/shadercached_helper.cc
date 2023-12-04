@@ -45,9 +45,7 @@ void ShaderCacheMountStatusChanged(
                            expected_mount, mount_status.mounted());
   }
 
-  if (event != nullptr) {
-    event->Signal();
-  }
+  event->Signal();
 }
 }  // namespace
 
@@ -91,11 +89,13 @@ void ShadercachedHelper::InstallShaderCache(
       .steam_app_id = request->steam_app_id()};
 
   bool callback_added = false;
-  if (request->mount()) {
-    callback_added = AddCallback(condition, /*expected_mount=*/true, error_out,
-                                 request->wait() ? event : nullptr);
+  if (request->wait()) {
+    // Only add call back if request is waiting for completion
+    callback_added =
+        AddCallback(condition, /*expected_mount=*/true, error_out, event);
     if (!callback_added) {
-      LOG(WARNING) << "Failed to add callback for install";
+      LOG(WARNING) << "Failed to add callback for install, still attempting "
+                      "install/mount";
     }
   }
 
@@ -133,8 +133,9 @@ void ShadercachedHelper::InstallShaderCache(
     return;
   }
 
-  if (!request->wait() || !callback_added) {
-    // Only signal if we don't have to wait or can't detect that a wait is over.
+  if (!request->wait()) {
+    // Signal if we don't have to wait, we don't have to worry about Install
+    // response.
     event->Signal();
     return;
   }
@@ -149,7 +150,18 @@ void ShadercachedHelper::InstallShaderCache(
 
   if (response.mounted()) {
     // If shader cache is already mounted, don't wait for mount signal
-    mount_callbacks_.erase(condition);
+    if (callback_added) {
+      mount_callbacks_.erase(condition);
+    }
+    event->Signal();
+    return;
+  }
+
+  if (!callback_added) {
+    // If callback wasn't added, signal now. If callback's been added,
+    // signalling will happen on ShaderCacheMountStatusChanged.
+    *error_out =
+        "Unable to notify on mount completion, still queued install/mount";
     event->Signal();
   }
 }
