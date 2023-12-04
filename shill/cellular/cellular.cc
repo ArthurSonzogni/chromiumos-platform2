@@ -896,7 +896,7 @@ void Cellular::OnConnectionUpdated(int interface_index) {
   if (multiplexed_tethering_pdn_ &&
       interface_index ==
           multiplexed_tethering_pdn_->network()->interface_index()) {
-    if (IsTetheringOperationDunMultiplexedOngoing()) {
+    if (IsTetheringOperationDunMultiplexedConnectOngoing()) {
       if (tethering_operation_->apn_connected) {
         SLOG(1) << LoggingTag()
                 << ": multiplexed tethering operation can be completed";
@@ -1666,7 +1666,7 @@ void Cellular::OnDisconnected() {
   // This should be fine because OnDisconnected() happens when the default PDN
   // is disconnected, so we would only have the multiplexed tethering PDN
   // attempt ongoing by the time we want to DisconnectAll().
-  if (IsTetheringOperationDunMultiplexedOngoing()) {
+  if (IsTetheringOperationDunMultiplexedConnectOngoing()) {
     if (capability_) {
       capability_->DisconnectAll(base::DoNothing());
     }
@@ -1713,17 +1713,23 @@ bool Cellular::IsTetheringOperationDunAsDefaultOngoing() {
             TetheringOperationType::kDisconnectDunAsDefaultPdn)));
 }
 
-bool Cellular::IsTetheringOperationDunMultiplexedOngoing() {
+bool Cellular::IsTetheringOperationDunMultiplexedConnectOngoing() {
   return (tethering_operation_ &&
-          ((tethering_operation_->type ==
-            TetheringOperationType::kConnectDunMultiplexed) ||
-           (tethering_operation_->type ==
-            TetheringOperationType::kDisconnectDunMultiplexed)));
+          (tethering_operation_->type ==
+           TetheringOperationType::kConnectDunMultiplexed));
+}
+
+bool Cellular::IsTetheringOperationDunMultiplexedDisconnectOngoing() {
+  return (tethering_operation_ &&
+          (tethering_operation_->type ==
+           TetheringOperationType::kDisconnectDunMultiplexed));
 }
 
 void Cellular::CompleteTetheringOperation(const Error& error) {
   bool dun_as_default_ongoing = IsTetheringOperationDunAsDefaultOngoing();
-  bool multiplexed_dun_ongoing = IsTetheringOperationDunMultiplexedOngoing();
+  bool multiplexed_dun_ongoing =
+      (IsTetheringOperationDunMultiplexedConnectOngoing() ||
+       IsTetheringOperationDunMultiplexedDisconnectOngoing());
   CHECK(dun_as_default_ongoing || multiplexed_dun_ongoing);
 
   // Reset operation info right away, as there are certain generic actions
@@ -1948,7 +1954,7 @@ void Cellular::OnCapabilityDisconnectMultiplexedTetheringReply(
                  << ": Multiplexed tethering disconnection failed: " << error;
   }
 
-  if (IsTetheringOperationDunMultiplexedOngoing()) {
+  if (IsTetheringOperationDunMultiplexedDisconnectOngoing()) {
     // Disconnections are not aborted, we can simply complete.
     CompleteTetheringOperation(error);
   }
@@ -2258,7 +2264,8 @@ void Cellular::AbortTetheringOperation(const Error& error,
 
   // Keep track of which operation was being done.
   bool dun_as_default_ongoing = IsTetheringOperationDunAsDefaultOngoing();
-  bool multiplexed_dun_ongoing = IsTetheringOperationDunMultiplexedOngoing();
+  bool multiplexed_dun_ongoing =
+      IsTetheringOperationDunMultiplexedConnectOngoing();
 
   // Abort the original connection attempt.
   LOG(INFO) << LoggingTag()
@@ -2526,7 +2533,7 @@ void Cellular::MultiplexedTetheringLinkUp() {
           capability_->GetActiveBearer(ApnList::ApnType::kDun))) {
     LOG(INFO) << LoggingTag()
               << ": Multiplexed tethering link network configuration failed";
-    if (IsTetheringOperationDunMultiplexedOngoing()) {
+    if (IsTetheringOperationDunMultiplexedConnectOngoing()) {
       AbortTetheringOperation(
           Error(Error::kOperationFailed, "Link configuration failed."),
           base::DoNothing());

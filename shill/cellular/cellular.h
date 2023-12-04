@@ -806,8 +806,9 @@ class Cellular : public Device,
   void OnConnectMultiplexedTetheringPdnReply(
       AcquireTetheringNetworkResultCallback callback, const Error& error);
 
-  // Helper to check whether a multiplexed DUN tethering operation is ongoing.
-  bool IsTetheringOperationDunMultiplexedOngoing();
+  // Helpers to check whether a multiplexed DUN tethering operation is ongoing.
+  bool IsTetheringOperationDunMultiplexedConnectOngoing();
+  bool IsTetheringOperationDunMultiplexedDisconnectOngoing();
 
   State state_ = State::kDisabled;
   ModemState modem_state_ = kModemStateUnknown;
