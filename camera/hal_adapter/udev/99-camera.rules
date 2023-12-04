@@ -14,6 +14,9 @@ ACTION=="add", SUBSYSTEM=="video4linux", SUBSYSTEMS=="i2c", \
 ATTR{name}=="cam_sync", SUBSYSTEM=="video4linux", GROUP="camera"
 ATTR{name}=="cam-req-mgr", SUBSYSTEM=="video4linux", GROUP="camera"
 
+# Limit access to MTK's mdp3 video node to the camera HAL.
+ATTR{name}=="mtk-mdp3:m2m", SUBSYSTEM=="video4linux", GROUP="camera"
+
 # Limit access to capture device nodes (cameras) to the camera HAL.
 ENV{ID_V4L_CAPABILITIES}==":capture:", SUBSYSTEM=="video4linux", GROUP="camera"
 
