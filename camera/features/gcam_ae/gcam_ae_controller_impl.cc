@@ -181,6 +181,16 @@ void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
     SetOptions(*overridden_json_values, metadata_logger_);
   }
 
+  std::optional<GainRange> gain_range =
+      ae_device_adapter_->GetGainRange(*result);
+  if (gain_range.has_value()) {
+    const Range<float>& ag_range = gain_range->analog_gain_range;
+    const Range<float>& dg_range = gain_range->digital_gain_range;
+    max_analog_gain_ = options_.gain_multiplier * ag_range.upper();
+    max_total_gain_ =
+        options_.gain_multiplier * ag_range.upper() * dg_range.upper();
+  }
+
   AeFrameInfo* frame_info = GetAeFrameInfoEntry(result->frame_number());
   if (!frame_info) {
     return;
@@ -223,6 +233,11 @@ void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
                       static_cast<float>(sensitivity_range_.lower()));
   float analog_gain = std::min(total_gain, max_analog_gain_);
   float digital_gain = std::max(total_gain / max_analog_gain_, 1.0f);
+  std::optional<Gain> gain = ae_device_adapter_->GetGain(*result);
+  if (gain.has_value()) {
+    analog_gain = options_.gain_multiplier * gain->analog_gain;
+    digital_gain = options_.gain_multiplier * gain->digital_gain;
+  }
 
   frame_info->exposure_time_ms =
       base::checked_cast<float>(exposure_time_ns[0]) / 1'000'000;
@@ -794,8 +809,7 @@ void GcamAeControllerImpl::SetOptions(
   }
 
   if (VLOG_IS_ON(1)) {
-    VLOGF(1) << "GcamAeController config:"
-             << " enabled=" << options_.enabled
+    VLOGF(1) << "GcamAeController config:" << " enabled=" << options_.enabled
              << " ae_frame_interval=" << options_.ae_frame_interval
              << " ae_stats_input_mode="
              << static_cast<int>(options_.ae_stats_input_mode)

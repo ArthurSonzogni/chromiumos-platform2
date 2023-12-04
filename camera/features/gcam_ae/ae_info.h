@@ -168,6 +168,16 @@ struct AeParameters {
   bool IsValid() { return short_tet > 0.0f && long_tet > 0.0f; }
 };
 
+struct Gain {
+  float analog_gain = 1.0f;
+  float digital_gain = 1.0f;
+};
+
+struct GainRange {
+  Range<float> analog_gain_range;
+  Range<float> digital_gain_range;
+};
+
 }  // namespace cros
 
 #endif  // CAMERA_FEATURES_GCAM_AE_AE_INFO_H_

@@ -33,6 +33,9 @@ class GcamAeDeviceAdapterIpu6 : public GcamAeDeviceAdapter {
                                   float exposure_target) override;
   bool ExtractAeStats(Camera3CaptureDescriptor* result,
                       MetadataLogger* metadata_logger = nullptr) override;
+  std::optional<Gain> GetGain(const Camera3CaptureDescriptor& result) override;
+  std::optional<GainRange> GetGainRange(
+      const Camera3CaptureDescriptor& result) override;
   bool HasAeStats(int frame_number) override;
   AeParameters ComputeAeParameters(int frame_number,
                                    const AeFrameInfo& frame_info,

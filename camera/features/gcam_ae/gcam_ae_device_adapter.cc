@@ -39,6 +39,16 @@ bool GcamAeDeviceAdapter::ExtractAeStats(Camera3CaptureDescriptor* result,
   return true;
 }
 
+std::optional<Gain> GcamAeDeviceAdapter::GetGain(
+    const Camera3CaptureDescriptor& result) {
+  return std::nullopt;
+}
+
+std::optional<GainRange> GcamAeDeviceAdapter::GetGainRange(
+    const Camera3CaptureDescriptor& result) {
+  return std::nullopt;
+}
+
 bool GcamAeDeviceAdapter::HasAeStats(int frame_number) {
   return true;
 }

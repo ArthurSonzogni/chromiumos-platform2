@@ -169,6 +169,35 @@ bool GcamAeDeviceAdapterIpu6::ExtractAeStats(Camera3CaptureDescriptor* result,
   return true;
 }
 
+std::optional<Gain> GcamAeDeviceAdapterIpu6::GetGain(
+    const Camera3CaptureDescriptor& result) {
+  base::span<const float> analog_gain =
+      result.GetMetadata<float>(INTEL_VENDOR_CAMERA_ANALOG_GAIN);
+  base::span<const float> digital_gain =
+      result.GetMetadata<float>(INTEL_VENDOR_CAMERA_DIGITAL_GAIN);
+  if (analog_gain.empty() || digital_gain.empty()) {
+    return std::nullopt;
+  }
+  return Gain{.analog_gain = analog_gain[0], .digital_gain = digital_gain[0]};
+}
+
+std::optional<GainRange> GcamAeDeviceAdapterIpu6::GetGainRange(
+    const Camera3CaptureDescriptor& result) {
+  base::span<const float> analog_gain_range =
+      result.GetMetadata<float>(INTEL_VENDOR_CAMERA_ANALOG_GAIN_RANGE);
+  base::span<const float> digital_gain_range =
+      result.GetMetadata<float>(INTEL_VENDOR_CAMERA_DIGITAL_GAIN_RANGE);
+  if (analog_gain_range.empty() || digital_gain_range.empty()) {
+    return std::nullopt;
+  }
+  GainRange gain_range;
+  gain_range.analog_gain_range =
+      Range<float>(analog_gain_range[0], analog_gain_range[1]);
+  gain_range.digital_gain_range =
+      Range<float>(digital_gain_range[0], digital_gain_range[1]);
+  return gain_range;
+}
+
 bool GcamAeDeviceAdapterIpu6::HasAeStats(int frame_number) {
   return GetAeStatsEntry(frame_number).has_value();
 }
@@ -189,8 +218,7 @@ AeParameters GcamAeDeviceAdapterIpu6::ComputeAeParameters(
                                frame_info.client_ae_compensation_log2,
   };
 
-  VLOGF(1) << "Running Gcam AE "
-           << " [" << frame_number << "]"
+  VLOGF(1) << "Running Gcam AE " << " [" << frame_number << "]"
            << " ae_stats_input="
            << static_cast<int>(frame_info.ae_stats_input_mode)
            << " exposure_time=" << ae_metadata.actual_exposure_time_ms
