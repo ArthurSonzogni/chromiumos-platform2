@@ -113,6 +113,9 @@ remove_old_pattern_log_files() {
 
   # Remove old modemfwd helper logs
   remove_old_files /var/log/modemfwd "helper_log.*"
+
+  # Remove old modemloggerd logs
+  remove_old_files /var/log/modemloggerd "*"
 }
 
 usage() {
