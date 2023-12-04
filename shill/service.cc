@@ -388,16 +388,6 @@ void Service::Connect(Error* error, const char* reason) {
   if (last_manual_connect_attempt_.ToDeltaSinceWindowsEpoch().is_zero())
     SetLastManualConnectAttemptProperty(base::Time::Now());
 
-  // The device has never been online. If the time since last manual connect
-  // attempt exceeds threshold, disable modem.
-  if (last_online_.ToDeltaSinceWindowsEpoch().is_zero()) {
-    manager_->power_opt()->UpdateDurationSinceLastOnline(
-        last_manual_connect_attempt_, is_in_user_connect());
-  } else {
-    manager_->power_opt()->UpdateDurationSinceLastOnline(last_online_,
-                                                         is_in_user_connect());
-  }
-
   if (!connectable()) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kOperationFailed,
@@ -667,6 +657,18 @@ void Service::SetState(ConnectState state) {
   UpdateErrorProperty();
   manager_->NotifyServiceStateChanged(this);
   UpdateStateTransitionMetrics(state);
+
+  if (last_online_.ToDeltaSinceWindowsEpoch().is_zero()) {
+    // The device has never been online. If the time since last manual connect
+    // attempt exceeds threshold, disable modem.
+    if (!last_manual_connect_attempt_.ToDeltaSinceWindowsEpoch().is_zero()) {
+      manager_->power_opt()->UpdateDurationSinceLastOnline(
+          last_manual_connect_attempt_, is_in_user_connect());
+    }
+  } else {
+    manager_->power_opt()->UpdateDurationSinceLastOnline(last_online_,
+                                                         is_in_user_connect());
+  }
 
   if (IsConnectedState(previous_state_) != IsConnectedState(state_)) {
     adaptor_->EmitBoolChanged(kIsConnectedProperty, IsConnected());
