@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_AUTH_SESSION_MANAGER_H_
 #define CRYPTOHOME_AUTH_SESSION_MANAGER_H_
 
+#include <cstddef>
 #include <map>
 #include <memory>
 #include <queue>
@@ -30,14 +31,20 @@ namespace cryptohome {
 class InUseAuthSession;
 class BoundAuthSession;
 
+using AuthSessionExpiringCallBack =
+    base::RepeatingCallback<void(user_data_auth::AuthSessionExpiring)>;
+
 class AuthSessionManager {
  public:
   // The default timeout duration for sessions.
   static constexpr base::TimeDelta kAuthTimeout = base::Minutes(5);
+  static constexpr base::TimeDelta kAuthTimeoutWarning = base::Minutes(1);
 
   // Construct a session manager that will use the given backing APIs to create
   // new AuthSession objects.
-  explicit AuthSessionManager(AuthSession::BackingApis backing_apis);
+  AuthSessionManager(
+      AuthSession::BackingApis backing_apis,
+      const AuthSessionExpiringCallBack& auth_session_expiring_callback);
 
   AuthSessionManager(AuthSessionManager&) = delete;
   AuthSessionManager& operator=(AuthSessionManager&) = delete;
@@ -125,9 +132,15 @@ class AuthSessionManager {
   // the expiration map.
   void ResetExpirationTimer();
 
+  // Starts/Restarts/Stops the expiration timer based on the current contents of
+  // the AuthSession Expiring Soon map.
+  void MoveAuthSessionToExpiringSoon();
+
   // Callback registered with sessions to catch authentication. This will set
   // the session to timeout in kAuthTimeout.
   void SessionOnAuthCallback(const base::UnguessableToken& token);
+
+  void CheckExpiringSoonMap(const base::UnguessableToken& token);
 
   // Callback to flush any expired sessions in the expiration map.
   void ExpireAuthSessions();
@@ -163,13 +176,18 @@ class AuthSessionManager {
   // Timer infrastructure used to track sessions for expiration. This is done by
   // using a map of expiration time -> token to keep track of when sessions
   // along with a timer which will be triggered whenever at least one of this
-  // sessions is ready to be expired.
+  // sessions is ready to be moved to expiring soon state. The timer is
+  // triggered for whichever of the maps needs it first.
   //
   // Note that this needs to be a multimap because you can have multiple
   // sessions that are set to expire at the exact same time.
   std::multimap<base::Time, base::UnguessableToken> expiration_map_;
+  std::multimap<base::Time, base::UnguessableToken>
+      auth_session_expiring_soon_map_;
   const base::Clock* clock_;
   base::WallClockTimer expiration_timer_;
+  // The repeating callback to send AuthSessionExpiringSignal.
+  AuthSessionExpiringCallBack auth_session_expiring_callback_;
 
   // The last member, to invalidate weak references first on destruction.
   base::WeakPtrFactory<AuthSessionManager> weak_factory_{this};
@@ -234,6 +252,11 @@ class InUseAuthSession {
   std::unique_ptr<BoundAuthSession> BindForCallback() &&;
 
  private:
+  // Extends the timer for the AuthSession by specified duration. Note that this
+  // can fail, in which case a not-OK status will returned. This function is
+  // specifically for the expiring soon map.
+  CryptohomeStatus ExtendExpiringSoonTimeout(base::TimeDelta extension);
+
   friend class AuthSessionManager;
   friend class BoundAuthSession;
 

@@ -848,11 +848,12 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   }
 
   if (!auth_session_manager_) {
-    default_auth_session_manager_ =
-        std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
+    default_auth_session_manager_ = std::make_unique<AuthSessionManager>(
+        AuthSession::BackingApis{
             crypto_, platform_, sessions_, keyset_management_,
             auth_block_utility_, auth_factor_driver_manager_,
-            auth_factor_manager_, uss_storage_, &async_init_features_});
+            auth_factor_manager_, uss_storage_, &async_init_features_},
+        auth_session_expiring_callback_);
     auth_session_manager_ = default_auth_session_manager_.get();
   }
 

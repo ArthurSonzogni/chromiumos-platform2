@@ -10,12 +10,15 @@
 #include <utility>
 #include <vector>
 
+#include <base/functional/bind.h>
+#include <base/functional/callback_forward.h>
 #include <base/test/bind.h>
 #include <base/test/power_monitor_test.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <base/time/time.h>
 #include <base/unguessable_token.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
@@ -80,6 +83,13 @@ class AuthSessionManagerTest : public ::testing::Test {
     return std::move(*session);
   }
 
+  void ExpiringSignalCalled(user_data_auth::AuthSessionExpiring proto) {
+    signal_called_++;
+    ASSERT_THAT(proto.time_left(),
+                AllOf(testing::Ge(0),
+                      Le(AuthSessionManager::kAuthTimeoutWarning.InSeconds())));
+  }
+
   const Username kUsername{"foo@example.com"};
   const Username kUsername2{"bar@example.com"};
 
@@ -110,6 +120,11 @@ class AuthSessionManagerTest : public ::testing::Test {
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorManager auth_factor_manager_{&platform_};
   FakeFeaturesForTesting features_;
+  int signal_called_ = 0;
+  base::RepeatingCallback<void(user_data_auth::AuthSessionExpiring)>
+      expiring_signal_ =
+          base::BindRepeating(&AuthSessionManagerTest::ExpiringSignalCalled,
+                              base::Unretained(this));
   AuthSession::BackingApis backing_apis_{&crypto_,
                                          &platform_,
                                          &user_session_map_,
@@ -119,7 +134,7 @@ class AuthSessionManagerTest : public ::testing::Test {
                                          &auth_factor_manager_,
                                          &uss_storage_,
                                          &features_.async};
-  AuthSessionManager auth_session_manager_{backing_apis_};
+  AuthSessionManager auth_session_manager_{backing_apis_, expiring_signal_};
 };
 
 TEST_F(AuthSessionManagerTest, CreateRemove) {
@@ -186,6 +201,7 @@ TEST_F(AuthSessionManagerTest, CreateExpire) {
     InUseAuthSession in_use_auth_session = TakeAuthSession(token);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
   }
+  ASSERT_THAT(signal_called_, 2);
 }
 
 TEST_F(AuthSessionManagerTest, ExtendExpire) {
@@ -267,14 +283,36 @@ TEST_F(AuthSessionManagerTest, ExtendExpire) {
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
   }
 
-  // Move time forward by another minute. This should expire the other session.
-  task_environment_.FastForwardBy(base::Minutes(1));
+  // Move time forward by another minute. This should move the session to
+  // expiring soon. AuthSession should still be good.
+  task_environment_.FastForwardBy(base::Seconds(30));
+  {
+    InUseAuthSession in_use_auth_session = TakeAuthSession(tokens[0]);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(in_use_auth_session.GetRemainingTime(),
+                AllOf(Gt(base::TimeDelta()), Le(base::Minutes(1))));
+  }
+
+  ASSERT_THAT(signal_called_, 2);
+
+  // Extend the first session to two minutes.
+  {
+    InUseAuthSession in_use_auth_session = TakeAuthSession(tokens[0]);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(in_use_auth_session.ExtendTimeout(base::Minutes(2)), IsOk());
+    EXPECT_THAT(in_use_auth_session.GetRemainingTime(),
+                AllOf(Gt(base::TimeDelta()), Le(base::Seconds(150))));
+  }
+
+  // Move time forward by another minute. This should kill the last session.
+  task_environment_.FastForwardBy(base::Minutes(3));
 
   // Now both sessions should be gone.
   for (const auto& token : tokens) {
     InUseAuthSession in_use_auth_session = TakeAuthSession(token);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), NotOk());
   }
+  ASSERT_THAT(signal_called_, 3);
 }
 
 TEST_F(AuthSessionManagerTest, CreateExpireAfterPowerSuspend) {

@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <base/functional/callback_helpers.h>
 #include <base/functional/bind.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/bind.h>
@@ -34,7 +35,6 @@
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
-#include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_factor/flatbuffer.h"
 #include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/auth_factor/storage_type.h"
@@ -45,7 +45,6 @@
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/fake_features.h"
-#include "cryptohome/features.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
@@ -160,11 +159,12 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
 
     crypto_.Init();
 
-    auth_session_manager_ =
-        std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
+    auth_session_manager_ = std::make_unique<AuthSessionManager>(
+        AuthSession::BackingApis{
             &crypto_, &platform_, &user_session_map_, &keyset_management_,
             &auth_block_utility_, &auth_factor_driver_manager_,
-            &auth_factor_manager_, &uss_storage_, &features_.async});
+            &auth_factor_manager_, &uss_storage_, &features_.async},
+        base::DoNothing());
     // Initializing UserData class.
     userdataauth_.set_platform(&platform_);
     userdataauth_.set_homedirs(&homedirs_);
@@ -1302,11 +1302,12 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapUserSecretStash) {
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // Attach the mock_auth_block_utility to our AuthSessionManager and created
   // AuthSession.
-  auto auth_session_manager_mock =
-      std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
+  auto auth_session_manager_mock = std::make_unique<AuthSessionManager>(
+      AuthSession::BackingApis{
           &crypto_, &platform_, &user_session_map_, &keyset_management_,
           &mock_auth_block_utility_, &auth_factor_driver_manager_,
-          &auth_factor_manager_, &uss_storage_, &features_.async});
+          &auth_factor_manager_, &uss_storage_, &features_.async},
+      base::DoNothing());
 
   base::UnguessableToken token = auth_session_manager_mock->CreateAuthSession(
       Username(kUsername), flags, AuthIntent::kDecrypt);
