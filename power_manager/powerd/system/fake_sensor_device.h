@@ -18,6 +18,8 @@ namespace power_manager::system {
 
 class FakeSensorDevice : public cros::mojom::SensorDevice {
  public:
+  FakeSensorDevice();
+
   mojo::ReceiverId AddReceiver(
       mojo::PendingReceiver<cros::mojom::SensorDevice> pending_receiver);
   bool HasReceivers() const;
@@ -64,6 +66,8 @@ class FakeSensorDevice : public cros::mojom::SensorDevice {
       override;
 
  protected:
+  void OnEventsObserverDisconnect(mojo::RemoteSetElementId id);
+
   std::map<std::string, std::string> attributes_;
 
   std::map<mojo::ReceiverId,

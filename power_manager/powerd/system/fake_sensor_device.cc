@@ -13,6 +13,11 @@
 
 namespace power_manager::system {
 
+FakeSensorDevice::FakeSensorDevice() {
+  events_observers_.set_disconnect_handler(base::BindRepeating(
+      &FakeSensorDevice::OnEventsObserverDisconnect, base::Unretained(this)));
+}
+
 mojo::ReceiverId FakeSensorDevice::AddReceiver(
     mojo::PendingReceiver<cros::mojom::SensorDevice> pending_receiver) {
   return receiver_set_.Add(this, std::move(pending_receiver));
@@ -61,11 +66,12 @@ void FakeSensorDevice::OnEventUpdated(cros::mojom::IioEventPtr event) {
     return;
   }
 
-  for (const auto& [id, enabled_indices] : events_enabled_indices_) {
-    if (!base::Contains(enabled_indices, event->channel))
+  for (auto it = events_observers_.begin(); it != events_observers_.end();
+       ++it) {
+    if (!base::Contains(events_enabled_indices_[it.id()], event->channel))
       continue;
 
-    events_observers_.Get(id)->OnEventUpdated(event.Clone());
+    (*it)->OnEventUpdated(event.Clone());
   }
 }
 
@@ -159,6 +165,10 @@ void FakeSensorDevice::StartReadingEvents(
     OnEventUpdated(std::move(events_[i]));
 
   events_.clear();
+}
+
+void FakeSensorDevice::OnEventsObserverDisconnect(mojo::RemoteSetElementId id) {
+  events_enabled_indices_.erase(id);
 }
 
 }  // namespace power_manager::system
