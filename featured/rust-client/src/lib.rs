@@ -20,6 +20,7 @@ use dbus::nonblock::SyncConnection;
 use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
+use std::pin::Pin;
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -88,7 +89,7 @@ pub trait CheckFeature {
 #[derive(Debug)]
 pub struct Feature {
     name: std::ffi::CString,
-    c_feature: VariationsFeature,
+    c_feature: Pin<Box<VariationsFeature>>,
 }
 
 impl Feature {
@@ -108,10 +109,10 @@ impl Feature {
         } else {
             FeatureState_FEATURE_DISABLED_BY_DEFAULT
         };
-        let c_feature = VariationsFeature {
+        let c_feature = Pin::new(Box::new(VariationsFeature {
             name: name.as_ptr(),
             default_state,
-        };
+        }));
         Ok(Feature { name, c_feature })
     }
 
@@ -242,7 +243,7 @@ impl SafeHandle {
     fn is_feature_enabled_blocking(&self, feature: &Feature) -> bool {
         // SAFETY: The C call is guaranteed to return a valid value and does not modify
         // the underlying handle or feature.
-        unsafe { CFeatureLibraryIsEnabledBlocking(self.handle, &feature.c_feature) != 0 }
+        unsafe { CFeatureLibraryIsEnabledBlocking(self.handle, &*feature.c_feature.as_ref()) != 0 }
     }
 
     fn get_params_and_enabled_blocking(
@@ -252,7 +253,7 @@ impl SafeHandle {
         // Extract the `VariationsFeature`s to pass to the C library.
         let feature_ptrs: Vec<_> = features
             .iter()
-            .map(|feature| &feature.c_feature as *const VariationsFeature)
+            .map(|feature| &*feature.c_feature.as_ref() as *const VariationsFeature)
             .collect();
 
         // Allocate an array for the C library to populate.
