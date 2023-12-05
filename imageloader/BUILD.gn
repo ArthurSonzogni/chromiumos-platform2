@@ -10,8 +10,6 @@ group("all") {
   deps = [
     ":imageloader",
     ":imageloader-adaptors",
-    ":install_dbus_config",
-    ":install_dbus_service",
     ":install_header",
     ":install_init",
     ":install_pkgconfig",
@@ -19,6 +17,12 @@ group("all") {
     ":libimageloader_static",
     ":protos",
   ]
+  if (!use.cros_host) {
+    deps += [
+      ":install_dbus_config",
+      ":install_dbus_service",
+    ]
+  }
   if (use.test) {
     deps += [ ":run_tests" ]
   }
