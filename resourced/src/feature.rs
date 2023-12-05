@@ -2,8 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
 use std::sync::Mutex;
 
 use anyhow::bail;
@@ -16,9 +18,16 @@ use featured::CheckFeature;
 use log::error;
 use once_cell::sync::OnceCell; // Trait CheckFeature is for is_feature_enabled_blocking
 
+type FeatureChangeCallback = Box<dyn Fn(bool) + Send + Sync + 'static>;
+type FeatureRegisterInfo = (&'static str, bool, Option<FeatureChangeCallback>);
+
 struct Feature {
     // The cached results of feature query.
-    enabled: bool,
+    enabled: AtomicBool,
+
+    // Callback invoked when the feature enable state changes.
+    #[cfg(feature = "chromeos")]
+    cb: Option<FeatureChangeCallback>,
 
     // There must only ever be one struct instance for a given feature name.
     //
@@ -31,83 +40,110 @@ struct Feature {
 //
 // Reference: https://chromium.googlesource.com/chromiumos/platform2/+/main/featured/README.md
 struct FeatureManager {
-    features: HashMap<String, Feature>,
+    features: Arc<HashMap<String, Feature>>,
 }
 
 impl FeatureManager {
-    fn new() -> FeatureManager {
-        FeatureManager {
-            features: HashMap::new(),
-        }
+    #[cfg_attr(not(feature = "chromeos"), allow(unused_variables))]
+    fn new(features: Vec<FeatureRegisterInfo>) -> Result<FeatureManager> {
+        let features = features
+            .into_iter()
+            .map(|(name, default_enabled, cb)| -> Result<(String, Feature)> {
+                cfg_if::cfg_if! {
+                    if #[cfg(feature = "chromeos")] {
+                        let raw = featured::Feature::new(name, default_enabled)?;
+                        let enabled =
+                            featured::PlatformFeatures::get()?.is_feature_enabled_blocking(&raw);
+                        if let Some(cb) = cb.as_ref() {
+                            if enabled != default_enabled {
+                                cb(enabled);
+                            }
+                        }
+
+                        let feature = Feature { enabled: AtomicBool::new(enabled), cb, raw };
+                        Ok((name.to_owned(), feature))
+                    } else {
+                        Ok((name.to_owned(), Feature { enabled: AtomicBool::new(default_enabled) }))
+                    }
+                }
+            })
+            .collect::<Result<Vec<(String, Feature)>>>()
+            .context("failed to initialize features")?;
+
+        Ok(FeatureManager {
+            features: Arc::new(HashMap::from_iter(features)),
+        })
     }
 
     // Returns the cached feature query result.
-    fn is_feature_enabled(&self, feature_name: &str) -> Result<bool> {
+    fn is_feature_enabled(&self, feature_name: &str) -> bool {
         match self.features.get(feature_name) {
-            Some(feature) => Ok(feature.enabled),
-            None => Ok(false),
+            Some(feature) => feature.enabled.load(Ordering::SeqCst),
+            None => false,
         }
-    }
-
-    // Adds a feature to the hashmap if it's not present and caches the feature query.
-    fn initialize_feature(&mut self, feature_name: &str, enabled_by_default: bool) -> Result<()> {
-        let Entry::Vacant(vacant_entry) = self.features.entry(feature_name.to_string()) else {
-            bail!("Double initialization of {}", feature_name);
-        };
-
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "chromeos")] {
-                let feature = featured::Feature::new(feature_name, enabled_by_default)?;
-                let enabled =
-                    featured::PlatformFeatures::get()?.is_feature_enabled_blocking(&feature);
-                vacant_entry.insert(Feature { enabled, raw: feature });
-            } else {
-                vacant_entry.insert(Feature { enabled: enabled_by_default });
-            }
-        }
-
-        Ok(())
     }
 
     #[cfg(feature = "chromeos")]
-    fn reload_cache(&mut self) -> Result<()> {
+    fn reload_cache(&self) -> Result<()> {
         let features: Vec<&featured::Feature> = self.features.values().map(|f| &f.raw).collect();
         let resp = featured::PlatformFeatures::get()?
             .get_params_and_enabled(&features)
             .context("failed to query features")?;
-        for feature in self.features.values_mut() {
-            feature.enabled = resp.is_enabled(&feature.raw);
+        for feature in self.features.values() {
+            let new_value = resp.is_enabled(&feature.raw);
+            let old_value = feature.enabled.swap(new_value, Ordering::SeqCst);
+            if new_value != old_value {
+                if let Some(cb) = feature.cb.as_ref() {
+                    cb(new_value);
+                }
+            }
         }
         Ok(())
     }
 }
 
 // Singleton pattern.
-static FEATURE_MANAGER: OnceCell<Mutex<FeatureManager>> = OnceCell::new();
+static FEATURE_MANAGER: OnceCell<FeatureManager> = OnceCell::new();
 
-pub fn init() -> Result<()> {
-    if FEATURE_MANAGER
-        .set(Mutex::new(FeatureManager::new()))
-        .is_err()
-    {
-        bail!("Failed to set FEATURE_MANAGER");
-    }
-    Ok(())
+static PENDING_FEATURES: OnceCell<Mutex<Vec<FeatureRegisterInfo>>> = OnceCell::new();
+
+/// Register a feature flag to be initialized and monitored by [`init`].
+///
+/// # Arguments
+/// * `feature_name` - The name of the feature flag.
+/// * `enabled_by_default` - The default value of the flag.
+/// * `cb` - An optional callback to be invoked when the feature flag changes. Note
+///          that if the initial state of the flag matches `enabled_by_default`, this
+///          callback will not be invoked.
+pub fn register_feature(
+    feature_name: &'static str,
+    enabled_by_default: bool,
+    cb: Option<FeatureChangeCallback>,
+) {
+    let pending = PENDING_FEATURES.get_or_init(|| Mutex::new(Vec::new()));
+    pending
+        .lock()
+        .expect("lock failed")
+        .push((feature_name, enabled_by_default, cb))
 }
 
 #[cfg_attr(not(feature = "chromeos"), allow(unused_variables))]
-pub async fn start_feature_monitoring(conn: &SyncConnection) -> Result<()> {
-    if FEATURE_MANAGER.get().is_none() {
-        bail!("FEATURE_MANAGER is not initialized");
+pub async fn init(conn: &SyncConnection) -> Result<()> {
+    let Some(pending) = PENDING_FEATURES.get() else {
+        return Ok(());
+    };
+    let pending = std::mem::take(&mut *pending.lock().expect("lock failed"));
+    let feature_manager = FeatureManager::new(pending)?;
+
+    if FEATURE_MANAGER.set(feature_manager).is_err() {
+        bail!("Double initialization of FEATURE_MANAGER");
     }
 
     #[cfg(feature = "chromeos")]
     featured::listen_for_refetch_needed(conn, || {
-        let mut feature_manager = FEATURE_MANAGER
+        let feature_manager = FEATURE_MANAGER
             .get()
-            .expect("FEATURE_MANAGER singleton disappeared")
-            .lock()
-            .expect("Lock failed");
+            .expect("FEATURE_MANAGER singleton disappeared");
         if let Err(e) = feature_manager.reload_cache() {
             error!("Error reloading feature cache: {:?}", e);
         }
@@ -118,29 +154,32 @@ pub async fn start_feature_monitoring(conn: &SyncConnection) -> Result<()> {
     Ok(())
 }
 
-#[cfg(test)]
-pub fn init_for_test() {
-    let _ = init();
-}
-
+#[cfg(not(test))]
 pub fn is_feature_enabled(feature_name: &str) -> Result<bool> {
-    let feature_manager = FEATURE_MANAGER
+    Ok(FEATURE_MANAGER
         .get()
-        .context("FEATURE_MANAGER is not initialized")?;
-    if let Ok(feature_manager_lock) = feature_manager.lock() {
-        feature_manager_lock.is_feature_enabled(feature_name)
-    } else {
-        bail!("Failed to lock FEATURE_MANAGER");
-    }
+        .context("FEATURE_MANAGER is not initialized")?
+        .is_feature_enabled(feature_name))
 }
 
-pub fn initialize_feature(feature_name: &str, enabled_by_default: bool) -> Result<()> {
-    let feature_manager = FEATURE_MANAGER
-        .get()
-        .context("FEATURE_MANAGER is not initialized")?;
-    if let Ok(mut feature_manager_lock) = feature_manager.lock() {
-        feature_manager_lock.initialize_feature(feature_name, enabled_by_default)
-    } else {
-        bail!("Failed to lock FEATURE_MANAGER");
+#[cfg(test)]
+pub fn is_feature_enabled(_feature_name: &str) -> Result<bool> {
+    Ok(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_initialize_feature_in_default_state() {
+        let feature_manager = FeatureManager::new(vec![
+            ("FakeFeatureDisabled", false, None),
+            ("FakeFeatureEnabled", true, None),
+        ])
+        .unwrap();
+
+        assert!(!feature_manager.is_feature_enabled("FakeFeatureDisabled"));
+        assert!(feature_manager.is_feature_enabled("FakeFeatureEnabled"));
     }
 }

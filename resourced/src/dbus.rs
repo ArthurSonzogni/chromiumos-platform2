@@ -31,6 +31,8 @@ use log::LevelFilter;
 use system_api::battery_saver::BatterySaverModeState;
 use tokio::sync::Mutex;
 
+#[cfg(target_arch = "x86_64")]
+use crate::cgroup_x86_64;
 use crate::common;
 use crate::common::read_from_file;
 use crate::config::ConfigProvider;
@@ -761,7 +763,10 @@ pub async fn service_main() -> Result<()> {
         panic!("Lost connection to D-Bus: {}", err);
     });
 
-    feature::start_feature_monitoring(conn.as_ref())
+    #[cfg(target_arch = "x86_64")]
+    cgroup_x86_64::register_feature();
+
+    feature::init(conn.as_ref())
         .await
         .context("start feature monitoring")?;
 

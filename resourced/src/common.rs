@@ -498,7 +498,6 @@ mod tests {
     use tempfile::NamedTempFile;
 
     use super::*;
-    use crate::feature;
     use crate::test_utils::*;
 
     #[test]
@@ -634,8 +633,6 @@ mod tests {
             root: root.to_path_buf(),
         };
 
-        feature::init_for_test();
-
         assert_eq!(get_fullscreen_video().unwrap(), FullscreenVideo::Inactive);
         set_fullscreen_video(&power_manager, FullscreenVideo::Active).unwrap();
         assert_eq!(get_fullscreen_video().unwrap(), FullscreenVideo::Active);
@@ -655,15 +652,5 @@ mod tests {
 
         assert_eq!(read_from_file::<u64, _>(&rps_down_path).unwrap(), 50);
         assert_eq!(read_from_file::<u64, _>(&rps_up_path).unwrap(), 75);
-    }
-
-    #[test]
-    fn test_initialize_feature_in_default_state() {
-        feature::init_for_test();
-        assert!(feature::initialize_feature("FakeFeatureDisabled", false).is_ok());
-        assert!(!feature::is_feature_enabled("FakeFeatureDisabled").unwrap());
-
-        assert!(feature::initialize_feature("FakeFeatureEnabled", true).is_ok());
-        assert!(feature::is_feature_enabled("FakeFeatureEnabled").unwrap());
     }
 }
