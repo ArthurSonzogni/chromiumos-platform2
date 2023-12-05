@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "base/files/scoped_file.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -147,6 +148,47 @@ TEST(VmBuilderTest, CustomKernel) {
   base::StringPairs result = std::move(builder).BuildVmArgs(&dev).value();
 
   EXPECT_EQ(result[result.size() - 1].first, "/dev/zero");
+}
+
+TEST(VmBuilderTest, SingleTapNetParams) {
+  base::ScopedFD fake_fd(open("/dev/zero", O_RDONLY));
+  int raw_fd = fake_fd.get();
+
+  VmBuilder builder;
+  builder.AppendTapFd(std::move(fake_fd));
+  base::StringPairs result = std::move(builder).BuildVmArgs(nullptr).value();
+
+  EXPECT_THAT(
+      result,
+      testing::Contains(
+          std::make_pair("--net", base::StringPrintf(
+                                      "packed-queue=true,tap-fd=%d", raw_fd)))
+          .Times(1));
+}
+
+TEST(VmBuilderTest, MultipleTapNetParams) {
+  base::ScopedFD fake_fd_1(open("/dev/zero", O_RDONLY));
+  base::ScopedFD fake_fd_2(open("/dev/zero", O_RDONLY));
+  int raw_fd_1 = fake_fd_1.get();
+  int raw_fd_2 = fake_fd_2.get();
+
+  VmBuilder builder;
+  builder.AppendTapFd(std::move(fake_fd_1));
+  builder.AppendTapFd(std::move(fake_fd_2));
+  base::StringPairs result = std::move(builder).BuildVmArgs(nullptr).value();
+
+  EXPECT_THAT(
+      result,
+      testing::Contains(
+          std::make_pair("--net", base::StringPrintf(
+                                      "packed-queue=true,tap-fd=%d", raw_fd_1)))
+          .Times(1));
+  EXPECT_THAT(
+      result,
+      testing::Contains(
+          std::make_pair("--net", base::StringPrintf(
+                                      "packed-queue=true,tap-fd=%d", raw_fd_2)))
+          .Times(1));
 }
 
 }  // namespace vm_tools::concierge

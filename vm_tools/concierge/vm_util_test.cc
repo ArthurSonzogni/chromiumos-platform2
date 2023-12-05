@@ -4,11 +4,12 @@
 
 #include "vm_tools/concierge/vm_util.h"
 
+#include <optional>
+
 #include <base/containers/contains.h>
 #include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <optional>
 
 #include "vm_tools/concierge/fake_crosvm_control.h"
 
