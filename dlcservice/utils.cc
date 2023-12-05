@@ -271,7 +271,7 @@ bool CopyAndHashFile(const base::FilePath& from,
       return false;
     }
     if (f_to.WriteAtCurrentPos(buf.data(), bytes) != bytes) {
-      PLOG(ERROR) << "Failed to write to file at " << from.value();
+      PLOG(ERROR) << "Failed to write " << from.value() << " to " << to.value();
       return false;
     }
     hash->Update(buf.data(), bytes);
