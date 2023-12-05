@@ -17,9 +17,9 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/string_piece.h>
 #include <base/time/time.h>
+#include <policy/libpolicy.h>
 
 #include "metrics/metrics_writer.h"
-#include "policy/libpolicy.h"
 
 class MetricsLibraryInterface {
  public:

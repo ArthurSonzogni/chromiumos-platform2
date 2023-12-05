@@ -4,8 +4,16 @@
 
 #include "metrics/metrics_library.h"
 
+#include <sys/file.h>
+#include <sys/stat.h>
+
+#include <cstddef>
+#include <cstdio>
+#include <cstring>
 #include <memory>
+#include <optional>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/files/file_enumerator.h>
@@ -13,28 +21,19 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <base/uuid.h>
 #include <brillo/files/safe_fd.h>
 #include <errno.h>
+#include <policy/device_policy.h>
 #include <session_manager/dbus-proxies.h>
-#include <sys/file.h>
-#include <sys/stat.h>
 
-#include <cstddef>
-#include <cstdio>
-#include <cstring>
-#include <optional>
-#include <vector>
-
-#include "base/memory/scoped_refptr.h"
 #include "metrics/metrics_writer.h"
 #include "metrics/serialization/metric_sample.h"
 #include "metrics/serialization/serialization_utils.h"
-
-#include "policy/device_policy.h"
 
 using brillo::SafeFD;
 using org::chromium::SessionManagerInterfaceProxy;
