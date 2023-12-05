@@ -57,9 +57,20 @@ static inline __attribute__((always_inline)) void fill_image_info(
   image_info->uid = BPF_CORE_READ(bprm, file, f_inode, i_uid.val);
   image_info->gid = BPF_CORE_READ(bprm, file, f_inode, i_gid.val);
   image_info->mode = BPF_CORE_READ(bprm, file, f_inode, i_mode);
+  // Starting with Linux kernel v6.7-rc1, commit 12cd4402365 ("fs: rename
+  // inode i_atime and i_mtime fields"), the field name changed.
+  //
+  // We can remove the guard after all ChromeOS kernels use __i_mtime.
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
+  image_info->mtime.tv_sec =
+      BPF_CORE_READ(bprm, file, f_inode, __i_mtime.tv_sec);
+  image_info->mtime.tv_nsec =
+      BPF_CORE_READ(bprm, file, f_inode, __i_mtime.tv_nsec);
+#else
   image_info->mtime.tv_sec = BPF_CORE_READ(bprm, file, f_inode, i_mtime.tv_sec);
   image_info->mtime.tv_nsec =
       BPF_CORE_READ(bprm, file, f_inode, i_mtime.tv_nsec);
+#endif
   // Starts from Linux kernel v6.6-rc1, commit 13bc24457850 ("fs: rename
   // i_ctime field to __i_ctime"), the field name changed.
   //
