@@ -535,7 +535,7 @@ void ChromiumCommandBuilder::AddUiFlags() {
     AddArg("--enable-native-gpu-memory-buffers");
 
   if (UseFlagIsSet("disable_cros_video_decoder"))
-    AddArg("--platform-disallows-chromeos-direct-video-decoder");
+    AddFeatureDisableOverride("UseChromeOSDirectVideoDecoder");
 
   if (UseFlagIsSet("arc_disable_cros_video_decoder"))
     AddFeatureDisableOverride("ArcVideoDecoder");
