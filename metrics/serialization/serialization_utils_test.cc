@@ -482,21 +482,26 @@ TEST_F(SerializationUtilsTest,
 }
 
 // Tests that WriteMetricsToFile() writes the sample metric to file on the
-// second attempt. Another process is created at the start of the test to grab
-// the file lock, causing the first attempt to fail. The process is then killed,
-// freeing the lock for the second attempt.
+// fifth attempt. Another process is created at the start of the test to grab
+// the file lock, causing the first through fourth attempts to fail. The process
+// is then killed, freeing the lock for the fifth attempt.
 TEST_F(SerializationUtilsTest,
-       WriteMetricsToFile_UseNonBlockingLock_GetLockOnSecondAttempt) {
+       WriteMetricsToFile_UseNonBlockingLock_GetLockOnFifthAttempt) {
   auto lock_process = LockFile(filepath_);
   bool cb_run = false;
+  size_t acquire_lock_attempts = 0;
   EXPECT_TRUE(SerializationUtils::WriteMetricsToFile(
       {MetricSample::CrashSample("mycrash", /*num_samples=*/1)}, filename_,
       /*use_nonblocking_lock=*/true,
       base::BindLambdaForTesting(
-          [&lock_process, &cb_run](base::TimeDelta sleep_time) {
+          [&lock_process, &cb_run,
+           &acquire_lock_attempts](base::TimeDelta sleep_time) {
             cb_run = true;
-            lock_process->Kill(SIGKILL, /*timeout=*/5);
-            lock_process->Wait();
+            ++acquire_lock_attempts;
+            if (acquire_lock_attempts == 4) {
+              lock_process->Kill(SIGKILL, /*timeout=*/5);
+              lock_process->Wait();
+            }
           })));
   EXPECT_TRUE(cb_run);
 

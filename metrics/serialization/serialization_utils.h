@@ -44,9 +44,9 @@ bool ReadAndTruncateMetricsFromFile(const std::string& filename,
 //
 //  Will block by default if unable to grab the lock to |filename|. If
 //  |use_nonblocking_lock| is set, the function tries to grab the lock with a
-//  maximum of two attempts, sleeping between each attempt to give time for the
+//  maximum of five attempts, sleeping between each attempt to give time for the
 //  lock to be freed by the holding process. If the function is not able to grab
-//  the lock after two attempts, it will not write the sample to |filename|.
+//  the lock after five attempts, it will not write the sample to |filename|.
 //
 //  NB: the file will never leave the device so message_size will be written
 //  with the architecture's endianness.
@@ -57,12 +57,12 @@ bool WriteMetricsToFile(const std::vector<MetricSample>& samples,
 // Same as above, but user must explicitly specify:
 //  * if the function should block if unable to grab the lock to |filename|
 //  * a callback to run if the function is unable to grab the lock on the first
-//    attempt
+//    through fourth attempts.
 bool WriteMetricsToFile(
     const std::vector<MetricSample>& samples,
     const std::string& filename,
     bool use_nonblocking_lock,
-    base::OnceCallback<void(base::TimeDelta)> sleep_function);
+    base::RepeatingCallback<void(base::TimeDelta)> sleep_function);
 
 // Maximum length of a serialized message.
 static const size_t kMessageMaxLength = 1024;

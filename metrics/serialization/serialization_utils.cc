@@ -162,25 +162,31 @@ bool ReadMessage(int fd, std::string* message_out, size_t* bytes_used_out) {
 
 // Attempts to acquire the lock to |file_descriptor|.
 //
-// If |use_nonblocking_lock| is set to true, this function does at most two
-// nonblocking attempts to acquire the lock. If the first attempt fails,
-// |sleep_function| will run before trying again, giving time for the lock to
-// become available.
+// If |use_nonblocking_lock| is set to true, this function does at most five
+// nonblocking attempts to acquire the lock. If the first through fourth
+// attempts fails, |sleep_function| will run before trying again, giving time
+// for the lock to become available.
 //
 // If |use_nonblocking_lock| is set to false, this function blocks if unable to
 // acquire the file lock.
-bool AcquireLock(const base::ScopedFD& file_descriptor,
-                 bool use_nonblocking_lock,
-                 base::OnceCallback<void(base::TimeDelta)> sleep_function) {
+bool AcquireLock(
+    const base::ScopedFD& file_descriptor,
+    bool use_nonblocking_lock,
+    base::RepeatingCallback<void(base::TimeDelta)> sleep_function) {
   int flags = LOCK_EX;
   if (use_nonblocking_lock) {
     flags |= LOCK_NB;
-    if (HANDLE_EINTR(flock(file_descriptor.get(), flags)) == 0) {
-      return true;
+    size_t acquire_lock_attempts = 1;
+    while (acquire_lock_attempts < 5) {
+      if (HANDLE_EINTR(flock(file_descriptor.get(), flags)) == 0) {
+        return true;
+      }
+      sleep_function.Run(kWaitForLockAvailableSleepTime);
+      ++acquire_lock_attempts;
     }
-    std::move(sleep_function).Run(kWaitForLockAvailableSleepTime);
   }
 
+  // Fifth attempt to grab the lock.
   return HANDLE_EINTR(flock(file_descriptor.get(), flags)) == 0;
 }
 
@@ -303,14 +309,14 @@ bool SerializationUtils::WriteMetricsToFile(
     const std::string& filename,
     bool use_nonblocking_lock) {
   return WriteMetricsToFile(samples, filename, use_nonblocking_lock,
-                            base::BindOnce(&base::PlatformThread::Sleep));
+                            base::BindRepeating(&base::PlatformThread::Sleep));
 }
 
 bool SerializationUtils::WriteMetricsToFile(
     const std::vector<MetricSample>& samples,
     const std::string& filename,
     bool use_nonblocking_lock,
-    base::OnceCallback<void(base::TimeDelta)> sleep_function) {
+    base::RepeatingCallback<void(base::TimeDelta)> sleep_function) {
   std::string output;
   for (const auto& sample : samples) {
     if (!sample.IsValid()) {
