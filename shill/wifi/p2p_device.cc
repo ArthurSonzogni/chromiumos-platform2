@@ -111,22 +111,44 @@ bool P2PDevice::Stop() {
 
 bool P2PDevice::CreateGroup(std::unique_ptr<P2PService> service) {
   if (state_ != P2PDeviceState::kReady) {
-    LOG(WARNING) << log_name() << ": Tried to create group while in state "
-                 << P2PDeviceStateName(state_);
+    LOG(ERROR) << log_name() << ": Tried to create group while in state "
+               << P2PDeviceStateName(state_);
     return false;
   }
+  CHECK(service);
+  if (service_) {
+    LOG(ERROR) << log_name()
+               << ": Attempted to create group on a device which already has a "
+                  "service configured.";
+    return false;
+  }
+  KeyValueStore properties = service->GetSupplicantConfigurationParameters();
+  if (!StartSupplicantGroupForGO(properties)) {
+    return false;
+  }
+  SetService(std::move(service));
   SetState(P2PDeviceState::kGOStarting);
-  return SetService(std::move(service));
+  // TODO(b/308081318): set service up on GroupStarted or NetworkStarted
+  // service_->SetState(LocalService::LocalServiceState::kStateUp);
+  return true;
 }
 
 bool P2PDevice::Connect(std::unique_ptr<P2PService> service) {
   if (state_ != P2PDeviceState::kReady) {
-    LOG(WARNING) << log_name() << ": Tried to connect while in state "
-                 << P2PDeviceStateName(state_);
+    LOG(ERROR) << log_name() << ": Tried to connect while in state "
+               << P2PDeviceStateName(state_);
     return false;
   }
+  CHECK(service);
+  if (service_) {
+    LOG(ERROR) << log_name()
+               << ": Attempted to connect to group on a device which already "
+                  "has a service configured.";
+    return false;
+  }
+  SetService(std::move(service));
   SetState(P2PDeviceState::kClientAssociating);
-  return SetService(std::move(service));
+  return true;
 }
 
 bool P2PDevice::RemoveGroup() {
@@ -135,7 +157,9 @@ bool P2PDevice::RemoveGroup() {
                  << P2PDeviceStateName(state_);
     return false;
   }
+  FinishSupplicantGroup();
   SetState(P2PDeviceState::kGOStopping);
+  // TODO(b/308081318): delete service on GroupFinished
   DeleteService();
   return true;
 }
@@ -165,18 +189,46 @@ bool P2PDevice::InClientState() const {
           state_ == P2PDeviceState::kClientDisconnecting);
 }
 
-bool P2PDevice::SetService(std::unique_ptr<P2PService> service) {
-  CHECK(service);
-  if (service_) {
-    // Device has service configured.
+SupplicantP2PDeviceProxyInterface* P2PDevice::SupplicantPrimaryP2PDeviceProxy()
+    const {
+  return manager()
+      ->wifi_provider()
+      ->p2p_manager()
+      ->SupplicantPrimaryP2PDeviceProxy();
+}
+
+bool P2PDevice::StartSupplicantGroupForGO(const KeyValueStore& properties) {
+  if (!SupplicantPrimaryP2PDeviceProxy()) {
     LOG(ERROR) << log_name()
-               << ": Attempted to set service on a device which "
-                  "already has a service configured.";
+               << ": Tried to start group while the primary P2PDevice proxy is "
+                  "not connected";
     return false;
   }
+  if (!SupplicantPrimaryP2PDeviceProxy()->GroupAdd(properties)) {
+    LOG(ERROR) << log_name()
+               << ": Failed to GroupAdd via the primary P2PDevice proxy";
+    return false;
+  }
+  return true;
+}
+
+bool P2PDevice::FinishSupplicantGroup() {
+  if (!supplicant_p2pdevice_proxy_) {
+    LOG(ERROR)
+        << log_name()
+        << ": Tried to stop group while P2PDevice proxy is not connected";
+    return false;
+  }
+  if (!supplicant_p2pdevice_proxy_->Disconnect()) {
+    LOG(ERROR) << log_name() << ": Failed to Disconnect via P2PDevice proxy";
+    return false;
+  }
+  return true;
+}
+
+void P2PDevice::SetService(std::unique_ptr<P2PService> service) {
   service_ = std::move(service);
   service_->SetState(LocalService::LocalServiceState::kStateStarting);
-  return true;
 }
 
 void P2PDevice::DeleteService() {
@@ -198,17 +250,15 @@ void P2PDevice::SetState(P2PDeviceState state) {
 bool P2PDevice::ConnectToSupplicantP2PDeviceProxy(
     const RpcIdentifier& interface) {
   if (supplicant_p2pdevice_proxy_) {
-    LOG(WARNING) << log_name()
-                 << ": Tried to connect to P2PDevice proxy while "
-                    "already connected";
+    LOG(WARNING)
+        << log_name()
+        << ": Tried to connect to P2PDevice proxy while already connected";
     return false;
   }
   supplicant_p2pdevice_proxy_ =
       ControlInterface()->CreateSupplicantP2PDeviceProxy(this, interface);
   if (!supplicant_p2pdevice_proxy_) {
-    LOG(ERROR) << log_name()
-               << ": Failed to connect to P2PDevice proxy, "
-                  "path: "
+    LOG(ERROR) << log_name() << ": Failed to connect to P2PDevice proxy, path: "
                << interface.value();
     return false;
   }

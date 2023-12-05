@@ -102,7 +102,7 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   SupplicantProcessProxyInterface* SupplicantProcessProxy() const;
   ControlInterface* ControlInterface() const;
   EventDispatcher* Dispatcher() const;
-  Manager* manager() { return manager_; }
+  Manager* manager() const { return manager_; }
   std::optional<std::string> link_name_;
 
  private:

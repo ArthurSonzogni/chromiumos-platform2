@@ -306,6 +306,7 @@ class WiFiProvider : public ProviderInterface {
 
  private:
   friend class WiFiProviderTest;
+  friend class P2PDeviceTest;
 
   using EndpointServiceMap = std::map<const WiFiEndpoint*, WiFiServiceRefPtr>;
   using PasspointCredentialsMap =

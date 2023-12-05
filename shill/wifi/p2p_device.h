@@ -113,6 +113,8 @@ class P2PDevice : public LocalDevice,
  private:
   friend class P2PDeviceTest;
   FRIEND_TEST(P2PDeviceTest, DeviceOnOff);
+  FRIEND_TEST(P2PDeviceTest, CreateAndRemove);
+  FRIEND_TEST(P2PDeviceTest, BadState_GO);
   FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantP2PDeviceProxy);
   FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantP2PDeviceProxy_WhileConnected);
   FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantP2PDeviceProxy_Failure);
@@ -121,7 +123,7 @@ class P2PDevice : public LocalDevice,
   FRIEND_TEST(P2PDeviceTest, GroupStartedAndFinished);
 
   // Set service_ to |service|.
-  bool SetService(std::unique_ptr<P2PService> service);
+  void SetService(std::unique_ptr<P2PService> service);
 
   // Delete service_.
   void DeleteService();
@@ -138,6 +140,15 @@ class P2PDevice : public LocalDevice,
 
   // Disconnect from wpa_supplicant p2p device proxy on GroupFinished signal.
   void DisconnectFromSupplicantP2PDeviceProxy();
+
+  // Returns wpa_supplicant p2p device proxy of the primary network interface.
+  SupplicantP2PDeviceProxyInterface* SupplicantPrimaryP2PDeviceProxy() const;
+
+  // These helper methods delegate group start/finish requests from P2PManager
+  // to the wpa_supplicant D-Bus method calls. On success they result with
+  // GroupStarted/GroupFinished signal, respectively.
+  bool StartSupplicantGroupForGO(const KeyValueStore& properties);
+  bool FinishSupplicantGroup();
 
   // These helper methods provide final operations for group setup/teardown
   // which are executed on wpa_supplicant GroupStarted/GroupFinished signal,

@@ -25,7 +25,7 @@ class MockP2PManager : public P2PManager {
   ~MockP2PManager() override = default;
 
   MOCK_METHOD(SupplicantP2PDeviceProxyInterface*,
-              SupplicantP2PDeviceProxy,
+              SupplicantPrimaryP2PDeviceProxy,
               (),
               (const));
 };
