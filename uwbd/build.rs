@@ -87,7 +87,7 @@ fn build_nxp_hal() {
         .cpp_set_stdlib("c++")
         .cpp_link_stdlib("c++")
         .flag("-std=c++20")
-        .define("OS_CHROMEOS", "None")
+        .define("OS_CHROMEOS", "1")
         .include("nxp_hal/extns/inc")
         .include("nxp_hal/halimpl/fwd/sr1xx")
         .include("nxp_hal/halimpl/hal")
@@ -107,7 +107,10 @@ fn build_nxp_hal() {
         })
     }
 
-    builder.compile("nxphal");
+    builder
+        .try_flags_from_environment("CPPFLAGS")
+        .expect("CPPFLAGS must be specified and UTF-8")
+        .compile("nxphal");
 }
 
 /// Generates the FFI bindings to the nxphal lib using Bindgen
