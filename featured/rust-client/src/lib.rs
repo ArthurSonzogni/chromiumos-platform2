@@ -14,6 +14,9 @@
 mod bindings;
 use crate::bindings::*;
 
+use dbus::channel::MatchingReceiver;
+use dbus::message::MatchRule;
+use dbus::nonblock::SyncConnection;
 use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
@@ -328,6 +331,25 @@ impl Drop for SafeHandle {
             unsafe { FakeCFeatureLibraryDelete(self.handle) }
         }
     }
+}
+
+/// Register a callback to run whenever it is required to refetch feature
+/// state (that is, whenever chrome restarts).
+pub async fn listen_for_refetch_needed<T: FnMut() + Send + 'static>(
+    conn: &SyncConnection,
+    mut signal_callback: T,
+) -> Result<(), dbus::Error> {
+    let refetch_signal = MatchRule::new_signal("org.chromium.feature_lib", "RefetchFeatureState");
+    conn.add_match_no_cb(&refetch_signal.match_str()).await?;
+
+    conn.start_receive(
+        refetch_signal,
+        Box::new(move |_, _| {
+            signal_callback();
+            true
+        }),
+    );
+    Ok(())
 }
 
 /// A platform specific featured client, used to communicate to featured via the
