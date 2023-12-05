@@ -1432,8 +1432,7 @@ void WiFiProvider::SetRegDomain(std::string country) {
   ReqSetRegMessage set_reg;
   set_reg.attributes()->SetStringAttributeValue(NL80211_ATTR_REG_ALPHA2,
                                                 country);
-  LOG(INFO) << "Requesting region change from: " << country_.value_or("null")
-            << " to: " << country;
+  LOG(INFO) << "Setting region change to: " << country;
   set_reg.Send(
       netlink_manager_,
       base::RepeatingCallback<void(const Nl80211Message&)>(),  //  null handler
@@ -1456,12 +1455,8 @@ void WiFiProvider::ResetRegDomain() {
 void WiFiProvider::UpdateRegAndPhyInfo(base::OnceClosure phy_ready_callback) {
   auto cellular_country = manager_->GetCellularOperatorCountryCode();
   LOG(INFO) << __func__ << ": cellular country is "
-            << cellular_country.value_or("null") << ", own country is "
-            << country_.value_or("null");
-  if (cellular_country.has_value() &&
-      (!country_.has_value() ||
-       base::CompareCaseInsensitiveASCII(cellular_country.value(),
-                                         country_.value()))) {
+            << cellular_country.value_or("null");
+  if (cellular_country.has_value()) {
     phy_info_ready_cb_ = std::move(phy_ready_callback);
     SetRegDomain(cellular_country.value());
     phy_update_timeout_cb_.Reset(
@@ -1470,14 +1465,9 @@ void WiFiProvider::UpdateRegAndPhyInfo(base::OnceClosure phy_ready_callback) {
 
     manager_->dispatcher()->PostDelayedTask(
         FROM_HERE, phy_update_timeout_cb_.callback(), kPhyUpdateTimeout);
-    return;
-  } else if (!country_.has_value()) {
-    // The WiFiPhy has not sync its phy info with kernel yet, request an update.
+  } else {
     UpdatePhyInfo(std::move(phy_ready_callback));
-    return;
   }
-
-  std::move(phy_ready_callback).Run();
 }
 
 void WiFiProvider::UpdatePhyInfo(base::OnceClosure phy_ready_callback) {
@@ -1501,7 +1491,6 @@ void WiFiProvider::PhyUpdateTimeout() {
 
 void WiFiProvider::RegionChanged(const std::string& country) {
   LOG(INFO) << __func__ << ": Country notification: " << country;
-  country_ = country;
   GetPhyInfo(kAllPhys);
 }
 

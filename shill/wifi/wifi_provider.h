@@ -394,8 +394,6 @@ class WiFiProvider : public ProviderInterface {
   // Holds reference pointers to all WiFi Local devices with the link name as
   // the map key.
   std::map<std::string, LocalDeviceRefPtr> local_devices_;
-  // Regulatory information: ISO 3166 alpha2 country code (e.g. "US") if known.
-  std::optional<std::string> country_;
   // Callbacks used during process of region/phy update (initiated by
   // a UpdateRegAndPhy() function).
   base::CancelableOnceClosure phy_update_timeout_cb_;

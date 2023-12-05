@@ -372,7 +372,6 @@ const uint8_t kActiveScanTriggerNlMsg[] = {
     0xad, 0x16, 0x00, 0x00, 0x08, 0x00, 0x20, 0x00, 0xc1, 0x16, 0x00, 0x00};
 
 const char kUS_Alpha2[] = "US";
-const char kWorld_Alpha2[] = "00";
 
 constexpr base::TimeDelta kPhyUpdateTimeout = base::Milliseconds(500);
 constexpr uint32_t kAllPhys = UINT32_MAX;
@@ -697,8 +696,6 @@ class WiFiProviderTest : public testing::Test {
         new NiceMock<MockLocalDevice>(&manager_, type, link_name, 0, cb.Get());
     return dev;
   }
-
-  void SetCountry(std::string alpha2) { provider_->country_ = alpha2; }
 
   void OnGetPhyInfoAuxMessage(uint32_t phy_index,
                               NetlinkManager::AuxiliaryMessageType type,
@@ -2642,24 +2639,7 @@ TEST_F(WiFiProviderTest, CreateHotspotDeviceForTest) {
   EXPECT_EQ(provider_->local_devices_[*(device->link_name())], device);
 }
 
-TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_NoChange) {
-  // With region domains set correctly the notification callback should be
-  // called immediately signaling no change ('false' as argument).
-  SetCountry(kUS_Alpha2);
-  EXPECT_CALL(manager_, GetCellularOperatorCountryCode())
-      .WillOnce(Return(kUS_Alpha2));
-  int times_called = 0;
-  provider_->UpdateRegAndPhyInfo(
-      base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
-  EXPECT_EQ(times_called, 1);
-  EXPECT_TRUE(IsPhyUpdateTimeoutCbCancelled());
-}
-
 TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_Timeout) {
-  // With different region domains we expect to request domain and phy update,
-  // however our request might not get a reply, so we should time out and run
-  // the callback.
-  SetCountry(kWorld_Alpha2);
   EXPECT_CALL(manager_, GetCellularOperatorCountryCode())
       .WillOnce(Return(kUS_Alpha2));
   int times_called = 0;
@@ -2678,8 +2658,6 @@ TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_Timeout) {
 
 TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_Success) {
   MockWiFiPhy* phy = AddMockPhy(kNewWiphyNlMsg_WiphyIndex);
-  // With different region domains we expect to request domain and phy update.
-  SetCountry(kWorld_Alpha2);
   EXPECT_CALL(manager_, GetCellularOperatorCountryCode())
       .WillOnce(Return(kUS_Alpha2));
   int times_called = 0;
@@ -2704,10 +2682,9 @@ TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_Success) {
   EXPECT_TRUE(IsPhyUpdateTimeoutCbCancelled());
 }
 
-TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_NoCellularNoCountry) {
+TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_NoCellularCountry) {
   MockWiFiPhy* phy = AddMockPhy(kNewWiphyNlMsg_WiphyIndex);
-  // If celluar cannot provide region code and WiFiProvider does not have coutry
-  // info yet, should request to do a sync.
+  // If celluar cannot provide region code, shill should request to do a sync.
   EXPECT_CALL(manager_, GetCellularOperatorCountryCode())
       .WillOnce(Return(std::nullopt));
   int times_called = 0;
