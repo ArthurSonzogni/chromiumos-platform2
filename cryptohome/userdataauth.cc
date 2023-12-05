@@ -3211,6 +3211,15 @@ void UserDataAuth::CreatePersistentUserWithSession(
 
   PopulateAuthSessionProperties(auth_session, reply.mutable_auth_properties());
   reply.set_sanitized_username(*auth_session->obfuscated_username());
+
+  // Send a special authentication complete to signal that a new user was
+  // created and signed in.
+  if (!authenticate_auth_factor_completed_callback_.is_null()) {
+    user_data_auth::AuthenticateAuthFactorCompleted completed_proto;
+    completed_proto.set_user_creation(true);
+    authenticate_auth_factor_completed_callback_.Run(completed_proto);
+  }
+
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 
