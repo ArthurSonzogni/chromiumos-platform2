@@ -238,10 +238,7 @@ const uint8_t GetRegMessage::kCommand = NL80211_CMD_GET_REG;
 const char GetRegMessage::kCommandString[] = "NL80211_CMD_GET_REG";
 
 GetRegMessage::GetRegMessage() : Nl80211Message(kCommand, kCommandString) {
-  attributes()->CreateAttribute(
-      NL80211_ATTR_WIPHY,
-      base::BindRepeating(&NewNl80211AttributeFromId,
-                          NetlinkMessage::MessageContext()));
+  CreateNl80211Attribute(attributes().get(), NL80211_ATTR_WIPHY);
 }
 
 const uint8_t ReqSetRegMessage::kCommand = NL80211_CMD_REQ_SET_REG;
@@ -251,10 +248,7 @@ ReqSetRegMessage::ReqSetRegMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateU32Attribute(NL80211_ATTR_USER_REG_HINT_TYPE,
                                    "NL80211_ATTR_USER_REG_HINT_TYPE");
-  attributes()->CreateAttribute(
-      NL80211_ATTR_REG_ALPHA2,
-      base::BindRepeating(&NewNl80211AttributeFromId,
-                          NetlinkMessage::MessageContext()));
+  CreateNl80211Attribute(attributes().get(), NL80211_ATTR_REG_ALPHA2);
 }
 
 const uint8_t GetStationMessage::kCommand = NL80211_CMD_GET_STATION;
@@ -262,13 +256,8 @@ const char GetStationMessage::kCommandString[] = "NL80211_CMD_GET_STATION";
 
 GetStationMessage::GetStationMessage()
     : Nl80211Message(kCommand, kCommandString) {
-  attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX,
-      base::BindRepeating(&NewNl80211AttributeFromId,
-                          NetlinkMessage::MessageContext()));
-  attributes()->CreateAttribute(
-      NL80211_ATTR_MAC, base::BindRepeating(&NewNl80211AttributeFromId,
-                                            NetlinkMessage::MessageContext()));
+  CreateNl80211Attribute(attributes().get(), NL80211_ATTR_IFINDEX);
+  CreateNl80211Attribute(attributes().get(), NL80211_ATTR_MAC);
 }
 
 const uint8_t SetWakeOnWiFiMessage::kCommand = NL80211_CMD_SET_WOWLAN;
@@ -281,16 +270,10 @@ const uint8_t GetWiphyMessage::kCommand = NL80211_CMD_GET_WIPHY;
 const char GetWiphyMessage::kCommandString[] = "NL80211_CMD_GET_WIPHY";
 
 GetWiphyMessage::GetWiphyMessage() : Nl80211Message(kCommand, kCommandString) {
-  attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX,
-      base::BindRepeating(&NewNl80211AttributeFromId,
-                          NetlinkMessage::MessageContext()));
+  CreateNl80211Attribute(attributes().get(), NL80211_ATTR_IFINDEX);
   attributes()->CreateFlagAttribute(NL80211_ATTR_SPLIT_WIPHY_DUMP,
                                     "Split wiphy dump");
-  attributes()->CreateAttribute(
-      NL80211_ATTR_WIPHY,
-      base::BindRepeating(&NewNl80211AttributeFromId,
-                          NetlinkMessage::MessageContext()));
+  CreateNl80211Attribute(attributes().get(), NL80211_ATTR_WIPHY);
 }
 
 const uint8_t JoinIbssMessage::kCommand = NL80211_CMD_JOIN_IBSS;
@@ -327,17 +310,9 @@ const char ProbeMeshLinkMessage::kCommandString[] =
 
 ProbeMeshLinkMessage::ProbeMeshLinkMessage()
     : Nl80211Message(kCommand, kCommandString) {
-  attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX,
-      base::BindRepeating(&NewNl80211AttributeFromId,
-                          NetlinkMessage::MessageContext()));
-  attributes()->CreateAttribute(
-      NL80211_ATTR_MAC, base::BindRepeating(&NewNl80211AttributeFromId,
-                                            NetlinkMessage::MessageContext()));
-  attributes()->CreateAttribute(
-      NL80211_ATTR_FRAME,
-      base::BindRepeating(&NewNl80211AttributeFromId,
-                          NetlinkMessage::MessageContext()));
+  CreateNl80211Attribute(attributes().get(), NL80211_ATTR_IFINDEX);
+  CreateNl80211Attribute(attributes().get(), NL80211_ATTR_MAC);
+  CreateNl80211Attribute(attributes().get(), NL80211_ATTR_FRAME);
 }
 
 const uint8_t RegBeaconHintMessage::kCommand = NL80211_CMD_REG_BEACON_HINT;
@@ -349,10 +324,7 @@ const char RegChangeMessage::kCommandString[] = "NL80211_CMD_REG_CHANGE";
 
 RegChangeMessage::RegChangeMessage()
     : Nl80211Message(kCommand, kCommandString) {
-  attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX,
-      base::BindRepeating(&NewNl80211AttributeFromId,
-                          NetlinkMessage::MessageContext()));
+  CreateNl80211Attribute(attributes().get(), NL80211_ATTR_IFINDEX);
 }
 
 const uint8_t RemainOnChannelMessage::kCommand = NL80211_CMD_REMAIN_ON_CHANNEL;
@@ -369,10 +341,7 @@ const uint8_t GetScanMessage::kCommand = NL80211_CMD_GET_SCAN;
 const char GetScanMessage::kCommandString[] = "NL80211_CMD_GET_SCAN";
 
 GetScanMessage::GetScanMessage() : Nl80211Message(kCommand, kCommandString) {
-  attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX,
-      base::BindRepeating(&NewNl80211AttributeFromId,
-                          NetlinkMessage::MessageContext()));
+  CreateNl80211Attribute(attributes().get(), NL80211_ATTR_IFINDEX);
 }
 
 const uint8_t TriggerScanMessage::kCommand = NL80211_CMD_TRIGGER_SCAN;
@@ -380,10 +349,7 @@ const char TriggerScanMessage::kCommandString[] = "NL80211_CMD_TRIGGER_SCAN";
 
 TriggerScanMessage::TriggerScanMessage()
     : Nl80211Message(kCommand, kCommandString) {
-  attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX,
-      base::BindRepeating(&NewNl80211AttributeFromId,
-                          NetlinkMessage::MessageContext()));
+  CreateNl80211Attribute(attributes().get(), NL80211_ATTR_IFINDEX);
 }
 
 const uint8_t UnprotDeauthenticateMessage::kCommand =
@@ -402,18 +368,12 @@ const char WiphyRegChangeMessage::kCommandString[] =
 
 WiphyRegChangeMessage::WiphyRegChangeMessage()
     : Nl80211Message(kCommand, kCommandString) {
-  attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX,
-      base::BindRepeating(&NewNl80211AttributeFromId,
-                          NetlinkMessage::MessageContext()));
+  CreateNl80211Attribute(attributes().get(), NL80211_ATTR_IFINDEX);
 }
 
 GetInterfaceMessage::GetInterfaceMessage()
     : Nl80211Message(kCommand, kCommandString) {
-  attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX,
-      base::BindRepeating(&NewNl80211AttributeFromId,
-                          NetlinkMessage::MessageContext()));
+  CreateNl80211Attribute(attributes().get(), NL80211_ATTR_IFINDEX);
 }
 
 const uint8_t GetInterfaceMessage::kCommand = NL80211_CMD_GET_INTERFACE;
@@ -427,10 +387,7 @@ const char GetSurveyMessage::kCommandString[] = "NL80211_CMD_GET_SURVEY";
 
 GetSurveyMessage::GetSurveyMessage()
     : Nl80211Message(kCommand, kCommandString) {
-  attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX,
-      base::BindRepeating(&NewNl80211AttributeFromId,
-                          NetlinkMessage::MessageContext()));
+  CreateNl80211Attribute(attributes().get(), NL80211_ATTR_IFINDEX);
   AddFlag(NLM_F_DUMP);
 }
 
@@ -443,13 +400,8 @@ const char GetMeshPathInfoMessage::kCommandString[] = "NL80211_CMD_GET_MPATH";
 
 GetMeshPathInfoMessage::GetMeshPathInfoMessage()
     : Nl80211Message(kCommand, kCommandString) {
-  attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX,
-      base::BindRepeating(&NewNl80211AttributeFromId,
-                          NetlinkMessage::MessageContext()));
-  attributes()->CreateAttribute(
-      NL80211_ATTR_MAC, base::BindRepeating(&NewNl80211AttributeFromId,
-                                            NetlinkMessage::MessageContext()));
+  CreateNl80211Attribute(attributes().get(), NL80211_ATTR_IFINDEX);
+  CreateNl80211Attribute(attributes().get(), NL80211_ATTR_MAC);
 }
 
 const uint8_t GetMeshProxyPathMessage::kCommand = NL80211_CMD_GET_MPP;
@@ -457,13 +409,8 @@ const char GetMeshProxyPathMessage::kCommandString[] = "NL80211_CMD_GET_MPP";
 
 GetMeshProxyPathMessage::GetMeshProxyPathMessage()
     : Nl80211Message(kCommand, kCommandString) {
-  attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX,
-      base::BindRepeating(&NewNl80211AttributeFromId,
-                          NetlinkMessage::MessageContext()));
-  attributes()->CreateAttribute(
-      NL80211_ATTR_MAC, base::BindRepeating(&NewNl80211AttributeFromId,
-                                            NetlinkMessage::MessageContext()));
+  CreateNl80211Attribute(attributes().get(), NL80211_ATTR_IFINDEX);
+  CreateNl80211Attribute(attributes().get(), NL80211_ATTR_MAC);
 }
 
 const uint8_t NewPeerCandidateMessage::kCommand =
