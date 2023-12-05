@@ -521,8 +521,8 @@ WiFiServiceRefPtr WiFiProvider::OnEndpointRemoved(
 
   WiFiServiceRefPtr service = FindServiceForEndpoint(endpoint);
 
-  CHECK(service) << "Can't find Service for Endpoint "
-                 << "(with BSSID " << endpoint->bssid_string() << ").";
+  CHECK(service) << "Can't find Service for Endpoint (with BSSID "
+                 << endpoint->bssid_string() << ").";
 
   std::string rmv_endpoint_log = base::StringPrintf(
       "Removed endpoint %s from service %s", endpoint->bssid_string().c_str(),
@@ -1139,8 +1139,8 @@ void WiFiProvider::GetPhyInfo(uint32_t phy_index) {
   }
   get_wiphy.attributes()->SetFlagAttributeValue(NL80211_ATTR_SPLIT_WIPHY_DUMP,
                                                 true);
-  netlink_manager_->SendNl80211Message(
-      &get_wiphy,
+  get_wiphy.Send(
+      netlink_manager_,
       base::BindRepeating(&WiFiProvider::OnNewWiphy,
                           weak_ptr_factory_while_started_.GetWeakPtr()),
       base::BindRepeating(&NetlinkManager::OnAckDoNothing),
@@ -1174,8 +1174,7 @@ void WiFiProvider::OnNewWiphy(const Nl80211Message& nl80211_message) {
 
 void WiFiProvider::HandleNetlinkBroadcast(const NetlinkMessage& message) {
   if (message.message_type() != Nl80211Message::GetMessageType()) {
-    SLOG(7) << __func__ << ": "
-            << "Not a NL80211 Message";
+    SLOG(7) << __func__ << ": Not a NL80211 Message";
     return;
   }
   const Nl80211Message& nl80211_message =
@@ -1431,8 +1430,8 @@ void WiFiProvider::SetRegDomain(std::string country) {
                                                 country);
   LOG(INFO) << "Requesting region change from: " << country_.value_or("null")
             << " to: " << country;
-  netlink_manager_->SendNl80211Message(
-      &set_reg,
+  set_reg.Send(
+      netlink_manager_,
       base::RepeatingCallback<void(const Nl80211Message&)>(),  //  null handler
       base::BindRepeating(&NetlinkManager::OnAckDoNothing),
       base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
@@ -1443,8 +1442,8 @@ void WiFiProvider::ResetRegDomain() {
   set_reg.attributes()->SetStringAttributeValue(NL80211_ATTR_REG_ALPHA2,
                                                 kWorldRegDomain);
   LOG(INFO) << "Resetting regulatory to world domain.";
-  netlink_manager_->SendNl80211Message(
-      &set_reg,
+  set_reg.Send(
+      netlink_manager_,
       base::RepeatingCallback<void(const Nl80211Message&)>(),  //  null handler
       base::BindRepeating(&NetlinkManager::OnAckDoNothing),
       base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
@@ -1503,7 +1502,8 @@ void WiFiProvider::RegionChanged(const std::string& country) {
 }
 
 void WiFiProvider::OnGetPhyInfoAuxMessage(
-    uint32_t phy_index, NetlinkManager::AuxiliaryMessageType type,
+    uint32_t phy_index,
+    NetlinkManager::AuxiliaryMessageType type,
     const NetlinkMessage* raw_message) {
   if (type != NetlinkManager::kDone) {
     NetlinkManager::OnNetlinkMessageError(type, raw_message);

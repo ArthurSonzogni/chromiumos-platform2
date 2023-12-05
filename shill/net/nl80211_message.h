@@ -13,6 +13,7 @@
 #include <base/no_destructor.h>
 
 #include "shill/net/generic_netlink_message.h"
+#include "shill/net/netlink_manager.h"
 #include "shill/net/shill_export.h"
 
 namespace shill {
@@ -23,6 +24,7 @@ class NetlinkPacket;
 // cfg80211 kernel module.
 class SHILL_EXPORT Nl80211Message : public GenericNetlinkMessage {
  public:
+  using Handler = base::RepeatingCallback<void(const Nl80211Message&)>;
   static const char kMessageTypeString[];
 
   // Describes the context of the netlink 80211 message for parsing purposes.
@@ -46,6 +48,15 @@ class SHILL_EXPORT Nl80211Message : public GenericNetlinkMessage {
 
   bool InitFromPacket(NetlinkPacket* packet, bool is_broadcast) override;
   bool InitFromPacketWithContext(NetlinkPacket* packet, const Context& context);
+
+  // Sends this netlink 80211 message to the kernel using the NetlinkManager
+  // socket after installing a handler to deal with the kernel's response to the
+  // message.
+  bool Send(
+      NetlinkManager* mgr,
+      const Handler& message_handler,
+      const NetlinkManager::NetlinkAckHandler& ack_handler,
+      const NetlinkManager::NetlinkAuxiliaryMessageHandler& error_handler);
 
   uint8_t command() const { return command_; }
   const char* command_string() const { return command_string_; }

@@ -1300,8 +1300,7 @@ void DeviceInfo::RetrieveLinkStatistics(int interface_index,
       base::span<const uint8_t>(stats_bytes)
           .subspan(0, sizeof(struct rtnl_link_stats64)));
 
-  SLOG(2) << "Link statistics for "
-          << " interface index " << interface_index << ": "
+  SLOG(2) << "Link statistics for interface index " << interface_index << ": "
           << "receive: " << stats.rx_bytes << "; "
           << "transmit: " << stats.tx_bytes << ".";
   infos_[interface_index].rx_bytes = stats.rx_bytes;
@@ -1332,12 +1331,11 @@ void DeviceInfo::GetWiFiInterfaceInfo(int interface_index) {
                   "determined!";
     return;
   }
-  netlink_manager_->SendNl80211Message(
-      &msg,
-      base::BindRepeating(&DeviceInfo::OnWiFiInterfaceInfoReceived,
-                          weak_factory_.GetWeakPtr()),
-      base::BindRepeating(&NetlinkManager::OnAckDoNothing),
-      base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
+  msg.Send(netlink_manager_,
+           base::BindRepeating(&DeviceInfo::OnWiFiInterfaceInfoReceived,
+                               weak_factory_.GetWeakPtr()),
+           base::BindRepeating(&NetlinkManager::OnAckDoNothing),
+           base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
 }
 
 void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message& msg) {

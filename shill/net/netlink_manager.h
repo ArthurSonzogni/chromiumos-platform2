@@ -79,7 +79,6 @@ namespace shill {
 
 class ControlNetlinkMessage;
 class NetlinkPacket;
-class Nl80211Message;
 
 // NetlinkManager is a singleton that coordinates sending netlink messages to,
 // and receiving netlink messages from, the kernel.  The first use of this is
@@ -104,8 +103,6 @@ class SHILL_EXPORT NetlinkManager {
       base::RepeatingCallback<void(const NetlinkMessage&)>;
   using ControlNetlinkMessageHandler =
       base::RepeatingCallback<void(const ControlNetlinkMessage&)>;
-  using Nl80211MessageHandler =
-      base::RepeatingCallback<void(const Nl80211Message&)>;
   // NetlinkAuxiliaryMessageHandler handles netlink error messages, things
   // like the DoneMessage at the end of a multi-part message, and any errors
   // discovered by |NetlinkManager| (which are passed as NULL pointers because
@@ -157,6 +154,7 @@ class SHILL_EXPORT NetlinkManager {
     NetlinkAuxiliaryMessageHandler error_handler_;
     base::TimeTicks delete_after_;
   };
+  using NetlinkResponseHandlerRefPtr = scoped_refptr<NetlinkResponseHandler>;
 
   // Encapsulates all the different things we know about a specific message
   // type like its name, and its id.
@@ -231,11 +229,11 @@ class SHILL_EXPORT NetlinkManager {
       const ControlNetlinkMessageHandler& message_handler,
       const NetlinkAckHandler& ack_handler,
       const NetlinkAuxiliaryMessageHandler& error_handler);
-  virtual bool SendNl80211Message(
-      Nl80211Message* message,
-      const Nl80211MessageHandler& message_handler,
-      const NetlinkAckHandler& ack_handler,
-      const NetlinkAuxiliaryMessageHandler& error_handler);
+
+  // Sends a netlink message if |pending_dump_| is false. Otherwise, post
+  // a message to |pending_messages_| to be sent later.
+  virtual bool SendOrPostMessage(NetlinkMessage* message,
+                                 NetlinkResponseHandlerRefPtr message_wrapper);
 
   // Get string version of NetlinkMessage for logging purposes
   static std::string GetRawMessage(const NetlinkMessage* raw_message);
@@ -293,8 +291,6 @@ class SHILL_EXPORT NetlinkManager {
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_NEW_STATION);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_NOTIFY_CQM);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_TRIGGER_SCAN);
-
-  using NetlinkResponseHandlerRefPtr = scoped_refptr<NetlinkResponseHandler>;
 
   // Container for information we need to send a netlink message out on a
   // netlink socket.
@@ -364,11 +360,6 @@ class SHILL_EXPORT NetlinkManager {
 
   // Handles a CTRL_CMD_NEWFAMILY message from the kernel.
   void OnNewFamilyMessage(const ControlNetlinkMessage& message);
-
-  // Sends a netlink message if |pending_dump_| is false. Otherwise, post
-  // a message to |pending_messages_| to be sent later.
-  bool SendOrPostMessage(NetlinkMessage* message,
-                         NetlinkResponseHandlerRefPtr message_wrapper);
 
   // Install a handler to deal with kernel's response to the message contained
   // in |pending_message|, then sends the message by calling

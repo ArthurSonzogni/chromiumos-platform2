@@ -468,9 +468,8 @@ TEST_F(DeviceInfoTest, CreateDeviceWiFi) {
   // Set the nl80211 message type to some non-default value.
   Nl80211Message::SetMessageType(1234);
 
-  EXPECT_CALL(
-      netlink_manager_,
-      SendNl80211Message(IsGetInterfaceMessage(kTestDeviceIndex), _, _, _));
+  EXPECT_CALL(netlink_manager_,
+              SendOrPostMessage(IsGetInterfaceMessage(kTestDeviceIndex), _));
   EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
                             Technology::kWiFi));
 }

@@ -3044,8 +3044,8 @@ void WiFi::TriggerPassiveScan(const FreqSet& freqs) {
     }
   }
 
-  netlink_manager_->SendNl80211Message(
-      &trigger_scan,
+  trigger_scan.Send(
+      netlink_manager_,
       base::BindRepeating(&WiFi::OnTriggerPassiveScanResponse,
                           weak_ptr_factory_while_started_.GetWeakPtr()),
       base::BindRepeating(&NetlinkManager::OnAckDoNothing),
@@ -3548,8 +3548,8 @@ void WiFi::GetPhyInfo() {
                                                interface_index());
   get_wiphy.attributes()->SetFlagAttributeValue(NL80211_ATTR_SPLIT_WIPHY_DUMP,
                                                 true);
-  netlink_manager_->SendNl80211Message(
-      &get_wiphy,
+  get_wiphy.Send(
+      netlink_manager_,
       base::BindRepeating(&WiFi::OnNewWiphy,
                           weak_ptr_factory_while_started_.GetWeakPtr()),
       base::BindRepeating(&NetlinkManager::OnAckDoNothing),
@@ -3613,8 +3613,8 @@ void WiFi::OnGetPhyInfoAuxMessage(NetlinkManager::AuxiliaryMessageType type,
 void WiFi::GetRegulatory() {
   GetRegMessage reg_msg;
   reg_msg.attributes()->SetU32AttributeValue(NL80211_ATTR_WIPHY, phy_index_);
-  netlink_manager_->SendNl80211Message(
-      &reg_msg,
+  reg_msg.Send(
+      netlink_manager_,
       base::BindRepeating(&WiFi::OnGetReg,
                           weak_ptr_factory_while_started_.GetWeakPtr()),
       base::BindRepeating(&NetlinkManager::OnAckDoNothing),

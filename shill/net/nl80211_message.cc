@@ -37,6 +37,50 @@
 #include "shill/net/nl80211_attribute.h"
 
 namespace shill {
+namespace {
+
+class Nl80211ResponseHandler : public NetlinkManager::NetlinkResponseHandler {
+ public:
+  Nl80211ResponseHandler(
+      const NetlinkManager::NetlinkAckHandler& ack_handler,
+      const NetlinkManager::NetlinkAuxiliaryMessageHandler& error_handler,
+      const Nl80211Message::Handler& handler)
+      : NetlinkManager::NetlinkResponseHandler(ack_handler, error_handler),
+        handler_(handler) {}
+  Nl80211ResponseHandler(const Nl80211ResponseHandler&) = delete;
+  Nl80211ResponseHandler& operator=(const Nl80211ResponseHandler&) = delete;
+
+  bool HandleMessage(const NetlinkMessage& netlink_message) const override {
+    if (netlink_message.message_type() != Nl80211Message::GetMessageType()) {
+      LOG(ERROR) << "Message is type " << netlink_message.message_type()
+                 << ", not " << Nl80211Message::GetMessageType()
+                 << " (Nl80211).";
+      return false;
+    }
+    if (!handler_.is_null()) {
+      const Nl80211Message* message =
+          static_cast<const Nl80211Message*>(&netlink_message);
+      handler_.Run(*message);
+    }
+    return true;
+  }
+
+  bool HandleAck() const override {
+    if (handler_.is_null()) {
+      return NetlinkManager::NetlinkResponseHandler::HandleAck();
+    } else {
+      bool remove_callbacks = false;
+      NetlinkManager::NetlinkResponseHandler::ack_handler_.Run(
+          &remove_callbacks);
+      return remove_callbacks;
+    }
+  }
+
+ private:
+  Nl80211Message::Handler handler_;
+};
+
+}  // namespace
 
 const uint8_t Nl80211Frame::kFrameTypeMask = 0xfc;
 
@@ -86,6 +130,17 @@ bool Nl80211Message::InitFromPacketWithContext(NetlinkPacket* packet,
 
   return packet->ConsumeAttributes(
       base::BindRepeating(&NewNl80211AttributeFromId, context), attributes_);
+}
+
+bool Nl80211Message::Send(
+    NetlinkManager* netlink_manager,
+    const Handler& message_handler,
+    const NetlinkManager::NetlinkAckHandler& ack_handler,
+    const NetlinkManager::NetlinkAuxiliaryMessageHandler& error_handler) {
+  return netlink_manager->SendOrPostMessage(
+      this,
+      NetlinkManager::NetlinkResponseHandlerRefPtr(new Nl80211ResponseHandler(
+          ack_handler, error_handler, message_handler)));
 }
 
 Nl80211Frame::Nl80211Frame(base::span<const uint8_t> raw_frame)

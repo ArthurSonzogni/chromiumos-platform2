@@ -739,8 +739,8 @@ TEST_F(WiFiProviderTest, Start) {
   EXPECT_FALSE(GetRunning());
   EXPECT_CALL(
       netlink_manager_,
-      SendNl80211Message(
-          IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
+      SendOrPostMessage(
+          IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _));
   EXPECT_CALL(netlink_manager_,
               SubscribeToEvents(Nl80211Message::kMessageTypeString,
                                 NetlinkManager::kEventTypeConfig));
@@ -2444,8 +2444,8 @@ TEST_F(WiFiProviderTest, NetLinkBroadcast_NewPhy) {
   // on NewWiphy broadcast message.
   EXPECT_CALL(
       netlink_manager_,
-      SendNl80211Message(
-          IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
+      SendOrPostMessage(
+          IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _));
   HandleNetlinkBroadcast(msg);
 }
 
@@ -2477,10 +2477,9 @@ TEST_F(WiFiProviderTest, NetLinkBroadcast_IncludesPresentPhy) {
 
   // We have a WiFiPhy object at the phy index in msg, so we do not expect an
   // NL80211_CMD_GET_WIPHY to be triggered.
-  EXPECT_CALL(
-      netlink_manager_,
-      SendNl80211Message(
-          IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _))
+  EXPECT_CALL(netlink_manager_,
+              SendOrPostMessage(
+                  IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _))
       .Times(0);
   HandleNetlinkBroadcast(msg);
 }
@@ -2494,8 +2493,8 @@ TEST_F(WiFiProviderTest, NetLinkBroadcast_IncludesAbsentPhy) {
   // NL80211_CMD_GET_WIPHY to be triggered.
   EXPECT_CALL(
       netlink_manager_,
-      SendNl80211Message(
-          IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
+      SendOrPostMessage(
+          IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _));
   HandleNetlinkBroadcast(msg);
 }
 
@@ -2648,10 +2647,10 @@ TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_Timeout) {
   EXPECT_CALL(manager_, GetCellularOperatorCountryCode())
       .WillOnce(Return(kUS_Alpha2));
   int times_called = 0;
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(
-                  IsNl80211Command(kNl80211FamilyId, NL80211_CMD_REQ_SET_REG),
-                  _, _, _));
+  EXPECT_CALL(
+      netlink_manager_,
+      SendOrPostMessage(
+          IsNl80211Command(kNl80211FamilyId, NL80211_CMD_REQ_SET_REG), _));
   provider_->UpdateRegAndPhyInfo(
       base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
   EXPECT_FALSE(IsPhyUpdateTimeoutCbCancelled());
@@ -2668,10 +2667,10 @@ TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_Success) {
   EXPECT_CALL(manager_, GetCellularOperatorCountryCode())
       .WillOnce(Return(kUS_Alpha2));
   int times_called = 0;
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(
-                  IsNl80211Command(kNl80211FamilyId, NL80211_CMD_REQ_SET_REG),
-                  _, _, _));
+  EXPECT_CALL(
+      netlink_manager_,
+      SendOrPostMessage(
+          IsNl80211Command(kNl80211FamilyId, NL80211_CMD_REQ_SET_REG), _));
   provider_->UpdateRegAndPhyInfo(
       base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
   EXPECT_FALSE(IsPhyUpdateTimeoutCbCancelled());
@@ -2680,8 +2679,8 @@ TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_Success) {
   // reception of "Done" message (signaling the end of "split messages" dump).
   EXPECT_CALL(
       netlink_manager_,
-      SendNl80211Message(
-          IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
+      SendOrPostMessage(
+          IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _));
   provider_->RegionChanged("US");
   OnGetPhyInfoAuxMessage(phy->GetPhyIndex(), NetlinkManager::kDone, nullptr);
   DispatchPendingEvents();
@@ -2698,8 +2697,8 @@ TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_NoCellularNoCountry) {
   int times_called = 0;
   EXPECT_CALL(
       netlink_manager_,
-      SendNl80211Message(
-          IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
+      SendOrPostMessage(
+          IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _));
   provider_->UpdateRegAndPhyInfo(
       base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
   EXPECT_FALSE(IsPhyUpdateTimeoutCbCancelled());
@@ -2716,8 +2715,8 @@ TEST_F(WiFiProviderTest, UpdatePhyInfo_Timeout) {
   int times_called = 0;
   EXPECT_CALL(
       netlink_manager_,
-      SendNl80211Message(
-          IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
+      SendOrPostMessage(
+          IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _));
   provider_->UpdatePhyInfo(
       base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
   EXPECT_FALSE(IsPhyUpdateTimeoutCbCancelled());
@@ -2732,8 +2731,8 @@ TEST_F(WiFiProviderTest, UpdatePhyInfo_Success) {
   MockWiFiPhy* phy = AddMockPhy(kNewWiphyNlMsg_WiphyIndex);
   EXPECT_CALL(
       netlink_manager_,
-      SendNl80211Message(
-          IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
+      SendOrPostMessage(
+          IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _));
   provider_->UpdatePhyInfo(
       base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
   EXPECT_FALSE(IsPhyUpdateTimeoutCbCancelled());

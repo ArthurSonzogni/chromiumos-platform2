@@ -482,8 +482,7 @@ class WakeOnWiFiTest : public ::testing::Test {
     wake_on_wifi_->dhcp_lease_renewal_timer_ =
         brillo::timers::SimpleAlarmTimer::CreateForTesting();
 
-    ON_CALL(netlink_manager_, SendNl80211Message(_, _, _, _))
-        .WillByDefault(Return(true));
+    ON_CALL(netlink_manager_, SendOrPostMessage).WillByDefault(Return(true));
   }
 
   void SetWakeOnWiFiMaxSSIDs(uint32_t max_ssids) {
@@ -734,9 +733,9 @@ class WakeOnWiFiTest : public ::testing::Test {
     EXPECT_CALL(*this, RemoveSupplicantNetworksCallback()).Times(1);
     EXPECT_CALL(
         netlink_manager_,
-        SendNl80211Message(
+        SendOrPostMessage(
             IsNl80211Command(kNl80211FamilyId, SetWakeOnWiFiMessage::kCommand),
-            _, _, _));
+            _));
   }
 
   void SetExpectationsConnectedBeforeSuspend() {
@@ -744,9 +743,9 @@ class WakeOnWiFiTest : public ::testing::Test {
     EXPECT_CALL(*this, DoneCallback(_)).Times(0);
     EXPECT_CALL(
         netlink_manager_,
-        SendNl80211Message(
+        SendOrPostMessage(
             IsNl80211Command(kNl80211FamilyId, SetWakeOnWiFiMessage::kCommand),
-            _, _, _));
+            _));
   }
 
   void VerifyStateConnectedBeforeSuspend() {
@@ -994,9 +993,9 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
 TEST_F(WakeOnWiFiTestWithMockDispatcher, RequestWakeOnWiFiSettings) {
   EXPECT_CALL(
       netlink_manager_,
-      SendNl80211Message(
-          IsNl80211Command(kNl80211FamilyId, GetWakeOnWiFiMessage::kCommand), _,
-          _, _))
+      SendOrPostMessage(
+          IsNl80211Command(kNl80211FamilyId, GetWakeOnWiFiMessage::kCommand),
+          _))
       .Times(1);
   RequestWakeOnWiFiSettings();
 }
@@ -1096,9 +1095,9 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   SetNumSetWakeOnWiFiRetries(WakeOnWiFi::kMaxSetWakeOnWiFiRetries - 1);
   EXPECT_CALL(
       netlink_manager_,
-      SendNl80211Message(
-          IsNl80211Command(kNl80211FamilyId, SetWakeOnWiFiMessage::kCommand), _,
-          _, _))
+      SendOrPostMessage(
+          IsNl80211Command(kNl80211FamilyId, SetWakeOnWiFiMessage::kCommand),
+          _))
       .Times(1);
   RetrySetWakeOnWiFiConnections();
   EXPECT_EQ(GetNumSetWakeOnWiFiRetries(), WakeOnWiFi::kMaxSetWakeOnWiFiRetries);
@@ -1116,7 +1115,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   EXPECT_FALSE(SuspendActionsCallbackIsNull());
   EXPECT_CALL(*this, DoneCallback(ErrorTypeIs(Error::kOperationFailed)))
       .Times(1);
-  EXPECT_CALL(netlink_manager_, SendNl80211Message(_, _, _, _)).Times(0);
+  EXPECT_CALL(netlink_manager_, SendOrPostMessage).Times(0);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("max retry attempts reached")));
   RetrySetWakeOnWiFiConnections();
@@ -1213,8 +1212,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   // ApplyWakeOnWiFiSettings should return immediately if the wifi interface
   // index has not been received when the function is called.
   SetWiphyIndexReceivedToFalse();
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _))
+  EXPECT_CALL(netlink_manager_, SendOrPostMessage(IsDisableWakeOnWiFiMsg(), _))
       .Times(0);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _,
@@ -1227,12 +1225,11 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   // Disable wake on WiFi if there are no wake on WiFi triggers registered.
   EXPECT_CALL(
       netlink_manager_,
-      SendNl80211Message(
-          IsNl80211Command(kNl80211FamilyId, SetWakeOnWiFiMessage::kCommand), _,
-          _, _))
+      SendOrPostMessage(
+          IsNl80211Command(kNl80211FamilyId, SetWakeOnWiFiMessage::kCommand),
+          _))
       .Times(0);
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _))
+  EXPECT_CALL(netlink_manager_, SendOrPostMessage(IsDisableWakeOnWiFiMsg(), _))
       .Times(1);
   ApplyWakeOnWiFiSettings();
 
@@ -1240,12 +1237,11 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kWakeTriggerDisconnect);
   EXPECT_CALL(
       netlink_manager_,
-      SendNl80211Message(
-          IsNl80211Command(kNl80211FamilyId, SetWakeOnWiFiMessage::kCommand), _,
-          _, _))
+      SendOrPostMessage(
+          IsNl80211Command(kNl80211FamilyId, SetWakeOnWiFiMessage::kCommand),
+          _))
       .Times(1);
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _))
+  EXPECT_CALL(netlink_manager_, SendOrPostMessage(IsDisableWakeOnWiFiMsg(), _))
       .Times(0);
   ApplyWakeOnWiFiSettings();
 }
@@ -2035,23 +2031,20 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiDisabledAfterResume) {
   // are enabled, so disable Wake on WiFi on resume.]
   EnableWakeOnWiFiFeaturesDarkConnect();
   GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kWakeTriggerDisconnect);
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _))
+  EXPECT_CALL(netlink_manager_, SendOrPostMessage(IsDisableWakeOnWiFiMsg(), _))
       .Times(1);
   OnAfterResume();
 
   // No wake no WiFi triggers supported, so do nothing.
   ClearWakeOnWiFiTriggersSupported();
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _))
+  EXPECT_CALL(netlink_manager_, SendOrPostMessage(IsDisableWakeOnWiFiMsg(), _))
       .Times(0);
   OnAfterResume();
 
   // Wake on WiFi features disabled, so do nothing.
   GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kWakeTriggerDisconnect);
   DisableWakeOnWiFiFeatures();
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _))
+  EXPECT_CALL(netlink_manager_, SendOrPostMessage(IsDisableWakeOnWiFiMsg(), _))
       .Times(0);
   OnAfterResume();
 
@@ -2059,8 +2052,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiDisabledAfterResume) {
   // so do nothing.
   ClearWakeOnWiFiTriggersSupported();
   DisableWakeOnWiFiFeatures();
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _))
+  EXPECT_CALL(netlink_manager_, SendOrPostMessage(IsDisableWakeOnWiFiMsg(), _))
       .Times(0);
   OnAfterResume();
 }

@@ -1082,14 +1082,14 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   }
   uint16_t GetScanInterval() { return wifi_->GetScanInterval(nullptr); }
   void StartWiFi(bool supplicant_present) {
-    EXPECT_CALL(netlink_manager_,
-                SendNl80211Message(
-                    IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY),
-                    _, _, _));
-    EXPECT_CALL(netlink_manager_,
-                SendNl80211Message(
-                    IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_STATION),
-                    _, _, _))
+    EXPECT_CALL(
+        netlink_manager_,
+        SendOrPostMessage(
+            IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _));
+    EXPECT_CALL(
+        netlink_manager_,
+        SendOrPostMessage(
+            IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_STATION), _))
         .Times(AtLeast(0));
 
     wifi_->supplicant_present_ = supplicant_present;
@@ -5334,10 +5334,10 @@ TEST_F(WiFiMainTest, InitiateScanInDarkResume_Idle) {
   StartWiFi();
   manager()->set_suppress_autoconnect(false);
   ASSERT_TRUE(wifi()->IsIdle());
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
-                                                  TriggerScanMessage::kCommand),
-                                 _, _, _));
+  EXPECT_CALL(
+      netlink_manager_,
+      SendOrPostMessage(
+          IsNl80211Command(kNl80211FamilyId, TriggerScanMessage::kCommand), _));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), FlushBSS(0));
   InitiateScanInDarkResume(freqs);
   EXPECT_TRUE(manager()->suppress_autoconnect());
@@ -5354,10 +5354,10 @@ TEST_F(WiFiMainTest, InitiateScanInDarkResume_NotIdle) {
   EXPECT_CALL(
       log,
       Log(_, _, HasSubstr("skipping scan, already connecting or connected.")));
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
-                                                  TriggerScanMessage::kCommand),
-                                 _, _, _))
+  EXPECT_CALL(
+      netlink_manager_,
+      SendOrPostMessage(
+          IsNl80211Command(kNl80211FamilyId, TriggerScanMessage::kCommand), _))
       .Times(0);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), FlushBSS(_)).Times(0);
   InitiateScanInDarkResume(freqs);
@@ -5369,10 +5369,10 @@ TEST_F(WiFiMainTest, TriggerPassiveScan_NoResults) {
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(3);
   const WiFi::FreqSet freqs;
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
-                                                  TriggerScanMessage::kCommand),
-                                 _, _, _));
+  EXPECT_CALL(
+      netlink_manager_,
+      SendOrPostMessage(
+          IsNl80211Command(kNl80211FamilyId, TriggerScanMessage::kCommand), _));
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("Scanning on specific channels")))
       .Times(0);
@@ -5386,10 +5386,10 @@ TEST_F(WiFiMainTest, TriggerPassiveScan_HasResults) {
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(3);
   const WiFi::FreqSet freqs = {1};
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
-                                                  TriggerScanMessage::kCommand),
-                                 _, _, _));
+  EXPECT_CALL(
+      netlink_manager_,
+      SendOrPostMessage(
+          IsNl80211Command(kNl80211FamilyId, TriggerScanMessage::kCommand), _));
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("Scanning on specific channels")))
       .Times(1);
