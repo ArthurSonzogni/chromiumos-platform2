@@ -12,7 +12,6 @@ libchromeos = { path = "../libchromeos-rs" } # provided by ebuild
 vboot_reference-sys = { path = "../../platform/vboot_reference/rust/vboot_reference-sys" } # provided by ebuild
 log = "0.4.20"
 nix = "0.23"
-stderrlog = "0.5.0"
 tar = "0.4.40"
 tempfile = "3.0"
 xz2 = "0.1.7"
