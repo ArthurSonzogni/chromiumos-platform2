@@ -213,7 +213,6 @@ void AuthenticationPlugin::HandleSessionStateChange(const std::string& state) {
   log_event->mutable_common()->set_create_timestamp_us(
       base::Time::Now().InMillisecondsSinceUnixEpoch() *
       base::Time::kMicrosecondsPerMillisecond);
-
   if (state == kStarted) {
     latest_successful_login_timestamp_ =
         log_event->common().create_timestamp_us();
@@ -256,6 +255,12 @@ void AuthenticationPlugin::HandleRegistrationResult(
 
 void AuthenticationPlugin::HandleAuthenticateAuthFactorCompleted(
     const user_data_auth::AuthenticateAuthFactorCompleted& completed) {
+  if (completed.user_creation()) {
+    auth_factor_type_ =
+        AuthFactorType::Authentication_AuthenticationType_AUTH_NEW_USER;
+    return;
+  }
+
   auto it = auth_factor_map_.find(completed.auth_factor_type());
   if (it == auth_factor_map_.end()) {
     LOG(ERROR) << "Unknown auth factor type " << completed.auth_factor_type();

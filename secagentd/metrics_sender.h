@@ -157,7 +157,8 @@ enum class AuthFactor {
   kKiosk,
   kSmartCard,
   kFingerprint,
-  kMaxValue = kFingerprint
+  kNewUser,
+  kMaxValue = kNewUser
 };
 
 static constexpr EnumMetric<AuthFactor> kLogin = {.name = "AuthFactor.Login"};
