@@ -475,26 +475,6 @@ bool ConvertCborMapToLedgerSignedProof(
 }
 
 template <typename T>
-bool GetValueFromCborMapByKey(const T& input_cbor,
-                              const std::string& map_key,
-                              cbor::Value* value) {
-  const auto& cbor = ReadCborMap(input_cbor);
-  if (!cbor) {
-    return false;
-  }
-
-  const cbor::Value::MapValue& map = cbor->GetMap();
-  const auto entry = map.find(cbor::Value(map_key));
-  if (entry == map.end()) {
-    LOG(ERROR) << "No `" << map_key << "` entry in the CBOR map.";
-    return false;
-  }
-
-  *value = entry->second.Clone();
-  return true;
-}
-
-template <typename T>
 bool GetBytestringValueFromCborMapByKey(const T& input_cbor,
                                         const std::string& map_key,
                                         T* value) {
@@ -508,18 +488,6 @@ bool GetBytestringValueFromCborMapByKey(const T& input_cbor,
     return false;
   }
 
-  return true;
-}
-
-template <typename T>
-bool SerializeCbor(const cbor::Value& cbor, T* serialized_cbor) {
-  std::optional<std::vector<uint8_t>> serialized = cbor::Writer::Write(cbor);
-  if (!serialized) {
-    LOG(ERROR) << "Failed to serialize CBOR Map.";
-    return false;
-  }
-
-  serialized_cbor->assign(serialized.value().begin(), serialized.value().end());
   return true;
 }
 
@@ -1104,35 +1072,6 @@ bool DeserializePrivateLogEntryFromCbor(
                                       private_log_entry);
 }
 
-bool GetValueFromCborMapByKeyForTesting(const brillo::SecureBlob& input_cbor,
-                                        const std::string& map_key,
-                                        cbor::Value* value) {
-  return GetValueFromCborMapByKey(input_cbor, map_key, value);
-}
-bool GetValueFromCborMapByKeyForTesting(const brillo::Blob& input_cbor,
-                                        const std::string& map_key,
-                                        cbor::Value* value) {
-  return GetValueFromCborMapByKey(input_cbor, map_key, value);
-}
-
-bool GetBytestringValueFromCborMapByKeyForTesting(
-    const brillo::SecureBlob& input_cbor,
-    const std::string& map_key,
-    brillo::SecureBlob* value) {
-  return GetBytestringValueFromCborMapByKey(input_cbor, map_key, value);
-}
-
-bool GetBytestringValueFromCborMapByKeyForTesting(
-    const brillo::SecureBlob& input_cbor,
-    const std::string& map_key,
-    brillo::Blob* value) {
-  brillo::SecureBlob secure_value;
-  bool ret =
-      GetBytestringValueFromCborMapByKey(input_cbor, map_key, &secure_value);
-  value->assign(secure_value.begin(), secure_value.end());
-  return ret;
-}
-
 bool GetBytestringValueFromCborMapByKeyForTesting(
     const brillo::Blob& input_cbor,
     const std::string& map_key,
@@ -1189,28 +1128,14 @@ bool GetHsmPayloadFromRequestAdForTesting(
   return true;
 }
 
-int GetCborMapSize(const brillo::SecureBlob& input_cbor) {
-  const auto& cbor = ReadCborMap(input_cbor);
-  if (!cbor) {
-    return -1;
-  }
-
-  return cbor->GetMap().size();
+bool SerializeCborMapForTesting(const cbor::Value::MapValue& cbor,
+                                brillo::SecureBlob* serialized_cbor) {
+  return SerializeCborMap(cbor, serialized_cbor);
 }
 
-int GetCborMapSize(const brillo::Blob& input_cbor) {
-  auto secure_cbor = brillo::SecureBlob(input_cbor);
-  return GetCborMapSize(secure_cbor);
-}
-
-bool SerializeCborForTesting(const cbor::Value& cbor,
-                             brillo::SecureBlob* serialized_cbor) {
-  return SerializeCbor(cbor, serialized_cbor);
-}
-
-bool SerializeCborForTesting(const cbor::Value& cbor,
-                             brillo::Blob* serialized_cbor) {
-  return SerializeCbor(cbor, serialized_cbor);
+bool SerializeCborMapForTesting(const cbor::Value::MapValue& cbor,
+                                brillo::Blob* serialized_cbor) {
+  return SerializeCborMap(cbor, serialized_cbor);
 }
 
 }  // namespace cryptorecovery

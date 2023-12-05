@@ -289,8 +289,7 @@ bool FakeRecoveryMediatorCrypto::GetFakeEpochResponse(
   brillo::Blob epoch_metadata_cbor;
   cbor::Value::MapValue meta_data_cbor;
   meta_data_cbor.emplace("meta_data_cbor_key", "meta_data_cbor_value");
-  if (!SerializeCborForTesting(cbor::Value(meta_data_cbor),
-                               &epoch_metadata_cbor)) {
+  if (!SerializeCborMapForTesting(meta_data_cbor, &epoch_metadata_cbor)) {
     LOG(ERROR) << "Failed to create epoch_metadata_cbor";
     return false;
   }

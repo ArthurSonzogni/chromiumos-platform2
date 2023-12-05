@@ -189,21 +189,6 @@ extern const int kLedgerSignedProofSchemaVersion;
 // The methods below are for testing only.
 //============================================================================
 
-bool GetValueFromCborMapByKeyForTesting(const brillo::SecureBlob& input_cbor,
-                                        const std::string& map_key,
-                                        cbor::Value* value);
-bool GetValueFromCborMapByKeyForTesting(const brillo::Blob& input_cbor,
-                                        const std::string& map_key,
-                                        cbor::Value* value);
-
-bool GetBytestringValueFromCborMapByKeyForTesting(
-    const brillo::SecureBlob& input_cbor,
-    const std::string& map_key,
-    brillo::SecureBlob* value);
-bool GetBytestringValueFromCborMapByKeyForTesting(
-    const brillo::SecureBlob& input_cbor,
-    const std::string& map_key,
-    brillo::Blob* value);
 bool GetBytestringValueFromCborMapByKeyForTesting(
     const brillo::Blob& input_cbor,
     const std::string& map_key,
@@ -212,16 +197,11 @@ bool GetBytestringValueFromCborMapByKeyForTesting(
 bool GetHsmPayloadFromRequestAdForTesting(
     const brillo::Blob& request_payload_cbor, HsmPayload* hsm_payload);
 
-// Returns number of values in CBOR map. Returns -1 if provided blob is not a
-// CBOR map.
-int GetCborMapSize(const brillo::SecureBlob& input_cbor);
-int GetCborMapSize(const brillo::Blob& input_cbor);
-
-// Serialize cbor::Value to SecureBlob or Blob.
-bool SerializeCborForTesting(const cbor::Value& cbor,
-                             brillo::SecureBlob* serialized_cbor);
-bool SerializeCborForTesting(const cbor::Value& cbor,
-                             brillo::Blob* serialized_cbor);
+// Serialize cbor MapValue to SecureBlob or Blob.
+bool SerializeCborMapForTesting(const cbor::Value::MapValue& cbor,
+                                brillo::SecureBlob* serialized_cbor);
+bool SerializeCborMapForTesting(const cbor::Value::MapValue& cbor,
+                                brillo::Blob* serialized_cbor);
 
 }  // namespace cryptorecovery
 }  // namespace cryptohome
