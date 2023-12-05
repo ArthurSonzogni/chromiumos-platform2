@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/deps.gni")
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
@@ -9,14 +10,10 @@ group("all") {
   deps = [
     ":install_headers",
     ":install_headers-test",
-    ":install_pkgconfig",
-    ":install_pkgconfig-test",
     ":install_proto_header",
     ":libenterprise_rollback_metrics",
+    ":libenterprise_rollback_metrics-test",
   ]
-  if (use.test || use.fuzzer) {
-    deps += [ ":libenterprise_rollback_metrics-test" ]
-  }
   if (use.test) {
     deps += [ ":enterprise_rollback_metrics_tests" ]
   }
@@ -62,18 +59,24 @@ source_set("enterprise_rollback_metrics_library_common_sources") {
   configs += [ "//common-mk:pic" ]
 }
 
+generate_pkg_config("libenterprise_rollback_metrics_pc") {
+  name = "libenterprise_rollback_metrics"
+  output_name = "libenterprise_rollback_metrics"
+  description = "Enterprise Rollback metrics library"
+  version = "0.0"
+
+  libs = [ "-lenterprise_rollback_metrics" ]
+  install = true
+}
+
 shared_library("libenterprise_rollback_metrics") {
   configs += [ ":target_defaults" ]
   deps = [
     ":enterprise_rollback_metrics_library_common_sources",
+    ":libenterprise_rollback_metrics_pc",
     "//oobe_config/filesystem:filesystem",
   ]
   install_path = "lib"
-}
-
-install_config("install_pkgconfig") {
-  sources = [ "libenterprise_rollback_metrics.pc" ]
-  install_path = "${libdir}/pkgconfig"
 }
 
 install_config("install_headers") {
@@ -95,9 +98,14 @@ install_config("install_headers-test") {
   install_path = "/usr/include/oobe_config/metrics"
 }
 
-install_config("install_pkgconfig-test") {
-  sources = [ "libenterprise_rollback_metrics-test.pc" ]
-  install_path = "${libdir}/pkgconfig"
+generate_pkg_config("libenterprise_rollback_metrics-test_pc") {
+  name = "libenterprise_rollback_metrics-test"
+  output_name = "libenterprise_rollback_metrics-test"
+  description = "Enterprise Rollback metrics library for testing"
+  version = "0.0"
+
+  libs = [ "-lenterprise_rollback_metrics-test" ]
+  install = true
 }
 
 source_set("enterprise_rollback_metrics_library_test_sources") {
@@ -116,6 +124,7 @@ shared_library("libenterprise_rollback_metrics-test") {
   ]
   deps = [
     ":enterprise_rollback_metrics_library_test_sources",
+    ":libenterprise_rollback_metrics-test_pc",
     "//oobe_config/filesystem:filesystem_for_testing",
   ]
   if (use.cros_host) {

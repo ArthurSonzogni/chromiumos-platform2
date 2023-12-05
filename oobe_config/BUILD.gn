@@ -14,28 +14,18 @@ group("all") {
     ":oobe_config_restore",
     ":oobe_config_save",
     ":rollback_cleanup",
-    "metrics:install_headers",
-    "metrics:install_headers-test",
-    "metrics:install_pkgconfig",
-    "metrics:install_pkgconfig-test",
-    "metrics:install_proto_header",
-    "metrics:libenterprise_rollback_metrics",
+    "metrics:all",
   ]
   if (use.test) {
     deps += [
       ":oobe_config_test",
       "filesystem:filesystem_test",
-      "metrics:enterprise_rollback_metrics_tests",
-      "metrics:libenterprise_rollback_metrics-test",
     ]
   }
   if (use.fuzzer) {
     deps += [
       ":load_oobe_config_rollback_fuzzer",
       ":openssl_encryption_fuzzer",
-      "metrics:install_headers-test",
-      "metrics:install_pkgconfig-test",
-      "metrics:libenterprise_rollback_metrics-test",
     ]
   }
 }

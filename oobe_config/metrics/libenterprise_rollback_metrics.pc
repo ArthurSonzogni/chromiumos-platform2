@@ -1,4 +1,0 @@
-Name: libenterprise_rollback_metrics
-Version: 0.0
-Description: Enterprise Rollback metrics library
-Libs: -lenterprise_rollback_metrics
