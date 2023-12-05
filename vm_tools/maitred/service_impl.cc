@@ -74,9 +74,6 @@ constexpr char kResolvConfPath[] = "/run/resolv.conf";
 constexpr char kRunPath[] = "/run";
 constexpr char kTmpResolvConfPath[] = "/run/resolv.conf.tmp";
 
-constexpr char kBashRc[] = "/etc/bash/bashrc.d/";
-constexpr char kSetPathScript[] = "set-path-for-lxd-next.sh";
-
 constexpr char kLocaltimePath[] = "/etc/localtime";
 constexpr char kZoneInfoPath[] = "/usr/share/zoneinfo";
 
@@ -218,15 +215,6 @@ bool WriteResolvConf(const std::vector<string> nameservers,
   }
 
   return true;
-}
-
-bool PrefixPath(const char* env_name, std::string new_val) {
-  const auto* curr_val = getenv(env_name);
-  if (curr_val != nullptr) {
-    new_val = new_val + std::string(":") + curr_val;
-  }
-
-  return setenv(env_name, new_val.c_str(), /*overwrite=*/true) == 0;
 }
 
 }  // namespace
@@ -581,8 +569,8 @@ grpc::Status ServiceImpl::Mount(grpc::ServerContext* ctx,
 
     if (ret < 0) {
       response->set_error(errno);
-      PLOG(ERROR) << "Failed to change the mode of \""
-                  << "\"" << request->target() << "\"";
+      PLOG(ERROR) << "Failed to change the mode of \"" << request->target()
+                  << "\"";
 
       // Unmount the disk. Since this is cleanup, we ignore its return value.
       umount(request->target().c_str());
@@ -714,60 +702,6 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
     }
   } else {
     response->set_mount_result(StartTerminaResponse::SUCCESS);
-  }
-
-  for (const auto feature : request->feature()) {
-    if (feature == StartTerminaRequest::LXD_5_LTS) {
-      // Create a marker file to record the LXD transition state so we won't go
-      // backwards even if concierge stops passing us this flag later.
-      base::File(base::FilePath("/mnt/stateful/lxd-5.0-transition"),
-                 base::File::FLAG_CREATE | base::File::FLAG_READ);
-      // Don't check if creating the file succeeded here, we check for path
-      // existence below and if it failed we just ignore the feature flag.
-    }
-  }
-
-  if (base::PathExists(base::FilePath("/mnt/stateful/lxd-5.0-transition"))) {
-    LOG(INFO) << "This system has transitioned to LXD 5.0.x";
-    // Set PATH and LD_LIBRARY_PATH to prefer things in the lxd-next
-    // directory. Note that we don't just want to affect our child processes,
-    // we want to affect our own path resolution, since we call lxcfs by name
-    // below.
-    if (!PrefixPath("PATH", "/opt/google/lxd-next/bin") ||
-        !PrefixPath("PATH", "/opt/google/lxd-next/usr/bin") ||
-        !PrefixPath("LD_LIBRARY_PATH", "/opt/google/lxd-next/lib") ||
-        !PrefixPath("LD_LIBRARY_PATH", "/opt/google/lxd-next/lib64") ||
-        !PrefixPath("LD_LIBRARY_PATH", "/opt/google/lxd-next/usr/lib") ||
-        !PrefixPath("LD_LIBRARY_PATH", "/opt/google/lxd-next/usr/lib64")) {
-      return grpc::Status(
-          grpc::INTERNAL,
-          std::string("failed to set PATH or LD_LIBRARY_PATH: ") +
-              strerror(errno));
-    }
-
-    // We also want to add these paths to the environment of vsh shells, but
-    // using normal environment inheritance presents several issues:
-    //
-    // 1) vshd has already started, so we would need to restart it from here
-    // 2) /etc/profile adds the "normal" PATH entries *before* anything
-    //    inherited from the parent of the shell, but we need our paths to
-    //    take precedence.
-    // 3) vshd clears the environment before execing anyway
-    //
-    // The scripts in /etc/bash/bashrc.d/ get run after the issues above, so
-    // we can do our environment modifications there. Because this directory
-    // is part of the read-only rootfs we use a bind-mount to insert the
-    // appropriate script when the LXD_4_LTS feature is set.
-    //
-    // This script is installed as a dot-file by the app-emulation/lxd:4
-    // ebuild, so it's ignored by default.
-    if (mount((string(kBashRc) + "." + kSetPathScript).c_str(),
-              (string(kBashRc) + kSetPathScript).c_str(), nullptr, MS_BIND,
-              nullptr) != 0) {
-      return grpc::Status(
-          grpc::INTERNAL,
-          std::string("failed to set up bashrc.d: ") + strerror(errno));
-    }
   }
 
   // Register our crash reporter.
