@@ -37,10 +37,8 @@ std::unique_ptr<V4lMcLink> V4lMcLink::CreateFromYamlNode(YamlNode& node_link,
   link->desc_.sink.index = node_link["sink"]["index"].ReadInt<__u16>(ok);
   link->desc_.sink.flags = node_link["sink"]["flags"].ReadInt<__u32>(ok);
   link->desc_.flags = node_link["flags"].ReadInt<__u32>(ok);
-  if (!ok) {
+  if (!ok)
     MCTK_PANIC("Failed parsing: link");
-    return nullptr;
-  }
 
   return link;
 }

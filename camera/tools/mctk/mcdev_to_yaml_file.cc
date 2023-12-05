@@ -10,7 +10,6 @@
 
 #include "tools/mctk/mcdev.h"
 
-#include <assert.h>
 #include <linux/media.h>
 #include <linux/types.h>
 #include <stddef.h> /* size_t */
@@ -26,73 +25,75 @@
 
 namespace {
 
-#define EMIT_STREAM_START()                                                 \
-  do {                                                                      \
-    yaml_event_t event;                                                     \
-    assert(yaml_stream_start_event_initialize(&event, YAML_UTF8_ENCODING)); \
-    assert(yaml_emitter_emit(&emitter, &event));                            \
+#define EMIT_STREAM_START()                                              \
+  do {                                                                   \
+    yaml_event_t event;                                                  \
+    MCTK_ASSERT(                                                         \
+        yaml_stream_start_event_initialize(&event, YAML_UTF8_ENCODING)); \
+    MCTK_ASSERT(yaml_emitter_emit(&emitter, &event));                    \
   } while (0);
 
-#define EMIT_STREAM_END()                             \
-  do {                                                \
-    yaml_event_t event;                               \
-    assert(yaml_stream_end_event_initialize(&event)); \
-    assert(yaml_emitter_emit(&emitter, &event));      \
-  } while (0);
-
-#define EMIT_DOCUMENT_START()                                                  \
-  do {                                                                         \
-    yaml_event_t event;                                                        \
-    assert(yaml_document_start_event_initialize(&event, NULL, NULL, NULL, 1)); \
-    assert(yaml_emitter_emit(&emitter, &event));                               \
-  } while (0);
-
-#define EMIT_DOCUMENT_END()                                \
+#define EMIT_STREAM_END()                                  \
   do {                                                     \
     yaml_event_t event;                                    \
-    assert(yaml_document_end_event_initialize(&event, 1)); \
-    assert(yaml_emitter_emit(&emitter, &event));           \
+    MCTK_ASSERT(yaml_stream_end_event_initialize(&event)); \
+    MCTK_ASSERT(yaml_emitter_emit(&emitter, &event));      \
+  } while (0);
+
+#define EMIT_DOCUMENT_START()                                               \
+  do {                                                                      \
+    yaml_event_t event;                                                     \
+    MCTK_ASSERT(                                                            \
+        yaml_document_start_event_initialize(&event, NULL, NULL, NULL, 1)); \
+    MCTK_ASSERT(yaml_emitter_emit(&emitter, &event));                       \
+  } while (0);
+
+#define EMIT_DOCUMENT_END()                                     \
+  do {                                                          \
+    yaml_event_t event;                                         \
+    MCTK_ASSERT(yaml_document_end_event_initialize(&event, 1)); \
+    MCTK_ASSERT(yaml_emitter_emit(&emitter, &event));           \
   } while (0);
 
 #define EMIT_MAP_START()                                                     \
   do {                                                                       \
     yaml_event_t event;                                                      \
-    assert(yaml_mapping_start_event_initialize(                              \
+    MCTK_ASSERT(yaml_mapping_start_event_initialize(                         \
         &event, NULL, reinterpret_cast<const yaml_char_t*>(YAML_MAP_TAG), 1, \
         YAML_BLOCK_MAPPING_STYLE));                                          \
-    assert(yaml_emitter_emit(&emitter, &event));                             \
+    MCTK_ASSERT(yaml_emitter_emit(&emitter, &event));                        \
   } while (0);
 
-#define EMIT_MAP_END()                                 \
-  do {                                                 \
-    yaml_event_t event;                                \
-    assert(yaml_mapping_end_event_initialize(&event)); \
-    assert(yaml_emitter_emit(&emitter, &event));       \
+#define EMIT_MAP_END()                                      \
+  do {                                                      \
+    yaml_event_t event;                                     \
+    MCTK_ASSERT(yaml_mapping_end_event_initialize(&event)); \
+    MCTK_ASSERT(yaml_emitter_emit(&emitter, &event));       \
   } while (0);
 
 #define EMIT_SEQ_START(sequence_style)                                       \
   do {                                                                       \
     yaml_event_t event;                                                      \
-    assert(yaml_sequence_start_event_initialize(                             \
+    MCTK_ASSERT(yaml_sequence_start_event_initialize(                        \
         &event, NULL, reinterpret_cast<const yaml_char_t*>(YAML_SEQ_TAG), 1, \
         (sequence_style)));                                                  \
-    assert(yaml_emitter_emit(&emitter, &event));                             \
+    MCTK_ASSERT(yaml_emitter_emit(&emitter, &event));                        \
   } while (0);
 
-#define EMIT_SEQ_END()                                  \
-  do {                                                  \
-    yaml_event_t event;                                 \
-    assert(yaml_sequence_end_event_initialize(&event)); \
-    assert(yaml_emitter_emit(&emitter, &event));        \
+#define EMIT_SEQ_END()                                       \
+  do {                                                       \
+    yaml_event_t event;                                      \
+    MCTK_ASSERT(yaml_sequence_end_event_initialize(&event)); \
+    MCTK_ASSERT(yaml_emitter_emit(&emitter, &event));        \
   } while (0);
 
-#define EMIT_CSTR(value_cstr)                                                 \
-  do {                                                                        \
-    yaml_event_t event;                                                       \
-    assert(yaml_scalar_event_initialize(&event, NULL, NULL,                   \
-                                        (const yaml_char_t*)(value_cstr), -1, \
-                                        1, 1, YAML_ANY_SCALAR_STYLE));        \
-    assert(yaml_emitter_emit(&emitter, &event));                              \
+#define EMIT_CSTR(value_cstr)                                           \
+  do {                                                                  \
+    yaml_event_t event;                                                 \
+    MCTK_ASSERT(yaml_scalar_event_initialize(                           \
+        &event, NULL, NULL, (const yaml_char_t*)(value_cstr), -1, 1, 1, \
+        YAML_ANY_SCALAR_STYLE));                                        \
+    MCTK_ASSERT(yaml_emitter_emit(&emitter, &event));                   \
   } while (0);
 
 #define EMIT_KEY_CSTR(value_cstr) \
@@ -348,7 +349,7 @@ void EmitControlValues(yaml_emitter_t& emitter, V4lMcControl& control) {
       /* This should never happen:
        * We enumerate controls, not control classes.
        */
-      assert(0);
+      MCTK_PANIC("Attempted to serialise V4L2_CTRL_TYPE_CTRL_CLASS");
       break;
     case V4L2_CTRL_TYPE_STRING:
       for (std::string str : control.values_string_)
@@ -455,7 +456,9 @@ void EmitControlValues(yaml_emitter_t& emitter, V4lMcControl& control) {
         // TODO(b/297144798): scaling_list_4x4
         // TODO(b/297144798): scaling_list_8x8
         (void)tmp;
-        assert(0);
+        MCTK_PANIC(
+            "Serialisation not implemented for struct "
+            "v4l2_ctrl_h264_scaling_matrix");
         EMIT_MAP_END();
       }
       break;
@@ -482,7 +485,9 @@ void EmitControlValues(yaml_emitter_t& emitter, V4lMcControl& control) {
 
         // TODO(b/297144798): ref_pic_list0
         // TODO(b/297144798): ref_pic_list1
-        assert(0);
+        MCTK_PANIC(
+            "Serialisation not implemented for struct "
+            "v4l2_ctrl_h264_slice_params");
 
         EMIT_U32_ELEM(&tmp, flags);
         EMIT_MAP_END();
@@ -494,7 +499,9 @@ void EmitControlValues(yaml_emitter_t& emitter, V4lMcControl& control) {
            control.values_h264_decode_params_) {
         EMIT_MAP_START();
         // TODO(b/297144798): v4l2_h264_dpb_entry
-        assert(0);
+        MCTK_PANIC(
+            "Serialisation not implemented for struct "
+            "v4l2_ctrl_h264_decode_params");
 
         EMIT_U16_ELEM(&tmp, nal_ref_idc);
         EMIT_U16_ELEM(&tmp, frame_num);
@@ -523,7 +530,9 @@ void EmitControlValues(yaml_emitter_t& emitter, V4lMcControl& control) {
         EMIT_U16_ELEM(&tmp, chroma_log2_weight_denom);
 
         // TODO(b/297144798): v4l2_h264_dpb_entry
-        assert(0);
+        MCTK_PANIC(
+            "Serialisation not implemented for struct "
+            "v4l2_ctrl_h264_pred_weights");
         EMIT_MAP_END();
       }
       break;
@@ -552,7 +561,8 @@ void EmitControlValues(yaml_emitter_t& emitter, V4lMcControl& control) {
         // TODO(b/297144798): quant
         // TODO(b/297144798): entropy
         // TODO(b/297144798): coder_state
-        assert(0);
+        MCTK_PANIC(
+            "Serialisation not implemented for struct v4l2_ctrl_vp8_frame");
 
         EMIT_U16_ELEM(&tmp, width);
         EMIT_U16_ELEM(&tmp, height);
@@ -593,7 +603,9 @@ void EmitControlValues(yaml_emitter_t& emitter, V4lMcControl& control) {
         // TODO(b/297144798): quant
         // TODO(b/297144798): entropy
         // TODO(b/297144798): coder_state
-        assert(0);
+        MCTK_PANIC(
+            "Serialisation not implemented for struct "
+            "v4l2_ctrl_mpeg2_quantisation");
         EMIT_MAP_END();
       }
       break;
@@ -619,7 +631,8 @@ void EmitControlValues(yaml_emitter_t& emitter, V4lMcControl& control) {
         EMIT_U64_ELEM(&tmp, forward_ref_ts);
         EMIT_U32_ELEM(&tmp, flags);
         // TODO(b/297144798): __u8 f_code[2][2];
-        assert(0);
+        MCTK_PANIC(
+            "Serialisation not implemented for struct v4l2_ctrl_mpeg2_picture");
         EMIT_U8_ELEM(&tmp, picture_coding_type);
         EMIT_U8_ELEM(&tmp, picture_structure);
         EMIT_U8_ELEM(&tmp, intra_dc_precision);
@@ -649,7 +662,9 @@ void EmitControlValues(yaml_emitter_t& emitter, V4lMcControl& control) {
         // TODO(b/297144798): __u8 partition[16][3];
 
         // TODO(b/297144798): struct v4l2_vp9_mv_probs mv;
-        assert(0);
+        MCTK_PANIC(
+            "Serialisation not implemented for struct "
+            "v4l2_ctrl_vp9_compressed_hdr");
         EMIT_MAP_END();
       }
       break;
@@ -660,7 +675,8 @@ void EmitControlValues(yaml_emitter_t& emitter, V4lMcControl& control) {
         // TODO(b/297144798): struct v4l2_vp9_loop_filter lf;
         // TODO(b/297144798): struct v4l2_vp9_quantization quant;
         // TODO(b/297144798): struct v4l2_vp9_segmentation seg;
-        assert(0);
+        MCTK_PANIC(
+            "Serialisation not implemented for struct v4l2_ctrl_vp9_frame");
         EMIT_U32_ELEM(&tmp, flags);
         EMIT_U16_ELEM(&tmp, compressed_header_size);
         EMIT_U16_ELEM(&tmp, uncompressed_header_size);
@@ -786,7 +802,9 @@ void EmitControlValues(yaml_emitter_t& emitter, V4lMcControl& control) {
         /* ISO/IEC 23008-2, ITU-T Rec. H.265: Weighted prediction parameter */
         // TODO(b/297144798): struct v4l2_hevc_pred_weight_table
         //                                                  pred_weight_table;
-        assert(0);
+        MCTK_PANIC(
+            "Serialisation not implemented for struct "
+            "v4l2_ctrl_hevc_slice_params");
 
         EMIT_U8_ELEM_ARRAY(&tmp, reserved1, 2);
         EMIT_U64_ELEM(&tmp, flags);
@@ -802,7 +820,9 @@ void EmitControlValues(yaml_emitter_t& emitter, V4lMcControl& control) {
         // TODO(b/297144798): __u8 scaling_list_8x8[6][64];
         // TODO(b/297144798): __u8 scaling_list_16x16[6][64];
         // TODO(b/297144798): __u8 scaling_list_32x32[2][64];
-        assert(0);
+        MCTK_PANIC(
+            "Serialisation not implemented for struct "
+            "v4l2_ctrl_hevc_scaling_matrix");
         EMIT_U8_ELEM_ARRAY(&tmp, scaling_list_dc_coef_16x16, 6);
         EMIT_U8_ELEM_ARRAY(&tmp, scaling_list_dc_coef_32x32, 2);
         EMIT_MAP_END();
@@ -829,7 +849,9 @@ void EmitControlValues(yaml_emitter_t& emitter, V4lMcControl& control) {
         EMIT_U8_ELEM_ARRAY(&tmp, reserved, 3);
         // TODO(b/297144798): struct v4l2_hevc_dpb_entry
         //                                dpb[V4L2_HEVC_DPB_ENTRIES_NUM_MAX];
-        assert(0);
+        MCTK_PANIC(
+            "Serialisation not implemented for struct "
+            "v4l2_ctrl_hevc_decode_params");
         EMIT_U64_ELEM(&tmp, flags);
         EMIT_MAP_END();
       }
@@ -876,7 +898,8 @@ void EmitControlValues(yaml_emitter_t& emitter, V4lMcControl& control) {
         EMIT_U8_ELEM(&tmp, primary_ref_frame);
         // TODO(b/297144798): struct v4l2_av1_loop_restoration loop_restoration;
         // TODO(b/297144798): struct v4l2_av1_global_motion global_motion;
-        assert(0);
+        MCTK_PANIC(
+            "Serialisation not implemented for struct v4l2_ctrl_av1_frame");
         EMIT_U32_ELEM(&tmp, flags);
         EMIT_U32_ELEM(&tmp, frame_type);
         EMIT_U32_ELEM(&tmp, order_hint);
@@ -938,10 +961,8 @@ void EmitControlValues(yaml_emitter_t& emitter, V4lMcControl& control) {
       break;
     }
 #endif /* V4L2_CTRL_TYPE_AV1_FILM_GRAIN */
-      assert(0);
-      break;
     default:
-      MCTK_PANIC("Unknown control type");
+      MCTK_PANIC("Serialisation not implemented for unknown control type");
       break;
   }
   // This function is large, but that's how it is now.
@@ -950,7 +971,7 @@ void EmitControlValues(yaml_emitter_t& emitter, V4lMcControl& control) {
 }
 
 void EmitPad(yaml_emitter_t& emitter, V4lMcPad* pad) {
-  assert(pad);
+  MCTK_ASSERT(pad);
 
   EMIT_MAP_START();
   EMIT_KEY_CSTR("desc");
@@ -1018,7 +1039,7 @@ void EmitPad(yaml_emitter_t& emitter, V4lMcPad* pad) {
 }
 
 void EmitEntity(yaml_emitter_t& emitter, V4lMcEntity* entity) {
-  assert(entity);
+  MCTK_ASSERT(entity);
 
   EMIT_MAP_START();
   EMIT_KEY_CSTR("desc");
@@ -1142,7 +1163,7 @@ void EmitEntity(yaml_emitter_t& emitter, V4lMcEntity* entity) {
   }
   if (entity->maindev_.fmt_video_overlay.has_value()) {
     /* v4l2_window is not (de)serialisable */
-    assert(0);
+    MCTK_PANIC("Serialisation not possible for fmt_video_overlay");
   }
   if (entity->maindev_.fmt_vbi_capture.has_value()) {
     EMIT_KEY_CSTR("fmt_vbi_capture");
@@ -1175,15 +1196,15 @@ void EmitEntity(yaml_emitter_t& emitter, V4lMcEntity* entity) {
   }
   if (entity->maindev_.fmt_sliced_vbi_capture.has_value()) {
     /* This format is not finalised in the V4L2 API yet. */
-    assert(0);
+    MCTK_PANIC("Serialisation not implemented for fmt_sliced_vbi_capture");
   }
   if (entity->maindev_.fmt_sliced_vbi_output.has_value()) {
     /* This format is not finalised in the V4L2 API yet. */
-    assert(0);
+    MCTK_PANIC("Serialisation not implemented for fmt_sliced_vbi_output");
   }
   if (entity->maindev_.fmt_video_output_overlay.has_value()) {
     /* v4l2_window is not (de)serialisable */
-    assert(0);
+    MCTK_PANIC("Serialisation not possible for fmt_video_output_overlay");
   }
   if (entity->maindev_.fmt_video_capture_mplane.has_value()) {
     EMIT_KEY_CSTR("fmt_video_capture_mplane");

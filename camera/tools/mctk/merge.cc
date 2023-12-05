@@ -89,7 +89,6 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
   for (auto& se : source.entities_) {
     if (!target.EntityById(se->desc_.id)) {
       MCTK_PANIC("Merge: target lacking an entity mentioned by source.");
-      return false;
     }
   }
 
@@ -104,7 +103,6 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
     for (auto& sp : se->pads_) {
       if (!te->PadByIndex(sp->desc_.index)) {
         MCTK_PANIC("Merge: target lacking a pad mentioned by source.");
-        return false;
       }
     }
   }
@@ -128,7 +126,6 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
         auto tl = tp->LinkBySinkIds(sink_entity_id, sl->desc_.sink.index);
         if (!tl) {
           MCTK_PANIC("Merge: target lacking a link mentioned by source.");
-          return false;
         }
       }
     }
@@ -199,7 +196,6 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
         (!te->maindev_.std && se->maindev_.std) ||
         (!te->maindev_.subdev_std && se->maindev_.subdev_std)) {
       MCTK_PANIC("Merge: target lacking a maindev prop mentioned by source.");
-      return false;
     }
 
     for (__u32 type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -223,7 +219,6 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
         MCTK_PANIC(
             "Merge: target lacking a maindev selection "
             "mentioned by source.");
-        return false;
       }
     }
   }
@@ -241,7 +236,6 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
 
       if (!tc) {
         MCTK_PANIC("Merge: target lacking a control mentioned by source.");
-        return false;
       }
     }
   }
@@ -261,7 +255,6 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
           (!tp->subdev_.fmt && sp->subdev_.fmt) ||
           (!tp->subdev_.frame_interval && sp->subdev_.frame_interval)) {
         MCTK_PANIC("Merge: target lacking a subdev prop mentioned by source.");
-        return false;
       }
 
       if ((!tp->subdev_.selection.crop_ && sp->subdev_.selection.crop_) ||
@@ -281,7 +274,6 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
         MCTK_PANIC(
             "Merge: target lacking a subdev selection "
             "mentioned by source.");
-        return false;
       }
     }
   }

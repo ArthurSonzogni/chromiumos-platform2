@@ -25,6 +25,4 @@ bool YamlEmpty::Emit(yaml_emitter_t& emitter) {
    * the program has likely corrupted the YAML tree.
    */
   MCTK_PANIC("Attempted to emit an empty YAML node.");
-
-  return true;
 }

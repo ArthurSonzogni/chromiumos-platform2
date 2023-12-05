@@ -6,43 +6,38 @@
 #ifndef CAMERA_TOOLS_MCTK_DEBUG_H_
 #define CAMERA_TOOLS_MCTK_DEBUG_H_
 
-#include <assert.h>
-#include <errno.h>
+#include <stdlib.h>
 
-#include <iostream>
-#include <string>
+#include <source_location>
+#include <string_view>
 
-#define MCTK_ASSERT(exp) \
-  do {                   \
-    assert(exp);         \
-  } while (0)
-
-#define MCTK_INFO(msg)             \
-  do {                             \
-    std::cerr << msg << std::endl; \
-  } while (0)
-
-#define MCTK_ERR(msg)                                               \
-  do {                                                              \
-    std::cerr << std::string(__func__) << ": " << msg << std::endl; \
-  } while (0)
-
-#define MCTK_PERROR(msg)                  \
-  do {                                    \
-    std::string temp = std::string(msg);  \
-    temp += ": ";                         \
-    temp += std::string(strerror(errno)); \
-                                          \
-    MCTK_ERR(temp);                       \
-  } while (0)
-
-/* Print error, then halt and catch fire.
- * If assert(0) works, then this function never returns.
+/* The function names here are UPPER CASE in order to be consistent with
+ * their classic use as macros, and with the one remaining macro MCTK_ASSERT.
  */
-#define MCTK_PANIC(msg) \
-  do {                  \
-    MCTK_ERR(msg);      \
-    assert(0);          \
+
+/* Print a message, without a prefix. */
+void MCTK_INFO(std::string_view msg);
+
+/* Print a message, prefixed with the caller's name. */
+void MCTK_ERR(std::string_view msg,
+              std::source_location = std::source_location::current());
+
+void MCTK_PERROR(std::string_view msg,
+                 std::source_location = std::source_location::current());
+
+/* Print failed expression, then halt and catch fire. */
+#define MCTK_ASSERT(exp)                      \
+  do {                                        \
+    if (!(exp)) {                             \
+      MCTK_ERR("Failed assertion on: " #exp); \
+                                              \
+      exit(EXIT_FAILURE);                     \
+    }                                         \
   } while (0)
+
+/* Print error message, then halt and catch fire. */
+[[noreturn]] void MCTK_PANIC(
+    std::string_view msg,
+    std::source_location = std::source_location::current());
 
 #endif /* CAMERA_TOOLS_MCTK_DEBUG_H_ */

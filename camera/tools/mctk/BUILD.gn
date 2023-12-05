@@ -12,6 +12,7 @@ executable("mctk") {
     "//camera/tools/mctk/control_from_yaml.cc",
     "//camera/tools/mctk/control_helpers.cc",
     "//camera/tools/mctk/control_setters.cc",
+    "//camera/tools/mctk/debug.cc",
     "//camera/tools/mctk/entity.cc",
     "//camera/tools/mctk/entity_from_kernel.cc",
     "//camera/tools/mctk/entity_from_yaml.cc",

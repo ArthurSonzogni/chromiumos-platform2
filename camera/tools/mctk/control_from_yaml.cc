@@ -116,7 +116,6 @@ bool ParsePayloadValue(V4lMcControl& control, YamlNode& node) {
 #endif /* V4L2_CTRL_TYPE_AREA */
     default:
       MCTK_PANIC("Unknown control type found in YAML file");
-      return false;
   }
 }
 

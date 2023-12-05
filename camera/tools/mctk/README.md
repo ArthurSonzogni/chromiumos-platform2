@@ -239,3 +239,12 @@ It is assumed that DFS routing can result in valid paths for all sensors.
 If sensor 0 can only be assigned to outputs {0,1} and sensor 1 can only
 be assigned to output 0, then routing the second sensor will fail because
 its only viable output will already be in use by sensor 0.
+
+
+
+Miscellaneous design decisions
+------------------------------
+
+### Thread safety
+
+This program is written with the assumption that it is run single-threaded.
