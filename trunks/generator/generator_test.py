@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # Copyright 2014 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -98,8 +97,8 @@ class TestGenerators(unittest.TestCase):
             ("int", "sizeOfFoo"),
             ("int", "foo[FOO_MAX]"),
         ]
-        # Choose TPMU_SYM_MODE because it exists in the selectors definition and it
-        # has few fields.
+        # Choose TPMU_SYM_MODE because it exists in the selectors definition and
+        # it has few fields.
         union = generator.Structure("TPMU_SYM_MODE", True)
         union.fields = [("FOO", "aes"), ("BAR", "sm4")]
         typemap = {"TPMU_SYM_MODE": union}

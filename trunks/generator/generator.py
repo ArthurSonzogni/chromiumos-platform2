@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # Copyright 2014 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -8,7 +7,7 @@
 
 The generator takes as input a structures file as emitted by the
 extract_structures.sh script and a commands file as emitted by the
-extract_commands.sh script.  It outputs valid C++ into tpm_generated.{h,cc}.
+extract_commands.sh script. It outputs valid C++ into tpm_generated.{h,cc}.
 
 The input grammar is documented in the extract_* scripts. Sample input for
 structures looks like this:
@@ -60,7 +59,7 @@ _END
 from __future__ import print_function
 
 import argparse
-from collections import OrderedDict
+import collections
 import re
 import subprocess
 
@@ -243,8 +242,8 @@ _HANDLE_COUNT_FUNCTION_END = """
 
 def FixName(name):
     """Fixes names to conform to Chromium style."""
-    # Handle names with array notation. E.g. 'myVar[10]' is grouped as 'myVar' and
-    # '[10]'.
+    # Handle names with array notation. E.g. 'myVar[10]' is grouped as 'myVar'
+    # and '[10]'.
     match = re.search(r"([^\[]*)(\[.*\])*", name)
     # Transform the name to Chromium style. E.g. 'myVarAgain' becomes
     # 'my_var_again'.
@@ -262,12 +261,12 @@ def GetCppBool(condition):
     return "false"
 
 
-class Typedef(object):
+class Typedef:
     """Represents a TPM typedef.
 
     Attributes:
-      old_type: The existing type in a typedef statement.
-      new_type: The new type in a typedef statement.
+        old_type: The existing type in a typedef statement.
+        new_type: The new type in a typedef statement.
     """
 
     _TYPEDEF = "typedef %(old_type)s %(new_type)s;\n"
@@ -293,8 +292,8 @@ TPM_RC Parse_%(new)s(
         """Initializes a Typedef instance.
 
         Args:
-          old_type: The existing type in a typedef statement.
-          new_type: The new type in a typedef statement.
+            old_type: The existing type in a typedef statement.
+            new_type: The new type in a typedef statement.
         """
         self.old_type = old_type
         self.new_type = new_type
@@ -302,14 +301,15 @@ TPM_RC Parse_%(new)s(
     def OutputForward(self, out_file, defined_types, typemap):
         """Writes a typedef definition to |out_file|.
 
-        Any outstanding dependencies will be forward declared. This method is the
-        same as Output() because forward declarations do not apply for typedefs.
+        Any outstanding dependencies will be forward declared. This method is
+        the same as Output() because forward declarations do not apply for
+        typedefs.
 
         Args:
-          out_file: The output file.
-          defined_types: A set of types for which definitions have already been
-              generated.
-          typemap: A dict mapping type names to the corresponding object.
+            out_file: The output file.
+            defined_types: A set of types for which definitions have already
+                been generated.
+            typemap: A dict mapping type names to the corresponding object.
         """
         self.Output(out_file, defined_types, typemap)
 
@@ -319,10 +319,10 @@ TPM_RC Parse_%(new)s(
         Any outstanding dependencies will be forward declared.
 
         Args:
-          out_file: The output file.
-          defined_types: A set of types for which definitions have already been
-              generated.
-          typemap: A dict mapping type names to the corresponding object.
+            out_file: The output file.
+            defined_types: A set of types for which definitions have already
+                been generated.
+            typemap: A dict mapping type names to the corresponding object.
         """
         if self.new_type in defined_types:
             return
@@ -341,10 +341,10 @@ TPM_RC Parse_%(new)s(
         """Writes a serialize and parse function for the typedef to |out_file|.
 
         Args:
-          out_file: The output file.
-          serialized_types: A set of types for which serialize and parse functions
-            have already been generated.
-          typemap: A dict mapping type names to the corresponding object.
+            out_file: The output file.
+            serialized_types: A set of types for which serialize and parse
+                functions have already been generated.
+            typemap: A dict mapping type names to the corresponding object.
         """
         if self.new_type in serialized_types:
             return
@@ -362,13 +362,13 @@ TPM_RC Parse_%(new)s(
         serialized_types.add(self.new_type)
 
 
-class Constant(object):
+class Constant:
     """Represents a TPM constant.
 
     Attributes:
-      const_type: The type of the constant (e.g. 'int').
-      name: The name of the constant (e.g. 'kMyConstant').
-      value: The value of the constant (e.g. '7').
+        const_type: The type of the constant (e.g. 'int').
+        name: The name of the constant (e.g. 'kMyConstant').
+        value: The value of the constant (e.g. '7').
     """
 
     _CONSTANT = "constexpr %(type)s %(name)s = %(value)s;\n"
@@ -377,9 +377,9 @@ class Constant(object):
         """Initializes a Constant instance.
 
         Args:
-          const_type: The type of the constant (e.g. 'int').
-          name: The name of the constant (e.g. 'kMyConstant').
-          value: The value of the constant (e.g. '7').
+            const_type: The type of the constant (e.g. 'int').
+            name: The name of the constant (e.g. 'kMyConstant').
+            value: The value of the constant (e.g. '7').
         """
         self.const_type = const_type
         self.name = name
@@ -391,10 +391,10 @@ class Constant(object):
         Any outstanding dependencies will be forward declared.
 
         Args:
-          out_file: The output file.
-          defined_types: A set of types for which definitions have already been
-              generated.
-          typemap: A dict mapping type names to the corresponding object.
+            out_file: The output file.
+            defined_types: A set of types for which definitions have already
+                been generated.
+            typemap: A dict mapping type names to the corresponding object.
         """
         # Make sure the dependency is already defined.
         if self.const_type not in defined_types:
@@ -407,15 +407,15 @@ class Constant(object):
         )
 
 
-class Structure(object):
+class Structure:
     """Represents a TPM structure or union.
 
     Attributes:
-      name: The name of the structure.
-      is_union: A boolean indicating whether this is a union.
-      fields: A list of (type, name) tuples representing the struct fields.
-      depends_on: A list of strings for types this struct depends on other than
-          field types. See AddDependency() for more details.
+        name: The name of the structure.
+        is_union: A boolean indicating whether this is a union.
+        fields: A list of (type, name) tuples representing the struct fields.
+        depends_on: A list of strings for types this struct depends on other
+            than field types. See AddDependency() for more details.
     """
 
     _STRUCTURE = "struct %(name)s {\n"
@@ -638,12 +638,12 @@ std::string StringFrom_%(type)s(
     def __init__(self, name, is_union):
         """Initializes a Structure instance.
 
-        Initially the instance will have no fields and no dependencies. Those can be
-        added with the AddField() and AddDependency() methods.
+        Initially the instance will have no fields and no dependencies. Those
+        can be added with the AddField() and AddDependency() methods.
 
         Args:
-          name: The name of the structure.
-          is_union: A boolean indicating whether this is a union.
+            name: The name of the structure.
+            is_union: A boolean indicating whether this is a union.
         """
         self.name = name
         self.is_union = is_union
@@ -655,21 +655,21 @@ std::string StringFrom_%(type)s(
         """Adds a field for this struct.
 
         Args:
-          field_type: The type of the field.
-          field_name: The name of the field.
+            field_type: The type of the field.
+            field_name: The name of the field.
         """
         self.fields.append((field_type, FixName(field_name)))
 
     def AddDependency(self, required_type):
         """Adds an explicit dependency on another type.
 
-        This is used in cases where there is an additional dependency other than the
-        field types, which are implicit dependencies.  For example, a field like
-        FIELD_TYPE value[sizeof(OTHER_TYPE)] would need OTHER_TYPE to be already
-        declared.
+        This is used in cases where there is an additional dependency other than
+        the field types, which are implicit dependencies. For example, a field
+        like FIELD_TYPE value[sizeof(OTHER_TYPE)] would need OTHER_TYPE to be
+        already declared.
 
         Args:
-          required_type: The type this structure depends on.
+            required_type: The type this structure depends on.
         """
         self.depends_on.append(required_type)
 
@@ -678,27 +678,29 @@ std::string StringFrom_%(type)s(
         return self.name.startswith("TPM2B_") and self.fields[1][0] == "BYTE"
 
     def IsComplexTPM2B(self):
-        """Returns whether this struct is a TPM2B structure with an inner struct."""
+        """Returns if struct is a TPM2B structure with an inner struct."""
         return self.name.startswith("TPM2B_") and self.fields[1][0] != "BYTE"
 
     def _GetFieldTypes(self):
         """Creates a list which holds all current field types.
 
         Returns:
-          A list of field types.
+            A list of field types.
         """
-        return list(OrderedDict.fromkeys(field[0] for field in self.fields))
+        return list(
+            collections.OrderedDict.fromkeys(field[0] for field in self.fields)
+        )
 
     def OutputForward(self, out_file, unused_defined_types, unused_typemap):
         """Writes a structure forward declaration to |out_file|.
 
-        This method needs to match the OutputForward method in other type classes
-        (e.g. Typedef) which is why the unused_* args exist.
+        This method needs to match the OutputForward method in other type
+        classes (e.g. Typedef) which is why the unused_* args exist.
 
         Args:
-          out_file: The output file.
-          unused_defined_types: Not used.
-          unused_typemap: Not used.
+            out_file: The output file.
+            unused_defined_types: Not used.
+            unused_typemap: Not used.
         """
         if self._forwarded:
             return
@@ -714,10 +716,10 @@ std::string StringFrom_%(type)s(
         Any outstanding dependencies will be defined.
 
         Args:
-          out_file: The output file.
-          defined_types: A set of types for which definitions have already been
-            generated.
-          typemap: A dict mapping type names to the corresponding object.
+            out_file: The output file.
+            defined_types: A set of types for which definitions have already
+                been generated.
+            typemap: A dict mapping type names to the corresponding object.
         """
         if self.name in defined_types:
             return
@@ -750,11 +752,11 @@ std::string StringFrom_%(type)s(
         """Writes serialize and parse functions for a structure to |out_file|.
 
         Args:
-          out_file: The output file.
-          serialized_types: A set of types for which serialize and parse functions
-            have already been generated.  This type name of this structure will be
-            added on success.
-          typemap: A dict mapping type names to the corresponding object.
+            out_file: The output file.
+            serialized_types: A set of types for which serialize and parse
+                functions have already been generated. This type name of this
+                structure will be added on success.
+            typemap: A dict mapping type names to the corresponding object.
         """
         if (
             self.name in serialized_types
@@ -849,12 +851,12 @@ std::string StringFrom_%(type)s(
         """Writes serialize and parse functions for a union to |out_file|.
 
         This is more complex than the struct case because only one field of the
-        union is serialized / parsed based on the value of a selector.  Arrays are
-        also handled differently: the full size of the array is serialized instead
-        of looking for a field which specifies the count.
+        union is serialized / parsed based on the value of a selector. Arrays
+        are also handled differently: the full size of the array is serialized
+        instead of looking for a field which specifies the count.
 
         Args:
-          out_file: The output file
+            out_file: The output file
         """
         selector_type = union_selectors.GetUnionSelectorType(self.name)
         selector_values = union_selectors.GetUnionSelectorValues(self.name)
@@ -937,15 +939,15 @@ std::string StringFrom_%(type)s(
     def _OutputUnionField(self, out_file, field, code_format):
         """Writes serialize / parse code for a union field.
 
-        In this case |self| may not necessarily represent a union but |field| does.
-        This requires that a field of an acceptable selector type appear somewhere
-        in the struct.  The value of this field is used as the selector value when
-        calling the serialize / parse function for the union.
+        In this case |self| may not necessarily represent a union but |field|
+        does. This requires that a field of an acceptable selector type appear
+        somewhere in the struct. The value of this field is used as the selector
+        value when calling the serialize / parse function for the union.
 
         Args:
-          out_file: The output file.
-          field: The union field to be processed as a (type, name) tuple.
-          code_format: Must be (_SERIALIZE|_PARSE)_FIELD_WITH_SELECTOR
+            out_file: The output file.
+            field: The union field to be processed as a (type, name) tuple.
+            code_format: Must be (_SERIALIZE|_PARSE)_FIELD_WITH_SELECTOR
         """
         selector_types = union_selectors.GetUnionSelectorTypes(field[0])
         selector_name = ""
@@ -970,13 +972,13 @@ std::string StringFrom_%(type)s(
         """Writes serialize / parse code for an array field.
 
         The allocated size of the array is ignored and a field which holds the
-        actual count of items in the array must exist.  Only the number of items
+        actual count of items in the array must exist. Only the number of items
         represented by the value of that count field are serialized / parsed.
 
         Args:
-          out_file: The output file.
-          field: The array field to be processed as a (type, name) tuple.
-          code_format: Must be (_SERIALIZE|_PARSE)_FIELD_ARRAY
+            out_file: The output file.
+            field: The array field to be processed as a (type, name) tuple.
+            code_format: Must be (_SERIALIZE|_PARSE)_FIELD_ARRAY
         """
         field_name = self._ARRAY_FIELD_RE.search(field[1]).group(1)
         for count_field in self.fields:
@@ -996,12 +998,12 @@ std::string StringFrom_%(type)s(
                 break
 
 
-class Define(object):
+class Define:
     """Represents a preprocessor define.
 
     Attributes:
-      name: The name being defined.
-      value: The value being assigned to the name.
+        name: The name being defined.
+        value: The value being assigned to the name.
     """
 
     _DEFINE = "#if !defined(%(name)s)\n#define %(name)s %(value)s\n#endif\n"
@@ -1010,8 +1012,8 @@ class Define(object):
         """Initializes a Define instance.
 
         Args:
-          name: The name being defined.
-          value: The value being assigned to the name.
+            name: The name being defined.
+            value: The value being assigned to the name.
         """
         self.name = name
         # Prepend 'trunks::' to types.
@@ -1021,12 +1023,12 @@ class Define(object):
         """Writes a preprocessor define to |out_file|.
 
         Args:
-          out_file: The output file.
+            out_file: The output file.
         """
         out_file.write(self._DEFINE % {"name": self.name, "value": self.value})
 
 
-class StructureParser(object):
+class StructureParser:
     """Structure definition parser.
 
     The input text file is extracted from the PDF file containing the TPM
@@ -1038,12 +1040,12 @@ class StructureParser(object):
     - Parses structs and unions to a list of Structure objects.
     - Parses defines to a list of Define objects.
 
-    The parser also creates 'typemap' dict which maps every type to its generator
-    object.  This typemap helps manage type dependencies.
+    The parser also creates 'typemap' dict which maps every type to its
+    generator object. This typemap helps manage type dependencies.
 
     Examples:
-      parser = StructureParser(open('myfile'))
-      types, constants, structs, defines, typemap = parser.Parse()
+        parser = StructureParser(open('myfile'))
+        types, constants, structs, defines, typemap = parser.Parse()
     """
 
     # Compile regular expressions.
@@ -1067,7 +1069,8 @@ class StructureParser(object):
         """Initializes a StructureParser instance.
 
         Args:
-          in_file: A file as returned by open() which has been opened for reading.
+            in_file: A file as returned by open() which has been opened for
+                reading.
         """
         self._line = None
         self._in_file = in_file
@@ -1076,7 +1079,7 @@ class StructureParser(object):
         """Gets the next input line.
 
         Returns:
-          The next input line if another line is available, None otherwise.
+            The next input line if another line is available, None otherwise.
         """
         self._line = next(self._in_file, None)
 
@@ -1084,9 +1087,9 @@ class StructureParser(object):
         """Parse everything in a structures file.
 
         Returns:
-          Lists of objects and a type-map as described in the class documentation.
-          Returns these in the following order: types, constants, structs, defines,
-          typemap.
+            Lists of objects and a type-map as described in the class
+            documentation. Returns these in the following order: types,
+            constants, structs, defines, typemap.
         """
         self._NextLine()
         types = []
@@ -1153,16 +1156,15 @@ class StructureParser(object):
         """Adds an empty Structure object to |structs| and |typemap|.
 
         Args:
-          name: The name to assign the new structure.
-          is_union: A boolean indicating whether the new structure is a union.
-          structs: A list of structures to which the new object is appended.
-          typemap: A map of type names to objects to which the new name and object
-              are added.
+            name: The name to assign the new structure.
+            is_union: A boolean indicating whether the new structure is a union.
+            structs: A list of structures to which the new object is appended.
+            typemap: A map of type names to objects to which the new name and
+                object are added.
         """
         s = Structure(name, is_union)
         structs.append(s)
         typemap[name] = s
-        return
 
     def _ParseTypes(self, typemap):
         """Parses a typedefs section.
@@ -1171,10 +1173,10 @@ class StructureParser(object):
         when an _END line is found.
 
         Args:
-          typemap: A dictionary to which parsed types are added.
+            typemap: A dictionary to which parsed types are added.
 
         Returns:
-          A list of Typedef objects.
+            A list of Typedef objects.
         """
         types = []
         self._NextLine()
@@ -1199,17 +1201,17 @@ class StructureParser(object):
     def _ParseConstants(self, types, typemap):
         """Parses a constants section.
 
-        The current line should be _BEGIN_CONSTANTS and the method will stop parsing
-        when an _END line is found. Each group of constants has an associated type
-        alias. A Typedef object is created for each of these aliases and added to
-        both |types| and |typemap|.
+        The current line should be _BEGIN_CONSTANTS and the method will stop
+        parsing when an _END line is found. Each group of constants has an
+        associated type alias. A Typedef object is created for each of these
+        aliases and added to both |types| and |typemap|.
 
         Args:
-          types: A list of Typedef objects.
-          typemap: A dictionary to which parsed types are added.
+            types: A list of Typedef objects.
+            typemap: A dictionary to which parsed types are added.
 
         Returns:
-          A list of Constant objects.
+            A list of Constant objects.
         """
         constants = []
         self._NextLine()
@@ -1250,15 +1252,16 @@ class StructureParser(object):
     def _ParseStructures(self, section_re, typemap):
         """Parses structures and unions.
 
-        The current line should be _BEGIN_STRUCTURES or _BEGIN_UNIONS and the method
-        will stop parsing when an _END line is found.
+        The current line should be _BEGIN_STRUCTURES or _BEGIN_UNIONS and the
+        method will stop parsing when an _END line is found.
 
         Args:
-          section_re: The regular expression to use for matching section tokens.
-          typemap: A dictionary to which parsed types are added.
+            section_re: The regular expression to use for matching section
+                tokens.
+            typemap: A dictionary to which parsed types are added.
 
         Returns:
-          A list of Structure objects.
+            A list of Structure objects.
         """
         structures = []
         is_union = section_re == self._UNION_SECTION_RE
@@ -1283,8 +1286,8 @@ class StructureParser(object):
                     print("Invalid field name: %s" % self._line)
                     return structures
                 field_name = match.group(1)
-                # If the field name includes 'sizeof(SOME_TYPE)', record the dependency
-                # on SOME_TYPE.
+                # If the field name includes 'sizeof(SOME_TYPE)', record the
+                # dependency on SOME_TYPE.
                 match = self._SIZEOF_RE.search(field_name)
                 if match:
                     current_structure.AddDependency(match.group(1))
@@ -1301,11 +1304,11 @@ class StructureParser(object):
     def _ParseDefines(self):
         """Parses preprocessor defines.
 
-        The current line should be _BEGIN_DEFINES and the method will stop parsing
-        when an _END line is found.
+        The current line should be _BEGIN_DEFINES and the method will stop
+        parsing when an _END line is found.
 
         Returns:
-          A list of Define objects.
+            A list of Define objects.
         """
         defines = []
         self._NextLine()
@@ -1326,20 +1329,21 @@ class StructureParser(object):
         return defines
 
 
-class Command(object):
+class Command:
     """Represents a TPM command.
 
     Attributes:
-      name: The command name (e.g. 'TPM2_Startup').
-      command_code: The name of the command code constant (e.g. TPM2_CC_Startup).
-      request_args: A list to hold command input arguments. Each element is a dict
-          and has these keys:
-              'type': The argument type.
-              'name': The argument name.
-              'command_code': The optional value of the command code constant.
-              'description': Optional descriptive text for the argument.
-      response_args: A list identical in form to request_args but to hold command
-          output arguments.
+        name: The command name (e.g. 'TPM2_Startup').
+        command_code: The name of the command code constant
+            (e.g. TPM2_CC_Startup).
+        request_args: A list to hold command input arguments. Each element is a
+            dict and has these keys:
+                'type': The argument type.
+                'name': The argument name.
+                'command_code': The optional value of the command code constant.
+                'description': Optional descriptive text for the argument.
+        response_args: A list identical in form to request_args but to hold
+            command output arguments.
     """
 
     _HANDLE_RE = re.compile(r"TPMI_.H_.*")
@@ -1593,7 +1597,7 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
         Initially the request_args and response_args attributes are not set.
 
         Args:
-          name: The command name (e.g. 'TPM2_Startup').
+            name: The command name (e.g. 'TPM2_Startup').
         """
         self.name = name
         self.command_code = ""
@@ -1604,7 +1608,7 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
         """Prints method and callback declaration statements for this command.
 
         Args:
-          out_file: The output file.
+            out_file: The output file.
         """
         self._OutputCallbackSignature(out_file)
         self._OutputMethodSignatures(out_file)
@@ -1613,7 +1617,7 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
         """Generates a serialize function for the command inputs.
 
         Args:
-          out_file: Generated code is written to this file.
+            out_file: Generated code is written to this file.
         """
         # Categorize arguments as either handles or parameters.
         handles, parameters = self._SplitArgs(self.request_args)
@@ -1696,7 +1700,7 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
         """Generates a parse function for the command outputs.
 
         Args:
-          out_file: Generated code is written to this file.
+            out_file: Generated code is written to this file.
         """
         out_file.write(
             self._RESPONSE_PARSER_START
@@ -1757,12 +1761,13 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
     def OutputMethodImplementation(self, out_file):
         """Generates the implementation of a Tpm class method for this command.
 
-        The method assembles a command to be sent unmodified to the TPM and invokes
-        the CommandTransceiver with the command. Errors are reported directly to the
-        response callback via the error callback (see OutputErrorCallback).
+        The method assembles a command to be sent unmodified to the TPM and
+        invokes the CommandTransceiver with the command. Errors are reported
+        directly to the response callback via the error callback (see
+        OutputErrorCallback).
 
         Args:
-          out_file: Generated code is written to this file.
+            out_file: Generated code is written to this file.
         """
         out_file.write(
             self._ASYNC_METHOD
@@ -1791,11 +1796,11 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
     def OutputErrorCallback(self, out_file):
         """Generates the implementation of an error callback for this command.
 
-        The error callback simply calls the command response callback with the error
-        as the first argument and default values for all other arguments.
+        The error callback simply calls the command response callback with the
+        error as the first argument and default values for all other arguments.
 
         Args:
-          out_file: Generated code is written to this file.
+            out_file: Generated code is written to this file.
         """
         out_file.write(
             self._ERROR_CALLBACK_START % {"method_name": self._MethodName()}
@@ -1807,13 +1812,13 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
     def OutputResponseCallback(self, out_file):
         """Generates the implementation of a response callback for this command.
 
-        The response callback takes the unmodified response from the TPM, parses it,
-        and invokes the original response callback with the parsed response args.
-        Errors during parsing or from the TPM are reported directly to the response
-        callback via the error callback (see OutputErrorCallback).
+        The response callback takes the unmodified response from the TPM, parses
+        it, and invokes the original response callback with the parsed response
+        args. Errors during parsing or from the TPM are reported directly to the
+        response callback via the error callback (see OutputErrorCallback).
 
         Args:
-          out_file: Generated code is written to this file.
+            out_file: Generated code is written to this file.
         """
         out_file.write(
             self._RESPONSE_CALLBACK_START % {"method_name": self._MethodName()}
@@ -1847,11 +1852,11 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
     def _OutputMethodSignatures(self, out_file):
         """Prints method declaration statements for this command.
 
-        This includes a method to serialize a request, a method to parse a response,
-        and methods for synchronous and asynchronous calls.
+        This includes a method to serialize a request, a method to parse a
+        response, and methods for synchronous and asynchronous calls.
 
         Args:
-          out_file: The output file.
+            out_file: The output file.
         """
         out_file.write(
             "  static TPM_RC SerializeCommand_%s(%s);\n"
@@ -1873,7 +1878,7 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
         """Prints a callback typedef for this command.
 
         Args:
-          out_file: The output file.
+            out_file: The output file.
         """
         args = self._InputArgList(self.response_args)
         if args:
@@ -1890,7 +1895,7 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
         We use the command name without the TPM2_ prefix.
 
         Returns:
-          The method name.
+            The method name.
         """
         if not self.name.startswith("TPM2_"):
             return self.name
@@ -1900,11 +1905,11 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
         """Formats a list of input arguments for use in a function declaration.
 
         Args:
-          args: An argument list in the same form as the request_args and
-              response_args attributes.
+            args: An argument list in the same form as the request_args and
+                response_args attributes.
 
         Returns:
-          A string which can be used in a function declaration.
+            A string which can be used in a function declaration.
         """
         if args:
             arg_list = ["const %(type)s& %(name)s" % a for a in args]
@@ -1915,11 +1920,11 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
         """Formats a list of output arguments for use in a function declaration.
 
         Args:
-          args: An argument list in the same form as the request_args and
-              response_args attributes.
+            args: An argument list in the same form as the request_args and
+                response_args attributes.
 
         Returns:
-          A string which can be used in a function declaration.
+            A string which can be used in a function declaration.
         """
         if args:
             arg_list = ["%(type)s* %(name)s" % a for a in args]
@@ -1932,14 +1937,14 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
         """Formats a list of arguments for use in a function call statement.
 
         Args:
-          args: An argument list in the same form as the request_args and
-              response_args attributes.
-          prefix: A prefix to be prepended to each argument.
-          leading_comma: Whether to include a comma before the first argument.
-          trailing_comma: Whether to include a comma after the last argument.
+            args: An argument list in the same form as the request_args and
+                response_args attributes.
+            prefix: A prefix to be prepended to each argument.
+            leading_comma: Whether to include a comma before the first argument.
+            trailing_comma: Whether to include a comma after the last argument.
 
         Returns:
-          A string which can be used in a function call statement.
+            A string which can be used in a function call statement.
         """
         if args:
             arg_list = [(prefix + a["name"]) for a in args]
@@ -1987,7 +1992,7 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
         """
         handles, parameters = self._SplitArgs(self.request_args)
         args = []
-        # Add a name argument for every handle.  We'll need it to compute cpHash.
+        # Add a name argument for every handle. We'll need it to compute cpHash.
         for handle in handles:
             args.append(handle)
             args.append(
@@ -2034,7 +2039,7 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
         return self._PARSE_ARG + args + "," + self._DELEGATE_ARG
 
 
-class CommandParser(object):
+class CommandParser:
     """Command definition parser.
 
     The input text file is extracted from the PDF file containing the TPM
@@ -2065,7 +2070,8 @@ class CommandParser(object):
         """Initializes a CommandParser instance.
 
         Args:
-          in_file: A file as returned by open() which has been opened for reading.
+            in_file: A file as returned by open() which has been opened for
+                reading.
         """
         self._line = None
         self._in_file = in_file
@@ -2074,7 +2080,7 @@ class CommandParser(object):
         """Gets the next input line.
 
         Returns:
-          The next input line if another line is available, None otherwise.
+            The next input line if another line is available, None otherwise.
         """
         self._line = next(self._in_file, None)
 
@@ -2082,7 +2088,7 @@ class CommandParser(object):
         """Parses everything in a commands file.
 
         Returns:
-          A list of extracted Command objects.
+            A list of extracted Command objects.
         """
         commands = []
         self._NextLine()
@@ -2102,7 +2108,7 @@ class CommandParser(object):
         """Parses inputs and outputs for a single TPM command.
 
         Returns:
-          A single Command object.
+            A single Command object.
         """
         match = self._INPUT_START_RE.search(self._line)
         if not match:
@@ -2118,7 +2124,7 @@ class CommandParser(object):
             return None
         self._NextLine()
         cmd.response_args = self._ParseCommandArgs(cmd)
-        request_var_names = set([arg["name"] for arg in cmd.request_args])
+        request_var_names = {arg["name"] for arg in cmd.request_args}
         for arg in cmd.response_args:
             if arg["name"] in request_var_names:
                 arg["name"] += "_out"
@@ -2133,12 +2139,12 @@ class CommandParser(object):
         The arguments may be input or output arguments.
 
         Args:
-          cmd: The current Command object. The command_code attribute will be set if
-              such a constant is parsed.
+            cmd: The current Command object. The command_code attribute will be
+                set if such a constant is parsed.
 
         Returns:
-          A list of arguments in the same form as the Command.request_args and
-          Command.response_args attributes.
+            A list of arguments in the same form as the Command.request_args and
+            Command.response_args attributes.
         """
         args = []
         match = self._TYPE_RE.search(self._line)
@@ -2167,8 +2173,8 @@ def GenerateHandleCountFunctions(commands, out_file):
     """Generates the GetNumberOf*Handles functions given a list of commands.
 
     Args:
-      commands: A list of Command objects.
-      out_file: The output file.
+        commands: A list of Command objects.
+        out_file: The output file.
     """
     out_file.write(_HANDLE_COUNT_FUNCTION_START % {"handle_type": "Request"})
     for command in commands:
@@ -2193,105 +2199,104 @@ def GenerateHandleCountFunctions(commands, out_file):
 
 
 def GenerateHeader(types, constants, structs, defines, typemap, commands):
-    """Generates a header file with declarations for all given generator objects.
+    """Generates a header file with declarations for all given generator objects
 
     Args:
-      types: A list of Typedef objects.
-      constants: A list of Constant objects.
-      structs: A list of Structure objects.
-      defines: A list of Define objects.
-      typemap: A dict mapping type names to the corresponding object.
-      commands: A list of Command objects.
+        types: A list of Typedef objects.
+        constants: A list of Constant objects.
+        structs: A list of Structure objects.
+        defines: A list of Define objects.
+        typemap: A dict mapping type names to the corresponding object.
+        commands: A list of Command objects.
     """
-    out_file = open(_OUTPUT_FILE_H, "w")
-    out_file.write(_COPYRIGHT_HEADER)
-    guard_name = "TRUNKS_%s_" % _OUTPUT_FILE_H.upper().replace(".", "_")
-    out_file.write(_HEADER_FILE_GUARD_HEADER % {"name": guard_name})
-    out_file.write(_HEADER_FILE_INCLUDES)
-    out_file.write(_NAMESPACE_BEGIN)
-    out_file.write(_FORWARD_DECLARATIONS)
-    out_file.write("\n")
-    # These types are built-in or defined by <stdint.h>; they serve as base cases
-    # when defining type dependencies.
-    defined_types = set(_BASIC_TYPES)
-    # Generate defines.  These must be generated before any other code.
-    for define in defines:
-        define.Output(out_file)
-    out_file.write("\n")
-    # Generate typedefs.  These are declared before structs because they are not
-    # likely to depend on structs and when they do a simple forward declaration
-    # for the struct can be generated.  This improves the readability of the
-    # generated code.
-    for typedef in types:
-        typedef.Output(out_file, defined_types, typemap)
-    out_file.write("\n")
-    # Generate constant definitions.  Again, generated before structs to improve
-    # readability.
-    for constant in constants:
-        constant.Output(out_file, defined_types, typemap)
-    out_file.write("\n")
-    # Generate structs.  All non-struct dependencies should be already declared.
-    for struct in structs:
-        struct.Output(out_file, defined_types, typemap)
-    # Helper function declarations.
-    out_file.write(_FUNCTION_DECLARATIONS)
-    # Generate serialize / parse function declarations.
-    for basic_type in _BASIC_TYPES:
-        out_file.write(_SERIALIZE_DECLARATION % {"type": basic_type})
-    for typedef in types:
-        out_file.write(_SERIALIZE_DECLARATION % {"type": typedef.new_type})
-    for struct in structs:
-        out_file.write(_SERIALIZE_DECLARATION % {"type": struct.name})
-        if struct.IsSimpleTPM2B():
-            out_file.write(
-                _SIMPLE_TPM2B_HELPERS_DECLARATION % {"type": struct.name}
-            )
-        elif struct.IsComplexTPM2B():
-            out_file.write(
-                _COMPLEX_TPM2B_HELPERS_DECLARATION
-                % {"type": struct.name, "inner_type": struct.fields[1][0]}
-            )
-    # Generate a declaration for a 'Tpm' class, which includes one method for
-    # every TPM 2.0 command.
-    out_file.write(_CLASS_BEGIN)
-    for command in commands:
-        command.OutputDeclarations(out_file)
-    out_file.write(_CLASS_END)
-    out_file.write(_NAMESPACE_END)
-    out_file.write(_HEADER_FILE_GUARD_FOOTER % {"name": guard_name})
-    out_file.close()
+    with open(_OUTPUT_FILE_H, "w", encoding="utf-8") as out_file:
+        out_file.write(_COPYRIGHT_HEADER)
+        guard_name = "TRUNKS_%s_" % _OUTPUT_FILE_H.upper().replace(".", "_")
+        out_file.write(_HEADER_FILE_GUARD_HEADER % {"name": guard_name})
+        out_file.write(_HEADER_FILE_INCLUDES)
+        out_file.write(_NAMESPACE_BEGIN)
+        out_file.write(_FORWARD_DECLARATIONS)
+        out_file.write("\n")
+        # These types are built-in or defined by <stdint.h>; they serve as base
+        # cases when defining type dependencies.
+        defined_types = set(_BASIC_TYPES)
+        # Generate defines. These must be generated before any other code.
+        for define in defines:
+            define.Output(out_file)
+        out_file.write("\n")
+        # Generate typedefs. These are declared before structs because they are
+        # not likely to depend on structs and when they do a simple forward
+        # declaration for the struct can be generated. This improves the
+        # readability of the generated code.
+        for typedef in types:
+            typedef.Output(out_file, defined_types, typemap)
+        out_file.write("\n")
+        # Generate constant definitions. Again, generated before structs to
+        # improve readability.
+        for constant in constants:
+            constant.Output(out_file, defined_types, typemap)
+        out_file.write("\n")
+        # Generate structs. All non-struct dependencies should be already
+        # declared.
+        for struct in structs:
+            struct.Output(out_file, defined_types, typemap)
+        # Helper function declarations.
+        out_file.write(_FUNCTION_DECLARATIONS)
+        # Generate serialize / parse function declarations.
+        for basic_type in _BASIC_TYPES:
+            out_file.write(_SERIALIZE_DECLARATION % {"type": basic_type})
+        for typedef in types:
+            out_file.write(_SERIALIZE_DECLARATION % {"type": typedef.new_type})
+        for struct in structs:
+            out_file.write(_SERIALIZE_DECLARATION % {"type": struct.name})
+            if struct.IsSimpleTPM2B():
+                out_file.write(
+                    _SIMPLE_TPM2B_HELPERS_DECLARATION % {"type": struct.name}
+                )
+            elif struct.IsComplexTPM2B():
+                out_file.write(
+                    _COMPLEX_TPM2B_HELPERS_DECLARATION
+                    % {"type": struct.name, "inner_type": struct.fields[1][0]}
+                )
+        # Generate a declaration for a 'Tpm' class, which includes one method
+        # for every TPM 2.0 command.
+        out_file.write(_CLASS_BEGIN)
+        for command in commands:
+            command.OutputDeclarations(out_file)
+        out_file.write(_CLASS_END)
+        out_file.write(_NAMESPACE_END)
+        out_file.write(_HEADER_FILE_GUARD_FOOTER % {"name": guard_name})
 
 
 def GenerateImplementation(types, structs, typemap, commands):
     """Generates implementation code for each command.
 
     Args:
-      types: A list of Typedef objects.
-      structs: A list of Structure objects.
-      typemap: A dict mapping type names to the corresponding object.
-      commands: A list of Command objects.
+        types: A list of Typedef objects.
+        structs: A list of Structure objects.
+        typemap: A dict mapping type names to the corresponding object.
+        commands: A list of Command objects.
     """
-    out_file = open(_OUTPUT_FILE_CC, "w")
-    out_file.write(_COPYRIGHT_HEADER)
-    out_file.write(_LOCAL_INCLUDE % {"filename": _OUTPUT_FILE_H})
-    out_file.write(_IMPLEMENTATION_FILE_INCLUDES)
-    out_file.write(_NAMESPACE_BEGIN)
-    GenerateHandleCountFunctions(commands, out_file)
-    serialized_types = set(_BASIC_TYPES)
-    for basic_type in _BASIC_TYPES:
-        out_file.write(_SERIALIZE_BASIC_TYPE % {"type": basic_type})
-    for typedef in types:
-        typedef.OutputSerialize(out_file, serialized_types, typemap)
-    for struct in structs:
-        struct.OutputSerialize(out_file, serialized_types, typemap)
-    for command in commands:
-        command.OutputSerializeFunction(out_file)
-        command.OutputParseFunction(out_file)
-        command.OutputErrorCallback(out_file)
-        command.OutputResponseCallback(out_file)
-        command.OutputMethodImplementation(out_file)
-    out_file.write(_NAMESPACE_END)
-    out_file.close()
+    with open(_OUTPUT_FILE_CC, "w", encoding="utf-8") as out_file:
+        out_file.write(_COPYRIGHT_HEADER)
+        out_file.write(_LOCAL_INCLUDE % {"filename": _OUTPUT_FILE_H})
+        out_file.write(_IMPLEMENTATION_FILE_INCLUDES)
+        out_file.write(_NAMESPACE_BEGIN)
+        GenerateHandleCountFunctions(commands, out_file)
+        serialized_types = set(_BASIC_TYPES)
+        for basic_type in _BASIC_TYPES:
+            out_file.write(_SERIALIZE_BASIC_TYPE % {"type": basic_type})
+        for typedef in types:
+            typedef.OutputSerialize(out_file, serialized_types, typemap)
+        for struct in structs:
+            struct.OutputSerialize(out_file, serialized_types, typemap)
+        for command in commands:
+            command.OutputSerializeFunction(out_file)
+            command.OutputParseFunction(out_file)
+            command.OutputErrorCallback(out_file)
+            command.OutputResponseCallback(out_file)
+            command.OutputMethodImplementation(out_file)
+        out_file.write(_NAMESPACE_END)
 
 
 def FormatFile(filename):
@@ -2301,21 +2306,24 @@ def FormatFile(filename):
 def main():
     """A main function.
 
-    Both a TPM structures file and commands file are parsed and C++ header and C++
-    implementation file are generated.
+    Both a TPM structures file and commands file are parsed and C++ header and
+    C++ implementation file are generated.
 
     Positional Args:
-      structures_file: The extracted TPM structures file.
-      commands_file: The extracted TPM commands file.
+        structures_file: The extracted TPM structures file.
+        commands_file: The extracted TPM commands file.
     """
     parser = argparse.ArgumentParser(description="TPM 2.0 code generator")
     parser.add_argument("structures_file")
     parser.add_argument("commands_file")
     args = parser.parse_args()
-    structure_parser = StructureParser(open(args.structures_file))
-    types, constants, structs, defines, typemap = structure_parser.Parse()
-    command_parser = CommandParser(open(args.commands_file))
-    commands = command_parser.Parse()
+    with open(args.structures_file, "r", encoding="utf-8") as s_file, open(
+        args.commands_file, "r", encoding="utf-8"
+    ) as c_file:
+        structure_parser = StructureParser(s_file)
+        types, constants, structs, defines, typemap = structure_parser.Parse()
+        command_parser = CommandParser(c_file)
+        commands = command_parser.Parse()
     GenerateHeader(types, constants, structs, defines, typemap, commands)
     GenerateImplementation(types, structs, typemap, commands)
     FormatFile(_OUTPUT_FILE_H)
