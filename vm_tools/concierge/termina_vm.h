@@ -58,7 +58,6 @@ struct VmFeatures {
   bool gpu;
   // Enable DGPU passthrough in the started VM.
   bool dgpu_passthrough;
-  bool vulkan;
   bool big_gl;
   bool virtgpu_native_context;
   bool render_server;

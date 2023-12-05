@@ -236,8 +236,8 @@ message StartVmRequest {
   // Kernel cmdline parameters that will be passed to crosvm.
   repeated string kernel_params = 17;
 
-  // Enable Vulkan in the started Vm.
-  bool enable_vulkan = 18;
+  // DEPRECATED: Vulkan is enabled when it's supported, and GPU is enabled.
+  bool enable_vulkan = 18 [deprecated = true];
 
   // Enable Big GL rendering for the started Vm (default is GLES).
   bool enable_big_gl = 19;

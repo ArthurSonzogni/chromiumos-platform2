@@ -232,7 +232,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
 
   if (features_.gpu) {
     vm_builder.EnableGpu(true)
-        .EnableVulkan(features_.vulkan)
+        .EnableVulkan(USE_CROSVM_VULKAN)
         .EnableBigGl(features_.big_gl)
         .EnableVirtgpuNativeContext(features_.virtgpu_native_context);
 

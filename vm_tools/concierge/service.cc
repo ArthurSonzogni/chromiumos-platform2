@@ -1859,12 +1859,6 @@ StartVmResponse Service::StartVmInternal(
     return response;
   }
 
-  if (request.enable_vulkan() && !request.enable_gpu()) {
-    LOG(ERROR) << "Vulkan enabled without GPU";
-    response.set_failure_reason("Vulkan enabled without GPU");
-    return response;
-  }
-
   if (request.enable_big_gl() && !request.enable_gpu()) {
     LOG(ERROR) << "Big GL enabled without GPU";
     response.set_failure_reason("Big GL enabled without GPU");
@@ -1878,7 +1872,7 @@ StartVmResponse Service::StartVmInternal(
   }
 
   // Enable the render server for Vulkan.
-  const bool enable_render_server = request.enable_vulkan();
+  const bool enable_render_server = request.enable_gpu() && USE_CROSVM_VULKAN;
   // Enable foz db list (dynamic un/loading for RO mesa shader cache) only for
   // Borealis, for now.
   const bool enable_foz_db_list = classification == apps::VmType::BOREALIS;
@@ -1945,7 +1939,6 @@ StartVmResponse Service::StartVmInternal(
   VmFeatures features{
       .gpu = request.enable_gpu(),
       .dgpu_passthrough = request.enable_dgpu_passthrough(),
-      .vulkan = request.enable_vulkan(),
       .big_gl = request.enable_big_gl(),
       .virtgpu_native_context = request.enable_virtgpu_native_context(),
       .render_server = enable_render_server,
