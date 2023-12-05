@@ -24,6 +24,7 @@ chromeos = ["featured"]
 [dependencies]
 anyhow = "1.0"
 async-trait = "0.1.36"
+cfg-if = "1.0.0"
 dbus = { version = "0.9", features = ["stdfd"] }
 dbus-crossroads = "0.5.0"
 dbus-tokio = "0.7.5"

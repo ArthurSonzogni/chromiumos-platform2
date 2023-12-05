@@ -65,7 +65,7 @@ fn main() -> Result<()> {
 
     let rt = Builder::new_current_thread().enable_all().build()?;
     if let Err(err) = rt.block_on(dbus::service_main()) {
-        error!("The D-Bus service main returns error: {}", err);
+        error!("The D-Bus service main returns error: {:?}", err);
     }
 
     Ok(())

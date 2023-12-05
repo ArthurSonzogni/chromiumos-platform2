@@ -756,6 +756,10 @@ pub async fn service_main() -> Result<()> {
         panic!("Lost connection to D-Bus: {}", err);
     });
 
+    feature::start_feature_monitoring(conn.as_ref())
+        .await
+        .context("start feature monitoring")?;
+
     let vmms_client = VmMemoryManagementClient::new(conn.clone())
         .await
         .context("create VmMemoryManagementClient")?;
@@ -874,20 +878,12 @@ pub async fn service_main() -> Result<()> {
         }),
     );
 
-    // Updates the feature periodically.
-    tokio::spawn(async move {
-        loop {
-            if let Err(err) = feature::update_feature(VARIABLE_TIME_MEMORY_SIGNAL_FEATURE_NAME) {
-                error!(
-                    "Failed to update feature {}: {}",
-                    VARIABLE_TIME_MEMORY_SIGNAL_FEATURE_NAME, err
-                );
-            }
-
-            // 10 minutes interval.
-            tokio::time::sleep(Duration::from_secs(10 * 60)).await;
-        }
-    });
+    if let Err(err) = feature::initialize_feature(VARIABLE_TIME_MEMORY_SIGNAL_FEATURE_NAME) {
+        error!(
+            "Failed to update feature {}: {}",
+            VARIABLE_TIME_MEMORY_SIGNAL_FEATURE_NAME, err
+        );
+    }
 
     // Reports memory pressure notification count every 10 minutes.
     let notification_count = Arc::new(AtomicI32::new(0));

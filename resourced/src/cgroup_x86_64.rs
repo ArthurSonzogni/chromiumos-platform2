@@ -13,16 +13,13 @@ use std::sync::Mutex;
 use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
-#[cfg(feature = "chromeos")]
-use featured::CheckFeature; // Trait CheckFeature is for is_feature_enabled_blocking
 use glob::glob;
 use log::info;
 use once_cell::sync::Lazy;
-#[cfg(feature = "chromeos")]
-use once_cell::sync::OnceCell;
 
 use crate::common;
 use crate::cpu_utils;
+use crate::feature;
 
 const MEDIA_MIN_ECORE_NUM: u32 = 4;
 
@@ -47,60 +44,16 @@ const CGROUP_CPUSET_NO_LIMIT: [&str; 3] = [
 const CGROUP_CPUSET_NONURGENT: &str = "sys/fs/cgroup/cpuset/chrome/non-urgent/cpus";
 const SCHEDULER_NONURGENT_PATH: &str = "run/chromeos-config/v1/scheduler-tune/cpuset-nonurgent";
 
-// Protects Feature access with a mutex.
-#[cfg(feature = "chromeos")]
-struct FeatureWrapper {
-    feature: Mutex<featured::Feature>,
-}
-
-// FeatureWrapper is thread safe because its content is protected by a Mutex.
-#[cfg(feature = "chromeos")]
-unsafe impl Send for FeatureWrapper {}
-#[cfg(feature = "chromeos")]
-unsafe impl Sync for FeatureWrapper {}
-
-#[cfg(feature = "chromeos")]
-static CGROUP_FEATURE: OnceCell<FeatureWrapper> = OnceCell::new();
-
 #[derive(PartialEq, Eq)]
 pub enum MediaDynamicCgroupAction {
     Start,
     Stop,
 }
 
+const FEATURE_MEDIA_DYNAMIC_CGROUP: &str = "CrOSLateBootMediaDynamicCgroup";
+
 pub fn init() -> Result<()> {
-    #[cfg(feature = "chromeos")]
-    {
-        const FEATURE_MEDIA_DYNAMIC_CGROUP: &str = "CrOSLateBootMediaDynamicCgroup";
-        let feature = featured::Feature::new(FEATURE_MEDIA_DYNAMIC_CGROUP, false)?;
-        if CGROUP_FEATURE
-            .set(FeatureWrapper {
-                feature: Mutex::new(feature),
-            })
-            .is_err()
-        {
-            bail!("Failed to set CGROUP_FEATURE");
-        }
-    }
-
-    Ok(())
-}
-
-fn is_dynamic_cgroup_enabled() -> Result<bool> {
-    #[cfg(feature = "chromeos")]
-    {
-        let feature_wrapper = CGROUP_FEATURE
-            .get()
-            .context("CGROUP_FEATURE is not initialized")?;
-        if let Ok(feature) = feature_wrapper.feature.lock() {
-            Ok(featured::PlatformFeatures::get()?.is_feature_enabled_blocking(&feature))
-        } else {
-            bail!("Failed to lock CGROUP_FEATURE");
-        }
-    }
-
-    #[cfg(not(feature = "chromeos"))]
-    Ok(false)
+    feature::initialize_feature(FEATURE_MEDIA_DYNAMIC_CGROUP)
 }
 
 fn write_cpusets(root: &Path, cpus: &str) -> Result<()> {
@@ -323,7 +276,7 @@ fn media_dynamic_cgroup_impl(action: MediaDynamicCgroupAction, root: &Path) -> R
 
 pub fn media_dynamic_cgroup(action: MediaDynamicCgroupAction) -> Result<()> {
     // Check whether CrOS supports media dynamic cgroup for power saving.
-    if is_dynamic_cgroup_enabled()? {
+    if feature::is_feature_enabled(FEATURE_MEDIA_DYNAMIC_CGROUP)? {
         let root = Path::new("/");
         // Check whether platform supports media dynamic cgroup.
         if platform_feature_media_dynamic_cgroup_enabled(root)? {

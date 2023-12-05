@@ -500,6 +500,7 @@ mod tests {
     use tempfile::tempdir;
 
     use super::*;
+    use crate::feature;
     use crate::test_utils::tests::get_intel_gpu_boost;
     use crate::test_utils::tests::set_intel_gpu_boost;
     use crate::test_utils::tests::set_intel_gpu_max;
@@ -615,6 +616,8 @@ mod tests {
         let power_manager = MockPowerPreferencesManager {
             root: root.to_path_buf(),
         };
+
+        feature::init_for_test();
 
         assert_eq!(get_fullscreen_video().unwrap(), FullscreenVideo::Inactive);
         set_fullscreen_video(&power_manager, FullscreenVideo::Active).unwrap();
