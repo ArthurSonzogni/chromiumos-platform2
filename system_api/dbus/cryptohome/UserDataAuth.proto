@@ -1666,8 +1666,16 @@ message AuthenticateAuthFactorCompleted {
   CryptohomeErrorCode error = 1;
   CryptohomeErrorInfo error_info = 2;
 
-  // The auth factor type should be filled regardless of result.
-  AuthFactorType auth_factor_type = 3;
+  oneof auth_factor {
+    // The auth factor type should be filled when it is not a new
+    // new user creation.
+    AuthFactorType auth_factor_type = 3;
+
+    // When a new user is created they are implicitly authenticated,
+    // so authentication does not occur.
+    // Create a new signal with this flag set on user creation instead.
+    bool user_creation = 4;
+  }
 }
 
 // The message sent in signal EvictedKeyRestoreSignal
