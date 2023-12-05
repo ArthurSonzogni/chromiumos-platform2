@@ -23,14 +23,14 @@ from typing import List, Optional
 import zipfile
 
 
-def get_perf_data(zip_file):
+def get_perf_data(zip_file: str):
     """Extract the blobs of perf-data/perfetto-data from a zip archive.
 
     Args:
-      zip_file: (str) file path to system logs archive.
+        zip_file: file path to system logs archive.
 
     Returns:
-      (str: perf-data, str: perfetto-data)
+        (perf-data, perfetto-data)
     """
     perf_prefix = "perf-data="
     perf_data = None
