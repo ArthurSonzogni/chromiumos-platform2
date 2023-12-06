@@ -11,6 +11,7 @@ use std::{
 
 use anyhow::{bail, Context, Result};
 use gpt_disk_types::{guid, Guid, LbaRangeInclusive};
+use libchromeos::rand;
 use vboot_reference_sys::vboot_host;
 
 /// Partition type for the thirteenth partition we are adding. We are marking
@@ -168,10 +169,17 @@ fn empty_guid() -> vboot_host::Guid {
 /// and need to provide this on our own.
 #[no_mangle]
 pub unsafe extern "C" fn GenerateGuid(newguid: *mut std::ffi::c_void) -> std::ffi::c_int {
+    let mut buffer = [0u8; 16];
+    // Fall back to the hardcoded UUID in case we can't generate one.
+    let uuid = match rand::rand_bytes(&mut buffer, rand::Source::Pseudorandom) {
+        Ok(_) => Guid::from_random_bytes(buffer).to_bytes(),
+        Err(_) => guid!("772831ce-b9c4-4d9e-891e-56df227885b2").to_bytes(),
+    };
+
     let newguid: *mut vboot_host::Guid = newguid.cast();
     (*newguid).u = vboot_host::Guid__bindgen_ty_1 {
         // Use a hardcoded GUID for now.
-        raw: guid!("772831ce-b9c4-4d9e-891e-56df227885b2").to_bytes(),
+        raw: uuid,
     };
 
     0
