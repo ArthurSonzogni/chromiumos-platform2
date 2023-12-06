@@ -7,6 +7,7 @@
 #include <signal.h>
 #include <unistd.h>
 
+#include <cstdlib>
 #include <string>
 #include <vector>
 
@@ -24,6 +25,8 @@ namespace {
 constexpr char kLpadminCommand[] = "/usr/sbin/lpadmin";
 constexpr char kLpstatCommand[] = "/usr/bin/lpstat";
 constexpr char kTestPPDCommand[] = "/usr/bin/cupstestppd";
+
+constexpr char kLanguageEnvironmentVariable[] = "CROS_CUPS_LANGUAGE";
 
 }  // namespace
 
@@ -88,15 +91,26 @@ int LpToolsImpl::RunCommand(const std::string& command,
 
 // Runs lpadmin with the provided |arg_list| and |std_input|.
 int LpToolsImpl::Lpadmin(const std::vector<std::string>& arg_list,
+                         const std::optional<std::string>& language,
                          const std::vector<uint8_t>* std_input) {
-  // Run in lp group so we can read and write /run/cups/cups.sock.
-  return RunCommand(kLpadminCommand, arg_list, std_input);
+  if (!language.has_value()) {
+    return RunCommand(kLpadminCommand, arg_list, std_input);
+  }
+
+  const char* prev_language = getenv(kLanguageEnvironmentVariable);
+  setenv(kLanguageEnvironmentVariable, language->c_str(), /*overwrite=*/1);
+  int ret = RunCommand(kLpadminCommand, arg_list, std_input);
+  if (prev_language) {
+    setenv(kLanguageEnvironmentVariable, prev_language, /*overwrite=*/1);
+  } else {
+    unsetenv(kLanguageEnvironmentVariable);
+  }
+  return ret;
 }
 
 // Runs lpstat with the provided |arg_list| and |std_input|.
 int LpToolsImpl::Lpstat(const std::vector<std::string>& arg_list,
                         std::string* output) {
-  // Run in lp group so we can read and write /run/cups/cups.sock.
   return RunCommand(kLpstatCommand, arg_list, /*std_input=*/nullptr, output);
 }
 

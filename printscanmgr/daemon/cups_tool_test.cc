@@ -107,6 +107,7 @@ class FakeLpTools : public LpTools {
   FakeLpTools() { CHECK(ppd_dir_.CreateUniqueTempDir()); }
 
   int Lpadmin(const std::vector<std::string>& arg_list,
+              const std::optional<std::string>& language,
               const std::vector<uint8_t>* std_input) override {
     return lpadmin_result_;
   }

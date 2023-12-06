@@ -5,6 +5,7 @@
 #ifndef PRINTSCANMGR_DAEMON_LP_TOOLS_H_
 #define PRINTSCANMGR_DAEMON_LP_TOOLS_H_
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -19,6 +20,7 @@ class LpTools {
 
   // Runs lpadmin with the provided |arg_list| and |std_input|.
   virtual int Lpadmin(const std::vector<std::string>& arg_list,
+                      const std::optional<std::string>& language = std::nullopt,
                       const std::vector<uint8_t>* std_input = nullptr) = 0;
 
   // Runs lpstat with the provided |arg_list| and |std_input|.
@@ -45,6 +47,7 @@ class LpToolsImpl : public LpTools {
 
   // LpTools overrides:
   int Lpadmin(const std::vector<std::string>& arg_list,
+              const std::optional<std::string>& language = std::nullopt,
               const std::vector<uint8_t>* std_input = nullptr) override;
   int Lpstat(const std::vector<std::string>& arg_list,
              std::string* output) override;
