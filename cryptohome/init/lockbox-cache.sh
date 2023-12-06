@@ -29,12 +29,6 @@ if [ -s $OLD_INSTALL_ATTRS_FILE ]; then
     mv $COPY_INSTALL_ATTRS_FILE $NEW_INSTALL_ATTRS_FILE
     sync
   fi
-  if [ -s $NEW_INSTALL_ATTRS_FILE ]; then
-    echo "Removing stale install attributes"
-    # It's time for removal.
-    rm $OLD_INSTALL_ATTRS_FILE
-    sync
-  fi
 fi
 
 # /sbin/mount-encrypted emits the TPM NVRAM contents, if they exist, to a
