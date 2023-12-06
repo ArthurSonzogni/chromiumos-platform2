@@ -35,6 +35,7 @@ group("all") {
     deps += [
       ":cellular_pco_fuzzer",
       ":dhcpv4_static_routes_fuzzer",
+      ":nl80211_message_fuzzer",
       ":shill_profile_fuzzer",
       ":shill_service_fuzzer",
       ":shill_technology_fuzzer",
@@ -391,6 +392,8 @@ static_library("libshill") {
     "wifi/hotspot_service.cc",
     "wifi/local_device.cc",
     "wifi/local_service.cc",
+    "wifi/nl80211_attribute.cc",
+    "wifi/nl80211_message.cc",
     "wifi/p2p_device.cc",
     "wifi/p2p_manager.cc",
     "wifi/p2p_service.cc",
@@ -553,6 +556,15 @@ if (use.fuzzer) {
       "//common-mk/common_fuzzer",
       ":target_defaults",
       ":shill_config",
+    ]
+    deps = [ ":libshill" ]
+  }
+  executable("nl80211_message_fuzzer") {
+    sources = [ "wifi/nl80211_message_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":fuzzed_data_config",
+      ":target_defaults",
     ]
     deps = [ ":libshill" ]
   }
@@ -847,6 +859,9 @@ if (use.test) {
       "wifi/mock_wifi_phy.cc",
       "wifi/mock_wifi_provider.cc",
       "wifi/mock_wifi_service.cc",
+      "wifi/netlink_manager_with_nl80211_message_test.cc",
+      "wifi/nl80211_attribute_test.cc",
+      "wifi/nl80211_message_test.cc",
       "wifi/p2p_device_test.cc",
       "wifi/p2p_manager_test.cc",
       "wifi/p2p_service_test.cc",

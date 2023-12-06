@@ -10,7 +10,7 @@
 #include <base/logging.h>
 #include <gmock/gmock.h>
 
-#include "shill/net/nl80211_message.h"
+#include "shill/wifi/nl80211_message.h"
 
 namespace shill {
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/nl80211_attribute.h"
+#include "shill/wifi/nl80211_attribute.h"
 
 #include <base/format_macros.h>
 #include <base/functional/bind.h>
@@ -11,6 +11,7 @@
 #include <net-base/byte_utils.h>
 
 #include "shill/net/ieee80211.h"
+#include "shill/net/netlink_attribute.h"
 
 namespace shill {
 

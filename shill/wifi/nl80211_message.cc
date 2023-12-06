@@ -22,7 +22,7 @@
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#include "shill/net/nl80211_message.h"
+#include "shill/wifi/nl80211_message.h"
 
 #include <limits>
 
@@ -34,7 +34,7 @@
 #include "shill/net/attribute_list.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/netlink_packet.h"
-#include "shill/net/nl80211_attribute.h"
+#include "shill/wifi/nl80211_attribute.h"
 
 namespace shill {
 namespace {

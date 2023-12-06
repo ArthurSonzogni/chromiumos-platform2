@@ -58,10 +58,10 @@
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/net/netlink_manager.h"
-#include "shill/net/nl80211_message.h"
 #include "shill/network/network.h"
 #include "shill/power_manager.h"
 #include "shill/vpn/vpn_provider.h"
+#include "shill/wifi/nl80211_message.h"
 #include "shill/wifi/wake_on_wifi.h"
 #include "shill/wifi/wifi.h"
 

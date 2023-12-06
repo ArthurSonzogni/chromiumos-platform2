@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NET_NL80211_MESSAGE_H_
-#define SHILL_NET_NL80211_MESSAGE_H_
+#ifndef SHILL_WIFI_NL80211_MESSAGE_H_
+#define SHILL_WIFI_NL80211_MESSAGE_H_
 
 #include <memory>
 #include <string>
@@ -566,4 +566,4 @@ class SHILL_EXPORT ControlPortFrameTxStatusMessage : public Nl80211Message {
 
 }  // namespace shill
 
-#endif  // SHILL_NET_NL80211_MESSAGE_H_
+#endif  // SHILL_WIFI_NL80211_MESSAGE_H_

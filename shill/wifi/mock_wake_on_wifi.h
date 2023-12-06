@@ -11,8 +11,8 @@
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 
-#include "shill/net/nl80211_message.h"
 #include "shill/store/property_store.h"
+#include "shill/wifi/nl80211_message.h"
 #include "shill/wifi/wake_on_wifi_interface.h"
 
 namespace shill {

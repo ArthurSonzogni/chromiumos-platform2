@@ -21,11 +21,11 @@
 #include "shill/manager.h"
 #include "shill/mojom/mojo_service_provider.h"
 #include "shill/net/netlink_manager.h"
-#include "shill/net/nl80211_message.h"
 #include "shill/net/process_manager.h"
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/network_applier.h"
 #include "shill/shill_config.h"
+#include "shill/wifi/nl80211_message.h"
 
 namespace shill {
 

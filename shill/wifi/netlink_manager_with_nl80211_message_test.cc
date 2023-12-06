@@ -26,7 +26,7 @@
 #include <net-base/mock_netlink_socket.h>
 
 #include "shill/net/netlink_packet.h"
-#include "shill/net/nl80211_message.h"
+#include "shill/wifi/nl80211_message.h"
 
 using testing::_;
 using testing::Invoke;

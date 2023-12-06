@@ -23,12 +23,12 @@
 #include "shill/mojom/mock_mojo_service_provider.h"
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/net/mock_process_manager.h"
-#include "shill/net/nl80211_message.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/network/mock_network_applier.h"
 #include "shill/shill_test_config.h"
 #include "shill/supplicant/supplicant_manager.h"
 #include "shill/test_event_dispatcher.h"
+#include "shill/wifi/nl80211_message.h"
 
 using ::testing::_;
 using ::testing::Expectation;

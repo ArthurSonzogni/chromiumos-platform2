@@ -13,8 +13,8 @@
 
 #include "shill/logging.h"
 #include "shill/metrics.h"
-#include "shill/net/nl80211_message.h"
 #include "shill/scope_logger.h"
+#include "shill/wifi/nl80211_message.h"
 #include "shill/wifi/wifi.h"
 
 namespace shill {
@@ -34,8 +34,7 @@ constexpr char kFwDumpIntelSysFs[] =
 bool WriteToFwDumpSysPath(const base::FilePath& path) {
   base::ScopedFD fd(HANDLE_EINTR(open(path.value().c_str(), O_WRONLY)));
   if (!fd.is_valid()) {
-    LOG(ERROR) << "Failed to open sysfs file"
-               << ", " << path.value();
+    LOG(ERROR) << "Failed to open sysfs file, " << path.value();
     return false;
   }
 

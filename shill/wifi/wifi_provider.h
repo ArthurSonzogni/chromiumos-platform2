@@ -20,10 +20,10 @@
 #include "shill/mockable.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/netlink_message.h"
-#include "shill/net/nl80211_message.h"
 #include "shill/provider_interface.h"
 #include "shill/refptr_types.h"
 #include "shill/wifi/local_device.h"
+#include "shill/wifi/nl80211_message.h"
 #include "shill/wifi/p2p_manager.h"
 #include "shill/wifi/wifi_rf.h"
 

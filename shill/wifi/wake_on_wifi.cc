@@ -32,8 +32,8 @@
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/net/netlink_manager.h"
-#include "shill/net/nl80211_message.h"
 #include "shill/store/property_accessor.h"
+#include "shill/wifi/nl80211_message.h"
 #include "shill/wifi/wifi.h"
 
 namespace shill {

@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "shill/mockable.h"
-#include "shill/net/nl80211_message.h"
+#include "shill/wifi/nl80211_message.h"
 #include "shill/wifi/wifi.h"
 #include "shill/wifi/wifi_provider.h"
 

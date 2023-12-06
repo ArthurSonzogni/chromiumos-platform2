@@ -18,12 +18,12 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/net/netlink_packet.h"
-#include "shill/net/nl80211_attribute.h"
-#include "shill/net/nl80211_message.h"
 #include "shill/refptr_types.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi.h"
+#include "shill/wifi/nl80211_attribute.h"
+#include "shill/wifi/nl80211_message.h"
 #include "shill/wifi/wifi.h"
 
 using ::testing::_;

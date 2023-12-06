@@ -4,7 +4,7 @@
 
 #include <string>
 
-#include "shill/net/nl80211_message.h"
+#include "shill/wifi/nl80211_message.h"
 
 #include <base/logging.h>
 

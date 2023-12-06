@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/nl80211_message.h"
+#include "shill/wifi/nl80211_message.h"
 
 #include <iterator>
 #include <memory>
@@ -15,7 +15,7 @@
 #include <net-base/byte_utils.h>
 
 #include "shill/net/netlink_packet.h"
-#include "shill/net/nl80211_attribute.h"
+#include "shill/wifi/nl80211_attribute.h"
 
 using testing::_;
 using testing::Test;

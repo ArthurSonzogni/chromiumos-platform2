@@ -132,7 +132,7 @@ class SHILL_EXPORT NetlinkAttribute {
   const char* datatype_string_;
 };
 
-class NetlinkU8Attribute : public NetlinkAttribute {
+class SHILL_EXPORT NetlinkU8Attribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -151,7 +151,7 @@ class NetlinkU8Attribute : public NetlinkAttribute {
   uint8_t value_;
 };
 
-class NetlinkU16Attribute : public NetlinkAttribute {
+class SHILL_EXPORT NetlinkU16Attribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -190,7 +190,7 @@ class SHILL_EXPORT NetlinkU32Attribute : public NetlinkAttribute {
   uint32_t value_;
 };
 
-class NetlinkU64Attribute : public NetlinkAttribute {
+class SHILL_EXPORT NetlinkU64Attribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -209,7 +209,7 @@ class NetlinkU64Attribute : public NetlinkAttribute {
   uint64_t value_;
 };
 
-class NetlinkFlagAttribute : public NetlinkAttribute {
+class SHILL_EXPORT NetlinkFlagAttribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -251,7 +251,7 @@ class SHILL_EXPORT NetlinkStringAttribute : public NetlinkAttribute {
 };
 
 // SSID attributes are just string attributes with different output semantics.
-class NetlinkSsidAttribute : public NetlinkStringAttribute {
+class SHILL_EXPORT NetlinkSsidAttribute : public NetlinkStringAttribute {
  public:
   NetlinkSsidAttribute(int id, const char* id_string)
       : NetlinkStringAttribute(id, id_string) {}
@@ -262,7 +262,7 @@ class NetlinkSsidAttribute : public NetlinkStringAttribute {
   bool ToString(std::string* output) const override;
 };
 
-class NetlinkNestedAttribute : public NetlinkAttribute {
+class SHILL_EXPORT NetlinkNestedAttribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -364,7 +364,7 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
       base::span<const uint8_t> value);
 };
 
-class NetlinkRawAttribute : public NetlinkAttribute {
+class SHILL_EXPORT NetlinkRawAttribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -382,7 +382,7 @@ class NetlinkRawAttribute : public NetlinkAttribute {
   std::vector<uint8_t> Encode() const override;
 };
 
-class NetlinkAttributeGeneric : public NetlinkRawAttribute {
+class SHILL_EXPORT NetlinkAttributeGeneric : public NetlinkRawAttribute {
  public:
   explicit NetlinkAttributeGeneric(int id);
   NetlinkAttributeGeneric(const NetlinkAttributeGeneric&) = delete;

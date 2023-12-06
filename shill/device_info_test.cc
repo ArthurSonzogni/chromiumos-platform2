@@ -49,13 +49,13 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/net/mock_netlink_manager.h"
-#include "shill/net/nl80211_attribute.h"
-#include "shill/net/nl80211_message.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/mock_network_applier.h"
 #include "shill/network/network.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/vpn_provider.h"
+#include "shill/wifi/nl80211_attribute.h"
+#include "shill/wifi/nl80211_message.h"
 
 using testing::_;
 using testing::AnyNumber;

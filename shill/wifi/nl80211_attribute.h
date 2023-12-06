@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NET_NL80211_ATTRIBUTE_H_
-#define SHILL_NET_NL80211_ATTRIBUTE_H_
+#ifndef SHILL_WIFI_NL80211_ATTRIBUTE_H_
+#define SHILL_WIFI_NL80211_ATTRIBUTE_H_
 
 #include <memory>
 #include <string>
@@ -12,8 +12,8 @@
 
 #include "shill/net/attribute_list.h"
 #include "shill/net/netlink_attribute.h"
-#include "shill/net/nl80211_message.h"
 #include "shill/net/shill_export.h"
+#include "shill/wifi/nl80211_message.h"
 
 namespace shill {
 
@@ -812,4 +812,4 @@ class Nl80211AttributeWiphySelfManagedReg : public NetlinkFlagAttribute {
 
 }  // namespace shill
 
-#endif  // SHILL_NET_NL80211_ATTRIBUTE_H_
+#endif  // SHILL_WIFI_NL80211_ATTRIBUTE_H_
