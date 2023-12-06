@@ -18,7 +18,7 @@ oom score -100
 
 pre-start script
   # Ensure the kernel module is loaded.
-  modprobe -q vhost-vsock
+  grep -q vhost-vsock /proc/misc || modprobe -q vhost-vsock
 end script
 
 # When forwarding to /dev/log (the default), we run as syslog.
