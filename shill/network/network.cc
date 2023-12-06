@@ -26,6 +26,7 @@
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 #include <net-base/network_config.h>
+#include <net-base/network_priority.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/ipconfig.h"
@@ -34,7 +35,6 @@
 #include "shill/network/compound_network_config.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/network_applier.h"
-#include "shill/network/network_priority.h"
 #include "shill/network/proc_fs_stub.h"
 #include "shill/network/slaac_controller.h"
 #include "shill/service.h"
@@ -311,7 +311,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   }
   state_ = State::kIdle;
   network_applier_->Release(interface_index_, interface_name_);
-  priority_ = NetworkPriority{};
+  priority_ = net_base::NetworkPriority{};
   if (should_trigger_callback) {
     for (auto& ev : event_handlers_) {
       ev.OnNetworkStopped(interface_index_, is_failure);
@@ -631,7 +631,7 @@ void Network::EnableARPFiltering() {
                       ProcFsStub::kIPFlagArpIgnoreLocalOnly);
 }
 
-void Network::SetPriority(NetworkPriority priority) {
+void Network::SetPriority(net_base::NetworkPriority priority) {
   if (!primary_family_) {
     LOG(WARNING) << *this << ": " << __func__
                  << " called but no connection exists";
@@ -645,7 +645,7 @@ void Network::SetPriority(NetworkPriority priority) {
                      NetworkApplier::Area::kDNS);
 }
 
-NetworkPriority Network::GetPriority() {
+net_base::NetworkPriority Network::GetPriority() {
   return priority_;
 }
 

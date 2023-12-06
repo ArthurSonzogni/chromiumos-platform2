@@ -22,6 +22,7 @@
 #include <net-base/ip_address.h>
 #include <net-base/ipv6_address.h>
 #include <net-base/network_config.h>
+#include <net-base/network_priority.h>
 #include <net-base/rtnl_handler.h>
 
 #include "shill/connection_diagnostics.h"
@@ -33,7 +34,6 @@
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/network_applier.h"
-#include "shill/network/network_priority.h"
 #include "shill/network/proc_fs_stub.h"
 #include "shill/network/slaac_controller.h"
 #include "shill/portal_detector.h"
@@ -303,10 +303,10 @@ class Network {
   //
   // This function should only be called when the Network is connected,
   // otherwise the call is a no-op.
-  mockable void SetPriority(NetworkPriority network_priority);
+  mockable void SetPriority(net_base::NetworkPriority network_priority);
 
   // Returns the current priority of the Network.
-  NetworkPriority GetPriority();
+  net_base::NetworkPriority GetPriority();
 
   // Returns the current active configuration of the Network. That could be from
   // DHCPv4, static IPv4 configuration, SLAAC, data-link layer control
@@ -564,7 +564,7 @@ class Network {
   std::unique_ptr<SLAACController> slaac_controller_;
   std::unique_ptr<IPConfig> ipconfig_;
   std::unique_ptr<IPConfig> ip6config_;
-  NetworkPriority priority_;
+  net_base::NetworkPriority priority_;
 
   base::RepeatingClosure current_ipconfig_change_handler_;
 

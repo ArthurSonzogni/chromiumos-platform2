@@ -13,6 +13,7 @@
 #include <gmock/gmock.h>
 #include <net-base/ip_address.h>
 #include <net-base/mock_rtnl_handler.h>
+#include <net-base/network_priority.h>
 
 #include "shill/mock_resolver.h"
 #include "shill/network/mock_network_applier.h"
@@ -20,7 +21,6 @@
 #include "shill/network/mock_routing_policy_service.h"
 #include "shill/network/mock_routing_table.h"
 #include "shill/network/network_applier.h"
-#include "shill/network/network_priority.h"
 #include "shill/network/routing_table.h"
 #include "shill/technology.h"
 
@@ -154,7 +154,7 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfig) {
   StrictMock<MockNetworkApplier> applier;
   const int kInterfaceIndex = 3;
   const std::string kInterfaceName = "placeholder";
-  NetworkPriority priority;
+  net_base::NetworkPriority priority;
   net_base::NetworkConfig config;
   config.ipv4_address =
       *net_base::IPv4CIDR::CreateFromCIDRString("192.0.2.100/24");
@@ -241,7 +241,7 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfigRouteParameters) {
   StrictMock<MockNetworkApplier> applier;
   const int kInterfaceIndex = 3;
   const std::string kInterfaceName = "placeholder";
-  NetworkPriority priority;
+  net_base::NetworkPriority priority;
   net_base::NetworkConfig config;
   config.ipv4_address =
       *net_base::IPv4CIDR::CreateFromCIDRString("192.0.2.100/24");
@@ -302,7 +302,7 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfigRoutingPolicyParameters) {
   StrictMock<MockNetworkApplier> applier;
   const int kInterfaceIndex = 3;
   const std::string kInterfaceName = "placeholder";
-  NetworkPriority priority;
+  net_base::NetworkPriority priority;
   net_base::NetworkConfig config;
   config.ipv4_address =
       *net_base::IPv4CIDR::CreateFromCIDRString("192.0.2.100/24");
@@ -337,7 +337,7 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultPhysical) {
   const int kInterfaceIndex = 3;
   const std::string kInterfaceName = "eth0";
 
-  NetworkPriority priority;
+  net_base::NetworkPriority priority;
   priority.is_primary_physical = true;
   priority.is_primary_logical = true;
   priority.ranking_order = 0;
@@ -466,7 +466,7 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultVPN) {
   const int kInterfaceIndex = 11;
   const std::string kInterfaceName = "tun0";
 
-  NetworkPriority priority;
+  net_base::NetworkPriority priority;
   priority.is_primary_logical = true;
   priority.ranking_order = 0;
 
@@ -566,7 +566,7 @@ TEST_F(NetworkApplierRoutingPolicyTest,
   const int kInterfaceIndex = 4;
   const std::string kInterfaceName = "wlan0";
 
-  NetworkPriority priority;
+  net_base::NetworkPriority priority;
   priority.ranking_order = 1;
 
   auto all_addresses = std::vector<net_base::IPCIDR>{
@@ -662,7 +662,7 @@ TEST_F(NetworkApplierRoutingPolicyTest,
   const int kInterfaceIndex = 5;
   const std::string kInterfaceName = "wwan0";
 
-  NetworkPriority priority;
+  net_base::NetworkPriority priority;
   priority.ranking_order = 2;
 
   auto all_addresses = std::vector<net_base::IPCIDR>{

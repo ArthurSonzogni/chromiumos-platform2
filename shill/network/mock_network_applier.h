@@ -48,13 +48,13 @@ class MockNetworkApplier : public NetworkApplier {
               (int interface_index,
                const std::string& interface_name,
                Technology technology,
-               NetworkPriority priority,
+               net_base::NetworkPriority priority,
                const std::vector<net_base::IPCIDR>& all_addresses,
                const std::vector<net_base::IPv4CIDR>& rfc3442_dsts),
               (override));
   MOCK_METHOD(void,
               ApplyDNS,
-              (NetworkPriority priority,
+              (net_base::NetworkPriority priority,
                const std::vector<net_base::IPAddress>& dns_servers,
                const std::vector<std::string>& dns_search_domains),
               (override));

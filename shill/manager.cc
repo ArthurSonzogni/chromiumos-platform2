@@ -38,6 +38,7 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/http_url.h>
 #include <net-base/ip_address.h>
+#include <net-base/network_priority.h>
 
 #include "shill/adaptor_interfaces.h"
 #if !defined(DISABLE_FLOSS)
@@ -62,7 +63,6 @@
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/network/network.h"
-#include "shill/network/network_priority.h"
 #include "shill/profile.h"
 #include "shill/resolver.h"
 #include "shill/result_aggregator.h"
@@ -1734,7 +1734,7 @@ void Manager::SortServicesTask() {
         new_physical = service;
       }
 
-      NetworkPriority network_priority = {
+      net_base::NetworkPriority network_priority = {
           .is_primary_logical = (service == new_logical),
           .is_primary_physical = (service == new_physical),
           .is_primary_for_dns = use_dns,

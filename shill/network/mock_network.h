@@ -14,10 +14,10 @@
 #include <base/time/time.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gmock/gmock.h>
+#include <net-base/network_priority.h>
 
 #include "shill/ipconfig.h"
 #include "shill/network/network.h"
-#include "shill/network/network_priority.h"
 #include "shill/portal_detector.h"
 #include "shill/technology.h"
 
@@ -73,7 +73,7 @@ class MockNetwork : public Network {
 
   MOCK_METHOD(void, InvalidateIPv6Config, (), (override));
 
-  MOCK_METHOD(void, SetPriority, (NetworkPriority), (override));
+  MOCK_METHOD(void, SetPriority, (net_base::NetworkPriority), (override));
 
   MOCK_METHOD(void,
               OnNeighborReachabilityEvent,

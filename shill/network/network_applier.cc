@@ -14,9 +14,9 @@
 #include <base/memory/ptr_util.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
+#include <net-base/network_priority.h>
 
 #include "shill/network/address_service.h"
-#include "shill/network/network_priority.h"
 #include "shill/network/routing_policy_service.h"
 #include "shill/network/routing_table.h"
 #include "shill/network/routing_table_entry.h"
@@ -145,7 +145,7 @@ void NetworkApplier::Clear(int interface_index) {
 }
 
 void NetworkApplier::ApplyDNS(
-    NetworkPriority priority,
+    net_base::NetworkPriority priority,
     const std::vector<net_base::IPAddress>& dns_servers,
     const std::vector<std::string>& dns_search_domains) {
   if (!priority.is_primary_for_dns) {
@@ -162,7 +162,7 @@ void NetworkApplier::ApplyRoutingPolicy(
     int interface_index,
     const std::string& interface_name,
     Technology technology,
-    NetworkPriority priority,
+    net_base::NetworkPriority priority,
     const std::vector<net_base::IPCIDR>& all_addresses,
     const std::vector<net_base::IPv4CIDR>& rfc3442_dsts) {
   uint32_t rule_priority =
@@ -442,7 +442,7 @@ void NetworkApplier::ApplyNetworkConfig(
     const std::string& interface_name,
     Area area,
     const net_base::NetworkConfig& network_config,
-    NetworkPriority priority,
+    net_base::NetworkPriority priority,
     Technology technology) {
   if (area & Area::kClear) {
     Clear(interface_index);

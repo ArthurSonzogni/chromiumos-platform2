@@ -13,11 +13,11 @@
 #include <base/no_destructor.h>
 #include <net-base/ip_address.h>
 #include <net-base/network_config.h>
+#include <net-base/network_priority.h>
 #include <net-base/rtnl_handler.h>
 
 #include "shill/mockable.h"
 #include "shill/network/address_service.h"
-#include "shill/network/network_priority.h"
 #include "shill/network/proc_fs_stub.h"
 #include "shill/network/routing_policy_service.h"
 #include "shill/network/routing_table.h"
@@ -77,13 +77,13 @@ class NetworkApplier {
                           const std::string& interface_name,
                           Area area,
                           const net_base::NetworkConfig& network_config,
-                          NetworkPriority priority,
+                          net_base::NetworkPriority priority,
                           Technology technology);
 
   // Apply the DNS configuration by writing into /etc/resolv.conf.
   // TODO(b/259354228): dnsproxy will take the ownership of resolv.conf file
   // after b/207657239 is resolved.
-  mockable void ApplyDNS(NetworkPriority priority,
+  mockable void ApplyDNS(net_base::NetworkPriority priority,
                          const std::vector<net_base::IPAddress>& dns_servers,
                          const std::vector<std::string>& dns_search_domains);
 
@@ -121,7 +121,7 @@ class NetworkApplier {
       int interface_index,
       const std::string& interface_name,
       Technology technology,
-      NetworkPriority priority,
+      net_base::NetworkPriority priority,
       const std::vector<net_base::IPCIDR>& all_addresses,
       const std::vector<net_base::IPv4CIDR>& rfc3442_dsts);
 
