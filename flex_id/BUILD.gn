@@ -8,6 +8,7 @@ group("all") {
   deps = [
     ":flex_id_tool",
     ":libflex_id",
+    ":libflex_state_key",
   ]
   if (use.test) {
     deps += [ ":flex_id_test" ]
@@ -24,12 +25,27 @@ pkg_config("target_defaults") {
 static_library("libflex_id") {
   sources = [ "flex_id.cc" ]
   configs += [ ":target_defaults" ]
+  deps = [ ":utils" ]
+}
+
+static_library("libflex_state_key") {
+  sources = [ "flex_state_key.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":utils" ]
 }
 
 executable("flex_id_tool") {
   sources = [ "flex_id_tool.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [ ":libflex_id" ]
+  deps = [
+    ":libflex_id",
+    ":libflex_state_key",
+  ]
+}
+
+static_library("utils") {
+  sources = [ "utils.cc" ]
+  configs += [ ":target_defaults" ]
 }
 
 if (use.test) {
@@ -38,7 +54,11 @@ if (use.test) {
   }
 
   executable("flex_id_test") {
-    sources = [ "flex_id_test.cc" ]
+    sources = [
+      "flex_id_test.cc",
+      "flex_state_key_test.cc",
+      "utils_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":flex_id_test_config",
@@ -46,6 +66,8 @@ if (use.test) {
     ]
     deps = [
       ":libflex_id",
+      ":libflex_state_key",
+      ":utils",
       "//common-mk/testrunner",
     ]
   }

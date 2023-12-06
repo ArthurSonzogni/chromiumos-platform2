@@ -6,7 +6,9 @@
 
 #include <optional>
 
+#include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
 namespace flex_id {
@@ -94,7 +96,7 @@ class FlexIdTest : public ::testing::Test {
 
   void DeleteFlexId() {
     base::FilePath flex_id_path = test_path_.Append("var/lib/flex_id/flex_id");
-    CHECK(base::DeleteFile(flex_id_path));
+    CHECK(brillo::DeleteFile(flex_id_path));
   }
 
   std::optional<flex_id::FlexIdGenerator> flex_id_generator_;
