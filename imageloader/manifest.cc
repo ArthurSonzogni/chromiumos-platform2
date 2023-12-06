@@ -47,6 +47,7 @@ constexpr char kDescription[] = "description";
 constexpr char kUseLogicalVolume[] = "use-logical-volume";
 constexpr char kScaled[] = "scaled";
 constexpr char kPowerwashSafe[] = "powerwash-safe";
+constexpr char kUserTied[] = "user-tied";
 constexpr char kArtifactsMeta[] = "artifacts-meta";
 constexpr char kArtifactsMetaUriKey[] = "uri";
 constexpr char kForceOTA[] = "force-ota";
@@ -136,7 +137,8 @@ bool Manifest::operator==(const Manifest& rhs) const {
       scaled() == rhs.scaled() &&
       powerwash_safe() == rhs.powerwash_safe() &&
       artifacts_meta() == rhs.artifacts_meta() &&
-      force_ota() == rhs.force_ota();
+      force_ota() == rhs.force_ota() &&
+      user_tied() == rhs.user_tied();
 }
 // clang-format on
 
@@ -250,6 +252,9 @@ bool Manifest::ParseManifest(const base::Value::Dict& manifest_dict) {
 
   // If `force-ota` field does not exist, by default it is false.
   force_ota_ = manifest_dict.FindBool(kForceOTA).value_or(false);
+
+  // If `user-tied` field does not exist, by default it is false.
+  user_tied_ = manifest_dict.FindBool(kUserTied).value_or(false);
 
   // All of these fields are optional.
   const std::string* id = manifest_dict.FindString(kId);

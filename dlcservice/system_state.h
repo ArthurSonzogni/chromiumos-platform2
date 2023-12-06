@@ -14,6 +14,7 @@
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <imageloader/proto_bindings/imageloader.pb.h>
 #include <imageloader/dbus-proxies.h>
+#include <session_manager-client/session_manager/dbus-proxies.h>
 #include <update_engine/proto_bindings/update_engine.pb.h>
 #include <update_engine/dbus-proxies.h>
 
@@ -43,6 +44,8 @@ class SystemState {
           image_loader_proxy,
       std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
           update_engine_proxy,
+      std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
+          session_manage_proxy,
       StateChangeReporterInterface* state_change_reporter,
       std::unique_ptr<BootSlotInterface> boot_slot,
       std::unique_ptr<Metrics> metrics,
@@ -71,6 +74,7 @@ class SystemState {
 #endif  // USE_LVM_STATEFUL_PARTITION
   org::chromium::ImageLoaderInterfaceProxyInterface* image_loader() const;
   org::chromium::UpdateEngineInterfaceProxyInterface* update_engine() const;
+  org::chromium::SessionManagerInterfaceProxyInterface* session_manager() const;
   BootSlotInterface* boot_slot() const;
   Metrics* metrics() const;
   StateChangeReporterInterface* state_change_reporter() const;
@@ -117,6 +121,8 @@ class SystemState {
           image_loader_proxy,
       std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
           update_engine_proxy,
+      std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
+          session_manager_proxy,
       StateChangeReporterInterface* state_change_reporter,
       std::unique_ptr<BootSlotInterface> boot_slot,
       std::unique_ptr<Metrics> metrics,
@@ -144,6 +150,8 @@ class SystemState {
       update_engine_proxy_;
   bool update_engine_service_available_ = false;
   bool not_resuming_from_hibernate_ = false;
+  std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
+      session_manager_proxy_;
   StateChangeReporterInterface* state_change_reporter_;
 
   std::optional<bool> is_lvm_stack_enabled_;

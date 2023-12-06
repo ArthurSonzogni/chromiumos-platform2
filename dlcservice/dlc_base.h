@@ -55,6 +55,7 @@ class DlcBase : public DlcInterface {
   bool IsVerified() const override;
   bool IsScaled() const override;
   bool IsForceOTA() const override;
+  bool IsUserTied() const override;
   bool HasContent() const override;
   uint64_t GetUsedBytesOnDisk() const override;
   bool IsPreloadAllowed() const override;
@@ -99,10 +100,12 @@ class DlcBase : public DlcInterface {
   FRIEND_TEST(DlcBaseTest, IsInstalledButUnmounted);
   FRIEND_TEST(DlcBaseTest, DeployingSkippedOnInstalledDLC);
   FRIEND_TEST(DlcBaseTest, DeployingSkippedOnInstallingDLC);
+  FRIEND_TEST(DlcBaseTest, GetDaemonStorePath);
 
   virtual bool MakeReadyForUpdateInternal() const;
 
-  // Returns the path to the DLC image given the slot.
+  // Returns the path to the DLC image given the slot. Returns empty path on
+  // error.
   virtual base::FilePath GetImagePath(BootSlot::Slot slot) const;
 
   // Creates the DLC directories and files if they don't exist. This function

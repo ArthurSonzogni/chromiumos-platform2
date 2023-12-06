@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/stringprintf.h>
@@ -163,10 +164,14 @@ bool DlcBase::IsForceOTA() const {
   return manifest_->force_ota();
 }
 
+bool DlcBase::IsUserTied() const {
+  return manifest_->user_tied();
+}
+
 bool DlcBase::HasContent() const {
   for (const auto& path :
        {GetImagePath(BootSlot::Slot::A), GetImagePath(BootSlot::Slot::B)}) {
-    if (base::PathExists(path))
+    if (!path.empty() && base::PathExists(path))
       return true;
   }
   return false;
@@ -176,7 +181,7 @@ uint64_t DlcBase::GetUsedBytesOnDisk() const {
   uint64_t total_size = 0;
   for (const auto& path :
        {GetImagePath(BootSlot::Slot::A), GetImagePath(BootSlot::Slot::B)}) {
-    if (!base::PathExists(path))
+    if (path.empty() || !base::PathExists(path))
       continue;
     int64_t size = 0;
     if (!base::GetFileSize(path, &size)) {
@@ -227,14 +232,37 @@ bool DlcBase::UpdateCompleted(ErrorPtr* err) {
 }
 
 FilePath DlcBase::GetImagePath(BootSlot::Slot slot) const {
-  return JoinPaths(content_package_path_, BootSlot::ToString(slot),
-                   kDlcImageFileName);
+  if (!IsUserTied()) {
+    return JoinPaths(content_package_path_, BootSlot::ToString(slot),
+                     kDlcImageFileName);
+  }
+
+  if (const auto& daemon_store = GetDaemonStorePath(); daemon_store.empty()) {
+    return {};
+  } else {
+    return JoinPaths(daemon_store, kDlcImagesDir, id_, package_,
+                     BootSlot::ToString(slot), kDlcImageFileName);
+  }
 }
 
 bool DlcBase::CreateDlc(ErrorPtr* err) {
   // Create content directories.
-  for (const auto& path :
-       {content_id_path_, content_package_path_, prefs_path_}) {
+  vector<FilePath> paths;
+  if (IsUserTied()) {
+    const auto& daemon_store = GetDaemonStorePath();
+    if (daemon_store.empty())
+      return false;
+
+    const auto& content_path = JoinPaths(daemon_store, kDlcImagesDir);
+    const auto& content_id_path = JoinPaths(content_path, id_);
+    const auto& content_package_path = JoinPaths(content_id_path, package_);
+    // File permissions needs to be set along the path.
+    paths = {daemon_store, content_path, content_id_path, content_package_path,
+             prefs_path_};
+  } else {
+    paths = {content_id_path_, content_package_path_, prefs_path_};
+  }
+  for (const auto& path : paths) {
     if (!CreateDir(path)) {
       *err = Error::CreateInternal(
           FROM_HERE, error::kFailedToCreateDirectory,
@@ -248,6 +276,11 @@ bool DlcBase::CreateDlc(ErrorPtr* err) {
   // Creates image A and B.
   for (const auto& slot : {BootSlot::Slot::A, BootSlot::Slot::B}) {
     FilePath image_path = GetImagePath(slot);
+    if (image_path.empty()) {
+      *err = Error::CreateInternal(FROM_HERE, kErrorInternal,
+                                   "Failed to get image path.");
+      return false;
+    }
 
     // If resuming from hibernate, space on stateful is limited by the
     // dm-snapshots set up on top of it. Avoid creating new DLCs during this
@@ -324,6 +357,11 @@ bool DlcBase::MakeReadyForUpdate() const {
     return false;
   }
 
+  if (IsUserTied()) {
+    LOG(WARNING) << "User-tied DLC=" << id_ << " will not update with the OS.";
+    return false;
+  }
+
   return MakeReadyForUpdateInternal();
 }
 
@@ -360,7 +398,7 @@ bool DlcBase::Verify() {
   auto image_path = GetImagePath(SystemState::Get()->active_boot_slot());
 
   vector<uint8_t> image_sha256;
-  if (!VerifyInternal(image_path, &image_sha256)) {
+  if (image_path.empty() || !VerifyInternal(image_path, &image_sha256)) {
     LOG(ERROR) << "Failed to verify DLC=" << id_;
     return false;
   }
@@ -416,7 +454,8 @@ bool DlcBase::PreloadedCopier(ErrorPtr* err) {
 
   FilePath image_path = GetImagePath(SystemState::Get()->active_boot_slot());
   vector<uint8_t> image_sha256;
-  if (!CopyAndHashFile(preloaded_image_path_, image_path, manifest_->size(),
+  if (image_path.empty() ||
+      !CopyAndHashFile(preloaded_image_path_, image_path, manifest_->size(),
                        &image_sha256)) {
     auto err_str =
         base::StringPrintf("Failed to copy preload DLC (%s) into path %s",
@@ -465,7 +504,8 @@ bool DlcBase::FactoryInstallCopier() {
 
   FilePath image_path = GetImagePath(SystemState::Get()->active_boot_slot());
   vector<uint8_t> image_sha256;
-  if (!CopyAndHashFile(factory_install_image_path_, image_path,
+  if (image_path.empty() ||
+      !CopyAndHashFile(factory_install_image_path_, image_path,
                        manifest_->size(), &image_sha256)) {
     LOG(WARNING) << "Failed to copy factory installed DLC (" << id_
                  << ") into path " << image_path;
@@ -519,7 +559,8 @@ bool DlcBase::DeployCopier(ErrorPtr* err) {
 
   FilePath image_path = GetImagePath(SystemState::Get()->active_boot_slot());
   vector<uint8_t> image_sha256;
-  if (!CopyAndHashFile(deployed_image_path_, image_path, manifest_->size(),
+  if (image_path.empty() ||
+      !CopyAndHashFile(deployed_image_path_, image_path, manifest_->size(),
                        &image_sha256)) {
     auto err_str =
         base::StringPrintf("Failed to copy deployed DLC (%s) into path %s",
@@ -748,13 +789,14 @@ bool DlcBase::Mount(ErrorPtr* err) {
 
 bool DlcBase::MountInternal(std::string* mount_point, ErrorPtr* err) {
   // TODO(kimjae): Make this async as well as the top level DLC operations.
-  if (!SystemState::Get()->image_loader()->LoadDlcImage(
-          id_, package_,
-          SystemState::Get()->active_boot_slot() == BootSlot::Slot::A
-              ? imageloader::kSlotNameA
-              : imageloader::kSlotNameB,
-          mount_point, nullptr,
-          /*timeout_ms=*/60 * 1000)) {
+  imageloader::LoadDlcRequest request;
+  request.set_id(id_);
+  request.set_path(
+      GetImagePath(SystemState::Get()->active_boot_slot()).value());
+  request.set_package(package_);
+  if (!SystemState::Get()->image_loader()->LoadDlc(request, mount_point,
+                                                   nullptr,
+                                                   /*timeout_ms=*/60 * 1000)) {
     *err =
         Error::CreateInternal(FROM_HERE, error::kFailedToMountImage,
                               "Imageloader is unavailable for LoadDlcImage().");
@@ -797,7 +839,8 @@ bool DlcBase::Unmount(ErrorPtr* err) {
 }
 
 bool DlcBase::IsActiveImagePresent() const {
-  return base::PathExists(GetImagePath(SystemState::Get()->active_boot_slot()));
+  const auto& image_path = GetImagePath(SystemState::Get()->active_boot_slot());
+  return !image_path.empty() && base::PathExists(image_path);
 }
 
 bool DlcBase::Delete(brillo::ErrorPtr* err) {
@@ -814,7 +857,11 @@ bool DlcBase::Delete(brillo::ErrorPtr* err) {
 
 bool DlcBase::DeleteInternal(ErrorPtr* err) {
   vector<string> undeleted_paths;
-  for (const auto& path : GetPathsToDelete(id_)) {
+  auto paths = GetPathsToDelete(id_);
+  if (IsUserTied()) {
+    paths.push_back(JoinPaths(GetDaemonStorePath(), kDlcImagesDir, id_));
+  }
+  for (const auto& path : paths) {
     if (base::PathExists(path)) {
       if (!brillo::DeletePathRecursively(path)) {
         PLOG(ERROR) << "Failed to delete path=" << path;

@@ -40,6 +40,9 @@ extern const char kCategoryUninstall[];
 extern const char kCategoryInit[];
 extern const char kCategoryCleanup[];
 
+extern const char kDlcDaemonStorePath[];
+extern const char kDlcImagesDir[];
+
 constexpr char kAlertComponent[] = "CoreServicesAlert";
 
 // The DLC preallocated size setting that resizes based on the image size.
@@ -105,6 +108,10 @@ base::FilePath GetDlcImagePath(const base::FilePath& dlc_module_root_path,
                                const std::string& id,
                                const std::string& package,
                                BootSlot::Slot current_slot);
+
+// Returns primary user's cryptohome daemon store path. Returns empty path on
+// error.
+base::FilePath GetDaemonStorePath();
 
 // Scans a directory and returns all its subdirectory names in a list.
 std::set<std::string> ScanDirectory(const base::FilePath& dir);

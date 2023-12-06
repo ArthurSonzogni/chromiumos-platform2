@@ -75,6 +75,7 @@ class BRILLO_EXPORT Manifest {
   bool use_logical_volume() const { return use_logical_volume_; }
   bool scaled() const { return scaled_; }
   bool powerwash_safe() const { return powerwash_safe_; }
+  bool user_tied() const { return user_tied_; }
   const ArtifactsMeta& artifacts_meta() const { return artifacts_meta_; }
   bool force_ota() const { return force_ota_; }
 
@@ -104,6 +105,7 @@ class BRILLO_EXPORT Manifest {
   bool use_logical_volume_ = false;
   bool scaled_ = false;
   bool powerwash_safe_ = false;
+  bool user_tied_ = false;
   ArtifactsMeta artifacts_meta_{
       .valid = false,
   };

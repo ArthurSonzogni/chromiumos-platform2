@@ -9,12 +9,14 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <cstdio>
 #include <memory>
 #include <utility>
 #include <vector>
 
 #include <base/check.h>
 #include <base/files/file_enumerator.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -81,6 +83,9 @@ const char kCategoryInstall[] = "install";
 const char kCategoryUninstall[] = "uninstall";
 const char kCategoryInit[] = "init";
 const char kCategoryCleanup[] = "cleanup";
+
+const char kDlcDaemonStorePath[] = "/run/daemon-store-cache/dlcservice";
+const char kDlcImagesDir[] = "dlc";
 
 bool SplitPartitionName(std::string partition_name,
                         std::string* disk_name_out,
@@ -291,6 +296,23 @@ FilePath GetDlcImagePath(const FilePath& dlc_module_root_path,
                          BootSlot::Slot slot) {
   return JoinPaths(dlc_module_root_path, id, package, BootSlot::ToString(slot),
                    kDlcImageFileName);
+}
+
+FilePath GetDaemonStorePath() {
+  std::string username;
+  std::string sanitized_username;
+  brillo::ErrorPtr err;
+  if (!SystemState::Get()->session_manager()->RetrievePrimarySession(
+          &username, &sanitized_username, &err)) {
+    const char* error_msg = err ? err->GetMessage().c_str() : "Unknown";
+    LOG(ERROR) << "Failed to RetrievePrimarySession, err=" << error_msg;
+    return {};
+  }
+  if (sanitized_username.empty()) {
+    LOG(ERROR) << "Primary session is not available.";
+    return {};
+  }
+  return JoinPaths(kDlcDaemonStorePath, sanitized_username);
 }
 
 set<string> ScanDirectory(const FilePath& dir) {

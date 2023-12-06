@@ -11,7 +11,9 @@
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 
+#include "dlcservice/boot/boot_slot.h"
 #include "dlcservice/boot/mock_boot_slot.h"
+#include "dlcservice/dlc_base.h"
 #include "dlcservice/metrics.h"
 #include "dlcservice/prefs.h"
 #include "dlcservice/system_state.h"
@@ -40,8 +42,8 @@ class DlcBaseTest : public BaseTest {
     dlc->Initialize();
     EXPECT_CALL(*mock_update_engine_proxy_ptr_,
                 SetDlcActiveValueAsync(_, id, _, _, _));
-    EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
-        .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
+    EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
+        .WillOnce(DoAll(SetArgPointee<1>(mount_path_.value()), Return(true)));
     EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
     EXPECT_CALL(*mock_metrics_,
                 SendInstallResult(InstallResult::kSuccessNewInstall));
@@ -218,8 +220,8 @@ TEST_F(DlcBaseTest, InstallWithUECompletion) {
 
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValueAsync(_, kFirstDlc, _, _, _));
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(mount_path_.value()), Return(true)));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessNewInstall));
@@ -241,8 +243,8 @@ TEST_F(DlcBaseTest, InstallWithoutUECompletion) {
 
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValueAsync(_, kFirstDlc, _, _, _));
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(mount_path_.value()), Return(true)));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessNewInstall));
@@ -383,8 +385,8 @@ TEST_F(DlcBaseTest, BootingFromNonRemovableDeviceKeepsPreloadedDLCs) {
 
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValueAsync(_, kThirdDlc, _, _, _));
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(mount_path_.value()), Return(true)));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessAlreadyInstalled));
@@ -406,8 +408,8 @@ TEST_F(DlcBaseTestRemovable, BootingFromRemovableDeviceKeepsPreloadedDLCs) {
 
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValueAsync(_, kThirdDlc, _, _, _));
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(mount_path_.value()), Return(true)));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessAlreadyInstalled));
@@ -475,9 +477,8 @@ TEST_F(DlcBaseTest, PreloadingSkippedOnAlreadyVerifiedDlc) {
 
   EXPECT_TRUE(dlc.MarkVerified());
   EXPECT_EQ(dlc.GetState().state(), DlcState::NOT_INSTALLED);
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_,
-              LoadDlcImage(kThirdDlc, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(mount_path_.value()), Return(true)));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValueAsync(_, kThirdDlc, _, _, _));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
@@ -500,9 +501,8 @@ TEST_F(DlcBaseTest, PreloadingSkippedOnAlreadyExistingAndVerifiableDlc) {
   InstallWithUpdateEngine({kThirdDlc});
 
   EXPECT_EQ(dlc.GetState().state(), DlcState::NOT_INSTALLED);
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_,
-              LoadDlcImage(kThirdDlc, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(mount_path_.value()), Return(true)));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValueAsync(_, kThirdDlc, _, _, _));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
@@ -534,9 +534,8 @@ TEST_F(DlcBaseTest, FactoryInstalledImageClearsAfterInstallation) {
   base::FilePath factory_image_path = SetUpDlcFactoryImage(kThirdDlc);
   EXPECT_TRUE(base::PathExists(factory_image_path));
 
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_,
-              LoadDlcImage(kThirdDlc, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(mount_path_.value()), Return(true)));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValueAsync(_, kThirdDlc, _, _, _));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
@@ -720,9 +719,8 @@ TEST_F(DlcBaseTest, ImageOnDiskButNotVerifiedInstalls) {
   InstallWithUpdateEngine({kSecondDlc});
 
   EXPECT_EQ(dlc.GetState().state(), DlcState::NOT_INSTALLED);
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_,
-              LoadDlcImage(kSecondDlc, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(mount_path_.value()), Return(true)));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValueAsync(_, kSecondDlc, _, _, _));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
@@ -743,9 +741,8 @@ TEST_F(DlcBaseTest, ImageOnDiskVerifiedInstalls) {
   dlc.Initialize();
 
   EXPECT_EQ(dlc.GetState().state(), DlcState::NOT_INSTALLED);
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_,
-              LoadDlcImage(kSecondDlc, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(mount_path_.value()), Return(true)));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValueAsync(_, kSecondDlc, _, _, _));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
@@ -762,9 +759,8 @@ TEST_F(DlcBaseTest, VerifyDlcImageOnUEFailureToCompleteInstall) {
 
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValueAsync(_, kSecondDlc, _, _, _));
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_,
-              LoadDlcImage(kSecondDlc, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(mount_path_.value()), Return(true)));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessNewInstall));
@@ -879,8 +875,8 @@ TEST_F(DlcBaseTest, MountFileCreated) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValueAsync(_, kFirstDlc, _, _, _));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(mount_path_.value()), Return(true)));
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessAlreadyInstalled));
 
@@ -900,8 +896,8 @@ TEST_F(DlcBaseTest, MountFileNotCreated) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValueAsync(_, kSecondDlc, _, _, _));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(mount_path_.value()), Return(true)));
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessAlreadyInstalled));
 
@@ -922,8 +918,8 @@ TEST_F(DlcBaseTest, MountFileRequiredDeletionOnUninstall) {
               SetDlcActiveValueAsync(_, kFirstDlc, _, _, _))
       .Times(2);
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(mount_path_.value()), Return(true)));
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessAlreadyInstalled));
   EXPECT_TRUE(dlc.Install(&err_));
@@ -1049,9 +1045,8 @@ TEST_F(DlcBaseTest, IsInstalledButUnmounted) {
 
   EXPECT_TRUE(dlc.MarkVerified());
   EXPECT_EQ(dlc.GetState().state(), DlcState::NOT_INSTALLED);
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_,
-              LoadDlcImage(kThirdDlc, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlc(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(mount_path_.value()), Return(true)));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValueAsync(_, kThirdDlc, _, _, _));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
@@ -1064,6 +1059,20 @@ TEST_F(DlcBaseTest, IsInstalledButUnmounted) {
   // Fake unmount.
   ASSERT_TRUE(base::DeletePathRecursively(dlc.GetRoot()));
   EXPECT_FALSE(dlc.IsInstalled());
+}
+
+TEST_F(DlcBaseTest, GetDaemonStorePath) {
+  DlcBase dlc(kUserTiedDlc);
+  dlc.Initialize();
+
+  EXPECT_CALL(*mock_session_manager_proxy_ptr_,
+              RetrievePrimarySession(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>("user_hash"), Return(true)));
+
+  ASSERT_EQ(
+      dlc.GetImagePath(BootSlot::Slot::A),
+      JoinPaths(kDlcDaemonStorePath, "user_hash", "dlc", kUserTiedDlc, kPackage,
+                BootSlot::ToString(BootSlot::Slot::A), kDlcImageFileName));
 }
 
 }  // namespace dlcservice

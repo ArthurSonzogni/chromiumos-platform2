@@ -55,6 +55,7 @@ const char kSecondDlc[] = "second-dlc";
 const char kThirdDlc[] = "third-dlc";
 const char kFourthDlc[] = "fourth-dlc";
 const char kScaledDlc[] = "scaled-dlc";
+const char kUserTiedDlc[] = "user-tied-dlc";
 const char kDefaultOmahaUrl[] = "http://foo-url";
 
 BaseTest::BaseTest() {
@@ -77,6 +78,10 @@ BaseTest::BaseTest() {
   mock_update_engine_proxy_ =
       std::make_unique<StrictMock<UpdateEngineProxyMock>>();
   mock_update_engine_proxy_ptr_ = mock_update_engine_proxy_.get();
+
+  mock_session_manager_proxy_ =
+      std::make_unique<StrictMock<SessionManagerProxyMock>>();
+  mock_session_manager_proxy_ptr_ = mock_session_manager_proxy_.get();
 
   mock_boot_slot_ = std::make_unique<MockBootSlot>();
   mock_boot_slot_ptr_ = mock_boot_slot_.get();
@@ -101,11 +106,12 @@ void BaseTest::SetUp() {
       std::move(mock_lvmd_proxy_wrapper_),
 #endif  // USE_LVM_STATEFUL_PARTITION
       std::move(mock_image_loader_proxy_), std::move(mock_update_engine_proxy_),
-      &mock_state_change_reporter_, std::move(mock_boot_slot_),
-      std::move(mock_metrics), std::move(mock_system_properties),
-      manifest_path_, preloaded_content_path_, factory_install_path_,
-      deployed_content_path_, content_path_, prefs_path_, users_path_,
-      verification_file_path_, resume_in_progress_path_, &clock_,
+      std::move(mock_session_manager_proxy_), &mock_state_change_reporter_,
+      std::move(mock_boot_slot_), std::move(mock_metrics),
+      std::move(mock_system_properties), manifest_path_,
+      preloaded_content_path_, factory_install_path_, deployed_content_path_,
+      content_path_, prefs_path_, users_path_, verification_file_path_,
+      resume_in_progress_path_, &clock_,
       /*for_test=*/true);
   SystemState::Get()->set_update_engine_service_available(true);
 #if USE_LVM_STATEFUL_PARTITION
@@ -146,7 +152,7 @@ void BaseTest::SetUpFilesAndDirectories() {
 
   // Create DLC manifest sub-directories.
   for (auto&& id : {kFirstDlc, kSecondDlc, kThirdDlc, kFourthDlc, kScaledDlc,
-                    kForceOTADlc}) {
+                    kForceOTADlc, kUserTiedDlc}) {
     base::CreateDirectory(JoinPaths(manifest_path_, id, kPackage));
     base::CopyFile(JoinPaths(testdata_path_, id, kPackage, kManifestName),
                    JoinPaths(manifest_path_, id, kPackage, kManifestName));

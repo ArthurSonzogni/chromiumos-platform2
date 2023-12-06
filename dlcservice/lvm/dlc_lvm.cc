@@ -180,7 +180,7 @@ bool DlcLvm::IsActiveImagePresent() const {
 }
 
 bool DlcLvm::UseLogicalVolume() const {
-  return manifest_->use_logical_volume() &&
+  return !IsUserTied() && manifest_->use_logical_volume() &&
          SystemState::Get()->IsLvmStackEnabled();
 }
 

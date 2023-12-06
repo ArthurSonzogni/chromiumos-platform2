@@ -49,6 +49,7 @@ pkg_config("target_defaults") {
     "libdlcservice-metadata",
     "libimageloader-client",
     "libmetrics",
+    "libsession_manager-client",
     "libimageloader-manifest",
     "libupdate_engine-client",
 
@@ -215,6 +216,7 @@ if (use.test) {
       "libbrillo-test",
       "libchrome-test",
       "libimageloader-client-test",
+      "libsession_manager-client-test",
       "libupdate_engine-client-test",
     ]
     if (use.lvm_stateful_partition) {
