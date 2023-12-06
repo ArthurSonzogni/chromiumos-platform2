@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NET_IEEE80211_H_
-#define SHILL_NET_IEEE80211_H_
+#ifndef SHILL_WIFI_IEEE80211_H_
+#define SHILL_WIFI_IEEE80211_H_
 
 #include <stdint.h>
 
@@ -287,4 +287,4 @@ SHILL_EXPORT std::string StatusToString(WiFiStatusCode status);
 
 }  // namespace shill
 
-#endif  // SHILL_NET_IEEE80211_H_
+#endif  // SHILL_WIFI_IEEE80211_H_

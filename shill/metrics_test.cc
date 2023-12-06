@@ -26,9 +26,9 @@
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_service.h"
-#include "shill/net/ieee80211.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/vpn_types.h"
+#include "shill/wifi/ieee80211.h"
 #include "shill/wifi/mock_wifi.h"
 
 using testing::_;

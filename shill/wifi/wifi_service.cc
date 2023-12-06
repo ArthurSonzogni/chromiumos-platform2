@@ -34,10 +34,10 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
-#include "shill/net/ieee80211.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
+#include "shill/wifi/ieee80211.h"
 #include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wifi.h"
 #include "shill/wifi/wifi_endpoint.h"
@@ -461,8 +461,7 @@ void WiFiService::RemoveEndpoint(const WiFiEndpointConstRefPtr& endpoint) {
   auto i = endpoints_.find(endpoint);
   DCHECK(i != endpoints_.end());
   if (i == endpoints_.end()) {
-    LOG(WARNING) << "In " << __func__ << "(): "
-                 << "ignoring non-existent endpoint "
+    LOG(WARNING) << "In " << __func__ << "(): ignoring non-existent endpoint "
                  << endpoint->bssid_string();
     return;
   }

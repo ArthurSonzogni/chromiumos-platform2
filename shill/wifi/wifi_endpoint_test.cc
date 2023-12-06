@@ -21,12 +21,12 @@
 #include "shill/mac_address.h"
 #include "shill/metrics.h"
 #include "shill/mock_log.h"
-#include "shill/net/ieee80211.h"
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/refptr_types.h"
 #include "shill/store/property_store_test.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/tethering.h"
+#include "shill/wifi/ieee80211.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi.h"
 

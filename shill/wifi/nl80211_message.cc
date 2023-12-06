@@ -32,8 +32,8 @@
 #include <endian.h>
 
 #include "shill/net/attribute_list.h"
-#include "shill/net/ieee80211.h"
 #include "shill/net/netlink_packet.h"
+#include "shill/wifi/ieee80211.h"
 #include "shill/wifi/nl80211_attribute.h"
 
 namespace shill {

@@ -18,10 +18,10 @@
 #include "shill/control_interface.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
-#include "shill/net/ieee80211.h"
 #include "shill/supplicant/supplicant_bss_proxy_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/tethering.h"
+#include "shill/wifi/ieee80211.h"
 #include "shill/wifi/wifi.h"
 
 namespace shill {

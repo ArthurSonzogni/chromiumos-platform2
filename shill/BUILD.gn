@@ -390,6 +390,7 @@ static_library("libshill") {
     "vpn/vpn_types.cc",
     "wifi/hotspot_device.cc",
     "wifi/hotspot_service.cc",
+    "wifi/ieee80211.cc",
     "wifi/local_device.cc",
     "wifi/local_service.cc",
     "wifi/nl80211_attribute.cc",

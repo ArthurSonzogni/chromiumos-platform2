@@ -10,8 +10,8 @@
 #include <base/strings/stringprintf.h>
 #include <net-base/byte_utils.h>
 
-#include "shill/net/ieee80211.h"
 #include "shill/net/netlink_attribute.h"
+#include "shill/wifi/ieee80211.h"
 
 namespace shill {
 

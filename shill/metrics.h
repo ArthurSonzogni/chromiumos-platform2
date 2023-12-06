@@ -19,9 +19,9 @@
 
 #include "shill/error.h"
 #include "shill/mockable.h"
-#include "shill/net/ieee80211.h"
 #include "shill/technology.h"
 #include "shill/vpn/vpn_types.h"
+#include "shill/wifi/ieee80211.h"
 
 namespace shill {
 
