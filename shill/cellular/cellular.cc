@@ -3040,9 +3040,13 @@ void Cellular::OnPPPConnected(
   ppp_device_->SetEnabled(true);
   ppp_device_->SelectService(service_);
 
+  // TODO(b/307855773): Migrate ParseIPConfiguration to ParseNetworkConfig
+  // to return net_base::NetworkConfig instead of IPConfig::Properties.
   auto properties = std::make_unique<IPConfig::Properties>(
       PPPDaemon::ParseIPConfiguration(params));
-  ppp_device_->UpdateIPConfig(std::move(properties), nullptr);
+  auto network_config = std::make_unique<net_base::NetworkConfig>(
+      IPConfig::Properties::ToNetworkConfig(properties.get(), nullptr));
+  ppp_device_->UpdateNetworkConfig(std::move(network_config));
 }
 
 void Cellular::OnPPPDied(pid_t pid, int exit) {

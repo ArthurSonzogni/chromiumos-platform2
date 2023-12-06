@@ -13,6 +13,7 @@
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/network_config.h>
 
 #include "shill/callbacks.h"
 #include "shill/eap_credentials.h"
@@ -93,8 +94,12 @@ class VPNDriver {
   // attempt might take at maximum.
   virtual base::TimeDelta ConnectAsync(EventHandler* handler) = 0;
   virtual void Disconnect() = 0;
+  // TODO(b/307855773): Deprecate these methods
   virtual std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const = 0;
   virtual std::unique_ptr<IPConfig::Properties> GetIPv6Properties() const = 0;
+
+  // TODO(b/307855773): Implement it in subclasses to make it pure virtual.
+  virtual std::unique_ptr<net_base::NetworkConfig> GetNetworkConfig() const;
 
   // Makes the VPN driver fail because of the connection timeout. The driver
   // will clean up its internal state, and invokes OnDriverFailure to notify the

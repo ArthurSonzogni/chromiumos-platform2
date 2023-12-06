@@ -9,6 +9,7 @@
 #include <string>
 
 #include <gmock/gmock.h>
+#include <net-base/network_config.h>
 
 #include "shill/virtual_device.h"
 
@@ -27,9 +28,8 @@ class MockVirtualDevice : public VirtualDevice {
 
   MOCK_METHOD(void, Stop, (EnabledStateChangedCallback), (override));
   MOCK_METHOD(void,
-              UpdateIPConfig,
-              (std::unique_ptr<IPConfig::Properties>,
-               std::unique_ptr<IPConfig::Properties>),
+              UpdateNetworkConfig,
+              (std::unique_ptr<net_base::NetworkConfig>),
               (override));
   MOCK_METHOD(void, DropConnection, (), (override));
   MOCK_METHOD(void, ResetConnection, (), (override));

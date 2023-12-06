@@ -8,6 +8,8 @@
 #include <memory>
 #include <string>
 
+#include <net-base/network_config.h>
+
 #include "shill/device.h"
 #include "shill/error.h"
 #include "shill/ipconfig.h"
@@ -37,9 +39,8 @@ class VirtualDevice : public Device {
   void Start(EnabledStateChangedCallback callback) override;
   void Stop(EnabledStateChangedCallback callback) override;
 
-  virtual void UpdateIPConfig(
-      std::unique_ptr<IPConfig::Properties> ipv4_properties,
-      std::unique_ptr<IPConfig::Properties> ipv6_properties);
+  virtual void UpdateNetworkConfig(
+      std::unique_ptr<net_base::NetworkConfig> network_config);
 
   // Drops the current connection and the selected service, if any.  Does not
   // change the state of the previously selected service.

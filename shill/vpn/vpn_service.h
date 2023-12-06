@@ -101,8 +101,7 @@ class VPNService : public Service,
 
   RpcIdentifier GetDeviceRpcId(Error* error) const override;
 
-  void ConfigureDevice(std::unique_ptr<IPConfig::Properties> ipv4_props,
-                       std::unique_ptr<IPConfig::Properties> ipv6_props);
+  void ConfigureDevice(std::unique_ptr<net_base::NetworkConfig> network_config);
   void CleanupDevice();
 
   // Initializes a callback that will invoke OnDriverConnectTimeout() after

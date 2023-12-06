@@ -4,12 +4,15 @@
 
 #include "shill/vpn/vpn_service.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
+#include <net-base/ip_address.h>
+#include <net-base/network_config.h>
 
 #include "shill/error.h"
 #include "shill/mock_adaptors.h"
@@ -380,8 +383,8 @@ TEST_F(VPNServiceTest, ConfigureDeviceAndCleanupDevice) {
   service_->device_ = device;
 
   EXPECT_CALL(*device, SetEnabled(true));
-  EXPECT_CALL(*device, UpdateIPConfig(_, _));
-  service_->ConfigureDevice(std::make_unique<IPConfig::Properties>(), nullptr);
+  EXPECT_CALL(*device, UpdateNetworkConfig(_));
+  service_->ConfigureDevice(std::make_unique<net_base::NetworkConfig>());
 
   EXPECT_CALL(*device, SetEnabled(false));
   EXPECT_CALL(*device, DropConnection());
@@ -390,29 +393,41 @@ TEST_F(VPNServiceTest, ConfigureDeviceAndCleanupDevice) {
 }
 
 TEST_F(VPNServiceTest, ReportIPTypeMetrics) {
-  const auto return_ip_props = []() {
-    return std::make_unique<IPConfig::Properties>();
+  const auto return_ipv4_props = []() {
+    IPConfig::Properties props;
+    props.address_family = net_base::IPFamily::kIPv4;
+    props.address = "0.0.0.0";
+    props.subnet_prefix = 16;
+    return std::make_unique<IPConfig::Properties>(props);
   };
+  const auto return_ipv6_props = []() {
+    IPConfig::Properties props;
+    props.address_family = net_base::IPFamily::kIPv6;
+    props.address = "::";
+    props.subnet_prefix = 64;
+    return std::make_unique<IPConfig::Properties>(props);
+  };
+
   const auto return_nullptr = []() { return nullptr; };
 
   scoped_refptr<MockVirtualDevice> device = new MockVirtualDevice(
       &manager_, kInterfaceName, kInterfaceIndex, Technology::kVPN);
   service_->device_ = device;
 
-  EXPECT_CALL(*driver_, GetIPv4Properties()).WillOnce(return_ip_props);
+  EXPECT_CALL(*driver_, GetIPv4Properties()).WillOnce(return_ipv4_props);
   EXPECT_CALL(*driver_, GetIPv6Properties()).WillOnce(return_nullptr);
   EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnIPType, _,
                                       Metrics::kIPTypeIPv4Only));
   service_->OnDriverConnected(kInterfaceName, kInterfaceIndex);
 
   EXPECT_CALL(*driver_, GetIPv4Properties()).WillOnce(return_nullptr);
-  EXPECT_CALL(*driver_, GetIPv6Properties()).WillOnce(return_ip_props);
+  EXPECT_CALL(*driver_, GetIPv6Properties()).WillOnce(return_ipv6_props);
   EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnIPType, _,
                                       Metrics::kIPTypeIPv6Only));
   service_->OnDriverConnected(kInterfaceName, kInterfaceIndex);
 
-  EXPECT_CALL(*driver_, GetIPv4Properties()).WillOnce(return_ip_props);
-  EXPECT_CALL(*driver_, GetIPv6Properties()).WillOnce(return_ip_props);
+  EXPECT_CALL(*driver_, GetIPv4Properties()).WillOnce(return_ipv4_props);
+  EXPECT_CALL(*driver_, GetIPv6Properties()).WillOnce(return_ipv6_props);
   EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnIPType, _,
                                       Metrics::kIPTypeDualStack));
   service_->OnDriverConnected(kInterfaceName, kInterfaceIndex);

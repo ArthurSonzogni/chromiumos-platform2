@@ -4,6 +4,7 @@
 
 #include "shill/vpn/vpn_driver.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -12,11 +13,13 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/network_config.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
+#include "shill/network/network.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/property_store.h"
 #include "shill/store/store_interface.h"
@@ -144,6 +147,14 @@ void VPNDriver::UnloadCredentials() {
   if (eap_credentials_) {
     eap_credentials_->Reset();
   }
+}
+
+std::unique_ptr<net_base::NetworkConfig> VPNDriver::GetNetworkConfig() const {
+  auto ipv4_properties = GetIPv4Properties();
+  auto ipv6_properties = GetIPv6Properties();
+  auto network_config = IPConfig::Properties::ToNetworkConfig(
+      ipv4_properties.get(), ipv6_properties.get());
+  return std::make_unique<net_base::NetworkConfig>(network_config);
 }
 
 void VPNDriver::InitPropertyStore(PropertyStore* store) {
