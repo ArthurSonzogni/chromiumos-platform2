@@ -9,12 +9,11 @@
 #include <algorithm>
 
 #include <base/containers/contains.h>
+#include <base/functional/callback.h>
 #include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <net-base/byte_utils.h>
-
-#include "shill/net/netlink_packet.h"
 
 namespace shill {
 

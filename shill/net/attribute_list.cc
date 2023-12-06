@@ -110,11 +110,10 @@ bool AttributeList::IterateAttributes(
   return true;
 }
 
-bool AttributeList::Decode(base::span<const uint8_t> payload,
-                           size_t offset,
-                           const AttributeList::NewFromIdMethod& factory) {
+bool AttributeList::Decode(NetlinkPacket* packet,
+                           const NewFromIdMethod& factory) {
   return IterateAttributes(
-      payload, offset,
+      packet->ConsumeRemainingPayload(), 0,
       base::BindRepeating(&AttributeList::CreateAndInitAttribute,
                           base::Unretained(this), factory));
 }

@@ -110,9 +110,9 @@ bool ControlNetlinkMessage::InitFromPacket(NetlinkPacket* packet,
     return false;
   }
 
-  return packet->ConsumeAttributes(
-      base::BindRepeating(&NetlinkAttribute::NewControlAttributeFromId),
-      attributes_);
+  return attributes_->Decode(
+      packet,
+      base::BindRepeating(&NetlinkAttribute::NewControlAttributeFromId));
 }
 
 // Specific Control types.

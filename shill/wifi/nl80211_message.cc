@@ -128,8 +128,8 @@ bool Nl80211Message::InitFromPacketWithContext(NetlinkPacket* packet,
     return false;
   }
 
-  return packet->ConsumeAttributes(
-      base::BindRepeating(&NewNl80211AttributeFromId, context), attributes_);
+  return attributes_->Decode(
+      packet, base::BindRepeating(&NewNl80211AttributeFromId, context));
 }
 
 bool Nl80211Message::Send(

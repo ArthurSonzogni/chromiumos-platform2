@@ -14,8 +14,10 @@
 
 #include <base/containers/span.h>
 #include <base/functional/bind.h>
+#include <base/functional/callback_forward.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST.
 
+#include "shill/net/netlink_packet.h"
 #include "shill/net/shill_export.h"
 
 struct nlmsghdr;
@@ -62,8 +64,6 @@ namespace shill {
 //
 // Do all of this before you start to create NetlinkMessages so that
 // NetlinkMessage can be instantiated with a valid |message_type_|.
-
-class NetlinkPacket;
 
 class SHILL_EXPORT NetlinkMessage {
  public:

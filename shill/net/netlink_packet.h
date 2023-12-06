@@ -13,7 +13,6 @@
 
 #include <base/containers/span.h>
 
-#include "shill/net/attribute_list.h"
 #include "shill/net/shill_export.h"
 
 namespace shill {
@@ -48,9 +47,10 @@ class SHILL_EXPORT NetlinkPacket {
   // on an invalid packet.
   base::span<const uint8_t> GetPayload() const;
 
-  // Consume netlink attributes from the remaining payload.
-  bool ConsumeAttributes(const AttributeList::NewFromIdMethod& factory,
-                         const AttributeListRefPtr& attributes);
+  // Consumes and returns the remaining payload. Note that the offset of the
+  // returned payload is aligned with NLA_ALIGN() for decoding to the netlink
+  // attribute.
+  base::span<const uint8_t> ConsumeRemainingPayload();
 
   // Consume |len| bytes out of the payload, and place them in |data|.
   // Any trailing alignment padding in |payload| is also consumed.  Returns

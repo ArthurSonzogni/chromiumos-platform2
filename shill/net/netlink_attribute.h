@@ -15,7 +15,6 @@
 #include <base/functional/callback.h>
 
 #include "shill/net/attribute_list.h"
-#include "shill/net/netlink_message.h"
 
 namespace shill {
 

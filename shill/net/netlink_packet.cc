@@ -55,12 +55,15 @@ base::span<const uint8_t> NetlinkPacket::GetPayload() const {
   return *payload_;
 }
 
-bool NetlinkPacket::ConsumeAttributes(
-    const AttributeList::NewFromIdMethod& factory,
-    const AttributeListRefPtr& attributes) {
-  bool result = attributes->Decode(GetPayload(), consumed_bytes_, factory);
-  consumed_bytes_ = GetPayload().size();
-  return result;
+base::span<const uint8_t> NetlinkPacket::ConsumeRemainingPayload() {
+  const auto payload = GetPayload();
+  if (payload.size() < NLA_ALIGN(consumed_bytes_)) {
+    return {};
+  }
+
+  const auto remaining_payload = payload.subspan(NLA_ALIGN(consumed_bytes_));
+  consumed_bytes_ = payload.size();
+  return remaining_payload;
 }
 
 bool NetlinkPacket::ConsumeData(size_t len, void* data) {
