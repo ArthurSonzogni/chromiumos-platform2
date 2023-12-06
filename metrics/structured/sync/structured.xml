@@ -867,6 +867,58 @@
 
 </project>
 
+<project name="CrostiniUsbDevice">
+  <owner>drmasquatch@google.com</owner>
+  <owner>clumptini@google.com</owner>
+  <id>none</id>
+  <summary>
+    Project for recording info about USB devices that get attached to Crostini.
+  </summary>
+
+  <event name="UsbDeviceInfo">
+    <summary>
+      Records the USB device info when an attempt to connect it to Crostini is
+      made.
+    </summary>
+    <metric name="VendorId" type="int">
+      <summary>
+        The vendor id of the USB device.
+      </summary>
+    </metric>
+    <metric name="VendorName" type="raw-string">
+      <summary>
+        The vendor name of the USB device.
+      </summary>
+    </metric>
+    <metric name="ProductId" type="int">
+      <summary>
+        The product id of the USB device.
+      </summary>
+    </metric>
+    <metric name="ProductName" type="raw-string">
+      <summary>
+        The product name of the USB device.
+      </summary>
+    </metric>
+    <metric name="DeviceClass" type="int">
+      <summary>
+        The device class of the USB device.
+      </summary>
+    </metric>
+    <metric name="InterfaceClass" type="int-array" max="20">
+      <summary>
+        The list of interface classes of the USB device. It is highly unlikely
+        that a single device has more than 20 interfaces, so max set to 20.
+      </summary>
+    </metric>
+    <metric name="CrostiniConnectionSuccess" type="int">
+      <summary>
+        Boolean to denote success of connecting device to Crostini.
+      </summary>
+    </metric>
+  </event>
+</project>
+
 <project name="RollbackEnterprise">
   <owner>crisguerrero@chromium.org</owner>
   <owner>mpolzer@google.com</owner>
