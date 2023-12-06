@@ -11,14 +11,13 @@
 
 #include <base/containers/span.h>
 #include <base/no_destructor.h>
+#include <net-base/netlink_packet.h>
 
 #include "shill/net/generic_netlink_message.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/shill_export.h"
 
 namespace shill {
-
-class NetlinkPacket;
 
 // Class for messages received from the mac80211 drivers by way of the
 // cfg80211 kernel module.
@@ -46,8 +45,10 @@ class SHILL_EXPORT Nl80211Message : public GenericNetlinkMessage {
   // Sets the family_id / message_type for all Nl80211 messages.
   static void SetMessageType(uint16_t message_type);
 
-  bool InitFromPacket(NetlinkPacket* packet, bool is_broadcast) override;
-  bool InitFromPacketWithContext(NetlinkPacket* packet, const Context& context);
+  bool InitFromPacket(net_base::NetlinkPacket* packet,
+                      bool is_broadcast) override;
+  bool InitFromPacketWithContext(net_base::NetlinkPacket* packet,
+                                 const Context& context);
 
   // Sends this netlink 80211 message to the kernel using the NetlinkManager
   // socket after installing a handler to deal with the kernel's response to the
@@ -66,7 +67,7 @@ class SHILL_EXPORT Nl80211Message : public GenericNetlinkMessage {
 
   // Message factory for all types of Nl80211 message.
   static std::unique_ptr<NetlinkMessage> CreateMessage(
-      const NetlinkPacket& packet);
+      const net_base::NetlinkPacket& packet);
 
  private:
   static uint16_t nl80211_message_type_;

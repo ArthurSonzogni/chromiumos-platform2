@@ -24,15 +24,16 @@
 
 #include "shill/wifi/nl80211_message.h"
 
+#include <endian.h>
+
 #include <limits>
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <endian.h>
+#include <net-base/netlink_packet.h>
 
 #include "shill/net/attribute_list.h"
-#include "shill/net/netlink_packet.h"
 #include "shill/wifi/ieee80211.h"
 #include "shill/wifi/nl80211_attribute.h"
 
@@ -100,7 +101,8 @@ void Nl80211Message::SetMessageType(uint16_t message_type) {
   nl80211_message_type_ = message_type;
 }
 
-bool Nl80211Message::InitFromPacket(NetlinkPacket* packet, bool is_broadcast) {
+bool Nl80211Message::InitFromPacket(net_base::NetlinkPacket* packet,
+                                    bool is_broadcast) {
   if (!packet) {
     LOG(ERROR) << "Null |packet| parameter";
     return false;
@@ -117,7 +119,7 @@ bool Nl80211Message::InitFromPacket(NetlinkPacket* packet, bool is_broadcast) {
   return InitFromPacketWithContext(packet, context);
 }
 
-bool Nl80211Message::InitFromPacketWithContext(NetlinkPacket* packet,
+bool Nl80211Message::InitFromPacketWithContext(net_base::NetlinkPacket* packet,
                                                const Context& context) {
   if (!packet) {
     LOG(ERROR) << "Null |packet| parameter";
@@ -497,7 +499,7 @@ const char ControlPortFrameTxStatusMessage::kCommandString[] =
 
 // static
 std::unique_ptr<NetlinkMessage> Nl80211Message::CreateMessage(
-    const NetlinkPacket& packet) {
+    const net_base::NetlinkPacket& packet) {
   genlmsghdr header;
   if (!packet.GetGenlMsgHdr(&header)) {
     LOG(ERROR) << "Could not read genl header.";

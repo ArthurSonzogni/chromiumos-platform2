@@ -69,6 +69,7 @@
 #include <base/lazy_instance.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/netlink_packet.h>
 #include <net-base/netlink_socket.h>
 
 #include "shill/net/generic_netlink_message.h"
@@ -78,7 +79,6 @@
 namespace shill {
 
 class ControlNetlinkMessage;
-class NetlinkPacket;
 
 // NetlinkManager is a singleton that coordinates sending netlink messages to,
 // and receiving netlink messages from, the kernel.  The first use of this is
@@ -336,7 +336,7 @@ class SHILL_EXPORT NetlinkManager {
   // the message to either the NetlinkManager callback that matches the sequence
   // number of the message or, if there isn't one, to all of the default
   // NetlinkManager callbacks in |broadcast_handlers_|.
-  void OnNlMessageReceived(NetlinkPacket* packet);
+  void OnNlMessageReceived(net_base::NetlinkPacket* packet);
 
   // Sends the pending dump message, and decrement the message's retry count if
   // it was resent successfully.
@@ -375,7 +375,7 @@ class SHILL_EXPORT NetlinkManager {
   bool SendMessageInternal(const NetlinkPendingMessage& pending_message);
 
   // Returns whether the packet is broadcast (for message parsing purposes).
-  bool IsBroadcastPacket(const NetlinkPacket& packet) const;
+  bool IsBroadcastPacket(const net_base::NetlinkPacket& packet) const;
 
   // Called when we time out waiting for a response to a netlink dump message.
   // Invokes the error handler with kTimeoutWaitingForResponse, deletes the

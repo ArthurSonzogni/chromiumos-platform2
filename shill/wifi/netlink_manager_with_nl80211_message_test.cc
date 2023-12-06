@@ -24,8 +24,8 @@
 #include <gtest/gtest.h>
 #include <net-base/byte_utils.h>
 #include <net-base/mock_netlink_socket.h>
+#include <net-base/netlink_packet.h>
 
-#include "shill/net/netlink_packet.h"
 #include "shill/wifi/nl80211_message.h"
 
 using testing::_;
@@ -363,7 +363,7 @@ TEST_F(NetlinkManagerTest, GetFamilyTimeout) {
 
 TEST_F(NetlinkManagerTest, BroadcastHandler) {
   Reset();
-  MutableNetlinkPacket packet(kNL80211_CMD_DISCONNECT);
+  net_base::MutableNetlinkPacket packet(kNL80211_CMD_DISCONNECT);
 
   MockHandlerNetlink handler1;
   MockHandlerNetlink handler2;
@@ -427,7 +427,7 @@ TEST_F(NetlinkManagerTest, MessageHandler) {
   MockHandler80211 handler_sent_2;
 
   // Set up the received message as a response to sent_message_1.
-  MutableNetlinkPacket received_message(kNL80211_CMD_DISCONNECT);
+  net_base::MutableNetlinkPacket received_message(kNL80211_CMD_DISCONNECT);
 
   // Verify that generic handler gets called for a message when no
   // message-specific handler has been installed.
@@ -497,7 +497,7 @@ TEST_F(NetlinkManagerTest, AckHandler) {
       netlink_manager_, handler_sent_1.on_netlink_message(),
       handler_sent_2.on_netlink_message(), null_error_handler));
   // Set up message as an ack in response to sent_message.
-  MutableNetlinkPacket received_ack_message(kNLMSG_ACK);
+  net_base::MutableNetlinkPacket received_ack_message(kNLMSG_ACK);
 
   // Make it appear that this message is in response to our sent message.
   received_ack_message.SetMessageSequence(
@@ -510,7 +510,8 @@ TEST_F(NetlinkManagerTest, AckHandler) {
   // Receive an Nl80211 response message after handling the Ack and verify
   // that the Nl80211 response handler is invoked to ensure that it was not
   // deleted after the Ack handler was executed.
-  MutableNetlinkPacket received_response_message(kNL80211_CMD_DISCONNECT);
+  net_base::MutableNetlinkPacket received_response_message(
+      kNL80211_CMD_DISCONNECT);
 
   // Make it appear that this message is in response to our sent message.
   received_response_message.SetMessageSequence(
@@ -554,7 +555,8 @@ TEST_F(NetlinkManagerTest, ErrorHandler) {
                                 handler_sent_1.on_netlink_message(),
                                 handler_sent_2.on_netlink_message(),
                                 handler_sent_3.on_netlink_message()));
-  MutableNetlinkPacket received_response_message(kNL80211_CMD_DISCONNECT);
+  net_base::MutableNetlinkPacket received_response_message(
+      kNL80211_CMD_DISCONNECT);
   received_response_message.SetMessageSequence(
       netlink_socket_->GetLastSequenceNumber());
   EXPECT_CALL(handler_sent_1, OnNetlinkMessage(_)).Times(1);
@@ -565,7 +567,7 @@ TEST_F(NetlinkManagerTest, ErrorHandler) {
                                 handler_sent_1.on_netlink_message(),
                                 handler_sent_2.on_netlink_message(),
                                 handler_sent_3.on_netlink_message()));
-  MutableNetlinkPacket received_error_message(kNLMSG_Error);
+  net_base::MutableNetlinkPacket received_error_message(kNLMSG_Error);
   received_error_message.SetMessageSequence(
       netlink_socket_->GetLastSequenceNumber());
   EXPECT_CALL(handler_sent_3,
@@ -603,7 +605,7 @@ TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
   NewScanResultsMessage new_scan_results;
   new_scan_results.AddFlag(NLM_F_MULTI);
   const auto new_scan_results_bytes = new_scan_results.Encode(kSequenceNumber);
-  MutableNetlinkPacket received_message(new_scan_results_bytes);
+  net_base::MutableNetlinkPacket received_message(new_scan_results_bytes);
   received_message.SetMessageSequence(netlink_socket_->GetLastSequenceNumber());
 
   // Verify that the message-specific handler is called.
@@ -618,7 +620,7 @@ TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
   // Build a Done message with the sent-message sequence number.
   DoneMessage done_message;
   done_message.AddFlag(NLM_F_MULTI);
-  NetlinkPacket done_packet(
+  net_base::NetlinkPacket done_packet(
       done_message.Encode(netlink_socket_->GetLastSequenceNumber()));
 
   // Verify that the message-specific auxiliary handler is called for the done
@@ -653,7 +655,7 @@ TEST_F(NetlinkManagerTest, TimeoutResponseHandlers) {
   const uint32_t kRandomSequenceNumber = 3;
   const auto new_wiphy_message_bytes =
       new_wiphy_message.Encode(kRandomSequenceNumber);
-  MutableNetlinkPacket received_message(new_wiphy_message_bytes);
+  net_base::MutableNetlinkPacket received_message(new_wiphy_message_bytes);
 
   // Setup a random received message to trigger wiping out old messages.
   NewScanResultsMessage new_scan_results;
@@ -722,10 +724,13 @@ TEST_F(NetlinkManagerTest, PendingDump) {
       new_station_message_1_pt2.Encode(kRandomSequenceNumber);
   const auto new_station_message_2_bytes =
       new_station_message_2.Encode(kRandomSequenceNumber);
-  MutableNetlinkPacket received_message_1_pt1(new_station_message_1_pt1_bytes);
-  MutableNetlinkPacket received_message_1_pt2(new_station_message_1_pt2_bytes);
+  net_base::MutableNetlinkPacket received_message_1_pt1(
+      new_station_message_1_pt1_bytes);
+  net_base::MutableNetlinkPacket received_message_1_pt2(
+      new_station_message_1_pt2_bytes);
   received_message_1_pt2.SetMessageType(NLMSG_DONE);
-  MutableNetlinkPacket received_message_2(new_station_message_2_bytes);
+  net_base::MutableNetlinkPacket received_message_2(
+      new_station_message_2_bytes);
 
   // The two get station messages (with the dump flag set) will be sent one
   // after another. The second message can only be sent once all replies to the
@@ -885,7 +890,7 @@ TEST_F(NetlinkManagerTest, PendingDump_Retry) {
   const int kNumRetries = 1;
   // Create EBUSY netlink error response. Do this manually because
   // ErrorAckMessage does not implement NetlinkMessage::Encode.
-  MutableNetlinkPacket received_ebusy_message(kNLMSG_ACK);
+  net_base::MutableNetlinkPacket received_ebusy_message(kNLMSG_ACK);
   *received_ebusy_message.GetMutablePayload() =
       net_base::byte_utils::ToBytes<uint32_t>(EBUSY);
 

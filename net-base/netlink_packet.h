@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NET_NETLINK_PACKET_H_
-#define SHILL_NET_NETLINK_PACKET_H_
+#ifndef NET_BASE_NETLINK_PACKET_H_
+#define NET_BASE_NETLINK_PACKET_H_
 
 #include <linux/genetlink.h>
 #include <linux/netlink.h>
@@ -13,11 +13,11 @@
 
 #include <base/containers/span.h>
 
-#include "shill/net/shill_export.h"
+#include "net-base/export.h"
 
-namespace shill {
+namespace net_base {
 
-class SHILL_EXPORT NetlinkPacket {
+class NET_BASE_EXPORT NetlinkPacket {
  public:
   explicit NetlinkPacket(base::span<const uint8_t> buf);
   NetlinkPacket(const NetlinkPacket&) = delete;
@@ -87,7 +87,7 @@ class SHILL_EXPORT NetlinkPacket {
 // Mutable Netlink packets are used in unit tests where it is convenient
 // to modify the header and payload of a packet before passing it to the
 // NetlinkMessage subclasses or NetlinkManager.
-class SHILL_EXPORT MutableNetlinkPacket : public NetlinkPacket {
+class NET_BASE_EXPORT MutableNetlinkPacket : public NetlinkPacket {
  public:
   explicit MutableNetlinkPacket(base::span<const uint8_t> buf);
   MutableNetlinkPacket(const MutableNetlinkPacket&) = delete;
@@ -111,6 +111,6 @@ class SHILL_EXPORT MutableNetlinkPacket : public NetlinkPacket {
   void SetMessageSequence(uint32_t sequence);
 };
 
-}  // namespace shill
+}  // namespace net_base
 
-#endif  // SHILL_NET_NETLINK_PACKET_H_
+#endif  // NET_BASE_NETLINK_PACKET_H_

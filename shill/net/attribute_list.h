@@ -15,8 +15,8 @@
 #include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
+#include <net-base/netlink_packet.h>
 
-#include "shill/net/netlink_packet.h"
 #include "shill/net/shill_export.h"
 
 namespace shill {
@@ -69,7 +69,7 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
 
   // Decode an attribute list starting from the remaining payload of |packet|.
   // Use |factory| to create each attribute object.
-  bool Decode(NetlinkPacket* packet, const NewFromIdMethod& factory);
+  bool Decode(net_base::NetlinkPacket* packet, const NewFromIdMethod& factory);
 
   // Returns the attributes as the payload portion of a netlink message
   // suitable for Sockets::Send.  Return value is empty on failure (or if no

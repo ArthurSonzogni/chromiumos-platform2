@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/netlink_packet.h"
+#include "net-base/netlink_packet.h"
 
 #include <linux/netlink.h>
 
@@ -12,7 +12,7 @@
 
 using testing::Test;
 
-namespace shill {
+namespace net_base {
 
 TEST(NetlinkPacketTest, Constructor) {
   // An empty buffer should not crash the constructor, but should yield
@@ -126,4 +126,4 @@ TEST(NetlinkPacketTest, ConsumeData) {
   EXPECT_EQ(0, packet.GetRemainingLength());
 }
 
-}  // namespace shill
+}  // namespace net_base

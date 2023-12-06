@@ -16,14 +16,15 @@
 #include <base/logging.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
+#include <net-base/netlink_packet.h>
 
 #include "shill/net/attribute_list.h"
-#include "shill/net/netlink_packet.h"
 
 namespace shill {
 
 namespace {
 // TODO(b/301905012): Remove this type alias when moving this file to net-base.
+using net_base::NetlinkPacket;
 using net_base::NetlinkSocket;
 
 base::LazyInstance<NetlinkManager>::DestructorAtExit g_netlink_manager =

@@ -14,8 +14,12 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <net-base/byte_utils.h>
+#include <net-base/netlink_packet.h>
 
 namespace shill {
+
+// TODO(b/301905012): Remove the type alias after moving this file to net-base.
+using net_base::NetlinkPacket;
 
 const uint32_t NetlinkMessage::kBroadcastSequenceNumber = 0;
 const uint16_t NetlinkMessage::kIllegalMessageType = UINT16_MAX;

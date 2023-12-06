@@ -11,10 +11,14 @@
 #include <base/containers/contains.h>
 #include <base/containers/span.h>
 #include <base/logging.h>
+#include <net-base/netlink_packet.h>
 
 #include "shill/net/netlink_attribute.h"
 
 namespace shill {
+
+// TODO(b/301905012): Remove the type alias after moving this file to net-base.
+using net_base::NetlinkPacket;
 
 AttributeList::AttributeList() = default;
 

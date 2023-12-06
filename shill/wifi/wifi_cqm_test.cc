@@ -11,13 +11,13 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/netlink_packet.h>
 
 #include "shill/metrics.h"
 #include "shill/mock_control.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/net/netlink_packet.h"
 #include "shill/refptr_types.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
@@ -150,7 +150,7 @@ TEST_F(WiFiCQMTest, OnCQMNotificationBeaconLoss) {
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(3);
 
-  NetlinkPacket packet(kCQMBeaconLossNLMsg);
+  net_base::NetlinkPacket packet(kCQMBeaconLossNLMsg);
   msg.InitFromPacketWithContext(&packet, Nl80211Message::Context());
   const Nl80211Message& nl80211_msg =
       *reinterpret_cast<const Nl80211Message*>(&msg);
@@ -181,7 +181,7 @@ TEST_F(WiFiCQMTest, OnCQMNotificationLowRssiLevelBreach) {
   ScopedMockLog log;
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(3);
-  NetlinkPacket packet(kCQMRssiLowNLMsg);
+  net_base::NetlinkPacket packet(kCQMRssiLowNLMsg);
   msg.InitFromPacketWithContext(&packet, Nl80211Message::Context());
   const Nl80211Message& nl80211_msg =
       *reinterpret_cast<const Nl80211Message*>(&msg);
@@ -198,7 +198,7 @@ TEST_F(WiFiCQMTest, OnCQMNotificationHighRssiLevelBreach) {
   ScopedMockLog log;
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(3);
-  NetlinkPacket packet(kCQMRssiHighNLMsg);
+  net_base::NetlinkPacket packet(kCQMRssiHighNLMsg);
   msg.InitFromPacketWithContext(&packet, Nl80211Message::Context());
   const Nl80211Message& nl80211_msg =
       *reinterpret_cast<const Nl80211Message*>(&msg);
@@ -217,7 +217,7 @@ TEST_F(WiFiCQMTest, OnCQMNotificationPacketLoss) {
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(3);
 
-  NetlinkPacket packet(kCQMPacketLossNLMsg);
+  net_base::NetlinkPacket packet(kCQMPacketLossNLMsg);
   msg.InitFromPacketWithContext(&packet, Nl80211Message::Context());
   const Nl80211Message& nl80211_msg =
       *reinterpret_cast<const Nl80211Message*>(&msg);

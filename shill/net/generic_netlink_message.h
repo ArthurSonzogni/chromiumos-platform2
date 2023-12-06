@@ -9,13 +9,13 @@
 #include <string>
 #include <vector>
 
+#include <net-base/netlink_packet.h>
+
 #include "shill/net/attribute_list.h"
 #include "shill/net/netlink_message.h"
 #include "shill/net/shill_export.h"
 
 namespace shill {
-
-class NetlinkPacket;
 
 // Objects of the |GenericNetlinkMessage| type represent messages that contain
 // a |genlmsghdr| after a |nlmsghdr|.  These messages seem to all contain a
@@ -85,7 +85,7 @@ class SHILL_EXPORT GenericNetlinkMessage : public NetlinkMessage {
   std::vector<uint8_t> EncodeHeader(uint32_t sequence_number) override;
   // Reads the |nlmsghdr| and |genlmsghdr| headers and consumes the latter
   // from the payload of |packet|.
-  bool InitAndStripHeader(NetlinkPacket* packet) override;
+  bool InitAndStripHeader(net_base::NetlinkPacket* packet) override;
 
   AttributeListRefPtr attributes_;
   const uint8_t command_;
@@ -104,11 +104,12 @@ class SHILL_EXPORT ControlNetlinkMessage : public GenericNetlinkMessage {
 
   static uint16_t GetMessageType() { return kMessageType; }
 
-  bool InitFromPacket(NetlinkPacket* packet, bool is_broadcast) override;
+  bool InitFromPacket(net_base::NetlinkPacket* packet,
+                      bool is_broadcast) override;
 
   // Message factory for all types of Control netlink message.
   static std::unique_ptr<NetlinkMessage> CreateMessage(
-      const NetlinkPacket& packet);
+      const net_base::NetlinkPacket& packet);
 };
 
 class SHILL_EXPORT NewFamilyMessage : public ControlNetlinkMessage {

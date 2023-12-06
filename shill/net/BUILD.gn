@@ -28,7 +28,6 @@ install_config("install_headers") {
     "netlink_attribute.h",
     "netlink_manager.h",
     "netlink_message.h",
-    "netlink_packet.h",
     "process_manager.h",
     "shill_export.h",
   ]
@@ -67,7 +66,6 @@ shared_library("libshill-net") {
     "netlink_attribute.cc",
     "netlink_manager.cc",
     "netlink_message.cc",
-    "netlink_packet.cc",
     "process_manager.cc",
   ]
   configs += [ ":target_defaults" ]
@@ -115,7 +113,6 @@ if (use.test) {
     sources = [
       "attribute_list_test.cc",
       "netlink_attribute_test.cc",
-      "netlink_packet_test.cc",
       "process_manager_test.cc",
     ]
     configs += [

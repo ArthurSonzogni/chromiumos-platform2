@@ -13,8 +13,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/byte_utils.h>
+#include <net-base/netlink_packet.h>
 
-#include "shill/net/netlink_packet.h"
 #include "shill/wifi/nl80211_attribute.h"
 
 using testing::_;
@@ -364,7 +364,7 @@ class Nl80211MessageTest : public Test {
 };
 
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_TRIGGER_SCAN) {
-  NetlinkPacket trigger_scan_packet(kNL80211_CMD_TRIGGER_SCAN);
+  net_base::NetlinkPacket trigger_scan_packet(kNL80211_CMD_TRIGGER_SCAN);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&trigger_scan_packet, false));
 
@@ -416,7 +416,8 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_TRIGGER_SCAN) {
 }
 
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS) {
-  NetlinkPacket new_scan_results_packet(kNL80211_CMD_NEW_SCAN_RESULTS);
+  net_base::NetlinkPacket new_scan_results_packet(
+      kNL80211_CMD_NEW_SCAN_RESULTS);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&new_scan_results_packet, false));
 
@@ -468,7 +469,7 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS) {
 }
 
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_NEW_STATION) {
-  NetlinkPacket netlink_packet(kNL80211_CMD_NEW_STATION);
+  net_base::NetlinkPacket netlink_packet(kNL80211_CMD_NEW_STATION);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&netlink_packet, false));
 
@@ -508,7 +509,7 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_NEW_STATION) {
 }
 
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_AUTHENTICATE) {
-  NetlinkPacket netlink_packet(kNL80211_CMD_AUTHENTICATE);
+  net_base::NetlinkPacket netlink_packet(kNL80211_CMD_AUTHENTICATE);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&netlink_packet, false));
 
@@ -546,7 +547,7 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_AUTHENTICATE) {
 }
 
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_ASSOCIATE) {
-  NetlinkPacket netlink_packet(kNL80211_CMD_ASSOCIATE);
+  net_base::NetlinkPacket netlink_packet(kNL80211_CMD_ASSOCIATE);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&netlink_packet, false));
 
@@ -584,7 +585,7 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_ASSOCIATE) {
 }
 
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_CONNECT) {
-  NetlinkPacket netlink_packet(kNL80211_CMD_CONNECT);
+  net_base::NetlinkPacket netlink_packet(kNL80211_CMD_CONNECT);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&netlink_packet, false));
 
@@ -679,7 +680,7 @@ TEST_F(Nl80211MessageTest, Build_NL80211_CMD_CONNECT) {
 }
 
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_DEAUTHENTICATE) {
-  NetlinkPacket netlink_packet(kNL80211_CMD_DEAUTHENTICATE);
+  net_base::NetlinkPacket netlink_packet(kNL80211_CMD_DEAUTHENTICATE);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&netlink_packet, false));
 
@@ -717,7 +718,7 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_DEAUTHENTICATE) {
 }
 
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_DISCONNECT) {
-  NetlinkPacket netlink_packet(kNL80211_CMD_DISCONNECT);
+  net_base::NetlinkPacket netlink_packet(kNL80211_CMD_DISCONNECT);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&netlink_packet, false));
 
@@ -754,7 +755,7 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_DISCONNECT) {
 }
 
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_NOTIFY_CQM) {
-  NetlinkPacket netlink_packet(kNL80211_CMD_NOTIFY_CQM);
+  net_base::NetlinkPacket netlink_packet(kNL80211_CMD_NOTIFY_CQM);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&netlink_packet, false));
 
@@ -813,7 +814,7 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_NOTIFY_CQM) {
 }
 
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_DISASSOCIATE) {
-  NetlinkPacket netlink_packet(kNL80211_CMD_DISASSOCIATE);
+  net_base::NetlinkPacket netlink_packet(kNL80211_CMD_DISASSOCIATE);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&netlink_packet, false));
 
@@ -853,7 +854,7 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_DISASSOCIATE) {
 // This test is to ensure that an unknown nl80211 message generates an
 // Nl80211UnknownMessage with all Nl80211 parts.
 TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_UNKNOWN) {
-  NetlinkPacket netlink_packet(kNL80211_CMD_UNKNOWN);
+  net_base::NetlinkPacket netlink_packet(kNL80211_CMD_UNKNOWN);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&netlink_packet, false));
   ASSERT_NE(nullptr, netlink_message);

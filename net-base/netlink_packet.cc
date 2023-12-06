@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/netlink_packet.h"
+#include "net-base/netlink_packet.h"
 
 #include <algorithm>
 
 #include <base/check.h>
 #include <base/logging.h>
 
-namespace shill {
+namespace net_base {
 
 NetlinkPacket::NetlinkPacket(base::span<const uint8_t> buf)
     : consumed_bytes_(0) {
@@ -118,4 +118,4 @@ void MutableNetlinkPacket::SetMessageSequence(uint32_t sequence) {
   mutable_header()->nlmsg_seq = sequence;
 }
 
-}  // namespace shill.
+}  // namespace net_base.
