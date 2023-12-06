@@ -210,6 +210,8 @@ message Storage {
     string mmc_host_pci_revision = 21;
     // Subsystem ID, 16 bits hex string
     string mmc_host_pci_subsystem = 22;
+    // Device class indicator, 32 bits
+    string mmc_host_pci_class = 23;
   }
   // Component alias.
   string name = 1;
