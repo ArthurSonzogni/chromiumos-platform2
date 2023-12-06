@@ -1040,6 +1040,10 @@ void AddMlFlags(ChromiumCommandBuilder* builder,
     builder->AddFeatureEnableOverride("CameraEffectsSupportedByHardware");
   }
 
+  if (builder->UseFlagIsSet("ondevice_image_content_annotation")) {
+    builder->AddFeatureEnableOverride("ICASupportedByHardware");
+  }
+
   SetUpHandwritingRecognitionWebPlatformApiFlag(builder, cros_config);
   SetUpHasHpsFlag(builder, cros_config);
 }
