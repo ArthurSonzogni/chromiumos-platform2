@@ -8,6 +8,8 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <utility>
+#include <variant>
 
 #include <brillo/secure_blob.h>
 
@@ -138,6 +140,25 @@ class DecryptedUss {
     std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets_;
   };
 
+  // Define an error type that combines a CryptohomeStatus with an EncryptedUss.
+  // This is used by several factory functions which take an EncryptedUss as a
+  // parameter, to give them a way to return the EncryptedUss object to the
+  // caller on failure.
+  //
+  // In theory this could be done as a subclass or extension of CryptohomeError
+  // but in practice this ends up being somewhat difficult to use interchangably
+  // with CryptohomeStatus and so barring some enhancements to StackableError
+  // this is probably the best we can do.
+  struct FailedDecrypt {
+    CryptohomeStatus status;
+    EncryptedUss encrypted;
+  };
+  // Define a variant type that's either a DecryptedUss or a FailedDecrypt. This
+  // is intended to be somewhat morally equivalent to
+  // CryptohomeStatusOr<DecryptedUss> but with FailedDecrypt instead of a
+  // status.
+  using FailedDecryptOrDecryptedUss = std::variant<DecryptedUss, FailedDecrypt>;
+
   // Create a new stash storing the given filesystem keyset, encrypted with the
   // given main key. Note that this will not persist the created USS to storage
   // yet, as a created USS without any wrapped keyset should only be persisted
@@ -164,12 +185,28 @@ class DecryptedUss {
       const std::string& wrapping_id,
       const brillo::SecureBlob& wrapping_key);
 
+  // Attempt to decrypt USS using an existing encrypted instance and the given
+  // wrapped key. On success, the returned variant will contain a DecryptedUss.
+  // On failure the returned variant will contain a not-OK status and the
+  // original encrypted USS.
+  static FailedDecryptOrDecryptedUss FromEncryptedUssUsingWrappedKey(
+      UserUssStorage& storage,
+      EncryptedUss encrypted,
+      const std::string& wrapping_id,
+      const brillo::SecureBlob& wrapping_key);
+
   DecryptedUss(const DecryptedUss&) = delete;
   DecryptedUss& operator=(const DecryptedUss&) = delete;
   DecryptedUss(DecryptedUss&&) = default;
   DecryptedUss& operator=(DecryptedUss&&) = default;
 
-  const EncryptedUss& encrypted() const { return encrypted_; }
+  // Simple read accessor for the underlying encrypted USS data.
+  const EncryptedUss& encrypted() const& { return encrypted_; }
+  // Destructive accessor that releases the underlying encrypted USS data to the
+  // caller. Note that this invalidates the DecryptedUss object. The use case
+  // is for when you intend to destroy |this| but need to extract and keep the
+  // original encrypted object.
+  EncryptedUss encrypted() && { return std::move(encrypted_); }
 
   const FileSystemKeyset& file_system_keyset() const {
     return file_system_keyset_;
@@ -203,7 +240,7 @@ class DecryptedUss {
   // fixed secrets). We perform the initialization routine of new fields in this
   // method, and if such routine is performed, the changes would be committed to
   // |storage|.
-  static CryptohomeStatusOr<DecryptedUss> FromEncryptedUss(
+  static FailedDecryptOrDecryptedUss FromEncryptedUss(
       UserUssStorage& storage,
       EncryptedUss encrypted,
       brillo::SecureBlob main_key);

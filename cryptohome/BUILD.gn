@@ -478,6 +478,7 @@ if (use.test) {
       "user_policy_file_unittest.cc",
       "user_secret_stash/decrypted_unittest.cc",
       "user_secret_stash/encrypted_unittest.cc",
+      "user_secret_stash/manager_unittest.cc",
       "user_secret_stash/migrator_unittest.cc",
       "user_secret_stash/storage_unittest.cc",
       "user_session/real_user_session_unittest.cc",

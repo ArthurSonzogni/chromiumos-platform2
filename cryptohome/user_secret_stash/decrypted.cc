@@ -7,7 +7,9 @@
 #include <map>
 #include <string>
 #include <utility>
+#include <variant>
 
+#include <base/functional/overloaded.h>
 #include <base/system/sys_info.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
@@ -199,6 +201,22 @@ CryptohomeStatus EncryptIntoContainer(
   container.gcm_tag = std::move(tag);
 
   return OkStatus<CryptohomeError>();
+}
+
+// Helper function that converts a FailedDecryptOr to a vanilla
+// CryptohomeStatusOr. This will discard the EncryptedUss attached to the
+// failure and so is intended for use in situations where you just want to
+// discard the encrypted object.
+CryptohomeStatusOr<DecryptedUss> DropEncryptedUssFromStatus(
+    DecryptedUss::FailedDecryptOrDecryptedUss decrypted) {
+  return std::visit<CryptohomeStatusOr<DecryptedUss>>(
+      base::Overloaded{
+          [](DecryptedUss decrypted) { return decrypted; },
+          [](DecryptedUss::FailedDecrypt failed) {
+            return std::move(failed.status);
+          },
+      },
+      std::move(decrypted));
 }
 
 }  // namespace
@@ -420,7 +438,8 @@ CryptohomeStatusOr<DecryptedUss> DecryptedUss::CreateWithRandomMainKey(
 CryptohomeStatusOr<DecryptedUss> DecryptedUss::FromStorageUsingMainKey(
     UserUssStorage& storage, brillo::SecureBlob main_key) {
   ASSIGN_OR_RETURN(EncryptedUss encrypted, EncryptedUss::FromStorage(storage));
-  return FromEncryptedUss(storage, std::move(encrypted), std::move(main_key));
+  return DropEncryptedUssFromStatus(
+      FromEncryptedUss(storage, std::move(encrypted), std::move(main_key)));
 }
 
 CryptohomeStatusOr<DecryptedUss> DecryptedUss::FromStorageUsingWrappedKey(
@@ -430,33 +449,64 @@ CryptohomeStatusOr<DecryptedUss> DecryptedUss::FromStorageUsingWrappedKey(
   ASSIGN_OR_RETURN(EncryptedUss encrypted, EncryptedUss::FromStorage(storage));
   ASSIGN_OR_RETURN(brillo::SecureBlob main_key,
                    encrypted.UnwrapMainKey(wrapping_id, wrapping_key));
-  return FromEncryptedUss(storage, std::move(encrypted), std::move(main_key));
+  return DropEncryptedUssFromStatus(
+      FromEncryptedUss(storage, std::move(encrypted), std::move(main_key)));
 }
 
-CryptohomeStatusOr<DecryptedUss> DecryptedUss::FromEncryptedUss(
+DecryptedUss::FailedDecryptOrDecryptedUss
+DecryptedUss::FromEncryptedUssUsingWrappedKey(
+    UserUssStorage& storage,
+    EncryptedUss encrypted,
+    const std::string& wrapping_id,
+    const brillo::SecureBlob& wrapping_key) {
+  auto main_key = encrypted.UnwrapMainKey(wrapping_id, wrapping_key);
+  if (!main_key.ok()) {
+    return FailedDecrypt{
+        .status = std::move(main_key).err_status(),
+        .encrypted = std::move(encrypted),
+    };
+  }
+  return FromEncryptedUss(storage, std::move(encrypted), std::move(*main_key));
+}
+
+DecryptedUss::FailedDecryptOrDecryptedUss DecryptedUss::FromEncryptedUss(
     UserUssStorage& storage,
     EncryptedUss encrypted,
     brillo::SecureBlob main_key) {
   // Use the main key to decrypt the USS payload.
-  ASSIGN_OR_RETURN(brillo::SecureBlob serialized_payload,
-                   encrypted.DecryptPayload(main_key));
+  CryptohomeStatusOr<brillo::SecureBlob> serialized_payload =
+      encrypted.DecryptPayload(main_key);
+  if (!serialized_payload.ok()) {
+    return FailedDecrypt{
+        .status = std::move(serialized_payload).err_status(),
+        .encrypted = std::move(encrypted),
+    };
+  }
 
   // Deserialize the decrypted payload into a flatbuffer.
   std::optional<UserSecretStashPayload> payload =
-      UserSecretStashPayload::Deserialize(serialized_payload);
+      UserSecretStashPayload::Deserialize(*serialized_payload);
   if (!payload) {
     LOG(ERROR) << "Failed to deserialize UserSecretStashPayload.";
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUSSDeserializeFailedInFromEncPayload),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+    return FailedDecrypt{
+        .status = MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUSSDeserializeFailedInFromEncPayload),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE),
+        .encrypted = std::move(encrypted)};
   }
 
   // Extract the filesystem keyset from the payload.
-  ASSIGN_OR_RETURN(FileSystemKeyset file_system_keyset,
-                   GetFileSystemKeysetFromPayload(*payload),
-                   _.LogError() << "UserSecretStashPayload has invalid file "
-                                   "system keyset information.");
+  CryptohomeStatusOr<FileSystemKeyset> file_system_keyset =
+      GetFileSystemKeysetFromPayload(*payload);
+  if (!file_system_keyset.ok()) {
+    LOG(ERROR)
+        << "UserSecretStashPayload has invalid file system keyset information.";
+    return FailedDecrypt{
+        .status = std::move(file_system_keyset).err_status(),
+        .encrypted = std::move(encrypted),
+    };
+  }
 
   // Extract the reset secrets from the payload.
   std::map<std::string, brillo::SecureBlob> reset_secrets;
@@ -512,7 +562,7 @@ CryptohomeStatusOr<DecryptedUss> DecryptedUss::FromEncryptedUss(
 
   DecryptedUss decrypted(
       &storage, std::move(encrypted), std::move(main_key),
-      std::move(file_system_keyset), std::move(reset_secrets),
+      std::move(*file_system_keyset), std::move(reset_secrets),
       std::move(rate_limiter_reset_secrets), std::move(key_derivation_seed));
   if (needs_commit) {
     // Note that we don't need to use Transaction to keep in-memory and storage
@@ -520,9 +570,14 @@ CryptohomeStatusOr<DecryptedUss> DecryptedUss::FromEncryptedUss(
     // constructed successfully if and only if the `ToStorage` call below is
     // successful, as long as it is the last possible error branch in this
     // function.
-    RETURN_IF_ERROR(decrypted.encrypted().ToStorage(storage));
+    CryptohomeStatus store_status = decrypted.encrypted().ToStorage(storage);
+    if (!store_status.ok()) {
+      return FailedDecrypt{
+          .status = std::move(store_status),
+          .encrypted = std::move(decrypted).encrypted(),
+      };
+    }
   }
-
   return decrypted;
 }
 

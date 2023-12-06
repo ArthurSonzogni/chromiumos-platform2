@@ -18,7 +18,6 @@
 
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/mock_platform.h"
-#include "cryptohome/user_secret_stash/decrypted.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
