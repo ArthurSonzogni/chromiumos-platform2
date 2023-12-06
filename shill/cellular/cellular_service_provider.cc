@@ -360,14 +360,12 @@ CellularService* CellularServiceProvider::GetActiveService() {
 
 bool CellularServiceProvider::HardwareSupportsTethering(
     bool experimental_tethering) {
-  // For now, the flag will allow all variants and FW versions. If there is a
-  // need to block a variant under any conditions, this has to be modified.
-  if (experimental_tethering)
-    return true;
-  return VariantSupportsTethering() && ModemFirmwareSupportsTethering();
+  return ModemFirmwareSupportsTethering(experimental_tethering) &&
+         VariantSupportsTethering(experimental_tethering);
 }
 
-bool CellularServiceProvider::ModemFirmwareSupportsTethering() {
+bool CellularServiceProvider::ModemFirmwareSupportsTethering(
+    bool experimental_tethering) {
   SLOG(3) << __func__;
   auto cellular_service = GetActiveService();
   // We need to find the firmware version as soon as possible to display
@@ -390,10 +388,18 @@ bool CellularServiceProvider::ModemFirmwareSupportsTethering() {
     SLOG(3) << __func__ << " cellular device doesn't exist";
     return false;
   }
+  if (experimental_tethering)
+    return true;
+
   return cellular_device->FirmwareSupportsTethering();
 }
 
-bool CellularServiceProvider::VariantSupportsTethering() {
+bool CellularServiceProvider::VariantSupportsTethering(
+    bool experimental_tethering) {
+  // For now, the flag will allow all variants. If there is a need to block a
+  // variant under any conditions, this has to be modified.
+  if (experimental_tethering)
+    return true;
   if (!variant_.has_value()) {
     SLOG(3) << __func__ << " reading modem firmware variant";
     std::string temp_variant;
@@ -420,24 +426,22 @@ void CellularServiceProvider::TetheringEntitlementCheck(
     Cellular::EntitlementCheckResultCallback callback,
     bool experimental_tethering) {
   SLOG(3) << __func__;
-  if (!experimental_tethering) {
-    if (!VariantSupportsTethering()) {
-      manager_->metrics()->NotifyCellularEntitlementCheckResult(
-          Metrics::kCellularEntitlementCheckNotAllowedOnVariant);
-      std::move(callback).Run(
-          TetheringManager::EntitlementStatus::kNotAllowedOnVariant);
-      return;
-    }
-    if (!ModemFirmwareSupportsTethering()) {
-      // Use the same metric as for the variant, since this line will only be
-      // hit on testing. Users won't see the hotspot menu when
-      // ModemFirmwareSupportsTethering is false.
-      manager_->metrics()->NotifyCellularEntitlementCheckResult(
-          Metrics::kCellularEntitlementCheckNotAllowedOnVariant);
-      std::move(callback).Run(
-          TetheringManager::EntitlementStatus::kNotAllowedOnFw);
-      return;
-    }
+  if (!VariantSupportsTethering(experimental_tethering)) {
+    manager_->metrics()->NotifyCellularEntitlementCheckResult(
+        Metrics::kCellularEntitlementCheckNotAllowedOnVariant);
+    std::move(callback).Run(
+        TetheringManager::EntitlementStatus::kNotAllowedOnVariant);
+    return;
+  }
+  if (!ModemFirmwareSupportsTethering(experimental_tethering)) {
+    // Use the same metric as for the variant, since this line will only be
+    // hit on testing. Users won't see the hotspot menu when
+    // ModemFirmwareSupportsTethering is false.
+    manager_->metrics()->NotifyCellularEntitlementCheckResult(
+        Metrics::kCellularEntitlementCheckNotAllowedOnVariant);
+    std::move(callback).Run(
+        TetheringManager::EntitlementStatus::kNotAllowedOnFw);
+    return;
   }
 
   const auto cellular_service = GetActiveService();

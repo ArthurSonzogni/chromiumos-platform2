@@ -627,6 +627,8 @@ TEST_F(CellularServiceProviderTest, HardwareSupportsTetheringReturnsTrue) {
 
   EXPECT_TRUE(
       provider()->HardwareSupportsTethering(/*experimental_tethering=*/false));
+  EXPECT_TRUE(
+      provider()->HardwareSupportsTethering(/*experimental_tethering=*/true));
 }
 
 TEST_F(CellularServiceProviderTest,
@@ -644,6 +646,8 @@ TEST_F(CellularServiceProviderTest,
 
   EXPECT_FALSE(
       provider()->HardwareSupportsTethering(/*experimental_tethering=*/false));
+  EXPECT_TRUE(
+      provider()->HardwareSupportsTethering(/*experimental_tethering=*/true));
 }
 
 TEST_F(CellularServiceProviderTest, HardwareSupportsTetheringFwNotSupported) {
@@ -659,16 +663,15 @@ TEST_F(CellularServiceProviderTest, HardwareSupportsTetheringFwNotSupported) {
       .WillOnce(Return(false));
   EXPECT_FALSE(
       provider()->HardwareSupportsTethering(/*experimental_tethering=*/false));
+  EXPECT_TRUE(
+      provider()->HardwareSupportsTethering(/*experimental_tethering=*/true));
 }
 
 TEST_F(CellularServiceProviderTest, HardwareSupportsTetheringNoCellularDevice) {
   SetVariantThatSupportsTethering();
   EXPECT_FALSE(
       provider()->HardwareSupportsTethering(/*experimental_tethering=*/false));
-}
-
-TEST_F(CellularServiceProviderTest, HardwareSupportsTethering_Override) {
-  EXPECT_TRUE(
+  EXPECT_FALSE(
       provider()->HardwareSupportsTethering(/*experimental_tethering=*/true));
 }
 
