@@ -34,13 +34,13 @@ pub fn get_command_output(mut command: Command) -> Result<Vec<u8>> {
     Ok(output.stdout)
 }
 
-// Executes a command and logs its result. There are three outcomes when
-// executing a command:
-// 1. Everything is fine, executing the command returns exit code zero.
-// 2. The command is not found and can thus not be executed.
-// 3. The command is found and executed, but returns a non-zero exit code.
-// The returned [`Result`] from this function maps 1. to `Ok` and 2., 3.
-// To the `Err`` case.
+/// Executes a command and logs its result. There are three outcomes when
+/// executing a command:
+/// 1. Everything is fine, executing the command returns exit code zero.
+/// 2. The command is not found and can thus not be executed.
+/// 3. The command is found and executed, but returns a non-zero exit code.
+/// The returned [`Result`] from this function maps 1. to `Ok` and 2., 3.
+/// To the `Err`` case.
 pub fn execute_command(mut command: Command) -> Result<()> {
     info!("Executing command: {:?}", command);
 

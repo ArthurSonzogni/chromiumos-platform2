@@ -13,12 +13,12 @@ use anyhow::{bail, Context, Result};
 use gpt_disk_types::{guid, Guid, LbaRangeInclusive};
 use vboot_reference_sys::vboot_host;
 
-// Partition type for the thirteenth partition we are adding. We are marking
-// the partition as CHROMEOS_FUTURE_USE type.
+/// Partition type for the thirteenth partition we are adding. We are marking
+/// the partition as CHROMEOS_FUTURE_USE type.
 const CHROMEOS_FUTURE_USE_PART_TYPE: Guid = guid!("2e0a753d-9e48-43b0-8337-b15192cb1b5e");
 
-// Adds a new GPT partition with the given arguments. The new partition has the
-// type GUID `CHROMEOS_FUTURE_USE_PART_TYPE`.
+/// Adds a new GPT partition with the given arguments. The new partition has the
+/// type GUID `CHROMEOS_FUTURE_USE_PART_TYPE`.
 pub fn add_cgpt_partition(
     index: u32,
     dst: &Path,
@@ -43,7 +43,7 @@ pub fn add_cgpt_partition(
     params.cgpt_add()
 }
 
-// Resizes an existing partition at `index`.
+/// Resizes an existing partition at `index`.
 pub fn resize_cgpt_partition(
     index: u32,
     dst: &Path,
@@ -68,8 +68,8 @@ pub fn resize_cgpt_partition(
     params.cgpt_add()
 }
 
-// Wrapper that handles lifetimes of the members of
-// [`vboot_host::CgptAddParams`], which holds pointers to [`CString`].
+/// Wrapper that handles lifetimes of the members of
+/// [`vboot_host::CgptAddParams`], which holds pointers to [`CString`].
 struct CgptAddParamsWrapper<'a> {
     params: vboot_host::CgptAddParams,
     phantom_data: PhantomData<&'a ()>,
@@ -87,10 +87,10 @@ impl CgptAddParamsWrapper<'_> {
     }
 }
 
-// Returns valid [`vboot_host::CgptAddParams`] for the given arguments.
-// [`vboot_host::CgptAdd`] (which takes those arguments), is used for
-// both adding partitions as well as modifying partitions. The caller
-// controls the behaviour with supplying the correct arguments here.
+/// Returns valid [`vboot_host::CgptAddParams`] for the given arguments.
+/// [`vboot_host::CgptAdd`] (which takes those arguments), is used for
+/// both adding partitions as well as modifying partitions. The caller
+/// controls the behaviour with supplying the correct arguments here.
 fn get_cgpt_add_params<'args, 'params>(
     index: u32,
     dst: &'args CStr,
@@ -145,9 +145,9 @@ where
     }
 }
 
-// Creates a [`vboot_host::Guid`] from a [`gpt_disk_types::Guid`]. This
-// conversion relies on the fact that it is only possible to obtain valid guids
-// using [`gpt_disk_types::Guid`], so it just places the raw bytes of the guid.
+/// Creates a [`vboot_host::Guid`] from a [`gpt_disk_types::Guid`]. This
+/// conversion relies on the fact that it is only possible to obtain valid guids
+/// using [`gpt_disk_types::Guid`], so it just places the raw bytes of the guid.
 fn to_cgpt_guid(guid: Guid) -> vboot_host::Guid {
     vboot_host::Guid {
         u: vboot_host::Guid__bindgen_ty_1 {
@@ -156,16 +156,16 @@ fn to_cgpt_guid(guid: Guid) -> vboot_host::Guid {
     }
 }
 
-// Returns an empty [`vboot_host::Guid`].
+/// Returns an empty [`vboot_host::Guid`].
 fn empty_guid() -> vboot_host::Guid {
     vboot_host::Guid {
         u: vboot_host::Guid__bindgen_ty_1 { raw: [0; 16] },
     }
 }
 
-// This needs to be defined here since CgptAdd needs this present. In the cgpt
-// binary this is replaced by a call to libuuid, but we don't link against that
-// and need to provide this on our own.
+/// This needs to be defined here since CgptAdd needs this present. In the cgpt
+/// binary this is replaced by a call to libuuid, but we don't link against that
+/// and need to provide this on our own.
 #[no_mangle]
 pub unsafe extern "C" fn GenerateGuid(newguid: *mut std::ffi::c_void) -> std::ffi::c_int {
     let newguid: *mut vboot_host::Guid = newguid.cast();

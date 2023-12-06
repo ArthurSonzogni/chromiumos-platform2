@@ -8,15 +8,15 @@ use anyhow::{anyhow, Context, Result};
 use gpt_disk_io::{BlockIo, BlockIoAdapter, Disk};
 use gpt_disk_types::{BlockSize, GptPartitionEntry, GptPartitionName};
 
-// Holds information about a GPT formatted disk.
+/// Holds information about a GPT formatted disk.
 pub struct Gpt<T: BlockIo> {
     disk: Disk<T>,
     block_size: BlockSize,
 }
 
 impl Gpt<BlockIoAdapter<File>> {
-    // Creates a new [`Gpt`] from a file. The file should point to a disk with a
-    // valid GPT header table on it, e.g. when opening "/dev/nvme0n1".
+    /// Creates a new [`Gpt`] from a file. The file should point to a disk with a
+    /// valid GPT header table on it, e.g. when opening "/dev/nvme0n1".
     pub fn from_file(file: File, block_size: BlockSize) -> Result<Self> {
         let block_io = BlockIoAdapter::new(file, block_size);
 
@@ -26,8 +26,8 @@ impl Gpt<BlockIoAdapter<File>> {
 
 #[cfg(test)]
 impl Gpt<BlockIoAdapter<Vec<u8>>> {
-    // Used for testing, creates a [`Gpt`] from a vector that should contain
-    // a valid GPT header table.
+    /// Used for testing, creates a [`Gpt`] from a vector that should contain
+    /// a valid GPT header table.
     fn from_slice(vec: Vec<u8>, block_size: BlockSize) -> Result<Self> {
         let block_io = BlockIoAdapter::new(vec, block_size);
 
@@ -36,7 +36,7 @@ impl Gpt<BlockIoAdapter<Vec<u8>>> {
 }
 
 impl<T: BlockIo> Gpt<T> {
-    // Creates a new [`Gpt`] backed by `io`.
+    /// Creates a new [`Gpt`] backed by `io`.
     fn new(io: T) -> Result<Self> {
         let block_size = io.block_size();
         let mut disk = Disk::new(io)?;
@@ -56,8 +56,8 @@ impl<T: BlockIo> Gpt<T> {
         Ok(())
     }
 
-    // Reads the GPT partition table and returns information about the first
-    // partition with `label` that is found.
+    /// Reads the GPT partition table and returns information about the first
+    /// partition with `label` that is found.
     pub fn get_entry_for_partition_with_label(
         &mut self,
         label: GptPartitionName,

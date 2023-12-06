@@ -7,7 +7,7 @@ use std::{path::Path, process::Command};
 use crate::util::execute_command;
 use anyhow::Result;
 
-// Writes the GPT partition table to disk and writes the stateful partition.
+/// Writes the GPT partition table to disk and writes the stateful partition.
 pub fn write_partition_table_and_stateful<P: AsRef<Path>>(dst: P) -> Result<()> {
     let mut cmd = get_chromeos_install_cmd(dst);
     // We skip installing the rootfs and all other partitions beside stateful.
@@ -18,7 +18,7 @@ pub fn write_partition_table_and_stateful<P: AsRef<Path>>(dst: P) -> Result<()> 
     execute_command(cmd)
 }
 
-// Installs an image onto a disk using the chromeos_install script.
+/// Installs an image onto a disk using the chromeos_install script.
 pub fn install_image_to_disk<P: AsRef<Path>>(dst: P, image_path: P) -> Result<()> {
     let mut cmd = get_chromeos_install_cmd(dst);
     // Set the path to the image on disk.

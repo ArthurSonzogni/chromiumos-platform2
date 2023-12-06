@@ -24,7 +24,7 @@ impl fmt::Display for FsType {
     }
 }
 
-// Mounts a disk to a tempdir and unmounts it on destruction.
+/// Mounts a disk to a tempdir and unmounts it on destruction.
 pub struct Mount {
     tempdir: TempDir,
 }

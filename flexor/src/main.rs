@@ -83,7 +83,7 @@ fn setup_flex_deploy_partition_and_install(device_path: &Path) -> Result<()> {
     )
 }
 
-// Performs the actual installation of ChromeOS.
+/// Performs the actual installation of ChromeOS.
 fn perform_installation(device_path: &Path) -> Result<()> {
     info!("Start Flex-ing");
     copy_image_to_rootfs(device_path)?;

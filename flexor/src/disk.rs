@@ -9,8 +9,8 @@ use log::info;
 
 use crate::mount;
 
-// Identifies the target device to install onto. The device
-// is identified by having the remote install payload on it.
+/// Identifies the target device to install onto. The device
+/// is identified by having the remote install payload on it.
 pub fn get_target_device() -> Result<PathBuf> {
     let disks = get_disks()?;
 
