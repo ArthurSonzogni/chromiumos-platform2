@@ -292,6 +292,22 @@ class MockPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
               (override));
 
   MOCK_METHOD(bool,
+              ConfigureNetwork,
+              (const ConfigureNetworkRequest&,
+               ConfigureNetworkResponse*,
+               brillo::ErrorPtr*,
+               int),
+              (override));
+
+  MOCK_METHOD(void,
+              ConfigureNetworkAsync,
+              (const ConfigureNetworkRequest&,
+               base::OnceCallback<void(const ConfigureNetworkResponse&)>,
+               base::OnceCallback<void(brillo::Error*)>,
+               int),
+              (override));
+
+  MOCK_METHOD(bool,
               SetDnsRedirectionRule,
               (const SetDnsRedirectionRuleRequest&,
                const base::ScopedFD&,

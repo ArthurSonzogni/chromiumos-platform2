@@ -19,6 +19,7 @@ const char kArcVmStartupMethod[] = "ArcVmStartup";
 const char kConnectNamespaceMethod[] = "ConnectNamespace";
 const char kCreateLocalOnlyNetworkMethod[] = "CreateLocalOnlyNetwork";
 const char kCreateTetheredNetworkMethod[] = "CreateTetheredNetwork";
+const char kConfigureNetworkMethod[] = "ConfigureNetwork";
 const char kGetDevicesMethod[] = "GetDevices";
 const char kGetDownstreamNetworkInfoMethod[] = "GetDownstreamNetworkInfo";
 const char kGetTrafficCountersMethod[] = "GetTrafficCounters";

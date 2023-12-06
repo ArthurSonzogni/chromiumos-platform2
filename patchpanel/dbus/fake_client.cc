@@ -168,6 +168,17 @@ bool FakeClient::GetDownstreamNetworkInfo(
   return true;
 }
 
+bool FakeClient::ConfigureNetwork(int interface_index,
+                                  std::string_view interface_name,
+                                  uint32_t area,
+                                  const net_base::NetworkConfig& network_config,
+                                  net_base::NetworkPriority priority,
+                                  NetworkTechnology technology,
+                                  ConfigureNetworkCallback callback) {
+  // TODO(b/293997937): schedule |callback| for unit tests.
+  return true;
+}
+
 bool FakeClient::SendSetFeatureFlagRequest(Client::FeatureFlag flag,
                                            bool enable) {
   return true;

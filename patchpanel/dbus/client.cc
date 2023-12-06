@@ -459,6 +459,20 @@ std::optional<Client::DownstreamNetwork> ConvertDownstreamNetwork(
   return out;
 }
 
+patchpanel::NetworkTechnology ConvertNetworkTechnology(
+    Client::NetworkTechnology network_technology) {
+  switch (network_technology) {
+    case Client::NetworkTechnology::kCellular:
+      return patchpanel::NetworkTechnology::CELLULAR;
+    case Client::NetworkTechnology::kEthernet:
+      return patchpanel::NetworkTechnology::ETHERNET;
+    case Client::NetworkTechnology::kVPN:
+      return patchpanel::NetworkTechnology::VPN;
+    case Client::NetworkTechnology::kWiFi:
+      return patchpanel::NetworkTechnology::WIFI;
+  }
+}
+
 std::optional<Client::NeighborReachabilityEvent>
 ConvertNeighborReachabilityEvent(const NeighborReachabilityEventSignal& in) {
   auto out = std::make_optional<Client::NeighborReachabilityEvent>();
@@ -719,6 +733,24 @@ void OnGetDownstreamNetworkInfoError(
   std::move(callback).Run(false, {}, {});
 }
 
+void OnConfigureNetworkResponse(
+    Client::ConfigureNetworkCallback callback,
+    const std::string& ifname,
+    const patchpanel::ConfigureNetworkResponse& response) {
+  if (!response.success()) {
+    LOG(ERROR) << __func__ << ": Failed to configure Network on " << ifname;
+    std::move(callback).Run(false);
+  }
+  std::move(callback).Run(true);
+}
+
+void OnConfigureNetworkError(Client::ConfigureNetworkCallback callback,
+                             const std::string& ifname,
+                             brillo::Error* error) {
+  LOG(ERROR) << __func__ << "() on " << ifname << ": " << error->GetMessage();
+  std::move(callback).Run(false);
+}
+
 class ClientImpl : public Client {
  public:
   ClientImpl(scoped_refptr<dbus::Bus> bus,
@@ -816,6 +848,14 @@ class ClientImpl : public Client {
   bool GetDownstreamNetworkInfo(
       const std::string& ifname,
       GetDownstreamNetworkInfoCallback callback) override;
+
+  bool ConfigureNetwork(int interface_index,
+                        std::string_view interface_name,
+                        uint32_t area,
+                        const net_base::NetworkConfig& network_config,
+                        net_base::NetworkPriority priority,
+                        NetworkTechnology technology,
+                        ConfigureNetworkCallback callback) override;
 
   bool SendSetFeatureFlagRequest(FeatureFlag flag, bool enable) override;
 
@@ -1604,6 +1644,44 @@ bool ClientImpl::GetDownstreamNetworkInfo(
   return true;
 }
 
+bool ClientImpl::ConfigureNetwork(int interface_index,
+                                  std::string_view interface_name,
+                                  uint32_t area,
+                                  const net_base::NetworkConfig& network_config,
+                                  net_base::NetworkPriority priority,
+                                  NetworkTechnology technology,
+                                  ConfigureNetworkCallback callback) {
+  ConfigureNetworkRequest request;
+  request.set_technology(ConvertNetworkTechnology(technology));
+  request.set_ifindex(interface_index);
+  request.set_ifname(std::string(interface_name));
+  request.set_area(area);
+  auto request_priority = request.mutable_priority();
+  request_priority->set_is_primary_logical(priority.is_primary_logical);
+  request_priority->set_is_primary_physical(priority.is_primary_physical);
+  request_priority->set_is_primary_for_dns(priority.is_primary_for_dns);
+  request_priority->set_ranking_order(priority.ranking_order);
+  // TODO(b/293997937): Pack NetworkConfig into request.
+
+  RunOnDBusThreadAsync(base::BindOnce(
+      [](PatchPanelProxyInterface* proxy,
+         const ConfigureNetworkRequest& request,
+         std::string_view interface_name, ConfigureNetworkCallback callback) {
+        auto split_callback = SplitOnceCallback(std::move(callback));
+        proxy->ConfigureNetworkAsync(
+            request,
+            base::BindOnce(&OnConfigureNetworkResponse,
+                           std::move(split_callback.first),
+                           std::string(interface_name)),
+            base::BindOnce(&OnConfigureNetworkError,
+                           std::move(split_callback.second),
+                           std::string(interface_name)));
+      },
+      proxy_.get(), request, interface_name,
+      base::BindPostTaskToCurrentDefault(std::move(callback))));
+  return true;
+}
+
 bool ClientImpl::SendSetFeatureFlagRequest(FeatureFlag flag, bool enable) {
   SetFeatureFlagRequest request;
   request.set_enabled(enable);
@@ -1757,6 +1835,20 @@ BRILLO_EXPORT std::ostream& operator<<(
                 << ", role: " << Client::NeighborRoleName(event.role)
                 << ", status: " << Client::NeighborStatusName(event.status)
                 << "}";
+}
+
+BRILLO_EXPORT std::ostream& operator<<(
+    std::ostream& stream, const Client::NetworkTechnology& technology) {
+  switch (technology) {
+    case Client::NetworkTechnology::kCellular:
+      return stream << "Cellular";
+    case Client::NetworkTechnology::kEthernet:
+      return stream << "Ethernet";
+    case Client::NetworkTechnology::kVPN:
+      return stream << "VPN";
+    case Client::NetworkTechnology::kWiFi:
+      return stream << "WiFi";
+  }
 }
 
 }  // namespace patchpanel

@@ -139,6 +139,19 @@ TetheredNetworkResponse PatchpanelAdaptor::CreateTetheredNetwork(
   return response;
 }
 
+ConfigureNetworkResponse PatchpanelAdaptor::ConfigureNetwork(
+    const ConfigureNetworkRequest& request) {
+  RecordDbusEvent(DbusUmaEvent::kConfigureNetwork);
+
+  // TODO(b/293997937): Migrate NetworkApplier here.
+  // TODO(b/293997937): Move dynamic iptables rule setup here.
+
+  ConfigureNetworkResponse response;
+  response.set_success(true);
+  RecordDbusEvent(DbusUmaEvent::kConfigureNetworkSuccess);
+  return response;
+}
+
 GetDevicesResponse PatchpanelAdaptor::GetDevices(
     const GetDevicesRequest& request) const {
   return manager_->GetDevices();

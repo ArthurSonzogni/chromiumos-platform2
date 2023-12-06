@@ -98,6 +98,8 @@ enum class DbusUmaEvent {
   kBorealisVmStartupSuccess = 42,
   kBorealisVmShutdown = 43,
   kBorealisVmShutdownSuccess = 44,
+  kConfigureNetwork = 45,
+  kConfigureNetworkSuccess = 46,
 
   kMaxValue,
 };

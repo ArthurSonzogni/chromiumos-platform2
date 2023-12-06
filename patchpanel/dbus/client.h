@@ -24,6 +24,8 @@
 #pragma GCC diagnostic pop
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/network_config.h>
+#include <net-base/network_priority.h>
 
 namespace org::chromium {
 class PatchPanelProxyInterface;
@@ -302,6 +304,14 @@ class BRILLO_EXPORT Client {
     std::vector<std::string> tap_device_ifnames;
   };
 
+  // See NetworkTechnology in patchpanel_service.proto.
+  enum class NetworkTechnology {
+    kCellular,
+    kEthernet,
+    kVPN,
+    kWiFi,
+  };
+
   using GetTrafficCountersCallback =
       base::OnceCallback<void(const std::vector<TrafficCounter>&)>;
   using NeighborReachabilityEventHandler =
@@ -316,6 +326,7 @@ class BRILLO_EXPORT Client {
       base::OnceCallback<void(bool success,
                               const DownstreamNetwork& downstream_network,
                               const std::vector<NetworkClientInfo>& clients)>;
+  using ConfigureNetworkCallback = base::OnceCallback<void(bool success)>;
 
   // Creates the instance with the system dbus object which is created
   // internally. The dbus object will shutdown at destruction.
@@ -494,12 +505,25 @@ class BRILLO_EXPORT Client {
   // Returns true if the request was successfully sent, false otherwise.
   virtual bool SendSetFeatureFlagRequest(FeatureFlag flag, bool enable) = 0;
 
+  // Sends a request to configure an IP network or modify the configuration of
+  // an existing IP network on a certain physical or VPN network interface.
+  virtual bool ConfigureNetwork(int interface_index,
+                                std::string_view interface_name,
+                                uint32_t area,
+                                const net_base::NetworkConfig& network_config,
+                                net_base::NetworkPriority priority,
+                                NetworkTechnology technology,
+                                ConfigureNetworkCallback callback) = 0;
+
  protected:
   Client() = default;
 };
 
 BRILLO_EXPORT std::ostream& operator<<(
     std::ostream& stream, const Client::NeighborReachabilityEvent& event);
+
+BRILLO_EXPORT std::ostream& operator<<(
+    std::ostream& stream, const Client::NetworkTechnology& technology);
 
 }  // namespace patchpanel
 

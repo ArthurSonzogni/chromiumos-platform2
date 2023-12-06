@@ -108,6 +108,18 @@
       </arg>
     </method>
 
+    <method name="ConfigureNetwork">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="patchpanel::ConfigureNetworkRequest" />
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="patchpanel::ConfigureNetworkResponse" />
+      </arg>
+    </method>
+
     <method name="GetDevices">
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <annotation name="org.chromium.DBus.Method.Const" value="true" />

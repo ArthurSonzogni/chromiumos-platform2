@@ -110,6 +110,14 @@ class BRILLO_EXPORT FakeClient : public Client {
       const std::string& ifname,
       Client::GetDownstreamNetworkInfoCallback callback) override;
 
+  bool ConfigureNetwork(int interface_index,
+                        std::string_view interface_name,
+                        uint32_t area,
+                        const net_base::NetworkConfig& network_config,
+                        net_base::NetworkPriority priority,
+                        NetworkTechnology technology,
+                        ConfigureNetworkCallback callback) override;
+
   bool SendSetFeatureFlagRequest(Client::FeatureFlag flag,
                                  bool enable) override;
 

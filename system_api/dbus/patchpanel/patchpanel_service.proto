@@ -918,6 +918,59 @@ message GetDownstreamNetworkInfoResponse {
   repeated NetworkClientInfo clients_info = 3;
 }
 
+// Request to configure an IP network or modify the configuration of an existing
+// IP network on a certain physical or VPN network interface corresponding to a
+// shill Service.
+message ConfigureNetworkRequest {
+  // Index of the interface used by the Network.
+  int32 ifindex = 1;
+
+  // Name of the interface used by this Network.
+  string ifname = 2;
+
+  // A bit flag indicating the field that should be configured. See detailed
+  // definition in NetworkApplier::Area.
+  uint32 area = 3;
+
+  // A serialization of the net_base::NetworkConfig object, which contains the
+  // configuration that should be used to configure the Network.
+  NetworkConfig network_config = 4;
+
+  // Technology of the Network.
+  NetworkTechnology technology = 5;
+
+  // The priority of the Network, calculated by shill Manager.
+  NetworkPriority priority = 6;
+}
+
+// ConfigureNetwork response object.
+message ConfigureNetworkResponse {
+  // True if the Network was successfully configured.
+  bool success = 1;
+}
+
+// Possible technologies for a Network created in patchpanel.
+enum NetworkTechnology {
+  UNKNOWN = 0;
+  CELLULAR = 1;
+  ETHERNET = 2;
+  VPN = 3;
+  WIFI = 4;
+}
+
+// A representation of shill SortServices() result. See
+// net_base::NetworkPriority.
+message NetworkPriority {
+  bool is_primary_logical = 1;
+  bool is_primary_physical = 2;
+  bool is_primary_for_dns = 3;
+  uint32 ranking_order = 4;
+}
+
+message NetworkConfig {
+  // TODO(b/293997937): Mirroring net_base::NetworkConfig here.
+}
+
 // Notification change in power state of ARC.
 message NotifyAndroidInteractiveStateRequest {
   bool interactive = 1;

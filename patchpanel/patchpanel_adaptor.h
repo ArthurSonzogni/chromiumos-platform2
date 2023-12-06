@@ -67,6 +67,8 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
   TetheredNetworkResponse CreateTetheredNetwork(
       const TetheredNetworkRequest& request,
       const base::ScopedFD& client_fd) override;
+  ConfigureNetworkResponse ConfigureNetwork(
+      const ConfigureNetworkRequest& request) override;
   GetDevicesResponse GetDevices(
       const GetDevicesRequest& request) const override;
   GetDownstreamNetworkInfoResponse GetDownstreamNetworkInfo(
