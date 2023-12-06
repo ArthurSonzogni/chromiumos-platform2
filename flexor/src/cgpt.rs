@@ -26,8 +26,7 @@ pub fn add_cgpt_partition(
     range: LbaRangeInclusive,
 ) -> Result<()> {
     let begin = range.start().to_u64();
-    // Add one, because the range type promises "inclusive".
-    let size = range.end().to_u64() - range.start().to_u64() + 1;
+    let size = range.num_blocks();
     let drive_name = CString::new(dst.as_os_str().as_bytes())
         .context("unable to convert drive path to CString")?;
     let label = CString::new(label).context("unable to convert label to CString")?;
@@ -52,8 +51,7 @@ pub fn resize_cgpt_partition(
     new_range: LbaRangeInclusive,
 ) -> Result<()> {
     let begin = new_range.start().to_u64();
-    // Add one, because the range type promises "inclusive".
-    let size = new_range.end().to_u64() - new_range.start().to_u64() + 1;
+    let size = new_range.num_blocks();
     let drive_name = CString::new(dst.as_os_str().as_bytes())
         .context("unable to convert drive path to CString")?;
     let label = CString::new(label).context("unable to convert label to CString")?;
@@ -245,8 +243,8 @@ mod tests {
         let new_range = LbaRangeInclusive::new(Lba(DATA_START), Lba(data_part_end)).unwrap();
         resize_cgpt_partition(DATA_NUM, path, DATA_LABEL, new_range)?;
 
-        let mut file = File::open(path)?;
-        let mut gpt = Gpt::from_file(&mut file, BlockSize::BS_512)?;
+        let file = File::open(path)?;
+        let mut gpt = Gpt::from_file(file, BlockSize::BS_512)?;
 
         let partition = gpt.get_entry_for_partition_with_label(DATA_LABEL.parse()?)?;
         assert!(partition.is_some());
@@ -259,8 +257,8 @@ mod tests {
         let new_part_label = "TEST".to_string();
         add_cgpt_partition(DATA_NUM + 1, path, &new_part_label, range)?;
 
-        let mut file = File::open(path)?;
-        let mut gpt = Gpt::from_file(&mut file, BlockSize::BS_512)?;
+        let file = File::open(path)?;
+        let mut gpt = Gpt::from_file(file, BlockSize::BS_512)?;
 
         let partition = gpt.get_entry_for_partition_with_label(new_part_label.parse()?)?;
         assert!(partition.is_some());

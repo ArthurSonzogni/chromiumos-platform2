@@ -2,12 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use crate::cgpt;
-use crate::gpt::Gpt;
+use crate::{cgpt, gpt::Gpt};
 
 use anyhow::{anyhow, bail, Context, Result};
 use gpt_disk_types::{BlockSize, GptPartitionEntry, Lba, LbaRangeInclusive};
-use log::{error, info, debug};
+use log::{debug, error, info};
 use std::{
     fs::File,
     io::BufReader,
@@ -139,8 +138,8 @@ const NEW_PARTITION_NAME: &str = "FLEX_DEPLOY";
 /// the partition layout but not the filesystem, it assumes the filesystem
 /// on stateful partition will be re-created later.
 pub fn insert_thirteenth_partition(disk_path: &Path, block_size: BlockSize) -> Result<()> {
-    let mut file = File::open(disk_path)?;
-    let mut gpt = Gpt::from_file(&mut file, block_size)?;
+    let file = File::open(disk_path)?;
+    let mut gpt = Gpt::from_file(file, block_size)?;
 
     let new_part_size_lba = NEW_PARTITION_SIZE_BYTES / block_size.to_u64();
     let stateful_name = "STATE";
@@ -162,8 +161,10 @@ fn shrink_partition_by(
     part_info: GptPartitionEntry,
     size_in_lba: u64,
 ) -> Result<LbaRangeInclusive> {
-    // Add one because the range is "inclusive".
-    let current_part_size = part_info.ending_lba.to_u64() - part_info.starting_lba.to_u64() + 1;
+    let current_part_size = part_info
+        .lba_range()
+        .context("Unable to get LbaRange")?
+        .num_blocks();
     if current_part_size < size_in_lba {
         bail!(
             "Can't make place for a new partition with size {size_in_lba} if the current
