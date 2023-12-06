@@ -7,8 +7,14 @@
 
 namespace fbpreprocessor {
 
-constexpr char kFbPreprocessorServiceName[] = "org.chromium.FbPreprocessor";
-constexpr char kFbPreprocessorServicePath[] = "/org/chromium/FbPreprocessor";
+inline constexpr char kFbPreprocessorServiceName[] =
+    "org.chromium.FbPreprocessor";
+inline constexpr char kFbPreprocessorServicePath[] =
+    "/org/chromium/FbPreprocessor";
+
+// Daemon-store directories for fbpreprocessord
+inline constexpr char kInputDirectory[] = "raw_dumps";
+inline constexpr char kProcessedDirectory[] = "processed_dumps";
 
 }  // namespace fbpreprocessor
 
