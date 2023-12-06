@@ -99,6 +99,16 @@ if [ -f "${SLOW_BOOT_REQ_FILE}" ]; then
   rm "${SLOW_BOOT_REQ_FILE}"
 fi
 
+# Remove the stale install_attributes.pb if it exists and migration completed.
+# The migration logic happens in lockbox-cache.
+OLD_INSTALL_ATTRIBUTES='/home/.shadow/install_attributes.pb'
+NEW_INSTALL_ATTRIBUTES='/var/lib/device_management/install_attributes.pb'
+if [ -f "${OLD_INSTALL_ATTRIBUTES}" ]; then
+  if [ -s "${NEW_INSTALL_ATTRIBUTES}" ]; then
+    rm "${OLD_INSTALL_ATTRIBUTES}"
+  fi
+fi
+
 # Run the verified boot debugging tool now, because we won't be able to run it
 # manually if there's a problem (no root shell). It leaves a log file that we
 # can look at.
