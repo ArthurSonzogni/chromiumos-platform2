@@ -63,6 +63,7 @@ std::unique_ptr<EglManager> EglManager::Create() {
 EglManager::~EglManager() {
   eglReleaseThread();
   eglDestroyContext(egl_display_, egl_context_);
+  eglTerminate(egl_display_);
 }
 
 mojom::GLESInfoPtr EglManager::FetchGLESInfo() {
