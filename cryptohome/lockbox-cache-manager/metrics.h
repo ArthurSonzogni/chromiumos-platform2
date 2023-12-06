@@ -9,15 +9,14 @@
 
 namespace cryptohome {
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class MigrationStatus {
-  kSuccess,     // Migration successful.
-  kNotNeeded,   // No legacy install-attributes. Migration not needed.
-  kMkdirFail,   // Fail to create new dir for install-attributes.
-  kReadFail,    // Fail to read the install-attributes from old path.
-  kCopyFail,    // Fail to copy the install-attributes from old to new path.
-  kMoveFail,    // Fail to move the copy of install-attributes to new path.
-  kDeleteFail,  // Fail to delete legacy install-attributes.
-  kSyncFail,    // Fail to sync the new install-attributes dir.
+  kSuccess,    // Migration successful.
+  kNotNeeded,  // No legacy install-attributes. Migration not needed.
+  kReadFail,   // Fail to read the install-attributes from old path.
+  kCopyFail,   // Fail to copy the install-attributes from old to new path.
+  kSyncFail,   // Fail to sync the new install-attributes dir.
   kMaxValue =
       kSyncFail,  // This is unused, just for counting the number of elements.
                   // Note that kMaxValue should always be the last element.
