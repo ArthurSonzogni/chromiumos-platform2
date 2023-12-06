@@ -17,8 +17,8 @@ use std::{
 /// - /dev
 /// - /dev/disk/by-path
 /// - /dev/disk/by-id
-pub fn get_partition_device(disk_device: &Path, num: u32) -> Option<PathBuf> {
-    return match disk_device.parent() {
+pub fn get_partition_device<P: AsRef<Path>>(disk_device: P, num: u32) -> Option<PathBuf> {
+    return match disk_device.as_ref().parent() {
         Some(path) => {
             if path.as_os_str() == "/dev" {
                 return Some(get_partition_device_dev(disk_device, num));
@@ -34,8 +34,8 @@ pub fn get_partition_device(disk_device: &Path, num: u32) -> Option<PathBuf> {
     };
 }
 
-fn get_partition_device_dev(disk_device: &Path, num: u32) -> PathBuf {
-    let mut buf = disk_device.as_os_str().to_os_string();
+fn get_partition_device_dev<P: AsRef<Path>>(disk_device: P, num: u32) -> PathBuf {
+    let mut buf = disk_device.as_ref().as_os_str().to_os_string();
 
     // If the disk path ends in a number, e.g. "/dev/nvme0n1", append
     // a "p" before the partition number.
@@ -50,8 +50,8 @@ fn get_partition_device_dev(disk_device: &Path, num: u32) -> PathBuf {
     PathBuf::from(buf)
 }
 
-fn get_partition_device_by_path_or_id(disk_device: &Path, num: u32) -> PathBuf {
-    let mut buf = disk_device.as_os_str().to_os_string();
+fn get_partition_device_by_path_or_id<P: AsRef<Path>>(disk_device: P, num: u32) -> PathBuf {
+    let mut buf = disk_device.as_ref().as_os_str().to_os_string();
     // Both by-path and by-id have a -partX postfix.
     // E.g. partition 4 of `/dev/disk/by-id/nvme-eui.e8238fa6bf530001001b448b4566aa1a` is:
     // `/dev/disk/by-id/nvme-eui.e8238fa6bf530001001b448b4566aa1a-part4`
