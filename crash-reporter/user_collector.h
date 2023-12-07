@@ -225,7 +225,7 @@ class UserCollector : public UserCollectorBase {
   // The maximum size when running the "loose" variant of the
   // ui.ChromeCrashEarly tast test. We need this for Chrome CQ -- Chrome CQ
   // tests non-is_official_build Chrome builds, which produce larger cores.
-  static constexpr int kMaxChromeCoreSizeLoose = 100 * 1024 * 1024;
+  static constexpr int kMaxChromeCoreSizeLoose = 1024 * 1024 * 1024;
 
   // Force a core2md failure for testing.
   bool core2md_failure_;
