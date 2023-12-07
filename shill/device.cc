@@ -45,6 +45,7 @@
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/network.h"
+#include "shill/network/network_monitor.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 #include "shill/store/property_accessor.h"
@@ -436,7 +437,8 @@ void Device::OnConnectionUpdated(int interface_index) {
   // when IPv4 provisioning completes after IPv6 provisioning. Note that
   // currently SetupConnection() is never called a second time if IPv6
   // provisioning completes after IPv4 provisioning.
-  UpdatePortalDetector(Network::ValidationReason::kNetworkConnectionUpdate);
+  UpdatePortalDetector(
+      NetworkMonitor::ValidationReason::kNetworkConnectionUpdate);
 }
 
 void Device::OnNetworkStopped(int interface_index, bool is_failure) {
@@ -558,7 +560,7 @@ void Device::SetServiceFailureSilent(Service::ConnectFailure failure_state) {
   }
 }
 
-bool Device::UpdatePortalDetector(Network::ValidationReason reason) {
+bool Device::UpdatePortalDetector(NetworkMonitor::ValidationReason reason) {
   SLOG(this, 1) << LoggingTag() << ": " << __func__ << " reason=" << reason;
 
   if (!selected_service_) {
@@ -612,7 +614,7 @@ void Device::set_mac_address(const std::string& mac_address) {
 }
 
 void Device::OnNetworkValidationResult(int interface_index,
-                                       const PortalDetector::Result& result) {
+                                       const NetworkMonitor::Result& result) {
   if (!IsEventOnPrimaryNetwork(interface_index)) {
     return;
   }
@@ -644,7 +646,8 @@ void Device::OnNetworkValidationResult(int interface_index,
     OnNetworkValidationSuccess();
   } else {
     OnNetworkValidationFailure();
-    if (!GetPrimaryNetwork()->RestartPortalDetection()) {
+    if (!GetPrimaryNetwork()->StartPortalDetection(
+            NetworkMonitor::ValidationReason::kRetryValidation)) {
       connection_state = Service::kStateNoConnectivity;
     }
   }

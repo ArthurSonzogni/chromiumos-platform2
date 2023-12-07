@@ -1757,7 +1757,7 @@ void Manager::SortServicesTask() {
     if (IsPrimaryConnectivityTechnology(new_logical->technology()) &&
         !new_logical->IsOnline()) {
       new_logical->UpdateNetworkValidation(
-          Network::ValidationReason::kServiceReorder);
+          NetworkMonitor::ValidationReason::kServiceReorder);
     }
   }
 
@@ -2278,7 +2278,7 @@ bool Manager::SetCheckPortalList(const std::string& portal_list, Error* error) {
   for (const auto& service : services_) {
     if (service->IsConnected()) {
       service->UpdateNetworkValidation(
-          Network::ValidationReason::kManagerPropertyUpdate);
+          NetworkMonitor::ValidationReason::kManagerPropertyUpdate);
     }
   }
   return true;
@@ -2671,7 +2671,8 @@ void Manager::RecheckPortal(Error* /*error*/) {
   SLOG(2) << __func__;
   for (const auto& service : services_) {
     if (service->IsConnected()) {
-      service->UpdateNetworkValidation(Network::ValidationReason::kDBusRequest);
+      service->UpdateNetworkValidation(
+          NetworkMonitor::ValidationReason::kDBusRequest);
     }
   }
 }

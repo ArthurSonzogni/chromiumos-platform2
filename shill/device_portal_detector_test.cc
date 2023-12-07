@@ -14,18 +14,17 @@
 #include <metrics/fake_metrics_library.h>
 #include <net-base/http_url.h>
 
-#include "shill/event_dispatcher.h"
 #include "shill/http_request.h"
 #include "shill/metrics.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/network/network.h"
+#include "shill/network/network_monitor.h"
 #include "shill/portal_detector.h"
 #include "shill/service_under_test.h"
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
-#include "shill/testing.h"
 
 using ::testing::_;
 using ::testing::ElementsAre;
@@ -67,7 +66,7 @@ class TestNetwork : public Network {
                 /*control_interface=*/nullptr,
                 /*dispatcher=*/nullptr,
                 metrics,
-                /*network_applier=*/nullptr) {}
+                /*patchpanel_client=*/nullptr) {}
   ~TestNetwork() override = default;
   TestNetwork(const TestNetwork&) = delete;
   TestNetwork& operator=(const TestNetwork&) = delete;
@@ -76,17 +75,16 @@ class TestNetwork : public Network {
   bool IsConnected() const override { return true; }
   void StartConnectionDiagnostics() override {}
 
-  bool StartPortalDetection(Network::ValidationReason reason) override {
-    portal_detection_delayed_ = false;
-    portal_detection_started_ = true;
-    portal_detection_running_ = true;
-    portal_detection_num_attempts_++;
-    return true;
-  }
-
-  bool RestartPortalDetection() override {
-    portal_detection_delayed_ = true;
-    portal_detection_running_ = false;
+  bool StartPortalDetection(NetworkMonitor::ValidationReason reason) override {
+    if (reason == NetworkMonitor::ValidationReason::kRetryValidation) {
+      portal_detection_delayed_ = true;
+      portal_detection_running_ = false;
+    } else {
+      portal_detection_delayed_ = false;
+      portal_detection_started_ = true;
+      portal_detection_running_ = true;
+      portal_detection_num_attempts_++;
+    }
     return true;
   }
 
@@ -97,16 +95,11 @@ class TestNetwork : public Network {
     portal_detection_num_attempts_ = 0;
   }
 
-  bool IsPortalDetectionInProgress() const override {
-    return portal_detection_started_;
-  }
-
   // Check if a portal detection attempt is currently running.
-  // IsPortalDetectionInProgress returns a different result from
-  // IsPortalDetectionInProgress when an attempt has completed
   // (Network::EventHandler::OnNetworkValidationResult has been called) and
   // portal detection has not been restarted with
-  // Network::RestartPortalDetection().
+  // Network::StartPortalDetection(
+  //     NetworkMonitor::ValidationReason::kRetryValidation).
   bool IsPortalDetectionRunning() const { return portal_detection_running_; }
 
   void SetDNSFailure() {
@@ -272,7 +265,8 @@ class DevicePortalDetectorTest : public testing::Test {
   }
 
   void UpdatePortalDetector() {
-    device_->UpdatePortalDetector(Network::ValidationReason::kDBusRequest);
+    device_->UpdatePortalDetector(
+        NetworkMonitor::ValidationReason::kDBusRequest);
   }
 
   TestNetwork* GetTestNetwork() { return device_->test_network(); }
@@ -323,7 +317,6 @@ TEST_F(DevicePortalDetectorTest, DNSFailure) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   test_network->SetDNSFailure();
   test_network->CompletePortalDetection();
@@ -337,10 +330,8 @@ TEST_F(DevicePortalDetectorTest, DNSFailure) {
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToDisconnect), 0);
 
   // Portal detection should be started again.
-  EXPECT_TRUE(test_network->IsPortalDetectionInProgress());
   EXPECT_FALSE(test_network->IsPortalDetectionRunning());
   test_network->ContinuePortalDetection();
-  EXPECT_TRUE(test_network->IsPortalDetectionInProgress());
   EXPECT_TRUE(test_network->IsPortalDetectionRunning());
   EXPECT_EQ(test_network->portal_detection_num_attempts(), 2);
 }
@@ -349,7 +340,6 @@ TEST_F(DevicePortalDetectorTest, DNSTimeout) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   test_network->SetDNSTimeout();
   test_network->CompletePortalDetection();
@@ -363,7 +353,6 @@ TEST_F(DevicePortalDetectorTest, DNSTimeout) {
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToDisconnect), 0);
 
   // Portal detection should still be active.
-  EXPECT_TRUE(test_network->IsPortalDetectionInProgress());
   EXPECT_FALSE(test_network->IsPortalDetectionRunning());
 }
 
@@ -371,7 +360,6 @@ TEST_F(DevicePortalDetectorTest, RedirectFound) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   test_network->SetRedirectResult(kRedirectUrl);
   test_network->CompletePortalDetection();
@@ -391,7 +379,6 @@ TEST_F(DevicePortalDetectorTest, RedirectFound) {
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToDisconnect), 0);
 
   // Portal detection should still be active.
-  EXPECT_TRUE(test_network->IsPortalDetectionInProgress());
   EXPECT_FALSE(test_network->IsPortalDetectionRunning());
 }
 
@@ -399,7 +386,6 @@ TEST_F(DevicePortalDetectorTest, RedirectFoundNoURL) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   // Redirect result with an empty redirect URL -> PortalSuspected state.
   test_network->SetInvalidRedirectResult();
@@ -416,7 +402,6 @@ TEST_F(DevicePortalDetectorTest, RedirectFoundNoURL) {
             0);
 
   // Portal detection should still be active.
-  EXPECT_TRUE(test_network->IsPortalDetectionInProgress());
   EXPECT_FALSE(test_network->IsPortalDetectionRunning());
 }
 
@@ -424,7 +409,6 @@ TEST_F(DevicePortalDetectorTest, RedirectFoundThenOnline) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   test_network->SetRedirectResult(kRedirectUrl);
   test_network->CompletePortalDetection();
@@ -442,7 +426,6 @@ TEST_F(DevicePortalDetectorTest, RedirectFoundThenOnline) {
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToDisconnect), 0);
 
   // Portal detection should be completed.
-  EXPECT_FALSE(test_network->IsPortalDetectionInProgress());
   EXPECT_FALSE(test_network->IsPortalDetectionRunning());
 }
 
@@ -450,7 +433,6 @@ TEST_F(DevicePortalDetectorTest, PartialConnectivity) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   test_network->SetHTTPSFailureResult();
   test_network->CompletePortalDetection();
@@ -468,7 +450,6 @@ TEST_F(DevicePortalDetectorTest, PartialConnectivity) {
             0);
 
   // Portal detection should still be active.
-  EXPECT_TRUE(test_network->IsPortalDetectionInProgress());
   EXPECT_FALSE(test_network->IsPortalDetectionRunning());
 }
 
@@ -476,7 +457,6 @@ TEST_F(DevicePortalDetectorTest, PartialConnectivityThenRedirectFound) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   // Multiple partial-connectivity results.
   test_network->SetHTTPSFailureResult();
@@ -489,10 +469,8 @@ TEST_F(DevicePortalDetectorTest, PartialConnectivityThenRedirectFound) {
               ElementsAre(Metrics::kPortalDetectorResultHTTPSFailure));
 
   // Portal detection should be started again.
-  EXPECT_TRUE(test_network->IsPortalDetectionInProgress());
   EXPECT_FALSE(test_network->IsPortalDetectionRunning());
   test_network->ContinuePortalDetection();
-  EXPECT_TRUE(test_network->IsPortalDetectionInProgress());
   EXPECT_TRUE(test_network->IsPortalDetectionRunning());
   EXPECT_EQ(test_network->portal_detection_num_attempts(), 3);
 
@@ -523,7 +501,6 @@ TEST_F(DevicePortalDetectorTest, PartialConnectivityThenOnline) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   test_network->SetHTTPSFailureResult();
   test_network->CompletePortalDetection();
@@ -550,7 +527,6 @@ TEST_F(DevicePortalDetectorTest, PartialConnectivityThenOnline) {
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToDisconnect), 0);
 
   // Portal detection should be completed.
-  EXPECT_FALSE(test_network->IsPortalDetectionInProgress());
   EXPECT_FALSE(test_network->IsPortalDetectionRunning());
 }
 
@@ -558,7 +534,6 @@ TEST_F(DevicePortalDetectorTest, ParialConnectivityThenDisconnect) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   // Multiple partial-connectivity results
   test_network->SetHTTPSFailureResult();
@@ -592,7 +567,6 @@ TEST_F(DevicePortalDetectorTest, Online) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   test_network->SetOnlineResult();
   test_network->CompletePortalDetection();
@@ -607,7 +581,6 @@ TEST_F(DevicePortalDetectorTest, Online) {
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToDisconnect), 0);
 
   // Portal detection should be completed.
-  EXPECT_FALSE(test_network->IsPortalDetectionInProgress());
   EXPECT_FALSE(test_network->IsPortalDetectionRunning());
 }
 
@@ -615,7 +588,6 @@ TEST_F(DevicePortalDetectorTest, RestartPortalDetection) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   // Run portal detection 3 times.
   test_network->SetHTTPSFailureResult();
@@ -626,12 +598,10 @@ TEST_F(DevicePortalDetectorTest, RestartPortalDetection) {
 
   // Portal detection should be started again.
   test_network->ContinuePortalDetection();
-  EXPECT_TRUE(test_network->IsPortalDetectionInProgress());
 
   // UpdatePortalDetector(true) will reset the current portal detector and
   // start a new one.
   UpdatePortalDetector();
-  EXPECT_TRUE(test_network->IsPortalDetectionInProgress());
 
   // CompletePortalDetection will run portal detection 1 more time with an
   // 'online' result.
@@ -655,7 +625,6 @@ TEST_F(DevicePortalDetectorTest, RestartPortalDetection) {
               ElementsAre(4));
 
   // Portal detection should be completed.
-  EXPECT_FALSE(test_network->IsPortalDetectionInProgress());
   EXPECT_FALSE(test_network->IsPortalDetectionRunning());
 }
 

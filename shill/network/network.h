@@ -35,6 +35,7 @@
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/network_applier.h"
+#include "shill/network/network_monitor.h"
 #include "shill/network/slaac_controller.h"
 #include "shill/portal_detector.h"
 #include "shill/resolver.h"
@@ -112,18 +113,17 @@ class Network {
         patchpanel::Client::NeighborRole role,
         patchpanel::Client::NeighborStatus status) = 0;
 
-    // Called every time PortalDetector finishes a network validation attempt
-    // starts. If network validation is used for this Service, PortalDetector
-    // starts the first attempt when OnConnected() is called. PortalDetector may
-    // run multiple times for the same network.
+    // Called when the NetworkMonitor has been started a network validation
+    // attempt. If network validation is used for this Service,
+    // NetworkMonitor starts the first attempt when OnConnected() is called.
+    // NetworkMonitor may run multiple times for the same network.
     virtual void OnNetworkValidationStart(int interface_index) = 0;
-    // Called every time PortalDetector is stopped before completing a trial.
+    // Called when NetworkMonitor is stopped before completing a trial.
     virtual void OnNetworkValidationStop(int interface_index) = 0;
-    // Called when a PortalDetector trial completes.
-    // Called every time a PortalDetector attempt finishes and Internet
+    // Called when a NetworkMonitor attempt finishes and Internet
     // connectivity has been evaluated.
     virtual void OnNetworkValidationResult(
-        int interface_index, const PortalDetector::Result& result) = 0;
+        int interface_index, const NetworkMonitor::Result& result) = 0;
 
     // Called when the Network object is about to be destroyed and become
     // invalid. Any EventHandler still registered should stop any reference
@@ -161,35 +161,13 @@ class Network {
     kConnected,
   };
 
-  // Reasons for starting or restarting portal detection on a Network.
-  enum class ValidationReason {
-    // IPv4 or IPv6 configuration of the network has completed.
-    kNetworkConnectionUpdate,
-    // Service order has changed.
-    kServiceReorder,
-    // A Service property relevant to network validation has changed.
-    kServicePropertyUpdate,
-    // A Manager property relevant to network validation has changed.
-    kManagerPropertyUpdate,
-    // A DBus request to recheck network validation has been received.
-    kDBusRequest,
-    // A L2 neighbor event has been received for an ethernet link indicating
-    // the gateway is not reachable. This event can trigger Internet access
-    // revalidation checks only on ethernet links.
-    kEthernetGatewayUnreachable,
-    // A L2 neighbor event has been received for an ethernet link indicating
-    // the gateway is reachable. This event can trigger Internet access
-    // revalidation checks only on ethernet links.
-    kEthernetGatewayReachable,
-  };
-
   // Helper struct which keeps a history of network validation results over time
   // until network validation stops for the first time or until the Network
   // disconnect.
   class ValidationLog {
    public:
     ValidationLog(Technology technology, Metrics* metrics);
-    void AddResult(const PortalDetector::Result& result);
+    void AddResult(const NetworkMonitor::Result& result);
     void SetCapportDHCPSupported();
     void SetCapportRASupported();
     void RecordMetrics() const;
@@ -204,15 +182,6 @@ class Network {
     bool capport_ra_supported_ = false;
   };
 
-  // Returns true if |reason| requires that network validation be entirely
-  // restarted with the latest IP configuration settings.
-  static bool ShouldResetNetworkValidation(ValidationReason reason);
-
-  // Returns true if |reason| requires that the next network validation attempt
-  // be scheduled immediately.
-  static bool ShouldScheduleNetworkValidationImmediately(
-      ValidationReason reason);
-
   Network(int interface_index,
           const std::string& interface_name,
           Technology technology,
@@ -222,7 +191,9 @@ class Network {
           Metrics* metrics,
           patchpanel::Client* patchpanel_client,
           NetworkApplier* network_applier = NetworkApplier::GetInstance(),
-          Resolver* resolver = Resolver::GetInstance());
+          Resolver* resolver = Resolver::GetInstance(),
+          std::unique_ptr<NetworkMonitorFactory> network_monitor_factory =
+              std::make_unique<NetworkMonitorFactory>());
   Network(const Network&) = delete;
   Network& operator=(const Network&) = delete;
   virtual ~Network();
@@ -331,44 +302,14 @@ class Network {
   mockable void OnNeighborReachabilityEvent(
       const patchpanel::Client::NeighborReachabilityEvent& event);
 
-  // Starts or restarts network validation and reschedule a network validation
-  // attempt if necessary. Depending on the current stage of network validation
-  // (rows) and |reason| (columns), different effects are possible as summarized
-  // in the table:
-  //
-  //             |  IP provisioning   |  schedule attempt  |      do not
-  //             |       event        |    immediately     |     reschedule
-  // ----------- +--------------------+--------------------+--------------------
-  //  validation |                    |                    |
-  //   stopped   |         a)         |         a)         |         a)
-  // ------------+--------------------+--------------------+--------------------
-  //   attempt   |                    |                    |
-  //  scheduled  |         a)         |         b)         |         d)
-  // ------------+--------------------+--------------------+--------------------
-  //  currently  |                    |                    |
-  //   running   |         a)         |         c)         |         d)
-  // ------------+--------------------+--------------------+--------------------
-  //   a) reinitialize |portal_detector_| & start a network validation attempt
-  //      immediately.
-  //   b) reschedule the next network validation attempt to run immediately.
-  //   c) reschedule another network validation attempt immediately after the
-  //      current one if the result is not conclusive (the result was not
-  //      kInternetConnectivity or kPortalRedirect).
-  //   e) do nothing, wait for the network validation attempt scheduled next to
-  //      run.
-  mockable bool StartPortalDetection(ValidationReason reason);
-  // Schedules the next portal detection attempt for the current network
-  // validation cycle. Returns true if portal detection restarts successfully.
-  // If portal detection fails to restart, it is stopped.
-  mockable bool RestartPortalDetection();
+  // Starts a network validation. See the detail of NetworkMonitor::Start().
+  mockable bool StartPortalDetection(NetworkMonitor::ValidationReason reason);
   // Stops the current network validation cycle if it is still running.
   mockable void StopPortalDetection();
-  // Returns true if portal detection is currently in progress.
-  mockable bool IsPortalDetectionInProgress() const;
   // Returns the PortalDetector::Result from the last network validation
   // attempt that completed, or nothing if no network validation attempt
   // has completed for this network connection yet.
-  const std::optional<PortalDetector::Result>& network_validation_result()
+  const std::optional<NetworkMonitor::Result>& network_validation_result()
       const {
     return network_validation_result_;
   }
@@ -413,7 +354,7 @@ class Network {
   // subclasses that choose unique mappings from portal results to connected
   // states can override this method in order to do so.
   // Visibility is public for usage in unit tests.
-  void OnPortalDetectorResult(const PortalDetector::Result& result);
+  void OnPortalDetectorResult(const NetworkMonitor::Result& result);
 
   // Helper functions to prepare data and call corresponding NetworkApplier
   // function. Protected for manual-triggering in test. Calls |callback| when
@@ -446,14 +387,15 @@ class Network {
     proc_fs_ = std::move(proc_fs);
     return proc_fs_.get();
   }
-  void set_portal_detector_for_testing(PortalDetector* portal_detector) {
-    portal_detector_.reset(portal_detector);
-  }
   void set_ignore_link_monitoring_for_testing(bool ignore_link_monitoring) {
     ignore_link_monitoring_ = ignore_link_monitoring;
   }
-  void set_portal_detector_result_for_testing(
-      const PortalDetector::Result& result) {
+  void set_network_monitor_for_testing(
+      std::unique_ptr<NetworkMonitor> network_monitor) {
+    network_monitor_ = std::move(network_monitor);
+  }
+  void set_network_monitor_result_for_testing(
+      const NetworkMonitor::Result& result) {
     network_validation_result_ = result;
   }
 
@@ -476,11 +418,6 @@ class Network {
 
   // Creates a SLAACController object. Isolated for unit test mock injection.
   mockable std::unique_ptr<SLAACController> CreateSLAACController();
-
-  // Constructs and returns a PortalDetector instance. Isolate
-  // this function only for unit tests, so that we can inject a mock
-  // PortalDetector object easily.
-  mockable std::unique_ptr<PortalDetector> CreatePortalDetector();
 
   // Returns the preferred IPFamily for performing network validation with
   // PortalDetector. This defaults to IPv4 if both IPv4 and IPv6 are available.
@@ -602,12 +539,15 @@ class Network {
   bool ipv4_gateway_found_ = false;
   bool ipv6_gateway_found_ = false;
 
+  std::unique_ptr<NetworkMonitorFactory> network_monitor_factory_;
   PortalDetector::ProbingConfiguration probing_configuration_;
-  std::unique_ptr<PortalDetector> portal_detector_;
+  // Validates the network connectivity and detect the captive portal.
+  // The instance is created at Start() and destroyed at Stop().
+  std::unique_ptr<NetworkMonitor> network_monitor_;
   std::unique_ptr<ValidationLog> network_validation_log_;
-  // Only defined if PortalDetector completed at least one attempt for the
+  // Only defined if NetworkMonitor completed at least one attempt for the
   // current network connection.
-  std::optional<PortalDetector::Result> network_validation_result_;
+  std::optional<NetworkMonitor::Result> network_validation_result_;
   std::unique_ptr<ConnectionDiagnostics> connection_diagnostics_;
   // Another instance of PortalDetector used for CreateConnectivityReport.
   std::unique_ptr<PortalDetector> connectivity_test_portal_detector_;
@@ -638,8 +578,6 @@ class Network {
 };
 
 std::ostream& operator<<(std::ostream& stream, const Network& network);
-std::ostream& operator<<(std::ostream& stream,
-                         Network::ValidationReason reason);
 
 }  // namespace shill
 

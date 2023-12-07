@@ -742,16 +742,18 @@ TEST_F(EthernetTest, ReachabilityEvent_Online) {
 
   // Service state is 'online', FAILED gateway neighbor events triggers network
   // validation.
-  EXPECT_CALL(*mock_service_,
-              UpdateNetworkValidation(
-                  Network::ValidationReason::kEthernetGatewayUnreachable));
+  EXPECT_CALL(
+      *mock_service_,
+      UpdateNetworkValidation(
+          NetworkMonitor::ValidationReason::kEthernetGatewayUnreachable));
   ethernet_->OnNeighborReachabilityEvent(
       ethernet_->interface_index(), kIPv4Addr, Role::kGateway, Status::kFailed);
   Mock::VerifyAndClearExpectations(mock_service_.get());
 
-  EXPECT_CALL(*mock_service_,
-              UpdateNetworkValidation(
-                  Network::ValidationReason::kEthernetGatewayUnreachable));
+  EXPECT_CALL(
+      *mock_service_,
+      UpdateNetworkValidation(
+          NetworkMonitor::ValidationReason::kEthernetGatewayUnreachable));
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
                                          kIPv6Addr, Role::kGatewayAndDnsServer,
                                          Status::kFailed);
@@ -782,7 +784,7 @@ TEST_F(EthernetTest, ReachabilityEvent_NotOnline) {
   // triggers network validation.
   EXPECT_CALL(*mock_service_,
               UpdateNetworkValidation(
-                  Network::ValidationReason::kEthernetGatewayReachable));
+                  NetworkMonitor::ValidationReason::kEthernetGatewayReachable));
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
                                          kIPv4Addr, Role::kGateway,
                                          Status::kReachable);
@@ -790,7 +792,7 @@ TEST_F(EthernetTest, ReachabilityEvent_NotOnline) {
 
   EXPECT_CALL(*mock_service_,
               UpdateNetworkValidation(
-                  Network::ValidationReason::kEthernetGatewayReachable));
+                  NetworkMonitor::ValidationReason::kEthernetGatewayReachable));
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
                                          kIPv6Addr, Role::kGatewayAndDnsServer,
                                          Status::kReachable);

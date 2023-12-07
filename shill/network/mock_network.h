@@ -18,6 +18,7 @@
 
 #include "shill/ipconfig.h"
 #include "shill/network/network.h"
+#include "shill/network/network_monitor.h"
 #include "shill/portal_detector.h"
 #include "shill/technology.h"
 
@@ -82,11 +83,9 @@ class MockNetwork : public Network {
   MOCK_METHOD(bool, ipv6_gateway_found, (), (const, override));
   MOCK_METHOD(bool,
               StartPortalDetection,
-              (Network::ValidationReason),
+              (NetworkMonitor::ValidationReason),
               (override));
-  MOCK_METHOD(bool, RestartPortalDetection, (), (override));
   MOCK_METHOD(void, StopPortalDetection, (), (override));
-  MOCK_METHOD(bool, IsPortalDetectionInProgress, (), (const, override));
   MOCK_METHOD(void, StartConnectionDiagnostics, (), (override));
   MOCK_METHOD(bool, IsConnectedViaTether, (), (const, override));
   MOCK_METHOD(void,
@@ -120,7 +119,7 @@ class MockNetworkEventHandler : public Network::EventHandler {
   MOCK_METHOD(void, OnNetworkValidationStop, (int), (override));
   MOCK_METHOD(void,
               OnNetworkValidationResult,
-              (int, const PortalDetector::Result& result),
+              (int, const NetworkMonitor::Result& result),
               (override));
   MOCK_METHOD(void, OnNetworkDestroyed, (int), (override));
 };

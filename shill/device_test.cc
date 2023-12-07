@@ -34,6 +34,7 @@
 #include "shill/mock_service.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/network.h"
+#include "shill/network/network_monitor.h"
 #include "shill/portal_detector.h"
 #include "shill/service.h"
 #include "shill/store/fake_store.h"
@@ -388,8 +389,7 @@ TEST_F(DeviceTest, OnNetworkValidationResultOtherInterface) {
   device_->SelectService(service);
   EXPECT_CALL(*service, IsConnected(_)).Times(0);
   EXPECT_CALL(*service, SetState(_)).Times(0);
-  device_->OnNetworkValidationResult(kOtherInterfaceIndex,
-                                     PortalDetector::Result{});
+  device_->OnNetworkValidationResult(kOtherInterfaceIndex, {});
 }
 
 TEST_F(DeviceTest, SetEnabledNonPersistent) {
@@ -716,7 +716,7 @@ class DevicePortalDetectionTest : public DeviceTest {
   void TearDown() override {}
 
  protected:
-  void OnNetworkValidationResult(const PortalDetector::Result& result) {
+  void OnNetworkValidationResult(const NetworkMonitor::Result& result) {
     device_->OnNetworkValidationResult(device_->interface_index(), result);
   }
 
@@ -730,10 +730,10 @@ TEST_F(DevicePortalDetectionTest, NoSelectedService) {
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
   EXPECT_CALL(*network_, StartPortalDetection).Times(0);
 
-  EXPECT_FALSE(
-      device_->UpdatePortalDetector(Network::ValidationReason::kDBusRequest));
   EXPECT_FALSE(device_->UpdatePortalDetector(
-      Network::ValidationReason::kServicePropertyUpdate));
+      NetworkMonitor::ValidationReason::kDBusRequest));
+  EXPECT_FALSE(device_->UpdatePortalDetector(
+      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
 }
 
 TEST_F(DevicePortalDetectionTest, ServiceNotConnected) {
@@ -742,10 +742,10 @@ TEST_F(DevicePortalDetectionTest, ServiceNotConnected) {
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
   EXPECT_CALL(*network_, StartPortalDetection).Times(0);
 
-  EXPECT_FALSE(
-      device_->UpdatePortalDetector(Network::ValidationReason::kDBusRequest));
   EXPECT_FALSE(device_->UpdatePortalDetector(
-      Network::ValidationReason::kServicePropertyUpdate));
+      NetworkMonitor::ValidationReason::kDBusRequest));
+  EXPECT_FALSE(device_->UpdatePortalDetector(
+      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionDisabled) {
@@ -755,22 +755,22 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDisabled) {
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(2);
   EXPECT_CALL(*network_, StartPortalDetection).Times(0);
 
-  EXPECT_FALSE(
-      device_->UpdatePortalDetector(Network::ValidationReason::kDBusRequest));
   EXPECT_FALSE(device_->UpdatePortalDetector(
-      Network::ValidationReason::kServicePropertyUpdate));
+      NetworkMonitor::ValidationReason::kDBusRequest));
+  EXPECT_FALSE(device_->UpdatePortalDetector(
+      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionInProgress_ForceRestart) {
   EXPECT_CALL(*service_, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*network_,
-              StartPortalDetection(Network::ValidationReason::kDBusRequest))
+  EXPECT_CALL(*network_, StartPortalDetection(
+                             NetworkMonitor::ValidationReason::kDBusRequest))
       .WillOnce(Return(true));
 
-  EXPECT_TRUE(
-      device_->UpdatePortalDetector(Network::ValidationReason::kDBusRequest));
+  EXPECT_TRUE(device_->UpdatePortalDetector(
+      NetworkMonitor::ValidationReason::kDBusRequest));
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionFailureToStart) {
@@ -780,12 +780,12 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionFailureToStart) {
   EXPECT_CALL(*service_, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
-  EXPECT_CALL(*network_,
-              StartPortalDetection(Network::ValidationReason::kDBusRequest))
+  EXPECT_CALL(*network_, StartPortalDetection(
+                             NetworkMonitor::ValidationReason::kDBusRequest))
       .WillOnce(Return(false));
 
-  EXPECT_FALSE(
-      device_->UpdatePortalDetector(Network::ValidationReason::kDBusRequest));
+  EXPECT_FALSE(device_->UpdatePortalDetector(
+      NetworkMonitor::ValidationReason::kDBusRequest));
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionStart) {
@@ -793,12 +793,12 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStart) {
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
-  EXPECT_CALL(*network_,
-              StartPortalDetection(Network::ValidationReason::kDBusRequest))
+  EXPECT_CALL(*network_, StartPortalDetection(
+                             NetworkMonitor::ValidationReason::kDBusRequest))
       .WillOnce(Return(true));
 
-  EXPECT_TRUE(
-      device_->UpdatePortalDetector(Network::ValidationReason::kDBusRequest));
+  EXPECT_TRUE(device_->UpdatePortalDetector(
+      NetworkMonitor::ValidationReason::kDBusRequest));
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionStartIPv6) {
@@ -806,20 +806,23 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStartIPv6) {
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
-  EXPECT_CALL(*network_,
-              StartPortalDetection(Network::ValidationReason::kDBusRequest))
+  EXPECT_CALL(*network_, StartPortalDetection(
+                             NetworkMonitor::ValidationReason::kDBusRequest))
       .WillOnce(Return(true));
 
-  EXPECT_TRUE(
-      device_->UpdatePortalDetector(Network::ValidationReason::kDBusRequest));
+  EXPECT_TRUE(device_->UpdatePortalDetector(
+      NetworkMonitor::ValidationReason::kDBusRequest));
 }
 
 TEST_F(DevicePortalDetectionTest, PortalRetryAfterHTTPProbeFailure) {
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillOnce(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
-  EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(
+      *network_,
+      StartPortalDetection(NetworkMonitor::ValidationReason::kRetryValidation))
+      .WillOnce(Return(true));
 
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.num_attempts = 1;
   result.http_result = PortalDetector::HTTPProbeResult::kConnectionFailure;
   result.http_probe_completed = true;
@@ -834,7 +837,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillOnce(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline));
 
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.num_attempts = 1;
   result.http_result = PortalDetector::HTTPProbeResult::kSuccess;
   result.http_status_code = 204;
@@ -856,11 +859,14 @@ TEST_F(DevicePortalDetectionTest, NextAttemptFails) {
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
   // The second portal detection attempt fails immediately, forcing the Device
   // to assume the Service state is 'no-connectivity'.
-  EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(false));
+  EXPECT_CALL(
+      *network_,
+      StartPortalDetection(NetworkMonitor::ValidationReason::kRetryValidation))
+      .WillOnce(Return(false));
 
   // First result indicating no connectivity and triggering a new portal
   // detection attempt.
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.num_attempts = 1;
   result.http_result = PortalDetector::HTTPProbeResult::kDNSTimeout;
   result.https_error = HttpRequest::Error::kHTTPTimeout;
@@ -878,11 +884,14 @@ TEST_F(DevicePortalDetectionTest, ScheduleNextDetectionAttempt) {
   // network, the Service state does not become 'online'.
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
   // The second portal detection attempt succeeds.
-  EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(
+      *network_,
+      StartPortalDetection(NetworkMonitor::ValidationReason::kRetryValidation))
+      .WillOnce(Return(true));
 
   // First result indicating no connectivity and triggering a new portal
   // detection attempt.
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.num_attempts = 1;
   result.http_result = PortalDetector::HTTPProbeResult::kDNSTimeout;
   result.https_error = HttpRequest::Error::kHTTPTimeout;
@@ -902,7 +911,7 @@ TEST_F(DevicePortalDetectionTest, CancelledOnSelectService) {
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.num_attempts = 1;
   result.http_result = PortalDetector::HTTPProbeResult::kDNSTimeout;
   result.https_error = HttpRequest::Error::kDNSFailure;
@@ -913,13 +922,16 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
-  EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(
+      *network_,
+      StartPortalDetection(NetworkMonitor::ValidationReason::kRetryValidation))
+      .WillOnce(Return(true));
 
   OnNetworkValidationResult(result);
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionDNSTimeout) {
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.num_attempts = 1;
   result.http_result = PortalDetector::HTTPProbeResult::kDNSTimeout;
   result.https_error = HttpRequest::Error::kDNSTimeout;
@@ -930,13 +942,16 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSTimeout) {
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
-  EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(
+      *network_,
+      StartPortalDetection(NetworkMonitor::ValidationReason::kRetryValidation))
+      .WillOnce(Return(true));
 
   OnNetworkValidationResult(result);
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionRedirect) {
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.num_attempts = 1;
   result.http_result = PortalDetector::HTTPProbeResult::kPortalRedirect;
   result.http_status_code = 302;
@@ -952,13 +967,16 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirect) {
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateRedirectFound));
-  EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(
+      *network_,
+      StartPortalDetection(NetworkMonitor::ValidationReason::kRetryValidation))
+      .WillOnce(Return(true));
 
   OnNetworkValidationResult(result);
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoURL) {
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.num_attempts = 1;
   result.http_result = PortalDetector::HTTPProbeResult::kPortalInvalidRedirect;
   result.http_status_code = 302;
@@ -970,13 +988,16 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoURL) {
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStatePortalSuspected));
-  EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(
+      *network_,
+      StartPortalDetection(NetworkMonitor::ValidationReason::kRetryValidation))
+      .WillOnce(Return(true));
 
   OnNetworkValidationResult(result);
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionPartialFailure) {
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.num_attempts = 1;
   result.http_result = PortalDetector::HTTPProbeResult::kSuccess;
   result.http_status_code = 204;
@@ -989,13 +1010,16 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionPartialFailure) {
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
-  EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(
+      *network_,
+      StartPortalDetection(NetworkMonitor::ValidationReason::kRetryValidation))
+      .WillOnce(Return(true));
 
   OnNetworkValidationResult(result);
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionNoConnectivity) {
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.num_attempts = 1;
   result.http_result = PortalDetector::HTTPProbeResult::kConnectionFailure;
   result.https_error = HttpRequest::Error::kConnectionFailure;
@@ -1006,13 +1030,16 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionNoConnectivity) {
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
-  EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(
+      *network_,
+      StartPortalDetection(NetworkMonitor::ValidationReason::kRetryValidation))
+      .WillOnce(Return(true));
 
   OnNetworkValidationResult(result);
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.num_attempts = 1;
   result.http_result = PortalDetector::HTTPProbeResult::kPortalSuspected;
   result.http_status_code = 200;
@@ -1025,7 +1052,10 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
 
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStatePortalSuspected));
-  EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(
+      *network_,
+      StartPortalDetection(NetworkMonitor::ValidationReason::kRetryValidation))
+      .WillOnce(Return(true));
 
   OnNetworkValidationResult(result);
 }

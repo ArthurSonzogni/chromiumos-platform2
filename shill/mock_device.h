@@ -14,6 +14,7 @@
 
 #include "shill/device.h"
 #include "shill/geolocation_info.h"
+#include "shill/network/network_monitor.h"
 
 namespace shill {
 
@@ -41,7 +42,7 @@ class MockDevice : public Device {
   MOCK_METHOD(bool, Save, (StoreInterface*), (override));
   MOCK_METHOD(bool,
               UpdatePortalDetector,
-              (Network::ValidationReason),
+              (NetworkMonitor::ValidationReason),
               (override));
   MOCK_METHOD(bool,
               IsConnectedToService,

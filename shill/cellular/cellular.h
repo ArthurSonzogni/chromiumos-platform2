@@ -30,6 +30,7 @@
 #include "shill/cellular/power_opt.h"
 #include "shill/device.h"
 #include "shill/device_id.h"
+#include "shill/network/network_monitor.h"
 #include "shill/refptr_types.h"
 #include "shill/rpc_task.h"
 #include "shill/tethering_manager.h"
@@ -204,7 +205,7 @@ class Cellular : public Device,
   void OnModemDestroyed();
 
   void OnNetworkValidationResult(int interface_index,
-                                 const PortalDetector::Result& result) override;
+                                 const NetworkMonitor::Result& result) override;
 
   // Returns true if |service| is connectable.
   bool GetConnectable(CellularService* service) const;

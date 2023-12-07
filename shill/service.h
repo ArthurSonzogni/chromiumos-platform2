@@ -31,6 +31,7 @@
 #include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/network/network.h"
+#include "shill/network/network_monitor.h"
 #include "shill/portal_detector.h"
 #include "shill/refptr_types.h"
 #include "shill/static_ip_parameters.h"
@@ -235,7 +236,7 @@ class Service : public base::RefCounted<Service> {
     void OnNetworkValidationStart(int interface_index) override {}
     void OnNetworkValidationStop(int interface_index) override {}
     void OnNetworkValidationResult(
-        int interface_index, const PortalDetector::Result& result) override;
+        int interface_index, const NetworkMonitor::Result& result) override;
     void OnNetworkDestroyed(int interface_index) override {}
 
    protected:
@@ -722,7 +723,8 @@ class Service : public base::RefCounted<Service> {
   // connection state transitions to 'online' immediately. When
   // network validation is enabled and Network::StartPortalDetection fails, the
   // connection state transitions to 'no-connectivity'.
-  mockable bool UpdateNetworkValidation(Network::ValidationReason reason);
+  mockable bool UpdateNetworkValidation(
+      NetworkMonitor::ValidationReason reason);
 
   void set_unreliable(bool unreliable) { unreliable_ = unreliable; }
   bool unreliable() const { return unreliable_; }

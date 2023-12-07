@@ -4,6 +4,7 @@
 
 #include "shill/network/network_monitor.h"
 
+#include <memory>
 #include <utility>
 
 #include <base/functional/bind.h>
@@ -96,8 +97,12 @@ bool NetworkMonitor::Start(ValidationReason reason,
   return true;
 }
 
-void NetworkMonitor::Stop() {
+bool NetworkMonitor::Stop() {
+  if (!portal_detector_) {
+    return false;
+  }
   portal_detector_.reset();
+  return true;
 }
 
 void NetworkMonitor::OnPortalDetectorResult(
@@ -108,6 +113,17 @@ void NetworkMonitor::OnPortalDetectorResult(
 void NetworkMonitor::set_portal_detector_for_testing(
     std::unique_ptr<PortalDetector> portal_detector) {
   portal_detector_ = std::move(portal_detector);
+}
+
+std::unique_ptr<NetworkMonitor> NetworkMonitorFactory::Create(
+    EventDispatcher* dispatcher,
+    std::string_view interface,
+    PortalDetector::ProbingConfiguration probing_configuration,
+    NetworkMonitor::ResultCallback result_callback,
+    std::string_view logging_tag) {
+  return std::make_unique<NetworkMonitor>(
+      dispatcher, interface, probing_configuration, std::move(result_callback),
+      logging_tag);
 }
 
 std::ostream& operator<<(std::ostream& stream,

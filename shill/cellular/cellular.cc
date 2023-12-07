@@ -59,6 +59,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
+#include "shill/network/network_monitor.h"
 #include "shill/ppp_daemon.h"
 #include "shill/profile.h"
 #include "shill/service.h"
@@ -1152,7 +1153,7 @@ void Cellular::UpdateSecondaryServices() {
 }
 
 void Cellular::OnNetworkValidationResult(int interface_index,
-                                         const PortalDetector::Result& result) {
+                                         const NetworkMonitor::Result& result) {
   SLOG(1) << LoggingTag() << ": " << __func__;
 
   Device::OnNetworkValidationResult(interface_index, result);
@@ -1763,7 +1764,7 @@ void Cellular::CompleteTetheringOperation(const Error& error) {
     // have been connected.
     CHECK(apn_connected);
     multiplexed_tethering_pdn_->network()->StartPortalDetection(
-        Network::ValidationReason::kNetworkConnectionUpdate);
+        NetworkMonitor::ValidationReason::kNetworkConnectionUpdate);
   }
 
   // Report success.

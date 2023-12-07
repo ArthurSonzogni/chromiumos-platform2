@@ -20,7 +20,7 @@
 
 #include "shill/mac_address.h"
 #include "shill/network/network.h"
-#include "shill/portal_detector.h"
+#include "shill/network/network_monitor.h"
 #include "shill/refptr_types.h"
 #include "shill/store/property_store.h"
 #include "shill/technology.h"
@@ -187,7 +187,7 @@ class TetheringManager : public Network::EventHandler {
   // Network::EventHandler for more details. TetheringManager only cares about
   // NetworkValidationResult NetworkDestroyed and Networkstopped event.
   void OnNetworkValidationResult(int interface_index,
-                                 const PortalDetector::Result& result) override;
+                                 const NetworkMonitor::Result& result) override;
   void OnNetworkStopped(int interface_index, bool is_failure) override;
   void OnNetworkDestroyed(int interface_index) override;
   // TetheringManager does nothing for the below network events.

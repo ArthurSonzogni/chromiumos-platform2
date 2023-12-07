@@ -53,7 +53,7 @@ class MockEthernetService : public EthernetService {
   MOCK_METHOD(bool, IsPortalDetectionDisabled, (), (const, override));
   MOCK_METHOD(bool,
               UpdateNetworkValidation,
-              (Network::ValidationReason),
+              (NetworkMonitor::ValidationReason),
               (override));
 };
 

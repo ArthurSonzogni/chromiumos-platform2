@@ -255,8 +255,8 @@ bool Ethernet::Save(StoreInterface* storage) {
 
 void Ethernet::ConnectTo(EthernetService* service) {
   CHECK(service_) << "Service should not be null";
-  CHECK(service == service_.get()) << "Ethernet was asked to connect the "
-                                   << "wrong service?";
+  CHECK(service == service_.get())
+      << "Ethernet was asked to connect the wrong service?";
   if (!link_up_) {
     return;
   }
@@ -285,8 +285,8 @@ std::string Ethernet::DeviceStorageSuffix() const {
 
 void Ethernet::DisconnectFrom(EthernetService* service) {
   CHECK(service_) << "Service should not be null";
-  CHECK(service == service_.get()) << "Ethernet was asked to disconnect the "
-                                   << "wrong service?";
+  CHECK(service == service_.get())
+      << "Ethernet was asked to disconnect the wrong service?";
   DropConnection();
 }
 
@@ -918,7 +918,7 @@ void Ethernet::OnNeighborReachabilityEvent(
     // case some other mechanism has already triggered a revalidation which
     // would otherwise get cancelled.
     selected_service()->UpdateNetworkValidation(
-        Network::ValidationReason::kEthernetGatewayUnreachable);
+        NetworkMonitor::ValidationReason::kEthernetGatewayUnreachable);
   }
 
   // When a reachability success event is received and the connection is thought
@@ -931,7 +931,7 @@ void Ethernet::OnNeighborReachabilityEvent(
     // Validation should be confirmed as soon as possible. If Internet is
     // validation is expected to be short so a restart is always forced.
     selected_service()->UpdateNetworkValidation(
-        Network::ValidationReason::kEthernetGatewayReachable);
+        NetworkMonitor::ValidationReason::kEthernetGatewayReachable);
   }
 }
 

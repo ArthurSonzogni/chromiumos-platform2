@@ -27,6 +27,8 @@
 #include "shill/error.h"
 #include "shill/mac_address.h"
 #include "shill/manager.h"
+#include "shill/network/network_monitor.h"
+#include "shill/portal_detector.h"
 #include "shill/profile.h"
 #include "shill/store/property_accessor.h"
 #include "shill/technology.h"
@@ -1380,7 +1382,7 @@ bool TetheringManager::SetExperimentalTetheringFunctionality(const bool& value,
 }
 
 void TetheringManager::OnNetworkValidationResult(
-    int interface_index, const PortalDetector::Result& result) {
+    int interface_index, const NetworkMonitor::Result& result) {
   DCHECK(upstream_network_);
   if (state_ == TetheringState::kTetheringStarting) {
     if (!IsUpstreamNetworkReady()) {

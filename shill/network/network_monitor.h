@@ -67,13 +67,38 @@ class NetworkMonitor {
   NetworkMonitor(const NetworkMonitor&) = delete;
   NetworkMonitor& operator=(const NetworkMonitor&) = delete;
 
-  // Starts a new validation attempt.
+  // Starts or restarts network validation and reschedule a network validation
+  // attempt if necessary. Depending on the current stage of network validation
+  // (rows) and |reason| (columns), different effects are possible as summarized
+  // in the table:
+  //
+  //             |  IP provisioning   |  schedule attempt  |      do not
+  //             |       event        |    immediately     |     reschedule
+  // ----------- +--------------------+--------------------+--------------------
+  //  validation |                    |                    |
+  //   stopped   |         a)         |         a)         |         a)
+  // ------------+--------------------+--------------------+--------------------
+  //   attempt   |                    |                    |
+  //  scheduled  |         a)         |         b)         |         d)
+  // ------------+--------------------+--------------------+--------------------
+  //  currently  |                    |                    |
+  //   running   |         a)         |         c)         |         d)
+  // ------------+--------------------+--------------------+--------------------
+  //   a) reinitialize |portal_detector_| & start a network validation attempt
+  //      immediately.
+  //   b) reschedule the next network validation attempt to run immediately.
+  //   c) reschedule another network validation attempt immediately after the
+  //      current one if the result is not conclusive (the result was not
+  //      kInternetConnectivity or kPortalRedirect).
+  //   e) do nothing, wait for the network validation attempt scheduled next to
+  //      run.
   mockable bool Start(ValidationReason reason,
                       net_base::IPFamily ip_family,
                       const std::vector<net_base::IPAddress>& dns_list);
 
-  // Stops the current attempt.
-  mockable void Stop();
+  // Stops the current attempt. No-op and returns false if no attempt is
+  // running.
+  mockable bool Stop();
 
   // Injects the PortalDetector for testing.
   void set_portal_detector_for_testing(
@@ -92,6 +117,19 @@ class NetworkMonitor {
   std::unique_ptr<PortalDetector> portal_detector_;
 
   base::WeakPtrFactory<NetworkMonitor> weak_ptr_factory_{this};
+};
+
+class NetworkMonitorFactory {
+ public:
+  NetworkMonitorFactory() = default;
+  virtual ~NetworkMonitorFactory() = default;
+
+  mockable std::unique_ptr<NetworkMonitor> Create(
+      EventDispatcher* dispatcher,
+      std::string_view interface,
+      PortalDetector::ProbingConfiguration probing_configuration,
+      NetworkMonitor::ResultCallback result_callback,
+      std::string_view logging_tag = "");
 };
 
 std::ostream& operator<<(std::ostream& stream,

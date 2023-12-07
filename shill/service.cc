@@ -44,6 +44,7 @@
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/network/network.h"
+#include "shill/network/network_monitor.h"
 #include "shill/portal_detector.h"
 #include "shill/profile.h"
 #include "shill/refptr_types.h"
@@ -1311,7 +1312,8 @@ std::string Service::GetEapPassphrase(Error* error) {
 
 void Service::RequestPortalDetection(Error* error) {
   LOG(INFO) << log_name() << ": " << __func__;
-  if (!UpdateNetworkValidation(Network::ValidationReason::kDBusRequest)) {
+  if (!UpdateNetworkValidation(
+          NetworkMonitor::ValidationReason::kDBusRequest)) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kOperationFailed,
         "Failed to restart network validation for Service " + log_name());
@@ -2254,7 +2256,8 @@ bool Service::SetCheckPortal(const std::string& check_portal, Error* error) {
   LOG(INFO) << log_name() << ": " << __func__ << ": " << check_portal_ << " -> "
             << check_portal;
   check_portal_ = check_portal;
-  UpdateNetworkValidation(Network::ValidationReason::kServicePropertyUpdate);
+  UpdateNetworkValidation(
+      NetworkMonitor::ValidationReason::kServicePropertyUpdate);
   return true;
 }
 
@@ -2353,7 +2356,8 @@ bool Service::SetProxyConfig(const std::string& proxy_config, Error* error) {
   LOG(INFO)
       << log_name()
       << ": Restarting network validation after proxy configuration change";
-  UpdateNetworkValidation(Network::ValidationReason::kServicePropertyUpdate);
+  UpdateNetworkValidation(
+      NetworkMonitor::ValidationReason::kServicePropertyUpdate);
   adaptor_->EmitStringChanged(kProxyConfigProperty, proxy_config_);
   return true;
 }
@@ -2641,7 +2645,7 @@ void Service::AddServiceStateTransitionTimer(const std::string& histogram_name,
   service_metrics_->timers.push_back(std::move(timer));
 }
 
-bool Service::UpdateNetworkValidation(Network::ValidationReason reason) {
+bool Service::UpdateNetworkValidation(NetworkMonitor::ValidationReason reason) {
   if (!IsConnected()) {
     LOG(INFO) << log_name() << ": " << __func__
               << ": Service was not connected.";
@@ -2677,7 +2681,7 @@ bool Service::UpdateNetworkValidation(Network::ValidationReason reason) {
 }
 
 void Service::NetworkEventHandler::OnNetworkValidationResult(
-    int interface_index, const PortalDetector::Result& result) {
+    int interface_index, const NetworkMonitor::Result& result) {
   if (!service_->IsConnected()) {
     // A race can happen if the Service is currently disconnecting.
     LOG(WARNING) << service_->log_name() << ": "

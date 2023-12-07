@@ -15,6 +15,7 @@
 #include <base/containers/fixed_flat_map.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/notreached.h>
 #include <base/observer_list.h>
 #include <base/strings/string_util.h>
@@ -36,6 +37,7 @@
 #include "shill/network/compound_network_config.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/network_applier.h"
+#include "shill/network/network_monitor.h"
 #include "shill/network/slaac_controller.h"
 #include "shill/service.h"
 #include "shill/technology.h"
@@ -53,28 +55,6 @@ namespace {
 constexpr char kAndroidMeteredHotspotVendorOption[] = "ANDROID_METERED";
 }  // namespace
 
-// static
-bool Network::ShouldResetNetworkValidation(Network::ValidationReason reason) {
-  // Only reset PortalDetector if there was an IP provisioning event.
-  return reason == Network::ValidationReason::kNetworkConnectionUpdate;
-}
-
-// static
-bool Network::ShouldScheduleNetworkValidationImmediately(
-    ValidationReason reason) {
-  switch (reason) {
-    case Network::ValidationReason::kDBusRequest:
-    case Network::ValidationReason::kEthernetGatewayReachable:
-    case Network::ValidationReason::kNetworkConnectionUpdate:
-    case Network::ValidationReason::kServiceReorder:
-      return true;
-    case Network::ValidationReason::kEthernetGatewayUnreachable:
-    case Network::ValidationReason::kManagerPropertyUpdate:
-    case Network::ValidationReason::kServicePropertyUpdate:
-      return false;
-  }
-}
-
 Network::Network(int interface_index,
                  const std::string& interface_name,
                  Technology technology,
@@ -84,7 +64,8 @@ Network::Network(int interface_index,
                  Metrics* metrics,
                  patchpanel::Client* patchpanel_client,
                  NetworkApplier* network_applier,
-                 Resolver* resolver)
+                 Resolver* resolver,
+                 std::unique_ptr<NetworkMonitorFactory> network_monitor_factory)
     : interface_index_(interface_index),
       interface_name_(interface_name),
       technology_(technology),
@@ -92,6 +73,7 @@ Network::Network(int interface_index,
       fixed_ip_params_(fixed_ip_params),
       proc_fs_(std::make_unique<net_base::ProcFsStub>(interface_name_)),
       config_(logging_tag_),
+      network_monitor_factory_(std::move(network_monitor_factory)),
       control_interface_(control_interface),
       dispatcher_(dispatcher),
       metrics_(metrics),
@@ -126,6 +108,10 @@ void Network::Start(const Network::StartOptions& opts) {
       std::make_unique<ValidationLog>(technology_, metrics_);
 
   probing_configuration_ = opts.probing_configuration;
+  network_monitor_ = network_monitor_factory_->Create(
+      dispatcher_, interface_name_, probing_configuration_,
+      base::BindRepeating(&Network::OnPortalDetectorResult, AsWeakPtr()),
+      logging_tag_);
 
   // TODO(b/232177767): Log the StartOptions and other parameters.
   if (state_ != State::kIdle) {
@@ -282,6 +268,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
 
   network_validation_result_.reset();
   StopPortalDetection();
+  network_monitor_.reset();
   StopConnectionDiagnostics();
   StopNetworkValidationLog();
 
@@ -774,83 +761,33 @@ void Network::OnNeighborReachabilityEvent(
   }
 }
 
-bool Network::StartPortalDetection(ValidationReason reason) {
+bool Network::StartPortalDetection(NetworkMonitor::ValidationReason reason) {
   if (!IsConnected()) {
-    LOG(INFO) << *this << " " << __func__ << "(" << reason
+    LOG(INFO) << *this << ": " << __func__ << "(" << reason
               << "): Cannot start portal detection: Network is not connected";
     return false;
   }
 
-  // Create a new PortalDetector instance and start the first trial if portal
-  // detection:
-  //   - has not been initialized yet,
-  //   - or has stopped,
-  //   - or should be reset immediately entirely.
-  if (!portal_detector_ || ShouldResetNetworkValidation(reason)) {
-    auto family = GetNetworkValidationIPFamily();
-    if (!family) {
-      LOG(ERROR) << *this << " " << __func__ << "(" << reason
-                 << "): Cannot start portal detection: No valid IP address";
-      portal_detector_.reset();
-      return false;
-    }
-    auto dns_list = GetNetworkValidationDNSServers(*family);
-    if (dns_list.empty()) {
-      LOG(ERROR) << *this << " " << __func__ << "(" << reason
-                 << "): Cannot start portal detection: No DNS servers";
-      portal_detector_.reset();
-      return false;
-    }
-    portal_detector_ = CreatePortalDetector();
-    portal_detector_->Start(interface_name_, *family, dns_list, logging_tag_);
-    LOG(INFO) << *this << " " << __func__ << "(" << reason
-              << "): Portal detection started.";
-    for (auto& ev : event_handlers_) {
-      ev.OnNetworkValidationStart(interface_index_);
-    }
-    return true;
-  }
-
-  // Otherwise, if the validation reason requires an immediate restart, reset
-  // the delay scheduled between attempts.
-  if (ShouldScheduleNetworkValidationImmediately(reason)) {
-    portal_detector_->ResetAttemptDelays();
-  }
-
-  // If portal detection is not running, reschedule the next a trial.
-  if (portal_detector_->IsInProgress()) {
-    LOG(INFO) << *this << " " << __func__ << "(" << reason
-              << "): Portal detection is already running.";
-    return true;
-  }
-
-  LOG(INFO) << *this << " " << __func__ << "(" << reason
-            << "): Restarting portal detection.";
-  return RestartPortalDetection();
-}
-
-bool Network::RestartPortalDetection() {
-  if (!portal_detector_) {
-    LOG(ERROR) << *this << ": Portal detection was not started, cannot restart";
-    return false;
-  }
-  auto family = GetNetworkValidationIPFamily();
+  const std::optional<net_base::IPFamily> family =
+      GetNetworkValidationIPFamily();
   if (!family) {
-    LOG(ERROR) << *this
-               << ": Cannot restart portal detection: No valid IP address";
-    portal_detector_.reset();
+    LOG(ERROR) << *this << ": " << __func__ << "(" << reason
+               << "): Cannot start portal detection: No valid IP address";
     return false;
   }
-  auto dns_list = GetNetworkValidationDNSServers(*family);
+  const std::vector<net_base::IPAddress> dns_list =
+      GetNetworkValidationDNSServers(*family);
   if (dns_list.empty()) {
-    LOG(ERROR) << *this << ": Cannot restart portal detection: No DNS servers";
-    portal_detector_.reset();
+    LOG(ERROR) << *this << ": " << __func__ << "(" << reason
+               << "): Cannot start portal detection: No DNS servers";
     return false;
   }
-  portal_detector_->Start(interface_name_, *family, dns_list, logging_tag_);
-  // TODO(b/216351118): this ignores the portal detection retry delay. The
-  // callback should be triggered when the next attempt starts, not when it
-  // is scheduled.
+  if (!network_monitor_->Start(reason, *family, dns_list)) {
+    LOG(ERROR) << *this << ": " << __func__ << "(" << reason
+               << "): Failed to start portal detection";
+    return false;
+  }
+
   for (auto& ev : event_handlers_) {
     ev.OnNetworkValidationStart(interface_index_);
   }
@@ -858,23 +795,11 @@ bool Network::RestartPortalDetection() {
 }
 
 void Network::StopPortalDetection() {
-  if (IsPortalDetectionInProgress()) {
-    LOG(INFO) << *this << ": Portal detection stopped.";
+  if (network_monitor_ && network_monitor_->Stop()) {
     for (auto& ev : event_handlers_) {
       ev.OnNetworkValidationStop(interface_index_);
     }
   }
-  portal_detector_.reset();
-}
-
-bool Network::IsPortalDetectionInProgress() const {
-  return portal_detector_ && portal_detector_->IsInProgress();
-}
-
-std::unique_ptr<PortalDetector> Network::CreatePortalDetector() {
-  return std::make_unique<PortalDetector>(
-      dispatcher_, probing_configuration_,
-      base::BindRepeating(&Network::OnPortalDetectorResult, AsWeakPtr()));
 }
 
 std::optional<net_base::IPFamily> Network::GetNetworkValidationIPFamily()
@@ -900,7 +825,7 @@ std::vector<net_base::IPAddress> Network::GetNetworkValidationDNSServers(
   return dns_list;
 }
 
-void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
+void Network::OnPortalDetectorResult(const NetworkMonitor::Result& result) {
   std::string previous_validation_state = "unevaluated";
   if (network_validation_result_) {
     previous_validation_state = PortalDetector::ValidationStateToString(
@@ -1213,7 +1138,7 @@ Network::ValidationLog::ValidationLog(Technology technology, Metrics* metrics)
       metrics_(metrics),
       connection_start_(base::TimeTicks::Now()) {}
 
-void Network::ValidationLog::AddResult(const PortalDetector::Result& result) {
+void Network::ValidationLog::AddResult(const NetworkMonitor::Result& result) {
   // Make sure that the total memory taken by ValidationLog is bounded.
   static constexpr size_t kValidationLogMaxSize = 128;
   if (results_.size() < kValidationLogMaxSize) {
@@ -1325,26 +1250,6 @@ void Network::ValidationLog::RecordMetrics() const {
 
 std::ostream& operator<<(std::ostream& stream, const Network& network) {
   return stream << network.logging_tag();
-}
-
-std::ostream& operator<<(std::ostream& stream,
-                         Network::ValidationReason reason) {
-  switch (reason) {
-    case Network::ValidationReason::kNetworkConnectionUpdate:
-      return stream << "NetworkConnectionUpdate";
-    case Network::ValidationReason::kServiceReorder:
-      return stream << "ServiceReorder";
-    case Network::ValidationReason::kServicePropertyUpdate:
-      return stream << "ServicePropertyUpdate";
-    case Network::ValidationReason::kManagerPropertyUpdate:
-      return stream << "ManagerPropertyUpdate";
-    case Network::ValidationReason::kDBusRequest:
-      return stream << "DbusRequest";
-    case Network::ValidationReason::kEthernetGatewayUnreachable:
-      return stream << "EthernetGatewayUnreachable";
-    case Network::ValidationReason::kEthernetGatewayReachable:
-      return stream << "EthernetGatewayReachable";
-  }
 }
 
 }  // namespace shill

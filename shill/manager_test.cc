@@ -2408,10 +2408,10 @@ TEST_F(ManagerTest, SetCheckPortalList) {
 
   EXPECT_CALL(*mock_service0,
               UpdateNetworkValidation(
-                  Network::ValidationReason::kManagerPropertyUpdate));
+                  NetworkMonitor::ValidationReason::kManagerPropertyUpdate));
   EXPECT_CALL(*mock_service1,
               UpdateNetworkValidation(
-                  Network::ValidationReason::kManagerPropertyUpdate));
+                  NetworkMonitor::ValidationReason::kManagerPropertyUpdate));
   EXPECT_CALL(*mock_service2, UpdateNetworkValidation).Times(0);
 
   Error error;
@@ -2429,10 +2429,12 @@ TEST_F(ManagerTest, RecheckPortal) {
   ON_CALL(*mock_service2, IsConnected(_)).WillByDefault(Return(true));
 
   EXPECT_CALL(*mock_service0, UpdateNetworkValidation).Times(0);
-  EXPECT_CALL(*mock_service1,
-              UpdateNetworkValidation(Network::ValidationReason::kDBusRequest));
-  EXPECT_CALL(*mock_service2,
-              UpdateNetworkValidation(Network::ValidationReason::kDBusRequest));
+  EXPECT_CALL(
+      *mock_service1,
+      UpdateNetworkValidation(NetworkMonitor::ValidationReason::kDBusRequest));
+  EXPECT_CALL(
+      *mock_service2,
+      UpdateNetworkValidation(NetworkMonitor::ValidationReason::kDBusRequest));
 
   manager()->RecheckPortal(nullptr);
 }

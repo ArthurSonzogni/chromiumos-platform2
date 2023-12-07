@@ -46,6 +46,7 @@
 #include "shill/mock_service.h"
 #include "shill/mock_time.h"
 #include "shill/network/mock_network.h"
+#include "shill/network/network_monitor.h"
 #include "shill/portal_detector.h"
 #include "shill/service_property_change_test.h"
 #include "shill/service_under_test.h"
@@ -1444,7 +1445,7 @@ TEST_F(ServiceTest, SetCheckPortal) {
   {
     EXPECT_CALL(*network,
                 StartPortalDetection(
-                    Network::ValidationReason::kServicePropertyUpdate));
+                    NetworkMonitor::ValidationReason::kServicePropertyUpdate));
     Error error;
     service_->SetCheckPortal("true", &error);
     EXPECT_TRUE(error.IsSuccess());
@@ -1455,7 +1456,7 @@ TEST_F(ServiceTest, SetCheckPortal) {
   {
     EXPECT_CALL(*network,
                 StartPortalDetection(
-                    Network::ValidationReason::kServicePropertyUpdate));
+                    NetworkMonitor::ValidationReason::kServicePropertyUpdate));
     Error error;
     service_->SetCheckPortal("auto", &error);
     EXPECT_TRUE(error.IsSuccess());
@@ -1502,7 +1503,7 @@ TEST_F(ServiceTest, SetProxyConfig) {
   {
     EXPECT_CALL(*network,
                 StartPortalDetection(
-                    Network::ValidationReason::kServicePropertyUpdate));
+                    NetworkMonitor::ValidationReason::kServicePropertyUpdate));
     Error error;
     service_->SetProxyConfig("{\"mode\":\"direct\"}", &error);
     EXPECT_TRUE(error.IsSuccess());
@@ -1513,7 +1514,7 @@ TEST_F(ServiceTest, SetProxyConfig) {
   {
     EXPECT_CALL(*network,
                 StartPortalDetection(
-                    Network::ValidationReason::kServicePropertyUpdate));
+                    NetworkMonitor::ValidationReason::kServicePropertyUpdate));
     Error error;
     service_->SetProxyConfig("", &error);
     EXPECT_TRUE(error.IsSuccess());
@@ -2497,8 +2498,8 @@ TEST_F(ServiceTest, RequestPortalDetection) {
   service_->AttachNetwork(network->AsWeakPtr());
   EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled(_))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*network,
-              StartPortalDetection(Network::ValidationReason::kDBusRequest))
+  EXPECT_CALL(*network, StartPortalDetection(
+                            NetworkMonitor::ValidationReason::kDBusRequest))
       .WillOnce(Return(true));
   EXPECT_FALSE(service_->IsPortalDetectionDisabled());
 
@@ -2844,7 +2845,7 @@ TEST_F(ServiceTest, PortalDetectionResult_AfterDisconnection) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.http_result = PortalDetector::HTTPProbeResult::kSuccess;
   result.http_status_code = 204;
   result.num_attempts = 1;
@@ -2870,7 +2871,7 @@ TEST_F(ServiceTest, PortalDetectionResult_Online) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.http_result = PortalDetector::HTTPProbeResult::kSuccess;
   result.http_status_code = 204;
   result.num_attempts = 1;
@@ -2893,7 +2894,7 @@ TEST_F(ServiceTest, PortalDetectionResult_OnlineSecondTry) {
   service_->AttachNetwork(network->AsWeakPtr());
   service_->increment_portal_detection_count_for_testing();
 
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.http_result = PortalDetector::HTTPProbeResult::kSuccess;
   result.http_status_code = 204;
   result.num_attempts = 1;
@@ -2917,7 +2918,7 @@ TEST_F(ServiceTest, PortalDetectionResult_ProbeConnectionFailure) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.http_result = PortalDetector::HTTPProbeResult::kConnectionFailure;
   result.http_status_code = 0;
   result.num_attempts = 1;
@@ -2940,7 +2941,7 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSFailure) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.http_result = PortalDetector::HTTPProbeResult::kDNSFailure;
   result.http_status_code = 0;
   result.https_error = HttpRequest::Error::kDNSFailure;
@@ -2964,7 +2965,7 @@ TEST_F(ServiceTest, PortalDetectionResult_DNSTimeout) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.http_result = PortalDetector::HTTPProbeResult::kDNSTimeout;
   result.http_status_code = 0;
   result.https_error = HttpRequest::Error::kDNSTimeout;
@@ -2988,7 +2989,7 @@ TEST_F(ServiceTest, PortalDetectionResult_Redirect) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.http_result = PortalDetector::HTTPProbeResult::kPortalRedirect;
   result.http_status_code = 302;
   result.redirect_url =
@@ -3015,7 +3016,7 @@ TEST_F(ServiceTest, PortalDetectionResult_RedirectNoUrl) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.http_result = PortalDetector::HTTPProbeResult::kPortalInvalidRedirect;
   result.http_status_code = 302;
   result.num_attempts = 1;
@@ -3038,7 +3039,7 @@ TEST_F(ServiceTest, PortalDetectionResult_PortalSuspected) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.http_result = PortalDetector::HTTPProbeResult::kPortalSuspected;
   result.http_status_code = 200;
   result.http_content_length = 123;
@@ -3063,7 +3064,7 @@ TEST_F(ServiceTest, PortalDetectionResult_NoConnectivity) {
   auto network = std::make_unique<MockNetwork>(1, "wlan0", Technology::kWiFi);
   service_->AttachNetwork(network->AsWeakPtr());
 
-  PortalDetector::Result result;
+  NetworkMonitor::Result result;
   result.http_result = PortalDetector::HTTPProbeResult::kNoResult;
   result.https_error = HttpRequest::Error::kConnectionFailure;
   result.num_attempts = 1;
@@ -3087,7 +3088,7 @@ TEST_F(ServiceTest, UpdateNetworkValidationWhenServiceNotConnected) {
 
   EXPECT_FALSE(service_->IsPortalDetectionDisabled());
   EXPECT_FALSE(service_->UpdateNetworkValidation(
-      Network::ValidationReason::kServicePropertyUpdate));
+      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
   EXPECT_EQ(Service::kStateIdle, service_->state());
 }
 
@@ -3098,7 +3099,7 @@ TEST_F(ServiceTest, UpdateNetworkValidationWhenNoAttachedNetwork) {
 
   EXPECT_FALSE(service_->IsPortalDetectionDisabled());
   EXPECT_FALSE(service_->UpdateNetworkValidation(
-      Network::ValidationReason::kServicePropertyUpdate));
+      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
   EXPECT_EQ(Service::kStateConnected, service_->state());
 }
 
@@ -3113,7 +3114,7 @@ TEST_F(ServiceTest, UpdateNetworkValidationWhenDisabledByTechnology) {
   EXPECT_CALL(*network, StartPortalDetection).Times(0);
   EXPECT_TRUE(service_->IsPortalDetectionDisabled());
   EXPECT_FALSE(service_->UpdateNetworkValidation(
-      Network::ValidationReason::kServicePropertyUpdate));
+      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
   EXPECT_EQ(Service::kStateOnline, service_->state());
 }
 
@@ -3130,7 +3131,7 @@ TEST_F(ServiceTest, UpdateNetworkValidationWhenDisabledByProxy) {
   EXPECT_CALL(*network, StartPortalDetection).Times(0);
   EXPECT_TRUE(service_->IsPortalDetectionDisabled());
   EXPECT_FALSE(service_->UpdateNetworkValidation(
-      Network::ValidationReason::kServicePropertyUpdate));
+      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
   EXPECT_EQ(Service::kStateOnline, service_->state());
 }
 
@@ -3147,7 +3148,7 @@ TEST_F(ServiceTest, UpdateNetworkValidationWhenDisabledByCheckPortal) {
   EXPECT_CALL(*network, StartPortalDetection).Times(0);
   EXPECT_TRUE(service_->IsPortalDetectionDisabled());
   EXPECT_FALSE(service_->UpdateNetworkValidation(
-      Network::ValidationReason::kServicePropertyUpdate));
+      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
   EXPECT_EQ(Service::kStateOnline, service_->state());
 }
 
@@ -3161,12 +3162,12 @@ TEST_F(ServiceTest, UpdateNetworkValidationSucceeds) {
 
   EXPECT_CALL(*network, StartPortalDetection).WillOnce(Return(true));
   EXPECT_TRUE(service_->UpdateNetworkValidation(
-      Network::ValidationReason::kServicePropertyUpdate));
+      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
   Mock::VerifyAndClearExpectations(network.get());
 
   EXPECT_CALL(*network, StartPortalDetection).WillOnce(Return(true));
   EXPECT_TRUE(service_->UpdateNetworkValidation(
-      Network::ValidationReason::kServicePropertyUpdate));
+      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
   EXPECT_EQ(Service::kStateConnected, service_->state());
 }
 
@@ -3180,7 +3181,7 @@ TEST_F(ServiceTest, UpdateNetworkValidationFails) {
 
   EXPECT_CALL(*network, StartPortalDetection).WillOnce(Return(false));
   EXPECT_FALSE(service_->UpdateNetworkValidation(
-      Network::ValidationReason::kServicePropertyUpdate));
+      NetworkMonitor::ValidationReason::kServicePropertyUpdate));
   EXPECT_EQ(Service::kStateNoConnectivity, service_->state());
 }
 

@@ -13,4 +13,8 @@ MockNetworkMonitor::MockNetworkMonitor()
 
 MockNetworkMonitor::~MockNetworkMonitor() = default;
 
+MockNetworkMonitorFactory::MockNetworkMonitorFactory() = default;
+
+MockNetworkMonitorFactory::~MockNetworkMonitorFactory() = default;
+
 }  // namespace shill

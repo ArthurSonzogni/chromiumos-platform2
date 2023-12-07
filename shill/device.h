@@ -29,6 +29,7 @@
 #include "shill/metrics.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/network.h"
+#include "shill/network/network_monitor.h"
 #include "shill/portal_detector.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
@@ -148,7 +149,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   //   details see Network::StartPortalDetection.
   // If the Service is connected and network validation should not be running,
   // it is stopped and the connection state of the Service is set to "online".
-  mockable bool UpdatePortalDetector(Network::ValidationReason reason);
+  mockable bool UpdatePortalDetector(NetworkMonitor::ValidationReason reason);
 
   const RpcIdentifier& GetRpcIdentifier() const;
   std::string GetStorageIdentifier() const;
@@ -284,7 +285,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // class does nothing.
   void OnNetworkValidationStop(int interface_index) override;
   void OnNetworkValidationResult(int interface_index,
-                                 const PortalDetector::Result& result) override;
+                                 const NetworkMonitor::Result& result) override;
   void OnNetworkDestroyed(int interface_index) override;
 
   void set_selected_service_for_testing(ServiceRefPtr service) {
