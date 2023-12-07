@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <absl/cleanup/cleanup.h>
+#include <absl/strings/numbers.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_path.h>
@@ -4477,6 +4478,24 @@ void UserDataAuth::RestoreDeviceKeyWithSession(
             .Wrap(std::move(mount_status).err_status());
     ReplyWithError(std::move(on_done), reply, status);
     return;
+  }
+
+  // Read ID for the suspend request key was evicted on.
+  std::string eviction_id_raw;
+  int eviction_id = -1;
+  if (!platform_->ReadFileToString(base::FilePath(kEncDeviceEvictedPath),
+                                   &eviction_id_raw) ||
+      !absl::SimpleAtoi(eviction_id_raw, &eviction_id)) {
+    LOG(ERROR) << "Couldn't read " << kEncDeviceEvictedPath;
+  }
+
+  // Send a signal to power_manager to coordinate when to thaw processes
+  // that touch the user's encrypted home directory and on what
+  // suspend request the key was evicted.
+  user_data_auth::EvictedKeyRestored key_restored_signal;
+  key_restored_signal.set_eviction_id(eviction_id);
+  if (evicted_key_restored_callback_) {
+    evicted_key_restored_callback_.Run(key_restored_signal);
   }
 
   // Since key was restored, delete record of the suspend attempt key was
