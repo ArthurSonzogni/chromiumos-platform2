@@ -61,8 +61,20 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
   void SuspendDone(const std::vector<uint8_t>& serialized_proto);
   void DarkSuspendImminent(const std::vector<uint8_t>& serialized_proto);
 
-  std::optional<int> RegisterSuspendDelayInternal(
-      bool is_dark, base::TimeDelta timeout, const std::string& description);
+  void RegisterSuspendDelayInternal(
+      bool is_dark,
+      base::TimeDelta timeout,
+      const std::string& description,
+      base::OnceCallback<void(std::optional<int>)> callback);
+  void OnRegisterSuspendDelayResponse(
+      bool is_dark,
+      base::OnceCallback<void(std::optional<int>)> callback,
+      const std::vector<uint8_t>& serialized_reply);
+  void OnRegisterSuspendDelayError(
+      bool is_dark,
+      base::OnceCallback<void(std::optional<int>)> callback,
+      brillo::Error* error);
+
   bool UnregisterSuspendDelayInternal(bool is_dark, int delay_id);
   bool ReportSuspendReadinessInternal(bool is_dark,
                                       int delay_id,

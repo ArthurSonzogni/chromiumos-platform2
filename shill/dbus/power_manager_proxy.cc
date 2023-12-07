@@ -90,8 +90,8 @@ void PowerManagerProxy::RegisterSuspendDelay(
     std::move(callback).Run(std::nullopt);
     return;
   }
-  std::move(callback).Run(
-      RegisterSuspendDelayInternal(false, timeout, description));
+  RegisterSuspendDelayInternal(false, timeout, description,
+                               std::move(callback));
 }
 
 bool PowerManagerProxy::UnregisterSuspendDelay(int delay_id) {
@@ -119,8 +119,7 @@ void PowerManagerProxy::RegisterDarkSuspendDelay(
     std::move(callback).Run(std::nullopt);
     return;
   }
-  std::move(callback).Run(
-      RegisterSuspendDelayInternal(true, timeout, description));
+  RegisterSuspendDelayInternal(true, timeout, description, std::move(callback));
 }
 
 bool PowerManagerProxy::UnregisterDarkSuspendDelay(int delay_id) {
@@ -183,8 +182,11 @@ void PowerManagerProxy::ChangeRegDomain(
           domain));
 }
 
-std::optional<int> PowerManagerProxy::RegisterSuspendDelayInternal(
-    bool is_dark, base::TimeDelta timeout, const std::string& description) {
+void PowerManagerProxy::RegisterSuspendDelayInternal(
+    bool is_dark,
+    base::TimeDelta timeout,
+    const std::string& description,
+    base::OnceCallback<void(std::optional<int>)> callback) {
   const std::string is_dark_arg = (is_dark ? "dark=true" : "dark=false");
   LOG(INFO) << __func__ << "(" << timeout.InMilliseconds() << ", "
             << is_dark_arg << ")";
@@ -195,27 +197,50 @@ std::optional<int> PowerManagerProxy::RegisterSuspendDelayInternal(
   std::vector<uint8_t> serialized_request;
   CHECK(SerializeProtocolBuffer(request_proto, &serialized_request));
 
-  std::vector<uint8_t> serialized_reply;
-  brillo::ErrorPtr error;
+  auto [cb1, cb2] = base::SplitOnceCallback(std::move(callback));
   if (is_dark) {
-    proxy_->RegisterDarkSuspendDelay(serialized_request, &serialized_reply,
-                                     &error);
+    proxy_->RegisterDarkSuspendDelayAsync(
+        serialized_request,
+        base::BindOnce(&PowerManagerProxy::OnRegisterSuspendDelayResponse,
+                       weak_factory_.GetWeakPtr(), /* is_dark = */ true,
+                       std::move(cb1)),
+        base::BindOnce(&PowerManagerProxy::OnRegisterSuspendDelayError,
+                       weak_factory_.GetWeakPtr(), /* is_dark = */ true,
+                       std::move(cb2)));
   } else {
-    proxy_->RegisterSuspendDelay(serialized_request, &serialized_reply, &error);
+    proxy_->RegisterSuspendDelayAsync(
+        serialized_request,
+        base::BindOnce(&PowerManagerProxy::OnRegisterSuspendDelayResponse,
+                       weak_factory_.GetWeakPtr(), /* is_dark = */ false,
+                       std::move(cb1)),
+        base::BindOnce(&PowerManagerProxy::OnRegisterSuspendDelayError,
+                       weak_factory_.GetWeakPtr(), /* is_dark = */ false,
+                       std::move(cb2)));
   }
-  if (error) {
-    LOG(ERROR) << "Failed to register suspend delay: " << error->GetCode()
-               << " " << error->GetMessage();
-    return std::nullopt;
-  }
+}
 
+void PowerManagerProxy::OnRegisterSuspendDelayResponse(
+    bool is_dark,
+    base::OnceCallback<void(std::optional<int>)> callback,
+    const std::vector<uint8_t>& serialized_reply) {
   power_manager::RegisterSuspendDelayReply reply_proto;
   if (!DeserializeProtocolBuffer(serialized_reply, &reply_proto)) {
     LOG(ERROR) << "Failed to register " << (is_dark ? "dark " : "")
                << "suspend delay.  Couldn't parse response.";
-    return std::nullopt;
+    std::move(callback).Run(std::nullopt);
+    return;
   }
-  return reply_proto.delay_id();
+  std::move(callback).Run(reply_proto.delay_id());
+}
+
+void PowerManagerProxy::OnRegisterSuspendDelayError(
+    bool is_dark,
+    base::OnceCallback<void(std::optional<int>)> callback,
+    brillo::Error* error) {
+  LOG(ERROR) << "Failed to register " << (is_dark ? "dark " : "")
+             << "suspend delay: " << error->GetCode() << " "
+             << error->GetMessage();
+  std::move(callback).Run(std::nullopt);
 }
 
 bool PowerManagerProxy::UnregisterSuspendDelayInternal(bool is_dark,
