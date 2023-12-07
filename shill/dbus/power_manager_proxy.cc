@@ -79,15 +79,13 @@ PowerManagerProxy::PowerManagerProxy(
 
 PowerManagerProxy::~PowerManagerProxy() = default;
 
-bool PowerManagerProxy::RegisterSuspendDelay(base::TimeDelta timeout,
-                                             const std::string& description,
-                                             int* delay_id_out) {
+std::optional<int> PowerManagerProxy::RegisterSuspendDelay(
+    base::TimeDelta timeout, const std::string& description) {
   if (!service_available_) {
     LOG(ERROR) << "PowerManager service not available";
-    return false;
+    return std::nullopt;
   }
-  return RegisterSuspendDelayInternal(false, timeout, description,
-                                      delay_id_out);
+  return RegisterSuspendDelayInternal(false, timeout, description);
 }
 
 bool PowerManagerProxy::UnregisterSuspendDelay(int delay_id) {
@@ -106,14 +104,13 @@ bool PowerManagerProxy::ReportSuspendReadiness(int delay_id, int suspend_id) {
   return ReportSuspendReadinessInternal(false, delay_id, suspend_id);
 }
 
-bool PowerManagerProxy::RegisterDarkSuspendDelay(base::TimeDelta timeout,
-                                                 const std::string& description,
-                                                 int* delay_id_out) {
+std::optional<int> PowerManagerProxy::RegisterDarkSuspendDelay(
+    base::TimeDelta timeout, const std::string& description) {
   if (!service_available_) {
     LOG(ERROR) << "PowerManager service not available";
-    return false;
+    return std::nullopt;
   }
-  return RegisterSuspendDelayInternal(true, timeout, description, delay_id_out);
+  return RegisterSuspendDelayInternal(true, timeout, description);
 }
 
 bool PowerManagerProxy::UnregisterDarkSuspendDelay(int delay_id) {
@@ -176,11 +173,8 @@ void PowerManagerProxy::ChangeRegDomain(
           domain));
 }
 
-bool PowerManagerProxy::RegisterSuspendDelayInternal(
-    bool is_dark,
-    base::TimeDelta timeout,
-    const std::string& description,
-    int* delay_id_out) {
+std::optional<int> PowerManagerProxy::RegisterSuspendDelayInternal(
+    bool is_dark, base::TimeDelta timeout, const std::string& description) {
   const std::string is_dark_arg = (is_dark ? "dark=true" : "dark=false");
   LOG(INFO) << __func__ << "(" << timeout.InMilliseconds() << ", "
             << is_dark_arg << ")";
@@ -202,17 +196,16 @@ bool PowerManagerProxy::RegisterSuspendDelayInternal(
   if (error) {
     LOG(ERROR) << "Failed to register suspend delay: " << error->GetCode()
                << " " << error->GetMessage();
-    return false;
+    return std::nullopt;
   }
 
   power_manager::RegisterSuspendDelayReply reply_proto;
   if (!DeserializeProtocolBuffer(serialized_reply, &reply_proto)) {
     LOG(ERROR) << "Failed to register " << (is_dark ? "dark " : "")
                << "suspend delay.  Couldn't parse response.";
-    return false;
+    return std::nullopt;
   }
-  *delay_id_out = reply_proto.delay_id();
-  return true;
+  return reply_proto.delay_id();
 }
 
 bool PowerManagerProxy::UnregisterSuspendDelayInternal(bool is_dark,

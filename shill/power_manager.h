@@ -10,6 +10,7 @@
 // PowerManagerProxy.
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/cancelable_callback.h>
@@ -119,10 +120,8 @@ class PowerManager : public PowerManagerProxyDelegate {
   base::TimeDelta suspend_delay_;
   // powerd tracks each (dark) suspend delay requested (by different clients)
   // using randomly generated unique |(dark)suspend_delay_id_|s.
-  bool suspend_delay_registered_;
-  int suspend_delay_id_;
-  bool dark_suspend_delay_registered_;
-  int dark_suspend_delay_id_;
+  std::optional<int> suspend_delay_id_;
+  std::optional<int> dark_suspend_delay_id_;
   // Callbacks from shill called by this object when:
   // ... powerd notified us that a suspend is imminent.
   SuspendImminentCallback suspend_imminent_callback_;

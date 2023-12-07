@@ -40,14 +40,12 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
   ~PowerManagerProxy() override;
 
   // Inherited from PowerManagerProxyInterface.
-  bool RegisterSuspendDelay(base::TimeDelta timeout,
-                            const std::string& description,
-                            int* delay_id_out) override;
+  std::optional<int> RegisterSuspendDelay(
+      base::TimeDelta timeout, const std::string& description) override;
   bool UnregisterSuspendDelay(int delay_id) override;
   bool ReportSuspendReadiness(int delay_id, int suspend_id) override;
-  bool RegisterDarkSuspendDelay(base::TimeDelta timeout,
-                                const std::string& description,
-                                int* delay_id_out) override;
+  std::optional<int> RegisterDarkSuspendDelay(
+      base::TimeDelta timeout, const std::string& description) override;
   bool UnregisterDarkSuspendDelay(int delay_id) override;
   bool ReportDarkSuspendReadiness(int delay_id, int suspend_id) override;
   bool RecordDarkResumeWakeReason(const std::string& wake_reason) override;
@@ -59,10 +57,8 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
   void SuspendDone(const std::vector<uint8_t>& serialized_proto);
   void DarkSuspendImminent(const std::vector<uint8_t>& serialized_proto);
 
-  bool RegisterSuspendDelayInternal(bool is_dark,
-                                    base::TimeDelta timeout,
-                                    const std::string& description,
-                                    int* delay_id_out);
+  std::optional<int> RegisterSuspendDelayInternal(
+      bool is_dark, base::TimeDelta timeout, const std::string& description);
   bool UnregisterSuspendDelayInternal(bool is_dark, int delay_id);
   bool ReportSuspendReadinessInternal(bool is_dark,
                                       int delay_id,

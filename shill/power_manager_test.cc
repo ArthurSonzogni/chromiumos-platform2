@@ -98,11 +98,10 @@ class PowerManagerTest : public Test {
 
   void TearDown() override { power_manager_.Stop(); }
 
-  void AddProxyExpectationForRegisterSuspendDelay(int delay_id,
-                                                  bool return_value) {
+  void AddProxyExpectationForRegisterSuspendDelay(std::optional<int> delay_id) {
     EXPECT_CALL(*power_manager_proxy_,
-                RegisterSuspendDelay(kTimeout, kDescription, _))
-        .WillOnce(DoAll(SetArgPointee<2>(delay_id), Return(return_value)));
+                RegisterSuspendDelay(kTimeout, kDescription))
+        .WillOnce(Return(delay_id));
   }
 
   void AddProxyExpectationForUnregisterSuspendDelay(int delay_id,
@@ -125,11 +124,11 @@ class PowerManagerTest : public Test {
         .WillOnce(Return(return_value));
   }
 
-  void AddProxyExpectationForRegisterDarkSuspendDelay(int delay_id,
-                                                      bool return_value) {
+  void AddProxyExpectationForRegisterDarkSuspendDelay(
+      std::optional<int> delay_id) {
     EXPECT_CALL(*power_manager_proxy_,
-                RegisterDarkSuspendDelay(kTimeout, kDarkDescription, _))
-        .WillOnce(DoAll(SetArgPointee<2>(delay_id), Return(return_value)));
+                RegisterDarkSuspendDelay(kTimeout, kDarkDescription))
+        .WillOnce(Return(delay_id));
   }
 
   void AddProxyExpectationForReportDarkSuspendReadiness(int delay_id,
@@ -152,8 +151,8 @@ class PowerManagerTest : public Test {
   }
 
   void RegisterSuspendDelays() {
-    AddProxyExpectationForRegisterSuspendDelay(kDelayId, true);
-    AddProxyExpectationForRegisterDarkSuspendDelay(kDelayId, true);
+    AddProxyExpectationForRegisterSuspendDelay(kDelayId);
+    AddProxyExpectationForRegisterDarkSuspendDelay(kDelayId);
     OnPowerManagerAppeared();
     Mock::VerifyAndClearExpectations(power_manager_proxy_);
   }
@@ -316,7 +315,7 @@ TEST_F(PowerManagerTest, SuspendDoneThenImminentThenDoneBeforeReady) {
 }
 
 TEST_F(PowerManagerTest, RegisterSuspendDelayFailure) {
-  AddProxyExpectationForRegisterSuspendDelay(kDelayId, false);
+  AddProxyExpectationForRegisterSuspendDelay(std::nullopt);
   OnPowerManagerAppeared();
   Mock::VerifyAndClearExpectations(power_manager_proxy_);
 
@@ -334,15 +333,13 @@ TEST_F(PowerManagerTest, RegisterSuspendDelayFailure) {
   //   path in this black swan case.
   EXPECT_CALL(*this, SuspendImminentAction());
   OnSuspendImminent(kSuspendId1);
-  AddProxyExpectationForReportSuspendReadiness(kDelayId, kSuspendId1, true);
-  EXPECT_TRUE(power_manager_.ReportSuspendReadiness());
+  EXPECT_FALSE(power_manager_.ReportSuspendReadiness());
   OnSuspendDone(kSuspendId1, kSuspendDurationUsecs);
   EXPECT_FALSE(power_manager_.suspending());
-  Mock::VerifyAndClearExpectations(this);
 }
 
 TEST_F(PowerManagerTest, RegisterDarkSuspendDelayFailure) {
-  AddProxyExpectationForRegisterDarkSuspendDelay(kDelayId, false);
+  AddProxyExpectationForRegisterDarkSuspendDelay(std::nullopt);
   OnPowerManagerAppeared();
   Mock::VerifyAndClearExpectations(power_manager_proxy_);
 
@@ -440,8 +437,8 @@ TEST_F(PowerManagerTest, OnPowerManagerReappeared) {
   RegisterSuspendDelays();
 
   // Check that we re-register suspend delay on powerd restart.
-  AddProxyExpectationForRegisterSuspendDelay(kDelayId2, true);
-  AddProxyExpectationForRegisterDarkSuspendDelay(kDelayId2, true);
+  AddProxyExpectationForRegisterSuspendDelay(kDelayId2);
+  AddProxyExpectationForRegisterDarkSuspendDelay(kDelayId2);
   // Check that we resend current reg domain on powerd restart.
   power_manager_.ChangeRegDomain(NL80211_DFS_FCC);
   AddProxyExpectationForChangeRegDomain(power_manager::WIFI_REG_DOMAIN_FCC,
@@ -484,8 +481,8 @@ TEST_F(PowerManagerTest, PowerManagerReappearedInSuspend) {
   OnSuspendImminent(kSuspendId1);
   Mock::VerifyAndClearExpectations(this);
 
-  AddProxyExpectationForRegisterSuspendDelay(kDelayId2, true);
-  AddProxyExpectationForRegisterDarkSuspendDelay(kDelayId2, true);
+  AddProxyExpectationForRegisterSuspendDelay(kDelayId2);
+  AddProxyExpectationForRegisterDarkSuspendDelay(kDelayId2);
   EXPECT_CALL(*this, SuspendDoneAction());
   OnPowerManagerVanished();
   OnPowerManagerAppeared();

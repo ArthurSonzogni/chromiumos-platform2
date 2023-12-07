@@ -25,10 +25,6 @@ const char PowerManager::kDarkSuspendDelayDescription[] = "shill";
 
 PowerManager::PowerManager(ControlInterface* control_interface)
     : control_interface_(control_interface),
-      suspend_delay_registered_(false),
-      suspend_delay_id_(0),
-      dark_suspend_delay_registered_(false),
-      dark_suspend_delay_id_(0),
       suspending_(false),
       suspend_ready_(false),
       suspend_done_deferred_(false),
@@ -59,15 +55,23 @@ void PowerManager::Start(
 
 void PowerManager::Stop() {
   LOG(INFO) << __func__;
-  // We may attempt to unregister with a stale |suspend_delay_id_| if powerd
-  // reappeared behind our back. It is safe to do so.
-  if (suspend_delay_registered_)
-    power_manager_proxy_->UnregisterSuspendDelay(suspend_delay_id_);
-  if (dark_suspend_delay_registered_)
-    power_manager_proxy_->UnregisterDarkSuspendDelay(dark_suspend_delay_id_);
 
-  suspend_delay_registered_ = false;
-  dark_suspend_delay_registered_ = false;
+  if (!power_manager_proxy_) {
+    return;
+  }
+
+  // We may attempt to unregister with a stale |suspend_delay_id_| if powerd
+  // disappeared and reappeared behind our back. It is safe to do so.
+  if (suspend_delay_id_.has_value() &&
+      power_manager_proxy_->UnregisterSuspendDelay(*suspend_delay_id_)) {
+    suspend_delay_id_.reset();
+  }
+  if (dark_suspend_delay_id_.has_value() &&
+      power_manager_proxy_->UnregisterDarkSuspendDelay(
+          *dark_suspend_delay_id_)) {
+    dark_suspend_delay_id_.reset();
+  }
+
   power_manager_proxy_.reset();
 }
 
@@ -89,13 +93,22 @@ bool PowerManager::ReportSuspendReadiness() {
               << ") not active. Ignoring signal.";
     return false;
   }
-  return power_manager_proxy_->ReportSuspendReadiness(suspend_delay_id_,
+
+  if (!suspend_delay_id_.has_value()) {
+    LOG(INFO) << "No suspend delay is registered. Ignoring signal.";
+    return false;
+  }
+  return power_manager_proxy_->ReportSuspendReadiness(suspend_delay_id_.value(),
                                                       current_suspend_id_);
 }
 
 bool PowerManager::ReportDarkSuspendReadiness() {
+  if (!dark_suspend_delay_id_.has_value()) {
+    LOG(INFO) << "No dark suspend delay is registered. Ignoring signal.";
+    return false;
+  }
   return power_manager_proxy_->ReportDarkSuspendReadiness(
-      dark_suspend_delay_id_, current_dark_suspend_id_);
+      dark_suspend_delay_id_.value(), current_dark_suspend_id_);
 }
 
 bool PowerManager::RecordDarkResumeWakeReason(const std::string& wake_reason) {
@@ -184,13 +197,14 @@ void PowerManager::NotifySuspendDone() {
 
 void PowerManager::OnDarkSuspendImminent(int suspend_id) {
   LOG(INFO) << __func__ << "(" << suspend_id << ")";
-  if (!dark_suspend_delay_registered_) {
+  if (!dark_suspend_delay_id_.has_value()) {
     LOG(WARNING) << "Ignoring DarkSuspendImminent signal from powerd. shill "
                  << "does not have a dark suspend delay registered. This "
                  << "means that shill is not guaranteed any time before a "
                  << "resuspend.";
     return;
   }
+
   in_dark_resume_ = true;
   current_dark_suspend_id_ = suspend_id;
   dark_suspend_imminent_callback_.Run();
@@ -201,18 +215,15 @@ void PowerManager::OnPowerManagerAppeared() {
 
   // This function could get called twice in a row due to races in
   // ObjectProxy.
-  if (suspend_delay_registered_) {
+  if (suspend_delay_id_.has_value()) {
     return;
   }
 
-  if (power_manager_proxy_->RegisterSuspendDelay(
-          suspend_delay_, kSuspendDelayDescription, &suspend_delay_id_))
-    suspend_delay_registered_ = true;
+  suspend_delay_id_ = power_manager_proxy_->RegisterSuspendDelay(
+      suspend_delay_, kSuspendDelayDescription);
+  dark_suspend_delay_id_ = power_manager_proxy_->RegisterDarkSuspendDelay(
+      suspend_delay_, kDarkSuspendDelayDescription);
 
-  if (power_manager_proxy_->RegisterDarkSuspendDelay(
-          suspend_delay_, kDarkSuspendDelayDescription,
-          &dark_suspend_delay_id_))
-    dark_suspend_delay_registered_ = true;
   if (wifi_reg_domain_is_set) {
     power_manager_proxy_->ChangeRegDomain(wifi_reg_domain_);
   }
@@ -225,8 +236,9 @@ void PowerManager::OnPowerManagerVanished() {
     suspend_ready_ = true;
     OnSuspendDone(kInvalidSuspendId, 0);
   }
-  suspend_delay_registered_ = false;
-  dark_suspend_delay_registered_ = false;
+
+  suspend_delay_id_.reset();
+  dark_suspend_delay_id_.reset();
 }
 
 }  // namespace shill
