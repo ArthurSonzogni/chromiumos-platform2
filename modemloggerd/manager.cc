@@ -52,17 +52,15 @@ Manager::Manager(dbus::Bus* bus, AdaptorFactoryInterface* adaptor_factory)
     return;
   }
   auto modem_name = GetModemName();
-  HelperEntry logging_helper;
   for (const HelperEntry& entry : parsed_manifest.helper()) {
     if (entry.modem_name() == modem_name) {
-      logging_helper = entry;
+      // TODO(b/312535821): Introduce DBus method so that MM tells when a modem
+      // has been found/ monitor udev
+      available_modems_.push_back(
+          std::make_unique<Modem>(bus_, adaptor_factory, entry));
+      break;
     }
   }
-
-  // TODO(b/312535821): Introduce DBus method so that MM tells when a modem has
-  // been found/ monitor udev
-  available_modems_.push_back(
-      std::make_unique<Modem>(bus_, adaptor_factory, logging_helper));
   UpdateAvailableModemsProperty();
 }
 
