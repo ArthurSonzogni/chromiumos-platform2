@@ -26,6 +26,7 @@ gettimeofday: 1
 getpid: 1
 stat64: 1
 poll: 1
+process_vm_readv: 1
 # ioctl:
 # UI_DEV_CREATE: 0x5501
 # UI_DEV_DESTROY: 0x5502
