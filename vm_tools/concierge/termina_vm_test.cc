@@ -38,8 +38,6 @@
 #include "vm_tools/concierge/network/guest_os_network.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
-using std::string;
-
 namespace pb = google::protobuf;
 
 namespace vm_tools {
@@ -62,12 +60,12 @@ class TerminaVmTest : public ::testing::Test {
   ~TerminaVmTest() override = default;
 
   // Called by FakeMaitredService to indicate a test failure.
-  void TestFailed(string reason);
+  void TestFailed(std::string reason);
 
   // Called by FakeMaitredService for checking the ConfigureNetwork RPC.
-  const string& address() const { return address_; }
-  const string& netmask() const { return netmask_; }
-  const string& gateway() const { return gateway_; }
+  const std::string& address() const { return address_; }
+  const std::string& netmask() const { return netmask_; }
+  const std::string& gateway() const { return gateway_; }
 
   // Called by FakeMaitredService the first time it receives a LaunchProcess
   // RPC.
@@ -114,7 +112,7 @@ class TerminaVmTest : public ::testing::Test {
 
   // Set when a failure occurs.
   bool failed_{false};
-  string failure_reason_;
+  std::string failure_reason_;
 
  private:
   // Temporary directory where we will store our socket.
@@ -124,9 +122,9 @@ class TerminaVmTest : public ::testing::Test {
   VsockCidPool vsock_cid_pool_;
 
   // Addresses assigned to the VM.
-  string address_;
-  string netmask_;
-  string gateway_;
+  std::string address_;
+  std::string netmask_;
+  std::string gateway_;
 
   // The thread on which the server will run.
   base::Thread server_thread_{"gRPC maitre'd thread"};
@@ -239,7 +237,7 @@ grpc::Status FakeMaitredService::LaunchProcess(
   vm_tools::LaunchProcessRequest expected = std::move(launch_requests_.front());
   launch_requests_.pop_front();
 
-  string difference;
+  std::string difference;
   pb::util::MessageDifferencer differencer;
   differencer.ReportDifferencesToString(&difference);
   if (!differencer.Compare(expected, *request)) {
@@ -252,7 +250,7 @@ grpc::Status FakeMaitredService::ConfigureNetwork(
     grpc::ServerContext* ctx,
     const vm_tools::NetworkConfigRequest* request,
     vm_tools::EmptyMessage* response) {
-  const string address =
+  const std::string address =
       net_base::IPv4Address(request->ipv4_config().address()).ToString();
   if (address != vm_test_->address()) {
     vm_test_->TestFailed(
@@ -261,7 +259,7 @@ grpc::Status FakeMaitredService::ConfigureNetwork(
     return grpc::Status::OK;
   }
 
-  const string netmask =
+  const std::string netmask =
       net_base::IPv4Address(request->ipv4_config().netmask()).ToString();
   if (netmask != vm_test_->netmask()) {
     vm_test_->TestFailed(
@@ -270,7 +268,7 @@ grpc::Status FakeMaitredService::ConfigureNetwork(
     return grpc::Status::OK;
   }
 
-  const string gateway =
+  const std::string gateway =
       net_base::IPv4Address(request->ipv4_config().gateway()).ToString();
   if (gateway != vm_test_->gateway()) {
     vm_test_->TestFailed(
@@ -298,7 +296,7 @@ grpc::Status FakeMaitredService::Mount(grpc::ServerContext* ctx,
   vm_tools::MountRequest expected = std::move(mount_requests_.front());
   mount_requests_.pop_front();
 
-  string difference;
+  std::string difference;
   pb::util::MessageDifferencer differencer;
   differencer.ReportDifferencesToString(&difference);
   if (!differencer.Compare(expected, *request)) {
@@ -431,7 +429,7 @@ void TerminaVmTest::ServerStartCallback(base::OnceClosure quit,
   std::move(quit).Run();
 }
 
-void TerminaVmTest::TestFailed(string reason) {
+void TerminaVmTest::TestFailed(std::string reason) {
   failed_ = true;
   failure_reason_ = std::move(reason);
 }
@@ -445,7 +443,7 @@ TEST_F(TerminaVmTest, ConfigureNetwork) {
 }
 
 TEST_F(TerminaVmTest, SetTime) {
-  string reason;
+  std::string reason;
   bool success = vm_->SetTime(&reason);
   EXPECT_TRUE(success) << reason;
 

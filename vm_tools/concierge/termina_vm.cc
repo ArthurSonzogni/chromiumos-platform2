@@ -51,8 +51,6 @@
 #include "vm_tools/concierge/vm_util.h"
 #include "vm_tools/concierge/vm_wl_interface.h"
 
-using std::string;
-
 namespace vm_tools::concierge {
 namespace {
 
@@ -433,8 +431,9 @@ bool TerminaVm::Shutdown() {
   return false;
 }
 
-bool TerminaVm::ConfigureNetwork(const std::vector<string>& nameservers,
-                                 const std::vector<string>& search_domains) {
+bool TerminaVm::ConfigureNetwork(
+    const std::vector<std::string>& nameservers,
+    const std::vector<std::string>& search_domains) {
   LOG(INFO) << "Configuring network for VM " << vsock_cid_;
 
   vm_tools::NetworkConfigRequest request;
@@ -486,11 +485,11 @@ bool TerminaVm::ConfigureContainerGuest(const std::string& vm_token,
   return true;
 }
 
-bool TerminaVm::Mount(string source,
-                      string target,
-                      string fstype,
+bool TerminaVm::Mount(std::string source,
+                      std::string target,
+                      std::string fstype,
                       uint64_t mountflags,
-                      string options) {
+                      std::string options) {
   LOG(INFO) << "Mounting " << source << " on " << target << " inside VM "
             << vsock_cid_;
 
@@ -619,7 +618,7 @@ void TerminaVm::HandleSuspendDone() {
   ResumeCrosvm();
 }
 
-bool TerminaVm::Mount9P(uint32_t port, string target) {
+bool TerminaVm::Mount9P(uint32_t port, std::string target) {
   LOG(INFO) << "Mounting 9P file system from port " << port << " on " << target;
 
   vm_tools::Mount9PRequest request;
@@ -645,8 +644,8 @@ bool TerminaVm::Mount9P(uint32_t port, string target) {
   return true;
 }
 
-bool TerminaVm::MountExternalDisk(string source, std::string target_dir) {
-  const string target = "/mnt/external/" + target_dir;
+bool TerminaVm::MountExternalDisk(std::string source, std::string target_dir) {
+  const std::string target = "/mnt/external/" + target_dir;
 
   LOG(INFO) << "Mounting an external disk on " << target;
 
@@ -679,8 +678,9 @@ bool TerminaVm::MountExternalDisk(string source, std::string target_dir) {
   return true;
 }
 
-bool TerminaVm::SetResolvConfig(const std::vector<string>& nameservers,
-                                const std::vector<string>& search_domains) {
+bool TerminaVm::SetResolvConfig(
+    const std::vector<std::string>& nameservers,
+    const std::vector<std::string>& search_domains) {
   VMT_TRACE(kCategory, "TerminaVm::SetResolvConfig");
   LOG(INFO) << "Setting resolv config for VM " << vsock_cid_;
 
@@ -689,11 +689,11 @@ bool TerminaVm::SetResolvConfig(const std::vector<string>& nameservers,
 
   vm_tools::ResolvConfig* resolv_config = request.mutable_resolv_config();
 
-  google::protobuf::RepeatedPtrField<string> request_nameservers(
+  google::protobuf::RepeatedPtrField<std::string> request_nameservers(
       nameservers.begin(), nameservers.end());
   resolv_config->mutable_nameservers()->Swap(&request_nameservers);
 
-  google::protobuf::RepeatedPtrField<string> request_search_domains(
+  google::protobuf::RepeatedPtrField<std::string> request_search_domains(
       search_domains.begin(), search_domains.end());
   resolv_config->mutable_search_domains()->Swap(&request_search_domains);
 
@@ -730,7 +730,7 @@ void TerminaVm::HostNetworkChanged() {
   }
 }
 
-bool TerminaVm::SetTime(string* failure_reason) {
+bool TerminaVm::SetTime(std::string* failure_reason) {
   VMT_TRACE(kCategory, "TerminaVm::SetTime");
   DCHECK(failure_reason);
 

@@ -37,8 +37,6 @@
 #include "vm_tools/concierge/vm_util.h"
 #include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 
-using std::string;
-
 namespace vm_tools::concierge {
 namespace {
 
@@ -506,8 +504,8 @@ void PluginVm::OnVmFileCanWriteWithoutBlocking() {
 
 // static
 bool PluginVm::WriteResolvConf(const base::FilePath& parent_dir,
-                               const std::vector<string>& nameservers,
-                               const std::vector<string>& search_domains) {
+                               const std::vector<std::string>& nameservers,
+                               const std::vector<std::string>& search_domains) {
   // Create temporary directory on the same file system so that we
   // can atomically replace old resolv.conf with new one.
   base::ScopedTempDir temp_dir;
@@ -525,7 +523,8 @@ bool PluginVm::WriteResolvConf(const base::FilePath& parent_dir,
   }
 
   for (auto& ns : nameservers) {
-    string nameserver_line = base::StringPrintf("nameserver %s\n", ns.c_str());
+    std::string nameserver_line =
+        base::StringPrintf("nameserver %s\n", ns.c_str());
     if (!file.WriteAtCurrentPos(nameserver_line.c_str(),
                                 nameserver_line.length())) {
       LOG(ERROR) << "Failed to write nameserver to temporary file";
@@ -534,7 +533,7 @@ bool PluginVm::WriteResolvConf(const base::FilePath& parent_dir,
   }
 
   if (!search_domains.empty()) {
-    string search_domains_line = base::StringPrintf(
+    std::string search_domains_line = base::StringPrintf(
         "search %s\n", base::JoinString(search_domains, " ").c_str());
     if (!file.WriteAtCurrentPos(search_domains_line.c_str(),
                                 search_domains_line.length())) {
@@ -563,8 +562,8 @@ bool PluginVm::WriteResolvConf(const base::FilePath& parent_dir,
   return true;
 }
 
-bool PluginVm::SetResolvConfig(const std::vector<string>& nameservers,
-                               const std::vector<string>& search_domains) {
+bool PluginVm::SetResolvConfig(const std::vector<std::string>& nameservers,
+                               const std::vector<std::string>& search_domains) {
   return WriteResolvConf(root_dir_.GetPath().Append("etc"), nameservers,
                          search_domains);
 }
@@ -637,7 +636,7 @@ bool PluginVm::Start(base::FilePath stateful_dir,
 
   // These are bind mounts with parts may change (i.e. they are either VM
   // or config specific).
-  std::vector<string> bind_mounts = {
+  std::vector<std::string> bind_mounts = {
       // This is directory where the VM image resides.
       base::StringPrintf("%s:%s:true", stateful_dir.value().c_str(),
                          pvm::plugin::kStatefulDir),

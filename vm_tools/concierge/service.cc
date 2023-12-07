@@ -120,8 +120,6 @@
 #include "vm_tools/concierge/vm_wl_interface.h"
 #include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 
-using std::string;
-
 namespace vm_tools::concierge {
 
 namespace {
@@ -1038,9 +1036,9 @@ std::optional<bool> Service::IsFeatureEnabled(const std::string& feature_name,
   return result;
 }
 
-bool Service::ListVmDisksInLocation(const string& cryptohome_id,
+bool Service::ListVmDisksInLocation(const std::string& cryptohome_id,
                                     StorageLocation location,
-                                    const string& lookup_name,
+                                    const std::string& lookup_name,
                                     ListVmDisksResponse* response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   base::FilePath image_dir;
@@ -1075,7 +1073,7 @@ bool Service::ListVmDisksInLocation(const string& cryptohome_id,
   base::FileEnumerator dir_enum(image_dir, false, file_type);
   for (base::FilePath path = dir_enum.Next(); !path.empty();
        path = dir_enum.Next()) {
-    string extension = path.BaseName().Extension();
+    std::string extension = path.BaseName().Extension();
     bool allowed = false;
     for (auto p = allowed_ext; *p; p++) {
       if (extension == *p) {
@@ -1589,7 +1587,7 @@ StartVmResponse Service::StartVmInternal(
     return response;
   }
 
-  string convert_fd_based_path_result = ConvertToFdBasedPaths(
+  std::string convert_fd_based_path_result = ConvertToFdBasedPaths(
       root_fd, request.writable_rootfs(), image_spec, owned_fds);
   if (!convert_fd_based_path_result.empty()) {
     response.set_failure_reason(convert_fd_based_path_result);
@@ -1625,14 +1623,14 @@ StartVmResponse Service::StartVmInternal(
   // Assume every subsequent image was assigned a letter in alphabetical order
   // starting from 'b'.
   bool use_pmem = USE_PMEM_DEVICE_FOR_ROOTFS;
-  string rootfs_device = use_pmem ? "/dev/pmem0" : "/dev/vda";
+  std::string rootfs_device = use_pmem ? "/dev/pmem0" : "/dev/vda";
   unsigned char disk_letter = use_pmem ? 'a' : 'b';
   std::vector<Disk> disks;
 
   // In newer components, the /opt/google/cros-containers directory
   // is split into its own disk image(vm_tools.img).  Detect whether it exists
   // to keep compatibility with older components with only vm_rootfs.img.
-  string tools_device;
+  std::string tools_device;
   if (base::PathExists(image_spec.tools_disk)) {
     failure_reason = ConvertToFdBasedPath(root_fd, &image_spec.tools_disk,
                                           O_RDONLY, owned_fds);
@@ -1653,7 +1651,7 @@ StartVmResponse Service::StartVmInternal(
   }
 
   // Assume the stateful device is the first disk in the request.
-  string stateful_device = base::StringPrintf("/dev/vd%c", disk_letter);
+  std::string stateful_device = base::StringPrintf("/dev/vd%c", disk_letter);
 
   auto stateful_path = base::FilePath(request.disks()[0].path());
   int64_t stateful_size = -1;
@@ -1709,7 +1707,7 @@ StartVmResponse Service::StartVmInternal(
     }
 
     int raw_fd = vm_start_image_fds->storage_fd.value().get();
-    string failure_reason = internal::RemoveCloseOnExec(raw_fd);
+    std::string failure_reason = internal::RemoveCloseOnExec(raw_fd);
     if (!failure_reason.empty()) {
       LOG(ERROR) << "failed to remove close-on-exec flag: " << failure_reason;
       response.set_failure_reason(
@@ -2004,7 +2002,7 @@ StartVmResponse Service::StartVmInternal(
 
   // Do all the mounts.
   for (const auto& disk : request.disks()) {
-    string src = base::StringPrintf("/dev/vd%c", disk_letter++);
+    std::string src = base::StringPrintf("/dev/vd%c", disk_letter++);
 
     if (!disk.do_mount())
       continue;
@@ -2080,7 +2078,7 @@ StartVmResponse Service::StartVmInternal(
   // Mount an extra disk in the VM. We mount them after calling StartTermina
   // because /mnt/external is set up there.
   if (vm_start_image_fds->storage_fd.has_value()) {
-    const string external_disk_path =
+    const std::string external_disk_path =
         base::StringPrintf("/dev/vd%c", disk_letter++);
 
     // To support multiple extra disks in the future easily, we use integers for
@@ -2356,7 +2354,7 @@ void Service::ResumeVm(
 
   vm->Resume();
 
-  string failure_reason;
+  std::string failure_reason;
   if (vm->SetTime(&failure_reason)) {
     LOG(INFO) << "Successfully set VM clock in " << iter->first << ".";
   } else {
@@ -2488,9 +2486,10 @@ void Service::AdjustVm(
     return;
   }
 
-  std::vector<string> params(request.params().begin(), request.params().end());
+  std::vector<std::string> params(request.params().begin(),
+                                  request.params().end());
 
-  string failure_reason;
+  std::string failure_reason;
   bool success = false;
   if (request.operation() == "pvm.shared-profile") {
     if (location != STORAGE_CRYPTOHOME_PLUGINVM) {
@@ -2547,7 +2546,7 @@ void Service::SyncVmTimes(
   int requests = 0;
   for (auto& vm_entry : vms_) {
     requests++;
-    string failure_reason;
+    std::string failure_reason;
     if (!vm_entry.second->SetTime(&failure_reason)) {
       failures++;
       response.add_failure_reason(std::move(failure_reason));
@@ -2563,14 +2562,14 @@ void Service::SyncVmTimes(
 bool Service::StartTermina(TerminaVm* vm,
                            bool allow_privileged_containers,
                            const google::protobuf::RepeatedField<int>& features,
-                           string* failure_reason,
+                           std::string* failure_reason,
                            vm_tools::StartTerminaResponse::MountResult* result,
                            int64_t* out_free_bytes) {
   LOG(INFO) << "Starting Termina-specific services";
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(result);
 
-  string error;
+  std::string error;
   vm_tools::StartTerminaResponse response;
   if (!vm->StartTermina(vm->ContainerCIDRAddress().ToString(),
                         allow_privileged_containers, features, &error,
@@ -2597,11 +2596,11 @@ bool Service::StartTermina(TerminaVm* vm,
 // or does not exit cleanly). Otherwise returns true and sets |exit_code|.
 bool ExecuteCommandOnDisk(const base::FilePath& disk_path,
                           const std::string& executable_path,
-                          const std::vector<string>& opts,
+                          const std::vector<std::string>& opts,
                           int* exit_code) {
-  std::vector<string> args = {executable_path, disk_path.value()};
+  std::vector<std::string> args = {executable_path, disk_path.value()};
   args.insert(args.end(), opts.begin(), opts.end());
-  string output;
+  std::string output;
   return base::GetAppOutputWithExitCode(base::CommandLine(args), &output,
                                         exit_code);
 }
@@ -2609,7 +2608,7 @@ bool ExecuteCommandOnDisk(const base::FilePath& disk_path,
 // Generates a file path that is a distinct sibling of the specified path and
 // does not contain the equal sign '='.
 base::FilePath GenerateTempFilePathWithNoEqualSign(const base::FilePath& path) {
-  string temp_name;
+  std::string temp_name;
   base::RemoveChars(path.BaseName().value(), "=", &temp_name);
   return path.DirName().Append(temp_name + ".tmp");
 }
@@ -2617,8 +2616,8 @@ base::FilePath GenerateTempFilePathWithNoEqualSign(const base::FilePath& path) {
 // Creates a filesystem at the specified file/path.
 bool CreateFilesystem(const base::FilePath& disk_location,
                       enum FilesystemType filesystem_type,
-                      const std::vector<string>& mkfs_opts,
-                      const std::vector<string>& tune2fs_opts) {
+                      const std::vector<std::string>& mkfs_opts,
+                      const std::vector<std::string>& tune2fs_opts) {
   std::string filesystem_string;
   switch (filesystem_type) {
     case FilesystemType::EXT4:
@@ -2822,7 +2821,7 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
       return response;
     }
 
-    std::vector<string> params(
+    std::vector<std::string> params(
         std::make_move_iterator(request.mutable_params()->begin()),
         std::make_move_iterator(request.mutable_params()->end()));
 
@@ -2924,7 +2923,7 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
     }
 
     // Create a filesystem on the disk to make it usable for the VM.
-    std::vector<string> mkfs_opts(
+    std::vector<std::string> mkfs_opts(
         std::make_move_iterator(request.mutable_mkfs_opts()->begin()),
         std::make_move_iterator(request.mutable_mkfs_opts()->end()));
     if (mkfs_opts.empty()) {
@@ -2934,7 +2933,7 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
     // -q is added to silence the output.
     mkfs_opts.push_back("-q");
 
-    const std::vector<string> tune2fs_opts(
+    const std::vector<std::string> tune2fs_opts(
         std::make_move_iterator(request.mutable_tune2fs_opts()->begin()),
         std::make_move_iterator(request.mutable_tune2fs_opts()->end()));
 
@@ -4012,8 +4011,8 @@ void Service::SendGetVmmmsKillConnectionResponse() {
   local->Return(response, fds);
 }
 
-void Service::OnResolvConfigChanged(std::vector<string> nameservers,
-                                    std::vector<string> search_domains) {
+void Service::OnResolvConfigChanged(std::vector<std::string> nameservers,
+                                    std::vector<std::string> search_domains) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (nameservers_ == nameservers && search_domains_ == search_domains) {
     return;
@@ -4279,7 +4278,7 @@ void Service::OnTremplinStartedSignal(dbus::Signal* signal) {
 
 void Service::OnVmToolsStateChangedSignal(dbus::Signal* signal) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  string owner_id, vm_name;
+  std::string owner_id, vm_name;
   bool running;
   if (!pvm::dispatcher::ParseVmToolsChangedSignal(signal, &owner_id, &vm_name,
                                                   &running)) {
@@ -4338,7 +4337,7 @@ void Service::HandleSuspendDone() {
 
     vm->Resume();
 
-    string failure_reason;
+    std::string failure_reason;
     if (!vm->SetTime(&failure_reason)) {
       LOG(ERROR) << "Failed to set VM clock in " << vm_entry.first << ": "
                  << failure_reason;
