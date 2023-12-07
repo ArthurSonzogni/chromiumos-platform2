@@ -992,10 +992,10 @@
         Boolean to denote success of connecting device to Crostini.
       </summary>
     </metric>
-    <metric name="GuestName" type="int">
+    <metric name="GuestType" type="int">
       <summary>
-        Enum for which guest the USB device is being connected to. 0=unknown,
-        1=crostini, 2=borealis, 3=bruschetta, 4=arcvm
+        Enum for which guest the USB device is being connected to. Value
+        corresponds to system_api/dbus/vm_applications/apps.proto:VmType.
       </summary>
     </metric>
   </event>

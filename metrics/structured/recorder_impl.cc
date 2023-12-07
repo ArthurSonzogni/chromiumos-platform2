@@ -97,6 +97,8 @@ bool RecorderImpl::Record(const EventBase& event) {
           events::audio_peripheral_info::Info::kProjectNameHash &&
       event.project_name_hash() !=
           events::audio_peripheral::Close::kProjectNameHash &&
+      event.project_name_hash() !=
+          events::guest_usb_device::UsbDeviceInfo::kProjectNameHash &&
       !metrics_library_.AreMetricsEnabled()) {
     return false;
   }

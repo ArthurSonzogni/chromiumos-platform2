@@ -583,8 +583,8 @@ bool TerminaVm::AttachUsbDevice(uint8_t bus,
                                 uint16_t pid,
                                 int fd,
                                 uint8_t* out_port) {
-  return vm_tools::concierge::AttachUsbDevice(GetVmSocketPath(), bus, addr, vid,
-                                              pid, fd, out_port);
+  return vm_tools::concierge::AttachUsbDevice(
+      GetVmSocketPath(), bus, addr, vid, pid, fd, out_port, GetInfo().type);
 }
 
 bool TerminaVm::DetachUsbDevice(uint8_t port) {

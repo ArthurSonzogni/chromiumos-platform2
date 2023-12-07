@@ -172,7 +172,8 @@ bool AttachUsbDevice(const std::string& socket_path,
                      uint16_t vid,
                      uint16_t pid,
                      int fd,
-                     uint8_t* out_port);
+                     uint8_t* out_port,
+                     apps::VmType vm_type);
 
 // Detaches the usb device at guest |port|.
 bool DetachUsbDevice(const std::string& socket_path, uint8_t port);

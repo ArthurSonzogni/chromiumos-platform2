@@ -6,6 +6,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <libudev.h>
 #include <signal.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
@@ -20,7 +21,9 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <absl/strings/str_split.h>
 #include <base/base64.h>
@@ -43,6 +46,7 @@
 #include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 #include <chromeos-config/libcros_config/cros_config.h>
+#include <metrics/structured_events.h>
 #include <vboot/crossystem.h>
 #include <vm_applications/apps.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
@@ -402,6 +406,24 @@ std::optional<BalloonStats> ParseBalloonStats(
   return stats;
 }
 
+udev_device* FindUdevDevice(const std::string& path) {
+  udev* udev = udev_new();
+  udev_enumerate* enumerate = udev_enumerate_new(udev);
+  udev_enumerate_scan_devices(enumerate);
+
+  struct udev_list_entry* entry = nullptr;
+  udev_list_entry_foreach(entry, udev_enumerate_get_list_entry(enumerate)) {
+    const char* syspath = udev_list_entry_get_name(entry);
+    udev_device* device = udev_device_new_from_syspath(udev, syspath);
+
+    const char* devnode = udev_device_get_devnode(device);
+    if (devnode && !strcmp(devnode, path.c_str()))
+      return device;
+  }
+
+  return nullptr;
+}
+
 bool AttachNetDevice(const std::string& socket_path,
                      const std::string& tap_name,
                      uint8_t* out_bus) {
@@ -412,19 +434,122 @@ bool DetachNetDevice(const std::string& socket_path, uint8_t bus) {
   return CrosvmControl::Get()->NetDetach(socket_path, bus);
 }
 
+std::string GetStringUdevAttr(udev_device* device, std::string sysattr) {
+  std::string attr = udev_device_get_sysattr_value(device, sysattr.c_str());
+  base::TrimWhitespaceASCII(attr, base::TRIM_ALL, &attr);
+  return attr;
+}
+
+int GetIntUdevAttr(udev_device* device, std::string sysattr) {
+  std::string attr = udev_device_get_sysattr_value(device, sysattr.c_str());
+  base::TrimWhitespaceASCII(attr, base::TRIM_ALL, &attr);
+  int attr_int = 0;
+  base::HexStringToInt(attr, &attr_int);
+  return attr_int;
+}
+
+bool LogGuestUsbStructuredMetrics(int fd,
+                                  bool attach_success,
+                                  apps::VmType vm_type) {
+  if (vm_type != apps::VmType::TERMINA) {
+    // Only Crostini has been approved to collect metrics for now.
+    return false;
+  }
+
+  std::string device_path = "/proc/self/fd/" + std::to_string(fd);
+  char buf[50];
+  int namelen = readlink(device_path.c_str(), buf, sizeof(buf));
+  if (namelen < 0) {
+    LOG(ERROR) << "Unable to determine device path from proc fd, will not log "
+                  "USB metrics";
+    return false;
+  }
+  std::string dev_path(buf, namelen);
+
+  udev_device* device = FindUdevDevice(dev_path);
+  if (!device) {
+    LOG(ERROR) << "Unable to find udev device for " << dev_path;
+    return false;
+  }
+
+  std::string vendor_name = GetStringUdevAttr(device, "manufacturer");
+  std::string product_name = GetStringUdevAttr(device, "product");
+  int vendor_id = GetIntUdevAttr(device, "idVendor");
+  int product_id = GetIntUdevAttr(device, "idProduct");
+  int device_class = GetIntUdevAttr(device, "bDeviceClass");
+
+  // Limit string length to prevent poorly behaved device from creating huge
+  // metrics packet.
+  int string_len_limit = 200;
+  vendor_name = vendor_name.substr(0, string_len_limit);
+  product_name = product_name.substr(0, string_len_limit);
+
+  std::vector<int64_t> interface_classes;
+  udev* udev = udev_device_get_udev(device);
+  udev_enumerate* enumerate = udev_enumerate_new(udev);
+  udev_enumerate_add_match_subsystem(enumerate, "usb");
+  udev_enumerate_add_match_parent(enumerate, device);
+  udev_enumerate_scan_devices(enumerate);
+
+  struct udev_list_entry* entry = nullptr;
+  udev_list_entry_foreach(entry, udev_enumerate_get_list_entry(enumerate)) {
+    const char* entry_path = udev_list_entry_get_name(entry);
+    // udev_enumerate_add_match_parent includes the parent entry, skip it.
+    if (!strcmp(udev_device_get_syspath(device), entry_path)) {
+      continue;
+    }
+    udev_device* child = udev_device_new_from_syspath(udev, entry_path);
+
+    const char* child_type = udev_device_get_devtype(child);
+    if (!child_type || strcmp(child_type, "usb_interface") != 0) {
+      // If this is not a usb_interface node then something is wrong, fail
+      // safe.
+      LOG(WARNING) << "Found a child '" << entry_path
+                   << "' with unexpected type: "
+                   << (child_type ? child_type : "(null)");
+      continue;
+    }
+
+    std::string interface_class(
+        udev_device_get_sysattr_value(child, "bInterfaceClass"));
+    int64_t interface_class_int = 0;
+    base::TrimWhitespaceASCII(interface_class, base::TRIM_ALL,
+                              &interface_class);
+    if (base::HexStringToInt64(interface_class, &interface_class_int)) {
+      interface_classes.push_back(interface_class_int);
+    }
+  }
+
+  return metrics::structured::events::guest_usb_device::UsbDeviceInfo()
+      .SetVendorName(vendor_name)
+      .SetVendorId(vendor_id)
+      .SetProductName(product_name)
+      .SetProductId(product_id)
+      .SetDeviceClass(device_class)
+      .SetCrostiniConnectionSuccess(attach_success)
+      .SetInterfaceClass(std::move(interface_classes))
+      .SetGuestType(vm_type)
+      .Record();
+}
+
 bool AttachUsbDevice(const std::string& socket_path,
                      uint8_t bus,
                      uint8_t addr,
                      uint16_t vid,
                      uint16_t pid,
                      int fd,
-                     uint8_t* out_port) {
+                     uint8_t* out_port,
+                     apps::VmType vm_type) {
   std::string device_path = "/proc/self/fd/" + std::to_string(fd);
 
   fcntl(fd, F_SETFD, 0);  // Remove the CLOEXEC
 
-  return CrosvmControl::Get()->UsbAttach(socket_path, bus, addr, vid, pid,
-                                         device_path, out_port);
+  bool attach_success = CrosvmControl::Get()->UsbAttach(
+      socket_path, bus, addr, vid, pid, device_path, out_port);
+
+  LogGuestUsbStructuredMetrics(fd, attach_success, vm_type);
+
+  return attach_success;
 }
 
 bool DetachUsbDevice(const std::string& socket_path, uint8_t port) {

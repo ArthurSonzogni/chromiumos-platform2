@@ -90,10 +90,13 @@ static_library("libconcierge") {
     "libarchive",
     "libcrossystem",
     "libdlcservice-client",
+    "libfeatures",
     "libmetrics",
     "libminijail",
     "libshill-client",
     "libspaced",
+    "libstructuredmetrics",
+    "libudev",
     "perfetto",
     "protobuf",
     "re2",
@@ -110,7 +113,6 @@ static_library("libconcierge") {
   deps = [
     ":dbus-adaptors",
     ":protos",
-    "//featured:libfeatures",
   ]
 }
 
