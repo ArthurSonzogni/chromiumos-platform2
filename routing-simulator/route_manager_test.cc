@@ -25,6 +25,7 @@ namespace {
 using ::testing::Return;
 
 constexpr std::string_view kMockIpRuleOutputIpv4 = R"(0: from all lookup local
+1005: from 192.168.200.0/24 lookup 1001
 1010: from all fwmark 0x3ea0000/0xffff0000 lookup 1002
 1010: from 100.87.84.132/24 lookup 1002
 1010: from all iif eth0 lookup 1002
@@ -54,6 +55,8 @@ constexpr std::string_view kMockIpRuleOutputIpv6 = R"(0: from all lookup local
 constexpr std::string_view kMockIpRouteOutputIpv4 =
     R"(default via 100.86.211.254 dev wlan0 table 1003 metric 65536
 unreachable default table 250
+192.168.200.0/24 dev wlan0 table 1001
+throw 192.168.200.1 table 1001
 100.86.208.0/22 dev wlan0 proto kernel scope link src 100.86.210.153
 100.115.92.132/30 dev arc_ns1 proto kernel scope link src 100.115.92.133
 local 100.86.210.153 dev wlan0 table local proto kernel scope host src 100.86.210.153
@@ -71,6 +74,9 @@ multicast ff00::/8 dev wlan0 table local proto kernel metric 256 pref medium)";
 
 const std::map<std::string, std::vector<std::string_view>>
     kExpectedTableToRoutesIpv4 = {
+        {"1001",
+         {"192.168.200.0/24 dev wlan0 table 1001",
+          "throw 192.168.200.1 table 1001"}},
         {"1003",
          {"default via 100.86.211.254 dev wlan0 table 1003 metric 65536"}},
         {"250", {"unreachable default table 250"}},
@@ -346,6 +352,43 @@ TEST_F(ProcessPacketTest, IPv4NoMatchedRoute) {
       "0: from all lookup local", "32765: from all lookup 1002",
       "32766: from all lookup main", "32767: from all lookup default"};
   std::vector<std::string_view> expected_route_results = {"", "", "", ""};
+  ASSERT_EQ(result.result().size(), expected_policy_results.size());
+  VerifyMatchingResult(result, expected_policy_results, expected_route_results);
+}
+
+// Test that throw routes are handled properly.
+TEST_F(ProcessPacketTest, IPv4ThrowRoute) {
+  const auto ip_family = net_base::IPFamily::kIPv4;
+  const auto protocol = Packet::Protocol::kIcmp;
+
+  // Source IP should be matched by the rule pointing to the routing table
+  // contains the throw route.
+  const auto src_ip =
+      net_base::IPAddress::CreateFromString("192.168.200.100").value();
+
+  // Will be matched by the throw route.
+  const auto dst_ip =
+      net_base::IPAddress::CreateFromString("192.168.200.1").value();
+
+  // So that this packet can be matched by the rule pointing to table 1003 which
+  // contains a default route.
+  const std::string_view in_if = "wlan0";
+
+  // Packet matched by the throw route.
+  auto packet = Packet::CreatePacketForTesting(ip_family, protocol, dst_ip,
+                                               src_ip, 0, 0, in_if)
+                    .value();
+  const auto result = route_manager_.ProcessPacketWithMutation(packet);
+  const std::vector<std::string_view> expected_policy_results = {
+      "0: from all lookup local",
+      "1005: from 192.168.200.0/24 lookup 1001",
+      "1020: from all iif wlan0 lookup 1003",
+  };
+  const std::vector<std::string_view> expected_route_results = {
+      "",
+      "throw 192.168.200.1 table 1001",
+      "default via 100.86.211.254 dev wlan0 table 1003 metric 65536",
+  };
   ASSERT_EQ(result.result().size(), expected_policy_results.size());
   VerifyMatchingResult(result, expected_policy_results, expected_route_results);
 }

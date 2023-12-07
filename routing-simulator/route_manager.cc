@@ -119,7 +119,7 @@ RoutingDecisionResult RouteManager::LookUpRoute(const Packet& packet) const {
     if (!policy.Matches(packet)) {
       continue;
     }
-    // TODO(b/307460180): Handle the case that the matched route type is throw.
+
     // Look up a matched route if the routing table that a policy points to
     // exists.
     const Route* matched_route_ptr = nullptr;
@@ -128,7 +128,9 @@ RoutingDecisionResult RouteManager::LookUpRoute(const Packet& packet) const {
       matched_route_ptr = it->second.LookUpRoute(packet.destination_ip());
     }
     result.AddResult(&policy, matched_route_ptr);
-    if (matched_route_ptr) {
+
+    // Stop if we get a non-throw route.
+    if (matched_route_ptr && matched_route_ptr->type() != Route::Type::kThrow) {
       return result;
     }
   }
