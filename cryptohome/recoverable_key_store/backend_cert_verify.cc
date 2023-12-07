@@ -13,8 +13,12 @@
 #include <vector>
 
 #include <base/base64.h>
+#include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
+#include <libhwsec-foundation/crypto/big_num_util.h>
+#include <libhwsec-foundation/crypto/elliptic_curve.h>
+#include <libhwsec-foundation/crypto/secure_box.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <libxml/xpath.h>
@@ -26,6 +30,9 @@
 namespace cryptohome {
 
 namespace {
+
+using ::hwsec_foundation::EllipticCurve;
+using ::hwsec_foundation::ScopedBN_CTX;
 
 // These are not OpenSSL types, but the libchrome ScopedOpenSSL is generalized
 // enough to be used with any type that we want to keep a pointer and free it
@@ -55,6 +62,11 @@ constexpr xmlChar kSignatureXmlIntermediateCertsXPath[] =
     "/signature/intermediates/cert";
 constexpr xmlChar kSignatureXmlSigningCertXPath[] = "/signature/certificate";
 constexpr xmlChar kSignatureXmlSignatureXPath[] = "/signature/value";
+
+constexpr xmlChar kCertXmlVersionXPath[] = "/certificate/metadata/serial";
+constexpr xmlChar kCertXmlIntermediateCertsXPath[] =
+    "/certificate/intermediates/cert";
+constexpr xmlChar kCertXmlEndpointCertsXPath[] = "/certificate/endpoints/cert";
 
 constexpr std::string_view kRecoverableKeyStoreServiceRootCaCommonName =
     "Google Cloud Key Vault Service Root CA";
@@ -142,6 +154,24 @@ std::optional<std::vector<brillo::Blob>> ParseMultipleBase64Nodes(
   return ret;
 }
 
+const xmlChar* GetContentFromSinglePathObject(const xmlXPathObjectPtr obj) {
+  xmlNodeSetPtr nodes = obj->nodesetval;
+  if (!nodes || !nodes->nodeTab) {
+    LOG(ERROR) << "XPath object's node set value is null.";
+    return nullptr;
+  }
+  if (nodes->nodeNr != 1 || !nodes->nodeTab[0]) {
+    LOG(ERROR) << "Number of nodes isn't exactly 1.";
+    return nullptr;
+  }
+  xmlNodePtr node = nodes->nodeTab[0]->children;
+  if (!node || !node->content) {
+    LOG(ERROR) << "Node has no content.";
+    return nullptr;
+  }
+  return node->content;
+}
+
 std::optional<brillo::Blob> ParseSingleBase64Node(xmlXPathContextPtr ctx,
                                                   const xmlChar* x_path) {
   ScopedXmlXPathObject obj(xmlXPathEvalExpression(x_path, ctx));
@@ -150,26 +180,35 @@ std::optional<brillo::Blob> ParseSingleBase64Node(xmlXPathContextPtr ctx,
     return std::nullopt;
   }
 
-  xmlNodeSetPtr nodes = obj->nodesetval;
-  if (!nodes || !nodes->nodeTab) {
-    LOG(ERROR) << "XPath object's node set value is null.";
+  const xmlChar* content = GetContentFromSinglePathObject(obj.get());
+  if (!content) {
     return std::nullopt;
   }
-  if (nodes->nodeNr != 1 || !nodes->nodeTab[0]) {
-    LOG(ERROR) << "Number of nodes isn't exactly 1.";
-    return std::nullopt;
-  }
-  xmlNodePtr node = nodes->nodeTab[0]->children;
-  if (!node || !node->content) {
-    LOG(ERROR) << "Node has no content.";
-    return std::nullopt;
-  }
-  std::optional<brillo::Blob> decoded =
-      Base64DecodeFromXmlCharArray(node->content);
+  std::optional<brillo::Blob> decoded = Base64DecodeFromXmlCharArray(content);
   if (!decoded.has_value()) {
     LOG(ERROR) << "Node content isn't valid Base64.";
   }
   return decoded;
+}
+
+std::optional<uint64_t> ParseUint64Node(xmlXPathContextPtr ctx,
+                                        const xmlChar* x_path) {
+  ScopedXmlXPathObject obj(xmlXPathEvalExpression(x_path, ctx));
+  if (!obj) {
+    LOG(ERROR) << "Failed to create XPath object.";
+    return std::nullopt;
+  }
+
+  const xmlChar* content = GetContentFromSinglePathObject(obj.get());
+  if (!content) {
+    return std::nullopt;
+  }
+  uint64_t ret;
+  if (!base::StringToUint64(XmlCharArrayToString(content), &ret)) {
+    LOG(ERROR) << "Node content isn't valid uint64_t";
+    return std::nullopt;
+  }
+  return ret;
 }
 
 struct SignatureXmlParseResult {
@@ -403,6 +442,144 @@ bool VerifyCertificateXmlSignature(const std::string& cert_xml,
       reinterpret_cast<const unsigned char*>(cert_xml.data()), cert_xml.size());
 }
 
+struct CertificateXmlParseResult {
+  uint64_t version;
+  std::vector<brillo::Blob> intermediate_certs;
+  std::vector<brillo::Blob> endpoint_certs;
+};
+
+// Check example xml format from
+// https://www.gstatic.com/cryptauthvault/v0/cert.xml.
+std::optional<CertificateXmlParseResult> ParseCertificateXml(
+    const std::string& signature_xml) {
+  ScopedXmlDoc doc(xmlParseMemory(signature_xml.data(), signature_xml.size()));
+  if (!doc) {
+    LOG(ERROR) << "Failed to parse xml.";
+    return std::nullopt;
+  }
+
+  ScopedXmlXPathContext xpath_ctx(xmlXPathNewContext(doc.get()));
+  if (!xpath_ctx) {
+    LOG(ERROR) << "Failed to create XPath context.";
+    return std::nullopt;
+  }
+
+  std::optional<uint64_t> version =
+      ParseUint64Node(xpath_ctx.get(), kCertXmlVersionXPath);
+  if (!version.has_value()) {
+    LOG(ERROR) << "Failed to parse version field.";
+    return std::nullopt;
+  }
+
+  // Parse the intermediate certs.
+  std::optional<std::vector<brillo::Blob>> intermediate_certs =
+      ParseMultipleBase64Nodes(xpath_ctx.get(), kCertXmlIntermediateCertsXPath);
+  if (!intermediate_certs.has_value()) {
+    LOG(ERROR) << "Failed to parse the intermediate certs.";
+    return std::nullopt;
+  }
+
+  // Parse the endpoint certs.
+  std::optional<std::vector<brillo::Blob>> endpoint_certs =
+      ParseMultipleBase64Nodes(xpath_ctx.get(), kCertXmlEndpointCertsXPath);
+  if (!endpoint_certs.has_value()) {
+    LOG(ERROR) << "Failed to parse the endpoint certs.";
+    return std::nullopt;
+  }
+
+  return CertificateXmlParseResult{
+      .version = *version,
+      .intermediate_certs = std::move(*intermediate_certs),
+      .endpoint_certs = std::move(*endpoint_certs),
+  };
+}
+
+// Returns the endpoint cert x509s after verifying.
+std::vector<crypto::ScopedX509> VerifyCertificateXmlCertificateChain(
+    const CertificateXmlParseResult& certificate) {
+  // 1. Prepare the intermediate certs into STACK_OF(X509) structure.
+  ScopedStackOfX509 intermediate_certs =
+      ConstructIntermediateCertsStack(certificate.intermediate_certs);
+  if (!intermediate_certs) {
+    LOG(ERROR) << "Failed to construct intermediate certs X509 stack.";
+    return {};
+  }
+
+  // 2. Prepare the trusted cert into X509_STORE structure.
+  X509_STORE* trusted_cert_store = GetTrustedCertStore();
+  if (!trusted_cert_store) {
+    LOG(ERROR) << "Failed to construct the trusted cert store.";
+    return {};
+  }
+
+  // 3. Verify the endpoint cert.
+  ScopedX509StoreCtx verify_ctx(X509_STORE_CTX_new());
+  if (!verify_ctx) {
+    LOG(ERROR) << "Failed to allocate X509_STORE_CTX structure.";
+    return {};
+  }
+  std::vector<crypto::ScopedX509> ret;
+  for (const auto& cert : certificate.endpoint_certs) {
+    ScopedX509 endpoint_cert = X509FromDer(cert);
+    if (!endpoint_cert) {
+      LOG(ERROR) << "Failed to parse endpoint_cert cert as X509.";
+      return {};
+    }
+    if (!VerifyEndpointCert(verify_ctx.get(), intermediate_certs.get(),
+                            trusted_cert_store, endpoint_cert.get())) {
+      LOG(ERROR) << "Failed to verify the endpoint certificate.";
+      return {};
+    }
+    ret.push_back(std::move(endpoint_cert));
+  }
+  return ret;
+}
+
+std::vector<RecoverableKeyStoreCert> EncodeEndpointCertificates(
+    const std::vector<crypto::ScopedX509>& certs) {
+  std::vector<RecoverableKeyStoreCert> ret;
+
+  ScopedBN_CTX context = hwsec_foundation::CreateBigNumContext();
+  if (!context) {
+    LOG(ERROR) << "Failed to allocate BIGNUM context.";
+    return {};
+  }
+  std::optional<EllipticCurve> curve =
+      EllipticCurve::Create(EllipticCurve::CurveType::kPrime256, context.get());
+  if (!curve.has_value()) {
+    LOG(ERROR) << "Failed to create EllipticCurve.";
+    return {};
+  }
+
+  for (const auto& cert : certs) {
+    const EVP_PKEY* public_key = X509_get0_pubkey(cert.get());
+    if (!public_key) {
+      LOG(ERROR) << "Failed to extract public key from certificate.";
+      return {};
+    }
+    const EC_KEY* ec_key = EVP_PKEY_get0_EC_KEY(public_key);
+    if (!ec_key) {
+      LOG(ERROR) << "Public key from certificate is not EC key.";
+      return {};
+    }
+    const EC_POINT* ec_point = EC_KEY_get0_public_key(ec_key);
+    if (!ec_point) {
+      LOG(ERROR) << "Failed to get public key point from EC key.";
+      return {};
+    }
+    std::optional<brillo::Blob> encoded =
+        hwsec_foundation::secure_box::EncodePublicKey(*curve, context.get(),
+                                                      *ec_point);
+    if (!encoded.has_value()) {
+      return {};
+    }
+    ret.push_back(RecoverableKeyStoreCert{
+        .public_key = std::move(*encoded),
+    });
+  }
+  return ret;
+}
+
 }  // namespace
 
 // TODO(b/315094662): Add fuzzer for parsing of untrusted data.
@@ -430,11 +607,31 @@ VerifyAndParseRecoverableKeyStoreBackendCertXmls(
     LOG(ERROR) << "Failed to verify certificate xml's signature.";
     return std::nullopt;
   }
-
-  // TODO(b/309734008): Implement the remaining steps.
   // 4. Parse the certificate XML.
+  std::optional<CertificateXmlParseResult> cert_result =
+      ParseCertificateXml(cert_xml);
+  if (!cert_result.has_value()) {
+    LOG(ERROR) << "Failed to parse certificate xml.";
+    return std::nullopt;
+  }
   // 5. Verify the certificate XML's certificates.
-  return std::nullopt;
+  std::vector<crypto::ScopedX509> endpoint_certs =
+      VerifyCertificateXmlCertificateChain(*cert_result);
+  if (endpoint_certs.empty()) {
+    LOG(ERROR) << "Failed to verify certificate xml's certificate chain.";
+    return std::nullopt;
+  }
+  // 6. Encode the endpoint certificates.
+  std::vector<RecoverableKeyStoreCert> key_store_certs =
+      EncodeEndpointCertificates(endpoint_certs);
+  if (key_store_certs.empty()) {
+    LOG(ERROR) << "Failed to encode endpoint certificates.";
+    return std::nullopt;
+  }
+  return RecoverableKeyStoreCertList{
+      .version = cert_result->version,
+      .certs = std::move(key_store_certs),
+  };
 }
 
 }  // namespace cryptohome
