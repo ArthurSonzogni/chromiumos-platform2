@@ -69,6 +69,8 @@ crypto::ScopedEC_POINT DecodePublicKey(const EllipticCurve& curve,
   return point;
 }
 
+}  // namespace
+
 std::optional<brillo::Blob> EncodePublicKey(const EllipticCurve& curve,
                                             BN_CTX* context,
                                             const EC_POINT& public_key_pt) {
@@ -93,8 +95,6 @@ std::optional<brillo::Blob> EncodePublicKey(const EllipticCurve& curve,
   DCHECK_EQ(public_key.size(), kEcPublicKeyUncompressedFormatSize);
   return public_key;
 }
-
-}  // namespace
 
 std::optional<KeyPair> DeriveKeyPairFromSeed(const brillo::SecureBlob& seed) {
   ScopedBN_CTX context = CreateBigNumContext();

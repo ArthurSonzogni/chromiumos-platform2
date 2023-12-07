@@ -8,7 +8,9 @@
 #include <optional>
 
 #include <brillo/secure_blob.h>
+#include <openssl/bn.h>
 
+#include "libhwsec-foundation/crypto/elliptic_curve.h"
 #include "libhwsec-foundation/hwsec-foundation_export.h"
 
 namespace hwsec_foundation {
@@ -25,6 +27,9 @@ struct KeyPair {
   // encrypted encoded private key, it contains the whole key pair.
   brillo::SecureBlob private_key;
 };
+
+std::optional<brillo::Blob> HWSEC_FOUNDATION_EXPORT EncodePublicKey(
+    const EllipticCurve& curve, BN_CTX* context, const EC_POINT& public_key_pt);
 
 // Derive a SecureBox P-256 EC key pair from the given seed using the FIPS
 // 186-5 "ECDSA Key Pair Generation by Extra Random Bits" method. The

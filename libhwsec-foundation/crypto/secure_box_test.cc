@@ -11,6 +11,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "libhwsec-foundation/crypto/big_num_util.h"
+#include "libhwsec-foundation/crypto/elliptic_curve.h"
+
 namespace hwsec_foundation {
 
 TEST(SecureBoxTest, DeriveKeyPairFromSeed) {
@@ -82,6 +85,23 @@ TEST(SecureBoxTest, EncryptInvalidParams) {
   std::optional<brillo::Blob> encrypted = secure_box::Encrypt(
       brillo::Blob(), brillo::SecureBlob(), kHeader, kPlaintext);
   EXPECT_FALSE(encrypted.has_value());
+}
+
+TEST(SecureBoxTest, EncodePublicKey) {
+  ScopedBN_CTX context = CreateBigNumContext();
+  ASSERT_TRUE(context);
+  std::optional<EllipticCurve> curve =
+      EllipticCurve::Create(EllipticCurve::CurveType::kPrime256, context.get());
+  ASSERT_TRUE(curve.has_value());
+  crypto::ScopedBIGNUM scalar = curve->RandomNonZeroScalar(context.get());
+  ASSERT_TRUE(scalar);
+  crypto::ScopedEC_POINT point =
+      curve->MultiplyWithGenerator(*scalar, context.get());
+  ASSERT_TRUE(point);
+  std::optional<brillo::Blob> encoded =
+      secure_box::EncodePublicKey(*curve, context.get(), *point);
+  ASSERT_TRUE(encoded.has_value());
+  EXPECT_EQ(encoded->size(), 65);
 }
 
 }  // namespace hwsec_foundation
