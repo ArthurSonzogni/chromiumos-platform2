@@ -16,14 +16,6 @@
 
 namespace hwsec_foundation {
 
-namespace {
-// TODO(b/309748204): Temporarily introduced to provide overloads with
-// SecureBlob params more easily.
-brillo::Blob BlobFromSecureBlob(const brillo::SecureBlob& data) {
-  return brillo::Blob(data.begin(), data.end());
-}
-}  // namespace
-
 crypto::ScopedEC_POINT ComputeEcdhSharedSecretPoint(
     const EllipticCurve& ec,
     const EC_POINT& others_pub_key,
@@ -111,33 +103,6 @@ bool GenerateEcdhHkdfSymmetricKey(const EllipticCurve& ec,
   // Dispose shared_secret after used
   shared_secret.clear();
   return true;
-}
-
-bool ComputeHkdfWithInfoSuffix(const brillo::SecureBlob& hkdf_secret,
-                               const brillo::SecureBlob& hkdf_info_suffix,
-                               const brillo::SecureBlob& source_pub_key,
-                               const brillo::SecureBlob& hkdf_salt,
-                               HkdfHash hkdf_hash,
-                               size_t symmetric_key_len,
-                               brillo::SecureBlob* symmetric_key) {
-  return ComputeHkdfWithInfoSuffix(
-      hkdf_secret, BlobFromSecureBlob(hkdf_info_suffix),
-      BlobFromSecureBlob(source_pub_key), BlobFromSecureBlob(hkdf_salt),
-      hkdf_hash, symmetric_key_len, symmetric_key);
-}
-
-bool GenerateEcdhHkdfSymmetricKey(const EllipticCurve& ec,
-                                  const EC_POINT& shared_secret_point,
-                                  const brillo::SecureBlob& source_pub_key,
-                                  const brillo::SecureBlob& hkdf_info_suffix,
-                                  const brillo::SecureBlob& hkdf_salt,
-                                  HkdfHash hkdf_hash,
-                                  size_t symmetric_key_len,
-                                  brillo::SecureBlob* symmetric_key) {
-  return GenerateEcdhHkdfSymmetricKey(
-      ec, shared_secret_point, BlobFromSecureBlob(source_pub_key),
-      BlobFromSecureBlob(hkdf_info_suffix), BlobFromSecureBlob(hkdf_salt),
-      hkdf_hash, symmetric_key_len, symmetric_key);
 }
 
 }  // namespace hwsec_foundation

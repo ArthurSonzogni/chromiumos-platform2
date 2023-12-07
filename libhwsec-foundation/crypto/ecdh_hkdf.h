@@ -75,27 +75,6 @@ GenerateEcdhHkdfSymmetricKey(const EllipticCurve& ec,
                              size_t symmetric_key_len,
                              brillo::SecureBlob* symmetric_key);
 
-// TODO(b/309748204): These are overloads with SecureBlob params which the
-// recovery crypto implementation uses. Remove these after recovery switches to
-// the new interface.
-bool HWSEC_FOUNDATION_EXPORT
-ComputeHkdfWithInfoSuffix(const brillo::SecureBlob& hkdf_secret,
-                          const brillo::SecureBlob& hkdf_info_suffix,
-                          const brillo::SecureBlob& source_pub_key,
-                          const brillo::SecureBlob& hkdf_salt,
-                          HkdfHash hkdf_hash,
-                          size_t symmetric_key_len,
-                          brillo::SecureBlob* symmetric_key);
-bool HWSEC_FOUNDATION_EXPORT
-GenerateEcdhHkdfSymmetricKey(const EllipticCurve& ec,
-                             const EC_POINT& shared_secret_point,
-                             const brillo::SecureBlob& source_pub_key,
-                             const brillo::SecureBlob& hkdf_info_suffix,
-                             const brillo::SecureBlob& hkdf_salt,
-                             HkdfHash hkdf_hash,
-                             size_t symmetric_key_len,
-                             brillo::SecureBlob* symmetric_key);
-
 }  // namespace hwsec_foundation
 
 #endif  // LIBHWSEC_FOUNDATION_CRYPTO_ECDH_HKDF_H_

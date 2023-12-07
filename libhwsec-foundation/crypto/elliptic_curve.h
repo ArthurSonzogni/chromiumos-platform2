@@ -124,9 +124,9 @@ class HWSEC_FOUNDATION_EXPORT EllipticCurve final {
   crypto::ScopedEC_POINT DecodeFromSpkiDer(
       const brillo::Blob& public_key_spki_der, BN_CTX* context) const;
 
-  // TODO(b/309748204): These are overloads with SecureBlob params which the
-  // recovery crypto implementation uses. Remove these after recovery switches
-  // to the new interface.
+  // TODO(b/309748204): Move them to cryptohome.
+  // These are overloads with SecureBlob params which the cryptohome
+  // recoverycrypto implementation uses due to niche implementation details.
   bool EncodeToSpkiDer(const crypto::ScopedEC_KEY& key,
                        brillo::SecureBlob* result,
                        BN_CTX* context) const;
