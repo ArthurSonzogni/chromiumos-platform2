@@ -11,6 +11,7 @@
 
 #include <base/files/file_util.h>
 
+#include "common/framing_stream_manipulator.h"
 #include "common/still_capture_processor_impl.h"
 #include "common/sw_privacy_switch_stream_manipulator.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
@@ -23,10 +24,6 @@
 #if USE_CAMERA_FEATURE_HDRNET
 #include "features/gcam_ae/gcam_ae_stream_manipulator.h"
 #include "features/hdrnet/hdrnet_stream_manipulator.h"
-#endif
-
-#if USE_CAMERA_FEATURE_AUTO_FRAMING
-#include "common/framing_stream_manipulator.h"
 #endif
 
 #if USE_CAMERA_FEATURE_EFFECTS

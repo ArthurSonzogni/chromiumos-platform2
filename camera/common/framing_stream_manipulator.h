@@ -24,7 +24,9 @@
 #include "common/still_capture_processor.h"
 #include "cros-camera/camera_metrics.h"
 #include "cros-camera/common_types.h"
+#if USE_CAMERA_FEATURE_AUTO_FRAMING
 #include "features/auto_framing/auto_framing_client.h"
+#endif
 
 namespace cros {
 
@@ -69,7 +71,8 @@ class FramingStreamManipulator : public StreamManipulator {
       GpuResources* gpu_resources,
       base::FilePath config_file_path,
       std::unique_ptr<StillCaptureProcessor> still_capture_processor,
-      std::optional<Options> options_override_for_testing = std::nullopt);
+      std::optional<Options> options_override_for_testing = std::nullopt,
+      bool auto_framing_supported = false);
   ~FramingStreamManipulator() override;
 
   // Implementations of StreamManipulator.
@@ -130,6 +133,9 @@ class FramingStreamManipulator : public StreamManipulator {
                                Camera3StreamBuffer still_yuv_buffer,
                                uint32_t frame_number);
   void ReturnStillCaptureResultOnThread(Camera3CaptureDescriptor result);
+  bool GetAutoFramingCropWindowOnThread(CaptureContext* ctx,
+                                        buffer_handle_t full_frame_buffer,
+                                        uint32_t frame_number);
   void UpdateFaceRectangleMetadataOnThread(Camera3CaptureDescriptor* result);
   void ResetOnThread();
   void UpdateOptionsOnThread(const base::Value::Dict& json_values);
@@ -187,7 +193,10 @@ class FramingStreamManipulator : public StreamManipulator {
   int64_t last_timestamp_ = 0;
   int64_t timestamp_offset_ = 0;
 
+#if USE_CAMERA_FEATURE_AUTO_FRAMING
   AutoFramingClient auto_framing_client_;
+#endif
+
   std::unique_ptr<CameraBufferPool> full_frame_buffer_pool_;
   std::unique_ptr<CameraBufferPool> still_yuv_buffer_pool_;
   std::unique_ptr<CameraBufferPool> cropped_still_yuv_buffer_pool_;
@@ -195,6 +204,10 @@ class FramingStreamManipulator : public StreamManipulator {
   std::vector<Rect<float>> faces_;
   Rect<float> region_of_interest_ = {0.0f, 0.0f, 1.0f, 1.0f};
   Rect<float> active_crop_region_ = {0.0f, 0.0f, 1.0f, 1.0f};
+
+  // Flagged if auto framing is enabled in FeatureProfile. This value should be
+  // false by default if a USE flag camera_feature_auto_framing is not set.
+  bool auto_framing_supported_ = false;
 
   Metrics metrics_;
 };

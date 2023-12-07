@@ -11,11 +11,13 @@
 
 #include <base/files/file_path.h>
 #include <base/synchronization/lock.h>
+#include <base/system/sys_info.h>
 #include <base/thread_annotations.h>
 
 #include "common/camera_buffer_handle.h"
 #include "common/camera_hal3_helpers.h"
 #include "common/common_tracing.h"
+#include "common/framing_stream_manipulator.h"
 #include "common/still_capture_processor_impl.h"
 #include "common/stream_manipulator.h"
 #include "common/sw_privacy_switch_stream_manipulator.h"
@@ -37,10 +39,6 @@
 #if USE_CAMERA_FEATURE_HDRNET
 #include "features/gcam_ae/gcam_ae_stream_manipulator.h"
 #include "features/hdrnet/hdrnet_stream_manipulator.h"
-#endif
-
-#if USE_CAMERA_FEATURE_AUTO_FRAMING
-#include "common/framing_stream_manipulator.h"
 #endif
 
 #if USE_CAMERA_FEATURE_EFFECTS
@@ -130,26 +128,35 @@ void MaybeEnableHdrNetStreamManipulator(
 #endif
 }
 
-void MaybeEnableAutoFramingStreamManipulator(
+void EnableFramingStreamManipulator(
     const FeatureProfile& feature_profile,
     StreamManipulator::RuntimeOptions* runtime_options,
     GpuResources* gpu_resources,
     std::vector<std::unique_ptr<StreamManipulator>>* out_stream_manipulators) {
-#if USE_CAMERA_FEATURE_AUTO_FRAMING
-  if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kAutoFraming)) {
-    std::unique_ptr<JpegCompressor> jpeg_compressor =
-        JpegCompressor::GetInstance(CameraMojoChannelManager::GetInstance());
-    std::unique_ptr<StillCaptureProcessor> still_capture_processor =
-        std::make_unique<StillCaptureProcessorImpl>(std::move(jpeg_compressor));
-    out_stream_manipulators->emplace_back(
-        std::make_unique<FramingStreamManipulator>(
-            runtime_options, gpu_resources,
-            feature_profile.GetConfigFilePath(
-                FeatureProfile::FeatureType::kAutoFraming),
-            std::move(still_capture_processor)));
-    LOGF(INFO) << "FramingStreamManipulator enabled";
+  // // TODO(b/316070046): Enable on strongbad devices once the
+  // ConfigureStreams crash is resolved.
+  if (base::SysInfo::GetLsbReleaseBoard() == "strongbad") {
+    return;
   }
+#if USE_CAMERA_FEATURE_AUTO_FRAMING
+  bool auto_framing_supported =
+      feature_profile.IsEnabled(FeatureProfile::FeatureType::kAutoFraming);
+#else
+  bool auto_framing_supported = false;
 #endif
+  std::unique_ptr<JpegCompressor> jpeg_compressor =
+      JpegCompressor::GetInstance(CameraMojoChannelManager::GetInstance());
+  std::unique_ptr<StillCaptureProcessor> still_capture_processor =
+      std::make_unique<StillCaptureProcessorImpl>(std::move(jpeg_compressor));
+  out_stream_manipulators->emplace_back(
+      std::make_unique<FramingStreamManipulator>(
+          runtime_options, gpu_resources,
+          feature_profile.GetConfigFilePath(
+              FeatureProfile::FeatureType::kAutoFraming),
+          std::move(still_capture_processor),
+          /*options_override_for_testing=*/std::nullopt,
+          auto_framing_supported));
+  LOGF(INFO) << "FramingStreamManipulator enabled";
 }
 
 }  // namespace
@@ -214,10 +221,8 @@ StreamManipulatorManager::StreamManipulatorManager(
                   CameraMojoChannelManager::GetInstance()))));
   LOGF(INFO) << "RotateAndCropStreamManipulator enabled";
 
-  // TODO(kamchonlathorn): Enable FramingStreamManipulator by default when the
-  // build flag is refactored.
-  MaybeEnableAutoFramingStreamManipulator(feature_profile, runtime_options,
-                                          gpu_resources, &stream_manipulators_);
+  EnableFramingStreamManipulator(feature_profile, runtime_options,
+                                 gpu_resources, &stream_manipulators_);
 
 #if USE_CAMERA_FEATURE_EFFECTS
   LOGF(INFO) << "Service built with effects support";
