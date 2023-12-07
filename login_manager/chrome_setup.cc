@@ -590,16 +590,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--oobe-force-tablet-first-run");
   }
 
-  if (builder->UseFlagIsSet("rialto")) {
-    builder->AddArg("--enterprise-enable-zero-touch-enrollment=hands-off");
-    builder->AddArg("--disable-machine-cert-request");
-    builder->AddArg("--cellular-first");
-    builder->AddArg(
-        "--app-mode-oem-manifest=/etc/rialto_overlay_oem_manifest.json");
-    builder->AddArg("--log-level=0");
-    builder->AddArg("--disable-logging-redirect");
-  }
-
   builder->AddArg("--login-manager");
   builder->AddArg("--login-profile=user");
 
