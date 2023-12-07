@@ -77,13 +77,13 @@ VmConciergeClient::VmConciergeClient(scoped_refptr<dbus::Bus> bus) : bus_(bus) {
       vm_tools::concierge::kVmConciergeServiceName,
       vm_tools::concierge::kVmStartedSignal,
       base::BindRepeating(&VmConciergeClient::OnVmStarted,
-                          base::Unretained(this)),
+                          weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(&HandleSignalConnected));
   concierge_proxy_->ConnectToSignal(
       vm_tools::concierge::kVmConciergeServiceName,
       vm_tools::concierge::kVmStoppingSignal,
       base::BindRepeating(&VmConciergeClient::OnVmStopping,
-                          base::Unretained(this)),
+                          weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(&HandleSignalConnected));
 }
 

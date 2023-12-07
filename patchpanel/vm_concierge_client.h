@@ -93,6 +93,7 @@ class VmConciergeClient {
   scoped_refptr<dbus::ObjectProxy> concierge_proxy_;
   std::map<int64_t, std::optional<VmId>> cid_vmid_map_;
   std::map<int64_t, std::queue<DeferredRequest>> cid_requestq_map_;
+  base::WeakPtrFactory<VmConciergeClient> weak_ptr_factory_{this};
 };
 
 std::ostream& operator<<(std::ostream& os,
