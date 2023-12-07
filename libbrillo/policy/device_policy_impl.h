@@ -46,6 +46,10 @@ class DevicePolicyImpl : public DevicePolicy {
     return *policy_;
   }
 
+  const enterprise_management::PolicyData& get_policy_data() const {
+    return *policy_data_;
+  }
+
   int get_number_of_policy_files() const { return number_of_policy_files_; }
 
   int get_number_of_invalid_files() const { return number_of_invalid_files_; }

@@ -187,11 +187,14 @@ executable("lockbox-cache") {
   configs += [ ":target_defaults" ]
   libs = [
     "keyutils",
+    "policy",
     "secure_erase_file",
   ]
   deps = [
     "libs:cryptohome-proto",
     "libs:libcrostpm",
+    "//common-mk/external_dependencies:policy-protos",
+    "//common-mk/external_dependencies:user_policy-protos",
   ]
   pkg_deps = [
     "libcrossystem",

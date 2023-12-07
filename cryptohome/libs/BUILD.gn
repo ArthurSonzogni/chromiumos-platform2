@@ -695,6 +695,8 @@ static_library("libcryptohome") {
     ":libcrostpm",
     ":namespace-mounter-ipc-proto",
     ":userdataauth_adaptors",
+    "//common-mk/external_dependencies:policy-protos",
+    "//common-mk/external_dependencies:user_policy-protos",
   ]
   pkg_deps = [
     "dbus-1",
