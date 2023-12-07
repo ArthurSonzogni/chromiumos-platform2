@@ -805,6 +805,7 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
       /*control_interface=*/&control_interface_,
       /*dispatcher=*/&dispatcher_,
       /*metrics=*/&metrics_,
+      /*patchpanel_client=*/patchpanel_client_,
       /*network_applier=*/&network_applier_));
   MockNetworkEventHandler event_handler0;
   device0->GetPrimaryNetwork()->set_state_for_testing(
@@ -828,6 +829,7 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
       /*control_interface=*/&control_interface_,
       /*dispatcher=*/&dispatcher_,
       /*metrics=*/&metrics_,
+      /*patchpanel_client=*/patchpanel_client_,
       /*network_applier=*/&network_applier_));
   device_info_.RegisterDevice(device1);
   device1->GetPrimaryNetwork()->set_state_for_testing(

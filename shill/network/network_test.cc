@@ -194,12 +194,13 @@ class NetworkInTest : public Network {
                 control_interface,
                 dispatcher,
                 metrics,
+                nullptr,
                 network_applier) {
     ON_CALL(*this, ApplyNetworkConfig)
-        .WillByDefault(
-            [](NetworkApplier::Area area, base::OnceClosure callback) {
-              std::move(callback).Run();
-            });
+        .WillByDefault([](NetworkApplier::Area area,
+                          base::OnceCallback<void(bool)> callback) {
+          std::move(callback).Run(true);
+        });
   }
 
   MOCK_METHOD(std::unique_ptr<SLAACController>,
@@ -218,7 +219,8 @@ class NetworkInTest : public Network {
               (override));
   MOCK_METHOD(void,
               ApplyNetworkConfig,
-              (NetworkApplier::Area area, base::OnceClosure callback),
+              (NetworkApplier::Area area,
+               base::OnceCallback<void(bool)> callback),
               (override));
 };
 

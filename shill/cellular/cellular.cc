@@ -4204,7 +4204,8 @@ Cellular::NetworkInfo::NetworkInfo(Cellular* cellular,
   network_ = std::make_unique<Network>(
       interface_index, interface_name, Technology::kCellular, false,
       cellular_->manager()->control_interface(),
-      cellular_->manager()->dispatcher(), cellular_->manager()->metrics());
+      cellular_->manager()->dispatcher(), cellular_->manager()->metrics(),
+      cellular_->manager()->patchpanel_client());
   network_->RegisterEventHandler(cellular_);
 }
 

@@ -9,6 +9,7 @@
 #include <base/check.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <net-base/ip_address.h>
@@ -75,7 +76,7 @@ class StaticIPParametersTest : public Test {
     const std::string ifname = "eth1";
     network_ = std::make_unique<Network>(
         1, ifname, Technology::kEthernet, false, &control_interface_,
-        &dispatcher_, &metrics_, &network_applier_);
+        &dispatcher_, &metrics_, &patchpanel_client_, &network_applier_);
     network_->set_ipconfig(
         std::make_unique<IPConfig>(&control_interface_, ifname));
     // Explicitly select this IPConfig object.
@@ -259,6 +260,7 @@ class StaticIPParametersTest : public Test {
   MockMetrics metrics_;
   std::unique_ptr<MockManager> manager_;
   NiceMock<MockNetworkApplier> network_applier_;
+  patchpanel::FakeClient patchpanel_client_;
 
   scoped_refptr<ServiceUnderTest> service_;
   std::unique_ptr<Network> network_;

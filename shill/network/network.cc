@@ -38,6 +38,7 @@
 #include "shill/network/proc_fs_stub.h"
 #include "shill/network/slaac_controller.h"
 #include "shill/service.h"
+#include "shill/technology.h"
 
 namespace shill {
 
@@ -81,6 +82,7 @@ Network::Network(int interface_index,
                  ControlInterface* control_interface,
                  EventDispatcher* dispatcher,
                  Metrics* metrics,
+                 patchpanel::Client* patchpanel_client,
                  NetworkApplier* network_applier)
     : interface_index_(interface_index),
       interface_name_(interface_name),
@@ -94,6 +96,7 @@ Network::Network(int interface_index,
       metrics_(metrics),
       dhcp_provider_(DHCPProvider::GetInstance()),
       rtnl_handler_(net_base::RTNLHandler::GetInstance()),
+      patchpanel_client_(patchpanel_client),
       network_applier_(network_applier) {}
 
 Network::~Network() {
@@ -242,8 +245,12 @@ void Network::SetupConnection(net_base::IPFamily family, bool is_slaac) {
                                     weak_factory_for_connection_.GetWeakPtr()));
 }
 
-void Network::OnSetupConnectionFinished() {
+void Network::OnSetupConnectionFinished(bool success) {
   LOG(INFO) << *this << ": " << __func__;
+  if (!success) {
+    // TODO(b/293997937): Properly handle RPC failure case.
+  }
+
   if (state_ != State::kConnected && technology_ != Technology::kVPN) {
     // The Network becomes connected, wait for 30 seconds to report its IP type.
     // Skip VPN since it's already reported separately in VPNService.
@@ -1096,13 +1103,57 @@ void Network::ReportIPType() {
 }
 
 void Network::ApplyNetworkConfig(NetworkApplier::Area area,
-                                 base::OnceClosure callback) {
+                                 base::OnceCallback<void(bool)> callback) {
+  const auto& network_config = GetNetworkConfig();
   network_applier_->ApplyNetworkConfig(interface_index_, interface_name_, area,
-                                       GetNetworkConfig(), priority_,
-                                       technology_);
-  // TODO(b/293997937): Notify patchpanel about the network change and register
-  // callback for patchpanel response.
-  dispatcher_->PostTask(FROM_HERE, std::move(callback));
+                                       network_config, priority_, technology_);
+  CHECK(patchpanel_client_);
+  patchpanel_client_->RegisterOnAvailableCallback(base::BindOnce(
+      &Network::CallPatchpanelConfigureNetwork, weak_factory_.GetWeakPtr(),
+      interface_index_, interface_name_, area, network_config, priority_,
+      technology_, std::move(callback)));
+}
+
+void Network::CallPatchpanelConfigureNetwork(
+    int interface_index,
+    const std::string& interface_name,
+    NetworkApplier::Area area,
+    const net_base::NetworkConfig& network_config,
+    net_base::NetworkPriority priority,
+    Technology technology,
+    base::OnceCallback<void(bool)> callback,
+    bool is_service_ready) {
+  if (!is_service_ready) {
+    LOG(ERROR)
+        << *this
+        << ": missing patchpanel service. Network setup might be partial.";
+    return;
+  }
+  VLOG(2) << __func__ << ": " << *this;
+  CHECK(patchpanel_client_);
+  patchpanel::Client::NetworkTechnology dbus_technology;
+  switch (technology) {
+    case Technology::kCellular:
+      dbus_technology = patchpanel::Client::NetworkTechnology::kCellular;
+      break;
+    case Technology::kWiFi:
+      dbus_technology = patchpanel::Client::NetworkTechnology::kWiFi;
+      break;
+    case Technology::kVPN:
+      dbus_technology = patchpanel::Client::NetworkTechnology::kVPN;
+      break;
+    case Technology::kEthernet:
+    case Technology::kEthernetEap:
+      dbus_technology = patchpanel::Client::NetworkTechnology::kVPN;
+      break;
+    default:
+      LOG(WARNING)
+          << "Patchpanel-unaware shill Technology, treating as Ethernet.";
+      dbus_technology = patchpanel::Client::NetworkTechnology::kEthernet;
+  }
+  patchpanel_client_->ConfigureNetwork(
+      interface_index, interface_name, static_cast<uint32_t>(area),
+      network_config, priority, dbus_technology, std::move(callback));
 }
 
 void Network::ReportNeighborLinkMonitorFailure(

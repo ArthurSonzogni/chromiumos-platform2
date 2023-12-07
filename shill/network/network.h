@@ -210,15 +210,15 @@ class Network {
   static bool ShouldScheduleNetworkValidationImmediately(
       ValidationReason reason);
 
-  explicit Network(
-      int interface_index,
-      const std::string& interface_name,
-      Technology technology,
-      bool fixed_ip_params,
-      ControlInterface* control_interface,
-      EventDispatcher* dispatcher,
-      Metrics* metrics,
-      NetworkApplier* network_applier = NetworkApplier::GetInstance());
+  Network(int interface_index,
+          const std::string& interface_name,
+          Technology technology,
+          bool fixed_ip_params,
+          ControlInterface* control_interface,
+          EventDispatcher* dispatcher,
+          Metrics* metrics,
+          patchpanel::Client* patchpanel_client,
+          NetworkApplier* network_applier = NetworkApplier::GetInstance());
   Network(const Network&) = delete;
   Network& operator=(const Network&) = delete;
   virtual ~Network();
@@ -416,7 +416,7 @@ class Network {
   // finished.
   mockable void ApplyNetworkConfig(
       NetworkApplier::Area area,
-      base::OnceClosure callback = base::DoNothing());
+      base::OnceCallback<void(bool)> callback = base::DoNothing());
 
   void set_fixed_ip_params_for_testing(bool val) { fixed_ip_params_ = val; }
   void set_dhcp_provider_for_testing(DHCPProvider* provider) {
@@ -467,7 +467,7 @@ class Network {
 
   // The second part of SetupConnection, called after network configuration
   // actually get applied to the netdev.
-  void OnSetupConnectionFinished();
+  void OnSetupConnectionFinished(bool success);
 
   // Creates a SLAACController object. Isolated for unit test mock injection.
   mockable std::unique_ptr<SLAACController> CreateSLAACController();
@@ -523,6 +523,16 @@ class Network {
   void OnUpdateFromSLAAC(SLAACController::UpdateType update_type);
 
   void UpdateIPConfigDBusObject();
+
+  void CallPatchpanelConfigureNetwork(
+      int interface_index,
+      const std::string& interface_name,
+      NetworkApplier::Area area,
+      const net_base::NetworkConfig& network_config,
+      net_base::NetworkPriority priority,
+      Technology technology,
+      base::OnceCallback<void(bool)> callback,
+      bool is_service_ready);
 
   // Enable ARP filtering on the interface. Incoming ARP requests are responded
   // to only by the interface(s) owning the address. Outgoing ARP requests will
@@ -607,6 +617,7 @@ class Network {
   // Cache singleton pointers for performance and test purposes.
   DHCPProvider* dhcp_provider_;
   net_base::RTNLHandler* rtnl_handler_;
+  patchpanel::Client* patchpanel_client_;
   NetworkApplier* network_applier_;
 
   // All the weak pointers created by this factory will be invalidated when the
