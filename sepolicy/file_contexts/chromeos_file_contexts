@@ -329,6 +329,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/fpstudygnupg(/.*)?     u:object_r:cros_var_lib_fpstudy:s0
 /var/lib/fwupd                  u:object_r:cros_var_lib_fwupd:s0
 /var/lib/fwupd/pending          u:object_r:cros_var_lib_fwupd_pending:s0
+/var/lib/heartd(/.*)?           u:object_r:cros_var_lib_heartd:s0
 /var/lib/hiberman               u:object_r:cros_var_lib_hiberman:s0
 /var/lib/imageloader(/.*)?      u:object_r:cros_var_lib_imageloader:s0
 /var/lib/metrics(/.*)?          u:object_r:cros_metrics_file:s0

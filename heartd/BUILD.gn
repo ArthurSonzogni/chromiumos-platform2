@@ -10,6 +10,7 @@ group("all") {
     ":install_init_config",
     ":install_mojo_service_manager_policy_config",
     ":install_seccomp_policy",
+    ":install_tmpfiles_config",
   ]
 }
 
@@ -39,4 +40,9 @@ install_config("install_seccomp_policy") {
   install_path = "seccomp_policy"
   sources = [ "seccomp/heartd-seccomp-${_arch}.policy" ]
   outputs = [ "heartd-seccomp.policy" ]
+}
+
+install_config("install_tmpfiles_config") {
+  sources = [ "tmpfiles.d/heartd.conf" ]
+  install_path = "tmpfilesd"
 }
