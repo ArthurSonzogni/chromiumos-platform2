@@ -22,7 +22,6 @@ namespace shill {
 const int PowerManager::kInvalidSuspendId = -1;
 const char PowerManager::kSuspendDelayDescription[] = "shill";
 const char PowerManager::kDarkSuspendDelayDescription[] = "shill";
-const int PowerManager::kSuspendTimeoutMilliseconds = 15 * 1000;
 
 PowerManager::PowerManager(ControlInterface* control_interface)
     : control_interface_(control_interface),

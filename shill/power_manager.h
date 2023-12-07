@@ -99,7 +99,6 @@ class PowerManager : public PowerManagerProxyDelegate {
   static const int kInvalidSuspendId;
   static const char kSuspendDelayDescription[];
   static const char kDarkSuspendDelayDescription[];
-  static const int kSuspendTimeoutMilliseconds;
 
   // These functions track the power_manager daemon appearing/vanishing from the
   // DBus connection.
