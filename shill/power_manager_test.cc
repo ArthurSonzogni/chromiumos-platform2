@@ -554,4 +554,11 @@ TEST_F(PowerManagerTest, OnChangeRegDomain) {
   power_manager_.ChangeRegDomain(NL80211_DFS_UNSET);
   power_manager_.ChangeRegDomain(NL80211_DFS_UNSET);
 }
+
+TEST_F(PowerManagerTest, ChangeRegDomainAfterStop) {
+  // This shouldn't crash the process.
+  power_manager_.Stop();
+  power_manager_.ChangeRegDomain(NL80211_DFS_FCC);
+}
+
 }  // namespace shill

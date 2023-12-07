@@ -149,7 +149,10 @@ void PowerManager::ChangeRegDomain(nl80211_dfs_regions domain) {
     return;
   }
   wifi_reg_domain_ = new_domain;
-  power_manager_proxy_->ChangeRegDomain(wifi_reg_domain_);
+
+  if (power_manager_proxy_) {
+    power_manager_proxy_->ChangeRegDomain(wifi_reg_domain_);
+  }
 }
 
 void PowerManager::OnSuspendImminent(int suspend_id) {
