@@ -19,6 +19,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/netlink_message.h>
 #include <net-base/netlink_packet.h>
 
 #include "shill/mock_control.h"
@@ -670,7 +671,7 @@ class WiFiProviderTest : public testing::Test {
     provider_->OnNewWiphy(nl80211_message);
   }
 
-  void HandleNetlinkBroadcast(const shill::NetlinkMessage& message) {
+  void HandleNetlinkBroadcast(const net_base::NetlinkMessage& message) {
     provider_->HandleNetlinkBroadcast(message);
   }
 
@@ -699,7 +700,7 @@ class WiFiProviderTest : public testing::Test {
 
   void OnGetPhyInfoAuxMessage(uint32_t phy_index,
                               NetlinkManager::AuxiliaryMessageType type,
-                              const NetlinkMessage* raw_message) {
+                              const net_base::NetlinkMessage* raw_message) {
     provider_->OnGetPhyInfoAuxMessage(phy_index, type, raw_message);
   }
 

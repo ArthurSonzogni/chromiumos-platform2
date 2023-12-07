@@ -27,7 +27,6 @@ install_config("install_headers") {
     "mock_process_manager.h",
     "netlink_attribute.h",
     "netlink_manager.h",
-    "netlink_message.h",
     "process_manager.h",
     "shill_export.h",
   ]
@@ -65,7 +64,6 @@ shared_library("libshill-net") {
     "generic_netlink_message.cc",
     "netlink_attribute.cc",
     "netlink_manager.cc",
-    "netlink_message.cc",
     "process_manager.cc",
   ]
   configs += [ ":target_defaults" ]

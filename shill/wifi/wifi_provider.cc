@@ -20,6 +20,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <net-base/netlink_message.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -1172,7 +1173,8 @@ void WiFiProvider::OnNewWiphy(const Nl80211Message& nl80211_message) {
   wifi_phys_[phy_index]->OnNewWiphy(nl80211_message);
 }
 
-void WiFiProvider::HandleNetlinkBroadcast(const NetlinkMessage& message) {
+void WiFiProvider::HandleNetlinkBroadcast(
+    const net_base::NetlinkMessage& message) {
   if (message.message_type() != Nl80211Message::GetMessageType()) {
     SLOG(7) << __func__ << ": Not a NL80211 Message";
     return;
@@ -1497,7 +1499,7 @@ void WiFiProvider::RegionChanged(const std::string& country) {
 void WiFiProvider::OnGetPhyInfoAuxMessage(
     uint32_t phy_index,
     NetlinkManager::AuxiliaryMessageType type,
-    const NetlinkMessage* raw_message) {
+    const net_base::NetlinkMessage* raw_message) {
   if (type != NetlinkManager::kDone) {
     NetlinkManager::OnNetlinkMessageError(type, raw_message);
     return;

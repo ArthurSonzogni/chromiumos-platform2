@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/netlink_message.h"
+#include "net-base/netlink_message.h"
 
 #include <unistd.h>
 
@@ -13,13 +13,11 @@
 #include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <net-base/byte_utils.h>
-#include <net-base/netlink_packet.h>
 
-namespace shill {
+#include "net-base/byte_utils.h"
+#include "net-base/netlink_packet.h"
 
-// TODO(b/301905012): Remove the type alias after moving this file to net-base.
-using net_base::NetlinkPacket;
+namespace net_base {
 
 const uint32_t NetlinkMessage::kBroadcastSequenceNumber = 0;
 const uint16_t NetlinkMessage::kIllegalMessageType = UINT16_MAX;
@@ -39,12 +37,12 @@ std::vector<uint8_t> NetlinkMessage::EncodeHeader(uint32_t sequence_number) {
 
   // Build netlink header.
   nlmsghdr header;
-  size_t nlmsghdr_with_pad = NLMSG_ALIGN(sizeof(header));
+  const uint32_t nlmsghdr_with_pad = NLMSG_ALIGN(sizeof(header));
   header.nlmsg_len = nlmsghdr_with_pad;
   header.nlmsg_type = message_type_;
   header.nlmsg_flags = NLM_F_REQUEST | flags_;
   header.nlmsg_seq = sequence_number_;
-  header.nlmsg_pid = getpid();
+  header.nlmsg_pid = static_cast<uint32_t>(getpid());
 
   // Netlink header + pad.
   std::vector<uint8_t> result = net_base::byte_utils::ToBytes(header);
@@ -296,4 +294,4 @@ std::unique_ptr<NetlinkMessage> NetlinkMessageFactory::CreateMessage(
   return message;
 }
 
-}  // namespace shill.
+}  // namespace net_base.

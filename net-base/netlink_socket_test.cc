@@ -15,8 +15,10 @@
 #include <base/containers/span.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/byte_utils.h>
-#include <net-base/mock_socket.h>
+
+#include "net-base/byte_utils.h"
+#include "net-base/mock_socket.h"
+#include "net-base/netlink_message.h"
 
 using testing::_;
 using testing::Invoke;
@@ -111,11 +113,10 @@ TEST_F(NetlinkSocketTest, SequenceNumberTest) {
   EXPECT_EQ(arbitrary_number + 1, netlink_socket_->GetSequenceNumber());
 
   // Make sure we don't go to |NetlinkMessage::kBroadcastSequenceNumber|.
-  // TODO(b/301905012): Use NetlinkMessage::kBroadcastSequenceNumber after
-  // moving NetlinkMessage to net-base library.
-  constexpr uint32_t kBroadcastSequenceNumber = 0;
-  netlink_socket_->set_sequence_number_for_test(kBroadcastSequenceNumber);
-  EXPECT_NE(kBroadcastSequenceNumber, netlink_socket_->GetSequenceNumber());
+  netlink_socket_->set_sequence_number_for_test(
+      NetlinkMessage::kBroadcastSequenceNumber);
+  EXPECT_NE(NetlinkMessage::kBroadcastSequenceNumber,
+            netlink_socket_->GetSequenceNumber());
 }
 
 }  // namespace net_base

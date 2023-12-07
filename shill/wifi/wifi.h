@@ -94,6 +94,7 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/ip_address.h>
+#include <net-base/netlink_message.h>
 
 #include "shill/device.h"
 #include "shill/metrics.h"
@@ -113,7 +114,6 @@ namespace shill {
 
 class Error;
 class NetlinkManager;
-class NetlinkMessage;
 class Nl80211Message;
 class SupplicantEAPStateHandler;
 class SupplicantInterfaceProxyInterface;
@@ -685,7 +685,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Utility function used to detect the end of PHY info dump.
   void OnGetPhyInfoAuxMessage(NetlinkManager::AuxiliaryMessageType type,
-                              const NetlinkMessage* raw_message);
+                              const net_base::NetlinkMessage* raw_message);
 
   // Requests regulatory information via NL80211_CMD_GET_REG.
   void GetRegulatory();
@@ -746,7 +746,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Callback invoked when broadcasted netlink messages are received.
   // Forwards (Wiphy)RegChangeMessages and TriggerScanMessages to their
   // appropriate handler functions.
-  void HandleNetlinkBroadcast(const NetlinkMessage& netlink_message);
+  void HandleNetlinkBroadcast(const net_base::NetlinkMessage& netlink_message);
 
   // Called when the kernel broadcasts a notification that a scan has
   // started.

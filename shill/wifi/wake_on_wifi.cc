@@ -25,6 +25,7 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/byte_utils.h>
+#include <net-base/netlink_message.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -520,7 +521,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
 
 void WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse(
     NetlinkManager::AuxiliaryMessageType type,
-    const NetlinkMessage* raw_message) {
+    const net_base::NetlinkMessage* raw_message) {
   Error error(Error::kOperationFailed);
   switch (type) {
     case NetlinkManager::kErrorFromKernel:
@@ -528,9 +529,10 @@ void WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse(
         error.Populate(Error::kOperationFailed, "Unknown error from kernel");
         break;
       }
-      if (raw_message->message_type() == ErrorAckMessage::GetMessageType()) {
-        const ErrorAckMessage* error_ack_message =
-            static_cast<const ErrorAckMessage*>(raw_message);
+      if (raw_message->message_type() ==
+          net_base::ErrorAckMessage::GetMessageType()) {
+        const net_base::ErrorAckMessage* error_ack_message =
+            static_cast<const net_base::ErrorAckMessage*>(raw_message);
         if (error_ack_message->error() == EOPNOTSUPP) {
           error.Populate(Error::kNotSupported);
         }
@@ -727,7 +729,8 @@ void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
   }
 }
 
-void WakeOnWiFi::OnWakeupReasonReceived(const NetlinkMessage& netlink_message) {
+void WakeOnWiFi::OnWakeupReasonReceived(
+    const net_base::NetlinkMessage& netlink_message) {
   // We only handle wakeup reason messages in this handler, which is are
   // nl80211 messages with the NL80211_CMD_SET_WOWLAN command.
   if (netlink_message.message_type() != Nl80211Message::GetMessageType()) {

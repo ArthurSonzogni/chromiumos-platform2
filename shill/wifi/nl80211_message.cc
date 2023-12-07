@@ -31,6 +31,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <net-base/netlink_message.h>
 #include <net-base/netlink_packet.h>
 
 #include "shill/net/attribute_list.h"
@@ -51,7 +52,8 @@ class Nl80211ResponseHandler : public NetlinkManager::NetlinkResponseHandler {
   Nl80211ResponseHandler(const Nl80211ResponseHandler&) = delete;
   Nl80211ResponseHandler& operator=(const Nl80211ResponseHandler&) = delete;
 
-  bool HandleMessage(const NetlinkMessage& netlink_message) const override {
+  bool HandleMessage(
+      const net_base::NetlinkMessage& netlink_message) const override {
     if (netlink_message.message_type() != Nl80211Message::GetMessageType()) {
       LOG(ERROR) << "Message is type " << netlink_message.message_type()
                  << ", not " << Nl80211Message::GetMessageType()
@@ -95,7 +97,7 @@ uint16_t Nl80211Message::GetMessageType() {
 
 // static
 void Nl80211Message::SetMessageType(uint16_t message_type) {
-  if (message_type == NetlinkMessage::kIllegalMessageType) {
+  if (message_type == net_base::NetlinkMessage::kIllegalMessageType) {
     LOG(FATAL) << "Absolutely need a legal message type for Nl80211 messages.";
   }
   nl80211_message_type_ = message_type;
@@ -498,7 +500,7 @@ const char ControlPortFrameTxStatusMessage::kCommandString[] =
     "NL80211_CMD_CONTROL_PORT_FRAME_TX_STATUS";
 
 // static
-std::unique_ptr<NetlinkMessage> Nl80211Message::CreateMessage(
+std::unique_ptr<net_base::NetlinkMessage> Nl80211Message::CreateMessage(
     const net_base::NetlinkPacket& packet) {
   genlmsghdr header;
   if (!packet.GetGenlMsgHdr(&header)) {

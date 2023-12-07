@@ -9,10 +9,10 @@
 #include <string>
 #include <vector>
 
+#include <net-base/netlink_message.h>
 #include <net-base/netlink_packet.h>
 
 #include "shill/net/attribute_list.h"
-#include "shill/net/netlink_message.h"
 #include "shill/net/shill_export.h"
 
 namespace shill {
@@ -56,12 +56,12 @@ namespace shill {
 //                       |<-----hdr.nla_len----->| |
 //                       |<NLA_ALIGN(hdr.nla_len)->|
 
-class SHILL_EXPORT GenericNetlinkMessage : public NetlinkMessage {
+class SHILL_EXPORT GenericNetlinkMessage : public net_base::NetlinkMessage {
  public:
   GenericNetlinkMessage(uint16_t my_message_type,
                         uint8_t command,
                         const char* command_string)
-      : NetlinkMessage(my_message_type),
+      : net_base::NetlinkMessage(my_message_type),
         attributes_(new AttributeList),
         command_(command),
         command_string_(command_string) {}
@@ -108,7 +108,7 @@ class SHILL_EXPORT ControlNetlinkMessage : public GenericNetlinkMessage {
                       bool is_broadcast) override;
 
   // Message factory for all types of Control netlink message.
-  static std::unique_ptr<NetlinkMessage> CreateMessage(
+  static std::unique_ptr<net_base::NetlinkMessage> CreateMessage(
       const net_base::NetlinkPacket& packet);
 };
 

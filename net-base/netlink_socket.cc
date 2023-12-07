@@ -15,17 +15,12 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 
+#include "net-base/netlink_message.h"
+
 // This is from a version of linux/socket.h that we don't have.
 #define SOL_NETLINK 270
 
 namespace net_base {
-namespace {
-
-// TODO(b/301905012): Use NetlinkMessage::kBroadcastSequenceNumber after moving
-// NetlinkMessage to net-base library.
-constexpr uint32_t kBroadcastSequenceNumber = 0;
-
-}  // namespace
 
 std::unique_ptr<NetlinkSocket> NetlinkSocket::Create() {
   return CreateWithSocketFactory(std::make_unique<net_base::SocketFactory>());
@@ -96,7 +91,7 @@ int NetlinkSocket::WaitForRead(base::TimeDelta timeout) const {
 }
 
 uint32_t NetlinkSocket::GetSequenceNumber() {
-  if (++sequence_number_ == kBroadcastSequenceNumber) {
+  if (++sequence_number_ == NetlinkMessage::kBroadcastSequenceNumber) {
     ++sequence_number_;
   }
   return sequence_number_;

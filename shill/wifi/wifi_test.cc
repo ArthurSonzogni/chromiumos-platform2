@@ -30,6 +30,7 @@
 #include <crypto/random.h>
 #include <net-base/mock_rtnl_handler.h>
 #include <net-base/netlink_packet.h>
+#include <net-base/netlink_message.h>
 
 #include "shill/dbus/dbus_control.h"
 #include "shill/error.h"
@@ -1291,7 +1292,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 
   std::vector<unsigned char> GetRandomMacMask() { return WiFi::kRandomMacMask; }
 
-  void HandleNetlinkBroadcast(const NetlinkMessage& netlink_message) {
+  void HandleNetlinkBroadcast(const net_base::NetlinkMessage& netlink_message) {
     wifi_->HandleNetlinkBroadcast(netlink_message);
   }
 

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NET_NETLINK_MESSAGE_H_
-#define SHILL_NET_NETLINK_MESSAGE_H_
+#ifndef NET_BASE_NETLINK_MESSAGE_H_
+#define NET_BASE_NETLINK_MESSAGE_H_
 
 #include <linux/netlink.h>
 
@@ -16,13 +16,13 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback_forward.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST.
-#include <net-base/netlink_packet.h>
 
-#include "shill/net/shill_export.h"
+#include "net-base/export.h"
+#include "net-base/netlink_packet.h"
 
 struct nlmsghdr;
 
-namespace shill {
+namespace net_base {
 
 // Netlink messages are sent over netlink sockets to talk between user-space
 // programs (like shill) and kernel modules (like the cfg80211 module).  Each
@@ -65,7 +65,7 @@ namespace shill {
 // Do all of this before you start to create NetlinkMessages so that
 // NetlinkMessage can be instantiated with a valid |message_type_|.
 
-class SHILL_EXPORT NetlinkMessage {
+class NET_BASE_EXPORT NetlinkMessage {
  public:
   static const uint32_t kBroadcastSequenceNumber;
   static const uint16_t kIllegalMessageType;
@@ -136,12 +136,12 @@ class SHILL_EXPORT NetlinkMessage {
 // a malformed message or a busy kernel module).  Ack messages are received
 // from the kernel when a sent message has the NLM_F_ACK flag set, indicating
 // that an Ack is requested.
-class SHILL_EXPORT ErrorAckMessage : public NetlinkMessage {
+class NET_BASE_EXPORT ErrorAckMessage : public NetlinkMessage {
  public:
   static const uint16_t kMessageType;
 
   ErrorAckMessage() : NetlinkMessage(kMessageType), error_(0) {}
-  explicit ErrorAckMessage(uint32_t err)
+  explicit ErrorAckMessage(int32_t err)
       : NetlinkMessage(kMessageType), error_(err) {}
   ErrorAckMessage(const ErrorAckMessage&) = delete;
   ErrorAckMessage& operator=(const ErrorAckMessage&) = delete;
@@ -151,13 +151,13 @@ class SHILL_EXPORT ErrorAckMessage : public NetlinkMessage {
                       bool is_broadcast) override;
   std::vector<uint8_t> Encode(uint32_t sequence_number) override;
   std::string ToString() const override;
-  uint32_t error() const { return -error_; }
+  int32_t error() const { return -error_; }
 
  private:
-  uint32_t error_;
+  int32_t error_;
 };
 
-class SHILL_EXPORT NoopMessage : public NetlinkMessage {
+class NET_BASE_EXPORT NoopMessage : public NetlinkMessage {
  public:
   static const uint16_t kMessageType;
 
@@ -170,7 +170,7 @@ class SHILL_EXPORT NoopMessage : public NetlinkMessage {
   std::string ToString() const override;
 };
 
-class SHILL_EXPORT DoneMessage : public NetlinkMessage {
+class NET_BASE_EXPORT DoneMessage : public NetlinkMessage {
  public:
   static const uint16_t kMessageType;
 
@@ -183,7 +183,7 @@ class SHILL_EXPORT DoneMessage : public NetlinkMessage {
   std::string ToString() const override;
 };
 
-class SHILL_EXPORT OverrunMessage : public NetlinkMessage {
+class NET_BASE_EXPORT OverrunMessage : public NetlinkMessage {
  public:
   static const uint16_t kMessageType;
 
@@ -196,7 +196,7 @@ class SHILL_EXPORT OverrunMessage : public NetlinkMessage {
   std::string ToString() const override;
 };
 
-class SHILL_EXPORT UnknownMessage : public NetlinkMessage {
+class NET_BASE_EXPORT UnknownMessage : public NetlinkMessage {
  public:
   UnknownMessage(uint16_t message_type, base::span<const uint8_t> message_body)
       : NetlinkMessage(message_type),
@@ -216,7 +216,7 @@ class SHILL_EXPORT UnknownMessage : public NetlinkMessage {
 // Factory class.
 //
 
-class SHILL_EXPORT NetlinkMessageFactory {
+class NET_BASE_EXPORT NetlinkMessageFactory {
  public:
   using FactoryMethod = base::RepeatingCallback<std::unique_ptr<NetlinkMessage>(
       const net_base::NetlinkPacket& packet)>;
@@ -236,6 +236,6 @@ class SHILL_EXPORT NetlinkMessageFactory {
   std::map<uint16_t, FactoryMethod> factories_;
 };
 
-}  // namespace shill
+}  // namespace net_base
 
-#endif  // SHILL_NET_NETLINK_MESSAGE_H_
+#endif  // NET_BASE_NETLINK_MESSAGE_H_

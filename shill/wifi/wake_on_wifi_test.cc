@@ -22,6 +22,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/netlink_message.h>
 #include <net-base/netlink_packet.h>
 
 #include "shill/error.h"
@@ -789,7 +790,7 @@ class WakeOnWiFiTest : public ::testing::Test {
     return &wake_on_wifi_->wake_on_allowed_ssids_;
   }
 
-  void OnWakeupReasonReceived(const NetlinkMessage& netlink_message) {
+  void OnWakeupReasonReceived(const net_base::NetlinkMessage& netlink_message) {
     wake_on_wifi_->OnWakeupReasonReceived(netlink_message);
   }
 

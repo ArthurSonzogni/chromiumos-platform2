@@ -22,6 +22,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <brillo/timers/alarm_timer.h>
+#include <net-base/netlink_message.h>
 
 #include "shill/callbacks.h"
 #include "shill/event_history.h"
@@ -179,7 +180,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   //
   // Note: Assumes only one wakeup reason is received. If more than one is
   // received, the only first one parsed will be handled.
-  void OnWakeupReasonReceived(const NetlinkMessage& netlink_message);
+  void OnWakeupReasonReceived(const net_base::NetlinkMessage& netlink_message);
   // Performs pre-suspend actions relevant to wake on WiFi functionality.
   //
   // Arguments:
@@ -359,7 +360,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   // programming attempts.
   void OnWakeOnWiFiSettingsErrorResponse(
       NetlinkManager::AuxiliaryMessageType type,
-      const NetlinkMessage* raw_message);
+      const net_base::NetlinkMessage* raw_message);
   // Message handler for NL80211_CMD_SET_WOWLAN responses.
   static void OnSetWakeOnWiFiConnectionResponse(
       const Nl80211Message& nl80211_message);

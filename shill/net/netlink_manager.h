@@ -71,9 +71,9 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/netlink_packet.h>
 #include <net-base/netlink_socket.h>
+#include <net-base/netlink_message.h>
 
 #include "shill/net/generic_netlink_message.h"
-#include "shill/net/netlink_message.h"
 #include "shill/net/shill_export.h"
 
 namespace shill {
@@ -100,7 +100,7 @@ class SHILL_EXPORT NetlinkManager {
     kUnexpectedResponseType
   };
   using NetlinkMessageHandler =
-      base::RepeatingCallback<void(const NetlinkMessage&)>;
+      base::RepeatingCallback<void(const net_base::NetlinkMessage&)>;
   using ControlNetlinkMessageHandler =
       base::RepeatingCallback<void(const ControlNetlinkMessage&)>;
   // NetlinkAuxiliaryMessageHandler handles netlink error messages, things
@@ -109,7 +109,7 @@ class SHILL_EXPORT NetlinkManager {
   // there is no way to reserve a part of the ErrorAckMessage space for
   // non-netlink errors).
   using NetlinkAuxiliaryMessageHandler = base::RepeatingCallback<void(
-      AuxiliaryMessageType type, const NetlinkMessage*)>;
+      AuxiliaryMessageType type, const net_base::NetlinkMessage*)>;
   // NetlinkAckHandler handles netlink Ack messages, which are a special type
   // of netlink error message carrying an error code of 0. Since Ack messages
   // contain no useful data (other than the error code of 0 to differentiate
@@ -136,9 +136,10 @@ class SHILL_EXPORT NetlinkManager {
     // false if |netlink_message| is not the correct type.  Calls callback
     // (which is declared in the private area of derived classes) with
     // properly cast version of |netlink_message|.
-    virtual bool HandleMessage(const NetlinkMessage& netlink_message) const = 0;
+    virtual bool HandleMessage(
+        const net_base::NetlinkMessage& netlink_message) const = 0;
     void HandleError(AuxiliaryMessageType type,
-                     const NetlinkMessage* netlink_message) const;
+                     const net_base::NetlinkMessage* netlink_message) const;
     virtual bool HandleAck() const;
     void set_delete_after(base::TimeTicks time) { delete_after_ = time; }
     base::TimeTicks delete_after() const { return delete_after_; }
@@ -200,7 +201,7 @@ class SHILL_EXPORT NetlinkManager {
   // event loop.
   virtual uint16_t GetFamily(
       const std::string& family_name,
-      const NetlinkMessageFactory::FactoryMethod& message_factory);
+      const net_base::NetlinkMessageFactory::FactoryMethod& message_factory);
 
   // Install a NetlinkManager NetlinkMessageHandler.  The handler is a
   // user-supplied object to be called by the system for user-bound messages
@@ -232,15 +233,15 @@ class SHILL_EXPORT NetlinkManager {
 
   // Sends a netlink message if |pending_dump_| is false. Otherwise, post
   // a message to |pending_messages_| to be sent later.
-  virtual bool SendOrPostMessage(NetlinkMessage* message,
+  virtual bool SendOrPostMessage(net_base::NetlinkMessage* message,
                                  NetlinkResponseHandlerRefPtr message_wrapper);
 
   // Get string version of NetlinkMessage for logging purposes
-  static std::string GetRawMessage(const NetlinkMessage* raw_message);
+  static std::string GetRawMessage(const net_base::NetlinkMessage* raw_message);
 
   // Generic erroneous message handler everyone can use.
-  static void OnNetlinkMessageError(AuxiliaryMessageType type,
-                                    const NetlinkMessage* raw_message);
+  static void OnNetlinkMessageError(
+      AuxiliaryMessageType type, const net_base::NetlinkMessage* raw_message);
 
   // Generic Ack handler that does nothing. Other callbacks registered for the
   // message are not deleted after this function is executed.
@@ -249,7 +250,7 @@ class SHILL_EXPORT NetlinkManager {
   }
 
   // Uninstall the handler for a specific netlink message.
-  bool RemoveMessageHandler(const NetlinkMessage& message);
+  bool RemoveMessageHandler(const net_base::NetlinkMessage& message);
 
   // Sign-up to receive and log multicast events of a specific type. These
   // events are processed by message handlers added with |AddBroadcastHandler|.
@@ -348,7 +349,7 @@ class SHILL_EXPORT NetlinkManager {
   // |message_handlers_|.
   void CallErrorHandler(uint32_t sequence_number,
                         AuxiliaryMessageType type,
-                        const NetlinkMessage* netlink_message);
+                        const net_base::NetlinkMessage* netlink_message);
 
   // Utility function that posts a task to the message loop to call
   // NetlinkManager::ResendPendingDumpMessage kNlMessageRetryDelay from now.
@@ -418,7 +419,7 @@ class SHILL_EXPORT NetlinkManager {
   std::unique_ptr<base::FileDescriptorWatcher::Controller> sock_watcher_;
 
   std::map<const std::string, MessageType> message_types_;
-  NetlinkMessageFactory message_factory_;
+  net_base::NetlinkMessageFactory message_factory_;
   bool dump_pending_;
 };
 

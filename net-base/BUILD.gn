@@ -44,6 +44,7 @@ shared_library("libnet-base") {
     "ipv4_address.cc",
     "ipv6_address.cc",
     "mac_address.cc",
+    "netlink_message.cc",
     "netlink_packet.cc",
     "netlink_sock_diag.cc",
     "netlink_socket.cc",

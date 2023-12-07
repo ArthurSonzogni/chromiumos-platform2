@@ -33,6 +33,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/netlink_message.h>
 #include <net-base/rtnl_handler.h>
 
 #if !defined(DISABLE_FLOSS)
@@ -47,7 +48,6 @@
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/net/netlink_manager.h"
-#include "shill/net/netlink_message.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/scope_logger.h"
 #include "shill/store/key_value_store.h"
@@ -1825,7 +1825,8 @@ void WiFi::ParseCipherSuites(const Nl80211Message& nl80211_message) {
   }
 }
 
-void WiFi::HandleNetlinkBroadcast(const NetlinkMessage& netlink_message) {
+void WiFi::HandleNetlinkBroadcast(
+    const net_base::NetlinkMessage& netlink_message) {
   // We only handle nl80211 commands.
   if (netlink_message.message_type() != Nl80211Message::GetMessageType()) {
     SLOG(this, 7) << __func__ << ": " << "Not a NL80211 Message";
@@ -3602,7 +3603,7 @@ void WiFi::OnNewWiphy(const Nl80211Message& nl80211_message) {
 }
 
 void WiFi::OnGetPhyInfoAuxMessage(NetlinkManager::AuxiliaryMessageType type,
-                                  const NetlinkMessage* raw_message) {
+                                  const net_base::NetlinkMessage* raw_message) {
   if (type != NetlinkManager::kDone) {
     NetlinkManager::OnNetlinkMessageError(type, raw_message);
     return;

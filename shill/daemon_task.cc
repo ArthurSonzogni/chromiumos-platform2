@@ -13,6 +13,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/message_loops/message_loop.h>
+#include <net-base/netlink_message.h>
 
 #include "shill/control_interface.h"
 #include "shill/dbus/dbus_control.h"
@@ -138,7 +139,7 @@ void DaemonTask::Start() {
     uint16_t nl80211_family_id = netlink_manager_->GetFamily(
         Nl80211Message::kMessageTypeString,
         base::BindRepeating(&Nl80211Message::CreateMessage));
-    if (nl80211_family_id == NetlinkMessage::kIllegalMessageType) {
+    if (nl80211_family_id == net_base::NetlinkMessage::kIllegalMessageType) {
       LOG(FATAL) << "Didn't get a legal message type for 'nl80211' messages.";
     }
     Nl80211Message::SetMessageType(nl80211_family_id);

@@ -11,6 +11,7 @@
 
 #include <base/containers/span.h>
 #include <base/no_destructor.h>
+#include <net-base/netlink_message.h>
 #include <net-base/netlink_packet.h>
 
 #include "shill/net/generic_netlink_message.h"
@@ -66,7 +67,7 @@ class SHILL_EXPORT Nl80211Message : public GenericNetlinkMessage {
   void set_sequence_number(uint32_t seq) { sequence_number_ = seq; }
 
   // Message factory for all types of Nl80211 message.
-  static std::unique_ptr<NetlinkMessage> CreateMessage(
+  static std::unique_ptr<net_base::NetlinkMessage> CreateMessage(
       const net_base::NetlinkPacket& packet);
 
  private:

@@ -14,12 +14,12 @@
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 #include <base/observer_list_types.h>
+#include <net-base/netlink_message.h>
 
 #include "shill/data_types.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/net/netlink_manager.h"
-#include "shill/net/netlink_message.h"
 #include "shill/provider_interface.h"
 #include "shill/refptr_types.h"
 #include "shill/wifi/local_device.h"
@@ -364,7 +364,7 @@ class WiFiProvider : public ProviderInterface {
   // NL80211_CMD_DEL_WIPHY by deleting the relevant WiFiPhy object. If we
   // receive any other NL80211 message which includes a phy index value, then
   // we request phy info for that phy index.
-  void HandleNetlinkBroadcast(const shill::NetlinkMessage& message);
+  void HandleNetlinkBroadcast(const net_base::NetlinkMessage& message);
 
   // Set regulatory domain to |country|
   mockable void SetRegDomain(std::string country);
@@ -374,7 +374,7 @@ class WiFiProvider : public ProviderInterface {
   // for calling the callback passed in UpdateRegAndPhy().
   void OnGetPhyInfoAuxMessage(uint32_t phy_index,
                               NetlinkManager::AuxiliaryMessageType type,
-                              const NetlinkMessage* raw_message);
+                              const net_base::NetlinkMessage* raw_message);
 
   Metrics* metrics() const;
 

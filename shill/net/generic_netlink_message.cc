@@ -11,6 +11,7 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <net-base/byte_utils.h>
+#include <net-base/netlink_message.h>
 #include <net-base/netlink_packet.h>
 
 #include "shill/net/netlink_attribute.h"
@@ -18,6 +19,7 @@
 namespace shill {
 
 // TODO(b/301905012): Remove the type alias after moving this file to net-base.
+using net_base::NetlinkMessage;
 using net_base::NetlinkPacket;
 
 std::vector<uint8_t> GenericNetlinkMessage::EncodeHeader(

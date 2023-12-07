@@ -10,6 +10,7 @@
 #include <string>
 
 #include <gmock/gmock.h>
+#include <net-base/netlink_message.h>
 
 namespace shill {
 
@@ -25,7 +26,8 @@ class MockNetlinkManager : public NetlinkManager {
   MOCK_METHOD(void, Start, (), (override));
   MOCK_METHOD(uint16_t,
               GetFamily,
-              (const std::string&, const NetlinkMessageFactory::FactoryMethod&),
+              (const std::string&,
+               const net_base::NetlinkMessageFactory::FactoryMethod&),
               (override));
   MOCK_METHOD(bool,
               RemoveBroadcastHandler,
@@ -44,7 +46,8 @@ class MockNetlinkManager : public NetlinkManager {
               (override));
   MOCK_METHOD(bool,
               SendOrPostMessage,
-              (NetlinkMessage*, NetlinkResponseHandlerRefPtr message_wrapper),
+              (net_base::NetlinkMessage*,
+               NetlinkResponseHandlerRefPtr message_wrapper),
               (override));
   MOCK_METHOD(bool,
               SubscribeToEvents,

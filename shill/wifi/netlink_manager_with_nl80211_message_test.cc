@@ -3,9 +3,9 @@
 // found in the LICENSE file.
 
 // This file provides tests for individual messages.  It tests
-// NetlinkMessageFactory's ability to create specific message types and it
-// tests the various NetlinkMessage types' ability to parse those
-// messages.
+// net_base::NetlinkMessageFactory's ability to create specific message types
+// and it tests the various net_base::NetlinkMessage types' ability to parse
+// those messages.
 
 // This file tests the public interface to NetlinkManager.
 #include "shill/net/netlink_manager.h"
@@ -24,6 +24,7 @@
 #include <gtest/gtest.h>
 #include <net-base/byte_utils.h>
 #include <net-base/mock_netlink_socket.h>
+#include <net-base/netlink_message.h>
 #include <net-base/netlink_packet.h>
 
 #include "shill/wifi/nl80211_message.h"
@@ -40,9 +41,6 @@ using testing::Test;
 namespace shill {
 
 namespace {
-
-// TODO(b/301905012): Remove this type alias when moving this file to net-base.
-using net_base::MockNetlinkSocket;
 
 // These data blocks have been collected by shill using NetlinkManager while,
 // simultaneously (and manually) comparing shill output with that of the 'iw'
@@ -96,7 +94,7 @@ class NetlinkManagerTest : public Test {
  public:
   NetlinkManagerTest()
       : netlink_manager_(NetlinkManager::GetInstance()),
-        netlink_socket_(new MockNetlinkSocket()) {
+        netlink_socket_(new net_base::MockNetlinkSocket()) {
     EXPECT_NE(nullptr, netlink_manager_);
     netlink_manager_->message_types_[Nl80211Message::kMessageTypeString]
         .family_id = kNl80211FamilyId;
@@ -182,7 +180,7 @@ class NetlinkManagerTest : public Test {
     MockHandlerNetlink(const MockHandlerNetlink&) = delete;
     MockHandlerNetlink& operator=(const MockHandlerNetlink&) = delete;
 
-    MOCK_METHOD(void, OnNetlinkMessage, (const NetlinkMessage& msg));
+    MOCK_METHOD(void, OnNetlinkMessage, (const net_base::NetlinkMessage& msg));
     const NetlinkManager::NetlinkMessageHandler& on_netlink_message() const {
       return on_netlink_message_;
     }
@@ -203,7 +201,8 @@ class NetlinkManagerTest : public Test {
 
     MOCK_METHOD(void,
                 OnErrorHandler,
-                (NetlinkManager::AuxiliaryMessageType, const NetlinkMessage*));
+                (NetlinkManager::AuxiliaryMessageType,
+                 const net_base::NetlinkMessage*));
     const NetlinkManager::NetlinkAuxiliaryMessageHandler& on_netlink_message()
         const {
       return on_netlink_message_;
@@ -258,7 +257,7 @@ class NetlinkManagerTest : public Test {
   };
 
   NetlinkManager* netlink_manager_;
-  MockNetlinkSocket* netlink_socket_;  // Owned by |netlink_manager_|.
+  net_base::MockNetlinkSocket* netlink_socket_;  // Owned by |netlink_manager_|.
   std::vector<uint8_t> saved_message_;
   uint32_t saved_sequence_number_ = 0;
 };
@@ -303,7 +302,7 @@ TEST_F(NetlinkManagerTest, GetFamily) {
   EXPECT_CALL(*netlink_socket_, WaitForRead).WillOnce(Return(1));
   EXPECT_CALL(*netlink_socket_, RecvMessage(_))
       .WillOnce(Invoke(this, &NetlinkManagerTest::ReplyToSentMessage));
-  NetlinkMessageFactory::FactoryMethod null_factory;
+  net_base::NetlinkMessageFactory::FactoryMethod null_factory;
   EXPECT_EQ(kSampleMessageType,
             netlink_manager_->GetFamily(kSampleMessageName, null_factory));
 }
@@ -333,7 +332,7 @@ TEST_F(NetlinkManagerTest, GetFamilyOneInterstitialMessage) {
   EXPECT_CALL(*netlink_socket_, RecvMessage(_))
       .WillOnce(Invoke(this, &NetlinkManagerTest::ReplyWithRandomMessage))
       .WillOnce(Invoke(this, &NetlinkManagerTest::ReplyToSentMessage));
-  NetlinkMessageFactory::FactoryMethod null_factory;
+  net_base::NetlinkMessageFactory::FactoryMethod null_factory;
   EXPECT_EQ(kSampleMessageType,
             netlink_manager_->GetFamily(kSampleMessageName, null_factory));
 }
@@ -354,10 +353,10 @@ TEST_F(NetlinkManagerTest, GetFamilyTimeout) {
   EXPECT_CALL(*netlink_socket_, RecvMessage(_))
       .WillRepeatedly(
           Invoke(this, &NetlinkManagerTest::ReplyWithRandomMessage));
-  NetlinkMessageFactory::FactoryMethod null_factory;
+  net_base::NetlinkMessageFactory::FactoryMethod null_factory;
 
   const std::string kSampleMessageName = "SampleMessageName";
-  EXPECT_EQ(NetlinkMessage::kIllegalMessageType,
+  EXPECT_EQ(net_base::NetlinkMessage::kIllegalMessageType,
             netlink_manager_->GetFamily(kSampleMessageName, null_factory));
 }
 
@@ -618,7 +617,7 @@ TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
   netlink_manager_->OnNlMessageReceived(&received_message);
 
   // Build a Done message with the sent-message sequence number.
-  DoneMessage done_message;
+  net_base::DoneMessage done_message;
   done_message.AddFlag(NLM_F_MULTI);
   net_base::NetlinkPacket done_packet(
       done_message.Encode(netlink_socket_->GetLastSequenceNumber()));
@@ -889,7 +888,7 @@ TEST_F(NetlinkManagerTest, PendingDump_Timeout) {
 TEST_F(NetlinkManagerTest, PendingDump_Retry) {
   const int kNumRetries = 1;
   // Create EBUSY netlink error response. Do this manually because
-  // ErrorAckMessage does not implement NetlinkMessage::Encode.
+  // ErrorAckMessage does not implement net_base::NetlinkMessage::Encode.
   net_base::MutableNetlinkPacket received_ebusy_message(kNLMSG_ACK);
   *received_ebusy_message.GetMutablePayload() =
       net_base::byte_utils::ToBytes<uint32_t>(EBUSY);
