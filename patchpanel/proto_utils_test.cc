@@ -13,6 +13,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
+#include <net-base/http_url.h>
+#include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"
@@ -174,6 +177,97 @@ TEST_F(ProtoUtilsTest, FillNetworkClientInfoProto) {
             net_base::IPv6Address::CreateFromString("fe80::3")->ToByteString());
   EXPECT_EQ(proto.hostname(), "test_host");
   EXPECT_EQ(proto.vendor_class(), "test_vendor_class");
+}
+
+TEST_F(ProtoUtilsTest, DeserializeNetworkConfigEmpty) {
+  patchpanel::NetworkConfig input;
+  input.set_ipv4_default_route(true);
+
+  const auto output = DeserializeNetworkConfig(input);
+  net_base::NetworkConfig expected_output;
+  EXPECT_EQ(output, expected_output);
+}
+
+TEST_F(ProtoUtilsTest, DeserializeNetworkConfig) {
+  patchpanel::NetworkConfig input;
+  auto* ipv4_address = input.mutable_ipv4_address();
+  ipv4_address->set_addr({10, 0, 1, 100});
+  ipv4_address->set_prefix_len(24);
+  input.set_ipv4_gateway({10, 0, 1, 2});
+  input.set_ipv4_broadcast({10, 0, 1, static_cast<char>(255)});
+  auto* ipv6_address = input.add_ipv6_addresses();
+  ipv6_address->set_addr(
+      {0x20, 0x01, 0x2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x10, 0});
+  ipv6_address->set_prefix_len(64);
+  ipv6_address = input.add_ipv6_addresses();
+  ipv6_address->set_addr(
+      {0x20, 0x01, 0x2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x20, 0});
+  ipv6_address->set_prefix_len(56);
+  input.set_ipv6_gateway(
+      {0x20, 0x01, 0x2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x2});
+  input.set_ipv4_default_route(false);
+  input.set_ipv6_blackhole_route(true);
+  auto* prefix = input.add_excluded_route_prefixes();
+  prefix->set_addr({0x20, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
+  prefix->set_prefix_len(128);
+  prefix = input.add_excluded_route_prefixes();
+  prefix->set_addr({1, 1, 0, 0});
+  prefix->set_prefix_len(32);
+  prefix = input.add_included_route_prefixes();
+  prefix->set_addr({0x20, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
+  prefix->set_prefix_len(120);
+  prefix = input.add_included_route_prefixes();
+  prefix->set_addr({1, 1, 0, 0});
+  prefix->set_prefix_len(28);
+  auto* rfc3442_route = input.add_rfc3442_routes();
+  auto* rfc3442_prefix = rfc3442_route->mutable_prefix();
+  rfc3442_prefix->set_addr({2, 0, 0, 0});
+  rfc3442_prefix->set_prefix_len(8);
+  rfc3442_route->set_gateway({10, 0, 1, 3});
+  input.add_dns_servers({8, 8, 8, 8});
+  input.add_dns_servers({0x20, 0x01, 0x48, 0x60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                         static_cast<char>(0x88), static_cast<char>(0x88)});
+  input.add_dns_search_domains("google.com");
+  input.set_mtu(1200);
+  input.set_captive_portal_uri("https://portal.net");
+
+  const auto output = DeserializeNetworkConfig(input);
+  net_base::NetworkConfig expected_output;
+  expected_output.ipv4_address =
+      *net_base::IPv4CIDR::CreateFromCIDRString("10.0.1.100/24");
+  expected_output.ipv4_gateway =
+      *net_base::IPv4Address::CreateFromString("10.0.1.2");
+  expected_output.ipv4_broadcast =
+      *net_base::IPv4Address::CreateFromString("10.0.1.255");
+  expected_output.ipv6_addresses.push_back(
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:200::1000/64"));
+  expected_output.ipv6_addresses.push_back(
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:200::2000/56"));
+  expected_output.ipv6_gateway =
+      *net_base::IPv6Address::CreateFromString("2001:200::2");
+  expected_output.ipv4_default_route = false;
+  expected_output.ipv6_blackhole_route = true;
+  expected_output.excluded_route_prefixes.push_back(
+      *net_base::IPCIDR::CreateFromCIDRString("2002::/128"));
+  expected_output.excluded_route_prefixes.push_back(
+      *net_base::IPCIDR::CreateFromCIDRString("1.1.0.0/32"));
+  expected_output.included_route_prefixes.push_back(
+      *net_base::IPCIDR::CreateFromCIDRString("2002::/120"));
+  expected_output.included_route_prefixes.push_back(
+      *net_base::IPCIDR::CreateFromCIDRString("1.1.0.0/28"));
+  expected_output.rfc3442_routes.emplace_back(
+      *net_base::IPv4CIDR::CreateFromCIDRString("2.0.0.0/8"),
+      *net_base::IPv4Address::CreateFromString("10.0.1.3"));
+  expected_output.dns_servers.push_back(
+      *net_base::IPAddress::CreateFromString("8.8.8.8"));
+  expected_output.dns_servers.push_back(
+      *net_base::IPAddress::CreateFromString("2001:4860::8888"));
+  expected_output.dns_search_domains.push_back("google.com");
+  expected_output.mtu = 1200;
+  expected_output.captive_portal_uri =
+      net_base::HttpUrl::CreateFromString("https://portal.net");
+
+  EXPECT_EQ(output, expected_output);
 }
 
 }  // namespace patchpanel

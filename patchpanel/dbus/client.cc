@@ -1661,7 +1661,8 @@ bool ClientImpl::ConfigureNetwork(int interface_index,
   request_priority->set_is_primary_physical(priority.is_primary_physical);
   request_priority->set_is_primary_for_dns(priority.is_primary_for_dns);
   request_priority->set_ranking_order(priority.ranking_order);
-  // TODO(b/293997937): Pack NetworkConfig into request.
+
+  SerializeNetworkConfig(network_config, request.mutable_network_config());
 
   RunOnDBusThreadAsync(base::BindOnce(
       [](PatchPanelProxyInterface* proxy,
@@ -1707,6 +1708,65 @@ bool ClientImpl::SendSetFeatureFlagRequest(FeatureFlag flag, bool enable) {
 }
 
 }  // namespace
+
+void SerializeNetworkConfig(const net_base::NetworkConfig& in,
+                            patchpanel::NetworkConfig* out) {
+  if (in.ipv4_address) {
+    auto* ipv4_address = out->mutable_ipv4_address();
+    ipv4_address->set_addr(in.ipv4_address->address().ToByteString());
+    ipv4_address->set_prefix_len(in.ipv4_address->prefix_length());
+  }
+  if (in.ipv4_broadcast) {
+    out->set_ipv4_broadcast(in.ipv4_broadcast->ToByteString());
+  }
+  if (in.ipv4_gateway) {
+    out->set_ipv4_gateway(in.ipv4_gateway->ToByteString());
+  }
+
+  for (const auto& ipv6_address : in.ipv6_addresses) {
+    auto* out_addr = out->add_ipv6_addresses();
+    out_addr->set_addr(ipv6_address.address().ToByteString());
+    out_addr->set_prefix_len(ipv6_address.prefix_length());
+  }
+  if (in.ipv6_gateway) {
+    out->set_ipv6_gateway(in.ipv6_gateway->ToByteString());
+  }
+
+  out->set_ipv4_default_route(in.ipv4_default_route);
+  out->set_ipv6_blackhole_route(in.ipv6_blackhole_route);
+
+  for (const auto& prefix : in.excluded_route_prefixes) {
+    auto* out_prefix = out->add_excluded_route_prefixes();
+    out_prefix->set_addr(prefix.address().ToByteString());
+    out_prefix->set_prefix_len(prefix.prefix_length());
+  }
+  for (const auto& prefix : in.included_route_prefixes) {
+    auto* out_prefix = out->add_included_route_prefixes();
+    out_prefix->set_addr(prefix.address().ToByteString());
+    out_prefix->set_prefix_len(prefix.prefix_length());
+  }
+  for (const auto& route : in.rfc3442_routes) {
+    auto* out_route = out->add_rfc3442_routes();
+    auto* out_prefix = out_route->mutable_prefix();
+    out_prefix->set_addr(route.first.address().ToByteString());
+    out_prefix->set_prefix_len(route.first.prefix_length());
+    out_route->set_gateway(route.second.ToByteString());
+  }
+
+  for (const auto& dns : in.dns_servers) {
+    out->add_dns_servers(dns.ToByteString());
+  }
+  for (const auto& dnssl : in.dns_search_domains) {
+    out->add_dns_search_domains(dnssl);
+  }
+  if (in.mtu) {
+    out->set_mtu(*in.mtu);
+  }
+
+  if (in.captive_portal_uri) {
+    out->set_captive_portal_uri(in.captive_portal_uri->ToString());
+  }
+}
 
 // static
 std::unique_ptr<Client> Client::New() {

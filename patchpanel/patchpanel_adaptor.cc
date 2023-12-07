@@ -4,6 +4,7 @@
 
 #include "patchpanel/patchpanel_adaptor.h"
 
+#include <memory>
 #include <set>
 #include <string>
 #include <utility>
@@ -142,6 +143,13 @@ TetheredNetworkResponse PatchpanelAdaptor::CreateTetheredNetwork(
 ConfigureNetworkResponse PatchpanelAdaptor::ConfigureNetwork(
     const ConfigureNetworkRequest& request) {
   RecordDbusEvent(DbusUmaEvent::kConfigureNetwork);
+
+  const int ifindex = request.ifindex();
+  const std::string& ifname = request.ifname();
+  const net_base::NetworkConfig network_config =
+      DeserializeNetworkConfig(request.network_config());
+  LOG(INFO) << __func__ << " on " << ifname << "(" << ifindex
+            << "): " << network_config;
 
   // TODO(b/293997937): Migrate NetworkApplier here.
   // TODO(b/293997937): Move dynamic iptables rule setup here.

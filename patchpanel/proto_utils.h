@@ -6,10 +6,12 @@
 #define PATCHPANEL_PROTO_UTILS_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/network_config.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/arc_service.h"
@@ -57,6 +59,9 @@ void FillDownstreamNetworkProto(
 
 void FillNetworkClientInfoProto(const DownstreamClientInfo& network_client_info,
                                 NetworkClientInfo* output);
+
+net_base::NetworkConfig DeserializeNetworkConfig(
+    const patchpanel::NetworkConfig& in);
 
 }  // namespace patchpanel
 #endif  // PATCHPANEL_PROTO_UTILS_H_

@@ -13,8 +13,8 @@
 #include <utility>
 #include <vector>
 
-#include "base/files/scoped_file.h"
-#include "base/functional/callback.h"
+#include <base/files/scoped_file.h>
+#include <base/functional/callback.h>
 #include <brillo/brillo_export.h>
 // Ignore Wconversion warnings in dbus headers.
 #pragma GCC diagnostic push
@@ -26,6 +26,7 @@
 #include <net-base/ipv6_address.h>
 #include <net-base/network_config.h>
 #include <net-base/network_priority.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 namespace org::chromium {
 class PatchPanelProxyInterface;
@@ -524,6 +525,9 @@ BRILLO_EXPORT std::ostream& operator<<(
 
 BRILLO_EXPORT std::ostream& operator<<(
     std::ostream& stream, const Client::NetworkTechnology& technology);
+
+BRILLO_EXPORT void SerializeNetworkConfig(const net_base::NetworkConfig& in,
+                                          patchpanel::NetworkConfig* out);
 
 }  // namespace patchpanel
 

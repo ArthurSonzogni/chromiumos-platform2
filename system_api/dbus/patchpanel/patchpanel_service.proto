@@ -967,8 +967,35 @@ message NetworkPriority {
   uint32 ranking_order = 4;
 }
 
+// Mirroring of net_base::NetworkConfig. IP addresses are represented as bytes
+// array of length 4 or 16 in network order.
 message NetworkConfig {
-  // TODO(b/293997937): Mirroring net_base::NetworkConfig here.
+  optional IPAddrCIDR ipv4_address = 1;
+  optional bytes ipv4_broadcast = 2;
+  optional bytes ipv4_gateway = 3;
+
+  repeated IPAddrCIDR ipv6_addresses = 4;
+  optional bytes ipv6_gateway = 5;
+
+  bool ipv4_default_route = 6;
+  bool ipv6_blackhole_route = 7;
+
+  repeated IPAddrCIDR excluded_route_prefixes = 8;
+  repeated IPAddrCIDR included_route_prefixes = 9;
+  repeated Route rfc3442_routes = 10;
+
+  repeated bytes dns_servers = 11;
+  repeated string dns_search_domains = 12;
+  optional int32 mtu = 13;
+
+  optional string captive_portal_uri = 14;
+}
+
+// Representation of custom routes, in the form of destination prefix plus a
+// gateway address. IP address are represented in network order byte arrays.
+message Route {
+  IPAddrCIDR prefix = 1;
+  bytes gateway = 2;
 }
 
 // Notification change in power state of ARC.

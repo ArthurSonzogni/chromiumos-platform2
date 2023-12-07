@@ -4,8 +4,12 @@
 
 #include "patchpanel/proto_utils.h"
 
+#include <memory>
+
+#include <net-base/http_url.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/network_config.h>
 
 #include "patchpanel/arc_service.h"
 #include "patchpanel/crostini_service.h"
@@ -107,6 +111,81 @@ void FillNetworkClientInfoProto(const DownstreamClientInfo& network_client_info,
   }
   output->set_hostname(network_client_info.hostname);
   output->set_vendor_class(network_client_info.vendor_class);
+}
+
+net_base::NetworkConfig DeserializeNetworkConfig(
+    const patchpanel::NetworkConfig& in) {
+  net_base::NetworkConfig out;
+  if (in.has_ipv4_address()) {
+    out.ipv4_address = net_base::IPv4CIDR::CreateFromBytesAndPrefix(
+        in.ipv4_address().addr(), in.ipv4_address().prefix_len());
+  }
+  if (in.has_ipv4_broadcast()) {
+    out.ipv4_broadcast =
+        net_base::IPv4Address::CreateFromBytes(in.ipv4_broadcast());
+  }
+  if (in.has_ipv4_gateway()) {
+    out.ipv4_gateway =
+        net_base::IPv4Address::CreateFromBytes(in.ipv4_gateway());
+  }
+
+  for (const auto& ipv6_address : in.ipv6_addresses()) {
+    auto ipv6_addr_out = net_base::IPv6CIDR::CreateFromBytesAndPrefix(
+        ipv6_address.addr(), ipv6_address.prefix_len());
+    if (ipv6_addr_out) {
+      out.ipv6_addresses.push_back(*ipv6_addr_out);
+    }
+  }
+  if (in.has_ipv6_gateway()) {
+    out.ipv6_gateway =
+        net_base::IPv6Address::CreateFromBytes(in.ipv6_gateway());
+  }
+
+  out.ipv4_default_route = in.ipv4_default_route();
+  out.ipv6_blackhole_route = in.ipv6_blackhole_route();
+
+  for (const auto& prefix : in.excluded_route_prefixes()) {
+    auto prefix_out = net_base::IPCIDR::CreateFromBytesAndPrefix(
+        prefix.addr(), prefix.prefix_len());
+    if (prefix_out) {
+      out.excluded_route_prefixes.push_back(*prefix_out);
+    }
+  }
+  for (const auto& prefix : in.included_route_prefixes()) {
+    auto prefix_out = net_base::IPCIDR::CreateFromBytesAndPrefix(
+        prefix.addr(), prefix.prefix_len());
+    if (prefix_out) {
+      out.included_route_prefixes.push_back(*prefix_out);
+    }
+  }
+  for (const auto& route : in.rfc3442_routes()) {
+    auto prefix = net_base::IPv4CIDR::CreateFromBytesAndPrefix(
+        route.prefix().addr(), route.prefix().prefix_len());
+    auto gateway = net_base::IPv4Address::CreateFromBytes(route.gateway());
+    if (prefix && gateway) {
+      out.rfc3442_routes.emplace_back(*prefix, *gateway);
+    }
+  }
+
+  for (const auto& dns : in.dns_servers()) {
+    auto dns_out = net_base::IPAddress::CreateFromBytes(dns);
+    if (dns_out) {
+      out.dns_servers.push_back(*dns_out);
+    }
+  }
+  for (const auto& dnssl : in.dns_search_domains()) {
+    out.dns_search_domains.push_back(dnssl);
+  }
+  if (in.has_mtu()) {
+    out.mtu = in.mtu();
+  }
+
+  if (in.has_captive_portal_uri()) {
+    out.captive_portal_uri =
+        net_base::HttpUrl::CreateFromString(in.captive_portal_uri());
+  }
+
+  return out;
 }
 
 }  // namespace patchpanel
