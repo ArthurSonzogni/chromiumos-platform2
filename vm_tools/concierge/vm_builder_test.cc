@@ -82,14 +82,14 @@ TEST(VmBuilderTest, ODirectN) {
 
   std::vector<std::string> disk_params;
   for (auto& p : result) {
-    if (p.first == "--disk") {
+    if (p.first == "--block") {
       disk_params.push_back(p.second);
     }
   }
 
-  EXPECT_EQ(disk_params[0], "/dev/0");
-  EXPECT_EQ(disk_params[1], "/dev/1");
-  EXPECT_EQ(disk_params[2], "/dev/2,o_direct=true,block_size=4096");
+  EXPECT_EQ(disk_params[0], "/dev/0,ro=true");
+  EXPECT_EQ(disk_params[1], "/dev/1,ro=true");
+  EXPECT_EQ(disk_params[2], "/dev/2,ro=true,o_direct=true,block_size=4096");
 }
 
 TEST(VmBuilderTest, ODirectNs) {
@@ -112,14 +112,14 @@ O_DIRECT_N=2)"};
 
   std::vector<std::string> disk_params;
   for (auto& p : result) {
-    if (p.first == "--disk") {
+    if (p.first == "--block") {
       disk_params.push_back(p.second);
     }
   }
 
-  EXPECT_EQ(disk_params[0], "/dev/0");
-  EXPECT_EQ(disk_params[1], "/dev/1,o_direct=true,block_size=4096");
-  EXPECT_EQ(disk_params[2], "/dev/2,o_direct=true,block_size=4096");
+  EXPECT_EQ(disk_params[0], "/dev/0,ro=true");
+  EXPECT_EQ(disk_params[1], "/dev/1,ro=true,o_direct=true,block_size=4096");
+  EXPECT_EQ(disk_params[2], "/dev/2,ro=true,o_direct=true,block_size=4096");
 }
 
 TEST(VmBuilderTest, ODirectTooLargeNDeath) {
@@ -207,17 +207,16 @@ TEST(VmBuilderTest, CrostiniDisks) {
   });
   base::StringPairs result = std::move(builder).BuildVmArgs(nullptr).value();
 
-  std::vector<int> disk_indices;
-  for (int i = 0; i < result.size(); i++) {
-    if (result[i].first == "--disk" || result[i].first == "--rwdisk") {
-      disk_indices.push_back(i);
+  std::vector<std::string> blocks;
+  for (auto& p : result) {
+    if (p.first == "--block") {
+      blocks.push_back(p.second);
     }
   }
 
-  EXPECT_EQ(disk_indices.size(), 2);
-  EXPECT_EQ(result[disk_indices[0]], std::make_pair("--disk", "/dev/0"));
-  EXPECT_EQ(result[disk_indices[1]],
-            std::make_pair("--rwdisk", "/dev/1,sparse=false"));
+  EXPECT_EQ(blocks.size(), 2);
+  EXPECT_EQ(blocks[0], "/dev/0,ro=true");
+  EXPECT_EQ(blocks[1], "/dev/1,ro=false,sparse=false");
 }
 
 TEST(VmBuilderTest, ARCVMDisks) {
@@ -244,20 +243,17 @@ TEST(VmBuilderTest, ARCVMDisks) {
   });
   base::StringPairs result = std::move(builder).BuildVmArgs(nullptr).value();
 
-  std::vector<int> disk_indices;
-  for (int i = 0; i < result.size(); i++) {
-    if (result[i].first == "--disk" || result[i].first == "--rwdisk") {
-      disk_indices.push_back(i);
+  std::vector<std::string> blocks;
+  for (auto& p : result) {
+    if (p.first == "--block") {
+      blocks.push_back(p.second);
     }
   }
 
-  EXPECT_EQ(disk_indices.size(), 3);
-  EXPECT_EQ(result[disk_indices[0]],
-            std::make_pair("--disk", "/dev/0,o_direct=true,block_size=4096"));
-  EXPECT_EQ(result[disk_indices[1]],
-            std::make_pair("--disk", "/dev/1,o_direct=false"));
-  EXPECT_EQ(result[disk_indices[2]],
-            std::make_pair("--rwdisk", "/dev/2,o_direct=true,block_size=4096"));
+  EXPECT_EQ(blocks.size(), 3);
+  EXPECT_EQ(blocks[0], "/dev/0,ro=true,o_direct=true,block_size=4096");
+  EXPECT_EQ(blocks[1], "/dev/1,ro=true,o_direct=false");
+  EXPECT_EQ(blocks[2], "/dev/2,ro=false,o_direct=true,block_size=4096");
 }
 
 }  // namespace vm_tools::concierge

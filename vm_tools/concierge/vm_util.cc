@@ -141,11 +141,9 @@ std::string AsyncExecutorToString(AsyncExecutor async_executor) {
 }
 
 base::StringPairs Disk::GetCrosvmArgs() const {
-  std::string first;
-  if (writable)
-    first = "--rwdisk";
-  else
-    first = "--disk";
+  std::string first = "--block";
+
+  std::string readonly_arg = BooleanParameter(",ro=", !writable);
 
   std::string sparse_arg;
   if (sparse) {
@@ -178,9 +176,9 @@ base::StringPairs Disk::GetCrosvmArgs() const {
     block_id_arg = base::StrCat({",id=", block_id.value()});
   }
 
-  std::string second = base::StrCat({path.value(), sparse_arg, o_direct_arg,
-                                     multiple_workers_arg, block_size_arg,
-                                     async_executor_arg, block_id_arg});
+  std::string second = base::StrCat(
+      {path.value(), readonly_arg, sparse_arg, o_direct_arg,
+       multiple_workers_arg, block_size_arg, async_executor_arg, block_id_arg});
   base::StringPairs result = {{std::move(first), std::move(second)}};
   return result;
 }
