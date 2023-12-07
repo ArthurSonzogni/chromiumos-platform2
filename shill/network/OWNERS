@@ -2,3 +2,6 @@ hugobenichi@google.com
 jiejiang@chromium.org
 matthewmwang@chromium.org
 taoyl@chromium.org
+
+# Fallback to the wider team.
+include chromiumos/owners:v1:/platform/OWNERS.networking
