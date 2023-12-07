@@ -40,12 +40,16 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
   ~PowerManagerProxy() override;
 
   // Inherited from PowerManagerProxyInterface.
-  std::optional<int> RegisterSuspendDelay(
-      base::TimeDelta timeout, const std::string& description) override;
+  void RegisterSuspendDelay(
+      base::TimeDelta timeout,
+      const std::string& description,
+      base::OnceCallback<void(std::optional<int>)> callback) override;
   bool UnregisterSuspendDelay(int delay_id) override;
   bool ReportSuspendReadiness(int delay_id, int suspend_id) override;
-  std::optional<int> RegisterDarkSuspendDelay(
-      base::TimeDelta timeout, const std::string& description) override;
+  void RegisterDarkSuspendDelay(
+      base::TimeDelta timeout,
+      const std::string& description,
+      base::OnceCallback<void(std::optional<int>)> callback) override;
   bool UnregisterDarkSuspendDelay(int delay_id) override;
   bool ReportDarkSuspendReadiness(int delay_id, int suspend_id) override;
   bool RecordDarkResumeWakeReason(const std::string& wake_reason) override;

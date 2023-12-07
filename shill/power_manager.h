@@ -106,6 +106,10 @@ class PowerManager : public PowerManagerProxyDelegate {
   void OnPowerManagerAppeared();
   void OnPowerManagerVanished();
 
+  // Callbacks for suspend delay registration.
+  void OnSuspendDelayRegistered(std::optional<int> delay_id);
+  void OnDarkSuspendDelayRegistered(std::optional<int> delay_id);
+
   void NotifySuspendDone();
 
   ControlInterface* control_interface_;
@@ -152,6 +156,8 @@ class PowerManager : public PowerManagerProxyDelegate {
 
   power_manager::WifiRegDomainDbus wifi_reg_domain_;
   bool wifi_reg_domain_is_set;
+
+  base::WeakPtrFactory<PowerManager> weak_ptr_factory_{this};
 };
 
 }  // namespace shill

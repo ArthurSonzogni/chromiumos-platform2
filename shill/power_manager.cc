@@ -44,9 +44,9 @@ void PowerManager::Start(
   power_manager_proxy_ = control_interface_->CreatePowerManagerProxy(
       this,
       base::BindRepeating(&PowerManager::OnPowerManagerAppeared,
-                          base::Unretained(this)),
+                          weak_ptr_factory_.GetWeakPtr()),
       base::BindRepeating(&PowerManager::OnPowerManagerVanished,
-                          base::Unretained(this)));
+                          weak_ptr_factory_.GetWeakPtr()));
   suspend_delay_ = suspend_delay;
   suspend_imminent_callback_ = suspend_imminent_callback;
   suspend_done_callback_ = suspend_done_callback;
@@ -219,14 +219,27 @@ void PowerManager::OnPowerManagerAppeared() {
     return;
   }
 
-  suspend_delay_id_ = power_manager_proxy_->RegisterSuspendDelay(
-      suspend_delay_, kSuspendDelayDescription);
-  dark_suspend_delay_id_ = power_manager_proxy_->RegisterDarkSuspendDelay(
-      suspend_delay_, kDarkSuspendDelayDescription);
+  power_manager_proxy_->RegisterSuspendDelay(
+      suspend_delay_, kSuspendDelayDescription,
+      base::BindOnce(&PowerManager::OnSuspendDelayRegistered,
+                     weak_ptr_factory_.GetWeakPtr()));
+
+  power_manager_proxy_->RegisterDarkSuspendDelay(
+      suspend_delay_, kDarkSuspendDelayDescription,
+      base::BindOnce(&PowerManager::OnDarkSuspendDelayRegistered,
+                     weak_ptr_factory_.GetWeakPtr()));
 
   if (wifi_reg_domain_is_set) {
     power_manager_proxy_->ChangeRegDomain(wifi_reg_domain_);
   }
+}
+
+void PowerManager::OnSuspendDelayRegistered(std::optional<int> delay_id) {
+  suspend_delay_id_ = delay_id;
+}
+
+void PowerManager::OnDarkSuspendDelayRegistered(std::optional<int> delay_id) {
+  dark_suspend_delay_id_ = delay_id;
 }
 
 void PowerManager::OnPowerManagerVanished() {

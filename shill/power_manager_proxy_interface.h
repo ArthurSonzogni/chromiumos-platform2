@@ -8,6 +8,7 @@
 #include <optional>
 #include <string>
 
+#include <base/functional/callback.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -26,10 +27,12 @@ class PowerManagerProxyInterface {
 
   // Sends a request to the power manager to wait for this client for up to
   // |timeout| before suspending the system. |description| is a
-  // human-readable string describing the delay's purpose. Returns the delay
-  // ID on success or nullopt on failure.
-  virtual std::optional<int> RegisterSuspendDelay(
-      base::TimeDelta timeout, const std::string& description) = 0;
+  // human-readable string describing the delay's purpose. Calls |callback|
+  // with the delay ID on success or nullopt on failure.
+  virtual void RegisterSuspendDelay(
+      base::TimeDelta timeout,
+      const std::string& description,
+      base::OnceCallback<void(std::optional<int>)> callback) = 0;
 
   // Unregisters a previously-registered suspend delay.  Returns true on
   // success.
@@ -42,10 +45,12 @@ class PowerManagerProxyInterface {
 
   // Sends a request to the power manager to wait for this client for up to
   // |timeout| before suspending the system from a dark resume. Arguments
-  // are as explained for |RegisterSuspendDelay|. Returns the delay ID on
-  // success or nullopt on failure.
-  virtual std::optional<int> RegisterDarkSuspendDelay(
-      base::TimeDelta timeout, const std::string& description) = 0;
+  // are as explained for |RegisterSuspendDelay|. Calls |callback| with the
+  // delay ID on success or nullopt on failure.
+  virtual void RegisterDarkSuspendDelay(
+      base::TimeDelta timeout,
+      const std::string& description,
+      base::OnceCallback<void(std::optional<int>)> callback) = 0;
 
   // Unregisters a previously-registered dark suspend delay. Returns true on
   // success.

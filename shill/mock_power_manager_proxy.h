@@ -21,15 +21,19 @@ class MockPowerManagerProxy : public PowerManagerProxyInterface {
 
   ~MockPowerManagerProxy() override;
 
-  MOCK_METHOD(std::optional<int>,
+  MOCK_METHOD(void,
               RegisterSuspendDelay,
-              (base::TimeDelta, const std::string&),
+              (base::TimeDelta,
+               const std::string&,
+               base::OnceCallback<void(std::optional<int>)>),
               (override));
   MOCK_METHOD(bool, UnregisterSuspendDelay, (int), (override));
   MOCK_METHOD(bool, ReportSuspendReadiness, (int, int), (override));
-  MOCK_METHOD(std::optional<int>,
+  MOCK_METHOD(void,
               RegisterDarkSuspendDelay,
-              (base::TimeDelta, const std::string&),
+              (base::TimeDelta,
+               const std::string&,
+               base::OnceCallback<void(std::optional<int>)>),
               (override));
   MOCK_METHOD(bool, UnregisterDarkSuspendDelay, (int), (override));
   MOCK_METHOD(bool, ReportDarkSuspendReadiness, (int, int), (override));

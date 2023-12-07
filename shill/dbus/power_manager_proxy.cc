@@ -4,6 +4,8 @@
 
 #include "shill/dbus/power_manager_proxy.h"
 
+#include <utility>
+
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/functional/bind.h>
@@ -79,13 +81,17 @@ PowerManagerProxy::PowerManagerProxy(
 
 PowerManagerProxy::~PowerManagerProxy() = default;
 
-std::optional<int> PowerManagerProxy::RegisterSuspendDelay(
-    base::TimeDelta timeout, const std::string& description) {
+void PowerManagerProxy::RegisterSuspendDelay(
+    base::TimeDelta timeout,
+    const std::string& description,
+    base::OnceCallback<void(std::optional<int>)> callback) {
   if (!service_available_) {
     LOG(ERROR) << "PowerManager service not available";
-    return std::nullopt;
+    std::move(callback).Run(std::nullopt);
+    return;
   }
-  return RegisterSuspendDelayInternal(false, timeout, description);
+  std::move(callback).Run(
+      RegisterSuspendDelayInternal(false, timeout, description));
 }
 
 bool PowerManagerProxy::UnregisterSuspendDelay(int delay_id) {
@@ -104,13 +110,17 @@ bool PowerManagerProxy::ReportSuspendReadiness(int delay_id, int suspend_id) {
   return ReportSuspendReadinessInternal(false, delay_id, suspend_id);
 }
 
-std::optional<int> PowerManagerProxy::RegisterDarkSuspendDelay(
-    base::TimeDelta timeout, const std::string& description) {
+void PowerManagerProxy::RegisterDarkSuspendDelay(
+    base::TimeDelta timeout,
+    const std::string& description,
+    base::OnceCallback<void(std::optional<int>)> callback) {
   if (!service_available_) {
     LOG(ERROR) << "PowerManager service not available";
-    return std::nullopt;
+    std::move(callback).Run(std::nullopt);
+    return;
   }
-  return RegisterSuspendDelayInternal(true, timeout, description);
+  std::move(callback).Run(
+      RegisterSuspendDelayInternal(true, timeout, description));
 }
 
 bool PowerManagerProxy::UnregisterDarkSuspendDelay(int delay_id) {

@@ -22,6 +22,7 @@
 using testing::_;
 using testing::DoAll;
 using testing::IgnoreResult;
+using testing::Invoke;
 using testing::InvokeWithoutArgs;
 using testing::Mock;
 using testing::Return;
@@ -100,8 +101,13 @@ class PowerManagerTest : public Test {
 
   void AddProxyExpectationForRegisterSuspendDelay(std::optional<int> delay_id) {
     EXPECT_CALL(*power_manager_proxy_,
-                RegisterSuspendDelay(kTimeout, kDescription))
-        .WillOnce(Return(delay_id));
+                RegisterSuspendDelay(kTimeout, kDescription, _))
+        .WillOnce(Invoke(
+            [delay_id](base::TimeDelta /* timeout */,
+                       const std::string& /* description */,
+                       base::OnceCallback<void(std::optional<int>)> callback) {
+              std::move(callback).Run(delay_id);
+            }));
   }
 
   void AddProxyExpectationForUnregisterSuspendDelay(int delay_id,
@@ -127,8 +133,13 @@ class PowerManagerTest : public Test {
   void AddProxyExpectationForRegisterDarkSuspendDelay(
       std::optional<int> delay_id) {
     EXPECT_CALL(*power_manager_proxy_,
-                RegisterDarkSuspendDelay(kTimeout, kDarkDescription))
-        .WillOnce(Return(delay_id));
+                RegisterDarkSuspendDelay(kTimeout, kDarkDescription, _))
+        .WillOnce(Invoke(
+            [delay_id](base::TimeDelta /* timeout */,
+                       const std::string& /* description */,
+                       base::OnceCallback<void(std::optional<int>)> callback) {
+              std::move(callback).Run(delay_id);
+            }));
   }
 
   void AddProxyExpectationForReportDarkSuspendReadiness(int delay_id,
