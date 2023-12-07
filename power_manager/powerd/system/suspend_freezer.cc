@@ -309,8 +309,11 @@ bool SuspendFreezer::ThawCgroups(std::vector<base::FilePath>& croups_to_thaw) {
 }
 
 bool SuspendFreezer::ThawEssentialProcesses() {
+  std::vector<base::FilePath> lock_screen_cgroups_to_thaw;
   // TODO(b/293161997): Add essential CGroups here.
-  std::vector<base::FilePath> lock_screen_cgroups_to_thaw = {};
+  if (!GetCgroups(&lock_screen_cgroups_to_thaw)) {
+    return false;
+  }
 
   return ThawCgroups(lock_screen_cgroups_to_thaw);
 }
