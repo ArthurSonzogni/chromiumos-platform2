@@ -191,4 +191,73 @@ TEST(VmBuilderTest, MultipleTapNetParams) {
           .Times(1));
 }
 
+TEST(VmBuilderTest, CrostiniDisks) {
+  VmBuilder builder;
+  builder.AppendDisks(std::vector<Disk>{
+      // For rootfs.
+      Disk{
+          .path = base::FilePath("/dev/0"),
+      },
+      // For user data.
+      Disk{
+          .path = base::FilePath("/dev/1"),
+          .writable = true,
+          .sparse = false,
+      },
+  });
+  base::StringPairs result = std::move(builder).BuildVmArgs(nullptr).value();
+
+  std::vector<int> disk_indices;
+  for (int i = 0; i < result.size(); i++) {
+    if (result[i].first == "--disk" || result[i].first == "--rwdisk") {
+      disk_indices.push_back(i);
+    }
+  }
+
+  EXPECT_EQ(disk_indices.size(), 2);
+  EXPECT_EQ(result[disk_indices[0]], std::make_pair("--disk", "/dev/0"));
+  EXPECT_EQ(result[disk_indices[1]],
+            std::make_pair("--rwdisk", "/dev/1,sparse=false"));
+}
+
+TEST(VmBuilderTest, ARCVMDisks) {
+  VmBuilder builder;
+  builder.AppendDisks(std::vector<Disk>{
+      // For system.img and vendor.img.
+      Disk{
+          .path = base::FilePath("/dev/0"),
+          .o_direct = true,
+          .block_size = 4096,
+      },
+      // For dummy fds.
+      Disk{
+          .path = base::FilePath("/dev/1"),
+          .o_direct = false,
+      },
+      // For user data image.
+      Disk{
+          .path = base::FilePath("/dev/2"),
+          .writable = true,
+          .o_direct = true,
+          .block_size = 4096,
+      },
+  });
+  base::StringPairs result = std::move(builder).BuildVmArgs(nullptr).value();
+
+  std::vector<int> disk_indices;
+  for (int i = 0; i < result.size(); i++) {
+    if (result[i].first == "--disk" || result[i].first == "--rwdisk") {
+      disk_indices.push_back(i);
+    }
+  }
+
+  EXPECT_EQ(disk_indices.size(), 3);
+  EXPECT_EQ(result[disk_indices[0]],
+            std::make_pair("--disk", "/dev/0,o_direct=true,block_size=4096"));
+  EXPECT_EQ(result[disk_indices[1]],
+            std::make_pair("--disk", "/dev/1,o_direct=false"));
+  EXPECT_EQ(result[disk_indices[2]],
+            std::make_pair("--rwdisk", "/dev/2,o_direct=true,block_size=4096"));
+}
+
 }  // namespace vm_tools::concierge
