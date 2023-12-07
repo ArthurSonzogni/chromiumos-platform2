@@ -3,12 +3,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Tests for model.py.
-"""
+"""Tests for model.py."""
 
 import unittest
 
-from model import Model
+from sync import model
 
 
 class ModelTest(unittest.TestCase):
@@ -34,7 +33,7 @@ class ModelTest(unittest.TestCase):
     def assert_model_raises(self, xml):
         raised = False
         try:
-            Model(xml)
+            model.Model(xml)
         except ValueError:
             raised = True
         self.assertTrue(raised)
@@ -80,7 +79,7 @@ class ModelTest(unittest.TestCase):
             </project>
             </structured-metrics>"""
 
-        data = Model(xml)
+        data = model.Model(xml)
 
         self.assertEqual(len(data.projects), 2)
         project_one, project_two = data.projects

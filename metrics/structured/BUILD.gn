@@ -24,8 +24,8 @@ action("gen_structured_events") {
   inputs = [
     "gen_events.py",
     "codegen.py",
-    "model.py",
-    "model_util.py",
+    "sync/model.py",
+    "sync/model_util.py",
     "templates.py",
   ]
   sources = [ _xml_file ]

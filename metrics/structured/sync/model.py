@@ -12,7 +12,7 @@ formatted version XML.
 import textwrap as tw
 import xml.etree.ElementTree as ET
 
-import model_util as util
+import sync.model_util as util
 
 
 def wrap(text, indent):
