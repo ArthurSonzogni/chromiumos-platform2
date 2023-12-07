@@ -30,6 +30,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_portal_detector.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/mock_dhcp_controller.h"
@@ -136,25 +137,6 @@ IPConfig::Properties NetworkConfigToIPProperties(
   props.UpdateFromNetworkConfig(config);
   return props;
 }
-
-class MockPortalDetector : public PortalDetector {
- public:
-  MockPortalDetector() : PortalDetector(nullptr, {}, base::DoNothing()) {}
-  MockPortalDetector(const MockPortalDetector&) = delete;
-  MockPortalDetector& operator=(const MockPortalDetector&) = delete;
-  ~MockPortalDetector() = default;
-
-  MOCK_METHOD(void,
-              Start,
-              (const std::string& ifname,
-               net_base::IPFamily,
-               const std::vector<net_base::IPAddress>&,
-               const std::string& logging_tag),
-              (override));
-  MOCK_METHOD(void, Stop, (), (override));
-  MOCK_METHOD(bool, IsInProgress, (), (const, override));
-  MOCK_METHOD(void, ResetAttemptDelays, (), (override));
-};
 
 class MockConnectionDiagnostics : public ConnectionDiagnostics {
  public:

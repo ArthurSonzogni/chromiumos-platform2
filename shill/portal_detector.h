@@ -25,6 +25,7 @@
 
 #include "shill/http_request.h"
 #include "shill/metrics.h"
+#include "shill/mockable.h"
 
 namespace shill {
 
@@ -110,6 +111,9 @@ class PortalDetector {
     // Set of fallback URLs used for retrying the HTTPS probe when portal
     // detection is not conclusive.
     std::vector<net_base::HttpUrl> portal_fallback_https_urls;
+
+    friend bool operator==(const ProbingConfiguration& lhs,
+                           const ProbingConfiguration& rhs);
   };
 
   // Returns the default ProbingConfiguration using the default URLs defined in
@@ -235,25 +239,25 @@ class PortalDetector {
   // of GetNextAttemptDelay. If an attempt is already scheduled to run but has
   // not run yet, the new attempt will override the old attempt. Nothing happens
   // if an attempt is already running.
-  virtual void Start(const std::string& ifname,
-                     net_base::IPFamily ip_family,
-                     const std::vector<net_base::IPAddress>& dns_list,
-                     const std::string& logging_tag);
+  mockable void Start(const std::string& ifname,
+                      net_base::IPFamily ip_family,
+                      const std::vector<net_base::IPAddress>& dns_list,
+                      const std::string& logging_tag);
 
   // End the current portal detection process if one exists, and do not call
   // the callback.
-  virtual void Stop();
+  mockable void Stop();
 
   // Resets the delay calculation for scheduling retries requested with
   // Restart(). This has no impact on probe rotation logic.
-  virtual void ResetAttemptDelays();
+  mockable void ResetAttemptDelays();
 
   // Returns the time delay for scheduling the next portal detection attempt
   // with Restart().
   base::TimeDelta GetNextAttemptDelay() const;
 
   // Returns whether portal request is "in progress".
-  virtual bool IsInProgress() const;
+  mockable bool IsInProgress() const;
 
   // Returns true if a new trial is scheduled to run but has not started yet.
   bool IsTrialScheduled() const;
@@ -276,7 +280,7 @@ class PortalDetector {
   }
 
   // Can be overwritten in tests;
-  virtual std::unique_ptr<HttpRequest> CreateHTTPRequest(
+  mockable std::unique_ptr<HttpRequest> CreateHTTPRequest(
       const std::string& ifname,
       net_base::IPFamily ip_family,
       const std::vector<net_base::IPAddress>& dns_list,
@@ -369,6 +373,20 @@ class PortalDetector {
   ProbingConfiguration probing_configuration_;
   base::CancelableOnceClosure trial_;
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_{this};
+};
+
+// The factory class of the PortalDetector, used to derive a mock factory to
+// create mock PortalDetector instance at testing.
+class PortalDetectorFactory {
+ public:
+  PortalDetectorFactory() = default;
+  virtual ~PortalDetectorFactory() = default;
+
+  // The default factory method, calling PortalDetector's constructor.
+  mockable std::unique_ptr<PortalDetector> Create(
+      EventDispatcher* dispatcher,
+      const PortalDetector::ProbingConfiguration& probing_configuration,
+      base::RepeatingCallback<void(const PortalDetector::Result&)> callback);
 };
 
 std::ostream& operator<<(std::ostream& stream,

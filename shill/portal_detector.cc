@@ -4,8 +4,10 @@
 
 #include "shill/portal_detector.h"
 
+#include <memory>
 #include <ostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/functional/bind.h>
@@ -552,6 +554,9 @@ Metrics::PortalDetectorResult PortalDetector::Result::GetResultMetric() const {
   }
 }
 
+bool operator==(const PortalDetector::ProbingConfiguration& lhs,
+                const PortalDetector::ProbingConfiguration& rhs) = default;
+
 bool PortalDetector::Result::operator==(
     const PortalDetector::Result& rhs) const {
   // Probe durations |http_duration| and |https_duration| are ignored.
@@ -562,6 +567,14 @@ bool PortalDetector::Result::operator==(
          http_probe_completed == rhs.http_probe_completed &&
          https_probe_completed == rhs.https_probe_completed &&
          redirect_url == rhs.redirect_url && probe_url == rhs.probe_url;
+}
+
+std::unique_ptr<PortalDetector> PortalDetectorFactory::Create(
+    EventDispatcher* dispatcher,
+    const PortalDetector::ProbingConfiguration& probing_configuration,
+    base::RepeatingCallback<void(const PortalDetector::Result&)> callback) {
+  return std::make_unique<PortalDetector>(dispatcher, probing_configuration,
+                                          std::move(callback));
 }
 
 std::ostream& operator<<(std::ostream& stream,
