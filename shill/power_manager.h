@@ -45,7 +45,7 @@ class PowerManager : public PowerManagerProxyDelegate {
   // ReportDarkSuspendImminentReadiness will be called asynchronously.
   using DarkSuspendImminentCallback = base::RepeatingClosure;
 
-  // |control_itnerface| creates the PowerManagerProxy. Use a fake for testing.
+  // |control_interface| creates the PowerManagerProxy. Use a fake for testing.
   // Note: |Start| should be called to initialize this object before using it.
   explicit PowerManager(ControlInterface* control_interface);
   PowerManager(const PowerManager&) = delete;
