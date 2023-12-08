@@ -909,6 +909,30 @@ void CameraDeviceAdapter::SignalStreamFlush(
                                            streams.data());
 }
 
+int32_t CameraDeviceAdapter::OnNewBuffer(mojom::CameraBufferHandlePtr buffer) {
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
+  TRACE_HAL_ADAPTER();
+  base::AutoLock buffer_handles_lock(buffer_handles_lock_);
+
+  uint64_t buffer_id = buffer->buffer_id;
+  if (RegisterBufferLocked(std::move(buffer))) {
+    LOGF(ERROR) << "Failed to register the new buffer notified from client.";
+    return -EINVAL;
+  }
+  buffer_ids_active_in_client_.insert(buffer_id);
+  return 0;
+}
+
+void CameraDeviceAdapter::OnBufferRetired(uint64_t buffer_id) {
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
+  TRACE_HAL_ADAPTER();
+  base::AutoLock buffer_handles_lock(buffer_handles_lock_);
+
+  CHECK(buffer_ids_active_in_client_.contains(buffer_id));
+  buffer_ids_active_in_client_.erase(buffer_id);
+  buffer_handles_.erase(buffer_id);
+}
+
 bool CameraDeviceAdapter::IsRequestOrResultStalling() {
   return !capture_monitor_.HasBeenKicked(
              CameraMonitor::MonitorType::kRequestsMonitor) ||
@@ -1280,6 +1304,13 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
     const std::vector<uint32_t>& strides,
     const std::vector<uint32_t>& offsets,
     uint64_t modifier) {
+  // Checks if this buffer already in the |buffer_hanldes_| pool.
+  auto buffer_handle_iter = buffer_handles_.find(buffer_id);
+  if (buffer_handle_iter != buffer_handles_.end()) {
+    buffer_handle_iter->second->state = kRegistered;
+    return 0;
+  }
+
   size_t num_planes = fds.size();
   CHECK_LE(num_planes, kMaxPlanes);
   CHECK_EQ(num_planes, strides.size());
@@ -1547,7 +1578,7 @@ CameraDeviceAdapter::PrepareBufferReturn(
   return buf_ptrs;
 }
 
-void CameraDeviceAdapter::RemoveBufferLocked(
+void CameraDeviceAdapter::MaybeRemoveBufferLocked(
     const camera3_stream_buffer_t& buffer) {
   buffer_handles_lock_.AssertAcquired();
   int release_fence = buffer.release_fence;
@@ -1569,6 +1600,15 @@ void CameraDeviceAdapter::RemoveBufferLocked(
   if (!handle) {
     return;
   }
+
+  // Don't retire the buffer object if it's synchronized with Chrome's buffer
+  // pool. Chrome will notify creation/retirement of this buffer object.
+  if (buffer_ids_active_in_client_.contains(handle->buffer_id)) {
+    DVLOGF(2) << "Keeps buffer " << handle->buffer_id
+              << " since it needs synchronization with client";
+    return;
+  }
+
   // Remove the buffer handle from |buffer_handles_| now to avoid a race
   // condition where the process_capture_request sends down an existing buffer
   // handle which hasn't been removed in RemoveBufferHandleOnFenceSyncThread.
@@ -1600,7 +1640,7 @@ void CameraDeviceAdapter::RemoveReturnBufferLocked(
   buffer_handles_lock_.AssertAcquired();
   DCHECK(buffer_handles_.find(buffer_id) != buffer_handles_.end());
   buffer_handles_[buffer_id]->state = kReturned;
-  RemoveBufferLocked(buffer);
+  MaybeRemoveBufferLocked(buffer);
 }
 
 void CameraDeviceAdapter::CancelBuffersRegistrationLocked(

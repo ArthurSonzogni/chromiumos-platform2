@@ -66,6 +66,10 @@ class Camera3DeviceOpsDelegate
 
   void SignalStreamFlush(const std::vector<uint64_t>& stream_ids) override;
 
+  void OnNewBuffer(mojom::CameraBufferHandlePtr buffer,
+                   OnNewBufferCallback callback) override;
+  void OnBufferRetired(uint64_t buffer_id) override;
+
   scoped_refptr<base::SingleThreadTaskRunner> callback_ops_task_runner_;
   CameraDeviceAdapter* camera_device_adapter_;
 };

@@ -168,4 +168,20 @@ void Camera3DeviceOpsDelegate::SignalStreamFlush(
   camera_device_adapter_->SignalStreamFlush(stream_ids);
 }
 
+void Camera3DeviceOpsDelegate::OnNewBuffer(mojom::CameraBufferHandlePtr buffer,
+                                           OnNewBufferCallback callback) {
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HAL_ADAPTER();
+
+  std::move(callback).Run(
+      camera_device_adapter_->OnNewBuffer(std::move(buffer)));
+}
+
+void Camera3DeviceOpsDelegate::OnBufferRetired(uint64_t buffer_id) {
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HAL_ADAPTER();
+
+  camera_device_adapter_->OnBufferRetired(buffer_id);
+}
+
 }  // namespace cros

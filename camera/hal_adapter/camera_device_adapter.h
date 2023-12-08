@@ -171,6 +171,9 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   void SignalStreamFlush(const std::vector<uint64_t>& stream_ids);
 
+  int32_t OnNewBuffer(mojom::CameraBufferHandlePtr buffer);
+  void OnBufferRetired(uint64_t buffer_id);
+
   bool IsRequestOrResultStalling();
 
   // Closes the camera as a fallback solution for HALs that have not implemented
@@ -246,8 +249,10 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   std::vector<mojom::Camera3StreamBufferPtr> PrepareBufferReturn(
       uint32_t num_buffers, const camera3_stream_buffer_t* const* buffers);
 
+  // Removes |buffer| from |buffer_handles_| if the client's buffer pool is not
+  // synchronized with the camera service (i.e. if the client is not Chrome).
   // Caller must hold |buffer_handles_lock_|.
-  void RemoveBufferLocked(const camera3_stream_buffer_t& buffer);
+  void MaybeRemoveBufferLocked(const camera3_stream_buffer_t& buffer);
 
   // Deregisters buffer before returned to the client and marks the buffer as
   // returned. The given |buffer| must be already registered.
@@ -342,6 +347,10 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   // Needs to be locked during ConfigureStreams() or RequestStreamBuffers().
   base::Lock configuring_streams_lock_;
+
+  // Stores the active buffer ids that are alive in client VCD buffer pool.
+  base::flat_set<uint64_t> buffer_ids_active_in_client_
+      GUARDED_BY(buffer_handles_lock_);
 
   // A mapping from the locally created buffer handle to the handle ID of the
   // imported buffer.  We need to return the correct handle ID in
