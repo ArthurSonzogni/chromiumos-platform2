@@ -81,9 +81,15 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
       brillo::Error* error);
 
   bool UnregisterSuspendDelayInternal(bool is_dark, int delay_id);
-  bool ReportSuspendReadinessInternal(bool is_dark,
+
+  void ReportSuspendReadinessInternal(bool is_dark,
                                       int delay_id,
-                                      int suspend_id);
+                                      int suspend_id,
+                                      base::OnceCallback<void(bool)> callback);
+  void OnReportSuspendReadinessResponse(
+      base::OnceCallback<void(bool)> callback);
+  void OnReportSuspendReadinessError(base::OnceCallback<void(bool)> callback,
+                                     brillo::Error* error);
 
   // Called when service appeared or vanished.
   void OnServiceAvailable(bool available);

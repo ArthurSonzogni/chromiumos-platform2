@@ -109,8 +109,8 @@ void PowerManagerProxy::ReportSuspendReadiness(
     std::move(callback).Run(false);
     return;
   }
-  std::move(callback).Run(
-      ReportSuspendReadinessInternal(false, delay_id, suspend_id));
+  ReportSuspendReadinessInternal(false, delay_id, suspend_id,
+                                 std::move(callback));
 }
 
 void PowerManagerProxy::RegisterDarkSuspendDelay(
@@ -140,8 +140,8 @@ void PowerManagerProxy::ReportDarkSuspendReadiness(
     std::move(callback).Run(false);
     return;
   }
-  std::move(callback).Run(
-      ReportSuspendReadinessInternal(true, delay_id, suspend_id));
+  ReportSuspendReadinessInternal(true, delay_id, suspend_id,
+                                 std::move(callback));
 }
 
 bool PowerManagerProxy::RecordDarkResumeWakeReason(
@@ -272,9 +272,11 @@ bool PowerManagerProxy::UnregisterSuspendDelayInternal(bool is_dark,
   return true;
 }
 
-bool PowerManagerProxy::ReportSuspendReadinessInternal(bool is_dark,
-                                                       int delay_id,
-                                                       int suspend_id) {
+void PowerManagerProxy::ReportSuspendReadinessInternal(
+    bool is_dark,
+    int delay_id,
+    int suspend_id,
+    base::OnceCallback<void(bool)> callback) {
   const std::string is_dark_arg = (is_dark ? "dark=true" : "dark=false");
   LOG(INFO) << __func__ << "(" << delay_id << ", " << suspend_id << ", "
             << is_dark_arg << ")";
@@ -286,17 +288,34 @@ bool PowerManagerProxy::ReportSuspendReadinessInternal(bool is_dark,
   CHECK(SerializeProtocolBuffer(proto, &serialized_proto));
 
   brillo::ErrorPtr error;
+  auto [cb1, cb2] = base::SplitOnceCallback(std::move(callback));
   if (is_dark) {
-    proxy_->HandleDarkSuspendReadiness(serialized_proto, &error);
+    proxy_->HandleDarkSuspendReadinessAsync(
+        serialized_proto,
+        base::BindOnce(&PowerManagerProxy::OnReportSuspendReadinessResponse,
+                       weak_factory_.GetWeakPtr(), std::move(cb1)),
+        base::BindOnce(&PowerManagerProxy::OnReportSuspendReadinessError,
+                       weak_factory_.GetWeakPtr(), std::move(cb2)));
   } else {
-    proxy_->HandleSuspendReadiness(serialized_proto, &error);
+    proxy_->HandleSuspendReadinessAsync(
+        serialized_proto,
+        base::BindOnce(&PowerManagerProxy::OnReportSuspendReadinessResponse,
+                       weak_factory_.GetWeakPtr(), std::move(cb1)),
+        base::BindOnce(&PowerManagerProxy::OnReportSuspendReadinessError,
+                       weak_factory_.GetWeakPtr(), std::move(cb2)));
   }
-  if (error) {
-    LOG(ERROR) << "Failed to report suspend readiness: " << error->GetCode()
-               << " " << error->GetMessage();
-    return false;
-  }
-  return true;
+}
+
+void PowerManagerProxy::OnReportSuspendReadinessResponse(
+    base::OnceCallback<void(bool)> callback) {
+  std::move(callback).Run(true);
+}
+
+void PowerManagerProxy::OnReportSuspendReadinessError(
+    base::OnceCallback<void(bool)> callback, brillo::Error* error) {
+  LOG(INFO) << "Got error reporting suspend readiness: " << error->GetCode()
+            << " " << error->GetMessage();
+  std::move(callback).Run(false);
 }
 
 void PowerManagerProxy::SuspendImminent(
