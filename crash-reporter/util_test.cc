@@ -288,7 +288,8 @@ TEST_F(CrashCommonUtilTest, IsBuildTimestampTooOldForUploads) {
 TEST_F(CrashCommonUtilTest, GetHardwareClass) {
   crossystem::Crossystem stub_crossystem(
       std::make_unique<crossystem::fake::CrossystemFake>());
-  auto old_instance = crossystem::ReplaceInstanceForTest(&stub_crossystem);
+  auto old_instance =
+      crash_crossystem::ReplaceInstanceForTest(&stub_crossystem);
 
   // HWID file not found and failed to get the "hwid" system property.
   EXPECT_EQ("undefined", GetHardwareClass());
@@ -313,13 +314,14 @@ TEST_F(CrashCommonUtilTest, GetHardwareClass) {
       std::string(kHwClassContents) + "\n"));
   EXPECT_EQ(kHwClassContents, GetHardwareClass());
 
-  crossystem::ReplaceInstanceForTest(old_instance);
+  crash_crossystem::ReplaceInstanceForTest(old_instance);
 }
 
 TEST_F(CrashCommonUtilTest, GetBootModeString) {
   crossystem::Crossystem stub_crossystem(
       std::make_unique<crossystem::fake::CrossystemFake>());
-  auto old_instance = crossystem::ReplaceInstanceForTest(&stub_crossystem);
+  auto old_instance =
+      crash_crossystem::ReplaceInstanceForTest(&stub_crossystem);
 
   EXPECT_EQ("missing-crossystem", GetBootModeString());
 
@@ -335,7 +337,7 @@ TEST_F(CrashCommonUtilTest, GetBootModeString) {
                             ""));
   EXPECT_EQ("", GetBootModeString());
 
-  crossystem::ReplaceInstanceForTest(old_instance);
+  crash_crossystem::ReplaceInstanceForTest(old_instance);
 }
 
 TEST_F(CrashCommonUtilTest, GetCachedKeyValue) {

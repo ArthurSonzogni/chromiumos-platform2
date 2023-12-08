@@ -338,7 +338,8 @@ std::string GetHardwareClass() {
       return hw_class;
     }
   }
-  auto vb_value = crossystem::GetInstance()->VbGetSystemPropertyString("hwid");
+  auto vb_value =
+      crash_crossystem::GetInstance()->VbGetSystemPropertyString("hwid");
   if (vb_value.has_value()) {
     std::string out;
     base::TrimWhitespaceASCII(vb_value.value(), base::TRIM_TRAILING, &out);
@@ -353,7 +354,8 @@ std::string GetBootModeString() {
   if (IsCrashTestInProgress())
     return "";
 
-  auto vb_value = crossystem::GetInstance()->VbGetSystemPropertyInt(kDevSwBoot);
+  auto vb_value =
+      crash_crossystem::GetInstance()->VbGetSystemPropertyInt(kDevSwBoot);
   if (!vb_value) {
     LOG(ERROR) << "Error trying to determine boot mode";
     return "missing-crossystem";

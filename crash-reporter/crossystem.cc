@@ -18,11 +18,12 @@ crossystem::Crossystem* shared_instance = nullptr;
 
 }  // namespace
 
-namespace crossystem {
+namespace crash_crossystem {
 
 crossystem::Crossystem* GetInstance() {
-  if (shared_instance == nullptr)
+  if (shared_instance == nullptr) {
     shared_instance = GetDefaultInstance();
+  }
   return shared_instance;
 }
 
@@ -34,4 +35,4 @@ crossystem::Crossystem* ReplaceInstanceForTest(
   return original_instance;
 }
 
-}  // namespace crossystem
+}  // namespace crash_crossystem

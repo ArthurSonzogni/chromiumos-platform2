@@ -7,7 +7,7 @@
 
 #include <libcrossystem/crossystem.h>
 
-namespace crossystem {
+namespace crash_crossystem {
 
 // Gets the singleton instance of crossystem::Crossystem that provides
 // functionalities to access and modify the system properties.
@@ -19,6 +19,6 @@ crossystem::Crossystem* GetInstance();
 crossystem::Crossystem* ReplaceInstanceForTest(
     crossystem::Crossystem* instance);
 
-}  // namespace crossystem
+}  // namespace crash_crossystem
 
 #endif  // CRASH_REPORTER_CROSSYSTEM_H_
