@@ -12,6 +12,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -39,6 +40,16 @@ bool WriteStringToFile(const base::FilePath& filename,
 }
 
 std::map<int, int> GetTpmTcgOpMap() {
+  std::string backup_request;
+  base::ReadFileToString(base::FilePath(kTpmPpiPath), &backup_request);
+  base::ScopedClosureRunner restore_request(base::BindOnce(
+      [](const std::string& backup_request) {
+        if (!backup_request.empty()) {
+          WriteStringToFile(base::FilePath(kTpmPpiPath), backup_request);
+        }
+      },
+      backup_request));
+
   std::string data;
   if (!base::ReadFileToString(base::FilePath(kTpmTcgOpPath), &data)) {
     return {};
