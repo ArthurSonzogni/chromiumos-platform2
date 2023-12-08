@@ -4,10 +4,11 @@
 
 use std::process;
 
+use anyhow::bail;
 use anyhow::Result;
+use log::info;
 use serde::Deserialize;
-
-use crate::util::get_command_output;
+use std::process::Command;
 
 /// Struct for deserializing the JSON output of `lsblk`.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
@@ -98,6 +99,23 @@ pub fn get_lsblk_devices() -> Result<Vec<LsBlkDevice>> {
     let output = get_lsblk_output()?;
     let parsed = LsBlkOutput::parse(&output)?;
     Ok(parsed.flattened())
+}
+
+/// Run a command and get its stdout as raw bytes. An error is
+/// returned if the process fails to launch, or if it exits non-zero.
+fn get_command_output(mut command: Command) -> Result<Vec<u8>> {
+    info!("running command: {:?}", command);
+    let output = match command.output() {
+        Ok(output) => output,
+        Err(err) => {
+            bail!("Failed to execute command: {err}");
+        }
+    };
+
+    if !output.status.success() {
+        bail!("Failed to execute command");
+    }
+    Ok(output.stdout)
 }
 
 #[cfg(test)]

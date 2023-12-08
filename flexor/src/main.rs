@@ -50,9 +50,9 @@ fn setup_disk(device_path: &Path, block_size: BlockSize) -> Result<()> {
     // Install the layout and stateful partition.
     chromeos_install::write_partition_table_and_stateful(device_path)?;
     // Insert a thirtheenth partition.
-    util::insert_thirteenth_partition(device_path, block_size)?;
+    disk::insert_thirteenth_partition(device_path, block_size)?;
     // Reread the partition table.
-    util::reload_partitions(device_path)
+    disk::reload_partitions(device_path)
 }
 
 /// Sets up the thirteenth partition on disk and then proceeds to install the
@@ -62,7 +62,7 @@ fn setup_flex_deploy_partition_and_install(device_path: &Path) -> Result<()> {
     let new_partition_path =
         libchromeos::disk::get_partition_device(device_path, FLEX_DEPLOY_PART_NUM)
             .context("Unable to find correct partition path")?;
-    util::mkfs_ext4(new_partition_path.as_path())?;
+    disk::mkfs_ext4(new_partition_path.as_path())?;
     let new_part_mount =
         mount::Mount::mount_by_path(new_partition_path.as_path(), mount::FsType::EXT4)?;
 
@@ -128,7 +128,7 @@ fn try_safe_logs(device_path: &Path) -> Result<()> {
             Err(_) => {
                 // The partition seems to exist, but we can't mount it as ext4,
                 // so we try to create a file system and retry.
-                util::mkfs_ext4(&flex_depl_partition_path)?;
+                disk::mkfs_ext4(&flex_depl_partition_path)?;
                 let flex_depl_mount =
                     mount::Mount::mount_by_path(&flex_depl_partition_path, mount::FsType::EXT4)?;
                 std::fs::copy(FLEXOR_LOG_FILE, flex_depl_mount.mount_path())?;
