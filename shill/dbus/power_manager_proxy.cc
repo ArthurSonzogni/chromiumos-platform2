@@ -102,12 +102,15 @@ bool PowerManagerProxy::UnregisterSuspendDelay(int delay_id) {
   return UnregisterSuspendDelayInternal(false, delay_id);
 }
 
-bool PowerManagerProxy::ReportSuspendReadiness(int delay_id, int suspend_id) {
+void PowerManagerProxy::ReportSuspendReadiness(
+    int delay_id, int suspend_id, base::OnceCallback<void(bool)> callback) {
   if (!service_available_) {
     LOG(ERROR) << "PowerManager service not available";
-    return false;
+    std::move(callback).Run(false);
+    return;
   }
-  return ReportSuspendReadinessInternal(false, delay_id, suspend_id);
+  std::move(callback).Run(
+      ReportSuspendReadinessInternal(false, delay_id, suspend_id));
 }
 
 void PowerManagerProxy::RegisterDarkSuspendDelay(
@@ -130,13 +133,15 @@ bool PowerManagerProxy::UnregisterDarkSuspendDelay(int delay_id) {
   return UnregisterSuspendDelayInternal(true, delay_id);
 }
 
-bool PowerManagerProxy::ReportDarkSuspendReadiness(int delay_id,
-                                                   int suspend_id) {
+void PowerManagerProxy::ReportDarkSuspendReadiness(
+    int delay_id, int suspend_id, base::OnceCallback<void(bool)> callback) {
   if (!service_available_) {
     LOG(ERROR) << "PowerManager service not available";
-    return false;
+    std::move(callback).Run(false);
+    return;
   }
-  return ReportSuspendReadinessInternal(true, delay_id, suspend_id);
+  std::move(callback).Run(
+      ReportSuspendReadinessInternal(true, delay_id, suspend_id));
 }
 
 bool PowerManagerProxy::RecordDarkResumeWakeReason(

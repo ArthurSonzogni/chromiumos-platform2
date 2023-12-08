@@ -28,7 +28,10 @@ class MockPowerManagerProxy : public PowerManagerProxyInterface {
                base::OnceCallback<void(std::optional<int>)>),
               (override));
   MOCK_METHOD(bool, UnregisterSuspendDelay, (int), (override));
-  MOCK_METHOD(bool, ReportSuspendReadiness, (int, int), (override));
+  MOCK_METHOD(void,
+              ReportSuspendReadiness,
+              (int, int, base::OnceCallback<void(bool)>),
+              (override));
   MOCK_METHOD(void,
               RegisterDarkSuspendDelay,
               (base::TimeDelta,
@@ -36,7 +39,10 @@ class MockPowerManagerProxy : public PowerManagerProxyInterface {
                base::OnceCallback<void(std::optional<int>)>),
               (override));
   MOCK_METHOD(bool, UnregisterDarkSuspendDelay, (int), (override));
-  MOCK_METHOD(bool, ReportDarkSuspendReadiness, (int, int), (override));
+  MOCK_METHOD(void,
+              ReportDarkSuspendReadiness,
+              (int, int, base::OnceCallback<void(bool)>),
+              (override));
   MOCK_METHOD(bool,
               RecordDarkResumeWakeReason,
               (const std::string&),

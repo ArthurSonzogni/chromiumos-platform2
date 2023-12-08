@@ -45,13 +45,18 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
       const std::string& description,
       base::OnceCallback<void(std::optional<int>)> callback) override;
   bool UnregisterSuspendDelay(int delay_id) override;
-  bool ReportSuspendReadiness(int delay_id, int suspend_id) override;
+  void ReportSuspendReadiness(int delay_id,
+                              int suspend_id,
+                              base::OnceCallback<void(bool)> callback) override;
   void RegisterDarkSuspendDelay(
       base::TimeDelta timeout,
       const std::string& description,
       base::OnceCallback<void(std::optional<int>)> callback) override;
   bool UnregisterDarkSuspendDelay(int delay_id) override;
-  bool ReportDarkSuspendReadiness(int delay_id, int suspend_id) override;
+  void ReportDarkSuspendReadiness(
+      int delay_id,
+      int suspend_id,
+      base::OnceCallback<void(bool)> callback) override;
   bool RecordDarkResumeWakeReason(const std::string& wake_reason) override;
   void ChangeRegDomain(power_manager::WifiRegDomainDbus domain) override;
 

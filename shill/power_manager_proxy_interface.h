@@ -40,8 +40,12 @@ class PowerManagerProxyInterface {
 
   // Calls the power manager's HandleSuspendReadiness method. |delay_id| should
   // contain the ID returned via RegisterSuspendDelay() and |suspend_id| should
-  // contain the ID from OnSuspendImminent(). Returns true on success.
-  virtual bool ReportSuspendReadiness(int delay_id, int suspend_id) = 0;
+  // contain the ID from OnSuspendImminent(). Calls |callback| with true on
+  // success or false on failure.
+  virtual void ReportSuspendReadiness(
+      int delay_id,
+      int suspend_id,
+      base::OnceCallback<void(bool)> callback) = 0;
 
   // Sends a request to the power manager to wait for this client for up to
   // |timeout| before suspending the system from a dark resume. Arguments
@@ -57,8 +61,12 @@ class PowerManagerProxyInterface {
   virtual bool UnregisterDarkSuspendDelay(int delay_id) = 0;
 
   // Calls the power manager's HandleDarkSuspendReadiness method. Arguments are
-  // as explained for ReportSuspendReadiness. Returns true on success.
-  virtual bool ReportDarkSuspendReadiness(int delay_id, int suspend_id) = 0;
+  // as explained for ReportSuspendReadiness. Calls |callback| with true on
+  // success or false on failure.
+  virtual void ReportDarkSuspendReadiness(
+      int delay_id,
+      int suspend_id,
+      base::OnceCallback<void(bool)> callback) = 0;
 
   // Calls the power manager's RecordDarkResumeWakeReason method to record the
   // wake reason for the current dark resume. Returns true on success.

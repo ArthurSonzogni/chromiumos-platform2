@@ -2843,7 +2843,7 @@ TEST_F(ManagerTest, OnSuspendImminentDevicesPresent) {
 }
 
 TEST_F(ManagerTest, OnSuspendImminentNoDevicesPresent) {
-  EXPECT_CALL(*power_manager_, ReportSuspendReadiness());
+  EXPECT_CALL(*power_manager_, ReportSuspendReadiness(_));
   SetPowerManager();
   OnSuspendImminent();
 }
@@ -2860,14 +2860,14 @@ TEST_F(ManagerTest, OnDarkSuspendImminentDevicesPresent) {
 }
 
 TEST_F(ManagerTest, OnDarkSuspendImminentNoDevicesPresent) {
-  EXPECT_CALL(*power_manager_, ReportDarkSuspendReadiness());
+  EXPECT_CALL(*power_manager_, ReportDarkSuspendReadiness(_));
   SetPowerManager();
   OnDarkSuspendImminent();
 }
 
 TEST_F(ManagerTest, OnSuspendActionsComplete) {
   Error error;
-  EXPECT_CALL(*power_manager_, ReportSuspendReadiness());
+  EXPECT_CALL(*power_manager_, ReportSuspendReadiness(_));
   SetPowerManager();
   OnSuspendActionsComplete(error);
 }

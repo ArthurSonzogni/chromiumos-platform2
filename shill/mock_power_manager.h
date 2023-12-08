@@ -21,8 +21,14 @@ class MockPowerManager : public PowerManager {
 
   ~MockPowerManager() override;
 
-  MOCK_METHOD(bool, ReportSuspendReadiness, (), (override));
-  MOCK_METHOD(bool, ReportDarkSuspendReadiness, (), (override));
+  MOCK_METHOD(void,
+              ReportSuspendReadiness,
+              (base::OnceCallback<void(bool)>),
+              (override));
+  MOCK_METHOD(void,
+              ReportDarkSuspendReadiness,
+              (base::OnceCallback<void(bool)>),
+              (override));
   MOCK_METHOD(void,
               Start,
               (base::TimeDelta,

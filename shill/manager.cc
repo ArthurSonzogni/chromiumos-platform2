@@ -1624,12 +1624,18 @@ void Manager::OnDarkSuspendImminent() {
 void Manager::OnSuspendActionsComplete(const Error& error) {
   LOG(INFO) << "Finished suspend actions. Result: " << error;
   metrics_->NotifySuspendActionsCompleted(error.IsSuccess());
-  power_manager_->ReportSuspendReadiness();
+  power_manager_->ReportSuspendReadiness(base::BindOnce([](bool success) {
+    LOG(INFO) << (success ? "Successfully reported" : "Failed to report")
+              << " suspend readiness to powerd";
+  }));
 }
 
 void Manager::OnDarkResumeActionsComplete(const Error& error) {
   LOG(INFO) << "Finished dark resume actions. Result: " << error;
-  power_manager_->ReportDarkSuspendReadiness();
+  power_manager_->ReportDarkSuspendReadiness(base::BindOnce([](bool success) {
+    LOG(INFO) << (success ? "Successfully reported" : "Failed to report")
+              << " dark suspend readiness to powerd";
+  }));
 }
 
 std::vector<DeviceRefPtr> Manager::FilterByTechnology(Technology tech) const {

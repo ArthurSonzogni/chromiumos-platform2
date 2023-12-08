@@ -5,6 +5,7 @@
 #include "shill/power_manager.h"
 
 #include <string>
+#include <utility>
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -75,7 +76,8 @@ void PowerManager::Stop() {
   power_manager_proxy_.reset();
 }
 
-bool PowerManager::ReportSuspendReadiness() {
+void PowerManager::ReportSuspendReadiness(
+    base::OnceCallback<void(bool)> callback) {
   // If |suspend_done_deferred_| is true, a SuspendDone notification was
   // observed before SuspendReadiness was reported and no further
   // SuspendImminent notification was observed after the SuspendDone
@@ -84,31 +86,37 @@ bool PowerManager::ReportSuspendReadiness() {
   if (suspend_done_deferred_) {
     LOG(INFO) << __func__ << ": Notifying deferred SuspendDone.";
     NotifySuspendDone();
-    return false;
+    std::move(callback).Run(false);
+    return;
   }
 
   suspend_ready_ = true;
   if (!suspending_) {
     LOG(INFO) << __func__ << ": Suspend attempt (" << current_suspend_id_
               << ") not active. Ignoring signal.";
-    return false;
+    std::move(callback).Run(false);
+    return;
   }
 
   if (!suspend_delay_id_.has_value()) {
     LOG(INFO) << "No suspend delay is registered. Ignoring signal.";
-    return false;
+    std::move(callback).Run(false);
+    return;
   }
-  return power_manager_proxy_->ReportSuspendReadiness(suspend_delay_id_.value(),
-                                                      current_suspend_id_);
+  power_manager_proxy_->ReportSuspendReadiness(
+      suspend_delay_id_.value(), current_suspend_id_, std::move(callback));
 }
 
-bool PowerManager::ReportDarkSuspendReadiness() {
+void PowerManager::ReportDarkSuspendReadiness(
+    base::OnceCallback<void(bool)> callback) {
   if (!dark_suspend_delay_id_.has_value()) {
     LOG(INFO) << "No dark suspend delay is registered. Ignoring signal.";
-    return false;
+    std::move(callback).Run(false);
+    return;
   }
-  return power_manager_proxy_->ReportDarkSuspendReadiness(
-      dark_suspend_delay_id_.value(), current_dark_suspend_id_);
+  power_manager_proxy_->ReportDarkSuspendReadiness(
+      dark_suspend_delay_id_.value(), current_dark_suspend_id_,
+      std::move(callback));
 }
 
 bool PowerManager::RecordDarkResumeWakeReason(const std::string& wake_reason) {

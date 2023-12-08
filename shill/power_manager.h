@@ -73,12 +73,13 @@ class PowerManager : public PowerManagerProxyDelegate {
   virtual void Stop();
 
   // Report suspend readiness. If called when there is no suspend attempt
-  // active, this function will fail. Returns true if sucessfully reported to
-  // powerd.
-  virtual bool ReportSuspendReadiness();
+  // active, this function will fail. Calls |callback| with true if sucessfully
+  // reported to powerd, or false if it failed.
+  virtual void ReportSuspendReadiness(base::OnceCallback<void(bool)> callback);
 
   // Report dark suspend readiness. See ReportSuspendReadiness for more details.
-  virtual bool ReportDarkSuspendReadiness();
+  virtual void ReportDarkSuspendReadiness(
+      base::OnceCallback<void(bool)> callback);
 
   // Record the wake reason for the current dark resume.
   bool RecordDarkResumeWakeReason(const std::string& wake_reason);
