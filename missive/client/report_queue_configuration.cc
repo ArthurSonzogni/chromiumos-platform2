@@ -49,7 +49,7 @@ ReportQueueConfiguration::Create(std::string_view dm_token,
   }
 
   std::unique_ptr<ReportQueueConfiguration> config =
-      std::move(config_result.ValueOrDie());
+      std::move(config_result.value());
   RETURN_IF_ERROR(config->SetDMToken(dm_token));
 
   return std::move(config);

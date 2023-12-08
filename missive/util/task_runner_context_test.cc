@@ -430,7 +430,7 @@ TEST_F(TaskRunner, ActionsWithStatusOrPtr) {
       base::SequencedTaskRunner::GetCurrentDefault());
   run_loop.Run();
   EXPECT_TRUE(result.ok()) << result.status();
-  EXPECT_EQ(result.ValueOrDie()->value(), kI);
+  EXPECT_EQ(result.value()->value(), kI);
 }
 
 }  // namespace

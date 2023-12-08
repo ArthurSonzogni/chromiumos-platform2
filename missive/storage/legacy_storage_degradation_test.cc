@@ -737,7 +737,7 @@ class LegacyStorageDegradationTest
         CreateTestStorage(options, encryption_module);
     ASSERT_OK(storage_result)
         << "Failed to create TestStorage, error=" << storage_result.status();
-    storage_ = std::move(storage_result.ValueOrDie());
+    storage_ = std::move(storage_result.value());
   }
 
   void ResetTestStorage() {
@@ -781,7 +781,7 @@ class LegacyStorageDegradationTest
                 std::move(start_uploader_cb).Run(result.status());
                 return;
               }
-              auto uploader = std::move(result.ValueOrDie());
+              auto uploader = std::move(result.value());
               std::move(start_uploader_cb).Run(std::move(uploader));
             },
             reason, std::move(start_uploader_cb), base::Unretained(this)));

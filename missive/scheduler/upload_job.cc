@@ -170,7 +170,7 @@ void UploadJob::Done(StatusOr<EncryptedRecords> records_result,
     Finish(records_result.status());
     return;
   }
-  std::move(set_records_cb_).Run(std::move(records_result.ValueOrDie()));
+  std::move(set_records_cb_).Run(std::move(records_result.value()));
   Finish(Status::StatusOK());
 }
 

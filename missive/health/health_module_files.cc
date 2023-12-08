@@ -53,7 +53,7 @@ std::unique_ptr<HealthModuleFiles> HealthModuleFiles::Create(
     if (!size_result.ok()) {
       continue;
     }
-    uint32_t file_size = size_result.ValueOrDie();
+    uint32_t file_size = size_result.value();
 
     if (file_size > 0) {
       storage_used += file_size;
@@ -118,10 +118,9 @@ void HealthModuleFiles::PopulateHistory(ERPHealthData* data) const {
       return;
     }
 
-    const auto records =
-        base::SplitString(read_result.ValueOrDie(), "\n",
-                          base::WhitespaceHandling::KEEP_WHITESPACE,
-                          base::SplitResult::SPLIT_WANT_NONEMPTY);
+    const auto records = base::SplitString(
+        read_result.value(), "\n", base::WhitespaceHandling::KEEP_WHITESPACE,
+        base::SplitResult::SPLIT_WANT_NONEMPTY);
     for (const auto& record : records) {
       std::string bytes;
       base::HexStringToString(record, &bytes);

@@ -16,7 +16,7 @@
 //
 //  StatusOr<float> result = DoBigCalculationThatCouldFail();
 //  if (result.ok()) {
-//    float answer = result.ValueOrDie();
+//    float answer = result.value();
 //    printf("Big calculation yielded: %f", answer);
 //  } else {
 //    LOG(ERROR) << result.status();
@@ -26,7 +26,7 @@
 //
 //  StatusOr<Foo*> result = FooFactory::MakeNewFoo(arg);
 //  if (result.ok()) {
-//    std::unique_ptr<Foo> foo(result.ValueOrDie());
+//    std::unique_ptr<Foo> foo(result.value());
 //    foo->DoSomethingCool();
 //  } else {
 //    LOG(ERROR) << result.status();
@@ -36,7 +36,7 @@
 //
 //  StatusOr<std::unique_ptr<Foo>> result = FooFactory::MakeNewFoo(arg);
 //  if (result.ok()) {
-//    std::unique_ptr<Foo> foo = std::move(result.ValueOrDie());
+//    std::unique_ptr<Foo> foo = std::move(result.value());
 //    foo->DoSomethingCool();
 //  } else {
 //    LOG(ERROR) << result.status();
@@ -97,7 +97,7 @@ class [[nodiscard]] StatusOr {
   StatusOr() : status_(internal::StatusOrHelper::NotInitializedStatus()) {}
 
   // Constructs a new StatusOr with the given non-ok status. After calling
-  // this constructor, calls to ValueOrDie() will CHECK-fail.
+  // this constructor, calls to value() will CHECK-fail.
   //
   // This constructor is not declared explicit so that a function with a return
   // type of |StatusOr<T>| can return a Status object, and the status will be
@@ -113,7 +113,7 @@ class [[nodiscard]] StatusOr {
 
   // Constructs a StatusOr object that contains |value|. The resulting object
   // is considered to have an OK status. The wrapped element can be accessed
-  // with ValueOrDie().
+  // with value().
   //
   // This constructor is made implicit so that a function with a return type of
   // |StatusOr<T>| can return an object of type |U&&|, implicitly converting
@@ -215,7 +215,7 @@ class [[nodiscard]] StatusOr {
   //
   // This method should only be called if this StatusOr object's status is OK
   // (i.e. a call to ok() returns true), otherwise this call will abort.
-  [[nodiscard]] const T& ValueOrDie() const& {
+  [[nodiscard]] const T& value() const& {
     if (!ok()) {
       internal::StatusOrHelper::Crash(status_);
     }
@@ -226,7 +226,7 @@ class [[nodiscard]] StatusOr {
   //
   // This method should only be called if this StatusOr object's status is OK
   // (i.e. a call to ok() returns true), otherwise this call will abort.
-  [[nodiscard]] T& ValueOrDie() & {
+  [[nodiscard]] T& value() & {
     if (!ok()) {
       internal::StatusOrHelper::Crash(status_);
     }
@@ -239,7 +239,7 @@ class [[nodiscard]] StatusOr {
   // (i.e. a call to ok() returns true), otherwise this call will abort. The
   // StatusOr object is invalidated after this call and will be updated to
   // contain a non-OK status with a |error::UNKNOWN| error code.
-  [[nodiscard]] T ValueOrDie() && {
+  [[nodiscard]] T value() && {
     if (!ok()) {
       internal::StatusOrHelper::Crash(status_);
     }

@@ -209,7 +209,7 @@ TEST_F(MissiveImplTest, AsyncStartUploadTest) {
       uploader_event.cb());
   auto response_result = uploader_event.result();
   EXPECT_OK(response_result) << response_result.status();
-  response_result.ValueOrDie()->Completed(
+  response_result.value()->Completed(
       Status(error::INTERNAL, "Failing for tests"));
 }
 

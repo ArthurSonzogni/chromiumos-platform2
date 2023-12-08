@@ -72,12 +72,12 @@ class ReportQueueImplTest : public testing::Test {
     ASSERT_OK(config_result) << config_result.status();
 
     test::TestEvent<StatusOr<std::unique_ptr<ReportQueue>>> report_queue_event;
-    ReportQueueImpl::Create(std::move(config_result.ValueOrDie()),
+    ReportQueueImpl::Create(std::move(config_result.value()),
                             test_storage_module_, report_queue_event.cb());
     auto report_queue_result = report_queue_event.result();
     ASSERT_OK(report_queue_result) << report_queue_result.status();
 
-    report_queue_ = std::move(report_queue_result.ValueOrDie());
+    report_queue_ = std::move(report_queue_result.value());
   }
 
   NiceMock<MockFunction<Status()>> mocked_policy_check_;
@@ -159,12 +159,12 @@ TEST_F(ReportQueueImplTest, SuccessfulProtoRecordWithReservedSpace) {
   ASSERT_OK(config_result) << config_result.status();
 
   test::TestEvent<StatusOr<std::unique_ptr<ReportQueue>>> report_queue_event;
-  ReportQueueImpl::Create(std::move(config_result.ValueOrDie()),
+  ReportQueueImpl::Create(std::move(config_result.value()),
                           test_storage_module_, report_queue_event.cb());
   auto report_queue_result = report_queue_event.result();
   ASSERT_OK(report_queue_result) << report_queue_result.status();
 
-  report_queue_ = std::move(report_queue_result.ValueOrDie());
+  report_queue_ = std::move(report_queue_result.value());
 
   test::TestMessage test_message;
   test_message.set_test(kTestMessage);
@@ -310,12 +310,12 @@ TEST_F(ReportQueueImplTest,
   ASSERT_OK(config_result) << config_result.status();
 
   test::TestEvent<StatusOr<std::unique_ptr<ReportQueue>>> report_queue_event;
-  ReportQueueImpl::Create(std::move(config_result.ValueOrDie()),
+  ReportQueueImpl::Create(std::move(config_result.value()),
                           test_storage_module_, report_queue_event.cb());
   auto report_queue_result = report_queue_event.result();
   ASSERT_OK(report_queue_result) << report_queue_result.status();
 
-  report_queue_ = std::move(report_queue_result.ValueOrDie());
+  report_queue_ = std::move(report_queue_result.value());
 
   static constexpr char kTestString[] = "El-Chupacabra";
   test::TestEvent<Status> a;

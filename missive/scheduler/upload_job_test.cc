@@ -54,7 +54,7 @@ class TestRecordUploader {
       StatusOr<std::unique_ptr<UploaderInterface>> uploader_interface_result) {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     EXPECT_OK(uploader_interface_result) << uploader_interface_result.status();
-    uploader_interface_ = std::move(uploader_interface_result.ValueOrDie());
+    uploader_interface_ = std::move(uploader_interface_result.value());
     Upload(/*send_next_record=*/true);
   }
 
@@ -173,8 +173,7 @@ TEST_F(UploadJobTest, UploadsRecords) {
                                         record_uploader->GetWeakPtr())),
       upload_responded.cb());
   ASSERT_OK(job_result) << job_result.status();
-  Scheduler::Job::SmartPtr<Scheduler::Job> job =
-      std::move(job_result.ValueOrDie());
+  Scheduler::Job::SmartPtr<Scheduler::Job> job = std::move(job_result.value());
 
   test::TestEvent<Status> upload_started;
   job->Start(upload_started.cb());

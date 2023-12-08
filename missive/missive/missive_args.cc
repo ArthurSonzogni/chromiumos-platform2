@@ -63,16 +63,16 @@ base::TimeDelta DurationParameterValue(std::string_view parameter_name,
   CHECK(ParseDuration(duration_default).ok());
 
   if (duration_string.empty()) {
-    return ParseDuration(duration_default).ValueOrDie();
+    return ParseDuration(duration_default).value();
   }
   const auto duration_result = ParseDuration(duration_string);
   if (!duration_result.ok()) {
     LOG(ERROR) << "Unable to parse parameter " << parameter_name << "="
                << duration_string << ", assumed default=" << duration_default
                << ", because: " << duration_result.status();
-    return ParseDuration(duration_default).ValueOrDie();
+    return ParseDuration(duration_default).value();
   }
-  return duration_result.ValueOrDie();
+  return duration_result.value();
 }
 
 // Recognizes boolean setting if valid. Otherwise, substitutes default value.

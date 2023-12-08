@@ -95,7 +95,7 @@ void CreateQueuePostData(
             // Queue created successfully, enqueue the message on a random
             // thread and verify.
             EXPECT_CALL(*static_cast<MockReportQueue*>(
-                            report_queue_result.ValueOrDie().get()),
+                            report_queue_result.value().get()),
                         AddRecord(StrEq(data), Eq(priority), _))
                 .WillOnce(
                     WithArg<2>(Invoke([](ReportQueue::EnqueueCallback cb) {
@@ -109,7 +109,7 @@ void CreateQueuePostData(
                        ReportQueue::EnqueueCallback done_cb) {
                       queue->Enqueue(data, priority, std::move(done_cb));
                     },
-                    std::move(report_queue_result.ValueOrDie()), data, priority,
+                    std::move(report_queue_result.value()), data, priority,
                     std::move(done_cb)));
           },
           std::string(data), priority, std::move(done_cb));
@@ -137,9 +137,8 @@ void CreateSpeculativeQueuePostData(
   }
   // Queue created successfully, enqueue the message on a random thread and
   // verify.
-  EXPECT_CALL(
-      *static_cast<MockReportQueue*>(report_queue_result.ValueOrDie().get()),
-      AddRecord(StrEq(data), Eq(priority), _))
+  EXPECT_CALL(*static_cast<MockReportQueue*>(report_queue_result.value().get()),
+              AddRecord(StrEq(data), Eq(priority), _))
       .WillOnce(WithArg<2>(Invoke([](ReportQueue::EnqueueCallback cb) {
         std::move(cb).Run(Status::StatusOK());
       })));
@@ -152,7 +151,7 @@ void CreateSpeculativeQueuePostData(
              ReportQueue::EnqueueCallback done_cb) {
             queue->Enqueue(data, priority, std::move(done_cb));
           },
-          std::move(report_queue_result.ValueOrDie()), data, priority,
+          std::move(report_queue_result.value()), data, priority,
           // Verification callback needs to be serialized, because EXPECT_... do
           // not support multithreading.
           base::BindPostTask(sequenced_task_runner, std::move(done_cb))));
@@ -171,7 +170,7 @@ TEST_F(ReportQueueProviderTest, CreateAndGetQueue) {
   base::ThreadPool::PostTask(
       FROM_HERE,
       base::BindOnce(&CreateQueuePostData, kTestMessage, FAST_BATCH,
-                     std::move(config_result.ValueOrDie()),
+                     std::move(config_result.value()),
                      base::SequencedTaskRunner::GetCurrentDefault(), e.cb()));
   const auto res = e.result();
   EXPECT_OK(res) << res;
@@ -217,8 +216,7 @@ TEST_F(ReportQueueProviderTest, CreateMultipleQueues) {
     base::ThreadPool::PostTask(
         FROM_HERE,
         base::BindOnce(&CreateQueuePostData, std::move(message),
-                       /*priority=*/s.first,
-                       std::move(config_result.ValueOrDie()),
+                       /*priority=*/s.first, std::move(config_result.value()),
                        base::SequencedTaskRunner::GetCurrentDefault(),
                        std::move(done_cb)));
   }
@@ -265,7 +263,7 @@ TEST_F(ReportQueueProviderTest, CreateMultipleSpeculativeQueues) {
         &waiter);
     CreateSpeculativeQueuePostData(
         std::move(message),
-        /*priority=*/s.first, std::move(config_result.ValueOrDie()),
+        /*priority=*/s.first, std::move(config_result.value()),
         base::SequencedTaskRunner::GetCurrentDefault(), std::move(done_cb));
   }
   waiter.Signal();  // Release the waiter
@@ -283,7 +281,7 @@ TEST_F(ReportQueueProviderTest,
   ASSERT_OK(config_result);
 
   test::TestEvent<ReportQueueProvider::CreateReportQueueResponse> event;
-  ReportQueueProvider::CreateQueue(std::move(config_result.ValueOrDie()),
+  ReportQueueProvider::CreateQueue(std::move(config_result.value()),
                                    event.cb());
   const auto result = event.result();
 
@@ -303,7 +301,7 @@ TEST_F(ReportQueueProviderTest,
   ASSERT_OK(config_result);
 
   const auto result = ReportQueueProvider::CreateSpeculativeQueue(
-      std::move(config_result.ValueOrDie()));
+      std::move(config_result.value()));
   ASSERT_FALSE(result.ok());
   EXPECT_EQ(result.status().code(), error::FAILED_PRECONDITION);
 }

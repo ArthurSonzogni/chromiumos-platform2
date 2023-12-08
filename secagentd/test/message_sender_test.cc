@@ -162,7 +162,7 @@ TEST_F(MessageSenderTestFixture, TestSendMessageValidDestination) {
               base::OnceCallback<reporting::StatusOr<std::string>()> record_cb,
               base::OnceCallback<void(reporting::Status)> status_cb) {
             auto serialized = std::move(record_cb).Run();
-            proto_string = serialized.ValueOrDie();
+            proto_string = serialized.value();
 
             std::move(status_cb).Run(reporting::Status::StatusOK());
           })));
@@ -190,7 +190,7 @@ TEST_F(MessageSenderTestFixture, TestSendMessageValidDestination) {
               base::OnceCallback<reporting::StatusOr<std::string>()> record_cb,
               base::OnceCallback<void(reporting::Status)> status_cb) {
             auto serialized = std::move(record_cb).Run();
-            proto_string = serialized.ValueOrDie();
+            proto_string = serialized.value();
 
             std::move(status_cb).Run(reporting::Status::StatusOK());
           })));

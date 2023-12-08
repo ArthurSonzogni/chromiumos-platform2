@@ -93,8 +93,8 @@ class StorageModuleTest : public ::testing::Test {
         base::BindPostTaskToCurrentDefault(module_event.cb()));
     auto res = module_event.result();
     ASSERT_OK(res);
-    EXPECT_TRUE(res.ValueOrDie().get());
-    storage_module_ = res.ValueOrDie();
+    EXPECT_TRUE(res.value().get());
+    storage_module_ = res.value();
   }
 
   Status CallAddRecord(scoped_refptr<StorageModule> module) {

@@ -46,7 +46,7 @@ class EncryptionModuleTest : public ::testing::Test {
 
     auto decryptor_result = test::Decryptor::Create();
     ASSERT_OK(decryptor_result.status()) << decryptor_result.status();
-    decryptor_ = std::move(decryptor_result.ValueOrDie());
+    decryptor_ = std::move(decryptor_result.value());
   }
 
   StatusOr<EncryptedRecord> EncryptSync(std::string_view data) {
@@ -62,8 +62,7 @@ class EncryptionModuleTest : public ::testing::Test {
     decryptor_->OpenRecord(encrypted.first, open_decrypt.cb());
     auto open_decrypt_result = open_decrypt.result();
     RETURN_IF_ERROR(open_decrypt_result.status());
-    test::Decryptor::Handle* const dec_handle =
-        open_decrypt_result.ValueOrDie();
+    test::Decryptor::Handle* const dec_handle = open_decrypt_result.value();
 
     test::TestEvent<Status> add_decrypt;
     dec_handle->AddToRecord(encrypted.second, add_decrypt.cb());
@@ -79,7 +78,7 @@ class EncryptionModuleTest : public ::testing::Test {
             std::move(close_cb).Run(result.status());
             return;
           }
-          *decrypted_string = std::string(result.ValueOrDie());
+          *decrypted_string = std::string(result.value());
           std::move(close_cb).Run(Status::StatusOK());
         },
         base::Unretained(&decrypted_string), close_decrypt.cb()));
@@ -140,17 +139,17 @@ TEST_F(EncryptionModuleTest, EncryptAndDecrypt) {
 
   // Decrypt shared secret with private asymmetric key.
   auto decrypt_secret_result = DecryptMatchingSecret(
-      encrypted_result.ValueOrDie().encryption_info().public_key_id(),
-      encrypted_result.ValueOrDie().encryption_info().encryption_key());
+      encrypted_result.value().encryption_info().public_key_id(),
+      encrypted_result.value().encryption_info().encryption_key());
   ASSERT_OK(decrypt_secret_result.status()) << decrypt_secret_result.status();
 
   // Decrypt back.
   const auto decrypted_result = DecryptSync(
-      std::make_pair(decrypt_secret_result.ValueOrDie(),
-                     encrypted_result.ValueOrDie().encrypted_wrapped_record()));
+      std::make_pair(decrypt_secret_result.value(),
+                     encrypted_result.value().encrypted_wrapped_record()));
   ASSERT_OK(decrypted_result.status()) << decrypted_result.status();
 
-  EXPECT_THAT(decrypted_result.ValueOrDie(), ::testing::StrEq(kTestString));
+  EXPECT_THAT(decrypted_result.value(), ::testing::StrEq(kTestString));
 }
 
 TEST_F(EncryptionModuleTest, EncryptionDisabled) {
@@ -165,9 +164,8 @@ TEST_F(EncryptionModuleTest, EncryptionDisabled) {
 
   // Expect the result to be identical to the original record,
   // and have no encryption_info.
-  EXPECT_EQ(encrypted_result.ValueOrDie().encrypted_wrapped_record(),
-            kTestString);
-  EXPECT_FALSE(encrypted_result.ValueOrDie().has_encryption_info());
+  EXPECT_EQ(encrypted_result.value().encrypted_wrapped_record(), kTestString);
+  EXPECT_FALSE(encrypted_result.value().has_encryption_info());
 }
 
 TEST_F(EncryptionModuleTest, PublicKeyUpdate) {
@@ -224,7 +222,7 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultiple) {
        {kTestStrings[0], kTestStrings[1], kTestStrings[2]}) {
     const auto encrypted_result = EncryptSync(test_string);
     ASSERT_OK(encrypted_result.status()) << encrypted_result.status();
-    encrypted_records.emplace_back(encrypted_result.ValueOrDie());
+    encrypted_records.emplace_back(encrypted_result.value());
   }
 
   // 3. Register second key pair.
@@ -234,7 +232,7 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultiple) {
   for (const char* test_string : {kTestStrings[3], kTestStrings[4]}) {
     const auto encrypted_result = EncryptSync(test_string);
     ASSERT_OK(encrypted_result.status()) << encrypted_result.status();
-    encrypted_records.emplace_back(encrypted_result.ValueOrDie());
+    encrypted_records.emplace_back(encrypted_result.value());
   }
 
   // 3. Register third key pair.
@@ -244,7 +242,7 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultiple) {
   for (const char* test_string : {kTestStrings[5]}) {
     const auto encrypted_result = EncryptSync(test_string);
     ASSERT_OK(encrypted_result.status()) << encrypted_result.status();
-    encrypted_records.emplace_back(encrypted_result.ValueOrDie());
+    encrypted_records.emplace_back(encrypted_result.value());
   }
 
   // For every encrypted record:
@@ -257,13 +255,12 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultiple) {
 
     // Decrypt back.
     const auto decrypted_result = DecryptSync(
-        std::make_pair(decrypt_secret_result.ValueOrDie(),
+        std::make_pair(decrypt_secret_result.value(),
                        encrypted_records[i].encrypted_wrapped_record()));
     ASSERT_OK(decrypted_result.status()) << decrypted_result.status();
 
     // Verify match.
-    EXPECT_THAT(decrypted_result.ValueOrDie(),
-                ::testing::StrEq(kTestStrings[i]));
+    EXPECT_THAT(decrypted_result.value(), ::testing::StrEq(kTestStrings[i]));
   }
 }
 
@@ -387,8 +384,7 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultipleParallel) {
                     FROM_HERE,
                     base::BindOnce(
                         &SingleDecryptionContext::DecryptSharedSecret,
-                        base::Unretained(self),
-                        private_key_result.ValueOrDie()));
+                        base::Unretained(self), private_key_result.value()));
               },
               base::Unretained(this)));
     }
@@ -402,9 +398,9 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultipleParallel) {
         return;
       }
       base::ThreadPool::PostTask(
-          FROM_HERE, base::BindOnce(&SingleDecryptionContext::OpenRecord,
-                                    base::Unretained(this),
-                                    shared_secret_result.ValueOrDie()));
+          FROM_HERE,
+          base::BindOnce(&SingleDecryptionContext::OpenRecord,
+                         base::Unretained(this), shared_secret_result.value()));
     }
 
     void OpenRecord(std::string_view shared_secret) {
@@ -419,10 +415,9 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultipleParallel) {
                 }
                 base::ThreadPool::PostTask(
                     FROM_HERE,
-                    base::BindOnce(
-                        &SingleDecryptionContext::AddToRecord,
-                        base::Unretained(self),
-                        base::Unretained(handle_result.ValueOrDie())));
+                    base::BindOnce(&SingleDecryptionContext::AddToRecord,
+                                   base::Unretained(self),
+                                   base::Unretained(handle_result.value())));
               },
               base::Unretained(this)));
     }
@@ -501,7 +496,7 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultipleParallel) {
   for (auto& record_result : record_results) {
     const auto result = record_result.result();
     ASSERT_OK(result.status()) << result.status();
-    public_value_ids.push_back(result.ValueOrDie());
+    public_value_ids.push_back(result.value());
   }
 
   // Encrypt all records in parallel.
@@ -525,7 +520,7 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultipleParallel) {
     ASSERT_OK(result.status()) << result.status();
     // Decrypt and compare encrypted_record.
     (new SingleDecryptionContext(
-         result.ValueOrDie(), decryptor_,
+         result.value(), decryptor_,
          base::BindOnce(
              [](base::OnceCallback<void(StatusOr<std::string>)>
                     decryption_result,
@@ -534,8 +529,7 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultipleParallel) {
                  std::move(decryption_result).Run(result.status());
                  return;
                }
-               std::move(decryption_result)
-                   .Run(std::string(result.ValueOrDie()));
+               std::move(decryption_result).Run(std::string(result.value()));
              },
              decryption_results[i].cb())))
         ->Start();
@@ -546,8 +540,7 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultipleParallel) {
     const auto decryption_result = decryption_results[i].result();
     ASSERT_OK(decryption_result.status()) << decryption_result.status();
     // Verify data match.
-    EXPECT_THAT(decryption_result.ValueOrDie(),
-                ::testing::StrEq(kTestStrings[i]));
+    EXPECT_THAT(decryption_result.value(), ::testing::StrEq(kTestStrings[i]));
   }
 }
 

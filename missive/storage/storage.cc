@@ -146,7 +146,7 @@ class CreateQueueContext : public TaskRunnerContext<Status> {
       return;
     }
     // Add queue to the container.
-    auto queue = storage_queue_result.ValueOrDie();
+    auto queue = storage_queue_result.value();
     const auto added_status =
         storage_->queues_container_->AddQueue(priority, queue);
     if (!added_status.ok()) {
@@ -165,7 +165,7 @@ class CreateQueueContext : public TaskRunnerContext<Status> {
       // Do not wait for the completion.
       queue->AsynchronouslyDeleteAllFilesAndDirectoryWarnIfFailed();
       // Substitute and use prior queue from now on.
-      queue = query_result.ValueOrDie();
+      queue = query_result.value();
     }
 
     // Report success.
@@ -237,8 +237,7 @@ void Storage::Create(
 
       // Key found, verified and downloaded.
       storage_->encryption_module_->UpdateAsymmetricKey(
-          download_key_result.ValueOrDie().first,
-          download_key_result.ValueOrDie().second,
+          download_key_result.value().first, download_key_result.value().second,
           base::BindPostTaskToCurrentDefault(base::BindOnce(
               &StorageInitContext::EncryptionSetUp, base::Unretained(this))));
     }
@@ -421,7 +420,7 @@ void Storage::Write(Priority priority,
                 // a generation guid if one doesn't exist.
                 NOTREACHED_NORETURN();
               }
-              generation_guid = generation_guid_result.ValueOrDie();
+              generation_guid = generation_guid_result.value();
             }
 
             // Find the queue for this generation guid + priority and write to
@@ -430,7 +429,7 @@ void Storage::Write(Priority priority,
             if (queue_result.ok()) {
               // The queue we need already exists, so we can write to it.
               std::move(write_queue_action)
-                  .Run(std::move(queue_result.ValueOrDie()),
+                  .Run(std::move(queue_result.value()),
                        std::move(completion_cb));
               return;
             }
@@ -559,7 +558,7 @@ void Storage::Confirm(SequenceInformation sequence_information,
             // Queue found, execute the action (it should relocate on
             // queue thread soon, to not block Storage task runner).
             std::move(queue_action)
-                .Run(queue_result.ValueOrDie(), std::move(completion_cb));
+                .Run(queue_result.value(), std::move(completion_cb));
           },
           base::WrapRefCounted(this), priority, std::move(generation_guid),
           std::move(queue_confirm_action), std::move(completion_cb)));
@@ -707,13 +706,13 @@ StatusOr<scoped_refptr<StorageQueue>> Storage::TryGetQueue(
   // Attempt to get queue by priority and generation_guid on
   // the Storage task runner.
   auto queue_result =
-      queues_container_->GetQueue(priority, generation_guid.ValueOrDie());
+      queues_container_->GetQueue(priority, generation_guid.value());
   if (!queue_result.ok()) {
     // Queue not found, abort.
     return queue_result.status();
   }
   // Queue found, return it.
-  return queue_result.ValueOrDie();
+  return queue_result.value();
 }
 
 void Storage::RegisterCompletionCallback(base::OnceClosure callback) {

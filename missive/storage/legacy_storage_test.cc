@@ -214,7 +214,7 @@ class SingleDecryptionContext {
                   FROM_HERE,
                   base::BindOnce(&SingleDecryptionContext::DecryptSharedSecret,
                                  base::Unretained(self),
-                                 private_key_result.ValueOrDie()));
+                                 private_key_result.value()));
             },
             base::Unretained(this)));
   }
@@ -228,9 +228,9 @@ class SingleDecryptionContext {
       return;
     }
     base::ThreadPool::PostTask(
-        FROM_HERE, base::BindOnce(&SingleDecryptionContext::OpenRecord,
-                                  base::Unretained(this),
-                                  shared_secret_result.ValueOrDie()));
+        FROM_HERE,
+        base::BindOnce(&SingleDecryptionContext::OpenRecord,
+                       base::Unretained(this), shared_secret_result.value()));
   }
 
   void OpenRecord(std::string_view shared_secret) {
@@ -247,7 +247,7 @@ class SingleDecryptionContext {
                   FROM_HERE,
                   base::BindOnce(&SingleDecryptionContext::AddToRecord,
                                  base::Unretained(self),
-                                 base::Unretained(handle_result.ValueOrDie())));
+                                 base::Unretained(handle_result.value())));
             },
             base::Unretained(this)));
   }
@@ -352,7 +352,7 @@ class LegacyStorageTest
       // Create decryption module.
       auto decryptor_result = test::Decryptor::Create();
       ASSERT_OK(decryptor_result.status()) << decryptor_result.status();
-      decryptor_ = std::move(decryptor_result.ValueOrDie());
+      decryptor_ = std::move(decryptor_result.value());
       // Prepare the key.
       signed_encryption_key_ = GenerateAndSignKey();
       // First record enqueue to Storage would need key delivered.
@@ -826,7 +826,7 @@ class LegacyStorageTest
                  ASSERT_OK(result.status()) << result.status();
                  WrappedRecord wrapped_record;
                  ASSERT_TRUE(wrapped_record.ParseFromArray(
-                     result.ValueOrDie().data(), result.ValueOrDie().size()));
+                     result.value().data(), result.value().size()));
                  // Schedule on the same runner to verify wrapped record once
                  // decrypted.
                  task_runner->PostTask(
@@ -963,7 +963,7 @@ class LegacyStorageTest
         CreateTestStorage(options, encryption_module);
     ASSERT_OK(storage_result)
         << "Failed to create TestStorage, error=" << storage_result.status();
-    storage_ = std::move(storage_result.ValueOrDie());
+    storage_ = std::move(storage_result.value());
   }
 
   void ResetTestStorage() {
@@ -1034,7 +1034,7 @@ class LegacyStorageTest
                 std::move(start_uploader_cb).Run(result.status());
                 return;
               }
-              auto uploader = std::move(result.ValueOrDie());
+              auto uploader = std::move(result.value());
               std::move(start_uploader_cb).Run(std::move(uploader));
             },
             reason, std::move(start_uploader_cb), base::Unretained(this)));
@@ -1120,7 +1120,7 @@ class LegacyStorageTest
         prepare_key_pair.cb());
     auto prepare_key_result = prepare_key_pair.result();
     CHECK(prepare_key_result.ok());
-    public_key_id = prepare_key_result.ValueOrDie();
+    public_key_id = prepare_key_result.value();
     // Prepare signed encryption key to be delivered to Storage.
     SignedEncryptionInfo signed_encryption_key;
     signed_encryption_key.set_public_asymmetric_key(
@@ -2168,7 +2168,7 @@ TEST_P(LegacyStorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
               base::Seconds(options_.key_check_period().InSeconds() - 1)));
   ASSERT_OK(storage_result)
       << "Failed to create legacy storage, error=" << storage_result.status();
-  storage_ = std::move(storage_result.ValueOrDie());
+  storage_ = std::move(storage_result.value());
 
   test::TestCallbackAutoWaiter waiter;
   EXPECT_CALL(set_mock_uploader_expectations_,
@@ -2216,7 +2216,7 @@ TEST_P(LegacyStorageTest, KeyDeliveryFailureOnStorage) {
       CreateTestStorageWithFailedKeyDelivery(BuildTestStorageOptions());
   ASSERT_OK(storage_result)
       << "Failed to create legacy storage, error=" << storage_result.status();
-  storage_ = std::move(storage_result.ValueOrDie());
+  storage_ = std::move(storage_result.value());
 
   key_delivery_failure_.store(true);
 

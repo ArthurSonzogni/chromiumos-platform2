@@ -150,8 +150,7 @@ void QueueUploaderInterface::WrapInstantiatedUploader(
   }
   std::move(start_uploader_cb)
       .Run(std::make_unique<QueueUploaderInterface>(
-          priority, std::move(recorder),
-          std::move(uploader_result.ValueOrDie())));
+          priority, std::move(recorder), std::move(uploader_result.value())));
 }
 
 // static
@@ -234,7 +233,7 @@ GenerationGuid QueuesContainer::GetOrCreateGenerationGuid(
     // Creation should never fail.
     CHECK(generation_guid_result.ok()) << generation_guid_result.status();
   }
-  return generation_guid_result.ValueOrDie();
+  return generation_guid_result.value();
 }
 
 StatusOr<GenerationGuid> QueuesContainer::GetGenerationGuid(
@@ -257,7 +256,7 @@ StatusOr<GenerationGuid> QueuesContainer::CreateGenerationGuidForDMToken(
     return Status(
         error::FAILED_PRECONDITION,
         base::StrCat({"Generation guid for dm_token ", dm_token,
-                      " already exists! guid=", generation_guid.ValueOrDie()}));
+                      " already exists! guid=", generation_guid.value()}));
   }
 
   GenerationGuid generation_guid =
@@ -539,8 +538,7 @@ void KeyDelivery::WrapInstantiatedKeyUploader(
   }
   std::move(start_uploader_cb)
       .Run(std::make_unique<QueueUploaderInterface>(
-          priority, std::move(recorder),
-          std::move(uploader_result.ValueOrDie())));
+          priority, std::move(recorder), std::move(uploader_result.value())));
 }
 
 void KeyDelivery::EncryptionKeyReceiverReady(
@@ -549,7 +547,7 @@ void KeyDelivery::EncryptionKeyReceiverReady(
     OnCompletion(uploader_result.status());
     return;
   }
-  uploader_result.ValueOrDie()->Completed(Status::StatusOK());
+  uploader_result.value()->Completed(Status::StatusOK());
 }
 
 KeyInStorage::KeyInStorage(
@@ -691,7 +689,7 @@ void KeyInStorage::RemoveKeyFilesWithLowerIndexes(uint64_t new_file_index) {
             const auto file_index =
                 StorageQueue::GetFileSequenceIdFromPath(full_name);
             if (!file_index.ok() ||  // Should not happen, will remove file.
-                file_index.ValueOrDie() <
+                file_index.value() <
                     static_cast<int64_t>(
                         new_file_index)) {  // Lower index file, will remove
                                             // it.
@@ -723,8 +721,7 @@ void KeyInStorage::EnumerateKeyFiles(
       continue;
     }
     if (!found_key_files
-             ->emplace(static_cast<uint64_t>(file_index.ValueOrDie()),
-                       full_name)
+             ->emplace(static_cast<uint64_t>(file_index.value()), full_name)
              .second) {
       // Duplicate extension (e.g., 01 and 001). Should not happen (file is
       // corrupt).
@@ -732,9 +729,8 @@ void KeyInStorage::EnumerateKeyFiles(
     }
     // Set 'next_key_file_index_' to a number which is definitely not used.
     if (static_cast<int64_t>(next_key_file_index_.load()) <=
-        file_index.ValueOrDie()) {
-      next_key_file_index_.store(
-          static_cast<uint64_t>(file_index.ValueOrDie() + 1));
+        file_index.value()) {
+      next_key_file_index_.store(static_cast<uint64_t>(file_index.value() + 1));
     }
   }
 }

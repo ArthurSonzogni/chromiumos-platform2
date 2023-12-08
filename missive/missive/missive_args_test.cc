@@ -4,6 +4,7 @@
 
 #include "missive/missive/missive_args.h"
 
+#include <memory>
 #include <utility>
 
 #include <base/functional/bind.h>
@@ -84,19 +85,19 @@ TEST_F(MissiveArgsTest, DefaultCollectionValues) {
   const auto& collection = get_collection.result();
   ASSERT_OK(collection) << collection.status();
   ASSERT_THAT(
-      collection.ValueOrDie().enqueuing_record_tallier,
+      collection.value().enqueuing_record_tallier,
       Eq(base::TimeDeltaFromString(MissiveArgs::kEnqueuingRecordTallierDefault)
              .value()));
   ASSERT_THAT(
-      collection.ValueOrDie().cpu_collector_interval,
+      collection.value().cpu_collector_interval,
       Eq(base::TimeDeltaFromString(MissiveArgs::kCpuCollectorIntervalDefault)
              .value()));
-  ASSERT_THAT(collection.ValueOrDie().storage_collector_interval,
+  ASSERT_THAT(collection.value().storage_collector_interval,
               Eq(base::TimeDeltaFromString(
                      MissiveArgs::kStorageCollectorIntervalDefault)
                      .value()));
   ASSERT_THAT(
-      collection.ValueOrDie().memory_collector_interval,
+      collection.value().memory_collector_interval,
       Eq(base::TimeDeltaFromString(MissiveArgs::kMemoryCollectorIntervalDefault)
              .value()));
 }
@@ -127,13 +128,12 @@ TEST_F(MissiveArgsTest, ExplicitCollectionValues) {
       .WithArgs(get_collection.cb());
   const auto& collection = get_collection.result();
   ASSERT_OK(collection) << collection.status();
-  ASSERT_THAT(collection.ValueOrDie().enqueuing_record_tallier,
+  ASSERT_THAT(collection.value().enqueuing_record_tallier,
               Eq(base::Milliseconds(10)));
-  ASSERT_THAT(collection.ValueOrDie().cpu_collector_interval,
-              Eq(base::Seconds(20)));
-  ASSERT_THAT(collection.ValueOrDie().storage_collector_interval,
+  ASSERT_THAT(collection.value().cpu_collector_interval, Eq(base::Seconds(20)));
+  ASSERT_THAT(collection.value().storage_collector_interval,
               Eq(base::Minutes(30)));
-  ASSERT_THAT(collection.ValueOrDie().memory_collector_interval,
+  ASSERT_THAT(collection.value().memory_collector_interval,
               Eq(base::Hours(40)));
 }
 
@@ -164,19 +164,19 @@ TEST_F(MissiveArgsTest, BadCollectionValues) {
   const auto& collection = get_collection.result();
   ASSERT_OK(collection) << collection.status();
   ASSERT_THAT(
-      collection.ValueOrDie().enqueuing_record_tallier,
+      collection.value().enqueuing_record_tallier,
       Eq(base::TimeDeltaFromString(MissiveArgs::kEnqueuingRecordTallierDefault)
              .value()));
   ASSERT_THAT(
-      collection.ValueOrDie().cpu_collector_interval,
+      collection.value().cpu_collector_interval,
       Eq(base::TimeDeltaFromString(MissiveArgs::kCpuCollectorIntervalDefault)
              .value()));
-  ASSERT_THAT(collection.ValueOrDie().storage_collector_interval,
+  ASSERT_THAT(collection.value().storage_collector_interval,
               Eq(base::TimeDeltaFromString(
                      MissiveArgs::kStorageCollectorIntervalDefault)
                      .value()));
   ASSERT_THAT(
-      collection.ValueOrDie().memory_collector_interval,
+      collection.value().memory_collector_interval,
       Eq(base::TimeDeltaFromString(MissiveArgs::kMemoryCollectorIntervalDefault)
              .value()));
 }
@@ -200,19 +200,19 @@ TEST_F(MissiveArgsTest, ListeningForCollectionValuesUpdate) {
   {
     const auto& collection = get_collection.result();
     ASSERT_OK(collection) << collection.status();
-    ASSERT_THAT(collection.ValueOrDie().enqueuing_record_tallier,
+    ASSERT_THAT(collection.value().enqueuing_record_tallier,
                 Eq(base::TimeDeltaFromString(
                        MissiveArgs::kEnqueuingRecordTallierDefault)
                        .value()));
     ASSERT_THAT(
-        collection.ValueOrDie().cpu_collector_interval,
+        collection.value().cpu_collector_interval,
         Eq(base::TimeDeltaFromString(MissiveArgs::kCpuCollectorIntervalDefault)
                .value()));
-    ASSERT_THAT(collection.ValueOrDie().storage_collector_interval,
+    ASSERT_THAT(collection.value().storage_collector_interval,
                 Eq(base::TimeDeltaFromString(
                        MissiveArgs::kStorageCollectorIntervalDefault)
                        .value()));
-    ASSERT_THAT(collection.ValueOrDie().memory_collector_interval,
+    ASSERT_THAT(collection.value().memory_collector_interval,
                 Eq(base::TimeDeltaFromString(
                        MissiveArgs::kMemoryCollectorIntervalDefault)
                        .value()));
@@ -269,15 +269,15 @@ TEST_F(MissiveArgsTest, DefaultStorageValues) {
   args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
   const auto& storage = get_storage.result();
   ASSERT_OK(storage) << storage.status();
-  EXPECT_THAT(storage.ValueOrDie().compression_enabled,
+  EXPECT_THAT(storage.value().compression_enabled,
               Eq(MissiveArgs::kCompressionEnabledDefault));
-  EXPECT_THAT(storage.ValueOrDie().encryption_enabled,
+  EXPECT_THAT(storage.value().encryption_enabled,
               Eq(MissiveArgs::kEncryptionEnabledDefault));
-  EXPECT_THAT(storage.ValueOrDie().controlled_degradation,
+  EXPECT_THAT(storage.value().controlled_degradation,
               Eq(MissiveArgs::kControlledDegradationDefault));
-  EXPECT_THAT(storage.ValueOrDie().legacy_storage_enabled,
+  EXPECT_THAT(storage.value().legacy_storage_enabled,
               StrEq(MissiveArgs::kLegacyStorageEnabledDefault));
-  EXPECT_THAT(storage.ValueOrDie().signature_verification_dev_enabled,
+  EXPECT_THAT(storage.value().signature_verification_dev_enabled,
               Eq(MissiveArgs::kSignatureVerificationDevEnabledDefault));
 }
 
@@ -310,11 +310,11 @@ TEST_F(MissiveArgsTest, ExplicitStorageValues) {
   args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
   const auto& storage = get_storage.result();
   ASSERT_OK(storage) << storage.status();
-  EXPECT_FALSE(storage.ValueOrDie().compression_enabled);
-  EXPECT_FALSE(storage.ValueOrDie().encryption_enabled);
-  EXPECT_TRUE(storage.ValueOrDie().controlled_degradation);
-  EXPECT_THAT(storage.ValueOrDie().legacy_storage_enabled, StrEq("SECURITY"));
-  EXPECT_TRUE(storage.ValueOrDie().signature_verification_dev_enabled);
+  EXPECT_FALSE(storage.value().compression_enabled);
+  EXPECT_FALSE(storage.value().encryption_enabled);
+  EXPECT_TRUE(storage.value().controlled_degradation);
+  EXPECT_THAT(storage.value().legacy_storage_enabled, StrEq("SECURITY"));
+  EXPECT_TRUE(storage.value().signature_verification_dev_enabled);
 }
 
 TEST_F(MissiveArgsTest, BadStorageValues) {
@@ -345,15 +345,15 @@ TEST_F(MissiveArgsTest, BadStorageValues) {
   args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
   const auto& storage = get_storage.result();
   ASSERT_OK(storage) << storage.status();
-  EXPECT_THAT(storage.ValueOrDie().compression_enabled,
+  EXPECT_THAT(storage.value().compression_enabled,
               Eq(MissiveArgs::kCompressionEnabledDefault));
-  EXPECT_THAT(storage.ValueOrDie().encryption_enabled,
+  EXPECT_THAT(storage.value().encryption_enabled,
               Eq(MissiveArgs::kEncryptionEnabledDefault));
-  EXPECT_THAT(storage.ValueOrDie().controlled_degradation,
+  EXPECT_THAT(storage.value().controlled_degradation,
               Eq(MissiveArgs::kControlledDegradationDefault));
-  EXPECT_THAT(storage.ValueOrDie().legacy_storage_enabled,
+  EXPECT_THAT(storage.value().legacy_storage_enabled,
               StrEq(MissiveArgs::kLegacyStorageEnabledDefault));
-  EXPECT_THAT(storage.ValueOrDie().signature_verification_dev_enabled,
+  EXPECT_THAT(storage.value().signature_verification_dev_enabled,
               Eq(MissiveArgs::kSignatureVerificationDevEnabledDefault));
 }
 
@@ -376,15 +376,15 @@ TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
   {
     const auto& storage = get_storage.result();
     ASSERT_OK(storage) << storage.status();
-    EXPECT_THAT(storage.ValueOrDie().compression_enabled,
+    EXPECT_THAT(storage.value().compression_enabled,
                 Eq(MissiveArgs::kCompressionEnabledDefault));
-    EXPECT_THAT(storage.ValueOrDie().encryption_enabled,
+    EXPECT_THAT(storage.value().encryption_enabled,
                 Eq(MissiveArgs::kEncryptionEnabledDefault));
-    EXPECT_THAT(storage.ValueOrDie().controlled_degradation,
+    EXPECT_THAT(storage.value().controlled_degradation,
                 Eq(MissiveArgs::kControlledDegradationDefault));
-    EXPECT_THAT(storage.ValueOrDie().legacy_storage_enabled,
+    EXPECT_THAT(storage.value().legacy_storage_enabled,
                 StrEq(MissiveArgs::kLegacyStorageEnabledDefault));
-    EXPECT_THAT(storage.ValueOrDie().signature_verification_dev_enabled,
+    EXPECT_THAT(storage.value().signature_verification_dev_enabled,
                 Eq(MissiveArgs::kSignatureVerificationDevEnabledDefault));
   }
 
@@ -445,9 +445,9 @@ TEST_F(MissiveArgsTest, DefaultConfigFileValues) {
       .WithArgs(get_config_file.cb());
   const auto& config_file = get_config_file.result();
   ASSERT_OK(config_file) << config_file.status();
-  EXPECT_THAT(config_file.ValueOrDie().blocking_destinations_enabled,
+  EXPECT_THAT(config_file.value().blocking_destinations_enabled,
               Eq(MissiveArgs::kBlockingDestinationsEnabledDefault));
-  EXPECT_THAT(config_file.ValueOrDie().blocking_metrics_enabled,
+  EXPECT_THAT(config_file.value().blocking_metrics_enabled,
               Eq(MissiveArgs::kBlockingDestinationsEnabledDefault));
 }
 
@@ -473,8 +473,8 @@ TEST_F(MissiveArgsTest, ExplicitConfigFileValues) {
       .WithArgs(get_config_file.cb());
   const auto& config_file = get_config_file.result();
   ASSERT_OK(config_file) << config_file.status();
-  EXPECT_FALSE(config_file.ValueOrDie().blocking_destinations_enabled);
-  EXPECT_FALSE(config_file.ValueOrDie().blocking_metrics_enabled);
+  EXPECT_FALSE(config_file.value().blocking_destinations_enabled);
+  EXPECT_FALSE(config_file.value().blocking_metrics_enabled);
 }
 
 TEST_F(MissiveArgsTest, BadConfigFileValues) {
@@ -500,9 +500,9 @@ TEST_F(MissiveArgsTest, BadConfigFileValues) {
       .WithArgs(get_config_file.cb());
   const auto& config_file = get_config_file.result();
   ASSERT_OK(config_file) << config_file.status();
-  EXPECT_THAT(config_file.ValueOrDie().blocking_destinations_enabled,
+  EXPECT_THAT(config_file.value().blocking_destinations_enabled,
               Eq(MissiveArgs::kBlockingDestinationsEnabledDefault));
-  EXPECT_THAT(config_file.ValueOrDie().blocking_metrics_enabled,
+  EXPECT_THAT(config_file.value().blocking_metrics_enabled,
               Eq(MissiveArgs::kBlockingMetricsEnabledDefault));
 }
 
@@ -526,9 +526,9 @@ TEST_F(MissiveArgsTest, ListeningForConfigFileValuesUpdate) {
   {
     const auto& config_file = get_config_file.result();
     ASSERT_OK(config_file) << config_file.status();
-    EXPECT_THAT(config_file.ValueOrDie().blocking_destinations_enabled,
+    EXPECT_THAT(config_file.value().blocking_destinations_enabled,
                 Eq(MissiveArgs::kBlockingDestinationsEnabledDefault));
-    EXPECT_THAT(config_file.ValueOrDie().blocking_metrics_enabled,
+    EXPECT_THAT(config_file.value().blocking_metrics_enabled,
                 Eq(MissiveArgs::kBlockingMetricsEnabledDefault));
   }
 

@@ -30,7 +30,7 @@ void ResourceCollectorCpu::Collect() {
     LOG(ERROR) << cpu_percentage.status();
     return;
   }
-  SendCpuUsagePercentageToUma(cpu_percentage.ValueOrDie());
+  SendCpuUsagePercentageToUma(cpu_percentage.value());
 }
 
 bool ResourceCollectorCpu::SendCpuUsagePercentageToUma(

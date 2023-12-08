@@ -41,9 +41,9 @@ void ReportQueueFactory::Create(EventType event_type,
   auto try_set_cb = CreateTrySetCallback(destination, std::move(success_cb),
                                          GetBackoffEntry());
   base::ThreadPool::PostTask(
-      FROM_HERE, base::BindOnce(ReportQueueProvider::CreateQueue,
-                                std::move(config_result.ValueOrDie()),
-                                std::move(try_set_cb)));
+      FROM_HERE,
+      base::BindOnce(ReportQueueProvider::CreateQueue,
+                     std::move(config_result.value()), std::move(try_set_cb)));
 }
 
 // static
@@ -66,7 +66,7 @@ ReportQueueFactory::CreateSpeculativeReportQueue(EventType event_type,
   }
 
   auto speculative_queue_result = ReportQueueProvider::CreateSpeculativeQueue(
-      std::move(config_result.ValueOrDie()));
+      std::move(config_result.value()));
   if (!speculative_queue_result.ok()) {
     DVLOG(1) << "Failed to create speculative queue: "
              << speculative_queue_result.status();
@@ -75,7 +75,7 @@ ReportQueueFactory::CreateSpeculativeReportQueue(EventType event_type,
                      base::SequencedTaskRunner::GetCurrentDefault()));
   }
 
-  return std::move(speculative_queue_result.ValueOrDie());
+  return std::move(speculative_queue_result.value());
 }
 
 ReportQueueFactory::TrySetReportQueueCallback
@@ -98,6 +98,6 @@ void ReportQueueFactory::TrySetReportQueue(
                     report_queue_result);
     return;
   }
-  std::move(success_cb).Run(std::move(report_queue_result.ValueOrDie()));
+  std::move(success_cb).Run(std::move(report_queue_result.value()));
 }
 }  // namespace reporting

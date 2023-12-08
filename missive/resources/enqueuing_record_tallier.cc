@@ -45,7 +45,7 @@ std::optional<uint64_t> EnqueuingRecordTallier::GetAverage() const {
 
 void EnqueuingRecordTallier::UpdateAverage() {
   if (auto average_status = ComputeAverage(); average_status.ok()) {
-    average_ = average_status.ValueOrDie();
+    average_ = average_status.value();
   } else {
     LOG(ERROR)
         << "The rate of new events (enqueuing events) cannot be computed: "
@@ -81,9 +81,9 @@ StatusOr<uint64_t> EnqueuingRecordTallier::ComputeAverage() {
   // We don't use a simple max operator here because of the unsignedness of the
   // variables.
   const uint64_t time_elapsed =
-      (wall_time.ValueOrDie() <= last_wall_time.ValueOrDie())
+      (wall_time.value() <= last_wall_time.value())
           ? 1U
-          : (wall_time.ValueOrDie() - last_wall_time.ValueOrDie());
+          : (wall_time.value() - last_wall_time.value());
   return cumulated_size / time_elapsed;
 }
 }  // namespace reporting

@@ -73,8 +73,7 @@ void NonChromeReportQueueProvider::ConfigureReportQueue(
 
         // Set DM token in config and trigger completion callback with the
         // corresponding result.
-        auto config_result =
-            configuration->SetDMToken(dm_token_result.ValueOrDie());
+        auto config_result = configuration->SetDMToken(dm_token_result.value());
 
         // Fail on error
         if (!config_result.ok()) {

@@ -38,12 +38,12 @@ StorageDirectory::Set StorageDirectory::FindQueueDirectories(
       // generation guid as an extension: foo/bar/Security,
       // foo/bar/FastBatch, etc.
       queue_params.emplace(
-          std::make_tuple(priority_result.ValueOrDie(), GenerationGuid()));
+          std::make_tuple(priority_result.value(), GenerationGuid()));
       LOG(INFO) << "Found legacy queue directory: " << full_name;
     } else if (auto queue_param =
                    GetPriorityAndGenerationGuid(full_name, options_list);
                queue_param.ok()) {
-      queue_params.emplace(queue_param.ValueOrDie());
+      queue_params.emplace(queue_param.value());
     } else {
       LOG(INFO) << "Could not parse queue parameters from filename "
                 << full_name.MaybeAsASCII()
@@ -69,7 +69,7 @@ StorageDirectory::GetPriorityAndGenerationGuid(
   if (!priority.ok()) {
     return priority.status();
   }
-  return std::make_tuple(priority.ValueOrDie(), generation_guid.ValueOrDie());
+  return std::make_tuple(priority.value(), generation_guid.value());
 }
 
 // static

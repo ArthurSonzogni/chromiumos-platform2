@@ -61,7 +61,7 @@ class UploadClientTest : public ::testing::Test {
                              client_waiter.cb());
     auto client_result = client_waiter.result();
     ASSERT_OK(client_result) << client_result.status();
-    upload_client_ = client_result.ValueOrDie();
+    upload_client_ = client_result.value();
 
     upload_client_->SetAvailabilityForTest(/*is_available=*/true);
   }
@@ -87,7 +87,7 @@ TEST_F(UploadClientTest, SuccessfulCall) {
          StatusOr<UploadEncryptedRecordResponse> response) {
         ASSERT_OK(response) << response.status().ToString();
         UploadEncryptedRecordResponse upload_response =
-            std::move(response.ValueOrDie());
+            std::move(response.value());
         EXPECT_EQ(upload_response.status().code(), error::OK);
         waiter->Signal();
       },

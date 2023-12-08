@@ -144,7 +144,7 @@ TEST_F(ReportQueueConfigurationTest, UsesProvidedPolicyCheckCallback) {
                           base::Unretained(&mock_handler)));
   EXPECT_OK(config_result);
 
-  auto config = std::move(config_result.ValueOrDie());
+  auto config = std::move(config_result.value());
   EXPECT_OK(config->CheckPolicy());
   EXPECT_THAT(config->reserved_space(), Eq(0L));
 }
@@ -156,7 +156,7 @@ TEST_F(ReportQueueConfigurationTest,
       EventType::kDevice, kValidDestination, kValidCallback, kReservedSpace);
   EXPECT_OK(config_result) << config_result.status();
 
-  auto config = std::move(config_result.ValueOrDie());
+  auto config = std::move(config_result.value());
   EXPECT_THAT(config->reserved_space(), Eq(kReservedSpace));
 }
 }  // namespace

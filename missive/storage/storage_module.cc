@@ -213,7 +213,7 @@ void StorageModule::SetStorage(
     std::move(callback).Run(storage.status());
     return;
   }
-  storage_ = storage.ValueOrDie();
+  storage_ = storage.value();
   std::move(callback).Run(base::WrapRefCounted(this));
 }
 

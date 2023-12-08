@@ -173,7 +173,7 @@ void MissiveImpl::OnUploadClientCreated(
     std::move(cb).Run(upload_client_result.status());
     return;
   }
-  upload_client_ = std::move(upload_client_result.ValueOrDie());
+  upload_client_ = std::move(upload_client_result.value());
 
   // `GetCollectionParameters` only responds once the features were updated.
   args_->AsyncCall(&MissiveArgs::GetCollectionParameters)
@@ -190,7 +190,7 @@ void MissiveImpl::OnCollectionParameters(
     return;
   }
 
-  const auto& collection_parameters = collection_parameters_result.ValueOrDie();
+  const auto& collection_parameters = collection_parameters_result.value();
   enqueuing_record_tallier_ = std::make_unique<EnqueuingRecordTallier>(
       collection_parameters.enqueuing_record_tallier);
   CHECK(!reporting_storage_dir_.empty())
@@ -236,7 +236,7 @@ void MissiveImpl::OnStorageParameters(
     std::move(cb).Run(storage_parameters_result.status());
     return;
   }
-  auto& parameters = storage_parameters_result.ValueOrDie();
+  auto& parameters = storage_parameters_result.value();
 
   // Create `Storage` service modules and register for dynamic update.
   queues_container_ =
@@ -313,7 +313,7 @@ void MissiveImpl::OnStorageModuleConfigured(
     std::move(cb).Run(storage_module_result.status());
     return;
   }
-  storage_module_ = std::move(storage_module_result.ValueOrDie());
+  storage_module_ = std::move(storage_module_result.value());
   storage_module_->AttachUploadSuccessCb(storage_upload_success_cb_);
   std::move(cb).Run(Status::StatusOK());
 }
@@ -376,7 +376,7 @@ void MissiveImpl::CreateUploadJob(
                << upload_job_result.status();
     return;
   }
-  scheduler_.EnqueueJob(std::move(upload_job_result.ValueOrDie()));
+  scheduler_.EnqueueJob(std::move(upload_job_result.value()));
 }
 
 void MissiveImpl::EnqueueRecord(
@@ -531,7 +531,7 @@ void MissiveImpl::HandleUploadResponse(
   if (!upload_response.ok()) {
     return;  // No response received.
   }
-  const auto& upload_response_value = upload_response.ValueOrDie();
+  const auto& upload_response_value = upload_response.value();
   if (!upload_response_value.has_status()) {
     CHECK(!upload_response_value.disable())
         << "Cannot disable reporting, no error status";
