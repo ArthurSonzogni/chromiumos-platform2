@@ -69,13 +69,13 @@ TEST(VmBuilderTest, ODirectN) {
   VmBuilder builder;
   builder.AppendDisks(std::vector<Disk>{
       Disk{
-          .path = base::FilePath("/dev/zero"),
+          .path = base::FilePath("/dev/0"),
       },
       Disk{
-          .path = base::FilePath("/dev/zero"),
+          .path = base::FilePath("/dev/1"),
       },
       Disk{
-          .path = base::FilePath("/dev/zero"),
+          .path = base::FilePath("/dev/2"),
       },
   });
   base::StringPairs result = std::move(builder).BuildVmArgs(&dev).value();
@@ -87,9 +87,9 @@ TEST(VmBuilderTest, ODirectN) {
     }
   }
 
-  EXPECT_EQ(disk_params[0], "/dev/zero");
-  EXPECT_EQ(disk_params[1], "/dev/zero");
-  EXPECT_EQ(disk_params[2], "/dev/zero,o_direct=true,block_size=4096");
+  EXPECT_EQ(disk_params[0], "/dev/0");
+  EXPECT_EQ(disk_params[1], "/dev/1");
+  EXPECT_EQ(disk_params[2], "/dev/2,o_direct=true,block_size=4096");
 }
 
 TEST(VmBuilderTest, ODirectNs) {
@@ -99,13 +99,13 @@ O_DIRECT_N=2)"};
   VmBuilder builder;
   builder.AppendDisks(std::vector<Disk>{
       Disk{
-          .path = base::FilePath("/dev/zero"),
+          .path = base::FilePath("/dev/0"),
       },
       Disk{
-          .path = base::FilePath("/dev/zero"),
+          .path = base::FilePath("/dev/1"),
       },
       Disk{
-          .path = base::FilePath("/dev/zero"),
+          .path = base::FilePath("/dev/2"),
       },
   });
   base::StringPairs result = std::move(builder).BuildVmArgs(&dev).value();
@@ -117,9 +117,9 @@ O_DIRECT_N=2)"};
     }
   }
 
-  EXPECT_EQ(disk_params[0], "/dev/zero");
-  EXPECT_EQ(disk_params[1], "/dev/zero,o_direct=true,block_size=4096");
-  EXPECT_EQ(disk_params[2], "/dev/zero,o_direct=true,block_size=4096");
+  EXPECT_EQ(disk_params[0], "/dev/0");
+  EXPECT_EQ(disk_params[1], "/dev/1,o_direct=true,block_size=4096");
+  EXPECT_EQ(disk_params[2], "/dev/2,o_direct=true,block_size=4096");
 }
 
 TEST(VmBuilderTest, ODirectTooLargeNDeath) {
