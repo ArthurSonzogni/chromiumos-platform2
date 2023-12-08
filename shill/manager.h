@@ -773,6 +773,9 @@ class Manager {
   // Initializes patchpanel_client_ if it has not already been initialized.
   void InitializePatchpanelClient();
 
+  // Callback called when patchpanel becomes available for RPC.
+  void OnPatchpanelClientReady(bool service_is_available);
+
   void RefreshAllTrafficCountersCallback(
       const std::vector<patchpanel::Client::TrafficCounter>& counters);
   void RefreshAllTrafficCountersTask();

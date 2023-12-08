@@ -2768,7 +2768,18 @@ void Manager::InitializePatchpanelClient() {
                                  kInitPatchpanelClientInterval);
     return;
   }
+  patchpanel_client_->RegisterOnAvailableCallback(base::BindOnce(
+      &Manager::OnPatchpanelClientReady, weak_factory_.GetWeakPtr()));
+  // TODO(b/315421170): RegisterProcessChangedCallback to handle patchpanel
+  // restart case as well.
+}
 
+void Manager::OnPatchpanelClientReady(bool service_is_available) {
+  if (!service_is_available) {
+    LOG(ERROR) << __func__ << " failed.";
+    return;
+  }
+  LOG(INFO) << __func__;
   // Kick off any patchpanel related communication below.
   device_info_.OnPatchpanelClientReady();
 
