@@ -11,7 +11,6 @@
 #include <set>
 #include <string>
 #include <tuple>
-#include <unordered_map>
 #include <utility>
 
 #include <base/check.h>
@@ -379,9 +378,8 @@ mojom::SetEffectResult CameraHalAdapter::SetCameraEffect(
   bool dlc_available = stream_manipulator_runtime_options_.GetDlcRootPath() !=
                        base::FilePath("");
 
-  LOG(INFO) << "CameraHalAdapter::SetCameraEffect:"
-            << " blur: " << config->blur_enabled
-            << " relight: " << config->relight_enabled
+  LOG(INFO) << "CameraHalAdapter::SetCameraEffect:" << " blur: "
+            << config->blur_enabled << " relight: " << config->relight_enabled
             << " replace: " << config->replace_enabled
             << " blur_level: " << config->blur_level
             << " effects_enabled: " << effects_enabled_
@@ -544,11 +542,15 @@ void CameraHalAdapter::camera_device_status_change(
     int new_status) {
   auto* aux = static_cast<const CameraModuleCallbacksAux*>(callbacks);
   CameraHalAdapter* self = aux->adapter;
-  self->camera_module_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&CameraHalAdapter::CameraDeviceStatusChange,
-                     base::Unretained(self), aux, internal_camera_id,
-                     static_cast<camera_device_status_t>(new_status)));
+  auto status = static_cast<camera_device_status_t>(new_status);
+  if (self->camera_module_thread_.task_runner()->BelongsToCurrentThread()) {
+    self->CameraDeviceStatusChange(aux, internal_camera_id, status);
+  } else {
+    self->camera_module_thread_.task_runner()->PostTask(
+        FROM_HERE, base::BindOnce(&CameraHalAdapter::CameraDeviceStatusChange,
+                                  base::Unretained(self), aux,
+                                  internal_camera_id, status));
+  }
 }
 
 // static
@@ -558,11 +560,15 @@ void CameraHalAdapter::torch_mode_status_change(
     int new_status) {
   auto* aux = static_cast<const CameraModuleCallbacksAux*>(callbacks);
   CameraHalAdapter* self = aux->adapter;
-  self->camera_module_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&CameraHalAdapter::TorchModeStatusChange,
-                     base::Unretained(self), aux, atoi(internal_camera_id),
-                     static_cast<torch_mode_status_t>(new_status)));
+  auto status = static_cast<torch_mode_status_t>(new_status);
+  int id = atoi(internal_camera_id);
+  if (self->camera_module_thread_.task_runner()->BelongsToCurrentThread()) {
+    self->TorchModeStatusChange(aux, id, status);
+  } else {
+    self->camera_module_thread_.task_runner()->PostTask(
+        FROM_HERE, base::BindOnce(&CameraHalAdapter::TorchModeStatusChange,
+                                  base::Unretained(self), aux, id, status));
+  }
 }
 
 std::optional<mojom::CameraPrivacySwitchState>
