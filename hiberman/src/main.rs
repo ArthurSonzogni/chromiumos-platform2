@@ -201,6 +201,10 @@ hibernation possible this boot.
 }
 
 fn hiberman_resume_init(args: &mut std::env::Args) -> std::result::Result<(), ()> {
+    // syslog is not available yet when resume_init() is invoked, log into
+    // kernel log instead.
+    kernlog::init().unwrap();
+
     let mut opts = Options::new();
     opts.optflag(
         "f",
@@ -224,20 +228,12 @@ fn hiberman_resume_init(args: &mut std::env::Args) -> std::result::Result<(), ()
         return Ok(());
     }
 
-    let verbosity = if matches.opt_present("v") { 9 } else { 1 };
-
-    // Syslog is not yet available, so just log to stderr.
-    stderrlog::new()
-        .module(module_path!())
-        .verbosity(verbosity)
-        .init()
-        .unwrap();
     let options = ResumeInitOptions {
         force: matches.opt_present("f"),
     };
 
     if let Err(e) = hiberman::resume_init(options) {
-        error!("Failed to initialize resume: {:#?}", e);
+        error!("Failed to initialize resume: {:?}", e);
         return Err(());
     }
 

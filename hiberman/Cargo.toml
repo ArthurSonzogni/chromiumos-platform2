@@ -20,6 +20,7 @@ dbus = "0.9"
 dbus-crossroads = "0.5.0"
 getopts = "0.2"
 hex = "0.4.3"
+kernlog = "0.3.1"
 lazy_static = "1.4.0"
 libc = "0.2.93"
 libchromeos = { path = "../libchromeos-rs" } # provided by ebuild
