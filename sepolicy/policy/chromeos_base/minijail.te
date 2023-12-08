@@ -44,6 +44,7 @@ chromeos_domain
 -cros_debugd
 -cros_debugd_minijail
 -frecon
+-cros_periodic_scheduler
 -cros_ssh_session
 -cros_tpm2_simulator
 -cros_tpm2_simulator_minijail
