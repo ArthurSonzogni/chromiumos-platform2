@@ -192,7 +192,7 @@ fn full_lv_name(volume_group: &str, name: &str) -> String {
 
 fn run_lvm_command_output(command: &mut std::process::Command) -> Result<std::process::Output> {
     let start = Instant::now();
-    let timeout = Duration::from_millis(100);
+    let timeout = Duration::from_millis(200);
 
     loop {
         let res = checked_command_output(command);
