@@ -146,7 +146,7 @@ fn check_disk_contains_flexor(path: &Path) -> bool {
         return false;
     };
 
-    let Ok(flex_depl_mount) = mount::Mount::mount_by_path(flex_depl_part, mount::FsType::Vfat)
+    let Ok(flex_depl_mount) = mount::Mount::mount_by_path(&flex_depl_part, mount::FsType::Vfat)
     else {
         return false;
     };

@@ -54,10 +54,7 @@ pub fn execute_command(mut command: Command) -> Result<()> {
 /// a tar archive and `dst` to a folder where the items are unpacked to. This
 /// also returns an `Vec<PathBuf>` of the entries that have been successfully
 /// unpacked to `dst`. Please note that these paths are relative to `dst´.
-pub fn uncompress_tar_xz<P1: AsRef<Path>, P2: AsRef<Path>>(
-    src: P1,
-    dst: P2,
-) -> Result<Vec<PathBuf>> {
+pub fn uncompress_tar_xz(src: &Path, dst: &Path) -> Result<Vec<PathBuf>> {
     let file = File::open(src).context("Unable to open tar archive")?;
     let xz_decoder = XzDecoder::new(BufReader::new(file));
 
@@ -69,7 +66,7 @@ pub fn uncompress_tar_xz<P1: AsRef<Path>, P2: AsRef<Path>>(
     {
         let mut entry = entry.context("Unable to read entry of the tar")?;
         entry
-            .unpack_in(dst.as_ref())
+            .unpack_in(dst)
             .context("Unable to unpack entry of the tar")?;
 
         result.push(
@@ -123,7 +120,7 @@ mod tests {
 
         // Uncompress the file.
         let file_path = tempdir.path().join(TAR_NAME);
-        let result = uncompress_tar_xz(file_path, &new_dir_path)?;
+        let result = uncompress_tar_xz(&file_path, &new_dir_path)?;
 
         // Compare for equality.
         assert_eq!(result, vec![Path::new(FILE_NAME)]);

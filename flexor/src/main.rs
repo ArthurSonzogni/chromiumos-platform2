@@ -30,7 +30,7 @@ fn copy_image_to_rootfs(disk_path: &Path) -> Result<()> {
     // We expect our data in partition 4, with a vFAT filesystem.
     let data_partition_path = libchromeos::disk::get_partition_device(disk_path, DATA_PART_NUM)
         .context("Unable to find correct partition path")?;
-    let mount = mount::Mount::mount_by_path(data_partition_path, mount::FsType::Vfat)?;
+    let mount = mount::Mount::mount_by_path(&data_partition_path, mount::FsType::Vfat)?;
 
     // Copy the image to rootfs.
     std::fs::copy(
@@ -67,7 +67,7 @@ fn setup_flex_deploy_partition_and_install(disk_path: &Path) -> Result<()> {
 
     // Then uncompress the image on disk.
     let entries = util::uncompress_tar_xz(
-        Path::new("/root").join(FLEX_IMAGE_FILENAME),
+        &Path::new("/root").join(FLEX_IMAGE_FILENAME),
         new_part_mount.mount_path(),
     )?;
     // A compressed ChromeOS image only contains the image path.
@@ -107,7 +107,8 @@ fn try_safe_logs(disk_path: &Path) -> Result<()> {
         libchromeos::disk::get_partition_device(disk_path, DATA_PART_NUM)
     {
         if matches!(data_partition_path.try_exists(), Ok(true)) {
-            let data_mount = mount::Mount::mount_by_path(data_partition_path, mount::FsType::Vfat)?;
+            let data_mount =
+                mount::Mount::mount_by_path(&data_partition_path, mount::FsType::Vfat)?;
             std::fs::copy(FLEXOR_LOG_FILE, data_mount.mount_path())?;
             return Ok(());
         }
