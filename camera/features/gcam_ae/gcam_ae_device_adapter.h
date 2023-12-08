@@ -47,13 +47,18 @@ class GcamAeDeviceAdapter {
   virtual bool ExtractAeStats(Camera3CaptureDescriptor* result,
                               MetadataLogger* metadata_logger = nullptr);
 
-  // Called by GcamAeController to get analog and digital gains if available
+  // Called by GcamAeController to get the analog and digital gains if available
   // from |result|'s metadata.
   virtual std::optional<Gain> GetGain(const Camera3CaptureDescriptor& result);
 
-  // Called by GcamAeController to get analog and digital gain ranges if
+  // Called by GcamAeController to get the analog and digital gain ranges if
   // available from |result|'s metadata.
   virtual std::optional<GainRange> GetGainRange(
+      const Camera3CaptureDescriptor& result);
+
+  // Called by GcamAeController to get the sensitivity range if available from
+  // |result|'s metadata.
+  virtual std::optional<Range<int>> GetSensitivityRange(
       const Camera3CaptureDescriptor& result);
 
   // Whether there's AE stats available for frame |frame_number|.

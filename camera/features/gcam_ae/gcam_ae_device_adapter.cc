@@ -49,6 +49,11 @@ std::optional<GainRange> GcamAeDeviceAdapter::GetGainRange(
   return std::nullopt;
 }
 
+std::optional<Range<int>> GcamAeDeviceAdapter::GetSensitivityRange(
+    const Camera3CaptureDescriptor& result) {
+  return std::nullopt;
+}
+
 bool GcamAeDeviceAdapter::HasAeStats(int frame_number) {
   return true;
 }

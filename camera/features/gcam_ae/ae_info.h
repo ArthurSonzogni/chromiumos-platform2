@@ -78,6 +78,13 @@ enum class AeOverrideMode {
   kWithVendorTag = 2,
 };
 
+struct SensorMetadata {
+  Range<int> sensitivity_range;
+  float max_analog_sensitivity = 1.0f;
+  float max_analog_gain = 1.0f;
+  float max_total_gain = 1.0f;
+};
+
 // A collection of all the info needed for producing the input arguments to the
 // AE algorithm.
 struct AeFrameInfo {
@@ -106,6 +113,9 @@ struct AeFrameInfo {
   int ae_compensation = 0;
   float estimated_sensor_sensitivity = 0.0f;
   std::optional<std::vector<NormalizedRect>> faces;
+
+  // Per-frame sensor metadata.
+  SensorMetadata sensor_metadata;
 
   // The capture request settings the camera client requested.
   struct {

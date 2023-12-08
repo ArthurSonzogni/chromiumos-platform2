@@ -129,14 +129,17 @@ GcamAeControllerImpl::GcamAeControllerImpl(
            << active_array_size[1] << "), (" << active_array_size[2] << ", "
            << active_array_size[3] << ")";
 
-  sensitivity_range_ = Range<int>(sensitivity_range[0], sensitivity_range[1]);
-  max_analog_sensitivity_ = *max_analog_sensitivity;
-  max_analog_gain_ = options_.gain_multiplier *
-                     (static_cast<float>(max_analog_sensitivity_) /
-                      static_cast<float>(sensitivity_range_.lower()));
-  max_total_gain_ = options_.gain_multiplier *
-                    (static_cast<float>(sensitivity_range_.upper()) /
-                     static_cast<float>(sensitivity_range_.lower()));
+  static_sensor_metadata_.sensitivity_range =
+      Range<int>(sensitivity_range[0], sensitivity_range[1]);
+  static_sensor_metadata_.max_analog_sensitivity = *max_analog_sensitivity;
+  static_sensor_metadata_.max_analog_gain =
+      options_.gain_multiplier *
+      (static_cast<float>(static_sensor_metadata_.max_analog_sensitivity) /
+       static_cast<float>(static_sensor_metadata_.sensitivity_range.lower()));
+  static_sensor_metadata_.max_total_gain =
+      options_.gain_multiplier *
+      (static_cast<float>(static_sensor_metadata_.sensitivity_range.upper()) /
+       static_cast<float>(static_sensor_metadata_.sensitivity_range.lower()));
   ae_compensation_step_ =
       (static_cast<float>(ae_compensation_step->numerator) /
        static_cast<float>(ae_compensation_step->denominator));
@@ -181,19 +184,33 @@ void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
     SetOptions(*overridden_json_values, metadata_logger_);
   }
 
+  AeFrameInfo* frame_info = GetAeFrameInfoEntry(result->frame_number());
+  if (!frame_info) {
+    return;
+  }
+
+  // Initialize per-frame sensor metadata with the static sensor metadata.
+  SensorMetadata& sensor_metadata = frame_info->sensor_metadata;
+  sensor_metadata = static_sensor_metadata_;
+
   std::optional<GainRange> gain_range =
       ae_device_adapter_->GetGainRange(*result);
   if (gain_range.has_value()) {
     const Range<float>& ag_range = gain_range->analog_gain_range;
     const Range<float>& dg_range = gain_range->digital_gain_range;
-    max_analog_gain_ = options_.gain_multiplier * ag_range.upper();
-    max_total_gain_ =
+    sensor_metadata.max_analog_gain =
+        options_.gain_multiplier * ag_range.upper();
+    sensor_metadata.max_total_gain =
         options_.gain_multiplier * ag_range.upper() * dg_range.upper();
   }
 
-  AeFrameInfo* frame_info = GetAeFrameInfoEntry(result->frame_number());
-  if (!frame_info) {
-    return;
+  std::optional<Range<int>> sensitivity_range =
+      ae_device_adapter_->GetSensitivityRange(*result);
+  if (sensitivity_range.has_value()) {
+    sensor_metadata.sensitivity_range = std::move(*sensitivity_range);
+    sensor_metadata.max_analog_sensitivity =
+        sensor_metadata.sensitivity_range.lower() *
+        sensor_metadata.max_analog_gain;
   }
 
   // Exposure and gain info.
@@ -228,11 +245,13 @@ void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
     return;
   }
 
-  float total_gain = options_.gain_multiplier *
-                     (base::checked_cast<float>(sensitivity[0]) /
-                      static_cast<float>(sensitivity_range_.lower()));
-  float analog_gain = std::min(total_gain, max_analog_gain_);
-  float digital_gain = std::max(total_gain / max_analog_gain_, 1.0f);
+  float total_gain =
+      options_.gain_multiplier *
+      (base::checked_cast<float>(sensitivity[0]) /
+       static_cast<float>(sensor_metadata.sensitivity_range.lower()));
+  float analog_gain = std::min(total_gain, sensor_metadata.max_analog_gain);
+  float digital_gain =
+      std::max(total_gain / sensor_metadata.max_analog_gain, 1.0f);
   std::optional<Gain> gain = ae_device_adapter_->GetGain(*result);
   if (gain.has_value()) {
     analog_gain = options_.gain_multiplier * gain->analog_gain;
@@ -244,7 +263,7 @@ void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
   frame_info->analog_gain = analog_gain;
   frame_info->digital_gain = digital_gain;
   frame_info->estimated_sensor_sensitivity =
-      (base::checked_cast<float>(sensitivity_range_.lower()) /
+      (base::checked_cast<float>(sensor_metadata.sensitivity_range.lower()) /
        (aperture[0] * aperture[0]));
   frame_info->ae_compensation = ae_compensation[0];
 
@@ -502,7 +521,7 @@ void GcamAeControllerImpl::MaybeRunAE(int frame_number) {
   // analog plus digital gain.
   Range<float> default_device_tet_range = {
       0.1, static_cast<float>((1000.0 / frame_info->target_fps_range.lower()) *
-                              max_total_gain_)};
+                              frame_info->sensor_metadata.max_total_gain)};
   AeParameters ae_parameters = ae_device_adapter_->ComputeAeParameters(
       frame_number, *frame_info, default_device_tet_range, max_hdr_ratio);
   VLOGFID(1, frame_info->frame_number)
@@ -709,8 +728,12 @@ void GcamAeControllerImpl::SetManualSensorControls(
   std::array<uint8_t, 1> ae_lock = {ANDROID_CONTROL_AE_LOCK_OFF};
   std::array<int64_t, 1> exposure_time = {
       base::checked_cast<int64_t>(exp_time * 1e6)};
-  std::array<int32_t, 1> sensitivity = {sensitivity_range_.Clamp(
-      base::checked_cast<int32_t>(sensitivity_range_.lower() * gain))};
+  // Calculate sensitivity using the static sensor metadata because this is sent
+  // to the HAL.
+  std::array<int32_t, 1> sensitivity = {
+      static_sensor_metadata_.sensitivity_range.Clamp(
+          base::checked_cast<int32_t>(
+              static_sensor_metadata_.sensitivity_range.lower() * gain))};
   if (!request->UpdateMetadata<uint8_t>(ANDROID_CONTROL_AE_MODE, ae_mode) ||
       !request->UpdateMetadata<uint8_t>(ANDROID_CONTROL_AE_LOCK, ae_lock) ||
       !request->UpdateMetadata<int64_t>(ANDROID_SENSOR_EXPOSURE_TIME,
@@ -797,12 +820,14 @@ void GcamAeControllerImpl::SetOptions(
 
   LoadIfExist(json_values, kGainMultiplier, &options_.gain_multiplier);
   // We need to recompute the sensitivity range when the multiplier changes.
-  max_analog_gain_ = options_.gain_multiplier *
-                     (static_cast<float>(max_analog_sensitivity_) /
-                      static_cast<float>(sensitivity_range_.lower()));
-  max_total_gain_ = options_.gain_multiplier *
-                    (static_cast<float>(sensitivity_range_.upper()) /
-                     static_cast<float>(sensitivity_range_.lower()));
+  static_sensor_metadata_.max_analog_gain =
+      options_.gain_multiplier *
+      (static_cast<float>(static_sensor_metadata_.max_analog_sensitivity) /
+       static_cast<float>(static_sensor_metadata_.sensitivity_range.lower()));
+  static_sensor_metadata_.max_total_gain =
+      options_.gain_multiplier *
+      (static_cast<float>(static_sensor_metadata_.sensitivity_range.upper()) /
+       static_cast<float>(static_sensor_metadata_.sensitivity_range.lower()));
 
   if (metadata_logger) {
     metadata_logger_ = *metadata_logger;
@@ -815,8 +840,8 @@ void GcamAeControllerImpl::SetOptions(
              << static_cast<int>(options_.ae_stats_input_mode)
              << " exposure_compensation=" << options_.exposure_compensation
              << " gain_multiplier=" << options_.gain_multiplier
-             << " max_analog_gain=" << max_analog_gain_
-             << " max_total_gain=" << max_total_gain_
+             << " max_analog_gain=" << static_sensor_metadata_.max_analog_gain
+             << " max_total_gain=" << static_sensor_metadata_.max_total_gain
              << " log_frame_metadata=" << !!metadata_logger_;
     VLOGF(1) << "max_hdr_ratio:";
     for (auto [gain, ratio] : options_.max_hdr_ratio) {

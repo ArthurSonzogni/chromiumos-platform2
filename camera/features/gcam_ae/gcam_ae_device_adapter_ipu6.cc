@@ -198,6 +198,16 @@ std::optional<GainRange> GcamAeDeviceAdapterIpu6::GetGainRange(
   return gain_range;
 }
 
+std::optional<Range<int>> GcamAeDeviceAdapterIpu6::GetSensitivityRange(
+    const Camera3CaptureDescriptor& result) {
+  base::span<const int32_t> sensitivity_range =
+      result.GetMetadata<int32_t>(INTEL_VENDOR_CAMERA_SENSITIVITY_RANGE);
+  if (sensitivity_range.empty()) {
+    return std::nullopt;
+  }
+  return Range<int>(sensitivity_range[0], sensitivity_range[1]);
+}
+
 bool GcamAeDeviceAdapterIpu6::HasAeStats(int frame_number) {
   return GetAeStatsEntry(frame_number).has_value();
 }
