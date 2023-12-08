@@ -98,7 +98,10 @@ fn perform_installation(disk_path: &Path) -> Result<()> {
     setup_disk(disk_path)?;
 
     info!("Setting up the new partition and installing ChromeOS Flex");
-    setup_flex_deploy_partition_and_install(disk_path)
+    setup_flex_deploy_partition_and_install(disk_path)?;
+
+    info!("Trying to remove the flex deployment partition");
+    disk::try_remove_thirteenth_partition(disk_path)
 }
 
 /// Tries to save logs to the disk depending on what state the installation fails in.
