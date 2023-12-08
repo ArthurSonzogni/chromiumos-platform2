@@ -83,7 +83,7 @@ impl<T: BlockIo> Gpt<T> {
 
         for index in 0..layout.num_entries {
             let entry = entry_array.get_partition_entry(index).unwrap();
-            if entry.name == label {
+            if entry.name == label && !entry.is_used() {
                 return Ok(Some(*entry));
             }
         }
@@ -96,7 +96,8 @@ mod tests {
     use anyhow::Result;
     use gpt_disk_io::{BlockIoAdapter, Disk};
     use gpt_disk_types::{
-        BlockSize, GptHeader, GptPartitionEntry, GptPartitionEntryArray, LbaLe, U32Le,
+        BlockSize, GptHeader, GptPartitionEntry, GptPartitionEntryArray, GptPartitionType, LbaLe,
+        U32Le,
     };
 
     use crate::gpt::Gpt;
@@ -112,6 +113,7 @@ mod tests {
         };
         let partition_entry = GptPartitionEntry {
             name: "STATE".parse().unwrap(),
+            partition_type_guid: GptPartitionType::EFI_SYSTEM,
             ..Default::default()
         };
         let layout = primary_header.get_partition_entry_array_layout()?;

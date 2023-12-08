@@ -7,6 +7,7 @@ use std::{
     marker::PhantomData,
     os::unix::prelude::OsStrExt,
     path::Path,
+    ptr::null,
 };
 
 use anyhow::{bail, Context, Result};
@@ -35,10 +36,27 @@ pub fn add_cgpt_partition(
     let mut params = get_cgpt_add_params(
         index,
         disk_path.as_c_str(),
-        label.as_c_str(),
-        begin,
-        size,
+        Some(label.as_c_str()),
+        Some(begin),
+        Some(size),
         Some(CHROMEOS_FUTURE_USE_PART_TYPE),
+    );
+
+    params.cgpt_add()
+}
+
+/// Removes a partition at `index`.
+pub fn remove_cgpt_partition(index: u32, disk_path: &Path) -> Result<()> {
+    let disk_path = CString::new(disk_path.as_os_str().as_bytes())
+        .context("unable to convert drive path to CString")?;
+
+    let mut params = get_cgpt_add_params(
+        index,
+        disk_path.as_c_str(),
+        /*label=*/ None,
+        /*begin=*/ None,
+        /*size=*/ None,
+        Some(Guid::ZERO),
     );
 
     params.cgpt_add()
@@ -60,9 +78,9 @@ pub fn resize_cgpt_partition(
     let mut params = get_cgpt_add_params(
         index,
         disk_path.as_c_str(),
-        label.as_c_str(),
-        begin,
-        size,
+        Some(label.as_c_str()),
+        Some(begin),
+        Some(size),
         /*type_guid=*/ None,
     );
 
@@ -95,16 +113,20 @@ impl CgptAddParamsWrapper<'_> {
 fn get_cgpt_add_params<'args, 'params>(
     index: u32,
     disk_path: &'args CStr,
-    label: &'args CStr,
-    begin: u64,
-    size: u64,
+    label: Option<&'args CStr>,
+    begin: Option<u64>,
+    size: Option<u64>,
     type_guid: Option<Guid>,
 ) -> CgptAddParamsWrapper<'params>
 where
     'args: 'params,
 {
     let set_type_guid: i32 = if type_guid.is_some() { 1 } else { 0 };
+    let set_begin: i32 = if begin.is_some() { 1 } else { 0 };
+    let set_size: i32 = if size.is_some() { 1 } else { 0 };
+
     let type_guid_c = type_guid.map_or(empty_guid(), to_cgpt_guid);
+    let label_ptr = label.map_or(null(), |label_str| label_str.as_ptr());
 
     CgptAddParamsWrapper {
         params: vboot_host::CgptAddParams {
@@ -120,18 +142,18 @@ where
             raw_value: 0,
 
             // Passed by the caller.
-            begin,
+            begin: begin.unwrap_or(0),
             partition: index,
             drive_name: disk_path.as_ptr(),
-            size,
+            size: size.unwrap_or(0),
             type_guid: type_guid_c,
-            label: label.as_ptr(),
+            label: label_ptr,
 
             // For each of these fields, a value of 1 means to update
             // the value in the partition, and a value of 0 means don't
             // update it.
-            set_begin: 1,
-            set_size: 1,
+            set_begin,
+            set_size,
             set_type: set_type_guid,
             set_unique: 0,
             set_error_counter: 0,
@@ -274,6 +296,15 @@ mod tests {
         assert_eq!(partition.unwrap().starting_lba.to_u64(), data_part_end + 1);
 
         assert_eq!(partition.unwrap().ending_lba.to_u64(), new_part_end);
+
+        // Test `remove_cgpt_partition`.
+        remove_cgpt_partition(DATA_NUM + 1, path)?;
+
+        let file = File::open(path)?;
+        let mut gpt = Gpt::from_file(file, BlockSize::BS_512)?;
+
+        let partition = gpt.get_entry_for_partition_with_label(new_part_label.parse()?)?;
+        assert!(partition.is_none());
 
         Ok(())
     }

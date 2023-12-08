@@ -20,8 +20,15 @@ mod util;
 const FLEXOR_TAG: &str = "flexor";
 const FLEX_IMAGE_FILENAME: &str = "flex_image.tar.xz";
 const FLEXOR_LOG_FILE: &str = "/var/log/messages";
-const DATA_PART_NUM: u32 = 4;
+
+const FLEX_DEPLOY_PART_NUM_BLOCKS: u64 = 8_000_000_000 / 512;
+const FLEX_DEPLOY_PART_LABEL: &str = "FLEX_DEPLOY";
 const FLEX_DEPLOY_PART_NUM: u32 = 13;
+
+const STATEFUL_PARTITION_LABEL: &str = "STATE";
+const STATEFUL_PARTITION_NUM: u32 = 1;
+
+const DATA_PART_NUM: u32 = 4;
 
 /// Copies the ChromeOS Flex image to rootfs (residing in RAM). This is done
 /// since we are about to repartition the disk and can't loose the image. Since
