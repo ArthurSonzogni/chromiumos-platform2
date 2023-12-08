@@ -36,16 +36,17 @@ std::vector<std::string> ConstructLoggingCommands(StorageDeviceType device_type,
   switch (device_type) {
     case StorageDeviceType::kStateful:
       if (is_mount_failure)
-        cmds = {"dumpe2fs_stateful", "kernel-warning", "console-ramoops"};
+        cmds = {"dumpe2fs_stateful", "console-ramoops", "hiberman",
+                "dm_snapshot_status"};
       else
         cmds = {"shutdown_umount_failure_state", "umount-encrypted"};
       break;
     case StorageDeviceType::kEncryptedStateful:
-      cmds = {"dumpe2fs_encstateful", "kernel-warning", "console-ramoops",
-              "mount-encrypted"};
+      cmds = {"dumpe2fs_encstateful", "console-ramoops", "mount-encrypted",
+              "hiberman", "dm_snapshot_status"};
       break;
     case StorageDeviceType::kCryptohome:
-      cmds = {"cryptohome", "kernel-warning"};
+      cmds = {"cryptohome", "hiberman", "dm_snapshot_status"};
       break;
     default:
       break;

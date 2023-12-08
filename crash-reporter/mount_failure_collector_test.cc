@@ -37,7 +37,9 @@ const char kLogConfigFileContents[] =
     "mount-encrypted=echo mount-encrypted\n"
     "shutdown_umount_failure_state=echo umount_failure_state\n"
     "umount-encrypted=echo umount-encrypted-logs\n"
-    "cryptohome=echo cryptohome";
+    "cryptohome=echo cryptohome\n"
+    "hiberman=echo dmesg\n"
+    "dm_snapshot_status=echo dm_snapshot_status\n";
 
 class MountFailureCollectorMock : public MountFailureCollector {
  public:
@@ -86,7 +88,7 @@ TEST(MountFailureCollectorTest, TestStatefulMountFailure) {
 
   // Check report contents.
   EXPECT_TRUE(base::ReadFileToString(report_path, &report_contents));
-  EXPECT_EQ("stateful\ndmesg\nramoops\n", report_contents);
+  EXPECT_EQ("stateful\nramoops\ndmesg\ndm_snapshot_status\n", report_contents);
 }
 
 TEST(MountFailureCollectorTest, TestEncryptedStatefulMountFailure) {
@@ -109,7 +111,9 @@ TEST(MountFailureCollectorTest, TestEncryptedStatefulMountFailure) {
 
   // Check report contents.
   EXPECT_TRUE(base::ReadFileToString(report_path, &report_contents));
-  EXPECT_EQ("encstateful\ndmesg\nramoops\nmount-encrypted\n", report_contents);
+  EXPECT_EQ(
+      "encstateful\nramoops\nmount-encrypted\ndmesg\ndm_snapshot_status\n",
+      report_contents);
   // Check meta contents do *not* include weight
   std::string meta_contents;
   ASSERT_TRUE(base::ReadFileToString(meta_path, &meta_contents));
@@ -163,7 +167,7 @@ TEST(MountFailureCollectorTest, TestCryptohomeMountFailure) {
 
   // Check report contents.
   EXPECT_TRUE(base::ReadFileToString(report_path, &report_contents));
-  EXPECT_EQ("cryptohome\ndmesg\n", report_contents);
+  EXPECT_EQ("cryptohome\ndmesg\ndm_snapshot_status\n", report_contents);
 }
 
 TEST(MountFailureCollectorTest, TestCryptohomeUmountFailure) {
@@ -186,7 +190,7 @@ TEST(MountFailureCollectorTest, TestCryptohomeUmountFailure) {
 
   // Check report contents.
   EXPECT_TRUE(base::ReadFileToString(report_path, &report_contents));
-  EXPECT_EQ("cryptohome\ndmesg\n", report_contents);
+  EXPECT_EQ("cryptohome\ndmesg\ndm_snapshot_status\n", report_contents);
 }
 
 TEST(MountFailureCollectorTest, TestStatefulMountFailure_UploadWeightedUMA) {
