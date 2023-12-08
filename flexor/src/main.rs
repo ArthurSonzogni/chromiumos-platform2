@@ -5,7 +5,6 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use gpt_disk_types::BlockSize;
 use libchromeos::{panic_handler, syslog};
 use log::{error, info};
 use nix::sys::reboot::reboot;
@@ -27,9 +26,9 @@ const FLEX_DEPLOY_PART_NUM: u32 = 13;
 /// Copies the ChromeOS Flex image to rootfs (residing in RAM). This is done
 /// since we are about to repartition the disk and can't loose the image. Since
 /// the image size is about 2.5GB, we assume that much free space in RAM.
-fn copy_image_to_rootfs(device_path: &Path) -> Result<()> {
+fn copy_image_to_rootfs(disk_path: &Path) -> Result<()> {
     // We expect our data in partition 4, with a vFAT filesystem.
-    let data_partition_path = libchromeos::disk::get_partition_device(device_path, DATA_PART_NUM)
+    let data_partition_path = libchromeos::disk::get_partition_device(disk_path, DATA_PART_NUM)
         .context("Unable to find correct partition path")?;
     let mount = mount::Mount::mount_by_path(data_partition_path, mount::FsType::Vfat)?;
 
@@ -46,21 +45,21 @@ fn copy_image_to_rootfs(device_path: &Path) -> Result<()> {
 /// two steps:
 /// 1. Put the ChromeOS partition layout and write stateful partition.
 /// 2. Insert a thirteenth partition on disk for our own data.
-fn setup_disk(device_path: &Path, block_size: BlockSize) -> Result<()> {
+fn setup_disk(disk_path: &Path) -> Result<()> {
     // Install the layout and stateful partition.
-    chromeos_install::write_partition_table_and_stateful(device_path)?;
+    chromeos_install::write_partition_table_and_stateful(disk_path)?;
     // Insert a thirtheenth partition.
-    disk::insert_thirteenth_partition(device_path, block_size)?;
+    disk::insert_thirteenth_partition(disk_path)?;
     // Reread the partition table.
-    disk::reload_partitions(device_path)
+    disk::reload_partitions(disk_path)
 }
 
 /// Sets up the thirteenth partition on disk and then proceeds to install the
 /// provided image on the device.
-fn setup_flex_deploy_partition_and_install(device_path: &Path) -> Result<()> {
+fn setup_flex_deploy_partition_and_install(disk_path: &Path) -> Result<()> {
     // Create an ext4 filesystem on the disk.
     let new_partition_path =
-        libchromeos::disk::get_partition_device(device_path, FLEX_DEPLOY_PART_NUM)
+        libchromeos::disk::get_partition_device(disk_path, FLEX_DEPLOY_PART_NUM)
             .context("Unable to find correct partition path")?;
     disk::mkfs_ext4(new_partition_path.as_path())?;
     let new_part_mount =
@@ -78,22 +77,21 @@ fn setup_flex_deploy_partition_and_install(device_path: &Path) -> Result<()> {
 
     // Finally install the image on disk.
     chromeos_install::install_image_to_disk(
-        device_path,
+        disk_path,
         new_part_mount.mount_path().join(image_path).as_path(),
     )
 }
 
 /// Performs the actual installation of ChromeOS.
-fn perform_installation(device_path: &Path) -> Result<()> {
+fn perform_installation(disk_path: &Path) -> Result<()> {
     info!("Start Flex-ing");
-    copy_image_to_rootfs(device_path)?;
+    copy_image_to_rootfs(disk_path)?;
 
     info!("Setting up the disk");
-    // Assuming a block size of 512, like all of ChromeOS.
-    setup_disk(device_path, BlockSize::BS_512)?;
+    setup_disk(disk_path)?;
 
     info!("Setting up the new partition and installing ChromeOS Flex");
-    setup_flex_deploy_partition_and_install(device_path)
+    setup_flex_deploy_partition_and_install(disk_path)
 }
 
 /// Tries to save logs to the disk depending on what state the installation fails in.
@@ -103,10 +101,10 @@ fn perform_installation(device_path: &Path) -> Result<()> {
 /// 2. Otherwise we hope to already have the Flex layout including the FLEX_DEPLOY partition
 ///    in that case we write the logs to that partition (may need to create a filesystem on that
 ///    partition though).
-fn try_safe_logs(device_path: &Path) -> Result<()> {
+fn try_safe_logs(disk_path: &Path) -> Result<()> {
     // Case 1: The data partition still exists, so we write the logs to it.
     if let Some(data_partition_path) =
-        libchromeos::disk::get_partition_device(device_path, DATA_PART_NUM)
+        libchromeos::disk::get_partition_device(disk_path, DATA_PART_NUM)
     {
         if matches!(data_partition_path.try_exists(), Ok(true)) {
             let data_mount = mount::Mount::mount_by_path(data_partition_path, mount::FsType::Vfat)?;
@@ -116,7 +114,7 @@ fn try_safe_logs(device_path: &Path) -> Result<()> {
     }
 
     let flex_depl_partition_path =
-        libchromeos::disk::get_partition_device(device_path, FLEX_DEPLOY_PART_NUM)
+        libchromeos::disk::get_partition_device(disk_path, FLEX_DEPLOY_PART_NUM)
             .context("Error finding a place to write logs to")?;
 
     // Case 2: We already have the Flex layout and can try to write to the FLEX_DEPLOY partition.
@@ -147,9 +145,9 @@ fn main() -> Result<()> {
     }
 
     info!("Hello from Flexor!");
-    let device_path = disk::get_target_device().context("Error getting the target disk")?;
+    let disk_path = disk::get_target_device().context("Error getting the target disk")?;
 
-    match perform_installation(&device_path) {
+    match perform_installation(&disk_path) {
         Ok(_) => {
             info!("Rebooting into ChromeOS Flex, keep fingers crossed");
             reboot(nix::sys::reboot::RebootMode::RB_AUTOBOOT)
@@ -159,7 +157,7 @@ fn main() -> Result<()> {
         Err(err) => {
             error!("Flexor couldn't complete due to error: {err}");
             // Try to save logs if possible, otherwise just be stuck.
-            let _ = try_safe_logs(&device_path);
+            let _ = try_safe_logs(&disk_path);
             // TODO(b/314965086): Add an error screen displaying the log.
             Ok(())
         }

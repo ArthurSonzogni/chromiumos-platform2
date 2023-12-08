@@ -30,7 +30,7 @@ pub struct Mount {
 }
 
 impl Mount {
-    pub fn mount_by_path<P: AsRef<Path>>(path: P, fs_type: FsType) -> Result<Self> {
+    pub fn mount_by_path<P: AsRef<Path>>(disk_path: P, fs_type: FsType) -> Result<Self> {
         let tempdir = TempDir::new()?;
         let flags = MsFlags::MS_NODEV | MsFlags::MS_NOEXEC | MsFlags::MS_NOSUID;
         let fs_str = fs_type.to_string();
@@ -38,11 +38,11 @@ impl Mount {
 
         info!(
             "Mounting {} to {}; fs type is: {fs_type}",
-            path.as_ref().display(),
+            disk_path.as_ref().display(),
             tempdir.path().display()
         );
         mount(
-            Some(path.as_ref()),
+            Some(disk_path.as_ref()),
             tempdir.path(),
             Some(Path::new(&fs_str)),
             flags,

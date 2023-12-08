@@ -22,19 +22,19 @@ const CHROMEOS_FUTURE_USE_PART_TYPE: Guid = guid!("2e0a753d-9e48-43b0-8337-b1519
 /// type GUID `CHROMEOS_FUTURE_USE_PART_TYPE`.
 pub fn add_cgpt_partition(
     index: u32,
-    dst: &Path,
+    disk_path: &Path,
     label: &str,
     range: LbaRangeInclusive,
 ) -> Result<()> {
     let begin = range.start().to_u64();
     let size = range.num_blocks();
-    let drive_name = CString::new(dst.as_os_str().as_bytes())
+    let disk_path = CString::new(disk_path.as_os_str().as_bytes())
         .context("unable to convert drive path to CString")?;
     let label = CString::new(label).context("unable to convert label to CString")?;
 
     let mut params = get_cgpt_add_params(
         index,
-        drive_name.as_c_str(),
+        disk_path.as_c_str(),
         label.as_c_str(),
         begin,
         size,
@@ -47,19 +47,19 @@ pub fn add_cgpt_partition(
 /// Resizes an existing partition at `index`.
 pub fn resize_cgpt_partition(
     index: u32,
-    dst: &Path,
+    disk_path: &Path,
     label: &str,
     new_range: LbaRangeInclusive,
 ) -> Result<()> {
     let begin = new_range.start().to_u64();
     let size = new_range.num_blocks();
-    let drive_name = CString::new(dst.as_os_str().as_bytes())
+    let disk_path = CString::new(disk_path.as_os_str().as_bytes())
         .context("unable to convert drive path to CString")?;
     let label = CString::new(label).context("unable to convert label to CString")?;
 
     let mut params = get_cgpt_add_params(
         index,
-        drive_name.as_c_str(),
+        disk_path.as_c_str(),
         label.as_c_str(),
         begin,
         size,
@@ -94,7 +94,7 @@ impl CgptAddParamsWrapper<'_> {
 /// controls the behaviour with supplying the correct arguments here.
 fn get_cgpt_add_params<'args, 'params>(
     index: u32,
-    dst: &'args CStr,
+    disk_path: &'args CStr,
     label: &'args CStr,
     begin: u64,
     size: u64,
@@ -122,7 +122,7 @@ where
             // Passed by the caller.
             begin,
             partition: index,
-            drive_name: dst.as_ptr(),
+            drive_name: disk_path.as_ptr(),
             size,
             type_guid: type_guid_c,
             label: label.as_ptr(),

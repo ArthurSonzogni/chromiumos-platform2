@@ -33,7 +33,7 @@ pub fn get_target_device() -> Result<PathBuf> {
 }
 
 /// Reload the partition table on block devices.
-pub fn reload_partitions(device: &Path) -> Result<()> {
+pub fn reload_partitions(disk_path: &Path) -> Result<()> {
     // In some cases, we may be racing with udev for access to the
     // device leading to EBUSY when we reread the partition table.  We
     // avoid the conflict by using `udevadm settle`, so that udev goes
@@ -44,16 +44,16 @@ pub fn reload_partitions(device: &Path) -> Result<()> {
 
     // Now we re-read the partition table using `blockdev`.
     let mut blockdev_cmd = Command::new("/sbin/blockdev");
-    blockdev_cmd.arg("--rereadpt").arg(device);
+    blockdev_cmd.arg("--rereadpt").arg(disk_path);
 
     execute_command(blockdev_cmd)
 }
 
 /// Creates an EXT4 filesystem on `device`.
-pub fn mkfs_ext4(device: &Path) -> Result<()> {
+pub fn mkfs_ext4(disk_path: &Path) -> Result<()> {
     // We use the mkfs.ext4 binary to put the filesystem.
     let mut cmd = Command::new("mkfs.ext4");
-    cmd.arg(device);
+    cmd.arg(disk_path);
 
     execute_command(cmd)
 }
@@ -66,11 +66,11 @@ const NEW_PARTITION_NAME: &str = "FLEX_DEPLOY";
 /// has a ChromeOS partition layout. Since this method is just changing
 /// the partition layout but not the filesystem, it assumes the filesystem
 /// on stateful partition will be re-created later.
-pub fn insert_thirteenth_partition(disk_path: &Path, block_size: BlockSize) -> Result<()> {
+pub fn insert_thirteenth_partition(disk_path: &Path) -> Result<()> {
     let file = File::open(disk_path)?;
-    let mut gpt = gpt::Gpt::from_file(file, block_size)?;
+    let mut gpt = gpt::Gpt::from_file(file, BlockSize::BS_512)?;
 
-    let new_part_size_lba = NEW_PARTITION_SIZE_BYTES / block_size.to_u64();
+    let new_part_size_lba = NEW_PARTITION_SIZE_BYTES / BlockSize::BS_512.to_u64();
     let stateful_name = "STATE";
 
     let current_stateful = gpt
