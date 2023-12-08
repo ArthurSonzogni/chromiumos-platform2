@@ -89,6 +89,8 @@ class VmConciergeClientImpl : public VmConciergeClient {
                        uint32_t bus_num,
                        DetachTapCallback callback) override;
 
+  static std::unique_ptr<VmConciergeClientImpl> CreateClientWithNewBus();
+
  private:
   // DeferredRequest is a request deferred until VmId is available.
   using DeferredRequest = base::OnceCallback<void(const VmId& vm_id)>;

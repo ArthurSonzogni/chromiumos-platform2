@@ -91,8 +91,15 @@ Manager::Manager(const base::FilePath& cmd_path,
   shill_client_->RegisterDoHProvidersChangedHandler(base::BindRepeating(
       &Manager::OnDoHProvidersChanged, weak_factory_.GetWeakPtr()));
 
-  auto arc_type =
-      USE_ARCVM ? ArcService::ArcType::kVM : ArcService::ArcType::kContainer;
+  constexpr ArcService::ArcType arc_type = []() constexpr {
+    if (USE_ARCVM_NIC_HOTPLUG) {
+      return ArcService::ArcType::kVMHotplug;
+    } else if (USE_ARCVM) {
+      return ArcService::ArcType::kVMStatic;
+    } else {
+      return ArcService::ArcType::kContainer;
+    }
+  }();
   arc_svc_ =
       std::make_unique<ArcService>(arc_type, datapath_.get(), &addr_mgr_, this,
                                    metrics_, dbus_client_notifier_);
@@ -469,7 +476,9 @@ std::optional<patchpanel::ArcVmStartupResponse> Manager::ArcVmStartup(
   if (const auto arc0_addr = arc_svc_->GetArc0IPv4Address()) {
     response.set_arc0_ipv4_address(arc0_addr->ToByteString());
   }
-  for (const auto& tap : arc_svc_->GetTapDevices()) {
+  // Only pass static tap devices before ARCVM starts. Hotplugged devices, if
+  // any, are added after VM starts.
+  for (const auto& tap : arc_svc_->GetStaticTapDevices()) {
     response.add_tap_device_ifnames(tap);
   }
   return response;

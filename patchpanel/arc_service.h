@@ -42,10 +42,17 @@ constexpr char kArcbr0Ifname[] = "arcbr0";
 
 class ArcService {
  public:
+  // Types of the ARC device.
   enum class ArcType {
+    // Container
     kContainer,
-    kVM,
+    // VM with hotplug support
+    kVMHotplug,
+    // VM without hotplug support
+    kVMStatic,
   };
+
+  static bool IsVM(ArcType type);
 
   // Helper class for storing some configuration data for an ArcDevice before
   // the ArcDevice is created.
@@ -306,9 +313,10 @@ class ArcService {
   // Returns the IPv4 address of the "arc0" legacy management interface.
   std::optional<net_base::IPv4Address> GetArc0IPv4Address() const;
 
-  // Returns the list of tap device ifnames that patchpanel has created for
-  // ARCVM. This list is empty for the ARC container.
-  std::vector<std::string> GetTapDevices() const;
+  // Returns the list of static tap device ifnames that patchpanel has created
+  // for ARCVM at VM start. This list is empty for the ARC container, and only
+  // contains arc0 device for ARCVM supporting hotplug.
+  std::vector<std::string> GetStaticTapDevices() const;
 
   // Returns a list of all patchpanel ARC Devices currently managed by this
   // service and attached to a shill Device.
@@ -386,7 +394,7 @@ class ArcService {
   FRIEND_TEST(ArcServiceTest, VmImpl_ArcvmInterfaceMapping);
 
   // Type of ARC environment.
-  ArcType arc_type_;
+  const ArcType arc_type_;
   // Routing and iptables controller service, owned by Manager.
   Datapath* datapath_;
   // IPv4 prefix and address manager, owned by Manager.

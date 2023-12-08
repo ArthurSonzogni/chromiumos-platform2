@@ -133,9 +133,9 @@ bool VmConciergeClientImpl::AttachTapDevice(int64_t vm_cid,
     DoAttachTapDevice(std::string(tap_name), std::move(callback), *itr->second);
   } else {
     // Queue requests since VM is not ready.
-    DeferredRequest request =
-        base::BindOnce(&VmConciergeClientImpl::DoAttachTapDevice,
-                       base::Unretained(this), tap_name, std::move(callback));
+    DeferredRequest request = base::BindOnce(
+        &VmConciergeClientImpl::DoAttachTapDevice,
+        weak_ptr_factory_.GetWeakPtr(), tap_name, std::move(callback));
     auto [q_itr, _] =
         cid_requestq_map_.insert({vm_cid, std::queue<DeferredRequest>()});
     q_itr->second.push(std::move(request));
@@ -174,9 +174,9 @@ bool VmConciergeClientImpl::DetachTapDevice(int64_t vm_cid,
   }
   if (!itr->second.has_value()) {
     // Queue requests since VM is not ready.
-    DeferredRequest request =
-        base::BindOnce(&VmConciergeClientImpl::DoDetachTapDevice,
-                       base::Unretained(this), bus_num, std::move(callback));
+    DeferredRequest request = base::BindOnce(
+        &VmConciergeClientImpl::DoDetachTapDevice,
+        weak_ptr_factory_.GetWeakPtr(), bus_num, std::move(callback));
     auto [q_itr, _] =
         cid_requestq_map_.insert({vm_cid, std::queue<DeferredRequest>()});
     q_itr->second.push(std::move(request));
@@ -229,6 +229,19 @@ void VmConciergeClientImpl::OnVmStopping(dbus::Signal* signal) {
     LOG(INFO) << __func__ << ": VM " << cid
               << " is removed from VmConciergeClientImpl.";
   }
+}
+
+std::unique_ptr<VmConciergeClientImpl>
+VmConciergeClientImpl::CreateClientWithNewBus() {
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
+  if (!bus->Connect()) {
+    LOG(ERROR) << __func__ << "Failed to connect to system bus";
+  }
+
+  return std::make_unique<VmConciergeClientImpl>(std::move(bus));
 }
 
 std::ostream& operator<<(std::ostream& os,
