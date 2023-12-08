@@ -10,9 +10,12 @@
 #include <utility>
 
 #include <chromeos/dbus/shill/dbus-constants.h>
+#include <net-base/byte_utils.h>
+#include <net-base/mac_address.h>
 
 #include "shill/control_interface.h"
 #include "shill/manager.h"
+#include "shill/supplicant/supplicant_group_proxy_interface.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_p2pdevice_proxy_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
@@ -38,6 +41,7 @@ P2PDevice::P2PDevice(Manager* manager,
                   : "p2p_client_" + std::to_string(shill_id);
   supplicant_interface_proxy_.reset();
   supplicant_p2pdevice_proxy_.reset();
+  supplicant_group_proxy_.reset();
   supplicant_persistent_group_path_ = RpcIdentifier("");
   LOG(INFO) << log_name() << ": P2PDevice created";
 }
@@ -365,6 +369,67 @@ void P2PDevice::DisconnectFromSupplicantP2PDeviceProxy() {
   }
 }
 
+bool P2PDevice::ConnectToSupplicantGroupProxy(const RpcIdentifier& group) {
+  if (supplicant_group_proxy_) {
+    LOG(WARNING) << log_name()
+                 << ": Tried to connect to the Group proxy while it is already "
+                    "connected";
+    return false;
+  }
+  supplicant_group_proxy_ =
+      ControlInterface()->CreateSupplicantGroupProxy(this, group);
+  if (!supplicant_group_proxy_) {
+    LOG(ERROR) << log_name() << ": Failed to connect to the Group proxy, path: "
+               << group.value();
+    return false;
+  }
+  LOG(INFO) << log_name() << ": Group proxy connected, path: " << group.value();
+  return true;
+}
+
+void P2PDevice::DisconnectFromSupplicantGroupProxy(void) {
+  if (supplicant_group_proxy_) {
+    supplicant_group_proxy_.reset();
+    LOG(INFO) << log_name() << ": Group proxy disconnected";
+  }
+}
+
+String P2PDevice::GetGroupSSID() const {
+  ByteArray ssid;
+  if (!supplicant_group_proxy_->GetSSID(&ssid)) {
+    LOG(ERROR) << log_name() << ": Failed to GetSSID via Group proxy";
+    return "";
+  }
+  return net_base::byte_utils::ByteStringFromBytes(ssid);
+}
+
+String P2PDevice::GetGroupBSSID() const {
+  ByteArray bssid;
+  if (!supplicant_group_proxy_->GetBSSID(&bssid)) {
+    LOG(ERROR) << log_name() << ": Failed to GetBSSID via Group proxy";
+    return "";
+  }
+  return net_base::MacAddress::CreateFromBytes(bssid)->ToString();
+}
+
+Integer P2PDevice::GetGroupFrequency() const {
+  uint16_t frequency = 0;
+  if (!supplicant_group_proxy_->GetFrequency(&frequency)) {
+    LOG(ERROR) << log_name() << ": Failed to GetFrequency via Group proxy";
+    return 0;
+  }
+  return frequency;
+}
+
+String P2PDevice::GetGroupPassphrase() const {
+  std::string passphrase;
+  if (!supplicant_group_proxy_->GetPassphrase(&passphrase)) {
+    LOG(ERROR) << log_name() << ": Failed to GetPassphrase via Group proxy";
+    return "";
+  }
+  return passphrase;
+}
+
 bool P2PDevice::SetupGroup(const KeyValueStore& properties) {
   RpcIdentifier interface_path = RpcIdentifier("");
   if (properties.Contains<RpcIdentifier>(
@@ -377,18 +442,49 @@ bool P2PDevice::SetupGroup(const KeyValueStore& properties) {
                << " without interface path";
     return false;
   }
+  RpcIdentifier group_path = RpcIdentifier("");
+  if (properties.Contains<RpcIdentifier>(
+          WPASupplicant::kGroupStartedPropertyGroupObject)) {
+    group_path = properties.Get<RpcIdentifier>(
+        WPASupplicant::kGroupStartedPropertyGroupObject);
+  }
+  if (group_path.value().empty()) {
+    LOG(ERROR) << log_name() << ": Failed to " << __func__
+               << " without group path";
+    return false;
+  }
   if (!ConnectToSupplicantInterfaceProxy(interface_path) ||
-      !ConnectToSupplicantP2PDeviceProxy(interface_path)) {
+      !ConnectToSupplicantP2PDeviceProxy(interface_path) ||
+      !ConnectToSupplicantGroupProxy(group_path)) {
     TeardownGroup();
     return false;
   }
+
   link_name_ = GetInterfaceName();
   if (!link_name_.value().empty())
     LOG(INFO) << log_name() << ": Link name configured: " << link_name_.value();
+
+  group_ssid_ = GetGroupSSID();
+  if (!group_ssid_.empty())
+    LOG(INFO) << log_name() << ": SSID configured: " << group_ssid_;
+
+  group_bssid_ = GetGroupBSSID();
+  if (!group_bssid_.empty())
+    LOG(INFO) << log_name() << ": BSSID configured: " << group_bssid_;
+
+  group_frequency_ = GetGroupFrequency();
+  if (group_frequency_)
+    LOG(INFO) << log_name() << ": Freqency configured: " << group_frequency_;
+
+  group_passphrase_ = GetGroupPassphrase();
+  if (!group_passphrase_.empty())
+    LOG(INFO) << log_name() << ": Passphrase configured: " << group_passphrase_;
+
   return true;
 }
 
 void P2PDevice::TeardownGroup() {
+  DisconnectFromSupplicantGroupProxy();
   DisconnectFromSupplicantP2PDeviceProxy();
   DisconnectFromSupplicantInterfaceProxy();
 
@@ -414,6 +510,16 @@ void P2PDevice::GroupFinished(const KeyValueStore& properties) {
 void P2PDevice::GroupFormationFailure(const std::string& reason) {
   LOG(WARNING) << log_name() << ": Got " << __func__ << " while in state "
                << P2PDeviceStateName(state_);
+}
+
+void P2PDevice::PeerJoined(const dbus::ObjectPath& peer) {
+  LOG(INFO) << log_name() << ": Got " << __func__ << " while in state "
+            << P2PDeviceStateName(state_);
+}
+
+void P2PDevice::PeerDisconnected(const dbus::ObjectPath& peer) {
+  LOG(INFO) << log_name() << ": Got " << __func__ << " while in state "
+            << P2PDeviceStateName(state_);
 }
 
 }  // namespace shill

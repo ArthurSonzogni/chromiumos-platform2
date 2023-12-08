@@ -11,6 +11,7 @@
 
 #include "shill/store/key_value_store.h"
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
+#include "shill/supplicant/supplicant_group_event_delegate_interface.h"
 #include "shill/supplicant/supplicant_p2pdevice_event_delegate_interface.h"
 #include "shill/wifi/local_device.h"
 #include "shill/wifi/p2p_service.h"
@@ -20,9 +21,11 @@ namespace shill {
 class Manager;
 class SupplicantInterfaceProxyInterface;
 class SupplicantP2PDeviceProxyInterface;
+class SupplicantGroupProxyInterface;
 
 class P2PDevice : public LocalDevice,
                   public SupplicantEventDelegateInterface,
+                  public SupplicantGroupEventDelegateInterface,
                   public SupplicantP2PDeviceEventDelegateInterface {
  public:
   enum class P2PDeviceState {
@@ -133,6 +136,12 @@ class P2PDevice : public LocalDevice,
   mockable void GroupFinished(const KeyValueStore& properties) override;
   mockable void GroupFormationFailure(const std::string& reason) override;
 
+  // Implementation of SupplicantGroupEventDelegateInterface. These methods
+  // are called by SupplicantGroupProxy, in response to events from
+  // wpa_supplicant.
+  void PeerJoined(const dbus::ObjectPath& peer) override;
+  void PeerDisconnected(const dbus::ObjectPath& peer) override;
+
  private:
   friend class P2PDeviceTest;
   FRIEND_TEST(P2PDeviceTest, DeviceOnOff);
@@ -146,8 +155,12 @@ class P2PDevice : public LocalDevice,
   FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantP2PDeviceProxy);
   FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantP2PDeviceProxy_WhileConnected);
   FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantP2PDeviceProxy_Failure);
+  FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantGroupProxy);
+  FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantGroupProxy_WhileConnected);
+  FRIEND_TEST(P2PDeviceTest, ConnectToSupplicantGroupProxy_Failure);
   FRIEND_TEST(P2PDeviceTest, SetupGroup);
   FRIEND_TEST(P2PDeviceTest, SetupGroup_EmptyProperties);
+  FRIEND_TEST(P2PDeviceTest, SetupGroup_MissingGroupPath);
   FRIEND_TEST(P2PDeviceTest, GroupStartedAndFinished);
 
   // Set service_ to |service|.
@@ -179,6 +192,21 @@ class P2PDevice : public LocalDevice,
 
   // Disconnect from wpa_supplicant p2p device proxy on GroupFinished signal.
   void DisconnectFromSupplicantP2PDeviceProxy();
+
+  // Connect to wpa_supplicant group proxy of group object received
+  // on GroupStarted signal. It provides the following wpa_supplicant
+  // signals: PeerJoined and PeerDisconnected.
+  bool ConnectToSupplicantGroupProxy(const RpcIdentifier& group);
+
+  // Disconnect from wpa_supplicant group proxy on GroupFinished signal.
+  void DisconnectFromSupplicantGroupProxy();
+
+  // These helper methods are used to retrieve group properties
+  // via wpa_supplicant group proxy.
+  String GetGroupSSID() const;
+  String GetGroupBSSID() const;
+  Integer GetGroupFrequency() const;
+  String GetGroupPassphrase() const;
 
   // Returns wpa_supplicant p2p device proxy of the primary network interface.
   SupplicantP2PDeviceProxyInterface* SupplicantPrimaryP2PDeviceProxy() const;
@@ -221,6 +249,16 @@ class P2PDevice : public LocalDevice,
   // and destroyed on GroupFinished signal via DisconnectP2PDeviceProxy()
   std::unique_ptr<SupplicantP2PDeviceProxyInterface>
       supplicant_p2pdevice_proxy_;
+
+  // The wpa_supplicant group proxy. It provides the following signals:
+  // PeerJoined and PeerDisconnected. Initialized by ConnectP2PGroupProxy().
+  std::unique_ptr<SupplicantGroupProxyInterface> supplicant_group_proxy_;
+
+  // The wpa_supplicant group properties.
+  String group_ssid_;
+  String group_bssid_;
+  Integer group_frequency_;
+  String group_passphrase_;
 
   // The wpa_supplicant persistent group path used for p2p client connection.
   RpcIdentifier supplicant_persistent_group_path_;
