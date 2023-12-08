@@ -3,22 +3,22 @@
   {
     "identity": "u:r:cros_heartd:s0",
     "own": [
-      "HeartdHeartbeatService",
-      "HeartdHeartbeatServiceControl"
+      "HeartdControl",
+      "HeartdHeartbeatService"
     ]
   },
   {
     "identity": "u:r:cros_browser:s0",
     "request": [
-      "HeartdHeartbeatService",
-      "HeartdHeartbeatServiceControl"
+      "HeartdControl",
+      "HeartdHeartbeatService"
     ]
   },
   {
     "identity": "u:r:cros_heartd_tool:s0",
     "request": [
-      "HeartdHeartbeatService",
-      "HeartdHeartbeatServiceControl"
+      "HeartdControl",
+      "HeartdHeartbeatService"
     ]
   }
 ]
