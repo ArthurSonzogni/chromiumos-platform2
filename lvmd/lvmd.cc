@@ -5,6 +5,7 @@
 #include "lvmd/lvmd.h"
 
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/strings/stringprintf.h>
@@ -185,6 +186,41 @@ bool Lvmd::CreateLogicalVolume(
   return true;
 }
 
+bool Lvmd::CreateLogicalVolumes(
+    brillo::ErrorPtr* error,
+    const lvmd::CreateLogicalVolumesRequest& in_request,
+    lvmd::CreateLogicalVolumesResponse* out_response) {
+  std::vector<std::string> failed_lvs;
+  for (const auto& info : in_request.logical_volume_infos()) {
+    const auto& thinpool = info.thinpool();
+    const auto& lv_config = info.lv_config();
+
+    brillo::ErrorPtr tmp_err;
+    lvmd::LogicalVolume lv;
+    if (!CreateLogicalVolume(&tmp_err, thinpool, lv_config, &lv)) {
+      failed_lvs.push_back(base::StringPrintf(
+          "lv name (%s) thinpool (%s) vg (%s) size (%ld)",
+          lv_config.name().c_str(), thinpool.name().c_str(),
+          thinpool.volume_group().name().c_str(), lv_config.size()));
+      // Continue looping to handle remaining logical volumes to create.
+      continue;
+    }
+    // Only add successfully created logical volumes into the response.
+    auto* lv_added =
+        out_response->mutable_logical_volume_list()->add_logical_volume();
+    lv_added->Swap(&lv);
+  }
+
+  if (!failed_lvs.empty()) {
+    *error = CreateError(
+        FROM_HERE, kErrorInternal,
+        base::StringPrintf("Failed to CreateLogicalVolumes: %s",
+                           base::JoinString(failed_lvs, ", ").c_str()));
+    return false;
+  }
+  return true;
+}
+
 bool Lvmd::RemoveLogicalVolume(brillo::ErrorPtr* error,
                                const lvmd::LogicalVolume& in_logical_volume) {
   auto vg_name = in_logical_volume.volume_group().name();
@@ -201,6 +237,38 @@ bool Lvmd::RemoveLogicalVolume(brillo::ErrorPtr* error,
     return false;
   }
 
+  return true;
+}
+
+bool Lvmd::RemoveLogicalVolumes(
+    brillo::ErrorPtr* error,
+    const lvmd::RemoveLogicalVolumesRequest& in_request,
+    lvmd::RemoveLogicalVolumesResponse* out_response) {
+  out_response->clear_logical_volume_list();
+  for (const auto& lv : in_request.logical_volume_list().logical_volume()) {
+    brillo::ErrorPtr tmp_err;
+    if (!RemoveLogicalVolume(&tmp_err, lv)) {
+      // Only add failed to remove logical volumes into the response.
+      // This will allow users to act on the logical volumes easier.
+      auto* lv_added =
+          out_response->mutable_logical_volume_list()->add_logical_volume();
+      lv_added->CopyFrom(lv);
+    }
+  }
+
+  if (out_response->has_logical_volume_list()) {
+    std::vector<std::string> failed_lvs(
+        out_response->logical_volume_list().logical_volume_size());
+    for (const auto& lv :
+         out_response->logical_volume_list().logical_volume()) {
+      failed_lvs.push_back(lv.name());
+    }
+    *error = CreateError(
+        FROM_HERE, kErrorInternal,
+        base::StringPrintf("Failed to RemoveLogicalVolumes: %s",
+                           base::JoinString(failed_lvs, ", ").c_str()));
+    return false;
+  }
   return true;
 }
 

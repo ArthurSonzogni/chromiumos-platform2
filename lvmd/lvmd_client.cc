@@ -7,10 +7,11 @@
 
 #include <iostream>
 #include <string>
-#include <utility>
 
 #include <base/logging.h>
 #include <base/json/json_writer.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
 #include <brillo/daemons/daemon.h>
@@ -135,9 +136,15 @@ class LvmdClient : public brillo::Daemon {
                           const std::string& thinpool_name,
                           const std::string& lv_name,
                           int64_t size);
+  int CreateLogicalVolumes(const std::string& vg_name,
+                           const std::string& thinpool_name,
+                           const std::string& lv_names,
+                           const std::string& sizes);
   // `--remove` helpers:
   int RemoveLogicalVolume(const std::string& vg_name,
                           const std::string& lv_name);
+  int RemoveLogicalVolumes(const std::string& vg_name,
+                           const std::string& lv_names);
 
   // `--activate` helpers:
   // `--deactivate` helpers:
@@ -222,6 +229,14 @@ int LvmdClient::ProcessFlags() {
   // Used in `--create`:
   //   `--lv`
   DEFINE_int64(size, -1, "Size in MiB.");
+  // Used in `--create`:
+  //   `--lvs`
+  // Used in `--remove`:
+  //   `--lvs`
+  DEFINE_string(lv_names, "", "Logical Volume names. (comma separated)");
+  // Used in `--create`:
+  //   `--lvs`
+  DEFINE_string(sizes, "", "Sizes in MiB. (comma separated)");
 
   brillo::FlagHelper::Init(argc_, argv_, "Lvmd Client");
 
@@ -287,6 +302,9 @@ int LvmdClient::ProcessFlags() {
     if (FLAGS_lv)
       return CreateLogicalVolume(FLAGS_vg_name, FLAGS_thinpool_name,
                                  FLAGS_lv_name, FLAGS_size);
+    if (FLAGS_lvs)
+      return CreateLogicalVolumes(FLAGS_vg_name, FLAGS_thinpool_name,
+                                  FLAGS_lv_names, FLAGS_sizes);
 
     LOG(ERROR) << "`--create` is not support for this LVM device.";
     return EX_USAGE;
@@ -295,6 +313,8 @@ int LvmdClient::ProcessFlags() {
   if (FLAGS_remove) {
     if (FLAGS_lv)
       return RemoveLogicalVolume(FLAGS_vg_name, FLAGS_lv_name);
+    if (FLAGS_lvs)
+      return RemoveLogicalVolumes(FLAGS_vg_name, FLAGS_lv_names);
 
     LOG(ERROR) << "`--remove` is not support for this LVM device.";
     return EX_USAGE;
@@ -472,6 +492,84 @@ int LvmdClient::CreateLogicalVolume(const std::string& vg_name,
   return PrintDict(ToDict(lv));
 }
 
+int LvmdClient::CreateLogicalVolumes(const std::string& vg_name,
+                                     const std::string& thinpool_name,
+                                     const std::string& lv_names,
+                                     const std::string& sizes) {
+  if (vg_name.empty()) {
+    LOG(ERROR) << "`--vg_name` must be provided.";
+    return EX_USAGE;
+  }
+
+  if (thinpool_name.empty()) {
+    LOG(ERROR) << "`--thinpool_name` must be provided.";
+    return EX_USAGE;
+  }
+
+  if (lv_names.empty()) {
+    LOG(ERROR) << "`--lv_names` must be provided.";
+    return EX_USAGE;
+  }
+
+  if (sizes.empty()) {
+    LOG(ERROR) << "`--sizes` must be provided.";
+    return EX_USAGE;
+  }
+
+  const std::string kDelims{","};
+  const auto& vec_lv_names = base::SplitString(
+      lv_names, kDelims, base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  const auto& vec_str_sizes = base::SplitString(
+      sizes, kDelims, base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+
+  if (vec_lv_names.size() != vec_str_sizes.size()) {
+    LOG(ERROR)
+        << "`--lv_names` and `--sizes` must have the same number of arguments.";
+    return EX_USAGE;
+  }
+
+  const int64_t kNumLvs = vec_lv_names.size();
+  std::vector<int64_t> vec_sizes;
+  vec_sizes.reserve(kNumLvs);
+  for (const auto& str_size : vec_str_sizes) {
+    int64_t size;
+    if (!base::StringToInt64(str_size, &size)) {
+      LOG(ERROR) << "`--sizes` given an invalid size: " << str_size;
+      return EX_USAGE;
+    }
+    if (size < 0) {
+      LOG(ERROR) << "`--sizes` must all be positive, given bad value: " << size;
+      return EX_USAGE;
+    }
+    vec_sizes.emplace_back(size);
+  }
+
+  lvmd::VolumeGroup vg;
+  vg.set_name(vg_name);
+
+  lvmd::Thinpool thinpool;
+  *thinpool.mutable_volume_group() = vg;
+  thinpool.set_name(thinpool_name);
+
+  lvmd::CreateLogicalVolumesRequest request;
+  for (int i = 0; i < kNumLvs; ++i) {
+    auto* lv_info = request.add_logical_volume_infos();
+    *lv_info->mutable_thinpool() = thinpool;
+    auto* lv_config = lv_info->mutable_lv_config();
+    lv_config->set_name(vec_lv_names[i]);
+    lv_config->set_size(vec_sizes[i]);
+  }
+
+  brillo::ErrorPtr err;
+  lvmd::CreateLogicalVolumesResponse response;
+  if (!lvmd_proxy_->CreateLogicalVolumes(request, &response, &err)) {
+    LOG(ERROR) << "Failed to create logical volumes, " << ErrorPtrToStr(err);
+    return EX_SOFTWARE;
+  }
+
+  return PrintDict(ToDict(response.logical_volume_list()));
+}
+
 int LvmdClient::RemoveLogicalVolume(const std::string& vg_name,
                                     const std::string& lv_name) {
   if (vg_name.empty()) {
@@ -494,6 +592,42 @@ int LvmdClient::RemoveLogicalVolume(const std::string& vg_name,
   brillo::ErrorPtr err;
   if (!lvmd_proxy_->RemoveLogicalVolume(lv, &err)) {
     LOG(ERROR) << "Failed to remove logical volume, " << ErrorPtrToStr(err);
+    return EX_SOFTWARE;
+  }
+
+  return EX_OK;
+}
+
+int LvmdClient::RemoveLogicalVolumes(const std::string& vg_name,
+                                     const std::string& lv_names) {
+  if (vg_name.empty()) {
+    LOG(ERROR) << "`--vg_name` must be provided.";
+    return EX_USAGE;
+  }
+
+  if (lv_names.empty()) {
+    LOG(ERROR) << "`--lv_names` must be provided.";
+    return EX_USAGE;
+  }
+
+  const auto& vec_lv_names = base::SplitString(
+      lv_names, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+
+  lvmd::VolumeGroup vg;
+  vg.set_name(vg_name);
+
+  lvmd::RemoveLogicalVolumesRequest request;
+  auto* lv_list = request.mutable_logical_volume_list();
+  for (const auto& lv_name : vec_lv_names) {
+    auto* lv = lv_list->add_logical_volume();
+    *lv->mutable_volume_group() = vg;
+    lv->set_name(lv_name);
+  }
+
+  brillo::ErrorPtr err;
+  lvmd::RemoveLogicalVolumesResponse response;
+  if (!lvmd_proxy_->RemoveLogicalVolumes(request, &response, &err)) {
+    LOG(ERROR) << "Failed to remove logical volumes, " << ErrorPtrToStr(err);
     return EX_SOFTWARE;
   }
 

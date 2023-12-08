@@ -14,6 +14,9 @@ group("all") {
     ":lvmd",
     ":lvmd_client",
   ]
+  if (use.test) {
+    deps += [ ":lvmd_tests" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -40,13 +43,18 @@ generate_dbus_adaptors("lvmd_dbus_adaptors") {
   sources = [ "dbus/org.chromium.Lvmd.xml" ]
 }
 
-executable("lvmd") {
-  sources = [
-    "lvmd.cc",
-    "main.cc",
-  ]
+static_library("liblvmd") {
+  sources = [ "lvmd.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [ ":lvmd_dbus_adaptors" ]
+}
+
+executable("lvmd") {
+  sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":liblvmd",
+    ":lvmd_dbus_adaptors",
+  ]
   install_path = "sbin"
 }
 
@@ -73,4 +81,28 @@ executable("lvmd_client") {
   ]
   deps = [ ":lvmd_dbus_adaptors" ]
   install_path = "sbin"
+}
+
+# For test:
+if (use.test) {
+  pkg_config("lvmd_tests_config") {
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
+    ]
+  }
+
+  executable("lvmd_tests") {
+    sources = [ "lvmd_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":lvmd_tests_config",
+      ":target_defaults",
+    ]
+    run_test = true
+    deps = [
+      ":liblvmd",
+      "//common-mk/testrunner",
+    ]
+  }
 }

@@ -148,6 +148,27 @@
                   value="lvmd::LogicalVolume"/>
     </arg>
   </method>
+  <method name="CreateLogicalVolumes">
+    <tp:docstring>
+      Returns the logical volumes created.
+    </tp:docstring>
+    <arg name="request" type="ay" direction="in">
+      <tp:docstring>
+        A serialized protobuf (CreateLogicalVolumesRequest,
+        platform2/system_api/dbus/lvmd/lvmd.proto).
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                  value="lvmd::CreateLogicalVolumesRequest"/>
+    </arg>
+    <arg name="response" type="ay" direction="out">
+      <tp:docstring>
+        A serialized protobuf (CreateLogicalVolumesResponse,
+        platform2/system_api/dbus/lvmd/lvmd.proto).
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                  value="lvmd::CreateLogicalVolumesResponse"/>
+    </arg>
+  </method>
   <method name="RemoveLogicalVolume">
     <tp:docstring>
       Removes the specified logical volume.
@@ -159,6 +180,27 @@
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                   value="lvmd::LogicalVolume"/>
+    </arg>
+  </method>
+  <method name="RemoveLogicalVolumes">
+    <tp:docstring>
+      Removes the specified logical volume.
+    </tp:docstring>
+    <arg name="request" type="ay" direction="in">
+      <tp:docstring>
+        A serialized protobuf (RemoveLogicalVolumesRequest,
+        platform2/system_api/dbus/lvmd/lvmd.proto).
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                  value="lvmd::RemoveLogicalVolumesRequest"/>
+    </arg>
+    <arg name="response" type="ay" direction="out">
+      <tp:docstring>
+        A serialized protobuf (RemoveLogicalVolumesResponse,
+        platform2/system_api/dbus/lvmd/lvmd.proto).
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                  value="lvmd::RemoveLogicalVolumesResponse"/>
     </arg>
   </method>
   <method name="ToggleLogicalVolumeActivation">

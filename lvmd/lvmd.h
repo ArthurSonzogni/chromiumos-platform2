@@ -66,10 +66,28 @@ class Lvmd : public brillo::DBusServiceDaemon,
       const lvmd::LogicalVolumeConfiguration& in_logical_volume_configuration,
       lvmd::LogicalVolume* out_logical_volume) override;
 
+  // Returns the logical volumes created.
+  // Returns false if any failed to be created.
+  // The list of logical volumes which successfully were created will be part of
+  // `lvmd::CreateLogicalVolumesResponse`.
+  bool CreateLogicalVolumes(
+      brillo::ErrorPtr* error,
+      const lvmd::CreateLogicalVolumesRequest& in_request,
+      lvmd::CreateLogicalVolumesResponse* out_response) override;
+
   // Removes the logical volume, if it exists.
   bool RemoveLogicalVolume(
       brillo::ErrorPtr* error,
       const lvmd::LogicalVolume& in_logical_volume) override;
+
+  // Removes the logical volumes, if they exist.
+  // Returns false if any failed to be removed.
+  // The list of logical volumes which failed to be removed will be part of
+  // `lvmd::RemoveLogicalVolumesResponse`.
+  bool RemoveLogicalVolumes(
+      brillo::ErrorPtr* error,
+      const lvmd::RemoveLogicalVolumesRequest& in_request,
+      lvmd::RemoveLogicalVolumesResponse* out_response) override;
 
   // Toggles the logical volume activation, if it exists.
   // Activating/deactivating already active/inactive logical volume has no
