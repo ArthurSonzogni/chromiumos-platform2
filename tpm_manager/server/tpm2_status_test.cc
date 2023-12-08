@@ -23,6 +23,7 @@ using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
 using testing::SetArgPointee;
+using testing::StrictMock;
 using trunks::TPM_RC_FAILURE;
 using trunks::TPM_RC_SUCCESS;
 
@@ -400,53 +401,57 @@ TEST_F(Tpm2StatusTest, GetRwVersionFailure) {
 #endif
 
 TEST_F(Tpm2StatusTest, SendVendorSpecificMetricsV0) {
-  EXPECT_CALL(mock_tpm_utility_, GetTi50Stats(_))
-      .WillOnce([](trunks::Ti50Stats* stats) {
-        stats->fs_init_time = 1234;
-        stats->fs_size = 5678;
-        stats->aprov_time = 9012;
-        stats->aprov_status = 3456;
-        stats->filesystem_busy_count = 1111;
-        stats->crypto_busy_count = 2222;
-        stats->dispatcher_busy_count = 3333;
-        stats->timeslices_expired = 4444;
-        stats->crypto_init_time = 5555;
-        stats->version = 0;
-        return TPM_RC_SUCCESS;
-      });
-  MockTpmManagerMetrics metrics{};
-  EXPECT_CALL(metrics, ReportFilesystemInitTime(1234)).Times(1);
-  EXPECT_CALL(metrics, ReportFilesystemUtilization(5678)).Times(1);
-  EXPECT_CALL(metrics, ReportApRoVerificationTime(9012)).Times(1);
-  EXPECT_CALL(metrics, ReportExpApRoVerificationStatus(3456)).Times(1);
+  StrictMock<MockTpmManagerMetrics> metrics{};
+  if (tpm_status_->GetGscVersion() == GscVersion::GSC_VERSION_TI50) {
+    EXPECT_CALL(mock_tpm_utility_, GetTi50Stats(_))
+        .WillOnce([](trunks::Ti50Stats* stats) {
+          stats->fs_init_time = 1234;
+          stats->fs_size = 5678;
+          stats->aprov_time = 9012;
+          stats->aprov_status = 3456;
+          stats->filesystem_busy_count = 1111;
+          stats->crypto_busy_count = 2222;
+          stats->dispatcher_busy_count = 3333;
+          stats->timeslices_expired = 4444;
+          stats->crypto_init_time = 5555;
+          stats->version = 0;
+          return TPM_RC_SUCCESS;
+        });
+    EXPECT_CALL(metrics, ReportFilesystemInitTime(1234)).Times(1);
+    EXPECT_CALL(metrics, ReportFilesystemUtilization(5678)).Times(1);
+    EXPECT_CALL(metrics, ReportApRoVerificationTime(9012)).Times(1);
+    EXPECT_CALL(metrics, ReportExpApRoVerificationStatus(3456)).Times(1);
+  }
   tpm_status_->SendVendorSpecificMetrics(&metrics);
 }
 
 TEST_F(Tpm2StatusTest, SendVendorSpecificMetricsV2) {
-  EXPECT_CALL(mock_tpm_utility_, GetTi50Stats(_))
-      .WillOnce([](trunks::Ti50Stats* stats) {
-        stats->fs_init_time = 1234;
-        stats->fs_size = 5678;
-        stats->aprov_time = 9012;
-        stats->aprov_status = 3456;
-        stats->filesystem_busy_count = 1111;
-        stats->crypto_busy_count = 2222;
-        stats->dispatcher_busy_count = 3333;
-        stats->timeslices_expired = 4444;
-        stats->crypto_init_time = 5555;
-        stats->version = 2;
-        return TPM_RC_SUCCESS;
-      });
-  MockTpmManagerMetrics metrics{};
-  EXPECT_CALL(metrics, ReportFilesystemInitTime(1234)).Times(1);
-  EXPECT_CALL(metrics, ReportFilesystemUtilization(5678)).Times(1);
-  EXPECT_CALL(metrics, ReportApRoVerificationTime(9012)).Times(1);
-  EXPECT_CALL(metrics, ReportExpApRoVerificationStatus(3456)).Times(1);
-  EXPECT_CALL(metrics, ReportFilesystemBusyCount(1111)).Times(1);
-  EXPECT_CALL(metrics, ReportCryptoBusyCount(2222)).Times(1);
-  EXPECT_CALL(metrics, ReportDispatcherBusyCount(3333)).Times(1);
-  EXPECT_CALL(metrics, ReportTimeslicesExpired(4444)).Times(1);
-  EXPECT_CALL(metrics, ReportCryptoInitTime(5555)).Times(1);
+  StrictMock<MockTpmManagerMetrics> metrics{};
+  if (tpm_status_->GetGscVersion() == GscVersion::GSC_VERSION_TI50) {
+    EXPECT_CALL(mock_tpm_utility_, GetTi50Stats(_))
+        .WillOnce([](trunks::Ti50Stats* stats) {
+          stats->fs_init_time = 1234;
+          stats->fs_size = 5678;
+          stats->aprov_time = 9012;
+          stats->aprov_status = 3456;
+          stats->filesystem_busy_count = 1111;
+          stats->crypto_busy_count = 2222;
+          stats->dispatcher_busy_count = 3333;
+          stats->timeslices_expired = 4444;
+          stats->crypto_init_time = 5555;
+          stats->version = 2;
+          return TPM_RC_SUCCESS;
+        });
+    EXPECT_CALL(metrics, ReportFilesystemInitTime(1234)).Times(1);
+    EXPECT_CALL(metrics, ReportFilesystemUtilization(5678)).Times(1);
+    EXPECT_CALL(metrics, ReportApRoVerificationTime(9012)).Times(1);
+    EXPECT_CALL(metrics, ReportExpApRoVerificationStatus(3456)).Times(1);
+    EXPECT_CALL(metrics, ReportFilesystemBusyCount(1111)).Times(1);
+    EXPECT_CALL(metrics, ReportCryptoBusyCount(2222)).Times(1);
+    EXPECT_CALL(metrics, ReportDispatcherBusyCount(3333)).Times(1);
+    EXPECT_CALL(metrics, ReportTimeslicesExpired(4444)).Times(1);
+    EXPECT_CALL(metrics, ReportCryptoInitTime(5555)).Times(1);
+  }
   tpm_status_->SendVendorSpecificMetrics(&metrics);
 }
 
