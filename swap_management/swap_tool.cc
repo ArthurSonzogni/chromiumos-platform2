@@ -194,7 +194,6 @@ std::optional<std::map<std::string, std::string>> SwapTool::GetFeatureParams(
   if (result.find(vf.name) != result.end() && result[vf.name].enabled)
     return result[vf.name].params;
 
-  LOG(INFO) << vf.name << " is not enabled in PlatformFeature.";
   return std::nullopt;
 }
 
@@ -202,7 +201,9 @@ std::optional<std::map<std::string, std::string>> SwapTool::GetFeatureParams(
 std::optional<std::string> SwapTool::GetFeatureParamValue(
     const VariationsFeature& vf, const std::string& key) {
   auto params = GetFeatureParams(vf);
-  if (params.has_value() && (*params).find(key) != (*params).end())
+  if (!params.has_value())
+    return std::nullopt;
+  if ((*params).find(key) != (*params).end())
     return (*params)[key];
 
   LOG(ERROR) << key << " is not configured in PlatformFeature " << vf.name;
