@@ -27,7 +27,6 @@ copies.
 |---------|-------------|
 | [arc](./arc/) | Tools/deamons/init-scripts to run ARC |
 | [attestation](./attestation/) | Daemon and client for managing remote attestation |
-| [authpolicy](./authpolicy/) | Daemon for integrating with Microsoft Active Directory (AD) domains |
 | [avtest_label_detect](./avtest_label_detect/) | Test tool for OCRing device labels |
 | [biod](./biod/) | Biometrics daemon |
 | [bootid-logger](./bootid-logger/) | Simple command to record the current boot id to the log. |
