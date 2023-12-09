@@ -15,7 +15,6 @@ group("all") {
     ":system_api-arcvm_data_migrator-protos",
     ":system_api-attestation-goprotos",
     ":system_api-attestation-protos",
-    ":system_api-authpolicy-protos",
     ":system_api-biod-goprotos",
     ":system_api-biod-protos",
     ":system_api-bootlockbox-goprotos",
@@ -216,14 +215,6 @@ goproto_library("system_api-cryptohome-goprotos") {
     "${proto_in_dir}/recoverable_key_store.proto",
     "${proto_in_dir}/rpc.proto",
   ]
-}
-
-proto_library("system_api-authpolicy-protos") {
-  proto_in_dir = "dbus/authpolicy"
-  proto_out_dir = "include/authpolicy/proto_bindings"
-  sources = [ "${proto_in_dir}/active_directory_info.proto" ]
-  standalone = true
-  install_package = true
 }
 
 proto_library("system_api-biod-protos") {
