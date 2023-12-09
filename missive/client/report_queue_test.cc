@@ -16,6 +16,7 @@
 #include "missive/analytics/metrics_test_util.h"
 #include "missive/client/mock_report_queue.h"
 #include "missive/util/status.h"
+#include "missive/util/status_macros.h"
 #include "missive/util/test_support_callbacks.h"
 
 using ::testing::_;

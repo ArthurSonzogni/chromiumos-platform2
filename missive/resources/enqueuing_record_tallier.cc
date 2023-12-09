@@ -44,7 +44,7 @@ std::optional<uint64_t> EnqueuingRecordTallier::GetAverage() const {
 }
 
 void EnqueuingRecordTallier::UpdateAverage() {
-  if (auto average_status = ComputeAverage(); average_status.ok()) {
+  if (auto average_status = ComputeAverage(); average_status.has_value()) {
     average_ = average_status.value();
   } else {
     LOG(ERROR)
@@ -63,10 +63,10 @@ StatusOr<uint64_t> EnqueuingRecordTallier::ComputeAverage() {
   last_wall_time_ = wall_time;
 
   // If either current wall time or last wall time is missing, return an error.
-  if (!wall_time.ok()) {
+  if (!wall_time.has_value()) {
     return wall_time;
   }
-  if (!last_wall_time.ok()) {
+  if (!last_wall_time.has_value()) {
     return last_wall_time;
   }
 

@@ -14,6 +14,7 @@
 #include <gtest/gtest.h>
 
 #include "missive/util/file.h"
+#include "missive/util/status_macros.h"
 
 using ::testing::IsEmpty;
 using ::testing::StrEq;

@@ -85,7 +85,7 @@ class CreateQueueContext : public TaskRunnerContext<Status> {
     DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
     // Verify this queue doesn't already exist
     CHECK(!storage_->queues_container_->GetQueue(priority_, generation_guid_)
-               .ok());
+               .has_value());
 
     // Set the extension of the queue directory name
     queue_options_.set_subdirectory_extension(generation_guid_);
@@ -138,7 +138,7 @@ class CreateQueueContext : public TaskRunnerContext<Status> {
                 StatusOr<scoped_refptr<StorageQueue>> storage_queue_result) {
     CheckOnValidSequence();
     DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
-    if (!storage_queue_result.ok()) {
+    if (!storage_queue_result.has_value()) {
       LOG(ERROR) << "Could not create queue for generation_guid="
                  << generation_guid_ << " priority=" << priority
                  << ", error=" << storage_queue_result.status();
@@ -156,7 +156,7 @@ class CreateQueueContext : public TaskRunnerContext<Status> {
       // We will check whether this is the case, and return that queue instead.
       const auto query_result =
           storage_->queues_container_->GetQueue(priority, generation_guid_);
-      if (!query_result.ok()) {
+      if (!query_result.has_value()) {
         // No pre-recorded queue either.
         Response(added_status);
         return;
@@ -228,7 +228,7 @@ void Storage::Create(
       // file with matching key signature after deserialization.
       const auto download_key_result =
           storage_->key_in_storage_->DownloadKeyFile();
-      if (!download_key_result.ok()) {
+      if (!download_key_result.has_value()) {
         // Key not found or corrupt. Proceed with encryption setup.
         // Key will be downloaded during setup.
         EncryptionSetUp(download_key_result.status());
@@ -415,7 +415,7 @@ void Storage::Write(Priority priority,
                   self->queues_container_->GetOrCreateGenerationGuid(dm_token,
                                                                      priority);
 
-              if (!generation_guid_result.ok()) {
+              if (!generation_guid_result.has_value()) {
                 // This should never happen. We should always be able to create
                 // a generation guid if one doesn't exist.
                 NOTREACHED_NORETURN();
@@ -426,7 +426,7 @@ void Storage::Write(Priority priority,
             // Find the queue for this generation guid + priority and write to
             // it.
             auto queue_result = self->TryGetQueue(priority, generation_guid);
-            if (queue_result.ok()) {
+            if (queue_result.has_value()) {
               // The queue we need already exists, so we can write to it.
               std::move(write_queue_action)
                   .Run(std::move(queue_result.value()),
@@ -551,7 +551,7 @@ void Storage::Confirm(SequenceInformation sequence_information,
                  queue_action,
              base::OnceCallback<void(Status)> completion_cb) {
             auto queue_result = self->TryGetQueue(priority, generation_guid);
-            if (!queue_result.ok()) {
+            if (!queue_result.has_value()) {
               std::move(completion_cb).Run(queue_result.status());
               return;
             }
@@ -700,14 +700,14 @@ void Storage::UpdateEncryptionKey(SignedEncryptionInfo signed_encryption_key) {
 StatusOr<scoped_refptr<StorageQueue>> Storage::TryGetQueue(
     Priority priority, StatusOr<GenerationGuid> generation_guid) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!generation_guid.ok()) {
+  if (!generation_guid.has_value()) {
     return generation_guid.status();
   }
   // Attempt to get queue by priority and generation_guid on
   // the Storage task runner.
   auto queue_result =
       queues_container_->GetQueue(priority, generation_guid.value());
-  if (!queue_result.ok()) {
+  if (!queue_result.has_value()) {
     // Queue not found, abort.
     return queue_result.status();
   }

@@ -6,6 +6,8 @@
 
 #include <gtest/gtest.h>
 
+#include "missive/util/status_macros.h"
+
 using ::testing::Ge;
 
 namespace reporting {

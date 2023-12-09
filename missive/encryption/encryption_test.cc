@@ -64,7 +64,7 @@ class EncryptionTest : public ::testing::Test {
         [](EncryptedRecord* encrypted,
            base::OnceCallback<void(Status)> close_cb,
            StatusOr<EncryptedRecord> result) {
-          if (!result.ok()) {
+          if (!result.has_value()) {
             std::move(close_cb).Run(result.status());
             return;
           }
@@ -95,7 +95,7 @@ class EncryptionTest : public ::testing::Test {
         [](std::string* decrypted_string,
            base::OnceCallback<void(Status)> close_cb,
            StatusOr<std::string_view> result) {
-          if (!result.ok()) {
+          if (!result.has_value()) {
             std::move(close_cb).Run(result.status());
             return;
           }
@@ -297,7 +297,7 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
       encryptor_->OpenRecord(base::BindOnce(
           [](SingleEncryptionContext* self,
              StatusOr<Encryptor::Handle*> handle_result) {
-            if (!handle_result.ok()) {
+            if (!handle_result.has_value()) {
               self->Respond(handle_result.status());
               return;
             }
@@ -383,7 +383,7 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
           base::BindOnce(
               [](SingleDecryptionContext* self,
                  StatusOr<std::string> private_key_result) {
-                if (!private_key_result.ok()) {
+                if (!private_key_result.has_value()) {
                   self->Respond(private_key_result.status());
                   return;
                 }
@@ -400,7 +400,7 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
       // Decrypt shared secret from private key and peer public key.
       auto shared_secret_result = decryptor_->DecryptSecret(
           private_key, encrypted_record_.encryption_info().encryption_key());
-      if (!shared_secret_result.ok()) {
+      if (!shared_secret_result.has_value()) {
         Respond(shared_secret_result.status());
         return;
       }
@@ -416,7 +416,7 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
           base::BindOnce(
               [](SingleDecryptionContext* self,
                  StatusOr<test::Decryptor::Handle*> handle_result) {
-                if (!handle_result.ok()) {
+                if (!handle_result.has_value()) {
                   self->Respond(handle_result.status());
                   return;
                 }
@@ -532,7 +532,7 @@ TEST_F(EncryptionTest, EncryptAndDecryptMultipleParallel) {
              [](base::OnceCallback<void(StatusOr<std::string>)>
                     decryption_result,
                 StatusOr<std::string_view> result) {
-               if (!result.ok()) {
+               if (!result.has_value()) {
                  std::move(decryption_result).Run(result.status());
                  return;
                }

@@ -44,7 +44,7 @@ ReportQueueConfiguration::Create(std::string_view dm_token,
                                  int64_t reserved_space) {
   auto config_result = Create(/*event_type=*/EventType::kDevice, destination,
                               policy_check_callback, reserved_space);
-  if (!config_result.ok()) {
+  if (!config_result.has_value()) {
     return config_result;
   }
 

@@ -206,7 +206,7 @@ class SingleDecryptionContext {
         base::BindOnce(
             [](SingleDecryptionContext* self,
                StatusOr<std::string> private_key_result) {
-              if (!private_key_result.ok()) {
+              if (!private_key_result.has_value()) {
                 self->Respond(private_key_result.status());
                 return;
               }
@@ -223,7 +223,7 @@ class SingleDecryptionContext {
     // Decrypt shared secret from private key and peer public key.
     auto shared_secret_result = decryptor_->DecryptSecret(
         private_key, encrypted_record_.encryption_info().encryption_key());
-    if (!shared_secret_result.ok()) {
+    if (!shared_secret_result.has_value()) {
       Respond(shared_secret_result.status());
       return;
     }
@@ -239,7 +239,7 @@ class SingleDecryptionContext {
         base::BindOnce(
             [](SingleDecryptionContext* self,
                StatusOr<test::Decryptor::Handle*> handle_result) {
-              if (!handle_result.ok()) {
+              if (!handle_result.has_value()) {
                 self->Respond(handle_result.status());
                 return;
               }
@@ -1027,7 +1027,7 @@ class LegacyStorageTest
               LOG(ERROR) << "Attempt upload, reason="
                          << UploaderInterface::ReasonToString(reason);
               auto result = self->set_mock_uploader_expectations_.Call(reason);
-              if (!result.ok()) {
+              if (!result.has_value()) {
                 LOG(ERROR) << "Upload not allowed, reason="
                            << UploaderInterface::ReasonToString(reason) << " "
                            << result.status();
@@ -1119,7 +1119,7 @@ class LegacyStorageTest
         std::string(reinterpret_cast<const char*>(public_value), kKeySize),
         prepare_key_pair.cb());
     auto prepare_key_result = prepare_key_pair.result();
-    CHECK(prepare_key_result.ok());
+    CHECK_OK(prepare_key_result);
     public_key_id = prepare_key_result.value();
     // Prepare signed encryption key to be delivered to Storage.
     SignedEncryptionInfo signed_encryption_key;

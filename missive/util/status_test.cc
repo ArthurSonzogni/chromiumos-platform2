@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 
 #include "missive/proto/status.pb.h"
+#include "missive/util/status_macros.h"
 
 using ::testing::StrEq;
 

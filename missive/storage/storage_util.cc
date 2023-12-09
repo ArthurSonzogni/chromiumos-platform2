@@ -33,7 +33,7 @@ StorageDirectory::Set StorageDirectory::FindQueueDirectories(
        full_name = dir_enum.Next()) {
     if (const auto priority_result =
             ParsePriorityFromQueueDirectory(full_name, options_list);
-        priority_result.ok() && full_name.Extension().empty()) {
+        priority_result.has_value() && full_name.Extension().empty()) {
       // This is a legacy queue directory named just by priority with no
       // generation guid as an extension: foo/bar/Security,
       // foo/bar/FastBatch, etc.
@@ -42,7 +42,7 @@ StorageDirectory::Set StorageDirectory::FindQueueDirectories(
       LOG(INFO) << "Found legacy queue directory: " << full_name;
     } else if (auto queue_param =
                    GetPriorityAndGenerationGuid(full_name, options_list);
-               queue_param.ok()) {
+               queue_param.has_value()) {
       queue_params.emplace(queue_param.value());
     } else {
       LOG(INFO) << "Could not parse queue parameters from filename "
@@ -60,13 +60,13 @@ StorageDirectory::GetPriorityAndGenerationGuid(
     const StorageOptions::QueuesOptionsList& options_list) {
   // Try to parse generation guid from file path
   const auto generation_guid = ParseGenerationGuidFromFilePath(full_name);
-  if (!generation_guid.ok()) {
+  if (!generation_guid.has_value()) {
     return generation_guid.status();
   }
   // Try to parse a priority from file path
   const auto priority =
       ParsePriorityFromQueueDirectory(full_name, options_list);
-  if (!priority.ok()) {
+  if (!priority.has_value()) {
     return priority.status();
   }
   return std::make_tuple(priority.value(), generation_guid.value());
@@ -148,7 +148,7 @@ bool StorageDirectory::DeleteEmptyMultigenerationQueueDirectories(
   const bool executed_without_error = DeleteFilesWarnIfFailed(
       dir_enum, base::BindRepeating([](const base::FilePath& queue_directory) {
         bool should_delete_queue_directory =
-            ParseGenerationGuidFromFilePath(queue_directory).ok() &&
+            ParseGenerationGuidFromFilePath(queue_directory).has_value() &&
             QueueDirectoryContainsNoUnconfirmedRecords(queue_directory);
 
         if (!should_delete_queue_directory) {

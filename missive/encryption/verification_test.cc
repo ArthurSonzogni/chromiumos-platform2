@@ -14,6 +14,7 @@
 #include "missive/encryption/primitives.h"
 #include "missive/encryption/testing_primitives.h"
 #include "missive/util/status.h"
+#include "missive/util/status_macros.h"
 
 using testing::Eq;
 using testing::HasSubstr;

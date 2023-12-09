@@ -15,6 +15,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "missive/util/status_macros.h"
+
 namespace reporting {
 namespace {
 
@@ -48,20 +50,20 @@ class CopyNoAssign {
 
 TEST(StatusOr, TestDefaultCtor) {
   StatusOr<int> thing;
-  EXPECT_FALSE(thing.ok());
+  EXPECT_FALSE(thing.has_value());
   EXPECT_EQ(error::UNKNOWN, thing.status().code());
 }
 
 TEST(StatusOr, TestStatusCtor) {
   StatusOr<int> thing(Status(error::CANCELLED, ""));
-  EXPECT_FALSE(thing.ok());
+  EXPECT_FALSE(thing.has_value());
   EXPECT_EQ(Status(error::CANCELLED, ""), thing.status());
 }
 
 TEST(StatusOr, TestValueCtor) {
   const int kI = 4;
   StatusOr<int> thing(kI);
-  EXPECT_TRUE(thing.ok());
+  EXPECT_TRUE(thing.has_value());
   EXPECT_EQ(kI, thing.value());
 }
 
@@ -127,9 +129,9 @@ TEST(StatusOr, TestAssignmentStatusNotOkConverting) {
 
 TEST(StatusOr, TestStatus) {
   StatusOr<int> good(4);
-  EXPECT_TRUE(good.ok());
+  EXPECT_TRUE(good.has_value());
   StatusOr<int> bad(Status(error::CANCELLED, ""));
-  EXPECT_FALSE(bad.ok());
+  EXPECT_FALSE(bad.has_value());
   EXPECT_EQ(Status(error::CANCELLED, ""), bad.status());
 }
 
@@ -141,20 +143,20 @@ TEST(StatusOr, TestValueConst) {
 
 TEST(StatusOr, TestPointerDefaultCtor) {
   StatusOr<int*> thing;
-  EXPECT_FALSE(thing.ok());
+  EXPECT_FALSE(thing.has_value());
   EXPECT_EQ(error::UNKNOWN, thing.status().code());
 }
 
 TEST(StatusOr, TestPointerStatusCtor) {
   StatusOr<int*> thing(Status(error::CANCELLED, ""));
-  EXPECT_FALSE(thing.ok());
+  EXPECT_FALSE(thing.has_value());
   EXPECT_EQ(Status(error::CANCELLED, ""), thing.status());
 }
 
 TEST(StatusOr, TestPointerValueCtor) {
   const int kI = 4;
   StatusOr<const int*> thing(&kI);
-  EXPECT_TRUE(thing.ok());
+  EXPECT_TRUE(thing.has_value());
   EXPECT_EQ(&kI, thing.value());
 }
 
@@ -221,7 +223,7 @@ TEST(StatusOr, TestPointerAssignmentStatusNotOkConverting) {
 TEST(StatusOr, TestPointerStatus) {
   const int kI = 0;
   StatusOr<const int*> good(&kI);
-  EXPECT_TRUE(good.ok());
+  EXPECT_TRUE(good.has_value());
   StatusOr<const int*> bad(Status(error::CANCELLED, ""));
   EXPECT_EQ(Status(error::CANCELLED, ""), bad.status());
 }
@@ -244,7 +246,7 @@ TEST(StatusOr, TestMoveStatusOr) {
   EXPECT_OK(thing.status());
   StatusOr<std::unique_ptr<int>> moved = std::move(thing);
   EXPECT_EQ(error::UNKNOWN, thing.status().code());
-  EXPECT_TRUE(moved.ok());
+  EXPECT_TRUE(moved.has_value());
   EXPECT_EQ(kI, *moved.value());
 }
 

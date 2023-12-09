@@ -26,7 +26,7 @@ ResourceCollectorCpu::~ResourceCollectorCpu() {
 
 void ResourceCollectorCpu::Collect() {
   const auto cpu_percentage = tallier_->Tally();
-  if (!cpu_percentage.ok()) {
+  if (!cpu_percentage.has_value()) {
     LOG(ERROR) << cpu_percentage.status();
     return;
   }

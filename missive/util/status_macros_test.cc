@@ -11,6 +11,7 @@
 #include <base/functional/callback.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <gtest/gtest-spi.h>
 
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
@@ -71,7 +72,7 @@ TEST(StatusMacros, AssignOnOk) {
   StatusOr<int> status_or_result =
       AssignOrReturnWrapperFunction(/*fail=*/false, kReturnValue);
 
-  ASSERT_TRUE(status_or_result.ok());
+  ASSERT_TRUE(status_or_result.has_value());
   EXPECT_EQ(status_or_result.value(), kReturnValue);
 }
 
@@ -79,7 +80,7 @@ TEST(StatusMacros, AssignOnOk) {
 TEST(StatusMacros, ReturnOnError) {
   StatusOr<int> status_or_result =
       AssignOrReturnWrapperFunction(/*fail=*/true, /*return_value=*/0);
-  EXPECT_FALSE(status_or_result.ok());
+  EXPECT_FALSE(status_or_result.has_value());
 }
 
 StatusOr<int> MultipleAssignOrReturnWrapperFunction(int return_value) {
@@ -97,7 +98,7 @@ TEST(StatusMacros, MultipleAssignsSucceed) {
   constexpr int kReturnValue = 42;
   StatusOr<int> status_or_result =
       MultipleAssignOrReturnWrapperFunction(kReturnValue);
-  ASSERT_TRUE(status_or_result.ok());
+  ASSERT_TRUE(status_or_result.has_value());
   EXPECT_EQ(status_or_result.value(), kReturnValue);
 }
 
@@ -109,7 +110,7 @@ TEST(StatusMacros, AssignOnOkMoveable) {
       AssignOrReturnWrapperFunction(/*fail=*/false,
                                     std::make_unique<int>(kReturnValue));
 
-  ASSERT_TRUE(status_or_result.ok());
+  ASSERT_TRUE(status_or_result.has_value());
   EXPECT_EQ(*status_or_result.value(), kReturnValue);
 }
 
@@ -118,7 +119,7 @@ TEST(StatusMacros, ReturnOnErrorMoveable) {
   StatusOr<std::unique_ptr<int>> status_or_result =
       AssignOrReturnWrapperFunction(/*fail=*/true,
                                     std::make_unique<int>(/*return_value=*/0));
-  EXPECT_FALSE(status_or_result.ok());
+  EXPECT_FALSE(status_or_result.has_value());
 }
 
 // ASSIGN_OR_ONCE_CALLBACK_AND_RETURN testing
@@ -212,5 +213,93 @@ TEST(StatusMacros, MultipleAssignOrOnceCallbackCompletes) {
   EXPECT_EQ(callback_test_class.status(), Status::StatusOK());
 }
 
+TEST(StatusMacros, CheckOKOnStatus) {
+  const auto ok_status = Status::StatusOK();
+  CHECK_OK(ok_status);
+  CHECK_OK(ok_status) << "error message";
+  // rvalue
+  CHECK_OK(Status::StatusOK());
+  // Can't check on error status here because CHECK does not use gtest
+  // utilities.
+}
+
+TEST(StatusMacros, DCheckOKOnStatus) {
+  const auto ok_status = Status::StatusOK();
+  DCHECK_OK(ok_status);
+  DCHECK_OK(ok_status) << "error message";
+  // rvalue
+  DCHECK_OK(Status::StatusOK());
+  // Can't check on error status here because DCHECK does not use gtest
+  // utilities.
+}
+
+void AssertOKErrorStatus() {
+  ASSERT_OK(Status(error::INTERNAL, ""));
+}
+
+TEST(StatusMacros, AssertOKOnStatus) {
+  const auto ok_status = Status::StatusOK();
+  ASSERT_OK(ok_status);
+  ASSERT_OK(ok_status) << "error message";
+  // rvalue
+  ASSERT_OK(Status::StatusOK());
+  EXPECT_FATAL_FAILURE(AssertOKErrorStatus(), "error::INTERNAL");
+}
+
+void ExpectOKErrorStatus() {
+  EXPECT_OK(Status(error::INTERNAL, ""));
+}
+
+TEST(StatusMacros, ExpectOKOnStatus) {
+  EXPECT_OK(Status::StatusOK());
+  EXPECT_OK(Status::StatusOK()) << "error message";
+  EXPECT_NONFATAL_FAILURE(ExpectOKErrorStatus(), "error::INTERNAL");
+}
+
+TEST(StatusMacros, CheckOKOnStatusOr) {
+  StatusOr<int> status_or(2);
+  CHECK_OK(status_or);
+  CHECK_OK(status_or) << "error message";
+  // rvalue
+  CHECK_OK(StatusOr<int>(2));
+  // Can't check on error status here because CHECK does not use gtest
+  // utilities.
+}
+
+TEST(StatusMacros, DCheckOKOnStatusOr) {
+  StatusOr<int> status_or(2);
+  DCHECK_OK(status_or);
+  DCHECK_OK(status_or) << "error message";
+  // rvalue
+  DCHECK_OK(StatusOr<int>(2));
+  // Can't check on error status here because DCHECK does not use gtest
+  // utilities.
+}
+
+void AssertOKErrorStatusOr() {
+  ASSERT_OK(StatusOr<int>(Status(error::INTERNAL, "")));
+}
+
+TEST(StatusMacros, AssertOKOnStatusOr) {
+  StatusOr<int> status_or(2);
+  ASSERT_OK(status_or);
+  ASSERT_OK(status_or) << "error message";
+  // rvalue
+  ASSERT_OK(StatusOr<int>(2));
+  EXPECT_FATAL_FAILURE(AssertOKErrorStatusOr(), "error::INTERNAL");
+}
+
+void ExpectOKErrorStatusOr() {
+  EXPECT_OK(StatusOr<int>(Status(error::INTERNAL, "")));
+}
+
+TEST(StatusMacros, ExpectOKOnStatusOr) {
+  StatusOr<int> status_or(2);
+  EXPECT_OK(status_or);
+  EXPECT_OK(status_or) << "error message";
+  // rvalue
+  EXPECT_OK(StatusOr<int>(2));
+  EXPECT_NONFATAL_FAILURE(ExpectOKErrorStatusOr(), "error::INTERNAL");
+}
 }  // namespace
 }  // namespace reporting

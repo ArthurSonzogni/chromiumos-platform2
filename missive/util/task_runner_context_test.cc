@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 
 #include "missive/util/status.h"
+#include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 
 namespace reporting {
@@ -393,7 +394,7 @@ TEST_F(TaskRunner, ActionsWithStatusOrPtr) {
     void Pick(size_t index) {
       CheckOnValidSequence();
       if (index < vector_->size()) {
-        if (!vector_->at(index).ok()) {
+        if (!vector_->at(index).has_value()) {
           Schedule(&ActionsWithStatusOrContext::Pick, base::Unretained(this),
                    index + 1);
           return;
@@ -429,7 +430,7 @@ TEST_F(TaskRunner, ActionsWithStatusOrPtr) {
           &run_loop, &result),
       base::SequencedTaskRunner::GetCurrentDefault());
   run_loop.Run();
-  EXPECT_TRUE(result.ok()) << result.status();
+  EXPECT_OK(result) << result.status();
   EXPECT_EQ(result.value()->value(), kI);
 }
 

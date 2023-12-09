@@ -21,6 +21,7 @@
 
 #include "missive/analytics/metrics.h"
 #include "missive/analytics/metrics_test_util.h"
+#include "missive/util/status_macros.h"
 
 namespace reporting {
 namespace {

@@ -206,7 +206,7 @@ class [[nodiscard]] StatusOr {
   }
 
   // Indicates whether the object contains a |T| value.
-  bool ok() const { return status_.ok(); }
+  bool has_value() const { return status_.ok(); }
 
   // Gets the stored status object, or an OK status if a |T| value is stored.
   Status status() const { return status_; }
@@ -216,7 +216,7 @@ class [[nodiscard]] StatusOr {
   // This method should only be called if this StatusOr object's status is OK
   // (i.e. a call to ok() returns true), otherwise this call will abort.
   [[nodiscard]] const T& value() const& {
-    if (!ok()) {
+    if (!has_value()) {
       internal::StatusOrHelper::Crash(status_);
     }
     return value_.value();
@@ -227,7 +227,7 @@ class [[nodiscard]] StatusOr {
   // This method should only be called if this StatusOr object's status is OK
   // (i.e. a call to ok() returns true), otherwise this call will abort.
   [[nodiscard]] T& value() & {
-    if (!ok()) {
+    if (!has_value()) {
       internal::StatusOrHelper::Crash(status_);
     }
     return value_.value();
@@ -240,7 +240,7 @@ class [[nodiscard]] StatusOr {
   // StatusOr object is invalidated after this call and will be updated to
   // contain a non-OK status with a |error::UNKNOWN| error code.
   [[nodiscard]] T value() && {
-    if (!ok()) {
+    if (!has_value()) {
       internal::StatusOrHelper::Crash(status_);
     }
 
@@ -269,7 +269,7 @@ class [[nodiscard]] StatusOr {
   // Resets |this| to contain |status|.
   template <class U>
   void AssignStatus(U&& status) {
-    if (ok()) {
+    if (has_value()) {
       OverwriteValueWithStatus(std::forward<U>(status));
     } else {
       status_ = std::forward<U>(status);
@@ -281,7 +281,7 @@ class [[nodiscard]] StatusOr {
   // a value.
   template <class U>
   void OverwriteValueWithStatus(U&& status) {
-    if (!ok()) {
+    if (!has_value()) {
       LOG(FATAL) << "Object does not have a value to change from";
     }
     value_.reset();

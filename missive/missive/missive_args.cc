@@ -23,6 +23,7 @@
 #include <featured/feature_library.h>
 
 #include "missive/storage/storage_configuration.h"
+#include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 
 // Temporary replacement for `Priority_Name` that does
@@ -60,13 +61,13 @@ StatusOr<base::TimeDelta> ParseDuration(std::string_view duration_string) {
 base::TimeDelta DurationParameterValue(std::string_view parameter_name,
                                        std::string_view duration_string,
                                        std::string_view duration_default) {
-  CHECK(ParseDuration(duration_default).ok());
+  CHECK_OK(ParseDuration(duration_default));
 
   if (duration_string.empty()) {
     return ParseDuration(duration_default).value();
   }
   const auto duration_result = ParseDuration(duration_string);
-  if (!duration_result.ok()) {
+  if (!duration_result.has_value()) {
     LOG(ERROR) << "Unable to parse parameter " << parameter_name << "="
                << duration_string << ", assumed default=" << duration_default
                << ", because: " << duration_result.status();

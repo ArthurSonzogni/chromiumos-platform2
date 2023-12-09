@@ -16,6 +16,7 @@
 #include "missive/analytics/metrics_test_util.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/util/status.h"
+#include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 
 using ::testing::_;
@@ -59,14 +60,14 @@ TEST_F(ReportQueueConfigurationTest,
        ValidateConfigurationWithInvalidDestination) {
   EXPECT_FALSE(ReportQueueConfiguration::Create(kDmToken, kInvalidDestination,
                                                 kValidCallback)
-                   .ok());
+                   .has_value());
 }
 
 TEST_F(ReportQueueConfigurationTest,
        ValidateConfigurationWithInvalidDestinationInvalidCallback) {
   EXPECT_FALSE(ReportQueueConfiguration::Create(
                    /*dm_token=*/kDmToken, kInvalidDestination, kInvalidCallback)
-                   .ok());
+                   .has_value());
 }
 
 TEST_F(ReportQueueConfigurationTest, ValidateConfigurationWithValidParams) {
@@ -83,21 +84,21 @@ TEST_F(ReportQueueConfigurationTest,
        ValidateConfigurationWithNoDMTokenInvalidDestination) {
   EXPECT_FALSE(ReportQueueConfiguration::Create(
                    /*dm_token*=*/"", kInvalidDestination, kValidCallback)
-                   .ok());
+                   .has_value());
 }
 
 TEST_F(ReportQueueConfigurationTest,
        ValidateConfigurationWithNoDMTokenInvalidCallback) {
   EXPECT_FALSE(ReportQueueConfiguration::Create(
                    /*dm_token=*/"", kValidDestination, kInvalidCallback)
-                   .ok());
+                   .has_value());
 }
 
 TEST_F(ReportQueueConfigurationTest,
        ValidateConfigurationWithNoDMTokenInvalidDestinationInvalidCallback) {
   EXPECT_FALSE(ReportQueueConfiguration::Create(
                    /*dm_token*=*/"", kInvalidDestination, kInvalidCallback)
-                   .ok());
+                   .has_value());
 }
 
 TEST_F(ReportQueueConfigurationTest, ValidateConfigurationWithDeviceEventType) {
@@ -114,14 +115,14 @@ TEST_F(ReportQueueConfigurationTest,
        ValidateConfigurationWithEventTypeInvalidDestination) {
   EXPECT_FALSE(ReportQueueConfiguration::Create(
                    EventType::kDevice, kInvalidDestination, kValidCallback)
-                   .ok());
+                   .has_value());
 }
 
 TEST_F(ReportQueueConfigurationTest,
        ValidateConfigurationWithEventTypeInvalidCallback) {
   EXPECT_FALSE(ReportQueueConfiguration::Create(
                    EventType::kDevice, kValidDestination, kInvalidCallback)
-                   .ok());
+                   .has_value());
 }
 
 TEST_F(ReportQueueConfigurationTest,
@@ -129,7 +130,7 @@ TEST_F(ReportQueueConfigurationTest,
   EXPECT_FALSE(ReportQueueConfiguration::Create(
                    EventType::kDevice, kValidDestination, kValidCallback,
                    /*reserved_space=*/-1L)
-                   .ok());
+                   .has_value());
 }
 
 TEST_F(ReportQueueConfigurationTest, UsesProvidedPolicyCheckCallback) {

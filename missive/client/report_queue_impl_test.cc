@@ -25,6 +25,7 @@
 #include "missive/proto/test.pb.h"
 #include "missive/storage/test_storage_module.h"
 #include "missive/util/status.h"
+#include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
 

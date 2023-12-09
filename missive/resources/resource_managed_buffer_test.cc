@@ -14,6 +14,7 @@
 
 #include "missive/resources/resource_manager.h"
 #include "missive/util/status.h"
+#include "missive/util/status_macros.h"
 
 using ::testing::AllOf;
 using ::testing::Eq;

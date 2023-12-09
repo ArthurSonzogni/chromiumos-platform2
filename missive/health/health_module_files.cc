@@ -50,7 +50,7 @@ std::unique_ptr<HealthModuleFiles> HealthModuleFiles::Create(
     files.emplace(header, path);
 
     auto size_result = FileSize(path);
-    if (!size_result.ok()) {
+    if (!size_result.has_value()) {
       continue;
     }
     uint32_t file_size = size_result.value();
@@ -81,8 +81,7 @@ HealthModuleFiles::HealthModuleFiles(
       max_storage_space_(max_storage_space),
       storage_used_(storage_used),
       files_(files) {
-  const auto free_result = FreeStorage(0);
-  if (!free_result.ok()) {
+  if (const auto free_result = FreeStorage(0); !free_result.ok()) {
     DVLOG(1) << "failed to initialize health files storage: "
              << free_result.error_message();
   }
@@ -114,7 +113,7 @@ void HealthModuleFiles::PopulateHistory(ERPHealthData* data) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   for (const auto& file : files_) {
     const auto read_result = MaybeReadFile(file.second, /*offset=*/0);
-    if (!read_result.status().ok()) {
+    if (!read_result.has_value()) {
       return;
     }
 

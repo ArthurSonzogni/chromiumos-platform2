@@ -139,7 +139,7 @@ void QueueUploaderInterface::WrapInstantiatedUploader(
     HealthModule::Recorder recorder,
     UploaderInterfaceResultCb start_uploader_cb,
     StatusOr<std::unique_ptr<UploaderInterface>> uploader_result) {
-  if (!uploader_result.ok()) {
+  if (!uploader_result.has_value()) {
     if (recorder) {
       auto* const record = recorder->mutable_upload_encrypted_record_call();
       record->set_priority(priority);
@@ -227,11 +227,12 @@ GenerationGuid QueuesContainer::GetOrCreateGenerationGuid(
   StatusOr<GenerationGuid> generation_guid_result;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (generation_guid_result = GetGenerationGuid(dm_token, priority);
-      !generation_guid_result.ok()) {
+      !generation_guid_result.has_value()) {
     // Create a generation guid for this dm token and priority
     generation_guid_result = CreateGenerationGuidForDMToken(dm_token, priority);
     // Creation should never fail.
-    CHECK(generation_guid_result.ok()) << generation_guid_result.status();
+    CHECK(generation_guid_result.has_value())
+        << generation_guid_result.status();
   }
   return generation_guid_result.value();
 }
@@ -252,7 +253,7 @@ StatusOr<GenerationGuid> QueuesContainer::CreateGenerationGuidForDMToken(
     const DMtoken& dm_token, Priority priority) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (auto generation_guid = GetGenerationGuid(dm_token, priority);
-      generation_guid.ok()) {
+      generation_guid.has_value()) {
     return Status(
         error::FAILED_PRECONDITION,
         base::StrCat({"Generation guid for dm_token ", dm_token,
@@ -532,7 +533,7 @@ void KeyDelivery::WrapInstantiatedKeyUploader(
     HealthModule::Recorder recorder,
     UploaderInterface::UploaderInterfaceResultCb start_uploader_cb,
     StatusOr<std::unique_ptr<UploaderInterface>> uploader_result) {
-  if (!uploader_result.ok()) {
+  if (!uploader_result.has_value()) {
     std::move(start_uploader_cb).Run(uploader_result.status());
     return;
   }
@@ -543,7 +544,7 @@ void KeyDelivery::WrapInstantiatedKeyUploader(
 
 void KeyDelivery::EncryptionKeyReceiverReady(
     StatusOr<std::unique_ptr<UploaderInterface>> uploader_result) {
-  if (!uploader_result.ok()) {
+  if (!uploader_result.has_value()) {
     OnCompletion(uploader_result.status());
     return;
   }
@@ -688,7 +689,8 @@ void KeyInStorage::RemoveKeyFilesWithLowerIndexes(uint64_t new_file_index) {
           [](uint64_t new_file_index, const base::FilePath& full_name) {
             const auto file_index =
                 StorageQueue::GetFileSequenceIdFromPath(full_name);
-            if (!file_index.ok() ||  // Should not happen, will remove file.
+            if (!file_index
+                     .has_value() ||  // Should not happen, will remove file.
                 file_index.value() <
                     static_cast<int64_t>(
                         new_file_index)) {  // Lower index file, will remove
@@ -717,7 +719,7 @@ void KeyInStorage::EnumerateKeyFiles(
       continue;
     }
     const auto file_index = StorageQueue::GetFileSequenceIdFromPath(full_name);
-    if (!file_index.ok()) {  // Shouldn't happen, something went wrong.
+    if (!file_index.has_value()) {  // Shouldn't happen, something went wrong.
       continue;
     }
     if (!found_key_files

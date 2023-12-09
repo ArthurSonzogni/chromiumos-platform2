@@ -33,6 +33,7 @@
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_module.h"
 #include "missive/util/status.h"
+#include "missive/util/status_macros.h"
 #include "missive/util/test_support_callbacks.h"
 #include "missive/util/test_util.h"
 

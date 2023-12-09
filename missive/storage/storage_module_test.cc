@@ -27,6 +27,7 @@
 #include "missive/storage/storage_base.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"
+#include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
 

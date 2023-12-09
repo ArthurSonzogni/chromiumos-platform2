@@ -47,6 +47,7 @@
 #include "missive/storage/storage_configuration.h"
 #include "missive/util/file.h"
 #include "missive/util/status.h"
+#include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
 
@@ -774,7 +775,7 @@ class StorageQueueTest
               LOG(ERROR) << "Attempt upload, reason="
                          << UploaderInterface::ReasonToString(reason);
               auto result = self->set_mock_uploader_expectations_.Call(reason);
-              if (!result.ok()) {
+              if (!result.has_value()) {
                 LOG(ERROR) << "Upload not allowed, reason="
                            << UploaderInterface::ReasonToString(reason) << " "
                            << result.status();
@@ -2202,7 +2203,7 @@ TEST_P(StorageQueueTest, CreateStorageQueueInvalidOptionsPath) {
   options_.set_directory(base::FilePath(kInvalidDirectoryPath));
   StatusOr<scoped_refptr<StorageQueue>> queue_result =
       CreateTestStorageQueue(BuildStorageQueueOptionsPeriodic());
-  EXPECT_FALSE(queue_result.ok());
+  EXPECT_FALSE(queue_result.has_value());
   EXPECT_EQ(queue_result.status().error_code(), error::UNAVAILABLE);
 }
 
@@ -2219,7 +2220,7 @@ TEST_P(StorageQueueTest, CreateStorageQueueAllRetriesFail) {
                               base::Unretained(&task_environment_))));
   StatusOr<scoped_refptr<StorageQueue>> queue_result =
       CreateTestStorageQueue(BuildStorageQueueOptionsPeriodic(), init_retry_cb);
-  EXPECT_FALSE(queue_result.ok());
+  EXPECT_FALSE(queue_result.has_value());
   EXPECT_EQ(queue_result.status().error_code(), error::UNAVAILABLE);
 }
 

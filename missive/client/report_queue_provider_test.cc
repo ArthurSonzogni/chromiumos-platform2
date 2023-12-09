@@ -23,6 +23,7 @@
 #include "missive/client/report_queue.h"
 #include "missive/client/report_queue_configuration.h"
 #include "missive/client/report_queue_provider_test_helper.h"
+#include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
 
@@ -88,7 +89,7 @@ void CreateQueuePostData(
              ReportQueue::EnqueueCallback done_cb,
              StatusOr<std::unique_ptr<ReportQueue>> report_queue_result) {
             // Bail out if queue failed to create.
-            if (!report_queue_result.ok()) {
+            if (!report_queue_result.has_value()) {
               std::move(done_cb).Run(report_queue_result.status());
               return;
             }
@@ -131,7 +132,7 @@ void CreateSpeculativeQueuePostData(
   auto report_queue_result =
       ReportQueueProvider::CreateSpeculativeQueue(std::move(config));
   // Bail out if queue failed to create.
-  if (!report_queue_result.ok()) {
+  if (!report_queue_result.has_value()) {
     std::move(done_cb).Run(report_queue_result.status());
     return;
   }
@@ -285,7 +286,7 @@ TEST_F(ReportQueueProviderTest,
                                    event.cb());
   const auto result = event.result();
 
-  ASSERT_FALSE(result.ok());
+  ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.status().code(), error::FAILED_PRECONDITION);
 }
 
@@ -302,7 +303,7 @@ TEST_F(ReportQueueProviderTest,
 
   const auto result = ReportQueueProvider::CreateSpeculativeQueue(
       std::move(config_result.value()));
-  ASSERT_FALSE(result.ok());
+  ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.status().code(), error::FAILED_PRECONDITION);
 }
 }  // namespace

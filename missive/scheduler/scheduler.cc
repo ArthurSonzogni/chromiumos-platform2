@@ -281,7 +281,7 @@ void Scheduler::StartJobs() {
   // non-OK status.
   StatusOr<std::unique_ptr<JobBlocker>> blocker_result =
       job_semaphore_->AcquireJobBlocker();
-  while (blocker_result.ok()) {
+  while (blocker_result.has_value()) {
     RunJob(std::move(blocker_result.value()), std::move(jobs_queue_.front()));
     jobs_queue_.pop();
     if (jobs_queue_.empty()) {

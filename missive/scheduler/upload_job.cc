@@ -166,7 +166,7 @@ void UploadJob::StartImpl() {
 void UploadJob::Done(StatusOr<EncryptedRecords> records_result,
                      ScopedReservation records_reservation) {
   CheckValidSequence();
-  if (!records_result.ok()) {
+  if (!records_result.has_value()) {
     Finish(records_result.status());
     return;
   }

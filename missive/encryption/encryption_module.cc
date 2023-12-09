@@ -16,6 +16,7 @@
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/proto/record.pb.h"
 #include "missive/util/status.h"
+#include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 
 namespace reporting {
@@ -52,7 +53,7 @@ EncryptionModule::EncryptionModule(bool is_enabled,
   static_assert(std::is_same<PublicKeyId, Encryptor::PublicKeyId>::value,
                 "Public key id types must match");
   auto encryptor_result = Encryptor::Create();
-  CHECK(encryptor_result.ok());
+  CHECK_OK(encryptor_result);
   encryptor_ = std::move(encryptor_result.value());
 }
 
@@ -66,7 +67,7 @@ void EncryptionModule::EncryptRecordImpl(
       [](std::string record,
          base::OnceCallback<void(StatusOr<EncryptedRecord>)> cb,
          StatusOr<Encryptor::Handle*> handle_result) {
-        if (!handle_result.ok()) {
+        if (!handle_result.has_value()) {
           std::move(cb).Run(handle_result.status());
           return;
         }

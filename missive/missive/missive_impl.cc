@@ -169,7 +169,7 @@ void MissiveImpl::OnUploadClientCreated(
     base::OnceCallback<void(Status)> cb,
     StatusOr<scoped_refptr<UploadClient>> upload_client_result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!upload_client_result.ok()) {
+  if (!upload_client_result.has_value()) {
     std::move(cb).Run(upload_client_result.status());
     return;
   }
@@ -185,7 +185,7 @@ void MissiveImpl::OnCollectionParameters(
     base::OnceCallback<void(Status)> cb,
     StatusOr<MissiveArgs::CollectionParameters> collection_parameters_result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!collection_parameters_result.ok()) {
+  if (!collection_parameters_result.has_value()) {
     std::move(cb).Run(collection_parameters_result.status());
     return;
   }
@@ -232,7 +232,7 @@ void MissiveImpl::OnStorageParameters(
     StorageOptions storage_options,
     StatusOr<MissiveArgs::StorageParameters> storage_parameters_result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!storage_parameters_result.ok()) {
+  if (!storage_parameters_result.has_value()) {
     std::move(cb).Run(storage_parameters_result.status());
     return;
   }
@@ -309,7 +309,7 @@ void MissiveImpl::OnStorageModuleConfigured(
     base::OnceCallback<void(Status)> cb,
     StatusOr<scoped_refptr<StorageModule>> storage_module_result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!storage_module_result.ok()) {
+  if (!storage_module_result.has_value()) {
     std::move(cb).Run(storage_module_result.status());
     return;
   }
@@ -369,7 +369,7 @@ void MissiveImpl::CreateUploadJob(
       std::move(uploader_result_cb),
       base::BindPostTaskToCurrentDefault(
           base::BindOnce(&MissiveImpl::HandleUploadResponse, GetWeakPtr())));
-  if (!upload_job_result.ok()) {
+  if (!upload_job_result.has_value()) {
     // In the event that UploadJob::Create fails, it will call
     // |uploader_result_cb| with a failure status.
     LOG(ERROR) << "Was unable to create UploadJob, status:"
@@ -528,7 +528,7 @@ void MissiveImpl::UpdateEncryptionKey(
 void MissiveImpl::HandleUploadResponse(
     StatusOr<UploadEncryptedRecordResponse> upload_response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!upload_response.ok()) {
+  if (!upload_response.has_value()) {
     return;  // No response received.
   }
   const auto& upload_response_value = upload_response.value();

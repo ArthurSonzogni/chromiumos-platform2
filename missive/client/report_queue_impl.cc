@@ -50,7 +50,7 @@ void AddRecordToStorage(scoped_refptr<StorageModuleInterface> storage,
                         StorageModuleInterface::EnqueueCallback callback) {
   // Generate record data.
   auto record_result = std::move(record_producer).Run();
-  if (!record_result.ok()) {
+  if (!record_result.has_value()) {
     std::move(callback).Run(record_result.status());
     return;
   }
@@ -90,7 +90,7 @@ void AddRecordToStorage(scoped_refptr<StorageModuleInterface> storage,
     return;
   }
   record.set_timestamp_us(time_since_epoch_us);
-  if (!record_result.ok()) {
+  if (!record_result.has_value()) {
     std::move(callback).Run(record_result.status());
     return;
   }
@@ -319,7 +319,7 @@ void SpeculativeReportQueueImpl::AttachActualQueue(
     // Already attached, do nothing.
     return;
   }
-  if (!status_or_actual_queue.ok()) {
+  if (!status_or_actual_queue.has_value()) {
     // Failed to create actual queue.
     // Flush all pending records with this status.
     PurgePendingProducers(status_or_actual_queue.status());

@@ -14,6 +14,7 @@
 #include <gtest/gtest.h>
 
 #include "missive/util/status.h"
+#include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
 
@@ -113,7 +114,7 @@ TEST_F(DisconnectableClientTest, NoConnection) {
       std::make_unique<MockDelegate>(111, base::TimeDelta(), res.cb()));
 
   auto result = res.result();
-  ASSERT_FALSE(result.ok());
+  ASSERT_FALSE(result.has_value());
   ASSERT_THAT(result.status().error_code(), Eq(error::UNAVAILABLE))
       << result.status();
 }
@@ -140,7 +141,7 @@ TEST_F(DisconnectableClientTest, FailedCallOnNormalConnection) {
   task_environment_.FastForwardBy(base::Seconds(1));
 
   result = res2.result();
-  ASSERT_FALSE(result.ok());
+  ASSERT_FALSE(result.has_value());
   ASSERT_THAT(result.status().error_code(), Eq(error::CANCELLED))
       << result.status();
 
@@ -170,7 +171,7 @@ TEST_F(DisconnectableClientTest, DroppedConnection) {
   client_.SetAvailability(/*is_available=*/false);
 
   result = res2.result();
-  ASSERT_FALSE(result.ok());
+  ASSERT_FALSE(result.has_value());
   ASSERT_THAT(result.status().error_code(), Eq(error::UNAVAILABLE))
       << result.status();
 }
@@ -199,12 +200,12 @@ TEST_F(DisconnectableClientTest, FailedCallOnDroppedConnection) {
   task_environment_.FastForwardBy(base::Seconds(1));
 
   result = res2.result();
-  ASSERT_FALSE(result.ok());
+  ASSERT_FALSE(result.has_value());
   ASSERT_THAT(result.status().error_code(), Eq(error::UNAVAILABLE))
       << result.status();
 
   result = res3.result();
-  ASSERT_FALSE(result.ok());
+  ASSERT_FALSE(result.has_value());
   ASSERT_THAT(result.status().error_code(), Eq(error::UNAVAILABLE))
       << result.status();
 }
@@ -231,7 +232,7 @@ TEST_F(DisconnectableClientTest, ConnectionDroppedThenRestored) {
   task_environment_.FastForwardBy(base::Seconds(1));
 
   result = res2.result();
-  ASSERT_FALSE(result.ok());
+  ASSERT_FALSE(result.has_value());
   ASSERT_THAT(result.status().error_code(), Eq(error::UNAVAILABLE))
       << result.status();
 

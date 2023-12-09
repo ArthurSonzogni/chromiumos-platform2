@@ -12,6 +12,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "missive/util/status_macros.h"
+
 using ::testing::StrEq;
 
 namespace reporting {
@@ -144,7 +146,7 @@ TEST(FileTest, ReadWriteFile) {
 
   // Read file at an out of bounds index
   read_status = MaybeReadFile(file_path, kOverFlowPos);
-  ASSERT_FALSE(read_status.ok());
+  ASSERT_FALSE(read_status.has_value());
   EXPECT_EQ(read_status.status().error_code(), error::DATA_LOSS);
 }
 

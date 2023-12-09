@@ -22,6 +22,7 @@
 #include "missive/analytics/resource_collector_storage.h"
 #include "missive/dbus/dbus_test_environment.h"
 #include "missive/util/status.h"
+#include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
 

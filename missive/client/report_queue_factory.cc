@@ -32,7 +32,7 @@ void ReportQueueFactory::Create(EventType event_type,
   auto config_result = ReportQueueConfiguration::Create(
       event_type, destination,
       base::BindRepeating([]() { return Status::StatusOK(); }), reserved_space);
-  if (!config_result.ok()) {
+  if (!config_result.has_value()) {
     LOG_WITH_STATUS(1, "ReportQueueConfiguration is invalid.", config_result);
     return;
   }
@@ -56,7 +56,7 @@ ReportQueueFactory::CreateSpeculativeReportQueue(EventType event_type,
   auto config_result = ReportQueueConfiguration::Create(
       event_type, destination,
       base::BindRepeating([]() { return Status::StatusOK(); }), reserved_space);
-  if (!config_result.ok()) {
+  if (!config_result.has_value()) {
     DVLOG(1)
         << "Cannot initialize report queue. Invalid ReportQueueConfiguration: "
         << config_result.status();
@@ -67,7 +67,7 @@ ReportQueueFactory::CreateSpeculativeReportQueue(EventType event_type,
 
   auto speculative_queue_result = ReportQueueProvider::CreateSpeculativeQueue(
       std::move(config_result.value()));
-  if (!speculative_queue_result.ok()) {
+  if (!speculative_queue_result.has_value()) {
     DVLOG(1) << "Failed to create speculative queue: "
              << speculative_queue_result.status();
     return std::unique_ptr<ReportQueue, base::OnTaskRunnerDeleter>(
@@ -93,7 +93,7 @@ ReportQueueFactory::CreateTrySetCallback(
 void ReportQueueFactory::TrySetReportQueue(
     SuccessCallback success_cb,
     StatusOr<std::unique_ptr<ReportQueue>> report_queue_result) {
-  if (!report_queue_result.ok()) {
+  if (!report_queue_result.has_value()) {
     LOG_WITH_STATUS(1, "ReportQueue could not be created.",
                     report_queue_result);
     return;

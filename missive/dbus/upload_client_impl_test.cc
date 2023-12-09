@@ -27,6 +27,7 @@
 #include "missive/health/health_module_delegate_mock.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
+#include "missive/util/status_macros.h"
 #include "missive/util/test_support_callbacks.h"
 
 using ::testing::_;
@@ -160,7 +161,7 @@ TEST_F(UploadClientTest, CallUnavailable) {
   auto response_callback = base::BindOnce(
       [](test::TestCallbackWaiter* waiter,
          StatusOr<UploadEncryptedRecordResponse> response) {
-        ASSERT_FALSE(response.ok());
+        ASSERT_FALSE(response.has_value());
         ASSERT_THAT(response.status().code(), Eq(error::UNAVAILABLE))
             << response.status().ToString();
         waiter->Signal();
@@ -202,7 +203,7 @@ TEST_F(UploadClientTest, CallBecameUnavailable) {
   auto response_callback = base::BindOnce(
       [](test::TestCallbackWaiter* waiter,
          StatusOr<UploadEncryptedRecordResponse> response) {
-        ASSERT_FALSE(response.ok());
+        ASSERT_FALSE(response.has_value());
         ASSERT_THAT(response.status().code(), Eq(error::UNAVAILABLE))
             << response.status().ToString();
         waiter->Signal();
