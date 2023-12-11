@@ -5,6 +5,7 @@
 use std::{path::Path, process::ExitCode};
 
 use anyhow::{Context, Result};
+use gpt_disk_types::{guid, Guid};
 use libchromeos::{panic_handler, syslog};
 use log::{error, info};
 use nix::sys::reboot::reboot;
@@ -28,15 +29,15 @@ const FLEX_DEPLOY_PART_NUM: u32 = 13;
 const STATEFUL_PARTITION_LABEL: &str = "STATE";
 const STATEFUL_PARTITION_NUM: u32 = 1;
 
-const DATA_PART_NUM: u32 = 4;
+const DATA_PART_GUID: Guid = guid!("e160967d-9493-4ba8-8153-f0dc8ac4f7b7");
 
 /// Copies the ChromeOS Flex image to rootfs (residing in RAM). This is done
 /// since we are about to repartition the disk and can't loose the image. Since
 /// the image size is about 2.5GB, we assume that much free space in RAM.
 fn copy_image_to_rootfs(disk_path: &Path) -> Result<()> {
-    // We expect our data in partition 4, with a vFAT filesystem.
-    let data_partition_path = libchromeos::disk::get_partition_device(disk_path, DATA_PART_NUM)
-        .context("Unable to find correct partition path")?;
+    // We expect our data on a partition with [`DATA_PART_GUID`], with a vFAT filesystem.
+    let data_partition_path =
+        disk::get_data_partition(disk_path).context("Unable to find correct partition path")?;
     let mount = mount::Mount::mount_by_path(&data_partition_path, mount::FsType::Vfat)?;
 
     // Copy the image to rootfs.
@@ -134,9 +135,7 @@ fn run(disk_path: &Path) -> Result<()> {
 ///    partition though).
 fn try_safe_logs(disk_path: &Path) -> Result<()> {
     // Case 1: The data partition still exists, so we write the logs to it.
-    if let Some(data_partition_path) =
-        libchromeos::disk::get_partition_device(disk_path, DATA_PART_NUM)
-    {
+    if let Ok(data_partition_path) = disk::get_data_partition(disk_path) {
         if matches!(data_partition_path.try_exists(), Ok(true)) {
             let data_mount =
                 mount::Mount::mount_by_path(&data_partition_path, mount::FsType::Vfat)?;

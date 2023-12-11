@@ -277,8 +277,8 @@ mod tests {
         let file = File::open(path)?;
         let mut gpt = Gpt::from_file(file, BlockSize::BS_512)?;
 
-        let partition = gpt.get_entry_for_partition_with_label(DATA_LABEL.parse()?)?;
-        assert!(partition.is_some());
+        let partition = gpt.get_entry_for_partition_with_label(DATA_LABEL.parse()?);
+        assert!(partition.is_ok());
 
         assert_eq!(partition.unwrap().ending_lba.to_u64(), data_part_end);
 
@@ -291,12 +291,13 @@ mod tests {
         let file = File::open(path)?;
         let mut gpt = Gpt::from_file(file, BlockSize::BS_512)?;
 
-        let partition = gpt.get_entry_for_partition_with_label(new_part_label.parse()?)?;
-        assert!(partition.is_some());
+        let partition = gpt.get_entry_for_partition_with_label(new_part_label.parse()?);
+        assert!(partition.is_ok());
+        let partition = partition.unwrap();
 
-        assert_eq!(partition.unwrap().starting_lba.to_u64(), data_part_end + 1);
+        assert_eq!(partition.starting_lba.to_u64(), data_part_end + 1);
 
-        assert_eq!(partition.unwrap().ending_lba.to_u64(), new_part_end);
+        assert_eq!(partition.ending_lba.to_u64(), new_part_end);
 
         // Test `remove_cgpt_partition`.
         remove_cgpt_partition(DATA_NUM + 1, path)?;
@@ -304,8 +305,8 @@ mod tests {
         let file = File::open(path)?;
         let mut gpt = Gpt::from_file(file, BlockSize::BS_512)?;
 
-        let partition = gpt.get_entry_for_partition_with_label(new_part_label.parse()?)?;
-        assert!(partition.is_none());
+        let partition = gpt.get_entry_for_partition_with_label(new_part_label.parse()?);
+        assert!(partition.is_err());
 
         Ok(())
     }

@@ -32,6 +32,18 @@ pub fn get_target_device() -> Result<PathBuf> {
     bail!("Unable to locate disk");
 }
 
+/// Gets the data partition on a device, which is identified by [`DATA_PART_GUID`].
+pub fn get_data_partition(disk_path: &Path) -> Result<PathBuf> {
+    let file = File::open(disk_path)?;
+    let mut gpt = gpt::Gpt::from_file(file, BlockSize::BS_512)?;
+
+    let (_, index) = gpt
+        .get_entry_and_part_num_for_partition_with_guid(crate::DATA_PART_GUID)
+        .context("Unable to find a partition with the data guid")?;
+    libchromeos::disk::get_partition_device(disk_path, index)
+        .context("Unable to find data partition on disk")
+}
+
 /// Reload the partition table on block devices.
 pub fn reload_partitions(disk_path: &Path) -> Result<()> {
     // In some cases, we may be racing with udev for access to the
@@ -70,7 +82,7 @@ pub fn insert_thirteenth_partition(disk_path: &Path) -> Result<()> {
     let new_part_size_lba = crate::FLEX_DEPLOY_PART_NUM_BLOCKS;
 
     let current_stateful = gpt
-        .get_entry_for_partition_with_label(crate::STATEFUL_PARTITION_LABEL.parse().unwrap())?
+        .get_entry_for_partition_with_label(crate::STATEFUL_PARTITION_LABEL.parse().unwrap())
         .context("Unable to locate stateful partition on disk")?;
 
     let new_stateful_range = shrink_partition_by(current_stateful, new_part_size_lba)
@@ -104,10 +116,10 @@ pub fn try_remove_thirteenth_partition(disk_path: &Path) -> Result<()> {
 
     // First make sure both the stateful and flex deployment partition exist.
     let stateful_part = gpt
-        .get_entry_for_partition_with_label(crate::STATEFUL_PARTITION_LABEL.parse().unwrap())?
+        .get_entry_for_partition_with_label(crate::STATEFUL_PARTITION_LABEL.parse().unwrap())
         .context("Unable to locate stateful partition on disk")?;
     let flex_dep_part = gpt
-        .get_entry_for_partition_with_label(crate::FLEX_DEPLOY_PART_LABEL.parse().unwrap())?
+        .get_entry_for_partition_with_label(crate::FLEX_DEPLOY_PART_LABEL.parse().unwrap())
         .context("Unable to locate flex deployment partition on disk")?;
 
     // Then calculate the new range and close the disk file handle.
@@ -240,16 +252,15 @@ fn get_disks() -> Result<Vec<PathBuf>> {
 }
 
 fn check_disk_contains_flexor(path: &Path) -> bool {
-    let Some(flex_depl_part) = libchromeos::disk::get_partition_device(path, crate::DATA_PART_NUM)
-    else {
+    let Ok(data_partition) = get_data_partition(path) else {
         return false;
     };
 
-    if !matches!(flex_depl_part.try_exists(), Ok(true)) {
+    if !matches!(data_partition.try_exists(), Ok(true)) {
         return false;
     };
 
-    let Ok(flex_depl_mount) = mount::Mount::mount_by_path(&flex_depl_part, mount::FsType::Vfat)
+    let Ok(flex_depl_mount) = mount::Mount::mount_by_path(&data_partition, mount::FsType::Vfat)
     else {
         return false;
     };
