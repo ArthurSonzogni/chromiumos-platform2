@@ -4362,6 +4362,33 @@ TEST_F(WiFiTimerTest, FastRescan) {
   ExpectInitialScanSequence();
 }
 
+TEST_F(WiFiTimerTest, FastScanBSSLost) {
+  // Test for RestartFastScanAttempts() is called when current and pending
+  // services are set to nullptr which is an edge case that happens sometimes
+  // when the device disconnects due to BSS is lost.
+
+  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
+      .Times(AnyNumber());
+  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, _)).Times(AnyNumber());
+
+  StartWiFi();
+
+  SetPendingService(nullptr);
+  SetCurrentService(nullptr);
+
+  // This PostTask is a result of the call to Scan(nullptr), and is meant to
+  // post a task to call Scan() on the wpa_supplicant proxy immediately.
+  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
+
+  // This PostTask is a result of the call to RestartFastScanAttempts(), and
+  // is meant to post a task to call Scan() on the wpa_supplicant proxy with
+  // short delay.
+  EXPECT_CALL(*mock_dispatcher_,
+              PostDelayedTask(_, _, WiFi::kFastScanInterval));
+
+  ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
+}
+
 TEST_F(WiFiTimerTest, ReconnectTimer) {
   EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
       .Times(AnyNumber());

@@ -1171,7 +1171,7 @@ void WiFi::CurrentBSSChanged(const RpcIdentifier& new_bss) {
     // scan request (for instance, if BSS entries hadn't expired and AutoConnect
     // was triggered via HandleDisconnect), shill has logic to ignore the scan
     // request since the STA will already be attempting to connect.
-    Scan(nullptr, __func__, false);
+    InitiateScan();
   } else {
     HandleRoam(new_bss, old_bss);
   }
@@ -1391,10 +1391,6 @@ void WiFi::HandleDisconnect() {
                   << " pending connection to: " << pending_service_->log_name()
                   << " after disconnect";
   }
-
-  // If we disconnect, initially scan at a faster frequency, to make sure
-  // we've found all available APs.
-  RestartFastScanAttempts();
 }
 
 void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service,

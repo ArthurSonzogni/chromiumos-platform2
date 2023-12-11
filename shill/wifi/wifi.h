@@ -364,6 +364,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // interworking_select_enabled_ and need_interworking_select_
   FRIEND_TEST(WiFiPropertyTest, PasspointInterworkingProperty);
   FRIEND_TEST(WiFiTimerTest, FastRescan);          // kFastScanInterval
+  FRIEND_TEST(WiFiTimerTest, FastScanBSSLost);     // kFastScanInterval
   FRIEND_TEST(WiFiTimerTest, RequestStationInfo);  // kRequestStationInfoPeriod
   // kPostWakeConnectivityReportDelay
   FRIEND_TEST(WiFiTimerTest, ResumeDispatchesConnectivityReportTask);
