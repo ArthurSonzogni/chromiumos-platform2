@@ -617,6 +617,13 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     vm_builder.SetVmmSwapDir(swap_dir);
   }
 
+  if (request.enable_s2idle()) {
+    // Force PCI config access via MMIO when s2idle is enabled to avoid the
+    // need for VM exits when reading the PCI config space. This substantially
+    // reduces how long it takes to exit s2idle.
+    vm_builder.AppendCustomParam("--break-linux-pci-config-io", "");
+  }
+
   base::RepeatingCallback<void(SwappingState)> vm_swapping_notify_callback =
       base::BindRepeating(&Service::NotifyVmSwapping,
                           weak_ptr_factory_.GetWeakPtr(), vm_id);
