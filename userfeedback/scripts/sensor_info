@@ -4,7 +4,7 @@
 # found in the LICENSE file.
 
 # Gather multi axis attributes.
-for attr in calibbias calibscale; do
+for attr in calibbias calibscale raw; do
   for path in /sys/bus/iio/devices/iio:device*/*${attr}; do
     printf '%s: ' "${path}"
     cat "${path}"
@@ -18,4 +18,5 @@ for attr in sampling_frequency sampling_frequency_available name location scale;
     cat "${path}"
   done
 done
+
 exit 0
