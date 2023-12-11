@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 # Copyright 2022 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -150,9 +149,17 @@ def download_vm_image(board: str, version: Version, temp_path: Path) -> Path:
             f"gs://chromeos-test-assets-private/tast/cros/hwsec/"
             f"cross_version_login/custombuilds/{version}_{board}.tar.xz"
         )
-    else:
+    elif board.endswith("-generic"):
         # No "custombuild" in the specified version, hence use the standard GS
         # folder (it's populated by build bots).
+        # Folder of *-generic VM board builds from builders, which are not
+        # built by chromeos release builders.
+        image_url = (
+            f"gs://chromiumos-image-archive/{board}-vm-public/{version}/"
+            f"chromiumos_test_image.tar.xz"
+        )
+    else:
+        # Folder of standard builds from chromeos release builders.
         image_url = (
             f"gs://chromeos-image-archive/{board}-release/{version}/"
             f"chromiumos_test_image.tar.xz"
@@ -237,7 +244,7 @@ def upload_data(
     )
     external_data = generate_external_data(gs_url, data_path)
     external_data_path = Path(f"{output_dir}/{data_file}.external")
-    with open(external_data_path, "w") as f:
+    with open(external_data_path, "w", encoding="utf-8") as f:
         f.write(external_data)
     print(
         f'External data file is created at "{external_data_path}".',
