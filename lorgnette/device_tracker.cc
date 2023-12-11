@@ -341,7 +341,12 @@ void DeviceTracker::ProbeIPPUSBDevice(std::string session_id,
     *scanner_info->add_image_format() = format;
   }
 
-  // TODO(b/277049537): Fetch device UUID from the scanner.
+  // IPP-USB devices are probed first and the previous check didn't find a
+  // matching known device.  Therefore we can generate a UUID here without
+  // checking to see if it matches a previous non-eSCL USB device.
+  // TODO(b/311196232): Replace generated UUID with the eSCL UUID fetched from
+  // the scanner.
+  scanner_info->set_device_uuid(GenerateUUID());
 
   LOG(INFO) << __func__ << ": Device " << device->Description()
             << " supports eSCL over IPP-USB at " << scanner_info->name();

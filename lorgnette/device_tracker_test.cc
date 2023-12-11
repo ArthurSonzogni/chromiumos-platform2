@@ -691,6 +691,98 @@ TEST_F(DeviceTrackerTest, DiscoverySessionLocalDevices) {
               ElementsAre(MatchesScannerInfo(usb_device)));
 }
 
+// Test that two discovery sessions finding the same devices return the same
+// device IDs.
+TEST_F(DeviceTrackerTest, DiscoverySessionStableDeviceIds) {
+  auto ippusb_device1 = MakeIPPUSBDevice("Scanner 1");
+  ippusb_device1.device->MutableDeviceDescriptor().idProduct = 0x1234;
+  ippusb_device1.device->Init();
+  CreateIPPUSBSocket(ippusb_device1);
+  CreateFakeScanner(ippusb_device1.connection_string);
+
+  auto ippusb_device2 = MakeIPPUSBDevice("Scanner 2");
+  ippusb_device2.device->MutableDeviceDescriptor().idProduct = 0x2345;
+  ippusb_device2.device->Init();
+  CreateIPPUSBSocket(ippusb_device2);
+  CreateFakeScanner(ippusb_device2.connection_string);
+
+  std::vector<std::unique_ptr<UsbDevice>> device_list;
+  device_list.emplace_back(std::move(ippusb_device1.device));
+  device_list.emplace_back(std::move(ippusb_device2.device));
+  libusb_->SetDevices(std::move(device_list));
+
+  EXPECT_CALL(*firewall_manager_, RequestUdpPortAccess(8612))
+      .WillRepeatedly([] {
+        return PortToken(/*firewall_manager=*/nullptr,
+                         /*port=*/8612);
+      });
+
+  // First session finds the two scanners.   They should have different
+  // deviceUuid values.
+  base::RunLoop run_loop1;
+  SetQuitClosure(run_loop1.QuitClosure());
+  StartScannerDiscoveryRequest start_request1;
+  start_request1.set_client_id("DiscoverySessionStableDevicesIds");
+  StartScannerDiscoveryResponse response1 =
+      tracker_->StartScannerDiscovery(start_request1);
+  EXPECT_TRUE(response1.started());
+  EXPECT_FALSE(response1.session_id().empty());
+  open_sessions_.insert(response1.session_id());
+  run_loop1.Run();
+  ASSERT_EQ(discovered_scanners_[response1.session_id()].size(), 2);
+  std::map<std::string, ScannerInfo*>
+      device_ids;  // Device ID to original info.
+  for (const auto& scanner : discovered_scanners_[response1.session_id()]) {
+    EXPECT_FALSE(scanner->device_uuid().empty());
+    EXPECT_FALSE(device_ids.contains(scanner->device_uuid()));
+    // It's safe to store these raw pointers because the original unique_ptr in
+    // discovered_scanners_ won't be deleted until after the test ends.
+    device_ids.emplace(scanner->device_uuid(), scanner.get());
+  }
+
+  // Second session for the same client finds the same two scanners with the
+  // same two deviceUuid values.
+  base::RunLoop run_loop2;
+  SetQuitClosure(run_loop2.QuitClosure());
+  StartScannerDiscoveryRequest start_request2;
+  start_request2.set_client_id("DiscoverySessionStableDevicesIds");
+  StartScannerDiscoveryResponse response2 =
+      tracker_->StartScannerDiscovery(start_request2);
+  EXPECT_TRUE(response2.started());
+  EXPECT_FALSE(response2.session_id().empty());
+  open_sessions_.insert(response2.session_id());
+  run_loop2.Run();
+  // Every returned device_uuid should match one of the previously returned
+  // devices.
+  for (const auto& scanner : discovered_scanners_[response2.session_id()]) {
+    EXPECT_FALSE(scanner->device_uuid().empty());
+    ASSERT_TRUE(device_ids.contains(scanner->device_uuid()));
+    EXPECT_THAT(scanner,
+                MatchesScannerInfo(*device_ids.at(scanner->device_uuid())));
+  }
+
+  // Session for a different client finds the same two scanners with the same
+  // two deviceUuid values.
+  base::RunLoop run_loop3;
+  SetQuitClosure(run_loop3.QuitClosure());
+  StartScannerDiscoveryRequest start_request3;
+  start_request3.set_client_id("DiscoverySessionStableDevicesIds2");
+  StartScannerDiscoveryResponse response3 =
+      tracker_->StartScannerDiscovery(start_request3);
+  EXPECT_TRUE(response3.started());
+  EXPECT_FALSE(response3.session_id().empty());
+  open_sessions_.insert(response3.session_id());
+  run_loop3.Run();
+  // Every returned device_uuid should match one of the previously returned
+  // devices.
+  for (const auto& scanner : discovered_scanners_[response3.session_id()]) {
+    EXPECT_FALSE(scanner->device_uuid().empty());
+    ASSERT_TRUE(device_ids.contains(scanner->device_uuid()));
+    EXPECT_THAT(scanner,
+                MatchesScannerInfo(*device_ids.at(scanner->device_uuid())));
+  }
+}
+
 TEST_F(DeviceTrackerTest, OpenScannerEmptyDevice) {
   OpenScannerRequest request;
   request.set_client_id("DeviceTrackerTest");
