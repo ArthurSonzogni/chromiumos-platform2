@@ -37,3 +37,4 @@ write: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 close: 1
 openat: 1
+pread64: 1
