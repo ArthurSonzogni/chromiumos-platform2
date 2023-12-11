@@ -12,7 +12,6 @@ use crate::util;
 
 const BASE_COMMANDS: &[&str] = &[
     "autest",
-    "authpolicy_debug",
     "battery_firmware",
     "battery_test",
     "chaps_debug",

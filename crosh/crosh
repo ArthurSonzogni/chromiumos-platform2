@@ -542,53 +542,6 @@ help_ff_debug() (
 )
 
 # shellcheck disable=SC2034
-USAGE_authpolicy_debug='<level>'
-# shellcheck disable=SC2034
-HELP_authpolicy_debug='
-  Set authpolicy daemon debugging level.
-  <level> can be 0 (quiet), 1 (taciturn), 2 (chatty), or 3 (verbose).
-'
-cmd_authpolicy_debug() (
-  if [ $# -ne 1 ]; then
-    help "exactly one argument (level) accepted"
-    return 1
-  fi
-  local level="$1"
-  if ! check_digits "${level}"; then
-    help "level must be a number"
-    return 1
-  fi
-
-  local reply status
-  reply="$(dbus-send --system --type=method_call --print-reply \
-      --dest=org.chromium.AuthPolicy /org/chromium/AuthPolicy \
-      "org.chromium.AuthPolicy.SetDefaultLogLevel" "int32:$1" 2>&1)"
-  status="$?"
-  if [ "${status}" -ne 0 ]; then
-    echo "ERROR: ${reply}"
-    return 1
-  fi
-  # Reply format: <dbus response header>\n    string "<error_message>"\n
-  local error_message
-  error_message="$(echo "${reply}" | sed -n -E '$s/.*string "(.*)"/\1/p')"
-  if [ "${error_message}" = "" ]; then
-    echo "Successfully set debugging level to ${level}."
-    if [ "${level}" -gt 0 ]; then
-      echo "Debug logs turned on for 30 minutes. Be sure to turn them off again"
-      echo "when you are done, e.g. by rebooting the device or setting the"
-      echo "level to 0. Authpolicy debugging info will be written into"
-      echo "/var/log/authpolicy.log, and will be attached to the next Feedback"
-      echo "report you send to Google. You may review these logs before sending"
-      echo "them."
-    else
-      echo "Debug logs turned off."
-    fi
-  else
-    help "${error_message}"
-  fi
-)
-
-# shellcheck disable=SC2034
 USAGE_set_arpgw='<true | false>'
 # shellcheck disable=SC2034
 HELP_set_arpgw='
