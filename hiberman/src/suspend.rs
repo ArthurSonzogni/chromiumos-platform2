@@ -56,6 +56,7 @@ use crate::metrics::METRICS_LOGGER;
 use crate::snapdev::FrozenUserspaceTicket;
 use crate::snapdev::SnapshotDevice;
 use crate::snapdev::SnapshotMode;
+use crate::swap_management::reclaim_all_processes;
 use crate::update_engine::is_update_engine_idle;
 use crate::volume::ActiveMount;
 use crate::volume::VolumeManager;
@@ -214,6 +215,10 @@ impl SuspendConductor<'_> {
         mut hibermeta_mount: ActiveMount,
         log_redirect_guard: LogRedirectGuard,
     ) -> Result<()> {
+        // Push all non-file backed reclaimable memory to zram.
+        reclaim_all_processes()
+            .context("Failed to perform memory reclaim")?;
+
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Read)?;
         info!("Freezing userspace");
         let frozen_userspace = snap_dev.freeze_userspace()?;
