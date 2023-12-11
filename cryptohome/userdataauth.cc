@@ -665,6 +665,7 @@ UserDataAuth::UserDataAuth()
       firmware_management_parameters_(nullptr),
       fingerprint_manager_(nullptr),
       biometrics_service_(nullptr),
+      key_store_cert_provider_(nullptr),
       default_install_attrs_(nullptr),
       install_attrs_(nullptr),
       enterprise_owned_(false),
