@@ -91,7 +91,6 @@ munmap: 1
 mlock: 1
 munlock: 1
 
-clone: 1
 setpriority: 1
 setitimer: 1
 pwrite64: 1
@@ -107,6 +106,13 @@ sched_yield: 1
 sysinfo: 1
 getrandom: arg2 in ~GRND_RANDOM
 uname: 1
+
+# For daemonize.
+clone: 1
+getsid: 1
+setsid: 1
+chdir: 1
+dup2: 1
 
 # These calls are attempted but apparently not necessary; return EPERM.
 ioctl: return 1

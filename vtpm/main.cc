@@ -1,8 +1,10 @@
 // Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
 #include <signal.h>
 #include <sysexits.h>
+#include <unistd.h>
 
 #include <base/command_line.h>
 #include <brillo/syslog_logging.h>
@@ -23,6 +25,8 @@ void MaskSignals() {
 }
 
 int main(int argc, char* argv[]) {
+  PLOG_IF(FATAL, daemon(0, 0) == -1) << "Failed to daemonize";
+
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   int flags = brillo::kLogToSyslog;
