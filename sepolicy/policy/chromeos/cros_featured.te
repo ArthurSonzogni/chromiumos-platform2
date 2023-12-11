@@ -6,7 +6,6 @@ log_writer(cros_featured)
 cros_dbus_client(cros_featured)
 
 allow cros_featured sysfs_cpuidle:file rw_file_perms;
-allow cros_featured sysfs_lru_gen_min_ttl_ms:file rw_file_perms;
 allow cros_featured proc_timer:file rw_file_perms;
 rw_dir_file(cros_featured, proc_sys_kernel)
 rw_dir_file(cros_featured, debugfs_tracing)

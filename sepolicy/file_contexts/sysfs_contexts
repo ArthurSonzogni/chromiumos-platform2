@@ -11,7 +11,6 @@
 /sys/kernel/debug/tracing(/.*)?            u:object_r:debugfs_tracing:s0
 /sys/kernel/debug/tracing/instances/(/.*)? u:object_r:debugfs_tracing_instances:s0
 /sys/kernel/debug/tracing/trace_marker     u:object_r:debugfs_trace_marker:s0
-/sys/kernel/mm/lru_gen/min_ttl_ms          u:object_r:sysfs_lru_gen_min_ttl_ms:s0
 /sys/kernel/tracing(/.*)?                  u:object_r:debugfs_tracing:s0
 /sys/kernel/tracing/instances/(/.*)?       u:object_r:debugfs_tracing_instances:s0
 /sys/kernel/tracing/trace_marker           u:object_r:debugfs_trace_marker:s0

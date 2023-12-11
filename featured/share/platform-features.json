@@ -62,54 +62,6 @@
     ]
   },
   {
-    "name": "CrOSLateBootLruMinTtlMs100",
-    "commands": [
-      {
-        "name": "WriteFile",
-        "path": "/sys/kernel/mm/lru_gen/min_ttl_ms",
-        "value": "100"
-      }
-    ],
-    "support_check_commands": [
-      {
-        "name": "FileExists",
-        "path": "/sys/kernel/mm/lru_gen/min_ttl_ms"
-      }
-    ]
-  },
-  {
-    "name": "CrOSLateBootLruMinTtlMs250",
-    "commands": [
-      {
-        "name": "WriteFile",
-        "path": "/sys/kernel/mm/lru_gen/min_ttl_ms",
-        "value": "250"
-      }
-    ],
-    "support_check_commands": [
-      {
-        "name": "FileExists",
-        "path": "/sys/kernel/mm/lru_gen/min_ttl_ms"
-      }
-    ]
-  },
-  {
-    "name": "CrOSLateBootLruMinTtlMs500",
-    "commands": [
-      {
-        "name": "WriteFile",
-        "path": "/sys/kernel/mm/lru_gen/min_ttl_ms",
-        "value": "500"
-      }
-    ],
-    "support_check_commands": [
-      {
-        "name": "FileExists",
-        "path": "/sys/kernel/mm/lru_gen/min_ttl_ms"
-      }
-    ]
-  },
-  {
     "name": "CrOSLateBootSchedUtilHints40",
     "commands": [
       {

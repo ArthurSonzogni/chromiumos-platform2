@@ -71,7 +71,6 @@ type usbfs, fs_type;
 type usermodehelper, fs_type, proc_type;
 type vfat, fs_type;
 
-type sysfs_lru_gen_min_ttl_ms, fs_type, sysfs_type;
 type sysfs_cpuidle, fs_type, sysfs_type;
 type sysfs_devices_system_cpu, fs_type, sysfs_type;
 type sysfs_loop, fs_type, sysfs_type;
