@@ -134,7 +134,9 @@ pub async fn periodic_dlc_handler<D: DbusConnectionTrait>(
             {
                 error!("Failed to dequeue failed install: {}", e);
             }
-            warn!("Failed to install shader cache dlc");
+            if let Err(_) = result.map_err(|e| warn!("Failed to install shader cache DLC: {}", e)) {
+                warn!("Failed to install shader cache DLC");
+            }
         }
     } else {
         debug!(
@@ -181,7 +183,6 @@ pub async fn mount_dlc<D: DbusConnectionTrait>(
     mount_map: ShaderCacheMountMapPtr,
     dbus_conn: Arc<D>,
 ) -> Result<()> {
-    info!("Mounting DLC");
     // Iterate through all mount points then attempt to mount shader cache if
     // |target_steam_app_id| matches |steam_app_id_to_mount| (which was just
     // installed)
@@ -191,7 +192,8 @@ pub async fn mount_dlc<D: DbusConnectionTrait>(
 
     for (vm_id, shader_cache_mount) in mount_map.iter_mut() {
         if shader_cache_mount.is_pending_mount(&steam_app_id) {
-            debug!("Mounting for {:?}", vm_id);
+            info!("Mounting DLC");
+            debug!("Mounting {:?} for {:?}", steam_app_id, vm_id);
             let mount_result = shader_cache_mount
                 .setup_mount_destination(vm_id, steam_app_id)
                 .await
