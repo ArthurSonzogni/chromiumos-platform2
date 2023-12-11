@@ -141,8 +141,6 @@ StartScannerDiscoveryResponse DeviceTracker::StartScannerDiscovery(
   std::string session_id;
   for (auto& kv : discovery_sessions_) {
     if (kv.second.client_id == client_id) {
-      // TODO(b/274860789): Clean up open scanner handles and jobs if
-      // the same client requests a new discovery session.
       session_id = kv.first;
       LOG(INFO) << __func__ << ": Reusing existing discovery session "
                 << session_id << " for client " << client_id;
@@ -161,6 +159,23 @@ StartScannerDiscoveryResponse DeviceTracker::StartScannerDiscovery(
   session.dlc_started = false;
   session.local_only = request.local_only();
   session.preferred_only = request.preferred_only();
+
+  // Close any open scanner handles owned by the same client.  This needs to be
+  // done whether the session is new or not because the client could have opened
+  // a scanner without an active discovery session previously.
+  for (auto it = open_scanners_.begin(); it != open_scanners_.end();) {
+    if (it->second.client_id == client_id) {
+      // Deleting the state object closes the scanner handle.
+      LOG(INFO) << __func__
+                << ": Closing existing scanner open by same client: "
+                << it->second.handle << " (" << it->second.connection_string
+                << ")";
+      // TODO(bmgordon): Make sure outstanding job handles are cancelled.
+      it = open_scanners_.erase(it);
+    } else {
+      ++it;
+    }
+  }
 
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(&DeviceTracker::StartDiscoverySessionInternal,

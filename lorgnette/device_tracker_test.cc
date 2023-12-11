@@ -576,6 +576,64 @@ TEST_F(DeviceTrackerTest, DiscoverySessionCachingBlockedSANEDeviceIncluded) {
   EXPECT_EQ(discovered_scanners_[response2.session_id()].size(), 1);
 }
 
+TEST_F(DeviceTrackerTest, DiscoverySessionClosesOpenScanners) {
+  sane_client_->SetListDevicesResult(true);
+  CreateFakeScanner("epson2:libusb:001:001", "GoogleTest", "Scanner 1", "USB");
+
+  EXPECT_CALL(*firewall_manager_, RequestUdpPortAccess(8612))
+      .WillRepeatedly([] {
+        return PortToken(/*firewall_manager=*/nullptr,
+                         /*port=*/8612);
+      });
+
+  // First discovery session finds the device.
+  base::RunLoop run_loop1;
+  SetQuitClosure(run_loop1.QuitClosure());
+  StartScannerDiscoveryRequest start_request;
+  start_request.set_client_id("DiscoverySessionClosesOpenScanners");
+  StartScannerDiscoveryResponse discovery_response1 =
+      tracker_->StartScannerDiscovery(start_request);
+  EXPECT_TRUE(discovery_response1.started());
+  EXPECT_FALSE(discovery_response1.session_id().empty());
+  open_sessions_.insert(discovery_response1.session_id());
+  run_loop1.Run();
+  EXPECT_THAT(closed_sessions_, ElementsAre(discovery_response1.session_id()));
+  EXPECT_EQ(discovered_scanners_[discovery_response1.session_id()].size(), 1);
+
+  // Opening the discovered device succeeds.
+  OpenScannerRequest open_request;
+  open_request.mutable_scanner_id()->set_connection_string(
+      "epson2:libusb:001:001");
+  open_request.set_client_id("DiscoverySessionClosesOpenScanners");
+  OpenScannerResponse open_response = tracker_->OpenScanner(open_request);
+  EXPECT_EQ(open_response.result(), OPERATION_RESULT_SUCCESS);
+  ASSERT_TRUE(open_response.has_config());
+  auto& handle = open_response.config().scanner();
+  EXPECT_FALSE(handle.token().empty());
+
+  // Second discovery session succeeds and invalidates the handle.
+  base::RunLoop run_loop2;
+  SetQuitClosure(run_loop2.QuitClosure());
+  StartScannerDiscoveryResponse discovery_response2 =
+      tracker_->StartScannerDiscovery(start_request);
+  EXPECT_TRUE(discovery_response2.started());
+  EXPECT_FALSE(discovery_response2.session_id().empty());
+  open_sessions_.insert(discovery_response2.session_id());
+  run_loop2.Run();
+  EXPECT_THAT(closed_sessions_, ElementsAre(discovery_response1.session_id(),
+                                            discovery_response2.session_id()));
+  EXPECT_EQ(discovered_scanners_[discovery_response2.session_id()].size(), 1);
+
+  // Handle is no longer valid.
+  GetCurrentConfigRequest config_request;
+  *config_request.mutable_scanner() = handle;
+  GetCurrentConfigResponse config_response =
+      tracker_->GetCurrentConfig(config_request);
+  EXPECT_THAT(config_response.scanner(), EqualsProto(handle));
+  EXPECT_NE(config_response.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_FALSE(config_response.has_config());
+}
+
 TEST_F(DeviceTrackerTest, DiscoverySessionLocalDevices) {
   sane_client_->SetListDevicesResult(true);
 
