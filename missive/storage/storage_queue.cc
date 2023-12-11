@@ -269,6 +269,9 @@ Status StorageQueue::Init() {
   // Make sure the assigned directory exists.
   base::File::Error error;
   if (!base::CreateDirectoryAndGetError(options_.directory(), &error)) {
+    LOG(ERROR) << "Failed to create queue at "
+               << options_.directory().MaybeAsASCII()
+               << ", error=" << base::File::ErrorToString(error);
     return Status(
         error::UNAVAILABLE,
         base::StrCat(
@@ -370,12 +373,17 @@ void StorageQueue::AsynchronouslyDeleteAllFilesAndDirectoryWarnIfFailed() {
   sequenced_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(
                      [](const base::FilePath& directory) {
-                       const bool deleted_queue_files_successfully =
+                       bool deleted_queue_files_successfully =
                            DeleteFilesWarnIfFailed(base::FileEnumerator(
                                directory, false, base::FileEnumerator::FILES));
                        if (deleted_queue_files_successfully) {
-                         DeleteFileWarnIfFailed(directory);
+                         deleted_queue_files_successfully =
+                             DeleteFileWarnIfFailed(directory);
                        }
+                       LOG(WARNING)
+                           << "Deleted all files in "
+                           << directory.MaybeAsASCII()
+                           << ", success=" << deleted_queue_files_successfully;
                      },
                      options_.directory()));
 }
