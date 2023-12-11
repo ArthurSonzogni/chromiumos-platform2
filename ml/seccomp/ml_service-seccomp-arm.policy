@@ -49,7 +49,11 @@ getsockname: 1
 gettid: 1
 gettimeofday: 1
 getuid32: 1
-ioctl: arg1 == SIOCSIFFLAGS || arg1 == TCGETS || arg1 == SIOCGIFFLAGS
+# ioctl:
+#   HIDIOCGRDESCSIZE: 0x80044801
+#   HIDIOCGRDESC: 0x90044802
+ioctl: arg1 == SIOCGIFFLAGS || arg1 == SIOCSIFFLAGS || arg1 == TCGETS || \
+        arg1 == 0x80044801 || arg1 == 0x90044802
 kill: arg1 == SIGKILL
 lstat64: 1
 madvise: 1
@@ -85,6 +89,7 @@ send: 1
 sendmsg: 1
 set_robust_list: 1
 set_tid_address: 1
+setgroups: 1
 setresuid32: 1
 setsid: 1
 sigaltstack: 1
