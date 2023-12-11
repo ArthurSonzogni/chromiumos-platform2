@@ -62,9 +62,6 @@ libbrillo_sublibs = [
     # (Current version of GN deployed to ChromeOS doesn't have string_replace.)
     library_name = "brillo-core"
     all_dependent_pkg_deps = [ "openssl" ]
-    if (use.dbus) {
-      all_dependent_pkg_deps += [ "dbus-1" ]
-    }
     libs = [ "modp_b64" ]
     sources = [
       "brillo/asynchronous_signal_handler.cc",
@@ -100,24 +97,6 @@ libbrillo_sublibs = [
       "brillo/url_utils.cc",
       "brillo/userdb_utils.cc",
     ]
-    if (use.dbus) {
-      sources += [
-        "brillo/any.cc",
-        "brillo/daemons/dbus_daemon.cc",
-        "brillo/dbus/async_event_sequencer.cc",
-        "brillo/dbus/data_serialization.cc",
-        "brillo/dbus/dbus_connection.cc",
-        "brillo/dbus/dbus_method_invoker.cc",
-        "brillo/dbus/dbus_method_response.cc",
-        "brillo/dbus/dbus_object.cc",
-        "brillo/dbus/dbus_proxy_util.cc",
-        "brillo/dbus/dbus_service_watcher.cc",
-        "brillo/dbus/dbus_signal.cc",
-        "brillo/dbus/exported_object_manager.cc",
-        "brillo/dbus/exported_property_set.cc",
-        "brillo/dbus/utils.cc",
-      ]
-    }
   },
 
   {
@@ -167,6 +146,7 @@ libbrillo_sublibs = [
     ]
     if (use.dbus) {
       sources += [ "brillo/http/http_proxy.cc" ]
+      deps += [ ":libbrillo-dbus" ]
     }
   },
 
@@ -245,6 +225,35 @@ libbrillo_sublibs = [
     sources = [ "brillo/compression/zlib_compressor.cc" ]
   },
 ]
+
+if (use.dbus) {
+  libbrillo_sublibs += [
+    {
+      # This links libbase-dbus.so which links protobuf-lite.so for non-fuzzers,
+      # so anything that depends on this cannot use protobuf.so or it will break
+      # ASAN with ODR violations.
+      library_name = "brillo-dbus"
+      all_dependent_pkg_deps = [ "dbus-1" ]
+      deps = [ ":libbrillo-core" ]
+      sources = [
+        "brillo/any.cc",
+        "brillo/daemons/dbus_daemon.cc",
+        "brillo/dbus/async_event_sequencer.cc",
+        "brillo/dbus/data_serialization.cc",
+        "brillo/dbus/dbus_connection.cc",
+        "brillo/dbus/dbus_method_invoker.cc",
+        "brillo/dbus/dbus_method_response.cc",
+        "brillo/dbus/dbus_object.cc",
+        "brillo/dbus/dbus_proxy_util.cc",
+        "brillo/dbus/dbus_service_watcher.cc",
+        "brillo/dbus/dbus_signal.cc",
+        "brillo/dbus/exported_object_manager.cc",
+        "brillo/dbus/exported_property_set.cc",
+        "brillo/dbus/utils.cc",
+      ]
+    },
+  ]
+}
 
 if (use.udev) {
   libbrillo_sublibs += [
@@ -712,7 +721,10 @@ if (use.fuzzer) {
     configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
     pkg_deps = [ "libchrome" ]
     include_dirs = [ "../libbrillo" ]
-    deps = [ ":libbrillo-core" ]
+    deps = [
+      ":libbrillo-core",
+      ":libbrillo-dbus",
+    ]
   }
 
   executable("libbrillo_http_form_data_fuzzer") {
