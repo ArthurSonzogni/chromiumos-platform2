@@ -34,7 +34,7 @@ class SaneClientFake : public SaneClient {
                         const std::string& manufacturer,
                         const std::string& model,
                         const std::string& type);
-  void RemoveDevice(const std::string& name);
+  void RemoveDeviceListing(const std::string& name);
 
   void SetDeviceForName(const std::string& device_name,
                         std::unique_ptr<SaneDeviceFake> device);

@@ -204,6 +204,15 @@ std::optional<DeviceTracker::DiscoverySessionState*> DeviceTracker::GetSession(
   return &discovery_sessions_.at(session_id);
 }
 
+void DeviceTracker::SendScannerAddedSignal(std::string session_id,
+                                           ScannerInfo scanner) {
+  ScannerListChangedSignal signal;
+  signal.set_event_type(ScannerListChangedSignal::SCANNER_ADDED);
+  signal.set_session_id(std::move(session_id));
+  *signal.mutable_scanner() = std::move(scanner);
+  signal_sender_.Run(signal);
+}
+
 void DeviceTracker::StartDiscoverySessionInternal(std::string session_id) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
@@ -224,21 +233,6 @@ void DeviceTracker::StartDiscoverySessionInternal(std::string session_id) {
   if (session->dlc_policy == BackendDownloadPolicy::DOWNLOAD_ALWAYS) {
     // TODO(rishabhagr): Kick off background DLC download.
     session->dlc_started = true;
-  }
-
-  // If a previous session already discovered some devices, go ahead and send
-  // signals for those right away.  Any newly-plugged devices will be added
-  // later when we re-enumerate everything.
-  for (const auto& device : known_devices_) {
-    if (session->local_only &&
-        device.connection_type() != lorgnette::CONNECTION_USB) {
-      continue;
-    }
-    ScannerListChangedSignal signal;
-    signal.set_event_type(ScannerListChangedSignal::SCANNER_ADDED);
-    signal.set_session_id(session_id);
-    *signal.mutable_scanner() = device;
-    signal_sender_.Run(signal);
   }
 
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
@@ -304,6 +298,17 @@ void DeviceTracker::ProbeIPPUSBDevice(std::string session_id,
     return;
   }
 
+  // If this device was already discovered in a previous session, return it
+  // without further probing.
+  for (const auto& known_dev : known_devices_) {
+    if (known_dev.name() == scanner_info->name()) {
+      LOG(INFO) << __func__
+                << ": Returning entry from cache: " << known_dev.name();
+      SendScannerAddedSignal(std::move(session_id), known_dev);
+      return;
+    }
+  }
+
   LOG(INFO) << __func__ << ": Attempting eSCL connection for "
             << device->Description() << " at " << scanner_info->name();
   brillo::ErrorPtr error;
@@ -325,11 +330,7 @@ void DeviceTracker::ProbeIPPUSBDevice(std::string session_id,
 
   LOG(INFO) << __func__ << ": Device " << device->Description()
             << " supports eSCL over IPP-USB at " << scanner_info->name();
-  ScannerListChangedSignal signal;
-  signal.set_event_type(ScannerListChangedSignal::SCANNER_ADDED);
-  signal.set_session_id(session_id);
-  *signal.mutable_scanner() = *scanner_info;
-  signal_sender_.Run(signal);
+  SendScannerAddedSignal(session_id, *scanner_info);
 
   std::string bus_dev = base::StringPrintf("%03d:%03d", device->GetBusNumber(),
                                            device->GetDeviceAddress());
@@ -405,6 +406,17 @@ void DeviceTracker::ProbeSANEDevice(std::string session_id,
   if (session->preferred_only) {
     if (DuplicateScannerExists(scanner_info.name(), known_vid_pids_,
                                known_bus_devs_)) {
+      return;
+    }
+  }
+
+  // If this device was already discovered in a previous session, return it
+  // without further probing.
+  for (const auto& known_dev : known_devices_) {
+    if (known_dev.name() == scanner_info.name()) {
+      LOG(INFO) << __func__
+                << ": Returning entry from cache: " << known_dev.name();
+      SendScannerAddedSignal(std::move(session_id), known_dev);
       return;
     }
   }

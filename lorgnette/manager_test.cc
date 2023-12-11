@@ -241,7 +241,7 @@ TEST_F(ManagerTest, ListScannerSuccess) {
   EXPECT_EQ(error, nullptr);
   EXPECT_NE(result, std::nullopt);
   EXPECT_EQ(result.value().size(), 1);
-  sane_client_->RemoveDevice("TestName");
+  sane_client_->RemoveDeviceListing("TestName");
   result = sane_client_->ListDevices(&error, /*local_only=*/false);
   EXPECT_NE(result, std::nullopt);
   EXPECT_EQ(result.value().size(), 0);

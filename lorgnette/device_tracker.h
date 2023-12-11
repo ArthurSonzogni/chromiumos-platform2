@@ -163,6 +163,7 @@ class DeviceTracker {
       const std::string& session_id);
 
   std::optional<OpenScannerState*> GetScanner(const std::string& handle);
+  void SendScannerAddedSignal(std::string session_id, ScannerInfo scanner);
 
   // Individual phases of discovery.  Each function is posted as a separate task
   // on the event loop to break up the amount of time spent blocking.

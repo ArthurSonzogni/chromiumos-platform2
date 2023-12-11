@@ -56,7 +56,7 @@ void SaneClientFake::AddDeviceListing(const std::string& name,
   scanners_.push_back(info);
 }
 
-void SaneClientFake::RemoveDevice(const std::string& name) {
+void SaneClientFake::RemoveDeviceListing(const std::string& name) {
   auto it = scanners_.begin();
   while (it != scanners_.end()) {
     if (it->name() == name) {
@@ -69,7 +69,11 @@ void SaneClientFake::RemoveDevice(const std::string& name) {
 
 void SaneClientFake::SetDeviceForName(const std::string& device_name,
                                       std::unique_ptr<SaneDeviceFake> device) {
-  devices_.emplace(device_name, std::move(device));
+  if (device) {
+    devices_.emplace(device_name, std::move(device));
+  } else {
+    devices_.erase(device_name);
+  }
 }
 
 void SaneClientFake::SetIppUsbSocketDir(base::FilePath path) {

@@ -19,6 +19,7 @@
 #include <base/files/file.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/strings/stringprintf.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
 
@@ -54,6 +55,62 @@ ScanParameters MakeScanParameters(int width, int height) {
   };
 }
 
+// libusb structures contain various pointers to separately allocated
+// memory and other resources.  This struct bundles RAII objects for these
+// allocations along with the device that uses them so they can all be deleted
+// when the whole struct goes out of scope.
+struct UsbDeviceBundle {
+  std::unique_ptr<libusb_interface_descriptor> altsetting;
+  std::unique_ptr<libusb_interface> interface;
+  std::unique_ptr<UsbDeviceFake> device;
+  std::string connection_string;
+  base::File ippusb_socket;
+};
+
+UsbDeviceBundle MakeIPPUSBDevice(const std::string& model) {
+  static size_t num = 1;  // Incremented on each call so returned devices are
+                          // unique.
+
+  UsbDeviceBundle result;
+  result.device = std::make_unique<UsbDeviceFake>();
+
+  // Device descriptor containing basic device info.
+  libusb_device_descriptor device_desc = MakeMinimalDeviceDescriptor();
+  device_desc.bDeviceClass = LIBUSB_CLASS_PER_INTERFACE;
+  device_desc.bNumConfigurations = 1;
+  device_desc.iManufacturer = 1;
+  device_desc.iProduct = 2;
+  device_desc.iSerialNumber = 3;
+  result.device->SetStringDescriptors(
+      {"", "GoogleTest", model, base::StringPrintf("ABC123%02zu", num)});
+  result.device->SetDeviceDescriptor(device_desc);
+
+  // One altsetting with a printer class and the IPP-USB protocol.
+  result.altsetting = MakeIppUsbInterfaceDescriptor();
+
+  // One interface containing the altsetting.
+  result.interface = std::make_unique<libusb_interface>();
+  result.interface->num_altsetting = 1;
+  result.interface->altsetting = result.altsetting.get();
+
+  // One config descriptor containing the interface.
+  libusb_config_descriptor config_desc;
+  memset(&config_desc, 0, sizeof(config_desc));
+  config_desc.bLength = sizeof(config_desc);
+  config_desc.bDescriptorType = LIBUSB_DT_CONFIG;
+  config_desc.wTotalLength = sizeof(config_desc);
+  config_desc.bNumInterfaces = 1;
+  config_desc.interface = result.interface.get();
+  result.device->SetConfigDescriptors({config_desc});
+
+  result.device->SetBusNumber(1);
+  result.device->SetDeviceAddress(num);
+  result.device->Init();
+  ++num;
+
+  return result;
+}
+
 class MockFirewallManager : public FirewallManager {
  public:
   explicit MockFirewallManager(const std::string& interface)
@@ -85,7 +142,7 @@ class DeviceTrackerTest : public testing::Test {
         closed_sessions_.push_back(signal.session_id());
         open_sessions_.erase(signal.session_id());
         if (open_sessions_.empty()) {
-          run_loop_.Quit();
+          run_loop_quit_.Run();
         }
         break;
       case ScannerListChangedSignal::SCANNER_ADDED: {
@@ -107,10 +164,14 @@ class DeviceTrackerTest : public testing::Test {
 
  protected:
   void SetUp() override {
+    run_loop_quit_ = run_loop_.QuitClosure();
     sane_client_ = std::make_unique<SaneClientFake>();
     libusb_ = std::make_unique<LibusbWrapperFake>();
     tracker_ =
         std::make_unique<DeviceTracker>(sane_client_.get(), libusb_.get());
+
+    CHECK(socket_dir_.CreateUniqueTempDir());
+    sane_client_->SetIppUsbSocketDir(socket_dir_.GetPath());
 
     // Using base::Unretained is safe here because the signal sender is removed
     // in TearDown() while this object is still alive.
@@ -124,6 +185,29 @@ class DeviceTrackerTest : public testing::Test {
 
   void TearDown() override {
     tracker_->SetScannerListChangedSignalSender(base::DoNothing());
+  }
+
+  // Create the appropriate "socket" in the filesystem to allow an IPP-USB
+  // device to pass the SaneDevice checks and fill in the connection string
+  // pointing to the socket.
+  void CreateIPPUSBSocket(UsbDeviceBundle& device) {
+    std::string socket_name = base::StringPrintf(
+        "%04x-%04x.sock", device.device->GetVid(), device.device->GetPid());
+    base::FilePath socket_path = socket_dir_.GetPath().Append(socket_name);
+    device.ippusb_socket = base::File(
+        socket_path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+
+    device.connection_string = base::StringPrintf(
+        "airscan:escl:%s %s:unix://%s/eSCL/",
+        device.device
+            ->GetStringDescriptor(
+                device.device->GetDeviceDescriptor()->iManufacturer)
+            ->c_str(),
+        device.device
+            ->GetStringDescriptor(
+                device.device->GetDeviceDescriptor()->iProduct)
+            ->c_str(),
+        socket_name.c_str());
   }
 
   SaneDeviceFake* CreateFakeScanner(const std::string& name) {
@@ -141,12 +225,18 @@ class DeviceTrackerTest : public testing::Test {
     return CreateFakeScanner(name);
   }
 
+  void SetQuitClosure(base::RepeatingClosure closure) {
+    run_loop_quit_ = std::move(closure);
+  }
+
   base::test::SingleThreadTaskEnvironment task_environment_;
   base::RunLoop run_loop_;
+  base::RepeatingClosure run_loop_quit_;
   std::unique_ptr<SaneClientFake> sane_client_;
   std::unique_ptr<LibusbWrapperFake> libusb_;
   std::unique_ptr<MockFirewallManager> firewall_manager_;
   std::unique_ptr<DeviceTracker> tracker_;  // Must come after all the mocks.
+  base::ScopedTempDir socket_dir_;
 
   // Set of open session ids that will be tracked by `RecordingSignalSender`.
   std::set<std::string> open_sessions_;
@@ -259,45 +349,17 @@ TEST_F(DeviceTrackerTest, StopSessionMissingID) {
 // backend have a signal emitted before shutting down the session.
 TEST_F(DeviceTrackerTest, CompleteDiscoverySession) {
   // Scanner that supports eSCL over IPP-USB.
-  auto ippusb_escl_device = std::make_unique<UsbDeviceFake>();
-
-  libusb_device_descriptor device_desc = MakeMinimalDeviceDescriptor();
-  device_desc.idVendor = 0x04a9;
-  device_desc.bDeviceClass = LIBUSB_CLASS_PER_INTERFACE;
-  device_desc.bNumConfigurations = 1;
-  device_desc.iManufacturer = 1;
-  device_desc.iProduct = 2;
-  ippusb_escl_device->SetStringDescriptors(
-      {"", "GoogleTest", "eSCL Scanner 3000"});
-  ippusb_escl_device->SetDeviceDescriptor(device_desc);
-
-  // One altsetting with a printer class and the IPP-USB protocol.
-  auto altsetting = MakeIppUsbInterfaceDescriptor();
-
-  // One interface containing the altsetting.
-  auto interface = std::make_unique<libusb_interface>();
-  interface->num_altsetting = 1;
-  interface->altsetting = altsetting.get();
-
-  // One config descriptor containing the interface.
-  libusb_config_descriptor descriptor;
-  memset(&descriptor, 0, sizeof(descriptor));
-  descriptor.bLength = sizeof(descriptor);
-  descriptor.bDescriptorType = LIBUSB_DT_CONFIG;
-  descriptor.wTotalLength = sizeof(descriptor);
-  descriptor.bNumInterfaces = 1;
-  descriptor.interface = interface.get();
-
-  ippusb_escl_device->SetConfigDescriptors({descriptor});
-  ippusb_escl_device->SetBusNumber(1);
-  ippusb_escl_device->SetDeviceAddress(1);
-  ippusb_escl_device->Init();
+  auto ippusb_escl_device = MakeIPPUSBDevice("eSCL Scanner 3000");
+  ippusb_escl_device.device->MutableDeviceDescriptor().idVendor = 0x04a9;
+  ippusb_escl_device.device->Init();
+  CreateIPPUSBSocket(ippusb_escl_device);
+  CreateFakeScanner(ippusb_escl_device.connection_string);
 
   // Printer that supports IPP-USB but not eSCL.
-  auto ippusb_printer = UsbDeviceFake::Clone(*ippusb_escl_device.get());
-  ippusb_printer->MutableDeviceDescriptor().idProduct = 0x6543;
-  ippusb_printer->SetStringDescriptors(
-      {"", "GoogleTest", "IPP-USB Printer 2000"});
+  auto ippusb_printer = MakeIPPUSBDevice("IPP-USB Printer 2000");
+  ippusb_printer.device->MutableDeviceDescriptor().idProduct = 0x6543;
+  ippusb_printer.device->Init();
+  CreateIPPUSBSocket(ippusb_printer);
 
   // Printer that doesn't support IPP-USB.
   auto printer_altsetting = MakeIppUsbInterfaceDescriptor();
@@ -305,37 +367,27 @@ TEST_F(DeviceTrackerTest, CompleteDiscoverySession) {
   auto printer_interface = std::make_unique<libusb_interface>();
   printer_interface->num_altsetting = 1;
   printer_interface->altsetting = printer_altsetting.get();
-  auto usb_printer = UsbDeviceFake::Clone(*ippusb_printer.get());
-  usb_printer->MutableDeviceDescriptor().idProduct = 0x7654;
-  usb_printer->MutableConfigDescriptor(0).interface = printer_interface.get();
-  usb_printer->SetStringDescriptors({"", "GoogleTest", "USB Printer 1000"});
+  auto usb_printer = MakeIPPUSBDevice("USB Printer 1000");
+  usb_printer.device->MutableDeviceDescriptor().idProduct = 0x7654;
+  usb_printer.device->MutableConfigDescriptor(0).interface =
+      printer_interface.get();
+  usb_printer.device->SetStringDescriptors(
+      {"", "GoogleTest", "USB Printer 1000"});
+  usb_printer.device->Init();
 
   // Not a printer at all.
-  auto non_printer = UsbDeviceFake::Clone(*usb_printer.get());
+  auto non_printer = UsbDeviceFake::Clone(*usb_printer.device.get());
   non_printer->MutableDeviceDescriptor().idProduct = 0x7654;
   non_printer->MutableDeviceDescriptor().bDeviceClass = LIBUSB_DT_HUB;
   non_printer->SetStringDescriptors({"", "GoogleTest", "USB Gadget 500"});
+  non_printer->Init();
 
   std::vector<std::unique_ptr<UsbDevice>> device_list;
   device_list.emplace_back(std::move(non_printer));
-  device_list.emplace_back(std::move(ippusb_escl_device));
-  device_list.emplace_back(std::move(ippusb_printer));
-  device_list.emplace_back(std::move(usb_printer));
+  device_list.emplace_back(std::move(ippusb_escl_device.device));
+  device_list.emplace_back(std::move(ippusb_printer.device));
+  device_list.emplace_back(std::move(usb_printer.device));
   libusb_->SetDevices(std::move(device_list));
-
-  // A "socket" that can reach the fake IPP-USB scanner and the matching
-  // fake SANE device to talk to it.
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  sane_client_->SetIppUsbSocketDir(temp_dir.GetPath());
-  base::FilePath ippusb_escl_path = temp_dir.GetPath().Append("04a9-4321.sock");
-  base::File ippusb_escl_socket(
-      ippusb_escl_path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
-  base::FilePath ippusb_path = temp_dir.GetPath().Append("1234-6543.sock");
-  base::File ippusb_socket(ippusb_path,
-                           base::File::FLAG_CREATE | base::File::FLAG_WRITE);
-  CreateFakeScanner(
-      "airscan:escl:GoogleTest eSCL Scanner 3000:unix://04a9-4321.sock/eSCL/");
 
   sane_client_->SetListDevicesResult(true);
   // Duplicates of eSCL over ippusb that are filtered out.
@@ -390,6 +442,138 @@ TEST_F(DeviceTrackerTest, CompleteDiscoverySession) {
               UnorderedElementsAre(MatchesScannerInfo(escl3000),
                                    MatchesScannerInfo(sane4000),
                                    MatchesScannerInfo(sane4200)));
+}
+
+TEST_F(DeviceTrackerTest, DiscoverySessionCachingUnpluggedDeviceRemoved) {
+  sane_client_->SetListDevicesResult(true);
+  CreateFakeScanner("epson2:libusb:001:001", "GoogleTest", "Scanner 1", "USB");
+
+  EXPECT_CALL(*firewall_manager_, RequestUdpPortAccess(8612))
+      .WillRepeatedly([] {
+        return PortToken(/*firewall_manager=*/nullptr,
+                         /*port=*/8612);
+      });
+
+  // First discovery session finds the device.
+  base::RunLoop run_loop1;
+  SetQuitClosure(run_loop1.QuitClosure());
+  StartScannerDiscoveryRequest start_request1;
+  start_request1.set_client_id("DiscoverySessionCaching1");
+  StartScannerDiscoveryResponse response1 =
+      tracker_->StartScannerDiscovery(start_request1);
+  EXPECT_TRUE(response1.started());
+  EXPECT_FALSE(response1.session_id().empty());
+  run_loop1.Run();
+  EXPECT_THAT(closed_sessions_, ElementsAre(response1.session_id()));
+  EXPECT_EQ(discovered_scanners_[response1.session_id()].size(), 1);
+
+  sane_client_->RemoveDeviceListing("epson2:libusb:001:001");
+
+  // Second discovery session does not find the device.
+  base::RunLoop run_loop2;
+  SetQuitClosure(run_loop2.QuitClosure());
+  StartScannerDiscoveryRequest start_request2;
+  start_request2.set_client_id("DiscoverySessionCaching2");
+  StartScannerDiscoveryResponse response2 =
+      tracker_->StartScannerDiscovery(start_request2);
+  EXPECT_TRUE(response2.started());
+  EXPECT_FALSE(response2.session_id().empty());
+  run_loop2.Run();
+  EXPECT_THAT(closed_sessions_,
+              ElementsAre(response1.session_id(), response2.session_id()));
+  EXPECT_EQ(discovered_scanners_[response2.session_id()].size(), 0);
+}
+
+TEST_F(DeviceTrackerTest, DiscoverySessionCachingBlockedIPPUSBDeviceIncluded) {
+  auto usb_device = MakeIPPUSBDevice("Scanner 1");
+  CreateIPPUSBSocket(usb_device);
+  CreateFakeScanner(usb_device.connection_string);
+
+  std::vector<std::unique_ptr<UsbDevice>> device_list;
+  device_list.emplace_back(std::move(usb_device.device));
+  libusb_->SetDevices(std::move(device_list));
+  sane_client_->SetListDevicesResult(true);
+
+  EXPECT_CALL(*firewall_manager_, RequestUdpPortAccess(8612))
+      .WillRepeatedly([] {
+        return PortToken(/*firewall_manager=*/nullptr,
+                         /*port=*/8612);
+      });
+
+  // First discovery session finds the device.
+  base::RunLoop run_loop1;
+  SetQuitClosure(run_loop1.QuitClosure());
+  StartScannerDiscoveryRequest start_request1;
+  start_request1.set_client_id("DiscoverySessionCaching1");
+  StartScannerDiscoveryResponse response1 =
+      tracker_->StartScannerDiscovery(start_request1);
+  EXPECT_TRUE(response1.started());
+  EXPECT_FALSE(response1.session_id().empty());
+  run_loop1.Run();
+  EXPECT_THAT(closed_sessions_, ElementsAre(response1.session_id()));
+  EXPECT_EQ(discovered_scanners_[response1.session_id()].size(), 1);
+
+  // After removing the SANE device, it can no longer be opened for probing, but
+  // it is still included in the listing.  This is similar to having a device
+  // opened by another client.
+  sane_client_->SetDeviceForName(usb_device.connection_string, nullptr);
+
+  // Second discovery session finds the device because it reads from the cache.
+  base::RunLoop run_loop2;
+  SetQuitClosure(run_loop2.QuitClosure());
+  StartScannerDiscoveryRequest start_request2;
+  start_request2.set_client_id("DiscoverySessionCaching2");
+  StartScannerDiscoveryResponse response2 =
+      tracker_->StartScannerDiscovery(start_request2);
+  EXPECT_TRUE(response2.started());
+  EXPECT_FALSE(response2.session_id().empty());
+  run_loop2.Run();
+  EXPECT_THAT(closed_sessions_,
+              ElementsAre(response1.session_id(), response2.session_id()));
+  EXPECT_EQ(discovered_scanners_[response2.session_id()].size(), 1);
+}
+
+TEST_F(DeviceTrackerTest, DiscoverySessionCachingBlockedSANEDeviceIncluded) {
+  sane_client_->SetListDevicesResult(true);
+  CreateFakeScanner("epson2:libusb:001:001", "GoogleTest", "Scanner 1", "USB");
+
+  EXPECT_CALL(*firewall_manager_, RequestUdpPortAccess(8612))
+      .WillRepeatedly([] {
+        return PortToken(/*firewall_manager=*/nullptr,
+                         /*port=*/8612);
+      });
+
+  // First discovery session finds the device.
+  base::RunLoop run_loop1;
+  SetQuitClosure(run_loop1.QuitClosure());
+  StartScannerDiscoveryRequest start_request1;
+  start_request1.set_client_id("DiscoverySessionCaching1");
+  StartScannerDiscoveryResponse response1 =
+      tracker_->StartScannerDiscovery(start_request1);
+  EXPECT_TRUE(response1.started());
+  EXPECT_FALSE(response1.session_id().empty());
+  run_loop1.Run();
+  EXPECT_THAT(closed_sessions_, ElementsAre(response1.session_id()));
+  EXPECT_EQ(discovered_scanners_[response1.session_id()].size(), 1);
+
+  // After removing the SANE device, it can no longer be opened for probing, but
+  // it is still included in the listing.  This is similar to having a device
+  // opened by another client.
+  sane_client_->SetDeviceForName("epson2:libusb:001:001", nullptr);
+
+  // Second discovery session finds the device because it reads from the cache.
+  base::RunLoop run_loop2;
+  SetQuitClosure(run_loop2.QuitClosure());
+  StartScannerDiscoveryRequest start_request2;
+  start_request2.set_client_id("DiscoverySessionCaching2");
+  StartScannerDiscoveryResponse response2 =
+      tracker_->StartScannerDiscovery(start_request2);
+  EXPECT_TRUE(response2.started());
+  EXPECT_FALSE(response2.session_id().empty());
+  run_loop2.Run();
+  EXPECT_THAT(closed_sessions_,
+              ElementsAre(response1.session_id(), response2.session_id()));
+  EXPECT_EQ(discovered_scanners_[response2.session_id()].size(), 1);
 }
 
 TEST_F(DeviceTrackerTest, DiscoverySessionLocalDevices) {
