@@ -312,6 +312,13 @@ std::string ShutdownReasonToString(ShutdownReason reason) {
       return "other-request-to-powerd";
     case ShutdownReason::HIBERNATE_FAILED:
       return "hibernate-failed";
+    case ShutdownReason::HIBERNATE:
+      return "hibernate";
+    case ShutdownReason::HIBERNATE_LOW_BATTERY:
+      return "low-battery-hibernate";
+    case ShutdownReason::MAX: {
+      // Fall through, the entry is needed to keep the compiler happy.
+    }
   }
   NOTREACHED() << "Unhandled shutdown reason " << static_cast<int>(reason);
   return "unknown";

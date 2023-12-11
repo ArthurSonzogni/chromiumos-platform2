@@ -507,6 +507,13 @@ enum class ShutdownReason {
   OTHER_REQUEST_TO_POWERD = 7,
   // Multiple hibernate attempts failed.
   HIBERNATE_FAILED = 8,
+  // Hibernate after device spent |kShutdownFromSuspendAfterSecPref| in suspend
+  // without full resume.
+  HIBERNATE = 9,
+  // Battery level dropped below hibernate threshold.
+  HIBERNATE_LOW_BATTERY = 10,
+  // Maximum value for ShutdownReason (exclusive).
+  MAX = 11
 };
 
 enum class WifiRegDomain {

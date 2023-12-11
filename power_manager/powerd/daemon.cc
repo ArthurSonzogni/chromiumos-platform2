@@ -895,6 +895,10 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
     base::PlatformThread::Sleep(kSuspendLockfilePollInterval);
   }
 
+  const system::PowerStatus status = power_supply_->GetPowerStatus();
+  bool battery_was_below_shutdown_threshold =
+      status.battery_below_shutdown_threshold;
+
   // Touch a file that crash-reporter can inspect later to determine
   // whether the system was suspended or hibernated while an unclean
   // shutdown occurred. If the file already exists, assume that
@@ -984,6 +988,15 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   bool undo_prep_suspend_succ = suspend_configurator_->UndoPrepareForSuspend();
   if (!(thaw_userspace_succ && undo_prep_suspend_succ))
     return policy::Suspender::Delegate::SuspendResult::FAILURE;
+
+  if (to_hibernate && !exit_code) {
+    // Resumed from hibernate. Report the shutdown from the hibernation,
+    // which was handled by hiberman, not powerd.
+    if (battery_was_below_shutdown_threshold)
+      metrics_collector_->HandleShutdown(ShutdownReason::HIBERNATE_LOW_BATTERY);
+    else
+      metrics_collector_->HandleShutdown(ShutdownReason::HIBERNATE);
+  }
 
   // These exit codes are defined in powerd/powerd_suspend.
   switch (exit_code) {

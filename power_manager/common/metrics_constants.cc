@@ -36,7 +36,6 @@ const int kSuspendDelayMin = 0;
 const int kSuspendDelayMax = 60;
 
 const char kShutdownReasonName[] = "Power.ShutdownReason";
-const int kShutdownReasonMax = 10;
 
 const char kBacklightLevelName[] = "Power.BacklightLevel";
 const char kKeyboardBacklightLevelName[] = "Power.KeyboardBacklightLevel";

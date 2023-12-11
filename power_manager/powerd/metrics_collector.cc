@@ -410,7 +410,7 @@ void MetricsCollector::HandlePowerStatusUpdate(const PowerStatus& status) {
 
 void MetricsCollector::HandleShutdown(ShutdownReason reason) {
   SendEnumMetric(kShutdownReasonName, static_cast<int>(reason),
-                 static_cast<int>(kShutdownReasonMax));
+                 static_cast<int>(ShutdownReason::MAX));
 }
 
 void MetricsCollector::HandlePrivacyScreenStateChange(
