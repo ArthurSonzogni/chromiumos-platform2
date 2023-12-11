@@ -539,6 +539,10 @@ bool SessionManagerImpl::ShouldEndSession(std::string* reason_out) {
   return false;
 }
 
+std::vector<std::string> SessionManagerImpl::GetExtraCommandLineArguments() {
+  return device_policy_->GetExtraCommandLineArguments();
+}
+
 void SessionManagerImpl::EmitStopArcVmInstanceImpulse() {
   if (!init_controller_->TriggerImpulse(
           kStopArcVmInstanceImpulse, {},

@@ -96,6 +96,9 @@ class DevicePolicyService : public PolicyService {
   // startup.
   virtual std::vector<std::string> GetFeatureFlags();
 
+  // Gets extra command line arguments to pass to Chrome on startup.
+  virtual std::vector<std::string> GetExtraCommandLineArguments();
+
   // Returns the currently active device settings.
   const enterprise_management::ChromeDeviceSettingsProto& GetSettings();
 

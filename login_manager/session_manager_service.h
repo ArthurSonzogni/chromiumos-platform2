@@ -113,6 +113,11 @@ class SessionManagerService
     // Trigger and handle SessionManagerImpl initialization.
     bool InitializeImpl() { return session_manager_service_->InitializeImpl(); }
 
+    // Trigger initialization of the browser job.
+    void InitializeBrowser() {
+      return session_manager_service_->InitializeBrowser();
+    }
+
    private:
     friend class SessionManagerService;
     explicit TestApi(SessionManagerService* session_manager_service)
@@ -211,6 +216,9 @@ class SessionManagerService
   // Initializes suspend delays with powerd and registers callbacks for
   // suspend and resume.
   void InitializeSuspendDelays();
+
+  // Initializes the browser job by setting the initial command line arguments.
+  void InitializeBrowser();
 
   // Tears down DBus connection. Failure is fatal.
   void ShutDownDBus();

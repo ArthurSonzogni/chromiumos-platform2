@@ -299,6 +299,14 @@ std::vector<std::string> DevicePolicyService::GetFeatureFlags() {
   return feature_flags;
 }
 
+std::vector<std::string> DevicePolicyService::GetExtraCommandLineArguments() {
+  if (GetSettings().has_devicehardwarevideodecodingenabled() &&
+      !GetSettings().devicehardwarevideodecodingenabled().value()) {
+    return {::chromeos::switches::kDisableAcceleratedVideoDecode};
+  }
+  return {};
+}
+
 const em::ChromeDeviceSettingsProto& DevicePolicyService::GetSettings() {
   if (!settings_.get()) {
     settings_.reset(new em::ChromeDeviceSettingsProto());

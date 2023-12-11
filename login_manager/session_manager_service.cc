@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/extend.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -244,8 +245,6 @@ bool SessionManagerService::Initialize() {
           chromeos::kChromeFeaturesServiceName,
           dbus::ObjectPath(chromeos::kChromeFeaturesServicePath)));
 
-  // Initially store in derived-type pointer, so that we can initialize
-  // appropriately below.
   impl_ = std::make_unique<SessionManagerImpl>(
       this /* delegate */,
       std::make_unique<InitDaemonControllerImpl>(init_dbus_proxy), bus_,
@@ -258,12 +257,17 @@ bool SessionManagerService::Initialize() {
   if (!InitializeImpl())
     return false;
 
-  // Set any flags that were specified system-wide.
-  browser_->SetFeatureFlags(impl_->GetFeatureFlags(), {});
+  InitializeBrowser();
 
   CHECK(impl_->StartDBusService())
       << "Unable to start " << kSessionManagerServiceName << " D-Bus service.";
   return true;
+}
+
+void SessionManagerService::InitializeBrowser() {
+  // Set any flags that were specified system-wide.
+  browser_->SetFeatureFlags(impl_->GetFeatureFlags(), {});
+  browser_->SetExtraArguments(impl_->GetExtraCommandLineArguments());
 }
 
 void SessionManagerService::Finalize() {
@@ -388,14 +392,19 @@ void SessionManagerService::SetBrowserSessionForUser(
 
 void SessionManagerService::SetFlagsForUser(
     const std::string& account_id, const std::vector<std::string>& flags) {
-  browser_->SetExtraArguments(flags);
+  // Merge provided flags with the ones enforced through device policies.
+  std::vector<std::string> combined_flags(flags);
+  base::Extend(combined_flags, impl_->GetExtraCommandLineArguments());
+
+  browser_->SetExtraArguments(combined_flags);
 }
 
 void SessionManagerService::SetFeatureFlagsForUser(
     const std::string& account_id,
     const std::vector<std::string>& feature_flags,
     const std::map<std::string, std::string>& origin_list_flags) {
-  browser_->SetExtraArguments({});
+  // Reset extra command line arguments to their default value.
+  browser_->SetExtraArguments(impl_->GetExtraCommandLineArguments());
   browser_->SetFeatureFlags(feature_flags, origin_list_flags);
 }
 

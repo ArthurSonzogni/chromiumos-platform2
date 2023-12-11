@@ -40,7 +40,9 @@ using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::AtLeast;
 using ::testing::Return;
+using ::testing::SaveArg;
 using ::testing::Sequence;
+using ::testing::UnorderedElementsAre;
 
 namespace login_manager {
 
@@ -465,6 +467,110 @@ TEST_F(SessionManagerProcessTest, ClearBrowserDataMigrationArgs) {
   EXPECT_CALL(*job, ClearBrowserDataBackwardMigrationArgs());
 
   manager_->RunBrowser();
+}
+
+TEST_F(SessionManagerProcessTest, InitializeShouldSetExtraCommandlineArgs) {
+  FakeBrowserJob* job = CreateMockJobAndInitManager(/*schedule_exit=*/false);
+
+  EXPECT_CALL(*session_manager_impl_, GetExtraCommandLineArguments)
+      .WillOnce(Return(std::vector<std::string>{"--the-first-argument",
+                                                "--the-second-argument"}));
+
+  std::vector<std::string> actual_arguments;
+  EXPECT_CALL(*job, SetExtraArguments).WillOnce(SaveArg<0>(&actual_arguments));
+
+  manager_->test_api().InitializeBrowser();
+
+  EXPECT_THAT(actual_arguments, UnorderedElementsAre("--the-first-argument",
+                                                     "--the-second-argument"));
+}
+
+TEST_F(SessionManagerProcessTest, InitializeShouldSetFeatureFlags) {
+  FakeBrowserJob* job = CreateMockJobAndInitManager(/*schedule_exit=*/false);
+
+  EXPECT_CALL(*session_manager_impl_, GetFeatureFlags)
+      .WillOnce(Return(
+          std::vector<std::string>{"the-first-flag", "the-second-flag"}));
+
+  std::vector<std::string> actual_flags;
+  EXPECT_CALL(*job, SetFeatureFlags).WillOnce(SaveArg<0>(&actual_flags));
+
+  manager_->test_api().InitializeBrowser();
+
+  EXPECT_THAT(actual_flags,
+              UnorderedElementsAre("the-first-flag", "the-second-flag"));
+}
+
+TEST_F(SessionManagerProcessTest,
+       SetFlagsForUsersShouldKeepExtraCommandLineArguments) {
+  FakeBrowserJob* job = CreateMockJobAndInitManager(/*schedule_exit=*/false);
+
+  EXPECT_CALL(*session_manager_impl_, GetExtraCommandLineArguments)
+      .WillOnce(Return(std::vector<std::string>{
+          "the-first-extra-argument",
+          "the-second-extra-argument",
+      }));
+
+  std::vector<std::string> actual_arguments;
+  EXPECT_CALL(*job, SetExtraArguments).WillOnce(SaveArg<0>(&actual_arguments));
+
+  manager_->SetFlagsForUser(
+      "account-id", {"the-first-user-argument", "the-second-user-argument"});
+
+  EXPECT_THAT(actual_arguments,
+              UnorderedElementsAre(
+                  "the-first-user-argument", "the-second-user-argument",
+                  "the-first-extra-argument", "the-second-extra-argument"));
+}
+
+TEST_F(SessionManagerProcessTest,
+       SetFeatureFlagsForUsersShouldForwardFeatureFlags) {
+  FakeBrowserJob* job = CreateMockJobAndInitManager(/*schedule_exit=*/false);
+
+  std::vector<std::string> actual_feature_flags;
+  EXPECT_CALL(*job, SetFeatureFlags)
+      .WillOnce(SaveArg<0>(&actual_feature_flags));
+
+  manager_->SetFeatureFlagsForUser("account-id",
+                                   {"the-first-flag", "the-second-flag"}, {});
+
+  EXPECT_THAT(actual_feature_flags,
+              UnorderedElementsAre("the-first-flag", "the-second-flag"));
+}
+
+TEST_F(SessionManagerProcessTest,
+       SetFeatureFlagsForUsersShouldForwardOriginListFlags) {
+  FakeBrowserJob* job = CreateMockJobAndInitManager(/*schedule_exit=*/false);
+
+  std::map<std::string, std::string> actual_origin_list_flags;
+  EXPECT_CALL(*job, SetFeatureFlags)
+      .WillOnce(SaveArg<1>(&actual_origin_list_flags));
+
+  manager_->SetFeatureFlagsForUser("account-id", {}, {{"origin", "flag"}});
+
+  EXPECT_THAT(actual_origin_list_flags,
+              UnorderedElementsAre(std::make_pair("origin", "flag")));
+}
+
+TEST_F(SessionManagerProcessTest,
+       SetFeatureFlagsForUsersShouldResetExtraArguments) {
+  FakeBrowserJob* job = CreateMockJobAndInitManager(/*schedule_exit=*/false);
+
+  EXPECT_CALL(*session_manager_impl_, GetExtraCommandLineArguments)
+      .WillOnce(Return(std::vector<std::string>{
+          "the-first-extra-argument",
+          "the-second-extra-argument",
+      }));
+
+  std::vector<std::string> actual_arguments;
+  EXPECT_CALL(*job, SetExtraArguments).WillOnce(SaveArg<0>(&actual_arguments));
+
+  manager_->SetFeatureFlagsForUser("account-id", {"the-flags"},
+                                   {{"origin", "flag"}});
+
+  EXPECT_THAT(actual_arguments,
+              UnorderedElementsAre("the-first-extra-argument",
+                                   "the-second-extra-argument"));
 }
 
 }  // namespace login_manager
