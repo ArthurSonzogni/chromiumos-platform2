@@ -481,14 +481,9 @@ void P2PManager::GroupFinished(const KeyValueStore& properties) {
           ? supplicant_primary_p2pdevice_event_delegates_[interface_path]
           : nullptr;
   if (!delegate) {
-    delegate = supplicant_primary_p2pdevice_pending_event_delegate_;
-    if (!delegate) {
-      LOG(WARNING) << "Ignored " << __func__
-                   << " while not expected, interface: "
-                   << interface_path.value();
-      return;
-    }
-    supplicant_primary_p2pdevice_pending_event_delegate_ = nullptr;
+    LOG(ERROR) << "Ignored " << __func__
+               << " while not expected, interface: " << interface_path.value();
+    return;
   } else {
     supplicant_primary_p2pdevice_event_delegates_.erase(interface_path);
   }

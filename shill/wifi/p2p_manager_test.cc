@@ -675,11 +675,11 @@ TEST_F(P2PManagerTest, GroupFinished_BeforeStarted) {
   EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
             p2p_device);
 
-  EXPECT_CALL(*p2p_device, GroupFinished(properties)).Times(1);
+  EXPECT_CALL(*p2p_device, GroupFinished(properties)).Times(0);
   PostGroupFinished(properties);
 
   EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
-            nullptr);
+            p2p_device);
 }
 
 TEST_F(P2PManagerTest, GroupFinished_IgnoreDuplicates) {
