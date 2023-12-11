@@ -53,3 +53,5 @@ capget: 1
 capset: 1
 setuid: 1
 dup: 1
+gettimeofday: 1
+sched_yield: 1
