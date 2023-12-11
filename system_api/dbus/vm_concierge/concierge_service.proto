@@ -493,6 +493,9 @@ message StartArcVmRequest {
 
   // Whether to enable O_DIRECT for the root disk (/dev/block/vda).
   bool rootfs_o_direct = 45;
+
+  // Whether to enable s2idle in the guest.
+  bool enable_s2idle = 46;
 }
 
 enum VmStatus {
