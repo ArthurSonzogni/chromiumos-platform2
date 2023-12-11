@@ -50,7 +50,8 @@ BackendTpm1::BackendTpm1(Proxy& proxy,
       recovery_crypto_(overalls_, config_, key_management_, sealing_, signing_),
       u2f_(),
       attestation_(overalls_, tss_helper_, config_, key_management_),
-      version_attestation_() {}
+      version_attestation_(),
+      ro_data_(tpm_nvram_) {}
 
 BackendTpm1::~BackendTpm1() = default;
 

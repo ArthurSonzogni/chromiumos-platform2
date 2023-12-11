@@ -19,6 +19,7 @@
 #include "libhwsec/backend/tpm1/pinweaver.h"
 #include "libhwsec/backend/tpm1/random.h"
 #include "libhwsec/backend/tpm1/recovery_crypto.h"
+#include "libhwsec/backend/tpm1/ro_data.h"
 #include "libhwsec/backend/tpm1/sealing.h"
 #include "libhwsec/backend/tpm1/signature_sealing.h"
 #include "libhwsec/backend/tpm1/signing.h"
@@ -47,6 +48,7 @@ class BackendTpm1 : public Backend {
   StateTpm1& GetStateTpm1() { return state_; }
   DAMitigationTpm1& GetDAMitigationTpm1() { return da_mitigation_; }
   StorageTpm1& GetStorageTpm1() { return storage_; }
+  RoDataTpm1& GetRoDataTpm1() { return ro_data_; }
   SealingTpm1& GetSealingTpm1() { return sealing_; }
   SignatureSealingTpm1& GetSignatureSealingTpm1() { return signature_sealing_; }
   DerivingTpm1& GetDerivingTpm1() { return deriving_; }
@@ -73,7 +75,7 @@ class BackendTpm1 : public Backend {
   State* GetState() override { return &state_; }
   DAMitigation* GetDAMitigation() override { return &da_mitigation_; }
   Storage* GetStorage() override { return &storage_; }
-  RoData* GetRoData() override { return nullptr; }
+  RoData* GetRoData() override { return &ro_data_; }
   Sealing* GetSealing() override { return &sealing_; }
   SignatureSealing* GetSignatureSealing() override {
     return &signature_sealing_;
@@ -126,6 +128,7 @@ class BackendTpm1 : public Backend {
   U2fTpm1 u2f_;
   AttestationTpm1 attestation_;
   VersionAttestationTpm1 version_attestation_;
+  RoDataTpm1 ro_data_;
 };
 
 }  // namespace hwsec
