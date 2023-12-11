@@ -40,6 +40,7 @@
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"
+#include "cryptohome/auth_blocks/recoverable_key_store.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/flatbuffer.h"
 #include "cryptohome/auth_factor/label.h"
@@ -441,6 +442,7 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       auth_factor_driver_manager_(backing_apis.auth_factor_driver_manager),
       auth_factor_manager_(backing_apis.auth_factor_manager),
       features_(backing_apis.features),
+      key_store_cert_provider_(backing_apis.key_store_cert_provider),
       converter_(keyset_management_),
       token_(platform_->CreateUnguessableToken()),
       serialized_token_(GetSerializedStringFromToken(token_).value_or("")),
@@ -3615,9 +3617,8 @@ void AuthSession::AuthenticateViaUserSecretStash(
   // Derive the keyset and then use USS to complete the authentication.
   auto derive_callback = base::BindOnce(
       &AuthSession::LoadUSSMainKeyAndFsKeyset, weak_factory_.GetWeakPtr(),
-      auth_factor.type(), auth_factor_label, auth_input,
-      std::move(auth_session_performance_timer), auth_factor_type_user_policy,
-      std::move(on_done));
+      auth_factor, auth_input, std::move(auth_session_performance_timer),
+      auth_factor_type_user_policy, std::move(on_done));
   auth_block_utility_->DeriveKeyBlobsWithAuthBlock(
       *auth_block_type, auth_input, auth_factor.auth_block_state(),
       std::move(derive_callback));
@@ -3708,8 +3709,7 @@ void AuthSession::AuthenticateViaSelectedAuthFactor(
 }
 
 void AuthSession::LoadUSSMainKeyAndFsKeyset(
-    AuthFactorType auth_factor_type,
-    const std::string& auth_factor_label,
+    const AuthFactor& auth_factor,
     const AuthInput& auth_input,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     const SerializedUserAuthFactorTypePolicy& auth_factor_type_user_policy,
@@ -3717,6 +3717,8 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
     CryptohomeStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::optional<AuthBlock::SuggestedAction> suggested_action) {
+  AuthFactorType auth_factor_type = auth_factor.type();
+  const std::string& auth_factor_label = auth_factor.label();
   // Check the status of the callback error, to see if the key blob derivation
   // was actually successful.
   if (!callback_error.ok() || !key_blobs) {
@@ -3804,6 +3806,11 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   // Flip the status on the successful authentication.
   SetAuthorizedForFullAuthIntents(auth_factor_type,
                                   auth_factor_type_user_policy);
+
+  // Update the recoverable key store on the successful authentication.
+  if (features_->IsFeatureEnabled(Features::kGenerateRecoverableKeyStore)) {
+    MaybeUpdateRecoverableKeyStore(auth_factor, auth_input);
+  }
 
   // Set the credential verifier for this credential.
   AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
@@ -4209,6 +4216,71 @@ CryptohomeStatus AuthSession::PrepareChapsKey() {
   }
 
   return OkStatus<CryptohomeCryptoError>();
+}
+
+void AuthSession::MaybeUpdateRecoverableKeyStore(const AuthFactor& auth_factor,
+                                                 AuthInput auth_input) {
+  // TODO(b/312628857): Report metrics for the update result.
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager_->GetDriver(auth_factor.type());
+  std::optional<LockScreenKnowledgeFactorType> lskf_type =
+      factor_driver.GetLockScreenKnowledgeFactorType();
+  if (!lskf_type.has_value() || !decrypted_uss_) {
+    return;
+  }
+  const SecurityDomainKeys* security_domain_keys =
+      decrypted_uss_->GetSecurityDomainKeys();
+  if (!security_domain_keys) {
+    LOG(WARNING) << "Failed to get security domain keys.";
+    return;
+  }
+  auth_input.security_domain_keys = *security_domain_keys;
+  RecoverableKeyStoreBackendCertProvider* provider =
+      key_store_cert_provider_.get();
+  if (!provider) {
+    LOG(WARNING) << "Failed to get key store backend cert provider.";
+    return;
+  }
+  RecoverableKeyStoreState new_state;
+  std::optional<RecoverableKeyStoreState> old_state =
+      auth_factor.auth_block_state().recoverable_key_store_state;
+  if (!old_state.has_value()) {
+    CryptohomeStatusOr<RecoverableKeyStoreState> new_state_status =
+        CreateRecoverableKeyStoreState(*lskf_type, auth_input, *provider);
+    if (!new_state_status.ok()) {
+      LOG(ERROR) << "Failed to create recoverable key store state: "
+                 << new_state_status.status();
+      return;
+    }
+    new_state = std::move(*new_state_status);
+  } else {
+    CryptohomeStatusOr<std::optional<RecoverableKeyStoreState>>
+        new_state_status = MaybeUpdateRecoverableKeyStoreState(
+            *old_state, *lskf_type, auth_input, *provider);
+    if (!new_state_status.ok()) {
+      LOG(ERROR) << "Failed to update recoverable key store state."
+                 << new_state_status.status();
+      return;
+    }
+    if (!new_state_status->has_value()) {
+      return;
+    }
+    new_state = std::move(**new_state_status);
+  }
+
+  AuthBlockState updated_auth_block_state = auth_factor.auth_block_state();
+  updated_auth_block_state.recoverable_key_store_state = std::move(new_state);
+  AuthFactor updated_auth_factor =
+      AuthFactor(auth_factor.type(), auth_factor.label(),
+                 auth_factor.metadata(), updated_auth_block_state);
+  CryptohomeStatus save_status = auth_factor_manager_->SaveAuthFactorFile(
+      obfuscated_username_, updated_auth_factor);
+  if (!save_status.ok()) {
+    LOG(ERROR) << "Failed to save updated auth factor.";
+    return;
+  }
+  auth_factor_map_.Add(std::move(updated_auth_factor),
+                       AuthFactorStorageType::kUserSecretStash);
 }
 
 }  // namespace cryptohome

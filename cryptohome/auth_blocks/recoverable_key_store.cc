@@ -36,12 +36,11 @@ using ::hwsec_foundation::status::MakeStatus;
 // bytes, we treat the label as bytes directly.
 constexpr size_t kWrongAttemptLabelSize = 8;
 
-}  // namespace
-
-CryptohomeStatusOr<RecoverableKeyStoreState> CreateRecoverableKeyStoreState(
+CryptohomeStatusOr<RecoverableKeyStoreState> DoCreateRecoverableKeyStoreState(
     LockScreenKnowledgeFactorType lskf_type,
     const AuthInput& auth_input,
-    const RecoverableKeyStoreBackendCertProvider& cert_provider) {
+    const RecoverableKeyStoreBackendCert& cert,
+    const brillo::Blob& wrong_attempt_label) {
   if (!auth_input.user_input.has_value() ||
       !auth_input.user_input_hash_algorithm.has_value() ||
       !auth_input.user_input_hash_salt.has_value() ||
@@ -58,21 +57,9 @@ CryptohomeStatusOr<RecoverableKeyStoreState> CreateRecoverableKeyStoreState(
       .hash = *auth_input.user_input,
   };
 
-  std::optional<RecoverableKeyStoreBackendCert> backend_cert =
-      cert_provider.GetBackendCert();
-  if (!backend_cert.has_value()) {
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocRecoverableKeyStoreCreateGetCertFailed),
-        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kRetry}),
-        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
-  }
-
-  brillo::Blob wrong_attempt_label = CreateRandomBlob(kWrongAttemptLabelSize);
-
   CryptohomeStatusOr<RecoverableKeyStore> key_store_proto =
       GenerateRecoverableKeyStore(lskf, wrong_attempt_label,
-                                  *auth_input.security_domain_keys,
-                                  *backend_cert);
+                                  *auth_input.security_domain_keys, cert);
   if (!key_store_proto.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(kLocRecoverableKeyStoreCreateGenerateFailed),
@@ -90,6 +77,61 @@ CryptohomeStatusOr<RecoverableKeyStoreState> CreateRecoverableKeyStoreState(
 
   return RecoverableKeyStoreState{
       .key_store_proto = brillo::BlobFromString(key_store_proto_string)};
+}
+
+}  // namespace
+
+CryptohomeStatusOr<RecoverableKeyStoreState> CreateRecoverableKeyStoreState(
+    LockScreenKnowledgeFactorType lskf_type,
+    const AuthInput& auth_input,
+    const RecoverableKeyStoreBackendCertProvider& cert_provider) {
+  std::optional<RecoverableKeyStoreBackendCert> backend_cert =
+      cert_provider.GetBackendCert();
+  if (!backend_cert.has_value()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoverableKeyStoreCreateGetCertFailed),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kRetry}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+  brillo::Blob wrong_attempt_label = CreateRandomBlob(kWrongAttemptLabelSize);
+  return DoCreateRecoverableKeyStoreState(lskf_type, auth_input, *backend_cert,
+                                          wrong_attempt_label);
+}
+
+CryptohomeStatusOr<std::optional<RecoverableKeyStoreState>>
+MaybeUpdateRecoverableKeyStoreState(
+    const RecoverableKeyStoreState& state,
+    LockScreenKnowledgeFactorType lskf_type,
+    const AuthInput& auth_input,
+    const RecoverableKeyStoreBackendCertProvider& cert_provider) {
+  std::optional<RecoverableKeyStoreBackendCert> backend_cert =
+      cert_provider.GetBackendCert();
+  if (!backend_cert.has_value()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoverableKeyStoreUpdateGetCertFailed),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kRetry}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+  RecoverableKeyStore key_store;
+  if (!key_store.ParseFromString(brillo::BlobToString(state.key_store_proto))) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoverableKeyStoreUpdateParseStateFailed),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+  uint64_t state_version = key_store.key_store_metadata().cert_list_version();
+  if (state_version >= backend_cert->version) {
+    return std::nullopt;
+  }
+  brillo::Blob wrong_attempt_label =
+      brillo::BlobFromString(key_store.key_store_parameters().counter_id());
+  CryptohomeStatusOr<RecoverableKeyStoreState> new_state =
+      DoCreateRecoverableKeyStoreState(lskf_type, auth_input, *backend_cert,
+                                       wrong_attempt_label);
+  if (!new_state.ok()) {
+    return std::move(new_state).err_status();
+  }
+  return *new_state;
 }
 
 }  // namespace cryptohome

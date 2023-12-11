@@ -46,11 +46,13 @@
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/recoverable_key_store/backend_cert_provider.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_secret_stash/decrypted.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/username.h"
+#include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
 
@@ -123,6 +125,8 @@ class AuthSession final {
     AuthFactorManager* auth_factor_manager = nullptr;
     UssStorage* user_secret_stash_storage = nullptr;
     AsyncInitFeatures* features = nullptr;
+    AsyncInitPtr<RecoverableKeyStoreBackendCertProvider>
+        key_store_cert_provider{nullptr};
   };
 
   // Creates new auth session for account_id. This method returns a unique_ptr
@@ -629,13 +633,12 @@ class AuthSession final {
                                  const AuthInput& auth_input,
                                  StatusCallback on_done);
 
-  // Loads and decrypts the USS payload with |auth_factor_label| using the
+  // Loads and decrypts the USS payload with |auth_factor| using the
   // given KeyBlobs. Designed to be used in conjunction with an async
   // DeriveKeyBlobs call by binding all of the initial parameters to make an
   // AuthBlock::DeriveCallback.
   void LoadUSSMainKeyAndFsKeyset(
-      AuthFactorType auth_factor_type,
-      const std::string& auth_factor_label,
+      const AuthFactor& auth_factor,
       const AuthInput& auth_input,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
@@ -809,6 +812,11 @@ class AuthSession final {
   // during PrepareUserForRemoval.
   void RemoveRateLimiters();
 
+  // Check whether the recoverable key store state of |auth_factor| is outdated,
+  // and update it if so.
+  void MaybeUpdateRecoverableKeyStore(const AuthFactor& auth_factor,
+                                      AuthInput auth_input);
+
   Username username_;
   ObfuscatedUsername obfuscated_username_;
 
@@ -855,6 +863,7 @@ class AuthSession final {
   AuthFactorManager* const auth_factor_manager_;
   // Unowned pointer.
   AsyncInitFeatures* const features_;
+  AsyncInitPtr<RecoverableKeyStoreBackendCertProvider> key_store_cert_provider_;
   // A stateless object to convert AuthFactor API to VaultKeyset KeyData and
   // VaultKeysets to AuthFactor API.
   AuthFactorVaultKeysetConverter converter_;

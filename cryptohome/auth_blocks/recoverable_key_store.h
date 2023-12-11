@@ -22,6 +22,16 @@ CryptohomeStatusOr<RecoverableKeyStoreState> CreateRecoverableKeyStoreState(
     const AuthInput& auth_input,
     const RecoverableKeyStoreBackendCertProvider& cert_provider);
 
+// If the content of |state| is up to date, return a nullopt.
+// Otherwise, regenerate the updated state based on |state|. If success, return
+// the regenerated state. Otherwise, return an error.
+CryptohomeStatusOr<std::optional<RecoverableKeyStoreState>>
+MaybeUpdateRecoverableKeyStoreState(
+    const RecoverableKeyStoreState& state,
+    LockScreenKnowledgeFactorType lskf_type,
+    const AuthInput& auth_input,
+    const RecoverableKeyStoreBackendCertProvider& cert_provider);
+
 }  // namespace cryptohome
 
 #endif  // CRYPTOHOME_AUTH_BLOCKS_RECOVERABLE_KEY_STORE_H_
