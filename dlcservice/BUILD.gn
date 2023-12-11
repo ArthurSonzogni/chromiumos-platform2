@@ -13,7 +13,11 @@ group("all") {
     ":dlcservice_adaptors",
     ":dlcservice_util",
     ":dlcverify",
+    ":install_dbus_config",
+    ":install_dlctool",
     ":install_minijail_conf",
+    ":install_seccomp_policy",
+    ":install_upstart_conf",
     ":install_utils_header",
     ":install_utils_pkgconfig",
     ":libdlcservice",
@@ -97,6 +101,24 @@ install_config("install_utils_header") {
   install_path = "/usr/include/libdlcservice"
 }
 
+install_config("install_seccomp_policy") {
+  sources = [ "seccomp/dlcservice-seccomp-" + getenv("ARCH") + ".policy" ]
+
+  # NOSORT
+  outputs = [ "dlcservice-seccomp.policy" ]
+  install_path = "seccomp_policy"
+}
+
+install_config("install_upstart_conf") {
+  sources = [ "dlcservice.conf" ]
+  install_path = "upstart"
+}
+
+install_config("install_dbus_config") {
+  sources = [ "org.chromium.DlcService.conf" ]
+  install_path = "dbus_system_d"
+}
+
 # DLC utils related files.
 static_library("libdlcservice_utils") {
   sources = [
@@ -148,6 +170,7 @@ static_library("libdlcservice") {
 # For dlcservice:
 executable("dlcservice") {
   sources = [ "main.cc" ]
+  install_path = "sbin"
   configs += [ ":target_defaults" ]
   deps = [ ":libdlcservice" ]
 }
@@ -155,6 +178,7 @@ executable("dlcservice") {
 # For dlcservice_util:
 executable("dlcservice_util") {
   sources = [ "tools/dlc_service_util.cc" ]
+  install_path = "bin"
   configs += [
     ":target_defaults",
     ":dlcservice_util_config",
@@ -167,12 +191,21 @@ executable("dlcverify") {
   sources = [ "tools/dlcverify.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libdlcverify" ]
+  install_path = "/usr/local/bin"
+}
+
+# For dlctool:
+install_config("install_dlctool") {
+  sources = [ "tools/dlctool" ]
+  install_path = "/usr/local/bin"
+  type = "executable"
 }
 
 # For dlc_metadata_util:
 executable("dlc_metadata_util") {
   sources = [ "tools/dlc_metadata_util.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
 }
 
 # For test:
