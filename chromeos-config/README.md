@@ -502,6 +502,7 @@ In the tables below,
 | regulatory-label | string |  | False |  | False | Base name of the directory containing the regulatory label files to show on this device. |
 | resource | [resource](#resource) |  | False |  | False | Defines settings that configure resourced. https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/software/resource_config.proto |
 | rmad | [rmad](#rmad) |  | False |  | False | ChromeOS Shimless RMA daemon configurations. |
+| schedqos | [schedqos](#schedqos) |  | False |  | False | ChromeOS scheduler QoS settings. |
 | scheduler-tune | [scheduler-tune](#scheduler_tune) |  | False |  | False | ChromeOS scheduler's tunable values. |
 | test-label | string |  | False |  | False | Test alias (model) label that will be applied in Autotest and reported for test results. |
 | thermal | [thermal](#thermal) |  | False |  | False |  |
@@ -1038,8 +1039,8 @@ In the tables below,
 ### resource
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| ac | [ac](#ac) |  | False |  | False | Defines settings that configure resourced based on power source. https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/software/resource_config.proto |
-| dc | [dc](#dc) |  | False |  | False | Defines settings that configure resourced based on power source. https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/software/resource_config.proto |
+| ac | [ac](#ac) |  | False |  | False | Defines settings that configure resourced based on power source. https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/resource_config.proto |
+| dc | [dc](#dc) |  | False |  | False | Defines settings that configure resourced based on power source. https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/resource_config.proto |
 
 ### ac
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -2405,6 +2406,77 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | identifier | string |  | False |  | False | Component name in the probe statement, e.g. gyroscope_1. |
 | value | integer |  | False |  | False | SSFC value of the component. Minimum value: 0x0. Maximum value: 0xffffffff. |
+
+### schedqos
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| default | [default](#default) |  | False |  | False | Defines settings that configure resourced based on schedqos. https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/schedqos_config.proto |
+
+### default
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| background-cpu-share | integer |  | False |  | False | The cpu share of background cpu cgroup. |
+| normal-cpu-share | integer |  | False |  | False | The cpu share of normal cpu cgroup. |
+| thread-background | [thread-background](#thread_background) |  | False |  | False | Thread config for schedqos of each QoS state. |
+| thread-balanced | [thread-balanced](#thread_balanced) |  | False |  | False | Thread config for schedqos of each QoS state. |
+| thread-eco | [thread-eco](#thread_eco) |  | False |  | False | Thread config for schedqos of each QoS state. |
+| thread-urgent | [thread-urgent](#thread_urgent) |  | False |  | False | Thread config for schedqos of each QoS state. |
+| thread-urgent-bursty | [thread-urgent-bursty](#thread_urgent_bursty) |  | False |  | False | Thread config for schedqos of each QoS state. |
+| thread-utility | [thread-utility](#thread_utility) |  | False |  | False | Thread config for schedqos of each QoS state. |
+
+### thread-background
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpuset-cgroup | string |  | False |  | False | The cpuset cgroup to use. |
+| latency-sensitive | boolean |  | False |  | False | Whether the thread is latency sensitive or not. The value (1 for true, 0 for false) is set to /proc/pid/task/tid/latency_sensitive. |
+| nice | integer |  | False |  | False | The nice value for scheduler. Minimum value: -0x14. Maximum value: 0x13. |
+| rt-priority | integer |  | False |  | False | The priority on RT mode. Negative value means RT is disabled. |
+| uclamp-min | integer |  | False |  | False | Percentage of uclamp.min. Minimum value: 0x0. Maximum value: 0x64. |
+
+### thread-balanced
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpuset-cgroup | string |  | False |  | False | The cpuset cgroup to use. |
+| latency-sensitive | boolean |  | False |  | False | Whether the thread is latency sensitive or not. The value (1 for true, 0 for false) is set to /proc/pid/task/tid/latency_sensitive. |
+| nice | integer |  | False |  | False | The nice value for scheduler. Minimum value: -0x14. Maximum value: 0x13. |
+| rt-priority | integer |  | False |  | False | The priority on RT mode. Negative value means RT is disabled. |
+| uclamp-min | integer |  | False |  | False | Percentage of uclamp.min. Minimum value: 0x0. Maximum value: 0x64. |
+
+### thread-eco
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpuset-cgroup | string |  | False |  | False | The cpuset cgroup to use. |
+| latency-sensitive | boolean |  | False |  | False | Whether the thread is latency sensitive or not. The value (1 for true, 0 for false) is set to /proc/pid/task/tid/latency_sensitive. |
+| nice | integer |  | False |  | False | The nice value for scheduler. Minimum value: -0x14. Maximum value: 0x13. |
+| rt-priority | integer |  | False |  | False | The priority on RT mode. Negative value means RT is disabled. |
+| uclamp-min | integer |  | False |  | False | Percentage of uclamp.min. Minimum value: 0x0. Maximum value: 0x64. |
+
+### thread-urgent
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpuset-cgroup | string |  | False |  | False | The cpuset cgroup to use. |
+| latency-sensitive | boolean |  | False |  | False | Whether the thread is latency sensitive or not. The value (1 for true, 0 for false) is set to /proc/pid/task/tid/latency_sensitive. |
+| nice | integer |  | False |  | False | The nice value for scheduler. Minimum value: -0x14. Maximum value: 0x13. |
+| rt-priority | integer |  | False |  | False | The priority on RT mode. Negative value means RT is disabled. |
+| uclamp-min | integer |  | False |  | False | Percentage of uclamp.min. Minimum value: 0x0. Maximum value: 0x64. |
+
+### thread-urgent-bursty
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpuset-cgroup | string |  | False |  | False | The cpuset cgroup to use. |
+| latency-sensitive | boolean |  | False |  | False | Whether the thread is latency sensitive or not. The value (1 for true, 0 for false) is set to /proc/pid/task/tid/latency_sensitive. |
+| nice | integer |  | False |  | False | The nice value for scheduler. Minimum value: -0x14. Maximum value: 0x13. |
+| rt-priority | integer |  | False |  | False | The priority on RT mode. Negative value means RT is disabled. |
+| uclamp-min | integer |  | False |  | False | Percentage of uclamp.min. Minimum value: 0x0. Maximum value: 0x64. |
+
+### thread-utility
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpuset-cgroup | string |  | False |  | False | The cpuset cgroup to use. |
+| latency-sensitive | boolean |  | False |  | False | Whether the thread is latency sensitive or not. The value (1 for true, 0 for false) is set to /proc/pid/task/tid/latency_sensitive. |
+| nice | integer |  | False |  | False | The nice value for scheduler. Minimum value: -0x14. Maximum value: 0x13. |
+| rt-priority | integer |  | False |  | False | The priority on RT mode. Negative value means RT is disabled. |
+| uclamp-min | integer |  | False |  | False | Percentage of uclamp.min. Minimum value: 0x0. Maximum value: 0x64. |
 
 ### scheduler-tune
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

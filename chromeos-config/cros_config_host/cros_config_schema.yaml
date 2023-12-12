@@ -412,7 +412,7 @@ typeDefs:
                       resourced sets default to 2.
   resourced_power_source_preferences: &resourced_power_source_preferences
     description: Defines settings that configure resourced based on power source.
-      https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/software/resource_config.proto
+      https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/resource_config.proto
     type: object
     properties:
       default-power-preferences: *resourced_power_preferences
@@ -422,6 +422,50 @@ typeDefs:
       borealis-gaming-power-preferences: *resourced_power_preferences
       arcvm-gaming-power-preferences: *resourced_power_preferences
       battery-saver-power-preferences: *resourced_power_preferences
+  schedqos_thread_config: &schedqos_thread_config
+    description: Thread config for schedqos of each QoS state.
+    type: object
+    properties:
+      rt-priority:
+        type: integer
+        description: The priority on RT mode. Negative value means RT is disabled.
+      nice:
+        type: integer
+        description: The nice value for scheduler.
+        minimum: -20
+        maximum: 19
+      uclamp-min:
+        type: integer
+        description: Percentage of uclamp.min.
+        minimum: 0
+        maximum: 100
+      cpuset-cgroup:
+        type: string
+        description: The cpuset cgroup to use.
+        enum:
+          - all
+          - efficient
+      latency-sensitive:
+        type: boolean
+        description: Whether the thread is latency sensitive or not.
+          The value (1 for true, 0 for false) is set to /proc/pid/task/tid/latency_sensitive.
+  schedqos_config: &schedqos_config
+    description: Defines settings that configure resourced based on schedqos.
+      https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/schedqos_config.proto
+    type: object
+    properties:
+      normal-cpu-share:
+        type: integer
+        description: The cpu share of normal cpu cgroup.
+      background-cpu-share:
+        type: integer
+        description: The cpu share of background cpu cgroup.
+      thread-urgent-bursty: *schedqos_thread_config
+      thread-urgent: *schedqos_thread_config
+      thread-balanced: *schedqos_thread_config
+      thread-eco: *schedqos_thread_config
+      thread-utility: *schedqos_thread_config
+      thread-background: *schedqos_thread_config
 type: object
 properties:
   chromeos:
@@ -1726,6 +1770,11 @@ properties:
                   description: (Optional) non-urgent task are only allowed
                     to use given CPUs.
               additionalProperties: false
+            schedqos:
+              type: object
+              description: ChromeOS scheduler QoS settings.
+              properties:
+                default: *schedqos_config
             branding:
               type: object
               description: Contains branding characteristics for this model.

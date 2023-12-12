@@ -1838,7 +1838,7 @@
                 "description": "Defines settings that configure resourced. https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/software/resource_config.proto",
                 "properties": {
                   "ac": {
-                    "description": "Defines settings that configure resourced based on power source. https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/software/resource_config.proto",
+                    "description": "Defines settings that configure resourced based on power source. https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/resource_config.proto",
                     "properties": {
                       "arcvm-gaming-power-preferences": {
                         "description": "For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html",
@@ -2579,7 +2579,7 @@
                     "type": "object"
                   },
                   "dc": {
-                    "description": "Defines settings that configure resourced based on power source. https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/software/resource_config.proto",
+                    "description": "Defines settings that configure resourced based on power source. https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/resource_config.proto",
                     "properties": {
                       "arcvm-gaming-power-preferences": {
                         "description": "For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html",
@@ -3390,6 +3390,230 @@
                   "use-legacy-custom-label": {
                     "description": "Whether use the legacy custom label key in VPD.",
                     "type": "boolean"
+                  }
+                },
+                "type": "object"
+              },
+              "schedqos": {
+                "description": "ChromeOS scheduler QoS settings.",
+                "properties": {
+                  "default": {
+                    "description": "Defines settings that configure resourced based on schedqos. https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/schedqos_config.proto",
+                    "properties": {
+                      "background-cpu-share": {
+                        "description": "The cpu share of background cpu cgroup.",
+                        "type": "integer"
+                      },
+                      "normal-cpu-share": {
+                        "description": "The cpu share of normal cpu cgroup.",
+                        "type": "integer"
+                      },
+                      "thread-background": {
+                        "description": "Thread config for schedqos of each QoS state.",
+                        "properties": {
+                          "cpuset-cgroup": {
+                            "description": "The cpuset cgroup to use.",
+                            "enum": [
+                              "all",
+                              "efficient"
+                            ],
+                            "type": "string"
+                          },
+                          "latency-sensitive": {
+                            "description": "Whether the thread is latency sensitive or not. The value (1 for true, 0 for false) is set to /proc/pid/task/tid/latency_sensitive.",
+                            "type": "boolean"
+                          },
+                          "nice": {
+                            "description": "The nice value for scheduler.",
+                            "maximum": 19,
+                            "minimum": -20,
+                            "type": "integer"
+                          },
+                          "rt-priority": {
+                            "description": "The priority on RT mode. Negative value means RT is disabled.",
+                            "type": "integer"
+                          },
+                          "uclamp-min": {
+                            "description": "Percentage of uclamp.min.",
+                            "maximum": 100,
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "thread-balanced": {
+                        "description": "Thread config for schedqos of each QoS state.",
+                        "properties": {
+                          "cpuset-cgroup": {
+                            "description": "The cpuset cgroup to use.",
+                            "enum": [
+                              "all",
+                              "efficient"
+                            ],
+                            "type": "string"
+                          },
+                          "latency-sensitive": {
+                            "description": "Whether the thread is latency sensitive or not. The value (1 for true, 0 for false) is set to /proc/pid/task/tid/latency_sensitive.",
+                            "type": "boolean"
+                          },
+                          "nice": {
+                            "description": "The nice value for scheduler.",
+                            "maximum": 19,
+                            "minimum": -20,
+                            "type": "integer"
+                          },
+                          "rt-priority": {
+                            "description": "The priority on RT mode. Negative value means RT is disabled.",
+                            "type": "integer"
+                          },
+                          "uclamp-min": {
+                            "description": "Percentage of uclamp.min.",
+                            "maximum": 100,
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "thread-eco": {
+                        "description": "Thread config for schedqos of each QoS state.",
+                        "properties": {
+                          "cpuset-cgroup": {
+                            "description": "The cpuset cgroup to use.",
+                            "enum": [
+                              "all",
+                              "efficient"
+                            ],
+                            "type": "string"
+                          },
+                          "latency-sensitive": {
+                            "description": "Whether the thread is latency sensitive or not. The value (1 for true, 0 for false) is set to /proc/pid/task/tid/latency_sensitive.",
+                            "type": "boolean"
+                          },
+                          "nice": {
+                            "description": "The nice value for scheduler.",
+                            "maximum": 19,
+                            "minimum": -20,
+                            "type": "integer"
+                          },
+                          "rt-priority": {
+                            "description": "The priority on RT mode. Negative value means RT is disabled.",
+                            "type": "integer"
+                          },
+                          "uclamp-min": {
+                            "description": "Percentage of uclamp.min.",
+                            "maximum": 100,
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "thread-urgent": {
+                        "description": "Thread config for schedqos of each QoS state.",
+                        "properties": {
+                          "cpuset-cgroup": {
+                            "description": "The cpuset cgroup to use.",
+                            "enum": [
+                              "all",
+                              "efficient"
+                            ],
+                            "type": "string"
+                          },
+                          "latency-sensitive": {
+                            "description": "Whether the thread is latency sensitive or not. The value (1 for true, 0 for false) is set to /proc/pid/task/tid/latency_sensitive.",
+                            "type": "boolean"
+                          },
+                          "nice": {
+                            "description": "The nice value for scheduler.",
+                            "maximum": 19,
+                            "minimum": -20,
+                            "type": "integer"
+                          },
+                          "rt-priority": {
+                            "description": "The priority on RT mode. Negative value means RT is disabled.",
+                            "type": "integer"
+                          },
+                          "uclamp-min": {
+                            "description": "Percentage of uclamp.min.",
+                            "maximum": 100,
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "thread-urgent-bursty": {
+                        "description": "Thread config for schedqos of each QoS state.",
+                        "properties": {
+                          "cpuset-cgroup": {
+                            "description": "The cpuset cgroup to use.",
+                            "enum": [
+                              "all",
+                              "efficient"
+                            ],
+                            "type": "string"
+                          },
+                          "latency-sensitive": {
+                            "description": "Whether the thread is latency sensitive or not. The value (1 for true, 0 for false) is set to /proc/pid/task/tid/latency_sensitive.",
+                            "type": "boolean"
+                          },
+                          "nice": {
+                            "description": "The nice value for scheduler.",
+                            "maximum": 19,
+                            "minimum": -20,
+                            "type": "integer"
+                          },
+                          "rt-priority": {
+                            "description": "The priority on RT mode. Negative value means RT is disabled.",
+                            "type": "integer"
+                          },
+                          "uclamp-min": {
+                            "description": "Percentage of uclamp.min.",
+                            "maximum": 100,
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "thread-utility": {
+                        "description": "Thread config for schedqos of each QoS state.",
+                        "properties": {
+                          "cpuset-cgroup": {
+                            "description": "The cpuset cgroup to use.",
+                            "enum": [
+                              "all",
+                              "efficient"
+                            ],
+                            "type": "string"
+                          },
+                          "latency-sensitive": {
+                            "description": "Whether the thread is latency sensitive or not. The value (1 for true, 0 for false) is set to /proc/pid/task/tid/latency_sensitive.",
+                            "type": "boolean"
+                          },
+                          "nice": {
+                            "description": "The nice value for scheduler.",
+                            "maximum": 19,
+                            "minimum": -20,
+                            "type": "integer"
+                          },
+                          "rt-priority": {
+                            "description": "The priority on RT mode. Negative value means RT is disabled.",
+                            "type": "integer"
+                          },
+                          "uclamp-min": {
+                            "description": "Percentage of uclamp.min.",
+                            "maximum": 100,
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "type": "object"
                   }
                 },
                 "type": "object"

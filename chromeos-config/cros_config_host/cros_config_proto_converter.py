@@ -27,6 +27,7 @@ from chromiumos.config.api import device_brand_id_pb2
 from chromiumos.config.api import device_brand_pb2
 from chromiumos.config.api import proximity_config_pb2
 from chromiumos.config.api import resource_config_pb2
+from chromiumos.config.api import schedqos_config_pb2
 from chromiumos.config.api import topology_pb2
 from chromiumos.config.api.software import brand_config_pb2
 from chromiumos.config.api.software import ui_config_pb2
@@ -869,6 +870,71 @@ def _build_resource(config: Config) -> dict:
         return result
 
     result = _build_power_source(resource_config)
+    return result
+
+
+_CPUSET_CGROUPS = {
+    schedqos_config_pb2.SchedqosConfig.CpusetCgroup.CPUSET_CGROUP_ALL: "all",
+    # pylint: disable=line-too-long
+    schedqos_config_pb2.SchedqosConfig.CpusetCgroup.CPUSET_CGROUP_EFFICIENT: "efficient",
+}
+
+
+def _build_schedqos(config: Config) -> dict:
+    """Builds the 'schedqos' property for cros_config_schema."""
+
+    def _build_thread_config(thread_config):
+        result = {}
+        if thread_config.HasField("rt_priority"):
+            result["rt-priority"] = thread_config.rt_priority.value
+        if thread_config.HasField("nice"):
+            result["nice"] = thread_config.nice.value
+        if thread_config.HasField("uclamp_min"):
+            result["uclamp-min"] = thread_config.uclamp_min.value
+        if thread_config.HasField("latency_sensitive"):
+            result["latency-sensitive"] = thread_config.latency_sensitive.value
+        if thread_config.cpuset_cgroup != 0:
+            result["cpuset-cgroup"] = _CPUSET_CGROUPS[
+                thread_config.cpuset_cgroup
+            ]
+        return result
+
+    def _build_config_set(config_set):
+        result = {}
+        if config_set.normal_cpu_share != 0:
+            result["normal-cpu-share"] = config_set.normal_cpu_share
+        if config_set.background_cpu_share != 0:
+            result["background-cpu-share"] = config_set.background_cpu_share
+        if config_set.HasField("thread_urgent_bursty"):
+            result["thread-urgent-bursty"] = _build_thread_config(
+                config_set.thread_urgent_bursty
+            )
+        if config_set.HasField("thread_urgent"):
+            result["thread-urgent"] = _build_thread_config(
+                config_set.thread_urgent
+            )
+        if config_set.HasField("thread_balanced"):
+            result["thread-balanced"] = _build_thread_config(
+                config_set.thread_balanced
+            )
+        if config_set.HasField("thread_eco"):
+            result["thread-eco"] = _build_thread_config(config_set.thread_eco)
+        if config_set.HasField("thread_utility"):
+            result["thread-utility"] = _build_thread_config(
+                config_set.thread_utility
+            )
+        if config_set.HasField("thread_background"):
+            result["thread-background"] = _build_thread_config(
+                config_set.thread_background
+            )
+        return result
+
+    result = {}
+    schedqos_config = config.program.platform.schedqos_config
+
+    if schedqos_config.HasField("default"):
+        result["default"] = _build_config_set(schedqos_config.default)
+
     return result
 
 
@@ -2945,6 +3011,7 @@ def _transform_build_config(config, config_files, custom_label):
     _upsert(_build_usb(config), result, "typecd")
     _upsert(_build_power(config), result, "power")
     _upsert(_build_resource(config), result, "resource")
+    _upsert(_build_schedqos(config), result, "schedqos")
     _upsert(_build_scheduler_tune(config), result, "scheduler-tune")
     _upsert(
         _build_thermal_config(config, config_files.dptf_map), result, "thermal"
