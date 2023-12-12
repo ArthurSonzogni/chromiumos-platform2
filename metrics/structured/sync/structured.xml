@@ -327,6 +327,82 @@
     </metric>
   </event>
 
+  <event name="BluetoothA2dpSession">
+    <summary>
+      Records the A2DP session metrics, filed when an A2DP session stops.
+    </summary>
+    <metric name="BootId" type="hmac-string">
+      <summary>
+        Random ID generated at boot time to detect reboots.
+      </summary>
+    </metric>
+    <metric name="SystemTime" type="int">
+      <summary>
+        The time elapsed since boot, in microseconds.
+      </summary>
+    </metric>
+    <metric name="DeviceId" type="hmac-string">
+      <summary>
+        The bluetooth device id.
+      </summary>
+    </metric>
+    <metric name="AudioDuration" type="int">
+      <summary>
+        The duration of the A2DP session, in milliseconds.
+      </summary>
+    </metric>
+    <metric name="MediaTimerMin" type="int">
+      <summary>
+        Minimum time interval for the media timer, in milliseconds.
+      </summary>
+    </metric>
+    <metric name="MediaTimerMax" type="int">
+      <summary>
+        Maximum time interval for the media timer, in milliseconds.
+      </summary>
+    </metric>
+    <metric name="MediaTimerAvg" type="int">
+      <summary>
+        Average time interval for the media timer, in milliseconds.
+      </summary>
+    </metric>
+    <metric name="TotalSchedulingCount" type="int">
+      <summary>
+        Total scheduling count.
+      </summary>
+    </metric>
+    <metric name="BufferOverrunsMaxCount" type="int">
+      <summary>
+        Maximum count of Tx queue messages dropped caused by buffer overruns.
+      </summary>
+    </metric>
+    <metric name="BufferOverrunsTotal" type="int">
+      <summary>
+        Total count of Tx queue messages dropped caused by buffer overruns.
+      </summary>
+    </metric>
+    <metric name="BufferUnderrunsAvg" type="double">
+      <summary>
+        Average number of bytes short in buffer underruns.
+      </summary>
+    </metric>
+    <metric name="BufferUnderrunsCount" type="int">
+      <summary>
+        Count of buffer underruns.
+      </summary>
+    </metric>
+    <metric name="CodecIndex" type="int">
+      <summary>
+        A2DP codec index defined in bt_av.h (SBC=0, AAC=1, etc...).
+      </summary>
+    </metric>
+    <metric name="IsA2dpOffload" type="int">
+      <summary>
+        Boolean to denote if A2DP is offload.
+      </summary>
+    </metric>
+  </event>
+
   <event name="BluetoothHfpPacketLoss">
     <summary>
       Records the Hfp packet loss.
