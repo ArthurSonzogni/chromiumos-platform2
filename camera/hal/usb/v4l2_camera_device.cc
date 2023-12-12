@@ -703,10 +703,17 @@ int V4L2CameraDevice::GetNextFrameBuffer(uint32_t* buffer_id,
   buffer.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   buffer.memory = V4L2_MEMORY_MMAP;
   int ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_DQBUF, &buffer));
+  // For capture streams buffer.timtestamp is time when the first data block was
+  // captured.
+  struct timespec dqbuf_ts;
+  clock_gettime(CLOCK_MONOTONIC, &dqbuf_ts);
   if (frame_number.has_value()) {
-    TRACE_USB_HAL_EVENT("VIDOC_DQBUF", "frame_sequence", buffer.sequence,
-                        perfetto::Flow::ProcessScoped(buffer.sequence),
-                        "frame_number", *frame_number);
+    TRACE_USB_HAL_EVENT(
+        "VIDOC_DQBUF", "frame_sequence", buffer.sequence,
+        perfetto::Flow::ProcessScoped(buffer.sequence), "frame_number",
+        *frame_number, "exposure_to_dqbuf_latency_ns",
+        (dqbuf_ts.tv_sec - buffer.timestamp.tv_sec) * 1'000'000'000LL +
+            dqbuf_ts.tv_nsec - buffer.timestamp.tv_usec * 1000);
   }
   if (ret < 0) {
     ret = ERRNO_OR_RET(ret);
@@ -1517,8 +1524,8 @@ int V4L2CameraDevice::QueryControl(const base::FilePath& device_path,
     return ret;
   }
 
-  VLOGF(1) << ControlTypeToString(type) << "(min,max,step,default) = "
-           << "(" << info->range.minimum << "," << info->range.maximum << ","
+  VLOGF(1) << ControlTypeToString(type) << "(min,max,step,default) = " << "("
+           << info->range.minimum << "," << info->range.maximum << ","
            << info->range.step << "," << info->range.default_value << ")";
 
   if (!info->menu_items.empty()) {

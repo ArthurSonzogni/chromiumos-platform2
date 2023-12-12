@@ -103,67 +103,137 @@ ORDER BY conf_id ASC, stream_id ASC;
 -- the lifetime of a result buffer.
 DROP VIEW IF EXISTS result_buffer_metrics;
 CREATE VIEW result_buffer_metrics AS
-WITH avg AS (
-  SELECT
-    conf_id,
-    EXTRACT_ARG(arg_set_id, 'debug.stream') AS stream_id,
-    EXTRACT_ARG(arg_set_id, 'debug.frame_number') AS frame_number,
-    name, "avg" AS metric_name, "us" AS unit, AVG(dur) AS value,
-    0 AS bigger_is_better
-  FROM slice_per_session_with_conf_id
-  WHERE name = 'Result Buffer'
-  GROUP BY conf_id, stream_id
-)
-  SELECT
-    conf_id,
-    EXTRACT_ARG(arg_set_id, 'debug.stream') AS stream_id,
-    EXTRACT_ARG(arg_set_id, 'debug.frame_number') AS frame_number,
-    name, "min" AS metric_name, "us" AS unit,
-    CAST(MIN(dur) / 1e3 AS INT) AS value, 0 AS bigger_is_better
-  FROM slice_per_session_with_conf_id
-  WHERE name = 'Result Buffer'
-  GROUP BY conf_id, stream_id
+WITH
+  avg AS (
+    SELECT
+      conf_id,
+      EXTRACT_ARG(arg_set_id, 'debug.stream') AS stream_id,
+      EXTRACT_ARG(arg_set_id, 'debug.frame_number') AS frame_number,
+      name, "avg" AS metric_name, "us" AS unit, AVG(dur) AS value,
+      0 AS bigger_is_better
+    FROM slice_per_session_with_conf_id
+    WHERE name = 'Result Buffer'
+    GROUP BY conf_id, stream_id
+  ), result_slices AS (
+    SELECT *
+    FROM slice_per_session_with_conf_id
+    WHERE name = 'Result Buffer'
+  )
+SELECT
+  conf_id,
+  EXTRACT_ARG(arg_set_id, 'debug.stream') AS stream_id,
+  EXTRACT_ARG(arg_set_id, 'debug.frame_number') AS frame_number,
+  name, "min" AS metric_name, "us" AS unit,
+  CAST(MIN(dur) / 1e3 AS INT) AS value, 0 AS bigger_is_better
+FROM result_slices
+GROUP BY conf_id, stream_id
 UNION ALL
-  SELECT
-    conf_id, stream_id, frame_number, name, metric_name, unit,
-    CAST(value / 1e3 AS INT) AS value, bigger_is_better
-  FROM avg
+SELECT
+  conf_id, stream_id, frame_number, name, metric_name, unit,
+  CAST(value / 1e3 AS INT) AS value, bigger_is_better
+FROM avg
 UNION ALL
-  SELECT
-    s.conf_id AS conf_id,
-    EXTRACT_ARG(s.arg_set_id, 'debug.stream') AS stream_id,
-    EXTRACT_ARG(s.arg_set_id, 'debug.frame_number') AS frame_number,
-    s.name AS name, "stddev" AS metric_name, "us" AS unit,
-    CAST(SQRT(AVG(POWER(s.dur - avg.value, 2))) / 1e3 AS INT) AS value,
-    0 AS bigger_is_better
-  FROM
-    (
-      SELECT * FROM slice_per_session_with_conf_id
-      WHERE name = 'Result Buffer'
-    ) AS s
-  LEFT JOIN avg ON s.name = avg.name
-  GROUP by s.conf_id, stream_id
+SELECT
+  s.conf_id AS conf_id,
+  EXTRACT_ARG(s.arg_set_id, 'debug.stream') AS stream_id,
+  EXTRACT_ARG(s.arg_set_id, 'debug.frame_number') AS frame_number,
+  s.name AS name, "stddev" AS metric_name, "us" AS unit,
+  CAST(SQRT(AVG(POWER(s.dur - avg.value, 2))) / 1e3 AS INT) AS value,
+  0 AS bigger_is_better
+FROM result_slices AS s
+LEFT JOIN avg ON s.name = avg.name
+GROUP by s.conf_id, stream_id
 UNION ALL
-  SELECT
-    conf_id,
-    EXTRACT_ARG(arg_set_id, 'debug.stream') AS stream_id,
-    EXTRACT_ARG(arg_set_id, 'debug.frame_number') AS frame_number,
-    name, "max" AS metric_name, "us" AS unit,
-    CAST(MAX(dur) / 1e3 AS INT) AS value, 0 AS bigger_is_better
-  FROM slice_per_session_with_conf_id
-  WHERE name = 'Result Buffer'
-  GROUP BY conf_id, stream_id
+SELECT
+  conf_id,
+  EXTRACT_ARG(arg_set_id, 'debug.stream') AS stream_id,
+  EXTRACT_ARG(arg_set_id, 'debug.frame_number') AS frame_number,
+  name, "max" AS metric_name, "us" AS unit,
+  CAST(MAX(dur) / 1e3 AS INT) AS value, 0 AS bigger_is_better
+FROM result_slices
+GROUP BY conf_id, stream_id
 UNION ALL
+SELECT
+  conf_id,
+  EXTRACT_ARG(arg_set_id, 'debug.stream') AS stream_id,
+  EXTRACT_ARG(arg_set_id, 'debug.frame_number') AS frame_number,
+  name, "count" AS metric_name, "count" AS unit, COUNT(dur) AS value,
+  0 AS bigger_is_better
+FROM result_slices
+GROUP BY conf_id, stream_id;
+
+
+-- Collect latency between key time points in a frame lifetime: exposure,
+-- v4l2_frame_sync_event, dqbuf, first capture result functions at different
+-- levels with at least one output buffer.
+DROP VIEW IF EXISTS frame_latency_slices;
+CREATE VIEW frame_latency_slices AS
+WITH frame_latency_time_points AS (
+  SELECT * FROM (
+    SELECT
+      session_id, conf_id,
+      EXTRACT_ARG(arg_set_id, 'debug.frame_number') AS frame_number,
+      min(ts) AS device_adapter_start
+    FROM slice_per_session_with_conf_id
+    WHERE
+      name =  'CameraDeviceAdapter::ProcessCaptureResult' AND
+      EXTRACT_ARG(arg_set_id, 'debug.num_output_buffers') > 0
+    GROUP BY session_id, conf_id, frame_number
+  ) LEFT JOIN (
+    SELECT
+      session_id, conf_id,
+      EXTRACT_ARG(arg_set_id, 'debug.frame_number') AS frame_number,
+      min(ts) AS delegate_start
+    FROM slice_per_session_with_conf_id
+    WHERE
+      name =  'Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread' AND
+      EXTRACT_ARG(arg_set_id, 'debug.num_output_buffers') > 0
+    GROUP BY session_id, conf_id, frame_number
+  ) USING (conf_id, frame_number) LEFT JOIN (
+    SELECT
+      session_id, conf_id,
+      EXTRACT_ARG(arg_set_id, 'debug.frame_number') AS frame_number,
+      EXTRACT_ARG(arg_set_id, 'debug.frame_sequence') AS frame_sequence,
+      min(ts) AS dqbuf_start,
+      min(EXTRACT_ARG(arg_set_id, 'debug.exposure_to_dqbuf_latency_ns')) AS exposure_to_dqbuf_latency
+    FROM slice_per_session_with_conf_id
+    WHERE name =  'VIDOC_DQBUF'
+    GROUP BY session_id, conf_id, frame_number, frame_sequence
+  ) USING (conf_id, frame_number) LEFT JOIN (
+    SELECT
+      session_id, conf_id,
+      EXTRACT_ARG(arg_set_id, 'debug.frame_sequence') AS frame_sequence,
+      min(ts) AS frame_sync_start
+    FROM slice_per_session_with_conf_id
+    WHERE name =  'V4L2_EVENT_FRAME_SYNC'
+    GROUP BY session_id, conf_id, frame_sequence
+  ) USING (conf_id, frame_sequence)
+) SELECT *
+FROM (
   SELECT
-    conf_id,
-    EXTRACT_ARG(arg_set_id, 'debug.stream') AS stream_id,
-    EXTRACT_ARG(arg_set_id, 'debug.frame_number') AS frame_number,
-    name, "count" AS metric_name, "count" AS unit, COUNT(dur) AS value,
-    0 AS bigger_is_better
-  FROM slice_per_session_with_conf_id
-  WHERE name = 'Result Buffer'
-  GROUP BY conf_id, stream_id
-ORDER BY conf_id ASC, stream_id ASC;
+    session_id, conf_id, frame_number,
+    exposure_to_dqbuf_latency - dqbuf_start + frame_sync_start AS dur,
+    "exposure_to_frame_sync_start" AS name
+  FROM frame_latency_time_points
+  UNION ALL
+  SELECT
+    session_id, conf_id, frame_number,
+    dqbuf_start - frame_sync_start AS dur,
+    "frame_sync_start_to_dqbuf_start" AS name
+  FROM frame_latency_time_points
+  UNION ALL
+  SELECT
+    session_id, conf_id, frame_number,
+    device_adapter_start - dqbuf_start AS dur,
+    "dqbuf_start_to_device_adapter_start" AS name
+  FROM frame_latency_time_points
+  UNION ALL
+  SELECT
+    session_id, conf_id, frame_number,
+    delegate_start - device_adapter_start AS dur,
+    "device_adapter_start_to_delegate_start" AS name
+  FROM frame_latency_time_points
+);
 
 
 -- Create a view that calculate the minimum, average, standard deviation,
@@ -171,60 +241,53 @@ ORDER BY conf_id ASC, stream_id ASC;
 -- function name for functions in |conf_functions|.
 DROP VIEW IF EXISTS conf_metrics;
 CREATE VIEW conf_metrics AS
-WITH avg AS (
-  SELECT
-    session_id, conf_id, name, "avg" AS metric_name, "us" AS unit,
-    AVG(dur) AS value, 0 AS bigger_is_better
-  FROM
-    slice_per_session_with_conf_id
-  WHERE name IN (SELECT name FROM conf_functions) AND conf_id NOT NULL
-  GROUP BY
-    session_id, conf_id, name
-)
-  SELECT
-    session_id, conf_id, name, "min" AS metric_name, "us" AS unit,
-    CAST(MIN(dur) / 1e3 AS INT) AS value, 0 AS bigger_is_better
-  FROM
-    slice_per_session_with_conf_id
-  WHERE name IN (SELECT name FROM conf_functions) AND conf_id NOT NULL
-  GROUP BY
-    session_id, conf_id, name
+WITH
+  avg AS (
+    SELECT
+      session_id, conf_id, name, "avg" AS metric_name, "us" AS unit,
+      AVG(dur) AS value, 0 AS bigger_is_better
+    FROM conf_slices
+    GROUP BY session_id, conf_id, name
+  ),
+  conf_slices AS (
+    SELECT session_id, conf_id, dur, name
+    FROM slice_per_session_with_conf_id
+    WHERE name IN (SELECT name FROM conf_functions) AND conf_id NOT NULL
+    UNION ALL
+    SELECT session_id, conf_id, dur, name
+    FROM frame_latency_slices
+  )
+SELECT
+  session_id, conf_id, name, "min" AS metric_name, "us" AS unit,
+  CAST(MIN(dur) / 1e3 AS INT) AS value, 0 AS bigger_is_better
+FROM conf_slices
+GROUP BY session_id, conf_id, name
 UNION ALL
-  SELECT
-    session_id, conf_id, name, metric_name, unit,
-    CAST(value / 1e3 AS INT) AS value, bigger_is_better
-  FROM avg
+SELECT
+  session_id, conf_id, name, metric_name, unit,
+  CAST(value / 1e3 AS INT) AS value, bigger_is_better
+FROM avg
 UNION ALL
-  SELECT
-    s.session_id AS session_id, s.conf_id as conf_id, s.name AS name,
-    "stddev" AS metric_name, "us" AS unit,
-    CAST(SQRT(AVG(POWER(s.dur - avg.value, 2))) / 1e3 AS INT) AS value,
-    0 AS bigger_is_better
-  FROM
-    (
-      SELECT * FROM slice_per_session_with_conf_id
-      WHERE name IN (SELECT name FROM conf_functions)
-    ) AS s
-  LEFT JOIN avg ON s.name = avg.name
-  GROUP BY s.session_id, s.conf_id, s.name
+SELECT
+  s.session_id AS session_id, s.conf_id as conf_id, s.name AS name,
+  "stddev" AS metric_name, "us" AS unit,
+  CAST(SQRT(AVG(POWER(s.dur - avg.value, 2))) / 1e3 AS INT) AS value,
+  0 AS bigger_is_better
+FROM conf_slices AS s
+LEFT JOIN avg ON s.name = avg.name
+GROUP BY s.session_id, s.conf_id, s.name
 UNION ALL
-  SELECT
-    session_id, conf_id, name, "max" AS metric_name, "us" AS unit,
-    CAST(MAX(dur) / 1e3 as INT) AS value, 0 AS bigger_is_better
-  FROM
-    slice_per_session_with_conf_id
-  WHERE name IN (SELECT name FROM conf_functions) AND conf_id NOT NULL
-  GROUP BY
-    session_id, conf_id, name
+SELECT
+  session_id, conf_id, name, "max" AS metric_name, "us" AS unit,
+  CAST(MAX(dur) / 1e3 as INT) AS value, 0 AS bigger_is_better
+FROM conf_slices
+GROUP BY session_id, conf_id, name
 UNION ALL
-  SELECT
-    session_id, conf_id, name, "count" AS metric_name, "count" AS unit,
-    COUNT(dur) AS value, 0 AS bigger_is_better
-  FROM
-    slice_per_session_with_conf_id
-  WHERE name IN (SELECT name FROM conf_functions) AND conf_id NOT NULL
-  GROUP BY
-    session_id, conf_id, name;
+SELECT
+  session_id, conf_id, name, "count" AS metric_name, "count" AS unit,
+  COUNT(dur) AS value, 0 AS bigger_is_better
+FROM conf_slices
+GROUP BY session_id, conf_id, name;
 
 
 -- Create a view that calculate the minimum, average, standard deviation,
@@ -232,52 +295,50 @@ UNION ALL
 -- functions in |session_functions|.
 DROP VIEW IF EXISTS session_metrics;
 CREATE VIEW session_metrics AS
-WITH avg AS (
-  SELECT
-    session_id, name, "avg" AS metric_name, "us" AS unit,
-    AVG(dur) AS value, 0 AS bigger_is_better
-  FROM slice_per_session
-  WHERE name IN (SELECT name FROM session_functions)
-  GROUP BY session_id, name
-)
-  SELECT
-    session_id, name, "min" AS metric_name, "us" AS unit,
-    CAST(MIN(dur) / 1e3 AS INT) AS value, 0 AS bigger_is_better
-  FROM slice_per_session
-  WHERE name IN (SELECT name FROM session_functions)
-  GROUP BY session_id, name
+WITH
+  avg AS (
+    SELECT
+      session_id, name, "avg" AS metric_name, "us" AS unit,
+      AVG(dur) AS value, 0 AS bigger_is_better
+    FROM slice_per_session
+    WHERE name IN (SELECT name FROM session_functions)
+    GROUP BY session_id, name
+  ), session_slices AS (
+    SELECT *
+    FROM slice_per_session
+    WHERE name IN (SELECT name FROM session_functions)
+  )
+SELECT
+  session_id, name, "min" AS metric_name, "us" AS unit,
+  CAST(MIN(dur) / 1e3 AS INT) AS value, 0 AS bigger_is_better
+FROM session_slices
+GROUP BY session_id, name
 UNION ALL
-  SELECT
-    session_id, name, metric_name, unit, CAST(value / 1e3 AS INT) AS value,
-    bigger_is_better
-  FROM avg
+SELECT
+  session_id, name, metric_name, unit, CAST(value / 1e3 AS INT) AS value,
+  bigger_is_better
+FROM avg
 UNION ALL
-  SELECT
-    s.session_id AS session_id, s.name AS name, "stddev" AS metric_name,
-    "us" AS unit,
-    CAST(SQRT(AVG(POWER(s.dur - avg.value, 2))) / 1e3 AS INT) AS value,
-    0 AS bigger_is_better
-  FROM
-    (
-      SELECT * FROM slice_per_session
-      WHERE name IN (SELECT name FROM session_functions)
-    ) AS s
-  LEFT JOIN avg ON s.name = avg.name
-  GROUP BY s.session_id, s.name
+SELECT
+  s.session_id AS session_id, s.name AS name, "stddev" AS metric_name,
+  "us" AS unit,
+  CAST(SQRT(AVG(POWER(s.dur - avg.value, 2))) / 1e3 AS INT) AS value,
+  0 AS bigger_is_better
+FROM session_slices AS s
+LEFT JOIN avg ON s.name = avg.name
+GROUP BY s.session_id, s.name
 UNION ALL
-  SELECT
-    session_id, name, "max" AS metric_name, "us" AS unit,
-    CAST(MAX(dur) / 1e3 AS INT) AS value, 0 AS bigger_is_better
-  FROM slice_per_session
-  WHERE name IN (SELECT name FROM session_functions)
-  GROUP BY session_id, name
+SELECT
+  session_id, name, "max" AS metric_name, "us" AS unit,
+  CAST(MAX(dur) / 1e3 AS INT) AS value, 0 AS bigger_is_better
+FROM session_slices
+GROUP BY session_id, name
 UNION ALL
-  SELECT
-    session_id, name, "count" AS metric_name, "count" AS unit,
-    COUNT(dur) AS value, 0 AS bigger_is_better
-  FROM slice_per_session
-  WHERE name IN (SELECT name FROM session_functions)
-  GROUP BY session_id, name;
+SELECT
+  session_id, name, "count" AS metric_name, "count" AS unit,
+  COUNT(dur) AS value, 0 AS bigger_is_better
+FROM session_slices
+GROUP BY session_id, name;
 
 
 DROP VIEW IF EXISTS camera_core_metrics_output;
