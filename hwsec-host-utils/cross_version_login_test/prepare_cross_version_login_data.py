@@ -12,6 +12,7 @@ google storage so that we could use it in cross-version login testing.
 
 import argparse
 import hashlib
+import logging
 from pathlib import Path
 import re
 import shutil
@@ -115,6 +116,12 @@ def main(argv: Optional[List[str]] = None) -> Optional[int]:
     parser = argparse.ArgumentParser(
         description="Generate cross-version test login data"
     )
+    parser.add_argument(
+        "--debug",
+        help="shows debug logging",
+        action="store_true",
+    )
+
     version_group = parser.add_argument_group(
         "ChromiumOS version"
     ).add_mutually_exclusive_group(required=True)
@@ -150,6 +157,9 @@ def main(argv: Optional[List[str]] = None) -> Optional[int]:
         type=Path,
     )
     opts = parser.parse_args(argv)
+
+    init_logging(opts.debug)
+
     # First, ensure the existence of image(s) to use.
     image_info_list = []
     for board in opts.boards:
@@ -166,6 +176,13 @@ def main(argv: Optional[List[str]] = None) -> Optional[int]:
 
     for image_info in image_info_list:
         run(image_info, opts.output_dir, opts.ssh_identity_file)
+
+
+def init_logging(debug: bool):
+    log_level = logging.DEBUG if debug else logging.INFO
+    logging.basicConfig(
+        level=log_level, format="%(asctime)s %(levelname)s: %(message)s"
+    )
 
 
 def run(
@@ -334,7 +351,7 @@ def upload_data(
     dut_config_path = Path(f"{DUT_ARTIFACTS_DIR}/config.json")
     config_path = Path(f"{output_dir}/{prefix}_config.json")
     dut.copy(dut_config_path, config_path)
-    print(f'Config file is created at "{config_path}".', file=sys.stderr)
+    logging.info('Config file is created at "%s".', config_path)
     # Generate the external data file that points to the file in GS.
     gs_url = (
         f"gs://chromiumos-test-assets-public/tast/cros/hwsec/"
@@ -344,13 +361,10 @@ def upload_data(
     external_data_path = Path(f"{output_dir}/{data_file}.external")
     with open(external_data_path, "w", encoding="utf-8") as f:
         f.write(external_data)
-    print(
-        f'External data file is created at "{external_data_path}".',
-        file=sys.stderr,
-    )
+    logging.info('External data file is created at "%s".', external_data_path)
     # Upload the data file to Google Cloud Storage.
     check_run("gsutil", "cp", data_path, gs_url)
-    print(f"Testing data is uploaded to {gs_url}", file=sys.stderr)
+    logging.info("Testing data is uploaded to %s.", gs_url)
 
 
 def generate_external_data(gs_url: str, data_path: Path) -> str:
@@ -368,6 +382,7 @@ def generate_external_data(gs_url: str, data_path: Path) -> str:
 def check_run(*args: str) -> str:
     """Runs the given command and returns the stdout; throws on failure."""
     try:
+        logging.debug("Running command: %s", args)
         result = subprocess.run(
             args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True
         )
@@ -375,13 +390,8 @@ def check_run(*args: str) -> str:
     except subprocess.CalledProcessError as exc:
         # Print the output to aid debugging (the exception message doesn't
         # include the output).
-        print(
-            "Command",
-            args,
-            "printed:\n",
-            exc.output.decode("utf-8"),
-            file=sys.stderr,
-        )
+        output = exc.output.decode("utf-8")
+        logging.error("Command %s printed:\n%s", args, output)
         raise
 
 
