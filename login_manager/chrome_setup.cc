@@ -1065,7 +1065,7 @@ void AddFeatureManagementFlags(
   builder->AddArg(base::StringPrintf("--feature-management-scope=%d",
                                      feature_management->GetScopeLevel()));
 
-  // TODO(b/294268057): Re-enable Lacros on targeted devices once they have been
+  // TODO(b/315897922): Re-enable Lacros on targeted devices once they have been
   // stabilized.
   if (feature_management->IsFeatureEnabled("FeatureManagementDisableLacros")) {
     builder->AddArg("--disallow-lacros");
