@@ -831,6 +831,7 @@ if (use.test) {
       "supplicant/mock_supplicant_interface_proxy.cc",
       "supplicant/mock_supplicant_network_proxy.cc",
       "supplicant/mock_supplicant_p2pdevice_proxy.cc",
+      "supplicant/mock_supplicant_peer_proxy.cc",
       "supplicant/mock_supplicant_process_proxy.cc",
       "supplicant/supplicant_eap_state_handler_test.cc",
       "supplicant/supplicant_manager_test.cc",
