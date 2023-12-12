@@ -29,7 +29,7 @@ using ::testing::Eq;
 
 MATCHER(IsNeighborDumpMessage, "") {
   if (!(arg->type() == net_base::RTNLMessage::kTypeNeighbor &&
-        arg->flags() == NLM_F_REQUEST | NLM_F_DUMP &&
+        arg->flags() == (NLM_F_REQUEST | NLM_F_DUMP) &&
         arg->mode() == net_base::RTNLMessage::kModeGet &&
         arg->interface_index() == kTestInterfaceIndex))
     return false;
@@ -39,7 +39,7 @@ MATCHER(IsNeighborDumpMessage, "") {
 
 MATCHER_P(IsNeighborProbeMessage, address, "") {
   if (!(arg->type() == net_base::RTNLMessage::kTypeNeighbor &&
-        arg->flags() == NLM_F_REQUEST | NLM_F_REPLACE &&
+        arg->flags() == (NLM_F_REQUEST | NLM_F_REPLACE) &&
         arg->mode() == net_base::RTNLMessage::kModeAdd &&
         arg->neighbor_status().state == NUD_PROBE &&
         arg->interface_index() == kTestInterfaceIndex &&
