@@ -36,6 +36,14 @@ group("all") {
 default_pkg_deps = [ "libchrome" ]
 pkg_config("target_defaults_pkg_deps") {
   pkg_deps = default_pkg_deps
+
+  # b/315754692: sanitizers may introduce undefined references to dead code of
+  # the Perfetto SDK linked in libchrome and failed to link an executable with
+  # "-Wl,--no-allow-shlib-undefined". Add perfetto to pkg_deps to work around
+  # the problem.
+  if (use.asan || use.fuzzer || use.msan || use.ubsan) {
+    pkg_deps += [ "perfetto" ]
+  }
   defines = [ "USE_ENTERPRISE_ROLLBACK_REVEN=${use.enterprise_rollback_reven}" ]
 }
 
