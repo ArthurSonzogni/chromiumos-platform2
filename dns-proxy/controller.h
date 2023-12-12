@@ -118,9 +118,6 @@ class Controller : public brillo::DBusDaemon {
   // Notified by shill whenever the default device changes.
   void OnDefaultDeviceChanged(const shill::Client::Device* const device);
 
-  // Notified by shill whenever a device is removed.
-  void OnDeviceRemoved(const shill::Client::Device* const device);
-
   // Notified by patchpanel whenever a change occurs in one of its virtual
   // network devices.
   void OnVirtualDeviceChanged(patchpanel::Client::VirtualDeviceEvent event,
