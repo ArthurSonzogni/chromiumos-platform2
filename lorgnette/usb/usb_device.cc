@@ -79,6 +79,27 @@ bool UsbDevice::SupportsIppUsb() const {
   return isIppUsb;
 }
 
+std::string UsbDevice::GetSerialNumber() {
+  auto maybe_descriptor = GetDeviceDescriptor();
+  if (!maybe_descriptor.has_value()) {
+    return "";
+  }
+  libusb_device_descriptor& descriptor = maybe_descriptor.value();
+
+  if (descriptor.iSerialNumber == 0) {
+    // A valid serial number string descriptor must be at index 1 or later.
+    return "";
+  }
+
+  auto serial = GetStringDescriptor(descriptor.iSerialNumber);
+  if (!serial.has_value() || serial->empty()) {
+    LOG(ERROR) << "Device " << Description() << " is missing serial number";
+    return "";
+  }
+
+  return serial.value();
+}
+
 std::optional<ScannerInfo> UsbDevice::IppUsbScannerInfo() {
   auto maybe_descriptor = GetDeviceDescriptor();
   if (!maybe_descriptor.has_value()) {

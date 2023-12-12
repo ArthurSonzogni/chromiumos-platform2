@@ -54,6 +54,10 @@ class UsbDevice {
   // Returns a description of this device that can be used for logging.
   std::string Description() const;
 
+  // Returns the device serial number if available.  Returns a blank string if
+  // the serial number is empty or an error occurs.
+  std::string GetSerialNumber();
+
   // Constructors can't call virtual functions.  This does equivalent setup, but
   // can be called after the object is created.  Must be called before calling
   // the other non-virtual functions.

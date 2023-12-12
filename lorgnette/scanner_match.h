@@ -9,8 +9,11 @@
 #include <string>
 #include <utility>
 
+#include <base/containers/flat_map.h>
 #include <base/containers/flat_set.h>
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
+
+#include "lorgnette/usb/usb_device.h"
 
 namespace lorgnette {
 
@@ -34,6 +37,32 @@ lorgnette::ConnectionType ConnectionTypeForScanner(const ScannerInfo& scanner);
 
 // Create a human-readable display name from the info in `scanner`.
 std::string DisplayNameForScanner(const ScannerInfo& scanner);
+
+// Associate a string value with known USB devices and allow looking up stored
+// values based on a ScannerInfo.  This is conceptually similar to a map that
+// has multiple keys for each value.
+class ScannerMatcher {
+ public:
+  ScannerMatcher() = default;
+  ~ScannerMatcher() = default;
+
+  // Associate `device` with `id`, overwriting any previous keys derived from
+  // `device` if they exist.
+  void AddUsbDevice(UsbDevice& device, const std::string& id);
+
+  // Try to extract USB info from `scanner` and look up a previously saved
+  // value.  Returns an empty string if no match can be found.
+  std::string LookupScanner(const ScannerInfo& scanner);
+
+ private:
+  // The key is vid:pid:serial, in the format vvvv:pppp:serial. The value is
+  // whatever string the caller supplied.
+  base::flat_map<std::string, std::string> by_vid_pid_;
+
+  // The key is bus:dev, in the format bbb:ddd.  The value is whatever string
+  // the caller supplied.
+  base::flat_map<std::string, std::string> by_bus_dev_;
+};
 
 }  // namespace lorgnette
 

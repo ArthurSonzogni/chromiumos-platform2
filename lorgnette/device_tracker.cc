@@ -14,8 +14,10 @@
 #include <base/logging.h>
 #include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
+#include <re2/re2.h>
 
 #include "lorgnette/constants.h"
 #include "lorgnette/firewall_manager.h"
@@ -137,6 +139,9 @@ StartScannerDiscoveryResponse DeviceTracker::StartScannerDiscovery(
                << ": Missing client_id in StartScannerDiscovery request";
     return response;
   }
+
+  // TODO(b/311196232): Load saved devices IDs and prepopulate
+  // canonical_scanners_.
 
   std::string session_id;
   for (auto& kv : discovery_sessions_) {
@@ -352,12 +357,7 @@ void DeviceTracker::ProbeIPPUSBDevice(std::string session_id,
             << " supports eSCL over IPP-USB at " << scanner_info->name();
   SendScannerAddedSignal(session_id, *scanner_info);
 
-  std::string bus_dev = base::StringPrintf("%03d:%03d", device->GetBusNumber(),
-                                           device->GetDeviceAddress());
-  std::string vid_pid =
-      base::StringPrintf("%04x:%04x", device->GetVid(), device->GetPid());
-  known_bus_devs_.insert(bus_dev);
-  known_vid_pids_.insert(vid_pid);
+  canonical_scanners_.AddUsbDevice(*device, scanner_info->name());
   known_devices_.push_back(std::move(*scanner_info));
 }
 
@@ -389,6 +389,10 @@ void DeviceTracker::EnumerateSANEDevices(std::string session_id) {
                                   weak_factory_.GetWeakPtr(), session_id,
                                   std::move(scanner_info)));
   }
+
+  // TODO(b/311196232): Persist the set of active device IDs to somewhere under
+  // /run/lorgnette so they can remain stable across lorgnette runs within the
+  // same login session.
 
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(&DeviceTracker::SendEnumerationCompletedSignal,
@@ -423,11 +427,9 @@ void DeviceTracker::ProbeSANEDevice(std::string session_id,
 
   // The preferred_only flag tells us whether or not we want to drop any
   // duplicates of IPP-USB devices that were already discovered.
-  if (session->preferred_only) {
-    if (DuplicateScannerExists(scanner_info.name(), known_vid_pids_,
-                               known_bus_devs_)) {
-      return;
-    }
+  std::string canonical_name = canonical_scanners_.LookupScanner(scanner_info);
+  if (session->preferred_only && canonical_name.starts_with("ippusb:")) {
+    return;
   }
 
   // If this device was already discovered in a previous session, return it
@@ -454,6 +456,22 @@ void DeviceTracker::ProbeSANEDevice(std::string session_id,
   for (const std::string& format : device->GetSupportedFormats()) {
     *scanner_info.add_image_format() = format;
   }
+
+  // If we can map this to an existing device, copy the deviceUuid.  If there
+  // wasn't a previous device ID match, generate one.
+  std::string device_id;
+  if (!canonical_name.empty()) {
+    for (const auto& known_dev : known_devices_) {
+      if (known_dev.name() == canonical_name) {
+        device_id = known_dev.device_uuid();
+        break;
+      }
+    }
+  }
+  if (device_id.empty()) {
+    device_id = GenerateUUID();
+  }
+  scanner_info.set_device_uuid(device_id);
 
   ScannerListChangedSignal signal;
   signal.set_event_type(ScannerListChangedSignal::SCANNER_ADDED);

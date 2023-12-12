@@ -25,6 +25,7 @@
 
 #include "lorgnette/dbus_adaptors/org.chromium.lorgnette.Manager.h"
 #include "lorgnette/firewall_manager.h"
+#include "lorgnette/scanner_match.h"
 
 using brillo::dbus_utils::DBusMethodResponse;
 
@@ -209,15 +210,9 @@ class DeviceTracker {
   base::flat_map<std::string, DiscoverySessionState> discovery_sessions_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
-  // The vid and pid in the format vid:pid of all previously discovered
-  // devices. Cached to avoid parsing `known_devices_` repeatedly.
-  base::flat_set<std::string> known_vid_pids_
-      GUARDED_BY_CONTEXT(sequence_checker_);
-
-  // The buses and device addresses in the format bus:dev of all previously
-  // discovered devices. Cached to avoid parsing `known_devices_` repeatedly.
-  base::flat_set<std::string> known_bus_devs_
-      GUARDED_BY_CONTEXT(sequence_checker_);
+  // Match USB info to the canonical scanner name that can be used to look up
+  // info in known_devices_;
+  ScannerMatcher canonical_scanners_ GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Mapping from scanner handles to open scanner state.
   base::flat_map<std::string, OpenScannerState> open_scanners_

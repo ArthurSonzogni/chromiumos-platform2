@@ -8,7 +8,9 @@
 #include <string>
 #include <utility>
 
+#include <base/containers/map_util.h>
 #include <base/strings/strcat.h>
+#include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
 #include <re2/re2.h>
 
@@ -80,6 +82,48 @@ std::string DisplayNameForScanner(const ScannerInfo& scanner) {
     scanner_name += " (USB)";
   }
   return scanner_name;
+}
+
+void ScannerMatcher::AddUsbDevice(UsbDevice& device, const std::string& id) {
+  std::string bus_dev = base::StringPrintf("%03d:%03d", device.GetBusNumber(),
+                                           device.GetDeviceAddress());
+  by_bus_dev_[bus_dev] = id;
+
+  std::string vid_pid =
+      base::StringPrintf("%04x:%04x:%s", device.GetVid(), device.GetPid(),
+                         device.GetSerialNumber().c_str());
+  by_vid_pid_[base::ToLowerASCII(vid_pid)] = id;
+}
+
+std::string ScannerMatcher::LookupScanner(const ScannerInfo& scanner) {
+  std::string device_name = base::ToLowerASCII(scanner.name());
+
+  // Backends that use the sanei libusb helper contain libusb:BBB:DDD.
+  std::string bus, dev;
+  if (RE2::FullMatch(device_name, "[^:]+:libusb:([0-9]{3}):([0-9]{3})", &bus,
+                     &dev)) {
+    std::string key = base::StringPrintf("%s:%s", bus.c_str(), dev.c_str());
+    std::string* id = base::FindOrNull(by_bus_dev_, key);
+    return id ? *id : "";
+
+    // TODO(b/311196232): If there isn't a match, use BUS:DEV to open the device
+    // and try to look up its VID:PID:SERIAL.  This will allow matching back
+    // devices that get reset or moved to a different USB port.
+  }
+
+  // Some backends use VID:PID as their identifier.
+  std::string vid, pid, serial;
+  if (RE2::FullMatch(device_name,
+                     "pixma:([0-9a-f]{4})([0-9a-f]{4})(?:_([0-9a-z]*))?", &vid,
+                     &pid, &serial)) {
+    std::string key = base::StringPrintf("%s:%s:%s", vid.c_str(), pid.c_str(),
+                                         serial.c_str());
+    std::string* id = base::FindOrNull(by_vid_pid_, key);
+    return id ? *id : "";
+  }
+
+  // Unknown scheme.  Don't try to match it back.
+  return "";
 }
 
 }  // namespace lorgnette

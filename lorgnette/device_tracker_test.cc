@@ -43,7 +43,7 @@ namespace lorgnette {
 namespace {
 
 constexpr char kEpson2Name[] = "epson2:net:127.0.0.1";
-constexpr char kEpsonDsName[] = "epsonds:libusb:001:002";
+constexpr char kEpsonDsName[] = "epsonds:libusb:003:002";
 
 ScanParameters MakeScanParameters(int width, int height) {
   return {
@@ -382,19 +382,16 @@ TEST_F(DeviceTrackerTest, CompleteDiscoverySession) {
   non_printer->SetStringDescriptors({"", "GoogleTest", "USB Gadget 500"});
   non_printer->Init();
 
-  std::vector<std::unique_ptr<UsbDevice>> device_list;
-  device_list.emplace_back(std::move(non_printer));
-  device_list.emplace_back(std::move(ippusb_escl_device.device));
-  device_list.emplace_back(std::move(ippusb_printer.device));
-  device_list.emplace_back(std::move(usb_printer.device));
-  libusb_->SetDevices(std::move(device_list));
-
   sane_client_->SetListDevicesResult(true);
   // Duplicates of eSCL over ippusb that are filtered out.
-  CreateFakeScanner("pixma:04A94321_12AF", "GoogleTest", "eSCL Scanner 3001",
-                    "eSCL");
-  CreateFakeScanner("epson2:libusb:001:001", "GoogleTest", "eSCL Scanner 3002",
-                    "eSCL");
+  std::string dup_by_vidpid =
+      base::StringPrintf("pixma:04A94321_%s",
+                         ippusb_escl_device.device->GetSerialNumber().c_str());
+  CreateFakeScanner(dup_by_vidpid, "GoogleTest", "eSCL Scanner 3001", "eSCL");
+  std::string dup_by_busdev = base::StringPrintf(
+      "epson2:libusb:%03d:%03d", ippusb_escl_device.device->GetBusNumber(),
+      ippusb_escl_device.device->GetDeviceAddress());
+  CreateFakeScanner(dup_by_busdev, "GoogleTest", "eSCL Scanner 3002", "eSCL");
 
   // Unique USB device without ippusb support that is added during SANE probing.
   CreateFakeScanner(kEpsonDsName, "GoogleTest", "SANE Scanner 4000", "USB");
@@ -402,6 +399,13 @@ TEST_F(DeviceTrackerTest, CompleteDiscoverySession) {
   // Unique non-eSCL network device that is added during SANE probing.
   CreateFakeScanner(kEpson2Name, "GoogleTest", "GoogleTest SANE NetScan 4200",
                     "Network");
+
+  std::vector<std::unique_ptr<UsbDevice>> device_list;
+  device_list.emplace_back(std::move(non_printer));
+  device_list.emplace_back(std::move(ippusb_escl_device.device));
+  device_list.emplace_back(std::move(ippusb_printer.device));
+  device_list.emplace_back(std::move(usb_printer.device));
+  libusb_->SetDevices(std::move(device_list));
 
   EXPECT_CALL(*firewall_manager_, RequestUdpPortAccess(8612))
       .WillOnce(testing::Return(PortToken(/*firewall_manager=*/nullptr,
@@ -710,6 +714,15 @@ TEST_F(DeviceTrackerTest, DiscoverySessionStableDeviceIds) {
   device_list.emplace_back(std::move(ippusb_device1.device));
   device_list.emplace_back(std::move(ippusb_device2.device));
   libusb_->SetDevices(std::move(device_list));
+  sane_client_->SetListDevicesResult(true);
+
+  // Unique device by VID:PID.
+  CreateFakeScanner("pixma:04A91234_5555", "GoogleTest",
+                    "Unique VIDPID Scanner", "USB");
+
+  // Unique device by BUS:DEV.
+  CreateFakeScanner("epson2:libusb:002:003", "GoogleTest",
+                    "Unique BUSDEV Scanner", "USB");
 
   EXPECT_CALL(*firewall_manager_, RequestUdpPortAccess(8612))
       .WillRepeatedly([] {
@@ -717,8 +730,8 @@ TEST_F(DeviceTrackerTest, DiscoverySessionStableDeviceIds) {
                          /*port=*/8612);
       });
 
-  // First session finds the two scanners.   They should have different
-  // deviceUuid values.
+  // First session finds the scanners.  They should have different deviceUuid
+  // values.
   base::RunLoop run_loop1;
   SetQuitClosure(run_loop1.QuitClosure());
   StartScannerDiscoveryRequest start_request1;
@@ -729,7 +742,7 @@ TEST_F(DeviceTrackerTest, DiscoverySessionStableDeviceIds) {
   EXPECT_FALSE(response1.session_id().empty());
   open_sessions_.insert(response1.session_id());
   run_loop1.Run();
-  ASSERT_EQ(discovered_scanners_[response1.session_id()].size(), 2);
+  EXPECT_EQ(discovered_scanners_[response1.session_id()].size(), 4);
   std::map<std::string, ScannerInfo*>
       device_ids;  // Device ID to original info.
   for (const auto& scanner : discovered_scanners_[response1.session_id()]) {
@@ -740,8 +753,8 @@ TEST_F(DeviceTrackerTest, DiscoverySessionStableDeviceIds) {
     device_ids.emplace(scanner->device_uuid(), scanner.get());
   }
 
-  // Second session for the same client finds the same two scanners with the
-  // same two deviceUuid values.
+  // Second session for the same client finds the same scanners with the
+  // same deviceUuid values.
   base::RunLoop run_loop2;
   SetQuitClosure(run_loop2.QuitClosure());
   StartScannerDiscoveryRequest start_request2;
@@ -752,6 +765,7 @@ TEST_F(DeviceTrackerTest, DiscoverySessionStableDeviceIds) {
   EXPECT_FALSE(response2.session_id().empty());
   open_sessions_.insert(response2.session_id());
   run_loop2.Run();
+  EXPECT_EQ(discovered_scanners_[response2.session_id()].size(), 4);
   // Every returned device_uuid should match one of the previously returned
   // devices.
   for (const auto& scanner : discovered_scanners_[response2.session_id()]) {
@@ -761,8 +775,8 @@ TEST_F(DeviceTrackerTest, DiscoverySessionStableDeviceIds) {
                 MatchesScannerInfo(*device_ids.at(scanner->device_uuid())));
   }
 
-  // Session for a different client finds the same two scanners with the same
-  // two deviceUuid values.
+  // Session for a different client finds the same scanners with the same
+  // deviceUuid values.
   base::RunLoop run_loop3;
   SetQuitClosure(run_loop3.QuitClosure());
   StartScannerDiscoveryRequest start_request3;
@@ -773,6 +787,7 @@ TEST_F(DeviceTrackerTest, DiscoverySessionStableDeviceIds) {
   EXPECT_FALSE(response3.session_id().empty());
   open_sessions_.insert(response3.session_id());
   run_loop3.Run();
+  EXPECT_EQ(discovered_scanners_[response3.session_id()].size(), 4);
   // Every returned device_uuid should match one of the previously returned
   // devices.
   for (const auto& scanner : discovered_scanners_[response3.session_id()]) {
@@ -781,6 +796,78 @@ TEST_F(DeviceTrackerTest, DiscoverySessionStableDeviceIds) {
     EXPECT_THAT(scanner,
                 MatchesScannerInfo(*device_ids.at(scanner->device_uuid())));
   }
+}
+
+TEST_F(DeviceTrackerTest, DiscoverySessionCanonicalDeviceIds) {
+  auto ippusb_device1 = MakeIPPUSBDevice("Scanner 1");
+  ippusb_device1.device->MutableDeviceDescriptor().idProduct = 0x1234;
+  ippusb_device1.device->Init();
+  CreateIPPUSBSocket(ippusb_device1);
+  CreateFakeScanner(ippusb_device1.connection_string);
+
+  auto ippusb_device2 = MakeIPPUSBDevice("Scanner 2");
+  ippusb_device2.device->MutableDeviceDescriptor().idProduct = 0x2345;
+  ippusb_device2.device->Init();
+  CreateIPPUSBSocket(ippusb_device2);
+  CreateFakeScanner(ippusb_device2.connection_string);
+
+  // Duplicate of device 1 by VID:PID.  Should have the same ID.
+  std::string dup_by_vidpid =
+      base::StringPrintf("pixma:%04X%04X_%s", ippusb_device1.device->GetVid(),
+                         ippusb_device1.device->GetPid(),
+                         ippusb_device1.device->GetSerialNumber().c_str());
+  CreateFakeScanner(dup_by_vidpid, "GoogleTest", "eSCL Scanner 3001", "eSCL");
+
+  // Duplicate of device 1 by BUS:DEV.  Should have the same ID.
+  std::string dup_by_busdev = base::StringPrintf(
+      "epson2:libusb:%03d:%03d", ippusb_device1.device->GetBusNumber(),
+      ippusb_device1.device->GetDeviceAddress());
+  CreateFakeScanner(dup_by_busdev, "GoogleTest", "eSCL Scanner 3002", "eSCL");
+
+  // Unique device by VID:PID.
+  CreateFakeScanner("pixma:04A91234_5555", "GoogleTest",
+                    "Unique VIDPID Scanner", "USB");
+
+  // Unique device by BUS:DEV.
+  CreateFakeScanner("epson2:libusb:002:003", "GoogleTest",
+                    "Unique BUSDEV Scanner", "USB");
+
+  std::vector<std::unique_ptr<UsbDevice>> device_list;
+  device_list.emplace_back(std::move(ippusb_device1.device));
+  device_list.emplace_back(std::move(ippusb_device2.device));
+  libusb_->SetDevices(std::move(device_list));
+  sane_client_->SetListDevicesResult(true);
+
+  EXPECT_CALL(*firewall_manager_, RequestUdpPortAccess(8612))
+      .WillRepeatedly([] {
+        return PortToken(/*firewall_manager=*/nullptr,
+                         /*port=*/8612);
+      });
+
+  // Session finds all the scanners.  Three of them should have the same
+  // device_uuid as device1 and the others should be unique.
+  base::RunLoop run_loop1;
+  SetQuitClosure(run_loop1.QuitClosure());
+  StartScannerDiscoveryRequest start_request1;
+  start_request1.set_client_id("DiscoverySessionStableDevicesIds");
+  StartScannerDiscoveryResponse response1 =
+      tracker_->StartScannerDiscovery(start_request1);
+  EXPECT_TRUE(response1.started());
+  EXPECT_FALSE(response1.session_id().empty());
+  open_sessions_.insert(response1.session_id());
+  run_loop1.Run();
+  std::map<std::string, size_t> device_ids;
+  std::string ippusb_device_id;
+  for (const auto& scanner : discovered_scanners_[response1.session_id()]) {
+    EXPECT_FALSE(scanner->device_uuid().empty());
+    device_ids[scanner->device_uuid()]++;
+    if (scanner->name().starts_with("ippusb:") &&
+        scanner->model() == "Scanner 1") {
+      ippusb_device_id = scanner->device_uuid();
+    }
+  }
+  EXPECT_EQ(device_ids.size(), 4);
+  EXPECT_EQ(device_ids[ippusb_device_id], 3);
 }
 
 TEST_F(DeviceTrackerTest, OpenScannerEmptyDevice) {
