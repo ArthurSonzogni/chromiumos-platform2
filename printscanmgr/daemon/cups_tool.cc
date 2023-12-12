@@ -43,8 +43,6 @@ startxref
 
 constexpr char kGzipCommand[] = "/bin/gzip";
 constexpr char kFoomaticCommand[] = "/usr/bin/foomatic-rip";
-const char kLanguageAllowedChars[] =
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-@";
 
 constexpr std::string_view kLpstatInterfaceLinePrefix("Interface: ");
 
@@ -203,15 +201,9 @@ CupsAddAutoConfiguredPrinterResponse CupsTool::AddAutoConfiguredPrinter(
     return response;
   }
 
-  const std::string language =
-      base::ContainsOnlyChars(request.language(), kLanguageAllowedChars)
-          ? request.language()
-          : "en";
-  LOG(INFO) << "Adding auto-configured printer " << name << " at " << uri
-            << " with language " << language;
-  const int ret = lp_tools_->Lpadmin(
-      {"-v", uri, "-p", name, "-m", "everywhere", "-E", "--env-add",
-       base::JoinString({"CROS_CUPS_LANGUAGE", language}, "=")});
+  LOG(INFO) << "Adding auto-configured printer " << name << " at " << uri;
+  const int ret =
+      lp_tools_->Lpadmin({"-v", uri, "-p", name, "-m", "everywhere", "-E"});
   response.set_result(
       LpadminReturnCodeToAddPrinterResult(ret, /*autoconf=*/true));
   return response;
@@ -243,16 +235,9 @@ CupsAddManuallyConfiguredPrinterResponse CupsTool::AddManuallyConfiguredPrinter(
     return response;
   }
 
-  const std::string language =
-      base::ContainsOnlyChars(request.language(), kLanguageAllowedChars)
-          ? request.language()
-          : "en";
-  LOG(INFO) << "Adding manual printer " << name << " at " << uri
-            << " with language " << language;
+  LOG(INFO) << "Adding manual printer " << name << " at " << uri;
   const int result = lp_tools_->Lpadmin(
-      {"-v", uri, "-p", name, "-P", "-", "-E", "--env-add",
-       base::JoinString({"CROS_CUPS_LANGUAGE", language}, "=")},
-      &ppd_contents);
+      {"-v", uri, "-p", name, "-P", "-", "-E"}, &ppd_contents);
   response.set_result(
       LpadminReturnCodeToAddPrinterResult(result, /*autoconf=*/false));
   return response;
