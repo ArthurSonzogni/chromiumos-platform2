@@ -564,8 +564,14 @@ bool SaneDeviceImpl::LoadOptions(brillo::ErrorPtr* error) {
       }
     }
 
-    // For options that are supposed to have a value, retrieve the value.
+    // Before retrieving the value, disable options that are known to cause
+    // problems.
     SaneOption sane_option(*opt, i);
+    if (sane_option.IsIncompatibleWithDevice(name_)) {
+      sane_option.Disable();
+    }
+
+    // For options that are supposed to have a value, retrieve the value.
     if (sane_option.IsActive() && sane_option.GetSize() > 0) {
       SANE_Status status = libsane_->sane_control_option(
           handle_, i, SANE_ACTION_GET_VALUE, sane_option.GetPointer(), NULL);

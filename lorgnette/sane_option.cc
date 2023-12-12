@@ -553,6 +553,22 @@ bool SaneOption::IsActive() const {
   return active_;
 }
 
+bool SaneOption::IsIncompatibleWithDevice(
+    const std::string& connection_string) const {
+  if (connection_string.starts_with("pixma:")) {
+    // pixma read-only options hang when retrieving their values.
+    if (detectable_ && !sw_settable_) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+void SaneOption::Disable() {
+  active_ = false;
+}
+
 SANE_Action SaneOption::GetAction() const {
   return action_;
 }

@@ -1199,4 +1199,22 @@ TEST(SaneOptionFromProto, SetFixedListWrongTypeFails) {
   EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_VALUE);
 }
 
+TEST(SaneOptionIncompatibleDevices, PixmaSettableOptionIsGood) {
+  auto raw_option =
+      CreateDescriptor("good-option", SANE_TYPE_INT, sizeof(SANE_Word));
+  raw_option.cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT;
+  SaneOption good_option(raw_option, 1);
+  EXPECT_FALSE(good_option.IsIncompatibleWithDevice("ippusb:escl:Device"));
+  EXPECT_FALSE(good_option.IsIncompatibleWithDevice("pixma:04A91234"));
+}
+
+TEST(SaneOptionIncompatibleDevices, PixmaReadOnlyOptionIsBad) {
+  auto raw_option =
+      CreateDescriptor("good-option", SANE_TYPE_INT, sizeof(SANE_Word));
+  raw_option.cap = SANE_CAP_SOFT_DETECT;
+  SaneOption good_option(raw_option, 1);
+  EXPECT_FALSE(good_option.IsIncompatibleWithDevice("ippusb:escl:Device"));
+  EXPECT_TRUE(good_option.IsIncompatibleWithDevice("pixma:04A91234"));
+}
+
 }  // namespace lorgnette

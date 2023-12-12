@@ -49,6 +49,16 @@ class SaneOption {
   // pointer does not outlive the SaneOption.
   void* GetPointer();
 
+  // Disable this option by marking it inactive.  This isn't needed for normal
+  // operation, but can be used to block an option that causes hangs or hardware
+  // problems.
+  void Disable();
+
+  // Some options are known to cause hangs or other problems with certain
+  // backends or specific devices.  If this function returns true, the caller
+  // should avoid attempting to retrieve or set this option's value.
+  bool IsIncompatibleWithDevice(const std::string& connection_string) const;
+
   int GetIndex() const;
   std::string GetName() const;
   std::string DisplayValue() const;
