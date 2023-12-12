@@ -199,8 +199,8 @@ void Proxy::Setup() {
     return;
   }
 
-  patchpanel_->RegisterOnAvailableCallback(base::BindRepeating(
-      &Proxy::OnPatchpanelReady, weak_factory_.GetWeakPtr()));
+  patchpanel_->RegisterOnAvailableCallback(
+      base::BindOnce(&Proxy::OnPatchpanelReady, weak_factory_.GetWeakPtr()));
   patchpanel_->RegisterProcessChangedCallback(base::BindRepeating(
       &Proxy::OnPatchpanelReset, weak_factory_.GetWeakPtr()));
 }

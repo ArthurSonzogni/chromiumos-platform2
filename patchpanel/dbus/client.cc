@@ -764,7 +764,7 @@ class ClientImpl : public Client {
   ~ClientImpl() override;
 
   void RegisterOnAvailableCallback(
-      base::RepeatingCallback<void(bool)> callback) override;
+      base::OnceCallback<void(bool)> callback) override;
 
   void RegisterProcessChangedCallback(
       base::RepeatingCallback<void(bool)> callback) override;
@@ -920,13 +920,13 @@ ClientImpl::~ClientImpl() {
 }
 
 void ClientImpl::RegisterOnAvailableCallback(
-    base::RepeatingCallback<void(bool)> callback) {
+    base::OnceCallback<void(bool)> callback) {
   auto* object_proxy = proxy_->GetObjectProxy();
   if (!object_proxy) {
     LOG(ERROR) << "Cannot register callback - no proxy";
     return;
   }
-  object_proxy->WaitForServiceToBeAvailable(callback);
+  object_proxy->WaitForServiceToBeAvailable(std::move(callback));
 }
 
 void ClientImpl::RegisterProcessChangedCallback(

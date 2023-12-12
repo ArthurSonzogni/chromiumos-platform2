@@ -25,7 +25,7 @@ class BRILLO_EXPORT FakeClient : public Client {
 
   // Client overrides.
   void RegisterOnAvailableCallback(
-      base::RepeatingCallback<void(bool)> callback) override;
+      base::OnceCallback<void(bool)> callback) override;
   void RegisterProcessChangedCallback(
       base::RepeatingCallback<void(bool)> callback) override;
 

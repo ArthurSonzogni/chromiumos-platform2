@@ -149,7 +149,7 @@ void Controller::Setup() {
     QuitWithExitCode(EX_UNAVAILABLE);
     return;
   }
-  patchpanel_->RegisterOnAvailableCallback(base::BindRepeating(
+  patchpanel_->RegisterOnAvailableCallback(base::BindOnce(
       &Controller::OnPatchpanelReady, weak_factory_.GetWeakPtr()));
   patchpanel_->RegisterProcessChangedCallback(base::BindRepeating(
       &Controller::OnPatchpanelReset, weak_factory_.GetWeakPtr()));

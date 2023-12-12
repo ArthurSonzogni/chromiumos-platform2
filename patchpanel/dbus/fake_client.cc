@@ -9,7 +9,7 @@
 namespace patchpanel {
 
 void FakeClient::RegisterOnAvailableCallback(
-    base::RepeatingCallback<void(bool)> callback) {}
+    base::OnceCallback<void(bool)> callback) {}
 
 void FakeClient::RegisterProcessChangedCallback(
     base::RepeatingCallback<void(bool)> callback) {}
