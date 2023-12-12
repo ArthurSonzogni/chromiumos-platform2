@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::path::Path;
+use std::{path::Path, process::ExitCode};
 
 use anyhow::{Context, Result};
 use libchromeos::{panic_handler, syslog};
@@ -91,9 +91,6 @@ fn setup_flex_deploy_partition_and_install(disk_path: &Path) -> Result<()> {
 
 /// Performs the actual installation of ChromeOS.
 fn perform_installation(disk_path: &Path) -> Result<()> {
-    info!("Start Flex-ing");
-    copy_image_to_rootfs(disk_path)?;
-
     info!("Setting up the disk");
     setup_disk(disk_path)?;
 
@@ -102,6 +99,30 @@ fn perform_installation(disk_path: &Path) -> Result<()> {
 
     info!("Trying to remove the flex deployment partition");
     disk::try_remove_thirteenth_partition(disk_path)
+}
+
+/// Installs ChromeOS Flex and retries the actual installation steps at most three times.
+fn run(disk_path: &Path) -> Result<()> {
+    info!("Start Flex-ing");
+    copy_image_to_rootfs(disk_path)?;
+
+    // Try installing on the device three times at most.
+    for _ in 0..3 {
+        match perform_installation(disk_path) {
+            Ok(_) => {
+                // On success we reboot and end execution.
+                info!("Rebooting into ChromeOS Flex, keep fingers crossed");
+                reboot(nix::sys::reboot::RebootMode::RB_AUTOBOOT)
+                    .context("Unable to reboot after successful installation")?;
+                return Ok(());
+            }
+            Err(err) => {
+                error!("Flexor couldn't complete due to error: {err}");
+            }
+        }
+    }
+
+    Ok(())
 }
 
 /// Tries to save logs to the disk depending on what state the installation fails in.
@@ -148,7 +169,7 @@ fn try_safe_logs(disk_path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn main() -> Result<()> {
+fn main() -> ExitCode {
     // Setup the panic handler and logging.
     panic_handler::install_memfd_handler();
     if let Err(err) = syslog::init(FLEXOR_TAG.to_owned(), /*log_to_stderr=*/ true) {
@@ -156,21 +177,25 @@ fn main() -> Result<()> {
     }
 
     info!("Hello from Flexor!");
-    let disk_path = disk::get_target_device().context("Error getting the target disk")?;
-
-    match perform_installation(&disk_path) {
-        Ok(_) => {
-            info!("Rebooting into ChromeOS Flex, keep fingers crossed");
-            reboot(nix::sys::reboot::RebootMode::RB_AUTOBOOT)
-                .context("Unable to reboot after successful installation")?;
-            Ok(())
-        }
+    let disk_path = match disk::get_target_device().with_context(|| "Error getting the target disk")
+    {
+        Ok(path) => path,
         Err(err) => {
-            error!("Flexor couldn't complete due to error: {err}");
-            // Try to save logs if possible, otherwise just be stuck.
-            let _ = try_safe_logs(&disk_path);
-            // TODO(b/314965086): Add an error screen displaying the log.
-            Ok(())
+            error!("Error selecting the target disk: {err}");
+            return ExitCode::FAILURE;
         }
+    };
+
+    if let Err(err) = run(&disk_path) {
+        error!("Unable to perform installation due to error: {err}");
+
+        // If we weren't successful, try to save the logs.
+        if let Err(err) = try_safe_logs(&disk_path) {
+            error!("Unable to save logs due to: {err}")
+        }
+        // TODO(b/314965086): Add an error screen displaying the log.
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
     }
 }
