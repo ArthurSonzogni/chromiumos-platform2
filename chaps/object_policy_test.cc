@@ -158,6 +158,10 @@ TEST_F(TestObjectPolicy, LatchingAttributes) {
         }
         object_.SetAttributeBool(CKA_EXTRACTABLE, extractable);
         object_.SetAttributeBool(CKA_SENSITIVE, sensitive);
+        // Remove attributes that are set in previous rounds as it may affect
+        // following tests.
+        object_.RemoveAttribute(CKA_ALWAYS_SENSITIVE);
+        object_.RemoveAttribute(CKA_NEVER_EXTRACTABLE);
         policy.SetDefaultAttributes();
 
         if (!keygen_known) {

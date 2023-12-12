@@ -55,12 +55,23 @@ void ObjectPolicySecretKey::SetDefaultAttributes() {
   if (object_->GetStage() == kCreate) {
     CK_ULONG keygen_mechanism = object_->GetAttributeInt(
         CKA_KEY_GEN_MECHANISM, static_cast<int>(CK_UNAVAILABLE_INFORMATION));
+    // keygen_mechanism is set only when a secret key is originally generated on
+    // the token (by a C_GenerateKey call).
     bool keygen_known = (keygen_mechanism != CK_UNAVAILABLE_INFORMATION);
-    if (keygen_known && object_->GetAttributeBool(CKA_SENSITIVE, false))
+    // If the key is not generated on the token, it is considered not always
+    // sensitive and once extractable. The only exception is when the key is
+    // derived from base key(s) that are always-sensitive/never-extractable. In
+    // this case the CKA_ALWAYS_SENSITIVE and CKA_NEVER_EXTRACTABLE attributes
+    // will be set in session_impl.cc.
+    if ((keygen_known ||
+         object_->GetAttributeBool(CKA_ALWAYS_SENSITIVE, false)) &&
+        object_->GetAttributeBool(CKA_SENSITIVE, false))
       object_->SetAttributeBool(CKA_ALWAYS_SENSITIVE, true);
     else
       object_->SetAttributeBool(CKA_ALWAYS_SENSITIVE, false);
-    if (keygen_known && !object_->GetAttributeBool(CKA_EXTRACTABLE, true))
+    if ((keygen_known ||
+         object_->GetAttributeBool(CKA_NEVER_EXTRACTABLE, false)) &&
+        !object_->GetAttributeBool(CKA_EXTRACTABLE, true))
       object_->SetAttributeBool(CKA_NEVER_EXTRACTABLE, true);
     else
       object_->SetAttributeBool(CKA_NEVER_EXTRACTABLE, false);
