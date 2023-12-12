@@ -66,7 +66,7 @@ std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config) {
                    config.excluded_route_prefixes.end(),
                    std::back_inserter(excluded_route_str),
                    [](net_base::IPCIDR cidr) { return cidr.ToString(); });
-    stream << ", included routes: ["
+    stream << ", excluded routes: ["
            << base::JoinString(excluded_route_str, ",") << "]";
   }
   if (!config.included_route_prefixes.empty()) {
