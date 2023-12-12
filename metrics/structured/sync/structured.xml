@@ -943,7 +943,7 @@
 
 </project>
 
-<project name="CrostiniUsbDevice">
+<project name="GuestUsbDevice">
   <owner>drmasquatch@google.com</owner>
   <owner>clumptini@google.com</owner>
   <id>none</id>
@@ -990,6 +990,12 @@
     <metric name="CrostiniConnectionSuccess" type="int">
       <summary>
         Boolean to denote success of connecting device to Crostini.
+      </summary>
+    </metric>
+    <metric name="GuestName" type="int">
+      <summary>
+        Enum for which guest the USB device is being connected to. 0=unknown,
+        1=crostini, 2=borealis, 3=bruschetta, 4=arcvm
       </summary>
     </metric>
   </event>
