@@ -3,9 +3,9 @@
 // found in the LICENSE file.
 
 use std::fmt;
-use std::io::{self, BufRead};
-use std::os::unix::process::CommandExt;
+use std::io::{self, BufRead, Read};
 use std::process::{Command, Output, Stdio};
+use std::thread;
 
 use log::{debug, info};
 
@@ -77,6 +77,17 @@ pub fn get_command_output(mut command: Command) -> Result<Vec<u8>, ProcessError>
     Ok(output.stdout)
 }
 
+/// Read all lines from `reader` and log them with a ">>> " prefix.
+///
+/// This is used for logging output from a child process.
+fn log_lines_from_reader(reader: &mut dyn Read) {
+    let reader = io::BufReader::new(reader);
+    reader
+        .lines()
+        .map_while(Result::ok)
+        .for_each(|line| info!(">>> {}", line));
+}
+
 /// Run a command and log its output (both stdout and stderr) at the
 /// info level. An error is returned if the process fails to launch,
 /// or if it exits non-zero.
@@ -84,38 +95,28 @@ pub fn run_command_log_output(mut command: Command) -> Result<(), ProcessError> 
     let cmd_str = command_to_string(&command);
     info!("running command: {}", cmd_str);
 
-    // This function dups stdout to stderr so that writes to stderr
-    // are sent to stdout. It's passed to Command::pre_exec, so it
-    // runs after forking the child process but before execing the
-    // child executable.
-    fn pre_exec() -> io::Result<()> {
-        nix::unistd::dup2(1, 2).map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
-        Ok(())
-    }
-    unsafe {
-        command.pre_exec(pre_exec);
-    }
-
     // Spawn the child with its output piped so that it can be logged.
     let mut child = command
+        // The `Command` API doesn't have a convenient way to create a
+        // shared pipe for stdout/stderr, so create two pipes.
+        .stderr(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
         .map_err(|err| ProcessError {
             command: cmd_str.clone(),
             kind: ErrorKind::LaunchProcess(err),
         })?;
-    // OK to unwrap because stdout is captured above.
-    let output = child.stdout.take().unwrap();
+    // OK to unwrap because output is captured above.
+    let mut stderr = child.stderr.take().unwrap();
+    let mut stdout = child.stdout.take().unwrap();
 
-    // Read each line as it comes in and log it at the info
-    // level. Each line is prefixed with ">>> " to clearly indicate
-    // it's coming from a separate executable. This loop will end when
-    // the output pipe is broken, probably when the child exits.
-    let reader = io::BufReader::new(output);
-    reader
-        .lines()
-        .filter_map(|line| line.ok())
-        .for_each(|line| info!(">>> {}", line));
+    // Spawn two background threads, one to log stdout and one to log
+    // stderr. The threads will terminate when the output pipe is
+    // broken, which happen until when the child exits.
+    let stderr_thread = thread::spawn(move || log_lines_from_reader(&mut stderr));
+    let stdout_thread = thread::spawn(move || log_lines_from_reader(&mut stdout));
+    stderr_thread.join().unwrap();
+    stdout_thread.join().unwrap();
 
     // Wait for the child process to exit completely.
     let status = child.wait().map_err(|err| ProcessError {
@@ -176,5 +177,15 @@ mod tests {
             }
         }
         panic!("get_command_output did not return ExitedNonZero");
+    }
+
+    /// Test running successful and unsuccessful commands with
+    /// `run_command_log_output`. Checking that logging worked as
+    /// expected is tricky in tests, so this test doesn't do that; it
+    /// just checks the return value.
+    #[test]
+    fn test_run_command_log_output() {
+        run_command_log_output(Command::new("true")).unwrap();
+        assert!(run_command_log_output(Command::new("false")).is_err());
     }
 }

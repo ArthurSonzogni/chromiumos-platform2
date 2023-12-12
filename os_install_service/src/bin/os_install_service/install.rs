@@ -8,7 +8,6 @@ use std::process::Command;
 
 use super::install_logger;
 use anyhow::Context;
-use libchromeos;
 use log::{error, info};
 use os_install_service::disk::{self, Disk};
 use os_install_service::mount::Mount;
