@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/network/routing_policy_service.h"
+#include "patchpanel/network/routing_policy_service.h"
 
 #include <algorithm>
 #include <array>
@@ -12,23 +12,17 @@
 #include <utility>
 #include <vector>
 
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
 #include <net-base/byte_utils.h>
 #include <net-base/ip_address.h>
 
-#include "shill/logging.h"
-
 bool operator==(const fib_rule_uid_range& a, const fib_rule_uid_range& b) {
   return (a.start == b.start) && (a.end == b.end);
 }
 
-namespace shill {
-
-namespace Logging {
-static auto kModuleLogScope = ScopeLogger::kRoute;
-}  // namespace Logging
-
+namespace patchpanel {
 namespace {
 
 // Amount added to an interface index to come up with the routing table ID for
@@ -39,12 +33,14 @@ static_assert(
     "kInterfaceTableIdIncrement must be greater than RT_TABLE_LOCAL, "
     "as otherwise some interface's table IDs may collide with system tables.");
 
-// For VPN drivers that only want to pass traffic for specific users,
-// these are the usernames that will be used to create the routing policy
-// rules. Also, when an AlwaysOnVpnPackage is set and a corresponding VPN
-// service is not active, traffic from these users will blackholed.
-// Currently the "user traffic" as defined by these usernames does not include
-// e.g. Android apps or system processes like the update engine.
+// TODO(b/293997937): Dedup this with the definition in
+// patchpanel/routing_service.h.
+// For VPN drivers that only want to pass traffic for specific users, these are
+// the usernames that will be used to create the routing policy rules. Also,
+// when an AlwaysOnVpnPackage is set and a corresponding VPN service is not
+// active, traffic from these users will blackholed. Currently the "user
+// traffic" as defined by these usernames does not include e.g. Android apps or
+// system processes like the update engine.
 constexpr std::array<std::string_view, 9> kUserTrafficUsernames = {
     "chronos",         // Traffic originating from chrome and nacl applications
     "debugd",          // crosh terminal
@@ -82,13 +78,13 @@ base::flat_map<std::string_view, fib_rule_uid_range> ComputeUserTrafficUids() {
 
 RoutingPolicyService::RoutingPolicyService()
     : rtnl_handler_(net_base::RTNLHandler::GetInstance()) {
-  SLOG(2) << __func__;
+  VLOG(2) << __func__;
 }
 
 RoutingPolicyService::~RoutingPolicyService() = default;
 
 void RoutingPolicyService::Start() {
-  SLOG(2) << __func__;
+  VLOG(2) << __func__;
 
   rule_listener_ = std::make_unique<net_base::RTNLListener>(
       net_base::RTNLHandler::kRequestRule,
@@ -98,7 +94,7 @@ void RoutingPolicyService::Start() {
 }
 
 void RoutingPolicyService::Stop() {
-  SLOG(2) << __func__;
+  VLOG(2) << __func__;
 
   rule_listener_.reset();
 }
@@ -257,7 +253,7 @@ bool RoutingPolicyService::AddRule(int interface_index,
 }
 
 void RoutingPolicyService::FlushRules(int interface_index) {
-  SLOG(2) << __func__;
+  VLOG(2) << __func__;
 
   auto table = policy_tables_.find(interface_index);
   if (table == policy_tables_.end()) {
@@ -274,7 +270,7 @@ bool RoutingPolicyService::ApplyRule(int interface_index,
                                      const RoutingPolicyEntry& entry,
                                      net_base::RTNLMessage::Mode mode,
                                      unsigned int flags) {
-  SLOG(2) << base::StringPrintf(
+  VLOG(2) << base::StringPrintf(
       "%s: index %d family %s prio %d", __func__, interface_index,
       net_base::ToString(entry.family).c_str(), entry.priority);
 
@@ -392,4 +388,4 @@ bool RoutingPolicyEntry::operator==(const RoutingPolicyEntry& b) const {
 }
 // clang-format on
 
-}  // namespace shill
+}  // namespace patchpanel

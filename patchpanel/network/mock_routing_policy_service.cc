@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/network/mock_routing_policy_service.h"
+#include "patchpanel/network/mock_routing_policy_service.h"
 
-namespace shill {
+namespace patchpanel {
 
 MockRoutingPolicyService::MockRoutingPolicyService() = default;
 
 MockRoutingPolicyService::~MockRoutingPolicyService() = default;
 
-}  // namespace shill
+}  // namespace patchpanel

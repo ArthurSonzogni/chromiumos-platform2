@@ -19,7 +19,6 @@
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/network/mock_network_applier.h"
 #include "shill/network/network.h"
 #include "shill/service_under_test.h"
 #include "shill/store/fake_store.h"
@@ -76,7 +75,7 @@ class StaticIPParametersTest : public Test {
     const std::string ifname = "eth1";
     network_ = std::make_unique<Network>(
         1, ifname, Technology::kEthernet, false, &control_interface_,
-        &dispatcher_, &metrics_, &patchpanel_client_, &network_applier_);
+        &dispatcher_, &metrics_, &patchpanel_client_);
     network_->set_ipconfig(
         std::make_unique<IPConfig>(&control_interface_, ifname));
     // Explicitly select this IPConfig object.
@@ -259,7 +258,6 @@ class StaticIPParametersTest : public Test {
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   std::unique_ptr<MockManager> manager_;
-  NiceMock<MockNetworkApplier> network_applier_;
   patchpanel::FakeClient patchpanel_client_;
 
   scoped_refptr<ServiceUnderTest> service_;

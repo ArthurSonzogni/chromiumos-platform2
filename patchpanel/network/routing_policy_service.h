@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NETWORK_ROUTING_POLICY_SERVICE_H_
-#define SHILL_NETWORK_ROUTING_POLICY_SERVICE_H_
+#ifndef PATCHPANEL_NETWORK_ROUTING_POLICY_SERVICE_H_
+#define PATCHPANEL_NETWORK_ROUTING_POLICY_SERVICE_H_
 
 // Add for fib_rule_uid_range definition.
 #include <linux/fib_rules.h>
@@ -22,7 +22,7 @@
 
 bool operator==(const fib_rule_uid_range& a, const fib_rule_uid_range& b);
 
-namespace shill {
+namespace patchpanel {
 
 // Represents a single policy routing rule.
 // ctor will initialize |dst| and |src| to be of the same family of |family|,
@@ -114,13 +114,13 @@ class RoutingPolicyService {
 
   // "User traffic" refers to traffic from processes that run under one of the
   // unix users enumered in |kUserTrafficUsernames| constant in
-  // shill/routing_table.cc.
+  // patchpanel/routing_table.cc.
   base::flat_map<std::string_view, fib_rule_uid_range> user_traffic_uids_;
 
   // Cache singleton pointer for performance and test purposes.
   net_base::RTNLHandler* rtnl_handler_;
 };
 
-}  // namespace shill
+}  // namespace patchpanel
 
-#endif  // SHILL_NETWORK_ROUTING_POLICY_SERVICE_H_
+#endif  // PATCHPANEL_NETWORK_ROUTING_POLICY_SERVICE_H_

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/network/routing_policy_service.h"
+#include "patchpanel/network/routing_policy_service.h"
 
 #include <linux/fib_rules.h>
 #include <linux/rtnetlink.h>
@@ -20,7 +20,7 @@ using testing::StrictMock;
 using testing::Test;
 using testing::WithArg;
 
-namespace shill {
+namespace patchpanel {
 
 class RoutingPolicyServiceTest : public Test {
  public:
@@ -104,4 +104,4 @@ TEST_F(RoutingPolicyServiceTest, PolicyRuleAddFlush) {
   EXPECT_EQ(CountRoutingPolicyEntries(), 0);
 }
 
-}  // namespace shill
+}  // namespace patchpanel

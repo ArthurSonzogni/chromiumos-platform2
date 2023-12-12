@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/network/routing_table_entry.h"
+#include "patchpanel/network/routing_table_entry.h"
 
 #include <string>
 
 #include <base/strings/stringprintf.h>
 #include <net-base/ip_address.h>
 
-namespace shill {
+namespace patchpanel {
 
 RoutingTableEntry::RoutingTableEntry(net_base::IPFamily family)
     : dst(net_base::IPCIDR(family)),
@@ -99,4 +99,4 @@ std::ostream& operator<<(std::ostream& os, const RoutingTableEntry& entry) {
   return os;
 }
 
-}  // namespace shill
+}  // namespace patchpanel

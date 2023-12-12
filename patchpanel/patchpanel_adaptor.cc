@@ -17,6 +17,7 @@
 #include "patchpanel/downstream_network_service.h"
 #include "patchpanel/manager.h"
 #include "patchpanel/metrics.h"
+#include "patchpanel/network/network_applier.h"
 #include "patchpanel/proto_utils.h"
 #include "patchpanel/rtnl_client.h"
 
@@ -148,10 +149,45 @@ ConfigureNetworkResponse PatchpanelAdaptor::ConfigureNetwork(
   const std::string& ifname = request.ifname();
   const net_base::NetworkConfig network_config =
       DeserializeNetworkConfig(request.network_config());
-  LOG(INFO) << __func__ << " on " << ifname << "(" << ifindex
-            << "): " << network_config;
 
-  // TODO(b/293997937): Migrate NetworkApplier here.
+  net_base::NetworkPriority priority;
+  priority.is_primary_logical = request.priority().is_primary_logical();
+  priority.is_primary_physical = request.priority().is_primary_physical();
+  priority.is_primary_for_dns = request.priority().is_primary_for_dns();
+  priority.ranking_order = request.priority().ranking_order();
+
+  // TODO(b/289971126): Unify the multiple enums used for technology.
+  NetworkApplier::Technology technology;
+  switch (request.technology()) {
+    case patchpanel::NetworkTechnology::CELLULAR:
+      technology = NetworkApplier::Technology::kCellular;
+      break;
+    case patchpanel::NetworkTechnology::ETHERNET:
+      technology = NetworkApplier::Technology::kEthernet;
+      break;
+    case patchpanel::NetworkTechnology::VPN:
+      technology = NetworkApplier::Technology::kVPN;
+      break;
+    case patchpanel::NetworkTechnology::WIFI:
+      technology = NetworkApplier::Technology::kWiFi;
+      break;
+    default:
+      technology = NetworkApplier::Technology::kEthernet;
+  }
+
+  LOG(INFO) << __func__ << " on " << ifname << "(" << ifindex
+            << "): " << network_config << ", priority " << priority
+            << ", area 0x" << std::hex << request.area();
+
+  // TODO(b/273742756): CreateNetwork and DestroyNetwork would be a better place
+  // for NetworkApplier::Register() and NetworkApplier::Deregister(). This can
+  // also be fully eliminated by a RoutingTable refactor.
+  NetworkApplier::GetInstance()->Register(ifindex, ifname);
+
+  NetworkApplier::GetInstance()->ApplyNetworkConfig(
+      ifindex, ifname, static_cast<NetworkApplier::Area>(request.area()),
+      network_config, priority, technology);
+
   // TODO(b/293997937): Move dynamic iptables rule setup here.
 
   ConfigureNetworkResponse response;

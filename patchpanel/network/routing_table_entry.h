@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NETWORK_ROUTING_TABLE_ENTRY_H_
-#define SHILL_NETWORK_ROUTING_TABLE_ENTRY_H_
+#ifndef PATCHPANEL_NETWORK_ROUTING_TABLE_ENTRY_H_
+#define PATCHPANEL_NETWORK_ROUTING_TABLE_ENTRY_H_
 
 #include <linux/rtnetlink.h>
 
@@ -11,7 +11,7 @@
 
 #include <net-base/ip_address.h>
 
-namespace shill {
+namespace patchpanel {
 
 // Represents a single entry in a routing table.
 struct RoutingTableEntry {
@@ -48,6 +48,6 @@ struct RoutingTableEntry {
 // Print out an entry in a format similar to that of ip route.
 std::ostream& operator<<(std::ostream& os, const RoutingTableEntry& entry);
 
-}  // namespace shill
+}  // namespace patchpanel
 
-#endif  // SHILL_NETWORK_ROUTING_TABLE_ENTRY_H_
+#endif  // PATCHPANEL_NETWORK_ROUTING_TABLE_ENTRY_H_

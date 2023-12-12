@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NETWORK_NETWORK_APPLIER_H_
-#define SHILL_NETWORK_NETWORK_APPLIER_H_
+#ifndef PATCHPANEL_NETWORK_NETWORK_APPLIER_H_
+#define PATCHPANEL_NETWORK_NETWORK_APPLIER_H_
 
 #include <memory>
 #include <string>
@@ -17,13 +17,11 @@
 #include <net-base/proc_fs_stub.h>
 #include <net-base/rtnl_handler.h>
 
-#include "shill/mockable.h"
-#include "shill/network/address_service.h"
-#include "shill/network/routing_policy_service.h"
-#include "shill/network/routing_table.h"
-#include "shill/technology.h"
+#include "patchpanel/network/address_service.h"
+#include "patchpanel/network/routing_policy_service.h"
+#include "patchpanel/network/routing_table.h"
 
-namespace shill {
+namespace patchpanel {
 
 // A singleton class that provide stateless API for Networks to apply their
 // configurations into kernel netdevice, routing table, routing policy table,
@@ -44,6 +42,13 @@ class NetworkApplier {
     kClear = 1u << 31,  // Clear all old configurations regardless of area
   };
 
+  enum class Technology {
+    kEthernet,
+    kWiFi,
+    kCellular,
+    kVPN,
+  };
+
   virtual ~NetworkApplier();
 
   // Singleton accessor.
@@ -58,7 +63,7 @@ class NetworkApplier {
       std::unique_ptr<net_base::ProcFsStub> proc_fs);
 
   // Start the RTNL listeners in subcomponents.
-  mockable void Start();
+  virtual void Start();
 
   // Notify NetworkApplier before a network interface can be configured by it so
   // it can do proper initialization.
@@ -81,15 +86,15 @@ class NetworkApplier {
   // Apply the DNS configuration by writing into /etc/resolv.conf.
   // TODO(b/259354228): dnsproxy will take the ownership of resolv.conf file
   // after b/207657239 is resolved.
-  mockable void ApplyDNS(net_base::NetworkPriority priority,
-                         const std::vector<net_base::IPAddress>& dns_servers,
-                         const std::vector<std::string>& dns_search_domains);
+  virtual void ApplyDNS(net_base::NetworkPriority priority,
+                        const std::vector<net_base::IPAddress>& dns_servers,
+                        const std::vector<std::string>& dns_search_domains);
 
   // Apply the local address onto kernel netdevice with interface index
   // |interface_index|. If IPv4, a customized |broadcast| address can be
   // specified.
   // TODO(b/264963034): Multiple IPv6 addresses is currently not supported.
-  mockable void ApplyAddress(
+  virtual void ApplyAddress(
       int interface_index,
       const net_base::IPCIDR& local,
       const std::optional<net_base::IPv4Address>& broadcast);
@@ -97,7 +102,7 @@ class NetworkApplier {
   // Apply the routes into per-device routing table. If |gateway| is nullopt,
   // the network is assumed to be point-to-point, and routes are added as
   // on-link.
-  mockable void ApplyRoute(
+  virtual void ApplyRoute(
       int interface_index,
       net_base::IPFamily family,
       const std::optional<net_base::IPAddress>& gateway,
@@ -115,7 +120,7 @@ class NetworkApplier {
   // there are any classless static routes configured in DHCPv4, passing
   // destinations of those routes as |rfc3442_dsts| will create routing rules
   // that force per-interface table for those destinations.
-  mockable void ApplyRoutingPolicy(
+  virtual void ApplyRoutingPolicy(
       int interface_index,
       const std::string& interface_name,
       Technology technology,
@@ -123,7 +128,7 @@ class NetworkApplier {
       const std::vector<net_base::IPCIDR>& all_addresses,
       const std::vector<net_base::IPv4CIDR>& rfc3442_dsts);
 
-  mockable void ApplyMTU(int interface_index, int mtu);
+  virtual void ApplyMTU(int interface_index, int mtu);
 
  protected:
   NetworkApplier();
@@ -160,6 +165,6 @@ inline NetworkApplier::Area& operator|=(NetworkApplier::Area& a,
   return a = a | b;
 }
 
-}  // namespace shill
+}  // namespace patchpanel
 
-#endif  // SHILL_NETWORK_NETWORK_APPLIER_H_
+#endif  // PATCHPANEL_NETWORK_NETWORK_APPLIER_H_

@@ -2,17 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NETWORK_MOCK_ROUTING_POLICY_SERVICE_H_
-#define SHILL_NETWORK_MOCK_ROUTING_POLICY_SERVICE_H_
+#ifndef PATCHPANEL_NETWORK_MOCK_ROUTING_POLICY_SERVICE_H_
+#define PATCHPANEL_NETWORK_MOCK_ROUTING_POLICY_SERVICE_H_
 
 #include <string_view>
 
 #include <base/containers/flat_map.h>
 #include <gmock/gmock.h>
 
-#include "shill/network/routing_policy_service.h"
+#include "patchpanel/network/routing_policy_service.h"
 
-namespace shill {
+namespace patchpanel {
 
 class MockRoutingPolicyService : public RoutingPolicyService {
  public:
@@ -33,6 +33,6 @@ class MockRoutingPolicyService : public RoutingPolicyService {
   MOCK_METHOD(fib_rule_uid_range, GetChromeUid, (), (override));
 };
 
-}  // namespace shill
+}  // namespace patchpanel
 
-#endif  // SHILL_NETWORK_MOCK_ROUTING_POLICY_SERVICE_H_
+#endif  // PATCHPANEL_NETWORK_MOCK_ROUTING_POLICY_SERVICE_H_

@@ -35,10 +35,8 @@
 #include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/network/mock_network.h"
-#include "shill/network/mock_network_applier.h"
 #include "shill/network/mock_network_monitor.h"
 #include "shill/network/mock_slaac_controller.h"
-#include "shill/network/network_applier.h"
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
 
@@ -167,7 +165,6 @@ class NetworkInTest : public Network {
                 ControlInterface* control_interface,
                 EventDispatcher* dispatcher,
                 Metrics* metrics,
-                NetworkApplier* network_applier,
                 std::unique_ptr<NetworkMonitorFactory> network_monitor_factory)
       : Network(interface_index,
                 interface_name,
@@ -177,7 +174,6 @@ class NetworkInTest : public Network {
                 dispatcher,
                 metrics,
                 nullptr,
-                network_applier,
                 nullptr,
                 std::move(network_monitor_factory)) {
     ON_CALL(*this, ApplyNetworkConfig)
@@ -212,8 +208,9 @@ class NetworkTest : public ::testing::Test {
 
     network_ = std::make_unique<NiceMock<NetworkInTest>>(
         kTestIfindex, kTestIfname, kTestTechnology,
+
         /*fixed_ip_params=*/false, &control_interface_, &dispatcher_, &metrics_,
-        &network_applier_, std::move(network_monitor_factory));
+        std::move(network_monitor_factory));
     network_->set_dhcp_provider_for_testing(&dhcp_provider_);
     network_->RegisterEventHandler(&event_handler_);
     network_->RegisterEventHandler(&event_handler2_);
@@ -291,7 +288,6 @@ class NetworkTest : public ::testing::Test {
   MockDHCPProvider dhcp_provider_;
   MockNetworkEventHandler event_handler_;
   MockNetworkEventHandler event_handler2_;
-  NiceMock<MockNetworkApplier> network_applier_;
 
   std::unique_ptr<NiceMock<NetworkInTest>> network_;
 
@@ -738,7 +734,7 @@ TEST_F(NetworkTest, NeighborReachabilityEventsMetrics) {
   auto wifi_network = std::make_unique<NiceMock<NetworkInTest>>(
       kTestIfindex, kTestIfname, Technology::kWiFi,
       /*fixed_ip_params=*/false, &control_interface_, &dispatcher_, &metrics_,
-      &network_applier_, nullptr);
+      nullptr);
   wifi_network->set_ignore_link_monitoring_for_testing(true);
 
   EXPECT_CALL(
@@ -792,7 +788,7 @@ TEST_F(NetworkTest, NeighborReachabilityEventsMetrics) {
   auto eth_network = std::make_unique<NiceMock<NetworkInTest>>(
       kTestIfindex, kTestIfname, Technology::kEthernet,
       /*fixed_ip_params=*/false, &control_interface_, &dispatcher_, &metrics_,
-      &network_applier_, nullptr);
+      nullptr);
   eth_network->set_ignore_link_monitoring_for_testing(true);
 
   EXPECT_CALL(metrics_,
@@ -1613,7 +1609,6 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   Mock::VerifyAndClearExpectations(&event_handler_);
   Mock::VerifyAndClearExpectations(&event_handler2_);
-  Mock::VerifyAndClearExpectations(&network_applier_);
 
   // Changing the address should trigger the connection update.
   const auto new_addr =
@@ -1687,7 +1682,6 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACDNSServerChangeEvent) {
   TriggerSLAACNameServersUpdate({dns_server});
   Mock::VerifyAndClearExpectations(&event_handler_);
   Mock::VerifyAndClearExpectations(&event_handler2_);
-  Mock::VerifyAndClearExpectations(&network_applier_);
 
   // If the IPv6 DNS server addresses does not change, no signal is emitted.
   TriggerSLAACNameServersUpdate({dns_server});

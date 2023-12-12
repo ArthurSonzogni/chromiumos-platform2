@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/network/network_applier.h"
+#include "patchpanel/network/network_applier.h"
 
 #include <algorithm>
 #include <optional>
@@ -17,17 +17,16 @@
 #include <net-base/network_priority.h>
 #include <net-base/proc_fs_stub.h>
 
-#include "shill/network/address_service.h"
-#include "shill/network/routing_policy_service.h"
-#include "shill/network/routing_table.h"
-#include "shill/network/routing_table_entry.h"
+#include "patchpanel/network/address_service.h"
+#include "patchpanel/network/routing_policy_service.h"
+#include "patchpanel/network/routing_table.h"
+#include "patchpanel/network/routing_table_entry.h"
 
-namespace shill {
+namespace patchpanel {
 
 namespace {
 // TODO(b/161507671) Use the constants defined in patchpanel::RoutingService at
-// platform2/patchpanel/routing_service.cc after the routing layer is migrated
-// to patchpanel.
+// platform2/patchpanel/routing_service.cc.
 constexpr const uint32_t kFwmarkRoutingMask = 0xffff0000;
 
 // kCrosVmFwmark = {.value = 0x2100, .mask = 0x3f00} should be the preferred
@@ -147,7 +146,7 @@ void NetworkApplier::ApplyDNS(
     const std::vector<net_base::IPAddress>& dns_servers,
     const std::vector<std::string>& dns_search_domains) {
   // TODO(b/259354228): Notify dnsproxy when DNS changes. Note that currently
-  // dnsproxy is getting the information from itself subscribing to shill
+  // dnsproxy is getting the information from itself subscribing to patchpanel
   // Device/Service event API instead.
 }
 
@@ -325,7 +324,7 @@ void NetworkApplier::ApplyRoute(
   const uint32_t table_id = RoutingTable::GetInterfaceTableId(interface_index);
   auto empty_ip = net_base::IPCIDR(family);
 
-  // 0. Flush existing routes set by shill.
+  // 0. Flush existing routes set by patchpanel.
   routing_table_->FlushRoutesWithTag(interface_index, family);
 
   // 1. Fix gateway reachablity (add an on-link /32 route to the gateway) if
@@ -537,4 +536,4 @@ void NetworkApplier::ApplyNetworkConfig(
   }
 }
 
-}  // namespace shill
+}  // namespace patchpanel

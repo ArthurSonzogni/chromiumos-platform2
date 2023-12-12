@@ -4,6 +4,9 @@
 
 #include "shill/network/slaac_controller.h"
 
+#include <linux/if_addr.h>
+#include <linux/rtnetlink.h>
+
 #include <string>
 
 #include <net-base/byte_utils.h>

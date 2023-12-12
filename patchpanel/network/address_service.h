@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NETWORK_ADDRESS_SERVICE_H_
-#define SHILL_NETWORK_ADDRESS_SERVICE_H_
+#ifndef PATCHPANEL_NETWORK_ADDRESS_SERVICE_H_
+#define PATCHPANEL_NETWORK_ADDRESS_SERVICE_H_
 
 #include <cstdint>
 #include <map>
@@ -15,9 +15,7 @@
 #include <net-base/ip_address.h>
 #include <net-base/rtnl_handler.h>
 
-#include "shill/mockable.h"
-
-namespace shill {
+namespace patchpanel {
 
 // A singleton providing capability to configure address onto kernel netdevice,
 // and maintaining the address information currently configured.
@@ -34,7 +32,7 @@ class AddressService {
       net_base::RTNLHandler* rtnl_handler);
 
   // Removes all addresses previous configured onto |interface_index|.
-  mockable void FlushAddress(int interface_index);
+  virtual void FlushAddress(int interface_index);
 
   // Removes all addresses of |family| previous configured onto
   // |interface_index|.
@@ -42,12 +40,12 @@ class AddressService {
 
   // Removes all configured addresses that shares a family with |local|, but not
   // |local| itself. Return true if any address removed that way.
-  mockable bool RemoveAddressOtherThan(int interface_index,
-                                       const net_base::IPCIDR& local);
+  virtual bool RemoveAddressOtherThan(int interface_index,
+                                      const net_base::IPCIDR& local);
 
   // Configures |local| onto |interface_index| through kernel RTNL. If |local|
   // is IPv4, a customized |broadcast| address can be specified.
-  mockable void AddAddress(
+  virtual void AddAddress(
       int interface_index,
       const net_base::IPCIDR& local,
       const std::optional<net_base::IPv4Address>& broadcast = std::nullopt);
@@ -61,6 +59,6 @@ class AddressService {
   // Cache singleton pointer for performance and test purposes.
   net_base::RTNLHandler* rtnl_handler_;
 };
-}  // namespace shill
+}  // namespace patchpanel
 
-#endif  // SHILL_NETWORK_ADDRESS_SERVICE_H_
+#endif  // PATCHPANEL_NETWORK_ADDRESS_SERVICE_H_

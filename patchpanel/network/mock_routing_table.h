@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NETWORK_MOCK_ROUTING_TABLE_H_
-#define SHILL_NETWORK_MOCK_ROUTING_TABLE_H_
+#ifndef PATCHPANEL_NETWORK_MOCK_ROUTING_TABLE_H_
+#define PATCHPANEL_NETWORK_MOCK_ROUTING_TABLE_H_
 
 #include <gmock/gmock.h>
 
-#include "shill/network/routing_table.h"
+#include "patchpanel/network/routing_table.h"
 
-namespace shill {
+namespace patchpanel {
 
 class MockRoutingTable : public RoutingTable {
  public:
@@ -39,6 +39,6 @@ class MockRoutingTable : public RoutingTable {
   MOCK_METHOD(void, ResetTable, (int), (override));
 };
 
-}  // namespace shill
+}  // namespace patchpanel
 
-#endif  // SHILL_NETWORK_MOCK_ROUTING_TABLE_H_
+#endif  // PATCHPANEL_NETWORK_MOCK_ROUTING_TABLE_H_

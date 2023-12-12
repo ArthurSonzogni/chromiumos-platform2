@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/network/address_service.h"
+#include "patchpanel/network/address_service.h"
 
 #include <memory>
 
@@ -10,7 +10,7 @@
 #include <base/memory/ptr_util.h>
 #include <net-base/ip_address.h>
 
-namespace shill {
+namespace patchpanel {
 
 AddressService::AddressService()
     : rtnl_handler_(net_base::RTNLHandler::GetInstance()) {}
@@ -98,4 +98,4 @@ void AddressService::AddAddress(
   added_addresses_[interface_index].push_back(local);
 }
 
-}  // namespace shill
+}  // namespace patchpanel

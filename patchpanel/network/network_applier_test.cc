@@ -16,12 +16,11 @@
 #include <net-base/mock_rtnl_handler.h>
 #include <net-base/network_priority.h>
 
-#include "shill/network/mock_network_applier.h"
-#include "shill/network/mock_routing_policy_service.h"
-#include "shill/network/mock_routing_table.h"
-#include "shill/network/network_applier.h"
-#include "shill/network/routing_table.h"
-#include "shill/technology.h"
+#include "patchpanel/network/mock_network_applier.h"
+#include "patchpanel/network/mock_routing_policy_service.h"
+#include "patchpanel/network/mock_routing_table.h"
+#include "patchpanel/network/network_applier.h"
+#include "patchpanel/network/routing_table.h"
 
 using testing::_;
 using testing::Eq;
@@ -32,7 +31,7 @@ using testing::ReturnRef;
 using testing::StrictMock;
 using testing::Test;
 
-namespace shill {
+namespace patchpanel {
 
 namespace {
 MATCHER_P3(IsValidRoutingRule, family, priority, table, "") {
@@ -161,12 +160,12 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfig) {
 
   applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
                              NetworkApplier::Area::kNone, config, priority,
-                             Technology::kEthernet);
+                             NetworkApplier::Technology::kEthernet);
 
   EXPECT_CALL(applier, ApplyAddress(kInterfaceIndex, _, _)).Times(1);
   applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
                              NetworkApplier::Area::kIPv4Address, config,
-                             priority, Technology::kEthernet);
+                             priority, NetworkApplier::Technology::kEthernet);
 
   EXPECT_CALL(applier, ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv4,
                                   /*gateway=*/Eq(std::nullopt),
@@ -176,7 +175,7 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfig) {
       .Times(1);
   applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
                              NetworkApplier::Area::kIPv4Route, config, priority,
-                             Technology::kEthernet);
+                             NetworkApplier::Technology::kEthernet);
 
   EXPECT_CALL(applier, ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv4,
                                   /*gateway=*/Eq(std::nullopt),
@@ -187,12 +186,13 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfig) {
   applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
                              NetworkApplier::Area::kIPv4Route |
                                  NetworkApplier::Area::kIPv4DefaultRoute,
-                             config, priority, Technology::kEthernet);
+                             config, priority,
+                             NetworkApplier::Technology::kEthernet);
 
   EXPECT_CALL(applier, ApplyAddress(kInterfaceIndex, _, _)).Times(1);
   applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
                              NetworkApplier::Area::kIPv6Address, config,
-                             priority, Technology::kEthernet);
+                             priority, NetworkApplier::Technology::kEthernet);
 
   EXPECT_CALL(applier, ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv6,
                                   /*gateway=*/Eq(std::nullopt),
@@ -202,7 +202,7 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfig) {
       .Times(1);
   applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
                              NetworkApplier::Area::kIPv6Route, config, priority,
-                             Technology::kEthernet);
+                             NetworkApplier::Technology::kEthernet);
 
   EXPECT_CALL(applier, ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv6,
                                   /*gateway=*/Eq(std::nullopt),
@@ -213,25 +213,26 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfig) {
   applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
                              NetworkApplier::Area::kIPv6Route |
                                  NetworkApplier::Area::kIPv6DefaultRoute,
-                             config, priority, Technology::kEthernet);
+                             config, priority,
+                             NetworkApplier::Technology::kEthernet);
 
-  EXPECT_CALL(applier,
-              ApplyRoutingPolicy(kInterfaceIndex, kInterfaceName,
-                                 Technology::kEthernet, priority, _, _));
+  EXPECT_CALL(applier, ApplyRoutingPolicy(kInterfaceIndex, kInterfaceName,
+                                          NetworkApplier::Technology::kEthernet,
+                                          priority, _, _));
   applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
                              NetworkApplier::Area::kRoutingPolicy, config,
-                             priority, Technology::kEthernet);
+                             priority, NetworkApplier::Technology::kEthernet);
 
   EXPECT_CALL(applier, ApplyDNS(priority, _, _)).Times(1);
   applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
                              NetworkApplier::Area::kDNS, config, priority,
-                             Technology::kEthernet);
+                             NetworkApplier::Technology::kEthernet);
 
   config.mtu = 1480;
   EXPECT_CALL(applier, ApplyMTU(kInterfaceIndex, 1480)).Times(1);
   applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
                              NetworkApplier::Area::kMTU, config, priority,
-                             Technology::kEthernet);
+                             NetworkApplier::Technology::kEthernet);
 }
 
 TEST_F(NetworkApplierTest, ApplyNetworkConfigRouteParameters) {
@@ -254,7 +255,8 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfigRouteParameters) {
   applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
                              NetworkApplier::Area::kIPv4Route |
                                  NetworkApplier::Area::kIPv4DefaultRoute,
-                             config, priority, Technology::kEthernet);
+                             config, priority,
+                             NetworkApplier::Technology::kEthernet);
 
   config.ipv4_default_route = false;
   EXPECT_CALL(applier, ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv4,
@@ -266,7 +268,8 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfigRouteParameters) {
   applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
                              NetworkApplier::Area::kIPv4Route |
                                  NetworkApplier::Area::kIPv4DefaultRoute,
-                             config, priority, Technology::kEthernet);
+                             config, priority,
+                             NetworkApplier::Technology::kEthernet);
 
   config.ipv4_default_route = true;
   config.ipv6_blackhole_route = true;
@@ -279,7 +282,8 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfigRouteParameters) {
   applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
                              NetworkApplier::Area::kIPv4Route |
                                  NetworkApplier::Area::kIPv4DefaultRoute,
-                             config, priority, Technology::kEthernet);
+                             config, priority,
+                             NetworkApplier::Technology::kEthernet);
 
   config.ipv4_gateway = *net_base::IPv4Address::CreateFromString(
       "198.51.100.1");  // Out of 192.0.2.100/24
@@ -292,7 +296,8 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfigRouteParameters) {
   applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
                              NetworkApplier::Area::kIPv4Route |
                                  NetworkApplier::Area::kIPv4DefaultRoute,
-                             config, priority, Technology::kEthernet);
+                             config, priority,
+                             NetworkApplier::Technology::kEthernet);
 }
 
 TEST_F(NetworkApplierTest, ApplyNetworkConfigRoutingPolicyParameters) {
@@ -316,7 +321,8 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfigRoutingPolicyParameters) {
   EXPECT_CALL(
       applier,
       ApplyRoutingPolicy(
-          kInterfaceIndex, kInterfaceName, Technology::kEthernet, priority,
+          kInterfaceIndex, kInterfaceName,
+          NetworkApplier::Technology::kEthernet, priority,
           Eq(std::vector<net_base::IPCIDR>{
               *net_base::IPCIDR::CreateFromCIDRString("192.0.2.100/24"),
               *net_base::IPCIDR::CreateFromCIDRString("2001:db8:1::1000/64"),
@@ -326,7 +332,7 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfigRoutingPolicyParameters) {
               *net_base::IPv4CIDR::CreateFromCIDRString("203.0.113.128/25")})));
   applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
                              NetworkApplier::Area::kRoutingPolicy, config,
-                             priority, Technology::kEthernet);
+                             priority, NetworkApplier::Technology::kEthernet);
 }
 
 using NetworkApplierRoutingPolicyTest = NetworkApplierTest;
@@ -456,8 +462,8 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultPhysical) {
 
   EXPECT_CALL(*proc_fs_, FlushRoutingCache()).WillOnce(Return(true));
   network_applier_->ApplyRoutingPolicy(
-      kInterfaceIndex, kInterfaceName, Technology::kEthernet, priority,
-      all_addresses, std::vector<net_base::IPv4CIDR>());
+      kInterfaceIndex, kInterfaceName, NetworkApplier::Technology::kEthernet,
+      priority, all_addresses, std::vector<net_base::IPv4CIDR>());
 }
 
 TEST_F(NetworkApplierRoutingPolicyTest, DefaultVPN) {
@@ -555,8 +561,8 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultVPN) {
 
   EXPECT_CALL(*proc_fs_, FlushRoutingCache()).WillOnce(Return(true));
   network_applier_->ApplyRoutingPolicy(
-      kInterfaceIndex, kInterfaceName, Technology::kVPN, priority,
-      all_addresses, std::vector<net_base::IPv4CIDR>());
+      kInterfaceIndex, kInterfaceName, NetworkApplier::Technology::kVPN,
+      priority, all_addresses, std::vector<net_base::IPv4CIDR>());
 }
 
 TEST_F(NetworkApplierRoutingPolicyTest,
@@ -651,8 +657,8 @@ TEST_F(NetworkApplierRoutingPolicyTest,
 
   EXPECT_CALL(*proc_fs_, FlushRoutingCache()).WillOnce(Return(true));
   network_applier_->ApplyRoutingPolicy(kInterfaceIndex, kInterfaceName,
-                                       Technology::kWiFi, priority,
-                                       all_addresses, rfc3442_dsts);
+                                       NetworkApplier::Technology::kWiFi,
+                                       priority, all_addresses, rfc3442_dsts);
 }
 
 TEST_F(NetworkApplierRoutingPolicyTest,
@@ -738,8 +744,8 @@ TEST_F(NetworkApplierRoutingPolicyTest,
 
   EXPECT_CALL(*proc_fs_, FlushRoutingCache()).WillOnce(Return(true));
   network_applier_->ApplyRoutingPolicy(
-      kInterfaceIndex, kInterfaceName, Technology::kCellular, priority,
-      all_addresses, std::vector<net_base::IPv4CIDR>());
+      kInterfaceIndex, kInterfaceName, NetworkApplier::Technology::kCellular,
+      priority, all_addresses, std::vector<net_base::IPv4CIDR>());
 }
 
 using NetworkApplierRouteTest = NetworkApplierTest;
@@ -934,4 +940,4 @@ TEST_F(NetworkApplierAddressTest, IPv4WithBroadcast) {
   network_applier_->ApplyAddress(kInterfaceIndex, local, broadcast);
 }
 
-}  // namespace shill
+}  // namespace patchpanel

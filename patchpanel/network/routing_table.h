@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NETWORK_ROUTING_TABLE_H_
-#define SHILL_NETWORK_ROUTING_TABLE_H_
+#ifndef PATCHPANEL_NETWORK_ROUTING_TABLE_H_
+#define PATCHPANEL_NETWORK_ROUTING_TABLE_H_
 
 #include <memory>
 #include <set>
@@ -13,15 +13,16 @@
 
 #include <base/functional/callback.h>
 #include <base/lazy_instance.h>
+#include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <net-base/ip_address.h>
 #include <net-base/rtnl_handler.h>
 #include <net-base/rtnl_listener.h>
 #include <net-base/rtnl_message.h>
 
-#include "shill/network/routing_table_entry.h"
+#include "patchpanel/network/routing_table_entry.h"
 
-namespace shill {
+namespace patchpanel {
 
 // This singleton maintains an in-process copy of the routing table on
 // a per-interface basis.  It offers the ability for other modules to
@@ -35,10 +36,10 @@ class RoutingTable {
   // remains identical with kernel configuration.
   static constexpr int kKernelSlaacRouteMetric = 1024;
 
-  // The metric shill will install its IPv4 default route. Does not have real
-  // impact to the routing decision since there will only be one default route
-  // in each routing table.
-  static constexpr int kShillDefaultRouteMetric = 65536;
+  // The metric patchpanel will install its IPv4 default route. Does not have
+  // real impact to the routing decision since there will only be one default
+  // route in each routing table.
+  static constexpr int kDefaultRouteMetric = 65536;
 
   // ID for the routing table that used for CLAT default routes. Patchpanel is
   // responsible for adding and removing routes in this table. Using a user
@@ -71,7 +72,7 @@ class RoutingTable {
   // re-added. For example, changing accept_ra_rt_table for an interface from -N
   // to 0 will not cause the routes to move back to the main routing table, and
   // in many cases (like a regular link down event for a managed interface), we
-  // would not want shill to manually move those routes back.
+  // would not want patchpanel to manually move those routes back.
   void DeregisterDevice(int interface_index, const std::string& link_name);
 
   // Add an entry to the routing table.
@@ -103,7 +104,7 @@ class RoutingTable {
   // Route entries are immediately purged from our copy of the routing table.
   virtual void FlushRoutes(int interface_index);
 
-  // Iterate over all routing tables removing all routes added by shill,
+  // Iterate over all routing tables removing all routes added by patchpanel,
   // associated with interface |tag| , and of IP family |family|. Route entries
   // are immediately purged from our copy of the routing table.
   virtual void FlushRoutesWithTag(int tag, net_base::IPFamily family);
@@ -149,6 +150,6 @@ class RoutingTable {
   net_base::RTNLHandler* rtnl_handler_;
 };
 
-}  // namespace shill
+}  // namespace patchpanel
 
-#endif  // SHILL_NETWORK_ROUTING_TABLE_H_
+#endif  // PATCHPANEL_NETWORK_ROUTING_TABLE_H_

@@ -50,7 +50,6 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/network/mock_network.h"
-#include "shill/network/mock_network_applier.h"
 #include "shill/network/network.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/vpn_provider.h"
@@ -185,8 +184,7 @@ class DeviceInfoTest : public Test {
   EventDispatcherForTest dispatcher_;
   net_base::MockNetlinkManager netlink_manager_;
   StrictMock<net_base::MockRTNLHandler> rtnl_handler_;
-  patchpanel::FakeClient* patchpanel_client_;  // Owned by Manager
-  NiceMock<MockNetworkApplier> network_applier_;
+  patchpanel::FakeClient* patchpanel_client_;    // Owned by Manager
   net_base::MockSocketFactory* socket_factory_;  // Owned by DeviceInfo
 
   base::ScopedTempDir temp_dir_;
@@ -805,8 +803,7 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
       /*control_interface=*/&control_interface_,
       /*dispatcher=*/&dispatcher_,
       /*metrics=*/&metrics_,
-      /*patchpanel_client=*/patchpanel_client_,
-      /*network_applier=*/&network_applier_));
+      /*patchpanel_client=*/patchpanel_client_));
   MockNetworkEventHandler event_handler0;
   device0->GetPrimaryNetwork()->set_state_for_testing(
       Network::State::kConnected);
@@ -829,8 +826,7 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
       /*control_interface=*/&control_interface_,
       /*dispatcher=*/&dispatcher_,
       /*metrics=*/&metrics_,
-      /*patchpanel_client=*/patchpanel_client_,
-      /*network_applier=*/&network_applier_));
+      /*patchpanel_client=*/patchpanel_client_));
   device_info_.RegisterDevice(device1);
   device1->GetPrimaryNetwork()->set_state_for_testing(
       Network::State::kConnected);

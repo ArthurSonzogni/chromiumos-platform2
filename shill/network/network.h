@@ -34,7 +34,6 @@
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/dhcpv4_config.h"
-#include "shill/network/network_applier.h"
 #include "shill/network/network_monitor.h"
 #include "shill/network/slaac_controller.h"
 #include "shill/portal_detector.h"
@@ -46,7 +45,34 @@ namespace shill {
 class EventDispatcher;
 class Service;
 
-using NetworkConfigArea = NetworkApplier::Area;
+// TODO(b/289971126): dedup with patchpanel::NetworkApplier::Area.
+enum class NetworkConfigArea : uint32_t {
+  kNone = 0,
+  kIPv4Address = 1u << 0,
+  kIPv4Route = 1u << 1,
+  kIPv4DefaultRoute = 1u << 2,
+  kIPv6Address = 1u << 8,
+  kIPv6Route = 1u << 9,
+  kIPv6DefaultRoute = 1u << 10,
+  kRoutingPolicy = 1u << 16,
+  kDNS = 1u << 17,
+  kMTU = 1u << 18,
+  kClear = 1u << 31,
+};
+
+inline uint32_t operator&(NetworkConfigArea a, NetworkConfigArea b) {
+  return static_cast<uint32_t>(a) & static_cast<uint32_t>(b);
+}
+
+inline NetworkConfigArea operator|(NetworkConfigArea a, NetworkConfigArea b) {
+  return static_cast<NetworkConfigArea>(static_cast<uint32_t>(a) |
+                                        static_cast<uint32_t>(b));
+}
+
+inline NetworkConfigArea& operator|=(NetworkConfigArea& a,
+                                     NetworkConfigArea b) {
+  return a = a | b;
+}
 
 // An object of Network class represents a network interface in the kernel, and
 // maintains the layer 3 configuration on this interface.
@@ -167,7 +193,6 @@ class Network : public NetworkMonitor::ClientNetwork {
           EventDispatcher* dispatcher,
           Metrics* metrics,
           patchpanel::Client* patchpanel_client,
-          NetworkApplier* network_applier = NetworkApplier::GetInstance(),
           Resolver* resolver = Resolver::GetInstance(),
           std::unique_ptr<NetworkMonitorFactory> network_monitor_factory =
               std::make_unique<NetworkMonitorFactory>());
@@ -452,6 +477,8 @@ class Network : public NetworkMonitor::ClientNetwork {
       base::OnceCallback<void(bool)> callback,
       bool is_service_ready);
 
+  void CallPatchpanelDestroyNetwork();
+
   // Enable ARP filtering on the interface. Incoming ARP requests are responded
   // to only by the interface(s) owning the address. Outgoing ARP requests will
   // contain the best local address for the target.
@@ -538,7 +565,6 @@ class Network : public NetworkMonitor::ClientNetwork {
   DHCPProvider* dhcp_provider_;
   net_base::RTNLHandler* rtnl_handler_;
   patchpanel::Client* patchpanel_client_;
-  NetworkApplier* network_applier_;
   // TODO(b/240871320): /etc/resolv.conf is now managed by dnsproxy. The
   // resolver class is to be deprecated.
   Resolver* resolver_;

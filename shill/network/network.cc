@@ -36,7 +36,6 @@
 #include "shill/metrics.h"
 #include "shill/network/compound_network_config.h"
 #include "shill/network/dhcpv4_config.h"
-#include "shill/network/network_applier.h"
 #include "shill/network/network_monitor.h"
 #include "shill/network/slaac_controller.h"
 #include "shill/network/validation_log.h"
@@ -54,6 +53,26 @@ namespace {
 // sharing a metered network (typically a Cellular network) via tethering
 // over a WiFi hotspot or a USB ethernet connection.
 constexpr char kAndroidMeteredHotspotVendorOption[] = "ANDROID_METERED";
+
+patchpanel::Client::NetworkTechnology
+ShillTechnologyToPatchpanelClientTechnology(Technology technology) {
+  switch (technology) {
+    case Technology::kCellular:
+      return patchpanel::Client::NetworkTechnology::kCellular;
+    case Technology::kWiFi:
+      return patchpanel::Client::NetworkTechnology::kWiFi;
+    case Technology::kVPN:
+      return patchpanel::Client::NetworkTechnology::kVPN;
+    case Technology::kEthernet:
+    case Technology::kEthernetEap:
+      return patchpanel::Client::NetworkTechnology::kEthernet;
+    default:
+      LOG(ERROR)
+          << "Patchpanel-unaware shill Technology, treating as Ethernet.";
+      return patchpanel::Client::NetworkTechnology::kEthernet;
+  }
+}
+
 }  // namespace
 
 Network::Network(int interface_index,
@@ -64,7 +83,6 @@ Network::Network(int interface_index,
                  EventDispatcher* dispatcher,
                  Metrics* metrics,
                  patchpanel::Client* patchpanel_client,
-                 NetworkApplier* network_applier,
                  Resolver* resolver,
                  std::unique_ptr<NetworkMonitorFactory> network_monitor_factory)
     : interface_index_(interface_index),
@@ -81,7 +99,6 @@ Network::Network(int interface_index,
       dhcp_provider_(DHCPProvider::GetInstance()),
       rtnl_handler_(net_base::RTNLHandler::GetInstance()),
       patchpanel_client_(patchpanel_client),
-      network_applier_(network_applier),
       resolver_(resolver) {}
 
 Network::~Network() {
@@ -120,7 +137,6 @@ void Network::Start(const Network::StartOptions& opts) {
     StopInternal(/*is_failure=*/false, /*trigger_callback=*/false);
   }
 
-  network_applier_->Register(interface_index_, interface_name_);
   EnableARPFiltering();
 
   // If the execution of this function fails, StopInternal() will be called and
@@ -235,7 +251,8 @@ void Network::SetupConnection(net_base::IPFamily family, bool is_slaac) {
 void Network::OnSetupConnectionFinished(bool success) {
   LOG(INFO) << *this << ": " << __func__;
   if (!success) {
-    // TODO(b/293997937): Properly handle RPC failure case.
+    StopInternal(/*is_failure=*/true,
+                 /*trigger_callback=*/state_ == State::kConnected);
   }
 
   if (state_ != State::kConnected && technology_ != Technology::kVPN) {
@@ -304,8 +321,8 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
     }
   }
   state_ = State::kIdle;
-  network_applier_->Release(interface_index_, interface_name_);
   priority_ = net_base::NetworkPriority{};
+  CallPatchpanelDestroyNetwork();
   if (should_trigger_callback) {
     for (auto& ev : event_handlers_) {
       ev.OnNetworkStopped(interface_index_, is_failure);
@@ -978,8 +995,6 @@ void Network::ReportIPType() {
 void Network::ApplyNetworkConfig(NetworkConfigArea area,
                                  base::OnceCallback<void(bool)> callback) {
   const auto& network_config = GetNetworkConfig();
-  network_applier_->ApplyNetworkConfig(interface_index_, interface_name_, area,
-                                       network_config, priority_, technology_);
 
   // TODO(b/240871320): /etc/resolv.conf is now managed by dnsproxy. This code
   // is to be deprecated.
@@ -1016,29 +1031,29 @@ void Network::CallPatchpanelConfigureNetwork(
   }
   VLOG(2) << __func__ << ": " << *this;
   CHECK(patchpanel_client_);
-  patchpanel::Client::NetworkTechnology dbus_technology;
-  switch (technology) {
-    case Technology::kCellular:
-      dbus_technology = patchpanel::Client::NetworkTechnology::kCellular;
-      break;
-    case Technology::kWiFi:
-      dbus_technology = patchpanel::Client::NetworkTechnology::kWiFi;
-      break;
-    case Technology::kVPN:
-      dbus_technology = patchpanel::Client::NetworkTechnology::kVPN;
-      break;
-    case Technology::kEthernet:
-    case Technology::kEthernetEap:
-      dbus_technology = patchpanel::Client::NetworkTechnology::kVPN;
-      break;
-    default:
-      LOG(WARNING)
-          << "Patchpanel-unaware shill Technology, treating as Ethernet.";
-      dbus_technology = patchpanel::Client::NetworkTechnology::kEthernet;
-  }
   patchpanel_client_->ConfigureNetwork(
       interface_index, interface_name, static_cast<uint32_t>(area),
-      network_config, priority, dbus_technology, std::move(callback));
+      network_config, priority,
+      ShillTechnologyToPatchpanelClientTechnology(technology),
+      std::move(callback));
+}
+
+void Network::CallPatchpanelDestroyNetwork() {
+  // TODO(b/273742756): Connect with patchpanel DestroyNetwork API.
+  if (!patchpanel_client_) {
+    LOG(ERROR) << __func__ << ": " << *this << ": missing patchpanel client.";
+    return;
+  }
+  // Note that we cannot use RegisterOnAvailableCallback here, as it is very
+  // possible that the Network object get destroyed immediately after this and
+  // the callback won't fire. That's particularlly observable for the case of
+  // VPN. Directly calling patchpanel dbus here as the possibility of patchpanel
+  // service not ready when a Network is being destroyed is very low.
+  patchpanel_client_->ConfigureNetwork(
+      interface_index_, interface_name_,
+      static_cast<uint32_t>(NetworkConfigArea::kClear), {}, {},
+      ShillTechnologyToPatchpanelClientTechnology(technology_),
+      base::DoNothing());
 }
 
 void Network::ReportNeighborLinkMonitorFailure(

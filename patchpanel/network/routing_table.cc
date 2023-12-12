@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/network/routing_table.h"
+#include "patchpanel/network/routing_table.h"
 
 #include <arpa/inet.h>
 #include <fcntl.h>
@@ -37,13 +37,7 @@
 #include <net-base/rtnl_handler.h>
 #include <net-base/rtnl_listener.h>
 
-#include "shill/logging.h"
-
-namespace shill {
-
-namespace Logging {
-static auto kModuleLogScope = ScopeLogger::kRoute;
-}  // namespace Logging
+namespace patchpanel {
 
 namespace {
 
@@ -72,7 +66,7 @@ bool ParseRoutingTableMessage(const net_base::RTNLMessage& message,
   }
 
   if (route_status.table == RT_TABLE_LOCAL) {
-    // Shill does not modify local routes, which are managed by the kernel.
+    // patchpanel does not modify local routes, which are managed by the kernel.
     return false;
   }
 
@@ -132,13 +126,13 @@ bool ParseRoutingTableMessage(const net_base::RTNLMessage& message,
 
 RoutingTable::RoutingTable()
     : rtnl_handler_(net_base::RTNLHandler::GetInstance()) {
-  SLOG(2) << __func__;
+  VLOG(2) << __func__;
 }
 
 RoutingTable::~RoutingTable() = default;
 
 void RoutingTable::Start() {
-  SLOG(2) << __func__;
+  VLOG(2) << __func__;
 
   route_listener_ = std::make_unique<net_base::RTNLListener>(
       net_base::RTNLHandler::kRequestRoute,
@@ -158,7 +152,7 @@ void RoutingTable::Start() {
 }
 
 void RoutingTable::Stop() {
-  SLOG(2) << __func__;
+  VLOG(2) << __func__;
 
   managed_interfaces_.clear();
   route_listener_.reset();
@@ -211,8 +205,8 @@ bool RoutingTable::RemoveRoute(int interface_index,
       return true;
     }
   }
-  SLOG(1) << "Successfully removed routing entry but could not find the "
-          << "corresponding entry in shill's representation of the "
+  VLOG(1) << "Successfully removed routing entry but could not find the "
+          << "corresponding entry in patchpanel's representation of the "
           << "routing table.";
   return true;
 }
@@ -231,11 +225,11 @@ bool RoutingTable::GetDefaultRoute(int interface_index,
 bool RoutingTable::GetDefaultRouteInternal(int interface_index,
                                            net_base::IPFamily family,
                                            RoutingTableEntry** entry) {
-  SLOG(2) << __func__ << " index " << interface_index << " family " << family;
+  VLOG(2) << __func__ << " index " << interface_index << " family " << family;
 
   RouteTables::iterator table = tables_.find(interface_index);
   if (table == tables_.end()) {
-    SLOG(2) << __func__ << " no table";
+    VLOG(2) << __func__ << " no table";
     return false;
   }
 
@@ -253,10 +247,10 @@ bool RoutingTable::GetDefaultRouteInternal(int interface_index,
   }
 
   if (lowest_metric == UINT_MAX) {
-    SLOG(2) << __func__ << " no route";
+    VLOG(2) << __func__ << " no route";
     return false;
   } else {
-    SLOG(2) << __func__ << ": found" << " gateway "
+    VLOG(2) << __func__ << ": found" << " gateway "
             << (*entry)->gateway.ToString() << " metric " << (*entry)->metric;
     return true;
   }
@@ -265,7 +259,7 @@ bool RoutingTable::GetDefaultRouteInternal(int interface_index,
 bool RoutingTable::SetDefaultRoute(int interface_index,
                                    const net_base::IPAddress& gateway_address,
                                    uint32_t table_id) {
-  SLOG(2) << __func__ << " index " << interface_index;
+  VLOG(2) << __func__ << " index " << interface_index;
 
   RoutingTableEntry* old_entry;
 
@@ -286,13 +280,13 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
   return AddRoute(
       interface_index,
       RoutingTableEntry(default_address, default_address, gateway_address)
-          .SetMetric(kShillDefaultRouteMetric)
+          .SetMetric(kDefaultRouteMetric)
           .SetTable(table_id)
           .SetTag(interface_index));
 }
 
 void RoutingTable::FlushRoutes(int interface_index) {
-  SLOG(2) << __func__;
+  VLOG(2) << __func__;
 
   auto table = tables_.find(interface_index);
   if (table == tables_.end()) {
@@ -306,16 +300,16 @@ void RoutingTable::FlushRoutes(int interface_index) {
 }
 
 void RoutingTable::FlushRoutesWithTag(int tag, net_base::IPFamily family) {
-  SLOG(2) << __func__;
+  VLOG(2) << __func__;
 
   for (auto& table : tables_) {
     for (auto nent = table.second.begin(); nent != table.second.end();) {
       if ((nent->tag == tag && nent->dst.GetFamily() == family) ||
-          // b/303315643: Workaround the case that shill-added route being
+          // b/303315643: Workaround the case that patchpanel-added route being
           // deleted and re-added in the cache by RouteMsgHandler. Those routes
           // will have tag -1, but we know all IPv4 routes in device-specific
-          // table are added by shill and should be treated as having tag ==
-          // ifindex.
+          // table are added by patchpanel and should be treated as having tag
+          // == ifindex.
           (table.first == tag && family == net_base::IPFamily::kIPv4 &&
            nent->dst.GetFamily() == net_base::IPFamily::kIPv4)) {
         RemoveRouteFromKernelTable(table.first, *nent);
@@ -333,7 +327,7 @@ void RoutingTable::ResetTable(int interface_index) {
 
 bool RoutingTable::AddRouteToKernelTable(int interface_index,
                                          const RoutingTableEntry& entry) {
-  SLOG(2) << __func__ << ": " << " index " << interface_index << " " << entry;
+  VLOG(2) << __func__ << ": " << " index " << interface_index << " " << entry;
 
   return ApplyRoute(interface_index, entry, net_base::RTNLMessage::kModeAdd,
                     NLM_F_CREATE | NLM_F_EXCL);
@@ -341,7 +335,7 @@ bool RoutingTable::AddRouteToKernelTable(int interface_index,
 
 bool RoutingTable::RemoveRouteFromKernelTable(int interface_index,
                                               const RoutingTableEntry& entry) {
-  SLOG(2) << __func__ << ": " << " index " << interface_index << " " << entry;
+  VLOG(2) << __func__ << ": " << " index " << interface_index << " " << entry;
 
   return ApplyRoute(interface_index, entry, net_base::RTNLMessage::kModeDelete,
                     0);
@@ -370,7 +364,7 @@ void RoutingTable::RouteMsgHandler(const net_base::RTNLMessage& message) {
     return;
   }
 
-  SLOG(2) << __func__ << " "
+  VLOG(2) << __func__ << " "
           << net_base::RTNLMessage::ModeToString(message.mode())
           << " index: " << interface_index << " entry: " << entry;
 
@@ -384,12 +378,12 @@ void RoutingTable::RouteMsgHandler(const net_base::RTNLMessage& message) {
   //      by the kernel when an interface comes up and routes created by `ip
   //      route` that do not explicitly specify a different protocol.
   //
-  // Thus a different service could create routes that are "hidden" from Shill
-  // by using a different protocol value (anything greater than RTPROT_STATIC
-  // would be appropriate), while routes created with protocol RTPROT_BOOT will
-  // be tracked by Shill. In the future, each service could use a unique
-  // protocol value, such that Shill would be able to determine which service
-  // created a particular route.
+  // Thus a different service could create routes that are "hidden" from
+  // patchpanel by using a different protocol value (anything greater than
+  // RTPROT_STATIC would be appropriate), while routes created with protocol
+  // RTPROT_BOOT will be tracked by patchpanel. In the future, each service
+  // could use a unique protocol value, such that patchpanel would be able to
+  // determine which service created a particular route.
   RouteTableEntryVector& table = tables_[interface_index];
   for (auto nent = table.begin(); nent != table.end();) {
     // clang-format off
@@ -414,8 +408,8 @@ void RoutingTable::RouteMsgHandler(const net_base::RTNLMessage& message) {
 
     if (message.mode() == net_base::RTNLMessage::kModeDelete &&
         entry.table == nent->table) {
-      // Keep track of route deletions that come from outside of shill. Continue
-      // the loop for resilience to any failure scenario in which
+      // Keep track of route deletions that come from outside of patchpanel.
+      // Continue the loop for resilience to any failure scenario in which
       // tables_[interface_index] has duplicate entries.
       nent = table.erase(nent);
     } else {
@@ -450,7 +444,7 @@ bool RoutingTable::ApplyRoute(int interface_index,
   DCHECK(entry.table != RT_TABLE_UNSPEC && entry.table != RT_TABLE_COMPAT)
       << "Attempted to apply route: " << entry;
 
-  SLOG(2) << base::StringPrintf("%s: dst %s src %s index %d mode %d flags 0x%x",
+  VLOG(2) << base::StringPrintf("%s: dst %s src %s index %d mode %d flags 0x%x",
                                 __func__, entry.dst.ToString().c_str(),
                                 entry.src.ToString().c_str(), interface_index,
                                 mode, flags);
@@ -492,7 +486,7 @@ bool RoutingTable::CreateBlackholeRoute(int interface_index,
                                         net_base::IPFamily family,
                                         uint32_t metric,
                                         uint32_t table_id) {
-  SLOG(2) << base::StringPrintf("%s: family %s metric %d", __func__,
+  VLOG(2) << base::StringPrintf("%s: family %s metric %d", __func__,
                                 net_base::ToString(family).c_str(), metric);
 
   auto entry = RoutingTableEntry(family)
@@ -508,4 +502,4 @@ uint32_t RoutingTable::GetInterfaceTableId(int interface_index) {
   return static_cast<uint32_t>(interface_index + kInterfaceTableIdIncrement);
 }
 
-}  // namespace shill
+}  // namespace patchpanel

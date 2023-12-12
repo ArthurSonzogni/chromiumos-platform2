@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NETWORK_MOCK_NETWORK_APPLIER_H_
-#define SHILL_NETWORK_MOCK_NETWORK_APPLIER_H_
+#ifndef PATCHPANEL_NETWORK_MOCK_NETWORK_APPLIER_H_
+#define PATCHPANEL_NETWORK_MOCK_NETWORK_APPLIER_H_
 
 #include <string>
 #include <utility>
@@ -11,9 +11,9 @@
 
 #include <gmock/gmock.h>
 
-#include "shill/network/network_applier.h"
+#include "patchpanel/network/network_applier.h"
 
-namespace shill {
+namespace patchpanel {
 
 class MockNetworkApplier : public NetworkApplier {
  public:
@@ -60,6 +60,6 @@ class MockNetworkApplier : public NetworkApplier {
               (override));
 };
 
-}  // namespace shill
+}  // namespace patchpanel
 
-#endif  // SHILL_NETWORK_MOCK_NETWORK_APPLIER_H_
+#endif  // PATCHPANEL_NETWORK_MOCK_NETWORK_APPLIER_H_

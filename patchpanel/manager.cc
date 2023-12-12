@@ -24,6 +24,7 @@
 #include "patchpanel/metrics.h"
 #include "patchpanel/multicast_metrics.h"
 #include "patchpanel/net_util.h"
+#include "patchpanel/network/network_applier.h"
 #include "patchpanel/proto_utils.h"
 #include "patchpanel/qos_service.h"
 #include "patchpanel/scoped_ns.h"
@@ -108,6 +109,10 @@ Manager::Manager(const base::FilePath& cmd_path,
       std::make_unique<ClatService>(datapath_.get(), process_manager, system);
   network_monitor_svc_->Start();
   ipv6_svc_->Start();
+
+  // TODO(b/293997937): NetworkApplier to be a Manager-owned service rather than
+  // a singleton.
+  NetworkApplier::GetInstance()->Start();
 
   // Shill client's default devices methods trigger the Manager's callbacks on
   // registration. Call them after everything is set up.

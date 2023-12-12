@@ -24,7 +24,6 @@
 #include "shill/manager.h"
 #include "shill/mojom/mojo_service_provider.h"
 #include "shill/network/dhcp_provider.h"
-#include "shill/network/network_applier.h"
 #include "shill/shill_config.h"
 #include "shill/wifi/nl80211_message.h"
 
@@ -42,7 +41,6 @@ DaemonTask::DaemonTask(const Settings& settings, Config* config)
     : settings_(settings),
       config_(config),
       rtnl_handler_(nullptr),
-      network_applier_(nullptr),
       dhcp_provider_(nullptr),
       netlink_manager_(nullptr),
       process_manager_(nullptr) {}
@@ -74,7 +72,6 @@ void DaemonTask::Init() {
   control_.reset(new DBusControl(dispatcher_.get()));
   metrics_.reset(new Metrics());
   rtnl_handler_ = net_base::RTNLHandler::GetInstance();
-  network_applier_ = NetworkApplier::GetInstance();
   dhcp_provider_ = DHCPProvider::GetInstance();
   process_manager_ = net_base::ProcessManager::GetInstance();
   netlink_manager_ = net_base::NetlinkManager::GetInstance();
@@ -128,7 +125,6 @@ void DaemonTask::Start() {
   rtnl_handler_->Start(RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
                        RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE |
                        RTMGRP_ND_USEROPT);
-  network_applier_->Start();
   dhcp_provider_->Init(control_.get(), dispatcher_.get(), metrics_.get());
   process_manager_->Init();
   // Note that net_base::NetlinkManager initialization is not necessarily

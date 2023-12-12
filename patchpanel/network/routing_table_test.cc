@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/network/routing_table.h"
+#include "patchpanel/network/routing_table.h"
 
 #include <linux/rtnetlink.h>
 #include <sys/socket.h>
@@ -31,7 +31,7 @@ using testing::StrictMock;
 using testing::Test;
 using testing::WithArg;
 
-namespace shill {
+namespace patchpanel {
 
 class RoutingTableTest : public Test {
  public:
@@ -64,8 +64,8 @@ class RoutingTableTest : public Test {
   }
 
  protected:
-  static const uint32_t kTestDeviceIndex0;
-  static const uint32_t kTestDeviceIndex1;
+  static const int kTestDeviceIndex0;
+  static const int kTestDeviceIndex1;
   static const char kTestDeviceName0[];
   static const char kTestDeviceNetAddress4[];
   static const char kTestForeignNetAddress4[];
@@ -101,8 +101,8 @@ class RoutingTableTest : public Test {
   StrictMock<net_base::MockRTNLHandler> rtnl_handler_;
 };
 
-const uint32_t RoutingTableTest::kTestDeviceIndex0 = 12345;
-const uint32_t RoutingTableTest::kTestDeviceIndex1 = 67890;
+const int RoutingTableTest::kTestDeviceIndex0 = 12345;
+const int RoutingTableTest::kTestDeviceIndex1 = 67890;
 const char RoutingTableTest::kTestDeviceName0[] = "test-device0";
 const char RoutingTableTest::kTestDeviceNetAddress4[] = "192.168.2.0/24";
 const char RoutingTableTest::kTestForeignNetAddress4[] = "192.168.2.2";
@@ -188,9 +188,10 @@ void RoutingTableTest::SendRouteEntryWithSeqAndProto(
                             0, net_base::ToSAFamily(entry.dst.GetFamily()));
 
   msg.set_route_status(net_base::RTNLMessage::RouteStatus(
-      entry.dst.prefix_length(), entry.src.prefix_length(),
-      entry.table < 256 ? entry.table : RT_TABLE_COMPAT, proto, entry.scope,
-      RTN_UNICAST, 0));
+      static_cast<uint8_t>(entry.dst.prefix_length()),
+      static_cast<uint8_t>(entry.src.prefix_length()),
+      entry.table < 256 ? static_cast<uint8_t>(entry.table) : RT_TABLE_COMPAT,
+      proto, entry.scope, RTN_UNICAST, 0));
 
   msg.SetAttribute(RTA_DST, entry.dst.address().ToBytes());
   if (!entry.src.address().IsZero()) {
@@ -236,7 +237,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   const auto gateway_address0 =
       *net_base::IPAddress::CreateFromString(kTestNetAddress0);
 
-  int metric = 10;
+  unsigned int metric = 10;
 
   // Add a single entry.
   auto entry0 =
@@ -334,7 +335,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
       *net_base::IPAddress::CreateFromString(kTestNetAddress0);
 
   RoutingTableEntry entry4(entry1);
-  entry4.SetMetric(RoutingTable::kShillDefaultRouteMetric);
+  entry4.SetMetric(RoutingTable::kDefaultRouteMetric);
   EXPECT_CALL(rtnl_handler_,
               DoSendMessage(IsRoutingPacket(net_base::RTNLMessage::kModeAdd,
                                             kTestDeviceIndex1, entry4,
@@ -428,7 +429,7 @@ TEST_F(RoutingTableTest, IPv6StatelessAutoconfiguration) {
   EXPECT_EQ(entry0, test_entry);
 
   // Now send an RTPROT_RA netlink message advertising some other random
-  // host.  shill should ignore these because they are frequent, and
+  // host.  patchpanel should ignore these because they are frequent, and
   // not worth tracking.
 
   const auto non_default_address =
@@ -477,4 +478,4 @@ TEST_F(RoutingTableTest, CreateBlackholeRoute) {
       kTestDeviceIndex0, net_base::IPFamily::kIPv6, kMetric, kTestTable));
 }
 
-}  // namespace shill
+}  // namespace patchpanel
