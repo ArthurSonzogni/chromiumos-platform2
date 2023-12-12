@@ -1,0 +1,30 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/mojom_bindings_generator.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [ ":mojo_perf_test" ]
+}
+
+generate_mojom_bindings("test_mojom") {
+  sources =
+      [ "//camera/common/basic_ops_perf_tests/mojom/mojo_perf_test.mojom" ]
+  mojo_root = "${platform2_root}"
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "benchmark",
+    "libchrome",
+  ]
+}
+
+executable("mojo_perf_test") {
+  sources = [ "//camera/common/basic_ops_perf_tests/mojo_perf_test.cc" ]
+  install_path = "bin"
+  configs += [ ":target_defaults" ]
+  deps = [ ":test_mojom" ]
+}
