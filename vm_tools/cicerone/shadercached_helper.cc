@@ -332,8 +332,6 @@ void ShadercachedHelper::MountStatusChanged(dbus::Signal* signal) {
               << mount_status.vm_name();
     std::move(mount_callbacks_[condition]).Run(mount_status, false);
     mount_callbacks_.erase(condition);
-  } else {
-    LOG(WARNING) << "No callback found for " << mount_status.steam_app_id();
   }
 }
 
