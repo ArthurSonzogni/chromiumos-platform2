@@ -212,29 +212,29 @@ std::unique_ptr<SLAACController> Network::CreateSLAACController() {
 
 void Network::SetupConnection(net_base::IPFamily family, bool is_slaac) {
   LOG(INFO) << *this << ": Setting " << family << " connection";
-  NetworkApplier::Area to_apply = NetworkApplier::Area::kRoutingPolicy |
-                                  NetworkApplier::Area::kDNS |
-                                  NetworkApplier::Area::kMTU;
+  NetworkConfigArea to_apply = NetworkConfigArea::kRoutingPolicy |
+                               NetworkConfigArea::kDNS |
+                               NetworkConfigArea::kMTU;
   if (family == net_base::IPFamily::kIPv4) {
     if (!fixed_ip_params_) {
-      to_apply |= NetworkApplier::Area::kIPv4Address;
+      to_apply |= NetworkConfigArea::kIPv4Address;
     }
-    to_apply |= NetworkApplier::Area::kIPv4Route;
-    to_apply |= NetworkApplier::Area::kIPv4DefaultRoute;
+    to_apply |= NetworkConfigArea::kIPv4Route;
+    to_apply |= NetworkConfigArea::kIPv4DefaultRoute;
   } else {
     if (!fixed_ip_params_ && !is_slaac) {
-      to_apply |= NetworkApplier::Area::kIPv6Address;
+      to_apply |= NetworkConfigArea::kIPv6Address;
     }
-    to_apply |= NetworkApplier::Area::kIPv6Route;
+    to_apply |= NetworkConfigArea::kIPv6Route;
     if (!is_slaac) {
-      to_apply |= NetworkApplier::Area::kIPv6DefaultRoute;
+      to_apply |= NetworkConfigArea::kIPv6DefaultRoute;
     }
   }
   if (family == net_base::IPFamily::kIPv6 &&
       primary_family_ == net_base::IPFamily::kIPv4) {
     // This means network loses IPv4 so we need to clear the old configuration
     // from kernel first.
-    to_apply |= NetworkApplier::Area::kClear;
+    to_apply |= NetworkConfigArea::kClear;
   }
 
   bool current_ipconfig_changed = primary_family_ != family;
@@ -539,7 +539,7 @@ void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
     // No matter whether the primary address changes, any address change will
     // need to trigger address-based routing rule to be updated.
     if (primary_family_) {
-      ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy);
+      ApplyNetworkConfig(NetworkConfigArea::kRoutingPolicy);
     }
     if (old_network_config.ipv6_addresses.size() >= 1 &&
         new_network_config.ipv6_addresses.size() >= 1 &&
@@ -598,7 +598,7 @@ void Network::OnIPv6ConfigUpdated() {
       SetupConnection(net_base::IPFamily::kIPv6, config_.HasSLAAC());
     } else {
       // Still apply IPv6 DNS even if the Connection is setup with IPv4.
-      ApplyNetworkConfig(NetworkApplier::Area::kDNS);
+      ApplyNetworkConfig(NetworkConfigArea::kDNS);
     }
   }
 }
@@ -652,8 +652,8 @@ void Network::SetPriority(net_base::NetworkPriority priority) {
     return;
   }
   priority_ = priority;
-  ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy |
-                     NetworkApplier::Area::kDNS);
+  ApplyNetworkConfig(NetworkConfigArea::kRoutingPolicy |
+                     NetworkConfigArea::kDNS);
 }
 
 net_base::NetworkPriority Network::GetPriority() {
@@ -1106,7 +1106,7 @@ void Network::ReportIPType() {
   metrics_->SendEnumToUMA(Metrics::kMetricIPType, technology_, ip_type);
 }
 
-void Network::ApplyNetworkConfig(NetworkApplier::Area area,
+void Network::ApplyNetworkConfig(NetworkConfigArea area,
                                  base::OnceCallback<void(bool)> callback) {
   const auto& network_config = GetNetworkConfig();
   network_applier_->ApplyNetworkConfig(interface_index_, interface_name_, area,
@@ -1114,7 +1114,7 @@ void Network::ApplyNetworkConfig(NetworkApplier::Area area,
 
   // TODO(b/240871320): /etc/resolv.conf is now managed by dnsproxy. This code
   // is to be deprecated.
-  if ((area & NetworkApplier::Area::kDNS) && priority_.is_primary_for_dns) {
+  if ((area & NetworkConfigArea::kDNS) && priority_.is_primary_for_dns) {
     std::vector<std::string> dns_strs;
     std::transform(network_config.dns_servers.begin(),
                    network_config.dns_servers.end(),
@@ -1133,7 +1133,7 @@ void Network::ApplyNetworkConfig(NetworkApplier::Area area,
 void Network::CallPatchpanelConfigureNetwork(
     int interface_index,
     const std::string& interface_name,
-    NetworkApplier::Area area,
+    NetworkConfigArea area,
     const net_base::NetworkConfig& network_config,
     net_base::NetworkPriority priority,
     Technology technology,

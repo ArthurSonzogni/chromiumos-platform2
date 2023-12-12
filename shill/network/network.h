@@ -45,6 +45,8 @@ namespace shill {
 class EventDispatcher;
 class Service;
 
+using NetworkConfigArea = NetworkApplier::Area;
+
 // An object of Network class represents a network interface in the kernel, and
 // maintains the layer 3 configuration on this interface.
 // TODO(b/232177767): Currently this class is mainly a wrapper of the Connection
@@ -417,7 +419,7 @@ class Network {
   // function. Protected for manual-triggering in test. Calls |callback| when
   // finished.
   mockable void ApplyNetworkConfig(
-      NetworkApplier::Area area,
+      NetworkConfigArea area,
       base::OnceCallback<void(bool)> callback = base::DoNothing());
 
   void set_fixed_ip_params_for_testing(bool val) { fixed_ip_params_ = val; }
@@ -530,7 +532,7 @@ class Network {
   void CallPatchpanelConfigureNetwork(
       int interface_index,
       const std::string& interface_name,
-      NetworkApplier::Area area,
+      NetworkConfigArea area,
       const net_base::NetworkConfig& network_config,
       net_base::NetworkPriority priority,
       Technology technology,

@@ -99,10 +99,10 @@ constexpr char kIPv6LinkProtocolNameserver[] = "fd00:1::3";
 
 MATCHER_P(ContainsAddressAndRoute, family, "") {
   if (family == net_base::IPFamily::kIPv4) {
-    return arg & NetworkApplier::Area::kIPv4Address &&
-           arg & NetworkApplier::Area::kIPv4Route;
+    return arg & NetworkConfigArea::kIPv4Address &&
+           arg & NetworkConfigArea::kIPv4Route;
   } else if (family == net_base::IPFamily::kIPv6) {
-    return arg & NetworkApplier::Area::kIPv6Route;
+    return arg & NetworkConfigArea::kIPv6Route;
   }
   return false;
 }
@@ -197,7 +197,7 @@ class NetworkInTest : public Network {
                 nullptr,
                 network_applier) {
     ON_CALL(*this, ApplyNetworkConfig)
-        .WillByDefault([](NetworkApplier::Area area,
+        .WillByDefault([](NetworkConfigArea area,
                           base::OnceCallback<void(bool)> callback) {
           std::move(callback).Run(true);
         });
@@ -219,8 +219,7 @@ class NetworkInTest : public Network {
               (override));
   MOCK_METHOD(void,
               ApplyNetworkConfig,
-              (NetworkApplier::Area area,
-               base::OnceCallback<void(bool)> callback),
+              (NetworkConfigArea area, base::OnceCallback<void(bool)> callback),
               (override));
 };
 
@@ -1952,7 +1951,7 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
               ApplyNetworkConfig(
                   ContainsAddressAndRoute(net_base::IPFamily::kIPv6), _));
   EXPECT_CALL(*network_,
-              ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy, _));
+              ApplyNetworkConfig(NetworkConfigArea::kRoutingPolicy, _));
   EXPECT_CALL(event_handler_, OnConnectionUpdated(network_->interface_index()));
   EXPECT_CALL(event_handler_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
@@ -1967,7 +1966,7 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
 
   // If the IPv6 address does not change, no signal is emitted.
   EXPECT_CALL(*network_,
-              ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy, _));
+              ApplyNetworkConfig(NetworkConfigArea::kRoutingPolicy, _));
   slaac_controller_->TriggerCallback(SLAACController::UpdateType::kAddress);
   dispatcher_.task_environment().RunUntilIdle();
   Mock::VerifyAndClearExpectations(&event_handler_);
@@ -1978,7 +1977,7 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
               ApplyNetworkConfig(
                   ContainsAddressAndRoute(net_base::IPFamily::kIPv6), _));
   EXPECT_CALL(*network_,
-              ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy, _));
+              ApplyNetworkConfig(NetworkConfigArea::kRoutingPolicy, _));
   EXPECT_CALL(event_handler_, OnConnectionUpdated(network_->interface_index()));
   EXPECT_CALL(event_handler_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
@@ -2208,8 +2207,8 @@ TEST_F(NetworkStartTest, DualStackDHCPFirst) {
   // Only routing policy and DNS will be updated when IPv6 config comes after
   // IPv4.
   EXPECT_CALL(*network_,
-              ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy, _));
-  EXPECT_CALL(*network_, ApplyNetworkConfig(NetworkApplier::Area::kDNS, _));
+              ApplyNetworkConfig(NetworkConfigArea::kRoutingPolicy, _));
+  EXPECT_CALL(*network_, ApplyNetworkConfig(NetworkConfigArea::kDNS, _));
   TriggerSLAACUpdate();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
 
