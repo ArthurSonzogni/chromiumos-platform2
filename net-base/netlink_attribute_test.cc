@@ -8,7 +8,7 @@
 // messages.
 
 // This file tests some public interface methods of NetlinkAttribute subclasses.
-#include "shill/net/netlink_attribute.h"
+#include "net-base/netlink_attribute.h"
 
 #include <string>
 
@@ -17,7 +17,7 @@
 
 using testing::Test;
 
-namespace shill {
+namespace net_base {
 
 class NetlinkAttributeTest : public Test {};
 
@@ -61,4 +61,4 @@ TEST_F(NetlinkAttributeTest, StringAttribute) {
   EXPECT_EQ(5, value.size());
 }
 
-}  // namespace shill
+}  // namespace net_base

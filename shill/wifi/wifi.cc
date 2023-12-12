@@ -33,6 +33,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/attribute_list.h>
 #include <net-base/netlink_message.h>
 #include <net-base/rtnl_handler.h>
 
@@ -1759,10 +1760,10 @@ void WiFi::ParseFeatureFlags(const Nl80211Message& nl80211_message) {
   }
 
   // Look for scheduled scan support.
-  AttributeListConstRefPtr cmds;
+  net_base::AttributeListConstRefPtr cmds;
   if (nl80211_message.const_attributes()->ConstGetNestedAttributeList(
           NL80211_ATTR_SUPPORTED_COMMANDS, &cmds)) {
-    AttributeIdIterator cmds_iter(*cmds);
+    net_base::AttributeIdIterator cmds_iter(*cmds);
     for (; !cmds_iter.AtEnd(); cmds_iter.Advance()) {
       uint32_t cmd;
       if (!cmds->GetU32AttributeValue(cmds_iter.GetId(), &cmd)) {
@@ -1866,10 +1867,10 @@ void WiFi::OnScanStarted(const Nl80211Message& scan_trigger_msg) {
     return;
   }
   bool is_active_scan = false;
-  AttributeListConstRefPtr ssids;
+  net_base::AttributeListConstRefPtr ssids;
   if (scan_trigger_msg.const_attributes()->ConstGetNestedAttributeList(
           NL80211_ATTR_SCAN_SSIDS, &ssids)) {
-    AttributeIdIterator ssid_iter(*ssids);
+    net_base::AttributeIdIterator ssid_iter(*ssids);
     // If any SSIDs (even the empty wild card) are reported, an active scan was
     // launched. Otherwise, a passive scan was launched.
     is_active_scan = !ssid_iter.AtEnd();
@@ -3025,7 +3026,7 @@ void WiFi::TriggerPassiveScan(const FreqSet& freqs) {
     CreateNl80211Attribute(trigger_scan.attributes().get(),
                            NL80211_ATTR_SCAN_FREQUENCIES);
 
-    AttributeListRefPtr frequency_list;
+    net_base::AttributeListRefPtr frequency_list;
     if (!trigger_scan.attributes()->GetNestedAttributeList(
             NL80211_ATTR_SCAN_FREQUENCIES, &frequency_list) ||
         !frequency_list) {

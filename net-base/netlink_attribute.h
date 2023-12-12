@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NET_NETLINK_ATTRIBUTE_H_
-#define SHILL_NET_NETLINK_ATTRIBUTE_H_
+#ifndef NET_BASE_NETLINK_ATTRIBUTE_H_
+#define NET_BASE_NETLINK_ATTRIBUTE_H_
 
 #include <map>
 #include <memory>
@@ -14,9 +14,10 @@
 #include <base/containers/span.h>
 #include <base/functional/callback.h>
 
-#include "shill/net/attribute_list.h"
+#include "net-base/attribute_list.h"
+#include "net-base/export.h"
 
-namespace shill {
+namespace net_base {
 
 // NetlinkAttribute is an abstract base class that describes an attribute in a
 // netlink-80211 message.  Child classes are type-specific and will define
@@ -27,7 +28,7 @@ namespace shill {
 // and a value.  In an nlattr (the underlying format for an attribute in a
 // message), the data is stored as a blob without type information; the writer
 // and reader of the attribute must agree on the data type.
-class SHILL_EXPORT NetlinkAttribute {
+class NET_BASE_EXPORT NetlinkAttribute {
  public:
   enum Type {
     kTypeU8,
@@ -131,7 +132,7 @@ class SHILL_EXPORT NetlinkAttribute {
   const char* datatype_string_;
 };
 
-class SHILL_EXPORT NetlinkU8Attribute : public NetlinkAttribute {
+class NET_BASE_EXPORT NetlinkU8Attribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -150,7 +151,7 @@ class SHILL_EXPORT NetlinkU8Attribute : public NetlinkAttribute {
   uint8_t value_;
 };
 
-class SHILL_EXPORT NetlinkU16Attribute : public NetlinkAttribute {
+class NET_BASE_EXPORT NetlinkU16Attribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -169,8 +170,7 @@ class SHILL_EXPORT NetlinkU16Attribute : public NetlinkAttribute {
   uint16_t value_;
 };
 
-// Set SHILL_EXPORT to allow unit tests to instantiate these.
-class SHILL_EXPORT NetlinkU32Attribute : public NetlinkAttribute {
+class NET_BASE_EXPORT NetlinkU32Attribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -189,7 +189,7 @@ class SHILL_EXPORT NetlinkU32Attribute : public NetlinkAttribute {
   uint32_t value_;
 };
 
-class SHILL_EXPORT NetlinkU64Attribute : public NetlinkAttribute {
+class NET_BASE_EXPORT NetlinkU64Attribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -208,7 +208,7 @@ class SHILL_EXPORT NetlinkU64Attribute : public NetlinkAttribute {
   uint64_t value_;
 };
 
-class SHILL_EXPORT NetlinkFlagAttribute : public NetlinkAttribute {
+class NET_BASE_EXPORT NetlinkFlagAttribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -227,8 +227,7 @@ class SHILL_EXPORT NetlinkFlagAttribute : public NetlinkAttribute {
   bool value_;
 };
 
-// Set SHILL_EXPORT to allow unit tests to instantiate these.
-class SHILL_EXPORT NetlinkStringAttribute : public NetlinkAttribute {
+class NET_BASE_EXPORT NetlinkStringAttribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -250,7 +249,7 @@ class SHILL_EXPORT NetlinkStringAttribute : public NetlinkAttribute {
 };
 
 // SSID attributes are just string attributes with different output semantics.
-class SHILL_EXPORT NetlinkSsidAttribute : public NetlinkStringAttribute {
+class NET_BASE_EXPORT NetlinkSsidAttribute : public NetlinkStringAttribute {
  public:
   NetlinkSsidAttribute(int id, const char* id_string)
       : NetlinkStringAttribute(id, id_string) {}
@@ -261,7 +260,7 @@ class SHILL_EXPORT NetlinkSsidAttribute : public NetlinkStringAttribute {
   bool ToString(std::string* output) const override;
 };
 
-class SHILL_EXPORT NetlinkNestedAttribute : public NetlinkAttribute {
+class NET_BASE_EXPORT NetlinkNestedAttribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -289,10 +288,10 @@ class SHILL_EXPORT NetlinkNestedAttribute : public NetlinkAttribute {
   struct NestedData {
     using AttributeParser =
         base::RepeatingCallback<bool(AttributeList* list,
-                                     size_t id,
+                                     int id,
                                      const std::string& attribute_name,
                                      base::span<const uint8_t> data)>;
-    using NestedDataMap = std::map<size_t, NestedData>;
+    using NestedDataMap = std::map<int, NestedData>;
 
     NestedData();
     NestedData(Type type, std::string attribute_name, bool is_array);
@@ -363,7 +362,7 @@ class SHILL_EXPORT NetlinkNestedAttribute : public NetlinkAttribute {
       base::span<const uint8_t> value);
 };
 
-class SHILL_EXPORT NetlinkRawAttribute : public NetlinkAttribute {
+class NET_BASE_EXPORT NetlinkRawAttribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
@@ -381,7 +380,7 @@ class SHILL_EXPORT NetlinkRawAttribute : public NetlinkAttribute {
   std::vector<uint8_t> Encode() const override;
 };
 
-class SHILL_EXPORT NetlinkAttributeGeneric : public NetlinkRawAttribute {
+class NET_BASE_EXPORT NetlinkAttributeGeneric : public NetlinkRawAttribute {
  public:
   explicit NetlinkAttributeGeneric(int id);
   NetlinkAttributeGeneric(const NetlinkAttributeGeneric&) = delete;
@@ -393,6 +392,6 @@ class SHILL_EXPORT NetlinkAttributeGeneric : public NetlinkRawAttribute {
   std::string id_string_;
 };
 
-}  // namespace shill
+}  // namespace net_base
 
-#endif  // SHILL_NET_NETLINK_ATTRIBUTE_H_
+#endif  // NET_BASE_NETLINK_ATTRIBUTE_H_

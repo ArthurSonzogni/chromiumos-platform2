@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NET_CONTROL_NETLINK_ATTRIBUTE_H_
-#define SHILL_NET_CONTROL_NETLINK_ATTRIBUTE_H_
+#ifndef NET_BASE_CONTROL_NETLINK_ATTRIBUTE_H_
+#define NET_BASE_CONTROL_NETLINK_ATTRIBUTE_H_
 
-#include "shill/net/netlink_attribute.h"
+#include "net-base/netlink_attribute.h"
 
-namespace shill {
+namespace net_base {
 
 // Control.
 
@@ -76,6 +76,6 @@ class ControlAttributeMcastGroups : public NetlinkNestedAttribute {
       delete;
 };
 
-}  // namespace shill
+}  // namespace net_base
 
-#endif  // SHILL_NET_CONTROL_NETLINK_ATTRIBUTE_H_
+#endif  // NET_BASE_CONTROL_NETLINK_ATTRIBUTE_H_

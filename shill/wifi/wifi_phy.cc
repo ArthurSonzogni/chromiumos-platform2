@@ -6,9 +6,10 @@
 #include <utility>
 
 #include <base/rand_util.h>
+#include <net-base/attribute_list.h>
+#include <net-base/netlink_attribute.h>
 
 #include "shill/logging.h"
-#include "shill/net/netlink_attribute.h"
 #include "shill/wifi/wifi_phy.h"
 
 namespace shill {
@@ -56,10 +57,10 @@ bool WiFiPhy::SupportsIftype(nl80211_iftype iftype) const {
 }
 
 void WiFiPhy::ParseInterfaceTypes(const Nl80211Message& nl80211_message) {
-  AttributeListConstRefPtr ifaces;
+  net_base::AttributeListConstRefPtr ifaces;
   if (nl80211_message.const_attributes()->ConstGetNestedAttributeList(
           NL80211_ATTR_SUPPORTED_IFTYPES, &ifaces)) {
-    AttributeIdIterator ifaces_iter(*ifaces);
+    net_base::AttributeIdIterator ifaces_iter(*ifaces);
     for (; !ifaces_iter.AtEnd(); ifaces_iter.Advance()) {
       uint32_t iface;
       if (!ifaces->GetU32AttributeValue(ifaces_iter.GetId(), &iface)) {
@@ -78,24 +79,24 @@ void WiFiPhy::ParseInterfaceTypes(const Nl80211Message& nl80211_message) {
 
 void WiFiPhy::ParseConcurrency(const Nl80211Message& nl80211_message) {
   // Check that the message contains concurrency combinations.
-  AttributeListConstRefPtr interface_combinations_attr;
+  net_base::AttributeListConstRefPtr interface_combinations_attr;
   if (!nl80211_message.const_attributes()->ConstGetNestedAttributeList(
           NL80211_ATTR_INTERFACE_COMBINATIONS, &interface_combinations_attr)) {
     return;
   }
   // Iterate over the combinations in the message.
   concurrency_combs_.clear();
-  AttributeIdIterator comb_iter(*interface_combinations_attr);
+  net_base::AttributeIdIterator comb_iter(*interface_combinations_attr);
   for (; !comb_iter.AtEnd(); comb_iter.Advance()) {
     struct ConcurrencyCombination comb;
-    AttributeListConstRefPtr iface_comb_attr;
+    net_base::AttributeListConstRefPtr iface_comb_attr;
     if (!interface_combinations_attr->ConstGetNestedAttributeList(
             comb_iter.GetId(), &iface_comb_attr)) {
       continue;  // Next combination.
     }
 
     // Check that the combination has limits.
-    AttributeListConstRefPtr iface_limits_attr;
+    net_base::AttributeListConstRefPtr iface_limits_attr;
     if (!iface_comb_attr->ConstGetNestedAttributeList(NL80211_IFACE_COMB_LIMITS,
                                                       &iface_limits_attr)) {
       continue;  // Next combination.
@@ -106,10 +107,10 @@ void WiFiPhy::ParseConcurrency(const Nl80211Message& nl80211_message) {
     iface_comb_attr->GetU32AttributeValue(NL80211_IFACE_COMB_NUM_CHANNELS,
                                           &comb.num_channels);
 
-    AttributeIdIterator limit_iter(*iface_limits_attr);
+    net_base::AttributeIdIterator limit_iter(*iface_limits_attr);
     for (; !limit_iter.AtEnd(); limit_iter.Advance()) {
       struct IfaceLimit limit;
-      AttributeListConstRefPtr limit_attr;
+      net_base::AttributeListConstRefPtr limit_attr;
       if (!iface_limits_attr->ConstGetNestedAttributeList(limit_iter.GetId(),
                                                           &limit_attr)) {
         LOG(WARNING) << "Interface combination limit " << limit_iter.GetId()
@@ -121,7 +122,7 @@ void WiFiPhy::ParseConcurrency(const Nl80211Message& nl80211_message) {
       limit_attr->GetU32AttributeValue(NL80211_IFACE_LIMIT_MAX, &limit.max);
 
       // Check that the limit contains interface types.
-      AttributeListConstRefPtr iface_types_attr;
+      net_base::AttributeListConstRefPtr iface_types_attr;
       if (!limit_attr->ConstGetNestedAttributeList(NL80211_IFACE_LIMIT_TYPES,
                                                    &iface_types_attr)) {
         continue;
@@ -156,31 +157,31 @@ void WiFiPhy::ParseFrequencies(const Nl80211Message& nl80211_message) {
     return;
   }
 
-  AttributeListConstRefPtr bands_list;
+  net_base::AttributeListConstRefPtr bands_list;
   if (nl80211_message.const_attributes()->ConstGetNestedAttributeList(
           NL80211_ATTR_WIPHY_BANDS, &bands_list)) {
-    AttributeIdIterator bands_iter(*bands_list);
+    net_base::AttributeIdIterator bands_iter(*bands_list);
     for (; !bands_iter.AtEnd(); bands_iter.Advance()) {
       // Each band has nested attributes and ...
-      AttributeListConstRefPtr band_attrs;
+      net_base::AttributeListConstRefPtr band_attrs;
       if (bands_list->ConstGetNestedAttributeList(bands_iter.GetId(),
                                                   &band_attrs)) {
         int current_band = bands_iter.GetId();
         // ... we are interested in freqs (which itself is a nested attribute).
-        AttributeListConstRefPtr freqs_list;
+        net_base::AttributeListConstRefPtr freqs_list;
         if (!band_attrs->ConstGetNestedAttributeList(NL80211_BAND_ATTR_FREQS,
                                                      &freqs_list)) {
           continue;
         }
-        AttributeIdIterator freqs_iter(*freqs_list);
+        net_base::AttributeIdIterator freqs_iter(*freqs_list);
         for (; !freqs_iter.AtEnd(); freqs_iter.Advance()) {
-          AttributeListConstRefPtr freq_attrs;
+          net_base::AttributeListConstRefPtr freq_attrs;
           if (freqs_list->ConstGetNestedAttributeList(freqs_iter.GetId(),
                                                       &freq_attrs)) {
             Frequency freq;
-            for (auto attr = AttributeIdIterator(*freq_attrs); !attr.AtEnd();
-                 attr.Advance()) {
-              if (attr.GetType() == NetlinkAttribute::kTypeFlag) {
+            for (auto attr = net_base::AttributeIdIterator(*freq_attrs);
+                 !attr.AtEnd(); attr.Advance()) {
+              if (attr.GetType() == net_base::NetlinkAttribute::kTypeFlag) {
                 freq.flags |= 1 << attr.GetId();
               } else {
                 if (attr.GetId() == NL80211_FREQUENCY_ATTR_FREQ) {

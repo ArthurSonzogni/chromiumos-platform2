@@ -9,6 +9,7 @@
 
 #include <base/logging.h>
 #include <gmock/gmock.h>
+#include <net-base/attribute_list.h>
 
 #include "shill/wifi/nl80211_message.h"
 
@@ -45,7 +46,7 @@ MATCHER(IsDisableWakeOnWiFiMsg, "") {
                                                      &wiphy)) {
     return false;
   }
-  AttributeListConstRefPtr triggers;
+  net_base::AttributeListConstRefPtr triggers;
   if (msg->const_attributes()->ConstGetNestedAttributeList(
           NL80211_ATTR_WOWLAN_TRIGGERS, &triggers)) {
     return false;
@@ -66,12 +67,12 @@ MATCHER_P(HasHiddenSSID, nl80211_message_type, "") {
   if (msg->command() != NL80211_CMD_TRIGGER_SCAN) {
     return false;
   }
-  AttributeListConstRefPtr ssids;
+  net_base::AttributeListConstRefPtr ssids;
   if (!msg->const_attributes()->ConstGetNestedAttributeList(
           NL80211_ATTR_SCAN_SSIDS, &ssids)) {
     return false;
   }
-  AttributeIdIterator ssid_iter(*ssids);
+  net_base::AttributeIdIterator ssid_iter(*ssids);
 
   std::vector<uint8_t> ssid;
   if (!ssids->GetRawAttributeValue(ssid_iter.GetId(), &ssid)) {
@@ -108,12 +109,12 @@ MATCHER_P(HasNoHiddenSSID, nl80211_message_type, "") {
   if (msg->command() != NL80211_CMD_TRIGGER_SCAN) {
     return false;
   }
-  AttributeListConstRefPtr ssids;
+  net_base::AttributeListConstRefPtr ssids;
   if (!msg->const_attributes()->ConstGetNestedAttributeList(
           NL80211_ATTR_SCAN_SSIDS, &ssids)) {
     return true;
   }
-  AttributeIdIterator ssid_iter(*ssids);
+  net_base::AttributeIdIterator ssid_iter(*ssids);
   if (ssid_iter.AtEnd()) {
     return true;
   }

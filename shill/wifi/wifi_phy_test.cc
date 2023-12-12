@@ -8,12 +8,13 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/attribute_list.h>
+#include <net-base/netlink_attribute.h>
 #include <net-base/netlink_packet.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/net/netlink_attribute.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi.h"
@@ -701,30 +702,30 @@ TEST_F(WiFiPhyTest, OnNewWiphy_KeepLastFreqs) {
   msg1.InitFromPacketWithContext(&packet1, Nl80211Message::Context());
 
   // Modify flags and attributes for the frequencies reported in the message.
-  AttributeListRefPtr bands_list;
+  net_base::AttributeListRefPtr bands_list;
   EXPECT_TRUE(msg1.attributes()->GetNestedAttributeList(
       NL80211_ATTR_WIPHY_BANDS, &bands_list));
-  AttributeIdIterator bands_iter(*bands_list);
+  net_base::AttributeIdIterator bands_iter(*bands_list);
   for (; !bands_iter.AtEnd(); bands_iter.Advance()) {
-    AttributeListRefPtr band_attrs;
+    net_base::AttributeListRefPtr band_attrs;
     if (bands_list->GetNestedAttributeList(bands_iter.GetId(), &band_attrs)) {
-      AttributeListRefPtr freqs_list;
+      net_base::AttributeListRefPtr freqs_list;
       if (!band_attrs->GetNestedAttributeList(NL80211_BAND_ATTR_FREQS,
                                               &freqs_list)) {
         continue;
       }
-      AttributeIdIterator freqs_iter(*freqs_list);
+      net_base::AttributeIdIterator freqs_iter(*freqs_list);
       for (; !freqs_iter.AtEnd(); freqs_iter.Advance()) {
-        AttributeListRefPtr freq_attrs;
+        net_base::AttributeListRefPtr freq_attrs;
         if (freqs_list->GetNestedAttributeList(freqs_iter.GetId(),
                                                &freq_attrs)) {
           uint32_t value;
-          for (auto attr = AttributeIdIterator(*freq_attrs); !attr.AtEnd();
-               attr.Advance()) {
-            if (attr.GetType() == NetlinkAttribute::kTypeFlag) {
+          for (auto attr = net_base::AttributeIdIterator(*freq_attrs);
+               !attr.AtEnd(); attr.Advance()) {
+            if (attr.GetType() == net_base::NetlinkAttribute::kTypeFlag) {
               freq_attrs->SetFlagAttributeValue(attr.GetId(), false);
             } else {
-              EXPECT_EQ(attr.GetType(), NetlinkAttribute::kTypeU32);
+              EXPECT_EQ(attr.GetType(), net_base::NetlinkAttribute::kTypeU32);
               if (attr.GetId() == NL80211_FREQUENCY_ATTR_FREQ) {
                 continue;
               }

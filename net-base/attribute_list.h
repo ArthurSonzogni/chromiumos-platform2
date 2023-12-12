@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NET_ATTRIBUTE_LIST_H_
-#define SHILL_NET_ATTRIBUTE_LIST_H_
+#ifndef NET_BASE_ATTRIBUTE_LIST_H_
+#define NET_BASE_ATTRIBUTE_LIST_H_
 
 #include <linux/nl80211.h>
 
@@ -15,11 +15,11 @@
 #include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
-#include <net-base/netlink_packet.h>
 
-#include "shill/net/shill_export.h"
+#include "net-base/export.h"
+#include "net-base/netlink_packet.h"
 
-namespace shill {
+namespace net_base {
 
 class AttributeList;
 using AttributeListConstRefPtr = scoped_refptr<const AttributeList>;
@@ -27,7 +27,7 @@ using AttributeListRefPtr = scoped_refptr<AttributeList>;
 
 class NetlinkAttribute;
 
-class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
+class NET_BASE_EXPORT AttributeList : public base::RefCounted<AttributeList> {
  public:
   using NewFromIdMethod =
       base::RepeatingCallback<std::unique_ptr<NetlinkAttribute>(int id)>;
@@ -136,7 +136,7 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
   using AttributeMap = std::map<int, std::unique_ptr<NetlinkAttribute>>;
 
   // Using this to get around issues with const and operator[].
-  SHILL_PRIVATE NetlinkAttribute* GetAttribute(int id) const;
+  NetlinkAttribute* GetAttribute(int id) const;
 
   AttributeMap attributes_;
 };
@@ -144,7 +144,7 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
 // Provides a mechanism to iterate through the ids of all of the attributes
 // in an |AttributeList|.  This class is really only useful if the caller
 // knows the type of each attribute in advance (such as with a nested array).
-class SHILL_EXPORT AttributeIdIterator {
+class NET_BASE_EXPORT AttributeIdIterator {
  public:
   explicit AttributeIdIterator(const AttributeList& list)
       : iter_(list.attributes_.begin()), end_(list.attributes_.end()) {}
@@ -161,6 +161,6 @@ class SHILL_EXPORT AttributeIdIterator {
   const AttributeList::AttributeMap::const_iterator end_;
 };
 
-}  // namespace shill
+}  // namespace net_base
 
-#endif  // SHILL_NET_ATTRIBUTE_LIST_H_
+#endif  // NET_BASE_ATTRIBUTE_LIST_H_

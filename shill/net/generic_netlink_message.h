@@ -9,10 +9,10 @@
 #include <string>
 #include <vector>
 
+#include <net-base/attribute_list.h>
 #include <net-base/netlink_message.h>
 #include <net-base/netlink_packet.h>
 
-#include "shill/net/attribute_list.h"
 #include "shill/net/shill_export.h"
 
 namespace shill {
@@ -62,7 +62,7 @@ class SHILL_EXPORT GenericNetlinkMessage : public net_base::NetlinkMessage {
                         uint8_t command,
                         const char* command_string)
       : net_base::NetlinkMessage(my_message_type),
-        attributes_(new AttributeList),
+        attributes_(new net_base::AttributeList),
         command_(command),
         command_string_(command_string) {}
   GenericNetlinkMessage(const GenericNetlinkMessage&) = delete;
@@ -74,8 +74,10 @@ class SHILL_EXPORT GenericNetlinkMessage : public net_base::NetlinkMessage {
 
   uint8_t command() const { return command_; }
   const char* command_string() const { return command_string_; }
-  AttributeListConstRefPtr const_attributes() const { return attributes_; }
-  AttributeListRefPtr attributes() { return attributes_; }
+  net_base::AttributeListConstRefPtr const_attributes() const {
+    return attributes_;
+  }
+  net_base::AttributeListRefPtr attributes() { return attributes_; }
   std::string ToString() const override;
   void Print(int header_log_level, int detail_log_level) const override;
 
@@ -87,7 +89,7 @@ class SHILL_EXPORT GenericNetlinkMessage : public net_base::NetlinkMessage {
   // from the payload of |packet|.
   bool InitAndStripHeader(net_base::NetlinkPacket* packet) override;
 
-  AttributeListRefPtr attributes_;
+  net_base::AttributeListRefPtr attributes_;
   const uint8_t command_;
   const char* command_string_;
 };

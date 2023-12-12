@@ -12,6 +12,7 @@ group("all") {
   if (use.fuzzer) {
     deps += [
       ":http_url_fuzzer",
+      ":netlink_attribute_list_fuzzer",
       ":rtnl_handler_fuzzer",
     ]
   }
@@ -36,7 +37,9 @@ pkg_config("target_defaults") {
 shared_library("libnet-base") {
   sources = [
     "ares_interface.cc",
+    "attribute_list.cc",
     "byte_utils.cc",
+    "control_netlink_attribute.cc",
     "dns_client.cc",
     "http_url.cc",
     "ip_address.cc",
@@ -44,6 +47,7 @@ shared_library("libnet-base") {
     "ipv4_address.cc",
     "ipv6_address.cc",
     "mac_address.cc",
+    "netlink_attribute.cc",
     "netlink_message.cc",
     "netlink_packet.cc",
     "netlink_sock_diag.cc",
@@ -71,6 +75,14 @@ generate_pkg_config("libnet-base_pc") {
 if (use.fuzzer) {
   executable("http_url_fuzzer") {
     sources = [ "http_url_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    deps = [ ":libnet-base" ]
+  }
+  executable("netlink_attribute_list_fuzzer") {
+    sources = [ "attribute_list_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
@@ -107,6 +119,7 @@ if (use.test) {
   executable("libnet-base-testrunner") {
     run_test = true
     sources = [
+      "attribute_list_test.cc",
       "byte_utils_test.cc",
       "dns_client_test.cc",
       "http_url_test.cc",
@@ -114,6 +127,7 @@ if (use.test) {
       "ipv4_address_test.cc",
       "ipv6_address_test.cc",
       "mac_address_test.cc",
+      "netlink_attribute_test.cc",
       "netlink_packet_test.cc",
       "netlink_socket_test.cc",
       "rtnl_handler_test.cc",

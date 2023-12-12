@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/attribute_list.h"
+#include "net-base/attribute_list.h"
 
 #include <linux/nl80211.h>
 
@@ -11,14 +11,11 @@
 #include <base/containers/contains.h>
 #include <base/containers/span.h>
 #include <base/logging.h>
-#include <net-base/netlink_packet.h>
 
-#include "shill/net/netlink_attribute.h"
+#include "net-base/netlink_attribute.h"
+#include "net-base/netlink_packet.h"
 
-namespace shill {
-
-// TODO(b/301905012): Remove the type alias after moving this file to net-base.
-using net_base::NetlinkPacket;
+namespace net_base {
 
 AttributeList::AttributeList() = default;
 
@@ -405,4 +402,4 @@ int AttributeIdIterator::GetType() const {
   return iter_->second->datatype();
 }
 
-}  // namespace shill
+}  // namespace net_base

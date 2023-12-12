@@ -93,6 +93,7 @@
 #include <base/time/time.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/attribute_list.h>
 #include <net-base/ip_address.h>
 #include <net-base/netlink_message.h>
 
@@ -668,8 +669,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Request and retrieve information about the currently connected station.
   void RequestStationInfo(WiFiLinkStatistics::Trigger trigger);
   void OnReceivedStationInfo(const Nl80211Message& nl80211_message);
-  static bool ParseStationBitrate(const AttributeListConstRefPtr& rate_info,
-                                  WiFiLinkStatistics::RxTxStats* stats);
+  static bool ParseStationBitrate(
+      const net_base::AttributeListConstRefPtr& rate_info,
+      WiFiLinkStatistics::RxTxStats* stats);
   void HandleUpdatedLinkStatistics();
   void StopRequestingStationInfo();
   void ResetStationInfoRequests();

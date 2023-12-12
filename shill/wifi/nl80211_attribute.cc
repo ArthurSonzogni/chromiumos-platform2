@@ -9,13 +9,13 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <net-base/byte_utils.h>
+#include <net-base/netlink_attribute.h>
 
-#include "shill/net/netlink_attribute.h"
 #include "shill/wifi/ieee80211.h"
 
 namespace shill {
 
-std::unique_ptr<NetlinkAttribute> NewNl80211AttributeFromId(
+std::unique_ptr<net_base::NetlinkAttribute> NewNl80211AttributeFromId(
     const Nl80211Message::Context& context, int id) {
   switch (id) {
     case NL80211_ATTR_BSS:
@@ -159,11 +159,11 @@ std::unique_ptr<NetlinkAttribute> NewNl80211AttributeFromId(
     case NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED:
       return std::make_unique<Nl80211AttributeWowlanTriggersSupported>();
     default:
-      return std::make_unique<NetlinkAttributeGeneric>(id);
+      return std::make_unique<net_base::NetlinkAttributeGeneric>(id);
   }
 }
 
-bool CreateNl80211Attribute(AttributeList* attribute_list, int id) {
+bool CreateNl80211Attribute(net_base::AttributeList* attribute_list, int id) {
   return attribute_list->CreateAttribute(
       id, base::BindRepeating(&NewNl80211AttributeFromId,
                               Nl80211Message::Context()));
@@ -250,8 +250,8 @@ Nl80211AttributeBss::Nl80211AttributeBss()
 }
 
 bool Nl80211AttributeBss::ParseInformationElements(
-    AttributeList* attribute_list,
-    size_t id,
+    net_base::AttributeList* attribute_list,
+    int id,
     const std::string& attribute_name,
     base::span<const uint8_t> data) {
   if (!attribute_list) {
@@ -261,7 +261,7 @@ bool Nl80211AttributeBss::ParseInformationElements(
   attribute_list->CreateNestedAttribute(id, attribute_name.c_str());
 
   // Now, handle the nested data.
-  AttributeListRefPtr ie_attribute;
+  net_base::AttributeListRefPtr ie_attribute;
   if (!attribute_list->GetNestedAttributeList(id, &ie_attribute) ||
       !ie_attribute) {
     LOG(ERROR) << "Couldn't get attribute " << attribute_name
@@ -299,7 +299,7 @@ bool Nl80211AttributeBss::ParseInformationElements(
       case kSupportedRatesAttributeId:
       case kExtendedRatesAttributeId: {
         ie_attribute->CreateNestedAttribute(type, kRatesString);
-        AttributeListRefPtr rates_attribute;
+        net_base::AttributeListRefPtr rates_attribute;
         if (!ie_attribute->GetNestedAttributeList(type, &rates_attribute) ||
             !rates_attribute) {
           LOG(ERROR) << "Couldn't get attribute " << attribute_name
@@ -784,7 +784,7 @@ bool Nl80211AttributeRegInitiator::InitFromValue(
   }
 
   SetU32Value(static_cast<uint32_t>(*u8_data));
-  return NetlinkAttribute::InitFromValue(input);
+  return net_base::NetlinkAttribute::InitFromValue(input);
 }
 
 const int Nl80211AttributeRegRules::kName = NL80211_ATTR_REG_RULES;
@@ -1081,8 +1081,8 @@ Nl80211AttributeSupportedIftypes::Nl80211AttributeSupportedIftypes()
 }
 
 bool Nl80211AttributeSupportedIftypes::ParseIfaceTypes(
-    AttributeList* attribute_list,
-    size_t id,
+    net_base::AttributeList* attribute_list,
+    int id,
     const std::string& attribute_name,
     base::span<const uint8_t> data) {
   if (!attribute_list) {

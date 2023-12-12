@@ -22,6 +22,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <brillo/timers/alarm_timer.h>
+#include <net-base/attribute_list.h>
 #include <net-base/netlink_message.h>
 
 #include "shill/callbacks.h"
@@ -413,7 +414,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   //    to have been extracted from a NL80211_CMD_SET_WOWLAN response message
   //    using the NL80211_WOWLAN_TRIG_NET_DETECT_RESULTS id.
   static WiFi::FreqSet ParseWakeOnSSIDResults(
-      AttributeListConstRefPtr results_list);
+      net_base::AttributeListConstRefPtr results_list);
 
   // Sets the |dark_resume_scan_retries_left_| counter if necessary, then runs
   // |initiate_scan_callback| with |freqs|.

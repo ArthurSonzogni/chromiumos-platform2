@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/control_netlink_attribute.h"
+#include "net-base/control_netlink_attribute.h"
 
 #include <linux/genetlink.h>
 
 #include <base/logging.h>
 
-namespace shill {
+namespace net_base {
 
 const int ControlAttributeFamilyId::kName = CTRL_ATTR_FAMILY_ID;
 const char ControlAttributeFamilyId::kNameString[] = "CTRL_ATTR_FAMILY_ID";
@@ -61,4 +61,4 @@ ControlAttributeMcastGroups::ControlAttributeMcastGroups()
   nested_template_.insert(AttrDataPair(kArrayAttrEnumVal, array));
 }
 
-}  // namespace shill
+}  // namespace net_base

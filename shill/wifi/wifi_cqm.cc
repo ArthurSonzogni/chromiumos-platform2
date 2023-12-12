@@ -10,6 +10,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <net-base/attribute_list.h>
 
 #include "shill/logging.h"
 #include "shill/metrics.h"
@@ -116,7 +117,7 @@ void WiFiCQM::OnCQMNotify(const Nl80211Message& nl80211_message) {
     return;
   }
 
-  AttributeListConstRefPtr cqm_attrs;
+  net_base::AttributeListConstRefPtr cqm_attrs;
   if (!nl80211_message.const_attributes()->ConstGetNestedAttributeList(
           NL80211_ATTR_CQM, &cqm_attrs)) {
     LOG(ERROR) << "Could not find NL80211_ATTR_CQM tag.";

@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 // This file tests some public interface methods of AttributeList.
-#include "shill/net/attribute_list.h"
+#include "net-base/attribute_list.h"
 
 #include <linux/netlink.h>
 
@@ -14,7 +14,8 @@
 #include <base/functional/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/byte_utils.h>
+
+#include "net-base/byte_utils.h"
 
 using testing::_;
 using testing::InSequence;
@@ -22,7 +23,7 @@ using testing::Mock;
 using testing::Return;
 using testing::Test;
 
-namespace shill {
+namespace net_base {
 
 class AttributeListTest : public Test {
  public:
@@ -226,4 +227,4 @@ TEST_F(AttributeListTest, TrailingGarbage) {
   Mock::VerifyAndClearExpectations(this);
 }
 
-}  // namespace shill
+}  // namespace net_base

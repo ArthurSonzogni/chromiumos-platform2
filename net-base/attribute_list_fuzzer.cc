@@ -7,12 +7,12 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
-#include <net-base/netlink_packet.h>
 
-#include "shill/net/attribute_list.h"
-#include "shill/net/netlink_attribute.h"
+#include "net-base/attribute_list.h"
+#include "net-base/netlink_attribute.h"
+#include "net-base/netlink_packet.h"
 
-namespace shill {
+namespace net_base {
 
 class Environment {
  public:
@@ -42,4 +42,4 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   return 0;
 }
 
-}  // namespace shill
+}  // namespace net_base

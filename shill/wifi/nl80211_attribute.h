@@ -9,122 +9,131 @@
 #include <string>
 
 #include <base/containers/span.h>
+#include <net-base/attribute_list.h>
+#include <net-base/netlink_attribute.h>
 
-#include "shill/net/attribute_list.h"
-#include "shill/net/netlink_attribute.h"
 #include "shill/net/shill_export.h"
 #include "shill/wifi/nl80211_message.h"
 
 namespace shill {
 
 // Generates the appropriate attribute object from the raw nlattr data.
-SHILL_EXPORT std::unique_ptr<NetlinkAttribute> NewNl80211AttributeFromId(
-    const Nl80211Message::Context& context, int id);
+SHILL_EXPORT std::unique_ptr<net_base::NetlinkAttribute>
+NewNl80211AttributeFromId(const Nl80211Message::Context& context, int id);
 
 // Helper function for creating nl80211 attribute inside AttributeList.
-SHILL_EXPORT bool CreateNl80211Attribute(AttributeList* attribute_list, int id);
+SHILL_EXPORT bool CreateNl80211Attribute(
+    net_base::AttributeList* attribute_list, int id);
 
 // U8.
 
-class Nl80211AttributeDfsRegion : public NetlinkU8Attribute {
+class Nl80211AttributeDfsRegion : public net_base::NetlinkU8Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeDfsRegion() : NetlinkU8Attribute(kName, kNameString) {}
+  Nl80211AttributeDfsRegion()
+      : net_base::NetlinkU8Attribute(kName, kNameString) {}
   Nl80211AttributeDfsRegion(const Nl80211AttributeDfsRegion&) = delete;
   Nl80211AttributeDfsRegion& operator=(const Nl80211AttributeDfsRegion&) =
       delete;
 };
 
-class Nl80211AttributeKeyIdx : public NetlinkU8Attribute {
+class Nl80211AttributeKeyIdx : public net_base::NetlinkU8Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeKeyIdx() : NetlinkU8Attribute(kName, kNameString) {}
+  Nl80211AttributeKeyIdx() : net_base::NetlinkU8Attribute(kName, kNameString) {}
   Nl80211AttributeKeyIdx(const Nl80211AttributeKeyIdx&) = delete;
   Nl80211AttributeKeyIdx& operator=(const Nl80211AttributeKeyIdx&) = delete;
 };
 
-class Nl80211AttributeMaxMatchSets : public NetlinkU8Attribute {
+class Nl80211AttributeMaxMatchSets : public net_base::NetlinkU8Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeMaxMatchSets() : NetlinkU8Attribute(kName, kNameString) {}
+  Nl80211AttributeMaxMatchSets()
+      : net_base::NetlinkU8Attribute(kName, kNameString) {}
   Nl80211AttributeMaxMatchSets(const Nl80211AttributeMaxMatchSets&) = delete;
   Nl80211AttributeMaxMatchSets& operator=(const Nl80211AttributeMaxMatchSets&) =
       delete;
 };
 
-class Nl80211AttributeMaxNumPmkids : public NetlinkU8Attribute {
+class Nl80211AttributeMaxNumPmkids : public net_base::NetlinkU8Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeMaxNumPmkids() : NetlinkU8Attribute(kName, kNameString) {}
+  Nl80211AttributeMaxNumPmkids()
+      : net_base::NetlinkU8Attribute(kName, kNameString) {}
   Nl80211AttributeMaxNumPmkids(const Nl80211AttributeMaxNumPmkids&) = delete;
   Nl80211AttributeMaxNumPmkids& operator=(const Nl80211AttributeMaxNumPmkids&) =
       delete;
 };
 
-class Nl80211AttributeMaxNumScanSsids : public NetlinkU8Attribute {
+class Nl80211AttributeMaxNumScanSsids : public net_base::NetlinkU8Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeMaxNumScanSsids() : NetlinkU8Attribute(kName, kNameString) {}
+  Nl80211AttributeMaxNumScanSsids()
+      : net_base::NetlinkU8Attribute(kName, kNameString) {}
   Nl80211AttributeMaxNumScanSsids(const Nl80211AttributeMaxNumScanSsids&) =
       delete;
   Nl80211AttributeMaxNumScanSsids& operator=(
       const Nl80211AttributeMaxNumScanSsids&) = delete;
 };
 
-class Nl80211AttributeMaxNumSchedScanSsids : public NetlinkU8Attribute {
+class Nl80211AttributeMaxNumSchedScanSsids
+    : public net_base::NetlinkU8Attribute {
  public:
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeMaxNumSchedScanSsids()
-      : NetlinkU8Attribute(kName, kNameString) {}
+      : net_base::NetlinkU8Attribute(kName, kNameString) {}
   Nl80211AttributeMaxNumSchedScanSsids(
       const Nl80211AttributeMaxNumSchedScanSsids&) = delete;
   Nl80211AttributeMaxNumSchedScanSsids& operator=(
       const Nl80211AttributeMaxNumSchedScanSsids&) = delete;
 };
 
-class Nl80211AttributeRegType : public NetlinkU8Attribute {
+class Nl80211AttributeRegType : public net_base::NetlinkU8Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeRegType() : NetlinkU8Attribute(kName, kNameString) {}
+  Nl80211AttributeRegType()
+      : net_base::NetlinkU8Attribute(kName, kNameString) {}
   Nl80211AttributeRegType(const Nl80211AttributeRegType&) = delete;
   Nl80211AttributeRegType& operator=(const Nl80211AttributeRegType&) = delete;
 };
 
-class Nl80211AttributeWiphyCoverageClass : public NetlinkU8Attribute {
+class Nl80211AttributeWiphyCoverageClass : public net_base::NetlinkU8Attribute {
  public:
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeWiphyCoverageClass()
-      : NetlinkU8Attribute(kName, kNameString) {}
+      : net_base::NetlinkU8Attribute(kName, kNameString) {}
   Nl80211AttributeWiphyCoverageClass(
       const Nl80211AttributeWiphyCoverageClass&) = delete;
   Nl80211AttributeWiphyCoverageClass& operator=(
       const Nl80211AttributeWiphyCoverageClass&) = delete;
 };
 
-class Nl80211AttributeWiphyRetryLong : public NetlinkU8Attribute {
+class Nl80211AttributeWiphyRetryLong : public net_base::NetlinkU8Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeWiphyRetryLong() : NetlinkU8Attribute(kName, kNameString) {}
+  Nl80211AttributeWiphyRetryLong()
+      : net_base::NetlinkU8Attribute(kName, kNameString) {}
   Nl80211AttributeWiphyRetryLong(const Nl80211AttributeWiphyRetryLong&) =
       delete;
   Nl80211AttributeWiphyRetryLong& operator=(
       const Nl80211AttributeWiphyRetryLong&) = delete;
 };
 
-class Nl80211AttributeWiphyRetryShort : public NetlinkU8Attribute {
+class Nl80211AttributeWiphyRetryShort : public net_base::NetlinkU8Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeWiphyRetryShort() : NetlinkU8Attribute(kName, kNameString) {}
+  Nl80211AttributeWiphyRetryShort()
+      : net_base::NetlinkU8Attribute(kName, kNameString) {}
   Nl80211AttributeWiphyRetryShort(const Nl80211AttributeWiphyRetryShort&) =
       delete;
   Nl80211AttributeWiphyRetryShort& operator=(
@@ -133,43 +142,46 @@ class Nl80211AttributeWiphyRetryShort : public NetlinkU8Attribute {
 
 // U16.
 
-class Nl80211AttributeMaxScanIeLen : public NetlinkU16Attribute {
+class Nl80211AttributeMaxScanIeLen : public net_base::NetlinkU16Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeMaxScanIeLen() : NetlinkU16Attribute(kName, kNameString) {}
+  Nl80211AttributeMaxScanIeLen()
+      : net_base::NetlinkU16Attribute(kName, kNameString) {}
   Nl80211AttributeMaxScanIeLen(const Nl80211AttributeMaxScanIeLen&) = delete;
   Nl80211AttributeMaxScanIeLen& operator=(const Nl80211AttributeMaxScanIeLen&) =
       delete;
 };
 
-class Nl80211AttributeMaxSchedScanIeLen : public NetlinkU16Attribute {
+class Nl80211AttributeMaxSchedScanIeLen : public net_base::NetlinkU16Attribute {
  public:
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeMaxSchedScanIeLen()
-      : NetlinkU16Attribute(kName, kNameString) {}
+      : net_base::NetlinkU16Attribute(kName, kNameString) {}
   Nl80211AttributeMaxSchedScanIeLen(const Nl80211AttributeMaxSchedScanIeLen&) =
       delete;
   Nl80211AttributeMaxSchedScanIeLen& operator=(
       const Nl80211AttributeMaxSchedScanIeLen&) = delete;
 };
 
-class Nl80211AttributeReasonCode : public NetlinkU16Attribute {
+class Nl80211AttributeReasonCode : public net_base::NetlinkU16Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeReasonCode() : NetlinkU16Attribute(kName, kNameString) {}
+  Nl80211AttributeReasonCode()
+      : net_base::NetlinkU16Attribute(kName, kNameString) {}
   Nl80211AttributeReasonCode(const Nl80211AttributeReasonCode&) = delete;
   Nl80211AttributeReasonCode& operator=(const Nl80211AttributeReasonCode&) =
       delete;
 };
 
-class Nl80211AttributeStatusCode : public NetlinkU16Attribute {
+class Nl80211AttributeStatusCode : public net_base::NetlinkU16Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeStatusCode() : NetlinkU16Attribute(kName, kNameString) {}
+  Nl80211AttributeStatusCode()
+      : net_base::NetlinkU16Attribute(kName, kNameString) {}
   Nl80211AttributeStatusCode(const Nl80211AttributeStatusCode&) = delete;
   Nl80211AttributeStatusCode& operator=(const Nl80211AttributeStatusCode&) =
       delete;
@@ -177,90 +189,98 @@ class Nl80211AttributeStatusCode : public NetlinkU16Attribute {
 
 // U32.
 
-class Nl80211AttributeDuration : public NetlinkU32Attribute {
+class Nl80211AttributeDuration : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeDuration() : NetlinkU32Attribute(kName, kNameString) {}
+  Nl80211AttributeDuration()
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeDuration(const Nl80211AttributeDuration&) = delete;
   Nl80211AttributeDuration& operator=(const Nl80211AttributeDuration&) = delete;
 };
 
-class Nl80211AttributeDeviceApSme : public NetlinkU32Attribute {
+class Nl80211AttributeDeviceApSme : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeDeviceApSme() : NetlinkU32Attribute(kName, kNameString) {}
+  Nl80211AttributeDeviceApSme()
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeDeviceApSme(const Nl80211AttributeDeviceApSme&) = delete;
   Nl80211AttributeDeviceApSme& operator=(const Nl80211AttributeDeviceApSme&) =
       delete;
 };
 
-class Nl80211AttributeFeatureFlags : public NetlinkU32Attribute {
+class Nl80211AttributeFeatureFlags : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeFeatureFlags() : NetlinkU32Attribute(kName, kNameString) {}
+  Nl80211AttributeFeatureFlags()
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeFeatureFlags(const Nl80211AttributeFeatureFlags&) = delete;
   Nl80211AttributeFeatureFlags& operator=(const Nl80211AttributeFeatureFlags&) =
       delete;
 };
 
-class Nl80211AttributeGeneration : public NetlinkU32Attribute {
+class Nl80211AttributeGeneration : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeGeneration() : NetlinkU32Attribute(kName, kNameString) {}
+  Nl80211AttributeGeneration()
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeGeneration(const Nl80211AttributeGeneration&) = delete;
   Nl80211AttributeGeneration& operator=(const Nl80211AttributeGeneration&) =
       delete;
 };
 
-class Nl80211AttributeIfindex : public NetlinkU32Attribute {
+class Nl80211AttributeIfindex : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeIfindex() : NetlinkU32Attribute(kName, kNameString) {}
+  Nl80211AttributeIfindex()
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeIfindex(const Nl80211AttributeIfindex&) = delete;
   Nl80211AttributeIfindex& operator=(const Nl80211AttributeIfindex&) = delete;
 };
 
-class Nl80211AttributeIftype : public NetlinkU32Attribute {
+class Nl80211AttributeIftype : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeIftype() : NetlinkU32Attribute(kName, kNameString) {}
+  Nl80211AttributeIftype()
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeIftype(const Nl80211AttributeIftype&) = delete;
   Nl80211AttributeIftype& operator=(const Nl80211AttributeIftype&) = delete;
 };
 
-class Nl80211AttributeKeyType : public NetlinkU32Attribute {
+class Nl80211AttributeKeyType : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeKeyType() : NetlinkU32Attribute(kName, kNameString) {}
+  Nl80211AttributeKeyType()
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeKeyType(const Nl80211AttributeKeyType&) = delete;
   Nl80211AttributeKeyType& operator=(const Nl80211AttributeKeyType&) = delete;
 };
 
-class Nl80211AttributeMaxRemainOnChannelDuration : public NetlinkU32Attribute {
+class Nl80211AttributeMaxRemainOnChannelDuration
+    : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeMaxRemainOnChannelDuration()
-      : NetlinkU32Attribute(kName, kNameString) {}
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeMaxRemainOnChannelDuration(
       const Nl80211AttributeMaxRemainOnChannelDuration&) = delete;
   Nl80211AttributeMaxRemainOnChannelDuration& operator=(
       const Nl80211AttributeMaxRemainOnChannelDuration&) = delete;
 };
 
-class Nl80211AttributeProbeRespOffload : public NetlinkU32Attribute {
+class Nl80211AttributeProbeRespOffload : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeProbeRespOffload()
-      : NetlinkU32Attribute(kName, kNameString) {}
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeProbeRespOffload(const Nl80211AttributeProbeRespOffload&) =
       delete;
   Nl80211AttributeProbeRespOffload& operator=(
@@ -268,11 +288,13 @@ class Nl80211AttributeProbeRespOffload : public NetlinkU32Attribute {
 };
 
 // Set SHILL_EXPORT to allow unit tests to instantiate these.
-class SHILL_EXPORT Nl80211AttributeRegInitiator : public NetlinkU32Attribute {
+class SHILL_EXPORT Nl80211AttributeRegInitiator
+    : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeRegInitiator() : NetlinkU32Attribute(kName, kNameString) {}
+  Nl80211AttributeRegInitiator()
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeRegInitiator(const Nl80211AttributeRegInitiator&) = delete;
   Nl80211AttributeRegInitiator& operator=(const Nl80211AttributeRegInitiator&) =
       delete;
@@ -280,129 +302,139 @@ class SHILL_EXPORT Nl80211AttributeRegInitiator : public NetlinkU32Attribute {
   bool InitFromValue(base::span<const uint8_t> input) override;
 };
 
-class Nl80211AttributeWiphy : public NetlinkU32Attribute {
+class Nl80211AttributeWiphy : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeWiphy() : NetlinkU32Attribute(kName, kNameString) {}
+  Nl80211AttributeWiphy() : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeWiphy(const Nl80211AttributeWiphy&) = delete;
   Nl80211AttributeWiphy& operator=(const Nl80211AttributeWiphy&) = delete;
 };
 
-class Nl80211AttributeWiphyAntennaAvailRx : public NetlinkU32Attribute {
+class Nl80211AttributeWiphyAntennaAvailRx
+    : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeWiphyAntennaAvailRx()
-      : NetlinkU32Attribute(kName, kNameString) {}
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeWiphyAntennaAvailRx(
       const Nl80211AttributeWiphyAntennaAvailRx&) = delete;
   Nl80211AttributeWiphyAntennaAvailRx& operator=(
       const Nl80211AttributeWiphyAntennaAvailRx&) = delete;
 };
 
-class Nl80211AttributeWiphyAntennaAvailTx : public NetlinkU32Attribute {
+class Nl80211AttributeWiphyAntennaAvailTx
+    : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeWiphyAntennaAvailTx()
-      : NetlinkU32Attribute(kName, kNameString) {}
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeWiphyAntennaAvailTx(
       const Nl80211AttributeWiphyAntennaAvailTx&) = delete;
   Nl80211AttributeWiphyAntennaAvailTx& operator=(
       const Nl80211AttributeWiphyAntennaAvailTx&) = delete;
 };
 
-class Nl80211AttributeWiphyAntennaRx : public NetlinkU32Attribute {
+class Nl80211AttributeWiphyAntennaRx : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeWiphyAntennaRx() : NetlinkU32Attribute(kName, kNameString) {}
+  Nl80211AttributeWiphyAntennaRx()
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeWiphyAntennaRx(const Nl80211AttributeWiphyAntennaRx&) =
       delete;
   Nl80211AttributeWiphyAntennaRx& operator=(
       const Nl80211AttributeWiphyAntennaRx&) = delete;
 };
 
-class Nl80211AttributeWiphyAntennaTx : public NetlinkU32Attribute {
+class Nl80211AttributeWiphyAntennaTx : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeWiphyAntennaTx() : NetlinkU32Attribute(kName, kNameString) {}
+  Nl80211AttributeWiphyAntennaTx()
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeWiphyAntennaTx(const Nl80211AttributeWiphyAntennaTx&) =
       delete;
   Nl80211AttributeWiphyAntennaTx& operator=(
       const Nl80211AttributeWiphyAntennaTx&) = delete;
 };
 
-class Nl80211AttributeWiphyFragThreshold : public NetlinkU32Attribute {
+class Nl80211AttributeWiphyFragThreshold
+    : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeWiphyFragThreshold()
-      : NetlinkU32Attribute(kName, kNameString) {}
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeWiphyFragThreshold(
       const Nl80211AttributeWiphyFragThreshold&) = delete;
   Nl80211AttributeWiphyFragThreshold& operator=(
       const Nl80211AttributeWiphyFragThreshold&) = delete;
 };
 
-class Nl80211AttributeWiphyFreq : public NetlinkU32Attribute {
+class Nl80211AttributeWiphyFreq : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeWiphyFreq() : NetlinkU32Attribute(kName, kNameString) {}
+  Nl80211AttributeWiphyFreq()
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeWiphyFreq(const Nl80211AttributeWiphyFreq&) = delete;
   Nl80211AttributeWiphyFreq& operator=(const Nl80211AttributeWiphyFreq&) =
       delete;
 };
 
-class Nl80211AttributeChannelType : public NetlinkU32Attribute {
+class Nl80211AttributeChannelType : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeChannelType() : NetlinkU32Attribute(kName, kNameString) {}
+  Nl80211AttributeChannelType()
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeChannelType(const Nl80211AttributeChannelType&) = delete;
   Nl80211AttributeChannelType& operator=(const Nl80211AttributeChannelType&) =
       delete;
 };
 
-class Nl80211AttributeChannelWidth : public NetlinkU32Attribute {
+class Nl80211AttributeChannelWidth : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeChannelWidth() : NetlinkU32Attribute(kName, kNameString) {}
+  Nl80211AttributeChannelWidth()
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeChannelWidth(const Nl80211AttributeChannelWidth&) = delete;
   Nl80211AttributeChannelWidth& operator=(const Nl80211AttributeChannelWidth&) =
       delete;
 };
 
-class Nl80211AttributeCenterFreq1 : public NetlinkU32Attribute {
+class Nl80211AttributeCenterFreq1 : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeCenterFreq1() : NetlinkU32Attribute(kName, kNameString) {}
+  Nl80211AttributeCenterFreq1()
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeCenterFreq1(const Nl80211AttributeCenterFreq1&) = delete;
   Nl80211AttributeCenterFreq1& operator=(const Nl80211AttributeCenterFreq1&) =
       delete;
 };
 
-class Nl80211AttributeCenterFreq2 : public NetlinkU32Attribute {
+class Nl80211AttributeCenterFreq2 : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeCenterFreq2() : NetlinkU32Attribute(kName, kNameString) {}
+  Nl80211AttributeCenterFreq2()
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeCenterFreq2(const Nl80211AttributeCenterFreq2&) = delete;
   Nl80211AttributeCenterFreq2& operator=(const Nl80211AttributeCenterFreq2&) =
       delete;
 };
 
-class Nl80211AttributeWiphyRtsThreshold : public NetlinkU32Attribute {
+class Nl80211AttributeWiphyRtsThreshold : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeWiphyRtsThreshold()
-      : NetlinkU32Attribute(kName, kNameString) {}
+      : net_base::NetlinkU32Attribute(kName, kNameString) {}
   Nl80211AttributeWiphyRtsThreshold(const Nl80211AttributeWiphyRtsThreshold&) =
       delete;
   Nl80211AttributeWiphyRtsThreshold& operator=(
@@ -411,144 +443,155 @@ class Nl80211AttributeWiphyRtsThreshold : public NetlinkU32Attribute {
 
 // U64.
 
-class Nl80211AttributeCookie : public NetlinkU64Attribute {
+class Nl80211AttributeCookie : public net_base::NetlinkU64Attribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeCookie() : NetlinkU64Attribute(kName, kNameString) {}
+  Nl80211AttributeCookie()
+      : net_base::NetlinkU64Attribute(kName, kNameString) {}
   Nl80211AttributeCookie(const Nl80211AttributeCookie&) = delete;
   Nl80211AttributeCookie& operator=(const Nl80211AttributeCookie&) = delete;
 };
 
 // Flag.
 
-class Nl80211AttributeControlPortEthertype : public NetlinkFlagAttribute {
+class Nl80211AttributeControlPortEthertype
+    : public net_base::NetlinkFlagAttribute {
  public:
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeControlPortEthertype()
-      : NetlinkFlagAttribute(kName, kNameString) {}
+      : net_base::NetlinkFlagAttribute(kName, kNameString) {}
   Nl80211AttributeControlPortEthertype(
       const Nl80211AttributeControlPortEthertype&) = delete;
   Nl80211AttributeControlPortEthertype& operator=(
       const Nl80211AttributeControlPortEthertype&) = delete;
 };
 
-class Nl80211AttributeDisconnectedByAp : public NetlinkFlagAttribute {
+class Nl80211AttributeDisconnectedByAp : public net_base::NetlinkFlagAttribute {
  public:
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeDisconnectedByAp()
-      : NetlinkFlagAttribute(kName, kNameString) {}
+      : net_base::NetlinkFlagAttribute(kName, kNameString) {}
   Nl80211AttributeDisconnectedByAp(const Nl80211AttributeDisconnectedByAp&) =
       delete;
   Nl80211AttributeDisconnectedByAp& operator=(
       const Nl80211AttributeDisconnectedByAp&) = delete;
 };
 
-class Nl80211AttributeOffchannelTxOk : public NetlinkFlagAttribute {
+class Nl80211AttributeOffchannelTxOk : public net_base::NetlinkFlagAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeOffchannelTxOk() : NetlinkFlagAttribute(kName, kNameString) {}
+  Nl80211AttributeOffchannelTxOk()
+      : net_base::NetlinkFlagAttribute(kName, kNameString) {}
   Nl80211AttributeOffchannelTxOk(const Nl80211AttributeOffchannelTxOk&) =
       delete;
   Nl80211AttributeOffchannelTxOk& operator=(
       const Nl80211AttributeOffchannelTxOk&) = delete;
 };
 
-class Nl80211AttributeRoamSupport : public NetlinkFlagAttribute {
+class Nl80211AttributeRoamSupport : public net_base::NetlinkFlagAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeRoamSupport() : NetlinkFlagAttribute(kName, kNameString) {}
+  Nl80211AttributeRoamSupport()
+      : net_base::NetlinkFlagAttribute(kName, kNameString) {}
   Nl80211AttributeRoamSupport(const Nl80211AttributeRoamSupport&) = delete;
   Nl80211AttributeRoamSupport& operator=(const Nl80211AttributeRoamSupport&) =
       delete;
 };
 
-class Nl80211AttributeSupportApUapsd : public NetlinkFlagAttribute {
+class Nl80211AttributeSupportApUapsd : public net_base::NetlinkFlagAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeSupportApUapsd() : NetlinkFlagAttribute(kName, kNameString) {}
+  Nl80211AttributeSupportApUapsd()
+      : net_base::NetlinkFlagAttribute(kName, kNameString) {}
   Nl80211AttributeSupportApUapsd(const Nl80211AttributeSupportApUapsd&) =
       delete;
   Nl80211AttributeSupportApUapsd& operator=(
       const Nl80211AttributeSupportApUapsd&) = delete;
 };
 
-class Nl80211AttributeSupportIbssRsn : public NetlinkFlagAttribute {
+class Nl80211AttributeSupportIbssRsn : public net_base::NetlinkFlagAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeSupportIbssRsn() : NetlinkFlagAttribute(kName, kNameString) {}
+  Nl80211AttributeSupportIbssRsn()
+      : net_base::NetlinkFlagAttribute(kName, kNameString) {}
   Nl80211AttributeSupportIbssRsn(const Nl80211AttributeSupportIbssRsn&) =
       delete;
   Nl80211AttributeSupportIbssRsn& operator=(
       const Nl80211AttributeSupportIbssRsn&) = delete;
 };
 
-class Nl80211AttributeSupportMeshAuth : public NetlinkFlagAttribute {
+class Nl80211AttributeSupportMeshAuth : public net_base::NetlinkFlagAttribute {
  public:
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeSupportMeshAuth()
-      : NetlinkFlagAttribute(kName, kNameString) {}
+      : net_base::NetlinkFlagAttribute(kName, kNameString) {}
   Nl80211AttributeSupportMeshAuth(const Nl80211AttributeSupportMeshAuth&) =
       delete;
   Nl80211AttributeSupportMeshAuth& operator=(
       const Nl80211AttributeSupportMeshAuth&) = delete;
 };
 
-class Nl80211AttributeTdlsExternalSetup : public NetlinkFlagAttribute {
+class Nl80211AttributeTdlsExternalSetup
+    : public net_base::NetlinkFlagAttribute {
  public:
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeTdlsExternalSetup()
-      : NetlinkFlagAttribute(kName, kNameString) {}
+      : net_base::NetlinkFlagAttribute(kName, kNameString) {}
   Nl80211AttributeTdlsExternalSetup(const Nl80211AttributeTdlsExternalSetup&) =
       delete;
   Nl80211AttributeTdlsExternalSetup& operator=(
       const Nl80211AttributeTdlsExternalSetup&) = delete;
 };
 
-class Nl80211AttributeTdlsSupport : public NetlinkFlagAttribute {
+class Nl80211AttributeTdlsSupport : public net_base::NetlinkFlagAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeTdlsSupport() : NetlinkFlagAttribute(kName, kNameString) {}
+  Nl80211AttributeTdlsSupport()
+      : net_base::NetlinkFlagAttribute(kName, kNameString) {}
   Nl80211AttributeTdlsSupport(const Nl80211AttributeTdlsSupport&) = delete;
   Nl80211AttributeTdlsSupport& operator=(const Nl80211AttributeTdlsSupport&) =
       delete;
 };
 
-class Nl80211AttributeTimedOut : public NetlinkFlagAttribute {
+class Nl80211AttributeTimedOut : public net_base::NetlinkFlagAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeTimedOut() : NetlinkFlagAttribute(kName, kNameString) {}
+  Nl80211AttributeTimedOut()
+      : net_base::NetlinkFlagAttribute(kName, kNameString) {}
   Nl80211AttributeTimedOut(const Nl80211AttributeTimedOut&) = delete;
   Nl80211AttributeTimedOut& operator=(const Nl80211AttributeTimedOut&) = delete;
 };
 
 // String.
 
-class Nl80211AttributeRegAlpha2 : public NetlinkStringAttribute {
+class Nl80211AttributeRegAlpha2 : public net_base::NetlinkStringAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeRegAlpha2() : NetlinkStringAttribute(kName, kNameString) {}
+  Nl80211AttributeRegAlpha2()
+      : net_base::NetlinkStringAttribute(kName, kNameString) {}
   Nl80211AttributeRegAlpha2(const Nl80211AttributeRegAlpha2&) = delete;
   Nl80211AttributeRegAlpha2& operator=(const Nl80211AttributeRegAlpha2&) =
       delete;
 };
 
-class Nl80211AttributeWiphyName : public NetlinkStringAttribute {
+class Nl80211AttributeWiphyName : public net_base::NetlinkStringAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeWiphyName() : NetlinkStringAttribute(kName, kNameString) {}
+  Nl80211AttributeWiphyName()
+      : net_base::NetlinkStringAttribute(kName, kNameString) {}
   Nl80211AttributeWiphyName(const Nl80211AttributeWiphyName&) = delete;
   Nl80211AttributeWiphyName& operator=(const Nl80211AttributeWiphyName&) =
       delete;
@@ -556,7 +599,7 @@ class Nl80211AttributeWiphyName : public NetlinkStringAttribute {
 
 // Nested.
 
-class Nl80211AttributeBss : public NetlinkNestedAttribute {
+class Nl80211AttributeBss : public net_base::NetlinkNestedAttribute {
  public:
   static const int kName;
   static const char kNameString[];
@@ -586,13 +629,13 @@ class Nl80211AttributeBss : public NetlinkNestedAttribute {
   Nl80211AttributeBss& operator=(const Nl80211AttributeBss&) = delete;
 
  private:
-  static bool ParseInformationElements(AttributeList* attribute_list,
-                                       size_t id,
+  static bool ParseInformationElements(net_base::AttributeList* attribute_list,
+                                       int id,
                                        const std::string& attribute_name,
                                        base::span<const uint8_t> data);
 };
 
-class Nl80211AttributeCqm : public NetlinkNestedAttribute {
+class Nl80211AttributeCqm : public net_base::NetlinkNestedAttribute {
  public:
   static const int kName;
   static const char kNameString[];
@@ -601,7 +644,7 @@ class Nl80211AttributeCqm : public NetlinkNestedAttribute {
   Nl80211AttributeCqm& operator=(const Nl80211AttributeCqm&) = delete;
 };
 
-class Nl80211AttributeRegRules : public NetlinkNestedAttribute {
+class Nl80211AttributeRegRules : public net_base::NetlinkNestedAttribute {
  public:
   static const int kName;
   static const char kNameString[];
@@ -610,7 +653,8 @@ class Nl80211AttributeRegRules : public NetlinkNestedAttribute {
   Nl80211AttributeRegRules& operator=(const Nl80211AttributeRegRules&) = delete;
 };
 
-class Nl80211AttributeScanFrequencies : public NetlinkNestedAttribute {
+class Nl80211AttributeScanFrequencies
+    : public net_base::NetlinkNestedAttribute {
  public:
   static const int kName;
   static const char kNameString[];
@@ -621,7 +665,7 @@ class Nl80211AttributeScanFrequencies : public NetlinkNestedAttribute {
       const Nl80211AttributeScanFrequencies&) = delete;
 };
 
-class Nl80211AttributeScanSsids : public NetlinkNestedAttribute {
+class Nl80211AttributeScanSsids : public net_base::NetlinkNestedAttribute {
  public:
   static const int kName;
   static const char kNameString[];
@@ -631,7 +675,7 @@ class Nl80211AttributeScanSsids : public NetlinkNestedAttribute {
       delete;
 };
 
-class Nl80211AttributeStaInfo : public NetlinkNestedAttribute {
+class Nl80211AttributeStaInfo : public net_base::NetlinkNestedAttribute {
  public:
   static const int kName;
   static const char kNameString[];
@@ -640,7 +684,7 @@ class Nl80211AttributeStaInfo : public NetlinkNestedAttribute {
   Nl80211AttributeStaInfo& operator=(const Nl80211AttributeStaInfo&) = delete;
 };
 
-class Nl80211AttributeMPathInfo : public NetlinkNestedAttribute {
+class Nl80211AttributeMPathInfo : public net_base::NetlinkNestedAttribute {
  public:
   static const int kName;
   static const char kNameString[];
@@ -650,7 +694,8 @@ class Nl80211AttributeMPathInfo : public NetlinkNestedAttribute {
       delete;
 };
 
-class Nl80211AttributeSupportedIftypes : public NetlinkNestedAttribute {
+class Nl80211AttributeSupportedIftypes
+    : public net_base::NetlinkNestedAttribute {
  public:
   static const int kName;
   static const char kNameString[];
@@ -661,13 +706,13 @@ class Nl80211AttributeSupportedIftypes : public NetlinkNestedAttribute {
       const Nl80211AttributeSupportedIftypes&) = delete;
 
  private:
-  static bool ParseIfaceTypes(AttributeList* attribute_list,
-                              size_t id,
+  static bool ParseIfaceTypes(net_base::AttributeList* attribute_list,
+                              int id,
                               const std::string& attribute_name,
                               base::span<const uint8_t> data);
 };
 
-class Nl80211AttributeWiphyBands : public NetlinkNestedAttribute {
+class Nl80211AttributeWiphyBands : public net_base::NetlinkNestedAttribute {
  public:
   static const int kName;
   static const char kNameString[];
@@ -677,7 +722,8 @@ class Nl80211AttributeWiphyBands : public NetlinkNestedAttribute {
       delete;
 };
 
-class Nl80211AttributeInterfaceCombinations : public NetlinkNestedAttribute {
+class Nl80211AttributeInterfaceCombinations
+    : public net_base::NetlinkNestedAttribute {
  public:
   static const int kName;
   static const char kNameString[];
@@ -688,7 +734,7 @@ class Nl80211AttributeInterfaceCombinations : public NetlinkNestedAttribute {
       const Nl80211AttributeInterfaceCombinations&) = delete;
 };
 
-class Nl80211AttributeWowlanTriggers : public NetlinkNestedAttribute {
+class Nl80211AttributeWowlanTriggers : public net_base::NetlinkNestedAttribute {
  public:
   static const int kName;
   static const char kNameString[];
@@ -700,7 +746,8 @@ class Nl80211AttributeWowlanTriggers : public NetlinkNestedAttribute {
       const Nl80211AttributeWowlanTriggers&) = delete;
 };
 
-class Nl80211AttributeWowlanTriggersSupported : public NetlinkNestedAttribute {
+class Nl80211AttributeWowlanTriggersSupported
+    : public net_base::NetlinkNestedAttribute {
  public:
   static const int kName;
   static const char kNameString[];
@@ -713,51 +760,53 @@ class Nl80211AttributeWowlanTriggersSupported : public NetlinkNestedAttribute {
 
 // Raw.
 
-class Nl80211AttributeCipherSuites : public NetlinkRawAttribute {
+class Nl80211AttributeCipherSuites : public net_base::NetlinkRawAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeCipherSuites() : NetlinkRawAttribute(kName, kNameString) {}
+  Nl80211AttributeCipherSuites()
+      : net_base::NetlinkRawAttribute(kName, kNameString) {}
   Nl80211AttributeCipherSuites(const Nl80211AttributeCipherSuites&) = delete;
   Nl80211AttributeCipherSuites& operator=(const Nl80211AttributeCipherSuites&) =
       delete;
 };
 
-class Nl80211AttributeFrame : public NetlinkRawAttribute {
+class Nl80211AttributeFrame : public net_base::NetlinkRawAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeFrame() : NetlinkRawAttribute(kName, kNameString) {}
+  Nl80211AttributeFrame() : net_base::NetlinkRawAttribute(kName, kNameString) {}
   Nl80211AttributeFrame(const Nl80211AttributeFrame&) = delete;
   Nl80211AttributeFrame& operator=(const Nl80211AttributeFrame&) = delete;
 };
 
-class Nl80211AttributeHtCapabilityMask : public NetlinkRawAttribute {
+class Nl80211AttributeHtCapabilityMask : public net_base::NetlinkRawAttribute {
  public:
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeHtCapabilityMask()
-      : NetlinkRawAttribute(kName, kNameString) {}
+      : net_base::NetlinkRawAttribute(kName, kNameString) {}
   Nl80211AttributeHtCapabilityMask(const Nl80211AttributeHtCapabilityMask&) =
       delete;
   Nl80211AttributeHtCapabilityMask& operator=(
       const Nl80211AttributeHtCapabilityMask&) = delete;
 };
 
-class Nl80211AttributeKeySeq : public NetlinkRawAttribute {
+class Nl80211AttributeKeySeq : public net_base::NetlinkRawAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeKeySeq() : NetlinkRawAttribute(kName, kNameString) {}
+  Nl80211AttributeKeySeq()
+      : net_base::NetlinkRawAttribute(kName, kNameString) {}
   Nl80211AttributeKeySeq(const Nl80211AttributeKeySeq&) = delete;
   Nl80211AttributeKeySeq& operator=(const Nl80211AttributeKeySeq&) = delete;
 };
 
-class Nl80211AttributeMac : public NetlinkRawAttribute {
+class Nl80211AttributeMac : public net_base::NetlinkRawAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeMac() : NetlinkRawAttribute(kName, kNameString) {}
+  Nl80211AttributeMac() : net_base::NetlinkRawAttribute(kName, kNameString) {}
   Nl80211AttributeMac(const Nl80211AttributeMac&) = delete;
   Nl80211AttributeMac& operator=(const Nl80211AttributeMac&) = delete;
 
@@ -768,16 +817,17 @@ class Nl80211AttributeMac : public NetlinkRawAttribute {
   static std::string StringFromMacAddress(const uint8_t* arg);
 };
 
-class Nl80211AttributeRespIe : public NetlinkRawAttribute {
+class Nl80211AttributeRespIe : public net_base::NetlinkRawAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeRespIe() : NetlinkRawAttribute(kName, kNameString) {}
+  Nl80211AttributeRespIe()
+      : net_base::NetlinkRawAttribute(kName, kNameString) {}
   Nl80211AttributeRespIe(const Nl80211AttributeRespIe&) = delete;
   Nl80211AttributeRespIe& operator=(const Nl80211AttributeRespIe&) = delete;
 };
 
-class Nl80211AttributeSurveyInfo : public NetlinkNestedAttribute {
+class Nl80211AttributeSurveyInfo : public net_base::NetlinkNestedAttribute {
  public:
   static const int kName;
   static const char kNameString[];
@@ -787,7 +837,8 @@ class Nl80211AttributeSurveyInfo : public NetlinkNestedAttribute {
       delete;
 };
 
-class Nl80211AttributeSupportedCommands : public NetlinkNestedAttribute {
+class Nl80211AttributeSupportedCommands
+    : public net_base::NetlinkNestedAttribute {
  public:
   static const int kName;
   static const char kNameString[];
@@ -798,12 +849,13 @@ class Nl80211AttributeSupportedCommands : public NetlinkNestedAttribute {
       const Nl80211AttributeSupportedCommands&) = delete;
 };
 
-class Nl80211AttributeWiphySelfManagedReg : public NetlinkFlagAttribute {
+class Nl80211AttributeWiphySelfManagedReg
+    : public net_base::NetlinkFlagAttribute {
  public:
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeWiphySelfManagedReg()
-      : NetlinkFlagAttribute(kName, kNameString) {}
+      : net_base::NetlinkFlagAttribute(kName, kNameString) {}
   Nl80211AttributeWiphySelfManagedReg(
       const Nl80211AttributeWiphySelfManagedReg&) = delete;
   Nl80211AttributeWiphySelfManagedReg& operator=(

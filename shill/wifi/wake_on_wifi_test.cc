@@ -22,6 +22,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/attribute_list.h>
 #include <net-base/netlink_message.h>
 #include <net-base/netlink_packet.h>
 
@@ -794,7 +795,8 @@ class WakeOnWiFiTest : public ::testing::Test {
     wake_on_wifi_->OnWakeupReasonReceived(netlink_message);
   }
 
-  WiFi::FreqSet ParseWakeOnSSIDResults(AttributeListConstRefPtr results_list) {
+  WiFi::FreqSet ParseWakeOnSSIDResults(
+      net_base::AttributeListConstRefPtr results_list) {
     return wake_on_wifi_->ParseWakeOnSSIDResults(results_list);
   }
 
@@ -1464,10 +1466,10 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, ParseWakeOnSSIDResults) {
   SetWakeOnWiFiMessage msg;
   net_base::NetlinkPacket packet(kWakeReasonSSIDNlMsg);
   msg.InitFromPacketWithContext(&packet, GetWakeupReportMsgContext());
-  AttributeListConstRefPtr triggers;
+  net_base::AttributeListConstRefPtr triggers;
   ASSERT_TRUE(msg.const_attributes()->ConstGetNestedAttributeList(
       NL80211_ATTR_WOWLAN_TRIGGERS, &triggers));
-  AttributeListConstRefPtr results_list;
+  net_base::AttributeListConstRefPtr results_list;
   ASSERT_TRUE(triggers->ConstGetNestedAttributeList(
       NL80211_WOWLAN_TRIG_NET_DETECT_RESULTS, &results_list));
   WiFi::FreqSet freqs = ParseWakeOnSSIDResults(results_list);

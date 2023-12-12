@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/netlink_attribute.h"
+#include "net-base/netlink_attribute.h"
 
 #include <linux/genetlink.h>
 
@@ -15,10 +15,10 @@
 #include <base/strings/stringprintf.h>
 #include <net-base/byte_utils.h>
 
-#include "shill/net/attribute_list.h"
-#include "shill/net/control_netlink_attribute.h"
+#include "net-base/attribute_list.h"
+#include "net-base/control_netlink_attribute.h"
 
-namespace shill {
+namespace net_base {
 
 NetlinkAttribute::NetlinkAttribute(int id,
                                    const char* id_string,
@@ -183,8 +183,8 @@ std::vector<uint8_t> NetlinkAttribute::EncodeGeneric(
   }
 
   nlattr header;
-  header.nla_type = id();
-  header.nla_len = NLA_HDRLEN + data.size();
+  header.nla_type = static_cast<uint16_t>(id());
+  header.nla_len = static_cast<uint16_t>(NLA_HDRLEN + data.size());
 
   std::vector<uint8_t> result = net_base::byte_utils::ToBytes(header);
   result.resize(NLA_HDRLEN, 0);  // Add padding after the header.
@@ -541,7 +541,7 @@ NetlinkNestedAttribute::NetlinkNestedAttribute(int id, const char* id_string)
 std::vector<uint8_t> NetlinkNestedAttribute::Encode() const {
   // Encode attribute header.
   nlattr header;
-  header.nla_type = id();
+  header.nla_type = static_cast<uint16_t>(id());
   header.nla_len = 0;  // Filled in at the end.
 
   std::vector<uint8_t> result = net_base::byte_utils::ToBytes(header);
@@ -557,7 +557,7 @@ std::vector<uint8_t> NetlinkNestedAttribute::Encode() const {
 
   // Go back and fill-in the size.
   nlattr* new_header = reinterpret_cast<nlattr*>(result.data());
-  new_header->nla_len = result.size();
+  new_header->nla_len = static_cast<uint16_t>(result.size());
 
   return result;
 }
@@ -823,4 +823,4 @@ const char* NetlinkAttributeGeneric::id_string() const {
   return id_string_.c_str();
 }
 
-}  // namespace shill
+}  // namespace net_base

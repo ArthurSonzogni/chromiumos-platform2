@@ -24,6 +24,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/attribute_list.h>
 #include <net-base/byte_utils.h>
 #include <net-base/netlink_message.h>
 
@@ -237,7 +238,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
     return false;
   }
 
-  AttributeListRefPtr triggers;
+  net_base::AttributeListRefPtr triggers;
   if (!msg->attributes()->GetNestedAttributeList(NL80211_ATTR_WOWLAN_TRIGGERS,
                                                  &triggers)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
@@ -280,7 +281,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
                                 "NL80211_WOWLAN_TRIG_NET_DETECT");
           return false;
         }
-        AttributeListRefPtr scan_attributes;
+        net_base::AttributeListRefPtr scan_attributes;
         if (!triggers->GetNestedAttributeList(NL80211_WOWLAN_TRIG_NET_DETECT,
                                               &scan_attributes)) {
           Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
@@ -319,7 +320,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
                                 "NL80211_ATTR_SCAN_SSIDS");
           return false;
         }
-        AttributeListRefPtr ssids;
+        net_base::AttributeListRefPtr ssids;
         if (!scan_attributes->GetNestedAttributeList(
                 NL80211_ATTR_SCHED_SCAN_MATCH, &ssids)) {
           Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
@@ -343,7 +344,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
                 "NL80211_ATTR_SCHED_SCAN_MATCH_SINGLE");
             return false;
           }
-          AttributeListRefPtr single_ssid;
+          net_base::AttributeListRefPtr single_ssid;
           if (!ssids->GetNestedAttributeList(ssid_num, &single_ssid)) {
             Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                                   "Could not get nested attribute list "
@@ -400,7 +401,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
     LOG(ERROR) << __func__ << ": Invalid message command";
     return false;
   }
-  AttributeListConstRefPtr triggers;
+  net_base::AttributeListConstRefPtr triggers;
   if (!msg.const_attributes()->ConstGetNestedAttributeList(
           NL80211_ATTR_WOWLAN_TRIGGERS, &triggers)) {
     // No triggers in the returned message, which is valid iff we expect there
@@ -410,7 +411,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
   // If we find a trigger in |msg| that we do not have a corresponding flag
   // for in |trigs|, we have a mismatch.
   bool unused_flag;
-  AttributeListConstRefPtr unused_list;
+  net_base::AttributeListConstRefPtr unused_list;
   if (triggers->GetFlagAttributeValue(NL80211_WOWLAN_TRIG_DISCONNECT,
                                       &unused_flag) &&
       !base::Contains(trigs, kWakeTriggerDisconnect)) {
@@ -446,7 +447,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
       case kWakeTriggerSSID: {
         std::set<std::vector<uint8_t>> expected_ssids(allowed_ssids.begin(),
                                                       allowed_ssids.end());
-        AttributeListConstRefPtr scan_attributes;
+        net_base::AttributeListConstRefPtr scan_attributes;
         if (!triggers->ConstGetNestedAttributeList(
                 NL80211_WOWLAN_TRIG_NET_DETECT, &scan_attributes)) {
           LOG(ERROR) << __func__ << ": "
@@ -466,7 +467,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
           SLOG(2) << __func__ << ": Net Detect scan period mismatch";
           return false;
         }
-        AttributeListConstRefPtr ssids;
+        net_base::AttributeListConstRefPtr ssids;
         if (!scan_attributes->ConstGetNestedAttributeList(
                 NL80211_ATTR_SCHED_SCAN_MATCH, &ssids)) {
           LOG(ERROR) << __func__ << ": "
@@ -476,8 +477,8 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
         }
         bool ssid_mismatch_found = false;
         size_t ssid_num_mismatch = expected_ssids.size();
-        AttributeIdIterator ssid_iter(*ssids);
-        AttributeListConstRefPtr single_ssid;
+        net_base::AttributeIdIterator ssid_iter(*ssids);
+        net_base::AttributeListConstRefPtr single_ssid;
         std::vector<uint8_t> ssid;
         int ssid_index;
         while (!ssid_iter.AtEnd()) {
@@ -708,7 +709,7 @@ void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
     LOG(ERROR) << "Received unexpected command:" << nl80211_message.command();
     return;
   }
-  AttributeListConstRefPtr triggers_supported;
+  net_base::AttributeListConstRefPtr triggers_supported;
   if (nl80211_message.const_attributes()->ConstGetNestedAttributeList(
           NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED, &triggers_supported)) {
     bool disconnect_supported = false;
@@ -758,7 +759,7 @@ void WakeOnWiFi::OnWakeupReasonReceived(
     return;
   }
   SLOG(2) << __func__ << ": Parsing wakeup reason";
-  AttributeListConstRefPtr triggers;
+  net_base::AttributeListConstRefPtr triggers;
   if (!wakeup_reason_msg.const_attributes()->ConstGetNestedAttributeList(
           NL80211_ATTR_WOWLAN_TRIGGERS, &triggers)) {
     SLOG(2) << __func__ << ": Wakeup reason: Not wake on WiFi related";
@@ -772,7 +773,7 @@ void WakeOnWiFi::OnWakeupReasonReceived(
     record_wake_reason_callback_.Run(GetLastWakeReason(nullptr));
     return;
   }
-  AttributeListConstRefPtr results_list;
+  net_base::AttributeListConstRefPtr results_list;
   if (triggers->ConstGetNestedAttributeList(
           NL80211_WOWLAN_TRIG_NET_DETECT_RESULTS, &results_list)) {
     // It is possible that NL80211_WOWLAN_TRIG_NET_DETECT_RESULTS is present
@@ -1011,14 +1012,14 @@ void WakeOnWiFi::BeforeSuspendActions(
 
 // static
 WiFi::FreqSet WakeOnWiFi::ParseWakeOnSSIDResults(
-    AttributeListConstRefPtr results_list) {
+    net_base::AttributeListConstRefPtr results_list) {
   WiFi::FreqSet freqs;
-  AttributeIdIterator results_iter(*results_list);
+  net_base::AttributeIdIterator results_iter(*results_list);
   if (results_iter.AtEnd()) {
     SLOG(2) << __func__ << ": Wake on SSID results not available";
     return freqs;
   }
-  AttributeListConstRefPtr result;
+  net_base::AttributeListConstRefPtr result;
   int ssid_num = 0;
   for (; !results_iter.AtEnd(); results_iter.Advance()) {
     if (!results_list->ConstGetNestedAttributeList(results_iter.GetId(),
@@ -1036,11 +1037,11 @@ WiFi::FreqSet WakeOnWiFi::ParseWakeOnSSIDResults(
     }
     SLOG(2) << "SSID " << ssid_num << ": "
             << net_base::byte_utils::ByteStringFromBytes(ssid);
-    AttributeListConstRefPtr frequencies;
+    net_base::AttributeListConstRefPtr frequencies;
     uint32_t freq_value;
     if (result->ConstGetNestedAttributeList(NL80211_ATTR_SCAN_FREQUENCIES,
                                             &frequencies)) {
-      AttributeIdIterator freq_iter(*frequencies);
+      net_base::AttributeIdIterator freq_iter(*frequencies);
       for (; !freq_iter.AtEnd(); freq_iter.Advance()) {
         if (frequencies->GetU32AttributeValue(freq_iter.GetId(), &freq_value)) {
           freqs.insert(freq_value);

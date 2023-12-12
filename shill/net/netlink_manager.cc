@@ -16,15 +16,15 @@
 #include <base/logging.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
+#include <net-base/attribute_list.h>
 #include <net-base/netlink_message.h>
 #include <net-base/netlink_packet.h>
-
-#include "shill/net/attribute_list.h"
 
 namespace shill {
 
 namespace {
 // TODO(b/301905012): Remove this type alias when moving this file to net-base.
+using net_base::AttributeListConstRefPtr;
 using net_base::ErrorAckMessage;
 using net_base::NetlinkMessage;
 using net_base::NetlinkMessageFactory;

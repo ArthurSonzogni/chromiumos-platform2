@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/attribute_list.h>
 #include <net-base/byte_utils.h>
 #include <net-base/netlink_message.h>
 #include <net-base/netlink_packet.h>
@@ -310,7 +311,7 @@ class Nl80211MessageTest : public Test {
       return false;
     }
 
-    AttributeListConstRefPtr frequency_list;
+    net_base::AttributeListConstRefPtr frequency_list;
     if (!message.const_attributes()->ConstGetNestedAttributeList(
             NL80211_ATTR_SCAN_FREQUENCIES, &frequency_list) ||
         !frequency_list) {
@@ -318,7 +319,7 @@ class Nl80211MessageTest : public Test {
       return false;
     }
 
-    AttributeIdIterator freq_iter(*frequency_list);
+    net_base::AttributeIdIterator freq_iter(*frequency_list);
     value->clear();
     for (; !freq_iter.AtEnd(); freq_iter.Advance()) {
       uint32_t freq = 0;
@@ -338,7 +339,7 @@ class Nl80211MessageTest : public Test {
       return false;
     }
 
-    AttributeListConstRefPtr ssid_list;
+    net_base::AttributeListConstRefPtr ssid_list;
     if (!message.const_attributes()->ConstGetNestedAttributeList(
             NL80211_ATTR_SCAN_SSIDS, &ssid_list) ||
         !ssid_list) {
@@ -346,7 +347,7 @@ class Nl80211MessageTest : public Test {
       return false;
     }
 
-    AttributeIdIterator ssid_iter(*ssid_list);
+    net_base::AttributeIdIterator ssid_iter(*ssid_list);
     value->clear();
     for (; !ssid_iter.AtEnd(); ssid_iter.Advance()) {
       std::vector<uint8_t> bytes;
@@ -496,7 +497,7 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_NEW_STATION) {
   }
 
   {
-    AttributeListConstRefPtr nested;
+    net_base::AttributeListConstRefPtr nested;
     EXPECT_TRUE(message->const_attributes()->ConstGetNestedAttributeList(
         NL80211_ATTR_STA_INFO, &nested));
   }
@@ -789,7 +790,7 @@ TEST_F(Nl80211MessageTest, Parse_NL80211_CMD_NOTIFY_CQM) {
   }
 
   {
-    AttributeListConstRefPtr nested;
+    net_base::AttributeListConstRefPtr nested;
     EXPECT_TRUE(message->const_attributes()->ConstGetNestedAttributeList(
         NL80211_ATTR_CQM, &nested));
     uint32_t threshold_event;

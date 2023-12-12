@@ -10,9 +10,6 @@ group("all") {
     ":install_headers",
     ":libshill-net",
   ]
-  if (use.fuzzer) {
-    deps += [ ":netlink_attribute_list_fuzzer" ]
-  }
   if (use.test) {
     deps += [ ":shill_net_test" ]
   }
@@ -20,12 +17,9 @@ group("all") {
 
 install_config("install_headers") {
   sources = [
-    "attribute_list.h",
-    "control_netlink_attribute.h",
     "generic_netlink_message.h",
     "mock_netlink_manager.h",
     "mock_process_manager.h",
-    "netlink_attribute.h",
     "netlink_manager.h",
     "process_manager.h",
     "shill_export.h",
@@ -59,10 +53,7 @@ write_deps("libshill-net_deps") {
 
 shared_library("libshill-net") {
   sources = [
-    "attribute_list.cc",
-    "control_netlink_attribute.cc",
     "generic_netlink_message.cc",
-    "netlink_attribute.cc",
     "netlink_manager.cc",
     "process_manager.cc",
   ]
@@ -74,14 +65,6 @@ shared_library("libshill-net") {
 if (use.fuzzer) {
   pkg_config("fuzzed_data_config") {
     pkg_deps = [ "libchrome-test" ]
-  }
-  executable("netlink_attribute_list_fuzzer") {
-    sources = [ "attribute_list_fuzzer.cc" ]
-    configs += [
-      "//common-mk/common_fuzzer",
-      ":target_defaults",
-    ]
-    deps = [ ":libshill-net" ]
   }
 }
 
@@ -108,11 +91,7 @@ if (use.test) {
 
   executable("shill_net_test") {
     run_test = true
-    sources = [
-      "attribute_list_test.cc",
-      "netlink_attribute_test.cc",
-      "process_manager_test.cc",
-    ]
+    sources = [ "process_manager_test.cc" ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
