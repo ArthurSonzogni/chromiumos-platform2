@@ -495,6 +495,10 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   // when a hibernate resume was aborted.
   base::FilePath hibernated_state_path_;
 
+  // Path to a file that's touched to announce imminent shutdown to other
+  // processes.
+  base::FilePath shutdown_announced_path_;
+
   // Path to a file that's touched when a suspend attempt's commencement is
   // announced to other processes and unlinked when the attempt's completion is
   // announced. Used to detect cases where powerd was restarted

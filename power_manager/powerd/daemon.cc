@@ -104,6 +104,10 @@ const char kDefaultOobeCompletedPath[] = "/home/chronos/.oobe_completed";
 const char kPowerOverrideLockfileDir[] = "/run/lock/power_override";
 
 // Basename appended to |run_dir| (see Daemon's c'tor) to produce
+// |shutdown_announced_path_|.
+const char kShutdownAnnouncedFile[] = "shutdown_announced";
+
+// Basename appended to |run_dir| (see Daemon's c'tor) to produce
 // |suspend_announced_path_|.
 const char kSuspendAnnouncedFile[] = "suspend_announced";
 
@@ -358,6 +362,7 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       run_dir_(run_dir),
       suspended_state_path_(kDefaultSuspendedStatePath),
       hibernated_state_path_(kDefaultHibernatedStatePath),
+      shutdown_announced_path_(run_dir.Append(kShutdownAnnouncedFile)),
       suspend_announced_path_(run_dir.Append(kSuspendAnnouncedFile)),
       already_ran_path_(run_dir.Append(Daemon::kAlreadyRanFileName)),
       video_activity_logger_(new PeriodicActivityLogger(
@@ -1918,6 +1923,11 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
   if (shutting_down_) {
     LOG(INFO) << "Shutdown already initiated; ignoring additional request";
     return;
+  }
+
+  if (!base::PathExists(shutdown_announced_path_)) {
+    if (base::WriteFile(shutdown_announced_path_, nullptr, 0) < 0)
+      PLOG(ERROR) << "Couldn't create " << shutdown_announced_path_.value();
   }
 
   std::string details;
