@@ -699,7 +699,8 @@ void AuthSession::MigrateToUssDuringUpdateVaultKeyset(
   // completion of the UpdateAuthFactor this will be passed to UserSession's
   // credential verifier to cache the secret for future lightweight
   // verifications.
-  AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
+  AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input,
+                        auth_factor_metadata);
 
   UssMigrator migrator(username_);
   // FilesystemKeyset is the same for all VaultKeysets hence the session's
@@ -873,7 +874,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
 
   // Set the credential verifier for this credential.
   AddCredentialVerifier(request_auth_factor_type, vault_keyset_->GetLabel(),
-                        auth_input);
+                        auth_input, metadata);
 
   ReportTimerDuration(auth_session_performance_timer.get());
 
@@ -1928,7 +1929,8 @@ void AuthSession::ResaveUssWithFactorUpdated(
   }
 
   // Create the credential verifier if applicable.
-  AddCredentialVerifier(auth_factor_type, auth_factor.label(), auth_input);
+  AddCredentialVerifier(auth_factor_type, auth_factor.label(), auth_input,
+                        auth_factor.metadata());
 
   LOG(INFO) << "AuthSession: updated auth factor " << auth_factor.label()
             << " in USS.";
@@ -2429,8 +2431,8 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactorEphemeral(
   }
 
   // Create the replacement verifier.
-  auto replacement_verifier =
-      factor_driver.CreateCredentialVerifier(auth_factor_label, *auth_input);
+  auto replacement_verifier = factor_driver.CreateCredentialVerifier(
+      auth_factor_label, *auth_input, auth_factor_metadata);
   if (!replacement_verifier) {
     LOG(ERROR) << "AuthSession: Unable to create replacement verifier.";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -2564,7 +2566,7 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactorIntoUss(
   factor_to_remove = &original_auth_factor;
   session_->verifier_forwarder_.ReleaseVerifier(original_auth_factor.label());
   session_->AddCredentialVerifier(auth_factor_type, auth_factor_label,
-                                  auth_input);
+                                  auth_input, auth_factor_metadata);
   session_->auth_factor_map_.Remove(original_auth_factor.label());
   session_->auth_factor_map_.Add(std::move(replacement_auth_factor),
                                  AuthFactorStorageType::kUserSecretStash);
@@ -2639,7 +2641,7 @@ void AuthSession::PrepareAuthFactor(
     }
 
     // If this type of factor supports label-less verifiers, then create one.
-    if (auto verifier = factor_driver.CreateCredentialVerifier({}, {})) {
+    if (auto verifier = factor_driver.CreateCredentialVerifier({}, {}, {})) {
       verifier_forwarder_.AddVerifier(std::move(verifier));
     }
   } else {
@@ -3148,11 +3150,12 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForPrepareForAuth(
 CredentialVerifier* AuthSession::AddCredentialVerifier(
     AuthFactorType auth_factor_type,
     const std::string& auth_factor_label,
-    const AuthInput& auth_input) {
+    const AuthInput& auth_input,
+    const AuthFactorMetadata& auth_factor_metadata) {
   const AuthFactorDriver& factor_driver =
       auth_factor_driver_manager_->GetDriver(auth_factor_type);
   if (auto new_verifier = factor_driver.CreateCredentialVerifier(
-          auth_factor_label, auth_input)) {
+          auth_factor_label, auth_input, auth_factor_metadata)) {
     auto* return_ptr = new_verifier.get();
     verifier_forwarder_.AddVerifier(std::move(new_verifier));
     return return_ptr;
@@ -3349,7 +3352,8 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
     }
   }
 
-  AddCredentialVerifier(auth_factor_type, auth_factor.label(), auth_input);
+  AddCredentialVerifier(auth_factor_type, auth_factor.label(), auth_input,
+                        auth_factor.metadata());
 
   LOG(INFO) << "AuthSession: added auth factor " << auth_factor.label()
             << " into USS.";
@@ -3498,9 +3502,9 @@ void AuthSession::AuthForDecrypt::AddAuthFactor(
   if (session_->is_ephemeral_user_) {
     // If AuthSession is configured as an ephemeral user, then we do not save
     // the key to the disk.
-    session_->AddAuthFactorForEphemeral(auth_factor_type, auth_factor_label,
-                                        auth_input_status.value(),
-                                        std::move(on_done));
+    session_->AddAuthFactorForEphemeral(
+        auth_factor_type, auth_factor_label, auth_input_status.value(),
+        auth_factor_metadata, std::move(on_done));
     return;
   }
 
@@ -3553,6 +3557,7 @@ void AuthSession::AddAuthFactorForEphemeral(
     AuthFactorType auth_factor_type,
     const std::string& auth_factor_label,
     const AuthInput& auth_input,
+    const AuthFactorMetadata& auth_factor_metadata,
     StatusCallback on_done) {
   CHECK(is_ephemeral_user_);
 
@@ -3573,8 +3578,8 @@ void AuthSession::AddAuthFactorForEphemeral(
     return;
   }
 
-  CredentialVerifier* verifier =
-      AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
+  CredentialVerifier* verifier = AddCredentialVerifier(
+      auth_factor_type, auth_factor_label, auth_input, auth_factor_metadata);
   // Check whether the verifier creation failed.
   if (!verifier) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -3813,7 +3818,8 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   }
 
   // Set the credential verifier for this credential.
-  AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
+  AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input,
+                        auth_factor.metadata());
 
   const AuthFactorDriver& factor_driver =
       auth_factor_driver_manager_->GetDriver(auth_factor_type);

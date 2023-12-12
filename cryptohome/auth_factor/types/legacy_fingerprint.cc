@@ -74,7 +74,9 @@ bool LegacyFingerprintAuthFactorDriver::IsLightAuthSupported(
 
 std::unique_ptr<CredentialVerifier>
 LegacyFingerprintAuthFactorDriver::CreateCredentialVerifier(
-    const std::string& auth_factor_label, const AuthInput& auth_input) const {
+    const std::string& auth_factor_label,
+    const AuthInput& auth_input,
+    const AuthFactorMetadata& auth_factor_metadata) const {
   if (!auth_factor_label.empty()) {
     LOG(ERROR) << "Legacy fingerprint verifiers cannot use labels";
     return nullptr;

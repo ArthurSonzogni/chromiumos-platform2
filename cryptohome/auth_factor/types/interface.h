@@ -142,7 +142,8 @@ class AuthFactorDriver {
   // null on failure or if verifiers are not supported by the driver.
   virtual std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
       const std::string& auth_factor_label,
-      const AuthInput& auth_input) const = 0;
+      const AuthInput& auth_input,
+      const AuthFactorMetadata& auth_factor_metadata) const = 0;
 
   // This returns if a type needs a reset secret.
   virtual bool NeedsResetSecret() const = 0;

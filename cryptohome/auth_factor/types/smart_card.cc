@@ -43,7 +43,9 @@ bool SmartCardAuthFactorDriver::IsLightAuthSupported(
 
 std::unique_ptr<CredentialVerifier>
 SmartCardAuthFactorDriver::CreateCredentialVerifier(
-    const std::string& auth_factor_label, const AuthInput& auth_input) const {
+    const std::string& auth_factor_label,
+    const AuthInput& auth_input,
+    const AuthFactorMetadata& auth_factor_metadata) const {
   if (!IsChallengeCredentialReady(auth_input, challenge_credentials_helper_,
                                   key_challenge_service_factory_)) {
     return nullptr;

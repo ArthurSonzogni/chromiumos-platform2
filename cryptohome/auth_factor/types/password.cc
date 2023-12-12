@@ -24,7 +24,9 @@ bool PasswordAuthFactorDriver::IsLightAuthSupported(
 
 std::unique_ptr<CredentialVerifier>
 PasswordAuthFactorDriver::CreateCredentialVerifier(
-    const std::string& auth_factor_label, const AuthInput& auth_input) const {
+    const std::string& auth_factor_label,
+    const AuthInput& auth_input,
+    const AuthFactorMetadata& auth_factor_metadata) const {
   if (!auth_input.user_input.has_value()) {
     LOG(ERROR) << "Cannot construct a password verifier without a password";
     return nullptr;

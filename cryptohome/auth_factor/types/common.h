@@ -207,7 +207,8 @@ class AfDriverNoCredentialVerifier : public virtual AuthFactorDriver {
   }
   std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
       const std::string& auth_factor_label,
-      const AuthInput& auth_input) const final {
+      const AuthInput& auth_input,
+      const AuthFactorMetadata& auth_factor_metadata) const final {
     return nullptr;
   }
 };

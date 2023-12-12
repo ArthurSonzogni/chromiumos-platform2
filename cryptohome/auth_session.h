@@ -520,7 +520,8 @@ class AuthSession final {
   CredentialVerifier* AddCredentialVerifier(
       AuthFactorType auth_factor_type,
       const std::string& auth_factor_label,
-      const AuthInput& auth_input);
+      const AuthInput& auth_input,
+      const AuthFactorMetadata& auth_factor_metadata);
 
   // Helper function to update a keyset on disk on KeyBlobs generated. If update
   // succeeds |vault_keyset_| is also updated. Failure doesn't return error and
@@ -631,6 +632,7 @@ class AuthSession final {
   void AddAuthFactorForEphemeral(AuthFactorType auth_factor_type,
                                  const std::string& auth_factor_label,
                                  const AuthInput& auth_input,
+                                 const AuthFactorMetadata& auth_factor_metadata,
                                  StatusCallback on_done);
 
   // Loads and decrypts the USS payload with |auth_factor| using the

@@ -183,7 +183,7 @@ TEST_F(PasswordDriverTest, CreateCredentialVerifier) {
   AuthFactorDriver& driver = password_driver;
 
   AuthInput auth_input = {.user_input = kPassword};
-  auto verifier = driver.CreateCredentialVerifier(kLabel, auth_input);
+  auto verifier = driver.CreateCredentialVerifier(kLabel, auth_input, {});
   ASSERT_THAT(verifier, NotNull());
   EXPECT_THAT(verifier->auth_factor_type(), Eq(AuthFactorType::kPassword));
   EXPECT_THAT(verifier->auth_factor_label(), Eq(kLabel));

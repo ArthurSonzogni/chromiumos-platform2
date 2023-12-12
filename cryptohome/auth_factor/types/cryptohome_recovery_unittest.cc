@@ -214,7 +214,7 @@ TEST_F(CryptohomeRecoveryDriverTest, CreateCredentialVerifierFails) {
   CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
   AuthFactorDriver& driver = recovery_driver;
 
-  auto verifier = driver.CreateCredentialVerifier(kLabel, {});
+  auto verifier = driver.CreateCredentialVerifier(kLabel, {}, {});
   EXPECT_THAT(verifier, IsNull());
 }
 

@@ -250,7 +250,7 @@ TEST_F(PinDriverTest, CreateCredentialVerifierFails) {
   PinAuthFactorDriver pin_driver(&crypto_);
   AuthFactorDriver& driver = pin_driver;
 
-  auto verifier = driver.CreateCredentialVerifier(kLabel, {});
+  auto verifier = driver.CreateCredentialVerifier(kLabel, {}, {});
   EXPECT_THAT(verifier, IsNull());
 }
 

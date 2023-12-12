@@ -248,7 +248,9 @@ TEST_F(SmartCardDriverTest, CreateCredentialVerifierFailsWithoutDbus) {
   };
   AuthInput auth_input = {.username = kUser,
                           .challenge_credential_auth_input = cc_input};
-  auto verifier = driver.CreateCredentialVerifier(kLabel, auth_input);
+  auto verifier = driver.CreateCredentialVerifier(
+      kLabel, auth_input,
+      {.metadata = SmartCardMetadata{.public_key_spki_der = kPublicKey}});
   EXPECT_THAT(verifier, IsNull());
 }
 
@@ -265,7 +267,9 @@ TEST_F(SmartCardDriverTest, CreateCredentialVerifierFailsWithoutHelper) {
       .dbus_service_name = kCcDbusServiceName};
   AuthInput auth_input = {.username = kUser,
                           .challenge_credential_auth_input = cc_input};
-  auto verifier = driver.CreateCredentialVerifier(kLabel, auth_input);
+  auto verifier = driver.CreateCredentialVerifier(
+      kLabel, auth_input,
+      {.metadata = SmartCardMetadata{.public_key_spki_der = kPublicKey}});
   EXPECT_THAT(verifier, IsNull());
 }
 
@@ -287,7 +291,9 @@ TEST_F(SmartCardDriverTest, CreateCredentialVerifier) {
       .WillOnce([](const std::string&) {
         return std::make_unique<MockKeyChallengeService>();
       });
-  auto verifier = driver.CreateCredentialVerifier(kLabel, auth_input);
+  auto verifier = driver.CreateCredentialVerifier(
+      kLabel, auth_input,
+      {.metadata = SmartCardMetadata{.public_key_spki_der = kPublicKey}});
   ASSERT_THAT(verifier, NotNull());
   EXPECT_THAT(verifier->auth_factor_type(), Eq(AuthFactorType::kSmartCard));
   EXPECT_THAT(verifier->auth_factor_label(), Eq(kLabel));
