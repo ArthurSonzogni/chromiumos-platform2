@@ -18,6 +18,8 @@ namespace shill {
 
 // This provides a static function for dumping the DNS information out
 // of an ipconfig into a "resolv.conf" formatted file.
+// TODO(b/240871320): /etc/resolv.conf is now managed by dnsproxy. The
+// resolver class is to be deprecated.
 class Resolver {
  public:
   // The default comma-separated list of search-list prefixes that

@@ -83,7 +83,8 @@ Network::Network(int interface_index,
                  EventDispatcher* dispatcher,
                  Metrics* metrics,
                  patchpanel::Client* patchpanel_client,
-                 NetworkApplier* network_applier)
+                 NetworkApplier* network_applier,
+                 Resolver* resolver)
     : interface_index_(interface_index),
       interface_name_(interface_name),
       technology_(technology),
@@ -97,7 +98,8 @@ Network::Network(int interface_index,
       dhcp_provider_(DHCPProvider::GetInstance()),
       rtnl_handler_(net_base::RTNLHandler::GetInstance()),
       patchpanel_client_(patchpanel_client),
-      network_applier_(network_applier) {}
+      network_applier_(network_applier),
+      resolver_(resolver) {}
 
 Network::~Network() {
   for (auto& ev : event_handlers_) {
@@ -1107,6 +1109,18 @@ void Network::ApplyNetworkConfig(NetworkApplier::Area area,
   const auto& network_config = GetNetworkConfig();
   network_applier_->ApplyNetworkConfig(interface_index_, interface_name_, area,
                                        network_config, priority_, technology_);
+
+  // TODO(b/240871320): /etc/resolv.conf is now managed by dnsproxy. This code
+  // is to be deprecated.
+  if ((area & NetworkApplier::Area::kDNS) && priority_.is_primary_for_dns) {
+    std::vector<std::string> dns_strs;
+    std::transform(network_config.dns_servers.begin(),
+                   network_config.dns_servers.end(),
+                   std::back_inserter(dns_strs),
+                   [](net_base::IPAddress dns) { return dns.ToString(); });
+    resolver_->SetDNSFromLists(dns_strs, network_config.dns_search_domains);
+  }
+
   CHECK(patchpanel_client_);
   patchpanel_client_->RegisterOnAvailableCallback(base::BindOnce(
       &Network::CallPatchpanelConfigureNetwork, weak_factory_.GetWeakPtr(),

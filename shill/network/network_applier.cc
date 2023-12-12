@@ -84,7 +84,6 @@ NetworkApplier::NetworkApplier()
     : rule_table_(std::make_unique<RoutingPolicyService>()),
       routing_table_(std::make_unique<RoutingTable>()),
       address_service_(std::make_unique<AddressService>()),
-      resolver_(Resolver::GetInstance()),
       rtnl_handler_(net_base::RTNLHandler::GetInstance()),
       proc_fs_(std::make_unique<ProcFsStub>("")) {}
 
@@ -98,7 +97,6 @@ NetworkApplier* NetworkApplier::GetInstance() {
 
 // static
 std::unique_ptr<NetworkApplier> NetworkApplier::CreateForTesting(
-    Resolver* resolver,
     std::unique_ptr<RoutingTable> routing_table,
     std::unique_ptr<RoutingPolicyService> rule_table,
     std::unique_ptr<AddressService> address_service,
@@ -106,7 +104,6 @@ std::unique_ptr<NetworkApplier> NetworkApplier::CreateForTesting(
     std::unique_ptr<ProcFsStub> proc_fs) {
   // Using `new` to access a non-public constructor.
   auto ptr = base::WrapUnique(new NetworkApplier());
-  ptr->resolver_ = resolver;
   ptr->routing_table_ = std::move(routing_table);
   ptr->rule_table_ = std::move(rule_table);
   ptr->address_service_ = std::move(address_service);
@@ -148,14 +145,9 @@ void NetworkApplier::ApplyDNS(
     net_base::NetworkPriority priority,
     const std::vector<net_base::IPAddress>& dns_servers,
     const std::vector<std::string>& dns_search_domains) {
-  if (!priority.is_primary_for_dns) {
-    return;
-  }
-  std::vector<std::string> dns_strs;
-  std::transform(dns_servers.begin(), dns_servers.end(),
-                 std::back_inserter(dns_strs),
-                 [](net_base::IPAddress dns) { return dns.ToString(); });
-  resolver_->SetDNSFromLists(dns_strs, dns_search_domains);
+  // TODO(b/259354228): Notify dnsproxy when DNS changes. Note that currently
+  // dnsproxy is getting the information from itself subscribing to shill
+  // Device/Service event API instead.
 }
 
 void NetworkApplier::ApplyRoutingPolicy(

@@ -21,7 +21,6 @@
 #include "shill/network/proc_fs_stub.h"
 #include "shill/network/routing_policy_service.h"
 #include "shill/network/routing_table.h"
-#include "shill/resolver.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -52,7 +51,6 @@ class NetworkApplier {
 
   // Helper factory function for test code with dependency injection.
   static std::unique_ptr<NetworkApplier> CreateForTesting(
-      Resolver* resolver,
       std::unique_ptr<RoutingTable> routing_table,
       std::unique_ptr<RoutingPolicyService> rule_table,
       std::unique_ptr<AddressService> address_service,
@@ -140,9 +138,6 @@ class NetworkApplier {
   std::unique_ptr<AddressService> address_service_;
 
   // Cache singleton pointers for performance and test purposes.
-  // TODO(b/264963034): Let NetworkApplier own those services after external
-  // dependencies on them are removed.
-  Resolver* resolver_;
   net_base::RTNLHandler* rtnl_handler_;
 
   // A ProcFsStub instance with no specific interface_name, for the purpose of

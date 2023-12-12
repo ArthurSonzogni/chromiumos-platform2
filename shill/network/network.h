@@ -37,6 +37,7 @@
 #include "shill/network/proc_fs_stub.h"
 #include "shill/network/slaac_controller.h"
 #include "shill/portal_detector.h"
+#include "shill/resolver.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -218,7 +219,8 @@ class Network {
           EventDispatcher* dispatcher,
           Metrics* metrics,
           patchpanel::Client* patchpanel_client,
-          NetworkApplier* network_applier = NetworkApplier::GetInstance());
+          NetworkApplier* network_applier = NetworkApplier::GetInstance(),
+          Resolver* resolver = Resolver::GetInstance());
   Network(const Network&) = delete;
   Network& operator=(const Network&) = delete;
   virtual ~Network();
@@ -619,6 +621,9 @@ class Network {
   net_base::RTNLHandler* rtnl_handler_;
   patchpanel::Client* patchpanel_client_;
   NetworkApplier* network_applier_;
+  // TODO(b/240871320): /etc/resolv.conf is now managed by dnsproxy. The
+  // resolver class is to be deprecated.
+  Resolver* resolver_;
 
   // All the weak pointers created by this factory will be invalidated when the
   // Network state becomes kIdle. Can be useful when the concept of a connected

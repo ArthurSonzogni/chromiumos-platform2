@@ -15,7 +15,6 @@
 #include <net-base/mock_rtnl_handler.h>
 #include <net-base/network_priority.h>
 
-#include "shill/mock_resolver.h"
 #include "shill/network/mock_network_applier.h"
 #include "shill/network/mock_proc_fs_stub.h"
 #include "shill/network/mock_routing_policy_service.h"
@@ -131,13 +130,12 @@ class NetworkApplierTest : public Test {
     rule_table_ = temp_rule_table_ptr.get();
 
     network_applier_ = NetworkApplier::CreateForTesting(
-        &resolver_, std::move(temp_routing_table_ptr),
-        std::move(temp_rule_table_ptr), std::move(temp_address_service_ptr),
-        &rtnl_handler_, std::move(temp_proc_fs_ptr));
+        std::move(temp_routing_table_ptr), std::move(temp_rule_table_ptr),
+        std::move(temp_address_service_ptr), &rtnl_handler_,
+        std::move(temp_proc_fs_ptr));
   }
 
  protected:
-  StrictMock<MockResolver> resolver_;
   StrictMock<MockRoutingTable>* routing_table_;  // owned by network_applier_
   StrictMock<MockRoutingPolicyService>*
       rule_table_;  // owned by network_applier_
