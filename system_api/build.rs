@@ -66,6 +66,11 @@ const BINDINGS_TO_GENERATE: &[(&str, &str, BindingsType)] = &[
         BindingsType::Client(OPTS),
     ),
     (
+        "org_chromium_swapmanagement",
+        "swap_management/dbus_bindings/org.chromium.SwapManagement.xml",
+        BindingsType::Client(OPTS),
+    ),
+    (
         "org_chromium_userdataauth",
         "cryptohome/dbus_bindings/org.chromium.UserDataAuth.xml",
         BindingsType::Client(OPTS),
