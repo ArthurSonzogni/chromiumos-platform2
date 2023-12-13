@@ -26,8 +26,7 @@ std::optional<AuthInput> CreateAuthInput(
     const Username& username,
     const ObfuscatedUsername& obfuscated_username,
     bool locked_to_single_user,
-    const std::optional<brillo::Blob>& cryptohome_recovery_ephemeral_pub_key,
-    const AuthFactorMetadata& auth_factor_metadata);
+    const std::optional<brillo::Blob>& cryptohome_recovery_ephemeral_pub_key);
 
 // Infers the `AuthFactorType` that the given `AuthInput` should be used with.
 // Returns `nullopt` un unexpected inputs.

@@ -1159,8 +1159,7 @@ void AuthSession::AuthenticateAuthFactor(
         return;
       }
       CryptohomeStatusOr<AuthInput> auth_input =
-          CreateAuthInputForAuthentication(auth_input_proto,
-                                           verifier->auth_factor_metadata());
+          CreateAuthInputForAuthentication(auth_input_proto);
       if (!auth_input.ok()) {
         std::move(on_done).Run(
             MakeStatus<CryptohomeError>(
@@ -1210,8 +1209,7 @@ void AuthSession::AuthenticateAuthFactor(
                                        auth_factor_type_user_policy) &&
           request.flags.force_full_auth != ForceFullAuthFlag::kForce) {
         CryptohomeStatusOr<AuthInput> auth_input =
-            CreateAuthInputForAuthentication(auth_input_proto,
-                                             verifier->auth_factor_metadata());
+            CreateAuthInputForAuthentication(auth_input_proto);
         if (!auth_input.ok()) {
           std::move(on_done).Run(
               MakeStatus<CryptohomeError>(
@@ -1296,7 +1294,7 @@ void AuthSession::AuthenticateAuthFactor(
       }
 
       CryptohomeStatusOr<AuthInput> auth_input =
-          CreateAuthInputForAuthentication(auth_input_proto, metadata);
+          CreateAuthInputForAuthentication(auth_input_proto);
       if (!auth_input.ok()) {
         std::move(on_done).Run(
             MakeStatus<CryptohomeError>(
@@ -1761,8 +1759,8 @@ void AuthSession::AuthForDecrypt::UpdateAuthFactor(
 
   // Create and initialize fields for auth_input.
   CryptohomeStatusOr<AuthInput> auth_input_status =
-      session_->CreateAuthInputForAdding(request.auth_input(), auth_factor_type,
-                                         auth_factor_metadata);
+      session_->CreateAuthInputForAdding(request.auth_input(),
+                                         auth_factor_type);
   if (!auth_input_status.ok()) {
     std::move(on_done).Run(
         MakeStatus<CryptohomeError>(
@@ -2278,7 +2276,7 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactor(
 
   // Construct an auth factor input for the replacement.
   CryptohomeStatusOr<AuthInput> auth_input = session_->CreateAuthInputForAdding(
-      request.auth_input(), auth_factor_type, auth_factor_metadata);
+      request.auth_input(), auth_factor_type);
   if (!auth_input.ok()) {
     std::move(on_done).Run(
         MakeStatus<CryptohomeError>(
@@ -2420,7 +2418,7 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactorEphemeral(
 
   // Construct an auth factor input for the replacement.
   CryptohomeStatusOr<AuthInput> auth_input = session_->CreateAuthInputForAdding(
-      request.auth_input(), auth_factor_type, auth_factor_metadata);
+      request.auth_input(), auth_factor_type);
   if (!auth_input.ok()) {
     std::move(on_done).Run(
         MakeStatus<CryptohomeError>(
@@ -2914,12 +2912,11 @@ void AuthSession::ResaveKeysetOnKeyBlobsGenerated(
 }
 
 CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAuthentication(
-    const user_data_auth::AuthInput& auth_input_proto,
-    const AuthFactorMetadata& auth_factor_metadata) {
+    const user_data_auth::AuthInput& auth_input_proto) {
   std::optional<AuthInput> auth_input = CreateAuthInput(
       platform_, auth_input_proto, username_, obfuscated_username_,
       auth_block_utility_->GetLockedToSingleUser(),
-      cryptohome_recovery_ephemeral_pub_key_, auth_factor_metadata);
+      cryptohome_recovery_ephemeral_pub_key_);
   if (!auth_input.has_value()) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocCreateFailedInAuthInputForAuth),
@@ -2966,13 +2963,12 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForMigration(
 
 CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
     const user_data_auth::AuthInput& auth_input_proto,
-    AuthFactorType auth_factor_type,
-    const AuthFactorMetadata& auth_factor_metadata) {
+    AuthFactorType auth_factor_type) {
   // Convert the proto to a basic AuthInput.
   std::optional<AuthInput> auth_input = CreateAuthInput(
       platform_, auth_input_proto, username_, obfuscated_username_,
       auth_block_utility_->GetLockedToSingleUser(),
-      cryptohome_recovery_ephemeral_pub_key_, auth_factor_metadata);
+      cryptohome_recovery_ephemeral_pub_key_);
   if (!auth_input.has_value()) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocCreateFailedInAuthInputForAdd),
@@ -2980,14 +2976,11 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
   // Delegate the rest of the construction to the other overload.
-  return CreateAuthInputForAdding(*std::move(auth_input), auth_factor_type,
-                                  auth_factor_metadata);
+  return CreateAuthInputForAdding(*std::move(auth_input), auth_factor_type);
 }
 
 CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
-    AuthInput auth_input,
-    AuthFactorType auth_factor_type,
-    const AuthFactorMetadata& auth_factor_metadata) {
+    AuthInput auth_input, AuthFactorType auth_factor_type) {
   const AuthFactorDriver& factor_driver =
       auth_factor_driver_manager_->GetDriver(auth_factor_type);
 
@@ -3489,8 +3482,8 @@ void AuthSession::AuthForDecrypt::AddAuthFactor(
   }
 
   CryptohomeStatusOr<AuthInput> auth_input_status =
-      session_->CreateAuthInputForAdding(request.auth_input(), auth_factor_type,
-                                         auth_factor_metadata);
+      session_->CreateAuthInputForAdding(request.auth_input(),
+                                         auth_factor_type);
   if (!auth_input_status.ok()) {
     std::move(on_done).Run(
         MakeStatus<CryptohomeError>(
@@ -3929,8 +3922,8 @@ void AuthSession::RecreateUssAuthFactor(
   }
   const AuthFactor& auth_factor = stored_auth_factor->auth_factor();
 
-  CryptohomeStatusOr<AuthInput> auth_input_for_add = CreateAuthInputForAdding(
-      std::move(auth_input), auth_factor.type(), auth_factor.metadata());
+  CryptohomeStatusOr<AuthInput> auth_input_for_add =
+      CreateAuthInputForAdding(std::move(auth_input), auth_factor.type());
   if (!auth_input_for_add.ok()) {
     LOG(WARNING) << "Unable to construct an auth input to recreate the factor: "
                  << auth_input_for_add.err_status();

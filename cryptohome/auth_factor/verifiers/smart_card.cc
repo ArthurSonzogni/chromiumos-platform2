@@ -24,14 +24,12 @@ using ::hwsec_foundation::status::StatusChain;
 
 SmartCardVerifier::SmartCardVerifier(
     std::string auth_factor_label,
-    const brillo::Blob& public_key_blob,
+    const AuthFactorMetadata& auth_factor_metadata,
     ChallengeCredentialsHelper* challenge_credentials_helper,
     KeyChallengeServiceFactory* key_challenge_service_factory)
-    : AsyncCredentialVerifier(
-          AuthFactorType::kSmartCard,
-          std::move(auth_factor_label),
-          {.metadata =
-               SmartCardMetadata{.public_key_spki_der = public_key_blob}}),
+    : AsyncCredentialVerifier(AuthFactorType::kSmartCard,
+                              std::move(auth_factor_label),
+                              auth_factor_metadata),
       challenge_credentials_helper_(challenge_credentials_helper),
       key_challenge_service_factory_(key_challenge_service_factory) {
   CHECK(challenge_credentials_helper_);
@@ -40,11 +38,11 @@ SmartCardVerifier::SmartCardVerifier(
 
 std::unique_ptr<SmartCardVerifier> SmartCardVerifier::Create(
     std::string auth_factor_label,
-    const brillo::Blob& public_key_blob,
+    const AuthFactorMetadata& auth_factor_metadata,
     ChallengeCredentialsHelper* challenge_credentials_helper,
     KeyChallengeServiceFactory* key_challenge_service_factory) {
   return base::WrapUnique(new SmartCardVerifier(
-      std::move(auth_factor_label), public_key_blob,
+      std::move(auth_factor_label), auth_factor_metadata,
       challenge_credentials_helper, key_challenge_service_factory));
 }
 
@@ -94,12 +92,24 @@ void SmartCardVerifier::VerifyAsync(const AuthInput& auth_input,
     return;
   }
 
+  auto* metadata =
+      std::get_if<SmartCardMetadata>(&auth_factor_metadata().metadata);
+  if (!metadata) {
+    LOG(ERROR) << __func__ << ": No smart card metadata.";
+    std::move(callback).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocSmartCardVerifierNoMetadata),
+        ErrorActionSet(
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+
   auto key_challenge_service = key_challenge_service_factory_->New(
       auth_input.challenge_credential_auth_input->dbus_service_name);
 
   SerializedChallengePublicKeyInfo public_key_info{
-      .public_key_spki_der = auth_input.challenge_credential_auth_input.value()
-                                 .public_key_spki_der,
+      .public_key_spki_der = metadata->public_key_spki_der,
       .signature_algorithm = auth_input.challenge_credential_auth_input.value()
                                  .challenge_signature_algorithms,
   };

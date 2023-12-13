@@ -29,7 +29,7 @@ class SmartCardVerifier final : public AsyncCredentialVerifier {
   // return null on failure.
   static std::unique_ptr<SmartCardVerifier> Create(
       std::string auth_factor_label,
-      const brillo::Blob& public_key_blob,
+      const AuthFactorMetadata& auth_factor_metadata,
       ChallengeCredentialsHelper* challenge_credentials_helper,
       KeyChallengeServiceFactory* key_challenge_service_factory);
 
@@ -42,7 +42,7 @@ class SmartCardVerifier final : public AsyncCredentialVerifier {
 
  private:
   SmartCardVerifier(std::string auth_factor_label,
-                    const brillo::Blob& public_key_blob,
+                    const AuthFactorMetadata& auth_factor_metadata,
                     ChallengeCredentialsHelper* challenge_credentials_helper,
                     KeyChallengeServiceFactory* key_challenge_service_factory);
 

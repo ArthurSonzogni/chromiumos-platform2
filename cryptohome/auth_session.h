@@ -475,20 +475,16 @@ class AuthSession final {
   // Converts the D-Bus AuthInput proto into the C++ struct. Returns nullopt on
   // failure.
   CryptohomeStatusOr<AuthInput> CreateAuthInputForAuthentication(
-      const user_data_auth::AuthInput& auth_input_proto,
-      const AuthFactorMetadata& auth_factor_metadata);
+      const user_data_auth::AuthInput& auth_input_proto);
   // Same as above, but additionally sets extra fields for resettable factors.
   // Can also be supplied with an already constructed AuthInput instead of the
   // raw proto, for cases where you need to construct both and don't want to
   // redo the same work.
   CryptohomeStatusOr<AuthInput> CreateAuthInputForAdding(
       const user_data_auth::AuthInput& auth_input_proto,
-      AuthFactorType auth_factor_type,
-      const AuthFactorMetadata& auth_factor_metadata);
+      AuthFactorType auth_factor_type);
   CryptohomeStatusOr<AuthInput> CreateAuthInputForAdding(
-      AuthInput auth_input,
-      AuthFactorType auth_factor_type,
-      const AuthFactorMetadata& auth_factor_metadata);
+      AuthInput auth_input, AuthFactorType auth_factor_type);
 
   // Creates AuthInput for migration from an AuthInput by adding `reset_secret`
   // if needed. If this is called during the AuthenticateAuthFactor, after the

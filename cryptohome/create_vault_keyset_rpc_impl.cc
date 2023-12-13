@@ -117,6 +117,7 @@ void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
       .locked_to_single_user = auth_block_utility_->GetLockedToSingleUser(),
       .username = auth_session.username(),
       .obfuscated_username = auth_session.obfuscated_username()};
+  AuthFactorMetadata auth_factor_metadata;
 
   // Generate the reset seed for AuthInput.
   if (factor_driver.NeedsResetSecret()) {
@@ -198,12 +199,13 @@ void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
           !challenge_spki.empty()) {
         auth_input.challenge_credential_auth_input =
             ChallengeCredentialAuthInput{
-                .public_key_spki_der = brillo::BlobFromString(challenge_spki),
                 .challenge_signature_algorithms = algos,
                 .dbus_service_name = request.key_delegate_dbus_service_name(),
             };
         auto* challenge_key = key_data.add_challenge_response_key();
         challenge_key->set_public_key_spki_der(challenge_spki);
+        auth_factor_metadata.metadata = SmartCardMetadata{
+            .public_key_spki_der = brillo::BlobFromString(challenge_spki)};
       }
       break;
     }
@@ -222,9 +224,9 @@ void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
       weak_factory_.GetWeakPtr(), key_data, request.disable_key_data(),
       std::ref(auth_session), std::move(on_done));
 
-  auth_block_utility_->CreateKeyBlobsWithAuthBlock(auth_block_type.value(),
-                                                   auth_input, /*metadata=*/{},
-                                                   std::move(create_callback));
+  auth_block_utility_->CreateKeyBlobsWithAuthBlock(
+      auth_block_type.value(), auth_input, auth_factor_metadata,
+      std::move(create_callback));
 }
 
 void CreateVaultKeysetRpcImpl::CreateAndPersistVaultKeyset(

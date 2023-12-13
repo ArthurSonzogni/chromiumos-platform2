@@ -144,9 +144,22 @@ void ChallengeCredentialAuthBlock::Create(
     return;
   }
 
+  auto* metadata =
+      std::get_if<SmartCardMetadata>(&auth_factor_metadata.metadata);
+  if (!metadata) {
+    LOG(ERROR) << __func__ << ": No smart card metadata.";
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocChalCredAuthBlockNoMetadataInCreate),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kAuth}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, nullptr);
+    return;
+  }
+
   SerializedChallengePublicKeyInfo public_key_info{
-      .public_key_spki_der = auth_input.challenge_credential_auth_input.value()
-                                 .public_key_spki_der,
+      .public_key_spki_der = metadata->public_key_spki_der,
       .signature_algorithm = auth_input.challenge_credential_auth_input.value()
                                  .challenge_signature_algorithms,
   };

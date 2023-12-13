@@ -876,18 +876,18 @@ TEST_F(AuthBlockUtilityImplTest, ChallengeCredentialCreate) {
         AuthInput auth_input{
             .challenge_credential_auth_input =
                 ChallengeCredentialAuthInput{
-                    .public_key_spki_der =
-                        brillo::BlobFromString("public_key_spki_der"),
                     .challenge_signature_algorithms =
                         {SerializedChallengeSignatureAlgorithm::
                              kRsassaPkcs1V15Sha256},
                 },
         };
+        const SmartCardMetadata metadata = {
+            .public_key_spki_der =
+                brillo::BlobFromString("public_key_spki_der")};
 
         ASSERT_TRUE(tpm_state.keyset_challenge_info.has_value());
         EXPECT_EQ(tpm_state.keyset_challenge_info.value().public_key_spki_der,
-                  auth_input.challenge_credential_auth_input.value()
-                      .public_key_spki_der);
+                  metadata.public_key_spki_der);
         EXPECT_EQ(
             tpm_state.keyset_challenge_info.value().salt_signature_algorithm,
             auth_input.challenge_credential_auth_input.value()
@@ -897,14 +897,17 @@ TEST_F(AuthBlockUtilityImplTest, ChallengeCredentialCreate) {
   auth_input.obfuscated_username = kObfuscated;
   auth_input.username = kUser, auth_input.locked_to_single_user = false;
   auth_input.challenge_credential_auth_input = ChallengeCredentialAuthInput{
-      .public_key_spki_der = brillo::BlobFromString("public_key_spki_der"),
       .challenge_signature_algorithms =
           {SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256},
       .dbus_service_name = kKeyDelegateDBusService};
+  const AuthFactorMetadata auth_factor_metadata = {
+      .metadata =
+          SmartCardMetadata{.public_key_spki_der =
+                                brillo::BlobFromString("public_key_spki_der")}};
 
   // Test.
   auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-      AuthBlockType::kChallengeCredential, auth_input, {},
+      AuthBlockType::kChallengeCredential, auth_input, auth_factor_metadata,
       std::move(create_callback));
 }
 
@@ -993,7 +996,6 @@ TEST_F(AuthBlockUtilityImplTest, ChallengeCredentialDerive) {
       passkey,
       /*locked_to_single_user=*/std::nullopt, .username = kUser,
       .challenge_credential_auth_input = ChallengeCredentialAuthInput{
-          .public_key_spki_der = brillo::BlobFromString("public_key_spki_der"),
           .challenge_signature_algorithms =
               {SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256},
           .dbus_service_name = kKeyDelegateDBusService}};
@@ -1274,8 +1276,6 @@ TEST_F(AuthBlockUtilityImplTest, GetAuthBlockWithTypeChallengeCredential) {
       .username = kUser,
       .challenge_credential_auth_input =
           ChallengeCredentialAuthInput{
-              .public_key_spki_der =
-                  brillo::BlobFromString("public_key_spki_der"),
               .challenge_signature_algorithms =
                   {SerializedChallengeSignatureAlgorithm::
                        kRsassaPkcs1V15Sha256},

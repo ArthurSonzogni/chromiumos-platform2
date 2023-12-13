@@ -54,8 +54,6 @@ struct CryptohomeRecoveryAuthInput {
 
 // Data required for Challenge Credential flow.
 struct ChallengeCredentialAuthInput {
-  // DER-encoded blob of the X.509 Subject Public Key Info.
-  brillo::Blob public_key_spki_der;
   // Supported signature algorithms, in the order of preference
   // (starting from the most preferred). Absence of this field
   // denotes that the key cannot be used for signing.

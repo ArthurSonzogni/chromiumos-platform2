@@ -51,8 +51,7 @@ SmartCardAuthFactorDriver::CreateCredentialVerifier(
     return nullptr;
   }
   std::unique_ptr<CredentialVerifier> verifier = SmartCardVerifier::Create(
-      auth_factor_label,
-      auth_input.challenge_credential_auth_input->public_key_spki_der,
+      auth_factor_label, auth_factor_metadata,
       challenge_credentials_helper_.get(), key_challenge_service_factory_);
   if (!verifier) {
     LOG(ERROR) << "Credential verifier initialization failed.";

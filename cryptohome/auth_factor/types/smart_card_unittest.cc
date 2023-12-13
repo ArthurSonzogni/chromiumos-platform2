@@ -242,7 +242,6 @@ TEST_F(SmartCardDriverTest, CreateCredentialVerifierFailsWithoutDbus) {
   AuthFactorDriver& driver = sc_driver;
 
   ChallengeCredentialAuthInput cc_input = {
-      .public_key_spki_der = kPublicKey,
       .challenge_signature_algorithms =
           {SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1},
   };
@@ -261,7 +260,6 @@ TEST_F(SmartCardDriverTest, CreateCredentialVerifierFailsWithoutHelper) {
   AuthFactorDriver& driver = sc_driver;
 
   ChallengeCredentialAuthInput cc_input = {
-      .public_key_spki_der = kPublicKey,
       .challenge_signature_algorithms =
           {SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1},
       .dbus_service_name = kCcDbusServiceName};
@@ -281,7 +279,6 @@ TEST_F(SmartCardDriverTest, CreateCredentialVerifier) {
   AuthFactorDriver& driver = sc_driver;
 
   ChallengeCredentialAuthInput cc_input = {
-      .public_key_spki_der = kPublicKey,
       .challenge_signature_algorithms =
           {SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1},
       .dbus_service_name = kCcDbusServiceName};

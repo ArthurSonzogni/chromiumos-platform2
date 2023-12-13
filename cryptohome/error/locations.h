@@ -2025,6 +2025,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocRateLimiterNoSecurityDomainKeysInAuthInputForAdd = 3436,
   /* ./auth_blocks/recoverable_key_store.cc */
   kLocRecoverableKeyStoreUpdateParseStateFailed = 3437,
+  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  kLocChalCredAuthBlockNoMetadataInCreate = 3438,
+  /* ./auth_factor/verifiers/smart_card.cc */
+  kLocSmartCardVerifierNoMetadata = 3439,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.

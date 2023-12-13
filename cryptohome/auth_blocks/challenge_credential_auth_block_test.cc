@@ -71,6 +71,7 @@ MATCHER_P(ChallengeAlgorithmIs, algorithm, "") {
 
 void VerifyCreateCallback(base::RunLoop* run_loop,
                           AuthInput* auth_input,
+                          const SmartCardMetadata* metadata,
                           CryptohomeStatus error,
                           std::unique_ptr<KeyBlobs> blobs,
                           std::unique_ptr<AuthBlockState> auth_state) {
@@ -99,9 +100,8 @@ void VerifyCreateCallback(base::RunLoop* run_loop,
   EXPECT_FALSE(tpm_state.scrypt_state.reset_seed_salt->empty());
 
   ASSERT_TRUE(tpm_state.keyset_challenge_info.has_value());
-  EXPECT_EQ(
-      tpm_state.keyset_challenge_info.value().public_key_spki_der,
-      auth_input->challenge_credential_auth_input.value().public_key_spki_der);
+  EXPECT_EQ(tpm_state.keyset_challenge_info.value().public_key_spki_der,
+            metadata->public_key_spki_der);
   EXPECT_EQ(tpm_state.keyset_challenge_info.value().salt_signature_algorithm,
             auth_input->challenge_credential_auth_input.value()
                 .challenge_signature_algorithms[0]);
@@ -146,13 +146,14 @@ TEST_F(ChallengeCredentialAuthBlockTest, Create) {
       .obfuscated_username = ObfuscatedUsername("obfuscated_username"),
       .challenge_credential_auth_input =
           ChallengeCredentialAuthInput{
-              .public_key_spki_der =
-                  brillo::BlobFromString("public_key_spki_der"),
               .challenge_signature_algorithms =
                   {SerializedChallengeSignatureAlgorithm::
                        kRsassaPkcs1V15Sha256},
           },
   };
+  const SmartCardMetadata smart_card_metadata = {
+      .public_key_spki_der = brillo::BlobFromString("public_key_spki_der")};
+  const AuthFactorMetadata metadata = {.metadata = smart_card_metadata};
 
   EXPECT_CALL(challenge_credentials_helper_,
               GenerateNew(kFakeAccountId, _, _, _, _))
@@ -168,10 +169,10 @@ TEST_F(ChallengeCredentialAuthBlockTest, Create) {
       });
 
   base::RunLoop run_loop;
-  AuthBlock::CreateCallback create_callback =
-      base::BindOnce(VerifyCreateCallback, &run_loop, &auth_input);
+  AuthBlock::CreateCallback create_callback = base::BindOnce(
+      VerifyCreateCallback, &run_loop, &auth_input, &smart_card_metadata);
 
-  auth_block_->Create(auth_input, {}, std::move(create_callback));
+  auth_block_->Create(auth_input, metadata, std::move(create_callback));
 
   run_loop.Run();
 }
@@ -202,15 +203,16 @@ TEST_F(ChallengeCredentialAuthBlockTest, CreateCredentialsFailed) {
       .obfuscated_username = ObfuscatedUsername("obfuscated_username"),
       .challenge_credential_auth_input =
           ChallengeCredentialAuthInput{
-              .public_key_spki_der =
-                  brillo::BlobFromString("public_key_spki_der"),
               .challenge_signature_algorithms =
                   {SerializedChallengeSignatureAlgorithm::
                        kRsassaPkcs1V15Sha256},
           },
   };
+  const SmartCardMetadata smart_card_metadata = {
+      .public_key_spki_der = brillo::BlobFromString("public_key_spki_der")};
+  const AuthFactorMetadata metadata = {.metadata = smart_card_metadata};
 
-  auth_block_->Create(auth_input, {}, std::move(create_callback));
+  auth_block_->Create(auth_input, metadata, std::move(create_callback));
 
   run_loop.Run();
 }
@@ -222,13 +224,14 @@ TEST_F(ChallengeCredentialAuthBlockTest, MutipleCreateFailed) {
       .obfuscated_username = ObfuscatedUsername("obfuscated_username"),
       .challenge_credential_auth_input =
           ChallengeCredentialAuthInput{
-              .public_key_spki_der =
-                  brillo::BlobFromString("public_key_spki_der"),
               .challenge_signature_algorithms =
                   {SerializedChallengeSignatureAlgorithm::
                        kRsassaPkcs1V15Sha256},
           },
   };
+  const SmartCardMetadata smart_card_metadata = {
+      .public_key_spki_der = brillo::BlobFromString("public_key_spki_der")};
+  const AuthFactorMetadata metadata = {.metadata = smart_card_metadata};
 
   EXPECT_CALL(challenge_credentials_helper_,
               GenerateNew(kFakeAccountId, _, _, _, _))
@@ -244,10 +247,10 @@ TEST_F(ChallengeCredentialAuthBlockTest, MutipleCreateFailed) {
       });
 
   base::RunLoop run_loop;
-  AuthBlock::CreateCallback create_callback =
-      base::BindOnce(VerifyCreateCallback, &run_loop, &auth_input);
+  AuthBlock::CreateCallback create_callback = base::BindOnce(
+      VerifyCreateCallback, &run_loop, &auth_input, &smart_card_metadata);
 
-  auth_block_->Create(auth_input, {}, std::move(create_callback));
+  auth_block_->Create(auth_input, metadata, std::move(create_callback));
 
   run_loop.Run();
 
@@ -261,7 +264,7 @@ TEST_F(ChallengeCredentialAuthBlockTest, MutipleCreateFailed) {
         run_loop2.Quit();
       });
 
-  auth_block_->Create(auth_input, {}, std::move(create_callback2));
+  auth_block_->Create(auth_input, metadata, std::move(create_callback2));
 
   run_loop2.Run();
 }
@@ -281,14 +284,15 @@ TEST_F(ChallengeCredentialAuthBlockTest, CreateMissingObfuscatedUsername) {
   AuthInput auth_input{
       .challenge_credential_auth_input =
           ChallengeCredentialAuthInput{
-              .public_key_spki_der =
-                  brillo::BlobFromString("public_key_spki_der"),
               .challenge_signature_algorithms =
                   {SerializedChallengeSignatureAlgorithm::
                        kRsassaPkcs1V15Sha256},
           },
   };
-  auth_block_->Create(auth_input, {}, std::move(create_callback));
+  const SmartCardMetadata smart_card_metadata = {
+      .public_key_spki_der = brillo::BlobFromString("public_key_spki_der")};
+  const AuthFactorMetadata metadata = {.metadata = smart_card_metadata};
+  auth_block_->Create(auth_input, metadata, std::move(create_callback));
   run_loop.Run();
 }
 
@@ -308,13 +312,17 @@ TEST_F(ChallengeCredentialAuthBlockTest,
   AuthInput auth_input{
       .obfuscated_username = ObfuscatedUsername("obfuscated_username"),
   };
-  auth_block_->Create(auth_input, {}, std::move(create_callback));
+  const SmartCardMetadata smart_card_metadata = {
+      .public_key_spki_der = brillo::BlobFromString("public_key_spki_der")};
+  const AuthFactorMetadata metadata = {.metadata = smart_card_metadata};
+  auth_block_->Create(auth_input, metadata, std::move(create_callback));
   run_loop.Run();
 }
 
-// The ChallengeCredentialAuthBlock::Create should fail when missing
-// algorithm.
-TEST_F(ChallengeCredentialAuthBlockTest, CreateMissingAlgorithm) {
+// The ChallengeCredentialAuthBlock::Create should fail when missing auth
+// factor metadata.
+TEST_F(ChallengeCredentialAuthBlockTest,
+       CreateMissingChallengeCredentialMetadata) {
   base::RunLoop run_loop;
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
       [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
@@ -328,12 +336,12 @@ TEST_F(ChallengeCredentialAuthBlockTest, CreateMissingAlgorithm) {
       .obfuscated_username = ObfuscatedUsername("obfuscated_username"),
       .challenge_credential_auth_input =
           ChallengeCredentialAuthInput{
-              .public_key_spki_der =
-                  brillo::BlobFromString("public_key_spki_der"),
+              .challenge_signature_algorithms =
+                  {SerializedChallengeSignatureAlgorithm::
+                       kRsassaPkcs1V15Sha256},
           },
   };
   auth_block_->Create(auth_input, {}, std::move(create_callback));
-
   run_loop.Run();
 }
 
@@ -674,13 +682,14 @@ class ChallengeCredentialAuthBlockFullTest : public ::testing::Test {
 
   CryptohomeStatus RunCreate(
       const AuthInput& auth_input,
+      const AuthFactorMetadata& metadata,
       std::unique_ptr<KeyBlobs>& out_key_blobs,
       std::unique_ptr<AuthBlockState>& out_auth_block_state) {
     CHECK(auth_block_);
     base::RunLoop run_loop;
     CryptohomeStatus got_error;
     auth_block_->Create(
-        auth_input, {},
+        auth_input, metadata,
         base::BindLambdaForTesting(
             [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
                 std::unique_ptr<AuthBlockState> auth_block_state) {
@@ -737,10 +746,11 @@ TEST_F(ChallengeCredentialAuthBlockFullTest, DeriveCreated) {
       .obfuscated_username = kObfuscatedUsername,
       .challenge_credential_auth_input =
           ChallengeCredentialAuthInput{
-              .public_key_spki_der = kPublicKeySpkiDer,
               .challenge_signature_algorithms = {kAlgorithm},
           },
   };
+  const AuthFactorMetadata kMetadata = {
+      .metadata = SmartCardMetadata{.public_key_spki_der = kPublicKeySpkiDer}};
 
   // Setup: create an auth block state.
   CreateAuthBlock();
@@ -748,8 +758,9 @@ TEST_F(ChallengeCredentialAuthBlockFullTest, DeriveCreated) {
   ChallengesWillRespond(kChallengeAlgorithm);
   std::unique_ptr<KeyBlobs> created_key_blobs;
   std::unique_ptr<AuthBlockState> auth_block_state;
-  ASSERT_THAT(RunCreate(kAuthInput, created_key_blobs, auth_block_state),
-              IsOk());
+  ASSERT_THAT(
+      RunCreate(kAuthInput, kMetadata, created_key_blobs, auth_block_state),
+      IsOk());
   ASSERT_TRUE(created_key_blobs);
   ASSERT_TRUE(auth_block_state);
   // Backfill the scrypt wrapped_keyset, to mimic how the caller uses
@@ -789,10 +800,11 @@ TEST_F(ChallengeCredentialAuthBlockFullTest, DeriveCreatedDifferentAlgorithms) {
       .obfuscated_username = kObfuscatedUsername,
       .challenge_credential_auth_input =
           ChallengeCredentialAuthInput{
-              .public_key_spki_der = kPublicKeySpkiDer,
               .challenge_signature_algorithms = kAlgorithms,
           },
   };
+  const AuthFactorMetadata kMetadata = {
+      .metadata = SmartCardMetadata{.public_key_spki_der = kPublicKeySpkiDer}};
 
   // Setup: create an auth block state.
   CreateAuthBlock();
@@ -800,8 +812,9 @@ TEST_F(ChallengeCredentialAuthBlockFullTest, DeriveCreatedDifferentAlgorithms) {
   ChallengesWillRespond(kSaltChallengeAlgorithm);
   std::unique_ptr<KeyBlobs> created_key_blobs;
   std::unique_ptr<AuthBlockState> auth_block_state;
-  ASSERT_THAT(RunCreate(kAuthInput, created_key_blobs, auth_block_state),
-              IsOk());
+  ASSERT_THAT(
+      RunCreate(kAuthInput, kMetadata, created_key_blobs, auth_block_state),
+      IsOk());
   ASSERT_TRUE(created_key_blobs);
   ASSERT_TRUE(auth_block_state);
   // Backfill the scrypt wrapped_keyset, to mimic how the caller uses
