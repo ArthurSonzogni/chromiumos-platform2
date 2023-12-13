@@ -11,11 +11,13 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/network_config.h>
 
 #include "shill/event_dispatcher.h"
+#include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
@@ -147,6 +149,22 @@ void VPNDriver::UnloadCredentials() {
   if (eap_credentials_) {
     eap_credentials_->Reset();
   }
+}
+
+std::unique_ptr<IPConfig::Properties> VPNDriver::GetIPv4Properties() const {
+  // This function should be a pure virtual function. It is made not pure
+  // virtual because we are currently migrating the overriding functions of its
+  // sub-classes (b/307855773). This function will be deprecated as the
+  // migration is done.
+  NOTREACHED_NORETURN();
+}
+
+std::unique_ptr<IPConfig::Properties> VPNDriver::GetIPv6Properties() const {
+  // This function should be a pure virtual function. It is made not pure
+  // virtual because we are currently migrating the overriding functions of its
+  // sub-classes (b/307855773). This function will be deprecated as the
+  // migration is done.
+  NOTREACHED_NORETURN();
 }
 
 std::unique_ptr<net_base::NetworkConfig> VPNDriver::GetNetworkConfig() const {

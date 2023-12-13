@@ -8,12 +8,14 @@
 #include <unistd.h>
 
 #include <iterator>
+#include <memory>
 #include <utility>
 
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/string_split.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/network_config.h>
 
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -71,22 +73,18 @@ void ArcVpnDriver::OnConnectTimeout() {
   NOTREACHED();
 }
 
-std::unique_ptr<IPConfig::Properties> ArcVpnDriver::GetIPv4Properties() const {
+std::unique_ptr<net_base::NetworkConfig> ArcVpnDriver::GetNetworkConfig()
+    const {
   SLOG(2) << __func__;
   // Currently L3 settings for ARC VPN are set from Chrome as
   // StaticIPProperty before connecting, so this will be mostly empty.
-  IPConfig::Properties ip_properties;
+  auto network_config = std::make_unique<net_base::NetworkConfig>();
   // ARC always sets IncludedRoutes through StaticIPConfig.
-  ip_properties.default_route = false;
+  network_config->ipv4_default_route = false;
   // IPv6 is not currently supported.  If the VPN is enabled, block all
   // IPv6 traffic so there is no "leak" past the VPN.
-  ip_properties.blackhole_ipv6 = true;
-  ip_properties.method = kTypeVPN;
-  return std::make_unique<IPConfig::Properties>(ip_properties);
-}
-
-std::unique_ptr<IPConfig::Properties> ArcVpnDriver::GetIPv6Properties() const {
-  return nullptr;
+  network_config->ipv6_blackhole_route = true;
+  return network_config;
 }
 
 }  // namespace shill

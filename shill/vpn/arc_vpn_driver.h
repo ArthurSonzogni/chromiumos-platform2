@@ -9,9 +9,9 @@
 #include <string>
 
 #include <gtest/gtest_prod.h>
+#include <net-base/network_config.h>
 
 #include "shill/error.h"
-#include "shill/ipconfig.h"
 #include "shill/vpn/vpn_driver.h"
 
 namespace shill {
@@ -27,8 +27,7 @@ class ArcVpnDriver : public VPNDriver {
   base::TimeDelta ConnectAsync(EventHandler* handler) override;
   void Disconnect() override;
   void OnConnectTimeout() override;
-  std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const override;
-  std::unique_ptr<IPConfig::Properties> GetIPv6Properties() const override;
+  std::unique_ptr<net_base::NetworkConfig> GetNetworkConfig() const override;
 
  private:
   static const Property kProperties[];

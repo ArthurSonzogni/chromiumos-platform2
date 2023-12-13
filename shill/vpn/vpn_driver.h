@@ -95,8 +95,8 @@ class VPNDriver {
   virtual base::TimeDelta ConnectAsync(EventHandler* handler) = 0;
   virtual void Disconnect() = 0;
   // TODO(b/307855773): Deprecate these methods
-  virtual std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const = 0;
-  virtual std::unique_ptr<IPConfig::Properties> GetIPv6Properties() const = 0;
+  virtual std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const;
+  virtual std::unique_ptr<IPConfig::Properties> GetIPv6Properties() const;
 
   // TODO(b/307855773): Implement it in subclasses to make it pure virtual.
   virtual std::unique_ptr<net_base::NetworkConfig> GetNetworkConfig() const;

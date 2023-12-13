@@ -95,11 +95,11 @@ TEST_F(ArcVpnDriverTest, ConnectAsync) {
   dispatcher_.task_environment().RunUntilIdle();
 }
 
-TEST_F(ArcVpnDriverTest, GetIPv4Properties) {
-  const auto ip_properties = driver_->GetIPv4Properties();
-  ASSERT_NE(ip_properties, nullptr);
-  EXPECT_TRUE(ip_properties->blackhole_ipv6);
-  EXPECT_FALSE(ip_properties->default_route);
+TEST_F(ArcVpnDriverTest, GetNetworkConfig) {
+  const auto network_config = driver_->GetNetworkConfig();
+  ASSERT_NE(network_config, nullptr);
+  EXPECT_TRUE(network_config->ipv6_blackhole_route);
+  EXPECT_FALSE(network_config->ipv4_default_route);
 }
 
 }  // namespace shill
