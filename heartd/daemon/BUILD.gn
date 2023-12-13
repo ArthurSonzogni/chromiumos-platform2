@@ -5,10 +5,17 @@
 import("//common-mk/pkg_config.gni")
 
 pkg_config("target_defaults") {
-  pkg_deps = [ "libbrillo" ]
+  pkg_deps = [
+    "libbrillo",
+    "mojo_service_manager",
+  ]
 }
 
 source_set("libheartd") {
-  sources = [ "heartd.cc" ]
+  sources = [
+    "heartd.cc",
+    "mojo_service.cc",
+  ]
   configs += [ ":target_defaults" ]
+  deps = [ "//heartd/mojom:libheartd_mojo_bindings" ]
 }

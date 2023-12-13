@@ -3,3 +3,17 @@
 // found in the LICENSE file.
 
 module ash.heartd.mojom;
+
+// Control interface exposed by heartd. Chrome can use this interface to control
+// the behavior of heartd.
+//
+// NextMinVersion: 0, NextIndex: 0
+interface HeartdControl {
+};
+
+// Heartbeat service interface exposed by heartd. Clients can use this interface
+// to register the service and send heartbeat to heartd.
+//
+// NextMinVersion: 0, NextIndex: 0
+interface HeartbeatService {
+};
