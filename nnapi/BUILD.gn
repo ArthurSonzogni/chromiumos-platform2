@@ -52,7 +52,6 @@ pkg_config("target_defaults") {
     "-Wextra",
     "-Wno-deprecated-declarations",
   ]
-  cflags_cc = [ "-std=c++17" ]
   include_dirs = [
     "includes",
     "${libbase_src}/include",
