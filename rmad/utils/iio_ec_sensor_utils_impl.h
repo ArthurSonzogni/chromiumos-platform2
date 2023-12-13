@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <libmems/iio_context.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
@@ -25,11 +26,13 @@ class IioEcSensorUtilsImpl : public IioEcSensorUtils,
   explicit IioEcSensorUtilsImpl(scoped_refptr<MojoServiceUtils> mojo_service,
                                 const std::string& location,
                                 const std::string& name);
-  // Used to inject |sysfs_prefix| for testing.
-  explicit IioEcSensorUtilsImpl(scoped_refptr<MojoServiceUtils> mojo_service,
-                                const std::string& location,
-                                const std::string& name,
-                                const std::string& sysfs_prefix);
+  // Used to inject |sysfs_prefix| and |iio_context| for testing.
+  explicit IioEcSensorUtilsImpl(
+      scoped_refptr<MojoServiceUtils> mojo_service,
+      const std::string& location,
+      const std::string& name,
+      const std::string& sysfs_prefix,
+      std::unique_ptr<libmems::IioContext> iio_context);
   ~IioEcSensorUtilsImpl() = default;
 
   bool GetAvgData(GetAvgDataCallback result_callback,
@@ -42,10 +45,6 @@ class IioEcSensorUtilsImpl : public IioEcSensorUtils,
 
  private:
   void Initialize();
-  // To find out a specific sensor and how to communicate with it, we will check
-  // the value in sysfs and then get all the necessary information in the init
-  // step.
-  bool InitializeFromSysfsPath(const base::FilePath& sysfs_path);
   void FinishSampling();
 
   // Overrides.
@@ -69,6 +68,7 @@ class IioEcSensorUtilsImpl : public IioEcSensorUtils,
   int sample_times_;
   int samples_to_discard_;
   scoped_refptr<MojoServiceUtils> mojo_service_;
+  std::unique_ptr<libmems::IioContext> iio_context_;
   mojo::Receiver<cros::mojom::SensorDeviceSamplesObserver>
       device_sample_receiver_{this};
 

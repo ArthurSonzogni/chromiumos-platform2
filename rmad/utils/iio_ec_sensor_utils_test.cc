@@ -4,6 +4,7 @@
 
 #include <array>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -13,6 +14,7 @@
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 
+#include "libmems/test_fakes.h"
 #include "mojo/core/embedder/embedder.h"
 #include "rmad/utils/iio_ec_sensor_utils_impl.h"
 #include "rmad/utils/mock_mojo_service_utils.h"
@@ -28,65 +30,10 @@ using testing::WithArg;
 
 namespace {
 
+constexpr char kDeviceLocationName[] = "location";
+constexpr char kDeviceScaleName[] = "scale";
+constexpr char kSamplingFrequencyAvailable[] = "sampling_frequency_available";
 constexpr char kTestIioSysfsPrefix[] = "iio_test_";
-constexpr int kNumberOfIioEntries = 19;
-
-constexpr char kTestFreqAvailableLocation[] = "test_freq_available_location";
-constexpr char kTestScaleLocation[] = "test_scale_location";
-constexpr char kTestSysValueLocation[] = "test_sys_value_location";
-
-constexpr char kTestIntName[] = "test_int";
-constexpr char kTestFloatName[] = "test_float";
-constexpr char kTestFloatRangeName[] = "test_float_range";
-constexpr char kTestDiscreteSetName[] = "test_discrete_set";
-constexpr char kTestTrailingSpaceName[] = "test_trailing_space";
-constexpr char kTestInvalidName[] = "test_invalid";
-constexpr char kTestNotAvailableName[] = "test_not_available";
-constexpr char kTestInitFailedName[] = "test_init_failed";
-
-// Used for test cases at initialization.
-constexpr std::array<const char*, 7> kIioEcProperties = {
-    "location",
-    "name",
-    "sampling_frequency_available",
-    "scale",
-    "test_sys_entry1",
-    "test_sys_entry2",
-    "test_sys_entry3"};
-constexpr std::array<std::array<const char*, 7>, kNumberOfIioEntries>
-    kIioEcEntries = {{
-        {"", kTestIntName, "0 13 208", "1.0"},
-        {kTestFreqAvailableLocation, "", "0 13 208", "1.0"},
-        {kTestFreqAvailableLocation, kTestIntName, "208", "1.0"},
-        {kTestFreqAvailableLocation, kTestFloatName, "208.0", "1.0"},
-        {kTestFreqAvailableLocation, kTestFloatRangeName, "0.0 13.0 208.0",
-         "1.0"},
-        {kTestFreqAvailableLocation, kTestDiscreteSetName, "0.0 13.0 26.0 52.0",
-         "1.0"},
-        {kTestFreqAvailableLocation, kTestTrailingSpaceName,
-         "0.0 13.0 26.0 52.0   ", "1.0"},
-        {kTestFreqAvailableLocation, kTestInvalidName, "123 abc", "1.0"},
-        {kTestFreqAvailableLocation, kTestNotAvailableName, "", "1.0"},
-        {kTestScaleLocation, kTestIntName, "0.0 13.0 208.0", "1"},
-        {kTestScaleLocation, kTestFloatName, "0.0 13.0 208.0", "1.0"},
-        {kTestScaleLocation, kTestTrailingSpaceName, "0.0 13.0 208.0", "1.0 "},
-        {kTestScaleLocation, kTestInvalidName, "0.0 13.0 208.0", "1.0 abc"},
-        {kTestScaleLocation, kTestNotAvailableName, "0.0 13.0 208.0", ""},
-        {kTestSysValueLocation, kTestIntName, "0.0 13.0 208.0", "1.0", "1", "2",
-         "3"},
-        {kTestSysValueLocation, kTestFloatName, "0.0 13.0 208.0", "1.0", "1.0",
-         "2.0", "3.0"},
-        {kTestSysValueLocation, kTestInitFailedName, "0.0 13.0 208.0",
-         "1.0 abc", "1.0", "2.0", "3.0"},
-        {kTestSysValueLocation, kTestNotAvailableName, "0.0 13.0 208.0", "1.0",
-         "1.0", "2.0", ""},
-        {kTestSysValueLocation, kTestInvalidName, "0.0 13.0 208.0", "1.0",
-         "1.0", "2.0", ""},
-    }};
-
-const std::vector<std::string> kTestSysEntries = {
-    "test_sys_entry1", "test_sys_entry2", "test_sys_entry3"};
-constexpr std::array<double, 3> kTestSysValues = {1.0, 2.0, 3.0};
 
 const std::vector<std::string> kTestChannels = {"channel1", "channel2",
                                                 "channel3"};
@@ -101,41 +48,80 @@ class IioEcSensorUtilsImplTest : public testing::Test {
  public:
   IioEcSensorUtilsImplTest() = default;
 
+  struct FakeDeviceArgs {
+    int id = 0;
+    std::string location = "base";
+    std::string name = "cros-ec-accel";
+    std::string available_freq_str = "0.0 12.5 100.0";
+    std::optional<double> scale = 1.0;
+  };
+
+  std::unique_ptr<libmems::fakes::FakeIioDevice> CreateFakeIioDevice(
+      const FakeDeviceArgs& args) {
+    auto device = std::make_unique<libmems::fakes::FakeIioDevice>(
+        nullptr, args.name, args.id);
+
+    EXPECT_TRUE(
+        device->WriteStringAttribute(kDeviceLocationName, args.location));
+
+    EXPECT_TRUE(device->WriteStringAttribute(kSamplingFrequencyAvailable,
+                                             args.available_freq_str));
+
+    if (args.scale.has_value()) {
+      EXPECT_TRUE(
+          device->WriteDoubleAttribute(kDeviceScaleName, args.scale.value()));
+    }
+
+    return device;
+  }
+
+  std::unique_ptr<libmems::fakes::FakeIioContext> CreateFakeIioContext(
+      const std::vector<FakeDeviceArgs>& fake_devices) {
+    auto iio_context = std::make_unique<libmems::fakes::FakeIioContext>();
+
+    for (const auto& device_args : fake_devices) {
+      auto device = CreateFakeIioDevice(device_args);
+      iio_context->AddDevice(std::move(device));
+    }
+
+    return iio_context;
+  }
+
   std::unique_ptr<IioEcSensorUtilsImpl> CreateIioEcSensorUtils(
-      const std::string& location, const std::string& name) {
+      std::unique_ptr<libmems::fakes::FakeIioContext> iio_context,
+      const std::string& location,
+      const std::string& name) {
     return std::make_unique<IioEcSensorUtilsImpl>(
         mojo_service_, location, name,
-        temp_dir_.GetPath().Append(kTestIioSysfsPrefix).MaybeAsASCII());
+        temp_dir_.GetPath().Append(kTestIioSysfsPrefix).MaybeAsASCII(),
+        std::move(iio_context));
   }
 
   std::unique_ptr<IioEcSensorUtilsImpl> CreateIioEcSensorUtils(
       scoped_refptr<MojoServiceUtils> mojo_service,
+      std::unique_ptr<libmems::fakes::FakeIioContext> iio_context,
       const std::string& location,
       const std::string& name) {
     return std::make_unique<IioEcSensorUtilsImpl>(
         mojo_service, location, name,
-        temp_dir_.GetPath().Append(kTestIioSysfsPrefix).MaybeAsASCII());
+        temp_dir_.GetPath().Append(kTestIioSysfsPrefix).MaybeAsASCII(),
+        std::move(iio_context));
+  }
+
+  void WriteSysEntries(int id, std::map<std::string, std::string> entries) {
+    auto base_path = temp_dir_.GetPath().AppendASCII(kTestIioSysfsPrefix +
+                                                     base::NumberToString(id));
+    EXPECT_TRUE(base::CreateDirectory(base_path));
+    for (const auto& [key, value] : entries) {
+      auto entry_path = base_path.AppendASCII(key);
+      base::WriteFile(entry_path, value);
+    }
   }
 
  protected:
   void SetUp() override {
     mojo::core::Init();
-
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base::FilePath base_path = temp_dir_.GetPath();
-    for (int i = 0; i < kNumberOfIioEntries; i++) {
-      std::string dirname = kTestIioSysfsPrefix + base::NumberToString(i);
-      base::FilePath dir_path = base_path.AppendASCII(dirname);
-      EXPECT_TRUE(base::CreateDirectory(dir_path));
-
-      for (int j = 0; j < kIioEcProperties.size(); j++) {
-        if (kIioEcEntries[i][j]) {
-          base::FilePath file_path = dir_path.AppendASCII(kIioEcProperties[j]);
-          base::WriteFile(file_path, kIioEcEntries[i][j],
-                          strlen(kIioEcEntries[i][j]));
-        }
-      }
-    }
   }
 
   scoped_refptr<MojoServiceUtils> mojo_service_;
@@ -143,7 +129,147 @@ class IioEcSensorUtilsImplTest : public testing::Test {
   base::test::TaskEnvironment task_environment_;
 };
 
-TEST_F(IioEcSensorUtilsImplTest, GetAvgData_Sucess) {
+TEST_F(IioEcSensorUtilsImplTest, Initialize_Success) {
+  auto iio_context = CreateFakeIioContext(
+      {{.id = 0, .location = "base", .name = "cros-ec-accel"}});
+  auto iio_ec_sensor_utils =
+      CreateIioEcSensorUtils(std::move(iio_context), "base", "cros-ec-accel");
+
+  EXPECT_TRUE(iio_ec_sensor_utils->IsInitialized());
+  EXPECT_EQ(iio_ec_sensor_utils->GetLocation(), "base");
+  EXPECT_EQ(iio_ec_sensor_utils->GetName(), "cros-ec-accel");
+}
+
+TEST_F(IioEcSensorUtilsImplTest, Initialize_NotMatched_Failed) {
+  auto iio_context = CreateFakeIioContext(
+      {{.id = 0, .location = "lid", .name = "cros-ec-accel"}});
+  auto iio_ec_sensor_utils =
+      CreateIioEcSensorUtils(std::move(iio_context), "base", "cros-ec-accel");
+
+  EXPECT_FALSE(iio_ec_sensor_utils->IsInitialized());
+}
+
+TEST_F(IioEcSensorUtilsImplTest, Initialize_InvalidFrequency_Failed) {
+  auto iio_context = CreateFakeIioContext({{.id = 0,
+                                            .location = "base",
+                                            .name = "cros-ec-accel",
+                                            .available_freq_str = ""}});
+  auto iio_ec_sensor_utils =
+      CreateIioEcSensorUtils(std::move(iio_context), "base", "cros-ec-accel");
+
+  EXPECT_FALSE(iio_ec_sensor_utils->IsInitialized());
+}
+
+TEST_F(IioEcSensorUtilsImplTest, Initialize_NoScale_Failed) {
+  auto iio_context = CreateFakeIioContext({{.id = 0,
+                                            .location = "base",
+                                            .name = "cros-ec-accel",
+                                            .scale = std::nullopt}});
+  auto iio_ec_sensor_utils =
+      CreateIioEcSensorUtils(std::move(iio_context), "base", "cros-ec-accel");
+
+  EXPECT_FALSE(iio_ec_sensor_utils->IsInitialized());
+}
+
+TEST_F(IioEcSensorUtilsImplTest, GetSysValue_Int_Success) {
+  auto iio_context = CreateFakeIioContext(
+      {{.id = 0, .location = "base", .name = "cros-ec-accel"}});
+  auto iio_ec_sensor_utils =
+      CreateIioEcSensorUtils(std::move(iio_context), "base", "cros-ec-accel");
+
+  std::map<std::string, std::string> sys_entries = {{"test_entry_1", "1"},
+                                                    {"test_entry_2", "2"}};
+  std::vector<std::string> keys;
+  for (const auto& [key, _] : sys_entries) {
+    keys.push_back(key);
+  }
+  WriteSysEntries(/*id=*/0, sys_entries);
+
+  std::vector<double> expected = {1.0, 2.0};
+  std::vector<double> values;
+  EXPECT_TRUE(iio_ec_sensor_utils->GetSysValues(keys, &values));
+  EXPECT_EQ(values.size(), keys.size());
+  for (int i = 0; i < keys.size(); i++) {
+    EXPECT_DOUBLE_EQ(values[i], expected[i]);
+  }
+}
+
+TEST_F(IioEcSensorUtilsImplTest, GetSysValue_Float_Success) {
+  auto iio_context = CreateFakeIioContext(
+      {{.id = 0, .location = "base", .name = "cros-ec-accel"}});
+  auto iio_ec_sensor_utils =
+      CreateIioEcSensorUtils(std::move(iio_context), "base", "cros-ec-accel");
+
+  std::map<std::string, std::string> sys_entries = {{"test_entry_1", "1.0"},
+                                                    {"test_entry_2", "2.0"}};
+  std::vector<std::string> keys;
+  for (const auto& [key, _] : sys_entries) {
+    keys.push_back(key);
+  }
+  WriteSysEntries(/*id=*/0, sys_entries);
+
+  std::vector<double> expected = {1.0, 2.0};
+  std::vector<double> values;
+  EXPECT_TRUE(iio_ec_sensor_utils->GetSysValues(keys, &values));
+  EXPECT_EQ(values.size(), keys.size());
+  for (int i = 0; i < keys.size(); i++) {
+    EXPECT_DOUBLE_EQ(values[i], expected[i]);
+  }
+}
+
+TEST_F(IioEcSensorUtilsImplTest, GetSysValue_NotInitialized_Failed) {
+  // No matched device will cause `NotInitialized`.
+  auto iio_context = CreateFakeIioContext(
+      {{.id = 0, .location = "lid", .name = "cros-ec-accel"}});
+  auto iio_ec_sensor_utils =
+      CreateIioEcSensorUtils(std::move(iio_context), "base", "cros-ec-accel");
+
+  std::map<std::string, std::string> sys_entries = {{"test_entry_1", "1.0"},
+                                                    {"test_entry_2", "2.0"}};
+  std::vector<std::string> keys;
+  for (const auto& [key, _] : sys_entries) {
+    keys.push_back(key);
+  }
+  WriteSysEntries(/*id=*/0, sys_entries);
+
+  std::vector<double> values;
+  EXPECT_FALSE(iio_ec_sensor_utils->GetSysValues(keys, &values));
+}
+
+TEST_F(IioEcSensorUtilsImplTest, GetSysValue_EntryNotAvailable_Failed) {
+  auto iio_context = CreateFakeIioContext(
+      {{.id = 0, .location = "base", .name = "cros-ec-accel"}});
+  auto iio_ec_sensor_utils =
+      CreateIioEcSensorUtils(std::move(iio_context), "base", "cros-ec-accel");
+
+  std::map<std::string, std::string> sys_entries = {{"test_entry_1", "1.0"},
+                                                    {"test_entry_2", "2.0"}};
+  WriteSysEntries(/*id=*/0, sys_entries);
+
+  std::vector<double> values;
+  EXPECT_FALSE(iio_ec_sensor_utils->GetSysValues({"invalid_entry"}, &values));
+}
+
+TEST_F(IioEcSensorUtilsImplTest, GetSysValue_InvalidValue_Failed) {
+  auto iio_context = CreateFakeIioContext(
+      {{.id = 0, .location = "base", .name = "cros-ec-accel"}});
+  auto iio_ec_sensor_utils =
+      CreateIioEcSensorUtils(std::move(iio_context), "base", "cros-ec-accel");
+
+  std::map<std::string, std::string> sys_entries = {
+      {"test_entry_1", "invalid value"}, {"test_entry_2", "2.0"}};
+  std::vector<std::string> keys;
+  for (const auto& [key, _] : sys_entries) {
+    keys.push_back(key);
+  }
+
+  WriteSysEntries(/*id=*/0, sys_entries);
+
+  std::vector<double> values;
+  EXPECT_FALSE(iio_ec_sensor_utils->GetSysValues(keys, &values));
+}
+
+TEST_F(IioEcSensorUtilsImplTest, GetAvgData_Success) {
   auto mock_mojo_service =
       base::MakeRefCounted<StrictMock<MockMojoServiceUtils>>();
   auto mock_sensor_device = StrictMock<MockSensorDevice>();
@@ -181,161 +307,16 @@ TEST_F(IioEcSensorUtilsImplTest, GetAvgData_Sucess) {
       .Times(6)
       .WillRepeatedly(Return(&mock_sensor_device));
 
+  // std::vector<FakeDeviceArgs> device_args = {
+  //     {.location = "test_location", .name = "test_name"}};
+
+  auto iio_context = CreateFakeIioContext({FakeDeviceArgs()});
   auto iio_ec_sensor_utils = CreateIioEcSensorUtils(
-      mock_mojo_service, kTestFreqAvailableLocation, kTestIntName);
+      mock_mojo_service, std::move(iio_context), "base", "cros-ec-accel");
 
   EXPECT_TRUE(iio_ec_sensor_utils->IsInitialized());
   EXPECT_TRUE(iio_ec_sensor_utils->GetAvgData(base::DoNothing(), kTestChannels,
                                               kTestSamples));
-}
-
-TEST_F(IioEcSensorUtilsImplTest, Initialize_FreqAvailableInt_Success) {
-  auto iio_ec_sensor_utils =
-      CreateIioEcSensorUtils(kTestFreqAvailableLocation, kTestIntName);
-
-  EXPECT_TRUE(iio_ec_sensor_utils->IsInitialized());
-  EXPECT_EQ(iio_ec_sensor_utils->GetLocation(), kTestFreqAvailableLocation);
-  EXPECT_EQ(iio_ec_sensor_utils->GetName(), kTestIntName);
-}
-
-TEST_F(IioEcSensorUtilsImplTest, Initialize_FreqAvailableFloat_Success) {
-  auto iio_ec_sensor_utils =
-      CreateIioEcSensorUtils(kTestFreqAvailableLocation, kTestFloatName);
-
-  EXPECT_TRUE(iio_ec_sensor_utils->IsInitialized());
-  EXPECT_EQ(iio_ec_sensor_utils->GetLocation(), kTestFreqAvailableLocation);
-  EXPECT_EQ(iio_ec_sensor_utils->GetName(), kTestFloatName);
-}
-
-TEST_F(IioEcSensorUtilsImplTest, Initialize_FreqAvailableFloatRange_Success) {
-  auto iio_ec_sensor_utils =
-      CreateIioEcSensorUtils(kTestFreqAvailableLocation, kTestFloatRangeName);
-
-  EXPECT_TRUE(iio_ec_sensor_utils->IsInitialized());
-  EXPECT_EQ(iio_ec_sensor_utils->GetLocation(), kTestFreqAvailableLocation);
-  EXPECT_EQ(iio_ec_sensor_utils->GetName(), kTestFloatRangeName);
-}
-
-TEST_F(IioEcSensorUtilsImplTest, Initialize_FreqAvailableDiscreteSet_Success) {
-  auto iio_ec_sensor_utils =
-      CreateIioEcSensorUtils(kTestFreqAvailableLocation, kTestDiscreteSetName);
-
-  EXPECT_TRUE(iio_ec_sensor_utils->IsInitialized());
-  EXPECT_EQ(iio_ec_sensor_utils->GetLocation(), kTestFreqAvailableLocation);
-  EXPECT_EQ(iio_ec_sensor_utils->GetName(), kTestDiscreteSetName);
-}
-
-TEST_F(IioEcSensorUtilsImplTest,
-       Initialize_FreqAvailableTrailingSpace_Success) {
-  auto iio_ec_sensor_utils = CreateIioEcSensorUtils(kTestFreqAvailableLocation,
-                                                    kTestTrailingSpaceName);
-
-  EXPECT_TRUE(iio_ec_sensor_utils->IsInitialized());
-  EXPECT_EQ(iio_ec_sensor_utils->GetLocation(), kTestFreqAvailableLocation);
-  EXPECT_EQ(iio_ec_sensor_utils->GetName(), kTestTrailingSpaceName);
-}
-
-TEST_F(IioEcSensorUtilsImplTest, Initialize_FreqAvailableInvalid_Failed) {
-  auto iio_ec_sensor_utils =
-      CreateIioEcSensorUtils(kTestFreqAvailableLocation, kTestInvalidName);
-
-  EXPECT_FALSE(iio_ec_sensor_utils->IsInitialized());
-}
-
-TEST_F(IioEcSensorUtilsImplTest, Initialize_FreqAvailableNotAvailable_Failed) {
-  auto iio_ec_sensor_utils =
-      CreateIioEcSensorUtils(kTestFreqAvailableLocation, kTestNotAvailableName);
-
-  EXPECT_FALSE(iio_ec_sensor_utils->IsInitialized());
-}
-
-TEST_F(IioEcSensorUtilsImplTest, Initialize_ScaleInt_Success) {
-  auto iio_ec_sensor_utils =
-      CreateIioEcSensorUtils(kTestScaleLocation, kTestIntName);
-
-  EXPECT_TRUE(iio_ec_sensor_utils->IsInitialized());
-  EXPECT_EQ(iio_ec_sensor_utils->GetLocation(), kTestScaleLocation);
-  EXPECT_EQ(iio_ec_sensor_utils->GetName(), kTestIntName);
-}
-
-TEST_F(IioEcSensorUtilsImplTest, Initialize_ScaleFloat_Success) {
-  auto iio_ec_sensor_utils =
-      CreateIioEcSensorUtils(kTestScaleLocation, kTestFloatName);
-
-  EXPECT_TRUE(iio_ec_sensor_utils->IsInitialized());
-  EXPECT_EQ(iio_ec_sensor_utils->GetLocation(), kTestScaleLocation);
-  EXPECT_EQ(iio_ec_sensor_utils->GetName(), kTestFloatName);
-}
-
-TEST_F(IioEcSensorUtilsImplTest, Initialize_ScaleTrailingSpace_Success) {
-  auto iio_ec_sensor_utils =
-      CreateIioEcSensorUtils(kTestScaleLocation, kTestTrailingSpaceName);
-
-  EXPECT_TRUE(iio_ec_sensor_utils->IsInitialized());
-  EXPECT_EQ(iio_ec_sensor_utils->GetLocation(), kTestScaleLocation);
-  EXPECT_EQ(iio_ec_sensor_utils->GetName(), kTestTrailingSpaceName);
-}
-
-TEST_F(IioEcSensorUtilsImplTest, Initialize_ScaleInvalid_Failed) {
-  auto iio_ec_sensor_utils =
-      CreateIioEcSensorUtils(kTestScaleLocation, kTestInvalidName);
-
-  EXPECT_FALSE(iio_ec_sensor_utils->IsInitialized());
-}
-
-TEST_F(IioEcSensorUtilsImplTest, Initialize_ScaleNotAvailable_Failed) {
-  auto iio_ec_sensor_utils =
-      CreateIioEcSensorUtils(kTestScaleLocation, kTestNotAvailableName);
-
-  EXPECT_FALSE(iio_ec_sensor_utils->IsInitialized());
-}
-
-TEST_F(IioEcSensorUtilsImplTest, GetSysValue_Int_Success) {
-  auto iio_ec_sensor_utils =
-      CreateIioEcSensorUtils(kTestSysValueLocation, kTestIntName);
-
-  std::vector<double> values;
-  EXPECT_TRUE(iio_ec_sensor_utils->GetSysValues(kTestSysEntries, &values));
-  EXPECT_EQ(values.size(), kTestSysEntries.size());
-  for (int i = 0; i < kTestSysEntries.size(); i++) {
-    EXPECT_DOUBLE_EQ(values[i], kTestSysValues[i]);
-  }
-}
-
-TEST_F(IioEcSensorUtilsImplTest, GetSysValue_Float_Success) {
-  auto iio_ec_sensor_utils =
-      CreateIioEcSensorUtils(kTestSysValueLocation, kTestFloatName);
-
-  std::vector<double> values;
-  EXPECT_TRUE(iio_ec_sensor_utils->GetSysValues(kTestSysEntries, &values));
-  EXPECT_EQ(values.size(), kTestSysEntries.size());
-  for (int i = 0; i < kTestSysEntries.size(); i++) {
-    EXPECT_DOUBLE_EQ(values[i], kTestSysValues[i]);
-  }
-}
-
-TEST_F(IioEcSensorUtilsImplTest, GetSysValue_NotInitialized_Failed) {
-  auto iio_ec_sensor_utils =
-      CreateIioEcSensorUtils(kTestSysValueLocation, kTestInitFailedName);
-
-  std::vector<double> values;
-  EXPECT_FALSE(iio_ec_sensor_utils->GetSysValues(kTestSysEntries, &values));
-}
-
-TEST_F(IioEcSensorUtilsImplTest, GetSysValue_EntryNotAvailable_Failed) {
-  auto iio_ec_sensor_utils =
-      CreateIioEcSensorUtils(kTestSysValueLocation, kTestNotAvailableName);
-
-  std::vector<double> values;
-  EXPECT_FALSE(iio_ec_sensor_utils->GetSysValues(kTestSysEntries, &values));
-}
-
-TEST_F(IioEcSensorUtilsImplTest, GetSysValue_InvalidValue_Failed) {
-  auto iio_ec_sensor_utils =
-      CreateIioEcSensorUtils(kTestSysValueLocation, kTestInvalidName);
-
-  std::vector<double> values;
-  EXPECT_FALSE(iio_ec_sensor_utils->GetSysValues(kTestSysEntries, &values));
 }
 
 }  // namespace rmad

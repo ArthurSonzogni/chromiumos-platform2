@@ -18,7 +18,6 @@
 
 namespace {
 
-constexpr char kIioDeviceAttributeLocation[] = "location";
 constexpr char kAccelerometerChannelPrefix[] = "accel";
 constexpr char kGyroscopeChannelPrefix[] = "anglvel";
 const std::vector<std::string> kCalibratableSensorChannelPrefix = {
@@ -47,7 +46,7 @@ IioSensorProbeUtilsImpl::IioSensorProbeUtilsImpl(
 std::set<RmadComponent> IioSensorProbeUtilsImpl::Probe() {
   std::set<RmadComponent> probed_components;
   for (const auto& device : iio_context_->GetAllDevices()) {
-    auto location = device->ReadStringAttribute(kIioDeviceAttributeLocation);
+    auto location = device->GetLocation();
     if (!location.has_value()) {
       continue;
     }

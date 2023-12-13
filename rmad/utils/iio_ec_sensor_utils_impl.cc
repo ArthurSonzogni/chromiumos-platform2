@@ -5,6 +5,7 @@
 #include "rmad/utils/iio_ec_sensor_utils_impl.h"
 
 #include <numeric>
+#include <string>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -12,21 +13,15 @@
 #include <base/logging.h>
 #include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_util.h>
-#include <re2/re2.h>
+#include <libmems/iio_context_impl.h>
 
 namespace {
 
-constexpr int kMaxNumEntries = 1024;
 constexpr int kTimeoutOverheadInMS = 1000;
 constexpr double kSecond2Millisecond = 1000.0;
 constexpr int kNumberFirstReadsDiscarded = 10;
 
 constexpr char kIioDevicePathPrefix[] = "/sys/bus/iio/devices/iio:device";
-constexpr char kIioDeviceEntryName[] = "name";
-constexpr char kIioDeviceEntryLocation[] = "location";
-constexpr char kIioDeviceEntryFrequencyAvailable[] =
-    "sampling_frequency_available";
 constexpr char kIioDeviceEntryScale[] = "scale";
 
 }  // namespace
@@ -40,7 +35,8 @@ IioEcSensorUtilsImpl::IioEcSensorUtilsImpl(
     : IioEcSensorUtils(location, name),
       sysfs_prefix_(kIioDevicePathPrefix),
       initialized_(false),
-      mojo_service_(mojo_service) {
+      mojo_service_(mojo_service),
+      iio_context_(std::make_unique<libmems::IioContextImpl>()) {
   Initialize();
 }
 
@@ -48,11 +44,13 @@ IioEcSensorUtilsImpl::IioEcSensorUtilsImpl(
     scoped_refptr<MojoServiceUtils> mojo_service,
     const std::string& location,
     const std::string& name,
-    const std::string& sysfs_prefix)
+    const std::string& sysfs_prefix,
+    std::unique_ptr<libmems::IioContext> iio_context)
     : IioEcSensorUtils(location, name),
       sysfs_prefix_(sysfs_prefix),
       initialized_(false),
-      mojo_service_(mojo_service) {
+      mojo_service_(mojo_service),
+      iio_context_(std::move(iio_context)) {
   Initialize();
 }
 
@@ -108,77 +106,40 @@ bool IioEcSensorUtilsImpl::GetSysValues(const std::vector<std::string>& entries,
 }
 
 void IioEcSensorUtilsImpl::Initialize() {
-  for (int i = 0; i < kMaxNumEntries; i++) {
-    base::FilePath sysfs_path(sysfs_prefix_ + base::NumberToString(i));
-    if (!base::PathExists(sysfs_path)) {
-      break;
+  for (const auto& device : iio_context_->GetAllDevices()) {
+    auto device_location = device->GetLocation();
+    auto device_name = device->GetName();
+
+    if (!device_location.has_value() || location_ != device_location.value() ||
+        name_ != device_name) {
+      continue;
     }
+    id_ = device->GetId();
 
-    if (InitializeFromSysfsPath(sysfs_path)) {
-      id_ = i;
-      sysfs_path_ = sysfs_path;
-      initialized_ = true;
-      break;
+    double unused_min_freq, max_freq;
+    if (!device->GetMinMaxFrequency(&unused_min_freq, &max_freq)) {
+      LOG(ERROR) << "Failed to get frequencies of " << location_ << ":"
+                 << name_;
+      return;
     }
-  }
-}
+    frequency_ = max_freq;
 
-bool IioEcSensorUtilsImpl::InitializeFromSysfsPath(
-    const base::FilePath& sysfs_path) {
-  CHECK(base::PathExists(sysfs_path));
+    auto scale = device->ReadDoubleAttribute(kIioDeviceEntryScale);
+    if (!scale.has_value()) {
+      LOG(ERROR) << "Failed to get scale of " << location_ << ":" << name_;
+      return;
+    }
+    scale_ = scale.value();
 
-  base::FilePath entry_name = sysfs_path.Append(kIioDeviceEntryName);
-  if (std::string buf;
-      !base::PathExists(entry_name) ||
-      !base::ReadFileToString(entry_name, &buf) ||
-      name_ != base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING)) {
-    return false;
-  }
+    sysfs_path_ = base::FilePath(sysfs_prefix_ + base::NumberToString(id_));
 
-  base::FilePath entry_location = sysfs_path.Append(kIioDeviceEntryLocation);
-  if (std::string buf;
-      !base::PathExists(entry_location) ||
-      !base::ReadFileToString(entry_location, &buf) ||
-      location_ != base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING)) {
-    return false;
+    initialized_ = true;
+    break;
   }
 
-  // For the sensor to work properly, we should set it according to one of its
-  // available sampling frequencies. Since all available frequencies should
-  // work, we will use the fastest frequency for calibration to save time.
-  base::FilePath entry_frequency_available =
-      sysfs_path.Append(kIioDeviceEntryFrequencyAvailable);
-  std::string frequency_available;
-  if (!base::PathExists(entry_frequency_available) ||
-      !base::ReadFileToString(entry_frequency_available,
-                              &frequency_available)) {
-    return false;
+  if (!initialized_) {
+    LOG(ERROR) << "Failed to initialize " << location_ << ":" << name_;
   }
-  // The value from sysfs could be one of:
-  // 1. A set of small discrete values, such as "0 2 4 6 8".
-  // 2. A range "[min min_step max]", where steps are not linear but power of 2.
-  frequency_ = 0;
-  re2::StringPiece str_piece(frequency_available);
-  // Currently, we only used the highest frequency.
-  re2::RE2 reg(R"((\d+(\.\d+)?)\s*$)");
-  std::string match;
-  if (double freq; RE2::FindAndConsume(&str_piece, reg, &match) &&
-                   base::StringToDouble(match, &freq) && freq > frequency_) {
-    frequency_ = freq;
-  } else {
-    return false;
-  }
-
-  base::FilePath entry_scale = sysfs_path.Append(kIioDeviceEntryScale);
-  if (std::string buf;
-      !base::PathExists(entry_scale) ||
-      !base::ReadFileToString(entry_scale, &buf) ||
-      !base::StringToDouble(base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING),
-                            &scale_)) {
-    return false;
-  }
-
-  return true;
 }
 
 void IioEcSensorUtilsImpl::OnSampleUpdated(
