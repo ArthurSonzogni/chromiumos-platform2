@@ -20,7 +20,7 @@ base::Time GetFirstTimestamp(const base::FilePath& file);
 // checks the oldest file among "message.log", "message.log.1", "message.log.2"
 // .... If failed, return a null time.
 // Note that, if the entry doesn't exist in a file, use the timestamp one day
-// prior to the last modifiled time of the file (assumeing the file is rotated
+// prior to the last modified time of the file (assuming the file is rotated
 // daily).
 base::Time GetOldestTimestampFromLogFiles(const base::FilePath& dir_path,
                                           const std::string& base_log_name);

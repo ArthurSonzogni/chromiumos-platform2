@@ -24,7 +24,6 @@ const char* kLogFiles[] = {"messages",
                            "session_manager",
                            "atrus.log",
                            "tlsdate.log",
-                           "authpolicy.log",
                            "tpm-firmware-updater.log",
                            "arc.log",
                            "recover_duts/recover_duts.log",
@@ -66,8 +65,8 @@ base::Time GetOldestTimestampFromLogFiles(const base::FilePath& dir_path,
   for (base::FilePath name = e.Next(); !name.empty(); name = e.Next()) {
     base::Time last_modified = GetFirstTimestamp(name);
 
-    // If the first timestamp can't be retrieved, Use the timestamp one day
-    // prior to the last modifiled time of the file (assumeing the file is
+    // If the first timestamp can't be retrieved, use the timestamp one day
+    // prior to the last modified time of the file (assuming the file is
     // rotated daily).
     if (last_modified.is_null())
       last_modified = e.GetInfo().GetLastModifiedTime() - base::Days(1);

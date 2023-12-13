@@ -31,7 +31,6 @@ const std::set<std::string_view> kEmptyEntries{
     "atmel_ts_deltas",
     "atmel_ts_refs",
     "atrus_logs",
-    "authpolicy",
     "bio_crypto_init.LATEST",
     "bio_crypto_init.PREVIOUS",
     "bio_fw_updater.LATEST",

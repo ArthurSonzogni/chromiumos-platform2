@@ -103,12 +103,6 @@ if ($programname startswith 'tlsdate') then -/var/log/tlsdate.log
 if ($msg contains 'system_log_api') then -/var/log/extensions.log
 & stop # Don't log extension messages anywhere else.
 
-# For authpolicyd and authpolicy_parser:
-# - Log all messages to /var/log/authpolicy.log.
-# - Log important stuff (EMERG..ERR) to /var/log/messages.
-if ($programname startswith 'authpolicy') then -/var/log/authpolicy.log
-if ($programname startswith 'authpolicy') and $syslogseverity >= '4' then stop
-
 # Log all kernel messages to the console.
 # Logging much else clutters up the screen.
 #kern.*                                                 /dev/console

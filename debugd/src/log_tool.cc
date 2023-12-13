@@ -554,7 +554,6 @@ const std::array kFeedbackLogs {
 const std::array kVarLogFileLogs {
   Log{kFile, "atrus_logs", "/var/log/atrus.log"},
   Log{kFile, "auth_failure", "/var/log/tcsd/auth_failure.permanent"},
-  Log{kFile, "authpolicy", "/var/log/authpolicy.log"},
   Log{kFile, "bio_crypto_init.LATEST",
     "/var/log/bio_crypto_init/bio_crypto_init.LATEST"},
   Log{kFile, "bio_crypto_init.PREVIOUS",
