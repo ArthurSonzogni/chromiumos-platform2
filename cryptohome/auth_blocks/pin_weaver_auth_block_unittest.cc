@@ -145,7 +145,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateTest) {
   features_.SetDefaultForFeature(Features::kModernPin, true);
 
   CreateTestFuture result;
-  auth_block_->Create(user_input, result.GetCallback());
+  auth_block_->Create(user_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
   ASSERT_THAT(status, IsOk());
@@ -182,7 +182,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateTestWithoutMigratePin) {
                           reset_secret};
   features_.SetDefaultForFeature(Features::kMigratePin, false);
   CreateTestFuture result;
-  auth_block_->Create(user_input, result.GetCallback());
+  auth_block_->Create(user_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
 
@@ -221,7 +221,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateFailureLeManager) {
                           reset_secret};
 
   CreateTestFuture result;
-  auth_block_->Create(user_input, result.GetCallback());
+  auth_block_->Create(user_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
 
@@ -238,7 +238,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateFailureNoUserInput) {
       .obfuscated_username = ObfuscatedUsername(kObfuscatedUsername),
       .reset_secret = reset_secret};
   CreateTestFuture result;
-  auth_block_->Create(auth_input, result.GetCallback());
+  auth_block_->Create(auth_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
 
@@ -256,7 +256,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateFailureNoObfuscated) {
   AuthInput auth_input = {.user_input = user_input,
                           .reset_secret = reset_secret};
   CreateTestFuture result;
-  auth_block_->Create(auth_input, result.GetCallback());
+  auth_block_->Create(auth_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
 
@@ -273,7 +273,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateFailureNoResetSecret) {
       .user_input = user_input,
       .obfuscated_username = ObfuscatedUsername(kObfuscatedUsername)};
   CreateTestFuture result;
-  auth_block_->Create(auth_input, result.GetCallback());
+  auth_block_->Create(auth_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
 
@@ -347,7 +347,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateTestWithRecoverableKeyStore) {
   features_.SetDefaultForFeature(Features::kGenerateRecoverableKeyStore, true);
 
   CreateTestFuture result;
-  auth_block_->Create(user_input, result.GetCallback());
+  auth_block_->Create(user_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
   ASSERT_THAT(status, IsOk());
@@ -394,7 +394,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateTestWithRecoverableKeyStoreDisabled) {
   features_.SetDefaultForFeature(Features::kGenerateRecoverableKeyStore, false);
 
   CreateTestFuture result;
-  auth_block_->Create(user_input, result.GetCallback());
+  auth_block_->Create(user_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
   ASSERT_THAT(status, IsOk());

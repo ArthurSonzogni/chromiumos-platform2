@@ -370,6 +370,7 @@ void TpmEccAuthBlock::TryCreate(const AuthInput& user_input,
 }
 
 void TpmEccAuthBlock::Create(const AuthInput& user_input,
+                             const AuthFactorMetadata& auth_factor_metadata,
                              AuthBlock::CreateCallback callback) {
   if (!user_input.user_input.has_value()) {
     LOG(ERROR) << "Missing user_input";

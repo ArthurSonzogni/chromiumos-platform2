@@ -151,8 +151,10 @@ std::unique_ptr<AuthBlock> FingerprintAuthBlock::New(
   return nullptr;
 }
 
-void FingerprintAuthBlock::Create(const AuthInput& auth_input,
-                                  CreateCallback callback) {
+void FingerprintAuthBlock::Create(
+    const AuthInput& auth_input,
+    const AuthFactorMetadata& auth_factor_metadata,
+    CreateCallback callback) {
   if (!auth_input.obfuscated_username.has_value()) {
     LOG(ERROR) << "Missing obfuscated_username.";
     std::move(callback).Run(

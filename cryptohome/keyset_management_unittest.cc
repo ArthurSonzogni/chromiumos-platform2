@@ -612,7 +612,7 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
                           vk_status->get()->GetResetSeed()};
   CreateTestFuture result;
   LOG(INFO) << "Before create";
-  auth_block->Create(auth_input, result.GetCallback());
+  auth_block->Create(auth_input, {}, result.GetCallback());
   LOG(INFO) << "After create";
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();

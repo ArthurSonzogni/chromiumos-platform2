@@ -62,6 +62,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   void CreateKeyBlobsWithAuthBlock(
       AuthBlockType auth_block_type,
       const AuthInput& auth_input,
+      const AuthFactorMetadata& auth_factor_metadata,
       AuthBlock::CreateCallback create_callback) override;
 
   void DeriveKeyBlobsWithAuthBlock(

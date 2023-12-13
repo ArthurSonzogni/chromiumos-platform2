@@ -987,7 +987,7 @@ void AuthSession::OnMigrationUssCreated(
 
   auth_block_utility_->CreateKeyBlobsWithAuthBlock(
       auth_block_type, migration_auth_input_status.value(),
-      std::move(create_callback));
+      auth_factor_metadata, std::move(create_callback));
 }
 
 const FileSystemKeyset& AuthSession::file_system_keyset() const {
@@ -1802,7 +1802,7 @@ void AuthSession::AuthForDecrypt::UpdateAuthFactor(
       std::move(auth_session_performance_timer), std::move(on_done));
 
   session_->auth_block_utility_->CreateKeyBlobsWithAuthBlock(
-      auth_block_type.value(), auth_input_status.value(),
+      auth_block_type.value(), auth_input_status.value(), auth_factor_metadata,
       std::move(create_callback));
 }
 
@@ -2305,11 +2305,11 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactor(
   auto create_callback = base::BindOnce(
       &AuthSession::AuthForDecrypt::ReplaceAuthFactorIntoUss,
       weak_factory_.GetWeakPtr(), std::move(*original_auth_factor), *auth_input,
-      auth_factor_type, std::move(auth_factor_label),
-      std::move(auth_factor_metadata), std::move(perf_timer),
-      std::move(on_done));
+      auth_factor_type, std::move(auth_factor_label), auth_factor_metadata,
+      std::move(perf_timer), std::move(on_done));
   session_->auth_block_utility_->CreateKeyBlobsWithAuthBlock(
-      *auth_block_type, *auth_input, std::move(create_callback));
+      *auth_block_type, *auth_input, auth_factor_metadata,
+      std::move(create_callback));
 }
 
 void AuthSession::AuthForDecrypt::RelabelAuthFactorEphemeral(
@@ -2890,7 +2890,7 @@ AuthBlockType AuthSession::ResaveVaultKeysetIfNeeded(
       &AuthSession::ResaveKeysetOnKeyBlobsGenerated, weak_factory_.GetWeakPtr(),
       std::move(updated_vault_keyset));
   auth_block_utility_->CreateKeyBlobsWithAuthBlock(
-      out_auth_block_type.value(), auth_input,
+      out_auth_block_type.value(), auth_input, /*metadata=*/{},
       /*CreateCallback*/ std::move(create_callback));
 
   return out_auth_block_type.value();
@@ -3545,7 +3545,7 @@ void AuthSession::AuthForDecrypt::AddAuthFactor(
   }
 
   session_->auth_block_utility_->CreateKeyBlobsWithAuthBlock(
-      auth_block_type.value(), auth_input_status.value(),
+      auth_block_type.value(), auth_input_status.value(), auth_factor_metadata,
       base::BindOnce(
           &AuthSession::PersistAuthFactorToUserSecretStash,
           session_->weak_factory_.GetWeakPtr(), auth_factor_type,
@@ -3968,7 +3968,8 @@ void AuthSession::RecreateUssAuthFactor(
       auth_factor.metadata(), *auth_input_for_add,
       std::move(auth_session_performance_timer), std::move(status_callback));
   auth_block_utility_->CreateKeyBlobsWithAuthBlock(
-      *auth_block_type, *auth_input_for_add, std::move(create_callback));
+      *auth_block_type, *auth_input_for_add, auth_factor.metadata(),
+      std::move(create_callback));
 }
 
 void AuthSession::ResetLECredentials() {

@@ -171,7 +171,7 @@ TEST_F(ChallengeCredentialAuthBlockTest, Create) {
   AuthBlock::CreateCallback create_callback =
       base::BindOnce(VerifyCreateCallback, &run_loop, &auth_input);
 
-  auth_block_->Create(auth_input, std::move(create_callback));
+  auth_block_->Create(auth_input, {}, std::move(create_callback));
 
   run_loop.Run();
 }
@@ -210,7 +210,7 @@ TEST_F(ChallengeCredentialAuthBlockTest, CreateCredentialsFailed) {
           },
   };
 
-  auth_block_->Create(auth_input, std::move(create_callback));
+  auth_block_->Create(auth_input, {}, std::move(create_callback));
 
   run_loop.Run();
 }
@@ -247,7 +247,7 @@ TEST_F(ChallengeCredentialAuthBlockTest, MutipleCreateFailed) {
   AuthBlock::CreateCallback create_callback =
       base::BindOnce(VerifyCreateCallback, &run_loop, &auth_input);
 
-  auth_block_->Create(auth_input, std::move(create_callback));
+  auth_block_->Create(auth_input, {}, std::move(create_callback));
 
   run_loop.Run();
 
@@ -261,7 +261,7 @@ TEST_F(ChallengeCredentialAuthBlockTest, MutipleCreateFailed) {
         run_loop2.Quit();
       });
 
-  auth_block_->Create(auth_input, std::move(create_callback2));
+  auth_block_->Create(auth_input, {}, std::move(create_callback2));
 
   run_loop2.Run();
 }
@@ -288,7 +288,7 @@ TEST_F(ChallengeCredentialAuthBlockTest, CreateMissingObfuscatedUsername) {
                        kRsassaPkcs1V15Sha256},
           },
   };
-  auth_block_->Create(auth_input, std::move(create_callback));
+  auth_block_->Create(auth_input, {}, std::move(create_callback));
   run_loop.Run();
 }
 
@@ -308,7 +308,7 @@ TEST_F(ChallengeCredentialAuthBlockTest,
   AuthInput auth_input{
       .obfuscated_username = ObfuscatedUsername("obfuscated_username"),
   };
-  auth_block_->Create(auth_input, std::move(create_callback));
+  auth_block_->Create(auth_input, {}, std::move(create_callback));
   run_loop.Run();
 }
 
@@ -332,7 +332,7 @@ TEST_F(ChallengeCredentialAuthBlockTest, CreateMissingAlgorithm) {
                   brillo::BlobFromString("public_key_spki_der"),
           },
   };
-  auth_block_->Create(auth_input, std::move(create_callback));
+  auth_block_->Create(auth_input, {}, std::move(create_callback));
 
   run_loop.Run();
 }
@@ -680,7 +680,7 @@ class ChallengeCredentialAuthBlockFullTest : public ::testing::Test {
     base::RunLoop run_loop;
     CryptohomeStatus got_error;
     auth_block_->Create(
-        auth_input,
+        auth_input, {},
         base::BindLambdaForTesting(
             [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
                 std::unique_ptr<AuthBlockState> auth_block_state) {

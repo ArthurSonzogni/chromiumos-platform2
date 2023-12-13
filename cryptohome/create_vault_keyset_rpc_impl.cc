@@ -222,8 +222,9 @@ void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
       weak_factory_.GetWeakPtr(), key_data, request.disable_key_data(),
       std::ref(auth_session), std::move(on_done));
 
-  auth_block_utility_->CreateKeyBlobsWithAuthBlock(
-      auth_block_type.value(), auth_input, std::move(create_callback));
+  auth_block_utility_->CreateKeyBlobsWithAuthBlock(auth_block_type.value(),
+                                                   auth_input, /*metadata=*/{},
+                                                   std::move(create_callback));
 }
 
 void CreateVaultKeysetRpcImpl::CreateAndPersistVaultKeyset(

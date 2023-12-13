@@ -2064,9 +2064,10 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWebAuthnIntent) {
   auto key_blobs = std::make_unique<KeyBlobs>(kKeyBlobs);
   auto auth_block_state = std::make_unique<AuthBlockState>();
   auth_block_state->state = kTpmState;
-  EXPECT_CALL(mock_auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
+  EXPECT_CALL(mock_auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _, _))
       .WillOnce([&key_blobs, &auth_block_state](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthFactorMetadata& auth_factor_metadata,
                     AuthBlock::CreateCallback create_callback) {
         std::move(create_callback)
             .Run(OkStatus<CryptohomeError>(), std::move(key_blobs),
@@ -2135,9 +2136,10 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorCheckSignal) {
   auto key_blobs = std::make_unique<KeyBlobs>(kKeyBlobs);
   auto auth_block_state = std::make_unique<AuthBlockState>();
   auth_block_state->state = kTpmState;
-  EXPECT_CALL(mock_auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
+  EXPECT_CALL(mock_auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _, _))
       .WillOnce([&key_blobs, &auth_block_state](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthFactorMetadata& auth_factor_metadata,
                     AuthBlock::CreateCallback create_callback) {
         std::move(create_callback)
             .Run(OkStatus<CryptohomeError>(), std::move(key_blobs),

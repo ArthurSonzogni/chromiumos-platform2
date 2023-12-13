@@ -59,7 +59,9 @@ class AuthBlock {
   // on success, error will be an ok status, KeyBlobs and AuthBlockState will be
   // populated. On Failure, the error is assigned the related error value, the
   // value of KeyBlobs and AuthBlockState are not valid to use.
-  virtual void Create(const AuthInput& user_input, CreateCallback callback) = 0;
+  virtual void Create(const AuthInput& user_input,
+                      const AuthFactorMetadata& auth_factor_metadata,
+                      CreateCallback callback) = 0;
 
   // On success, |error| will be OK and |key_blobs| will be populated with the
   // derived key. The value of |suggested_action| may also be set if there are

@@ -67,6 +67,7 @@ CryptoStatus CreateScryptHelper(const brillo::SecureBlob& input_key,
 }
 
 void ScryptAuthBlock::Create(const AuthInput& auth_input,
+                             const AuthFactorMetadata& auth_factor_metadata,
                              CreateCallback callback) {
   const brillo::SecureBlob input_key = auth_input.user_input.value();
 

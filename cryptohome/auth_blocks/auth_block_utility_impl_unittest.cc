@@ -231,7 +231,7 @@ TEST_F(AuthBlockUtilityImplTest, CreatePinweaverAuthBlockTest) {
              std::unique_ptr<AuthBlockState>>
       create_result;
   auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-      AuthBlockType::kPinWeaver, auth_input, create_result.GetCallback());
+      AuthBlockType::kPinWeaver, auth_input, {}, create_result.GetCallback());
 
   // Verify
   ASSERT_THAT(create_result.Get<2>(), NotNull());
@@ -308,7 +308,8 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedPcrBoundAuthBlock) {
              std::unique_ptr<AuthBlockState>>
       create_result;
   auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-      AuthBlockType::kTpmBoundToPcr, auth_input, create_result.GetCallback());
+      AuthBlockType::kTpmBoundToPcr, auth_input, {},
+      create_result.GetCallback());
 
   // Verify
   ASSERT_THAT(create_result.Get<2>(), NotNull());
@@ -340,7 +341,8 @@ TEST_F(AuthBlockUtilityImplTest,
              std::unique_ptr<AuthBlockState>>
       create_result;
   auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-      AuthBlockType::kTpmBoundToPcr, auth_input, create_result.GetCallback());
+      AuthBlockType::kTpmBoundToPcr, auth_input, {},
+      create_result.GetCallback());
 
   // Verify
   EXPECT_THAT(create_result.Get<0>(), NotOk());
@@ -408,7 +410,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedNonPcrBoundAuthBlock) {
              std::unique_ptr<AuthBlockState>>
       create_result;
   auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-      AuthBlockType::kTpmNotBoundToPcr, auth_input,
+      AuthBlockType::kTpmNotBoundToPcr, auth_input, {},
       create_result.GetCallback());
 
   // Verify
@@ -441,7 +443,7 @@ TEST_F(AuthBlockUtilityImplTest,
              std::unique_ptr<AuthBlockState>>
       create_result;
   auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-      AuthBlockType::kTpmNotBoundToPcr, auth_input,
+      AuthBlockType::kTpmNotBoundToPcr, auth_input, {},
       create_result.GetCallback());
 
   // Verify
@@ -514,7 +516,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedEccAuthBlock) {
              std::unique_ptr<AuthBlockState>>
       create_result;
   auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-      AuthBlockType::kTpmEcc, auth_input, create_result.GetCallback());
+      AuthBlockType::kTpmEcc, auth_input, {}, create_result.GetCallback());
 
   // Verify
   ASSERT_THAT(create_result.Get<2>(), NotNull());
@@ -545,7 +547,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedEccAuthBlockErrorNoLoader) {
              std::unique_ptr<AuthBlockState>>
       create_result;
   auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-      AuthBlockType::kTpmEcc, auth_input, create_result.GetCallback());
+      AuthBlockType::kTpmEcc, auth_input, {}, create_result.GetCallback());
 
   // Verify
   EXPECT_THAT(create_result.Get<0>(), NotOk());
@@ -614,7 +616,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateScryptAuthBlockTest) {
              std::unique_ptr<AuthBlockState>>
       create_result;
   auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-      AuthBlockType::kScrypt, auth_input, create_result.GetCallback());
+      AuthBlockType::kScrypt, auth_input, {}, create_result.GetCallback());
 
   // Verify
   ASSERT_THAT(create_result.Get<2>(), NotNull());
@@ -902,7 +904,7 @@ TEST_F(AuthBlockUtilityImplTest, ChallengeCredentialCreate) {
 
   // Test.
   auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-      AuthBlockType::kChallengeCredential, auth_input,
+      AuthBlockType::kChallengeCredential, auth_input, {},
       std::move(create_callback));
 }
 

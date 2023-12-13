@@ -57,8 +57,10 @@ DoubleWrappedCompatAuthBlock::DoubleWrappedCompatAuthBlock(
     : AuthBlock(kDoubleWrapped),
       tpm_auth_block_(hwsec, cryptohome_keys_manager) {}
 
-void DoubleWrappedCompatAuthBlock::Create(const AuthInput& user_input,
-                                          CreateCallback callback) {
+void DoubleWrappedCompatAuthBlock::Create(
+    const AuthInput& user_input,
+    const AuthFactorMetadata& auth_factor_metadata,
+    CreateCallback callback) {
   LOG(FATAL) << "Cannot create a keyset wrapped with both scrypt and TPM.";
   std::move(callback).Run(
       MakeStatus<CryptohomeCryptoError>(
@@ -90,7 +92,7 @@ void DoubleWrappedCompatAuthBlock::Derive(const AuthInput& user_input,
       user_input, scrypt_state,
       base::BindOnce(&DoubleWrappedCompatAuthBlock::CreateDeriveAfterScrypt,
                      weak_factory_.GetWeakPtr(), std::move(callback),
-                     std::move(user_input), std::move(state)));
+                     user_input, std::move(state)));
 }
 
 void DoubleWrappedCompatAuthBlock::CreateDeriveAfterScrypt(

@@ -122,8 +122,10 @@ CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(
   CHECK(platform_);
 }
 
-void CryptohomeRecoveryAuthBlock::Create(const AuthInput& auth_input,
-                                         CreateCallback callback) {
+void CryptohomeRecoveryAuthBlock::Create(
+    const AuthInput& auth_input,
+    const AuthFactorMetadata& auth_factor_metadata,
+    CreateCallback callback) {
   CHECK(auth_input.cryptohome_recovery_auth_input.has_value());
   auto cryptohome_recovery_auth_input =
       auth_input.cryptohome_recovery_auth_input.value();

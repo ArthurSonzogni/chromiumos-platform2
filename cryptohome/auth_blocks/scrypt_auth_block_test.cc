@@ -52,7 +52,7 @@ TEST_F(ScryptAuthBlockTest, CreateAndDeriveTest) {
   auth_input.user_input = brillo::SecureBlob("foo");
   ScryptAuthBlock auth_block;
   CreateTestFuture result;
-  auth_block.Create(auth_input, result.GetCallback());
+  auth_block.Create(auth_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
   ASSERT_THAT(status, IsOk());
@@ -144,7 +144,7 @@ TEST_F(ScryptAuthBlockTest, CreateTest) {
       });
 
   auto scrypt_auth_block = std::make_unique<ScryptAuthBlock>();
-  scrypt_auth_block->Create(auth_input, std::move(create_callback));
+  scrypt_auth_block->Create(auth_input, {}, std::move(create_callback));
 
   run_loop.Run();
 }

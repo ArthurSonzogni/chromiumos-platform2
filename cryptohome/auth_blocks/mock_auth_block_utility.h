@@ -36,6 +36,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
               CreateKeyBlobsWithAuthBlock,
               (AuthBlockType auth_block_type,
                const AuthInput& auth_input,
+               const AuthFactorMetadata& auth_factor_metadata,
                AuthBlock::CreateCallback create_callback),
               (override));
   MOCK_METHOD(void,

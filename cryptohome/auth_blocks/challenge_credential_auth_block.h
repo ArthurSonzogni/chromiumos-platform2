@@ -49,7 +49,9 @@ class ChallengeCredentialAuthBlock : public AuthBlock {
       delete;
 
   // This creates the KeyBlobs & AuthBlockState  from the key challenge service.
-  void Create(const AuthInput& user_input, CreateCallback callback) override;
+  void Create(const AuthInput& user_input,
+              const AuthFactorMetadata& auth_factor_metadata,
+              CreateCallback callback) override;
 
   // This derives the KeyBlobs from the key challenge service.
   void Derive(const AuthInput& user_input,

@@ -92,6 +92,7 @@ bool AuthBlockUtilityImpl::GetLockedToSingleUser() const {
 void AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlock(
     AuthBlockType auth_block_type,
     const AuthInput& auth_input,
+    const AuthFactorMetadata& auth_factor_metadata,
     AuthBlock::CreateCallback create_callback) {
   CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
       GetAuthBlockWithType(auth_block_type, auth_input);
@@ -119,7 +120,8 @@ void AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlock(
                                 std::move(auth_block_state));
       },
       std::move(auth_block.value()), std::move(create_callback));
-  auth_block_ptr->Create(auth_input, std::move(managed_callback));
+  auth_block_ptr->Create(auth_input, auth_factor_metadata,
+                         std::move(managed_callback));
 }
 
 void AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(

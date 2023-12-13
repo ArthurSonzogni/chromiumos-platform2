@@ -57,6 +57,7 @@ class AuthBlockUtility {
   virtual void CreateKeyBlobsWithAuthBlock(
       AuthBlockType auth_block_type,
       const AuthInput& auth_input,
+      const AuthFactorMetadata& auth_factor_metadata,
       AuthBlock::CreateCallback create_callback) = 0;
 
   // Derives KeyBlobs with the given type of AuthBlock using the passed

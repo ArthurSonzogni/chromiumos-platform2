@@ -308,7 +308,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
       auth_block_type = AuthBlockType::kPinWeaver;
     }
     auth_block_utility_.CreateKeyBlobsWithAuthBlock(
-        auth_block_type, auth_input,
+        auth_block_type, auth_input, {},
         base::BindLambdaForTesting(
             [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
                 std::unique_ptr<AuthBlockState> auth_block_state) {
@@ -381,10 +381,12 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     auto auth_block_state = std::make_unique<AuthBlockState>();
     auth_block_state->state = kTpmState;
 
-    EXPECT_CALL(mock_auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
+    EXPECT_CALL(mock_auth_block_utility_,
+                CreateKeyBlobsWithAuthBlock(_, _, _, _))
         .WillOnce([&key_blobs, &auth_block_state](
                       AuthBlockType auth_block_type,
                       const AuthInput& auth_input,
+                      const AuthFactorMetadata& auth_factor_metadata,
                       AuthBlock::CreateCallback create_callback) {
           std::move(create_callback)
               .Run(OkStatus<CryptohomeError>(), std::move(key_blobs),
@@ -426,10 +428,12 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     auto auth_block_state = std::make_unique<AuthBlockState>();
     auth_block_state->state = kTpmState;
 
-    EXPECT_CALL(mock_auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
+    EXPECT_CALL(mock_auth_block_utility_,
+                CreateKeyBlobsWithAuthBlock(_, _, _, _))
         .WillRepeatedly([&key_blobs, &auth_block_state](
                             AuthBlockType auth_block_type,
                             const AuthInput& auth_input,
+                            const AuthFactorMetadata& metadata,
                             AuthBlock::CreateCallback create_callback) {
           std::move(create_callback)
               .Run(OkStatus<CryptohomeError>(), std::move(key_blobs),
@@ -479,10 +483,12 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     auto auth_block_state = std::make_unique<AuthBlockState>();
     auth_block_state->state = kTpmState;
 
-    EXPECT_CALL(mock_auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
+    EXPECT_CALL(mock_auth_block_utility_,
+                CreateKeyBlobsWithAuthBlock(_, _, _, _))
         .WillOnce([&key_blobs, &auth_block_state](
                       AuthBlockType auth_block_type,
                       const AuthInput& auth_input,
+                      const AuthFactorMetadata& auth_factor_metadata,
                       AuthBlock::CreateCallback create_callback) {
           std::move(create_callback)
               .Run(OkStatus<CryptohomeError>(), std::move(key_blobs),
@@ -672,7 +678,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
       .obfuscated_username = users_[0].obfuscated,
   };
   auth_block_utility_.CreateKeyBlobsWithAuthBlock(
-      AuthBlockType::kTpmEcc, auth_input,
+      AuthBlockType::kTpmEcc, auth_input, {},
       base::BindLambdaForTesting(
           [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
               std::unique_ptr<AuthBlockState> auth_block_state) {
@@ -911,7 +917,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthenticatePasswordVkToKioskUss) {
       /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt,
       auth_factor_metadata);
   auth_block_utility_.CreateKeyBlobsWithAuthBlock(
-      AuthBlockType::kTpmEcc, auth_input.value(),
+      AuthBlockType::kTpmEcc, auth_input.value(), {},
       base::BindLambdaForTesting(
           [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
               std::unique_ptr<AuthBlockState> auth_block_state) {
@@ -976,7 +982,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   };
   VaultKeyset vk;
   auth_block_utility_.CreateKeyBlobsWithAuthBlock(
-      AuthBlockType::kTpmEcc, auth_input,
+      AuthBlockType::kTpmEcc, auth_input, {},
       base::BindLambdaForTesting(
           [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
               std::unique_ptr<AuthBlockState> auth_block_state) {

@@ -93,8 +93,10 @@ ChallengeCredentialAuthBlock::ChallengeCredentialAuthBlock(
   CHECK(key_challenge_service_);
 }
 
-void ChallengeCredentialAuthBlock::Create(const AuthInput& auth_input,
-                                          CreateCallback callback) {
+void ChallengeCredentialAuthBlock::Create(
+    const AuthInput& auth_input,
+    const AuthFactorMetadata& auth_factor_metadata,
+    CreateCallback callback) {
   if (!key_challenge_service_) {
     LOG(ERROR) << __func__ << ": No valid key challenge service.";
     std::move(callback).Run(
@@ -186,7 +188,7 @@ void ChallengeCredentialAuthBlock::CreateContinue(
 
   ScryptAuthBlock scrypt_auth_block;
   scrypt_auth_block.Create(
-      auth_input,
+      auth_input, /*metadata=*/{},
       base::BindOnce(&ChallengeCredentialAuthBlock::CreateContinueAfterScrypt,
                      weak_factory_.GetWeakPtr(), std::move(callback),
                      std::move(signature_challenge_info)));

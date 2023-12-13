@@ -41,7 +41,9 @@ class TpmEccAuthBlock : public AuthBlock {
   TpmEccAuthBlock(const TpmEccAuthBlock&) = delete;
   TpmEccAuthBlock& operator=(const TpmEccAuthBlock&) = delete;
 
-  void Create(const AuthInput& user_input, CreateCallback callback) override;
+  void Create(const AuthInput& user_input,
+              const AuthFactorMetadata& auth_factor_metadata,
+              CreateCallback callback) override;
 
   void Derive(const AuthInput& auth_input,
               const AuthBlockState& state,

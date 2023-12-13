@@ -42,7 +42,9 @@ class DoubleWrappedCompatAuthBlock : public AuthBlock {
 
   // This auth block represents legacy keysets left in an inconsistent state, so
   // calling Create() here is FATAL.
-  void Create(const AuthInput& user_input, CreateCallback callback) override;
+  void Create(const AuthInput& user_input,
+              const AuthFactorMetadata& auth_factor_metadata,
+              CreateCallback callback) override;
 
   // First tries to derive the keys with scrypt, and falls back to the TPM.
   void Derive(const AuthInput& user_input,

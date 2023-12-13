@@ -293,8 +293,10 @@ void TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
                           std::move(key_blobs), std::nullopt);
 }
 
-void TpmNotBoundToPcrAuthBlock::Create(const AuthInput& user_input,
-                                       CreateCallback callback) {
+void TpmNotBoundToPcrAuthBlock::Create(
+    const AuthInput& user_input,
+    const AuthFactorMetadata& auth_factor_metadata,
+    CreateCallback callback) {
   if (!user_input.user_input.has_value()) {
     LOG(ERROR) << "Missing user_input";
     std::move(callback).Run(

@@ -53,7 +53,9 @@ class CryptohomeRecoveryAuthBlock : public AuthBlock {
 
   // `auth_input` object should have `salt` and
   // `cryptohome_recovery_auth_input.mediator_pub_key` fields set.
-  void Create(const AuthInput& auth_input, CreateCallback callback) override;
+  void Create(const AuthInput& auth_input,
+              const AuthFactorMetadata& auth_factor_metadata,
+              CreateCallback callback) override;
 
   // `auth_input` object should have `salt`,
   // `cryptohome_recovery_auth_input.epoch_pub_key`,

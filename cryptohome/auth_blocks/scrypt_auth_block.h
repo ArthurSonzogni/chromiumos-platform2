@@ -31,7 +31,9 @@ class ScryptAuthBlock : public AuthBlock {
   // Derives a high entropy secret from the user's password with scrypt.
   // Returns a key for each field that must be wrapped by scrypt, such as the
   // wrapped_chaps_key, etc.
-  void Create(const AuthInput& user_input, CreateCallback callback) override;
+  void Create(const AuthInput& user_input,
+              const AuthFactorMetadata& auth_factor_metadata,
+              CreateCallback callback) override;
 
   // This uses Scrypt to derive high entropy keys from the user's password.
   void Derive(const AuthInput& auth_input,

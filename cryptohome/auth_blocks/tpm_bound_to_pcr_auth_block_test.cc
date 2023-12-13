@@ -101,7 +101,7 @@ TEST_F(TpmBoundToPcrTest, CreateTest) {
                           /*reset_secret=*/std::nullopt};
 
   CreateTestFuture result;
-  auth_block_->Create(user_input, result.GetCallback());
+  auth_block_->Create(user_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
 
   auto [status, key_blobs, auth_state] = result.Take();
@@ -141,7 +141,7 @@ TEST_F(TpmBoundToPcrTest, CreateFailTpm) {
                           /*reset_secret=*/std::nullopt};
   AuthBlockState auth_state;
   CreateTestFuture result;
-  auth_block_->Create(user_input, result.GetCallback());
+  auth_block_->Create(user_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
 
   ASSERT_THAT(result.Get<0>(), NotOk());
@@ -156,7 +156,7 @@ TEST_F(TpmBoundToPcrTest, CreateFailNoUserInput) {
 
   // Test.
   CreateTestFuture result;
-  auth_block_->Create(auth_input, result.GetCallback());
+  auth_block_->Create(auth_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
 
   ASSERT_THAT(result.Get<0>(), NotOk());
@@ -172,7 +172,7 @@ TEST_F(TpmBoundToPcrTest, CreateFailNoObfuscated) {
 
   // Test.
   CreateTestFuture result;
-  auth_block_->Create(auth_input, result.GetCallback());
+  auth_block_->Create(auth_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
 
   ASSERT_THAT(result.Get<0>(), NotOk());

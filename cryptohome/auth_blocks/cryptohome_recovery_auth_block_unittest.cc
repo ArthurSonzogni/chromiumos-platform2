@@ -169,7 +169,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
   AuthInput auth_input = GenerateFakeAuthInput();
 
   CreateTestFuture result;
-  auth_block.Create(auth_input, result.GetCallback());
+  auth_block.Create(auth_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
 
   auto [status, created_key_blobs, auth_state] = result.Take();
@@ -234,7 +234,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithNoDeviceUserId) {
   auth_input.cryptohome_recovery_auth_input->device_user_id.clear();
 
   CreateTestFuture result;
-  auth_block.Create(auth_input, result.GetCallback());
+  auth_block.Create(auth_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
 
   auto [status, created_key_blobs, auth_state] = result.Take();
@@ -305,7 +305,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
 
   CreateTestFuture result;
   AuthInput auth_input = GenerateFakeAuthInput();
-  auth_block.Create(auth_input, result.GetCallback());
+  auth_block.Create(auth_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, created_key_blobs, auth_state] = result.Take();
 
@@ -385,7 +385,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, CreateGeneratesRecoveryId) {
 
   CreateTestFuture result;
   AuthInput auth_input = GenerateFakeAuthInput();
-  auth_block.Create(auth_input, result.GetCallback());
+  auth_block.Create(auth_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, created_key_blobs, auth_state] = result.Take();
 
@@ -416,7 +416,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, MissingObfuscatedUsername) {
                                          recovery_crypto_fake_backend_.get(),
                                          &hwsec_pw_manager_, &platform_);
   CreateTestFuture result;
-  auth_block.Create(auth_input, result.GetCallback());
+  auth_block.Create(auth_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, created_key_blobs, auth_state] = result.Take();
   ASSERT_THAT(status, NotOk());
@@ -433,7 +433,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, MissingUserGaiaId) {
                                          recovery_crypto_fake_backend_.get(),
                                          &hwsec_pw_manager_, &platform_);
   CreateTestFuture result;
-  auth_block.Create(auth_input, result.GetCallback());
+  auth_block.Create(auth_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, created_key_blobs, auth_state] = result.Take();
   ASSERT_THAT(status, NotOk());

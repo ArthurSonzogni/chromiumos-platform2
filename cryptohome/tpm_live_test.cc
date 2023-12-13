@@ -163,6 +163,7 @@ void TestPasswordBasedAuthBlock(std::unique_ptr<AuthBlock> auth_block,
   auth_block->Create(
       AuthInput{.user_input = SecureBlob(kPassword),
                 .obfuscated_username = obfuscated_username},
+      AuthFactorMetadata{},
       base::BindOnce(&TestPasswordBasedAuthBlockOnCreate, std::move(auth_block),
                      std::move(callback)));
 }

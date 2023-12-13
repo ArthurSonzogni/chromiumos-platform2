@@ -198,7 +198,7 @@ TEST_F(FingerprintAuthBlockTest, CreateSuccess) {
       .WillOnce(ReturnValue(kFakeCredLabel));
 
   CreateTestFuture result;
-  auth_block_->Create(kFakeAuthInput, result.GetCallback());
+  auth_block_->Create(kFakeAuthInput, {}, result.GetCallback());
 
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
@@ -222,7 +222,7 @@ TEST_F(FingerprintAuthBlockTest, CreateNoUsername) {
   ASSERT_TRUE(token);
 
   CreateTestFuture result;
-  auth_block_->Create(AuthInput{}, result.GetCallback());
+  auth_block_->Create(AuthInput{}, {}, result.GetCallback());
 
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
@@ -239,7 +239,7 @@ TEST_F(FingerprintAuthBlockTest, CreateNoSession) {
                                  .rate_limiter_label = kFakeRateLimiterLabel};
 
   CreateTestFuture result;
-  auth_block_->Create(kFakeAuthInput, result.GetCallback());
+  auth_block_->Create(kFakeAuthInput, {}, result.GetCallback());
 
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
@@ -267,7 +267,7 @@ TEST_F(FingerprintAuthBlockTest, CreateCreateCredentialFailed) {
       });
 
   CreateTestFuture result;
-  auth_block_->Create(kFakeAuthInput, result.GetCallback());
+  auth_block_->Create(kFakeAuthInput, {}, result.GetCallback());
 
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
@@ -300,7 +300,7 @@ TEST_F(FingerprintAuthBlockTest, CreateInsertCredentialFailed) {
                                              hwsec::TPMRetryAction::kNoRetry));
 
   CreateTestFuture result;
-  auth_block_->Create(kFakeAuthInput, result.GetCallback());
+  auth_block_->Create(kFakeAuthInput, {}, result.GetCallback());
 
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();

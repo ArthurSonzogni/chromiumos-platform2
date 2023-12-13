@@ -169,6 +169,7 @@ PinWeaverAuthBlock::PinWeaverAuthBlock(
 }
 
 void PinWeaverAuthBlock::Create(const AuthInput& auth_input,
+                                const AuthFactorMetadata& auth_factor_metadata,
                                 CreateCallback callback) {
   if (!auth_input.user_input.has_value()) {
     LOG(ERROR) << "Missing user_input";

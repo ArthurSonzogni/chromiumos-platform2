@@ -111,7 +111,7 @@ TEST_F(TpmEccAuthBlockTest, CreateTest) {
                           /*reset_secret=*/std::nullopt};
 
   CreateTestFuture result;
-  auth_block_->Create(user_input, result.GetCallback());
+  auth_block_->Create(user_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
 
   auto [status, key_blobs, auth_state] = result.Take();
@@ -164,7 +164,7 @@ TEST_F(TpmEccAuthBlockTest, CreateRetryTest) {
                           /*reset_secret=*/std::nullopt};
 
   CreateTestFuture result;
-  auth_block_->Create(user_input, result.GetCallback());
+  auth_block_->Create(user_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
 
   auto [status, key_blobs, auth_state] = result.Take();
@@ -204,7 +204,7 @@ TEST_F(TpmEccAuthBlockTest, CreateRetryFailTest) {
                           ObfuscatedUsername(kUsername),
                           /*reset_secret=*/std::nullopt};
   CreateTestFuture result;
-  auth_block_->Create(user_input, result.GetCallback());
+  auth_block_->Create(user_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
 
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_TPM_NEEDS_REBOOT,
@@ -220,7 +220,7 @@ TEST_F(TpmEccAuthBlockTest, CreateFailNoUserInput) {
 
   // Test.
   CreateTestFuture result;
-  auth_block_->Create(auth_input, result.GetCallback());
+  auth_block_->Create(auth_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
 
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
@@ -237,7 +237,7 @@ TEST_F(TpmEccAuthBlockTest, CreateFailNoObfuscated) {
 
   // Test.
   CreateTestFuture result;
-  auth_block_->Create(auth_input, result.GetCallback());
+  auth_block_->Create(auth_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
 
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
@@ -264,7 +264,7 @@ TEST_F(TpmEccAuthBlockTest, CreateSealToPcrFailTest) {
                           ObfuscatedUsername(kUsername),
                           /*reset_secret=*/std::nullopt};
   CreateTestFuture result;
-  auth_block_->Create(user_input, result.GetCallback());
+  auth_block_->Create(user_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
 
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
@@ -292,7 +292,7 @@ TEST_F(TpmEccAuthBlockTest, CreateSecondSealToPcrFailTest) {
                           Username(kUsername), ObfuscatedUsername(),
                           /*reset_secret=*/std::nullopt};
   CreateTestFuture result;
-  auth_block_->Create(user_input, result.GetCallback());
+  auth_block_->Create(user_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
 
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
@@ -317,7 +317,7 @@ TEST_F(TpmEccAuthBlockTest, CreateEccAuthValueFailTest) {
                           ObfuscatedUsername(kUsername),
                           /*reset_secret=*/std::nullopt};
   CreateTestFuture result;
-  auth_block_->Create(user_input, result.GetCallback());
+  auth_block_->Create(user_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
 
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
