@@ -314,7 +314,7 @@ void Executor::GetAllFanSpeed(GetAllFanSpeedCallback callback) {
       seccomp_file::kFan,
       SandboxedProcess::Options{
           .user = user::kEc,
-          .writable_mount_points = {base::FilePath{path::kCrosEcDevice}},
+          .readonly_mount_points = {base::FilePath{path::kCrosEcDevice}},
       });
 
   auto* delegate_ptr = delegate.get();
@@ -530,7 +530,7 @@ void Executor::SetLedColor(mojom::LedName name,
       seccomp_file::kLed,
       SandboxedProcess::Options{
           .user = user::kEc,
-          .writable_mount_points = {base::FilePath{path::kCrosEcDevice}},
+          .readonly_mount_points = {base::FilePath{path::kCrosEcDevice}},
       });
 
   auto* delegate_ptr = delegate.get();
@@ -547,7 +547,7 @@ void Executor::ResetLedColor(ash::cros_healthd::mojom::LedName name,
       seccomp_file::kLed,
       SandboxedProcess::Options{
           .user = user::kEc,
-          .writable_mount_points = {base::FilePath{path::kCrosEcDevice}},
+          .readonly_mount_points = {base::FilePath{path::kCrosEcDevice}},
       });
 
   auto* delegate_ptr = delegate.get();
@@ -1007,7 +1007,7 @@ void Executor::SetFanSpeed(
       seccomp_file::kFan,
       SandboxedProcess::Options{
           .user = user::kEc,
-          .writable_mount_points = {base::FilePath{path::kCrosEcDevice}},
+          .readonly_mount_points = {base::FilePath{path::kCrosEcDevice}},
       });
 
   auto* delegate_ptr = delegate.get();
@@ -1023,7 +1023,7 @@ void Executor::SetAllFanAutoControl(SetAllFanAutoControlCallback callback) {
       seccomp_file::kFan,
       SandboxedProcess::Options{
           .user = user::kEc,
-          .writable_mount_points = {base::FilePath{path::kCrosEcDevice}},
+          .readonly_mount_points = {base::FilePath{path::kCrosEcDevice}},
       });
 
   auto* delegate_ptr = delegate.get();
@@ -1054,7 +1054,7 @@ void Executor::GetEcThermalSensors(GetEcThermalSensorsCallback callback) {
       seccomp_file::kThermal,
       SandboxedProcess::Options{
           .user = user::kEc,
-          .writable_mount_points = {base::FilePath{path::kCrosEcDevice}},
+          .readonly_mount_points = {base::FilePath{path::kCrosEcDevice}},
       });
 
   auto* delegate_ptr = delegate.get();

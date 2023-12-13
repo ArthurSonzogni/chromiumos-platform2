@@ -317,7 +317,7 @@ void DelegateImpl::SetLedColor(mojom::LedName name,
     return;
   }
 
-  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
+  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDONLY));
 
   auto query_cmd = ec_command_factory_->LedControlQueryCommand(ec_led_id);
   if (!query_cmd || !query_cmd->Run(cros_fd.get())) {
@@ -352,7 +352,7 @@ void DelegateImpl::ResetLedColor(mojom::LedName name,
     return;
   }
 
-  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
+  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDONLY));
 
   auto cmd = ec_command_factory_->LedControlAutoCommand(ec_led_id);
   if (!cmd || !cmd->Run(cros_fd.get())) {
@@ -410,7 +410,7 @@ void DelegateImpl::MonitorStylus(
 }
 
 void DelegateImpl::GetLidAngle(GetLidAngleCallback callback) {
-  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
+  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDONLY));
   ec::MotionSenseCommandLidAngle cmd;
   if (!cmd.Run(cros_fd.get())) {
     // TODO(b/274524224): Remove the below invalid EC result handling.
@@ -688,7 +688,7 @@ void DelegateImpl::RunFloatingPoint(base::TimeDelta exec_duration,
 }
 
 void DelegateImpl::GetAllFanSpeed(GetAllFanSpeedCallback callback) {
-  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
+  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDONLY));
   std::vector<uint16_t> fan_rpms;
   std::optional<uint8_t> num_fans = GetNumFans(cros_fd.get());
 
@@ -722,7 +722,7 @@ void DelegateImpl::GetAllFanSpeed(GetAllFanSpeedCallback callback) {
 void DelegateImpl::SetFanSpeed(
     const base::flat_map<uint8_t, uint16_t>& fan_id_to_rpm,
     SetFanSpeedCallback callback) {
-  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
+  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDONLY));
   std::optional<uint8_t> num_fans = GetNumFans(cros_fd.get());
 
   if (!num_fans.has_value()) {
@@ -748,7 +748,7 @@ void DelegateImpl::SetFanSpeed(
 }
 
 void DelegateImpl::SetAllFanAutoControl(SetAllFanAutoControlCallback callback) {
-  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
+  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDONLY));
   std::optional<uint8_t> num_fans = GetNumFans(cros_fd.get());
 
   if (!num_fans.has_value()) {
@@ -770,7 +770,7 @@ void DelegateImpl::SetAllFanAutoControl(SetAllFanAutoControlCallback callback) {
 }
 
 void DelegateImpl::GetEcThermalSensors(GetEcThermalSensorsCallback callback) {
-  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
+  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDONLY));
 
   std::vector<mojom::ThermalSensorInfoPtr> thermal_sensors;
 
