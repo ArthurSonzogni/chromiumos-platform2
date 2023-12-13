@@ -53,7 +53,7 @@ class CameraAlgorithmOpsImpl : public mojom::CameraAlgorithmOps,
 
   // Implementation of mojom::CameraAlgorithmOps::Request interface
   void Request(uint32_t req_id,
-               const std::vector<uint8_t>& req_headers,
+               const std::vector<uint8_t>& req_header,
                int32_t buffer_handle) override;
 
   // Implementation of mojom::CameraAlgorithmOps::DeregisterBuffers interface
