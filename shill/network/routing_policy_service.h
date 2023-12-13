@@ -99,7 +99,7 @@ class RoutingPolicyService {
 
   void RuleMsgHandler(const net_base::RTNLMessage& message);
 
-  bool ApplyRule(uint32_t interface_index,
+  bool ApplyRule(int interface_index,
                  const RoutingPolicyEntry& entry,
                  net_base::RTNLMessage::Mode mode,
                  unsigned int flags);

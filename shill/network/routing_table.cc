@@ -76,12 +76,12 @@ bool ParseRoutingTableMessage(const net_base::RTNLMessage& message,
     return false;
   }
 
-  const auto interface_index_u32 =
-      net_base::byte_utils::FromBytes<uint32_t>(message.GetAttribute(RTA_OIF));
-  if (!interface_index_u32) {
+  const auto interface_index_i32 =
+      net_base::byte_utils::FromBytes<int32_t>(message.GetAttribute(RTA_OIF));
+  if (!interface_index_i32) {
     return false;
   }
-  *interface_index = *interface_index_u32;
+  *interface_index = *interface_index_i32;
 
   uint32_t metric = 0;
   if (message.HasAttribute(RTA_PRIORITY)) {
@@ -481,7 +481,7 @@ void RoutingTable::RouteMsgHandler(const net_base::RTNLMessage& message) {
   }
 }
 
-bool RoutingTable::ApplyRoute(uint32_t interface_index,
+bool RoutingTable::ApplyRoute(int interface_index,
                               const RoutingTableEntry& entry,
                               net_base::RTNLMessage::Mode mode,
                               unsigned int flags) {
@@ -497,9 +497,10 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
       net_base::RTNLMessage::kTypeRoute, mode, NLM_F_REQUEST | flags, 0, 0, 0,
       net_base::ToSAFamily(entry.dst.GetFamily()));
   message->set_route_status(net_base::RTNLMessage::RouteStatus(
-      entry.dst.prefix_length(), entry.src.prefix_length(),
-      entry.table < 256 ? entry.table : RT_TABLE_COMPAT, entry.protocol,
-      entry.scope, entry.type, 0));
+      static_cast<uint8_t>(entry.dst.prefix_length()),
+      static_cast<uint8_t>(entry.src.prefix_length()),
+      entry.table < 256 ? static_cast<uint8_t>(entry.table) : RT_TABLE_COMPAT,
+      entry.protocol, entry.scope, entry.type, 0));
 
   message->SetAttribute(RTA_TABLE,
                         net_base::byte_utils::ToBytes<uint32_t>(entry.table));
@@ -519,7 +520,7 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
     // because that is how it looks up the |tables_| vector.  But
     // FlushRoutes() and FlushRoutesWithTag() do not care.
     message->SetAttribute(
-        RTA_OIF, net_base::byte_utils::ToBytes<uint32_t>(interface_index));
+        RTA_OIF, net_base::byte_utils::ToBytes<int32_t>(interface_index));
   }
 
   return rtnl_handler_->SendMessage(std::move(message), nullptr);

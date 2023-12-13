@@ -130,7 +130,7 @@ class RoutingTable {
                                   const RoutingTableEntry& entry);
 
   void RouteMsgHandler(const net_base::RTNLMessage& msg);
-  bool ApplyRoute(uint32_t interface_index,
+  bool ApplyRoute(int interface_index,
                   const RoutingTableEntry& entry,
                   net_base::RTNLMessage::Mode mode,
                   unsigned int flags);

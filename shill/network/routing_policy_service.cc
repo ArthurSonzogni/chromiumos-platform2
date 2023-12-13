@@ -270,7 +270,7 @@ void RoutingPolicyService::FlushRules(int interface_index) {
   table->second.clear();
 }
 
-bool RoutingPolicyService::ApplyRule(uint32_t interface_index,
+bool RoutingPolicyService::ApplyRule(int interface_index,
                                      const RoutingPolicyEntry& entry,
                                      net_base::RTNLMessage::Mode mode,
                                      unsigned int flags) {
@@ -282,9 +282,11 @@ bool RoutingPolicyService::ApplyRule(uint32_t interface_index,
       net_base::RTNLMessage::kTypeRule, mode, NLM_F_REQUEST | flags, 0, 0, 0,
       net_base::ToSAFamily(entry.family));
   message->set_route_status(net_base::RTNLMessage::RouteStatus(
-      entry.dst.prefix_length(), entry.src.prefix_length(),
-      entry.table < 256 ? entry.table : RT_TABLE_COMPAT, RTPROT_BOOT,
-      RT_SCOPE_UNIVERSE, RTN_UNICAST, entry.invert_rule ? FIB_RULE_INVERT : 0));
+      static_cast<uint8_t>(entry.dst.prefix_length()),
+      static_cast<uint8_t>(entry.src.prefix_length()),
+      entry.table < 256 ? static_cast<uint8_t>(entry.table) : RT_TABLE_COMPAT,
+      RTPROT_BOOT, RT_SCOPE_UNIVERSE, RTN_UNICAST,
+      entry.invert_rule ? FIB_RULE_INVERT : 0));
 
   message->SetAttribute(FRA_TABLE,
                         net_base::byte_utils::ToBytes<uint32_t>(entry.table));

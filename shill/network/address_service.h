@@ -56,7 +56,7 @@ class AddressService {
   friend class base::NoDestructor<AddressService>;
 
   // Cache for the addresses added earlier by us, keyed by the interface id.
-  std::map<uint32_t, std::vector<net_base::IPCIDR>> added_addresses_;
+  std::map<int, std::vector<net_base::IPCIDR>> added_addresses_;
 
   // Cache singleton pointer for performance and test purposes.
   net_base::RTNLHandler* rtnl_handler_;

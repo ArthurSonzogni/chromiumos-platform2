@@ -302,7 +302,7 @@ void NetworkApplier::ApplyRoutingPolicy(
 }
 
 void NetworkApplier::ApplyMTU(int interface_index, int mtu) {
-  rtnl_handler_->SetInterfaceMTU(interface_index, mtu);
+  rtnl_handler_->SetInterfaceMTU(interface_index, static_cast<uint32_t>(mtu));
 }
 
 void NetworkApplier::ApplyRoute(
