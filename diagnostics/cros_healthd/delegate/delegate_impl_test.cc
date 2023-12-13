@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include <base/test/test_future.h>
 #include <chromeos/ec/ec_commands.h>
@@ -37,6 +38,12 @@ inline constexpr mojom::LedColor kArbitraryValidLedColor =
 // The ec_led_colors corresponding to |kArbitraryValidLedColor|.
 inline constexpr ec_led_colors kArbitraryValidLedColorEcEnum =
     EC_LED_COLOR_AMBER;
+
+// Parameters for running i2c read command.
+constexpr uint8_t kBatteryI2cAddress = 0x16;
+constexpr uint8_t kBatteryI2cManufactureDateOffset = 0x1B;
+constexpr uint8_t kBatteryI2cTemperatureOffset = 0x08;
+constexpr uint8_t kBatteryI2cReadLen = 2;
 
 class FakeLedControlAutoCommand : public ec::LedControlAutoCommand {
  public:
@@ -87,6 +94,25 @@ class FakeLedControlSetCommand : public ec::LedControlSetCommand {
   bool fake_run_result_ = false;
 };
 
+class FakeI2cReadCommand : public ec::I2cReadCommand {
+ public:
+  FakeI2cReadCommand() = default;
+
+  // ec::EcCommand overrides.
+  bool Run(int fd) override { return fake_run_result_; }
+
+  // ec::I2cReadCommand overrides.
+  uint32_t Data() const override { return fake_data_; }
+
+  void SetRunResult(bool result) { fake_run_result_ = result; }
+
+  void SetData(uint32_t data) { fake_data_ = data; }
+
+ private:
+  bool fake_run_result_ = false;
+  uint32_t fake_data_ = 0;
+};
+
 class DelegateImplTest : public BaseFileTest {
  public:
   DelegateImplTest(const DelegateImplTest&) = delete;
@@ -108,6 +134,18 @@ class DelegateImplTest : public BaseFileTest {
     base::test::TestFuture<const std::optional<std::string>&> err_future;
     delegate_.ResetLedColor(name, err_future.GetCallback());
     return err_future.Take();
+  }
+
+  std::optional<uint32_t> GetSmartBatteryManufactureDateSync(uint8_t i2c_port) {
+    base::test::TestFuture<std::optional<uint32_t>> future;
+    delegate_.GetSmartBatteryManufactureDate(i2c_port, future.GetCallback());
+    return future.Get();
+  }
+
+  std::optional<uint32_t> GetSmartBatteryTemperatureSync(uint8_t i2c_port) {
+    base::test::TestFuture<std::optional<uint32_t>> future;
+    delegate_.GetSmartBatteryTemperature(i2c_port, future.GetCallback());
+    return future.Get();
   }
 
   ec::MockEcCommandFactory mock_ec_command_factory_;
@@ -246,6 +284,66 @@ TEST_F(DelegateImplTest, ResetLedColorSuccess) {
 
   auto err = ResetLedColorSync(kArbitraryValidLedName);
   EXPECT_EQ(err, std::nullopt);
+}
+
+TEST_F(DelegateImplTest, GetSmartBatteryManufactureDateSuccess) {
+  auto cmd = std::make_unique<FakeI2cReadCommand>();
+  cmd->SetRunResult(true);
+  cmd->SetData(0x4d06);
+
+  uint8_t i2c_port = 5;
+  EXPECT_CALL(
+      mock_ec_command_factory_,
+      I2cReadCommand(i2c_port, kBatteryI2cAddress,
+                     kBatteryI2cManufactureDateOffset, kBatteryI2cReadLen))
+      .WillOnce(Return(std::move(cmd)));
+
+  auto output = GetSmartBatteryManufactureDateSync(i2c_port);
+  EXPECT_EQ(output, 0x4d06);
+}
+
+TEST_F(DelegateImplTest, GetSmartBatteryManufactureDateFailed) {
+  auto cmd = std::make_unique<FakeI2cReadCommand>();
+  cmd->SetRunResult(false);
+
+  uint8_t i2c_port = 5;
+  EXPECT_CALL(
+      mock_ec_command_factory_,
+      I2cReadCommand(i2c_port, kBatteryI2cAddress,
+                     kBatteryI2cManufactureDateOffset, kBatteryI2cReadLen))
+      .WillOnce(Return(std::move(cmd)));
+
+  auto output = GetSmartBatteryManufactureDateSync(i2c_port);
+  EXPECT_EQ(output, std::nullopt);
+}
+
+TEST_F(DelegateImplTest, GetSmartBatteryTemperatureSuccess) {
+  auto cmd = std::make_unique<FakeI2cReadCommand>();
+  cmd->SetRunResult(true);
+  cmd->SetData(0xbae);
+
+  uint8_t i2c_port = 5;
+  EXPECT_CALL(mock_ec_command_factory_,
+              I2cReadCommand(i2c_port, kBatteryI2cAddress,
+                             kBatteryI2cTemperatureOffset, kBatteryI2cReadLen))
+      .WillOnce(Return(std::move(cmd)));
+
+  auto output = GetSmartBatteryTemperatureSync(i2c_port);
+  EXPECT_EQ(output, 0xbae);
+}
+
+TEST_F(DelegateImplTest, GetSmartBatteryTemperatureFailed) {
+  auto cmd = std::make_unique<FakeI2cReadCommand>();
+  cmd->SetRunResult(false);
+
+  uint8_t i2c_port = 5;
+  EXPECT_CALL(mock_ec_command_factory_,
+              I2cReadCommand(i2c_port, kBatteryI2cAddress,
+                             kBatteryI2cTemperatureOffset, kBatteryI2cReadLen))
+      .WillOnce(Return(std::move(cmd)));
+
+  auto output = GetSmartBatteryTemperatureSync(i2c_port);
+  EXPECT_EQ(output, std::nullopt);
 }
 
 }  // namespace

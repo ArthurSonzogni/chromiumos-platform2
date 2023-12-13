@@ -874,7 +874,7 @@ void DelegateImpl::GetSmartBatteryManufactureDate(
     uint8_t i2c_port, GetSmartBatteryManufactureDateCallback callback) {
   auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDONLY));
   // Offset of manufacture date is 0x1B and the number of reading bytes is 2.
-  std::unique_ptr<ec::I2cReadCommand> cmd = ec::I2cReadCommand::Create(
+  auto cmd = ec_command_factory_->I2cReadCommand(
       /*port=*/i2c_port, /*addr8=*/kBatteryI2cAddress,
       /*offset=*/0x1B, /*read_len=*/2);
   if (!cmd || !cmd->Run(cros_fd.get())) {
@@ -888,7 +888,7 @@ void DelegateImpl::GetSmartBatteryTemperature(
     uint8_t i2c_port, GetSmartBatteryTemperatureCallback callback) {
   auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDONLY));
   // Offset of temperature is 0x08 and the number of reading bytes is 2.
-  std::unique_ptr<ec::I2cReadCommand> cmd = ec::I2cReadCommand::Create(
+  auto cmd = ec_command_factory_->I2cReadCommand(
       /*port=*/i2c_port, /*addr8=*/kBatteryI2cAddress,
       /*offset=*/0x08, /*read_len=*/2);
   if (!cmd || !cmd->Run(cros_fd.get())) {
