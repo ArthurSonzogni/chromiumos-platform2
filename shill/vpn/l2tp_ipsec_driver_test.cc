@@ -13,11 +13,11 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/mock_process_manager.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/net/mock_process_manager.h"
 #include "shill/store/fake_store.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/fake_vpn_util.h"
@@ -31,7 +31,8 @@ namespace shill {
 
 class L2TPIPsecDriverUnderTest : public L2TPIPsecDriver {
  public:
-  L2TPIPsecDriverUnderTest(Manager* manager, ProcessManager* process_manager)
+  L2TPIPsecDriverUnderTest(Manager* manager,
+                           net_base::ProcessManager* process_manager)
       : L2TPIPsecDriver(manager, process_manager) {}
 
   L2TPIPsecDriverUnderTest(const L2TPIPsecDriverUnderTest&) = delete;
@@ -51,7 +52,7 @@ class L2TPIPsecDriverUnderTest : public L2TPIPsecDriver {
       std::unique_ptr<VPNConnection> l2tp_connection,
       DeviceInfo* device_info,
       EventDispatcher* dispatcher,
-      ProcessManager* process_manager) override {
+      net_base::ProcessManager* process_manager) override {
     ipsec_config_ = std::move(config);
     auto ipsec_connection = std::make_unique<VPNConnectionUnderTest>(
         std::move(callbacks), dispatcher);
@@ -64,7 +65,7 @@ class L2TPIPsecDriverUnderTest : public L2TPIPsecDriver {
       ControlInterface* control_interface,
       DeviceInfo* device_info,
       EventDispatcher* dispatcher,
-      ProcessManager* process_manager) override {
+      net_base::ProcessManager* process_manager) override {
     l2tp_config_ = std::move(config);
     return std::make_unique<VPNConnectionUnderTest>(nullptr, dispatcher);
   }
@@ -115,7 +116,7 @@ class L2TPIPsecDriverTest : public testing::Test {
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;
-  MockProcessManager process_manager_;
+  net_base::MockProcessManager process_manager_;
 
   // Other objects used in the tests.
   FakeStore fake_store_;

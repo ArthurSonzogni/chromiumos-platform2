@@ -27,6 +27,7 @@ extern "C" {
 #include <base/memory/weak_ptr.h>
 #include <base/strings/string_number_conversions.h>
 #include <net-base/ip_address.h>
+#include <net-base/process_manager.h>
 
 #include "shill/control_interface.h"
 #include "shill/error.h"
@@ -61,7 +62,7 @@ const char PPPDaemon::kShimPluginPath[] = SHIMDIR "/shill-pppd-plugin.so";
 
 std::unique_ptr<ExternalTask> PPPDaemon::Start(
     ControlInterface* control_interface,
-    ProcessManager* process_manager,
+    net_base::ProcessManager* process_manager,
     const base::WeakPtr<RpcTaskDelegate>& task_delegate,
     const PPPDaemon::Options& options,
     const std::string& device,

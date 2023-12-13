@@ -6,7 +6,6 @@
 
 #include <map>
 #include <memory>
-#include <set>
 #include <string>
 #include <vector>
 
@@ -16,10 +15,10 @@
 #include <base/strings/string_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/mock_process_manager.h>
 
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
-#include "shill/net/mock_process_manager.h"
 #include "shill/test_event_dispatcher.h"
 
 using testing::_;
@@ -85,7 +84,7 @@ class ExternalTaskTest : public testing::Test, public RpcTaskDelegate {
 
   MockControl control_;
   EventDispatcherForTest dispatcher_;
-  MockProcessManager process_manager_;
+  net_base::MockProcessManager process_manager_;
   base::WeakPtrFactory<ExternalTaskTest> weak_ptr_factory_;
   std::unique_ptr<ExternalTask> external_task_;
   bool test_rpc_task_destroyed_;

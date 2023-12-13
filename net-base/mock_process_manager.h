@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NET_MOCK_PROCESS_MANAGER_H_
-#define SHILL_NET_MOCK_PROCESS_MANAGER_H_
+#ifndef NET_BASE_MOCK_PROCESS_MANAGER_H_
+#define NET_BASE_MOCK_PROCESS_MANAGER_H_
 
-#include "shill/net/process_manager.h"
+#include "net-base/process_manager.h"
 
 #include <map>
 #include <string>
@@ -15,7 +15,7 @@
 #include <base/location.h>
 #include <gmock/gmock.h>
 
-namespace shill {
+namespace net_base {
 
 class MockProcessManager : public ProcessManager {
  public:
@@ -89,6 +89,5 @@ MATCHER_P(MinijailOptionsMatchInheritSupplementaryGroup,
   return arg.inherit_supplementary_groups == inherit_supplementary_groups;
 }
 
-}  // namespace shill
-
-#endif  // SHILL_NET_MOCK_PROCESS_MANAGER_H_
+}  // namespace net_base
+#endif  // NET_BASE_MOCK_PROCESS_MANAGER_H_

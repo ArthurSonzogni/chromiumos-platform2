@@ -17,6 +17,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
+#include <net-base/process_manager.h>
 
 #include "patchpanel/metrics.h"
 #include "patchpanel/system.h"
@@ -106,7 +107,7 @@ DHCPServerController::DHCPServerController(
     : metrics_(metrics),
       dhcp_events_metric_name_(dhcp_events_metric_name),
       ifname_(ifname),
-      process_manager_(shill::ProcessManager::GetInstance()) {
+      process_manager_(net_base::ProcessManager::GetInstance()) {
   DCHECK(metrics_);
 }
 
@@ -159,7 +160,7 @@ bool DHCPServerController::Start(const Config& config,
         base::StringPrintf("--dhcp-option-force=%u,%s", tag, content.c_str()));
   }
 
-  shill::ProcessManager::MinijailOptions minijail_options = {};
+  net_base::ProcessManager::MinijailOptions minijail_options = {};
   minijail_options.user = kPatchpaneldUser;
   minijail_options.group = kPatchpaneldGroup;
   minijail_options.capmask = CAP_TO_MASK(CAP_NET_ADMIN) |

@@ -16,13 +16,10 @@
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
+#include <net-base/process_manager.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/message_dispatcher.h"
-
-namespace shill {
-class ProcessManager;
-}  // namespace shill
 
 namespace patchpanel {
 
@@ -36,7 +33,7 @@ class SubprocessController {
   // The caller should guarantee the |system| and |process_manager| outlive
   // the SubprocessController instance.
   SubprocessController(System* system,
-                       shill::ProcessManager* process_manager,
+                       net_base::ProcessManager* process_manager,
                        const base::FilePath& cmd_path,
                        const std::string& fd_arg);
   SubprocessController(const SubprocessController&) = delete;
@@ -72,7 +69,7 @@ class SubprocessController {
   System* system_;
   // The singleton instance which is used to create the subprocess and watch the
   // subprocess exited unexpectedly.
-  shill::ProcessManager* process_manager_;
+  net_base::ProcessManager* process_manager_;
 
   std::optional<pid_t> pid_ = std::nullopt;
   uint8_t restarts_{0};

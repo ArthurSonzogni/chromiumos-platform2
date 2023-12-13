@@ -20,12 +20,12 @@
 #include <base/strings/string_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/mock_process_manager.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/net/mock_process_manager.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/fake_vpn_util.h"
 #include "shill/vpn/vpn_connection_under_test.h"
@@ -39,7 +39,7 @@ class IPsecConnectionUnderTest : public IPsecConnection {
                            std::unique_ptr<VPNConnection> l2tp_connection,
                            DeviceInfo* device_info,
                            EventDispatcher* dispatcher,
-                           ProcessManager* process_manager)
+                           net_base::ProcessManager* process_manager)
       : IPsecConnection(std::move(config),
                         std::move(callbacks),
                         std::move(l2tp_connection),
@@ -299,7 +299,7 @@ class IPsecConnectionTest : public testing::Test {
   MockManager manager_;
 
   MockCallbacks callbacks_;
-  MockProcessManager process_manager_;
+  net_base::MockProcessManager process_manager_;
 
   std::unique_ptr<IPsecConnectionUnderTest> ipsec_connection_;
   VPNConnectionUnderTest* l2tp_connection_;  // owned by ipsec_connection_;
@@ -353,13 +353,14 @@ TEST_F(IPsecConnectionTest, StartCharon) {
   constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN) |
                                         CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
                                         CAP_TO_MASK(CAP_NET_RAW);
-  EXPECT_CALL(process_manager_,
-              StartProcessInMinijail(
-                  _, kExpectedProgramPath, kExpectedArgs, kExpectedEnv,
-                  AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
-                        MinijailOptionsMatchCapMask(kExpectedCapMask),
-                        MinijailOptionsMatchInheritSupplementaryGroup(true)),
-                  _))
+  EXPECT_CALL(
+      process_manager_,
+      StartProcessInMinijail(
+          _, kExpectedProgramPath, kExpectedArgs, kExpectedEnv,
+          AllOf(net_base::MinijailOptionsMatchUserGroup("vpn", "vpn"),
+                net_base::MinijailOptionsMatchCapMask(kExpectedCapMask),
+                net_base::MinijailOptionsMatchInheritSupplementaryGroup(true)),
+          _))
       .WillOnce(Return(123));
 
   // Triggers the task.
@@ -500,22 +501,24 @@ TEST_F(IPsecConnectionTest, SwanctlLoadConfig) {
   ipsec_connection_->set_swanctl_conf_path(kSwanctlConfPath);
 
   // Expects call for starting swanctl process.
-  ProcessManager::ExitWithStdoutCallback exit_cb;
+  net_base::ProcessManager::ExitWithStdoutCallback exit_cb;
   const base::FilePath kExpectedProgramPath("/usr/sbin/swanctl");
   const std::vector<std::string> kExpectedArgs = {"--load-all", "--file",
                                                   kSwanctlConfPath.value()};
   const std::map<std::string, std::string> kExpectedEnv = {
       {"STRONGSWAN_CONF", kStrongSwanConfPath.value()}};
   constexpr uint64_t kExpectedCapMask = 0;
-  EXPECT_CALL(process_manager_,
-              StartProcessInMinijailWithStdout(
-                  _, kExpectedProgramPath, kExpectedArgs, kExpectedEnv,
-                  AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
-                        MinijailOptionsMatchCapMask(kExpectedCapMask),
-                        MinijailOptionsMatchInheritSupplementaryGroup(true)),
-                  _))
+  EXPECT_CALL(
+      process_manager_,
+      StartProcessInMinijailWithStdout(
+          _, kExpectedProgramPath, kExpectedArgs, kExpectedEnv,
+          AllOf(net_base::MinijailOptionsMatchUserGroup("vpn", "vpn"),
+                net_base::MinijailOptionsMatchCapMask(kExpectedCapMask),
+                net_base::MinijailOptionsMatchInheritSupplementaryGroup(true)),
+          _))
       .WillOnce(WithArg<5>(
-          [&exit_cb](ProcessManager::ExitWithStdoutCallback exit_callback) {
+          [&exit_cb](
+              net_base::ProcessManager::ExitWithStdoutCallback exit_callback) {
             exit_cb = std::move(exit_callback);
             return 123;
           }));
@@ -545,11 +548,12 @@ TEST_F(IPsecConnectionTest, SwanctlLoadConfigFailExecution) {
 TEST_F(IPsecConnectionTest, SwanctlLoadConfigFailExitCodeNonZero) {
   ipsec_connection_->set_state(VPNConnection::State::kConnecting);
 
-  ProcessManager::ExitWithStdoutCallback exit_cb;
+  net_base::ProcessManager::ExitWithStdoutCallback exit_cb;
   EXPECT_CALL(process_manager_,
               StartProcessInMinijailWithStdout(_, _, _, _, _, _))
       .WillOnce(WithArg<5>(
-          [&exit_cb](ProcessManager::ExitWithStdoutCallback exit_callback) {
+          [&exit_cb](
+              net_base::ProcessManager::ExitWithStdoutCallback exit_callback) {
             exit_cb = std::move(exit_callback);
             return 123;
           }));
@@ -571,22 +575,24 @@ TEST_F(IPsecConnectionTest, SwanctlInitiateConnection) {
   ipsec_connection_->set_swanctl_conf_path(kSwanctlConfPath);
 
   // Expects call for starting swanctl process.
-  ProcessManager::ExitWithStdoutCallback exit_cb;
+  net_base::ProcessManager::ExitWithStdoutCallback exit_cb;
   const base::FilePath kExpectedProgramPath("/usr/sbin/swanctl");
   const std::vector<std::string> kExpectedArgs = {"--initiate", "-c", "managed",
                                                   "--timeout", "30"};
   const std::map<std::string, std::string> kExpectedEnv = {
       {"STRONGSWAN_CONF", kStrongSwanConfPath.value()}};
   constexpr uint64_t kExpectedCapMask = 0;
-  EXPECT_CALL(process_manager_,
-              StartProcessInMinijailWithStdout(
-                  _, kExpectedProgramPath, kExpectedArgs, kExpectedEnv,
-                  AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
-                        MinijailOptionsMatchCapMask(kExpectedCapMask),
-                        MinijailOptionsMatchInheritSupplementaryGroup(true)),
-                  _))
+  EXPECT_CALL(
+      process_manager_,
+      StartProcessInMinijailWithStdout(
+          _, kExpectedProgramPath, kExpectedArgs, kExpectedEnv,
+          AllOf(net_base::MinijailOptionsMatchUserGroup("vpn", "vpn"),
+                net_base::MinijailOptionsMatchCapMask(kExpectedCapMask),
+                net_base::MinijailOptionsMatchInheritSupplementaryGroup(true)),
+          _))
       .WillOnce(WithArg<5>(
-          [&exit_cb](ProcessManager::ExitWithStdoutCallback exit_callback) {
+          [&exit_cb](
+              net_base::ProcessManager::ExitWithStdoutCallback exit_callback) {
             exit_cb = std::move(exit_callback);
             return 123;
           }));
@@ -604,21 +610,23 @@ TEST_F(IPsecConnectionTest, SwanctlListSAsL2TP) {
   const base::FilePath kStrongSwanConfPath("/tmp/strongswan.conf");
   ipsec_connection_->set_strongswan_conf_path(kStrongSwanConfPath);
 
-  ProcessManager::ExitWithStdoutCallback exit_cb;
+  net_base::ProcessManager::ExitWithStdoutCallback exit_cb;
   const base::FilePath kExpectedProgramPath("/usr/sbin/swanctl");
   const std::vector<std::string> kExpectedArgs = {"--list-sas"};
   const std::map<std::string, std::string> kExpectedEnv = {
       {"STRONGSWAN_CONF", kStrongSwanConfPath.value()}};
   constexpr uint64_t kExpectedCapMask = 0;
-  EXPECT_CALL(process_manager_,
-              StartProcessInMinijailWithStdout(
-                  _, kExpectedProgramPath, kExpectedArgs, kExpectedEnv,
-                  AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
-                        MinijailOptionsMatchCapMask(kExpectedCapMask),
-                        MinijailOptionsMatchInheritSupplementaryGroup(true)),
-                  _))
+  EXPECT_CALL(
+      process_manager_,
+      StartProcessInMinijailWithStdout(
+          _, kExpectedProgramPath, kExpectedArgs, kExpectedEnv,
+          AllOf(net_base::MinijailOptionsMatchUserGroup("vpn", "vpn"),
+                net_base::MinijailOptionsMatchCapMask(kExpectedCapMask),
+                net_base::MinijailOptionsMatchInheritSupplementaryGroup(true)),
+          _))
       .WillOnce(WithArg<5>(
-          [&exit_cb](ProcessManager::ExitWithStdoutCallback exit_callback) {
+          [&exit_cb](
+              net_base::ProcessManager::ExitWithStdoutCallback exit_callback) {
             exit_cb = std::move(exit_callback);
             return 123;
           }));
@@ -646,11 +654,12 @@ TEST_F(IPsecConnectionTest, SwanctlListSAsL2TP) {
 TEST_F(IPsecConnectionTest, SwanctlListSAsIKEv2) {
   SetAsIKEv2Connection();
 
-  ProcessManager::ExitWithStdoutCallback exit_cb;
+  net_base::ProcessManager::ExitWithStdoutCallback exit_cb;
   EXPECT_CALL(process_manager_,
               StartProcessInMinijailWithStdout(_, _, _, _, _, _))
       .WillOnce(WithArg<5>(
-          [&exit_cb](ProcessManager::ExitWithStdoutCallback exit_callback) {
+          [&exit_cb](
+              net_base::ProcessManager::ExitWithStdoutCallback exit_callback) {
             exit_cb = std::move(exit_callback);
             return 123;
           }));
@@ -681,11 +690,12 @@ TEST_F(IPsecConnectionTest, SwanctlListSAsIKEv2ParseVIPFailed) {
   SetAsIKEv2Connection();
   ipsec_connection_->set_state(VPNConnection::State::kConnecting);
 
-  ProcessManager::ExitWithStdoutCallback exit_cb;
+  net_base::ProcessManager::ExitWithStdoutCallback exit_cb;
   EXPECT_CALL(process_manager_,
               StartProcessInMinijailWithStdout(_, _, _, _, _, _))
       .WillOnce(WithArg<5>(
-          [&exit_cb](ProcessManager::ExitWithStdoutCallback exit_callback) {
+          [&exit_cb](
+              net_base::ProcessManager::ExitWithStdoutCallback exit_callback) {
             exit_cb = std::move(exit_callback);
             return 123;
           }));

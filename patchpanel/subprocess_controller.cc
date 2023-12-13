@@ -16,7 +16,7 @@
 #include <base/process/launch.h>
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/syslog_logging.h>
-#include <shill/net/process_manager.h>
+#include <net-base/process_manager.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/system.h"
@@ -31,7 +31,7 @@ constexpr int kSubprocessRestartDelayMs = 900;
 
 SubprocessController::SubprocessController(
     System* system,
-    shill::ProcessManager* process_manager,
+    net_base::ProcessManager* process_manager,
     const base::FilePath& cmd_path,
     const std::string& fd_arg)
     : system_(system),
@@ -71,7 +71,7 @@ void SubprocessController::Start() {
       FROM_HERE, cmd_path_, child_argv, /*environment=*/{}, fds_to_bind, true,
       base::BindOnce(&SubprocessController::OnProcessExitedUnexpectedly,
                      weak_factory_.GetWeakPtr()));
-  if (pid != shill::ProcessManager::kInvalidPID) {
+  if (pid != net_base::ProcessManager::kInvalidPID) {
     pid_ = pid;
   } else {
     LOG(ERROR) << "Failed to start the subprocess: " << fd_arg_;

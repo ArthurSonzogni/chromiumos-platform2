@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/process_manager.h"
+#include "net-base/process_manager.h"
 
 #include <signal.h>
 #include <stdlib.h>
@@ -25,7 +25,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 
-namespace shill {
+namespace net_base {
 
 namespace {
 
@@ -67,7 +67,7 @@ ProcessManager* ProcessManager::GetInstance() {
 void ProcessManager::Init() {
   VLOG(2) << __func__;
   CHECK(!async_signal_handler_);
-  async_signal_handler_.reset(new brillo::AsynchronousSignalHandler());
+  async_signal_handler_ = std::make_unique<brillo::AsynchronousSignalHandler>();
   async_signal_handler_->Init();
   process_reaper_.Register(async_signal_handler_.get());
   minijail_ = brillo::Minijail::GetInstance();
@@ -81,8 +81,8 @@ void ProcessManager::Stop() {
 
   // Kill the pending termination processes (which we have already sent SIGTERM
   // to). Note that currently the process started by minijail will not be killed
-  // automatically when shill quits, so we need to do this manually. See
-  // b/261666421 for an issue in the test which caused by this.
+  // automatically when the main process quits, so we need to do this manually.
+  // See b/261666421 for an issue in the test which caused by this.
   for (const auto& [pid, callback] : pending_termination_processes_) {
     LOG(WARNING) << __func__ << ": send SIGKILL to " << pid;
     bool not_used;
@@ -162,7 +162,11 @@ pid_t ProcessManager::StartProcessInMinijailWithStdout(
   int stdout_fd;
   pid_t pid = StartProcessInMinijailWithPipesInternal(
       spawn_source, program, arguments, environment, minijail_options,
-      {.stdout_fd = &stdout_fd});
+      {
+          .stdin_fd = nullptr,
+          .stdout_fd = &stdout_fd,
+          .stderr_fd = nullptr,
+      });
   if (pid == kInvalidPID) {
     return pid;
   }
@@ -384,7 +388,7 @@ void ProcessManager::OnProcessStdoutReadable(pid_t pid) {
   // atomic write to a pipe. The value is 4KB in Linux.
   constexpr int kBufferSize = PIPE_BUF;
   char buffer[kBufferSize];
-  while (1) {
+  while (true) {
     ssize_t ret = HANDLE_EINTR(read(fd, buffer, kBufferSize));
     if (ret == -1 && errno == EAGAIN) {
       // The pipe is empty now. Waits for more data.
@@ -401,7 +405,8 @@ void ProcessManager::OnProcessStdoutReadable(pid_t pid) {
       return;
     } else {
       // We got some data.
-      watched_process_it->second.stdout_str.append(buffer, ret);
+      watched_process_it->second.stdout_str.append(buffer,
+                                                   static_cast<size_t>(ret));
       if (watched_process_it->second.stdout_str.size() > kMaxStdoutBufferSize) {
         watched_process_it->second.stdout_str.resize(kMaxStdoutBufferSize);
       }
@@ -523,4 +528,4 @@ std::optional<bool> ProcessManager::IsTerminating(
          pending_termination_processes_.end();
 }
 
-}  // namespace shill
+}  // namespace net_base

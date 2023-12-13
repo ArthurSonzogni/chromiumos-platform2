@@ -15,12 +15,11 @@
 #include <base/files/file_path_watcher.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/callback.h>
+#include <net-base/process_manager.h>
 
 #include "shill/certificate_file.h"
 #include "shill/device_info.h"
 #include "shill/metrics.h"
-#include "shill/mockable.h"
-#include "shill/net/process_manager.h"
 #include "shill/service.h"
 #include "shill/vpn/vpn_connection.h"
 #include "shill/vpn/vpn_util.h"
@@ -116,7 +115,7 @@ class IPsecConnection : public VPNConnection {
                            std::unique_ptr<VPNConnection> l2tp_connection,
                            DeviceInfo* device_info,
                            EventDispatcher* dispatcher,
-                           ProcessManager* process_manager);
+                           net_base::ProcessManager* process_manager);
   ~IPsecConnection();
 
   Metrics::VpnIpsecEncryptionAlgorithm ike_encryption_algo() const {
@@ -276,7 +275,7 @@ class IPsecConnection : public VPNConnection {
 
   // External dependencies.
   DeviceInfo* device_info_;
-  ProcessManager* process_manager_;
+  net_base::ProcessManager* process_manager_;
   std::unique_ptr<VPNUtil> vpn_util_;
 
   base::WeakPtrFactory<IPsecConnection> weak_factory_{this};

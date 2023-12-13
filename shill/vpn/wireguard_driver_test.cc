@@ -6,8 +6,8 @@
 
 #include <map>
 #include <memory>
-#include <set>
 #include <utility>
+#include <vector>
 
 #include <base/containers/flat_set.h>
 #include <base/files/scoped_file.h>
@@ -15,13 +15,14 @@
 #include <base/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
+#include <net-base/mock_process_manager.h>
+#include <net-base/process_manager.h>
 
 #include "shill/metrics.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/net/mock_process_manager.h"
 #include "shill/store/fake_store.h"
 #include "shill/store/property_store.h"
 #include "shill/test_event_dispatcher.h"
@@ -108,8 +109,8 @@ class WireGuardDriverTest : public testing::Test {
   // Useful in storage-related tests.
   void ResetDriver() {
     driver_ = new WireGuardDriver(&manager_, &process_manager_);
-    driver_test_peer_.reset(new WireGuardDriverTestPeer(driver_));
-    property_store_.reset(new PropertyStore());
+    driver_test_peer_ = std::make_unique<WireGuardDriverTestPeer>(driver_);
+    property_store_ = std::make_unique<PropertyStore>();
     driver_->InitPropertyStore(property_store_.get());
   }
 
@@ -143,20 +144,22 @@ class WireGuardDriverTest : public testing::Test {
   // TODO(jiejiang): Consider returning a different key to avoid missing the
   // failure that keys are misused.
   void SetFakeKeyGenerator() {
-    EXPECT_CALL(process_manager_,
-                StartProcessInMinijailWithPipes(
-                    _, base::FilePath("/usr/bin/wg"),
-                    std::vector<std::string>{"pubkey"}, _,
-                    AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
-                          MinijailOptionsMatchCapMask(0u),
-                          MinijailOptionsMatchInheritSupplementaryGroup(true)),
-                    _, _))
+    EXPECT_CALL(
+        process_manager_,
+        StartProcessInMinijailWithPipes(
+            _, base::FilePath("/usr/bin/wg"),
+            std::vector<std::string>{"pubkey"}, _,
+            AllOf(
+                net_base::MinijailOptionsMatchUserGroup("vpn", "vpn"),
+                net_base::MinijailOptionsMatchCapMask(0u),
+                net_base::MinijailOptionsMatchInheritSupplementaryGroup(true)),
+            _, _))
         .WillRepeatedly([](const base::Location&, const base::FilePath&,
                            const std::vector<std::string>&,
                            const std::map<std::string, std::string>&,
-                           const ProcessManager::MinijailOptions&,
+                           const net_base::ProcessManager::MinijailOptions&,
                            base::OnceCallback<void(int)>,
-                           struct std_file_descriptors std_fds) {
+                           struct net_base::std_file_descriptors std_fds) {
           CHECK(std_fds.stdin_fd);
           CHECK(std_fds.stdout_fd);
           int echo_pipe[2];
@@ -185,25 +188,27 @@ class WireGuardDriverTest : public testing::Test {
     std::vector<std::string> args;
     base::flat_set<int> fds;
     constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
-    EXPECT_CALL(process_manager_,
-                StartProcessInMinijail(
-                    _, base::FilePath("/usr/bin/wg"), _, _,
-                    AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
-                          MinijailOptionsMatchCapMask(kExpectedCapMask),
-                          MinijailOptionsMatchInheritSupplementaryGroup(true)),
-                    _))
-        .WillOnce(
-            [this, &args, &fds](
-                const base::Location&, const base::FilePath&,
-                const std::vector<std::string>& arguments,
-                const std::map<std::string, std::string>&,
-                const MockProcessManager::MinijailOptions& minijail_options,
-                base::OnceCallback<void(int)> exit_callback) {
-              wireguard_tools_exit_callback_ = std::move(exit_callback);
-              args = arguments;
-              fds = minijail_options.preserved_nonstd_fds;
-              return kWireGuardToolsPid;
-            });
+    EXPECT_CALL(
+        process_manager_,
+        StartProcessInMinijail(
+            _, base::FilePath("/usr/bin/wg"), _, _,
+            AllOf(
+                net_base::MinijailOptionsMatchUserGroup("vpn", "vpn"),
+                net_base::MinijailOptionsMatchCapMask(kExpectedCapMask),
+                net_base::MinijailOptionsMatchInheritSupplementaryGroup(true)),
+            _))
+        .WillOnce([this, &args, &fds](
+                      const base::Location&, const base::FilePath&,
+                      const std::vector<std::string>& arguments,
+                      const std::map<std::string, std::string>&,
+                      const net_base::MockProcessManager::MinijailOptions&
+                          minijail_options,
+                      base::OnceCallback<void(int)> exit_callback) {
+          wireguard_tools_exit_callback_ = std::move(exit_callback);
+          args = arguments;
+          fds = minijail_options.preserved_nonstd_fds;
+          return kWireGuardToolsPid;
+        });
     std::move(link_ready_callback_).Run(kIfName, kIfIndex);
 
     EXPECT_EQ(args[0], "setconf");
@@ -233,7 +238,7 @@ class WireGuardDriverTest : public testing::Test {
   MockControl control_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
-  MockProcessManager process_manager_;
+  net_base::MockProcessManager process_manager_;
   MockManager manager_;
   FakeStore fake_store_;
   std::unique_ptr<PropertyStore> property_store_;

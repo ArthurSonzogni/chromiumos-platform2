@@ -10,6 +10,7 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <net-base/ip_address.h>
+#include <net-base/process_manager.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/dbus_adaptors/org.chromium.patchpanel.h"
@@ -18,10 +19,6 @@
 #include "patchpanel/network_monitor_service.h"
 
 class MetricsLibraryInterface;
-
-namespace shill {
-class ProcessManager;
-}  // namespace shill
 
 namespace patchpanel {
 
@@ -38,7 +35,7 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
   PatchpanelAdaptor(const base::FilePath& cmd_path,
                     scoped_refptr<::dbus::Bus> bus,
                     System* system,
-                    shill::ProcessManager* process_manager,
+                    net_base::ProcessManager* process_manager,
                     MetricsLibraryInterface* metrics,
                     std::unique_ptr<RTNLClient> rtnl_client);
   virtual ~PatchpanelAdaptor();

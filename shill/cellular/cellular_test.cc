@@ -22,6 +22,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <gtest/gtest.h>
+#include <net-base/mock_process_manager.h>
 #include <net-base/mock_rtnl_handler.h>
 #include <net-base/network_config.h>
 
@@ -64,7 +65,6 @@ extern "C" {
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_virtual_device.h"
-#include "shill/net/mock_process_manager.h"
 #include "shill/network/mock_network.h"
 #include "shill/ppp_daemon.h"
 #include "shill/rpc_task.h"  // for RpcTaskDelegate
@@ -578,7 +578,7 @@ class CellularTest : public testing::Test {
   NiceMock<MockManager> manager_;
   NiceMock<MockMetrics> metrics_;
   MockModemInfo modem_info_;
-  NiceMock<MockProcessManager> process_manager_;
+  NiceMock<net_base::MockProcessManager> process_manager_;
   NiceMock<net_base::MockRTNLHandler> rtnl_handler_;
 
   bool create_gsm_card_proxy_from_factory_;

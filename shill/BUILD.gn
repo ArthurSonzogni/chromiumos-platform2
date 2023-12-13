@@ -112,7 +112,6 @@ pkg_config("target_defaults") {
     "libmojo",
     "libnet-base",
     "libpatchpanel-client",
-    "libshill-net",
     "mojo_service_manager",
     "re2",
 
@@ -899,7 +898,6 @@ if (use.test) {
       ":mobile_operator_db-test-db",
       "//metrics:metrics_test_support",
       "//net-base:net_base_test_support",
-      "//shill/net:net_test_support",
     ]
 
     if (use.vpn) {

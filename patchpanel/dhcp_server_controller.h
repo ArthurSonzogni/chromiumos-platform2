@@ -18,14 +18,14 @@
 #include <gtest/gtest_prod.h>
 #include <metrics/metrics_library.h>
 #include <net-base/ipv4_address.h>
-#include <shill/net/process_manager.h>
+#include <net-base/process_manager.h>
 
 namespace patchpanel {
 
 // This class manages the one IPv4 DHCP server on a certain network interface.
 class DHCPServerController {
  public:
-  using ExitCallback = shill::ProcessManager::ExitCallback;
+  using ExitCallback = net_base::ProcessManager::ExitCallback;
 
   // The configuration of the DHCP server. The instance is read-only once
   // created, so the configuration is always valid.
@@ -98,7 +98,8 @@ class DHCPServerController {
   virtual ~DHCPServerController();
 
   // Injects the mock ProcessManager for testing.
-  void set_process_manager_for_testing(shill::ProcessManager* process_manager) {
+  void set_process_manager_for_testing(
+      net_base::ProcessManager* process_manager) {
     process_manager_ = process_manager;
   }
 
@@ -141,7 +142,7 @@ class DHCPServerController {
   const std::string ifname_;
 
   // The process manager to create the dnsmasq subprocess.
-  shill::ProcessManager* process_manager_;
+  net_base::ProcessManager* process_manager_;
 
   // The pid of the dnsmasq process, nullopt iff the process is not running.
   std::optional<pid_t> pid_;

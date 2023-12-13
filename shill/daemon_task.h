@@ -11,6 +11,7 @@
 
 #include <base/functional/callback.h>
 #include <net-base/netlink_manager.h>
+#include <net-base/process_manager.h>
 #include <net-base/rtnl_handler.h>
 
 #include "shill/event_dispatcher.h"
@@ -25,7 +26,6 @@ class DHCPProvider;
 class Error;
 class Manager;
 class MojoServiceProvider;
-class ProcessManager;
 class RoutingPolicyService;
 class RoutingTable;
 
@@ -90,7 +90,7 @@ class DaemonTask {
   NetworkApplier* network_applier_;
   DHCPProvider* dhcp_provider_;
   net_base::NetlinkManager* netlink_manager_;
-  ProcessManager* process_manager_;
+  net_base::ProcessManager* process_manager_;
   std::unique_ptr<Manager> manager_;
   std::unique_ptr<MojoServiceProvider> mojo_provider_;
   base::OnceClosure termination_completed_callback_;

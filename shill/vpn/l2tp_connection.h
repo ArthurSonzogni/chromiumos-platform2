@@ -13,12 +13,12 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/callback.h>
 #include <libpasswordprovider/password_provider.h>
+#include <net-base/process_manager.h>
 
 #include "shill/control_interface.h"
 #include "shill/device_info.h"
 #include "shill/event_dispatcher.h"
 #include "shill/external_task.h"
-#include "shill/net/process_manager.h"
 #include "shill/service.h"
 #include "shill/vpn/vpn_connection.h"
 #include "shill/vpn/vpn_util.h"
@@ -49,7 +49,7 @@ class L2TPConnection : public VPNConnection, public RpcTaskDelegate {
                  ControlInterface* control_interface,
                  DeviceInfo* device_info,
                  EventDispatcher* dispatcher,
-                 ProcessManager* process_manager);
+                 net_base::ProcessManager* process_manager);
   ~L2TPConnection();
 
   // Implements RpcTaskDelegate.
@@ -104,7 +104,7 @@ class L2TPConnection : public VPNConnection, public RpcTaskDelegate {
   DeviceInfo* device_info_;
   std::unique_ptr<password_provider::PasswordProviderInterface>
       password_provider_;
-  ProcessManager* process_manager_;
+  net_base::ProcessManager* process_manager_;
   std::unique_ptr<VPNUtil> vpn_util_;
 
   base::WeakPtrFactory<L2TPConnection> weak_factory_{this};

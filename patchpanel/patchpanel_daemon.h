@@ -17,16 +17,13 @@
 #include <brillo/process/process_reaper.h>
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/metrics_library.h>
+#include <net-base/process_manager.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/manager.h"
 #include "patchpanel/metrics.h"
 #include "patchpanel/patchpanel_adaptor.h"
 #include "patchpanel/system.h"
-
-namespace shill {
-class ProcessManager;
-}  // namespace shill
 
 namespace patchpanel {
 
@@ -69,7 +66,7 @@ class PatchpanelDaemon final : public brillo::DBusServiceDaemon {
   std::unique_ptr<System> system_;
   // The singleton instance that manages the creation and exit notification of
   // each subprocess. All the subprocesses should be created by this.
-  shill::ProcessManager* process_manager_;
+  net_base::ProcessManager* process_manager_;
   // UMA metrics client.
   std::unique_ptr<MetricsLibraryInterface> metrics_;
 

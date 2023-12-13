@@ -20,6 +20,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/network_config.h>
+#include <net-base/process_manager.h>
 
 #include "base/containers/span.h"
 #include "shill/control_interface.h"
@@ -69,8 +70,8 @@ const VPNDriver::Property ThirdPartyVpnDriver::kProperties[] = {
 
 ThirdPartyVpnDriver* ThirdPartyVpnDriver::active_client_ = nullptr;
 
-ThirdPartyVpnDriver::ThirdPartyVpnDriver(Manager* manager,
-                                         ProcessManager* process_manager)
+ThirdPartyVpnDriver::ThirdPartyVpnDriver(
+    Manager* manager, net_base::ProcessManager* process_manager)
     : VPNDriver(manager,
                 process_manager,
                 VPNType::kThirdParty,

@@ -29,8 +29,10 @@ pkg_config("target_defaults") {
     "-Wno-unused-parameter",  # needed for libchrome
   ]
   pkg_deps = [
+    "libbrillo",
     "libcares",
     "libchrome",
+    "libminijail",
   ]
 }
 
@@ -56,6 +58,7 @@ shared_library("libnet-base") {
     "netlink_socket.cc",
     "network_config.cc",
     "network_priority.cc",
+    "process_manager.cc",
     "rtnl_handler.cc",
     "rtnl_listener.cc",
     "rtnl_message.cc",
@@ -106,6 +109,7 @@ if (use.test) {
     sources = [
       "mock_netlink_manager.cc",
       "mock_netlink_socket.cc",
+      "mock_process_manager.cc",
       "mock_rtnl_handler.cc",
       "mock_socket.cc",
     ]
@@ -133,6 +137,7 @@ if (use.test) {
       "netlink_attribute_test.cc",
       "netlink_packet_test.cc",
       "netlink_socket_test.cc",
+      "process_manager_test.cc",
       "rtnl_handler_test.cc",
       "rtnl_listener_test.cc",
       "rtnl_message_test.cc",

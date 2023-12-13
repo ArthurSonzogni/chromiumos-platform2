@@ -14,6 +14,7 @@
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/ip_address.h>
+#include <net-base/process_manager.h>
 
 #include "shill/ipconfig.h"
 #include "shill/rpc_task.h"
@@ -34,7 +35,7 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
     kReconnectReasonTLSError,
   };
 
-  OpenVPNDriver(Manager* manager, ProcessManager* process_manager);
+  OpenVPNDriver(Manager* manager, net_base::ProcessManager* process_manager);
   OpenVPNDriver(const OpenVPNDriver&) = delete;
   OpenVPNDriver& operator=(const OpenVPNDriver&) = delete;
 

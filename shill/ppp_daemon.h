@@ -12,6 +12,7 @@
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>
+#include <net-base/process_manager.h>
 
 #include "shill/external_task.h"
 #include "shill/ipconfig.h"
@@ -21,7 +22,6 @@ namespace shill {
 
 class ControlInterface;
 class Error;
-class ProcessManager;
 
 static constexpr char kPPPDNS1[] = "DNS1";
 static constexpr char kPPPDNS2[] = "DNS2";
@@ -96,7 +96,7 @@ class PPPDaemon {
   // started, and nullptr is returned.
   static std::unique_ptr<ExternalTask> Start(
       ControlInterface* control_interface,
-      ProcessManager* process_manager,
+      net_base::ProcessManager* process_manager,
       const base::WeakPtr<RpcTaskDelegate>& task_delegate,
       const Options& options,
       const std::string& device,

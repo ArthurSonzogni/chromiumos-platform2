@@ -15,7 +15,6 @@
 #include "shill/event_dispatcher.h"
 #include "shill/ipconfig.h"
 #include "shill/mockable.h"
-#include "shill/net/process_manager.h"
 #include "shill/service.h"
 
 namespace shill {

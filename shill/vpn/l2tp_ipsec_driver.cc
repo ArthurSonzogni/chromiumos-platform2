@@ -17,6 +17,7 @@
 #include <brillo/type_list.h>
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/process_manager.h>
 
 #include "shill/error.h"
 #include "shill/ipconfig.h"
@@ -182,14 +183,14 @@ const VPNDriver::Property L2TPIPsecDriver::kProperties[] = {
 };
 
 L2TPIPsecDriver::L2TPIPsecDriver(Manager* manager,
-                                 ProcessManager* process_manager)
+                                 net_base::ProcessManager* process_manager)
     : VPNDriver(manager,
                 process_manager,
                 VPNType::kL2TPIPsec,
                 kProperties,
                 std::size(kProperties)) {}
 
-L2TPIPsecDriver::~L2TPIPsecDriver() {}
+L2TPIPsecDriver::~L2TPIPsecDriver() = default;
 
 base::TimeDelta L2TPIPsecDriver::ConnectAsync(EventHandler* handler) {
   event_handler_ = handler;
@@ -242,7 +243,7 @@ std::unique_ptr<VPNConnection> L2TPIPsecDriver::CreateIPsecConnection(
     std::unique_ptr<VPNConnection> l2tp_connection,
     DeviceInfo* device_info,
     EventDispatcher* dispatcher,
-    ProcessManager* process_manager) {
+    net_base::ProcessManager* process_manager) {
   return std::make_unique<IPsecConnection>(
       std::move(config), std::move(callbacks), std::move(l2tp_connection),
       device_info, dispatcher, process_manager);
@@ -253,7 +254,7 @@ std::unique_ptr<VPNConnection> L2TPIPsecDriver::CreateL2TPConnection(
     ControlInterface* control_interface,
     DeviceInfo* device_info,
     EventDispatcher* dispatcher,
-    ProcessManager* process_manager) {
+    net_base::ProcessManager* process_manager) {
   // Callbacks for L2TP will be set and handled in IPsecConnection.
   return std::make_unique<L2TPConnection>(
       std::move(config), /*callbacks=*/nullptr, control_interface, device_info,

@@ -17,6 +17,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/timer.h>
 #include <net-base/network_config.h>
+#include <net-base/process_manager.h>
 
 #include "shill/ipconfig.h"
 #include "shill/metrics.h"
@@ -31,7 +32,6 @@ class ControlInterface;
 class DHCPProvider;
 class DHCPProxyInterface;
 class EventDispatcher;
-class ProcessManager;
 
 // This class provides a DHCP client instance for the device |device_name|.
 //
@@ -313,7 +313,7 @@ class DHCPController {
 
   base::WeakPtrFactory<DHCPController> weak_ptr_factory_;
   EventDispatcher* dispatcher_;
-  ProcessManager* process_manager_;
+  net_base::ProcessManager* process_manager_;
   Metrics* metrics_;
   Time* time_;
 };

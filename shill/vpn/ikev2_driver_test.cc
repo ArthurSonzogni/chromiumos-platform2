@@ -12,11 +12,11 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/mock_process_manager.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/net/mock_process_manager.h"
 #include "shill/store/fake_store.h"
 #include "shill/test_event_dispatcher.h"
 
@@ -29,7 +29,8 @@ namespace shill {
 
 class IKEv2DriverUnderTest : public IKEv2Driver {
  public:
-  IKEv2DriverUnderTest(Manager* manager, ProcessManager* process_manager)
+  IKEv2DriverUnderTest(Manager* manager,
+                       net_base::ProcessManager* process_manager)
       : IKEv2Driver(manager, process_manager) {}
 
   IKEv2DriverUnderTest(const IKEv2DriverUnderTest&) = delete;
@@ -47,7 +48,7 @@ class IKEv2DriverUnderTest : public IKEv2Driver {
       std::unique_ptr<VPNConnection::Callbacks> callbacks,
       DeviceInfo* device_info,
       EventDispatcher* dispatcher,
-      ProcessManager* process_manager) override {
+      net_base::ProcessManager* process_manager) override {
     ipsec_config_ = std::move(config);
     auto ipsec_connection = std::make_unique<VPNConnectionUnderTest>(
         std::move(callbacks), dispatcher);
@@ -100,7 +101,7 @@ class IKEv2DriverTest : public testing::Test {
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;
-  MockProcessManager process_manager_;
+  net_base::MockProcessManager process_manager_;
 
   // Other objects used in the tests.
   FakeStore fake_store_;

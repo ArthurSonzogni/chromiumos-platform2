@@ -5,10 +5,10 @@
 #ifndef SHILL_VPN_MOCK_OPENVPN_DRIVER_H_
 #define SHILL_VPN_MOCK_OPENVPN_DRIVER_H_
 
-#include <string>
 #include <string_view>
 
 #include <gmock/gmock.h>
+#include <net-base/process_manager.h>
 
 #include "shill/vpn/openvpn_driver.h"
 
@@ -16,7 +16,8 @@ namespace shill {
 
 class MockOpenVPNDriver : public OpenVPNDriver {
  public:
-  MockOpenVPNDriver(Manager* manager, ProcessManager* process_manager);
+  MockOpenVPNDriver(Manager* manager,
+                    net_base::ProcessManager* process_manager);
   MockOpenVPNDriver(const MockOpenVPNDriver&) = delete;
   MockOpenVPNDriver& operator=(const MockOpenVPNDriver&) = delete;
 

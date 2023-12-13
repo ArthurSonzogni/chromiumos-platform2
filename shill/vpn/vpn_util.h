@@ -15,8 +15,7 @@
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/version.h>
-
-#include "shill/net/process_manager.h"
+#include <net-base/process_manager.h>
 
 namespace shill {
 
@@ -45,7 +44,8 @@ class VPNUtil {
   // by VPN clients:
   // - |user| and |group| are set to "vpn".
   // - |inherit_supplementary_groups| are set to true.
-  static ProcessManager::MinijailOptions BuildMinijailOptions(uint64_t capmask);
+  static net_base::ProcessManager::MinijailOptions BuildMinijailOptions(
+      uint64_t capmask);
 
   // Writes |contents| into file with path |filename|, changes the group of this
   // file to "vpn", and makes this file group-readable. Note that although shill

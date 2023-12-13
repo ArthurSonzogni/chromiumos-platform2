@@ -6,92 +6,10 @@ import("//common-mk/deps.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [
-    ":install_headers",
-    ":libshill-net",
-  ]
-  if (use.test) {
-    deps += [ ":shill_net_test" ]
-  }
+  deps = [ ":install_headers" ]
 }
 
 install_config("install_headers") {
-  sources = [
-    "mock_process_manager.h",
-    "process_manager.h",
-    "shill_export.h",
-  ]
+  sources = [ "shill_export.h" ]
   install_path = "/usr/include/shill/net"
-}
-
-pkg_config("target_defaults") {
-  cflags_cc = [
-    "-fno-strict-aliasing",
-    "-Woverloaded-virtual",
-    "-Wno-missing-field-initializers",  # for LAZY_INSTANCE_INITIALIZER
-  ]
-  cflags = [
-    "-Wextra",
-    "-Werror",
-    "-Wno-unused-parameter",
-  ]
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-    "libminijail",
-    "libnet-base",
-  ]
-}
-
-write_deps("libshill-net_deps") {
-  pkg_deps = []
-  target = "libshill-net"
-}
-
-shared_library("libshill-net") {
-  sources = [ "process_manager.cc" ]
-  configs += [ ":target_defaults" ]
-  deps = [ ":${target_name}_deps" ]
-  install_path = "lib"
-}
-
-if (use.fuzzer) {
-  pkg_config("fuzzed_data_config") {
-    pkg_deps = [ "libchrome-test" ]
-  }
-}
-
-if (use.test) {
-  source_set("net_test_support") {
-    sources = [ "mock_process_manager.cc" ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    pkg_deps = [ "libshill-net" ]
-    deps = [ "//net-base:net_base_test_support" ]
-  }
-
-  pkg_config("shill_net_test_config") {
-    pkg_deps = [
-      "libchrome-test",
-      "re2",
-    ]
-  }
-
-  executable("shill_net_test") {
-    run_test = true
-    sources = [ "process_manager_test.cc" ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-      ":shill_net_test_config",
-    ]
-    deps = [
-      ":libshill-net",
-      ":net_test_support",
-      "//common-mk/testrunner",
-      "//net-base:net_base_test_support",
-    ]
-  }
 }

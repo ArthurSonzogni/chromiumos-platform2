@@ -19,6 +19,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/mock_process_manager.h>
 
 #include "shill/error.h"
 #include "shill/ipconfig.h"
@@ -30,7 +31,6 @@
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/net/mock_process_manager.h"
 #include "shill/rpc_task.h"
 #include "shill/technology.h"
 #include "shill/vpn/fake_vpn_util.h"
@@ -206,7 +206,7 @@ class OpenVPNDriverTest
   MockControl control_;
   MockEventDispatcher dispatcher_;
   MockMetrics metrics_;
-  MockProcessManager process_manager_;
+  net_base::MockProcessManager process_manager_;
   MockManager manager_;
   MockVPNDriverEventHandler event_handler_;
   std::unique_ptr<OpenVPNDriver> driver_;

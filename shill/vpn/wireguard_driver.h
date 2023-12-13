@@ -8,10 +8,10 @@
 #include <memory>
 #include <string>
 #include <string_view>
-#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
+#include <net-base/process_manager.h>
 
 #include "shill/ipconfig.h"
 #include "shill/metrics.h"
@@ -22,7 +22,7 @@ namespace shill {
 
 class WireGuardDriver : public VPNDriver {
  public:
-  WireGuardDriver(Manager* manager, ProcessManager* process_manager);
+  WireGuardDriver(Manager* manager, net_base::ProcessManager* process_manager);
   WireGuardDriver(const WireGuardDriver&) = delete;
   WireGuardDriver& operator=(const WireGuardDriver&) = delete;
 

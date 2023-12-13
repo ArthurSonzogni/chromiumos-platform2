@@ -15,6 +15,7 @@
 
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
+#include <net-base/process_manager.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"
@@ -48,7 +49,7 @@ class Manager : public ForwardingService {
   // |client| variables outlive the created Manager instance.
   Manager(const base::FilePath& cmd_path,
           System* system,
-          shill::ProcessManager* process_manager,
+          net_base::ProcessManager* process_manager,
           MetricsLibraryInterface* metrics,
           DbusClientNotifier* dbus_client_notifier,
           std::unique_ptr<ShillClient> shill_client,

@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <gmock/gmock.h>
+#include <net-base/process_manager.h>
 
 #include "shill/external_task.h"
 
@@ -18,7 +19,7 @@ namespace shill {
 class MockExternalTask : public ExternalTask {
  public:
   MockExternalTask(ControlInterface* control,
-                   ProcessManager* process_manager,
+                   net_base::ProcessManager* process_manager,
                    const base::WeakPtr<RpcTaskDelegate>& task_delegate,
                    base::OnceCallback<void(pid_t, int)> death_callback);
   MockExternalTask(const MockExternalTask&) = delete;

@@ -8,7 +8,6 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <base/check.h>
 #include <base/files/file_util.h>
@@ -19,12 +18,12 @@
 #include <gtest/gtest.h>
 #include <libpasswordprovider/fake_password_provider.h>
 #include <libpasswordprovider/password.h>
+#include <net-base/mock_process_manager.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/net/mock_process_manager.h"
 #include "shill/ppp_daemon.h"
 #include "shill/rpc_task.h"
 #include "shill/test_event_dispatcher.h"
@@ -40,7 +39,7 @@ class L2TPConnectionUnderTest : public L2TPConnection {
                           ControlInterface* control_interface,
                           DeviceInfo* device_info,
                           EventDispatcher* dispatcher,
-                          ProcessManager* process_manager)
+                          net_base::ProcessManager* process_manager)
       : L2TPConnection(std::move(config),
                        std::move(callbacks),
                        control_interface,
@@ -173,7 +172,7 @@ class L2TPConnectionTest : public testing::Test {
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;
-  MockProcessManager process_manager_;
+  net_base::MockProcessManager process_manager_;
 
   MockCallbacks callbacks_;
   std::unique_ptr<L2TPConnectionUnderTest> l2tp_connection_;
@@ -239,13 +238,14 @@ TEST_F(L2TPConnectionTest, StartXl2tpd) {
   std::map<std::string, std::string> actual_env;
   const base::FilePath kExpectedProgramPath("/usr/sbin/xl2tpd");
   constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
-  EXPECT_CALL(process_manager_,
-              StartProcessInMinijail(
-                  _, kExpectedProgramPath, _, _,
-                  AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
-                        MinijailOptionsMatchCapMask(kExpectedCapMask),
-                        MinijailOptionsMatchInheritSupplementaryGroup(true)),
-                  _))
+  EXPECT_CALL(
+      process_manager_,
+      StartProcessInMinijail(
+          _, kExpectedProgramPath, _, _,
+          AllOf(net_base::MinijailOptionsMatchUserGroup("vpn", "vpn"),
+                net_base::MinijailOptionsMatchCapMask(kExpectedCapMask),
+                net_base::MinijailOptionsMatchInheritSupplementaryGroup(true)),
+          _))
       .WillOnce(WithArg<3>(
           [&actual_env](const std::map<std::string, std::string>& environment) {
             actual_env = environment;
@@ -289,12 +289,13 @@ TEST_F(L2TPConnectionTest, Disconnect) {
   base::OnceCallback<void(int)> exit_cb;
   const base::FilePath kExpectedProgramPath("/usr/sbin/xl2tpd-control");
   constexpr uint64_t kExpectedCapMask = 0;
-  EXPECT_CALL(process_manager_,
-              StartProcessInMinijail(
-                  _, kExpectedProgramPath, _, _,
-                  AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
-                        MinijailOptionsMatchCapMask(kExpectedCapMask)),
-                  _))
+  EXPECT_CALL(
+      process_manager_,
+      StartProcessInMinijail(
+          _, kExpectedProgramPath, _, _,
+          AllOf(net_base::MinijailOptionsMatchUserGroup("vpn", "vpn"),
+                net_base::MinijailOptionsMatchCapMask(kExpectedCapMask)),
+          _))
       .WillOnce(
           WithArg<5>([&exit_cb](base::OnceCallback<void(int)> exit_callback) {
             exit_cb = std::move(exit_callback);

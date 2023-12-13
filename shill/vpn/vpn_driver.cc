@@ -15,6 +15,7 @@
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/network_config.h>
+#include <net-base/process_manager.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/ipconfig.h"
@@ -34,7 +35,7 @@ static auto kModuleLogScope = ScopeLogger::kVPN;
 }  // namespace Logging
 
 VPNDriver::VPNDriver(Manager* manager,
-                     ProcessManager* process_manager,
+                     net_base::ProcessManager* process_manager,
                      VPNType vpn_type,
                      const Property* properties,
                      size_t property_count,

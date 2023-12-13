@@ -9,7 +9,7 @@
 #include <string>
 
 #include <net-base/ipv6_address.h>
-#include <shill/net/process_manager.h>
+#include <net-base/process_manager.h>
 
 #include "patchpanel/datapath.h"
 #include "patchpanel/shill_client.h"
@@ -22,7 +22,7 @@ namespace patchpanel {
 class ClatService {
  public:
   ClatService(Datapath* datapath,
-              shill::ProcessManager* process_manager,
+              net_base::ProcessManager* process_manager,
               System* system);
   ClatService(const ClatService&) = delete;
   ClatService& operator=(const ClatService&) = delete;
@@ -78,7 +78,7 @@ class ClatService {
   // These variables are injected at the constructor. The caller should
   // guarantee these variables outlive the ClatService instance.
   Datapath* datapath_;
-  shill::ProcessManager* process_manager_;
+  net_base::ProcessManager* process_manager_;
   System* system_;
   // Flag to turn CLAT feature on or off. Can be modified through Enable() and
   // Disable().

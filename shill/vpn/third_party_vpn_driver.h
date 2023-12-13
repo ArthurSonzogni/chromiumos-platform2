@@ -16,6 +16,7 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback.h>
 #include <gtest/gtest_prod.h>
+#include <net-base/process_manager.h>
 
 #include "shill/ipconfig.h"
 #include "shill/vpn/vpn_driver.h"
@@ -39,7 +40,8 @@ class ThirdPartyVpnDriver : public VPNDriver {
     kResume
   };
 
-  ThirdPartyVpnDriver(Manager* manager, ProcessManager* process_manager);
+  ThirdPartyVpnDriver(Manager* manager,
+                      net_base::ProcessManager* process_manager);
   ThirdPartyVpnDriver(const ThirdPartyVpnDriver&) = delete;
   ThirdPartyVpnDriver& operator=(const ThirdPartyVpnDriver&) = delete;
 

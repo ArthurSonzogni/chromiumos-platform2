@@ -15,6 +15,7 @@
 #include <brillo/message_loops/message_loop.h>
 #include <net-base/netlink_manager.h>
 #include <net-base/netlink_message.h>
+#include <net-base/process_manager.h>
 
 #include "shill/control_interface.h"
 #include "shill/dbus/dbus_control.h"
@@ -22,7 +23,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/mojom/mojo_service_provider.h"
-#include "shill/net/process_manager.h"
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/network_applier.h"
 #include "shill/shill_config.h"
@@ -76,7 +76,7 @@ void DaemonTask::Init() {
   rtnl_handler_ = net_base::RTNLHandler::GetInstance();
   network_applier_ = NetworkApplier::GetInstance();
   dhcp_provider_ = DHCPProvider::GetInstance();
-  process_manager_ = ProcessManager::GetInstance();
+  process_manager_ = net_base::ProcessManager::GetInstance();
   netlink_manager_ = net_base::NetlinkManager::GetInstance();
   manager_.reset(new Manager(control_.get(), dispatcher_.get(), metrics_.get(),
                              config_->GetRunDirectory(),

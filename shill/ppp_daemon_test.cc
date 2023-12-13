@@ -13,12 +13,12 @@
 #include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest.h>
+#include <net-base/mock_process_manager.h>
 
 #include "shill/error.h"
 #include "shill/external_task.h"
 #include "shill/ipconfig.h"
 #include "shill/mock_control.h"
-#include "shill/net/mock_process_manager.h"
 #include "shill/ppp_daemon.h"
 #include "shill/rpc_task.h"
 #include "shill/service.h"
@@ -62,7 +62,7 @@ class PPPDaemonTest : public Test, public RpcTaskDelegate {
 
  protected:
   MockControl control_;
-  MockProcessManager process_manager_;
+  net_base::MockProcessManager process_manager_;
 
   std::vector<std::string> argv_;
   base::WeakPtrFactory<PPPDaemonTest> weak_ptr_factory_;

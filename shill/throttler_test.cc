@@ -5,12 +5,12 @@
 #include "shill/throttler.h"
 
 #include <gmock/gmock.h>
+#include <net-base/mock_process_manager.h>
 #include <net-base/mock_socket.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_file_io.h"
 #include "shill/mock_manager.h"
-#include "shill/net/mock_process_manager.h"
 #include "shill/test_event_dispatcher.h"
 
 using testing::_;
@@ -44,7 +44,7 @@ class ThrottlerTest : public Test {
   MockControl control_interface_;
   EventDispatcherForTest dispatcher_;
   StrictMock<MockManager> mock_manager_;
-  NiceMock<MockProcessManager> mock_process_manager_;
+  NiceMock<net_base::MockProcessManager> mock_process_manager_;
   NiceMock<MockFileIO> mock_file_io_;
   Throttler throttler_;
   net_base::MockSocket socket_;
@@ -63,19 +63,20 @@ TEST_F(ThrottlerTest, ThrottleCallsTCExpectedTimesAndSetsState) {
   EXPECT_CALL(mock_manager_, GetDeviceInterfaceNames())
       .WillOnce(Return(interfaces));
   constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
-  EXPECT_CALL(mock_process_manager_,
-              StartProcessInMinijailWithPipes(
-                  _, base::FilePath(Throttler::kTCPath), _, _,
-                  AllOf(MinijailOptionsMatchUserGroup(Throttler::kTCUser,
-                                                      Throttler::kTCGroup),
-                        MinijailOptionsMatchCapMask(kExpectedCapMask)),
-                  _, _))
+  EXPECT_CALL(
+      mock_process_manager_,
+      StartProcessInMinijailWithPipes(
+          _, base::FilePath(Throttler::kTCPath), _, _,
+          AllOf(net_base::MinijailOptionsMatchUserGroup(Throttler::kTCUser,
+                                                        Throttler::kTCGroup),
+                net_base::MinijailOptionsMatchCapMask(kExpectedCapMask)),
+          _, _))
       .Times(interfaces.size())
-      .WillOnce(WithArg<6>([&](struct std_file_descriptors std_fds) {
+      .WillOnce(WithArg<6>([&](struct net_base::std_file_descriptors std_fds) {
         *std_fds.stdin_fd = socket_.Get();
         return kPID1;
       }))
-      .WillOnce(WithArg<6>([&](struct std_file_descriptors std_fds) {
+      .WillOnce(WithArg<6>([&](struct net_base::std_file_descriptors std_fds) {
         *std_fds.stdin_fd = socket_.Get();
         return kPID2;
       }));
@@ -96,15 +97,16 @@ TEST_F(ThrottlerTest, NewlyAddedInterfaceIsThrottled) {
   throttler_.desired_upload_rate_kbits_ = kThrottleRate;
   throttler_.desired_download_rate_kbits_ = kThrottleRate;
   constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
-  EXPECT_CALL(mock_process_manager_,
-              StartProcessInMinijailWithPipes(
-                  _, base::FilePath(Throttler::kTCPath), _, _,
-                  AllOf(MinijailOptionsMatchUserGroup(Throttler::kTCUser,
-                                                      Throttler::kTCGroup),
-                        MinijailOptionsMatchCapMask(kExpectedCapMask)),
-                  _, _))
+  EXPECT_CALL(
+      mock_process_manager_,
+      StartProcessInMinijailWithPipes(
+          _, base::FilePath(Throttler::kTCPath), _, _,
+          AllOf(net_base::MinijailOptionsMatchUserGroup(Throttler::kTCUser,
+                                                        Throttler::kTCGroup),
+                net_base::MinijailOptionsMatchCapMask(kExpectedCapMask)),
+          _, _))
       .Times(1)
-      .WillOnce(WithArg<6>([&](struct std_file_descriptors std_fds) {
+      .WillOnce(WithArg<6>([&](struct net_base::std_file_descriptors std_fds) {
         *std_fds.stdin_fd = socket_.Get();
         return kPID3;
       }));
@@ -120,15 +122,16 @@ TEST_F(ThrottlerTest, DisablingThrottleClearsState) {
   EXPECT_CALL(mock_manager_, GetDeviceInterfaceNames())
       .WillOnce(Return(interfaces));
   constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
-  EXPECT_CALL(mock_process_manager_,
-              StartProcessInMinijailWithPipes(
-                  _, base::FilePath(Throttler::kTCPath), _, _,
-                  AllOf(MinijailOptionsMatchUserGroup(Throttler::kTCUser,
-                                                      Throttler::kTCGroup),
-                        MinijailOptionsMatchCapMask(kExpectedCapMask)),
-                  _, _))
+  EXPECT_CALL(
+      mock_process_manager_,
+      StartProcessInMinijailWithPipes(
+          _, base::FilePath(Throttler::kTCPath), _, _,
+          AllOf(net_base::MinijailOptionsMatchUserGroup(Throttler::kTCUser,
+                                                        Throttler::kTCGroup),
+                net_base::MinijailOptionsMatchCapMask(kExpectedCapMask)),
+          _, _))
       .Times(1)
-      .WillOnce(WithArg<6>([&](struct std_file_descriptors std_fds) {
+      .WillOnce(WithArg<6>([&](struct net_base::std_file_descriptors std_fds) {
         *std_fds.stdin_fd = socket_.Get();
         return kPID1;
       }));
@@ -150,15 +153,16 @@ TEST_F(ThrottlerTest, DisablingThrottleWhenNoThrottleExists) {
   EXPECT_CALL(mock_manager_, GetDeviceInterfaceNames())
       .WillOnce(Return(interfaces));
   constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
-  EXPECT_CALL(mock_process_manager_,
-              StartProcessInMinijailWithPipes(
-                  _, base::FilePath(Throttler::kTCPath), _, _,
-                  AllOf(MinijailOptionsMatchUserGroup(Throttler::kTCUser,
-                                                      Throttler::kTCGroup),
-                        MinijailOptionsMatchCapMask(kExpectedCapMask)),
-                  _, _))
+  EXPECT_CALL(
+      mock_process_manager_,
+      StartProcessInMinijailWithPipes(
+          _, base::FilePath(Throttler::kTCPath), _, _,
+          AllOf(net_base::MinijailOptionsMatchUserGroup(Throttler::kTCUser,
+                                                        Throttler::kTCGroup),
+                net_base::MinijailOptionsMatchCapMask(kExpectedCapMask)),
+          _, _))
       .Times(1)
-      .WillOnce(WithArg<6>([&](struct std_file_descriptors std_fds) {
+      .WillOnce(WithArg<6>([&](struct net_base::std_file_descriptors std_fds) {
         *std_fds.stdin_fd = socket_.Get();
         return kPID1;
       }));

@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/memory/weak_ptr.h>
+#include <net-base/process_manager.h>
 
 #include "shill/manager.h"
 #include "shill/mockable.h"
@@ -21,7 +22,7 @@ namespace shill {
 
 class L2TPIPsecDriver : public VPNDriver {
  public:
-  L2TPIPsecDriver(Manager* manager, ProcessManager* process_manager);
+  L2TPIPsecDriver(Manager* manager, net_base::ProcessManager* process_manager);
   L2TPIPsecDriver(const L2TPIPsecDriver&) = delete;
   L2TPIPsecDriver& operator=(const L2TPIPsecDriver&) = delete;
   ~L2TPIPsecDriver() override;
@@ -58,13 +59,13 @@ class L2TPIPsecDriver : public VPNDriver {
       std::unique_ptr<VPNConnection> l2tp_connection,
       DeviceInfo* device_info,
       EventDispatcher* dispatcher,
-      ProcessManager* process_manager);
+      net_base::ProcessManager* process_manager);
   mockable std::unique_ptr<VPNConnection> CreateL2TPConnection(
       std::unique_ptr<L2TPConnection::Config> config,
       ControlInterface* control_interface,
       DeviceInfo* device_info,
       EventDispatcher* dispatcher,
-      ProcessManager* process_manager);
+      net_base::ProcessManager* process_manager);
 
   // Callbacks from IPsecConnection.
   void OnIPsecConnected(const std::string& link_name,

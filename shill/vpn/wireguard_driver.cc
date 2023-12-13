@@ -29,11 +29,11 @@
 #include <base/version.h>
 #include <chromeos/dbus/service_constants.h>
 #include <crypto/random.h>
+#include <net-base/process_manager.h>
 
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
-#include "shill/net/process_manager.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
 #include "shill/vpn/vpn_types.h"
@@ -118,8 +118,9 @@ std::string GenerateBase64PrivateKey() {
 // Invokes wireguard-tools to calculates the public key based on the given
 // private key. Returns an empty string on error. Note that the call to
 // wireguard-tools is blocking but with a timeout (kPollTimeout below).
-std::string CalculateBase64PublicKey(const std::string& base64_private_key,
-                                     ProcessManager* process_manager) {
+std::string CalculateBase64PublicKey(
+    const std::string& base64_private_key,
+    net_base::ProcessManager* process_manager) {
   constexpr auto kPollTimeout = base::Seconds(1);
 
   constexpr uint64_t kCapMask = 0;
@@ -204,7 +205,7 @@ const VPNDriver::Property WireGuardDriver::kProperties[] = {
 };
 
 WireGuardDriver::WireGuardDriver(Manager* manager,
-                                 ProcessManager* process_manager)
+                                 net_base::ProcessManager* process_manager)
     : VPNDriver(manager,
                 process_manager,
                 VPNType::kWireGuard,

@@ -12,7 +12,7 @@
 #include <chromeos/dbus/patchpanel/dbus-constants.h>
 #include <metrics/metrics_library.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
-#include <shill/net/process_manager.h>
+#include <net-base/process_manager.h>
 
 #include "patchpanel/downstream_network_service.h"
 #include "patchpanel/manager.h"
@@ -25,7 +25,7 @@ namespace patchpanel {
 PatchpanelAdaptor::PatchpanelAdaptor(const base::FilePath& cmd_path,
                                      scoped_refptr<::dbus::Bus> bus,
                                      System* system,
-                                     shill::ProcessManager* process_manager,
+                                     net_base::ProcessManager* process_manager,
                                      MetricsLibraryInterface* metrics,
                                      std::unique_ptr<RTNLClient> rtnl_client)
     : org::chromium::PatchPanelAdaptor(this),

@@ -20,13 +20,13 @@
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/timer.h>
 #include <net-base/network_config.h>
+#include <net-base/process_manager.h>
 
 #include "shill/control_interface.h"
 #include "shill/event_dispatcher.h"
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
-#include "shill/net/process_manager.h"
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/dhcp_proxy_interface.h"
 #include "shill/network/dhcpv4_config.h"
@@ -74,7 +74,7 @@ DHCPController::DHCPController(ControlInterface* control_interface,
       root_("/"),
       weak_ptr_factory_(this),
       dispatcher_(dispatcher),
-      process_manager_(ProcessManager::GetInstance()),
+      process_manager_(net_base::ProcessManager::GetInstance()),
       metrics_(metrics),
       time_(Time::GetInstance()) {
   SLOG(this, 2) << __func__ << ": " << device_name;
@@ -293,7 +293,7 @@ bool DHCPController::Start() {
   }
   args.push_back(interface_arg);
 
-  ProcessManager::MinijailOptions minijail_options;
+  net_base::ProcessManager::MinijailOptions minijail_options;
   minijail_options.user = kDHCPCDUser;
   minijail_options.group = kDHCPCDGroup;
   minijail_options.capmask =
@@ -327,9 +327,9 @@ void DHCPController::KillClient() {
     return;
   }
 
-  // Pass the termination responsibility to ProcessManager.
-  // ProcessManager will try to terminate the process using SIGTERM, then
-  // SIGKill signals.  It will log an error message if it is not able to
+  // Pass the termination responsibility to net_base::ProcessManager.
+  // net_base::ProcessManager will try to terminate the process using SIGTERM,
+  // then SIGKill signals.  It will log an error message if it is not able to
   // terminate the process in a timely manner.
   process_manager_->StopProcessAndBlock(pid_);
 }

@@ -14,6 +14,7 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/network_config.h>
+#include <net-base/process_manager.h>
 
 #include "shill/callbacks.h"
 #include "shill/eap_credentials.h"
@@ -30,7 +31,6 @@ class ControlInterface;
 class Error;
 class EventDispatcher;
 class Manager;
-class ProcessManager;
 class PropertyStore;
 class StoreInterface;
 
@@ -156,7 +156,7 @@ class VPNDriver {
   };
 
   VPNDriver(Manager* manager,
-            ProcessManager* process_manager,
+            net_base::ProcessManager* process_manager,
             VPNType vpn_type,
             const Property* properties,
             size_t property_count,
@@ -168,7 +168,7 @@ class VPNDriver {
   EventDispatcher* dispatcher() const;
   Metrics* metrics() const;
   Manager* manager() const { return manager_; }
-  ProcessManager* process_manager() const { return process_manager_; }
+  net_base::ProcessManager* process_manager() const { return process_manager_; }
 
   // Registered for "Provider" property, which can be read over RPC. All
   // accessible properties defined in |properties_| are included.
@@ -195,7 +195,7 @@ class VPNDriver {
                                 Error* error);
 
   Manager* manager_;
-  ProcessManager* process_manager_;
+  net_base::ProcessManager* process_manager_;
 
   const VPNType vpn_type_;
   const Property* const properties_;

@@ -3,16 +3,16 @@
 // found in the LICENSE file.
 #include <stdlib.h>
 
+#include <utility>
+#include <vector>
+
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-
-#include <utility>
-#include <vector>
+#include <net-base/process_manager.h>
 
 #include "shill/logging.h"
-#include "shill/net/process_manager.h"
 #include "shill/throttler.h"
 
 namespace shill {
@@ -55,7 +55,7 @@ Throttler::Throttler(EventDispatcher* dispatcher, Manager* manager)
       tc_stdin_(-1),
       tc_pid_(0),
       manager_(manager),
-      process_manager_(ProcessManager::GetInstance()) {
+      process_manager_(net_base::ProcessManager::GetInstance()) {
   SLOG(2) << __func__;
 }
 
@@ -223,7 +223,7 @@ bool Throttler::StartTCForCommands(const std::vector<std::string>& commands) {
       "-"    // Use stdin for input
   };
 
-  ProcessManager::MinijailOptions minijail_options;
+  net_base::ProcessManager::MinijailOptions minijail_options;
   minijail_options.user = kTCUser;
   minijail_options.group = kTCGroup;
   minijail_options.capmask = CAP_TO_MASK(CAP_NET_ADMIN);
@@ -232,7 +232,7 @@ bool Throttler::StartTCForCommands(const std::vector<std::string>& commands) {
   tc_commands_ = commands;
   // shill's stderr is wired to syslog, so nullptr for stderr
   // here implies throttling errors show up in /var/log/net.log.
-  struct std_file_descriptors std_fds {
+  struct net_base::std_file_descriptors std_fds {
     &tc_stdin_, nullptr, nullptr
   };
   tc_pid_ = process_manager_->StartProcessInMinijailWithPipes(

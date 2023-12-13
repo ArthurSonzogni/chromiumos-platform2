@@ -30,10 +30,10 @@
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/ip_address.h>
 #include <net-base/network_config.h>
+#include <net-base/process_manager.h>
 #include <re2/re2.h>
 
 #include "shill/metrics.h"
-#include "shill/net/process_manager.h"
 #include "shill/vpn/vpn_util.h"
 
 namespace shill {
@@ -376,7 +376,7 @@ IPsecConnection::IPsecConnection(std::unique_ptr<Config> config,
                                  std::unique_ptr<VPNConnection> l2tp_connection,
                                  DeviceInfo* device_info,
                                  EventDispatcher* dispatcher,
-                                 ProcessManager* process_manager)
+                                 net_base::ProcessManager* process_manager)
     : VPNConnection(std::move(callbacks), dispatcher),
       config_(std::move(config)),
       l2tp_connection_(std::move(l2tp_connection)),
@@ -719,7 +719,7 @@ void IPsecConnection::CheckPreviousCharonProcess(bool wait_if_alive) {
       FROM_HERE,
       base::BindOnce(&IPsecConnection::CheckPreviousCharonProcess,
                      weak_factory_.GetWeakPtr(), false),
-      ProcessManager::kTerminationTimeout);
+      net_base::ProcessManager::kTerminationTimeout);
   return;
 }
 

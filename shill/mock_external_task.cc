@@ -6,11 +6,13 @@
 
 #include <utility>
 
+#include <net-base/process_manager.h>
+
 namespace shill {
 
 MockExternalTask::MockExternalTask(
     ControlInterface* control,
-    ProcessManager* process_manager,
+    net_base::ProcessManager* process_manager,
     const base::WeakPtr<RpcTaskDelegate>& task_delegate,
     base::OnceCallback<void(pid_t, int)> death_callback)
     : ExternalTask(

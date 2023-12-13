@@ -9,13 +9,14 @@
 
 #include <iterator>
 #include <memory>
-#include <utility>
+#include <string>
 
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/string_split.h>
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/network_config.h>
+#include <net-base/process_manager.h>
 
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -35,7 +36,8 @@ const VPNDriver::Property ArcVpnDriver::kProperties[] = {
     {kProviderTypeProperty, 0},
     {kArcVpnTunnelChromeProperty, 0}};
 
-ArcVpnDriver::ArcVpnDriver(Manager* manager, ProcessManager* process_manager)
+ArcVpnDriver::ArcVpnDriver(Manager* manager,
+                           net_base::ProcessManager* process_manager)
     : VPNDriver(manager,
                 process_manager,
                 VPNType::kARC,

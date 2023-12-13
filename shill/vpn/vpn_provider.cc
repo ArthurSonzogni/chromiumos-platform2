@@ -5,7 +5,6 @@
 #include "shill/vpn/vpn_provider.h"
 
 #include <algorithm>
-#include <map>
 #include <memory>
 #include <utility>
 
@@ -14,11 +13,11 @@
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
+#include <net-base/process_manager.h>
 
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/net/process_manager.h"
 #include "shill/profile.h"
 #include "shill/store/store_interface.h"
 #include "shill/vpn/arc_vpn_driver.h"
@@ -223,19 +222,24 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const std::string& type,
 
   std::unique_ptr<VPNDriver> driver;
   if (type == kProviderOpenVpn) {
-    driver.reset(new OpenVPNDriver(manager_, ProcessManager::GetInstance()));
+    driver.reset(
+        new OpenVPNDriver(manager_, net_base::ProcessManager::GetInstance()));
   } else if (type == kProviderL2tpIpsec) {
-    driver.reset(new L2TPIPsecDriver(manager_, ProcessManager::GetInstance()));
+    driver.reset(
+        new L2TPIPsecDriver(manager_, net_base::ProcessManager::GetInstance()));
   } else if (type == kProviderIKEv2) {
-    driver.reset(new IKEv2Driver(manager_, ProcessManager::GetInstance()));
+    driver.reset(
+        new IKEv2Driver(manager_, net_base::ProcessManager::GetInstance()));
   } else if (type == kProviderThirdPartyVpn) {
     // For third party VPN host contains extension ID
-    driver.reset(
-        new ThirdPartyVpnDriver(manager_, ProcessManager::GetInstance()));
+    driver.reset(new ThirdPartyVpnDriver(
+        manager_, net_base::ProcessManager::GetInstance()));
   } else if (type == kProviderArcVpn) {
-    driver.reset(new ArcVpnDriver(manager_, ProcessManager::GetInstance()));
+    driver.reset(
+        new ArcVpnDriver(manager_, net_base::ProcessManager::GetInstance()));
   } else if (type == kProviderWireGuard) {
-    driver.reset(new WireGuardDriver(manager_, ProcessManager::GetInstance()));
+    driver.reset(
+        new WireGuardDriver(manager_, net_base::ProcessManager::GetInstance()));
   } else {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Invalid VPN type: " + type);

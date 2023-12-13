@@ -6,9 +6,9 @@
 #include <cstdint>
 
 #include <base/logging.h>
+#include <net-base/process_manager.h>
 
 #include "shill/event_dispatcher.h"
-#include "shill/net/process_manager.h"
 #include "shill/vpn/ipsec_connection.h"
 
 namespace shill {
@@ -19,7 +19,7 @@ class IPsecConnectionUnderTest : public IPsecConnection {
       std::unique_ptr<IPsecConnection::Config> config,
       std::unique_ptr<VPNConnection> l2tp_connection,
       EventDispatcher* dispatcher,
-      ProcessManager* process_manager)
+      net_base::ProcessManager* process_manager)
       : IPsecConnection(
             std::move(config),
             std::make_unique<VPNConnection::Callbacks>(
@@ -55,7 +55,7 @@ class EventDispatcherForFuzzer : public EventDispatcher {
                        base::TimeDelta delay) override {}
 };
 
-class FakeProcessManager : public ProcessManager {
+class FakeProcessManager : public net_base::ProcessManager {
  public:
   explicit FakeProcessManager(const std::string& data) : data_(data) {}
   FakeProcessManager(const FakeProcessManager&) = delete;

@@ -14,8 +14,8 @@
 #include <net-base/ip_address_utils.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
-#include <shill/net/mock_process_manager.h>
-#include <shill/net/process_manager.h>
+#include <net-base/mock_process_manager.h>
+#include <net-base/process_manager.h>
 
 #include "patchpanel/datapath.h"
 #include "patchpanel/fake_system.h"
@@ -52,7 +52,7 @@ MATCHER_P(AddressHasPrefix, expected_prefix_str, "") {
 class ClatServiceUnderTest : public ClatService {
  public:
   ClatServiceUnderTest(Datapath* datapath,
-                       shill::ProcessManager* process_manager,
+                       net_base::ProcessManager* process_manager,
                        System* system)
       : ClatService(datapath, process_manager, system) {
     ON_CALL(*this, StartClat(_))
@@ -124,7 +124,8 @@ class ClatServiceTest : public ::testing::Test {
         &datapath_, &process_manager_, &system_);
   }
   MockDatapath datapath_ = MockDatapath();
-  shill::MockProcessManager process_manager_ = shill::MockProcessManager();
+  net_base::MockProcessManager process_manager_ =
+      net_base::MockProcessManager();
   FakeSystem system_ = FakeSystem();
   std::unique_ptr<ClatServiceUnderTest> target_;
 };

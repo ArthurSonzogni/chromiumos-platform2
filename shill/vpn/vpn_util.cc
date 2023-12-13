@@ -17,8 +17,7 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
-
-#include "shill/net/process_manager.h"
+#include <net-base/process_manager.h>
 
 namespace shill {
 
@@ -139,9 +138,9 @@ bool VPNUtil::CheckKernelVersion(const base::Version& minimum_version) {
 }
 
 // static
-ProcessManager::MinijailOptions VPNUtil::BuildMinijailOptions(
+net_base::ProcessManager::MinijailOptions VPNUtil::BuildMinijailOptions(
     uint64_t capmask) {
-  ProcessManager::MinijailOptions options;
+  net_base::ProcessManager::MinijailOptions options;
   options.user = VPNUtil::kVPNUser;
   options.group = VPNUtil::kVPNGroup;
   options.capmask = capmask;

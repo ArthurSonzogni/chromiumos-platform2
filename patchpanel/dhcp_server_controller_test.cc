@@ -19,7 +19,7 @@
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 #include <net-base/ipv4_address.h>
-#include <shill/net/mock_process_manager.h>
+#include <net-base/mock_process_manager.h>
 
 #include "patchpanel/metrics.h"
 
@@ -101,7 +101,7 @@ class DHCPServerControllerTest : public ::testing::Test {
       base::test::TaskEnvironment::MainThreadType::IO};
 
   StrictMock<MetricsLibraryMock> metrics_;
-  StrictMock<shill::MockProcessManager> process_manager_;
+  StrictMock<net_base::MockProcessManager> process_manager_;
   std::unique_ptr<DHCPServerController> dhcp_server_controller_;
 
   int pipe_fds_[2];
@@ -212,7 +212,7 @@ TEST_F(DHCPServerControllerTest, StartSuccessfulAtFirstTime) {
 
 TEST_F(DHCPServerControllerTest, StartFailed) {
   const auto config = CreateValidConfig();
-  constexpr pid_t invalid_pid = shill::ProcessManager::kInvalidPID;
+  constexpr pid_t invalid_pid = net_base::ProcessManager::kInvalidPID;
 
   ExpectMetrics(DHCPServerUmaEvent::kStart, 1);
   EXPECT_CALL(process_manager_, StartProcessInMinijailWithPipes)

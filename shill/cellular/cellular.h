@@ -18,6 +18,7 @@
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/netlink_sock_diag.h>
+#include <net-base/process_manager.h>
 #include <net-base/rtnl_listener.h>
 #include <net-base/rtnl_message.h>
 
@@ -38,7 +39,6 @@ namespace shill {
 class CellularCapability3gpp;
 class Error;
 class ExternalTask;
-class ProcessManager;
 class PowerOpt;
 
 class Cellular : public Device,
@@ -946,7 +946,7 @@ class Cellular : public Device,
   std::optional<InterfaceToProperties> initial_properties_;
   std::unique_ptr<CarrierEntitlement> carrier_entitlement_;
 
-  ProcessManager* process_manager_;
+  net_base::ProcessManager* process_manager_;
 
   // The active CellularService instance for this Device. This will always be
   // set to a valid service instance.

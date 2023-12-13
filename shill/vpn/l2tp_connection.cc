@@ -20,6 +20,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <libpasswordprovider/password_provider.h>
 #include <net-base/network_config.h>
+#include <net-base/process_manager.h>
 
 #include "shill/ppp_daemon.h"
 #include "shill/vpn/vpn_util.h"
@@ -58,7 +59,7 @@ L2TPConnection::L2TPConnection(std::unique_ptr<Config> config,
                                ControlInterface* control_interface,
                                DeviceInfo* device_info,
                                EventDispatcher* dispatcher,
-                               ProcessManager* process_manager)
+                               net_base::ProcessManager* process_manager)
     : VPNConnection(std::move(callbacks), dispatcher),
       config_(std::move(config)),
       control_interface_(control_interface),

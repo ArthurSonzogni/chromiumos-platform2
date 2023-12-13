@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NET_PROCESS_MANAGER_H_
-#define SHILL_NET_PROCESS_MANAGER_H_
+#ifndef NET_BASE_PROCESS_MANAGER_H_
+#define NET_BASE_PROCESS_MANAGER_H_
 
 #include <sys/types.h>  // for rlim_t
 
@@ -29,11 +29,11 @@
 #include <brillo/process/process_reaper.h>
 #include <libminijail.h>
 
-#include "shill/net/shill_export.h"
+#include "net-base/export.h"
 
-namespace shill {
+namespace net_base {
 
-struct SHILL_EXPORT std_file_descriptors {
+struct NET_BASE_EXPORT std_file_descriptors {
   int* stdin_fd;
   int* stdout_fd;
   int* stderr_fd;
@@ -42,13 +42,13 @@ struct SHILL_EXPORT std_file_descriptors {
 // The ProcessManager is a singleton providing process creation and
 // asynchronous process termination. Need to initialize it once with
 // Init method call.
-class SHILL_EXPORT ProcessManager {
+class NET_BASE_EXPORT ProcessManager {
  public:
   using ExitCallback = base::OnceCallback<void(int exit_status)>;
   using ExitWithStdoutCallback =
       base::OnceCallback<void(int exit_status, const std::string& stdout_str)>;
 
-  struct SHILL_EXPORT MinijailOptions {
+  struct NET_BASE_EXPORT MinijailOptions {
     // Program will run as |user| and |group|.
     std::string user;
     std::string group;
@@ -69,10 +69,14 @@ class SHILL_EXPORT ProcessManager {
   static constexpr base::TimeDelta kTerminationTimeout = base::Seconds(2);
   static constexpr pid_t kInvalidPID = -1;
 
-  virtual ~ProcessManager();
-
   // This is a singleton -- use ProcessManager::GetInstance()->Foo().
   static ProcessManager* GetInstance();
+
+  virtual ~ProcessManager();
+
+  // It's not copyable and movable.
+  ProcessManager(const ProcessManager&) = delete;
+  ProcessManager& operator=(const ProcessManager&) = delete;
 
   // Register async signal handler and setup process reaper.
   virtual void Init();
@@ -169,8 +173,6 @@ class SHILL_EXPORT ProcessManager {
 
  protected:
   ProcessManager();
-  ProcessManager(const ProcessManager&) = delete;
-  ProcessManager& operator=(const ProcessManager&) = delete;
 
  private:
   friend class ProcessManagerTest;
@@ -271,6 +273,6 @@ class SHILL_EXPORT ProcessManager {
   base::WeakPtrFactory<ProcessManager> weak_factory_{this};
 };
 
-}  // namespace shill
+}  // namespace net_base
 
-#endif  // SHILL_NET_PROCESS_MANAGER_H_
+#endif  // NET_BASE_PROCESS_MANAGER_H_

@@ -4,10 +4,12 @@
 
 #include "shill/vpn/mock_openvpn_driver.h"
 
+#include <net-base/process_manager.h>
+
 namespace shill {
 
 MockOpenVPNDriver::MockOpenVPNDriver(Manager* manager,
-                                     ProcessManager* process_manager)
+                                     net_base::ProcessManager* process_manager)
     : OpenVPNDriver(manager, process_manager) {}
 
 MockOpenVPNDriver::~MockOpenVPNDriver() = default;

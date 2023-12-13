@@ -15,6 +15,7 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/single_thread_task_runner.h>
+#include <net-base/process_manager.h>
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/crostini_service.h"
@@ -40,7 +41,7 @@ constexpr ConntrackMonitor::EventType kConntrackEvents[] = {
 
 Manager::Manager(const base::FilePath& cmd_path,
                  System* system,
-                 shill::ProcessManager* process_manager,
+                 net_base::ProcessManager* process_manager,
                  MetricsLibraryInterface* metrics,
                  DbusClientNotifier* dbus_client_notifier,
                  std::unique_ptr<ShillClient> shill_client,

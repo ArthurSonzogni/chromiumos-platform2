@@ -24,7 +24,7 @@
 #include <brillo/process/process.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
-#include <shill/net/process_manager.h>
+#include <net-base/process_manager.h>
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
@@ -79,7 +79,7 @@ bool NeedsClat(const ShillClient::Device& device) {
 }  // namespace
 
 ClatService::ClatService(Datapath* datapath,
-                         shill::ProcessManager* process_manager,
+                         net_base::ProcessManager* process_manager,
                          System* system)
     : datapath_(datapath), process_manager_(process_manager), system_(system) {
   DCHECK(datapath);
@@ -190,8 +190,7 @@ void ClatService::StartClat(const ShillClient::Device& shill_device) {
   }
 
   if (!shill_device.ipconfig.ipv6_cidr) {
-    LOG(ERROR) << shill_device << " doesn't have"
-               << " an IPv6 address";
+    LOG(ERROR) << shill_device << " doesn't have an IPv6 address";
     return;
   }
 
@@ -344,7 +343,7 @@ bool ClatService::StartTayga() {
       kTaygaConfigFilePath,
   };
 
-  shill::ProcessManager::MinijailOptions minijail_options;
+  net_base::ProcessManager::MinijailOptions minijail_options;
   minijail_options.user = kPatchpaneldUser;
   minijail_options.group = kPatchpaneldGroup;
   minijail_options.capmask = CAP_TO_MASK(CAP_NET_RAW);

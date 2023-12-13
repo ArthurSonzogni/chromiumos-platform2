@@ -15,7 +15,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
-#include <shill/net/mock_process_manager.h>
+#include <net-base/mock_process_manager.h>
 
 #include "patchpanel/fake_system.h"
 
@@ -47,7 +47,7 @@ class SubprocessControllerTest : public ::testing::Test {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
   FakeSystem system_;
-  shill::MockProcessManager process_manager_;
+  net_base::MockProcessManager process_manager_;
 };
 
 TEST_F(SubprocessControllerTest, Start) {
@@ -80,7 +80,7 @@ TEST_F(SubprocessControllerTest, Start) {
 TEST_F(SubprocessControllerTest, StartFailed) {
   // StopProcess() should not be called when StartProcess() fails.
   EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _, _))
-      .WillOnce(Return(shill::ProcessManager::kInvalidPID));
+      .WillOnce(Return(net_base::ProcessManager::kInvalidPID));
   EXPECT_CALL(process_manager_, StopProcess(_)).Times(0);
 
   SubprocessController subprocess_controller(&system_, &process_manager_,

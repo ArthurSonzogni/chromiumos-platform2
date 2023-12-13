@@ -69,7 +69,6 @@ pkg_config("target_defaults") {
     "libnet-base",
     "libnetfilter_conntrack",
     "libshill-client",
-    "libshill-net",
     "re2",
     "system_api",
     "vboot_host",
@@ -340,7 +339,6 @@ if (use.test) {
       ":libpatchpanel",
       "//common-mk/testrunner",
       "//net-base:net_base_test_support",
-      "//shill/net:net_test_support",
     ]
   }
 }

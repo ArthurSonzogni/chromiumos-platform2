@@ -14,6 +14,7 @@
 #include <base/time/time.h>
 #include <base/version.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
+#include <net-base/process_manager.h>
 
 #include "shill/error.h"
 #include "shill/ipconfig.h"
@@ -110,7 +111,8 @@ bool IKEv2Driver::IsSupported() {
   return VPNUtil::CheckKernelVersion(base::Version("4.19"));
 }
 
-IKEv2Driver::IKEv2Driver(Manager* manager, ProcessManager* process_manager)
+IKEv2Driver::IKEv2Driver(Manager* manager,
+                         net_base::ProcessManager* process_manager)
     : VPNDriver(manager,
                 process_manager,
                 VPNType::kIKEv2,
@@ -161,7 +163,7 @@ std::unique_ptr<VPNConnection> IKEv2Driver::CreateIPsecConnection(
     std::unique_ptr<VPNConnection::Callbacks> callbacks,
     DeviceInfo* device_info,
     EventDispatcher* dispatcher,
-    ProcessManager* process_manager) {
+    net_base::ProcessManager* process_manager) {
   return std::make_unique<IPsecConnection>(
       std::move(config), std::move(callbacks), /*l2tp_connection=*/nullptr,
       device_info, dispatcher, process_manager);

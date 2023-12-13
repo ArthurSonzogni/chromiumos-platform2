@@ -26,7 +26,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/key_value_store.h>
 #include <metrics/metrics_library.h>
-#include <shill/net/process_manager.h>
+#include <net-base/process_manager.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/metrics.h"
@@ -39,7 +39,7 @@ PatchpanelDaemon::PatchpanelDaemon(const base::FilePath& cmd_path)
     : DBusServiceDaemon(kPatchPanelServiceName),
       cmd_path_(cmd_path),
       system_(std::make_unique<System>()),
-      process_manager_(shill::ProcessManager::GetInstance()),
+      process_manager_(net_base::ProcessManager::GetInstance()),
       metrics_(std::make_unique<MetricsLibrary>()) {}
 
 std::map<const std::string, bool> PatchpanelDaemon::cached_feature_enabled_ =

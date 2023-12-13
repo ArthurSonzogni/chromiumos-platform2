@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/process_manager.h"
+#include "net-base/process_manager.h"
 
 #include <map>
 #include <memory>
@@ -28,7 +28,7 @@ using testing::SetArgPointee;
 using testing::StrEq;
 using testing::WithArgs;
 
-namespace shill {
+namespace net_base {
 
 class ProcessManagerTest : public testing::Test {
  public:
@@ -107,7 +107,7 @@ MATCHER_P2(IsProcessArgs, program, args, "") {
   if (std::string(arg[0]) != program) {
     return false;
   }
-  int index = 1;
+  size_t index = 1;
   for (const auto& option : args) {
     if (std::string(arg[index++]) != option) {
       return false;
@@ -344,7 +344,7 @@ TEST_F(ProcessManagerTest, StartProcessWithMinijailWithStdout) {
   const auto write_to_pipe = [&process_side_stdout_fd, &expected_stdout,
                               this]() {
     const char c = static_cast<char>(base::RandInt('a', 'z'));
-    const int length = base::RandInt(0, 2048);
+    const size_t length = static_cast<size_t>(base::RandInt(0, 2048));
     const std::string str = std::string(length, c);
     CHECK(base::WriteFileDescriptor(process_side_stdout_fd.get(), str));
     expected_stdout.append(str);
@@ -421,4 +421,4 @@ TEST_F(ProcessManagerTest, StartProcessWithMinijailWithPreservedNonstdFds) {
   AssertNonEmptyWatchedProcesses();
 }
 
-}  // namespace shill
+}  // namespace net_base

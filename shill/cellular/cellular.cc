@@ -32,6 +32,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/ipv6_address.h>
 #include <net-base/network_config.h>
+#include <net-base/process_manager.h>
 #include <net-base/rtnl_handler.h>
 #include <ModemManager/ModemManager.h>
 
@@ -59,7 +60,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
-#include "shill/net/process_manager.h"
 #include "shill/ppp_daemon.h"
 #include "shill/profile.h"
 #include "shill/service.h"
@@ -302,7 +302,7 @@ Cellular::Cellular(Manager* manager,
       dbus_service_(service),
       dbus_path_(path),
       dbus_path_str_(path.value()),
-      process_manager_(ProcessManager::GetInstance()) {
+      process_manager_(net_base::ProcessManager::GetInstance()) {
   RegisterProperties();
   mobile_operator_info_->Init();
 

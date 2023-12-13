@@ -16,8 +16,8 @@
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/process_manager.h>
 
-#include "shill/net/process_manager.h"
 #include "shill/rpc_task.h"
 
 namespace shill {
@@ -32,7 +32,7 @@ class ExternalTask : public RpcTaskDelegate {
   // Stop()'d. Clients are free to destruct the ExternalTask within the death
   // callback.
   ExternalTask(ControlInterface* control,
-               ProcessManager* process_manager,
+               net_base::ProcessManager* process_manager,
                const base::WeakPtr<RpcTaskDelegate>& task_delegate,
                base::OnceCallback<void(pid_t, int)> death_callback);
   ExternalTask(const ExternalTask&) = delete;
@@ -74,7 +74,7 @@ class ExternalTask : public RpcTaskDelegate {
       const base::FilePath& program,
       std::vector<std::string>* arguments,
       const std::map<std::string, std::string>& environment,
-      const ProcessManager::MinijailOptions& minijail_options,
+      const net_base::ProcessManager::MinijailOptions& minijail_options,
       Error* error);
 
   virtual void Stop();
@@ -98,7 +98,7 @@ class ExternalTask : public RpcTaskDelegate {
   void OnTaskDied(int exit_status);
 
   ControlInterface* control_;
-  ProcessManager* process_manager_;
+  net_base::ProcessManager* process_manager_;
 
   std::unique_ptr<RpcTask> rpc_task_;
   base::WeakPtr<RpcTaskDelegate> task_delegate_;

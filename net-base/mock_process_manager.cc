@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/mock_process_manager.h"
+#include "net-base/mock_process_manager.h"
 
-namespace shill {
+namespace net_base {
 
 MockProcessManager::MockProcessManager() = default;
 
 MockProcessManager::~MockProcessManager() = default;
 
-}  // namespace shill
+}  // namespace net_base

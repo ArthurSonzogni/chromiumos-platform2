@@ -11,11 +11,11 @@
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/memory/weak_ptr.h>
+#include <net-base/process_manager.h>
 
 #include "shill/callbacks.h"
 #include "shill/file_io.h"
 #include "shill/manager.h"
-#include "shill/net/process_manager.h"
 
 namespace shill {
 
@@ -114,7 +114,7 @@ class Throttler {
   // To get a list of interfaces to throttle
   Manager* manager_;
   // For spawning 'tc'
-  ProcessManager* process_manager_;
+  net_base::ProcessManager* process_manager_;
 
   base::WeakPtrFactory<Throttler> weak_factory_{this};
 };

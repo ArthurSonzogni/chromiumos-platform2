@@ -6,10 +6,10 @@
 #define SHILL_VPN_ARC_VPN_DRIVER_H_
 
 #include <memory>
-#include <string>
 
 #include <gtest/gtest_prod.h>
 #include <net-base/network_config.h>
+#include <net-base/process_manager.h>
 
 #include "shill/error.h"
 #include "shill/vpn/vpn_driver.h"
@@ -18,7 +18,7 @@ namespace shill {
 
 class ArcVpnDriver : public VPNDriver {
  public:
-  ArcVpnDriver(Manager* manager, ProcessManager* process_manager);
+  ArcVpnDriver(Manager* manager, net_base::ProcessManager* process_manager);
   ArcVpnDriver(const ArcVpnDriver&) = delete;
   ArcVpnDriver& operator=(const ArcVpnDriver&) = delete;
 

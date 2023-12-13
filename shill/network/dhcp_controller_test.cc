@@ -17,13 +17,13 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/ipv4_address.h>
+#include <net-base/mock_process_manager.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/mock_control.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_time.h"
-#include "shill/net/mock_process_manager.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/network/mock_dhcp_proxy.h"
@@ -142,7 +142,7 @@ class DHCPControllerTest : public ::testing::Test {
   MockControl control_interface_;
   EventDispatcherForTest dispatcher_;
   std::unique_ptr<MockDHCPProxy> proxy_;
-  MockProcessManager process_manager_;
+  net_base::MockProcessManager process_manager_;
   MockTime time_;
   std::unique_ptr<DHCPController> controller_;
   MockDHCPProvider provider_;
@@ -724,7 +724,7 @@ class DHCPControllerDHCPCDStoppedTest : public DHCPControllerTest {
  protected:
   void StartAndSaveExitCallback() {
     EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
-        .WillOnce(WithArg<5>([this](ProcessManager::ExitCallback cb) {
+        .WillOnce(WithArg<5>([this](net_base::ProcessManager::ExitCallback cb) {
           exit_callback_ = std::move(cb);
           return kPID;
         }));
@@ -764,7 +764,7 @@ class DHCPControllerDHCPCDStoppedTest : public DHCPControllerTest {
   base::FilePath lease_file_;
   base::FilePath pid_file_;
   base::ScopedTempDir temp_dir_;
-  ProcessManager::ExitCallback exit_callback_;
+  net_base::ProcessManager::ExitCallback exit_callback_;
 };
 
 TEST_F(DHCPControllerDHCPCDStoppedTest, StopEphemral) {

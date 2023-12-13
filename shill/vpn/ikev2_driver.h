@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/memory/weak_ptr.h>
+#include <net-base/process_manager.h>
 
 #include "shill/manager.h"
 #include "shill/mockable.h"
@@ -23,7 +24,7 @@ class IKEv2Driver : public VPNDriver {
   // Returns whether IKEv2 is supported by the device.
   static bool IsSupported();
 
-  IKEv2Driver(Manager* manager, ProcessManager* process_manager);
+  IKEv2Driver(Manager* manager, net_base::ProcessManager* process_manager);
   IKEv2Driver(const IKEv2Driver&) = delete;
   IKEv2Driver& operator=(const IKEv2Driver&) = delete;
   ~IKEv2Driver() override;
@@ -59,7 +60,7 @@ class IKEv2Driver : public VPNDriver {
       std::unique_ptr<VPNConnection::Callbacks> callbacks,
       DeviceInfo* device_info,
       EventDispatcher* dispatcher,
-      ProcessManager* process_manager);
+      net_base::ProcessManager* process_manager);
 
   // Callbacks from IPsecConnection.
   void OnIPsecConnected(const std::string& link_name,

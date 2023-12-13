@@ -16,14 +16,14 @@
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <net-base/process_manager.h>
 
 #include "shill/error.h"
-#include "shill/net/process_manager.h"
 
 namespace shill {
 
 ExternalTask::ExternalTask(ControlInterface* control,
-                           ProcessManager* process_manager,
+                           net_base::ProcessManager* process_manager,
                            const base::WeakPtr<RpcTaskDelegate>& task_delegate,
                            base::OnceCallback<void(pid_t, int)> death_callback)
     : control_(control),
@@ -71,7 +71,7 @@ bool ExternalTask::StartInMinijail(
     const base::FilePath& program,
     std::vector<std::string>* arguments,
     const std::map<std::string, std::string>& environment,
-    const ProcessManager::MinijailOptions& minijail_options,
+    const net_base::ProcessManager::MinijailOptions& minijail_options,
     Error* error) {
   // Checks will fail if Start or StartInMinijailWithRpcIdentifiers has already
   // been called on this object.

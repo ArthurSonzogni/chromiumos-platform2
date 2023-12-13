@@ -23,6 +23,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/ip_address.h>
 #include <net-base/network_config.h>
+#include <net-base/process_manager.h>
 
 #include "shill/certificate_file.h"
 #include "shill/device_info.h"
@@ -30,7 +31,6 @@
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/net/process_manager.h"
 #include "shill/rpc_task.h"
 #include "shill/vpn/openvpn_management_server.h"
 #include "shill/vpn/vpn_service.h"
@@ -150,7 +150,8 @@ const VPNDriver::Property OpenVPNDriver::kProperties[] = {
     {kVPNMTUProperty, 0},
 };
 
-OpenVPNDriver::OpenVPNDriver(Manager* manager, ProcessManager* process_manager)
+OpenVPNDriver::OpenVPNDriver(Manager* manager,
+                             net_base::ProcessManager* process_manager)
     : VPNDriver(manager,
                 process_manager,
                 VPNType::kOpenVPN,
@@ -287,7 +288,7 @@ bool OpenVPNDriver::SpawnOpenVPN() {
       {"OPENSSL_CHROMIUM_GENERATE_METRICS", "1"},
   };
 
-  ProcessManager::MinijailOptions minijail_options;
+  net_base::ProcessManager::MinijailOptions minijail_options;
   minijail_options.user = "vpn";
   minijail_options.group = "vpn";
   // openvpn needs CAP_NET_ADMIN for several operations, e.g, set SO_MARK on the

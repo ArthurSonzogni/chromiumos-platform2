@@ -14,13 +14,13 @@
 #include <base/test/task_environment.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
+#include <net-base/mock_process_manager.h>
 #include <net-base/mock_socket.h>
 
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_metrics.h"
-#include "shill/net/mock_process_manager.h"
 #include "shill/store/key_value_store.h"
 #include "shill/vpn/mock_openvpn_driver.h"
 
@@ -157,7 +157,7 @@ class OpenVPNManagementServerTest : public testing::Test {
   MockControl control_;
   MockEventDispatcher dispatcher_;
   MockMetrics metrics_;
-  MockProcessManager process_manager_;
+  net_base::MockProcessManager process_manager_;
   Manager manager_;
   MockOpenVPNDriver driver_;
   OpenVPNManagementServer server_;  // Destroy before anything it references.
