@@ -118,4 +118,9 @@ EcCommandFactory::LedControlAutoCommand(enum ec_led_id led_id) {
   return std::make_unique<ec::LedControlAutoCommand>(led_id);
 }
 
+std::unique_ptr<ec::I2cReadCommand> EcCommandFactory::I2cReadCommand(
+    uint8_t port, uint8_t addr8, uint8_t offset, uint8_t read_len) {
+  return ec::I2cReadCommand::Create(port, addr8, offset, read_len);
+}
+
 }  // namespace ec

@@ -105,6 +105,10 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
               LedControlAutoCommand,
               (enum ec_led_id led_id),
               (override));
+  MOCK_METHOD(std::unique_ptr<ec::I2cReadCommand>,
+              I2cReadCommand,
+              (uint8_t port, uint8_t addr8, uint8_t offset, uint8_t read_len),
+              (override));
 };
 
 }  // namespace ec
