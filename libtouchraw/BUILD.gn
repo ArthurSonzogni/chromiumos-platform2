@@ -26,6 +26,7 @@ pkg_config("target_defaults_pkg_deps") {
 
 shared_library("libtouchraw") {
   sources = [
+    "defragmenter.cc",
     "parser.cc",
     "reader.cc",
   ]
@@ -56,6 +57,7 @@ generate_pkg_config("libtouchraw_pc") {
 if (use.test) {
   executable("libtouchraw_test") {
     sources = [
+      "defragmenter_test.cc",
       "parser_test.cc",
       "reader_test.cc",
     ]
