@@ -15,7 +15,7 @@
 
 namespace {
 
-constexpr char const* kDevicesSupportingLogging[] = {"em060"};
+constexpr char const* kDevicesSupportingLogging[] = {"em060", "fm101", "nl668"};
 
 const char kManifest[] =
     "/usr/local/usr/share/modemloggerd/helper_manifest.textproto";
