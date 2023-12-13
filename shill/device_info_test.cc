@@ -36,6 +36,7 @@
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 #include <net-base/mac_address.h>
+#include <net-base/mock_netlink_manager.h>
 #include <net-base/mock_rtnl_handler.h>
 #include <net-base/mock_socket.h>
 #include <net-base/network_config.h>
@@ -48,7 +49,6 @@
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/net/mock_netlink_manager.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/mock_network_applier.h"
 #include "shill/network/network.h"
@@ -183,7 +183,7 @@ class DeviceInfoTest : public Test {
   StrictMock<MockManager> manager_;
   DeviceInfo device_info_;
   EventDispatcherForTest dispatcher_;
-  MockNetlinkManager netlink_manager_;
+  net_base::MockNetlinkManager netlink_manager_;
   StrictMock<net_base::MockRTNLHandler> rtnl_handler_;
   patchpanel::FakeClient* patchpanel_client_;  // Owned by Manager
   NiceMock<MockNetworkApplier> network_applier_;

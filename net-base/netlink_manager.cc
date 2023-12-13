@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/netlink_manager.h"
+#include "net-base/netlink_manager.h"
 
 #include <errno.h>
 #include <sys/select.h>
@@ -16,32 +16,19 @@
 #include <base/logging.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
-#include <net-base/attribute_list.h>
-#include <net-base/generic_netlink_message.h>
-#include <net-base/netlink_message.h>
-#include <net-base/netlink_packet.h>
 
-namespace shill {
+#include "net-base/attribute_list.h"
+#include "net-base/generic_netlink_message.h"
+#include "net-base/netlink_message.h"
+#include "net-base/netlink_packet.h"
+
+namespace net_base {
 
 namespace {
-// TODO(b/301905012): Remove this type alias when moving this file to net-base.
-using net_base::AttributeListConstRefPtr;
-using net_base::ControlNetlinkMessage;
-using net_base::ErrorAckMessage;
-using net_base::GetFamilyMessage;
-using net_base::NetlinkMessage;
-using net_base::NetlinkMessageFactory;
-using net_base::NetlinkPacket;
-using net_base::NetlinkSocket;
-
 base::LazyInstance<NetlinkManager>::DestructorAtExit g_netlink_manager =
     LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
-const char NetlinkManager::kEventTypeConfig[] = "config";
-const char NetlinkManager::kEventTypeScan[] = "scan";
-const char NetlinkManager::kEventTypeRegulatory[] = "regulatory";
-const char NetlinkManager::kEventTypeMlme[] = "mlme";
 const int NetlinkManager::kMaxNlMessageRetries = 1;
 
 NetlinkManager::NetlinkResponseHandler::NetlinkResponseHandler(
@@ -600,7 +587,7 @@ void NetlinkManager::OnNlMessageReceived(NetlinkPacket* packet) {
   NetlinkMessage::PrintPacket(8, *packet);
 
   bool is_error_ack_message = false;
-  uint32_t error_code = 0;
+  int32_t error_code = 0;
   if (message->message_type() == ErrorAckMessage::GetMessageType()) {
     is_error_ack_message = true;
     const ErrorAckMessage* error_ack_message =
@@ -620,7 +607,7 @@ void NetlinkManager::OnNlMessageReceived(NetlinkPacket* packet) {
     // Dump currently in progress, this message's sequence number matches that
     // of the pending dump request, and we are not in the middle of receiving a
     // multi-part reply.
-    if (is_error_ack_message && (error_code == static_cast<uint32_t>(-EBUSY))) {
+    if (is_error_ack_message && (error_code == -EBUSY)) {
       VLOG(2) << "EBUSY reply received for NL dump message "
               << PendingDumpSequenceNumber();
       if (pending_messages_.front().retries_left) {
@@ -738,4 +725,4 @@ void NetlinkManager::ResendPendingDumpMessageAfterDelay() {
       kNlMessageRetryDelay);
 }
 
-}  // namespace shill.
+}  // namespace net_base

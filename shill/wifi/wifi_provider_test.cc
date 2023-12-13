@@ -19,6 +19,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/mock_netlink_manager.h>
 #include <net-base/netlink_message.h>
 #include <net-base/netlink_packet.h>
 
@@ -26,7 +27,6 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
-#include "shill/net/mock_netlink_manager.h"
 #include "shill/store/fake_store.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
@@ -698,9 +698,10 @@ class WiFiProviderTest : public testing::Test {
     return dev;
   }
 
-  void OnGetPhyInfoAuxMessage(uint32_t phy_index,
-                              NetlinkManager::AuxiliaryMessageType type,
-                              const net_base::NetlinkMessage* raw_message) {
+  void OnGetPhyInfoAuxMessage(
+      uint32_t phy_index,
+      net_base::NetlinkManager::AuxiliaryMessageType type,
+      const net_base::NetlinkMessage* raw_message) {
     provider_->OnGetPhyInfoAuxMessage(phy_index, type, raw_message);
   }
 
@@ -713,7 +714,7 @@ class WiFiProviderTest : public testing::Test {
   MockControl control_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
-  MockNetlinkManager netlink_manager_;
+  net_base::MockNetlinkManager netlink_manager_;
   StrictMock<MockManager> manager_;
   WiFiProvider* provider_;
   scoped_refptr<MockProfile> default_profile_;
@@ -741,16 +742,16 @@ TEST_F(WiFiProviderTest, Start) {
           IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _));
   EXPECT_CALL(netlink_manager_,
               SubscribeToEvents(Nl80211Message::kMessageTypeString,
-                                NetlinkManager::kEventTypeConfig));
+                                WiFiProvider::kEventTypeConfig));
   EXPECT_CALL(netlink_manager_,
               SubscribeToEvents(Nl80211Message::kMessageTypeString,
-                                NetlinkManager::kEventTypeScan));
+                                WiFiProvider::kEventTypeScan));
   EXPECT_CALL(netlink_manager_,
               SubscribeToEvents(Nl80211Message::kMessageTypeString,
-                                NetlinkManager::kEventTypeRegulatory));
+                                WiFiProvider::kEventTypeRegulatory));
   EXPECT_CALL(netlink_manager_,
               SubscribeToEvents(Nl80211Message::kMessageTypeString,
-                                NetlinkManager::kEventTypeMlme));
+                                WiFiProvider::kEventTypeMlme));
   provider_->Start();
   EXPECT_TRUE(GetServices().empty());
   EXPECT_TRUE(GetRunning());
@@ -2677,7 +2678,8 @@ TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_Success) {
       SendOrPostMessage(
           IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _));
   provider_->RegionChanged("US");
-  OnGetPhyInfoAuxMessage(phy->GetPhyIndex(), NetlinkManager::kDone, nullptr);
+  OnGetPhyInfoAuxMessage(phy->GetPhyIndex(), net_base::NetlinkManager::kDone,
+                         nullptr);
   DispatchPendingEvents();
   EXPECT_EQ(times_called, 1);
   EXPECT_TRUE(IsPhyUpdateTimeoutCbCancelled());
@@ -2699,7 +2701,8 @@ TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_NoCellularCountry) {
 
   // Now simulate reception of region change, expect phy dump and simulate
   // reception of "Done" message (signaling the end of "split messages" dump).
-  OnGetPhyInfoAuxMessage(phy->GetPhyIndex(), NetlinkManager::kDone, nullptr);
+  OnGetPhyInfoAuxMessage(phy->GetPhyIndex(), net_base::NetlinkManager::kDone,
+                         nullptr);
   DispatchPendingEvents();
   EXPECT_EQ(times_called, 1);
   EXPECT_TRUE(IsPhyUpdateTimeoutCbCancelled());
@@ -2733,7 +2736,8 @@ TEST_F(WiFiProviderTest, UpdatePhyInfo_Success) {
 
   // Now simulate reception of expect phy dump and simulate reception of "Done"
   // message (signaling the end of "split messages" dump).
-  OnGetPhyInfoAuxMessage(phy->GetPhyIndex(), NetlinkManager::kDone, nullptr);
+  OnGetPhyInfoAuxMessage(phy->GetPhyIndex(), net_base::NetlinkManager::kDone,
+                         nullptr);
   DispatchPendingEvents();
   EXPECT_EQ(times_called, 1);
   EXPECT_TRUE(IsPhyUpdateTimeoutCbCancelled());
@@ -2746,12 +2750,13 @@ TEST_F(WiFiProviderTest, PhyDumpComplete) {
   // Only call PhyDumpComplete on the phy which receives the done signal.
   EXPECT_CALL(*phy0, PhyDumpComplete()).Times(1);
   EXPECT_CALL(*phy1, PhyDumpComplete()).Times(0);
-  OnGetPhyInfoAuxMessage(phy0->GetPhyIndex(), NetlinkManager::kDone, nullptr);
+  OnGetPhyInfoAuxMessage(phy0->GetPhyIndex(), net_base::NetlinkManager::kDone,
+                         nullptr);
 
   // Call PhyDumpComplete on all phys.
   EXPECT_CALL(*phy0, PhyDumpComplete()).Times(1);
   EXPECT_CALL(*phy1, PhyDumpComplete()).Times(1);
-  OnGetPhyInfoAuxMessage(kAllPhys, NetlinkManager::kDone, nullptr);
+  OnGetPhyInfoAuxMessage(kAllPhys, net_base::NetlinkManager::kDone, nullptr);
 }
 
 }  // namespace shill

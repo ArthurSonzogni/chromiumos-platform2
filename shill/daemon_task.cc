@@ -13,6 +13,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/message_loops/message_loop.h>
+#include <net-base/netlink_manager.h>
 #include <net-base/netlink_message.h>
 
 #include "shill/control_interface.h"
@@ -21,7 +22,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/mojom/mojo_service_provider.h"
-#include "shill/net/netlink_manager.h"
 #include "shill/net/process_manager.h"
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/network_applier.h"
@@ -77,7 +77,7 @@ void DaemonTask::Init() {
   network_applier_ = NetworkApplier::GetInstance();
   dhcp_provider_ = DHCPProvider::GetInstance();
   process_manager_ = ProcessManager::GetInstance();
-  netlink_manager_ = NetlinkManager::GetInstance();
+  netlink_manager_ = net_base::NetlinkManager::GetInstance();
   manager_.reset(new Manager(control_.get(), dispatcher_.get(), metrics_.get(),
                              config_->GetRunDirectory(),
                              config_->GetStorageDirectory(),
@@ -131,9 +131,9 @@ void DaemonTask::Start() {
   network_applier_->Start();
   dhcp_provider_->Init(control_.get(), dispatcher_.get(), metrics_.get());
   process_manager_->Init();
-  // Note that NetlinkManager initialization is not necessarily
-  // WiFi-specific. It just happens that we currently only use NetlinkManager
-  // for WiFi.
+  // Note that net_base::NetlinkManager initialization is not necessarily
+  // WiFi-specific. It just happens that we currently only use
+  // net_base::NetlinkManager for WiFi.
   if (netlink_manager_) {
     netlink_manager_->Init();
     uint16_t nl80211_family_id = netlink_manager_->GetFamily(

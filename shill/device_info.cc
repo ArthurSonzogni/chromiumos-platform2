@@ -48,6 +48,7 @@
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/byte_utils.h>
+#include <net-base/netlink_manager.h>
 #include <re2/re2.h>
 
 #include "shill/cellular/modem_info.h"
@@ -57,7 +58,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
-#include "shill/net/netlink_manager.h"
 #include "shill/network/network.h"
 #include "shill/power_manager.h"
 #include "shill/vpn/vpn_provider.h"
@@ -235,7 +235,7 @@ DeviceInfo::DeviceInfo(Manager* manager)
     : manager_(manager),
       device_info_root_(kDeviceInfoRoot),
       rtnl_handler_(net_base::RTNLHandler::GetInstance()),
-      netlink_manager_(NetlinkManager::GetInstance()) {
+      netlink_manager_(net_base::NetlinkManager::GetInstance()) {
   if (manager) {
     // |manager| may be null in tests.
     dispatcher_ = manager->dispatcher();
@@ -1331,11 +1331,12 @@ void DeviceInfo::GetWiFiInterfaceInfo(int interface_index) {
                   "determined!";
     return;
   }
-  msg.Send(netlink_manager_,
-           base::BindRepeating(&DeviceInfo::OnWiFiInterfaceInfoReceived,
-                               weak_factory_.GetWeakPtr()),
-           base::BindRepeating(&NetlinkManager::OnAckDoNothing),
-           base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
+  msg.Send(
+      netlink_manager_,
+      base::BindRepeating(&DeviceInfo::OnWiFiInterfaceInfoReceived,
+                          weak_factory_.GetWeakPtr()),
+      base::BindRepeating(&net_base::NetlinkManager::OnAckDoNothing),
+      base::BindRepeating(&net_base::NetlinkManager::OnNetlinkMessageError));
 }
 
 void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message& msg) {

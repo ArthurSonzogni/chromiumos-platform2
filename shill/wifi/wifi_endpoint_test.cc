@@ -17,11 +17,11 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/mock_netlink_manager.h>
 
 #include "shill/mac_address.h"
 #include "shill/metrics.h"
 #include "shill/mock_log.h"
-#include "shill/net/mock_netlink_manager.h"
 #include "shill/refptr_types.h"
 #include "shill/store/property_store_test.h"
 #include "shill/supplicant/wpa_supplicant.h"
@@ -188,7 +188,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
   scoped_refptr<MockWiFi> wifi() { return wifi_; }
 
  private:
-  MockNetlinkManager netlink_manager_;
+  net_base::MockNetlinkManager netlink_manager_;
   scoped_refptr<MockWiFi> wifi_;
 };
 

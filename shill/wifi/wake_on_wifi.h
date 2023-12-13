@@ -23,12 +23,12 @@
 #include <base/time/time.h>
 #include <brillo/timers/alarm_timer.h>
 #include <net-base/attribute_list.h>
+#include <net-base/netlink_manager.h>
 #include <net-base/netlink_message.h>
 
 #include "shill/callbacks.h"
 #include "shill/event_history.h"
 #include "shill/metrics.h"
-#include "shill/net/netlink_manager.h"
 #include "shill/refptr_types.h"
 #include "shill/wifi/wake_on_wifi_interface.h"
 #include "shill/wifi/wifi.h"
@@ -152,7 +152,7 @@ class SetWakeOnWiFiMessage;
 
 class WakeOnWiFi : public WakeOnWiFiInterface {
  public:
-  WakeOnWiFi(NetlinkManager* netlink_manager,
+  WakeOnWiFi(net_base::NetlinkManager* netlink_manager,
              EventDispatcher* dispatcher,
              Metrics* metrics,
              RecordWakeReasonCallback record_wake_reason_callback);
@@ -360,7 +360,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   // Handler for NL80211 message error responses from NIC wake on WiFi setting
   // programming attempts.
   void OnWakeOnWiFiSettingsErrorResponse(
-      NetlinkManager::AuxiliaryMessageType type,
+      net_base::NetlinkManager::AuxiliaryMessageType type,
       const net_base::NetlinkMessage* raw_message);
   // Message handler for NL80211_CMD_SET_WOWLAN responses.
   static void OnSetWakeOnWiFiConnectionResponse(
@@ -423,7 +423,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
 
   // Pointers to objects owned by the WiFi object that created this object.
   EventDispatcher* dispatcher_;
-  NetlinkManager* netlink_manager_;
+  net_base::NetlinkManager* netlink_manager_;
   Metrics* metrics_;
   // Executes after the NIC's wake on WiFi settings are configured via
   // NL80211 messages to verify that the new configuration has taken effect.
@@ -495,7 +495,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   RecordWakeReasonCallback record_wake_reason_callback_;
 
   // Netlink broadcast handler, for wakeup reasons.
-  NetlinkManager::NetlinkMessageHandler netlink_handler_;
+  net_base::NetlinkManager::NetlinkMessageHandler netlink_handler_;
 
   base::WeakPtrFactory<WakeOnWiFi> weak_ptr_factory_;
 };

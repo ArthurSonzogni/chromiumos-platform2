@@ -28,6 +28,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <crypto/random.h>
+#include <net-base/mock_netlink_manager.h>
 #include <net-base/mock_rtnl_handler.h>
 #include <net-base/netlink_packet.h>
 #include <net-base/netlink_message.h>
@@ -48,7 +49,6 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_power_manager.h"
 #include "shill/mock_time.h"
-#include "shill/net/mock_netlink_manager.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/network.h"
 #include "shill/store/key_value_store.h"
@@ -474,7 +474,7 @@ class WiFiPropertyTest : public PropertyStoreTest {
 
  protected:
   MockMetrics metrics_;
-  MockNetlinkManager netlink_manager_;
+  net_base::MockNetlinkManager netlink_manager_;
   WiFiRefPtr device_;
 };
 
@@ -1400,7 +1400,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   MockWakeOnWiFi* wake_on_wifi_;  // Owned by |wifi_|.
   NiceMock<net_base::MockRTNLHandler> rtnl_handler_;
   MockTime time_;
-  MockNetlinkManager netlink_manager_;
+  net_base::MockNetlinkManager netlink_manager_;
 
  private:
   MockControl control_interface_;

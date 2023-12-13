@@ -23,6 +23,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/attribute_list.h>
+#include <net-base/mock_netlink_manager.h>
 #include <net-base/netlink_message.h>
 #include <net-base/netlink_packet.h>
 
@@ -32,7 +33,6 @@
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_time.h"
-#include "shill/net/mock_netlink_manager.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 #include "shill/time.h"
@@ -858,7 +858,7 @@ class WakeOnWiFiTest : public ::testing::Test {
  protected:
   MockControl control_interface_;
   MockMetrics metrics_;
-  MockNetlinkManager netlink_manager_;
+  net_base::MockNetlinkManager netlink_manager_;
   MockTime time_;
   std::unique_ptr<WakeOnWiFi> wake_on_wifi_;
 };

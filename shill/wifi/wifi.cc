@@ -34,6 +34,7 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/attribute_list.h>
+#include <net-base/netlink_manager.h>
 #include <net-base/netlink_message.h>
 #include <net-base/rtnl_handler.h>
 
@@ -48,7 +49,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
-#include "shill/net/netlink_manager.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/scope_logger.h"
 #include "shill/store/key_value_store.h"
@@ -179,7 +179,7 @@ WiFi::WiFi(Manager* manager,
       bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
       scan_interval_seconds_(kDefaultScanIntervalSeconds),
-      netlink_manager_(NetlinkManager::GetInstance()),
+      netlink_manager_(net_base::NetlinkManager::GetInstance()),
       random_mac_supported_(false),
       random_mac_enabled_(false),
       sched_scan_supported_(false),
@@ -3050,8 +3050,8 @@ void WiFi::TriggerPassiveScan(const FreqSet& freqs) {
       netlink_manager_,
       base::BindRepeating(&WiFi::OnTriggerPassiveScanResponse,
                           weak_ptr_factory_while_started_.GetWeakPtr()),
-      base::BindRepeating(&NetlinkManager::OnAckDoNothing),
-      base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
+      base::BindRepeating(&net_base::NetlinkManager::OnAckDoNothing),
+      base::BindRepeating(&net_base::NetlinkManager::OnNetlinkMessageError));
 }
 
 void WiFi::OnConnected() {
@@ -3554,7 +3554,7 @@ void WiFi::GetPhyInfo() {
       netlink_manager_,
       base::BindRepeating(&WiFi::OnNewWiphy,
                           weak_ptr_factory_while_started_.GetWeakPtr()),
-      base::BindRepeating(&NetlinkManager::OnAckDoNothing),
+      base::BindRepeating(&net_base::NetlinkManager::OnAckDoNothing),
       base::BindRepeating(&WiFi::OnGetPhyInfoAuxMessage,
                           weak_ptr_factory_while_started_.GetWeakPtr()));
 }
@@ -3603,10 +3603,11 @@ void WiFi::OnNewWiphy(const Nl80211Message& nl80211_message) {
   ParseCipherSuites(nl80211_message);
 }
 
-void WiFi::OnGetPhyInfoAuxMessage(NetlinkManager::AuxiliaryMessageType type,
-                                  const net_base::NetlinkMessage* raw_message) {
-  if (type != NetlinkManager::kDone) {
-    NetlinkManager::OnNetlinkMessageError(type, raw_message);
+void WiFi::OnGetPhyInfoAuxMessage(
+    net_base::NetlinkManager::AuxiliaryMessageType type,
+    const net_base::NetlinkMessage* raw_message) {
+  if (type != net_base::NetlinkManager::kDone) {
+    net_base::NetlinkManager::OnNetlinkMessageError(type, raw_message);
     return;
   }
   provider_->PhyDumpComplete(phy_index_);
@@ -3619,8 +3620,8 @@ void WiFi::GetRegulatory() {
       netlink_manager_,
       base::BindRepeating(&WiFi::OnGetReg,
                           weak_ptr_factory_while_started_.GetWeakPtr()),
-      base::BindRepeating(&NetlinkManager::OnAckDoNothing),
-      base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
+      base::BindRepeating(&net_base::NetlinkManager::OnAckDoNothing),
+      base::BindRepeating(&net_base::NetlinkManager::OnNetlinkMessageError));
 }
 
 void WiFi::OnTriggerPassiveScanResponse(const Nl80211Message& netlink_message) {

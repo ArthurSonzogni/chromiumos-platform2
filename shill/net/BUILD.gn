@@ -17,9 +17,7 @@ group("all") {
 
 install_config("install_headers") {
   sources = [
-    "mock_netlink_manager.h",
     "mock_process_manager.h",
-    "netlink_manager.h",
     "process_manager.h",
     "shill_export.h",
   ]
@@ -51,10 +49,7 @@ write_deps("libshill-net_deps") {
 }
 
 shared_library("libshill-net") {
-  sources = [
-    "netlink_manager.cc",
-    "process_manager.cc",
-  ]
+  sources = [ "process_manager.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":${target_name}_deps" ]
   install_path = "lib"
@@ -68,10 +63,7 @@ if (use.fuzzer) {
 
 if (use.test) {
   source_set("net_test_support") {
-    sources = [
-      "mock_netlink_manager.cc",
-      "mock_process_manager.cc",
-    ]
+    sources = [ "mock_process_manager.cc" ]
     configs += [
       "//common-mk:test",
       ":target_defaults",

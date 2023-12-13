@@ -26,6 +26,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/attribute_list.h>
 #include <net-base/byte_utils.h>
+#include <net-base/netlink_manager.h>
 #include <net-base/netlink_message.h>
 
 #include "shill/error.h"
@@ -33,7 +34,6 @@
 #include "shill/event_history.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
-#include "shill/net/netlink_manager.h"
 #include "shill/store/property_accessor.h"
 #include "shill/wifi/nl80211_message.h"
 #include "shill/wifi/wifi.h"
@@ -64,7 +64,7 @@ base::TimeDelta WakeOnWiFi::DarkResumeActionsTimeout =
 const int WakeOnWiFi::kMaxFreqsForDarkResumeScanRetries = 8;
 const int WakeOnWiFi::kMaxDarkResumeScanRetries = 5;
 
-WakeOnWiFi::WakeOnWiFi(NetlinkManager* netlink_manager,
+WakeOnWiFi::WakeOnWiFi(net_base::NetlinkManager* netlink_manager,
                        EventDispatcher* dispatcher,
                        Metrics* metrics,
                        RecordWakeReasonCallback record_wake_reason_callback)
@@ -521,11 +521,11 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
 }
 
 void WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse(
-    NetlinkManager::AuxiliaryMessageType type,
+    net_base::NetlinkManager::AuxiliaryMessageType type,
     const net_base::NetlinkMessage* raw_message) {
   Error error(Error::kOperationFailed);
   switch (type) {
-    case NetlinkManager::kErrorFromKernel:
+    case net_base::NetlinkManager::kErrorFromKernel:
       if (!raw_message) {
         error.Populate(Error::kOperationFailed, "Unknown error from kernel");
         break;
@@ -540,16 +540,16 @@ void WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse(
       }
       break;
 
-    case NetlinkManager::kUnexpectedResponseType:
+    case net_base::NetlinkManager::kUnexpectedResponseType:
       error.Populate(Error::kNotRegistered,
                      "Message not handled by regular message handler:");
       break;
 
-    case NetlinkManager::kTimeoutWaitingForResponse:
+    case net_base::NetlinkManager::kTimeoutWaitingForResponse:
       // CMD_SET_WOWLAN messages do not receive responses, so this error type
-      // is received when NetlinkManager times out the message handler. Return
-      // immediately rather than run the done callback since this event does
-      // not signify the completion of suspend actions.
+      // is received when net_base::NetlinkManager times out the message
+      // handler. Return immediately rather than run the done callback since
+      // this event does not signify the completion of suspend actions.
       return;
       break;
 
@@ -583,8 +583,8 @@ void WakeOnWiFi::RequestWakeOnWiFiSettings() {
       netlink_manager_,
       base::BindRepeating(&WakeOnWiFi::VerifyWakeOnWiFiSettings,
                           weak_ptr_factory_.GetWeakPtr()),
-      base::BindRepeating(&NetlinkManager::OnAckDoNothing),
-      base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
+      base::BindRepeating(&net_base::NetlinkManager::OnAckDoNothing),
+      base::BindRepeating(&net_base::NetlinkManager::OnNetlinkMessageError));
 }
 
 void WakeOnWiFi::VerifyWakeOnWiFiSettings(
@@ -628,7 +628,7 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
   if (!set_wowlan_msg.Send(
           netlink_manager_,
           base::BindRepeating(&WakeOnWiFi::OnSetWakeOnWiFiConnectionResponse),
-          base::BindRepeating(&NetlinkManager::OnAckDoNothing),
+          base::BindRepeating(&net_base::NetlinkManager::OnAckDoNothing),
           base::BindRepeating(&WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse,
                               weak_ptr_factory_.GetWeakPtr()))) {
     RunSuspendActionsDoneCallback(
@@ -659,7 +659,7 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
   if (!disable_wowlan_msg.Send(
           netlink_manager_,
           base::BindRepeating(&WakeOnWiFi::OnSetWakeOnWiFiConnectionResponse),
-          base::BindRepeating(&NetlinkManager::OnAckDoNothing),
+          base::BindRepeating(&net_base::NetlinkManager::OnAckDoNothing),
           base::BindRepeating(&WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse,
                               weak_ptr_factory_.GetWeakPtr()))) {
     RunSuspendActionsDoneCallback(

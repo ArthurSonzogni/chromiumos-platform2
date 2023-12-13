@@ -20,6 +20,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <net-base/netlink_manager.h>
 #include <net-base/netlink_message.h>
 
 #include "shill/error.h"
@@ -241,9 +242,14 @@ bool GetServiceParametersFromStorage(const StoreInterface* storage,
 
 }  // namespace
 
+const char WiFiProvider::kEventTypeConfig[] = "config";
+const char WiFiProvider::kEventTypeScan[] = "scan";
+const char WiFiProvider::kEventTypeRegulatory[] = "regulatory";
+const char WiFiProvider::kEventTypeMlme[] = "mlme";
+
 WiFiProvider::WiFiProvider(Manager* manager)
     : manager_(manager),
-      netlink_manager_(NetlinkManager::GetInstance()),
+      netlink_manager_(net_base::NetlinkManager::GetInstance()),
       weak_ptr_factory_while_started_(this),
       p2p_manager_(new P2PManager(manager_)),
       hotspot_device_factory_(
@@ -271,13 +277,13 @@ void WiFiProvider::Start() {
   netlink_manager_->AddBroadcastHandler(broadcast_handler_);
   // Subscribe to multicast events.
   netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
-                                      NetlinkManager::kEventTypeConfig);
+                                      kEventTypeConfig);
   netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
-                                      NetlinkManager::kEventTypeScan);
+                                      kEventTypeScan);
   netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
-                                      NetlinkManager::kEventTypeRegulatory);
+                                      kEventTypeRegulatory);
   netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
-                                      NetlinkManager::kEventTypeMlme);
+                                      kEventTypeMlme);
   GetPhyInfo(kAllPhys);
   p2p_manager_->Start();
 }
@@ -1144,7 +1150,7 @@ void WiFiProvider::GetPhyInfo(uint32_t phy_index) {
       netlink_manager_,
       base::BindRepeating(&WiFiProvider::OnNewWiphy,
                           weak_ptr_factory_while_started_.GetWeakPtr()),
-      base::BindRepeating(&NetlinkManager::OnAckDoNothing),
+      base::BindRepeating(&net_base::NetlinkManager::OnAckDoNothing),
       base::BindRepeating(&WiFiProvider::OnGetPhyInfoAuxMessage,
                           weak_ptr_factory_while_started_.GetWeakPtr(),
                           phy_index));
@@ -1438,8 +1444,8 @@ void WiFiProvider::SetRegDomain(std::string country) {
   set_reg.Send(
       netlink_manager_,
       base::RepeatingCallback<void(const Nl80211Message&)>(),  //  null handler
-      base::BindRepeating(&NetlinkManager::OnAckDoNothing),
-      base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
+      base::BindRepeating(&net_base::NetlinkManager::OnAckDoNothing),
+      base::BindRepeating(&net_base::NetlinkManager::OnNetlinkMessageError));
 }
 
 void WiFiProvider::ResetRegDomain() {
@@ -1450,8 +1456,8 @@ void WiFiProvider::ResetRegDomain() {
   set_reg.Send(
       netlink_manager_,
       base::RepeatingCallback<void(const Nl80211Message&)>(),  //  null handler
-      base::BindRepeating(&NetlinkManager::OnAckDoNothing),
-      base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
+      base::BindRepeating(&net_base::NetlinkManager::OnAckDoNothing),
+      base::BindRepeating(&net_base::NetlinkManager::OnNetlinkMessageError));
 }
 
 void WiFiProvider::UpdateRegAndPhyInfo(base::OnceClosure phy_ready_callback) {
@@ -1498,10 +1504,10 @@ void WiFiProvider::RegionChanged(const std::string& country) {
 
 void WiFiProvider::OnGetPhyInfoAuxMessage(
     uint32_t phy_index,
-    NetlinkManager::AuxiliaryMessageType type,
+    net_base::NetlinkManager::AuxiliaryMessageType type,
     const net_base::NetlinkMessage* raw_message) {
-  if (type != NetlinkManager::kDone) {
-    NetlinkManager::OnNetlinkMessageError(type, raw_message);
+  if (type != net_base::NetlinkManager::kDone) {
+    net_base::NetlinkManager::OnNetlinkMessageError(type, raw_message);
     return;
   }
   // Signal the end of dump.

@@ -2,18 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NET_MOCK_NETLINK_MANAGER_H_
-#define SHILL_NET_MOCK_NETLINK_MANAGER_H_
+#ifndef NET_BASE_MOCK_NETLINK_MANAGER_H_
+#define NET_BASE_MOCK_NETLINK_MANAGER_H_
 
-#include "shill/net/netlink_manager.h"
+#include "net-base/netlink_manager.h"
 
 #include <string>
 
 #include <gmock/gmock.h>
-#include <net-base/generic_netlink_message.h>
-#include <net-base/netlink_message.h>
 
-namespace shill {
+#include "net-base/generic_netlink_message.h"
+#include "net-base/netlink_message.h"
+
+namespace net_base {
 
 class MockNetlinkManager : public NetlinkManager {
  public:
@@ -27,8 +28,7 @@ class MockNetlinkManager : public NetlinkManager {
   MOCK_METHOD(void, Start, (), (override));
   MOCK_METHOD(uint16_t,
               GetFamily,
-              (const std::string&,
-               const net_base::NetlinkMessageFactory::FactoryMethod&),
+              (const std::string&, const NetlinkMessageFactory::FactoryMethod&),
               (override));
   MOCK_METHOD(bool,
               RemoveBroadcastHandler,
@@ -40,15 +40,14 @@ class MockNetlinkManager : public NetlinkManager {
               (override));
   MOCK_METHOD(bool,
               SendControlMessage,
-              (net_base::ControlNetlinkMessage*,
+              (ControlNetlinkMessage*,
                const ControlNetlinkMessageHandler&,
                const NetlinkAckHandler&,
                const NetlinkAuxiliaryMessageHandler&),
               (override));
   MOCK_METHOD(bool,
               SendOrPostMessage,
-              (net_base::NetlinkMessage*,
-               NetlinkResponseHandlerRefPtr message_wrapper),
+              (NetlinkMessage*, NetlinkResponseHandlerRefPtr message_wrapper),
               (override));
   MOCK_METHOD(bool,
               SubscribeToEvents,
@@ -56,6 +55,6 @@ class MockNetlinkManager : public NetlinkManager {
               (override));
 };
 
-}  // namespace shill
+}  // namespace net_base
 
-#endif  // SHILL_NET_MOCK_NETLINK_MANAGER_H_
+#endif  // NET_BASE_MOCK_NETLINK_MANAGER_H_

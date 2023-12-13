@@ -95,12 +95,12 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/attribute_list.h>
 #include <net-base/ip_address.h>
+#include <net-base/netlink_manager.h>
 #include <net-base/netlink_message.h>
 
 #include "shill/device.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
-#include "shill/net/netlink_manager.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 #include "shill/store/key_value_store.h"
@@ -114,7 +114,6 @@
 namespace shill {
 
 class Error;
-class NetlinkManager;
 class Nl80211Message;
 class SupplicantEAPStateHandler;
 class SupplicantInterfaceProxyInterface;
@@ -685,8 +684,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void OnNewWiphy(const Nl80211Message& nl80211_message);
 
   // Utility function used to detect the end of PHY info dump.
-  void OnGetPhyInfoAuxMessage(NetlinkManager::AuxiliaryMessageType type,
-                              const net_base::NetlinkMessage* raw_message);
+  void OnGetPhyInfoAuxMessage(
+      net_base::NetlinkManager::AuxiliaryMessageType type,
+      const net_base::NetlinkMessage* raw_message);
 
   // Requests regulatory information via NL80211_CMD_GET_REG.
   void GetRegulatory();
@@ -905,7 +905,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   int32_t bgscan_signal_threshold_dbm_;
   uint16_t scan_interval_seconds_;
 
-  NetlinkManager* netlink_manager_;
+  net_base::NetlinkManager* netlink_manager_;
 
   bool random_mac_supported_;
   bool random_mac_enabled_;
@@ -967,7 +967,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   std::unique_ptr<WakeOnWiFiInterface> wake_on_wifi_;
 
   // Netlink broadcast handler, for scan results.
-  NetlinkManager::NetlinkMessageHandler netlink_handler_;
+  net_base::NetlinkManager::NetlinkMessageHandler netlink_handler_;
 
   // Managed supplicant listener, for watching service (re)start.
   std::unique_ptr<SupplicantManager::ScopedSupplicantListener>

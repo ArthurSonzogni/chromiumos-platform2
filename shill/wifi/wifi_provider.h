@@ -14,12 +14,12 @@
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 #include <base/observer_list_types.h>
+#include <net-base/netlink_manager.h>
 #include <net-base/netlink_message.h>
 
 #include "shill/data_types.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
-#include "shill/net/netlink_manager.h"
 #include "shill/provider_interface.h"
 #include "shill/refptr_types.h"
 #include "shill/wifi/local_device.h"
@@ -42,6 +42,13 @@ class WiFiSecurity;
 // (created due to user or storage configuration) Services.
 class WiFiProvider : public ProviderInterface {
  public:
+  // Various kinds of events to which we can subscribe (and receive) from
+  // cfg80211.
+  static const char kEventTypeConfig[];
+  static const char kEventTypeScan[];
+  static const char kEventTypeRegulatory[];
+  static const char kEventTypeMlme[];
+
   // Describes the priority of the network computed during the a match between
   // a set of Passpoint credentials and a BSS.
   enum MatchPriority : uint64_t {
@@ -373,9 +380,10 @@ class WiFiProvider : public ProviderInterface {
   void PhyUpdateTimeout();
   // Utility function used to detect the end of PHY info dump and responsible
   // for calling the callback passed in UpdateRegAndPhy().
-  void OnGetPhyInfoAuxMessage(uint32_t phy_index,
-                              NetlinkManager::AuxiliaryMessageType type,
-                              const net_base::NetlinkMessage* raw_message);
+  void OnGetPhyInfoAuxMessage(
+      uint32_t phy_index,
+      net_base::NetlinkManager::AuxiliaryMessageType type,
+      const net_base::NetlinkMessage* raw_message);
 
   Metrics* metrics() const;
 
@@ -383,7 +391,7 @@ class WiFiProvider : public ProviderInterface {
   void SortServices();
 
   Manager* manager_;
-  NetlinkManager* netlink_manager_;
+  net_base::NetlinkManager* netlink_manager_;
 
   std::vector<WiFiServiceRefPtr> services_;
   EndpointServiceMap service_by_endpoint_;
@@ -391,7 +399,7 @@ class WiFiProvider : public ProviderInterface {
   base::ObserverList<PasspointCredentialsObserver> credentials_observers_;
   base::WeakPtrFactory<WiFiProvider> weak_ptr_factory_while_started_;
   std::map<uint32_t, std::unique_ptr<WiFiPhy>> wifi_phys_;
-  shill::NetlinkManager::NetlinkMessageHandler broadcast_handler_;
+  net_base::NetlinkManager::NetlinkMessageHandler broadcast_handler_;
   // Holds reference pointers to all WiFi Local devices with the link name as
   // the map key.
   std::map<std::string, LocalDeviceRefPtr> local_devices_;

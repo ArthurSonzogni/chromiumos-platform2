@@ -20,6 +20,7 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/mac_address.h>
+#include <net-base/netlink_manager.h>
 #include <net-base/rtnl_handler.h>
 #include <net-base/rtnl_listener.h>
 #include <net-base/rtnl_message.h>
@@ -34,7 +35,6 @@ namespace shill {
 
 class EventDispatcher;
 class Manager;
-class NetlinkManager;
 class Nl80211Message;
 
 class DeviceInfo {
@@ -316,7 +316,7 @@ class DeviceInfo {
 
   // Cache copy of singleton pointers.
   net_base::RTNLHandler* rtnl_handler_;
-  NetlinkManager* netlink_manager_;
+  net_base::NetlinkManager* netlink_manager_;
 
   // Used to create net_base::Socket. Keep it as a class member so that a mock
   // can be injected for testing.

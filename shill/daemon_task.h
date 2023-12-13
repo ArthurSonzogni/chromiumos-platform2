@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/functional/callback.h>
+#include <net-base/netlink_manager.h>
 #include <net-base/rtnl_handler.h>
 
 #include "shill/event_dispatcher.h"
@@ -24,7 +25,6 @@ class DHCPProvider;
 class Error;
 class Manager;
 class MojoServiceProvider;
-class NetlinkManager;
 class ProcessManager;
 class RoutingPolicyService;
 class RoutingTable;
@@ -89,7 +89,7 @@ class DaemonTask {
   net_base::RTNLHandler* rtnl_handler_;
   NetworkApplier* network_applier_;
   DHCPProvider* dhcp_provider_;
-  NetlinkManager* netlink_manager_;
+  net_base::NetlinkManager* netlink_manager_;
   ProcessManager* process_manager_;
   std::unique_ptr<Manager> manager_;
   std::unique_ptr<MojoServiceProvider> mojo_provider_;

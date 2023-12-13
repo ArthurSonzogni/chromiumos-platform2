@@ -21,6 +21,8 @@
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 #include <metrics/timer_mock.h>
+#include <net-base/mock_netlink_manager.h>
+
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
@@ -32,7 +34,6 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
-#include "shill/net/mock_netlink_manager.h"
 #include "shill/network/mock_network.h"
 #include "shill/refptr_types.h"
 #include "shill/service_property_change_test.h"
@@ -256,7 +257,7 @@ class WiFiServiceTest : public PropertyStoreTest {
 
  private:
   MockManager mock_manager_;
-  MockNetlinkManager netlink_manager_;
+  net_base::MockNetlinkManager netlink_manager_;
   scoped_refptr<MockWiFi> wifi_;
   MockWiFiProvider provider_;
   const std::vector<uint8_t> simple_ssid_;
