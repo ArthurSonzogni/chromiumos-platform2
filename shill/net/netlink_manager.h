@@ -69,16 +69,14 @@
 #include <base/lazy_instance.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/generic_netlink_message.h>
 #include <net-base/netlink_packet.h>
 #include <net-base/netlink_socket.h>
 #include <net-base/netlink_message.h>
 
-#include "shill/net/generic_netlink_message.h"
 #include "shill/net/shill_export.h"
 
 namespace shill {
-
-class ControlNetlinkMessage;
 
 // NetlinkManager is a singleton that coordinates sending netlink messages to,
 // and receiving netlink messages from, the kernel.  The first use of this is
@@ -102,7 +100,7 @@ class SHILL_EXPORT NetlinkManager {
   using NetlinkMessageHandler =
       base::RepeatingCallback<void(const net_base::NetlinkMessage&)>;
   using ControlNetlinkMessageHandler =
-      base::RepeatingCallback<void(const ControlNetlinkMessage&)>;
+      base::RepeatingCallback<void(const net_base::ControlNetlinkMessage&)>;
   // NetlinkAuxiliaryMessageHandler handles netlink error messages, things
   // like the DoneMessage at the end of a multi-part message, and any errors
   // discovered by |NetlinkManager| (which are passed as NULL pointers because
@@ -226,7 +224,7 @@ class SHILL_EXPORT NetlinkManager {
   // TODO(wdg): Eventually, this should also include a timeout and a callback
   // to call in case of timeout.
   virtual bool SendControlMessage(
-      ControlNetlinkMessage* message,
+      net_base::ControlNetlinkMessage* message,
       const ControlNetlinkMessageHandler& message_handler,
       const NetlinkAckHandler& ack_handler,
       const NetlinkAuxiliaryMessageHandler& error_handler);
@@ -360,7 +358,7 @@ class SHILL_EXPORT NetlinkManager {
   void Reset(bool full);
 
   // Handles a CTRL_CMD_NEWFAMILY message from the kernel.
-  void OnNewFamilyMessage(const ControlNetlinkMessage& message);
+  void OnNewFamilyMessage(const net_base::ControlNetlinkMessage& message);
 
   // Install a handler to deal with kernel's response to the message contained
   // in |pending_message|, then sends the message by calling

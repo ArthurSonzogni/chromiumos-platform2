@@ -11,10 +11,10 @@
 
 #include <base/containers/span.h>
 #include <base/no_destructor.h>
+#include <net-base/generic_netlink_message.h>
 #include <net-base/netlink_message.h>
 #include <net-base/netlink_packet.h>
 
-#include "shill/net/generic_netlink_message.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/shill_export.h"
 
@@ -22,7 +22,7 @@ namespace shill {
 
 // Class for messages received from the mac80211 drivers by way of the
 // cfg80211 kernel module.
-class SHILL_EXPORT Nl80211Message : public GenericNetlinkMessage {
+class SHILL_EXPORT Nl80211Message : public net_base::GenericNetlinkMessage {
  public:
   using Handler = base::RepeatingCallback<void(const Nl80211Message&)>;
   static const char kMessageTypeString[];
@@ -34,7 +34,8 @@ class SHILL_EXPORT Nl80211Message : public GenericNetlinkMessage {
   };
 
   Nl80211Message(uint8_t command, const char* command_string)
-      : GenericNetlinkMessage(nl80211_message_type_, command, command_string) {}
+      : net_base::GenericNetlinkMessage(
+            nl80211_message_type_, command, command_string) {}
   Nl80211Message(const Nl80211Message&) = delete;
   Nl80211Message& operator=(const Nl80211Message&) = delete;
 

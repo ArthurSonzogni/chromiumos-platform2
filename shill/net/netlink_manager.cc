@@ -17,6 +17,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <net-base/attribute_list.h>
+#include <net-base/generic_netlink_message.h>
 #include <net-base/netlink_message.h>
 #include <net-base/netlink_packet.h>
 
@@ -25,7 +26,9 @@ namespace shill {
 namespace {
 // TODO(b/301905012): Remove this type alias when moving this file to net-base.
 using net_base::AttributeListConstRefPtr;
+using net_base::ControlNetlinkMessage;
 using net_base::ErrorAckMessage;
+using net_base::GetFamilyMessage;
 using net_base::NetlinkMessage;
 using net_base::NetlinkMessageFactory;
 using net_base::NetlinkPacket;

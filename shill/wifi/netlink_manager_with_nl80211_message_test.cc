@@ -23,6 +23,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/byte_utils.h>
+#include <net-base/generic_netlink_message.h>
 #include <net-base/mock_netlink_socket.h>
 #include <net-base/netlink_message.h>
 #include <net-base/netlink_packet.h>
@@ -156,7 +157,7 @@ class NetlinkManagerTest : public Test {
   }
 
   bool ReplyWithRandomMessage(std::vector<uint8_t>* message) {
-    GetFamilyMessage get_family_message;
+    net_base::GetFamilyMessage get_family_message;
     // Any number that's not 0 or 1 is acceptable, here.  Zero is bad because
     // we want to make sure that this message is different than the main
     // send/receive pair.  One is bad because the default for
@@ -285,7 +286,7 @@ TEST_F(NetlinkManagerTest, GetFamily) {
   const std::string kSampleMessageName = "SampleMessageName";
   const uint32_t kRandomSequenceNumber = 3;
 
-  NewFamilyMessage new_family_message;
+  net_base::NewFamilyMessage new_family_message;
   new_family_message.attributes()->CreateControlAttribute(CTRL_ATTR_FAMILY_ID);
   new_family_message.attributes()->SetU16AttributeValue(CTRL_ATTR_FAMILY_ID,
                                                         kSampleMessageType);
@@ -314,7 +315,7 @@ TEST_F(NetlinkManagerTest, GetFamilyOneInterstitialMessage) {
   const std::string kSampleMessageName = "SampleMessageName";
   const uint32_t kRandomSequenceNumber = 3;
 
-  NewFamilyMessage new_family_message;
+  net_base::NewFamilyMessage new_family_message;
   new_family_message.attributes()->CreateControlAttribute(CTRL_ATTR_FAMILY_ID);
   new_family_message.attributes()->SetU16AttributeValue(CTRL_ATTR_FAMILY_ID,
                                                         kSampleMessageType);

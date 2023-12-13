@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/generic_netlink_message.h"
+#include "net-base/generic_netlink_message.h"
 
 #include <string>
 #include <vector>
@@ -10,17 +10,13 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <net-base/byte_utils.h>
-#include <net-base/netlink_attribute.h>
-#include <net-base/netlink_message.h>
-#include <net-base/netlink_packet.h>
 
-namespace shill {
+#include "net-base/byte_utils.h"
+#include "net-base/netlink_attribute.h"
+#include "net-base/netlink_message.h"
+#include "net-base/netlink_packet.h"
 
-// TODO(b/301905012): Remove the type alias after moving this file to net-base.
-using net_base::NetlinkAttribute;
-using net_base::NetlinkMessage;
-using net_base::NetlinkPacket;
+namespace net_base {
 
 std::vector<uint8_t> GenericNetlinkMessage::EncodeHeader(
     uint32_t sequence_number) {
@@ -37,8 +33,7 @@ std::vector<uint8_t> GenericNetlinkMessage::EncodeHeader(
   genl_header.version = 1;
   genl_header.reserved = 0;
 
-  std::vector<uint8_t> genl_header_bytes =
-      net_base::byte_utils::ToBytes(genl_header);
+  std::vector<uint8_t> genl_header_bytes = byte_utils::ToBytes(genl_header);
   size_t genlmsghdr_with_pad = NLMSG_ALIGN(sizeof(genl_header));
   genl_header_bytes.resize(genlmsghdr_with_pad, 0);  // Zero-fill.
 
@@ -155,4 +150,4 @@ std::unique_ptr<NetlinkMessage> ControlNetlinkMessage::CreateMessage(
   }
 }
 
-}  // namespace shill.
+}  // namespace net_base

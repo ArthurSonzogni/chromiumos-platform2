@@ -17,7 +17,6 @@ group("all") {
 
 install_config("install_headers") {
   sources = [
-    "generic_netlink_message.h",
     "mock_netlink_manager.h",
     "mock_process_manager.h",
     "netlink_manager.h",
@@ -53,7 +52,6 @@ write_deps("libshill-net_deps") {
 
 shared_library("libshill-net") {
   sources = [
-    "generic_netlink_message.cc",
     "netlink_manager.cc",
     "process_manager.cc",
   ]

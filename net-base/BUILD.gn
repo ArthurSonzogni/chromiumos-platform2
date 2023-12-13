@@ -41,6 +41,7 @@ shared_library("libnet-base") {
     "byte_utils.cc",
     "control_netlink_attribute.cc",
     "dns_client.cc",
+    "generic_netlink_message.cc",
     "http_url.cc",
     "ip_address.cc",
     "ip_address_utils.cc",

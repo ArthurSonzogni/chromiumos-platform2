@@ -10,6 +10,7 @@
 #include <string>
 
 #include <gmock/gmock.h>
+#include <net-base/generic_netlink_message.h>
 #include <net-base/netlink_message.h>
 
 namespace shill {
@@ -39,7 +40,7 @@ class MockNetlinkManager : public NetlinkManager {
               (override));
   MOCK_METHOD(bool,
               SendControlMessage,
-              (ControlNetlinkMessage*,
+              (net_base::ControlNetlinkMessage*,
                const ControlNetlinkMessageHandler&,
                const NetlinkAckHandler&,
                const NetlinkAuxiliaryMessageHandler&),

@@ -2,20 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NET_GENERIC_NETLINK_MESSAGE_H_
-#define SHILL_NET_GENERIC_NETLINK_MESSAGE_H_
+#ifndef NET_BASE_GENERIC_NETLINK_MESSAGE_H_
+#define NET_BASE_GENERIC_NETLINK_MESSAGE_H_
 
 #include <memory>
 #include <string>
 #include <vector>
 
-#include <net-base/attribute_list.h>
-#include <net-base/netlink_message.h>
-#include <net-base/netlink_packet.h>
+#include "net-base/attribute_list.h"
+#include "net-base/export.h"
+#include "net-base/netlink_message.h"
+#include "net-base/netlink_packet.h"
 
-#include "shill/net/shill_export.h"
-
-namespace shill {
+namespace net_base {
 
 // Objects of the |GenericNetlinkMessage| type represent messages that contain
 // a |genlmsghdr| after a |nlmsghdr|.  These messages seem to all contain a
@@ -56,13 +55,13 @@ namespace shill {
 //                       |<-----hdr.nla_len----->| |
 //                       |<NLA_ALIGN(hdr.nla_len)->|
 
-class SHILL_EXPORT GenericNetlinkMessage : public net_base::NetlinkMessage {
+class NET_BASE_EXPORT GenericNetlinkMessage : public NetlinkMessage {
  public:
   GenericNetlinkMessage(uint16_t my_message_type,
                         uint8_t command,
                         const char* command_string)
-      : net_base::NetlinkMessage(my_message_type),
-        attributes_(new net_base::AttributeList),
+      : NetlinkMessage(my_message_type),
+        attributes_(new AttributeList),
         command_(command),
         command_string_(command_string) {}
   GenericNetlinkMessage(const GenericNetlinkMessage&) = delete;
@@ -74,10 +73,8 @@ class SHILL_EXPORT GenericNetlinkMessage : public net_base::NetlinkMessage {
 
   uint8_t command() const { return command_; }
   const char* command_string() const { return command_string_; }
-  net_base::AttributeListConstRefPtr const_attributes() const {
-    return attributes_;
-  }
-  net_base::AttributeListRefPtr attributes() { return attributes_; }
+  AttributeListConstRefPtr const_attributes() const { return attributes_; }
+  AttributeListRefPtr attributes() { return attributes_; }
   std::string ToString() const override;
   void Print(int header_log_level, int detail_log_level) const override;
 
@@ -87,16 +84,16 @@ class SHILL_EXPORT GenericNetlinkMessage : public net_base::NetlinkMessage {
   std::vector<uint8_t> EncodeHeader(uint32_t sequence_number) override;
   // Reads the |nlmsghdr| and |genlmsghdr| headers and consumes the latter
   // from the payload of |packet|.
-  bool InitAndStripHeader(net_base::NetlinkPacket* packet) override;
+  bool InitAndStripHeader(NetlinkPacket* packet) override;
 
-  net_base::AttributeListRefPtr attributes_;
+  AttributeListRefPtr attributes_;
   const uint8_t command_;
   const char* command_string_;
 };
 
 // Control Messages
 
-class SHILL_EXPORT ControlNetlinkMessage : public GenericNetlinkMessage {
+class NET_BASE_EXPORT ControlNetlinkMessage : public GenericNetlinkMessage {
  public:
   static const uint16_t kMessageType;
   ControlNetlinkMessage(uint8_t command, const char* command_string)
@@ -106,15 +103,14 @@ class SHILL_EXPORT ControlNetlinkMessage : public GenericNetlinkMessage {
 
   static uint16_t GetMessageType() { return kMessageType; }
 
-  bool InitFromPacket(net_base::NetlinkPacket* packet,
-                      bool is_broadcast) override;
+  bool InitFromPacket(NetlinkPacket* packet, bool is_broadcast) override;
 
   // Message factory for all types of Control netlink message.
-  static std::unique_ptr<net_base::NetlinkMessage> CreateMessage(
-      const net_base::NetlinkPacket& packet);
+  static std::unique_ptr<NetlinkMessage> CreateMessage(
+      const NetlinkPacket& packet);
 };
 
-class SHILL_EXPORT NewFamilyMessage : public ControlNetlinkMessage {
+class NET_BASE_EXPORT NewFamilyMessage : public ControlNetlinkMessage {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -124,7 +120,7 @@ class SHILL_EXPORT NewFamilyMessage : public ControlNetlinkMessage {
   NewFamilyMessage& operator=(const NewFamilyMessage&) = delete;
 };
 
-class SHILL_EXPORT GetFamilyMessage : public ControlNetlinkMessage {
+class NET_BASE_EXPORT GetFamilyMessage : public ControlNetlinkMessage {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -134,7 +130,7 @@ class SHILL_EXPORT GetFamilyMessage : public ControlNetlinkMessage {
   GetFamilyMessage& operator=(const GetFamilyMessage&) = delete;
 };
 
-class SHILL_EXPORT UnknownControlMessage : public ControlNetlinkMessage {
+class NET_BASE_EXPORT UnknownControlMessage : public ControlNetlinkMessage {
  public:
   explicit UnknownControlMessage(uint8_t command)
       : ControlNetlinkMessage(command, "<UNKNOWN CONTROL MESSAGE>") {}
@@ -142,6 +138,6 @@ class SHILL_EXPORT UnknownControlMessage : public ControlNetlinkMessage {
   UnknownControlMessage& operator=(const UnknownControlMessage&) = delete;
 };
 
-}  // namespace shill
+}  // namespace net_base
 
-#endif  // SHILL_NET_GENERIC_NETLINK_MESSAGE_H_
+#endif  // NET_BASE_GENERIC_NETLINK_MESSAGE_H_
