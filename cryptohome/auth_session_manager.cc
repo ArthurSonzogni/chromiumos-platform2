@@ -5,9 +5,6 @@
 #include "cryptohome/auth_session_manager.h"
 
 #include <algorithm>
-#include <climits>
-#include <cstddef>
-#include <iterator>
 #include <memory>
 #include <optional>
 #include <string>
@@ -39,12 +36,8 @@ using ::hwsec_foundation::status::OkStatus;
 
 }  // namespace
 
-AuthSessionManager::AuthSessionManager(
-    AuthSession::BackingApis backing_apis,
-    const AuthSessionExpiringCallBack& auth_session_expiring_callback)
-    : backing_apis_(backing_apis),
-      clock_(base::DefaultClock::GetInstance()),
-      auth_session_expiring_callback_(auth_session_expiring_callback) {
+AuthSessionManager::AuthSessionManager(AuthSession::BackingApis backing_apis)
+    : backing_apis_(backing_apis), clock_(base::DefaultClock::GetInstance()) {
   CHECK(backing_apis.crypto);
   CHECK(backing_apis.platform);
   CHECK(backing_apis.user_session_map);
@@ -229,66 +222,15 @@ base::UnguessableToken AuthSessionManager::AddAuthSession(
   return token;
 }
 
-void AuthSessionManager::MoveAuthSessionToExpiringSoon() {
-  auto iter = expiration_map_.begin();
-  bool need_moving = false;
-  while (iter != expiration_map_.end() &&
-         (iter->first - clock_->Now()) <= kAuthTimeoutWarning) {
-    auto token_iter = token_to_user_.find(iter->second);
-    if (token_iter == token_to_user_.end()) {
-      continue;
-    }
-    // If the sending the signal fails or is not sent because of authsession not
-    // found, that's fine for now since this is informational.
-    if (user_auth_sessions_.find(token_to_user_[iter->second]) !=
-        user_auth_sessions_.end()) {
-      user_data_auth::AuthSessionExpiring expiring_proto;
-      auto broadcast_id =
-          user_auth_sessions_.find(token_to_user_[iter->second])
-              ->second.auth_sessions[iter->second]
-              ->serialized_public_token();
-      expiring_proto.set_broadcast_id(
-          user_auth_sessions_.find(token_to_user_[iter->second])
-              ->second.auth_sessions[iter->second]
-              ->serialized_public_token());
-      expiring_proto.set_time_left((iter->first - clock_->Now()).InSeconds());
-      auth_session_expiring_callback_.Run(expiring_proto);
-    }
-    ++iter;
-    need_moving = true;
-  }
-
-  if (need_moving) {
-    std::copy(std::make_move_iterator(expiration_map_.begin()),
-              std::make_move_iterator(iter),
-              std::inserter(auth_session_expiring_soon_map_,
-                            auth_session_expiring_soon_map_.begin()));
-    // Clearing it explicitly in order to avoid a undefined state.
-    expiration_map_.erase(expiration_map_.cbegin(), iter);
-    ResetExpirationTimer();
-  }
-}
-
 void AuthSessionManager::ResetExpirationTimer() {
-  if (auth_session_expiring_soon_map_.empty() && expiration_map_.empty()) {
+  if (expiration_map_.empty()) {
     expiration_timer_.Stop();
-    return;
-  }
-
-  if (auth_session_expiring_soon_map_.empty() ||
-      (!expiration_map_.empty() &&
-       ((expiration_map_.cbegin()->first - kAuthTimeoutWarning) <
-        auth_session_expiring_soon_map_.cbegin()->first))) {
+  } else {
     expiration_timer_.Start(
-        FROM_HERE, expiration_map_.cbegin()->first - kAuthTimeoutWarning,
-        base::BindOnce(&AuthSessionManager::MoveAuthSessionToExpiringSoon,
+        FROM_HERE, expiration_map_.cbegin()->first,
+        base::BindOnce(&AuthSessionManager::ExpireAuthSessions,
                        weak_factory_.GetWeakPtr()));
-    return;
   }
-  expiration_timer_.Start(
-      FROM_HERE, auth_session_expiring_soon_map_.cbegin()->first,
-      base::BindOnce(&AuthSessionManager::ExpireAuthSessions,
-                     weak_factory_.GetWeakPtr()));
 }
 
 void AuthSessionManager::SessionOnAuthCallback(
@@ -301,7 +243,9 @@ void AuthSessionManager::SessionOnAuthCallback(
   // If we couldn't find a session something really went wrong, but there's not
   // much we can do about it.
   if (iter == expiration_map_.end()) {
-    CheckExpiringSoonMap(token);
+    LOG(ERROR) << "AuthSessionManager received an OnAuth event for a session "
+                  "which it is not managing";
+    return;
   }
   // Remove the existing expiration entry and add a new one that triggers
   // starting now.
@@ -311,43 +255,18 @@ void AuthSessionManager::SessionOnAuthCallback(
   ResetExpirationTimer();
 }
 
-void AuthSessionManager::CheckExpiringSoonMap(
-    const base::UnguessableToken& token) {
-  // Find the existing expiration time of the session.
-  auto iter = auth_session_expiring_soon_map_.begin();
-  while (iter != auth_session_expiring_soon_map_.end() &&
-         iter->second != token) {
-    ++iter;
-  }
-  // If we couldn't find a session something really went wrong, but there's not
-  // much we can do about it.
-  if (iter == auth_session_expiring_soon_map_.end()) {
-    LOG(ERROR) << "AuthSessionManager received an OnAuth event for a session "
-                  "which it is not managing";
-    return;
-  }
-  // Remove the existing expiration entry and add a new one that triggers
-  // starting now.
-  base::Time new_time = clock_->Now() + kAuthTimeout;
-  auth_session_expiring_soon_map_.erase(iter);
-  // We add it to the new map.
-  expiration_map_.emplace(new_time, token);
-  ResetExpirationTimer();
-}
-
 void AuthSessionManager::ExpireAuthSessions() {
   base::Time now = clock_->Now();
-  // Go through the map, removing all of the sessions until we find one with
-  // an expiration time after now (or reach the end).
+  // Go through the map, removing all of the sessions until we find one with an
+  // expiration time after now (or reach the end).
   //
-  // This will always remove the first element of the map even if its
-  // expiration time is later than now. This is because it's possible for the
-  // timer to be triggered slightly early and we don't want this callback to
-  // turn into a busy-wait where it runs over and over as a no-op.
-  auto iter = auth_session_expiring_soon_map_.begin();
+  // This will always remove the first element of the map even if its expiration
+  // time is later than now. This is because it's possible for the timer to be
+  // triggered slightly early and we don't want this callback to turn into a
+  // busy-wait where it runs over and over as a no-op.
+  auto iter = expiration_map_.begin();
   bool first_entry = true;
-  while (iter != auth_session_expiring_soon_map_.end() &&
-         (first_entry || iter->first <= now)) {
+  while (iter != expiration_map_.end() && (first_entry || iter->first <= now)) {
     auto token_iter = token_to_user_.find(iter->second);
     if (token_iter == token_to_user_.end()) {
       LOG(FATAL) << "AuthSessionManager expired a session it is not managing";
@@ -373,8 +292,7 @@ void AuthSessionManager::ExpireAuthSessions() {
     first_entry = false;
   }
   // Erase all of the entries from the map that were just removed.
-  iter = auth_session_expiring_soon_map_.erase(
-      auth_session_expiring_soon_map_.begin(), iter);
+  iter = expiration_map_.erase(expiration_map_.begin(), iter);
   // Reset the expiration timer to run again based on what's left in the map.
   ResetExpirationTimer();
 }
@@ -487,8 +405,8 @@ CryptohomeStatus InUseAuthSession::AuthSessionStatus() const {
 
 base::TimeDelta InUseAuthSession::GetRemainingTime() const {
   // Find the expiration time of the session. If it doesn't have one then its
-  // expiration is pending the object no longer being in use, which we report
-  // as zero remaining time.
+  // expiration is pending the object no longer being in use, which we report as
+  // zero remaining time.
   std::optional<base::Time> expiration_time;
   for (const auto& [time, token] : manager_->expiration_map_) {
     if (token == session_->token()) {
@@ -496,17 +414,6 @@ base::TimeDelta InUseAuthSession::GetRemainingTime() const {
       break;
     }
   }
-
-  if (!expiration_time) {
-    for (const auto& [time, token] :
-         manager_->auth_session_expiring_soon_map_) {
-      if (token == session_->token()) {
-        expiration_time = time;
-        break;
-      }
-    }
-  }
-
   if (!expiration_time) {
     return base::TimeDelta();
   }
@@ -514,24 +421,28 @@ base::TimeDelta InUseAuthSession::GetRemainingTime() const {
   if (expiration_time->is_max()) {
     return base::TimeDelta::Max();
   }
-  // Given the (finite) expiration time we now have, compute the remaining
-  // time. If the expiration time is in the past (e.g. because the expiration
-  // timer hasn't fired yet) then we clamp the time to zero.
+  // Given the (finite) expiration time we now have, compute the remaining time.
+  // If the expiration time is in the past (e.g. because the expiration timer
+  // hasn't fired yet) then we clamp the time to zero.
   base::TimeDelta time_left = *expiration_time - manager_->clock_->Now();
   return time_left.is_negative() ? base::TimeDelta() : time_left;
 }
 
 CryptohomeStatus InUseAuthSession::ExtendTimeout(base::TimeDelta extension) {
   // Find the existing expiration time of the session. If it doesn't have one
-  // then we check the expring soon map.
-
+  // then the session has already been expired pending the session no longer
+  // being in use. This cannot be reverted and so the extend fails.
   auto iter = manager_->expiration_map_.begin();
   while (iter != manager_->expiration_map_.end() &&
          iter->second != session_->token()) {
     ++iter;
   }
   if (iter == manager_->expiration_map_.end()) {
-    return ExtendExpiringSoonTimeout(extension);
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionTimedOutInExtend),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kRetry,
+                        PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
   }
   // Remove the existing expiration entry and add a new one with the new time.
   base::Time new_time =
@@ -588,32 +499,6 @@ void BoundAuthSession::ScheduleReleaseCheck(base::TimeDelta delay) {
       FROM_HERE, session_.manager_->clock_->Now() + delay,
       base::BindOnce(&BoundAuthSession::ReleaseSessionIfBlocking,
                      base::Unretained(this)));
-}
-
-CryptohomeStatus InUseAuthSession::ExtendExpiringSoonTimeout(
-    base::TimeDelta extension) {
-  // Find the existing expiration time of the session. If it doesn't have one
-  // then the session has already been expired pending the session no longer
-  // being in use. This cannot be reverted and so the extend fails.
-  auto iter = manager_->auth_session_expiring_soon_map_.begin();
-  while (iter != manager_->auth_session_expiring_soon_map_.end() &&
-         iter->second != session_->token()) {
-    ++iter;
-  }
-  if (iter == manager_->auth_session_expiring_soon_map_.end()) {
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionTimedOutInExtend),
-        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kRetry,
-                        PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-  }
-  // Remove the existing expiration entry and add a new one with the new time.
-  base::Time new_time =
-      std::max(iter->first, manager_->clock_->Now() + extension);
-  manager_->auth_session_expiring_soon_map_.erase(iter);
-  manager_->expiration_map_.emplace(new_time, session_->token());
-  manager_->ResetExpirationTimer();
-  return OkStatus<CryptohomeError>();
 }
 
 }  // namespace cryptohome

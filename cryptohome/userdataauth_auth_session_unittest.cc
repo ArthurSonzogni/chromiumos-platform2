@@ -9,7 +9,6 @@
 #include <utility>
 
 #include <base/containers/span.h>
-#include <base/functional/callback_helpers.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/bind.h>
 #include <base/test/mock_callback.h>
@@ -186,12 +185,11 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
   }
 
   void CreateAuthSessionManager(AuthBlockUtility* auth_block_utility) {
-    auth_session_manager_ = std::make_unique<AuthSessionManager>(
-        AuthSession::BackingApis{
+    auth_session_manager_ =
+        std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
             &crypto_, &platform_, &user_session_map_, &keyset_management_,
             auth_block_utility, &auth_factor_driver_manager_,
-            &auth_factor_manager_, &uss_storage_, &features_.async},
-        expiring_signal_);
+            &auth_factor_manager_, &uss_storage_, &features_.async});
     userdataauth_.set_auth_session_manager(auth_session_manager_.get());
   }
 
@@ -332,12 +330,6 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
     return reply_future.Get();
   }
 
-  void ExpiringSignalCalled(user_data_auth::AuthSessionExpiring proto) {
-    signal_called_++;
-    ASSERT_THAT(proto.time_left(),
-                AllOf(testing::Ge(0), Le(base::Minutes(1).InSeconds())));
-  }
-
   const Username kUsername{kUsernameString};
   const Username kUsername2{kUsername2String};
   const Username kUsername3{kUsername3String};
@@ -374,11 +366,6 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
   UserDataAuth userdataauth_;
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
   FakeFeaturesForTesting features_;
-  base::RepeatingCallback<void(user_data_auth::AuthSessionExpiring)>
-      expiring_signal_ = base::BindRepeating(
-          &AuthSessionInterfaceTestBase::ExpiringSignalCalled,
-          base::Unretained(this));
-  int signal_called_ = 0;
 };
 
 class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
@@ -702,6 +689,7 @@ TEST_F(AuthSessionInterfaceTest, GetHibernateSecretUnauthenticatedTest) {
     InUseAuthSession auth_session = future.Take();
     serialized_token = auth_session->serialized_token();
   }
+
   // Verify an unauthenticated session fails in producing a hibernate secret.
   user_data_auth::GetHibernateSecretRequest request;
   request.set_auth_session_id(serialized_token);
