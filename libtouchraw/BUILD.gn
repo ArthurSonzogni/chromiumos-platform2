@@ -25,7 +25,10 @@ pkg_config("target_defaults_pkg_deps") {
 }
 
 shared_library("libtouchraw") {
-  sources = [ "reader.cc" ]
+  sources = [
+    "parser.cc",
+    "reader.cc",
+  ]
   configs += [ ":target_defaults_pkg_deps" ]
   install_path = "lib"
 }
@@ -52,7 +55,10 @@ generate_pkg_config("libtouchraw_pc") {
 
 if (use.test) {
   executable("libtouchraw_test") {
-    sources = [ "reader_test.cc" ]
+    sources = [
+      "parser_test.cc",
+      "reader_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults_pkg_deps",

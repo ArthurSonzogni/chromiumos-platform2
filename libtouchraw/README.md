@@ -4,8 +4,8 @@ C++ library to process HID raw data read from /dev/hidraw*.
 
 ## Design Documentation
 
-See the [design doc](go/cros-platform-heatmap) and the
-[implementation proposal](go/cros-heatmap-library).
+See the [design doc](https://go/cros-platform-heatmap) and the
+[implementation proposal](https://go/cros-heatmap-library).
 
 ## Usage
 
