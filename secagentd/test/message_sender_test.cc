@@ -239,7 +239,7 @@ TEST_F(MessageSenderTestFixture, TestSendMessageWithCallback) {
       destination, mutable_common, std::move(message),
       base::BindOnce(
           [](base::RunLoop* run_loop, reporting::Status status) {
-            EXPECT_OK(status);
+            EXPECT_TRUE(status.ok());
             run_loop->Quit();
           },
           &run_loop));

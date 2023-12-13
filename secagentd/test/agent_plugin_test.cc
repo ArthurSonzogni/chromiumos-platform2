@@ -85,7 +85,7 @@ class AgentPluginTestFixture : public ::testing::TestWithParam<BootmodeAndTpm> {
   void CreateAndRunAgentPlugin(int heartbeat_timer) {
     base::RunLoop run_loop = base::RunLoop();
     CreateAgentPlugin(&run_loop, heartbeat_timer);
-    EXPECT_OK(plugin_->Activate());
+    EXPECT_TRUE(plugin_->Activate().ok());
     run_loop.Run();
   }
 
@@ -438,7 +438,7 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventFailure) {
           })));
 
   CreateAgentPlugin(nullptr, kDefaultHeartbeatTimer);
-  EXPECT_OK(plugin_->Activate());
+  EXPECT_TRUE(plugin_->Activate().ok());
   task_environment_.FastForwardBy(base::Seconds(kTimePassed));
 }
 

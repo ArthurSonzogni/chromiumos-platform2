@@ -172,7 +172,7 @@ TEST_F(AuthenticationPluginTestFixture, TestScreenLockToUnlock) {
                 std::move(message->SerializeAsString()));
           })));
 
-  EXPECT_OK(plugin_->Activate());
+  EXPECT_TRUE(plugin_->Activate().ok());
   auth_factor_cb_.Run(completed);
   locked_cb_.Run();
 
@@ -227,7 +227,7 @@ TEST_F(AuthenticationPluginTestFixture, TestScreenLoginToLogout) {
                 std::move(message->SerializeAsString()));
           })));
 
-  EXPECT_OK(plugin_->Activate());
+  EXPECT_TRUE(plugin_->Activate().ok());
   auth_factor_cb_.Run(completed);
   state_changed_cb_.Run(kStarted);
 
@@ -274,7 +274,7 @@ TEST_F(AuthenticationPluginTestFixture, LateAuthFactor) {
                 std::move(message->SerializeAsString()));
           })));
 
-  EXPECT_OK(plugin_->Activate());
+  EXPECT_TRUE(plugin_->Activate().ok());
   // Have the state change cb run first to simulate late signal.
   state_changed_cb_.Run(kStarted);
   auth_factor_cb_.Run(completed);
@@ -349,7 +349,7 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginThenSuccess) {
         return true;
       });
 
-  EXPECT_OK(plugin_->Activate());
+  EXPECT_TRUE(plugin_->Activate().ok());
   // 2 Failures.
   auth_factor_cb_.Run(failure);
   auth_factor_cb_.Run(failure);
@@ -435,7 +435,7 @@ TEST_F(AuthenticationPluginTestFixture, FailedLockscreenLogin) {
         return true;
       });
 
-  EXPECT_OK(plugin_->Activate());
+  EXPECT_TRUE(plugin_->Activate().ok());
   // 2 Failures for pin and password.
   auth_factor_cb_.Run(failure_pin);
   auth_factor_cb_.Run(failure_pass);
@@ -524,7 +524,7 @@ TEST_F(AuthenticationPluginTestFixture, FailedLockscreenDelayBetweenAttempts) {
         return true;
       });
 
-  EXPECT_OK(plugin_->Activate());
+  EXPECT_TRUE(plugin_->Activate().ok());
   // 2 pin failures for first event.
   auth_factor_cb_.Run(failure_pin);
   auth_factor_cb_.Run(failure_pin);
@@ -583,7 +583,7 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginAfterTimeout) {
         return true;
       });
 
-  EXPECT_OK(plugin_->Activate());
+  EXPECT_TRUE(plugin_->Activate().ok());
   // 3 Failures.
   auth_factor_cb_.Run(failure);
   auth_factor_cb_.Run(failure);
@@ -648,7 +648,7 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginCreateTimestampSquashing) {
         return std::move(cb).Run(failure_event_2.get());
       });
 
-  EXPECT_OK(plugin_->Activate());
+  EXPECT_TRUE(plugin_->Activate().ok());
 
   // 2 Failures.
   auth_factor_cb_.Run(failure);
@@ -724,7 +724,7 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginAuthFactorSquashing) {
         return std::move(cb).Run(failure_event_1.get());
       });
 
-  EXPECT_OK(plugin_->Activate());
+  EXPECT_TRUE(plugin_->Activate().ok());
 
   // 2 Failures of same type.
   auth_factor_cb_.Run(failure);
@@ -775,7 +775,7 @@ TEST_F(AuthenticationPluginTestFixture, TestSecagentdRestart) {
                 std::move(message->SerializeAsString()));
           })));
 
-  EXPECT_OK(plugin_->Activate());
+  EXPECT_TRUE(plugin_->Activate().ok());
   // First one should do nothing because device user is empty.
   state_changed_cb_.Run(kInit);
   state_changed_cb_.Run(kInit);
@@ -818,7 +818,7 @@ TEST_F(AuthenticationPluginTestFixture, TestUserCreation) {
                 std::move(message->SerializeAsString()));
           })));
 
-  EXPECT_OK(plugin_->Activate());
+  EXPECT_TRUE(plugin_->Activate().ok());
   auth_factor_cb_.Run(completed);
   state_changed_cb_.Run(kStarted);
 

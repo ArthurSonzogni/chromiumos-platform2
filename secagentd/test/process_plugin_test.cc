@@ -86,7 +86,7 @@ class ProcessPluginTestFixture : public ::testing::Test {
         .WillOnce(
             DoAll(SaveArg<1>(&cbs_), Return(ByMove(std::move(bpf_skeleton_)))));
     EXPECT_CALL(*batch_sender_, Start());
-    EXPECT_OK(plugin_->Activate());
+    EXPECT_TRUE(plugin_->Activate().ok());
 
     ON_CALL(*policies_features_broker_,
             GetFeature(PoliciesFeaturesBroker::Feature::

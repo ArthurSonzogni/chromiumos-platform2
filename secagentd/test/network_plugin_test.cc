@@ -121,7 +121,7 @@ class NetworkPluginTestFixture : public ::testing::Test {
         .WillOnce(
             DoAll(SaveArg<1>(&cbs_), Return(ByMove(std::move(bpf_skeleton)))));
     EXPECT_CALL(*batch_sender_, Start());
-    EXPECT_OK(plugin_->Activate());
+    EXPECT_TRUE(plugin_->Activate().ok());
   }
 
   scoped_refptr<MockSkeletonFactory> skel_factory_;
