@@ -44,6 +44,8 @@ class SwapTool {
   // MGLRU configuration.
   absl::Status MGLRUSetEnable(uint8_t value);
 
+  absl::Status ReclaimAllProcesses(uint8_t memory_types);
+
  private:
   absl::StatusOr<bool> IsZramSwapOn();
   absl::StatusOr<uint64_t> GetMemTotalKiB();

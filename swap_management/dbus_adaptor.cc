@@ -165,4 +165,17 @@ bool DBusAdaptor::MGLRUSetEnable(brillo::ErrorPtr* error, uint8_t value) {
   return true;
 }
 
+bool DBusAdaptor::ReclaimAllProcesses(brillo::ErrorPtr* error,
+                                      uint8_t memory_types) {
+  absl::Status status = swap_tool_->ReclaimAllProcesses(memory_types);
+  if (!status.ok()) {
+    brillo::Error::AddTo(
+        error, FROM_HERE, brillo::errors::dbus::kDomain,
+        "org.chromium.SwapManagement.error.ReclaimAllProcesses",
+        status.ToString());
+    return false;
+  }
+  return true;
+}
+
 }  // namespace swap_management

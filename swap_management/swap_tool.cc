@@ -9,11 +9,13 @@
 #include "swap_management/zram_recompression.h"
 #include "swap_management/zram_writeback.h"
 
+#include <algorithm>
 #include <optional>
 #include <vector>
 
 #include <absl/status/status.h>
 #include <base/files/dir_reader_posix.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
 #include <base/process/process_metrics.h>
@@ -40,6 +42,14 @@ constexpr VariationsFeature kSwapZramWritebackFeature{
     "CrOSLateBootSwapZramWriteback", FEATURE_DISABLED_BY_DEFAULT};
 constexpr VariationsFeature kSwapZramRecompressionFeature{
     "CrOSLateBootSwapZramRecompression", FEATURE_DISABLED_BY_DEFAULT};
+
+// Reclaimable memory types.
+//
+// The values represent bits that must be alligned with their corresponding
+// RECLAIM_MEMORY_* value from the D-Bus interface.
+constexpr std::array kReclaimTypes{
+    std::pair{0x01, "anon"}, std::pair{0x02, "shmem"}, std::pair{0x04, "file"}};
+
 }  // namespace
 
 SwapTool::SwapTool(feature::PlatformFeatures* platform_features)
@@ -427,6 +437,41 @@ absl::Status SwapTool::EnableZramWriteback() {
   }
 
   return ZramWriteback::Get()->Start();
+}
+
+absl::Status SwapTool::ReclaimAllProcesses(uint8_t memory_types) {
+  std::string pid = std::to_string(getpid());
+
+  base::DirReaderPosix dir_reader("/proc");
+  if (!dir_reader.IsValid()) {
+    PLOG(ERROR) << "Can't access /proc";
+    return absl::AbortedError("Can't access /proc");
+  }
+
+  base::FilePath proc_dir("/proc");
+  while (dir_reader.Next()) {
+    std::string name = dir_reader.name();
+
+    // Don't reclaim our own memory and skip non-PID directories.
+    if (name == pid || !std::all_of(name.begin(), name.end(), ::isdigit))
+      continue;
+
+    base::FilePath pid_dir = proc_dir.Append(name);
+    base::FilePath reclaim_file = pid_dir.Append("reclaim");
+
+    for (const auto& reclaim_type : kReclaimTypes) {
+      if (!(memory_types & reclaim_type.first))
+        continue;
+
+      absl::Status status =
+          Utils::Get()->WriteFile(reclaim_file, reclaim_type.second);
+      LOG_IF(WARNING, !status.ok())
+          << "Failed to reclaim memory (" << reclaim_type.second
+          << ") for process with PID " << pid;
+    }
+  }
+
+  return absl::OkStatus();
 }
 
 }  // namespace swap_management

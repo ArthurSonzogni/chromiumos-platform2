@@ -112,6 +112,17 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
+    <method name="ReclaimAllProcesses">
+      <tp:docstring>
+        Perform a memory reclaim for all processes.
+      </tp:docstring>
+      <arg name="memory_types" type="y" direction="in">
+        <tp:docstring>
+          The type(s) of memory to reclaim.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
     <tp:enum name="ZramWritebackMode" type="u">
       <tp:docstring>
         The valid modes available to use for zram writeback.
@@ -149,6 +160,31 @@
       <tp:enumvalue suffix="ZRAM_RECOMPRESSION_HUGE_IDLE" value="0x0004">
         <tp:docstring>
           Recompress pages which are both idle and huge.
+        </tp:docstring>
+      </tp:enumvalue>
+    </tp:enum>
+    <tp:enum name="MemoryType" type="u">
+      <tp:docstring>
+        The types of memory to reclaim.
+      </tp:docstring>
+      <tp:enumvalue suffix="RECLAIM_MEMORY_ANON" value="0x0001">
+        <tp:docstring>
+          Anonymous memory.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="RECLAIM_MEMORY_SHMEM" value="0x0002">
+        <tp:docstring>
+         Shared memory.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="RECLAIM_MEMORY_FILE" value="0x0004">
+        <tp:docstring>
+          Memory that is backed by a file.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="RECLAIM_MEMORY_ALL" value="0x0007">
+        <tp:docstring>
+          Anonymous, shared and memory backed by a file.
         </tp:docstring>
       </tp:enumvalue>
     </tp:enum>

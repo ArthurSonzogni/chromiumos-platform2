@@ -25,6 +25,7 @@ constexpr char kSwapZramWriteback[] = "InitiateSwapZramWriteback";
 constexpr char kMGLRUSetEnable[] = "MGLRUSetEnable";
 constexpr char kSwapZramRecompression[] = "InitiateSwapZramRecompression";
 constexpr char kSwapZramSetRecompAlgorithms[] = "SwapZramSetRecompAlgorithms";
+constexpr char kReclaimAllProcesses[] = "ReclaimAllProcesses";
 
 // ZramWritebackMode contains the allowed modes of operation
 // for zram writeback. The definition is in:
