@@ -1,0 +1,9 @@
+helper {
+  modem_name: "em060"
+  exe {
+    filename: "/usr/local/bin/qlog"
+    extra_argument: "-f"
+    extra_argument: "/usr/local/usr/share/qlog/default.cfg"
+    output_dir_argument: "-s"
+  }
+}
