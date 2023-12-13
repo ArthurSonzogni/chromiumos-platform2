@@ -11,7 +11,6 @@ group("guest") {
     ":guest_service_failure_notifier",
     ":maitred",
     ":upgrade_container",
-    ":virtwl_guest_proxy",
     ":vm_syslog",
     "//vm_tools:vshd",
   ]
@@ -139,12 +138,6 @@ executable("vm_syslog") {
   sources = [ "../syslog/main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libsyslog" ]
-}
-
-executable("virtwl_guest_proxy") {
-  sources = [ "../virtwl_guest_proxy/main.c" ]
-  configs += [ ":target_defaults" ]
-  ldflags = [ "-pthread" ]
 }
 
 if (!use.fuzzer) {
