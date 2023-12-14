@@ -35,19 +35,35 @@ class UssManager {
     // user but it can be overrwritten with a real token.
     DecryptToken() = default;
 
-    // Tokens can be moved around by not copied.
+    // Tokens can be moved around but not copied.
     DecryptToken(const DecryptToken&) = delete;
     DecryptToken& operator=(const DecryptToken&) = delete;
     DecryptToken(DecryptToken&&);
     DecryptToken& operator=(DecryptToken&&);
+
+    // If the object is not blank (i.e. it has a non-empty username) decrement
+    // the token count for this user. If the token count goes to zero this will
+    // also unload the DecryptedUss.
+    ~DecryptToken();
 
    private:
     friend class UssManager;
 
     // Construct a token for accessing a specific user. This is private because
     // only the UssManager can construct new non-null tokens.
-    explicit DecryptToken(ObfuscatedUsername username);
+    DecryptToken(UssManager* uss_manager, ObfuscatedUsername username);
 
+    // Helpers to increment decrement the token count for the current user. Will
+    // CHECK-fail if the manager does not have any entry for the username. That
+    // should never happen because the manager only constructs these after
+    // finding or setting up an entry.
+    void IncrementTokenCount();
+    void DecrementTokenCount();
+
+    // The UssManager that created this token.
+    UssManager* uss_manager_;
+    // The username this token is for. Will be blank on a default or moved-from
+    // token.
     ObfuscatedUsername username_;
   };
 
@@ -63,13 +79,32 @@ class UssManager {
   // The pointer returned on success is invalidated by any subsequent calls to
   // a Load* function.
   CryptohomeStatusOr<const EncryptedUss*> LoadEncrypted(
-      ObfuscatedUsername username);
+      const ObfuscatedUsername& username);
+
+  // Attempt to discard the loaded encrypted data for a user. This will succeed
+  // (as a no-op) if there is no loaded data for the user. It will also succeed
+  // if only encrypted data has been loaded for the user. However, if decrypted
+  // data has also been loaded and there are still live tokens for it then this
+  // will fail and return a not-OK status.
+  CryptohomeStatus DiscardEncrypted(const ObfuscatedUsername& username);
+
+  // Attempt to discard encrypted data for all users. This is basically
+  // DiscardEncrypted for all users. It will succeed only if there is no
+  // decrypted data.
+  CryptohomeStatus DiscardAllEncrypted();
+
+  // Attempt to add a new decrypted USS instance for a user. This will fail if
+  // an encrypted or decrypted USS for this user already exists, and return a
+  // not-OK status. Otherwise it will return a token that can be used to access
+  // the newly added instance.
+  CryptohomeStatusOr<DecryptToken> AddDecrypted(
+      const ObfuscatedUsername& username, DecryptedUss decrypted_uss);
 
   // Returns a reference to the decrypted USS instance for a user, or not-OK if
   // no such USS can be loaded or decrypted. If the result is OK then the
   // returned pointer will never be null.
   CryptohomeStatusOr<DecryptToken> LoadDecrypted(
-      ObfuscatedUsername username,
+      const ObfuscatedUsername& username,
       const std::string& wrapping_id,
       const brillo::SecureBlob& wrapping_key);
 
@@ -86,8 +121,21 @@ class UssManager {
   // A copy of all of the loaded encrypted USS instances.
   std::map<ObfuscatedUsername, EncryptedUss> map_of_encrypted_;
 
-  // A copy of all of the loaded decrypted USS instances.
-  std::map<ObfuscatedUsername, DecryptedUss> map_of_decrypted_;
+  // A copy of all of the loaded decrypted USS instances along with a token
+  // count. The token count basically acts as a reference count; when the number
+  // of outstanding tokens for a DecryptedUss it will be removed from this map
+  // and downgraded back to an EncryptedUss.
+  //
+  // This is useful for two reasons. First, it avoids keeping copies of the
+  // decrypted data in-memory if there are no active sessiosn that might need
+  // it. Second, it provides a mechanism to remove the USS entirely (e.g. when
+  // deleting a user) by terminating all active sessions and then using
+  // DiscardEncrypted to flush the loaded USS from memory entirely.
+  struct DecryptedWithCount {
+    DecryptedUss uss;
+    int token_count;
+  };
+  std::map<ObfuscatedUsername, DecryptedWithCount> map_of_decrypted_;
 };
 
 }  // namespace cryptohome

@@ -1575,6 +1575,14 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthNoSecretFoundInGetHibernateSecret = 2189,
   /* ./userdataauth.cc */
   kLocUserDataAuthSessionNotFoundInStartAuthSession = 2190,
+  /* ./user_secret_stash/manager.cc */
+  kLocUssManagerAddDecryptedWhenEncryptedExists = 2191,
+  /* ./user_secret_stash/manager.cc */
+  kLocUssManagerAddDecryptedWhenDecryptedExists = 2192,
+  /* ./user_secret_stash/manager.cc */
+  kLocUssManagerDiscardEncryptedCannotDiscardBusy = 2193,
+  /* ./user_secret_stash/manager.cc */
+  kLocUssManagerDiscardAllEncryptedCannotDiscardBusy = 2194,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.
