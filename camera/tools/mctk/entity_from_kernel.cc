@@ -377,7 +377,7 @@ std::unique_ptr<V4lMcEntity> V4lMcEntity::CreateFromKernel(
     if (links_enum.links[i].source.entity != entity->desc_.id)
       continue;
 
-    auto link = std::make_unique<V4lMcLink>();
+    auto link = std::make_unique<V4lMcLink>(fd_mc);
 
     link->desc_ = links_enum.links[i];
 
