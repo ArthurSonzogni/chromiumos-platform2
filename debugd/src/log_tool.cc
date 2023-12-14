@@ -354,9 +354,9 @@ const std::array kCommandLogs {
   Log{kGlob, "qcom_fw_info", "/sys/kernel/debug/qcom_socinfo/*/*",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   Log{kCommand, "segmentation_feature_level",
-    "/usr/sbin/feature_check --feature_level", kRoot, kRoot},
+    "/usr/sbin/feature_check --feature_level 2>/dev/null", kRoot, kRoot},
   Log{kCommand, "segmentation_scope_level",
-    "/usr/sbin/feature_check --scope_level", kRoot, kRoot},
+    "/usr/sbin/feature_check --scope_level 2>/dev/null", kRoot, kRoot},
   Log{kCommand, "sensor_info", "/usr/share/userfeedback/scripts/sensor_info"},
   // /proc/slabinfo is owned by root and has 0400 permission.
   Log{kFile, "slabinfo", "/proc/slabinfo", kRoot, kRoot},
