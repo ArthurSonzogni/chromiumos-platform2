@@ -301,7 +301,7 @@ impl ResumeConductor {
     }
 
     /// Inner helper function to read the resume image and launch it.
-    fn resume_system(&mut self, mut hibermeta_mount: ActiveMount) -> Result<()> {
+    fn resume_system(&mut self, hibermeta_mount: ActiveMount) -> Result<()> {
         // Start logging to the resume logger.
         let log_file = LogFile::new(HibernateStage::Resume, true, &hibermeta_mount)?;
 
@@ -364,8 +364,7 @@ impl ResumeConductor {
 
         // Keep logs in memory for now.
         mem::drop(log_file);
-
-        hibermeta_mount.unmount()?;
+        drop(hibermeta_mount);
 
         // This is safe because sync() does not modify memory.
         unsafe {
@@ -440,9 +439,9 @@ impl ResumeConductor {
             .context("Failed to set up buffer device for hiberimage")?;
 
         // briefly mount hibermeta to read the size of the hiberimage.
-        let mut hibermeta_mount = volume_manager.setup_hibermeta_lv(true)?;
+        let hibermeta_mount = volume_manager.setup_hibermeta_lv(true)?;
         let image_size = read_hiberimage_size()?;
-        hibermeta_mount.unmount()?;
+        drop(hibermeta_mount);
 
         let ram_size = get_ram_size();
         // Don't fill up more than 33% of the RAM.

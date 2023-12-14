@@ -201,7 +201,7 @@ impl SuspendConductor<'_> {
     /// successful hibernation has resumed.
     fn suspend_system(
         &mut self,
-        mut hibermeta_mount: ActiveMount,
+        hibermeta_mount: ActiveMount,
     ) -> Result<()> {
         // Stop logging to syslog, and divert instead to a file since the
         // logging daemon's about to be frozen.
@@ -221,7 +221,7 @@ impl SuspendConductor<'_> {
         }
 
         mem::drop(log_file);
-        hibermeta_mount.unmount()?;
+        drop(hibermeta_mount);
 
         self.volume_manager.thicken_hiberimage()?;
 
@@ -272,7 +272,7 @@ impl SuspendConductor<'_> {
             let image_size = snap_dev.get_image_size()?;
             let pages_with_zeroes = get_number_of_dropped_pages_with_zeroes()?;
             // Briefly remount 'hibermeta' to write logs and metrics.
-            let mut hibermeta_mount = self.volume_manager.mount_hibermeta()?;
+            let hibermeta_mount = self.volume_manager.mount_hibermeta()?;
             let log_file = LogFile::new(HibernateStage::Suspend, false, &hibermeta_mount)?;
 
             let start = Instant::now();
@@ -321,7 +321,7 @@ impl SuspendConductor<'_> {
             }
 
             mem::drop(log_file);
-            hibermeta_mount.unmount()?;
+            drop(hibermeta_mount);
 
             // Power the thing down.
             if !dry_run {

@@ -923,7 +923,6 @@ fn log_file_system_status(status: FileSystemStatus) {
 /// Tracks and active mount and unmounts it when the instance is dropped.
 pub struct ActiveMount {
     mountpoint: PathBuf,
-    is_mounted: bool,
 }
 
 impl ActiveMount {
@@ -931,22 +930,16 @@ impl ActiveMount {
     fn new<P: AsRef<OsStr>>(mountpoint: P) -> Self {
         ActiveMount {
             mountpoint: PathBuf::from(Path::new(&mountpoint)),
-            is_mounted: true,
         }
     }
 
-    /// Unmount the active mount
-    pub fn unmount(&mut self) -> Result<()> {
-        self.is_mounted = false;
-        unmount_filesystem(&self.mountpoint)
-    }
 }
 
 impl Drop for ActiveMount {
-    /// Unmounts the active mount if it is still mounted
+    /// Unmounts the active mount
     fn drop(&mut self) {
-        if self.is_mounted {
-            self.unmount().unwrap();
+        if let Err(e) = unmount_filesystem(&self.mountpoint) {
+            panic!("Could not umount '{:?}' because {:?}", self.mountpoint, e);
         }
     }
 }
