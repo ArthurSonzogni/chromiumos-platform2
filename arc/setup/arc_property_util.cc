@@ -543,7 +543,7 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
 
       // 14th gen
       re2::RE2::PartialMatch(model_field.value(),
-                             R"(Intel\(R\) CoreTM (Ultra [ 0-9A-Za-z]*)$)",
+                             R"(Intel\(R\) Core\(?TM\)? ([ 0-9A-Za-z]*)$)",
                              &model)) {
     manufacturer = "Intel";
   } else if (base::EndsWith(model_field.value(), "Genuine Intel(R) 0000")) {

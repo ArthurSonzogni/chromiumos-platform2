@@ -771,6 +771,10 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
         {"model name: Intel(R) CoreTM Ultra 5 115U\n",
          "ro.soc.manufacturer=Intel\nro.soc.model=Ultra 5 115U\n"},
 
+        // For new Brya devices.
+        {"model name: Intel(R) Core(TM) 7 150U\n",
+         "ro.soc.manufacturer=Intel\nro.soc.model=7 150U\n"},
+
         // CPU for some VMs. See b/256650882.
         {"model name: Intel(R) Xeon(R) CPU @ 2.80GHz\n",
          "ro.soc.manufacturer=Intel\nro.soc.model=Unknown-Xeon\n"},
