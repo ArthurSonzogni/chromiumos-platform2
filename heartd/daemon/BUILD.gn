@@ -13,6 +13,7 @@ pkg_config("target_defaults") {
 
 source_set("libheartd") {
   sources = [
+    "action_runner.cc",
     "heartbeat_manager.cc",
     "heartbeat_tracker.cc",
     "heartd.cc",
