@@ -255,10 +255,12 @@ where
 pub struct LogFile {}
 
 impl LogFile {
-    /// Create the log file with the given path, truncate the file if it already
+    /// Create the log file at given hibernate stage, truncate the file if it already
     /// exists. The file is opened with O_SYNC to make sure data from writes
     /// isn't buffered by the kernel but submitted to storage immediately.
-    pub fn create<P: AsRef<Path>>(path: P) -> Result<File> {
+    pub fn create(stage: HibernateStage) -> Result<File> {
+        let path = Self::get_path(stage);
+
         let opts = OpenOptions::new()
             .create(true)
             .truncate(true)

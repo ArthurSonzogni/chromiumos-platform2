@@ -303,8 +303,7 @@ impl ResumeConductor {
 
     /// Inner helper function to read the resume image and launch it.
     fn resume_system(&mut self, mut hibermeta_mount: ActiveMount) -> Result<()> {
-        let log_file_path = hiberlog::LogFile::get_path(HibernateStage::Resume);
-        let log_file = hiberlog::LogFile::create(log_file_path)?;
+        let log_file = hiberlog::LogFile::create(HibernateStage::Resume)?;
         // Start logging to the resume logger.
         let redirect_guard = LogRedirectGuard::new(log_file);
 

@@ -163,8 +163,7 @@ impl SuspendConductor<'_> {
 
         // Stop logging to syslog, and divert instead to a file since the
         // logging daemon's about to be frozen.
-        let log_file_path = hiberlog::LogFile::get_path(HibernateStage::Suspend);
-        let log_file = hiberlog::LogFile::create(log_file_path)?;
+        let log_file = hiberlog::LogFile::create(HibernateStage::Suspend)?;
         let redirect_guard = LogRedirectGuard::new(log_file);
 
         debug!("Syncing filesystems");
