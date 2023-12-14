@@ -139,6 +139,18 @@ def GetArcCodecFiles(config):
         print(files.dest)
 
 
+def get_arc_properties(config):
+    """Prints a list of ARC properties required by ARC board_specific_setup.
+
+    Outputs a JSON mapping from property name to respective values.
+
+    Args:
+        config: A CrosConfig instance
+    """
+    output = json.dumps(config.get_arc_properties(), sort_keys=True, indent=2)
+    print(output)
+
+
 def GetAudioFiles(config):
     """Print a list of audio files across all models
 
@@ -473,6 +485,12 @@ def GetParser(description):
         help="Lists pairs of arc media codec files in sequence: first line is "
         "the relative source file, second line is the full install pathname",
     )
+    # Parser: get-arc-properties
+    subparsers.add_parser(
+        "get-arc-properties",
+        help="Lists ARC properties required by ARC board_specific_setup: "
+        "outputs a JSON mapping from property name to respective values",
+    )
     # Parser: get-audio-files
     subparsers.add_parser(
         "get-audio-files",
@@ -669,6 +687,8 @@ def main(argv=None):
         GetArcFiles(config)
     elif opts.subcommand == "get-arc-codec-files":
         GetArcCodecFiles(config)
+    elif opts.subcommand == "get-arc-properties":
+        get_arc_properties(config)
     elif opts.subcommand == "get-audio-files":
         GetAudioFiles(config)
     elif opts.subcommand == "get-bluetooth-files":

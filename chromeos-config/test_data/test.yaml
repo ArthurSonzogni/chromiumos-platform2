@@ -251,6 +251,11 @@ chromeos:
       skus:
         - config:
             name: "{{$name}}"
+            arc:
+              build-properties:
+                product: "{{$name}}"
+                device: "{{$name}}_cheets"
+                metrics-tag: "abc123"
             audio:
               <<: *audio
               $topology-name: "another"
@@ -325,11 +330,17 @@ chromeos:
                 build-path: "build-path/wifi_sar_3.hex"
                 system-path: "/firmware/cbfs-rw-raw/proj/wifi_sar_3.hex"
             wallpaper: "default"
-    - products:
+    - $name: "some_customization"
+      products:
         - $key-id: "SOME_CUSTOMIZATION"
       skus:
         - config:
-            name: "some_customization"
+            name: "{{$name}}"
+            arc:
+              build-properties:
+                product: "{{$name}}"
+                device: "{{$name}}_cheets"
+                metrics-tag: "abc123"
             identity:
               platform-name: "Some"
               frid: "Google_SomeCustomization"

@@ -874,6 +874,13 @@
         "wallpaper": "some"
       },
       {
+        "arc": {
+          "build-properties": {
+            "device": "another_cheets",
+            "metrics-tag": "abc123",
+            "product": "another"
+          }
+        },
         "audio": {
           "main": {
             "cras-config-dir": "another",
@@ -1008,6 +1015,13 @@
         }
       },
       {
+        "arc": {
+          "build-properties": {
+            "device": "some_customization_cheets",
+            "metrics-tag": "abc123",
+            "product": "some_customization"
+          }
+        },
         "fingerprint": {
           "board": "bloonchipper",
           "ro-version": "VERSION1"

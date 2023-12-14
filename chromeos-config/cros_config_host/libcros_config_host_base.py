@@ -9,6 +9,7 @@ from __future__ import print_function
 import collections
 import os
 import sys
+from typing import Dict, List
 
 
 # pylint: disable=wrong-import-position
@@ -269,6 +270,20 @@ class DeviceConfig:
             List of BaseFile objects representing the arc codec files needed.
         """
 
+    def get_arc_properties(self):
+        """Get a dict of ARC properties required by board_specific_setup.
+
+        In case a property doesn't have a common value across models, the value
+        is returned as a placeholder `{prop}` where prop is the property name,
+        to be substituted with the real value during ARC runtime.
+
+        Returns:
+            Dict mapping from property name to property value.
+
+        Raises:
+            ValidationError if required properties are not found.
+        """
+
     def GetAudioFiles(self):
         """Get a list of audio files
 
@@ -393,6 +408,7 @@ class CrosConfigBaseImpl:
         ] = self.GetDetachableBaseFirmwareFiles()
         result["GetArcFiles"] = self.GetArcFiles()
         result["GetArcCodecFiles"] = self.GetArcCodecFiles()
+        result["get_arc_properties"] = self.GetArcProperties()
         result["GetAudioFiles"] = self.GetAudioFiles()
         bluetooth_files = self.GetBluetoothFiles()
         if bluetooth_files:
@@ -528,6 +544,49 @@ class CrosConfigBaseImpl:
             referenced by all devices
         """
         return self._GetFiles("GetArcCodecFiles")
+
+    def get_arc_properties(self) -> Dict[str, str]:
+        """Get a dict of ARC properties required by board_specific_setup.
+
+        In case a property doesn't have a common value across models, the value
+        is returned as a placeholder `{prop}` where prop is the property name,
+        to be substituted with the real value during ARC runtime.
+
+        Returns:
+            Dict mapping from property name to property value.
+
+        Raises:
+            ValidationError if required properties are not found in some models.
+        """
+        path = "/arc/build-properties"
+        props = ("product", "device", "metrics-tag")
+
+        result: Dict[str, str] = {}
+        missing_props: Dict[str, List[str]] = {}
+        for prop in props:
+            common_value = None
+            for device in self.GetDeviceConfigs():
+                model = device.GetName()
+                value = device.GetProperty(path, prop)
+                if not value:
+                    missing_props.setdefault(model, []).append(prop)
+                    continue
+                if common_value is None:
+                    common_value = value
+                elif common_value != value:
+                    common_value = "{%s}" % prop
+            if common_value is None:
+                raise ValidationError("No device configs found")
+            result[prop] = common_value
+
+        if missing_props:
+            msg = "Missing ARC properties for the following models: "
+            msg += ", ".join(
+                f"{model} {props}" for model, props in missing_props.items()
+            )
+            raise ValidationError(msg)
+
+        return result
 
     def GetAudioFiles(self):
         """Get a list of unique audio files for all models

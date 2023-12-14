@@ -141,6 +141,18 @@ class CrosConfigHostTest(unittest.TestCase):
             ],
         )
 
+    def test_get_arc_properties(self):
+        config = CrosConfig(self.filepath)
+        arc_props = config.get_arc_properties()
+        self.assertDictEqual(
+            arc_props,
+            {
+                "product": "{product}",
+                "device": "{device}",
+                "metrics-tag": "abc123",
+            },
+        )
+
     def testGetThermalFiles(self):
         config = CrosConfig(self.filepath)
         thermal_files = config.GetThermalFiles()
