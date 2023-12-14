@@ -36,9 +36,9 @@ use crate::files::remove_resume_in_progress_file;
 use crate::files::HIBERNATING_USER_FILE;
 use crate::hiberlog;
 use crate::hiberlog::redirect_log;
-use crate::hiberlog::redirect_log_to_file;
 use crate::hiberlog::replay_logs;
 use crate::hiberlog::HiberlogOut;
+use crate::hiberlog::LogRedirectGuard;
 use crate::hiberutil::get_ram_size;
 use crate::hiberutil::lock_process_memory;
 use crate::hiberutil::path_to_stateful_block;
@@ -306,7 +306,7 @@ impl ResumeConductor {
         let log_file_path = hiberlog::LogFile::get_path(HibernateStage::Resume);
         let log_file = hiberlog::LogFile::create(log_file_path)?;
         // Start logging to the resume logger.
-        let redirect_guard = redirect_log_to_file(log_file);
+        let redirect_guard = LogRedirectGuard::new(log_file);
 
         // Let other daemons know it's the end of the world.
         let mut powerd_resume =

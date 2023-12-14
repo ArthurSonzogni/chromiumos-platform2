@@ -311,7 +311,15 @@ impl LogFile {
 /// (which hosts the log file).
 pub struct LogRedirectGuard {}
 
-impl LogRedirectGuard {}
+impl LogRedirectGuard {
+    /// Divert the log to a file. If the log was previously pointing to syslog
+    /// those messages are flushed.
+    pub fn new(log_file: File) -> Self {
+        redirect_log(HiberlogOut::File(Box::new(log_file)));
+        LogRedirectGuard {}
+    }
+}
+
 
 impl Drop for LogRedirectGuard {
     fn drop(&mut self) {
@@ -348,14 +356,6 @@ pub fn redirect_log(out: HiberlogOut) {
         }
         _ => {}
     }
-}
-
-/// Divert the log to a file. If the log was previously pointing to syslog
-/// those messages are flushed.
-pub fn redirect_log_to_file(log_file: File) -> LogRedirectGuard {
-    redirect_log(HiberlogOut::File(Box::new(log_file)));
-
-    LogRedirectGuard {}
 }
 
 /// Discard any buffered but unsent logging data.

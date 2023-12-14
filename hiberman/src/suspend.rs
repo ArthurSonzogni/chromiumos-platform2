@@ -32,7 +32,6 @@ use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
 use crate::hiberlog;
 use crate::hiberlog::redirect_log;
-use crate::hiberlog::redirect_log_to_file;
 use crate::hiberlog::replay_logs;
 use crate::hiberlog::reset_log;
 use crate::hiberlog::HiberlogOut;
@@ -166,7 +165,7 @@ impl SuspendConductor<'_> {
         // logging daemon's about to be frozen.
         let log_file_path = hiberlog::LogFile::get_path(HibernateStage::Suspend);
         let log_file = hiberlog::LogFile::create(log_file_path)?;
-        let redirect_guard = redirect_log_to_file(log_file);
+        let redirect_guard = LogRedirectGuard::new(log_file);
 
         debug!("Syncing filesystems");
         // This is safe because sync() does not modify memory.
@@ -283,7 +282,7 @@ impl SuspendConductor<'_> {
             let mut hibermeta_mount = self.volume_manager.mount_hibermeta()?;
             let log_file_path = hiberlog::LogFile::get_path(HibernateStage::Suspend);
             let log_file = hiberlog::LogFile::open(log_file_path)?;
-            let redirect_guard = redirect_log_to_file(log_file);
+            let redirect_guard = LogRedirectGuard::new(log_file);
 
             let start = Instant::now();
 
