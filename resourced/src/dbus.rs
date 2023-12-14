@@ -38,6 +38,7 @@ use crate::feature;
 use crate::memory;
 use crate::power;
 use crate::proc::load_euid;
+use crate::process_stats;
 use crate::psi;
 use crate::qos;
 use crate::qos::set_process_state;
@@ -730,6 +731,29 @@ fn report_notification_count(notification_count: i32) -> Result<()> {
     Ok(())
 }
 
+fn report_memory_stats(stats: process_stats::MemStats) -> Result<()> {
+    let metrics = metrics_rs::MetricsLibrary::get().context("MetricsLibrary::get() failed")?;
+    // Shall panic on poisoned mutex.
+    let mut metrics = metrics.lock().expect("Lock MetricsLibrary object failed");
+
+    for (process_kind, stats) in stats.iter().enumerate() {
+        for (mem_kind, usage_bytes) in stats.iter().enumerate() {
+            // Max process allocation size in megabytes, used as an upper bound
+            // for UMA histograms (these are all consumer devices, and 64 GB
+            // should be good for a few more years).
+            const MAX_MEM_SIZE_MIB: i32 = 64 * 1024;
+            metrics.send_to_uma(
+                &process_stats::get_metric_name(process_kind, mem_kind),
+                (usage_bytes / 1024 / 1024) as i32,
+                1,
+                MAX_MEM_SIZE_MIB,
+                50,
+            )?;
+        }
+    }
+    Ok(())
+}
+
 pub async fn service_main() -> Result<()> {
     let root = Path::new("/");
     let config_provider = ConfigProvider::from_root(root);
@@ -888,7 +912,7 @@ pub async fn service_main() -> Result<()> {
         );
     }
 
-    // Reports memory pressure notification count every 10 minutes.
+    // Reports memory pressure notification count and memory stats every 10 minutes.
     let notification_count = Arc::new(AtomicI32::new(0));
     let notification_count_clone = notification_count.clone();
     tokio::spawn(async move {
@@ -902,6 +926,15 @@ pub async fn service_main() -> Result<()> {
                 error!("Failed to report notification count: {}", err);
             }
             notification_count_clone.store(0, Ordering::Relaxed);
+
+            match process_stats::get_all_memory_stats("/proc", "/run") {
+                Ok(stats) => {
+                    if let Err(err) = report_memory_stats(stats) {
+                        error!("Failed to report memory stats: {}", err);
+                    }
+                }
+                Err(e) => error!("Failed to gather memory stats {:?}", e),
+            }
         }
     });
 

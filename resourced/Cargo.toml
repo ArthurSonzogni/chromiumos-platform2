@@ -43,6 +43,9 @@ protobuf = "3.2"
 featured = { version = "0.1.0", optional = true }
 procfs = "0.15"
 
+[dev-dependencies]
+tempfile = "3"
+
 [dev-dependencies.tokio]
 features = ["test-util"]
 
