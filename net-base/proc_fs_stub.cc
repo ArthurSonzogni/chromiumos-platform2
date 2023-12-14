@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/network/proc_fs_stub.h"
+#include "net-base/proc_fs_stub.h"
 
 #include <string>
 #include <string_view>
@@ -11,7 +11,7 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
-namespace shill {
+namespace net_base {
 
 namespace {
 constexpr char kIPFlagTemplate[] = "/proc/sys/net/%s/conf/%s/%s";
@@ -39,7 +39,8 @@ bool ProcFsStub::SetIPFlag(net_base::IPFamily family,
     // interface is already removed. Returning silently without an ERROR log.
     return false;
   }
-  if (base::WriteFile(flag_file, value.c_str(), value.length()) !=
+  if (base::WriteFile(flag_file, value.c_str(),
+                      static_cast<int>(value.length())) !=
       static_cast<int>(value.length())) {
     LOG(ERROR) << "IP flag write failed: " << value << " to "
                << flag_file.value();
@@ -60,4 +61,4 @@ bool ProcFsStub::FlushRoutingCache() {
 
   return ret;
 }
-}  // namespace shill
+}  // namespace net_base

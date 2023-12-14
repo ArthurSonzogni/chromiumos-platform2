@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/network/mock_proc_fs_stub.h"
+#include "net-base/mock_proc_fs_stub.h"
 
-namespace shill {
+namespace net_base {
 
 namespace {
 using ::testing::_;
@@ -18,4 +18,4 @@ MockProcFsStub::MockProcFsStub(const std::string& interface_name)
 
 MockProcFsStub::~MockProcFsStub() = default;
 
-}  // namespace shill
+}  // namespace net_base

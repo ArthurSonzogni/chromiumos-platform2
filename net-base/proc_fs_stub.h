@@ -2,20 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NETWORK_PROC_FS_STUB_H_
-#define SHILL_NETWORK_PROC_FS_STUB_H_
+#ifndef NET_BASE_PROC_FS_STUB_H_
+#define NET_BASE_PROC_FS_STUB_H_
 
 #include <string>
 
-#include <net-base/ip_address.h>
+#include "net-base/ip_address.h"
 
-#include "shill/mockable.h"
-
-namespace shill {
+namespace net_base {
 
 // Helper class to handle all /proc/sys/ interactions for a certain network
 // interface.
-class ProcFsStub {
+class NET_BASE_EXPORT ProcFsStub {
  public:
   static constexpr char kIPFlagAcceptDuplicateAddressDetection[] = "accept_dad";
   static constexpr char kIPFlagAcceptDuplicateAddressDetectionEnabled[] = "1";
@@ -41,17 +39,17 @@ class ProcFsStub {
   // Set an IP configuration flag on the device. |flag| should be the name of
   // the flag to be set and |value| is what this flag should be set to.
   // Overridden by unit tests to pretend writing to procfs.
-  mockable bool SetIPFlag(net_base::IPFamily family,
-                          const std::string& flag,
-                          const std::string& value);
+  virtual bool SetIPFlag(net_base::IPFamily family,
+                         const std::string& flag,
+                         const std::string& value);
 
   // Flush the routing cache for all interfaces. Does not use member variables
   // but declared non-static for mocking.
-  mockable bool FlushRoutingCache();
+  virtual bool FlushRoutingCache();
 
  private:
   const std::string interface_name_;
 };
-}  // namespace shill
+}  // namespace net_base
 
-#endif  // SHILL_NETWORK_PROC_FS_STUB_H_
+#endif  // NET_BASE_PROC_FS_STUB_H_

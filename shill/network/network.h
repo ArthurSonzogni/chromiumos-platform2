@@ -23,6 +23,7 @@
 #include <net-base/ipv6_address.h>
 #include <net-base/network_config.h>
 #include <net-base/network_priority.h>
+#include <net-base/proc_fs_stub.h>
 #include <net-base/rtnl_handler.h>
 
 #include "shill/connection_diagnostics.h"
@@ -34,7 +35,6 @@
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/network_applier.h"
-#include "shill/network/proc_fs_stub.h"
 #include "shill/network/slaac_controller.h"
 #include "shill/portal_detector.h"
 #include "shill/resolver.h"
@@ -437,9 +437,10 @@ class Network {
   void set_dhcp_data_for_testing(const DHCPv4Config::Data data) {
     dhcp_data_ = data;
   }
-  // Take ownership of an external created ProcFsStub and return the point to
-  // internal proc_fs_ after move.
-  ProcFsStub* set_proc_fs_for_testing(std::unique_ptr<ProcFsStub> proc_fs) {
+  // Take ownership of an external created net_base::ProcFsStub and return the
+  // point to internal proc_fs_ after move.
+  net_base::ProcFsStub* set_proc_fs_for_testing(
+      std::unique_ptr<net_base::ProcFsStub> proc_fs) {
     proc_fs_ = std::move(proc_fs);
     return proc_fs_.get();
   }
@@ -570,7 +571,7 @@ class Network {
   //  kIPv4 - IPv4 configuration has been applied (IPv6 can be yes or no).
   std::optional<net_base::IPFamily> primary_family_ = std::nullopt;
 
-  std::unique_ptr<ProcFsStub> proc_fs_;
+  std::unique_ptr<net_base::ProcFsStub> proc_fs_;
 
   std::unique_ptr<DHCPController> dhcp_controller_;
   std::unique_ptr<SLAACController> slaac_controller_;

@@ -14,13 +14,13 @@
 #include <metrics/timer.h>
 #include <net-base/ipv6_address.h>
 #include <net-base/network_config.h>
+#include <net-base/proc_fs_stub.h>
 #include <net-base/rtnl_handler.h>
 #include <net-base/rtnl_listener.h>
 #include <net-base/rtnl_message.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/mockable.h"
-#include "shill/network/proc_fs_stub.h"
 
 namespace shill {
 
@@ -37,7 +37,7 @@ class SLAACController {
   using UpdateCallback = base::RepeatingCallback<void(UpdateType)>;
 
   SLAACController(int interface_index,
-                  ProcFsStub* proc_fs,
+                  net_base::ProcFsStub* proc_fs,
                   net_base::RTNLHandler* rtnl_handler,
                   EventDispatcher* dispatcher);
   virtual ~SLAACController();
@@ -120,7 +120,7 @@ class SLAACController {
   std::unique_ptr<chromeos_metrics::Timer> last_provision_timer_;
 
   // Owned by Network
-  ProcFsStub* proc_fs_;
+  net_base::ProcFsStub* proc_fs_;
 
   net_base::RTNLHandler* rtnl_handler_;
   std::unique_ptr<net_base::RTNLListener> address_listener_;

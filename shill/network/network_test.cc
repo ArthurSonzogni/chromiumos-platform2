@@ -22,6 +22,7 @@
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/mock_proc_fs_stub.h>
 
 #include "shill/http_request.h"
 #include "shill/ipconfig.h"
@@ -35,7 +36,6 @@
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/mock_network_applier.h"
-#include "shill/network/mock_proc_fs_stub.h"
 #include "shill/network/mock_slaac_controller.h"
 #include "shill/network/network_applier.h"
 #include "shill/portal_detector.h"
@@ -234,8 +234,9 @@ class NetworkTest : public ::testing::Test {
     network_->set_dhcp_provider_for_testing(&dhcp_provider_);
     network_->RegisterEventHandler(&event_handler_);
     network_->RegisterEventHandler(&event_handler2_);
-    proc_fs_ = dynamic_cast<MockProcFsStub*>(network_->set_proc_fs_for_testing(
-        std::make_unique<NiceMock<MockProcFsStub>>(kTestIfname)));
+    proc_fs_ = dynamic_cast<net_base::MockProcFsStub*>(
+        network_->set_proc_fs_for_testing(
+            std::make_unique<NiceMock<net_base::MockProcFsStub>>(kTestIfname)));
     EXPECT_CALL(dhcp_provider_, CreateController).Times(0);
     ON_CALL(*network_, CreateSLAACController()).WillByDefault([this]() {
       auto ret = std::make_unique<NiceMock<MockSLAACController>>();
@@ -311,7 +312,7 @@ class NetworkTest : public ::testing::Test {
   // Variables owned by |network_|. Not guaranteed valid even if it's not null.
   MockDHCPController* dhcp_controller_ = nullptr;
   MockSLAACController* slaac_controller_ = nullptr;
-  MockProcFsStub* proc_fs_ = nullptr;
+  net_base::MockProcFsStub* proc_fs_ = nullptr;
 };
 
 TEST_F(NetworkTest, EventHandlerRegistration) {

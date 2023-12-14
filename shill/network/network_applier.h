@@ -14,11 +14,11 @@
 #include <net-base/ip_address.h>
 #include <net-base/network_config.h>
 #include <net-base/network_priority.h>
+#include <net-base/proc_fs_stub.h>
 #include <net-base/rtnl_handler.h>
 
 #include "shill/mockable.h"
 #include "shill/network/address_service.h"
-#include "shill/network/proc_fs_stub.h"
 #include "shill/network/routing_policy_service.h"
 #include "shill/network/routing_table.h"
 #include "shill/technology.h"
@@ -55,7 +55,7 @@ class NetworkApplier {
       std::unique_ptr<RoutingPolicyService> rule_table,
       std::unique_ptr<AddressService> address_service,
       net_base::RTNLHandler* rtnl_handler,
-      std::unique_ptr<ProcFsStub> proc_fs);
+      std::unique_ptr<net_base::ProcFsStub> proc_fs);
 
   // Start the RTNL listeners in subcomponents.
   mockable void Start();
@@ -140,9 +140,9 @@ class NetworkApplier {
   // Cache singleton pointers for performance and test purposes.
   net_base::RTNLHandler* rtnl_handler_;
 
-  // A ProcFsStub instance with no specific interface_name, for the purpose of
-  // calling FlushRoutingCache().
-  std::unique_ptr<ProcFsStub> proc_fs_;
+  // A net_base::ProcFsStub instance with no specific interface_name, for the
+  // purpose of calling FlushRoutingCache().
+  std::unique_ptr<net_base::ProcFsStub> proc_fs_;
 };
 
 inline uint32_t operator&(NetworkApplier::Area a, NetworkApplier::Area b) {

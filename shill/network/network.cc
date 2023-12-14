@@ -27,6 +27,7 @@
 #include <net-base/ipv6_address.h>
 #include <net-base/network_config.h>
 #include <net-base/network_priority.h>
+#include <net-base/proc_fs_stub.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/ipconfig.h"
@@ -35,7 +36,6 @@
 #include "shill/network/compound_network_config.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/network_applier.h"
-#include "shill/network/proc_fs_stub.h"
 #include "shill/network/slaac_controller.h"
 #include "shill/service.h"
 #include "shill/technology.h"
@@ -90,7 +90,7 @@ Network::Network(int interface_index,
       technology_(technology),
       logging_tag_(interface_name),
       fixed_ip_params_(fixed_ip_params),
-      proc_fs_(std::make_unique<ProcFsStub>(interface_name_)),
+      proc_fs_(std::make_unique<net_base::ProcFsStub>(interface_name_)),
       config_(logging_tag_),
       control_interface_(control_interface),
       dispatcher_(dispatcher),
@@ -152,7 +152,7 @@ void Network::Start(const Network::StartOptions& opts) {
   } else if (config_.GetLinkProtocol() &&
              !config_.GetLinkProtocol()->ipv6_addresses.empty()) {
     proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
-                        ProcFsStub::kIPFlagDisableIPv6, "0");
+                        net_base::ProcFsStub::kIPFlagDisableIPv6, "0");
     UpdateIPConfigDBusObject();
     dispatcher_->PostTask(
         FROM_HERE,
@@ -634,10 +634,12 @@ void Network::UpdateIPConfigDBusObject() {
 }
 
 void Network::EnableARPFiltering() {
-  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv4, ProcFsStub::kIPFlagArpAnnounce,
-                      ProcFsStub::kIPFlagArpAnnounceBestLocal);
-  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv4, ProcFsStub::kIPFlagArpIgnore,
-                      ProcFsStub::kIPFlagArpIgnoreLocalOnly);
+  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv4,
+                      net_base::ProcFsStub::kIPFlagArpAnnounce,
+                      net_base::ProcFsStub::kIPFlagArpAnnounceBestLocal);
+  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv4,
+                      net_base::ProcFsStub::kIPFlagArpIgnore,
+                      net_base::ProcFsStub::kIPFlagArpIgnoreLocalOnly);
 }
 
 void Network::SetPriority(net_base::NetworkPriority priority) {

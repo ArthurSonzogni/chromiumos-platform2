@@ -18,6 +18,7 @@
 #include <net-base/http_url.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/proc_fs_stub.h>
 #include <net-base/rtnl_message.h>
 
 namespace shill {
@@ -26,7 +27,7 @@ namespace shill {
 #define ND_OPT_LIFETIME_INFINITY 0xFFFFFFFF
 
 SLAACController::SLAACController(int interface_index,
-                                 ProcFsStub* proc_fs,
+                                 net_base::ProcFsStub* proc_fs,
                                  net_base::RTNLHandler* rtnl_handler,
                                  EventDispatcher* dispatcher)
     : interface_index_(interface_index),
@@ -59,30 +60,34 @@ void SLAACController::Start(
 
   link_local_address_ = link_local_address;
 
-  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6, ProcFsStub::kIPFlagUseTempAddr,
-                      ProcFsStub::kIPFlagUseTempAddrUsedAndDefault);
+  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
+                      net_base::ProcFsStub::kIPFlagUseTempAddr,
+                      net_base::ProcFsStub::kIPFlagUseTempAddrUsedAndDefault);
   proc_fs_->SetIPFlag(
       net_base::IPFamily::kIPv6,
-      ProcFsStub::kIPFlagAcceptDuplicateAddressDetection,
-      ProcFsStub::kIPFlagAcceptDuplicateAddressDetectionEnabled);
-  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
-                      ProcFsStub::kIPFlagAcceptRouterAdvertisements,
-                      ProcFsStub::kIPFlagAcceptRouterAdvertisementsAlways);
+      net_base::ProcFsStub::kIPFlagAcceptDuplicateAddressDetection,
+      net_base::ProcFsStub::kIPFlagAcceptDuplicateAddressDetectionEnabled);
+  proc_fs_->SetIPFlag(
+      net_base::IPFamily::kIPv6,
+      net_base::ProcFsStub::kIPFlagAcceptRouterAdvertisements,
+      net_base::ProcFsStub::kIPFlagAcceptRouterAdvertisementsAlways);
 
   // Temporarily disable IPv6 to remove all existing addresses.
-  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6, ProcFsStub::kIPFlagDisableIPv6,
-                      "1");
+  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
+                      net_base::ProcFsStub::kIPFlagDisableIPv6, "1");
   // If link local address is specified, don't let kernel generate another one.
   proc_fs_->SetIPFlag(
-      net_base::IPFamily::kIPv6, ProcFsStub::kIPFlagAddressGenerationMode,
-      link_local_address_ ? ProcFsStub::kIPFlagAddressGenerationModeNoLinkLocal
-                          : ProcFsStub::kIPFlagAddressGenerationModeDefault);
+      net_base::IPFamily::kIPv6,
+      net_base::ProcFsStub::kIPFlagAddressGenerationMode,
+      link_local_address_
+          ? net_base::ProcFsStub::kIPFlagAddressGenerationModeNoLinkLocal
+          : net_base::ProcFsStub::kIPFlagAddressGenerationModeDefault);
 
   // Re-enable IPv6. If kIPFlagAddressGenerationMode is Default, kernel will
   // start SLAAC upon this. If it is NoLinkLocal, kernel will start SLAAC as
   // soon as we add the link local address manually.
-  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6, ProcFsStub::kIPFlagDisableIPv6,
-                      "0");
+  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
+                      net_base::ProcFsStub::kIPFlagDisableIPv6, "0");
   if (link_local_address_) {
     ConfigureLinkLocalAddress();
   }

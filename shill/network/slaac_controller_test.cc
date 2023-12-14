@@ -11,11 +11,11 @@
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/mock_proc_fs_stub.h>
 #include <net-base/mock_rtnl_handler.h>
 #include <net-base/rtnl_message.h>
 
 #include "shill/network/mock_network.h"
-#include "shill/network/mock_proc_fs_stub.h"
 #include "shill/test_event_dispatcher.h"
 
 using testing::_;
@@ -77,7 +77,7 @@ class SLAACControllerTest : public testing::Test {
   MOCK_METHOD(void, UpdateCallback, (SLAACController::UpdateType));
 
   SLAACController slaac_controller_;
-  MockProcFsStub proc_fs_;
+  net_base::MockProcFsStub proc_fs_;
   net_base::MockRTNLHandler rtnl_handler_;
   MockNetwork network_;
   EventDispatcherForTest dispatcher_;

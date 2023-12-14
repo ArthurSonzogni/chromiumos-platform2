@@ -58,6 +58,7 @@ shared_library("libnet-base") {
     "netlink_socket.cc",
     "network_config.cc",
     "network_priority.cc",
+    "proc_fs_stub.cc",
     "process_manager.cc",
     "rtnl_handler.cc",
     "rtnl_listener.cc",
@@ -109,6 +110,7 @@ if (use.test) {
     sources = [
       "mock_netlink_manager.cc",
       "mock_netlink_socket.cc",
+      "mock_proc_fs_stub.cc",
       "mock_process_manager.cc",
       "mock_rtnl_handler.cc",
       "mock_socket.cc",

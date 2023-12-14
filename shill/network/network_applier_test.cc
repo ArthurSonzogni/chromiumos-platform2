@@ -12,11 +12,11 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <net-base/ip_address.h>
+#include <net-base/mock_proc_fs_stub.h>
 #include <net-base/mock_rtnl_handler.h>
 #include <net-base/network_priority.h>
 
 #include "shill/network/mock_network_applier.h"
-#include "shill/network/mock_proc_fs_stub.h"
 #include "shill/network/mock_routing_policy_service.h"
 #include "shill/network/mock_routing_table.h"
 #include "shill/network/network_applier.h"
@@ -117,7 +117,7 @@ MATCHER_P(IsLinkRouteTo, dst, "") {
 class NetworkApplierTest : public Test {
  public:
   NetworkApplierTest() {
-    auto temp_proc_fs_ptr = std::make_unique<MockProcFsStub>("");
+    auto temp_proc_fs_ptr = std::make_unique<net_base::MockProcFsStub>("");
     proc_fs_ = temp_proc_fs_ptr.get();
     auto temp_address_service_ptr =
         AddressService::CreateForTesting(&address_rtnl_handler_);
@@ -143,7 +143,7 @@ class NetworkApplierTest : public Test {
   AddressService* address_service_;  // mocked at net_base::RTNLHandler level,
                                      // owned by network_applier_
   net_base::MockRTNLHandler rtnl_handler_;
-  MockProcFsStub* proc_fs_;  // owned by network_applier_;
+  net_base::MockProcFsStub* proc_fs_;  // owned by network_applier_;
   std::unique_ptr<NetworkApplier> network_applier_;
 };
 

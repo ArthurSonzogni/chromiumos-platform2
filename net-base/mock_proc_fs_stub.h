@@ -2,19 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NETWORK_MOCK_PROC_FS_STUB_H_
-#define SHILL_NETWORK_MOCK_PROC_FS_STUB_H_
+#ifndef NET_BASE_MOCK_PROC_FS_STUB_H_
+#define NET_BASE_MOCK_PROC_FS_STUB_H_
 
-#include <memory>
 #include <string>
 
 #include <gmock/gmock.h>
 
-#include "shill/network/proc_fs_stub.h"
+#include "net-base/proc_fs_stub.h"
 
-namespace shill {
+namespace net_base {
 
-class MockProcFsStub : public ProcFsStub {
+class NET_BASE_EXPORT MockProcFsStub : public ProcFsStub {
  public:
   explicit MockProcFsStub(const std::string& interface_name);
   MockProcFsStub(const MockProcFsStub&) = delete;
@@ -28,6 +27,6 @@ class MockProcFsStub : public ProcFsStub {
 
   MOCK_METHOD(bool, FlushRoutingCache, (), (override));
 };
-}  // namespace shill
+}  // namespace net_base
 
-#endif  // SHILL_NETWORK_MOCK_PROC_FS_STUB_H_
+#endif  // NET_BASE_MOCK_PROC_FS_STUB_H_
