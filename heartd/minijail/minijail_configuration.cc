@@ -36,6 +36,8 @@ void EnterHeartdMinijail() {
   minijail_mount_with_data(j.get(), "tmpfs", "/run", "tmpfs", 0, "");
   // The socket file for the mojo service manager.
   minijail_bind(j.get(), "/run/mojo", "/run/mojo", 0);
+  // Shared socket file for talking to the D-Bus daemon.
+  minijail_bind(j.get(), "/run/dbus", "/run/dbus", 0);
 
   CHECK_EQ(0, minijail_change_user(j.get(), kHeartdUser));
   CHECK_EQ(0, minijail_change_group(j.get(), kHeartdGroup));

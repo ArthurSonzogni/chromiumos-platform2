@@ -8,13 +8,16 @@
 
 #include <base/task/single_thread_task_runner.h>
 
+#include "heartd/daemon/dbus_connector_impl.h"
+
 namespace heartd {
 
 HeartdDaemon::HeartdDaemon() {
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
       base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
-  action_runner_ = std::make_unique<ActionRunner>();
+  dbus_connector_ = std::make_unique<DbusConnectorImpl>();
+  action_runner_ = std::make_unique<ActionRunner>(dbus_connector_.get());
   heartbeat_manager_ = std::make_unique<HeartbeatManager>();
   mojo_service_ = std::make_unique<HeartdMojoService>(heartbeat_manager_.get(),
                                                       action_runner_.get());

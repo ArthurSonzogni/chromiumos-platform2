@@ -5,13 +5,14 @@
 #ifndef HEARTD_DAEMON_ACTION_RUNNER_H_
 #define HEARTD_DAEMON_ACTION_RUNNER_H_
 
+#include "heartd/daemon/dbus_connector.h"
 #include "heartd/mojom/heartd.mojom.h"
 
 namespace heartd {
 
 class ActionRunner {
  public:
-  ActionRunner();
+  explicit ActionRunner(DbusConnector* dbus_connector);
   ActionRunner(const ActionRunner&) = delete;
   ActionRunner& operator=(const ActionRunner&) = delete;
   ~ActionRunner();
@@ -33,6 +34,9 @@ class ActionRunner {
   void DisableForceRebootAction();
 
  private:
+  // Unowned pointer. Should outlive this instance.
+  // Used to communicate with other D-Bus services.
+  DbusConnector* const dbus_connector_;
   // Allows to normal reboot or not.
   bool allow_normal_reboot_ = false;
   // Allows to force reboot or not.

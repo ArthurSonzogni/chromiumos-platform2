@@ -51,3 +51,9 @@ fcntl: 1
 recvmsg: 1
 memfd_create: 1
 eventfd2: 1
+getresuid: 1
+getresgid: 1
+clock_nanosleep: 1
+getsockname: 1
+poll: 1
+sendmsg: 1

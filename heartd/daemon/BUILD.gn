@@ -7,6 +7,7 @@ import("//common-mk/pkg_config.gni")
 pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
+    "libpower_manager-client",
     "mojo_service_manager",
   ]
 }
@@ -14,6 +15,7 @@ pkg_config("target_defaults") {
 source_set("libheartd") {
   sources = [
     "action_runner.cc",
+    "dbus_connector_impl.cc",
     "heartbeat_manager.cc",
     "heartbeat_tracker.cc",
     "heartd.cc",
@@ -28,7 +30,9 @@ source_set("libheartd") {
 
 if (use.test) {
   source_set("libheartd_test") {
+    pkg_deps = [ "libpower_manager-client-test" ]
     sources = [
+      "action_runner_test.cc",
       "heartbeat_manager_test.cc",
       "heartbeat_tracker_test.cc",
     ]

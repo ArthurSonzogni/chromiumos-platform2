@@ -9,7 +9,12 @@ if (use.test) {
     pkg_deps = [
       "libchrome",
       "libmojo",
+      "libpower_manager-client",
+      "libpower_manager-client-test",
     ]
-    sources = [ "heartd_testrunner.cc" ]
+    sources = [
+      "heartd_testrunner.cc",
+      "mock_dbus_connector.cc",
+    ]
   }
 }
