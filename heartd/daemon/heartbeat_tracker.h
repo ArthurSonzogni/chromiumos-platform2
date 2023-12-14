@@ -16,6 +16,8 @@
 
 namespace heartd {
 
+constexpr base::TimeDelta kMinVerificationWindow = base::Seconds(70);
+
 class HeartbeatTracker : public ash::heartd::mojom::Pacemaker {
  public:
   explicit HeartbeatTracker(
@@ -58,6 +60,11 @@ class HeartbeatTracker : public ash::heartd::mojom::Pacemaker {
   bool stop_monitor_ = false;
   // The time when receiving the last heartbeat.
   base::Time last_touch_time_;
+  // For every verification, we check if there is at least one heartbeat in the
+  // past |verification_window_seconds|. The minimum value of this is 70.
+  base::TimeDelta verification_window_ = kMinVerificationWindow;
+  // |actions_| describes what action to be taken for a specific failure count.
+  std::vector<ash::heartd::mojom::ActionPtr> actions_;
 };
 
 }  // namespace heartd

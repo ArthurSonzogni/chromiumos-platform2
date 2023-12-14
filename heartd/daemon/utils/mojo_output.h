@@ -12,6 +12,7 @@
 namespace heartd {
 
 std::string ToStr(ash::heartd::mojom::ServiceName name);
+std::string ToStr(ash::heartd::mojom::ActionType action);
 
 }  // namespace heartd
 

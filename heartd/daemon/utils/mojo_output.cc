@@ -25,4 +25,17 @@ std::string ToStr(mojom::ServiceName name) {
   }
 }
 
+std::string ToStr(mojom::ActionType action) {
+  switch (action) {
+    case mojom::ActionType::kNoOperation:
+      return "kNoOperation";
+    case mojom::ActionType::kNormalReboot:
+      return "kNormalReboot";
+    case mojom::ActionType::kForceReboot:
+      return "kForceReboot";
+    case mojom::ActionType::kUnmappedEnumField:
+      return "kUnmappedEnumField";
+  }
+}
+
 }  // namespace heartd

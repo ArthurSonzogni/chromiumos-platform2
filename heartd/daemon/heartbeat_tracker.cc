@@ -68,6 +68,11 @@ void HeartbeatTracker::OnPacemakerDisconnect() {
 }
 
 void HeartbeatTracker::SetupArgument(
-    mojom::HeartbeatServiceArgumentPtr argument) {}
+    mojom::HeartbeatServiceArgumentPtr argument) {
+  base::TimeDelta threshold =
+      base::Seconds(argument->verification_window_seconds);
+  verification_window_ = std::max(verification_window_, threshold);
+  actions_ = std::move(argument->actions);
+}
 
 }  // namespace heartd

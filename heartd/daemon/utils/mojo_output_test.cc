@@ -32,6 +32,25 @@ TEST_F(MojoOutputTest, ServiceNameToStr) {
   }
 }
 
+TEST_F(MojoOutputTest, ActionTypeToStr) {
+  auto action = mojom::ActionType::kNoOperation;
+  switch (action) {
+    case mojom::ActionType::kNoOperation:
+      EXPECT_EQ(ToStr(mojom::ActionType::kNoOperation), "kNoOperation");
+      [[fallthrough]];
+    case mojom::ActionType::kNormalReboot:
+      EXPECT_EQ(ToStr(mojom::ActionType::kNormalReboot), "kNormalReboot");
+      [[fallthrough]];
+    case mojom::ActionType::kForceReboot:
+      EXPECT_EQ(ToStr(mojom::ActionType::kForceReboot), "kForceReboot");
+      [[fallthrough]];
+    case mojom::ActionType::kUnmappedEnumField:
+      EXPECT_EQ(ToStr(mojom::ActionType::kUnmappedEnumField),
+                "kUnmappedEnumField");
+      return;
+  }
+}
+
 }  // namespace
 
 }  // namespace heartd

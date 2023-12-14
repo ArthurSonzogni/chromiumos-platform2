@@ -30,6 +30,22 @@ interface HeartbeatService {
 };
 
 struct HeartbeatServiceArgument {
+  // The actions to be taken when the heartbeat is missing.
+  array<Action> actions@0;
+  // For every verification, we check if there is at least one heartbeat in the
+  // past `verification_window_seconds`. It's recommended to set it to a little
+  // larger than the heartbeat rate. The minimum value of this is 70 (The min
+  // heartbeat rate is 60s + buffer time 10s). Client is better to consider the
+  // buffer time since their process may not be real time or high priority.
+  uint32 verification_window_seconds@1;
+};
+
+struct Action {
+  // How many heartbeat consecutive verification failures are required to
+  // perform `action`.
+  uint8 failure_count@0;
+  // The action to perform when failure count is equal to `failure_count`.
+  ActionType action@1;
 };
 
 // Pacemaker interface. Clients hold the remote and use this to send heartbeat
@@ -51,4 +67,13 @@ interface Pacemaker {
 enum ServiceName {
   [Default] kUnmappedEnumField = 0,
   kKiosk = 1,
+};
+
+[Extensible]
+enum ActionType {
+  [Default] kUnmappedEnumField = 0,
+  // No operation.
+  kNoOperation = 1,
+  kNormalReboot = 2,
+  kForceReboot = 3,
 };
