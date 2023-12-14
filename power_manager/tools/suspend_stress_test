@@ -186,7 +186,7 @@ get_verify_s0ix_count() {
 # Returns the Package Cstate residency counter as returned by the kernel.
 # The driver that provides these counters depends on the platform.
 get_pc10_count() {
-  grep 'C10' /sys/kernel/debug/pmc_core/package_cstate_show | \
+  grep -s 'C10' /sys/kernel/debug/pmc_core/package_cstate_show | \
     awk '{print $4}'
 }
 
