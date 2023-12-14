@@ -125,6 +125,38 @@ AltMode* Cable::GetAltMode(int index) {
 }
 
 // Ref:
+//   VESA DisplayPort Alt Mode on USB Type-C Standard, Version 2.1
+//   Figure 5-2.
+bool Cable::DPPDIdentityCheck() {
+  auto product_type = GetIdHeaderVDO() >> kIDHeaderVDOProductTypeBitOffset &
+                      kIDHeaderVDOProductTypeMask;
+
+  // Passive cables must not be USB 2.0 only.
+  if (product_type == kIDHeaderVDOProductTypeCablePassive &&
+      (GetProductTypeVDO1() & kUSBSpeedBitMask) == kUSBSpeed20) {
+    LOG(INFO) << "Passive USB 2.0 cable detected, DPAltMode not supported.";
+    return false;
+  }
+
+  // Active cables must support modal operation, and provide a DPAltMode SVID.
+  if (product_type == kIDHeaderVDOProductTypeCableActive) {
+    if (!(GetIdHeaderVDO() & kIDHeaderVDOModalOperationBitField)) {
+      LOG(INFO) << "Active non-modal cable detected, DPAltMode not supported.";
+      return false;
+    }
+
+    if (!IsAltModeSVIDPresent(kDPAltModeSID)) {
+      LOG(INFO) << "Active non-DP cable detected, DPAltMode not supported.";
+      return false;
+    }
+  }
+
+  // Default to supporting DPAltMode.
+  LOG(INFO) << "Cable passed DPAltMode entry checks.";
+  return true;
+}
+
+// Ref:
 //   USB Type-C Connector Spec, release 2.0
 //   Figure F-1.
 bool Cable::TBT3PDIdentityCheck() {

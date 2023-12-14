@@ -137,7 +137,9 @@ class Port {
   void SetSupportsUSB4(bool enable) { supports_usb4_ = enable; }
 
   // Check whether we can enter DP Alt Mode. This should check for the presence
-  // of required attributes on the Partner and (if applicable) Cable.
+  // of required attributes on the partner and cable. |invalid_cable_flag| is an
+  // optional argument which will be set to true if the partner supports mode
+  // entry and the cable may not be able to drive a display.
   virtual bool CanEnterDPAltMode(bool* invalid_cable_flag);
 
   // Check whether we can enter Thunderbolt Compatibility Alt Mode. This should
@@ -202,6 +204,7 @@ class Port {
   FRIEND_TEST(PortTest, DPAltModeEntryTBT3ToDock);
   FRIEND_TEST(PortTest, DPAltModeEntryUnbrandedUSB2ToDock);
   FRIEND_TEST(PortTest, DPAltModeEntryNekteckUSB2ToDock);
+  FRIEND_TEST(PortTest, DPAltModeEntryBelkinTBT3ToDock);
   FRIEND_TEST(PortTest, DPAltModeEntryCableMattersDock);
   FRIEND_TEST(PortTest, TBTCompatibilityModeEntryCheckTrueStartech);
   FRIEND_TEST(PortTest, TBTCompatibilityModeEntryCheckFalseStartech);

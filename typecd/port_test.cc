@@ -266,8 +266,8 @@ TEST_F(PortTest, DPAltModeEntryUnbrandedUSB2ToDisplay) {
 
 // Check that DP Alt Mode Entry works with cable check for a failing case.
 // Case: The WIMAXIT Type-C display supports DP alternate mode but, a tested
-// Nekteck cable only supports up to USB2. The typec daemon should still try
-// to enter alternate mode but the cable will be flagged as invalid
+// Nekteck cable only supports USB 2.0. For an emarked USB 2.0 only cable,
+// typecd will not enter DPAltMode and warn the user about the cable.
 TEST_F(PortTest, DPAltModeEntryNekteckUSB2ToDisplay) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
@@ -275,7 +275,7 @@ TEST_F(PortTest, DPAltModeEntryNekteckUSB2ToDisplay) {
   AddNekteckUSB2PassiveCable(*port);
 
   bool invalid_dpalt_cable = false;
-  EXPECT_TRUE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
+  EXPECT_FALSE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
   EXPECT_TRUE(invalid_dpalt_cable);
 }
 
@@ -311,8 +311,8 @@ TEST_F(PortTest, DPAltModeEntryUnbrandedUSB2ToDock) {
 
 // Check that DP Alt Mode Entry works with cable check for a failing case.
 // Case: The Thinkpad Dock supports DP alternate mode but a tested Nekteck
-// type-c cable only supports up to USB2. The typec daemon should try to
-// enter DP alternate mode but the cable will be flagged as invalid.
+// type-c cable only supports USB 2.0. For an emarked USB 2.0 only cable,
+// typecd will not enter DPAltMode and warn the user about the cable.
 TEST_F(PortTest, DPAltModeEntryNekteckUSB2ToDock) {
   auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
 
@@ -320,8 +320,19 @@ TEST_F(PortTest, DPAltModeEntryNekteckUSB2ToDock) {
   AddNekteckUSB2PassiveCable(*port);
 
   bool invalid_dpalt_cable = false;
-  EXPECT_TRUE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
+  EXPECT_FALSE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
   EXPECT_TRUE(invalid_dpalt_cable);
+}
+
+// Check that DPAltMode entry fails with the Belkin TBT3 active cable. That
+// cable will not work in DPAltMode, so it should lead to CanEnterDPAltMode
+// returning false which will force TBT3 entry in this case.
+TEST_F(PortTest, DPAltModeEntryBelkinTBT3ToDock) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+  AddThinkpadTBT3Dock(*port);
+  AddBelkinTBT3ActiveCable(*port);
+
+  EXPECT_FALSE(port->CanEnterDPAltMode(nullptr));
 }
 
 // Check that DP Alt Mode Entry works with cable check for a passing case.

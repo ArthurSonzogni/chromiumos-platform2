@@ -70,6 +70,9 @@ class Cable : public Peripheral {
   // alternate modes doesn't exist.
   AltMode* GetAltMode(int index);
 
+  // Check whether the cable supports DPAltMode requirements.
+  bool DPPDIdentityCheck();
+
   // Check whether the cable supports Thunderbolt3 speed requirements.
   bool TBT3PDIdentityCheck();
 

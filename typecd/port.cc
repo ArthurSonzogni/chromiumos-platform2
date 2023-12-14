@@ -180,6 +180,9 @@ VerticalPosition Port::GetVerticalPosition() {
 }
 
 bool Port::CanEnterDPAltMode(bool* invalid_dpalt_cable_ptr) {
+  if (!partner_->SupportsDp())
+    return false;
+
   bool partner_is_receptacle = false;
   for (int i = 0; i < partner_->GetNumAltModes(); i++) {
     auto alt_mode = partner_->GetAltMode(i);
@@ -187,29 +190,35 @@ bool Port::CanEnterDPAltMode(bool* invalid_dpalt_cable_ptr) {
       partner_is_receptacle = true;
   }
 
-  // Partner does not support DPAltMode -> partner error
-  if (!partner_->SupportsDp())
-    return false;
-
-  // If the partner supports DPAltMode and an invalid cable flag is passed to
-  // the function, check to see if the cable also supports DPAltMode.
-  if (invalid_dpalt_cable_ptr != nullptr) {
-    // First assume the cable can support DPAlt mode.
+  // Partner supports DPAltMode. Clear the invalid_dpalt_cable_ptr flag to
+  // assume the cable can support driving displays.
+  if (invalid_dpalt_cable_ptr != nullptr)
     *invalid_dpalt_cable_ptr = false;
 
-    // Missing cable with partner indicating it is not captive -> cable error.
-    if (!cable_ && partner_is_receptacle)
-      *invalid_dpalt_cable_ptr = true;
+  // Only check the cable if the partner is a receptacle.
+  if (partner_is_receptacle) {
+    // Non-emarked cables will not prevent mode entry, but may not support
+    // displays. Return true, but set the invalid_dpalt_cable_ptr flag to
+    // warn the user.
+    if (!cable_ || !(cable_->GetIdHeaderVDO())) {
+      if (invalid_dpalt_cable_ptr != nullptr)
+        *invalid_dpalt_cable_ptr = true;
 
-    // Cable exists and partner supports DPAltMode. If cable is usb2 and the
-    // partner is a receptacle -> cable error.
-    // Otherwise it is a captive cable, and not a cable error.
-    auto speed = cable_->GetProductTypeVDO1() & kUSBSpeedBitMask;
-    if (speed == kUSBSpeed20 && partner_is_receptacle)
-      *invalid_dpalt_cable_ptr = true;
+      return true;
+    }
+
+    // If the cable is emarked, check it's identity to determine mode entry
+    // support. If the idenity check fails, prevent mode entry and set the
+    // invalid_dpalt_cable_ptr flag to warn the user.
+    if (!cable_->DPPDIdentityCheck()) {
+      if (invalid_dpalt_cable_ptr != nullptr)
+        *invalid_dpalt_cable_ptr = true;
+
+      return false;
+    }
   }
 
-  // Partner supports DPAltMode.
+  // Partner and cable support DPAltMode entry.
   return true;
 }
 
