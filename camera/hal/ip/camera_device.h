@@ -6,12 +6,15 @@
 #ifndef CAMERA_HAL_IP_CAMERA_DEVICE_H_
 #define CAMERA_HAL_IP_CAMERA_DEVICE_H_
 
+#include <array>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include <base/memory/read_only_shared_memory_region.h>
+
 #include <base/threading/thread.h>
+#include <base/timer/timer.h>
 #include <camera/camera_metadata.h>
 #include <hardware/camera3.h>
 #include <hardware/camera_common.h>
@@ -27,6 +30,44 @@
 #include "hal/ip/request_queue.h"
 
 namespace cros {
+
+enum class ProfilePoint {
+  kProcessCaptureRequestStart = 0,
+  kProcessCaptureRequestQueued,
+  kFlush,
+  kCopyFromMappingToOutputBufferStart,
+  kCopyFromMappingToOutputBufferEnd,
+  kDecodeJpegStart,
+  kDecodeJpegNoRequest,
+  kDecodeJpegTaskPosted,
+  kDecodeJpegCaptureNotified,
+  kOnFrameCapturedStart,
+  kOnFrameCapturedEmptyRequestQueue,
+  kOnFrameCapturedSharedMemoryError,
+  kOnFrameCapturedJpegPosted,
+  kOnFrameCapturedNoRequest,
+  kOnFrameCapturedYUVCopied,
+  kMaxEnumValue
+};
+
+class FrameStatistics {
+ public:
+  // Periodically (once per minute when CameraDevice is open) log counts of
+  // OnFrameCaptured, DecodeJpeg calls and outcomes.
+  // This class's methods are called from multiple threads, which produce
+  // race conditions in the Log, Reached, and Reset methods.
+  // We intentionally trade accuracy for performance by not locking.
+  void Log();
+  void Reached(const ProfilePoint value);
+  void Reset();
+  void StartTimer();
+  void StopTimer();
+
+ private:
+  base::RepeatingTimer timer_;
+  std::array<int, static_cast<int>(ProfilePoint::kMaxEnumValue)> call_count_ = {
+      0};
+};
 
 class CameraDevice : public mojom::IpCameraFrameListener {
  public:
@@ -78,6 +119,7 @@ class CameraDevice : public mojom::IpCameraFrameListener {
   int width_;
   int height_;
   std::vector<mojom::IpCameraStreamPtr> streams_;
+  FrameStatistics stats_;
   RequestQueue request_queue_;
   scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner_;
   mojo::Receiver<IpCameraFrameListener> receiver_;

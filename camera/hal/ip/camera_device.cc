@@ -12,6 +12,7 @@
 #include <mojo/public/cpp/system/platform_handle.h>
 #include <utility>
 
+#include "absl/strings/str_cat.h"
 #include "cros-camera/common.h"
 #include "cros-camera/ipc_util.h"
 #include "hal/ip/camera_device.h"
@@ -98,6 +99,77 @@ static int camera_device_close(struct hw_device_t* hw_device) {
 
   dev->priv = nullptr;
   return CameraHal::GetInstance().CloseDevice(device->GetId());
+}
+
+static constexpr absl::string_view kProfilePoint[] = {
+    "kProcessCaptureRequestStart",
+    "kProcessCaptureRequestQueued",
+    "kFlush",
+    "kCopyFromMappingToOutputBufferStart",
+    "kCopyFromMappingToOutputBufferEnd",
+    "kDecodeJpegStart",
+    "kDecodeJpegNoRequest",
+    "kDecodeJpegTaskPosted",
+    "kDecodeJpegCaptureNotified",
+    "kOnFrameCapturedStart",
+    "kOnFrameCapturedEmptyRequestQueue",
+    "kOnFrameCapturedSharedMemoryError",
+    "kOnFrameCapturedJpegPosted",
+    "kOnFrameCapturedNoRequest",
+    "kOnFrameCapturedYUVCopied",
+    "kMaxEnumValue",
+};
+
+constexpr int kVerboseFrameThreshold =
+    22 * 60;  // use verbose logging if every part of the pipeline handled at
+              // least 22 fps for 60 seconds
+constexpr float kErrorFramesRatio =
+    1.1;  // error if some part of this code handles
+          // more frames than some other part by 10%
+
+void FrameStatistics::Log() {
+  std::string msg;
+  const int max_enum_value = static_cast<int>(ProfilePoint::kMaxEnumValue);
+  int min_nonzero_count = 0;
+  int max_count = 0;
+  for (int i = 0; i < max_enum_value; ++i) {
+    absl::StrAppend(&msg, kProfilePoint[i], "=", call_count_[i]);
+    if (i < max_enum_value - 1) {
+      absl::StrAppend(&msg, ", ");
+    }
+    if (0 < call_count_[i] &&
+        (call_count_[i] < min_nonzero_count || 0 == min_nonzero_count)) {
+      min_nonzero_count = call_count_[i];
+    }
+    if (max_count < call_count_[i]) {
+      max_count = call_count_[i];
+    }
+  }
+  if (min_nonzero_count > kVerboseFrameThreshold) {
+    VLOGF(1) << "FrameStatistics {" << msg << "}";
+  } else if (min_nonzero_count * kErrorFramesRatio < max_count) {
+    LOGF(ERROR) << "FrameStatistics {" << msg << "}";
+  } else {
+    LOGF(WARNING) << "FrameStatistics {" << msg << "}";
+  }
+  Reset();
+}
+
+void FrameStatistics::Reached(const ProfilePoint value) {
+  ++call_count_[static_cast<int>(value)];
+}
+
+void FrameStatistics::Reset() {
+  call_count_.fill(0);
+}
+
+void FrameStatistics::StartTimer() {
+  timer_.Start(FROM_HERE, base::Seconds(60), this, &FrameStatistics::Log);
+}
+
+void FrameStatistics::StopTimer() {
+  timer_.Stop();
+  Log();
 }
 
 CameraDevice::CameraDevice(int id)
@@ -195,6 +267,7 @@ void CameraDevice::Open(const hw_module_t* module, hw_device_t** hw_device) {
   camera3_device_.common.module = const_cast<hw_module_t*>(module);
   *hw_device = &camera3_device_.common;
   open_ = true;
+  stats_.Reset();
 }
 
 CameraDevice::~CameraDevice() {
@@ -215,6 +288,7 @@ CameraDevice::~CameraDevice() {
 }
 
 void CameraDevice::DestroyOnIpcThread(scoped_refptr<Future<void>> return_val) {
+  stats_.StopTimer();
   ip_device_.reset();
   receiver_.reset();
   return_val->Set();
@@ -259,6 +333,7 @@ void CameraDevice::StopStreamingOnIpcThread(
   if (ip_device_) {
     ip_device_->StopStreaming();
   }
+  stats_.StopTimer();
   return_val->Set();
 }
 
@@ -355,6 +430,7 @@ void CameraDevice::StartStreamingOnIpcThread(
   if (ip_device_) {
     ip_device_->StartStreaming(std::move(stream));
   }
+  stats_.StartTimer();
   return_val->Set();
 }
 
@@ -368,6 +444,7 @@ const camera_metadata_t* CameraDevice::ConstructDefaultRequestSettings(
 }
 
 int CameraDevice::ProcessCaptureRequest(camera3_capture_request_t* request) {
+  stats_.Reached(ProfilePoint::kProcessCaptureRequestStart);
   if (!request) {
     LOGFID(ERROR, id_) << "Received a NULL request";
     return -EINVAL;
@@ -413,16 +490,19 @@ int CameraDevice::ProcessCaptureRequest(camera3_capture_request_t* request) {
       std::make_unique<CaptureRequest>(*request, latest_request_metadata_);
   request_queue_.Push(std::move(capture_request));
 
+  stats_.Reached(ProfilePoint::kProcessCaptureRequestQueued);
   return 0;
 }
 
 int CameraDevice::Flush() {
+  stats_.Reached(ProfilePoint::kFlush);
   request_queue_.Flush();
   return 0;
 }
 
 void CameraDevice::CopyFromMappingToOutputBuffer(
     base::ReadOnlySharedMemoryMapping* mapping, buffer_handle_t* buffer) {
+  stats_.Reached(ProfilePoint::kCopyFromMappingToOutputBufferStart);
   buffer_manager_->Register(*buffer);
   struct android_ycbcr ycbcr;
 
@@ -452,6 +532,7 @@ void CameraDevice::CopyFromMappingToOutputBuffer(
 
   buffer_manager_->Unlock(*buffer);
   buffer_manager_->Deregister(*buffer);
+  stats_.Reached(ProfilePoint::kCopyFromMappingToOutputBufferEnd);
 }
 
 void CameraDevice::ReturnBufferOnIpcThread(int32_t id) {
@@ -463,8 +544,10 @@ void CameraDevice::ReturnBufferOnIpcThread(int32_t id) {
 void CameraDevice::DecodeJpeg(base::ReadOnlySharedMemoryRegion shm,
                               int32_t id,
                               uint32_t size) {
+  stats_.Reached(ProfilePoint::kDecodeJpegStart);
   std::unique_ptr<CaptureRequest> request = request_queue_.Pop();
   if (!request) {
+    stats_.Reached(ProfilePoint::kDecodeJpegNoRequest);
     ipc_task_runner_->PostTask(
         FROM_HERE, base::BindOnce(&CameraDevice::ReturnBufferOnIpcThread,
                                   base::Unretained(this), id));
@@ -494,6 +577,7 @@ void CameraDevice::DecodeJpeg(base::ReadOnlySharedMemoryRegion shm,
                                   base::Unretained(this), id));
     return;
   }
+  stats_.Reached(ProfilePoint::kDecodeJpegTaskPosted);
   ipc_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&CameraDevice::ReturnBufferOnIpcThread,
                                 base::Unretained(this), id));
@@ -507,15 +591,18 @@ void CameraDevice::DecodeJpeg(base::ReadOnlySharedMemoryRegion shm,
   buffer_manager_->Deregister(*buffer);
 
   request_queue_.NotifyCapture(std::move(request));
+  stats_.Reached(ProfilePoint::kDecodeJpegCaptureNotified);
 }
 
 void CameraDevice::OnFrameCaptured(mojo::ScopedSharedBufferHandle shm_handle,
                                    int32_t id,
                                    uint32_t size) {
+  stats_.Reached(ProfilePoint::kOnFrameCapturedStart);
   if (request_queue_.IsEmpty()) {
     if (ip_device_) {
       ip_device_->ReturnBuffer(id);
     }
+    stats_.Reached(ProfilePoint::kOnFrameCapturedEmptyRequestQueue);
     return;
   }
 
@@ -526,6 +613,7 @@ void CameraDevice::OnFrameCaptured(mojo::ScopedSharedBufferHandle shm_handle,
     if (ip_device_) {
       ip_device_->ReturnBuffer(id);
     }
+    stats_.Reached(ProfilePoint::kOnFrameCapturedSharedMemoryError);
     return;
   }
 
@@ -534,6 +622,7 @@ void CameraDevice::OnFrameCaptured(mojo::ScopedSharedBufferHandle shm_handle,
         FROM_HERE,
         base::BindOnce(&CameraDevice::DecodeJpeg, base::Unretained(this),
                        std::move(shm), id, size));
+    stats_.Reached(ProfilePoint::kOnFrameCapturedJpegPosted);
     return;
   }
 
@@ -551,6 +640,7 @@ void CameraDevice::OnFrameCaptured(mojo::ScopedSharedBufferHandle shm_handle,
     if (ip_device_) {
       ip_device_->ReturnBuffer(id);
     }
+    stats_.Reached(ProfilePoint::kOnFrameCapturedNoRequest);
     return;
   }
 
@@ -560,10 +650,12 @@ void CameraDevice::OnFrameCaptured(mojo::ScopedSharedBufferHandle shm_handle,
     ip_device_->ReturnBuffer(id);
   }
   request_queue_.NotifyCapture(std::move(request));
+  stats_.Reached(ProfilePoint::kOnFrameCapturedYUVCopied);
 }
 
 void CameraDevice::OnConnectionError() {
   LOGF(ERROR) << "Lost connection to IP Camera";
+  stats_.StopTimer();
   ip_device_.reset();
   receiver_.reset();
 }
