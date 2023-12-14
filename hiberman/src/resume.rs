@@ -37,7 +37,7 @@ use crate::files::HIBERNATING_USER_FILE;
 use crate::hiberlog::redirect_log;
 use crate::hiberlog::replay_logs;
 use crate::hiberlog::HiberlogOut;
-use crate::hiberlog::LogRedirectGuard;
+use crate::hiberlog::LogFile;
 use crate::hiberutil::get_ram_size;
 use crate::hiberutil::lock_process_memory;
 use crate::hiberutil::path_to_stateful_block;
@@ -303,7 +303,7 @@ impl ResumeConductor {
     /// Inner helper function to read the resume image and launch it.
     fn resume_system(&mut self, mut hibermeta_mount: ActiveMount) -> Result<()> {
         // Start logging to the resume logger.
-        let redirect_guard = LogRedirectGuard::new(HibernateStage::Resume, true)?;
+        let log_file = LogFile::new(HibernateStage::Resume, true)?;
 
         // Let other daemons know it's the end of the world.
         let mut powerd_resume =
@@ -363,7 +363,7 @@ impl ResumeConductor {
         }
 
         // Keep logs in memory for now.
-        mem::drop(redirect_guard);
+        mem::drop(log_file);
 
         hibermeta_mount.unmount()?;
 

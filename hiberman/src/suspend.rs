@@ -34,7 +34,7 @@ use crate::hiberlog::redirect_log;
 use crate::hiberlog::replay_logs;
 use crate::hiberlog::reset_log;
 use crate::hiberlog::HiberlogOut;
-use crate::hiberlog::LogRedirectGuard;
+use crate::hiberlog::LogFile;
 use crate::hiberutil::checked_command_output;
 use crate::hiberutil::get_kernel_restore_time;
 use crate::hiberutil::get_page_size;
@@ -162,7 +162,7 @@ impl SuspendConductor<'_> {
 
         // Stop logging to syslog, and divert instead to a file since the
         // logging daemon's about to be frozen.
-        let redirect_guard = LogRedirectGuard::new(HibernateStage::Suspend, true)?;
+        let log_file = LogFile::new(HibernateStage::Suspend, true)?;
 
         debug!("Syncing filesystems");
         // This is safe because sync() does not modify memory.
@@ -172,7 +172,7 @@ impl SuspendConductor<'_> {
 
         prealloc_mem().context("Failed to preallocate memory for hibernate")?;
 
-        let result = self.suspend_system(hibermeta_mount, redirect_guard);
+        let result = self.suspend_system(hibermeta_mount, log_file);
 
         if result.is_ok() {
             log_metric_event(HibernateEvent::ResumeSuccess);
@@ -204,12 +204,12 @@ impl SuspendConductor<'_> {
     /// and shut down. Returns upon a failure to hibernate, or after a
     /// successful hibernation has resumed.
     ///
-    /// The order of the `hibermeta_mount` and `log_redirect_guard` parameters
+    /// The order of the `hibermeta_mount` and `log_file` parameters
     /// must not be changed!!!
     fn suspend_system(
         &mut self,
         mut hibermeta_mount: ActiveMount,
-        log_redirect_guard: LogRedirectGuard,
+        log_file: LogFile,
     ) -> Result<()> {
         // Push all non-file backed reclaimable memory to zram.
         reclaim_all_processes()
@@ -224,7 +224,7 @@ impl SuspendConductor<'_> {
             metrics_logger.flush()?;
         }
 
-        mem::drop(log_redirect_guard);
+        mem::drop(log_file);
         hibermeta_mount.unmount()?;
 
         self.volume_manager.thicken_hiberimage()?;
@@ -277,7 +277,7 @@ impl SuspendConductor<'_> {
             let pages_with_zeroes = get_number_of_dropped_pages_with_zeroes()?;
             // Briefly remount 'hibermeta' to write logs and metrics.
             let mut hibermeta_mount = self.volume_manager.mount_hibermeta()?;
-            let redirect_guard = LogRedirectGuard::new(HibernateStage::Suspend, false)?;
+            let log_file = LogFile::new(HibernateStage::Suspend, false)?;
 
             let start = Instant::now();
 
@@ -324,7 +324,7 @@ impl SuspendConductor<'_> {
                 info!("Powering off");
             }
 
-            mem::drop(redirect_guard);
+            mem::drop(log_file);
             hibermeta_mount.unmount()?;
 
             // Power the thing down.

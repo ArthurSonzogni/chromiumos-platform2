@@ -252,9 +252,28 @@ where
 
 /// Struct with associated functions for creating and opening hibernate
 /// log files.
+///
+/// The structure will redirect the hibernate logs to a buffer in memory
+/// when the struct goes out of scope.
+///
+/// The struct is used during the suspend and resume process to ensure
+/// that an open log file is always closed before unmounting 'hibermeta'
+/// (which hosts the log file).
 pub struct LogFile {}
 
 impl LogFile {
+    /// Divert the log to a file. If the log was previously pointing to syslog
+    /// those messages are flushed.
+    pub fn new(stage: HibernateStage, create: bool) -> Result<Self> {
+        let log_file = if create {
+            Self::create(stage)
+        } else {
+            Self::open(stage)
+        }?;
+        redirect_log(HiberlogOut::File(Box::new(log_file)));
+        Ok(LogFile {})
+    }
+
     /// Create the log file at given hibernate stage, truncate the file if it already
     /// exists. The file is opened with O_SYNC to make sure data from writes
     /// isn't buffered by the kernel but submitted to storage immediately.
@@ -321,30 +340,7 @@ impl LogFile {
     }
 }
 
-/// Helper struct that redirects the hibernate logs to a buffer in memory
-/// when the struct goes out of scope.
-///
-/// The struct is used during the suspend and resume process to ensure
-/// that an open log file is always closed before unmounting 'hibermeta'
-/// (which hosts the log file).
-pub struct LogRedirectGuard {}
-
-impl LogRedirectGuard {
-    /// Divert the log to a file. If the log was previously pointing to syslog
-    /// those messages are flushed.
-    pub fn new(stage: HibernateStage, create: bool) -> Result<Self> {
-        let log_file = if create {
-            LogFile::create(stage)
-        } else {
-            LogFile::open(stage)
-        }?;
-        redirect_log(HiberlogOut::File(Box::new(log_file)));
-        Ok(LogRedirectGuard {})
-    }
-}
-
-
-impl Drop for LogRedirectGuard {
+impl Drop for LogFile {
     fn drop(&mut self) {
         redirect_log(HiberlogOut::BufferInMemory);
     }
