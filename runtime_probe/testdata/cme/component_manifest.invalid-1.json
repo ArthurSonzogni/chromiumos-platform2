@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "component_list": [
+    {
+      "component_type": "base_sensor",
+      "component_name": "base_sensor_1",
+      "i2c": {
+        "port": 3
+      }
+    }
+  ]
+}
+
