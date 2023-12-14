@@ -17,3 +17,24 @@ interface HeartdControl {
 // NextMinVersion: 0, NextIndex: 0
 interface HeartbeatService {
 };
+
+// Pacemaker interface. Clients hold the remote and use this to send heartbeat
+// or stop the service.
+//
+// NextMinVersion: 1, NextIndex: 2
+interface Pacemaker {
+  // Clients have to call this method periodically to indicate they are alive.
+  // Please call this at most once in a minute to minimize power consumption.
+  SendHeartbeat@0() => ();
+  // After calling this method, heartd will do the necessary clean up. Clients
+  // can drop the connection safely after the callback is invoked.
+  StopMonitor@1() => ();
+};
+
+// Adding new service needs a security review. Please reach out to the heartd
+// service owner as early as possible.
+[Extensible]
+enum ServiceName {
+  [Default] kUnmappedEnumField = 0,
+  kKiosk = 1,
+};

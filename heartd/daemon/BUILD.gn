@@ -13,9 +13,28 @@ pkg_config("target_defaults") {
 
 source_set("libheartd") {
   sources = [
+    "heartbeat_tracker.cc",
     "heartd.cc",
     "mojo_service.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [ "//heartd/mojom:libheartd_mojo_bindings" ]
+  deps = [
+    "//heartd/daemon/utils:utils",
+    "//heartd/mojom:libheartd_mojo_bindings",
+  ]
+}
+
+if (use.test) {
+  source_set("libheartd_test") {
+    sources = [ "heartbeat_tracker_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libheartd",
+      "//heartd/daemon/test_utils:test_utils",
+      "//heartd/daemon/utils:utils_test",
+    ]
+  }
 }

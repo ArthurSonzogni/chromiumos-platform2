@@ -12,6 +12,10 @@ group("all") {
     ":install_seccomp_policy",
     ":install_tmpfiles_config",
   ]
+
+  if (use.test) {
+    deps += [ ":heartd_test" ]
+  }
 }
 
 executable("heartd") {
@@ -48,4 +52,14 @@ install_config("install_seccomp_policy") {
 install_config("install_tmpfiles_config") {
   sources = [ "tmpfiles.d/heartd.conf" ]
   install_path = "tmpfilesd"
+}
+
+if (use.test) {
+  executable("heartd_test") {
+    run_test = true
+    deps = [
+      "//common-mk/testrunner",
+      "//heartd/daemon:libheartd_test",
+    ]
+  }
 }
