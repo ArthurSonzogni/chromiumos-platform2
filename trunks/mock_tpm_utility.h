@@ -379,8 +379,8 @@ class MockTpmUtility : public TpmUtility {
                       const brillo::Blob&,
                       brillo::Blob*,
                       brillo::Blob*));
-  MOCK_METHOD1(FipsGetStatus, TPM_RC(uint32_t*));
-  MOCK_METHOD0(FipsActivate, TPM_RC());
+  MOCK_METHOD1(U2fGetFipsStatus, TPM_RC(bool*));
+  MOCK_METHOD0(ActivateFips, TPM_RC());
   MOCK_METHOD1(GetRsuDeviceId, TPM_RC(std::string*));
   MOCK_METHOD1(GetRoVerificationStatus, TPM_RC(ap_ro_status*));
   MOCK_METHOD(bool, IsGsc, (), (override));

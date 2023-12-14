@@ -10,7 +10,6 @@
 #include <memory>
 #include <optional>
 
-#include <base/big_endian.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/hash/sha1.h>
@@ -89,8 +88,8 @@ constexpr uint8_t kPwLeafTypeNormal = 0;
 constexpr uint8_t kPwLeafTypeBiometrics = 1;
 constexpr uint8_t kPwSecretSize = 32;
 
-constexpr uint8_t kGscFipsCmdGetStatusCode = 0;
 constexpr uint8_t kGscFipsCmdOnCode = 1;
+constexpr uint8_t kGscFipsCmdGetU2fStatusCode = 13;
 
 // Returns a serialized representation of the unmodified handle. This is useful
 // for predefined handle values, like TPM_RH_OWNER. For details on what types of
@@ -3294,26 +3293,24 @@ TPM_RC TpmUtilityImpl::U2fAttest(const brillo::SecureBlob& user_secret,
       });
 }
 
-TPM_RC TpmUtilityImpl::FipsGetStatus(uint32_t* status) {
+TPM_RC TpmUtilityImpl::U2fGetFipsStatus(bool* is_active) {
   if (!IsGsc()) {
     return TPM_RC_FAILURE;
   }
-  std::string command({kGscFipsCmdGetStatusCode});
+  std::string command({kGscFipsCmdGetU2fStatusCode});
   std::string response;
   TPM_RC rc = GscVendorCommand(kGscSubcmdFipsCmd, command, &response);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  if (response.size() != sizeof(*status)) {
+  if (response.size() != 1) {
     return SAPI_RC_BAD_SIZE;
   }
-  // The response FIPS status code is in big-endian representation.
-  base::ReadBigEndian(reinterpret_cast<const uint8_t*>(response.data()),
-                      status);
+  *is_active = (response[0] == 1);
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC TpmUtilityImpl::FipsActivate() {
+TPM_RC TpmUtilityImpl::ActivateFips() {
   if (!IsGsc()) {
     return TPM_RC_FAILURE;
   }

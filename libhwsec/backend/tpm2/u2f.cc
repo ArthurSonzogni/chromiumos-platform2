@@ -40,11 +40,6 @@ constexpr u2f::Config kConfigTpm2{
 constexpr uint32_t kCr50StatusNotAllowed = 0x507;
 constexpr uint32_t kCr50StatusPasswordRequired = 0x50a;
 
-// FIPS status constants directly copied from cr50/board/cr50/dcrypto/fips.h.
-// That header has many other dependencies so will be difficult to copy to
-// trunks, and we only need 1 constant.
-constexpr uint32_t kCr50FipsModeActiveBit = 1 << 31;
-
 // This two functions are needed for backward compatibility. Key handles
 // that were already generated have inserted hash, so we continue to
 // insert/remove them.
@@ -102,13 +97,6 @@ class PublicKeyTpm2 : public u2f::PublicKey {
 
   brillo::Blob data_;
 };
-
-FipsStatus ParseFipsStatusCode(uint32_t fips_status) {
-  if (fips_status & kCr50FipsModeActiveBit) {
-    return FipsStatus::kActive;
-  }
-  return FipsStatus::kNotActive;
-}
 
 }  // namespace
 
@@ -401,11 +389,11 @@ StatusOr<FipsStatus> U2fTpm2::GetFipsStatus() {
   if (fips_status_.has_value()) {
     return *fips_status_;
   }
-  uint32_t fips_status;
+  bool is_active;
   RETURN_IF_ERROR(MakeStatus<TPM2Error>(
-                      context_.GetTpmUtility().FipsGetStatus(&fips_status)))
+                      context_.GetTpmUtility().U2fGetFipsStatus(&is_active)))
       .WithStatus<TPMError>("Failed to get FIPS status");
-  fips_status_ = ParseFipsStatusCode(fips_status);
+  fips_status_ = static_cast<FipsStatus>(is_active);
   return *fips_status_;
 }
 
@@ -417,8 +405,9 @@ Status U2fTpm2::ActivateFips() {
     return OkStatus();
   }
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context_.GetTpmUtility().FipsActivate()))
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().ActivateFips()))
       .WithStatus<TPMError>("Failed to activate FIPS");
+  fips_status_ = FipsStatus::kActive;
   return OkStatus();
 }
 

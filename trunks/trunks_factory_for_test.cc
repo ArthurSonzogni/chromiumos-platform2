@@ -741,11 +741,11 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->U2fAttest(user_secret, format, data, sig_r, sig_s);
   }
 
-  TPM_RC FipsGetStatus(uint32_t* status) override {
-    return target_->FipsGetStatus(status);
+  TPM_RC U2fGetFipsStatus(bool* is_active) override {
+    return target_->U2fGetFipsStatus(is_active);
   }
 
-  TPM_RC FipsActivate() override { return target_->FipsActivate(); }
+  TPM_RC ActivateFips() override { return target_->ActivateFips(); }
 
   TPM_RC GetRsuDeviceId(std::string* device_id) override {
     return target_->GetRsuDeviceId(device_id);

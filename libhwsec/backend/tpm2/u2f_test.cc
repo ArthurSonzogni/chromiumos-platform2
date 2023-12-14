@@ -34,7 +34,6 @@ namespace {
 
 constexpr uint32_t kCr50StatusNotAllowed = 0x507;
 constexpr uint32_t kCr50StatusPasswordRequired = 0x50a;
-constexpr uint32_t kCr50FipsModeActive = 1 << 31;
 
 brillo::Blob GetStubBlob() {
   return brillo::Blob(10, 10);
@@ -474,9 +473,8 @@ TEST_F(BackendU2fTpm2Test, GetFipsStatusActive) {
   EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(version_info), Return(true)));
 
-  EXPECT_CALL(proxy_->GetMockTpmUtility(), FipsGetStatus(_))
-      .WillOnce(DoAll(SetArgPointee<0>(kCr50FipsModeActive),
-                      Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), U2fGetFipsStatus(_))
+      .WillOnce(DoAll(SetArgPointee<0>(true), Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_THAT(backend_->GetU2fTpm2().GetFipsStatus(),
               IsOkAndHolds(u2f::FipsStatus::kActive));
@@ -488,8 +486,8 @@ TEST_F(BackendU2fTpm2Test, GetFipsStatusInactive) {
   EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(version_info), Return(true)));
 
-  EXPECT_CALL(proxy_->GetMockTpmUtility(), FipsGetStatus(_))
-      .WillOnce(DoAll(SetArgPointee<0>(0), Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), U2fGetFipsStatus(_))
+      .WillOnce(DoAll(SetArgPointee<0>(false), Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_THAT(backend_->GetU2fTpm2().GetFipsStatus(),
               IsOkAndHolds(u2f::FipsStatus::kNotActive));
@@ -501,7 +499,7 @@ TEST_F(BackendU2fTpm2Test, GetFipsStatusError) {
   EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(version_info), Return(true)));
 
-  EXPECT_CALL(proxy_->GetMockTpmUtility(), FipsGetStatus(_))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), U2fGetFipsStatus(_))
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
 
   EXPECT_THAT(backend_->GetU2fTpm2().GetFipsStatus(),
@@ -523,10 +521,12 @@ TEST_F(BackendU2fTpm2Test, ActivateFipsSuccess) {
   EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(version_info), Return(true)));
 
-  EXPECT_CALL(proxy_->GetMockTpmUtility(), FipsActivate())
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), ActivateFips())
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   EXPECT_THAT(backend_->GetU2fTpm2().ActivateFips(), IsOk());
+  EXPECT_THAT(backend_->GetU2fTpm2().GetFipsStatus(),
+              IsOkAndHolds(u2f::FipsStatus::kActive));
 }
 
 TEST_F(BackendU2fTpm2Test, ActivateFipsError) {
@@ -535,7 +535,7 @@ TEST_F(BackendU2fTpm2Test, ActivateFipsError) {
   EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(version_info), Return(true)));
 
-  EXPECT_CALL(proxy_->GetMockTpmUtility(), FipsActivate())
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), ActivateFips())
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
 
   EXPECT_THAT(backend_->GetU2fTpm2().ActivateFips(),
