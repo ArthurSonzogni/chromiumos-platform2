@@ -280,8 +280,7 @@ impl SuspendConductor<'_> {
             let pages_with_zeroes = get_number_of_dropped_pages_with_zeroes()?;
             // Briefly remount 'hibermeta' to write logs and metrics.
             let mut hibermeta_mount = self.volume_manager.mount_hibermeta()?;
-            let log_file_path = hiberlog::LogFile::get_path(HibernateStage::Suspend);
-            let log_file = hiberlog::LogFile::open(log_file_path)?;
+            let log_file = hiberlog::LogFile::open(HibernateStage::Suspend)?;
             let redirect_guard = LogRedirectGuard::new(log_file);
 
             let start = Instant::now();

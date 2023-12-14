@@ -57,6 +57,7 @@ lazy_static! {
 }
 
 /// Define the hibernate stages.
+#[derive(Clone,Copy)]
 pub enum HibernateStage {
     Suspend,
     Resume,

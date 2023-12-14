@@ -269,17 +269,19 @@ impl LogFile {
         Self::open_file(path, &opts)
     }
 
-    /// Open an existing log file at the given path. The file is opened with
+    /// Open existing log file at given hibernation stage. The file is opened with
     /// O_SYNC to make sure data from writes isn't buffered by the kernel but
     /// submitted to storage immediately.
-    pub fn open<P: AsRef<Path>>(path: P) -> Result<File> {
-        Self::open_file(
-            path,
-            OpenOptions::new()
-                .read(true)
-                .write(true)
-                .custom_flags(libc::O_SYNC),
-        )
+    pub fn open(stage: HibernateStage) -> Result<File> {
+        let path = Self::get_path(stage);
+
+        let opts = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .custom_flags(libc::O_SYNC)
+            .clone();
+
+        Self::open_file(path, &opts)
     }
 
     /// Get the path of the log file for a given hibernate stage.
@@ -392,7 +394,7 @@ fn replay_log(stage: HibernateStage, clear: bool) {
         return;
     }
 
-    let mut opened_log = match LogFile::open(&path) {
+    let mut opened_log = match LogFile::open(stage) {
         Ok(f) => f,
         Err(e) => {
             warn!("{}", e);
