@@ -843,6 +843,9 @@ TEST_F(OmahaRequestActionTest, ExtraHeadersSentInteractiveTest) {
 
 TEST_F(OmahaRequestActionTest, ExtraHeadersSentNoInteractiveTest) {
   request_params_.set_interactive(false);
+  FakeSystemState::Get()->set_update_attempter(nullptr);
+  ON_CALL(*FakeSystemState::Get()->mock_update_attempter(), IsUpdating())
+      .WillByDefault(Return(true));
   test_http_fetcher_headers_ = true;
   tuc_params_.http_response = "invalid xml>";
   tuc_params_.expected_code = ErrorCode::kOmahaRequestXMLParseError;
@@ -852,6 +855,29 @@ TEST_F(OmahaRequestActionTest, ExtraHeadersSentNoInteractiveTest) {
   ASSERT_FALSE(TestUpdateCheck());
 
   EXPECT_FALSE(response_.update_exists);
+}
+
+TEST_F(OmahaRequestActionTest, NonUpdatesAreAlwaysInForeGround) {
+  request_params_.set_interactive(true);
+  FakeSystemState::Get()->set_update_attempter(nullptr);
+  ON_CALL(*FakeSystemState::Get()->mock_update_attempter(), IsUpdating())
+      .WillByDefault(Return(false));
+  delegate_.interactive_ = true;
+  delegate_.test_http_fetcher_headers_ = true;
+  tuc_params_.http_response = fake_update_response_.GetUpdateResponse();
+  ASSERT_TRUE(TestUpdateCheck());
+}
+
+TEST_F(OmahaRequestActionTest,
+       NonUpdatesAreAlwaysInForeGroundPrecedenceOverParams) {
+  request_params_.set_interactive(false);
+  FakeSystemState::Get()->set_update_attempter(nullptr);
+  ON_CALL(*FakeSystemState::Get()->mock_update_attempter(), IsUpdating())
+      .WillByDefault(Return(false));
+  delegate_.interactive_ = true;
+  delegate_.test_http_fetcher_headers_ = true;
+  tuc_params_.http_response = fake_update_response_.GetUpdateResponse();
+  ASSERT_TRUE(TestUpdateCheck());
 }
 
 TEST_F(OmahaRequestActionTest, ValidUpdateBlockedByConnection) {

@@ -255,9 +255,12 @@ void OmahaRequestAction::PerformAction() {
   string request_post = omaha_request.GetRequest();
 
   // Set X-Goog-Update headers.
-  const auto* params = SystemState::Get()->request_params();
+  auto* system_state = SystemState::Get();
+  const auto* params = system_state->request_params();
+  auto* update_attempter = system_state->update_attempter();
+  bool interactive = params->interactive() || !update_attempter->IsUpdating();
   http_fetcher_->SetHeader(kXGoogleUpdateInteractivity,
-                           params->interactive() ? "fg" : "bg");
+                           interactive ? "fg" : "bg");
   http_fetcher_->SetHeader(kXGoogleUpdateAppId, params->GetAppId());
   http_fetcher_->SetHeader(
       kXGoogleUpdateUpdater,
