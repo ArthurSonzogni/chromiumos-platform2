@@ -10,6 +10,7 @@
 #include <brillo/daemons/daemon.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
+#include "heartd/daemon/action_runner.h"
 #include "heartd/daemon/heartbeat_manager.h"
 #include "heartd/daemon/mojo_service.h"
 #include "heartd/mojom/heartd.mojom.h"
@@ -26,6 +27,8 @@ class HeartdDaemon final : public brillo::Daemon {
  private:
   // For mojo thread initialization.
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
+  // Used to run action.
+  std::unique_ptr<ActionRunner> action_runner_ = nullptr;
   // Used to manage heartbeat service.
   std::unique_ptr<HeartbeatManager> heartbeat_manager_ = nullptr;
   // Used to provide mojo interface to mojo service manager.

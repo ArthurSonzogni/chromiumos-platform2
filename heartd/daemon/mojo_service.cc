@@ -12,6 +12,7 @@
 #include <chromeos/mojo/service_constants.h>
 #include <mojo_service_manager/lib/connect.h>
 
+#include "heartd/daemon/action_runner.h"
 #include "heartd/daemon/utils/mojo_output.h"
 #include "heartd/mojom/heartd.mojom.h"
 
@@ -23,8 +24,9 @@ namespace mojom = ::ash::heartd::mojom;
 
 }  // namespace
 
-HeartdMojoService::HeartdMojoService(HeartbeatManager* heartbeat_manager)
-    : heartbeat_manager_(heartbeat_manager) {
+HeartdMojoService::HeartdMojoService(HeartbeatManager* heartbeat_manager,
+                                     ActionRunner* action_runner)
+    : heartbeat_manager_(heartbeat_manager), action_runner_(action_runner) {
   auto pending_remote =
       chromeos::mojo_service_manager::ConnectToMojoServiceManager();
   CHECK(pending_remote) << "Failed to connect to mojo service manager.";
@@ -60,6 +62,16 @@ void HeartdMojoService::Register(
   heartbeat_manager_->EstablishHeartbeatTracker(name, std::move(receiver),
                                                 std::move(argument));
   std::move(callback).Run(true);
+}
+
+void HeartdMojoService::EnableNormalRebootAction() {
+  LOG(INFO) << "Heartbeat service enables normal reboot action";
+  action_runner_->EnableNormalRebootAction();
+}
+
+void HeartdMojoService::EnableForceRebootAction() {
+  LOG(INFO) << "Heartbeat service enables force reboot action";
+  action_runner_->EnableForceRebootAction();
 }
 
 }  // namespace heartd
