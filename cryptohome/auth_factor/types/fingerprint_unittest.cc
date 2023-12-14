@@ -2,10 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Copyright 2023 The ChromiumOS Authors
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
-
 #include "cryptohome/auth_factor/types/fingerprint.h"
 
 #include <limits>
@@ -30,6 +26,7 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/util/async_init.h"
 
@@ -93,6 +90,7 @@ class FingerprintDriverTest : public AuthFactorDriverGenericTest {
 
   NiceMock<MockPlatform> platform_;
   UssStorage uss_storage_{&platform_};
+  UssManager uss_manager_{uss_storage_};
   MockBiometricsCommandProcessor* bio_command_processor_;
   std::unique_ptr<BiometricsAuthBlockService> bio_service_;
 };
@@ -100,7 +98,7 @@ class FingerprintDriverTest : public AuthFactorDriverGenericTest {
 TEST_F(FingerprintDriverTest, ConvertToProto) {
   // Setup
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, &uss_storage_,
+      &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
   AuthFactorMetadata metadata = CreateMetadataWithType<FingerprintMetadata>();
@@ -126,7 +124,7 @@ TEST_F(FingerprintDriverTest, ConvertToProto) {
 TEST_F(FingerprintDriverTest, ConvertToProtoNullOpt) {
   // Setup
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, &uss_storage_,
+      &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
   AuthFactorMetadata metadata;
@@ -142,7 +140,7 @@ TEST_F(FingerprintDriverTest, ConvertToProtoNullOpt) {
 TEST_F(FingerprintDriverTest, UnsupportedWithVk) {
   // Setup
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, &uss_storage_,
+      &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
@@ -155,7 +153,7 @@ TEST_F(FingerprintDriverTest, UnsupportedWithVk) {
 TEST_F(FingerprintDriverTest, SupportedWithVkUssMix) {
   // Setup
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, &uss_storage_,
+      &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
@@ -170,7 +168,7 @@ TEST_F(FingerprintDriverTest, SupportedWithVkUssMix) {
 TEST_F(FingerprintDriverTest, UnsupportedWithKiosk) {
   // Setup
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, &uss_storage_,
+      &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
@@ -184,7 +182,7 @@ TEST_F(FingerprintDriverTest, UnsupportedWithKiosk) {
 TEST_F(FingerprintDriverTest, UnsupportedByBlock) {
   // Setup
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, &uss_storage_,
+      &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
@@ -199,7 +197,7 @@ TEST_F(FingerprintDriverTest, SupportedByBlock) {
   EXPECT_CALL(hwsec_, IsBiometricsPinWeaverEnabled())
       .WillOnce(ReturnValue(true));
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, &uss_storage_,
+      &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
@@ -212,7 +210,7 @@ TEST_F(FingerprintDriverTest, PrepareForAddFailure) {
   const brillo::Blob kNonce(32, 2);
   // Setup.
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, &uss_storage_,
+      &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
   EXPECT_CALL(*bio_command_processor_, GetNonce(_))
@@ -247,7 +245,7 @@ TEST_F(FingerprintDriverTest, PrepareForAddSuccess) {
   const brillo::Blob kNonce(32, 2);
   // Setup.
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, &uss_storage_,
+      &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
   EXPECT_CALL(*bio_command_processor_, GetNonce(_))
@@ -278,7 +276,7 @@ TEST_F(FingerprintDriverTest, PrepareForAuthenticateFailure) {
   const brillo::Blob kNonce(32, 2);
   // Setup.
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, &uss_storage_,
+      &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
   EXPECT_CALL(*bio_command_processor_, GetNonce(_))
@@ -312,7 +310,7 @@ TEST_F(FingerprintDriverTest, PrepareForAuthenticateSuccess) {
   const brillo::Blob kNonce(32, 2);
   // Setup.
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, &uss_storage_,
+      &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
   EXPECT_CALL(*bio_command_processor_, GetNonce(_))
@@ -342,7 +340,7 @@ TEST_F(FingerprintDriverTest, PrepareForAuthenticateSuccess) {
 
 TEST_F(FingerprintDriverTest, GetDelayFailsWithoutLeLabel) {
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, &uss_storage_,
+      &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
@@ -358,7 +356,7 @@ TEST_F(FingerprintDriverTest, GetDelayFailsWithoutLeLabel) {
 
 TEST_F(FingerprintDriverTest, GetDelayInfinite) {
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, &uss_storage_,
+      &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
@@ -376,7 +374,7 @@ TEST_F(FingerprintDriverTest, GetDelayInfinite) {
 
 TEST_F(FingerprintDriverTest, GetDelayFinite) {
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, &uss_storage_,
+      &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
@@ -394,7 +392,7 @@ TEST_F(FingerprintDriverTest, GetDelayFinite) {
 
 TEST_F(FingerprintDriverTest, GetDelayZero) {
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, &uss_storage_,
+      &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
@@ -412,7 +410,7 @@ TEST_F(FingerprintDriverTest, GetDelayZero) {
 
 TEST_F(FingerprintDriverTest, IsExpiredFailsWithoutLeLabel) {
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, &uss_storage_,
+      &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
@@ -428,7 +426,7 @@ TEST_F(FingerprintDriverTest, IsExpiredFailsWithoutLeLabel) {
 
 TEST_F(FingerprintDriverTest, IsNotExpired) {
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, &uss_storage_,
+      &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
@@ -446,7 +444,7 @@ TEST_F(FingerprintDriverTest, IsNotExpired) {
 
 TEST_F(FingerprintDriverTest, IsExpired) {
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, &uss_storage_,
+      &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
@@ -464,7 +462,7 @@ TEST_F(FingerprintDriverTest, IsExpired) {
 
 TEST_F(FingerprintDriverTest, CreateCredentialVerifierFails) {
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, &uss_storage_,
+      &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 

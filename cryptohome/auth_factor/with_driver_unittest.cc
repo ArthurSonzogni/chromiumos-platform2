@@ -32,6 +32,7 @@
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/util/async_init.h"
 
@@ -112,6 +113,7 @@ class AuthFactorWithDriverTest : public ::testing::Test {
   Crypto crypto_{&hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_,
                  /*recovery_hwsec=*/nullptr};
   UssStorage uss_storage_{&platform_};
+  UssManager uss_manager_{uss_storage_};
   MockFingerprintManager fp_manager_;
   FingerprintAuthBlockService fp_service_{
       AsyncInitPtr<FingerprintManager>(&fp_manager_), base::DoNothing()};
@@ -122,7 +124,7 @@ class AuthFactorWithDriverTest : public ::testing::Test {
   AuthFactorDriverManager manager_{
       &platform_,
       &crypto_,
-      &uss_storage_,
+      &uss_manager_,
       AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
       nullptr,
       &fp_service_,

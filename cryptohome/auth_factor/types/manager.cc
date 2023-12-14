@@ -19,7 +19,7 @@
 #include "cryptohome/auth_factor/types/pin.h"
 #include "cryptohome/auth_factor/types/smart_card.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/user_secret_stash/storage.h"
+#include "cryptohome/user_secret_stash/manager.h"
 
 namespace cryptohome {
 namespace {
@@ -29,7 +29,7 @@ std::unique_ptr<AuthFactorDriver> CreateDriver(
     AuthFactorType auth_factor_type,
     Platform* platform,
     Crypto* crypto,
-    UssStorage* uss_storage,
+    UssManager* uss_manager,
     AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
     KeyChallengeServiceFactory* key_challenge_service_factory,
     FingerprintAuthBlockService* fp_service,
@@ -51,7 +51,7 @@ std::unique_ptr<AuthFactorDriver> CreateDriver(
       return std::make_unique<LegacyFingerprintAuthFactorDriver>(fp_service);
     case AuthFactorType::kFingerprint:
       return std::make_unique<FingerprintAuthFactorDriver>(
-          platform, crypto, uss_storage, bio_service);
+          platform, crypto, uss_manager, bio_service);
     case AuthFactorType::kUnspecified:
       return nullptr;
   }
@@ -62,7 +62,7 @@ std::unordered_map<AuthFactorType, std::unique_ptr<AuthFactorDriver>>
 CreateDriverMap(
     Platform* platform,
     Crypto* crypto,
-    UssStorage* uss_storage,
+    UssManager* uss_manager,
     AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
     KeyChallengeServiceFactory* key_challenge_service_factory,
     FingerprintAuthBlockService* fp_service,
@@ -79,7 +79,7 @@ CreateDriverMap(
            AuthFactorType::kFingerprint,
        }) {
     auto driver =
-        CreateDriver(auth_factor_type, platform, crypto, uss_storage,
+        CreateDriver(auth_factor_type, platform, crypto, uss_manager,
                      challenge_credentials_helper,
                      key_challenge_service_factory, fp_service, bio_service);
     CHECK_NE(driver.get(), nullptr);
@@ -93,7 +93,7 @@ CreateDriverMap(
 AuthFactorDriverManager::AuthFactorDriverManager(
     Platform* platform,
     Crypto* crypto,
-    UssStorage* uss_storage,
+    UssManager* uss_manager,
     AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
     KeyChallengeServiceFactory* key_challenge_service_factory,
     FingerprintAuthBlockService* fp_service,
@@ -101,7 +101,7 @@ AuthFactorDriverManager::AuthFactorDriverManager(
     : null_driver_(std::make_unique<NullAuthFactorDriver>()),
       driver_map_(CreateDriverMap(platform,
                                   crypto,
-                                  uss_storage,
+                                  uss_manager,
                                   challenge_credentials_helper,
                                   key_challenge_service_factory,
                                   fp_service,

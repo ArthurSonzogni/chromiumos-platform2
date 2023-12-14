@@ -53,6 +53,7 @@
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
 #include <libhwsec-foundation/utility/task_dispatching_framework.h>
 #include <metrics/timer.h>
 
@@ -95,11 +96,13 @@
 #include "cryptohome/recoverable_key_store/backend_cert_provider_impl.h"
 #include "cryptohome/signalling.h"
 #include "cryptohome/storage/cryptohome_vault.h"
+#include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/real_user_session_factory.h"
 #include "cryptohome/user_session/user_session.h"
 #include "cryptohome/util/proto_enum.h"
 #include "cryptohome/vault_keyset.h"
+#include "libhwsec-foundation/status/status_chain.h"
 
 using base::FilePath;
 using brillo::Blob;
@@ -840,11 +843,14 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
     default_uss_storage_ = std::make_unique<UssStorage>(platform_);
     uss_storage_ = default_uss_storage_.get();
   }
+  if (!uss_manager_) {
+    uss_manager_ = std::make_unique<UssManager>(*uss_storage_);
+  }
 
   if (!auth_factor_driver_manager_) {
     default_auth_factor_driver_manager_ =
         std::make_unique<AuthFactorDriverManager>(
-            platform_, crypto_, uss_storage_, async_cc_helper,
+            platform_, crypto_, uss_manager_.get(), async_cc_helper,
             key_challenge_service_factory_, fingerprint_service_.get(),
             async_biometrics_service);
     auth_factor_driver_manager_ = default_auth_factor_driver_manager_.get();
@@ -855,8 +861,8 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
         std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
             crypto_, platform_, sessions_, keyset_management_,
             auth_block_utility_, auth_factor_driver_manager_,
-            auth_factor_manager_, uss_storage_, &async_init_features_,
-            async_key_store_cert_provider});
+            auth_factor_manager_, uss_storage_, uss_manager_.get(),
+            &async_init_features_, async_key_store_cert_provider});
     auth_session_manager_ = default_auth_session_manager_.get();
   }
 
@@ -1565,15 +1571,19 @@ user_data_auth::UnmountReply UserDataAuth::Unmount() {
   homedirs_->RemoveCryptohomesBasedOnPolicy();
 
   // Since all the user mounts are now gone, there should not be any active
-  // authsessions left.
-  auth_session_manager_->RemoveAllAuthSessions();
-  CryptohomeStatus result;
+  // authsessions left. Remove them all and discard any loaded state related to
+  // them such as loaded USS data.
+  CryptohomeStatus result = TerminateAuthSessionsAndClearLoadedState();
+
+  // If the unmount failed, reporting the error there takes priority over the
+  // failed termination of auth sessions.
   if (!unmount_ok) {
     result = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUserDataAuthRemoveAllMountsFailedInUnmount),
         ErrorActionSet({PossibleAction::kReboot}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL);
   }
+
   user_data_auth::UnmountReply reply;
   PopulateReplyWithError(result, &reply);
   return reply;
@@ -2338,10 +2348,9 @@ void UserDataAuth::GetRecoverableKeyStores(
   // Load the USS so that we can use it to check the validity of any auth
   // factors being loaded.
   std::set<std::string_view> uss_labels;
-  UserUssStorage user_uss_storage(*uss_storage_, obfuscated_username);
-  auto encrypted_uss = EncryptedUss::FromStorage(user_uss_storage);
+  auto encrypted_uss = uss_manager_->LoadEncrypted(obfuscated_username);
   if (encrypted_uss.ok()) {
-    uss_labels = encrypted_uss->WrappedMainKeyIds();
+    uss_labels = (*encrypted_uss)->WrappedMainKeyIds();
   }
 
   // Load the AuthFactorMap.
@@ -2853,6 +2862,12 @@ void UserDataAuth::PostMountHook(UserSession* user_session,
   }
   LOG(INFO) << "Mount succeeded.";
   InitializePkcs11(user_session);
+}
+
+CryptohomeStatus UserDataAuth::TerminateAuthSessionsAndClearLoadedState() {
+  auth_session_manager_->RemoveAllAuthSessions();
+  RETURN_IF_ERROR(uss_manager_->DiscardAllEncrypted());
+  return OkStatus<CryptohomeError>();
 }
 
 EncryptedContainerType UserDataAuth::DbusEncryptionTypeToContainerType(
@@ -3367,7 +3382,11 @@ void UserDataAuth::EvictDeviceKey(
 
   // If key eviction is successful, we should invalidate all authenticated
   // AuthSessions, similar to unmounting.
-  auth_session_manager_->RemoveAllAuthSessions();
+  if (CryptohomeStatus status = TerminateAuthSessionsAndClearLoadedState();
+      !status.ok()) {
+    ReplyWithError(std::move(on_done), reply, std::move(status));
+    return;
+  }
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 
@@ -3911,10 +3930,9 @@ void UserDataAuth::ListAuthFactors(
     // Load the USS so that we can use it to check the validity of any auth
     // factors being loaded.
     std::set<std::string_view> uss_labels;
-    UserUssStorage user_uss_storage(*uss_storage_, obfuscated_username);
-    auto encrypted_uss = EncryptedUss::FromStorage(user_uss_storage);
+    auto encrypted_uss = uss_manager_->LoadEncrypted(obfuscated_username);
     if (encrypted_uss.ok()) {
-      uss_labels = encrypted_uss->WrappedMainKeyIds();
+      uss_labels = (*encrypted_uss)->WrappedMainKeyIds();
     }
 
     // Prepare the response for configured AuthFactors (with status) with all of

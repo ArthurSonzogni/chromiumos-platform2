@@ -22,16 +22,13 @@
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/user_secret_stash/decrypted.h"
+#include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/user_secret_stash/storage.h"
+#include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
-
 namespace {
-constexpr char kLabel[] = "label";
-constexpr char kPinLabel[] = "pin";
-constexpr char kUser[] = "user";
-constexpr char kMigrationSecretLabel[] = "vk_to_uss_migration_secret_label";
 
 using ::base::test::TestFuture;
 using ::brillo::cryptohome::home::SanitizeUserName;
@@ -40,11 +37,16 @@ using ::testing::Contains;
 using ::testing::NiceMock;
 using ::testing::Not;
 
+constexpr char kLabel[] = "label";
+constexpr char kPinLabel[] = "pin";
+constexpr char kUser[] = "user";
+constexpr char kMigrationSecretLabel[] = "vk_to_uss_migration_secret_label";
+
 class UssMigratorTest : public ::testing::Test {
  protected:
   UssMigratorTest()
-      : file_system_keyset_(FileSystemKeyset::CreateRandom()),
-        username_(kUser),
+      : username_(SanitizeUserName(Username(kUser))),
+        file_system_keyset_(FileSystemKeyset::CreateRandom()),
         migrator_(UssMigrator(username_)) {}
 
   void GenerateVaultKeysets() {
@@ -66,29 +68,32 @@ class UssMigratorTest : public ::testing::Test {
   void CallMigrator(std::string label) {
     auto iter = vk_map_.find(label);
     std::unique_ptr<VaultKeyset> vault_keyset = std::move(iter->second);
-    TestFuture<std::optional<DecryptedUss>> migrate_future;
+    TestFuture<std::optional<UssManager::DecryptToken>> migrate_future;
     migrator_.MigrateVaultKeysetToUss(
-        user_uss_storage_, vault_keyset->GetLabel(), file_system_keyset_,
-        migrate_future.GetCallback());
-    decrypted_uss_ = migrate_future.Take();
+        uss_manager_, user_uss_storage_, vault_keyset->GetLabel(),
+        file_system_keyset_, migrate_future.GetCallback());
+    decrypt_token_ = migrate_future.Take();
   }
 
   void CorruptUssAndResetState() {
-    EXPECT_TRUE(platform_.DeleteFileDurable(UserSecretStashPath(
-        SanitizeUserName(username_), kUserSecretStashDefaultSlot)));
-    decrypted_uss_.reset();
+    EXPECT_TRUE(platform_.DeleteFileDurable(
+        UserSecretStashPath(username_, kUserSecretStashDefaultSlot)));
+    decrypt_token_.reset();
+    EXPECT_THAT(uss_manager_.DiscardEncrypted(username_), IsOk());
     // Create an empty user_secret_stash.
-    EXPECT_TRUE(platform_.TouchFileDurable(UserSecretStashPath(
-        SanitizeUserName(username_), kUserSecretStashDefaultSlot)));
+    EXPECT_TRUE(platform_.TouchFileDurable(
+        UserSecretStashPath(username_, kUserSecretStashDefaultSlot)));
   }
 
   void RemoveMigrationSecretAndResetState() {
-    auto transaction = decrypted_uss_->StartTransaction();
+    DecryptedUss& decrypted_uss = uss_manager_.GetDecrypted(*decrypt_token_);
+    auto transaction = decrypted_uss.StartTransaction();
     EXPECT_THAT(transaction.RemoveWrappingId(kMigrationSecretLabel), IsOk());
     EXPECT_THAT(std::move(transaction).Commit(), IsOk());
-    EXPECT_THAT(decrypted_uss_->encrypted().WrappedMainKeyIds(),
+    EXPECT_THAT(decrypted_uss.encrypted().WrappedMainKeyIds(),
                 Not(Contains(kMigrationSecretLabel)));
-    decrypted_uss_.reset();
+    decrypt_token_.reset();
+    EXPECT_THAT(uss_manager_.DiscardEncrypted(username_), IsOk());
   }
 
   void SetUp() override { GenerateVaultKeysets(); }
@@ -96,62 +101,72 @@ class UssMigratorTest : public ::testing::Test {
   base::test::SingleThreadTaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   FakePlatform platform_;
+  const ObfuscatedUsername username_;
+
   FileSystemKeyset file_system_keyset_;
-  std::optional<DecryptedUss> decrypted_uss_;
   UssStorage uss_storage_{&platform_};
-  UserUssStorage user_uss_storage_{uss_storage_,
-                                   SanitizeUserName(Username(kUser))};
+  UssManager uss_manager_{uss_storage_};
+  UserUssStorage user_uss_storage_{uss_storage_, username_};
   std::map<std::string, std::unique_ptr<VaultKeyset>> vk_map_;
   std::unique_ptr<VaultKeyset> pin_vault_keyset_;
-  const Username username_;
   UssMigrator migrator_;
+
+  std::optional<UssManager::DecryptToken> decrypt_token_;
 };
 
 // Test that user secret stash is created by the migrator if there isn't any
 // existing user secret stash for the user.
 TEST_F(UssMigratorTest, UserSecretStashCreatedIfDoesntExist) {
-  EXPECT_EQ(std::nullopt, decrypted_uss_);
+  EXPECT_EQ(std::nullopt, decrypt_token_);
 
   CallMigrator(kLabel);
-  EXPECT_NE(std::nullopt, decrypted_uss_);
+  EXPECT_NE(std::nullopt, decrypt_token_);
 }
 
 // Test that if there is an existing user secret stash migrator add to the same
 // user secret stash.
 TEST_F(UssMigratorTest, MigratorAppendToTheSameUserSecretStash) {
   CallMigrator(kLabel);
-  EXPECT_THAT(decrypted_uss_->encrypted().WrappedMainKeyIds(),
+  EXPECT_THAT(uss_manager_.GetDecrypted(*decrypt_token_)
+                  .encrypted()
+                  .WrappedMainKeyIds(),
               Contains(kMigrationSecretLabel));
 
   CallMigrator(kPinLabel);
-  EXPECT_THAT(decrypted_uss_->encrypted().WrappedMainKeyIds(),
+  EXPECT_THAT(uss_manager_.GetDecrypted(*decrypt_token_)
+                  .encrypted()
+                  .WrappedMainKeyIds(),
               Contains(kMigrationSecretLabel));
-
-  EXPECT_NE(std::nullopt, decrypted_uss_);
 }
 
-// Test that corrupted user secret stash fails the migration.
-TEST_F(UssMigratorTest, MigrationFailsIfUssCorrupted) {
+// Test that user secret stash is created by the migrator if there is an
+// existing user secret stash but it is corrupt and can't be loaded.
+TEST_F(UssMigratorTest, UserSecretStashCreatedIfUssCorrupted) {
   CallMigrator(kLabel);
-  EXPECT_THAT(decrypted_uss_->encrypted().WrappedMainKeyIds(),
+  EXPECT_THAT(uss_manager_.GetDecrypted(*decrypt_token_)
+                  .encrypted()
+                  .WrappedMainKeyIds(),
               Contains(kMigrationSecretLabel));
 
   CorruptUssAndResetState();
 
+  EXPECT_EQ(std::nullopt, decrypt_token_);
   CallMigrator(kPinLabel);
-  EXPECT_EQ(std::nullopt, decrypted_uss_);
+  EXPECT_NE(std::nullopt, decrypt_token_);
 }
 
 // Test that failure in obtaining migration secret block fails the migration.
 TEST_F(UssMigratorTest, MigrationFailsIfThereIsUssButNoMigrationKey) {
   CallMigrator(kLabel);
-  EXPECT_THAT(decrypted_uss_->encrypted().WrappedMainKeyIds(),
+  EXPECT_THAT(uss_manager_.GetDecrypted(*decrypt_token_)
+                  .encrypted()
+                  .WrappedMainKeyIds(),
               Contains(kMigrationSecretLabel));
 
   RemoveMigrationSecretAndResetState();
 
   CallMigrator(kPinLabel);
-  EXPECT_EQ(std::nullopt, decrypted_uss_);
+  EXPECT_EQ(std::nullopt, decrypt_token_);
 }
 
 }  // namespace

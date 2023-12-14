@@ -49,6 +49,7 @@
 #include "cryptohome/recoverable_key_store/backend_cert_provider.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_secret_stash/decrypted.h"
+#include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/username.h"
@@ -124,6 +125,7 @@ class AuthSession final {
     AuthFactorDriverManager* auth_factor_driver_manager = nullptr;
     AuthFactorManager* auth_factor_manager = nullptr;
     UssStorage* user_secret_stash_storage = nullptr;
+    UssManager* user_secret_stash_manager = nullptr;
     AsyncInitFeatures* features = nullptr;
     AsyncInitPtr<RecoverableKeyStoreBackendCertProvider>
         key_store_cert_provider{nullptr};
@@ -187,7 +189,7 @@ class AuthSession final {
   const AuthFactorMap& auth_factor_map() const { return auth_factor_map_; }
 
   // Indicates if the session has a User Secret Stash enabled.
-  bool has_user_secret_stash() const { return decrypted_uss_.has_value(); }
+  bool has_user_secret_stash() const { return decrypt_token_.has_value(); }
 
   // Indicates if the session has migration to User Secret Stash enabled.
   bool has_migrate_to_user_secret_stash() const {
@@ -197,7 +199,8 @@ class AuthSession final {
   // Indicates if there is a reset_secret in session's User Secret Stash for
   // the given label.
   inline bool HasResetSecretInUssForTesting(const std::string& label) const {
-    return decrypted_uss_ && decrypted_uss_->GetResetSecret(label);
+    return decrypt_token_ &&
+           uss_manager_->GetDecrypted(*decrypt_token_).GetResetSecret(label);
   }
 
   // OnUserCreated is called when the user and their homedir are newly created.
@@ -393,13 +396,14 @@ class AuthSession final {
   // OnMigrationUssCreated is the callback function to be called after
   // migration secret is generated and added to UserSecretStash during the
   // AuthenticateViaVaultKeysetAndMigrateToUss() operation.
-  void OnMigrationUssCreated(AuthBlockType auth_block_type,
-                             AuthFactorType auth_factor_type,
-                             const AuthFactorMetadata& auth_factor_metadata,
-                             const AuthInput& auth_input,
-                             CryptohomeStatus pre_migration_status,
-                             StatusCallback on_done,
-                             std::optional<DecryptedUss> loaded_uss);
+  void OnMigrationUssCreated(
+      AuthBlockType auth_block_type,
+      AuthFactorType auth_factor_type,
+      const AuthFactorMetadata& auth_factor_metadata,
+      const AuthInput& auth_input,
+      CryptohomeStatus pre_migration_status,
+      StatusCallback on_done,
+      std::optional<UssManager::DecryptToken> loaded_token);
 
   // OnMigrationUssCreatedForUpdate is the callback function to be called after
   // migration secret is generated and added to UserSecretStash during the
@@ -413,7 +417,7 @@ class AuthSession final {
       CryptohomeStatus callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_state,
-      std::optional<DecryptedUss> loaded_uss);
+      std::optional<UssManager::DecryptToken> loaded_token);
 
   // Sets |vault_keyset_| for testing purpose.
   void set_vault_keyset_for_testing(std::unique_ptr<VaultKeyset> value) {
@@ -844,10 +848,12 @@ class AuthSession final {
   // The repeating callback to send AuthFactorStatusUpdateSignal.
   AuthFactorStatusUpdateCallback auth_factor_status_update_callback_;
 
-  // The decrypted USS. Only populated if the session is able to decrypt the USS
-  // which generally requires it to have been decrypt-authorized.
-  std::optional<DecryptedUss> decrypted_uss_;
+  // The USS storage and manager. These are used to access the USS.
   UserUssStorage uss_storage_;
+  UssManager* uss_manager_;
+  // The decrypted USS token, set if the session has successfully completed a
+  // USS decryption.
+  std::optional<UssManager::DecryptToken> decrypt_token_;
 
   Crypto* const crypto_;
   Platform* const platform_;

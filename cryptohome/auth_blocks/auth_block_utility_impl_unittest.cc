@@ -68,6 +68,7 @@
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/recoverable_key_store/backend_cert_provider.h"
 #include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
+#include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -187,6 +188,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
       recovery_crypto_fake_backend_;
   Crypto crypto_;
   UssStorage uss_storage_{&platform_};
+  UssManager uss_manager_{uss_storage_};
   std::unique_ptr<KeysetManagement> keyset_management_;
   NiceMock<MockKeyChallengeServiceFactory> key_challenge_service_factory_;
   NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
@@ -199,7 +201,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   AuthFactorDriverManager auth_factor_driver_manager_{
       &platform_,
       &crypto_,
-      &uss_storage_,
+      &uss_manager_,
       AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
       &key_challenge_service_factory_,
       &fp_service_,

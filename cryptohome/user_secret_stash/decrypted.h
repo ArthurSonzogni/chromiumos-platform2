@@ -167,21 +167,21 @@ class DecryptedUss {
   // persisted, the user isn't created successfully so the inconsistency doesn't
   // matter.
   static CryptohomeStatusOr<DecryptedUss> CreateWithMainKey(
-      UserUssStorage& storage,
+      UserUssStorage storage,
       FileSystemKeyset file_system_keyset,
       brillo::SecureBlob main_key);
 
   // This will generate a random main key and call CreateWithMainKey.
   static CryptohomeStatusOr<DecryptedUss> CreateWithRandomMainKey(
-      UserUssStorage& storage, FileSystemKeyset file_system_keyset);
+      UserUssStorage storage, FileSystemKeyset file_system_keyset);
 
   // Attempt to decrypt USS using using the main key.
   static CryptohomeStatusOr<DecryptedUss> FromStorageUsingMainKey(
-      UserUssStorage& storage, brillo::SecureBlob main_key);
+      UserUssStorage storage, brillo::SecureBlob main_key);
 
   // Attempt to decrypt USS using using a wrapped key.
   static CryptohomeStatusOr<DecryptedUss> FromStorageUsingWrappedKey(
-      UserUssStorage& storage,
+      UserUssStorage storage,
       const std::string& wrapping_id,
       const brillo::SecureBlob& wrapping_key);
 
@@ -190,7 +190,7 @@ class DecryptedUss {
   // On failure the returned variant will contain a not-OK status and the
   // original encrypted USS.
   static FailedDecryptOrDecryptedUss FromEncryptedUssUsingWrappedKey(
-      UserUssStorage& storage,
+      UserUssStorage storage,
       EncryptedUss encrypted,
       const std::string& wrapping_id,
       const brillo::SecureBlob& wrapping_key);
@@ -241,12 +241,12 @@ class DecryptedUss {
   // method, and if such routine is performed, the changes would be committed to
   // |storage|.
   static FailedDecryptOrDecryptedUss FromEncryptedUss(
-      UserUssStorage& storage,
+      UserUssStorage storage,
       EncryptedUss encrypted,
       brillo::SecureBlob main_key);
 
   DecryptedUss(
-      UserUssStorage* storage,
+      UserUssStorage storage,
       EncryptedUss encrypted,
       brillo::SecureBlob main_key,
       FileSystemKeyset file_system_keyset,
@@ -255,7 +255,7 @@ class DecryptedUss {
       brillo::SecureBlob key_derivation_seed);
 
   // The underlying storage of the decrypted USS instance.
-  UserUssStorage* storage_;
+  UserUssStorage storage_;
   // The underlying raw data.
   EncryptedUss encrypted_;
   // The main key used to encrypt and decrypt the payload.

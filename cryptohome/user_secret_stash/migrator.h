@@ -13,8 +13,7 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/storage/file_system_keyset.h"
-#include "cryptohome/user_secret_stash/decrypted.h"
-#include "cryptohome/user_secret_stash/storage.h"
+#include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -24,19 +23,20 @@ namespace cryptohome {
 // and AuthFactor.
 class UssMigrator {
  public:
-  explicit UssMigrator(Username username);
+  explicit UssMigrator(ObfuscatedUsername username);
 
   UssMigrator(const UssMigrator&) = delete;
   UssMigrator& operator=(const UssMigrator&) = delete;
 
-  // Called upon completion of USS migration with the DecryptedUss being
+  // Called upon completion of USS migration with the DecryptedUss token being
   // provided when successful and null otherwise.
   using CompletionCallback =
-      base::OnceCallback<void(std::optional<DecryptedUss>)>;
+      base::OnceCallback<void(std::optional<UssManager::DecryptToken>)>;
 
   // The function that migrates the VaultKeyset with |label| and
   // |filesystem_keyset| to AuthFactor and USS.
-  void MigrateVaultKeysetToUss(UserUssStorage& user_secret_stash_storage,
+  void MigrateVaultKeysetToUss(UssManager& uss_manager,
+                               UserUssStorage& user_uss_storage,
                                const std::string& label,
                                const FileSystemKeyset& filesystem_keyset,
                                CompletionCallback completion_callback);
@@ -45,7 +45,7 @@ class UssMigrator {
   // Generates migration secret from the filesystem keyset.
   void GenerateMigrationSecret(const FileSystemKeyset& filesystem_keyset);
 
-  Username username_;
+  ObfuscatedUsername username_;
   std::unique_ptr<brillo::SecureBlob> migration_secret_;
 };
 

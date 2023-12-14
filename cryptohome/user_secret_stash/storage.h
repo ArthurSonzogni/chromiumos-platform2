@@ -39,16 +39,16 @@ class UssStorage final {
   Platform* const platform_;
 };
 
-// Wrapper around UssStorage binds it to a specific user. Individual instances
-// of USS are generally tied to a user and so it's useful to have a single
-// object to pass around.
+// Wrapper around UssStorage that binds it to a specific user. Individual
+// instances of USS are generally tied to a user and so it's useful to have a
+// single object to pass around.
 class UserUssStorage final {
  public:
   UserUssStorage(UssStorage& storage, ObfuscatedUsername username)
       : storage_(&storage), username_(std::move(username)) {}
 
-  UserUssStorage(const UserUssStorage&) = delete;
-  UserUssStorage& operator=(const UserUssStorage&) = delete;
+  UserUssStorage(const UserUssStorage&) = default;
+  UserUssStorage& operator=(const UserUssStorage&) = default;
 
   // These functions are the same was as the UssStorage versions minus the
   // username parameter.
@@ -60,8 +60,8 @@ class UserUssStorage final {
   }
 
  private:
-  UssStorage* const storage_;
-  const ObfuscatedUsername username_;
+  UssStorage* storage_;
+  ObfuscatedUsername username_;
 };
 
 }  // namespace cryptohome

@@ -35,6 +35,7 @@
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
@@ -75,6 +76,7 @@
 #include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_policy_file.h"
+#include "cryptohome/user_secret_stash/decrypted.h"
 #include "cryptohome/user_secret_stash/encrypted.h"
 #include "cryptohome/user_secret_stash/migrator.h"
 #include "cryptohome/user_secret_stash/storage.h"
@@ -387,11 +389,10 @@ std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
     // Load the USS so that we can use it to check the validity of any auth
     // factors being loaded.
     std::set<std::string_view> uss_labels;
-    UserUssStorage uss_storage(*backing_apis.user_secret_stash_storage,
-                               obfuscated_username);
-    auto encrypted_uss = EncryptedUss::FromStorage(uss_storage);
+    auto encrypted_uss = backing_apis.user_secret_stash_manager->LoadEncrypted(
+        obfuscated_username);
     if (encrypted_uss.ok()) {
-      uss_labels = encrypted_uss->WrappedMainKeyIds();
+      uss_labels = (*encrypted_uss)->WrappedMainKeyIds();
     }
 
     // Load all of the auth factors.
@@ -433,6 +434,7 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       auth_session_creation_time_(base::TimeTicks::Now()),
       uss_storage_(*backing_apis.user_secret_stash_storage,
                    obfuscated_username_),
+      uss_manager_(backing_apis.user_secret_stash_manager),
       crypto_(backing_apis.crypto),
       platform_(backing_apis.platform),
       user_session_map_(backing_apis.user_session_map),
@@ -453,6 +455,7 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       auth_factor_map_(std::move(params.auth_factor_map)) {
   CHECK(!serialized_token_.empty());
   CHECK(auth_factor_status_update_timer_);
+  CHECK(uss_manager_);
   CHECK(crypto_);
   CHECK(platform_);
   CHECK(user_session_map_);
@@ -630,11 +633,10 @@ CryptohomeStatus AuthSession::OnUserCreated() {
       file_system_keyset_ = FileSystemKeyset::CreateRandom();
     }
     // Check invariants.
-    CHECK(!decrypted_uss_);
+    CHECK(!decrypt_token_);
     CHECK(file_system_keyset_.has_value());
-    // Create the USS for the newly created
-    // non-ephemeral user. Keep the USS in memory: it will be persisted after
-    // the first auth factor gets added.
+    // Create the USS for the newly created non-ephemeral user. Keep the USS in
+    // memory: it will be persisted after the first auth factor gets added.
     CryptohomeStatusOr<DecryptedUss> new_uss =
         DecryptedUss::CreateWithRandomMainKey(uss_storage_,
                                               *file_system_keyset_);
@@ -649,7 +651,13 @@ CryptohomeStatus AuthSession::OnUserCreated() {
                      CRYPTOHOME_ERROR_MOUNT_FATAL)
           .Wrap(std::move(new_uss).err_status());
     }
-    decrypted_uss_ = std::move(*new_uss);
+    // Attempt to add the new USS to the manager.
+    CryptohomeStatusOr<UssManager::DecryptToken> token =
+        uss_manager_->AddDecrypted(obfuscated_username_, std::move(*new_uss));
+    if (!token.ok()) {
+      return std::move(token).err_status();
+    }
+    decrypt_token_ = std::move(*token);
   }
 
   return OkStatus<CryptohomeError>();
@@ -702,11 +710,12 @@ void AuthSession::MigrateToUssDuringUpdateVaultKeyset(
   AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input,
                         auth_factor_metadata);
 
-  UssMigrator migrator(username_);
+  UssMigrator migrator(obfuscated_username_);
   // FilesystemKeyset is the same for all VaultKeysets hence the session's
   // |file_system_keyset_| is what we need for the migrator.
   migrator.MigrateVaultKeysetToUss(
-      uss_storage_, auth_factor_label, file_system_keyset_.value(),
+      *uss_manager_, uss_storage_, auth_factor_label,
+      file_system_keyset_.value(),
       base::BindOnce(&AuthSession::OnMigrationUssCreatedForUpdate,
                      weak_factory_.GetWeakPtr(), auth_factor_type,
                      auth_factor_label, auth_factor_metadata, auth_input,
@@ -879,10 +888,11 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
   ReportTimerDuration(auth_session_performance_timer.get());
 
   if (auth_for_decrypt_) {
-    UssMigrator migrator(username_);
+    UssMigrator migrator(obfuscated_username_);
 
     migrator.MigrateVaultKeysetToUss(
-        uss_storage_, vault_keyset_->GetLabel(), file_system_keyset_.value(),
+        *uss_manager_, uss_storage_, vault_keyset_->GetLabel(),
+        file_system_keyset_.value(),
         base::BindOnce(
             &AuthSession::OnMigrationUssCreated, weak_factory_.GetWeakPtr(),
             auth_block_type_for_resaved_vk, request_auth_factor_type, metadata,
@@ -902,8 +912,8 @@ void AuthSession::OnMigrationUssCreatedForUpdate(
     CryptohomeStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_block_state,
-    std::optional<DecryptedUss> loaded_uss) {
-  if (!loaded_uss) {
+    std::optional<UssManager::DecryptToken> loaded_token) {
+  if (!loaded_token) {
     LOG(ERROR) << "Uss migration during UpdateVaultKeyset failed for "
                   "VaultKeyset with label: "
                << auth_factor_label;
@@ -914,7 +924,7 @@ void AuthSession::OnMigrationUssCreatedForUpdate(
     return;
   }
 
-  decrypted_uss_ = std::move(loaded_uss);
+  decrypt_token_ = std::move(*loaded_token);
 
   auto migration_performance_timer =
       std::make_unique<AuthSessionPerformanceTimer>(kUSSMigrationTimer);
@@ -935,8 +945,8 @@ void AuthSession::OnMigrationUssCreated(
     const AuthInput& auth_input,
     CryptohomeStatus pre_migration_status,
     StatusCallback on_done,
-    std::optional<DecryptedUss> loaded_uss) {
-  if (!loaded_uss) {
+    std::optional<UssManager::DecryptToken> loaded_token) {
+  if (!loaded_token) {
     LOG(ERROR) << "Uss migration failed for VaultKeyset with label: "
                << key_data_.label();
     // We don't report VK to USS migration status here because it is expected
@@ -946,7 +956,7 @@ void AuthSession::OnMigrationUssCreated(
     return;
   }
 
-  decrypted_uss_ = std::move(loaded_uss);
+  decrypt_token_ = std::move(*loaded_token);
 
   auto migration_performance_timer =
       std::make_unique<AuthSessionPerformanceTimer>(kUSSMigrationTimer);
@@ -996,7 +1006,7 @@ const FileSystemKeyset& AuthSession::file_system_keyset() const {
 }
 
 bool AuthSession::MigrateResetSecretToUss() {
-  CHECK(decrypted_uss_);
+  CHECK(decrypt_token_);
   if (!vault_keyset_->HasWrappedResetSeed()) {
     // Authenticated VaultKeyset doesn't include a reset seed if it is not a
     // password VaultKeyset";
@@ -1004,7 +1014,8 @@ bool AuthSession::MigrateResetSecretToUss() {
   }
 
   bool updated = false;
-  auto transaction = decrypted_uss_->StartTransaction();
+  DecryptedUss& decrypted_uss = uss_manager_->GetDecrypted(*decrypt_token_);
+  auto transaction = decrypted_uss.StartTransaction();
   for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map_) {
     // Look for only pinweaver and VaultKeyset backed AuthFactors.
     if (stored_auth_factor.storage_type() !=
@@ -1017,7 +1028,7 @@ bool AuthSession::MigrateResetSecretToUss() {
     }
 
     // Skip any factors that already have a reset secret in USS.
-    if (decrypted_uss_->GetResetSecret(auth_factor.label())) {
+    if (decrypted_uss.GetResetSecret(auth_factor.label())) {
       continue;
     }
 
@@ -1504,7 +1515,7 @@ void AuthSession::AuthForDecrypt::RemoveAuthFactor(
   }
 
   bool remove_using_vk =
-      !session_->decrypted_uss_ ||
+      !session_->decrypt_token_ ||
       stored_auth_factor->storage_type() == AuthFactorStorageType::kVaultKeyset;
 
   if (!remove_using_vk) {
@@ -1576,12 +1587,10 @@ void AuthSession::RemoveRateLimiters() {
   // Currently fingerprint is the only auth factor type using rate
   // limiter, so the field name isn't generic. We'll make it generic to any
   // auth factor types in the future.
-  CryptohomeStatusOr<EncryptedUss> encrypted_uss =
-      EncryptedUss::FromStorage(uss_storage_);
-  if (!encrypted_uss.ok()) {
-    LOG(WARNING) << "Failed to load the user metadata.";
-    return;
-  }
+  ASSIGN_OR_RETURN(
+      const EncryptedUss* encrypted_uss,
+      uss_manager_->LoadEncrypted(obfuscated_username_),
+      (_.LogWarning() << "Failed to load the user metadata.").ReturnVoid());
   if (!encrypted_uss->fingerprint_rate_limiter_id().has_value()) {
     return;
   }
@@ -1631,7 +1640,7 @@ void AuthSession::RemoveAuthFactorViaUserSecretStash(
     const AuthFactor& auth_factor,
     StatusCallback on_done) {
   // Preconditions.
-  CHECK(decrypted_uss_);
+  CHECK(decrypt_token_);
 
   auth_factor_manager_->RemoveAuthFactor(
       obfuscated_username_, auth_factor, auth_block_utility_,
@@ -1659,9 +1668,9 @@ void AuthSession::ResaveUssWithFactorRemoved(
   // At any step after this point if we fail in updating the USS we still report
   // OkStatus as the final result. The AuthFactor itself is already gone and so
   // no matter how the rest of the cleanup goes the removal has happened.
-
+  DecryptedUss& decrypted_uss = uss_manager_->GetDecrypted(*decrypt_token_);
   {
-    auto transaction = decrypted_uss_->StartTransaction();
+    auto transaction = decrypted_uss.StartTransaction();
     if (auto status = transaction.RemoveWrappingId(auth_factor_label);
         !status.ok()) {
       LOG(ERROR) << "AuthSession: Failed to remove auth factor from user "
@@ -1892,8 +1901,9 @@ void AuthSession::ResaveUssWithFactorUpdated(
     return;
   }
 
+  DecryptedUss& decrypted_uss = uss_manager_->GetDecrypted(*decrypt_token_);
   {
-    auto transaction = decrypted_uss_->StartTransaction();
+    auto transaction = decrypted_uss.StartTransaction();
 
     // Overwrite the existing factor with the new one.
     if (auto status =
@@ -2127,7 +2137,9 @@ void AuthSession::AuthForDecrypt::RelabelAuthFactor(
 
   // Update the USS to move the wrapped key to the new label.
   {
-    auto transaction = session_->decrypted_uss_->StartTransaction();
+    DecryptedUss& decrypted_uss =
+        session_->uss_manager_->GetDecrypted(*session_->decrypt_token_);
+    auto transaction = decrypted_uss.StartTransaction();
     if (auto status = transaction.RenameWrappingId(
             request.auth_factor_label(), request.new_auth_factor_label());
         !status.ok()) {
@@ -2500,7 +2512,9 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactorIntoUss(
   };
 
   {
-    auto transaction = session_->decrypted_uss_->StartTransaction();
+    DecryptedUss& decrypted_uss =
+        session_->uss_manager_->GetDecrypted(*session_->decrypt_token_);
+    auto transaction = decrypted_uss.StartTransaction();
 
     // Add the new factor into the USS and remove the old one.
     if (CryptohomeStatus status = session_->AddAuthFactorToUssTransaction(
@@ -2658,7 +2672,7 @@ void AuthSession::AuthForDecrypt::PrepareAuthFactorForAdd(
   AuthFactorDriver& factor_driver =
       session_->auth_factor_driver_manager_->GetDriver(auth_factor_type);
 
-  if (!session_->decrypted_uss_) {
+  if (!session_->decrypt_token_) {
     // Currently PrepareAuthFactor is only supported for USS.
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionNoUSSInPrepareAuthFactorForAdd),
@@ -2667,9 +2681,11 @@ void AuthSession::AuthForDecrypt::PrepareAuthFactorForAdd(
     std::move(on_done).Run(std::move(status));
     return;
   }
+  DecryptedUss& decrypted_uss =
+      session_->uss_manager_->GetDecrypted(*session_->decrypt_token_);
   if (factor_driver.NeedsRateLimiter()) {
     CryptohomeStatus status = factor_driver.TryCreateRateLimiter(
-        session_->obfuscated_username_, *session_->decrypted_uss_);
+        session_->obfuscated_username_, decrypted_uss);
     if (!status.ok()) {
       std::move(on_done).Run(std::move(status));
       return;
@@ -2986,9 +3002,10 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
 
   std::optional<LockScreenKnowledgeFactorType> lskf_type =
       factor_driver.GetLockScreenKnowledgeFactorType();
-  if (lskf_type.has_value() && decrypted_uss_) {
+  if (lskf_type.has_value() && decrypt_token_) {
+    DecryptedUss& decrypted_uss = uss_manager_->GetDecrypted(*decrypt_token_);
     const SecurityDomainKeys* security_domain_keys =
-        decrypted_uss_->GetSecurityDomainKeys();
+        decrypted_uss.GetSecurityDomainKeys();
     if (!security_domain_keys) {
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(
@@ -3001,9 +3018,10 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
 
   // Types which need rate-limiters are exclusive with those which need
   // per-label reset secrets.
-  if (factor_driver.NeedsRateLimiter() && decrypted_uss_) {
+  if (factor_driver.NeedsRateLimiter() && decrypt_token_) {
+    DecryptedUss& decrypted_uss = uss_manager_->GetDecrypted(*decrypt_token_);
     std::optional<brillo::SecureBlob> reset_secret =
-        decrypted_uss_->GetRateLimiterResetSecret(auth_factor_type);
+        decrypted_uss.GetRateLimiterResetSecret(auth_factor_type);
     if (!reset_secret.has_value()) {
       LOG(ERROR) << "No existing rate-limiter.";
       return MakeStatus<CryptohomeError>(
@@ -3015,7 +3033,7 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
     return std::move(auth_input);
   }
 
-  if (factor_driver.NeedsResetSecret() && decrypted_uss_) {
+  if (factor_driver.NeedsResetSecret() && decrypt_token_) {
     // When using USS, every resettable factor gets a unique reset secret,
     // each of which is generated independently.
     LOG(INFO) << "Adding random reset secret for UserSecretStash.";
@@ -3035,16 +3053,15 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForSelectFactor(
       auth_factor_driver_manager_->GetDriver(auth_factor_type);
   if (factor_driver.NeedsRateLimiter()) {
     // Load the USS to get the raw user metadata directly.
-    CryptohomeStatusOr<EncryptedUss> encrypted_uss =
-        EncryptedUss::FromStorage(uss_storage_);
-    if (!encrypted_uss.ok()) {
-      LOG(ERROR) << "Failed to load the user metadata.";
-      return MakeStatus<CryptohomeError>(
-                 CRYPTOHOME_ERR_LOC(
-                     kLocAuthSessionGetMetadataFailedInAuthInputForSelect),
-                 user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
-          .Wrap(std::move(encrypted_uss).err_status());
-    }
+    ASSIGN_OR_RETURN(
+        const EncryptedUss* encrypted_uss,
+        uss_manager_->LoadEncrypted(obfuscated_username_),
+        _.WithStatus<CryptohomeError>(
+             CRYPTOHOME_ERR_LOC(
+                 kLocAuthSessionGetMetadataFailedInAuthInputForSelect),
+             user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
+                .LogError()
+            << "Failed to load the user metadata.");
 
     // Currently fingerprint is the only auth factor type using rate
     // limiter, so the field name isn't generic. We'll make it generic to any
@@ -3075,7 +3092,7 @@ AuthSession::AuthForDecrypt::CreateAuthInputForPrepareForAdd(
       session_->auth_factor_driver_manager_->GetDriver(auth_factor_type);
 
   if (factor_driver.NeedsRateLimiter()) {
-    if (!session_->decrypted_uss_) {
+    if (!session_->decrypt_token_) {
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocRateLimiterNoUSSInAuthInputForPrepare),
           ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
@@ -3084,10 +3101,12 @@ AuthSession::AuthForDecrypt::CreateAuthInputForPrepareForAdd(
     // Currently fingerprint is the only auth factor type using rate limiter, so
     // the interface isn't designed to be generic. We'll make it generic to any
     // auth factor types in the future.
+    DecryptedUss& decrypted_uss =
+        session_->uss_manager_->GetDecrypted(*session_->decrypt_token_);
     std::optional<uint64_t> rate_limiter_label =
-        session_->decrypted_uss_->encrypted().fingerprint_rate_limiter_id();
+        decrypted_uss.encrypted().fingerprint_rate_limiter_id();
     std::optional<brillo::SecureBlob> reset_secret =
-        session_->decrypted_uss_->GetRateLimiterResetSecret(auth_factor_type);
+        decrypted_uss.GetRateLimiterResetSecret(auth_factor_type);
     if (!rate_limiter_label.has_value() || !reset_secret.has_value()) {
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionNoRateLimiterInAuthInputPrepareAdd),
@@ -3111,15 +3130,13 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForPrepareForAuth(
       auth_factor_driver_manager_->GetDriver(auth_factor_type);
   if (factor_driver.NeedsRateLimiter()) {
     // Load the USS to get the raw user metadata directly.
-    CryptohomeStatusOr<EncryptedUss> encrypted_uss =
-        EncryptedUss::FromStorage(uss_storage_);
-    if (!encrypted_uss.ok()) {
-      return MakeStatus<CryptohomeError>(
-                 CRYPTOHOME_ERR_LOC(
-                     kLocAuthSessionGetMetadataFailedInAuthInputPrepareAuth),
-                 user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
-          .Wrap(std::move(encrypted_uss).err_status());
-    }
+    ASSIGN_OR_RETURN(
+        const EncryptedUss* encrypted_uss,
+        uss_manager_->LoadEncrypted(obfuscated_username_),
+        _.WithStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionGetMetadataFailedInAuthInputPrepareAuth),
+            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
 
     // Currently fingerprint is the only auth factor type using rate
     // limiter, so the field name isn't generic. We'll make it generic to any
@@ -3290,7 +3307,8 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
                          auth_factor_metadata, *auth_block_state);
 
   {
-    auto transaction = decrypted_uss_->StartTransaction();
+    DecryptedUss& decrypted_uss = uss_manager_->GetDecrypted(*decrypt_token_);
+    auto transaction = decrypted_uss.StartTransaction();
 
     // Add the factor into the USS.
     if (auto status =
@@ -3760,16 +3778,15 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   // This unwraps the USS Main Key with the credential secret, and decrypts the
   // USS payload using the USS Main Key. The wrapping_id field is defined equal
   // to the factor's label.
-  CryptohomeStatusOr<DecryptedUss> existing_uss =
-      DecryptedUss::FromStorageUsingWrappedKey(uss_storage_, auth_factor_label,
-                                               *uss_credential_secret);
-  if (!existing_uss.ok()) {
+  auto existing_token = uss_manager_->LoadDecrypted(
+      obfuscated_username_, auth_factor_label, *uss_credential_secret);
+  if (!existing_token.ok()) {
     LOG(ERROR) << "Failed to decrypt the user secret stash";
     std::move(on_done).Run(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocAuthSessionDecryptUSSFailedInLoadUSS),
             user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED)
-            .Wrap(std::move(existing_uss).err_status()));
+            .Wrap(std::move(existing_token).err_status()));
     return;
   }
 
@@ -3781,10 +3798,11 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
     LOG(WARNING) << "Failed to declare TPM firmware stable: " << status;
   }
 
-  decrypted_uss_ = std::move(*existing_uss);
+  decrypt_token_ = std::move(*existing_token);
 
   // Populate data fields from the USS.
-  file_system_keyset_ = decrypted_uss_->file_system_keyset();
+  file_system_keyset_ =
+      uss_manager_->GetDecrypted(*decrypt_token_).file_system_keyset();
 
   CryptohomeStatus prepare_status = OkStatus<error::CryptohomeError>();
   if (auth_intent_ == AuthIntent::kWebAuthn) {
@@ -3971,7 +3989,7 @@ void AuthSession::ResetLECredentials() {
     local_reset_seed = vault_keyset_->GetResetSeed();
   }
 
-  if (!decrypted_uss_ && local_reset_seed.empty()) {
+  if (!decrypt_token_ && local_reset_seed.empty()) {
     LOG(ERROR)
         << "No user secret stash or VK available to reset LE credentials.";
     return;
@@ -4000,8 +4018,9 @@ void AuthSession::ResetLECredentials() {
     brillo::SecureBlob reset_secret;
     std::optional<brillo::SecureBlob> reset_secret_uss;
     // Get the reset secret from the USS for this auth factor label.
-    if (decrypted_uss_) {
-      reset_secret_uss = decrypted_uss_->GetResetSecret(auth_factor.label());
+    if (decrypt_token_) {
+      DecryptedUss& decrypted_uss = uss_manager_->GetDecrypted(*decrypt_token_);
+      reset_secret_uss = decrypted_uss.GetResetSecret(auth_factor.label());
     }
 
     if (reset_secret_uss.has_value()) {
@@ -4046,18 +4065,19 @@ void AuthSession::ResetLECredentials() {
 
 void AuthSession::ResetRateLimiterCredentials(
     AuthFactorDriver::ResetCapability capability) {
-  if (!decrypted_uss_) {
+  if (!decrypt_token_) {
     return;
   }
+  DecryptedUss& decrypted_uss = uss_manager_->GetDecrypted(*decrypt_token_);
   std::optional<uint64_t> rate_limiter_label =
-      decrypted_uss_->encrypted().fingerprint_rate_limiter_id();
+      decrypted_uss.encrypted().fingerprint_rate_limiter_id();
   if (!rate_limiter_label.has_value()) {
     return;
   }
 
   // Currently only fingerprint auth factor has a rate-limiter.
   std::optional<brillo::SecureBlob> reset_secret =
-      decrypted_uss_->GetRateLimiterResetSecret(AuthFactorType::kFingerprint);
+      decrypted_uss.GetRateLimiterResetSecret(AuthFactorType::kFingerprint);
   if (!reset_secret.has_value()) {
     LOG(WARNING) << "Fingerprint rate-limiter has no reset secret in USS.";
     return;
@@ -4132,11 +4152,9 @@ bool AuthSession::NeedsFullAuthForReset(
   }
 
   // Check if the rate-limiter needs reset.
-  CryptohomeStatusOr<EncryptedUss> encrypted_uss =
-      EncryptedUss::FromStorage(uss_storage_);
-  if (!encrypted_uss.ok()) {
-    return false;
-  }
+  ASSIGN_OR_RETURN(const EncryptedUss* encrypted_uss,
+                   uss_manager_->LoadEncrypted(obfuscated_username_),
+                   _.As(false));
   if (!encrypted_uss->fingerprint_rate_limiter_id().has_value()) {
     return false;
   }
@@ -4225,11 +4243,11 @@ void AuthSession::MaybeUpdateRecoverableKeyStore(const AuthFactor& auth_factor,
       auth_factor_driver_manager_->GetDriver(auth_factor.type());
   std::optional<LockScreenKnowledgeFactorType> lskf_type =
       factor_driver.GetLockScreenKnowledgeFactorType();
-  if (!lskf_type.has_value() || !decrypted_uss_) {
+  if (!lskf_type.has_value() || !decrypt_token_) {
     return;
   }
   const SecurityDomainKeys* security_domain_keys =
-      decrypted_uss_->GetSecurityDomainKeys();
+      uss_manager_->GetDecrypted(*decrypt_token_).GetSecurityDomainKeys();
   if (!security_domain_keys) {
     LOG(WARNING) << "Failed to get security domain keys.";
     return;

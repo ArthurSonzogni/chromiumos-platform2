@@ -69,6 +69,7 @@
 #include "cryptohome/recoverable_key_store/type.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_mount.h"
+#include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/real_user_session.h"
@@ -320,6 +321,7 @@ class AuthSessionTest : public ::testing::Test {
   Crypto crypto_{&hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_,
                  nullptr};
   UssStorage uss_storage_{&platform_};
+  UssManager uss_manager_{uss_storage_};
   UserUssStorage user_uss_storage_{uss_storage_,
                                    SanitizeUserName(kFakeUsername)};
   UserSessionMap user_session_map_;
@@ -335,7 +337,7 @@ class AuthSessionTest : public ::testing::Test {
   AuthFactorDriverManager auth_factor_driver_manager_{
       &platform_,
       &crypto_,
-      &uss_storage_,
+      &uss_manager_,
       AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
       &key_challenge_service_factory_,
       fp_service_.get(),
@@ -353,6 +355,7 @@ class AuthSessionTest : public ::testing::Test {
       &auth_factor_driver_manager_,
       &auth_factor_manager_,
       &uss_storage_,
+      &uss_manager_,
       &fake_features_.async,
       AsyncInitPtr<RecoverableKeyStoreBackendCertProvider>(base::BindRepeating(
           [](AuthSessionTest* test) -> RecoverableKeyStoreBackendCertProvider* {

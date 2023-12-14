@@ -309,15 +309,10 @@ CryptohomeStatusOr<base::TimeDelta> FingerprintAuthFactorDriver::GetFactorDelay(
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
-  UserUssStorage user_storage(*uss_storage_, username);
-  CryptohomeStatusOr<EncryptedUss> uss =
-      EncryptedUss::FromStorage(user_storage);
-  if (!uss.ok()) {
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocAuthFactorFingerprintGetFactorDelayLoadMetadataFailed))
-        .Wrap(std::move(uss).err_status());
-  }
+  ASSIGN_OR_RETURN(
+      const EncryptedUss* uss, uss_manager_->LoadEncrypted(username),
+      _.WithStatus<CryptohomeError>(CRYPTOHOME_ERR_LOC(
+          kLocAuthFactorFingerprintGetFactorDelayLoadMetadataFailed)));
   if (!uss->fingerprint_rate_limiter_id()) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorFingerprintGetFactorDelayNoLabel),
@@ -355,15 +350,10 @@ CryptohomeStatusOr<bool> FingerprintAuthFactorDriver::IsExpired(
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
-  UserUssStorage user_storage(*uss_storage_, username);
-  CryptohomeStatusOr<EncryptedUss> uss =
-      EncryptedUss::FromStorage(user_storage);
-  if (!uss.ok()) {
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocAuthFactorFingerprintIsExpiredLoadMetadataFailed))
-        .Wrap(std::move(uss).err_status());
-  }
+  ASSIGN_OR_RETURN(const EncryptedUss* uss,
+                   uss_manager_->LoadEncrypted(username),
+                   _.WithStatus<CryptohomeError>(CRYPTOHOME_ERR_LOC(
+                       kLocAuthFactorFingerprintIsExpiredLoadMetadataFailed)));
   if (!uss->fingerprint_rate_limiter_id()) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorFingerprintIsExpiredNoLabel),

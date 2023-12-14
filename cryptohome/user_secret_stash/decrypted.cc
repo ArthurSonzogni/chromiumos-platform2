@@ -29,7 +29,6 @@
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_secret_stash/encrypted.h"
 #include "cryptohome/user_secret_stash/storage.h"
-#include "cryptohome/username.h"
 
 namespace cryptohome {
 namespace {
@@ -385,7 +384,7 @@ CryptohomeStatus DecryptedUss::Transaction::Commit() && {
       rate_limiter_reset_secrets_, uss_.key_derivation_seed_, container_));
   EncryptedUss encrypted_uss(std::move(container_));
   // Persist the new encrypted data out to storage.
-  RETURN_IF_ERROR(encrypted_uss.ToStorage(*uss_.storage_));
+  RETURN_IF_ERROR(encrypted_uss.ToStorage(uss_.storage_));
   // The stored USS is updated so push the updates in-memory as well.
   uss_.encrypted_ = std::move(encrypted_uss);
   uss_.reset_secrets_ = std::move(reset_secrets_);
@@ -404,7 +403,7 @@ DecryptedUss::Transaction::Transaction(
       rate_limiter_reset_secrets_(std::move(rate_limiter_reset_secrets)) {}
 
 CryptohomeStatusOr<DecryptedUss> DecryptedUss::CreateWithMainKey(
-    UserUssStorage& storage,
+    UserUssStorage storage,
     FileSystemKeyset file_system_keyset,
     brillo::SecureBlob main_key) {
   // Check that the given key has the correct size.
@@ -423,39 +422,39 @@ CryptohomeStatusOr<DecryptedUss> DecryptedUss::CreateWithMainKey(
   RETURN_IF_ERROR(EncryptIntoContainer(main_key, file_system_keyset, {}, {},
                                        key_derivation_seed, container));
 
-  return DecryptedUss(&storage, EncryptedUss(std::move(container)),
+  return DecryptedUss(std::move(storage), EncryptedUss(std::move(container)),
                       std::move(main_key), std::move(file_system_keyset), {},
                       {}, key_derivation_seed);
 }
 
 CryptohomeStatusOr<DecryptedUss> DecryptedUss::CreateWithRandomMainKey(
-    UserUssStorage& storage, FileSystemKeyset file_system_keyset) {
+    UserUssStorage storage, FileSystemKeyset file_system_keyset) {
   // Generate a new main key and delegate to the WithMainKey factor.
-  return CreateWithMainKey(storage, std::move(file_system_keyset),
+  return CreateWithMainKey(std::move(storage), std::move(file_system_keyset),
                            CreateSecureRandomBlob(kAesGcm256KeySize));
 }
 
 CryptohomeStatusOr<DecryptedUss> DecryptedUss::FromStorageUsingMainKey(
-    UserUssStorage& storage, brillo::SecureBlob main_key) {
+    UserUssStorage storage, brillo::SecureBlob main_key) {
   ASSIGN_OR_RETURN(EncryptedUss encrypted, EncryptedUss::FromStorage(storage));
-  return DropEncryptedUssFromStatus(
-      FromEncryptedUss(storage, std::move(encrypted), std::move(main_key)));
+  return DropEncryptedUssFromStatus(FromEncryptedUss(
+      std::move(storage), std::move(encrypted), std::move(main_key)));
 }
 
 CryptohomeStatusOr<DecryptedUss> DecryptedUss::FromStorageUsingWrappedKey(
-    UserUssStorage& storage,
+    UserUssStorage storage,
     const std::string& wrapping_id,
     const brillo::SecureBlob& wrapping_key) {
   ASSIGN_OR_RETURN(EncryptedUss encrypted, EncryptedUss::FromStorage(storage));
   ASSIGN_OR_RETURN(brillo::SecureBlob main_key,
                    encrypted.UnwrapMainKey(wrapping_id, wrapping_key));
-  return DropEncryptedUssFromStatus(
-      FromEncryptedUss(storage, std::move(encrypted), std::move(main_key)));
+  return DropEncryptedUssFromStatus(FromEncryptedUss(
+      std::move(storage), std::move(encrypted), std::move(main_key)));
 }
 
 DecryptedUss::FailedDecryptOrDecryptedUss
 DecryptedUss::FromEncryptedUssUsingWrappedKey(
-    UserUssStorage& storage,
+    UserUssStorage storage,
     EncryptedUss encrypted,
     const std::string& wrapping_id,
     const brillo::SecureBlob& wrapping_key) {
@@ -466,11 +465,12 @@ DecryptedUss::FromEncryptedUssUsingWrappedKey(
         .encrypted = std::move(encrypted),
     };
   }
-  return FromEncryptedUss(storage, std::move(encrypted), std::move(*main_key));
+  return FromEncryptedUss(std::move(storage), std::move(encrypted),
+                          std::move(*main_key));
 }
 
 DecryptedUss::FailedDecryptOrDecryptedUss DecryptedUss::FromEncryptedUss(
-    UserUssStorage& storage,
+    UserUssStorage storage,
     EncryptedUss encrypted,
     brillo::SecureBlob main_key) {
   // Use the main key to decrypt the USS payload.
@@ -561,7 +561,7 @@ DecryptedUss::FailedDecryptOrDecryptedUss DecryptedUss::FromEncryptedUss(
   }
 
   DecryptedUss decrypted(
-      &storage, std::move(encrypted), std::move(main_key),
+      std::move(storage), std::move(encrypted), std::move(main_key),
       std::move(*file_system_keyset), std::move(reset_secrets),
       std::move(rate_limiter_reset_secrets), std::move(key_derivation_seed));
   if (needs_commit) {
@@ -640,21 +640,19 @@ DecryptedUss::Transaction DecryptedUss::StartTransaction() {
 }
 
 DecryptedUss::DecryptedUss(
-    UserUssStorage* storage,
+    UserUssStorage storage,
     EncryptedUss encrypted,
     brillo::SecureBlob main_key,
     FileSystemKeyset file_system_keyset,
     std::map<std::string, brillo::SecureBlob> reset_secrets,
     std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets,
     brillo::SecureBlob key_derivation_seed)
-    : storage_(storage),
+    : storage_(std::move(storage)),
       encrypted_(std::move(encrypted)),
       main_key_(std::move(main_key)),
       file_system_keyset_(std::move(file_system_keyset)),
       reset_secrets_(std::move(reset_secrets)),
       rate_limiter_reset_secrets_(std::move(rate_limiter_reset_secrets)),
-      key_derivation_seed_(key_derivation_seed) {
-  CHECK(storage);
-}
+      key_derivation_seed_(key_derivation_seed) {}
 
 }  // namespace cryptohome

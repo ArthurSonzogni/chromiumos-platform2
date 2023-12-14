@@ -23,24 +23,26 @@
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
-
 namespace {
-using brillo::cryptohome::home::SanitizeUserName;
-using cryptohome::error::CryptohomeError;
-using cryptohome::error::ReapAndReportError;
-using hwsec::StatusOr;
-using hwsec_foundation::HmacSha256;
-using hwsec_foundation::status::OkStatus;
+
+using ::cryptohome::error::CryptohomeError;
+using ::cryptohome::error::ReapAndReportError;
+using ::hwsec::StatusOr;
+using ::hwsec_foundation::HmacSha256;
+using ::hwsec_foundation::status::OkStatus;
 
 constexpr char kMigrationSecretDerivationPublicInfo[] =
     "CHROMEOS_USS_MIGRATION_SECRET";
 constexpr char kMigrationSecretLabel[] = "vk_to_uss_migration_secret_label";
+
 }  // namespace
 
-UssMigrator::UssMigrator(Username username) : username_(std::move(username)) {}
+UssMigrator::UssMigrator(ObfuscatedUsername username)
+    : username_(std::move(username)) {}
 
 void UssMigrator::MigrateVaultKeysetToUss(
-    UserUssStorage& user_secret_stash_storage,
+    UssManager& uss_manager,
+    UserUssStorage& user_uss_storage,
     const std::string& label,
     const FileSystemKeyset& filesystem_keyset,
     CompletionCallback completion_callback) {
@@ -53,13 +55,12 @@ void UssMigrator::MigrateVaultKeysetToUss(
   // credentials are migrated to AuthFactors and USS.
 
   // Load the USS container with the encrypted payload.
-  std::optional<DecryptedUss> decrypted_uss;
-  if (!user_secret_stash_storage.LoadPersisted().ok()) {
-    // If no UserSecretStash file found for the user create a new
-    // UserSecretStash from the passed VaultKeyset and add the migration_secret
-    // block.
-    auto new_uss = DecryptedUss::CreateWithRandomMainKey(
-        user_secret_stash_storage, filesystem_keyset);
+  std::optional<UssManager::DecryptToken> decrypt_token;
+  if (!uss_manager.LoadEncrypted(username_).ok()) {
+    // If no USS for the user can be loaded at all create a new UserSecretStash
+    // from the passed VaultKeyset and add the migration_secret block.
+    auto new_uss = DecryptedUss::CreateWithRandomMainKey(user_uss_storage,
+                                                         filesystem_keyset);
     if (!new_uss.ok()) {
       LOG(ERROR) << "UserSecretStash creation failed during migration of "
                     "VaultKeyset with label: "
@@ -70,8 +71,20 @@ void UssMigrator::MigrateVaultKeysetToUss(
       std::move(completion_callback).Run(std::nullopt);
       return;
     }
+    auto new_token = uss_manager.AddDecrypted(username_, std::move(*new_uss));
+    if (!new_token.ok()) {
+      LOG(ERROR) << "UserSecretStash addition failed during migration of "
+                    "VaultKeyset with label: "
+                 << label;
+      ReapAndReportError(std::move(new_token).status(),
+                         kCryptohomeErrorUssMigrationErrorBucket);
+      ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedUssCreation);
+      std::move(completion_callback).Run(std::nullopt);
+      return;
+    }
     {
-      auto transaction = new_uss->StartTransaction();
+      DecryptedUss& decrypted_uss = uss_manager.GetDecrypted(*new_token);
+      auto transaction = decrypted_uss.StartTransaction();
       if (auto status = transaction.InsertWrappedMainKey(kMigrationSecretLabel,
                                                          *migration_secret_);
           !status.ok()) {
@@ -94,24 +107,23 @@ void UssMigrator::MigrateVaultKeysetToUss(
         return;
       }
     }
-    decrypted_uss = std::move(*new_uss);
+    decrypt_token = std::move(*new_token);
   } else {
     // Decrypt the existing UserSecretStash payload with the migration secret
     // and obtain the main key.
-    auto existing_uss = DecryptedUss::FromStorageUsingWrappedKey(
-        user_secret_stash_storage, kMigrationSecretLabel, *migration_secret_);
-    if (!existing_uss.ok()) {
+    auto existing_token = uss_manager.LoadDecrypted(
+        username_, kMigrationSecretLabel, *migration_secret_);
+    if (!existing_token.ok()) {
       LOG(ERROR) << "Failed to decrypt the UserSecretStash during migration.";
-      ReapAndReportError(std::move(existing_uss).status(),
+      ReapAndReportError(std::move(existing_token).status(),
                          kCryptohomeErrorUssMigrationErrorBucket);
       ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedUssDecrypt);
       std::move(completion_callback).Run(std::nullopt);
       return;
     }
-    decrypted_uss = std::move(*existing_uss);
+    decrypt_token = std::move(*existing_token);
   }
-
-  std::move(completion_callback).Run(std::move(*decrypted_uss));
+  std::move(completion_callback).Run(std::move(decrypt_token));
 }
 
 void UssMigrator::GenerateMigrationSecret(

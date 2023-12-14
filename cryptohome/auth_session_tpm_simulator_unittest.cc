@@ -312,6 +312,7 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
       hwsec_cryptohome_frontend_.get(), hwsec_pinweaver_manager_frontend.get(),
       &cryptohome_keys_manager_, hwsec_recovery_crypto_frontend_.get()};
   UssStorage uss_storage_{&platform_};
+  UssManager uss_manager_{uss_storage_};
   UserSessionMap user_session_map_;
   KeysetManagement keyset_management_{&platform_, &crypto_,
                                       std::make_unique<VaultKeysetFactory>()};
@@ -332,7 +333,7 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
   AuthFactorDriverManager auth_factor_driver_manager_{
       &platform_,
       &crypto_,
-      &uss_storage_,
+      &uss_manager_,
       AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
       nullptr,
       fp_service_.get(),
@@ -347,6 +348,7 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
                                          &auth_factor_driver_manager_,
                                          &auth_factor_manager_,
                                          &uss_storage_,
+                                         &uss_manager_,
                                          &features_.async};
 };
 

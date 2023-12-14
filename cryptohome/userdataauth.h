@@ -60,6 +60,7 @@
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_factory.h"
 #include "cryptohome/user_policy_file.h"
+#include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/user_session.h"
 #include "cryptohome/user_session/user_session_factory.h"
@@ -890,6 +891,10 @@ class UserDataAuth {
   // Not applicable to guest user.
   void PostMountHook(UserSession* user_session, const MountStatus& error);
 
+  // Helper that will attempt to terminate all existing auth sessions and clear
+  // any existing loaded state: USS and AuthFactor objects loaded from storage.
+  CryptohomeStatus TerminateAuthSessionsAndClearLoadedState();
+
   // Converts the Dbus value for encryption type into internal representation.
   EncryptedContainerType DbusEncryptionTypeToContainerType(
       user_data_auth::VaultEncryptionType type);
@@ -1242,6 +1247,8 @@ class UserDataAuth {
   // Usually set to |default_uss_storage_|, but can be overridden
   // for tests.
   UssStorage* uss_storage_ = nullptr;
+  // Manages all of the loaded USS objects.
+  std::unique_ptr<UssManager> uss_manager_;
 
   // Records the UserSession objects associated with each username.
   // This and its content should only be accessed from the mount thread.

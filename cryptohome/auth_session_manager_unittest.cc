@@ -28,6 +28,7 @@
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/user_session_map.h"
 
@@ -95,6 +96,7 @@ class AuthSessionManagerTest : public ::testing::Test {
   Crypto crypto_{&hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_,
                  nullptr};
   UssStorage uss_storage_{&platform_};
+  UssManager uss_manager_{uss_storage_};
   UserSessionMap user_session_map_;
   NiceMock<MockKeysetManagement> keyset_management_;
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
@@ -103,7 +105,7 @@ class AuthSessionManagerTest : public ::testing::Test {
   AuthFactorDriverManager auth_factor_driver_manager_{
       &platform_,
       &crypto_,
-      &uss_storage_,
+      &uss_manager_,
       AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
       nullptr,
       fp_service_.get(),
@@ -118,6 +120,7 @@ class AuthSessionManagerTest : public ::testing::Test {
                                          &auth_factor_driver_manager_,
                                          &auth_factor_manager_,
                                          &uss_storage_,
+                                         &uss_manager_,
                                          &features_.async};
   AuthSessionManager auth_session_manager_{backing_apis_};
 };
@@ -149,12 +152,10 @@ TEST_F(AuthSessionManagerTest, CreateExpire) {
 
   // Create a pair of auth sessions. Before they're authenticated they should
   // have infinite time remaining.
-  for (auto& token : tokens) {
-    token = auth_session_manager_.CreateAuthSession(kUsername, 0,
-                                                    AuthIntent::kDecrypt);
-    InUseAuthSession auth_session = TakeAuthSession(token);
-    ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
-  }
+  tokens[0] = auth_session_manager_.CreateAuthSession(kUsername, 0,
+                                                      AuthIntent::kDecrypt);
+  tokens[1] = auth_session_manager_.CreateAuthSession(kUsername2, 0,
+                                                      AuthIntent::kDecrypt);
   for (const auto& token : tokens) {
     InUseAuthSession in_use_auth_session = TakeAuthSession(token);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
@@ -193,9 +194,11 @@ TEST_F(AuthSessionManagerTest, ExtendExpire) {
 
   // Create and set up a pair of auth sessions, setting them to authenticated so
   // that they can eventually get expired.
+  tokens[0] = auth_session_manager_.CreateAuthSession(kUsername, 0,
+                                                      AuthIntent::kDecrypt);
+  tokens[1] = auth_session_manager_.CreateAuthSession(kUsername2, 0,
+                                                      AuthIntent::kDecrypt);
   for (auto& token : tokens) {
-    token = auth_session_manager_.CreateAuthSession(kUsername, 0,
-                                                    AuthIntent::kDecrypt);
     InUseAuthSession auth_session = TakeAuthSession(token);
     ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
     EXPECT_THAT(auth_session->OnUserCreated(), IsOk());

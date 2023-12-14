@@ -44,6 +44,7 @@ class AuthFactorDriverManagerTest : public ::testing::Test {
                  /*recovery_hwsec=*/nullptr};
   MockFingerprintManager fp_manager_;
   UssStorage uss_storage_{&platform_};
+  UssManager uss_manager_{uss_storage_};
   FingerprintAuthBlockService fp_service_{
       AsyncInitPtr<FingerprintManager>(&fp_manager_), base::DoNothing()};
 
@@ -51,7 +52,7 @@ class AuthFactorDriverManagerTest : public ::testing::Test {
   AuthFactorDriverManager manager_{
       &platform_,
       &crypto_,
-      &uss_storage_,
+      &uss_manager_,
       AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
       nullptr,
       &fp_service_,
