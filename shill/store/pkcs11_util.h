@@ -5,6 +5,7 @@
 #ifndef SHILL_STORE_PKCS11_UTIL_H_
 #define SHILL_STORE_PKCS11_UTIL_H_
 
+#include <optional>
 #include <string>
 #include <string_view>
 
