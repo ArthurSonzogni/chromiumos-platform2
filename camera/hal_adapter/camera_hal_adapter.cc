@@ -401,6 +401,10 @@ mojom::SetEffectResult CameraHalAdapter::SetCameraEffect(
   return mojom::SetEffectResult::kOk;
 }
 
+mojom::EffectsConfigPtr CameraHalAdapter::GetCameraEffect() {
+  return stream_manipulator_runtime_options_.GetEffectsConfig();
+}
+
 void CameraHalAdapter::SetCameraDiagnosticsConfig(
     CameraDiagnosticsConfig* config) {
   camera_diagnostics_config_ = config;

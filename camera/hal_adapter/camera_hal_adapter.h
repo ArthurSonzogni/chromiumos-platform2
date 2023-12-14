@@ -119,6 +119,8 @@ class CameraHalAdapter {
 
   mojom::SetEffectResult SetCameraEffect(mojom::EffectsConfigPtr config);
 
+  mojom::EffectsConfigPtr GetCameraEffect();
+
   void SetCameraDiagnosticsConfig(CameraDiagnosticsConfig* config);
 
  protected:

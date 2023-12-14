@@ -166,8 +166,15 @@ void CameraHalServerImpl::IPCBridge::SetAutoFramingState(
 void CameraHalServerImpl::IPCBridge::SetCameraEffect(
     mojom::EffectsConfigPtr config,
     mojom::CrosCameraService::SetCameraEffectCallback callback) {
-  std::move(callback).Run(
-      camera_hal_adapter_->SetCameraEffect(std::move(config)));
+  mojom::SetEffectResult result =
+      camera_hal_adapter_->SetCameraEffect(config->Clone());
+  std::move(callback).Run(result);
+  if (result == mojom::SetEffectResult::kOk) {
+    mojom::EffectsConfigPtr currentConfig = camera_hal_adapter_->GetCameraEffect();
+    for (auto& observer : observers_) {
+      observer->CameraEffectChange(currentConfig->Clone());
+    }
+  }
 }
 
 void CameraHalServerImpl::IPCBridge::GetCameraSWPrivacySwitchState(
@@ -263,6 +270,8 @@ void CameraHalServerImpl::IPCBridge::AddCrosCameraServiceObserver(
   DCHECK(camera_hal_adapter_);
   observers_.Get(id)->CameraSWPrivacySwitchStateChange(
       camera_hal_adapter_->GetCameraSWPrivacySwitchState());
+  observers_.Get(id)->CameraEffectChange(
+      camera_hal_adapter_->GetCameraEffect());
 }
 
 int CameraHalServerImpl::LoadCameraHal() {
