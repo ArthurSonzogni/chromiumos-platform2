@@ -16,7 +16,7 @@
  */
 
 /* Print a message, without a prefix. */
-void MCTK_INFO(std::string_view msg);
+void MCTK_VERBOSE(std::string_view msg);
 
 /* Print a message, prefixed with the caller's name. */
 void MCTK_ERR(std::string_view msg,

@@ -15,6 +15,8 @@
 #include "tools/mctk/routing.h"
 #include "tools/mctk/yaml_tree.h"
 
+extern int mctk_verbosity;
+
 namespace {
 
 void PrintUsage(char* progname) {
@@ -39,6 +41,8 @@ void PrintUsage(char* progname) {
       "Options, executed in the order they are passed in:\n"
       "\n"
       "  -h, --help                    Print this help message.\n"
+      "\n"
+      "  -v, --verbose                 Increase verbosity.\n"
       "\n"
       "  -d, --load-device <devfile>   Work on a real /dev/mediaX device.\n"
       "                                All changes will be sent to the "
@@ -68,6 +72,8 @@ int main(int argc, char** argv) {
   static struct option long_options[] = {
       {"help", 0, 0, 'h'},
 
+      {"verbose", 0, 0, 'v'},
+
       {"load-device", 1, 0, 'd'},
 
       {"load-yaml", 1, 0, 10001},  {"dump-yaml", 1, 0, 10002},
@@ -83,12 +89,16 @@ int main(int argc, char** argv) {
   }
 
   /* Process arguments one by one, like a command list */
-  while ((opt = getopt_long(argc, argv, "hd:r", long_options, &option_index)) !=
-         -1) {
+  while ((opt = getopt_long(argc, argv, "hvd:r", long_options,
+                            &option_index)) != -1) {
     switch (opt) {
       default:
       case 'h':
         PrintUsage(argv[0]);
+        break;
+
+      case 'v':
+        ++mctk_verbosity;
         break;
 
       case 'd': /* --load-device */ {
@@ -122,7 +132,7 @@ int main(int argc, char** argv) {
           return EXIT_FAILURE;
         }
 
-        MCTK_INFO("Resetting links.");
+        MCTK_VERBOSE("Resetting links.");
         mcdev->ResetLinks();
 
         break;
@@ -229,7 +239,7 @@ int main(int argc, char** argv) {
           return EXIT_FAILURE;
         }
 
-        MCTK_INFO("Autorouting sensors.");
+        MCTK_VERBOSE("Autorouting sensors.");
         V4lMcRouteSensors(*mcdev);
 
         break;

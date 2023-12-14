@@ -13,8 +13,14 @@
 #include <source_location>
 #include <string_view>
 
+/* Global variable */
+int mctk_verbosity = 0;
+
 /* Print a message, without a prefix. */
-void MCTK_INFO(std::string_view msg) {
+void MCTK_VERBOSE(std::string_view msg) {
+  if (mctk_verbosity < 1)
+    return;
+
   std::cerr << msg << std::endl;
 }
 
