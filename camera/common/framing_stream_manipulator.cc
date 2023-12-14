@@ -20,6 +20,7 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/system/sys_info.h>
 #include <base/task/bind_post_task.h>
 #include <sys/types.h>
 
@@ -244,6 +245,44 @@ bool IsFullCrop(const Rect<float>& rect) {
   return rect.width >= 1.0 - kThreshold || rect.height >= 1.0 - kThreshold;
 }
 
+// Gets the crop region in the capture request, if exists and is valid, and
+// normalized with active array size.
+std::optional<Rect<float>> GetManualZoomRequest(
+    const base::span<const int32_t>& crop_region, const Size& active_array) {
+  if (crop_region.size() != 4) {
+    return std::nullopt;
+  }
+
+  uint32_t active_width = active_array.width;
+  uint32_t active_height = active_array.height;
+  int32_t crop_x = crop_region[0];
+  int32_t crop_y = crop_region[1];
+  int32_t crop_width = crop_region[2];
+  int32_t crop_height = crop_region[3];
+
+  // Validate crop region.
+  if (crop_x < 0 || crop_width <= 0 || crop_y < 0 || crop_height <= 0 ||
+      crop_x + crop_width > active_width ||
+      crop_y + crop_height > active_height) {
+    VLOG(1) << "Invalid crop window specified for manual zoom";
+    return std::nullopt;
+  }
+
+  // Normalize crop region with ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE.
+  auto normalized_crop_region =
+      Rect<float>(static_cast<float>(crop_region[0]) / active_array.width,
+                  static_cast<float>(crop_region[1]) / active_array.height,
+                  static_cast<float>(crop_region[2]) / active_array.width,
+                  static_cast<float>(crop_region[3]) / active_array.height);
+
+  // There is no need to do manual zoom if the crop region is the full frame.
+  if (IsFullCrop(normalized_crop_region)) {
+    return std::nullopt;
+  }
+
+  return normalized_crop_region;
+}
+
 }  // namespace
 
 //
@@ -301,6 +340,51 @@ FramingStreamManipulator::~FramingStreamManipulator() {
   gpu_resources_->PostGpuTaskSync(
       FROM_HERE, base::BindOnce(&FramingStreamManipulator::ResetOnThread,
                                 base::Unretained(this)));
+}
+
+bool FramingStreamManipulator::UpdateVendorTags(
+    VendorTagManager& vendor_tag_manager) {
+  if (!vendor_tag_manager.Add(kCrosDigitalZoomVendorKey,
+                              kCrosDigitalZoomVendorTagSectionName,
+                              kCrosDigitalZoomVendorTagName, TYPE_BYTE)) {
+    LOGF(ERROR) << "Failed to add digital zoom vendor tag";
+    return false;
+  }
+  return true;
+}
+
+bool FramingStreamManipulator::UpdateStaticMetadata(
+    android::CameraMetadata* static_info) {
+  if (!FramingStreamManipulator::IsManualZoomSupported()) {
+    VLOGF(1) << "Manual zoom is not supported on this device.";
+    return true;
+  }
+
+  camera_metadata_entry_t facing_entry = static_info->find(ANDROID_LENS_FACING);
+  bool is_external = facing_entry.count > 0 &&
+                     facing_entry.data.u8[0] == ANDROID_LENS_FACING_EXTERNAL;
+  if (is_external) {
+    VLOGF(1) << "Manual zoom is not supported on external cameras";
+    return true;
+  }
+
+  camera_metadata_entry_t zoom_entry =
+      static_info->find(ANDROID_SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
+  bool has_internal_zoom = zoom_entry.count > 0 && zoom_entry.data.f[0] > 1.0;
+  if (has_internal_zoom) {
+    VLOGF(1) << "Manual zoom is not supported since the device has built-in "
+                "digital zoom";
+    return true;
+  }
+
+  uint8_t can_attempt_digital_zoom = 1;
+  if (static_info->update(kCrosDigitalZoomVendorKey, &can_attempt_digital_zoom,
+                          1) != 0) {
+    LOGF(ERROR) << "Failed to update kCrosDigitalZoomVendorKey";
+    return false;
+  }
+
+  return true;
 }
 
 bool FramingStreamManipulator::Initialize(
@@ -433,6 +517,10 @@ bool FramingStreamManipulator::InitializeOnThread(
       GetCenteringFullCrop(active_array_dimension_, full_frame_size_.width,
                            full_frame_size_.height),
       active_array_dimension_);
+
+  std::optional<uint8_t> vendor_tag =
+      GetRoMetadata<uint8_t>(static_info, kCrosDigitalZoomVendorKey);
+  manual_zoom_supported_ = vendor_tag.has_value() && *vendor_tag == 1;
 
   return true;
 }
@@ -662,7 +750,14 @@ bool FramingStreamManipulator::ProcessCaptureRequestOnThread(
 
   ++metrics_.num_captures;
 
-  const std::pair<State, State> state_transition = StateTransitionOnThread();
+  auto requested_crop_region = GetManualZoomRequest(
+      request->GetMetadata<int32_t>(ANDROID_SCALER_CROP_REGION),
+      active_array_dimension_);
+  bool manual_zoom_enabled =
+      manual_zoom_supported_ && requested_crop_region.has_value();
+
+  const std::pair<State, State> state_transition =
+      StateTransitionOnThread(manual_zoom_enabled);
 
   // Bypass reprocessing requests and all requests when in |kDisabled| state.
   if (request->has_input_buffer() ||
@@ -675,6 +770,10 @@ bool FramingStreamManipulator::ProcessCaptureRequestOnThread(
     return false;
   }
   ctx->state_transition = state_transition;
+
+  if (state_transition.second == State::kManualZoom) {
+    ctx->crop_region = requested_crop_region;
+  }
 
   // Separate the buffers that will be done by us into |ctx->client_buffers|
   // from the ones that will be sent to the HAL.
@@ -885,7 +984,8 @@ bool FramingStreamManipulator::ProcessFullFrameOnThread(
     return false;
   }
 
-  if (auto_framing_supported_ &&
+  if (ctx->state_transition.second != State::kManualZoom &&
+      auto_framing_supported_ &&
       !GetAutoFramingCropWindowOnThread(ctx, *full_frame_buffer.buffer(),
                                         frame_number)) {
     return false;
@@ -1367,11 +1467,11 @@ void FramingStreamManipulator::OnOptionsUpdated(
 }
 
 std::pair<FramingStreamManipulator::State, FramingStreamManipulator::State>
-FramingStreamManipulator::StateTransitionOnThread() {
+FramingStreamManipulator::StateTransitionOnThread(bool manual_zoom_enabled) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_AUTO_FRAMING();
 
-  // State transition graph:
+  // Auto-framing state transition graph:
   //
   //     d--> kDisabled --a    b-----------------------|
   //     |                v    |                       v
@@ -1390,9 +1490,16 @@ FramingStreamManipulator::StateTransitionOnThread() {
   // |active_crop_region_| is full, which is used in the last capture result. If
   // it is, we assume it stays full up to the time this state change is applied
   // in the future capture result.
+  //
+  // Manual zoom state is toggled according to |manual_zoom_enabled|, given the
+  // current state is not auto-framing states. In case auto framing and manual
+  // zoom are activated at the same capture request, auto framing is activated.
 
   const State prev_state = state_;
-  if (GetAutoFramingEnabled()) {
+  bool auto_framing_enabled = GetAutoFramingEnabled();
+
+  // Auto framing states
+  if (auto_framing_enabled) {
     if (state_ == State::kDisabled || state_ == State::kAutoFramingOff ||
         state_ == State::kTransitionToAutoFramingOff) {
       state_ = State::kTransitionToAutoFramingOn;
@@ -1412,12 +1519,23 @@ FramingStreamManipulator::StateTransitionOnThread() {
       state_ = State::kDisabled;
     }
   }
+
+  // Manual zoom states
+  if (prev_state == State::kDisabled && manual_zoom_enabled &&
+      !auto_framing_enabled) {
+    state_ = State::kManualZoom;
+  } else if (prev_state == State::kManualZoom && !manual_zoom_enabled) {
+    state_ = State::kDisabled;
+  }
+
+  // Collect metrics when the state is updated.
   if (prev_state != state_) {
     LOGF(INFO) << "State: " << static_cast<int>(prev_state) << " -> "
                << static_cast<int>(state_);
     if (prev_state == State::kAutoFramingOn) {
       metrics_.accumulated_on_time += state_transition_timer_.Elapsed();
-    } else if (prev_state == State::kDisabled ||
+    } else if ((prev_state == State::kDisabled &&
+                state_ != State::kManualZoom) ||
                prev_state == State::kAutoFramingOff) {
       metrics_.accumulated_off_time += state_transition_timer_.Elapsed();
     }

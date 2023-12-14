@@ -39,11 +39,14 @@ const uint32_t kCrosZslVendorTagEnd = 0x80060000;
 const uint32_t kCrosRotateAndCropVendorTagStart = 0x80060000;
 const uint32_t kCrosRotateAndCropVendorTagEnd = 0x80070000;
 
+const uint32_t kCrosDigitalZoomVendorTagStart = 0x80070000;
+const uint32_t kCrosDigitalZoomVendorTagEnd = 0x80080000;
+
 // Please update this value when allocating a new interval, such as
 // const uint32_t kFooVendorTagStart = {value of kNextAvailableVendorTag};
 // const uint32_t kFooVendorTagEnd = ...;
 // const uint32_t kNextAvailableVendorTag = {value of kFooVendorTagEnd};
-const uint32_t kNextAvailableVendorTag = kCrosRotateAndCropVendorTagEnd;
+const uint32_t kNextAvailableVendorTag = kCrosDigitalZoomVendorTagEnd;
 
 class CROS_CAMERA_EXPORT VendorTagManager : public vendor_tag_ops_t {
  public:

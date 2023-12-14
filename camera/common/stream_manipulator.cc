@@ -98,7 +98,8 @@ StreamManipulator::RuntimeOptions::sw_privacy_switch_state() {
 // static
 bool StreamManipulator::UpdateVendorTags(VendorTagManager& vendor_tag_manager) {
   if (!ZslStreamManipulator::UpdateVendorTags(vendor_tag_manager) ||
-      !RotateAndCropStreamManipulator::UpdateVendorTags(vendor_tag_manager)) {
+      !RotateAndCropStreamManipulator::UpdateVendorTags(vendor_tag_manager) ||
+      !FramingStreamManipulator::UpdateVendorTags(vendor_tag_manager)) {
     return false;
   }
 #if USE_CAMERA_FEATURE_PORTRAIT_MODE
@@ -113,7 +114,8 @@ bool StreamManipulator::UpdateVendorTags(VendorTagManager& vendor_tag_manager) {
 bool StreamManipulator::UpdateStaticMetadata(
     android::CameraMetadata* static_info) {
   if (!ZslStreamManipulator::UpdateStaticMetadata(static_info) ||
-      !RotateAndCropStreamManipulator::UpdateStaticMetadata(static_info)) {
+      !RotateAndCropStreamManipulator::UpdateStaticMetadata(static_info) ||
+      !FramingStreamManipulator::UpdateStaticMetadata(static_info)) {
     return false;
   }
 #if USE_CAMERA_FEATURE_PORTRAIT_MODE
