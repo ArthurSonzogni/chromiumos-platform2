@@ -721,6 +721,15 @@ std::optional<int> FindIntValue(
   return std::optional<int>(val);
 }
 
+// Helper function to record the StopDuration metric when shutting down a VM
+bool ShutdownVm(VmBaseImpl* vm,
+                const raw_ref<MetricsLibraryInterface> metrics) {
+  CHECK(vm);
+  metrics::DurationRecorder duration_recorder(
+      metrics, vm->GetInfo().type, metrics::DurationRecorder::Event::kVmStop);
+  return vm->Shutdown();
+}
+
 }  // namespace
 
 base::FilePath Service::GetVmGpuCachePathInternal(const VmId& vm_id) {
@@ -2170,15 +2179,11 @@ bool Service::StopVmInternal(const VmId& vm_id, VmStopReason reason) {
   std::unique_ptr<VmBaseImpl>& vm = iter->second;
   VmBaseImpl::Info info = vm->GetInfo();
 
-  // Log how long it takes to stop the VM.
-  metrics::DurationRecorder duration_recorder(
-      raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()), info.type,
-      metrics::DurationRecorder::Event::kVmStop);
-
   // Notify that we are about to stop a VM.
   NotifyVmStopping(vm_id, info.cid);
 
-  if (!vm->Shutdown()) {
+  if (!ShutdownVm(vm.get(),
+                  raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()))) {
     return false;
   }
 
@@ -2201,11 +2206,15 @@ class VMDelegate : public base::PlatformThread::Delegate {
   VMDelegate& operator=(VMDelegate&& other) = default;
   explicit VMDelegate(const Service&) = delete;
   VMDelegate& operator=(const Service&) = delete;
-  explicit VMDelegate(VmBaseImpl* vm) : vm_(vm) {}
-  void ThreadMain() override { vm_->Shutdown(); }
+  VMDelegate(VmBaseImpl* vm, MetricsLibraryInterface* metrics)
+      : vm_(vm), metrics_(metrics) {}
+  void ThreadMain() override {
+    ShutdownVm(vm_, raw_ref<MetricsLibraryInterface>::from_ptr(metrics_));
+  }
 
  private:
   VmBaseImpl* vm_;
+  MetricsLibraryInterface* metrics_;
 };
 
 void Service::StopAllVms(
@@ -2242,7 +2251,9 @@ void Service::StopAllVmsImpl(VmStopReason reason) {
     // then forcibly) it if it hasn't stopped yet.
     //
     // Would you just take a lambda function? Why do we need the Delegate?...
-    ctx.delegate = VMDelegate(vm_base_impl);
+    // It's safe to pass a pointer to |metrics_| to another thread because
+    // |metrics_| uses AsynchronousMetricsWriter, which is thread-safe.
+    ctx.delegate = VMDelegate(vm_base_impl, metrics_.get());
     base::PlatformThread::Create(0, &ctx.delegate, &ctx.handle);
   }
 
