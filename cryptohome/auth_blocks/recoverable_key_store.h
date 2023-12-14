@@ -7,6 +7,7 @@
 
 #include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 
+#include "cryptohome/auth_factor/metadata.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
@@ -20,6 +21,7 @@ namespace cryptohome {
 CryptohomeStatusOr<RecoverableKeyStoreState> CreateRecoverableKeyStoreState(
     LockScreenKnowledgeFactorType lskf_type,
     const AuthInput& auth_input,
+    const AuthFactorMetadata& metadata,
     const RecoverableKeyStoreBackendCertProvider& cert_provider);
 
 // If the content of |state| is up to date, return a nullopt.
@@ -30,6 +32,7 @@ MaybeUpdateRecoverableKeyStoreState(
     const RecoverableKeyStoreState& state,
     LockScreenKnowledgeFactorType lskf_type,
     const AuthInput& auth_input,
+    const AuthFactorMetadata& metadata,
     const RecoverableKeyStoreBackendCertProvider& cert_provider);
 
 }  // namespace cryptohome

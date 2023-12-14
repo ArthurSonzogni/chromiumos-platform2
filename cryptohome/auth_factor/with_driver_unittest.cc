@@ -289,7 +289,7 @@ TEST_F(AuthFactorWithDriverTest, FingerprintSupportsSomeIntents) {
 
 TEST_F(AuthFactorWithDriverTest, PasswordVerifierSupportsVerifyOnly) {
   std::unique_ptr<CredentialVerifier> verifier =
-      ScryptVerifier::Create(kLabel, brillo::SecureBlob("password"));
+      ScryptVerifier::Create(kLabel, {}, brillo::SecureBlob("password"));
 
   SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
       {.type = SerializeAuthFactorType(verifier->auth_factor_type()).value(),

@@ -26,6 +26,22 @@ enum SerializedLockoutPolicy : int {
   TIME_LIMITED = 3,
 }
 
+// Refer to the LockScreenKnowledgeFactorHashAlgorithm proto.
+enum SerializedLockScreenKnowledgeFactorHashAlgorithm : int {
+  // Used for hashing PINs in Chrome.
+  PBKDF2_AES256_1234 = 1,
+
+  // Used for hashing passwords in Chrome.
+  SHA256_TOP_HALF = 2,
+}
+
+// Refer to the KnowledgeFactorHashInfo proto.
+table SerializedKnowledgeFactorHashInfo {
+  // This field should always be non-null in practice.
+  algorithm:SerializedLockScreenKnowledgeFactorHashAlgorithm = null (id:0);
+  salt:[ubyte] (id:1);
+}
+
 // Metadata common to all auth factors.
 table CommonMetadata {
   // ChromeOS version.
@@ -46,10 +62,14 @@ table CommonMetadata {
 }
 
 // Metadata for a `PASSWORD` auth factor.
-table PasswordMetadata {}
+table PasswordMetadata {
+  hash_info:SerializedKnowledgeFactorHashInfo (id:0, optional);
+}
 
 // Metadata for a `PIN` auth factor.
-table PinMetadata {}
+table PinMetadata {
+  hash_info:SerializedKnowledgeFactorHashInfo (id:0, optional);
+}
 
 // Metadata for a `Recovery` auth factor.
 table CryptohomeRecoveryMetadata {

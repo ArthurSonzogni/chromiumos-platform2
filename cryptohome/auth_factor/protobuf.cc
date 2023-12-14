@@ -21,17 +21,40 @@
 namespace cryptohome {
 namespace {
 
-// Set password metadata here, which happens to be empty. For other types of
-// factors, there will be more computations involved.
-void GetPasswordMetadata(const user_data_auth::AuthFactor& auth_factor,
-                         AuthFactorMetadata& out_auth_factor_metadata) {
-  out_auth_factor_metadata.metadata = PasswordMetadata();
+std::optional<SerializedKnowledgeFactorHashInfo>
+KnowledgeFactorHashInfoFromProto(
+    const user_data_auth::KnowledgeFactorHashInfo& hash_info) {
+  std::optional<SerializedLockScreenKnowledgeFactorHashAlgorithm> algorithm =
+      SerializedKnowledgeFactorAlgorithmFromProto(hash_info.algorithm());
+  if (!algorithm.has_value()) {
+    return std::nullopt;
+  }
+  return SerializedKnowledgeFactorHashInfo{
+      .algorithm = *algorithm,
+      .salt = brillo::BlobFromString(hash_info.salt()),
+  };
 }
 
-// Set pin metadata here, which happens to be empty.
+// Set password metadata here.
+void GetPasswordMetadata(const user_data_auth::AuthFactor& auth_factor,
+                         AuthFactorMetadata& out_auth_factor_metadata) {
+  PasswordMetadata password_metadata;
+  if (auth_factor.password_metadata().has_hash_info()) {
+    password_metadata.hash_info = KnowledgeFactorHashInfoFromProto(
+        auth_factor.password_metadata().hash_info());
+  }
+  out_auth_factor_metadata.metadata = password_metadata;
+}
+
+// Set pin metadata here.
 void GetPinMetadata(const user_data_auth::AuthFactor& auth_factor,
                     AuthFactorMetadata& out_auth_factor_metadata) {
-  out_auth_factor_metadata.metadata = PinMetadata();
+  PinMetadata pin_metadata;
+  if (auth_factor.pin_metadata().has_hash_info()) {
+    pin_metadata.hash_info = KnowledgeFactorHashInfoFromProto(
+        auth_factor.pin_metadata().hash_info());
+  }
+  out_auth_factor_metadata.metadata = pin_metadata;
 }
 
 // Set cryptohome recovery metadata here, which includes mediator_pub_key.
@@ -122,6 +145,32 @@ std::optional<AuthFactorType> AuthFactorTypeFromProto(
       return AuthFactorType::kLegacyFingerprint;
     case user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT:
       return AuthFactorType::kFingerprint;
+    default:
+      return std::nullopt;
+  }
+}
+
+LockScreenKnowledgeFactorHashAlgorithm
+SerializedKnowledgeFactorAlgorithmToProto(
+    const SerializedLockScreenKnowledgeFactorHashAlgorithm& algorithm) {
+  switch (algorithm) {
+    case SerializedLockScreenKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234:
+      return LockScreenKnowledgeFactorHashAlgorithm::
+          HASH_TYPE_PBKDF2_AES256_1234;
+    case SerializedLockScreenKnowledgeFactorHashAlgorithm::SHA256_TOP_HALF:
+      return LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_SHA256_TOP_HALF;
+  }
+}
+
+std::optional<SerializedLockScreenKnowledgeFactorHashAlgorithm>
+SerializedKnowledgeFactorAlgorithmFromProto(
+    const LockScreenKnowledgeFactorHashAlgorithm& algorithm) {
+  switch (algorithm) {
+    case LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234:
+      return SerializedLockScreenKnowledgeFactorHashAlgorithm::
+          PBKDF2_AES256_1234;
+    case LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_SHA256_TOP_HALF:
+      return SerializedLockScreenKnowledgeFactorHashAlgorithm::SHA256_TOP_HALF;
     default:
       return std::nullopt;
   }

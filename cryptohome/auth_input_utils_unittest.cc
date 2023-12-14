@@ -70,35 +70,8 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputPasswordLocked) {
 }
 
 // Test the conversion from the PIN AuthInput proto into the cryptohome
-// struct, with the hash algorithm and salt fields set.
-TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputPinWithHash) {
-  constexpr char kPin[] = "fake-pin";
-  constexpr LockScreenKnowledgeFactorHashAlgorithm kHashAlgorithm =
-      LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234;
-  constexpr char kSalt[] = "fake-salt";
-
-  user_data_auth::AuthInput proto;
-  proto.mutable_pin_input()->set_secret(kPin);
-  proto.mutable_pin_input()->set_hash_algorithm(kHashAlgorithm);
-  proto.mutable_pin_input()->set_hash_salt(kSalt);
-
-  AuthFactorMetadata auth_factor_metadata;
-  std::optional<AuthInput> auth_input =
-      CreateAuthInput(&platform_, proto, kUserName, kObfuscatedUsername,
-                      /*locked_to_single_user=*/false,
-                      /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt);
-  ASSERT_TRUE(auth_input.has_value());
-  EXPECT_EQ(auth_input.value().user_input, SecureBlob(kPin));
-  EXPECT_EQ(auth_input.value().user_input_hash_algorithm, kHashAlgorithm);
-  EXPECT_EQ(auth_input.value().user_input_hash_salt,
-            brillo::BlobFromString(kSalt));
-  EXPECT_EQ(auth_input.value().obfuscated_username, kObfuscatedUsername);
-  EXPECT_EQ(auth_input.value().locked_to_single_user, false);
-}
-
-// Test the conversion from the PIN AuthInput proto into the cryptohome
-// struct, with the hash algorithm and salt fields unset.
-TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputPinWithoutHash) {
+// struct.
+TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputPin) {
   constexpr char kPin[] = "fake-pin";
 
   user_data_auth::AuthInput proto;
@@ -111,8 +84,6 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputPinWithoutHash) {
                       /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt);
   ASSERT_TRUE(auth_input.has_value());
   EXPECT_EQ(auth_input.value().user_input, SecureBlob(kPin));
-  EXPECT_FALSE(auth_input.value().user_input_hash_algorithm.has_value());
-  EXPECT_FALSE(auth_input.value().user_input_hash_salt.has_value());
   EXPECT_EQ(auth_input.value().obfuscated_username, kObfuscatedUsername);
   EXPECT_EQ(auth_input.value().locked_to_single_user, false);
 }

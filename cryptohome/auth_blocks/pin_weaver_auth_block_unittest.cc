@@ -35,6 +35,7 @@
 #include "cryptohome/fake_features.h"
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
 #include "cryptohome/recoverable_key_store/type.h"
@@ -336,18 +337,22 @@ TEST_F(PinWeaverAuthBlockTest, CreateTestWithRecoverableKeyStore) {
       .locked_to_single_user = std::nullopt,
       .obfuscated_username = ObfuscatedUsername(kObfuscatedUsername),
       .reset_secret = reset_secret,
-      .user_input_hash_algorithm =
-          LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234,
-      .user_input_hash_salt = brillo::Blob(kPinInputSaltSize, 0xBB),
       .security_domain_keys = *security_domain_keys,
   };
+  AuthFactorMetadata metadata = {
+      .metadata = PinMetadata{
+          .hash_info = SerializedKnowledgeFactorHashInfo{
+              .algorithm = SerializedLockScreenKnowledgeFactorHashAlgorithm::
+                  PBKDF2_AES256_1234,
+              .salt = brillo::Blob(kPinInputSaltSize, 0xBB),
+          }}};
   KeyBlobs vkk_data;
 
   features_.SetDefaultForFeature(Features::kModernPin, true);
   features_.SetDefaultForFeature(Features::kGenerateRecoverableKeyStore, true);
 
   CreateTestFuture result;
-  auth_block_->Create(user_input, {}, result.GetCallback());
+  auth_block_->Create(user_input, metadata, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
   ASSERT_THAT(status, IsOk());
@@ -381,11 +386,15 @@ TEST_F(PinWeaverAuthBlockTest, CreateTestWithRecoverableKeyStoreDisabled) {
       .locked_to_single_user = std::nullopt,
       .obfuscated_username = ObfuscatedUsername(kObfuscatedUsername),
       .reset_secret = reset_secret,
-      .user_input_hash_algorithm =
-          LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234,
-      .user_input_hash_salt = brillo::Blob(kPinInputSaltSize, 0xBB),
       .security_domain_keys = *security_domain_keys,
   };
+  AuthFactorMetadata metadata = {
+      .metadata = PinMetadata{
+          .hash_info = SerializedKnowledgeFactorHashInfo{
+              .algorithm = SerializedLockScreenKnowledgeFactorHashAlgorithm::
+                  PBKDF2_AES256_1234,
+              .salt = brillo::Blob(kPinInputSaltSize, 0xBB),
+          }}};
   KeyBlobs vkk_data;
 
   features_.SetDefaultForFeature(Features::kModernPin, true);
@@ -394,7 +403,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateTestWithRecoverableKeyStoreDisabled) {
   features_.SetDefaultForFeature(Features::kGenerateRecoverableKeyStore, false);
 
   CreateTestFuture result;
-  auth_block_->Create(user_input, {}, result.GetCallback());
+  auth_block_->Create(user_input, metadata, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
   ASSERT_THAT(status, IsOk());

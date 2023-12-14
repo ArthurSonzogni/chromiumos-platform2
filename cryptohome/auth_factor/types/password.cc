@@ -31,8 +31,8 @@ PasswordAuthFactorDriver::CreateCredentialVerifier(
     LOG(ERROR) << "Cannot construct a password verifier without a password";
     return nullptr;
   }
-  std::unique_ptr<CredentialVerifier> verifier =
-      ScryptVerifier::Create(auth_factor_label, *auth_input.user_input);
+  std::unique_ptr<CredentialVerifier> verifier = ScryptVerifier::Create(
+      auth_factor_label, auth_factor_metadata, *auth_input.user_input);
   if (!verifier) {
     LOG(ERROR) << "Credential verifier initialization failed.";
     return nullptr;

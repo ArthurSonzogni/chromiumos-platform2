@@ -89,13 +89,6 @@ struct AuthInput {
   std::optional<brillo::Blob> reset_salt;
   // The PinWeaver leaf label of the rate-limiter.
   std::optional<uint64_t> rate_limiter_label;
-  // If the user input is a hash of the actual user knowledge factor, the
-  // algorithm used for hashing.
-  std::optional<LockScreenKnowledgeFactorHashAlgorithm>
-      user_input_hash_algorithm;
-  // If the user input is a hash of the actual user knowledge factor, the salt
-  // used for hashing.
-  std::optional<brillo::Blob> user_input_hash_salt;
   // security_domain_keys used to generate recoverable key stores.
   std::optional<SecurityDomainKeys> security_domain_keys;
   // Data required for Cryptohome Recovery flow.

@@ -602,6 +602,7 @@ static_library("libcryptohome") {
   sources = [
     "../auth_factor/flatbuffer.cc",
     "../auth_factor/map.cc",
+    "../auth_factor/metadata.cc",
     "../auth_factor/protobuf.cc",
     "../auth_factor/storage_type.cc",
     "../auth_factor/type.cc",

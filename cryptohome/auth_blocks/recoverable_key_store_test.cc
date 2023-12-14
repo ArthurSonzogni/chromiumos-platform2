@@ -9,7 +9,6 @@
 #include <utility>
 
 #include <brillo/secure_blob.h>
-#include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/secure_box.h>
@@ -80,11 +79,15 @@ TEST(RecoverableKeyStoreTest, CreateSuccess) {
 
   AuthInput auth_input = {
       .user_input = brillo::SecureBlob(kHashSize, 0xAA),
-      .user_input_hash_algorithm =
-          LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234,
-      .user_input_hash_salt = brillo::Blob(kSaltSize, 0xBB),
       .security_domain_keys = *security_domain_keys,
   };
+  AuthFactorMetadata metadata = {
+      .metadata = PinMetadata{
+          .hash_info = SerializedKnowledgeFactorHashInfo{
+              .algorithm = SerializedLockScreenKnowledgeFactorHashAlgorithm::
+                  PBKDF2_AES256_1234,
+              .salt = brillo::Blob(kSaltSize, 0xBB),
+          }}};
 
   std::optional<RecoverableKeyStoreBackendCert> backend_cert =
       GetValidBackendCert();
@@ -95,7 +98,7 @@ TEST(RecoverableKeyStoreTest, CreateSuccess) {
   CryptohomeStatusOr<RecoverableKeyStoreState> state =
       CreateRecoverableKeyStoreState(
           LockScreenKnowledgeFactorType::LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_PIN,
-          auth_input, cert_provider);
+          auth_input, metadata, cert_provider);
   ASSERT_THAT(state, IsOk());
   EXPECT_TRUE(RecoverableKeyStore().ParseFromString(
       brillo::BlobToString(state->key_store_proto)));
@@ -108,7 +111,7 @@ TEST(RecoverableKeyStoreTest, CreateInvalidParams) {
   CryptohomeStatusOr<RecoverableKeyStoreState> state =
       CreateRecoverableKeyStoreState(
           LockScreenKnowledgeFactorType::LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_PIN,
-          auth_input, cert_provider);
+          auth_input, {}, cert_provider);
   EXPECT_THAT(state, NotOk());
 }
 
@@ -119,11 +122,15 @@ TEST(RecoverableKeyStoreTest, CreateGetCertFailed) {
 
   AuthInput auth_input = {
       .user_input = brillo::SecureBlob(kHashSize, 0xAA),
-      .user_input_hash_algorithm =
-          LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234,
-      .user_input_hash_salt = brillo::Blob(kSaltSize, 0xBB),
       .security_domain_keys = *security_domain_keys,
   };
+  AuthFactorMetadata metadata = {
+      .metadata = PinMetadata{
+          .hash_info = SerializedKnowledgeFactorHashInfo{
+              .algorithm = SerializedLockScreenKnowledgeFactorHashAlgorithm::
+                  PBKDF2_AES256_1234,
+              .salt = brillo::Blob(kSaltSize, 0xBB),
+          }}};
 
   MockRecoverableKeyStoreBackendCertProvider cert_provider;
   EXPECT_CALL(cert_provider, GetBackendCert).WillOnce(Return(std::nullopt));
@@ -131,7 +138,7 @@ TEST(RecoverableKeyStoreTest, CreateGetCertFailed) {
   CryptohomeStatusOr<RecoverableKeyStoreState> state =
       CreateRecoverableKeyStoreState(
           LockScreenKnowledgeFactorType::LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_PIN,
-          auth_input, cert_provider);
+          auth_input, metadata, cert_provider);
   EXPECT_THAT(state, NotOk());
 }
 
@@ -146,11 +153,15 @@ TEST(RecoverableKeyStoreTest, UpdateSuccess) {
 
   AuthInput auth_input = {
       .user_input = brillo::SecureBlob(kHashSize, 0xAA),
-      .user_input_hash_algorithm =
-          LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234,
-      .user_input_hash_salt = brillo::Blob(kSaltSize, 0xBB),
       .security_domain_keys = *security_domain_keys,
   };
+  AuthFactorMetadata metadata = {
+      .metadata = PinMetadata{
+          .hash_info = SerializedKnowledgeFactorHashInfo{
+              .algorithm = SerializedLockScreenKnowledgeFactorHashAlgorithm::
+                  PBKDF2_AES256_1234,
+              .salt = brillo::Blob(kSaltSize, 0xBB),
+          }}};
 
   std::optional<RecoverableKeyStoreBackendCert> backend_cert =
       GetValidBackendCert();
@@ -161,7 +172,7 @@ TEST(RecoverableKeyStoreTest, UpdateSuccess) {
   auto updated = MaybeUpdateRecoverableKeyStoreState(
       *state,
       LockScreenKnowledgeFactorType::LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_PIN,
-      auth_input, cert_provider);
+      auth_input, metadata, cert_provider);
   ASSERT_THAT(updated, IsOk());
   ASSERT_TRUE(updated->has_value());
   EXPECT_NE(state->key_store_proto, (*updated)->key_store_proto);
@@ -178,11 +189,15 @@ TEST(RecoverableKeyStoreTest, UpdateNotNeeded) {
 
   AuthInput auth_input = {
       .user_input = brillo::SecureBlob(kHashSize, 0xAA),
-      .user_input_hash_algorithm =
-          LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234,
-      .user_input_hash_salt = brillo::Blob(kSaltSize, 0xBB),
       .security_domain_keys = *security_domain_keys,
   };
+  AuthFactorMetadata metadata = {
+      .metadata = PinMetadata{
+          .hash_info = SerializedKnowledgeFactorHashInfo{
+              .algorithm = SerializedLockScreenKnowledgeFactorHashAlgorithm::
+                  PBKDF2_AES256_1234,
+              .salt = brillo::Blob(kSaltSize, 0xBB),
+          }}};
 
   std::optional<RecoverableKeyStoreBackendCert> backend_cert =
       GetValidBackendCert();
@@ -193,7 +208,7 @@ TEST(RecoverableKeyStoreTest, UpdateNotNeeded) {
   auto updated = MaybeUpdateRecoverableKeyStoreState(
       *state,
       LockScreenKnowledgeFactorType::LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_PIN,
-      auth_input, cert_provider);
+      auth_input, metadata, cert_provider);
   ASSERT_THAT(updated, IsOkAndHolds(std::nullopt));
 }
 
@@ -209,11 +224,15 @@ TEST(RecoverableKeyStoreTest, UpdateFailed) {
 
   AuthInput auth_input = {
       .user_input = brillo::SecureBlob(kHashSize, 0xAA),
-      .user_input_hash_algorithm =
-          LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234,
-      .user_input_hash_salt = brillo::Blob(kSaltSize, 0xBB),
       .security_domain_keys = *security_domain_keys,
   };
+  AuthFactorMetadata metadata = {
+      .metadata = PinMetadata{
+          .hash_info = SerializedKnowledgeFactorHashInfo{
+              .algorithm = SerializedLockScreenKnowledgeFactorHashAlgorithm::
+                  PBKDF2_AES256_1234,
+              .salt = brillo::Blob(kSaltSize, 0xBB),
+          }}};
 
   MockRecoverableKeyStoreBackendCertProvider cert_provider;
   EXPECT_CALL(cert_provider, GetBackendCert).WillOnce(Return(std::nullopt));
@@ -221,7 +240,7 @@ TEST(RecoverableKeyStoreTest, UpdateFailed) {
   auto updated = MaybeUpdateRecoverableKeyStoreState(
       *state,
       LockScreenKnowledgeFactorType::LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_PIN,
-      auth_input, cert_provider);
+      auth_input, metadata, cert_provider);
   EXPECT_THAT(updated, NotOk());
 }
 

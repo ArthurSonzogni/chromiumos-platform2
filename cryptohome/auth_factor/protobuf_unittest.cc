@@ -179,9 +179,57 @@ TEST(AuthFactorPropertiesFromProtoTest, AuthFactorMetaDataCheck) {
               Eq(kChromeosVersion));
   EXPECT_THAT(auth_factor_metadata.common.chrome_version_last_updated,
               Eq(kChromeVersion));
+  const auto* password_metadata =
+      std::get_if<PasswordMetadata>(&auth_factor_metadata.metadata);
+  ASSERT_NE(password_metadata, nullptr);
+  EXPECT_FALSE(password_metadata->hash_info.has_value());
+  EXPECT_THAT(auth_factor_type, Eq(AuthFactorType::kPassword));
+  EXPECT_THAT(auth_factor_label, Eq(kLabel));
+}
+
+TEST(AuthFactorPropertiesFromProtoTest,
+     AuthFactorMetaDataCheckKnowledgeFactorHashInfo) {
+  const std::string kSalt(16, 0xAA);
+  // Setup
+  user_data_auth::AuthFactor auth_factor_proto;
+  auto& common_metadata_proto = *auth_factor_proto.mutable_common_metadata();
+  common_metadata_proto.set_chromeos_version_last_updated(kChromeosVersion);
+  common_metadata_proto.set_chrome_version_last_updated(kChromeVersion);
+  user_data_auth::KnowledgeFactorHashInfo hash_info;
+  hash_info.set_algorithm(
+      LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_SHA256_TOP_HALF);
+  hash_info.set_salt(kSalt);
+  *auth_factor_proto.mutable_password_metadata()->mutable_hash_info() =
+      hash_info;
+  auth_factor_proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  auth_factor_proto.set_label(kLabel);
+
+  // Test
+  AuthFactorType auth_factor_type;
+  std::string auth_factor_label;
+  AuthFactorMetadata auth_factor_metadata;
+  FakeFeaturesForTesting features;
+  EXPECT_THAT(AuthFactorPropertiesFromProto(auth_factor_proto, features.async,
+                                            auth_factor_type, auth_factor_label,
+                                            auth_factor_metadata),
+              IsTrue());
+
+  // Verify
+  EXPECT_THAT(auth_factor_metadata.common.chromeos_version_last_updated,
+              Eq(kChromeosVersion));
+  EXPECT_THAT(auth_factor_metadata.common.chrome_version_last_updated,
+              Eq(kChromeVersion));
   EXPECT_THAT(auth_factor_metadata.common.lockout_policy,
-              Eq(SerializedLockoutPolicy::NO_LOCKOUT));
-  EXPECT_THAT(auth_factor_metadata.metadata, VariantWith<PasswordMetadata>(_));
+              Optional(SerializedLockoutPolicy::NO_LOCKOUT));
+  const auto* password_metadata =
+      std::get_if<PasswordMetadata>(&auth_factor_metadata.metadata);
+  ASSERT_NE(password_metadata, nullptr);
+  ASSERT_TRUE(password_metadata->hash_info.has_value());
+  EXPECT_THAT(
+      password_metadata->hash_info->algorithm,
+      Optional(
+          SerializedLockScreenKnowledgeFactorHashAlgorithm::SHA256_TOP_HALF));
+  EXPECT_EQ(password_metadata->hash_info->salt, brillo::BlobFromString(kSalt));
   EXPECT_THAT(auth_factor_type, Eq(AuthFactorType::kPassword));
   EXPECT_THAT(auth_factor_label, Eq(kLabel));
 }
@@ -214,7 +262,7 @@ TEST(AuthFactorPropertiesFromProtoTest, AuthFactorMetaDataCheckPin) {
   EXPECT_THAT(auth_factor_metadata.common.chrome_version_last_updated,
               Eq(kChromeVersion));
   EXPECT_THAT(auth_factor_metadata.common.lockout_policy,
-              Eq(SerializedLockoutPolicy::ATTEMPT_LIMITED));
+              Optional(SerializedLockoutPolicy::ATTEMPT_LIMITED));
   EXPECT_THAT(auth_factor_metadata.metadata, VariantWith<PinMetadata>(_));
   EXPECT_THAT(auth_factor_type, Eq(AuthFactorType::kPin));
   EXPECT_THAT(auth_factor_label, Eq(kLabel));
@@ -248,7 +296,7 @@ TEST(AuthFactorPropertiesFromProtoTest, AuthFactorMetaDataCheckPinTimeLimit) {
   EXPECT_THAT(auth_factor_metadata.common.chrome_version_last_updated,
               Eq(kChromeVersion));
   EXPECT_THAT(auth_factor_metadata.common.lockout_policy,
-              Eq(SerializedLockoutPolicy::TIME_LIMITED));
+              Optional(SerializedLockoutPolicy::TIME_LIMITED));
   EXPECT_THAT(auth_factor_metadata.metadata, VariantWith<PinMetadata>(_));
   EXPECT_THAT(auth_factor_type, Eq(AuthFactorType::kPin));
   EXPECT_THAT(auth_factor_label, Eq(kLabel));
@@ -283,7 +331,7 @@ TEST(AuthFactorPropertiesFromProtoTest,
   EXPECT_THAT(auth_factor_metadata.common.chrome_version_last_updated,
               Eq(kChromeVersion));
   EXPECT_THAT(auth_factor_metadata.common.lockout_policy,
-              Eq(SerializedLockoutPolicy::TIME_LIMITED));
+              Optional(SerializedLockoutPolicy::TIME_LIMITED));
   EXPECT_THAT(auth_factor_metadata.metadata, VariantWith<PinMetadata>(_));
   EXPECT_THAT(auth_factor_type, Eq(AuthFactorType::kPin));
   EXPECT_THAT(auth_factor_label, Eq(kLabel));
@@ -319,7 +367,7 @@ TEST(AuthFactorPropertiesFromProtoTest,
   EXPECT_THAT(auth_factor_metadata.common.chrome_version_last_updated,
               Eq(kChromeVersion));
   EXPECT_THAT(auth_factor_metadata.common.lockout_policy,
-              Eq(SerializedLockoutPolicy::TIME_LIMITED));
+              Optional(SerializedLockoutPolicy::TIME_LIMITED));
   EXPECT_THAT(auth_factor_metadata.metadata, VariantWith<PinMetadata>(_));
   EXPECT_THAT(auth_factor_type, Eq(AuthFactorType::kPin));
   EXPECT_THAT(auth_factor_label, Eq(kLabel));

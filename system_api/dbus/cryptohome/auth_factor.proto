@@ -75,13 +75,9 @@ message PasswordAuthInput {
 }
 
 // Pin AuthFactor requires a secret to be passed for derivation and
-// creation of key. If secret is a hash of the user-provided raw input, the
-// hash_algorithm and hash_salt parameters can be specified, which will allow
-// the auth factor to generate a recoverable key store.
+// creation of key.
 message PinAuthInput {
   bytes secret = 1;
-  cryptohome.LockScreenKnowledgeFactorHashAlgorithm hash_algorithm = 2;
-  bytes hash_salt = 3;
 }
 
 message CryptohomeRecoveryAuthInput {
@@ -157,9 +153,10 @@ message AuthInput {
   }
 }
 
-// Password AuthFactor does not store any special metadata. Although this could
-// change in the future and keeping that in mind, an empty proto is defined.
-message PasswordMetadata {}
+message PasswordMetadata {
+  // The hash information used to generate the secret.
+  KnowledgeFactorHashInfo hash_info = 1;
+}
 
 message PinMetadata {
   // If true, the key is "locked" after too many unsuccessful authorization
@@ -170,6 +167,8 @@ message PinMetadata {
   // This is populated by cryptohome,  should be omitted in any Add/Update
   // request. And it will be ignored when present in any Add/Update request.
   bool auth_locked = 1;
+  // The hash information used to generate the secret.
+  KnowledgeFactorHashInfo hash_info = 2;
 }
 
 message CryptohomeRecoveryMetadata {
@@ -200,6 +199,14 @@ enum LockoutPolicy {
   // for a particular time after particular number of wrong attempts.
   // The policy specifics itself can be custom defined by an AuthFactor.
   LOCKOUT_POLICY_TIME_LIMITED = 3;
+}
+
+// The hash information of an auth factor that is used to generate the actual
+// secret. This can be used to generate the recoverable key store for the auth
+// factor.
+message KnowledgeFactorHashInfo {
+  cryptohome.LockScreenKnowledgeFactorHashAlgorithm algorithm = 1;
+  bytes salt = 2;
 }
 
 message CommonMetadata {

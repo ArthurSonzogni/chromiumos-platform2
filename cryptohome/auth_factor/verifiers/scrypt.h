@@ -20,13 +20,16 @@ class ScryptVerifier final : public SyncCredentialVerifier {
   // Attempt to construct a credential verifier with the given passkey. Will
   // return null on failure.
   static std::unique_ptr<ScryptVerifier> Create(
-      std::string auth_factor_label, const brillo::SecureBlob& passkey);
+      std::string auth_factor_label,
+      AuthFactorMetadata metadata,
+      const brillo::SecureBlob& passkey);
 
   ScryptVerifier(const ScryptVerifier&) = delete;
   ScryptVerifier& operator=(const ScryptVerifier&) = delete;
 
  private:
   ScryptVerifier(std::string auth_factor_label,
+                 AuthFactorMetadata metadata,
                  brillo::Blob scrypt_salt,
                  brillo::SecureBlob verifier);
 

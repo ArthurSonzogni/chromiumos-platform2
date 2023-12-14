@@ -35,13 +35,9 @@ AuthInput FromPasswordAuthInput(
 }
 
 AuthInput FromPinAuthInput(const user_data_auth::PinAuthInput& proto) {
-  AuthInput input = {.user_input = SecureBlob(proto.secret())};
-  if (proto.hash_algorithm() !=
-      LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_UNSPECIFIED) {
-    input.user_input_hash_algorithm = proto.hash_algorithm();
-    input.user_input_hash_salt = brillo::BlobFromString(proto.hash_salt());
-  }
-  return input;
+  return AuthInput{
+      .user_input = SecureBlob(proto.secret()),
+  };
 }
 
 AuthInput FromCryptohomeRecoveryAuthInput(

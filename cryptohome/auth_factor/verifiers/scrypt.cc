@@ -45,26 +45,29 @@ constexpr int kScryptOutputSize = 256 / CHAR_BIT;
 }  // namespace
 
 std::unique_ptr<ScryptVerifier> ScryptVerifier::Create(
-    std::string auth_factor_label, const brillo::SecureBlob& passkey) {
+    std::string auth_factor_label,
+    AuthFactorMetadata metadata,
+    const brillo::SecureBlob& passkey) {
   // Create a salt and try to scrypt the passkey with it.
   brillo::Blob scrypt_salt = CreateRandomBlob(kScryptSaltSize);
   brillo::SecureBlob verifier(kScryptOutputSize, 0);
   if (Scrypt(passkey, scrypt_salt, kScryptNFactor, kScryptRFactor,
              kScryptPFactor, &verifier)) {
-    return base::WrapUnique(new ScryptVerifier(std::move(auth_factor_label),
-                                               std::move(scrypt_salt),
-                                               std::move(verifier)));
+    return base::WrapUnique(
+        new ScryptVerifier(std::move(auth_factor_label), std::move(metadata),
+                           std::move(scrypt_salt), std::move(verifier)));
   }
   // If the Scrypt failed, then we can't make a verifier with this passkey.
   return nullptr;
 }
 
 ScryptVerifier::ScryptVerifier(std::string auth_factor_label,
+                               AuthFactorMetadata metadata,
                                brillo::Blob scrypt_salt,
                                brillo::SecureBlob verifier)
     : SyncCredentialVerifier(AuthFactorType::kPassword,
                              std::move(auth_factor_label),
-                             {.metadata = PasswordMetadata()}),
+                             std::move(metadata)),
       scrypt_salt_(std::move(scrypt_salt)),
       verifier_(std::move(verifier)) {}
 

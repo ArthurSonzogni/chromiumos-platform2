@@ -319,7 +319,7 @@ void PinWeaverAuthBlock::Create(const AuthInput& auth_input,
         CreateRecoverableKeyStoreState(
             LockScreenKnowledgeFactorType::
                 LOCK_SCREEN_KNOWLEDGE_FACTOR_TYPE_PIN,
-            auth_input, *key_store_cert_provider_);
+            auth_input, auth_factor_metadata, *key_store_cert_provider_);
     if (!key_store_state.ok()) {
       LOG(WARNING) << "Failed to generate recoverable key store state: "
                    << key_store_state.status();

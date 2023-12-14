@@ -20,7 +20,9 @@ constexpr char kLabel[] = "fake-label";
 class ScryptVerifierTest : public ::testing::Test {
  public:
   ScryptVerifierTest()
-      : verifier_(ScryptVerifier::Create(kLabel, brillo::SecureBlob("good"))) {}
+      : verifier_(ScryptVerifier::Create(kLabel,
+                                         {.metadata = PasswordMetadata{}},
+                                         brillo::SecureBlob("good"))) {}
 
  protected:
   std::unique_ptr<ScryptVerifier> verifier_;

@@ -1606,6 +1606,7 @@ TEST_F(AuthSessionWithUssTest,
 // Test that a new auth factor and a pin can be added to the newly created user,
 // in case the USS experiment is on.
 TEST_F(AuthSessionWithUssTest, AddPasswordAndPinAuthFactorViaUss) {
+  const std::string kHashSalt(16, 0xAA);
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -1672,12 +1673,18 @@ TEST_F(AuthSessionWithUssTest, AddPasswordAndPinAuthFactorViaUss) {
                  std::move(auth_block_state));
       });
   // Calling AddAuthFactor.
+  user_data_auth::KnowledgeFactorHashInfo hash_info;
+  hash_info.set_algorithm(
+      LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234);
+  hash_info.set_salt(kHashSalt);
   user_data_auth::AddAuthFactorRequest add_pin_request;
   add_pin_request.set_auth_session_id(auth_session.serialized_token());
   add_pin_request.mutable_auth_factor()->set_type(
       user_data_auth::AUTH_FACTOR_TYPE_PIN);
   add_pin_request.mutable_auth_factor()->set_label(kFakePinLabel);
-  add_pin_request.mutable_auth_factor()->mutable_pin_metadata();
+  *add_pin_request.mutable_auth_factor()
+       ->mutable_pin_metadata()
+       ->mutable_hash_info() = hash_info;
   add_pin_request.mutable_auth_input()->mutable_pin_input()->set_secret(
       kFakePin);
   // Test and Verify.
@@ -1696,6 +1703,17 @@ TEST_F(AuthSessionWithUssTest, AddPasswordAndPinAuthFactorViaUss) {
   EXPECT_THAT(user_session->GetCredentialVerifiers(),
               UnorderedElementsAre(
                   IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
+  CryptohomeStatusOr<AuthFactor> loaded_pin_factor =
+      auth_factor_manager_.LoadAuthFactor(SanitizeUserName(kFakeUsername),
+                                          AuthFactorType::kPin, kFakePinLabel);
+  ASSERT_THAT(loaded_pin_factor, IsOk());
+  const auto* loaded_hash_info = loaded_pin_factor->metadata().hash_info();
+  ASSERT_NE(loaded_hash_info, nullptr);
+  ASSERT_TRUE(loaded_hash_info->algorithm.has_value());
+  EXPECT_EQ(
+      *loaded_hash_info->algorithm,
+      SerializedLockScreenKnowledgeFactorHashAlgorithm::PBKDF2_AES256_1234);
+  EXPECT_EQ(loaded_hash_info->salt, brillo::BlobFromString(kHashSalt));
 }
 
 // Test that an existing user with an existing password auth factor can be
@@ -4982,9 +5000,21 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinGenerateKeyStoreState) {
   ASSERT_THAT(uss, IsOk());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
-  AuthFactor auth_factor(AuthFactorType::kPin, kFakePinLabel,
-                         AuthFactorMetadata{.metadata = PinMetadata()},
-                         AuthBlockState{.state = PinWeaverAuthBlockState()});
+  AuthFactor auth_factor(
+      AuthFactorType::kPin, kFakePinLabel,
+      AuthFactorMetadata{
+          .metadata =
+              PinMetadata{
+                  .hash_info =
+                      SerializedKnowledgeFactorHashInfo{
+                          .algorithm =
+                              SerializedLockScreenKnowledgeFactorHashAlgorithm::
+                                  PBKDF2_AES256_1234,
+                          .salt = brillo::Blob(30, 0xAA),
+                      },
+              },
+      },
+      AuthBlockState{.state = PinWeaverAuthBlockState()});
   EXPECT_TRUE(
       auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
           .ok());
@@ -5040,9 +5070,6 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinGenerateKeyStoreState) {
   std::vector<std::string> auth_factor_labels{kFakePinLabel};
   user_data_auth::AuthInput auth_input_proto;
   auth_input_proto.mutable_pin_input()->set_secret(kFakePin);
-  auth_input_proto.mutable_pin_input()->set_hash_algorithm(
-      LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234);
-  auth_input_proto.mutable_pin_input()->set_hash_salt(std::string(30, 0xAA));
   AuthenticateTestFuture authenticate_future;
   SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
       {.type = *SerializeAuthFactorType(
@@ -5094,7 +5121,18 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinUpdateKeyStoreState) {
   // test.
   AuthFactor auth_factor(
       AuthFactorType::kPin, kFakePinLabel,
-      AuthFactorMetadata{.metadata = PinMetadata()},
+      AuthFactorMetadata{
+          .metadata =
+              PinMetadata{
+                  .hash_info =
+                      SerializedKnowledgeFactorHashInfo{
+                          .algorithm =
+                              SerializedLockScreenKnowledgeFactorHashAlgorithm::
+                                  PBKDF2_AES256_1234,
+                          .salt = brillo::Blob(30, 0xAA),
+                      },
+              },
+      },
       AuthBlockState{.state = PinWeaverAuthBlockState(),
                      .recoverable_key_store_state = *key_store_state});
   EXPECT_TRUE(
@@ -5152,9 +5190,6 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinUpdateKeyStoreState) {
   std::vector<std::string> auth_factor_labels{kFakePinLabel};
   user_data_auth::AuthInput auth_input_proto;
   auth_input_proto.mutable_pin_input()->set_secret(kFakePin);
-  auth_input_proto.mutable_pin_input()->set_hash_algorithm(
-      LockScreenKnowledgeFactorHashAlgorithm::HASH_TYPE_PBKDF2_AES256_1234);
-  auth_input_proto.mutable_pin_input()->set_hash_salt(std::string(30, 0xAA));
   AuthenticateTestFuture authenticate_future;
   SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
       {.type = *SerializeAuthFactorType(

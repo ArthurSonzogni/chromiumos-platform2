@@ -14,6 +14,7 @@
 #include "cryptohome/auth_factor/prepare_purpose.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/features.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
 namespace cryptohome {
 
@@ -26,6 +27,15 @@ namespace cryptohome {
 user_data_auth::AuthFactorType AuthFactorTypeToProto(AuthFactorType type);
 std::optional<AuthFactorType> AuthFactorTypeFromProto(
     user_data_auth::AuthFactorType type);
+
+// Functions to convert a SerializedLockScreenKnowledgeFactorHashAlgorithm to
+// and from the protobuf enum.
+LockScreenKnowledgeFactorHashAlgorithm
+SerializedKnowledgeFactorAlgorithmToProto(
+    const SerializedLockScreenKnowledgeFactorHashAlgorithm& algorithm);
+std::optional<SerializedLockScreenKnowledgeFactorHashAlgorithm>
+SerializedKnowledgeFactorAlgorithmFromProto(
+    const LockScreenKnowledgeFactorHashAlgorithm& algorithm);
 
 // Function to convert an auth factor prepare purpose from the protobuf enum.
 std::optional<AuthFactorPreparePurpose> AuthFactorPreparePurposeFromProto(

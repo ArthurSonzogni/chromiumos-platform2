@@ -29,6 +29,10 @@ struct AuthFactorMetadata {
                SmartCardMetadata,
                FingerprintMetadata>
       metadata;
+
+  // Returns the SerializedKnowledgeFactorHashInfo if the metadata contains this
+  // field. Returns null otherwise.
+  const SerializedKnowledgeFactorHashInfo* hash_info() const;
 };
 
 }  // namespace cryptohome

@@ -2894,8 +2894,6 @@ AuthBlockType AuthSession::ResaveVaultKeysetIfNeeded(
                           .reset_secret = std::nullopt,
                           .reset_seed = std::nullopt,
                           .rate_limiter_label = std::nullopt,
-                          .user_input_hash_algorithm = std::nullopt,
-                          .user_input_hash_salt = std::nullopt,
                           .cryptohome_recovery_auth_input = std::nullopt,
                           .challenge_credential_auth_input = std::nullopt,
                           .fingerprint_auth_input = std::nullopt};
@@ -4260,24 +4258,26 @@ void AuthSession::MaybeUpdateRecoverableKeyStore(const AuthFactor& auth_factor,
     return;
   }
   RecoverableKeyStoreState new_state;
-  std::optional<RecoverableKeyStoreState> old_state =
+  const std::optional<RecoverableKeyStoreState>& old_state =
       auth_factor.auth_block_state().recoverable_key_store_state;
   if (!old_state.has_value()) {
     CryptohomeStatusOr<RecoverableKeyStoreState> new_state_status =
-        CreateRecoverableKeyStoreState(*lskf_type, auth_input, *provider);
+        CreateRecoverableKeyStoreState(*lskf_type, auth_input,
+                                       auth_factor.metadata(), *provider);
     if (!new_state_status.ok()) {
-      LOG(ERROR) << "Failed to create recoverable key store state: "
-                 << new_state_status.status();
+      LOG(WARNING) << "Failed to create recoverable key store state: "
+                   << new_state_status.status();
       return;
     }
     new_state = std::move(*new_state_status);
   } else {
     CryptohomeStatusOr<std::optional<RecoverableKeyStoreState>>
         new_state_status = MaybeUpdateRecoverableKeyStoreState(
-            *old_state, *lskf_type, auth_input, *provider);
+            *old_state, *lskf_type, auth_input, auth_factor.metadata(),
+            *provider);
     if (!new_state_status.ok()) {
-      LOG(ERROR) << "Failed to update recoverable key store state."
-                 << new_state_status.status();
+      LOG(WARNING) << "Failed to update recoverable key store state."
+                   << new_state_status.status();
       return;
     }
     if (!new_state_status->has_value()) {
