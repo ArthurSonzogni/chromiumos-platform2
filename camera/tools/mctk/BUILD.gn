@@ -8,6 +8,7 @@ group("all") {
 
 executable("mctk") {
   sources = [
+    "//camera/tools/mctk/control.cc",
     "//camera/tools/mctk/control_from_kernel.cc",
     "//camera/tools/mctk/control_from_yaml.cc",
     "//camera/tools/mctk/control_helpers.cc",

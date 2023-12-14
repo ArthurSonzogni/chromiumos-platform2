@@ -41,6 +41,8 @@ class V4lMcControl {
   static std::unique_ptr<V4lMcControl> CreateFromYamlNode(
       YamlNode& node_control);
 
+  bool IsReadOnly();
+
   /* Setters for controls with value arrays */
   bool Set(std::vector<__s32>& values);
   bool Set(std::vector<__s64>& values);
@@ -110,6 +112,10 @@ class V4lMcControl {
 #endif /* V4L2_CTRL_TYPE_AV1_FILM_GRAIN */
 
  private:
+  /* Private functions */
+
+  bool WrapIoctl(struct v4l2_ext_control& controls_ptr);
+
   /* Private variables */
 
   /* Optional fd to V4L2 device containing this control.

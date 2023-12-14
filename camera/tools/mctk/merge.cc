@@ -75,11 +75,7 @@ bool MergeControl(V4lMcControl& tc, class V4lMcControl& sc) {
       MCTK_PANIC("Unmergeable control type encountered");
   }
 
-  if (!ok) {
-    MCTK_ERR("Setting control failed");
-  }
-
-  return true;
+  return ok;
 }
 
 }  // namespace
@@ -471,8 +467,16 @@ bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
         continue;
       }
 
+      if (tc->IsReadOnly()) {
+        MCTK_VERBOSE("Entity: " + std::string(te->desc_.name) +
+                     " - not merging read-only control " +
+                     std::to_string(tc->desc_.id));
+        continue;
+      }
+
       if (!MergeControl(*tc, *sc)) {
-        MCTK_ERR("Control failed to merge. Continuing...");
+        MCTK_ERR("Control failed to merge on entity: " +
+                 std::string(te->desc_.name));
         continue;
       }
     }

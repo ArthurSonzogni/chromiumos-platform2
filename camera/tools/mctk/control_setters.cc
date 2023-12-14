@@ -27,17 +27,16 @@
 
 #include "tools/mctk/debug.h"
 
-namespace {
-
-bool WrapIoctl(std::optional<int>& fd, struct v4l2_ext_control* controls_ptr) {
-  if (fd.has_value()) {
+bool V4lMcControl::WrapIoctl(struct v4l2_ext_control& controls) {
+  if (fd_ent_.has_value()) {
     struct v4l2_ext_controls ext_controls = {};
     ext_controls.which = V4L2_CTRL_WHICH_CUR_VAL;
     ext_controls.count = 1;
-    ext_controls.controls = controls_ptr;
+    ext_controls.controls = &controls;
 
-    if (ioctl(fd.value(), VIDIOC_S_EXT_CTRLS, &ext_controls) < 0) {
+    if (ioctl(fd_ent_.value(), VIDIOC_S_EXT_CTRLS, &ext_controls) < 0) {
       MCTK_PERROR("VIDIOC_S_EXT_CTRLS");
+      MCTK_ERR("Failed setting control " + std::to_string(desc_.id));
       return false;
     }
   }
@@ -45,9 +44,8 @@ bool WrapIoctl(std::optional<int>& fd, struct v4l2_ext_control* controls_ptr) {
   return true;
 }
 
-}  // namespace
-
 bool V4lMcControl::Set(std::vector<__s32>& values_s32) {
+  MCTK_ASSERT(!this->IsReadOnly());
   MCTK_ASSERT(this->desc_.type == V4L2_CTRL_TYPE_INTEGER ||
               this->desc_.type == V4L2_CTRL_TYPE_BOOLEAN ||
               this->desc_.type == V4L2_CTRL_TYPE_MENU ||
@@ -69,10 +67,11 @@ bool V4lMcControl::Set(std::vector<__s32>& values_s32) {
     ec.value = this->values_s32_[0];
   }
 
-  return WrapIoctl(this->fd_ent_, &ec);
+  return WrapIoctl(ec);
 }
 
 bool V4lMcControl::Set(std::vector<__s64>& values_s64) {
+  MCTK_ASSERT(!this->IsReadOnly());
   MCTK_ASSERT(this->desc_.type == V4L2_CTRL_TYPE_INTEGER64);
   MCTK_ASSERT(values_s64.size() == this->desc_.elems);
   this->values_s64_ = values_s64;
@@ -89,10 +88,11 @@ bool V4lMcControl::Set(std::vector<__s64>& values_s64) {
     ec.value = this->values_s64_[0];
   }
 
-  return WrapIoctl(this->fd_ent_, &ec);
+  return WrapIoctl(ec);
 }
 
 bool V4lMcControl::Set(std::vector<std::string>& values_string) {
+  MCTK_ASSERT(!this->IsReadOnly());
   MCTK_ASSERT(this->desc_.type == V4L2_CTRL_TYPE_STRING);
   MCTK_ASSERT(this->desc_.elem_size >= 1);
 
@@ -123,10 +123,11 @@ bool V4lMcControl::Set(std::vector<std::string>& values_string) {
   ec.size = this->desc_.elems * this->desc_.elem_size;
   ec.string = temp.data();
 
-  return WrapIoctl(this->fd_ent_, &ec);
+  return WrapIoctl(ec);
 }
 
 bool V4lMcControl::Set(std::vector<__u8>& values_u8) {
+  MCTK_ASSERT(!this->IsReadOnly());
   MCTK_ASSERT(this->desc_.type == V4L2_CTRL_TYPE_U8);
   MCTK_ASSERT(values_u8.size() == this->desc_.elems);
   this->values_u8_ = values_u8;
@@ -136,10 +137,11 @@ bool V4lMcControl::Set(std::vector<__u8>& values_u8) {
   ec.size = this->desc_.elems * this->desc_.elem_size;
   ec.p_u8 = this->values_u8_.data();
 
-  return WrapIoctl(this->fd_ent_, &ec);
+  return WrapIoctl(ec);
 }
 
 bool V4lMcControl::Set(std::vector<__u16>& values_u16) {
+  MCTK_ASSERT(!this->IsReadOnly());
   MCTK_ASSERT(this->desc_.type == V4L2_CTRL_TYPE_U16);
   MCTK_ASSERT(values_u16.size() == this->desc_.elems);
   this->values_u16_ = values_u16;
@@ -149,10 +151,11 @@ bool V4lMcControl::Set(std::vector<__u16>& values_u16) {
   ec.size = this->desc_.elems * this->desc_.elem_size;
   ec.p_u16 = this->values_u16_.data();
 
-  return WrapIoctl(this->fd_ent_, &ec);
+  return WrapIoctl(ec);
 }
 
 bool V4lMcControl::Set(std::vector<__u32>& values_u32) {
+  MCTK_ASSERT(!this->IsReadOnly());
   MCTK_ASSERT(this->desc_.type == V4L2_CTRL_TYPE_U32);
   MCTK_ASSERT(values_u32.size() == this->desc_.elems);
   this->values_u32_ = values_u32;
@@ -162,11 +165,12 @@ bool V4lMcControl::Set(std::vector<__u32>& values_u32) {
   ec.size = this->desc_.elems * this->desc_.elem_size;
   ec.p_u32 = this->values_u32_.data();
 
-  return WrapIoctl(this->fd_ent_, &ec);
+  return WrapIoctl(ec);
 }
 
 #ifdef V4L2_CTRL_TYPE_AREA
 bool V4lMcControl::Set(std::vector<struct v4l2_area>& values_area) {
+  MCTK_ASSERT(!this->IsReadOnly());
   MCTK_ASSERT(this->desc_.type == V4L2_CTRL_TYPE_AREA);
   MCTK_ASSERT(values_area.size() == this->desc_.elems);
   this->values_area_ = values_area;
@@ -176,7 +180,7 @@ bool V4lMcControl::Set(std::vector<struct v4l2_area>& values_area) {
   ec.size = this->desc_.elems * this->desc_.elem_size;
   ec.p_area = this->values_area_.data();
 
-  return WrapIoctl(this->fd_ent_, &ec);
+  return WrapIoctl(ec);
 }
 #endif /* V4L2_CTRL_TYPE_AREA */
 
