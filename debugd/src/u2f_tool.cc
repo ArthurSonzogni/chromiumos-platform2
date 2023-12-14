@@ -27,8 +27,10 @@ constexpr char kOverrideConfigDir[] = "/var/lib/u2f/force";
 constexpr char kJobName[] = "u2fd";
 
 constexpr const char* kKnownFlags[] = {
-    u2f_flags::kU2f,      u2f_flags::kG2f,           u2f_flags::kVerbose,
-    u2f_flags::kUserKeys, u2f_flags::kAllowlistData, u2f_flags::kCorpProtocol,
+    u2f_flags::kU2f,           u2f_flags::kG2f,
+    u2f_flags::kVerbose,       u2f_flags::kUserKeys,
+    u2f_flags::kAllowlistData, u2f_flags::kDisableCorpProtocol,
+    u2f_flags::kActivateFips,
 };
 
 int ControlU2fd(bool start) {
