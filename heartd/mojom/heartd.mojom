@@ -14,8 +14,22 @@ interface HeartdControl {
 // Heartbeat service interface exposed by heartd. Clients can use this interface
 // to register the service and send heartbeat to heartd.
 //
-// NextMinVersion: 0, NextIndex: 0
+// NextMinVersion: 0, NextIndex: 1
 interface HeartbeatService {
+  // Each ServiceName can only register one heartbeat service. We reject second
+  // registration by dropping the `Pacemaker` mojo connection directly.
+  // After registration, heartd starts to verify the heartbeat consistency. So
+  // clients are expected to send heartbeat once registered. If the mojo
+  // connection of `Pacemaker` is dropped by the clients before calling
+  // `StopMonitor`, we assume that something bad happens and will treat it as
+  // one missing heartbeat when verification.
+  Register@0(
+    ServiceName name,
+    HeartbeatServiceArgument argument,
+    pending_receiver<Pacemaker> receiver) => (bool success);
+};
+
+struct HeartbeatServiceArgument {
 };
 
 // Pacemaker interface. Clients hold the remote and use this to send heartbeat

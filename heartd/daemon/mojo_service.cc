@@ -12,9 +12,19 @@
 #include <chromeos/mojo/service_constants.h>
 #include <mojo_service_manager/lib/connect.h>
 
+#include "heartd/daemon/utils/mojo_output.h"
+#include "heartd/mojom/heartd.mojom.h"
+
 namespace heartd {
 
-HeartdMojoService::HeartdMojoService() {
+namespace {
+
+namespace mojom = ::ash::heartd::mojom;
+
+}  // namespace
+
+HeartdMojoService::HeartdMojoService(HeartbeatManager* heartbeat_manager)
+    : heartbeat_manager_(heartbeat_manager) {
   auto pending_remote =
       chromeos::mojo_service_manager::ConnectToMojoServiceManager();
   CHECK(pending_remote) << "Failed to connect to mojo service manager.";
@@ -35,5 +45,21 @@ HeartdMojoService::HeartdMojoService() {
 }
 
 HeartdMojoService::~HeartdMojoService() = default;
+
+void HeartdMojoService::Register(
+    mojom::ServiceName name,
+    mojom::HeartbeatServiceArgumentPtr argument,
+    mojo::PendingReceiver<mojom::Pacemaker> receiver,
+    RegisterCallback callback) {
+  if (heartbeat_manager_->IsPacemakerBound(name)) {
+    LOG(ERROR) << "Repeated registration: " << ToStr(name);
+    std::move(callback).Run(false);
+    return;
+  }
+
+  heartbeat_manager_->EstablishHeartbeatTracker(name, std::move(receiver),
+                                                std::move(argument));
+  std::move(callback).Run(true);
+}
 
 }  // namespace heartd

@@ -67,4 +67,7 @@ void HeartbeatTracker::OnPacemakerDisconnect() {
   receiver_.reset();
 }
 
+void HeartbeatTracker::SetupArgument(
+    mojom::HeartbeatServiceArgumentPtr argument) {}
+
 }  // namespace heartd

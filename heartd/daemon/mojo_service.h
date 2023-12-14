@@ -5,9 +5,11 @@
 #ifndef HEARTD_DAEMON_MOJO_SERVICE_H_
 #define HEARTD_DAEMON_MOJO_SERVICE_H_
 
+#include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
+#include "heartd/daemon/heartbeat_manager.h"
 #include "heartd/daemon/utils/mojo_service_provider.h"
 #include "heartd/mojom/heartd.mojom.h"
 
@@ -18,10 +20,16 @@ namespace heartd {
 class HeartdMojoService final : public ash::heartd::mojom::HeartbeatService,
                                 public ash::heartd::mojom::HeartdControl {
  public:
-  HeartdMojoService();
+  explicit HeartdMojoService(HeartbeatManager* heartbeat_manager);
   HeartdMojoService(const HeartdMojoService&) = delete;
   HeartdMojoService& operator=(const HeartdMojoService&) = delete;
   ~HeartdMojoService() override;
+
+  // ash::heartd::mojom::HeartbeatService overrides:
+  void Register(ash::heartd::mojom::ServiceName name,
+                ash::heartd::mojom::HeartbeatServiceArgumentPtr argument,
+                mojo::PendingReceiver<ash::heartd::mojom::Pacemaker> receiver,
+                RegisterCallback callback) override;
 
  private:
   // Mojo remote to mojo service manager, used to register mojo interface.
@@ -35,6 +43,9 @@ class HeartdMojoService final : public ash::heartd::mojom::HeartbeatService,
   // manager.
   MojoServiceProvider<ash::heartd::mojom::HeartdControl>
       heartd_control_provider_{this};
+  // Unowned pointer. Should outlive this instance.
+  // It is used to register new heartbeat tracker.
+  HeartbeatManager* const heartbeat_manager_;
 };
 
 }  // namespace heartd

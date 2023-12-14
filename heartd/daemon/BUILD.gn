@@ -13,6 +13,7 @@ pkg_config("target_defaults") {
 
 source_set("libheartd") {
   sources = [
+    "heartbeat_manager.cc",
     "heartbeat_tracker.cc",
     "heartd.cc",
     "mojo_service.cc",
@@ -26,7 +27,10 @@ source_set("libheartd") {
 
 if (use.test) {
   source_set("libheartd_test") {
-    sources = [ "heartbeat_tracker_test.cc" ]
+    sources = [
+      "heartbeat_manager_test.cc",
+      "heartbeat_tracker_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",

@@ -41,6 +41,9 @@ class HeartbeatTracker : public ash::heartd::mojom::Pacemaker {
   void RebindPacemaker(
       mojo::PendingReceiver<ash::heartd::mojom::Pacemaker> receiver);
 
+  // Set up the service argument.
+  void SetupArgument(ash::heartd::mojom::HeartbeatServiceArgumentPtr argument);
+
  private:
   // Handler when pacemaker mojo disconnects.
   void OnPacemakerDisconnect();

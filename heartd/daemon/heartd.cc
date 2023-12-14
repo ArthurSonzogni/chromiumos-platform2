@@ -14,7 +14,8 @@ HeartdDaemon::HeartdDaemon() {
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
       base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
-  mojo_service_ = std::make_unique<HeartdMojoService>();
+  heartbeat_manager_ = std::make_unique<HeartbeatManager>();
+  mojo_service_ = std::make_unique<HeartdMojoService>(heartbeat_manager_.get());
 }
 
 HeartdDaemon::~HeartdDaemon() = default;
