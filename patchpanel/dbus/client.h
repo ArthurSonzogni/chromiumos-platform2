@@ -26,7 +26,6 @@
 #include <net-base/ipv6_address.h>
 #include <net-base/network_config.h>
 #include <net-base/network_priority.h>
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 namespace org::chromium {
 class PatchPanelProxyInterface;
@@ -525,6 +524,10 @@ BRILLO_EXPORT std::ostream& operator<<(
 
 BRILLO_EXPORT std::ostream& operator<<(
     std::ostream& stream, const Client::NetworkTechnology& technology);
+
+// Forward declaring the protobuf-defined class patchpanel::NetworkConfig to
+// avoid including protobuf binding in a public header.
+class NetworkConfig;
 
 BRILLO_EXPORT void SerializeNetworkConfig(const net_base::NetworkConfig& in,
                                           patchpanel::NetworkConfig* out);
