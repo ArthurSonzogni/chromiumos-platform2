@@ -6,7 +6,6 @@
 
 mod arc;
 mod bt_console;
-mod builtin_corpssh;
 mod ccd_pass;
 mod display_debug;
 mod dlc_install;
@@ -25,7 +24,6 @@ use crate::dispatcher::Dispatcher;
 
 pub fn register(dispatcher: &mut Dispatcher) {
     arc::register(dispatcher);
-    builtin_corpssh::register(dispatcher);
     bt_console::register(dispatcher);
     ccd_pass::register(dispatcher);
     dlc_install::register(dispatcher);
