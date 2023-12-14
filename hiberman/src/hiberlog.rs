@@ -286,8 +286,22 @@ impl LogFile {
         Self::open_file(path, &opts)
     }
 
+    /// Check if log file exists for a given hibernation stage.
+    fn exists(stage: HibernateStage) -> bool {
+        let path = Self::get_path(stage);
+        path.exists()
+    }
+
+    /// Clear the log file for a given hibernation stage.
+    fn clear(stage: HibernateStage) {
+        let path = Self::get_path(stage);
+        if let Err(e) = fs::remove_file(&path) {
+            warn!("Failed to remove {}: {}", path.display(), e);
+        }
+    }
+
     /// Get the path of the log file for a given hibernate stage.
-    pub fn get_path(stage: HibernateStage) -> PathBuf {
+    fn get_path(stage: HibernateStage) -> PathBuf {
         let name = match stage {
             HibernateStage::Suspend => SUSPEND_LOG_FILE_NAME,
             HibernateStage::Resume => RESUME_LOG_FILE_NAME,
@@ -391,15 +405,14 @@ pub fn replay_logs(push_resume_logs: bool, clear: bool) {
 /// Helper function to replay the suspend or resume log to the syslogger, and
 /// potentially zero out the log as well.
 fn replay_log(stage: HibernateStage, clear: bool) {
+    if !LogFile::exists(stage) {
+        return;
+    }
+
     let (name, prefix) = match stage {
         HibernateStage::Suspend => ("suspend log", "S"),
         HibernateStage::Resume => ("resume log", "R"),
     };
-
-    let path = LogFile::get_path(stage);
-    if !path.exists() {
-        return;
-    }
 
     let mut opened_log = match LogFile::open(stage) {
         Ok(f) => f,
@@ -413,9 +426,7 @@ fn replay_log(stage: HibernateStage, clear: bool) {
 
     if clear {
         mem::drop(opened_log);
-        if let Err(e) = fs::remove_file(&path) {
-            warn!("Failed to remove {}: {}", path.display(), e);
-        }
+        LogFile::clear(stage);
     }
 }
 
