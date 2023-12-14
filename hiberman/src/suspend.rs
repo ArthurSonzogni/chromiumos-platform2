@@ -30,7 +30,6 @@ use regex::Regex;
 
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
-use crate::hiberlog;
 use crate::hiberlog::redirect_log;
 use crate::hiberlog::replay_logs;
 use crate::hiberlog::reset_log;
@@ -163,8 +162,7 @@ impl SuspendConductor<'_> {
 
         // Stop logging to syslog, and divert instead to a file since the
         // logging daemon's about to be frozen.
-        let log_file = hiberlog::LogFile::create(HibernateStage::Suspend)?;
-        let redirect_guard = LogRedirectGuard::new(log_file);
+        let redirect_guard = LogRedirectGuard::new(HibernateStage::Suspend, true)?;
 
         debug!("Syncing filesystems");
         // This is safe because sync() does not modify memory.
@@ -279,8 +277,7 @@ impl SuspendConductor<'_> {
             let pages_with_zeroes = get_number_of_dropped_pages_with_zeroes()?;
             // Briefly remount 'hibermeta' to write logs and metrics.
             let mut hibermeta_mount = self.volume_manager.mount_hibermeta()?;
-            let log_file = hiberlog::LogFile::open(HibernateStage::Suspend)?;
-            let redirect_guard = LogRedirectGuard::new(log_file);
+            let redirect_guard = LogRedirectGuard::new(HibernateStage::Suspend, false)?;
 
             let start = Instant::now();
 

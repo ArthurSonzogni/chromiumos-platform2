@@ -258,7 +258,7 @@ impl LogFile {
     /// Create the log file at given hibernate stage, truncate the file if it already
     /// exists. The file is opened with O_SYNC to make sure data from writes
     /// isn't buffered by the kernel but submitted to storage immediately.
-    pub fn create(stage: HibernateStage) -> Result<File> {
+    fn create(stage: HibernateStage) -> Result<File> {
         let path = Self::get_path(stage);
 
         let opts = OpenOptions::new()
@@ -274,7 +274,7 @@ impl LogFile {
     /// Open existing log file at given hibernation stage. The file is opened with
     /// O_SYNC to make sure data from writes isn't buffered by the kernel but
     /// submitted to storage immediately.
-    pub fn open(stage: HibernateStage) -> Result<File> {
+    fn open(stage: HibernateStage) -> Result<File> {
         let path = Self::get_path(stage);
 
         let opts = OpenOptions::new()
@@ -318,9 +318,14 @@ pub struct LogRedirectGuard {}
 impl LogRedirectGuard {
     /// Divert the log to a file. If the log was previously pointing to syslog
     /// those messages are flushed.
-    pub fn new(log_file: File) -> Self {
+    pub fn new(stage: HibernateStage, create: bool) -> Result<Self> {
+        let log_file = if create {
+            LogFile::create(stage)
+        } else {
+            LogFile::open(stage)
+        }?;
         redirect_log(HiberlogOut::File(Box::new(log_file)));
-        LogRedirectGuard {}
+        Ok(LogRedirectGuard {})
     }
 }
 

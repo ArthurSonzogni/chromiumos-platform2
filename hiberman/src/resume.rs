@@ -34,7 +34,6 @@ use crate::cryptohome;
 use crate::device_mapper::DeviceMapper;
 use crate::files::remove_resume_in_progress_file;
 use crate::files::HIBERNATING_USER_FILE;
-use crate::hiberlog;
 use crate::hiberlog::redirect_log;
 use crate::hiberlog::replay_logs;
 use crate::hiberlog::HiberlogOut;
@@ -303,9 +302,8 @@ impl ResumeConductor {
 
     /// Inner helper function to read the resume image and launch it.
     fn resume_system(&mut self, mut hibermeta_mount: ActiveMount) -> Result<()> {
-        let log_file = hiberlog::LogFile::create(HibernateStage::Resume)?;
         // Start logging to the resume logger.
-        let redirect_guard = LogRedirectGuard::new(log_file);
+        let redirect_guard = LogRedirectGuard::new(HibernateStage::Resume, true)?;
 
         // Let other daemons know it's the end of the world.
         let mut powerd_resume =
