@@ -493,7 +493,6 @@ has_arc(`
 /run/hibernate                  u:object_r:cros_run_hibernate:s0
 /run/ippusb(/.*)?               u:object_r:cros_run_ippusb:s0
 /run/ipsec                      u:object_r:cros_run_ipsec:s0
-/run/l2tpipsec_vpn              u:object_r:cros_run_l2tpipsec_vpn:s0
 /run/lock                       u:object_r:cros_run_lock:s0
 /run/lock/firmware_utility_lock u:object_r:cros_run_lock_firmware_utility_lock:s0
 /run/lock/power_override        u:object_r:cros_run_lock_power_override:s0

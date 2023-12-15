@@ -560,7 +560,6 @@ type cros_run_fuse, file_type, cros_file_type, cros_run_file_type;
 type cros_run_hibernate, file_type, cros_file_type, cros_run_file_type;
 type cros_run_ippusb, file_type, cros_file_type, cros_run_file_type;
 type cros_run_ipsec, file_type, cros_file_type, cros_run_file_type;
-type cros_run_l2tpipsec_vpn, file_type, cros_file_type, cros_run_file_type;
 type cros_run_lock, file_type, cros_file_type, cros_run_file_type;
 type cros_run_lock_firmware_utility_lock, file_type, cros_file_type, cros_run_file_type;
 type cros_run_lock_power_override, file_type, cros_file_type, cros_run_file_type;

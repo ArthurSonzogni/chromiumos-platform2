@@ -3,7 +3,7 @@
 
 # shill spawns dhcpcd as 'dhcp' group
 20104:224
-# shill spawns wireguard tools, openvpn, and 'l2tpipsec_vpn' as 'vpn' group
+# shill spawns charon, openvpn, swanctl, and wireguard tools as 'vpn' group
 20104:20174
 # shill spawns logger as 'syslog' group
 20104:202

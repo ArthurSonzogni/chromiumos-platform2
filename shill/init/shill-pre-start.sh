@@ -20,7 +20,6 @@ systemd-tmpfiles --create --remove --clean /usr/lib/tmpfiles.d/dhcpcd.conf
 
   chown -c -R vpn:vpn \
     /run/ipsec \
-    /run/l2tpipsec_vpn \
     /run/xl2tpd \
     /run/wireguard
 
