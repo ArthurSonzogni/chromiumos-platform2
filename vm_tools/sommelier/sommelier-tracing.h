@@ -23,6 +23,7 @@ PERFETTO_DEFINE_CATEGORIES(
     perfetto::Category("x11wm").SetDescription(
         "Events for X11 window management"),
     perfetto::Category("gaming").SetDescription("Events for Gaming"),
+    perfetto::Category("timing").SetDescription("Events for Timing"),
     perfetto::Category("other").SetDescription("Uncategorized Wayland calls."));
 
 void perfetto_annotate_atom(struct sl_context* ctx,

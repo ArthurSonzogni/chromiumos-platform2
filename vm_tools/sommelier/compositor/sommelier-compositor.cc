@@ -791,6 +791,25 @@ static void sl_host_surface_commit(struct wl_client* client,
     }
   }
 
+  // Log frame stats.
+  if (host->ctx->frame_stats != nullptr) {
+    // Try and find a matching window to identify steam game id and
+    // activation status.
+    // TODO(davidriley): This ideally isn't doing a linear search each frame.
+    uint32_t steam_game_id = 0;
+    bool activated = false;
+    struct sl_window* window;
+    wl_list_for_each(window, &host->ctx->windows, link) {
+      if (window->host_surface_id == try_wl_resource_get_id(resource)) {
+        steam_game_id = window->steam_game_id;
+        activated = window->activated;
+        break;
+      }
+    }
+
+    host->ctx->frame_stats->AddFrame(resource_id, steam_game_id, activated);
+  }
+
   if (host->contents_shm_mmap) {
     if (host->contents_shm_mmap->buffer_resource) {
       wl_buffer_send_release(host->contents_shm_mmap->buffer_resource);

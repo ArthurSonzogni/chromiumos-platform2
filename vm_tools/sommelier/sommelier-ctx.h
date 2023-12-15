@@ -110,6 +110,7 @@ struct sl_context {
   std::unique_ptr<struct wl_event_source> sigchld_event_source;
   std::unique_ptr<struct wl_event_source> sigusr1_event_source;
   std::unique_ptr<struct wl_event_source> clipboard_event_source;
+  std::unique_ptr<struct wl_event_source> stats_timer_event_source;
   struct wl_array dpi;
   int wm_fd;
   int wayland_channel_fd;
@@ -209,6 +210,8 @@ struct sl_context {
 #ifdef QUIRKS_SUPPORT
   Quirks quirks;
 #endif
+  std::unique_ptr<FrameStats> frame_stats;
+  int stats_timer_delay;
 
   // Command-line configurable options.
   bool trace_system;

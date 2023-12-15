@@ -3212,6 +3212,16 @@ static int sl_handle_sigusr1(int signal_number, void* data) {
   return 1;
 }
 
+static int sl_handle_stats_timer(void* data) {
+  struct sl_context* ctx = (struct sl_context*)data;
+  if (ctx->frame_stats != nullptr) {
+    ctx->frame_stats->OutputStats();
+  }
+  wl_event_source_timer_update(ctx->stats_timer_event_source.get(),
+                               ctx->stats_timer_delay);
+  return 1;
+}
+
 static void sl_execvp(const char* file,
                       char* const argv[],
                       int wayland_socked_fd) {
@@ -3458,6 +3468,15 @@ static void sl_print_usage() {
 #ifdef QUIRKS_SUPPORT
       "  --quirks-config=PATH[,PATH...]\tOne or more 'quirks' config files.\n"
 #endif
+      "  --stats-summary=PATH\t\tPath for recent frame timing stats "
+      "(rewrites)\n"
+      "  --stats-log=PATH\t\t\tPath to log/append frame timing stats "
+      "(appends)\n"
+      "\tThe two previous arguments log the same data for different usages.\n"
+      "\tThe summary is the most recent entries for the metrics collector,\n"
+      "\twhile the log will grow infinitely and is intended for debugging\n"
+      "\tor development purposes.\n"
+      "  --stats-timer=SECS\t\tNumber of seconds between stats dumps\n"
       "  --fullscreen-mode=MODE\tDefault fullscreen behavior (immersive,"
       " plain)\n"
       "  --noop-driver\t\tPass through to existing Wayland server"
@@ -3836,6 +3855,8 @@ int real_main(int argc, char** argv) {
   int parent = 0;
   int client_fd = -1;
   int i;
+  const char* stats_summary = nullptr;
+  const char* stats_log = nullptr;
 
   // Ignore SIGUSR1 (used for trace dumping) in all child processes.
   signal(SIGUSR1, SIG_IGN);
@@ -3940,6 +3961,12 @@ int real_main(int argc, char** argv) {
     } else if (strstr(arg, "--quirks-config") == arg) {
       quirks_paths = sl_arg_value(arg);
 #endif
+    } else if (strstr(arg, "--stats-summary") == arg) {
+      stats_summary = sl_arg_value(arg);
+    } else if (strstr(arg, "--stats-log") == arg) {
+      stats_log = sl_arg_value(arg);
+    } else if (strstr(arg, "--stats-timer") == arg) {
+      ctx.stats_timer_delay = atoi(sl_arg_value(arg)) * 1000;
     } else if (arg[0] == '-') {
       if (strcmp(arg, "--") == 0) {
         ctx.runprog = &argv[i + 1];
@@ -4206,6 +4233,14 @@ int real_main(int argc, char** argv) {
   // Initialize timing log values.
   if (ctx.timing) {
     ctx.timing->RecordStartTime();
+  }
+
+  if (stats_summary != nullptr || stats_log != nullptr) {
+    ctx.frame_stats.reset(new FrameStats(stats_summary, stats_log));
+    ctx.stats_timer_event_source.reset(
+        wl_event_loop_add_timer(event_loop, sl_handle_stats_timer, &ctx));
+    wl_event_source_timer_update(ctx.stats_timer_event_source.get(),
+                                 ctx.stats_timer_delay);
   }
 
   wl_client_add_destroy_listener(ctx.client, &client_destroy_listener);
