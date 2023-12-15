@@ -12,8 +12,6 @@
 
 #include <base/no_destructor.h>
 
-#include "shill/net/shill_export.h"
-
 namespace shill {
 
 // Timestamp encapsulates a |monotonic| and a |boottime| clock that can be used
@@ -22,7 +20,7 @@ namespace shill {
 // format. Note that the monotonic clock does not necessarily advance during
 // suspend, while boottime clock does include any time that the system is
 // suspended.
-struct SHILL_EXPORT Timestamp {
+struct Timestamp {
   Timestamp() : monotonic{} {}
   Timestamp(const struct timeval& in_monotonic,
             const struct timeval& in_boottime,
@@ -37,7 +35,7 @@ struct SHILL_EXPORT Timestamp {
 };
 
 // A "sys/time.h" abstraction allowing mocking in tests.
-class SHILL_EXPORT Time {
+class Time {
  public:
   virtual ~Time();
 

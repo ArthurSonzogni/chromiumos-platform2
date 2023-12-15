@@ -16,13 +16,11 @@
 #include <net-base/netlink_message.h>
 #include <net-base/netlink_packet.h>
 
-#include "shill/net/shill_export.h"
-
 namespace shill {
 
 // Class for messages received from the mac80211 drivers by way of the
 // cfg80211 kernel module.
-class SHILL_EXPORT Nl80211Message : public net_base::GenericNetlinkMessage {
+class Nl80211Message : public net_base::GenericNetlinkMessage {
  public:
   using Handler = base::RepeatingCallback<void(const Nl80211Message&)>;
   static const char kMessageTypeString[];
@@ -75,7 +73,7 @@ class SHILL_EXPORT Nl80211Message : public net_base::GenericNetlinkMessage {
   static uint16_t nl80211_message_type_;
 };
 
-class SHILL_EXPORT Nl80211Frame {
+class Nl80211Frame {
  public:
   enum Type {
     kAssocResponseFrameType = 0x10,
@@ -113,7 +111,7 @@ class SHILL_EXPORT Nl80211Frame {
 // Specific Nl80211Message types.
 //
 
-class SHILL_EXPORT AssociateMessage : public Nl80211Message {
+class AssociateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -123,7 +121,7 @@ class SHILL_EXPORT AssociateMessage : public Nl80211Message {
   AssociateMessage& operator=(const AssociateMessage&) = delete;
 };
 
-class SHILL_EXPORT AuthenticateMessage : public Nl80211Message {
+class AuthenticateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -133,7 +131,7 @@ class SHILL_EXPORT AuthenticateMessage : public Nl80211Message {
   AuthenticateMessage& operator=(const AuthenticateMessage&) = delete;
 };
 
-class SHILL_EXPORT CancelRemainOnChannelMessage : public Nl80211Message {
+class CancelRemainOnChannelMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -144,7 +142,7 @@ class SHILL_EXPORT CancelRemainOnChannelMessage : public Nl80211Message {
       delete;
 };
 
-class SHILL_EXPORT ConnectMessage : public Nl80211Message {
+class ConnectMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -154,7 +152,7 @@ class SHILL_EXPORT ConnectMessage : public Nl80211Message {
   ConnectMessage& operator=(const ConnectMessage&) = delete;
 };
 
-class SHILL_EXPORT DeauthenticateMessage : public Nl80211Message {
+class DeauthenticateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -164,7 +162,7 @@ class SHILL_EXPORT DeauthenticateMessage : public Nl80211Message {
   DeauthenticateMessage& operator=(const DeauthenticateMessage&) = delete;
 };
 
-class SHILL_EXPORT DelInterfaceMessage : public Nl80211Message {
+class DelInterfaceMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -174,7 +172,7 @@ class SHILL_EXPORT DelInterfaceMessage : public Nl80211Message {
   DelInterfaceMessage& operator=(const DelInterfaceMessage&) = delete;
 };
 
-class SHILL_EXPORT DeleteStationMessage : public Nl80211Message {
+class DeleteStationMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -184,7 +182,7 @@ class SHILL_EXPORT DeleteStationMessage : public Nl80211Message {
   DeleteStationMessage& operator=(const DeleteStationMessage&) = delete;
 };
 
-class SHILL_EXPORT DelWiphyMessage : public Nl80211Message {
+class DelWiphyMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -194,7 +192,7 @@ class SHILL_EXPORT DelWiphyMessage : public Nl80211Message {
   DelWiphyMessage& operator=(const DelInterfaceMessage&) = delete;
 };
 
-class SHILL_EXPORT DisassociateMessage : public Nl80211Message {
+class DisassociateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -204,7 +202,7 @@ class SHILL_EXPORT DisassociateMessage : public Nl80211Message {
   DisassociateMessage& operator=(const DisassociateMessage&) = delete;
 };
 
-class SHILL_EXPORT DisconnectMessage : public Nl80211Message {
+class DisconnectMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -214,7 +212,7 @@ class SHILL_EXPORT DisconnectMessage : public Nl80211Message {
   DisconnectMessage& operator=(const DisconnectMessage&) = delete;
 };
 
-class SHILL_EXPORT FrameTxStatusMessage : public Nl80211Message {
+class FrameTxStatusMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -224,7 +222,7 @@ class SHILL_EXPORT FrameTxStatusMessage : public Nl80211Message {
   FrameTxStatusMessage& operator=(const FrameTxStatusMessage&) = delete;
 };
 
-class SHILL_EXPORT GetRegMessage : public Nl80211Message {
+class GetRegMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -234,7 +232,7 @@ class SHILL_EXPORT GetRegMessage : public Nl80211Message {
   GetRegMessage& operator=(const GetRegMessage&) = delete;
 };
 
-class SHILL_EXPORT ReqSetRegMessage : public Nl80211Message {
+class ReqSetRegMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -244,7 +242,7 @@ class SHILL_EXPORT ReqSetRegMessage : public Nl80211Message {
   ReqSetRegMessage& operator=(const ReqSetRegMessage&) = delete;
 };
 
-class SHILL_EXPORT GetStationMessage : public Nl80211Message {
+class GetStationMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -254,7 +252,7 @@ class SHILL_EXPORT GetStationMessage : public Nl80211Message {
   GetStationMessage& operator=(const GetStationMessage&) = delete;
 };
 
-class SHILL_EXPORT SetWakeOnWiFiMessage : public Nl80211Message {
+class SetWakeOnWiFiMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -264,7 +262,7 @@ class SHILL_EXPORT SetWakeOnWiFiMessage : public Nl80211Message {
   SetWakeOnWiFiMessage& operator=(const SetWakeOnWiFiMessage&) = delete;
 };
 
-class SHILL_EXPORT GetWakeOnWiFiMessage : public Nl80211Message {
+class GetWakeOnWiFiMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -274,7 +272,7 @@ class SHILL_EXPORT GetWakeOnWiFiMessage : public Nl80211Message {
   GetWakeOnWiFiMessage& operator=(const GetWakeOnWiFiMessage&) = delete;
 };
 
-class SHILL_EXPORT GetWiphyMessage : public Nl80211Message {
+class GetWiphyMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -284,7 +282,7 @@ class SHILL_EXPORT GetWiphyMessage : public Nl80211Message {
   GetWiphyMessage& operator=(const GetWiphyMessage&) = delete;
 };
 
-class SHILL_EXPORT JoinIbssMessage : public Nl80211Message {
+class JoinIbssMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -294,7 +292,7 @@ class SHILL_EXPORT JoinIbssMessage : public Nl80211Message {
   JoinIbssMessage& operator=(const JoinIbssMessage&) = delete;
 };
 
-class SHILL_EXPORT MichaelMicFailureMessage : public Nl80211Message {
+class MichaelMicFailureMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -304,7 +302,7 @@ class SHILL_EXPORT MichaelMicFailureMessage : public Nl80211Message {
   MichaelMicFailureMessage& operator=(const MichaelMicFailureMessage&) = delete;
 };
 
-class SHILL_EXPORT NewMeshPathMessage : public Nl80211Message {
+class NewMeshPathMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -314,7 +312,7 @@ class SHILL_EXPORT NewMeshPathMessage : public Nl80211Message {
   NewMeshPathMessage& operator=(const NewMeshPathMessage&) = delete;
 };
 
-class SHILL_EXPORT NewScanResultsMessage : public Nl80211Message {
+class NewScanResultsMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -324,7 +322,7 @@ class SHILL_EXPORT NewScanResultsMessage : public Nl80211Message {
   NewScanResultsMessage& operator=(const NewScanResultsMessage&) = delete;
 };
 
-class SHILL_EXPORT NewStationMessage : public Nl80211Message {
+class NewStationMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -334,7 +332,7 @@ class SHILL_EXPORT NewStationMessage : public Nl80211Message {
   NewStationMessage& operator=(const NewStationMessage&) = delete;
 };
 
-class SHILL_EXPORT NewWiphyMessage : public Nl80211Message {
+class NewWiphyMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -344,7 +342,7 @@ class SHILL_EXPORT NewWiphyMessage : public Nl80211Message {
   NewWiphyMessage& operator=(const NewWiphyMessage&) = delete;
 };
 
-class SHILL_EXPORT NotifyCqmMessage : public Nl80211Message {
+class NotifyCqmMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -354,7 +352,7 @@ class SHILL_EXPORT NotifyCqmMessage : public Nl80211Message {
   NotifyCqmMessage& operator=(const NotifyCqmMessage&) = delete;
 };
 
-class SHILL_EXPORT PmksaCandidateMessage : public Nl80211Message {
+class PmksaCandidateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -364,7 +362,7 @@ class SHILL_EXPORT PmksaCandidateMessage : public Nl80211Message {
   PmksaCandidateMessage& operator=(const PmksaCandidateMessage&) = delete;
 };
 
-class SHILL_EXPORT ProbeMeshLinkMessage : public Nl80211Message {
+class ProbeMeshLinkMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -374,7 +372,7 @@ class SHILL_EXPORT ProbeMeshLinkMessage : public Nl80211Message {
   ProbeMeshLinkMessage& operator=(const ProbeMeshLinkMessage&) = delete;
 };
 
-class SHILL_EXPORT RegBeaconHintMessage : public Nl80211Message {
+class RegBeaconHintMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -384,7 +382,7 @@ class SHILL_EXPORT RegBeaconHintMessage : public Nl80211Message {
   RegBeaconHintMessage& operator=(const RegBeaconHintMessage&) = delete;
 };
 
-class SHILL_EXPORT RegChangeMessage : public Nl80211Message {
+class RegChangeMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -394,7 +392,7 @@ class SHILL_EXPORT RegChangeMessage : public Nl80211Message {
   RegChangeMessage& operator=(const RegChangeMessage&) = delete;
 };
 
-class SHILL_EXPORT RemainOnChannelMessage : public Nl80211Message {
+class RemainOnChannelMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -404,7 +402,7 @@ class SHILL_EXPORT RemainOnChannelMessage : public Nl80211Message {
   RemainOnChannelMessage& operator=(const RemainOnChannelMessage&) = delete;
 };
 
-class SHILL_EXPORT RoamMessage : public Nl80211Message {
+class RoamMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -414,7 +412,7 @@ class SHILL_EXPORT RoamMessage : public Nl80211Message {
   RoamMessage& operator=(const RoamMessage&) = delete;
 };
 
-class SHILL_EXPORT ScanAbortedMessage : public Nl80211Message {
+class ScanAbortedMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -424,7 +422,7 @@ class SHILL_EXPORT ScanAbortedMessage : public Nl80211Message {
   ScanAbortedMessage& operator=(const ScanAbortedMessage&) = delete;
 };
 
-class SHILL_EXPORT GetScanMessage : public Nl80211Message {
+class GetScanMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -434,7 +432,7 @@ class SHILL_EXPORT GetScanMessage : public Nl80211Message {
   GetScanMessage& operator=(const GetScanMessage&) = delete;
 };
 
-class SHILL_EXPORT TriggerScanMessage : public Nl80211Message {
+class TriggerScanMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -444,7 +442,7 @@ class SHILL_EXPORT TriggerScanMessage : public Nl80211Message {
   TriggerScanMessage& operator=(const TriggerScanMessage&) = delete;
 };
 
-class SHILL_EXPORT UnknownNl80211Message : public Nl80211Message {
+class UnknownNl80211Message : public Nl80211Message {
  public:
   explicit UnknownNl80211Message(uint8_t command)
       : Nl80211Message(command, "<UNKNOWN NL80211 MESSAGE>") {}
@@ -452,7 +450,7 @@ class SHILL_EXPORT UnknownNl80211Message : public Nl80211Message {
   UnknownNl80211Message& operator=(const UnknownNl80211Message&) = delete;
 };
 
-class SHILL_EXPORT UnprotDeauthenticateMessage : public Nl80211Message {
+class UnprotDeauthenticateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -463,7 +461,7 @@ class SHILL_EXPORT UnprotDeauthenticateMessage : public Nl80211Message {
       delete;
 };
 
-class SHILL_EXPORT UnprotDisassociateMessage : public Nl80211Message {
+class UnprotDisassociateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -474,7 +472,7 @@ class SHILL_EXPORT UnprotDisassociateMessage : public Nl80211Message {
       delete;
 };
 
-class SHILL_EXPORT WiphyRegChangeMessage : public Nl80211Message {
+class WiphyRegChangeMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -484,7 +482,7 @@ class SHILL_EXPORT WiphyRegChangeMessage : public Nl80211Message {
   WiphyRegChangeMessage& operator=(const WiphyRegChangeMessage&) = delete;
 };
 
-class SHILL_EXPORT GetInterfaceMessage : public Nl80211Message {
+class GetInterfaceMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -494,7 +492,7 @@ class SHILL_EXPORT GetInterfaceMessage : public Nl80211Message {
   GetInterfaceMessage& operator=(const GetInterfaceMessage&) = delete;
 };
 
-class SHILL_EXPORT NewInterfaceMessage : public Nl80211Message {
+class NewInterfaceMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -504,7 +502,7 @@ class SHILL_EXPORT NewInterfaceMessage : public Nl80211Message {
   NewInterfaceMessage& operator=(const NewInterfaceMessage&) = delete;
 };
 
-class SHILL_EXPORT GetSurveyMessage : public Nl80211Message {
+class GetSurveyMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -514,7 +512,7 @@ class SHILL_EXPORT GetSurveyMessage : public Nl80211Message {
   GetSurveyMessage& operator=(const GetSurveyMessage&) = delete;
 };
 
-class SHILL_EXPORT SurveyResultsMessage : public Nl80211Message {
+class SurveyResultsMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -524,7 +522,7 @@ class SHILL_EXPORT SurveyResultsMessage : public Nl80211Message {
   SurveyResultsMessage& operator=(const SurveyResultsMessage&) = delete;
 };
 
-class SHILL_EXPORT GetMeshPathInfoMessage : public Nl80211Message {
+class GetMeshPathInfoMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -534,7 +532,7 @@ class SHILL_EXPORT GetMeshPathInfoMessage : public Nl80211Message {
   GetMeshPathInfoMessage& operator=(const GetMeshPathInfoMessage&) = delete;
 };
 
-class SHILL_EXPORT GetMeshProxyPathMessage : public Nl80211Message {
+class GetMeshProxyPathMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -544,7 +542,7 @@ class SHILL_EXPORT GetMeshProxyPathMessage : public Nl80211Message {
   GetMeshProxyPathMessage& operator=(const GetMeshProxyPathMessage&) = delete;
 };
 
-class SHILL_EXPORT NewPeerCandidateMessage : public Nl80211Message {
+class NewPeerCandidateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -554,7 +552,7 @@ class SHILL_EXPORT NewPeerCandidateMessage : public Nl80211Message {
   NewPeerCandidateMessage& operator=(const NewPeerCandidateMessage&) = delete;
 };
 
-class SHILL_EXPORT ControlPortFrameTxStatusMessage : public Nl80211Message {
+class ControlPortFrameTxStatusMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];

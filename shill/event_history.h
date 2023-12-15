@@ -11,7 +11,6 @@
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/net/shill_export.h"
 #include "shill/time.h"
 
 namespace shill {
@@ -20,7 +19,7 @@ namespace shill {
 // events. Events are ordered from earliest to latest. |max_events_saved|
 // can optionally be provided to limit the number of event timestamps saved
 // at any one time.
-class SHILL_EXPORT EventHistory {
+class EventHistory {
  public:
   enum ClockType {
     kClockTypeBoottime = 0,

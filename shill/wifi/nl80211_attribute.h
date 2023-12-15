@@ -12,18 +12,16 @@
 #include <net-base/attribute_list.h>
 #include <net-base/netlink_attribute.h>
 
-#include "shill/net/shill_export.h"
 #include "shill/wifi/nl80211_message.h"
 
 namespace shill {
 
 // Generates the appropriate attribute object from the raw nlattr data.
-SHILL_EXPORT std::unique_ptr<net_base::NetlinkAttribute>
-NewNl80211AttributeFromId(const Nl80211Message::Context& context, int id);
+std::unique_ptr<net_base::NetlinkAttribute> NewNl80211AttributeFromId(
+    const Nl80211Message::Context& context, int id);
 
 // Helper function for creating nl80211 attribute inside AttributeList.
-SHILL_EXPORT bool CreateNl80211Attribute(
-    net_base::AttributeList* attribute_list, int id);
+bool CreateNl80211Attribute(net_base::AttributeList* attribute_list, int id);
 
 // U8.
 
@@ -287,9 +285,8 @@ class Nl80211AttributeProbeRespOffload : public net_base::NetlinkU32Attribute {
       const Nl80211AttributeProbeRespOffload&) = delete;
 };
 
-// Set SHILL_EXPORT to allow unit tests to instantiate these.
-class SHILL_EXPORT Nl80211AttributeRegInitiator
-    : public net_base::NetlinkU32Attribute {
+// Set  to allow unit tests to instantiate these.
+class Nl80211AttributeRegInitiator : public net_base::NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
