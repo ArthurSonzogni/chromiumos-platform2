@@ -303,7 +303,7 @@ impl ResumeConductor {
     /// Inner helper function to read the resume image and launch it.
     fn resume_system(&mut self, mut hibermeta_mount: ActiveMount) -> Result<()> {
         // Start logging to the resume logger.
-        let log_file = LogFile::new(HibernateStage::Resume, true)?;
+        let log_file = LogFile::new(HibernateStage::Resume, true, &hibermeta_mount)?;
 
         // Let other daemons know it's the end of the world.
         let mut powerd_resume =

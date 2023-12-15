@@ -37,6 +37,7 @@ use syslog::Formatter3164;
 
 use crate::files::HIBERMETA_DIR;
 use crate::hiberutil::HibernateStage;
+use crate::volume::ActiveMount;
 
 /// Define the path to kmsg, used to send log lines into the kernel buffer in
 /// case a crash occurs.
@@ -259,19 +260,19 @@ where
 /// The struct is used during the suspend and resume process to ensure
 /// that an open log file is always closed before unmounting 'hibermeta'
 /// (which hosts the log file).
-pub struct LogFile {}
+pub struct LogFile<'m>(pub &'m ActiveMount);
 
-impl LogFile {
+impl<'m> LogFile<'m> {
     /// Divert the log to a file. If the log was previously pointing to syslog
     /// those messages are flushed.
-    pub fn new(stage: HibernateStage, create: bool) -> Result<Self> {
+    pub fn new(stage: HibernateStage, create: bool, am: &'m ActiveMount) -> Result<Self> {
         let log_file = if create {
             Self::create(stage)
         } else {
             Self::open(stage)
         }?;
         redirect_log(HiberlogOut::File(Box::new(log_file)));
-        Ok(LogFile {})
+        Ok(LogFile(&am))
     }
 
     /// Create the log file at given hibernate stage, truncate the file if it already
@@ -340,7 +341,7 @@ impl LogFile {
     }
 }
 
-impl Drop for LogFile {
+impl Drop for LogFile<'_> {
     fn drop(&mut self) {
         redirect_log(HiberlogOut::BufferInMemory);
     }

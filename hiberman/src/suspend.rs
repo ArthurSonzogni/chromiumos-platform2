@@ -160,10 +160,6 @@ impl SuspendConductor<'_> {
             return Err(HibernateError::UpdateEngineBusyError()).context("Update engine is active");
         }
 
-        // Stop logging to syslog, and divert instead to a file since the
-        // logging daemon's about to be frozen.
-        let log_file = LogFile::new(HibernateStage::Suspend, true)?;
-
         debug!("Syncing filesystems");
         // This is safe because sync() does not modify memory.
         unsafe {
@@ -172,7 +168,7 @@ impl SuspendConductor<'_> {
 
         prealloc_mem().context("Failed to preallocate memory for hibernate")?;
 
-        let result = self.suspend_system(hibermeta_mount, log_file);
+        let result = self.suspend_system(hibermeta_mount);
 
         if result.is_ok() {
             log_metric_event(HibernateEvent::ResumeSuccess);
@@ -203,14 +199,14 @@ impl SuspendConductor<'_> {
     /// Inner helper function to actually take the snapshot, save it to disk,
     /// and shut down. Returns upon a failure to hibernate, or after a
     /// successful hibernation has resumed.
-    ///
-    /// The order of the `hibermeta_mount` and `log_file` parameters
-    /// must not be changed!!!
     fn suspend_system(
         &mut self,
         mut hibermeta_mount: ActiveMount,
-        log_file: LogFile,
     ) -> Result<()> {
+        // Stop logging to syslog, and divert instead to a file since the
+        // logging daemon's about to be frozen.
+        let log_file = LogFile::new(HibernateStage::Suspend, true, &hibermeta_mount)?;
+
         // Push all non-file backed reclaimable memory to zram.
         reclaim_all_processes()
             .context("Failed to perform memory reclaim")?;
@@ -277,7 +273,7 @@ impl SuspendConductor<'_> {
             let pages_with_zeroes = get_number_of_dropped_pages_with_zeroes()?;
             // Briefly remount 'hibermeta' to write logs and metrics.
             let mut hibermeta_mount = self.volume_manager.mount_hibermeta()?;
-            let log_file = LogFile::new(HibernateStage::Suspend, false)?;
+            let log_file = LogFile::new(HibernateStage::Suspend, false, &hibermeta_mount)?;
 
             let start = Instant::now();
 
