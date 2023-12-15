@@ -1180,7 +1180,8 @@ void UserDataAuth::CreateRecoverableKeyStoreBackendCertProvider() {
   if (!key_store_cert_provider_) {
     if (!default_key_store_cert_provider_) {
       default_key_store_cert_provider_ =
-          std::make_unique<RecoverableKeyStoreBackendCertProviderImpl>();
+          std::make_unique<RecoverableKeyStoreBackendCertProviderImpl>(
+              platform_);
     }
     key_store_cert_provider_ = default_key_store_cert_provider_.get();
   }

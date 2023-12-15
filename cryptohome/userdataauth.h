@@ -837,9 +837,9 @@ class UserDataAuth {
 
   // ============= WebAuthn / Passkey Related Public Methods ==============
 
-  // Called on Mount thread. This creates a key store cert provider that
-  // connects to the remote cert fetcher and maintains the on-disk backend
-  // certs.
+  // Called on Mount thread. This creates a key store cert provider that fetches
+  // certificate lists from the server endpoint and maintains the on-disk
+  // backend certs.
   void CreateRecoverableKeyStoreBackendCertProvider();
 
   // =============== PKCS#11 Related Utilities ===============

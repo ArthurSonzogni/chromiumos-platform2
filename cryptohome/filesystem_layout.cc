@@ -32,6 +32,8 @@ constexpr char kSystemSaltFile[] = "salt";
 constexpr int64_t kSystemSaltMaxSize = (1 << 20);  // 1 MB
 constexpr mode_t kSaltFilePermissions = 0644;
 
+constexpr char kRecoverableKeyStoreDir[] = "recoverable_key_store_backend_cert";
+
 constexpr char kSkelPath[] = "/etc/skel";
 constexpr char kLogicalVolumePrefix[] = "cryptohome";
 constexpr char kDmcryptVolumePrefix[] = "dmcrypt";
@@ -101,6 +103,10 @@ base::FilePath PublicMountSaltFile() {
 
 base::FilePath SkelDir() {
   return base::FilePath(kSkelPath);
+}
+
+base::FilePath RecoverableKeyStoreBackendCertDir() {
+  return ShadowRoot().Append(kRecoverableKeyStoreDir);
 }
 
 base::FilePath UserPath(const ObfuscatedUsername& obfuscated) {

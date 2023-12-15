@@ -53,6 +53,7 @@ base::FilePath ShadowRoot();
 base::FilePath SystemSaltFile();
 base::FilePath PublicMountSaltFile();
 base::FilePath SkelDir();
+base::FilePath RecoverableKeyStoreBackendCertDir();
 base::FilePath UserPath(const ObfuscatedUsername& obfuscated);
 base::FilePath VaultKeysetPath(const ObfuscatedUsername& obfuscated, int index);
 base::FilePath UserActivityPerIndexTimestampPath(

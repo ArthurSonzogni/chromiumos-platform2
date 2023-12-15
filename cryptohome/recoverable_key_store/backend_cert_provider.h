@@ -20,11 +20,6 @@ namespace cryptohome {
 // regeneration.
 class RecoverableKeyStoreBackendCertProvider {
  public:
-  RecoverableKeyStoreBackendCertProvider() = default;
-  RecoverableKeyStoreBackendCertProvider(
-      const RecoverableKeyStoreBackendCertProvider&) = delete;
-  RecoverableKeyStoreBackendCertProvider& operator=(
-      const RecoverableKeyStoreBackendCertProvider&) = delete;
   virtual ~RecoverableKeyStoreBackendCertProvider() = default;
 
   // Get a recoverable key store service backend certificate. This should try to
