@@ -46,6 +46,7 @@
 #include <crypto/sha2.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
+#include "base/location.h"
 #include "missive/analytics/metrics.h"
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
@@ -158,72 +159,15 @@ struct RecordHeader {
 }  // namespace
 
 // static
-void StorageQueue::Create(
-    const Settings& settings,
-    base::OnceCallback<void(StatusOr<scoped_refptr<StorageQueue>>)>
-        completion_cb) {
-  // Initialize StorageQueue object loading the data.
-  class StorageQueueInitContext
-      : public TaskRunnerContext<StatusOr<scoped_refptr<StorageQueue>>> {
-   public:
-    StorageQueueInitContext(
-        scoped_refptr<StorageQueue> storage_queue,
-        InitRetryCb init_retry_cb,
-        base::OnceCallback<void(StatusOr<scoped_refptr<StorageQueue>>)>
-            callback)
-        : TaskRunnerContext<StatusOr<scoped_refptr<StorageQueue>>>(
-              std::move(callback), storage_queue->sequenced_task_runner_),
-          storage_queue_(std::move(storage_queue)),
-          init_retry_cb_(init_retry_cb) {
-      CHECK(storage_queue_);
-    }
-
-   private:
-    // Context can only be deleted by calling Response method.
-    ~StorageQueueInitContext() override = default;
-
-    void OnStart() override { Attempt(kRetries); }
-
-    void Attempt(size_t retries) {
-      auto init_status = storage_queue_->Init();
-      if (!init_status.ok()) {
-        if (retries <= 0) {
-          // No more retry attempts.
-          Response(init_status);
-          return;
-        }
-        const auto backoff_result = init_retry_cb_.Run(init_status, retries);
-        if (!backoff_result.has_value()) {
-          // Retry not allowed.
-          Response(backoff_result.status());
-          return;
-        }
-        // Back off and retry. Some of the errors could be transient.
-        ScheduleAfter(backoff_result.value(), &StorageQueueInitContext::Attempt,
-                      base::Unretained(this), retries - 1);
-        return;
-      }
-      // Success.
-      Response(std::move(storage_queue_));
-    }
-
-    scoped_refptr<StorageQueue> storage_queue_;
-    const InitRetryCb init_retry_cb_;
-  };
-
+scoped_refptr<StorageQueue> StorageQueue::Create(const Settings& settings) {
   auto sequenced_task_runner = base::ThreadPool::CreateSequencedTaskRunner(
       {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
 
   // Create StorageQueue object.
   // Cannot use base::MakeRefCounted<StorageQueue>, because constructor is
   // private.
-  scoped_refptr<StorageQueue> storage_queue =
-      base::WrapRefCounted(new StorageQueue(sequenced_task_runner, settings));
-
-  // Asynchronously run initialization.
-  Start<StorageQueueInitContext>(std::move(storage_queue),
-                                 settings.init_retry_cb,
-                                 std::move(completion_cb));
+  return base::WrapRefCounted(
+      new StorageQueue(sequenced_task_runner, settings));
 }
 
 StorageQueue::StorageQueue(
@@ -263,7 +207,67 @@ StorageQueue::~StorageQueue() {
   ReleaseAllFileInstances();
 }
 
-Status StorageQueue::Init() {
+void StorageQueue::Init(
+    const InitRetryCb init_retry_cb,
+    base::OnceCallback<void(Status /*initialization_result*/)> initialized_cb) {
+  // Initialize StorageQueue object, loading the data.
+  class StorageQueueInitContext final : public TaskRunnerContext<Status> {
+   public:
+    StorageQueueInitContext(scoped_refptr<StorageQueue> storage_queue,
+                            InitRetryCb init_retry_cb,
+                            base::OnceCallback<void(Status)> initialized_cb)
+        : TaskRunnerContext<Status>(
+              base::BindOnce(&StorageQueue::RunQueuedInits, storage_queue),
+              storage_queue->sequenced_task_runner_),
+          storage_queue_(std::move(storage_queue)),
+          initialized_cb_(std::move(initialized_cb)),
+          init_retry_cb_(init_retry_cb) {
+      CHECK(storage_queue_);
+    }
+
+   private:
+    // Context can only be deleted by calling Response method.
+    ~StorageQueueInitContext() override = default;
+
+    void OnStart() override {
+      storage_queue_->EnqueueOnInit(/*self_init=*/true,
+                                    std::move(initialized_cb_));
+      Attempt(kRetries);
+    }
+
+    void Attempt(size_t retries) {
+      auto init_status = storage_queue_->DoInit();
+      if (!init_status.ok()) {
+        if (retries <= 0) {
+          // No more retry attempts.
+          Response(init_status);
+          return;
+        }
+        const auto backoff_result = init_retry_cb_.Run(init_status, retries);
+        if (!backoff_result.has_value()) {
+          // Retry not allowed.
+          Response(backoff_result.status());
+          return;
+        }
+        // Back off and retry. Some of the errors could be transient.
+        ScheduleAfter(backoff_result.value(), &StorageQueueInitContext::Attempt,
+                      base::Unretained(this), retries - 1);
+        return;
+      }
+      // Success.
+      Response(Status::StatusOK());
+    }
+
+    scoped_refptr<StorageQueue> storage_queue_;
+    base::OnceCallback<void(Status)> initialized_cb_;
+    const InitRetryCb init_retry_cb_;
+  };
+
+  Start<StorageQueueInitContext>(base::WrapRefCounted(this), init_retry_cb,
+                                 std::move(std::move(initialized_cb)));
+}
+
+Status StorageQueue::DoInit() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
   // Make sure the assigned directory exists.
   base::File::Error error;
@@ -2195,6 +2199,40 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
   base::WeakPtrFactory<WriteContext> weak_ptr_factory_
       GUARDED_BY_CONTEXT(storage_queue_->storage_queue_sequence_checker_){this};
 };
+
+void StorageQueue::OnInit(
+    base::OnceCallback<void(Status /*initialization_result*/)> callback) {
+  sequenced_task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&StorageQueue::EnqueueOnInit, base::WrapRefCounted(this),
+                     /*self_init=*/false, std::move(callback)));
+}
+
+void StorageQueue::EnqueueOnInit(
+    bool self_init,
+    base::OnceCallback<void(Status /*initialization_result*/)> callback) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
+  if (!self_init && init_cb_queue_.empty()) {
+    // Posting callback from another queue instance, and `this` instance is
+    // already initialized. Run the callback immediately.
+    std::move(callback).Run(Status::StatusOK());
+    return;
+  }
+  // Either `this` is being initialized, or callback is posted by duplicate
+  // instance. Schedule the callback to be called once initialization ends in
+  // these cases.
+  init_cb_queue_.push(std::move(callback));
+}
+
+void StorageQueue::RunQueuedInits(Status status) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
+  CHECK(!init_cb_queue_.empty()) << "RunQueuedInits can only be called when "
+                                    "there is at least one callback scheduled";
+  do {
+    std::move(init_cb_queue_.front()).Run(status);
+    init_cb_queue_.pop();
+  } while (!init_cb_queue_.empty());
+}
 
 void StorageQueue::Write(Record record,
                          HealthModule::Recorder recorder,

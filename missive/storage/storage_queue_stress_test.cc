@@ -164,43 +164,40 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
     test_encryption_module->UpdateAsymmetricKey("DUMMY KEY", 0,
                                                 key_update_event.cb());
     ASSERT_OK(key_update_event.result());
-    test::TestEvent<StatusOr<scoped_refptr<StorageQueue>>>
-        storage_queue_create_event;
-    StorageQueue::Create(
-        {
-            .generation_guid = "GENERATION_GUID",
-            .options = options,
-            .async_start_upload_cb = base::BindRepeating(
-                &StorageQueueStressTest::AsyncStartTestUploader,
-                base::Unretained(this)),
-            .degradation_candidates_cb = base::BindRepeating(
-                [](scoped_refptr<StorageQueue> queue,
-                   base::OnceCallback<void(
-                       std::queue<scoped_refptr<StorageQueue>>)> result_cb) {
-                  // Returns empty candidates queue - no degradation allowed.
-                  std::move(result_cb).Run({});
-                }),
-            .disconnect_queue_cb = base::BindRepeating(
-                [](GenerationGuid generation_guid, base::OnceClosure done_cb) {
-                  // Finished disconnect.
-                  std::move(done_cb).Run();
-                }),
-            .encryption_module = test_encryption_module,
-            .compression_module =
-                base::MakeRefCounted<test::TestCompressionModule>(),
-            .init_retry_cb = base::BindRepeating(
-                [](Status init_status,
-                   size_t retry_count) -> StatusOr<base::TimeDelta> {
-                  return init_status;  // Do not allow initialization retries.
-                }),
-            .uma_id = "Unknown",
-        },
-        storage_queue_create_event.cb());
-    StatusOr<scoped_refptr<StorageQueue>> storage_queue_result =
-        storage_queue_create_event.result();
-    ASSERT_OK(storage_queue_result) << "Failed to create StorageQueue, error="
-                                    << storage_queue_result.status();
-    storage_queue_ = std::move(storage_queue_result.value());
+    test::TestEvent<Status> initialized_event;
+    storage_queue_ = StorageQueue::Create({
+        .generation_guid = "GENERATION_GUID",
+        .options = options,
+        .async_start_upload_cb =
+            base::BindRepeating(&StorageQueueStressTest::AsyncStartTestUploader,
+                                base::Unretained(this)),
+        .degradation_candidates_cb = base::BindRepeating(
+            [](scoped_refptr<StorageQueue> queue,
+               base::OnceCallback<void(std::queue<scoped_refptr<StorageQueue>>)>
+                   result_cb) {
+              // Returns empty candidates queue - no degradation allowed.
+              std::move(result_cb).Run({});
+            }),
+        .disconnect_queue_cb = base::BindRepeating(
+            [](GenerationGuid generation_guid, base::OnceClosure done_cb) {
+              // Finished disconnect.
+              std::move(done_cb).Run();
+            }),
+        .encryption_module = test_encryption_module,
+        .compression_module =
+            base::MakeRefCounted<test::TestCompressionModule>(),
+        .uma_id = "Unknown",
+    });
+    storage_queue_->Init(
+        /*init_retry_cb=*/base::BindRepeating(
+            [](Status init_status,
+               size_t retry_count) -> StatusOr<base::TimeDelta> {
+              return init_status;  // Do not allow initialization retries.
+            }),
+        initialized_event.cb());
+    const auto initialized_result = initialized_event.result();
+    ASSERT_OK(initialized_result)
+        << "Failed to initialize StorageQueue, error=" << initialized_result;
   }
 
   void ResetTestStorageQueue() {

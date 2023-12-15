@@ -183,9 +183,9 @@ Status QueuesContainer::AddQueue(Priority priority,
       std::make_tuple(priority, queue->generation_guid()), queue);
   if (!emplaced) {
     return Status(
-        error::DATA_LOSS,
+        error::ALREADY_EXISTS,
         base::StrCat({"Queue with generation GUID=", queue->generation_guid(),
-                      " created, but could not be stored."}));
+                      " is already being created."}));
   }
   return Status::StatusOK();
 }

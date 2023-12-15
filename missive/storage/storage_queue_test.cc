@@ -672,35 +672,32 @@ class StorageQueueTest
         HealthModule::Create(std::make_unique<HealthModuleDelegateMock>());
     // Just to check everything works identically with debugging active.
     health_module_->set_debugging(testing::get<2>(GetParam()));
-    test::TestEvent<StatusOr<scoped_refptr<StorageQueue>>>
-        storage_queue_create_event;
-    StorageQueue::Create(
-        {
-            .generation_guid = "GENERATION_GUID",
-            .options = options,
-            .async_start_upload_cb =
-                base::BindRepeating(&StorageQueueTest::AsyncStartMockUploader,
-                                    base::Unretained(this)),
-            .degradation_candidates_cb = base::BindRepeating(
-                [](scoped_refptr<StorageQueue> queue,
-                   base::OnceCallback<void(
-                       std::queue<scoped_refptr<StorageQueue>>)> result_cb) {
-                  // Returns empty candidates queue - no degradation allowed.
-                  std::move(result_cb).Run({});
-                }),
-            .disconnect_queue_cb = base::BindRepeating(
-                [](GenerationGuid generation_guid, base::OnceClosure done_cb) {
-                  // Finished disconnect.
-                  std::move(done_cb).Run();
-                }),
-            .encryption_module = test_encryption_module_,
-            .compression_module = CompressionModule::Create(
-                /*is_enabled=*/true, kCompressionThreshold, kCompressionType),
-            .init_retry_cb = init_retry_cb,
-            .uma_id = kUmaId,
-        },
-        storage_queue_create_event.cb());
-    return storage_queue_create_event.result();
+    test::TestEvent<Status> initialized_event;
+    const auto storage_queue = StorageQueue::Create({
+        .generation_guid = "GENERATION_GUID",
+        .options = options,
+        .async_start_upload_cb = base::BindRepeating(
+            &StorageQueueTest::AsyncStartMockUploader, base::Unretained(this)),
+        .degradation_candidates_cb = base::BindRepeating(
+            [](scoped_refptr<StorageQueue> queue,
+               base::OnceCallback<void(std::queue<scoped_refptr<StorageQueue>>)>
+                   result_cb) {
+              // Returns empty candidates queue - no degradation allowed.
+              std::move(result_cb).Run({});
+            }),
+        .disconnect_queue_cb = base::BindRepeating(
+            [](GenerationGuid generation_guid, base::OnceClosure done_cb) {
+              // Finished disconnect.
+              std::move(done_cb).Run();
+            }),
+        .encryption_module = test_encryption_module_,
+        .compression_module = CompressionModule::Create(
+            /*is_enabled=*/true, kCompressionThreshold, kCompressionType),
+        .uma_id = kUmaId,
+    });
+    storage_queue->Init(init_retry_cb, initialized_event.cb());
+    RETURN_IF_ERROR(initialized_event.result());
+    return storage_queue;
   }
 
   void ResetTestStorageQueue() {
@@ -2224,6 +2221,63 @@ TEST_P(StorageQueueTest, CreateStorageQueueAllRetriesFail) {
   EXPECT_EQ(queue_result.status().error_code(), error::UNAVAILABLE);
 }
 
+TEST_P(StorageQueueTest, CreateStorageQueueMultipleTimesRace) {
+  static constexpr size_t kThreads = 128;
+  // Populate multiple instances of `StorageQueue` (synchronously) without
+  // initialization.
+  std::array<scoped_refptr<StorageQueue>, kThreads> queues;
+  CreateTestEncryptionModuleOrDie();
+  health_module_ =
+      HealthModule::Create(std::make_unique<HealthModuleDelegateMock>());
+  // Just to check everything works identically with debugging active.
+  health_module_->set_debugging(testing::get<2>(GetParam()));
+  const StorageQueue::Settings queue_settings{
+      .generation_guid = "GENERATION_GUID",
+      .options = BuildStorageQueueOptionsOnlyManual(),
+      .async_start_upload_cb = base::BindRepeating(
+          &StorageQueueTest_CreateStorageQueueMultipleTimesRace_Test::
+              AsyncStartMockUploader,
+          base::Unretained(this)),
+      .degradation_candidates_cb = base::BindRepeating(
+          [](scoped_refptr<StorageQueue> queue,
+             base::OnceCallback<void(std::queue<scoped_refptr<StorageQueue>>)>
+                 result_cb) {
+            // Returns empty candidates queue - no degradation allowed.
+            std::move(result_cb).Run({});
+          }),
+      .disconnect_queue_cb = base::BindRepeating(
+          [](GenerationGuid generation_guid, base::OnceClosure done_cb) {
+            // Finished disconnect.
+            std::move(done_cb).Run();
+          }),
+      .encryption_module = test_encryption_module_,
+      .compression_module = CompressionModule::Create(
+          /*is_enabled=*/true, kCompressionThreshold, kCompressionType),
+      .uma_id = kUmaId,
+  };
+  for (size_t i = 0; i < kThreads; ++i) {
+    queues[i] = StorageQueue::Create(queue_settings);
+  }
+  // Initialize all instances in parallel with the same settings (options).
+  std::array<test::TestEvent<Status>, kThreads> init_events;
+  const StorageQueue::InitRetryCb init_retry_cb = base::BindRepeating(
+      [](Status init_status, size_t retry_count) -> StatusOr<base::TimeDelta> {
+        return init_status;  // Do not allow initialization retries.
+      });
+  for (size_t i = 0; i < kThreads; ++i) {
+    base::ThreadPool::PostTask(
+        FROM_HERE, base::BindOnce(&StorageQueue::Init, queues[i], init_retry_cb,
+                                  init_events[i].cb()));
+  }
+  // Check that all queues have been initialized with success (to increase
+  // chances of a race, in reverse order to the initialization calls).
+  for (size_t i = kThreads; i > 0; --i) {
+    const auto status = init_events[i - 1].result();
+    ASSERT_OK(status) << "Failed to create TestStorageQueue[" << i - 1
+                      << "], error=" << status;
+  }
+}
+
 TEST_P(StorageQueueTest, CreateStorageQueueRetry) {
   // Create a file instead of directory, to make StorageQueue initialization
   // fail.
@@ -2232,8 +2286,8 @@ TEST_P(StorageQueueTest, CreateStorageQueueRetry) {
   const QueueOptions queue_options =
       BuildStorageQueueOptionsPeriodic().set_subdirectory(
           bad_file.BaseName().MaybeAsASCII());
-  // Allow the retries with backoff several times, and the last time delete the
-  // file.
+  // Allow the retries with backoff several times, and the last time delete
+  // the file.
   auto init_retry_cb = base::BindRepeating(
       [](base::RepeatingCallback<void(base::TimeDelta)> forward_cb,
          const base::FilePath& bad_file, Status init_status,

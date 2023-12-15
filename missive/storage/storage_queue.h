@@ -90,6 +90,10 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
     kMaxValue = 14
   };
 
+  // Declaration of a callback to be invoked once queue initialization has
+  // finished or failed.
+  using QueueInitCb = base::OnceCallback<void(Status)>;
+
   // Declaration of a callback to be used under disk space stress, to get a
   // queue of `StorageQueue`s that can be used by controlled degradation.
   using DegradationCandidatesCb = base::RepeatingCallback<void(
@@ -123,13 +127,15 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   struct Settings {
     const GenerationGuid generation_guid;
     const QueueOptions& options;
+    // A factory callback that instantiates UploaderInterface every time the
+    // queue starts uploading records - periodically, immediately after Write
+    // or upon explicit Flush request.
     const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb;
     const DegradationCandidatesCb degradation_candidates_cb;
     const DisableQueueCb disable_queue_cb;
     const DisconnectQueueCb disconnect_queue_cb;
     const scoped_refptr<EncryptionModuleInterface> encryption_module;
     const scoped_refptr<CompressionModule> compression_module;
-    const InitRetryCb init_retry_cb;
     const std::string uma_id;  // ID string for queue-specific UMAs.
   };
 
@@ -141,18 +147,29 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   static constexpr char kUploadToStorageRatePrefix[] =
       "Platform.Missive.UploadToStorageRate.";
 
-  // Creates StorageQueue instance with the specified options, and returns it
-  // with the |completion_cb| callback. |async_start_upload_cb| is a factory
-  // callback that instantiates UploaderInterface every time the queue starts
-  // uploading records - periodically or immediately after Write (and in the
-  // near future - upon explicit Flush request).
-  static void Create(
-      const Settings& settings,
-      base::OnceCallback<void(StatusOr<scoped_refptr<StorageQueue>>)>
-          completion_cb);
+  // Creates StorageQueue instance with the specified options and returns it.
+  // Starts asynchronous initialization, that will run `initialized_cb` callback
+  // once completed or failed.
+  static scoped_refptr<StorageQueue> Create(const Settings& settings);
 
   StorageQueue(const StorageQueue& other) = delete;
   StorageQueue& operator=(const StorageQueue& other) = delete;
+
+  // Initializes the object by enumerating files in the assigned directory
+  // and determines the sequence information of the last record.
+  // Must be called once and only once after construction.
+  // Returns OK or error status, if anything failed to initialize.
+  // Called once, during initialization.
+  // Helper methods: EnumerateDataFiles, ScanLastFile, RestoreMetadata.
+  void Init(const InitRetryCb init_retry_cb,
+            base::OnceCallback<void(Status /*initialization_result*/)>
+                initialized_cb);
+
+  // Schedules callback by another instance (racing with this one) to be invoked
+  // when initialization of this instance is done (or immediately, if the queue
+  // is already initialized). See b/315493850.
+  void OnInit(
+      base::OnceCallback<void(Status /*initialization_result*/)> callback);
 
   // Wraps and serializes Record (taking ownership of it), encrypts and writes
   // the resulting blob into the StorageQueue (the last file of it) with the
@@ -360,7 +377,19 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // Returns OK or error status, if anything failed to initialize.
   // Called once, during initialization.
   // Helper methods: EnumerateDataFiles, ScanLastFile, RestoreMetadata.
-  Status Init();
+  Status DoInit();
+
+  // Schedules callback to be invoked when initialization is done (or
+  // immediately, if the queue is already initialized).
+  void EnqueueOnInit(
+      bool self_init,  // true, if called for this queue initialization.
+      base::OnceCallback<void(Status /*initialization_result*/)> callback);
+
+  // Runs callbacks scheduled by `OnInit`. There must be at least one callback,
+  // scheduled before the initialization started - when there are no callbacks,
+  // the queue has already been initialized and any new callback is run
+  // immediately.
+  void RunQueuedInits(Status status);
 
   // Retrieves last record digest (does not exist at a generation start).
   std::optional<std::string> GetLastRecordDigest() const;
@@ -603,6 +632,13 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // used for long enough time, and if it is empty, its file can be deleted and
   // the queue itself can self-destruct.
   base::RetainingOneShotTimer inactivity_check_and_destruct_timer_
+      GUARDED_BY_CONTEXT(storage_queue_sequence_checker_);
+
+  // Queue of initialization callbacks. Empty list means the queue is ready,
+  // otherwise each callback represents an action that triggered queue redundant
+  // initialization and is now pending until initialization that started earlier
+  // has finished or failed.
+  std::queue<QueueInitCb> init_cb_queue_
       GUARDED_BY_CONTEXT(storage_queue_sequence_checker_);
 
   // Inactivity self-destruct flag. This flag is set once the queue has been

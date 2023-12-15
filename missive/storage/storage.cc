@@ -83,9 +83,6 @@ class CreateQueueContext : public TaskRunnerContext<Status> {
   void OnStart() override {
     CheckOnValidSequence();
     DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
-    // Verify this queue doesn't already exist
-    CHECK(!storage_->queues_container_->GetQueue(priority_, generation_guid_)
-               .has_value());
 
     // Set the extension of the queue directory name
     queue_options_.set_subdirectory_extension(generation_guid_);
@@ -96,86 +93,93 @@ class CreateQueueContext : public TaskRunnerContext<Status> {
 
   void InitQueue(Priority priority, QueueOptions queue_options) {
     CheckOnValidSequence();
-    StorageQueue::Create(
-        {
-            .generation_guid = generation_guid_,
-            .options = queue_options,
-            // Note: the callback below belongs to the Queue and does not
-            // outlive Storage, so it cannot refer to `storage_` itself!
-            .async_start_upload_cb = base::BindRepeating(
-                &QueueUploaderInterface::AsyncProvideUploader, priority,
-                storage_->health_module_, storage_->async_start_upload_cb_,
-                storage_->encryption_module_),
-            // `queues_container_` refers a weak pointer only, so that its
-            // callback does not hold a reference to it.
-            .degradation_candidates_cb = base::BindPostTask(
-                storage_->sequenced_task_runner_,
-                base::BindRepeating(&QueuesContainer::GetDegradationCandidates,
-                                    storage_->queues_container_->GetWeakPtr(),
-                                    priority)),
-            .disable_queue_cb = base::BindPostTask(
-                storage_->sequenced_task_runner_,
-                base::BindRepeating(&QueuesContainer::DisableQueue,
-                                    storage_->queues_container_->GetWeakPtr(),
-                                    priority)),
-            .disconnect_queue_cb = base::BindPostTask(
-                storage_->sequenced_task_runner_,
-                base::BindRepeating(&QueuesContainer::DisconnectQueue,
-                                    storage_->queues_container_->GetWeakPtr(),
-                                    priority)),
-            .encryption_module = storage_->encryption_module_,
-            .compression_module = storage_->compression_module_,
-            .init_retry_cb =
-                base::BindRepeating(&StorageQueue::MaybeBackoffAndReInit),
-            .uma_id = Priority_Name_Substitute(priority),
-        },
-        base::BindPostTaskToCurrentDefault(base::BindOnce(
-            &CreateQueueContext::AddQueue, base::Unretained(this),
-            /*priority=*/priority)));
-  }
-
-  void AddQueue(Priority priority,
-                StatusOr<scoped_refptr<StorageQueue>> storage_queue_result) {
-    CheckOnValidSequence();
-    DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
-    if (!storage_queue_result.has_value()) {
-      LOG(ERROR) << "Could not create queue for generation_guid="
-                 << generation_guid_ << " priority=" << priority
-                 << ", error=" << storage_queue_result.status();
-      Response(storage_queue_result.status());
+    // Instantiate queue.
+    storage_queue_ = StorageQueue::Create({
+        .generation_guid = generation_guid_,
+        .options = queue_options,
+        // Note: the callback below belongs to the Queue and does not
+        // outlive Storage, so it cannot refer to `storage_` itself!
+        .async_start_upload_cb = base::BindRepeating(
+            &QueueUploaderInterface::AsyncProvideUploader, priority,
+            storage_->health_module_, storage_->async_start_upload_cb_,
+            storage_->encryption_module_),
+        // `queues_container_` refers a weak pointer only, so that its
+        // callback does not hold a reference to it.
+        .degradation_candidates_cb = base::BindPostTask(
+            storage_->sequenced_task_runner_,
+            base::BindRepeating(&QueuesContainer::GetDegradationCandidates,
+                                storage_->queues_container_->GetWeakPtr(),
+                                priority)),
+        .disable_queue_cb = base::BindPostTask(
+            storage_->sequenced_task_runner_,
+            base::BindRepeating(&QueuesContainer::DisableQueue,
+                                storage_->queues_container_->GetWeakPtr(),
+                                priority)),
+        .disconnect_queue_cb = base::BindPostTask(
+            storage_->sequenced_task_runner_,
+            base::BindRepeating(&QueuesContainer::DisconnectQueue,
+                                storage_->queues_container_->GetWeakPtr(),
+                                priority)),
+        .encryption_module = storage_->encryption_module_,
+        .compression_module = storage_->compression_module_,
+        .uma_id = Priority_Name_Substitute(priority),
+    });
+    // Add queue to the container.
+    const auto added_status =
+        storage_->queues_container_->AddQueue(priority, storage_queue_);
+    if (added_status.ok()) {
+      // The queue has been added. Once it is initialized, we will resume at
+      // `Initialized` and invoke the `queue_created_cb_` (if successful).
+      // Asynchronously run initialization.
+      storage_queue_->Init(
+          /*init_retry_cb=*/base::BindRepeating(
+              &StorageQueue::MaybeBackoffAndReInit),
+          /*initialized_cb=*/base::BindPostTaskToCurrentDefault(base::BindOnce(
+              &CreateQueueContext::Initialized, base::Unretained(this),
+              /*priority=*/priority)));
       return;
     }
-    // Add queue to the container.
-    auto queue = storage_queue_result.value();
-    const auto added_status =
-        storage_->queues_container_->AddQueue(priority, queue);
-    if (!added_status.ok()) {
-      // The queue failed to add. It could happen because the same priority and
-      // guid were being added in parallel (could only happen when new
-      // multi-generation queues are needed for `Write` operation).
-      // We will check whether this is the case, and return that queue instead.
-      const auto query_result =
-          storage_->queues_container_->GetQueue(priority, generation_guid_);
-      if (!query_result.has_value()) {
-        // No pre-recorded queue either.
-        Response(added_status);
-        return;
-      }
-      // Asynchronously delete newly created queue files and directory.
-      // Do not wait for the completion.
-      queue->AsynchronouslyDeleteAllFilesAndDirectoryWarnIfFailed();
-      // Substitute and use prior queue from now on.
-      queue = query_result.value();
+
+    // The queue failed to add. It could happen because the same priority and
+    // guid were being added in parallel (could only happen when new
+    // multi-generation queues are needed for `Write` operation).
+    // We will check whether this is the case, and return that queue instead.
+    const auto query_result =
+        storage_->queues_container_->GetQueue(priority, generation_guid_);
+    if (!query_result.has_value()) {
+      // No pre-recorded queue either.
+      Response(added_status);
+      return;
+    }
+    // Substitute and use prior queue from now on.
+    storage_queue_ = query_result.value();
+    // Schedule `Initialized` to be invoked when initialization is done (or
+    // immediately, if the queue is already initialized).
+    storage_queue_->OnInit(base::BindPostTaskToCurrentDefault(base::BindOnce(
+        &CreateQueueContext::Initialized, base::Unretained(this), priority)));
+  }
+
+  void Initialized(Priority priority, Status initialization_result) {
+    CheckOnValidSequence();
+    DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
+    if (!initialization_result.ok()) {
+      LOG(ERROR) << "Could not initialize queue for generation_guid="
+                 << generation_guid_ << " priority=" << priority
+                 << ", error=" << initialization_result;
+      Response(initialization_result);
+      return;
     }
 
     // Report success.
     std::move(queue_created_cb_)
-        .Run(std::move(queue),
+        .Run(storage_queue_,
              base::BindPostTaskToCurrentDefault(base::BindOnce(
                  &CreateQueueContext::Response, base::Unretained(this))));
   }
 
   QueueOptions queue_options_;
+  scoped_refptr<StorageQueue> storage_queue_;
+
   const scoped_refptr<Storage> storage_;
   const GenerationGuid generation_guid_;
   const Priority priority_;
