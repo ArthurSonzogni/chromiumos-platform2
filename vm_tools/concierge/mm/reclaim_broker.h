@@ -22,7 +22,6 @@
 #include "vm_tools/concierge/sysfs_notify_watcher.h"
 
 using vm_tools::vm_memory_management::MglruStats;
-using vm_tools::vm_memory_management::ResizePriority;
 
 namespace vm_tools::concierge::mm {
 

@@ -8,10 +8,10 @@
 #include <memory>
 #include <vector>
 
+#include "vm_tools/concierge/mm/resize_priority.h"
 #include "vm_tools/concierge/mm/server.h"
 
 using vm_tools::vm_memory_management::DecisionLatency;
-using vm_tools::vm_memory_management::ResizePriority;
 
 namespace vm_tools::concierge::mm {
 

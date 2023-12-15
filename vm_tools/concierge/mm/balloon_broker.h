@@ -26,8 +26,6 @@
 #include "vm_tools/concierge/mm/balloon_metrics.h"
 #include "vm_tools/concierge/mm/kills_server.h"
 
-using vm_tools::vm_memory_management::ResizePriority;
-
 namespace vm_tools::concierge::mm {
 
 // The BalloonBroker is the main entrypoint into adjusting the size of
@@ -102,8 +100,7 @@ class BalloonBroker {
     bool has_kill_candidates = true;
 
     // The priority of the most recent kill request from this client.
-    ResizePriority kill_request_priority =
-        ResizePriority::RESIZE_PRIORITY_UNSPECIFIED;
+    ResizePriority kill_request_priority = ResizePriority::kInvalid;
 
     // The result of the most recent kill request from this client.
     int64_t kill_request_result = 0;

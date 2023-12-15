@@ -19,6 +19,14 @@ FakeBalloonBlocker::FakeBalloonBlocker(int vm_cid,
     : BalloonBlocker(
           vm_cid, std::make_unique<FakeBalloon>(), std::move(metrics)) {
   fake_balloon_blockers_[vm_cid] = this;
+
+  blocks_[ResizeDirection::kInflate] = {};
+  blocks_[ResizeDirection::kDeflate] = {};
+
+  for (ResizePriority priority : kAllResizePrioritiesIncreasing) {
+    blocks_[ResizeDirection::kInflate][priority] = false;
+    blocks_[ResizeDirection::kDeflate][priority] = false;
+  }
 }
 
 FakeBalloonBlocker::~FakeBalloonBlocker() {
@@ -43,26 +51,20 @@ void FakeBalloonBlocker::BlockAt(ResizeDirection direction,
     blocks_[direction] = {};
   }
 
-  while (priority <= ResizePriority::RESIZE_PRIORITY_LOWEST) {
-    blocks_.at(direction)[priority] = true;
-
-    priority = static_cast<ResizePriority>(priority + 1);
+  for (ResizePriority check_priority : kAllResizePrioritiesIncreasing) {
+    blocks_.at(direction)[check_priority] = priority <= check_priority;
   }
 }
 
 ResizePriority FakeBalloonBlocker::LowestUnblockedPriority(
     ResizeDirection direction, base::TimeTicks check_time) const {
-  if (!blocks_.contains(direction)) {
-    return ResizePriority::RESIZE_PRIORITY_LOWEST;
-  }
-
-  for (auto block : blocks_.at(direction)) {
-    if (block.second) {
-      return static_cast<ResizePriority>(block.first - 1);
+  for (ResizePriority priority : kAllResizePrioritiesIncreasing) {
+    if (!blocks_.at(direction).at(priority)) {
+      return priority;
     }
   }
 
-  return ResizePriority::RESIZE_PRIORITY_LOWEST;
+  return ResizePriority::kInvalid;
 }
 
 int FakeBalloonBlocker::Cid() {

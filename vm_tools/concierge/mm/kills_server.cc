@@ -85,9 +85,14 @@ void KillsServer::HandleKillRequest(const Connection& connection,
 
   size_t freed_space = 0;
 
-  if (kill_request_handler_) {
-    freed_space = kill_request_handler_.Run(connection.client, proc_size,
-                                            request.priority());
+  ResizePriority priority = FromProtoResizePriority(request.priority());
+
+  if (priority == ResizePriority::kInvalid) {
+    LOG(ERROR) << "Received kill request with invalid priority: "
+               << request.priority();
+  } else if (kill_request_handler_) {
+    freed_space =
+        kill_request_handler_.Run(connection.client, proc_size, priority);
   }
 
   // Client expects a response in KB units.

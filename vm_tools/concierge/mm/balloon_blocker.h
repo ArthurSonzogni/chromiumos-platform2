@@ -15,15 +15,13 @@
 #include <metrics/metrics_library.h>
 
 #include <vm_applications/apps.pb.h>
-#include <vm_memory_management/vm_memory_management.pb.h>
 
 #include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/mm/balloon.h"
 #include "vm_tools/concierge/mm/balloon_metrics.h"
+#include "vm_tools/concierge/mm/resize_priority.h"
 
 namespace vm_tools::concierge::mm {
-
-using vm_tools::vm_memory_management::ResizePriority;
 
 // Represents the direction for a balloon resize.
 enum class ResizeDirection { kDeflate, kInflate };
@@ -117,7 +115,7 @@ class BalloonBlocker {
 
   // The highest priority that is blocked at the low priority duration.
   static constexpr ResizePriority kLowPriorityBlockDurationCutoff =
-      ResizePriority::RESIZE_PRIORITY_CACHED_TAB;
+      ResizePriority::kCachedTab;
 
   // Ensure calls are made on the right sequence.
   SEQUENCE_CHECKER(sequence_checker_);

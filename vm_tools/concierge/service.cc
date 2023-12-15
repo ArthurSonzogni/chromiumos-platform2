@@ -98,6 +98,7 @@
 #include "vm_tools/concierge/dlc_helper.h"
 #include "vm_tools/concierge/if_method_exists.h"
 #include "vm_tools/concierge/metrics/duration_recorder.h"
+#include "vm_tools/concierge/mm/resize_priority.h"
 #include "vm_tools/concierge/network/borealis_network.h"
 #include "vm_tools/concierge/network/bruschetta_network.h"
 #include "vm_tools/concierge/network/guest_os_network.h"
@@ -3937,7 +3938,7 @@ void Service::AggressiveBalloon(AggressiveBalloonResponder response_cb,
           },
           std::move(response_cb));
       vm_memory_management_service_->ReclaimUntilBlocked(
-          cid, ResizePriority::RESIZE_PRIORITY_CACHED_TAB, std::move(cb));
+          cid, mm::ResizePriority::kCachedTab, std::move(cb));
     } else {
       vm_memory_management_service_->StopReclaimUntilBlocked(cid);
       response.set_success(true);

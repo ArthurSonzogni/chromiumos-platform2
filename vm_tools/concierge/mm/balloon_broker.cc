@@ -21,7 +21,7 @@
 #include <vm_applications/apps.pb.h>
 #include <vm_memory_management/vm_memory_management.pb.h>
 
-using vm_tools::vm_memory_management::ResizePriority_Name;
+#include "vm_tools/concierge/mm/resize_priority.h"
 
 namespace vm_tools::concierge::mm {
 
@@ -115,8 +115,7 @@ void BalloonBroker::Reclaim(const ReclaimOperation& reclaim_targets,
   // ReclaimUntilBlocked() will still be granted and resize the balloon
   // appropriately.
   if (reclaim_until_blocked_params_ &&
-      reclaim_until_blocked_params_->second ==
-          ResizePriority::RESIZE_PRIORITY_MGLRU_RECLAIM) {
+      reclaim_until_blocked_params_->second == ResizePriority::kMglruReclaim) {
     StopReclaimUntilBlocked(reclaim_until_blocked_params_->first);
   }
 
@@ -169,7 +168,7 @@ void BalloonBroker::ReclaimUntilBlocked(int vm_cid,
     // ReclaimUntilBlocked can spam BalloonTrace logs, so disable logging when
     // reclaiming at a low priority and then re-enable them when the reclaim
     // operation is complete.
-    if (priority == ResizePriority::RESIZE_PRIORITY_LOWEST) {
+    if (priority == ResizePriority::kMglruReclaim) {
       SetShouldLogBalloonTrace(vm_cid, false);
 
       // Unretained(this) is safe because the callback is owned by this
@@ -242,7 +241,7 @@ ResizePriority BalloonBroker::LowestUnblockedPriority() const {
 
   base::TimeTicks check_time = base::TimeTicks::Now();
 
-  ResizePriority lowest_priority = ResizePriority::RESIZE_PRIORITY_UNSPECIFIED;
+  ResizePriority lowest_priority = ResizePriority::kInvalid;
 
   for (ResizeDirection direction :
        {ResizeDirection::kInflate, ResizeDirection::kDeflate}) {
@@ -344,9 +343,8 @@ size_t BalloonBroker::HandleKillRequest(Client client,
   // If the balloon was not adjusted as much as requested, the process should be
   // killed by the client.
   if (std::abs(balloon_delta_actual) < proc_size) {
-    LOG(INFO) << "KillTrace:[" << client.cid << ","
-              << ResizePriority_Name(priority) << "," << (proc_size / MiB(1))
-              << "MB]";
+    LOG(INFO) << "KillTrace:[" << client.cid << "," << priority << ","
+              << (proc_size / MiB(1)) << "MB]";
   }
 
   // Track the result of this kill request.
@@ -378,15 +376,13 @@ void BalloonBroker::HandleNoKillCandidates(Client client) {
   // The context has no kill candidates and still needs to kill something,
   // give it some breathing room at a high priority.
   if (client.cid == VMADDR_CID_LOCAL) {
-    EvenlyAdjustBalloons(
-        connected_vms_, kNoKillCandidatesReclaimAmount,
-        ResizePriority::RESIZE_PRIORITY_NO_KILL_CANDIDATES_HOST);
+    EvenlyAdjustBalloons(connected_vms_, kNoKillCandidatesReclaimAmount,
+                         ResizePriority::kNoKillCandidatesHost);
     return;
   }
 
-  EvenlyAdjustBalloons(
-      {client.cid}, -kNoKillCandidatesReclaimAmount,
-      ResizePriority::RESIZE_PRIORITY_NO_KILL_CANDIDATES_GUEST);
+  EvenlyAdjustBalloons({client.cid}, -kNoKillCandidatesReclaimAmount,
+                       ResizePriority::kNoKillCandidatesGuest);
 }
 
 void BalloonBroker::HandleDecisionLatency(Client client,
@@ -409,19 +405,18 @@ void BalloonBroker::HandleDecisionLatency(Client client,
     // Timeout, log the priority of the failed request.
     metrics_->SendEnumToUMA(GetMetricName(client.cid, kDecisionTimeoutMetric),
                             static_cast<int>(bb_client->kill_request_priority),
-                            ResizePriority::RESIZE_PRIORITY_N_PRIORITIES);
+                            LowestResizePriority() + 1);
     if (bb_client->kill_request_result > 0) {
       // If the client timed out waiting for the response but the kill request
       // was successful, this means that something was killed when it shouldn't
       // have been.
       LOG(WARNING) << "Unnecessary kill occurred for CID: " << client.cid
-                   << " Priority: "
-                   << ResizePriority_Name(bb_client->kill_request_priority)
+                   << " Priority: " << bb_client->kill_request_priority
                    << " Reason: Response timed out.";
       metrics_->SendEnumToUMA(
           GetMetricName(client.cid, kUnnecessaryKillMetric),
           static_cast<int>(bb_client->kill_request_priority),
-          ResizePriority::RESIZE_PRIORITY_N_PRIORITIES);
+          LowestResizePriority() + 1);
     }
   }
 }

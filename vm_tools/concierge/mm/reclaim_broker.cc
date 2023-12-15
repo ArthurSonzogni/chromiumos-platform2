@@ -23,11 +23,11 @@
 
 #include "vm_tools/concierge/mm/mglru.h"
 #include "vm_tools/concierge/mm/reclaim_server.h"
+#include "vm_tools/concierge/mm/resize_priority.h"
 
 using vm_tools::vm_memory_management::MglruGeneration;
 using vm_tools::vm_memory_management::MglruMemcg;
 using vm_tools::vm_memory_management::MglruNode;
-using vm_tools::vm_memory_management::ResizePriority;
 
 namespace vm_tools::concierge::mm {
 namespace {
@@ -265,10 +265,9 @@ void ReclaimBroker::NewGenerationEvent(int cid, MglruStats new_stats) {
     return;
   }
 
-  // If the lowest block priority is higher than the reclaim priority, there is
-  // nothing to do. Note that a higher priority has a lower numerical value.
-  if (lowest_unblocked_priority_.Run() <
-      ResizePriority::RESIZE_PRIORITY_MGLRU_RECLAIM) {
+  // Reclaim should only be attempted if the lowest unblocked priority is lower
+  // than or equal to the reclaim priority (MGLRU_RECLAIM).
+  if (lowest_unblocked_priority_.Run() < ResizePriority::kMglruReclaim) {
     return;
   }
 
@@ -311,8 +310,7 @@ void ReclaimBroker::NewGenerationEvent(int cid, MglruStats new_stats) {
   }
 
   if (reclaim_operation.size() > 0) {
-    reclaim_handler_.Run(reclaim_operation,
-                         ResizePriority::RESIZE_PRIORITY_MGLRU_RECLAIM);
+    reclaim_handler_.Run(reclaim_operation, ResizePriority::kMglruReclaim);
   }
 
   return;

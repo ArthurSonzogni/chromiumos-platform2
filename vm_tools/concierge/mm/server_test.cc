@@ -583,6 +583,9 @@ TEST_F(KillsServerTest, TestHandleKillRequestCallsKillRequestHandler) {
   VmMemoryManagementPacket request_packet;
   request_packet.set_type(PacketType::PACKET_TYPE_KILL_REQUEST);
   request_packet.mutable_kill_decision_request()->set_size_kb(10);
+  request_packet.mutable_kill_decision_request()->set_priority(
+      vm_tools::vm_memory_management::ResizePriority::
+          RESIZE_PRIORITY_FOCUSED_APP);
   client_socket->packet_to_read_ = request_packet;
 
   client_socket->on_readable_.Run();
@@ -620,6 +623,9 @@ TEST_F(KillsServerTest, TestHandleKillRequestSendsCorrectResponse) {
   request_packet.set_type(PacketType::PACKET_TYPE_KILL_REQUEST);
   request_packet.mutable_kill_decision_request()->set_sequence_num(6);
   request_packet.mutable_kill_decision_request()->set_size_kb(10);
+  request_packet.mutable_kill_decision_request()->set_priority(
+      vm_tools::vm_memory_management::ResizePriority::
+          RESIZE_PRIORITY_FOCUSED_APP);
   client_socket->packet_to_read_ = request_packet;
 
   // The kill request is for 10 kb, but only return 5kb. Make sure the server is

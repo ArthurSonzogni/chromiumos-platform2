@@ -11,7 +11,7 @@
 
 #include <base/logging.h>
 
-using vm_tools::vm_memory_management::ResizePriority_Name;
+#include "vm_tools/concierge/mm/resize_priority.h"
 
 namespace vm_tools::concierge::mm {
 namespace {
@@ -19,15 +19,6 @@ namespace {
 ResizeDirection OppositeDirection(ResizeDirection direction) {
   return direction == ResizeDirection::kInflate ? ResizeDirection::kDeflate
                                                 : ResizeDirection::kInflate;
-}
-
-void ForEachResizePriorityIncreasing(
-    std::function<void(ResizePriority)> callback) {
-  ResizePriority priority = ResizePriority::RESIZE_PRIORITY_LOWEST;
-  while (priority >= ResizePriority::RESIZE_PRIORITY_HIGHEST) {
-    callback(priority);
-    priority = static_cast<ResizePriority>(priority - 1);
-  }
 }
 
 }  // namespace
@@ -70,9 +61,9 @@ BalloonBlocker::BalloonBlocker(int vm_cid,
   // Initialize all the request lists to the unblocked state.
   RequestList fully_unblocked{};
 
-  ForEachResizePriorityIncreasing([&fully_unblocked](ResizePriority priority) {
+  for (ResizePriority priority : kAllResizePrioritiesIncreasing) {
     fully_unblocked[priority] = {};
-  });
+  }
 
   request_lists_[ResizeDirection::kInflate] = fully_unblocked;
   request_lists_[ResizeDirection::kDeflate] = fully_unblocked;
@@ -88,6 +79,8 @@ int64_t BalloonBlocker::TryResize(ResizeRequest request) {
   // so the priorities are blocked correctly.
   RecordResizeRequest(request);
 
+  // If the incoming request is a lower priority than the lowest unblocked
+  // priority, it is blocked. Do not adjust the balloon.
   if (request.GetPriority() >
       LowestUnblockedPriority(request.GetDirection(), base::TimeTicks::Now())) {
     return 0;
@@ -114,13 +107,10 @@ ResizePriority BalloonBlocker::LowestUnblockedPriority(
   const RequestList& opposite_request_list =
       request_lists_.at(OppositeDirection(direction));
 
-  ResizePriority highest_opposite_request =
-      ResizePriority::RESIZE_PRIORITY_N_PRIORITIES;
+  ResizePriority highest_opposite_request = ResizePriority::kInvalid;
 
   // Iterate in increasing priority order over requests.
-  ForEachResizePriorityIncreasing([&opposite_request_list, &check_time,
-                                   &highest_opposite_request](
-                                      ResizePriority check_priority) {
+  for (ResizePriority check_priority : kAllResizePrioritiesIncreasing) {
     base::TimeTicks unblocked_time = opposite_request_list.at(check_priority);
 
     // If the unblocked time is after the check time, then the balloon is
@@ -128,8 +118,21 @@ ResizePriority BalloonBlocker::LowestUnblockedPriority(
     if (check_time <= unblocked_time) {
       highest_opposite_request = check_priority;
     }
-  });
+  }
 
+  // If there were no requests in the opposite direction, nothing is blocked, so
+  // the lowest priority is unblocked.
+  if (highest_opposite_request == ResizePriority::kInvalid) {
+    return LowestResizePriority();
+  }
+
+  // If everything is blocked, return invalid.
+  if (highest_opposite_request == HighestResizePriority()) {
+    return ResizePriority::kInvalid;
+  }
+
+  // The lowest unblocked priority is one priority level higher than the highest
+  // opposite request.
   return static_cast<ResizePriority>(highest_opposite_request - 1);
 }
 
@@ -157,7 +160,7 @@ void BalloonBlocker::RecordResizeRequest(const ResizeRequest& request) {
 
   // If the request is for the lowest priority, don't do anything since lowest
   // cannot block anything.
-  if (request.GetPriority() == ResizePriority::RESIZE_PRIORITY_LOWEST) {
+  if (request.GetPriority() == LowestResizePriority()) {
     return;
   }
 
@@ -174,7 +177,7 @@ void BalloonBlocker::RecordResizeRequest(const ResizeRequest& request) {
   // If the requested priority is lower than a balloon stall but higher than the
   // lowest unblocked priority, cap the priority.
   if (requested_priority < lowest_unblocked_priority &&
-      requested_priority > ResizePriority::RESIZE_PRIORITY_BALLOON_STALL) {
+      requested_priority > ResizePriority::kBalloonStall) {
     requested_priority = lowest_unblocked_priority;
   }
 
@@ -189,14 +192,13 @@ void BalloonBlocker::RecordResizeRequest(const ResizeRequest& request) {
   list[requested_priority] = now + block_duration;
 
   // Additionally unset all blocks at a higher priority than this one.
-  ForEachResizePriorityIncreasing(
-      [&list, requested_priority](ResizePriority check_priority) {
-        if (check_priority >= requested_priority) {
-          return;
-        }
+  for (ResizePriority check_priority : kAllResizePrioritiesIncreasing) {
+    if (check_priority >= requested_priority) {
+      continue;
+    }
 
-        list[check_priority] = base::TimeTicks();
-      });
+    list[check_priority] = base::TimeTicks();
+  }
 }
 
 void BalloonBlocker::OnBalloonStall(Balloon::StallStatistics stats,
@@ -204,9 +206,9 @@ void BalloonBlocker::OnBalloonStall(Balloon::StallStatistics stats,
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   // If the balloon stalled, block inflations at stall priority.
-  RecordResizeRequest({ResizePriority::RESIZE_PRIORITY_BALLOON_STALL, -1});
+  RecordResizeRequest({ResizePriority::kBalloonStall, -1});
 
-  OnResizeResult(ResizePriority::RESIZE_PRIORITY_BALLOON_STALL, result);
+  OnResizeResult(ResizePriority::kBalloonStall, result);
 
   metrics_->OnStall(stats);
 }
@@ -216,8 +218,7 @@ void BalloonBlocker::OnResizeResult(ResizePriority priority,
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (should_log_balloon_trace_) {
-    LOG(INFO) << "BalloonTrace:[" << vm_cid_ << ","
-              << ResizePriority_Name(priority) << ","
+    LOG(INFO) << "BalloonTrace:[" << vm_cid_ << "," << priority << ","
               << (result.new_target / MiB(1)) << " MB ("
               << (result.actual_delta_bytes / MiB(1)) << " MB)]";
   }

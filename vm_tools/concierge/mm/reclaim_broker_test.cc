@@ -34,7 +34,6 @@ using mglru::StatsToString;
 using vm_tools::vm_memory_management::ConnectionType;
 using vm_tools::vm_memory_management::MglruMemcg;
 using vm_tools::vm_memory_management::MglruNode;
-using vm_tools::vm_memory_management::ResizePriority;
 
 class ReclaimBrokerTest : public ::testing::Test {
  protected:
@@ -97,8 +96,7 @@ class ReclaimBrokerTest : public ::testing::Test {
   ReclaimServer::ClientConnectionNotification client_connection_handler_{};
   ReclaimServer::NewGenerationNotification new_generation_notification_{};
 
-  ResizePriority lowest_block_priority_ =
-      ResizePriority::RESIZE_PRIORITY_LOWEST;
+  ResizePriority lowest_block_priority_ = LowestResizePriority();
   std::vector<BalloonBroker::ReclaimOperation> reclaim_events_{};
   size_t bytes_reclaimed_{};
 };
@@ -484,7 +482,7 @@ TEST_F(ReclaimBrokerTest, TestAllBalloonsBlockedDoesNotReclaim) {
 
   // Set the lowest blocked priority to cached app. At this priority, nothing
   // should be able to be reclaimed and the ReclaimBroker should do nothing.
-  lowest_block_priority_ = ResizePriority::RESIZE_PRIORITY_CACHED_APP;
+  lowest_block_priority_ = ResizePriority::kCachedApp;
 
   new_generation_notification_.Run(VMADDR_CID_LOCAL, {});
 

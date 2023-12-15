@@ -129,9 +129,9 @@ TEST_F(BalloonBrokerTest, TestNoConnections) {
                      .connection_id = 1,
                      .type = ConnectionType::CONNECTION_TYPE_KILLS};
 
-  ASSERT_EQ(kill_request_handler_.Run(
-                host_client, 512, ResizePriority::RESIZE_PRIORITY_FOCUSED_TAB),
-            0);
+  ASSERT_EQ(
+      kill_request_handler_.Run(host_client, 512, ResizePriority::kFocusedTab),
+      0);
   // There are two VMs, but neither has clients connected. No balloons should be
   // changed
   ExpectNoResizes();
@@ -152,11 +152,11 @@ TEST_F(BalloonBrokerTest, TestOneConnectionHostKillRequest) {
   FakeBalloonBlocker::fake_balloon_blockers_[6]
       ->try_resize_results_.emplace_back(512);
 
-  ASSERT_EQ(kill_request_handler_.Run(
-                host_client, 512, ResizePriority::RESIZE_PRIORITY_FOCUSED_TAB),
-            512);
+  ASSERT_EQ(
+      kill_request_handler_.Run(host_client, 512, ResizePriority::kFocusedTab),
+      512);
   // Only the connected VM should have its balloon changed
-  ExpectResizeRequest(6, {ResizePriority::RESIZE_PRIORITY_FOCUSED_TAB, 512});
+  ExpectResizeRequest(6, {ResizePriority::kFocusedTab, 512});
 }
 
 TEST_F(BalloonBrokerTest, TestMultipleConnectionsHostKillRequest) {
@@ -178,13 +178,13 @@ TEST_F(BalloonBrokerTest, TestMultipleConnectionsHostKillRequest) {
   FakeBalloonBlocker::fake_balloon_blockers_[6]
       ->try_resize_results_.emplace_back(256);
 
-  ASSERT_EQ(kill_request_handler_.Run(
-                host_client, 512, ResizePriority::RESIZE_PRIORITY_FOCUSED_TAB),
-            512);
+  ASSERT_EQ(
+      kill_request_handler_.Run(host_client, 512, ResizePriority::kFocusedTab),
+      512);
 
   // Both balloons should be inflated by an equal amount
-  ExpectResizeRequest(5, {ResizePriority::RESIZE_PRIORITY_FOCUSED_TAB, 256});
-  ExpectResizeRequest(6, {ResizePriority::RESIZE_PRIORITY_FOCUSED_TAB, 256});
+  ExpectResizeRequest(5, {ResizePriority::kFocusedTab, 256});
+  ExpectResizeRequest(6, {ResizePriority::kFocusedTab, 256});
 }
 
 TEST_F(BalloonBrokerTest, TestGuestDisconnectHostKillRequest) {
@@ -206,12 +206,12 @@ TEST_F(BalloonBrokerTest, TestGuestDisconnectHostKillRequest) {
   FakeBalloonBlocker::fake_balloon_blockers_[6]
       ->try_resize_results_.emplace_back(512);
 
-  ASSERT_EQ(kill_request_handler_.Run(
-                host_client, 512, ResizePriority::RESIZE_PRIORITY_FOCUSED_TAB),
-            512);
+  ASSERT_EQ(
+      kill_request_handler_.Run(host_client, 512, ResizePriority::kFocusedTab),
+      512);
 
   // Only 6 is connected now, so it should be the only one inflated
-  ExpectResizeRequest(6, {ResizePriority::RESIZE_PRIORITY_FOCUSED_TAB, 512});
+  ExpectResizeRequest(6, {ResizePriority::kFocusedTab, 512});
 }
 
 TEST_F(BalloonBrokerTest, TestGuestKillRequest) {
@@ -225,12 +225,11 @@ TEST_F(BalloonBrokerTest, TestGuestKillRequest) {
   FakeBalloonBlocker::fake_balloon_blockers_[5]
       ->try_resize_results_.emplace_back(-512);
 
-  ASSERT_EQ(kill_request_handler_.Run(
-                client, 512, ResizePriority::RESIZE_PRIORITY_FOCUSED_TAB),
+  ASSERT_EQ(kill_request_handler_.Run(client, 512, ResizePriority::kFocusedTab),
             512);
   // The balloon should have been deflated since this is a client initiated kill
   // request
-  ExpectResizeRequest(5, {ResizePriority::RESIZE_PRIORITY_FOCUSED_TAB, -512});
+  ExpectResizeRequest(5, {ResizePriority::kFocusedTab, -512});
 }
 
 TEST_F(BalloonBrokerTest, TestReclaimWithNoConnectedVms) {
@@ -239,8 +238,7 @@ TEST_F(BalloonBrokerTest, TestReclaimWithNoConnectedVms) {
 
   BalloonBroker::ReclaimOperation reclaim_operation{{VMADDR_CID_LOCAL, 512}};
 
-  balloon_broker_->Reclaim(reclaim_operation,
-                           ResizePriority::RESIZE_PRIORITY_MGLRU_RECLAIM);
+  balloon_broker_->Reclaim(reclaim_operation, ResizePriority::kMglruReclaim);
 
   ExpectNoResizes();
 }
@@ -259,11 +257,10 @@ TEST_F(BalloonBrokerTest, TestReclaimFromHost) {
 
   BalloonBroker::ReclaimOperation reclaim_operation{{VMADDR_CID_LOCAL, 512}};
 
-  balloon_broker_->Reclaim(reclaim_operation,
-                           ResizePriority::RESIZE_PRIORITY_MGLRU_RECLAIM);
+  balloon_broker_->Reclaim(reclaim_operation, ResizePriority::kMglruReclaim);
 
-  ExpectResizeRequest(5, {ResizePriority::RESIZE_PRIORITY_MGLRU_RECLAIM, -256});
-  ExpectResizeRequest(6, {ResizePriority::RESIZE_PRIORITY_MGLRU_RECLAIM, -256});
+  ExpectResizeRequest(5, {ResizePriority::kMglruReclaim, -256});
+  ExpectResizeRequest(6, {ResizePriority::kMglruReclaim, -256});
 }
 
 TEST_F(BalloonBrokerTest, TestReclaimFromGuest) {
@@ -278,10 +275,9 @@ TEST_F(BalloonBrokerTest, TestReclaimFromGuest) {
 
   BalloonBroker::ReclaimOperation reclaim_operation{{5, 512}};
 
-  balloon_broker_->Reclaim(reclaim_operation,
-                           ResizePriority::RESIZE_PRIORITY_MGLRU_RECLAIM);
+  balloon_broker_->Reclaim(reclaim_operation, ResizePriority::kMglruReclaim);
 
-  ExpectResizeRequest(5, {ResizePriority::RESIZE_PRIORITY_MGLRU_RECLAIM, 512});
+  ExpectResizeRequest(5, {ResizePriority::kMglruReclaim, 512});
 }
 
 TEST_F(BalloonBrokerTest, TestReclaimFromHostAndGuest) {
@@ -299,11 +295,10 @@ TEST_F(BalloonBrokerTest, TestReclaimFromHostAndGuest) {
   BalloonBroker::ReclaimOperation reclaim_operation{{5, 100},
                                                     {VMADDR_CID_LOCAL, 500}};
 
-  balloon_broker_->Reclaim(reclaim_operation,
-                           ResizePriority::RESIZE_PRIORITY_MGLRU_RECLAIM);
+  balloon_broker_->Reclaim(reclaim_operation, ResizePriority::kMglruReclaim);
 
-  ExpectResizeRequest(5, {ResizePriority::RESIZE_PRIORITY_MGLRU_RECLAIM, -150});
-  ExpectResizeRequest(6, {ResizePriority::RESIZE_PRIORITY_MGLRU_RECLAIM, -250});
+  ExpectResizeRequest(5, {ResizePriority::kMglruReclaim, -150});
+  ExpectResizeRequest(6, {ResizePriority::kMglruReclaim, -250});
 }
 
 TEST_F(BalloonBrokerTest, TestClientDisconnected) {
@@ -323,12 +318,11 @@ TEST_F(BalloonBrokerTest, TestClientDisconnected) {
   FakeBalloonBlocker::fake_balloon_blockers_[vm_cid]
       ->try_resize_results_.emplace_back(512);
 
-  ASSERT_EQ(kill_request_handler_.Run(
-                host_client, 512, ResizePriority::RESIZE_PRIORITY_FOCUSED_TAB),
-            512);
+  ASSERT_EQ(
+      kill_request_handler_.Run(host_client, 512, ResizePriority::kFocusedTab),
+      512);
 
-  ExpectResizeRequest(vm_cid,
-                      {ResizePriority::RESIZE_PRIORITY_FOCUSED_TAB, 512});
+  ExpectResizeRequest(vm_cid, {ResizePriority::kFocusedTab, 512});
 
   // Even after one of the clients has disconnected, the balloon should still be
   // resized since one client remains
@@ -337,20 +331,19 @@ TEST_F(BalloonBrokerTest, TestClientDisconnected) {
   FakeBalloonBlocker::fake_balloon_blockers_[vm_cid]
       ->try_resize_results_.emplace_back(256);
 
-  ASSERT_EQ(kill_request_handler_.Run(
-                host_client, 256, ResizePriority::RESIZE_PRIORITY_FOCUSED_TAB),
-            256);
+  ASSERT_EQ(
+      kill_request_handler_.Run(host_client, 256, ResizePriority::kFocusedTab),
+      256);
 
-  ExpectResizeRequest(vm_cid,
-                      {ResizePriority::RESIZE_PRIORITY_FOCUSED_TAB, 256});
+  ExpectResizeRequest(vm_cid, {ResizePriority::kFocusedTab, 256});
 
   // Now that both clients have disconnected, no more resizes should be
   // performed
   client_disconnected_handler_.Run(client2);
   ASSERT_EQ(FakeBalloonBlocker::fake_balloon_blockers_.size(), 0);
-  ASSERT_EQ(kill_request_handler_.Run(
-                host_client, 512, ResizePriority::RESIZE_PRIORITY_FOCUSED_TAB),
-            0);
+  ASSERT_EQ(
+      kill_request_handler_.Run(host_client, 512, ResizePriority::kFocusedTab),
+      0);
 }
 
 TEST_F(BalloonBrokerTest, TestLowestUnblockedPriority) {
@@ -358,39 +351,37 @@ TEST_F(BalloonBrokerTest, TestLowestUnblockedPriority) {
   balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
 
   // By default if nothing is blocked, the lowest block priority is LOWEST.
-  ASSERT_EQ(balloon_broker_->LowestUnblockedPriority(),
-            ResizePriority::RESIZE_PRIORITY_LOWEST);
+  ASSERT_EQ(balloon_broker_->LowestUnblockedPriority(), LowestResizePriority());
 
   // VM 5 is fully blocked at cached app priority, but VM 6 is not, so the
   // lowest block should still be LOWEST.
   FakeBalloonBlocker::fake_balloon_blockers_[5]->BlockAt(
-      ResizeDirection::kInflate, ResizePriority::RESIZE_PRIORITY_CACHED_APP);
+      ResizeDirection::kInflate, ResizePriority::kCachedApp);
   FakeBalloonBlocker::fake_balloon_blockers_[5]->BlockAt(
-      ResizeDirection::kDeflate, ResizePriority::RESIZE_PRIORITY_CACHED_APP);
-  ASSERT_EQ(balloon_broker_->LowestUnblockedPriority(),
-            ResizePriority::RESIZE_PRIORITY_LOWEST);
+      ResizeDirection::kDeflate, ResizePriority::kCachedApp);
+  ASSERT_EQ(balloon_broker_->LowestUnblockedPriority(), LowestResizePriority());
 
   // Now that VM 6 is also fully blocked at cached app priority, the lowest
   // block priority should be CACHED_APP which means CACHED_TAB is the lowest
   // unblocked priority.
   FakeBalloonBlocker::fake_balloon_blockers_[6]->BlockAt(
-      ResizeDirection::kInflate, ResizePriority::RESIZE_PRIORITY_CACHED_APP);
+      ResizeDirection::kInflate, ResizePriority::kCachedApp);
   FakeBalloonBlocker::fake_balloon_blockers_[6]->BlockAt(
-      ResizeDirection::kDeflate, ResizePriority::RESIZE_PRIORITY_CACHED_APP);
+      ResizeDirection::kDeflate, ResizePriority::kCachedApp);
   ASSERT_EQ(balloon_broker_->LowestUnblockedPriority(),
-            ResizePriority::RESIZE_PRIORITY_CACHED_TAB);
+            ResizePriority::kCachedTab);
 
   // Check that when every balloon is fully blocked, UNSPECIFIED is returned.
   FakeBalloonBlocker::fake_balloon_blockers_[5]->BlockAt(
-      ResizeDirection::kInflate, ResizePriority::RESIZE_PRIORITY_HIGHEST);
+      ResizeDirection::kInflate, HighestResizePriority());
   FakeBalloonBlocker::fake_balloon_blockers_[5]->BlockAt(
-      ResizeDirection::kDeflate, ResizePriority::RESIZE_PRIORITY_HIGHEST);
+      ResizeDirection::kDeflate, HighestResizePriority());
   FakeBalloonBlocker::fake_balloon_blockers_[6]->BlockAt(
-      ResizeDirection::kInflate, ResizePriority::RESIZE_PRIORITY_HIGHEST);
+      ResizeDirection::kInflate, HighestResizePriority());
   FakeBalloonBlocker::fake_balloon_blockers_[6]->BlockAt(
-      ResizeDirection::kDeflate, ResizePriority::RESIZE_PRIORITY_HIGHEST);
+      ResizeDirection::kDeflate, HighestResizePriority());
   ASSERT_EQ(balloon_broker_->LowestUnblockedPriority(),
-            ResizePriority::RESIZE_PRIORITY_UNSPECIFIED);
+            ResizePriority::kInvalid);
 }
 
 TEST_F(BalloonBrokerTest, TestHandleNoKillCandidates) {
@@ -420,9 +411,8 @@ TEST_F(BalloonBrokerTest, TestHandleNoKillCandidates) {
   no_kill_candidate_handler_.Run(host_client);
   // Both clients have no kill candidates, so the guest balloon should be
   // inflated by the no kill candidate reclaim amount (64MB)
-  ExpectResizeRequest(
-      vm_cid,
-      {ResizePriority::RESIZE_PRIORITY_NO_KILL_CANDIDATES_HOST, MiB(128)});
+  ExpectResizeRequest(vm_cid,
+                      {ResizePriority::kNoKillCandidatesHost, MiB(128)});
 }
 
 TEST_F(BalloonBrokerTest, HandleDecisionLatencyMetrics) {
@@ -444,7 +434,7 @@ TEST_F(BalloonBrokerTest, HandleDecisionLatencyMetrics) {
     FakeBalloonBlocker::fake_balloon_blockers_[vm_cid]
         ->try_resize_results_.emplace_back(MiB(512));
     kill_request_handler_.Run(host_client, MiB(512),
-                              ResizePriority::RESIZE_PRIORITY_CACHED_TAB);
+                              ResizePriority::kCachedTab);
     decision_latency_handler_.Run(host_client, result);
   }
 
@@ -452,14 +442,13 @@ TEST_F(BalloonBrokerTest, HandleDecisionLatencyMetrics) {
     SCOPED_TRACE("Timed out latency that would have been rejected");
     DecisionLatency result;
     result.set_latency_ms(std::numeric_limits<uint32_t>::max());
-    EXPECT_CALL(*metrics_,
-                SendEnumToUMA("Memory.VMMMS.Host.DecisionTimeout",
-                              ResizePriority::RESIZE_PRIORITY_CACHED_TAB, _))
+    EXPECT_CALL(*metrics_, SendEnumToUMA("Memory.VMMMS.Host.DecisionTimeout",
+                                         ResizePriority::kCachedTab, _))
         .Times(1);
     FakeBalloonBlocker::fake_balloon_blockers_[vm_cid]
         ->try_resize_results_.emplace_back(MiB(0));
     kill_request_handler_.Run(host_client, MiB(512),
-                              ResizePriority::RESIZE_PRIORITY_CACHED_TAB);
+                              ResizePriority::kCachedTab);
     decision_latency_handler_.Run(host_client, result);
   }
 
@@ -467,20 +456,16 @@ TEST_F(BalloonBrokerTest, HandleDecisionLatencyMetrics) {
     SCOPED_TRACE("Timed out latency that would have been granted");
     DecisionLatency result;
     result.set_latency_ms(std::numeric_limits<uint32_t>::max());
-    EXPECT_CALL(
-        *metrics_,
-        SendEnumToUMA("Memory.VMMMS.Host.DecisionTimeout",
-                      ResizePriority::RESIZE_PRIORITY_PERCEPTIBLE_TAB, _))
+    EXPECT_CALL(*metrics_, SendEnumToUMA("Memory.VMMMS.Host.DecisionTimeout",
+                                         ResizePriority::kPerceptibleTab, _))
         .Times(1);
-    EXPECT_CALL(
-        *metrics_,
-        SendEnumToUMA("Memory.VMMMS.Host.UnnecessaryKill",
-                      ResizePriority::RESIZE_PRIORITY_PERCEPTIBLE_TAB, _))
+    EXPECT_CALL(*metrics_, SendEnumToUMA("Memory.VMMMS.Host.UnnecessaryKill",
+                                         ResizePriority::kPerceptibleTab, _))
         .Times(1);
     FakeBalloonBlocker::fake_balloon_blockers_[vm_cid]
         ->try_resize_results_.emplace_back(MiB(512));
     kill_request_handler_.Run(host_client, MiB(512),
-                              ResizePriority::RESIZE_PRIORITY_PERCEPTIBLE_TAB);
+                              ResizePriority::kPerceptibleTab);
     decision_latency_handler_.Run(host_client, result);
   }
 }

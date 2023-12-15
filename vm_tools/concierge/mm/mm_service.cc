@@ -117,8 +117,7 @@ void MmService::NotifyVmBootComplete(int vm_cid) {
   // kill low priority apps or a new MGLRU generation is created. This helps
   // ensure that future balloon inflations resulting from host kills will
   // actually apply memory pressure in the guest.
-  ReclaimUntilBlocked(vm_cid, ResizePriority::RESIZE_PRIORITY_MGLRU_RECLAIM,
-                      base::DoNothing());
+  ReclaimUntilBlocked(vm_cid, ResizePriority::kMglruReclaim, base::DoNothing());
 }
 
 void MmService::NotifyVmStopping(int vm_cid) {
