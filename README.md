@@ -48,6 +48,7 @@ copies.
 | [cros-disks](./cros-disks/) | Daemon for mounting removable media (e.g. USB sticks and SD cards) |
 | [crosdns](./crosdns/) | Hostname resolution service for ChromeOS |
 | [crosh](./crosh/) | The ChromiumOS shell |
+| [crosier-chrome](./crosier-chrome/) | Crosier testing framework |
 | [croslog](./croslog/) | The log manipulation command |
 | [cryptohome](./cryptohome/) | Daemon and tools for managing encrypted /home and /var directories |
 | [cups_proxy](./cups_proxy/) | Daemon for proxying CUPS printing request |

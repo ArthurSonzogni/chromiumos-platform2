@@ -1,0 +1,24 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Schema can be found at: platform/dev/test/gtest/gtest_schema.yaml
+---
+author: "ChromiumOS Authors"
+name: "DemoIntegrationTest"
+harness: "crosier"
+category: "integration"
+owners:
+  - email: "jamescook@chromium.org"
+  - email: "svenzheng@google.com"
+hw_agnostic: True
+criteria: |
+  This test verifies Chrome can launch and open version page.
+  Manually:
+    1 Launch Chrome
+    2 Go to chrome://version
+    3 Make sure the page can open successfully.
+cases:
+  - id: "NewTab"
+    tags: []
+...
