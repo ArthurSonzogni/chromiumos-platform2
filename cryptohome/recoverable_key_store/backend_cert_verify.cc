@@ -451,8 +451,8 @@ struct CertificateXmlParseResult {
 // Check example xml format from
 // https://www.gstatic.com/cryptauthvault/v0/cert.xml.
 std::optional<CertificateXmlParseResult> ParseCertificateXml(
-    const std::string& signature_xml) {
-  ScopedXmlDoc doc(xmlParseMemory(signature_xml.data(), signature_xml.size()));
+    const std::string& cert_xml) {
+  ScopedXmlDoc doc(xmlParseMemory(cert_xml.data(), cert_xml.size()));
   if (!doc) {
     LOG(ERROR) << "Failed to parse xml.";
     return std::nullopt;
@@ -583,6 +583,17 @@ std::vector<RecoverableKeyStoreCert> EncodeEndpointCertificates(
 }  // namespace
 
 // TODO(b/315094662): Add fuzzer for parsing of untrusted data.
+
+std::optional<uint64_t> GetCertXmlVersion(const std::string& cert_xml) {
+  std::optional<CertificateXmlParseResult> cert_result =
+      ParseCertificateXml(cert_xml);
+  if (!cert_result.has_value()) {
+    LOG(ERROR) << "Failed to parse certificate xml.";
+    return std::nullopt;
+  }
+  return cert_result->version;
+}
+
 std::optional<RecoverableKeyStoreCertList>
 VerifyAndParseRecoverableKeyStoreBackendCertXmls(
     const std::string& cert_xml, const std::string& signature_xml) {

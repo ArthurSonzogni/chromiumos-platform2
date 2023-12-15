@@ -28,6 +28,10 @@ struct RecoverableKeyStoreCertList {
   std::vector<RecoverableKeyStoreCert> certs;
 };
 
+// Get the version of the certificate xml. This doesn't attempt to verify the
+// certificate.
+std::optional<uint64_t> GetCertXmlVersion(const std::string& cert_xml);
+
 // Verify that the given certificate and certificate signature xml files are
 // valid, and parse the endpoint certificates into the
 // RecoverableKeyStoreCertList structure.

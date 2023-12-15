@@ -19,6 +19,7 @@ namespace {
 
 using ::testing::Each;
 using ::testing::Field;
+using ::testing::Optional;
 using ::testing::SizeIs;
 
 // A valid cert xml from https://www.gstatic.com/cryptauthvault/v0/cert.xml
@@ -476,6 +477,17 @@ constexpr char kOldSigXmlB64[] =
     "WDdmRmE1cWJLckVsZHhlbkZOczFPMUdCMWovVlVxdXN4RGcvWXB0TUs3RHBiQld1S0N6cEo3"
     "VGpCVUhUM1JjWUpWNDB1aFI3L0dFZDdwZ0x6ak1ndWRIc3VKTy8zRTN6UlliZHNZY2FqeG9S"
     "NjdvdDhHeG9scjZkR3NPcHMzMWYvRT08L3ZhbHVlPgo8L3NpZ25hdHVyZT4=";
+
+TEST(RecoverableKeyStoreBackendCertVerifyTest, GetCertXmlVersion) {
+  std::string cert_xml;
+  ASSERT_TRUE(base::Base64Decode(kCertXmlB64, &cert_xml));
+  EXPECT_THAT(GetCertXmlVersion(cert_xml), Optional(10014));
+}
+
+TEST(RecoverableKeyStoreBackendCertVerifyTest, GetCertXmlVersionFailed) {
+  const std::string cert_xml = "not a xml";
+  EXPECT_EQ(GetCertXmlVersion(cert_xml), std::nullopt);
+}
 
 TEST(RecoverableKeyStoreBackendCertVerifyTest, Success) {
   std::string cert_xml, sig_xml;
