@@ -85,6 +85,7 @@ class FlexHwisTest : public ::testing::Test {
     EXPECT_CALL(mock_policy_provider_, device_policy_is_loaded())
         .Times(AtMost(1))
         .WillOnce(Return(true));
+    telemetry_.AddTelemetryInfo();
   }
 
   void CreateTimeStamp(const std::string& timestamp) {
@@ -133,35 +134,38 @@ class FlexHwisTest : public ::testing::Test {
   MetricsLibraryMock library_;
   base::ScopedTempDir test_dir_;
   base::FilePath test_path_;
-  hwis_proto::Device hardware_info_;
+  flex_hwis::TelemetryForTesting telemetry_;
 };
 
 TEST_F(FlexHwisTest, HasRunRecently) {
-  auto flex_hwis_sender = flex_hwis::FlexHwisSender(
+  auto flex_hwis_sender_ = flex_hwis::FlexHwisSender(
       test_path_, mock_policy_provider_, mock_http_sender_);
+  flex_hwis_sender_.SetTelemetryInfoForTesting(telemetry_.Get());
   const auto current_from_epoch =
       (base::Time::Now() - base::Time::UnixEpoch()).InSeconds();
   CreateTimeStamp(base::NumberToString(current_from_epoch));
 
-  EXPECT_EQ(flex_hwis_sender.MaybeSend(hardware_info_, library_),
+  EXPECT_EQ(flex_hwis_sender_.CollectAndSend(library_, Debug::None),
             Result::HasRunRecently);
 }
 
 TEST_F(FlexHwisTest, ManagedWithoutPermission) {
-  auto flex_hwis_sender = flex_hwis::FlexHwisSender(
+  auto flex_hwis_sender_ = flex_hwis::FlexHwisSender(
       test_path_, mock_policy_provider_, mock_http_sender_);
+  flex_hwis_sender_.SetTelemetryInfoForTesting(telemetry_.Get());
   EXPECT_CALL(mock_device_policy_, GetReportSystemInfo(_))
       .WillOnce(SetEnabled(false));
   ExpectPermissionMetric(PermissionResult::kPolicyDenial);
   ExpectDeleteAction();
 
-  EXPECT_EQ(flex_hwis_sender.MaybeSend(hardware_info_, library_),
+  EXPECT_EQ(flex_hwis_sender_.CollectAndSend(library_, Debug::None),
             Result::NotAuthorized);
 }
 
 TEST_F(FlexHwisTest, UnManagedWithoutPermission) {
-  auto flex_hwis_sender = flex_hwis::FlexHwisSender(
+  auto flex_hwis_sender_ = flex_hwis::FlexHwisSender(
       test_path_, mock_policy_provider_, mock_http_sender_);
+  flex_hwis_sender_.SetTelemetryInfoForTesting(telemetry_.Get());
   EXPECT_CALL(mock_device_policy_, IsEnterpriseEnrolled())
       .WillOnce(SetEnterpriseEnrolled(false));
   EXPECT_CALL(mock_device_policy_, GetHwDataUsageEnabled(_))
@@ -169,39 +173,44 @@ TEST_F(FlexHwisTest, UnManagedWithoutPermission) {
   ExpectPermissionMetric(PermissionResult::kOptInDenial);
   ExpectDeleteAction();
 
-  EXPECT_EQ(flex_hwis_sender.MaybeSend(hardware_info_, library_),
+  EXPECT_EQ(flex_hwis_sender_.CollectAndSend(library_, Debug::None),
             Result::NotAuthorized);
 }
 
 TEST_F(FlexHwisTest, ManagedWithPermission) {
-  auto flex_hwis_sender = flex_hwis::FlexHwisSender(
+  auto flex_hwis_sender_ = flex_hwis::FlexHwisSender(
       test_path_, mock_policy_provider_, mock_http_sender_);
+  flex_hwis_sender_.SetTelemetryInfoForTesting(telemetry_.Get());
   ExpectPermissionMetric(PermissionResult::kPolicySuccess);
   ExpectRegisterAction(/*api_call_success=*/true);
-  EXPECT_EQ(flex_hwis_sender.MaybeSend(hardware_info_, library_), Result::Sent);
+  EXPECT_EQ(flex_hwis_sender_.CollectAndSend(library_, Debug::None),
+            Result::Sent);
 }
 
 TEST_F(FlexHwisTest, UpdateDeviceFail) {
-  auto flex_hwis_sender = flex_hwis::FlexHwisSender(
+  auto flex_hwis_sender_ = flex_hwis::FlexHwisSender(
       test_path_, mock_policy_provider_, mock_http_sender_);
+  flex_hwis_sender_.SetTelemetryInfoForTesting(telemetry_.Get());
   ExpectPermissionMetric(PermissionResult::kPolicySuccess);
   CreateDeviceName();
   EXPECT_CALL(mock_http_sender_, UpdateDevice(_))
       .WillOnce(Return(DeviceUpdateResult::Fail));
   ExpectApiMetric(kPutMetricName, /*device updated result=*/false);
-  EXPECT_EQ(flex_hwis_sender.MaybeSend(hardware_info_, library_),
+  EXPECT_EQ(flex_hwis_sender_.CollectAndSend(library_, Debug::None),
             Result::Error);
 }
 
 TEST_F(FlexHwisTest, UpdateDeviceNotFound) {
-  auto flex_hwis_sender = flex_hwis::FlexHwisSender(
+  auto flex_hwis_sender_ = flex_hwis::FlexHwisSender(
       test_path_, mock_policy_provider_, mock_http_sender_);
+  flex_hwis_sender_.SetTelemetryInfoForTesting(telemetry_.Get());
   ExpectPermissionMetric(PermissionResult::kPolicySuccess);
   CreateDeviceName();
   EXPECT_CALL(mock_http_sender_, UpdateDevice(_))
       .WillOnce(Return(DeviceUpdateResult::DeviceNotFound));
   ExpectRegisterAction(/*api_call_success=*/true);
-  EXPECT_EQ(flex_hwis_sender.MaybeSend(hardware_info_, library_), Result::Sent);
+  EXPECT_EQ(flex_hwis_sender_.CollectAndSend(library_, Debug::None),
+            Result::Sent);
 }
 
 }  // namespace flex_hwis
