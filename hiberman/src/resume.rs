@@ -97,7 +97,11 @@ impl ResumeConductor {
     /// resume, this does not return, as the resume image is running instead. In
     /// the case of resume failure, an error is returned.
     pub fn resume(&mut self, options: ResumeOptions) -> Result<()> {
-        info!("Beginning resume");
+        if self.is_resume_pending()? {
+            info!("Preparing for resume from hibernate");
+        } else {
+            info!("Setting the system up for future hibernation");
+        }
 
         // Ensure the persistent version of the stateful block device is available.
         let _rw_stateful_lv = activate_physical_lv("unencrypted")?;
