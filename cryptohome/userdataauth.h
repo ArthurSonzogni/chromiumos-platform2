@@ -55,6 +55,7 @@
 #include "cryptohome/pkcs11_init.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/recoverable_key_store/backend_cert_provider.h"
+#include "cryptohome/signalling.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_factory.h"
@@ -201,6 +202,9 @@ class UserDataAuth {
   void set_critical_cleanup_threshold(uint64_t critical_cleanup_threshold);
   void set_target_free_space(uint64_t target_free_space);
 
+  // Set the D-Bus signalling interface.
+  void SetSignallingInterface(SignallingInterface& signalling);
+
   // Set the AuthFactorStatusUpdate callback which is called by the DBUS
   // adaptor.
   void SetAuthFactorStatusUpdateCallback(
@@ -222,12 +226,6 @@ class UserDataAuth {
   void SetPrepareAuthFactorProgressCallback(
       const base::RepeatingCallback<
           void(user_data_auth::PrepareAuthFactorProgress)>& callback);
-
-  // Set the AuthenticateAuthFactorCompleted callback. This is usually called by
-  // the DBus adaptor.
-  void SetAuthenticateAuthFactorCompletedCallback(
-      const base::RepeatingCallback<
-          void(user_data_auth::AuthenticateAuthFactorCompleted)>& callback);
 
   // Set the AuthFactorAdded callback. This is usually called by the
   // DBus adaptor.
@@ -1227,6 +1225,10 @@ class UserDataAuth {
 
   bool challenge_credentials_helper_initialized_ = false;
 
+  // The signalling interface, including a null default interface.
+  NullSignalling default_signalling_;
+  SignallingInterface* signalling_intf_ = &default_signalling_;
+
   // The repeating callback to send FingerprintScanResult signal.
   base::RepeatingCallback<void(user_data_auth::FingerprintScanResult)>
       fingerprint_scan_result_callback_;
@@ -1234,10 +1236,6 @@ class UserDataAuth {
   // The repeating callback to send PrepareAuthFactorProgress signal.
   base::RepeatingCallback<void(user_data_auth::PrepareAuthFactorProgress)>
       prepare_auth_factor_progress_callback_;
-
-  // The repeating callback to send AuthenticateAuthFactorCompleted signal.
-  base::RepeatingCallback<void(user_data_auth::AuthenticateAuthFactorCompleted)>
-      authenticate_auth_factor_completed_callback_;
 
   // The repeating callback to send AuthFactorAdded signal.
   base::RepeatingCallback<void(user_data_auth::AuthFactorAdded)>

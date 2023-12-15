@@ -967,11 +967,6 @@ void UserDataAuthAdaptor::PrepareAuthFactorProgressCallback(
   SendPrepareAuthFactorProgressSignal(signal);
 }
 
-void UserDataAuthAdaptor::AuthenticateAuthFactorCompletedCallback(
-    user_data_auth::AuthenticateAuthFactorCompleted signal) {
-  SendAuthenticateAuthFactorCompletedSignal(signal);
-}
-
 void UserDataAuthAdaptor::AuthFactorAddedCallback(
     user_data_auth::AuthFactorAdded signal) {
   SendAuthFactorAddedSignal(signal);

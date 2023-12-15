@@ -46,6 +46,7 @@
 #include "cryptohome/mock_install_attributes.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_signalling.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/recoverable_key_store/backend_cert_provider.h"
 #include "cryptohome/storage/error.h"
@@ -2124,6 +2125,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorCheckSignal) {
       .extended_sealed_hvkkm = kBlob32,
       .tpm_public_key_hash = brillo::BlobFromString(kPublicHash),
   };
+
   // Arrange.
   std::string serialized_token = StartAuthenticatedAuthSession(
       kUsernameString, user_data_auth::AUTH_INTENT_DECRYPT);
@@ -2150,14 +2152,12 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorCheckSignal) {
                 .error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
-  // Copy results from callback.
-  user_data_auth::AuthenticateAuthFactorCompleted result_proto;
-  userdataauth_.SetAuthenticateAuthFactorCompletedCallback(base::BindRepeating(
-      [](user_data_auth::AuthenticateAuthFactorCompleted* proto_copy,
-         const user_data_auth::AuthenticateAuthFactorCompleted proto) {
-        proto_copy->CopyFrom(proto);
-      },
-      &result_proto));
+  // Set up signalling to capture the relevant signal.
+  NiceMock<MockSignalling> signalling;
+  userdataauth_.SetSignallingInterface(signalling);
+  user_data_auth::AuthenticateAuthFactorCompleted signal_proto;
+  EXPECT_CALL(signalling, SendAuthenticateAuthFactorCompleted(_))
+      .WillOnce(SaveArg<0>(&signal_proto));
 
   // Act.
   EXPECT_CALL(mock_auth_block_utility_, GetAuthBlockTypeFromState(_))
@@ -2171,9 +2171,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorCheckSignal) {
       AuthenticateAuthFactor(request);
 
   // Verify
-  ASSERT_TRUE(result_proto.has_error_info());
+  ASSERT_TRUE(signal_proto.has_error_info());
   EXPECT_EQ(user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND,
-            result_proto.error());
+            signal_proto.error());
 }
 
 }  // namespace

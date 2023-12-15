@@ -12,6 +12,7 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
+#include "cryptohome/signalling.h"
 #include "cryptohome/userdataauth.h"
 #include "dbus_adaptors/org.chromium.UserDataAuth.h"
 
@@ -24,8 +25,10 @@ class UserDataAuthAdaptor
                                brillo::dbus_utils::DBusObject* dbus_object,
                                UserDataAuth* service)
       : org::chromium::UserDataAuthInterfaceAdaptor(this),
+        signalling_(*this),
         dbus_object_(dbus_object),
         service_(service) {
+    service_->SetSignallingInterface(signalling_);
     service_->SetAuthFactorStatusUpdateCallback(base::BindRepeating(
         &UserDataAuthAdaptor::AuthFactorStatusUpdateCallback,
         base::Unretained(this)));
@@ -36,9 +39,6 @@ class UserDataAuthAdaptor
                             base::Unretained(this)));
     service_->SetPrepareAuthFactorProgressCallback(base::BindRepeating(
         &UserDataAuthAdaptor::PrepareAuthFactorProgressCallback,
-        base::Unretained(this)));
-    service_->SetAuthenticateAuthFactorCompletedCallback(base::BindRepeating(
-        &UserDataAuthAdaptor::AuthenticateAuthFactorCompletedCallback,
         base::Unretained(this)));
     service_->SetAuthFactorAddedCallback(base::BindRepeating(
         &UserDataAuthAdaptor::AuthFactorAddedCallback, base::Unretained(this)));
@@ -448,11 +448,6 @@ class UserDataAuthAdaptor
   void PrepareAuthFactorProgressCallback(
       user_data_auth::PrepareAuthFactorProgress signal);
 
-  // This is called by UserDataAuth for processing the result of Authenticating
-  // the AuthFactor. All we do here is send the signal.
-  void AuthenticateAuthFactorCompletedCallback(
-      user_data_auth::AuthenticateAuthFactorCompleted signal);
-
   // This is called by UserDataAuth when a new AuthFactor is added for a user.
   void AuthFactorAddedCallback(user_data_auth::AuthFactorAdded signal);
 
@@ -471,6 +466,27 @@ class UserDataAuthAdaptor
   void EvictedKeyRestoredCallback(user_data_auth::EvictedKeyRestored signal);
 
  private:
+  // Implements the signalling interface for this service. All of the send
+  // operations are implemented by forwarding to the relevant adaptor function.
+  class Signalling : public SignallingInterface {
+   public:
+    explicit Signalling(UserDataAuthInterfaceAdaptor& adaptor)
+        : adaptor_(&adaptor) {}
+
+    Signalling(const Signalling&) = delete;
+    Signalling& operator=(const Signalling&) = delete;
+
+   private:
+    void SendAuthenticateAuthFactorCompleted(
+        const user_data_auth::AuthenticateAuthFactorCompleted& signal)
+        override {
+      adaptor_->SendAuthenticateAuthFactorCompletedSignal(signal);
+    }
+
+    UserDataAuthInterfaceAdaptor* adaptor_;
+  };
+  Signalling signalling_;
+
   brillo::dbus_utils::DBusObject* dbus_object_;
 
   // This is the object that holds most of the states that this adaptor uses,

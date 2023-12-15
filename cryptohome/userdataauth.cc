@@ -93,6 +93,7 @@
 #include "cryptohome/pkcs11/real_pkcs11_token_factory.h"
 #include "cryptohome/recoverable_key_store/backend_cert_provider.h"
 #include "cryptohome/recoverable_key_store/backend_cert_provider_impl.h"
+#include "cryptohome/signalling.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/real_user_session_factory.h"
@@ -1666,6 +1667,10 @@ void UserDataAuth::set_target_free_space(uint64_t target_free_space) {
   disk_cleanup_target_free_space_ = target_free_space;
 }
 
+void UserDataAuth::SetSignallingInterface(SignallingInterface& signalling) {
+  signalling_intf_ = &signalling;
+}
+
 void UserDataAuth::SetLowDiskSpaceCallback(
     const base::RepeatingCallback<void(uint64_t)>& callback) {
   low_disk_space_handler_->SetLowDiskSpaceCallback(callback);
@@ -1681,12 +1686,6 @@ void UserDataAuth::SetPrepareAuthFactorProgressCallback(
     const base::RepeatingCallback<
         void(user_data_auth::PrepareAuthFactorProgress)>& callback) {
   prepare_auth_factor_progress_callback_ = callback;
-}
-
-void UserDataAuth::SetAuthenticateAuthFactorCompletedCallback(
-    const base::RepeatingCallback<
-        void(user_data_auth::AuthenticateAuthFactorCompleted)>& callback) {
-  authenticate_auth_factor_completed_callback_ = callback;
 }
 
 void UserDataAuth::SetEvictedKeyRestoredCallback(
@@ -3217,11 +3216,9 @@ void UserDataAuth::CreatePersistentUserWithSession(
 
   // Send a special authentication complete to signal that a new user was
   // created and signed in.
-  if (!authenticate_auth_factor_completed_callback_.is_null()) {
-    user_data_auth::AuthenticateAuthFactorCompleted completed_proto;
-    completed_proto.set_user_creation(true);
-    authenticate_auth_factor_completed_callback_.Run(completed_proto);
-  }
+  user_data_auth::AuthenticateAuthFactorCompleted completed_proto;
+  completed_proto.set_user_creation(true);
+  signalling_intf_->SendAuthenticateAuthFactorCompleted(completed_proto);
 
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
@@ -3499,9 +3496,7 @@ void UserDataAuth::AuthenticateAuthFactorWithSession(
   // Wrap callback to signal AuthenticateAuthFactorCompleted.
   OnDoneCallback<user_data_auth::AuthenticateAuthFactorReply>
       on_done_wrapped_with_signal_cb = base::BindOnce(
-          [](base::RepeatingCallback<void(
-                 user_data_auth::AuthenticateAuthFactorCompleted)>
-                 authenticate_auth_factor_result_callback,
+          [](SignallingInterface* signalling_intf,
              OnDoneCallback<user_data_auth::AuthenticateAuthFactorReply> cb,
              user_data_auth::AuthFactorType auth_factor_type,
              const user_data_auth::AuthenticateAuthFactorReply& reply) {
@@ -3514,12 +3509,11 @@ void UserDataAuth::AuthenticateAuthFactorWithSession(
             }
             completed_proto.set_auth_factor_type(auth_factor_type);
 
-            if (!authenticate_auth_factor_result_callback.is_null()) {
-              authenticate_auth_factor_result_callback.Run(completed_proto);
-            }
+            signalling_intf->SendAuthenticateAuthFactorCompleted(
+                completed_proto);
             std::move(cb).Run(reply);
           },
-          authenticate_auth_factor_completed_callback_, std::move(on_done),
+          signalling_intf_, std::move(on_done),
           AuthFactorTypeToProto(
               DetermineFactorTypeFromAuthInput(request.auth_input())
                   .value_or(AuthFactorType::kUnspecified)));
