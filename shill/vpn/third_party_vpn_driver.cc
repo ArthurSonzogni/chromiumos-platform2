@@ -7,27 +7,34 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <cstdint>
 #include <iterator>
+#include <memory>
+#include <optional>
+#include <set>
+#include <string_view>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/containers/span.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/network_config.h>
 #include <net-base/process_manager.h>
 
-#include "base/containers/span.h"
 #include "shill/control_interface.h"
 #include "shill/device_info.h"
 #include "shill/error.h"
 #include "shill/file_io.h"
-#include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
@@ -60,6 +67,103 @@ std::string IPAddressFingerprint(const net_base::IPv4CIDR& cidr) {
   return fingerprint.substr(0, cidr.prefix_length());
 }
 
+// Returns the string value corresponding to the |key| in the given
+// |parameters|. Returns std::nullopt when the |key| is missing.
+// When the flag |mandatory| is set to true and the |key| is missing in
+// |parameters|, an error message will be appended to |error_message|.
+std::optional<std::string_view> GetParameterString(
+    const std::map<std::string, std::string>& parameters,
+    std::string_view key,
+    bool mandatory,
+    std::string* error_message) {
+  if (const auto it = parameters.find(std::string(key));
+      it != parameters.end()) {
+    return std::make_optional<std::string_view>(it->second);
+  }
+  // Key not found.
+  if (mandatory) {
+    error_message->append(key).append(" is missing;");
+  }
+  return std::nullopt;
+}
+
+// Returns the int32 value corresponding to the |key| in the given |parameters|.
+// If the value is a valid int32, and is between |min_value| and |max_value|,
+// then it will be returned, otherwise an error message will be appended to
+// |error_message|.
+// When the flag |mandatory| is set to true and the |key| is missing in
+// |parameters|, an error message will be appended to |error_message|.
+std::optional<int32_t> GetParameterInt32(
+    const std::map<std::string, std::string>& parameters,
+    std::string_view key,
+    int32_t min_value,
+    int32_t max_value,
+    bool mandatory,
+    std::string* error_message) {
+  const std::optional<std::string_view> value_str =
+      GetParameterString(parameters, key, mandatory, error_message);
+  if (!value_str.has_value()) {
+    return std::nullopt;
+  }
+  int32_t value = 0;
+  if (base::StringToInt(*value_str, &value) && value >= min_value &&
+      value <= max_value) {
+    return value;
+  }
+  // |value_str| is not a valid integer or is not in expected range.
+  error_message->append(key).append(" not in expected range;");
+  return std::nullopt;
+}
+
+// Returns a list of IP addresses in CIDR format corresponding to the |key| in
+// the given |parameters|. The value string from the dictionary |parameters|
+// will be separated by |delimiter|.
+// |known_cidrs| is used to identify duplicate entries in inclusion and
+// exclusion lists.
+// Errors and warnings will be added to |error_message| and |warning_message|
+// respectively. When the flag |mandatory| is set to true and the |key| is
+// missing in |parameters|, an error will be reported in |error_message|.
+std::vector<net_base::IPCIDR> GetParameterIPArrayCIDR(
+    const std::map<std::string, std::string>& parameters,
+    std::string_view key,
+    std::string_view delimiter,
+    std::set<std::string>& known_cidrs,
+    bool mandatory,
+    std::string* error_message,
+    std::string* warning_message) {
+  const std::optional<std::string_view> value_str =
+      GetParameterString(parameters, key, mandatory, error_message);
+  if (!value_str.has_value()) {
+    return {};
+  }
+  const std::vector<std::string_view> cidr_str_array = base::SplitStringPiece(
+      *value_str, delimiter, base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  std::vector<net_base::IPCIDR> ret;
+
+  for (const auto& cidr_str : cidr_str_array) {
+    const auto cidr = net_base::IPv4CIDR::CreateFromCIDRString(cidr_str);
+    if (!cidr.has_value()) {
+      warning_message->append(
+          base::StrCat({cidr_str, " for ", key, " is invalid;"}));
+      continue;
+    }
+    const std::string cidr_key = IPAddressFingerprint(*cidr);
+    if (known_cidrs.contains(cidr_key)) {
+      warning_message->append(base::StrCat(
+          {"Duplicate entry for ", cidr_str, " in ", key, " found;"}));
+      continue;
+    }
+    known_cidrs.insert(cidr_key);
+    ret.push_back(net_base::IPCIDR(*cidr));
+  }
+
+  if (ret.empty()) {
+    error_message->append(key).append(" has no valid values or is empty;");
+  }
+
+  return ret;
+}
+
 }  // namespace
 
 const VPNDriver::Property ThirdPartyVpnDriver::kProperties[] = {
@@ -78,7 +182,7 @@ ThirdPartyVpnDriver::ThirdPartyVpnDriver(
                 kProperties,
                 std::size(kProperties)),
       tun_fd_(-1),
-      ip_properties_set_(false),
+      network_config_set_(false),
       parameters_expected_(false),
       reconnect_supported_(false) {
   file_io_ = FileIO::GetInstance();
@@ -168,173 +272,6 @@ void ThirdPartyVpnDriver::SendPacket(const std::vector<uint8_t>& ip_packet,
   }
 }
 
-void ThirdPartyVpnDriver::ProcessIp(
-    const std::map<std::string, std::string>& parameters,
-    const char* key,
-    std::string* target,
-    bool mandatory,
-    std::string* error_message) {
-  // TODO(kaliamoorthi): Add IPV6 support.
-  auto it = parameters.find(key);
-  if (it != parameters.end()) {
-    const std::string& ip = it->second;
-    if (net_base::IPv4Address::CreateFromString(ip).has_value()) {
-      *target = ip;
-    } else {
-      error_message->append(key).append(" is not a valid IP;");
-    }
-  } else if (mandatory) {
-    error_message->append(key).append(" is missing;");
-  }
-}
-
-void ThirdPartyVpnDriver::ProcessIPArray(
-    const std::map<std::string, std::string>& parameters,
-    const char* key,
-    char delimiter,
-    std::vector<std::string>* target,
-    bool mandatory,
-    std::string* error_message,
-    std::string* warning_message) {
-  std::vector<std::string> string_array;
-  auto it = parameters.find(key);
-  if (it != parameters.end()) {
-    string_array =
-        base::SplitString(parameters.at(key), std::string{delimiter},
-                          base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-
-    // Eliminate invalid IPs
-    for (auto value = string_array.begin(); value != string_array.end();) {
-      const auto addr = net_base::IPv4Address::CreateFromString(*value);
-      if (!addr.has_value()) {
-        warning_message->append(*value + " for " + key + " is invalid;");
-        value = string_array.erase(value);
-      } else {
-        ++value;
-      }
-    }
-
-    if (!string_array.empty()) {
-      target->swap(string_array);
-    } else if (mandatory) {
-      error_message->append(key).append(" has no valid values or is empty;");
-    }
-  } else if (mandatory) {
-    error_message->append(key).append(" is missing;");
-  }
-}
-
-void ThirdPartyVpnDriver::ProcessIPArrayCIDR(
-    const std::map<std::string, std::string>& parameters,
-    const char* key,
-    char delimiter,
-    std::vector<std::string>* target,
-    bool mandatory,
-    std::string* error_message,
-    std::string* warning_message) {
-  std::vector<std::string> string_array;
-  auto it = parameters.find(key);
-  if (it != parameters.end()) {
-    string_array =
-        base::SplitString(parameters.at(key), std::string{delimiter},
-                          base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-
-    // Eliminate invalid IPs
-    for (auto value = string_array.begin(); value != string_array.end();) {
-      const auto cidr = net_base::IPv4CIDR::CreateFromCIDRString(*value);
-      if (!cidr.has_value()) {
-        warning_message->append(*value + " for " + key + " is invalid;");
-        value = string_array.erase(value);
-        continue;
-      }
-      const std::string cidr_key = IPAddressFingerprint(*cidr);
-      if (known_cidrs_.find(cidr_key) != known_cidrs_.end()) {
-        warning_message->append("Duplicate entry for " + *value + " in " + key +
-                                " found;");
-        value = string_array.erase(value);
-      } else {
-        known_cidrs_.insert(cidr_key);
-        ++value;
-      }
-    }
-
-    if (!string_array.empty()) {
-      target->swap(string_array);
-    } else {
-      error_message->append(key).append(" has no valid values or is empty;");
-    }
-  } else if (mandatory) {
-    error_message->append(key).append(" is missing;");
-  }
-}
-
-void ThirdPartyVpnDriver::ProcessSearchDomainArray(
-    const std::map<std::string, std::string>& parameters,
-    const char* key,
-    char delimiter,
-    std::vector<std::string>* target,
-    bool mandatory,
-    std::string* error_message) {
-  std::vector<std::string> string_array;
-  auto it = parameters.find(key);
-  if (it != parameters.end()) {
-    string_array =
-        base::SplitString(parameters.at(key), std::string{delimiter},
-                          base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-
-    if (!string_array.empty()) {
-      target->swap(string_array);
-    } else {
-      error_message->append(key).append(" has no valid values or is empty;");
-    }
-  } else if (mandatory) {
-    error_message->append(key).append(" is missing;");
-  }
-}
-
-void ThirdPartyVpnDriver::ProcessInt32(
-    const std::map<std::string, std::string>& parameters,
-    const char* key,
-    int32_t* target,
-    int32_t min_value,
-    int32_t max_value,
-    bool mandatory,
-    std::string* error_message) {
-  int32_t value = 0;
-  auto it = parameters.find(key);
-  if (it != parameters.end()) {
-    if (base::StringToInt(parameters.at(key), &value) && value >= min_value &&
-        value <= max_value) {
-      *target = value;
-    } else {
-      error_message->append(key).append(" not in expected range;");
-    }
-  } else if (mandatory) {
-    error_message->append(key).append(" is missing;");
-  }
-}
-
-void ThirdPartyVpnDriver::ProcessBoolean(
-    const std::map<std::string, std::string>& parameters,
-    const char* key,
-    bool* target,
-    bool mandatory,
-    std::string* error_message) {
-  auto it = parameters.find(key);
-  if (it != parameters.end()) {
-    std::string str_value = parameters.at(key);
-    if (str_value == "true") {
-      *target = true;
-    } else if (str_value == "false") {
-      *target = false;
-    } else {
-      error_message->append(key).append(" not a valid boolean;");
-    }
-  } else if (mandatory) {
-    error_message->append(key).append(" is missing;");
-  }
-}
-
 void ThirdPartyVpnDriver::SetParameters(
     const std::map<std::string, std::string>& parameters,
     std::string* error_message,
@@ -345,75 +282,133 @@ void ThirdPartyVpnDriver::SetParameters(
     return;
   }
 
-  ipv4_properties_ = std::make_unique<IPConfig::Properties>();
-  ipv4_properties_->address_family = net_base::IPFamily::kIPv4;
+  network_config_ = std::make_optional<net_base::NetworkConfig>();
 
-  ProcessIp(parameters, kAddressParameterThirdPartyVpn,
-            &ipv4_properties_->address, true, error_message);
-  ProcessIp(parameters, kBroadcastAddressParameterThirdPartyVpn,
-            &ipv4_properties_->broadcast_address, false, error_message);
+  const std::optional<std::string_view> address = GetParameterString(
+      parameters, kAddressParameterThirdPartyVpn, true, error_message);
+  const std::optional<int32_t> subnet_prefix =
+      GetParameterInt32(parameters, kSubnetPrefixParameterThirdPartyVpn, 0, 32,
+                        true, error_message);
+  if (address.has_value() && subnet_prefix.has_value()) {
+    network_config_->ipv4_address =
+        net_base::IPv4CIDR::CreateFromStringAndPrefix(*address, *subnet_prefix);
+    if (!network_config_->ipv4_address.has_value()) {
+      error_message->append(kAddressParameterThirdPartyVpn)
+          .append(" is not a valid IP;");
+    } else {
+      network_config_->ipv4_gateway = network_config_->ipv4_address->address();
+    }
+  }
 
-  ipv4_properties_->gateway = ipv4_properties_->address;
+  const std::optional<std::string_view> broadcast_address =
+      GetParameterString(parameters, kBroadcastAddressParameterThirdPartyVpn,
+                         false, error_message);
+  if (broadcast_address.has_value()) {
+    network_config_->ipv4_broadcast =
+        net_base::IPv4Address::CreateFromString(*broadcast_address);
+    if (!network_config_->ipv4_broadcast.has_value()) {
+      error_message->append(kBroadcastAddressParameterThirdPartyVpn)
+          .append(" is not a valid IP;");
+    }
+  }
 
-  ProcessInt32(parameters, kSubnetPrefixParameterThirdPartyVpn,
-               &ipv4_properties_->subnet_prefix, 0, 32, true, error_message);
-  ProcessInt32(parameters, kMtuParameterThirdPartyVpn, &ipv4_properties_->mtu,
-               net_base::NetworkConfig::kMinIPv4MTU, kConstantMaxMtu, false,
-               error_message);
+  network_config_->mtu =
+      GetParameterInt32(parameters, kMtuParameterThirdPartyVpn,
+                        net_base::NetworkConfig::kMinIPv4MTU, kConstantMaxMtu,
+                        false, error_message);
 
-  ProcessSearchDomainArray(parameters, kDomainSearchParameterThirdPartyVpn,
-                           kNonIPDelimiter, &ipv4_properties_->domain_search,
-                           false, error_message);
-  ProcessIPArray(parameters, kDnsServersParameterThirdPartyVpn, kIPDelimiter,
-                 &ipv4_properties_->dns_servers, false, error_message,
-                 warning_message);
+  const std::string non_ip_delimiter{kNonIPDelimiter};
+  const std::string ip_delimiter{kIPDelimiter};
 
-  known_cidrs_.clear();
+  const std::optional<std::string_view> dns_search_domains_str =
+      GetParameterString(parameters, kDomainSearchParameterThirdPartyVpn, false,
+                         error_message);
+  if (dns_search_domains_str.has_value()) {
+    const std::vector<std::string_view> dns_search_domains_array =
+        base::SplitStringPiece(*dns_search_domains_str, non_ip_delimiter,
+                               base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+    if (dns_search_domains_array.empty()) {
+      error_message->append(kDomainSearchParameterThirdPartyVpn)
+          .append(" has no valid values or is empty;");
+    } else {
+      // Deduplicate search domains
+      base::flat_set<std::string_view> dns_search_domains_dedup;
+      for (const auto& domain : dns_search_domains_array) {
+        if (!dns_search_domains_dedup.contains(domain)) {
+          network_config_->dns_search_domains.push_back(std::string(domain));
+          dns_search_domains_dedup.insert(domain);
+        }
+      }
+    }
+  }
 
-  ProcessIPArrayCIDR(parameters, kExclusionListParameterThirdPartyVpn,
-                     kIPDelimiter, &ipv4_properties_->exclusion_list, true,
-                     error_message, warning_message);
-  if (!ipv4_properties_->exclusion_list.empty()) {
+  const std::optional<std::string_view> dns_servers_str = GetParameterString(
+      parameters, kDnsServersParameterThirdPartyVpn, false, error_message);
+  if (dns_servers_str.has_value()) {
+    const std::vector<std::string_view> dns_servers_array =
+        base::SplitStringPiece(*dns_servers_str, ip_delimiter,
+                               base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+    for (const auto& dns_server : dns_servers_array) {
+      auto dns = net_base::IPAddress::CreateFromString(dns_server);
+      if (dns.has_value()) {
+        network_config_->dns_servers.push_back(*dns);
+      } else {
+        warning_message->append(
+            base::StrCat({dns_server, " for ",
+                          kDnsServersParameterThirdPartyVpn, " is invalid;"}));
+      }
+    }
+  }
+
+  // Used to identify duplicate entries in inclusion and exclusion lists.
+  std::set<std::string> known_cidrs;
+
+  network_config_->excluded_route_prefixes = GetParameterIPArrayCIDR(
+      parameters, kExclusionListParameterThirdPartyVpn, ip_delimiter,
+      known_cidrs, true, error_message, warning_message);
+  if (!network_config_->excluded_route_prefixes.empty()) {
     // The first excluded IP is used to find the default gateway. The logic that
     // finds the default gateway does not work for default route "0.0.0.0/0".
     // Hence, this code ensures that the first IP is not default.
-    const auto cidr = net_base::IPv4CIDR::CreateFromCIDRString(
-        ipv4_properties_->exclusion_list[0]);
-    if (!cidr.has_value()) {
-      LOG(ERROR) << "Invalid prefix string: "
-                 << ipv4_properties_->exclusion_list[0];
-    } else if (cidr->IsDefault()) {
-      if (ipv4_properties_->exclusion_list.size() > 1) {
-        swap(ipv4_properties_->exclusion_list[0],
-             ipv4_properties_->exclusion_list[1]);
+    const net_base::IPCIDR& cidr = network_config_->excluded_route_prefixes[0];
+    if (cidr.IsDefault()) {
+      if (network_config_->excluded_route_prefixes.size() > 1) {
+        std::swap(network_config_->excluded_route_prefixes[0],
+                  network_config_->excluded_route_prefixes[1]);
       } else {
         // When there is only a single entry which is a default address, it can
         // be cleared since the default behavior is to not route any traffic to
         // the tunnel interface.
-        ipv4_properties_->exclusion_list.clear();
+        network_config_->excluded_route_prefixes.clear();
       }
     }
   }
 
   reconnect_supported_ = false;
-  ProcessBoolean(parameters, kReconnectParameterThirdPartyVpn,
-                 &reconnect_supported_, false, error_message);
+  const std::optional<std::string_view> reconnect_supported_str =
+      GetParameterString(parameters, kReconnectParameterThirdPartyVpn, false,
+                         error_message);
+  if (reconnect_supported_str.has_value()) {
+    if (reconnect_supported_str == "true") {
+      reconnect_supported_ = true;
+    } else if (reconnect_supported_str != "false") {
+      error_message->append(kReconnectParameterThirdPartyVpn)
+          .append(" not a valid boolean;");
+    }
+  }
 
-  std::vector<std::string> inclusion_list;
-  ProcessIPArrayCIDR(parameters, kInclusionListParameterThirdPartyVpn,
-                     kIPDelimiter, &inclusion_list, true, error_message,
-                     warning_message);
-  ipv4_properties_->inclusion_list = inclusion_list;
+  network_config_->included_route_prefixes = GetParameterIPArrayCIDR(
+      parameters, kInclusionListParameterThirdPartyVpn, ip_delimiter,
+      known_cidrs, true, error_message, warning_message);
 
   if (!error_message->empty()) {
     LOG(ERROR) << __func__ << ": " << error_message;
     return;
   }
-  ipv4_properties_->default_route = false;
-  ipv4_properties_->blackhole_ipv6 = true;
-  ipv4_properties_->method = kTypeVPN;
-  if (!ip_properties_set_) {
-    ip_properties_set_ = true;
+  network_config_->ipv4_default_route = false;
+  network_config_->ipv6_blackhole_route = true;
+  if (!network_config_set_) {
+    network_config_set_ = true;
     metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver,
                              Metrics::kVpnDriverThirdParty);
   }
@@ -509,8 +504,8 @@ void ThirdPartyVpnDriver::OnLinkReady(const std::string& link_name,
   interface_name_ = link_name;
   interface_index_ = interface_index;
 
-  ipv4_properties_ = std::make_unique<IPConfig::Properties>();
-  ip_properties_set_ = false;
+  network_config_ = std::make_optional<net_base::NetworkConfig>();
+  network_config_set_ = false;
 
   tun_fd_ = manager()->device_info()->OpenTunnelInterface(interface_name_);
   if (tun_fd_ < 0) {
@@ -532,18 +527,13 @@ void ThirdPartyVpnDriver::OnLinkReady(const std::string& link_name,
       static_cast<uint32_t>(PlatformMessage::kConnected));
 }
 
-std::unique_ptr<IPConfig::Properties> ThirdPartyVpnDriver::GetIPv4Properties()
+std::unique_ptr<net_base::NetworkConfig> ThirdPartyVpnDriver::GetNetworkConfig()
     const {
-  if (ipv4_properties_ == nullptr) {
-    LOG(DFATAL) << "ipv4_properties_ is invalid.";
+  if (!network_config_.has_value()) {
+    LOG(DFATAL) << "network_config_ is invalid.";
     return nullptr;
   }
-  return std::make_unique<IPConfig::Properties>(*ipv4_properties_);
-}
-
-std::unique_ptr<IPConfig::Properties> ThirdPartyVpnDriver::GetIPv6Properties()
-    const {
-  return nullptr;
+  return std::make_unique<net_base::NetworkConfig>(*network_config_);
 }
 
 void ThirdPartyVpnDriver::FailService(Service::ConnectFailure failure,

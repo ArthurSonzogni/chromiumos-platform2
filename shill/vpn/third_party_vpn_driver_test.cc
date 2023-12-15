@@ -9,6 +9,8 @@
 #include <base/functional/bind.h>
 #include <base/memory/ptr_util.h>
 #include <gtest/gtest.h>
+#include <net-base/ip_address.h>
+#include <net-base/ipv4_address.h>
 
 #include "shill/callbacks.h"
 #include "shill/mock_adaptors.h"
@@ -19,7 +21,6 @@
 #include "shill/mock_metrics.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/mock_vpn_driver.h"
-#include "shill/vpn/mock_vpn_provider.h"
 #include "shill/vpn/vpn_types.h"
 
 using testing::_;
@@ -56,6 +57,11 @@ class ThirdPartyVpnDriverTest : public testing::Test {
   MockDeviceInfo* device_info() { return manager_.mock_device_info(); }
 
  protected:
+  void PrepareDriverForParameters() {
+    ThirdPartyVpnDriver::active_client_ = driver_.get();
+    driver_->parameters_expected_ = true;
+  }
+
   MockControl control_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
@@ -237,74 +243,136 @@ TEST_F(ThirdPartyVpnDriverTest, UpdateConnectionState) {
   Mock::VerifyAndClearExpectations(adaptor_interface_);
 }
 
-TEST_F(ThirdPartyVpnDriverTest, SetParameters) {
-  manager_.vpn_provider_ = std::make_unique<MockVPNProvider>();
-  manager_.vpn_provider_->manager_ = &manager_;
-  manager_.UpdateProviderMapping();
-
+TEST_F(ThirdPartyVpnDriverTest, SetParametersUnexpectedCall) {
   std::map<std::string, std::string> parameters;
   std::string error;
   std::string warning;
   driver_->SetParameters(parameters, &error, &warning);
   EXPECT_EQ(error, "Unexpected call");
+  EXPECT_TRUE(warning.empty());
+}
 
-  error.clear();
-  ThirdPartyVpnDriver::active_client_ = driver_.get();
-  driver_->parameters_expected_ = true;
+TEST_F(ThirdPartyVpnDriverTest, SetParametersEmpty) {
+  std::map<std::string, std::string> parameters;
+  std::string error;
+  std::string warning;
+  PrepareDriverForParameters();
   driver_->SetParameters(parameters, &error, &warning);
   EXPECT_EQ(error,
             "address is missing;subnet_prefix is missing;"
             "exclusion_list is missing;inclusion_list is missing;");
   EXPECT_TRUE(warning.empty());
+}
+
+TEST_F(ThirdPartyVpnDriverTest, SetParametersCorrect) {
+  std::map<std::string, std::string> parameters;
+  std::string error;
+  std::string warning;
+  PrepareDriverForParameters();
+
+  parameters["address"] = "123.211.21.18";
+  parameters["subnet_prefix"] = "12";
+  parameters["exclusion_list"] = "0.0.0.0/0 123.211.21.29/31 123.211.21.1/24";
+  parameters["inclusion_list"] = "123.211.61.29/7 123.211.42.29/17";
+
+  driver_->SetParameters(parameters, &error, &warning);
+  EXPECT_EQ(driver_->network_config_->ipv4_address,
+            net_base::IPv4CIDR::CreateFromCIDRString("123.211.21.18/12"));
+  EXPECT_EQ(driver_->network_config_->excluded_route_prefixes.size(), 3);
+  EXPECT_EQ(driver_->network_config_->excluded_route_prefixes[0],
+            net_base::IPCIDR::CreateFromCIDRString("123.211.21.29/31"));
+  EXPECT_EQ(driver_->network_config_->excluded_route_prefixes[1],
+            net_base::IPCIDR::CreateFromCIDRString("0.0.0.0/0"));
+  EXPECT_EQ(driver_->network_config_->excluded_route_prefixes[2],
+            net_base::IPCIDR::CreateFromCIDRString("123.211.21.1/24"));
+  EXPECT_EQ(driver_->network_config_->included_route_prefixes.size(), 2);
+  EXPECT_EQ(driver_->network_config_->included_route_prefixes[0],
+            net_base::IPCIDR::CreateFromCIDRString("123.211.61.29/7"));
+  EXPECT_EQ(driver_->network_config_->included_route_prefixes[1],
+            net_base::IPCIDR::CreateFromCIDRString("123.211.42.29/17"));
+  EXPECT_TRUE(error.empty());
+  EXPECT_TRUE(warning.empty());
+}
+
+TEST_F(ThirdPartyVpnDriverTest, SetParametersAddress) {
+  std::map<std::string, std::string> parameters;
+  std::string error;
+  std::string warning;
+  PrepareDriverForParameters();
+
+  parameters["subnet_prefix"] = "12";
+  parameters["exclusion_list"] = "0.0.0.0/0 123.211.21.29/31 123.211.21.1/24";
+  parameters["inclusion_list"] = "123.211.61.29/7 123.211.42.29/17";
+
+  driver_->SetParameters(parameters, &error, &warning);
+  EXPECT_EQ(error, "address is missing;");
 
   error.clear();
   parameters["address"] = "1234.1.1.1";
   driver_->SetParameters(parameters, &error, &warning);
-  EXPECT_EQ(error,
-            "address is not a valid IP;subnet_prefix is missing;"
-            "exclusion_list is missing;inclusion_list is missing;");
+  EXPECT_EQ(error, "address is not a valid IP;");
   EXPECT_TRUE(warning.empty());
+}
 
-  error.clear();
+TEST_F(ThirdPartyVpnDriverTest, SetParametersSubnetPrefix) {
+  std::map<std::string, std::string> parameters;
+  std::string error;
+  std::string warning;
+  PrepareDriverForParameters();
+
   parameters["address"] = "123.211.21.18";
+  parameters["exclusion_list"] = "0.0.0.0/0 123.211.21.29/31 123.211.21.1/24";
+  parameters["inclusion_list"] = "123.211.61.29/7 123.211.42.29/17";
+
   driver_->SetParameters(parameters, &error, &warning);
-  EXPECT_EQ(error,
-            "subnet_prefix is missing;"
-            "exclusion_list is missing;inclusion_list is missing;");
-  EXPECT_TRUE(warning.empty());
+  EXPECT_EQ(error, "subnet_prefix is missing;");
 
   error.clear();
   parameters["subnet_prefix"] = "123";
   driver_->SetParameters(parameters, &error, &warning);
-  EXPECT_EQ(error,
-            "subnet_prefix not in expected range;"
-            "exclusion_list is missing;inclusion_list is missing;");
+  EXPECT_EQ(error, "subnet_prefix not in expected range;");
   EXPECT_TRUE(warning.empty());
+}
 
-  error.clear();
+TEST_F(ThirdPartyVpnDriverTest, SetParametersDNSServers) {
+  std::map<std::string, std::string> parameters;
+  std::string error;
+  std::string warning;
+  PrepareDriverForParameters();
+
+  parameters["address"] = "123.211.21.18";
   parameters["subnet_prefix"] = "12";
-  driver_->SetParameters(parameters, &error, &warning);
-  EXPECT_EQ(error, "exclusion_list is missing;inclusion_list is missing;");
-  EXPECT_TRUE(warning.empty());
+  parameters["exclusion_list"] = "0.0.0.0/0 123.211.21.29/31 123.211.21.1/24";
+  parameters["inclusion_list"] = "123.211.61.29/7 123.211.42.29/17";
 
-  error.clear();
-  parameters["dns_servers"] = "12 123123 43902374";
+  parameters["dns_servers"] = "12 123123 43902374 123.211.21.19";
   driver_->SetParameters(parameters, &error, &warning);
-  EXPECT_EQ(error, "exclusion_list is missing;inclusion_list is missing;");
+  EXPECT_EQ(driver_->network_config_->dns_servers.size(), 1);
+  EXPECT_EQ(driver_->network_config_->dns_servers[0],
+            net_base::IPAddress::CreateFromString("123.211.21.19"));
+  EXPECT_TRUE(error.empty());
   EXPECT_EQ(warning,
             "12 for dns_servers is invalid;"
             "123123 for dns_servers is invalid;"
             "43902374 for dns_servers is invalid;");
+}
 
-  error.clear();
-  warning.clear();
+TEST_F(ThirdPartyVpnDriverTest, SetParametersExclusionList) {
+  std::map<std::string, std::string> parameters;
+  std::string error;
+  std::string warning;
+  PrepareDriverForParameters();
+
+  parameters["address"] = "123.211.21.18";
+  parameters["subnet_prefix"] = "12";
+  parameters["inclusion_list"] = "123.211.61.29/7 123.211.42.29/17";
+
   parameters["exclusion_list"] =
       "400.400.400.400/12 1.1.1.1/44 1.1.1.1/-1 "
       "123.211.21.0/23 123.211.21.1/23 123.211.21.0/25 "
       "1.1.1.1.1/12 1.1.1/13";
-  parameters["dns_servers"] = "";
   driver_->SetParameters(parameters, &error, &warning);
-  EXPECT_EQ(error, "inclusion_list is missing;");
+  EXPECT_TRUE(error.empty());
   EXPECT_EQ(warning,
             "400.400.400.400/12 for exclusion_list is invalid;"
             "1.1.1.1/44 for exclusion_list is invalid;"
@@ -313,40 +381,94 @@ TEST_F(ThirdPartyVpnDriverTest, SetParameters) {
             "1.1.1.1.1/12 for exclusion_list is invalid;"
             "1.1.1/13 for exclusion_list is invalid;");
 
-  error.clear();
   warning.clear();
-  parameters["exclusion_list"] = "0.0.0.0/0 123.211.21.29/31 123.211.21.1/24";
-  parameters["inclusion_list"] =
-      "400.400.400.400/12 1.1.1.1/44 1.1.1.1/-1 "
-      "123.211.22.0/24 123.211.22.1/24 "
-      "1.1.1.1.1/12 1.1.1/13 123.211.21.0/24";
+  parameters["exclusion_list"] = "0.0.0.0/0";
   driver_->SetParameters(parameters, &error, &warning);
-  EXPECT_TRUE(error.empty());
-  EXPECT_EQ(warning,
-            "400.400.400.400/12 for inclusion_list is invalid;"
-            "1.1.1.1/44 for inclusion_list is invalid;"
-            "1.1.1.1/-1 for inclusion_list is invalid;"
-            "Duplicate entry for 123.211.22.1/24 in inclusion_list found;"
-            "1.1.1.1.1/12 for inclusion_list is invalid;"
-            "1.1.1/13 for inclusion_list is invalid;"
-            "Duplicate entry for 123.211.21.0/24 in inclusion_list found;");
-
-  error.clear();
-  warning.clear();
-  parameters["dns_servers"] = "123.211.21.18 123.211.21.19";
-  parameters["inclusion_list"] = "123.211.61.29/7 123.211.42.29/17";
-  driver_->parameters_expected_ = true;
-  driver_->SetParameters(parameters, &error, &warning);
-  EXPECT_EQ(driver_->ipv4_properties_->exclusion_list.size(), 3);
-  EXPECT_EQ(driver_->ipv4_properties_->exclusion_list[0], "123.211.21.29/31");
-  EXPECT_EQ(driver_->ipv4_properties_->exclusion_list[1], "0.0.0.0/0");
-  EXPECT_EQ(driver_->ipv4_properties_->exclusion_list[2], "123.211.21.1/24");
-  EXPECT_EQ(driver_->ipv4_properties_->inclusion_list.size(), 2);
-  EXPECT_EQ(driver_->ipv4_properties_->inclusion_list[0], "123.211.61.29/7");
-  EXPECT_EQ(driver_->ipv4_properties_->inclusion_list[1], "123.211.42.29/17");
+  EXPECT_TRUE(driver_->network_config_->excluded_route_prefixes.empty());
   EXPECT_TRUE(error.empty());
   EXPECT_TRUE(warning.empty());
-  EXPECT_TRUE(driver_->parameters_expected_);
+}
+
+TEST_F(ThirdPartyVpnDriverTest, SetParametersInclusionList) {
+  std::map<std::string, std::string> parameters;
+  std::string error;
+  std::string warning;
+  PrepareDriverForParameters();
+
+  parameters["address"] = "123.211.21.18";
+  parameters["subnet_prefix"] = "12";
+  parameters["exclusion_list"] = "0.0.0.0/0 123.211.21.29/31 123.211.21.1/24";
+
+  parameters["inclusion_list"] = "";
+  driver_->SetParameters(parameters, &error, &warning);
+  EXPECT_EQ(error, "inclusion_list has no valid values or is empty;");
+  EXPECT_TRUE(warning.empty());
+}
+
+TEST_F(ThirdPartyVpnDriverTest, SetParametersBroadcastAddress) {
+  std::map<std::string, std::string> parameters;
+  std::string error;
+  std::string warning;
+  PrepareDriverForParameters();
+
+  parameters["address"] = "123.211.21.18";
+  parameters["subnet_prefix"] = "12";
+  parameters["exclusion_list"] = "0.0.0.0/0 123.211.21.29/31 123.211.21.1/24";
+  parameters["inclusion_list"] = "123.211.61.29/7 123.211.42.29/17";
+
+  parameters["broadcast_address"] = "abc";
+  driver_->SetParameters(parameters, &error, &warning);
+  EXPECT_EQ(error, "broadcast_address is not a valid IP;");
+  EXPECT_TRUE(warning.empty());
+}
+
+TEST_F(ThirdPartyVpnDriverTest, SetParametersDomainSearch) {
+  std::map<std::string, std::string> parameters;
+  std::string error;
+  std::string warning;
+  PrepareDriverForParameters();
+
+  parameters["address"] = "123.211.21.18";
+  parameters["subnet_prefix"] = "12";
+  parameters["exclusion_list"] = "0.0.0.0/0 123.211.21.29/31 123.211.21.1/24";
+  parameters["inclusion_list"] = "123.211.61.29/7 123.211.42.29/17";
+
+  parameters["domain_search"] = "";
+  driver_->SetParameters(parameters, &error, &warning);
+  EXPECT_EQ(error, "domain_search has no valid values or is empty;");
+  EXPECT_TRUE(warning.empty());
+
+  error.clear();
+  parameters["domain_search"] = "google.com:google.com";
+  driver_->SetParameters(parameters, &error, &warning);
+  EXPECT_EQ(driver_->network_config_->dns_search_domains.size(), 1);
+  EXPECT_EQ(driver_->network_config_->dns_search_domains[0], "google.com");
+  EXPECT_TRUE(error.empty());
+  EXPECT_TRUE(warning.empty());
+}
+
+TEST_F(ThirdPartyVpnDriverTest, SetParametersReconnect) {
+  std::map<std::string, std::string> parameters;
+  std::string error;
+  std::string warning;
+  PrepareDriverForParameters();
+
+  parameters["address"] = "123.211.21.18";
+  parameters["subnet_prefix"] = "12";
+  parameters["exclusion_list"] = "0.0.0.0/0 123.211.21.29/31 123.211.21.1/24";
+  parameters["inclusion_list"] = "123.211.61.29/7 123.211.42.29/17";
+
+  parameters["reconnect"] = "abc";
+  driver_->SetParameters(parameters, &error, &warning);
+  EXPECT_EQ(error, "reconnect not a valid boolean;");
+  EXPECT_TRUE(warning.empty());
+
+  error.clear();
+  parameters["reconnect"] = "true";
+  driver_->SetParameters(parameters, &error, &warning);
+  EXPECT_TRUE(driver_->reconnect_supported_);
+  EXPECT_TRUE(error.empty());
+  EXPECT_TRUE(warning.empty());
 }
 
 }  // namespace shill

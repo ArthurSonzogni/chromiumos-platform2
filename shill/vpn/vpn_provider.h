@@ -70,7 +70,6 @@ class VPNProvider : public ProviderInterface {
   friend class OpenVPNDriverTest;
   friend class VPNProviderTest;
   friend class VPNServiceTest;
-  FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
   FRIEND_TEST(VPNProviderTest, CreateService);
   FRIEND_TEST(VPNProviderTest, CreateArcService);
   FRIEND_TEST(VPNProviderTest, RemoveService);

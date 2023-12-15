@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -16,6 +15,8 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback.h>
 #include <gtest/gtest_prod.h>
+#include <net-base/ip_address.h>
+#include <net-base/network_config.h>
 #include <net-base/process_manager.h>
 
 #include "shill/ipconfig.h"
@@ -68,8 +69,7 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // Implementation of VPNDriver
   void InitPropertyStore(PropertyStore* store) override;
   base::TimeDelta ConnectAsync(EventHandler* handler) override;
-  std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const override;
-  std::unique_ptr<IPConfig::Properties> GetIPv6Properties() const override;
+  std::unique_ptr<net_base::NetworkConfig> GetNetworkConfig() const override;
   void Disconnect() override;
   void OnConnectTimeout() override;
 
@@ -93,7 +93,11 @@ class ThirdPartyVpnDriver : public VPNDriver {
   FRIEND_TEST(ThirdPartyVpnDriverTest, ReconnectionEvents);
   FRIEND_TEST(ThirdPartyVpnDriverTest, PowerEvents);
   FRIEND_TEST(ThirdPartyVpnDriverTest, OnConnectTimeout);
-  FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
+  FRIEND_TEST(ThirdPartyVpnDriverTest, SetParametersCorrect);
+  FRIEND_TEST(ThirdPartyVpnDriverTest, SetParametersDNSServers);
+  FRIEND_TEST(ThirdPartyVpnDriverTest, SetParametersExclusionList);
+  FRIEND_TEST(ThirdPartyVpnDriverTest, SetParametersDomainSearch);
+  FRIEND_TEST(ThirdPartyVpnDriverTest, SetParametersReconnect);
   FRIEND_TEST(ThirdPartyVpnDriverTest, UpdateConnectionState);
   FRIEND_TEST(ThirdPartyVpnDriverTest, SendPacket);
 
@@ -110,96 +114,6 @@ class ThirdPartyVpnDriver : public VPNDriver {
                    std::string_view error_details);
 
   void OnLinkReady(const std::string& link_name, int interface_index);
-
-  // This function first checks if a value is present for a particular |key| in
-  // the dictionary |parameters|.
-  // If present it ensures the value is a valid IP address and then sets it to
-  // the |target|.
-  // The flag |mandatory| when set to true, makes the function treat a missing
-  // key as an error. The function adds to |error_messages|, when there is a
-  // failure.
-  // This function supports only IPV4 addresses now.
-  void ProcessIp(const std::map<std::string, std::string>& parameters,
-                 const char* key,
-                 std::string* target,
-                 bool mandatory,
-                 std::string* error_message);
-
-  // This function first checks if a value is present for a particular |key| in
-  // the dictionary |parameters|.
-  // If present it treats the value as a list of string separated by
-  // |delimiter|. Each string value is verified to be a valid IP address,
-  // deleting ones that are not. The list of string is set to |target|.
-  // The flag |mandatory| when set to true, makes the function treat a missing
-  // key as an error. The function adds to |error_message|, when there is a
-  // failure and |warn_message| when there is a warning.
-  void ProcessIPArray(const std::map<std::string, std::string>& parameters,
-                      const char* key,
-                      char delimiter,
-                      std::vector<std::string>* target,
-                      bool mandatory,
-                      std::string* error_message,
-                      std::string* warn_message);
-
-  // This function first checks if a value is present for a particular |key| in
-  // the dictionary |parameters|.
-  // If present it treats the value as a list of string separated by
-  // |delimiter|. Each string value is verified to be a valid IP address in
-  // CIDR format, deleting ones that are not. The list of string is set to
-  // |target|. The flag |mandatory| when set to true, makes the function treat a
-  // missing key as an error. The function adds to |error_message|, when there
-  // is a failure and |warn_message| when there is a warning.
-  void ProcessIPArrayCIDR(const std::map<std::string, std::string>& parameters,
-                          const char* key,
-                          char delimiter,
-                          std::vector<std::string>* target,
-                          bool mandatory,
-                          std::string* error_message,
-                          std::string* warn_message);
-
-  // This function first checks if a value is present for a particular |key| in
-  // the dictionary |parameters|.
-  // If present it treats the value as a list of string separated by
-  // |delimiter|. The list of string is set to |target|.
-  // The flag |mandatory| when set to true, makes the function treat a missing
-  // key as an error. The function adds to |error_messages|, when there is a
-  // failure.
-  void ProcessSearchDomainArray(
-      const std::map<std::string, std::string>& parameters,
-      const char* key,
-      char delimiter,
-      std::vector<std::string>* target,
-      bool mandatory,
-      std::string* error_message);
-
-  // This function first checks if a value is present for a particular |key| in
-  // the dictionary |parameters|.
-  // If present it treats the value as an integer and verifies if the value lies
-  // between |min_value| and |max_value|. It then updates |target| with the
-  // integer value if it is in range.
-  // The flag |mandatory| when set to true, makes the function treat a missing
-  // key as an error. The function adds to |error_messages|, when there is a
-  // failure.
-  void ProcessInt32(const std::map<std::string, std::string>& parameters,
-                    const char* key,
-                    int32_t* target,
-                    int32_t min_value,
-                    int32_t max_value,
-                    bool mandatory,
-                    std::string* error_message);
-
-  // This function first checks if a value is present for a particular |key| in
-  // the dictionary |parameters|.
-  // If present it treats the value as a boolean. It then updates |target|
-  // with the boolean value if it is valid;
-  // The flag |mandatory| when set to true, makes the function treat a missing
-  // key as an error. The function adds to |error_messages|, when there is a
-  // failure.
-  void ProcessBoolean(const std::map<std::string, std::string>& parameters,
-                      const char* key,
-                      bool* target,
-                      bool mandatory,
-                      std::string* error_message);
 
   // These functions are called whe there is input and error in the tun
   // interface.
@@ -227,15 +141,12 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // prior than |tun_fd_| is closed.
   std::unique_ptr<base::FileDescriptorWatcher::Controller> tun_watcher_;
 
-  // Configuration properties of the virtual VPN device set by the VPN client.
-  std::unique_ptr<IPConfig::Properties> ipv4_properties_;
-  bool ip_properties_set_;
+  // Network configuration of the virtual VPN device set by the VPN client.
+  std::optional<net_base::NetworkConfig> network_config_;
+  bool network_config_set_;
 
   // The object is used to write to tun device.
   FileIO* file_io_;
-
-  // Set used to identify duplicate entries in inclusion and exclusion list.
-  std::set<std::string> known_cidrs_;
 
   // The boolean indicates if parameters are expected from the VPN client.
   bool parameters_expected_;

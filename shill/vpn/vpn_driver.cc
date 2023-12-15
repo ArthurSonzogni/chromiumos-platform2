@@ -169,6 +169,17 @@ std::unique_ptr<IPConfig::Properties> VPNDriver::GetIPv6Properties() const {
 }
 
 std::unique_ptr<net_base::NetworkConfig> VPNDriver::GetNetworkConfig() const {
+  // As we go with the migration, this method in the base class should not be
+  // reached for more VPN drivers.
+  switch (vpn_type_) {
+    case VPNType::kARC:
+    case VPNType::kThirdParty:
+      NOTREACHED_NORETURN();
+      break;
+    default:
+      break;
+  }
+
   auto ipv4_properties = GetIPv4Properties();
   auto ipv6_properties = GetIPv6Properties();
   auto network_config = IPConfig::Properties::ToNetworkConfig(

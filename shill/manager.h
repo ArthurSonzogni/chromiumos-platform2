@@ -604,7 +604,6 @@ class Manager {
   FRIEND_TEST(ManagerTest,
               UpdateDefaultServicesWithDefaultServiceCallbacksRemoved);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
-  FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
   FRIEND_TEST(WiFiMainTest, ScanAllowRoam);
   FRIEND_TEST(WiFiMainTest, WiFiRequestScanTypeDefault);
   FRIEND_TEST(WiFiMainTest, WiFiRequestScanTypeActive);
