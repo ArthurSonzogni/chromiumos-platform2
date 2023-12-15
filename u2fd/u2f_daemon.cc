@@ -138,12 +138,14 @@ U2fDaemon::U2fDaemon(bool force_u2f,
                      bool force_g2f,
                      bool enable_corp_protocol,
                      bool g2f_allowlist_data,
+                     bool force_activate_fips,
                      bool legacy_kh_fallback)
     : brillo::DBusServiceDaemon(kU2FServiceName),
       force_u2f_(force_u2f),
       force_g2f_(force_g2f),
       enable_corp_protocol_(enable_corp_protocol),
       g2f_allowlist_data_(g2f_allowlist_data),
+      force_activate_fips_(force_activate_fips),
       legacy_kh_fallback_(legacy_kh_fallback),
       service_started_(false),
       hwsec_factory_(hwsec::ThreadingMode::kCurrentThread) {
@@ -207,6 +209,23 @@ void U2fDaemon::TryStartService(
   }
 }
 
+bool U2fDaemon::MaybeForceActivateFips(U2fMode u2f_mode) {
+  auto u2f_vendor_frontend = hwsec_factory_.GetU2fVendorFrontend();
+  if (!u2f_vendor_frontend->IsEnabled().value_or(false)) {
+    return true;
+  }
+  bool should_activate = force_activate_fips_;
+  if (!should_activate) {
+    return true;
+  }
+  if (hwsec::Status status = u2f_vendor_frontend->ActivateFipsIfNotActive();
+      !status.ok()) {
+    LOG(ERROR) << "ActivateFips failed: " << status;
+    return false;
+  }
+  return true;
+}
+
 void U2fDaemon::ReportFipsStatus(U2fMode u2f_mode) {
   auto u2f_vendor_frontend = hwsec_factory_.GetU2fVendorFrontend();
   // Only need to report FIPS status on devices supporting U2F vendor command.
@@ -224,9 +243,11 @@ void U2fDaemon::ReportFipsStatus(U2fMode u2f_mode) {
   switch (*fips_status) {
     case FipsStatus::kNotActive:
       status = U2fFipsStatus::kNotActive;
+      LOG(INFO) << "U2F is not running in FIPS mode.";
       break;
     case FipsStatus::kActive:
       status = U2fFipsStatus::kActive;
+      LOG(INFO) << "U2F is running in FIPS mode.";
       break;
   }
   SendU2fFipsStatusMetrics(metrics_library_, u2f_mode, status);
@@ -234,6 +255,10 @@ void U2fDaemon::ReportFipsStatus(U2fMode u2f_mode) {
 
 int U2fDaemon::StartService() {
   U2fMode u2f_mode = GetU2fMode(force_u2f_, force_g2f_);
+  if (!MaybeForceActivateFips(u2f_mode)) {
+    // If FIPS mode should be forced but we failed to force it, stop u2fd.
+    return EX_UNAVAILABLE;
+  }
   ReportFipsStatus(u2f_mode);
 
   // Start U2fHid service before WebAuthn because WebAuthn initialization can

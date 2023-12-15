@@ -35,6 +35,7 @@ class U2fDaemon : public brillo::DBusServiceDaemon {
             bool force_g2f,
             bool enable_corp_protocol,
             bool g2f_allowlist_data,
+            bool force_activate_fips,
             bool legacy_kh_fallback);
   U2fDaemon(const U2fDaemon&) = delete;
   U2fDaemon& operator=(const U2fDaemon&) = delete;
@@ -78,6 +79,11 @@ class U2fDaemon : public brillo::DBusServiceDaemon {
   // Determines U2F mode depending on the force flags and the policy.
   U2fMode GetU2fMode(bool force_u2f, bool force_g2f);
 
+  // Checks whether FIPS need to be force activated, and tries to activate it.
+  // If it should be activated but activation failed, returns false. Otherwise
+  // returns true.
+  bool MaybeForceActivateFips(U2fMode u2f_mode);
+
   // Reports the FIPS status metrics.
   void ReportFipsStatus(U2fMode u2f_mode);
 
@@ -86,6 +92,7 @@ class U2fDaemon : public brillo::DBusServiceDaemon {
   const bool force_g2f_;
   const bool enable_corp_protocol_;
   const bool g2f_allowlist_data_;
+  const bool force_activate_fips_;
   const bool legacy_kh_fallback_;
 
   // Cache whether service already started.
