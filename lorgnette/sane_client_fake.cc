@@ -24,6 +24,8 @@ std::unique_ptr<SaneDevice> SaneClientFake::ConnectToDeviceInternal(
   if (devices_.count(device_name) > 0) {
     auto ptr = std::move(devices_[device_name]);
     devices_.erase(device_name);
+    // Put back a fresh copy so the device can be opened again later.
+    SetDeviceForName(device_name, ptr->CloneForTesting());
     return ptr;
   }
 
@@ -39,10 +41,10 @@ void SaneClientFake::SetListDevicesResult(bool value) {
   list_devices_result_ = value;
 }
 
-void SaneClientFake::AddDevice(const std::string& name,
-                               const std::string& manufacturer,
-                               const std::string& model,
-                               const std::string& type) {
+void SaneClientFake::AddDeviceListing(const std::string& name,
+                                      const std::string& manufacturer,
+                                      const std::string& model,
+                                      const std::string& type) {
   ScannerInfo info;
   info.set_name(name);
   info.set_manufacturer(manufacturer);

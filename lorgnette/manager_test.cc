@@ -233,7 +233,8 @@ class ManagerTest : public testing::Test {
 
 TEST_F(ManagerTest, ListScannerSuccess) {
   brillo::ErrorPtr error;
-  sane_client_->AddDevice("TestName", "TestMaker", "TestModel", "TestType");
+  sane_client_->AddDeviceListing("TestName", "TestMaker", "TestModel",
+                                 "TestType");
   sane_client_->SetListDevicesResult(true);
   std::optional<std::vector<ScannerInfo>> result =
       sane_client_->ListDevices(&error, /*local_only=*/false);

@@ -30,10 +30,10 @@ class SaneClientFake : public SaneClient {
   }
 
   void SetListDevicesResult(bool value);
-  void AddDevice(const std::string& name,
-                 const std::string& manufacturer,
-                 const std::string& model,
-                 const std::string& type);
+  void AddDeviceListing(const std::string& name,
+                        const std::string& manufacturer,
+                        const std::string& model,
+                        const std::string& type);
   void RemoveDevice(const std::string& name);
 
   void SetDeviceForName(const std::string& device_name,
