@@ -358,7 +358,7 @@ bool StatefulMount::AttemptStatefulMigration() {
   thinpool_migrator.AddArg(
       base::StringPrintf("--device=%s", state_dev_.value().c_str()));
 
-  if (!thinpool_migrator.Run()) {
+  if (thinpool_migrator.Run() != 0) {
     LOG(ERROR) << "Failed to run thinpool migrator";
     return false;
   }
