@@ -101,10 +101,10 @@ TEST_F(DisconnectableClientTest, NormalConnection) {
       std::make_unique<MockDelegate>(222, base::TimeDelta(), res2.cb()));
 
   auto result = res1.result();
-  ASSERT_OK(result) << result.status();
+  ASSERT_OK(result) << result.error();
   EXPECT_THAT(result.value(), Eq(222));
   result = res2.result();
-  ASSERT_OK(result) << result.status();
+  ASSERT_OK(result) << result.error();
   EXPECT_THAT(result.value(), Eq(444));
 }
 
@@ -115,8 +115,8 @@ TEST_F(DisconnectableClientTest, NoConnection) {
 
   auto result = res.result();
   ASSERT_FALSE(result.has_value());
-  ASSERT_THAT(result.status().error_code(), Eq(error::UNAVAILABLE))
-      << result.status();
+  ASSERT_THAT(result.error().error_code(), Eq(error::UNAVAILABLE))
+      << result.error();
 }
 
 TEST_F(DisconnectableClientTest, FailedCallOnNormalConnection) {
@@ -135,20 +135,20 @@ TEST_F(DisconnectableClientTest, FailedCallOnNormalConnection) {
   task_environment_.FastForwardBy(base::Seconds(1));
 
   auto result = res1.result();
-  ASSERT_OK(result) << result.status();
+  ASSERT_OK(result) << result.error();
   EXPECT_THAT(result.value(), Eq(222));
 
   task_environment_.FastForwardBy(base::Seconds(1));
 
   result = res2.result();
   ASSERT_FALSE(result.has_value());
-  ASSERT_THAT(result.status().error_code(), Eq(error::CANCELLED))
-      << result.status();
+  ASSERT_THAT(result.error().error_code(), Eq(error::CANCELLED))
+      << result.error();
 
   task_environment_.FastForwardBy(base::Seconds(1));
 
   result = res3.result();
-  ASSERT_OK(result) << result.status();
+  ASSERT_OK(result) << result.error();
   EXPECT_THAT(result.value(), Eq(444));
 }
 
@@ -165,15 +165,15 @@ TEST_F(DisconnectableClientTest, DroppedConnection) {
   task_environment_.FastForwardBy(base::Seconds(1));
 
   auto result = res1.result();
-  ASSERT_OK(result) << result.status();
+  ASSERT_OK(result) << result.error();
   EXPECT_THAT(result.value(), Eq(222));
 
   client_.SetAvailability(/*is_available=*/false);
 
   result = res2.result();
   ASSERT_FALSE(result.has_value());
-  ASSERT_THAT(result.status().error_code(), Eq(error::UNAVAILABLE))
-      << result.status();
+  ASSERT_THAT(result.error().error_code(), Eq(error::UNAVAILABLE))
+      << result.error();
 }
 
 TEST_F(DisconnectableClientTest, FailedCallOnDroppedConnection) {
@@ -192,7 +192,7 @@ TEST_F(DisconnectableClientTest, FailedCallOnDroppedConnection) {
   task_environment_.FastForwardBy(base::Seconds(1));
 
   auto result = res1.result();
-  ASSERT_OK(result) << result.status();
+  ASSERT_OK(result) << result.error();
   EXPECT_THAT(result.value(), Eq(222));
 
   client_.SetAvailability(/*is_available=*/false);
@@ -201,13 +201,13 @@ TEST_F(DisconnectableClientTest, FailedCallOnDroppedConnection) {
 
   result = res2.result();
   ASSERT_FALSE(result.has_value());
-  ASSERT_THAT(result.status().error_code(), Eq(error::UNAVAILABLE))
-      << result.status();
+  ASSERT_THAT(result.error().error_code(), Eq(error::UNAVAILABLE))
+      << result.error();
 
   result = res3.result();
   ASSERT_FALSE(result.has_value());
-  ASSERT_THAT(result.status().error_code(), Eq(error::UNAVAILABLE))
-      << result.status();
+  ASSERT_THAT(result.error().error_code(), Eq(error::UNAVAILABLE))
+      << result.error();
 }
 
 TEST_F(DisconnectableClientTest, ConnectionDroppedThenRestored) {
@@ -224,7 +224,7 @@ TEST_F(DisconnectableClientTest, ConnectionDroppedThenRestored) {
   task_environment_.FastForwardBy(base::Seconds(1));
 
   auto result = res1.result();
-  ASSERT_OK(result) << result.status();
+  ASSERT_OK(result) << result.error();
   EXPECT_THAT(result.value(), Eq(222));
 
   client_.SetAvailability(/*is_available=*/false);
@@ -233,8 +233,8 @@ TEST_F(DisconnectableClientTest, ConnectionDroppedThenRestored) {
 
   result = res2.result();
   ASSERT_FALSE(result.has_value());
-  ASSERT_THAT(result.status().error_code(), Eq(error::UNAVAILABLE))
-      << result.status();
+  ASSERT_THAT(result.error().error_code(), Eq(error::UNAVAILABLE))
+      << result.error();
 
   client_.SetAvailability(/*is_available=*/true);
 
@@ -244,7 +244,7 @@ TEST_F(DisconnectableClientTest, ConnectionDroppedThenRestored) {
   task_environment_.FastForwardBy(base::Seconds(1));
 
   result = res3.result();
-  ASSERT_OK(result) << result.status();
+  ASSERT_OK(result) << result.error();
   EXPECT_THAT(result.value(), Eq(666));
 }
 

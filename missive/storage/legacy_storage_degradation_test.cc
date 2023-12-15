@@ -736,7 +736,7 @@ class LegacyStorageDegradationTest
     StatusOr<scoped_refptr<Storage>> storage_result =
         CreateTestStorage(options, encryption_module);
     ASSERT_OK(storage_result)
-        << "Failed to create TestStorage, error=" << storage_result.status();
+        << "Failed to create TestStorage, error=" << storage_result.error();
     storage_ = std::move(storage_result.value());
   }
 
@@ -777,8 +777,8 @@ class LegacyStorageDegradationTest
               if (!result.has_value()) {
                 LOG(ERROR) << "Upload not allowed, reason="
                            << UploaderInterface::ReasonToString(reason) << " "
-                           << result.status();
-                std::move(start_uploader_cb).Run(result.status());
+                           << result.error();
+                std::move(start_uploader_cb).Run(result.error());
                 return;
               }
               auto uploader = std::move(result.value());

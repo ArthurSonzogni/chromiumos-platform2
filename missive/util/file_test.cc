@@ -31,9 +31,9 @@ void RemoveAndTruncateTest(const base::FilePath& file_path,
                            uint32_t pos,
                            int expected_lines_removed) {
   const auto remove_status = RemoveAndTruncateLine(file_path, 0);
-  ASSERT_OK(remove_status) << remove_status.status();
+  ASSERT_OK(remove_status) << remove_status.error();
   const auto read_status = MaybeReadFile(file_path, 0);
-  ASSERT_OK(read_status) << read_status.status();
+  ASSERT_OK(read_status) << read_status.error();
   ASSERT_THAT(
       read_status.value(),
       StrEq(
@@ -133,7 +133,7 @@ TEST(FileTest, ReadWriteFile) {
   ASSERT_OK(write_status) << write_status;
 
   auto read_status = MaybeReadFile(file_path, /*offset=*/0);
-  ASSERT_OK(read_status) << read_status.status();
+  ASSERT_OK(read_status) << read_status.error();
   EXPECT_EQ(read_status.value(), kWriteDataOne);
 
   // Overwrite file.
@@ -141,13 +141,13 @@ TEST(FileTest, ReadWriteFile) {
   ASSERT_OK(write_status) << write_status;
 
   read_status = MaybeReadFile(file_path, /*offset=*/0);
-  ASSERT_OK(read_status) << read_status.status();
+  ASSERT_OK(read_status) << read_status.error();
   EXPECT_EQ(read_status.value(), kWriteDataTwo);
 
   // Read file at an out of bounds index
   read_status = MaybeReadFile(file_path, kOverFlowPos);
   ASSERT_FALSE(read_status.has_value());
-  EXPECT_EQ(read_status.status().error_code(), error::DATA_LOSS);
+  EXPECT_EQ(read_status.error().error_code(), error::DATA_LOSS);
 }
 
 TEST(FileTest, AppendLine) {
@@ -165,12 +165,12 @@ TEST(FileTest, AppendLine) {
 
   status = AppendLine(file_path, kWriteDataOne);
   auto read_status = MaybeReadFile(file_path, /*offset=*/0);
-  ASSERT_OK(read_status) << read_status.status();
+  ASSERT_OK(read_status) << read_status.error();
   ASSERT_EQ(read_status.value(), base::StrCat({kWriteDataOne, "\n"}));
 
   status = AppendLine(file_path, kWriteDataTwo);
   read_status = MaybeReadFile(file_path, /*offset=*/0);
-  ASSERT_OK(read_status) << read_status.status();
+  ASSERT_OK(read_status) << read_status.error();
   ASSERT_EQ(read_status.value(),
             base::StrCat({kWriteDataOne, "\n", kWriteDataTwo, "\n"}));
 }

@@ -90,7 +90,7 @@ void CreateQueuePostData(
              StatusOr<std::unique_ptr<ReportQueue>> report_queue_result) {
             // Bail out if queue failed to create.
             if (!report_queue_result.has_value()) {
-              std::move(done_cb).Run(report_queue_result.status());
+              std::move(done_cb).Run(report_queue_result.error());
               return;
             }
             // Queue created successfully, enqueue the message on a random
@@ -133,7 +133,7 @@ void CreateSpeculativeQueuePostData(
       ReportQueueProvider::CreateSpeculativeQueue(std::move(config));
   // Bail out if queue failed to create.
   if (!report_queue_result.has_value()) {
-    std::move(done_cb).Run(report_queue_result.status());
+    std::move(done_cb).Run(report_queue_result.error());
     return;
   }
   // Queue created successfully, enqueue the message on a random thread and
@@ -287,7 +287,7 @@ TEST_F(ReportQueueProviderTest,
   const auto result = event.result();
 
   ASSERT_FALSE(result.has_value());
-  EXPECT_EQ(result.status().code(), error::FAILED_PRECONDITION);
+  EXPECT_EQ(result.error().code(), error::FAILED_PRECONDITION);
 }
 
 TEST_F(ReportQueueProviderTest,
@@ -304,7 +304,7 @@ TEST_F(ReportQueueProviderTest,
   const auto result = ReportQueueProvider::CreateSpeculativeQueue(
       std::move(config_result.value()));
   ASSERT_FALSE(result.has_value());
-  EXPECT_EQ(result.status().code(), error::FAILED_PRECONDITION);
+  EXPECT_EQ(result.error().code(), error::FAILED_PRECONDITION);
 }
 }  // namespace
 }  // namespace reporting

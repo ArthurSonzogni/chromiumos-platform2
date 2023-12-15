@@ -246,7 +246,7 @@ void StorageQueue::Init(
         const auto backoff_result = init_retry_cb_.Run(init_status, retries);
         if (!backoff_result.has_value()) {
           // Retry not allowed.
-          Response(backoff_result.status());
+          Response(backoff_result.error());
           return;
         }
         // Back off and retry. Some of the errors could be transient.
@@ -467,7 +467,7 @@ StatusOr<int64_t> StorageQueue::AddDataFile(
                           .disk_space_resource = options_.disk_space_resource(),
                           .completion_closure_list = completion_closure_list_});
   if (!file_or_status.has_value()) {
-    return file_or_status.status();
+    return file_or_status.error();
   }
   if (!files_.emplace(file_sequence_id, file_or_status.value()).second) {
     return Status(error::ALREADY_EXISTS,
@@ -509,7 +509,7 @@ Status StorageQueue::EnumerateDataFiles(
         AddDataFile(full_name, dir_enum.GetInfo());
     if (!file_sequencing_id_result.has_value()) {
       LOG(WARNING) << "Failed to add file " << full_name.MaybeAsASCII()
-                   << ", status=" << file_sequencing_id_result.status();
+                   << ", status=" << file_sequencing_id_result.error();
       continue;
     }
     if (!first_sequencing_id.has_value() ||
@@ -577,14 +577,15 @@ Status StorageQueue::ScanLastFile() {
     auto read_result =
         last_file->Read(pos, RecordHeader::kSize, max_buffer_size,
                         /*expect_readonly=*/false);
-    if (read_result.status().error_code() == error::OUT_OF_RANGE) {
+    if (!read_result.has_value() &&
+        read_result.error().error_code() == error::OUT_OF_RANGE) {
       // End of file detected.
       break;
     }
     if (!read_result.has_value()) {
       // Error detected.
       LOG(ERROR) << "Error reading file " << last_file->name()
-                 << ", status=" << read_result.status();
+                 << ", status=" << read_result.error();
       break;
     }
     pos += read_result.value().size();
@@ -603,7 +604,7 @@ Status StorageQueue::ScanLastFile() {
     if (!read_result.has_value()) {
       // Error detected.
       LOG(ERROR) << "Error reading file " << last_file->name()
-                 << ", status=" << read_result.status();
+                 << ", status=" << read_result.error();
       break;
     }
     pos += read_result.value().size();
@@ -735,7 +736,7 @@ Status StorageQueue::WriteHeaderAndBlock(
     SendResExCaseToUma(ResourceExhaustedCase::CANNOT_WRITE_HEADER);
     return Status(error::RESOURCE_EXHAUSTED,
                   base::StrCat({"Cannot write file=", file->name(),
-                                " status=", write_status.status().ToString()}));
+                                " status=", write_status.error().ToString()}));
   }
   if (data.size() > 0) {
     write_status = file->Append(data);
@@ -744,7 +745,7 @@ Status StorageQueue::WriteHeaderAndBlock(
       return Status(
           error::RESOURCE_EXHAUSTED,
           base::StrCat({"Cannot write file=", file->name(),
-                        " status=", write_status.status().ToString()}));
+                        " status=", write_status.error().ToString()}));
     }
   }
 
@@ -761,7 +762,7 @@ Status StorageQueue::WriteHeaderAndBlock(
       SendResExCaseToUma(ResourceExhaustedCase::CANNOT_PAD);
       return Status(error::RESOURCE_EXHAUSTED,
                     base::StrCat({"Cannot pad file=", file->name(), " status=",
-                                  write_status.status().ToString()}));
+                                  write_status.error().ToString()}));
     }
   }
   return Status::StatusOK();
@@ -802,19 +803,17 @@ Status StorageQueue::WriteMetadata(std::string_view current_record_digest,
       reinterpret_cast<const char*>(&generation_id_), sizeof(generation_id_)));
   if (!append_result.has_value()) {
     SendResExCaseToUma(ResourceExhaustedCase::CANNOT_WRITE_GENERATION);
-    return Status(
-        error::RESOURCE_EXHAUSTED,
-        base::StrCat({"Cannot write metafile=", meta_file->name(),
-                      " status=", append_result.status().ToString()}));
+    return Status(error::RESOURCE_EXHAUSTED,
+                  base::StrCat({"Cannot write metafile=", meta_file->name(),
+                                " status=", append_result.error().ToString()}));
   }
   // Write last record digest.
   append_result = meta_file->Append(current_record_digest);
   if (!append_result.has_value()) {
     SendResExCaseToUma(ResourceExhaustedCase::CANNOT_WRITE_DIGEST);
-    return Status(
-        error::RESOURCE_EXHAUSTED,
-        base::StrCat({"Cannot write metafile=", meta_file->name(),
-                      " status=", append_result.status().ToString()}));
+    return Status(error::RESOURCE_EXHAUSTED,
+                  base::StrCat({"Cannot write metafile=", meta_file->name(),
+                                " status=", append_result.error().ToString()}));
   }
   if (append_result.value() != current_record_digest.size()) {
     return Status(error::DATA_LOSS, base::StrCat({"Failure writing metafile=",
@@ -854,7 +853,7 @@ Status StorageQueue::ReadMetadata(
       read_result.value().size() != sizeof(generation_id_)) {
     return Status(error::DATA_LOSS,
                   base::StrCat({"Cannot read metafile=", meta_file->name(),
-                                " status=", read_result.status().ToString()}));
+                                " status=", read_result.error().ToString()}));
   }
   const int64_t generation_id =
       *reinterpret_cast<const int64_t*>(read_result.value().data());
@@ -882,7 +881,7 @@ Status StorageQueue::ReadMetadata(
       read_result.value().size() != crypto::kSHA256Length) {
     return Status(error::DATA_LOSS,
                   base::StrCat({"Cannot read metafile=", meta_file->name(),
-                                " status=", read_result.status().ToString()}));
+                                " status=", read_result.error().ToString()}));
   }
   // Everything read successfully, set the queue up.
   if (generation_id_ <= 0) {
@@ -1198,7 +1197,8 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     for (int64_t sequencing_id = current_file_->first;
          sequencing_id < sequence_info_.sequencing_id(); ++sequencing_id) {
       auto blob = EnsureBlob(sequencing_id);
-      if (blob.status().error_code() == error::OUT_OF_RANGE) {
+      if (!blob.has_value() &&
+          blob.error().error_code() == error::OUT_OF_RANGE) {
         // Reached end of file, switch to the next one (if present).
         ++current_file_;
         if (current_file_ == files_.end()) {
@@ -1430,7 +1430,12 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
         RoundUpToFrameSize(RecordHeader::kSize);
     auto read_result = current_file_->second->Read(
         current_pos_, RecordHeader::kSize, max_buffer_size);
-    RETURN_IF_ERROR(read_result.status());
+    // TODO(b/305766975): Change the following if-block back to
+    // RETURN_IF_ERROR(read_result) once StatusOr becomes an alias to
+    // base::expected.
+    if (!read_result.has_value()) {
+      return read_result.error();
+    }
     auto header_data = read_result.value();
     if (header_data.empty()) {
       // No more blobs.
@@ -1461,7 +1466,12 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     // overwritten when reading rest of the data.
     read_result =
         current_file_->second->Read(current_pos_, data_size, max_buffer_size);
-    RETURN_IF_ERROR(read_result.status());
+    // TODO(b/305766975): Change the following if-block back to
+    // RETURN_IF_ERROR(read_result) once StatusOr becomes an alias to
+    // base::expected.
+    if (!read_result.has_value()) {
+      return read_result.error();
+    }
     current_pos_ += read_result.value().size();
     if (read_result.value().size() != data_size) {
       // File corrupt, blob incomplete.
@@ -1500,7 +1510,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     DCHECK_CALLED_ON_VALID_SEQUENCE(
         storage_queue_->storage_queue_sequence_checker_);
     auto blob = EnsureBlob(sequence_info_.sequencing_id());
-    if (blob.status().error_code() == error::OUT_OF_RANGE) {
+    if (!blob.has_value() && blob.error().error_code() == error::OUT_OF_RANGE) {
       // Reached end of file, switch to the next one (if present).
       ++current_file_;
       if (current_file_ == files_.end()) {
@@ -1567,7 +1577,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     if (!uploader_result.has_value()) {
       Response(Status(error::FAILED_PRECONDITION,
                       base::StrCat({"Failed to provide the Uploader, status=",
-                                    uploader_result.status().ToString()})));
+                                    uploader_result.error().ToString()})));
       return;
     }
     CHECK(!uploader_)
@@ -1868,7 +1878,7 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
         storage_queue_->storage_queue_sequence_checker_);
     if (!encrypted_record_result.has_value()) {
       // Failed to serialize or encrypt.
-      Response(encrypted_record_result.status());
+      Response(encrypted_record_result.error());
       return;
     }
     auto encrypted_record = std::move(encrypted_record_result.value());
@@ -1984,7 +1994,7 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
     StatusOr<scoped_refptr<SingleFile>> assign_result =
         storage_queue_->AssignLastFile(buffer_.size());
     if (!assign_result.has_value()) {
-      Response(assign_result.status());
+      Response(assign_result.error());
       return;
     }
     scoped_refptr<SingleFile> last_file = assign_result.value();

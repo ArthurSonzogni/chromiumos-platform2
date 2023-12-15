@@ -68,7 +68,7 @@ void EncryptionModule::EncryptRecordImpl(
          base::OnceCallback<void(StatusOr<EncryptedRecord>)> cb,
          StatusOr<Encryptor::Handle*> handle_result) {
         if (!handle_result.has_value()) {
-          std::move(cb).Run(handle_result.status());
+          std::move(cb).Run(handle_result.error());
           return;
         }
         base::ThreadPool::PostTask(

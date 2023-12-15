@@ -19,7 +19,7 @@
 //    float answer = result.value();
 //    printf("Big calculation yielded: %f", answer);
 //  } else {
-//    LOG(ERROR) << result.status();
+//    LOG(ERROR) << result.error();
 //  }
 //
 // Example client usage for a StatusOr<T*>:
@@ -29,7 +29,7 @@
 //    std::unique_ptr<Foo> foo(result.value());
 //    foo->DoSomethingCool();
 //  } else {
-//    LOG(ERROR) << result.status();
+//    LOG(ERROR) << result.error();
 //  }
 //
 // Example client usage for a StatusOr<std::unique_ptr<T>>:
@@ -39,7 +39,7 @@
 //    std::unique_ptr<Foo> foo = std::move(result.value());
 //    foo->DoSomethingCool();
 //  } else {
-//    LOG(ERROR) << result.status();
+//    LOG(ERROR) << result.error();
 //  }
 //
 // Example factory implementation returning StatusOr<T*>:
@@ -208,7 +208,10 @@ class [[nodiscard]] StatusOr {
   bool has_value() const { return status_.ok(); }
 
   // Gets the stored status object, or an OK status if a |T| value is stored.
-  Status status() const { return status_; }
+  Status error() const {
+    CHECK(!has_value());
+    return status_;
+  }
 
   // Gets the stored |T| value.
   //

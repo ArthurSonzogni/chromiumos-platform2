@@ -430,7 +430,7 @@ TEST_F(TaskRunner, ActionsWithStatusOrPtr) {
           &run_loop, &result),
       base::SequencedTaskRunner::GetCurrentDefault());
   run_loop.Run();
-  EXPECT_OK(result) << result.status();
+  EXPECT_OK(result) << result.error();
   EXPECT_EQ(result.value()->value(), kI);
 }
 

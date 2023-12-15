@@ -70,13 +70,13 @@ class ReportQueueImplTest : public testing::Test {
         ReportQueueConfiguration::Create(dm_token_, destination_,
                                          policy_check_callback_);
 
-    ASSERT_OK(config_result) << config_result.status();
+    ASSERT_OK(config_result) << config_result.error();
 
     test::TestEvent<StatusOr<std::unique_ptr<ReportQueue>>> report_queue_event;
     ReportQueueImpl::Create(std::move(config_result.value()),
                             test_storage_module_, report_queue_event.cb());
     auto report_queue_result = report_queue_event.result();
-    ASSERT_OK(report_queue_result) << report_queue_result.status();
+    ASSERT_OK(report_queue_result) << report_queue_result.error();
 
     report_queue_ = std::move(report_queue_result.value());
   }
@@ -157,13 +157,13 @@ TEST_F(ReportQueueImplTest, SuccessfulProtoRecordWithReservedSpace) {
       ReportQueueConfiguration::Create(dm_token_, destination_,
                                        policy_check_callback_, kReservedSpace);
 
-  ASSERT_OK(config_result) << config_result.status();
+  ASSERT_OK(config_result) << config_result.error();
 
   test::TestEvent<StatusOr<std::unique_ptr<ReportQueue>>> report_queue_event;
   ReportQueueImpl::Create(std::move(config_result.value()),
                           test_storage_module_, report_queue_event.cb());
   auto report_queue_result = report_queue_event.result();
-  ASSERT_OK(report_queue_result) << report_queue_result.status();
+  ASSERT_OK(report_queue_result) << report_queue_result.error();
 
   report_queue_ = std::move(report_queue_result.value());
 
@@ -308,13 +308,13 @@ TEST_F(ReportQueueImplTest,
       ReportQueueConfiguration::Create(dm_token_, destination_,
                                        policy_check_callback_, kReservedSpace);
 
-  ASSERT_OK(config_result) << config_result.status();
+  ASSERT_OK(config_result) << config_result.error();
 
   test::TestEvent<StatusOr<std::unique_ptr<ReportQueue>>> report_queue_event;
   ReportQueueImpl::Create(std::move(config_result.value()),
                           test_storage_module_, report_queue_event.cb());
   auto report_queue_result = report_queue_event.result();
-  ASSERT_OK(report_queue_result) << report_queue_result.status();
+  ASSERT_OK(report_queue_result) << report_queue_result.error();
 
   report_queue_ = std::move(report_queue_result.value());
 

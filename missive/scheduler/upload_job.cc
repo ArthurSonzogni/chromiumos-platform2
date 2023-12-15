@@ -167,7 +167,7 @@ void UploadJob::Done(StatusOr<EncryptedRecords> records_result,
                      ScopedReservation records_reservation) {
   CheckValidSequence();
   if (!records_result.has_value()) {
-    Finish(records_result.status());
+    Finish(records_result.error());
     return;
   }
   std::move(set_records_cb_).Run(std::move(records_result.value()));

@@ -155,7 +155,7 @@ TEST_F(ReportQueueConfigurationTest,
   static constexpr int64_t kReservedSpace = 12345L;
   auto config_result = ReportQueueConfiguration::Create(
       EventType::kDevice, kValidDestination, kValidCallback, kReservedSpace);
-  EXPECT_OK(config_result) << config_result.status();
+  EXPECT_OK(config_result) << config_result.error();
 
   auto config = std::move(config_result.value());
   EXPECT_THAT(config->reserved_space(), Eq(kReservedSpace));

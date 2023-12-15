@@ -210,7 +210,7 @@ void StorageModule::SetStorage(
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback,
     StatusOr<scoped_refptr<Storage>> storage) {
   if (!storage.has_value()) {
-    std::move(callback).Run(storage.status());
+    std::move(callback).Run(storage.error());
     return;
   }
   storage_ = storage.value();

@@ -209,7 +209,7 @@ TEST_F(MissiveImplTest, AsyncStartUploadTest) {
       missive_->GetWeakPtr(), UploaderInterface::UploadReason::IMMEDIATE_FLUSH,
       uploader_event.cb());
   auto response_result = uploader_event.result();
-  EXPECT_OK(response_result) << response_result.status();
+  EXPECT_OK(response_result) << response_result.error();
   response_result.value()->Completed(
       Status(error::INTERNAL, "Failing for tests"));
 }
@@ -223,9 +223,9 @@ TEST_F(MissiveImplTest, AsyncNoStartUploadTest) {
       uploader_event.cb());
   auto response_result = uploader_event.result();
   EXPECT_THAT(response_result,
-              Property(&StatusOr<std::unique_ptr<UploaderInterface>>::status,
+              Property(&StatusOr<std::unique_ptr<UploaderInterface>>::error,
                        Property(&Status::code, Eq(error::UNAVAILABLE))))
-      << response_result.status();
+      << response_result.error();
 }
 
 TEST_F(MissiveImplTest, EnqueueRecordTest) {
@@ -446,7 +446,7 @@ TEST_F(MissiveImplTest, DisabledReportingTest) {
         UploaderInterface::UploadReason::IMMEDIATE_FLUSH, uploader_event.cb());
     const auto& response_result = uploader_event.result();
     EXPECT_THAT(response_result,
-                Property(&StatusOr<std::unique_ptr<UploaderInterface>>::status,
+                Property(&StatusOr<std::unique_ptr<UploaderInterface>>::error,
                          AllOf(Property(&Status::error_code,
                                         Eq(error::FAILED_PRECONDITION)),
                                Property(&Status::error_message,

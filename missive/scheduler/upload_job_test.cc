@@ -54,7 +54,7 @@ class TestRecordUploader {
   void StartUpload(
       StatusOr<std::unique_ptr<UploaderInterface>> uploader_interface_result) {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-    EXPECT_OK(uploader_interface_result) << uploader_interface_result.status();
+    EXPECT_OK(uploader_interface_result) << uploader_interface_result.error();
     uploader_interface_ = std::move(uploader_interface_result.value());
     Upload(/*send_next_record=*/true);
   }
@@ -173,7 +173,7 @@ TEST_F(UploadJobTest, UploadsRecords) {
                          base::BindOnce(&TestRecordUploader::StartUpload,
                                         record_uploader->GetWeakPtr())),
       upload_responded.cb());
-  ASSERT_OK(job_result) << job_result.status();
+  ASSERT_OK(job_result) << job_result.error();
   Scheduler::Job::SmartPtr<Scheduler::Job> job = std::move(job_result.value());
 
   test::TestEvent<Status> upload_started;
@@ -182,7 +182,7 @@ TEST_F(UploadJobTest, UploadsRecords) {
   EXPECT_OK(status) << status;
   // Let everything finish before `record_uploader` destructs.
   const auto upload_result = upload_responded.result();
-  EXPECT_OK(upload_result) << upload_result.status();
+  EXPECT_OK(upload_result) << upload_result.error();
 }
 }  // namespace
 }  // namespace reporting

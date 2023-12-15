@@ -84,7 +84,7 @@ TEST_F(MissiveArgsTest, DefaultCollectionValues) {
   args.AsyncCall(&MissiveArgs::GetCollectionParameters)
       .WithArgs(get_collection.cb());
   const auto& collection = get_collection.result();
-  ASSERT_OK(collection) << collection.status();
+  ASSERT_OK(collection) << collection.error();
   ASSERT_THAT(
       collection.value().enqueuing_record_tallier,
       Eq(base::TimeDeltaFromString(MissiveArgs::kEnqueuingRecordTallierDefault)
@@ -128,7 +128,7 @@ TEST_F(MissiveArgsTest, ExplicitCollectionValues) {
   args.AsyncCall(&MissiveArgs::GetCollectionParameters)
       .WithArgs(get_collection.cb());
   const auto& collection = get_collection.result();
-  ASSERT_OK(collection) << collection.status();
+  ASSERT_OK(collection) << collection.error();
   ASSERT_THAT(collection.value().enqueuing_record_tallier,
               Eq(base::Milliseconds(10)));
   ASSERT_THAT(collection.value().cpu_collector_interval, Eq(base::Seconds(20)));
@@ -163,7 +163,7 @@ TEST_F(MissiveArgsTest, BadCollectionValues) {
   args.AsyncCall(&MissiveArgs::GetCollectionParameters)
       .WithArgs(get_collection.cb());
   const auto& collection = get_collection.result();
-  ASSERT_OK(collection) << collection.status();
+  ASSERT_OK(collection) << collection.error();
   ASSERT_THAT(
       collection.value().enqueuing_record_tallier,
       Eq(base::TimeDeltaFromString(MissiveArgs::kEnqueuingRecordTallierDefault)
@@ -200,7 +200,7 @@ TEST_F(MissiveArgsTest, ListeningForCollectionValuesUpdate) {
       .WithArgs(get_collection.cb());
   {
     const auto& collection = get_collection.result();
-    ASSERT_OK(collection) << collection.status();
+    ASSERT_OK(collection) << collection.error();
     ASSERT_THAT(collection.value().enqueuing_record_tallier,
                 Eq(base::TimeDeltaFromString(
                        MissiveArgs::kEnqueuingRecordTallierDefault)
@@ -269,7 +269,7 @@ TEST_F(MissiveArgsTest, DefaultStorageValues) {
   test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_storage;
   args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
   const auto& storage = get_storage.result();
-  ASSERT_OK(storage) << storage.status();
+  ASSERT_OK(storage) << storage.error();
   EXPECT_THAT(storage.value().compression_enabled,
               Eq(MissiveArgs::kCompressionEnabledDefault));
   EXPECT_THAT(storage.value().encryption_enabled,
@@ -310,7 +310,7 @@ TEST_F(MissiveArgsTest, ExplicitStorageValues) {
   test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_storage;
   args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
   const auto& storage = get_storage.result();
-  ASSERT_OK(storage) << storage.status();
+  ASSERT_OK(storage) << storage.error();
   EXPECT_FALSE(storage.value().compression_enabled);
   EXPECT_FALSE(storage.value().encryption_enabled);
   EXPECT_TRUE(storage.value().controlled_degradation);
@@ -345,7 +345,7 @@ TEST_F(MissiveArgsTest, BadStorageValues) {
   test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_storage;
   args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
   const auto& storage = get_storage.result();
-  ASSERT_OK(storage) << storage.status();
+  ASSERT_OK(storage) << storage.error();
   EXPECT_THAT(storage.value().compression_enabled,
               Eq(MissiveArgs::kCompressionEnabledDefault));
   EXPECT_THAT(storage.value().encryption_enabled,
@@ -376,7 +376,7 @@ TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
   args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
   {
     const auto& storage = get_storage.result();
-    ASSERT_OK(storage) << storage.status();
+    ASSERT_OK(storage) << storage.error();
     EXPECT_THAT(storage.value().compression_enabled,
                 Eq(MissiveArgs::kCompressionEnabledDefault));
     EXPECT_THAT(storage.value().encryption_enabled,
@@ -445,7 +445,7 @@ TEST_F(MissiveArgsTest, DefaultConfigFileValues) {
   args.AsyncCall(&MissiveArgs::GetConfigFileParameters)
       .WithArgs(get_config_file.cb());
   const auto& config_file = get_config_file.result();
-  ASSERT_OK(config_file) << config_file.status();
+  ASSERT_OK(config_file) << config_file.error();
   EXPECT_THAT(config_file.value().blocking_destinations_enabled,
               Eq(MissiveArgs::kBlockingDestinationsEnabledDefault));
   EXPECT_THAT(config_file.value().blocking_metrics_enabled,
@@ -473,7 +473,7 @@ TEST_F(MissiveArgsTest, ExplicitConfigFileValues) {
   args.AsyncCall(&MissiveArgs::GetConfigFileParameters)
       .WithArgs(get_config_file.cb());
   const auto& config_file = get_config_file.result();
-  ASSERT_OK(config_file) << config_file.status();
+  ASSERT_OK(config_file) << config_file.error();
   EXPECT_FALSE(config_file.value().blocking_destinations_enabled);
   EXPECT_FALSE(config_file.value().blocking_metrics_enabled);
 }
@@ -500,7 +500,7 @@ TEST_F(MissiveArgsTest, BadConfigFileValues) {
   args.AsyncCall(&MissiveArgs::GetConfigFileParameters)
       .WithArgs(get_config_file.cb());
   const auto& config_file = get_config_file.result();
-  ASSERT_OK(config_file) << config_file.status();
+  ASSERT_OK(config_file) << config_file.error();
   EXPECT_THAT(config_file.value().blocking_destinations_enabled,
               Eq(MissiveArgs::kBlockingDestinationsEnabledDefault));
   EXPECT_THAT(config_file.value().blocking_metrics_enabled,
@@ -526,7 +526,7 @@ TEST_F(MissiveArgsTest, ListeningForConfigFileValuesUpdate) {
       .WithArgs(get_config_file.cb());
   {
     const auto& config_file = get_config_file.result();
-    ASSERT_OK(config_file) << config_file.status();
+    ASSERT_OK(config_file) << config_file.error();
     EXPECT_THAT(config_file.value().blocking_destinations_enabled,
                 Eq(MissiveArgs::kBlockingDestinationsEnabledDefault));
     EXPECT_THAT(config_file.value().blocking_metrics_enabled,

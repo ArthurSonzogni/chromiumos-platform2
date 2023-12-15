@@ -214,7 +214,7 @@ class SingleDecryptionContext {
             [](SingleDecryptionContext* self,
                StatusOr<std::string> private_key_result) {
               if (!private_key_result.has_value()) {
-                self->Respond(private_key_result.status());
+                self->Respond(private_key_result.error());
                 return;
               }
               base::ThreadPool::PostTask(
@@ -231,7 +231,7 @@ class SingleDecryptionContext {
     auto shared_secret_result = decryptor_->DecryptSecret(
         private_key, encrypted_record_.encryption_info().encryption_key());
     if (!shared_secret_result.has_value()) {
-      Respond(shared_secret_result.status());
+      Respond(shared_secret_result.error());
       return;
     }
     base::ThreadPool::PostTask(
@@ -247,7 +247,7 @@ class SingleDecryptionContext {
             [](SingleDecryptionContext* self,
                StatusOr<test::Decryptor::Handle*> handle_result) {
               if (!handle_result.has_value()) {
-                self->Respond(handle_result.status());
+                self->Respond(handle_result.error());
                 return;
               }
               base::ThreadPool::PostTask(
@@ -363,7 +363,7 @@ class StorageTest : public ::testing::TestWithParam<
           kKeySize));
       // Create decryption module.
       auto decryptor_result = test::Decryptor::Create();
-      ASSERT_OK(decryptor_result.status()) << decryptor_result.status();
+      ASSERT_OK(decryptor_result) << decryptor_result.error();
       decryptor_ = std::move(decryptor_result.value());
       // Prepare the key.
       signed_encryption_key_ = GenerateAndSignKey();
@@ -854,7 +854,7 @@ class StorageTest : public ::testing::TestWithParam<
                   base::OnceCallback<void(bool)> processed_cb,
                   scoped_refptr<base::SequencedTaskRunner> task_runner,
                   TestUploader* uploader, StatusOr<std::string_view> result) {
-                 ASSERT_OK(result.status()) << result.status();
+                 ASSERT_OK(result) << result.error();
                  WrappedRecord wrapped_record;
                  ASSERT_TRUE(wrapped_record.ParseFromArray(
                      result.value().data(), result.value().size()));
@@ -993,7 +993,7 @@ class StorageTest : public ::testing::TestWithParam<
     StatusOr<scoped_refptr<Storage>> storage_result =
         CreateTestStorage(options, encryption_module);
     ASSERT_OK(storage_result)
-        << "Failed to create TestStorage, error=" << storage_result.status();
+        << "Failed to create TestStorage, error=" << storage_result.error();
     storage_ = std::move(storage_result.value());
   }
 
@@ -1061,8 +1061,8 @@ class StorageTest : public ::testing::TestWithParam<
               if (!result.has_value()) {
                 LOG(ERROR) << "Upload not allowed, reason="
                            << UploaderInterface::ReasonToString(reason) << " "
-                           << result.status();
-                std::move(start_uploader_cb).Run(result.status());
+                           << result.error();
+                std::move(start_uploader_cb).Run(result.error());
                 return;
               }
               auto uploader = std::move(result.value());
@@ -2277,7 +2277,7 @@ TEST_P(StorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
               /*is_enabled=*/true,
               base::Seconds(options_.key_check_period().InSeconds() - 1)));
   ASSERT_OK(storage_result)
-      << "Failed to create StorageTest, error=" << storage_result.status();
+      << "Failed to create StorageTest, error=" << storage_result.error();
   storage_ = std::move(storage_result.value());
 
   test::TestCallbackAutoWaiter waiter;
@@ -2325,7 +2325,7 @@ TEST_P(StorageTest, KeyDeliveryFailureOnStorage) {
   StatusOr<scoped_refptr<Storage>> storage_result =
       CreateTestStorageWithFailedKeyDelivery(BuildTestStorageOptions());
   ASSERT_OK(storage_result)
-      << "Failed to create StorageTest, error=" << storage_result.status();
+      << "Failed to create StorageTest, error=" << storage_result.error();
   storage_ = std::move(storage_result.value());
 
   key_delivery_failure_.store(true);

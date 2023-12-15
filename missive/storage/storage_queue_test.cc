@@ -644,7 +644,7 @@ class StorageQueueTest
     auto storage_queue_result = CreateTestStorageQueue(options);
     ASSERT_OK(storage_queue_result)
         << "Failed to create TestStorageQueue, error="
-        << storage_queue_result.status();
+        << storage_queue_result.error();
     storage_queue_ = std::move(storage_queue_result.value());
   }
 
@@ -775,8 +775,8 @@ class StorageQueueTest
               if (!result.has_value()) {
                 LOG(ERROR) << "Upload not allowed, reason="
                            << UploaderInterface::ReasonToString(reason) << " "
-                           << result.status();
-                std::move(start_uploader_cb).Run(result.status());
+                           << result.error();
+                std::move(start_uploader_cb).Run(result.error());
                 return;
               }
               auto uploader = std::move(result.value());
@@ -2201,7 +2201,7 @@ TEST_P(StorageQueueTest, CreateStorageQueueInvalidOptionsPath) {
   StatusOr<scoped_refptr<StorageQueue>> queue_result =
       CreateTestStorageQueue(BuildStorageQueueOptionsPeriodic());
   EXPECT_FALSE(queue_result.has_value());
-  EXPECT_EQ(queue_result.status().error_code(), error::UNAVAILABLE);
+  EXPECT_EQ(queue_result.error().error_code(), error::UNAVAILABLE);
 }
 
 TEST_P(StorageQueueTest, CreateStorageQueueAllRetriesFail) {
@@ -2218,7 +2218,7 @@ TEST_P(StorageQueueTest, CreateStorageQueueAllRetriesFail) {
   StatusOr<scoped_refptr<StorageQueue>> queue_result =
       CreateTestStorageQueue(BuildStorageQueueOptionsPeriodic(), init_retry_cb);
   EXPECT_FALSE(queue_result.has_value());
-  EXPECT_EQ(queue_result.status().error_code(), error::UNAVAILABLE);
+  EXPECT_EQ(queue_result.error().error_code(), error::UNAVAILABLE);
 }
 
 TEST_P(StorageQueueTest, CreateStorageQueueMultipleTimesRace) {
@@ -2304,7 +2304,7 @@ TEST_P(StorageQueueTest, CreateStorageQueueRetry) {
       bad_file);
   StatusOr<scoped_refptr<StorageQueue>> queue_result =
       CreateTestStorageQueue(queue_options, init_retry_cb);
-  EXPECT_OK(queue_result) << queue_result.status();
+  EXPECT_OK(queue_result) << queue_result.error();
 }
 
 TEST_P(StorageQueueTest, WriteRecordDataWithInsufficientDiskSpaceFailure) {

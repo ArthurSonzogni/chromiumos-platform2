@@ -47,7 +47,7 @@ StorageDirectory::Set StorageDirectory::FindQueueDirectories(
     } else {
       LOG(INFO) << "Could not parse queue parameters from filename "
                 << full_name.MaybeAsASCII()
-                << " error = " << queue_param.status();
+                << " error = " << queue_param.error();
     }
   }
   return queue_params;
@@ -61,13 +61,13 @@ StorageDirectory::GetPriorityAndGenerationGuid(
   // Try to parse generation guid from file path
   const auto generation_guid = ParseGenerationGuidFromFilePath(full_name);
   if (!generation_guid.has_value()) {
-    return generation_guid.status();
+    return generation_guid.error();
   }
   // Try to parse a priority from file path
   const auto priority =
       ParsePriorityFromQueueDirectory(full_name, options_list);
   if (!priority.has_value()) {
-    return priority.status();
+    return priority.error();
   }
   return std::make_tuple(priority.value(), generation_guid.value());
 }

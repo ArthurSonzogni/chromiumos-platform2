@@ -70,7 +70,7 @@ base::TimeDelta DurationParameterValue(std::string_view parameter_name,
   if (!duration_result.has_value()) {
     LOG(ERROR) << "Unable to parse parameter " << parameter_name << "="
                << duration_string << ", assumed default=" << duration_default
-               << ", because: " << duration_result.status();
+               << ", because: " << duration_result.error();
     return ParseDuration(duration_default).value();
   }
   return duration_result.value();

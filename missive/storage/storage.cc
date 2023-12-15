@@ -235,7 +235,7 @@ void Storage::Create(
       if (!download_key_result.has_value()) {
         // Key not found or corrupt. Proceed with encryption setup.
         // Key will be downloaded during setup.
-        EncryptionSetUp(download_key_result.status());
+        EncryptionSetUp(download_key_result.error());
         return;
       }
 
@@ -556,7 +556,7 @@ void Storage::Confirm(SequenceInformation sequence_information,
              base::OnceCallback<void(Status)> completion_cb) {
             auto queue_result = self->TryGetQueue(priority, generation_guid);
             if (!queue_result.has_value()) {
-              std::move(completion_cb).Run(queue_result.status());
+              std::move(completion_cb).Run(queue_result.error());
               return;
             }
             // Queue found, execute the action (it should relocate on
@@ -705,7 +705,7 @@ StatusOr<scoped_refptr<StorageQueue>> Storage::TryGetQueue(
     Priority priority, StatusOr<GenerationGuid> generation_guid) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!generation_guid.has_value()) {
-    return generation_guid.status();
+    return generation_guid.error();
   }
   // Attempt to get queue by priority and generation_guid on
   // the Storage task runner.
@@ -713,7 +713,7 @@ StatusOr<scoped_refptr<StorageQueue>> Storage::TryGetQueue(
       queues_container_->GetQueue(priority, generation_guid.value());
   if (!queue_result.has_value()) {
     // Queue not found, abort.
-    return queue_result.status();
+    return queue_result.error();
   }
   // Queue found, return it.
   return queue_result.value();

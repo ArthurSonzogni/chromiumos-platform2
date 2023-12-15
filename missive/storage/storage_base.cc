@@ -143,9 +143,9 @@ void QueueUploaderInterface::WrapInstantiatedUploader(
     if (recorder) {
       auto* const record = recorder->mutable_upload_encrypted_record_call();
       record->set_priority(priority);
-      uploader_result.status().SaveTo(record->mutable_status());
+      uploader_result.error().SaveTo(record->mutable_status());
     }
-    std::move(start_uploader_cb).Run(uploader_result.status());
+    std::move(start_uploader_cb).Run(uploader_result.error());
     return;
   }
   std::move(start_uploader_cb)
@@ -231,8 +231,7 @@ GenerationGuid QueuesContainer::GetOrCreateGenerationGuid(
     // Create a generation guid for this dm token and priority
     generation_guid_result = CreateGenerationGuidForDMToken(dm_token, priority);
     // Creation should never fail.
-    CHECK(generation_guid_result.has_value())
-        << generation_guid_result.status();
+    CHECK(generation_guid_result.has_value()) << generation_guid_result.error();
   }
   return generation_guid_result.value();
 }
@@ -540,7 +539,7 @@ void KeyDelivery::WrapInstantiatedKeyUploader(
     UploaderInterface::UploaderInterfaceResultCb start_uploader_cb,
     StatusOr<std::unique_ptr<UploaderInterface>> uploader_result) {
   if (!uploader_result.has_value()) {
-    std::move(start_uploader_cb).Run(uploader_result.status());
+    std::move(start_uploader_cb).Run(uploader_result.error());
     return;
   }
   std::move(start_uploader_cb)
@@ -551,7 +550,7 @@ void KeyDelivery::WrapInstantiatedKeyUploader(
 void KeyDelivery::EncryptionKeyReceiverReady(
     StatusOr<std::unique_ptr<UploaderInterface>> uploader_result) {
   if (!uploader_result.has_value()) {
-    OnCompletion(uploader_result.status());
+    OnCompletion(uploader_result.error());
     return;
   }
   uploader_result.value()->Completed(Status::StatusOK());

@@ -18,7 +18,7 @@
 #include "missive/util/backoff_settings.h"
 
 #define LOG_WITH_STATUS(LEVEL, MESSAGE, STATUS) \
-  VLOG(LEVEL) << MESSAGE << " status=" << STATUS.status();
+  VLOG(LEVEL) << MESSAGE << " status=" << STATUS.error();
 
 namespace reporting {
 
@@ -59,7 +59,7 @@ ReportQueueFactory::CreateSpeculativeReportQueue(EventType event_type,
   if (!config_result.has_value()) {
     DVLOG(1)
         << "Cannot initialize report queue. Invalid ReportQueueConfiguration: "
-        << config_result.status();
+        << config_result.error();
     return std::unique_ptr<ReportQueue, base::OnTaskRunnerDeleter>(
         nullptr, base::OnTaskRunnerDeleter(
                      base::SequencedTaskRunner::GetCurrentDefault()));
@@ -69,7 +69,7 @@ ReportQueueFactory::CreateSpeculativeReportQueue(EventType event_type,
       std::move(config_result.value()));
   if (!speculative_queue_result.has_value()) {
     DVLOG(1) << "Failed to create speculative queue: "
-             << speculative_queue_result.status();
+             << speculative_queue_result.error();
     return std::unique_ptr<ReportQueue, base::OnTaskRunnerDeleter>(
         nullptr, base::OnTaskRunnerDeleter(
                      base::SequencedTaskRunner::GetCurrentDefault()));

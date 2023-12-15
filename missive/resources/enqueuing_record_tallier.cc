@@ -49,7 +49,7 @@ void EnqueuingRecordTallier::UpdateAverage() {
   } else {
     LOG(ERROR)
         << "The rate of new events (enqueuing events) cannot be computed: "
-        << average_status.status();
+        << average_status.error();
     average_ = kAverageNullOpt;
   }
 }

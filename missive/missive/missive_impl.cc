@@ -170,7 +170,7 @@ void MissiveImpl::OnUploadClientCreated(
     StatusOr<scoped_refptr<UploadClient>> upload_client_result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!upload_client_result.has_value()) {
-    std::move(cb).Run(upload_client_result.status());
+    std::move(cb).Run(upload_client_result.error());
     return;
   }
   upload_client_ = std::move(upload_client_result.value());
@@ -186,7 +186,7 @@ void MissiveImpl::OnCollectionParameters(
     StatusOr<MissiveArgs::CollectionParameters> collection_parameters_result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!collection_parameters_result.has_value()) {
-    std::move(cb).Run(collection_parameters_result.status());
+    std::move(cb).Run(collection_parameters_result.error());
     return;
   }
 
@@ -233,7 +233,7 @@ void MissiveImpl::OnStorageParameters(
     StatusOr<MissiveArgs::StorageParameters> storage_parameters_result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!storage_parameters_result.has_value()) {
-    std::move(cb).Run(storage_parameters_result.status());
+    std::move(cb).Run(storage_parameters_result.error());
     return;
   }
   auto& parameters = storage_parameters_result.value();
@@ -310,7 +310,7 @@ void MissiveImpl::OnStorageModuleConfigured(
     StatusOr<scoped_refptr<StorageModule>> storage_module_result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!storage_module_result.has_value()) {
-    std::move(cb).Run(storage_module_result.status());
+    std::move(cb).Run(storage_module_result.error());
     return;
   }
   storage_module_ = std::move(storage_module_result.value());
@@ -373,7 +373,7 @@ void MissiveImpl::CreateUploadJob(
     // In the event that UploadJob::Create fails, it will call
     // |uploader_result_cb| with a failure status.
     LOG(ERROR) << "Was unable to create UploadJob, status:"
-               << upload_job_result.status();
+               << upload_job_result.error();
     return;
   }
   scheduler_.EnqueueJob(std::move(upload_job_result.value()));

@@ -61,7 +61,7 @@ class UploadClientTest : public ::testing::Test {
                              dbus_test_environment_.mock_chrome_proxy().get(),
                              client_waiter.cb());
     auto client_result = client_waiter.result();
-    ASSERT_OK(client_result) << client_result.status();
+    ASSERT_OK(client_result) << client_result.error();
     upload_client_ = client_result.value();
 
     upload_client_->SetAvailabilityForTest(/*is_available=*/true);
@@ -86,7 +86,7 @@ TEST_F(UploadClientTest, SuccessfulCall) {
   auto response_callback = base::BindOnce(
       [](test::TestCallbackWaiter* waiter,
          StatusOr<UploadEncryptedRecordResponse> response) {
-        ASSERT_OK(response) << response.status().ToString();
+        ASSERT_OK(response) << response.error().ToString();
         UploadEncryptedRecordResponse upload_response =
             std::move(response.value());
         EXPECT_EQ(upload_response.status().code(), error::OK);
@@ -162,8 +162,8 @@ TEST_F(UploadClientTest, CallUnavailable) {
       [](test::TestCallbackWaiter* waiter,
          StatusOr<UploadEncryptedRecordResponse> response) {
         ASSERT_FALSE(response.has_value());
-        ASSERT_THAT(response.status().code(), Eq(error::UNAVAILABLE))
-            << response.status().ToString();
+        ASSERT_THAT(response.error().code(), Eq(error::UNAVAILABLE))
+            << response.error().ToString();
         waiter->Signal();
       },
       &waiter);
@@ -204,8 +204,8 @@ TEST_F(UploadClientTest, CallBecameUnavailable) {
       [](test::TestCallbackWaiter* waiter,
          StatusOr<UploadEncryptedRecordResponse> response) {
         ASSERT_FALSE(response.has_value());
-        ASSERT_THAT(response.status().code(), Eq(error::UNAVAILABLE))
-            << response.status().ToString();
+        ASSERT_THAT(response.error().code(), Eq(error::UNAVAILABLE))
+            << response.error().ToString();
         waiter->Signal();
       },
       &waiter);
