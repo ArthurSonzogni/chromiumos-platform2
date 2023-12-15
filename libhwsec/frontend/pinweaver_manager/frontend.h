@@ -49,6 +49,11 @@ class PinWeaverManagerFrontend : public Frontend {
   // Gets the version of pinweaver.
   virtual StatusOr<uint8_t> GetVersion() const = 0;
 
+  // Initialize PinWeaverManager (specifically the memory-mapped pinweaver leaf
+  // cache file). Returning Okstatus indicates that PinWeaverManager is
+  // initialized, not locked out, and hash tree is valid.
+  virtual Status Initialize() const = 0;
+
   // Tries to insert a credential into the TPM.
   //
   // The LE credential to be added is in |le_secret|. Along with

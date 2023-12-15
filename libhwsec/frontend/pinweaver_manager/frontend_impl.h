@@ -26,6 +26,7 @@ class PinWeaverManagerFrontendImpl : public PinWeaverManagerFrontend,
 
   StatusOr<bool> IsEnabled() const override;
   StatusOr<uint8_t> GetVersion() const override;
+  Status Initialize() const override;
   StatusOr<uint64_t> InsertCredential(
       const std::vector<OperationPolicySetting>& policies,
       const brillo::SecureBlob& le_secret,

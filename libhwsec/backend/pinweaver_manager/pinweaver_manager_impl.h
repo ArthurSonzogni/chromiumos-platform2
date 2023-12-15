@@ -49,6 +49,8 @@ class PinWeaverManagerImpl : public PinWeaverManager {
 
   virtual ~PinWeaverManagerImpl() {}
 
+  Status StateIsReady() override;
+
   StatusOr<uint64_t> InsertCredential(
       const std::vector<hwsec::OperationPolicySetting>& policies,
       const brillo::SecureBlob& le_secret,
@@ -90,12 +92,6 @@ class PinWeaverManagerImpl : public PinWeaverManager {
   Status SyncHashTree() override;
 
  private:
-  // Performs checks to ensure the SignInHashTree is at good state. This
-  // includes insuring that PinWeaverManager is initialized, not locked out,
-  // and hash tree is valid.
-  // All public PW operation functions should first call StateIsReady().
-  Status StateIsReady();
-
   // Helper to turn a label into an original credential. Helper for a lot of the
   // Get* functions which starts with a label and first need to turn it into a
   // credential to call the actual Pinweaver function they need to call.

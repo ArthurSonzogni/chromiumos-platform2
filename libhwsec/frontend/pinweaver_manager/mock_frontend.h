@@ -25,6 +25,7 @@ class MockPinWeaverManagerFrontend : public MockFrontend,
 
   MOCK_METHOD(StatusOr<bool>, IsEnabled, (), (const override));
   MOCK_METHOD(StatusOr<uint8_t>, GetVersion, (), (const override));
+  MOCK_METHOD(Status, Initialize, (), (const override));
   MOCK_METHOD(StatusOr<uint64_t>,
               InsertCredential,
               (const std::vector<OperationPolicySetting>& policies,

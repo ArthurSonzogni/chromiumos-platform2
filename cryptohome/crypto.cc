@@ -59,6 +59,7 @@ Crypto::Crypto(const hwsec::CryptohomeFrontend* hwsec,
       cryptohome_keys_manager_(cryptohome_keys_manager),
       recovery_hwsec_(recovery_hwsec) {
   CHECK(hwsec);
+  CHECK(hwsec_pw_manager);
   CHECK(cryptohome_keys_manager);
   // recovery_hwsec_ may be nullptr.
 }
@@ -67,6 +68,17 @@ Crypto::~Crypto() {}
 
 void Crypto::Init() {
   cryptohome_keys_manager_->Init();
+
+  // Calling Initialize() to ensure that PinWeaverManager is initialized
+  // (specifically the memory-mapped pinweaver leaf cache file). This is not
+  // necessary as we always ensure state is ready before running any PW
+  // operation functions, but it may result in better boot performance.
+  if (hwsec::Status status = hwsec_pw_manager_->Initialize(); !status.ok()) {
+    LOG(ERROR) << "PinWeaver Manager is not in a good state: "
+               << status.status();
+    // We don't report the error to the caller: this failure shouldn't abort
+    // the daemon initialization.
+  }
 }
 
 void Crypto::PasswordToPasskey(const char* password,

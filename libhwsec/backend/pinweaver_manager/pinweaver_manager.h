@@ -45,6 +45,12 @@ class PinWeaverManager {
 
   virtual ~PinWeaverManager() = default;
 
+  // Performs checks to ensure the SignInHashTree is at good state. This
+  // includes insuring that PinWeaverManager is initialized, not locked out,
+  // and hash tree is valid.
+  // All public PW operation functions should first call StateIsReady().
+  virtual Status StateIsReady() = 0;
+
   // Inserts an LE credential into the system.
   //
   // The Low entropy credential is represented by |le_secret|, and the high
