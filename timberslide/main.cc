@@ -18,9 +18,9 @@ const char kDefaultDeviceLogFile[] = "/sys/kernel/debug/cros_ec/console_log";
 const char kDefaultDeviceUptimeFile[] = "/sys/kernel/debug/cros_ec/uptime";
 const char kDefaultLogDirectory[] = "/var/log/";
 const std::array<std::string_view, 3> kDefaultTokenDatabasePaths = {
+    "/usr/local/cros_ec/tokens.bin",
     "/usr/share/cros_ec/tokens.bin",
     "/usr/local/usr/share/cros_ec/tokens.bin",
-    "/usr/local/cros_ec/tokens.bin",
 };
 }  // namespace
 
