@@ -10,6 +10,7 @@ mod ccd_pass;
 mod display_debug;
 mod dlc_install;
 mod dmesg;
+mod force_fips;
 mod hibernate;
 mod insert_coin;
 mod packet_capture;
@@ -29,6 +30,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
     dlc_install::register(dispatcher);
     display_debug::register(dispatcher);
     dmesg::register(dispatcher);
+    force_fips::register(dispatcher);
     hibernate::register(dispatcher);
     insert_coin::register(dispatcher);
     packet_capture::register(dispatcher);
