@@ -39,7 +39,17 @@ int main(int argc, char* argv[]) {
   std::string modulesPath =
       base::StringPrintf("/lib/modules/%s/modules.devname", unameData.release);
   if (!base::ReadFileToString(base::FilePath(modulesPath), &modules)) {
-    PLOG(FATAL) << "Could not read in list of modules";
+    // Read the global error-code in case it is overwritten.
+    bool ignore_err = errno == ENOENT;
+
+    // When booting a different kernel version from the root disk, we run into
+    // this problem, so try to be helpful (See b/314683192).
+    PLOG(ERROR) << "Could not read in list of modules from " << modulesPath;
+    if (!ignore_err)
+      LOG(FATAL) << "Giving up";
+
+    LOG(ERROR) << "(continuing anyway, likely just a module-version mismatch)";
+    return EX_OK;
   }
 
   umask(0);
