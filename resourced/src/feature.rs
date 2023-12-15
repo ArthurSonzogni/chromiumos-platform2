@@ -50,19 +50,19 @@ impl FeatureManager {
     }
 
     // Adds a feature to the hashmap if it's not present and caches the feature query.
-    fn initialize_feature(&mut self, feature_name: &str) -> Result<()> {
+    fn initialize_feature(&mut self, feature_name: &str, enabled_by_default: bool) -> Result<()> {
         let Entry::Vacant(vacant_entry) = self.features.entry(feature_name.to_string()) else {
             bail!("Double initialization of {}", feature_name);
         };
 
         cfg_if::cfg_if! {
             if #[cfg(feature = "chromeos")] {
-                let feature = featured::Feature::new(feature_name, false)?;
+                let feature = featured::Feature::new(feature_name, enabled_by_default)?;
                 let enabled =
                     featured::PlatformFeatures::get()?.is_feature_enabled_blocking(&feature);
                 vacant_entry.insert(Feature { enabled, raw: feature });
             } else {
-                vacant_entry.insert(Feature { enabled: false });
+                vacant_entry.insert(Feature { enabled: enabled_by_default });
             }
         }
 
@@ -134,12 +134,12 @@ pub fn is_feature_enabled(feature_name: &str) -> Result<bool> {
     }
 }
 
-pub fn initialize_feature(feature_name: &str) -> Result<()> {
+pub fn initialize_feature(feature_name: &str, enabled_by_default: bool) -> Result<()> {
     let feature_manager = FEATURE_MANAGER
         .get()
         .context("FEATURE_MANAGER is not initialized")?;
     if let Ok(mut feature_manager_lock) = feature_manager.lock() {
-        feature_manager_lock.initialize_feature(feature_name)
+        feature_manager_lock.initialize_feature(feature_name, enabled_by_default)
     } else {
         bail!("Failed to lock FEATURE_MANAGER");
     }

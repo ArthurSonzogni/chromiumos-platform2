@@ -639,4 +639,15 @@ mod tests {
         assert_eq!(read_file_to_u64(&rps_down_path).unwrap(), 50);
         assert_eq!(read_file_to_u64(&rps_up_path).unwrap(), 75);
     }
+
+    #[test]
+    fn test_initialize_feature_in_default_state() {
+
+        feature::init_for_test();
+        assert!(feature::initialize_feature("FakeFeatureDisabled", false).is_ok());
+        assert!(!feature::is_feature_enabled("FakeFeatureDisabled").unwrap());
+
+        assert!(feature::initialize_feature("FakeFeatureEnabled", true).is_ok());
+        assert!(feature::is_feature_enabled("FakeFeatureEnabled").unwrap());
+    }
 }

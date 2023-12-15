@@ -878,7 +878,7 @@ pub async fn service_main() -> Result<()> {
         }),
     );
 
-    if let Err(err) = feature::initialize_feature(VARIABLE_TIME_MEMORY_SIGNAL_FEATURE_NAME) {
+    if let Err(err) = feature::initialize_feature(VARIABLE_TIME_MEMORY_SIGNAL_FEATURE_NAME, false) {
         error!(
             "Failed to update feature {}: {}",
             VARIABLE_TIME_MEMORY_SIGNAL_FEATURE_NAME, err

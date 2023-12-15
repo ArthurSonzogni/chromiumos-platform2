@@ -53,7 +53,7 @@ pub enum MediaDynamicCgroupAction {
 const FEATURE_MEDIA_DYNAMIC_CGROUP: &str = "CrOSLateBootMediaDynamicCgroup";
 
 pub fn init() -> Result<()> {
-    feature::initialize_feature(FEATURE_MEDIA_DYNAMIC_CGROUP)
+    feature::initialize_feature(FEATURE_MEDIA_DYNAMIC_CGROUP, false)
 }
 
 fn write_cpusets(root: &Path, cpus: &str) -> Result<()> {
