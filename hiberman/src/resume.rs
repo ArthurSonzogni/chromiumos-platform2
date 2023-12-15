@@ -175,6 +175,7 @@ impl ResumeConductor {
                 account_id,
                 session_id,
             } => {
+                debug!("User authentication completed");
                 self.current_user = Some(sanitize_username(&account_id)?);
                 cryptohome::get_user_key_for_session(&session_id)?
             }
@@ -218,7 +219,7 @@ impl ResumeConductor {
             return Err(e);
         }
 
-        // We attempt to resume from hibernate.
+        info!("Starting resume from hibernate");
 
         self.timestamp_start = UNIX_EPOCH.elapsed().unwrap_or(Duration::ZERO);
 
