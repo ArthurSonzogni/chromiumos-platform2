@@ -221,30 +221,6 @@ class UserDataAuth {
       const base::RepeatingCallback<
           void(user_data_auth::FingerprintScanResult)>& callback);
 
-  // Set the PrepareAuthFactorProgress callback. This is usually called by the
-  // DBus adaptor.
-  void SetPrepareAuthFactorProgressCallback(
-      const base::RepeatingCallback<
-          void(user_data_auth::PrepareAuthFactorProgress)>& callback);
-
-  // Set the AuthFactorAdded callback. This is usually called by the
-  // DBus adaptor.
-  void SetAuthFactorAddedCallback(
-      const base::RepeatingCallback<void(user_data_auth::AuthFactorAdded)>&
-          callback);
-
-  // Set the AuthFactorRemoved callback. This is usually called by the
-  // DBus adaptor.
-  void SetAuthFactorRemovedCallback(
-      const base::RepeatingCallback<void(user_data_auth::AuthFactorRemoved)>&
-          callback);
-
-  // Set the AuthFactorUpdated callback. This is usually called by the
-  // DBus adaptor.
-  void SetAuthFactorUpdatedCallback(
-      const base::RepeatingCallback<void(user_data_auth::AuthFactorUpdated)>&
-          callback);
-
   // Set the AuthSessionExpiring callback. This is usually called by the
   // DBus adaptor.
   void SetAuthSessionExpiringCallback(
@@ -1232,22 +1208,6 @@ class UserDataAuth {
   // The repeating callback to send FingerprintScanResult signal.
   base::RepeatingCallback<void(user_data_auth::FingerprintScanResult)>
       fingerprint_scan_result_callback_;
-
-  // The repeating callback to send PrepareAuthFactorProgress signal.
-  base::RepeatingCallback<void(user_data_auth::PrepareAuthFactorProgress)>
-      prepare_auth_factor_progress_callback_;
-
-  // The repeating callback to send AuthFactorAdded signal.
-  base::RepeatingCallback<void(user_data_auth::AuthFactorAdded)>
-      auth_factor_added_callback_;
-
-  // The repeating callback to send AuthFactorRemoved signal.
-  base::RepeatingCallback<void(user_data_auth::AuthFactorRemoved)>
-      auth_factor_removed_callback_;
-
-  // The repeating callback to send AuthFactorUpdated signal.
-  base::RepeatingCallback<void(user_data_auth::AuthFactorUpdated)>
-      auth_factor_updated_callback_;
 
   // The repeating callback to send AuthSessionExpiring signal.
   base::RepeatingCallback<void(user_data_auth::AuthSessionExpiring)>

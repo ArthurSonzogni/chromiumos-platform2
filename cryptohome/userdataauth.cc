@@ -1144,9 +1144,6 @@ void UserDataAuth::CreateBiometricsService() {
 void UserDataAuth::OnFingerprintEnrollProgress(
     user_data_auth::AuthEnrollmentProgress result) {
   AssertOnMountThread();
-  if (!prepare_auth_factor_progress_callback_) {
-    return;
-  }
   ReportFingerprintEnrollSignal(result.scan_result().fingerprint_result());
   user_data_auth::PrepareAuthFactorProgress progress;
   user_data_auth::PrepareAuthFactorForAddProgress add_progress;
@@ -1155,15 +1152,12 @@ void UserDataAuth::OnFingerprintEnrollProgress(
   *add_progress.mutable_biometrics_progress() = result;
   progress.set_purpose(user_data_auth::PURPOSE_ADD_AUTH_FACTOR);
   *progress.mutable_add_progress() = add_progress;
-  prepare_auth_factor_progress_callback_.Run(progress);
+  signalling_intf_->SendPrepareAuthFactorProgress(progress);
 }
 
 void UserDataAuth::OnFingerprintAuthProgress(
     user_data_auth::AuthScanDone result) {
   AssertOnMountThread();
-  if (!prepare_auth_factor_progress_callback_) {
-    return;
-  }
   ReportFingerprintAuthSignal(result.scan_result().fingerprint_result());
   user_data_auth::PrepareAuthFactorProgress progress;
   user_data_auth::PrepareAuthFactorForAuthProgress auth_progress;
@@ -1172,7 +1166,7 @@ void UserDataAuth::OnFingerprintAuthProgress(
   *auth_progress.mutable_biometrics_progress() = result;
   progress.set_purpose(user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
   *progress.mutable_auth_progress() = auth_progress;
-  prepare_auth_factor_progress_callback_.Run(progress);
+  signalling_intf_->SendPrepareAuthFactorProgress(progress);
 }
 
 void UserDataAuth::CreateRecoverableKeyStoreBackendCertProvider() {
@@ -1682,34 +1676,10 @@ void UserDataAuth::SetFingerprintScanResultCallback(
   fingerprint_scan_result_callback_ = callback;
 }
 
-void UserDataAuth::SetPrepareAuthFactorProgressCallback(
-    const base::RepeatingCallback<
-        void(user_data_auth::PrepareAuthFactorProgress)>& callback) {
-  prepare_auth_factor_progress_callback_ = callback;
-}
-
 void UserDataAuth::SetEvictedKeyRestoredCallback(
     const base::RepeatingCallback<void(user_data_auth::EvictedKeyRestored)>&
         callback) {
   evicted_key_restored_callback_ = callback;
-}
-
-void UserDataAuth::SetAuthFactorAddedCallback(
-    const base::RepeatingCallback<void(user_data_auth::AuthFactorAdded)>&
-        callback) {
-  auth_factor_added_callback_ = callback;
-}
-
-void UserDataAuth::SetAuthFactorRemovedCallback(
-    const base::RepeatingCallback<void(user_data_auth::AuthFactorRemoved)>&
-        callback) {
-  auth_factor_removed_callback_ = callback;
-}
-
-void UserDataAuth::SetAuthFactorUpdatedCallback(
-    const base::RepeatingCallback<void(user_data_auth::AuthFactorUpdated)>&
-        callback) {
-  auth_factor_updated_callback_ = callback;
 }
 
 void UserDataAuth::SetAuthSessionExpiringCallback(
@@ -3421,9 +3391,7 @@ void UserDataAuth::AddAuthFactorWithSession(
   // Wrap callback to signal AuthFactorAdded.
   OnDoneCallback<user_data_auth::AddAuthFactorReply>
       on_done_wrapped_with_signal_ = base::BindOnce(
-          [](base::RepeatingCallback<void(user_data_auth::AuthFactorAdded)>
-                 auth_factor_added_callback,
-             std::string broadcast_id,
+          [](SignallingInterface* signalling_intf, std::string broadcast_id,
              OnDoneCallback<user_data_auth::AddAuthFactorReply> cb,
              const user_data_auth::AddAuthFactorReply& reply) {
             user_data_auth::AuthFactorAdded completed_proto;
@@ -3431,14 +3399,11 @@ void UserDataAuth::AddAuthFactorWithSession(
               completed_proto.mutable_auth_factor()->CopyFrom(
                   reply.added_auth_factor().auth_factor());
               completed_proto.set_broadcast_id(broadcast_id);
-
-              if (!auth_factor_added_callback.is_null()) {
-                auth_factor_added_callback.Run(completed_proto);
-              }
+              signalling_intf->SendAuthFactorAdded(completed_proto);
             }
             std::move(cb).Run(reply);
           },
-          auth_factor_added_callback_, auth_session->serialized_public_token(),
+          signalling_intf_, auth_session->serialized_public_token(),
           std::move(on_done));
 
   user_data_auth::AddAuthFactorReply reply;
@@ -3613,9 +3578,7 @@ void UserDataAuth::UpdateAuthFactorWithSession(
   // Wrap callback to signal AuthFactorUpdated.
   OnDoneCallback<user_data_auth::UpdateAuthFactorReply>
       on_done_wrapped_with_signal_ = base::BindOnce(
-          [](base::RepeatingCallback<void(user_data_auth::AuthFactorUpdated)>
-                 auth_factor_updated_callback,
-             std::string broadcast_id,
+          [](SignallingInterface* signalling_intf, std::string broadcast_id,
              OnDoneCallback<user_data_auth::UpdateAuthFactorReply> cb,
              const user_data_auth::UpdateAuthFactorReply& reply) {
             user_data_auth::AuthFactorUpdated completed_proto;
@@ -3625,15 +3588,12 @@ void UserDataAuth::UpdateAuthFactorWithSession(
               completed_proto.mutable_auth_factor()->CopyFrom(
                   reply.updated_auth_factor().auth_factor());
               completed_proto.set_broadcast_id(broadcast_id);
-
-              if (!auth_factor_updated_callback.is_null()) {
-                auth_factor_updated_callback.Run(completed_proto);
-              }
+              signalling_intf->SendAuthFactorUpdated(completed_proto);
             }
             std::move(cb).Run(reply);
           },
-          auth_factor_updated_callback_,
-          auth_session->serialized_public_token(), std::move(on_done));
+          signalling_intf_, auth_session->serialized_public_token(),
+          std::move(on_done));
   user_data_auth::UpdateAuthFactorReply reply;
 
   // Populate the request auth factor with accurate sysinfo.
@@ -3871,18 +3831,16 @@ void UserDataAuth::RemoveAuthFactorWithSession(
   // Wrap callback to signal AuthenticateAuthFactorCompleted.
   OnDoneCallback<user_data_auth::RemoveAuthFactorReply>
       on_done_wrapped_with_signal_cb = base::BindOnce(
-          [](base::RepeatingCallback<void(user_data_auth::AuthFactorRemoved)>
-                 auth_factor_removed_callback,
+          [](SignallingInterface* signalling_intf,
              user_data_auth::AuthFactorRemoved auth_factor_removed_msg,
              OnDoneCallback<user_data_auth::RemoveAuthFactorReply> cb,
              const user_data_auth::RemoveAuthFactorReply& reply) {
-            if (!reply.has_error_info() &&
-                !auth_factor_removed_callback.is_null()) {
-              auth_factor_removed_callback.Run(auth_factor_removed_msg);
+            if (!reply.has_error_info()) {
+              signalling_intf->SendAuthFactorRemoved(auth_factor_removed_msg);
             }
             std::move(cb).Run(reply);
           },
-          auth_factor_removed_callback_, std::move(auth_factor_removed_msg),
+          signalling_intf_, std::move(auth_factor_removed_msg),
           std::move(on_done));
   StatusCallback on_remove_auth_factor_finished =
       base::BindOnce(&ReplyWithStatus<user_data_auth::RemoveAuthFactorReply>,

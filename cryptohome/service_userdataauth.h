@@ -37,17 +37,6 @@ class UserDataAuthAdaptor
     service_->SetFingerprintScanResultCallback(
         base::BindRepeating(&UserDataAuthAdaptor::FingerprintScanResultCallback,
                             base::Unretained(this)));
-    service_->SetPrepareAuthFactorProgressCallback(base::BindRepeating(
-        &UserDataAuthAdaptor::PrepareAuthFactorProgressCallback,
-        base::Unretained(this)));
-    service_->SetAuthFactorAddedCallback(base::BindRepeating(
-        &UserDataAuthAdaptor::AuthFactorAddedCallback, base::Unretained(this)));
-    service_->SetAuthFactorRemovedCallback(
-        base::BindRepeating(&UserDataAuthAdaptor::AuthFactorRemovedCallback,
-                            base::Unretained(this)));
-    service_->SetAuthFactorUpdatedCallback(
-        base::BindRepeating(&UserDataAuthAdaptor::AuthFactorUpdatedCallback,
-                            base::Unretained(this)));
     service_->SetAuthSessionExpiringCallback(
         base::BindRepeating(&UserDataAuthAdaptor::AuthSessionExpiringCallback,
                             base::Unretained(this)));
@@ -443,20 +432,6 @@ class UserDataAuthAdaptor
   void FingerprintScanResultCallback(
       user_data_auth::FingerprintScanResult result);
 
-  // This is called by UserDataAuth for processing an emitted signal from
-  // a prepared AuthFactor. All we do here is send the signal.
-  void PrepareAuthFactorProgressCallback(
-      user_data_auth::PrepareAuthFactorProgress signal);
-
-  // This is called by UserDataAuth when a new AuthFactor is added for a user.
-  void AuthFactorAddedCallback(user_data_auth::AuthFactorAdded signal);
-
-  // This is called by UserDataAuth when an AuthFactor is removed for a user.
-  void AuthFactorRemovedCallback(user_data_auth::AuthFactorRemoved signal);
-
-  // This is called by UserDataAuth when an AuthFactor is updated for a user.
-  void AuthFactorUpdatedCallback(user_data_auth::AuthFactorUpdated signal);
-
   // AuthSessionExpiringCallback is sent when AuthSession has less than a
   // minute remaining.
   void AuthSessionExpiringCallback(user_data_auth::AuthSessionExpiring signal);
@@ -477,10 +452,26 @@ class UserDataAuthAdaptor
     Signalling& operator=(const Signalling&) = delete;
 
    private:
+    void SendPrepareAuthFactorProgress(
+        const user_data_auth::PrepareAuthFactorProgress& signal) override {
+      adaptor_->SendPrepareAuthFactorProgressSignal(signal);
+    }
     void SendAuthenticateAuthFactorCompleted(
         const user_data_auth::AuthenticateAuthFactorCompleted& signal)
         override {
       adaptor_->SendAuthenticateAuthFactorCompletedSignal(signal);
+    }
+    void SendAuthFactorAdded(
+        const user_data_auth::AuthFactorAdded& signal) override {
+      adaptor_->SendAuthFactorAddedSignal(signal);
+    }
+    void SendAuthFactorRemoved(
+        const user_data_auth::AuthFactorRemoved& signal) override {
+      adaptor_->SendAuthFactorRemovedSignal(signal);
+    }
+    void SendAuthFactorUpdated(
+        const user_data_auth::AuthFactorUpdated& signal) override {
+      adaptor_->SendAuthFactorUpdatedSignal(signal);
     }
 
     UserDataAuthInterfaceAdaptor* adaptor_;

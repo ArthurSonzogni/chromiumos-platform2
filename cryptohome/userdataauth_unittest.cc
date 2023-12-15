@@ -74,6 +74,7 @@
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_pkcs11_init.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_signalling.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/pkcs11/fake_pkcs11_token.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
@@ -120,6 +121,7 @@ using ::hwsec_foundation::status::OkStatus;
 using ::hwsec_foundation::status::StatusChain;
 using ::testing::_;
 using ::testing::AtLeast;
+using ::testing::AtMost;
 using ::testing::ByMove;
 using ::testing::DoAll;
 using ::testing::ElementsAre;
@@ -4613,6 +4615,7 @@ class UserDataAuthApiTest : public UserDataAuthTest {
         .WillByDefault(ReturnValue(true));
     userdataauth_ = std::make_unique<UserDataAuth>();
     userdataauth_->set_hwsec_factory(&sim_factory_);
+    userdataauth_->SetSignallingInterface(signalling_);
 
     SetupDefaultUserDataAuth();
     SetupMountFactory();
@@ -4726,14 +4729,13 @@ class UserDataAuthApiTest : public UserDataAuthTest {
         ->set_secret(kPassword1);
 
     bool signal_sent = false;
-    user_data_auth::AuthFactorAdded proto_copy;
-    userdataauth_->SetAuthFactorAddedCallback(base::BindRepeating(
-        [](bool* called, user_data_auth::AuthFactorAdded* proto_copy,
-           const user_data_auth::AuthFactorAdded proto) {
-          proto_copy->CopyFrom(proto);
-          *called = true;
-        },
-        &signal_sent, &proto_copy));
+    user_data_auth::AuthFactorAdded signal_proto;
+    EXPECT_CALL(signalling_, SendAuthFactorAdded(_))
+        .Times(AtMost(1))
+        .WillOnce([&](auto&& signal) {
+          signal_sent = true;
+          signal_proto = std::move(signal);
+        });
 
     std::optional<user_data_auth::AddAuthFactorReply> add_factor_reply =
         AddAuthFactorSync(add_factor_request);
@@ -4741,6 +4743,7 @@ class UserDataAuthApiTest : public UserDataAuthTest {
       LOG(ERROR)
           << "Call to AddAuthFactor() did not complete in CreateTestUser().";
       EXPECT_FALSE(signal_sent);
+      ::testing::Mock::VerifyAndClearExpectations(&signalling_);
       return false;
     }
     if (add_factor_reply->error_info().primary_action() !=
@@ -4748,12 +4751,13 @@ class UserDataAuthApiTest : public UserDataAuthTest {
       LOG(ERROR) << "Call to AddAuthFactor() failed in CreateTestUser(): "
                  << GetProtoDebugString(add_factor_reply.value());
       EXPECT_FALSE(signal_sent);
+      ::testing::Mock::VerifyAndClearExpectations(&signalling_);
       return false;
     }
 
     EXPECT_TRUE(signal_sent);
-    EXPECT_THAT(proto_copy.auth_factor().label(), kPasswordLabel);
-    EXPECT_THAT(proto_copy.auth_factor().type(),
+    EXPECT_THAT(signal_proto.auth_factor().label(), kPasswordLabel);
+    EXPECT_THAT(signal_proto.auth_factor().type(),
                 user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_PASSWORD);
 
     // Invalidate the session.
@@ -4938,6 +4942,9 @@ class UserDataAuthApiTest : public UserDataAuthTest {
   static constexpr char kTestErrorString[] = "ErrorForTestingOnly";
 
   hwsec::Tpm2SimulatorFactoryForTest sim_factory_;
+
+  // Mock to use to capture any signals sent.
+  NiceMock<MockSignalling> signalling_;
 };
 
 // Matches against user_data_auth::CryptohomeErrorInfo to see if it contains an

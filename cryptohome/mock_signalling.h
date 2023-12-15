@@ -20,8 +20,24 @@ class MockSignalling : public SignallingInterface {
   MockSignalling& operator=(const MockSignalling&) = delete;
 
   MOCK_METHOD(void,
+              SendPrepareAuthFactorProgress,
+              (const user_data_auth::PrepareAuthFactorProgress&),
+              (override));
+  MOCK_METHOD(void,
               SendAuthenticateAuthFactorCompleted,
               (const user_data_auth::AuthenticateAuthFactorCompleted&),
+              (override));
+  MOCK_METHOD(void,
+              SendAuthFactorAdded,
+              (const user_data_auth::AuthFactorAdded&),
+              (override));
+  MOCK_METHOD(void,
+              SendAuthFactorRemoved,
+              (const user_data_auth::AuthFactorRemoved&),
+              (override));
+  MOCK_METHOD(void,
+              SendAuthFactorUpdated,
+              (const user_data_auth::AuthFactorUpdated&),
               (override));
 };
 

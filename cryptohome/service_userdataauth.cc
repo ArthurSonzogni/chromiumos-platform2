@@ -962,26 +962,6 @@ void UserDataAuthAdaptor::FingerprintScanResultCallback(
   SendAuthScanResultSignal(signal_payload);
 }
 
-void UserDataAuthAdaptor::PrepareAuthFactorProgressCallback(
-    user_data_auth::PrepareAuthFactorProgress signal) {
-  SendPrepareAuthFactorProgressSignal(signal);
-}
-
-void UserDataAuthAdaptor::AuthFactorAddedCallback(
-    user_data_auth::AuthFactorAdded signal) {
-  SendAuthFactorAddedSignal(signal);
-}
-
-void UserDataAuthAdaptor::AuthFactorRemovedCallback(
-    user_data_auth::AuthFactorRemoved signal) {
-  SendAuthFactorRemovedSignal(signal);
-}
-
-void UserDataAuthAdaptor::AuthFactorUpdatedCallback(
-    user_data_auth::AuthFactorUpdated signal) {
-  SendAuthFactorUpdatedSignal(signal);
-}
-
 void UserDataAuthAdaptor::AuthSessionExpiringCallback(
     user_data_auth::AuthSessionExpiring signal) {
   SendAuthSessionExpiringSignal(signal);

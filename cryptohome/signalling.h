@@ -17,8 +17,16 @@ class SignallingInterface {
 
   // Send the given signal. All of these functions work the same way: calling
   // "SendXxx" will send the UserDataAuth D-Bus signal named "Xxx".
+  virtual void SendPrepareAuthFactorProgress(
+      const user_data_auth::PrepareAuthFactorProgress& signal) = 0;
   virtual void SendAuthenticateAuthFactorCompleted(
       const user_data_auth::AuthenticateAuthFactorCompleted& signal) = 0;
+  virtual void SendAuthFactorAdded(
+      const user_data_auth::AuthFactorAdded& signal) = 0;
+  virtual void SendAuthFactorRemoved(
+      const user_data_auth::AuthFactorRemoved& signal) = 0;
+  virtual void SendAuthFactorUpdated(
+      const user_data_auth::AuthFactorUpdated& signal) = 0;
 };
 
 // Null implementation of the signalling interface that considers every signal
@@ -32,8 +40,16 @@ class NullSignalling : public SignallingInterface {
   NullSignalling& operator=(const NullSignalling&) = delete;
 
  private:
+  void SendPrepareAuthFactorProgress(
+      const user_data_auth::PrepareAuthFactorProgress& signal) override {}
   void SendAuthenticateAuthFactorCompleted(
       const user_data_auth::AuthenticateAuthFactorCompleted& signal) override {}
+  void SendAuthFactorAdded(
+      const user_data_auth::AuthFactorAdded& signal) override {}
+  void SendAuthFactorRemoved(
+      const user_data_auth::AuthFactorRemoved& signal) override {}
+  void SendAuthFactorUpdated(
+      const user_data_auth::AuthFactorUpdated& signal) override {}
 };
 
 }  // namespace cryptohome
