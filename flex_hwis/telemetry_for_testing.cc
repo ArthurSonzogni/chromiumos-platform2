@@ -144,6 +144,16 @@ void TelemetryForTesting::AddTpmInfo() {
   info_->tpm_result = mojom::TpmResult::NewTpmInfo({std::move(tpm_info)});
 }
 
+void TelemetryForTesting::AddTelemetryInfo() {
+  AddSystemInfo();
+  AddCpuInfo();
+  AddMemoryInfo();
+  AddPciBusInfo(mojom::BusDeviceClass::kEthernetController);
+  AddGraphicsInfo();
+  AddInputInfo();
+  AddTpmInfo();
+}
+
 mojom::TelemetryInfoPtr TelemetryForTesting::Get() const {
   std::vector<mojom::BusDevicePtr> devices_copy;
   for (auto& dev : devices_) {
