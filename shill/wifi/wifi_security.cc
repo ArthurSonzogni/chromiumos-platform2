@@ -248,11 +248,10 @@ WiFiSecurity WiFiSecurity::Combine(WiFiSecurity::Mode mode) const {
   }
 
   if (SecurityClass() == kSecurityClassNone) {
-    // kNone combines only with itself (handled above).
-    if (mode == kNone || mode_ == kNone) {
-      return {};
+    // Stick to the more secure mode.
+    if (mode == kOwe || mode_ == kOwe) {
+      return kOwe;
     }
-    // Here only kTransOwe + kOwe is possible and they combine to kTransOwe.
     return kTransOwe;
   }
 

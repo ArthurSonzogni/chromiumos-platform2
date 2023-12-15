@@ -48,4 +48,9 @@ MockManager::MockManager(ControlInterface* control_interface,
 
 MockManager::~MockManager() = default;
 
+void MockManager::set_wifi_provider(std::unique_ptr<WiFiProvider> provider) {
+  this->wifi_provider_ = std::move(provider);
+  this->UpdateProviderMapping();
+}
+
 }  // namespace shill

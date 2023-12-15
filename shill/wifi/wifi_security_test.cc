@@ -340,8 +340,8 @@ TEST(WiFiSecurityTest, CombineSecurityNone) {
   WiFiSecurity sec = WiFiSecurity::kNone;
 
   EXPECT_EQ(sec.Combine(WiFiSecurity::kNone), WiFiSecurity::kNone);
-  EXPECT_FALSE(sec.Combine(WiFiSecurity::kTransOwe).IsValid());
-  EXPECT_FALSE(sec.Combine(WiFiSecurity::kOwe).IsValid());
+  EXPECT_EQ(sec.Combine(WiFiSecurity::kTransOwe), WiFiSecurity::kTransOwe);
+  EXPECT_EQ(sec.Combine(WiFiSecurity::kOwe), WiFiSecurity::kOwe);
   EXPECT_FALSE(sec.Combine(WiFiSecurity::kWep).IsValid());
   EXPECT_FALSE(sec.Combine(WiFiSecurity::kWpa).IsValid());
   EXPECT_FALSE(sec.Combine(WiFiSecurity::kWpaWpa2).IsValid());
@@ -359,9 +359,9 @@ TEST(WiFiSecurityTest, CombineSecurityNone) {
 TEST(WiFiSecurityTest, CombineSecurityTransOwe) {
   WiFiSecurity sec = WiFiSecurity::kTransOwe;
 
-  EXPECT_FALSE(sec.Combine(WiFiSecurity::kNone).IsValid());
+  EXPECT_EQ(sec.Combine(WiFiSecurity::kNone), WiFiSecurity::kTransOwe);
   EXPECT_EQ(sec.Combine(WiFiSecurity::kTransOwe), WiFiSecurity::kTransOwe);
-  EXPECT_EQ(sec.Combine(WiFiSecurity::kOwe), WiFiSecurity::kTransOwe);
+  EXPECT_EQ(sec.Combine(WiFiSecurity::kOwe), WiFiSecurity::kOwe);
   EXPECT_FALSE(sec.Combine(WiFiSecurity::kWep).IsValid());
   EXPECT_FALSE(sec.Combine(WiFiSecurity::kWpa).IsValid());
   EXPECT_FALSE(sec.Combine(WiFiSecurity::kWpaWpa2).IsValid());
@@ -379,8 +379,8 @@ TEST(WiFiSecurityTest, CombineSecurityTransOwe) {
 TEST(WiFiSecurityTest, CombineSecurityOwe) {
   WiFiSecurity sec = WiFiSecurity::kOwe;
 
-  EXPECT_FALSE(sec.Combine(WiFiSecurity::kNone).IsValid());
-  EXPECT_EQ(sec.Combine(WiFiSecurity::kTransOwe), WiFiSecurity::kTransOwe);
+  EXPECT_EQ(sec.Combine(WiFiSecurity::kNone), WiFiSecurity::kOwe);
+  EXPECT_EQ(sec.Combine(WiFiSecurity::kTransOwe), WiFiSecurity::kOwe);
   EXPECT_EQ(sec.Combine(WiFiSecurity::kOwe), WiFiSecurity::kOwe);
   EXPECT_FALSE(sec.Combine(WiFiSecurity::kWep).IsValid());
   EXPECT_FALSE(sec.Combine(WiFiSecurity::kWpa).IsValid());

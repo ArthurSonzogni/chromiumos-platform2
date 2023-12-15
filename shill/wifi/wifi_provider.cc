@@ -491,14 +491,13 @@ bool WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr& endpoint) {
 
   WiFiServiceRefPtr service = FindService(endpoint);
   if (!service) {
-    const bool hidden_ssid = false;
-    if (security == WiFiSecurity::kOwe && !endpoint->owe_ssid().empty()) {
+    if (security == WiFiSecurity::kTransOwe && endpoint->has_rsn_owe() &&
+        !endpoint->owe_ssid().empty()) {
       LOG(WARNING) << "Found a hidden OWE BSS w/o public counterpart";
       ssid = endpoint->owe_ssid();
-      security = WiFiSecurity::kTransOwe;
     }
     service = AddService(ssid, mode, WiFiSecurity::SecurityClass(security),
-                         security, hidden_ssid);
+                         security, /*is_hidden=*/false);
   }
 
   std::string asgn_endpoint_log = base::StringPrintf(

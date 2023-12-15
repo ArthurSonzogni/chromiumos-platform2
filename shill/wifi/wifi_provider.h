@@ -314,8 +314,9 @@ class WiFiProvider : public ProviderInterface {
   std::string GetUniqueLocalDeviceName(const std::string& iface_prefix);
 
  private:
-  friend class WiFiProviderTest;
+  friend class MockWiFiProvider;
   friend class P2PDeviceTest;
+  friend class WiFiProviderTest;
 
   using EndpointServiceMap = std::map<const WiFiEndpoint*, WiFiServiceRefPtr>;
   using PasspointCredentialsMap =

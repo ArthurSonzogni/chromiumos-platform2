@@ -405,6 +405,8 @@ class WiFiService : public Service {
 
   // Helper function used in constructor mainly to configure key management.
   void SetSecurityProperties();
+  // Helper function to update key management.
+  void UpdateKeyManagement();
 
   // Wrapper for |WiFiService::SignalLevel()| to register it in
   // |Service::store_|.

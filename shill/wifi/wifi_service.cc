@@ -357,7 +357,13 @@ void WiFiService::SetSecurityProperties() {
   if (Is8021x()) {
     // Passphrases are not mandatory for 802.1X.
     need_passphrase_ = false;
-  } else if (security_class() == kSecurityClassPsk) {
+  } else {
+    UpdateKeyManagement();
+  }
+}
+
+void WiFiService::UpdateKeyManagement() {
+  if (security_class() == kSecurityClassPsk) {
 #if !defined(DISABLE_WPA3_SAE)
     // WPA/WPA2-PSK or WPA3-SAE.
     SetEAPKeyManagement(
@@ -387,68 +393,6 @@ void WiFiService::AddEndpoint(const WiFiEndpointConstRefPtr& endpoint) {
   DCHECK(IsSecurityMatch(endpoint->security_mode()));
 
   endpoints_.insert(endpoint);
-  // When Security is not set (e.g. we see endpoints for some network that user
-  // has not visited/configured/..., we create Service for it and add endpoints
-  // to it) then we keep Security property flexible and update on every new
-  // endpoint found.  Once user connects it becomes frozen (but this logic is
-  // handled in WiFiSecurity::Combine() function.  Note that we do nothing in
-  // RemoveEndpoint() - that is intentional, until we connect we want to have
-  // the largest possible set of endpoints belonging to given network.
-  auto new_security = security_.Combine(endpoint->security_mode());
-  if (security_.IsFrozen() && new_security.mode() != security_.mode()) {
-    auto mode = Metrics::kWirelessSecurityChangeMax;
-    // In the initial phase we allow all security changes after initial
-    // connection just to have some information about how disruptive it would
-    // be to block them.
-    switch (new_security.mode()) {
-      case WiFiSecurity::kWpaWpa2:
-        if (security_ == WiFiSecurity::kWpa2) {
-          mode = Metrics::kWirelessSecurityChangeWpa2ToWpa12;
-        }
-        break;
-      case WiFiSecurity::kWpaAll:
-        if (security_ == WiFiSecurity::kWpa3) {
-          mode = Metrics::kWirelessSecurityChangeWpa3ToWpa123;
-        } else if (security_ == WiFiSecurity::kWpa2Wpa3) {
-          mode = Metrics::kWirelessSecurityChangeWpa23ToWpa123;
-        } else if (security_ == WiFiSecurity::kWpaWpa2) {
-          mode = Metrics::kWirelessSecurityChangeWpa12ToWpa123;
-        }
-        break;
-      case WiFiSecurity::kWpa2Wpa3:
-        if (security_ == WiFiSecurity::kWpa3) {
-          mode = Metrics::kWirelessSecurityChangeWpa3ToWpa23;
-        }
-        break;
-      case WiFiSecurity::kWpaWpa2Enterprise:
-        if (security_ == WiFiSecurity::kWpa2Enterprise) {
-          mode = Metrics::kWirelessSecurityChangeEAPWpa2ToWpa12;
-        }
-        break;
-      case WiFiSecurity::kWpaAllEnterprise:
-        if (security_ == WiFiSecurity::kWpa3Enterprise) {
-          mode = Metrics::kWirelessSecurityChangeEAPWpa3ToWpa123;
-        } else if (security_ == WiFiSecurity::kWpa2Wpa3Enterprise) {
-          mode = Metrics::kWirelessSecurityChangeEAPWpa23ToWpa123;
-        } else if (security_ == WiFiSecurity::kWpaWpa2Enterprise) {
-          mode = Metrics::kWirelessSecurityChangeEAPWpa12ToWpa123;
-        }
-        break;
-      case WiFiSecurity::kWpa2Wpa3Enterprise:
-        if (security_ == WiFiSecurity::kWpa3Enterprise) {
-          mode = Metrics::kWirelessSecurityChangeEAPWpa3ToWpa23;
-        }
-        break;
-      default:
-        break;
-    }
-    if (mode != Metrics::kWirelessSecurityChangeMax) {
-      metrics()->SendEnumToUMA(Metrics::kMetricWirelessSecurityChange, mode,
-                               Metrics::kWirelessSecurityChangeMax);
-    }
-  }
-  security_ = new_security;
-
   UpdateFromEndpoints();
 }
 
@@ -668,8 +612,8 @@ bool WiFiService::Load(const StoreInterface* storage) {
     disconnect_time_.FromDeltaSinceWindowsEpoch(base::Microseconds(delta));
   }
 
-  // NB: mode, security and ssid parameters are never read in from
-  // Load() as they are provided from the scan.
+  // NB: mode and ssid parameters are never read in from Load() as they are
+  // provided from the scan.
 
   std::string passphrase;
   if (storage->GetString(id, kStorageCredentialPassphrase, &passphrase)) {
@@ -681,12 +625,19 @@ bool WiFiService::Load(const StoreInterface* storage) {
   std::string security_str;
   if (storage->GetString(id, kStorageSecurity, &security_str)) {
     WiFiSecurity security(security_str);
-    if (security_.IsValid() && security_ != security) {
-      SLOG(2) << "Overwriting Security property: " << security_ << " <- "
-              << security_str;
+    if (!security.IsValid()) {
+      LOG(ERROR) << "Read invalid Security from storage";
+    } else {
+      // This should be guaranteed by the WiFiProvider and the rules by which
+      // endpoints are added to the service.
+      CHECK_EQ(security.SecurityClass(), security_class());
+      if (security != security_) {
+        SLOG(2) << "Overwriting Security property: " << security_ << " <- "
+                << security_str;
+        security_ = security;
+      }
+      security_.Freeze();
     }
-    security_ = security;
-    security_.Freeze();
   }
 
   expecting_disconnect_ = false;
@@ -851,8 +802,7 @@ bool WiFiService::IsMatch(const std::vector<uint8_t>& ssid,
 
 bool WiFiService::IsMatch(const WiFiEndpointConstRefPtr& endpoint) const {
   if (ssid() != endpoint->ssid()) {
-    if (security() != WiFiSecurity::kTransOwe ||
-        endpoint->security_mode() != WiFiSecurity::kOwe ||
+    if (security() != WiFiSecurity::kTransOwe || !endpoint->has_rsn_owe() ||
         ssid() != endpoint->owe_ssid()) {
       return false;
     }
@@ -1357,6 +1307,7 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
       key_mgmt += base::StringPrintf(" %s", ft_mgmt.c_str());
     }
   }
+  SLOG(2) << "Sending KeyMgmt to supplicant: " << key_mgmt;
   params.Set<std::string>(WPASupplicant::kNetworkPropertyEapKeyManagement,
                           key_mgmt);
 
@@ -1538,9 +1489,6 @@ void WiFiService::UpdateFromEndpoints() {
   }
   frequency_list_.assign(frequency_set.begin(), frequency_set.end());
 
-  if (Is8021x())
-    cipher_8021x_ = ComputeCipher8021x(endpoints_);
-
   uint16_t frequency = 0;
   int16_t signal = WiFiService::SignalLevelMin;
   std::string bssid;
@@ -1587,8 +1535,6 @@ void WiFiService::UpdateFromEndpoints() {
     SetStrength(SignalToStrength(signal));
   }
 
-  // Either cipher_8021x_ or security_ may have changed. Recomputing is
-  // harmless.
   UpdateSecurity();
   // WPA2/3 info may change this.
   UpdateConnectable();
@@ -1614,6 +1560,90 @@ bool WiFiService::IsAESCapable() const {
 }
 
 void WiFiService::UpdateSecurity() {
+  if (!endpoints_.empty()) {
+    WiFiSecurity current_security;
+    for (const auto& ep : endpoints_) {
+      current_security = current_security.Combine(ep->security_mode());
+    }
+    CHECK(current_security.IsValid());
+    if (!current_security.IsSubsetOf(security_)) {
+      WiFiSecurity new_security;
+      if (current_security.SecurityClass() == kSecurityClassNone) {
+        // For SecurityClassNone we want to use highest setting of currently
+        // available endpoints - previous security of the service should not
+        // play a role (it can cause problems during owe -> public downgrade).
+        new_security = current_security;
+      } else {
+        new_security = security_.Combine(current_security.mode());
+      }
+      if (new_security.mode() != security_.mode()) {
+        if (security_.IsFrozen()) {
+          // In the initial phase of fine-grained security we allow all security
+          // changes after initial connection and only collect some information
+          // about how disruptive it would be to block them.
+          auto mode = Metrics::kWirelessSecurityChangeMax;
+          switch (new_security.mode()) {
+            case WiFiSecurity::kWpaWpa2:
+              if (security_ == WiFiSecurity::kWpa2) {
+                mode = Metrics::kWirelessSecurityChangeWpa2ToWpa12;
+              }
+              break;
+            case WiFiSecurity::kWpaAll:
+              if (security_ == WiFiSecurity::kWpa3) {
+                mode = Metrics::kWirelessSecurityChangeWpa3ToWpa123;
+              } else if (security_ == WiFiSecurity::kWpa2Wpa3) {
+                mode = Metrics::kWirelessSecurityChangeWpa23ToWpa123;
+              } else if (security_ == WiFiSecurity::kWpaWpa2) {
+                mode = Metrics::kWirelessSecurityChangeWpa12ToWpa123;
+              }
+              break;
+            case WiFiSecurity::kWpa2Wpa3:
+              if (security_ == WiFiSecurity::kWpa3) {
+                mode = Metrics::kWirelessSecurityChangeWpa3ToWpa23;
+              }
+              break;
+            case WiFiSecurity::kWpaWpa2Enterprise:
+              if (security_ == WiFiSecurity::kWpa2Enterprise) {
+                mode = Metrics::kWirelessSecurityChangeEAPWpa2ToWpa12;
+              }
+              break;
+            case WiFiSecurity::kWpaAllEnterprise:
+              if (security_ == WiFiSecurity::kWpa3Enterprise) {
+                mode = Metrics::kWirelessSecurityChangeEAPWpa3ToWpa123;
+              } else if (security_ == WiFiSecurity::kWpa2Wpa3Enterprise) {
+                mode = Metrics::kWirelessSecurityChangeEAPWpa23ToWpa123;
+              } else if (security_ == WiFiSecurity::kWpaWpa2Enterprise) {
+                mode = Metrics::kWirelessSecurityChangeEAPWpa12ToWpa123;
+              }
+              break;
+            case WiFiSecurity::kWpa2Wpa3Enterprise:
+              if (security_ == WiFiSecurity::kWpa3Enterprise) {
+                mode = Metrics::kWirelessSecurityChangeEAPWpa3ToWpa23;
+              }
+              break;
+            default:
+              break;
+          }
+          if (mode != Metrics::kWirelessSecurityChangeMax) {
+            metrics()->SendEnumToUMA(Metrics::kMetricWirelessSecurityChange,
+                                     mode, Metrics::kWirelessSecurityChangeMax);
+          }
+        }
+        SLOG(2) << "Changing security of service: " << security_ << " -> "
+                << new_security;
+        security_ = new_security;
+        // For SecurityClassNone it is possible for the key management to change
+        // due to transitioning between open and (trans)owe.
+        if (security_class() == kSecurityClassNone) {
+          UpdateKeyManagement();
+        }
+      }
+    }
+  }
+
+  if (Is8021x())
+    cipher_8021x_ = ComputeCipher8021x(endpoints_);
+
   CryptoAlgorithm algorithm = kCryptoNone;
   bool key_rotation = false;
   bool endpoint_auth = false;

@@ -23,24 +23,22 @@
 #include <metrics/timer_mock.h>
 #include <net-base/mock_netlink_manager.h>
 
-#include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/mock_adaptors.h"
-#include "shill/mock_certificate_file.h"
 #include "shill/mock_control.h"
 #include "shill/mock_eap_credentials.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
+#include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
-#include "shill/mock_service.h"
 #include "shill/network/mock_network.h"
 #include "shill/refptr_types.h"
 #include "shill/service_property_change_test.h"
 #include "shill/store/fake_store.h"
-#include "shill/store/property_store_test.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
+#include "shill/test_event_dispatcher.h"
 #include "shill/tethering.h"
 #include "shill/wifi/ieee80211.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
@@ -52,6 +50,7 @@ using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::DoAll;
 using ::testing::EndsWith;
+using ::testing::Eq;
 using ::testing::Ge;
 using ::testing::HasSubstr;
 using ::testing::Mock;
@@ -65,15 +64,21 @@ using ::testing::StrNe;
 
 namespace shill {
 
-class WiFiServiceTest : public PropertyStoreTest {
+class WiFiServiceTest : public testing::Test {
  public:
   WiFiServiceTest()
-      : mock_manager_(control_interface(), dispatcher(), metrics()),
-        wifi_(new NiceMock<MockWiFi>(
-            manager(), "wifi", fake_mac, 0, 0, new MockWakeOnWiFi())),
-        provider_(&mock_manager_),
+      : manager_(&control_interface_, &dispatcher_, &metrics_),
+        provider_(new MockWiFiProvider(manager())),
         simple_ssid_(1, 'a'),
-        simple_ssid_string_("a") {}
+        simple_ssid_string_("a") {
+    // Manager keeps the ownership of the wifi provider.
+    manager_.set_wifi_provider(std::unique_ptr<WiFiProvider>(provider_));
+    // This is initialized here since we want to switch first wifi provider in
+    // manager with our mock and this one instance to be used everywhere (so
+    // WiFi should be initialized at the end since it takes it from Manager).
+    wifi_ = base::MakeRefCounted<NiceMock<MockWiFi>>(
+        manager(), "wifi", fake_mac, 0, 0, new MockWakeOnWiFi());
+  }
   ~WiFiServiceTest() override = default;
 
  protected:
@@ -143,24 +148,24 @@ class WiFiServiceTest : public PropertyStoreTest {
   WiFiServiceRefPtr MakeServiceSSID(const std::string& security_class,
                                     const std::string& ssid) {
     const std::vector<uint8_t> ssid_bytes(ssid.begin(), ssid.end());
-    return new WiFiService(manager(), &provider_, ssid_bytes, kModeManaged,
+    return new WiFiService(manager(), provider(), ssid_bytes, kModeManaged,
                            security_class, WiFiSecurity(), false);
   }
 
   WiFiServiceRefPtr MakeServiceSSID(const std::string& ssid,
                                     const WiFiSecurity& security) {
-    return new WiFiService(manager(), &provider_, {ssid.begin(), ssid.end()},
+    return new WiFiService(manager(), provider(), {ssid.begin(), ssid.end()},
                            kModeManaged, security.SecurityClass(), security,
                            false);
   }
 
   WiFiServiceRefPtr MakeSimpleService(const std::string& security_class) {
-    return new WiFiService(manager(), &provider_, simple_ssid_, kModeManaged,
+    return new WiFiService(manager(), provider(), simple_ssid_, kModeManaged,
                            security_class, WiFiSecurity(), false);
   }
 
   WiFiServiceRefPtr MakeSimpleService(const WiFiSecurity& security) {
-    return new WiFiService(manager(), &provider_, simple_ssid_, kModeManaged,
+    return new WiFiService(manager(), provider(), simple_ssid_, kModeManaged,
                            security.SecurityClass(), security, false);
   }
 
@@ -186,9 +191,8 @@ class WiFiServiceTest : public PropertyStoreTest {
   }
 
   WiFiServiceRefPtr MakeServiceWithMockManager() {
-    return new WiFiService(&mock_manager_, &provider_, simple_ssid_,
-                           kModeManaged, kSecurityClassNone, WiFiSecurity(),
-                           false);
+    return new WiFiService(manager(), provider(), simple_ssid_, kModeManaged,
+                           kSecurityClassNone, WiFiSecurity(), false);
   }
 
   scoped_refptr<MockWiFi> MakeSimpleWiFi(const std::string& link_name) {
@@ -219,8 +223,10 @@ class WiFiServiceTest : public PropertyStoreTest {
   }
 
   scoped_refptr<MockWiFi> wifi() { return wifi_; }
-  MockManager* mock_manager() { return &mock_manager_; }
-  MockWiFiProvider* provider() { return &provider_; }
+  MockManager* manager() { return &manager_; }
+  MockWiFiProvider* provider() { return provider_; }
+  EventDispatcherForTest* dispatcher() { return &dispatcher_; }
+  MockMetrics* metrics() { return &metrics_; }
 
   std::string GetAnyDeviceAddress() const {
     return WiFiService::kAnyDeviceAddress;
@@ -256,10 +262,12 @@ class WiFiServiceTest : public PropertyStoreTest {
   }
 
  private:
-  MockManager mock_manager_;
-  net_base::MockNetlinkManager netlink_manager_;
+  MockControl control_interface_;
+  EventDispatcherForTest dispatcher_;
+  NiceMock<MockMetrics> metrics_;
+  MockManager manager_;
+  MockWiFiProvider* provider_;
   scoped_refptr<MockWiFi> wifi_;
-  MockWiFiProvider provider_;
   const std::vector<uint8_t> simple_ssid_;
   const std::string simple_ssid_string_;
 };
@@ -1085,6 +1093,61 @@ TEST_F(WiFiServiceSecurityTest, EndpointsDisappear) {
   EXPECT_EQ(kSecurityClassPsk, service->security_class());
 }
 
+TEST_F(WiFiServiceSecurityTest, EndpointAddRemoveOWE) {
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
+  WiFiEndpointRefPtr open_endpoint =
+      MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
+  service->AddEndpoint(open_endpoint);
+  EXPECT_EQ(WiFiSecurity::kNone, service->security());
+  EXPECT_EQ(service->key_management(), WPASupplicant::kKeyManagementNone);
+
+  WiFiEndpoint::SecurityFlags flags;
+  flags.rsn_owe = true;
+  WiFiEndpointRefPtr owe_endpoint =
+      MakeEndpoint(simple_ssid_string(), "00:00:00:00:00:02", 0, 0, flags);
+  service->AddEndpoint(owe_endpoint);
+  EXPECT_EQ(WiFiSecurity::kOwe, service->security());
+  EXPECT_EQ(service->key_management(), WPASupplicant::kKeyManagementOWE);
+
+  service->RemoveEndpoint(owe_endpoint);
+  EXPECT_EQ(WiFiSecurity::kNone, service->security());
+  EXPECT_EQ(service->key_management(), WPASupplicant::kKeyManagementNone);
+}
+
+TEST_F(WiFiServiceSecurityTest, EndpointSecurityChange) {
+  WiFiServiceRefPtr service = MakeSimpleService(WiFiSecurity::kWpa2);
+  WiFiEndpoint::SecurityFlags flags;
+  flags.rsn_psk = true;
+  WiFiEndpointRefPtr endpoint =
+      MakeEndpoint(simple_ssid_string(), "00:00:00:00:00:01", 0, 0, flags);
+  service->AddEndpoint(endpoint);
+  EXPECT_EQ(WiFiSecurity::kWpa2, service->security());
+
+  KeyValueStore properties;
+  KeyValueStore rsn;
+  rsn.Set<Strings>(WPASupplicant::kSecurityMethodPropertyKeyManagement,
+                   {"wpa-psk", "sae"});
+  properties.Set(WPASupplicant::kPropertyRSN, rsn);
+
+  // Mark provider as running (so that actual implementation can be used).
+  provider()->Start();
+  // Unmock these to use the actual implementation of WiFi and WiFiProvider to
+  // forward the update notification to WiFiService.  In order to make this work
+  // we also need to instruct provider about endpoint->service mapping since the
+  // service is not properly registered there.
+  EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).WillOnce([this](auto ep) {
+    wifi()->WiFi::NotifyEndpointChanged(ep);
+  });
+  EXPECT_CALL(*provider(), OnEndpointUpdated(_)).WillOnce([this](auto ep) {
+    provider()->WiFiProvider::OnEndpointUpdated(ep);
+  });
+  EXPECT_CALL(*provider(), FindServiceForEndpoint(Eq(endpoint)))
+      .WillOnce(Return(service));
+  // Now trigger the update of the endpoint and check the expected result.
+  endpoint->PropertiesChanged(properties);
+  EXPECT_EQ(WiFiSecurity::kWpa2Wpa3, service->security());
+}
+
 TEST_F(WiFiServiceTest, LoadAndUnloadPassphrase) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassPsk);
   FakeStore store;
@@ -1191,7 +1254,8 @@ TEST_F(WiFiServiceTest, ConfigureMakesConnectable) {
   // Hack the GUID in so that we don't have to mess about with WiFi to register
   // our service.  This way, Manager will handle the lookup itself.
   service->SetGuid(guid, nullptr);
-  manager()->RegisterService(service);
+  // Use the actual implementation instead of mock.
+  manager()->Manager::RegisterService(service);
   EXPECT_FALSE(service->connectable());
   EXPECT_EQ(service, manager()->GetService(args, &error));
   EXPECT_TRUE(error.IsSuccess());
@@ -2140,7 +2204,7 @@ TEST_F(WiFiServiceTest, PropertyChanges) {
 // the new value is the same as the old value.
 TEST_F(WiFiServiceTest, CustomSetterNoopChange) {
   WiFiServiceRefPtr service = MakeServiceWithMockManager();
-  TestCustomSetterNoopChange(service, mock_manager());
+  TestCustomSetterNoopChange(service, manager());
 }
 
 TEST_F(WiFiServiceTest, SuspectedCredentialFailure) {
@@ -2299,11 +2363,10 @@ TEST_F(WiFiServiceTest, ChooseDevice) {
   scoped_refptr<MockWiFi> wifi = MakeSimpleWiFi("test_wifi");
   WiFiServiceRefPtr service = MakeServiceWithMockManager();
 
-  EXPECT_CALL(*mock_manager(),
+  EXPECT_CALL(*manager(),
               GetEnabledDeviceWithTechnology(Technology(Technology::kWiFi)))
       .WillOnce(Return(wifi));
   EXPECT_EQ(wifi, service->ChooseDevice());
-  Mock::VerifyAndClearExpectations(mock_manager());
 }
 
 TEST_F(WiFiServiceTest, SetMACPolicy) {

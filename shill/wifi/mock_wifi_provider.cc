@@ -17,6 +17,7 @@ using testing::WithArg;
 namespace shill {
 
 MockWiFiProvider::MockWiFiProvider(Manager* manager) : WiFiProvider(manager) {
+  ON_CALL(*this, Start).WillByDefault([this]() { this->running_ = true; });
   ON_CALL(*this, GetHiddenSSIDList()).WillByDefault(Return(ByteArrays()));
   ON_CALL(*this, UpdateRegAndPhyInfo(_)).WillByDefault(Invoke([](auto cb) {
     std::move(cb).Run();

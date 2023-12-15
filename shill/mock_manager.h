@@ -159,6 +159,8 @@ class MockManager : public Manager {
     mock_device_info_ = std::move(mock_device_info);
   }
 
+  void set_wifi_provider(std::unique_ptr<WiFiProvider> provider);
+
  private:
   std::unique_ptr<MockDeviceInfo> mock_device_info_;
   std::unique_ptr<MockEthernetProvider> mock_ethernet_provider_;

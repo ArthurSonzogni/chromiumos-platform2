@@ -350,6 +350,10 @@ bool WiFiEndpoint::has_tethering_signature() const {
   return has_tethering_signature_;
 }
 
+bool WiFiEndpoint::has_rsn_owe() const {
+  return security_flags_.rsn_owe;
+}
+
 const WiFiEndpoint::Ap80211krvSupport& WiFiEndpoint::krv_support() const {
   return supported_features_.krv_support;
 }
@@ -520,10 +524,15 @@ WiFiSecurity::Mode WiFiEndpoint::ParseSecurity(const KeyValueStore& properties,
     return flags->wpa_psk ? WiFiSecurity::kWpaWpa2 : WiFiSecurity::kWpa2;
   } else if (flags->wpa_psk) {
     return WiFiSecurity::kWpa;
+  } else if (flags->trans_owe) {
+    // Both public and hidden endpoint of a transitional-OWE AP has "trans-owe"
+    // security (even though only the hidden one is using encryption).  This way
+    // they both match security of the WiFiService and you can tell difference
+    // between them by comparing ssid() against SSID of WiFiService and/or
+    // checking has_rsn_owe() flag.
+    return WiFiSecurity::kTransOwe;
   } else if (flags->rsn_owe) {
     return WiFiSecurity::kOwe;
-  } else if (flags->trans_owe) {
-    return WiFiSecurity::kTransOwe;
   } else if (flags->privacy) {
     return WiFiSecurity::kWep;
   } else {

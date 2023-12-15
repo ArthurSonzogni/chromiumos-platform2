@@ -121,6 +121,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   bool has_wpa_property() const;
   bool has_psk_property() const;
   bool has_tethering_signature() const;
+  bool has_rsn_owe() const;
   const Ap80211krvSupport& krv_support() const;
   const HS20Information& hs20_information() const;
   bool mbo_support() const;

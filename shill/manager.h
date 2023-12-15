@@ -550,6 +550,7 @@ class Manager {
   friend class L2TPIPsecDriverTest;
   friend class ManagerAdaptorInterface;
   friend class ManagerTest;
+  friend class MockManager;
   friend class ModemInfoTest;
   friend class ModemManagerTest;
   friend class OpenVPNDriverTest;
