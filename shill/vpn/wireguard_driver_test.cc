@@ -4,6 +4,7 @@
 
 #include "shill/vpn/wireguard_driver.h"
 
+#include <cstddef>
 #include <map>
 #include <memory>
 #include <utility>
@@ -14,7 +15,11 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/ip_address.h>
+#include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
 #include <net-base/mock_process_manager.h>
 #include <net-base/process_manager.h>
 
@@ -274,28 +279,24 @@ TEST_F(WireGuardDriverTest, ConnectFlowKernel) {
   // Checks that the config file has been deleted.
   EXPECT_FALSE(driver_test_peer_->config_fd().is_valid());
 
-  // Checks IPProperties.
-  const auto ipv4_properties = driver_->GetIPv4Properties();
-  ASSERT_NE(ipv4_properties, nullptr);
-  EXPECT_EQ(ipv4_properties->address_family, net_base::IPFamily::kIPv4);
-  EXPECT_EQ(ipv4_properties->address, kIPv4Address);
-  EXPECT_EQ(ipv4_properties->subnet_prefix, 32);
-  EXPECT_THAT(ipv4_properties->inclusion_list,
+  // Checks the network configuration.
+  const auto network_config = driver_->GetNetworkConfig();
+  ASSERT_NE(network_config, nullptr);
+  EXPECT_EQ(network_config->ipv4_address,
+            net_base::IPv4CIDR::CreateFromStringAndPrefix(kIPv4Address, 32));
+  EXPECT_EQ(network_config->ipv6_addresses.size(), 1);
+  EXPECT_EQ(network_config->ipv6_addresses[0],
+            net_base::IPv6CIDR::CreateFromStringAndPrefix(kIPv6Address1, 128));
+  EXPECT_THAT(network_config->included_route_prefixes,
               testing::UnorderedElementsAre(
-                  // We do not dedup so this entry appears twice.
-                  "192.168.1.2/32", "192.168.1.2/32", "192.168.2.0/24"));
-
-  const auto ipv6_properties = driver_->GetIPv6Properties();
-  ASSERT_NE(ipv6_properties, nullptr);
-  EXPECT_EQ(ipv6_properties->address_family, net_base::IPFamily::kIPv6);
-  EXPECT_EQ(ipv6_properties->subnet_prefix, 128);
-  EXPECT_EQ(ipv6_properties->address, kIPv6Address1);
-  EXPECT_THAT(
-      ipv6_properties->inclusion_list,
-      testing::UnorderedElementsAre(
-          // We do not dedup so this entry appears twice.
-          "fd00:0:0:0:1::/128", "fd00:0:0:0:1::/128", "fd00:0:0:2::/64"));
-
+                  // We do not dedup so "192.168.1.2/32" and
+                  // "fd00:0:0:0:1::/128" appears twice.
+                  net_base::IPCIDR::CreateFromCIDRString("192.168.1.2/32"),
+                  net_base::IPCIDR::CreateFromCIDRString("192.168.1.2/32"),
+                  net_base::IPCIDR::CreateFromCIDRString("192.168.2.0/24"),
+                  net_base::IPCIDR::CreateFromCIDRString("fd00:0:0:0:1::/128"),
+                  net_base::IPCIDR::CreateFromCIDRString("fd00:0:0:0:1::/128"),
+                  net_base::IPCIDR::CreateFromCIDRString("fd00:0:0:2::/64")));
   // Disconnect.
   EXPECT_CALL(*device_info(), DeleteInterface(kIfIndex));
   driver_->Disconnect();
@@ -581,13 +582,11 @@ TEST_F(WireGuardDriverTest, GetIPProperties) {
       kWireGuardIPAddress, std::vector<std::string>{kIPv4Address}, &err);
   create_kernel_link();
   assert_ip_address_is(std::vector<std::string>{kIPv4Address});
-  auto ipv4_properties = driver_->GetIPv4Properties();
-  ASSERT_NE(ipv4_properties, nullptr);
-  EXPECT_EQ(ipv4_properties->address_family, net_base::IPFamily::kIPv4);
-  EXPECT_EQ(ipv4_properties->address, kIPv4Address);
-  EXPECT_EQ(ipv4_properties->subnet_prefix, 32);
-  auto ipv6_properties = driver_->GetIPv6Properties();
-  ASSERT_EQ(ipv6_properties, nullptr);
+  auto network_config = driver_->GetNetworkConfig();
+  ASSERT_NE(network_config, nullptr);
+  EXPECT_EQ(network_config->ipv4_address,
+            net_base::IPv4CIDR::CreateFromStringAndPrefix(kIPv4Address, 32));
+  EXPECT_TRUE(network_config->ipv6_addresses.empty());
   driver_->Disconnect();
 
   // The case that the user configures only one IPv6 address.
@@ -596,13 +595,12 @@ TEST_F(WireGuardDriverTest, GetIPProperties) {
       kWireGuardIPAddress, std::vector<std::string>{kIPv6Address1}, &err);
   create_kernel_link();
   assert_ip_address_is(std::vector<std::string>{kIPv6Address1});
-  ipv4_properties = driver_->GetIPv4Properties();
-  ASSERT_EQ(ipv4_properties, nullptr);
-  ipv6_properties = driver_->GetIPv6Properties();
-  ASSERT_NE(ipv6_properties, nullptr);
-  EXPECT_EQ(ipv6_properties->address_family, net_base::IPFamily::kIPv6);
-  EXPECT_EQ(ipv6_properties->address, kIPv6Address1);
-  EXPECT_EQ(ipv6_properties->subnet_prefix, 128);
+  network_config = driver_->GetNetworkConfig();
+  ASSERT_NE(network_config, nullptr);
+  ASSERT_FALSE(network_config->ipv4_address.has_value());
+  ASSERT_EQ(network_config->ipv6_addresses.size(), 1);
+  ASSERT_EQ(network_config->ipv6_addresses[0],
+            net_base::IPv6CIDR::CreateFromStringAndPrefix(kIPv6Address1, 128));
   driver_->Disconnect();
 
   // The case that the user configures one IPv4 address and one IPv6 address.
@@ -611,16 +609,13 @@ TEST_F(WireGuardDriverTest, GetIPProperties) {
   // is set by default.
   create_kernel_link();
   assert_ip_address_is(std::vector<std::string>{kIPv4Address, kIPv6Address1});
-  ipv4_properties = driver_->GetIPv4Properties();
-  ASSERT_NE(ipv4_properties, nullptr);
-  EXPECT_EQ(ipv4_properties->address_family, net_base::IPFamily::kIPv4);
-  EXPECT_EQ(ipv4_properties->subnet_prefix, 32);
-  EXPECT_EQ(ipv4_properties->address, kIPv4Address);
-  ipv6_properties = driver_->GetIPv6Properties();
-  ASSERT_NE(ipv6_properties, nullptr);
-  EXPECT_EQ(ipv6_properties->address_family, net_base::IPFamily::kIPv6);
-  EXPECT_EQ(ipv6_properties->subnet_prefix, 128);
-  EXPECT_EQ(ipv6_properties->address, kIPv6Address1);
+  network_config = driver_->GetNetworkConfig();
+  ASSERT_NE(network_config, nullptr);
+  EXPECT_EQ(network_config->ipv4_address,
+            net_base::IPv4CIDR::CreateFromStringAndPrefix(kIPv4Address, 32));
+  ASSERT_EQ(network_config->ipv6_addresses.size(), 1);
+  ASSERT_EQ(network_config->ipv6_addresses[0],
+            net_base::IPv6CIDR::CreateFromStringAndPrefix(kIPv6Address1, 128));
   driver_->Disconnect();
 
   // The case that the user configures two IPv6 addresses.
@@ -630,13 +625,12 @@ TEST_F(WireGuardDriverTest, GetIPProperties) {
       std::vector<std::string>{kIPv6Address1, kIPv6Address2}, &err);
   create_kernel_link();
   assert_ip_address_is(std::vector<std::string>{kIPv6Address1, kIPv6Address2});
-  ipv4_properties = driver_->GetIPv4Properties();
-  ASSERT_EQ(ipv4_properties, nullptr);
-  ipv6_properties = driver_->GetIPv6Properties();
-  ASSERT_NE(ipv6_properties, nullptr);
-  EXPECT_EQ(ipv6_properties->address_family, net_base::IPFamily::kIPv6);
-  EXPECT_EQ(ipv6_properties->subnet_prefix, 128);
-  EXPECT_EQ(ipv6_properties->address, kIPv6Address1);
+  network_config = driver_->GetNetworkConfig();
+  ASSERT_NE(network_config, nullptr);
+  ASSERT_FALSE(network_config->ipv4_address.has_value());
+  ASSERT_EQ(network_config->ipv6_addresses.size(), 1);
+  ASSERT_EQ(network_config->ipv6_addresses[0],
+            net_base::IPv6CIDR::CreateFromStringAndPrefix(kIPv6Address1, 128));
   driver_->Disconnect();
 
   // The case that the user configures one wrong format address.
@@ -646,8 +640,7 @@ TEST_F(WireGuardDriverTest, GetIPProperties) {
   EXPECT_CALL(driver_event_handler_, OnDriverFailure(_, _));
   create_kernel_link();
   assert_ip_address_is(std::vector<std::string>{kWrongIPAddress});
-  ASSERT_EQ(driver_->GetIPv4Properties(), nullptr);
-  ASSERT_EQ(driver_->GetIPv6Properties(), nullptr);
+  ASSERT_EQ(driver_->GetNetworkConfig(), nullptr);
   driver_->Disconnect();
 }
 }  // namespace

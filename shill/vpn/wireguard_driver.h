@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <net-base/process_manager.h>
+#include <net-base/network_config.h>
 
 #include "shill/ipconfig.h"
 #include "shill/metrics.h"
@@ -32,8 +33,7 @@ class WireGuardDriver : public VPNDriver {
   base::TimeDelta ConnectAsync(EventHandler* event_handler) override;
   void Disconnect() override;
   void OnConnectTimeout() override;
-  std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const override;
-  std::unique_ptr<IPConfig::Properties> GetIPv6Properties() const override;
+  std::unique_ptr<net_base::NetworkConfig> GetNetworkConfig() const override;
 
   // These functions (including GetProvider() below) are overridden for
   // implementing the "WireGuard.Peers" property in both property store (as an
@@ -102,8 +102,7 @@ class WireGuardDriver : public VPNDriver {
   EventHandler* event_handler_;
   pid_t wireguard_pid_ = -1;
   int interface_index_ = -1;
-  IPConfig::Properties ipv4_properties_;
-  IPConfig::Properties ipv6_properties_;
+  std::optional<net_base::NetworkConfig> network_config_;
   base::ScopedFD config_fd_;
 
   // Indicates that whether we have an open wg interface in the kernel which is

@@ -174,6 +174,7 @@ std::unique_ptr<net_base::NetworkConfig> VPNDriver::GetNetworkConfig() const {
   switch (vpn_type_) {
     case VPNType::kARC:
     case VPNType::kThirdParty:
+    case VPNType::kWireGuard:
       NOTREACHED_NORETURN();
       break;
     default:

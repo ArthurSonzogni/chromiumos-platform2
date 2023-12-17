@@ -6,7 +6,9 @@
 
 #include <poll.h>
 
+#include <cstddef>
 #include <iterator>
+#include <memory>
 #include <optional>
 #include <set>
 #include <string>
@@ -29,6 +31,9 @@
 #include <base/version.h>
 #include <chromeos/dbus/service_constants.h>
 #include <crypto/random.h>
+#include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
+#include <net-base/network_config.h>
 #include <net-base/process_manager.h>
 
 #include "shill/logging.h"
@@ -234,18 +239,10 @@ void WireGuardDriver::Disconnect() {
   event_handler_ = nullptr;
 }
 
-std::unique_ptr<IPConfig::Properties> WireGuardDriver::GetIPv4Properties()
+std::unique_ptr<net_base::NetworkConfig> WireGuardDriver::GetNetworkConfig()
     const {
-  if (ipv4_properties_.address_family) {
-    return std::make_unique<IPConfig::Properties>(ipv4_properties_);
-  }
-  return nullptr;
-}
-
-std::unique_ptr<IPConfig::Properties> WireGuardDriver::GetIPv6Properties()
-    const {
-  if (ipv6_properties_.address_family) {
-    return std::make_unique<IPConfig::Properties>(ipv6_properties_);
+  if (network_config_.has_value()) {
+    return std::make_unique<net_base::NetworkConfig>(*network_config_);
   }
   return nullptr;
 }
@@ -545,12 +542,13 @@ void WireGuardDriver::OnConfigurationDone(int exit_code) {
 }
 
 bool WireGuardDriver::PopulateIPProperties() {
-  ipv4_properties_.default_route = false;
+  network_config_ = std::make_optional<net_base::NetworkConfig>();
+  network_config_->ipv4_default_route = false;
   const auto ip_address_list =
       args()->Lookup<std::vector<std::string>>(kWireGuardIPAddress, {});
 
-  std::vector<std::string> ipv4_address_list;
-  std::vector<std::string> ipv6_address_list;
+  std::vector<net_base::IPv4Address> ipv4_address_list;
+  std::vector<net_base::IPv6Address> ipv6_address_list;
 
   for (const auto& ip_address : ip_address_list) {
     const auto ip = net_base::IPAddress::CreateFromString(ip_address);
@@ -561,10 +559,10 @@ bool WireGuardDriver::PopulateIPProperties() {
     }
     switch (ip->GetFamily()) {
       case net_base::IPFamily::kIPv4:
-        ipv4_address_list.push_back(ip_address);
+        ipv4_address_list.push_back(ip->ToIPv4Address().value());
         break;
       case net_base::IPFamily::kIPv6:
-        ipv6_address_list.push_back(ip_address);
+        ipv6_address_list.push_back(ip->ToIPv6Address().value());
         break;
     }
   }
@@ -573,25 +571,18 @@ bool WireGuardDriver::PopulateIPProperties() {
     return false;
   }
   if (ipv4_address_list.size() > 0) {
-    ipv4_properties_.address = ipv4_address_list[0];
-    ipv4_properties_.address_family = net_base::IPFamily::kIPv4;
-    ipv4_properties_.subnet_prefix = 32;
-    // This is a point-to-point link, gateway does not make sense here. Set it
-    // default to skip RTA_GATEWAY when installing routes, and also make shill
-    // users happier (b/276506661).
-    ipv4_properties_.gateway = "0.0.0.0";
+    network_config_->ipv4_address =
+        net_base::IPv4CIDR::CreateFromAddressAndPrefix(ipv4_address_list[0],
+                                                       32);
   }
   if (ipv6_address_list.size() > 1) {
     LOG(WARNING) << "Multiple IPv6 addresses are set. Only apply the first one";
   }
   if (ipv6_address_list.size() > 0) {
-    ipv6_properties_.address = ipv6_address_list[0];
-    ipv6_properties_.address_family = net_base::IPFamily::kIPv6;
-    ipv6_properties_.subnet_prefix = 128;
-    // This is a point-to-point link, gateway does not make sense here. Set it
-    // default to skip RTA_GATEWAY when installing routes, and also make shill
-    // users happier (b/276506661).
-    ipv6_properties_.gateway = "::";
+    network_config_->ipv6_addresses.push_back(
+        net_base::IPv6CIDR::CreateFromAddressAndPrefix(ipv6_address_list[0],
+                                                       128)
+            .value());
   }
   if ((ipv4_address_list.size() == 0) && (ipv6_address_list.size() == 0)) {
     LOG(ERROR) << "Missing client IP address in the configuration";
@@ -612,18 +603,9 @@ bool WireGuardDriver::PopulateIPProperties() {
                    << allowed_ip;
         return false;
       }
-      switch (prefix->GetFamily()) {
-        case net_base::IPFamily::kIPv4:
-          ipv4_properties_.inclusion_list.push_back(std::string(allowed_ip));
-          break;
-        case net_base::IPFamily::kIPv6:
-          ipv6_properties_.inclusion_list.push_back(std::string(allowed_ip));
-          break;
-      }
+      network_config_->included_route_prefixes.push_back(*prefix);
     }
   }
-  ipv4_properties_.method = kTypeVPN;
-  ipv6_properties_.method = kTypeVPN;
   return true;
 }
 
@@ -647,8 +629,7 @@ void WireGuardDriver::Cleanup() {
     kernel_interface_open_ = false;
   }
   interface_index_ = -1;
-  ipv4_properties_ = {};
-  ipv6_properties_ = {};
+  network_config_ = std::nullopt;
   config_fd_.reset();
 }
 
