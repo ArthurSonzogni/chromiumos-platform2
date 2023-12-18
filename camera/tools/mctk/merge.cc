@@ -83,7 +83,13 @@ bool MergeControl(V4lMcControl& tc, class V4lMcControl& sc) {
 bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap) {
   /* Check: See if target contains all entities */
   for (auto& se : source.entities_) {
-    if (!target.EntityById(se->desc_.id)) {
+    __u32 te_id = se->desc_.id;
+    if (remap)
+      te_id = remap->LookupEntityId(te_id, target);
+
+    auto te = target.EntityById(te_id);
+
+    if (!te) {
       MCTK_PANIC("Merge: target lacking an entity mentioned by source.");
     }
   }
