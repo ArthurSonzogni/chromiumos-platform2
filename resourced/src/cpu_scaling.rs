@@ -449,7 +449,7 @@ mod tests {
     use tempfile::tempdir;
 
     use super::*;
-    use crate::test_utils::tests::*;
+    use crate::test_utils::*;
 
     const MOCK_NUM_CPU: i32 = 16;
 

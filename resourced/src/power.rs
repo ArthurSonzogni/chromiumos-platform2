@@ -476,14 +476,7 @@ mod tests {
     use tempfile::tempdir;
 
     use super::*;
-    use crate::test_utils::tests::test_check_online_cpu;
-    use crate::test_utils::tests::test_check_smt_control;
-    use crate::test_utils::tests::test_write_core_cpus_list;
-    use crate::test_utils::tests::test_write_cpu_max_freq;
-    use crate::test_utils::tests::test_write_cpuset_root_cpus;
-    use crate::test_utils::tests::test_write_online_cpu;
-    use crate::test_utils::tests::test_write_smt_control;
-    use crate::test_utils::tests::test_write_ui_use_flags;
+    use crate::test_utils::*;
 
     #[test]
     fn test_parse_power_supply_status() -> anyhow::Result<()> {

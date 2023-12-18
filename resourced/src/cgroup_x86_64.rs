@@ -293,7 +293,7 @@ mod tests {
     use tempfile::TempDir;
 
     use super::*;
-    use crate::test_utils::tests::*;
+    use crate::test_utils::*;
 
     #[test]
     fn test_power_is_intel_hybrid_system() -> Result<()> {

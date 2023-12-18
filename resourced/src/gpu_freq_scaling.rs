@@ -621,7 +621,7 @@ mod tests {
     use crate::common;
     use crate::cpu_scaling::DeviceCpuStatus;
     use crate::gpu_freq_scaling::amd_device::AmdDeviceConfig;
-    use crate::test_utils::tests::*;
+    use crate::test_utils::*;
 
     #[test]
     fn test_intel_malformed_root() {

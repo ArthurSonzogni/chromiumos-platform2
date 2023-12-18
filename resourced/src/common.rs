@@ -501,17 +501,7 @@ mod tests {
 
     use super::*;
     use crate::feature;
-    use crate::test_utils::tests::get_intel_gpu_boost;
-    use crate::test_utils::tests::set_intel_gpu_boost;
-    use crate::test_utils::tests::set_intel_gpu_max;
-    use crate::test_utils::tests::set_intel_gpu_min;
-    use crate::test_utils::tests::setup_mock_cpu_dev_dirs;
-    use crate::test_utils::tests::setup_mock_cpu_files;
-    use crate::test_utils::tests::setup_mock_intel_gpu_dev_dirs;
-    use crate::test_utils::tests::setup_mock_intel_gpu_files;
-    use crate::test_utils::tests::test_write_cpuset_root_cpus;
-    use crate::test_utils::tests::write_mock_cpuinfo;
-    use crate::test_utils::tests::MockPowerPreferencesManager;
+    use crate::test_utils::*;
 
     #[test]
     fn test_parse_file_to_u64() {

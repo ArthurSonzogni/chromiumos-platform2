@@ -236,7 +236,7 @@ mod tests {
     use std::time::Duration;
 
     use super::*;
-    use crate::test_utils::tests::*;
+    use crate::test_utils::*;
 
     fn create_schedqos_context_for_test() -> Arc<Mutex<SchedQosContext>> {
         let dir = tempfile::tempdir().unwrap();
