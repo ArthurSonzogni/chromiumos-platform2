@@ -21,7 +21,14 @@ use crate::common::FullscreenVideo;
 use crate::common::GameMode;
 use crate::common::RTCAudioActive;
 use crate::common::VmBootMode;
-use crate::config;
+use crate::config::ConfigProvider;
+use crate::config::CpuOfflinePreference;
+use crate::config::DirectoryConfigProvider;
+use crate::config::EnergyPerformancePreference;
+use crate::config::Governor;
+use crate::config::PowerPreferences;
+use crate::config::PowerPreferencesType;
+use crate::config::PowerSourceType;
 use crate::cpu_utils::hotplug_cpus;
 use crate::cpu_utils::HotplugCpuAction;
 
@@ -32,7 +39,7 @@ const GLOBAL_ONDEMAND_PATH: &str = "sys/devices/system/cpu/cpufreq/ondemand";
 
 pub trait PowerSourceProvider {
     /// Returns the current power source of the system.
-    fn get_power_source(&self) -> Result<config::PowerSourceType>;
+    fn get_power_source(&self) -> Result<PowerSourceType>;
 }
 
 /// See the `POWER_SUPPLY_STATUS_` enum in the linux kernel.
@@ -83,11 +90,11 @@ impl PowerSourceProvider for DirectoryPowerSourceProvider {
     /// measurements. In order to determine if the charger is powering the system we need to
     /// look at the `status` property. If there is no charger connected and powering the system
     /// then we assume we are running off a battery (DC).
-    fn get_power_source(&self) -> Result<config::PowerSourceType> {
+    fn get_power_source(&self) -> Result<PowerSourceType> {
         let path = self.root.join(POWER_SUPPLY_PATH);
 
         if !path.exists() {
-            return Ok(config::PowerSourceType::DC);
+            return Ok(PowerSourceType::DC);
         }
 
         let dirs = path
@@ -138,28 +145,28 @@ impl PowerSourceProvider for DirectoryPowerSourceProvider {
                 continue;
             }
 
-            return Ok(config::PowerSourceType::AC);
+            return Ok(PowerSourceType::AC);
         }
 
-        Ok(config::PowerSourceType::DC)
+        Ok(PowerSourceType::DC)
     }
 }
 
 pub trait PowerPreferencesManager {
-    /// Chooses a [power preference](config::PowerPreferences) using the parameters and the
+    /// Chooses a [power preference](PowerPreferences) using the parameters and the
     /// system's current power source. It then applies it to the system.
     ///
     /// If more then one activity is active, the following priority list is used
-    /// to determine which [power preference](config::PowerPreferences) to apply. If there is no
+    /// to determine which [power preference](PowerPreferences) to apply. If there is no
     /// power preference defined for an activity, the next activity in the list will be tried.
     ///
-    /// 1) [Borealis Gaming](config::PowerPreferencesType::BorealisGaming)
-    /// 2) [ARCVM Gaming](config::PowerPreferencesType::ArcvmGaming)
-    /// 3) [WebRTC](config::PowerPreferencesType::WebRTC)
-    /// 4) [Fullscreen Video](config::PowerPreferencesType::Fullscreen)
-    /// 5) [VM boot Mode] (config::PowerPreferencesType::VmBoot)
+    /// 1) [Borealis Gaming](PowerPreferencesType::BorealisGaming)
+    /// 2) [ARCVM Gaming](PowerPreferencesType::ArcvmGaming)
+    /// 3) [WebRTC](PowerPreferencesType::WebRTC)
+    /// 4) [Fullscreen Video](PowerPreferencesType::Fullscreen)
+    /// 5) [VM boot Mode] (PowerPreferencesType::VmBoot)
     ///
-    /// The [default](config::PowerPreferencesType::Default) preference will be applied when no
+    /// The [default](PowerPreferencesType::Default) preference will be applied when no
     /// activity is active.
     fn update_power_preferences(
         &self,
@@ -219,18 +226,18 @@ fn write_to_cpu_policy_patterns(pattern: &str, new_value: &str) -> Result<()> {
 }
 
 #[derive(Clone, Debug)]
-/// Applies [power preferences](config::PowerPreferences) to the system by writing to
+/// Applies [power preferences](PowerPreferences) to the system by writing to
 /// the system's sysfs nodes.
 ///
-/// This struct is using generics for the [ConfigProvider](config::ConfigProvider) and
+/// This struct is using generics for the [ConfigProvider](ConfigProvider) and
 /// [PowerSourceProvider] to make unit testing easier.
-pub struct DirectoryPowerPreferencesManager<C: config::ConfigProvider, P: PowerSourceProvider> {
+pub struct DirectoryPowerPreferencesManager<C: ConfigProvider, P: PowerSourceProvider> {
     root: PathBuf,
     config_provider: C,
     power_source_provider: P,
 }
 
-impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreferencesManager<C, P> {
+impl<C: ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreferencesManager<C, P> {
     // The global ondemand parameters are in /sys/devices/system/cpu/cpufreq/ondemand/.
     fn set_global_ondemand_governor_value(&self, attr: &str, value: u32) -> Result<()> {
         let path = self.root.join(GLOBAL_ONDEMAND_PATH).join(attr);
@@ -277,10 +284,10 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreference
         write_to_cpu_policy_patterns(&pattern, new_governor)
     }
 
-    fn apply_governor_preferences(&self, governor: config::Governor) -> Result<()> {
+    fn apply_governor_preferences(&self, governor: Governor) -> Result<()> {
         self.set_scaling_governor(governor.to_name())?;
 
-        if let config::Governor::Ondemand {
+        if let Governor::Ondemand {
             powersave_bias,
             sampling_rate,
         } = governor
@@ -329,7 +336,7 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreference
         Ok(Path::new(&pattern).exists())
     }
 
-    fn set_epp(&self, epp: config::EnergyPerformancePreference) -> Result<()> {
+    fn set_epp(&self, epp: EnergyPerformancePreference) -> Result<()> {
         const EPP_PATTERN: &str =
             "sys/devices/system/cpu/cpufreq/policy*/energy_performance_preference";
         if self.has_epp()? {
@@ -344,7 +351,7 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreference
         Ok(())
     }
 
-    fn apply_power_preferences(&self, preferences: config::PowerPreferences) -> Result<()> {
+    fn apply_power_preferences(&self, preferences: PowerPreferences) -> Result<()> {
         if let Some(epp) = preferences.epp {
             self.set_epp(epp)?
         }
@@ -355,17 +362,17 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreference
         Ok(())
     }
 
-    fn apply_cpu_hotplug(&self, preferences: config::PowerPreferences) -> Result<()> {
+    fn apply_cpu_hotplug(&self, preferences: PowerPreferences) -> Result<()> {
         match preferences.cpu_offline {
-            Some(config::CpuOfflinePreference::Smt { min_active_threads }) => hotplug_cpus(
+            Some(CpuOfflinePreference::Smt { min_active_threads }) => hotplug_cpus(
                 self.get_root(),
                 HotplugCpuAction::OfflineSMT { min_active_threads },
             )?,
-            Some(config::CpuOfflinePreference::Half { min_active_threads }) => hotplug_cpus(
+            Some(CpuOfflinePreference::Half { min_active_threads }) => hotplug_cpus(
                 self.get_root(),
                 HotplugCpuAction::OfflineHalf { min_active_threads },
             )?,
-            Some(config::CpuOfflinePreference::SmallCore { min_active_threads }) => hotplug_cpus(
+            Some(CpuOfflinePreference::SmallCore { min_active_threads }) => hotplug_cpus(
                 self.get_root(),
                 HotplugCpuAction::OfflineSmallCore { min_active_threads },
             )?,
@@ -378,7 +385,7 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreference
     }
 }
 
-impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
+impl<C: ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
     for DirectoryPowerPreferencesManager<C, P>
 {
     fn update_power_preferences(
@@ -389,7 +396,7 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
         vmboot: VmBootMode,
         batterysaver: BatterySaverMode,
     ) -> Result<()> {
-        let mut preferences: Option<config::PowerPreferences> = None;
+        let mut preferences: Option<PowerPreferences> = None;
 
         let power_source = self.power_source_provider.get_power_source()?;
 
@@ -398,40 +405,39 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
         if batterysaver == BatterySaverMode::Active {
             preferences = self
                 .config_provider
-                .read_power_preferences(power_source, config::PowerPreferencesType::BatterySaver)?;
+                .read_power_preferences(power_source, PowerPreferencesType::BatterySaver)?;
         } else if game == GameMode::Borealis {
-            preferences = self.config_provider.read_power_preferences(
-                power_source,
-                config::PowerPreferencesType::BorealisGaming,
-            )?;
+            preferences = self
+                .config_provider
+                .read_power_preferences(power_source, PowerPreferencesType::BorealisGaming)?;
         } else if game == GameMode::Arc {
             preferences = self
                 .config_provider
-                .read_power_preferences(power_source, config::PowerPreferencesType::ArcvmGaming)?;
+                .read_power_preferences(power_source, PowerPreferencesType::ArcvmGaming)?;
         }
 
         if preferences.is_none() && rtc == RTCAudioActive::Active {
             preferences = self
                 .config_provider
-                .read_power_preferences(power_source, config::PowerPreferencesType::WebRTC)?;
+                .read_power_preferences(power_source, PowerPreferencesType::WebRTC)?;
         }
 
         if preferences.is_none() && fullscreen == FullscreenVideo::Active {
             preferences = self
                 .config_provider
-                .read_power_preferences(power_source, config::PowerPreferencesType::Fullscreen)?;
+                .read_power_preferences(power_source, PowerPreferencesType::Fullscreen)?;
         }
 
         if preferences.is_none() && vmboot == VmBootMode::Active {
             preferences = self
                 .config_provider
-                .read_power_preferences(power_source, config::PowerPreferencesType::VmBoot)?;
+                .read_power_preferences(power_source, PowerPreferencesType::VmBoot)?;
         }
 
         if preferences.is_none() {
             preferences = self
                 .config_provider
-                .read_power_preferences(power_source, config::PowerPreferencesType::Default)?;
+                .read_power_preferences(power_source, PowerPreferencesType::Default)?;
         }
 
         if let Some(preferences) = preferences {
@@ -439,14 +445,14 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
             self.apply_power_preferences(preferences)?
         }
 
-        if power_source == config::PowerSourceType::DC
+        if power_source == PowerSourceType::DC
             && (rtc == RTCAudioActive::Active || fullscreen == FullscreenVideo::Active)
         {
-            if let Err(err) = self.set_epp(config::EnergyPerformancePreference::BalancePower) {
+            if let Err(err) = self.set_epp(EnergyPerformancePreference::BalancePower) {
                 error!("Failed to set energy performance preference: {:#}", err);
             }
         } else {
-            self.set_epp(config::EnergyPerformancePreference::BalancePerformance)?;
+            self.set_epp(EnergyPerformancePreference::BalancePerformance)?;
             // Default EPP
         }
 
@@ -460,12 +466,11 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
 
 pub fn new_directory_power_preferences_manager(
     root: &Path,
-) -> DirectoryPowerPreferencesManager<config::DirectoryConfigProvider, DirectoryPowerSourceProvider>
-{
+) -> DirectoryPowerPreferencesManager<DirectoryConfigProvider, DirectoryPowerSourceProvider> {
     let root = root.to_path_buf();
     DirectoryPowerPreferencesManager {
         root: root.clone(),
-        config_provider: config::DirectoryConfigProvider { root: root.clone() },
+        config_provider: DirectoryConfigProvider { root: root.clone() },
         power_source_provider: DirectoryPowerSourceProvider::new(root),
     }
 }
@@ -520,7 +525,7 @@ mod tests {
 
         let power_source = provider.get_power_source()?;
 
-        assert_eq!(power_source, config::PowerSourceType::DC);
+        assert_eq!(power_source, PowerSourceType::DC);
 
         Ok(())
     }
@@ -540,7 +545,7 @@ mod tests {
 
         let power_source = provider.get_power_source()?;
 
-        assert_eq!(power_source, config::PowerSourceType::DC);
+        assert_eq!(power_source, PowerSourceType::DC);
 
         Ok(())
     }
@@ -564,37 +569,30 @@ mod tests {
 
         fs::write(&online, b"0")?;
         let power_source = provider.get_power_source()?;
-        assert_eq!(power_source, config::PowerSourceType::DC);
+        assert_eq!(power_source, PowerSourceType::DC);
 
         let status = charger.join("status");
         fs::write(&online, b"1")?;
         fs::write(&status, b"Charging\n")?;
         let power_source = provider.get_power_source()?;
-        assert_eq!(power_source, config::PowerSourceType::AC);
+        assert_eq!(power_source, PowerSourceType::AC);
 
         fs::write(&online, b"1")?;
         fs::write(&status, b"Not Charging\n")?;
         let power_source = provider.get_power_source()?;
-        assert_eq!(power_source, config::PowerSourceType::DC);
+        assert_eq!(power_source, PowerSourceType::DC);
 
         Ok(())
     }
 
     struct FakeConfigProvider {
-        default_power_preferences:
-            fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
-        web_rtc_power_preferences:
-            fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
-        fullscreen_power_preferences:
-            fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
-        vm_boot_power_preferences:
-            fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
-        borealis_gaming_power_preferences:
-            fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
-        arcvm_gaming_power_preferences:
-            fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
-        battery_saver_power_preferences:
-            fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
+        default_power_preferences: fn(PowerSourceType) -> Result<Option<PowerPreferences>>,
+        web_rtc_power_preferences: fn(PowerSourceType) -> Result<Option<PowerPreferences>>,
+        fullscreen_power_preferences: fn(PowerSourceType) -> Result<Option<PowerPreferences>>,
+        vm_boot_power_preferences: fn(PowerSourceType) -> Result<Option<PowerPreferences>>,
+        borealis_gaming_power_preferences: fn(PowerSourceType) -> Result<Option<PowerPreferences>>,
+        arcvm_gaming_power_preferences: fn(PowerSourceType) -> Result<Option<PowerPreferences>>,
+        battery_saver_power_preferences: fn(PowerSourceType) -> Result<Option<PowerPreferences>>,
     }
 
     impl Default for FakeConfigProvider {
@@ -613,32 +611,28 @@ mod tests {
         }
     }
 
-    impl config::ConfigProvider for FakeConfigProvider {
+    impl ConfigProvider for FakeConfigProvider {
         fn read_power_preferences(
             &self,
-            power_source_type: config::PowerSourceType,
-            power_preference_type: config::PowerPreferencesType,
-        ) -> Result<Option<config::PowerPreferences>> {
+            power_source_type: PowerSourceType,
+            power_preference_type: PowerPreferencesType,
+        ) -> Result<Option<PowerPreferences>> {
             match power_preference_type {
-                config::PowerPreferencesType::Default => {
+                PowerPreferencesType::Default => {
                     (self.default_power_preferences)(power_source_type)
                 }
-                config::PowerPreferencesType::WebRTC => {
-                    (self.web_rtc_power_preferences)(power_source_type)
-                }
-                config::PowerPreferencesType::Fullscreen => {
+                PowerPreferencesType::WebRTC => (self.web_rtc_power_preferences)(power_source_type),
+                PowerPreferencesType::Fullscreen => {
                     (self.fullscreen_power_preferences)(power_source_type)
                 }
-                config::PowerPreferencesType::VmBoot => {
-                    (self.vm_boot_power_preferences)(power_source_type)
-                }
-                config::PowerPreferencesType::BorealisGaming => {
+                PowerPreferencesType::VmBoot => (self.vm_boot_power_preferences)(power_source_type),
+                PowerPreferencesType::BorealisGaming => {
                     (self.borealis_gaming_power_preferences)(power_source_type)
                 }
-                config::PowerPreferencesType::ArcvmGaming => {
+                PowerPreferencesType::ArcvmGaming => {
                     (self.arcvm_gaming_power_preferences)(power_source_type)
                 }
-                config::PowerPreferencesType::BatterySaver => {
+                PowerPreferencesType::BatterySaver => {
                     (self.battery_saver_power_preferences)(power_source_type)
                 }
             }
@@ -646,11 +640,11 @@ mod tests {
     }
 
     struct FakePowerSourceProvider {
-        power_source: config::PowerSourceType,
+        power_source: PowerSourceType,
     }
 
     impl PowerSourceProvider for FakePowerSourceProvider {
-        fn get_power_source(&self) -> Result<config::PowerSourceType> {
+        fn get_power_source(&self) -> Result<PowerSourceType> {
             Ok(self.power_source)
         }
     }
@@ -720,7 +714,7 @@ mod tests {
 
     struct PolicyConfigs<'a> {
         policy_path: &'a str,
-        governor: &'a config::Governor,
+        governor: &'a Governor,
         affected_cpus: &'a str,
     }
     // Instead of returning an error, crash/assert immediately in a test utility function makes it
@@ -742,7 +736,7 @@ mod tests {
         }
     }
 
-    fn check_per_policy_scaling_governor(root: &Path, expected: Vec<config::Governor>) {
+    fn check_per_policy_scaling_governor(root: &Path, expected: Vec<Governor>) {
         for (i, policy) in TEST_CPUFREQ_POLICIES.iter().enumerate() {
             let governor_path = root.join(policy).join(SCALING_GOVERNOR_FILENAME);
             let scaling_governor = std::fs::read_to_string(governor_path).unwrap();
@@ -826,13 +820,13 @@ mod tests {
 
         test_write_cpuset_root_cpus(root.path(), "0-3");
         let power_source_provider = FakePowerSourceProvider {
-            power_source: config::PowerSourceType::AC,
+            power_source: PowerSourceType::AC,
         };
 
         let config_provider = FakeConfigProvider {
             default_power_preferences: |_| {
-                Ok(Some(config::PowerPreferences {
-                    governor: Some(config::Governor::Ondemand {
+                Ok(Some(PowerPreferences {
+                    governor: Some(Governor::Ondemand {
                         powersave_bias: 200,
                         sampling_rate: None,
                     }),
@@ -873,7 +867,7 @@ mod tests {
         test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
-            power_source: config::PowerSourceType::AC,
+            power_source: PowerSourceType::AC,
         };
 
         let config_provider = FakeConfigProvider {
@@ -913,15 +907,15 @@ mod tests {
         test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
-            power_source: config::PowerSourceType::AC,
+            power_source: PowerSourceType::AC,
         };
 
         let config_provider = FakeConfigProvider {
             default_power_preferences: |power_source| {
-                assert_eq!(power_source, config::PowerSourceType::AC);
+                assert_eq!(power_source, PowerSourceType::AC);
 
-                Ok(Some(config::PowerPreferences {
-                    governor: Some(config::Governor::Ondemand {
+                Ok(Some(PowerPreferences {
+                    governor: Some(Governor::Ondemand {
                         powersave_bias: 200,
                         sampling_rate: Some(16000),
                     }),
@@ -964,15 +958,15 @@ mod tests {
         test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
-            power_source: config::PowerSourceType::DC,
+            power_source: PowerSourceType::DC,
         };
 
         let config_provider = FakeConfigProvider {
             default_power_preferences: |power_source| {
-                assert_eq!(power_source, config::PowerSourceType::DC);
+                assert_eq!(power_source, PowerSourceType::DC);
 
-                Ok(Some(config::PowerPreferences {
-                    governor: Some(config::Governor::Ondemand {
+                Ok(Some(PowerPreferences {
+                    governor: Some(Governor::Ondemand {
                         powersave_bias: 200,
                         sampling_rate: None,
                     }),
@@ -1015,13 +1009,13 @@ mod tests {
         test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
-            power_source: config::PowerSourceType::AC,
+            power_source: PowerSourceType::AC,
         };
 
         let config_provider = FakeConfigProvider {
             default_power_preferences: |_| {
-                Ok(Some(config::PowerPreferences {
-                    governor: Some(config::Governor::Ondemand {
+                Ok(Some(PowerPreferences {
+                    governor: Some(Governor::Ondemand {
                         powersave_bias: 200,
                         sampling_rate: Some(4000),
                     }),
@@ -1065,13 +1059,13 @@ mod tests {
         test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
-            power_source: config::PowerSourceType::AC,
+            power_source: PowerSourceType::AC,
         };
 
         let config_provider = FakeConfigProvider {
             web_rtc_power_preferences: |_| {
-                Ok(Some(config::PowerPreferences {
-                    governor: Some(config::Governor::Ondemand {
+                Ok(Some(PowerPreferences {
+                    governor: Some(Governor::Ondemand {
                         powersave_bias: 200,
                         sampling_rate: Some(16000),
                     }),
@@ -1114,27 +1108,27 @@ mod tests {
         test_write_cpuset_root_cpus(root, "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
-            power_source: config::PowerSourceType::AC,
+            power_source: PowerSourceType::AC,
         };
 
         let config_provider = FakeConfigProvider {
             arcvm_gaming_power_preferences: |_| {
-                Ok(Some(config::PowerPreferences {
-                    governor: Some(config::Governor::Schedutil),
+                Ok(Some(PowerPreferences {
+                    governor: Some(Governor::Schedutil),
                     epp: None,
                     cpu_offline: None,
                 }))
             },
             battery_saver_power_preferences: |_| {
-                Ok(Some(config::PowerPreferences {
-                    governor: Some(config::Governor::Conservative),
+                Ok(Some(PowerPreferences {
+                    governor: Some(Governor::Conservative),
                     epp: None,
                     cpu_offline: None,
                 }))
             },
             default_power_preferences: |_| {
-                Ok(Some(config::PowerPreferences {
-                    governor: Some(config::Governor::Schedutil),
+                Ok(Some(PowerPreferences {
+                    governor: Some(Governor::Schedutil),
                     epp: None,
                     cpu_offline: None,
                 }))
@@ -1152,21 +1146,21 @@ mod tests {
             (
                 BatterySaverMode::Active,
                 "balance_performance",
-                config::Governor::Conservative,
+                Governor::Conservative,
                 AFFECTED_CPU0, // policy0 affected_cpus
                 AFFECTED_CPU1, // policy1 affected_cpus
             ),
             (
                 BatterySaverMode::Inactive,
                 "balance_performance",
-                config::Governor::Schedutil,
+                Governor::Schedutil,
                 AFFECTED_CPU0, // policy0 affected_cpus
                 AFFECTED_CPU1, // policy1 affected_cpus
             ),
             (
                 BatterySaverMode::Active,
                 "balance_performance",
-                config::Governor::Conservative,
+                Governor::Conservative,
                 AFFECTED_CPU_NONE, // policy0 affected_cpus, which has no affected cpus
                 AFFECTED_CPU1,     // policy1 affected_cpus
             ),
@@ -1174,7 +1168,7 @@ mod tests {
 
         // Test device without EPP path
         for test in tests {
-            let orig_governor = config::Governor::Performance;
+            let orig_governor = Governor::Performance;
             let policy0 = PolicyConfigs {
                 policy_path: TEST_CPUFREQ_POLICIES[0],
                 governor: &orig_governor,
@@ -1234,7 +1228,7 @@ mod tests {
             cluster2_state: [&'a str; 2],
             cluster1_freq: [u32; 2],
             cluster2_freq: [u32; 2],
-            preferences: config::PowerPreferences,
+            preferences: PowerPreferences,
             smt_offlined: bool,
             smt_orig_state: &'a str,
             cluster1_expected_state: [&'a str; 2],
@@ -1251,10 +1245,10 @@ mod tests {
                 cluster2_state: ["1"; 2],
                 cluster1_freq: [2400000; 2],
                 cluster2_freq: [1800000; 2],
-                preferences: config::PowerPreferences {
-                    governor: Some(config::Governor::Conservative),
+                preferences: PowerPreferences {
+                    governor: Some(Governor::Conservative),
                     epp: None,
-                    cpu_offline: Some(config::CpuOfflinePreference::SmallCore {
+                    cpu_offline: Some(CpuOfflinePreference::SmallCore {
                         min_active_threads: 2,
                     }),
                 },
@@ -1272,10 +1266,10 @@ mod tests {
                 cluster2_state: ["1"; 2],
                 cluster1_freq: [2400000; 2],
                 cluster2_freq: [2400000; 2],
-                preferences: config::PowerPreferences {
+                preferences: PowerPreferences {
                     governor: None,
                     epp: None,
-                    cpu_offline: Some(config::CpuOfflinePreference::Smt {
+                    cpu_offline: Some(CpuOfflinePreference::Smt {
                         min_active_threads: 2,
                     }),
                 },
@@ -1293,10 +1287,10 @@ mod tests {
                 cluster2_state: ["1"; 2],
                 cluster1_freq: [2400000; 2],
                 cluster2_freq: [2400000; 2],
-                preferences: config::PowerPreferences {
-                    governor: Some(config::Governor::Conservative),
+                preferences: PowerPreferences {
+                    governor: Some(Governor::Conservative),
                     epp: None,
-                    cpu_offline: Some(config::CpuOfflinePreference::Half {
+                    cpu_offline: Some(CpuOfflinePreference::Half {
                         min_active_threads: 2,
                     }),
                 },
@@ -1314,7 +1308,7 @@ mod tests {
                 cluster2_state: ["0"; 2],
                 cluster1_freq: [2400000; 2],
                 cluster2_freq: [2400000; 2],
-                preferences: config::PowerPreferences {
+                preferences: PowerPreferences {
                     governor: None,
                     epp: None,
                     cpu_offline: None,
@@ -1337,7 +1331,7 @@ mod tests {
                     ..Default::default()
                 },
                 power_source_provider: FakePowerSourceProvider {
-                    power_source: config::PowerSourceType::DC,
+                    power_source: PowerSourceType::DC,
                 },
             };
             test_write_cpuset_root_cpus(root, test.cpus);
@@ -1406,7 +1400,7 @@ mod tests {
         let tests = [
             (
                 FakePowerSourceProvider {
-                    power_source: config::PowerSourceType::DC,
+                    power_source: PowerSourceType::DC,
                 },
                 RTCAudioActive::Active,
                 FullscreenVideo::Inactive,
@@ -1414,7 +1408,7 @@ mod tests {
             ),
             (
                 FakePowerSourceProvider {
-                    power_source: config::PowerSourceType::DC,
+                    power_source: PowerSourceType::DC,
                 },
                 RTCAudioActive::Inactive,
                 FullscreenVideo::Active,
@@ -1422,7 +1416,7 @@ mod tests {
             ),
             (
                 FakePowerSourceProvider {
-                    power_source: config::PowerSourceType::DC,
+                    power_source: PowerSourceType::DC,
                 },
                 RTCAudioActive::Active,
                 FullscreenVideo::Active,
@@ -1430,7 +1424,7 @@ mod tests {
             ),
             (
                 FakePowerSourceProvider {
-                    power_source: config::PowerSourceType::DC,
+                    power_source: PowerSourceType::DC,
                 },
                 RTCAudioActive::Inactive,
                 FullscreenVideo::Inactive,
@@ -1438,7 +1432,7 @@ mod tests {
             ),
             (
                 FakePowerSourceProvider {
-                    power_source: config::PowerSourceType::AC,
+                    power_source: PowerSourceType::AC,
                 },
                 RTCAudioActive::Inactive,
                 FullscreenVideo::Active,
@@ -1446,7 +1440,7 @@ mod tests {
             ),
             (
                 FakePowerSourceProvider {
-                    power_source: config::PowerSourceType::AC,
+                    power_source: PowerSourceType::AC,
                 },
                 RTCAudioActive::Active,
                 FullscreenVideo::Active,
@@ -1454,7 +1448,7 @@ mod tests {
             ),
             (
                 FakePowerSourceProvider {
-                    power_source: config::PowerSourceType::AC,
+                    power_source: PowerSourceType::AC,
                 },
                 RTCAudioActive::Active,
                 FullscreenVideo::Inactive,
@@ -1466,8 +1460,8 @@ mod tests {
             // Let's assume we have no config
             let config_provider = FakeConfigProvider {
                 default_power_preferences: |_| {
-                    Ok(Some(config::PowerPreferences {
-                        governor: Some(config::Governor::Schedutil),
+                    Ok(Some(PowerPreferences {
+                        governor: Some(Governor::Schedutil),
                         epp: None,
                         cpu_offline: None,
                     }))
@@ -1508,13 +1502,13 @@ mod tests {
         test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
-            power_source: config::PowerSourceType::AC,
+            power_source: PowerSourceType::AC,
         };
 
         let config_provider = FakeConfigProvider {
             fullscreen_power_preferences: |_| {
-                Ok(Some(config::PowerPreferences {
-                    governor: Some(config::Governor::Ondemand {
+                Ok(Some(PowerPreferences {
+                    governor: Some(Governor::Ondemand {
                         powersave_bias: 200,
                         sampling_rate: Some(16000),
                     }),
@@ -1557,13 +1551,13 @@ mod tests {
         test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
-            power_source: config::PowerSourceType::AC,
+            power_source: PowerSourceType::AC,
         };
 
         let config_provider = FakeConfigProvider {
             borealis_gaming_power_preferences: |_| {
-                Ok(Some(config::PowerPreferences {
-                    governor: Some(config::Governor::Ondemand {
+                Ok(Some(PowerPreferences {
+                    governor: Some(Governor::Ondemand {
                         powersave_bias: 200,
                         sampling_rate: Some(16000),
                     }),
@@ -1606,13 +1600,13 @@ mod tests {
         test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
-            power_source: config::PowerSourceType::AC,
+            power_source: PowerSourceType::AC,
         };
 
         let config_provider = FakeConfigProvider {
             arcvm_gaming_power_preferences: |_| {
-                Ok(Some(config::PowerPreferences {
-                    governor: Some(config::Governor::Ondemand {
+                Ok(Some(PowerPreferences {
+                    governor: Some(Governor::Ondemand {
                         powersave_bias: 200,
                         sampling_rate: Some(16000),
                     }),
@@ -1655,7 +1649,7 @@ mod tests {
         const CONFIG_POWERSAVE_BIAS: u32 = 200;
         const CONFIG_SAMPLING_RATE: u32 = 16000;
 
-        let ondemand = config::Governor::Ondemand {
+        let ondemand = Governor::Ondemand {
             powersave_bias: INIT_POWERSAVE_BIAS,
             sampling_rate: Some(INIT_SAMPLING_RATE),
         };
@@ -1676,13 +1670,13 @@ mod tests {
         test_write_cpuset_root_cpus(root, "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
-            power_source: config::PowerSourceType::AC,
+            power_source: PowerSourceType::AC,
         };
 
         let config_provider = FakeConfigProvider {
             arcvm_gaming_power_preferences: |_| {
-                Ok(Some(config::PowerPreferences {
-                    governor: Some(config::Governor::Ondemand {
+                Ok(Some(PowerPreferences {
+                    governor: Some(Governor::Ondemand {
                         powersave_bias: CONFIG_POWERSAVE_BIAS,
                         sampling_rate: Some(CONFIG_SAMPLING_RATE),
                     }),
@@ -1712,19 +1706,17 @@ mod tests {
     }
 
     struct ArcvmGamingConfigProvider {
-        arcvm_gaming_power_preferences: config::PowerPreferences,
+        arcvm_gaming_power_preferences: PowerPreferences,
     }
 
-    impl config::ConfigProvider for ArcvmGamingConfigProvider {
+    impl ConfigProvider for ArcvmGamingConfigProvider {
         fn read_power_preferences(
             &self,
-            _power_source_type: config::PowerSourceType,
-            power_preference_type: config::PowerPreferencesType,
-        ) -> Result<Option<config::PowerPreferences>> {
+            _power_source_type: PowerSourceType,
+            power_preference_type: PowerPreferencesType,
+        ) -> Result<Option<PowerPreferences>> {
             match power_preference_type {
-                config::PowerPreferencesType::ArcvmGaming => {
-                    Ok(Some(self.arcvm_gaming_power_preferences))
-                }
+                PowerPreferencesType::ArcvmGaming => Ok(Some(self.arcvm_gaming_power_preferences)),
                 _ => bail!("Unexpected power preference type"),
             }
         }
@@ -1739,7 +1731,7 @@ mod tests {
         const INIT_POWERSAVE_BIAS: u32 = 0;
         const INIT_SAMPLING_RATE: u32 = 2000;
 
-        let ondemand = config::Governor::Ondemand {
+        let ondemand = Governor::Ondemand {
             powersave_bias: INIT_POWERSAVE_BIAS,
             sampling_rate: Some(INIT_SAMPLING_RATE),
         };
@@ -1757,22 +1749,22 @@ mod tests {
         write_per_policy_scaling_governor(root, policies);
 
         let governors = [
-            config::Governor::Conservative,
-            config::Governor::Performance,
-            config::Governor::Powersave,
-            config::Governor::Schedutil,
-            config::Governor::Userspace,
+            Governor::Conservative,
+            Governor::Performance,
+            Governor::Powersave,
+            Governor::Schedutil,
+            Governor::Userspace,
         ];
 
         for governor in governors {
             let power_source_provider = FakePowerSourceProvider {
-                power_source: config::PowerSourceType::AC,
+                power_source: PowerSourceType::AC,
             };
             // The governor is a variable that we cannot use FakeConfigProvider.
             // Got the following error when using FakeConfigProvider:
             // closures can only be coerced to `fn` types if they do not capture any variables
             let config_provider = ArcvmGamingConfigProvider {
-                arcvm_gaming_power_preferences: config::PowerPreferences {
+                arcvm_gaming_power_preferences: PowerPreferences {
                     governor: Some(governor),
                     epp: None,
                     cpu_offline: None,
