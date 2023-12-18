@@ -48,12 +48,6 @@ class CopyNoAssign {
   const CopyNoAssign& operator=(const CopyNoAssign&);
 };
 
-TEST(StatusOr, TestDefaultCtor) {
-  StatusOr<int> thing;
-  EXPECT_FALSE(thing.has_value());
-  EXPECT_EQ(error::UNKNOWN, thing.status().code());
-}
-
 TEST(StatusOr, TestStatusCtor) {
   StatusOr<int> thing(Status(error::CANCELLED, ""));
   EXPECT_FALSE(thing.has_value());
@@ -98,7 +92,7 @@ TEST(StatusOr, TestCopyCtorStatusNotOkConverting) {
 TEST(StatusOr, TestAssignmentStatusOk) {
   const int kI = 4;
   StatusOr<int> source(kI);
-  StatusOr<int> target;
+  StatusOr<int> target = CreateUnknownErrorStatusOr();
   target = source;
   EXPECT_EQ(source.status(), target.status());
   EXPECT_EQ(source.value(), target.value());
@@ -106,7 +100,7 @@ TEST(StatusOr, TestAssignmentStatusOk) {
 
 TEST(StatusOr, TestAssignmentStatusNotOk) {
   StatusOr<int> source(Status(error::CANCELLED, ""));
-  StatusOr<int> target;
+  StatusOr<int> target = CreateUnknownErrorStatusOr();
   target = source;
   EXPECT_EQ(source.status(), target.status());
 }
@@ -114,7 +108,7 @@ TEST(StatusOr, TestAssignmentStatusNotOk) {
 TEST(StatusOr, TestAssignmentStatusOKConverting) {
   const int kI = 4;
   StatusOr<int> source(kI);
-  StatusOr<double> target;
+  StatusOr<double> target = CreateUnknownErrorStatusOr();
   target = source;
   EXPECT_EQ(source.status(), target.status());
   EXPECT_DOUBLE_EQ(source.value(), target.value());
@@ -122,7 +116,7 @@ TEST(StatusOr, TestAssignmentStatusOKConverting) {
 
 TEST(StatusOr, TestAssignmentStatusNotOkConverting) {
   StatusOr<int> source(Status(error::CANCELLED, ""));
-  StatusOr<double> target;
+  StatusOr<double> target = CreateUnknownErrorStatusOr();
   target = source;
   EXPECT_EQ(source.status(), target.status());
 }
@@ -139,12 +133,6 @@ TEST(StatusOr, TestValueConst) {
   const int kI = 4;
   const StatusOr<int> thing(kI);
   EXPECT_EQ(kI, thing.value());
-}
-
-TEST(StatusOr, TestPointerDefaultCtor) {
-  StatusOr<int*> thing;
-  EXPECT_FALSE(thing.has_value());
-  EXPECT_EQ(error::UNKNOWN, thing.status().code());
 }
 
 TEST(StatusOr, TestPointerStatusCtor) {
@@ -191,7 +179,7 @@ TEST(StatusOr, TestPointerCopyCtorStatusNotOkConverting) {
 TEST(StatusOr, TestPointerAssignmentStatusOk) {
   const int kI = 0;
   StatusOr<const int*> source(&kI);
-  StatusOr<const int*> target;
+  StatusOr<const int*> target = CreateUnknownErrorStatusOr();
   target = source;
   EXPECT_EQ(source.status(), target.status());
   EXPECT_EQ(source.value(), target.value());
@@ -199,7 +187,7 @@ TEST(StatusOr, TestPointerAssignmentStatusOk) {
 
 TEST(StatusOr, TestPointerAssignmentStatusNotOk) {
   StatusOr<int*> source(Status(error::CANCELLED, ""));
-  StatusOr<int*> target;
+  StatusOr<int*> target = CreateUnknownErrorStatusOr();
   target = source;
   EXPECT_EQ(source.status(), target.status());
 }
@@ -207,7 +195,7 @@ TEST(StatusOr, TestPointerAssignmentStatusNotOk) {
 TEST(StatusOr, TestPointerAssignmentStatusOKConverting) {
   Derived derived;
   StatusOr<Derived*> source(&derived);
-  StatusOr<Base2*> target;
+  StatusOr<Base2*> target = CreateUnknownErrorStatusOr();
   target = source;
   EXPECT_EQ(source.status(), target.status());
   EXPECT_EQ(static_cast<const Base2*>(source.value()), target.value());
@@ -215,7 +203,7 @@ TEST(StatusOr, TestPointerAssignmentStatusOKConverting) {
 
 TEST(StatusOr, TestPointerAssignmentStatusNotOkConverting) {
   StatusOr<Derived*> source(Status(error::CANCELLED, ""));
-  StatusOr<Base2*> target;
+  StatusOr<Base2*> target = CreateUnknownErrorStatusOr();
   target = source;
   EXPECT_EQ(source.status(), target.status());
 }

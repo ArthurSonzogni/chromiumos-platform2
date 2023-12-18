@@ -93,8 +93,7 @@ class [[nodiscard]] StatusOr {
                          std::is_convertible<V, U>> {};
 
  public:
-  // Constructs a new StatusOr with UNINITIALIZED status and no value.
-  StatusOr() : status_(internal::StatusOrHelper::NotInitializedStatus()) {}
+  StatusOr() = delete;
 
   // Constructs a new StatusOr with the given non-ok status. After calling
   // this constructor, calls to value() will CHECK-fail.
@@ -301,6 +300,10 @@ class [[nodiscard]] StatusOr {
   std::optional<T> value_;
 };
 
+// Create a `StatusOr<T>` object with an unknown error.
+// The function is defined here because once we migrate to `base::expected`, the
+// return type will become `base::unepxected<Status>`.
+Status CreateUnknownErrorStatusOr();
 }  // namespace reporting
 
 #endif  // MISSIVE_UTIL_STATUSOR_H_

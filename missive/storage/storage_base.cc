@@ -224,10 +224,10 @@ size_t QueuesContainer::RunActionOnAllQueues(
 
 GenerationGuid QueuesContainer::GetOrCreateGenerationGuid(
     const DMtoken& dm_token, Priority priority) {
-  StatusOr<GenerationGuid> generation_guid_result;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (generation_guid_result = GetGenerationGuid(dm_token, priority);
-      !generation_guid_result.has_value()) {
+  StatusOr<GenerationGuid> generation_guid_result =
+      GetGenerationGuid(dm_token, priority);
+  if (!generation_guid_result.has_value()) {
     // Create a generation guid for this dm token and priority
     generation_guid_result = CreateGenerationGuidForDMToken(dm_token, priority);
     // Creation should never fail.

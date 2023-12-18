@@ -418,7 +418,7 @@ TEST_F(TaskRunner, ActionsWithStatusOrPtr) {
   vector.emplace_back(Status(error::CANCELLED, "Cancelled"));
   vector.emplace_back(Status(error::CANCELLED, "Cancelled"));
   vector.emplace_back(std::make_unique<WrappedValue>(kI));
-  StatusOrPtr result;
+  StatusOrPtr result = CreateUnknownErrorStatusOr();
   base::RunLoop run_loop;
   Start<ActionsWithStatusOrContext>(
       &vector,

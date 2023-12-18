@@ -7,7 +7,8 @@
 #include <base/logging.h>
 #include <base/no_destructor.h>
 
-namespace reporting::internal {
+namespace reporting {
+namespace internal {
 
 // static
 const Status& StatusOrHelper::NotInitializedStatus() {
@@ -28,4 +29,9 @@ void StatusOrHelper::Crash(const Status& status) {
   LOG(FATAL) << "Attempting to fetch value instead of handling error "
              << status.ToString();
 }
-}  // namespace reporting::internal
+}  // namespace internal
+
+Status CreateUnknownErrorStatusOr() {
+  return internal::StatusOrHelper::NotInitializedStatus();
+}
+}  // namespace reporting

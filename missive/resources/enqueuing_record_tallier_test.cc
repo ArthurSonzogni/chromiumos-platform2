@@ -51,7 +51,7 @@ class FakeEnqueuingRecordTallier : public EnqueuingRecordTallier {
   }
 
   // The value that the fake |GetCurrentWallTime| returns.
-  StatusOr<uint64_t> fake_wall_time_;
+  StatusOr<uint64_t> fake_wall_time_{CreateUnknownErrorStatusOr()};
 };
 
 class EnqueuingRecordTallierTest : public ::testing::Test {
