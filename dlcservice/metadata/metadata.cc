@@ -232,7 +232,6 @@ bool Metadata::LoadMetadata(const DlcId& id) {
   if (cache_.FindDict(id))
     return true;
 
-  LOG(INFO) << "Loading metadata for DLC=" << id;
   // Locate the metadata file by binary search the `file_id`.
   auto file_id = file_ids_.upper_bound(id);
   if (file_id == file_ids_.begin()) {
@@ -290,7 +289,6 @@ DlcIdList Metadata::ListDlcIds(const FilterKey& filter_key,
     return {};
 
   if (const auto& idx = GetIndex(*key_str)) {
-    LOG(INFO) << "Get from indexed DLC IDs.";
     return *idx;
   }
 
