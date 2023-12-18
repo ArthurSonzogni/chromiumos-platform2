@@ -36,5 +36,5 @@ stderrlog = "0.5.0"
 syslog = "6.0.1"
 system_api = { path = "../../platform2/system_api" } # provided by ebuild
 thiserror = "1.0.20"
-update_engine_dbus = { path = "../../aosp/system/update_engine" } # provided by ebuild
+update_engine_dbus = { path = "../../platform2/update_engine" } # provided by ebuild
 zeroize = { version = "1.5.1", features = ["zeroize_derive"] }
