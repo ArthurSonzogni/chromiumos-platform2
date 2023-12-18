@@ -107,6 +107,10 @@ void enter_vfs_namespace() {
   PCHECK(
       mj_call(minijail_bind(j.get(), "/run/dns-proxy", "/run/dns-proxy", 0)));
 
+  // We need to write to VPD (and its cache files in /run/vpd) to modify
+  // RLZ-related keys.
+  PCHECK(mj_call(minijail_bind(j.get(), "/run/vpd", "/run/vpd", 1)));
+
   // Bind mount /run/lockbox and /var/lib/devicesettings to be able to read
   // policy files and check device policies.
   // In case we start before, make sure the path exists.
