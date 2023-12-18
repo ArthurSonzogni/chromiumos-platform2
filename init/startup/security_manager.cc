@@ -104,6 +104,7 @@ bool AccumulatePolicyFiles(const base::FilePath& root,
   for (base::FilePath file = enumerator.Next(); !file.empty();
        file = enumerator.Next()) {
     std::string file_str;
+    DLOG(INFO) << "Loading: " << file.value();
     if (!base::ReadFileToString(file, &file_str)) {
       PLOG(WARNING) << "Can't read policy file " << file;
       continue;
@@ -121,6 +122,7 @@ bool AccumulatePolicyFiles(const base::FilePath& root,
   std::string combined_policy_str = base::JoinString(combined_policy, "\n");
   combined_policy_str.append("\n");
 
+  DLOG(INFO) << "Applying policy to: " << output_file.value();
   if (!base::WriteFile(output_file, combined_policy_str)) {
     PLOG(ERROR) << output_file << ": Failed to write to file";
     return false;
@@ -132,6 +134,7 @@ bool AccumulatePolicyFiles(const base::FilePath& root,
 // No inputs, checks for which securityfs file paths exist
 // and accumulates files for securityfs.
 bool ConfigureProcessMgmtSecurity(const base::FilePath& root) {
+  DLOG(INFO) << "ConfigureProcessMgmtSecurity";
   // For UID relevant files.
 
   const base::FilePath policies_dir =

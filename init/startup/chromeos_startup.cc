@@ -369,8 +369,8 @@ void ChromeosStartup::EarlySetup() {
   const base::FilePath disable_sec_hard =
       root_.Append(kDisableStatefulSecurityHard);
   enable_stateful_security_hardening_ = !base::PathExists(disable_sec_hard);
-  if (!enable_stateful_security_hardening_ &&
-      !ConfigureProcessMgmtSecurity(root_)) {
+  if (!(enable_stateful_security_hardening_ &&
+        ConfigureProcessMgmtSecurity(root_))) {
     PLOG(WARNING) << "Failed to configure process management security.";
   }
 }
