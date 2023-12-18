@@ -58,7 +58,6 @@ use crate::resume_dbus::DBusServer;
 use crate::snapdev::FrozenUserspaceTicket;
 use crate::snapdev::SnapshotDevice;
 use crate::snapdev::SnapshotMode;
-use crate::volume::ActiveMount;
 use crate::volume::PendingStatefulMerge;
 use crate::volume::VolumeManager;
 use crate::volume::VOLUME_MANAGER;
@@ -228,7 +227,6 @@ impl ResumeConductor {
         }
 
         let volume_manager = VOLUME_MANAGER.read().unwrap();
-        let hibermeta_mount = volume_manager.setup_hibermeta_lv(false)?;
 
         // Set up the snapshot device for resuming
         self.setup_snapshot_device(false, user_key)?;
@@ -236,7 +234,7 @@ impl ResumeConductor {
         volume_manager.lockdown_hiberimage()?;
 
         let _locked_memory = lock_process_memory()?;
-        self.resume_system(hibermeta_mount)
+        self.resume_system()
     }
 
     /// Helper function to evaluate the hibernate cookie and decide whether or
@@ -301,8 +299,10 @@ impl ResumeConductor {
     }
 
     /// Inner helper function to read the resume image and launch it.
-    fn resume_system(&mut self, hibermeta_mount: ActiveMount) -> Result<()> {
+    fn resume_system(&mut self) -> Result<()> {
         // Start logging to the resume logger.
+        let volume_manager = VOLUME_MANAGER.read().unwrap();
+        let hibermeta_mount = volume_manager.setup_hibermeta_lv(false)?;
         let log_file = LogFile::new(HibernateStage::Resume, true, &hibermeta_mount)?;
 
         // Let other daemons know it's the end of the world.
