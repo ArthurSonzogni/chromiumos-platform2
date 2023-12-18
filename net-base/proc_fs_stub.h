@@ -20,6 +20,13 @@ class NET_BASE_EXPORT ProcFsStub {
   static constexpr char kIPFlagAcceptRouterAdvertisements[] = "accept_ra";
   static constexpr char kIPFlagAcceptRouterAdvertisementsNever[] = "0";
   static constexpr char kIPFlagAcceptRouterAdvertisementsAlways[] = "2";
+  static constexpr char kIPFlagPerDeviceRoutingTableForRA[] =
+      "accept_ra_rt_table";
+  // Routes added by kernel from RA would be added to the routing table with
+  // id = 1000 + interface_id. The value needs to be consistent with the routing
+  // policy management code in NetworkApplier.
+  static constexpr char kIPFlagPerDeviceRoutingTableForRAEnabled[] = "-1000";
+  static constexpr char kIPFlagPerDeviceRoutingTableForRADisabled[] = "0";
   static constexpr char kIPFlagAddressGenerationMode[] = "addr_gen_mode";
   static constexpr char kIPFlagAddressGenerationModeDefault[] = "0";
   static constexpr char kIPFlagAddressGenerationModeNoLinkLocal[] = "1";

@@ -47,9 +47,9 @@ static auto kModuleLogScope = ScopeLogger::kRoute;
 
 namespace {
 
-const char kIpv6ProcPath[] = "/proc/sys/net/ipv6/conf";
 // Amount added to an interface index to come up with the routing table ID for
-// that interface.
+// that interface. Needs to match the kIPFlagPerDeviceRoutingTableForRAEnabled
+// offset set in net_base::ProcFsStub.
 constexpr int kInterfaceTableIdIncrement = 1000;
 static_assert(
     kInterfaceTableIdIncrement > RT_TABLE_LOCAL,
@@ -170,52 +170,14 @@ void RoutingTable::RegisterDevice(int interface_index,
     return;
   }
 
-  LOG(INFO) << "Device " << link_name << " registered.";
+  LOG(INFO) << __func__ << ": " << link_name;
   managed_interfaces_.insert(interface_index);
-
-  uint32_t table_id = GetInterfaceTableId(interface_index);
-  // Move existing entries for this interface to the per-Device table.
-  for (auto& nent : tables_[interface_index]) {
-    if (nent.table == table_id) {
-      continue;
-    }
-    RoutingTableEntry new_entry = nent;
-    new_entry.table = table_id;
-    AddRouteToKernelTable(interface_index, new_entry);
-    RemoveRouteFromKernelTable(interface_index, nent);
-    nent.table = table_id;
-  }
-
-  // Set accept_ra_rt_table to -N to cause routes created by the reception of
-  // RAs to be sent to the table id (interface_index + N).
-  std::string ra_rt_table = std::to_string(-kInterfaceTableIdIncrement);
-  auto path = base::FilePath(kIpv6ProcPath)
-                  .Append(link_name)
-                  .Append("accept_ra_rt_table");
-  int str_size = static_cast<int>(ra_rt_table.size());
-  if (base::WriteFile(path, ra_rt_table.c_str(), str_size) != str_size) {
-    LOG(ERROR) << "Cannot write to " << path.MaybeAsASCII();
-  }
 }
 
 void RoutingTable::DeregisterDevice(int interface_index,
                                     const std::string& link_name) {
-  LOG(INFO) << "Device " << link_name << " deregistered.";
+  LOG(INFO) << __func__ << ": " << link_name;
   managed_interfaces_.erase(interface_index);
-  // Set accept_ra_rt_table to 0. Note that this will *not* cause routes to be
-  // moved back from the per-Device table to the main routing table.
-  auto path = base::FilePath(kIpv6ProcPath)
-                  .Append(link_name)
-                  .Append("accept_ra_rt_table");
-  if (!base::PathExists(path)) {
-    SLOG(2) << "Cannot write to " << path.MaybeAsASCII()
-            << ", likely because the interface has already went down.";
-  } else if (base::WriteFile(path, "0", 1) != 1) {
-    // Note that there is a potential race condition in which the file exists in
-    // the check above but is removed by the time we call WriteFile. In this
-    // case, the following error log will be spurious.
-    LOG(ERROR) << "Cannot write to " << path.MaybeAsASCII();
-  }
 }
 
 bool RoutingTable::AddRoute(int interface_index,

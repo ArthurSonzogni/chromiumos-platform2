@@ -60,6 +60,11 @@ void SLAACController::Start(
 
   link_local_address_ = link_local_address;
 
+  proc_fs_->SetIPFlag(
+      net_base::IPFamily::kIPv6,
+      net_base::ProcFsStub::kIPFlagPerDeviceRoutingTableForRA,
+      net_base::ProcFsStub::kIPFlagPerDeviceRoutingTableForRAEnabled);
+
   proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
                       net_base::ProcFsStub::kIPFlagUseTempAddr,
                       net_base::ProcFsStub::kIPFlagUseTempAddrUsedAndDefault);
@@ -102,6 +107,10 @@ void SLAACController::Stop() {
   address_listener_.reset();
   nd_option_listener_.reset();
   last_provision_timer_.reset();
+  proc_fs_->SetIPFlag(
+      net_base::IPFamily::kIPv6,
+      net_base::ProcFsStub::kIPFlagPerDeviceRoutingTableForRA,
+      net_base::ProcFsStub::kIPFlagPerDeviceRoutingTableForRADisabled);
 }
 
 void SLAACController::AddressMsgHandler(const net_base::RTNLMessage& msg) {

@@ -336,6 +336,10 @@ TEST_F(SLAACControllerTest, StartIPv6Flags) {
       EXPECT_CALL(proc_fs_,
                   SetIPFlag(net_base::IPFamily::kIPv6, "accept_ra", "2"))
           .WillOnce(Return(true));
+  testing::Expectation accept_ra_rt_table =
+      EXPECT_CALL(proc_fs_, SetIPFlag(net_base::IPFamily::kIPv6,
+                                      "accept_ra_rt_table", "-1000"))
+          .WillOnce(Return(true));
   testing::Expectation addr_gen_mode =
       EXPECT_CALL(proc_fs_,
                   SetIPFlag(net_base::IPFamily::kIPv6, "addr_gen_mode", "0"))
@@ -347,7 +351,7 @@ TEST_F(SLAACControllerTest, StartIPv6Flags) {
           .WillOnce(Return(true));
   EXPECT_CALL(proc_fs_,
               SetIPFlag(net_base::IPFamily::kIPv6, "disable_ipv6", "0"))
-      .After(accept_ra, addr_gen_mode, disable_ipv6)
+      .After(accept_ra, accept_ra_rt_table, addr_gen_mode, disable_ipv6)
       .WillOnce(Return(true));
 
   slaac_controller_.Start();
@@ -363,6 +367,10 @@ TEST_F(SLAACControllerTest, StartIPv6FlagsWithLinkLocal) {
       EXPECT_CALL(proc_fs_,
                   SetIPFlag(net_base::IPFamily::kIPv6, "accept_ra", "2"))
           .WillOnce(Return(true));
+  testing::Expectation accept_ra_rt_table =
+      EXPECT_CALL(proc_fs_, SetIPFlag(net_base::IPFamily::kIPv6,
+                                      "accept_ra_rt_table", "-1000"))
+          .WillOnce(Return(true));
   testing::Expectation addr_gen_mode =
       EXPECT_CALL(proc_fs_,
                   SetIPFlag(net_base::IPFamily::kIPv6, "addr_gen_mode", "1"))
@@ -375,7 +383,7 @@ TEST_F(SLAACControllerTest, StartIPv6FlagsWithLinkLocal) {
   testing::Expectation reenable_ipv6 =
       EXPECT_CALL(proc_fs_,
                   SetIPFlag(net_base::IPFamily::kIPv6, "disable_ipv6", "0"))
-          .After(accept_ra, addr_gen_mode, disable_ipv6)
+          .After(accept_ra, accept_ra_rt_table, addr_gen_mode, disable_ipv6)
           .WillOnce(Return(true));
   EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _))
       .After(reenable_ipv6)
