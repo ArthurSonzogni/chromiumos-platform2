@@ -83,6 +83,8 @@ void EnterMinijail(bool set_admin_caps) {
   // Required by |vpd| utility.
   minijail_bind(j.get(), "/run/lock", "/run/lock", 1);
   minijail_add_fs_restriction_rw(j.get(), "/run/lock");
+  minijail_bind(j.get(), "/run/vpd", "/run/vpd", 1);
+  minijail_add_fs_restriction_rw(j.get(), "/run/vpd");
 
   minijail_mount_with_data(j.get(), "tmpfs", "/var", "tmpfs", 0, nullptr);
 
@@ -112,6 +114,8 @@ void EnterMinijail(bool set_admin_caps) {
   // Required to read VPD and sensor attributes.
   minijail_bind(j.get(), "/sys/bus", "/sys/bus", 0);
   minijail_add_fs_restriction_ro(j.get(), "/sys/bus");
+  minijail_bind(j.get(), "/sys/firmware/vpd", "/sys/firmware/vpd", 0);
+  minijail_add_fs_restriction_ro(j.get(), "/sys/firmware/vpd");
 
   // Required to read system properties (crossystem) on arm.
   BindMountIfPathExists(j.get(),

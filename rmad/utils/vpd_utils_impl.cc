@@ -186,9 +186,9 @@ bool VpdUtilsImpl::SetRoVpd(
     log_msg += key_value_pair + " ";
   }
 
-  static std::string unused_output;
-  if (!cmd_utils_->GetOutput(argv, &unused_output)) {
-    LOG(ERROR) << "Failed to flush " << log_msg << "into RO_PVD.";
+  static std::string output;
+  if (!cmd_utils_->GetOutputAndError(argv, &output)) {
+    LOG(ERROR) << "Failed to flush " << log_msg << "into RO_PVD: " << output;
     return false;
   }
   return true;

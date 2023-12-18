@@ -229,7 +229,7 @@ TEST_F(VpdUtilsTest, GetStableDeviceSecret_Success) {
 TEST_F(VpdUtilsTest, SetSerialNumber_Success) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   // Expect this to be called when flushing the cached values in destructor.
-  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _))
       .WillOnce([](const std::vector<std::string>& argv, std::string* output) {
         const std::vector<std::string> expect = {
             "/usr/sbin/vpd", "-i", "RO_VPD", "-s", "serial_number=abc"};
@@ -247,7 +247,7 @@ TEST_F(VpdUtilsTest, SetSerialNumber_Success) {
 TEST_F(VpdUtilsTest, SetCustomLabelTag_NonLegacy_Success) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   // Expect this to be called when flushing the cached values in destructor.
-  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _))
       .WillOnce([](const std::vector<std::string>& argv, std::string* output) {
         const std::vector<std::string> expect = {
             "/usr/sbin/vpd", "-i", "RO_VPD", "-s", "custom_label_tag=abc"};
@@ -265,7 +265,7 @@ TEST_F(VpdUtilsTest, SetCustomLabelTag_NonLegacy_Success) {
 TEST_F(VpdUtilsTest, SetCustomLabelTag_Legacy_Success) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   // Expect this to be called when flushing the cached values in destructor.
-  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _))
       .WillOnce([](const std::vector<std::string>& argv, std::string* output) {
         const std::vector<std::string> expect = {
             "/usr/sbin/vpd", "-i", "RO_VPD", "-s", "whitelabel_tag=abc"};
@@ -283,7 +283,7 @@ TEST_F(VpdUtilsTest, SetCustomLabelTag_Legacy_Success) {
 TEST_F(VpdUtilsTest, SetRegion_Success) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   // Expect this to be called when flushing the cached values in destructor.
-  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _))
       .WillOnce([](const std::vector<std::string>& argv, std::string* output) {
         const std::vector<std::string> expect = {"/usr/sbin/vpd", "-i",
                                                  "RO_VPD", "-s", "region=abc"};
@@ -302,7 +302,7 @@ TEST_F(VpdUtilsTest, SetCalibbias_Success) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   // Expect this to be called when flushing the cached values in destructor.
   // The command can be in either order.
-  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _))
       .WillOnce([](const std::vector<std::string>& argv, std::string* output) {
         const std::vector<std::string> expect1 = {
             "/usr/sbin/vpd", "-i", "RO_VPD", "-s", "x=123", "-s", "y=456"};
@@ -357,7 +357,7 @@ TEST_F(VpdUtilsTest, SetStableDeviceSecret_Success) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   // Expect this to be called when flushing the cached values in destructor.
   // The command can be in either order.
-  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _))
       .WillOnce([](const std::vector<std::string>& argv, std::string* output) {
         const std::vector<std::string> expect = {
             "/usr/sbin/vpd", "-i", "RO_VPD", "-s",
@@ -409,7 +409,7 @@ TEST_F(VpdUtilsTest, RemoveCustomLabelTag_Failed) {
 
 TEST_F(VpdUtilsTest, FlushRoSuccess) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
-  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _))
       .WillOnce([](const std::vector<std::string>& argv, std::string* output) {
         const std::vector<std::string> expect = {
             "/usr/sbin/vpd", "-i", "RO_VPD", "-s", "serial_number=abc"};
@@ -451,7 +451,8 @@ TEST_F(VpdUtilsTest, FlushRwSuccess) {
 
 TEST_F(VpdUtilsTest, FlushRoFail) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
-  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillRepeatedly(Return(false));
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _))
+      .WillRepeatedly(Return(false));
   auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
 
   EXPECT_TRUE(vpd_utils->SetSerialNumber("abc"));
