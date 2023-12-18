@@ -155,6 +155,7 @@ copies.
 | [routing-simulator](./routing-simulator/) | Debugging tool for routing subsystem |
 | [run_oci](./run_oci/) | Minimalistic container runtime |
 | [runtime_probe](./runtime_probe/) | Runtime probe tool for ChromeOS |
+| [sandboxing-codelab](./sandboxing-codelab/) | Sandboxing exercise |
 | [screen-capture-utils](./screen-capture-utils/) | Utilities for screen capturing (screenshot) |
 | [secagentd](./secagentd/) | Daemon for detecting and reporting security related events |
 | [secanomalyd](./secanomalyd/) | Daemon for detecting and reporting security anomalies |
