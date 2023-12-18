@@ -1297,13 +1297,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalInvalidRedirect) {
   ASSERT_EQ(PortalDetector::ValidationState::kPortalSuspected,
             result.GetValidationState());
 
-  MockConnectionDiagnostics* conn_diag = new MockConnectionDiagnostics();
-  EXPECT_CALL(*network_, CreateConnectionDiagnostics)
-      .WillOnce([conn_diag](const net_base::IPAddress&,
-                            const net_base::IPAddress&,
-                            const std::vector<net_base::IPAddress>&) {
-        return std::unique_ptr<MockConnectionDiagnostics>(conn_diag);
-      });
+  EXPECT_CALL(*network_, CreateConnectionDiagnostics).Times(0);
   EXPECT_CALL(event_handler_,
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
@@ -1379,18 +1373,11 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalSuspected200) {
   ASSERT_EQ(PortalDetector::ValidationState::kPortalSuspected,
             result.GetValidationState());
 
-  MockConnectionDiagnostics* conn_diag = new MockConnectionDiagnostics();
   MockPortalDetector* portal_detector = new MockPortalDetector();
   ON_CALL(*portal_detector, IsInProgress()).WillByDefault(Return(true));
   network_->set_portal_detector_for_testing(portal_detector);
 
-  EXPECT_CALL(*network_, CreateConnectionDiagnostics)
-      .WillOnce([conn_diag](const net_base::IPAddress&,
-                            const net_base::IPAddress&,
-                            const std::vector<net_base::IPAddress>&) {
-        return std::unique_ptr<MockConnectionDiagnostics>(conn_diag);
-      });
-
+  EXPECT_CALL(*network_, CreateConnectionDiagnostics).Times(0);
   EXPECT_CALL(event_handler_,
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,

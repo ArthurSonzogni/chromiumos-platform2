@@ -930,9 +930,8 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
 
   switch (result.GetValidationState()) {
     case PortalDetector::ValidationState::kNoConnectivity:
-    case PortalDetector::ValidationState::kPortalSuspected:
-      // If portal detection was not conclusive, also start additional
-      // connection diagnostics for the current network connection.
+      // If network validation failed, also start additional connection
+      // diagnostics for the current network connection.
       StartConnectionDiagnostics();
       break;
     case PortalDetector::ValidationState::kInternetConnectivity:
@@ -950,6 +949,11 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
       // flow.
       metrics_->SendToUMA(Metrics::kPortalDetectorPortalDiscoveryDuration,
                           technology_, total_duration);
+      break;
+    case PortalDetector::ValidationState::kPortalSuspected:
+      // b/309175584: the "portal-suspected" also starts the portal detection
+      // sign-in flow and is considered conclusive. Do not run additional
+      // connection diagnostics.
       break;
   }
 
