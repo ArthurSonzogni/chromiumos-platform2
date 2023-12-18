@@ -5,7 +5,6 @@
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
-use std::str;
 use std::time::Duration;
 
 use anyhow::Result;
@@ -53,25 +52,25 @@ impl power::PowerPreferencesManager for MockPowerPreferencesManager {
 }
 
 pub fn test_create_parent_dir(path: &Path) {
-    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
 }
 
 pub fn test_write_ui_use_flags(root: &Path, use_flags: &str) {
     let use_flags_path = root.join("etc/ui_use_flags.txt");
     test_create_parent_dir(&use_flags_path);
-    std::fs::write(use_flags_path, use_flags).unwrap();
+    fs::write(use_flags_path, use_flags).unwrap();
 }
 
 pub fn test_write_online_cpu(root: &Path, cpu: u32, value: &str) {
     let root_online_cpu = root.join(format!("sys/devices/system/cpu/cpu{}/online", cpu));
     test_create_parent_dir(&root_online_cpu);
-    std::fs::write(root_online_cpu, value).unwrap();
+    fs::write(root_online_cpu, value).unwrap();
 }
 
 pub fn test_check_online_cpu(root: &Path, cpu: u32, expected: &str) {
     let root_online_cpu = root.join(format!("sys/devices/system/cpu/cpu{}/online", cpu));
     test_create_parent_dir(&root_online_cpu);
-    let value = std::fs::read_to_string(root_online_cpu).unwrap();
+    let value = fs::read_to_string(root_online_cpu).unwrap();
     assert_eq!(value, expected);
 }
 
@@ -81,26 +80,26 @@ pub fn test_write_core_cpus_list(root: &Path, cpu: u32, value: &str) {
         cpu
     ));
     test_create_parent_dir(&core_cpus_list);
-    std::fs::write(core_cpus_list, value).unwrap();
+    fs::write(core_cpus_list, value).unwrap();
 }
 
 pub fn test_write_smt_control(root: &Path, status: &str) {
     let smt_control = root.join(SMT_CONTROL_PATH);
     test_create_parent_dir(&smt_control);
-    std::fs::write(smt_control, status).unwrap();
+    fs::write(smt_control, status).unwrap();
 }
 
 pub fn test_check_smt_control(root: &Path, expected: &str) {
     let root_smt_control = root.join(SMT_CONTROL_PATH);
     test_create_parent_dir(&root_smt_control);
-    let value = std::fs::read_to_string(root_smt_control).unwrap();
+    let value = fs::read_to_string(root_smt_control).unwrap();
     assert_eq!(value, expected);
 }
 
 pub fn test_write_cpuset_root_cpus(root: &Path, cpus: &str) {
     let root_cpuset_cpus = root.join("sys/fs/cgroup/cpuset/cpus");
     test_create_parent_dir(&root_cpuset_cpus);
-    std::fs::write(root_cpuset_cpus, cpus).unwrap();
+    fs::write(root_cpuset_cpus, cpus).unwrap();
 }
 
 pub fn test_write_cpu_max_freq(root: &Path, cpu_num: u32, max_freq: u32) {
@@ -109,11 +108,11 @@ pub fn test_write_cpu_max_freq(root: &Path, cpu_num: u32, max_freq: u32) {
         cpu_num
     ));
     test_create_parent_dir(&cpu_max_path);
-    std::fs::write(cpu_max_path, max_freq.to_string()).unwrap();
+    fs::write(cpu_max_path, max_freq.to_string()).unwrap();
 }
 
 pub fn write_mock_pl0(root: &Path, value: u64) -> Result<()> {
-    std::fs::write(
+    fs::write(
         root.join(DEVICE_POWER_LIMIT_PATH)
             .join("constraint_0_power_limit_uw"),
         value.to_string(),
@@ -133,19 +132,19 @@ pub fn write_mock_cpu(
     let policy_path = root
         .join(DEVICE_CPUFREQ_PATH)
         .join(format!("policy{cpu_num}"));
-    std::fs::write(
+    fs::write(
         policy_path.join("cpuinfo_max_freq"),
         baseline_max.to_string(),
     )
     .expect("Failed to write to file!");
-    std::fs::write(
+    fs::write(
         policy_path.join("cpuinfo_min_freq"),
         baseline_min.to_string(),
     )
     .expect("Failed to write to file!");
 
-    std::fs::write(policy_path.join("scaling_max_freq"), curr_max.to_string())?;
-    std::fs::write(policy_path.join("scaling_min_freq"), curr_min.to_string())?;
+    fs::write(policy_path.join("scaling_max_freq"), curr_max.to_string())?;
+    fs::write(policy_path.join("scaling_min_freq"), curr_min.to_string())?;
     Ok(())
 }
 
@@ -159,7 +158,7 @@ pub fn setup_mock_cpu_dev_dirs(root: &Path) -> anyhow::Result<()> {
 
 pub fn get_cpu0_freq_max(root: &Path) -> i32 {
     let policy_path = root.join(DEVICE_CPUFREQ_PATH).join("policy0");
-    let read_val = std::fs::read(policy_path.join("scaling_max_freq")).unwrap();
+    let read_val = fs::read(policy_path.join("scaling_max_freq")).unwrap();
 
     std::str::from_utf8(&read_val)
         .unwrap()
@@ -169,9 +168,12 @@ pub fn get_cpu0_freq_max(root: &Path) -> i32 {
 
 pub fn get_cpu0_freq_min(root: &Path) -> i32 {
     let policy_path = root.join(DEVICE_CPUFREQ_PATH).join("policy0");
-    let read_val = std::fs::read(policy_path.join("scaling_min_freq")).unwrap();
+    let read_val = fs::read(policy_path.join("scaling_min_freq")).unwrap();
 
-    str::from_utf8(&read_val).unwrap().parse::<i32>().unwrap()
+    std::str::from_utf8(&read_val)
+        .unwrap()
+        .parse::<i32>()
+        .unwrap()
 }
 
 pub fn setup_mock_cpu_files(root: &Path) -> Result<()> {
@@ -193,7 +195,7 @@ pub fn setup_mock_cpu_files(root: &Path) -> Result<()> {
     ];
 
     for pl_file in &pl_files {
-        std::fs::write(
+        fs::write(
             root.join(DEVICE_POWER_LIMIT_PATH)
                 .join(PathBuf::from(pl_file)),
             "0",
@@ -204,7 +206,7 @@ pub fn setup_mock_cpu_files(root: &Path) -> Result<()> {
         let policy_path = root.join(DEVICE_CPUFREQ_PATH).join(format!("policy{i}"));
 
         for cpufreq_file in &cpufreq_files {
-            std::fs::write(policy_path.join(cpufreq_file.0), cpufreq_file.1)?;
+            fs::write(policy_path.join(cpufreq_file.0), cpufreq_file.1)?;
         }
     }
 
@@ -272,29 +274,35 @@ pub fn setup_mock_intel_gpu_files(root: &Path) {
 
 pub fn get_intel_gpu_max(root: &Path) -> i32 {
     let gpu_max_path = root.join(GPU0_DEVICE_PATH).join("gt_max_freq_mhz");
-    let read_val = std::fs::read(gpu_max_path).unwrap();
-    str::from_utf8(&read_val).unwrap().parse::<i32>().unwrap()
+    let read_val = fs::read(gpu_max_path).unwrap();
+    std::str::from_utf8(&read_val)
+        .unwrap()
+        .parse::<i32>()
+        .unwrap()
 }
 
 pub fn set_intel_gpu_max(root: &Path, val: u32) {
     let gpu_max_path = root.join(GPU0_DEVICE_PATH).join("gt_max_freq_mhz");
-    std::fs::write(gpu_max_path, val.to_string()).unwrap();
+    fs::write(gpu_max_path, val.to_string()).unwrap();
 }
 
 pub fn set_intel_gpu_min(root: &Path, val: u32) {
     let gpu_min_path = root.join(GPU0_DEVICE_PATH).join("gt_min_freq_mhz");
-    std::fs::write(gpu_min_path, val.to_string()).unwrap();
+    fs::write(gpu_min_path, val.to_string()).unwrap();
 }
 
 pub fn get_intel_gpu_boost(root: &Path) -> i32 {
     let gpu_max_path = root.join(GPU0_DEVICE_PATH).join("gt_boost_freq_mhz");
-    let read_val = std::fs::read(gpu_max_path).unwrap();
-    str::from_utf8(&read_val).unwrap().parse::<i32>().unwrap()
+    let read_val = fs::read(gpu_max_path).unwrap();
+    std::str::from_utf8(&read_val)
+        .unwrap()
+        .parse::<i32>()
+        .unwrap()
 }
 
 pub fn set_intel_gpu_boost(root: &Path, val: u32) {
     let gpu_boot_path = root.join(GPU0_DEVICE_PATH).join("gt_boost_freq_mhz");
-    std::fs::write(gpu_boot_path, val.to_string()).unwrap();
+    fs::write(gpu_boot_path, val.to_string()).unwrap();
 }
 
 pub struct ProcessForTest {
