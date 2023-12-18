@@ -482,7 +482,7 @@ void Storage::WriteToQueue(Record record,
         },
         queue, std::move(record), std::move(recorder),
         std::move(completion_cb));
-    key_delivery_->Request(std::move(action));
+    key_delivery_->Request(/*is_mandatory=*/true, std::move(action));
     return;
   }
   // Otherwise we can write into the queue right away.

@@ -235,7 +235,10 @@ class KeyDelivery {
 
   ~KeyDelivery();
 
-  void Request(RequestCallback callback);
+  // Makes a request to update key, invoking `callback` once responded.
+  // If `is_mandatory` is false and the request is not the first, do
+  // nothing and just drop `callback`.
+  void Request(bool is_mandatory, RequestCallback callback);
 
   void OnCompletion(Status status);
 
@@ -251,8 +254,10 @@ class KeyDelivery {
 
   void RequestKeyIfNeeded();
 
-  void EuqueueRequestAndPossiblyStart(HealthModule::Recorder recorder,
-                                      RequestCallback callback);
+  void EnqueueRequestAndPossiblyStart(
+      bool is_mandatory,  // just like in `Request`
+      HealthModule::Recorder recorder,
+      RequestCallback callback);
 
   void PostResponses(Status status);
 

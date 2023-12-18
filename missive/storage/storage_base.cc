@@ -441,12 +441,12 @@ KeyDelivery::~KeyDelivery() {
       Status(error::UNAVAILABLE, "Key not delivered - Storage shuts down"));
 }
 
-void KeyDelivery::Request(RequestCallback callback) {
+void KeyDelivery::Request(bool is_mandatory, RequestCallback callback) {
   sequenced_task_runner_->PostTask(
       FROM_HERE,
-      base::BindOnce(&KeyDelivery::EuqueueRequestAndPossiblyStart,
-                     base::Unretained(this), health_module_->NewRecorder(),
-                     std::move(callback)));
+      base::BindOnce(&KeyDelivery::EnqueueRequestAndPossiblyStart,
+                     base::Unretained(this), is_mandatory,
+                     health_module_->NewRecorder(), std::move(callback)));
 }
 
 void KeyDelivery::OnCompletion(Status status) {
@@ -464,7 +464,8 @@ void KeyDelivery::StartPeriodicKeyUpdate(const base::TimeDelta period) {
                          return;
                        }
                        // `base::Unretained` is ok here because `upload_timer_`
-                       // is destructed in the class destructor
+                       // is destructed in the class destructor, and so is the
+                       // callback.
                        self->upload_timer_.Start(
                            FROM_HERE, period,
                            base::BindRepeating(&KeyDelivery::RequestKeyIfNeeded,
@@ -493,22 +494,27 @@ void KeyDelivery::RequestKeyIfNeeded() {
     return;
   }
   // Request the key
-  Request(base::BindOnce([](Status status) {
-    // Log the request status in UMA
-    const auto res = analytics::Metrics::SendEnumToUMA(
-        /*name=*/kKeyDeliveryResultUma, status.code(), error::Code::MAX_VALUE);
-    LOG_IF(ERROR, !res) << "SendEnumToUMA failure, " << kKeyDeliveryResultUma
-                        << " " << static_cast<int>(status.code());
-  }));
+  Request(/*is_mandatory=*/false, base::BindOnce([](Status status) {
+            // Log the request status in UMA
+            const auto res = analytics::Metrics::SendEnumToUMA(
+                /*name=*/kKeyDeliveryResultUma, status.code(),
+                error::Code::MAX_VALUE);
+            LOG_IF(ERROR, !res)
+                << "SendEnumToUMA failure, " << kKeyDeliveryResultUma << " "
+                << static_cast<int>(status.code());
+          }));
 }
 
-void KeyDelivery::EuqueueRequestAndPossiblyStart(
-    HealthModule::Recorder recorder, RequestCallback callback) {
+void KeyDelivery::EnqueueRequestAndPossiblyStart(
+    bool is_mandatory,
+    HealthModule::Recorder recorder,
+    RequestCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(callback);
-  callbacks_.push_back(std::move(callback));
+  if (is_mandatory || callbacks_.empty()) {
+    callbacks_.push_back(std::move(callback));
+  }
 
-  // The first request, starting the roundtrip.
   // Initiate upload with need_encryption_key flag and no records.
   UploaderInterface::UploaderInterfaceResultCb start_uploader_cb =
       base::BindOnce(&KeyDelivery::EncryptionKeyReceiverReady,
