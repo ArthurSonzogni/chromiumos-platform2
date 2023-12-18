@@ -81,7 +81,6 @@ class LvmdProxyWrapper : public LvmdProxyWrapperInterface {
   bool CreateLogicalVolume(const lvmd::Thinpool& thinpool,
                            const lvmd::LogicalVolumeConfiguration& lv_config,
                            lvmd::LogicalVolume* lv);
-  bool RemoveLogicalVolume(const lvmd::LogicalVolume& lv);
   bool ToggleLogicalVolumeActivation(const lvmd::LogicalVolume& lv,
                                      bool activate);
 

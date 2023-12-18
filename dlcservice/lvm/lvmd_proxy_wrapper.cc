@@ -132,16 +132,6 @@ bool LvmdProxyWrapper::CreateLogicalVolume(
   return true;
 }
 
-bool LvmdProxyWrapper::RemoveLogicalVolume(const lvmd::LogicalVolume& lv) {
-  brillo::ErrorPtr err;
-  if (!lvmd_proxy_->RemoveLogicalVolume(lv, &err)) {
-    LOG(WARNING) << "Failed to RemoveLogicalVolume in lvmd: "
-                 << Error::ToString(err);
-    return false;
-  }
-  return true;
-}
-
 bool LvmdProxyWrapper::ToggleLogicalVolumeActivation(
     const lvmd::LogicalVolume& lv, bool activate) {
   brillo::ErrorPtr err;
