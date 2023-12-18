@@ -15,7 +15,6 @@
 
 #include "shill/control_interface.h"
 #include "shill/error.h"
-#include "shill/mac_address.h"
 #include "shill/manager.h"
 #include "shill/store/property_accessor.h"
 #include "shill/supplicant/supplicant_p2pdevice_proxy_interface.h"
@@ -47,9 +46,12 @@ void P2PManager::InitPropertyStore(PropertyStore* store) {
 }
 
 bool P2PManager::IsP2PSupported() {
-  // TODO(b/295050788): it requires wifi phy to have
-  // ability to get hardware support for Wifi Direct.
-  return true;
+  auto wifi_phys = manager_->wifi_provider()->GetPhys();
+  if (!wifi_phys.empty()) {
+    return wifi_phys.front()->SupportP2PMode();
+  }
+  LOG(ERROR) << "No WiFiPhy available";
+  return false;
 }
 
 String P2PManager::GroupReadiness() {

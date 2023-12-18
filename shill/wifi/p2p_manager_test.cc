@@ -7,6 +7,7 @@
 #include <map>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/test/mock_callback.h>
@@ -19,7 +20,6 @@
 #include "shill/supplicant/mock_supplicant_p2pdevice_proxy.h"
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
 #include "shill/test_event_dispatcher.h"
-#include "shill/testing.h"
 #include "shill/wifi/mock_p2p_device.h"
 #include "shill/wifi/mock_wifi_phy.h"
 #include "shill/wifi/mock_wifi_provider.h"
@@ -39,6 +39,7 @@ namespace shill {
 namespace {
 const uint32_t kDefaultShillId = 0;
 const char kPrimaryInterfaceName[] = "wlan0";
+constexpr uint32_t kPhyIndex = 5678;
 const RpcIdentifier kPrimaryIfacePath = RpcIdentifier("/interface/wlan0");
 }  // namespace
 
@@ -207,6 +208,11 @@ TEST_F(P2PManagerTest, SetP2PAllowed) {
 }
 
 TEST_F(P2PManagerTest, GetP2PCapabilities) {
+  std::unique_ptr<NiceMock<MockWiFiPhy>> phy(
+      new NiceMock<MockWiFiPhy>(kPhyIndex));
+  const std::vector<const WiFiPhy*> phys = {phy.get()};
+  ON_CALL(*wifi_provider_, GetPhys()).WillByDefault(Return(phys));
+  ON_CALL(*phy, SupportP2PMode()).WillByDefault(Return(true));
   KeyValueStore caps = GetCapabilities(p2p_manager_);
   EXPECT_TRUE(caps.Contains<Boolean>(kP2PCapabilitiesP2PSupportedProperty));
   auto supported = caps.Get<Boolean>(kP2PCapabilitiesP2PSupportedProperty);
