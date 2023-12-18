@@ -13,6 +13,7 @@
 #include <base/functional/bind.h>
 
 #include "diagnostics/cros_healthd/routines/simple_routine.h"
+#include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/mojom/external/network_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
@@ -60,11 +61,18 @@ SimpleRoutine::RoutineResult ParseDnsLatencyResult(
   }
 }
 
-void RunDnsLatencyRoutine(
-    NetworkDiagnosticsAdapter* network_diagnostics_adapter,
-    SimpleRoutine::RoutineResultCallback callback) {
-  CHECK(network_diagnostics_adapter);
-  network_diagnostics_adapter->RunDnsLatencyRoutine(
+void RunDnsLatencyRoutine(MojoService* const mojo_service,
+                          SimpleRoutine::RoutineResultCallback callback) {
+  auto* network_diagnostics_routines =
+      mojo_service->GetNetworkDiagnosticsRoutines();
+  if (!network_diagnostics_routines) {
+    std::move(callback).Run({
+        .status = mojom::DiagnosticRoutineStatusEnum::kNotRun,
+        .status_message = kDnsLatencyRoutineNotRunMessage,
+    });
+    return;
+  }
+  network_diagnostics_routines->RunDnsLatency(
       base::BindOnce(&ParseDnsLatencyResult).Then(std::move(callback)));
 }
 
@@ -83,9 +91,9 @@ const char kDnsLatencyRoutineNotRunMessage[] =
     "DNS latency routine did not run.";
 
 std::unique_ptr<DiagnosticRoutine> CreateDnsLatencyRoutine(
-    NetworkDiagnosticsAdapter* network_diagnostics_adapter) {
+    MojoService* const mojo_service) {
   return std::make_unique<SimpleRoutine>(
-      base::BindOnce(&RunDnsLatencyRoutine, network_diagnostics_adapter));
+      base::BindOnce(&RunDnsLatencyRoutine, mojo_service));
 }
 
 }  // namespace diagnostics

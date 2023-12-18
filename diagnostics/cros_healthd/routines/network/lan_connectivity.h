@@ -7,10 +7,10 @@
 
 #include <memory>
 
-#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 
 namespace diagnostics {
+class MojoService;
 
 // Status messages reported by the LAN connectivity routine.
 extern const char kLanConnectivityRoutineNoProblemMessage[];
@@ -18,7 +18,7 @@ extern const char kLanConnectivityRoutineProblemMessage[];
 extern const char kLanConnectivityRoutineNotRunMessage[];
 
 std::unique_ptr<DiagnosticRoutine> CreateLanConnectivityRoutine(
-    NetworkDiagnosticsAdapter* network_diagnostics_adapter);
+    MojoService* const mojo_service);
 
 }  // namespace diagnostics
 

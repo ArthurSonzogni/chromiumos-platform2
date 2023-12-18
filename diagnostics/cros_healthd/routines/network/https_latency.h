@@ -7,10 +7,10 @@
 
 #include <memory>
 
-#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 
 namespace diagnostics {
+class MojoService;
 
 // Status messages reported by the HTTPS latency routine.
 extern const char kHttpsLatencyRoutineNoProblemMessage[];
@@ -22,7 +22,7 @@ extern const char kHttpsLatencyRoutineNotRunMessage[];
 
 // Creates an instance of the HTTPS latency routine.
 std::unique_ptr<DiagnosticRoutine> CreateHttpsLatencyRoutine(
-    NetworkDiagnosticsAdapter* network_diagnostics_adapter);
+    MojoService* const mojo_service);
 
 }  // namespace diagnostics
 

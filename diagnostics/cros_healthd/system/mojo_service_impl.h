@@ -70,6 +70,11 @@ class MojoServiceImpl : public MojoService {
   network_health_service() {
     return network_health_service_;
   }
+  mojo::Remote<
+      chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines>&
+  network_diagnostics_routines() {
+    return network_diagnostics_routines_;
+  }
 
  private:
   // Requests the service from service manager. This will also setup the

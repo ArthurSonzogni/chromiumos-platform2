@@ -9,10 +9,10 @@
 #include <optional>
 #include <string>
 
-#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 
 namespace diagnostics {
+class MojoService;
 
 // Status messages reported by the video conferencing routine. The messages
 // listed below list track all combinations of problems the routine may return
@@ -29,7 +29,7 @@ extern const char kVideoConferencingRoutineSupportDetailsKey[];
 // Creates an instance of the video conferencing routine.
 std::unique_ptr<DiagnosticRoutine> CreateVideoConferencingRoutine(
     const std::optional<std::string>& stun_server_hostname,
-    NetworkDiagnosticsAdapter* network_diagnostics_adapter);
+    MojoService* const mojo_service);
 
 }  // namespace diagnostics
 

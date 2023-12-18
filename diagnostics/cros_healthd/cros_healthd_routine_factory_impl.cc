@@ -147,82 +147,79 @@ CrosHealthdRoutineFactoryImpl::MakeBatteryChargeRoutine(
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeLanConnectivityRoutine() {
-  return CreateLanConnectivityRoutine(context_->network_diagnostics_adapter());
+  return CreateLanConnectivityRoutine(context_->mojo_service());
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeSignalStrengthRoutine() {
-  return CreateSignalStrengthRoutine(context_->network_diagnostics_adapter());
+  return CreateSignalStrengthRoutine(context_->mojo_service());
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeGatewayCanBePingedRoutine() {
-  return CreateGatewayCanBePingedRoutine(
-      context_->network_diagnostics_adapter());
+  return CreateGatewayCanBePingedRoutine(context_->mojo_service());
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeHasSecureWiFiConnectionRoutine() {
-  return CreateHasSecureWiFiConnectionRoutine(
-      context_->network_diagnostics_adapter());
+  return CreateHasSecureWiFiConnectionRoutine(context_->mojo_service());
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeDnsResolverPresentRoutine() {
-  return CreateDnsResolverPresentRoutine(
-      context_->network_diagnostics_adapter());
+  return CreateDnsResolverPresentRoutine(context_->mojo_service());
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeDnsLatencyRoutine() {
-  return CreateDnsLatencyRoutine(context_->network_diagnostics_adapter());
+  return CreateDnsLatencyRoutine(context_->mojo_service());
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeDnsResolutionRoutine() {
-  return CreateDnsResolutionRoutine(context_->network_diagnostics_adapter());
+  return CreateDnsResolutionRoutine(context_->mojo_service());
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeCaptivePortalRoutine() {
-  return CreateCaptivePortalRoutine(context_->network_diagnostics_adapter());
+  return CreateCaptivePortalRoutine(context_->mojo_service());
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeHttpFirewallRoutine() {
-  return CreateHttpFirewallRoutine(context_->network_diagnostics_adapter());
+  return CreateHttpFirewallRoutine(context_->mojo_service());
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeHttpsFirewallRoutine() {
-  return CreateHttpsFirewallRoutine(context_->network_diagnostics_adapter());
+  return CreateHttpsFirewallRoutine(context_->mojo_service());
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeHttpsLatencyRoutine() {
-  return CreateHttpsLatencyRoutine(context_->network_diagnostics_adapter());
+  return CreateHttpsLatencyRoutine(context_->mojo_service());
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeVideoConferencingRoutine(
     const std::optional<std::string>& stun_server_hostname) {
-  return CreateVideoConferencingRoutine(
-      stun_server_hostname, context_->network_diagnostics_adapter());
+  return CreateVideoConferencingRoutine(stun_server_hostname,
+                                        context_->mojo_service());
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeArcHttpRoutine() {
-  return CreateArcHttpRoutine(context_->network_diagnostics_adapter());
+  return CreateArcHttpRoutine(context_->mojo_service());
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeArcPingRoutine() {
-  return CreateArcPingRoutine(context_->network_diagnostics_adapter());
+  return CreateArcPingRoutine(context_->mojo_service());
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeArcDnsResolutionRoutine() {
-  return CreateArcDnsResolutionRoutine(context_->network_diagnostics_adapter());
+  return CreateArcDnsResolutionRoutine(context_->mojo_service());
 }
 
 std::unique_ptr<DiagnosticRoutine>

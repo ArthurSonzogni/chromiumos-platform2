@@ -22,10 +22,17 @@ void FakeMojoService::InitializeFakeMojoService() {
 
   network_health_service().Bind(
       fake_network_health_service_.receiver().BindNewPipeAndPassRemote());
+
+  network_diagnostics_routines().Bind(
+      fake_network_diagnostics_routines_.receiver().BindNewPipeAndPassRemote());
 }
 
 void FakeMojoService::ResetNetworkHealthService() {
   network_health_service().reset();
+}
+
+void FakeMojoService::ResetNetworkDiagnosticsRoutines() {
+  network_diagnostics_routines().reset();
 }
 
 }  // namespace diagnostics

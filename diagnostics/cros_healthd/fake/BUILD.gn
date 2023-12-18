@@ -23,6 +23,7 @@ source_set("libfake_cros_healthd") {
   sources = [
     "fake_chromium_data_collector.cc",
     "fake_diagnostics_service.cc",
+    "fake_network_diagnostics_routines.cc",
     "fake_network_health_service.cc",
     "fake_probe_service.cc",
     "fake_sensor_device.cc",

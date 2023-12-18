@@ -14,9 +14,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/network_diagnostics/mock_network_diagnostics_adapter.h"
-#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_utils.h"
+#include "diagnostics/cros_healthd/fake/fake_network_diagnostics_routines.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
+#include "diagnostics/cros_healthd/system/fake_mojo_service.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/external/network_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -47,8 +47,8 @@ class HasSecureWiFiConnectionRoutineTest : public testing::Test {
   HasSecureWiFiConnectionRoutineTest() = default;
 
   void SetUp() override {
-    routine_ =
-        CreateHasSecureWiFiConnectionRoutine(network_diagnostics_adapter());
+    fake_mojo_service()->InitializeFakeMojoService();
+    routine_ = CreateHasSecureWiFiConnectionRoutine(fake_mojo_service());
   }
 
   mojom::RoutineUpdatePtr RunRoutineAndWaitForExit() {
@@ -56,34 +56,34 @@ class HasSecureWiFiConnectionRoutineTest : public testing::Test {
     mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
                                 mojom::RoutineUpdateUnionPtr()};
     routine_->Start();
+    task_environment_.RunUntilIdle();
     routine_->PopulateStatusUpdate(&update, true);
     return mojom::RoutineUpdate::New(update.progress_percent,
                                      std::move(update.output),
                                      std::move(update.routine_update_union));
   }
 
-  MockNetworkDiagnosticsAdapter* network_diagnostics_adapter() {
-    return mock_context_.network_diagnostics_adapter();
+  FakeMojoService* fake_mojo_service() {
+    return mock_context_.fake_mojo_service();
+  }
+
+  FakeNetworkDiagnosticsRoutines& fake_network_diagnostics_routines() {
+    return fake_mojo_service()->fake_network_diagnostics_routines();
   }
 
  private:
-  base::test::SingleThreadTaskEnvironment task_environment_;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   MockContext mock_context_;
   std::unique_ptr<DiagnosticRoutine> routine_;
 };
 
 // Test that the HasSecureWiFiConnection routine can be run successfully.
 TEST_F(HasSecureWiFiConnectionRoutineTest, RoutineSuccess) {
-  EXPECT_CALL(*(network_diagnostics_adapter()),
-              RunHasSecureWiFiConnectionRoutine(_))
-      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                        RunHasSecureWiFiConnectionCallback callback) {
-        auto result =
-            CreateResult(network_diagnostics_ipc::RoutineVerdict::kNoProblem,
-                         network_diagnostics_ipc::RoutineProblems::
-                             NewHasSecureWifiConnectionProblems({}));
-        std::move(callback).Run(std::move(result));
-      });
+  fake_network_diagnostics_routines().SetRoutineResult(
+      network_diagnostics_ipc::RoutineVerdict::kNoProblem,
+      network_diagnostics_ipc::RoutineProblems::
+          NewHasSecureWifiConnectionProblems({}));
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,
@@ -94,17 +94,21 @@ TEST_F(HasSecureWiFiConnectionRoutineTest, RoutineSuccess) {
 // Test that the HasSecureWiFiConnection routine returns a kNotRun status when
 // it is not run.
 TEST_F(HasSecureWiFiConnectionRoutineTest, RoutineNotRun) {
-  EXPECT_CALL(*(network_diagnostics_adapter()),
-              RunHasSecureWiFiConnectionRoutine(_))
-      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                        RunHasSecureWiFiConnectionCallback callback) {
-        auto result =
-            CreateResult(network_diagnostics_ipc::RoutineVerdict::kNotRun,
-                         network_diagnostics_ipc::RoutineProblems::
-                             NewHasSecureWifiConnectionProblems({}));
-        std::move(callback).Run(std::move(result));
-      });
+  fake_network_diagnostics_routines().SetRoutineResult(
+      network_diagnostics_ipc::RoutineVerdict::kNotRun,
+      network_diagnostics_ipc::RoutineProblems::
+          NewHasSecureWifiConnectionProblems({}));
 
+  mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
+  VerifyNonInteractiveUpdate(routine_update->routine_update_union,
+                             mojom::DiagnosticRoutineStatusEnum::kNotRun,
+                             kHasSecureWiFiConnectionRoutineNotRunMessage);
+}
+
+// Test that the HasSecureWiFiConnection routine returns a kNotRun status if no
+// remote is bound.
+TEST_F(HasSecureWiFiConnectionRoutineTest, RemoteNotBound) {
+  fake_mojo_service()->ResetNetworkDiagnosticsRoutines();
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,
                              mojom::DiagnosticRoutineStatusEnum::kNotRun,
@@ -129,16 +133,10 @@ class HasSecureWiFiConnectionProblemTest
 // WiFi connection problem.
 TEST_P(HasSecureWiFiConnectionProblemTest,
        HandleHasSecureWiFiConnectionProblem) {
-  EXPECT_CALL(*(network_diagnostics_adapter()),
-              RunHasSecureWiFiConnectionRoutine(_))
-      .WillOnce([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
-                        RunHasSecureWiFiConnectionCallback callback) {
-        auto result = CreateResult(
-            network_diagnostics_ipc::RoutineVerdict::kProblem,
-            network_diagnostics_ipc::RoutineProblems::
-                NewHasSecureWifiConnectionProblems({params().problem_enum}));
-        std::move(callback).Run(std::move(result));
-      });
+  fake_network_diagnostics_routines().SetRoutineResult(
+      network_diagnostics_ipc::RoutineVerdict::kProblem,
+      network_diagnostics_ipc::RoutineProblems::
+          NewHasSecureWifiConnectionProblems({params().problem_enum}));
 
   mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,

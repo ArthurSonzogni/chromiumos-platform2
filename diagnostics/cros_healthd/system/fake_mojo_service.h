@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_FAKE_MOJO_SERVICE_H_
 
 #include "diagnostics/cros_healthd/fake/fake_chromium_data_collector.h"
+#include "diagnostics/cros_healthd/fake/fake_network_diagnostics_routines.h"
 #include "diagnostics/cros_healthd/fake/fake_network_health_service.h"
 #include "diagnostics/cros_healthd/fake/fake_sensor_service.h"
 #include "diagnostics/cros_healthd/fake/fake_service_manager.h"
@@ -39,8 +40,15 @@ class FakeMojoService : public MojoServiceImpl {
     return fake_network_health_service_;
   }
 
+  FakeNetworkDiagnosticsRoutines& fake_network_diagnostics_routines() {
+    return fake_network_diagnostics_routines_;
+  }
+
   // Reset network health service to an unbound state.
   void ResetNetworkHealthService();
+
+  // Reset network diagnostics routines to an unbound state.
+  void ResetNetworkDiagnosticsRoutines();
 
  private:
   // Fake implementations.
@@ -48,6 +56,7 @@ class FakeMojoService : public MojoServiceImpl {
   FakeChromiumDataCollector fake_chromium_data_collector_;
   FakeSensorService fake_sensor_service_;
   FakeNetworkHealthService fake_network_health_service_;
+  FakeNetworkDiagnosticsRoutines fake_network_diagnostics_routines_;
 };
 
 }  // namespace diagnostics

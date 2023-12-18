@@ -13,6 +13,7 @@
 #include <base/functional/bind.h>
 
 #include "diagnostics/cros_healthd/routines/simple_routine.h"
+#include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/mojom/external/network_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
@@ -73,19 +74,27 @@ SimpleRoutine::RoutineResult ParseArcPingResult(
   }
 }
 
-void RunArcPingRoutine(NetworkDiagnosticsAdapter* network_diagnostics_adapter,
+void RunArcPingRoutine(MojoService* const mojo_service,
                        SimpleRoutine::RoutineResultCallback callback) {
-  CHECK(network_diagnostics_adapter);
-  network_diagnostics_adapter->RunArcPingRoutine(
+  auto* network_diagnostics_routines =
+      mojo_service->GetNetworkDiagnosticsRoutines();
+  if (!network_diagnostics_routines) {
+    std::move(callback).Run({
+        .status = mojom::DiagnosticRoutineStatusEnum::kNotRun,
+        .status_message = kArcPingRoutineNotRunMessage,
+    });
+    return;
+  }
+  network_diagnostics_routines->RunArcPing(
       base::BindOnce(&ParseArcPingResult).Then(std::move(callback)));
 }
 
 }  // namespace
 
 std::unique_ptr<DiagnosticRoutine> CreateArcPingRoutine(
-    NetworkDiagnosticsAdapter* network_diagnostics_adapter) {
+    MojoService* const mojo_service) {
   return std::make_unique<SimpleRoutine>(
-      base::BindOnce(&RunArcPingRoutine, network_diagnostics_adapter));
+      base::BindOnce(&RunArcPingRoutine, mojo_service));
 }
 
 }  // namespace diagnostics

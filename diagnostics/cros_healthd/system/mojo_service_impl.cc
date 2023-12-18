@@ -91,8 +91,10 @@ MojoServiceImpl::GetNetworkHealth() {
 
 chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines*
 MojoServiceImpl::GetNetworkDiagnosticsRoutines() {
-  DCHECK(network_diagnostics_routines_.is_bound());
-  return network_diagnostics_routines_.get();
+  if (network_diagnostics_routines_.is_bound()) {
+    return network_diagnostics_routines_.get();
+  }
+  return nullptr;
 }
 
 cros::mojom::SensorService* MojoServiceImpl::GetSensorService() {

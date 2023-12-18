@@ -7,10 +7,10 @@
 
 #include <memory>
 
-#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 
 namespace diagnostics {
+class MojoService;
 
 // Status messages reported by the DNS resolution routine.
 extern const char kDnsResolutionRoutineNoProblemMessage[];
@@ -19,7 +19,7 @@ extern const char kDnsResolutionRoutineNotRunMessage[];
 
 // Creates an instance of the DNS resolution routine.
 std::unique_ptr<DiagnosticRoutine> CreateDnsResolutionRoutine(
-    NetworkDiagnosticsAdapter* network_diagnostics_adapter);
+    MojoService* const mojo_service);
 
 }  // namespace diagnostics
 

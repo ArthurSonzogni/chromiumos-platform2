@@ -7,10 +7,10 @@
 
 #include <memory>
 
-#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 
 namespace diagnostics {
+class MojoService;
 
 // Status messages reported by the ARC DNS resolution routine.
 inline constexpr char kArcDnsResolutionRoutineNoProblemMessage[] =
@@ -31,7 +31,7 @@ inline constexpr char kArcDnsResolutionRoutineNotRunMessage[] =
 
 // Creates an instance of ARC DNS resolution routine.
 std::unique_ptr<DiagnosticRoutine> CreateArcDnsResolutionRoutine(
-    NetworkDiagnosticsAdapter* network_diagnostics_adapter);
+    MojoService* const mojo_service);
 
 }  // namespace diagnostics
 

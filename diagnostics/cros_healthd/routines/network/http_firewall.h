@@ -7,10 +7,10 @@
 
 #include <memory>
 
-#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 
 namespace diagnostics {
+class MojoService;
 
 // Status messages reported by the HTTP firewall routine.
 extern const char kHttpFirewallRoutineNoProblemMessage[];
@@ -22,7 +22,7 @@ extern const char kHttpFirewallRoutineNotRunMessage[];
 
 // Creates an instance of the HTTP firewall routine.
 std::unique_ptr<DiagnosticRoutine> CreateHttpFirewallRoutine(
-    NetworkDiagnosticsAdapter* network_diagnostics_adapter);
+    MojoService* const mojo_service);
 
 }  // namespace diagnostics
 

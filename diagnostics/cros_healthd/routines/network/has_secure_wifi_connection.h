@@ -7,10 +7,10 @@
 
 #include <memory>
 
-#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 
 namespace diagnostics {
+class MojoService;
 
 // Status messages reported by the has secure WiFi connection routine.
 extern const char kHasSecureWiFiConnectionRoutineNoProblemMessage[];
@@ -26,7 +26,7 @@ extern const char kHasSecureWiFiConnectionRoutineNotRunMessage[];
 
 // Creates the has secure WiFi connection routine.
 std::unique_ptr<DiagnosticRoutine> CreateHasSecureWiFiConnectionRoutine(
-    NetworkDiagnosticsAdapter* network_diagnostics_adapter);
+    MojoService* const mojo_service);
 
 }  // namespace diagnostics
 

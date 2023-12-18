@@ -13,6 +13,7 @@
 #include <base/functional/bind.h>
 
 #include "diagnostics/cros_healthd/routines/simple_routine.h"
+#include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/mojom/external/network_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
@@ -60,11 +61,18 @@ SimpleRoutine::RoutineResult ParseHttpFirewallResult(
   }
 }
 
-void RunHttpFirewallRoutine(
-    NetworkDiagnosticsAdapter* network_diagnostics_adapter,
-    SimpleRoutine::RoutineResultCallback callback) {
-  CHECK(network_diagnostics_adapter);
-  network_diagnostics_adapter->RunHttpFirewallRoutine(
+void RunHttpFirewallRoutine(MojoService* const mojo_service,
+                            SimpleRoutine::RoutineResultCallback callback) {
+  auto* network_diagnostics_routines =
+      mojo_service->GetNetworkDiagnosticsRoutines();
+  if (!network_diagnostics_routines) {
+    std::move(callback).Run({
+        .status = mojom::DiagnosticRoutineStatusEnum::kNotRun,
+        .status_message = kHttpFirewallRoutineNotRunMessage,
+    });
+    return;
+  }
+  network_diagnostics_routines->RunHttpFirewall(
       base::BindOnce(&ParseHttpFirewallResult).Then(std::move(callback)));
 }
 
@@ -82,9 +90,9 @@ const char kHttpFirewallRoutineNotRunMessage[] =
     "HTTP firewall routine did not run.";
 
 std::unique_ptr<DiagnosticRoutine> CreateHttpFirewallRoutine(
-    NetworkDiagnosticsAdapter* network_diagnostics_adapter) {
+    MojoService* const mojo_service) {
   return std::make_unique<SimpleRoutine>(
-      base::BindOnce(&RunHttpFirewallRoutine, network_diagnostics_adapter));
+      base::BindOnce(&RunHttpFirewallRoutine, mojo_service));
 }
 
 }  // namespace diagnostics

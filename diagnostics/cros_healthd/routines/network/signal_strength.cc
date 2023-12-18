@@ -13,6 +13,7 @@
 #include <base/functional/bind.h>
 
 #include "diagnostics/cros_healthd/routines/simple_routine.h"
+#include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/mojom/external/network_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
@@ -55,11 +56,18 @@ SimpleRoutine::RoutineResult ParseSignalStrengthResult(
   }
 }
 
-void RunSignalStrengthRoutine(
-    NetworkDiagnosticsAdapter* network_diagnostics_adapter,
-    SimpleRoutine::RoutineResultCallback callback) {
-  CHECK(network_diagnostics_adapter);
-  network_diagnostics_adapter->RunSignalStrengthRoutine(
+void RunSignalStrengthRoutine(MojoService* const mojo_service,
+                              SimpleRoutine::RoutineResultCallback callback) {
+  auto* network_diagnostics_routines =
+      mojo_service->GetNetworkDiagnosticsRoutines();
+  if (!network_diagnostics_routines) {
+    std::move(callback).Run({
+        .status = mojom::DiagnosticRoutineStatusEnum::kNotRun,
+        .status_message = kSignalStrengthRoutineNotRunMessage,
+    });
+    return;
+  }
+  network_diagnostics_routines->RunSignalStrength(
       base::BindOnce(&ParseSignalStrengthResult).Then(std::move(callback)));
 }
 
@@ -73,9 +81,9 @@ const char kSignalStrengthRoutineNotRunMessage[] =
     "Signal strength routine did not run.";
 
 std::unique_ptr<DiagnosticRoutine> CreateSignalStrengthRoutine(
-    NetworkDiagnosticsAdapter* network_diagnostics_adapter) {
+    MojoService* const mojo_service) {
   return std::make_unique<SimpleRoutine>(
-      base::BindOnce(&RunSignalStrengthRoutine, network_diagnostics_adapter));
+      base::BindOnce(&RunSignalStrengthRoutine, mojo_service));
 }
 
 }  // namespace diagnostics

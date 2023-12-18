@@ -11,8 +11,8 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 
-#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/routines/simple_routine.h"
+#include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/mojom/external/network_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
@@ -55,11 +55,18 @@ SimpleRoutine::RoutineResult ParseLanConnectivityResult(
   }
 }
 
-void RunLanConnectivityRoutine(
-    NetworkDiagnosticsAdapter* network_diagnostics_adapter,
-    SimpleRoutine::RoutineResultCallback callback) {
-  CHECK(network_diagnostics_adapter);
-  network_diagnostics_adapter->RunLanConnectivityRoutine(
+void RunLanConnectivityRoutine(MojoService* const mojo_service,
+                               SimpleRoutine::RoutineResultCallback callback) {
+  auto* network_diagnostics_routines =
+      mojo_service->GetNetworkDiagnosticsRoutines();
+  if (!network_diagnostics_routines) {
+    std::move(callback).Run({
+        .status = mojom::DiagnosticRoutineStatusEnum::kNotRun,
+        .status_message = kLanConnectivityRoutineNotRunMessage,
+    });
+    return;
+  }
+  network_diagnostics_routines->RunLanConnectivity(
       base::BindOnce(&ParseLanConnectivityResult).Then(std::move(callback)));
 }
 
@@ -73,9 +80,9 @@ const char kLanConnectivityRoutineNotRunMessage[] =
     "LAN Connectivity routine did not run.";
 
 std::unique_ptr<DiagnosticRoutine> CreateLanConnectivityRoutine(
-    NetworkDiagnosticsAdapter* network_diagnostics_adapter) {
+    MojoService* const mojo_service) {
   return std::make_unique<SimpleRoutine>(
-      base::BindOnce(&RunLanConnectivityRoutine, network_diagnostics_adapter));
+      base::BindOnce(&RunLanConnectivityRoutine, mojo_service));
 }
 
 }  // namespace diagnostics

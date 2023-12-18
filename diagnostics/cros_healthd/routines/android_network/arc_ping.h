@@ -7,10 +7,10 @@
 
 #include <memory>
 
-#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 
 namespace diagnostics {
+class MojoService;
 
 // Status messages reported by the gateway can be pinged routine.
 inline constexpr char kArcPingRoutineNoProblemMessage[] =
@@ -42,7 +42,7 @@ inline constexpr char kArcPingRoutineNotRunMessage[] =
 
 // Creates an instance of ARC ping routine.
 std::unique_ptr<DiagnosticRoutine> CreateArcPingRoutine(
-    NetworkDiagnosticsAdapter* network_diagnostics_adapter);
+    MojoService* const mojo_service);
 
 }  // namespace diagnostics
 
