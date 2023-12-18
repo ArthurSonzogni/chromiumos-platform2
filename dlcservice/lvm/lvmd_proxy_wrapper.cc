@@ -224,19 +224,21 @@ bool LvmdProxyWrapper::RemoveLogicalVolumes(
     return false;
   }
 
-  bool ret = true;
-  lvmd::LogicalVolume lv;
+  brillo::ErrorPtr err;
+  lvmd::RemoveLogicalVolumesRequest request;
+  lvmd::RemoveLogicalVolumesResponse response;
+
   for (const auto& lv_name : lv_names) {
-    if (!GetLogicalVolume(vg, lv_name, &lv)) {
-      LOG(WARNING) << "Failed to GetLogicalVolume name=" << lv_name;
-      continue;
-    }
-    if (!RemoveLogicalVolume(lv)) {
-      LOG(ERROR) << "Failed to RemoveLogicalVolume name=" << lv_name;
-      ret = false;
-    }
+    auto* lv = request.mutable_logical_volume_list()->add_logical_volume();
+    lv->set_name(lv_name);
+    lv->mutable_volume_group()->CopyFrom(vg);
   }
-  return ret;
+  if (!lvmd_proxy_->RemoveLogicalVolumes(request, &response, &err)) {
+    LOG(WARNING) << "Failed to RemoveLogicalVolumes in lvmd: "
+                 << Error::ToString(err);
+    return false;
+  }
+  return true;
 }
 
 bool LvmdProxyWrapper::ActivateLogicalVolume(const std::string& lv_name) {
