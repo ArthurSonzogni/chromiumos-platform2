@@ -13,8 +13,7 @@ TEST(ShadercachedHelper, CreateShaderSharedDataParamTest) {
   ASSERT_EQ(
       "/:precompiled_gpu_cache:type=fs:cache=never:uidmap=0 65534 1,1000 333 "
       "1:gidmap=0 65534 1,1000 333 "
-      "1:timeout=1:rewrite-security-xattrs=false:writeback=false:"
-      "negative_timeout=1",
+      "1:timeout=1:rewrite-security-xattrs=false:writeback=false",
       CreateShaderSharedDataParam(base::FilePath("/")).to_string());
 }
 
