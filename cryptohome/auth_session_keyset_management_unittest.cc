@@ -330,16 +330,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   }
 
   AuthSession StartAuthSessionWithMockAuthBlockUtility() {
-    AuthFactorVaultKeysetConverter converter{&keyset_management_};
-
-    std::map<std::string, AuthFactorType> af_types =
-        auth_factor_manager_.ListAuthFactors(users_[0].obfuscated);
-    std::set<std::string_view> labels;
-    for (const auto& [label, unused] : af_types) {
-      labels.insert(label);
-    }
-    AuthFactorMap auth_factor_map = auth_factor_manager_.LoadAllAuthFactors(
-        users_[0].obfuscated, labels, converter);
+    AuthFactorMap auth_factor_map =
+        auth_factor_manager_.LoadAllAuthFactors(users_[0].obfuscated);
     AuthSession::Params auth_session_params{
         .username = users_[0].username,
         .is_ephemeral_user = false,
@@ -353,16 +345,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   }
 
   AuthSession StartAuthSession() {
-    AuthFactorVaultKeysetConverter converter{&keyset_management_};
-
-    std::map<std::string, AuthFactorType> af_types =
-        auth_factor_manager_.ListAuthFactors(users_[0].obfuscated);
-    std::set<std::string_view> labels;
-    for (const auto& [label, unused] : af_types) {
-      labels.insert(label);
-    }
-    AuthFactorMap auth_factor_map = auth_factor_manager_.LoadAllAuthFactors(
-        users_[0].obfuscated, labels, converter);
+    AuthFactorMap auth_factor_map =
+        auth_factor_manager_.LoadAllAuthFactors(users_[0].obfuscated);
     AuthSession::Params auth_session_params{
         .username = users_[0].username,
         .is_ephemeral_user = false,
@@ -606,7 +590,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
       nullptr,
       fp_service_.get(),
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
-  AuthFactorManager auth_factor_manager_{&platform_};
+  AuthFactorManager auth_factor_manager_{&platform_, &keyset_management_,
+                                         &uss_manager_};
   AuthSession::BackingApis backing_apis_{&crypto_,
                                          &platform_,
                                          &user_session_map_,

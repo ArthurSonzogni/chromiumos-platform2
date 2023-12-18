@@ -833,18 +833,18 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
     auth_block_utility_ = default_auth_block_utility_.get();
   }
 
-  if (!auth_factor_manager_) {
-    default_auth_factor_manager_ =
-        std::make_unique<AuthFactorManager>(platform_);
-    auth_factor_manager_ = default_auth_factor_manager_.get();
-  }
-
   if (!uss_storage_) {
     default_uss_storage_ = std::make_unique<UssStorage>(platform_);
     uss_storage_ = default_uss_storage_.get();
   }
   if (!uss_manager_) {
     uss_manager_ = std::make_unique<UssManager>(*uss_storage_);
+  }
+
+  if (!auth_factor_manager_) {
+    default_auth_factor_manager_ = std::make_unique<AuthFactorManager>(
+        platform_, keyset_management_, uss_manager_.get());
+    auth_factor_manager_ = default_auth_factor_manager_.get();
   }
 
   if (!auth_factor_driver_manager_) {
@@ -2345,18 +2345,9 @@ void UserDataAuth::GetRecoverableKeyStores(
     ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
   }
 
-  // Load the USS so that we can use it to check the validity of any auth
-  // factors being loaded.
-  std::set<std::string_view> uss_labels;
-  auto encrypted_uss = uss_manager_->LoadEncrypted(obfuscated_username);
-  if (encrypted_uss.ok()) {
-    uss_labels = (*encrypted_uss)->WrappedMainKeyIds();
-  }
-
   // Load the AuthFactorMap.
-  AuthFactorVaultKeysetConverter converter(keyset_management_);
-  AuthFactorMap auth_factor_map = auth_factor_manager_->LoadAllAuthFactors(
-      obfuscated_username, uss_labels, converter);
+  AuthFactorMap auth_factor_map =
+      auth_factor_manager_->LoadAllAuthFactors(obfuscated_username);
 
   // Populate the response from the items in the AuthFactorMap.
   for (AuthFactorMap::ValueView item : auth_factor_map) {
@@ -3927,21 +3918,12 @@ void UserDataAuth::ListAuthFactors(
 
   std::vector<AuthFactorType> supported_auth_factors;
   if (is_persistent_user) {
-    // Load the USS so that we can use it to check the validity of any auth
-    // factors being loaded.
-    std::set<std::string_view> uss_labels;
-    auto encrypted_uss = uss_manager_->LoadEncrypted(obfuscated_username);
-    if (encrypted_uss.ok()) {
-      uss_labels = (*encrypted_uss)->WrappedMainKeyIds();
-    }
-
     // Prepare the response for configured AuthFactors (with status) with all of
     // the auth factors from the disk.
 
     // Load the AuthFactorMap.
-    AuthFactorVaultKeysetConverter converter(keyset_management_);
-    AuthFactorMap auth_factor_map = auth_factor_manager_->LoadAllAuthFactors(
-        obfuscated_username, uss_labels, converter);
+    AuthFactorMap auth_factor_map =
+        auth_factor_manager_->LoadAllAuthFactors(obfuscated_username);
 
     // Populate the response from the items in the AuthFactorMap.
     for (AuthFactorMap::ValueView item : auth_factor_map) {

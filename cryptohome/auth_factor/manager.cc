@@ -88,8 +88,14 @@ CryptohomeStatusOr<base::FilePath> GetAuthFactorPath(
 }
 }  // namespace
 
-AuthFactorManager::AuthFactorManager(Platform* platform) : platform_(platform) {
+AuthFactorManager::AuthFactorManager(Platform* platform,
+                                     KeysetManagement* keyset_management,
+                                     UssManager* uss_manager)
+    : platform_(platform),
+      uss_manager_(uss_manager),
+      converter_(keyset_management) {
   CHECK(platform_);
+  CHECK(uss_manager_);
 }
 
 CryptohomeStatus AuthFactorManager::SaveAuthFactorFile(
@@ -243,10 +249,16 @@ CryptohomeStatusOr<AuthFactor> AuthFactorManager::LoadAuthFactor(
 }
 
 AuthFactorMap AuthFactorManager::LoadAllAuthFactors(
-    const ObfuscatedUsername& obfuscated_username,
-    const std::set<std::string_view>& uss_labels,
-    AuthFactorVaultKeysetConverter& converter) {
+    const ObfuscatedUsername& obfuscated_username) {
   AuthFactorMap auth_factor_map;
+
+  // Load labels for auth factors in the USS. If the USS cannot be loaded then
+  // tere are no factors listed in the USS.
+  std::set<std::string_view> uss_labels;
+  auto encrypted_uss = uss_manager_->LoadEncrypted(obfuscated_username);
+  if (encrypted_uss.ok()) {
+    uss_labels = (*encrypted_uss)->WrappedMainKeyIds();
+  }
 
   // Load all of the USS-based auth factors.
   for (const auto& [label, auth_factor_type] :
@@ -270,7 +282,7 @@ AuthFactorMap AuthFactorManager::LoadAllAuthFactors(
   std::vector<std::string> migrated_labels;
   std::map<std::string, AuthFactor> vk_factor_map;
   std::map<std::string, AuthFactor> backup_factor_map;
-  converter.VaultKeysetsToAuthFactorsAndKeyLabelData(
+  converter_.VaultKeysetsToAuthFactorsAndKeyLabelData(
       obfuscated_username, migrated_labels, vk_factor_map, backup_factor_map);
 
   // Duplicate labels are not expected on any use case. However in very rare

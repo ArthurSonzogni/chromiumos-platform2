@@ -338,7 +338,8 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
       nullptr,
       fp_service_.get(),
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
-  AuthFactorManager auth_factor_manager_{&platform_};
+  AuthFactorManager auth_factor_manager_{&platform_, &keyset_management_,
+                                         &uss_manager_};
 
   AuthSession::BackingApis backing_apis_{&crypto_,
                                          &platform_,

@@ -13,7 +13,10 @@
 #include <base/test/test_future.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
+#include <libhwsec-foundation/status/status_chain.h>
 
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
@@ -25,6 +28,8 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state_test_utils.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/user_secret_stash/manager.h"
+#include "cryptohome/user_secret_stash/storage.h"
 
 namespace cryptohome {
 namespace {
@@ -34,6 +39,7 @@ using ::brillo::BlobFromString;
 using ::brillo::SecureBlob;
 using ::brillo::cryptohome::home::SanitizeUserName;
 using ::cryptohome::error::CryptohomeError;
+using ::hwsec_foundation::kAesGcm256KeySize;
 using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::OkStatus;
@@ -81,12 +87,18 @@ class AuthFactorManagerTest : public ::testing::Test {
  protected:
   const ObfuscatedUsername kObfuscatedUsername{"obfuscated1"};
 
-  MockPlatform platform_;
-  AuthFactorManager auth_factor_manager_{&platform_};
   base::test::SingleThreadTaskEnvironment task_environment_ = {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   scoped_refptr<base::SequencedTaskRunner> task_runner_ =
       base::SequencedTaskRunner::GetCurrentDefault();
+
+  MockPlatform platform_;
+  UssStorage uss_storage_{&platform_};
+  UssManager uss_manager_{uss_storage_};
+  StrictMock<MockKeysetManagement> keyset_management_;
+
+  AuthFactorManager auth_factor_manager_{&platform_, &keyset_management_,
+                                         &uss_manager_};
 };
 
 // Test the `SaveAuthFactorFile()` method correctly serializes the factor into a
@@ -621,7 +633,7 @@ std::unique_ptr<VaultKeyset> CreateMigratedVaultKeyset(
   return migrated_vk;
 }
 
-class LoadAllAuthFactorsTest : public ::testing::Test {
+class LoadAllAuthFactorsTest : public AuthFactorManagerTest {
  protected:
   // Install mocks to set up vault keysets for testing. Expects a map of VK
   // labels to factory functions that will construct a VaultKeyset object.
@@ -646,29 +658,45 @@ class LoadAllAuthFactorsTest : public ::testing::Test {
   // Install a single USS auth factor. If you want to set up multiple factors
   // for your test, call this multiple times.
   void InstallUssFactor(AuthFactor factor) {
-    EXPECT_THAT(manager_.SaveAuthFactorFile(kObfuscatedUsername, factor),
-                IsOk());
+    EXPECT_THAT(
+        auth_factor_manager_.SaveAuthFactorFile(kObfuscatedUsername, factor),
+        IsOk());
   }
 
-  FakePlatform platform_;
+  // Create a random USS with wrapped keys with the given IDs. The actual keys
+  // stored in the USS will be made up.
+  CryptohomeStatus CreateUssWithWrappingIds(
+      const std::vector<std::string>& wrapping_ids) {
+    UserUssStorage user_storage(uss_storage_, kObfuscatedUsername);
+    const brillo::SecureBlob wrapping_key =
+        brillo::SecureBlob(kAesGcm256KeySize, 0xA);
+
+    ASSIGN_OR_RETURN(auto uss,
+                     DecryptedUss::CreateWithRandomMainKey(
+                         user_storage, FileSystemKeyset::CreateRandom()));
+    {
+      auto transaction = uss.StartTransaction();
+      for (const std::string& id : wrapping_ids) {
+        RETURN_IF_ERROR(transaction.InsertWrappedMainKey(id, wrapping_key));
+      }
+      RETURN_IF_ERROR(std::move(transaction).Commit());
+    }
+    return OkStatus<CryptohomeError>();
+  }
 
   // Username used for all tests.
   const Username kUsername{"user@testing.com"};
   // Computing the obfuscated name requires the system salt from FakePlatform
   // and so this must be defined after it and not before.
   const ObfuscatedUsername kObfuscatedUsername{SanitizeUserName(kUsername)};
-
-  StrictMock<MockKeysetManagement> keyset_management_;
-  AuthFactorVaultKeysetConverter converter_{&keyset_management_};
-  AuthFactorManager manager_{&platform_};
 };
 
 // Test that if nothing is set up, no factors are loaded.
 TEST_F(LoadAllAuthFactorsTest, NoFactors) {
   InstallVaultKeysets({});
+  ASSERT_THAT(CreateUssWithWrappingIds({}), IsOk());
 
-  auto af_map =
-      manager_.LoadAllAuthFactors(kObfuscatedUsername, {}, converter_);
+  auto af_map = auth_factor_manager_.LoadAllAuthFactors(kObfuscatedUsername);
 
   EXPECT_THAT(af_map, IsEmpty());
 }
@@ -681,8 +709,9 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithOnlyUss) {
   InstallUssFactor(AuthFactor(AuthFactorType::kPin, "secondary",
                               {.metadata = PinMetadata()},
                               {.state = PinWeaverAuthBlockState()}));
-  auto af_map = manager_.LoadAllAuthFactors(
-      kObfuscatedUsername, {"primary", "secondary"}, converter_);
+  ASSERT_THAT(CreateUssWithWrappingIds({"primary", "secondary"}), IsOk());
+
+  auto af_map = auth_factor_manager_.LoadAllAuthFactors(kObfuscatedUsername);
 
   EXPECT_THAT(af_map,
               UnorderedElementsAre(
@@ -703,9 +732,9 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithMixUsesUssAndVk) {
   InstallUssFactor(AuthFactor(AuthFactorType::kPin, "secondary",
                               {.metadata = PinMetadata()},
                               {.state = PinWeaverAuthBlockState()}));
+  ASSERT_THAT(CreateUssWithWrappingIds({"primary", "secondary"}), IsOk());
 
-  auto af_map = manager_.LoadAllAuthFactors(
-      kObfuscatedUsername, {"primary", "secondary"}, converter_);
+  auto af_map = auth_factor_manager_.LoadAllAuthFactors(kObfuscatedUsername);
 
   EXPECT_THAT(af_map,
               UnorderedElementsAre(
@@ -725,9 +754,9 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithMixUsesUssAndMigratedVk) {
   InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "primary",
                               {.metadata = PasswordMetadata()},
                               {.state = TpmBoundToPcrAuthBlockState()}));
+  ASSERT_THAT(CreateUssWithWrappingIds({"primary"}), IsOk());
 
-  auto af_map =
-      manager_.LoadAllAuthFactors(kObfuscatedUsername, {"primary"}, converter_);
+  auto af_map = auth_factor_manager_.LoadAllAuthFactors(kObfuscatedUsername);
 
   EXPECT_THAT(af_map,
               UnorderedElementsAre(
@@ -748,9 +777,9 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithOnlyUssAndBrokenFactors) {
   InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "broken",
                               {.metadata = PasswordMetadata()},
                               {.state = TpmBoundToPcrAuthBlockState()}));
+  ASSERT_THAT(CreateUssWithWrappingIds({"primary", "secondary"}), IsOk());
 
-  auto af_map = manager_.LoadAllAuthFactors(
-      kObfuscatedUsername, {"primary", "secondary"}, converter_);
+  auto af_map = auth_factor_manager_.LoadAllAuthFactors(kObfuscatedUsername);
 
   EXPECT_THAT(af_map,
               UnorderedElementsAre(

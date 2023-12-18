@@ -20,7 +20,9 @@
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
@@ -34,12 +36,17 @@ class AuthFactorManager final {
   // Mapping between auth factor label and type.
   using LabelToTypeMap = std::map<std::string, AuthFactorType>;
 
-  explicit AuthFactorManager(Platform* platform);
+  AuthFactorManager(Platform* platform,
+                    KeysetManagement* keyset_management,
+                    UssManager* uss_manager);
 
   AuthFactorManager(const AuthFactorManager&) = delete;
   AuthFactorManager& operator=(const AuthFactorManager&) = delete;
 
-  ~AuthFactorManager() = default;
+  // Loads all configured auth factors for the given user from the disk. If any
+  // factors are malformed they will be logged and skipped.
+  AuthFactorMap LoadAllAuthFactors(
+      const ObfuscatedUsername& obfuscated_username);
 
   // Serializes and persists as a file the given auth factor in the user's data
   // vault.
@@ -58,15 +65,6 @@ class AuthFactorManager final {
       const ObfuscatedUsername& obfuscated_username,
       AuthFactorType auth_factor_type,
       const std::string& auth_factor_label);
-
-  // Loads all configured auth factors for the given user from the disk. For
-  // each USS-based factor the given validity-check function will be called and
-  // the factor will only be loaded if the check return true. If any factors are
-  // malformed they will be logged and skipped.
-  AuthFactorMap LoadAllAuthFactors(
-      const ObfuscatedUsername& obfuscated_username,
-      const std::set<std::string_view>& uss_labels,
-      AuthFactorVaultKeysetConverter& converter);
 
   // Loads the list of configured auth factors from the user's data vault.
   LabelToTypeMap ListAuthFactors(const ObfuscatedUsername& obfuscated_username);
@@ -111,8 +109,11 @@ class AuthFactorManager final {
                                   StatusCallback callback,
                                   CryptohomeStatus status);
 
-  // Unowned pointer that must outlive this object.
   Platform* const platform_;
+  UssManager* const uss_manager_;
+
+  // Converter used for VK -> AF conversion.
+  AuthFactorVaultKeysetConverter converter_;
 
   // The last member, to invalidate weak references first on destruction.
   base::WeakPtrFactory<AuthFactorManager> weak_factory_{this};

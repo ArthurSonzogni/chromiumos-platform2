@@ -83,6 +83,7 @@
 #include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/storage/mock_mount.h"
 #include "cryptohome/storage/mock_mount_factory.h"
+#include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/mock_user_session_factory.h"
@@ -3437,8 +3438,12 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
 TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-  AuthFactorManager manager(&platform_);
+
+  UssStorage uss_storage_{&platform_};
+  UssManager uss_manager_{uss_storage_};
+  AuthFactorManager manager(&platform_, &keyset_management_, &uss_manager_);
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
+
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
   EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(_))
       .WillRepeatedly(ReturnValue(UINT32_MAX));
@@ -3585,10 +3590,13 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
 TEST_F(UserDataAuthExTest, ListAuthFactorsWithIncompleteFactorsFromUss) {
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-  AuthFactorManager manager(&platform_);
-  userdataauth_->set_auth_factor_manager_for_testing(&manager);
-  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
 
+  UssStorage uss_storage_{&platform_};
+  UssManager uss_manager_{uss_storage_};
+  AuthFactorManager manager(&platform_, &keyset_management_, &uss_manager_);
+  userdataauth_->set_auth_factor_manager_for_testing(&manager);
+
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
 
   // Set up standard list auth factor parameters, we'll be calling this a few
@@ -3685,8 +3693,10 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
   // Setup.
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-  AuthFactorManager manager(&platform_);
 
+  UssStorage uss_storage_{&platform_};
+  UssManager uss_manager_{uss_storage_};
+  AuthFactorManager manager(&platform_, &keyset_management_, &uss_manager_);
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
 
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
@@ -3799,9 +3809,12 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
   // Setup.
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-  AuthFactorManager manager(&platform_);
 
+  UssStorage uss_storage_{&platform_};
+  UssManager uss_manager_{uss_storage_};
+  AuthFactorManager manager(&platform_, &keyset_management_, &uss_manager_);
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
+
   features_.SetDefaultForFeature(Features::kModernPin, true);
 
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
@@ -3918,8 +3931,10 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedLegacy) {
   // Setup.
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-  AuthFactorManager manager(&platform_);
 
+  UssStorage uss_storage_{&platform_};
+  UssManager uss_manager_{uss_storage_};
+  AuthFactorManager manager(&platform_, &keyset_management_, &uss_manager_);
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
 
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
@@ -4041,9 +4056,12 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
   // Setup.
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-  AuthFactorManager manager(&platform_);
 
+  UssStorage uss_storage_{&platform_};
+  UssManager uss_manager_{uss_storage_};
+  AuthFactorManager manager(&platform_, &keyset_management_, &uss_manager_);
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
+
   features_.SetDefaultForFeature(Features::kModernPin, true);
 
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
@@ -4167,8 +4185,12 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
 TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-  AuthFactorManager manager(&platform_);
+
+  UssStorage uss_storage_{&platform_};
+  UssManager uss_manager_{uss_storage_};
+  AuthFactorManager manager(&platform_, &keyset_management_, &uss_manager_);
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
+
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
   EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(_))
       .WillRepeatedly(ReturnValue(UINT32_MAX));
@@ -4467,8 +4489,12 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorBadTypeFailure) {
 TEST_F(UserDataAuthExTest, GetRecoverableKeyStores) {
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-  AuthFactorManager manager(&platform_);
+
+  UssStorage uss_storage_{&platform_};
+  UssManager uss_manager_{uss_storage_};
+  AuthFactorManager manager(&platform_, &keyset_management_, &uss_manager_);
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
+
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
 
   // Add uss auth factors, 1 with recoverable key store and 1 without.

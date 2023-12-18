@@ -386,19 +386,9 @@ std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
   // If we have an existing persistent user, load all of their auth factors.
   AuthFactorMap auth_factor_map;
   if (persistent_user_exists) {
-    // Load the USS so that we can use it to check the validity of any auth
-    // factors being loaded.
-    std::set<std::string_view> uss_labels;
-    auto encrypted_uss = backing_apis.user_secret_stash_manager->LoadEncrypted(
-        obfuscated_username);
-    if (encrypted_uss.ok()) {
-      uss_labels = (*encrypted_uss)->WrappedMainKeyIds();
-    }
-
     // Load all of the auth factors.
-    AuthFactorVaultKeysetConverter converter(backing_apis.keyset_management);
     auth_factor_map = backing_apis.auth_factor_manager->LoadAllAuthFactors(
-        obfuscated_username, uss_labels, converter);
+        obfuscated_username);
 
     // If only uss factors exists, then we should remove all the backups.
     if (!auth_factor_map.HasFactorWithStorage(

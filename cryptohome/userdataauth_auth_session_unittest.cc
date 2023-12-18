@@ -360,7 +360,8 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
       nullptr,
       fp_service_.get(),
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
-  AuthFactorManager auth_factor_manager_{&platform_};
+  AuthFactorManager auth_factor_manager_{&platform_, &keyset_management_,
+                                         &uss_manager_};
   NiceMock<MockKeysetManagement> keyset_management_;
   NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
   NiceMock<MockUserOldestActivityTimestampManager>

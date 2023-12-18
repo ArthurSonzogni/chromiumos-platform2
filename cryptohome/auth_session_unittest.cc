@@ -344,7 +344,8 @@ class AuthSessionTest : public ::testing::Test {
       AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(
           [](AuthSessionTest* test) { return test->bio_service_.get(); },
           base::Unretained(this)))};
-  AuthFactorManager auth_factor_manager_{&platform_};
+  AuthFactorManager auth_factor_manager_{&platform_, &keyset_management_,
+                                         &uss_manager_};
   FakeFeaturesForTesting fake_features_;
   AuthSession::BackingApis backing_apis_{
       &crypto_,
