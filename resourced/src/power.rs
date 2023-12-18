@@ -67,7 +67,13 @@ impl FromStr for PowerSupplyStatus {
 
 #[derive(Clone, Debug)]
 pub struct DirectoryPowerSourceProvider {
-    pub root: PathBuf,
+    root: PathBuf,
+}
+
+impl DirectoryPowerSourceProvider {
+    pub fn new(root: PathBuf) -> Self {
+        Self { root }
+    }
 }
 
 impl PowerSourceProvider for DirectoryPowerSourceProvider {
@@ -219,9 +225,9 @@ fn write_to_cpu_policy_patterns(pattern: &str, new_value: &str) -> Result<()> {
 /// This struct is using generics for the [ConfigProvider](config::ConfigProvider) and
 /// [PowerSourceProvider] to make unit testing easier.
 pub struct DirectoryPowerPreferencesManager<C: config::ConfigProvider, P: PowerSourceProvider> {
-    pub root: PathBuf,
-    pub config_provider: C,
-    pub power_source_provider: P,
+    root: PathBuf,
+    config_provider: C,
+    power_source_provider: P,
 }
 
 impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreferencesManager<C, P> {
@@ -456,14 +462,11 @@ pub fn new_directory_power_preferences_manager(
     root: &Path,
 ) -> DirectoryPowerPreferencesManager<config::DirectoryConfigProvider, DirectoryPowerSourceProvider>
 {
+    let root = root.to_path_buf();
     DirectoryPowerPreferencesManager {
-        root: root.to_path_buf(),
-        config_provider: config::DirectoryConfigProvider {
-            root: root.to_path_buf(),
-        },
-        power_source_provider: DirectoryPowerSourceProvider {
-            root: root.to_path_buf(),
-        },
+        root: root.clone(),
+        config_provider: config::DirectoryConfigProvider { root: root.clone() },
+        power_source_provider: DirectoryPowerSourceProvider::new(root),
     }
 }
 

@@ -33,6 +33,7 @@ use crate::cpu_scaling::set_min_cpu_freq;
 use crate::gpu_freq_scaling::intel_device;
 use crate::memory;
 use crate::power;
+use crate::power::DirectoryPowerSourceProvider;
 use crate::power::PowerSourceProvider;
 
 // Paths for RPS up/down threshold relative to rootdir.
@@ -126,10 +127,7 @@ pub fn set_game_mode(
             Err(e) => warn!("Active GPU tuning not set. {:?}", e),
         }
         let mut power_is_ac = false;
-        match power::new_directory_power_preferences_manager(Path::new(&root))
-            .power_source_provider
-            .get_power_source()
-        {
+        match DirectoryPowerSourceProvider::new(root.clone()).get_power_source() {
             Ok(source) => power_is_ac = source == config::PowerSourceType::AC,
             Err(_) => warn!("Failed to get power state"),
         };
