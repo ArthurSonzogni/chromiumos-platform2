@@ -44,12 +44,10 @@ bool SetBalloonSize(std::string control_socket, int64_t size) {
 Balloon::Balloon(
     int vm_cid,
     const std::string& control_socket,
-    scoped_refptr<base::SequencedTaskRunner> balloon_operations_task_runner,
-    const base::RepeatingCallback<base::TimeTicks(void)> time_ticks_now)
+    scoped_refptr<base::SequencedTaskRunner> balloon_operations_task_runner)
     : vm_cid_(vm_cid),
       control_socket_(control_socket),
-      balloon_operations_task_runner_(balloon_operations_task_runner),
-      time_ticks_now_(time_ticks_now) {}
+      balloon_operations_task_runner_(balloon_operations_task_runner) {}
 
 void Balloon::SetStallCallback(
     base::RepeatingCallback<void(StallStatistics, ResizeResult)>
@@ -96,7 +94,7 @@ void Balloon::DoResizeInternal(
   // the current time and size.
   if (BalloonIsExpectedSizeOrLarger(*current_size)) {
     initial_balloon_size_ = target_balloon_size_;
-    resize_time_ = time_ticks_now_.Run();
+    resize_time_ = base::TimeTicks::Now();
   }
 
   int64_t operation_base_size = *current_size;
@@ -232,7 +230,7 @@ std::optional<Balloon::StallStatistics> Balloon::BalloonIsStalled(
     int64_t current_size) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  base::TimeDelta time_since_resize = time_ticks_now_.Run() - resize_time_;
+  base::TimeDelta time_since_resize = base::TimeTicks::Now() - resize_time_;
 
   // If the balloon is already at or above the expected size, then it is not
   // stalled on an inflation.
@@ -270,7 +268,7 @@ std::optional<Balloon::StallStatistics> Balloon::BalloonIsStalled(
   // Reset the initial balloon size and resize time so the next stall detection
   // is based only on the inflation amount that occurred since this check.
   initial_balloon_size_ = current_size;
-  resize_time_ = time_ticks_now_.Run();
+  resize_time_ = base::TimeTicks::Now();
 
   // The balloon isn't stalled, but it also isn't at the target size yet. Check
   // again in the future.

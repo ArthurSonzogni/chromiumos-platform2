@@ -25,13 +25,10 @@ class BalloonTest : public ::testing::Test {
     FakeCrosvmControl::Get()->set_balloon_size_wait_for_result_ = false;
 
     balloon_ = std::make_unique<Balloon>(
-        6, kTestSocket, base::SequencedTaskRunner::GetCurrentDefault(),
-        base::BindRepeating(&BalloonTest::Now, base::Unretained(this)));
+        6, kTestSocket, base::SequencedTaskRunner::GetCurrentDefault());
 
     balloon_->SetStallCallback(base::BindRepeating(&BalloonTest::OnBalloonStall,
                                                    base::Unretained(this)));
-
-    now_ = base::TimeTicks::Now();
   }
 
   void TearDown() override { CrosvmControl::Reset(); }
@@ -67,20 +64,12 @@ class BalloonTest : public ::testing::Test {
     resize_results_.emplace_back(result);
   }
 
-  void FastForwardBy(base::TimeDelta duration) {
-    now_ += duration;
-    task_environment_.FastForwardBy(duration);
-  }
-
-  base::TimeTicks Now() { return now_; }
-
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   std::unique_ptr<Balloon> balloon_{};
   std::vector<Balloon::ResizeResult> resize_results_{};
   std::vector<std::pair<Balloon::StallStatistics, Balloon::ResizeResult>>
       balloon_stall_results_{};
-  base::TimeTicks now_{};
   int balloon_op_count_ = 1;
 };
 
@@ -149,7 +138,7 @@ TEST_F(BalloonTest, TestBalloonStallIgnoredForShortTime) {
   DoResize(MiB(128));
   AssertBalloonSizedTo(MiB(128));
 
-  now_ += base::Milliseconds(1);
+  task_environment_.FastForwardBy(base::Milliseconds(1));
 
   ReturnBalloonSize(MiB(1));
 
@@ -176,13 +165,13 @@ TEST_F(BalloonTest, TestBalloonStallDetectedAndCorrected) {
   // inflation rate is still above the target so the stall should not be
   // triggered.
   ReturnBalloonSize(MiB(128));
-  FastForwardBy(base::Seconds(6));
+  task_environment_.FastForwardBy(base::Seconds(6));
   ASSERT_EQ(balloon_stall_results_.size(), 0);
 
   // 6 more seconds in the future and the balloon has only inflated by 30 more
   // MiB. This should be detected as a stall.
   ReturnBalloonSize(MiB(128 + 30));
-  FastForwardBy(base::Seconds(6));
+  task_environment_.FastForwardBy(base::Seconds(6));
 
   // The current stall back off is 128 MiB, so since the balloon stalled at 158
   // MiB it should be deflated down to 30 MiB.
@@ -190,8 +179,9 @@ TEST_F(BalloonTest, TestBalloonStallDetectedAndCorrected) {
 
   ASSERT_EQ(balloon_stall_results_.size(), 1);
 
-  // The stall throughput should be 30MiB / 6s or 5 MiB/s.
-  ASSERT_EQ(balloon_stall_results_[0].first.inflate_mb_per_s, 5);
+  // The stall throughput should be 30MiB / kBalloonStallDetectionInterval (5
+  // seconds) or 6 MiB/s.
+  ASSERT_EQ(balloon_stall_results_[0].first.inflate_mb_per_s, 6);
 }
 
 TEST_F(BalloonTest, TestBalloonStallDetectionOnlyRunsOnce) {
@@ -206,7 +196,7 @@ TEST_F(BalloonTest, TestBalloonStallDetectionOnlyRunsOnce) {
 
   // Even though two inflations were performed, only one balloon stall check
   // should have been run.
-  FastForwardBy(base::Seconds(6));
+  task_environment_.FastForwardBy(base::Seconds(6));
   ASSERT_EQ(initial_stats_count + 1,
             FakeCrosvmControl::Get()->count_balloon_stats_);
 }

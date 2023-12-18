@@ -48,8 +48,6 @@ class ReclaimBroker {
     std::unique_ptr<ReclaimServer> reclaim_server;
     LowestUnblockedPriorityCallback lowest_unblocked_priority;
     ReclaimCallback reclaim_handler;
-    base::RepeatingCallback<base::TimeTicks()> time_ticks_now =
-        base::BindRepeating(&base::TimeTicks::Now);
     size_t reclaim_threshold = kDefaultReclaimThreshold;
   };
 
@@ -106,9 +104,6 @@ class ReclaimBroker {
 
   // Callback to execute reclaim operations.
   const ReclaimCallback reclaim_handler_;
-
-  // Runner for TimeTicks::Now().
-  const base::RepeatingCallback<base::TimeTicks()> time_ticks_now_;
 
   // The default reclaim threshold. Reclaim operations under this amount will be
   // ignored.

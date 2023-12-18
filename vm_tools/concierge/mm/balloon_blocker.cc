@@ -57,19 +57,16 @@ void ResizeRequest::LimitMagnitude(int64_t limit_bytes) {
       GetDirection() == ResizeDirection::kInflate ? magnitude : -magnitude;
 }
 
-BalloonBlocker::BalloonBlocker(
-    int vm_cid,
-    std::unique_ptr<Balloon> balloon,
-    std::unique_ptr<BalloonMetrics> metrics,
-    base::TimeDelta low_priority_block_duration,
-    base::TimeDelta high_priority_block_duration,
-    base::RepeatingCallback<base::TimeTicks(void)> time_ticks_now)
+BalloonBlocker::BalloonBlocker(int vm_cid,
+                               std::unique_ptr<Balloon> balloon,
+                               std::unique_ptr<BalloonMetrics> metrics,
+                               base::TimeDelta low_priority_block_duration,
+                               base::TimeDelta high_priority_block_duration)
     : vm_cid_(vm_cid),
       balloon_(std::move(balloon)),
       metrics_(std::move(metrics)),
       low_priority_block_duration_(low_priority_block_duration),
-      high_priority_block_duration_(high_priority_block_duration),
-      time_ticks_now_(time_ticks_now) {
+      high_priority_block_duration_(high_priority_block_duration) {
   // Initialize all the request lists to the unblocked state.
   RequestList fully_unblocked{};
 
@@ -92,7 +89,7 @@ int64_t BalloonBlocker::TryResize(ResizeRequest request) {
   RecordResizeRequest(request);
 
   if (request.GetPriority() >
-      LowestUnblockedPriority(request.GetDirection(), time_ticks_now_.Run())) {
+      LowestUnblockedPriority(request.GetDirection(), base::TimeTicks::Now())) {
     return 0;
   }
 
@@ -164,7 +161,7 @@ void BalloonBlocker::RecordResizeRequest(const ResizeRequest& request) {
     return;
   }
 
-  base::TimeTicks now = time_ticks_now_.Run();
+  base::TimeTicks now = base::TimeTicks::Now();
 
   RequestList& list = request_lists_[request.GetDirection()];
   ResizePriority requested_priority = request.GetPriority();

@@ -39,8 +39,6 @@ using vm_tools::vm_memory_management::ResizePriority;
 class ReclaimBrokerTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    now_ = base::TimeTicks::Now();
-
     ASSERT_TRUE(base::CreateTemporaryFile(&local_mglru_));
 
     std::unique_ptr<FakeReclaimServer> reclaim_server =
@@ -55,7 +53,6 @@ class ReclaimBrokerTest : public ::testing::Test {
                              base::Unretained(this)),
          base::BindRepeating(&ReclaimBrokerTest::ReclaimHandler,
                              base::Unretained(this)),
-         base::BindRepeating(&ReclaimBrokerTest::Now, base::Unretained(this)),
          0});
 
     ASSERT_TRUE(reclaim_broker_);
@@ -79,8 +76,6 @@ class ReclaimBrokerTest : public ::testing::Test {
     reclaim_events_.emplace_back(reclaim_operation);
   }
 
-  base::TimeTicks Now() { return now_; }
-
   base::FilePath local_mglru_{};
   static constexpr Client guest_1 = {
       .cid = 10,
@@ -93,15 +88,14 @@ class ReclaimBrokerTest : public ::testing::Test {
       .type = ConnectionType::CONNECTION_TYPE_STATS,
   };
 
-  base::test::TaskEnvironment task_environment_;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
   FakeReclaimServer* reclaim_server_;
   std::unique_ptr<ReclaimBroker> reclaim_broker_;
 
   ReclaimServer::ClientConnectionNotification client_connection_handler_{};
   ReclaimServer::NewGenerationNotification new_generation_notification_{};
-
-  base::TimeTicks now_{};
 
   ResizePriority lowest_block_priority_ =
       ResizePriority::RESIZE_PRIORITY_LOWEST;
@@ -451,8 +445,6 @@ TEST_F(ReclaimBrokerTest, TestReclaimThreshold) {
        base::BindRepeating(
            &ReclaimBrokerTest_TestReclaimThreshold_Test::ReclaimHandler,
            base::Unretained(this)),
-       base::BindRepeating(&ReclaimBrokerTest_TestReclaimThreshold_Test::Now,
-                           base::Unretained(this)),
        MiB(1)});
 
   ASSERT_TRUE(reclaim_broker_);
@@ -524,7 +516,7 @@ TEST_F(ReclaimBrokerTest, TestReclaimIntervalRespected) {
   ASSERT_EQ(reclaim_events_.size(), 1);
 
   // Fast forward by some amount less than the reclaim interval.
-  now_ += base::Seconds(10);
+  task_environment_.FastForwardBy(base::Seconds(10));
 
   new_generation_notification_.Run(VMADDR_CID_LOCAL, host_stats);
 
@@ -532,7 +524,7 @@ TEST_F(ReclaimBrokerTest, TestReclaimIntervalRespected) {
   ASSERT_EQ(reclaim_events_.size(), 1);
 
   // Fast forward past the reclaim interval
-  now_ += base::Seconds(100);
+  task_environment_.FastForwardBy(base::Seconds(100));
 
   new_generation_notification_.Run(VMADDR_CID_LOCAL, host_stats);
 

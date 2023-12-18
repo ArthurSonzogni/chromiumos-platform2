@@ -69,9 +69,7 @@ class BalloonBlocker {
                  base::TimeDelta low_priority_block_duration =
                      kDefaultLowPriorityBalloonBlockDuration,
                  base::TimeDelta high_priority_block_duration =
-                     kDefaultHighPriorityBalloonBlockDuration,
-                 base::RepeatingCallback<base::TimeTicks(void)> time_ticks_now =
-                     base::BindRepeating(&base::TimeTicks::Now));
+                     kDefaultHighPriorityBalloonBlockDuration);
 
   virtual ~BalloonBlocker() = default;
 
@@ -148,10 +146,6 @@ class BalloonBlocker {
   const base::TimeDelta low_priority_block_duration_
       GUARDED_BY_CONTEXT(sequence_checker_);
   const base::TimeDelta high_priority_block_duration_
-      GUARDED_BY_CONTEXT(sequence_checker_);
-
-  // Getter for TimeTicks::Now
-  const base::RepeatingCallback<base::TimeTicks(void)> time_ticks_now_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Tracks the unblock time for a direction and priority.

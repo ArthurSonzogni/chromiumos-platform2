@@ -21,9 +21,7 @@ namespace vm_tools::concierge::mm {
 class BalloonMetrics {
  public:
   BalloonMetrics(apps::VmType vm_type,
-                 const raw_ref<MetricsLibraryInterface> metrics,
-                 base::RepeatingCallback<base::TimeTicks(void)> time_ticks_now =
-                     base::BindRepeating(&base::TimeTicks::Now));
+                 const raw_ref<MetricsLibraryInterface> metrics);
   ~BalloonMetrics();
 
   // Not copyable or movable
@@ -47,10 +45,6 @@ class BalloonMetrics {
 
   // Metrics logging helpers.
   const raw_ref<MetricsLibraryInterface> metrics_
-      GUARDED_BY_CONTEXT(sequence_checker_);
-
-  // Getter for TimeTicks::Now
-  const base::RepeatingCallback<base::TimeTicks(void)> time_ticks_now_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   // The time of the previous resize, or startup if there hasn't been one yet.

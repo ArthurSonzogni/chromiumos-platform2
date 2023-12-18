@@ -216,7 +216,6 @@ ReclaimBroker::ReclaimBroker(Config config,
       reclaim_server_(std::move(config.reclaim_server)),
       lowest_unblocked_priority_(config.lowest_unblocked_priority),
       reclaim_handler_(config.reclaim_handler),
-      time_ticks_now_(config.time_ticks_now),
       reclaim_threshold_(config.reclaim_threshold) {
   mglru_watcher_->SetCallback(base::BindRepeating(
       &ReclaimBroker::OnNewLocalMglruGeneration, base::Unretained(this)));
@@ -255,11 +254,11 @@ void ReclaimBroker::NewGenerationEvent(int cid, MglruStats new_stats) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   // Do not reclaim more than once within a reclaim interval.
-  if (time_ticks_now_.Run() - last_reclaim_event_time_ < kReclaimInterval) {
+  if (base::TimeTicks::Now() - last_reclaim_event_time_ < kReclaimInterval) {
     return;
   }
 
-  last_reclaim_event_time_ = time_ticks_now_.Run();
+  last_reclaim_event_time_ = base::TimeTicks::Now();
 
   if (contexts_.find(cid) == contexts_.end()) {
     LOG(ERROR) << "Received new generation for invalid VM Context";

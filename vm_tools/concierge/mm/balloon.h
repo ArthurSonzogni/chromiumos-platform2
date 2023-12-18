@@ -40,9 +40,7 @@ class Balloon {
   Balloon(
       int vm_cid,
       const std::string& control_socket,
-      scoped_refptr<base::SequencedTaskRunner> balloon_operations_task_runner,
-      base::RepeatingCallback<base::TimeTicks(void)> time_ticks_now =
-          base::BindRepeating(&base::TimeTicks::Now));
+      scoped_refptr<base::SequencedTaskRunner> balloon_operations_task_runner);
 
   virtual ~Balloon() = default;
 
@@ -117,9 +115,6 @@ class Balloon {
   // The task runner on which to run balloon operations.
   const scoped_refptr<base::SequencedTaskRunner>
       balloon_operations_task_runner_;
-
-  // Getter for TimeTicks::Now
-  const base::RepeatingCallback<base::TimeTicks(void)> time_ticks_now_;
 
   // Ensure calls are made on the main sequence.
   SEQUENCE_CHECKER(sequence_checker_);

@@ -65,25 +65,22 @@ std::string GetMetricName(apps::VmType vm_type,
 
 }  // namespace
 
-BalloonMetrics::BalloonMetrics(
-    apps::VmType vm_type,
-    const raw_ref<MetricsLibraryInterface> metrics,
-    base::RepeatingCallback<base::TimeTicks(void)> time_ticks_now)
+BalloonMetrics::BalloonMetrics(apps::VmType vm_type,
+                               const raw_ref<MetricsLibraryInterface> metrics)
     : vm_type_(vm_type),
       metrics_(metrics),
-      time_ticks_now_(time_ticks_now),
-      resize_interval_start_(time_ticks_now.Run()),
+      resize_interval_start_(base::TimeTicks::Now()),
       last_size_log_time_(resize_interval_start_),
       last_size_mib_(0) {}
 
 BalloonMetrics::~BalloonMetrics() {
-  LogSizeIfNeeded(last_size_mib_, time_ticks_now_.Run());
+  LogSizeIfNeeded(last_size_mib_, base::TimeTicks::Now());
 }
 
 void BalloonMetrics::OnResize(Balloon::ResizeResult result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  const base::TimeTicks now = time_ticks_now_.Run();
+  const base::TimeTicks now = base::TimeTicks::Now();
 
   const base::TimeDelta resize_interval = now - resize_interval_start_;
   resize_interval_start_ = now;

@@ -26,7 +26,6 @@ class BalloonBlockerTest : public ::testing::Test {
  public:
   void SetUp() override {
     metrics_ = std::make_unique<MetricsLibraryMock>();
-    now_ = base::TimeTicks::Now();
     std::unique_ptr<FakeBalloon> fake_balloon = std::make_unique<FakeBalloon>();
     leaked_fake_balloon_ = fake_balloon.get();
 
@@ -34,11 +33,8 @@ class BalloonBlockerTest : public ::testing::Test {
         6, std::move(fake_balloon),
         std::make_unique<BalloonMetrics>(
             apps::VmType::ARCVM,
-            raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()),
-            base::BindRepeating(&BalloonBlockerTest::Now,
-                                base::Unretained(this))),
-        base::Milliseconds(1000), base::Milliseconds(100),
-        base::BindRepeating(&BalloonBlockerTest::Now, base::Unretained(this)));
+            raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get())),
+        base::Milliseconds(1000), base::Milliseconds(100));
   }
 
  protected:
@@ -57,13 +53,11 @@ class BalloonBlockerTest : public ::testing::Test {
     ASSERT_EQ(leaked_fake_balloon_->resizes_.back(), delta_bytes);
   }
 
-  base::TimeTicks Now() { return now_; }
-
-  base::test::TaskEnvironment task_environment_{};
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   FakeBalloon* leaked_fake_balloon_{};
   std::unique_ptr<BalloonBlocker> balloon_blocker_{};
   size_t balloon_adjustment_count_{};
-  base::TimeTicks now_{};
   std::unique_ptr<MetricsLibraryMock> metrics_;
 };
 
@@ -84,7 +78,7 @@ TEST_F(BalloonBlockerTest, TestLowestUnblockedPriorityStepByStep) {
   balloon_blocker_->TryResize(
       {ResizePriority::RESIZE_PRIORITY_NO_KILL_CANDIDATES_HOST, 100});
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_CACHED_APP);
 
   // Next, a deflation should cause an inflation block at cached app meaning
@@ -92,7 +86,7 @@ TEST_F(BalloonBlockerTest, TestLowestUnblockedPriorityStepByStep) {
   balloon_blocker_->TryResize(
       {ResizePriority::RESIZE_PRIORITY_NO_KILL_CANDIDATES_GUEST, -100});
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kInflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_CACHED_TAB);
 
   // Another inflation should cause the unblocked priority to increase to
@@ -100,7 +94,7 @@ TEST_F(BalloonBlockerTest, TestLowestUnblockedPriorityStepByStep) {
   balloon_blocker_->TryResize(
       {ResizePriority::RESIZE_PRIORITY_NO_KILL_CANDIDATES_HOST, 100});
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_PERCEPTIBLE_APP);
 
   // And another deflation should cause the unblocked priority to increase to
@@ -108,7 +102,7 @@ TEST_F(BalloonBlockerTest, TestLowestUnblockedPriorityStepByStep) {
   balloon_blocker_->TryResize(
       {ResizePriority::RESIZE_PRIORITY_NO_KILL_CANDIDATES_GUEST, -100});
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kInflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_PERCEPTIBLE_TAB);
 
   // Repeat for increasing priorities...
@@ -117,21 +111,21 @@ TEST_F(BalloonBlockerTest, TestLowestUnblockedPriorityStepByStep) {
   balloon_blocker_->TryResize(
       {ResizePriority::RESIZE_PRIORITY_NO_KILL_CANDIDATES_HOST, 100});
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_FOCUSED_APP);
 
   // FOCUSED_TAB
   balloon_blocker_->TryResize(
       {ResizePriority::RESIZE_PRIORITY_NO_KILL_CANDIDATES_GUEST, -100});
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kInflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_FOCUSED_TAB);
 
   // NO_KILL_CANDIDATES_GUEST
   balloon_blocker_->TryResize(
       {ResizePriority::RESIZE_PRIORITY_NO_KILL_CANDIDATES_HOST, 100});
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_NO_KILL_CANDIDATES_GUEST);
 
   // After a balloon stall deflation, the balloon should not be unblocked for
@@ -139,7 +133,7 @@ TEST_F(BalloonBlockerTest, TestLowestUnblockedPriorityStepByStep) {
   balloon_blocker_->TryResize(
       {ResizePriority::RESIZE_PRIORITY_BALLOON_STALL, -100});
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kInflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_UNSPECIFIED);
 }
 
@@ -147,20 +141,21 @@ TEST_F(BalloonBlockerTest, TestLowPriorityBlockDuration) {
   SetBlockPriorityTo(ResizePriority::RESIZE_PRIORITY_CACHED_APP);
 
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_CACHED_TAB);
 
   // Deflations should be blocked at lowest priority before the block is
   // expired.
-  now_ += base::Milliseconds(999);
+  task_environment_.FastForwardBy(base::Milliseconds(999));
+
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_CACHED_TAB);
 
   // And the block should be removed after the block is expired.
-  now_ += base::Milliseconds(10);
+  task_environment_.FastForwardBy(base::Milliseconds(10));
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_LOWEST);
 }
 
@@ -168,47 +163,47 @@ TEST_F(BalloonBlockerTest, TestHighPriorityBlockDuration) {
   SetBlockPriorityTo(ResizePriority::RESIZE_PRIORITY_FOCUSED_APP);
 
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kInflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_FOCUSED_TAB);
 
   // Deflations should be blocked at lowest priority before the block is
   // expired.
-  now_ += base::Milliseconds(99);
+  task_environment_.FastForwardBy(base::Milliseconds(99));
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kInflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_FOCUSED_TAB);
 
   // And the block should be removed after the block is expired.
-  now_ += base::Milliseconds(10);
+  task_environment_.FastForwardBy(base::Milliseconds(10));
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kInflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_CACHED_TAB);
 }
 
 TEST_F(BalloonBlockerTest, TestPriorityFallback) {
   SetBlockPriorityTo(ResizePriority::RESIZE_PRIORITY_FOCUSED_TAB);
-  now_ += base::Milliseconds(20);
+  task_environment_.FastForwardBy(base::Milliseconds(20));
 
   // The focused tab block should still apply.
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_NO_KILL_CANDIDATES_GUEST);
 
   // Set an additional cached tab block.
   balloon_blocker_->TryResize({ResizePriority::RESIZE_PRIORITY_CACHED_TAB, 1});
 
-  now_ += base::Milliseconds(90);
+  task_environment_.FastForwardBy(base::Milliseconds(90));
 
   // The focused tab block should be expired.
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_PERCEPTIBLE_APP);
 
-  now_ += base::Milliseconds(10000);
+  task_environment_.FastForwardBy(base::Milliseconds(10000));
 
   // The cached block should also be expired now.
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_LOWEST);
 }
 
@@ -217,21 +212,21 @@ TEST_F(BalloonBlockerTest, TestLowPriorityClearsHighPriorityBlock) {
 
   // Should be unblocked at RESIZE_PRIORITY_NO_KILL_CANDIDATES_GUEST
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_NO_KILL_CANDIDATES_GUEST);
 
   // A lower priority inflation request should un-do the higher priority
   // deflation blocks.
   balloon_blocker_->TryResize({ResizePriority::RESIZE_PRIORITY_CACHED_TAB, 1});
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_PERCEPTIBLE_APP);
 }
 
 TEST_F(BalloonBlockerTest, TestBalloonStallSetsCorrectBlock) {
   // Nothing should be blocked by default.
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kDeflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_LOWEST);
 
   leaked_fake_balloon_->RunStallCallback({}, {
@@ -243,7 +238,7 @@ TEST_F(BalloonBlockerTest, TestBalloonStallSetsCorrectBlock) {
   // After a balloon stall, inflations should be blocked at the highest
   // priority.
   ASSERT_EQ(balloon_blocker_->LowestUnblockedPriority(ResizeDirection::kInflate,
-                                                      now_),
+                                                      base::TimeTicks::Now()),
             ResizePriority::RESIZE_PRIORITY_UNSPECIFIED);
 }
 
@@ -266,7 +261,7 @@ TEST_F(BalloonBlockerTest, TestStallMetrics) {
       .Times(1);
 
   const base::TimeDelta resize_interval = base::Seconds(12);
-  now_ += resize_interval;
+  task_environment_.FastForwardBy(resize_interval);
   EXPECT_CALL(*metrics_, SendTimeToUMA("Memory.VMMMS.ARCVM.ResizeInterval",
                                        resize_interval, _, _, _))
       .Times(1);
@@ -324,7 +319,7 @@ TEST_F(BalloonBlockerTest, TestResizeMetrics) {
         .actual_delta_bytes = MiB(delta_mib),
         .new_target = MiB(size_mib),
     });
-    now_ += resize_interval;
+    task_environment_.FastForwardBy(resize_interval);
     balloon_blocker_->TryResize(
         {ResizePriority::RESIZE_PRIORITY_MGLRU_RECLAIM, MiB(delta_mib)});
     task_environment_.RunUntilIdle();
