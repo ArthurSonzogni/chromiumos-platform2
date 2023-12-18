@@ -180,7 +180,7 @@ bool Lvmd::CreateLogicalVolume(
   }
 
   *out_logical_volume->mutable_volume_group() = in_thinpool.volume_group();
-  out_logical_volume->set_name(opt_lv->GetName());
+  out_logical_volume->set_name(opt_lv->GetRawName());
   out_logical_volume->set_path(opt_lv->GetPath().value());
   return true;
 }
