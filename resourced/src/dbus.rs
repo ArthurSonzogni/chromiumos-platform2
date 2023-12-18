@@ -32,7 +32,7 @@ use log::LevelFilter;
 use system_api::battery_saver::BatterySaverModeState;
 
 use crate::common;
-use crate::config;
+use crate::config::ConfigProvider;
 use crate::feature;
 use crate::memory;
 use crate::power;
@@ -61,10 +61,8 @@ const DEFAULT_VM_BOOT_TIMEOUT: Duration = Duration::from_secs(60);
 const VARIABLE_TIME_MEMORY_SIGNAL_FEATURE_NAME: &str =
     "CrOSLateBootResourcedVariableTimeMemorySignal";
 
-type PowerPreferencesManager = power::DirectoryPowerPreferencesManager<
-    config::DirectoryConfigProvider,
-    power::DirectoryPowerSourceProvider,
->;
+type PowerPreferencesManager =
+    power::DirectoryPowerPreferencesManager<power::DirectoryPowerSourceProvider>;
 
 // Context data for the D-Bus service.
 #[derive(Clone)]
@@ -733,6 +731,7 @@ fn report_notification_count(notification_count: i32) -> Result<()> {
 
 pub async fn service_main() -> Result<()> {
     let root = Path::new("/");
+    let config_provider = ConfigProvider::from_root(root);
     let scheduler_context = match qos::create_schedqos_context() {
         Ok(ctx) => Some(Arc::new(Mutex::new(ctx))),
         Err(e) => {
@@ -741,7 +740,10 @@ pub async fn service_main() -> Result<()> {
         }
     };
     let context = DbusContext {
-        power_preferences_manager: Arc::new(power::new_directory_power_preferences_manager(root)),
+        power_preferences_manager: Arc::new(power::new_directory_power_preferences_manager(
+            root,
+            config_provider,
+        )),
         reset_game_mode_timer_id: Arc::new(AtomicUsize::new(0)),
         reset_fullscreen_video_timer_id: Arc::new(AtomicUsize::new(0)),
         reset_vm_boot_mode_timer_id: Arc::new(AtomicUsize::new(0)),
