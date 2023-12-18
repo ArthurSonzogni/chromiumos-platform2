@@ -242,13 +242,13 @@ void PortalDetector::HttpRequestSuccessCallback(
     std::string redirect_url_string =
         response->GetHeader(brillo::http::response_header::kLocation);
     if (!redirect_url_string.empty()) {
+      result_->probe_url = http_url_;
       result_->redirect_url =
           net_base::HttpUrl::CreateFromString(redirect_url_string);
       if (result_->redirect_url) {
         LOG(INFO) << LoggingTag() << ": Redirect response, Redirect URL: "
                   << redirect_url_string
                   << ", response status code: " << status_code;
-        result_->probe_url = http_url_;
         result_->http_result = HTTPProbeResult::kPortalRedirect;
       } else {
         // Do not log the Location header if it is not a valid URL and cannot
@@ -478,12 +478,13 @@ std::unique_ptr<HttpRequest> PortalDetector::CreateHTTPRequest(
 }
 
 bool PortalDetector::Result::IsComplete() const {
-  // If the HTTP probe was redirected and a Location URL was received, the
-  // result is unambiguously kPortalRedirect and the trial can complete
-  // immediately. This allows to abort the HTTPS probe and avoids waiting the
-  // full duration of the HTTPS probe timeout if the captive portal is silently
-  // dropping HTTPS traffic when closed.
-  return IsHTTPProbeRedirected() ||
+  // Any HTTP probe result that triggers the Chrome sign-in portal UX flow
+  // (portal redirect or portal suspected results) is enough to complete the
+  // trial immediately. When the captive portal is silently dropping HTTPS
+  // traffic, this allows to avoid waiting the full duration of the HTTPS probe
+  // timeout and terminating the socket connection of the HTTPS probe early by
+  // triggering CleanupTrial. Otherwise, the results of both probes is needed.
+  return IsHTTPProbeRedirected() || IsHTTPProbeRedirectionSuspected() ||
          (http_probe_completed && https_probe_completed);
 }
 

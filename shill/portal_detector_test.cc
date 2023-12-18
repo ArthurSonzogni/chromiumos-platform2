@@ -847,10 +847,9 @@ TEST_F(PortalDetectorTest, Request200WithContent) {
   result.http_result = PortalDetector::HTTPProbeResult::kPortalSuspected;
   result.http_status_code = 200;
   result.http_content_length = 768;
-  result.https_error = HttpRequest::Error::kConnectionFailure;
   result.probe_url = *net_base::HttpUrl::CreateFromString(kHttpUrl);
   result.http_probe_completed = true;
-  result.https_probe_completed = true;
+  result.https_probe_completed = false;
   ASSERT_EQ(PortalDetector::ValidationState::kPortalSuspected,
             result.GetValidationState());
 
@@ -858,7 +857,33 @@ TEST_F(PortalDetectorTest, Request200WithContent) {
   EXPECT_CALL(*http_connection(), GetResponseHeader("Content-Length"))
       .WillOnce(Return("768"));
   ExpectHttpRequestSuccessWithStatus(200);
-  HTTPSRequestFailure(HttpRequest::Error::kConnectionFailure);
+  // The trial has been completed, even if the HTTPS probe did not complete.
+  ExpectCleanupTrial();
+}
+
+TEST_F(PortalDetectorTest, RequestInvalidRedirect) {
+  StartAttempt();
+  EXPECT_TRUE(portal_detector_->IsInProgress());
+
+  PortalDetector::Result result;
+  result.num_attempts = 1;
+  result.http_result = PortalDetector::HTTPProbeResult::kPortalInvalidRedirect;
+  result.http_status_code = 302;
+  result.http_content_length = 0;
+  result.redirect_url = std::nullopt;
+  result.probe_url = *net_base::HttpUrl::CreateFromString(kHttpUrl);
+  result.http_probe_completed = true;
+  result.https_probe_completed = false;
+  ASSERT_EQ(PortalDetector::ValidationState::kPortalSuspected,
+            result.GetValidationState());
+
+  EXPECT_CALL(callback_target(), ResultCallback(Eq(result)));
+  EXPECT_CALL(*http_connection(), GetResponseHeader("Content-Length"))
+      .WillOnce(Return("0"));
+  EXPECT_CALL(*http_connection(), GetResponseHeader("Location"))
+      .WillOnce(Return("invalid_url"));
+  ExpectHttpRequestSuccessWithStatus(302);
+  // The trial has been completed, even if the HTTPS probe did not complete.
   ExpectCleanupTrial();
 }
 
