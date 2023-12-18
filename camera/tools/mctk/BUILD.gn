@@ -18,6 +18,7 @@ executable("mctk") {
     "//camera/tools/mctk/entity_from_kernel.cc",
     "//camera/tools/mctk/entity_from_yaml.cc",
     "//camera/tools/mctk/entity_setters.cc",
+    "//camera/tools/mctk/find_mcdev_file.cc",
     "//camera/tools/mctk/link_from_yaml.cc",
     "//camera/tools/mctk/link_getters.cc",
     "//camera/tools/mctk/link_setters.cc",

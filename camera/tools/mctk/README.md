@@ -76,6 +76,13 @@ and then quits without performing any action on it:
     # ./mctk --load-device /dev/media0
 
 
+The following command does the same, but takes a bus_info string instead.
+The tool will iterate over all /dev/media* devices until it finds one
+with the given bus_info string in its `struct media_device_info`.
+
+    # ./mctk --load-by-businfo usb-0000:04:00.3-1
+
+
 The following command opens a virtual media-ctl device from a YAML dump,
 and then quits without performing any action on the resulting model:
 

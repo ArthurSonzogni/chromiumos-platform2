@@ -8,7 +8,11 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include <optional>
+#include <string>
+
 #include "tools/mctk/debug.h"
+#include "tools/mctk/find_mcdev_file.h"
 #include "tools/mctk/mcdev.h"
 #include "tools/mctk/merge.h"
 #include "tools/mctk/remap.h"
@@ -40,26 +44,44 @@ void PrintUsage(char* progname) {
       "\n"
       "Options, executed in the order they are passed in:\n"
       "\n"
-      "  -h, --help                    Print this help message.\n"
+      "  -h, --help                        Print this help message.\n"
       "\n"
-      "  -v, --verbose                 Increase verbosity.\n"
+      "  -v, --verbose                     Increase verbosity.\n"
       "\n"
-      "  -d, --load-device <devfile>   Work on a real /dev/mediaX device.\n"
-      "                                All changes will be sent to the "
-      "kernel.\n"
+      "  -d, --load-device <devfile>       Work on a real /dev/mediaX device.\n"
+      "                                    Changes propagate to the kernel.\n"
+      "      --load-by-businfo <bus_info>  Similar to --load-device, picking\n"
+      "                                    a /dev/media* device by bus_info.\n"
       "\n"
-      "      --load-yaml   <yamlfile>  "
-      "Work on a virtual media-ctl read from a YAML file.\n"
-      "      --dump-yaml   <yamlfile>  Dump the active model to a YAML file.\n"
-      "      --merge-yaml  <yamlfile>  "
-      "Merge the settings from a model read from a YAML file.\n"
+      "      --load-yaml   <yamlfile>      Work on a virtual media-ctl read\n"
+      "                                    from a YAML file.\n"
+      "      --dump-yaml   <yamlfile>      Dump active model to a YAML file.\n"
+      "      --merge-yaml  <yamlfile>      Merge settings from a YAML file.\n"
       "\n"
-      "  -r, --reset-links             Disable all links in the active model.\n"
+      "  -r, --reset-links                 Disable all links in active model.\n"
       "\n"
       "Unfinished options:\n"
-      "      --auto-route              "
-      "Guess a route from each sensor to a /dev/videoX device.\n"
+      "      --auto-route                  Guess a route from each sensor to\n"
+      "                                    a /dev/videoX device.\n"
       "\n");
+}
+
+std::unique_ptr<V4lMcDev> OpenMcDevKernel(std::string path) {
+  int fd_mc = open(path.c_str(), O_RDWR);
+  if (fd_mc < 0) {
+    MCTK_PERROR("Failed to open media controller device " + path);
+    return nullptr;
+  }
+
+  std::unique_ptr<V4lMcDev> mcdev = V4lMcDev::CreateFromKernel(fd_mc);
+  if (!mcdev) {
+    close(fd_mc);
+    MCTK_ERR("CreateFromKernel() for MC device failed. Aborting.");
+    return nullptr;
+  }
+
+  /* NOTE: mcdev now owns the fd, and will close it in its destructor. */
+  return mcdev;
 }
 
 }  // namespace
@@ -74,7 +96,7 @@ int main(int argc, char** argv) {
 
       {"verbose", 0, 0, 'v'},
 
-      {"load-device", 1, 0, 'd'},
+      {"load-device", 1, 0, 'd'},  {"load-by-businfo", 1, 0, 10005},
 
       {"load-yaml", 1, 0, 10001},  {"dump-yaml", 1, 0, 10002},
       {"merge-yaml", 1, 0, 10003},
@@ -109,20 +131,31 @@ int main(int argc, char** argv) {
           return EXIT_FAILURE;
         }
 
-        int fd_mc = open(optarg, O_RDWR);
-        if (fd_mc < 0) {
-          MCTK_PERROR("Failed to open media controller device");
+        mcdev = OpenMcDevKernel(optarg);
+        if (!mcdev)
+          return EXIT_FAILURE;
+
+        break;
+      }
+
+      case 10005: /* --load-by-businfo */ {
+        if (mcdev) {
+          MCTK_ERR(
+              "A media-ctl model is already loaded - cannot load another. "
+              "Aborting.");
           return EXIT_FAILURE;
         }
 
-        mcdev = V4lMcDev::CreateFromKernel(fd_mc);
-        if (!mcdev) {
-          close(fd_mc);
-          MCTK_ERR("CreateFromKernel() for MC device failed. Aborting.");
+        std::optional<std::string> path = MctkFindMcDevByBusInfo(optarg);
+        if (!path) {
+          MCTK_ERR("No device with given bus_info found. Aborting.");
           return EXIT_FAILURE;
         }
 
-        /* NOTE: mcdev now owns the fd, and will close it in its destructor. */
+        mcdev = OpenMcDevKernel(path.value());
+        if (!mcdev)
+          return EXIT_FAILURE;
+
         break;
       }
 
