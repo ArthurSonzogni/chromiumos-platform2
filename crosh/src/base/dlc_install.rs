@@ -107,5 +107,5 @@ fn execute_dlc_install(_dlc_id: &str) -> Result<(), dispatcher::Error> {
 }
 
 fn flag_and_arg(_flag: &str, _arg: &str) -> String {
-    vec![_flag.to_string(), _arg.to_string()].join("=")
+    [_flag.to_string(), _arg.to_string()].join("=")
 }

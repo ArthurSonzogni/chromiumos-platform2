@@ -14,12 +14,12 @@ use std::io::Write;
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
 use crate::util::DEFAULT_DBUS_TIMEOUT;
 
-const BEFORE_LINES: &str = r#"
+const BEFORE_LINES: &str = r"
   ________________________
  | /_____________________/
- ||                     |"#;
+ ||                     |";
 
-const AFTER_LINES: &str = r#"
+const AFTER_LINES: &str = r"
  ||_____________________|
  |.\ ==  o    *  == o    \
  |..\    |:::       |:::  \
@@ -30,7 +30,7 @@ const AFTER_LINES: &str = r#"
  |...|        |_||_|      |
   \..|        |    |      |
    \.|        |    |      |
-    \|________|____|______|"#;
+    \|________|____|______|";
 
 // Register insert_coin command with dispatcher.
 pub fn register(dispatcher: &mut Dispatcher) {
@@ -182,7 +182,8 @@ mod tests {
 
     #[test]
     fn test_ascii_art() {
-        assert_eq!(r#"
+        assert_eq!(
+            r"
   ________________________
  | /_____________________/
  ||                     |
@@ -220,9 +221,18 @@ mod tests {
  |...|        |_||_|      |
   \..|        |    |      |
    \.|        |    |      |
-    \|________|____|______|"#, ascii_art("I was born in a water moon. Some people, especially its inhabitants, called it a planet, but as it was only a little over two hundred kilometres in diameter, 'moon' seems the more accurate term. The moon was made entirely of water, by which I mean it was a globe that not only had no land, but no rock either, a sphere with no solid core at all, just liquid water, all the way down to the very centre of the globe."));
+    \|________|____|______|",
+            ascii_art(
+                "I was born in a water moon. Some people, especially its inhabitants, \
+                called it a planet, but as it was only a little over two hundred kilometres \
+                in diameter, 'moon' seems the more accurate term. The moon was made entirely \
+                of water, by which I mean it was a globe that not only had no land, but no rock \
+                either, a sphere with no solid core at all, just liquid water, all the way down \
+                to the very centre of the globe."
+            )
+        );
         assert_eq!(
-            r#"
+            r"
   ________________________
  | /_____________________/
  ||                     |
@@ -239,7 +249,7 @@ mod tests {
  |...|        |_||_|      |
   \..|        |    |      |
    \.|        |    |      |
-    \|________|____|______|"#,
+    \|________|____|______|",
             ascii_art("Coin Invalid")
         );
     }
