@@ -7,25 +7,37 @@
 # Allow cros-disks (UID 213) to change UID to the following users.
 # chronos (for DriveFS)
 213:1000
+1000:1000
 # fuse-archivemount
 213:311
+311:311
 # fuse-exfat
 213:302
+302:302
 # fuse-fusebox
 213:312
+312:312
 # fuse-rar2fs
 213:308
+308:308
 # fuse-zip
 213:309
+309:309
 # fuse-sshfs
 213:305
+305:305
 # nobody
 213:65534
+# 65534:65534  # provided by shill
 # ntfs-3g
 213:300
+300:300
 # fuse-smbfs
 213:307
+307:307
 # fuse-drivefs (for migrating legacy data)
 213:304
+304:304
 # mkfs
 213:425
+425:425
