@@ -18,6 +18,7 @@
 #ifndef LIBHWSEC_FOUNDATION_FLATBUFFERS_BASIC_OBJECTS_H_
 #define LIBHWSEC_FOUNDATION_FLATBUFFERS_BASIC_OBJECTS_H_
 
+#include <concepts>
 #include <optional>
 #include <string>
 #include <type_traits>
@@ -41,8 +42,7 @@ struct IsUnionEnum {};
 //             type enum. "void" indicates union offset, "IsUnionEnum" indicates
 //             union type enum. This field should be "void" for non-union input
 //             type.
-//   |Enable| - The enable_if_t helper field.
-template <typename T, typename Union = void, typename Enable = void>
+template <typename T, typename Union = void>
 struct ToFlatBuffer {
   // You have to have a specialization for ToFlatBuffer.
   ToFlatBuffer() = delete;
@@ -52,8 +52,7 @@ struct ToFlatBuffer {
 //
 // Template parameters:
 //   |T| - The type that need to be convert from FlatBuffer object.
-//   |Enable| - The enable_if_t helper field.
-template <typename T, typename Enable = void>
+template <typename T>
 struct FromFlatBuffer {
   // You have to have a specialization for FromFlatBuffer.
   FromFlatBuffer() = delete;
@@ -68,9 +67,8 @@ struct FromFlatBuffer {
 //                                  flatbuffers::Vector<uint8_t>>
 //   std::optional<std::string> => flatbuffers::Offset<flatbuffers::String>
 template <typename T, typename Union>
-struct ToFlatBuffer<std::optional<T>,
-                    Union,
-                    std::enable_if_t<!std::is_scalar_v<T>>> {
+  requires(!std::is_scalar_v<T>)
+struct ToFlatBuffer<std::optional<T>, Union> {
   using ResultType = typename ToFlatBuffer<T, Union>::ResultType;
 
   ResultType operator()(flatbuffers::FlatBufferBuilder* builder,
@@ -87,9 +85,8 @@ struct ToFlatBuffer<std::optional<T>,
 //   std::optional<uint32_t> => flatbuffers::Optional<uint32_t>
 //   std::optional<Enum> => flatbuffers::Optional<_serialized_::Enum>
 template <typename T>
-struct ToFlatBuffer<std::optional<T>,
-                    void,
-                    std::enable_if_t<std::is_scalar_v<T>>> {
+  requires(std::is_scalar_v<T>)
+struct ToFlatBuffer<std::optional<T>> {
   using ResultType =
       flatbuffers::Optional<typename ToFlatBuffer<T>::ResultType>;
 
@@ -111,9 +108,8 @@ struct ToFlatBuffer<std::optional<T>,
 //   std::vector<Table> => flatbuffers::Offset<flatbuffers::Vector<
 //                             flatbuffers::Offset<_serialized_::Table>>>
 template <typename T>
-struct ToFlatBuffer<std::vector<T>,
-                    void,
-                    std::enable_if_t<!std::is_same_v<T, uint8_t>>> {
+  requires(!std::same_as<T, uint8_t>)
+struct ToFlatBuffer<std::vector<T>> {
   using ValueType = typename ToFlatBuffer<T>::ResultType;
   using ResultType = flatbuffers::Offset<flatbuffers::Vector<ValueType>>;
 
@@ -154,7 +150,8 @@ struct ToFlatBuffer<std::variant<VariantArgs...>> {
 //   uint32_t => uint32_t
 //   float => float
 template <typename T>
-struct ToFlatBuffer<T, void, std::enable_if_t<std::is_arithmetic_v<T>>> {
+  requires(std::is_arithmetic_v<T>)
+struct ToFlatBuffer<T> {
   using ResultType = T;
 
   ResultType operator()(flatbuffers::FlatBufferBuilder* builder,
@@ -248,8 +245,8 @@ struct FromFlatBuffer<std::optional<T>> {
 //   flatbuffers::Vector<_serialized_::Enum>* => std::vector<Enum>
 //   flatbuffers::Vector<_serialized_::Table>* => std::vector<Table>
 template <typename T>
-struct FromFlatBuffer<std::vector<T>,
-                      std::enable_if_t<!std::is_same_v<T, uint8_t>>> {
+  requires(!std::same_as<T, uint8_t>)
+struct FromFlatBuffer<std::vector<T>> {
   template <typename InputType>
   std::vector<T> operator()(const InputType* object) const {
     if (object == nullptr) {
@@ -272,7 +269,8 @@ struct FromFlatBuffer<std::vector<T>,
 //   uint32_t => uint32_t
 //   float => float
 template <typename T>
-struct FromFlatBuffer<T, std::enable_if_t<std::is_arithmetic_v<T>>> {
+  requires(std::is_arithmetic_v<T>)
+struct FromFlatBuffer<T> {
   T operator()(T object) const { return object; }
 };
 
