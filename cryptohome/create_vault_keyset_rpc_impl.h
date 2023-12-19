@@ -9,8 +9,9 @@
 #include <string>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
+#include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/auth_factor/types/manager.h"
-#include "cryptohome/auth_session_manager.h"
+#include "cryptohome/auth_session.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -20,6 +21,7 @@ class CreateVaultKeysetRpcImpl {
   CreateVaultKeysetRpcImpl(KeysetManagement* keyset_management,
                            const hwsec::CryptohomeFrontend* hwsec,
                            AuthBlockUtility* auth_block_utility,
+                           AuthFactorManager* auth_factor_manager,
                            AuthFactorDriverManager* auth_factor_driver_manager);
 
   CreateVaultKeysetRpcImpl(const CreateVaultKeysetRpcImpl&) = delete;
@@ -53,6 +55,7 @@ class CreateVaultKeysetRpcImpl {
   KeysetManagement* const keyset_management_;
   const hwsec::CryptohomeFrontend* hwsec_;
   AuthBlockUtility* const auth_block_utility_;
+  AuthFactorManager* const auth_factor_manager_;
   AuthFactorDriverManager* const auth_factor_driver_manager_;
 
   // Used to decrypt/ encrypt & store credentials.

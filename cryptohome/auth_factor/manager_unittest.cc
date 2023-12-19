@@ -633,7 +633,7 @@ std::unique_ptr<VaultKeyset> CreateMigratedVaultKeyset(
   return migrated_vk;
 }
 
-class LoadAllAuthFactorsTest : public AuthFactorManagerTest {
+class GetAuthFactorMapTest : public AuthFactorManagerTest {
  protected:
   // Install mocks to set up vault keysets for testing. Expects a map of VK
   // labels to factory functions that will construct a VaultKeyset object.
@@ -692,16 +692,17 @@ class LoadAllAuthFactorsTest : public AuthFactorManagerTest {
 };
 
 // Test that if nothing is set up, no factors are loaded.
-TEST_F(LoadAllAuthFactorsTest, NoFactors) {
+TEST_F(GetAuthFactorMapTest, NoFactors) {
   InstallVaultKeysets({});
   ASSERT_THAT(CreateUssWithWrappingIds({}), IsOk());
 
-  auto af_map = auth_factor_manager_.LoadAllAuthFactors(kObfuscatedUsername);
+  AuthFactorMap& af_map =
+      auth_factor_manager_.GetAuthFactorMap(kObfuscatedUsername);
 
   EXPECT_THAT(af_map, IsEmpty());
 }
 
-TEST_F(LoadAllAuthFactorsTest, LoadWithOnlyUss) {
+TEST_F(GetAuthFactorMapTest, LoadWithOnlyUss) {
   InstallVaultKeysets({});
   InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "primary",
                               {.metadata = PasswordMetadata()},
@@ -711,7 +712,8 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithOnlyUss) {
                               {.state = PinWeaverAuthBlockState()}));
   ASSERT_THAT(CreateUssWithWrappingIds({"primary", "secondary"}), IsOk());
 
-  auto af_map = auth_factor_manager_.LoadAllAuthFactors(kObfuscatedUsername);
+  AuthFactorMap& af_map =
+      auth_factor_manager_.GetAuthFactorMap(kObfuscatedUsername);
 
   EXPECT_THAT(af_map,
               UnorderedElementsAre(
@@ -723,7 +725,7 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithOnlyUss) {
 
 // Test that, given a mix of regular VKs, backup VKs, and USS factors, the
 // correct ones are loaded depending on whether USS is enabled or disabled.
-TEST_F(LoadAllAuthFactorsTest, LoadWithMixUsesUssAndVk) {
+TEST_F(GetAuthFactorMapTest, LoadWithMixUsesUssAndVk) {
   InstallVaultKeysets({{"tertiary", &CreatePasswordVaultKeyset},
                        {"quaternary", &CreateBackupVaultKeyset}});
   InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "primary",
@@ -734,7 +736,8 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithMixUsesUssAndVk) {
                               {.state = PinWeaverAuthBlockState()}));
   ASSERT_THAT(CreateUssWithWrappingIds({"primary", "secondary"}), IsOk());
 
-  auto af_map = auth_factor_manager_.LoadAllAuthFactors(kObfuscatedUsername);
+  AuthFactorMap& af_map =
+      auth_factor_manager_.GetAuthFactorMap(kObfuscatedUsername);
 
   EXPECT_THAT(af_map,
               UnorderedElementsAre(
@@ -748,7 +751,7 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithMixUsesUssAndVk) {
 
 // Test that, given a mix of regular VKs, migrated VKs, and USS factors, the
 // correct ones are loaded.
-TEST_F(LoadAllAuthFactorsTest, LoadWithMixUsesUssAndMigratedVk) {
+TEST_F(GetAuthFactorMapTest, LoadWithMixUsesUssAndMigratedVk) {
   InstallVaultKeysets({{"secondary", &CreatePasswordVaultKeyset},
                        {"primary", &CreateMigratedVaultKeyset}});
   InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "primary",
@@ -756,7 +759,8 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithMixUsesUssAndMigratedVk) {
                               {.state = TpmBoundToPcrAuthBlockState()}));
   ASSERT_THAT(CreateUssWithWrappingIds({"primary"}), IsOk());
 
-  auto af_map = auth_factor_manager_.LoadAllAuthFactors(kObfuscatedUsername);
+  AuthFactorMap& af_map =
+      auth_factor_manager_.GetAuthFactorMap(kObfuscatedUsername);
 
   EXPECT_THAT(af_map,
               UnorderedElementsAre(
@@ -766,7 +770,7 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithMixUsesUssAndMigratedVk) {
                                     AuthFactorStorageType::kVaultKeyset)));
 }
 
-TEST_F(LoadAllAuthFactorsTest, LoadWithOnlyUssAndBrokenFactors) {
+TEST_F(GetAuthFactorMapTest, LoadWithOnlyUssAndBrokenFactors) {
   InstallVaultKeysets({});
   InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "primary",
                               {.metadata = PasswordMetadata()},
@@ -779,7 +783,8 @@ TEST_F(LoadAllAuthFactorsTest, LoadWithOnlyUssAndBrokenFactors) {
                               {.state = TpmBoundToPcrAuthBlockState()}));
   ASSERT_THAT(CreateUssWithWrappingIds({"primary", "secondary"}), IsOk());
 
-  auto af_map = auth_factor_manager_.LoadAllAuthFactors(kObfuscatedUsername);
+  AuthFactorMap& af_map =
+      auth_factor_manager_.GetAuthFactorMap(kObfuscatedUsername);
 
   EXPECT_THAT(af_map,
               UnorderedElementsAre(

@@ -329,31 +329,25 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   }
 
   AuthSession StartAuthSessionWithMockAuthBlockUtility() {
-    AuthFactorMap auth_factor_map =
-        auth_factor_manager_.LoadAllAuthFactors(users_[0].obfuscated);
     AuthSession::Params auth_session_params{
         .username = users_[0].username,
         .is_ephemeral_user = false,
         .intent = AuthIntent::kDecrypt,
         .auth_factor_status_update_timer =
             std::make_unique<base::WallClockTimer>(),
-        .user_exists = true,
-        .auth_factor_map = std::move(auth_factor_map)};
+        .user_exists = true};
     backing_apis_.auth_block_utility = &mock_auth_block_utility_;
     return AuthSession(std::move(auth_session_params), backing_apis_);
   }
 
   AuthSession StartAuthSession() {
-    AuthFactorMap auth_factor_map =
-        auth_factor_manager_.LoadAllAuthFactors(users_[0].obfuscated);
     AuthSession::Params auth_session_params{
         .username = users_[0].username,
         .is_ephemeral_user = false,
         .intent = AuthIntent::kDecrypt,
         .auth_factor_status_update_timer =
             std::make_unique<base::WallClockTimer>(),
-        .user_exists = true,
-        .auth_factor_map = std::move(auth_factor_map)};
+        .user_exists = true};
     return AuthSession(std::move(auth_session_params), backing_apis_);
   }
 
@@ -762,6 +756,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
     EXPECT_NE(nullptr, keyset_management_.GetVaultKeyset(users_[0].obfuscated,
                                                          kDefaultLabel));
   }
+  auth_factor_manager_.DiscardAllAuthFactorMaps();
 
   // Simulate backup keyset.
 

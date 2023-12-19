@@ -861,7 +861,7 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   }
 
   create_vault_keyset_impl_ = std::make_unique<CreateVaultKeysetRpcImpl>(
-      keyset_management_, hwsec_, auth_block_utility_,
+      keyset_management_, hwsec_, auth_block_utility_, auth_factor_manager_,
       auth_factor_driver_manager_);
 
   if (!vault_factory_) {
@@ -2351,8 +2351,8 @@ void UserDataAuth::GetRecoverableKeyStores(
   }
 
   // Load the AuthFactorMap.
-  AuthFactorMap auth_factor_map =
-      auth_factor_manager_->LoadAllAuthFactors(obfuscated_username);
+  AuthFactorMap& auth_factor_map =
+      auth_factor_manager_->GetAuthFactorMap(obfuscated_username);
 
   // Populate the response from the items in the AuthFactorMap.
   for (AuthFactorMap::ValueView item : auth_factor_map) {
@@ -2862,6 +2862,7 @@ void UserDataAuth::PostMountHook(UserSession* user_session,
 
 CryptohomeStatus UserDataAuth::TerminateAuthSessionsAndClearLoadedState() {
   auth_session_manager_->RemoveAllAuthSessions();
+  auth_factor_manager_->DiscardAllAuthFactorMaps();
   RETURN_IF_ERROR(uss_manager_->DiscardAllEncrypted());
   return OkStatus<CryptohomeError>();
 }
@@ -3927,8 +3928,8 @@ void UserDataAuth::ListAuthFactors(
     // the auth factors from the disk.
 
     // Load the AuthFactorMap.
-    AuthFactorMap auth_factor_map =
-        auth_factor_manager_->LoadAllAuthFactors(obfuscated_username);
+    AuthFactorMap& auth_factor_map =
+        auth_factor_manager_->GetAuthFactorMap(obfuscated_username);
 
     // Populate the response from the items in the AuthFactorMap.
     for (AuthFactorMap::ValueView item : auth_factor_map) {

@@ -330,8 +330,7 @@ TEST_F(AuthSessionManagerTest, AddRemove) {
                           .intent = AuthIntent::kDecrypt,
                           .auth_factor_status_update_timer =
                               std::make_unique<base::WallClockTimer>(),
-                          .user_exists = false,
-                          .auth_factor_map = AuthFactorMap()});
+                          .user_exists = false});
 
   // After InUseAuthSession is freed, then AuthSessionManager can operate on the
   // token and remove it.
@@ -346,8 +345,7 @@ TEST_F(AuthSessionManagerTest, AddRemove) {
                           .intent = AuthIntent::kDecrypt,
                           .auth_factor_status_update_timer =
                               std::make_unique<base::WallClockTimer>(),
-                          .user_exists = false,
-                          .auth_factor_map = AuthFactorMap()});
+                          .user_exists = false});
   std::string serialized_token =
       *AuthSession::GetSerializedStringFromToken(token);
 
@@ -364,16 +362,14 @@ TEST_F(AuthSessionManagerTest, AddRemoveUser) {
                           .intent = AuthIntent::kDecrypt,
                           .auth_factor_status_update_timer =
                               std::make_unique<base::WallClockTimer>(),
-                          .user_exists = false,
-                          .auth_factor_map = AuthFactorMap()});
+                          .user_exists = false});
   base::UnguessableToken u2_token = auth_session_manager_.CreateAuthSession(
       AuthSession::Params{.username = kUsername2,
                           .is_ephemeral_user = false,
                           .intent = AuthIntent::kDecrypt,
                           .auth_factor_status_update_timer =
                               std::make_unique<base::WallClockTimer>(),
-                          .user_exists = false,
-                          .auth_factor_map = AuthFactorMap()});
+                          .user_exists = false});
 
   // We should be able to grab sessions for both tokens.
   {
@@ -421,8 +417,7 @@ TEST_F(AuthSessionManagerTest, AddAndWaitRemove) {
                             .intent = AuthIntent::kDecrypt,
                             .auth_factor_status_update_timer =
                                 std::make_unique<base::WallClockTimer>(),
-                            .user_exists = false,
-                            .auth_factor_map = AuthFactorMap()});
+                            .user_exists = false});
     TestFuture<InUseAuthSession> created_future;
     auth_session_manager_.RunWhenAvailable(token, created_future.GetCallback());
     InUseAuthSession auth_session = created_future.Take();
@@ -470,32 +465,28 @@ TEST_F(AuthSessionManagerTest, MultiUserBlocking) {
                           .intent = AuthIntent::kDecrypt,
                           .auth_factor_status_update_timer =
                               std::make_unique<base::WallClockTimer>(),
-                          .user_exists = false,
-                          .auth_factor_map = AuthFactorMap()});
+                          .user_exists = false});
   tokens[1] = auth_session_manager_.CreateAuthSession(
       AuthSession::Params{.username = kUsername,
                           .is_ephemeral_user = false,
                           .intent = AuthIntent::kDecrypt,
                           .auth_factor_status_update_timer =
                               std::make_unique<base::WallClockTimer>(),
-                          .user_exists = false,
-                          .auth_factor_map = AuthFactorMap()});
+                          .user_exists = false});
   tokens[2] = auth_session_manager_.CreateAuthSession(
       AuthSession::Params{.username = kUsername2,
                           .is_ephemeral_user = false,
                           .intent = AuthIntent::kDecrypt,
                           .auth_factor_status_update_timer =
                               std::make_unique<base::WallClockTimer>(),
-                          .user_exists = false,
-                          .auth_factor_map = AuthFactorMap()});
+                          .user_exists = false});
   tokens[3] = auth_session_manager_.CreateAuthSession(
       AuthSession::Params{.username = kUsername2,
                           .is_ephemeral_user = false,
                           .intent = AuthIntent::kDecrypt,
                           .auth_factor_status_update_timer =
                               std::make_unique<base::WallClockTimer>(),
-                          .user_exists = false,
-                          .auth_factor_map = AuthFactorMap()});
+                          .user_exists = false});
 
   // Take ownership of a session for the first user. Work should be blocked on
   // both sessions for that user, but runnable on the second user's sessions.
@@ -582,16 +573,14 @@ TEST_F(AuthSessionManagerTest, PendingWorkStaysBlockedAfterRemove) {
                           .intent = AuthIntent::kDecrypt,
                           .auth_factor_status_update_timer =
                               std::make_unique<base::WallClockTimer>(),
-                          .user_exists = false,
-                          .auth_factor_map = AuthFactorMap()});
+                          .user_exists = false});
   tokens[1] = auth_session_manager_.CreateAuthSession(
       AuthSession::Params{.username = kUsername,
                           .is_ephemeral_user = false,
                           .intent = AuthIntent::kDecrypt,
                           .auth_factor_status_update_timer =
                               std::make_unique<base::WallClockTimer>(),
-                          .user_exists = false,
-                          .auth_factor_map = AuthFactorMap()});
+                          .user_exists = false});
 
   // Track when work was done, and when work was done with a valid session.
   std::vector<size_t> work_done, work_done_with_session;
@@ -638,16 +627,14 @@ TEST_F(AuthSessionManagerTest, RemovedSessionsStillBlockNewWork) {
                           .intent = AuthIntent::kDecrypt,
                           .auth_factor_status_update_timer =
                               std::make_unique<base::WallClockTimer>(),
-                          .user_exists = false,
-                          .auth_factor_map = AuthFactorMap()});
+                          .user_exists = false});
   tokens[1] = auth_session_manager_.CreateAuthSession(
       AuthSession::Params{.username = kUsername,
                           .is_ephemeral_user = false,
                           .intent = AuthIntent::kDecrypt,
                           .auth_factor_status_update_timer =
                               std::make_unique<base::WallClockTimer>(),
-                          .user_exists = false,
-                          .auth_factor_map = AuthFactorMap()});
+                          .user_exists = false});
 
   // Track when work was done, and when work was done with a valid session.
   std::vector<size_t> work_done, work_done_with_session;
@@ -735,8 +722,7 @@ TEST_F(AuthSessionManagerTest, AddFindUnMount) {
                           .intent = AuthIntent::kDecrypt,
                           .auth_factor_status_update_timer =
                               std::make_unique<base::WallClockTimer>(),
-                          .user_exists = false,
-                          .auth_factor_map = AuthFactorMap()});
+                          .user_exists = false});
 
   // After InUseAuthSession is freed, then AuthSessionManager can operate on the
   // token and remove it.
@@ -751,8 +737,7 @@ TEST_F(AuthSessionManagerTest, AddFindUnMount) {
                           .intent = AuthIntent::kDecrypt,
                           .auth_factor_status_update_timer =
                               std::make_unique<base::WallClockTimer>(),
-                          .user_exists = false,
-                          .auth_factor_map = AuthFactorMap()});
+                          .user_exists = false});
   std::string serialized_token =
       *AuthSession::GetSerializedStringFromToken(token);
 

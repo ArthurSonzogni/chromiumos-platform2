@@ -385,25 +385,14 @@ std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
   bool user_is_active = user_session && user_session->IsActive();
   bool user_exists = persistent_user_exists || user_is_active;
 
-  // If we have an existing persistent user, load all of their auth factors.
-  AuthFactorMap auth_factor_map;
-  if (persistent_user_exists) {
-    // Load all of the auth factors.
-    auth_factor_map = backing_apis.auth_factor_manager->LoadAllAuthFactors(
-        obfuscated_username);
+  // Force a reload of the AuthFactorMap for this session's user. This preserves
+  // the original "caching" behavior of in-memory AuthFactor objects from when
+  // each session loaded its own copy.
+  //
+  // TODO(b/306423754): Remove this once we're sure nothing is relying on
+  // modifying the auth factor files externally.
+  backing_apis.auth_factor_manager->DiscardAuthFactorMap(obfuscated_username);
 
-    // If only uss factors exists, then we should remove all the backups.
-    if (!auth_factor_map.HasFactorWithStorage(
-            AuthFactorStorageType::kVaultKeyset)) {
-      CryptohomeStatus cleanup_status =
-          CleanUpAllBackupKeysets(*backing_apis.keyset_management,
-                                  obfuscated_username, auth_factor_map);
-      if (!cleanup_status.ok()) {
-        LOG(WARNING) << "Cleaning up backup keysets failed.";
-        // Error can be ignored.
-      }
-    }
-  }
   // Assumption here is that keyset_management_ will outlive this AuthSession.
   AuthSession::Params params = {
       .username = std::move(account_id),
@@ -411,8 +400,7 @@ std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
       .intent = intent,
       .auth_factor_status_update_timer =
           std::make_unique<base::WallClockTimer>(),
-      .user_exists = user_exists,
-      .auth_factor_map = std::move(auth_factor_map)};
+      .user_exists = user_exists};
   return std::make_unique<AuthSession>(std::move(params), backing_apis);
 }
 
@@ -443,8 +431,7 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       public_token_(platform_->CreateUnguessableToken()),
       serialized_public_token_(
           GetSerializedStringFromToken(public_token_).value_or("")),
-      user_exists_(*params.user_exists),
-      auth_factor_map_(std::move(params.auth_factor_map)) {
+      user_exists_(*params.user_exists) {
   CHECK(!serialized_token_.empty());
   CHECK(auth_factor_status_update_timer_);
   CHECK(uss_manager_);
@@ -455,8 +442,22 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
   CHECK(auth_block_utility_);
   CHECK(auth_factor_manager_);
   CHECK(features_);
-  auth_factor_map_.ReportAuthFactorBackingStoreMetrics();
-  RecordAuthSessionStart();
+
+  // Record the session start and report standard metrics.
+  AuthFactorMap& auth_factor_map = GetAuthFactorMap();
+  auth_factor_map.ReportAuthFactorBackingStoreMetrics();
+  RecordAuthSessionStart(auth_factor_map);
+
+  // If only USS factors exist, then we should remove all the backups.
+  if (!is_ephemeral_user_ && user_exists_ &&
+      !auth_factor_map.HasFactorWithStorage(
+          AuthFactorStorageType::kVaultKeyset)) {
+    CryptohomeStatus cleanup_status = CleanUpAllBackupKeysets(
+        *keyset_management_, obfuscated_username_, auth_factor_map);
+    if (!cleanup_status.ok()) {
+      LOG(WARNING) << "Cleaning up backup keysets failed.";
+    }
+  }
 }
 
 AuthSession::~AuthSession() {
@@ -483,10 +484,15 @@ base::flat_set<AuthIntent> AuthSession::authorized_intents() const {
   return intents;
 }
 
-void AuthSession::RecordAuthSessionStart() const {
+AuthFactorMap& AuthSession::GetAuthFactorMap() {
+  return auth_factor_manager_->GetAuthFactorMap(obfuscated_username_);
+}
+
+void AuthSession::RecordAuthSessionStart(
+    const AuthFactorMap& auth_factor_map) const {
   std::vector<std::string> factors;
-  factors.reserve(auth_factor_map_.size());
-  for (AuthFactorMap::ValueView item : auth_factor_map_) {
+  factors.reserve(auth_factor_map.size());
+  for (AuthFactorMap::ValueView item : auth_factor_map) {
     factors.push_back(base::StringPrintf(
         "%s(type %d %s)", item.auth_factor().label().c_str(),
         static_cast<int>(item.auth_factor().type()),
@@ -566,7 +572,7 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
   }
   auto user_policy = user_policy_file.GetUserPolicy();
 
-  for (AuthFactorMap::ValueView item : auth_factor_map_) {
+  for (AuthFactorMap::ValueView item : GetAuthFactorMap()) {
     const AuthFactor& auth_factor = item.auth_factor();
     AuthFactorDriver& driver =
         auth_factor_driver_manager_->GetDriver(auth_factor.type());
@@ -656,8 +662,8 @@ CryptohomeStatus AuthSession::OnUserCreated() {
 }
 
 void AuthSession::RegisterVaultKeysetAuthFactor(AuthFactor auth_factor) {
-  auth_factor_map_.Add(std::move(auth_factor),
-                       AuthFactorStorageType::kVaultKeyset);
+  GetAuthFactorMap().Add(std::move(auth_factor),
+                         AuthFactorStorageType::kVaultKeyset);
 }
 
 void AuthSession::CancelAllOutstandingAsyncCallbacks() {
@@ -1008,7 +1014,7 @@ bool AuthSession::MigrateResetSecretToUss() {
   bool updated = false;
   DecryptedUss& decrypted_uss = uss_manager_->GetDecrypted(*decrypt_token_);
   auto transaction = decrypted_uss.StartTransaction();
-  for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map_) {
+  for (AuthFactorMap::ValueView stored_auth_factor : GetAuthFactorMap()) {
     // Look for only pinweaver and VaultKeyset backed AuthFactors.
     if (stored_auth_factor.storage_type() !=
         AuthFactorStorageType::kVaultKeyset) {
@@ -1245,7 +1251,7 @@ void AuthSession::AuthenticateAuthFactor(
 
       // Load the auth factor and it should exist for authentication.
       std::optional<AuthFactorMap::ValueView> stored_auth_factor =
-          auth_factor_map_.Find(auth_factor_labels[0]);
+          GetAuthFactorMap().Find(auth_factor_labels[0]);
       if (!stored_auth_factor) {
         // This could happen for 2 reasons, either the user doesn't exist or the
         // auth factor is not available for this user.
@@ -1346,7 +1352,7 @@ void AuthSession::AuthenticateAuthFactor(
       for (const std::string& label : auth_factor_labels) {
         // Load the auth factor and it should exist for authentication.
         std::optional<AuthFactorMap::ValueView> stored_auth_factor =
-            auth_factor_map_.Find(label);
+            GetAuthFactorMap().Find(label);
         if (!stored_auth_factor) {
           // This could happen for 2 reasons, either the user doesn't exist or
           // the auth factor is not available for this user.
@@ -1467,9 +1473,10 @@ void AuthSession::AuthForDecrypt::RemoveAuthFactor(
     StatusCallback on_done) {
   auto remove_timer_start = base::TimeTicks::Now();
   const auto& auth_factor_label = request.auth_factor_label();
+  AuthFactorMap& auth_factor_map = session_->GetAuthFactorMap();
 
   std::optional<AuthFactorMap::ValueView> stored_auth_factor =
-      session_->auth_factor_map_.Find(auth_factor_label);
+      auth_factor_map.Find(auth_factor_label);
   if (!stored_auth_factor) {
     LOG(ERROR) << "AuthSession: Key to remove not found: " << auth_factor_label;
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -1483,7 +1490,7 @@ void AuthSession::AuthForDecrypt::RemoveAuthFactor(
       std::move(on_done), stored_auth_factor->auth_factor().type(),
       kCryptohomeErrorRemoveAuthFactorErrorBucket);
 
-  if (session_->auth_factor_map_.size() == 1) {
+  if (auth_factor_map.size() == 1) {
     LOG(ERROR) << "AuthSession: Cannot remove the last auth factor.";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionLastFactorInRemoveAuthFactor),
@@ -1540,7 +1547,7 @@ void AuthSession::AuthForDecrypt::RemoveAuthFactor(
   }
 
   // Remove the AuthFactor from the map.
-  session_->auth_factor_map_.Remove(auth_factor_label);
+  session_->GetAuthFactorMap().Remove(auth_factor_label);
   session_->verifier_forwarder_.ReleaseVerifier(auth_factor_label);
 
   // Report time taken for a successful remove.
@@ -1556,9 +1563,10 @@ void AuthSession::PrepareUserForRemoval(base::OnceClosure on_finish) {
 
   // All auth factors of the user are being removed when we remove the user, so
   // we should PrepareForRemoval() all auth factors.
+  AuthFactorMap& auth_factor_map = GetAuthFactorMap();
   base::RepeatingClosure barrier =
-      base::BarrierClosure(auth_factor_map_.size(), std::move(on_finish));
-  for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map_) {
+      base::BarrierClosure(auth_factor_map.size(), std::move(on_finish));
+  for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map) {
     const AuthFactor& auth_factor = stored_auth_factor.auth_factor();
     auto log_status = [](const AuthFactor& auth_factor,
                          base::OnceClosure on_finish,
@@ -1620,7 +1628,7 @@ void AuthSession::ClearAuthFactorInMemoryObjects(
   }
 
   // Remove the AuthFactor from the map.
-  auth_factor_map_.Remove(auth_factor_label);
+  GetAuthFactorMap().Remove(auth_factor_label);
   verifier_forwarder_.ReleaseVerifier(auth_factor_label);
   ReportTimerDuration(kAuthSessionRemoveAuthFactorUSSTimer, remove_timer_start,
                       "" /*append_string*/);
@@ -1698,7 +1706,7 @@ void AuthSession::AuthForDecrypt::UpdateAuthFactor(
   }
 
   std::optional<AuthFactorMap::ValueView> stored_auth_factor =
-      session_->auth_factor_map_.Find(request.auth_factor_label());
+      session_->GetAuthFactorMap().Find(request.auth_factor_label());
   if (!stored_auth_factor) {
     LOG(ERROR) << "AuthSession: Key to update not found: "
                << request.auth_factor_label();
@@ -1934,8 +1942,8 @@ void AuthSession::ResaveUssWithFactorUpdated(
 
   LOG(INFO) << "AuthSession: updated auth factor " << auth_factor.label()
             << " in USS.";
-  auth_factor_map_.Add(std::move(auth_factor),
-                       AuthFactorStorageType::kUserSecretStash);
+  GetAuthFactorMap().Add(std::move(auth_factor),
+                         AuthFactorStorageType::kUserSecretStash);
   ReportTimerDuration(auth_session_performance_timer.get());
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
@@ -1954,7 +1962,7 @@ void AuthSession::UpdateAuthFactorMetadata(
   }
 
   std::optional<AuthFactorMap::ValueView> stored_auth_factor =
-      auth_factor_map_.Find(request.auth_factor_label());
+      GetAuthFactorMap().Find(request.auth_factor_label());
   if (!stored_auth_factor) {
     LOG(ERROR) << "AuthSession: UpdateAuthFactorMetadata's to-be-updated auth "
                   "factor not found, label: "
@@ -2051,10 +2059,11 @@ void AuthSession::AuthForDecrypt::RelabelAuthFactor(
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
+  AuthFactorMap& auth_factor_map = session_->GetAuthFactorMap();
   std::optional<AuthFactor> old_auth_factor;
   {
     std::optional<AuthFactorMap::ValueView> stored_auth_factor =
-        session_->auth_factor_map_.Find(request.auth_factor_label());
+        auth_factor_map.Find(request.auth_factor_label());
     if (!stored_auth_factor) {
       LOG(ERROR) << "AuthSession: Key to update not found: "
                  << request.auth_factor_label();
@@ -2089,7 +2098,7 @@ void AuthSession::AuthForDecrypt::RelabelAuthFactor(
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
-  if (session_->auth_factor_map_.Find(request.new_auth_factor_label())) {
+  if (auth_factor_map.Find(request.new_auth_factor_label())) {
     LOG(ERROR) << "AuthSession: New auth factor label already exists: "
                << request.new_auth_factor_label();
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -2167,9 +2176,9 @@ void AuthSession::AuthForDecrypt::RelabelAuthFactor(
     verifier->ChangeLabel(new_auth_factor.label());
     session_->verifier_forwarder_.AddVerifier(std::move(verifier));
   }
-  session_->auth_factor_map_.Remove(old_auth_factor->label());
-  session_->auth_factor_map_.Add(std::move(new_auth_factor),
-                                 AuthFactorStorageType::kUserSecretStash);
+  auth_factor_map.Remove(old_auth_factor->label());
+  auth_factor_map.Add(std::move(new_auth_factor),
+                      AuthFactorStorageType::kUserSecretStash);
   LOG(INFO) << "AuthSession: relabelled auth factor "
             << old_auth_factor->label() << " to "
             << request.new_auth_factor_label();
@@ -2211,10 +2220,11 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactor(
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
+  AuthFactorMap& auth_factor_map = session_->GetAuthFactorMap();
   std::optional<AuthFactor> original_auth_factor;
   {
     std::optional<AuthFactorMap::ValueView> stored_auth_factor =
-        session_->auth_factor_map_.Find(request.auth_factor_label());
+        auth_factor_map.Find(request.auth_factor_label());
     if (!stored_auth_factor) {
       LOG(ERROR) << "AuthSession: Key to update not found: "
                  << request.auth_factor_label();
@@ -2249,7 +2259,7 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactor(
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
-  if (session_->auth_factor_map_.Find(request.auth_factor().label())) {
+  if (auth_factor_map.Find(request.auth_factor().label())) {
     LOG(ERROR) << "AuthSession: New auth factor label already exists: "
                << request.auth_factor().label();
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -2567,13 +2577,14 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactorIntoUss(
   }
 
   ReportTimerDuration(perf_timer.get());
+  AuthFactorMap& auth_factor_map = session_->GetAuthFactorMap();
   factor_to_remove = &original_auth_factor;
   session_->verifier_forwarder_.ReleaseVerifier(original_auth_factor.label());
   session_->AddCredentialVerifier(auth_factor_type, auth_factor_label,
                                   auth_input, auth_factor_metadata);
-  session_->auth_factor_map_.Remove(original_auth_factor.label());
-  session_->auth_factor_map_.Add(std::move(replacement_auth_factor),
-                                 AuthFactorStorageType::kUserSecretStash);
+  auth_factor_map.Remove(original_auth_factor.label());
+  auth_factor_map.Add(std::move(replacement_auth_factor),
+                      AuthFactorStorageType::kUserSecretStash);
   LOG(INFO) << "AuthSession: replaced auth factor "
             << original_auth_factor.label() << " with new auth factor "
             << auth_factor_label;
@@ -2760,7 +2771,7 @@ void AuthSession::GetRecoveryRequest(
 
   // Check the factor exists.
   std::optional<AuthFactorMap::ValueView> stored_auth_factor =
-      auth_factor_map_.Find(request.auth_factor_label());
+      GetAuthFactorMap().Find(request.auth_factor_label());
   if (!stored_auth_factor) {
     LOG(ERROR) << "Authentication key not found: "
                << request.auth_factor_label();
@@ -3346,9 +3357,10 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
   }
 
   // If a USS only factor is added backup keysets should be removed.
+  AuthFactorMap& auth_factor_map = GetAuthFactorMap();
   if (!IsFactorTypeSupportedByVk(auth_factor_type)) {
     CryptohomeStatus cleanup_status = CleanUpAllBackupKeysets(
-        *keyset_management_, obfuscated_username_, auth_factor_map_);
+        *keyset_management_, obfuscated_username_, auth_factor_map);
     if (!cleanup_status.ok()) {
       LOG(ERROR) << "Cleaning up backup keysets failed: " << cleanup_status;
     }
@@ -3359,8 +3371,8 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
 
   LOG(INFO) << "AuthSession: added auth factor " << auth_factor.label()
             << " into USS.";
-  auth_factor_map_.Add(std::move(auth_factor),
-                       AuthFactorStorageType::kUserSecretStash);
+  auth_factor_map.Add(std::move(auth_factor),
+                      AuthFactorStorageType::kUserSecretStash);
 
   // Report timer for how long AuthSession operation takes.
   ReportTimerDuration(auth_session_performance_timer.get());
@@ -3480,7 +3492,7 @@ void AuthSession::AuthForDecrypt::AddAuthFactor(
       kCryptohomeErrorAddAuthFactorErrorBucket);
 
   // You cannot add an auth factor with a label if one already exists.
-  if (session_->auth_factor_map_.Find(auth_factor_label)) {
+  if (session_->GetAuthFactorMap().Find(auth_factor_label)) {
     LOG(ERROR) << "Cannot add a new auth factor when one already exists: "
                << auth_factor_label;
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -3833,7 +3845,7 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   // Backup VaultKeyset of the authenticated factor can still be in disk if
   // the migration is not completed. Break the dependency of the migrated and
   // not-migrated keysets and remove the backup keyset
-  if (auth_factor_map_.HasFactorWithStorage(
+  if (GetAuthFactorMap().HasFactorWithStorage(
           AuthFactorStorageType::kVaultKeyset) &&
       keyset_management_->GetVaultKeyset(obfuscated_username_,
                                          auth_factor_label) != nullptr) {
@@ -3917,7 +3929,7 @@ void AuthSession::RecreateUssAuthFactor(
   }
 
   std::optional<AuthFactorMap::ValueView> stored_auth_factor =
-      auth_factor_map_.Find(auth_factor_label);
+      GetAuthFactorMap().Find(auth_factor_label);
   if (!stored_auth_factor) {
     auto status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionGetStoredFactorFailedInRecreate),
@@ -3987,7 +3999,7 @@ void AuthSession::ResetLECredentials() {
     return;
   }
 
-  for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map_) {
+  for (AuthFactorMap::ValueView stored_auth_factor : GetAuthFactorMap()) {
     const AuthFactor& auth_factor = stored_auth_factor.auth_factor();
 
     // Look for only pinweaver backed AuthFactors.
@@ -4090,7 +4102,7 @@ void AuthSession::ResetRateLimiterCredentials(
     }
   }
 
-  for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map_) {
+  for (AuthFactorMap::ValueView stored_auth_factor : GetAuthFactorMap()) {
     const AuthFactor& auth_factor = stored_auth_factor.auth_factor();
 
     // Look for only pinweaver backed AuthFactors.
@@ -4123,7 +4135,7 @@ void AuthSession::ResetRateLimiterCredentials(
 bool AuthSession::NeedsFullAuthForReset(
     AuthFactorDriver::ResetCapability capability) {
   // Check if LE credentials need reset.
-  for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map_) {
+  for (AuthFactorMap::ValueView stored_auth_factor : GetAuthFactorMap()) {
     const AuthFactor& auth_factor = stored_auth_factor.auth_factor();
 
     // Look for only pinweaver backed AuthFactors.
@@ -4368,8 +4380,8 @@ void AuthSession::MaybeUpdateRecoverableKeyStore(const AuthFactor& auth_factor,
     LOG(ERROR) << "Failed to save updated auth factor.";
     return;
   }
-  auth_factor_map_.Add(std::move(updated_auth_factor),
-                       AuthFactorStorageType::kUserSecretStash);
+  GetAuthFactorMap().Add(std::move(updated_auth_factor),
+                         AuthFactorStorageType::kUserSecretStash);
 }
 
 }  // namespace cryptohome

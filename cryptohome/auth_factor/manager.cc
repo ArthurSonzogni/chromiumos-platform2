@@ -6,11 +6,12 @@
 
 #include <sys/stat.h>
 
-#include <algorithm>
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -96,6 +97,25 @@ AuthFactorManager::AuthFactorManager(Platform* platform,
       converter_(keyset_management) {
   CHECK(platform_);
   CHECK(uss_manager_);
+}
+
+AuthFactorMap& AuthFactorManager::GetAuthFactorMap(
+    const ObfuscatedUsername& username) {
+  auto iter = map_of_af_maps_.lower_bound(username);
+  if (iter == map_of_af_maps_.end() || iter->first != username) {
+    iter = map_of_af_maps_.emplace_hint(iter, username,
+                                        LoadAllAuthFactors(username));
+  }
+  return iter->second;
+}
+
+void AuthFactorManager::DiscardAuthFactorMap(
+    const ObfuscatedUsername& username) {
+  map_of_af_maps_.erase(username);
+}
+
+void AuthFactorManager::DiscardAllAuthFactorMaps() {
+  map_of_af_maps_.clear();
 }
 
 CryptohomeStatus AuthFactorManager::SaveAuthFactorFile(
@@ -248,59 +268,6 @@ CryptohomeStatusOr<AuthFactor> AuthFactorManager::LoadAuthFactor(
       serialized_factor.value().auth_block_state);
 }
 
-AuthFactorMap AuthFactorManager::LoadAllAuthFactors(
-    const ObfuscatedUsername& obfuscated_username) {
-  AuthFactorMap auth_factor_map;
-
-  // Load labels for auth factors in the USS. If the USS cannot be loaded then
-  // tere are no factors listed in the USS.
-  std::set<std::string_view> uss_labels;
-  auto encrypted_uss = uss_manager_->LoadEncrypted(obfuscated_username);
-  if (encrypted_uss.ok()) {
-    uss_labels = (*encrypted_uss)->WrappedMainKeyIds();
-  }
-
-  // Load all of the USS-based auth factors.
-  for (const auto& [label, auth_factor_type] :
-       ListAuthFactors(obfuscated_username)) {
-    if (!uss_labels.contains(label)) {
-      LOG(WARNING) << "Skipping auth factor which has no key in USS " << label;
-      continue;
-    }
-    CryptohomeStatusOr<AuthFactor> auth_factor =
-        LoadAuthFactor(obfuscated_username, auth_factor_type, label);
-    if (!auth_factor.ok()) {
-      LOG(WARNING) << "Skipping malformed auth factor " << label;
-      continue;
-    }
-    auth_factor_map.Add(std::move(*auth_factor),
-                        AuthFactorStorageType::kUserSecretStash);
-  }
-
-  // Load all the VaultKeysets and backup VaultKeysets in disk and convert
-  // them to AuthFactor format.
-  std::vector<std::string> migrated_labels;
-  std::map<std::string, AuthFactor> vk_factor_map;
-  std::map<std::string, AuthFactor> backup_factor_map;
-  converter_.VaultKeysetsToAuthFactorsAndKeyLabelData(
-      obfuscated_username, migrated_labels, vk_factor_map, backup_factor_map);
-
-  // Duplicate labels are not expected on any use case. However in very rare
-  // edge cases where an interrupted USS migration results in having both
-  // regular VaultKeyset and USS factor in disk it is safer to use the original
-  // VaultKeyset. In that case regular VaultKeyset overrides the existing
-  // label in the map.
-  for (auto& [unused, factor] : vk_factor_map) {
-    if (auth_factor_map.Find(factor.label())) {
-      LOG(WARNING) << "Unexpected duplication of label: " << factor.label()
-                   << ". Regular VaultKeyset will override the AuthFactor.";
-    }
-    auth_factor_map.Add(std::move(factor), AuthFactorStorageType::kVaultKeyset);
-  }
-
-  return auth_factor_map;
-}
-
 AuthFactorManager::LabelToTypeMap AuthFactorManager::ListAuthFactors(
     const ObfuscatedUsername& obfuscated_username) {
   LabelToTypeMap label_to_type_map;
@@ -419,6 +386,59 @@ void AuthFactorManager::UpdateAuthFactor(
       base::BindOnce(&AuthFactorManager::LogPrepareForRemovalStatus,
                      weak_factory_.GetWeakPtr(), obfuscated_username,
                      auth_factor, std::move(callback)));
+}
+
+AuthFactorMap AuthFactorManager::LoadAllAuthFactors(
+    const ObfuscatedUsername& obfuscated_username) {
+  AuthFactorMap auth_factor_map;
+
+  // Load labels for auth factors in the USS. If the USS cannot be loaded then
+  // tere are no factors listed in the USS.
+  std::set<std::string_view> uss_labels;
+  auto encrypted_uss = uss_manager_->LoadEncrypted(obfuscated_username);
+  if (encrypted_uss.ok()) {
+    uss_labels = (*encrypted_uss)->WrappedMainKeyIds();
+  }
+
+  // Load all of the USS-based auth factors.
+  for (const auto& [label, auth_factor_type] :
+       ListAuthFactors(obfuscated_username)) {
+    if (!uss_labels.contains(label)) {
+      LOG(WARNING) << "Skipping auth factor which has no key in USS " << label;
+      continue;
+    }
+    CryptohomeStatusOr<AuthFactor> auth_factor =
+        LoadAuthFactor(obfuscated_username, auth_factor_type, label);
+    if (!auth_factor.ok()) {
+      LOG(WARNING) << "Skipping malformed auth factor " << label;
+      continue;
+    }
+    auth_factor_map.Add(std::move(*auth_factor),
+                        AuthFactorStorageType::kUserSecretStash);
+  }
+
+  // Load all the VaultKeysets and backup VaultKeysets in disk and convert
+  // them to AuthFactor format.
+  std::vector<std::string> migrated_labels;
+  std::map<std::string, AuthFactor> vk_factor_map;
+  std::map<std::string, AuthFactor> backup_factor_map;
+  converter_.VaultKeysetsToAuthFactorsAndKeyLabelData(
+      obfuscated_username, migrated_labels, vk_factor_map, backup_factor_map);
+
+  // Duplicate labels are not expected on any use case. However in very rare
+  // edge cases where an interrupted USS migration results in having both
+  // regular VaultKeyset and USS factor in disk it is safer to use the original
+  // VaultKeyset. In that case regular VaultKeyset overrides the existing
+  // label in the map.
+  for (auto& [unused, factor] : vk_factor_map) {
+    if (auth_factor_map.Find(factor.label())) {
+      LOG(WARNING) << "Unexpected duplication of label: " << factor.label()
+                   << ". Regular VaultKeyset will override the AuthFactor.";
+    }
+    auth_factor_map.Add(std::move(factor), AuthFactorStorageType::kVaultKeyset);
+  }
+
+  return auth_factor_map;
 }
 
 void AuthFactorManager::RemoveAuthFactorFiles(

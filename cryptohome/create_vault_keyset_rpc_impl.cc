@@ -15,9 +15,9 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
 
+#include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/auth_factor/protobuf.h"
 #include "cryptohome/error/cryptohome_error.h"
-#include "cryptohome/signature_sealing/structures_proto.h"
 
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
@@ -40,10 +40,12 @@ CreateVaultKeysetRpcImpl::CreateVaultKeysetRpcImpl(
     KeysetManagement* keyset_management,
     const hwsec::CryptohomeFrontend* hwsec,
     AuthBlockUtility* auth_block_utility,
+    AuthFactorManager* auth_factor_manager,
     AuthFactorDriverManager* auth_factor_driver_manager)
     : keyset_management_(keyset_management),
       hwsec_(hwsec),
       auth_block_utility_(auth_block_utility),
+      auth_factor_manager_(auth_factor_manager),
       auth_factor_driver_manager_(auth_factor_driver_manager) {}
 
 bool CreateVaultKeysetRpcImpl::ClearKeyDataFromInitialKeyset(
@@ -287,18 +289,10 @@ void CreateVaultKeysetRpcImpl::CreateAndPersistVaultKeyset(
     return;
   }
 
-  // A stateless object to convert AuthFactor API to VaultKeyset KeyData and
-  // VaultKeysets to AuthFactor API.
-  AuthFactorVaultKeysetConverter converter(keyset_management_);
-
-  // Add VaultKeyset as an AuthFactor to the linked AuthSession.
-  if (std::optional<AuthFactor> added_auth_factor =
-          converter.VaultKeysetToAuthFactor(auth_session.obfuscated_username(),
-                                            key_data.label())) {
-    auth_session.RegisterVaultKeysetAuthFactor(*added_auth_factor);
-  } else {
-    LOG(WARNING) << "Failed to convert added keyset to AuthFactor.";
-  }
+  // Discard the already-loaded auth factor map for the user, so that on the
+  // next access the factors will be reloaded with the new keyset.
+  auth_factor_manager_->DiscardAuthFactorMap(
+      auth_session.obfuscated_username());
 
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }

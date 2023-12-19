@@ -6,10 +6,7 @@
 #define CRYPTOHOME_AUTH_FACTOR_MANAGER_H_
 
 #include <map>
-#include <memory>
-#include <set>
 #include <string>
-#include <string_view>
 
 #include <base/memory/weak_ptr.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
@@ -43,10 +40,24 @@ class AuthFactorManager final {
   AuthFactorManager(const AuthFactorManager&) = delete;
   AuthFactorManager& operator=(const AuthFactorManager&) = delete;
 
-  // Loads all configured auth factors for the given user from the disk. If any
-  // factors are malformed they will be logged and skipped.
-  AuthFactorMap LoadAllAuthFactors(
-      const ObfuscatedUsername& obfuscated_username);
+  // ========= In-Memory AuthFactor Functions =========
+  // Functions for loading and accessing the in-memory AuthFactor objects via
+  // the per-user AuthFactorMap instances.
+
+  // Returns a reference to the auth factor map for the given user. This may
+  // load the factors from storage.
+  //
+  // The reference to the map itself is valid until a Discard function is called
+  // to discard either this user's map or all map. However, as a general rule
+  // callers should still avoid storing persistent references to the map.
+  AuthFactorMap& GetAuthFactorMap(const ObfuscatedUsername& username);
+
+  // Discard the in-memory map for an individual user, or for all users.
+  void DiscardAuthFactorMap(const ObfuscatedUsername& username);
+  void DiscardAllAuthFactorMaps();
+
+  // ========= Stored AuthFactor functions =========
+  // Functions for accessing and modifying the stored AuthFactor files.
 
   // Serializes and persists as a file the given auth factor in the user's data
   // vault.
@@ -94,6 +105,11 @@ class AuthFactorManager final {
                         StatusCallback callback);
 
  private:
+  // Loads all configured auth factors for the given user from the disk. If any
+  // factors are malformed they will be logged and skipped.
+  AuthFactorMap LoadAllAuthFactors(
+      const ObfuscatedUsername& obfuscated_username);
+
   // RemoveAuthFactorFiles removes files related to |auth_factor|
   // when passed-in |status| is ok. Any error status will be passed to
   // |callback|.
@@ -114,6 +130,9 @@ class AuthFactorManager final {
 
   // Converter used for VK -> AF conversion.
   AuthFactorVaultKeysetConverter converter_;
+
+  // All loaded auth factor maps, per-user.
+  std::map<ObfuscatedUsername, AuthFactorMap> map_of_af_maps_;
 
   // The last member, to invalidate weak references first on destruction.
   base::WeakPtrFactory<AuthFactorManager> weak_factory_{this};

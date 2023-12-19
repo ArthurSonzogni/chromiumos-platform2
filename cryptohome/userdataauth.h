@@ -456,6 +456,11 @@ class UserDataAuth {
   // Note that all functions below in this section should only be used for unit
   // testing purpose only.
 
+  // Direct access to the underlying interface(s) for testing.
+  AuthFactorManager* GetAuthFactorManagerForTesting() {
+    return auth_factor_manager_;
+  }
+
   // Override |crypto_| for testing purpose
   void set_crypto(Crypto* crypto) { crypto_ = crypto; }
 

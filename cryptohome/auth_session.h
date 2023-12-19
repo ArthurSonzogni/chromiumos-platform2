@@ -116,7 +116,6 @@ class AuthSession final {
     hwsec::ExplicitInit<AuthIntent> intent;
     std::unique_ptr<base::WallClockTimer> auth_factor_status_update_timer;
     hwsec::ExplicitInit<bool> user_exists;
-    AuthFactorMap auth_factor_map;
   };
 
   // Parameter struct used to supply all of the backing APIs that AuthSession
@@ -192,7 +191,9 @@ class AuthSession final {
   const KeyData& current_key_data() const { return key_data_; }
 
   // Returns the map from the label to the auth factor.
-  const AuthFactorMap& auth_factor_map() const { return auth_factor_map_; }
+  const AuthFactorMap& auth_factor_map() const {
+    return const_cast<AuthSession*>(this)->GetAuthFactorMap();
+  }
 
   // Indicates if the session has a User Secret Stash enabled.
   bool has_user_secret_stash() const { return decrypt_token_.has_value(); }
@@ -457,7 +458,7 @@ class AuthSession final {
   void SetAuthFactorStatusUpdateCallback(
       const AuthFactorStatusUpdateCallback& callback);
 
-  // Adds AuthFactor to |auth_factor_map_|, registered as a VaultKeyset backed
+  // Adds AuthFactor to the auth factor map, registered as a VaultKeyset backed
   // factor. This functionality is only used by the cryptohome-test-tool and
   // through UserDataAuth::CreateVaultKeyset() for testing purposes.
   void RegisterVaultKeysetAuthFactor(AuthFactor auth_factor);
@@ -468,8 +469,11 @@ class AuthSession final {
   void CancelAllOutstandingAsyncCallbacks();
 
  private:
+  // Helper to get a reference to the AuthFactorMap for this session's user.
+  AuthFactorMap& GetAuthFactorMap();
+
   // Emits a debug log message with this Auth Session's initial state.
-  void RecordAuthSessionStart() const;
+  void RecordAuthSessionStart(const AuthFactorMap& auth_factor_map) const;
 
   // Switches the state to authorize the specified intents. Starts or restarts
   // the timer when applicable.
@@ -921,8 +925,6 @@ class AuthSession final {
   std::optional<FileSystemKeyset> file_system_keyset_;
   // Whether the user existed at the time this object was constructed.
   bool user_exists_;
-  // Map containing the auth factors already configured for this user.
-  AuthFactorMap auth_factor_map_;
   // Key used by AuthenticateAuthFactor for cryptohome recovery AuthFactor.
   // It's set only after GetRecoveryRequest() call, and is std::nullopt in other
   // cases.
