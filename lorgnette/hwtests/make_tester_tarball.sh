@@ -62,7 +62,7 @@ HWTESTS_BINS=(
   die "This script must be run inside the chroot."
 
 [[ -d /build/amd64-generic ]] || \
-  die "Run build_packages --board=amd64-generic first"
+  die "Run cros build-packages --board=amd64-generic first"
 
 if [[ -f "${OUT}" ]]; then
   rm -f "${OUT}"
@@ -70,7 +70,7 @@ if [[ -f "${OUT}" ]]; then
 fi
 
 if [[ "${BUILD_PACKAGES}" -ne 0 ]]; then
-  ~/trunk/src/scripts/build_packages --board=amd64-generic "${PACKAGES[@]}"
+  cros build-packages --board=amd64-generic "${PACKAGES[@]}"
 fi
 
 cd "${HWTESTS}" || die "Can't cd to ${HWTESTS}"

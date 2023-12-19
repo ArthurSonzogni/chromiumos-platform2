@@ -106,7 +106,7 @@ for src in "${sources[@]}"; do
       if [[ ${mode} == "Color" ]]; then
         expected_color="sRGB"
       elif [[ ${mode} == "Grayscale" ]]; then
-        expected_color="Gray"
+        expected_color="Grayscale"
       else
         expected_color="Unmatched"
       fi
