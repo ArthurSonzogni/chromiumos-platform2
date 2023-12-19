@@ -42,25 +42,6 @@ genxml2cpp("dbus-proxies") {
   sources = [ "${xml2cpp_in_dir}/org.freedesktop.DBus.Properties.xml" ]
 }
 
-action("cloud_policy_proto_generator") {
-  policy_resources_dir = "${sysroot}/usr/share/policy_resources"
-  proto_out_dir = "${target_gen_dir}/proto"
-  policy_tools_dir = "${sysroot}/usr/share/policy_tools"
-
-  script = "${policy_tools_dir}/generate_policy_source.py"
-  sources = [
-    "${policy_resources_dir}/VERSION",
-    "${policy_resources_dir}/generated_policy_templates.json",
-  ]
-  outputs = [ "${proto_out_dir}/cloud_policy.proto" ]
-  args = [
-    "--cloud-policy-protobuf=${proto_out_dir}/cloud_policy.proto",
-    "--chrome-version-file=${policy_resources_dir}/VERSION",
-    "--target-platform=chromeos",
-    "--policy-templates-file=${policy_resources_dir}/generated_policy_templates.json",
-  ]
-}
-
 proto_library("policy_common_definitions-protos") {
   proto_in_dir = "${sysroot}/usr/share/protofiles"
   proto_out_dir = "include/bindings"
@@ -144,11 +125,10 @@ goproto_library("rlwe_goprotos") {
 }
 
 proto_library("user_policy-protos") {
-  proto_in_dir = "${target_gen_dir}/proto"
+  proto_in_dir = "${sysroot}/usr/share/protofiles"
   proto_out_dir = "include/bindings"
   proto_lib_dirs = [ "${sysroot}/usr/share/protofiles" ]
   sources = [ "${proto_in_dir}/cloud_policy.proto" ]
-  deps = [ ":cloud_policy_proto_generator" ]
   public_deps = [ ":policy_common_definitions-protos" ]
 }
 
