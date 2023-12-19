@@ -5,7 +5,6 @@
 #include "dlcservice/lvm/lvmd_proxy_wrapper.h"
 
 #include <memory>
-#include <string>
 #include <utility>
 
 #include <base/files/scoped_temp_dir.h>
@@ -17,13 +16,14 @@
 #include <lvmd/dbus-proxy-mocks.h>
 
 #include "dlcservice/utils/mock_utils.h"
-#include "dlcservice/utils/utils.h"
 
 using testing::_;
 using testing::DoAll;
+using testing::Invoke;
 using testing::Return;
 using testing::SetArgPointee;
 using testing::StrictMock;
+using testing::WithArg;
 
 namespace dlcservice {
 
@@ -71,6 +71,35 @@ TEST_F(LvmdProxyWrapperTest, CreateLogicalVolumeGidCheck) {
 
   lvmd::LogicalVolume lv_arg;
   EXPECT_TRUE(lvmd_->CreateLogicalVolume({}, {}, &lv_arg));
+}
+
+TEST_F(LvmdProxyWrapperTest, RemoveLogicalVolumesAsyncSuccessTest) {
+  bool called = false;
+  auto cb = base::BindOnce(
+      [](bool* called, bool success) {
+        *called = true;
+        EXPECT_TRUE(success);
+      },
+      &called);
+  EXPECT_CALL(*mlvmd_ptr_, RemoveLogicalVolumesAsync(_, _, _, _))
+      .WillOnce(WithArg<1>(Invoke([](auto cb) { std::move(cb).Run({}); })));
+  lvmd_->RemoveLogicalVolumesAsync({}, std::move(cb));
+  EXPECT_TRUE(called);
+}
+
+TEST_F(LvmdProxyWrapperTest, RemoveLogicalVolumesAsyncFailureTest) {
+  bool called = false;
+  auto cb = base::BindOnce(
+      [](bool* called, bool success) {
+        *called = true;
+        EXPECT_FALSE(success);
+      },
+      &called);
+  EXPECT_CALL(*mlvmd_ptr_, RemoveLogicalVolumesAsync(_, _, _, _))
+      .WillOnce(
+          WithArg<2>(Invoke([](auto cb) { std::move(cb).Run(nullptr); })));
+  lvmd_->RemoveLogicalVolumesAsync({}, std::move(cb));
+  EXPECT_TRUE(called);
 }
 
 }  // namespace dlcservice

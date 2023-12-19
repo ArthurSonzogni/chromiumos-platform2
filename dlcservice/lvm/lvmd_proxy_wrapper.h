@@ -30,6 +30,9 @@ class LvmdProxyWrapperInterface {
   // Removes the logical volumes, if they exist.
   virtual bool RemoveLogicalVolumes(
       const std::vector<std::string>& lv_names) = 0;
+  virtual void RemoveLogicalVolumesAsync(
+      const std::vector<std::string>& lv_names,
+      base::OnceCallback<void(bool)> cb) = 0;
 
   // Activates the logical volume, if they exist.
   virtual bool ActivateLogicalVolume(const std::string& lv_name) = 0;
@@ -62,6 +65,8 @@ class LvmdProxyWrapper : public LvmdProxyWrapperInterface {
   bool CreateLogicalVolumes(
       const std::vector<lvmd::LogicalVolumeConfiguration>& lv_configs) override;
   bool RemoveLogicalVolumes(const std::vector<std::string>& lv_names) override;
+  void RemoveLogicalVolumesAsync(const std::vector<std::string>& lv_names,
+                                 base::OnceCallback<void(bool)> cb) override;
   bool ActivateLogicalVolume(const std::string& lv_name) override;
   bool ListLogicalVolumes(lvmd::LogicalVolumeList* lvs) override;
   std::string GetLogicalVolumePath(const std::string& lv_name) override;

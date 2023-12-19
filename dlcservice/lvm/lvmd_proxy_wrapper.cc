@@ -5,11 +5,13 @@
 #include "dlcservice/lvm/lvmd_proxy_wrapper.h"
 
 #include <memory>
-#include <tuple>
 #include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
+#include <lvmd/proto_bindings/lvmd.pb.h>
 
 #include "dlcservice/system_state.h"
 
@@ -229,6 +231,28 @@ bool LvmdProxyWrapper::RemoveLogicalVolumes(
     return false;
   }
   return true;
+}
+
+void LvmdProxyWrapper::RemoveLogicalVolumesAsync(
+    const std::vector<std::string>& lv_names,
+    base::OnceCallback<void(bool)> cb) {
+  lvmd::RemoveLogicalVolumesRequest request;
+  auto* lv_list = request.mutable_logical_volume_list();
+  for (const auto& lv_name : lv_names) {
+    auto* lv = lv_list->add_logical_volume();
+    lv->set_name(lv_name);
+  }
+  auto [cb1, cb2] = base::SplitOnceCallback(std::move(cb));
+  lvmd_proxy_->RemoveLogicalVolumesAsync(
+      request,
+      base::BindOnce(
+          [](decltype(cb) cb, const lvmd::RemoveLogicalVolumesResponse&) {
+            std::move(cb).Run(true);
+          },
+          std::move(cb1)),
+      base::BindOnce(
+          [](decltype(cb) cb, brillo::Error*) { std::move(cb).Run(false); },
+          std::move(cb2)));
 }
 
 bool LvmdProxyWrapper::ActivateLogicalVolume(const std::string& lv_name) {
