@@ -1,4 +1,5 @@
 # Filesystem types
+type fs_bpf, fs_type;
 type labeledfs, fs_type;
 type pipefs, fs_type;
 type sockfs, fs_type;
