@@ -139,6 +139,10 @@ void DlcService::CleanupUnsupported() {
       }
   }
 
+#if USE_LVM_STATEFUL_PARTITION
+  CleanupUnsupportedLvs();
+#endif  // USE_LVM_STATEFUL_PARTITION
+
   // Delete the unsupported/preload not allowed DLC(s) in the preloaded
   // directory.
   auto preloaded_content_dir = system_state->preloaded_content_dir();
@@ -157,6 +161,44 @@ void DlcService::CleanupUnsupported() {
                 << " for unsupported/preload not allowed DLC=" << id;
   }
 }
+
+#if USE_LVM_STATEFUL_PARTITION
+void DlcService::CleanupUnsupportedLvs() {
+  lvmd::LogicalVolumeList lvs;
+  if (!SystemState::Get()->lvmd_wrapper()->ListLogicalVolumes(&lvs)) {
+    LOG(ERROR) << "Failed to list logical volumes for cleaning.";
+  } else {
+    std::vector<string> lv_names;
+    for (const auto& lv : lvs.logical_volume()) {
+      const auto& id = utils_->LogicalVolumeNameToId(lv.name());
+      if (id.empty()) {
+        continue;
+      }
+      brillo::ErrorPtr tmp_err;
+      if (GetDlc(id, &tmp_err) != nullptr) {
+        continue;
+      }
+      lv_names.push_back(lv.name());
+    }
+    // Asynchronously delete all unsupported DLC(s).
+    if (!lv_names.empty()) {
+      SystemState::Get()->lvmd_wrapper()->RemoveLogicalVolumesAsync(
+          lv_names,
+          base::BindOnce(
+              [](const decltype(lv_names)& lv_names, bool success) {
+                if (success) {
+                  LOG(INFO)
+                      << "Successfully removed all stale logical volumes.";
+                  return;
+                }
+                LOG(ERROR) << "Failed to remove stale logical volumes: "
+                           << base::JoinString(lv_names, ", ");
+              },
+              lv_names));
+    }
+  }
+}
+#endif  // USE_LVM_STATEFUL_PARTITION
 
 void DlcService::OnWaitForUpdateEngineServiceToBeAvailable(bool available) {
   LOG(INFO) << "Update Engine service available=" << available;

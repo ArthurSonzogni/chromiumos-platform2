@@ -9,6 +9,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/test/mock_log.h>
 #include <base/test/simple_test_clock.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
@@ -35,6 +36,7 @@
 #include "dlcservice/types.h"
 #include "dlcservice/utils.h"
 #include "dlcservice/utils/mock_utils.h"
+#include "dlcservice/utils/utils_interface.h"
 
 using brillo::dbus_utils::MockDBusMethodResponse;
 using dlcservice::metrics::InstallResult;
@@ -129,6 +131,10 @@ TEST_F(DlcServiceTest, InitializeTest) {
   EXPECT_CALL(*mock_utils_, GetSupportedDlcIds)
       .WillOnce(Return(DlcIdList(
           {kFirstDlc, kSecondDlc, kThirdDlc, kFourthDlc, kScaledDlc})));
+#if USE_LVM_STATEFUL_PARTITION
+  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, ListLogicalVolumes(_))
+      .WillOnce(Return(false));
+#endif  // USE_LVM_STATEFUL_PARTITION
   dlc_service_->Initialize();
 }
 
@@ -742,7 +748,10 @@ TEST_F(DlcServiceTest, CleanupUnsupportedTest) {
 
   SetUpDlcPreloadedImage(kThirdDlc);
   EXPECT_TRUE(base::PathExists(JoinPaths(preloaded_content_path_, kThirdDlc)));
-
+#if USE_LVM_STATEFUL_PARTITION
+  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, ListLogicalVolumes(_))
+      .WillOnce(Return(false));
+#endif  // USE_LVM_STATEFUL_PARTITION
   dlc_service_->CleanupUnsupported();
 
   EXPECT_FALSE(base::PathExists(
@@ -751,6 +760,64 @@ TEST_F(DlcServiceTest, CleanupUnsupportedTest) {
       GetDlcImagePath(content_path_, kThirdDlc, kPackage, BootSlot::Slot::B)));
   EXPECT_FALSE(base::PathExists(JoinPaths(preloaded_content_path_, kThirdDlc)));
 }
+
+#if USE_LVM_STATEFUL_PARTITION
+TEST_F(DlcServiceTest, CleanupUnsupportedLvsLvmFailure) {
+  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, ListLogicalVolumes(_))
+      .WillOnce(Return(false));
+  dlc_service_->CleanupUnsupportedLvs();
+}
+
+TEST_F(DlcServiceTest, CleanupUnsupportedLvsNoDlcs) {
+  lvmd::LogicalVolumeList lvs;
+  for (int i = 0; i < 100; ++i) {
+    auto lv_name = base::NumberToString(i) + "not-a-dlc";
+    lvs.add_logical_volume()->set_name(lv_name);
+    EXPECT_CALL(*mock_utils_, LogicalVolumeNameToId(lv_name));
+  }
+  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, ListLogicalVolumes(_))
+      .WillOnce(DoAll(SetArgPointee<0>(lvs), Return(true)));
+  dlc_service_->CleanupUnsupportedLvs();
+}
+
+TEST_F(DlcServiceTest, CleanupUnsupportedLvsAllSupportedDlcs) {
+  lvmd::LogicalVolumeList lvs;
+  DlcMap test_supported;
+  for (int i = 0; i < 100; ++i) {
+    auto dlc_name = "cow-dlc-" + base::NumberToString(i);
+    auto lv_name = utils_->LogicalVolumeName(
+        dlc_name, (i % 2) ? PartitionSlot::A : PartitionSlot::B);
+    lvs.add_logical_volume()->set_name(lv_name);
+    EXPECT_CALL(*mock_utils_, LogicalVolumeNameToId(lv_name))
+        .WillOnce(Return(dlc_name));
+    // Feed in strict mocks to catch unexpected calls on `DlcInterface`s.
+    test_supported.emplace(dlc_name, std::make_unique<MockDlc>());
+  }
+  dlc_service_->SetSupportedForTesting(std::move(test_supported));
+
+  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, ListLogicalVolumes(_))
+      .WillOnce(DoAll(SetArgPointee<0>(lvs), Return(true)));
+  dlc_service_->CleanupUnsupportedLvs();
+}
+
+TEST_F(DlcServiceTest, CleanupUnsupportedLvs) {
+  lvmd::LogicalVolumeList lvs;
+  constexpr int kLoop = 100;
+  for (int i = 0; i < kLoop; ++i) {
+    auto dlc_name = "cow-dlc-" + base::NumberToString(i);
+    auto lv_name = utils_->LogicalVolumeName(
+        dlc_name, (i % 3) ? PartitionSlot::A : PartitionSlot::B);
+    lvs.add_logical_volume()->set_name(lv_name);
+    EXPECT_CALL(*mock_utils_, LogicalVolumeNameToId(lv_name))
+        .WillOnce(Return(dlc_name));
+  }
+
+  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, ListLogicalVolumes(_))
+      .WillOnce(DoAll(SetArgPointee<0>(lvs), Return(true)));
+  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, RemoveLogicalVolumesAsync(_, _));
+  dlc_service_->CleanupUnsupportedLvs();
+}
+#endif  // USE_LVM_STATEFUL_PARTITION
 
 // Tests related to `OnStatusUpdateAdvancedSignalConnected`.
 
@@ -806,6 +873,8 @@ class DlcServiceTestLegacy : public BaseTest {
     auto dlc_creator =
 #if USE_LVM_STATEFUL_PARTITION
         std::make_unique<DlcLvmCreator>();
+    EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, ListLogicalVolumes(_))
+        .WillOnce(Return(false));
 #else
         std::make_unique<DlcBaseCreator>();
 #endif  // USE_LVM_STATEFUL_PARTITION

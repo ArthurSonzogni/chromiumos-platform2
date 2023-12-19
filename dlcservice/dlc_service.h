@@ -208,6 +208,14 @@ class DlcService : public DlcServiceInterface {
   void CleanupUnsupported();
   FRIEND_TEST(DlcServiceTest, CleanupUnsupportedTest);
 
+#if USE_LVM_STATEFUL_PARTITION
+  void CleanupUnsupportedLvs();
+  FRIEND_TEST(DlcServiceTest, CleanupUnsupportedLvsLvmFailure);
+  FRIEND_TEST(DlcServiceTest, CleanupUnsupportedLvsNoDlcs);
+  FRIEND_TEST(DlcServiceTest, CleanupUnsupportedLvsAllSupportedDlcs);
+  FRIEND_TEST(DlcServiceTest, CleanupUnsupportedLvs);
+#endif  // USE_LVM_STATEFUL_PARTITION
+
   // Holds the DLC that is being installed by update_engine.
   std::optional<DlcId> installing_dlc_id_;
 
