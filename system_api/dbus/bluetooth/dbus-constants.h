@@ -650,4 +650,15 @@ constexpr char kServiceAllowListProperty[] = "ServiceAllowList";
 constexpr char kIsBlockedByPolicyProperty[] = "AffectedByPolicy";
 }  // namespace bluetooth_admin_policy
 
+// Bluetooth manager.
+namespace bluetooth_manager {
+constexpr char kBluetoothManagerInterface[] = "org.chromium.bluetooth.Manager";
+constexpr char kBluetoothManagerServicePath[] =
+    "/org/chromium/bluetooth/Manager";
+constexpr char kBluetoothManagerServiceName[] =
+    "org.chromium.bluetooth.Manager";
+constexpr char kBluetoothManagerCallbackInterface[] =
+    "org.chromium.bluetooth.ManagerCallback";
+}  // namespace bluetooth_manager
+
 #endif  // SYSTEM_API_DBUS_BLUETOOTH_DBUS_CONSTANTS_H_
