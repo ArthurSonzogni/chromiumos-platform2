@@ -25,28 +25,18 @@ constexpr base::TimeDelta kFirstConnectDelay = base::Seconds(0);
 // The delay of reconnecting when disconnect from the services.
 constexpr base::TimeDelta kReconnectDelay = base::Seconds(1);
 
-MojoServiceImpl::MojoServiceImpl()
-    : network_health_adapter_(nullptr), network_diagnostics_adapter_(nullptr) {}
-
-MojoServiceImpl::MojoServiceImpl(
-    NetworkHealthAdapter* network_health_adapter,
-    NetworkDiagnosticsAdapter* network_diagnostics_adapter)
-    : network_health_adapter_(network_health_adapter),
-      network_diagnostics_adapter_(network_diagnostics_adapter) {}
+MojoServiceImpl::MojoServiceImpl() = default;
 
 MojoServiceImpl::~MojoServiceImpl() = default;
 
 // static
 std::unique_ptr<MojoServiceImpl> MojoServiceImpl::Create(
-    base::OnceClosure shutdown_callback,
-    NetworkHealthAdapter* network_health_adapter,
-    NetworkDiagnosticsAdapter* network_diagnostics_adapter) {
+    base::OnceClosure shutdown_callback) {
   auto pending_remote =
       chromeos::mojo_service_manager::ConnectToMojoServiceManager();
   CHECK(pending_remote) << "Failed to connect to mojo service manager.";
 
-  auto impl = base::WrapUnique(
-      new MojoServiceImpl(network_health_adapter, network_diagnostics_adapter));
+  auto impl = base::WrapUnique(new MojoServiceImpl());
   impl->service_manager_.Bind(std::move(pending_remote));
   impl->service_manager_.set_disconnect_with_reason_handler(
       base::BindOnce([](uint32_t error, const std::string& message) {
@@ -141,28 +131,6 @@ void MojoServiceImpl::SendServiceRequest(
     return;
   service_manager_->Request(service_name, std::nullopt,
                             pending_receiver.PassPipe());
-
-  // Bind an additional connection to network adapters. TODO(b/237239654):
-  // Remove this after we remove these network adapters.
-  if (service_name == chromeos::mojo_services::kChromiumNetworkHealth) {
-    mojo::PendingRemote<chromeos::network_health::mojom::NetworkHealthService>
-        pending_remote;
-    service_manager_->Request(
-        service_name, std::nullopt,
-        pending_remote.InitWithNewPipeAndPassReceiver().PassPipe());
-    network_health_adapter_->SetServiceRemote(std::move(pending_remote));
-  }
-  if (service_name ==
-      chromeos::mojo_services::kChromiumNetworkDiagnosticsRoutines) {
-    mojo::PendingRemote<
-        chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines>
-        pending_remote;
-    service_manager_->Request(
-        service_name, std::nullopt,
-        pending_remote.InitWithNewPipeAndPassReceiver().PassPipe());
-    network_diagnostics_adapter_->SetNetworkDiagnosticsRoutines(
-        std::move(pending_remote));
-  }
 }
 
 template <typename InterfaceType>

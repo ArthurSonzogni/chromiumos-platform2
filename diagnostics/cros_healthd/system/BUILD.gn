@@ -43,8 +43,6 @@ source_set("libcros_healthd_system") {
     ":libcros_healthd_system_pci_util",
     "//diagnostics/base",
     "//diagnostics/cros_healthd/executor:libcros_healthd_executor",
-    "//diagnostics/cros_healthd/network:libnetwork_health_adapter",
-    "//diagnostics/cros_healthd/network_diagnostics:libnetwork_diagnostics_adapter",
     "//diagnostics/dbus_bindings",
     "//diagnostics/mojom/external:libcros_healthd_internal",
   ]
@@ -103,8 +101,6 @@ if (use.test || use.fuzzer) {
       ":libcros_healthd_system",
       "//diagnostics/base",
       "//diagnostics/cros_healthd/fake:libfake_cros_healthd",
-      "//diagnostics/cros_healthd/network:libnetwork_health_adapter_test_utils",
-      "//diagnostics/cros_healthd/network_diagnostics:libnetwork_diagnostics_adapter_test_utils",
       "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test_utils",
     ]
     sources = [

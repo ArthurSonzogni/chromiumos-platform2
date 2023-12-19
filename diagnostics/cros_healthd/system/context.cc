@@ -26,8 +26,6 @@
 // NOLINTNEXTLINE(build/include_alpha) dbus-proxies.h needs spaced.pb.h
 #include <spaced/dbus-proxies.h>
 
-#include "diagnostics/cros_healthd/network/network_health_adapter_impl.h"
-#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter_impl.h"
 #include "diagnostics/cros_healthd/system/bluez_controller.h"
 #include "diagnostics/cros_healthd/system/bluez_event_hub.h"
 #include "diagnostics/cros_healthd/system/cros_config.h"
@@ -103,12 +101,7 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
 
   // Create the mojo clients which will be initialized after connecting with
   // chrome.
-  network_health_adapter_ = std::make_unique<NetworkHealthAdapterImpl>();
-  network_diagnostics_adapter_ =
-      std::make_unique<NetworkDiagnosticsAdapterImpl>();
-  mojo_service_ = MojoServiceImpl::Create(std::move(shutdown_callback),
-                                          network_health_adapter_.get(),
-                                          network_diagnostics_adapter_.get());
+  mojo_service_ = MojoServiceImpl::Create(std::move(shutdown_callback));
 
   // Connect to the root-level executor. Must after creating mojo services
   // because we need to wait the mojo broker (the service manager) being

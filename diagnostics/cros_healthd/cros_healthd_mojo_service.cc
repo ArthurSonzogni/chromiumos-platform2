@@ -12,10 +12,8 @@
 #include <chromeos/mojo/service_constants.h>
 
 #include "diagnostics/cros_healthd/fetchers/process_fetcher.h"
-#include "diagnostics/cros_healthd/network/network_health_adapter.h"
-#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/system/mojo_service.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
 
@@ -60,7 +58,12 @@ void CrosHealthdMojoService::AddPowerObserver(
 
 void CrosHealthdMojoService::AddNetworkObserver(
     mojo::PendingRemote<network_health_mojom::NetworkEventsObserver> observer) {
-  context_->network_health_adapter()->AddObserver(std::move(observer));
+  auto* network_health = context_->mojo_service()->GetNetworkHealth();
+  if (!network_health) {
+    LOG(ERROR) << "Network health service is unavailable.";
+    return;
+  }
+  network_health->AddObserver(std::move(observer));
 }
 
 void CrosHealthdMojoService::AddAudioObserver(

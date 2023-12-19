@@ -58,8 +58,6 @@ class FlossController;
 class FlossEventHub;
 class GroundTruth;
 class MojoService;
-class NetworkDiagnosticsAdapter;
-class NetworkHealthAdapter;
 class PciUtil;
 class PowerdAdapter;
 class ResourceQueue;
@@ -119,19 +117,6 @@ class Context {
   }
   // Gets GroundTruth to determine conditional features.
   GroundTruth* ground_truth() const { return ground_truth_.get(); }
-  // Use the object returned by network_health_adapter() to make requests to the
-  // NetworkHealthService. Example: cros_healthd calls out to the
-  // NetworkHealthService to get network telemetry data.
-  NetworkHealthAdapter* network_health_adapter() const {
-    return network_health_adapter_.get();
-  }
-  // Use the object returned by network_diagnostics_adapter() to make calls to
-  // the NetworkDiagnosticsRoutines interface implemented by the browser.
-  // Example: cros_healthd calls out to the NetworkDiagnosticsRoutines interface
-  // with async callbacks when it needs to run network diagnostics.
-  NetworkDiagnosticsAdapter* network_diagnostics_adapter() const {
-    return network_diagnostics_adapter_.get();
-  }
   // Use the object returned by powerd_adapter() to subscribe to notifications
   // from powerd.
   PowerdAdapter* powerd_adapter() const { return powerd_adapter_.get(); }
@@ -210,8 +195,6 @@ class Context {
   std::unique_ptr<org::freedesktop::fwupdProxyInterface> fwupd_proxy_;
   std::unique_ptr<GroundTruth> ground_truth_;
   std::unique_ptr<MojoService> mojo_service_;
-  std::unique_ptr<NetworkHealthAdapter> network_health_adapter_;
-  std::unique_ptr<NetworkDiagnosticsAdapter> network_diagnostics_adapter_;
   std::unique_ptr<org::chromium::PowerManagerProxyInterface>
       power_manager_proxy_;
   std::unique_ptr<PowerdAdapter> powerd_adapter_;

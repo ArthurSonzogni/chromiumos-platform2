@@ -31,8 +31,6 @@ class SensorDevice;
 namespace diagnostics {
 
 // Interface for accessing external mojo services.
-// TODO(b/237239654): Move network mojo interface here and clean up the network
-// adaptors.
 class MojoService {
  public:
   virtual ~MojoService() = default;

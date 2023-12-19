@@ -23,7 +23,6 @@ source_set("libcros_healthd") {
   deps = [
     "events:libcros_healthd_events",
     "fetchers:libcros_healthd_fetchers",
-    "network_diagnostics:libnetwork_diagnostics_adapter",
     "routines:libdiag_routine",
     "system:libcros_healthd_system",
     "//diagnostics/base",
@@ -85,8 +84,6 @@ if (use.test) {
       "//diagnostics/cros_healthd/events:libcros_healthd_events_test",
       "//diagnostics/cros_healthd/executor/utils:test",
       "//diagnostics/cros_healthd/fetchers:libcros_healthd_fetchers_test",
-      "//diagnostics/cros_healthd/network:network_test",
-      "//diagnostics/cros_healthd/network_diagnostics:network_diagnostics_test",
       "//diagnostics/cros_healthd/routines:libroutine_test_utils",
       "//diagnostics/cros_healthd/routines:routine_test",
       "//diagnostics/cros_healthd/system:libcros_healthd_system_test",

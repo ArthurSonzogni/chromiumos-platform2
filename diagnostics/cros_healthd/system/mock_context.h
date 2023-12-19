@@ -40,14 +40,12 @@ namespace diagnostics {
 class FakeBluezEventHub;
 class FakeFlossEventHub;
 class FakeMojoService;
-class FakeNetworkHealthAdapter;
 class FakePowerdAdapter;
 class FakeSystemConfig;
 class FakeSystemUtilities;
 class MockBluezController;
 class MockExecutor;
 class MockFlossController;
-class MockNetworkDiagnosticsAdapter;
 
 // A mock context class for testing.
 class MockContext final : public Context {
@@ -68,8 +66,6 @@ class MockContext final : public Context {
   org::chromium::cras::ControlProxyMock* mock_cras_proxy() const;
   org::freedesktop::fwupdProxyMock* mock_fwupd_proxy() const;
   FakeMojoService* fake_mojo_service() const;
-  FakeNetworkHealthAdapter* fake_network_health_adapter() const;
-  MockNetworkDiagnosticsAdapter* network_diagnostics_adapter() const;
   FakePowerdAdapter* fake_powerd_adapter() const;
   FakeSystemConfig* fake_system_config() const;
   FakeSystemUtilities* fake_system_utils() const;

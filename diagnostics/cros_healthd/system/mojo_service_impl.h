@@ -15,8 +15,6 @@
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
-#include "diagnostics/cros_healthd/network/network_health_adapter.h"
-#include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/mojom/external/cros_healthd_internal.mojom.h"
 #include "diagnostics/mojom/external/network_diagnostics.mojom.h"
@@ -33,9 +31,7 @@ class MojoServiceImpl : public MojoService {
 
   // Creates an instance with all the services initialized.
   static std::unique_ptr<MojoServiceImpl> Create(
-      base::OnceClosure shutdown_callback,
-      NetworkHealthAdapter* network_health_adapter,
-      NetworkDiagnosticsAdapter* network_diagnostics_adapter);
+      base::OnceClosure shutdown_callback);
 
   // MojoService overrides.
   chromeos::mojo_service_manager::mojom::ServiceManager* GetServiceManager()
@@ -51,8 +47,6 @@ class MojoServiceImpl : public MojoService {
 
  protected:
   MojoServiceImpl();
-  MojoServiceImpl(NetworkHealthAdapter* network_health_adapter,
-                  NetworkDiagnosticsAdapter* network_diagnostics_adapter);
 
   // Getters for subclass to modify the value.
   mojo::Remote<ash::cros_healthd::internal::mojom::ChromiumDataCollector>&
@@ -113,10 +107,6 @@ class MojoServiceImpl : public MojoService {
       network_diagnostics_routines_;
   mojo::Remote<cros::mojom::SensorService> sensor_service_;
   std::map<int32_t, mojo::Remote<cros::mojom::SensorDevice>> sensor_devices_;
-
-  // Network adapters. TODO(b/237239654): Remove this after migration.
-  NetworkHealthAdapter* const network_health_adapter_;
-  NetworkDiagnosticsAdapter* const network_diagnostics_adapter_;
 
   // Must be the last class member.
   base::WeakPtrFactory<MojoServiceImpl> weak_ptr_factory_{this};

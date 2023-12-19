@@ -32,8 +32,6 @@ executable("executor-delegate") {
     "//diagnostics/cros_healthd/executor/*",
     "//diagnostics/cros_healthd/fetchers/*",
     "//diagnostics/cros_healthd/minijail/*",
-    "//diagnostics/cros_healthd/network/*",
-    "//diagnostics/cros_healthd/network_diagnostics/*",
     "//diagnostics/cros_healthd/process/*",
     "//diagnostics/cros_healthd/routines/*",
     "//diagnostics/cros_healthd/system/*",

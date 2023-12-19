@@ -21,8 +21,6 @@
 #include <spaced/dbus-proxy-mocks.h>
 #include <gmock/gmock.h>
 
-#include "diagnostics/cros_healthd/network/fake_network_health_adapter.h"
-#include "diagnostics/cros_healthd/network_diagnostics/mock_network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/service_config.h"
 #include "diagnostics/cros_healthd/system/cros_config.h"
 #include "diagnostics/cros_healthd/system/fake_bluez_event_hub.h"
@@ -50,9 +48,6 @@ MockContext::MockContext() {
       std::make_unique<testing::StrictMock<org::freedesktop::fwupdProxyMock>>();
   ground_truth_ = std::make_unique<GroundTruth>(this);
   mojo_service_ = std::make_unique<FakeMojoService>();
-  network_health_adapter_ = std::make_unique<FakeNetworkHealthAdapter>();
-  network_diagnostics_adapter_ =
-      std::make_unique<MockNetworkDiagnosticsAdapter>();
   power_manager_proxy_ = std::make_unique<
       testing::StrictMock<org::chromium::PowerManagerProxyMock>>();
   powerd_adapter_ = std::make_unique<FakePowerdAdapter>();
@@ -112,17 +107,6 @@ org::freedesktop::fwupdProxyMock* MockContext::mock_fwupd_proxy() const {
 FakeMojoService* MockContext::fake_mojo_service() const {
   return static_cast<FakeMojoService*>(mojo_service_.get());
 }
-
-FakeNetworkHealthAdapter* MockContext::fake_network_health_adapter() const {
-  return static_cast<FakeNetworkHealthAdapter*>(network_health_adapter_.get());
-}
-
-MockNetworkDiagnosticsAdapter* MockContext::network_diagnostics_adapter()
-    const {
-  return static_cast<MockNetworkDiagnosticsAdapter*>(
-      network_diagnostics_adapter_.get());
-}
-
 FakePowerdAdapter* MockContext::fake_powerd_adapter() const {
   return static_cast<FakePowerdAdapter*>(powerd_adapter_.get());
 }
