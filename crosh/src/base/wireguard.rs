@@ -714,10 +714,11 @@ mod option_util {
         // Clears the bits after netmask (e.g., "192.168.1.1/24" => "192.168.1.0/24")
         let formatter = |s: &str| -> Result<String, Error> {
             let segments: Vec<&str> = s.split('/').collect();
-            if segments.len() != 2 {
-                return Err(err());
-            }
-            let prefix = segments[1].parse::<i32>().map_err(|_| err())?;
+            let prefix = match segments.len() {
+                1 => Ok(None),
+                2 => segments[1].parse::<i32>().map(Some).map_err(|_| err()),
+                _ => Err(err()),
+            }?;
             match segments[0].parse::<IpAddr>().map_err(|_| err())? {
                 IpAddr::V4(addr) => {
                     let addr_u32 = addr
@@ -725,11 +726,11 @@ mod option_util {
                         .iter()
                         .fold(0u32, |acc, x| (acc << 8) + (*x as u32));
                     match prefix {
-                        0..=31 => {
-                            let base_addr = Ipv4Addr::from(addr_u32 & !(u32::MAX >> prefix));
-                            Ok(format!("{}/{}", base_addr, prefix))
+                        Some(v) if (0..=31).contains(&v) => {
+                            let base_addr = Ipv4Addr::from(addr_u32 & !(u32::MAX >> v));
+                            Ok(format!("{}/{}", base_addr, v))
                         }
-                        32 => Ok(s.to_string()),
+                        Some(32) | None => Ok(s.to_string()),
                         _ => Err(err()),
                     }
                 }
@@ -739,11 +740,11 @@ mod option_util {
                         .iter()
                         .fold(0u128, |acc, x| (acc << 8) + (*x as u128));
                     match prefix {
-                        0..=127 => {
-                            let base_addr = Ipv6Addr::from(addr_u128 & !(u128::MAX >> prefix));
-                            Ok(format!("{}/{}", base_addr, prefix))
+                        Some(v) if (0..=127).contains(&v) => {
+                            let base_addr = Ipv6Addr::from(addr_u128 & !(u128::MAX >> v));
+                            Ok(format!("{}/{}", base_addr, v))
                         }
-                        128 => Ok(s.to_string()),
+                        Some(128) | None => Ok(s.to_string()),
                         _ => Err(err()),
                     }
                 }
@@ -1206,12 +1207,14 @@ mod tests {
             ("", ""),
             ("0.0.0.0/0", "0.0.0.0/0"),
             ("192.168.12.13/0", "0.0.0.0/0"),
+            ("192.168.0.1", "192.168.0.1"),
             ("192.168.0.1/32", "192.168.0.1/32"),
             ("192.168.1.0/24", "192.168.1.0/24"),
             ("192.168.1.1/24", "192.168.1.0/24"),
             ("192.168.0.0/16", "192.168.0.0/16"),
             ("192.168.12.13/16", "192.168.0.0/16"),
             ("192.168.128.0/20,10.0.0.0/8", "192.168.128.0/20,10.0.0.0/8"),
+            ("fd01::1", "fd01::1"),
             ("fd01::1/64", "fd01::/64"),
             ("fd01::1/8", "fd00::/8"),
             ("fd01::1/128", "fd01::1/128"),
@@ -1238,7 +1241,6 @@ mod tests {
             "192.168.128.0/20, 10.0.0.0/8", // additional space
             "192.168.128.0/20;10.0.0.0/8",  // bad separator
             "fd01::1/-1",
-            "fd01::1",
             "fd01::/129",
         ];
         for c in cases.iter() {
