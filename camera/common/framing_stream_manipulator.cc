@@ -337,7 +337,7 @@ bool FramingStreamManipulator::UpdateStaticMetadata(
   }
 
   // TODO(b/316070046): Enable on strongbad devices.
-  bool device_supported = base::SysInfo::GetLsbReleaseBoard() != "strongbad";
+  bool device_supported = base::SysInfo::HardwareModelName() != "STRONGBAD";
   if (!device_supported) {
     manual_zoom_supported = false;
     VLOGF(1) << "Manual zoom is not supported on this device";

@@ -133,9 +133,9 @@ void EnableFramingStreamManipulator(
     StreamManipulator::RuntimeOptions* runtime_options,
     GpuResources* gpu_resources,
     std::vector<std::unique_ptr<StreamManipulator>>* out_stream_manipulators) {
-  // // TODO(b/316070046): Enable on strongbad devices once the
+  // TODO(b/316070046): Enable on strongbad devices once the
   // ConfigureStreams crash is resolved.
-  if (base::SysInfo::GetLsbReleaseBoard() == "strongbad") {
+  if (base::SysInfo::HardwareModelName() == "STRONGBAD") {
     return;
   }
 #if USE_CAMERA_FEATURE_AUTO_FRAMING
