@@ -168,6 +168,10 @@ class PeripheralBatteryWatcherTest : public TestEnvironment {
         device_dir.Append(PeripheralBatteryWatcher::kCapacityFile);
 
     battery_.set_battery_path_for_testing(temp_dir_.GetPath());
+
+    test_wrapper_.SetMethodCallback(base::BindRepeating(
+        &PeripheralBatteryWatcherTest::HandleBluetoothManagerRegisterCallback,
+        base::Unretained(this)));
   }
 
   void TearDown() override {
@@ -197,6 +201,13 @@ class PeripheralBatteryWatcherTest : public TestEnvironment {
         device_dir.Append(PeripheralBatteryWatcher::kStatusFile);
     peripheral_charger_health_file_ =
         device_dir.Append(PeripheralBatteryWatcher::kHealthFile);
+  }
+
+  std::unique_ptr<dbus::Response> HandleBluetoothManagerRegisterCallback(
+      dbus::ObjectProxy* proxy, dbus::MethodCall* method_call) {
+    std::unique_ptr<dbus::Response> response =
+        dbus::Response::FromMethodCall(method_call);
+    return response;
   }
 
   // Temporary directory mimicking a /sys directory containing a set of sensor

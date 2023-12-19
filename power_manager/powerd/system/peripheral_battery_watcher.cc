@@ -125,7 +125,7 @@ void PeripheralBatteryWatcher::Init(DBusWrapperInterface* dbus_wrapper,
           weak_ptr_factory_.GetWeakPtr()));
 
   bluez_battery_provider_->Init(dbus_wrapper_->GetBus());
-  floss_battery_provider_->Init(dbus_wrapper_->GetBus());
+  floss_battery_provider_->Init(dbus_wrapper_);
 }
 
 void PeripheralBatteryWatcher::OnUdevEvent(const UdevEvent& event) {
