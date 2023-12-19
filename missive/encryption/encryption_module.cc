@@ -12,6 +12,7 @@
 #include <base/functional/callback.h>
 #include <base/task/thread_pool.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/proto/record.pb.h"
@@ -34,7 +35,7 @@ void AddToRecord(std::string_view record,
              base::OnceCallback<void(StatusOr<EncryptedRecord>)> cb,
              Status status) {
             if (!status.ok()) {
-              std::move(cb).Run(status);
+              std::move(cb).Run(base::unexpected(std::move(status)));
               return;
             }
             base::ThreadPool::PostTask(
@@ -68,7 +69,7 @@ void EncryptionModule::EncryptRecordImpl(
          base::OnceCallback<void(StatusOr<EncryptedRecord>)> cb,
          StatusOr<Encryptor::Handle*> handle_result) {
         if (!handle_result.has_value()) {
-          std::move(cb).Run(handle_result.error());
+          std::move(cb).Run(base::unexpected(std::move(handle_result).error()));
           return;
         }
         base::ThreadPool::PostTask(

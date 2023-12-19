@@ -14,6 +14,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
+#include <base/types/expected.h>
 
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
@@ -183,7 +184,8 @@ class Scheduler::JobSemaphore {
   StatusOr<std::unique_ptr<JobBlocker>> AcquireJobBlocker() {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     if (running_jobs_ >= task_limit_) {
-      return Status(error::RESOURCE_EXHAUSTED, "Currently at job limit");
+      return base::unexpected(
+          Status(error::RESOURCE_EXHAUSTED, "Currently at job limit"));
     }
     running_jobs_++;
 

@@ -22,6 +22,7 @@
 #include <base/test/task_environment.h>
 #include <base/thread_annotations.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <crypto/sha2.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -192,7 +193,8 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
         /*init_retry_cb=*/base::BindRepeating(
             [](Status init_status,
                size_t retry_count) -> StatusOr<base::TimeDelta> {
-              return init_status;  // Do not allow initialization retries.
+              // Do not allow initialization retries.
+              return base::unexpected(std::move(init_status));
             }),
         initialized_event.cb());
     const auto initialized_result = initialized_event.result();
@@ -227,10 +229,10 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
       LOG(ERROR) << "Upload not expected, reason="
                  << UploaderInterface::ReasonToString(reason);
       std::move(start_uploader_cb)
-          .Run(Status(
+          .Run(base::unexpected(Status(
               error::CANCELLED,
               base::StrCat({"Unexpected upload ignored, reason=",
-                            UploaderInterface::ReasonToString(reason)})));
+                            UploaderInterface::ReasonToString(reason)}))));
       return;
     }
     std::move(start_uploader_cb)

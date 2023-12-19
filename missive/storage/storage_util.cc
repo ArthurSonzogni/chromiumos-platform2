@@ -6,6 +6,7 @@
 
 #include <string>
 #include <tuple>
+#include <utility>
 
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>
@@ -13,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
+#include <base/types/expected.h>
 #include <base/uuid.h>
 
 #include "missive/storage/storage_queue.h"
@@ -61,13 +63,13 @@ StorageDirectory::GetPriorityAndGenerationGuid(
   // Try to parse generation guid from file path
   const auto generation_guid = ParseGenerationGuidFromFilePath(full_name);
   if (!generation_guid.has_value()) {
-    return generation_guid.error();
+    return base::unexpected(std::move(generation_guid).error());
   }
   // Try to parse a priority from file path
   const auto priority =
       ParsePriorityFromQueueDirectory(full_name, options_list);
   if (!priority.has_value()) {
-    return priority.error();
+    return base::unexpected(std::move(priority).error());
   }
   return std::make_tuple(priority.value(), generation_guid.value());
 }
@@ -79,10 +81,10 @@ StatusOr<GenerationGuid> StorageDirectory::ParseGenerationGuidFromFilePath(
   // ".txt" instead of "txt", so remove the period just get the text part of
   // the extension.
   if (full_name.Extension().empty()) {
-    return Status(
+    return base::unexpected(Status(
         error::DATA_LOSS,
         base::StrCat({"Could not parse generation GUID from queue directory ",
-                      full_name.MaybeAsASCII()}));
+                      full_name.MaybeAsASCII()})));
   }
 
   const std::string extension_without_leading_period =
@@ -91,10 +93,10 @@ StatusOr<GenerationGuid> StorageDirectory::ParseGenerationGuidFromFilePath(
   const auto generation_guid =
       base::Uuid::ParseCaseInsensitive(extension_without_leading_period);
   if (!generation_guid.is_valid()) {
-    return Status(
+    return base::unexpected(Status(
         error::DATA_LOSS,
         base::StrCat({"Could not parse generation GUID from queue directory ",
-                      full_name.MaybeAsASCII()}));
+                      full_name.MaybeAsASCII()})));
   }
   return generation_guid.AsLowercaseString();
 }
@@ -109,9 +111,9 @@ StatusOr<Priority> StorageDirectory::ParsePriorityFromQueueDirectory(
       return priority_queue_options_pair.first;
     }
   }
-  return Status(error::NOT_FOUND,
-                base::StrCat({"Found no priority for queue directory ",
-                              full_path.MaybeAsASCII()}));
+  return base::unexpected(Status(
+      error::NOT_FOUND, base::StrCat({"Found no priority for queue directory ",
+                                      full_path.MaybeAsASCII()})));
 }
 
 // static

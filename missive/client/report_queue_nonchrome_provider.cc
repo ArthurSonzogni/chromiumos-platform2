@@ -16,6 +16,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/task/bind_post_task.h>
 #include <base/task/sequenced_task_runner.h>
+#include <base/types/expected.h>
 
 #include "missive/client/empty_dm_token_retriever.h"
 #include "missive/client/missive_client.h"
@@ -53,10 +54,11 @@ void NonChromeReportQueueProvider::ConfigureReportQueue(
 
   if (configuration->event_type() != EventType::kDevice) {
     std::move(completion_cb)
-        .Run(Status(error::INTERNAL,
-                    base::StrCat({"No DM token retriever found for event type=",
-                                  base::NumberToString(static_cast<int>(
-                                      configuration->event_type()))})));
+        .Run(base::unexpected(
+            Status(error::INTERNAL,
+                   base::StrCat({"No DM token retriever found for event type=",
+                                 base::NumberToString(static_cast<int>(
+                                     configuration->event_type()))}))));
     return;
   }
   auto dm_token_retriever = std::make_unique<EmptyDMTokenRetriever>();
@@ -67,7 +69,8 @@ void NonChromeReportQueueProvider::ConfigureReportQueue(
         // Trigger completion callback with error if there was an error
         // retrieving DM token.
         if (!dm_token_result.has_value()) {
-          std::move(completion_cb).Run(dm_token_result.error());
+          std::move(completion_cb)
+              .Run(base::unexpected(std::move(dm_token_result).error()));
           return;
         }
 
@@ -77,7 +80,8 @@ void NonChromeReportQueueProvider::ConfigureReportQueue(
 
         // Fail on error
         if (!config_result.ok()) {
-          std::move(completion_cb).Run(config_result);
+          std::move(completion_cb)
+              .Run(base::unexpected(std::move(config_result)));
           return;
         }
 
@@ -103,9 +107,9 @@ void NonChromeReportQueueProvider::CreateMissiveStorageModule(
         cb) {
   MissiveClient* const missive_client = MissiveClient::Get();
   if (!missive_client) {
-    std::move(cb).Run(Status(
+    std::move(cb).Run(base::unexpected(Status(
         error::FAILED_PRECONDITION,
-        "Missive Client unavailable, probably has not been initialized"));
+        "Missive Client unavailable, probably has not been initialized")));
     return;
   }
   // Refer to the storage module.
@@ -121,8 +125,9 @@ void NonChromeReportQueueProvider::CreateMissiveStorageModule(
   auto missive_storage_module =
       MissiveStorageModule::Create(std::move(missive_storage_module_delegate));
   if (!missive_storage_module) {
-    std::move(cb).Run(Status(error::FAILED_PRECONDITION,
-                             "Missive Storage Module failed to create"));
+    std::move(cb).Run(
+        base::unexpected(Status(error::FAILED_PRECONDITION,
+                                "Missive Storage Module failed to create")));
     return;
   }
   LOG(WARNING) << "Store reporting data by a Missive daemon";

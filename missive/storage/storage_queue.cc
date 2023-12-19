@@ -42,6 +42,8 @@
 #include <base/task/thread_pool.h>
 #include <base/thread_annotations.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
+#include <base/types/expected_macros.h>
 #include <crypto/random.h>
 #include <crypto/sha2.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
@@ -139,14 +141,14 @@ struct RecordHeader {
   // consistent even compiler behavior changes.
   [[nodiscard]] static StatusOr<RecordHeader> FromString(std::string_view s) {
     if (s.size() < kSize) {
-      return Status(error::INTERNAL, "header is corrupt");
+      return base::unexpected(Status(error::INTERNAL, "header is corrupt"));
     }
 
     RecordHeader header;
     const char* p = s.data();
     header.record_sequencing_id = *reinterpret_cast<const int64_t*>(p);
     if (header.record_sequencing_id < 0) {
-      return Status(error::INTERNAL, "header is corrupt");
+      return base::unexpected(Status(error::INTERNAL, "header is corrupt"));
     }
     p += sizeof(header.record_sequencing_id);
     header.record_size = *reinterpret_cast<const int32_t*>(p);
@@ -285,8 +287,8 @@ Status StorageQueue::DoInit() {
   std::unordered_set<base::FilePath> used_files_set;
   // Enumerate data files and scan the last one to determine what sequence
   // ids do we have (first and last).
-  RETURN_IF_ERROR(EnumerateDataFiles(&used_files_set));
-  RETURN_IF_ERROR(ScanLastFile());
+  RETURN_IF_ERROR_STATUS(EnumerateDataFiles(&used_files_set));
+  RETURN_IF_ERROR_STATUS(ScanLastFile());
   if (next_sequencing_id_ > 0) {
     // Enumerate metadata files to determine what sequencing ids have
     // last record digest. They might have metadata for sequencing ids
@@ -438,17 +440,17 @@ StatusOr<int64_t> StorageQueue::GetFileSequenceIdFromPath(
     const base::FilePath& file_name) {
   const auto extension = file_name.FinalExtension();
   if (extension.empty() || extension == ".") {
-    return Status(error::INTERNAL,
-                  base::StrCat({"File has no extension: '",
-                                file_name.MaybeAsASCII(), "'"}));
+    return base::unexpected(
+        Status(error::INTERNAL, base::StrCat({"File has no extension: '",
+                                              file_name.MaybeAsASCII(), "'"})));
   }
   int64_t file_sequence_id = 0;
   const bool success =
       base::StringToInt64(extension.substr(1), &file_sequence_id);
   if (!success) {
-    return Status(error::INTERNAL,
-                  base::StrCat({"File extension does not parse: '",
-                                file_name.MaybeAsASCII(), "'"}));
+    return base::unexpected(Status(
+        error::INTERNAL, base::StrCat({"File extension does not parse: '",
+                                       file_name.MaybeAsASCII(), "'"})));
   }
 
   return file_sequence_id;
@@ -467,12 +469,12 @@ StatusOr<int64_t> StorageQueue::AddDataFile(
                           .disk_space_resource = options_.disk_space_resource(),
                           .completion_closure_list = completion_closure_list_});
   if (!file_or_status.has_value()) {
-    return file_or_status.error();
+    return base::unexpected(std::move(file_or_status).error());
   }
   if (!files_.emplace(file_sequence_id, file_or_status.value()).second) {
-    return Status(error::ALREADY_EXISTS,
-                  base::StrCat({"Sequencing id duplicated: '",
-                                full_name.MaybeAsASCII(), "'"}));
+    return base::unexpected(Status(
+        error::ALREADY_EXISTS, base::StrCat({"Sequencing id duplicated: '",
+                                             full_name.MaybeAsASCII(), "'"})));
   }
   return file_sequence_id;
 }
@@ -658,7 +660,8 @@ StatusOr<scoped_refptr<StorageQueue::SingleFile>> StorageQueue::AssignLastFile(
     CHECK(insert_result.second);
   }
   if (size > options_.max_record_size()) {
-    return Status(error::OUT_OF_RANGE, "Too much data to be recorded at once");
+    return base::unexpected(
+        Status(error::OUT_OF_RANGE, "Too much data to be recorded at once"));
   }
   scoped_refptr<SingleFile> last_file = files_.rbegin()->second;
   if (last_file->size() > 0 &&  // Cannot have a file with no records.
@@ -688,13 +691,13 @@ StorageQueue::OpenNewWriteableFile() {
            .memory_resource = options_.memory_resource(),
            .disk_space_resource = options_.disk_space_resource(),
            .completion_closure_list = completion_closure_list_}));
-  RETURN_IF_ERROR(new_file->Open(/*read_only=*/false));
+  RETURN_IF_ERROR_STATUS(base::unexpected(new_file->Open(/*read_only=*/false)));
   auto insert_result = files_.emplace(next_sequencing_id_, new_file);
   if (!insert_result.second) {
-    return Status(
-        error::ALREADY_EXISTS,
-        base::StrCat({"Sequencing id already assigned: '",
-                      base::NumberToString(next_sequencing_id_), "'"}));
+    return base::unexpected(
+        Status(error::ALREADY_EXISTS,
+               base::StrCat({"Sequencing id already assigned: '",
+                             base::NumberToString(next_sequencing_id_), "'"})));
   }
   return new_file;
 }
@@ -708,7 +711,7 @@ Status StorageQueue::WriteHeaderAndBlock(
 
   // Test only: Simulate failure if requested
   if (test_injection_handler_) {
-    RETURN_IF_ERROR(test_injection_handler_.Run(
+    RETURN_IF_ERROR_STATUS(test_injection_handler_.Run(
         test::StorageQueueOperationKind::kWriteBlock, next_sequencing_id_));
   }
 
@@ -774,7 +777,7 @@ Status StorageQueue::WriteMetadata(std::string_view current_record_digest,
 
   // Test only: Simulate failure if requested
   if (test_injection_handler_) {
-    RETURN_IF_ERROR(test_injection_handler_.Run(
+    RETURN_IF_ERROR_STATUS(test_injection_handler_.Run(
         test::StorageQueueOperationKind::kWriteMetadata, next_sequencing_id_));
   }
 
@@ -789,7 +792,7 @@ Status StorageQueue::WriteMetadata(std::string_view current_record_digest,
                         .memory_resource = options_.memory_resource(),
                         .disk_space_resource = options_.disk_space_resource(),
                         .completion_closure_list = completion_closure_list_}));
-  RETURN_IF_ERROR(meta_file->Open(/*read_only=*/false));
+  RETURN_IF_ERROR_STATUS(meta_file->Open(/*read_only=*/false));
 
   // The space for this following Appends has being reserved with
   // `ReserveNewRecordDiskSpace`.
@@ -840,7 +843,7 @@ Status StorageQueue::ReadMetadata(
                         .memory_resource = options_.memory_resource(),
                         .disk_space_resource = options_.disk_space_resource(),
                         .completion_closure_list = completion_closure_list_}));
-  RETURN_IF_ERROR(meta_file->Open(/*read_only=*/true));
+  RETURN_IF_ERROR_STATUS(meta_file->Open(/*read_only=*/true));
   // Metadata file format is:
   // - generation id (8 bytes)
   // - last record digest (crypto::kSHA256Length bytes)
@@ -1412,34 +1415,33 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   // or record hash does not match), returns error.
   StatusOr<std::string_view> EnsureBlob(int64_t sequencing_id) {
     if (!storage_queue_) {
-      return Status(error::UNAVAILABLE, "StorageQueue shut down");
+      return base::unexpected(
+          Status(error::UNAVAILABLE, "StorageQueue shut down"));
     }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
         storage_queue_->storage_queue_sequence_checker_);
 
     // Test only: simulate error, if requested.
     if (storage_queue_->test_injection_handler_) {
-      RETURN_IF_ERROR(storage_queue_->test_injection_handler_.Run(
-          test::StorageQueueOperationKind::kReadBlock, sequencing_id));
+      RETURN_IF_ERROR_STATUS(
+          base::unexpected(storage_queue_->test_injection_handler_.Run(
+              test::StorageQueueOperationKind::kReadBlock, sequencing_id)));
     }
 
     // Read from the current file at the current offset.
-    RETURN_IF_ERROR(current_file_->second->Open(/*read_only=*/true));
+    RETURN_IF_ERROR_STATUS(
+        base::unexpected(current_file_->second->Open(/*read_only=*/true)));
     const size_t max_buffer_size =
         RoundUpToFrameSize(storage_queue_->options_.max_record_size()) +
         RoundUpToFrameSize(RecordHeader::kSize);
     auto read_result = current_file_->second->Read(
         current_pos_, RecordHeader::kSize, max_buffer_size);
-    // TODO(b/305766975): Change the following if-block back to
-    // RETURN_IF_ERROR(read_result) once StatusOr becomes an alias to
-    // base::expected.
-    if (!read_result.has_value()) {
-      return read_result.error();
-    }
+    RETURN_IF_ERROR(read_result);
     auto header_data = read_result.value();
     if (header_data.empty()) {
       // No more blobs.
-      return Status(error::OUT_OF_RANGE, "Reached end of data");
+      return base::unexpected(
+          Status(error::OUT_OF_RANGE, "Reached end of data"));
     }
     current_pos_ += header_data.size();
     // Copy the header out (its memory can be overwritten when reading rest of
@@ -1447,18 +1449,18 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     const auto header_status = RecordHeader::FromString(header_data);
     if (!header_status.has_value()) {
       // Error detected.
-      return Status(
+      return base::unexpected(Status(
           error::INTERNAL,
-          base::StrCat({"File corrupt: ", current_file_->second->name()}));
+          base::StrCat({"File corrupt: ", current_file_->second->name()})));
     }
     const auto header = std::move(header_status.value());
     if (header.record_sequencing_id != sequencing_id) {
-      return Status(
+      return base::unexpected(Status(
           error::INTERNAL,
           base::StrCat(
               {"File corrupt: ", current_file_->second->name(),
                " seq=", base::NumberToString(header.record_sequencing_id),
-               " expected=", base::NumberToString(sequencing_id)}));
+               " expected=", base::NumberToString(sequencing_id)})));
     }
     // Read the record blob (align size to FRAME_SIZE).
     const size_t data_size = RoundUpToFrameSize(header.record_size);
@@ -1466,27 +1468,22 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     // overwritten when reading rest of the data.
     read_result =
         current_file_->second->Read(current_pos_, data_size, max_buffer_size);
-    // TODO(b/305766975): Change the following if-block back to
-    // RETURN_IF_ERROR(read_result) once StatusOr becomes an alias to
-    // base::expected.
-    if (!read_result.has_value()) {
-      return read_result.error();
-    }
+    RETURN_IF_ERROR(read_result);
     current_pos_ += read_result.value().size();
     if (read_result.value().size() != data_size) {
       // File corrupt, blob incomplete.
-      return Status(
+      return base::unexpected(Status(
           error::INTERNAL,
           base::StrCat(
               {"File corrupt: ", current_file_->second->name(),
                " size=", base::NumberToString(read_result.value().size()),
-               " expected=", base::NumberToString(data_size)}));
+               " expected=", base::NumberToString(data_size)})));
     }
     // Verify record hash.
     uint32_t actual_record_hash =
         base::PersistentHash(read_result.value().data(), header.record_size);
     if (header.record_hash != actual_record_hash) {
-      return Status(
+      return base::unexpected(Status(
           error::INTERNAL,
           base::StrCat(
               {"File corrupt: ", current_file_->second->name(), " seq=",
@@ -1497,7 +1494,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
                " expected=",
                base::HexEncode(
                    reinterpret_cast<const uint8_t*>(&actual_record_hash),
-                   sizeof(actual_record_hash))}));
+                   sizeof(actual_record_hash))})));
     }
     return read_result.value().substr(0, header.record_size);
   }
@@ -2605,10 +2602,10 @@ StorageQueue::SingleFile::Create(
     LOG(WARNING) << "Disk space exceeded adding file "
                  << settings.filename.MaybeAsASCII();
     SendResExCaseToUma(ResourceExhaustedCase::DISK_SPACE_EXCEEDED_ADDING_FILE);
-    return Status(
-        error::RESOURCE_EXHAUSTED,
-        base::StrCat({"Not enough disk space available to include file=",
-                      settings.filename.MaybeAsASCII()}));
+    return base::unexpected(
+        Status(error::RESOURCE_EXHAUSTED,
+               base::StrCat({"Not enough disk space available to include file=",
+                             settings.filename.MaybeAsASCII()})));
   }
 
   // Cannot use base::MakeRefCounted, since the constructor is private.
@@ -2685,21 +2682,23 @@ StatusOr<std::string_view> StorageQueue::SingleFile::Read(
     uint32_t pos, uint32_t size, size_t max_buffer_size, bool expect_readonly) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!handle_) {
-    return Status(error::UNAVAILABLE, base::StrCat({"File not open ", name()}));
+    return base::unexpected(
+        Status(error::UNAVAILABLE, base::StrCat({"File not open ", name()})));
   }
   if (expect_readonly != is_readonly()) {
-    return Status(error::INTERNAL,
-                  base::StrCat({"Attempt to read ",
-                                is_readonly() ? "readonly" : "writeable",
-                                " File ", name()}));
+    return base::unexpected(Status(
+        error::INTERNAL, base::StrCat({"Attempt to read ",
+                                       is_readonly() ? "readonly" : "writeable",
+                                       " File ", name()})));
   }
   if (size > max_buffer_size) {
     SendResExCaseToUma(ResourceExhaustedCase::TOO_MUCH_DATA_TO_READ);
-    return Status(error::RESOURCE_EXHAUSTED, "Too much data to read");
+    return base::unexpected(
+        Status(error::RESOURCE_EXHAUSTED, "Too much data to read"));
   }
   if (size_ == 0) {
     // Empty file, return EOF right away.
-    return Status(error::OUT_OF_RANGE, "End of file");
+    return base::unexpected(Status(error::OUT_OF_RANGE, "End of file"));
   }
   // If no buffer yet, allocate.
   // TODO(b/157943192): Add buffer management - consider adding an UMA for
@@ -2710,7 +2709,7 @@ StatusOr<std::string_view> StorageQueue::SingleFile::Read(
     auto alloc_status = buffer_.Allocate(buffer_size);
     if (!alloc_status.ok()) {
       SendResExCaseToUma(ResourceExhaustedCase::NO_MEMORY_FOR_READ_BUFFER);
-      return alloc_status;
+      return base::unexpected(std::move(alloc_status));
     }
     data_start_ = data_end_ = 0;
     file_position_ = 0;
@@ -2738,11 +2737,11 @@ StatusOr<std::string_view> StorageQueue::SingleFile::Read(
     const int32_t result =
         handle_->Read(pos, buffer_.at(data_end_), buffer_.size() - data_end_);
     if (result < 0) {
-      return Status(
+      return base::unexpected(Status(
           error::DATA_LOSS,
           base::StrCat({"File read error=",
                         handle_->ErrorToString(handle_->GetLastFileError()),
-                        " ", name()}));
+                        " ", name()})));
     }
     if (result == 0) {
       break;
@@ -2757,7 +2756,7 @@ StatusOr<std::string_view> StorageQueue::SingleFile::Read(
   }
   // If nothing read, report end of file.
   if (actual_size == 0) {
-    return Status(error::OUT_OF_RANGE, "End of file");
+    return base::unexpected(Status(error::OUT_OF_RANGE, "End of file"));
   }
   // Prepare reference to actually loaded data.
   auto read_data = std::string_view(buffer_.at(data_start_), actual_size);
@@ -2772,22 +2771,23 @@ StatusOr<std::string_view> StorageQueue::SingleFile::Read(
 StatusOr<uint32_t> StorageQueue::SingleFile::Append(std::string_view data) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!handle_) {
-    return Status(error::UNAVAILABLE, base::StrCat({"File not open ", name()}));
+    return base::unexpected(
+        Status(error::UNAVAILABLE, base::StrCat({"File not open ", name()})));
   }
   if (is_readonly()) {
-    return Status(
-        error::INTERNAL,
-        base::StrCat({"Attempt to append to read-only File ", name()}));
+    return base::unexpected(
+        Status(error::INTERNAL,
+               base::StrCat({"Attempt to append to read-only File ", name()})));
   }
   size_t actual_size = 0;
   while (data.size() > 0) {
     const int32_t result = handle_->Write(size_, data.data(), data.size());
     if (result < 0) {
-      return Status(
+      return base::unexpected(Status(
           error::DATA_LOSS,
           base::StrCat({"File write error=",
                         handle_->ErrorToString(handle_->GetLastFileError()),
-                        " ", name()}));
+                        " ", name()})));
     }
     size_ += result;
     actual_size += result;

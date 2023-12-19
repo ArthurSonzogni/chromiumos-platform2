@@ -9,6 +9,7 @@
 #include <optional>
 #include <utility>
 
+#include <base/logging.h>
 #include <base/sequence_checker.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>

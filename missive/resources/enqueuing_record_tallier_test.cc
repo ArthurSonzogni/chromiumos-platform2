@@ -11,6 +11,7 @@
 
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -153,9 +154,9 @@ TEST_F(EnqueuingRecordTallierTest, AssumeOneWhenNegativeTimeDifference) {
 TEST_F(EnqueuingRecordTallierTest, FailedToGetCurrentWallTime) {
   // Failed to get current wall time
   constexpr uint64_t kNumRecords = 2U;
-  const Status kWallTime(error::UNKNOWN, "Failed to get wall time");
   tallier_.TallyTimes(kRecord, kNumRecords);
-  tallier_.SetCurrentWallTime(kWallTime);
+  tallier_.SetCurrentWallTime(
+      base::unexpected(Status(error::UNKNOWN, "Failed to get wall time")));
 
   // kWallTime dictates the return value of |GetAverage|.
   task_environment_.FastForwardBy(kInterval);
@@ -167,10 +168,10 @@ TEST_F(EnqueuingRecordTallierTest, FailedToGetCurrentWallTime) {
 TEST_F(EnqueuingRecordTallierTest, FailedToGetLastWallTime) {
   // Failed to get last wall time
   constexpr uint64_t kNumRecords = 30U;
-  const Status kFailedWallTime(error::UNKNOWN, "Failed to get wall time");
   constexpr uint64_t kSuccessfulWallTime = 40U;
 
-  tallier_.SetCurrentWallTime(kFailedWallTime);
+  tallier_.SetCurrentWallTime(
+      base::unexpected(Status(error::UNKNOWN, "Failed to get wall time")));
   tallier_.ResetLastWallTime();
 
   // The erroneous last wall time dictates the return value of |GetAverage|.

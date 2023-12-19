@@ -8,6 +8,7 @@
 
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -25,9 +26,6 @@ class ResourceCollectorCpuTest : public ::testing::Test {
    public:
     MOCK_METHOD(StatusOr<uint64_t>, Tally, (), (override));
   };
-
-  void SetUp() override {
-  }
 
   void MockCpu() {
     resource_collector_.tallier_ = std::make_unique<MockCpuUsageTallier>();
@@ -63,7 +61,8 @@ TEST_F(ResourceCollectorCpuTest, FailToSendMockCpu) {
       *static_cast<MockCpuUsageTallier*>(resource_collector_.tallier_.get()),
       Tally())
       .Times(1)
-      .WillOnce(Return(Status(error::INTERNAL, "Some internal error")));
+      .WillOnce(Return(
+          base::unexpected(Status(error::INTERNAL, "Some internal error"))));
   // Proper data should be sent to UMA upon kInterval having elapsed
   EXPECT_CALL(Metrics::TestEnvironment::GetMockMetricsLibrary(),
               SendPercentageToUMA(_, _))

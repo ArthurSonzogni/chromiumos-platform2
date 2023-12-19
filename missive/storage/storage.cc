@@ -32,6 +32,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/sequence_checker.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
 #include "missive/encryption/encryption_module_interface.h"
@@ -310,7 +311,7 @@ void Storage::Create(
         return;
       }
       if (!final_status_.ok()) {
-        Response(final_status_);
+        Response(base::unexpected(final_status_));
         return;
       }
       Response(std::move(storage_));
@@ -705,7 +706,7 @@ StatusOr<scoped_refptr<StorageQueue>> Storage::TryGetQueue(
     Priority priority, StatusOr<GenerationGuid> generation_guid) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!generation_guid.has_value()) {
-    return generation_guid.error();
+    return base::unexpected(std::move(generation_guid).error());
   }
   // Attempt to get queue by priority and generation_guid on
   // the Storage task runner.
@@ -713,10 +714,10 @@ StatusOr<scoped_refptr<StorageQueue>> Storage::TryGetQueue(
       queues_container_->GetQueue(priority, generation_guid.value());
   if (!queue_result.has_value()) {
     // Queue not found, abort.
-    return queue_result.error();
+    return base::unexpected(std::move(queue_result).error());
   }
   // Queue found, return it.
-  return queue_result.value();
+  return std::move(queue_result).value();
 }
 
 void Storage::RegisterCompletionCallback(base::OnceClosure callback) {

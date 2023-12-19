@@ -9,9 +9,9 @@
 
 #include <base/logging.h>
 #include <base/time/time.h>
+#include <base/types/expected_macros.h>
 
 #include "missive/analytics/metrics.h"
-#include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 #include "missive/util/time.h"
 

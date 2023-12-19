@@ -26,100 +26,68 @@ Status StatusTestFunction(bool fail) {
   return Status::StatusOK();
 }
 
-Status ReturnIfErrorWrapperFunction(bool fail) {
-  RETURN_IF_ERROR(StatusTestFunction(fail));
+Status ReturnIfErrorStatusWrapperFunction(bool fail) {
+  RETURN_IF_ERROR_STATUS(StatusTestFunction(fail));
 
   // Return error here to make sure that we aren't just returning the OK from
   // StatusTestFunction.
   return Status(error::INTERNAL, "Returning Internal Error");
 }
 
-// RETURN_IF_ERROR macro actually returns on a non-OK status.
-TEST(StatusMacros, ReturnsOnError) {
-  Status test_status = ReturnIfErrorWrapperFunction(/*fail=*/true);
+// RETURN_IF_ERROR_STATUS macro actually returns on a non-OK status.
+TEST(StatusMacros, ReturnsOnErrorStatus) {
+  Status test_status = ReturnIfErrorStatusWrapperFunction(/*fail=*/true);
   EXPECT_FALSE(test_status.ok());
   EXPECT_EQ(test_status.code(), error::INVALID_ARGUMENT);
 }
 
-// RETURN_IF_ERROR macro continues on an OK status.
-TEST(StatusMacros, ReturnIfErrorContinuesOnOk) {
-  Status test_status = ReturnIfErrorWrapperFunction(/*fail=*/false);
+// RETURN_IF_ERROR_STATUS macro continues on an OK status.
+TEST(StatusMacros, ReturnIfErrorStatusContinuesOnOk) {
+  Status test_status = ReturnIfErrorStatusWrapperFunction(/*fail=*/false);
   EXPECT_FALSE(test_status.ok());
   EXPECT_EQ(test_status.code(), error::INTERNAL);
 }
 
+base::unexpected<Status> UnexpectedStatusTestFunction(bool fail) {
+  if (fail) {
+    return base::unexpected(Status(error::INVALID_ARGUMENT, "Fail was true."));
+  }
+  return base::unexpected(Status::StatusOK());
+}
+
+StatusOr<int> ReturnIfErrorUnexpectedStatusWrapperFunction(bool fail) {
+  RETURN_IF_ERROR_STATUS(UnexpectedStatusTestFunction(fail));
+
+  // Return error here to make sure that we aren't just returning the OK from
+  // UnexpectedStatusTestFunction.
+  return base::unexpected(Status(error::INTERNAL, "Returning Internal Error"));
+}
+
+// RETURN_IF_ERROR_STATUS macro actually returns on a non-OK status.
+TEST(StatusMacros, ReturnsOnErrorUnexpectedStatus) {
+  StatusOr<int> test_status =
+      ReturnIfErrorUnexpectedStatusWrapperFunction(/*fail=*/true);
+  EXPECT_FALSE(test_status.has_value());
+  EXPECT_EQ(test_status.error().code(), error::INVALID_ARGUMENT);
+}
+
+// RETURN_IF_ERROR_STATUS macro continues on an OK status.
+TEST(StatusMacros, ReturnIfErrorUnexpectedStatusContinuesOnOk) {
+  StatusOr<int> test_status =
+      ReturnIfErrorUnexpectedStatusWrapperFunction(/*fail=*/false);
+  EXPECT_FALSE(test_status.has_value());
+  EXPECT_EQ(test_status.error().code(), error::INTERNAL);
+}
+
 // Function to test StatusOr macros.
 template <typename T>
-StatusOr<T> StatusOrTestFunction(bool fail, T return_value) {
+StatusOr<T> AssignOrOnceCallbackAndReturnTestFunction(bool fail,
+                                                      T return_value) {
   if (fail) {
-    return Status(error::INVALID_ARGUMENT, "Test failure requested.");
+    return base::unexpected(
+        Status(error::INVALID_ARGUMENT, "Test failure requested."));
   }
   return std::forward<T>(return_value);
-}
-
-// Function for testing ASSIGN_OR_RETURN.
-template <typename T>
-StatusOr<T> AssignOrReturnWrapperFunction(bool fail, T return_value) {
-  ASSIGN_OR_RETURN(T value,
-                   StatusOrTestFunction(fail, std::forward<T>(return_value)));
-  return std::forward<T>(value);
-}
-
-// ASSIGN_OR_RETURN actually assigns the value if the status is OK.
-TEST(StatusMacros, AssignOnOk) {
-  constexpr int kReturnValue = 42;
-
-  StatusOr<int> status_or_result =
-      AssignOrReturnWrapperFunction(/*fail=*/false, kReturnValue);
-
-  ASSERT_TRUE(status_or_result.has_value());
-  EXPECT_EQ(status_or_result.value(), kReturnValue);
-}
-
-// ASSIGN_OR_RETURN actually returns on a non-OK status.
-TEST(StatusMacros, ReturnOnError) {
-  StatusOr<int> status_or_result =
-      AssignOrReturnWrapperFunction(/*fail=*/true, /*return_value=*/0);
-  EXPECT_FALSE(status_or_result.has_value());
-}
-
-StatusOr<int> MultipleAssignOrReturnWrapperFunction(int return_value) {
-  bool fail = false;
-  int value;
-  ASSIGN_OR_RETURN(value, StatusOrTestFunction(fail, return_value));
-  ASSIGN_OR_RETURN(value, StatusOrTestFunction(fail, return_value));
-  ASSIGN_OR_RETURN(value, StatusOrTestFunction(fail, return_value));
-  ASSIGN_OR_RETURN(value, StatusOrTestFunction(fail, return_value));
-  return value;
-}
-
-// ASSIGN_OR_RETURN compiles when used multiple times.
-TEST(StatusMacros, MultipleAssignsSucceed) {
-  constexpr int kReturnValue = 42;
-  StatusOr<int> status_or_result =
-      MultipleAssignOrReturnWrapperFunction(kReturnValue);
-  ASSERT_TRUE(status_or_result.has_value());
-  EXPECT_EQ(status_or_result.value(), kReturnValue);
-}
-
-// ASSIGN_OR_RETURN actually moves the value if the status is OK.
-TEST(StatusMacros, AssignOnOkMoveable) {
-  constexpr int kReturnValue = 42;
-
-  StatusOr<std::unique_ptr<int>> status_or_result =
-      AssignOrReturnWrapperFunction(/*fail=*/false,
-                                    std::make_unique<int>(kReturnValue));
-
-  ASSERT_TRUE(status_or_result.has_value());
-  EXPECT_EQ(*status_or_result.value(), kReturnValue);
-}
-
-// ASSIGN_OR_RETURN actually returns on a non-OK status.
-TEST(StatusMacros, ReturnOnErrorMoveable) {
-  StatusOr<std::unique_ptr<int>> status_or_result =
-      AssignOrReturnWrapperFunction(/*fail=*/true,
-                                    std::make_unique<int>(/*return_value=*/0));
-  EXPECT_FALSE(status_or_result.has_value());
 }
 
 // ASSIGN_OR_ONCE_CALLBACK_AND_RETURN testing
@@ -127,8 +95,9 @@ void AssignOrOnceCallbackWrapperFunction(
     bool fail, base::OnceCallback<void(Status)> callback) {
   constexpr int kReturnValue = 42;
   int value;
-  ASSIGN_OR_ONCE_CALLBACK_AND_RETURN(value, callback,
-                                     StatusOrTestFunction(fail, kReturnValue));
+  ASSIGN_OR_ONCE_CALLBACK_AND_RETURN(
+      value, callback,
+      AssignOrOnceCallbackAndReturnTestFunction(fail, kReturnValue));
   ASSERT_EQ(value, kReturnValue);
 }
 
@@ -188,12 +157,15 @@ void MultipleAssignOrOnceCallbackWrapperFunction(
   constexpr bool kFail = false;
 
   int value;
-  ASSIGN_OR_ONCE_CALLBACK_AND_RETURN(value, callback,
-                                     StatusOrTestFunction(kFail, kReturnValue));
-  ASSIGN_OR_ONCE_CALLBACK_AND_RETURN(value, callback,
-                                     StatusOrTestFunction(kFail, kReturnValue));
-  ASSIGN_OR_ONCE_CALLBACK_AND_RETURN(value, callback,
-                                     StatusOrTestFunction(kFail, kReturnValue));
+  ASSIGN_OR_ONCE_CALLBACK_AND_RETURN(
+      value, callback,
+      AssignOrOnceCallbackAndReturnTestFunction(kFail, kReturnValue));
+  ASSIGN_OR_ONCE_CALLBACK_AND_RETURN(
+      value, callback,
+      AssignOrOnceCallbackAndReturnTestFunction(kFail, kReturnValue));
+  ASSIGN_OR_ONCE_CALLBACK_AND_RETURN(
+      value, callback,
+      AssignOrOnceCallbackAndReturnTestFunction(kFail, kReturnValue));
   ASSERT_EQ(value, kReturnValue);
 }
 
@@ -277,7 +249,7 @@ TEST(StatusMacros, DCheckOKOnStatusOr) {
 }
 
 void AssertOKErrorStatusOr() {
-  ASSERT_OK(StatusOr<int>(Status(error::INTERNAL, "")));
+  ASSERT_OK(StatusOr<int>(base::unexpected(Status(error::INTERNAL, ""))));
 }
 
 TEST(StatusMacros, AssertOKOnStatusOr) {
@@ -290,7 +262,7 @@ TEST(StatusMacros, AssertOKOnStatusOr) {
 }
 
 void ExpectOKErrorStatusOr() {
-  EXPECT_OK(StatusOr<int>(Status(error::INTERNAL, "")));
+  EXPECT_OK(StatusOr<int>(base::unexpected(Status(error::INTERNAL, ""))));
 }
 
 TEST(StatusMacros, ExpectOKOnStatusOr) {

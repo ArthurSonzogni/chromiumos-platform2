@@ -19,6 +19,7 @@
 #include <base/task/thread_pool/thread_pool_instance.h>
 #include <base/task/task_traits.h>
 #include <base/threading/sequence_bound.h>
+#include <base/types/expected.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
@@ -118,9 +119,9 @@ class DBusSender {
     Priority priority;
     if (!Priority_Parse(std::string(priority_string), &priority) ||
         priority == Priority::UNDEFINED_PRIORITY) {
-      return Status(
+      return base::unexpected(Status(
           error::INVALID_ARGUMENT,
-          base::StrCat({"Wrong priority: ", std::string(priority_string)}));
+          base::StrCat({"Wrong priority: ", std::string(priority_string)})));
     }
     return priority;
   }
@@ -129,9 +130,10 @@ class DBusSender {
     Destination destination;
     if (!Destination_Parse(std::string(destination_string), &destination) ||
         destination == Destination::UNDEFINED_DESTINATION) {
-      return Status(error::INVALID_ARGUMENT,
-                    base::StrCat({"Wrong destination: ",
-                                  std::string(destination_string)}));
+      return base::unexpected(
+          Status(error::INVALID_ARGUMENT,
+                 base::StrCat({"Wrong destination: ",
+                               std::string(destination_string)})));
     }
     return destination;
   }

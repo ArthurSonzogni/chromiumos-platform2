@@ -7,6 +7,8 @@
 #include <string_view>
 #include <utility>
 
+#include <base/logging.h>
+
 namespace reporting {
 
 namespace {

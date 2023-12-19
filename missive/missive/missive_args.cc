@@ -19,6 +19,7 @@
 #include <base/time/time.h>
 #include <base/time/time_delta_from_string.h>
 #include <base/threading/thread.h>
+#include <base/types/expected.h>
 #include <dbus/bus.h>
 #include <featured/feature_library.h>
 
@@ -48,10 +49,12 @@ std::string FindValueOrEmpty(const std::string& key,
 StatusOr<base::TimeDelta> ParseDuration(std::string_view duration_string) {
   const auto duration_result = base::TimeDeltaFromString(duration_string);
   if (!duration_result.has_value()) {
-    return Status(error::INVALID_ARGUMENT, "Duration is not parseable.");
+    return base::unexpected(
+        Status(error::INVALID_ARGUMENT, "Duration is not parseable."));
   }
   if (!duration_result.value().is_positive()) {
-    return Status(error::INVALID_ARGUMENT, "Duration is not positive.");
+    return base::unexpected(
+        Status(error::INVALID_ARGUMENT, "Duration is not positive."));
   }
   return duration_result.value();
 }

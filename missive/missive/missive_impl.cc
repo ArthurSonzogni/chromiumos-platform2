@@ -14,6 +14,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/task/bind_post_task.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <featured/feature_library.h>
 
 #include "missive/analytics/metrics.h"
@@ -325,7 +326,8 @@ void MissiveImpl::AsyncStartUpload(
     UploaderInterface::UploaderInterfaceResultCb uploader_result_cb) {
   if (!missive) {
     std::move(uploader_result_cb)
-        .Run(Status(error::UNAVAILABLE, "Missive service has been shut down"));
+        .Run(base::unexpected(
+            Status(error::UNAVAILABLE, "Missive service has been shut down")));
     return;
   }
   missive->AsyncStartUploadInternal(reason, std::move(uploader_result_cb));
@@ -338,15 +340,16 @@ void MissiveImpl::AsyncStartUploadInternal(
   CHECK(uploader_result_cb);
   if (!is_enabled_) {
     std::move(uploader_result_cb)
-        .Run(Status(error::FAILED_PRECONDITION, "Reporting is disabled"));
+        .Run(base::unexpected(
+            Status(error::FAILED_PRECONDITION, "Reporting is disabled")));
     return;
   }
   if (!storage_module_) {
     // This is a precaution for a rare case - usually `storage_module_` is
     // already set by the time `AsyncStartUpload`.
     std::move(uploader_result_cb)
-        .Run(Status(error::FAILED_PRECONDITION,
-                    "Missive service not yet ready"));
+        .Run(base::unexpected(Status(error::FAILED_PRECONDITION,
+                                     "Missive service not yet ready")));
     return;
   }
   CreateUploadJob(health_module_, reason, std::move(uploader_result_cb));

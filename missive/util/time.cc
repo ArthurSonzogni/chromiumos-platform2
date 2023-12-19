@@ -10,6 +10,7 @@
 #include <string>
 
 #include <base/strings/strcat.h>
+#include <base/types/expected.h>
 
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
@@ -44,14 +45,15 @@ StatusOr<time_t> GetCurrentTime(TimeType type) {
       break;
     default:
       // Should be impossible to reach here
-      return Status(error::INVALID_ARGUMENT, "Unknown TimeType.");
+      return base::unexpected(
+          Status(error::INVALID_ARGUMENT, "Unknown TimeType."));
   }
 
   struct timespec tp;
   if (clock_gettime(clock_id, &tp)) {
-    return Status(error::UNKNOWN,
-                  base::StrCat({"Failed to retrieve ", readable_type,
-                                " time: ", GetSystemErrorMessage()}));
+    return base::unexpected(Status(
+        error::UNKNOWN, base::StrCat({"Failed to retrieve ", readable_type,
+                                      " time: ", GetSystemErrorMessage()})));
   }
 
   return tp.tv_sec;

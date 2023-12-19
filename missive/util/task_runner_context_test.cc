@@ -17,6 +17,7 @@
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -402,7 +403,8 @@ TEST_F(TaskRunner, ActionsWithStatusOrPtr) {
         Response(std::move(vector_->at(index)));
         return;
       }
-      Response(Status(error::OUT_OF_RANGE, "All statuses are OK"));
+      Response(
+          base::unexpected(Status(error::OUT_OF_RANGE, "All statuses are OK")));
     }
 
     void OnStart() override { Pick(0); }
@@ -412,11 +414,10 @@ TEST_F(TaskRunner, ActionsWithStatusOrPtr) {
 
   const int kI = 0;
   std::vector<StatusOrPtr> vector;
-  vector.emplace_back(Status(error::CANCELLED, "Cancelled"));
-  vector.emplace_back(Status(error::CANCELLED, "Cancelled"));
-  vector.emplace_back(Status(error::CANCELLED, "Cancelled"));
-  vector.emplace_back(Status(error::CANCELLED, "Cancelled"));
-  vector.emplace_back(Status(error::CANCELLED, "Cancelled"));
+  for (int i = 0; i < 5; ++i) {
+    vector.emplace_back(
+        base::unexpected(Status(error::CANCELLED, "Cancelled")));
+  }
   vector.emplace_back(std::make_unique<WrappedValue>(kI));
   StatusOrPtr result = CreateUnknownErrorStatusOr();
   base::RunLoop run_loop;

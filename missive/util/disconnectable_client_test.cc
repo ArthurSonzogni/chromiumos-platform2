@@ -10,6 +10,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -42,7 +43,7 @@ class MockDelegate : public DisconnectableClient::Delegate {
   void Respond(Status status) override {
     CHECK(completion_cb_);
     if (!status.ok()) {
-      std::move(completion_cb_).Run(status);
+      std::move(completion_cb_).Run(base::unexpected(std::move(status)));
       return;
     }
     std::move(completion_cb_).Run(input_ * 2);
@@ -71,10 +72,11 @@ class FailDelegate : public DisconnectableClient::Delegate {
   void Respond(Status status) override {
     CHECK(completion_cb_);
     if (!status.ok()) {
-      std::move(completion_cb_).Run(status);
+      std::move(completion_cb_).Run(base::unexpected(std::move(status)));
       return;
     }
-    std::move(completion_cb_).Run(Status(error::CANCELLED, "Failed in test"));
+    std::move(completion_cb_)
+        .Run(base::unexpected(Status(error::CANCELLED, "Failed in test")));
   }
 
  private:

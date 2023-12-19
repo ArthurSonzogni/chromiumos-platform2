@@ -13,6 +13,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/task_environment.h>
+#include <base/types/expected.h>
 #include <base/values.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -375,7 +376,7 @@ TEST_F(ReportQueueImplTest, SpeculativeQueueCreationFailedToCreate) {
 
     // Fail to attach queue before calling `Enqueue`.
     speculative_report_queue->PrepareToAttachActualQueue().Run(
-        Status(error::UNKNOWN, "Failed for Test"));
+        base::unexpected(Status(error::UNKNOWN, "Failed for Test")));
     task_environment_.RunUntilIdle();  // Let `AttachActualQueue` finish.
 
     speculative_report_queue->Enqueue(kTestString, Priority::IMMEDIATE,
@@ -399,7 +400,7 @@ TEST_F(ReportQueueImplTest, SpeculativeQueueEnqueueAndCreationFailed) {
 
   // Fail to attach queue after calling `Enqueue`.
   speculative_report_queue->PrepareToAttachActualQueue().Run(
-      Status(error::UNKNOWN, "Failed for Test"));
+      base::unexpected(Status(error::UNKNOWN, "Failed for Test")));
   task_environment_.RunUntilIdle();  // Let `AttachActualQueue` finish.
 
   // Unfulfilled pending Enqueue returns the queue failure status.
@@ -456,7 +457,7 @@ TEST_F(ReportQueueImplTest, FlushFailedSpeculativeReportQueue) {
     auto speculative_report_queue = SpeculativeReportQueueImpl::Create();
 
     speculative_report_queue->PrepareToAttachActualQueue().Run(
-        Status(error::UNKNOWN, "Failed for Test"));
+        base::unexpected(Status(error::UNKNOWN, "Failed for Test")));
     task_environment_.RunUntilIdle();  // Let `AttachActualQueue` finish.
 
     speculative_report_queue->Flush(priority_, event.cb());

@@ -21,6 +21,7 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/location.h>
+#include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/task/thread_pool.h>
 #include <base/containers/adapters.h>
@@ -31,6 +32,7 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/timer/timer.h>
+#include <base/types/expected.h>
 #include <base/uuid.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
@@ -145,7 +147,8 @@ void QueueUploaderInterface::WrapInstantiatedUploader(
       record->set_priority(priority);
       uploader_result.error().SaveTo(record->mutable_status());
     }
-    std::move(start_uploader_cb).Run(uploader_result.error());
+    std::move(start_uploader_cb)
+        .Run(base::unexpected(std::move(uploader_result).error()));
     return;
   }
   std::move(start_uploader_cb)
@@ -195,10 +198,11 @@ StatusOr<scoped_refptr<StorageQueue>> QueuesContainer::GetQueue(
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   auto it = queues_.find(std::make_tuple(priority, generation_guid));
   if (it == queues_.end()) {
-    return Status(error::NOT_FOUND,
-                  base::StrCat({"No queue found with priority=",
-                                base::NumberToString(priority),
-                                " and generation_guid= ", generation_guid}));
+    return base::unexpected(Status(
+        error::NOT_FOUND,
+        base::StrCat(
+            {"No queue found with priority=", base::NumberToString(priority),
+             " and generation_guid= ", generation_guid})));
   }
   return it->second;
 }
@@ -241,9 +245,9 @@ StatusOr<GenerationGuid> QueuesContainer::GetGenerationGuid(
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (dmtoken_to_generation_guid_map_.find(std::make_tuple(
           dm_token, priority)) == dmtoken_to_generation_guid_map_.end()) {
-    return Status(
+    return base::unexpected(Status(
         error::NOT_FOUND,
-        base::StrCat({"No generation guid exists for DM token: ", dm_token}));
+        base::StrCat({"No generation guid exists for DM token: ", dm_token})));
   }
   return dmtoken_to_generation_guid_map_[std::make_tuple(dm_token, priority)];
 }
@@ -253,10 +257,10 @@ StatusOr<GenerationGuid> QueuesContainer::CreateGenerationGuidForDMToken(
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (auto generation_guid = GetGenerationGuid(dm_token, priority);
       generation_guid.has_value()) {
-    return Status(
+    return base::unexpected(Status(
         error::FAILED_PRECONDITION,
         base::StrCat({"Generation guid for dm_token ", dm_token,
-                      " already exists! guid=", generation_guid.value()}));
+                      " already exists! guid=", generation_guid.value()})));
   }
 
   GenerationGuid generation_guid =
@@ -539,7 +543,8 @@ void KeyDelivery::WrapInstantiatedKeyUploader(
     UploaderInterface::UploaderInterfaceResultCb start_uploader_cb,
     StatusOr<std::unique_ptr<UploaderInterface>> uploader_result) {
   if (!uploader_result.has_value()) {
-    std::move(start_uploader_cb).Run(uploader_result.error());
+    std::move(start_uploader_cb)
+        .Run(base::unexpected(std::move(uploader_result).error()));
     return;
   }
   std::move(start_uploader_cb)
@@ -575,7 +580,8 @@ Status KeyInStorage::UploadKeyFile(
   // Atomically reserve file index (none else will get the same index).
   uint64_t new_file_index = next_key_file_index_.fetch_add(1);
   // Write into file.
-  RETURN_IF_ERROR(WriteKeyInfoFile(new_file_index, signed_encryption_key));
+  RETURN_IF_ERROR_STATUS(
+      WriteKeyInfoFile(new_file_index, signed_encryption_key));
 
   // Enumerate data files and delete all files with lower index.
   RemoveKeyFilesWithLowerIndexes(new_file_index);
@@ -591,11 +597,11 @@ KeyInStorage::DownloadKeyFile() {
   // Make sure the assigned directory exists.
   base::File::Error error;
   if (!base::CreateDirectoryAndGetError(directory_, &error)) {
-    return Status(
+    return base::unexpected(Status(
         error::UNAVAILABLE,
         base::StrCat(
             {"Storage directory '", directory_.MaybeAsASCII(),
-             "' does not exist, error=", base::File::ErrorToString(error)}));
+             "' does not exist, error=", base::File::ErrorToString(error)})));
   }
 
   // Enumerate possible key files, collect the ones that have valid name,
@@ -609,7 +615,8 @@ KeyInStorage::DownloadKeyFile() {
 
   // If not found, return error.
   if (!signed_encryption_key_result.has_value()) {
-    return Status(error::NOT_FOUND, "No valid encryption key found");
+    return base::unexpected(
+        Status(error::NOT_FOUND, "No valid encryption key found"));
   }
 
   // Found and validated, delete all other files.

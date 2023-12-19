@@ -10,6 +10,7 @@
 
 #include <base/functional/bind.h>
 #include <base/memory/ptr_util.h>
+#include <base/types/expected.h>
 
 #include "missive/proto/record_constants.pb.h"
 #include "missive/util/status.h"
@@ -29,10 +30,12 @@ ReportQueueConfiguration::Create(EventType event_type,
   auto config = base::WrapUnique<ReportQueueConfiguration>(
       new ReportQueueConfiguration());
 
-  RETURN_IF_ERROR(config->SetEventType(event_type));
-  RETURN_IF_ERROR(config->SetDestination(destination));
-  RETURN_IF_ERROR(config->SetPolicyCheckCallback(policy_check_callback));
-  RETURN_IF_ERROR(config->SetReservedSpace(reserved_space));
+  RETURN_IF_ERROR_STATUS(base::unexpected(config->SetEventType(event_type)));
+  RETURN_IF_ERROR_STATUS(base::unexpected(config->SetDestination(destination)));
+  RETURN_IF_ERROR_STATUS(
+      base::unexpected(config->SetPolicyCheckCallback(policy_check_callback)));
+  RETURN_IF_ERROR_STATUS(
+      base::unexpected(config->SetReservedSpace(reserved_space)));
 
   return config;
 }
@@ -50,7 +53,7 @@ ReportQueueConfiguration::Create(std::string_view dm_token,
 
   std::unique_ptr<ReportQueueConfiguration> config =
       std::move(config_result.value());
-  RETURN_IF_ERROR(config->SetDMToken(dm_token));
+  RETURN_IF_ERROR_STATUS(base::unexpected(config->SetDMToken(dm_token)));
 
   return std::move(config);
 }

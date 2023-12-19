@@ -19,6 +19,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
+#include <base/types/expected.h>
 
 #include "missive/dbus/upload_client.h"
 #include "missive/proto/record.pb.h"
@@ -119,7 +120,7 @@ void UploadJob::RecordProcessor::Completed(Status final_status) {
   if (!final_status.ok()) {
     // Destroy the records to regain system memory now.
     encrypted_records_.clear();
-    std::move(done_cb_).Run(final_status,
+    std::move(done_cb_).Run(base::unexpected(final_status),
                             std::move(encrypted_records_reservation_));
     return;
   }
@@ -137,10 +138,11 @@ StatusOr<Scheduler::Job::SmartPtr<UploadJob>> UploadJob::Create(
     UploaderInterface::UploaderInterfaceResultCb start_cb,
     UploadClient::HandleUploadResponseCallback response_cb) {
   if (upload_client == nullptr) {
-    Status status(error::INVALID_ARGUMENT,
-                  "Unable to create UploadJob, invalid upload_client");
+    base::unexpected status(
+        Status(error::INVALID_ARGUMENT,
+               "Unable to create UploadJob, invalid upload_client"));
     std::move(start_cb).Run(status);
-    return status;
+    return std::move(status);
   }
 
   auto upload_delegate = std::make_unique<UploadDelegate>(

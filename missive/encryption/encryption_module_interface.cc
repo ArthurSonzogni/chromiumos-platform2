@@ -12,6 +12,7 @@
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 
 #include "missive/proto/record.pb.h"
 #include "missive/util/dynamic_flag.h"
@@ -43,8 +44,8 @@ void EncryptionModuleInterface::EncryptRecord(
   // Encryptor enabled: start encryption of the record as a whole.
   if (!has_encryption_key()) {
     // Encryption key is not available.
-    std::move(cb).Run(
-        Status(error::NOT_FOUND, "Cannot encrypt record - no key"));
+    std::move(cb).Run(base::unexpected(
+        Status(error::NOT_FOUND, "Cannot encrypt record - no key")));
     return;
   }
   // Encryption key is available, encrypt.

@@ -11,10 +11,12 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/json/json_writer.h>
+#include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/sequence_checker.h>
 #include <base/strings/strcat.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <base/values.h>
 
 #include "missive/analytics/metrics.h"
@@ -30,8 +32,9 @@ namespace {
 StatusOr<std::string> ValueToJson(base::Value record) {
   std::string json_record;
   if (!base::JSONWriter::Write(record, &json_record)) {
-    return Status(error::INVALID_ARGUMENT,
-                  "Provided record was not convertable to a std::string");
+    return base::unexpected(
+        Status(error::INVALID_ARGUMENT,
+               "Provided record was not convertable to a std::string"));
   }
   return json_record;
 }
@@ -40,9 +43,10 @@ StatusOr<std::string> ProtoToString(
     std::unique_ptr<const google::protobuf::MessageLite> record) {
   std::string protobuf_record;
   if (!record->SerializeToString(&protobuf_record)) {
-    return Status(error::INVALID_ARGUMENT,
-                  "Unabled to serialize record to string. Most likely due to "
-                  "unset required fields.");
+    return base::unexpected(
+        Status(error::INVALID_ARGUMENT,
+               "Unabled to serialize record to string. Most likely due to "
+               "unset required fields."));
   }
   return protobuf_record;
 }

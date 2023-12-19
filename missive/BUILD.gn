@@ -96,6 +96,8 @@ static_library("missiveclientlib") {
     "util/disconnectable_client.h",
     "util/status.cc",
     "util/status.h",
+    "util/status_macros.cc",
+    "util/status_macros.h",
     "util/statusor.cc",
     "util/statusor.h",
   ]

@@ -25,6 +25,8 @@
 #include <base/thread_annotations.h>
 #include <base/threading/sequence_bound.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
+#include <base/types/expected_macros.h>
 #include <crypto/sha2.h>
 #include <gmock/gmock-matchers.h>
 #include <gmock/gmock.h>
@@ -778,7 +780,8 @@ class LegacyStorageDegradationTest
                 LOG(ERROR) << "Upload not allowed, reason="
                            << UploaderInterface::ReasonToString(reason) << " "
                            << result.error();
-                std::move(start_uploader_cb).Run(result.error());
+                std::move(start_uploader_cb)
+                    .Run(base::unexpected(result.error()));
                 return;
               }
               auto uploader = std::move(result.value());

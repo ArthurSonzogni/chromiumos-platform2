@@ -56,8 +56,12 @@ static_library("time") {
 }
 
 source_set("status_macros") {
-  sources = [ "status_macros.h" ]
+  sources = [
+    "status_macros.cc",
+    "status_macros.h",
+  ]
 
+  configs += [ ":target_defaults" ]
   deps = [ ":status" ]
 }
 

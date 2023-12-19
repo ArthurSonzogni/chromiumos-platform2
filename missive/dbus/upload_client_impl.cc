@@ -17,6 +17,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/run_loop.h>
 #include <base/task/bind_post_task.h>
+#include <base/types/expected.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 #include <dbus/message.h>
@@ -176,7 +177,7 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
       Status status(error::UNKNOWN,
                     "MessageWriter was unable to append the request.");
       LOG(ERROR) << status;
-      std::move(response_callback_).Run(status);
+      std::move(response_callback_).Run(base::unexpected(std::move(status)));
       return;
     }
 
@@ -198,14 +199,15 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
     }
 
     if (!status.ok()) {
-      std::move(response_callback_).Run(status);
+      std::move(response_callback_).Run(base::unexpected(std::move(status)));
       return;
     }
 
     if (!response_) {
       std::move(response_callback_)
-          .Run(Status(error::UNAVAILABLE,
-                      "Chrome is not responding, upload skipped."));
+          .Run(base::unexpected(
+              Status(error::UNAVAILABLE,
+                     "Chrome is not responding, upload skipped.")));
       return;
     }
 
@@ -213,7 +215,8 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
     UploadEncryptedRecordResponse response_body;
     if (!reader.PopArrayOfBytesAsProto(&response_body)) {
       std::move(response_callback_)
-          .Run(Status(error::INTERNAL, "Response was not parsable."));
+          .Run(base::unexpected(
+              Status(error::INTERNAL, "Response was not parsable.")));
       return;
     }
 

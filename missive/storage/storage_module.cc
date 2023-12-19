@@ -26,6 +26,7 @@
 #include <base/strings/string_split.h>
 #include <base/task/bind_post_task.h>
 #include <base/task/thread_pool.h>
+#include <base/types/expected.h>
 
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
@@ -210,7 +211,7 @@ void StorageModule::SetStorage(
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback,
     StatusOr<scoped_refptr<Storage>> storage) {
   if (!storage.has_value()) {
-    std::move(callback).Run(storage.error());
+    std::move(callback).Run(base::unexpected(std::move(storage).error()));
     return;
   }
   storage_ = storage.value();
