@@ -66,12 +66,19 @@ TEST_F(GenericBatteryTest, Succeed) {
   auto debugd = mock_context()->mock_debugd_proxy();
   const std::vector<std::string> kEctoolBatteryOutputs = {
       "Battery 0 info:\n"
-      "  OEM name:               123-ABCDEF\n"
-      "  Model number:           XYZ-00000-ABC\n"
+      "  Manufacturer:           123-ABCDEF\n"
+      "  Device name:            XYZ-00000-ABC\n"
       "  Chemistry   :           LiP\n"
       "  Serial number:          00C4\n"
       "  Design capacity:        3920 mAh\n",
       // For EC not supporting EC_CMD_BATTERY_GET_STATIC.
+      "Battery info:\n"
+      "  Manufacturer:           123-ABCDEF\n"
+      "  Device name:            XYZ-00000-ABC\n"
+      "  Chemistry   :           LiP\n"
+      "  Serial number:          00C4\n"
+      "  Design capacity:        3920 mAh\n",
+      // For legacy ectool output. See crrev/c/5096745.
       "Battery info:\n"
       "  OEM name:               123-ABCDEF\n"
       "  Model number:           XYZ-00000-ABC\n"
