@@ -2595,9 +2595,23 @@ TEST_F(WiFiMainTest, TimeoutHandshake) {
   // Handshake timeout initiates disconnection.
   EXPECT_CALL(*service, Disconnect(_, HasSubstr("HandshakeTimeoutHandler")));
   handshake_timeout.callback().Run();
+
+  // Make sure shill doesn't handle disconnect until it receives the
+  // |CurrentBSSChanged| signal from supplicant.
+  // Here we invoke |DisconnectFrom| through |InitiateDisconnect| because the
+  // mocked service is not full-fledged to call |DisconnectFrom|. This is
+  // covered in |WiFiServiceTest.DisconnectWithWiFi|.
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
+  InitiateDisconnect(service);
+  EXPECT_NE(nullptr, GetCurrentService());
+  ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
+  EXPECT_EQ(service->state(), Service::kStateIdle);
+  EXPECT_EQ(nullptr, GetCurrentService());
+
   // Verify expectations now, because WiFi may report other state changes
   // when WiFi is Stop()-ed (during TearDown()).
   Mock::VerifyAndClearExpectations(service.get());
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 }
 
 TEST_F(WiFiMainTest, DisconnectInvalidService) {

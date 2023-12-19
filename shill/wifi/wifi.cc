@@ -136,6 +136,19 @@ bool IsPrintableAsciiChar(char c) {
   return (c >= ' ' && c <= '~');
 }
 
+// Is the state of wpa_supplicant indicating that it has finished association?
+// It is guaranteed a |CurrentBSSChanged| signal for a new BSS from
+// wpa_supplicant was received before shill updates the supplicant state to
+// |kInterfaceStateAssociated| or beyond. If shill decides to disconnect during
+// this stage, shill should expect another |CurrentBSSChanged| signal with new
+// BSS being null to handle the disconnection.
+bool IsWPAStateFinishedAssociation(const std::string& state) {
+  return state == WPASupplicant::kInterfaceStateAssociated ||
+         state == WPASupplicant::kInterfaceState4WayHandshake ||
+         state == WPASupplicant::kInterfaceStateGroupHandshake ||
+         state == WPASupplicant::kInterfaceStateCompleted;
+}
+
 // Is the state of wpa_supplicant indicating that it is currently possibly
 // attempting to connect to a network (e.g. is it associating?).
 bool IsWPAStateConnectionInProgress(const std::string& state) {
@@ -839,7 +852,7 @@ void WiFi::DisconnectFrom(WiFiService* service) {
     disconnect_in_progress = false;
   }
 
-  if (supplicant_state_ != WPASupplicant::kInterfaceStateCompleted ||
+  if (!IsWPAStateFinishedAssociation(supplicant_state_) ||
       !disconnect_in_progress) {
     // Can't depend on getting a notification of CurrentBSS change.
     // So effect changes immediately.  For instance, this can happen when
