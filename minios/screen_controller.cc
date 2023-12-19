@@ -18,6 +18,7 @@
 
 #include "minios/error.h"
 #include "minios/key_reader.h"
+#include "minios/metrics_reporter.h"
 #include "minios/recovery_installer.h"
 #include "minios/screen_types.h"
 #include "minios/screens/screen_debug_options.h"

@@ -2,16 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "minios/screens/screen_debug_options.h"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <linux/input-event-codes.h>
+
 #include <memory>
 
 #include "minios/mock_draw_interface.h"
 #include "minios/mock_log_store_manager.h"
 #include "minios/mock_process_manager.h"
 #include "minios/mock_screen_controller.h"
-#include "minios/screens/screen_debug_options.h"
 
 using ::testing::_;
 using ::testing::Contains;

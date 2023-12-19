@@ -5,9 +5,9 @@
 #ifndef MINIOS_MOCK_CGPT_WRAPPER_H_
 #define MINIOS_MOCK_CGPT_WRAPPER_H_
 
-#include "minios/cgpt_wrapper_interface.h"
-
 #include <gmock/gmock.h>
+
+#include "minios/cgpt_wrapper_interface.h"
 
 namespace minios {
 

@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "minios/blkid_wrapper.h"
+
 #include <memory>
 #include <optional>
 
 #include <blkid/blkid.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "minios/blkid_wrapper.h"
 
 namespace minios {
 using ::testing::Optional;

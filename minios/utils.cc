@@ -5,8 +5,6 @@
 #include "minios/utils.h"
 
 #include <cstdint>
-#include <cstdio>
-#include <istream>
 #include <memory>
 #include <optional>
 #include <string>

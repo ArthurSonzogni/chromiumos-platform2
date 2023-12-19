@@ -5,10 +5,11 @@
 #ifndef MINIOS_MOCK_CGPT_UTIL_H_
 #define MINIOS_MOCK_CGPT_UTIL_H_
 
-#include "minios/cgpt_util_interface.h"
+#include <string>
 
 #include <gmock/gmock.h>
-#include <string>
+
+#include "minios/cgpt_util_interface.h"
 
 namespace minios {
 

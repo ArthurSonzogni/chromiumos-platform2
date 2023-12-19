@@ -2,15 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "minios/screens/screen_network.h"
+
+#include <linux/input.h>
+
 #include <dbus/minios/dbus-constants.h>
 #include <dbus/shill/dbus-constants.h>
 #include <gtest/gtest.h>
 
-#include "minios/key_reader.h"
 #include "minios/mock_draw_interface.h"
 #include "minios/mock_network_manager.h"
 #include "minios/mock_screen_controller.h"
-#include "minios/screens/screen_network.h"
 #include "minios/test_utils.h"
 
 using ::testing::NiceMock;

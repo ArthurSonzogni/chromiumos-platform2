@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "minios/screens/screen_error.h"
+
 #include <gtest/gtest.h>
 
 #include "minios/mock_draw_interface.h"
 #include "minios/mock_screen_controller.h"
 #include "minios/screen_types.h"
-#include "minios/screens/screen_error.h"
 
 using ::testing::NiceMock;
 using ::testing::StrictMock;

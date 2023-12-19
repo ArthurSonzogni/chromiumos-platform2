@@ -6,9 +6,10 @@
 
 #include <linux/input.h>
 
+#include <memory>
+
 #include <base/logging.h>
 #include <minios/proto_bindings/minios.pb.h>
-#include <memory>
 
 #include "minios/draw_utils.h"
 #include "minios/log_store_manager_interface.h"

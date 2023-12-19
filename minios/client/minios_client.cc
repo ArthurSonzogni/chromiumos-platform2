@@ -3,9 +3,9 @@
 // found in the LICENSE file.
 
 #include <sysexits.h>
+
 #include <memory>
 #include <numeric>
-#include <unordered_set>
 #include <vector>
 
 #include <base/logging.h>
@@ -22,8 +22,7 @@
 using dbus::Bus;
 using org::chromium::MiniOsInterfaceProxy;
 
-namespace minios {
-namespace client {
+namespace minios::client {
 
 // Constant to signal that we need to continue running the daemon after
 // initialization.
@@ -330,8 +329,7 @@ class MiniOsClient : public brillo::Daemon {
   base::WeakPtrFactory<MiniOsClient> weak_ptr_factory_;
 };
 
-}  // namespace client
-}  // namespace minios
+}  // namespace minios::client
 
 int main(int argc, char** argv) {
   minios::client::MiniOsClient client(argc, argv);

@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gtest/gtest.h>
+#include "minios/dbus_adaptors/dbus_adaptor.h"
+
 #include <linux/input.h>
 
-#include "minios/dbus_adaptors/dbus_adaptor.h"
+#include <gtest/gtest.h>
+
 #include "minios/mock_minios.h"
 #include "minios/mock_network_manager.h"
 

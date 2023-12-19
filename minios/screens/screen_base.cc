@@ -4,10 +4,11 @@
 
 #include "minios/screens/screen_base.h"
 
+#include <linux/input.h>
+
 #include <base/logging.h>
 
 #include "minios/error.h"
-#include "minios/key_reader.h"
 
 namespace minios {
 

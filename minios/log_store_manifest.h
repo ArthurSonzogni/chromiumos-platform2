@@ -5,8 +5,6 @@
 #ifndef MINIOS_LOG_STORE_MANIFEST_H_
 #define MINIOS_LOG_STORE_MANIFEST_H_
 
-#include "minios/log_store_manifest_interface.h"
-
 #include <cstdint>
 #include <optional>
 
@@ -14,6 +12,8 @@
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>
 #include <minios/proto_bindings/minios.pb.h>
+
+#include "minios/log_store_manifest_interface.h"
 
 namespace minios {
 

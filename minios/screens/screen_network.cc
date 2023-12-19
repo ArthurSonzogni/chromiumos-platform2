@@ -4,6 +4,8 @@
 
 #include "minios/screens/screen_network.h"
 
+#include <algorithm>
+
 #include <base/logging.h>
 #include <dbus/minios/dbus-constants.h>
 #include <dbus/shill/dbus-constants.h>
@@ -86,7 +88,7 @@ void ScreenNetwork::ShowButtons() {
       break;
     }
     case NetworkState::kDropdownOpen: {
-      draw_utils_->ShowLanguageMenu(/*selected=*/false);
+      draw_utils_->ShowLanguageMenu(/*is_selected=*/false);
       ShowCollapsedNetworkDropDown(false);
       ShowNetworkDropdown(index_);
       int dropdown_size =

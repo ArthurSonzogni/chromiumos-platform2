@@ -5,13 +5,13 @@
 #include "minios/screens/screen_download.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <minios/proto_bindings/minios.pb.h>
 
+#include "minios/log_store_manager.h"
 #include "minios/log_store_manager_interface.h"
 #include "minios/process_manager_interface.h"
 #include "minios/utils.h"

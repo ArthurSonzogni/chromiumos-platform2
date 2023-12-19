@@ -5,9 +5,9 @@
 #ifndef MINIOS_MOCK_DRAW_UTILS_H_
 #define MINIOS_MOCK_DRAW_UTILS_H_
 
-#include <gmock/gmock.h>
-
 #include <string>
+
+#include <gmock/gmock.h>
 
 #include "minios/draw_utils.h"
 

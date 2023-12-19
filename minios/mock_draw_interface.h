@@ -5,11 +5,11 @@
 #ifndef MINIOS_MOCK_DRAW_INTERFACE_H_
 #define MINIOS_MOCK_DRAW_INTERFACE_H_
 
-#include <base/files/file_path.h>
-#include <gmock/gmock.h>
-
 #include <string>
 #include <vector>
+
+#include <base/files/file_path.h>
+#include <gmock/gmock.h>
 
 #include "minios/draw_interface.h"
 

@@ -173,7 +173,7 @@ TEST_F(ScreenControllerTest, ChangeLocale) {
   // Return from language dropdown, return to original screen.
   EXPECT_CALL(mock_screen_, GetType())
       .WillOnce(testing::Return(ScreenType::kLanguageDropDownScreen));
-  screen_controller_.UpdateLocale(&mock_screen_, /*index=*/1);
+  screen_controller_.UpdateLocale(&mock_screen_, /*selected_locale_index=*/1);
   EXPECT_EQ(ScreenType::kNetworkDropDownScreen,
             screen_controller_.GetCurrentScreen());
 }

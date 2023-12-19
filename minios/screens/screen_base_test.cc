@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 #include <gtest/gtest.h>
+#include <linux/input.h>
 
-#include "minios/key_reader.h"
 #include "minios/screens/screen_welcome.h"
 
 namespace minios {

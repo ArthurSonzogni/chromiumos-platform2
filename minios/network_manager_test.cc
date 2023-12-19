@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "minios/network_manager.h"
+
 #include <string>
 #include <utility>
 #include <vector>
@@ -14,7 +16,6 @@
 
 #include "minios/mock_network_manager.h"
 #include "minios/mock_shill_proxy.h"
-#include "minios/network_manager.h"
 
 using ::testing::_;
 using ::testing::ElementsAre;

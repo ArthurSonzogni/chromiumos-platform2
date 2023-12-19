@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "minios/utils.h"
+
 #include <memory>
 #include <optional>
 #include <utility>
@@ -25,7 +27,6 @@
 #include "minios/log_store_manifest.h"
 #include "minios/mock_cgpt_util.h"
 #include "minios/mock_process_manager.h"
-#include "minios/utils.h"
 
 namespace minios {
 

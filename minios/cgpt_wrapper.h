@@ -5,10 +5,10 @@
 #ifndef MINIOS_CGPT_WRAPPER_H_
 #define MINIOS_CGPT_WRAPPER_H_
 
-#include "minios/cgpt_wrapper_interface.h"
-
 #include <vboot/crossystem.h>
 #include <vboot/vboot_host.h>
+
+#include "minios/cgpt_wrapper_interface.h"
 
 namespace minios {
 

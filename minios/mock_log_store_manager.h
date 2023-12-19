@@ -5,8 +5,9 @@
 #ifndef MINIOS_MOCK_LOG_STORE_MANAGER_H_
 #define MINIOS_MOCK_LOG_STORE_MANAGER_H_
 
-#include <gmock/gmock.h>
 #include <memory>
+
+#include <gmock/gmock.h>
 
 #include "minios/log_store_manager_interface.h"
 

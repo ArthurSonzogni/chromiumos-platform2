@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "minios/draw_utils.h"
+
 #include <memory>
 #include <optional>
 
@@ -11,7 +13,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "minios/draw_utils.h"
 #include "minios/mock_draw_utils.h"
 #include "minios/mock_process_manager.h"
 

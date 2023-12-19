@@ -5,7 +5,6 @@
 #ifndef MINIOS_SCREENS_SCREEN_NETWORK_H_
 #define MINIOS_SCREENS_SCREEN_NETWORK_H_
 
-#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
