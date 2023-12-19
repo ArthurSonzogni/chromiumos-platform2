@@ -83,7 +83,7 @@ impl<T: BlockIo> Gpt<T> {
 
         for index in 0..layout.num_entries {
             let entry = entry_array.get_partition_entry(index).unwrap();
-            if entry.name == label && !entry.is_used() {
+            if entry.name == label && entry.is_used() {
                 return Ok(Some(*entry));
             }
         }
