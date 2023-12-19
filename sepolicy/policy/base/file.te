@@ -66,6 +66,8 @@ type proc_vmstat, fs_type, proc_type;
 type proc_zoneinfo, fs_type, proc_type;
 type sysfs_fs_ext4_features, sysfs_type, fs_type;
 
+type module_kvm_params_pvsched, fs_type, sysfs_type;
+
 type pstorefs, fs_type;
 type qtaguid_proc, fs_type;
 type usbfs, fs_type;

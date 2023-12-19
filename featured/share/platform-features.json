@@ -180,5 +180,21 @@
         "path": "/proc/sys/kernel/timer_highres"
       }
     ]
+  },
+  {
+    "name": "CrOSLateBootArcVmVcpuBoost",
+    "commands": [
+      {
+        "name": "WriteFile",
+        "path": "/sys/module/kvm/parameters/kvm_pv_sched",
+        "value": "1"
+      }
+    ],
+    "support_check_commands": [
+      {
+        "name": "FileExists",
+        "path": "/sys/module/kvm/parameters/kvm_pv_sched"
+      }
+    ]
   }
 ]

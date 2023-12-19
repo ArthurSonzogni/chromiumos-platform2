@@ -5,6 +5,7 @@ domain_auto_trans(cros_init, cros_featured_exec, cros_featured)
 log_writer(cros_featured)
 cros_dbus_client(cros_featured)
 
+allow cros_featured module_kvm_params_pvsched:file rw_file_perms;
 allow cros_featured sysfs_cpuidle:file rw_file_perms;
 allow cros_featured proc_timer:file rw_file_perms;
 rw_dir_file(cros_featured, proc_sys_kernel)
