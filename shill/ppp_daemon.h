@@ -12,6 +12,7 @@
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>
+#include <net-base/network_config.h>
 #include <net-base/process_manager.h>
 
 #include "shill/external_task.h"
@@ -103,10 +104,9 @@ class PPPDaemon {
       DeathCallback death_callback,
       Error* error);
 
-  // Return an IPConfig::Properties struct parsed from |configuration|, but
-  // don't set the IPConfig.  This lets the caller tweak or inspect the
-  // Properties first.
-  static IPConfig::Properties ParseIPConfiguration(
+  // Returns a net_base::NetworkConfig parsed from |configuration|. The caller
+  // might tweak or inspect it first.
+  static net_base::NetworkConfig ParseNetworkConfig(
       const std::map<std::string, std::string>& configuration);
 
   static Service::ConnectFailure ExitStatusToFailure(int exit);

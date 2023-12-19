@@ -36,7 +36,6 @@
 #include <net-base/rtnl_handler.h>
 #include <ModemManager/ModemManager.h>
 
-#include "dbus/shill/dbus-constants.h"
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular/apn_list.h"
 #include "shill/cellular/carrier_entitlement.h"
@@ -3040,12 +3039,8 @@ void Cellular::OnPPPConnected(
   ppp_device_->SetEnabled(true);
   ppp_device_->SelectService(service_);
 
-  // TODO(b/307855773): Migrate ParseIPConfiguration to ParseNetworkConfig
-  // to return net_base::NetworkConfig instead of IPConfig::Properties.
-  auto properties = std::make_unique<IPConfig::Properties>(
-      PPPDaemon::ParseIPConfiguration(params));
   auto network_config = std::make_unique<net_base::NetworkConfig>(
-      IPConfig::Properties::ToNetworkConfig(properties.get(), nullptr));
+      PPPDaemon::ParseNetworkConfig(params));
   ppp_device_->UpdateNetworkConfig(std::move(network_config));
 }
 

@@ -408,10 +408,9 @@ class CellularTest : public testing::Test {
 
   static net_base::NetworkConfig GetExpectedNetworkConfigFromPPPConfig(
       std::map<std::string, std::string>& ppp_config) {
-    auto ip_props = PPPDaemon::ParseIPConfiguration(ppp_config);
-    ip_props.blackhole_ipv6 = false;
-    auto network_config =
-        IPConfig::Properties::ToNetworkConfig(&ip_props, nullptr);
+    net_base::NetworkConfig network_config =
+        PPPDaemon::ParseNetworkConfig(ppp_config);
+    network_config.ipv6_blackhole_route = false;
     return network_config;
   }
 

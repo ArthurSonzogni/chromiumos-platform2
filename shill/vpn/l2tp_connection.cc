@@ -154,27 +154,19 @@ void L2TPConnection::Notify(const std::string& reason,
   }
 
   std::string interface_name = PPPDaemon::GetInterfaceName(dict);
-  auto ipv4_properties = std::make_unique<IPConfig::Properties>(
-      PPPDaemon::ParseIPConfiguration(dict));
-  std::unique_ptr<IPConfig::Properties> ipv6_properties;
+  auto network_config = std::make_unique<net_base::NetworkConfig>(
+      PPPDaemon::ParseNetworkConfig(dict));
 
   // There is no IPv6 support for L2TP/IPsec VPN at this moment, so create a
   // blackhole route for IPv6 traffic after establishing a IPv4 VPN.
-  ipv4_properties->blackhole_ipv6 = true;
+  network_config->ipv6_blackhole_route = true;
 
   // Reduce MTU to the minimum viable for IPv6, since the IPsec layer consumes
   // some variable portion of the payload.  Although this system does not yet
   // support IPv6, it is a reasonable value to start with, since the minimum
   // IPv6 packet size will plausibly be a size any gateway would support, and
   // is also larger than the IPv4 minimum size.
-  ipv4_properties->mtu = net_base::NetworkConfig::kMinIPv6MTU;
-
-  ipv4_properties->method = kTypeVPN;
-
-  // TODO(b/307855773): Make PPPDaemon::ParseIPConfiguration return
-  // NetworkConfig
-  auto network_config = std::make_unique<net_base::NetworkConfig>(
-      IPConfig::Properties::ToNetworkConfig(ipv4_properties.get(), nullptr));
+  network_config->mtu = net_base::NetworkConfig::kMinIPv6MTU;
 
   // Notify() could be invoked either before or after the creation of the ppp
   // interface. We need to make sure that the interface is ready (by checking

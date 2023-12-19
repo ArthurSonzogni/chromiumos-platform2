@@ -13,7 +13,10 @@
 #include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest.h>
+#include <net-base/ip_address.h>
+#include <net-base/ipv4_address.h>
 #include <net-base/mock_process_manager.h>
+#include <net-base/network_config.h>
 
 #include "shill/error.h"
 #include "shill/external_task.h"
@@ -141,23 +144,22 @@ TEST_F(PPPDaemonTest, ParseIPConfiguration) {
   config[kPPPLNSAddress] = "99.88.77.66";
   config[kPPPMRU] = "1492";
   config["foo"] = "bar";  // Unrecognized keys don't cause crash.
-  IPConfig::Properties props = PPPDaemon::ParseIPConfiguration(config);
-  EXPECT_EQ(net_base::IPFamily::kIPv4, props.address_family);
-  EXPECT_EQ(net_base::IPv4CIDR::kMaxPrefixLength, props.subnet_prefix);
-  EXPECT_EQ("4.5.6.7", props.address);
-  EXPECT_EQ("33.44.55.66", props.peer_address);
-  EXPECT_EQ("192.168.1.1", props.gateway);
-  ASSERT_EQ(2, props.dns_servers.size());
-  EXPECT_EQ("1.1.1.1", props.dns_servers[0]);
-  EXPECT_EQ("2.2.2.2", props.dns_servers[1]);
-  EXPECT_EQ("99.88.77.66/32", props.exclusion_list[0]);
-  EXPECT_EQ(1, props.exclusion_list.size());
-  EXPECT_EQ(1492, props.mtu);
-
-  // No gateway specified.
-  config.erase(kPPPGatewayAddress);
-  IPConfig::Properties props2 = PPPDaemon::ParseIPConfiguration(config);
-  EXPECT_EQ("33.44.55.66", props2.gateway);
+  const net_base::NetworkConfig network_config =
+      PPPDaemon::ParseNetworkConfig(config);
+  EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("4.5.6.7/32"),
+            network_config.ipv4_address);
+  // The presence of kPPPExternalIP4Address suggests that this is a p2p network,
+  // thus no gateway is needed.
+  EXPECT_FALSE(network_config.ipv4_gateway.has_value());
+  ASSERT_EQ(2, network_config.dns_servers.size());
+  EXPECT_EQ(*net_base::IPAddress::CreateFromString("1.1.1.1"),
+            network_config.dns_servers[0]);
+  EXPECT_EQ(*net_base::IPAddress::CreateFromString("2.2.2.2"),
+            network_config.dns_servers[1]);
+  EXPECT_EQ(*net_base::IPCIDR::CreateFromCIDRString("99.88.77.66/32"),
+            network_config.excluded_route_prefixes[0]);
+  EXPECT_EQ(1, network_config.excluded_route_prefixes.size());
+  EXPECT_EQ(1492, network_config.mtu);
 }
 
 }  // namespace shill

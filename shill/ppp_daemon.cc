@@ -8,9 +8,13 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include <net-base/ipv4_address.h>
+#include <net-base/network_config.h>
 
 extern "C" {
 // A struct member in pppd.h has the name 'class'.
@@ -132,49 +136,79 @@ std::string PPPDaemon::GetInterfaceName(
 }
 
 // static
-IPConfig::Properties PPPDaemon::ParseIPConfiguration(
+net_base::NetworkConfig PPPDaemon::ParseNetworkConfig(
     const std::map<std::string, std::string>& configuration) {
-  IPConfig::Properties properties;
-  properties.address_family = net_base::IPFamily::kIPv4;
-  properties.subnet_prefix = net_base::IPv4CIDR::kMaxPrefixLength;
-  for (const auto& it : configuration) {
-    const auto& key = it.first;
-    const auto& value = it.second;
+  net_base::NetworkConfig config;
+  std::optional<net_base::IPv4Address> external_address;
+  for (const auto& [key, value] : configuration) {
     SLOG(2) << "Processing: " << key << " -> " << value;
     if (key == kPPPInternalIP4Address) {
-      properties.address = value;
+      config.ipv4_address = net_base::IPv4CIDR::CreateFromStringAndPrefix(
+          value, net_base::IPv4CIDR::kMaxPrefixLength);
+      if (!config.ipv4_address.has_value()) {
+        LOG(ERROR) << "Failed to parse internal IPv4 address: " << value;
+      }
     } else if (key == kPPPExternalIP4Address) {
-      properties.peer_address = value;
+      external_address = net_base::IPv4Address::CreateFromString(value);
+      if (!external_address.has_value()) {
+        LOG(WARNING) << "Failed to parse external IPv4 address: " << value;
+      }
     } else if (key == kPPPGatewayAddress) {
-      properties.gateway = value;
+      config.ipv4_gateway = net_base::IPv4Address::CreateFromString(value);
+      if (!config.ipv4_gateway.has_value()) {
+        LOG(WARNING) << "Failed to parse internal gateway address: " << value;
+      }
     } else if (key == kPPPDNS1) {
-      properties.dns_servers.insert(properties.dns_servers.begin(), value);
+      const std::optional<net_base::IPAddress> dns_server =
+          net_base::IPAddress::CreateFromString(value);
+      if (!dns_server.has_value()) {
+        LOG(WARNING) << "Failed to parse DNS1: " << value;
+        continue;
+      }
+      config.dns_servers.insert(config.dns_servers.begin(), *dns_server);
     } else if (key == kPPPDNS2) {
-      properties.dns_servers.push_back(value);
+      const std::optional<net_base::IPAddress> dns_server =
+          net_base::IPAddress::CreateFromString(value);
+      if (!dns_server.has_value()) {
+        LOG(WARNING) << "Failed to parse DNS2: " << value;
+        continue;
+      }
+      config.dns_servers.push_back(*dns_server);
     } else if (key == kPPPLNSAddress) {
       // This is really a L2TPIPsec property. But it's sent to us by
       // our PPP plugin.
-      properties.exclusion_list.push_back(
-          value + "/" +
-          base::NumberToString(net_base::IPv4CIDR::kMaxPrefixLength));
+      const std::optional<net_base::IPCIDR> prefix =
+          net_base::IPCIDR::CreateFromStringAndPrefix(
+              value, net_base::IPv4CIDR::kMaxPrefixLength);
+      if (!prefix.has_value()) {
+        LOG(WARNING) << "Failed to parse LNS address: " << value;
+        continue;
+      }
+      config.excluded_route_prefixes.push_back(*prefix);
     } else if (key == kPPPMRU) {
       int mru;
       if (!base::StringToInt(value, &mru)) {
         LOG(WARNING) << "Failed to parse MRU: " << value;
         continue;
       }
-      properties.mtu = mru;
+      if (mru < net_base::NetworkConfig::kMinIPv4MTU) {
+        LOG(INFO) << __func__ << " MRU " << mru
+                  << " is too small; adjusting up to "
+                  << net_base::NetworkConfig::kMinIPv4MTU;
+        mru = net_base::NetworkConfig::kMinIPv4MTU;
+      }
+      config.mtu = mru;
     } else {
       SLOG(2) << "Key ignored.";
     }
   }
-  if (properties.gateway.empty()) {
-    // The gateway may be unspecified, since this is a point-to-point
-    // link. Set to the peer's address, so that Connection can set the
-    // routing table.
-    properties.gateway = properties.peer_address;
+
+  // The presence of the external address suggests that this is a p2p network.
+  // No gateway is needed.
+  if (external_address.has_value()) {
+    config.ipv4_gateway = std::nullopt;
   }
-  return properties;
+  return config;
 }
 
 // static
