@@ -1,4 +1,4 @@
-# Copyright 2020 The ChromiumOS Authors
+# Copyright 2021 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -14,6 +14,9 @@ Functions use the concept of 'compound' and 'text' XML nodes.
 
 import collections
 import re
+
+
+BOOLEAN_REGEX = r"(?i)(true|false|)$"
 
 
 def error(elem, msg):
@@ -36,22 +39,43 @@ def get_attr(elem, tag, regex=None):
     if regex and not re.match(regex, attr):
         error(
             elem,
-            f"has '{tag}' attribute '{attr}' which does "
-            f"not match regex '{regex}'",
+            (
+                f"has '{tag}' attribute '{attr}' which does "
+                "not match regex '{regex}'"
+            ),
         )
     return attr
 
 
-def get_compound_children(elem, tag):
+def get_optional_attr(elem, tag, regex=None):
+    """Get an attribute.
+
+    Returns None if it doesn't exist.
+    """
+    attr = elem.attrib.get(tag)
+    if not attr:
+        return None
+    if regex and not re.match(regex, attr):
+        error(
+            elem,
+            (
+                f"has '{tag}' attribute '{attr}' which does "
+                "not match regex '{regex}'"
+            ),
+        )
+    return attr
+
+
+def get_compound_children(elem, tag, allow_missing_children=False):
     """Get all child nodes of `elem` with tag `tag`.
 
     Error if none exist, or a child is not a compound node.
     """
     children = elem.findall(tag)
-    if not children:
+    if not children and not allow_missing_children:
         error(elem, f"missing node '{tag}'")
     for child in children:
-        if child.text.strip():
+        if child.text and child.text.strip():
             error(child, "contains text, but shouldn't")
     return children
 
@@ -87,8 +111,10 @@ def get_text_children(elem, tag, regex=None):
         if regex and not re.match(regex, text):
             error(
                 elem,
-                f"has '{tag}' node '{text}' which does "
-                f"not match regex '{regex}'",
+                (
+                    f"has '{tag}' node '{text}' which does "
+                    "not match regex '{regex}'"
+                ),
             )
         result.append(text)
     return result
@@ -106,22 +132,32 @@ def get_text_child(elem, tag, regex=None):
     return result[0]
 
 
-def check_attributes(elem, expected_attrs):
+def check_attributes(elem, expected_attrs, optional_attrs=None):
     """Ensure `elem` has no attributes except those in `expected_attrs`."""
-    actual_attrs = elem.attrib.keys()
+    actual_attrs = set(elem.attrib.keys())
     unexpected_attrs = actual_attrs - set(expected_attrs)
+    if optional_attrs:
+        unexpected_attrs = unexpected_attrs - set(optional_attrs)
     if unexpected_attrs:
         attrs = " ".join(unexpected_attrs)
-        error(elem, f"has unexpected attributes: {attrs}")
+        error(elem, "has unexpected attributes: " + attrs)
 
 
 def check_children(elem, expected_children):
-    """Ensure `elem` has no children without tags in `expected_children`."""
+    """Ensure all children in `expected_children` are in `elem`."""
     actual_children = {child.tag for child in elem}
-    unexpected_children = actual_children - set(expected_children)
+    unexpected_children = set(expected_children) - actual_children
     if unexpected_children:
         children = " ".join(unexpected_children)
-        error(elem, f"has unexpected nodes: {children}")
+        error(elem, "is missing nodes: " + children)
+
+
+def get_boolean_attr(elem, attr_name):
+    maybe_attr = get_optional_attr(elem, attr_name, BOOLEAN_REGEX)
+    if maybe_attr:
+        return maybe_attr.lower() == "true"
+    else:
+        return False
 
 
 def check_child_names_unique(elem, tag):
