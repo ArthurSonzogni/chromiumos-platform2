@@ -33,6 +33,10 @@ void HandleSignalConnected(const std::string& interface,
 }
 
 std::optional<uint32_t> ReadAttachResponse(dbus::Response* dbus_response) {
+  if (dbus_response == nullptr) {
+    LOG(ERROR) << __func__ << ": method call failed";
+    return std::nullopt;
+  }
   dbus::MessageReader reader(dbus_response);
   vm_tools::concierge::AttachNetDeviceResponse attach_response;
   if (!reader.PopArrayOfBytesAsProto(&attach_response)) {
@@ -50,6 +54,10 @@ std::optional<uint32_t> ReadAttachResponse(dbus::Response* dbus_response) {
 }
 
 bool ReadDetachResponse(dbus::Response* dbus_response) {
+  if (dbus_response == nullptr) {
+    LOG(ERROR) << __func__ << ": method call failed";
+    return false;
+  }
   dbus::MessageReader reader(dbus_response);
   vm_tools::concierge::DetachNetDeviceResponse detach_response;
   if (!reader.PopArrayOfBytesAsProto(&detach_response)) {
