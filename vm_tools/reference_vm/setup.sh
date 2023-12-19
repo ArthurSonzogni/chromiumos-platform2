@@ -97,18 +97,18 @@ EOF
   systemctl enable maitred.service update-cros-list.service vshd.service \
     'opt-google-cros\x2dcontainers.mount'
 
-  install -D -m 0644 -t /usr/src/virtio-wayland-0 \
-    "${DATA_ROOT}/usr/src/virtio-wayland-0/dkms.conf" \
-    "${DATA_ROOT}/usr/src/virtio-wayland-0/Makefile" \
-    "${DATA_ROOT}/usr/src/virtio-wayland-0/virtio_wl.c"
-  install -D -m 0644 -t /usr/src/virtio-wayland-0/include/linux \
-    "${DATA_ROOT}/usr/src/virtio-wayland-0/include/linux/virtio_wl.h" \
-    "${DATA_ROOT}/usr/src/virtio-wayland-0/include/linux/virtwl.h"
-  install -D -m 0644 -t /usr/src/virtio-tpm-0 \
-    "${DATA_ROOT}/usr/src/virtio-tpm-0/dkms.conf" \
-    "${DATA_ROOT}/usr/src/virtio-tpm-0/Makefile" \
-    "${DATA_ROOT}/usr/src/virtio-tpm-0/tpm.h" \
-    "${DATA_ROOT}/usr/src/virtio-tpm-0/tpm_virtio.c"
+  install -D -m 0644 -t /usr/src/virtio-tpm-1 \
+    "${DATA_ROOT}/usr/src/virtio-tpm-1/dkms.conf" \
+    "${DATA_ROOT}/usr/src/virtio-tpm-1/Makefile" \
+    "${DATA_ROOT}/usr/src/virtio-tpm-1/tpm.h" \
+    "${DATA_ROOT}/usr/src/virtio-tpm-1/tpm_virtio.c"
+  install -D -m 0644 -t /usr/src/virtio-wayland-1 \
+    "${DATA_ROOT}/usr/src/virtio-wayland-1/dkms.conf" \
+    "${DATA_ROOT}/usr/src/virtio-wayland-1/Makefile" \
+    "${DATA_ROOT}/usr/src/virtio-wayland-1/virtio_wl.c"
+  install -D -m 0644 -t /usr/src/virtio-wayland-1/include/linux \
+    "${DATA_ROOT}/usr/src/virtio-wayland-1/include/linux/virtio_wl.h" \
+    "${DATA_ROOT}/usr/src/virtio-wayland-1/include/linux/virtwl.h"
   install -D -m 0644 -t /var/lib/dkms "${DATA_ROOT}/var/lib/dkms/mok.pub"
   install -D -m 0600 -t /var/lib/dkms "${DATA_ROOT}/var/lib/dkms/mok.key"
 
@@ -123,8 +123,8 @@ EOF
   # Find the installed, not running, kernel version.
   kernel="$(dpkg-query -Wf '${Package}\n' 'linux-image-*-amd64' | tail -n 1 | \
     sed -E -e 's/linux-image-//')"
-  dkms install virtio-wayland/0 -k "${kernel}"
-  dkms install virtio-tpm/0 -k "${kernel}"
+  dkms install virtio-tpm/1 -k "${kernel}"
+  dkms install virtio-wayland/1 -k "${kernel}"
 
   # chromeos guest tools repo
   curl https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor > \
