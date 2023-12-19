@@ -5,6 +5,7 @@
 #ifndef LIBHWSEC_ERROR_TPM_RETRY_HANDLER_H_
 #define LIBHWSEC_ERROR_TPM_RETRY_HANDLER_H_
 
+#include <concepts>
 #include <utility>
 
 #include <base/logging.h>
@@ -29,7 +30,7 @@ class TPMRetryHandler {
   // Does the generic error handling for the Status/StatusOr result.
   // Returns true when there is no need to retry anymore (the result is success
   // or there is no way to recover from this error).
-  template <typename Result, typename... Args>
+  template <std::constructible_from<Status> Result, typename... Args>
   bool HandleResult(Result& result, Backend& backend, const Args&... args) {
     using hwsec_foundation::status::MakeStatus;
     if (result.ok()) {
