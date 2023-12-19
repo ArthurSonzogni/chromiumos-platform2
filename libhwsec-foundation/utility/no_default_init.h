@@ -8,6 +8,8 @@
 #include <type_traits>
 #include <utility>
 
+#include "libhwsec-foundation/utility/concepts.h"
+
 // Helper type to create variable of an arbitrary type which does not allow for
 // default construction. This is most useful in contexts like structs where you
 // want force specific fields to be explicitly initialized.
@@ -36,7 +38,7 @@
 
 namespace hwsec_foundation {
 
-template <typename T, typename = void>
+template <typename T>
 class NoDefault : public T {
  public:
   using T::T;
@@ -50,7 +52,8 @@ class NoDefault : public T {
 };
 
 template <typename T>
-class NoDefault<T, std::enable_if_t<std::is_scalar_v<T>>> {
+  requires(std::is_scalar_v<T>)
+class NoDefault<T> {
  public:
   constexpr NoDefault(T v) : value_(v) {}  // NOLINT(runtime/explicit)
   NoDefault() = delete;
@@ -60,17 +63,15 @@ class NoDefault<T, std::enable_if_t<std::is_scalar_v<T>>> {
   constexpr operator T() const { return value_; }
   constexpr operator T&() { return value_; }
 
-  template <int&... ExplicitArgumentBarrier,
-            typename U = T,
-            typename = std::void_t<decltype(*std::declval<U>())>>
-  constexpr auto& operator*() const {
+  constexpr auto& operator*() const
+    requires(Dereferencable<T>)
+  {
     return *value_;
   }
 
-  template <int&... ExplicitArgumentBarrier,
-            typename U = T,
-            typename = std::void_t<decltype(*std::declval<U>())>>
-  constexpr T operator->() const {
+  constexpr T operator->() const
+    requires(Dereferencable<T>)
+  {
     return value_;
   }
 
